@@ -1,0 +1,68 @@
+name: football-intelligence
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fbi-postgres
+    environment:
+      POSTGRES_USER: fbi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fbi_local_dev}
+      POSTGRES_DB: fbi
+    ports: ["5433:5432"]
+    volumes:
+      - ./.data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fbi -d fbi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: { context: ., dockerfile: Dockerfile }
+    container_name: fbi-api
+    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      FBI_DATABASE_URL: postgresql+psycopg://fbi:${POSTGRES_PASSWORD:-fbi_local_dev}@postgres:5432/fbi
+    env_file: [.env]
+    ports: ["8010:8000"]
+    volumes: [".:/app"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., dockerfile: Dockerfile }
+    container_name: fbi-worker
+    command: python -m apps.worker.main
+    environment:
+      FBI_DATABASE_URL: postgresql+psycopg://fbi:${POSTGRES_PASSWORD:-fbi_local_dev}@postgres:5432/fbi
+    env_file: [.env]
+    volumes: [".:/app", "./.data:/app/.data"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: unless-stopped
+
+  web:
+    image: node:22-alpine
+    container_name: fbi-web
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    ports: ["3010:3000"]
+    volumes: ["./apps/web:/app"]
+    profiles: ["web"]
+
+  bot:
+    build: { context: ., dockerfile: Dockerfile }
+    container_name: fbi-bot
+    command: python -m apps.bot.main
+    env_file: [.env]
+    depends_on: [api]
+    profiles: ["bot"]
+
+  adminer:
+    image: adminer:latest
+    container_name: fbi-adminer
+    ports: ["8011:8080"]
+    depends_on: [postgres]
+    profiles: ["dev"]
