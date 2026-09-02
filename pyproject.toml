@@ -32,7 +32,7 @@ packages = ["src/fbi"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "src"]
 asyncio_mode = "auto"
 addopts = "-ra --strict-markers"
 markers = ["integration: requires a live PostgreSQL"]

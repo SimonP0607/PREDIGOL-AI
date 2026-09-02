@@ -49,12 +49,13 @@ def _runtime() -> RuntimeSettings:
 
 @lru_cache(maxsize=1)
 def _database() -> DatabaseSettings:
-    return DatabaseSettings()
+    # Values come from the environment; pydantic-settings fills them at runtime.
+    return DatabaseSettings()  # type: ignore[call-arg]
 
 
 @lru_cache(maxsize=1)
 def _api_football() -> ApiFootballSettings:
-    return ApiFootballSettings()
+    return ApiFootballSettings()  # type: ignore[call-arg]
 
 
 @lru_cache(maxsize=1)

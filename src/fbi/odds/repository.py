@@ -1,0 +1,201 @@
+"""Persistence for the odds time series.
+
+Idempotency is a property of the schema, not of this code: the primary key of
+``market.odds_snapshots`` includes ``captured_at``, so writes use
+``ON CONFLICT DO NOTHING``. Re-running a capture can never corrupt history and
+can never silently overwrite a price - the failure that cost the legacy system
+its entire odds history.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from dataclasses import dataclass
+from datetime import datetime
+
+import psycopg
+import structlog
+from psycopg.rows import tuple_row
+
+from fbi.providers.base import OddsQuote
+
+log = structlog.get_logger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class WriteResult:
+    offered: int
+    written: int
+    skipped_existing: int
+    skipped_unknown_fixture: int
+    skipped_unknown_market: int
+
+
+class OddsRepository:
+    def __init__(self, conn: psycopg.Connection) -> None:
+        self._conn = conn
+
+    def ensure_bookmakers(self, quotes: Sequence[OddsQuote]) -> dict[int, int]:
+        """Upsert bookmakers, returning provider_id -> internal id."""
+        seen = {q.provider_bookmaker_id: q.bookmaker_name for q in quotes}
+        if not seen:
+            return {}
+        with self._conn.cursor(row_factory=tuple_row) as cur:
+            cur.executemany(
+                "INSERT INTO market.bookmakers (provider_bookmaker_id, name) VALUES (%s, %s) "
+                "ON CONFLICT (provider_bookmaker_id) DO UPDATE SET name = EXCLUDED.name",
+                list(seen.items()),
+            )
+            cur.execute(
+                "SELECT provider_bookmaker_id, id FROM market.bookmakers "
+                "WHERE provider_bookmaker_id = ANY(%s)",
+                (list(seen),),
+            )
+            return dict(cur.fetchall())
+
+    def _fixture_ids(self, quotes: Sequence[OddsQuote]) -> dict[int, int]:
+        provider_ids = sorted({q.provider_fixture_id for q in quotes})
+        if not provider_ids:
+            return {}
+        with self._conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(
+                "SELECT provider_fixture_id, id FROM core.fixtures WHERE provider_fixture_id = ANY(%s)",
+                (provider_ids,),
+            )
+            return dict(cur.fetchall())
+
+    def _known_markets(self) -> set[str]:
+        with self._conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute("SELECT key FROM market.markets WHERE is_tracked")
+            return {row[0] for row in cur.fetchall()}
+
+    def write_snapshots(self, quotes: Sequence[OddsQuote]) -> WriteResult:
+        if not quotes:
+            return WriteResult(0, 0, 0, 0, 0)
+
+        bookmakers = self.ensure_bookmakers(quotes)
+        fixtures = self._fixture_ids(quotes)
+        markets = self._known_markets()
+
+        rows: list[tuple[object, ...]] = []
+        unknown_fixture = unknown_market = 0
+        for q in quotes:
+            fixture_id = fixtures.get(q.provider_fixture_id)
+            if fixture_id is None:
+                unknown_fixture += 1
+                continue
+            if q.market_key not in markets:
+                unknown_market += 1
+                continue
+            rows.append(
+                (
+                    fixture_id,
+                    bookmakers[q.provider_bookmaker_id],
+                    q.market_key,
+                    q.selection,
+                    q.line,
+                    q.odds_decimal,
+                    q.captured_at,
+                    q.minutes_to_ko,
+                    q.source,
+                    q.payload_hash,
+                )
+            )
+
+        written = 0
+        if rows:
+            with self._conn.cursor() as cur:
+                cur.executemany(
+                    "INSERT INTO market.odds_snapshots "
+                    "(fixture_id,bookmaker_id,market_key,selection,line,odds_decimal,"
+                    " captured_at,minutes_to_ko,source,payload_hash) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+                    "ON CONFLICT DO NOTHING",
+                    rows,
+                    returning=False,
+                )
+                written = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+
+        result = WriteResult(
+            offered=len(quotes),
+            written=written,
+            skipped_existing=max(0, len(rows) - written),
+            skipped_unknown_fixture=unknown_fixture,
+            skipped_unknown_market=unknown_market,
+        )
+        if unknown_fixture or unknown_market:
+            log.warning(
+                "odds.rows_dropped",
+                unknown_fixture=unknown_fixture,
+                unknown_market=unknown_market,
+            )
+        return result
+
+    def upsert_near_close(self, quotes: Sequence[OddsQuote]) -> int:
+        """Materialise the latest pre-kickoff price we managed to capture.
+
+        Deliberately NOT called a closing line. ``is_validated_close`` stays
+        false and ``minutes_to_ko`` records how far from kick-off this actually
+        was, so nobody downstream has to guess.
+        """
+        if not quotes:
+            return 0
+        bookmakers = self.ensure_bookmakers(quotes)
+        fixtures = self._fixture_ids(quotes)
+        markets = self._known_markets()
+
+        rows = [
+            (
+                fixtures[q.provider_fixture_id],
+                bookmakers[q.provider_bookmaker_id],
+                q.market_key,
+                q.selection,
+                q.line,
+                q.odds_decimal,
+                q.captured_at,
+                q.minutes_to_ko,
+                q.source,
+            )
+            for q in quotes
+            if q.provider_fixture_id in fixtures and q.market_key in markets
+        ]
+        if not rows:
+            return 0
+        with self._conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO market.near_close_snapshots "
+                "(fixture_id,bookmaker_id,market_key,selection,line,odds_decimal,"
+                " captured_at,minutes_to_ko,source) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+                "ON CONFLICT (fixture_id,bookmaker_id,market_key,selection,line) DO UPDATE SET "
+                "  odds_decimal = EXCLUDED.odds_decimal,"
+                "  captured_at = EXCLUDED.captured_at,"
+                "  minutes_to_ko = EXCLUDED.minutes_to_ko,"
+                "  source = EXCLUDED.source "
+                "WHERE market.near_close_snapshots.minutes_to_ko > EXCLUDED.minutes_to_ko",
+                rows,
+                returning=False,
+            )
+        return len(rows)
+
+    def observations_since(
+        self, *, since: datetime, provider_fixture_ids: Sequence[int] | None = None
+    ) -> list[tuple[int, str, int]]:
+        """(provider_fixture_id, source, minutes_to_ko) already on record.
+
+        The planner turns these into window keys. Deriving coverage from what is
+        actually stored - rather than from a separate "we ran this" table - means
+        the idempotency check can never disagree with reality.
+        """
+        sql = (
+            "SELECT DISTINCT f.provider_fixture_id, o.source, o.minutes_to_ko "
+            "FROM market.odds_snapshots o JOIN core.fixtures f ON f.id = o.fixture_id "
+            "WHERE o.captured_at >= %s"
+        )
+        params: list[object] = [since]
+        if provider_fixture_ids:
+            sql += " AND f.provider_fixture_id = ANY(%s)"
+            params.append(list(provider_fixture_ids))
+        with self._conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(sql, params)
+            return [(int(a), str(b), int(c)) for a, b, c in cur.fetchall()]

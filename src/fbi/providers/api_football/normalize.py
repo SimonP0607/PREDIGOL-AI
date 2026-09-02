@@ -1,0 +1,220 @@
+"""Turn API-Football JSON into provider-agnostic DTOs.
+
+Everything here is defensive. The legacy system trusted the payload shape and
+paid for it: ``_parse_avg`` fell back to the SEASON TOTAL when the average was
+missing, producing expected_goals of 108.0, 94.0, 90.0, 55.0 and 15.0 goals per
+match - values that then drove the Over/Under heuristic for months without
+anybody noticing.
+
+The rule that follows from that: a value that cannot be parsed is DROPPED and
+counted, never substituted with a plausible-looking neighbour.
+"""
+
+from __future__ import annotations
+
+import math
+from collections.abc import Iterator
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
+from typing import Any
+
+import structlog
+
+from fbi.providers.base import FixtureRef, OddsQuote, OddsSource
+
+log = structlog.get_logger(__name__)
+
+# API-Football bet ids -> our market keys. Only what we actually model.
+BET_ID_TO_MARKET: dict[int, str] = {
+    1: "1X2",
+    5: "OU",
+    8: "BTTS",
+    12: "DC",
+    4: "AH",
+}
+
+SELECTION_ALIASES: dict[str, dict[str, str]] = {
+    "1X2": {"home": "Home", "draw": "Draw", "away": "Away", "1": "Home", "x": "Draw", "2": "Away"},
+    "BTTS": {"yes": "Yes", "no": "No"},
+    "DC": {"home/draw": "1X", "home/away": "12", "draw/away": "X2", "1x": "1X", "12": "12", "x2": "X2"},
+}
+
+MIN_ODDS = Decimal("1.001")
+MAX_ODDS = Decimal("999.999")
+
+
+def _to_decimal(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    try:
+        d = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        return None
+    if not d.is_finite():
+        return None
+    return d
+
+
+def _parse_line(market_key: str, raw_value: str) -> tuple[str, Decimal] | None:
+    """Split 'Over 2.5' into ('Over', 2.5). Returns None if the line is
+    unreadable - never a default of 0, which would silently merge every
+    Over/Under line into one."""
+    text = raw_value.strip()
+    if market_key not in {"OU", "AH"}:
+        return text, Decimal("0")
+    parts = text.rsplit(" ", 1)
+    if len(parts) != 2:
+        return None
+    side, line_text = parts[0].strip(), parts[1].strip()
+    line = _to_decimal(line_text)
+    if line is None or not side:
+        return None
+    return side.title(), line
+
+
+def _canonical_selection(market_key: str, raw_value: str) -> str | None:
+    aliases = SELECTION_ALIASES.get(market_key)
+    if aliases is None:
+        return raw_value.strip() or None
+    return aliases.get(raw_value.strip().lower())
+
+
+def minutes_to_kickoff(kickoff_at: datetime, captured_at: datetime) -> int:
+    """Positive before kick-off, floored at 0. Never negative for a prematch
+    price: that would assert we saw a pre-match quote after the match began."""
+    delta = (kickoff_at - captured_at).total_seconds() / 60.0
+    return max(0, math.floor(delta))
+
+
+def iter_odds(
+    body: dict[str, Any],
+    *,
+    kickoff_at: datetime,
+    captured_at: datetime,
+    payload_hash: str,
+    source: OddsSource,
+    market_filter: set[str] | None = None,
+) -> Iterator[OddsQuote]:
+    """Yield one OddsQuote per (bookmaker, market, selection, line).
+
+    Anything malformed is skipped and logged with its reason. The caller compares
+    yielded count against the payload's own counts to detect silent loss.
+    """
+    mtk = minutes_to_kickoff(kickoff_at, captured_at)
+    for entry in body.get("response") or []:
+        if not isinstance(entry, dict):
+            continue
+        fixture_id = _fixture_id(entry)
+        if fixture_id is None:
+            continue
+        for book in entry.get("bookmakers") or []:
+            if not isinstance(book, dict):
+                continue
+            book_id, book_name = book.get("id"), book.get("name")
+            if not isinstance(book_id, int) or not isinstance(book_name, str):
+                continue
+            for bet in book.get("bets") or []:
+                if not isinstance(bet, dict):
+                    continue
+                market_key = BET_ID_TO_MARKET.get(bet.get("id"))  # type: ignore[arg-type]
+                if market_key is None:
+                    continue
+                if market_filter and market_key not in market_filter:
+                    continue
+                for value in bet.get("values") or []:
+                    quote = _quote(
+                        value=value,
+                        market_key=market_key,
+                        fixture_id=fixture_id,
+                        book_id=book_id,
+                        book_name=book_name,
+                        captured_at=captured_at,
+                        minutes=mtk,
+                        source=source,
+                        payload_hash=payload_hash,
+                    )
+                    if quote is not None:
+                        yield quote
+
+
+def _fixture_id(entry: dict[str, Any]) -> int | None:
+    fixture = entry.get("fixture")
+    if isinstance(fixture, dict) and isinstance(fixture.get("id"), int):
+        return int(fixture["id"])
+    if isinstance(entry.get("fixture"), int):
+        return int(entry["fixture"])
+    return None
+
+
+def _quote(
+    *,
+    value: Any,
+    market_key: str,
+    fixture_id: int,
+    book_id: int,
+    book_name: str,
+    captured_at: datetime,
+    minutes: int,
+    source: OddsSource,
+    payload_hash: str,
+) -> OddsQuote | None:
+    if not isinstance(value, dict):
+        return None
+    raw_selection = value.get("value")
+    if not isinstance(raw_selection, str):
+        return None
+
+    parsed = _parse_line(market_key, raw_selection)
+    if parsed is None:
+        log.debug("odds.unparsable_line", market=market_key, value=raw_selection)
+        return None
+    side, line = parsed
+
+    selection = _canonical_selection(market_key, side) if market_key not in {"OU", "AH"} else side
+    if selection is None:
+        log.debug("odds.unknown_selection", market=market_key, value=raw_selection)
+        return None
+
+    odds = _to_decimal(value.get("odd"))
+    if odds is None or not (MIN_ODDS <= odds <= MAX_ODDS):
+        log.debug("odds.out_of_range", market=market_key, selection=selection, odd=value.get("odd"))
+        return None
+
+    return OddsQuote(
+        provider_fixture_id=fixture_id,
+        provider_bookmaker_id=book_id,
+        bookmaker_name=book_name,
+        market_key=market_key,
+        selection=selection,
+        line=line,
+        odds_decimal=odds,
+        captured_at=captured_at,
+        minutes_to_ko=minutes,
+        source=source,
+        payload_hash=payload_hash,
+    )
+
+
+def iter_fixtures(body: dict[str, Any]) -> Iterator[FixtureRef]:
+    for entry in body.get("response") or []:
+        if not isinstance(entry, dict):
+            continue
+        fixture, league, teams = entry.get("fixture"), entry.get("league"), entry.get("teams")
+        if not all(isinstance(x, dict) for x in (fixture, league, teams)):
+            continue
+        assert isinstance(fixture, dict) and isinstance(league, dict) and isinstance(teams, dict)
+        try:
+            kickoff = datetime.fromisoformat(str(fixture["date"]))
+            home, away = teams["home"], teams["away"]
+            yield FixtureRef(
+                provider_fixture_id=int(fixture["id"]),
+                provider_league_id=int(league["id"]),
+                season=int(league["season"]),
+                kickoff_at=kickoff,
+                provider_home_team_id=int(home["id"]),
+                provider_away_team_id=int(away["id"]),
+                status_short=str((fixture.get("status") or {}).get("short") or "NS"),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            log.debug("fixture.unparsable", error=str(exc))
+            continue

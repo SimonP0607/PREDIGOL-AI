@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 import sys
 import uuid
+from collections.abc import MutableMapping
 from contextvars import ContextVar
+from typing import Any
 
 import structlog
 
@@ -24,12 +26,22 @@ def get_run_id() -> str:
     return _run_id.get()
 
 
-def _add_run_id(_logger: object, _name: str, event_dict: dict) -> dict:
+def bind_run_id(run_id: str) -> None:
+    """Attach an existing run id (e.g. raw.ingestion_runs.id) to every log line
+    emitted from here on in this task."""
+    _run_id.set(run_id)
+
+
+def _add_run_id(
+    _logger: Any, _name: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     event_dict["run_id"] = _run_id.get()
     return event_dict
 
 
-def _redact(_logger: object, _name: str, event_dict: dict) -> dict:
+def _redact(
+    _logger: Any, _name: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     """Never let a credential reach a log line, whatever the caller passes."""
     for k in list(event_dict):
         if any(s in k.lower() for s in _SECRET_KEYS):
@@ -56,4 +68,5 @@ def configure(level: str = "INFO") -> None:
 
 
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:
-    return structlog.get_logger(name)
+    logger: structlog.stdlib.BoundLogger = structlog.get_logger(name)
+    return logger

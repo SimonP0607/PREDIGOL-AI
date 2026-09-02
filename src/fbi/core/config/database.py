@@ -24,6 +24,12 @@ class DatabaseSettings(BaseSettings):
     __str__ = __repr__
 
     @property
+    def psycopg_url(self) -> str:
+        """The plain libpq URL. SQLAlchemy's +psycopg dialect marker is not
+        understood by psycopg.connect()."""
+        return self.database_url.replace("postgresql+psycopg://", "postgresql://")
+
+    @property
     def masked_url(self) -> str:
         url = self.database_url
         if "@" not in url or "//" not in url:
