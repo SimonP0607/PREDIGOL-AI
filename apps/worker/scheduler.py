@@ -24,7 +24,8 @@ import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from fbi.core.config import settings
-from fbi.core.logging import configure_logging, new_run_id
+from fbi.core.logging import configure as configure_logging
+from fbi.core.logging import new_run_id
 from fbi.odds.partitions import ensure_partitions
 
 log = structlog.get_logger("worker")
@@ -60,7 +61,7 @@ async def main() -> None:
     scheduler = AsyncIOScheduler(timezone="UTC")
     scheduler.add_job(_tick, "interval", minutes=TICK_MINUTES, id="odds_capture", max_instances=1)
     scheduler.start()
-    log.info("worker.started", tick_minutes=TICK_MINUTES, leagues=settings.odds.league_ids)
+    log.info("worker.started", tick_minutes=TICK_MINUTES)
 
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

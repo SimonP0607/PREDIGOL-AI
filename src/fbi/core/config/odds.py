@@ -16,7 +16,6 @@ class OddsCaptureSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="FBI_", env_file=".env", extra="ignore")
 
-    active_leagues: str = Field(default="")
     odds_prematch_windows: str = Field(default="4320,2880,1440,720,360,180")
     odds_nearclose_window: int = Field(default=12, ge=5, le=15)
     odds_window_tolerance: int = Field(default=45, ge=1)
@@ -34,10 +33,6 @@ class OddsCaptureSettings(BaseSettings):
                 "Use the near-close window (/odds/live) instead."
             )
         return v
-
-    @property
-    def league_ids(self) -> list[int]:
-        return [int(x) for x in self.active_leagues.split(",") if x.strip().isdigit()]
 
     @property
     def prematch_windows(self) -> list[int]:

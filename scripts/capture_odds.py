@@ -20,9 +20,10 @@ import psycopg
 import structlog
 from psycopg.rows import tuple_row
 
+from fbi.catalog.activation import active_league_ids
 from fbi.core.clock import now
 from fbi.core.config import settings
-from fbi.core.logging import configure_logging
+from fbi.core.logging import configure as configure_logging
 from fbi.ingestion.payload_store import PayloadStore
 from fbi.odds.capture import OddsCaptureService
 from fbi.odds.schedule import CapturePlanner, ScheduledFixture
@@ -41,14 +42,15 @@ def _build_planner() -> CapturePlanner:
 
 
 def _upcoming(conn: psycopg.Connection, horizon_hours: int) -> list[ScheduledFixture]:
-    """Fixtures inside the horizon, restricted to the configured leagues.
+    """Fixtures inside the horizon for the ACTIVE competitions.
 
-    The league list is configuration, never a constant in the domain: the legacy
-    system hard-coded nine league ids in five different files.
+    Activation lives in core.competitions.is_tracked, set only by
+    config/competitions.yaml through scripts.manage_competitions. Nothing here
+    or anywhere else carries a league id.
     """
-    league_ids = settings.odds.league_ids
+    league_ids = active_league_ids(conn)
     if not league_ids:
-        log.warning("capture.no_active_leagues", hint="set FBI_ACTIVE_LEAGUES")
+        log.warning("capture.no_active_competitions", hint="enable one in config/competitions.yaml and run manage_competitions apply")
         return []
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(
@@ -56,11 +58,11 @@ def _upcoming(conn: psycopg.Connection, horizon_hours: int) -> list[ScheduledFix
             "FROM core.fixtures f "
             "JOIN core.competition_seasons cs ON cs.id = f.competition_season_id "
             "JOIN core.competitions c ON c.id = cs.competition_id "
-            "WHERE c.provider_league_id = ANY(%s) "
+            "WHERE c.is_tracked "
             "  AND f.kickoff_at BETWEEN %s AND %s "
             "  AND f.status_group = 'scheduled' "
             "ORDER BY f.kickoff_at",
-            (league_ids, now(), now() + timedelta(hours=horizon_hours)),
+            (now(), now() + timedelta(hours=horizon_hours)),
         )
         return [ScheduledFixture(int(a), b, str(c)) for a, b, c in cur.fetchall()]
 

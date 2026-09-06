@@ -1,0 +1,43 @@
+# Which competitions the platform ingests. THE single source of truth for
+# activation. Nothing in the domain, the scheduler or the provider package
+# hard-codes a league id; they all read core.competitions.is_tracked, and
+# this file is what sets it (python -m scripts.manage_competitions apply).
+#
+#   known  = exists in core.competitions (catalogue: 77 rescued from Supabase)
+#   enabled = is_tracked = true -> fixtures synced, odds captured, quota spent
+#
+# Pilot policy (BUILD PHASE V2): start with ONE or TWO competitions with
+# fixtures in the next few days. Validate the pipeline end to end. Widen later.
+# Every enabled competition costs roughly 6 /odds calls + 1 /odds/live call
+# per fixture, plus the fixtures sync itself.
+
+provider: api_football
+
+competitions:
+  # ── pilot ──────────────────────────────────────────────────────────────
+  # Chosen at run time by checking which of the candidates has fixtures in
+  # the next 96 h with a single /fixtures call each. Filled in by the
+  # operator after `manage_competitions probe`.
+  - league_id: 39      # Premier League
+    enabled: false
+    note: candidate for pilot
+  - league_id: 140     # La Liga
+    enabled: false
+    note: candidate for pilot
+  - league_id: 2       # UEFA Champions League
+    enabled: false
+    note: candidate for pilot
+
+  # ── the other six the legacy tracked most closely; OFF until the pilot passes
+  - league_id: 135     # Serie A
+    enabled: false
+  - league_id: 78      # Bundesliga
+    enabled: false
+  - league_id: 61      # Ligue 1
+    enabled: false
+  - league_id: 88      # Eredivisie
+    enabled: false
+  - league_id: 94      # Primeira Liga
+    enabled: false
+  - league_id: 144     # Jupiler Pro League
+    enabled: false
