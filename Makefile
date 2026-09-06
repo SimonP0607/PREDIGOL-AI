@@ -10,5 +10,5 @@ lint:      ; ruff check .
 typecheck: ; mypy
 capture:   ; python -m scripts.capture_odds run --window auto
 report:    ; python -m scripts.capture_odds report
-fresh:     ; docker compose down -v && docker compose up -d postgres && sleep 6 && alembic upgrade head
+fresh:     ; docker compose down -v && docker compose up -d postgres && sleep 8 && alembic upgrade head
 check:     ; ruff check . && mypy && pytest -q

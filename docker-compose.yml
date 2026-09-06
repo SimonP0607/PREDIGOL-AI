@@ -10,7 +10,9 @@ services:
       POSTGRES_DB: fbi
     ports: ["5433:5432"]
     volumes:
-      - ./.data/postgres:/var/lib/postgresql/data
+      # Named volume, not a bind mount: PostgreSQL on a 9P/UNC-backed directory
+      # is slow and fsync-unsafe. `docker compose down -v` is the reset.
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fbi -d fbi"]
       interval: 5s
@@ -66,3 +68,6 @@ services:
     ports: ["8011:8080"]
     depends_on: [postgres]
     profiles: ["dev"]
+
+volumes:
+  pgdata:
