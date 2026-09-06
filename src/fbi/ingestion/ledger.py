@@ -54,9 +54,11 @@ class RunLedger:
     ) -> int:
         with self._conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO raw.ingestion_runs (job_name, job_type, params, scheduled_for, attempt) "
-                "VALUES (%s, %s, %s::jsonb, %s, %s) RETURNING id",
-                (job_type, job_type, Json(params or {}), scheduled_for, attempt),
+                "INSERT INTO raw.ingestion_runs (job_name, job_type, params, scheduled_for, attempt, started_at) "
+                "VALUES (%s, %s, %s::jsonb, %s, %s, %s) RETURNING id",
+                # started_at from the application clock, not the database default:
+                # one source of time, and the ledger stays testable under FrozenClock.
+                (job_type, job_type, Json(params or {}), scheduled_for, attempt, now()),
             )
             row = cur.fetchone()
             assert row is not None

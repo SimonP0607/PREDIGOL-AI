@@ -100,7 +100,7 @@ def seed(migrated_database: str) -> Seed:
             "INSERT INTO market.markets (key,name,n_outcomes,has_line,is_exclusive) VALUES "
             "('1X2','Match Winner',3,false,true),('DC','Double Chance',3,false,false)"
         )
-        cur.execute("INSERT INTO raw.ingestion_runs (job_name) VALUES ('test') RETURNING id")
+        cur.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, finished_at) VALUES ('test', 'test_seed', 'completed', now()) RETURNING id")
         run_id = cur.fetchone()[0]
         cur.execute(
             "INSERT INTO raw.ingestion_payloads (hash,run_id,endpoint,fetched_at,http_status,file_path,bytes) "

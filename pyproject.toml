@@ -55,4 +55,4 @@ ignore = ["E501"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src/fbi/domain", "src/fbi/odds", "src/fbi/core", "src/fbi/catalog", "src/fbi/ingestion", "src/fbi/providers"]
+files = ["src/fbi/domain", "src/fbi/odds", "src/fbi/core", "src/fbi/catalog", "src/fbi/ingestion", "src/fbi/providers", "src/fbi/quality"]

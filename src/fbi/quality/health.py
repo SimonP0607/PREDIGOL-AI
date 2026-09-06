@@ -1,0 +1,153 @@
+"""Health of the four things that can be down: app, database, worker, provider.
+
+Every check answers with a status and a reason, never with an exception, so
+/health can always render. Nothing here exposes a credential, a hostname
+with a password in it, or an account email.
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, Literal
+
+import psycopg
+from psycopg.rows import tuple_row
+
+from fbi.core.clock import now
+
+Status = Literal["ok", "degraded", "down", "unknown"]
+
+WORKER_STALE_AFTER = timedelta(minutes=45)  # 3 ticks of the 15-minute scheduler
+
+
+@dataclass(frozen=True, slots=True)
+class Check:
+    status: Status
+    detail: str
+    data: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class Health:
+    app: Check
+    database: Check
+    worker: Check
+    football_provider: Check
+    checked_at: datetime
+
+    @property
+    def status(self) -> Status:
+        statuses = [self.app.status, self.database.status, self.worker.status, self.football_provider.status]
+        if "down" in statuses:
+            return "down"
+        if "degraded" in statuses or "unknown" in statuses:
+            return "degraded"
+        return "ok"
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "checked_at": self.checked_at.isoformat(),
+            "app": asdict(self.app),
+            "database": asdict(self.database),
+            "worker": asdict(self.worker),
+            "football_provider": asdict(self.football_provider),
+        }
+
+
+def check_database(conn: psycopg.Connection) -> Check:
+    try:
+        with conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute("SELECT version_num FROM alembic_version")
+            row = cur.fetchone()
+            revision = str(row[0]) if row else "none"
+            cur.execute("SELECT count(*) FROM core.competitions WHERE is_tracked")
+            active = int(cur.fetchone()[0])  # type: ignore[index]
+        return Check("ok", f"reachable, schema at {revision}", {"revision": revision, "active_competitions": active})
+    except psycopg.Error as exc:
+        return Check("down", f"{exc.__class__.__name__}", {})
+
+
+def check_worker(conn: psycopg.Connection) -> Check:
+    """Derived from the ledger, not from a heartbeat file that can lie."""
+    try:
+        with conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(
+                "SELECT job_type, status, started_at, finished_at, last_error "
+                "FROM raw.ingestion_runs WHERE job_type IN ('odds_capture','fixtures_sync') "
+                "ORDER BY started_at DESC LIMIT 1"
+            )
+            last = cur.fetchone()
+            cur.execute(
+                "SELECT started_at FROM raw.ingestion_runs WHERE status = 'completed' "
+                "ORDER BY started_at DESC LIMIT 1"
+            )
+            ok = cur.fetchone()
+            cur.execute("SELECT count(*) FROM raw.ingestion_runs WHERE status = 'running' AND started_at < %s", (now() - timedelta(hours=2),))
+            zombies = int(cur.fetchone()[0])  # type: ignore[index]
+    except psycopg.Error as exc:
+        return Check("unknown", f"ledger unreadable: {exc.__class__.__name__}")
+    if last is None:
+        return Check("unknown", "no run recorded yet", {"last_successful_run": None})
+    job_type, status, started_at, _finished, last_error = last
+    data: dict[str, Any] = {
+        "last_job": job_type,
+        "last_status": status,
+        "last_started_at": started_at.isoformat(),
+        "last_successful_run": ok[0].isoformat() if ok else None,
+        "last_error": last_error,
+        "stale_running_jobs": zombies,
+    }
+    age = now() - started_at
+    if zombies:
+        return Check("degraded", f"{zombies} run(s) stuck in 'running' for over 2 h", data)
+    if age > WORKER_STALE_AFTER:
+        return Check("degraded", f"last run {int(age.total_seconds() // 60)} min ago", data)
+    if status == "failed":
+        return Check("degraded", "last run failed", data)
+    return Check("ok", f"last run {int(age.total_seconds() // 60)} min ago", data)
+
+
+def check_provider(conn: psycopg.Connection, daily_budget: int) -> Check:
+    """Requests spent today and the last provider error, from the ledger.
+    No live call: /health must not spend quota."""
+    try:
+        with conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute("SELECT coalesce(sum(api_calls), 0) FROM raw.ingestion_runs WHERE started_at >= date_trunc('day', now())")
+            spent = int(cur.fetchone()[0])  # type: ignore[index]
+            cur.execute(
+                "SELECT last_error, started_at FROM raw.ingestion_runs WHERE errors > 0 "
+                "ORDER BY started_at DESC LIMIT 1"
+            )
+            err = cur.fetchone()
+            cur.execute("SELECT max(fetched_at) FROM raw.ingestion_payloads")
+            last_payload = cur.fetchone()[0]  # type: ignore[index]
+    except psycopg.Error as exc:
+        return Check("unknown", f"ledger unreadable: {exc.__class__.__name__}")
+    data: dict[str, Any] = {
+        "requests_today": spent,
+        "daily_budget": daily_budget,
+        "last_error": err[0] if err else None,
+        "last_error_at": err[1].isoformat() if err else None,
+        "last_payload_at": last_payload.isoformat() if last_payload else None,
+    }
+    if spent >= daily_budget:
+        return Check("degraded", "daily budget exhausted", data)
+    if err and (now() - err[1]) < timedelta(hours=1):
+        return Check("degraded", "provider error in the last hour", data)
+    return Check("ok", f"{spent}/{daily_budget} requests today", data)
+
+
+def health(conn: psycopg.Connection | None, *, version: str, daily_budget: int) -> Health:
+    app = Check("ok", "running", {"version": version})
+    if conn is None:
+        down = Check("down", "no database connection")
+        return Health(app, down, Check("unknown", "database down"), Check("unknown", "database down"), now())
+    return Health(
+        app=app,
+        database=check_database(conn),
+        worker=check_worker(conn),
+        football_provider=check_provider(conn, daily_budget),
+        checked_at=now(),
+    )

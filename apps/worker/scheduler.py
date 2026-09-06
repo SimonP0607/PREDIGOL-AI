@@ -31,13 +31,24 @@ from fbi.odds.partitions import ensure_partitions
 log = structlog.get_logger("worker")
 
 TICK_MINUTES = int(os.environ.get("FBI_ODDS_TICK_MINUTES", "15"))
+FIXTURES_SYNC_HOURS = int(os.environ.get("FBI_FIXTURES_SYNC_HOURS", "12"))
 
 
 async def _tick() -> None:
-    from scripts.capture_odds import _build_planner, _connect, _provider, _upcoming
+    """One scheduler tick: partitions, then the windows that are due.
 
-    from fbi.core.clock import today
+    The planner decides what "due" means; a tick that finds nothing due costs
+    zero provider calls. The ledger records every tick that did something.
+    """
+    from datetime import timedelta
+
+    from scripts.capture_odds import _build_planner, _client, _connect, _upcoming
+
+    from fbi.core.clock import now, today
     from fbi.odds.capture import OddsCaptureService
+    from fbi.odds.repository import OddsRepository
+    from fbi.odds.schedule import validate_plan
+    from fbi.providers.api_football import ApiFootballProvider
 
     new_run_id()
     with _connect() as conn:
@@ -46,12 +57,44 @@ async def _tick() -> None:
         if not fixtures:
             log.info("tick.nothing_scheduled")
             return
-        provider = _provider()
-        try:
-            service = OddsCaptureService(
-                conn, provider, _build_planner(), raw_root=settings.runtime.raw_store_dir
+        planner = _build_planner()
+        covered = planner.covered_keys(
+            OddsRepository(conn).observations_since(
+                since=now() - timedelta(hours=24),
+                provider_fixture_ids=[f.provider_fixture_id for f in fixtures],
             )
+        )
+        tasks = planner.plan(fixtures, at=now(), already_done=covered)
+        if not tasks:
+            log.info("tick.nothing_due", fixtures=len(fixtures), next_window=planner.next_run_at(fixtures, at=now()))
+            return
+        check = validate_plan(
+            tasks, at=now(), budget_remaining=settings.api_football.daily_budget,
+            known_fixture_ids={f.provider_fixture_id for f in fixtures},
+        )
+        if not check.ok:
+            log.error("tick.plan_rejected", issues=check.issues)
+            return
+        provider = ApiFootballProvider(_client(), market_filter=settings.odds.market_filter)
+        try:
+            service = OddsCaptureService(conn, provider, planner, raw_root=settings.runtime.raw_store_dir)
             await service.capture(fixtures)
+        finally:
+            await provider.aclose()
+
+
+async def _daily_fixtures_sync() -> None:
+    """Refresh the fixture list for active competitions: one call per league."""
+    from scripts.capture_odds import _client, _connect
+
+    from fbi.ingestion.fixtures import sync_fixtures
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await sync_fixtures(conn, provider, horizon_days=7)
         finally:
             await provider.aclose()
 
@@ -60,6 +103,7 @@ async def main() -> None:
     configure_logging(settings.runtime.log_level)
     scheduler = AsyncIOScheduler(timezone="UTC")
     scheduler.add_job(_tick, "interval", minutes=TICK_MINUTES, id="odds_capture", max_instances=1)
+    scheduler.add_job(_daily_fixtures_sync, "interval", hours=FIXTURES_SYNC_HOURS, id="fixtures_sync", max_instances=1)
     scheduler.start()
     log.info("worker.started", tick_minutes=TICK_MINUTES)
 
