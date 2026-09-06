@@ -17,11 +17,10 @@ from datetime import datetime, timedelta
 
 import psycopg
 import structlog
-from psycopg.types.json import Json
 
 from fbi.core.clock import now
 from fbi.core.errors import CircuitOpenError, ProviderError, QuotaExhaustedError
-from fbi.core.logging import bind_run_id
+from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.odds.repository import OddsRepository
 from fbi.odds.schedule import CapturePlanner, CaptureTask, ScheduledFixture
 from fbi.providers.base import FootballDataProvider, OddsQuote, RawResponse
@@ -36,8 +35,10 @@ class CaptureReport:
     executed: int = 0
     quotes_seen: int = 0
     snapshots_written: int = 0
+    duplicates_skipped: int = 0
     near_close_written: int = 0
     api_calls: int = 0
+    payloads_stored: int = 0
     errors: list[str] = field(default_factory=list)
     stopped_early: str | None = None
 
@@ -46,6 +47,18 @@ class CaptureReport:
         if self.stopped_early:
             return "aborted"
         return "failed" if self.errors and not self.executed else "completed"
+
+    @property
+    def counters(self) -> RunCounters:
+        return RunCounters(
+            api_calls=self.api_calls,
+            payloads_stored=self.payloads_stored,
+            rows_normalized=self.quotes_seen,
+            rows_inserted=self.snapshots_written,
+            rows_updated=self.near_close_written,
+            errors=list(self.errors),
+            stopped_early=self.stopped_early,
+        )
 
 
 class OddsCaptureService:
@@ -62,66 +75,9 @@ class OddsCaptureService:
         self._provider = provider
         self._planner = planner
         self._repo = OddsRepository(conn)
+        self._ledger = RunLedger(conn)
         self._raw_root = raw_root
         self._lookback = timedelta(hours=lookback_hours)
-
-    # ── run bookkeeping ──────────────────────────────────────────────────────
-    def _open_run(self, job_name: str, params: dict[str, object]) -> int:
-        with self._conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO raw.ingestion_runs (job_name, params) VALUES (%s, %s::jsonb) RETURNING id",
-                (job_name, Json(params)),
-            )
-            row = cur.fetchone()
-            assert row is not None
-            run_id: int = row[0]
-        self._conn.commit()
-        return run_id
-
-    def _close_run(self, report: CaptureReport) -> None:
-        with self._conn.cursor() as cur:
-            cur.execute(
-                "UPDATE raw.ingestion_runs SET finished_at = %s, status = %s, api_calls = %s, "
-                "rows_written = %s, errors = %s, notes = %s WHERE id = %s",
-                (
-                    now(),
-                    report.status,
-                    report.api_calls,
-                    report.snapshots_written,
-                    len(report.errors),
-                    report.stopped_early,
-                    report.run_id,
-                ),
-            )
-        self._conn.commit()
-
-    def _record_payloads(self, run_id: int, raws: Sequence[RawResponse]) -> None:
-        """Index the raw files. The FK from odds_snapshots.payload_hash means a
-        price cannot exist without the bytes it came from."""
-        if not raws:
-            return
-        with self._conn.cursor() as cur:
-            cur.executemany(
-                "INSERT INTO raw.ingestion_payloads "
-                "(hash,run_id,provider,endpoint,params,fetched_at,http_status,results_count,file_path,bytes) "
-                "VALUES (%s,%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s) ON CONFLICT (hash) DO NOTHING",
-                [
-                    (
-                        r.payload_hash,
-                        run_id,
-                        "api_football",
-                        r.endpoint,
-                        Json(r.params),  # already sanitized
-                        r.fetched_at,
-                        r.http_status,
-                        r.results_count,
-                        r.file_path,
-                        r.bytes_written,
-                    )
-                    for r in raws
-                ],
-                returning=False,
-            )
 
     # ── the capture itself ───────────────────────────────────────────────────
     async def capture(
@@ -135,15 +91,15 @@ class OddsCaptureService:
         already_done = self._planner.covered_keys(observations)
         tasks = self._planner.plan(fixtures, at=moment, already_done=already_done)
 
-        run_id = self._open_run(
+        run_id = self._ledger.open(
             "odds_capture",
-            {
+            params={
                 "planned": len(tasks),
                 "fixtures": len(fixtures),
                 "skipped_already_captured": len(already_done),
             },
+            scheduled_for=moment,
         )
-        bind_run_id(str(run_id))
         report = CaptureReport(run_id=run_id, planned=len(tasks))
         log.info(
             "capture.planned",
@@ -167,7 +123,7 @@ class OddsCaptureService:
                 report.errors.append(f"{task.window_key}: {exc}")
                 log.warning("capture.task_failed", window=task.window_key, error=str(exc))
 
-        self._close_run(report)
+        self._ledger.close(run_id, report.counters, notes=report.stopped_early)
         log.info(
             "capture.finished",
             executed=report.executed,
@@ -197,9 +153,10 @@ class OddsCaptureService:
         report.api_calls += len(raws)
         report.quotes_seen += len(quotes)
 
-        self._record_payloads(report.run_id, raws)
+        report.payloads_stored += self._ledger.record_payloads(report.run_id, raws)
         written = self._repo.write_snapshots(quotes)
         report.snapshots_written += written.written
+        report.duplicates_skipped += written.skipped_existing
 
         if task.kind == "near_close":
             report.near_close_written += self._repo.upsert_near_close(quotes)

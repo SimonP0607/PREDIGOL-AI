@@ -129,4 +129,5 @@ class PayloadStore:
 
     def load(self, file_path: str) -> dict[str, Any]:
         with gzip.open(self._root / file_path, "rb") as fh:
-            return json.loads(fh.read().decode("utf-8"))
+            envelope: dict[str, Any] = json.loads(fh.read().decode("utf-8"))
+        return envelope

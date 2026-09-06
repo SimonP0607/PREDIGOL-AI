@@ -160,3 +160,49 @@ class CapturePlanner:
                 if moment > at:
                     candidates.append(moment)
         return min(candidates) if candidates else None
+
+
+@dataclass(frozen=True, slots=True)
+class PlanCheck:
+    """What a plan must satisfy before a single request is spent."""
+
+    issues: list[str]
+    estimated_requests: int
+
+    @property
+    def ok(self) -> bool:
+        return not self.issues
+
+
+def validate_plan(
+    tasks: Sequence[CaptureTask],
+    *,
+    at: datetime,
+    budget_remaining: int,
+    known_fixture_ids: set[int] | None = None,
+) -> PlanCheck:
+    """Refuse a plan that would capture nonsense.
+
+    Checked: duplicate window keys, fixtures already kicked off, timestamps
+    that make no sense, fixtures the database does not know, and the number
+    of requests against the budget that is actually left.
+    """
+    issues: list[str] = []
+    keys = [t.window_key for t in tasks]
+    dupes = sorted({k for k in keys if keys.count(k) > 1})
+    if dupes:
+        issues.append(f"duplicate windows: {dupes[:5]}")
+    for t in tasks:
+        if t.kickoff_at <= at:
+            issues.append(f"{t.window_key}: kick-off {t.kickoff_at.isoformat()} is not in the future")
+        if t.kickoff_at.tzinfo is None:
+            issues.append(f"{t.window_key}: naive kick-off timestamp")
+        if t.minutes_to_ko < 0 or t.minutes_to_ko > 60 * 24 * 14:
+            issues.append(f"{t.window_key}: implausible minutes_to_ko {t.minutes_to_ko}")
+        if known_fixture_ids is not None and t.provider_fixture_id not in known_fixture_ids:
+            issues.append(f"{t.window_key}: fixture unknown to the database")
+    # /odds for one fixture is one page in practice; /odds/live is one call.
+    estimated = len(tasks)
+    if estimated > budget_remaining:
+        issues.append(f"plan needs ~{estimated} requests but only {budget_remaining} remain in the budget")
+    return PlanCheck(issues=issues, estimated_requests=estimated)
