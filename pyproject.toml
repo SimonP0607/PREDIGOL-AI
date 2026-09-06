@@ -23,7 +23,10 @@ dependencies = [
 [project.optional-dependencies]
 analytics = ["numpy>=2.1", "scipy>=1.14", "statsmodels>=0.14", "duckdb>=1.1", "pyarrow>=18"]
 ml        = ["scikit-learn>=1.5", "lightgbm>=4.5"]
-dev       = ["pytest>=8.3", "pytest-asyncio>=0.24", "pytest-cov>=6.0", "ruff>=0.8", "mypy>=1.13", "pip-audit>=2.7"]
+dev       = ["pytest>=8.3", "pytest-asyncio>=0.24", "pytest-cov>=6.0", "ruff>=0.8", "mypy>=1.13", "pip-audit>=2.7",
+             # Type stubs for the runtime deps that do not ship their own.
+             # Without these a clean `pip install -e ".[dev]"` fails `mypy`.
+             "types-PyYAML>=6.0"]
 
 [build-system]
 requires = ["hatchling"]
@@ -55,4 +58,25 @@ ignore = ["E501"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
+# `mypy` with no argument checks exactly these packages, in strict mode. That is
+# the gate: the code that computes probabilities, prices and decisions.
 files = ["src/fbi/domain", "src/fbi/odds", "src/fbi/core", "src/fbi/catalog", "src/fbi/ingestion", "src/fbi/providers", "src/fbi/quality"]
+
+# `mypy .` additionally walks tests, scripts, apps and migrations. Those are
+# still type-checked - a genuine type error there is still reported - but they
+# are not held to `strict`. Demanding full annotations from a pytest fixture or
+# a psycopg row unpack buys nothing and would push people to annotate tests
+# instead of writing them. The strictness that matters stays above.
+[[tool.mypy.overrides]]
+module = ["tests.*", "scripts.*", "apps.*", "migrations.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+warn_return_any = false
+check_untyped_defs = true
+
+# APScheduler 3.x ships no py.typed marker. Nothing else in the tree is exempt.
+[[tool.mypy.overrides]]
+module = ["apscheduler.*"]
+ignore_missing_imports = true

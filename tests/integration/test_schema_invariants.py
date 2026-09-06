@@ -19,7 +19,7 @@ import psycopg
 import pytest
 
 from tests.integration.conftest import Seed
-from tests.integration.helpers import must_be_accepted, must_be_rejected
+from tests.integration.helpers import must_be_accepted, must_be_rejected, scalar
 
 CALIBRATOR_COLS = (
     "model_version_id,market_key,scope,method,params,n_train,train_from,train_to,"
@@ -45,7 +45,7 @@ def _valid_calibrator(cur: psycopg.Cursor, seed: Seed) -> int:
         "500,'2024-07-01','2025-06-30',0.018,0.04,0.19,0.58,0.82) RETURNING id",
         (seed.model_version_id,),
     )
-    return cur.fetchone()[0]
+    return scalar(cur)
 
 
 def _valid_prediction(cur: psycopg.Cursor, seed: Seed, calibrator_id: int) -> int:
@@ -56,7 +56,7 @@ def _valid_prediction(cur: psycopg.Cursor, seed: Seed, calibrator_id: int) -> in
         "VALUES (%s,%s,%s,'1X2','Home',0.52,0.49,0.44,0.54,'fh','2026-09-15 18:00Z') RETURNING id",
         (seed.fixture_id, seed.model_version_id, calibrator_id),
     )
-    return cur.fetchone()[0]
+    return scalar(cur)
 
 
 def _selected_candidate(cur: psycopg.Cursor, seed: Seed, prediction_id: int) -> int:
@@ -68,7 +68,7 @@ def _selected_candidate(cur: psycopg.Cursor, seed: Seed, prediction_id: int) -> 
         "RETURNING id",
         (seed.run_id, seed.fixture_id, prediction_id, seed.bookmaker_id),
     )
-    return cur.fetchone()[0]
+    return scalar(cur)
 
 
 def _valid_pick(
@@ -95,7 +95,7 @@ def _valid_pick(
             market_odds,
         ),
     )
-    return cur.fetchone()[0]
+    return scalar(cur)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -118,7 +118,7 @@ def test_t1_same_selection_at_three_instants_coexists(db: psycopg.Connection, se
         cur.execute(
             "SELECT count(*) FROM market.odds_snapshots WHERE fixture_id = %s", (seed.fixture_id,)
         )
-        assert cur.fetchone()[0] == 3
+        assert scalar(cur) == 3
 
 
 def test_t1b_identical_capture_instant_is_rejected(db: psycopg.Connection, seed: Seed) -> None:
@@ -350,7 +350,7 @@ def test_t14_a_complete_traceable_priced_pick_is_accepted(
         candidate_id = _selected_candidate(cur, seed, prediction_id)
         pick_id = _valid_pick(cur, seed, candidate_id, calibrator_id)
         cur.execute("SELECT mode FROM picks.picks WHERE id = %s", (pick_id,))
-        assert cur.fetchone()[0] == "shadow", "a new pick must default to shadow, never live"
+        assert scalar(cur) == "shadow", "a new pick must default to shadow, never live"
 
 
 def test_the_same_candidate_cannot_become_two_picks(db: psycopg.Connection, seed: Seed) -> None:
@@ -380,7 +380,7 @@ def test_t15_half_win_settlement_is_accepted(db: psycopg.Connection, seed: Seed)
             "VALUES (%s,'half_win',0.55,now()) RETURNING result_status",
             (pick_id,),
         )
-        assert cur.fetchone()[0] == "half_win"
+        assert scalar(cur) == "half_win"
 
 
 def test_t16_settled_result_without_profit_or_date_is_rejected(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import psycopg
 
 from tests.integration.conftest import Seed
-from tests.integration.helpers import must_be_accepted, must_be_rejected
+from tests.integration.helpers import must_be_accepted, must_be_rejected, scalar
 
 
 def test_a_team_cannot_play_itself(db: psycopg.Connection, seed: Seed) -> None:
@@ -23,7 +23,7 @@ def test_a_model_can_have_only_one_champion_version(db: psycopg.Connection, seed
     produced a given pick."""
     with must_be_rejected(db, "two champion versions of one model") as cur:
         cur.execute("SELECT model_id FROM models.model_versions WHERE id = %s", (seed.model_version_id,))
-        model_id = cur.fetchone()[0]
+        model_id = scalar(cur)
         for version in ("v9a", "v9b"):
             cur.execute(
                 "INSERT INTO models.model_versions "
@@ -82,7 +82,7 @@ def test_a_blocked_feature_must_say_why(db: psycopg.Connection) -> None:
             "VALUES ('team_lv_last10','market','team','numeric','x','blocked',"
             "'no hay historico de cuotas suficiente para calcularla') RETURNING status"
         )
-        assert cur.fetchone()[0] == "blocked"
+        assert scalar(cur) == "blocked"
 
 
 def test_every_migration_is_reversible_and_leaves_nothing_behind() -> None:
@@ -118,14 +118,14 @@ def test_every_migration_is_reversible_and_leaves_nothing_behind() -> None:
                 "SELECT count(*) FROM information_schema.schemata WHERE schema_name IN "
                 "('raw','core','market','features','models','picks','analytics','audit')"
             )
-            assert cur.fetchone()[0] == 0, "downgrade left schemas behind"
+            assert scalar(cur) == 0, "downgrade left schemas behind"
         command.upgrade(cfg, "head")
         with psycopg.connect(f"{head}/{db_name}") as conn, conn.cursor() as cur:
             cur.execute(
                 "SELECT count(*) FROM information_schema.tables WHERE table_schema IN "
                 "('raw','core','market','features','models','picks','analytics','audit')"
             )
-            assert cur.fetchone()[0] > 30, "re-upgrade did not rebuild the schema"
+            assert scalar(cur) > 30, "re-upgrade did not rebuild the schema"
     finally:
         if previous is None:
             os.environ.pop("FBI_DATABASE_URL", None)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from fbi.providers.api_football.provider import ApiFootballProvider
 from fbi.providers.api_football.status import fetch_status
 from fbi.providers.ratelimit import DailyQuota, TokenBucket
 from tests.integration.conftest import Seed
+from tests.integration.helpers import row, scalar
 
 SECRET = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
 NOW = datetime(2026, 9, 6, 8, 0, tzinfo=UTC)
@@ -50,7 +52,7 @@ STATUS_BODY = {
 
 
 @pytest.fixture()
-def clock() -> FrozenClock:
+def clock() -> Iterator[FrozenClock]:
     c = FrozenClock(NOW)
     set_clock(c)
     yield c
@@ -76,7 +78,7 @@ def provider_with(tmp_path: Path, body_for: object) -> tuple[ApiFootballProvider
 
 
 @pytest.fixture()
-def active(db: psycopg.Connection, seed: Seed) -> psycopg.Connection:
+def active(db: psycopg.Connection, seed: Seed) -> Iterator[psycopg.Connection]:
     with db.cursor() as cur:
         cur.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
         cur.execute("UPDATE core.competition_seasons SET is_current = true WHERE id = %s", (seed.season_id,))
@@ -106,16 +108,16 @@ async def test_sync_writes_fixtures_teams_payload_and_a_ledger_row(active: psyco
 
     with active.cursor() as cur:
         cur.execute("SELECT count(*) FROM core.fixtures WHERE provider_fixture_id IN (5001, 5002)")
-        assert cur.fetchone()[0] == 2
+        assert scalar(cur) == 2
         cur.execute("SELECT name FROM core.teams WHERE provider_team_id = 903")
-        assert cur.fetchone()[0] == "Gamma FC"
+        assert scalar(cur) == "Gamma FC"
         cur.execute(
             "SELECT job_type, status, api_calls, payloads_stored, rows_normalized, rows_written, rows_updated, attempt, duration_ms "
             "FROM raw.ingestion_runs WHERE job_type = 'fixtures_sync' ORDER BY id DESC LIMIT 1"
         )
-        row = cur.fetchone()
-        assert row[:8] == ("fixtures_sync", "completed", 1, 1, 2, 2, 0, 1)
-        assert row[8] is not None, "duration is derived, not typed in"
+        ledger_row = row(cur)
+        assert ledger_row[:8] == ("fixtures_sync", "completed", 1, 1, 2, 2, 0, 1)
+        assert ledger_row[8] is not None, "duration is derived, not typed in"
 
 
 async def test_syncing_twice_updates_instead_of_duplicating(active: psycopg.Connection, tmp_path: Path, clock: FrozenClock) -> None:
@@ -130,7 +132,7 @@ async def test_syncing_twice_updates_instead_of_duplicating(active: psycopg.Conn
     assert (second.rows_inserted, second.rows_updated) == (0, 1)
     with active.cursor() as cur:
         cur.execute("SELECT count(*), max(kickoff_at) FROM core.fixtures WHERE provider_fixture_id = 5001")
-        n, ko = cur.fetchone()
+        n, ko = row(cur)
         assert n == 1 and ko == datetime(2026, 9, 8, 20, 0, tzinfo=UTC)
 
 

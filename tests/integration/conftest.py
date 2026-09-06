@@ -16,6 +16,8 @@ import pytest
 from alembic import command
 from alembic.config import Config
 
+from tests.integration.helpers import scalar
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ADMIN_URL = os.environ.get(
@@ -73,52 +75,52 @@ def seed(migrated_database: str) -> Seed:
             "INSERT INTO core.competitions (provider_league_id,name,type,entity_scope,competition_type) "
             "VALUES (39,'Premier League','league','club','domestic_league') RETURNING id"
         )
-        competition_id = cur.fetchone()[0]
+        competition_id = scalar(cur)
         cur.execute(
             "INSERT INTO core.competition_seasons (competition_id,season) VALUES (%s,2025) RETURNING id",
             (competition_id,),
         )
-        season_id = cur.fetchone()[0]
+        season_id = scalar(cur)
         cur.execute(
             "INSERT INTO core.teams (provider_team_id,name) VALUES (33,'Manchester United') RETURNING id"
         )
-        home_team_id = cur.fetchone()[0]
+        home_team_id = scalar(cur)
         cur.execute("INSERT INTO core.teams (provider_team_id,name) VALUES (40,'Liverpool') RETURNING id")
-        away_team_id = cur.fetchone()[0]
+        away_team_id = scalar(cur)
         cur.execute(
             "INSERT INTO core.fixtures "
             "(provider_fixture_id,competition_season_id,home_team_id,away_team_id,kickoff_at) "
             "VALUES (1001,%s,%s,%s,'2026-09-15 19:00Z') RETURNING id",
             (season_id, home_team_id, away_team_id),
         )
-        fixture_id = cur.fetchone()[0]
+        fixture_id = scalar(cur)
         cur.execute(
             "INSERT INTO market.bookmakers (provider_bookmaker_id,name) VALUES (8,'Bet365') RETURNING id"
         )
-        bookmaker_id = cur.fetchone()[0]
+        bookmaker_id = scalar(cur)
         cur.execute(
             "INSERT INTO market.markets (key,name,n_outcomes,has_line,is_exclusive) VALUES "
             "('1X2','Match Winner',3,false,true),('DC','Double Chance',3,false,false)"
         )
         cur.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, finished_at) VALUES ('test', 'test_seed', 'completed', now()) RETURNING id")
-        run_id = cur.fetchone()[0]
+        run_id = scalar(cur)
         cur.execute(
             "INSERT INTO raw.ingestion_payloads (hash,run_id,endpoint,fetched_at,http_status,file_path,bytes) "
             "VALUES ('h1',%s,'/odds',now(),200,'x',1) RETURNING hash",
             (run_id,),
         )
-        payload_hash = cur.fetchone()[0]
+        payload_hash = scalar(cur)
         cur.execute(
             "INSERT INTO models.model_registry (name,family,description) "
             "VALUES ('dixon_coles','goals','test') RETURNING id"
         )
-        model_id = cur.fetchone()[0]
+        model_id = scalar(cur)
         cur.execute(
             "INSERT INTO models.model_versions (model_id,version,train_from,train_to,n_train,code_version) "
             "VALUES (%s,'v1','2020-01-01','2024-06-30',5000,'abc123') RETURNING id",
             (model_id,),
         )
-        model_version_id = cur.fetchone()[0]
+        model_version_id = scalar(cur)
 
     return Seed(
         competition_id=competition_id,

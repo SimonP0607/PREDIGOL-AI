@@ -29,7 +29,7 @@ def test_values_outside_the_interval_are_refused(value: float) -> None:
 
 def test_a_boolean_is_not_a_probability() -> None:
     with pytest.raises(InvalidProbabilityError):
-        Probability(True)  # type: ignore[arg-type]
+        Probability(True)  # bool is an int to the type system; the guard is at runtime
 
 
 def test_from_percentage_is_the_only_bridge_from_percent() -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gzip
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -21,7 +22,7 @@ OK_BODY = {"response": [{"fixture": {"id": 1001}}], "errors": [], "paging": {"cu
 
 
 @pytest.fixture(autouse=True)
-def frozen() -> FrozenClock:
+def frozen() -> Iterator[FrozenClock]:
     clock = FrozenClock(datetime(2026, 9, 15, 12, 0, tzinfo=UTC))
     set_clock(clock)
     yield clock

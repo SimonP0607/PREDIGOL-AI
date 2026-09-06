@@ -6,6 +6,7 @@ twice adds history, never overwrites it, and never duplicates it.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -24,6 +25,7 @@ from fbi.providers.api_football.client import ApiFootballClient
 from fbi.providers.api_football.provider import ApiFootballProvider
 from fbi.providers.ratelimit import DailyQuota, TokenBucket
 from tests.integration.conftest import Seed
+from tests.integration.helpers import scalar
 
 KICKOFF = datetime(2026, 9, 15, 19, 0, tzinfo=UTC)
 SECRET = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
@@ -59,7 +61,7 @@ def odds_body(home: str, draw: str, away: str) -> dict:
 
 
 @pytest.fixture()
-def clock() -> FrozenClock:
+def clock() -> Iterator[FrozenClock]:
     frozen = FrozenClock(KICKOFF - timedelta(minutes=1441))
     set_clock(frozen)
     yield frozen
@@ -92,7 +94,7 @@ def make_service(
 
 
 @pytest.fixture()
-def prepared(db: psycopg.Connection, seed: Seed) -> psycopg.Connection:
+def prepared(db: psycopg.Connection, seed: Seed) -> Iterator[psycopg.Connection]:
     """Align the seeded fixture and bookmaker with the mocked payload ids."""
     with db.cursor() as cur:
         cur.execute(
@@ -134,7 +136,7 @@ async def test_a_capture_writes_prices_payloads_and_a_run(
         cur.execute("SELECT status, api_calls, rows_written FROM raw.ingestion_runs WHERE id = %s", (report.run_id,))
         assert cur.fetchone() == ("completed", 1, 3)
         cur.execute("SELECT count(*) FROM raw.ingestion_payloads WHERE run_id = %s", (report.run_id,))
-        assert cur.fetchone()[0] == 1
+        assert scalar(cur) == 1
 
 
 async def test_running_the_same_window_twice_makes_no_second_call(
@@ -154,7 +156,7 @@ async def test_running_the_same_window_twice_makes_no_second_call(
 
     with prepared.cursor() as cur:
         cur.execute("SELECT count(*) FROM market.odds_snapshots")
-        assert cur.fetchone()[0] == 3
+        assert scalar(cur) == 3
 
 
 async def test_a_later_window_appends_history_instead_of_overwriting_it(

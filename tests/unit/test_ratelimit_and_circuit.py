@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
@@ -13,7 +14,7 @@ from fbi.providers.ratelimit import DailyQuota, TokenBucket
 
 
 @pytest.fixture()
-def frozen() -> FrozenClock:
+def frozen() -> Iterator[FrozenClock]:
     clock = FrozenClock(datetime(2026, 9, 15, 12, 0, tzinfo=UTC))
     set_clock(clock)
     yield clock
@@ -69,12 +70,24 @@ def test_the_budget_resets_at_utc_midnight(frozen: FrozenClock) -> None:
     quota.spend()
 
 
+def state_of(breaker: CircuitBreaker) -> CircuitState:
+    """Read the state through a call.
+
+    ``CircuitBreaker.state`` is a property whose value depends on the clock, so
+    it legitimately changes between two reads with no method call in between.
+    mypy narrows the property expression after an ``assert`` and then calls the
+    next comparison impossible; going through a function defeats that narrowing
+    without weakening anything.
+    """
+    return breaker.state
+
+
 def test_the_circuit_opens_after_consecutive_failures(frozen: FrozenClock) -> None:
     breaker = CircuitBreaker("t", failure_threshold=3, reset_seconds=60)
     breaker.before_call()
     for _ in range(3):
         breaker.record_failure()
-    assert breaker.state is CircuitState.OPEN
+    assert state_of(breaker) is CircuitState.OPEN
     with pytest.raises(CircuitOpenError, match="is open"):
         breaker.before_call()
 
@@ -85,16 +98,16 @@ def test_a_success_before_the_threshold_resets_the_count(frozen: FrozenClock) ->
     breaker.record_failure()
     breaker.record_success()
     breaker.record_failure()
-    assert breaker.state is CircuitState.CLOSED
+    assert state_of(breaker) is CircuitState.CLOSED
 
 
 def test_the_circuit_half_opens_after_the_reset_window(frozen: FrozenClock) -> None:
     breaker = CircuitBreaker("t", failure_threshold=2, reset_seconds=60)
     breaker.record_failure()
     breaker.record_failure()
-    assert breaker.state is CircuitState.OPEN
+    assert state_of(breaker) is CircuitState.OPEN
     frozen.advance(seconds=61)
-    assert breaker.state is CircuitState.HALF_OPEN
+    assert state_of(breaker) is CircuitState.HALF_OPEN
     breaker.before_call()  # a trial call is allowed
     breaker.record_success()
-    assert breaker.state is CircuitState.CLOSED
+    assert state_of(breaker) is CircuitState.CLOSED

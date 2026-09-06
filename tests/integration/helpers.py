@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Any
 
 import psycopg
 import pytest
@@ -41,3 +42,16 @@ def must_be_accepted(conn: psycopg.Connection) -> Iterator[psycopg.Cursor]:
     """Run the enclosed statements and roll them back; they must not raise."""
     with conn.transaction(force_rollback=True), conn.cursor() as cur:
         yield cur
+
+
+def row(cur: psycopg.Cursor) -> tuple[Any, ...]:
+    """fetchone() that fails with "the query returned no row" instead of
+    "NoneType is not subscriptable" three frames later."""
+    fetched = cur.fetchone()
+    assert fetched is not None, "the query returned no row"
+    return tuple(fetched)
+
+
+def scalar(cur: psycopg.Cursor) -> Any:
+    """First column of the single row the query must have returned."""
+    return row(cur)[0]
