@@ -2,7 +2,7 @@
 name = "football-intelligence"
 version = "0.1.0"
 description = "Football Betting Intelligence Platform — private, local-first"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115",
   "uvicorn[standard]>=0.32",
@@ -44,7 +44,7 @@ markers = ["integration: requires a live PostgreSQL"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -56,7 +56,11 @@ ignore = ["E501"]
 "tests/*" = ["S101"]
 
 [tool.mypy]
-python_version = "3.11"
+# 3.12 everywhere: the Dockerfile is python:3.12-slim and the dev venv is 3.12.
+# It also has to be >= 3.12 for mypy to be able to PARSE the stubs of what we
+# install - numpy 2.x ships PEP 695 `type` statements in its .pyi files, which
+# are a syntax error to mypy when it is told to assume an older version.
+python_version = "3.12"
 strict = true
 # `mypy` with no argument checks exactly these packages, in strict mode. That is
 # the gate: the code that computes probabilities, prices and decisions.
