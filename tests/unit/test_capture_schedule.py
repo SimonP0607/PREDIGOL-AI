@@ -109,3 +109,33 @@ def test_next_run_at_points_at_the_next_pending_window() -> None:
 
 def test_nothing_scheduled_means_no_wakeup() -> None:
     assert planner().next_run_at([], at=at(500)) is None
+
+
+def test_two_ticks_inside_one_tolerance_band_spend_one_request_not_two() -> None:
+    """The tolerance is what makes a late scheduler tick still useful; it must
+    not also make an early one pay twice.
+
+    With a 45-minute tolerance the 180 window is due anywhere from T-180 to
+    T-225, so two consecutive ticks can both land in it. The first captures and
+    the snapshot it writes is what removes the window from the second - coverage
+    derived from the stored price, not from a separate bookkeeping table.
+    """
+    p = planner()
+    first = p.plan([FIXTURE], at=at(210))
+    assert [t.window_minutes for t in first] == [180], "the early tick captures the window"
+
+    # What the first capture stored: a prematch price at T-210.
+    done = p.covered_keys([(1001, "prematch", 210)])
+    assert done == {"1001:prematch:180"}
+
+    second = p.plan([FIXTURE], at=at(180), already_done=done)
+    assert second == [], "the nominal tick adds nothing once the window is on record"
+
+
+def test_without_the_record_the_same_window_is_offered_again() -> None:
+    """The guard is the stored snapshot, so its absence must be visible rather
+    than silently forgiven - otherwise a capture that failed to persist would
+    look identical to one that succeeded."""
+    p = planner()
+    assert [t.window_minutes for t in p.plan([FIXTURE], at=at(210))] == [180]
+    assert [t.window_minutes for t in p.plan([FIXTURE], at=at(180), already_done=set())] == [180]

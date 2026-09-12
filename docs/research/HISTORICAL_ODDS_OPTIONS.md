@@ -23,6 +23,35 @@ y se dice cuál sería la comprobación. **Nada de esto se ha contratado ni desc
 
 ---
 
+## 0.bis Lo que el plan Free NO permite — medido en la cuenta real (2026-09-12)
+
+Cuando se escribió este documento el límite conocido era la retención: 7 días de `/odds`.
+Ejecutando la captura piloto contra la cuenta real aparece un límite anterior y más duro,
+y conviene dejarlo escrito porque cambia el cálculo de la decisión.
+
+| Restricción | Evidencia textual del proveedor | Consecuencia |
+|---|---|---|
+| `/fixtures?league=&season=` rechazado | `{"plan": "Free plans do not have access to this season, try from 2022 to 2024."}` | la temporada en curso no se puede consultar por liga; hay que ir por fecha |
+| `/fixtures?date=` sólo ±1 día | `{"plan": "Free plans do not have access to this date, try from 2026-09-11 to 2026-09-13."}` | **el sistema no puede ver un partido con más de ~24 h de antelación** |
+| parámetro `last` rechazado | `{"plan": "Free plans do not have access to the Last parameter."}` | no hay atajo para "los N últimos partidos" |
+| cuota | 10 req/min, 100 req/día | ~60–70 requests cubren una jornada de una sola liga |
+
+Lo que esto implica para la captura propia, con las ventanas configuradas
+(`4320, 2880, 1440, 720, 360, 180` min + near-close T−12):
+
+* **alcanzables:** T−720, T−360, T−180 y la near-close T−12.
+* **inalcanzables mientras la cuenta sea Free:** T−4320 (72 h) y T−2880 (48 h). No es que
+  falte cuota: el partido **todavía no es visible** a esa distancia, así que la ventana no
+  puede existir.
+
+Por tanto la serie temporal T−72h → cierre —la que hace falta para medir movimiento de línea
+y para cualquier estudio de CLV— **no se puede construir con captura propia en plan Free**,
+ni esperando 6–9 meses. Las dos únicas salidas siguen siendo las de las secciones 1–4 de este
+documento (fuente externa) o subir de plan. Esto no se decide aquí; queda registrado para que
+la decisión se tome con el dato medido y no con el supuesto.
+
+---
+
 ## 1. Betfair Exchange Historical Data
 
 **Qué es.** El histórico del Stream API del exchange, empaquetado en TAR de JSON comprimido

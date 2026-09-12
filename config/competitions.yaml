@@ -24,6 +24,28 @@ provider: api_football
 # A Premier League matchday is ~10 fixtures, so ~60-70 requests to cover it
 # fully. That is the whole daily budget for ONE league. Two leagues would not
 # fit in the plan, which is why the pilot is one.
+#
+# ── The free plan's HARD horizon, measured 2026-09-12 ──────────────────────
+# /fixtures?date= is answered only for a three-day window around today. The
+# provider states the bounds in its own refusal:
+#
+#   date=2026-09-14 -> {"plan": "Free plans do not have access to this date,
+#                                try from 2026-09-11 to 2026-09-13."}
+#
+# So on this plan the system can see fixtures at most ~24h ahead, and
+# `--horizon-days` above 1 just buys refusals. Consequences to design around,
+# not to paper over:
+#
+#   * reachable   T-720, T-360, T-180 and the T-12 near-close window
+#   * unreachable T-4320 (72h) and T-2880 (48h) - the fixture is not even
+#                 visible that far out, so those windows can never be captured
+#                 while the account is free
+#   * a line-movement study needs the full T-72h..close arc, so it stays
+#     blocked on a paid plan. Recorded in docs/research/HISTORICAL_ODDS_OPTIONS.md.
+#
+# Nothing is pruned from FBI_ODDS_PREMATCH_WINDOWS because of this: the windows
+# describe the cadence we want, and the planner already skips one whose instant
+# has passed. Deleting them would hide the limitation instead of stating it.
 
 competitions:
   # ── PILOT ────────────────────────────────────────────────────────────────

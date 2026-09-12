@@ -12,8 +12,13 @@ puts them there. Two strategies, because one provider plan refuses the other:
           alone is answered in full.
 
 ``auto`` tries LEAGUE and falls back to DATE when the provider refuses on plan
-grounds. The refused request costs nothing - the provider does not count
-errored calls against the daily quota - so the fallback is free.
+grounds. Two different budgets are involved and they disagree about that
+refused request, so be precise: the PROVIDER does not count an errored call
+against its daily limit, while OUR ``DailyQuota`` is spent when the request is
+issued, before the answer is known. The ledger follows ours - requests issued -
+because a budget that under-reports what it sent is a budget that gets
+overspent. So the fallback is free against the provider's 100/day and costs one
+request against our own cap.
 
 Either way the cost is stated before it is spent, and every call lands in the
 job ledger whether it succeeded or not.
