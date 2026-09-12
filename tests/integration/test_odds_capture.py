@@ -62,7 +62,7 @@ def odds_body(home: str, draw: str, away: str) -> dict:
 
 @pytest.fixture()
 def clock() -> Iterator[FrozenClock]:
-    frozen = FrozenClock(KICKOFF - timedelta(minutes=1441))
+    frozen = FrozenClock(KICKOFF - timedelta(minutes=1439))  # inside the 1440 window: T-1440..T-1395
     set_clock(frozen)
     yield frozen
     set_clock(SystemClock())
@@ -129,9 +129,9 @@ async def test_a_capture_writes_prices_payloads_and_a_run(
             "ORDER BY selection"
         )
         assert cur.fetchall() == [
-            ("Away", Decimal("3.600"), 1441, "prematch"),
-            ("Draw", Decimal("3.400"), 1441, "prematch"),
-            ("Home", Decimal("2.100"), 1441, "prematch"),
+            ("Away", Decimal("3.600"), 1439, "prematch"),
+            ("Draw", Decimal("3.400"), 1439, "prematch"),
+            ("Home", Decimal("2.100"), 1439, "prematch"),
         ]
         cur.execute("SELECT status, api_calls, rows_written FROM raw.ingestion_runs WHERE id = %s", (report.run_id,))
         assert cur.fetchone() == ("completed", 1, 3)
@@ -170,7 +170,7 @@ async def test_a_later_window_appends_history_instead_of_overwriting_it(
     fixtures = [ScheduledFixture(1001, KICKOFF)]
 
     await service.capture(fixtures)
-    clock.advance(minutes=1081)  # now inside the 360-minute window
+    clock.advance(minutes=1079)  # now at T-360, the 360-minute window
     await service.capture(fixtures)
 
     with prepared.cursor() as cur:
@@ -178,13 +178,13 @@ async def test_a_later_window_appends_history_instead_of_overwriting_it(
             "SELECT odds_decimal, minutes_to_ko FROM market.odds_snapshots "
             "WHERE selection = 'Home' ORDER BY captured_at"
         )
-        assert cur.fetchall() == [(Decimal("2.100"), 1441), (Decimal("1.950"), 360)]
+        assert cur.fetchall() == [(Decimal("2.100"), 1439), (Decimal("1.950"), 360)]
 
 
 async def test_the_near_close_snapshot_is_recorded_without_claiming_to_be_a_close(
     prepared: psycopg.Connection, tmp_path: Path, clock: FrozenClock
 ) -> None:
-    clock.advance(minutes=1429)  # T-12: the /odds/live band
+    clock.advance(minutes=1427)  # T-12: the /odds/live band
     service, _ = make_service(prepared, tmp_path, lambda _n: odds_body("1.90", "3.70", "4.20"))
     report = await service.capture([ScheduledFixture(1001, KICKOFF)])
 

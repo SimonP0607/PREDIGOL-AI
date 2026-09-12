@@ -122,11 +122,26 @@ class CapturePlanner:
     def _due_window(self, minutes: float) -> int | None:
         """The tightest configured window this fixture currently sits in.
 
-        A window is 'due' from its nominal time until ``tolerance`` minutes
-        later, so a scheduler tick that lands late still captures it once.
+        The band runs FORWARD from the nominal instant: window W is due while
+        ``W - tolerance <= minutes_to_kickoff <= W``, which in wall-clock time
+        is ``kickoff - W`` through ``kickoff - W + tolerance``. Both readings
+        matter and they are easy to confuse, so:
+
+          * ``next_run_at`` returns ``kickoff - W``, the instant the band
+            OPENS. A scheduler that sleeps until then and wakes up to
+            ``tolerance`` minutes late still captures the window - which is
+            the whole point of having a tolerance.
+          * a snapshot that satisfies window W is therefore never FURTHER from
+            kick-off than W claims. Overshooting the other way would file a
+            price taken at T-765 under the "720" window, and this project does
+            not label a price as closer to kick-off than it really was.
+
+        The band used to run backwards - ``W <= minutes <= W + tolerance`` -
+        which made ``next_run_at`` point at the instant the band CLOSED, so a
+        tick even one minute late lost the window entirely.
         """
         for window in sorted(self._windows):
-            if window <= minutes <= window + self._tolerance:
+            if window - self._tolerance <= minutes <= window:
                 return window
         return None
 
@@ -134,10 +149,14 @@ class CapturePlanner:
         """Map stored snapshots back onto the windows they satisfy.
 
         ``observations`` are (provider_fixture_id, source, minutes_to_ko) rows
-        from the database. A snapshot at T-1421 satisfies the 1440 window when
-        the tolerance is 45; it satisfies nothing when it is 200 minutes late.
-        Coverage is therefore derived from what was really captured, never from
-        a separate bookkeeping table that can drift out of step with it.
+        from the database. A snapshot at T-1400 satisfies the 1440 window when
+        the tolerance is 45; one at T-1200 satisfies nothing, and neither does
+        one at T-1460, taken before the window opened. Coverage is therefore
+        derived from what was really captured, never from a separate
+        bookkeeping table that can drift out of step with it.
+
+        Same band as ``_due_window`` and deliberately so: if these two ever
+        disagree, a window is either captured twice or never marked done.
         """
         keys: set[str] = set()
         for fixture_id, source, minutes in observations:
@@ -145,14 +164,18 @@ class CapturePlanner:
                 if abs(minutes - self._near_close) <= 3:
                     keys.add(f"{fixture_id}:near_close:{self._near_close}")
                 continue
-            for window in self._windows:
-                if window <= minutes <= window + self._tolerance:
+            for window in sorted(self._windows):  # same order as _due_window
+                if window - self._tolerance <= minutes <= window:
                     keys.add(f"{fixture_id}:prematch:{window}")
                     break
         return keys
 
     def next_run_at(self, fixtures: Iterable[ScheduledFixture], *, at: datetime) -> datetime | None:
-        """When the scheduler should next wake up. None = nothing pending."""
+        """When the scheduler should next wake up. None = nothing pending.
+
+        This is the instant a window OPENS, so waking here and running late by
+        up to the tolerance still captures it. See ``_due_window``.
+        """
         candidates: list[datetime] = []
         for fixture in fixtures:
             for window in (*self._windows, self._near_close):
