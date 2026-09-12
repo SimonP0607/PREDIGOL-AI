@@ -36,6 +36,28 @@ class RawResponse:
 
 
 @dataclass(frozen=True, slots=True)
+class SeasonRef:
+    """One season of one competition, as the provider currently sees it.
+
+    ``is_current`` is the provider's answer, not ours. Our catalogue came from a
+    backup and drifts by a whole season every August; this is how it gets
+    corrected instead of silently querying a season that ended months ago.
+
+    ``has_odds`` comes from the provider's own coverage flags: a season the
+    provider does not cover for odds cannot be a capture pilot, however many
+    fixtures it has.
+    """
+
+    provider_league_id: int
+    season: int
+    is_current: bool
+    start_date: str | None
+    end_date: str | None
+    has_odds: bool
+    has_fixtures: bool
+
+
+@dataclass(frozen=True, slots=True)
 class FixtureRef:
     provider_fixture_id: int
     provider_league_id: int
@@ -73,6 +95,10 @@ class FootballDataProvider(Protocol):
     """What the platform needs from any football data source."""
 
     name: str
+
+    async def fetch_league_seasons(
+        self, *, league_id: int
+    ) -> tuple[list[SeasonRef], RawResponse]: ...
 
     async def fetch_fixtures(
         self, *, league_id: int, season: int, date_from: str | None = None, date_to: str | None = None

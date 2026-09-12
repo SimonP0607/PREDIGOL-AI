@@ -9,8 +9,8 @@ import structlog
 
 from fbi.core.clock import now
 from fbi.providers.api_football.client import ApiFootballClient
-from fbi.providers.api_football.normalize import iter_fixtures, iter_odds
-from fbi.providers.base import FixtureRef, OddsQuote, RawResponse
+from fbi.providers.api_football.normalize import iter_fixtures, iter_league_seasons, iter_odds
+from fbi.providers.base import FixtureRef, OddsQuote, RawResponse, SeasonRef
 
 log = structlog.get_logger(__name__)
 
@@ -29,6 +29,14 @@ class ApiFootballProvider:
 
     async def aclose(self) -> None:
         await self._client.aclose()
+
+    async def fetch_league_seasons(
+        self, *, league_id: int
+    ) -> tuple[list[SeasonRef], RawResponse]:
+        """One request. Tells us which season the provider calls current and
+        whether it covers odds for it."""
+        response = await self._client.get("/leagues", {"id": league_id})
+        return list(iter_league_seasons(response.body)), _raw(response)
 
     async def fetch_fixtures(
         self,

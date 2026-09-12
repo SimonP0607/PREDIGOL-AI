@@ -21,6 +21,11 @@ Status = Literal["ok", "degraded", "down", "unknown"]
 WORKER_STALE_AFTER = timedelta(minutes=45)  # 3 ticks of the 15-minute scheduler
 
 
+def _start_of_day() -> datetime:
+    """Midnight UTC of the current day, by the application clock."""
+    return now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 @dataclass(frozen=True, slots=True)
 class Check:
     status: Status
@@ -114,7 +119,14 @@ def check_provider(conn: psycopg.Connection, daily_budget: int) -> Check:
     No live call: /health must not spend quota."""
     try:
         with conn.cursor(row_factory=tuple_row) as cur:
-            cur.execute("SELECT coalesce(sum(api_calls), 0) FROM raw.ingestion_runs WHERE started_at >= date_trunc('day', now())")
+            # The day boundary comes from the application clock, like every
+            # other instant in this system. Using the database's now() here
+            # made "requests today" disagree with the clock the capturer bills
+            # its quota against.
+            cur.execute(
+                "SELECT coalesce(sum(api_calls), 0) FROM raw.ingestion_runs WHERE started_at >= %s",
+                (_start_of_day(),),
+            )
             spent = int(cur.fetchone()[0])  # type: ignore[index]
             cur.execute(
                 "SELECT last_error, started_at FROM raw.ingestion_runs WHERE errors > 0 "

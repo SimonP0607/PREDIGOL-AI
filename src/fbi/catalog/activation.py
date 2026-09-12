@@ -7,6 +7,7 @@ the only writer of the second, and it reads a file a human edited.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ import yaml
 from psycopg.rows import tuple_row
 
 from fbi.core.errors import ConfigError
+from fbi.providers.base import SeasonRef
 
 log = structlog.get_logger(__name__)
 
@@ -98,3 +100,81 @@ def active_league_ids(conn: psycopg.Connection) -> list[int]:
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute("SELECT provider_league_id FROM core.competitions WHERE is_tracked ORDER BY 1")
         return [int(r[0]) for r in cur.fetchall()]
+
+
+@dataclass(frozen=True)
+class SeasonUpdate:
+    provider_league_id: int
+    name: str
+    was_current: int | None
+    now_current: int | None
+    has_odds: bool
+    start_date: str | None
+    end_date: str | None
+    seasons_seen: int
+
+
+def refresh_seasons(
+    conn: psycopg.Connection, refs: Sequence[SeasonRef], *, dry_run: bool
+) -> list[SeasonUpdate]:
+    """Correct ``core.competition_seasons`` from what the provider says today.
+
+    Our catalogue came from a backup, so ``is_current`` is wrong by one whole
+    season every August. Nothing else in the platform can fix that, which means
+    a pilot would query a season that ended months ago and silently find no
+    fixtures. This is the only writer of ``is_current`` on seasons.
+    """
+    by_league: dict[int, list[SeasonRef]] = {}
+    for ref in refs:
+        by_league.setdefault(ref.provider_league_id, []).append(ref)
+
+    updates: list[SeasonUpdate] = []
+    for league_id, seasons in sorted(by_league.items()):
+        with conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(
+                "SELECT id, name FROM core.competitions WHERE provider_league_id = %s", (league_id,)
+            )
+            found = cur.fetchone()
+            if found is None:
+                log.warning("refresh_seasons.unknown_competition", league=league_id)
+                continue
+            competition_id, name = int(found[0]), str(found[1])
+            cur.execute(
+                "SELECT season FROM core.competition_seasons WHERE competition_id = %s AND is_current",
+                (competition_id,),
+            )
+            previous = cur.fetchone()
+            was = int(previous[0]) if previous else None
+
+        current = next((s for s in seasons if s.is_current), None)
+        update = SeasonUpdate(
+            provider_league_id=league_id,
+            name=name,
+            was_current=was,
+            now_current=current.season if current else None,
+            has_odds=bool(current and current.has_odds),
+            start_date=current.start_date if current else None,
+            end_date=current.end_date if current else None,
+            seasons_seen=len(seasons),
+        )
+        updates.append(update)
+        if dry_run or current is None:
+            continue
+
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO core.competition_seasons (competition_id, season, start_date, end_date, is_current, has_odds) "
+                "VALUES (%s,%s,%s,%s,true,%s) "
+                "ON CONFLICT (competition_id, season) DO UPDATE SET "
+                "  start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date, "
+                "  is_current = true, has_odds = EXCLUDED.has_odds",
+                (competition_id, current.season, current.start_date, current.end_date, current.has_odds),
+            )
+            # Exactly one current season per competition.
+            cur.execute(
+                "UPDATE core.competition_seasons SET is_current = false "
+                "WHERE competition_id = %s AND season <> %s AND is_current",
+                (competition_id, current.season),
+            )
+    log.info("refresh_seasons.done", dry_run=dry_run, leagues=len(updates))
+    return updates

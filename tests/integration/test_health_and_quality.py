@@ -111,3 +111,33 @@ def test_quality_snapshot_counts_a_captured_fixture(db: psycopg.Connection) -> N
     finally:
         set_clock(SystemClock())
         db.rollback()
+
+
+def test_requests_today_uses_the_application_clock_not_the_database_clock(
+    db: psycopg.Connection,
+) -> None:
+    """A run recorded "today" by the frozen clock must count as today.
+
+    This failed the first time the suite ran on a different calendar day from
+    the one the test was written on: the query said
+    `started_at >= date_trunc('day', now())` and `now()` was the database's,
+    not the clock the capturer bills its quota against.
+    """
+    clock = FrozenClock(datetime(2026, 3, 4, 9, 30, tzinfo=UTC))
+    set_clock(clock)
+    try:
+        ledger = RunLedger(db)
+        today_run = ledger.open("odds_capture")
+        ledger.close(today_run, RunCounters(api_calls=7))
+        clock.advance(hours=30)  # next day by the same clock
+        yesterday_only = health(db, version="t", daily_budget=60)
+        assert yesterday_only.football_provider.data["requests_today"] == 0
+
+        clock.advance(hours=-30)
+        same_day = health(db, version="t", daily_budget=60)
+        assert same_day.football_provider.data["requests_today"] == 7
+    finally:
+        set_clock(SystemClock())
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM raw.ingestion_runs WHERE id = %s", (today_run,))
+        db.commit()

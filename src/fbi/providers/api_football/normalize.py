@@ -20,7 +20,7 @@ from typing import Any
 
 import structlog
 
-from fbi.providers.base import FixtureRef, OddsQuote, OddsSource
+from fbi.providers.base import FixtureRef, OddsQuote, OddsSource, SeasonRef
 
 log = structlog.get_logger(__name__)
 
@@ -218,3 +218,37 @@ def iter_fixtures(body: dict[str, Any]) -> Iterator[FixtureRef]:
         except (KeyError, TypeError, ValueError) as exc:
             log.debug("fixture.unparsable", error=str(exc))
             continue
+
+
+def iter_league_seasons(body: dict[str, Any]) -> Iterator[SeasonRef]:
+    """Parse /leagues. One SeasonRef per season the provider exposes for us.
+
+    On a restricted plan the provider returns only the seasons that plan can
+    see, so an empty result is information: this league is not usable, rather
+    than a parsing failure.
+    """
+    for entry in body.get("response") or []:
+        if not isinstance(entry, dict):
+            continue
+        league, seasons = entry.get("league"), entry.get("seasons")
+        if not isinstance(league, dict) or not isinstance(seasons, list):
+            continue
+        league_id = league.get("id")
+        if not isinstance(league_id, int):
+            continue
+        for season in seasons:
+            if not isinstance(season, dict) or not isinstance(season.get("year"), int):
+                continue
+            raw_coverage = season.get("coverage")
+            coverage: dict[str, Any] = raw_coverage if isinstance(raw_coverage, dict) else {}
+            raw_fixtures = coverage.get("fixtures")
+            fixtures: dict[str, Any] = raw_fixtures if isinstance(raw_fixtures, dict) else {}
+            yield SeasonRef(
+                provider_league_id=int(league_id),
+                season=int(season["year"]),
+                is_current=bool(season.get("current", False)),
+                start_date=(str(season["start"]) if season.get("start") else None),
+                end_date=(str(season["end"]) if season.get("end") else None),
+                has_odds=bool(coverage.get("odds", False)),
+                has_fixtures=bool(fixtures.get("events", False)) or bool(fixtures),
+            )

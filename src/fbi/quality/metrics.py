@@ -111,7 +111,9 @@ def data_quality_snapshot(conn: psycopg.Connection, *, horizon_hours: int = 96, 
         """, (moment, until, moment - STALE_CAPTURE_AFTER)))
         failed_jobs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status IN ('failed','aborted') AND started_at >= %s", (since,)))
         provider_errors = int(_scalar(cur, "SELECT coalesce(sum(errors), 0) FROM raw.ingestion_runs WHERE started_at >= %s", (since,)))
-        requests_today = int(_scalar(cur, "SELECT coalesce(sum(api_calls), 0) FROM raw.ingestion_runs WHERE started_at >= date_trunc('day', now())"))
+        # Day boundary from the application clock, not the database's now().
+        start_of_day = moment.replace(hour=0, minute=0, second=0, microsecond=0)
+        requests_today = int(_scalar(cur, "SELECT coalesce(sum(api_calls), 0) FROM raw.ingestion_runs WHERE started_at >= %s", (start_of_day,)))
         last_ok = _scalar(cur, "SELECT max(finished_at) FROM raw.ingestion_runs WHERE job_type = 'odds_capture' AND status = 'completed'")
         # Windows: for fixtures that kicked off in the last 24 h, how many
         # distinct prematch windows did we actually record vs the configured cadence.
