@@ -1,9 +1,14 @@
 """Sync upcoming fixtures for the ACTIVE competitions.
 
-    python -m scripts.sync_fixtures --horizon-days 7
+    python -m scripts.sync_fixtures                       # announce the cost, spend nothing
+    python -m scripts.sync_fixtures --yes
+    python -m scripts.sync_fixtures --yes --strategy date --horizon-days 8
 
-Cost: exactly one /fixtures call per active competition-season. Says so
-before it spends them.
+Cost, stated before it is spent:
+    league  one /fixtures call per active competition-season
+    date    one /fixtures call per calendar day in the horizon
+    auto    league first; falls back to date if the provider refuses on plan
+            grounds (a refused call does not count against the daily quota)
 """
 
 from __future__ import annotations
@@ -16,27 +21,37 @@ import psycopg
 
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
-from fbi.ingestion.fixtures import active_seasons, sync_fixtures
+from fbi.ingestion.fixtures import SyncStrategy, active_seasons, sync_fixtures
 from fbi.ingestion.payload_store import PayloadStore
 from fbi.providers.api_football import ApiFootballClient, ApiFootballProvider
 
 
-async def _main(horizon_days: int, yes: bool) -> int:
+async def _main(horizon_days: int, yes: bool, strategy: SyncStrategy) -> int:
     with psycopg.connect(settings.database.psycopg_url) as conn:
         seasons = active_seasons(conn)
         print(f"active competition-seasons: {len(seasons)}")
         for s in seasons:
             print(f"  league {s.provider_league_id:<5} season {s.season}  {s.name}")
-        print(f"this will spend exactly {len(seasons)} provider request(s).")
         if not seasons:
+            print("nothing tracked: enable a league in config/competitions.yaml and run `manage_competitions apply`.")
             return 0
+        if strategy is SyncStrategy.LEAGUE:
+            cost = f"exactly {len(seasons)}"
+        elif strategy is SyncStrategy.DATE:
+            cost = f"exactly {horizon_days + 1}"
+        else:
+            cost = f"{len(seasons)}, or {len(seasons)} + {horizon_days + 1} if the plan refuses league+season"
+        print(f"strategy: {strategy}")
+        print(f"this will spend {cost} provider request(s).")
         if not yes:
             print("re-run with --yes to spend them.")
             return 0
         client = ApiFootballClient(settings.api_football, PayloadStore(settings.runtime.raw_store_dir))
         provider = ApiFootballProvider(client)
         try:
-            counters = await sync_fixtures(conn, provider, horizon_days=horizon_days)
+            counters = await sync_fixtures(
+                conn, provider, horizon_days=horizon_days, strategy=strategy
+            )
         finally:
             await provider.aclose()
         print(
@@ -53,9 +68,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="sync_fixtures", description=__doc__)
     parser.add_argument("--horizon-days", type=int, default=7)
     parser.add_argument("--yes", action="store_true", help="actually spend the requests")
+    parser.add_argument(
+        "--strategy",
+        type=SyncStrategy,
+        choices=list(SyncStrategy),
+        default=SyncStrategy.AUTO,
+        help="auto (default) | league | date",
+    )
     args = parser.parse_args(argv)
     configure_logging(settings.runtime.log_level)
-    return asyncio.run(_main(args.horizon_days, args.yes))
+    return asyncio.run(_main(args.horizon_days, args.yes, args.strategy))
 
 
 if __name__ == "__main__":

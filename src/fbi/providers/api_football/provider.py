@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 import structlog
@@ -52,6 +52,19 @@ class ApiFootballProvider:
         if date_to:
             params["to"] = date_to
         response = await self._client.get("/fixtures", params)
+        return list(iter_fixtures(response.body)), _raw(response)
+
+    async def fetch_fixtures_by_date(
+        self, *, on: date
+    ) -> tuple[list[FixtureRef], RawResponse]:
+        """Every fixture the provider has for one calendar day, all leagues.
+
+        One request covers every tracked competition at once, and it is the only
+        fixtures query a restricted plan allows: `league` + `season` is refused
+        with "Free plans do not have access to this season", while `date` alone
+        is served. The caller filters to the competitions it tracks.
+        """
+        response = await self._client.get("/fixtures", {"date": on.isoformat()})
         return list(iter_fixtures(response.body)), _raw(response)
 
     async def fetch_prematch_odds(

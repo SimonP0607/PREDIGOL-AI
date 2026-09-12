@@ -13,7 +13,7 @@ back to the exact bytes the provider returned.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal, Protocol, runtime_checkable
 
@@ -102,6 +102,10 @@ class FootballDataProvider(Protocol):
 
     async def fetch_fixtures(
         self, *, league_id: int, season: int, date_from: str | None = None, date_to: str | None = None
+    ) -> tuple[list[FixtureRef], RawResponse]: ...
+
+    async def fetch_fixtures_by_date(
+        self, *, on: date
     ) -> tuple[list[FixtureRef], RawResponse]: ...
 
     async def fetch_prematch_odds(

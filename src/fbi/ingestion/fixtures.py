@@ -1,15 +1,30 @@
 """Sync fixtures (and the teams they need) for the active competitions.
 
 The capturer only captures fixtures that exist in core.fixtures; this is what
-puts them there. One /fixtures call per active competition-season and window,
-so the cost is known before it is spent: N active leagues = N calls.
+puts them there. Two strategies, because one provider plan refuses the other:
+
+  LEAGUE  ``/fixtures?league=&season=&from=&to=`` - one call per active
+          competition-season. Cheapest for one league over a long horizon.
+  DATE    ``/fixtures?date=`` - one call per calendar day, every league at
+          once, filtered locally to the competitions we track. The only
+          fixtures query a restricted plan serves: league+season comes back
+          with "Free plans do not have access to this season", while date
+          alone is answered in full.
+
+``auto`` tries LEAGUE and falls back to DATE when the provider refuses on plan
+grounds. The refused request costs nothing - the provider does not count
+errored calls against the daily quota - so the fallback is free.
+
+Either way the cost is stated before it is spent, and every call lands in the
+job ledger whether it succeeded or not.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from enum import StrEnum
 
 import psycopg
 import structlog
@@ -21,6 +36,15 @@ from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.providers.base import FixtureRef, FootballDataProvider
 
 log = structlog.get_logger(__name__)
+
+PLAN_REFUSAL = "do not have access"
+"""Substring the provider uses when the plan, not the request, is the problem."""
+
+
+class SyncStrategy(StrEnum):
+    AUTO = "auto"
+    LEAGUE = "league"
+    DATE = "date"
 
 STATUS_GROUP: dict[str, str] = {
     "TBD": "scheduled", "NS": "scheduled",
@@ -49,6 +73,22 @@ def active_seasons(conn: psycopg.Connection) -> list[ActiveSeason]:
         return [ActiveSeason(int(a), int(b), int(c), str(d)) for a, b, c, d in cur.fetchall()]
 
 
+def tracked_season_ids(conn: psycopg.Connection) -> dict[tuple[int, int], int]:
+    """(provider_league_id, season) -> competition_season_id, tracked only.
+
+    The date strategy gets fixtures for every league on Earth; this is what
+    decides which of them are ours. A fixture whose (league, season) is not in
+    here is dropped, not guessed at.
+    """
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(
+            "SELECT c.provider_league_id, cs.season, cs.id "
+            "FROM core.competition_seasons cs JOIN core.competitions c ON c.id = cs.competition_id "
+            "WHERE c.is_tracked"
+        )
+        return {(int(a), int(b)): int(c) for a, b, c in cur.fetchall()}
+
+
 class FixtureRepository:
     def __init__(self, conn: psycopg.Connection) -> None:
         self._conn = conn
@@ -66,12 +106,25 @@ class FixtureRepository:
             cur.execute("SELECT provider_team_id, id FROM core.teams WHERE provider_team_id = ANY(%s)", (ids,))
             return {int(a): int(b) for a, b in cur.fetchall()}
 
-    def upsert_fixtures(self, refs: Sequence[FixtureRef], season_id: int, team_ids: dict[int, int]) -> tuple[int, int]:
+    def upsert_fixtures(
+        self,
+        refs: Sequence[FixtureRef],
+        season_ids: Mapping[tuple[int, int], int],
+        team_ids: dict[int, int],
+    ) -> tuple[int, int]:
         """Returns (inserted, updated). Kick-off and status are the only
-        things that legitimately change; the identity never does."""
+        things that legitimately change; the identity never does.
+
+        ``season_ids`` maps (provider_league_id, season) to the row in
+        core.competition_seasons. A ref with no entry is skipped: we do not
+        invent a season row for a competition we are not tracking.
+        """
         inserted = updated = 0
         with self._conn.cursor(row_factory=tuple_row) as cur:
             for r in refs:
+                season_id = season_ids.get((r.provider_league_id, r.season))
+                if season_id is None:
+                    continue
                 cur.execute(
                     """
                     INSERT INTO core.fixtures
@@ -103,16 +156,53 @@ async def sync_fixtures(
     *,
     horizon_days: int = 7,
     at: datetime | None = None,
+    strategy: SyncStrategy = SyncStrategy.AUTO,
 ) -> RunCounters:
-    """One provider call per active season. Fixtures within [today, today+horizon]."""
+    """Bring core.fixtures up to date for the tracked competitions.
+
+    Cost: LEAGUE = one request per active competition-season.
+          DATE   = one request per calendar day in the horizon, all leagues.
+    """
     moment = at or now()
-    seasons = active_seasons(conn)
     ledger = RunLedger(conn)
-    repo = FixtureRepository(conn)
-    run_id = ledger.open("fixtures_sync", params={"seasons": len(seasons), "horizon_days": horizon_days})
+    run_id = ledger.open(
+        "fixtures_sync",
+        params={"horizon_days": horizon_days, "strategy": str(strategy)},
+        scheduled_for=moment,
+    )
     counters = RunCounters()
+    try:
+        if strategy in (SyncStrategy.AUTO, SyncStrategy.LEAGUE):
+            refused = await _sync_by_league(conn, provider, ledger, run_id, counters, moment, horizon_days)
+            if refused and strategy is SyncStrategy.AUTO:
+                log.warning("fixtures.plan_refused_league_strategy", falling_back_to="date")
+                counters.errors.clear()  # the refusal is understood and handled, not a failure
+                await _sync_by_date(conn, provider, ledger, run_id, counters, moment, horizon_days)
+        else:
+            await _sync_by_date(conn, provider, ledger, run_id, counters, moment, horizon_days)
+    finally:
+        ledger.close(run_id, counters, notes=str(strategy))
+    return counters
+
+
+async def _sync_by_league(
+    conn: psycopg.Connection,
+    provider: FootballDataProvider,
+    ledger: RunLedger,
+    run_id: int,
+    counters: RunCounters,
+    moment: datetime,
+    horizon_days: int,
+) -> bool:
+    """Returns True if the provider refused on PLAN grounds (so a fallback is
+    warranted). A transport or parameter error is a real error and is recorded
+    as one."""
+    seasons = active_seasons(conn)
+    season_ids = tracked_season_ids(conn)
+    repo = FixtureRepository(conn)
     date_from = moment.date().isoformat()
     date_to = (moment + timedelta(days=horizon_days)).date().isoformat()
+    plan_refused = False
 
     for s in seasons:
         try:
@@ -120,22 +210,64 @@ async def sync_fixtures(
                 league_id=s.provider_league_id, season=s.season, date_from=date_from, date_to=date_to
             )
         except ProviderError as exc:
+            # The request WAS issued, so it is counted even though it failed.
+            counters.api_calls += 1
             counters.errors.append(f"league {s.provider_league_id}: {exc}")
+            if PLAN_REFUSAL in str(exc):
+                plan_refused = True
             log.warning("fixtures.fetch_failed", league=s.provider_league_id, error=str(exc))
             continue
         counters.api_calls += 1
         counters.payloads_stored += ledger.record_payloads(run_id, [raw])
         counters.rows_normalized += len(refs)
-        names = _team_names(raw.body)
-        team_ids = repo.ensure_teams(refs, names)
-        ins, upd = repo.upsert_fixtures(refs, s.competition_season_id, team_ids)
+        team_ids = repo.ensure_teams(refs, _team_names(raw.body))
+        ins, upd = repo.upsert_fixtures(refs, season_ids, team_ids)
         counters.rows_inserted += ins
         counters.rows_updated += upd
         conn.commit()
-        log.info("fixtures.synced", league=s.provider_league_id, name=s.name, fixtures=len(refs), inserted=ins, updated=upd)
+        log.info("fixtures.synced", strategy="league", league=s.provider_league_id,
+                 name=s.name, seen=len(refs), inserted=ins, updated=upd)
+    return plan_refused
 
-    ledger.close(run_id, counters, notes=f"{date_from}..{date_to}")
-    return counters
+
+async def _sync_by_date(
+    conn: psycopg.Connection,
+    provider: FootballDataProvider,
+    ledger: RunLedger,
+    run_id: int,
+    counters: RunCounters,
+    moment: datetime,
+    horizon_days: int,
+) -> None:
+    """One request per day. Every league comes back; only tracked ones are kept."""
+    season_ids = tracked_season_ids(conn)
+    if not season_ids:
+        log.warning("fixtures.no_tracked_seasons")
+        return
+    repo = FixtureRepository(conn)
+    for offset in range(horizon_days + 1):
+        on: date = (moment + timedelta(days=offset)).date()
+        try:
+            refs, raw = await provider.fetch_fixtures_by_date(on=on)
+        except ProviderError as exc:
+            counters.api_calls += 1
+            counters.errors.append(f"{on.isoformat()}: {exc}")
+            log.warning("fixtures.fetch_failed", date=on.isoformat(), error=str(exc))
+            continue
+        counters.api_calls += 1
+        counters.payloads_stored += ledger.record_payloads(run_id, [raw])
+        ours = [r for r in refs if (r.provider_league_id, r.season) in season_ids]
+        counters.rows_normalized += len(ours)
+        if ours:
+            team_ids = repo.ensure_teams(ours, _team_names(raw.body))
+            ins, upd = repo.upsert_fixtures(ours, season_ids, team_ids)
+            counters.rows_inserted += ins
+            counters.rows_updated += upd
+            conn.commit()
+        else:
+            ins = upd = 0
+        log.info("fixtures.synced", strategy="date", date=on.isoformat(),
+                 seen_all_leagues=len(refs), seen_ours=len(ours), inserted=ins, updated=upd)
 
 
 def _team_names(body: dict[str, object]) -> dict[int, str]:
