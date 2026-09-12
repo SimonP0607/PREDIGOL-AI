@@ -1,34 +1,50 @@
 # Which competitions the platform ingests. THE single source of truth for
 # activation. Nothing in the domain, the scheduler or the provider package
 # hard-codes a league id; they all read core.competitions.is_tracked, and
-# this file is what sets it (python -m scripts.manage_competitions apply).
+# this file is what sets it:
 #
-#   known  = exists in core.competitions (catalogue: 77 rescued from Supabase)
+#   python -m scripts.manage_competitions apply
+#
+#   known   = a row exists in core.competitions (77 rescued from Supabase)
 #   enabled = is_tracked = true -> fixtures synced, odds captured, quota spent
 #
-# Pilot policy (BUILD PHASE V2): start with ONE or TWO competitions with
-# fixtures in the next few days. Validate the pipeline end to end. Widen later.
-# Every enabled competition costs roughly 6 /odds calls + 1 /odds/live call
-# per fixture, plus the fixtures sync itself.
+# After enabling a league, run `refresh-seasons` for it: the catalogue's
+# is_current came from a backup and is a season behind.
 
 provider: api_football
 
+# ── The cost of enabling one league, measured ──────────────────────────────
+# Account plan (verified via /status on 2026-09-12): FREE — 10 req/min,
+# 100 req/day. Our own cap: FBI_APIFOOTBALL_DAILY_BUDGET=60.
+#
+#   fixtures sync      1 request per league per run
+#   prematch odds      1 request per fixture per window x 6 windows
+#   near-close odds    1 request per fixture
+#
+# A Premier League matchday is ~10 fixtures, so ~60-70 requests to cover it
+# fully. That is the whole daily budget for ONE league. Two leagues would not
+# fit in the plan, which is why the pilot is one.
+
 competitions:
-  # ── pilot ──────────────────────────────────────────────────────────────
-  # Chosen at run time by checking which of the candidates has fixtures in
-  # the next 96 h with a single /fixtures call each. Filled in by the
-  # operator after `manage_competitions probe`.
+  # ── PILOT ────────────────────────────────────────────────────────────────
   - league_id: 39      # Premier League
-    enabled: false
-    note: candidate for pilot
+    enabled: true
+    note: >-
+      Pilot. Probed 2026-09-12: current season 2026 (2026-08-21 .. 2027-05-30),
+      odds coverage yes. Chosen over La Liga and the Champions League because it
+      is the deepest bookmaker market of the three and the league the legacy
+      tracked most closely, so a coverage gap here is a real signal rather than
+      a thin-market artefact.
+
+  # ── Probed and viable, deliberately OFF: no room in the free plan ───────
   - league_id: 140     # La Liga
     enabled: false
-    note: candidate for pilot
+    note: "viable (season 2026, odds yes) - enable when the plan allows a second league"
   - league_id: 2       # UEFA Champions League
     enabled: false
-    note: candidate for pilot
+    note: "viable (season 2026 runs 2026-07-07 .. 2027-01-27, odds yes)"
 
-  # ── the other six the legacy tracked most closely; OFF until the pilot passes
+  # ── The rest of the nine the legacy tracked. Not probed yet. ────────────
   - league_id: 135     # Serie A
     enabled: false
   - league_id: 78      # Bundesliga
