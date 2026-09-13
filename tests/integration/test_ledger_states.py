@@ -26,10 +26,30 @@ from fbi.providers.api_football.client import ApiFootballClient
 from fbi.providers.api_football.provider import ApiFootballProvider
 from fbi.providers.ratelimit import DailyQuota, TokenBucket
 from tests.integration.conftest import Seed
-from tests.integration.helpers import must_be_rejected, row
+from tests.integration.helpers import must_be_rejected, row, scalar
 
 NOW = datetime(2026, 9, 12, 21, 54, tzinfo=UTC)
 SECRET = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+
+
+def _backfill_sql() -> str:
+    """0013's UPGRADE, read from the migration itself.
+
+    A copy of the SQL in the test would pass forever while the migration
+    drifted away from it, so the file is the source. Its module name starts
+    with a digit and cannot be imported, hence the load by path.
+    """
+    import importlib.util
+
+    path = Path(__file__).parents[2] / "migrations" / "versions" / "0013_reclassify_mislabelled_runs.py"
+    spec = importlib.util.spec_from_file_location("migration_0013", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return str(module.UPGRADE)
+
+
+BACKFILL_SQL = _backfill_sql()
 
 
 # ---------------------------------------------------------------------------
@@ -198,3 +218,55 @@ async def test_the_sync_that_was_wrongly_called_completed_is_now_partial(
     assert status == "partial", "the honest answer: it worked, and it also did not"
     assert (calls, errors, payloads, written) == (9, 7, 2, 1)
     assert "do not have access to this date" in last_error
+
+
+# ---------------------------------------------------------------------------
+# The backfill: rows the two-state rule labelled wrongly
+# ---------------------------------------------------------------------------
+
+def test_the_backfill_relabels_only_rows_whose_own_numbers_contradict_them(
+    clean: psycopg.Connection,
+) -> None:
+    """Migration 0013's UPGRADE, run against rows in the shapes it has to judge.
+
+    The decision uses only columns already in the row, so nothing is invented.
+    The risk to guard against is the opposite one: relabelling a row whose
+    status was right all along.
+    """
+    cases = {
+        # (status, errors, rows_written, rows_updated, payloads) -> expected
+        ("completed", 7, 9, 0, 2): "partial",   # the real fixtures_sync
+        ("completed", 1, 0, 4, 0): "partial",   # updates count as durable
+        ("completed", 1, 0, 0, 1): "partial",   # a stored payload counts too
+        ("completed", 2, 0, 0, 0): "failed",    # errors and nothing to show
+        ("failed", 3, 5, 0, 1): "partial",      # was too harsh, not too kind
+        ("completed", 0, 9, 0, 2): "completed",  # nothing wrong with it
+        ("failed", 4, 0, 0, 0): "failed",        # already right
+        ("aborted", 2, 3, 0, 1): "aborted",      # never touched: a cap, not a fault
+    }
+    ids: dict[int, tuple[str, str]] = {}
+    with clean.cursor() as cur:
+        for (status, errors, written, updated, payloads), expected in cases.items():
+            cur.execute(
+                "INSERT INTO raw.ingestion_runs "
+                "(job_name, job_type, status, errors, rows_written, rows_updated, payloads_stored, finished_at) "
+                "VALUES ('backfill','backfill_test',%s,%s,%s,%s,%s, now()) RETURNING id",
+                (status, errors, written, updated, payloads),
+            )
+            ids[int(scalar(cur))] = (status, expected)
+
+        cur.execute(BACKFILL_SQL)
+
+        for run_id, (was, expected) in ids.items():
+            cur.execute("SELECT status, notes FROM raw.ingestion_runs WHERE id = %s", (run_id,))
+            status, notes = row(cur)
+            assert status == expected, f"run {run_id} was {was} and should now be {expected}, got {status}"
+            if was == expected:
+                assert notes is None, (
+                    f"run {run_id} was already {was}; touching its notes would imply a "
+                    "change that did not happen"
+                )
+            else:
+                assert notes is not None and f"reclassified by migration 0013 from {was}" in notes, (
+                    "a relabelled row has to say what it was, or the change is invisible"
+                )

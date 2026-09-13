@@ -157,15 +157,9 @@ def check_provider(conn: psycopg.Connection, daily_budget: int) -> Check:
     }
     if usage.remaining == 0:
         return Check("degraded", "daily budget exhausted", data)
-    if usage.drift > 0:
-        # The counter is ahead of the ledger: requests were issued by a run
-        # that never wrote its total. Usually a crash. Worth surfacing, not
-        # worth stopping for - the conservative number is already in force.
-        return Check(
-            "degraded",
-            f"{usage.drift} request(s) issued by a run that never closed",
-            data,
-        )
+    # usage.unattributed is reported in `data` but is deliberately NOT a fault:
+    # a bare `capture_odds status` opens no run, so it always produces some. The
+    # crash it might indicate is caught by stale_running_jobs in check_worker.
     if err and (now() - err[1]) < timedelta(hours=1):
         return Check("degraded", "provider error in the last hour", data)
     return Check("ok", f"{usage.spent}/{usage.budget} requests today", data)

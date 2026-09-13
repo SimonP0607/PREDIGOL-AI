@@ -19,8 +19,8 @@ calls when it CLOSES. Two runs in flight would both read the same total and
 both spend the whole budget, which is exactly the hole being closed here - and
 a run killed mid-flight never records its calls at all. So the counter is
 incremented before each request, in its own committed transaction, and the
-ledger sum becomes a cross-check: ``QuotaUsage.drift`` reports the difference,
-and a positive drift is the signature of a run that died without closing.
+ledger sum is kept beside it as a cross-check: ``QuotaUsage.unattributed``
+reports requests no closed run has claimed.
 
 The atomicity that makes this work across processes is one statement:
 
@@ -92,10 +92,25 @@ class QuotaUsage:
         return max(0, self.budget - self.spent)
 
     @property
-    def drift(self) -> int:
-        """Counter minus ledger. Positive means requests were issued by a run
-        that never closed - a crash, or a run still in flight. Negative should
-        be impossible and means something spent without going through here."""
+    def unattributed(self) -> int:
+        """Requests billed here that no CLOSED run has claimed.
+
+        Three innocent reasons and one bad one, which is why this is a number
+        and not an alarm:
+
+          * ``/status`` and other ad-hoc calls do not open a ledger run at all;
+          * a run still in flight has not written its total yet;
+          * a run that died never will - the bad one.
+
+        Only the third is a fault, and ``stale_running_jobs`` in /health is the
+        check that identifies it. Treating this figure as a fault on its own
+        made a plain ``capture_odds status`` degrade the health of the system,
+        which is a false alarm, and a health check that cries wolf is worse
+        than one that says nothing.
+
+        Negative should be impossible: it would mean something reached the
+        provider without passing through this counter.
+        """
         return self.spent - self.ledger_api_calls
 
     def as_dict(self) -> dict[str, object]:
@@ -105,7 +120,7 @@ class QuotaUsage:
             "daily_budget": self.budget,
             "remaining": self.remaining,
             "ledger_api_calls_today": self.ledger_api_calls,
-            "drift": self.drift,
+            "unattributed_requests": self.unattributed,
         }
 
 

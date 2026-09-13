@@ -100,8 +100,9 @@ async def _status() -> int:
     print("--- our budget, counted in the database and shared by every process ---")
     print(f"requests issued today: {ours.spent} / {ours.budget}  (remaining {ours.remaining})")
     print(f"budget vs plan limit : {'OK' if ours.budget < st.requests_limit_day else '<- budget must stay BELOW the plan limit'}")
-    print(f"ledger api_calls     : {ours.ledger_api_calls}  drift {ours.drift:+d}"
-          f"{'' if ours.drift == 0 else '  <- a run issued requests without closing; see /health'}")
+    print(f"claimed by closed runs: {ours.ledger_api_calls}"
+          f"   unattributed: {ours.unattributed}"
+          f"{'' if ours.unattributed == 0 else '  (ad-hoc calls like this /status open no run)'}")
     print(f"counted for           : {ours.quota_date.isoformat()} (UTC day)")
     print(f"subscription active  : {st.subscription_active} (ends {st.subscription_end or '-'})")
     return 0 if cfg.plan == st.plan else 1

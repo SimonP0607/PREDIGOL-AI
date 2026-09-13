@@ -202,9 +202,12 @@ def test_health_reports_the_persistent_counter_not_a_sum_over_closed_runs(db: ps
         assert data["requests_today"] == 40, "from raw.provider_quota"
         assert data["ledger_api_calls_today"] == 0, "no run has closed"
         assert data["remaining"] == 20
-        assert data["drift"] == 40
-        assert h.football_provider.status == "degraded"
-        assert "never closed" in h.football_provider.detail
+        assert data["unattributed_requests"] == 40
+        assert h.football_provider.status == "ok", (
+            "unattributed requests are reported, not alarmed about: a plain "
+            "`capture_odds status` opens no run and would otherwise degrade the "
+            "health of a perfectly healthy system"
+        )
     finally:
         set_clock(SystemClock())
         db.rollback()
@@ -254,7 +257,7 @@ def test_the_quality_snapshot_separates_partial_runs_from_failed_ones(db: psycop
         db.commit()
 
 
-def test_the_quality_snapshot_reports_the_budget_and_flags_drift(db: psycopg.Connection) -> None:
+def test_the_quality_snapshot_reports_the_budget_without_crying_wolf(db: psycopg.Connection) -> None:
     set_clock(FrozenClock(NOW))
     try:
         with db.cursor() as cur:
@@ -267,7 +270,35 @@ def test_the_quality_snapshot_reports_the_budget_and_flags_drift(db: psycopg.Con
         d = snap.as_dict()
         assert (d["requests_today"], d["daily_budget"], d["requests_remaining_today"]) == (13, 60, 47)
         assert d["ledger_api_calls_today"] == 0
-        assert any("disagree by +13" in n for n in snap.notes)
+        assert d["unattributed_requests_today"] == 13
+        assert not any("likely a crash" in n for n in snap.notes), (
+            "no run is stuck, so unattributed requests are just ad-hoc calls"
+        )
+    finally:
+        set_clock(SystemClock())
+        db.rollback()
+
+
+def test_unattributed_requests_plus_a_stuck_run_is_worth_a_note(db: psycopg.Connection) -> None:
+    """Together they mean what neither means alone: a run took the budget and
+    died. Apart, each is ordinary."""
+    set_clock(FrozenClock(NOW))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "INSERT INTO raw.provider_quota (provider, quota_date, spent, budget) "
+                "VALUES ('api_football', %s, 9, 60)",
+                (NOW.date(),),
+            )
+            cur.execute(
+                "INSERT INTO raw.ingestion_runs (job_name, job_type, status, started_at) "
+                "VALUES ('odds_capture','odds_capture','running', %s)",
+                (NOW - timedelta(hours=3),),
+            )
+        snap = data_quality_snapshot(db, daily_budget=60)
+        assert snap.stale_running_jobs == 1
+        assert snap.unattributed_requests_today == 9
+        assert any("likely a crash" in n for n in snap.notes)
     finally:
         set_clock(SystemClock())
         db.rollback()

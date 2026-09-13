@@ -272,9 +272,10 @@ def test_the_daily_budget_still_wins_when_it_is_tighter_than_the_run_cap(dsn: st
 # Reconciliation
 # ---------------------------------------------------------------------------
 
-def test_a_run_that_died_without_closing_shows_up_as_drift(dsn: str) -> None:
-    """The counter is ahead of the ledger. That is the signature of a crash:
-    the requests were issued and billed, but the run never recorded them."""
+def test_requests_no_closed_run_has_claimed_are_counted_as_unattributed(dsn: str) -> None:
+    """The counter is ahead of the ledger while a run is in flight - and stays
+    ahead for good if that run dies. It is a number, not a verdict: an ad-hoc
+    /status call produces the same reading and is perfectly normal."""
     q = quota(dsn, budget=60)
     q.spend(4)
     with psycopg.connect(dsn, autocommit=True) as conn:
@@ -282,10 +283,11 @@ def test_a_run_that_died_without_closing_shows_up_as_drift(dsn: str) -> None:
         usage = read_usage(conn, budget=60)
     assert usage.spent == 4
     assert usage.ledger_api_calls == 0
-    assert usage.drift == 4
+    assert usage.unattributed == 4
+    assert usage.as_dict()["unattributed_requests"] == 4
 
 
-def test_the_two_counters_agree_when_a_run_closes_properly(dsn: str) -> None:
+def test_nothing_is_unattributed_once_the_run_closes(dsn: str) -> None:
     q = quota(dsn, budget=60)
     with psycopg.connect(dsn, autocommit=True) as conn:
         ledger = RunLedger(conn)
@@ -294,7 +296,7 @@ def test_the_two_counters_agree_when_a_run_closes_properly(dsn: str) -> None:
             q.spend(1)
         ledger.close(run_id, RunCounters(api_calls=3, rows_inserted=2))
         usage = read_usage(conn, budget=60)
-    assert (usage.spent, usage.ledger_api_calls, usage.drift) == (3, 3, 0)
+    assert (usage.spent, usage.ledger_api_calls, usage.unattributed) == (3, 3, 0)
 
 
 def test_usage_reports_the_day_it_is_counting(dsn: str) -> None:

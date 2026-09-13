@@ -60,6 +60,10 @@ class QualitySnapshot:
     ledger_api_calls_today: int
     daily_budget: int
     requests_remaining_today: int
+    unattributed_requests_today: int
+    """Billed here but claimed by no closed run: ad-hoc calls like /status, runs
+    still in flight, and - the one that matters - runs that died."""
+    stale_running_jobs: int
     last_successful_capture: datetime | None
     windows_expected_24h: int
     windows_captured_24h: int
@@ -128,6 +132,7 @@ def data_quality_snapshot(
         """, (moment, until, moment - STALE_CAPTURE_AFTER)))
         failed_jobs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status IN ('failed','aborted') AND started_at >= %s", (since,)))
         partial_jobs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status = 'partial' AND started_at >= %s", (since,)))
+        stale_runs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status = 'running' AND started_at < %s", (moment - timedelta(hours=2),)))
         provider_errors = int(_scalar(cur, "SELECT coalesce(sum(errors), 0) FROM raw.ingestion_runs WHERE started_at >= %s", (since,)))
         last_ok = _scalar(cur, "SELECT max(finished_at) FROM raw.ingestion_runs WHERE job_type = 'odds_capture' AND status = 'completed'")
         # Windows: for fixtures that kicked off in the last 24 h, how many
@@ -148,10 +153,17 @@ def data_quality_snapshot(
         """, (since, moment)))
     # Day boundary from the application clock, not the database's now().
     usage = read_usage(conn, budget=daily_budget)
-    if usage.drift != 0:
+    if usage.unattributed < 0:
+        # Impossible unless something reached the provider without being
+        # billed, which would mean the budget is not actually a budget.
         notes.append(
-            f"the quota counter and the ledger disagree by {usage.drift:+d} request(s): "
-            "a run issued calls without recording them, most likely a crash"
+            f"{-usage.unattributed} request(s) recorded by runs were never billed to "
+            "the daily counter: something is reaching the provider outside the quota"
+        )
+    elif usage.unattributed > 0 and stale_runs:
+        notes.append(
+            f"{usage.unattributed} request(s) today belong to no closed run, and "
+            f"{stale_runs} run(s) have been 'running' for over 2 h: likely a crash"
         )
     if fixtures_expected == 0:
         notes.append("no scheduled fixtures for active competitions in the horizon: coverage ratios are null, not zero")
@@ -176,6 +188,8 @@ def data_quality_snapshot(
         ledger_api_calls_today=usage.ledger_api_calls,
         daily_budget=usage.budget,
         requests_remaining_today=usage.remaining,
+        unattributed_requests_today=usage.unattributed,
+        stale_running_jobs=stale_runs,
         last_successful_capture=last_ok,
         windows_expected_24h=kicked * prematch_windows,
         windows_captured_24h=min(windows_captured, kicked * prematch_windows),
