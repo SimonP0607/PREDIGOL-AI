@@ -15,15 +15,11 @@ import psycopg
 from psycopg.rows import tuple_row
 
 from fbi.core.clock import now
+from fbi.providers.quota import read_usage
 
 Status = Literal["ok", "degraded", "down", "unknown"]
 
 WORKER_STALE_AFTER = timedelta(minutes=45)  # 3 ticks of the 15-minute scheduler
-
-
-def _start_of_day() -> datetime:
-    """Midnight UTC of the current day, by the application clock."""
-    return now().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +80,9 @@ def check_worker(conn: psycopg.Connection) -> Check:
                 "ORDER BY started_at DESC LIMIT 1"
             )
             last = cur.fetchone()
+            # Strictly 'completed'. A partial run is not a successful run, and
+            # counting it as one would hide exactly what 'partial' was added
+            # to reveal.
             cur.execute(
                 "SELECT started_at FROM raw.ingestion_runs WHERE status = 'completed' "
                 "ORDER BY started_at DESC LIMIT 1"
@@ -91,6 +90,12 @@ def check_worker(conn: psycopg.Connection) -> Check:
             ok = cur.fetchone()
             cur.execute("SELECT count(*) FROM raw.ingestion_runs WHERE status = 'running' AND started_at < %s", (now() - timedelta(hours=2),))
             zombies = int(cur.fetchone()[0])  # type: ignore[index]
+            cur.execute(
+                "SELECT status, count(*) FROM raw.ingestion_runs WHERE started_at >= %s "
+                "GROUP BY status",
+                (now() - timedelta(hours=24),),
+            )
+            by_status = {str(k): int(v) for k, v in cur.fetchall()}
     except psycopg.Error as exc:
         return Check("unknown", f"ledger unreadable: {exc.__class__.__name__}")
     if last is None:
@@ -103,6 +108,9 @@ def check_worker(conn: psycopg.Connection) -> Check:
         "last_successful_run": ok[0].isoformat() if ok else None,
         "last_error": last_error,
         "stale_running_jobs": zombies,
+        "runs_24h_by_status": by_status,
+        "partial_runs_24h": by_status.get("partial", 0),
+        "failed_runs_24h": by_status.get("failed", 0),
     }
     age = now() - started_at
     if zombies:
@@ -111,23 +119,27 @@ def check_worker(conn: psycopg.Connection) -> Check:
         return Check("degraded", f"last run {int(age.total_seconds() // 60)} min ago", data)
     if status == "failed":
         return Check("degraded", "last run failed", data)
+    if status == "partial":
+        # The state this check used to miss entirely: work was done AND errors
+        # happened, which under the old two-state rule was recorded as
+        # 'completed' and read as healthy.
+        return Check("degraded", "last run only partly succeeded", data)
+    if status == "aborted":
+        return Check("degraded", "last run stopped at a cap before finishing", data)
     return Check("ok", f"last run {int(age.total_seconds() // 60)} min ago", data)
 
 
 def check_provider(conn: psycopg.Connection, daily_budget: int) -> Check:
-    """Requests spent today and the last provider error, from the ledger.
-    No live call: /health must not spend quota."""
+    """Our budget, the last provider error, and whether the two counters agree.
+
+    No live call: /health must never spend quota to report on quota. The figure
+    shown is raw.provider_quota - the counter the capturer actually bills
+    against, incremented before each request - rather than a sum over closed
+    runs, which lags behind by a whole run and loses a crashed one entirely.
+    """
     try:
+        usage = read_usage(conn, budget=daily_budget)
         with conn.cursor(row_factory=tuple_row) as cur:
-            # The day boundary comes from the application clock, like every
-            # other instant in this system. Using the database's now() here
-            # made "requests today" disagree with the clock the capturer bills
-            # its quota against.
-            cur.execute(
-                "SELECT coalesce(sum(api_calls), 0) FROM raw.ingestion_runs WHERE started_at >= %s",
-                (_start_of_day(),),
-            )
-            spent = int(cur.fetchone()[0])  # type: ignore[index]
             cur.execute(
                 "SELECT last_error, started_at FROM raw.ingestion_runs WHERE errors > 0 "
                 "ORDER BY started_at DESC LIMIT 1"
@@ -138,17 +150,25 @@ def check_provider(conn: psycopg.Connection, daily_budget: int) -> Check:
     except psycopg.Error as exc:
         return Check("unknown", f"ledger unreadable: {exc.__class__.__name__}")
     data: dict[str, Any] = {
-        "requests_today": spent,
-        "daily_budget": daily_budget,
+        **usage.as_dict(),
         "last_error": err[0] if err else None,
         "last_error_at": err[1].isoformat() if err else None,
         "last_payload_at": last_payload.isoformat() if last_payload else None,
     }
-    if spent >= daily_budget:
+    if usage.remaining == 0:
         return Check("degraded", "daily budget exhausted", data)
+    if usage.drift > 0:
+        # The counter is ahead of the ledger: requests were issued by a run
+        # that never wrote its total. Usually a crash. Worth surfacing, not
+        # worth stopping for - the conservative number is already in force.
+        return Check(
+            "degraded",
+            f"{usage.drift} request(s) issued by a run that never closed",
+            data,
+        )
     if err and (now() - err[1]) < timedelta(hours=1):
         return Check("degraded", "provider error in the last hour", data)
-    return Check("ok", f"{spent}/{daily_budget} requests today", data)
+    return Check("ok", f"{usage.spent}/{usage.budget} requests today", data)
 
 
 def health(conn: psycopg.Connection | None, *, version: str, daily_budget: int) -> Health:

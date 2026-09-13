@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pathlib
 from datetime import UTC, datetime, timedelta
 
 import psycopg
@@ -14,6 +15,12 @@ from fbi.quality.metrics import data_quality_snapshot
 NOW = datetime(2026, 9, 6, 12, 0, tzinfo=UTC)
 
 
+def head_revision() -> str:
+    """The newest migration on disk, read rather than remembered."""
+    versions = pathlib.Path(__file__).parents[2] / "migrations" / "versions"
+    return max(f.name.split("_", 1)[0] for f in versions.glob("[0-9]*.py"))
+
+
 def test_health_with_an_empty_ledger_is_honest_not_green(db: psycopg.Connection) -> None:
     set_clock(FrozenClock(NOW))
     try:
@@ -21,7 +28,10 @@ def test_health_with_an_empty_ledger_is_honest_not_green(db: psycopg.Connection)
     finally:
         set_clock(SystemClock())
     assert h.database.status == "ok"
-    assert h.database.data["revision"] == "0011"
+    assert h.database.data["revision"] == head_revision(), (
+        "/health must report the revision the test database was actually migrated to; "
+        "a hard-coded number here just breaks on every new migration"
+    )
     assert h.worker.status == "unknown", "no run yet is 'unknown', never 'ok'"
     assert h.football_provider.status == "ok" and h.football_provider.data["requests_today"] == 0
     assert h.status == "degraded"
@@ -141,3 +151,123 @@ def test_requests_today_uses_the_application_clock_not_the_database_clock(
         with db.cursor() as cur:
             cur.execute("DELETE FROM raw.ingestion_runs WHERE id = %s", (today_run,))
         db.commit()
+
+
+# ---------------------------------------------------------------------------
+# The two guards from BLOQUE 2.5, as /health and /health/quality see them
+# ---------------------------------------------------------------------------
+
+def test_a_partial_run_degrades_the_worker_instead_of_reading_as_healthy(db: psycopg.Connection) -> None:
+    """The regression that mattered: before 'partial' existed this exact run
+    was stored as 'completed' and /health reported the worker as ok."""
+    set_clock(FrozenClock(NOW))
+    try:
+        ledger = RunLedger(db)
+        run_id = ledger.open("fixtures_sync", scheduled_for=NOW)
+        ledger.close(
+            run_id,
+            RunCounters(api_calls=9, payloads_stored=2, rows_inserted=9, errors=["refused"] * 7),
+        )
+        h = health(db, version="t", daily_budget=60)
+        assert h.worker.status == "degraded"
+        assert "partly succeeded" in h.worker.detail
+        assert h.worker.data["last_status"] == "partial"
+        assert h.worker.data["partial_runs_24h"] == 1
+        assert h.worker.data["last_successful_run"] != h.worker.data["last_started_at"], (
+            "a partial run is not a successful run; if 'last successful' pointed at "
+            "it, that would hide exactly what 'partial' was added to reveal"
+        )
+        assert h.status == "degraded"
+    finally:
+        set_clock(SystemClock())
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM raw.ingestion_runs WHERE id = %s", (run_id,))
+        db.commit()
+
+
+def test_health_reports_the_persistent_counter_not_a_sum_over_closed_runs(db: psycopg.Connection) -> None:
+    """A run still in flight has spent requests the ledger has not recorded yet.
+    /health must show the number the budget actually bills against, because
+    that is the one that will refuse the next call."""
+    set_clock(FrozenClock(NOW))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "INSERT INTO raw.provider_quota (provider, quota_date, spent, budget) "
+                "VALUES ('api_football', %s, 40, 60)",
+                (NOW.date(),),
+            )
+        h = health(db, version="t", daily_budget=60)
+        data = h.football_provider.data
+        assert data["requests_today"] == 40, "from raw.provider_quota"
+        assert data["ledger_api_calls_today"] == 0, "no run has closed"
+        assert data["remaining"] == 20
+        assert data["drift"] == 40
+        assert h.football_provider.status == "degraded"
+        assert "never closed" in h.football_provider.detail
+    finally:
+        set_clock(SystemClock())
+        db.rollback()
+
+
+def test_an_exhausted_budget_degrades_the_provider_check(db: psycopg.Connection) -> None:
+    set_clock(FrozenClock(NOW))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "INSERT INTO raw.provider_quota (provider, quota_date, spent, budget) "
+                "VALUES ('api_football', %s, 60, 60)",
+                (NOW.date(),),
+            )
+        h = health(db, version="t", daily_budget=60)
+        assert h.football_provider.status == "degraded"
+        assert h.football_provider.detail == "daily budget exhausted"
+        assert h.football_provider.data["remaining"] == 0
+    finally:
+        set_clock(SystemClock())
+        db.rollback()
+
+
+def test_the_quality_snapshot_separates_partial_runs_from_failed_ones(db: psycopg.Connection) -> None:
+    set_clock(FrozenClock(NOW))
+    ids = []
+    try:
+        ledger = RunLedger(db)
+        for counters in (
+            RunCounters(api_calls=9, payloads_stored=2, rows_inserted=9, errors=["r"] * 7),
+            RunCounters(api_calls=1, errors=["dead"]),
+            RunCounters(api_calls=2, rows_inserted=3),
+        ):
+            run_id = ledger.open("odds_capture", scheduled_for=NOW)
+            ledger.close(run_id, counters)
+            ids.append(run_id)
+        snap = data_quality_snapshot(db, daily_budget=60)
+        assert snap.partial_jobs_24h == 1
+        assert snap.failed_jobs_24h == 1, "the partial one is not counted as failed"
+        assert snap.provider_errors_24h == 8
+        d = snap.as_dict()
+        assert d["partial_jobs_24h"] == 1 and d["failed_jobs_24h"] == 1
+    finally:
+        set_clock(SystemClock())
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM raw.ingestion_runs WHERE id = ANY(%s)", (ids,))
+        db.commit()
+
+
+def test_the_quality_snapshot_reports_the_budget_and_flags_drift(db: psycopg.Connection) -> None:
+    set_clock(FrozenClock(NOW))
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "INSERT INTO raw.provider_quota (provider, quota_date, spent, budget) "
+                "VALUES ('api_football', %s, 13, 60)",
+                (NOW.date(),),
+            )
+        snap = data_quality_snapshot(db, daily_budget=60)
+        d = snap.as_dict()
+        assert (d["requests_today"], d["daily_budget"], d["requests_remaining_today"]) == (13, 60, 47)
+        assert d["ledger_api_calls_today"] == 0
+        assert any("disagree by +13" in n for n in snap.notes)
+    finally:
+        set_clock(SystemClock())
+        db.rollback()

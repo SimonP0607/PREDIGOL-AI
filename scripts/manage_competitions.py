@@ -34,8 +34,8 @@ from fbi.core.config import settings
 from fbi.core.errors import FbiError
 from fbi.core.logging import configure as configure_logging
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.ingestion.payload_store import PayloadStore
-from fbi.providers.api_football import ApiFootballClient, ApiFootballProvider
+from fbi.providers.api_football import ApiFootballProvider
+from fbi.providers.api_football.build import build_client
 from fbi.providers.base import SeasonRef
 
 REPO = Path(__file__).resolve().parent.parent
@@ -94,7 +94,7 @@ async def _fetch_seasons(conn: psycopg.Connection, league_ids: list[int]) -> lis
     ledger = RunLedger(conn)
     run_id = ledger.open("seasons_refresh", params={"leagues": league_ids})
     counters = RunCounters()
-    client = ApiFootballClient(settings.api_football, PayloadStore(settings.runtime.raw_store_dir))
+    client = build_client()  # persistent daily budget, shared with every other script
     provider = ApiFootballProvider(client)
     refs: list[SeasonRef] = []
     try:

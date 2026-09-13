@@ -133,3 +133,26 @@ def test_every_migration_is_reversible_and_leaves_nothing_behind() -> None:
             os.environ["FBI_DATABASE_URL"] = previous
         with psycopg.connect(admin_url, autocommit=True) as conn:
             conn.execute(f'DROP DATABASE IF EXISTS "{db_name}"')
+
+
+def test_only_the_factory_builds_a_provider_client() -> None:
+    """The hole BLOQUE 2.5 closed started as three scripts each constructing
+    their own ApiFootballClient; two of them let the quota default to the
+    in-memory one and spent against a budget that reset every invocation.
+
+    Source-level guard rather than a runtime one, because the mistake is made
+    at author time and a runtime check would only fire on the code path that
+    was already wrong.
+    """
+    import pathlib
+
+    root = pathlib.Path(__file__).parents[2]
+    offenders: list[str] = []
+    for path in [*(root / "scripts").rglob("*.py"), *(root / "apps").rglob("*.py")]:
+        for number, line in enumerate(path.read_text().splitlines(), start=1):
+            if "ApiFootballClient(" in line and "build_client" not in line:
+                offenders.append(f"{path.relative_to(root)}:{number}: {line.strip()}")
+    assert not offenders, (
+        "construct the client through fbi.providers.api_football.build.build_client, "
+        "which is what attaches the persistent daily budget:\n  " + "\n  ".join(offenders)
+    )

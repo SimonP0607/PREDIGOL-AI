@@ -22,8 +22,8 @@ import psycopg
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.ingestion.fixtures import SyncStrategy, active_seasons, sync_fixtures
-from fbi.ingestion.payload_store import PayloadStore
-from fbi.providers.api_football import ApiFootballClient, ApiFootballProvider
+from fbi.providers.api_football import ApiFootballProvider
+from fbi.providers.api_football.build import build_client
 
 
 async def _main(horizon_days: int, yes: bool, strategy: SyncStrategy) -> int:
@@ -46,7 +46,7 @@ async def _main(horizon_days: int, yes: bool, strategy: SyncStrategy) -> int:
         if not yes:
             print("re-run with --yes to spend them.")
             return 0
-        client = ApiFootballClient(settings.api_football, PayloadStore(settings.runtime.raw_store_dir))
+        client = build_client()  # persistent daily budget, shared with every other script
         provider = ApiFootballProvider(client)
         try:
             counters = await sync_fixtures(

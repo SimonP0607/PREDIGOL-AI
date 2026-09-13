@@ -54,3 +54,15 @@ def now() -> datetime:
 
 def today() -> date:
     return _clock.now().date()
+
+
+def day_start() -> datetime:
+    """Midnight UTC of the current day, by the application clock.
+
+    "Today" has to mean exactly one thing across the quota counter, the health
+    checks and the quality snapshot, or the three of them disagree about how
+    many requests have been spent. It used to be computed in three places, and
+    one of them used the DATABASE's clock, which is how that disagreement was
+    found.
+    """
+    return _clock.now().replace(hour=0, minute=0, second=0, microsecond=0)

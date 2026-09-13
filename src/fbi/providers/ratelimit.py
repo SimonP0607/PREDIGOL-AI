@@ -72,7 +72,13 @@ class TokenBucket:
 
 @dataclass
 class DailyQuota:
-    """A hard per-day call budget that resets at UTC midnight."""
+    """A hard per-day call budget that resets at UTC midnight - IN THIS PROCESS.
+
+    Kept for tests and for callers with no database. It is not what production
+    uses: two shells each got a full budget, which is the hole
+    ``fbi.providers.quota.PersistentDailyQuota`` closes by keeping the counter
+    in PostgreSQL. Same interface, so the client does not care which it has.
+    """
 
     budget: int
     _day: date = field(default_factory=lambda: now().date())

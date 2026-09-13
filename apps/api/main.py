@@ -34,11 +34,19 @@ def _conn() -> psycopg.Connection | None:
         return None
 
 
+def _budget() -> int:
+    """Our internal cap, never reported as higher than the plan allows - the
+    same arithmetic the capturer uses, so /health and the capturer cannot
+    disagree about what the budget is."""
+    cfg = settings.api_football
+    return min(cfg.daily_budget, cfg.per_day_limit)
+
+
 @app.get("/health")
 def get_health(response: Response) -> dict[str, Any]:
     conn = _conn()
     try:
-        h = health(conn, version=VERSION, daily_budget=settings.api_football.daily_budget)
+        h = health(conn, version=VERSION, daily_budget=_budget())
     finally:
         if conn is not None:
             conn.close()
@@ -54,6 +62,10 @@ def get_quality(response: Response) -> dict[str, Any]:
         response.status_code = 503
         return {"status": "down", "detail": "no database connection"}
     try:
-        return data_quality_snapshot(conn).as_dict()
+        return data_quality_snapshot(
+            conn,
+            prematch_windows=len(settings.odds.prematch_windows),
+            daily_budget=_budget(),
+        ).as_dict()
     finally:
         conn.close()

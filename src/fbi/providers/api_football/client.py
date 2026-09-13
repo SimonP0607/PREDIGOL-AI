@@ -70,6 +70,10 @@ class ApiFootballClient:
         # A margin below the published limit: being throttled costs more than
         # the handful of calls this leaves on the table.
         self._bucket = rate_limiter or TokenBucket(max(1, int(settings.per_minute_limit * 0.9)))
+        # In-memory fallback, for tests and for any caller that has no database.
+        # It counts only within this process, so it is NOT the production path:
+        # real callers go through build_client, which attaches the persistent
+        # counter. The structural guard in the test suite enforces that.
         self._quota = quota or DailyQuota(budget=min(settings.daily_budget, settings.per_day_limit))
         self._breaker = breaker or CircuitBreaker(
             "api_football",

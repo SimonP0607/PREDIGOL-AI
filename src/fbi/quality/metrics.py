@@ -16,6 +16,7 @@ import psycopg
 from psycopg.rows import tuple_row
 
 from fbi.core.clock import now
+from fbi.providers.quota import read_usage
 
 STALE_CAPTURE_AFTER = timedelta(hours=4)  # /odds refreshes every 3 h; beyond 4 h something is wrong
 
@@ -47,8 +48,18 @@ class QualitySnapshot:
     stale_fixtures: int
     """Upcoming fixtures whose newest snapshot is older than STALE_CAPTURE_AFTER."""
     failed_jobs_24h: int
+    """Runs that finished with errors and nothing durable to show (plus aborted)."""
+    partial_jobs_24h: int
+    """Runs that wrote something AND hit errors. Invisible before revision 0012,
+    when they were recorded as 'completed'."""
     provider_errors_24h: int
     requests_today: int
+    """From raw.provider_quota - requests ISSUED, the number the budget bills
+    against. ledger_api_calls_today is the same figure summed over closed runs;
+    they differ when a run died without closing."""
+    ledger_api_calls_today: int
+    daily_budget: int
+    requests_remaining_today: int
     last_successful_capture: datetime | None
     windows_expected_24h: int
     windows_captured_24h: int
@@ -71,7 +82,13 @@ def _scalar(cur: psycopg.Cursor, sql: str, params: tuple[Any, ...] = ()) -> Any:
     return row[0] if row else None
 
 
-def data_quality_snapshot(conn: psycopg.Connection, *, horizon_hours: int = 96, prematch_windows: int = 6) -> QualitySnapshot:
+def data_quality_snapshot(
+    conn: psycopg.Connection,
+    *,
+    horizon_hours: int = 96,
+    prematch_windows: int = 6,
+    daily_budget: int = 60,
+) -> QualitySnapshot:
     moment = now()
     since = moment - timedelta(hours=24)
     until = moment + timedelta(hours=horizon_hours)
@@ -110,10 +127,8 @@ def data_quality_snapshot(conn: psycopg.Connection, *, horizon_hours: int = 96, 
             ) t WHERE last_seen < %s
         """, (moment, until, moment - STALE_CAPTURE_AFTER)))
         failed_jobs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status IN ('failed','aborted') AND started_at >= %s", (since,)))
+        partial_jobs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status = 'partial' AND started_at >= %s", (since,)))
         provider_errors = int(_scalar(cur, "SELECT coalesce(sum(errors), 0) FROM raw.ingestion_runs WHERE started_at >= %s", (since,)))
-        # Day boundary from the application clock, not the database's now().
-        start_of_day = moment.replace(hour=0, minute=0, second=0, microsecond=0)
-        requests_today = int(_scalar(cur, "SELECT coalesce(sum(api_calls), 0) FROM raw.ingestion_runs WHERE started_at >= %s", (start_of_day,)))
         last_ok = _scalar(cur, "SELECT max(finished_at) FROM raw.ingestion_runs WHERE job_type = 'odds_capture' AND status = 'completed'")
         # Windows: for fixtures that kicked off in the last 24 h, how many
         # distinct prematch windows did we actually record vs the configured cadence.
@@ -131,6 +146,13 @@ def data_quality_snapshot(conn: psycopg.Connection, *, horizon_hours: int = 96, 
               GROUP BY f.id
             ) t
         """, (since, moment)))
+    # Day boundary from the application clock, not the database's now().
+    usage = read_usage(conn, budget=daily_budget)
+    if usage.drift != 0:
+        notes.append(
+            f"the quota counter and the ledger disagree by {usage.drift:+d} request(s): "
+            "a run issued calls without recording them, most likely a crash"
+        )
     if fixtures_expected == 0:
         notes.append("no scheduled fixtures for active competitions in the horizon: coverage ratios are null, not zero")
     if snapshots_24h == 0:
@@ -148,8 +170,12 @@ def data_quality_snapshot(conn: psycopg.Connection, *, horizon_hours: int = 96, 
         snapshots_24h=snapshots_24h,
         stale_fixtures=stale,
         failed_jobs_24h=failed_jobs,
+        partial_jobs_24h=partial_jobs,
         provider_errors_24h=provider_errors,
-        requests_today=requests_today,
+        requests_today=usage.spent,
+        ledger_api_calls_today=usage.ledger_api_calls,
+        daily_budget=usage.budget,
+        requests_remaining_today=usage.remaining,
         last_successful_capture=last_ok,
         windows_expected_24h=kicked * prematch_windows,
         windows_captured_24h=min(windows_captured, kicked * prematch_windows),

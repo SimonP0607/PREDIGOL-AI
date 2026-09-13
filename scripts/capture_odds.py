@@ -27,7 +27,6 @@ from fbi.catalog.activation import active_league_ids
 from fbi.core.clock import now
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.odds.capture import OddsCaptureService
 from fbi.odds.repository import OddsRepository
 from fbi.odds.schedule import (
@@ -38,8 +37,9 @@ from fbi.odds.schedule import (
     validate_plan,
 )
 from fbi.providers.api_football import ApiFootballClient, ApiFootballProvider
+from fbi.providers.api_football.build import build_client
 from fbi.providers.api_football.status import fetch_status
-from fbi.providers.ratelimit import DailyQuota
+from fbi.providers.quota import read_usage
 
 log = structlog.get_logger("capture_odds")
 
@@ -78,10 +78,10 @@ def _upcoming(conn: psycopg.Connection, horizon_hours: int) -> list[ScheduledFix
         return [ScheduledFixture(int(a), b, str(c)) for a, b, c in cur.fetchall()]
 
 
-def _client(budget: int | None = None) -> ApiFootballClient:
-    cfg = settings.api_football
-    quota = DailyQuota(budget=min(budget or cfg.daily_budget, cfg.per_day_limit))
-    return ApiFootballClient(cfg, PayloadStore(settings.runtime.raw_store_dir), quota=quota)
+def _client(max_requests: int | None = None) -> ApiFootballClient:
+    """Always through build_client: that is what attaches the persistent
+    budget. A locally constructed client would count in memory and forget."""
+    return build_client(max_requests)
 
 
 async def _status() -> int:
@@ -91,10 +91,18 @@ async def _status() -> int:
     finally:
         await client.aclose()
     cfg = settings.api_football
+    with _connect() as conn:
+        ours = read_usage(conn, budget=min(cfg.daily_budget, cfg.per_day_limit))
     print(f"plan (provider)      : {st.plan}")
     print(f"plan (configured)    : {cfg.plan}  {'OK' if cfg.plan == st.plan else '<- MISMATCH: fix FBI_APIFOOTBALL_PLAN'}")
+    print("--- the provider's limit (it does not count calls it refused) ---")
     print(f"requests today       : {st.requests_today} / {st.requests_limit_day}  (remaining {st.remaining_today})")
-    print(f"our daily budget     : {cfg.daily_budget}  {'OK' if cfg.daily_budget < st.requests_limit_day else '<- budget must stay BELOW the plan limit'}")
+    print("--- our budget, counted in the database and shared by every process ---")
+    print(f"requests issued today: {ours.spent} / {ours.budget}  (remaining {ours.remaining})")
+    print(f"budget vs plan limit : {'OK' if ours.budget < st.requests_limit_day else '<- budget must stay BELOW the plan limit'}")
+    print(f"ledger api_calls     : {ours.ledger_api_calls}  drift {ours.drift:+d}"
+          f"{'' if ours.drift == 0 else '  <- a run issued requests without closing; see /health'}")
+    print(f"counted for           : {ours.quota_date.isoformat()} (UTC day)")
     print(f"subscription active  : {st.subscription_active} (ends {st.subscription_end or '-'})")
     return 0 if cfg.plan == st.plan else 1
 
@@ -108,13 +116,19 @@ def _plan_only(conn: psycopg.Connection, horizon_hours: int) -> tuple[list[Sched
     )
     tasks = planner.plan(fixtures, at=now(), already_done=covered)
     known = {f.provider_fixture_id for f in fixtures}
-    check = validate_plan(tasks, at=now(), budget_remaining=settings.api_football.daily_budget, known_fixture_ids=known)
+    cfg = settings.api_football
+    # REMAINING, not the whole budget: the guard is
+    # requests_used_today + planned <= internal_daily_budget, and passing the
+    # full budget here made a plan look affordable on a budget already spent.
+    ours = read_usage(conn, budget=min(cfg.daily_budget, cfg.per_day_limit))
+    check = validate_plan(tasks, at=now(), budget_remaining=ours.remaining, known_fixture_ids=known)
     print(f"fixtures in horizon  : {len(fixtures)}")
     print(f"already captured     : {len(covered)} window(s)")
     print(f"tasks due now        : {len(tasks)}")
     for t in tasks[:50]:
         print(f"  {t.window_key:<28} T-{t.minutes_to_ko:<6} {'/odds/live' if t.kind == 'near_close' else '/odds'}")
     print(f"estimated requests   : {check.estimated_requests}")
+    print(f"budget               : {ours.spent} spent today of {ours.budget}, {ours.remaining} left")
     print("actual requests      : 0")
     nxt = planner.next_run_at(fixtures, at=now())
     print(f"next window at       : {nxt.isoformat() if nxt else 'nothing pending'}")
@@ -140,7 +154,7 @@ async def _run(horizon_hours: int, max_requests: int | None) -> int:
             print(f"\nSTOP: plan needs ~{check.estimated_requests} requests, cap is {max_requests}. Raise --max-requests or wait.")
             return 2
 
-        client = _client(budget=max_requests)
+        client = _client(max_requests)
         provider = ApiFootballProvider(client, market_filter=settings.odds.market_filter)
         try:
             service = OddsCaptureService(conn, provider, _build_planner(), raw_root=settings.runtime.raw_store_dir)

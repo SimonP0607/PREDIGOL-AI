@@ -34,10 +34,39 @@ class RunCounters:
     stopped_early: str | None = None
 
     @property
+    def did_useful_work(self) -> bool:
+        """Did anything durable come out of this run?
+
+        Rows are the obvious answer, but a stored raw payload counts too: it is
+        on disk, indexed in raw.ingestion_payloads, and a price can be
+        normalised out of it later. A run that fetched and kept the bytes has
+        made progress even if nothing was parsed from them yet.
+
+        api_calls deliberately does NOT count. Spending quota is not work.
+        """
+        return bool(self.rows_inserted or self.rows_updated or self.payloads_stored)
+
+    @property
     def status(self) -> str:
+        """One of running/completed/partial/failed/aborted - see the comment on
+        raw.ingestion_runs.status, which this must agree with.
+
+            stopped deliberately          -> aborted
+            no errors                     -> completed
+            errors + something durable    -> partial
+            errors + nothing durable      -> failed
+
+        ``partial`` exists because the old two-state rule called a fixtures
+        sync with 7 refusals out of 9 requests 'completed', which reads as if
+        nothing had gone wrong. An operator scanning statuses would never look
+        at it. 'aborted' stays separate and orthogonal: it means a cap stopped
+        the run on purpose, not that the run broke.
+        """
         if self.stopped_early:
             return "aborted"
-        return "failed" if self.errors and not self.rows_inserted and not self.rows_updated else "completed"
+        if not self.errors:
+            return "completed"
+        return "partial" if self.did_useful_work else "failed"
 
 
 class RunLedger:
