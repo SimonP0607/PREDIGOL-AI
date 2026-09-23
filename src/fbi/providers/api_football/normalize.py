@@ -20,7 +20,7 @@ from typing import Any
 
 import structlog
 
-from fbi.providers.base import FixtureRef, OddsQuote, OddsSource, SeasonRef
+from fbi.providers.base import FixtureRef, FixtureResultRef, OddsQuote, OddsSource, SeasonRef
 
 log = structlog.get_logger(__name__)
 
@@ -252,3 +252,69 @@ def iter_league_seasons(body: dict[str, Any]) -> Iterator[SeasonRef]:
                 has_odds=bool(coverage.get("odds", False)),
                 has_fixtures=bool(fixtures.get("events", False)) or bool(fixtures),
             )
+
+FINISHED_STATUSES = frozenset({"FT", "AET", "PEN"})
+"""Only these mean "this match was played to a conclusion".
+
+Deliberately narrow. A postponed, abandoned or awarded fixture has no score we
+are willing to settle on, and the provider happily reports 0-0 for several of
+them.
+"""
+
+
+def _pair(block: Any) -> tuple[int | None, int | None]:
+    """(home, away) from one of the provider's score blocks, or (None, None).
+
+    The provider uses null for periods that did not happen, and the blocks are
+    absent entirely on some payloads, so both shapes have to read the same."""
+    if not isinstance(block, dict):
+        return None, None
+    home, away = block.get("home"), block.get("away")
+    return (home if isinstance(home, int) else None, away if isinstance(away, int) else None)
+
+
+def iter_fixture_results(body: dict[str, Any]) -> Iterator[FixtureResultRef]:
+    """Scores, from the SAME /fixtures payload the fixture sync already reads.
+
+    This costs no extra request: the provider returns goals and score blocks
+    alongside every fixture, and the previous code simply discarded them. That
+    matters more than it sounds - on a restricted plan a result unclaimed
+    within the plan's date window is unreachable forever.
+
+    A fixture the provider does not report as finished yields nothing, so a
+    postponed match never acquires a score.
+    """
+    for entry in body.get("response") or []:
+        if not isinstance(entry, dict):
+            continue
+        fixture = entry.get("fixture")
+        if not isinstance(fixture, dict):
+            continue
+        status = str((fixture.get("status") or {}).get("short") or "")
+        if status not in FINISHED_STATUSES:
+            continue
+        goals_home, goals_away = _pair(entry.get("goals"))
+        if goals_home is None or goals_away is None:
+            log.debug("result.no_goals", fixture=fixture.get("id"), status=status)
+            continue
+        raw_score = entry.get("score")
+        score: dict[str, Any] = raw_score if isinstance(raw_score, dict) else {}
+        ht_h, ht_a = _pair(score.get("halftime"))
+        et_h, et_a = _pair(score.get("extratime"))
+        pk_h, pk_a = _pair(score.get("penalty"))
+        try:
+            yield FixtureResultRef(
+                provider_fixture_id=int(fixture["id"]),
+                status_short=status,
+                goals_home=goals_home,
+                goals_away=goals_away,
+                ht_goals_home=ht_h,
+                ht_goals_away=ht_a,
+                et_goals_home=et_h,
+                et_goals_away=et_a,
+                pen_home=pk_h,
+                pen_away=pk_a,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            log.debug("result.unparsable", error=str(exc))
+            continue

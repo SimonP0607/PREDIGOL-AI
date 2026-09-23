@@ -12,6 +12,15 @@ Two jobs, both deliberately boring:
 
 The tick is short and the planner is idempotent: a missed tick costs one window
 at worst, and a duplicated tick costs nothing at all.
+
+  * ``fixtures_sync``  every 12 h, horizon 1 day  -> 2 requests per run, 4/day
+  * ``results_sync``   every 6 h, lookback 1 day  -> 2 requests per run, 8/day
+
+Standing cost is therefore about 12 requests/day, leaving roughly 48 of the
+60-request budget for odds capture - enough for a Premier League matchday at
+four reachable windows per fixture. The numbers are environment variables
+rather than constants because the right cadence changes the moment the plan
+does.
 """
 
 from __future__ import annotations
@@ -32,6 +41,9 @@ log = structlog.get_logger("worker")
 
 TICK_MINUTES = int(os.environ.get("FBI_ODDS_TICK_MINUTES", "15"))
 FIXTURES_SYNC_HOURS = int(os.environ.get("FBI_FIXTURES_SYNC_HOURS", "12"))
+FIXTURES_HORIZON_DAYS = int(os.environ.get("FBI_FIXTURES_HORIZON_DAYS", "1"))
+RESULTS_SYNC_HOURS = int(os.environ.get("FBI_RESULTS_SYNC_HOURS", "6"))
+RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
 
 
 async def _tick() -> None:
@@ -84,7 +96,13 @@ async def _tick() -> None:
 
 
 async def _daily_fixtures_sync() -> None:
-    """Refresh the fixture list for active competitions: one call per league."""
+    """Refresh the fixture list for active competitions.
+
+    The horizon is deliberately short. On the free plan ``/fixtures?date=`` is
+    served only for about a day either side of today, so a longer horizon does
+    not see further - it just spends requests on refusals. Running often is
+    what buys reach here, not asking for more at once.
+    """
     from scripts.capture_odds import _client, _connect
 
     from fbi.ingestion.fixtures import sync_fixtures
@@ -94,7 +112,30 @@ async def _daily_fixtures_sync() -> None:
     with _connect() as conn:
         provider = ApiFootballProvider(_client())
         try:
-            await sync_fixtures(conn, provider, horizon_days=7)
+            await sync_fixtures(conn, provider, horizon_days=FIXTURES_HORIZON_DAYS)
+        finally:
+            await provider.aclose()
+
+
+async def _results_sync() -> None:
+    """Close the loop on fixtures that have been played.
+
+    Without this a fixture whose kick-off passed keeps saying 'NS' for ever,
+    because the fixture sync only looks forward. And the window to fix it is
+    narrow: the free plan stops serving a date about a day after it passes, so
+    a result missed today is missed permanently. That is why this runs on its
+    own short cycle instead of riding along with a daily job.
+    """
+    from scripts.capture_odds import _client, _connect
+
+    from fbi.ingestion.results import sync_results
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await sync_results(conn, provider, lookback_days=RESULTS_LOOKBACK_DAYS)
         finally:
             await provider.aclose()
 
@@ -104,8 +145,15 @@ async def main() -> None:
     scheduler = AsyncIOScheduler(timezone="UTC")
     scheduler.add_job(_tick, "interval", minutes=TICK_MINUTES, id="odds_capture", max_instances=1)
     scheduler.add_job(_daily_fixtures_sync, "interval", hours=FIXTURES_SYNC_HOURS, id="fixtures_sync", max_instances=1)
+    scheduler.add_job(_results_sync, "interval", hours=RESULTS_SYNC_HOURS, id="results_sync", max_instances=1)
     scheduler.start()
-    log.info("worker.started", tick_minutes=TICK_MINUTES)
+    log.info(
+        "worker.started",
+        tick_minutes=TICK_MINUTES,
+        fixtures_sync_hours=FIXTURES_SYNC_HOURS,
+        results_sync_hours=RESULTS_SYNC_HOURS,
+        daily_budget=settings.api_football.daily_budget,
+    )
 
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

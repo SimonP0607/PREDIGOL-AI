@@ -69,6 +69,33 @@ class FixtureRef:
 
 
 @dataclass(frozen=True, slots=True)
+class FixtureResultRef:
+    """The score of a fixture that has actually been played.
+
+    Separate from ``FixtureRef`` on purpose: a fixture exists from the moment
+    it is scheduled, a result exists only once it has been played, and
+    conflating the two is how a cancelled match ends up with a 0-0 "result".
+    Only fixtures the provider reports as finished produce one of these.
+
+    ``goals_home``/``goals_away`` are the 90-minute score the provider settles
+    markets on. Extra time and penalties are carried separately because a
+    1X2 market settles on the former and a cup winner on the latter; merging
+    them silently would mis-settle every knockout tie.
+    """
+
+    provider_fixture_id: int
+    status_short: str
+    goals_home: int
+    goals_away: int
+    ht_goals_home: int | None = None
+    ht_goals_away: int | None = None
+    et_goals_home: int | None = None
+    et_goals_away: int | None = None
+    pen_home: int | None = None
+    pen_away: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class OddsQuote:
     """A single price, at a single instant, from a single bookmaker.
 
@@ -107,6 +134,10 @@ class FootballDataProvider(Protocol):
     async def fetch_fixtures_by_date(
         self, *, on: date
     ) -> tuple[list[FixtureRef], RawResponse]: ...
+
+    async def fetch_results_by_date(
+        self, *, on: date
+    ) -> tuple[list[FixtureResultRef], RawResponse]: ...
 
     async def fetch_prematch_odds(
         self, *, provider_fixture_id: int, kickoff_at: datetime

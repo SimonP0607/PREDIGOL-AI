@@ -64,6 +64,12 @@ class QualitySnapshot:
     """Billed here but claimed by no closed run: ad-hoc calls like /status, runs
     still in flight, and - the one that matters - runs that died."""
     stale_running_jobs: int
+    fixtures_awaiting_result: int
+    """Kicked off, still recorded as scheduled or live. Every one of these is a
+    row asserting something false, and on a plan that stops serving a date a
+    day after it passes, each is close to becoming permanent."""
+    fixtures_with_result: int
+    """Of the tracked fixtures that have kicked off, how many have a score."""
     last_successful_capture: datetime | None
     windows_expected_24h: int
     windows_captured_24h: int
@@ -133,6 +139,19 @@ def data_quality_snapshot(
         failed_jobs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status IN ('failed','aborted') AND started_at >= %s", (since,)))
         partial_jobs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status = 'partial' AND started_at >= %s", (since,)))
         stale_runs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status = 'running' AND started_at < %s", (moment - timedelta(hours=2),)))
+        awaiting_result = int(_scalar(cur, """
+            SELECT count(*) FROM core.fixtures f
+            JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+            JOIN core.competitions c ON c.id = cs.competition_id
+            WHERE c.is_tracked AND f.kickoff_at < %s AND f.status_group IN ('scheduled','live')
+        """, (moment,)))
+        with_result = int(_scalar(cur, """
+            SELECT count(*) FROM core.fixtures f
+            JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+            JOIN core.competitions c ON c.id = cs.competition_id
+            JOIN core.fixture_results r ON r.fixture_id = f.id
+            WHERE c.is_tracked AND f.kickoff_at < %s
+        """, (moment,)))
         provider_errors = int(_scalar(cur, "SELECT coalesce(sum(errors), 0) FROM raw.ingestion_runs WHERE started_at >= %s", (since,)))
         last_ok = _scalar(cur, "SELECT max(finished_at) FROM raw.ingestion_runs WHERE job_type = 'odds_capture' AND status = 'completed'")
         # Windows: for fixtures that kicked off in the last 24 h, how many
@@ -165,6 +184,11 @@ def data_quality_snapshot(
             f"{usage.unattributed} request(s) today belong to no closed run, and "
             f"{stale_runs} run(s) have been 'running' for over 2 h: likely a crash"
         )
+    if awaiting_result:
+        notes.append(
+            f"{awaiting_result} fixture(s) kicked off but are still recorded as not started; "
+            "on this plan a result becomes unreachable about a day after kick-off"
+        )
     if fixtures_expected == 0:
         notes.append("no scheduled fixtures for active competitions in the horizon: coverage ratios are null, not zero")
     if snapshots_24h == 0:
@@ -190,6 +214,8 @@ def data_quality_snapshot(
         requests_remaining_today=usage.remaining,
         unattributed_requests_today=usage.unattributed,
         stale_running_jobs=stale_runs,
+        fixtures_awaiting_result=awaiting_result,
+        fixtures_with_result=with_result,
         last_successful_capture=last_ok,
         windows_expected_24h=kicked * prematch_windows,
         windows_captured_24h=min(windows_captured, kicked * prematch_windows),

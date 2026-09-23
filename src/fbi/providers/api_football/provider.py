@@ -9,8 +9,13 @@ import structlog
 
 from fbi.core.clock import now
 from fbi.providers.api_football.client import ApiFootballClient
-from fbi.providers.api_football.normalize import iter_fixtures, iter_league_seasons, iter_odds
-from fbi.providers.base import FixtureRef, OddsQuote, RawResponse, SeasonRef
+from fbi.providers.api_football.normalize import (
+    iter_fixture_results,
+    iter_fixtures,
+    iter_league_seasons,
+    iter_odds,
+)
+from fbi.providers.base import FixtureRef, FixtureResultRef, OddsQuote, RawResponse, SeasonRef
 
 log = structlog.get_logger(__name__)
 
@@ -66,6 +71,14 @@ class ApiFootballProvider:
         """
         response = await self._client.get("/fixtures", {"date": on.isoformat()})
         return list(iter_fixtures(response.body)), _raw(response)
+
+    async def fetch_results_by_date(
+        self, *, on: date
+    ) -> tuple[list[FixtureResultRef], RawResponse]:
+        """Scores for one calendar day. Same endpoint, same cost, as
+        ``fetch_fixtures_by_date`` - the goals were always in that payload."""
+        response = await self._client.get("/fixtures", {"date": on.isoformat()})
+        return list(iter_fixture_results(response.body)), _raw(response)
 
     async def fetch_prematch_odds(
         self, *, provider_fixture_id: int, kickoff_at: datetime

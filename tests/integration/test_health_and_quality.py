@@ -302,3 +302,42 @@ def test_unattributed_requests_plus_a_stuck_run_is_worth_a_note(db: psycopg.Conn
     finally:
         set_clock(SystemClock())
         db.rollback()
+
+
+def test_the_snapshot_counts_fixtures_that_kicked_off_without_a_result(
+    db: psycopg.Connection,
+) -> None:
+    """The defect the result sync exists for, made visible. A fixture past
+    kick-off and still 'scheduled' is a row asserting something false, and the
+    free plan stops serving its date about a day later - so the count is also
+    a countdown."""
+    set_clock(FrozenClock(NOW))
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE core.competitions SET is_tracked = true WHERE provider_league_id = 39")
+            cur.execute(
+                "UPDATE core.fixtures SET kickoff_at = %s, status_group = 'scheduled', status_short = 'NS' "
+                "WHERE provider_fixture_id = 1001",
+                (NOW - timedelta(hours=6),),
+            )
+        snap = data_quality_snapshot(db, daily_budget=60)
+        assert snap.fixtures_awaiting_result == 1
+        assert snap.fixtures_with_result == 0
+        assert any("still recorded as not started" in n for n in snap.notes)
+
+        cur = db.cursor()
+        cur.execute(
+            "UPDATE core.fixtures SET status_group = 'finished', status_short = 'FT' "
+            "WHERE provider_fixture_id = 1001"
+        )
+        cur.execute(
+            "INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away) "
+            "SELECT id, 2, 1 FROM core.fixtures WHERE provider_fixture_id = 1001"
+        )
+        settled = data_quality_snapshot(db, daily_budget=60)
+        assert settled.fixtures_awaiting_result == 0
+        assert settled.fixtures_with_result == 1
+        assert not any("still recorded as not started" in n for n in settled.notes)
+    finally:
+        set_clock(SystemClock())
+        db.rollback()
