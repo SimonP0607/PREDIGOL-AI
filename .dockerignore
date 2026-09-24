@@ -1,0 +1,17 @@
+# The build context is the image. Nothing here may carry a secret or data.
+.env
+.env.*
+!.env.example
+.git
+.venv
+data/raw
+data/reports
+backups
+*.dump
+*.duckdb
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+node_modules

@@ -1,5 +1,36 @@
 name: football-intelligence
 
+# Two ways to run the stack. Use ONE of them.
+#
+#   host mode     scripts/dev-up        API, worker and web as processes in WSL;
+#                                       only postgres runs here.
+#   compose mode  make up               postgres + api + worker in containers,
+#                 (docker compose --profile stack up -d --build)
+#                                       web on the host (bun run dev).
+#
+# Both use the same database (volume pgdata) and the same raw payload store
+# (./data/raw), so switching modes loses nothing. Running both at once is
+# refused by the worker itself: it holds a database advisory lock, and a
+# second worker exits (code 75) naming the one that holds it.
+#
+# `docker compose up -d` with no profile starts postgres only, which is what
+# host mode needs. api and worker only start when the stack profile is asked for.
+
+x-backend: &backend
+  build:
+    context: .
+    args:
+      FBI_CODE_VERSION: ${FBI_CODE_VERSION:-unknown}
+      FBI_UID: ${FBI_UID:-1000}
+  image: fbi-backend:local
+  env_file:
+    - path: .env
+      required: false
+  depends_on:
+    postgres: { condition: service_healthy }
+  restart: unless-stopped
+  profiles: ["stack"]
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -21,51 +52,40 @@ services:
     restart: unless-stopped
 
   api:
-    build: { context: ., dockerfile: Dockerfile }
+    <<: *backend
     container_name: fbi-api
-    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "warning"]
     environment:
       FBI_DATABASE_URL: postgresql+psycopg://fbi:${POSTGRES_PASSWORD:-fbi_local_dev}@postgres:5432/fbi
-    env_file: [.env]
-    ports: ["8010:8000"]
-    volumes: [".:/app"]
-    depends_on:
-      postgres: { condition: service_healthy }
-    restart: unless-stopped
+    ports: ["127.0.0.1:8010:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   worker:
-    build: { context: ., dockerfile: Dockerfile }
+    <<: *backend
     container_name: fbi-worker
-    command: python -m apps.worker.main
+    # A stable hostname keeps one heartbeat row (worker_id = <hostname>:worker)
+    # instead of a new one per container.
+    hostname: fbi-worker
+    command: ["python", "-m", "apps.worker.main"]
     environment:
       FBI_DATABASE_URL: postgresql+psycopg://fbi:${POSTGRES_PASSWORD:-fbi_local_dev}@postgres:5432/fbi
-    env_file: [.env]
-    volumes: [".:/app", "./.data:/app/.data"]
-    depends_on:
-      postgres: { condition: service_healthy }
-    restart: unless-stopped
-
-  web:
-    image: node:22-alpine
-    container_name: fbi-web
-    working_dir: /app
-    command: sh -c "npm install && npm run dev"
-    ports: ["3010:3000"]
-    volumes: ["./apps/web:/app"]
-    profiles: ["web"]
-
-  bot:
-    build: { context: ., dockerfile: Dockerfile }
-    container_name: fbi-bot
-    command: python -m apps.bot.main
-    env_file: [.env]
-    depends_on: [api]
-    profiles: ["bot"]
+      FBI_WEB_BASE_URL: ${FBI_WEB_BASE_URL:-http://localhost:5173}
+    volumes:
+      # The raw store is shared with host mode: a bind mount of the repo's own
+      # data/raw (on the Linux filesystem, not /mnt/c). Paths in
+      # raw.ingestion_payloads are relative to it, so lineage survives a switch.
+      - ./data/raw:/app/data/raw
+    stop_grace_period: 30s
 
   adminer:
     image: adminer:latest
     container_name: fbi-adminer
-    ports: ["8011:8080"]
+    ports: ["127.0.0.1:8011:8080"]
     depends_on: [postgres]
     profiles: ["dev"]
 
