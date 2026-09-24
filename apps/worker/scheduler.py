@@ -54,6 +54,7 @@ from fbi.ops.heartbeat import (
     last_success,
     next_run_after,
 )
+from fbi.ops.worker_lock import WorkerLock, holder
 
 log = structlog.get_logger("worker")
 
@@ -232,6 +233,11 @@ async def _notify() -> None:
 
 
 _scheduler: AsyncIOScheduler | None = None
+_lock: WorkerLock | None = None
+_stop: asyncio.Event | None = None
+
+EXIT_ANOTHER_WORKER = 75
+"""EX_TEMPFAIL: not an error in this worker, and worth trying again later."""
 
 
 def _connect() -> psycopg.Connection:
@@ -274,6 +280,14 @@ async def _tick_with_heartbeat() -> None:
     is a different diagnosis from "dead". The failure is re-raised so the
     scheduler logs it as well.
     """
+    if _lock is not None:
+        held = _lock.still_held()
+        if held is False:
+            # The database restarted and another worker took the lock first.
+            log.error("worker.lock_lost", action="stopping; the other worker carries on")
+            if _stop is not None:
+                _stop.set()
+            return
     lag = _lag_ms()
     started = time.monotonic()
     outcome: TickOutcome = "failed"
@@ -299,8 +313,18 @@ def _on_error(event: JobEvent) -> None:
 
 
 async def main() -> None:
-    global _scheduler
+    global _scheduler, _lock, _stop
     configure_logging(settings.runtime.log_level)
+    # One worker per database, host or container: the second one leaves at once.
+    _lock = WorkerLock.acquire(settings.database.psycopg_url)
+    if _lock is None:
+        with _connect() as conn:
+            other = holder(conn)
+        log.error("worker.already_running", held_by=other.application_name if other else None,
+                  since=other.backend_start.isoformat() if other and other.backend_start else None,
+                  action="not starting: stop the other worker first (scripts/dev-down worker, "
+                         "or docker compose stop worker)")
+        raise SystemExit(EXIT_ANOTHER_WORKER)
     scheduler = AsyncIOScheduler(timezone="UTC")
     _scheduler = scheduler
     moment = now()
@@ -351,6 +375,7 @@ async def main() -> None:
     )
 
     stop = asyncio.Event()
+    _stop = stop
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, stop.set)
@@ -361,6 +386,7 @@ async def main() -> None:
             _writer(conn).stopped()
     except psycopg.Error:
         pass
+    _lock.release()
     log.info("worker.stopped")
 
 
