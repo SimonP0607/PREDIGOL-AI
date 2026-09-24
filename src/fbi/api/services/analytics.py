@@ -3,15 +3,25 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from fbi.api.contracts.analytics import (
     BacktestMetrics,
+    BacktestSessionSummary,
+    BaselineScore,
+    CalibrationBucket,
+    CompetitionName,
+    Coverage,
+    HypotheticalBetting,
     MarketBaselineSummary,
+    MarketComparison,
     ModelsOverview,
     ModelVersionSummary,
     PerformanceSummary,
     PickRow,
     PicksOverview,
+    ScoreSummary,
+    SplitRow,
 )
 from fbi.api.envelope import DataStatus, Envelope, Section, ok, section, unavailable
 from fbi.api.repositories import Conn
@@ -21,19 +31,79 @@ MIN_SETTLED_FOR_PERFORMANCE = 30
 """Below this, an ROI is noise with a percentage sign. Reported as insufficient."""
 
 
+BETTING_NOTE = ("Hypothetical: flat one-unit stakes at the historical source's closing price, by a rule fixed "
+                "before the test season. Not a record of bets, not a forecast of returns.")
+
+
+def _comparison(r: dict[str, Any]) -> MarketComparison:
+    return MarketComparison(**{k: v for k, v in r.items() if k != "backtest_run_id"})
+
+
+def _scores(d: dict[str, Any] | None) -> ScoreSummary | None:
+    if not d:
+        return None
+    return ScoreSummary(n=int(d["n"]), brier=float(d["brier"]), log_loss=float(d["log_loss"]), ece=float(d["ece"]))
+
+
+def _splits(d: dict[str, dict[str, float]] | None, labels: dict[int, str] | None = None) -> list[SplitRow]:
+    out = []
+    for key, row in (d or {}).items():
+        label = labels.get(int(key), key) if labels is not None and key.isdigit() else key
+        out.append(SplitRow(key=key, label=label, n=int(row["n"]), model_logloss=float(row["model_logloss"]),
+                            baseline_logloss=float(row["baseline_logloss"]), logloss_diff=float(row["logloss_diff"])))
+    return out
+
+
+def _backtest(b: dict[str, Any], comps: list[dict[str, Any]], primary_key: str | None,
+              labels: dict[int, str]) -> BacktestMetrics:
+    details: dict[str, Any] = b.get("details") or {}
+    vs = [_comparison(c) for c in comps]
+    primary = next((c for c in vs if c.baseline_key == primary_key and c.market_key == "1X2"), None)
+    bet_meta = details.get("betting") or {}
+    betting = None
+    if b.get("n_bets") is not None and b.get("odds_source"):
+        betting = HypotheticalBetting(
+            rule=str(bet_meta.get("rule", "")), odds_source=str(b["odds_source"]),
+            fixtures_priced=int(bet_meta.get("fixtures_priced", 0)), n_bets=int(b["n_bets"]),
+            staked_units=Decimal(b["total_stake_units"] or 0), profit_units=Decimal(b["total_profit_units"] or 0),
+            roi_pct=b["roi_pct"], roi_ci_low=b["roi_ci_low"], roi_ci_high=b["roi_ci_high"],
+            max_drawdown_units=b["max_drawdown_units"], mean_probability_edge=bet_meta.get("mean_probability_edge"),
+            note=BETTING_NOTE,
+        )
+    cov = details.get("coverage")
+    return BacktestMetrics(
+        run_id=b["run_id"], name=b["name"], protocol=b["protocol"], session_id=b["session_id"],
+        test_from=b["test_from"], test_to=b["test_to"], n_samples=b["n_samples"], brier=b["brier"],
+        logloss=b["logloss"], ece=b["ece"], accuracy_pct=b["accuracy_pct"],
+        coverage=Coverage(**cov) if cov else None, primary=primary, vs_market=vs,
+        calibration=[CalibrationBucket(**x) for x in details.get("calibration", [])],
+        over_under_2_5=_scores(details.get("ou")), btts=_scores(details.get("btts")),
+        by_competition=_splits(details.get("by_competition"), labels), by_month=_splits(details.get("by_month")),
+        betting=betting, odds_source=b["odds_source"], n_bets=b["n_bets"], roi_pct=b["roi_pct"],
+        yield_pct=b["yield_pct"], near_close_lv_mean=b["near_close_lv_mean"], code_version=b["code_version"],
+        finished_at=b["finished_at"],
+    )
+
+
 def models(conn: Conn) -> Envelope[ModelsOverview]:
+    session = repo.latest_session(conn)
+    labels = repo.competition_names(conn, list(session["competition_ids"])) if session else {}
     versions = repo.model_versions(conn)
     backtests = repo.latest_backtests(conn)
+    comps: dict[int, list[dict[str, Any]]] = {}
+    for c in repo.comparisons(conn, [int(b["run_id"]) for b in backtests.values()]):
+        comps.setdefault(int(c["backtest_run_id"]), []).append(c)
+    primary_key = str(session["primary_baseline"]) if session else None
     items = [
         ModelVersionSummary(
-            **v, latest_backtest=BacktestMetrics(**{k: val for k, val in backtests[v["version_id"]].items()
-                                                   if k != "model_version_id"})
+            **v, latest_backtest=_backtest(backtests[v["version_id"]], comps.get(int(backtests[v["version_id"]]["run_id"]), []),
+                                           primary_key, labels)
             if v["version_id"] in backtests else None,
         )
         for v in versions
     ]
     base = repo.market_baseline(conn)
-    baseline = (
+    live_baseline = (
         Section[MarketBaselineSummary | None](
             status=DataStatus.OK,
             data=MarketBaselineSummary(fixtures_with_consensus=base["fixtures_with_consensus"],
@@ -41,11 +111,32 @@ def models(conn: Conn) -> Envelope[ModelsOverview]:
         if base["fixtures_with_consensus"] else
         Section[MarketBaselineSummary | None](
             status=DataStatus.INSUFFICIENT_DATA, data=None,
-            reason="No de-vigged market consensus exists yet: the baseline needs captured odds.")
+            reason="No live de-vigged consensus yet: it is computed from odds WE captured, and none has been captured.")
     )
+    if session is None:
+        backtest = Section[BacktestSessionSummary | None](
+            status=DataStatus.NOT_AVAILABLE, data=None, reason="No walk-forward backtest has been stored yet.")
+        historical: Section[list[BaselineScore]] = section(
+            [], status=DataStatus.NOT_AVAILABLE,
+            reason="Market baselines are scored as part of a backtest session; none exists yet.")
+    else:
+        backtest = Section[BacktestSessionSummary | None](status=DataStatus.OK, data=BacktestSessionSummary(
+            id=session["id"], session_uuid=session["session_uuid"], name=session["name"],
+            protocol=session["protocol"],
+            competitions=[CompetitionName(id=i, name=labels.get(int(i), str(i))) for i in session["competition_ids"]],
+            validation_season=session["validation_season"], test_season=session["test_season"],
+            test_from=session["test_from"], test_to=session["test_to"], n_targets=session["n_targets"],
+            primary_baseline=session["primary_baseline"], dataset_hash=session["dataset_hash"],
+            code_version=session["code_version"], finished_at=session["finished_at"],
+            selection=session["selection"], config=session["config"]))
+        rows = [BaselineScore(**r, is_primary=(r["baseline_key"] == primary_key and r["market_key"] == "1X2"))
+                for r in repo.baseline_evaluations(conn, int(session["id"]))]
+        historical = section(rows) if rows else section(
+            rows, status=DataStatus.EMPTY, reason="The session priced no fixture with a historical market.")
     listed = (section(items) if items else section(
         items, status=DataStatus.NOT_AVAILABLE, reason="No model has been trained and registered yet."))
-    return ok(ModelsOverview(market_baseline=baseline, models=listed))
+    return ok(ModelsOverview(market_baseline=live_baseline, backtest=backtest, historical_baselines=historical,
+                             models=listed))
 
 
 def picks(conn: Conn, *, limit: int, offset: int) -> Envelope[PicksOverview]:

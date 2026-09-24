@@ -233,7 +233,7 @@ def run_elo_ologit(
     domestic = set(cfg.competition_ids)
     labelled = [m for m in data.matches if m.has_result and m.competition_id in domestic
                 and data.features.get(m.fixture_id, {}).get("elo_diff") is not None]
-    run = ModelRun("elo_ologit", "elo-v2.0 (K=20, home=65) + ordered logit")
+    run = ModelRun("elo_ologit", "elo=v2.0,K=20,home=65")
     for cutoff, group in blocks(targets, refit_days, cfg.cutoff_offset):
         train = [m for m in labelled if known_before(m, cutoff)]
         run.blocks.append(_check_block(cutoff, train, group))

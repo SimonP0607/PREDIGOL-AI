@@ -179,3 +179,41 @@ def test_an_interval_is_both_bounds_or_none(db: psycopg.Connection, seed: Seed) 
         cur.execute(insert, (seed.fixture_id, seed.model_version_id, 0.55, 0.6))
     with must_be_accepted(db) as cur:
         cur.execute(insert, (seed.fixture_id, seed.model_version_id, None, None))
+
+
+def test_the_models_endpoint_shows_the_market_first_and_labels_betting_hypothetical(
+    db: psycopg.Connection, league: list[MatchRecord], migrated_database: str
+) -> None:
+    from fastapi.testclient import TestClient
+
+    from fbi.core.config import reset_cache
+
+    data = _data(league)
+    evaluation = evaluate_session(data, league, [_run(league, "poisson", 0.6)])
+    cfg = WalkForwardConfig(competition_ids=(league[0].competition_id,))
+    hypers: dict[str, dict[str, object]] = {"poisson": {"xi": 0.002}}
+    store_session(db, name="api-session", cfg=cfg, data=data, evaluation=evaluation, selection={}, hypers=hypers,
+                  code_version="feedbeef", cfg_hash="x")
+    db.commit()
+    mp = pytest.MonkeyPatch()
+    mp.setenv("FBI_DATABASE_URL", migrated_database.replace("postgresql://", "postgresql+psycopg://"))
+    reset_cache()
+    try:
+        from fbi.api.app import create_app
+
+        with TestClient(create_app()) as client:
+            body = client.get("/api/v1/models").json()
+    finally:
+        mp.undo()
+        reset_cache()
+    d = body["data"]
+    assert d["backtest"]["status"] == "ok" and d["backtest"]["data"]["name"] == "api-session"
+    baselines = d["historical_baselines"]["data"]
+    assert [b["baseline_key"] for b in baselines if b["is_primary"]] == [PRIMARY_BASELINE]
+    assert all(b["price_kind"] == "closing" for b in baselines)
+    poisson = next(m for m in d["models"]["data"] if m["name"] == "poisson")
+    bt = poisson["latest_backtest"]
+    assert bt["primary"]["baseline_key"] == PRIMARY_BASELINE and bt["primary"]["n_common"] == len(league)
+    assert bt["betting"]["hypothetical"] is True and "Hypothetical" in bt["betting"]["note"]
+    assert bt["coverage"]["predicted"] == len(league)
+    assert d["market_baseline"]["status"] == "insufficient_data", "the live consensus still needs captured odds"

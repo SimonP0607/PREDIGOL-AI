@@ -6,23 +6,62 @@ from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
 
 
 def model_versions(conn: Conn) -> list[Row]:
+    """The newest version of every registered model."""
     return fetch_all(conn, """
-        SELECT m.id AS model_id, m.name, m.family, m.description, v.id AS version_id, v.version, v.status,
-               v.train_from, v.train_to, v.n_train, v.code_version, v.created_at
+        SELECT DISTINCT ON (m.id) m.id AS model_id, m.name, m.family, m.description, v.id AS version_id, v.version,
+               v.status, v.hyperparameters, v.train_from, v.train_to, v.n_train, v.code_version, v.created_at
         FROM models.model_versions v JOIN models.model_registry m ON m.id = v.model_id
-        ORDER BY m.family, m.name, v.created_at DESC
+        ORDER BY m.id, v.created_at DESC, v.id DESC
     """)
 
 
 def latest_backtests(conn: Conn) -> dict[int, Row]:
     rows = fetch_all(conn, """
-        SELECT DISTINCT ON (model_version_id) model_version_id, id AS run_id, name, protocol, test_from, test_to,
-               n_samples, brier_score AS brier, logloss, ece, odds_source, n_bets, roi_pct, yield_pct,
-               near_close_lv_mean, code_version, finished_at
+        SELECT DISTINCT ON (model_version_id) model_version_id, id AS run_id, name, protocol, session_id, test_from,
+               test_to, n_samples, brier_score AS brier, logloss, ece, accuracy_pct, odds_source, n_bets,
+               total_stake_units, total_profit_units, roi_pct, yield_pct, roi_ci_low, roi_ci_high,
+               max_drawdown_units, near_close_lv_mean, code_version, finished_at, details
         FROM analytics.backtest_runs WHERE status = 'completed'
         ORDER BY model_version_id, finished_at DESC NULLS LAST, id DESC
     """)
     return {int(r["model_version_id"]): r for r in rows}
+
+
+def comparisons(conn: Conn, run_ids: list[int]) -> list[Row]:
+    if not run_ids:
+        return []
+    return fetch_all(conn, """
+        SELECT backtest_run_id, baseline_key, market_key, line, n_common, model_logloss, baseline_logloss,
+               logloss_diff, logloss_diff_ci_low, logloss_diff_ci_high, model_brier, baseline_brier, brier_diff,
+               brier_diff_ci_low, brier_diff_ci_high, verdict
+        FROM analytics.backtest_comparisons WHERE backtest_run_id = ANY(%s)
+        ORDER BY backtest_run_id, market_key, baseline_logloss
+    """, (run_ids,))
+
+
+def latest_session(conn: Conn) -> Row | None:
+    return fetch_one(conn, """
+        SELECT id, session_uuid::text AS session_uuid, name, protocol, competition_ids, validation_season,
+               test_season, test_from, test_to, n_targets, primary_baseline, dataset_hash, code_version, finished_at,
+               selection, config
+        FROM analytics.backtest_sessions WHERE status = 'completed'
+        ORDER BY finished_at DESC NULLS LAST, id DESC LIMIT 1
+    """)
+
+
+def competition_names(conn: Conn, ids: list[int]) -> dict[int, str]:
+    if not ids:
+        return {}
+    rows = fetch_all(conn, "SELECT id, name FROM core.competitions WHERE id = ANY(%s)", (ids,))
+    return {int(r["id"]): str(r["name"]) for r in rows}
+
+
+def baseline_evaluations(conn: Conn, session_id: int) -> list[Row]:
+    return fetch_all(conn, """
+        SELECT baseline_key, source, bookmaker_code, price_kind, devig_method, market_key, line, n_samples,
+               brier_score AS brier, logloss, ece, mean_overround
+        FROM analytics.baseline_evaluations WHERE session_id = %s ORDER BY market_key, logloss
+    """, (session_id,))
 
 
 def market_baseline(conn: Conn) -> Row:
