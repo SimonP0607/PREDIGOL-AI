@@ -118,14 +118,17 @@ async def _daily_fixtures_sync() -> None:
     """
     from scripts.capture_odds import _client, _connect
 
-    from fbi.ingestion.fixtures import sync_fixtures
+    from fbi.ingestion.fixtures import SyncStrategy, sync_fixtures
     from fbi.providers.api_football import ApiFootballProvider
 
     new_run_id()
+    # On the free plan the league query is always refused; asking anyway spent
+    # one request of our budget per run just to be told so again.
+    strategy = SyncStrategy.DATE if settings.provider_plan.plan == "free" else SyncStrategy.AUTO
     with _connect() as conn:
         provider = ApiFootballProvider(_client())
         try:
-            await sync_fixtures(conn, provider, horizon_days=FIXTURES_HORIZON_DAYS)
+            await sync_fixtures(conn, provider, horizon_days=FIXTURES_HORIZON_DAYS, strategy=strategy)
         finally:
             await provider.aclose()
 

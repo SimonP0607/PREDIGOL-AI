@@ -1,0 +1,108 @@
+"""Competitions and teams."""
+
+from __future__ import annotations
+
+from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
+
+_COMPETITIONS = """
+SELECT c.id, c.provider_league_id, c.name, c.country, c.type, c.competition_type, c.tier, c.is_tracked,
+       count(DISTINCT cs.id) AS seasons,
+       max(cs.season) FILTER (WHERE cs.is_current) AS current_season,
+       count(DISTINCT f.id) AS fixtures,
+       count(DISTINCT t.team_id) AS teams
+FROM core.competitions c
+LEFT JOIN core.competition_seasons cs ON cs.competition_id = c.id
+LEFT JOIN core.fixtures f ON f.competition_season_id = cs.id
+LEFT JOIN LATERAL (VALUES (f.home_team_id), (f.away_team_id)) AS t(team_id) ON f.id IS NOT NULL
+WHERE (%(tracked)s::boolean IS NULL OR c.is_tracked = %(tracked)s::boolean)
+  AND (%(q)s::text IS NULL OR c.name ILIKE %(q)s::text OR c.country ILIKE %(q)s::text)
+  AND (%(competition_id)s::bigint IS NULL OR c.id = %(competition_id)s::bigint)
+GROUP BY c.id
+ORDER BY c.is_tracked DESC, (count(DISTINCT f.id) > 0) DESC, c.tier NULLS LAST, c.country NULLS LAST, c.name
+LIMIT %(limit)s OFFSET %(offset)s
+"""
+
+
+def list_competitions(
+    conn: Conn, *, tracked: bool | None, q: str | None, limit: int, offset: int, competition_id: int | None = None
+) -> list[Row]:
+    return fetch_all(conn, _COMPETITIONS, {
+        "tracked": tracked, "q": f"%{q}%" if q else None, "limit": limit, "offset": offset,
+        "competition_id": competition_id,
+    })
+
+
+def count_competitions(conn: Conn, *, tracked: bool | None, q: str | None) -> int:
+    r = fetch_one(conn, """
+        SELECT count(*) AS n FROM core.competitions c
+        WHERE (%(tracked)s::boolean IS NULL OR c.is_tracked = %(tracked)s::boolean)
+          AND (%(q)s::text IS NULL OR c.name ILIKE %(q)s::text OR c.country ILIKE %(q)s::text)
+    """, {"tracked": tracked, "q": f"%{q}%" if q else None})
+    return int(r["n"]) if r else 0
+
+
+def seasons_of(conn: Conn, competition_id: int) -> list[Row]:
+    return fetch_all(conn, """
+        SELECT cs.id, cs.season, cs.start_date, cs.end_date, cs.is_current, cs.has_odds,
+               count(f.id) AS fixtures,
+               count(f.id) FILTER (WHERE f.status_group = 'finished') AS finished,
+               count(r.fixture_id) AS with_results
+        FROM core.competition_seasons cs
+        LEFT JOIN core.fixtures f ON f.competition_season_id = cs.id
+        LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
+        WHERE cs.competition_id = %s
+        GROUP BY cs.id ORDER BY cs.season DESC
+    """, (competition_id,))
+
+
+def teams_of(conn: Conn, competition_id: int) -> list[Row]:
+    return fetch_all(conn, """
+        SELECT DISTINCT t.id, t.name, t.provider_team_id
+        FROM core.fixtures f
+        JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+        JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
+        WHERE cs.competition_id = %s
+        ORDER BY t.name
+    """, (competition_id,))
+
+
+_TEAMS = """
+SELECT t.id, t.provider_team_id, t.name, t.country, t.venue_id,
+       count(DISTINCT f.id) AS fixtures, count(DISTINCT r.fixture_id) AS results
+FROM core.teams t
+LEFT JOIN core.fixtures f ON t.id IN (f.home_team_id, f.away_team_id)
+LEFT JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
+WHERE (%(q)s::text IS NULL OR t.name ILIKE %(q)s::text)
+  AND (%(team_id)s::bigint IS NULL OR t.id = %(team_id)s::bigint)
+  AND (%(competition_id)s::bigint IS NULL OR cs.competition_id = %(competition_id)s::bigint)
+GROUP BY t.id
+HAVING %(competition_id)s::bigint IS NULL OR count(DISTINCT f.id) > 0
+ORDER BY t.name
+LIMIT %(limit)s OFFSET %(offset)s
+"""
+
+
+def list_teams(
+    conn: Conn, *, q: str | None, competition_id: int | None, limit: int, offset: int, team_id: int | None = None
+) -> list[Row]:
+    return fetch_all(conn, _TEAMS, {
+        "q": f"%{q}%" if q else None, "competition_id": competition_id, "limit": limit,
+        "offset": offset, "team_id": team_id,
+    })
+
+
+def team_record(conn: Conn, team_id: int) -> Row | None:
+    """W/D/L and goals over RECORDED results only."""
+    return fetch_one(conn, """
+        SELECT count(*) AS played,
+               count(*) FILTER (WHERE (f.home_team_id = %(t)s AND r.goals_home > r.goals_away)
+                                   OR (f.away_team_id = %(t)s AND r.goals_away > r.goals_home)) AS won,
+               count(*) FILTER (WHERE r.goals_home = r.goals_away) AS drawn,
+               count(*) FILTER (WHERE (f.home_team_id = %(t)s AND r.goals_home < r.goals_away)
+                                   OR (f.away_team_id = %(t)s AND r.goals_away < r.goals_home)) AS lost,
+               COALESCE(sum(CASE WHEN f.home_team_id = %(t)s THEN r.goals_home ELSE r.goals_away END), 0) AS goals_for,
+               COALESCE(sum(CASE WHEN f.home_team_id = %(t)s THEN r.goals_away ELSE r.goals_home END), 0) AS goals_against
+        FROM core.fixtures f JOIN core.fixture_results r ON r.fixture_id = f.id
+        WHERE %(t)s IN (f.home_team_id, f.away_team_id)
+    """, {"t": team_id})

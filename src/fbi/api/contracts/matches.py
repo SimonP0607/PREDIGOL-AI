@@ -1,0 +1,93 @@
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
+from typing import Literal
+
+from pydantic import Field
+
+from fbi.api.contracts.common import (
+    CompetitionRef,
+    Contract,
+    Lineage,
+    Score,
+    StatusGroup,
+    TeamRef,
+    VenueRef,
+)
+from fbi.api.envelope import Section
+
+
+class OddsSummary(Contract):
+    snapshots: int
+    bookmakers: int
+    markets: int
+    first_captured_at: datetime | None
+    last_captured_at: datetime | None
+    near_close_snapshots: int
+
+
+class MatchSummary(Contract):
+    id: int
+    provider_fixture_id: int
+    kickoff_at: datetime
+    status_short: str
+    status_group: StatusGroup
+    round: str | None
+    competition: CompetitionRef
+    home: TeamRef
+    away: TeamRef
+    score: Score | None
+    odds: OddsSummary
+    predictions: int
+    awaiting_result: bool = Field(
+        description="Kicked off but still recorded as scheduled or live: the row is out of date."
+    )
+
+
+class MarketQuote(Contract):
+    """One bookmaker's latest price for one selection."""
+
+    bookmaker_id: int
+    bookmaker: str
+    market_key: str
+    selection: str
+    line: Decimal
+    odds_decimal: Decimal
+    implied_probability: Decimal = Field(description="1/odds. Raw: the bookmaker margin is still in it.")
+    captured_at: datetime
+    minutes_to_ko: int
+    source: Literal["prematch", "live"]
+    payload_hash: str
+
+
+class PredictionRow(Contract):
+    model: str
+    model_version: str
+    market_key: str
+    selection: str
+    line: Decimal
+    p_raw: Decimal
+    p_calibrated: Decimal
+    p_lo: Decimal
+    p_hi: Decimal
+    data_cutoff_ts: datetime
+    feature_set_hash: str
+    created_at: datetime
+
+
+class TimelineEvent(Contract):
+    key: str
+    label: str
+    detail: str
+    at: datetime | None
+    state: Literal["done", "pending", "skipped", "failed"]
+
+
+class MatchDetail(Contract):
+    match: MatchSummary
+    venue: VenueRef | None
+    lineage: Lineage
+    markets: Section[list[MarketQuote]]
+    predictions: Section[list[PredictionRow]]
+    timeline: list[TimelineEvent]

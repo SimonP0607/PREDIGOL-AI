@@ -10,6 +10,7 @@ from functools import lru_cache
 
 from .database import DatabaseSettings
 from .odds import OddsCaptureSettings
+from .plan import ProviderPlanSettings
 from .providers import ApiFootballSettings
 from .runtime import RuntimeSettings
 
@@ -17,6 +18,7 @@ __all__ = [
     "ApiFootballSettings",
     "DatabaseSettings",
     "OddsCaptureSettings",
+    "ProviderPlanSettings",
     "RuntimeSettings",
     "settings",
 ]
@@ -41,6 +43,10 @@ class _Settings:
     def odds(self) -> OddsCaptureSettings:
         return _odds()
 
+    @property
+    def provider_plan(self) -> ProviderPlanSettings:
+        return _provider_plan()
+
 
 @lru_cache(maxsize=1)
 def _runtime() -> RuntimeSettings:
@@ -63,8 +69,13 @@ def _odds() -> OddsCaptureSettings:
     return OddsCaptureSettings()
 
 
+@lru_cache(maxsize=1)
+def _provider_plan() -> ProviderPlanSettings:
+    return ProviderPlanSettings()
+
+
 def reset_cache() -> None:
-    for fn in (_runtime, _database, _api_football, _odds):
+    for fn in (_runtime, _database, _api_football, _odds, _provider_plan):
         fn.cache_clear()
 
 
