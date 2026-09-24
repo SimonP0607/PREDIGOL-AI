@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 log = structlog.get_logger("api")
 
 
-def _body(code: str, message: str, request_id: str) -> dict[str, object]:
+def body(code: str, message: str, request_id: str) -> dict[str, object]:
     return {"status": "error", "error": {"code": code, "message": message}, "request_id": request_id}
 
 
@@ -30,7 +30,7 @@ def install(app: FastAPI) -> None:
     @app.exception_handler(HTTPException)
     async def _http(request: Request, exc: HTTPException) -> JSONResponse:
         code = {400: "bad_request", 404: "not_found", 422: "invalid", 503: "unavailable"}.get(exc.status_code, "error")
-        return JSONResponse(_body(code, str(exc.detail), request_id(request)), status_code=exc.status_code)
+        return JSONResponse(body(code, str(exc.detail), request_id(request)), status_code=exc.status_code)
 
     @app.exception_handler(RequestValidationError)
     async def _invalid(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -39,11 +39,11 @@ def install(app: FastAPI) -> None:
             f"{'.'.join(str(p) for p in e.get('loc', ()) if p != 'query')}: {e.get('msg', 'invalid')}"
             for e in exc.errors()
         )
-        return JSONResponse(_body("invalid", problems or "invalid request", request_id(request)), status_code=422)
+        return JSONResponse(body("invalid", problems or "invalid request", request_id(request)), status_code=422)
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
         rid = request_id(request)
         log.error("api.unhandled", request_id=rid, path=request.url.path, error=exc.__class__.__name__)
-        return JSONResponse(_body("internal", "internal error; see the server log for this request id", rid),
+        return JSONResponse(body("internal", "internal error; see the server log for this request id", rid),
                             status_code=500)

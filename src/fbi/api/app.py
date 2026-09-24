@@ -64,6 +64,19 @@ def create_app() -> FastAPI:
     )
     errors.install(app)
 
+    # Registered BEFORE the CORS middleware, so it sits inside it: an
+    # unexpected error becomes a JSON 500 that still carries the CORS headers.
+    # Otherwise the browser reports a CORS failure and hides the real status.
+    @app.middleware("http")
+    async def _contain(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        try:
+            return await call_next(request)
+        except Exception as exc:
+            rid = errors.request_id(request)
+            log.error("api.unhandled", request_id=rid, path=request.url.path, error=exc.__class__.__name__)
+            return JSONResponse(errors.body("internal", "internal error; see the server log for this request id", rid),
+                                status_code=500)
+
     origins = [o.strip() for o in os.environ.get("FBI_API_CORS_ORIGINS", DEFAULT_ORIGINS).split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,

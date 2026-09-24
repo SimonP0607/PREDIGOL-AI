@@ -373,3 +373,19 @@ def test_the_api_cannot_write_even_if_code_tried(client: TestClient) -> None:
 
     with read_only_connection() as conn, pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
         conn.execute("INSERT INTO core.venues (name) VALUES ('should never exist')")
+
+
+def test_an_unexpected_error_is_a_json_500_that_the_browser_can_read(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without this the browser sees a CORS failure instead of the 500."""
+    from fbi.api.services import analytics
+
+    def boom(*_a: object, **_k: object) -> None:
+        raise RuntimeError("database says: password=fbi_local_dev")
+
+    monkeypatch.setattr(analytics, "performance", boom)
+    r = client.get("/api/v1/performance", headers={"origin": "http://localhost:5173"})
+    assert r.status_code == 500
+    assert r.headers.get("access-control-allow-origin") == "http://localhost:5173"
+    assert r.json()["error"]["code"] == "internal" and "password" not in r.text
