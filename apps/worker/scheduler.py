@@ -17,6 +17,8 @@ at worst, and a duplicated tick costs nothing at all.
   * ``results_sync``   every 6 h, lookback 1 day  -> 2 requests per run, 8/day
   * ``pick_pipeline``  every 30 min and right after a capture: forecasts,
     shadow picks, settlement. Database only, zero requests.
+  * ``notifier``       every 10 min: new events -> audit.notifications ->
+    Telegram when a token is configured, 'skipped' otherwise.
 
 Standing cost is therefore about 12 requests/day, leaving roughly 48 of the
 60-request budget for odds capture - enough for a Premier League matchday at
@@ -63,6 +65,7 @@ RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
 BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "6"))
 BACKFILL_MAX_PER_RUN = int(os.environ.get("FBI_BACKFILL_MAX_PER_RUN", "6"))
 PIPELINE_MINUTES = int(os.environ.get("FBI_PIPELINE_MINUTES", "30"))
+NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
 
 
 async def _tick() -> TickOutcome:
@@ -209,6 +212,25 @@ async def _pipeline() -> None:
     await asyncio.to_thread(_pipeline_now)
 
 
+def _notify_now() -> None:
+    """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
+    from fbi.notify.service import channel_from_env, run_notifier
+
+    channel = channel_from_env()
+    try:
+        with _connect() as conn:
+            run_notifier(conn, channel)
+    except Exception as exc:  # a notification problem must never stop the worker
+        log.error("notify.failed", error=type(exc).__name__)
+    finally:
+        if channel is not None:
+            channel.close()
+
+
+async def _notify() -> None:
+    await asyncio.to_thread(_notify_now)
+
+
 _scheduler: AsyncIOScheduler | None = None
 
 
@@ -309,6 +331,8 @@ async def main() -> None:
     scheduler.add_job(_pipeline, "interval", minutes=PIPELINE_MINUTES, id="pick_pipeline", max_instances=1,
                       coalesce=True, misfire_grace_time=PIPELINE_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=2))
+    scheduler.add_job(_notify, "interval", minutes=NOTIFY_MINUTES, id="notifier", max_instances=1, coalesce=True,
+                      misfire_grace_time=NOTIFY_MINUTES * 60, next_run_time=moment + timedelta(minutes=3))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     scheduler.start()

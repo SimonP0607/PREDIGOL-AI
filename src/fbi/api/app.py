@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from fbi.api import errors
-from fbi.api.routers import football, market, system
+from fbi.api.routers import analyst, football, market, system
 from fbi.api.services.ops import VERSION
 from fbi.core.config import settings
 from fbi.core.logging import configure
@@ -69,7 +69,8 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=origins,
         allow_credentials=False,
-        allow_methods=["GET", "OPTIONS"],
+        # POST exists for one route only - /analyst/ask - and it writes nothing.
+        allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["accept", "content-type", "x-request-id"],
         expose_headers=["x-request-id"],
         max_age=600,
@@ -102,7 +103,7 @@ def create_app() -> FastAPI:
                  ms=elapsed_ms, request_id=rid)
         return response
 
-    for r in (system.router, football.router, market.router):
+    for r in (system.router, football.router, market.router, analyst.router):
         app.include_router(r, prefix="/api/v1")
     # The original unversioned health endpoints stay where monitors expect them.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)

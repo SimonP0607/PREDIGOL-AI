@@ -95,6 +95,7 @@ def league(db: psycopg.Connection, seed: object, migrated_database: str) -> Iter
     yield ids
     db.rollback()
     with db.cursor() as cur:
+        cur.execute("DELETE FROM audit.notifications")
         cur.execute("DELETE FROM picks.picks WHERE fixture_id = %s", (ids["target"],))
         cur.execute("DELETE FROM picks.pick_candidates WHERE fixture_id = %s", (ids["target"],))
         cur.execute("DELETE FROM market.market_consensus WHERE fixture_id = %s", (ids["target"],))
@@ -246,3 +247,44 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     assert d["rejection_reasons"], "why prices were rejected is counted"
     assert perf["status"] == "insufficient_data", "one settled shadow pick is not a performance record"
     assert {p["kind"] for p in match["predictions"]["data"]} == {"forecast"}
+
+    # 7. the bot: informs once per event, never as advice, and never leaks its token
+    import httpx
+
+    from fbi.notify.service import TelegramChannel, run_notifier
+
+    sent: list[dict] = []
+
+    def telegram(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"ok": True})
+
+    channel = TelegramChannel("123:secret-token", "42", transport=httpx.MockTransport(telegram))
+    first_run = run_notifier(db, channel)
+    assert first_run.sent == first_run.new >= 3, "pick created, pick settled, first capture"
+    texts = [m["text"] for m in sent]
+    assert any("research only, not a bet" in t for t in texts)
+    assert any("settled: loss" in t for t in texts)
+    assert all("secret-token" not in t for t in texts)
+    repeat = run_notifier(db, channel)
+    assert repeat.new == 0 and repeat.sent == 0, "one message per event"
+    with db.cursor() as cur:
+        cur.execute("SELECT count(*) FROM audit.notifications WHERE status = 'sent' AND channel = 'telegram'")
+        assert scalar(cur) == first_run.sent
+
+    def down(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"ok": False, "description": "Unauthorized"})
+
+    with db.cursor() as cur:
+        cur.execute("DELETE FROM audit.notifications")
+    db.commit()
+    failing = run_notifier(db, TelegramChannel("123:secret-token", "42", transport=httpx.MockTransport(down)))
+    assert failing.failed == failing.new
+    with db.cursor() as cur:
+        cur.execute("SELECT DISTINCT last_error FROM audit.notifications WHERE status = 'failed'")
+        errors = [r[0] for r in cur.fetchall()]
+        assert errors == ["telegram answered HTTP 401"], "the reason, without the token"
+        cur.execute("UPDATE audit.notifications SET status = 'queued', last_error = NULL")
+    db.commit()
+    quiet = run_notifier(db, None)
+    assert quiet.skipped == failing.new and quiet.sent == 0
