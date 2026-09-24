@@ -31,7 +31,7 @@ from fbi.domain.market_probability import DevigMethod, FairProbability
 from fbi.domain.odds import DecimalOdds
 from fbi.domain.probability import Probability
 from fbi.picks import settlement
-from fbi.picks.rules import RULE_V1, DecisionRule, VersionEvidence, decide, qualify
+from fbi.picks.rules import RULE_V1, DecisionRule, VersionEvidence, decide, qualify, reason_kind
 from fbi.picks.value import assess
 
 CONSENSUS_METHOD = DevigMethod.SHIN
@@ -185,7 +185,7 @@ def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: st
             report.candidates += 1
             if reason is not None:
                 report.rejected += 1
-                bucket = reason.split(" ")[0] if not reason.startswith("no ") else reason
+                bucket = reason_kind(reason)
                 report.reasons[bucket] = report.reasons.get(bucket, 0) + 1
                 continue
             report.selected += 1

@@ -27,10 +27,10 @@ N_TEAMS = 10
 
 
 @pytest.fixture()
-def league(db: psycopg.Connection, seed: object) -> Iterator[dict[str, object]]:
+def league(db: psycopg.Connection, seed: object, migrated_database: str) -> Iterator[dict[str, object]]:
     rng = np.random.default_rng(42)
     strength = rng.normal(0, 0.3, N_TEAMS)
-    ids: dict[str, object] = {}
+    ids: dict[str, object] = {"dsn": migrated_database.replace("postgresql://", "postgresql+psycopg://")}
     with db.cursor() as cur:
         cur.execute("INSERT INTO core.competitions (provider_league_id, name, type, entity_scope, competition_type, "
                     "is_tracked) VALUES (88039, 'Pipeline League', 'league', 'club', 'domestic_league', true) "
@@ -217,3 +217,32 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
         cur.execute("SELECT to_status FROM picks.pick_events WHERE pick_id = %s ORDER BY at, id", (pick_id,))
         assert [r[0] for r in cur.fetchall()] == ["shadow", "settled"]
     assert settle_open_picks(db, run_id=run_id).open_picks == 0, "settled picks are not settled again"
+
+    # 6. and the API tells the same story, with the lineage
+    from fastapi.testclient import TestClient
+
+    from fbi.core.config import reset_cache
+
+    mp = pytest.MonkeyPatch()
+    mp.setenv("FBI_DATABASE_URL", str(league["dsn"]))
+    reset_cache()
+    try:
+        from fbi.api.app import create_app
+
+        with TestClient(create_app()) as client:
+            body = client.get("/api/v1/picks").json()
+            perf = client.get("/api/v1/performance").json()
+            match = client.get(f"/api/v1/matches/{target}").json()["data"]
+    finally:
+        mp.undo()
+        reset_cache()
+    d = body["data"]
+    assert d["publishing_enabled"] is False and d["rule"]["version"] == "shadow-rule-v1"
+    assert d["lifecycle"]["settled"] == len(rows) and d["lifecycle"]["candidates"] == picks.candidates
+    api_pick = next(p for p in d["picks"]["data"] if p["id"] == pick_id)
+    assert api_pick["status"] == "settled" and api_pick["result_status"] == "loss"
+    assert api_pick["odds_payload_hash"] == "pipeline-odds" and api_pick["calibrated"] is False
+    assert [e["to_status"] for e in api_pick["events"]] == ["shadow", "settled"]
+    assert d["rejection_reasons"], "why prices were rejected is counted"
+    assert perf["status"] == "insufficient_data", "one settled shadow pick is not a performance record"
+    assert {p["kind"] for p in match["predictions"]["data"]} == {"forecast"}

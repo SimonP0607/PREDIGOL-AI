@@ -182,34 +182,101 @@ class ModelsOverview(Contract):
     models: Section[list[ModelVersionSummary]]
 
 
+class PickEvent(Contract):
+    from_status: str | None
+    to_status: str
+    at: datetime
+    reason: str
+
+
 class PickRow(Contract):
+    """A shadow pick with everything it claims traced to where it came from."""
+
     id: int
     fixture_id: int
+    fixture: str
+    competition: str
+    kickoff_at: datetime
     market_key: str
     selection: str
     line: Decimal
+    status: Literal["shadow", "qualified", "published", "settled"]
     mode: str
-    status: str
-    model_version_id: int
-    decision_rule_version: str
+    model: str
+    model_version: str
+    prediction_id: int | None
+    data_cutoff_ts: datetime
+    feature_set_hash: str
+    calibrated: bool = Field(description="False: the model's own probability, no calibrator applied.")
+    bookmaker: str
     market_odds: Decimal
     odds_captured_at: datetime
-    p_calibrated: Decimal
+    odds_payload_hash: str | None
+    p_model: Decimal
+    p_lo: Decimal | None
+    p_hi: Decimal | None
     p_market_fair: Decimal
-    edge: Decimal
-    price_edge: Decimal
-    ev: Decimal
+    consensus_method: str | None
+    consensus_as_of: datetime | None
+    fair_odds: Decimal = Field(description="1 / p_model: the price at which the model would break even.")
+    probability_edge: Decimal = Field(description="p_model - p_market_fair.")
+    price_edge: Decimal = Field(description="odds / market fair odds - 1.")
+    ev: Decimal = Field(description="p_model * odds - 1, per unit staked.")
+    ev_at_lower_bound: Decimal | None
+    kelly_fraction: Decimal = Field(description="Reported only. Stakes are flat.")
     stake_units: Decimal
-    data_cutoff_ts: datetime
-    created_at: datetime
-    result_status: str | None
+    stake_policy: str
+    decision_rule_version: str
+    code_version: str
+    qualification: dict[str, Any]
+    result_status: str
     profit_units: Decimal | None
+    settled_at: datetime | None
+    settlement_basis: str | None
+    review_reason: str | None
+    created_at: datetime
+    events: list[PickEvent]
+
+
+class CandidateRow(Contract):
+    id: int
+    fixture_id: int
+    fixture: str
+    market_key: str
+    selection: str
+    line: Decimal
+    model: str
+    bookmaker: str | None
+    market_odds: Decimal | None
+    p_model: Decimal
+    p_market_fair: Decimal | None
+    probability_edge: Decimal | None
+    ev: Decimal | None
+    decision: Literal["selected", "rejected"]
+    rejection_reason: str | None
+    decision_rule_version: str | None
+    odds_captured_at: datetime | None
+    evaluated_at: datetime
+
+
+class Lifecycle(Contract):
+    candidates: int
+    rejected: int
+    shadow: int
+    qualified: int
+    published: int
+    settled: int
 
 
 class PicksOverview(Contract):
+    lifecycle: Lifecycle
+    rule: dict[str, Any]
+    rejection_reasons: dict[str, int]
+    publishing_enabled: Literal[False] = False
     candidates_by_decision: dict[str, int]
     picks_by_mode: dict[str, int]
     picks: Section[list[PickRow]]
+    recent_candidates: Section[list[CandidateRow]]
 
 
 class PerformanceSummary(Contract):

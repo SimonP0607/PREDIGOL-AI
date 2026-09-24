@@ -10,14 +10,17 @@ from fbi.api.contracts.analytics import (
     BacktestSessionSummary,
     BaselineScore,
     CalibrationBucket,
+    CandidateRow,
     CompetitionName,
     Coverage,
     HypotheticalBetting,
+    Lifecycle,
     MarketBaselineSummary,
     MarketComparison,
     ModelsOverview,
     ModelVersionSummary,
     PerformanceSummary,
+    PickEvent,
     PickRow,
     PicksOverview,
     ScoreSummary,
@@ -140,15 +143,29 @@ def models(conn: Conn) -> Envelope[ModelsOverview]:
 
 
 def picks(conn: Conn, *, limit: int, offset: int) -> Envelope[PicksOverview]:
-    rows = [PickRow(**r) for r in repo.picks(conn, limit=limit, offset=offset)]
+    from fbi.picks.rules import RULE_V1
+
+    rows = repo.picks(conn, limit=limit, offset=offset)
+    events: dict[int, list[PickEvent]] = {}
+    for e in repo.pick_events(conn, [int(r["id"]) for r in rows]):
+        events.setdefault(int(e["pick_id"]), []).append(PickEvent(**{k: v for k, v in e.items() if k != "pick_id"}))
+    items = [PickRow(**r, events=events.get(int(r["id"]), [])) for r in rows]
+    candidates = [CandidateRow(**c) for c in repo.recent_candidates(conn, limit=50)]
     body = PicksOverview(
+        lifecycle=Lifecycle(**{k: int(v) for k, v in repo.lifecycle(conn).items()}),
+        rule=RULE_V1.as_dict(),
+        rejection_reasons=repo.rejection_reasons(conn),
         candidates_by_decision=repo.candidate_counts(conn),
         picks_by_mode=repo.pick_counts(conn),
-        picks=section(rows) if rows else section(
-            rows, status=DataStatus.NOT_AVAILABLE,
-            reason="The pick engine has not produced any pick yet. Publishing is disabled; every pick is shadow."),
+        picks=section(items) if items else section(
+            items, status=DataStatus.NOT_AVAILABLE,
+            reason="No shadow pick yet: one needs a real-time forecast AND a price captured after it that passes "
+                   f"{RULE_V1.version}. Publishing is disabled; every pick is shadow."),
+        recent_candidates=section(candidates) if candidates else section(
+            candidates, status=DataStatus.NOT_AVAILABLE,
+            reason="No captured price has been evaluated yet: candidates appear after the first odds capture."),
     )
-    if not rows:
+    if not items:
         return unavailable(body, "No pick exists yet.", limit=limit, offset=offset)
     return ok(body, limit=limit, offset=offset)
 

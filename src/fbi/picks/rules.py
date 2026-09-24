@@ -47,12 +47,17 @@ def decide(a: ValueAssessment, market_key: str, rule: DecisionRule = RULE_V1) ->
     if rule.require_market_consensus and (a.fair is None or a.probability_edge is None):
         return "no de-vigged market consensus at this capture"
     if not (rule.min_odds <= a.odds.value <= rule.max_odds):
-        return f"odds {a.odds.value} outside [{rule.min_odds}, {rule.max_odds}]"
+        return f"odds outside [{rule.min_odds}, {rule.max_odds}] (observed {a.odds.value})"
     if a.expected_value.per_unit < rule.min_ev:
-        return f"expected value {a.expected_value.per_unit:+.4f} below {rule.min_ev}"
+        return f"expected value below {rule.min_ev} (observed {a.expected_value.per_unit:+.4f})"
     if a.probability_edge is not None and a.probability_edge.value < rule.min_probability_edge:
-        return f"probability edge {a.probability_edge.value:+.4f} below {rule.min_probability_edge}"
+        return f"probability edge below {rule.min_probability_edge} (observed {a.probability_edge.value:+.4f})"
     return None
+
+
+def reason_kind(reason: str) -> str:
+    """The rule that failed, without the observed value - for counting."""
+    return reason.split(" (observed ", 1)[0]
 
 
 MIN_VALIDATION_SAMPLE = 1000
