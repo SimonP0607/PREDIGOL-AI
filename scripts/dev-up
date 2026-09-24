@@ -95,7 +95,11 @@ start() {  # name, pattern, dir, command...
   local name="$1" pattern="$2" dir="$3"; shift 3
   if running "$pattern"; then say "$name: already running"; return; fi
   if in_compose "$name"; then say "$name: runs in compose (container fbi-$name) - not starting a second one"; return; fi
-  (cd "$dir" && nohup "$@" >>"$RUN/$name.log" 2>&1 & echo $! >"$RUN/$name.pid")
+  # The subshell becomes the service (exec): no shell is left holding this
+  # script's stdout, so a caller reading it is not kept waiting, and setsid
+  # takes the service out of the caller's session, so it outlives the caller.
+  (cd "$dir" && exec setsid nohup "$@" >>"$RUN/$name.log" 2>&1 </dev/null) &
+  echo $! >"$RUN/$name.pid"
   say "$name: started (pid $(cat "$RUN/$name.pid"), log $RUN/$name.log)"
 }
 
