@@ -10,3 +10,4 @@ data/raw/
 node_modules/
 .next/
 *.duckdb
+data/reports/
