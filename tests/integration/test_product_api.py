@@ -395,3 +395,10 @@ def test_rankings_need_an_elo_history_and_say_so(client: TestClient) -> None:
     body = get(client, "/api/v1/rankings")
     assert body["status"] == "not_available" and "build_features" in body["reason"]
     assert client.get("/api/v1/rankings?limit=0").status_code == 422
+
+
+def test_job_health_summarises_the_ledger(client: TestClient) -> None:
+    body = get(client, "/api/v1/ops/jobs")
+    assert body["status"] in ("ok", "empty")
+    for j in body["data"]:
+        assert j["runs_24h"] >= j["failed_24h"] >= 0 and j["job_type"] != "unspecified"

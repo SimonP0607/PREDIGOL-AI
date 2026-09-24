@@ -7,7 +7,14 @@ from fastapi import APIRouter, Depends, Query, Response
 
 from fbi.api.contracts.common import RunSummary
 from fbi.api.contracts.notify import NotificationRow, NotificationsOverview
-from fbi.api.contracts.ops import CoverageRow, Overview, QualityIssue, QualityReport, SystemHealth
+from fbi.api.contracts.ops import (
+    CoverageRow,
+    JobHealth,
+    Overview,
+    QualityIssue,
+    QualityReport,
+    SystemHealth,
+)
 from fbi.api.deps import get_db, read_only_connection
 from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
 from fbi.api.services import ops
@@ -81,3 +88,37 @@ def get_notifications(conn: Db, limit: Annotated[int, Query(ge=1, le=200)] = 50)
         return unavailable(body, "The notifier has produced nothing yet: it reacts to shadow picks, settlements, "
                                  "the first capture and failures.", status=DataStatus.EMPTY)
     return ok(body)
+
+
+JOBS_SQL = """
+    SELECT job_type,
+           count(*) FILTER (WHERE started_at > now() - interval '24 hours') AS runs_24h,
+           count(*) FILTER (WHERE started_at > now() - interval '24 hours' AND status = 'failed') AS failed_24h,
+           count(*) FILTER (WHERE started_at > now() - interval '24 hours' AND status = 'partial') AS partial_24h,
+           COALESCE(sum(api_calls) FILTER (WHERE started_at > now() - interval '24 hours'), 0) AS api_calls_24h,
+           (array_agg(status ORDER BY started_at DESC))[1] AS last_status,
+           max(started_at) AS last_started_at,
+           max(started_at) FILTER (WHERE status IN ('completed', 'partial')) AS last_success_at,
+           (array_agg(last_error ORDER BY started_at DESC) FILTER (WHERE last_error IS NOT NULL))[1] AS last_error,
+           avg(duration_ms) FILTER (WHERE started_at > now() - interval '7 days')::int AS mean_duration_ms
+    FROM raw.ingestion_runs WHERE job_type <> 'unspecified'
+    GROUP BY job_type ORDER BY max(started_at) DESC
+"""
+
+
+@router.get("/ops/jobs", response_model=Envelope[list[JobHealth]])
+def get_jobs(conn: Db) -> Envelope[list[JobHealth]]:
+    """Every job type: what ran in the last 24 h, what failed, when it last succeeded, when it runs next."""
+    from datetime import datetime
+
+    from fbi.api.repositories import fetch_all, fetch_one
+
+    hb = fetch_one(conn, "SELECT jobs FROM raw.worker_heartbeats ORDER BY last_beat_at DESC LIMIT 1")
+    scheduled: dict[str, str] = dict((hb or {}).get("jobs") or {})
+    rows = []
+    for r in fetch_all(conn, JOBS_SQL):
+        nxt = scheduled.get(str(r["job_type"]))  # scheduler job ids are the ledger's job types
+        rows.append(JobHealth(**r, next_run_at=datetime.fromisoformat(nxt) if nxt else None))
+    if not rows:
+        return unavailable(rows, "The job ledger is empty.", status=DataStatus.EMPTY)
+    return ok(rows)

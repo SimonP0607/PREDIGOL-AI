@@ -125,3 +125,19 @@ class QualityIssue(Contract):
     detail: str
     count: int
     detected_at: datetime
+
+
+class JobHealth(Contract):
+    """One scheduled or manual job type, as the ledger and the heartbeat see it."""
+
+    job_type: str
+    runs_24h: int
+    failed_24h: int
+    partial_24h: int
+    api_calls_24h: int
+    last_status: str | None
+    last_started_at: datetime | None
+    last_success_at: datetime | None
+    last_error: str | None
+    mean_duration_ms: int | None
+    next_run_at: datetime | None = Field(description="From the worker's last heartbeat; null for manual jobs.")
