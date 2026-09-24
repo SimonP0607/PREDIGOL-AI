@@ -251,6 +251,16 @@ def test_fixture_odds_give_series_near_close_and_an_honest_consensus(
     past = get(client, f"/api/v1/odds/fixtures/{dataset['f1']}")["data"]
     assert past["near_close"]["status"] == "ok"
     assert past["near_close"]["data"][0]["is_validated_close"] is False
+    assert d["historical"]["status"] == "empty" and d["historical"]["reason"], "second source kept apart, and says so"
+
+
+def test_odds_intelligence_needs_the_historical_source_and_says_so(client: TestClient) -> None:
+    body = get(client, "/api/v1/odds/intelligence")
+    assert body["status"] == "not_available" and body["reason"]
+    d = body["data"]
+    assert d["margins"]["status"] == "not_available" and d["movement"]["status"] == "not_available"
+    assert d["live"]["status"] == "ok" and d["live"]["data"]["snapshots"] > 0, "our own captures are counted apart"
+    assert "not captured by this platform" in d["note"]
 
 
 def test_a_market_filter_narrows_the_board(client: TestClient, dataset: dict[str, int]) -> None:

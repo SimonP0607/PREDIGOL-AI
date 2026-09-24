@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.analytics import ModelsOverview, PerformanceSummary, PicksOverview
 from fbi.api.contracts.matches import MatchSummary
-from fbi.api.contracts.odds import FixtureOdds
+from fbi.api.contracts.odds import FixtureOdds, OddsIntelligence
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.services import analytics, odds
@@ -24,6 +24,12 @@ def get_odds(
 ) -> Envelope[list[MatchSummary]]:
     """Fixtures that have at least one captured price."""
     return odds.list_fixtures_with_odds(conn, limit=limit, offset=offset)
+
+
+@router.get("/odds/intelligence", response_model=Envelope[OddsIntelligence])
+def get_odds_intelligence(conn: Db) -> Envelope[OddsIntelligence]:
+    """Bookmaker margins and pre-closing -> closing movement from the historical source."""
+    return odds.intelligence(conn)
 
 
 @router.get("/odds/fixtures/{fixture_id}", response_model=Envelope[FixtureOdds])

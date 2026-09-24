@@ -10,18 +10,33 @@ from fastapi import HTTPException
 
 from fbi.api.contracts.matches import MatchSummary
 from fbi.api.contracts.odds import (
+    BookmakerMargin,
     ConsensusQuote,
     FixtureOdds,
+    HistoricalBook,
+    HistoricalFair,
+    HistoricalMarket,
+    HistoricalPrice,
+    MovementRow,
     NearCloseQuote,
+    OddsIntelligence,
     OddsPoint,
     OddsSeries,
 )
-from fbi.api.envelope import DataStatus, Envelope, listing, ok, section
+from fbi.api.envelope import DataStatus, Envelope, Section, listing, ok, section, unavailable
 from fbi.api.repositories import Conn
 from fbi.api.repositories import fixtures as fixtures_repo
 from fbi.api.repositories import odds as repo
 from fbi.api.services.matches import NO_MARKET_DATA, quote, summary
 from fbi.core.clock import now
+
+HISTORICAL_SOURCE = "football-data.co.uk"
+HISTORICAL_NOTE = (
+    "Prices published by Football-Data.co.uk, not captured by this platform. 'closing' and 'pre_closing' are "
+    "the source's labels; pre-closing prices are collected on Friday or Tuesday afternoons and neither kind "
+    "carries an exact timestamp. MAX and AVG are composites across bookmakers, not books anyone offered."
+)
+COMPOSITES = frozenset({"MAX", "AVG"})
 
 NO_SNAPSHOTS = (
     "No odds snapshot has been captured yet. The capturer records prices only inside "
@@ -70,4 +85,50 @@ def fixture_odds(conn: Conn, fixture_id: int, *, market_key: str | None) -> Enve
         consensus=section(cons) if cons else section(
             cons, status=DataStatus.NOT_AVAILABLE,
             reason="No de-vigged market consensus has been computed for this fixture."),
+        historical=_historical(conn, fixture_id),
     ))
+
+
+def _historical(conn: Conn, fixture_id: int) -> Section[HistoricalMarket | None]:
+    prices = repo.historical_prices(conn, fixture_id)
+    if not prices:
+        return Section[HistoricalMarket | None](
+            status=DataStatus.EMPTY, data=None,
+            reason="No historical price from the second source is attached to this fixture.")
+    grouped: dict[tuple[Any, ...], list[HistoricalPrice]] = defaultdict(list)
+    for r in prices:
+        odds = Decimal(r["odds_decimal"])
+        grouped[(r["bookmaker_code"], r["price_kind"], r["market_key"], r["line"])].append(
+            HistoricalPrice(selection=r["selection"], odds_decimal=odds,
+                            raw_implied=(Decimal(1) / odds).quantize(Decimal("0.00001"))))
+    books = []
+    for (bm, kind, market, line), ps in grouped.items():
+        composite = bm in COMPOSITES
+        overround = None if bm == "MAX" else sum((p.raw_implied for p in ps), Decimal(0)).quantize(Decimal("0.00001"))
+        books.append(HistoricalBook(bookmaker_code=bm, price_kind=kind, market_key=market, line=line,
+                                    overround=overround, is_composite=composite, prices=ps))
+    fair = [HistoricalFair(**r) for r in repo.historical_fair(conn, fixture_id)]
+    return Section[HistoricalMarket | None](status=DataStatus.OK, data=HistoricalMarket(
+        source=HISTORICAL_SOURCE, note=HISTORICAL_NOTE, books=books, fair_1x2=fair))
+
+
+def intelligence(conn: Conn) -> Envelope[OddsIntelligence]:
+    cov = repo.historical_coverage(conn)
+    live_row = repo.live_counts(conn)
+    margins = [BookmakerMargin(**r) for r in repo.bookmaker_margins(conn)]
+    moves = [MovementRow(**r) for r in repo.movement(conn)]
+    live_counts = {k: int(v) for k, v in live_row.items()}
+    body = OddsIntelligence(
+        source=HISTORICAL_SOURCE, note=HISTORICAL_NOTE, fixtures_with_prices=int(cov["fixtures"] or 0),
+        seasons=sorted(int(x) for x in cov["seasons"]),
+        margins=section(margins) if margins else section(
+            margins, status=DataStatus.NOT_AVAILABLE, reason="No historical odds have been imported."),
+        movement=section(moves) if moves else section(
+            moves, status=DataStatus.NOT_AVAILABLE,
+            reason="Movement needs both a pre-closing and a closing Pinnacle price per fixture."),
+        live=section(live_counts) if live_counts["snapshots"] else section(
+            live_counts, status=DataStatus.EMPTY, reason=NO_SNAPSHOTS),
+    )
+    if not margins:
+        return unavailable(body, "No historical odds have been imported yet.")
+    return ok(body)

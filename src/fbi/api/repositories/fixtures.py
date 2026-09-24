@@ -143,13 +143,22 @@ def predictions_for(conn: Conn, fixture_id: int) -> list[Row]:
     return fetch_all(
         conn,
         """
-        SELECT m.name AS model, v.version AS model_version, p.market_key, p.selection, p.line,
+        WITH latest AS (
+            SELECT id FROM analytics.backtest_sessions WHERE status = 'completed'
+            ORDER BY finished_at DESC NULLS LAST, id DESC LIMIT 1
+        )
+        SELECT m.name AS model, v.version AS model_version,
+               CASE WHEN p.backtest_session_id IS NULL THEN 'forecast' ELSE 'backtest' END AS kind,
+               p.backtest_session_id, p.market_key, p.selection, p.line,
                p.p_raw, p.p_calibrated, p.p_lo, p.p_hi, p.data_cutoff_ts, p.feature_set_hash, p.created_at
         FROM models.predictions p
         JOIN models.model_versions v ON v.id = p.model_version_id
         JOIN models.model_registry m ON m.id = v.model_id
         WHERE p.fixture_id = %s
-        ORDER BY p.created_at DESC, m.name, p.market_key, p.selection
+          AND (p.backtest_session_id IS NULL
+               OR p.model_version_id IN (SELECT r.model_version_id FROM analytics.backtest_runs r
+                                         WHERE r.session_id = (SELECT id FROM latest)))
+        ORDER BY kind DESC, m.name, p.market_key, p.line, p.selection
         """,
         (fixture_id,),
     )

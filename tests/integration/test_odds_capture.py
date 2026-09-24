@@ -104,6 +104,7 @@ def prepared(db: psycopg.Connection, seed: Seed) -> Iterator[psycopg.Connection]
     db.commit()
     yield db
     with db.cursor() as cur:
+        cur.execute("DELETE FROM market.market_consensus")
         cur.execute("DELETE FROM market.odds_snapshots")
         cur.execute("DELETE FROM market.near_close_snapshots")
         cur.execute("DELETE FROM raw.ingestion_payloads WHERE hash <> 'h1'")
@@ -261,3 +262,27 @@ async def test_prices_for_an_unknown_fixture_are_counted_not_silently_dropped(
     )
     assert result.written == 0
     assert result.skipped_unknown_fixture == 1
+
+
+async def test_a_capture_computes_the_consensus_of_the_books_it_saw(
+    prepared: psycopg.Connection, tmp_path: Path, clock: FrozenClock, seed: Seed
+) -> None:
+    from fbi.market.consensus import recompute_from_snapshots
+
+    service, _ = make_service(prepared, tmp_path, lambda _n: odds_body("2.10", "3.40", "3.60"))
+    report = await service.capture([ScheduledFixture(1001, KICKOFF)])
+    assert report.consensus_written == 9, "three selections, three de-vig methods"
+    with prepared.cursor() as cur:
+        cur.execute(
+            "SELECT devig_method, sum(p_fair), min(n_bookmakers), bool_and(dispersion IS NULL), "
+            "count(DISTINCT as_of) FROM market.market_consensus WHERE fixture_id = %s GROUP BY devig_method",
+            (seed.fixture_id,))
+        for method, total, n_books, no_dispersion, instants in cur.fetchall():
+            assert abs(float(total) - 1.0) < 1e-5, method
+            assert n_books == 1 and no_dispersion, "one book has no spread to report"
+            assert instants == 1
+        cur.execute("SELECT as_of FROM market.market_consensus LIMIT 1")
+        as_of = scalar(cur)
+        cur.execute("SELECT max(captured_at) FROM market.odds_snapshots")
+        assert as_of == scalar(cur), "the consensus is as of the capture, not of the computation"
+    assert recompute_from_snapshots(prepared, fixture_ids=[seed.fixture_id]) == (1, 0), "idempotent"

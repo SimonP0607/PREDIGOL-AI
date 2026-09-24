@@ -64,6 +64,10 @@ class OddsRepository:
             )
             return dict(cur.fetchall())
 
+    def fixture_ids_of(self, quotes: Sequence[OddsQuote]) -> list[int]:
+        """Our fixture ids for the provider fixtures these quotes belong to."""
+        return sorted(set(self._fixture_ids(quotes).values())) if quotes else []
+
     def _known_markets(self) -> set[str]:
         with self._conn.cursor(row_factory=tuple_row) as cur:
             cur.execute("SELECT key FROM market.markets WHERE is_tracked")

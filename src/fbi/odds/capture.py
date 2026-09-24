@@ -21,6 +21,7 @@ import structlog
 from fbi.core.clock import now
 from fbi.core.errors import CircuitOpenError, ProviderError, QuotaExhaustedError
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.market.consensus import recompute_from_snapshots
 from fbi.odds.repository import OddsRepository
 from fbi.odds.schedule import CapturePlanner, CaptureTask, ScheduledFixture
 from fbi.providers.base import FootballDataProvider, OddsQuote, RawResponse
@@ -37,6 +38,7 @@ class CaptureReport:
     snapshots_written: int = 0
     duplicates_skipped: int = 0
     near_close_written: int = 0
+    consensus_written: int = 0
     api_calls: int = 0
     payloads_stored: int = 0
     errors: list[str] = field(default_factory=list)
@@ -129,6 +131,7 @@ class OddsCaptureService:
             executed=report.executed,
             written=report.snapshots_written,
             near_close=report.near_close_written,
+            consensus=report.consensus_written,
             api_calls=report.api_calls,
             errors=len(report.errors),
             status=report.status,
@@ -161,6 +164,17 @@ class OddsCaptureService:
         if task.kind == "near_close":
             report.near_close_written += self._repo.upsert_near_close(quotes)
         self._conn.commit()
+
+        # The consensus is derived data: if computing it fails, the prices are
+        # already committed and the failure is recorded, not hidden.
+        try:
+            for fixture_id in self._repo.fixture_ids_of(quotes):
+                report.consensus_written += recompute_from_snapshots(self._conn, fixture_ids=[fixture_id])[1]
+            self._conn.commit()
+        except Exception as exc:  # derived data must never cost the capture
+            self._conn.rollback()
+            report.errors.append(f"{task.window_key}: consensus not computed: {type(exc).__name__}: {exc}")
+            log.error("capture.consensus_failed", window=task.window_key, error=str(exc))
 
         log.info(
             "capture.task_done",

@@ -217,3 +217,60 @@ def test_the_models_endpoint_shows_the_market_first_and_labels_betting_hypotheti
     assert bt["betting"]["hypothetical"] is True and "Hypothetical" in bt["betting"]["note"]
     assert bt["coverage"]["predicted"] == len(league)
     assert d["market_baseline"]["status"] == "insufficient_data", "the live consensus still needs captured odds"
+
+
+def test_historical_prices_reach_the_match_and_the_market_pages_labelled_as_a_second_source(
+    db: psycopg.Connection, league: list[MatchRecord], migrated_database: str, seed: Seed
+) -> None:
+    from decimal import Decimal
+
+    from fastapi.testclient import TestClient
+
+    from fbi.core.config import reset_cache
+    from fbi.market.baseline import baseline_from_prices, write_baseline
+
+    target = league[0]
+    prices = {("pinnacle", "pre_closing"): ("2.05", "3.50", "3.80"), ("pinnacle", "closing"): ("1.95", "3.60", "4.10"),
+              ("MAX", "closing"): ("2.02", "3.75", "4.30")}
+    with db.cursor() as cur:
+        for (bm, kind), trio in prices.items():
+            for sel, odd in zip(("Home", "Draw", "Away"), trio, strict=True):
+                cur.execute(
+                    "INSERT INTO market.historical_odds (fixture_id, source, bookmaker_code, market_key, selection, "
+                    "line, price_kind, odds_decimal, source_payload_hash) VALUES (%s,'football-data.co.uk',%s,'1X2',"
+                    "%s,0,%s,%s,%s)", (target.fixture_id, bm, sel, kind, odd, seed.payload_hash))
+            if bm != "MAX":
+                write_baseline(db, baseline_from_prices(target.fixture_id, "football-data.co.uk", bm, kind,
+                                                        *(Decimal(x) for x in trio)))
+        cur.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away) VALUES (%s,%s,%s) "
+                    "ON CONFLICT DO NOTHING", (target.fixture_id, target.goals_home, target.goals_away))
+    evaluation = evaluate_session(_data(league), league, [_run(league, "poisson", 0.6)])
+    store_session(db, name="hist", cfg=WalkForwardConfig(competition_ids=(target.competition_id,)), data=_data(league),
+                  evaluation=evaluation, selection={}, hypers={"poisson": {"xi": 0.0}}, code_version="c0ffee",
+                  cfg_hash="y")
+    db.commit()
+    mp = pytest.MonkeyPatch()
+    mp.setenv("FBI_DATABASE_URL", migrated_database.replace("postgresql://", "postgresql+psycopg://"))
+    reset_cache()
+    try:
+        from fbi.api.app import create_app
+
+        with TestClient(create_app()) as client:
+            odds = client.get(f"/api/v1/odds/fixtures/{target.fixture_id}").json()["data"]
+            intel = client.get("/api/v1/odds/intelligence").json()
+            match = client.get(f"/api/v1/matches/{target.fixture_id}").json()["data"]
+    finally:
+        mp.undo()
+        reset_cache()
+    hist = odds["historical"]
+    assert hist["status"] == "ok" and "not captured by this platform" in hist["data"]["note"]
+    books = {(b["bookmaker_code"], b["price_kind"]): b for b in hist["data"]["books"]}
+    assert books[("MAX", "closing")]["is_composite"] and books[("MAX", "closing")]["overround"] is None
+    assert Decimal(books[("pinnacle", "closing")]["overround"]) > 1
+    assert {f["devig_method"] for f in hist["data"]["fair_1x2"]} == {"proportional", "shin", "power"}
+    assert odds["near_close"]["status"] == "empty", "a historical close is not our near-close"
+    assert intel["status"] == "ok"
+    moves = intel["data"]["movement"]["data"]
+    assert len(moves) == 1 and moves[0]["fixtures"] == 1
+    kinds = {p["kind"] for p in match["predictions"]["data"]}
+    assert kinds == {"backtest"}, "a replay is never shown as a forecast"
