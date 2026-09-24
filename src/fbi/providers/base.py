@@ -59,6 +59,13 @@ class SeasonRef:
 
 @dataclass(frozen=True, slots=True)
 class FixtureRef:
+    """A fixture as the provider describes it at one instant.
+
+    ``round`` and the venue fields are optional because the provider omits
+    them for some competitions; an absent value is stored as NULL, never
+    guessed.
+    """
+
     provider_fixture_id: int
     provider_league_id: int
     season: int
@@ -66,6 +73,10 @@ class FixtureRef:
     provider_home_team_id: int
     provider_away_team_id: int
     status_short: str
+    round: str | None = None
+    provider_venue_id: int | None = None
+    venue_name: str | None = None
+    venue_city: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +133,10 @@ class FootballDataProvider(Protocol):
     """What the platform needs from any football data source."""
 
     name: str
+
+    def parse_fixtures(self, body: dict[str, object]) -> list[FixtureRef]: ...
+
+    def parse_results(self, body: dict[str, object]) -> list[FixtureResultRef]: ...
 
     async def fetch_league_seasons(
         self, *, league_id: int

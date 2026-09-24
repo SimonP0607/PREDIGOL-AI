@@ -30,6 +30,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 import psycopg
 import structlog
@@ -38,7 +39,10 @@ from psycopg.rows import tuple_row
 from fbi.core.clock import now
 from fbi.core.errors import ProviderError
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.providers.base import FixtureRef, FootballDataProvider
+from fbi.providers.base import FixtureRef, FootballDataProvider, RawResponse
+
+if TYPE_CHECKING:
+    from fbi.ingestion.apply import PayloadOutcome
 
 log = structlog.get_logger(__name__)
 
@@ -94,6 +98,29 @@ def tracked_season_ids(conn: psycopg.Connection) -> dict[tuple[int, int], int]:
         return {(int(a), int(b)): int(c) for a, b, c in cur.fetchall()}
 
 
+@dataclass(frozen=True, slots=True)
+class PayloadLineage:
+    """Which stored payload a write came from, and when it was fetched.
+
+    ``fetched_at`` orders writes: a row is only ever overwritten by a payload
+    fetched at the same instant or later, so re-applying an old response (a
+    replay, a late retry) cannot regress a finished match to scheduled.
+    """
+
+    payload_hash: str
+    fetched_at: datetime
+
+
+# A write with lineage may replace a row with no lineage or with older lineage.
+# A write WITHOUT lineage may only replace a row that has none either: it must
+# never be able to overwrite something a traced payload established.
+MONOTONIC_SQL = """
+    (EXCLUDED.source_fetched_at IS NULL AND {t}.source_fetched_at IS NULL)
+    OR (EXCLUDED.source_fetched_at IS NOT NULL
+        AND ({t}.source_fetched_at IS NULL OR EXCLUDED.source_fetched_at >= {t}.source_fetched_at))
+"""
+
+
 class FixtureRepository:
     def __init__(self, conn: psycopg.Connection) -> None:
         self._conn = conn
@@ -111,20 +138,49 @@ class FixtureRepository:
             cur.execute("SELECT provider_team_id, id FROM core.teams WHERE provider_team_id = ANY(%s)", (ids,))
             return {int(a): int(b) for a, b in cur.fetchall()}
 
+    def ensure_venues(self, refs: Sequence[FixtureRef]) -> dict[int, int]:
+        """provider_venue_id -> core.venues.id, for the venues these refs name.
+
+        A venue the provider does not identify is not created: a name without
+        an id cannot be deduplicated, and a duplicated venue is worse than none.
+        """
+        venues = {r.provider_venue_id: r for r in refs if r.provider_venue_id is not None and r.venue_name}
+        if not venues:
+            return {}
+        with self._conn.cursor(row_factory=tuple_row) as cur:
+            cur.executemany(
+                "INSERT INTO core.venues (provider_venue_id, name, city) VALUES (%s, %s, %s) "
+                "ON CONFLICT (provider_venue_id) DO UPDATE SET name = EXCLUDED.name, "
+                "city = COALESCE(EXCLUDED.city, core.venues.city)",
+                [(vid, r.venue_name, r.venue_city) for vid, r in venues.items()],
+            )
+            cur.execute(
+                "SELECT provider_venue_id, id FROM core.venues WHERE provider_venue_id = ANY(%s)",
+                (sorted(venues),),
+            )
+            return {int(a): int(b) for a, b in cur.fetchall()}
+
     def upsert_fixtures(
         self,
         refs: Sequence[FixtureRef],
         season_ids: Mapping[tuple[int, int], int],
         team_ids: dict[int, int],
+        *,
+        lineage: PayloadLineage | None = None,
+        venue_ids: Mapping[int, int] | None = None,
     ) -> tuple[int, int]:
-        """Returns (inserted, updated). Kick-off and status are the only
-        things that legitimately change; the identity never does.
+        """Returns (inserted, updated). Kick-off, status, round and venue are
+        the things that legitimately change; the identity never does.
 
         ``season_ids`` maps (provider_league_id, season) to the row in
         core.competition_seasons. A ref with no entry is skipped: we do not
         invent a season row for a competition we are not tracking.
+
+        A ref older than what the row already holds is skipped too, and counted
+        in neither total - see ``PayloadLineage``.
         """
         inserted = updated = 0
+        venue_ids = venue_ids or {}
         with self._conn.cursor(row_factory=tuple_row) as cur:
             for r in refs:
                 season_id = season_ids.get((r.provider_league_id, r.season))
@@ -134,21 +190,33 @@ class FixtureRepository:
                     """
                     INSERT INTO core.fixtures
                       (provider_fixture_id, competition_season_id, home_team_id, away_team_id,
-                       kickoff_at, status_short, status_group)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s)
+                       kickoff_at, status_short, status_group, round, venue_id,
+                       source_payload_hash, source_fetched_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (provider_fixture_id) DO UPDATE SET
                       kickoff_at = EXCLUDED.kickoff_at, status_short = EXCLUDED.status_short,
-                      status_group = EXCLUDED.status_group, updated_at = now()
+                      status_group = EXCLUDED.status_group,
+                      round = COALESCE(EXCLUDED.round, core.fixtures.round),
+                      venue_id = COALESCE(EXCLUDED.venue_id, core.fixtures.venue_id),
+                      source_payload_hash = EXCLUDED.source_payload_hash,
+                      source_fetched_at = EXCLUDED.source_fetched_at,
+                      updated_at = now()
+                    WHERE """ + MONOTONIC_SQL.format(t="core.fixtures") + """
                     RETURNING (xmax = 0) AS inserted
                     """,
                     (
                         r.provider_fixture_id, season_id, team_ids[r.provider_home_team_id],
                         team_ids[r.provider_away_team_id], r.kickoff_at, r.status_short,
-                        STATUS_GROUP.get(r.status_short, "scheduled"),
+                        STATUS_GROUP.get(r.status_short, "scheduled"), r.round,
+                        venue_ids.get(r.provider_venue_id) if r.provider_venue_id is not None else None,
+                        lineage.payload_hash if lineage else None,
+                        lineage.fetched_at if lineage else None,
                     ),
                 )
                 row = cur.fetchone()
-                if row is not None and row[0]:
+                if row is None:
+                    continue  # an older payload than the one already applied
+                if row[0]:
                     inserted += 1
                 else:
                     updated += 1
@@ -204,7 +272,6 @@ async def _sync_by_league(
     as one."""
     seasons = active_seasons(conn)
     season_ids = tracked_season_ids(conn)
-    repo = FixtureRepository(conn)
     date_from = moment.date().isoformat()
     date_to = (moment + timedelta(days=horizon_days)).date().isoformat()
     plan_refused = False
@@ -224,14 +291,11 @@ async def _sync_by_league(
             continue
         counters.api_calls += 1
         counters.payloads_stored += ledger.record_payloads(run_id, [raw])
-        counters.rows_normalized += len(refs)
-        team_ids = repo.ensure_teams(refs, _team_names(raw.body))
-        ins, upd = repo.upsert_fixtures(refs, season_ids, team_ids)
-        counters.rows_inserted += ins
-        counters.rows_updated += upd
+        outcome = _apply(conn, provider, raw, season_ids, counters)
         conn.commit()
         log.info("fixtures.synced", strategy="league", league=s.provider_league_id,
-                 name=s.name, seen=len(refs), inserted=ins, updated=upd)
+                 name=s.name, seen=len(refs), inserted=outcome.fixtures_inserted,
+                 updated=outcome.fixtures_updated, results_written=outcome.results_written)
     return plan_refused
 
 
@@ -249,11 +313,10 @@ async def _sync_by_date(
     if not season_ids:
         log.warning("fixtures.no_tracked_seasons")
         return
-    repo = FixtureRepository(conn)
     for offset in range(horizon_days + 1):
         on: date = (moment + timedelta(days=offset)).date()
         try:
-            refs, raw = await provider.fetch_fixtures_by_date(on=on)
+            _, raw = await provider.fetch_fixtures_by_date(on=on)
         except ProviderError as exc:
             counters.api_calls += 1
             counters.errors.append(f"{on.isoformat()}: {exc}")
@@ -261,21 +324,40 @@ async def _sync_by_date(
             continue
         counters.api_calls += 1
         counters.payloads_stored += ledger.record_payloads(run_id, [raw])
-        ours = [r for r in refs if (r.provider_league_id, r.season) in season_ids]
-        counters.rows_normalized += len(ours)
-        if ours:
-            team_ids = repo.ensure_teams(ours, _team_names(raw.body))
-            ins, upd = repo.upsert_fixtures(ours, season_ids, team_ids)
-            counters.rows_inserted += ins
-            counters.rows_updated += upd
-            conn.commit()
-        else:
-            ins = upd = 0
+        outcome = _apply(conn, provider, raw, season_ids, counters)
+        conn.commit()
         log.info("fixtures.synced", strategy="date", date=on.isoformat(),
-                 seen_all_leagues=len(refs), seen_ours=len(ours), inserted=ins, updated=upd)
+                 seen_all_leagues=outcome.seen, seen_ours=outcome.ours,
+                 inserted=outcome.fixtures_inserted, updated=outcome.fixtures_updated,
+                 results_written=outcome.results_written)
 
 
-def _team_names(body: dict[str, object]) -> dict[int, str]:
+def _apply(
+    conn: psycopg.Connection,
+    provider: FootballDataProvider,
+    raw: RawResponse,
+    season_ids: Mapping[tuple[int, int], int],
+    counters: RunCounters,
+) -> PayloadOutcome:
+    """Apply a just-fetched payload and account for it in the run's counters.
+
+    A score is recorded as an update: it changes the state of a fixture we
+    already hold, it does not create a new one.
+    """
+    # Imported here, not at module level: apply imports this module.
+    from fbi.ingestion.apply import apply_fixtures_payload
+
+    outcome = apply_fixtures_payload(
+        conn, provider, raw.body,
+        payload_hash=raw.payload_hash, fetched_at=raw.fetched_at, season_ids=season_ids,
+    )
+    counters.rows_normalized += outcome.ours
+    counters.rows_inserted += outcome.fixtures_inserted
+    counters.rows_updated += outcome.fixtures_updated + outcome.results_written
+    return outcome
+
+
+def team_names(body: dict[str, object]) -> dict[int, str]:
     names: dict[int, str] = {}
     response = body.get("response")
     if not isinstance(response, list):

@@ -37,10 +37,10 @@ PLAYED = NOW - timedelta(hours=20)
 # Parsing: the goals were always in the /fixtures payload
 # ---------------------------------------------------------------------------
 
-def entry(fid: int, status: str, gh: object, ga: object, **score: object) -> dict:
+def entry(fid: int, status: str, gh: object, ga: object, *, league: int = 39, **score: object) -> dict:
     return {
         "fixture": {"id": fid, "date": PLAYED.isoformat(), "status": {"short": status}},
-        "league": {"id": 39, "season": 2025},
+        "league": {"id": league, "season": 2025},
         "teams": {"home": {"id": 33, "name": "H"}, "away": {"id": 40, "name": "A"}},
         "goals": {"home": gh, "away": ga},
         "score": {
@@ -106,6 +106,11 @@ def played(db: psycopg.Connection, seed: Seed) -> Iterator[psycopg.Connection]:
     yield db
     set_clock(SystemClock())
     with db.cursor() as cur:
+        # Lineage points at the payloads about to be deleted (FK since 0015).
+        cur.execute(
+            "UPDATE core.fixtures SET source_payload_hash = NULL, source_fetched_at = NULL WHERE id = %s",
+            (seed.fixture_id,),
+        )
         cur.execute("DELETE FROM core.fixture_results WHERE fixture_id = %s", (seed.fixture_id,))
         cur.execute("DELETE FROM raw.ingestion_payloads WHERE run_id IN (SELECT id FROM raw.ingestion_runs WHERE job_type = 'results_sync')")
         cur.execute("DELETE FROM raw.ingestion_runs WHERE job_type = 'results_sync'")
@@ -177,13 +182,17 @@ async def test_the_sync_closes_the_gap_and_is_idempotent(
 ) -> None:
     payload = body(
         entry(1001, "FT", 2, 1, ht={"home": 1, "away": 0}),
-        entry(777_001, "FT", 0, 0),  # another league, must be ignored
+        entry(777_001, "FT", 0, 0, league=140),  # another league, must be ignored
     )
     first = await sync_results(played, client_for(tmp_path, payload), lookback_days=1)
 
     assert first.api_calls == 2, "today and yesterday"
     assert first.payloads_stored == 2
-    assert first.rows_updated == 2, "one tracked fixture, seen on both days"
+    assert first.rows_updated == 4, (
+        "one tracked fixture, seen on both days: each day refreshes its status "
+        "and rewrites its score - two updates a day"
+    )
+    assert first.rows_inserted == 0, "the fixture already existed; the other league is not ours"
     assert first.status == "completed"
     with played.cursor() as cur:
         cur.execute("SELECT status_short FROM core.fixtures WHERE id = %s", (seed.fixture_id,))

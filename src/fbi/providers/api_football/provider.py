@@ -35,6 +35,22 @@ class ApiFootballProvider:
     async def aclose(self) -> None:
         await self._client.aclose()
 
+    # -- pure parsing: no I/O, so a stored payload can be re-normalised ------
+
+    def parse_fixtures(self, body: dict[str, Any]) -> list[FixtureRef]:
+        """Fixture identities from a /fixtures response already in hand.
+
+        The network methods below call this on what they just fetched; the raw
+        replay calls it on what was fetched days ago. One normaliser, so a
+        replayed payload cannot be read differently from a live one.
+        """
+        return list(iter_fixtures(body))
+
+    def parse_results(self, body: dict[str, Any]) -> list[FixtureResultRef]:
+        """Scores of the finished fixtures in the same response. Zero extra
+        requests: /fixtures always carried the goals."""
+        return list(iter_fixture_results(body))
+
     async def fetch_league_seasons(
         self, *, league_id: int
     ) -> tuple[list[SeasonRef], RawResponse]:

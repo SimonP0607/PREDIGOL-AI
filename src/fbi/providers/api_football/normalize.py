@@ -195,6 +195,11 @@ def _quote(
     )
 
 
+def _text(value: Any) -> str | None:
+    """A non-empty string, or None. The provider sends "" and null interchangeably."""
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
 def iter_fixtures(body: dict[str, Any]) -> Iterator[FixtureRef]:
     for entry in body.get("response") or []:
         if not isinstance(entry, dict):
@@ -206,6 +211,10 @@ def iter_fixtures(body: dict[str, Any]) -> Iterator[FixtureRef]:
         try:
             kickoff = datetime.fromisoformat(str(fixture["date"]))
             home, away = teams["home"], teams["away"]
+            venue = fixture.get("venue") if isinstance(fixture.get("venue"), dict) else {}
+            assert isinstance(venue, dict)
+            venue_id = venue.get("id")
+            round_name = league.get("round")
             yield FixtureRef(
                 provider_fixture_id=int(fixture["id"]),
                 provider_league_id=int(league["id"]),
@@ -214,6 +223,10 @@ def iter_fixtures(body: dict[str, Any]) -> Iterator[FixtureRef]:
                 provider_home_team_id=int(home["id"]),
                 provider_away_team_id=int(away["id"]),
                 status_short=str((fixture.get("status") or {}).get("short") or "NS"),
+                round=str(round_name) if isinstance(round_name, str) and round_name else None,
+                provider_venue_id=int(venue_id) if isinstance(venue_id, int) else None,
+                venue_name=_text(venue.get("name")),
+                venue_city=_text(venue.get("city")),
             )
         except (KeyError, TypeError, ValueError) as exc:
             log.debug("fixture.unparsable", error=str(exc))

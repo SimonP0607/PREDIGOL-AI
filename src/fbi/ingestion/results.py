@@ -43,7 +43,7 @@ from psycopg.rows import tuple_row
 
 from fbi.core.clock import now
 from fbi.core.errors import ProviderError
-from fbi.ingestion.fixtures import PLAN_REFUSAL, STATUS_GROUP
+from fbi.ingestion.fixtures import MONOTONIC_SQL, PLAN_REFUSAL, STATUS_GROUP, PayloadLineage
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.providers.base import FixtureResultRef, FootballDataProvider
 
@@ -86,7 +86,9 @@ class ResultRepository:
     def __init__(self, conn: psycopg.Connection) -> None:
         self._conn = conn
 
-    def apply(self, refs: list[FixtureResultRef]) -> tuple[int, int]:
+    def apply(
+        self, refs: list[FixtureResultRef], *, lineage: PayloadLineage | None = None
+    ) -> tuple[int, int]:
         """Returns (fixtures_updated, results_written).
 
         Two writes per fixture and both matter: the status on core.fixtures is
@@ -97,39 +99,61 @@ class ResultRepository:
 
         A result for a fixture we do not have is skipped, not invented: the
         date sweep sees every league on Earth and we track one.
+
+        Both writes are monotonic on the payload's fetch time (see
+        ``PayloadLineage``): replaying an older response is a no-op.
         """
         if not refs:
             return 0, 0
         updated = written = 0
+        lineage_hash = lineage.payload_hash if lineage else None
+        lineage_at = lineage.fetched_at if lineage else None
         with self._conn.cursor(row_factory=tuple_row) as cur:
             for r in refs:
-                cur.execute(
-                    "UPDATE core.fixtures SET status_short = %s, status_group = %s, updated_at = now() "
-                    "WHERE provider_fixture_id = %s RETURNING id",
-                    (r.status_short, STATUS_GROUP.get(r.status_short, "finished"), r.provider_fixture_id),
-                )
-                row = cur.fetchone()
-                if row is None:
+                cur.execute("SELECT id FROM core.fixtures WHERE provider_fixture_id = %s", (r.provider_fixture_id,))
+                found = cur.fetchone()
+                if found is None:
                     continue  # not a fixture we track
-                updated += 1
+                fixture_id = int(found[0])
+                cur.execute(
+                    "UPDATE core.fixtures SET status_short = %(s)s, status_group = %(g)s, "
+                    "source_payload_hash = %(h)s, source_fetched_at = %(at)s, updated_at = now() "
+                    "WHERE id = %(id)s AND ("
+                    "  (%(at)s::timestamptz IS NULL AND source_fetched_at IS NULL) OR "
+                    "  (%(at)s::timestamptz IS NOT NULL AND (source_fetched_at IS NULL OR %(at)s >= source_fetched_at))"
+                    ") RETURNING id",
+                    {
+                        "s": r.status_short, "g": STATUS_GROUP.get(r.status_short, "finished"),
+                        "h": lineage_hash, "at": lineage_at, "id": fixture_id,
+                    },
+                )
+                if cur.fetchone() is not None:
+                    updated += 1
                 cur.execute(
                     """
                     INSERT INTO core.fixture_results
                       (fixture_id, goals_home, goals_away, ht_goals_home, ht_goals_away,
-                       et_goals_home, et_goals_away, pen_home, pen_away)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                       et_goals_home, et_goals_away, pen_home, pen_away,
+                       source_payload_hash, source_fetched_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (fixture_id) DO UPDATE SET
                       goals_home = EXCLUDED.goals_home, goals_away = EXCLUDED.goals_away,
                       ht_goals_home = EXCLUDED.ht_goals_home, ht_goals_away = EXCLUDED.ht_goals_away,
                       et_goals_home = EXCLUDED.et_goals_home, et_goals_away = EXCLUDED.et_goals_away,
-                      pen_home = EXCLUDED.pen_home, pen_away = EXCLUDED.pen_away
+                      pen_home = EXCLUDED.pen_home, pen_away = EXCLUDED.pen_away,
+                      source_payload_hash = EXCLUDED.source_payload_hash,
+                      source_fetched_at = EXCLUDED.source_fetched_at
+                    WHERE """ + MONOTONIC_SQL.format(t="core.fixture_results") + """
+                    RETURNING fixture_id
                     """,
                     (
-                        int(row[0]), r.goals_home, r.goals_away, r.ht_goals_home, r.ht_goals_away,
+                        fixture_id, r.goals_home, r.goals_away, r.ht_goals_home, r.ht_goals_away,
                         r.et_goals_home, r.et_goals_away, r.pen_home, r.pen_away,
+                        lineage_hash, lineage_at,
                     ),
                 )
-                written += 1
+                if cur.fetchone() is not None:
+                    written += 1
         return updated, written
 
 
@@ -154,15 +178,19 @@ async def sync_results(
             served=PLAN_LOOKBACK_LIMIT,
             hint="the free plan refuses dates further back; those requests will be spent and rejected",
         )
+    # Imported here, not at module level: apply imports this module.
+    from fbi.ingestion.apply import apply_fixtures_payload
+    from fbi.ingestion.fixtures import tracked_season_ids
+
     ledger = RunLedger(conn)
     run_id = ledger.open("results_sync", params={"lookback_days": lookback_days}, scheduled_for=moment)
     counters = RunCounters()
-    repo = ResultRepository(conn)
+    season_ids = tracked_season_ids(conn)
     try:
         for offset in range(lookback_days + 1):
             on: date = (moment - timedelta(days=offset)).date()
             try:
-                refs, raw = await provider.fetch_results_by_date(on=on)
+                _, raw = await provider.fetch_fixtures_by_date(on=on)
             except ProviderError as exc:
                 counters.api_calls += 1  # the request was issued
                 counters.errors.append(f"{on.isoformat()}: {exc}")
@@ -171,14 +199,20 @@ async def sync_results(
                 continue
             counters.api_calls += 1
             counters.payloads_stored += ledger.record_payloads(run_id, [raw])
-            counters.rows_normalized += len(refs)
-            updated, written = repo.apply(list(refs))
-            counters.rows_updated += updated
-            counters.rows_inserted += written
+            # The same path the fixtures sync uses: statuses AND scores, so a
+            # postponement is recorded here too instead of staying 'scheduled'.
+            outcome = apply_fixtures_payload(
+                conn, provider, raw.body,
+                payload_hash=raw.payload_hash, fetched_at=raw.fetched_at, season_ids=season_ids,
+            )
+            counters.rows_normalized += outcome.ours
+            counters.rows_inserted += outcome.fixtures_inserted
+            counters.rows_updated += outcome.fixtures_updated + outcome.results_written
             conn.commit()
             log.info(
                 "results.synced", date=on.isoformat(),
-                finished_all_leagues=len(refs), ours=updated, results_written=written,
+                finished_all_leagues=outcome.finished_seen, ours=outcome.ours,
+                fixtures_updated=outcome.fixtures_updated, results_written=outcome.results_written,
             )
     finally:
         ledger.close(run_id, counters, notes=f"lookback={lookback_days}")
