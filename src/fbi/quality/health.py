@@ -15,11 +15,10 @@ import psycopg
 from psycopg.rows import tuple_row
 
 from fbi.core.clock import now
+from fbi.ops.heartbeat import latest_heartbeat
 from fbi.providers.quota import read_usage
 
 Status = Literal["ok", "degraded", "down", "unknown"]
-
-WORKER_STALE_AFTER = timedelta(minutes=45)  # 3 ticks of the 15-minute scheduler
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,12 +70,19 @@ def check_database(conn: psycopg.Connection) -> Check:
 
 
 def check_worker(conn: psycopg.Connection) -> Check:
-    """Derived from the ledger, not from a heartbeat file that can lie."""
+    """Liveness from the heartbeat, outcomes from the ledger.
+
+    Two different questions. Is the process alive? - answered by the heartbeat
+    it writes on every tick, busy or not. Did its jobs work? - answered by the
+    ledger. The ledger alone cannot tell a quiet worker from a dead one, which
+    is how a healthy worker came to be reported as "last run 400 min ago".
+    """
     try:
+        beat = latest_heartbeat(conn)
         with conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(
                 "SELECT job_type, status, started_at, finished_at, last_error "
-                "FROM raw.ingestion_runs WHERE job_type IN ('odds_capture','fixtures_sync') "
+                "FROM raw.ingestion_runs WHERE job_type IN ('odds_capture','fixtures_sync','results_sync') "
                 "ORDER BY started_at DESC LIMIT 1"
             )
             last = cur.fetchone()
@@ -98,35 +104,70 @@ def check_worker(conn: psycopg.Connection) -> Check:
             by_status = {str(k): int(v) for k, v in cur.fetchall()}
     except psycopg.Error as exc:
         return Check("unknown", f"ledger unreadable: {exc.__class__.__name__}")
-    if last is None:
-        return Check("unknown", "no run recorded yet", {"last_successful_run": None})
-    job_type, status, started_at, _finished, last_error = last
+
     data: dict[str, Any] = {
-        "last_job": job_type,
-        "last_status": status,
-        "last_started_at": started_at.isoformat(),
+        "heartbeat": beat.as_dict() if beat else None,
+        "alive": beat.is_alive() if beat else None,
+        "last_job": last[0] if last else None,
+        "last_status": last[1] if last else None,
+        "last_started_at": last[2].isoformat() if last else None,
         "last_successful_run": ok[0].isoformat() if ok else None,
-        "last_error": last_error,
+        "last_error": last[4] if last else None,
         "stale_running_jobs": zombies,
         "runs_24h_by_status": by_status,
         "partial_runs_24h": by_status.get("partial", 0),
         "failed_runs_24h": by_status.get("failed", 0),
     }
-    age = now() - started_at
+    if beat is None:
+        return _judge_from_ledger(last, zombies, data)
+    if not beat.is_alive():
+        silent = int((now() - beat.last_beat_at).total_seconds() // 60)
+        if beat.stopped_at is not None and beat.stopped_at >= beat.last_beat_at:
+            return Check("down", f"worker stopped {silent} min ago", data)
+        return Check("down", f"no heartbeat for {silent} min: worker is not running", data)
     if zombies:
         return Check("degraded", f"{zombies} run(s) stuck in 'running' for over 2 h", data)
-    if age > WORKER_STALE_AFTER:
-        return Check("degraded", f"last run {int(age.total_seconds() // 60)} min ago", data)
+    if beat.last_tick_outcome in ("failed", "plan_rejected"):
+        return Check("degraded", f"last tick: {beat.last_tick_outcome}", data)
+    if last is not None:
+        status = last[1]
+        if status == "failed":
+            return Check("degraded", f"last {last[0]} failed", data)
+        if status == "partial":
+            # The state this check used to miss entirely: work was done AND
+            # errors happened, which the old two-state rule recorded as
+            # 'completed' and read as healthy.
+            return Check("degraded", f"last {last[0]} only partly succeeded", data)
+        if status == "aborted":
+            return Check("degraded", f"last {last[0]} stopped at a cap before finishing", data)
+    beat_age = int((now() - beat.last_beat_at).total_seconds() // 60)
+    return Check("ok", f"alive, last beat {beat_age} min ago", data)
+
+
+LEDGER_STALE_AFTER = timedelta(minutes=45)  # 3 ticks of the 15-minute scheduler
+
+
+def _judge_from_ledger(last: tuple[Any, ...] | None, zombies: int, data: dict[str, Any]) -> Check:
+    """The pre-heartbeat rule, kept for a worker that has not yet written one
+    (an older build still running). It can only ever say "unknown" or worse
+    about liveness, because the ledger cannot tell quiet from dead - every
+    detail says so."""
+    if last is None:
+        return Check("unknown", "no heartbeat and no run recorded yet", data)
+    job_type, status, started_at, _finished, _error = last
+    age = now() - started_at
+    prefix = "no heartbeat (older worker build?); from the ledger: "
+    if zombies:
+        return Check("degraded", f"{prefix}{zombies} run(s) stuck in 'running' for over 2 h", data)
+    if age > LEDGER_STALE_AFTER:
+        return Check("degraded", f"{prefix}last run {int(age.total_seconds() // 60)} min ago", data)
     if status == "failed":
-        return Check("degraded", "last run failed", data)
+        return Check("degraded", f"{prefix}last {job_type} failed", data)
     if status == "partial":
-        # The state this check used to miss entirely: work was done AND errors
-        # happened, which under the old two-state rule was recorded as
-        # 'completed' and read as healthy.
-        return Check("degraded", "last run only partly succeeded", data)
+        return Check("degraded", f"{prefix}last {job_type} only partly succeeded", data)
     if status == "aborted":
-        return Check("degraded", "last run stopped at a cap before finishing", data)
-    return Check("ok", f"last run {int(age.total_seconds() // 60)} min ago", data)
+        return Check("degraded", f"{prefix}last {job_type} stopped at a cap before finishing", data)
+    return Check("ok", f"{prefix}last run {int(age.total_seconds() // 60)} min ago", data)
 
 
 def check_provider(conn: psycopg.Connection, daily_budget: int) -> Check:
