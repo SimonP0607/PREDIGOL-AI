@@ -376,11 +376,48 @@ def test_t15_half_win_settlement_is_accepted(db: psycopg.Connection, seed: Seed)
         candidate_id = _selected_candidate(cur, seed, prediction_id)
         pick_id = _valid_pick(cur, seed, candidate_id, calibrator_id)
         cur.execute(
-            "INSERT INTO picks.pick_results (pick_id,result_status,profit_units,settled_at) "
-            "VALUES (%s,'half_win',0.55,now()) RETURNING result_status",
+            "INSERT INTO picks.pick_results (pick_id,result_status,profit_units,settled_at,settlement_basis,"
+            "rule_version) VALUES (%s,'half_win',0.55,now(),'regulation_90','settle-v1') RETURNING result_status",
             (pick_id,),
         )
         assert scalar(cur) == "half_win"
+
+
+def test_a_final_result_must_say_what_it_settled_on(db: psycopg.Connection, seed: Seed) -> None:
+    with must_be_rejected(db, "a win without a settlement basis or rule version") as cur:
+        calibrator_id = _valid_calibrator(cur, seed)
+        prediction_id = _valid_prediction(cur, seed, calibrator_id)
+        candidate_id = _selected_candidate(cur, seed, prediction_id)
+        pick_id = _valid_pick(cur, seed, candidate_id, calibrator_id)
+        cur.execute("INSERT INTO picks.pick_results (pick_id,result_status,profit_units,settled_at) "
+                    "VALUES (%s,'win',1.1,now())", (pick_id,))
+
+
+def test_publishing_is_disabled_by_the_schema(db: psycopg.Connection, seed: Seed) -> None:
+    with must_be_rejected(db, "a pick moved to 'published'") as cur:
+        calibrator_id = _valid_calibrator(cur, seed)
+        prediction_id = _valid_prediction(cur, seed, calibrator_id)
+        candidate_id = _selected_candidate(cur, seed, prediction_id)
+        pick_id = _valid_pick(cur, seed, candidate_id, calibrator_id)
+        cur.execute("UPDATE picks.picks SET status = 'published' WHERE id = %s", (pick_id,))
+    with must_be_rejected(db, "a pick with a publication time") as cur:
+        calibrator_id = _valid_calibrator(cur, seed)
+        prediction_id = _valid_prediction(cur, seed, calibrator_id)
+        candidate_id = _selected_candidate(cur, seed, prediction_id)
+        pick_id = _valid_pick(cur, seed, candidate_id, calibrator_id)
+        cur.execute("UPDATE picks.picks SET published_at = now() WHERE id = %s", (pick_id,))
+
+
+def test_markets_settle_on_the_regulation_score(db: psycopg.Connection, seed: Seed) -> None:
+    """PSV 3-1 Juventus (19 Feb 2025) was 2-1 at 90 minutes: one goal in extra time."""
+    with must_be_accepted(db) as cur:
+        cur.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away, et_goals_home, "
+                    "et_goals_away) VALUES (%s, 1, 1, 1, 0) RETURNING reg_goals_home, reg_goals_away, "
+                    "outcome_1x2, total_goals, btts", (seed.fixture_id,))
+        assert cur.fetchone() == (0, 1, "Away", 1, False)
+    with must_be_rejected(db, "more extra-time goals than final goals") as cur:
+        cur.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away, et_goals_home, "
+                    "et_goals_away) VALUES (%s, 1, 1, 2, 0)", (seed.fixture_id,))
 
 
 def test_t16_settled_result_without_profit_or_date_is_rejected(

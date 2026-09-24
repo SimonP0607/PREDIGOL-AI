@@ -264,7 +264,7 @@ def dataset_hash(targets: Sequence[MatchRecord], data: BacktestData) -> str:
     base = data.market.get(PRIMARY_BASELINE, {})
     for m in sorted(targets, key=lambda t: t.fixture_id):
         b = base.get(m.fixture_id)
-        d.update(f"{m.fixture_id}|{m.kickoff_at.isoformat()}|{m.goals_home}-{m.goals_away}|".encode())
+        d.update(f"{m.fixture_id}|{m.kickoff_at.isoformat()}|{m.settle_home}-{m.settle_away}|".encode())
         if b is not None:
             d.update(f"{b.p_home:.6f},{b.p_draw:.6f},{b.p_away:.6f}".encode())
         d.update(b";")
@@ -275,8 +275,8 @@ def evaluate_session(data: BacktestData, targets: Sequence[MatchRecord], runs: S
     scored = [m for m in targets if m.has_result]
     y = {m.fixture_id: outcome_index(m) for m in scored}
     by_id = {m.fixture_id: m for m in scored}
-    y_ou = {m.fixture_id: 0 if (m.goals_home or 0) + (m.goals_away or 0) > OU_LINE else 1 for m in scored}
-    y_btts = {m.fixture_id: 0 if (m.goals_home or 0) > 0 and (m.goals_away or 0) > 0 else 1 for m in scored}
+    y_ou = {m.fixture_id: 0 if (m.settle_home or 0) + (m.settle_away or 0) > OU_LINE else 1 for m in scored}
+    y_btts = {m.fixture_id: 0 if (m.settle_home or 0) > 0 and (m.settle_away or 0) > 0 else 1 for m in scored}
 
     base_1x2: dict[str, dict[int, NDArray[np.float64]]] = {}
     baselines: list[BaselineEvaluation] = []

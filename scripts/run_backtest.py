@@ -40,6 +40,8 @@ from fbi.backtesting.persist import (
     config_hash,
     config_json,
     find_completed_session,
+    goal_hyper,
+    ologit_hyper,
     scores_json,
     store_session,
 )
@@ -247,13 +249,9 @@ def main() -> int:
             _say("dry run - nothing stored (use --apply)")
             return 0
 
-        hypers = {
-            kind: {"xi": specs[kind].xi, "penalty": specs[kind].penalty, "history_days": cfg.history_days,
-                   "min_train": MIN_GOAL_TRAIN, "interval": "laplace 90%", "code_version": version}
-            for kind in ("poisson", "dixon_coles")
-        }
-        hypers["elo_ologit"] = {"elo": "elo-v2.0 K=20 home=65 initial=1500", "feature_version": FEATURE_VERSION,
-                                "min_train": MIN_OLOGIT_TRAIN, "interval": "laplace 90%", "code_version": version}
+        hypers = {kind: goal_hyper(specs[kind].xi, specs[kind].penalty, cfg, version)
+                  for kind in ("poisson", "dixon_coles")}
+        hypers["elo_ologit"] = ologit_hyper(version)
         cfg_hash = config_hash({"cfg": config_json(cfg), "hypers": hypers, "semver": MODEL_SEMVER})
         existing = find_completed_session(conn, name=name, dataset_hash=evaluation.dataset_hash,
                                           code_version=version, cfg_hash=cfg_hash)

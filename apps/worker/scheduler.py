@@ -15,6 +15,8 @@ at worst, and a duplicated tick costs nothing at all.
 
   * ``fixtures_sync``  every 12 h, horizon 1 day  -> 2 requests per run, 4/day
   * ``results_sync``   every 6 h, lookback 1 day  -> 2 requests per run, 8/day
+  * ``pick_pipeline``  every 30 min and right after a capture: forecasts,
+    shadow picks, settlement. Database only, zero requests.
 
 Standing cost is therefore about 12 requests/day, leaving roughly 48 of the
 60-request budget for odds capture - enough for a Premier League matchday at
@@ -60,6 +62,7 @@ RESULTS_SYNC_HOURS = int(os.environ.get("FBI_RESULTS_SYNC_HOURS", "6"))
 RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
 BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "6"))
 BACKFILL_MAX_PER_RUN = int(os.environ.get("FBI_BACKFILL_MAX_PER_RUN", "6"))
+PIPELINE_MINUTES = int(os.environ.get("FBI_PIPELINE_MINUTES", "30"))
 
 
 async def _tick() -> TickOutcome:
@@ -107,6 +110,9 @@ async def _tick() -> TickOutcome:
             await service.capture(fixtures)
         finally:
             await provider.aclose()
+    # A fresh price is evaluated at once, not up to half an hour later: the
+    # pipeline is database-only and idempotent, so running it here is free.
+    await asyncio.to_thread(_pipeline_now)
     return "captured"
 
 
@@ -184,6 +190,23 @@ async def _historical_backfill() -> None:
             await provider.aclose()
     log.info("backfill.tick", done=report.done, refused=report.refused, failed=report.failed,
              allowance=report.allowance, reserve=report.reserve, deferred=report.deferred_reason)
+
+
+def _pipeline_now() -> None:
+    """Forecasts, evaluation of captured prices, settlement. Never raises into
+    the capture: a failure is logged and recorded in its own ledger run."""
+    from fbi.picks.pipeline import run_pipeline
+
+    try:
+        with _connect() as conn:
+            run_pipeline(conn, at=now(), code_version=code_version())
+    except Exception as exc:  # the capture has already been committed
+        log.error("pipeline.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _pipeline() -> None:
+    new_run_id()
+    await asyncio.to_thread(_pipeline_now)
 
 
 _scheduler: AsyncIOScheduler | None = None
@@ -281,6 +304,11 @@ async def main() -> None:
     scheduler.add_job(_historical_backfill, "interval", hours=BACKFILL_HOURS, id="historical_backfill",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(backfill_next, moment + timedelta(minutes=5)))
+    # Database only: forecasts for new fixtures or new results, shadow picks for
+    # new prices, settlement for new results. First run shortly after start.
+    scheduler.add_job(_pipeline, "interval", minutes=PIPELINE_MINUTES, id="pick_pipeline", max_instances=1,
+                      coalesce=True, misfire_grace_time=PIPELINE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=2))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     scheduler.start()

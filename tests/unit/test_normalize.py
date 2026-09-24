@@ -153,3 +153,32 @@ def test_fixtures_are_parsed_and_bad_rows_skipped() -> None:
     assert result[0].provider_fixture_id == 1001
     assert result[0].provider_league_id == 39
     assert result[0].kickoff_at == KICKOFF
+
+
+def _result_body(status: str, goals: tuple[int, int], extratime: tuple[int | None, int | None],
+                 penalty: tuple[int | None, int | None] = (None, None)) -> dict:
+    return {"response": [{
+        "fixture": {"id": 77, "status": {"short": status}},
+        "goals": {"home": goals[0], "away": goals[1]},
+        "score": {"halftime": {"home": 0, "away": 0}, "extratime": {"home": extratime[0], "away": extratime[1]},
+                  "penalty": {"home": penalty[0], "away": penalty[1]}},
+    }]}
+
+
+def test_an_extra_time_result_keeps_its_breakdown() -> None:
+    from fbi.providers.api_football.normalize import iter_fixture_results
+
+    (r,) = list(iter_fixture_results(_result_body("AET", (3, 1), (1, 0))))
+    assert (r.goals_home, r.goals_away, r.et_goals_home, r.et_goals_away) == (3, 1, 1, 0)
+
+
+def test_an_extra_time_result_without_its_breakdown_is_not_stored() -> None:
+    """`goals` includes extra time. Without the extra-time goals the 90-minute
+    score markets settle on is unknown: better awaited than wrong."""
+    from fbi.providers.api_football.normalize import iter_fixture_results
+
+    assert list(iter_fixture_results(_result_body("AET", (2, 1), (None, None)))) == []
+    assert list(iter_fixture_results(_result_body("PEN", (1, 1), (None, None), (4, 3)))) == []
+    assert list(iter_fixture_results(_result_body("AET", (1, 0), (2, 0)))) == [], "more ET goals than final goals"
+    (ft,) = list(iter_fixture_results(_result_body("FT", (2, 2), (None, None))))
+    assert ft.et_goals_home is None, "no extra time in a regular match is not missing data"

@@ -275,6 +275,9 @@ them.
 """
 
 
+EXTRA_TIME_STATUSES = frozenset({"AET", "PEN"})
+
+
 def _pair(block: Any) -> tuple[int | None, int | None]:
     """(home, away) from one of the provider's score blocks, or (None, None).
 
@@ -315,6 +318,15 @@ def iter_fixture_results(body: dict[str, Any]) -> Iterator[FixtureResultRef]:
         ht_h, ht_a = _pair(score.get("halftime"))
         et_h, et_a = _pair(score.get("extratime"))
         pk_h, pk_a = _pair(score.get("penalty"))
+        if status in EXTRA_TIME_STATUSES and (et_h is None or et_a is None):
+            # `goals` includes extra time; without the extra-time breakdown the
+            # 90-minute score that markets settle on cannot be derived. Better
+            # an awaited result than a wrong one.
+            log.warning("result.extra_time_without_breakdown", fixture=fixture.get("id"), status=status)
+            continue
+        if (et_h is not None and et_h > goals_home) or (et_a is not None and et_a > goals_away):
+            log.warning("result.extra_time_exceeds_final", fixture=fixture.get("id"))
+            continue
         try:
             yield FixtureResultRef(
                 provider_fixture_id=int(fixture["id"]),

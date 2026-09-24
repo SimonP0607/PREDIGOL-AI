@@ -29,12 +29,21 @@ from fbi.models.scoring import MARKET_ROWS
 
 MIN_GOAL_TRAIN = 100
 MIN_OLOGIT_TRAIN = 200
+MIN_ELO_HISTORY = 10
+"""An Elo rating built from fewer matches than this is still mostly the starting
+value (1500 for every newcomer): the Elo model declines the fixture."""
+
+
+def elo_history_short(features: dict[str, float | None]) -> bool:
+    return min(features.get("home_history_n") or 0.0, features.get("away_history_n") or 0.0) < MIN_ELO_HISTORY
 
 
 def outcome_index(m: MatchRecord) -> int:
-    """Index into (home, draw, away): 0 home, 1 draw, 2 away."""
-    assert m.goals_home is not None and m.goals_away is not None
-    return 0 if m.goals_home > m.goals_away else 1 if m.goals_home == m.goals_away else 2
+    """Index into (home, draw, away): 0 home, 1 draw, 2 away - on the REGULATION
+    score, which is what the market being compared settles on."""
+    h, a = m.settle_home, m.settle_away
+    assert h is not None and a is not None
+    return 0 if h > a else 1 if h == a else 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,10 +145,10 @@ def known_before(m: MatchRecord, cutoff: datetime) -> bool:
     return m.has_result and m.kickoff_at + RESULT_AVAILABLE_AFTER < cutoff
 
 
-def _train_hash(rows: Sequence[MatchRecord]) -> str:
+def train_hash(rows: Sequence[MatchRecord]) -> str:
     d = hashlib.sha256()
     for m in sorted(rows, key=lambda r: r.fixture_id):
-        d.update(f"{m.fixture_id}:{m.goals_home}-{m.goals_away};".encode())
+        d.update(f"{m.fixture_id}:{m.settle_home}-{m.settle_away};".encode())
     return d.hexdigest()
 
 
@@ -181,7 +190,7 @@ def run_goal_model(
                 run.uncovered.extend(
                     (m.fixture_id, f"fewer than {MIN_GOAL_TRAIN} training matches before the cut-off") for m in group)
                 continue
-            obs = [GoalObs(m.home_team_id, m.away_team_id, m.goals_home or 0, m.goals_away or 0,
+            obs = [GoalObs(m.home_team_id, m.away_team_id, m.settle_home or 0, m.settle_away or 0,
                            weight=math.exp(-spec.xi * (cutoff - m.kickoff_at).total_seconds() / 86400),
                            neutral=m.is_neutral) for m in train]
             run.fits += 1
@@ -197,7 +206,7 @@ def run_goal_model(
                 run.uncovered.extend((m.fixture_id, "model fit did not converge") for m in group)
                 continue
             run.note_training(train)
-            th = _train_hash(train)
+            th = train_hash(train)
             for m in group:
                 if not (model.knows(m.home_team_id) and model.knows(m.away_team_id)):
                     run.uncovered.append((m.fixture_id, "a team has no match in this competition's training window"))
@@ -254,13 +263,17 @@ def run_elo_ologit(
             continue
         run.note_training(train)
         for m in group:
-            x = data.features.get(m.fixture_id, {}).get("elo_diff")
+            fv = data.features.get(m.fixture_id, {})
+            x = fv.get("elo_diff")
             feature_cutoff = data.feature_cutoff.get(m.fixture_id)
             if x is None or feature_cutoff is None:
                 run.uncovered.append((m.fixture_id, "no feature set for this fixture"))
                 continue
             if feature_cutoff >= m.kickoff_at:
                 raise LeakageError(f"feature cut-off after kick-off for fixture {m.fixture_id}")
+            if elo_history_short(fv):
+                run.uncovered.append((m.fixture_id, f"a team has fewer than {MIN_ELO_HISTORY} rated matches"))
+                continue
             try:
                 p = model.predict(float(x), neutral=m.is_neutral)
             except ValueError as exc:

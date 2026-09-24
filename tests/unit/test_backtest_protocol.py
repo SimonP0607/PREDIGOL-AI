@@ -190,3 +190,16 @@ def test_betting_simulation_arithmetic() -> None:
     assert sim.profit == pytest.approx(wins * 1.2 - (3 - wins))
     assert sim.staked == 3.0
     assert sim.mean_probability_edge == pytest.approx(0.06)
+
+
+def test_the_elo_model_declines_a_team_whose_rating_is_still_the_starting_value() -> None:
+    matches = _league()
+    features: dict[int, dict[str, float | None]] = {
+        m.fixture_id: {"elo_diff": 10.0, "home_history_n": 60.0, "away_history_n": 60.0} for m in matches}
+    cutoffs = {m.fixture_id: m.kickoff_at - timedelta(hours=1) for m in matches}
+    thin = _targets(matches)[-1]
+    features[thin.fixture_id] = {"elo_diff": 0.0, "home_history_n": 60.0, "away_history_n": 3.0}
+    run = run_elo_ologit(BacktestData(matches, features, {}, cutoffs, {}, {}), _targets(matches), cfg=CFG,
+                         refit_days=7)
+    assert thin.fixture_id not in run.predictions
+    assert any(fid == thin.fixture_id and "fewer than 10 rated matches" in why for fid, why in run.uncovered)

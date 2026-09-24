@@ -87,11 +87,16 @@ def find_completed_session(conn: psycopg.Connection, *, name: str, dataset_hash:
         return int(row[0]) if row else None
 
 
-def ensure_model_version(conn: psycopg.Connection, run: ModelRun, *, hyper: dict[str, Any], code_version: str,
-                         feature_names: Sequence[str]) -> int:
-    reg_name, family, description = CATALOGUE[run.model]
-    version = f"{MODEL_SEMVER}/{run.spec}@{code_version[:7]}"
-    assert run.train_from is not None and run.train_to is not None
+def version_string(model: str, spec: str, code_version: str) -> str:
+    return f"{MODEL_SEMVER}/{spec}@{code_version[:7]}"
+
+
+def ensure_version(conn: psycopg.Connection, *, model: str, spec: str, hyper: dict[str, Any], code_version: str,
+                   feature_names: Sequence[str], train_from: date, train_to: date, n_train: int) -> int:
+    """The id of (model, version), created on first use. A version is immutable:
+    the same version string with other hyper-parameters is a conflict."""
+    reg_name, family, description = CATALOGUE[model]
+    version = version_string(model, spec, code_version)
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(
             "INSERT INTO models.model_registry (name, family, description) VALUES (%s, %s, %s) "
@@ -108,17 +113,38 @@ def ensure_model_version(conn: psycopg.Connection, run: ModelRun, *, hyper: dict
             if dict(existing[1]) != hyper:
                 raise VersionConflictError(f"{reg_name} {version} exists with other hyper-parameters; bump MODEL_SEMVER")
             return int(existing[0])
-        train_from = run.train_from.date()
-        train_to = max(run.train_to.date(), train_from + timedelta(days=1))
         cur.execute(
             "INSERT INTO models.model_versions (model_id, version, hyperparameters, feature_names, train_from, "
             "train_to, n_train, code_version, status) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'experimental') RETURNING id",
-            (model_id, version, json.dumps(hyper), list(feature_names), train_from, train_to,
-             len(run.train_ids), code_version),
+            (model_id, version, json.dumps(hyper), list(feature_names), train_from,
+             max(train_to, train_from + timedelta(days=1)), max(n_train, 1), code_version),
         )
         row = cur.fetchone()
         assert row is not None
         return int(row[0])
+
+
+def ensure_model_version(conn: psycopg.Connection, run: ModelRun, *, hyper: dict[str, Any], code_version: str,
+                         feature_names: Sequence[str]) -> int:
+    assert run.train_from is not None and run.train_to is not None
+    return ensure_version(conn, model=run.model, spec=run.spec, hyper=hyper, code_version=code_version,
+                          feature_names=feature_names, train_from=run.train_from.date(),
+                          train_to=run.train_to.date(), n_train=len(run.train_ids))
+
+
+def goal_hyper(spec_xi: float, spec_penalty: float, cfg: WalkForwardConfig, code_version: str) -> dict[str, Any]:
+    from fbi.backtesting.walkforward import MIN_GOAL_TRAIN
+
+    return {"xi": spec_xi, "penalty": spec_penalty, "history_days": cfg.history_days, "min_train": MIN_GOAL_TRAIN,
+            "interval": "laplace 90%", "code_version": code_version}
+
+
+def ologit_hyper(code_version: str) -> dict[str, Any]:
+    from fbi.backtesting.walkforward import MIN_OLOGIT_TRAIN
+    from fbi.features.engine import FEATURE_VERSION
+
+    return {"elo": "elo-v2.0 K=20 home=65 initial=1500", "feature_version": FEATURE_VERSION,
+            "min_train": MIN_OLOGIT_TRAIN, "interval": "laplace 90%", "code_version": code_version}
 
 
 def store_session(
@@ -247,8 +273,8 @@ def _store_run(cur: psycopg.Cursor[Any], *, session_id: int, name: str, cfg: Wal
         if m is None:
             continue
         y = outcome_index(m)
-        total = (m.goals_home or 0) + (m.goals_away or 0)
-        both = (m.goals_home or 0) > 0 and (m.goals_away or 0) > 0
+        total = (m.settle_home or 0) + (m.settle_away or 0)
+        both = (m.settle_home or 0) > 0 and (m.settle_away or 0) > 0
         f = fair.get(fid)
         for r in pr.rows:
             preds.append((fid, version_id, r.market_key, r.selection, r.line, round(r.p, 6), round(r.p, 6),
