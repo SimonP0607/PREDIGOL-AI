@@ -8,11 +8,13 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.catalog import CompetitionDetail, CompetitionSummary, TeamDetail, TeamSummary
 from fbi.api.contracts.matches import MatchDetail, MatchSummary
+from fbi.api.contracts.rankings import Rankings
 from fbi.api.contracts.search import SearchHit
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.repositories.fixtures import FixtureFilter
 from fbi.api.services import catalog, matches
+from fbi.api.services import rankings as rankings_service
 from fbi.api.services import search as search_service
 
 router = APIRouter(tags=["football"])
@@ -84,3 +86,13 @@ def get_search(
     limit: Annotated[int, Query(ge=1, le=20)] = 8,
 ) -> Envelope[list[SearchHit]]:
     return search_service.search(conn, q, limit)
+
+
+@router.get("/rankings", response_model=Envelope[Rankings | None])
+def get_rankings(
+    conn: Db,
+    competition_id: Annotated[int | None, Query(ge=1, description="Teams whose LAST rated match was here.")] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> Envelope[Rankings | None]:
+    """Current Elo per team from the stored rating history."""
+    return rankings_service.rankings(conn, competition_id=competition_id, limit=limit)

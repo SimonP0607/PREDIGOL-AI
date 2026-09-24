@@ -389,3 +389,9 @@ def test_an_unexpected_error_is_a_json_500_that_the_browser_can_read(
     assert r.status_code == 500
     assert r.headers.get("access-control-allow-origin") == "http://localhost:5173"
     assert r.json()["error"]["code"] == "internal" and "password" not in r.text
+
+
+def test_rankings_need_an_elo_history_and_say_so(client: TestClient) -> None:
+    body = get(client, "/api/v1/rankings")
+    assert body["status"] == "not_available" and "build_features" in body["reason"]
+    assert client.get("/api/v1/rankings?limit=0").status_code == 422
