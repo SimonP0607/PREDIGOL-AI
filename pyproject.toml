@@ -64,7 +64,7 @@ python_version = "3.12"
 strict = true
 # `mypy` with no argument checks exactly these packages, in strict mode. That is
 # the gate: the code that computes probabilities, prices and decisions.
-files = ["src/fbi/domain", "src/fbi/odds", "src/fbi/core", "src/fbi/catalog", "src/fbi/ingestion", "src/fbi/providers", "src/fbi/quality", "src/fbi/ops", "src/fbi/api"]
+files = ["src/fbi/domain", "src/fbi/odds", "src/fbi/core", "src/fbi/catalog", "src/fbi/ingestion", "src/fbi/providers", "src/fbi/quality", "src/fbi/ops", "src/fbi/api", "src/fbi/features"]
 
 # `mypy .` additionally walks tests, scripts, apps and migrations. Those are
 # still type-checked - a genuine type error there is still reported - but they

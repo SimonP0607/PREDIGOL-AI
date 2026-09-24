@@ -58,6 +58,8 @@ FIXTURES_SYNC_HOURS = int(os.environ.get("FBI_FIXTURES_SYNC_HOURS", "12"))
 FIXTURES_HORIZON_DAYS = int(os.environ.get("FBI_FIXTURES_HORIZON_DAYS", "1"))
 RESULTS_SYNC_HOURS = int(os.environ.get("FBI_RESULTS_SYNC_HOURS", "6"))
 RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
+BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "6"))
+BACKFILL_MAX_PER_RUN = int(os.environ.get("FBI_BACKFILL_MAX_PER_RUN", "6"))
 
 
 async def _tick() -> TickOutcome:
@@ -156,6 +158,34 @@ async def _results_sync() -> None:
             await provider.aclose()
 
 
+async def _historical_backfill() -> None:
+    """Carry on with pending history - only what live capture can spare.
+
+    The backfill computes its own reserve for the next 24 h of odds windows
+    and standing syncs, and defers entirely when the day's remaining budget is
+    inside it. Tasks are seeded deliberately with ``scripts.backfill seed``;
+    the worker never widens the scope on its own.
+    """
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.backfill import run_backfill
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            report = await run_backfill(
+                conn, provider, max_requests=BACKFILL_MAX_PER_RUN,
+                daily_budget=settings.provider_plan.effective_budget,
+                prematch_windows=settings.odds.prematch_windows,
+            )
+        finally:
+            await provider.aclose()
+    log.info("backfill.tick", done=report.done, refused=report.refused, failed=report.failed,
+             allowance=report.allowance, reserve=report.reserve, deferred=report.deferred_reason)
+
+
 _scheduler: AsyncIOScheduler | None = None
 
 
@@ -236,6 +266,7 @@ async def main() -> None:
     with _connect() as conn:
         fixtures_next = next_run_after(last_success(conn, "fixtures_sync"), timedelta(hours=FIXTURES_SYNC_HOURS), moment)
         results_next = next_run_after(last_success(conn, "results_sync"), timedelta(hours=RESULTS_SYNC_HOURS), moment)
+        backfill_next = next_run_after(last_success(conn, "historical_backfill"), timedelta(hours=BACKFILL_HOURS), moment)
 
     # A tick that could not start on time is still worth running late: the
     # capture tolerance band is wider than any grace time given here.
@@ -246,6 +277,10 @@ async def main() -> None:
                       max_instances=1, coalesce=True, misfire_grace_time=3600, next_run_time=fixtures_next)
     scheduler.add_job(_results_sync, "interval", hours=RESULTS_SYNC_HOURS, id="results_sync",
                       max_instances=1, coalesce=True, misfire_grace_time=3600, next_run_time=results_next)
+    # History waits a few minutes after start so the catch-up syncs go first.
+    scheduler.add_job(_historical_backfill, "interval", hours=BACKFILL_HOURS, id="historical_backfill",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600,
+                      next_run_time=max(backfill_next, moment + timedelta(minutes=5)))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     scheduler.start()
