@@ -98,3 +98,17 @@ def test_a_stored_payload_round_trips(store: PayloadStore) -> None:
     assert envelope["http_status"] == 200
     assert envelope["payload_hash"] == stored.hash
     assert envelope["captured_at"] == FETCHED.isoformat()
+
+
+def test_credentials_inside_strings_are_redacted_and_httpx_is_quiet() -> None:
+    import logging
+
+    from fbi.core.logging import configure, redact_text
+
+    assert redact_text("POST https://api.telegram.org/bot123456:AAE-x_y/sendMessage") == \
+        "POST https://api.telegram.org/bot[REDACTED]/sendMessage"
+    assert "sk-ant-" not in redact_text("key sk-ant-api03-abcdefghijkl failed")
+    assert redact_text("postgresql+psycopg://fbi:hunter2@localhost:5433/fbi") == \
+        "postgresql+psycopg://fbi:[REDACTED]@localhost:5433/fbi"
+    configure("INFO")
+    assert logging.getLogger("httpx").level == logging.WARNING

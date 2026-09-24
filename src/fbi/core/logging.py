@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 import uuid
 from collections.abc import MutableMapping
@@ -14,6 +15,14 @@ import structlog
 _run_id: ContextVar[str] = ContextVar("run_id", default="-")
 
 _SECRET_KEYS = {"key", "token", "password", "secret", "apikey", "api_key", "authorization"}
+# Credentials that travel inside strings: a Telegram bot token is part of the
+# URL path, an LLM key has a recognisable prefix, a connection string can
+# carry a password.
+_SECRET_PATTERNS = (
+    (re.compile(r"/bot\d+:[A-Za-z0-9_-]+"), "/bot[REDACTED]"),
+    (re.compile(r"\bsk-[A-Za-z0-9_-]{8,}"), "[REDACTED]"),
+    (re.compile(r"(postgres(?:ql)?(?:\+psycopg)?://[^:/@\s]+):[^@\s]+@"), r"\1:[REDACTED]@"),
+)
 
 
 def new_run_id() -> str:
@@ -46,11 +55,23 @@ def _redact(
     for k in list(event_dict):
         if any(s in k.lower() for s in _SECRET_KEYS):
             event_dict[k] = "[REDACTED]"
+        elif isinstance(event_dict[k], str):
+            event_dict[k] = redact_text(event_dict[k])
     return event_dict
+
+
+def redact_text(text: str) -> str:
+    for pattern, replacement in _SECRET_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
 
 
 def configure(level: str = "INFO") -> None:
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level)
+    # httpx logs every request URL at INFO. A Telegram bot token is in the URL
+    # path, so those lines never reach the log: warnings and errors only.
+    for noisy in ("httpx", "httpcore"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
