@@ -2,7 +2,7 @@
 # at purchase time: check the dashboard the day you buy (prices, limits and the
 # Free plan's season window are the provider's to change).
 #
-# Sources, read 2026-09-25 (docs/research/A5_api_football_inventory.md):
+# Sources, read 2026-09-25 (docs/research/notes/A5_api_football_inventory.md):
 #   https://www.api-football.com/pricing
 #   https://api-sports.io/sports/football
 #   https://www.api-football.com/news/post/how-ratelimit-works (2026-06-12)

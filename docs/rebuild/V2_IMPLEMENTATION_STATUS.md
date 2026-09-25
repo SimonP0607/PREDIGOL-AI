@@ -1,6 +1,7 @@
 # V2 — Implementation status
 
-**Actualizado:** 2026-09-24 22:40 UTC.
+**Actualizado:** 2026-09-25 03:00 UTC (fase pre-upgrade). La matriz de 32 capas está en
+`PRE_UPGRADE_READINESS.md`; este documento sigue siendo el detalle por área.
 
 Dos fuentes, y este documento no las mezcla:
 
@@ -26,12 +27,12 @@ PostgreSQL              ✅ Alembic 0018                  ✅ Alembic 0021
 Odds history (propio)   ⛔ 0 snapshots                   ⛔ 0 snapshots
 Odds history (externo)  ⛔ sin importar                  ✅ 345.964 cuotas · 5.329 partidos
 Feature Engine          ✅ 181.740 features · 12.110 Elo ✅
-Modelos                 ⛔ código no desplegado          ✅ Poisson · Dixon-Coles · Elo+logit
+Modelos                 ⛔ código no desplegado          ✅ 5 familias · registro · model gate
 Market Baseline         ⛔                               ✅ histórico · ⛔ consenso propio (0 capturas)
-Backtest walk-forward   ⛔                               ✅ sesión 1 (código 9a83ac0)
+Backtest walk-forward   ⛔                               ✅ sesiones 1 y 2 (2 reproducida bit a bit)
 Value Engine / Picks    ⛔                               ✅ código + tests · 0 picks (0 capturas)
-FastAPI /api/v1         🟡 versión de 22ff00c            ✅ 25 operaciones
-Frontend                🟡 versión de 1625ee7            ✅ 14 rutas LIVE · 1 placeholder
+FastAPI /api/v1         🟡 versión de 22ff00c            ✅ 32 operaciones (audit + analytics)
+Frontend                🟡 versión de 1625ee7            ✅ 15 rutas LIVE · búsqueda LIVE
 Analista IA             ⛔                               🟡 herramientas ✅ · LLM sin credencial
 Bot (notificador)       ⛔                               🟡 ✅ · Telegram sin credencial
 Arranque local          🟡 lanzadores ad hoc             ✅ dev-up/dev-down · compose verificado
@@ -108,9 +109,30 @@ peor. Apuestas hipotéticas (EV ≥ 5 % al precio Pinnacle closing, 1 unidad): P
 [−17,2 %, +2,6 %] en 1.433 apuestas; Dixon-Coles −7,82 % en 1.366; Elo −8,62 % en 1.339.
 Ningún resultado de apuestas es rentable ni distinguible de cero con confianza.
 
-**Pendiente de honestidad:** la sesión se ejecutó con el código `9a83ac0`, anterior al cambio que
-liquida sobre el marcador a 90 minutos. Hay que repetirla en la máquina con el código actual
-(§12) antes de citar estas cifras como definitivas.
+**Resuelto el pendiente de honestidad** de la sesión 1 (código anterior a la liquidación a 90'):
+la sesión 2 corre con el código actual.
+
+### Sesión 2 (25 sep, código `ac8ec90`, features fv2, 5 familias)
+
+Mismo protocolo, intervalos por **bloques de jornada** (2.000 remuestreos), Diebold–Mariano
+(HAC + HLN), RPS y diferencia mínima detectable; etiqueta de evidencia. Muestra común (todas las
+familias y el mercado): **1.674 partidos**.
+
+| Familia | Log loss (común) | Brier | ECE | Δ log loss vs Pinnacle cierre (Shin) [IC 95 %] | DM p | Veredicto |
+|---|---|---|---|---|---|---|
+| Mercado (Pinnacle cierre, Shin) | 0,95853 | 0,56921 | 0,0093 | — | — | referencia |
+| Logit multinomial (fv2) | 0,98145 | 0,58415 | 0,0187 | +0,0229 [+0,0140, +0,0314] (n=1.674) | < 0,001 | peor (evidencia suficiente) |
+| Poisson | 0,98295 | 0,58596 | 0,0093 | +0,0268 [+0,0175, +0,0360] (n=1.744) | < 0,001 | peor |
+| Dixon-Coles | 0,98329 | 0,58624 | 0,0106 | +0,0270 [+0,0180, +0,0362] (n=1.744) | < 0,001 | peor |
+| Elo V2 + logit ordenado | 0,98791 | 0,58943 | 0,0211 | +0,0294 [+0,0212, +0,0375] (n=1.674) | < 0,001 | peor |
+| Tasas base (sin habilidad) | 1,07772 | 0,65293 | 0,0124 | +0,1192 [+0,1017, +0,1375] (n=1.751) | < 0,001 | peor |
+
+Las cinco familias quedan registradas como experimentos (`analytics.experiments` 1–5) con su
+model gate; `scripts.experiment reproduce 5` re-ejecutó la sesión y **las cinco dieron
+predicciones idénticas** (experimentos 6–10). Gate: ninguna supera `beats_market`; el Elo además
+falla `calibrated`. **Todas en RESEARCH.** Apuestas hipotéticas (EV ≥ 5 %): mnlogit −3,18 %
+[−11,5 %, +4,9 %] en 1.306; Poisson −7,32 %; Dixon-Coles −7,07 %; Elo −7,44 %; tasas base
+−11,07 % [−21,0 %, −0,6 %].
 
 ## 5. Picks
 
@@ -122,7 +144,8 @@ que evaluar. Ninguna versión de modelo puede calificar mientras su backtest sea
 
 ## 6. API de producto
 
-25 operaciones bajo `/api/v1` (24 GET + `POST /analyst/ask`), solo lectura con conexiones
+32 operaciones bajo `/api/v1` (31 GET + `POST /analyst/ask`; nuevas: `/matches/{id}/audit` y
+seis de `/analytics/*`), solo lectura con conexiones
 read-only; cada respuesta es `ok | empty | insufficient_data | not_available` con motivo. Errores
 inesperados salen como JSON 500 con cabeceras CORS. Límite por cliente (240/min por defecto).
 
@@ -158,13 +181,13 @@ rompían con sesiones guardadas sin la rejilla de validación).
 | Gate | Resultado |
 |---|---|
 | `ruff check .` | limpio |
-| `mypy` (estricto, 17 paquetes) · `mypy .` | 124 ficheros sin errores · 214 sin errores |
-| `pytest` | 490 passed |
+| `mypy` (estricto, 19 paquetes) · `mypy .` | 153 ficheros sin errores · 257 sin errores |
+| `pytest` | 548 passed |
 | Migraciones | roundtrip completo limpio |
 | `pip-audit` | sin vulnerabilidades conocidas |
-| Frontend `lint` · `typecheck` · `build` | 0 errores (11 avisos react-refresh conocidos) · limpio · OK |
+| Frontend `lint` · `typecheck` · `build` | 0 errores (13 avisos react-refresh) · limpio · OK |
 | `bun audit` | sin vulnerabilidades (tras fijar nanoid, js-yaml y brace-expansion) |
-| Playwright | 81/81 contra la réplica · 81/81 contra la base sintética de UI |
+| Playwright | 84 flujos y vistas contra la réplica (Audit, Analytics y búsqueda nuevos) |
 
 ## 10. Seguridad
 
@@ -190,7 +213,10 @@ credencial que estuviera en el sistema legacy.
 2. `pg_dump` a `~/backups`.
 3. Traer los commits (bundle) y fast-forward: backend `22ff00c → HEAD`, frontend `1625ee7 → HEAD`.
 4. `pip install -e ".[dev,analytics]"` (numpy, scipy) y `bun install`.
-5. `scripts/dev-down`, `scripts/dev-up --migrate` (hace el backup y migra 0018 → 0021).
-6. `python -m scripts.import_historical_odds --apply` y `python -m scripts.run_backtest --apply`
-   con el árbol limpio.
+5. `python -m scripts.backup create --label pre-0024 --restore-test` (6/6 PASS), después
+   `scripts/dev-down`, `scripts/dev-up --migrate` (migra 0018 → 0024).
+6. `python -m scripts.import_historical_odds --from-raw --apply` (o descarga), `scripts.build_features
+   --apply` (fv2), `python -m scripts.run_backtest --apply` con el árbol limpio y
+   `scripts.experiment reproduce`.
+6b. `python -m scripts.probe_plan --yes` (2 peticiones: `ids=` y cobertura) antes de comprar.
 7. Push del frontend a GitHub (`main`, sincroniza con Lovable) y verificación en el navegador.
