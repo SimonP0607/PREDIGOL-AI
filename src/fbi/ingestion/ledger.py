@@ -8,12 +8,14 @@ error, and how long it took.
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
 import psycopg
 import structlog
+from psycopg.pq import TransactionStatus
 from psycopg.types.json import Json
 
 from fbi.core.clock import now
@@ -117,6 +119,19 @@ class RunLedger:
         return len(raws)
 
     def close(self, run_id: int, counters: RunCounters, *, notes: str | None = None) -> None:
+        """Write the outcome. Called while an exception is propagating - the usual
+        ``finally:`` close - the run records that exception, so a crash is never
+        'completed' (on 25 Sep 2026 a Football-Data import whose download was reset
+        closed as 'completed' with nothing done). An interrupt (KeyboardInterrupt,
+        SystemExit, cancellation) is 'aborted'. An error the caller already recorded
+        is not recorded twice. A transaction the failure left aborted is rolled back
+        first, so the ledger row is still written instead of a second error hiding
+        the first."""
+        in_flight = sys.exc_info()[1]
+        if in_flight is not None:
+            _record_in_flight(counters, in_flight)
+        if self._conn.info.transaction_status == TransactionStatus.INERROR:
+            self._conn.rollback()
         with self._conn.cursor() as cur:
             cur.execute(
                 "UPDATE raw.ingestion_runs SET finished_at = %s, status = %s, api_calls = %s, "
@@ -135,3 +150,13 @@ class RunLedger:
             payloads=counters.payloads_stored, normalized=counters.rows_normalized,
             inserted=counters.rows_inserted, updated=counters.rows_updated, errors=len(counters.errors),
         )
+
+
+def _record_in_flight(counters: RunCounters, exc: BaseException) -> None:
+    """Fold an exception that is escaping the run into its counters."""
+    if not isinstance(exc, Exception):
+        counters.stopped_early = counters.stopped_early or f"interrupted ({type(exc).__name__})"
+        return
+    key = str(exc)[:200] or type(exc).__name__
+    if not any(key in e for e in counters.errors):
+        counters.errors.append(f"{type(exc).__name__}: {exc}"[:500])

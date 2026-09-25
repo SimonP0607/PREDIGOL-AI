@@ -127,6 +127,95 @@ def test_each_state_round_trips_through_the_database(clean: psycopg.Connection) 
         cur.execute("DELETE FROM raw.ingestion_runs WHERE job_type = 'odds_capture'")
 
 
+@pytest.fixture()
+def runs(clean: psycopg.Connection) -> Iterator[list[int]]:
+    """Ids of the runs a test opens; open() commits, so they are deleted afterwards."""
+    ids: list[int] = []
+    yield ids
+    clean.rollback()
+    clean.execute("DELETE FROM raw.ingestion_runs WHERE id = ANY(%s)", (ids,))
+    clean.commit()
+
+
+def _closed(conn: psycopg.Connection, run_id: int) -> tuple[str, int, str | None]:
+    with conn.cursor() as cur:
+        cur.execute("SELECT status, errors, last_error FROM raw.ingestion_runs WHERE id = %s", (run_id,))
+        status, errors, last_error = row(cur)
+    return str(status), int(errors), last_error
+
+
+def test_a_run_that_crashes_is_failed_not_completed(clean: psycopg.Connection, runs: list[int]) -> None:
+    """25 Sep 2026: a Football-Data import whose download was reset closed as
+    'completed' with nothing done - the exception left through a finally."""
+    ledger = RunLedger(clean)
+    run_id = ledger.open("historical_odds_import")
+    runs.append(run_id)
+    counters = RunCounters()
+    with pytest.raises(ConnectionResetError):
+        try:
+            raise ConnectionResetError("[Errno 104] Connection reset by peer")
+        finally:
+            ledger.close(run_id, counters)
+    status, errors, last_error = _closed(clean, run_id)
+    assert (status, errors) == ("failed", 1)
+    assert last_error is not None and "Connection reset by peer" in last_error
+
+
+def test_an_error_the_caller_recorded_is_not_recorded_twice(clean: psycopg.Connection, runs: list[int]) -> None:
+    ledger = RunLedger(clean)
+    run_id = ledger.open("backtest")
+    runs.append(run_id)
+    counters = RunCounters()
+    with pytest.raises(ValueError):
+        try:
+            raise ValueError("no fixtures")
+        except ValueError as exc:
+            counters.errors.append(f"{type(exc).__name__}: {exc}")
+            ledger.close(run_id, counters)
+            raise
+    assert _closed(clean, run_id)[:2] == ("failed", 1)
+
+
+def test_an_interrupt_is_aborted(clean: psycopg.Connection, runs: list[int]) -> None:
+    ledger = RunLedger(clean)
+    run_id = ledger.open("odds_capture")
+    runs.append(run_id)
+    counters = RunCounters(api_calls=1, rows_inserted=1)
+    with pytest.raises(KeyboardInterrupt):
+        try:
+            raise KeyboardInterrupt
+        finally:
+            ledger.close(run_id, counters)
+    status, _, last_error = _closed(clean, run_id)
+    assert status == "aborted" and last_error == "interrupted (KeyboardInterrupt)"
+
+
+def test_a_failed_transaction_does_not_hide_the_run(clean: psycopg.Connection, runs: list[int]) -> None:
+    """A database error leaves the transaction aborted; the close must still land."""
+    ledger = RunLedger(clean)
+    run_id = ledger.open("feature_build")
+    runs.append(run_id)
+    counters = RunCounters()
+    with pytest.raises(psycopg.errors.DivisionByZero):
+        try:
+            clean.execute("SELECT 1 / 0")
+        finally:
+            ledger.close(run_id, counters)
+    status, errors, last_error = _closed(clean, run_id)
+    assert (status, errors) == ("failed", 1) and last_error is not None and "division by zero" in last_error
+
+
+def test_a_clean_close_is_untouched(clean: psycopg.Connection, runs: list[int]) -> None:
+    ledger = RunLedger(clean)
+    run_id = ledger.open("results_sync")
+    runs.append(run_id)
+    try:
+        pass
+    finally:
+        ledger.close(run_id, RunCounters(api_calls=2, rows_updated=1))
+    assert _closed(clean, run_id) == ("completed", 0, None)
+
+
 def test_the_database_refuses_a_status_it_does_not_know(clean: psycopg.Connection) -> None:
     """The CHECK constraint and RunCounters.status have to agree. If someone
     invents a fifth state in Python, this is what catches it."""
