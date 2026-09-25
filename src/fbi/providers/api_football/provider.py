@@ -9,6 +9,16 @@ import structlog
 
 from fbi.core.clock import now
 from fbi.providers.api_football.client import ApiFootballClient
+from fbi.providers.api_football.details import (
+    AbsenceRef,
+    CoverageRef,
+    FixtureDetail,
+    StandingRef,
+    iter_coverage,
+    iter_fixture_details,
+    iter_injuries,
+    iter_standings,
+)
 from fbi.providers.api_football.normalize import (
     iter_fixture_results,
     iter_fixtures,
@@ -23,6 +33,8 @@ log = structlog.get_logger(__name__)
 # fixture always fits on one page. We query per fixture, so pagination is a
 # safety net rather than the normal path.
 MAX_PAGES = 10
+MAX_IDS = 20
+"""/fixtures?ids= and /injuries?ids= accept at most 20 ids (documented)."""
 
 
 class ApiFootballProvider:
@@ -140,6 +152,38 @@ class ApiFootballProvider:
             )
         )
         return quotes, _raw(response)
+
+
+    # -- historical migration ------------------------------------------------
+
+    async def fetch_coverage(self, *, league_id: int | None = None) -> tuple[list[CoverageRef], RawResponse]:
+        """/leagues: every league (or one) with every season and its coverage flags. One request."""
+        response = await self._client.get("/leagues", {"id": league_id} if league_id is not None else {})
+        return list(iter_coverage(response.body)), _raw(response)
+
+    async def fetch_fixture_details(self, *, provider_fixture_ids: list[int]) -> tuple[list[FixtureDetail], RawResponse]:
+        """Events, lineups, statistics and player statistics for up to 20 fixtures, one request."""
+        ids = sorted(set(provider_fixture_ids))
+        if not 1 <= len(ids) <= MAX_IDS:
+            raise ValueError(f"/fixtures?ids= takes 1 to {MAX_IDS} ids, got {len(ids)}")
+        response = await self._client.get("/fixtures", {"ids": "-".join(str(i) for i in ids)})
+        return list(iter_fixture_details(response.body)), _raw(response)
+
+    async def fetch_standings(self, *, league_id: int, season: int) -> tuple[list[StandingRef], RawResponse]:
+        response = await self._client.get("/standings", {"league": league_id, "season": season})
+        return list(iter_standings(response.body)), _raw(response)
+
+    async def fetch_injuries(self, *, league_id: int, season: int) -> tuple[list[AbsenceRef], RawResponse]:
+        response = await self._client.get("/injuries", {"league": league_id, "season": season})
+        return list(iter_injuries(response.body)), _raw(response)
+
+    async def fetch_teams(self, *, league_id: int, season: int) -> RawResponse:
+        """Stored raw: team and venue identity per season (normalised later if a page needs it)."""
+        return _raw(await self._client.get("/teams", {"league": league_id, "season": season}))
+
+    async def fetch_players_page(self, *, league_id: int, season: int, page: int) -> RawResponse:
+        """One page (20 players) of season player statistics. Stored raw."""
+        return _raw(await self._client.get("/players", {"league": league_id, "season": season, "page": page}))
 
 
 def _raw(response: Any) -> RawResponse:
