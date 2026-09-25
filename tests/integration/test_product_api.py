@@ -204,6 +204,30 @@ def test_the_audit_trail_names_every_link_and_every_gap(client: TestClient, data
     assert body["status"] == "error" and body["error"]["code"] == "not_found"
 
 
+def test_analytics_counts_what_is_stored_and_flags_small_samples(
+        client: TestClient, dataset: dict[str, int], seed: Seed) -> None:
+    rows = get(client, "/api/v1/analytics/competitions")["data"]
+    mine = next(r for r in rows if r["competition_id"] == seed.competition_id and r["season"] == 2025)
+    assert mine["finished"] == 2 and mine["low_sample"] is True, "two results are shown with their n, flagged"
+    assert (mine["home_win"], mine["draw"], mine["away_win"]) == (0.5, 0.5, 0.0)
+    assert mine["goals_per_match"] == 1.5 and mine["with_odds_snapshots"] == 1
+    cov = next(r for r in get(client, "/api/v1/analytics/coverage")["data"]
+               if r["competition_id"] == seed.competition_id and r["season"] == 2025)
+    assert cov["with_result"] == 2 and cov["with_features"] == 0 and cov["with_team_stats"] == 0
+    team = get(client, f"/api/v1/analytics/teams/{seed.home_team_id}")["data"]
+    assert team["splits"]["home"]["played"] == 2 and team["splits"]["home"]["won"] == 1
+    assert team["splits"]["away"] == {"played": 0, "won": 0, "drawn": 0, "lost": 0, "goals_for": 0,
+                                      "goals_against": 0, "points_per_match": None}
+    assert team["elo"] == [] and team["process"] == [] and team["features"] is None
+    market = get(client, "/api/v1/analytics/market")
+    assert market["status"] == "not_available" and "historical market baseline" in market["reason"]
+    exps = get(client, "/api/v1/analytics/experiments")
+    assert exps["status"] == "empty" and "run_backtest --apply" in exps["reason"]
+    mig = get(client, "/api/v1/analytics/migration")
+    assert mig["status"] in ("ok", "not_available") and "units" in mig["data"]
+    assert get(client, "/api/v1/analytics/teams/999999999", status=404)["error"]["code"] == "not_found"
+
+
 def test_a_row_without_lineage_says_it_was_not_recorded(client: TestClient, dataset: dict[str, int]) -> None:
     d = get(client, f"/api/v1/matches/{dataset['f5']}")["data"]
     assert d["lineage"]["recorded"] is False
