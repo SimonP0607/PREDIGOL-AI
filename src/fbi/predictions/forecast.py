@@ -41,7 +41,7 @@ from fbi.backtesting.walkforward import (
     outcome_index,
     train_hash,
 )
-from fbi.features.data import MatchRecord
+from fbi.features.data import MatchRecord, load_team_stats
 from fbi.features.elo import EloParams
 from fbi.features.engine import FEATURE_VERSION, walk_forward
 from fbi.features.store import ensure_registry, write_feature_sets
@@ -191,7 +191,7 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
                 report.predicted[kind] += 1
 
     # --- Elo ordered logit ---------------------------------------------------
-    vectors, _ = walk_forward(data.matches, [(t, at) for t in targets], EloParams())
+    vectors, _ = walk_forward(data.matches, [(t, at) for t in targets], EloParams(), load_team_stats(conn))
     ensure_registry(conn)
     write_feature_sets(conn, vectors, version=FEATURE_VERSION, code_version=code_version, run_id=None,
                        lineage={"purpose": "real-time forecast", "cutoff": at.isoformat()})

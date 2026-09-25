@@ -24,7 +24,7 @@ from fbi.core.clock import now
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
-from fbi.features.data import load_matches
+from fbi.features.data import load_matches, load_team_stats
 from fbi.features.elo import EloParams
 from fbi.features.engine import (
     FEATURE_NAMES,
@@ -61,7 +61,8 @@ def main() -> int:
                 targets.append((m, m.kickoff_at - offset))
             elif m.status_group == "scheduled":
                 targets.append((m, min(moment, m.kickoff_at - offset)))
-        vectors, elo = walk_forward(history, targets, params)
+        stats = load_team_stats(conn)
+        vectors, elo = walk_forward(history, targets, params, stats)
 
         # A scheduled fixture recomputed with no new information is not a new vector.
         with conn.cursor(row_factory=tuple_row) as cur:
@@ -74,7 +75,8 @@ def main() -> int:
         fresh = [v for v in vectors if latest.get(v.fixture_id) != v.input_hash]
 
         nulls = Counter(name for v in vectors for name, value in v.values.items() if value is None)
-        print(f"history: {len(history)} fixtures, {sum(1 for m in history if m.has_result)} with results")
+        print(f"history: {len(history)} fixtures, {sum(1 for m in history if m.has_result)} with results, "
+              f"{len(stats)} with shot statistics")
         print(f"targets: {len(targets)} -> vectors: {len(vectors)}, new information: {len(fresh)}")
         print(f"elo history rows: {len(elo)} ({params.version})")
         if vectors:

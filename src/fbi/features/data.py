@@ -64,3 +64,37 @@ def load_matches(conn: psycopg.Connection, *, competition_ids: list[int] | None 
                         None if rh is None else int(rh), None if ra is None else int(ra))
             for a, b, c, d, e, f, g, h, i, j, k, rh, ra in cur.fetchall()
         ]
+
+
+@dataclass(frozen=True, slots=True)
+class TeamStatsPair:
+    """Shots and shots on target of both sides of one fixture, from one source."""
+
+    home_shots: int | None
+    away_shots: int | None
+    home_sot: int | None
+    away_sot: int | None
+    source: str
+
+
+STATS_PRECEDENCE = ("api-football", "football-data.co.uk")
+"""When both sources report a fixture, the provider we also take lineups and
+events from wins. How far the two disagree is not known yet: it is measured
+once both exist for the same fixtures (data quality), not assumed."""
+
+
+def load_team_stats(conn: psycopg.Connection) -> dict[int, TeamStatsPair]:
+    """fixture id -> shots of both sides, from the preferred source that has both sides."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute("SELECT fixture_id, source, team_side, shots, shots_on_target FROM core.fixture_team_stats")
+        rows: dict[tuple[int, str], dict[str, tuple[int | None, int | None]]] = {}
+        for fid, source, side, shots, sot in cur.fetchall():
+            rows.setdefault((int(fid), str(source)), {})[str(side)] = (shots, sot)
+    out: dict[int, TeamStatsPair] = {}
+    for source in reversed(STATS_PRECEDENCE):
+        for (fid, src), sides in rows.items():
+            if src != source or "home" not in sides or "away" not in sides:
+                continue
+            (hs, hst), (as_, ast) = sides["home"], sides["away"]
+            out[fid] = TeamStatsPair(hs, as_, hst, ast, src)
+    return out

@@ -20,22 +20,38 @@ None, and ``*_history_n`` says how much history there was. Zero would be a
 claim ("scored nothing") the data never made.
 
 WHAT A VECTOR RECORDS. The number of results consumed, the kick-off of the
-newest one, and a running sha256 over every consumed (fixture, score) pair in
-consumption order: the same information set always yields the same hash.
+newest one, and a running sha256 over every consumed (fixture, score and, when
+present, shots) record in consumption order: the same information set always
+yields the same hash.
+
+VERSION 2 (fv2.0.0) adds what the research review (docs/research) ranked as
+supported by our data and most likely to help: pi-ratings (Constantinou &
+Fenton 2013), shot and shot-on-target shares from team match statistics (a
+process signal less noisy than goals; Wheatcroft 2020, 2021), form measured
+against the Elo expectation (opponent-adjusted by construction), the league's
+current home advantage in goals, and the league's mean Elo (cross-league
+strength, informed by European cup matches). Match statistics are available
+with the result - three hours after kick-off - and never earlier. That is the
+live provider's timing (API-Football publishes final statistics shortly after
+full time); the Football-Data files that stand in for it historically were
+published a few days later, which does not matter for what a fixture could
+have known in live operation, only for when we could have downloaded it.
 """
 
 from __future__ import annotations
 
 import hashlib
 from collections import defaultdict, deque
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from fbi.features.data import MatchRecord
+from fbi.features.data import MatchRecord, TeamStatsPair
 from fbi.features.elo import EloBook, EloParams, expected_score
+from fbi.features.pi import PiBook, PiParams
 
-FEATURE_VERSION = "fv1.0.0"
+FEATURE_VERSION = "fv2.0.0"
+SHOTS_N = 10
 RESULT_AVAILABLE_AFTER = timedelta(hours=3)
 FORM_N = 5
 STRENGTH_N = 10
@@ -86,6 +102,19 @@ FEATURES: tuple[FeatureSpec, ...] = (
     FeatureSpec("away_season_matches", "context", "Away team matches already played in this competition-season."),
     FeatureSpec("home_history_n", "sufficiency", "Home team matches available in the dataset (capped at 60)."),
     FeatureSpec("away_history_n", "sufficiency", "Away team matches available in the dataset (capped at 60)."),
+    FeatureSpec("pi_home", "rating", "Home team's pi-rating at home (Constantinou & Fenton 2013, pi-v1.0)."),
+    FeatureSpec("pi_away", "rating", "Away team's pi-rating away."),
+    FeatureSpec("pi_expected_gd", "rating", "Goal difference the pi-ratings expect, home minus away."),
+    FeatureSpec("home_shot_share10", "process", "Home team shots / (shots + shots conceded), last 10 matches with statistics.", "last 10 with stats"),
+    FeatureSpec("away_shot_share10", "process", "Away team shot share, as home_shot_share10.", "last 10 with stats"),
+    FeatureSpec("home_sot_share10", "process", "Home team shots on target / (on target for + against), last 10 with statistics.", "last 10 with stats"),
+    FeatureSpec("away_sot_share10", "process", "Away team shot-on-target share.", "last 10 with stats"),
+    FeatureSpec("home_stats_n10", "sufficiency", "How many of the home team's last 10 matches had shot statistics."),
+    FeatureSpec("away_stats_n10", "sufficiency", "How many of the away team's last 10 matches had shot statistics."),
+    FeatureSpec("home_elo_resid10", "form", "Home team mean (actual - Elo-expected score), last 10: form beyond rating.", "last 10"),
+    FeatureSpec("away_elo_resid10", "form", "Away team mean (actual - Elo-expected score), last 10.", "last 10"),
+    FeatureSpec("league_home_gd_avg", "context", "Mean home-minus-away goals in this competition, last 200 matches.", "last 200"),
+    FeatureSpec("league_elo_mean", "context", "Mean pre-match Elo of the teams in this competition's last 200 matches.", "last 200"),
 )
 FEATURE_NAMES = tuple(f.name for f in FEATURES)
 
@@ -99,6 +128,15 @@ class TeamMatch:
     opponent_elo_before: float
     competition_id: int
     season: int
+    elo_expected: float = 0.5
+    shots_for: int | None = None
+    shots_against: int | None = None
+    sot_for: int | None = None
+    sot_against: int | None = None
+
+    @property
+    def actual(self) -> float:
+        return 1.0 if self.goals_for > self.goals_against else 0.5 if self.goals_for == self.goals_against else 0.0
 
     @property
     def points(self) -> int:
@@ -140,28 +178,37 @@ def _ratio(a: float | None, b: float | None) -> float | None:
 class WalkForward:
     """State as of a moment: ratings, recent matches per team and competition."""
 
-    def __init__(self, params: EloParams) -> None:
+    def __init__(self, params: EloParams, pi: PiParams | None = None) -> None:
         self.book = EloBook(params)
+        self.pi = PiBook(pi or PiParams())
         self.teams: dict[int, deque[TeamMatch]] = defaultdict(lambda: deque(maxlen=TEAM_MEMORY))
-        self.league: dict[int, deque[tuple[int, int]]] = defaultdict(lambda: deque(maxlen=LEAGUE_N))
+        self.league: dict[int, deque[tuple[int, int, float, float]]] = defaultdict(lambda: deque(maxlen=LEAGUE_N))
         self.n_inputs = 0
         self.newest_input_at: datetime | None = None
         self._digest = hashlib.sha256()
         self.elo_history: list[EloRecord] = []
 
-    def ingest(self, m: MatchRecord) -> None:
+    def ingest(self, m: MatchRecord, stats: TeamStatsPair | None = None) -> None:
         assert m.goals_home is not None and m.goals_away is not None
         gh, ga = m.goals_home, m.goals_away
         up = self.book.update(m.home_team_id, m.away_team_id, gh, ga, neutral=m.is_neutral)
+        self.pi.update(m.home_team_id, m.away_team_id, gh, ga)
+        hs, as_, hst, ast = (stats.home_shots, stats.away_shots, stats.home_sot, stats.away_sot) if stats \
+            else (None, None, None, None)
         self.teams[m.home_team_id].append(
-            TeamMatch(m.kickoff_at, True, gh, ga, up.away_before, m.competition_id, m.season))
+            TeamMatch(m.kickoff_at, True, gh, ga, up.away_before, m.competition_id, m.season,
+                      up.expected_home, hs, as_, hst, ast))
         self.teams[m.away_team_id].append(
-            TeamMatch(m.kickoff_at, False, ga, gh, up.home_before, m.competition_id, m.season))
-        self.league[m.competition_id].append((gh, ga))
+            TeamMatch(m.kickoff_at, False, ga, gh, up.home_before, m.competition_id, m.season,
+                      1.0 - up.expected_home, as_, hs, ast, hst))
+        self.league[m.competition_id].append((gh, ga, up.home_before, up.away_before))
         self.n_inputs += 1
         if self.newest_input_at is None or m.kickoff_at > self.newest_input_at:
             self.newest_input_at = m.kickoff_at
-        self._digest.update(f"{m.fixture_id}:{gh}-{ga};".encode())
+        self._digest.update(f"{m.fixture_id}:{gh}-{ga}".encode())
+        if stats is not None:
+            self._digest.update(f"|s{hs},{as_},{hst},{ast}".encode())
+        self._digest.update(b";")
         self.elo_history.append(EloRecord(m.home_team_id, m.fixture_id, m.kickoff_at, up.home_before,
                                           up.home_after, up.expected_home, up.actual_home, up.k, up.multiplier))
         self.elo_history.append(EloRecord(m.away_team_id, m.fixture_id, m.kickoff_at, up.away_before,
@@ -176,7 +223,7 @@ class WalkForward:
         hh5 = [x for x in home if x.at_home][-FORM_N:]
         aa5 = [x for x in away if not x.at_home][-FORM_N:]
         league = self.league[t.competition_id]
-        per_team = (sum(gh + ga for gh, ga in league) / (2 * len(league))) if league else None
+        per_team = (sum(g[0] + g[1] for g in league) / (2 * len(league))) if league else None
         eh, ea = self.book.rating(t.home_team_id), self.book.rating(t.away_team_id)
         advantage = 0.0 if t.is_neutral else self.book.params.home_advantage
 
@@ -186,6 +233,19 @@ class WalkForward:
         def season_n(ms: list[TeamMatch]) -> float:
             return float(sum(1 for x in ms if x.competition_id == t.competition_id and x.season == t.season))
 
+        def share(ms: list[TeamMatch], sot: bool) -> tuple[float | None, float]:
+            rows = [x for x in ms if (x.sot_for if sot else x.shots_for) is not None
+                    and (x.sot_against if sot else x.shots_against) is not None][-SHOTS_N:]
+            f = sum(int((x.sot_for if sot else x.shots_for) or 0) for x in rows)
+            a = sum(int((x.sot_against if sot else x.shots_against) or 0) for x in rows)
+            return (f / (f + a) if rows and f + a > 0 else None), float(len(rows))
+
+        h_shot, h_n = share(home, False)
+        a_shot, a_n = share(away, False)
+        h_sot, _ = share(home, True)
+        a_sot, _ = share(away, True)
+        pi_h, _ = self.pi.ratings(t.home_team_id)
+        _, pi_a = self.pi.ratings(t.away_team_id)
         values: dict[str, float | None] = {
             "elo_home": eh,
             "elo_away": ea,
@@ -209,14 +269,27 @@ class WalkForward:
             "away_rest_days": rest(away),
             "home_sos5": _mean([x.opponent_elo_before for x in h5]),
             "away_sos5": _mean([x.opponent_elo_before for x in a5]),
-            "league_goals_avg": (sum(gh + ga for gh, ga in league) / len(league)) if league else None,
-            "league_home_win_rate": (sum(1 for gh, ga in league if gh > ga) / len(league)) if league else None,
+            "league_goals_avg": (sum(g[0] + g[1] for g in league) / len(league)) if league else None,
+            "league_home_win_rate": (sum(1 for g in league if g[0] > g[1]) / len(league)) if league else None,
             "is_neutral": 1.0 if t.is_neutral else 0.0,
             "is_cup": 0.0 if t.competition_type == "domestic_league" else 1.0,
             "home_season_matches": season_n(home),
             "away_season_matches": season_n(away),
             "home_history_n": float(len(home)),
             "away_history_n": float(len(away)),
+            "pi_home": pi_h,
+            "pi_away": pi_a,
+            "pi_expected_gd": self.pi.predicted_gd(t.home_team_id, t.away_team_id),
+            "home_shot_share10": h_shot,
+            "away_shot_share10": a_shot,
+            "home_sot_share10": h_sot,
+            "away_sot_share10": a_sot,
+            "home_stats_n10": h_n,
+            "away_stats_n10": a_n,
+            "home_elo_resid10": _mean([x.actual - x.elo_expected for x in h10]),
+            "away_elo_resid10": _mean([x.actual - x.elo_expected for x in a10]),
+            "league_home_gd_avg": (sum(g[0] - g[1] for g in league) / len(league)) if league else None,
+            "league_elo_mean": (sum((g[2] + g[3]) / 2 for g in league) / len(league)) if league else None,
         }
         assert set(values) == set(FEATURE_NAMES)
         return FeatureVector(
@@ -230,6 +303,7 @@ def walk_forward(
     history: Sequence[MatchRecord],
     targets: Sequence[tuple[MatchRecord, datetime]],
     params: EloParams | None = None,
+    stats: Mapping[int, TeamStatsPair] | None = None,
 ) -> tuple[list[FeatureVector], list[EloRecord]]:
     """Feature vectors for ``targets`` (fixture, cut-off), and the Elo history.
 
@@ -251,7 +325,7 @@ def walk_forward(
     vectors: list[FeatureVector] = []
     for at, kind, _ko, _fid, m in events:
         if kind == 1:
-            state.ingest(m)
+            state.ingest(m, stats.get(m.fixture_id) if stats else None)
         else:
             v = state.features(m, at)
             if v.newest_input_at is not None and v.newest_input_at >= v.data_cutoff:
