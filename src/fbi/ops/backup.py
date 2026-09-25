@@ -19,6 +19,12 @@ backup called good. The scratch database and directory are removed unless
 Credentials: the password reaches pg_dump/pg_restore through the environment
 of the child process only; it is never on a command line, in a log or in the
 manifest.
+
+Where the host has no PostgreSQL client tools (the WSL machine: Postgres runs in
+Docker Desktop and apt needs a password), set ``FBI_PG_CONTAINER=fbi-postgres``:
+pg_dump and pg_restore then run inside that container through ``docker`` (or
+``docker.exe`` from WSL), connecting over its local socket - no password is
+passed at all - and the dump streams through stdout/stdin.
 """
 
 from __future__ import annotations
@@ -59,6 +65,9 @@ def sha256_file(path: Path) -> str:
     return d.hexdigest()
 
 
+PG_CONTAINER_ENV = "FBI_PG_CONTAINER"
+
+
 def _libpq(url: str) -> tuple[list[str], dict[str, str]]:
     """Connection arguments for the pg_* tools and the environment carrying the password."""
     info = conninfo_to_dict(url)
@@ -70,6 +79,25 @@ def _libpq(url: str) -> tuple[list[str], dict[str, str]]:
     if info.get("password"):
         env["PGPASSWORD"] = str(info["password"])
     return args, env
+
+
+def pg_command(tool: str, url: str) -> tuple[list[str], dict[str, str]]:
+    """argv prefix and environment to run ``tool`` (pg_dump / pg_restore) against ``url``.
+
+    The host's own binary when there is one; otherwise, with FBI_PG_CONTAINER set,
+    the container's, through docker - as the URL's user, over the container's
+    local socket, so no password travels anywhere."""
+    local = shutil.which(tool)
+    if local:
+        args, env = _libpq(url)
+        return [local, *args], env
+    container = os.environ.get(PG_CONTAINER_ENV, "").strip()
+    docker = shutil.which("docker") or shutil.which("docker.exe")
+    if container and docker:
+        user = conninfo_to_dict(url).get("user") or "postgres"
+        return [docker, "exec", "-i", container, tool, f"--username={user}"], dict(os.environ)
+    raise FileNotFoundError(f"{tool} is not installed here; install the PostgreSQL client or set "
+                            f"{PG_CONTAINER_ENV} to the database container's name")
 
 
 def _dbname(url: str) -> str:
@@ -120,8 +148,10 @@ def _alembic_revision(conn: psycopg.Connection) -> str | None:
         return None if row is None else str(row[0])
 
 
-def _tool_version(tool: str) -> str:
-    out = subprocess.run([tool, "--version"], capture_output=True, text=True, check=True)
+def _tool_version(tool: str, url: str) -> str:
+    argv, env = pg_command(tool, url)
+    base = [a for a in argv if not a.startswith("--")]
+    out = subprocess.run([*base, "--version"], capture_output=True, text=True, check=True, env=env)
     return out.stdout.strip()
 
 
@@ -144,7 +174,7 @@ def create_backup(db_url: str, raw_root: Path, out_root: Path, *, label: str = "
     stamp = started.strftime("%Y%m%dT%H%M%SZ") + (f"-{label}" if label else "")
     folder = out_root / stamp
     folder.mkdir(parents=True, exist_ok=False)
-    args, env = _libpq(db_url)
+    dump_argv, env = pg_command("pg_dump", db_url)
     dbname = _dbname(db_url)
     with psycopg.connect(db_url) as conn:
         before = fingerprints(conn)
@@ -152,9 +182,11 @@ def create_backup(db_url: str, raw_root: Path, out_root: Path, *, label: str = "
         server = str(conn.info.parameter_status("server_version"))
         # a consistent snapshot: the dump runs in its own transaction; comparing the
         # fingerprints taken before and after tells whether anything wrote meanwhile
-        subprocess.run(["pg_dump", *args, "--format=custom", "--no-owner", "--no-privileges",
-                        f"--file={folder / DUMP}", f"--dbname={dbname}"], env=env, check=True,
-                       capture_output=True)
+        with (folder / DUMP).open("wb") as out:
+            proc = subprocess.run([*dump_argv, "--format=custom", "--no-owner", "--no-privileges",
+                                   f"--dbname={dbname}"], env=env, stdout=out, stderr=subprocess.PIPE)
+        if proc.returncode != 0:
+            raise RuntimeError(f"pg_dump failed: {proc.stderr.decode(errors='replace').strip()[-300:]}")
         after = fingerprints(conn)
     changed = sorted(k for k in after if before.get(k) != after.get(k))
     files = raw_files(raw_root)
@@ -170,7 +202,7 @@ def create_backup(db_url: str, raw_root: Path, out_root: Path, *, label: str = "
         "database": dbname,
         "alembic_revision": revision,
         "server_version": server,
-        "pg_dump": _tool_version("pg_dump"),
+        "pg_dump": _tool_version("pg_dump", db_url),
         "files": {DUMP: {"sha256": sha256_file(folder / DUMP), "bytes": (folder / DUMP).stat().st_size},
                   RAW: {"sha256": sha256_file(folder / RAW), "bytes": (folder / RAW).stat().st_size}},
         "tables": after,
@@ -225,13 +257,14 @@ def restore_test(folder: Path, admin_url: str, *, keep: bool = False) -> Restore
     c.append(Check("FILES: dump and raw archive match the manifest", not problems, "; ".join(problems) or "sha256 ok"))
     if problems:
         return report
-    args, env = _libpq(admin_url)
+    restore_argv, env = pg_command("pg_restore", admin_url)
     with psycopg.connect(admin_url, autocommit=True) as admin:
         admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(scratch)))
     work = Path(tempfile.mkdtemp(prefix="fbi-restore-"))
     try:
-        proc = subprocess.run(["pg_restore", *args, "--no-owner", "--no-privileges", "--exit-on-error",
-                               f"--dbname={scratch}", str(folder / DUMP)], env=env, capture_output=True, text=True)
+        with (folder / DUMP).open("rb") as dump:
+            proc = subprocess.run([*restore_argv, "--no-owner", "--no-privileges", "--exit-on-error",
+                                   f"--dbname={scratch}"], env=env, stdin=dump, capture_output=True, text=True)
         c.append(Check("RESTORE: pg_restore into a new, empty database", proc.returncode == 0,
                        proc.stderr.strip()[-300:] or f"into {scratch}"))
         if proc.returncode != 0:
