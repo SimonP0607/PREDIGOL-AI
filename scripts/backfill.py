@@ -1,6 +1,7 @@
 """Historical backfill, one competition-season per request.
 
     python -m scripts.backfill seed                 # register the default units (no request)
+    python -m scripts.backfill seed --league 141 --priority 70   # one named league, same seasons
     python -m scripts.backfill status               # progress and today's allowance (no request)
     python -m scripts.backfill run --yes --max 18   # spend at most 18, never the live reserve
 
@@ -53,7 +54,12 @@ def main() -> int:
     configure_logging(settings.runtime.log_level)
     parser = argparse.ArgumentParser(prog="backfill", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("seed")
+    sd = sub.add_parser("seed")
+    sd.add_argument("--league", type=int, action="append", default=[],
+                    help="provider league id to seed instead of the defaults (repeatable)")
+    sd.add_argument("--seasons", default=",".join(map(str, DEFAULT_SEASONS)),
+                    help="comma-separated seasons (default: the three the free plan serves)")
+    sd.add_argument("--priority", type=int, default=70, help="lower runs first (defaults use 10-60)")
     sub.add_parser("status")
     run = sub.add_parser("run")
     run.add_argument("--yes", action="store_true")
@@ -63,8 +69,11 @@ def main() -> int:
     budget = settings.provider_plan.effective_budget
     with _connect() as conn:
         if args.cmd == "seed":
-            units = [BackfillUnit(league, season, prio) for league, prio in DEFAULT_LEAGUES for season in DEFAULT_SEASONS]
-            print(f"added {seed_tasks(conn, units)} task(s); {len(units)} default units")
+            seasons = [int(s) for s in args.seasons.split(",") if s.strip()]
+            leagues = [(lid, args.priority) for lid in args.league] or DEFAULT_LEAGUES
+            units = [BackfillUnit(league, season, prio) for league, prio in leagues for season in seasons]
+            kind = "named" if args.league else "default"
+            print(f"added {seed_tasks(conn, units)} task(s); {len(units)} {kind} units")
             return 0
         if args.cmd == "status" or not args.yes:
             reserve = live_reserve(conn, prematch_windows=settings.odds.prematch_windows) + 10

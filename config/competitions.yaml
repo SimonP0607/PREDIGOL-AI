@@ -58,6 +58,21 @@ competitions:
       tracked most closely, so a coverage gap here is a real signal rather than
       a thin-market artefact.
 
+  # ── LIVE-CYCLE TEST, temporary ─────────────────────────────────────────
+  # The Premier League stops for its first three-week international break
+  # (late September to early October 2026): the free plan, which sees one day
+  # ahead, has no Premier League fixture to capture until it resumes. The
+  # live cycle (sync -> odds windows -> near-close -> result -> features ->
+  # forecast -> market consensus -> shadow decision -> settlement) is shown on
+  # a league that keeps playing: 11 fixtures a round, Friday to Monday.
+  # Its history comes from the free plan's seasons 2022-2024 (3 requests), so
+  # its forecasts are made on results that end in June 2025 - the lineage says
+  # so, and nothing about model quality is concluded from them.
+  # Turn OFF when the Premier League resumes (two leagues do not fit 60/day).
+  - league_id: 141     # Segunda Division (Spain)
+    enabled: true
+    note: "live-cycle test during the Premier League's international break (from 2026-09-25)"
+
   # ── Probed and viable, deliberately OFF: no room in the free plan ───────
   - league_id: 140     # La Liga
     enabled: false

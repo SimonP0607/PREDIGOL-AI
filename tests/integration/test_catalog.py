@@ -81,13 +81,16 @@ def test_config_file_is_validated(tmp_path: Path) -> None:
     assert [(t.league_id, t.enabled) for t in toggles] == [(39, True), (140, False)]
 
 
-def test_the_shipped_config_enables_exactly_one_pilot_league() -> None:
+def test_the_shipped_config_enables_the_pilot_and_at_most_the_live_cycle_test() -> None:
     """The free plan is 100 requests/day and one Premier League matchday costs
-    about 60-70. A second league would not fit, so the config is allowed to
-    enable exactly one - and the test says so, rather than letting a second
-    one appear by accident."""
+    about 60-70: two leagues that play on the same days do not fit. The only
+    second league allowed is the temporary live-cycle test that runs while the
+    Premier League is on its international break (Segunda Division, 141), and
+    it has to say so - the test keeps a second league from appearing by
+    accident, or staying without a reason."""
     toggles = activation.load_config(Path(__file__).resolve().parents[2] / "config" / "competitions.yaml")
-    assert len(toggles) == 9
+    assert len(toggles) == 10
     enabled = [t.league_id for t in toggles if t.enabled]
-    assert enabled == [39], f"expected only the Premier League pilot, got {enabled}"
+    assert enabled[:1] == [39] and set(enabled) <= {39, 141}, f"unexpected enabled leagues: {enabled}"
     assert all(t.note for t in toggles if t.enabled), "an enabled league must say why"
+    assert all("live-cycle test" in (t.note or "") for t in toggles if t.enabled and t.league_id != 39)
