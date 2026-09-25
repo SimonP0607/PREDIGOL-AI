@@ -71,7 +71,7 @@ def _detail(fx: dict[str, Any]) -> dict[str, Any]:
     fid = fx["fixture"]["id"]
     h, a = fx["teams"]["home"]["id"], fx["teams"]["away"]["id"]
     gh, ga = fx["goals"]["home"], fx["goals"]["away"]
-    events = []
+    events: list[dict[str, Any]] = []
     for side_team, goals in ((h, gh), (a, ga)):
         for g in range(goals):
             scorer = _players(side_team)[9 + g % 2]
@@ -192,11 +192,11 @@ class FakeApi:
                 {"league": {"id": lid, "season": season, "name": LEAGUES[lid], "standings": [standings]}}]))
         if path.endswith("/injuries"):
             lid, season = int(q["league"]), int(q["season"])
-            fx = fixtures_of(lid, season)[:3]
+            first_three = fixtures_of(lid, season)[:3]
             body = [{"player": {"id": f["teams"]["home"]["id"] * 100 + 2, "name": "Injured Player",
                                 "type": "Missing Fixture", "reason": "Knee Injury"},
                      "team": {"id": f["teams"]["home"]["id"]}, "fixture": {"id": f["fixture"]["id"]},
-                     "league": {"id": lid, "season": season}} for f in fx]
+                     "league": {"id": lid, "season": season}} for f in first_three]
             return httpx.Response(200, json=_envelope("injuries", q, body))
         if path.endswith("/teams"):
             lid = int(q["league"])

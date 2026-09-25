@@ -232,16 +232,16 @@ async def dry_run(admin_url: str, *, keep: bool = False, work_dir: Path | None =
                 c.append(Check("RAW+HASH: every payload file re-hashes to its recorded hash",
                                not bad and len(payloads) == report.requests,
                                f"{len(payloads)} payloads, {len(bad)} mismatched"))
-                r = report.rows
+                n = report.rows
                 c.append(Check("NORMALISED: every fixture, result and detail block landed",
-                               r["core.fixtures"] == expected_fixtures and r["core.fixture_results"] == expected_fixtures
-                               and r["core.fixture_team_stats"] == 2 * expected_fixtures
-                               and r["core.fixture_lineups"] == 2 * expected_fixtures
-                               and r["core.fixture_events"] > 0 and r["core.fixture_player_stats"] > 0
-                               and r["raw.league_coverage"] == len(LEAGUES) * len(SEASONS)
-                               and r["core.standings"] > 0 and r["core.player_absences"] > 0,
-                               ", ".join(f"{k.split('.')[1]}={v}" for k, v in r.items())))
-                before = dict(r)
+                               n["core.fixtures"] == expected_fixtures and n["core.fixture_results"] == expected_fixtures
+                               and n["core.fixture_team_stats"] == 2 * expected_fixtures
+                               and n["core.fixture_lineups"] == 2 * expected_fixtures
+                               and n["core.fixture_events"] > 0 and n["core.fixture_player_stats"] > 0
+                               and n["raw.league_coverage"] == len(LEAGUES) * len(SEASONS)
+                               and n["core.standings"] > 0 and n["core.player_absences"] > 0,
+                               ", ".join(f"{k.split('.')[1]}={v}" for k, v in n.items())))
+                before = dict(n)
                 _replay(conn, provider, store)
                 again = await run_backfill(conn, provider, max_requests=1000, daily_budget=7500)
                 after = _counts(conn)
