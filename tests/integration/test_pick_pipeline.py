@@ -108,7 +108,7 @@ def league(db: psycopg.Connection, seed: object, migrated_database: str) -> Iter
         cur.execute("DELETE FROM core.competition_seasons WHERE id = %s", (ids["season"],))
         cur.execute("DELETE FROM core.competitions WHERE id = %s", (ids["comp"],))
         cur.execute("DELETE FROM analytics.backtest_sessions WHERE id = %s", (ids["session"],))
-        cur.execute("DELETE FROM models.model_versions WHERE version LIKE '%%@pipetes'")
+        cur.execute("DELETE FROM models.model_versions WHERE version LIKE '%%@pipetes' OR version LIKE '%%@pipenew'")
         cur.execute("DELETE FROM models.model_registry r WHERE NOT EXISTS "
                     "(SELECT 1 FROM models.model_versions v WHERE v.model_id = r.id)")
         cur.execute("DELETE FROM raw.ingestion_payloads WHERE hash = 'pipeline-odds'")
@@ -307,3 +307,96 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     db.commit()
     quiet = run_notifier(db, None)
     assert quiet.skipped == failing.new and quiet.sent == 0
+
+
+def test_a_model_re_versioned_by_a_code_change_is_judged_once(db: psycopg.Connection,
+                                                               league: dict[str, object]) -> None:
+    """25 Sep 2026, first real capture: three versions of one Elo model (the worker restarted
+    on three commits) each had a forecast, and one price became three identical shadow picks.
+    One model, one judgement per price - through its newest forecast - and the economic summary
+    counts a bet once even where old rows repeat it."""
+    target = int(league["target"])  # type: ignore[call-overload]
+    books: list[int] = league["books"]  # type: ignore[assignment]
+    forecast_upcoming(db, at=AT, code_version="pipetest")
+    forecast_upcoming(db, at=AT + timedelta(minutes=30), code_version="pipenew")  # same inputs, new version
+    db.commit()
+    with db.cursor() as cur:
+        cur.execute("SELECT m.name, count(DISTINCT p.model_version_id) FROM models.predictions p "
+                    "JOIN models.model_versions v ON v.id = p.model_version_id "
+                    "JOIN models.model_registry m ON m.id = v.model_id WHERE p.fixture_id = %s GROUP BY m.name",
+                    (target,))
+        versions: dict[str, int] = dict(cur.fetchall())
+        assert versions == {"poisson": 2, "dixon_coles": 2}, "the premise: two versions of each model forecast"
+        cur.execute("SELECT p.p_calibrated FROM models.predictions p JOIN models.model_versions v ON "
+                    "v.id = p.model_version_id JOIN models.model_registry m ON m.id = v.model_id WHERE p.fixture_id = %s "
+                    "AND m.name = 'poisson' AND p.market_key = '1X2' AND p.selection = 'Home' "
+                    "AND v.version LIKE '%%@pipenew'", (target,))
+        p_home = float(scalar(cur))
+        long_home = (Decimal("1.15") / Decimal(str(p_home))).quantize(Decimal("0.01"))
+        for book in books:
+            rest = Decimal("1.07") - 1 / long_home
+            _snapshot(cur, target, book, "Home", long_home)
+            _snapshot(cur, target, book, "Draw", (1 / (rest * Decimal("0.45"))).quantize(Decimal("0.01")))
+            _snapshot(cur, target, book, "Away", (1 / (rest * Decimal("0.55"))).quantize(Decimal("0.01")))
+    recompute_from_snapshots(db, fixture_ids=[target])
+    db.commit()
+
+    run_id = RunLedger(db).open("shadow_picks")
+    picks = evaluate_captures(db, run_id=run_id, code_version="pipenew")
+    db.commit()
+    assert picks.candidates == 6, "3 selections x 2 models - not x 4 versions"
+    with db.cursor() as cur:
+        cur.execute("SELECT DISTINCT v.version LIKE '%%@pipenew' FROM picks.pick_candidates c "
+                    "JOIN models.predictions p ON p.id = c.prediction_id "
+                    "JOIN models.model_versions v ON v.id = p.model_version_id WHERE c.fixture_id = %s", (target,))
+        assert cur.fetchall() == [(True,)], "judged through the newest forecast of each model"
+        cur.execute("SELECT v.model_id, p.selection, count(*) FROM picks.picks p "
+                    "JOIN models.model_versions v ON v.id = p.model_version_id WHERE p.fixture_id = %s "
+                    "GROUP BY 1, 2 HAVING count(*) > 1", (target,))
+        assert cur.fetchall() == [], "one pick per model and selection at one price"
+        cur.execute("SELECT count(*) FROM picks.picks WHERE fixture_id = %s", (target,))
+        n_picks = int(scalar(cur))
+    assert n_picks >= 1
+
+    # rows written before the fix repeat a bet (the old version's candidate and pick, as on the
+    # machine): the economic summary still counts it once
+    from fbi.api.repositories.analytics import settled_summary
+
+    with db.cursor() as cur:
+        cur.execute("SELECT p.id, p.candidate_id, p.market_key, p.selection, v.model_id FROM picks.picks p "
+                    "JOIN models.model_versions v ON v.id = p.model_version_id WHERE p.fixture_id = %s "
+                    "ORDER BY p.id LIMIT 1", (target,))
+        first, cand, market, selection, model_id = cur.fetchone()  # type: ignore[misc]
+        cur.execute("SELECT p.id, p.model_version_id FROM models.predictions p "
+                    "JOIN models.model_versions v ON v.id = p.model_version_id WHERE p.fixture_id = %s "
+                    "AND p.market_key = %s AND p.selection = %s AND v.model_id = %s AND v.version LIKE '%%@pipetes'",
+                    (target, market, selection, model_id))
+        old_prediction, old_version = cur.fetchone()  # type: ignore[misc]
+        cur.execute("""
+            INSERT INTO picks.pick_candidates (run_id, fixture_id, prediction_id, market_key, selection, line,
+                bookmaker_id, market_odds, p_calibrated, p_market_fair, edge, price_edge, ev, ev_adjusted, decision,
+                rejection_reason, decision_rule_version, odds_captured_at, odds_payload_hash, consensus_method,
+                consensus_as_of, data_cutoff_ts)
+            SELECT run_id, fixture_id, %s, market_key, selection, line, bookmaker_id, market_odds, p_calibrated,
+                   p_market_fair, edge, price_edge, ev, ev_adjusted, decision, rejection_reason,
+                   decision_rule_version, odds_captured_at, odds_payload_hash, consensus_method, consensus_as_of,
+                   data_cutoff_ts
+            FROM picks.pick_candidates WHERE id = %s RETURNING id""", (old_prediction, cand))
+        old_cand = int(scalar(cur))
+        cur.execute("""
+            INSERT INTO picks.picks (candidate_id, fixture_id, market_key, selection, line, model_version_id,
+                calibrator_id, feature_set_hash, data_cutoff_ts, decision_rule_version, code_version, bookmaker_id,
+                market_odds, odds_captured_at, p_model, p_calibrated, p_calibrated_lo, p_calibrated_hi, p_market_fair,
+                fair_odds, edge, price_edge, ev, ev_adjusted, kelly_fraction, stake_units, selection_reason, mode,
+                prediction_id, odds_payload_hash, consensus_method, consensus_as_of, stake_policy, qualification,
+                status)
+            SELECT %s, fixture_id, market_key, selection, line, %s, calibrator_id, feature_set_hash, data_cutoff_ts,
+                   decision_rule_version, code_version, bookmaker_id, market_odds, odds_captured_at, p_model,
+                   p_calibrated, p_calibrated_lo, p_calibrated_hi, p_market_fair, fair_odds, edge, price_edge, ev,
+                   ev_adjusted, kelly_fraction, stake_units, selection_reason, mode, %s, odds_payload_hash,
+                   consensus_method, consensus_as_of, stake_policy, qualification, status
+            FROM picks.picks WHERE id = %s""", (old_cand, old_version, old_prediction, first))
+        cur.execute("SELECT count(*) FROM picks.picks WHERE fixture_id = %s", (target,))
+        assert int(scalar(cur)) == n_picks + 1, "the premise: a repeated bet in the rows"
+    summary = settled_summary(db)
+    assert int(summary["pending"]) == n_picks, "the repeated bet is one bet, not two"

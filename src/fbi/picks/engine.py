@@ -1,8 +1,12 @@
 """From a captured price and a forecast made before it, to a candidate - and maybe a shadow pick.
 
 For every consensus the capturer computed (one per captured payload), every
-model version with a real-time forecast made BEFORE that capture is compared
-with the best price in that capture:
+MODEL with a real-time forecast made BEFORE that capture is compared with the
+best price in that capture - through its newest forecast, whichever version
+made it. A model is re-versioned whenever the code version changes (a docs-only
+commit included); judging every version would record the same bet once per
+restart, which is what the first real capture showed on 25 Sep 2026 (three
+identical shadow picks from three versions of one Elo model):
 
     candidate  every (forecast, selection, capture) evaluated, kept whatever the decision
     shadow     a candidate the versioned rule selected
@@ -80,19 +84,23 @@ def _consensus(conn: psycopg.Connection, fixture_id: int, as_of: datetime) -> li
 
 
 def _forecasts(conn: psycopg.Connection, fixture_id: int, as_of: datetime) -> list[dict[str, Any]]:
-    """The newest real-time forecast of every model version made before this capture."""
+    """The newest real-time forecast of every MODEL made before this capture - one version per
+    model (the one that made that forecast; the higher id on a tie), never one per version."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             """
-            WITH newest AS (
-                SELECT model_version_id, max(data_cutoff_ts) AS cutoff FROM models.predictions
-                WHERE fixture_id = %s AND backtest_session_id IS NULL AND data_cutoff_ts <= %s
-                GROUP BY model_version_id
+            WITH made AS (
+                SELECT DISTINCT v.model_id, p.model_version_id, p.data_cutoff_ts
+                FROM models.predictions p JOIN models.model_versions v ON v.id = p.model_version_id
+                WHERE p.fixture_id = %s AND p.backtest_session_id IS NULL AND p.data_cutoff_ts <= %s
+            ), newest AS (
+                SELECT DISTINCT ON (model_id) model_id, model_version_id, data_cutoff_ts FROM made
+                ORDER BY model_id, data_cutoff_ts DESC, model_version_id DESC
             )
             SELECT p.id, p.model_version_id, p.market_key, p.selection, p.line, p.p_calibrated, p.p_lo, p.p_hi,
                    p.feature_set_hash, p.data_cutoff_ts, p.calibrator_id
             FROM models.predictions p JOIN newest n ON n.model_version_id = p.model_version_id
-                 AND n.cutoff = p.data_cutoff_ts
+                 AND n.data_cutoff_ts = p.data_cutoff_ts
             WHERE p.fixture_id = %s AND p.backtest_session_id IS NULL
             """,
             (fixture_id, as_of, fixture_id),

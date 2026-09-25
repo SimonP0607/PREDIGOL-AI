@@ -154,13 +154,26 @@ def rejection_reasons(conn: Conn) -> dict[str, int]:
 
 
 def settled_summary(conn: Conn) -> Row:
+    """Economic totals over BETS, not rows: the same model's pick on the same selection at the same
+    captured price under the same rule is one bet, however many versions of the model made it (the
+    engine made three such rows on 25 Sep 2026 before it evaluated one version per model)."""
     r = fetch_one(conn, """
-        SELECT count(*) FILTER (WHERE pr.result_status NOT IN ('pending')) AS settled,
-               count(*) FILTER (WHERE pr.result_status = 'pending' OR pr.result_status IS NULL) AS pending,
-               sum(p.stake_units) FILTER (WHERE pr.result_status NOT IN ('pending','void')) AS staked,
-               sum(pr.profit_units) FILTER (WHERE pr.result_status NOT IN ('pending')) AS profit,
-               count(*) FILTER (WHERE pr.result_status IN ('win','half_win')) AS wins
-        FROM picks.picks p LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
+        WITH bets AS (
+            SELECT DISTINCT ON (v.model_id, p.fixture_id, p.market_key, p.selection, p.line, p.odds_captured_at,
+                                p.decision_rule_version)
+                   p.stake_units, pr.result_status, pr.profit_units
+            FROM picks.picks p
+            JOIN models.model_versions v ON v.id = p.model_version_id
+            LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
+            ORDER BY v.model_id, p.fixture_id, p.market_key, p.selection, p.line, p.odds_captured_at,
+                     p.decision_rule_version, p.id
+        )
+        SELECT count(*) FILTER (WHERE result_status NOT IN ('pending')) AS settled,
+               count(*) FILTER (WHERE result_status = 'pending' OR result_status IS NULL) AS pending,
+               sum(stake_units) FILTER (WHERE result_status NOT IN ('pending','void')) AS staked,
+               sum(profit_units) FILTER (WHERE result_status NOT IN ('pending')) AS profit,
+               count(*) FILTER (WHERE result_status IN ('win','half_win')) AS wins
+        FROM bets
     """)
     assert r is not None
     return r
