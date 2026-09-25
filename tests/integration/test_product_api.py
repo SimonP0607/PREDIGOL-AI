@@ -178,6 +178,32 @@ def test_the_match_center_traces_the_score_to_its_payload(client: TestClient, da
     assert d["match"]["score"]["ht_home"] == 1
 
 
+def test_the_audit_trail_names_every_link_and_every_gap(client: TestClient, dataset: dict[str, int]) -> None:
+    d = get(client, f"/api/v1/matches/{dataset['f1']}/audit")["data"]
+    steps = {s["key"]: s for s in d["steps"]}
+    assert [s["key"] for s in d["steps"]] == ["provider", "raw", "normalized", "features", "models", "predictions",
+                                             "market", "picks", "settlement"]
+    assert steps["provider"]["state"] == "recorded" and "/fixtures" in steps["provider"]["detail"]
+    (payload,) = steps["raw"]["items"]
+    assert payload["ref"] == "api-fx-payload" and payload["facts"]["roles"] == "fixture, result"
+    assert payload["facts"]["on_disk"] is False and steps["raw"]["state"] == "partial", \
+        "a payload whose file is not in the raw store is reported, not assumed"
+    assert {i["kind"] for i in steps["normalized"]["items"]} == {"fixture", "result"}
+    assert steps["features"]["state"] == "missing" and steps["predictions"]["state"] == "not_applicable"
+    assert steps["market"]["state"] == "recorded" and steps["market"]["items"][0]["kind"] == "near_close"
+    assert steps["picks"]["state"] == "not_applicable" and steps["settlement"]["state"] == "not_applicable"
+    assert d["complete"] is False
+    old = get(client, f"/api/v1/matches/{dataset['f5']}/audit")["data"]
+    by = {s["key"]: s for s in old["steps"]}
+    assert by["provider"]["state"] == "partial" and "predates lineage" in by["provider"]["detail"]
+    assert by["raw"]["state"] == "missing" and by["market"]["state"] == "missing"
+    upcoming = {s["key"]: s for s in get(client, f"/api/v1/matches/{dataset['f3']}/audit")["data"]["steps"]}
+    assert upcoming["market"]["items"][0]["facts"]["quotes"] == 12
+    assert "odds_snapshot" in upcoming["raw"]["items"][0]["facts"]["roles"]
+    body = get(client, "/api/v1/matches/999999999/audit", status=404)
+    assert body["status"] == "error" and body["error"]["code"] == "not_found"
+
+
 def test_a_row_without_lineage_says_it_was_not_recorded(client: TestClient, dataset: dict[str, int]) -> None:
     d = get(client, f"/api/v1/matches/{dataset['f5']}")["data"]
     assert d["lineage"]["recorded"] is False

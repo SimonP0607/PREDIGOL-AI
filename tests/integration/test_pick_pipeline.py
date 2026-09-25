@@ -234,6 +234,7 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
             body = client.get("/api/v1/picks").json()
             perf = client.get("/api/v1/performance").json()
             match = client.get(f"/api/v1/matches/{target}").json()["data"]
+            audit = client.get(f"/api/v1/matches/{target}/audit").json()["data"]
     finally:
         mp.undo()
         reset_cache()
@@ -247,6 +248,24 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     assert d["rejection_reasons"], "why prices were rejected is counted"
     assert perf["status"] == "insufficient_data", "one settled shadow pick is not a performance record"
     assert {p["kind"] for p in match["predictions"]["data"]} == {"forecast"}
+
+    # 6b. and the audit trail reconstructs the chain from stored links alone
+    steps = {s["key"]: s for s in audit["steps"]}
+    for key in ("features", "models", "predictions", "market", "picks", "settlement"):
+        assert steps[key]["state"] == "recorded", f"{key}: {steps[key]['detail']}"
+    items = {(i["kind"], i["ref"]): i for s in audit["steps"] for i in s["items"]}
+    pick_item = items[("pick", str(pick_id))]
+    candidate_link = next(x for x in pick_item["links"] if x.startswith("pick_candidate:"))
+    candidate = items[tuple(candidate_link.split(":", 1))]
+    assert "payload:pipeline-odds" in candidate["links"], "the price a candidate was judged on is named"
+    prediction_link = next(x for x in candidate["links"] if x.startswith("prediction:"))
+    prediction = items[tuple(prediction_link.split(":", 1))]
+    assert prediction["facts"]["cutoff_before_kickoff"] is True and prediction["facts"]["kind"] == "forecast"
+    assert any(x.startswith("model_version:") for x in prediction["links"])
+    assert any(x.startswith("feature_set:") for i in steps["predictions"]["items"] for x in i["links"]), \
+        "the Elo forecast names the feature set it read"
+    assert items[("settlement", str(pick_id))]["facts"]["result_status"] == "loss"
+    assert f"pick:{pick_id}" in items[("settlement", str(pick_id))]["links"]
 
     # 7. the bot: informs once per event, never as advice, and never leaks its token
     import httpx

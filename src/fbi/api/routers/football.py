@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
+from fbi.api.contracts.audit import MatchAudit
 from fbi.api.contracts.catalog import CompetitionDetail, CompetitionSummary, TeamDetail, TeamSummary
 from fbi.api.contracts.matches import MatchDetail, MatchSummary
 from fbi.api.contracts.rankings import Rankings
@@ -13,7 +14,7 @@ from fbi.api.contracts.search import SearchHit
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.repositories.fixtures import FixtureFilter
-from fbi.api.services import catalog, matches
+from fbi.api.services import audit, catalog, matches
 from fbi.api.services import rankings as rankings_service
 from fbi.api.services import search as search_service
 
@@ -45,6 +46,12 @@ def get_matches(
 @router.get("/matches/{fixture_id}", response_model=Envelope[MatchDetail])
 def get_match(conn: Db, fixture_id: Id) -> Envelope[MatchDetail]:
     return matches.match_detail(conn, fixture_id)
+
+
+@router.get("/matches/{fixture_id}/audit", response_model=Envelope[MatchAudit])
+def get_match_audit(conn: Db, fixture_id: Id) -> Envelope[MatchAudit]:
+    """The chain behind every number shown for a fixture, provider to settlement."""
+    return audit.match_audit(conn, fixture_id)
 
 
 @router.get("/competitions", response_model=Envelope[list[CompetitionSummary]])
