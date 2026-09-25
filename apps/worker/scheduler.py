@@ -58,13 +58,18 @@ from fbi.ops.worker_lock import WorkerLock, holder
 
 log = structlog.get_logger("worker")
 
+# Defaults follow the plan. On the free plan the provider shows fixtures about a
+# day ahead and history is a few requests a day; on a paid plan the worker looks
+# four days ahead (so T-72h and T-48h become reachable) and the historical
+# migration runs every hour, always behind the live reserve it computes itself.
+PAID_PLAN = settings.provider_plan.plan != "free"
 TICK_MINUTES = int(os.environ.get("FBI_ODDS_TICK_MINUTES", "15"))
 FIXTURES_SYNC_HOURS = int(os.environ.get("FBI_FIXTURES_SYNC_HOURS", "12"))
-FIXTURES_HORIZON_DAYS = int(os.environ.get("FBI_FIXTURES_HORIZON_DAYS", "1"))
+FIXTURES_HORIZON_DAYS = int(os.environ.get("FBI_FIXTURES_HORIZON_DAYS", "4" if PAID_PLAN else "1"))
 RESULTS_SYNC_HOURS = int(os.environ.get("FBI_RESULTS_SYNC_HOURS", "6"))
 RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
-BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "6"))
-BACKFILL_MAX_PER_RUN = int(os.environ.get("FBI_BACKFILL_MAX_PER_RUN", "6"))
+BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "1" if PAID_PLAN else "6"))
+BACKFILL_MAX_PER_RUN = int(os.environ.get("FBI_BACKFILL_MAX_PER_RUN", "1500" if PAID_PLAN else "6"))
 PIPELINE_MINUTES = int(os.environ.get("FBI_PIPELINE_MINUTES", "30"))
 NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
 

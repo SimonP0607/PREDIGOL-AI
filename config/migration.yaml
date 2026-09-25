@@ -1,0 +1,182 @@
+# Historical migration: what to backfill from API-Football once a paid plan is
+# active, in what order, and what it costs. Read by `python -m scripts.migration
+# plan`, which prices everything BEFORE a request is made.
+#
+# The tiers are a starting selection. The final one is decided by the
+# provider's own coverage flags (raw.league_coverage, from ONE /leagues call):
+# a season the provider does not cover for statistics is not queried for them,
+# and a league with fewer seasons than the target is shown with what it has.
+
+version: 1
+
+seasons:
+  current: 2026          # the season key API-Football calls current (2026 = 2026/27)
+  target_depth: 8        # completed seasons to backfill when the provider has them: 2018..2025
+  include_current: true  # the current season's played fixtures as well
+
+# Share of each day's quota the backfill leaves untouched for live operation, on
+# top of the live model's own estimate (the engine also computes a live reserve
+# every run and never spends it).
+budget:
+  live_reserve_fraction: 0.10
+  buffer_fraction: 0.35     # safety margin on every estimate (25-40% asked for)
+  max_backfill_days: 14     # a plan must finish the chosen tiers within this many days to "fit"
+
+# Request cost of each unit kind. `classification` is why we fetch it at all:
+#   MODEL_REQUIRED   a model or feature needs it
+#   PRODUCT_REQUIRED a page needs it
+#   OPTIONAL         useful later; not fetched unless asked (--with optional)
+#   NOT_NEEDED       exists, deliberately not fetched
+#   NOT_AVAILABLE    cannot be backfilled from this provider
+endpoints:
+  league_coverage:
+    path: /leagues
+    classification: MODEL_REQUIRED
+    why: per-season coverage flags decide every other unit; one call returns all leagues
+    requests: 1
+  fixtures_season:
+    path: /fixtures?league&season
+    classification: MODEL_REQUIRED
+    why: fixtures, scores (HT, ET, penalties), venue, status - one request per competition-season
+  fixture_details:
+    path: /fixtures?ids= (<=20)
+    classification: MODEL_REQUIRED
+    why: events, lineups, team statistics and player statistics in one request per 20 fixtures
+    batch: 20
+    per_fixture_without_batching: 4   # /fixtures/events + /lineups + /statistics + /players
+    requires_coverage: [events, lineups, statistics_fixtures, statistics_players]   # any of them
+  standings_season:
+    path: /standings
+    classification: PRODUCT_REQUIRED
+    why: final tables per season for the Analytics page; derivable from results, kept for lineage
+    requires_coverage: [standings]
+  injuries_season:
+    path: /injuries?league&season
+    classification: MODEL_REQUIRED
+    why: absences for lineup-aware strength (the provider keeps injuries from April 2021 only)
+    since_season: 2020
+    requires_coverage: [injuries]
+  teams_season:
+    path: /teams?league&season
+    classification: PRODUCT_REQUIRED
+    why: team and venue identity per season (names, venues, founded)
+  players_season:
+    path: /players?league&season&page
+    classification: OPTIONAL
+    why: season player profiles and totals; 20 per page. Per-fixture player statistics already come with fixture_details
+    pages_estimate: 36
+    requires_coverage: [players]
+  predictions:
+    path: /predictions?fixture
+    classification: NOT_NEEDED
+    why: the provider's own forecasts; one request per fixture and not a baseline we trust over the market
+  top_players:
+    path: /players/topscorers|topassists|topyellowcards|topredcards
+    classification: NOT_NEEDED
+    why: derivable from per-fixture player statistics
+  odds_history:
+    path: /odds
+    classification: NOT_AVAILABLE
+    why: pre-match odds are kept 7 days and live odds not at all - history comes from Football-Data.co.uk
+
+# Tiers. `fixtures` is the planning estimate per season (our database knows the
+# real count for seasons already stored; the fixtures_season unit replaces the
+# estimate with the provider's count before any detail unit is created).
+tiers:
+  1:
+    name: Top-5 leagues and the Champions League
+    competitions:
+      - {league_id: 39, name: Premier League, fixtures: 380}
+      - {league_id: 140, name: La Liga, fixtures: 380}
+      - {league_id: 78, name: Bundesliga, fixtures: 308}
+      - {league_id: 135, name: Serie A, fixtures: 380}
+      - {league_id: 61, name: Ligue 1, fixtures: 308}
+      - {league_id: 2, name: UEFA Champions League, fixtures: 280}
+  2:
+    name: Strong secondary leagues and European cups
+    competitions:
+      - {league_id: 3, name: UEFA Europa League, fixtures: 280}
+      - {league_id: 40, name: Championship, fixtures: 557}
+      - {league_id: 88, name: Eredivisie, fixtures: 310}
+      - {league_id: 94, name: Primeira Liga, fixtures: 308}
+      - {league_id: 144, name: Jupiler Pro League, fixtures: 312}
+      - {league_id: 136, name: Serie B, fixtures: 390}
+      - {league_id: 79, name: 2. Bundesliga, fixtures: 308}
+      - {league_id: 141, name: Segunda Division, fixtures: 466}
+      - {league_id: 62, name: Ligue 2, fixtures: 310}
+      - {league_id: 71, name: Serie A (Brazil), fixtures: 380}
+      - {league_id: 128, name: Liga Profesional Argentina, fixtures: 420}
+      - {league_id: 262, name: Liga MX, fixtures: 330}
+      - {league_id: 253, name: Major League Soccer, fixtures: 510}
+      - {league_id: 113, name: Allsvenskan, fixtures: 240}
+      - {league_id: 103, name: Eliteserien, fixtures: 240}
+      - {league_id: 119, name: Superliga (Denmark), fixtures: 192}
+  3:
+    name: Long tail (catalogued domestic leagues)
+    competitions:
+      - {league_id: 72, name: Serie B (Brazil), fixtures: 380}
+      - {league_id: 80, name: 3. Liga, fixtures: 380}
+      - {league_id: 89, name: Eerste Divisie, fixtures: 380}
+      - {league_id: 95, name: Segunda Liga, fixtures: 306}
+      - {league_id: 106, name: Ekstraklasa, fixtures: 306}
+      - {league_id: 114, name: Superettan, fixtures: 240}
+      - {league_id: 129, name: Primera Nacional, fixtures: 500}
+      - {league_id: 145, name: Challenger Pro League, fixtures: 240}
+      - {league_id: 239, name: Primera A (Colombia), fixtures: 400}
+      - {league_id: 265, name: Primera Division (Chile), fixtures: 240}
+      - {league_id: 283, name: Liga I, fixtures: 300}
+      - {league_id: 286, name: Super Liga (Serbia), fixtures: 296}
+      - {league_id: 292, name: K League 1, fixtures: 228}
+      - {league_id: 296, name: Thai League 1, fixtures: 240}
+      - {league_id: 63, name: National 1, fixtures: 306}
+      - {league_id: 255, name: USL Championship, fixtures: 450}
+      - {league_id: 263, name: Liga de Expansion MX, fixtures: 280}
+      - {league_id: 266, name: Primera B (Chile), fixtures: 240}
+      - {league_id: 268, name: Primera Division (Uruguay), fixtures: 240}
+      - {league_id: 281, name: Primera Division (Peru), fixtures: 340}
+      - {league_id: 288, name: Premier Soccer League, fixtures: 240}
+      - {league_id: 293, name: K League 2, fixtures: 240}
+      - {league_id: 107, name: I Liga, fixtures: 306}
+      - {league_id: 104, name: 1. Division (Norway), fixtures: 240}
+      - {league_id: 120, name: 1. Division (Denmark), fixtures: 198}
+      - {league_id: 284, name: Liga II, fixtures: 300}
+      - {league_id: 287, name: Prva Liga, fixtures: 240}
+      - {league_id: 240, name: Primera B (Colombia), fixtures: 300}
+      - {league_id: 269, name: Segunda Division (Uruguay), fixtures: 200}
+      - {league_id: 282, name: Segunda Division (Peru), fixtures: 200}
+      - {league_id: 289, name: 1st Division (South Africa), fixtures: 240}
+      - {league_id: 297, name: Thai League 2, fixtures: 306}
+      - {league_id: 299, name: Primera Division (Venezuela), fixtures: 300}
+      - {league_id: 300, name: Segunda Division (Venezuela), fixtures: 200}
+      - {league_id: 122, name: 2. Division (Denmark), fixtures: 200}
+      - {league_id: 295, name: K3 League, fixtures: 240}
+
+# Live operation once the plan is active: which tiers are captured live, and the
+# cadence that drives the daily request model (docs/rebuild/API_PLAN_CAPACITY_MODEL.md).
+live:
+  tiers: [1, 2]
+  season_days: 280            # days over which a season's fixtures are spread, for the average day
+  peak_share_of_week: 0.35    # share of a week's fixtures on its busiest day (a Saturday)
+  prematch_windows: 6         # T-72h, T-48h, T-24h, T-12h, T-6h, T-3h (all reachable on a paid plan)
+  near_close: 1               # /odds/live near kick-off
+  lineup_polls: 2             # /fixtures?ids= at ~T-40 and ~T-20 min, batched by kick-off slot
+  post_match_details: 1       # /fixtures?ids= once per finished fixture, batched
+  injuries_daily_per_league: 1
+  standing_syncs_daily: 12    # fixtures by date (4) and results by date (8)
+  standings_daily_per_league: 1
+
+storage:
+  # Measured on our raw store (gzip): a season's fixture list is 13-18 KB.
+  fixtures_season_kb: 17
+  # Not measured yet (no detail payload stored): documented shape, ~40 KB JSON
+  # per fixture, gzip about 1:6. Replace with the measured size after the first
+  # real /fixtures?ids= request.
+  details_per_fixture_kb: 7
+  standings_kb: 6
+  injuries_kb: 25
+  teams_kb: 6
+  players_page_kb: 20
+  coverage_kb: 450
+  # PostgreSQL, rows and indexes per fixture once details are normalised
+  # (~15 events, ~40 lineup rows, ~32 player rows, 2 team rows).
+  db_per_fixture_kb: 30
