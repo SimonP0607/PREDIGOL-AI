@@ -1,7 +1,8 @@
 """Walk-forward predictive backtest of the V2 models against the de-vigged market.
 
     python -m scripts.run_backtest                  # dry run: full report printed and saved as JSON, nothing stored
-    python -m scripts.run_backtest --apply          # store the session (refuses on uncommitted code)
+    python -m scripts.run_backtest --apply          # store the session and one registry experiment per model
+                                                    # (refuses on uncommitted code)
 
 Protocol (fixed before any test result is seen):
   * competitions: every domestic league with at least 100 finished fixtures in both the
@@ -16,7 +17,9 @@ Protocol (fixed before any test result is seen):
     each market baseline; the verdict against the market needs the whole
     interval (match days resampled as blocks) on one side of zero, and a
     comparison whose interval straddles zero is labelled with its evidence
-    ('equivalent' inside +/- 0.005 nats, else 'insufficient').
+    ('equivalent' inside +/- 0.005 nats, else 'insufficient');
+  * every stored model gets a research-registry experiment with its model gate
+    (fbi.research.gate): RESEARCH unless all six checks pass.
 
 Zero provider requests. Reads core fixtures/results, the current feature
 version, market.historical_odds and analytics.market_baseline.
@@ -34,33 +37,23 @@ from dataclasses import replace
 from pathlib import Path
 
 import psycopg
-from psycopg.rows import tuple_row
 
-from fbi.backtesting.data import load_backtest_data
-from fbi.backtesting.evaluate import PRIMARY_BASELINE, SessionEvaluation, evaluate_session
+from fbi.backtesting.evaluate import PRIMARY_BASELINE, SessionEvaluation
 from fbi.backtesting.persist import (
     MODEL_SEMVER,
-    base_rates_hyper,
     comparison_json,
     config_hash,
     config_json,
     find_completed_session,
-    goal_hyper,
-    mnlogit_hyper,
-    ologit_hyper,
     scores_json,
     store_session,
 )
+from fbi.backtesting.session import SessionResult, eligible_competitions, hypers_for, run_session
 from fbi.backtesting.walkforward import (
     MIN_GOAL_TRAIN,
     MIN_MNLOGIT_TRAIN,
     MIN_OLOGIT_TRAIN,
     WalkForwardConfig,
-    run_base_rates,
-    run_elo_ologit,
-    run_goal_model,
-    run_mnlogit,
-    select_goal_spec,
 )
 from fbi.core.clock import now
 from fbi.core.config import settings
@@ -68,42 +61,26 @@ from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
 from fbi.features.engine import FEATURE_VERSION
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.research.experiments import record_session
+from fbi.research.gate import evaluate_gate
 
 REPO = Path(__file__).resolve().parents[1]
 REPORT_DIR = REPO / "data" / "reports"
-MIN_SEASON_FIXTURES = 100
+QUESTION = ("Out of sample and walk-forward, does any model family forecast 1X2 better than the de-vigged "
+            "Pinnacle closing line - or at least better than the league base rates?")
 
 
 def _say(msg: str) -> None:
     print(msg, flush=True)
 
 
-def _dirty() -> list[str]:
+def dirty_tree() -> list[str]:
     try:
         out = subprocess.run(["git", "status", "--porcelain", "--", "src", "scripts", "migrations"],
                              cwd=REPO, capture_output=True, text=True, check=True).stdout
     except (OSError, subprocess.CalledProcessError):
         return []
     return [line for line in out.splitlines() if line.strip()]
-
-
-def _competitions(conn: psycopg.Connection, provider_ids: list[int], validation: int, test: int) -> list[tuple[int, str]]:
-    with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(
-            """
-            SELECT c.id, c.name
-            FROM core.competitions c
-            JOIN core.competition_seasons cs ON cs.competition_id = c.id
-            JOIN core.fixtures f ON f.competition_season_id = cs.id AND f.status_group = 'finished'
-            WHERE c.competition_type = 'domestic_league'
-              AND (%s::bigint[] IS NULL OR c.provider_league_id = ANY(%s::bigint[]))
-            GROUP BY c.id, c.name
-            HAVING count(*) FILTER (WHERE cs.season = %s) >= %s AND count(*) FILTER (WHERE cs.season = %s) >= %s
-            ORDER BY c.id
-            """,
-            (provider_ids or None, provider_ids or None, validation, MIN_SEASON_FIXTURES, test, MIN_SEASON_FIXTURES),
-        )
-        return [(int(a), str(b)) for a, b in cur.fetchall()]
 
 
 def report_json(name: str, cfg: WalkForwardConfig, evaluation: SessionEvaluation, selection: dict[str, object],
@@ -131,6 +108,7 @@ def report_json(name: str, cfg: WalkForwardConfig, evaluation: SessionEvaluation
                 "comparisons": [comparison_json(c) for c in ev.comparisons],
                 "ou": scores_json(ev.ou), "ou_comparisons": [comparison_json(c) for c in ev.ou_comparisons],
                 "btts": scores_json(ev.btts), "by_competition": ev.by_competition, "by_month": ev.by_month,
+                "gate": evaluate_gate(ev, evaluation, refit_days=cfg.refit_days),
                 "betting": None if ev.betting is None else {
                     "hypothetical": True, "rule": ev.betting.rule, "odds_source": ev.betting.odds_source,
                     "fixtures_priced": ev.betting.fixtures_priced, "bets": len(ev.betting.bets),
@@ -144,7 +122,7 @@ def report_json(name: str, cfg: WalkForwardConfig, evaluation: SessionEvaluation
     }
 
 
-def _print_summary(evaluation: SessionEvaluation, competitions: dict[int, str]) -> None:
+def print_summary(evaluation: SessionEvaluation, competitions: dict[int, str], refit_days: int) -> None:
     _say("")
     _say(f"common sample (every model AND {PRIMARY_BASELINE}): {len(evaluation.common_ids)} fixtures")
     _say(f"{'':28s} {'n':>5s} {'log loss':>9s} {'Brier':>8s} {'ECE':>7s}")
@@ -183,13 +161,25 @@ def _print_summary(evaluation: SessionEvaluation, competitions: dict[int, str]) 
             ci = "" if bet.roi_ci is None else f" [{bet.roi_ci[0]:+.1f}%, {bet.roi_ci[1]:+.1f}%]"
             _say(f"  hypothetical bets ({bet.rule}): {len(bet.bets)} bets, profit {bet.profit:+.2f}u, "
                  f"ROI {roi}{ci}, max drawdown {bet.max_drawdown:.1f}u")
+        gate = evaluate_gate(ev, evaluation, refit_days=refit_days)
+        failed = [k for k, v in gate["checks"].items() if not v["passed"]]
+        _say(f"  model gate: {'PASSED' if gate['passed'] else 'not passed'}"
+             + ("" if gate["passed"] else f" ({', '.join(failed)})"))
+
+
+def save_report(name: str, result: SessionResult, version: str) -> Path:
+    report = report_json(name, result.cfg, result.evaluation, result.selection, result.competitions, version)
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    path = REPORT_DIR / f"backtest-{name}-{now().strftime('%Y%m%dT%H%M%SZ')}.json"
+    path.write_text(json.dumps(report, indent=2, default=str))
+    return path
 
 
 def main() -> int:
     configure_logging(settings.runtime.log_level)
     parser = argparse.ArgumentParser(prog="run_backtest", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--apply", action="store_true", help="store the session in the database")
+    parser.add_argument("--apply", action="store_true", help="store the session and its experiments")
     parser.add_argument("--allow-dirty", action="store_true", help="store even with uncommitted code (not reproducible)")
     parser.add_argument("--name", default="", help="session name (default: leagues-<test season>-wf)")
     parser.add_argument("--competitions", default="", help="provider league ids, comma-separated (default: data-driven)")
@@ -199,17 +189,16 @@ def main() -> int:
     args = parser.parse_args()
 
     version = code_version()
-    dirty = _dirty()
+    dirty = dirty_tree()
     if args.apply and dirty and not args.allow_dirty:
         _say("refusing to store: uncommitted changes under src/, scripts/ or migrations/ - the stored result could not "
              "be reproduced from its code_version. Commit first (or pass --allow-dirty).")
         for line in dirty[:10]:
             _say(f"  {line}")
         return 2
-    started = time.monotonic()
     with psycopg.connect(settings.database.psycopg_url) as conn:
         provider_ids = [int(x) for x in args.competitions.split(",") if x.strip()]
-        comps = _competitions(conn, provider_ids, args.validation_season, args.test_season)
+        comps = eligible_competitions(conn, provider_ids, args.validation_season, args.test_season)
         if not comps:
             _say("no competition has enough finished fixtures in both seasons")
             return 1
@@ -221,54 +210,18 @@ def main() -> int:
              f"(refit every {cfg.refit_days} day(s), cut-off {int(cfg.cutoff_offset.total_seconds() // 60)} min "
              f"before a block's first kick-off, min training {MIN_GOAL_TRAIN} goal / {MIN_OLOGIT_TRAIN} Elo / "
              f"{MIN_MNLOGIT_TRAIN} mnlogit)")
-        data = load_backtest_data(conn, feature_version=FEATURE_VERSION)
-        targets = [m for m in data.matches if m.competition_id in cfg.competition_ids
-                   and m.season == cfg.test_season and m.has_result]
-        _say(f"{len(data.matches)} fixtures loaded; {len(targets)} test fixtures with results")
-
-        selection: dict[str, object] = {}
-        specs = {}
-        for kind in ("poisson", "dixon_coles"):
-            _say(f"selecting {kind} hyper-parameters on {cfg.validation_season} ...")
-            spec, scores, grid = select_goal_spec(data, cfg, kind, progress=_say)
-            specs[kind] = spec
-            selection[kind] = {"chosen": {"xi": spec.xi, "penalty": spec.penalty}, "validation_logloss": scores,
-                               "initial_grid": {"xi": list(cfg.xi_grid), "penalty": list(cfg.penalty_grid)},
-                               "final_grid": grid, "validation_season": cfg.validation_season}
-            _say(f"  -> {kind}: {spec.tag}")
-
-        runs = []
-        for kind in ("poisson", "dixon_coles"):
-            t0 = time.monotonic()
-            runs.append(run_goal_model(data, targets, spec=specs[kind], cfg=cfg, refit_days=cfg.refit_days,
-                                       intervals=True))
-            _say(f"{kind}: {len(runs[-1].predictions)} predictions in {time.monotonic() - t0:.0f}s")
-        for label, runner in (("elo_ologit", run_elo_ologit), ("base_rates", run_base_rates),
-                              ("mnlogit", run_mnlogit)):
-            t0 = time.monotonic()
-            runs.append(runner(data, targets, cfg=cfg, refit_days=cfg.refit_days))
-            _say(f"{label}: {len(runs[-1].predictions)} predictions in {time.monotonic() - t0:.0f}s")
-
-        evaluation = evaluate_session(data, targets, runs)
-        _print_summary(evaluation, dict(comps))
-
-        report = report_json(name, cfg, evaluation, selection, comps, version)
-        REPORT_DIR.mkdir(parents=True, exist_ok=True)
-        path = REPORT_DIR / f"backtest-{name}-{now().strftime('%Y%m%dT%H%M%SZ')}.json"
-        path.write_text(json.dumps(report, indent=2, default=str))
+        result = run_session(conn, cfg, comps, progress=_say)
+        print_summary(result.evaluation, dict(comps), cfg.refit_days)
+        path = save_report(name, result, version)
         _say("")
-        _say(f"report: {path.relative_to(REPO)}  ({time.monotonic() - started:.0f}s)")
+        _say(f"report: {path.relative_to(REPO)}  ({result.seconds:.0f}s)")
         if not args.apply:
             _say("dry run - nothing stored (use --apply)")
             return 0
-
-        hypers = {kind: goal_hyper(specs[kind].xi, specs[kind].penalty, cfg, version)
-                  for kind in ("poisson", "dixon_coles")}
-        hypers["elo_ologit"] = ologit_hyper(version)
-        hypers["base_rates"] = base_rates_hyper(cfg, version)
-        hypers["mnlogit"] = mnlogit_hyper(version)
+        started = time.monotonic()
+        hypers = hypers_for(result, version)
         cfg_hash = config_hash({"cfg": config_json(cfg), "hypers": hypers, "semver": MODEL_SEMVER})
-        existing = find_completed_session(conn, name=name, dataset_hash=evaluation.dataset_hash,
+        existing = find_completed_session(conn, name=name, dataset_hash=result.evaluation.dataset_hash,
                                           code_version=version, cfg_hash=cfg_hash)
         if existing is not None:
             _say(f"session {existing} already holds this exact backtest (same data, code and config) - nothing stored")
@@ -278,17 +231,22 @@ def main() -> int:
                                                  "competitions": list(cfg.competition_ids)})
         counters = RunCounters()
         try:
-            session_id = store_session(conn, name=name, cfg=replace(cfg), data=data, evaluation=evaluation,
-                                       selection=selection, hypers=hypers, code_version=version, cfg_hash=cfg_hash)
+            session_id = store_session(conn, name=name, cfg=replace(cfg), data=result.data,
+                                       evaluation=result.evaluation, selection=result.selection, hypers=hypers,
+                                       code_version=version, cfg_hash=cfg_hash)
+            recorded = record_session(conn, result=result, session_id=session_id, name=name, question=QUESTION,
+                                      code_version=version, hypers=hypers, report_path=path)
             conn.commit()
-            counters.rows_inserted = sum(len(r.predictions) for r in runs)
-            _say(f"stored session {session_id} (ledger run {run_id})")
+            counters.rows_inserted = sum(len(r.predictions) for r in result.runs)
+            _say(f"stored session {session_id} (ledger run {run_id}) in {time.monotonic() - started:.0f}s")
+            for r in recorded:
+                _say(f"  experiment {r.id} {r.model:12s} {r.research_status}  data/experiments/{r.uuid}/")
         except Exception as exc:
             conn.rollback()
             counters.errors.append(f"{type(exc).__name__}: {exc}"[:500])
             ledger.close(run_id, counters, notes="failed, nothing stored")
             raise
-        ledger.close(run_id, counters, notes=f"session {session_id}, 0 requests")
+        ledger.close(run_id, counters, notes=f"session {session_id}, {len(recorded)} experiments, 0 requests")
     return 0
 
 

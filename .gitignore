@@ -11,3 +11,5 @@ node_modules/
 .next/
 *.duckdb
 data/reports/
+data/experiments/
+data/backups/

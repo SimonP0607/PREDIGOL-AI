@@ -87,6 +87,17 @@ def config_json(cfg: WalkForwardConfig) -> dict[str, Any]:
     return out
 
 
+def config_from_json(d: dict[str, Any]) -> WalkForwardConfig:
+    """The inverse of config_json: the configuration a stored session or experiment ran with."""
+    return WalkForwardConfig(
+        competition_ids=tuple(int(x) for x in d["competition_ids"]), test_season=int(d["test_season"]),
+        validation_season=int(d["validation_season"]), refit_days=int(d["refit_days"]),
+        validation_refit_days=int(d["validation_refit_days"]), history_days=int(d["history_days"]),
+        cutoff_offset=timedelta(minutes=int(d["cutoff_offset_minutes"])),
+        xi_grid=tuple(float(x) for x in d["xi_grid"]), penalty_grid=tuple(float(x) for x in d["penalty_grid"]),
+        interval_draws=int(d["interval_draws"]))
+
+
 def config_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
 
