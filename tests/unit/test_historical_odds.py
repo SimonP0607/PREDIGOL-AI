@@ -103,3 +103,22 @@ def test_every_devig_method_returns_a_distribution() -> None:
         assert r.overround == pytest.approx(1 / 1.57 + 1 / 4.49 + 1 / 5.62, abs=1e-6)
     assert baseline_from_prices(1, "s", "MAX", "closing", Decimal("2.2"), Decimal("4.0"), Decimal("4.5")) == [], \
         "a book with no margin (a best-price composite) has nothing to remove"
+
+
+STATS_CSV = """Div,Date,HomeTeam,AwayTeam,FTHG,FTAG,HS,AS,HST,AST,HC,AC,HF,AF,HY,AY,HR,AR
+E0,16/08/2024,Man United,Fulham,1,0,14,10,5,2,7,8,12,10,2,3,0,0
+E0,17/08/2024,Arsenal,Wolves,2,0,18,9,,3,,,,,1,1,0,1
+"""
+
+
+def test_match_statistics_are_read_literally_and_a_blank_is_not_zero() -> None:
+    rows, _ = parse_csv(STATS_CSV)
+    first, second = rows
+    assert first.home_stats == {"shots": 14, "shots_on_target": 5, "corners": 7, "fouls": 12, "yellow_cards": 2,
+                                "red_cards": 0}
+    assert first.away_stats["shots"] == 10 and first.away_stats["shots_on_target"] == 2
+    assert second.home_stats["shots_on_target"] is None and second.home_stats["corners"] is None
+    assert second.away_stats["red_cards"] == 1
+    no_stats, _ = parse_csv(CSV)
+    assert no_stats[0].home_stats == {} and no_stats[0].away_stats == {}, "absent columns are absent, not None"
+    assert hash(first) == hash(first), "a row stays hashable with its statistics"

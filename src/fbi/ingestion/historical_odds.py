@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import psycopg
 from psycopg.rows import tuple_row
@@ -171,4 +171,36 @@ def write_matched(conn: psycopg.Connection, report: MatchReport, *, payload_hash
                 "ON CONFLICT (source, alias) DO UPDATE SET evidence = GREATEST(core.team_aliases.evidence, EXCLUDED.evidence)",
                 (SOURCE, alias, team_id, n),
             )
+    return written
+
+
+STAT_FIELDS = ("shots", "shots_on_target", "corners", "fouls", "yellow_cards", "red_cards")
+
+
+def write_matched_stats(conn: psycopg.Connection, report: MatchReport, *, payload_hash: str,
+                        fetched_at: datetime) -> int:
+    """Team match statistics of matched rows into core.fixture_team_stats (source
+    football-data.co.uk). A row with no statistic at all writes nothing; shots on
+    target above total shots are the source's error and dropped. Idempotent and
+    monotonic on fetched_at."""
+    written = 0
+    cols = ", ".join(STAT_FIELDS)
+    sets = ", ".join(f"{c} = EXCLUDED.{c}" for c in STAT_FIELDS)
+    with conn.cursor() as cur:
+        for row, f in report.matched:
+            for side, stats in (("home", row.home_stats), ("away", row.away_stats)):
+                values = [stats.get(c) for c in STAT_FIELDS]
+                if all(v is None for v in values):
+                    continue
+                if values[0] is not None and values[1] is not None and values[1] > values[0]:
+                    values[1] = None
+                cur.execute(
+                    f"INSERT INTO core.fixture_team_stats (fixture_id, team_side, source, {cols}, payload_hash, "
+                    f"fetched_at) VALUES (%s, %s, %s, {', '.join(['%s'] * len(STAT_FIELDS))}, %s, %s) "
+                    f"ON CONFLICT (fixture_id, team_side, source) DO UPDATE SET {sets}, "
+                    "payload_hash = EXCLUDED.payload_hash, fetched_at = EXCLUDED.fetched_at "
+                    "WHERE core.fixture_team_stats.fetched_at <= EXCLUDED.fetched_at",
+                    (f.fixture_id, side, SOURCE, *values, payload_hash, fetched_at),
+                )
+                written += max(cur.rowcount, 0)
     return written

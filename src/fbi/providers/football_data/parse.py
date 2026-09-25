@@ -48,6 +48,18 @@ class Price:
     odds: Decimal
 
 
+# Match statistics columns (notes.txt): home/away shots, shots on target,
+# corners, fouls committed, yellow and red cards.
+STAT_COLUMNS: dict[str, tuple[str, str]] = {
+    "shots": ("HS", "AS"),
+    "shots_on_target": ("HST", "AST"),
+    "corners": ("HC", "AC"),
+    "fouls": ("HF", "AF"),
+    "yellow_cards": ("HY", "AY"),
+    "red_cards": ("HR", "AR"),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class FDRow:
     division: str
@@ -57,6 +69,19 @@ class FDRow:
     goals_home: int
     goals_away: int
     prices: tuple[Price, ...] = field(default_factory=tuple)
+    home_stats: dict[str, int | None] = field(default_factory=dict, hash=False)
+    away_stats: dict[str, int | None] = field(default_factory=dict, hash=False)
+    """Only the columns the CSV has; a blank cell is None, never 0."""
+
+
+def _count(text: str | None) -> int | None:
+    if text is None or not text.strip():
+        return None
+    try:
+        v = int(float(text.strip()))
+    except ValueError:
+        return None
+    return v if v >= 0 else None
 
 
 def decode(raw: bytes) -> str:
@@ -120,5 +145,8 @@ def parse_csv(text: str) -> tuple[list[FDRow], list[str]]:
                 if over is not None and under is not None:
                     prices.append(Price(code, "OU", "Over", Decimal("2.5"), kind, over))
                     prices.append(Price(code, "OU", "Under", Decimal("2.5"), kind, under))
-        rows.append(FDRow((r.get("Div") or "").strip(), d, home, away, gh, ga, tuple(prices)))
+        home_stats = {k: _count(r.get(h)) for k, (h, _) in STAT_COLUMNS.items() if h in r}
+        away_stats = {k: _count(r.get(a)) for k, (_, a) in STAT_COLUMNS.items() if a in r}
+        rows.append(FDRow((r.get("Div") or "").strip(), d, home, away, gh, ga, tuple(prices), home_stats,
+                          away_stats))
     return rows, skipped
