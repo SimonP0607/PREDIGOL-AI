@@ -1,43 +1,51 @@
 # Go-live checklist
 
-**Fecha:** 25 sep 2026. Cada casilla se marca con evidencia (comando, fila, captura), nunca por
+**Fecha:** 25 sep 2026 (máquina sincronizada a las 03:25 UTC). Cada casilla se marca con evidencia (comando, fila, captura), nunca por
 haber escrito el código. ✅ hecho · ⏳ pendiente de la máquina · 👤 paso manual de Simon.
 
 ## A. Puerta de compra (antes de pagar)
 
 | Condición | Estado | Evidencia |
 |---|---|---|
-| PRE-UPGRADE SYSTEM COMPLETE | ✅ réplica · ⏳ máquina | backend `056910d` (548 tests), frontend `ffde018` (lint 0 errores, typecheck, build, 84 E2E); la máquina corre `22ff00c`/`1625ee7` hasta sincronizar |
+| PRE-UPGRADE SYSTEM COMPLETE | ✅ réplica y máquina | máquina en backend `ea1d0c8` / Alembic 0024 / frontend `ffde018` (25 sep); tests en la máquina: ruff, mypy, pytest verdes; frontend en GitHub |
 | RESEARCH COMPLETE | ✅ | `docs/research/FOOTBALL_ANALYTICS_STATE_OF_THE_ART_2026.md` (15 áreas, 248 fuentes), `ANALYTICS_CAPABILITY_MATRIX.md`, `notes/A1–A5` |
-| MIGRATION PLANNER COMPLETE | ✅ | `API_FOOTBALL_MIGRATION_PLAN.md`; dry run 9/9 PASS (25 sep); unidades resumibles con test de caída |
-| REQUEST BUDGET COMPLETE | ✅ | `API_PLAN_CAPACITY_MODEL.md`; escenarios con y sin `ids=` |
-| BACKUP/RESTORE VERIFIED | 🟡 réplica 5/6 (LINEAGE: 32 ficheros viven en la máquina) · ⏳ máquina 6/6 | `BACKUP_RECOVERY_TEST.md` |
-| LIVE SYSTEM READY | ⏳ | el ciclo completo (§D) no se ha demostrado: 0 cuotas capturadas en la máquina a 24 sep 19:49 UTC |
+| MIGRATION PLANNER COMPLETE | ✅ | `API_FOOTBALL_MIGRATION_PLAN.md`; dry run 9/9 PASS en la réplica **y en la máquina**; cobertura verificada con `/leagues` (643 competición-temporadas) |
+| REQUEST BUDGET COMPLETE | ✅ | `API_PLAN_CAPACITY_MODEL.md`: 11.611 peticiones (15.675 con margen) con `ids=`; 756.810 sin él; vivo T1–2 medio 384 / pico 819 |
+| BACKUP/RESTORE VERIFIED | ✅ máquina 6/6 | `BACKUP_RECOVERY_TEST.md §4` (1.121.683 filas, 57 payloads re-hasheados) |
+| LIVE SYSTEM READY | 🟡 → ver §D | worker, API y web a HEAD en la máquina; capturas programadas; el ciclo completo se está demostrando sobre la Segunda División (la Premier está en su parón de tres semanas) |
 
 ### Pasos previos a la compra (en este orden)
 
-1. ⏳ Máquina en línea → sincronizar backend y frontend a HEAD (bundle git), dependencias,
-   **backup + restore-test 6/6**, migración Alembic 0018 → 0024, reinicio del worker bajo un solo
-   keeper, lejos de las ventanas de captura (±45 min).
-2. ⏳ `python -m scripts.probe_plan --yes` (2 peticiones del plan Free): ¿`ids=` disponible? +
-   cobertura y NAME CHECK de los 72 ids.
+1. ✅ Máquina sincronizada (25 sep 02:53–03:25 UTC): bundles git, dependencias, backup previo,
+   Alembic 0017 → 0024, servicios reiniciados lejos de cualquier ventana, research, backup +
+   restore-test 6/6, reproducción 5/5.
+2. ✅ Sonda (`python -m scripts.probe_plan --yes`, 2 peticiones): **Free rechaza `ids=`**
+   ("Free plans do not have access to the Ids parameter."); `/leagues` → cobertura verificada;
+   NAME CHECK con un renombre (63). La pregunta del plan de pago se cierra en §B.1.
 3. 👤 Confirmar el precio en el dashboard de API-Football el día de la compra.
-4. 👤 **Pagar** el plan recomendado (Pro si la sonda dice AVAILABLE; si no, Ultra o Mega).
+4. 👤 **Pagar Pro, 1 mes** (regla y alternativas: `API_PLAN_CAPACITY_MODEL.md §5`).
 
 ## B. Tras activar el plan
 
 1. `python -m scripts.capture_odds status` → el plan que dice el proveedor (/status, gratis).
+   Enseguida, **antes de sembrar nada**: `python -m scripts.probe_plan --yes` (2 peticiones).
+   AVAILABLE → seguir. Rechazado o sin bloques → upgrade a Mega (7,6 días sin `ids=`) o Ultra
+   (15,3) desde el dashboard, repetir la sonda y `scripts.migration capacity --no-ids`.
 2. `.env`: `FBI_APIFOOTBALL_PLAN=<plan>` y `FBI_APIFOOTBALL_DAILY_BUDGET` (por debajo del límite
    del plan); reiniciar el worker (el lock impide dos).
 3. `python -m scripts.migration plan` → "verified" y NAME CHECK limpio; `capacity` con cobertura
    real.
-4. `seed --tiers 1 --yes` → `run --yes --max …` (o el worker, cada hora) → `status`.
+4. `python -m scripts.backup create --label pre-tier1 --restore-test` → `seed --tiers 1 --yes` →
+   `run --yes --max …` (o el worker, cada hora) → `status`.
 5. Validación de calidad del tier 1 (`API_FOOTBALL_MIGRATION_PLAN.md §8`) + backup.
 6. Features (`scripts.build_features --apply`), walk-forward (`scripts.run_backtest --apply`),
    reproducción (`scripts.experiment reproduce <id>`), comparación con el mercado (Models Lab,
    Analytics → Models).
 7. Tiers 2 y 3 tras el NAME CHECK; backup tras cada uno.
-8. Activar el vivo de forma permanente (§D) con las competiciones de los tiers 1–2.
+8. Activar el vivo de forma permanente (§D) con las competiciones de los tiers 1–2
+   (`config/competitions.yaml`; la prueba de la Segunda División queda dentro del tier 2).
+9. **Si el plan sigue siendo Free cuando vuelva la Premier:** apagar la Segunda División
+   (`enabled: false` + `manage_competitions apply`): dos ligas no caben en 60 peticiones/día.
 
 ## C. Validación del near-close antes de llamarlo "cierre"
 
@@ -93,22 +101,25 @@ evidencia en `analytics.experiments.gate`:
    de 0.
 
 Gate superado → `CANDIDATE`; `PRODUCTION` solo con `scripts.experiment promote <id>` (la base de
-datos también lo rechaza sin gate). **Estado hoy:** 5 experimentos de la sesión 2, los cinco
-reproducidos bit a bit, **ninguno bate al mercado → todos en RESEARCH.** No se fuerza un ganador.
+datos también lo rechaza sin gate). **Estado hoy:** 5 experimentos de la sesión 2 de la réplica
+y 5 de la sesión 1 de la máquina (que ya incluye la Segunda División), los diez reproducidos bit
+a bit, **ninguno bate al mercado → todos en RESEARCH.** El mejor en la máquina, el logit
+multinomial: ΔLL **+0,0245 [+0,0152, +0,0333]** frente a Pinnacle cierre (Shin), 1.684 partidos,
+evidencia suficiente de que es peor. No se fuerza un ganador.
 
 ## F. Quality gates
 
-| Gate | Estado (25 sep) |
-|---|---|
-| Backend `ruff check .` | ✅ |
-| Backend `mypy` (estricto, 19 paquetes) y `mypy .` | ✅ |
-| Backend `pytest -q` | ✅ 548 passed |
-| Migraciones desde cero (suite + dry run) | ✅ 0001 → 0024 |
-| Frontend `bun run lint` | ✅ 0 errores (13 warnings de fast-refresh, preexistentes) |
-| Frontend `bun run typecheck` | ✅ |
-| Frontend `bun run build` | ✅ |
-| E2E (Playwright, contra el stack en marcha) | ✅ 84 flujos y vistas responsive (1440/1024/768/390 px) |
-| Secretos en el repositorio | ver `PRE_UPGRADE_READINESS.md` (capa 30) |
+| Gate | Réplica (25 sep) | Máquina (25 sep) |
+|---|---|---|
+| Backend `ruff check .` | ✅ | ✅ |
+| Backend `mypy` (estricto, 154 ficheros) y `mypy .` (261) | ✅ | ✅ (153 / 258 a `938d55e`) |
+| Backend `pytest -q` | ✅ 555 passed | ✅ 551 passed a `938d55e` |
+| Migraciones desde cero (suite + dry run) | ✅ 0001 → 0024 | ✅ dry run 9/9; producción 0017 → 0024 |
+| Frontend `bun run lint` | ✅ 0 errores (13 warnings de fast-refresh, preexistentes) | ✅ igual |
+| Frontend `bun run typecheck` | ✅ | ✅ |
+| Frontend `bun run build` | ✅ | ✅ |
+| E2E (Playwright, contra el stack en marcha) | ✅ 84 flujos y vistas responsive (1440/1024/768/390 px) | — (UI comprobada en Chrome contra la máquina) |
+| Secretos en el repositorio | ✅ 0 (ver `PRE_UPGRADE_READINESS.md`, capa 30) | — |
 
 ## G. IA y Telegram — bloqueados a propósito
 

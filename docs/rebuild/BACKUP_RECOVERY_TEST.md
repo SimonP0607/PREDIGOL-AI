@@ -1,6 +1,6 @@
 # Backup y recuperación: probado restaurando
 
-**Fecha:** 25 sep 2026 · **Código:** `src/fbi/ops/backup.py`, `scripts/backup.py` · **Tests:**
+**Fecha:** 25 sep 2026 (réplica 01:53 UTC; máquina 03:18 UTC) · **Código:** `src/fbi/ops/backup.py`, `scripts/backup.py` · **Tests:**
 `tests/integration/test_backup_restore.py`.
 
 Un backup no cuenta como backup hasta que se ha restaurado y comparado. Esto es lo que hace
@@ -57,21 +57,45 @@ restore test FAILED in 7.0s
 se restauran idénticos. El fallo de LINEAGE es correcto y esperado **en la réplica**: 32 de los
 47 payloads indexados (las respuestas de API-Football) están en el almacén raw de la máquina, no
 en este entorno. La comprobación existe precisamente para detectar esto. **La prueba que cuenta
-es la de la máquina**, con su almacén completo: tiene que dar 6/6 PASS.
+es la de la máquina**, con su almacén completo: tenía que dar 6/6 PASS, y lo dio (§4).
 
 El test de integración reproduce los dos casos: un backup con un payload propio que restaura y
 verifica, la fila semilla cuyo fichero nunca existió (LINEAGE lo detecta), y un archivo
 corrompido un byte (FILES lo detecta y la restauración se niega).
 
-## 4. En la máquina (pendiente: sin conexión desde el 24 sep 19:49 UTC)
+## 4. En la máquina (25 sep 2026): 6/6 PASS
+
+La máquina no tiene `pg_dump`/`pg_restore` en WSL (PostgreSQL vive en el contenedor de Docker
+Desktop): con `FBI_PG_CONTAINER=fbi-postgres` las herramientas corren **dentro** del contenedor
+por `docker exec`, con el volcado por stdout y la restauración por stdin (`938d55e`). Tras la
+sincronización (Alembic 0017 → 0024), la importación de Football-Data y la sesión de backtest:
 
 ```
-cd ~/projects/football-intelligence-v2
-python -m scripts.backup create --label pre-upgrade --restore-test
+backup data/backups/20260925T031755Z-post-sync in 7.4s
+  database fbi at revision 0024: 56 tables, 1121683 rows; dump 10730529 bytes
+  raw store: 65 files, 1915175 bytes; archive 2037760 bytes
+  [PASS] FILES: dump and raw archive match the manifest: sha256 ok
+  [PASS] RESTORE: pg_restore into a new, empty database: into fbi_restore_a17daec6
+  [PASS] TABLES: every table's row count and content fingerprint: 56 tables, 1121683 rows; identical
+  [PASS] SCHEMA: the Alembic revision came back: 0024
+  [PASS] RAW: every archived file re-hashes to its manifest sha256: 65 files
+  [PASS] LINEAGE: every payload the restored index names exists and re-hashes: 57 index rows: 57 files present and verified
+restore test PASSED in 6.0s (scratch database fbi_restore_a17daec6)
 ```
 
-- Antes de migrar a 0024 y antes de comprar el plan: **backup + restore-test 6/6**.
-- Después de cada tier de la migración: backup (el raw crece ~0,1–0,6 GB por tier).
+Antes de migrar se tomó además el volcado previo (`~/backups/fbi-20260925T025324Z-pre-sync.dump`,
+1,9 MB, 43 tablas con datos, a Alembic 0017): el punto de vuelta atrás de la migración.
+
+**Hallazgo menor:** el almacén raw tiene 8 ficheros sin fila de índice (65 ficheros, 57 filas):
+seis respuestas de `/status` del 12–13 sep (gratuitas; `capture_odds status` guarda el cuerpo
+pero no lo indexa porque no es ingesta), un `/fixtures` del 12 sep anterior al ledger y un
+`/leagues` del 24 sep. LINEAGE comprueba índice → fichero y pasa; ningún dato normalizado
+apunta a esos ficheros. No se "reindexan" a mano: se dejan como están y constan aquí.
+
+Operación:
+
+- Antes de cada cambio de esquema y antes de cada tier de la migración: `python -m
+  scripts.backup create --label <motivo> --restore-test` (el raw crece ~0,1–0,6 GB por tier).
 - Retención propuesta: los 3 últimos y el de antes de cada cambio de esquema. Copia fuera del
   portátil (disco externo o almacenamiento cifrado del usuario): **decisión de Simon** (no se
   envía nada a terceros sin su permiso).

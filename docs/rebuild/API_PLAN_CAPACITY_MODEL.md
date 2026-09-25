@@ -1,6 +1,6 @@
 # Modelo de capacidad: qué plan de API-Football comprar
 
-**Fecha:** 25 sep 2026 · **Código:** `src/fbi/migration/capacity.py`, `config/api_plans.yaml`,
+**Fecha:** 25 sep 2026 (cifras con la cobertura verificada en la máquina, 03:25 UTC) · **Código:** `src/fbi/migration/capacity.py`, `config/api_plans.yaml`,
 `config/migration.yaml` · **Comando:** `python -m scripts.migration capacity [--no-ids]
 [--with-optional] [--tiers …] [--live-tiers …]`.
 
@@ -27,6 +27,10 @@ margen razonable. No se asume Ultra ni ningún otro: se calcula.
   eventos, alineaciones, estadísticas y jugadores (changelog 3.9.2; tutoriales oficiales de 2024 y
   2026) — con una única salvedad oficial: "**when available for your plan**" (post del 27 jul
   2026), sin decir qué planes no lo tienen.
+- **Medido en esta cuenta (25 sep 2026, plan Free):** `{'plan': 'Free plans do not have access
+  to the Ids parameter.'}`. Free queda descartado para `ids=`; para los planes de pago la
+  documentación dice que sí y el rechazo nombra solo a Free, pero **no está demostrado** hasta
+  sondearlo con el plan activo (§5).
 - **Los precios hay que confirmarlos en el dashboard el día de la compra**: no se copian de aquí.
 
 Detalle y enlaces: `docs/research/notes/A5_api_football_inventory.md`.
@@ -56,35 +60,40 @@ En el día pico de tiers 1–2, las cuotas pre-partido son 579 peticiones y el n
 
 ## 3. Escenarios
 
-**A. Migración completa (72 competiciones × ≤ 9 temporadas), `ids=` disponible (documentado):
-12.139 peticiones → 16.388 con margen.**
+Cobertura **verificada** (`/leagues` en la máquina): 643 competición-temporadas, 190.313
+partidos. Salida de `python -m scripts.migration capacity` en la máquina, 25 sep 2026:
+
+**A. Migración completa (72 competiciones × ≤ 9 temporadas), `ids=` disponible:
+11.611 peticiones → 15.675 con margen.**
 
 | Plan | Peticiones/día | Backfill | Días | Vivo pico (T1–2) | Holgura | ¿Encaja? |
 |---|---|---|---|---|---|---|
-| Free | 100 | 16.388 | nunca | 819 | −1.006 % | no |
-| **Pro** | 7.500 | 16.388 | **2,6** | 819 | **85,3 %** | **sí** |
-| Ultra | 75.000 | 16.388 | 0,2 | 819 | 98,5 % | sí |
-| Mega | 150.000 | 16.388 | 0,1 | 819 | 99,3 % | sí |
+| Free | 100 | 15.675 | nunca | 819 | −1.005,9 % | no |
+| **Pro** | 7.500 | 15.675 | **2,5** | 819 | **85,3 %** | **sí** |
+| Ultra | 75.000 | 15.675 | 0,2 | 819 | 98,5 % | sí |
+| Mega | 150.000 | 15.675 | 0,1 | 819 | 99,3 % | sí |
 
-Con los perfiles de jugador opcionales (35.467 → 47.881): Pro **7,7 días**. Con captura en vivo
-de las 72 competiciones: Pro 2,8 días de backfill y **71,7 %** de holgura en el día pico.
+Con los perfiles de jugador opcionales (34.147 → 46.099): Pro **7,4 días**. Con captura en vivo
+de las 72 competiciones (medio 736, pico 1.572 peticiones/día): Pro 2,7 días de backfill y
+**71,7 %** de holgura en el día pico.
 
-**B. La misma migración si `ids=` NO estuviera disponible: 768.261 → 1.037.153.**
+**B. La misma migración si `ids=` NO estuviera disponible: 756.810 → 1.021.694.**
 
 | Plan | Días | Holgura vivo | ¿Encaja en 14 días? |
 |---|---|---|---|
-| Pro | 166,4 | 85,3 % | no |
-| Ultra | 15,5 | 98,5 % | no por 1,5 días (sí en un mes) |
-| Mega | 7,7 | 99,3 % | sí |
+| Pro | 163,9 | 85,3 % | no |
+| Ultra | 15,3 | 98,5 % | no por 1,3 días (sí dentro del mes) |
+| Mega | 7,6 | 99,3 % | sí |
 
-Por tiers sin `ids=`: tier 1 solo → Ultra 1,5 días / Pro 16 días; tiers 1–2 → Ultra 8,0 días /
-Mega 4,0.
+Por tiers sin `ids=`: tier 1 solo (99.594 con margen) → Ultra 1,5 días / Pro 16,0 días;
+tiers 1–2 (530.441) → Ultra 7,9 días / Mega 3,9 / Pro 85,1.
 
 ## 4. Sensibilidad
 
-- **La variable que decide es `ids=`**: sin ella el detalle cuesta ~80 veces más (4 peticiones por
-  partido frente a 1 por cada 20) y la migración entera 63 veces más (12.139 → 768.261). Todo lo demás (profundidad, opcionales, captura en vivo de
-  las 72) mueve los días de Pro entre 2,6 y 7,7, nunca fuera del mes.
+- **La variable que decide es `ids=`**: sin ella el detalle cuesta ~79 veces más (4 peticiones por
+  partido frente a 1 por cada 20: 9.565 → 754.764) y la migración entera 65 veces más
+  (11.611 → 756.810). Todo lo demás (profundidad, opcionales, captura en vivo de las 72) mueve
+  los días de Pro entre 2,5 y 7,4, nunca fuera del mes.
 - El límite de 14 días es una decisión nuestra (tener el histórico pronto para modelar), no del
   proveedor. Con un mes de margen, sin `ids=` Ultra también encaja.
 - La holgura de Pro en vivo (71–85 %) deja sitio para más competiciones en directo, más ventanas
@@ -94,17 +103,24 @@ Mega 4,0.
 
 ## 5. Recomendación y regla de decisión
 
-**Comprar Pro, 1 mes** — es el más barato que cumple la migración completa (2,6 días) y la
-operación en vivo con 85 % de holgura, con la condición que la documentación oficial ya indica
-(`ids=` para todos los planes). La salvedad del 27 jul 2026 se cierra **antes de pagar** con la
-sonda gratuita de 2 peticiones:
+**Comprar Pro, 1 mes** — es el más barato que cumple la migración completa (2,5 días) y la
+operación en vivo con 85 % de holgura **si el plan de pago sirve `ids=`**, que es lo que dice la
+documentación oficial. La sonda en Free (25 sep) no pudo cerrarlo: Free rechaza el parámetro.
+Por qué Pro sigue siendo la compra correcta:
 
-1. `python -m scripts.probe_plan --yes` (plan Free, 2 de las 100 peticiones del día).
-2. Si dice **AVAILABLE** → comprar **Pro**.
-3. Si dice **NOT available** → comprar **Ultra** (15,5 días, dentro del mes) o **Mega** (7,7
-   días) según la prisa. Y si se compró Pro y el plan de pago no devolviera los bloques, el
-   upgrade a Ultra/Mega cuesta solo la diferencia y conserva la fecha de fin; al revés no se
-   puede (sin downgrade): por eso se empieza por el más barato que encaja.
+- Si Pro sirve `ids=` (lo documentado): $19 y la migración completa en 2,5 días.
+- Si no lo sirviera: el upgrade a **Mega** cuesta la diferencia ($20) y conserva la fecha de fin
+  → migración sin `ids=` en 7,6 días (o Ultra, +$10, 15,3 días). El peor caso total es $39, el
+  mismo que comprar Mega hoy; el mejor caso es $19. Empezar por Pro no tiene coste esperado y
+  no se puede hacer downgrade: por eso se empieza por el más barato que encaja.
+
+Regla, **en la primera hora del plan de pago y antes de sembrar nada**:
+
+1. `python -m scripts.capture_odds status` → confirma el plan activo (gratis).
+2. `python -m scripts.probe_plan --yes` (2 peticiones).
+3. **AVAILABLE** → seguir con Pro (`GO_LIVE_CHECKLIST.md §B`).
+4. **Refused / NOT available** → upgrade a Mega (7,6 días) o Ultra (15,3) desde el dashboard y
+   repetir la sonda; `scripts.migration capacity --no-ids` recalcula con la cuota nueva.
 
 Prepago: **1 mes** primero. La migración y la validación del ciclo en vivo caben de sobra; el
 prepago largo (hasta −30 % a 12 meses, $159,60 en Pro) se decide cuando el vivo esté demostrado,

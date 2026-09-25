@@ -148,7 +148,7 @@ tiers:
       - {league_id: 286, name: Super Liga (Serbia), fixtures: 296}
       - {league_id: 292, name: K League 1, fixtures: 228}
       - {league_id: 296, name: Thai League 1, fixtures: 240}
-      - {league_id: 63, name: National 1, fixtures: 306}
+      - {league_id: 63, name: Ligue 3 (France), fixtures: 306}   # "National 1" until 2026; renamed at the provider (NAME CHECK, 2026-09-25)
       - {league_id: 255, name: USL Championship, fixtures: 450}
       - {league_id: 263, name: Liga de Expansion MX, fixtures: 280}
       - {league_id: 266, name: Primera B (Chile), fixtures: 240}

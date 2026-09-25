@@ -1,15 +1,17 @@
 # V2 — Implementation status
 
-**Actualizado:** 2026-09-25 03:00 UTC (fase pre-upgrade). La matriz de 32 capas está en
-`PRE_UPGRADE_READINESS.md`; este documento sigue siendo el detalle por área.
+**Actualizado:** 2026-09-25 03:40 UTC (fase pre-upgrade; máquina sincronizada). La matriz de
+32 capas está en `PRE_UPGRADE_READINESS.md`; este documento sigue siendo el detalle por área.
 
 Dos fuentes, y este documento no las mezcla:
 
-* **Máquina** — el portátil de Simon (WSL2 + Docker Desktop). Último contacto: 2026-09-24
-  19:49 UTC. Corre el backend en `22ff00c` (features + backfill) y el frontend en `1625ee7`.
-* **Réplica** — un `pg_dump` de la base de datos de la máquina tomado en ese contacto,
+* **Máquina** — el portátil de Simon (WSL2 + Docker Desktop). Sin conexión del 24 sep 19:49 UTC
+  al 25 sep 02:45 UTC; **sincronizada el 25 sep 02:53–03:25 UTC**: backend `ea1d0c8`, Alembic
+  **0024** (venía de 0017), frontend `ffde018`, research repetido allí (ver §12 y
+  `PRE_UPGRADE_READINESS.md`).
+* **Réplica** — un `pg_dump` de la base de datos de la máquina tomado el 24 sep a las 19:49 UTC,
   restaurado en el entorno de trabajo en la nube. Todo lo posterior a `22ff00c` se construyó,
-  se probó y se midió ahí. **No está desplegado en la máquina todavía** (ver §12).
+  se probó y se midió ahí antes de desplegarse.
 
 Una casilla ✅ significa: ejecutado, verificado y con tests en verde en el sitio indicado.
 Nada está marcado por haber sido escrito.
@@ -19,23 +21,23 @@ Nada está marcado por haber sido escrito.
 ## 0. Lectura rápida
 
 ```
-                        máquina (22ff00c)              réplica (HEAD)
-API-Football            ✅ plan Free, clave solo .env    — (sin clave: no llama a nadie)
-Ingesta                 ✅ fixtures · resultados · backfill
-Raw storage             ✅ 47 payloads, 1,3 MB           ✅ + CSVs de Football-Data
-PostgreSQL              ✅ Alembic 0018                  ✅ Alembic 0021
-Odds history (propio)   ⛔ 0 snapshots                   ⛔ 0 snapshots
-Odds history (externo)  ⛔ sin importar                  ✅ 345.964 cuotas · 5.329 partidos
-Feature Engine          ✅ 181.740 features · 12.110 Elo ✅
-Modelos                 ⛔ código no desplegado          ✅ 5 familias · registro · model gate
-Market Baseline         ⛔                               ✅ histórico · ⛔ consenso propio (0 capturas)
-Backtest walk-forward   ⛔                               ✅ sesiones 1 y 2 (2 reproducida bit a bit)
-Value Engine / Picks    ⛔                               ✅ código + tests · 0 picks (0 capturas)
-FastAPI /api/v1         🟡 versión de 22ff00c            ✅ 32 operaciones (audit + analytics)
-Frontend                🟡 versión de 1625ee7            ✅ 15 rutas LIVE · búsqueda LIVE
-Analista IA             ⛔                               🟡 herramientas ✅ · LLM sin credencial
-Bot (notificador)       ⛔                               🟡 ✅ · Telegram sin credencial
-Arranque local          🟡 lanzadores ad hoc             ✅ dev-up/dev-down · compose verificado
+                        máquina (25 sep, ea1d0c8)                 réplica (HEAD)
+API-Football            ✅ plan Free, clave solo .env; sonda hecha  — (sin clave: no llama a nadie)
+Ingesta                 ✅ fixtures · resultados · backfill (+ Segunda 2022–2024)
+Raw storage             ✅ 65 ficheros, 57 indexados, 1,9 MB        ✅ + CSVs de Football-Data
+PostgreSQL              ✅ Alembic 0024 · 1.121.683 filas            ✅ Alembic 0024
+Odds history (propio)   ⏳ 0 snapshots; ventanas programadas         ⛔ 0 snapshots
+Odds history (externo)  ✅ 5.329 partidos (vía raw_transfer)         ✅ 345.964 cuotas · 5.329 partidos
+Feature Engine          ✅ fv2 · 7.467 conjuntos                     ✅
+Modelos                 ✅ 5 familias · 5 experimentos reproducidos  ✅ 5 familias · registro · model gate
+Market Baseline         ✅ histórico · ⏳ consenso propio            ✅ histórico · ⛔ consenso propio
+Backtest walk-forward   ✅ sesión 1 (reproducida bit a bit)          ✅ sesiones 1 y 2 (2 reproducida)
+Value Engine / Picks    ⏳ previsiones en vivo; 0 precios aún        ✅ código + tests · 0 picks (0 capturas)
+FastAPI /api/v1         ✅ 32 operaciones                            ✅ 32 operaciones (audit + analytics)
+Frontend                ✅ 15 rutas LIVE; GitHub `ffde018`           ✅ 15 rutas LIVE · búsqueda LIVE
+Analista IA             🟡 herramientas ✅ · LLM sin credencial      🟡 herramientas ✅ · LLM sin credencial
+Bot (notificador)       🟡 ✅ · Telegram sin credencial              🟡 ✅ · Telegram sin credencial
+Arranque local          🟡 wsl.exe ocultos, arranque manual          ✅ dev-up/dev-down · compose verificado
 ```
 
 El cuello de botella sigue sin ser código: **no hay ni una cuota capturada por la plataforma**.
@@ -50,9 +52,9 @@ calendario (plan Free: solo ±1 día).
 | | Dónde | Estado | Evidencia |
 |---|---|---|---|
 | WSL2 + Docker Desktop + PostgreSQL 16 | máquina | ✅ | `fbi-postgres` healthy, puerto 5433, volumen `pgdata` |
-| Alembic | réplica | ✅ 0021 | roundtrip `upgrade head → downgrade base → upgrade head` limpio (49 tablas) |
-| Alembic | máquina | 🟡 0018 | 0019–0021 pendientes (§12) |
-| Worker | máquina | ✅ corriendo | heartbeat `Mila:worker`, arrancado 19:49:07 UTC en `22ff00c` |
+| Alembic | réplica | ✅ 0024 | roundtrip `upgrade head → downgrade base → upgrade head` limpio |
+| Alembic | máquina | ✅ 0024 | 0017 → 0024 el 25 sep 02:55 UTC, tras `pg_dump` previo |
+| Worker | máquina | ✅ corriendo | heartbeat `Mila:worker` en `ea1d0c822bdc` desde el 25 sep 03:12 UTC |
 | Un solo worker por BD | réplica | ✅ | advisory lock; 2.º worker sale con código 75 (host y contenedor, verificado) |
 | Modo host | réplica | ✅ | `scripts/dev-up` / `dev-down` / `dev-status`, probado de extremo a extremo |
 | Modo compose | nube | ✅ | imagen construida (sin `.env` ni `.git`, uid 1000), migraciones, api healthy, worker |
@@ -200,23 +202,28 @@ credencial que estuviera en el sistema legacy.
 
 ## 11. Bloqueos reales
 
-1. **Sin captura real todavía.** Depende del calendario y del plan Free. El worker de la máquina
-   capturará solo cuando haya una ventana alcanzable.
-2. **Máquina desconectada** desde las 19:49 UTC del 24-09: el despliegue de todo lo posterior a
-   `22ff00c` espera a que vuelva (§12).
+1. **Sin captura real todavía.** Depende del calendario y del plan Free: la Premier está en su
+   parón internacional de tres semanas; el ciclo en vivo se demuestra sobre la Segunda División
+   (primera ventana 25 sep 06:30 UTC).
+2. ~~Máquina desconectada~~ — resuelto: sincronizada el 25 sep (§12).
 3. **Credenciales que no existen:** LLM del analista y Telegram. Son decisiones de Simon.
-4. **Plan Free:** sin temporada 2025/26 por liga, sin T−72h/T−48h, sin historia de línea.
+4. **Plan Free:** sin temporada 2025/26 por liga, sin T−72h/T−48h, sin historia de línea, sin
+   `ids=` (rechazado por el proveedor el 25 sep).
+5. **Football-Data.co.uk bloqueado en la red de la máquina** (redirección a coljuegos.gov.co):
+   las CSV se descargan en la réplica y llegan con `scripts.raw_transfer`.
 
-## 12. Despliegue pendiente en la máquina (en este orden)
+## 12. Despliegue en la máquina — hecho el 25 sep 2026 (02:53–03:25 UTC)
 
-1. Comprobar WS0 (worker, cuota, próximas ventanas) y hacerlo lejos de una ventana de captura.
-2. `pg_dump` a `~/backups`.
-3. Traer los commits (bundle) y fast-forward: backend `22ff00c → HEAD`, frontend `1625ee7 → HEAD`.
-4. `pip install -e ".[dev,analytics]"` (numpy, scipy) y `bun install`.
-5. `python -m scripts.backup create --label pre-0024 --restore-test` (6/6 PASS), después
-   `scripts/dev-down`, `scripts/dev-up --migrate` (migra 0018 → 0024).
-6. `python -m scripts.import_historical_odds --from-raw --apply` (o descarga), `scripts.build_features
-   --apply` (fv2), `python -m scripts.run_backtest --apply` con el árbol limpio y
-   `scripts.experiment reproduce`.
-6b. `python -m scripts.probe_plan --yes` (2 peticiones: `ids=` y cobertura) antes de comprar.
-7. Push del frontend a GitHub (`main`, sincroniza con Lovable) y verificación en el navegador.
+Por fases (`sync-machine.sh`, cada fase corta o en primer plano dentro de un `wsl.exe` oculto):
+
+1. ✅ WS0: worker caído desde el 24 sep 20:34 UTC, 0 capturas, ninguna ventana pendiente.
+2. ✅ `pg_dump` previo (`~/backups/fbi-20260925T025324Z-pre-sync.dump`, Alembic 0017).
+3. ✅ Fast-forward desde bundles: backend `22ff00c → ea1d0c8`, frontend `1625ee7 → ffde018`.
+4. ✅ `pip install -e ".[dev,analytics]"` y `bun install`.
+5. ✅ Alembic 0017 → 0024; worker, API y web reiniciados (sin ventanas en ±45 min).
+6. ✅ Tests en la máquina (ruff, mypy, pytest 551) y gates del frontend.
+7. ✅ Football-Data por `raw_transfer` + `import_historical_odds --from-raw --apply`, fv2,
+   `run_backtest --apply`, `experiment reproduce` (5/5 idénticos), dry run de la migración 9/9.
+8. ✅ `scripts.backup create --label post-sync --restore-test`: **6/6 PASS**.
+9. ✅ Sonda: `ids=` rechazado en Free; `/leagues` → cobertura verificada.
+10. ✅ Push del frontend a GitHub (`origin/main` = `ffde018`) y verificación en Chrome.
