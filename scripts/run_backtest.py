@@ -10,12 +10,16 @@ Protocol (fixed before any test result is seen):
     here, by log loss, on the fixtures every candidate predicted;
   * test season: refit every --refit-days on results public before the
     block's cut-off (kick-off of its first fixture minus 60 minutes);
+  * families: the no-skill base rates, Poisson, Dixon-Coles, the Elo ordered logit
+    and the multinomial logistic on feature version 2 (fbi.models.families);
   * every model is scored on its own sample AND on the fixtures it shares with
     each market baseline; the verdict against the market needs the whole
-    paired-bootstrap interval on one side of zero.
+    interval (match days resampled as blocks) on one side of zero, and a
+    comparison whose interval straddles zero is labelled with its evidence
+    ('equivalent' inside +/- 0.005 nats, else 'insufficient').
 
-Zero provider requests. Reads core fixtures/results, features fv1.0.0,
-market.historical_odds and analytics.market_baseline.
+Zero provider requests. Reads core fixtures/results, the current feature
+version, market.historical_odds and analytics.market_baseline.
 """
 
 from __future__ import annotations
@@ -36,21 +40,26 @@ from fbi.backtesting.data import load_backtest_data
 from fbi.backtesting.evaluate import PRIMARY_BASELINE, SessionEvaluation, evaluate_session
 from fbi.backtesting.persist import (
     MODEL_SEMVER,
+    base_rates_hyper,
     comparison_json,
     config_hash,
     config_json,
     find_completed_session,
     goal_hyper,
+    mnlogit_hyper,
     ologit_hyper,
     scores_json,
     store_session,
 )
 from fbi.backtesting.walkforward import (
     MIN_GOAL_TRAIN,
+    MIN_MNLOGIT_TRAIN,
     MIN_OLOGIT_TRAIN,
     WalkForwardConfig,
+    run_base_rates,
     run_elo_ologit,
     run_goal_model,
+    run_mnlogit,
     select_goal_spec,
 )
 from fbi.core.clock import now
@@ -157,9 +166,10 @@ def _print_summary(evaluation: SessionEvaluation, competitions: dict[int, str]) 
             _say(f"  own sample: n={ev.own.n} logloss={ev.own.log_loss:.5f} brier={ev.own.brier:.5f} "
                  f"ece={ev.own.ece:.4f} (accuracy {ev.own.accuracy:.1%}, not a ranking metric)")
         for c in (*ev.comparisons, *ev.ou_comparisons):
+            dm = "" if c.dm_p is None else f" DM p={c.dm_p:.3f}"
             _say(f"  vs {c.baseline_key:30s} {c.market_key:4s} n={c.n_common:5d} "
                  f"dLL={c.logloss_diff.mean:+.5f} [{c.logloss_diff.lo:+.5f},{c.logloss_diff.hi:+.5f}] "
-                 f"dBrier={c.brier_diff.mean:+.5f} -> {c.verdict}")
+                 f"dBrier={c.brier_diff.mean:+.5f}{dm} -> {c.verdict} ({c.evidence})")
         if ev.btts is not None:
             _say(f"  BTTS (no market baseline available): n={ev.btts.n} logloss={ev.btts.log_loss:.5f} "
                  f"brier={ev.btts.brier:.5f} ece={ev.btts.ece:.4f}")
@@ -209,7 +219,8 @@ def main() -> int:
         _say(f"backtest '{name}' at {version}: {', '.join(n for _, n in comps)}")
         _say(f"validation season {cfg.validation_season} (hyper-parameters) -> test season {cfg.test_season} "
              f"(refit every {cfg.refit_days} day(s), cut-off {int(cfg.cutoff_offset.total_seconds() // 60)} min "
-             f"before a block's first kick-off, min training {MIN_GOAL_TRAIN} goal / {MIN_OLOGIT_TRAIN} Elo)")
+             f"before a block's first kick-off, min training {MIN_GOAL_TRAIN} goal / {MIN_OLOGIT_TRAIN} Elo / "
+             f"{MIN_MNLOGIT_TRAIN} mnlogit)")
         data = load_backtest_data(conn, feature_version=FEATURE_VERSION)
         targets = [m for m in data.matches if m.competition_id in cfg.competition_ids
                    and m.season == cfg.test_season and m.has_result]
@@ -232,9 +243,11 @@ def main() -> int:
             runs.append(run_goal_model(data, targets, spec=specs[kind], cfg=cfg, refit_days=cfg.refit_days,
                                        intervals=True))
             _say(f"{kind}: {len(runs[-1].predictions)} predictions in {time.monotonic() - t0:.0f}s")
-        t0 = time.monotonic()
-        runs.append(run_elo_ologit(data, targets, cfg=cfg, refit_days=cfg.refit_days))
-        _say(f"elo_ologit: {len(runs[-1].predictions)} predictions in {time.monotonic() - t0:.0f}s")
+        for label, runner in (("elo_ologit", run_elo_ologit), ("base_rates", run_base_rates),
+                              ("mnlogit", run_mnlogit)):
+            t0 = time.monotonic()
+            runs.append(runner(data, targets, cfg=cfg, refit_days=cfg.refit_days))
+            _say(f"{label}: {len(runs[-1].predictions)} predictions in {time.monotonic() - t0:.0f}s")
 
         evaluation = evaluate_session(data, targets, runs)
         _print_summary(evaluation, dict(comps))
@@ -252,6 +265,8 @@ def main() -> int:
         hypers = {kind: goal_hyper(specs[kind].xi, specs[kind].penalty, cfg, version)
                   for kind in ("poisson", "dixon_coles")}
         hypers["elo_ologit"] = ologit_hyper(version)
+        hypers["base_rates"] = base_rates_hyper(cfg, version)
+        hypers["mnlogit"] = mnlogit_hyper(version)
         cfg_hash = config_hash({"cfg": config_json(cfg), "hypers": hypers, "semver": MODEL_SEMVER})
         existing = find_completed_session(conn, name=name, dataset_hash=evaluation.dataset_hash,
                                           code_version=version, cfg_hash=cfg_hash)

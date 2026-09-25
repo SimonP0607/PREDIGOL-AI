@@ -23,12 +23,17 @@ from fbi.backtesting.data import BacktestData
 from fbi.features.data import MatchRecord
 from fbi.features.engine import RESULT_AVAILABLE_AFTER, LeakageError
 from fbi.models.elo_ologit import OLogitObs, fit_ologit
+from fbi.models.families import MNLOGIT_FEATURES, mnlogit_row
 from fbi.models.goals import GoalObs, InvalidCorrectionError, fit_goal_model
+from fbi.models.logistic import fit_logistic
 from fbi.models.metrics import log_loss
 from fbi.models.scoring import MARKET_ROWS
 
 MIN_GOAL_TRAIN = 100
 MIN_OLOGIT_TRAIN = 200
+MIN_MNLOGIT_TRAIN = 400
+MNLOGIT_L2 = 1.0
+MIN_BASE_RATE_TRAIN = 50
 MIN_ELO_HISTORY = 10
 """An Elo rating built from fewer matches than this is still mostly the starting
 value (1500 for every newcomer): the Elo model declines the fixture."""
@@ -291,6 +296,95 @@ def run_elo_ologit(
             run.predictions[m.fixture_id] = Prediction(
                 m.fixture_id, "elo_ologit", max(cutoff, feature_cutoff), p, rows,
                 data.feature_hash.get(m.fixture_id, ""), len(train))
+    return run
+
+
+def run_base_rates(
+    data: BacktestData, targets: Sequence[MatchRecord], *, cfg: WalkForwardConfig, refit_days: int
+) -> ModelRun:
+    """Per competition, the home/draw/away frequencies of the results public before
+    each block's cut-off (training window ``history_days``), Laplace-smoothed. The
+    no-skill reference: a model that cannot beat it has learned nothing."""
+    by_comp: dict[int, list[MatchRecord]] = defaultdict(list)
+    for m in data.matches:
+        if m.has_result:
+            by_comp[m.competition_id].append(m)
+    run = ModelRun("base_rates", f"window={cfg.history_days}d,laplace=1")
+    comp_targets: dict[int, list[MatchRecord]] = defaultdict(list)
+    for t in targets:
+        comp_targets[t.competition_id].append(t)
+    for comp, ts in sorted(comp_targets.items()):
+        for cutoff, group in blocks(ts, refit_days, cfg.cutoff_offset):
+            horizon = cutoff - timedelta(days=cfg.history_days)
+            train = [m for m in by_comp[comp] if known_before(m, cutoff) and m.kickoff_at >= horizon]
+            run.blocks.append(_check_block(cutoff, train, group))
+            if len(train) < MIN_BASE_RATE_TRAIN:
+                run.uncovered.extend((m.fixture_id, f"fewer than {MIN_BASE_RATE_TRAIN} results in the window")
+                                     for m in group)
+                continue
+            run.fits += 1
+            run.note_training(train)
+            counts = np.bincount([outcome_index(m) for m in train], minlength=3) + 1.0
+            p = counts / counts.sum()
+            th = train_hash(train)
+            for m in group:
+                rows = tuple(PredRow("1X2", sel, 0.0, float(p[k]), None, None)
+                             for k, sel in enumerate(("Home", "Draw", "Away")))
+                run.no_interval += 1
+                run.predictions[m.fixture_id] = Prediction(m.fixture_id, "base_rates", cutoff,
+                                                           (float(p[0]), float(p[1]), float(p[2])), rows, th, len(train))
+    return run
+
+
+def run_mnlogit(
+    data: BacktestData, targets: Sequence[MatchRecord], *, cfg: WalkForwardConfig, refit_days: int,
+    l2: float = MNLOGIT_L2,
+) -> ModelRun:
+    """Refitted per block on domestic results with features known before the cut-off;
+    each fixture is predicted from its own feature set (cut-off kick-off - 60 min),
+    exactly as the ordered logit. The L2 strength is fixed a priori, not tuned."""
+    domestic = set(cfg.competition_ids)
+    labelled = [m for m in data.matches if m.has_result and m.competition_id in domestic
+                and data.features.get(m.fixture_id, {}).get("elo_diff") is not None
+                and data.features.get(m.fixture_id, {}).get("pi_expected_gd") is not None]
+    run = ModelRun("mnlogit", f"features={','.join(MNLOGIT_FEATURES)},l2={l2:g}")
+    for cutoff, group in blocks(targets, refit_days, cfg.cutoff_offset):
+        train = [m for m in labelled if known_before(m, cutoff)]
+        run.blocks.append(_check_block(cutoff, train, group))
+        if len(train) < MIN_MNLOGIT_TRAIN:
+            run.uncovered.extend(
+                (m.fixture_id, f"fewer than {MIN_MNLOGIT_TRAIN} training matches with features") for m in group)
+            continue
+        run.fits += 1
+        try:
+            model = fit_logistic([mnlogit_row(data.features[m.fixture_id]) for m in train],
+                                 [outcome_index(m) for m in train], features=MNLOGIT_FEATURES, l2=l2)
+        except ValueError:
+            run.failed_fits += 1
+            run.uncovered.extend((m.fixture_id, "model fit failed") for m in group)
+            continue
+        if not model.converged:
+            run.failed_fits += 1
+            run.uncovered.extend((m.fixture_id, "model fit did not converge") for m in group)
+            continue
+        run.note_training(train)
+        for m in group:
+            fv = data.features.get(m.fixture_id, {})
+            feature_cutoff = data.feature_cutoff.get(m.fixture_id)
+            if fv.get("elo_diff") is None or fv.get("pi_expected_gd") is None or feature_cutoff is None:
+                run.uncovered.append((m.fixture_id, "no feature set for this fixture"))
+                continue
+            if feature_cutoff >= m.kickoff_at:
+                raise LeakageError(f"feature cut-off after kick-off for fixture {m.fixture_id}")
+            if elo_history_short(fv):
+                run.uncovered.append((m.fixture_id, f"a team has fewer than {MIN_ELO_HISTORY} rated matches"))
+                continue
+            p = model.predict(mnlogit_row(fv))
+            rows = tuple(PredRow("1X2", sel, 0.0, float(p[k]), None, None)
+                         for k, sel in enumerate(("Home", "Draw", "Away")))
+            run.no_interval += 1
+            run.predictions[m.fixture_id] = Prediction(m.fixture_id, "mnlogit", max(cutoff, feature_cutoff), p, rows,
+                                                       data.feature_hash.get(m.fixture_id, ""), len(train))
     return run
 
 

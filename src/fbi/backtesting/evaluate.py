@@ -6,8 +6,23 @@ never used to rank: it rewards backing the favourite and says nothing about
 whether 60% meant 60%.
 
 Every model-versus-market number is computed on the fixtures BOTH priced, and
-the difference carries a paired-bootstrap interval. A model is 'better' than
-the market only if that whole interval is below zero.
+the difference carries a paired interval. A model is 'better' than the market
+only if that whole interval is below zero.
+
+The interval resamples whole MATCH DAYS (a block bootstrap with the kick-off
+date as the block), not single matches: matches on the same day share
+information and model state, so the per-match bootstrap understated the
+uncertainty. Serial dependence ACROSS days is handled by the Diebold-Mariano
+test that every comparison also carries (Newey-West variance,
+Harvey-Leybourne-Newbold correction). Each comparison further reports the
+ranked probability score, for comparison with the literature, and the minimum
+log-loss difference the sample could have detected.
+
+``evidence`` says what the interval allows: 'sufficient' when it excludes
+zero; 'equivalent' when it lies inside +/- EQUIVALENCE_MARGIN (a difference of
+no practical consequence, fixed before any result was seen); otherwise
+'insufficient' - the sample cannot tell, and that is the reading, whatever
+the sign of the point estimate.
 """
 
 from __future__ import annotations
@@ -28,12 +43,21 @@ from fbi.domain.odds import DecimalOdds
 from fbi.features.data import MatchRecord
 from fbi.models.metrics import (
     Bucket,
+    block_bootstrap_ci,
     brier,
     calibration,
+    diebold_mariano,
     log_loss,
-    paired_bootstrap_ci,
+    minimum_detectable_difference,
     per_match_log_loss,
+    per_match_rps,
 )
+
+CI_METHOD = "block bootstrap, kick-off date as block, 2000 draws, 95% percentile"
+EQUIVALENCE_MARGIN = 0.005
+"""Log-loss difference (nats per match) inside which two forecasts are treated as
+practically equal: about a sixth of the gap between the session-1 models and
+the Pinnacle close (0.027-0.030). Fixed before session 2 was run; not tuned."""
 
 PRIMARY_BASELINE = "pinnacle/closing/shin"
 BASELINES_1X2 = (
@@ -88,6 +112,13 @@ class Comparison:
     baseline: Scores
     logloss_diff: Diff
     brier_diff: Diff
+    rps_model: float | None = None
+    rps_baseline: float | None = None
+    rps_diff: Diff | None = None
+    dm_stat: float | None = None
+    dm_p: float | None = None
+    mdd: float | None = None
+    n_blocks: int | None = None
 
     @property
     def verdict(self) -> str:
@@ -97,6 +128,25 @@ class Comparison:
             return "worse"
         return "indistinguishable"
 
+    @property
+    def evidence(self) -> str:
+        """'sufficient': the interval excludes zero. 'equivalent': it lies inside
+        +/- EQUIVALENCE_MARGIN. 'insufficient': neither - the sample cannot tell."""
+        if self.verdict != "indistinguishable":
+            return "sufficient"
+        d = self.logloss_diff
+        if d.lo >= -EQUIVALENCE_MARGIN and d.hi <= EQUIVALENCE_MARGIN:
+            return "equivalent"
+        return "insufficient"
+
+    def details(self) -> dict[str, object]:
+        return {"ci_method": CI_METHOD, "n_blocks": self.n_blocks, "evidence": self.evidence,
+                "rps_model": self.rps_model, "rps_baseline": self.rps_baseline,
+                "rps_diff": None if self.rps_diff is None else
+                [self.rps_diff.mean, self.rps_diff.lo, self.rps_diff.hi],
+                "dm_stat": self.dm_stat, "dm_p": self.dm_p, "min_detectable_logloss_diff": self.mdd,
+                "equivalence_margin": EQUIVALENCE_MARGIN}
+
 
 def _brier_rows(p: NDArray[np.float64], y: NDArray[np.int64]) -> NDArray[np.float64]:
     return np.asarray(((p - np.eye(p.shape[1])[y]) ** 2).sum(axis=1), dtype=np.float64)
@@ -104,18 +154,39 @@ def _brier_rows(p: NDArray[np.float64], y: NDArray[np.int64]) -> NDArray[np.floa
 
 def compare(model_p: dict[int, NDArray[np.float64]], base_p: dict[int, NDArray[np.float64]],
             y: dict[int, int], *, baseline_key: str, market_key: str, line: float,
-            only: set[int] | None = None) -> Comparison | None:
+            only: set[int] | None = None, blocks: dict[int, object] | None = None,
+            order: dict[int, object] | None = None) -> Comparison | None:
+    """``blocks`` labels each fixture's match day (resampled together); ``order``
+    sorts fixtures in time for the Diebold-Mariano series. Without them every
+    fixture is its own block, which is the per-match bootstrap."""
     ids = sorted(set(model_p) & set(base_p) & set(y) & (only if only is not None else set(y)))
     if not ids:
         return None
+    if order is not None:
+        ids.sort(key=lambda i: (str(order.get(i, "")), i))
+    labels = [blocks.get(i, i) if blocks is not None else i for i in ids]
     pm = np.array([model_p[i] for i in ids])
     pb = np.array([base_p[i] for i in ids])
     yy = np.array([y[i] for i in ids])
-    ll = paired_bootstrap_ci(per_match_log_loss(pm, yy), per_match_log_loss(pb, yy))
-    br = paired_bootstrap_ci(_brier_rows(pm, yy), _brier_rows(pb, yy))
+    d_ll = per_match_log_loss(pm, yy) - per_match_log_loss(pb, yy)
+    d_br = _brier_rows(pm, yy) - _brier_rows(pb, yy)
+    ll = block_bootstrap_ci(d_ll, labels)
+    br = block_bootstrap_ci(d_br, labels)
+    rps_m = rps_b = None
+    rps_d = None
+    if pm.shape[1] == 3:
+        r_m, r_b = per_match_rps(pm, yy), per_match_rps(pb, yy)
+        rp = block_bootstrap_ci(r_m - r_b, labels)
+        rps_m, rps_b = float(r_m.mean()), float(r_b.mean())
+        rps_d = Diff(rp[0], min(rp[1], rp[0]), max(rp[2], rp[0]))
+    dm = diebold_mariano(d_ll) if len(ids) >= 10 else (None, None, 0)
+    # the detectable difference uses the block-bootstrap standard error, so it is
+    # consistent with the interval the verdict is read from
+    se = (ll[2] - ll[1]) / (2 * 1.959963984540054)
     return Comparison(baseline_key, market_key, line, len(ids), score(pm, yy), score(pb, yy),
                       Diff(ll[0], min(ll[1], ll[0]), max(ll[2], ll[0])),
-                      Diff(br[0], min(br[1], br[0]), max(br[2], br[0])))
+                      Diff(br[0], min(br[1], br[0]), max(br[2], br[0])),
+                      rps_m, rps_b, rps_d, dm[0], dm[1], minimum_detectable_difference(d_ll, se=se), ll[3])
 
 
 @dataclass(frozen=True, slots=True)
@@ -299,6 +370,8 @@ def evaluate_session(data: BacktestData, targets: Sequence[MatchRecord], runs: S
                 f"{key}/shin", "OU", OU_LINE,
                 score(np.array([probs[i] for i in ids]), np.array([y_ou[i] for i in ids])), None))
 
+    days: dict[int, object] = {m.fixture_id: m.kickoff_at.date().isoformat() for m in scored}
+    moments: dict[int, object] = {m.fixture_id: m.kickoff_at.isoformat() for m in scored}
     evaluations: list[ModelEvaluation] = []
     for run in runs:
         p1 = {fid: np.array(pr.p) for fid, pr in run.predictions.items() if fid in y}
@@ -306,7 +379,8 @@ def evaluate_session(data: BacktestData, targets: Sequence[MatchRecord], runs: S
         ev = ModelEvaluation(run, len(scored),
                              score(np.array([p1[i] for i in ids]), np.array([y[i] for i in ids])) if ids else None)
         for key in BASELINES_1X2:
-            c = compare(p1, base_1x2[key], y, baseline_key=key, market_key="1X2", line=0.0)
+            c = compare(p1, base_1x2[key], y, baseline_key=key, market_key="1X2", line=0.0, blocks=days,
+                        order=moments)
             if c is not None:
                 ev.comparisons.append(c)
         rows = {fid: {(r.market_key, r.selection): r.p for r in pr.rows} for fid, pr in run.predictions.items()}
@@ -316,7 +390,8 @@ def evaluate_session(data: BacktestData, targets: Sequence[MatchRecord], runs: S
             ids_ou = sorted(pou)
             ev.ou = score(np.array([pou[i] for i in ids_ou]), np.array([y_ou[i] for i in ids_ou]))
             for key in BASELINES_OU:
-                c = compare(pou, base_ou[key], y_ou, baseline_key=f"{key}/shin", market_key="OU", line=OU_LINE)
+                c = compare(pou, base_ou[key], y_ou, baseline_key=f"{key}/shin", market_key="OU", line=OU_LINE,
+                            blocks=days, order=moments)
                 if c is not None:
                     ev.ou_comparisons.append(c)
         pbt = {fid: np.array([r[("BTTS", "Yes")], r[("BTTS", "No")]]) for fid, r in rows.items()

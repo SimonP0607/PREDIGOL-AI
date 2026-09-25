@@ -17,6 +17,7 @@ from typing import Any
 
 import psycopg
 from psycopg.rows import tuple_row
+from psycopg.types.json import Json
 
 from fbi.backtesting.data import BacktestData
 from fbi.backtesting.evaluate import (
@@ -29,6 +30,7 @@ from fbi.backtesting.evaluate import (
     SessionEvaluation,
 )
 from fbi.backtesting.walkforward import ModelRun, WalkForwardConfig, outcome_index
+from fbi.models.families import MNLOGIT_SOURCE_FEATURES
 
 MODEL_SEMVER = "2.0.0"
 
@@ -43,6 +45,19 @@ CATALOGUE: dict[str, tuple[str, str, str]] = {
     "elo_ologit": ("elo_ologit", "rating",
                    "Elo V2 ratings (World Football Elo: K=20, home advantage 65, margin multiplier) mapped to "
                    "1X2 by an ordered logit refitted at every cut-off."),
+    "base_rates": ("base_rates", "baseline",
+                   "League home/draw/away frequencies over the training window, Laplace-smoothed: the no-skill "
+                   "reference."),
+    "mnlogit": ("mnlogit", "ml",
+                "Multinomial logistic regression (L2 = 1, fixed a priori) on Elo and pi-rating differences, shot and "
+                "shot-on-target share differences, Elo-residual form, rest and league home advantage."),
+}
+
+
+FEATURE_LINEAGE: dict[str, list[str]] = {
+    # the feature-set columns a model version reads (models.model_versions.feature_names)
+    "elo_ologit": ["elo_diff"],
+    "mnlogit": list(MNLOGIT_SOURCE_FEATURES),
 }
 
 
@@ -60,7 +75,8 @@ def scores_json(s: Scores | None) -> dict[str, Any] | None:
 def comparison_json(c: Comparison) -> dict[str, Any]:
     return {"baseline": c.baseline_key, "market": c.market_key, "line": c.line, "n_common": c.n_common,
             "model": scores_json(c.model), "baseline_scores": scores_json(c.baseline),
-            "logloss_diff": asdict(c.logloss_diff), "brier_diff": asdict(c.brier_diff), "verdict": c.verdict}
+            "logloss_diff": asdict(c.logloss_diff), "brier_diff": asdict(c.brier_diff), "verdict": c.verdict,
+            "evidence": c.evidence, "details": c.details()}
 
 
 def config_json(cfg: WalkForwardConfig) -> dict[str, Any]:
@@ -147,6 +163,22 @@ def ologit_hyper(code_version: str) -> dict[str, Any]:
             "min_train": MIN_OLOGIT_TRAIN, "interval": "laplace 90%", "code_version": code_version}
 
 
+def base_rates_hyper(cfg: WalkForwardConfig, code_version: str) -> dict[str, Any]:
+    from fbi.backtesting.walkforward import MIN_BASE_RATE_TRAIN
+
+    return {"history_days": cfg.history_days, "laplace": 1, "min_train": MIN_BASE_RATE_TRAIN,
+            "code_version": code_version}
+
+
+def mnlogit_hyper(code_version: str) -> dict[str, Any]:
+    from fbi.backtesting.walkforward import MIN_MNLOGIT_TRAIN, MNLOGIT_L2
+    from fbi.features.engine import FEATURE_VERSION
+    from fbi.models.families import MNLOGIT_FEATURES
+
+    return {"features": list(MNLOGIT_FEATURES), "l2": MNLOGIT_L2, "feature_version": FEATURE_VERSION,
+            "min_train": MIN_MNLOGIT_TRAIN, "imputation": "training mean", "code_version": code_version}
+
+
 def store_session(
     conn: psycopg.Connection,
     *,
@@ -204,7 +236,7 @@ def _store_run(cur: psycopg.Cursor[Any], *, session_id: int, name: str, cfg: Wal
     run = ev.run
     if ev.own is None or not run.predictions:
         return
-    feature_names = ["elo_diff"] if run.model == "elo_ologit" else []
+    feature_names = FEATURE_LINEAGE.get(run.model, [])
     version_id = ensure_model_version(conn, run, hyper=hyper, code_version=code_version,
                                       feature_names=feature_names)
     targets = evaluation.targets
@@ -255,11 +287,12 @@ def _store_run(cur: psycopg.Cursor[Any], *, session_id: int, name: str, cfg: Wal
         cur.execute(
             "INSERT INTO analytics.backtest_comparisons (backtest_run_id, baseline_key, market_key, line, n_common, "
             "model_logloss, baseline_logloss, logloss_diff, logloss_diff_ci_low, logloss_diff_ci_high, model_brier, "
-            "baseline_brier, brier_diff, brier_diff_ci_low, brier_diff_ci_high, verdict) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            "baseline_brier, brier_diff, brier_diff_ci_low, brier_diff_ci_high, verdict, details) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             (run_id, c.baseline_key, c.market_key, c.line, c.n_common, round(c.model.log_loss, 6),
              round(c.baseline.log_loss, 6), *ll, round(c.model.brier, 6), round(c.baseline.brier, 6),
-             *_ordered(c.brier_diff.mean, c.brier_diff.lo, c.brier_diff.hi), verdict(ll[1], ll[2])),
+             *_ordered(c.brier_diff.mean, c.brier_diff.lo, c.brier_diff.hi), verdict(ll[1], ll[2]),
+             Json(c.details())),
         )
 
     fair = data.market.get(PRIMARY_BASELINE, {})
