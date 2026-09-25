@@ -1,6 +1,6 @@
 # Pre-upgrade readiness — 32 capas
 
-**Fecha:** 25 sep 2026, 03:40 UTC. **Código:** backend `ea1d0c8` (+ docs), frontend `ffde018`.
+**Fecha:** 25 sep 2026, 07:40 UTC. **Código:** backend `df585b6`, frontend `ffde018`.
 
 **Dónde se verificó.** Primero en la **réplica** (entorno en la nube: restauración de la base de
 la máquina del 24 sep 19:49 UTC + todo el código posterior) y, desde las 02:53 UTC del 25 sep,
@@ -18,6 +18,9 @@ la máquina del 24 sep 19:49 UTC + todo el código posterior) y, desde las 02:53
 | 03:18 backup + restore | **6/6 PASS** (1.121.683 filas, 57 payloads verificados) |
 | 03:23 sonda | `ids=` **rechazado en Free**; `/leagues` 8.746 filas → cobertura verificada |
 | 03:25 reproducción | los 5 experimentos de la máquina **idénticos** al re-ejecutarse |
+| 03:27–03:34 | fallo del ledger corregido (`221f17a`), desplegado; tests en la máquina **560 passed** |
+| 06:32 primera captura real | Girona–Albacete, ventana T-12h: 235 precios de 9 casas (incluida Pinnacle), 1 petición; 9 candidatos y 3 picks shadow idénticos → fallo del Pick Engine |
+| 07:28 | fallo corregido (`df585b6`), desplegado lejos de ventanas; tests en la máquina **561 passed**, mypy 154/261, ruff limpio |
 
 **Criterio.** `DONE` = existe + se ejecuta + tiene tests + está integrado + se puede verificar.
 Un fichero no basta. Estados: `DONE` · `FUNCTIONAL_BUT_IMMATURE` · `IN_PROGRESS` ·
@@ -35,19 +38,19 @@ Un fichero no basta. Estados: `DONE` · `FUNCTIONAL_BUT_IMMATURE` · `IN_PROGRES
 | 06 | Cuota / scheduling | DONE | `raw.provider_quota` compartida por todos los procesos; reserva para el vivo; scheduler consciente del plan (horizonte 4 días y backfill horario en planes de pago) | — | — | ajustar `FBI_APIFOOTBALL_PLAN` tras comprar |
 | 07 | Ingesta de fixtures | DONE | sync por fecha con linaje de payload (0015); 6.058 partidos en la réplica | — | — | — |
 | 08 | Ingesta de resultados | DONE | sync de resultados con linaje, marcador de 90' separado de prórroga/penaltis (0020), detección de "awaiting result" | en Free, inalcanzable ~1 día después del partido | resultados perdidos en Free | se resuelve con el plan de pago |
-| 09 | Ingesta de cuotas | IN_PROGRESS | capturador con 6 ventanas pre-partido + near-close, tolerancia ±45 min, timeline que distingue capturado/perdido/inalcanzable; tests | **0 capturas reales** hasta el 25 sep: la Premier está en su primer parón internacional de tres semanas y Free solo ve un día por delante; en Free T-72h/T-48h son inalcanzables | sin series propias no hay CLV propio | ciclo en vivo sobre la Segunda División (5 partidos 25–26 sep; primera ventana 06:30 UTC) |
+| 09 | Ingesta de cuotas | IN_PROGRESS | capturador con 6 ventanas pre-partido + near-close, tolerancia ±45 min, timeline que distingue capturado/perdido/inalcanzable; tests; **primera captura real** el 25 sep 06:32 UTC (Girona–Albacete, T-12h): 1 petición, 1 payload de 20 KB que re-hashea, `paging` 1/1 (una petición por partido y ventana, como en el presupuesto), 9 casas **incluida Pinnacle**, 235 precios en 1X2, O/U, doble oportunidad y BTTS; idempotente (`plan`: 1 ventana capturada, 0 peticiones más) | near-close real y las demás ventanas del día; en Free T-72h/T-48h son inalcanzables | sin series propias no hay CLV propio | T-6h 12:30, T-3h 15:30, near-close ~18:18 UTC |
 | 10 | Migración histórica | BLOCKED_BY_PLAN | planificador, unidades resumibles (0023), motor; dry run 9/9 PASS **también en la máquina**; cobertura **verificada**: 72 competiciones, 643 competición-temporadas, 190.313 partidos, **11.611 peticiones (15.675 con margen)**; NAME CHECK: un renombre (63 → "Ligue 3"), ningún id erróneo | el plan de pago | `ids=` en el plan de pago | compra → sonda → tier 1 |
 | 11 | Calidad de datos | FUNCTIONAL_BUT_IMMATURE | informe de calidad con nulos explicados, issues derivados en cada petición, cobertura, Jobs, Analytics → Coverage, Audit por partido | las validaciones de detalle por tier (§8 del plan) están descritas, no automatizadas; **3 resultados de la Premier del 13–14 sep siguen "awaiting result"** en la máquina (el worker estaba parado y Free ya no sirve esas fechas) | detalle incoherente sin aviso | automatizar §8 antes del tier 2; los 3 resultados llegan con el tier 1 |
 | 12 | Feature Engine | DONE | fv1 (30) y **fv2 (43)**: pi-ratings, shares de tiros, forma residual, contexto de liga; point-in-time; la BD rechaza fuga; hash del conjunto de información; **7.467 conjuntos fv2 en la máquina** | historia (3 temporadas) | — | recalcular tras el backfill |
-| 13 | Market baseline | DONE | Shin/power/proporcional sobre cierre y pre-cierre de Pinnacle, media y Bet365 (5.329 partidos, también en la máquina); consenso de-vigged desde capturas | consenso real (0 capturas); **Football-Data.co.uk está bloqueado en la red de la máquina** (redirección a coljuegos.gov.co): las CSV llegan desde la réplica con `scripts.raw_transfer` (linaje verificado) | actualizar temporadas futuras | decisión de Simon sobre la vía de descarga |
+| 13 | Market baseline | DONE | Shin/power/proporcional sobre cierre y pre-cierre de Pinnacle, media y Bet365 (5.329 partidos, también en la máquina); **consenso de-vigged desde capturas reales** (06:32: 9 casas, margen 7,9 %, Shin Local 0,635 / Empate 0,210 / Visitante 0,155) | **Football-Data.co.uk está bloqueado en la red de la máquina** (redirección a coljuegos.gov.co): las CSV llegan desde la réplica con `scripts.raw_transfer` (linaje verificado) | actualizar temporadas futuras | decisión de Simon sobre la vía de descarga |
 | 14 | Elo | DONE | Elo V2 (K 20, local 65, multiplicador de margen), historia persistida, ordered logit; declina con < 10 partidos | HA por liga variable en el tiempo | sesgo en ligas con HA distinta | P0 del roadmap |
 | 15 | Poisson | DONE | Maher con decaimiento y encogimiento elegidos en validación (rejilla que se amplía si el óptimo cae en el borde); intervalos Laplace | — | — | — |
 | 16 | Dixon–Coles | DONE | ρ estimado conjuntamente; corrección inválida → declina | — | — | — |
 | 17 | Calibración | FUNCTIONAL_BUT_IMMATURE | ECE por bins y diagramas de fiabilidad por modelo; check de calibración en el gate | recalibración (temperatura/isotónica) no ajustada; CORP | probabilidades mal calibradas en producción | ajustar en validación tras el backfill |
 | 18 | Backtesting predictivo | DONE | walk-forward con reajuste diario y control de fuga por bloque; bootstrap por jornadas, DM-HLN, MDD, RPS, etiqueta de evidencia; sesión 2 de la réplica y **sesión 1 de la máquina reproducidas bit a bit** (5/5 idénticos) | MCS | — | — |
 | 19 | Backtesting económico | FUNCTIONAL_BUT_IMMATURE | apuestas hipotéticas con IC del ROI y drawdown sobre precios de FD | CLV agregado; el ROI no informa con < 10.000 apuestas | sobrelectura del ROI | CLV con IC por bloques |
-| 20 | Value Engine | BLOCKED_BY_DATA | EV en el límite inferior del intervalo, consenso de-vigged, regla versionada; test de pipeline de extremo a extremo | precios capturados reales | — | llega con las capturas |
-| 21 | Pick Engine | BLOCKED_BY_DATA | picks shadow con ciclo de vida y eventos; publicar es imposible en el esquema | ídem | — | ídem |
+| 20 | Value Engine | FUNCTIONAL_BUT_IMMATURE | EV en el límite inferior del intervalo, consenso de-vigged, regla versionada; test de extremo a extremo; **primeros candidatos reales** (06:32): Local rechazado (EV −0,37), Visitante rechazado (cuota 6,50 fuera de [1,50, 5,00]), Empate seleccionado en shadow (modelo 0,293 frente a 0,210 del mercado) | un modelo que pase la puerta: hoy el “valor” solo mide cuánto discrepa un modelo sin validar | leer un shadow como consejo | ninguna: la regla está bien; el modelo es el límite |
+| 21 | Pick Engine | FUNCTIONAL_BUT_IMMATURE | picks shadow con ciclo de vida y eventos; publicar es imposible en el esquema; **primeros picks shadow reales**; la captura real destapó un fallo: **se juzgaba cada versión del modelo** (3 reinicios = 3 picks idénticos), corregido en `df585b6` con test de regresión; el resumen económico cuenta apuestas, no filas | liquidación real (hoy) | — | — |
 | 22 | Settlement | BLOCKED_BY_DATA | liquidación a 90', cola de revisión, línea de valor | picks reales | — | ídem |
 | 23 | Product API | DONE | **32 operaciones** bajo `/api/v1` (31 GET + `POST /analyst/ask`), solo lectura, envelope de 4 estados con motivo, 404/422/500 en JSON; `/matches/{id}/audit` y 6 de `/analytics`; **desplegada en la máquina** (`/health` 200) | — | — | — |
 | 24 | Frontend | DONE | 15 rutas LIVE en modo live (inventario abajo); lint 0 errores, typecheck, build (también en la máquina); 84 E2E; **desplegado en la máquina y en GitHub/Lovable**; comprobado en Chrome contra los datos de la máquina (Matches, Match Center → Audit) | — | — | — |
@@ -60,7 +63,7 @@ Un fichero no basta. Estados: `DONE` · `FUNCTIONAL_BUT_IMMATURE` · `IN_PROGRES
 | 31 | Preparación IA | FUNCTIONAL_BUT_IMMATURE | herramientas de solo lectura con linaje; la IA explica, no genera probabilidades; consola de herramientas | credencial del LLM; bloqueado a propósito hasta la plataforma sólida | — | tras la puerta del modelo |
 | 32 | Preparación Telegram | FUNCTIONAL_BUT_IMMATURE | notificador con un mensaje por evento, modo investigación, sin fugas de token (test) | token del bot; bloqueado a propósito | — | tras la puerta del modelo |
 
-**Recuento:** DONE 17 · FUNCTIONAL_BUT_IMMATURE 9 · IN_PROGRESS 1 · BLOCKED_BY_DATA 4 ·
+**Recuento:** DONE 17 · FUNCTIONAL_BUT_IMMATURE 11 · IN_PROGRESS 1 · BLOCKED_BY_DATA 2 ·
 BLOCKED_BY_PLAN 1 · NOT_STARTED 0.
 
 ## Hallazgos de la sincronización con la máquina (25 sep 2026)
@@ -92,6 +95,15 @@ BLOCKED_BY_PLAN 1 · NOT_STARTED 0.
 7. **Procesos en la máquina:** lo que deja atrás un `wsl.exe` que termina muere con él (el
    primer `deps` en segundo plano no llegó a abrir su log). Las fases largas corren ahora en
    primer plano dentro de un `wsl.exe` oculto, igual que el worker, la API y la web.
+8. **La primera captura real destapó un fallo del Pick Engine** (25 sep, 06:32 UTC): el worker
+   se había reiniciado en tres commits esa mañana, cada commit crea versiones nuevas de los
+   modelos y el motor juzgaba “cada versión con previsión anterior al precio”: 9 candidatos y 3
+   picks shadow idénticos (Empate a 4,54). Corregido en `df585b6`: una previsión por modelo (la
+   más reciente anterior al precio); el resumen económico cuenta apuestas, no filas. Los tres
+   picks se quedan como registro de lo que hizo el motor; cuentan como una apuesta.
+9. **El ledger llamaba “completed” a un proceso que se caía** (la importación de Football-Data
+   cortada por la red, run 55). Corregido en `221f17a`: una excepción en vuelo se registra
+   (`failed`/`partial`), una interrupción es `aborted`. El run 55 se deja como se escribió.
 
 ## Inventario LIVE del frontend (D3)
 

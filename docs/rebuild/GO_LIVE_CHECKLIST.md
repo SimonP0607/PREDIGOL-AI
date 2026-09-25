@@ -7,12 +7,12 @@ haber escrito el código. ✅ hecho · ⏳ pendiente de la máquina · 👤 paso
 
 | Condición | Estado | Evidencia |
 |---|---|---|
-| PRE-UPGRADE SYSTEM COMPLETE | ✅ réplica y máquina | máquina en backend `ea1d0c8` / Alembic 0024 / frontend `ffde018` (25 sep); tests en la máquina: ruff, mypy, pytest verdes; frontend en GitHub |
+| PRE-UPGRADE SYSTEM COMPLETE | ✅ réplica y máquina | máquina en backend `df585b6` / Alembic 0024 / frontend `ffde018` (25 sep); tests en la máquina: ruff, mypy, 561 passed; frontend en GitHub |
 | RESEARCH COMPLETE | ✅ | `docs/research/FOOTBALL_ANALYTICS_STATE_OF_THE_ART_2026.md` (15 áreas, 248 fuentes), `ANALYTICS_CAPABILITY_MATRIX.md`, `notes/A1–A5` |
 | MIGRATION PLANNER COMPLETE | ✅ | `API_FOOTBALL_MIGRATION_PLAN.md`; dry run 9/9 PASS en la réplica **y en la máquina**; cobertura verificada con `/leagues` (643 competición-temporadas) |
 | REQUEST BUDGET COMPLETE | ✅ | `API_PLAN_CAPACITY_MODEL.md`: 11.611 peticiones (15.675 con margen) con `ids=`; 756.810 sin él; vivo T1–2 medio 384 / pico 819 |
 | BACKUP/RESTORE VERIFIED | ✅ máquina 6/6 | `BACKUP_RECOVERY_TEST.md §4` (1.121.683 filas, 57 payloads re-hasheados) |
-| LIVE SYSTEM READY | 🟡 → ver §D | worker, API y web a HEAD en la máquina; capturas programadas; el ciclo completo se está demostrando sobre la Segunda División (la Premier está en su parón de tres semanas) |
+| LIVE SYSTEM READY | 🟡 → ver §D | worker, API y web a HEAD en la máquina; **primera captura real** 06:32 UTC (235 precios, 9 casas) con consenso, candidatos y picks shadow; el ciclo completo se cierra hoy con el resultado de Girona–Albacete |
 
 ### Pasos previos a la compra (en este orden)
 
@@ -112,8 +112,8 @@ evidencia suficiente de que es peor. No se fuerza un ganador.
 | Gate | Réplica (25 sep) | Máquina (25 sep) |
 |---|---|---|
 | Backend `ruff check .` | ✅ | ✅ |
-| Backend `mypy` (estricto, 154 ficheros) y `mypy .` (261) | ✅ | ✅ (153 / 258 a `938d55e`) |
-| Backend `pytest -q` | ✅ 555 passed | ✅ 551 passed a `938d55e` |
+| Backend `mypy` (estricto, 154 ficheros) y `mypy .` (261) | ✅ | ✅ (a `df585b6`) |
+| Backend `pytest -q` | ✅ 561 passed | ✅ 561 passed a `df585b6` |
 | Migraciones desde cero (suite + dry run) | ✅ 0001 → 0024 | ✅ dry run 9/9; producción 0017 → 0024 |
 | Frontend `bun run lint` | ✅ 0 errores (13 warnings de fast-refresh, preexistentes) | ✅ igual |
 | Frontend `bun run typecheck` | ✅ | ✅ |
