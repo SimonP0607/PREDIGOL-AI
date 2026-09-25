@@ -25,7 +25,7 @@ from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.migration.capacity import live_budget, recommend, scenarios
 from fbi.migration.config import load_migration_config, load_plans
-from fbi.migration.facts import DatabaseFacts
+from fbi.migration.facts import DatabaseFacts, name_mismatches
 from fbi.migration.planner import MigrationPlan, plan_migration
 from fbi.migration.units import migration_status, save_plan, seed_plan
 
@@ -70,6 +70,8 @@ def main() -> int:
         p.add_argument("--json", action="store_true")
         if name == "seed":
             p.add_argument("--yes", action="store_true")
+        if name == "capacity":
+            p.add_argument("--live-tiers", default="", help="tiers captured live (default: config live.tiers)")
     sub.add_parser("status")
     dr = sub.add_parser("dry-run")
     dr.add_argument("--admin-url", default="", help="admin DSN of the same server (default: the configured one)")
@@ -132,10 +134,17 @@ def main() -> int:
                 print(json.dumps(plan.as_dict(), indent=2, default=str))
             else:
                 _print_plan(plan)
+                configured = {c.league_id: c.name for c in cfg.tier_competitions(set(plan.tiers))}
+                wrong = name_mismatches(DatabaseFacts(conn), configured)
+                for lid, mine, theirs in wrong:
+                    print(f"NAME CHECK: league {lid} is '{mine}' here but '{theirs}' at the provider - fix the id "
+                          "before seeding")
+                if not wrong:
+                    print("name check: every league the provider has described matches its configured name")
             return 0
         if args.cmd == "capacity":
             catalogue = load_plans()
-            live = live_budget(cfg)
+            live = live_budget(cfg, _tiers(args.live_tiers) if args.live_tiers else None)
             options = scenarios(plan, cfg, catalogue, live, max_backfill_days=cfg.max_backfill_days)
             rec = recommend(options)
             _print_plan(plan)

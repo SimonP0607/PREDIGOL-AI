@@ -119,16 +119,19 @@ def test_the_recommendation_is_the_cheapest_plan_that_fits(cfg) -> None:
     rec = recommend(scenarios(small, cfg, cat, live, max_backfill_days=cfg.max_backfill_days))
     assert rec is not None and rec.plan.name == "Pro"
     big = plan_migration(cfg, DictFacts(), tiers={1, 2, 3}, ids_batching=False)
-    options = scenarios(big, cfg, cat, live, max_backfill_days=cfg.max_backfill_days)
-    by = {s.plan.name: s for s in options}
+    month = scenarios(big, cfg, cat, live, max_backfill_days=30)
+    by = {s.plan.name: s for s in month}
     assert not by["Free"].fits and not by["Pro"].fits and by["Ultra"].fits
-    assert recommend(options).plan.name == "Ultra"  # type: ignore[union-attr]
+    assert recommend(month).plan.name == "Ultra", "a month allowed: the cheaper plan that fits"  # type: ignore[union-attr]
+    fortnight = scenarios(big, cfg, cat, live, max_backfill_days=10)
+    assert recommend(fortnight).plan.name == "Mega", "ten days allowed: only the bigger quota fits"  # type: ignore[union-attr]
 
 
 def test_live_needs_grow_with_the_tiers_captured(cfg) -> None:
     one = live_budget(cfg, {1})
     two = live_budget(cfg, {1, 2})
-    assert two.peak_total > one.peak_total > 0 and two.leagues == 22 and one.leagues == 6
+    tiers_1_2 = len(cfg.tier_competitions({1, 2}))
+    assert two.peak_total > one.peak_total > 0 and two.leagues == tiers_1_2 and one.leagues == 6
     assert one.peak["odds_prematch"] == pytest.approx(one.peak_fixtures_per_day * cfg.live.prematch_windows)
 
 

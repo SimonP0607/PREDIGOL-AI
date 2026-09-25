@@ -111,6 +111,26 @@ tiers:
       - {league_id: 113, name: Allsvenskan, fixtures: 240}
       - {league_id: 103, name: Eliteserien, fixtures: 240}
       - {league_id: 119, name: Superliga (Denmark), fixtures: 192}
+      # Strong competitions missing from the legacy catalogue, added so the
+      # migration covers the ~70 best competitions asked for (2026-09-24). Their
+      # ids are the provider's published ids; the first unit (/leagues) stores
+      # the provider's own name for each (raw.league_coverage.league_name) and
+      # `scripts.migration plan` prints any id whose name does not match -
+      # review that list before seeding tier 2.
+      - {league_id: 203, name: Super Lig, fixtures: 380}
+      - {league_id: 179, name: Premiership (Scotland), fixtures: 228}
+      - {league_id: 218, name: Bundesliga (Austria), fixtures: 192}
+      - {league_id: 207, name: Super League (Switzerland), fixtures: 228}
+      - {league_id: 197, name: Super League 1 (Greece), fixtures: 240}
+      - {league_id: 345, name: Czech Liga, fixtures: 300}
+      - {league_id: 210, name: HNL, fixtures: 180}
+      - {league_id: 333, name: Premier League (Ukraine), fixtures: 240}
+      - {league_id: 98, name: J1 League, fixtures: 380}
+      - {league_id: 307, name: Pro League (Saudi Arabia), fixtures: 306}
+      - {league_id: 188, name: A-League, fixtures: 170}
+      - {league_id: 848, name: UEFA Europa Conference League, fixtures: 280}
+      - {league_id: 13, name: CONMEBOL Libertadores, fixtures: 155}
+      - {league_id: 11, name: CONMEBOL Sudamericana, fixtures: 155}
   3:
     name: Long tail (catalogued domestic leagues)
     competitions:
