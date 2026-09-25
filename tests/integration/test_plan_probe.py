@@ -71,3 +71,30 @@ async def test_missing_blocks_mean_no_batching(db: psycopg.Connection, seed: See
     await provider.aclose()
     assert rep.fixtures_returned == 2 and not rep.ids_batching_available
     assert rep.blocks_present == {"events": 0, "lineups": 0, "statistics": 0, "players": 0}
+
+
+async def test_a_plan_refusal_is_an_answer_and_coverage_still_comes(db: psycopg.Connection, seed: Seed,
+                                                                    tmp_path: Path, migrated_database: str) -> None:
+    """The Free plan answers ids= with errors.plan (observed 25 Sep 2026): record it, ask /leagues anyway."""
+    api = FakeApi()
+    words = "Free plans do not have access to the Ids parameter."
+
+    def refusing(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/fixtures") and "ids" in request.url.params:
+            return httpx.Response(200, json={"get": "fixtures", "parameters": {"ids": request.url.params["ids"]},
+                                             "errors": {"plan": words}, "results": 0, "response": []})
+        return api.handle(request)
+
+    provider, quota = _provider(migrated_database, tmp_path, refusing)
+    spent_before = quota.spent  # the quota row is shared by every test of the day
+    rep = await run_probe(db, provider, _ids(), configured={9901: "Dry-run League A"})
+    await provider.aclose()
+    assert rep.ids_verdict == "refused_by_plan" and not rep.ids_batching_available
+    assert rep.ids_refusal is not None and words in rep.ids_refusal
+    assert rep.fixtures_returned == 0 and rep.detail_kb_per_fixture is None
+    assert rep.coverage_rows == len(LEAGUES) * 2, "the coverage question is still answered"
+    assert rep.requests == 2 and quota.spent - spent_before == 2, "the refused request was issued, so it counts"
+    with db.cursor() as cur:
+        cur.execute("SELECT status, notes FROM raw.ingestion_runs WHERE id = %s", (rep.run_id,))
+        status, notes = cur.fetchone()  # type: ignore[misc]
+    assert status == "completed" and words in notes

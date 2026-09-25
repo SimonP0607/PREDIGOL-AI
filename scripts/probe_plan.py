@@ -63,12 +63,22 @@ async def _go(conn: psycopg.Connection, ids: list[int]) -> int:
     finally:
         await provider.aclose()
     n = rep.fixtures_returned
-    _say(f"/fixtures?ids={'-'.join(map(str, ids))}: {n} fixtures; blocks present: "
-         + ", ".join(f"{b} {rep.blocks_present.get(b, 0)}/{n}" for b in BLOCKS))
+    if rep.ids_refusal is None:
+        _say(f"/fixtures?ids={'-'.join(map(str, ids))}: {n} fixtures; blocks present: "
+             + ", ".join(f"{b} {rep.blocks_present.get(b, 0)}/{n}" for b in BLOCKS))
+    else:
+        _say(f"/fixtures?ids={'-'.join(map(str, ids))}: refused by the plan")
     if rep.detail_kb_per_fixture is not None:
         _say(f"  detail payload {rep.detail_kb_per_fixture:.1f} KB per fixture (gzip); {rep.detail_rows} rows normalised")
-    _say("  RESULT: /fixtures?ids= detail batching is AVAILABLE on this account" if rep.ids_batching_available else
-         "  RESULT: detail batching is NOT available on this account - price with `scripts.migration capacity --no-ids`")
+    if rep.ids_verdict == "refused_by_plan":
+        _say(f"  RESULT: this plan REFUSES the ids parameter - the provider says: {rep.ids_refusal}")
+        _say("          That settles THIS plan only. Probe again on the first day of a paid plan (same command, "
+             "2 requests): AVAILABLE -> stay; otherwise price with `scripts.migration capacity --no-ids`.")
+    elif rep.ids_batching_available:
+        _say("  RESULT: /fixtures?ids= detail batching is AVAILABLE on this account")
+    else:
+        _say("  RESULT: detail batching is NOT available on this account - price with "
+             "`scripts.migration capacity --no-ids`")
     _say(f"/leagues: {rep.coverage_rows} (league, season) coverage rows stored")
     for lid, mine, theirs in rep.name_mismatches:
         _say(f"  NAME CHECK: league {lid} is '{mine}' in config/migration.yaml but '{theirs}' at the provider")
