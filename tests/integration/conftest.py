@@ -20,10 +20,28 @@ from tests.integration.helpers import scalar
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-ADMIN_URL = os.environ.get(
-    "FBI_TEST_ADMIN_URL",
-    "postgresql://postgres:fbi_local_dev@127.0.0.1:5433/postgres",
-)
+def _admin_url() -> str:
+    """The DSN used to DROP and CREATE the test database.
+
+    Derived from FBI_DATABASE_URL when FBI_TEST_ADMIN_URL is not set, because the
+    two are almost always the same server with the same credentials and only the
+    database name differs. The literal that used to be hard-coded here assumed a
+    'postgres' superuser with a particular password; the machine's cluster is owned
+    by 'fbi' (POSTGRES_USER in docker-compose), so every integration test failed
+    there with "password authentication failed for user postgres" - 321 errors that
+    looked like a code regression and were a missing environment variable.
+    """
+    explicit = os.environ.get("FBI_TEST_ADMIN_URL")
+    if explicit:
+        return explicit
+    configured = os.environ.get("FBI_DATABASE_URL")
+    if configured:
+        head, _, _ = configured.rpartition("/")
+        return f"{head}/postgres".replace("postgresql+psycopg://", "postgresql://")
+    return "postgresql://postgres:fbi_local_dev@127.0.0.1:5433/postgres"
+
+
+ADMIN_URL = _admin_url()
 TEST_DB = os.environ.get("FBI_TEST_DB", "fbi_test")
 
 
