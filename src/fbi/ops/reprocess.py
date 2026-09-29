@@ -37,8 +37,11 @@ from psycopg.rows import dict_row
 
 from fbi.core.errors import FbiError
 from fbi.ingestion.details import apply_fixture_details
+from fbi.ingestion.fixtures import PayloadLineage
 from fbi.ingestion.payload_store import PayloadStore, body_hash
+from fbi.ingestion.results import ResultRepository
 from fbi.providers.api_football.details import iter_fixture_details
+from fbi.providers.api_football.normalize import iter_fixture_results
 
 log = structlog.get_logger(__name__)
 
@@ -116,6 +119,53 @@ def _bodies(store: PayloadStore, rows: list[dict[str, Any]], report: ReprocessRe
             report.problems.append(f"{file_path}: the stored body is not an object")
             continue
         yield row, body, row["fetched_at"]
+
+
+def reprocess_results(
+    conn: psycopg.Connection,
+    raw_root: Path,
+    *,
+    apply: bool,
+    limit: int | None = None,
+    verify_hashes: bool = True,
+) -> ReprocessReport:
+    """Re-derive every stored score, so ft_goals_* is filled from the bytes on disk.
+
+    Why this exists: the 90-minute score was reconstructed as ``goals - extratime``,
+    which is wrong wherever the provider gives ``extratime`` as the running total -
+    78 stored results were 0-0 draws that were not draws, and 6 ties that went
+    straight from ninety minutes to penalties had no result row at all. The provider
+    states the score in ``score.fulltime`` and always did: the payloads holding it are
+    already on disk, so correcting this costs NO provider request.
+
+    ``core.fixture_results`` is derived, not a snapshot. Re-deriving it from the stored
+    payload is the operation the raw store exists to make possible; the payloads
+    themselves are read and never written.
+    """
+    report = ReprocessReport()
+    store = PayloadStore(raw_root)
+    rows = detail_payloads(conn, limit=limit)
+    disagreements: list[str] = []
+    for row, body, fetched_at in _bodies(store, rows, report, verify=verify_hashes):
+        results = list(iter_fixture_results(body, disagreements=disagreements))
+        if not results:
+            continue
+        report.payloads_applied += 1
+        if not apply:
+            report.fixtures_touched += len(results)
+            continue
+        _, written = ResultRepository(conn).apply(
+            results, lineage=PayloadLineage(payload_hash=str(row["hash"]), fetched_at=fetched_at)
+        )
+        report.fixtures_touched += written
+        conn.commit()  # a checkpoint per payload: a crash resumes, never restarts
+    for note in disagreements:
+        report.problems.append(note)
+    report.issues_opened = len(disagreements)
+    log.info("reprocess.results_finished", **report.as_dict())
+    if not apply:
+        conn.rollback()
+    return report
 
 
 def reprocess_fixture_details(

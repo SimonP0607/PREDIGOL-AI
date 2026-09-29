@@ -28,6 +28,7 @@ from fbi.ops.reprocess import (
     derive_coverage_from_stored_detail,
     derive_identity_from_stored_detail,
     reprocess_fixture_details,
+    reprocess_results,
     reprocess_teams,
 )
 
@@ -49,6 +50,9 @@ def main() -> int:
                         help="faster, and gives up the guarantee that the bytes are unchanged")
     parser.add_argument("--derive-only", action="store_true",
                         help="skip the replay; only fill coverage and identity from what is normalized")
+    parser.add_argument("--results", action="store_true",
+                        help="re-derive the 90-minute score from score.fulltime in the stored "
+                             "payloads: fixes the rows where extratime was the running total")
     parser.add_argument("--teams", action="store_true",
                         help="normalise the /teams payloads that were only ever stored as bytes")
     args = parser.parse_args()
@@ -64,6 +68,20 @@ def main() -> int:
               + ", ".join(f"{k} {v}" for k, v in coverage.items()))
         print("identity derived: " + ", ".join(f"{k} {v}" for k, v in identity.items()))
         return 0
+
+    if args.results:
+        with psycopg.connect(settings.database.psycopg_url) as conn:
+            rep = reprocess_results(conn, _raw_root(), apply=args.apply, limit=args.limit,
+                                    verify_hashes=not args.skip_hash_check)
+        print(f"{rep.payloads_seen} /fixtures payload(s), {rep.payloads_applied} with scores, "
+              f"{rep.fixtures_touched} result(s) written")
+        print(f"provider score parts disagreeing (fulltime + extratime != goals): "
+              f"{rep.issues_opened}")
+        for problem in rep.problems[:10]:
+            print(f"  {problem}")
+        if not args.apply:
+            print("re-run with --apply")
+        return 1 if rep.payloads_missing_file or rep.payloads_not_rehashing else 0
 
     if args.teams:
         with psycopg.connect(settings.database.psycopg_url) as conn:

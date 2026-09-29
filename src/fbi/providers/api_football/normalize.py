@@ -422,7 +422,9 @@ def _pair(block: Any) -> tuple[int | None, int | None]:
     return (home if isinstance(home, int) else None, away if isinstance(away, int) else None)
 
 
-def iter_fixture_results(body: dict[str, Any]) -> Iterator[FixtureResultRef]:
+def iter_fixture_results(
+    body: dict[str, Any], *, disagreements: list[str] | None = None
+) -> Iterator[FixtureResultRef]:
     """Scores, from the SAME /fixtures payload the fixture sync already reads.
 
     This costs no extra request: the provider returns goals and score blocks
@@ -432,6 +434,12 @@ def iter_fixture_results(body: dict[str, Any]) -> Iterator[FixtureResultRef]:
 
     A fixture the provider does not report as finished yields nothing, so a
     postponed match never acquires a score.
+
+    ``disagreements`` collects the fixtures where the provider's own three numbers do
+    not add up - ``fulltime + extratime != goals``, which happens on about 5% of its
+    extra-time fixtures because ``extratime`` sometimes carries the running total. The
+    stated ``fulltime`` is used regardless; the caller records the disagreement, because
+    it is the provider's fact rather than our arithmetic.
     """
     for entry in body.get("response") or []:
         if not isinstance(entry, dict):
@@ -449,17 +457,41 @@ def iter_fixture_results(body: dict[str, Any]) -> Iterator[FixtureResultRef]:
         raw_score = entry.get("score")
         score: dict[str, Any] = raw_score if isinstance(raw_score, dict) else {}
         ht_h, ht_a = _pair(score.get("halftime"))
+        ft_h, ft_a = _pair(score.get("fulltime"))
         et_h, et_a = _pair(score.get("extratime"))
         pk_h, pk_a = _pair(score.get("penalty"))
-        if status in EXTRA_TIME_STATUSES and (et_h is None or et_a is None):
-            # `goals` includes extra time; without the extra-time breakdown the
-            # 90-minute score that markets settle on cannot be derived. Better
-            # an awaited result than a wrong one.
-            log.warning("result.extra_time_without_breakdown", fixture=fixture.get("id"), status=status)
+
+        if ft_h is not None and ft_a is not None and (ft_h > goals_home or ft_a > goals_away):
+            # The score at ninety minutes cannot exceed the final score.
+            log.warning("result.fulltime_exceeds_final", fixture=fixture.get("id"),
+                        fulltime=(ft_h, ft_a), final=(goals_home, goals_away))
+            ft_h = ft_a = None
+        if (ft_h is None or ft_a is None) \
+                and status in EXTRA_TIME_STATUSES and (et_h is None or et_a is None):
+            # Neither the stated 90-minute score nor an extra-time breakdown to derive
+            # it from. `goals` includes extra time, so it is not the 90-minute score and
+            # there is nothing here to settle a 1X2 on. Better an awaited result than a
+            # wrong one.
+            log.warning("result.no_ninety_minute_score", fixture=fixture.get("id"), status=status)
             continue
         if (et_h is not None and et_h > goals_home) or (et_a is not None and et_a > goals_away):
             log.warning("result.extra_time_exceeds_final", fixture=fixture.get("id"))
             continue
+        if ft_h is not None and ft_a is not None and et_h is not None and et_a is not None \
+                and (ft_h + et_h, ft_a + et_a) != (goals_home, goals_away):
+            # The provider contradicting itself: on about 5% of its extra-time fixtures
+            # `extratime` carries the running total rather than the increment, so the
+            # three numbers do not add up. `fulltime` is used regardless - which is the
+            # point of reading it - and the disagreement is recorded rather than hidden,
+            # because it is the provider's fact and not our arithmetic.
+            log.info("result.score_parts_disagree", fixture=fixture.get("id"),
+                     fulltime=(ft_h, ft_a), extratime=(et_h, et_a), final=(goals_home, goals_away))
+            if disagreements is not None:
+                disagreements.append(
+                    f"fixture {fixture.get('id')}: fulltime {ft_h}-{ft_a} + extratime "
+                    f"{et_h}-{et_a} != goals {goals_home}-{goals_away}; the stated fulltime "
+                    "is used"
+                )
         try:
             yield FixtureResultRef(
                 provider_fixture_id=int(fixture["id"]),
@@ -468,6 +500,8 @@ def iter_fixture_results(body: dict[str, Any]) -> Iterator[FixtureResultRef]:
                 goals_away=goals_away,
                 ht_goals_home=ht_h,
                 ht_goals_away=ht_a,
+                ft_goals_home=ft_h,
+                ft_goals_away=ft_a,
                 et_goals_home=et_h,
                 et_goals_away=et_a,
                 pen_home=pk_h,

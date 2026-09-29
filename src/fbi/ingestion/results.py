@@ -133,12 +133,13 @@ class ResultRepository:
                     """
                     INSERT INTO core.fixture_results
                       (fixture_id, goals_home, goals_away, ht_goals_home, ht_goals_away,
-                       et_goals_home, et_goals_away, pen_home, pen_away,
-                       source_payload_hash, source_fetched_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                       ft_goals_home, ft_goals_away, et_goals_home, et_goals_away,
+                       pen_home, pen_away, source_payload_hash, source_fetched_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (fixture_id) DO UPDATE SET
                       goals_home = EXCLUDED.goals_home, goals_away = EXCLUDED.goals_away,
                       ht_goals_home = EXCLUDED.ht_goals_home, ht_goals_away = EXCLUDED.ht_goals_away,
+                      ft_goals_home = EXCLUDED.ft_goals_home, ft_goals_away = EXCLUDED.ft_goals_away,
                       et_goals_home = EXCLUDED.et_goals_home, et_goals_away = EXCLUDED.et_goals_away,
                       pen_home = EXCLUDED.pen_home, pen_away = EXCLUDED.pen_away,
                       source_payload_hash = EXCLUDED.source_payload_hash,
@@ -148,8 +149,8 @@ class ResultRepository:
                     """,
                     (
                         fixture_id, r.goals_home, r.goals_away, r.ht_goals_home, r.ht_goals_away,
-                        r.et_goals_home, r.et_goals_away, r.pen_home, r.pen_away,
-                        lineage_hash, lineage_at,
+                        r.ft_goals_home, r.ft_goals_away, r.et_goals_home, r.et_goals_away,
+                        r.pen_home, r.pen_away, lineage_hash, lineage_at,
                     ),
                 )
                 if cur.fetchone() is not None:

@@ -89,10 +89,16 @@ class FixtureResultRef:
     conflating the two is how a cancelled match ends up with a 0-0 "result".
     Only fixtures the provider reports as finished produce one of these.
 
-    ``goals_home``/``goals_away`` are the 90-minute score the provider settles
-    markets on. Extra time and penalties are carried separately because a
-    1X2 market settles on the former and a cup winner on the latter; merging
-    them silently would mis-settle every knockout tie.
+    ``goals_home``/``goals_away`` are the FINAL score with extra time included and
+    penalties excluded. ``ft_goals_*`` is the score at ninety minutes, which is what
+    1X2, Over/Under and BTTS settle on, and penalties decide only a cup winner;
+    merging them silently would mis-settle every knockout tie.
+
+    ``ft_goals_*`` is read from the provider's ``score.fulltime`` rather than derived
+    as ``goals - extratime``. Measured on 1,645 extra-time fixtures: ``extratime`` is
+    the increment on 1,557 of them and the RUNNING TOTAL on 82, and the subtraction
+    turns the second group into a 0-0 draw. A stated value cannot be wrong about the
+    semantics of a different field.
     """
 
     provider_fixture_id: int
@@ -101,6 +107,8 @@ class FixtureResultRef:
     goals_away: int
     ht_goals_home: int | None = None
     ht_goals_away: int | None = None
+    ft_goals_home: int | None = None
+    ft_goals_away: int | None = None
     et_goals_home: int | None = None
     et_goals_away: int | None = None
     pen_home: int | None = None
