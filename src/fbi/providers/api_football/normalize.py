@@ -13,9 +13,8 @@ counted, never substituted with a plausible-looking neighbour.
 from __future__ import annotations
 
 import math
-from collections import Counter
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -24,7 +23,27 @@ import structlog
 
 from fbi.core.errors import InvalidSelectionError
 from fbi.domain.market import MarketLine, MarketType, Selection, Side
-from fbi.providers.base import FixtureRef, FixtureResultRef, OddsQuote, OddsSource, SeasonRef
+from fbi.providers.base import (
+    FixtureRef,
+    FixtureResultRef,
+    OddsParseLog,
+    OddsQuote,
+    OddsSource,
+    SeasonRef,
+)
+
+__all__ = [
+    "BETS_BY_SOURCE",
+    "INPLAY_BETS",
+    "PREMATCH_BETS",
+    "OddsParseLog",
+    "ProviderBet",
+    "iter_fixture_results",
+    "iter_fixtures",
+    "iter_league_seasons",
+    "iter_odds",
+    "minutes_to_kickoff",
+]
 
 log = structlog.get_logger(__name__)
 
@@ -110,33 +129,6 @@ LINED_MARKETS = frozenset({"OU", "AH"})
 
 MIN_ODDS = Decimal("1.001")
 MAX_ODDS = Decimal("999.999")
-
-MAX_REJECTIONS_KEPT = 200
-
-
-@dataclass
-class OddsParseLog:
-    """What the boundary refused, so the caller can record it.
-
-    A price we cannot read is dropped - never guessed - but dropping it silently
-    is how the legacy system lost Asian Handicap for months. Everything refused
-    lands here with its reason and the provider's own words, ready to become a
-    quality issue.
-    """
-
-    unmapped_bets: Counter[tuple[int, str]] = field(default_factory=Counter)
-    renamed_bets: list[tuple[int, str, str]] = field(default_factory=list)
-    """(bet_id, the name we expect, the name the provider sent). A populated
-    list means the provider's catalogue moved under us: PROVIDER_INCONSISTENCY,
-    not a parsing bug."""
-    rejected: list[tuple[str, str, str]] = field(default_factory=list)
-    rejected_total: int = 0
-
-    def refuse(self, market_key: str, raw_value: str, reason: str) -> None:
-        self.rejected_total += 1
-        if len(self.rejected) < MAX_REJECTIONS_KEPT:
-            self.rejected.append((market_key, raw_value, reason))
-
 
 def _to_decimal(value: Any) -> Decimal | None:
     if value is None:

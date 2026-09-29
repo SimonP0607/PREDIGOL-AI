@@ -25,7 +25,14 @@ from fbi.providers.api_football.normalize import (
     iter_league_seasons,
     iter_odds,
 )
-from fbi.providers.base import FixtureRef, FixtureResultRef, OddsQuote, RawResponse, SeasonRef
+from fbi.providers.base import (
+    FixtureRef,
+    FixtureResultRef,
+    OddsParseLog,
+    OddsQuote,
+    RawResponse,
+    SeasonRef,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -109,7 +116,8 @@ class ApiFootballProvider:
         return list(iter_fixture_results(response.body)), _raw(response)
 
     async def fetch_prematch_odds(
-        self, *, provider_fixture_id: int, kickoff_at: datetime
+        self, *, provider_fixture_id: int, kickoff_at: datetime,
+        parse_log: OddsParseLog | None = None,
     ) -> tuple[list[OddsQuote], list[RawResponse]]:
         quotes: list[OddsQuote] = []
         raws: list[RawResponse] = []
@@ -127,6 +135,7 @@ class ApiFootballProvider:
                     payload_hash=response.stored.hash,
                     source="prematch",
                     market_filter=self._market_filter or None,
+                    parse_log=parse_log,
                 )
             )
             raws.append(_raw(response))
@@ -138,7 +147,8 @@ class ApiFootballProvider:
         return quotes, raws
 
     async def fetch_live_odds(
-        self, *, provider_fixture_id: int, kickoff_at: datetime
+        self, *, provider_fixture_id: int, kickoff_at: datetime,
+        parse_log: OddsParseLog | None = None,
     ) -> tuple[list[OddsQuote], RawResponse]:
         response = await self._client.get("/odds/live", {"fixture": provider_fixture_id})
         quotes = list(
@@ -149,6 +159,7 @@ class ApiFootballProvider:
                 payload_hash=response.stored.hash,
                 source="live",
                 market_filter=self._market_filter or None,
+                parse_log=parse_log,
             )
         )
         return quotes, _raw(response)

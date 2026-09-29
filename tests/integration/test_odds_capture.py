@@ -117,6 +117,10 @@ def prepared(db: psycopg.Connection, seed: Seed) -> Iterator[psycopg.Connection]
         # near-close first: it holds a foreign key onto the series it projects.
         cur.execute("DELETE FROM market.near_close_snapshots")
         cur.execute("DELETE FROM market.odds_snapshots")
+        # Quality issues reference the payloads that produced them, and that is
+        # the point of them: they go first.
+        cur.execute("DELETE FROM audit.data_quality_issues")
+        cur.execute("DELETE FROM market.provider_markets WHERE source = 'observed'")
         cur.execute("DELETE FROM raw.ingestion_payloads WHERE hash <> 'h1'")
         cur.execute("DELETE FROM raw.ingestion_runs WHERE job_name = 'odds_capture'")
     db.commit()
@@ -324,3 +328,47 @@ async def test_a_live_body_numbered_like_a_prematch_one_yields_nothing(
     with prepared.cursor() as cur:
         cur.execute("SELECT count(*) FROM market.near_close_snapshots")
         assert scalar(cur) == 0
+
+
+async def test_a_bet_we_do_not_model_is_registered_rather_than_skipped(
+    prepared: psycopg.Connection, tmp_path: Path, clock: FrozenClock
+) -> None:
+    """The other half of the live-namespace fix.
+
+    Refusing to store an unmapped bet is right; refusing silently is not. The bet
+    lands in the provider catalogue as 'observed' and in the quality registry, so
+    "we do not model this" stops looking like "we lost this".
+    """
+    clock.advance(minutes=1427)
+    body = odds_body("1.90", "3.70", "4.20", scope="prematch")  # prematch ids on /odds/live
+    service, _ = make_service(prepared, tmp_path, lambda _n: body)
+    report = await service.capture([ScheduledFixture(1001, KICKOFF)])
+
+    assert (report.snapshots_written, report.quality_issues_opened) == (0, 1)
+    assert report.provider_bets_newly_observed == 1
+    with prepared.cursor() as cur:
+        cur.execute("SELECT code, entity_type, provider_entity_id, observed, payload_hash IS NOT NULL "
+                    "FROM audit.data_quality_issues")
+        assert cur.fetchall() == [("UNKNOWN_PROVIDER_ENTITY", "provider_market", 1, "Match Winner", True)]
+        cur.execute("SELECT scope, name, market_key, source FROM market.provider_markets "
+                    "WHERE source = 'observed'")
+        assert cur.fetchall() == [("inplay", "Match Winner", None, "observed")]
+
+
+async def test_an_unreadable_price_is_recorded_with_the_provider_s_own_words(
+    prepared: psycopg.Connection, tmp_path: Path, clock: FrozenClock
+) -> None:
+    body = odds_body("1.90", "3.70", "4.20")
+    body["response"][0]["bookmakers"][0]["bets"][0]["values"].append(
+        {"value": "Sideways", "odd": "2.00"}
+    )
+    service, _ = make_service(prepared, tmp_path, lambda _n: body)
+    report = await service.capture([ScheduledFixture(1001, KICKOFF)])
+
+    assert report.snapshots_written == 3, "the three readable prices are kept"
+    assert report.quality_issues_opened == 1
+    with prepared.cursor() as cur:
+        cur.execute("SELECT code, field, observed, expected FROM audit.data_quality_issues")
+        assert cur.fetchall() == [
+            ("NORMALIZATION_REJECTED", "1X2", "Sideways", "not a selection of this market")
+        ]

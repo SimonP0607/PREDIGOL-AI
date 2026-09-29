@@ -286,10 +286,13 @@ async def _execute(conn: psycopg.Connection, provider: Any, ledger: RunLedger, r
         ids = [int(x) for x in str(task.batch_key or "").split("-") if x]
         details, raw = await provider.fetch_fixture_details(provider_fixture_ids=ids)
         stored(raw)
-        rep = apply_fixture_details(conn, details, payload_hash=raw.payload_hash, fetched_at=raw.fetched_at)
+        rep = apply_fixture_details(conn, details, payload_hash=raw.payload_hash,
+                                    fetched_at=raw.fetched_at, run_id=run_id)
         counters.rows_normalized += rep.fixtures
         counters.rows_inserted += rep.rows
         if rep.unknown_stat_types:
+            # Also in audit.data_quality_issues now: a log line disappears, and a
+            # new provider field must not look like one we never received.
             log.info("details.unknown_stat_types", types=sorted(rep.unknown_stat_types))
         return _Outcome(raw.payload_hash, rep.rows, len(details), rep.fixtures, None)
     if task.kind == "standings_season":

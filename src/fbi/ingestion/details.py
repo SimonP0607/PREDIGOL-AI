@@ -25,6 +25,14 @@ from fbi.providers.api_football.details import (
     FixtureDetail,
     StandingRef,
 )
+from fbi.quality.issues import (
+    EntityType,
+    IssueRegistry,
+    QualityIssue,
+    inconsistency,
+    issues_from,
+    unknown_entity,
+)
 
 SOURCE = "api-football"
 
@@ -53,6 +61,11 @@ class DetailReport:
     stale: int = 0
     """Payload older than what is stored for that fixture: nothing written."""
     unknown_stat_types: set[str] = field(default_factory=set)
+    issues: list[QualityIssue] = field(default_factory=list)
+    """What the provider sent that we could not store as sent. Recorded in
+    audit.data_quality_issues, never silently dropped."""
+    issues_opened: int = 0
+    issues_seen_again: int = 0
 
     @property
     def rows(self) -> int:
@@ -79,14 +92,71 @@ def _side(team_id: int | None, home: int, away: int) -> str | None:
 
 
 def _clean(value: Decimal | int | bool | None) -> Decimal | int | bool | None:
-    """Negative counts are the provider's error, not a statistic: dropped."""
+    """Negative counts are the provider's error, not a statistic: dropped.
+
+    The caller records what was dropped; see ``_team_stat_values``.
+    """
     if isinstance(value, bool) or value is None:
         return value
     return None if value < 0 else value
 
 
+CONTRADICTIONS: tuple[tuple[str, str], ...] = (
+    ("shots_on_target", "shots"),
+    ("passes_accurate", "passes"),
+)
+"""(the part, the whole). The schema forbids the part exceeding the whole, so a
+contradictory value cannot be stored - but it can be named."""
+
+
+def _team_stat_values(
+    raw: dict[str, Decimal | int | bool | None],
+    *,
+    fixture_id: int,
+    provider_team_id: int | None,
+    payload_hash: str,
+    run_id: int | None,
+) -> tuple[list[Decimal | int | bool | None], list[str], list[QualityIssue]]:
+    """The row to write, the columns dropped from it, and why.
+
+    Two kinds of drop, both recorded rather than absorbed:
+      * a negative count, which is not a statistic;
+      * a part exceeding its whole, which the schema's CHECK refuses.
+    """
+    index = {name: i for i, name in enumerate(TEAM_STAT_COLUMNS)}
+    values: list[Decimal | int | bool | None] = []
+    dropped: list[str] = []
+    issues: list[QualityIssue] = []
+    for name in TEAM_STAT_COLUMNS:
+        original = raw.get(name)
+        cleaned = _clean(original)
+        if cleaned is None and original is not None:
+            dropped.append(name)
+            issues.append(inconsistency(
+                entity_type=EntityType.TEAM_STATISTICS, entity_id=fixture_id,
+                provider_entity_id=provider_team_id, field_name=name, observed=original,
+                expected="a count of zero or more", payload_hash=payload_hash, run_id=run_id,
+                detail=f"{name} arrived negative, which is not a statistic",
+            ))
+        values.append(cleaned)
+    for part, whole in CONTRADICTIONS:
+        p_value, w_value = values[index[part]], values[index[whole]]
+        if p_value is None or w_value is None or p_value <= w_value:
+            continue
+        dropped.append(part)
+        issues.append(inconsistency(
+            entity_type=EntityType.TEAM_STATISTICS, entity_id=fixture_id,
+            provider_entity_id=provider_team_id, field_name=part, observed=p_value,
+            expected=f"at most {whole} ({w_value})", payload_hash=payload_hash, run_id=run_id,
+            detail=f"the provider reported {part}={p_value} with {whole}={w_value}; "
+                   f"the schema forbids the part exceeding the whole, so {part} is not stored",
+        ))
+        values[index[part]] = None
+    return values, sorted(set(dropped)), issues
+
+
 def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDetail], *, payload_hash: str,
-                          fetched_at: datetime) -> DetailReport:
+                          fetched_at: datetime, run_id: int | None = None) -> DetailReport:
     details = list(details)
     fmap = _fixture_map(conn, (d.provider_fixture_id for d in details))
     report = DetailReport()
@@ -116,20 +186,30 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                     if side is None:
                         continue
                     report.unknown_stat_types.update(s.unknown_types)
-                    vals = [_clean(s.values.get(c)) for c in TEAM_STAT_COLUMNS]
-                    if vals[0] is not None and vals[1] is not None and vals[1] > vals[0]:  # on target > total
-                        vals[1] = None
-                    if vals[14] is not None and vals[13] is not None and vals[14] > vals[13]:
-                        vals[14] = None
+                    for unknown in sorted(s.unknown_types):
+                        report.issues.append(unknown_entity(
+                            entity_type=EntityType.TEAM_STATISTICS, name=unknown,
+                            provider_entity_id=s.provider_team_id, payload_hash=payload_hash,
+                            run_id=run_id,
+                            detail="a statistic type the normaliser has no column for; the value is "
+                                   "in the raw payload and is not stored",
+                        ))
+                    vals, dropped, found = _team_stat_values(
+                        s.values, fixture_id=fixture_id, provider_team_id=s.provider_team_id,
+                        payload_hash=payload_hash, run_id=run_id,
+                    )
+                    report.issues.extend(found)
                     cols = ", ".join(TEAM_STAT_COLUMNS)
                     sets = ", ".join(f"{c} = EXCLUDED.{c}" for c in TEAM_STAT_COLUMNS)
                     cur.execute(
                         f"INSERT INTO core.fixture_team_stats (fixture_id, team_side, source, {cols}, payload_hash, "
-                        f"fetched_at) VALUES (%s, %s, %s, {', '.join(['%s'] * len(TEAM_STAT_COLUMNS))}, %s, %s) "
+                        f"fetched_at, dropped_fields) "
+                        f"VALUES (%s, %s, %s, {', '.join(['%s'] * len(TEAM_STAT_COLUMNS))}, %s, %s, %s) "
                         f"ON CONFLICT (fixture_id, team_side, source) DO UPDATE SET {sets}, "
-                        "payload_hash = EXCLUDED.payload_hash, fetched_at = EXCLUDED.fetched_at "
+                        "payload_hash = EXCLUDED.payload_hash, fetched_at = EXCLUDED.fetched_at, "
+                        "dropped_fields = EXCLUDED.dropped_fields "
                         "WHERE core.fixture_team_stats.fetched_at <= EXCLUDED.fetched_at",
-                        (fixture_id, side, SOURCE, *vals, payload_hash, fetched_at),
+                        (fixture_id, side, SOURCE, *vals, payload_hash, fetched_at, dropped),
                     )
                     report.stats_rows += max(cur.rowcount, 0)
             if "events" in d.blocks_present:
@@ -196,7 +276,19 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                         (fixture_id, SOURCE, ps.provider_player_id, side, ps.name, *vals2, payload_hash, fetched_at),
                     )
                     report.player_rows += max(cur.rowcount, 0)
+    _record(conn, report)
     return report
+
+
+def _record(conn: psycopg.Connection, report: DetailReport) -> None:
+    """Persist what could not be stored as sent, in the same transaction as the
+    rows that were. Deduplicated by fingerprint first, so one payload counts as
+    one occurrence of each distinct problem."""
+    if not report.issues:
+        return
+    result = IssueRegistry(conn).record_many(issues_from(report.issues))
+    report.issues_opened = result.opened
+    report.issues_seen_again = result.seen_again
 
 
 def apply_injuries(conn: psycopg.Connection, absences: Iterable[AbsenceRef], *, payload_hash: str,

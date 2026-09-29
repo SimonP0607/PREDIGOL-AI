@@ -12,7 +12,8 @@ back to the exact bytes the provider returned.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal, Protocol, runtime_checkable
@@ -128,6 +129,33 @@ class OddsQuote:
     payload_hash: str
 
 
+MAX_REJECTIONS_KEPT = 200
+
+
+@dataclass
+class OddsParseLog:
+    """What a provider boundary refused, so the caller can record it.
+
+    A price we cannot read is dropped - never guessed - but dropping it silently
+    is how the legacy system lost Asian Handicap for months. Everything refused
+    lands here with its reason and the provider's own words, ready to become a
+    quality issue.
+    """
+
+    unmapped_bets: Counter[tuple[int, str]] = field(default_factory=Counter)
+    renamed_bets: list[tuple[int, str, str]] = field(default_factory=list)
+    """(bet_id, the name we expect, the name the provider sent). A populated
+    list means the provider's catalogue moved under us: PROVIDER_INCONSISTENCY,
+    not a parsing bug."""
+    rejected: list[tuple[str, str, str]] = field(default_factory=list)
+    rejected_total: int = 0
+
+    def refuse(self, market_key: str, raw_value: str, reason: str) -> None:
+        self.rejected_total += 1
+        if len(self.rejected) < MAX_REJECTIONS_KEPT:
+            self.rejected.append((market_key, raw_value, reason))
+
+
 @runtime_checkable
 class FootballDataProvider(Protocol):
     """What the platform needs from any football data source."""
@@ -155,11 +183,13 @@ class FootballDataProvider(Protocol):
     ) -> tuple[list[FixtureResultRef], RawResponse]: ...
 
     async def fetch_prematch_odds(
-        self, *, provider_fixture_id: int, kickoff_at: datetime
+        self, *, provider_fixture_id: int, kickoff_at: datetime,
+        parse_log: OddsParseLog | None = None,
     ) -> tuple[list[OddsQuote], list[RawResponse]]: ...
 
     async def fetch_live_odds(
-        self, *, provider_fixture_id: int, kickoff_at: datetime
+        self, *, provider_fixture_id: int, kickoff_at: datetime,
+        parse_log: OddsParseLog | None = None,
     ) -> tuple[list[OddsQuote], RawResponse]: ...
 
     async def aclose(self) -> None: ...

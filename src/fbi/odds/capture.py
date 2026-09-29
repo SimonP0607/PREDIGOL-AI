@@ -24,7 +24,14 @@ from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.market.consensus import recompute_from_snapshots
 from fbi.odds.repository import OddsRepository
 from fbi.odds.schedule import CapturePlanner, CaptureTask, ScheduledFixture
-from fbi.providers.base import FootballDataProvider, OddsQuote, RawResponse
+from fbi.providers.base import (
+    FootballDataProvider,
+    OddsParseLog,
+    OddsQuote,
+    OddsSource,
+    RawResponse,
+)
+from fbi.quality.provider_signals import record_parse_log
 
 log = structlog.get_logger(__name__)
 
@@ -41,6 +48,11 @@ class CaptureReport:
     consensus_written: int = 0
     api_calls: int = 0
     payloads_stored: int = 0
+    quality_issues_opened: int = 0
+    quality_issues_seen_again: int = 0
+    provider_bets_newly_observed: int = 0
+    """Bets that appeared in a payload and were not in the catalogue: a provider
+    change, recorded rather than skipped."""
     errors: list[str] = field(default_factory=list)
     stopped_early: str | None = None
 
@@ -134,6 +146,8 @@ class OddsCaptureService:
             consensus=report.consensus_written,
             api_calls=report.api_calls,
             errors=len(report.errors),
+            quality_issues=report.quality_issues_opened,
+            new_provider_bets=report.provider_bets_newly_observed,
             status=report.status,
         )
         return report
@@ -141,15 +155,19 @@ class OddsCaptureService:
     async def _capture_one(self, task: CaptureTask, report: CaptureReport) -> None:
         quotes: list[OddsQuote]
         raws: list[RawResponse]
+        parse_log = OddsParseLog()
+        source: OddsSource = "live" if task.kind == "near_close" else "prematch"
 
         if task.kind == "near_close":
             quotes, raw = await self._provider.fetch_live_odds(
-                provider_fixture_id=task.provider_fixture_id, kickoff_at=task.kickoff_at
+                provider_fixture_id=task.provider_fixture_id, kickoff_at=task.kickoff_at,
+                parse_log=parse_log,
             )
             raws = [raw]
         else:
             quotes, raws = await self._provider.fetch_prematch_odds(
-                provider_fixture_id=task.provider_fixture_id, kickoff_at=task.kickoff_at
+                provider_fixture_id=task.provider_fixture_id, kickoff_at=task.kickoff_at,
+                parse_log=parse_log,
             )
 
         report.executed += 1
@@ -163,6 +181,16 @@ class OddsCaptureService:
 
         if task.kind == "near_close":
             report.near_close_written += self._repo.upsert_near_close(quotes)
+
+        # What the boundary refused is part of this capture, not a footnote: the
+        # unmapped bets, the renames and the unreadable values go in with the
+        # prices, in the same transaction.
+        signals = record_parse_log(self._conn, parse_log, source=source,
+                                   payload_hash=raws[-1].payload_hash if raws else None,
+                                   run_id=report.run_id)
+        report.quality_issues_opened += signals.issues_opened
+        report.quality_issues_seen_again += signals.issues_seen_again
+        report.provider_bets_newly_observed += signals.bets_newly_observed
         self._conn.commit()
 
         # The consensus is derived data: if computing it fails, the prices are
