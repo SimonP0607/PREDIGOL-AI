@@ -68,6 +68,9 @@ class SweepReport:
     checks: list[CheckOutcome] = field(default_factory=list)
     issues_opened: int = 0
     issues_seen_again: int = 0
+    issues_resolved: int = 0
+    """Issues closed because the check that opened them no longer finds them. A registry
+    that only ever grows cannot tell today's faults from last month's."""
 
     @property
     def offenders(self) -> int:
@@ -79,7 +82,8 @@ class SweepReport:
 
     def as_dict(self) -> dict[str, Any]:
         return {"checks": len(self.checks), "failed": len(self.failed), "offenders": self.offenders,
-                "issues_opened": self.issues_opened, "issues_seen_again": self.issues_seen_again}
+                "issues_opened": self.issues_opened, "issues_seen_again": self.issues_seen_again,
+                "issues_resolved": self.issues_resolved}
 
 
 def _scalar(conn: psycopg.Connection, sql: str, params: Sequence[Any] = ()) -> int:
@@ -100,13 +104,18 @@ def _rows(conn: psycopg.Connection, sql: str, params: Sequence[Any] = (),
 
 UNRESOLVED_RESULT_SQL = """
 SELECT f.id AS fixture_id, f.provider_fixture_id, f.status_short,
-       r.goals_home, r.goals_away, r.et_goals_home, r.pen_home, r.pen_away,
+       r.goals_home, r.goals_away, r.et_goals_home, r.et_goals_away,
+       r.pen_home, r.pen_away,
        (r.fixture_id IS NULL) AS no_result
   FROM core.fixtures f
   LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
  WHERE f.status_group = 'finished'
    AND (r.fixture_id IS NULL
-        OR (f.status_short IN ('AET','PEN') AND r.et_goals_home IS NULL))
+        OR (r.ft_goals_home IS NULL
+            AND f.status_short IN ('AET','PEN')
+            AND (r.et_goals_home IS NULL
+                 OR (r.et_goals_home = r.goals_home AND r.et_goals_away = r.goals_away
+                     AND (r.goals_home > 0 OR r.goals_away > 0)))))
  ORDER BY f.kickoff_at DESC
 """
 
@@ -117,10 +126,21 @@ def check_results_are_resolved(conn: psycopg.Connection) -> CheckOutcome:
     Two shapes, and neither is repairable from what we hold:
 
       * finished with no result row at all;
-      * decided after extra time (AET) or on penalties (PEN) with no extra-time
-        score. ``reg_goals_*`` is ``goals - COALESCE(et_goals, 0)``, so with the
-        extra-time score missing it EQUALS the after-extra-time score. Settling a
-        90-minute market on that would count extra-time goals as regulation goals.
+      * an extra-time or penalty decision with NO stated ``score.fulltime`` and no way
+        to derive the 90-minute score from what is left. Since revision 0031 the
+        provider's stated fulltime is read into ``ft_goals_*``, so its absence is only a
+        problem when the fallback - ``goals - COALESCE(et_goals, 0)`` - cannot be
+        trusted either. Two cases:
+
+        - no extra-time score at all, so there is nothing to subtract;
+        - ``et_goals`` EQUALS ``goals`` on a match that was not goalless. That is the
+          provider's running-total shape, where the subtraction yields 0-0 for a tie
+          that may have stood 1-1 at ninety minutes. The 1X2 is still safe (the match
+          was level, or it would not have gone to extra time) but Over/Under and BTTS
+          are not.
+
+    A goalless final is deliberately NOT an offender: 0 - 0 is 0 whichever way
+    ``extratime`` is meant, so the subtraction is exact there.
 
     The score is NOT invented and the penalty shoot-out is NOT turned into a
     90-minute result. The fixture is recorded as RESULT_UNRESOLVED and left alone.
@@ -133,11 +153,20 @@ def check_results_are_resolved(conn: psycopg.Connection) -> CheckOutcome:
         if r["no_result"]:
             field_name, observed, detail = "goals_home", None, (
                 f"status {r['status_short']} but no row in core.fixture_results")
-        else:
-            field_name = "et_goals_home"
+        elif r["et_goals_home"] is None:
+            field_name = "ft_goals_home"
             observed = f"{r['goals_home']}-{r['goals_away']}"
-            detail = (f"status {r['status_short']} with no extra-time score: the 90-minute result "
-                      f"cannot be derived from {observed}, so it is not derived")
+            detail = (f"status {r['status_short']} with neither a stated fulltime nor an "
+                      f"extra-time score: the 90-minute result cannot be derived from "
+                      f"{observed}, so it is not derived")
+        else:
+            field_name = "ft_goals_home"
+            observed = f"{r['goals_home']}-{r['goals_away']}"
+            detail = (f"status {r['status_short']} with no stated fulltime and extratime "
+                      f"{r['et_goals_home']}-{r['et_goals_away']} equal to the final score - the "
+                      "provider's running-total shape. reg_goals falls back to 0-0, which keeps "
+                      "the 1X2 right (the match was level) but leaves Over/Under and BTTS "
+                      "unsettleable")
         issues.append(QualityIssue(
             code=IssueCode.RESULT_UNRESOLVED, entity_type=EntityType.FIXTURE_RESULT,
             severity=Severity.ERROR, entity_id=int(r["fixture_id"]),
@@ -439,6 +468,75 @@ CHECKS: tuple[Callable[[psycopg.Connection], CheckOutcome], ...] = (
     check_prices_come_from_known_books,
 )
 
+CHECK_SCOPES: dict[str, tuple[tuple[str, str], ...]] = {
+    "results_are_resolved": ((IssueCode.RESULT_UNRESOLVED.value, EntityType.FIXTURE_RESULT.value),),
+    "lineups_are_complete": ((IssueCode.INCOMPLETE_LINEUP.value, EntityType.LINEUP.value),),
+    "detail_has_been_fetched": ((IssueCode.MISSING_DETAIL.value, EntityType.FIXTURE.value),),
+    "values_are_possible": (
+        (IssueCode.PROVIDER_INCONSISTENCY.value, EntityType.TEAM_STATISTICS.value),
+        (IssueCode.PROVIDER_INCONSISTENCY.value, EntityType.MATCH_EVENT.value),
+    ),
+    "results_are_not_stale": ((IssueCode.STALE_DATA.value, EntityType.FIXTURE.value),),
+    "lineage_holds": (
+        (IssueCode.LINEAGE_BROKEN.value, EntityType.ODDS_SNAPSHOT.value),
+        (IssueCode.LINEAGE_BROKEN.value, EntityType.PAYLOAD.value),
+    ),
+    "prices_come_from_known_books": (
+        (IssueCode.UNKNOWN_PROVIDER_ENTITY.value, EntityType.BOOKMAKER.value),
+    ),
+}
+"""What each check OWNS, as (code, entity_type) pairs - never the code alone.
+
+The code alone would be a trap. UNKNOWN_PROVIDER_ENTITY is opened both by the bookmaker
+check and, on a completely different entity, by detail ingestion for an unmapped
+statistic type; PROVIDER_INCONSISTENCY likewise. A clean bookmaker check closing "every
+open UNKNOWN_PROVIDER_ENTITY" would silently resolve 89 real statistics issues it knows
+nothing about. Pairing the code with the entity type keeps each check to its own."""
+
+
+OPEN_IN_SCOPE_SQL = """
+SELECT fingerprint FROM audit.data_quality_issues
+ WHERE status = 'open'
+   AND (code, entity_type) IN (SELECT * FROM unnest(%(codes)s::text[], %(entities)s::text[]))
+"""
+
+
+def _close_what_the_check_no_longer_finds(
+    conn: psycopg.Connection, registry: IssueRegistry, outcome: CheckOutcome
+) -> int:
+    """Resolve the open issues of this check's codes that it did not produce this time.
+
+    Without this the registry is append-only: a problem that has been FIXED stays open
+    for ever, and an operator reading it cannot tell today's faults from last month's.
+    That is most of the registry's value.
+
+    Two guards, and both matter. Completeness: ``_rows`` truncates at 500, so a check
+    with more offenders than it listed has an INCOMPLETE issue set, and closing "what it
+    did not produce" would close real problems it simply did not reach. Scope: a check
+    may only close its own (code, entity_type) pairs, because the same code is opened by
+    unrelated producers - see CHECK_SCOPES.
+    """
+    if outcome.offenders > len(outcome.issues):
+        return 0  # truncated listing: it cannot speak for what it did not enumerate
+    scope = CHECK_SCOPES.get(outcome.name, ())
+    if not scope:
+        return 0
+    still_found = {issue.fingerprint for issue in outcome.issues}
+    codes = [code for code, _entity in scope]
+    entities = [entity for _code, entity in scope]
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(OPEN_IN_SCOPE_SQL, {"codes": codes, "entities": entities})
+        stale = [str(r["fingerprint"]) for r in cur.fetchall()
+                 if str(r["fingerprint"]) not in still_found]
+    closed = 0
+    for fingerprint in stale:
+        closed += int(registry.resolve(
+            fingerprint,
+            resolution=(f"the {outcome.name} check no longer finds it: {outcome.offenders} "
+                        f"offender(s) in a population of {outcome.population}"),
+        ))
+    return closed
+
 
 def sweep(conn: psycopg.Connection, *, run_id: int, apply: bool = True) -> SweepReport:
     """Run every check, record what it found, and say what it ran against.
@@ -456,6 +554,7 @@ def sweep(conn: psycopg.Connection, *, run_id: int, apply: bool = True) -> Sweep
         result = registry.record_many(issues_from(outcome.issues))
         report.issues_opened += result.opened
         report.issues_seen_again += result.seen_again
+        report.issues_resolved += _close_what_the_check_no_longer_finds(conn, registry, outcome)
         record_check(conn, run_id=run_id, check_name=outcome.name, scope=outcome.scope,
                      severity=outcome.severity, population=outcome.population,
                      offenders=outcome.offenders, issues_opened=result.opened,

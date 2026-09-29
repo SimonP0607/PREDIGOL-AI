@@ -71,13 +71,11 @@ def _fixture(db: psycopg.Connection, seed: Seed, pid: int, *, status: str, group
 # ── results that cannot be derived ──────────────────────────────────────────
 
 
-def test_a_penalty_shoot_out_without_an_extra_time_score_is_unresolved(
+def test_a_shoot_out_with_neither_a_stated_fulltime_nor_an_extra_time_score_is_unresolved(
     db: psycopg.Connection, seed: Seed
 ) -> None:
-    """The six fixtures the mandate names. reg_goals_* is goals minus extra-time
-    goals, so with no extra-time score it equals the after-extra-time score -
-    and settling a 90-minute market on that counts extra-time goals as regulation
-    goals. The shoot-out is NOT turned into a 90-minute result."""
+    """Nothing to read and nothing to subtract, so the 90-minute score does not exist for
+    us. The shoot-out is NOT turned into a 90-minute result."""
     fid = _fixture(db, seed, 84001, status="PEN", group="finished")
     db.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away, pen_home, pen_away) "
                "VALUES (%s,1,1,4,3)", (fid,))
@@ -87,8 +85,45 @@ def test_a_penalty_shoot_out_without_an_extra_time_score_is_unresolved(
     mine = [i for i in outcome.issues if i.entity_id == fid]
     assert len(mine) == 1
     assert mine[0].code is IssueCode.RESULT_UNRESOLVED and mine[0].severity is Severity.ERROR
-    assert mine[0].field == "et_goals_home" and mine[0].observed == "1-1"
+    assert mine[0].field == "ft_goals_home" and mine[0].observed == "1-1"
     assert mine[0].detail is not None and "cannot be derived" in mine[0].detail
+
+
+def test_a_stated_fulltime_resolves_a_shoot_out_that_never_played_extra_time(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """A tie can go from ninety minutes straight to penalties, and the provider records
+    that by leaving extratime null. Treating it as missing data left six Champions League
+    ties with no result at all; score.fulltime states the score plainly."""
+    fid = _fixture(db, seed, 84010, status="PEN", group="finished")
+    db.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away, "
+               " ft_goals_home, ft_goals_away, pen_home, pen_away) VALUES (%s,1,0,1,0,6,5)", (fid,))
+    assert [i for i in check_results_are_resolved(db).issues if i.entity_id == fid] == []
+
+
+def test_a_running_total_extratime_on_a_scoring_match_is_unresolved(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """The provider's other shape: extratime carries the running total, so the
+    subtraction yields 0-0 for a tie that may have stood 1-1 at ninety minutes. The 1X2
+    survives - it was level either way - but Over/Under and BTTS do not."""
+    fid = _fixture(db, seed, 84011, status="PEN", group="finished")
+    db.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away, "
+               " et_goals_home, et_goals_away, pen_home, pen_away) VALUES (%s,2,2,2,2,4,3)", (fid,))
+    mine = [i for i in check_results_are_resolved(db).issues if i.entity_id == fid]
+    assert len(mine) == 1
+    assert mine[0].detail is not None and "running-total" in mine[0].detail
+
+
+def test_a_goalless_final_is_not_an_offender_because_the_subtraction_is_exact(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """0 - 0 is 0 whichever way extratime is meant. 31 of the 32 rows without a stated
+    fulltime are this shape, and flagging them would be noise."""
+    fid = _fixture(db, seed, 84012, status="AET", group="finished")
+    db.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away, "
+               " et_goals_home, et_goals_away, pen_home, pen_away) VALUES (%s,0,0,0,0,3,2)", (fid,))
+    assert [i for i in check_results_are_resolved(db).issues if i.entity_id == fid] == []
 
 
 def test_extra_time_with_a_recorded_score_is_resolved(db: psycopg.Connection, seed: Seed) -> None:
