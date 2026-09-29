@@ -93,10 +93,10 @@ def test_every_migration_is_reversible_and_leaves_nothing_behind() -> None:
     from alembic import command
     from alembic.config import Config
 
+    from tests.integration.conftest import ADMIN_URL
+
     repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    admin_url = os.environ.get(
-        "FBI_TEST_ADMIN_URL", "postgresql://postgres:fbi_local_dev@127.0.0.1:5433/postgres"
-    )
+    admin_url = ADMIN_URL  # derived from the configured database when not set explicitly
     head, _, _ = admin_url.rpartition("/")
     db_name = "fbi_migration_roundtrip"
 
