@@ -163,3 +163,27 @@ def test_budget_fractions_are_validated(cfg, tmp_path) -> None:
     with pytest.raises(ConfigError):
         load_migration_config(path)
     assert replace(cfg, buffer_fraction=0.25).buffer_fraction == 0.25
+
+
+def test_the_earliest_injury_season_is_flagged_as_a_tail() -> None:
+    """Measured, not assumed. API-Football season 2020 means 2020/21, which runs
+    to May 2021, so the provider's April-2021 injuries cut-off falls inside it:
+    our six stored /injuries payloads for season 2020 returned 3,100 absences
+    against 13,774 for 2021. Raising since_season to 2021 would discard those.
+    """
+    cfg = load_migration_config()
+    injuries = cfg.endpoints["injuries_season"]
+    assert injuries.since_season == 2020
+    assert injuries.since_season_is_partial is True, \
+        "that season is a two-month tail: its coverage must never read as complete"
+
+
+def test_the_storage_estimates_are_the_measured_ones() -> None:
+    """The documented-shape guess for a detail payload was 7 KB per fixture. The
+    real figure, over 818 payloads and 16,053 fixtures, is 3.21 - and a storage
+    forecast built on double the real size is not a forecast."""
+    cfg = load_migration_config()
+    assert cfg.storage_kb["details_per_fixture_kb"] == pytest.approx(3.21)
+    assert cfg.storage_kb["injuries_kb"] == 43
+    assert cfg.storage_kb["teams_kb"] == pytest.approx(2.5)
+    assert cfg.storage_kb["standings_kb"] == pytest.approx(1.8)

@@ -35,6 +35,11 @@ class EndpointSpec:
     per_fixture_without_batching: int | None = None
     requires_coverage: tuple[str, ...] = ()
     since_season: int | None = None
+    since_season_is_partial: bool = False
+    """The earliest season is a tail, not a whole year. /injuries measures this:
+    season 2020 (2020/21) returned 3,100 absences against 13,774 for 2021, because
+    the provider's April-2021 cut-off falls inside 2020/21. Coverage for that
+    season must therefore never be reported as complete."""
     pages_estimate: int | None = None
 
 
@@ -123,6 +128,7 @@ def load_migration_config(path: Path = MIGRATION_FILE) -> MigrationConfig:
         endpoints[key] = EndpointSpec(key, str(_req(e, "path", key)), cls, str(e.get("why", "")), e.get("batch"),
                                       e.get("per_fixture_without_batching"),
                                       tuple(e.get("requires_coverage") or ()), e.get("since_season"),
+                                      bool(e.get("since_season_is_partial", False)),
                                       e.get("pages_estimate"))
     for kind in UNIT_KINDS:
         if kind not in endpoints:

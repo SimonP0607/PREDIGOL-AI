@@ -19,6 +19,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import tuple_row
 
+from fbi.ingestion.identity import IdentityReport, apply_people, link_lineup_coaches
 from fbi.providers.api_football.details import (
     COVERAGE_FLAGS,
     AbsenceRef,
@@ -26,6 +27,7 @@ from fbi.providers.api_football.details import (
     FixtureDetail,
     LineupRef,
     StandingRef,
+    iter_lineup_people,
 )
 from fbi.quality.issues import (
     EntityType,
@@ -85,6 +87,9 @@ class DetailReport:
     issues_seen_again: int = 0
     coverage_rows: int = 0
     """Rows written to core.fixture_detail_coverage: four per fixture, always."""
+    identity: IdentityReport = field(default_factory=IdentityReport)
+    """Players and coaches the payload named. They arrive with the detail, so
+    recording them costs nothing extra."""
 
     @property
     def rows(self) -> int:
@@ -303,6 +308,14 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                     )
                     report.player_rows += max(cur.rowcount, 0)
                     delivered["player_statistics"] += 1
+            # The payload already names every player and coach it mentions, so
+            # identity comes free with the detail: no extra request, and the
+            # "players without a mapping" gap closes itself.
+            people, coaches = iter_lineup_people(d)
+            apply_people(conn, people, coaches, payload_hash=payload_hash, fetched_at=fetched_at,
+                         report=report.identity)
+            if coaches:
+                report.identity.lineups_linked += link_lineup_coaches(conn, fixture_id)
             report.coverage_rows += _write_coverage(
                 cur, fixture_id=fixture_id, blocks_present=d.blocks_present, delivered=delivered,
                 payload_hash=payload_hash, fetched_at=fetched_at, report=report, run_id=run_id,

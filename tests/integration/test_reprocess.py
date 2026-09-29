@@ -77,6 +77,9 @@ def clean_slate(db: psycopg.Connection) -> Iterator[None]:
     with db.cursor() as cur:
         cur.execute("DELETE FROM audit.data_quality_issues")
         cur.execute("DELETE FROM core.fixtures WHERE provider_fixture_id BETWEEN 83000 AND 83999")
+        # Identity rows name the payload they came from, so they go before it.
+        cur.execute("DELETE FROM core.coaches WHERE provider_coach_id = 77")
+        cur.execute("DELETE FROM core.players WHERE provider_player_id BETWEEN 8000 AND 8199")
         cur.execute("DELETE FROM raw.ingestion_payloads WHERE endpoint = '/fixtures' AND params ? 'ids'")
     db.commit()
 

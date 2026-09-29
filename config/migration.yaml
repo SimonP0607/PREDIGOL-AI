@@ -54,7 +54,13 @@ endpoints:
     path: /injuries?league&season
     classification: MODEL_REQUIRED
     why: absences for lineup-aware strength (the provider keeps injuries from April 2021 only)
+    # MEASURED, not assumed. Season 2020 means 2020/21, which runs to May 2021, so
+    # the provider's April-2021 cut-off falls INSIDE it: our 6 stored /injuries
+    # payloads for season 2020 returned 3,100 absences, against 13,774 for 2021.
+    # Partial, and real - about the last two months of that season. Raising this
+    # to 2021 would throw those 3,100 records away for no reason.
     since_season: 2020
+    since_season_is_partial: true   # the earliest season is a tail, not a full year
     requires_coverage: [injuries]
   teams_season:
     path: /teams?league&season
@@ -188,15 +194,15 @@ live:
 storage:
   # Measured on our raw store (gzip): a season's fixture list is 13-18 KB.
   fixtures_season_kb: 17
-  # Not measured yet (no detail payload stored): documented shape, ~40 KB JSON
-  # per fixture, gzip about 1:6. Replace with the measured size after the first
-  # real /fixtures?ids= request.
-  details_per_fixture_kb: 7
-  standings_kb: 6
-  injuries_kb: 25
-  teams_kb: 6
-  players_page_kb: 20
-  coverage_kb: 450
+  # MEASURED on 818 real /fixtures?ids= payloads: 52,742,076 bytes gzipped for
+  # 16,053 fixtures. The documented-shape estimate of 7 was more than double.
+  details_per_fixture_kb: 3.21
+  # MEASURED on the stored payloads (average gzipped size per request).
+  standings_kb: 1.8
+  injuries_kb: 43
+  teams_kb: 2.5
+  players_page_kb: 20        # not measured: no /players payload stored yet
+  coverage_kb: 450           # not measured: our /leagues calls were filtered
   # PostgreSQL, rows and indexes per fixture once details are normalised
   # (~15 events, ~40 lineup rows, ~32 player rows, 2 team rows).
   db_per_fixture_kb: 30

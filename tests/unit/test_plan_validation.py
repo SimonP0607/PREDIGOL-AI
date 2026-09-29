@@ -50,3 +50,4 @@ def test_a_plan_beyond_the_remaining_budget_is_refused() -> None:
 def test_an_implausible_distance_to_kickoff_is_refused() -> None:
     check = validate_plan([task(mtk=60 * 24 * 30)], at=NOW, budget_remaining=100)
     assert any("implausible" in i for i in check.issues)
+

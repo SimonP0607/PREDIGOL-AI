@@ -49,8 +49,10 @@ from fbi.ingestion.details import (
     apply_standings,
 )
 from fbi.ingestion.fixtures import PLAN_REFUSAL
+from fbi.ingestion.identity import apply_teams
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.migration.completeness import fixtures_missing_detail
+from fbi.providers.api_football.details import iter_teams
 from fbi.providers.base import FootballDataProvider, RawResponse
 from fbi.providers.quota import read_usage
 
@@ -165,6 +167,23 @@ def expand_detail_batches(conn: psycopg.Connection, *, league_id: int, season: i
                                batch_key=key)
     conn.commit()
     return created
+
+
+def _competition_season_id(conn: psycopg.Connection, league_id: int, season: int) -> int | None:
+    """Our competition-season id for a provider league and season, or None.
+
+    None means the catalogue does not hold that season, in which case team
+    membership is not recorded - a membership we cannot attach to a season we know
+    would be a row with no meaning.
+    """
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(
+            "SELECT cs.id FROM core.competition_seasons cs JOIN core.competitions c ON c.id = cs.competition_id "
+            "WHERE c.provider_league_id = %s AND cs.season = %s",
+            (league_id, season),
+        )
+        row = cur.fetchone()
+    return int(row[0]) if row else None
 
 
 def _revive(cur: psycopg.Cursor[Any], *, kind: str, league_id: int, season: int,
@@ -334,7 +353,14 @@ async def _execute(conn: psycopg.Connection, provider: Any, ledger: RunLedger, r
     if task.kind == "teams_season":
         raw = await provider.fetch_teams(league_id=task.league_id, season=task.season)
         stored(raw)
-        return _Outcome(raw.payload_hash, 0, raw.results_count)
+        teams = list(iter_teams(raw.body)) if isinstance(raw.body, dict) else []
+        identity = apply_teams(
+            conn, teams, payload_hash=raw.payload_hash, fetched_at=raw.fetched_at,
+            competition_season_id=_competition_season_id(conn, task.league_id, task.season),
+        )
+        counters.rows_normalized += len(teams)
+        counters.rows_inserted += identity.rows
+        return _Outcome(raw.payload_hash, identity.rows, raw.results_count, len(teams))
     if task.kind == "players_season":
         page = task.page or 1
         raw = await provider.fetch_players_page(league_id=task.league_id, season=task.season, page=page)

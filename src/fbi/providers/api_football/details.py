@@ -410,3 +410,105 @@ def iter_standings(body: dict[str, Any]) -> Iterator[StandingRef]:
                 rank, points, played, wins, draws, losses, gf, ga = (int(v) for v in values if v is not None)
                 yield StandingRef(lid, int(season), team, rank, points, played, wins, draws, losses, gf, ga,
                                   _text(row, "form"), _text(row, "group"))
+
+
+# ── identity: /teams, and what the detail payloads already tell us ───────────
+
+
+@dataclass(frozen=True, slots=True)
+class VenueRef:
+    provider_venue_id: int | None
+    name: str | None
+    city: str | None
+    country: str | None
+    capacity: int | None = None
+    surface: str | None = None
+    address: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TeamRef:
+    provider_team_id: int
+    name: str
+    code: str | None
+    country: str | None
+    founded: int | None
+    is_national: bool
+    logo_url: str | None
+    venue: VenueRef | None
+
+
+def iter_teams(body: dict[str, Any]) -> Iterator[TeamRef]:
+    """Parse /teams?league&season.
+
+    Fifty-four of these payloads were fetched and normalised into nothing. The
+    shape is ``{"team": {...}, "venue": {...}}`` per entry; a team without an id
+    or a name is not an identity and is skipped rather than invented.
+    """
+    for entry in body.get("response") or []:
+        if not isinstance(entry, dict):
+            continue
+        team = entry.get("team")
+        if not isinstance(team, dict) or not isinstance(team.get("id"), int):
+            continue
+        name = _text(team, "name")
+        if name is None:
+            continue
+        raw_venue = entry.get("venue")
+        venue: VenueRef | None = None
+        if isinstance(raw_venue, dict) and (raw_venue.get("id") is not None or _text(raw_venue, "name")):
+            venue = VenueRef(
+                provider_venue_id=raw_venue["id"] if isinstance(raw_venue.get("id"), int) else None,
+                name=_text(raw_venue, "name"),
+                city=_text(raw_venue, "city"),
+                country=_text(team, "country"),
+                capacity=raw_venue["capacity"] if isinstance(raw_venue.get("capacity"), int) else None,
+                surface=_text(raw_venue, "surface"),
+                address=_text(raw_venue, "address"),
+            )
+        national = team.get("national")
+        yield TeamRef(
+            provider_team_id=int(team["id"]),
+            name=name,
+            code=_text(team, "code"),
+            country=_text(team, "country"),
+            founded=team["founded"] if isinstance(team.get("founded"), int) else None,
+            is_national=bool(national) if isinstance(national, bool) else False,
+            logo_url=_text(team, "logo"),
+            venue=venue,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PersonRef:
+    """A player or a coach as the provider names them: an id and a name.
+
+    Detail payloads carry nothing richer, and that is enough for identity - which
+    is the point. Height, birth date and the rest arrive from /players later, and
+    a row written from a detail payload must not pretend to hold them.
+    """
+
+    provider_id: int
+    name: str
+    position: str | None = None
+
+
+def iter_lineup_people(detail: FixtureDetail) -> tuple[list[PersonRef], list[PersonRef]]:
+    """(players, coaches) named by the line-ups and player statistics of one fixture.
+
+    De-duplicated by provider id, keeping the first name seen, so a payload that
+    repeats a player between the line-up and the statistics block yields one
+    identity rather than two.
+    """
+    players: dict[int, PersonRef] = {}
+    coaches: dict[int, PersonRef] = {}
+    for lu in detail.lineups:
+        if lu.provider_coach_id is not None and lu.coach_name:
+            coaches.setdefault(lu.provider_coach_id, PersonRef(lu.provider_coach_id, lu.coach_name))
+        for p in lu.players:
+            if p.name:
+                players.setdefault(p.provider_player_id, PersonRef(p.provider_player_id, p.name, p.position))
+    for ps in detail.players:
+        if ps.name:
+            players.setdefault(ps.provider_player_id, PersonRef(ps.provider_player_id, ps.name))
+    return list(players.values()), list(coaches.values())
