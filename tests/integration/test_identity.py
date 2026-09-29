@@ -66,6 +66,12 @@ def clean_slate(db: psycopg.Connection) -> Iterator[None]:
                     "venue_id = NULL, logo_url = NULL, source_payload_hash = NULL, "
                     "source_fetched_at = NULL, name = 'Manchester United' WHERE provider_team_id = 33")
         cur.execute("DELETE FROM core.venues WHERE provider_venue_id IN (556, 494)")
+        # These tests commit (deriving identity does), so the detail rows they
+        # write have to be removed explicitly - and line-ups reference coaches, so
+        # they go first.
+        cur.execute("DELETE FROM core.fixture_player_stats WHERE provider_player_id BETWEEN 9000 AND 9099")
+        cur.execute("DELETE FROM core.fixture_lineup_players WHERE provider_player_id BETWEEN 9000 AND 9099")
+        cur.execute("DELETE FROM core.fixture_lineups WHERE provider_coach_id BETWEEN 700 AND 799")
         cur.execute("DELETE FROM core.players WHERE provider_player_id BETWEEN 9000 AND 9099")
         cur.execute("DELETE FROM core.coaches WHERE provider_coach_id BETWEEN 700 AND 799")
     db.commit()
@@ -251,3 +257,72 @@ def test_a_lineup_points_at_the_coach_identity_and_keeps_the_name(
                     (seed.fixture_id,))
         assert cur.fetchone() == ("A Coach", "A Coach", 700)
     assert link_lineup_coaches(db, seed.fixture_id) == 0, "already linked: nothing to do"
+
+
+# ── identity derived from detail already stored ─────────────────────────────
+
+
+def test_identity_is_derivable_from_stored_lineups_without_a_request(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """The 1,809 fixtures whose payload replay reads as stale still named their
+    players and their coach. Those names are in our own tables, with the payload
+    they came from, so identity costs nothing to establish."""
+    from fbi.ops.reprocess import derive_identity_from_stored_detail
+
+    with db.cursor() as cur:
+        cur.execute(
+            "INSERT INTO core.fixture_lineups (fixture_id, team_side, source, formation, "
+            "provider_coach_id, coach_name, payload_hash, fetched_at) "
+            "VALUES (%s,'home','api-football','4-3-3',701,'Derived Coach',%s,%s)",
+            (seed.fixture_id, seed.payload_hash, FETCHED),
+        )
+        cur.execute(
+            "INSERT INTO core.fixture_lineup_players (fixture_id, team_side, source, "
+            "provider_player_id, player_name, position, is_starter) "
+            "VALUES (%s,'home','api-football',9010,'Derived Player','G',true)",
+            (seed.fixture_id,),
+        )
+        cur.execute(
+            "INSERT INTO core.fixture_player_stats (fixture_id, source, provider_player_id, team_side, "
+            "player_name, payload_hash, fetched_at) VALUES (%s,'api-football',9011,'home','Stats Only',%s,%s)",
+            (seed.fixture_id, seed.payload_hash, FETCHED),
+        )
+    written = derive_identity_from_stored_detail(db)
+    assert written["players"] == 2 and written["coaches"] == 1 and written["lineups_linked"] == 1
+    with db.cursor() as cur:
+        cur.execute("SELECT provider_player_id, name, position, source_payload_hash FROM core.players "
+                    "WHERE provider_player_id IN (9010, 9011) ORDER BY provider_player_id")
+        assert cur.fetchall() == [(9010, "Derived Player", "G", seed.payload_hash),
+                                  (9011, "Stats Only", None, seed.payload_hash)]
+        cur.execute("SELECT c.name FROM core.fixture_lineups l JOIN core.coaches c ON c.id = l.coach_id "
+                    "WHERE l.fixture_id = %s", (seed.fixture_id,))
+        assert cur.fetchone() == ("Derived Coach",)
+
+
+def test_deriving_never_replaces_a_richer_identity(db: psycopg.Connection, seed: Seed) -> None:
+    """A row written from /players holds a birth date and a nationality. A line-up
+    never will, and must not overwrite it with less."""
+    from fbi.ops.reprocess import derive_identity_from_stored_detail
+
+    with db.cursor() as cur:
+        cur.execute(
+            "INSERT INTO core.players (provider_player_id, name, birth_date, nationality) "
+            "VALUES (9010,'Full Record','1997-03-11','Brazil')"
+        )
+        cur.execute(
+            "INSERT INTO core.fixture_lineups (fixture_id, team_side, source, provider_coach_id, "
+            "coach_name, payload_hash, fetched_at) "
+            "VALUES (%s,'home','api-football',701,'A Coach',%s,%s)",
+            (seed.fixture_id, seed.payload_hash, FETCHED),
+        )
+        cur.execute(
+            "INSERT INTO core.fixture_lineup_players (fixture_id, team_side, source, "
+            "provider_player_id, player_name, is_starter) "
+            "VALUES (%s,'home','api-football',9010,'Line-up Name',true)",
+            (seed.fixture_id,),
+        )
+    assert derive_identity_from_stored_detail(db)["players"] == 0
+    with db.cursor() as cur:
+        cur.execute("SELECT name, nationality FROM core.players WHERE provider_player_id = 9010")
+        assert cur.fetchone() == ("Full Record", "Brazil")

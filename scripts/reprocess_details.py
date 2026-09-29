@@ -24,7 +24,12 @@ import psycopg
 
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
-from fbi.ops.reprocess import derive_coverage_from_stored_detail, reprocess_fixture_details
+from fbi.ops.reprocess import (
+    derive_coverage_from_stored_detail,
+    derive_identity_from_stored_detail,
+    reprocess_fixture_details,
+    reprocess_teams,
+)
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -43,7 +48,9 @@ def main() -> int:
     parser.add_argument("--skip-hash-check", action="store_true",
                         help="faster, and gives up the guarantee that the bytes are unchanged")
     parser.add_argument("--derive-only", action="store_true",
-                        help="skip the replay; only fill coverage from detail already normalized")
+                        help="skip the replay; only fill coverage and identity from what is normalized")
+    parser.add_argument("--teams", action="store_true",
+                        help="normalise the /teams payloads that were only ever stored as bytes")
     args = parser.parse_args()
 
     if args.derive_only:
@@ -51,11 +58,24 @@ def main() -> int:
             print("--derive-only writes rows: add --apply")
             return 2
         with psycopg.connect(settings.database.psycopg_url) as conn:
-            written = derive_coverage_from_stored_detail(conn)
-        total = sum(written.values())
-        print(f"{total} coverage row(s) derived from detail already normalized: "
-              + ", ".join(f"{k} {v}" for k, v in written.items()))
+            coverage = derive_coverage_from_stored_detail(conn)
+            identity = derive_identity_from_stored_detail(conn)
+        print(f"{sum(coverage.values())} coverage row(s) derived: "
+              + ", ".join(f"{k} {v}" for k, v in coverage.items()))
+        print("identity derived: " + ", ".join(f"{k} {v}" for k, v in identity.items()))
         return 0
+
+    if args.teams:
+        with psycopg.connect(settings.database.psycopg_url) as conn:
+            rep = reprocess_teams(conn, _raw_root(), apply=args.apply,
+                                  verify_hashes=not args.skip_hash_check)
+        print(f"{rep.payloads_seen} /teams payload(s), {rep.payloads_applied} usable, "
+              f"{rep.fixtures_touched} team(s) named, {rep.coverage_rows} row(s) written")
+        for problem in rep.problems[:10]:
+            print(f"  {problem}")
+        if not args.apply:
+            print("re-run with --apply")
+        return 1 if rep.payloads_missing_file or rep.payloads_not_rehashing else 0
 
     with psycopg.connect(settings.database.psycopg_url) as conn:
         report = reprocess_fixture_details(conn, _raw_root(), apply=args.apply, limit=args.limit,
