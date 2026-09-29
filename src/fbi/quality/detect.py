@@ -468,36 +468,52 @@ CHECKS: tuple[Callable[[psycopg.Connection], CheckOutcome], ...] = (
     check_prices_come_from_known_books,
 )
 
-CHECK_SCOPES: dict[str, tuple[tuple[str, str], ...]] = {
-    "results_are_resolved": ((IssueCode.RESULT_UNRESOLVED.value, EntityType.FIXTURE_RESULT.value),),
-    "lineups_are_complete": ((IssueCode.INCOMPLETE_LINEUP.value, EntityType.LINEUP.value),),
-    "detail_has_been_fetched": ((IssueCode.MISSING_DETAIL.value, EntityType.FIXTURE.value),),
-    "values_are_possible": (
-        (IssueCode.PROVIDER_INCONSISTENCY.value, EntityType.TEAM_STATISTICS.value),
-        (IssueCode.PROVIDER_INCONSISTENCY.value, EntityType.MATCH_EVENT.value),
+CHECK_SCOPES: dict[str, tuple[tuple[str, str, str], ...]] = {
+    "results_are_resolved": (
+        (IssueCode.RESULT_UNRESOLVED.value, EntityType.FIXTURE_RESULT.value, "goals_home"),
+        (IssueCode.RESULT_UNRESOLVED.value, EntityType.FIXTURE_RESULT.value, "ft_goals_home"),
     ),
-    "results_are_not_stale": ((IssueCode.STALE_DATA.value, EntityType.FIXTURE.value),),
+    "lineups_are_complete": (
+        (IssueCode.INCOMPLETE_LINEUP.value, EntityType.LINEUP.value, "starters"),
+    ),
+    "detail_has_been_fetched": (
+        (IssueCode.MISSING_DETAIL.value, EntityType.FIXTURE.value, "detail"),
+    ),
+    "values_are_possible": (
+        (IssueCode.PROVIDER_INCONSISTENCY.value, EntityType.TEAM_STATISTICS.value, "possession_pct"),
+        (IssueCode.PROVIDER_INCONSISTENCY.value, EntityType.MATCH_EVENT.value, "minute"),
+    ),
+    "results_are_not_stale": (
+        (IssueCode.STALE_DATA.value, EntityType.FIXTURE.value, "status_short"),
+    ),
     "lineage_holds": (
-        (IssueCode.LINEAGE_BROKEN.value, EntityType.ODDS_SNAPSHOT.value),
-        (IssueCode.LINEAGE_BROKEN.value, EntityType.PAYLOAD.value),
+        (IssueCode.LINEAGE_BROKEN.value, EntityType.ODDS_SNAPSHOT.value, "captured_at"),
     ),
     "prices_come_from_known_books": (
-        (IssueCode.UNKNOWN_PROVIDER_ENTITY.value, EntityType.BOOKMAKER.value),
+        (IssueCode.UNKNOWN_PROVIDER_ENTITY.value, EntityType.BOOKMAKER.value, "is_active"),
     ),
 }
-"""What each check OWNS, as (code, entity_type) pairs - never the code alone.
+"""What each check OWNS, as (code, entity_type, FIELD) triples.
 
-The code alone would be a trap. UNKNOWN_PROVIDER_ENTITY is opened both by the bookmaker
-check and, on a completely different entity, by detail ingestion for an unmapped
-statistic type; PROVIDER_INCONSISTENCY likewise. A clean bookmaker check closing "every
-open UNKNOWN_PROVIDER_ENTITY" would silently resolve 89 real statistics issues it knows
-nothing about. Pairing the code with the entity type keeps each check to its own."""
+The field is not decoration, it is the whole guard. A first version scoped on (code,
+entity_type) and a clean `values_are_possible` run closed **11,694** issues it had never
+opened: detail ingestion records PROVIDER_INCONSISTENCY on team_statistics for the
+`goals_prevented` field it cannot use, while this check records the same code on the same
+entity for `possession_pct`. Same code, same entity type, different producer - and 11,694
+real records were resolved with a reason that was not true of them. They were reopened;
+the lesson is in the third element of these tuples.
+
+`lineage_holds` also opens issues whose field is a relation name computed at run time.
+Those are never in this table, so they are closed only when the check names them in the
+same run - see the union in _close_what_the_check_no_longer_finds. A check that goes
+completely clean therefore leaves them open, which is the conservative direction."""
 
 
 OPEN_IN_SCOPE_SQL = """
 SELECT fingerprint FROM audit.data_quality_issues
  WHERE status = 'open'
-   AND (code, entity_type) IN (SELECT * FROM unnest(%(codes)s::text[], %(entities)s::text[]))
+   AND (code, entity_type, coalesce(field, '')) IN (
+         SELECT * FROM unnest(%(codes)s::text[], %(entities)s::text[], %(fields)s::text[]))
 """
 
 
@@ -510,22 +526,32 @@ def _close_what_the_check_no_longer_finds(
     for ever, and an operator reading it cannot tell today's faults from last month's.
     That is most of the registry's value.
 
-    Two guards, and both matter. Completeness: ``_rows`` truncates at 500, so a check
-    with more offenders than it listed has an INCOMPLETE issue set, and closing "what it
-    did not produce" would close real problems it simply did not reach. Scope: a check
-    may only close its own (code, entity_type) pairs, because the same code is opened by
-    unrelated producers - see CHECK_SCOPES.
+    Two guards, and both matter.
+
+    Completeness: ``_rows`` truncates at 500, so a check with more offenders than it
+    listed has an INCOMPLETE issue set, and closing "what it did not produce" would
+    resolve real problems it simply did not reach.
+
+    Scope: a check may only close its own (code, entity_type, field) triples. The field is
+    what makes this safe. Scoped on the code and entity type alone, a clean
+    ``values_are_possible`` closed 11,694 PROVIDER_INCONSISTENCY issues that detail
+    ingestion had opened on the same entity for a different field. See CHECK_SCOPES.
     """
     if outcome.offenders > len(outcome.issues):
         return 0  # truncated listing: it cannot speak for what it did not enumerate
-    scope = CHECK_SCOPES.get(outcome.name, ())
-    if not scope:
+    declared = set(CHECK_SCOPES.get(outcome.name, ()))
+    if not declared:
         return 0
+    # Union with what this run actually produced, so a check whose field is computed at
+    # run time (lineage_holds names a relation) can still close its own work.
+    observed = {(i.code.value, i.entity_type.value, i.field or "") for i in outcome.issues}
+    scope = sorted(declared | observed)
     still_found = {issue.fingerprint for issue in outcome.issues}
-    codes = [code for code, _entity in scope]
-    entities = [entity for _code, entity in scope]
+    codes = [c for c, _e, _f in scope]
+    entities = [e for _c, e, _f in scope]
+    fields = [f for _c, _e, f in scope]
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(OPEN_IN_SCOPE_SQL, {"codes": codes, "entities": entities})
+        cur.execute(OPEN_IN_SCOPE_SQL, {"codes": codes, "entities": entities, "fields": fields})
         stale = [str(r["fingerprint"]) for r in cur.fetchall()
                  if str(r["fingerprint"]) not in still_found]
     closed = 0
