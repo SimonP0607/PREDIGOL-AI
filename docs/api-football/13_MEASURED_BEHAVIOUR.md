@@ -119,3 +119,37 @@ planner could see to **322**, and odds snapshots from 663 on 2 fixtures to **8,7
 
 Under `--strategy league` the wider horizon costs nothing: it only changes the `from`/`to`
 parameters of the one request per competition-season.
+
+## 2026-09-29: `score.extratime` does not always mean the same thing
+
+Measured over the 1,645 `AET`/`PEN` fixtures in the raw store that carry a non-null
+`extratime` block:
+
+| relation | fixtures | what `extratime` means there |
+|---|---|---|
+| `goals == fulltime + extratime` | 1,557 | goals scored **during** extra time |
+| `goals == extratime` | 82 | the **running total** after extra time |
+| neither | 4 | — |
+
+So `extratime` is the increment about 95% of the time and the running total about 5% of
+the time, with no flag distinguishing the two. Any code that derives the 90-minute score
+as `goals - extratime` is therefore wrong on roughly one in twenty extra-time fixtures,
+and wrong in the worst way: the subtraction yields `0-0`, so a tie that stood 2-1 after
+ninety minutes reads as a goalless draw.
+
+**Do not derive the 90-minute score. `score.fulltime` states it.** That is now
+`core.fixture_results.ft_goals_*`, and `reg_goals_*`, `outcome_1x2`, `total_goals` and
+`btts` all read `COALESCE(ft_goals, goals - COALESCE(et_goals, 0))`.
+
+Two related observations from the same sweep:
+
+* A `PEN` fixture with `extratime` null is **not** missing data. The tie went from ninety
+  minutes straight to penalties, which is how several competitions are played, and
+  `fulltime` gives the score. Treating a null extratime as unusable left 6 Champions
+  League ties with no result row at all.
+* `fulltime + extratime != goals` is the provider contradicting itself. It is recorded as
+  a disagreement rather than resolved silently, because it is the provider's fact and not
+  our arithmetic.
+
+Cost of finding this: zero requests. Every payload needed was already in the raw store —
+which is the argument for keeping it.
