@@ -1,6 +1,6 @@
 # Pre-upgrade readiness — 32 capas
 
-**Fecha:** 25 sep 2026, 07:40 UTC. **Código:** backend `df585b6`, frontend `ffde018`.
+**Fecha:** 29 sep 2026, 02:00 UTC. **Código:** backend `e5fa69d`, frontend `ffde018`.
 
 **Dónde se verificó.** Primero en la **réplica** (entorno en la nube: restauración de la base de
 la máquina del 24 sep 19:49 UTC + todo el código posterior) y, desde las 02:53 UTC del 25 sep,
@@ -21,6 +21,11 @@ la máquina del 24 sep 19:49 UTC + todo el código posterior) y, desde las 02:53
 | 03:27–03:34 | fallo del ledger corregido (`221f17a`), desplegado; tests en la máquina **560 passed** |
 | 06:32 primera captura real | Girona–Albacete, ventana T-12h: 235 precios de 9 casas (incluida Pinnacle), 1 petición; 9 candidatos y 3 picks shadow idénticos → fallo del Pick Engine |
 | 07:28 | fallo corregido (`df585b6`), desplegado lejos de ventanas; tests en la máquina **561 passed**, mypy 154/261, ruff limpio |
+| 12:12 y 12:42 | dos capturas más: T-24h de Ceuta–Real Sociedad II (209 precios) y **T-6h de Girona–Albacete** (219). Con la corrección, 3 candidatos y 1 pick, no 9 y 3 |
+| **13:12** | **el worker muere** (último latido; sin `stopped_at`: no fue una parada limpia). Nada más se captura |
+| 27 sep 23:50 | la máquina reinicia (Windows); Docker Desktop no vuelve solo, así que PostgreSQL queda caído |
+| 29 sep 01:52 | Docker Desktop y `fbi-postgres` arriba de nuevo; worker, API y web relanzados (`e5fa69d`, `/health` 200) |
+| 29 sep 01:53 | intento de resultados: el proveedor responde **`'Free plans do not have access to this date, try from 2026-09-28 to 2026-09-30.'`** → el 25 y el 26 son **inalcanzables para siempre** en Free |
 
 **Criterio.** `DONE` = existe + se ejecuta + tiene tests + está integrado + se puede verificar.
 Un fichero no basta. Estados: `DONE` · `FUNCTIONAL_BUT_IMMATURE` · `IN_PROGRESS` ·
@@ -30,14 +35,14 @@ Un fichero no basta. Estados: `DONE` · `FUNCTIONAL_BUT_IMMATURE` · `IN_PROGRES
 
 | # | Capa | Estado | Evidencia | Falta | Riesgo | Siguiente acción |
 |---|---|---|---|---|---|---|
-| 01 | Infraestructura | FUNCTIONAL_BUT_IMMATURE | PostgreSQL 16 en Docker Desktop (sano); worker, API y web en la máquina a HEAD, cada uno en un `wsl.exe` oculto; worker con lock de instancia única (exit 75) y heartbeat; herramientas de PostgreSQL por `docker exec` (sin integración WSL de Docker) | portátil como servidor; arranque manual tras reinicio de Windows; sin monitorización externa ni copia fuera del equipo | una caída o suspensión del portátil corta la captura (el 24 sep murió a las 20:34 UTC) | arranque automático al iniciar sesión y copia externa: decisiones de Simon |
+| 01 | Infraestructura | **IN_PROGRESS** | PostgreSQL 16 en Docker Desktop; worker, API y web en la máquina a HEAD, cada uno en un `wsl.exe` oculto; lock de instancia única (exit 75) y heartbeat; herramientas de PostgreSQL por `docker exec` | **el portátil no es un servidor y ya costó el ciclo en vivo**: el worker murió el 25 sep a las 13:12 UTC y nadie lo supo; el 27 sep Windows reinició y Docker Desktop no volvió solo. Sin arranque automático, sin vigilancia, sin copia fuera del equipo | **cada caída pierde ventanas que en Free no se recuperan** (medido: 5 partidos sin resultado) | decisión de Simon: arranque automático al iniciar sesión + aviso cuando el latido se detenga, o mover el worker a un servidor |
 | 02 | Git / entrega | FUNCTIONAL_BUT_IMMATURE | backend: historia completa, commits por grupo lógico, tests verdes en cada uno, sincronizado a la máquina por bundles (fast-forward); frontend **empujado a GitHub** el 25 sep (14 commits, `origin/main` = `ffde018`, sin reescribir historia) | el backend no tiene remoto (portátil + réplica); sin CI | pérdida del repo backend si fallan portátil y réplica a la vez | con permiso de Simon, un remoto privado para el backend |
 | 03 | PostgreSQL / esquema | DONE | 24 migraciones; la suite construye el esquema solo con Alembic; restricciones que rechazan fuga temporal, PRODUCTION sin gate, publicación de picks; **máquina migrada 0017 → 0024** el 25 sep tras backup | — | — | — |
 | 04 | Almacén raw | DONE | payloads gzip inmutables con hash, índice `raw.ingestion_payloads`, redacción de credenciales con test, replay; incluido en el backup | — | — | — |
 | 05 | Proveedor API-Football | DONE | cliente con rate limit, circuit breaker, reintentos y cuota persistente; en producción en plan Free desde el 12 sep; endpoints de detalle, lesiones, cobertura, equipos, jugadores probados contra HTTP falso; **`/leagues` real** (8.746 filas) y **`ids=` real: rechazado en Free** con las palabras del proveedor | `ids=` en el plan de pago | que Pro tampoco lo sirva (ruta de upgrade documentada) | sonda en la primera hora del plan de pago |
 | 06 | Cuota / scheduling | DONE | `raw.provider_quota` compartida por todos los procesos; reserva para el vivo; scheduler consciente del plan (horizonte 4 días y backfill horario en planes de pago) | — | — | ajustar `FBI_APIFOOTBALL_PLAN` tras comprar |
 | 07 | Ingesta de fixtures | DONE | sync por fecha con linaje de payload (0015); 6.058 partidos en la réplica | — | — | — |
-| 08 | Ingesta de resultados | DONE | sync de resultados con linaje, marcador de 90' separado de prórroga/penaltis (0020), detección de "awaiting result" | en Free, inalcanzable ~1 día después del partido | resultados perdidos en Free | se resuelve con el plan de pago |
+| 08 | Ingesta de resultados | FUNCTIONAL_BUT_IMMATURE | sync con linaje, marcador de 90' separado de prórroga/penaltis (0020), detección de "awaiting result"; el 29 sep escribió Leganés 0–2 Castellón (28 sep) con su payload | **medido el 29 sep:** Free solo sirve `2026-09-28 .. 2026-09-30` (3 días alrededor de hoy). 8 partidos quedaron en `NS` para siempre: 3 de Premier (13–14 sep) y los 5 de Segunda del 25–26 sep | un resultado no leído en ~24 h se pierde | lo resuelve el plan de pago; las 8 ventanas perdidas **se quedan perdidas** |
 | 09 | Ingesta de cuotas | IN_PROGRESS | capturador con 6 ventanas pre-partido + near-close, tolerancia ±45 min, timeline que distingue capturado/perdido/inalcanzable; tests; **primera captura real** el 25 sep 06:32 UTC (Girona–Albacete, T-12h): 1 petición, 1 payload de 20 KB que re-hashea, `paging` 1/1 (una petición por partido y ventana, como en el presupuesto), 9 casas **incluida Pinnacle**, 235 precios en 1X2, O/U, doble oportunidad y BTTS; idempotente (`plan`: 1 ventana capturada, 0 peticiones más) | near-close real y las demás ventanas del día; en Free T-72h/T-48h son inalcanzables | sin series propias no hay CLV propio | T-6h 12:30, T-3h 15:30, near-close ~18:18 UTC |
 | 10 | Migración histórica | BLOCKED_BY_PLAN | planificador, unidades resumibles (0023), motor; dry run 9/9 PASS **también en la máquina**; cobertura **verificada**: 72 competiciones, 643 competición-temporadas, 190.313 partidos, **11.611 peticiones (15.675 con margen)**; NAME CHECK: un renombre (63 → "Ligue 3"), ningún id erróneo | el plan de pago | `ids=` en el plan de pago | compra → sonda → tier 1 |
 | 11 | Calidad de datos | FUNCTIONAL_BUT_IMMATURE | informe de calidad con nulos explicados, issues derivados en cada petición, cobertura, Jobs, Analytics → Coverage, Audit por partido | las validaciones de detalle por tier (§8 del plan) están descritas, no automatizadas; **3 resultados de la Premier del 13–14 sep siguen "awaiting result"** en la máquina (el worker estaba parado y Free ya no sirve esas fechas) | detalle incoherente sin aviso | automatizar §8 antes del tier 2; los 3 resultados llegan con el tier 1 |
@@ -51,7 +56,7 @@ Un fichero no basta. Estados: `DONE` · `FUNCTIONAL_BUT_IMMATURE` · `IN_PROGRES
 | 19 | Backtesting económico | FUNCTIONAL_BUT_IMMATURE | apuestas hipotéticas con IC del ROI y drawdown sobre precios de FD | CLV agregado; el ROI no informa con < 10.000 apuestas | sobrelectura del ROI | CLV con IC por bloques |
 | 20 | Value Engine | FUNCTIONAL_BUT_IMMATURE | EV en el límite inferior del intervalo, consenso de-vigged, regla versionada; test de extremo a extremo; **primeros candidatos reales** (06:32): Local rechazado (EV −0,37), Visitante rechazado (cuota 6,50 fuera de [1,50, 5,00]), Empate seleccionado en shadow (modelo 0,293 frente a 0,210 del mercado) | un modelo que pase la puerta: hoy el “valor” solo mide cuánto discrepa un modelo sin validar | leer un shadow como consejo | ninguna: la regla está bien; el modelo es el límite |
 | 21 | Pick Engine | FUNCTIONAL_BUT_IMMATURE | picks shadow con ciclo de vida y eventos; publicar es imposible en el esquema; **primeros picks shadow reales**; la captura real destapó un fallo: **se juzgaba cada versión del modelo** (3 reinicios = 3 picks idénticos), corregido en `df585b6` con test de regresión; el resumen económico cuenta apuestas, no filas | liquidación real (hoy) | — | — |
-| 22 | Settlement | BLOCKED_BY_DATA | liquidación a 90', cola de revisión, línea de valor | picks reales | — | ídem |
+| 22 | Settlement | BLOCKED_BY_DATA | liquidación a 90', cola de revisión, línea de valor; probado de extremo a extremo en la suite (postpuesto → pendiente con motivo; AET → pierde a 90'; no se liquida dos veces) | **un resultado real sobre un pick real**: los 4 picks shadow siguen `pending` porque el resultado del 25 sep ya no es alcanzable | — | próxima jornada de Segunda (2–5 oct) con la máquina encendida |
 | 23 | Product API | DONE | **32 operaciones** bajo `/api/v1` (31 GET + `POST /analyst/ask`), solo lectura, envelope de 4 estados con motivo, 404/422/500 en JSON; `/matches/{id}/audit` y 6 de `/analytics`; **desplegada en la máquina** (`/health` 200) | — | — | — |
 | 24 | Frontend | DONE | 15 rutas LIVE en modo live (inventario abajo); lint 0 errores, typecheck, build (también en la máquina); 84 E2E; **desplegado en la máquina y en GitHub/Lovable**; comprobado en Chrome contra los datos de la máquina (Matches, Match Center → Audit) | — | — | — |
 | 25 | Match Center | DONE | Overview, Markets, Models, Timeline, Lineage y **Audit** (cadena completa con estado por paso) | — | — | — |
@@ -63,7 +68,7 @@ Un fichero no basta. Estados: `DONE` · `FUNCTIONAL_BUT_IMMATURE` · `IN_PROGRES
 | 31 | Preparación IA | FUNCTIONAL_BUT_IMMATURE | herramientas de solo lectura con linaje; la IA explica, no genera probabilidades; consola de herramientas | credencial del LLM; bloqueado a propósito hasta la plataforma sólida | — | tras la puerta del modelo |
 | 32 | Preparación Telegram | FUNCTIONAL_BUT_IMMATURE | notificador con un mensaje por evento, modo investigación, sin fugas de token (test) | token del bot; bloqueado a propósito | — | tras la puerta del modelo |
 
-**Recuento:** DONE 17 · FUNCTIONAL_BUT_IMMATURE 11 · IN_PROGRESS 1 · BLOCKED_BY_DATA 2 ·
+**Recuento:** DONE 16 · FUNCTIONAL_BUT_IMMATURE 11 · IN_PROGRESS 2 · BLOCKED_BY_DATA 2 ·
 BLOCKED_BY_PLAN 1 · NOT_STARTED 0.
 
 ## Hallazgos de la sincronización con la máquina (25 sep 2026)
@@ -101,7 +106,13 @@ BLOCKED_BY_PLAN 1 · NOT_STARTED 0.
    picks shadow idénticos (Empate a 4,54). Corregido en `df585b6`: una previsión por modelo (la
    más reciente anterior al precio); el resumen económico cuenta apuestas, no filas. Los tres
    picks se quedan como registro de lo que hizo el motor; cuentan como una apuesta.
-9. **El ledger llamaba “completed” a un proceso que se caía** (la importación de Football-Data
+9. **El ciclo en vivo llegó hasta el pick shadow y ahí se cortó.** Dos ventanas reales del
+   Girona–Albacete (T-12h 06:32 y T-6h 12:42) dan **movimiento de línea medido**: el margen del
+   libro baja de 7,94 % a 6,76 %, el visitante se acorta de 6,50 a 6,13 (p justa 0,1554 → 0,1514)
+   y el local no se mueve (1,55). Con la corrección del Pick Engine, la segunda ventana produce
+   3 candidatos y 1 pick, no 9 y 3. Lo que falta —resultado y liquidación— no es código: el
+   worker murió a las 13:12 y el plan Free solo sirve 3 días de resultados.
+10. **El ledger llamaba “completed” a un proceso que se caía** (la importación de Football-Data
    cortada por la red, run 55). Corregido en `221f17a`: una excepción en vuelo se registra
    (`failed`/`partial`), una interrupción es `aborted`. El run 55 se deja como se escribió.
 

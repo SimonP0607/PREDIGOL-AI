@@ -1,6 +1,6 @@
 # Go-live checklist
 
-**Fecha:** 25 sep 2026 (máquina sincronizada a las 03:25 UTC). Cada casilla se marca con evidencia (comando, fila, captura), nunca por
+**Fecha:** 29 sep 2026 (máquina sincronizada el 25 sep; ciclo en vivo medido hasta el 29). Cada casilla se marca con evidencia (comando, fila, captura), nunca por
 haber escrito el código. ✅ hecho · ⏳ pendiente de la máquina · 👤 paso manual de Simon.
 
 ## A. Puerta de compra (antes de pagar)
@@ -12,7 +12,7 @@ haber escrito el código. ✅ hecho · ⏳ pendiente de la máquina · 👤 paso
 | MIGRATION PLANNER COMPLETE | ✅ | `API_FOOTBALL_MIGRATION_PLAN.md`; dry run 9/9 PASS en la réplica **y en la máquina**; cobertura verificada con `/leagues` (643 competición-temporadas) |
 | REQUEST BUDGET COMPLETE | ✅ | `API_PLAN_CAPACITY_MODEL.md`: 11.611 peticiones (15.675 con margen) con `ids=`; 756.810 sin él; vivo T1–2 medio 384 / pico 819 |
 | BACKUP/RESTORE VERIFIED | ✅ máquina 6/6 | `BACKUP_RECOVERY_TEST.md §4` (1.121.683 filas, 57 payloads re-hasheados) |
-| LIVE SYSTEM READY | 🟡 → ver §D | worker, API y web a HEAD en la máquina; **primera captura real** 06:32 UTC (235 precios, 9 casas) con consenso, candidatos y picks shadow; el ciclo completo se cierra hoy con el resultado de Girona–Albacete |
+| LIVE SYSTEM READY | 🟡 **7 de 9 pasos** | dos ventanas reales con movimiento de línea, consenso, candidatos y picks shadow (§D). Faltan near-close y resultado→liquidación: el worker cayó el 25 sep 13:12 UTC y la ventana de resultados de Free (3 días) se cerró. No se recupera ni se inventa |
 
 ### Pasos previos a la compra (en este orden)
 
@@ -24,6 +24,8 @@ haber escrito el código. ✅ hecho · ⏳ pendiente de la máquina · 👤 paso
    NAME CHECK con un renombre (63). La pregunta del plan de pago se cierra en §B.1.
 3. 👤 Confirmar el precio en el dashboard de API-Football el día de la compra.
 4. 👤 **Pagar Pro, 1 mes** (regla y alternativas: `API_PLAN_CAPACITY_MODEL.md §5`).
+5. 👤 Decidir cómo se mantiene encendido el anfitrión (§D, causa 2). No bloquea la compra, pero
+   sí bloquea operar en vivo de verdad: sin esto se vuelven a perder ventanas en silencio.
 
 ## B. Tras activar el plan
 
@@ -65,20 +67,45 @@ el cierre oficial es el de Pinnacle en Football-Data.
 
 ## D. Puerta de modo LIVE — un ciclo completo demostrado
 
-Para un fixture real de una competición seguida, todo con fila y payload:
+**Estado: 7 de 9 pasos demostrados sobre un partido real** (Girona–Albacete, fixture 6079,
+Segunda División, 25 sep 2026). Lo que falta no es código.
 
-| Paso | Cómo se comprueba |
-|---|---|
-| Sync de fixtures | `core.fixtures` con `source_payload_hash`; Data Quality → Jobs |
-| Captura de cuotas (ventanas) | Match Center → Timeline: ventanas `done`, no `skipped` |
-| Near-close | `market.near_close_snapshots` + Timeline "Near-close capture" |
-| Resultado | `core.fixture_results` con linaje; Match Center → Result |
-| Features | `features.feature_sets` con `data_cutoff` < kick-off (Audit → Feature sets) |
-| Predicción | `models.predictions` `kind=forecast`, corte antes del kick-off (Audit → Predictions) |
-| Baseline de mercado | consenso de-vigged (`market.market_consensus`) |
-| Candidato shadow | `picks.pick_candidates` con decisión; **"NO VALUE FOUND" es un resultado válido** |
-| Liquidación | si hubo pick: `picks.pick_results` con `result_payload_hash` |
-| Calidad de datos | Data Quality sin issues críticos; Audit `complete = true` o cada hueco explicado |
+| Paso | Cómo se comprueba | Estado sobre el fixture 6079 |
+|---|---|---|
+| Sync de fixtures | `core.fixtures` con `source_payload_hash` | ✅ 25 sep 03:06, payload `189921c1754e` |
+| Captura de cuotas | Match Center → Timeline: ventanas `done`, no `skipped` | ✅ **dos ventanas**: T-12h 06:32 (235 precios, 9 casas) y T-6h 12:42 (219, 7 casas); T-72h/T-48h marcadas inalcanzables en Free, no "perdidas" |
+| Features | `features.feature_sets` con `data_cutoff` < kick-off | ✅ fv2.0.0, corte 03:17, 7.459 entradas |
+| Predicción | `models.predictions` `kind=forecast`, corte antes del kick-off | ✅ 3 filas de Elo-ologit, corte 15 h antes del saque |
+| Baseline de mercado | consenso de-vigged (`market.market_consensus`) | ✅ Shin en los dos instantes; **movimiento medido**: margen 7,94 % → 6,76 % |
+| Candidato shadow | `picks.pick_candidates` con decisión | ✅ 3 por instante: local rechazado por EV, visitante por cuota fuera de rango, empate seleccionado |
+| Liquidación de la decisión | pick shadow con su linaje | ✅ 1 pick por instante (4 filas en total, 3 de ellas del fallo ya corregido) |
+| **Near-close** | `market.near_close_snapshots` + Timeline | ❌ la ventana (18:18) llegó con el worker ya caído |
+| **Resultado → liquidación** | `core.fixture_results` con linaje → `picks.pick_results` | ❌ ver abajo |
+
+**Por qué se cortó, sin adornos.** El worker murió el 25 sep a las 13:12 UTC (último latido, sin
+parada limpia) y nadie se enteró; el 27 sep Windows reinició y Docker Desktop no volvió solo.
+Cuando se restableció todo el 29 sep, el proveedor ya contestaba a la petición de resultados:
+
+```
+{'plan': 'Free plans do not have access to this date, try from 2026-09-28 to 2026-09-30.'}
+```
+
+Tres días de ventana. El resultado del 25 sep **no es recuperable y no se inventa**: los 4 picks
+shadow se quedan en `pending` y 8 partidos (3 de Premier del 13–14 sep y los 5 de Segunda del
+25–26 sep) se quedan en `NS` para siempre. La liquidación sí está probada de extremo a extremo en
+la suite de integración (postpuesto → pendiente con motivo; prórroga → pierde a 90 minutos; no se
+liquida dos veces), pero **sobre datos sintéticos, no sobre un precio capturado**.
+
+**Las dos causas son exactamente lo que se compra y lo que Simon decide:**
+
+1. *La ventana de resultados.* En Free son 3 días; en un plan de pago el horizonte deja de ser el
+   límite. Seguir esperando en Free no compra nada.
+2. *El anfitrión.* Un portátil que duerme, se reinicia y arranca sus procesos a mano pierde
+   ventanas en silencio. Antes de operar en vivo de verdad hacen falta arranque automático y un
+   aviso cuando el latido se detenga (`/health` ya lo expone). **Decisión de Simon.**
+
+**Cómo se cierra:** próxima jornada de Segunda (2–5 oct) con la máquina encendida, o el primer
+fin de semana tras activar el plan. Un solo partido con resultado basta.
 
 `GET /api/v1/matches/{id}/audit` reconstruye toda la cadena desde enlaces guardados; el E2E
 "Match Center → Audit" comprueba que la UI muestra exactamente lo que devuelve la API.
