@@ -1,0 +1,8131 @@
+{
+ "_source": {
+  "endpoint": "/fixtures",
+  "payload_sha256": "cd27a8f047cdcfabade254a17703887328114c75baa8b13d58249b814ae8d5af",
+  "fetched_at": "2026-09-29T06:41:22.560110+00:00",
+  "http_status": 200,
+  "results_in_full_payload": 20,
+  "note": "Trimmed and sanitised from our own raw store. Params are NOT kept."
+ },
+ "body": {
+  "get": "fixtures",
+  "parameters": {
+   "ids": "878762-878763-878764-878765-878766-878767-878768-878769-878770-878771-878772-878773-878774-878775-878776-878777-878778-878780-878781-878783"
+  },
+  "errors": [],
+  "results": 2,
+  "paging": {
+   "current": 1,
+   "total": 1
+  },
+  "response": [
+   {
+    "fixture": {
+     "id": 878762,
+     "referee": "Daniel Trujillo",
+     "timezone": "UTC",
+     "date": "2023-05-20T16:30:00+00:00",
+     "timestamp": 1684600200,
+     "periods": {
+      "first": 1684600200,
+      "second": 1684603800
+     },
+     "venue": {
+      "id": 1470,
+      "name": "Estadio de Mendizorroza",
+      "city": "Vitoria-Gasteiz"
+     },
+     "status": {
+      "long": "Match Finished",
+      "short": "FT",
+      "elapsed": 90,
+      "extra": null
+     }
+    },
+    "league": {
+     "id": 141,
+     "name": "Segunda División",
+     "country": "Spain",
+     "logo": "https://example.invalid/logo.png",
+     "flag": "https://example.invalid/flag.png",
+     "season": 2022,
+     "round": "Regular Season - 41",
+     "standings": true
+    },
+    "teams": {
+     "home": {
+      "id": 542,
+      "name": "Alaves",
+      "logo": "https://example.invalid/logo.png",
+      "winner": true
+     },
+     "away": {
+      "id": 535,
+      "name": "Malaga",
+      "logo": "https://example.invalid/logo.png",
+      "winner": false
+     }
+    },
+    "goals": {
+     "home": 2,
+     "away": 1
+    },
+    "score": {
+     "halftime": {
+      "home": 0,
+      "away": 0
+     },
+     "fulltime": {
+      "home": 2,
+      "away": 1
+     },
+     "extratime": {
+      "home": null,
+      "away": null
+     },
+     "penalty": {
+      "home": null,
+      "away": null
+     }
+    },
+    "events": [
+     {
+      "time": {
+       "elapsed": 9,
+       "extra": null
+      },
+      "team": {
+       "id": 535,
+       "name": "Malaga",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47137,
+       "name": "Alberto Escassi"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Foul"
+     },
+     {
+      "time": {
+       "elapsed": 39,
+       "extra": null
+      },
+      "team": {
+       "id": 535,
+       "name": "Malaga",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47048,
+       "name": "Julián Delmás"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Foul"
+     },
+     {
+      "time": {
+       "elapsed": 45,
+       "extra": 1
+      },
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 6233,
+       "name": "Nahuel Tenaglia"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Foul"
+     },
+     {
+      "time": {
+       "elapsed": 46,
+       "extra": null
+      },
+      "team": {
+       "id": 535,
+       "name": "Malaga",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47048,
+       "name": "Delmás"
+      },
+      "assist": {
+       "id": 401837,
+       "name": "Alejandro Calvo"
+      },
+      "type": "subst",
+      "detail": "Substitution 1",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 46,
+       "extra": null
+      },
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 104853,
+       "name": "Asier Villalibre"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Goal",
+      "detail": "Normal Goal",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 50,
+       "extra": null
+      },
+      "team": {
+       "id": 535,
+       "name": "Malaga",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47137,
+       "name": "Alberto Escassi"
+      },
+      "assist": {
+       "id": 47012,
+       "name": "Rubén Castro"
+      },
+      "type": "subst",
+      "detail": "Substitution 3",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 60,
+       "extra": null
+      },
+      "team": {
+       "id": 535,
+       "name": "Malaga",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 46749,
+       "name": "L. Junior"
+      },
+      "assist": {
+       "id": 19306,
+       "name": "A. Appiah"
+      },
+      "type": "subst",
+      "detail": "Substitution 5",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 64,
+       "extra": null
+      },
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 1582,
+       "name": "Róber"
+      },
+      "assist": {
+       "id": 107217,
+       "name": "Xeber Alkain"
+      },
+      "type": "subst",
+      "detail": "Substitution 3",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 69,
+       "extra": null
+      },
+      "team": {
+       "id": 535,
+       "name": "Malaga",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47192,
+       "name": "Luis Muñoz"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Foul"
+     },
+     {
+      "time": {
+       "elapsed": 70,
+       "extra": null
+      },
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 46743,
+       "name": "Salva Sevilla"
+      },
+      "assist": {
+       "id": 47,
+       "name": "Toni Moya"
+      },
+      "type": "subst",
+      "detail": "Substitution 4",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 71,
+       "extra": null
+      },
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 6233,
+       "name": "N. Tenaglia"
+      },
+      "assist": {
+       "id": 79371,
+       "name": "A. Arroyo"
+      },
+      "type": "subst",
+      "detail": "Substitution 5",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 73,
+       "extra": null
+      },
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47,
+       "name": "Toni Moya"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Foul"
+     },
+     {
+      "time": {
+       "elapsed": 77,
+       "extra": null
+      },
+      "team": {
+       "id": 535,
+       "name": "Malaga",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47192,
+       "name": "Luis Muñoz"
+      },
+      "assist": {
+       "id": 22014,
+       "name": "P. Chavarría"
+      },
+      "type": "Goal",
+      "detail": "Normal Goal",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 79,
+       "extra": null
+      },
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 183751,
+       "name": "A. Rebbach"
+      },
+      "assist": {
+       "id": 47494,
+       "name": "Miguel de la Fuente"
+      },
+      "type": "subst",
+      "detail": "Substitution 8",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 82,
+       "extra": null
+      },
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 162686,
+       "name": "Antonio Blanco"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Foul"
+     },
+     {
+      "time": {
+       "elapsed": 87,
+       "extra": null
+      },
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47,
+       "name": "Toni Moya"
+      },
+      "assist": {
+       "id": 104853,
+       "name": "Asier Villalibre"
+      },
+      "type": "Goal",
+      "detail": "Normal Goal",
+      "comments": null
+     }
+    ],
+    "lineups": [
+     {
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png",
+       "colors": {
+        "player": {
+         "primary": "ffffff",
+         "number": "000000",
+         "border": "ffffff"
+        },
+        "goalkeeper": {
+         "primary": "006600",
+         "number": "ffffff",
+         "border": "006600"
+        }
+       }
+      },
+      "coach": {
+       "id": 45,
+       "name": "Luis García",
+       "photo": "https://example.invalid/photo.png"
+      },
+      "formation": "4-3-3",
+      "startXI": [
+       {
+        "player": {
+         "id": 47353,
+         "name": "Sivera",
+         "number": 1,
+         "pos": "G",
+         "grid": "1:1"
+        }
+       },
+       {
+        "player": {
+         "id": 6233,
+         "name": "N. Tenaglia",
+         "number": 14,
+         "pos": "D",
+         "grid": "2:4"
+        }
+       },
+       {
+        "player": {
+         "id": 46813,
+         "name": "A. Abqar",
+         "number": 22,
+         "pos": "D",
+         "grid": "2:3"
+        }
+       },
+       {
+        "player": {
+         "id": 40419,
+         "name": "A. Sedlar",
+         "number": 4,
+         "pos": "D",
+         "grid": "2:2"
+        }
+       },
+       {
+        "player": {
+         "id": 47355,
+         "name": "Rubén Duarte",
+         "number": 3,
+         "pos": "D",
+         "grid": "2:1"
+        }
+       },
+       {
+        "player": {
+         "id": 104821,
+         "name": "Jon Guridi",
+         "number": 18,
+         "pos": "M",
+         "grid": "3:3"
+        }
+       },
+       {
+        "player": {
+         "id": 162686,
+         "name": "Antonio Blanco",
+         "number": 37,
+         "pos": "M",
+         "grid": "3:2"
+        }
+       },
+       {
+        "player": {
+         "id": 46743,
+         "name": "Salva Sevilla",
+         "number": 8,
+         "pos": "M",
+         "grid": "3:1"
+        }
+       },
+       {
+        "player": {
+         "id": 1582,
+         "name": "Róber",
+         "number": 20,
+         "pos": "F",
+         "grid": "4:3"
+        }
+       },
+       {
+        "player": {
+         "id": 104853,
+         "name": "Asier Villalibre",
+         "number": 12,
+         "pos": "F",
+         "grid": "4:2"
+        }
+       },
+       {
+        "player": {
+         "id": 183751,
+         "name": "A. Rebbach",
+         "number": 21,
+         "pos": "F",
+         "grid": "4:1"
+        }
+       }
+      ],
+      "substitutes": [
+       {
+        "player": {
+         "id": 107217,
+         "name": "Xeber Alkain",
+         "number": 17,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47,
+         "name": "Toni Moya",
+         "number": 6,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 79371,
+         "name": "A. Arroyo",
+         "number": 2,
+         "pos": "D",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47494,
+         "name": "Miguel de la Fuente",
+         "number": 9,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 182637,
+         "name": "Álex Balboa",
+         "number": 28,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 122471,
+         "name": "Jesús Owono",
+         "number": 31,
+         "pos": "G",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 8518,
+         "name": "M. Sylla",
+         "number": 7,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 182636,
+         "name": "Javi López",
+         "number": 27,
+         "pos": "D",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47473,
+         "name": "Jason",
+         "number": 10,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 390742,
+         "name": "J. Panichelli",
+         "number": 29,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47357,
+         "name": "Laguardia",
+         "number": 5,
+         "pos": "D",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 163060,
+         "name": "Adrián",
+         "number": 33,
+         "pos": "G",
+         "grid": null
+        }
+       }
+      ]
+     },
+     {
+      "team": {
+       "id": 535,
+       "name": "Malaga",
+       "logo": "https://example.invalid/logo.png",
+       "colors": {
+        "player": {
+         "primary": "712839",
+         "number": "ffffff",
+         "border": "712839"
+        },
+        "goalkeeper": {
+         "primary": "ffff66",
+         "number": "000000",
+         "border": "ffff66"
+        }
+       }
+      },
+      "coach": {
+       "id": 7001,
+       "name": "Sergio Pellicer",
+       "photo": "https://example.invalid/photo.png"
+      },
+      "formation": "3-4-3",
+      "startXI": [
+       {
+        "player": {
+         "id": 47248,
+         "name": "Rubén Yáñez",
+         "number": 13,
+         "pos": "G",
+         "grid": "1:1"
+        }
+       },
+       {
+        "player": {
+         "id": 47510,
+         "name": "Jonás Ramalho",
+         "number": 22,
+         "pos": "D",
+         "grid": "2:3"
+        }
+       },
+       {
+        "player": {
+         "id": 47137,
+         "name": "Alberto Escassi",
+         "number": 23,
+         "pos": "D",
+         "grid": "2:2"
+        }
+       },
+       {
+        "player": {
+         "id": 154741,
+         "name": "Juande Rivas",
+         "number": 5,
+         "pos": "D",
+         "grid": "2:1"
+        }
+       },
+       {
+        "player": {
+         "id": 47048,
+         "name": "Delmás",
+         "number": 17,
+         "pos": "M",
+         "grid": "3:4"
+        }
+       },
+       {
+        "player": {
+         "id": 47192,
+         "name": "Luis Muñoz",
+         "number": 8,
+         "pos": "M",
+         "grid": "3:3"
+        }
+       },
+       {
+        "player": {
+         "id": 46711,
+         "name": "Aleix Febas",
+         "number": 10,
+         "pos": "M",
+         "grid": "3:2"
+        }
+       },
+       {
+        "player": {
+         "id": 137441,
+         "name": "Cristian Gutiérrez",
+         "number": 39,
+         "pos": "M",
+         "grid": "3:1"
+        }
+       },
+       {
+        "player": {
+         "id": 47143,
+         "name": "Fran Villalba",
+         "number": 21,
+         "pos": "F",
+         "grid": "4:3"
+        }
+       },
+       {
+        "player": {
+         "id": 22014,
+         "name": "P. Chavarría",
+         "number": 12,
+         "pos": "F",
+         "grid": "4:2"
+        }
+       },
+       {
+        "player": {
+         "id": 46749,
+         "name": "L. Junior",
+         "number": 7,
+         "pos": "F",
+         "grid": "4:1"
+        }
+       }
+      ],
+      "substitutes": [
+       {
+        "player": {
+         "id": 401837,
+         "name": "Alejandro Calvo",
+         "number": 26,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47012,
+         "name": "Rubén Castro",
+         "number": 24,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 19306,
+         "name": "A. Appiah",
+         "number": 2,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 2992,
+         "name": "A. N'Diaye",
+         "number": 18,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47403,
+         "name": "Unai Bustinza",
+         "number": 4,
+         "pos": "D",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 104889,
+         "name": "Javi Jiménez",
+         "number": 3,
+         "pos": "D",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 419680,
+         "name": "Arturo Ramírez",
+         "number": 36,
+         "pos": "G",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47580,
+         "name": "Álex Gallar",
+         "number": 11,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 46940,
+         "name": "E. Burgos",
+         "number": 20,
+         "pos": "D",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 46729,
+         "name": "Manolo Reina",
+         "number": 1,
+         "pos": "G",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47442,
+         "name": "Jozabed",
+         "number": 19,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 163401,
+         "name": "Genaro Rodríguez",
+         "number": 16,
+         "pos": "M",
+         "grid": null
+        }
+       }
+      ]
+     }
+    ],
+    "statistics": [
+     {
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "statistics": [
+       {
+        "type": "Shots on Goal",
+        "value": 4
+       },
+       {
+        "type": "Shots off Goal",
+        "value": 6
+       },
+       {
+        "type": "Total Shots",
+        "value": 15
+       },
+       {
+        "type": "Blocked Shots",
+        "value": 5
+       },
+       {
+        "type": "Shots insidebox",
+        "value": 8
+       },
+       {
+        "type": "Shots outsidebox",
+        "value": 7
+       },
+       {
+        "type": "Fouls",
+        "value": 23
+       },
+       {
+        "type": "Corner Kicks",
+        "value": 6
+       },
+       {
+        "type": "Offsides",
+        "value": 0
+       },
+       {
+        "type": "Ball Possession",
+        "value": "45%"
+       },
+       {
+        "type": "Yellow Cards",
+        "value": 3
+       },
+       {
+        "type": "Red Cards",
+        "value": null
+       },
+       {
+        "type": "Goalkeeper Saves",
+        "value": 4
+       },
+       {
+        "type": "Total passes",
+        "value": 336
+       },
+       {
+        "type": "Passes accurate",
+        "value": 246
+       },
+       {
+        "type": "Passes %",
+        "value": "73%"
+       },
+       {
+        "type": "expected_goals",
+        "value": null
+       }
+      ]
+     },
+     {
+      "team": {
+       "id": 535,
+       "name": "Malaga",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "statistics": [
+       {
+        "type": "Shots on Goal",
+        "value": 5
+       },
+       {
+        "type": "Shots off Goal",
+        "value": 5
+       },
+       {
+        "type": "Total Shots",
+        "value": 15
+       },
+       {
+        "type": "Blocked Shots",
+        "value": 5
+       },
+       {
+        "type": "Shots insidebox",
+        "value": 6
+       },
+       {
+        "type": "Shots outsidebox",
+        "value": 9
+       },
+       {
+        "type": "Fouls",
+        "value": 15
+       },
+       {
+        "type": "Corner Kicks",
+        "value": 3
+       },
+       {
+        "type": "Offsides",
+        "value": 2
+       },
+       {
+        "type": "Ball Possession",
+        "value": "55%"
+       },
+       {
+        "type": "Yellow Cards",
+        "value": 3
+       },
+       {
+        "type": "Red Cards",
+        "value": null
+       },
+       {
+        "type": "Goalkeeper Saves",
+        "value": 2
+       },
+       {
+        "type": "Total passes",
+        "value": 394
+       },
+       {
+        "type": "Passes accurate",
+        "value": 317
+       },
+       {
+        "type": "Passes %",
+        "value": "80%"
+       },
+       {
+        "type": "expected_goals",
+        "value": null
+       }
+      ]
+     }
+    ],
+    "players": [
+     {
+      "team": {
+       "id": 542,
+       "name": "Alaves",
+       "logo": "https://example.invalid/logo.png",
+       "update": "2023-06-19T04:08:52+00:00"
+      },
+      "players": [
+       {
+        "player": {
+         "id": 47353,
+         "name": "Antonio Sivera",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 1,
+           "position": "G",
+           "rating": "6.9",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 1,
+           "assists": null,
+           "saves": 4
+          },
+          "passes": {
+           "total": 27,
+           "key": "[REDACTED]",
+           "accuracy": "16"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": 0
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 6233,
+         "name": "Nahuel Tenaglia",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 71,
+           "number": 14,
+           "position": "D",
+           "rating": "7.3",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 26,
+           "key": "[REDACTED]",
+           "accuracy": "18"
+          },
+          "tackles": {
+           "total": 5,
+           "blocks": null,
+           "interceptions": 2
+          },
+          "duels": {
+           "total": 8,
+           "won": 6
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 1,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46813,
+         "name": "Abdelkabir Abqar",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 22,
+           "position": "D",
+           "rating": "6.9",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 33,
+           "key": "[REDACTED]",
+           "accuracy": "27"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": 2,
+           "interceptions": 2
+          },
+          "duels": {
+           "total": 6,
+           "won": 2
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 3
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 40419,
+         "name": "Aleksandar Sedlar",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 4,
+           "position": "D",
+           "rating": "7.2",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 32,
+           "key": "[REDACTED]",
+           "accuracy": "26"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": 2,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 8,
+           "won": 6
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47355,
+         "name": "Rubén Duarte",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 3,
+           "position": "D",
+           "rating": "6.9",
+           "captain": true,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 2,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 36,
+           "key": "[REDACTED]",
+           "accuracy": "28"
+          },
+          "tackles": {
+           "total": 2,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 8,
+           "won": 5
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 104821,
+         "name": "Jon Guridi",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 18,
+           "position": "M",
+           "rating": "7.2",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 33,
+           "key": "[REDACTED]",
+           "accuracy": "28"
+          },
+          "tackles": {
+           "total": 4,
+           "blocks": null,
+           "interceptions": 2
+          },
+          "duels": {
+           "total": 16,
+           "won": 8
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": 1,
+           "past": 2
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": 2
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 162686,
+         "name": "Antonio Blanco",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 37,
+           "position": "M",
+           "rating": "6.2",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 37,
+           "key": "[REDACTED]",
+           "accuracy": "28"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": 3
+          },
+          "duels": {
+           "total": 12,
+           "won": 3
+          },
+          "dribbles": {
+           "attempts": 1,
+           "success": null,
+           "past": 4
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": 4
+          },
+          "cards": {
+           "yellow": 1,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46743,
+         "name": "Salva Sevilla",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 70,
+           "number": 8,
+           "position": "M",
+           "rating": "6.6",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 34,
+           "key": "[REDACTED]",
+           "accuracy": "26"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 4,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 2
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 1582,
+         "name": "Rober González",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 64,
+           "number": 20,
+           "position": "F",
+           "rating": "6.3",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 14,
+           "key": "[REDACTED]",
+           "accuracy": "9"
+          },
+          "tackles": {
+           "total": 4,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 13,
+           "won": 6
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": null,
+           "past": 2
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 2
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 104853,
+         "name": "Asier Villalibre",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 12,
+           "position": "F",
+           "rating": "8.2",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 3,
+           "on": 1
+          },
+          "goals": {
+           "total": 1,
+           "conceded": 0,
+           "assists": 1,
+           "saves": null
+          },
+          "passes": {
+           "total": 22,
+           "key": "[REDACTED]",
+           "accuracy": "17"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 12,
+           "won": 8
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": 2
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 183751,
+         "name": "Abderrahman Rebbach",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 79,
+           "number": 21,
+           "position": "F",
+           "rating": "6.6",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 3,
+           "on": 2
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 22,
+           "key": "[REDACTED]",
+           "accuracy": "7"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 16,
+           "won": 6
+          },
+          "dribbles": {
+           "attempts": 3,
+           "success": 1,
+           "past": 2
+          },
+          "fouls": {
+           "drawn": 3,
+           "committed": 4
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 107217,
+         "name": "Xeber Alkain",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 26,
+           "number": 17,
+           "position": "F",
+           "rating": "6.2",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 6,
+           "key": "[REDACTED]",
+           "accuracy": "4"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": 1,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 4,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47,
+         "name": "Toni Moya",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 20,
+           "number": 6,
+           "position": "M",
+           "rating": "7.3",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": 1
+          },
+          "goals": {
+           "total": 1,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 8,
+           "key": "[REDACTED]",
+           "accuracy": "7"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 2,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 1,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 79371,
+         "name": "Anderson Arroyo",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 19,
+           "number": 2,
+           "position": "D",
+           "rating": "6.3",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 5,
+           "key": "[REDACTED]",
+           "accuracy": "4"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 1,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47494,
+         "name": "Miguel de la Fuente",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 11,
+           "number": 9,
+           "position": "F",
+           "rating": "6.2",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 1,
+           "key": "[REDACTED]",
+           "accuracy": "1"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 3,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 122471,
+         "name": "Jesús Owono",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 31,
+           "position": "G",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 163060,
+         "name": "Adrián Rodríguez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 33,
+           "position": "G",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 182636,
+         "name": "Javi López",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 27,
+           "position": "D",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47357,
+         "name": "Víctor Laguardia",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 5,
+           "position": "D",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 182637,
+         "name": "Alex Balboa",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 28,
+           "position": "M",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47473,
+         "name": "Jason",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 10,
+           "position": "M",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 390742,
+         "name": "Joaquin Panichelli",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 29,
+           "position": "F",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 8518,
+         "name": "Mamadou Sylla",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 7,
+           "position": "F",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "team": {
+       "id": 535,
+       "name": "Malaga",
+       "logo": "https://example.invalid/logo.png",
+       "update": "2023-06-19T04:08:52+00:00"
+      },
+      "players": [
+       {
+        "player": {
+         "id": 47248,
+         "name": "Rubén Yáñez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 13,
+           "position": "G",
+           "rating": "6.6",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 2,
+           "assists": null,
+           "saves": 2
+          },
+          "passes": {
+           "total": 29,
+           "key": "[REDACTED]",
+           "accuracy": "17"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 2,
+           "won": 2
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": 0
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47510,
+         "name": "Jonas Ramalho",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 22,
+           "position": "D",
+           "rating": "6.9",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 34,
+           "key": "[REDACTED]",
+           "accuracy": "27"
+          },
+          "tackles": {
+           "total": 2,
+           "blocks": 1,
+           "interceptions": 3
+          },
+          "duels": {
+           "total": 6,
+           "won": 3
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47137,
+         "name": "Alberto Escassi",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 50,
+           "number": 23,
+           "position": "D",
+           "rating": "6.3",
+           "captain": true,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 20,
+           "key": "[REDACTED]",
+           "accuracy": "13"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": 1,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 4,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 1,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 154741,
+         "name": "Juande Rivas",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 5,
+           "position": "D",
+           "rating": "6.9",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 55,
+           "key": "[REDACTED]",
+           "accuracy": "47"
+          },
+          "tackles": {
+           "total": 3,
+           "blocks": 1,
+           "interceptions": 3
+          },
+          "duels": {
+           "total": 9,
+           "won": 5
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47048,
+         "name": "Julián Delmás",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 45,
+           "number": 17,
+           "position": "M",
+           "rating": "6.7",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 17,
+           "key": "[REDACTED]",
+           "accuracy": "15"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 5,
+           "won": 3
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": 1,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 1,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47192,
+         "name": "Luis Muñoz",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 8,
+           "position": "M",
+           "rating": "7.7",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 3,
+           "on": 2
+          },
+          "goals": {
+           "total": 1,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 40,
+           "key": "[REDACTED]",
+           "accuracy": "37"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 15,
+           "won": 7
+          },
+          "dribbles": {
+           "attempts": 3,
+           "success": 3,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": 3
+          },
+          "cards": {
+           "yellow": 1,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46711,
+         "name": "Aleix Febas",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 10,
+           "position": "M",
+           "rating": "7.2",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 55,
+           "key": "[REDACTED]",
+           "accuracy": "50"
+          },
+          "tackles": {
+           "total": 3,
+           "blocks": 1,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 18,
+           "won": 12
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": 2,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": 7,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 137441,
+         "name": "Cristian Gutiérrez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 39,
+           "position": "M",
+           "rating": "6.7",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 43,
+           "key": "[REDACTED]",
+           "accuracy": "34"
+          },
+          "tackles": {
+           "total": 2,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 7,
+           "won": 3
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47143,
+         "name": "Francisco Villalba",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 21,
+           "position": "F",
+           "rating": "7.3",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 45,
+           "key": "[REDACTED]",
+           "accuracy": "33"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 7,
+           "won": 5
+          },
+          "dribbles": {
+           "attempts": 3,
+           "success": 2,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 22014,
+         "name": "Pablo Chavarría",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 12,
+           "position": "F",
+           "rating": "6.3",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": 2,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": 1,
+           "saves": null
+          },
+          "passes": {
+           "total": 16,
+           "key": "[REDACTED]",
+           "accuracy": "11"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 17,
+           "won": 4
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": 6
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46749,
+         "name": "Lago Júnior",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 61,
+           "number": 7,
+           "position": "F",
+           "rating": "6.9",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 2,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 18,
+           "key": "[REDACTED]",
+           "accuracy": "17"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 10,
+           "won": 6
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": 2,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 3,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 401837,
+         "name": "Alex Calvo",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 45,
+           "number": 26,
+           "position": "F",
+           "rating": "7.2",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 6,
+           "key": "[REDACTED]",
+           "accuracy": "4"
+          },
+          "tackles": {
+           "total": 3,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 7,
+           "won": 6
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": 2,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47012,
+         "name": "Rubén Castro",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 40,
+           "number": 24,
+           "position": "F",
+           "rating": "6.9",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": 5,
+           "on": 3
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 12,
+           "key": "[REDACTED]",
+           "accuracy": "10"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 3,
+           "won": 2
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 19306,
+         "name": "Arvin Appiah",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 29,
+           "number": 2,
+           "position": "F",
+           "rating": "6.5",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 4,
+           "key": "[REDACTED]",
+           "accuracy": "2"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 3,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 419680,
+         "name": "Arturo Ramirez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 36,
+           "position": "G",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46729,
+         "name": "Manolo Reina",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 1,
+           "position": "G",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 104889,
+         "name": "Javi Jiménez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 3,
+           "position": "D",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47403,
+         "name": "Unai Bustinza",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 4,
+           "position": "D",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46940,
+         "name": "Esteban Burgos",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 20,
+           "position": "D",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 163401,
+         "name": "Genaro",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 16,
+           "position": "M",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47442,
+         "name": "Jozabed Sánchez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 19,
+           "position": "M",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 2992,
+         "name": "Alfred N'Diaye",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 18,
+           "position": "M",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47580,
+         "name": "Álex Gallar",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 11,
+           "position": "F",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "fixture": {
+     "id": 878763,
+     "referee": "David Gálvez",
+     "timezone": "UTC",
+     "date": "2023-05-20T16:30:00+00:00",
+     "timestamp": 1684600200,
+     "periods": {
+      "first": 1684600200,
+      "second": 1684603800
+     },
+     "venue": {
+      "id": 3976,
+      "name": "Estadio Municipal Cartagonova",
+      "city": "Cartagena"
+     },
+     "status": {
+      "long": "Match Finished",
+      "short": "FT",
+      "elapsed": 90,
+      "extra": null
+     }
+    },
+    "league": {
+     "id": 141,
+     "name": "Segunda División",
+     "country": "Spain",
+     "logo": "https://example.invalid/logo.png",
+     "flag": "https://example.invalid/flag.png",
+     "season": 2022,
+     "round": "Regular Season - 41",
+     "standings": true
+    },
+    "teams": {
+     "home": {
+      "id": 5262,
+      "name": "FC Cartagena",
+      "logo": "https://example.invalid/logo.png",
+      "winner": false
+     },
+     "away": {
+      "id": 534,
+      "name": "Las Palmas",
+      "logo": "https://example.invalid/logo.png",
+      "winner": true
+     }
+    },
+    "goals": {
+     "home": 1,
+     "away": 4
+    },
+    "score": {
+     "halftime": {
+      "home": 1,
+      "away": 3
+     },
+     "fulltime": {
+      "home": 1,
+      "away": 4
+     },
+     "extratime": {
+      "home": null,
+      "away": null
+     },
+     "penalty": {
+      "home": null,
+      "away": null
+     }
+    },
+    "events": [
+     {
+      "time": {
+       "elapsed": 11,
+       "extra": null
+      },
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47287,
+       "name": "Mikel Rico"
+      },
+      "assist": {
+       "id": 47386,
+       "name": "P. De Blasis"
+      },
+      "type": "Goal",
+      "detail": "Normal Goal",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 15,
+       "extra": null
+      },
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 21709,
+       "name": "E. Loiodice"
+      },
+      "assist": {
+       "id": 157194,
+       "name": "Pejiño"
+      },
+      "type": "Goal",
+      "detail": "Normal Goal",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 22,
+       "extra": null
+      },
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47324,
+       "name": "Sandro Ramírez"
+      },
+      "assist": {
+       "id": 157194,
+       "name": "Pejiño"
+      },
+      "type": "Goal",
+      "detail": "Normal Goal",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 27,
+       "extra": null
+      },
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 46920,
+       "name": "Yan Eteki"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Foul"
+     },
+     {
+      "time": {
+       "elapsed": 37,
+       "extra": null
+      },
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47483,
+       "name": "Kiko Olivas"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Goal",
+      "detail": "Own Goal",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 45,
+       "extra": null
+      },
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47386,
+       "name": "Pablo De Blasis"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Argument"
+     },
+     {
+      "time": {
+       "elapsed": 53,
+       "extra": null
+      },
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47040,
+       "name": "Alfredo Ortuño"
+      },
+      "assist": {
+       "id": 749,
+       "name": "F. Feuillassier"
+      },
+      "type": "subst",
+      "detail": "Substitution 1",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 53,
+       "extra": null
+      },
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 41155,
+       "name": "Pêpê Rodrigues"
+      },
+      "assist": {
+       "id": 46771,
+       "name": "Jairo Izquierdo"
+      },
+      "type": "subst",
+      "detail": "Substitution 2",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 61,
+       "extra": null
+      },
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 70500,
+       "name": "Sergi Cardona"
+      },
+      "assist": {
+       "id": 162026,
+       "name": "Marvin Park"
+      },
+      "type": "subst",
+      "detail": "Substitution 3",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 61,
+       "extra": null
+      },
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 182519,
+       "name": "Alberto Moleiro"
+      },
+      "assist": {
+       "id": 47004,
+       "name": "Fabio González"
+      },
+      "type": "subst",
+      "detail": "Substitution 4",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 68,
+       "extra": null
+      },
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 157194,
+       "name": "Pejiño"
+      },
+      "assist": {
+       "id": 131529,
+       "name": "Enrique Clemente"
+      },
+      "type": "subst",
+      "detail": "Substitution 5",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 73,
+       "extra": null
+      },
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 46920,
+       "name": "Y. Eteki"
+      },
+      "assist": {
+       "id": 47577,
+       "name": "D. Musto"
+      },
+      "type": "subst",
+      "detail": "Substitution 3",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 73,
+       "extra": null
+      },
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 46910,
+       "name": "Iván Martos"
+      },
+      "assist": {
+       "id": 47573,
+       "name": "David Ferreiro"
+      },
+      "type": "subst",
+      "detail": "Substitution 4",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 79,
+       "extra": null
+      },
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47324,
+       "name": "Sandro Ramírez"
+      },
+      "assist": {
+       "id": 70315,
+       "name": "Kirian Rodríguez"
+      },
+      "type": "Goal",
+      "detail": "Normal Goal",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 81,
+       "extra": null
+      },
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 70315,
+       "name": "Kirian Rodríguez"
+      },
+      "assist": {
+       "id": 1576,
+       "name": "W. Kaptoum"
+      },
+      "type": "subst",
+      "detail": "Substitution 7",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 81,
+       "extra": null
+      },
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 47324,
+       "name": "Sandro Ramírez"
+      },
+      "assist": {
+       "id": 47393,
+       "name": "Marc Cardona"
+      },
+      "type": "subst",
+      "detail": "Substitution 8",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 84,
+       "extra": null
+      },
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 46771,
+       "name": "Jairo Izquierdo"
+      },
+      "assist": {
+       "id": 46807,
+       "name": "Borja Valle"
+      },
+      "type": "subst",
+      "detail": "Substitution 5",
+      "comments": null
+     },
+     {
+      "time": {
+       "elapsed": 89,
+       "extra": null
+      },
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 122468,
+       "name": "Saúl Coco"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Foul"
+     },
+     {
+      "time": {
+       "elapsed": 90,
+       "extra": 1
+      },
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "player": {
+       "id": 46807,
+       "name": "Borja Valle"
+      },
+      "assist": {
+       "id": null,
+       "name": null
+      },
+      "type": "Var",
+      "detail": "Penalty cancelled",
+      "comments": null
+     }
+    ],
+    "lineups": [
+     {
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png",
+       "colors": {
+        "player": {
+         "primary": "ffffff",
+         "number": "000000",
+         "border": "ffffff"
+        },
+        "goalkeeper": {
+         "primary": "ff69b3",
+         "number": "222226",
+         "border": "ff69b3"
+        }
+       }
+      },
+      "coach": {
+       "id": 49,
+       "name": "Luis Carrión",
+       "photo": "https://example.invalid/photo.png"
+      },
+      "formation": "4-2-3-1",
+      "startXI": [
+       {
+        "player": {
+         "id": 46673,
+         "name": "Aarón Escandell",
+         "number": 13,
+         "pos": "G",
+         "grid": "1:1"
+        }
+       },
+       {
+        "player": {
+         "id": 93988,
+         "name": "Iván Calero",
+         "number": 16,
+         "pos": "D",
+         "grid": "2:4"
+        }
+       },
+       {
+        "player": {
+         "id": 47483,
+         "name": "Kiko Olivas",
+         "number": 21,
+         "pos": "D",
+         "grid": "2:3"
+        }
+       },
+       {
+        "player": {
+         "id": 14384,
+         "name": "T. Datković",
+         "number": 6,
+         "pos": "D",
+         "grid": "2:2"
+        }
+       },
+       {
+        "player": {
+         "id": 46910,
+         "name": "Iván Martos",
+         "number": 3,
+         "pos": "D",
+         "grid": "2:1"
+        }
+       },
+       {
+        "player": {
+         "id": 46920,
+         "name": "Y. Eteki",
+         "number": 22,
+         "pos": "M",
+         "grid": "3:2"
+        }
+       },
+       {
+        "player": {
+         "id": 41155,
+         "name": "Pêpê Rodrigues",
+         "number": 23,
+         "pos": "M",
+         "grid": "3:1"
+        }
+       },
+       {
+        "player": {
+         "id": 104835,
+         "name": "Darío Poveda",
+         "number": 11,
+         "pos": "M",
+         "grid": "4:3"
+        }
+       },
+       {
+        "player": {
+         "id": 47287,
+         "name": "Mikel Rico",
+         "number": 17,
+         "pos": "M",
+         "grid": "4:2"
+        }
+       },
+       {
+        "player": {
+         "id": 47386,
+         "name": "P. De Blasis",
+         "number": 8,
+         "pos": "M",
+         "grid": "4:1"
+        }
+       },
+       {
+        "player": {
+         "id": 47040,
+         "name": "Alfredo Ortuño",
+         "number": 9,
+         "pos": "F",
+         "grid": "5:1"
+        }
+       }
+      ],
+      "substitutes": [
+       {
+        "player": {
+         "id": 749,
+         "name": "F. Feuillassier",
+         "number": 14,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 46771,
+         "name": "Jairo Izquierdo",
+         "number": 20,
+         "pos": "D",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47577,
+         "name": "D. Musto",
+         "number": 18,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47573,
+         "name": "David Ferreiro",
+         "number": 7,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 46807,
+         "name": "Borja Valle",
+         "number": 10,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47313,
+         "name": "Sangalli",
+         "number": 15,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47504,
+         "name": "Alcalá",
+         "number": 4,
+         "pos": "D",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 116909,
+         "name": "Marc Martínez",
+         "number": 1,
+         "pos": "G",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 104871,
+         "name": "Pablo Vázquez",
+         "number": 5,
+         "pos": "D",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 48418,
+         "name": "A. Sadiku",
+         "number": 19,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 66507,
+         "name": "Lee Sang-Hyeok",
+         "number": 12,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 1690,
+         "name": "Miguel Llambrich",
+         "number": 2,
+         "pos": "D",
+         "grid": null
+        }
+       }
+      ]
+     },
+     {
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png",
+       "colors": {
+        "player": {
+         "primary": "ffff00",
+         "number": "4097e2",
+         "border": "ffff00"
+        },
+        "goalkeeper": {
+         "primary": "0053a6",
+         "number": "ffff55",
+         "border": "0053a6"
+        }
+       }
+      },
+      "coach": {
+       "id": 5391,
+       "name": "García Pimienta",
+       "photo": "https://example.invalid/photo.png"
+      },
+      "formation": "4-1-4-1",
+      "startXI": [
+       {
+        "player": {
+         "id": 46990,
+         "name": "Álvaro Vallés",
+         "number": 13,
+         "pos": "G",
+         "grid": "1:1"
+        }
+       },
+       {
+        "player": {
+         "id": 46996,
+         "name": "Álvaro Lemos",
+         "number": 14,
+         "pos": "D",
+         "grid": "2:4"
+        }
+       },
+       {
+        "player": {
+         "id": 122468,
+         "name": "Saúl Coco",
+         "number": 23,
+         "pos": "D",
+         "grid": "2:3"
+        }
+       },
+       {
+        "player": {
+         "id": 131535,
+         "name": "Álex Suárez",
+         "number": 4,
+         "pos": "D",
+         "grid": "2:2"
+        }
+       },
+       {
+        "player": {
+         "id": 70500,
+         "name": "Sergi Cardona",
+         "number": 3,
+         "pos": "D",
+         "grid": "2:1"
+        }
+       },
+       {
+        "player": {
+         "id": 70315,
+         "name": "Kirian Rodríguez",
+         "number": 20,
+         "pos": "M",
+         "grid": "3:1"
+        }
+       },
+       {
+        "player": {
+         "id": 157194,
+         "name": "Pejiño",
+         "number": 24,
+         "pos": "M",
+         "grid": "4:4"
+        }
+       },
+       {
+        "player": {
+         "id": 21709,
+         "name": "E. Loiodice",
+         "number": 12,
+         "pos": "M",
+         "grid": "4:3"
+        }
+       },
+       {
+        "player": {
+         "id": 12667,
+         "name": "Jonathan Viera",
+         "number": 21,
+         "pos": "M",
+         "grid": "4:2"
+        }
+       },
+       {
+        "player": {
+         "id": 182519,
+         "name": "Alberto Moleiro",
+         "number": 10,
+         "pos": "M",
+         "grid": "4:1"
+        }
+       },
+       {
+        "player": {
+         "id": 47324,
+         "name": "Sandro Ramírez",
+         "number": 9,
+         "pos": "F",
+         "grid": "5:1"
+        }
+       }
+      ],
+      "substitutes": [
+       {
+        "player": {
+         "id": 162026,
+         "name": "Marvin Park",
+         "number": 2,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47004,
+         "name": "Fabio González",
+         "number": 8,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 131529,
+         "name": "Enrique Clemente",
+         "number": 5,
+         "pos": "D",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 1576,
+         "name": "W. Kaptoum",
+         "number": 25,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47393,
+         "name": "Marc Cardona",
+         "number": 19,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 287387,
+         "name": "Javier Cendón",
+         "number": 30,
+         "pos": "G",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 1584,
+         "name": "Loren Morón",
+         "number": 11,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 163241,
+         "name": "Óscar Clemente",
+         "number": 17,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 18978,
+         "name": "F. Andone",
+         "number": 16,
+         "pos": "F",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 46890,
+         "name": "Álvaro Jiménez",
+         "number": 15,
+         "pos": "M",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 47351,
+         "name": "Álex Domínguez",
+         "number": 1,
+         "pos": "G",
+         "grid": null
+        }
+       },
+       {
+        "player": {
+         "id": 46993,
+         "name": "Eric Curbelo",
+         "number": 6,
+         "pos": "D",
+         "grid": null
+        }
+       }
+      ]
+     }
+    ],
+    "statistics": [
+     {
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "statistics": [
+       {
+        "type": "Shots on Goal",
+        "value": 4
+       },
+       {
+        "type": "Shots off Goal",
+        "value": 5
+       },
+       {
+        "type": "Total Shots",
+        "value": 12
+       },
+       {
+        "type": "Blocked Shots",
+        "value": 3
+       },
+       {
+        "type": "Shots insidebox",
+        "value": 9
+       },
+       {
+        "type": "Shots outsidebox",
+        "value": 3
+       },
+       {
+        "type": "Fouls",
+        "value": 15
+       },
+       {
+        "type": "Corner Kicks",
+        "value": 5
+       },
+       {
+        "type": "Offsides",
+        "value": 3
+       },
+       {
+        "type": "Ball Possession",
+        "value": "45%"
+       },
+       {
+        "type": "Yellow Cards",
+        "value": 2
+       },
+       {
+        "type": "Red Cards",
+        "value": null
+       },
+       {
+        "type": "Goalkeeper Saves",
+        "value": 5
+       },
+       {
+        "type": "Total passes",
+        "value": 411
+       },
+       {
+        "type": "Passes accurate",
+        "value": 343
+       },
+       {
+        "type": "Passes %",
+        "value": "83%"
+       },
+       {
+        "type": "expected_goals",
+        "value": null
+       }
+      ]
+     },
+     {
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png"
+      },
+      "statistics": [
+       {
+        "type": "Shots on Goal",
+        "value": 8
+       },
+       {
+        "type": "Shots off Goal",
+        "value": 4
+       },
+       {
+        "type": "Total Shots",
+        "value": 16
+       },
+       {
+        "type": "Blocked Shots",
+        "value": 4
+       },
+       {
+        "type": "Shots insidebox",
+        "value": 8
+       },
+       {
+        "type": "Shots outsidebox",
+        "value": 8
+       },
+       {
+        "type": "Fouls",
+        "value": 7
+       },
+       {
+        "type": "Corner Kicks",
+        "value": 4
+       },
+       {
+        "type": "Offsides",
+        "value": 0
+       },
+       {
+        "type": "Ball Possession",
+        "value": "55%"
+       },
+       {
+        "type": "Yellow Cards",
+        "value": 1
+       },
+       {
+        "type": "Red Cards",
+        "value": null
+       },
+       {
+        "type": "Goalkeeper Saves",
+        "value": 3
+       },
+       {
+        "type": "Total passes",
+        "value": 517
+       },
+       {
+        "type": "Passes accurate",
+        "value": 436
+       },
+       {
+        "type": "Passes %",
+        "value": "84%"
+       },
+       {
+        "type": "expected_goals",
+        "value": null
+       }
+      ]
+     }
+    ],
+    "players": [
+     {
+      "team": {
+       "id": 5262,
+       "name": "FC Cartagena",
+       "logo": "https://example.invalid/logo.png",
+       "update": "2023-06-19T04:08:53+00:00"
+      },
+      "players": [
+       {
+        "player": {
+         "id": 46673,
+         "name": "Aarón Escandell",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 13,
+           "position": "G",
+           "rating": "6.5",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 4,
+           "assists": null,
+           "saves": 5
+          },
+          "passes": {
+           "total": 24,
+           "key": "[REDACTED]",
+           "accuracy": "20"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": 0
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 93988,
+         "name": "Ivan Calero",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 16,
+           "position": "D",
+           "rating": "6.7",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 33,
+           "key": "[REDACTED]",
+           "accuracy": "29"
+          },
+          "tackles": {
+           "total": 2,
+           "blocks": 1,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 9,
+           "won": 4
+          },
+          "dribbles": {
+           "attempts": 4,
+           "success": 1,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47483,
+         "name": "Kiko Olivas",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 21,
+           "position": "D",
+           "rating": "6.2",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 55,
+           "key": "[REDACTED]",
+           "accuracy": "48"
+          },
+          "tackles": {
+           "total": 3,
+           "blocks": null,
+           "interceptions": 3
+          },
+          "duels": {
+           "total": 10,
+           "won": 7
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": 2,
+           "past": 2
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 14384,
+         "name": "Toni Datković",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 6,
+           "position": "D",
+           "rating": "6.6",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 40,
+           "key": "[REDACTED]",
+           "accuracy": "38"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": 3,
+           "interceptions": 2
+          },
+          "duels": {
+           "total": 8,
+           "won": 4
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": 2
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46910,
+         "name": "Iván Martos",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 73,
+           "number": 3,
+           "position": "D",
+           "rating": "5.7",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 26,
+           "key": "[REDACTED]",
+           "accuracy": "16"
+          },
+          "tackles": {
+           "total": 3,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 10,
+           "won": 3
+          },
+          "dribbles": {
+           "attempts": 1,
+           "success": null,
+           "past": 4
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46920,
+         "name": "Yan Eteki",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 73,
+           "number": 22,
+           "position": "M",
+           "rating": "6.7",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": 1
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 32,
+           "key": "[REDACTED]",
+           "accuracy": "30"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": 3
+          },
+          "duels": {
+           "total": 3,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 1,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 41155,
+         "name": "Pêpê",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 54,
+           "number": 23,
+           "position": "M",
+           "rating": "6.2",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 25,
+           "key": "[REDACTED]",
+           "accuracy": "22"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 5,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 2
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 3
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 104835,
+         "name": "Darío Poveda",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 11,
+           "position": "M",
+           "rating": "6.6",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 2,
+           "on": 1
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 18,
+           "key": "[REDACTED]",
+           "accuracy": "13"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 8,
+           "won": 5
+          },
+          "dribbles": {
+           "attempts": 5,
+           "success": 3,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47287,
+         "name": "Mikel Rico",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 17,
+           "position": "M",
+           "rating": "7",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 2,
+           "on": 1
+          },
+          "goals": {
+           "total": 1,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 43,
+           "key": "[REDACTED]",
+           "accuracy": "35"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 6,
+           "won": 2
+          },
+          "dribbles": {
+           "attempts": 3,
+           "success": 1,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47386,
+         "name": "Pablo De Blasis",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 8,
+           "position": "M",
+           "rating": "7.5",
+           "captain": true,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": 1
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": 1,
+           "saves": null
+          },
+          "passes": {
+           "total": 58,
+           "key": "[REDACTED]",
+           "accuracy": "47"
+          },
+          "tackles": {
+           "total": 4,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 12,
+           "won": 6
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 3
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 2
+          },
+          "cards": {
+           "yellow": 1,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47040,
+         "name": "Alfredo Ortuño",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 54,
+           "number": 9,
+           "position": "F",
+           "rating": "6.2",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": 3,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 11,
+           "key": "[REDACTED]",
+           "accuracy": "6"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 4,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46771,
+         "name": "Jairo Izquierdo",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 30,
+           "number": 20,
+           "position": "D",
+           "rating": "5.9",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 9,
+           "key": "[REDACTED]",
+           "accuracy": "9"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 5,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": 1,
+           "success": null,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 749,
+         "name": "Franchu",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 36,
+           "number": 14,
+           "position": "M",
+           "rating": "6.9",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 15,
+           "key": "[REDACTED]",
+           "accuracy": "11"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 9,
+           "won": 6
+          },
+          "dribbles": {
+           "attempts": 5,
+           "success": 4,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47577,
+         "name": "Damián Musto",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 17,
+           "number": 18,
+           "position": "M",
+           "rating": "6.3",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 13,
+           "key": "[REDACTED]",
+           "accuracy": "12"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 1,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47573,
+         "name": "David Ferreiro",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 17,
+           "number": 7,
+           "position": "M",
+           "rating": "6.7",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 4,
+           "key": "[REDACTED]",
+           "accuracy": "3"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46807,
+         "name": "Borja Valle",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 11,
+           "number": 10,
+           "position": "M",
+           "rating": "6.7",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 5,
+           "key": "[REDACTED]",
+           "accuracy": "4"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 5,
+           "won": 3
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": 1,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 116909,
+         "name": "Marc Martínez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 1,
+           "position": "G",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 104871,
+         "name": "Pablo Vázquez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 5,
+           "position": "D",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 1690,
+         "name": "Miguelón",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 2,
+           "position": "D",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47504,
+         "name": "Pedro Alcalá",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 4,
+           "position": "D",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47313,
+         "name": "Luca Sangalli",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 15,
+           "position": "M",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 66507,
+         "name": "Sang-Hyeok Lee",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 12,
+           "position": "M",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 48418,
+         "name": "Armando Sadiku",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 19,
+           "position": "F",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "team": {
+       "id": 534,
+       "name": "Las Palmas",
+       "logo": "https://example.invalid/logo.png",
+       "update": "2023-06-19T04:08:53+00:00"
+      },
+      "players": [
+       {
+        "player": {
+         "id": 46990,
+         "name": "Álvaro Valles",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 13,
+           "position": "G",
+           "rating": "7",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 1,
+           "assists": null,
+           "saves": 3
+          },
+          "passes": {
+           "total": 32,
+           "key": "[REDACTED]",
+           "accuracy": "19"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": 0
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46996,
+         "name": "Álvaro Lemos",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 14,
+           "position": "D",
+           "rating": "6.6",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 52,
+           "key": "[REDACTED]",
+           "accuracy": "37"
+          },
+          "tackles": {
+           "total": 4,
+           "blocks": null,
+           "interceptions": 2
+          },
+          "duels": {
+           "total": 9,
+           "won": 5
+          },
+          "dribbles": {
+           "attempts": 1,
+           "success": 1,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 122468,
+         "name": "Saúl Coco",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 23,
+           "position": "D",
+           "rating": "7.3",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 42,
+           "key": "[REDACTED]",
+           "accuracy": "31"
+          },
+          "tackles": {
+           "total": 2,
+           "blocks": 2,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 7,
+           "won": 4
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 1,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 131535,
+         "name": "Alex Suárez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 4,
+           "position": "D",
+           "rating": "6.6",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": 1
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 25,
+           "key": "[REDACTED]",
+           "accuracy": "25"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 3,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 70500,
+         "name": "Sergi Cardona",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 61,
+           "number": 3,
+           "position": "D",
+           "rating": "6.6",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 36,
+           "key": "[REDACTED]",
+           "accuracy": "33"
+          },
+          "tackles": {
+           "total": 2,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 3,
+           "won": 2
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 70315,
+         "name": "Kirian Rodríguez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 81,
+           "number": 20,
+           "position": "M",
+           "rating": "7.2",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": 1,
+           "saves": null
+          },
+          "passes": {
+           "total": 70,
+           "key": "[REDACTED]",
+           "accuracy": "67"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": 1
+          },
+          "duels": {
+           "total": 10,
+           "won": 5
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": 2,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": 3,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 157194,
+         "name": "Pejiño",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 68,
+           "number": 24,
+           "position": "M",
+           "rating": "8.3",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 3,
+           "on": 2
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": 2,
+           "saves": null
+          },
+          "passes": {
+           "total": 20,
+           "key": "[REDACTED]",
+           "accuracy": "14"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 11,
+           "won": 7
+          },
+          "dribbles": {
+           "attempts": 8,
+           "success": 5,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 21709,
+         "name": "Enzo Loiodice",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 12,
+           "position": "M",
+           "rating": "7.7",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": 1
+          },
+          "goals": {
+           "total": 1,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 73,
+           "key": "[REDACTED]",
+           "accuracy": "63"
+          },
+          "tackles": {
+           "total": 2,
+           "blocks": null,
+           "interceptions": 3
+          },
+          "duels": {
+           "total": 8,
+           "won": 4
+          },
+          "dribbles": {
+           "attempts": 1,
+           "success": 1,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 12667,
+         "name": "Jonathan Viera",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 90,
+           "number": 21,
+           "position": "M",
+           "rating": "7.5",
+           "captain": true,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 71,
+           "key": "[REDACTED]",
+           "accuracy": "63"
+          },
+          "tackles": {
+           "total": 3,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 14,
+           "won": 9
+          },
+          "dribbles": {
+           "attempts": 3,
+           "success": 3,
+           "past": 2
+          },
+          "fouls": {
+           "drawn": 3,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 182519,
+         "name": "Alberto Moleiro",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 61,
+           "number": 10,
+           "position": "M",
+           "rating": "6.2",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 36,
+           "key": "[REDACTED]",
+           "accuracy": "32"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 9,
+           "won": 4
+          },
+          "dribbles": {
+           "attempts": 5,
+           "success": 2,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47324,
+         "name": "Sandro Ramírez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 81,
+           "number": 9,
+           "position": "F",
+           "rating": "8.9",
+           "captain": false,
+           "substitute": false
+          },
+          "offsides": null,
+          "shots": {
+           "total": 4,
+           "on": 3
+          },
+          "goals": {
+           "total": 2,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 20,
+           "key": "[REDACTED]",
+           "accuracy": "19"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 8,
+           "won": 5
+          },
+          "dribbles": {
+           "attempts": 2,
+           "success": 2,
+           "past": null
+          },
+          "fouls": {
+           "drawn": 2,
+           "committed": 1
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47004,
+         "name": "Fabio González",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 29,
+           "number": 8,
+           "position": "M",
+           "rating": "6.5",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 23,
+           "key": "[REDACTED]",
+           "accuracy": "22"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 5,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 2
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": 2
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 162026,
+         "name": "Marvin Park",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 29,
+           "number": 2,
+           "position": "F",
+           "rating": "6.7",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 7,
+           "key": "[REDACTED]",
+           "accuracy": "5"
+          },
+          "tackles": {
+           "total": 2,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 4,
+           "won": 3
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": 1,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 131529,
+         "name": "Enrique Clemente",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 22,
+           "number": 5,
+           "position": "D",
+           "rating": "6.7",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 8,
+           "key": "[REDACTED]",
+           "accuracy": "5"
+          },
+          "tackles": {
+           "total": 1,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 1,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 1576,
+         "name": "Wilfrid Kaptoum",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 9,
+           "number": 25,
+           "position": "M",
+           "rating": "6.7",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 1,
+           "key": "[REDACTED]",
+           "accuracy": "1"
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 1,
+           "won": 1
+          },
+          "dribbles": {
+           "attempts": 1,
+           "success": 1,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47393,
+         "name": "Marc Cardona",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": 9,
+           "number": 19,
+           "position": "F",
+           "rating": "6.3",
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": 1,
+           "on": 1
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": 1,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": 1,
+           "interceptions": null
+          },
+          "duels": {
+           "total": 2,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": 1
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 47351,
+         "name": "Alex Domínguez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 1,
+           "position": "G",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 287387,
+         "name": "Javi Cendón",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 30,
+           "position": "G",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46993,
+         "name": "Eric Curbelo",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 6,
+           "position": "D",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 46890,
+         "name": "Álvaro Jiménez",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 15,
+           "position": "M",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 163241,
+         "name": "Óscar Clemente",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 17,
+           "position": "M",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 18978,
+         "name": "Florin Andone",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 16,
+           "position": "F",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       },
+       {
+        "player": {
+         "id": 1584,
+         "name": "Loren Morón",
+         "photo": "https://example.invalid/photo.png"
+        },
+        "statistics": [
+         {
+          "games": {
+           "minutes": null,
+           "number": 11,
+           "position": "F",
+           "rating": null,
+           "captain": false,
+           "substitute": true
+          },
+          "offsides": null,
+          "shots": {
+           "total": null,
+           "on": null
+          },
+          "goals": {
+           "total": null,
+           "conceded": 0,
+           "assists": null,
+           "saves": null
+          },
+          "passes": {
+           "total": null,
+           "key": "[REDACTED]",
+           "accuracy": null
+          },
+          "tackles": {
+           "total": null,
+           "blocks": null,
+           "interceptions": null
+          },
+          "duels": {
+           "total": null,
+           "won": null
+          },
+          "dribbles": {
+           "attempts": null,
+           "success": null,
+           "past": null
+          },
+          "fouls": {
+           "drawn": null,
+           "committed": null
+          },
+          "cards": {
+           "yellow": 0,
+           "red": 0
+          },
+          "penalty": {
+           "won": null,
+           "commited": null,
+           "scored": 0,
+           "missed": 0,
+           "saved": null
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "_trimmed_from": 20
+ }
+}

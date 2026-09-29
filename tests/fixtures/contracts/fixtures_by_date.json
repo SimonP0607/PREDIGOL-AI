@@ -1,0 +1,165 @@
+{
+ "_source": {
+  "endpoint": "/fixtures",
+  "payload_sha256": "787f8bb9d03960ada3c817f713bec03ef3190995d561b4df3f470658317a0232",
+  "fetched_at": "2026-09-12T21:54:53.440070+00:00",
+  "http_status": 200,
+  "results_in_full_payload": 1608,
+  "note": "Trimmed and sanitised from our own raw store. Params are NOT kept."
+ },
+ "body": {
+  "get": "fixtures",
+  "parameters": {
+   "date": "2026-09-12"
+  },
+  "errors": [],
+  "results": 2,
+  "paging": {
+   "current": 1,
+   "total": 1
+  },
+  "response": [
+   {
+    "fixture": {
+     "id": 1492374,
+     "referee": null,
+     "timezone": "UTC",
+     "date": "2026-09-12T00:00:00+00:00",
+     "timestamp": 1789171200,
+     "periods": {
+      "first": null,
+      "second": null
+     },
+     "venue": {
+      "id": null,
+      "name": null,
+      "city": "Curitiba"
+     },
+     "status": {
+      "long": "Match Finished",
+      "short": "FT",
+      "elapsed": 90,
+      "extra": null
+     }
+    },
+    "league": {
+     "id": 71,
+     "name": "Serie A",
+     "country": "Brazil",
+     "logo": "https://example.invalid/logo.png",
+     "flag": "https://example.invalid/flag.png",
+     "season": 2026,
+     "round": "Regular Season - 27",
+     "standings": true
+    },
+    "teams": {
+     "home": {
+      "id": 147,
+      "name": "Coritiba",
+      "logo": "https://example.invalid/logo.png",
+      "winner": null
+     },
+     "away": {
+      "id": 134,
+      "name": "Atletico Paranaense",
+      "logo": "https://example.invalid/logo.png",
+      "winner": null
+     }
+    },
+    "goals": {
+     "home": 3,
+     "away": 3
+    },
+    "score": {
+     "halftime": {
+      "home": 1,
+      "away": 2
+     },
+     "fulltime": {
+      "home": 3,
+      "away": 3
+     },
+     "extratime": {
+      "home": null,
+      "away": null
+     },
+     "penalty": {
+      "home": null,
+      "away": null
+     }
+    }
+   },
+   {
+    "fixture": {
+     "id": 1508539,
+     "referee": null,
+     "timezone": "UTC",
+     "date": "2026-09-12T00:00:00+00:00",
+     "timestamp": 1789171200,
+     "periods": {
+      "first": null,
+      "second": null
+     },
+     "venue": {
+      "id": null,
+      "name": "CPKC Stadium",
+      "city": null
+     },
+     "status": {
+      "long": "Match Finished",
+      "short": "FT",
+      "elapsed": 90,
+      "extra": null
+     }
+    },
+    "league": {
+     "id": 254,
+     "name": "NWSL Women",
+     "country": "USA",
+     "logo": "https://example.invalid/logo.png",
+     "flag": "https://example.invalid/flag.png",
+     "season": 2026,
+     "round": "Group Stage",
+     "standings": true
+    },
+    "teams": {
+     "home": {
+      "id": 16487,
+      "name": "Kansas City W",
+      "logo": "https://example.invalid/logo.png",
+      "winner": null
+     },
+     "away": {
+      "id": 3000,
+      "name": "Orlando Pride W",
+      "logo": "https://example.invalid/logo.png",
+      "winner": null
+     }
+    },
+    "goals": {
+     "home": 2,
+     "away": 2
+    },
+    "score": {
+     "halftime": {
+      "home": 0,
+      "away": 1
+     },
+     "fulltime": {
+      "home": 2,
+      "away": 2
+     },
+     "extratime": {
+      "home": null,
+      "away": null
+     },
+     "penalty": {
+      "home": null,
+      "away": null
+     }
+    }
+   }
+  ],
+  "_trimmed_from": 1608
+ }
+}

@@ -1,0 +1,229 @@
+{
+ "_source": {
+  "endpoint": "/leagues",
+  "payload_sha256": "2139bfcf85f0a0950ac46c28650b59627d074ace70e1c766a045259cf83f7ca1",
+  "fetched_at": "2026-09-29T04:33:10.213255+00:00",
+  "http_status": 200,
+  "results_in_full_payload": 1247,
+  "note": "Trimmed and sanitised from our own raw store. Params are NOT kept."
+ },
+ "body": {
+  "get": "leagues",
+  "parameters": [],
+  "errors": [],
+  "results": 2,
+  "paging": {
+   "current": 1,
+   "total": 1
+  },
+  "response": [
+   {
+    "league": {
+     "id": 4,
+     "name": "Euro Championship",
+     "type": "Cup",
+     "logo": "https://example.invalid/logo.png"
+    },
+    "country": {
+     "name": "World",
+     "code": null,
+     "flag": null
+    },
+    "seasons": [
+     {
+      "year": 2008,
+      "start": "2008-06-07",
+      "end": "2008-06-29",
+      "current": false,
+      "coverage": {
+       "fixtures": {
+        "events": true,
+        "lineups": true,
+        "statistics_fixtures": false,
+        "statistics_players": false
+       },
+       "standings": false,
+       "players": true,
+       "top_scorers": true,
+       "top_assists": true,
+       "top_cards": true,
+       "injuries": false,
+       "predictions": true,
+       "odds": false
+      }
+     },
+     {
+      "year": 2012,
+      "start": "2012-06-08",
+      "end": "2012-07-01",
+      "current": false,
+      "coverage": {
+       "fixtures": {
+        "events": true,
+        "lineups": true,
+        "statistics_fixtures": false,
+        "statistics_players": false
+       },
+       "standings": false,
+       "players": true,
+       "top_scorers": true,
+       "top_assists": true,
+       "top_cards": true,
+       "injuries": false,
+       "predictions": true,
+       "odds": false
+      }
+     },
+     {
+      "year": 2016,
+      "start": "2016-06-10",
+      "end": "2016-07-10",
+      "current": false,
+      "coverage": {
+       "fixtures": {
+        "events": true,
+        "lineups": true,
+        "statistics_fixtures": true,
+        "statistics_players": true
+       },
+       "standings": true,
+       "players": true,
+       "top_scorers": true,
+       "top_assists": true,
+       "top_cards": true,
+       "injuries": false,
+       "predictions": true,
+       "odds": false
+      }
+     },
+     {
+      "year": 2020,
+      "start": "2019-03-21",
+      "end": "2021-07-11",
+      "current": false,
+      "coverage": {
+       "fixtures": {
+        "events": true,
+        "lineups": true,
+        "statistics_fixtures": true,
+        "statistics_players": true
+       },
+       "standings": true,
+       "players": true,
+       "top_scorers": true,
+       "top_assists": true,
+       "top_cards": true,
+       "injuries": false,
+       "predictions": true,
+       "odds": false
+      }
+     },
+     {
+      "year": 2024,
+      "start": "2024-06-14",
+      "end": "2024-07-14",
+      "current": true,
+      "coverage": {
+       "fixtures": {
+        "events": true,
+        "lineups": true,
+        "statistics_fixtures": true,
+        "statistics_players": true
+       },
+       "standings": true,
+       "players": true,
+       "top_scorers": true,
+       "top_assists": true,
+       "top_cards": true,
+       "injuries": false,
+       "predictions": true,
+       "odds": false
+      }
+     }
+    ]
+   },
+   {
+    "league": {
+     "id": 21,
+     "name": "Confederations Cup",
+     "type": "Cup",
+     "logo": "https://example.invalid/logo.png"
+    },
+    "country": {
+     "name": "World",
+     "code": null,
+     "flag": null
+    },
+    "seasons": [
+     {
+      "year": 2009,
+      "start": "2009-06-14",
+      "end": "2009-06-28",
+      "current": false,
+      "coverage": {
+       "fixtures": {
+        "events": true,
+        "lineups": true,
+        "statistics_fixtures": false,
+        "statistics_players": false
+       },
+       "standings": false,
+       "players": true,
+       "top_scorers": true,
+       "top_assists": true,
+       "top_cards": true,
+       "injuries": false,
+       "predictions": true,
+       "odds": false
+      }
+     },
+     {
+      "year": 2013,
+      "start": "2013-06-15",
+      "end": "2013-06-30",
+      "current": false,
+      "coverage": {
+       "fixtures": {
+        "events": true,
+        "lineups": true,
+        "statistics_fixtures": false,
+        "statistics_players": false
+       },
+       "standings": false,
+       "players": true,
+       "top_scorers": true,
+       "top_assists": true,
+       "top_cards": true,
+       "injuries": false,
+       "predictions": true,
+       "odds": false
+      }
+     },
+     {
+      "year": 2017,
+      "start": "2017-06-17",
+      "end": "2017-07-02",
+      "current": true,
+      "coverage": {
+       "fixtures": {
+        "events": true,
+        "lineups": true,
+        "statistics_fixtures": true,
+        "statistics_players": false
+       },
+       "standings": false,
+       "players": true,
+       "top_scorers": true,
+       "top_assists": true,
+       "top_cards": true,
+       "injuries": false,
+       "predictions": true,
+       "odds": false
+      }
+     }
+    ]
+   }
+  ],
+  "_trimmed_from": 1247
+ }
+}

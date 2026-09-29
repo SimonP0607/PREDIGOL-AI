@@ -1,0 +1,66 @@
+{
+ "_source": {
+  "endpoint": "/teams",
+  "payload_sha256": "0c411ca7bcc6d2719e8fa175436b80d4fd95bd211ee895bff24d7eaf1d1915e4",
+  "fetched_at": "2026-09-29T04:40:44.966321+00:00",
+  "http_status": 200,
+  "results_in_full_payload": 82,
+  "note": "Trimmed and sanitised from our own raw store. Params are NOT kept."
+ },
+ "body": {
+  "get": "teams",
+  "parameters": {
+   "league": "2",
+   "season": "2025"
+  },
+  "errors": [],
+  "results": 2,
+  "paging": {
+   "current": 1,
+   "total": 1
+  },
+  "response": [
+   {
+    "team": {
+     "id": 34,
+     "name": "Newcastle",
+     "code": "NEW",
+     "country": "England",
+     "founded": 1892,
+     "national": false,
+     "logo": "https://example.invalid/logo.png"
+    },
+    "venue": {
+     "id": 562,
+     "name": "St. James' Park",
+     "address": "St. James&apos; Street",
+     "city": "Newcastle upon Tyne",
+     "capacity": 52758,
+     "surface": "grass",
+     "image": "https://example.invalid/image.png"
+    }
+   },
+   {
+    "team": {
+     "id": 40,
+     "name": "Liverpool",
+     "code": "LIV",
+     "country": "England",
+     "founded": 1892,
+     "national": false,
+     "logo": "https://example.invalid/logo.png"
+    },
+    "venue": {
+     "id": 550,
+     "name": "Anfield",
+     "address": "Anfield Road",
+     "city": "Liverpool",
+     "capacity": 61276,
+     "surface": "grass",
+     "image": "https://example.invalid/image.png"
+    }
+   }
+  ],
+  "_trimmed_from": 82
+ }
+}
