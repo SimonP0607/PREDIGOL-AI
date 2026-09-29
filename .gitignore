@@ -13,3 +13,6 @@ node_modules/
 data/reports/
 data/experiments/
 data/backups/
+
+# Cloud-only dev shim (DB on 5433 natively, not in Docker)
+devenv.sh
