@@ -112,6 +112,12 @@ class SeasonUpdate:
     start_date: str | None
     end_date: str | None
     seasons_seen: int
+    seasons_written: int = 0
+    """Rows upserted into core.competition_seasons. Every season the provider
+    listed, not only the current one - which is what this used to be."""
+    without_fixtures: int = 0
+    """Seasons the provider lists and says have no fixture list. Not a gap in our
+    backfill: nothing to fetch."""
 
 
 def refresh_seasons(
@@ -147,6 +153,7 @@ def refresh_seasons(
             was = int(previous[0]) if previous else None
 
         current = next((s for s in seasons if s.is_current), None)
+        without_fixtures = sum(1 for s in seasons if s.has_fixtures is False)
         update = SeasonUpdate(
             provider_league_id=league_id,
             name=name,
@@ -156,25 +163,37 @@ def refresh_seasons(
             start_date=current.start_date if current else None,
             end_date=current.end_date if current else None,
             seasons_seen=len(seasons),
+            seasons_written=0 if dry_run else len(seasons),
+            without_fixtures=without_fixtures,
         )
         updates.append(update)
-        if dry_run or current is None:
+        if dry_run:
             continue
 
+        # EVERY season the provider lists, not only the current one. A season we
+        # have no row for cannot be planned against, cannot carry fixtures, and
+        # cannot be reported as "known and not fetched": it is simply invisible.
         with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO core.competition_seasons (competition_id, season, start_date, end_date, is_current, has_odds) "
-                "VALUES (%s,%s,%s,%s,true,%s) "
-                "ON CONFLICT (competition_id, season) DO UPDATE SET "
-                "  start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date, "
-                "  is_current = true, has_odds = EXCLUDED.has_odds",
-                (competition_id, current.season, current.start_date, current.end_date, current.has_odds),
-            )
-            # Exactly one current season per competition.
-            cur.execute(
-                "UPDATE core.competition_seasons SET is_current = false "
-                "WHERE competition_id = %s AND season <> %s AND is_current",
-                (competition_id, current.season),
-            )
+            for s in sorted(seasons, key=lambda r: r.season):
+                cur.execute(
+                    "INSERT INTO core.competition_seasons (competition_id, season, start_date, end_date, "
+                    " is_current, has_odds, has_fixtures, listed_at) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,now()) "
+                    "ON CONFLICT (competition_id, season) DO UPDATE SET "
+                    "  start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date, "
+                    "  is_current = EXCLUDED.is_current, has_odds = EXCLUDED.has_odds, "
+                    "  has_fixtures = EXCLUDED.has_fixtures, listed_at = EXCLUDED.listed_at",
+                    (competition_id, s.season, s.start_date, s.end_date, s.is_current, s.has_odds,
+                     s.has_fixtures),
+                )
+            # Exactly one current season per competition. The provider may list
+            # none as current mid-transition; then nothing is marked current
+            # rather than the wrong thing being left behind.
+            if current is not None:
+                cur.execute(
+                    "UPDATE core.competition_seasons SET is_current = false "
+                    "WHERE competition_id = %s AND season <> %s AND is_current",
+                    (competition_id, current.season),
+                )
     log.info("refresh_seasons.done", dry_run=dry_run, leagues=len(updates))
     return updates
