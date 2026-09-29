@@ -234,19 +234,34 @@ def test_a_row_dated_with_its_payload_is_fine(db: psycopg.Connection, seed: Seed
 # ── the sweep as a whole ────────────────────────────────────────────────────
 
 
-def test_the_sweep_records_every_check_with_its_population(
+def test_the_sweep_records_every_check_with_its_denominator_or_says_it_has_none(
     db: psycopg.Connection, seed: Seed
 ) -> None:
+    """Five checks count offenders out of a population. Two span more than one
+    population - statistics rows and event rows; near-close rows and three detail
+    tables - and report NULL rather than picking one, because a ratio over the
+    wrong denominator is worse than no ratio.
+
+    The schema enforces the distinction: offenders <= population. The first version
+    of check_lineage_holds reported 3 offenders out of a population of 0 and the
+    constraint refused the row.
+    """
     report = sweep(db, run_id=seed.run_id, apply=True)
     assert len(report.checks) == 7
     with db.cursor() as cur:
-        cur.execute("SELECT check_name, population IS NOT NULL, offenders IS NOT NULL, passed "
-                    "FROM audit.data_quality_checks WHERE run_id = %s ORDER BY check_name",
-                    (seed.run_id,))
-        rows = cur.fetchall()
+        cur.execute("SELECT check_name, population, offenders FROM audit.data_quality_checks "
+                    "WHERE run_id = %s ORDER BY check_name", (seed.run_id,))
+        rows = {str(n): (p, o) for n, p, o in cur.fetchall()}
     assert len(rows) == 7
-    assert all(has_population and has_offenders for _n, has_population, has_offenders, _p in rows), \
-        "a check without a denominator cannot be turned into a coverage figure"
+    assert rows["values_are_possible"][0] is None
+    assert rows["lineage_holds"][0] is None
+    for name in ("results_are_resolved", "lineups_are_complete", "detail_has_been_fetched",
+                 "results_are_not_stale", "prices_come_from_known_books"):
+        population, offenders = rows[name]
+        assert population is not None, f"{name} has one population and must report it"
+        assert offenders is not None and offenders <= population
+    assert all(c.ratio is None for c in report.checks if c.population is None), \
+        "no denominator, no ratio: never an invented 0.0 or 1.0"
 
 
 def test_a_verify_only_sweep_writes_nothing(db: psycopg.Connection, seed: Seed) -> None:

@@ -257,8 +257,12 @@ def check_values_are_possible(conn: psycopg.Connection) -> CheckOutcome:
     caught at the boundary and recorded there. This looks for what the schema
     allows and football does not: possession outside 1..99, an event after the
     130th minute.
+
+    ``population`` is None on purpose. The check spans two populations - statistics
+    rows and event rows - so there is no single denominator, and picking one of them
+    would turn the offender count into a ratio that means nothing. NULL says "no
+    denominator", which the schema distinguishes from zero.
     """
-    population = _scalar(conn, "SELECT count(*) FROM core.fixture_team_stats WHERE source = 'api-football'")
     issues: list[QualityIssue] = []
     for r in _rows(conn, IMPOSSIBLE_STATS_SQL):
         issues.append(QualityIssue(
@@ -276,7 +280,7 @@ def check_values_are_possible(conn: psycopg.Connection) -> CheckOutcome:
             observed=int(r["last_minute"]), expected="at most 130",
             detail=f"an event is timed at minute {r['last_minute']} among {r['events']} events",
         ))
-    return CheckOutcome("values_are_possible", "api_football_detail", Severity.WARNING, population,
+    return CheckOutcome("values_are_possible", "api_football_detail", Severity.WARNING, None,
                         len(issues), issues)
 
 
@@ -358,8 +362,12 @@ def check_lineage_holds(conn: psycopg.Connection) -> CheckOutcome:
         The raw store keeps identical bodies once, so a payload fetched twice is
         indexed at the first fetch while the caller holds the second - and passing
         that later time to the writers made 1,809 fixtures' detail look absent.
+
+    ``population`` is None for the same reason as above: near-close rows and three
+    detail tables are not one population, and the first version of this check said
+    otherwise - the schema's own ``offenders <= population`` constraint refused the
+    row, which is exactly what it is for.
     """
-    population = _scalar(conn, "SELECT count(*) FROM market.near_close_snapshots")
     issues: list[QualityIssue] = []
     for r in _rows(conn, ORPHAN_NEAR_CLOSE_SQL):
         issues.append(QualityIssue(
@@ -384,7 +392,7 @@ def check_lineage_holds(conn: psycopg.Connection) -> CheckOutcome:
                    "they name: the raw store deduplicates identical bodies and keeps the first "
                    "fetch, so writers must use the index's time",
         ))
-    return CheckOutcome("lineage_holds", "market_and_detail", Severity.ERROR, population,
+    return CheckOutcome("lineage_holds", "market_and_detail", Severity.ERROR, None,
                         len(issues), issues, detail=f"{drift} row(s) dated after their payload")
 
 
