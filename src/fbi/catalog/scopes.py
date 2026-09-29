@@ -72,6 +72,22 @@ class ScopeReport:
 
 
 EVIDENCE_SQL = """
+WITH participants AS (
+    -- /teams?league&season says directly which teams are in a competition-season, so
+    -- membership is the evidence of record. Fixtures are the fallback for a season whose
+    -- squads were never fetched, and they are also the only evidence for a competition
+    -- that is out of season right now: 34 of the tracked 124 had no fixture inside the
+    -- sync horizon, which is exactly why membership had to be read as well.
+    SELECT s.competition_id, m.team_id
+      FROM core.team_season_memberships m
+      JOIN core.competition_seasons s ON s.id = m.competition_season_id
+    UNION
+    SELECT s.competition_id, f.home_team_id
+      FROM core.fixtures f JOIN core.competition_seasons s ON s.id = f.competition_season_id
+    UNION
+    SELECT s.competition_id, f.away_team_id
+      FROM core.fixtures f JOIN core.competition_seasons s ON s.id = f.competition_season_id
+)
 SELECT c.id,
        c.provider_league_id,
        c.name,
@@ -80,12 +96,11 @@ SELECT c.id,
        c.entity_scope,
        c.competition_type,
        c.elo_weight,
-       count(DISTINCT t.id)                                    AS teams_seen,
-       count(DISTINCT t.id) FILTER (WHERE t.is_national)       AS national_seen
+       count(DISTINCT t.id)                              AS teams_seen,
+       count(DISTINCT t.id) FILTER (WHERE t.is_national) AS national_seen
   FROM core.competitions c
-  LEFT JOIN core.competition_seasons s ON s.competition_id = c.id
-  LEFT JOIN core.fixtures f            ON f.competition_season_id = s.id
-  LEFT JOIN core.teams t               ON t.id IN (f.home_team_id, f.away_team_id)
+  LEFT JOIN participants p ON p.competition_id = c.id
+  LEFT JOIN core.teams t   ON t.id = p.team_id
  WHERE (%(only_tracked)s IS FALSE OR c.is_tracked)
  GROUP BY c.id, c.provider_league_id, c.name, c.country, c.type, c.entity_scope,
           c.competition_type, c.elo_weight

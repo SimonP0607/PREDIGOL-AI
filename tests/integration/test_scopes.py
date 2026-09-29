@@ -21,7 +21,7 @@ from fbi.catalog.scopes import FRIENDLY_LEAGUES, resolve_scopes
 from tests.integration.conftest import Seed
 
 KICKOFF = datetime(2026, 6, 1, 18, 0, tzinfo=UTC)
-LEAGUES = (91001, 91002, 91003, 91004, 91005)
+LEAGUES = (91001, 91002, 91003, 91004, 91005, 91006)
 
 
 @pytest.fixture(autouse=True)
@@ -34,6 +34,10 @@ def clean_slate(db: psycopg.Connection) -> Iterator[None]:
         cur.execute("DELETE FROM core.fixtures f USING core.competition_seasons s, core.competitions c "
                     "WHERE f.competition_season_id = s.id AND s.competition_id = c.id "
                     "AND c.provider_league_id = ANY(%s)", (list(LEAGUES) + sorted(FRIENDLY_LEAGUES),))
+        cur.execute("DELETE FROM core.team_season_memberships m USING core.competition_seasons s, "
+                    "core.competitions c WHERE m.competition_season_id = s.id "
+                    "AND s.competition_id = c.id AND c.provider_league_id = ANY(%s)",
+                    (list(LEAGUES) + sorted(FRIENDLY_LEAGUES),))
         cur.execute("DELETE FROM core.competition_seasons s USING core.competitions c "
                     "WHERE s.competition_id = c.id AND c.provider_league_id = ANY(%s)",
                     (list(LEAGUES) + sorted(FRIENDLY_LEAGUES),))
@@ -108,12 +112,32 @@ def test_a_world_competition_of_clubs_stays_continental(
     db: psycopg.Connection, seed: Seed
 ) -> None:
     clubs = [team(db, 910101 + i, national=False) for i in range(4)]
-    comp = competition(db, 91002, country="World")
+    comp = competition(db, 91006, country="World")
     season_with(db, comp, [(clubs[0], clubs[1]), (clubs[2], clubs[3])])
 
     resolve_scopes(db)
 
-    assert scope_of(db, 91002) == ("club", "continental", Decimal("0.90"))
+    assert scope_of(db, 91006) == ("club", "continental", Decimal("0.90"))
+
+
+def test_season_membership_counts_as_evidence_without_any_fixture(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """A competition out of season has no fixture in the sync horizon, and 34 of the
+    tracked 124 were in exactly that state. /teams still said who is in it, so the
+    membership rows are the evidence of record and fixtures are the fallback."""
+    nationals = [team(db, 910601 + i, national=True) for i in range(4)]
+    comp = competition(db, 91002, country="World")
+    row = db.execute("INSERT INTO core.competition_seasons (competition_id, season, is_current) "
+                     "VALUES (%s, 2026, true) RETURNING id", (comp,)).fetchone()
+    assert row is not None
+    for t in nationals:
+        db.execute("INSERT INTO core.team_season_memberships (team_id, competition_season_id) "
+                   "VALUES (%s, %s)", (t, int(row[0])))
+
+    resolve_scopes(db)
+
+    assert scope_of(db, 91002) == ("national_team", "international", Decimal("0.70"))
 
 
 def test_a_competition_with_no_team_on_record_is_reported_not_guessed(
