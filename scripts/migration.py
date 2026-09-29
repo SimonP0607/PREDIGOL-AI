@@ -73,6 +73,10 @@ def main() -> int:
         if name == "capacity":
             p.add_argument("--live-tiers", default="", help="tiers captured live (default: config live.tiers)")
     sub.add_parser("status")
+    gaps = sub.add_parser("gaps", help="played fixtures whose detail has never been fetched")
+    gaps.add_argument("--tier", type=int)
+    gaps.add_argument("--expand", action="store_true", help="create the units that would close them")
+    gaps.add_argument("--json", action="store_true")
     dr = sub.add_parser("dry-run")
     dr.add_argument("--admin-url", default="", help="admin DSN of the same server (default: the configured one)")
     dr.add_argument("--keep", action="store_true")
@@ -103,6 +107,37 @@ def main() -> int:
             for r in rows:
                 print(f"{r.tier if r.tier is not None else '-':>4} {r.kind:<18} {r.status:<8} {r.units:>7} "
                       f"{r.requests:>9} {r.rows:>9}")
+            return 0
+        if args.cmd == "gaps":
+            from fbi.ingestion.backfill import DETAIL_BATCH, expand_detail_batches
+            from fbi.migration.completeness import season_gaps
+
+            gap_rows = season_gaps(conn, tier=args.tier)
+            if args.json:
+                print(json.dumps([{"league": g.provider_league_id, "season": g.season, "tier": g.tier,
+                                   "played": g.played, "missing": g.missing, "requests": g.batches}
+                                  for g in gap_rows], indent=2))
+            else:
+                print(f"{'tier':>4} {'league':>7} {'season':>7} {'played':>7} {'missing':>8} {'requests':>9}")
+                for g in gap_rows:
+                    print(f"{g.tier if g.tier is not None else '-':>4} {g.provider_league_id:>7} "
+                          f"{g.season:>7} {g.played:>7} {g.missing:>8} {g.batches:>9}")
+            total_missing = sum(g.missing for g in gap_rows)
+            total_requests = sum(g.batches for g in gap_rows)
+            print(f"{len(gap_rows)} league-season(s), {total_missing} fixture(s) without detail, "
+                  f"{total_requests} request(s) at {DETAIL_BATCH} per request")
+            if not args.expand:
+                if gap_rows:
+                    print("add --expand to create the units (no provider request is made)")
+                return 0
+            created = 0
+            for g in gap_rows:
+                created += expand_detail_batches(
+                    conn, league_id=g.provider_league_id, season=g.season, tier=g.tier,
+                    priority=(g.tier or 9) * 10_000 + 200,
+                )
+            print(f"{created} detail unit(s) created or revived; run them with: "
+                  f"python -m scripts.migration run --yes --max N")
             return 0
         if args.cmd == "run":
             if not args.yes:
