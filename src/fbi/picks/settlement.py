@@ -32,6 +32,10 @@ RULE_VERSION = "settle-v1"
 BASIS = "regulation_90"
 
 FINISHED = frozenset({"FT", "AET", "PEN"})
+DECIDED_AFTER_NINETY = frozenset({"AET", "PEN"})
+"""Statuses that mean the match went past 90 minutes. reg_goals_* can only be
+trusted for these when the extra-time score is recorded, because it is derived by
+subtracting it."""
 VOID_STATUSES = frozenset({"CANC"})
 REVIEW: dict[str, str] = {
     "PST": "postponed: bookmakers void after a delay that varies by book; not inferred",
@@ -57,6 +61,15 @@ class MatchState:
     status_short: str
     reg_home: int | None
     reg_away: int | None
+    et_home: int | None = None
+    et_away: int | None = None
+    """The extra-time goals the provider reported, if any.
+
+    Needed because ``reg_goals_*`` is a generated column - goals minus extra-time
+    goals - so when the extra-time score is NOT recorded it silently equals the
+    full-time score. For a match decided after extra time that is a claim we
+    cannot make: see the check in ``settle``.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,6 +171,16 @@ def settle(market_key: str, selection: str, line: Decimal, odds: Decimal, stake:
         return Settlement(Status.PENDING, None, None)  # not played yet, or in play
     if state.reg_home is None or state.reg_away is None:
         return Settlement(Status.PENDING, None, "finished, but no regulation score is recorded")
+    if state.status_short in DECIDED_AFTER_NINETY and state.et_home is None:
+        # reg_goals_* = goals - COALESCE(et_goals, 0), so with no extra-time score
+        # it equals the after-extra-time score. Settling 1X2, Over/Under or BTTS on
+        # that would quietly treat extra-time goals as regulation goals. The match
+        # is left unsettled and recorded as RESULT_UNRESOLVED instead.
+        return Settlement(
+            Status.PENDING, None,
+            f"{state.status_short}: the match went past 90 minutes and the extra-time score is not "
+            "recorded, so the regulation result cannot be derived",
+        )
     try:
         outcome = market_outcome(market_key, selection, line, state.reg_home, state.reg_away)
     except ValueError as exc:

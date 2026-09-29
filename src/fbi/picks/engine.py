@@ -254,7 +254,8 @@ def settle_open_picks(conn: psycopg.Connection, *, run_id: int) -> SettlementRep
         cur.execute(
             """
             SELECT p.id, p.market_key, p.selection, p.line, p.market_odds, p.stake_units, p.status,
-                   f.status_short, r.reg_goals_home, r.reg_goals_away, r.source_payload_hash,
+                   f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away,
+                   r.source_payload_hash,
                    COALESCE(pr.review_reason, '') AS previous_review
             FROM picks.picks p
             JOIN core.fixtures f ON f.id = p.fixture_id
@@ -269,7 +270,8 @@ def settle_open_picks(conn: psycopg.Connection, *, run_id: int) -> SettlementRep
         report.open_picks += 1
         result = settlement.settle(
             p["market_key"], p["selection"], Decimal(p["line"]), Decimal(p["market_odds"]), Decimal(p["stake_units"]),
-            settlement.MatchState(p["status_short"], p["reg_goals_home"], p["reg_goals_away"]))
+            settlement.MatchState(p["status_short"], p["reg_goals_home"], p["reg_goals_away"],
+                                  p.get("et_goals_home"), p.get("et_goals_away")))
         with conn.cursor() as cur:
             if not result.is_final:
                 report.still_pending += 1

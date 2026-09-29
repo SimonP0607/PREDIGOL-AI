@@ -92,8 +92,10 @@ def test_qualification_needs_a_backtest_a_win_and_a_sample() -> None:
 FT = "FT"
 
 
-def s(market: str, sel: str, line: str, home: int, away: int, status: str = FT, odds: str = "2.00"):
-    return settle(market, sel, D(line), D(odds), D(1), MatchState(status, home, away))
+def s(market: str, sel: str, line: str, home: int, away: int, status: str = FT, odds: str = "2.00",
+      et_home: int | None = None, et_away: int | None = None):
+    return settle(market, sel, D(line), D(odds), D(1),
+                  MatchState(status, home, away, et_home, et_away))
 
 
 def test_1x2_btts_and_double_chance() -> None:
@@ -141,11 +143,33 @@ def test_profit_follows_the_status() -> None:
 
 
 def test_extra_time_and_penalties_do_not_change_a_90_minute_market() -> None:
-    """1-1 at 90 minutes, 2-1 after extra time, or 1-1 and a shoot-out: 1X2 is a draw either way.
-    The caller passes the regulation score (core.fixture_results.reg_goals_*)."""
-    assert s("1X2", "Draw", "0", 1, 1, status="AET").status is Status.WIN
-    assert s("1X2", "Draw", "0", 1, 1, status="PEN").status is Status.WIN
-    assert s("OU", "Over", "2.5", 1, 1, status="AET").status is Status.LOSS
+    """1-1 at 90 minutes, 2-1 after extra time, or 1-1 and a shoot-out: 1X2 is a draw
+    either way. The caller passes the regulation score (reg_goals_*), and for a match
+    decided past 90 minutes it must also pass the extra-time score that was subtracted
+    to get it - otherwise the claim cannot be checked."""
+    assert s("1X2", "Draw", "0", 1, 1, status="AET", et_home=1, et_away=0).status is Status.WIN
+    assert s("1X2", "Draw", "0", 1, 1, status="PEN", et_home=0, et_away=0).status is Status.WIN
+    assert s("OU", "Over", "2.5", 1, 1, status="AET", et_home=1, et_away=1).status is Status.LOSS
+
+
+def test_a_match_past_90_minutes_without_an_extra_time_score_is_not_settled() -> None:
+    """reg_goals_* is goals minus extra-time goals, so with no extra-time score it
+    EQUALS the after-extra-time score. Settling on that would quietly count
+    extra-time goals as regulation goals - which is how a losing Over 2.5 becomes a
+    winner. Six fixtures in our database are in exactly this state."""
+    for status in ("AET", "PEN"):
+        result = s("1X2", "Draw", "0", 1, 1, status=status)
+        assert result.status is Status.PENDING
+        assert result.profit_units is None
+        assert result.review_reason is not None
+        assert "extra-time score is not recorded" in result.review_reason
+        assert status in result.review_reason
+
+
+def test_a_full_time_match_needs_no_extra_time_score() -> None:
+    """90 minutes is all there was, so there is nothing to subtract and nothing to
+    check. Requiring it would leave every ordinary match unsettled."""
+    assert s("1X2", "Home", "0", 2, 1, status=FT).status is Status.WIN
 
 
 def test_cancelled_is_void_and_the_ambiguous_stay_pending_with_a_reason() -> None:
