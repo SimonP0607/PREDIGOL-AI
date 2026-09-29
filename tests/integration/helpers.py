@@ -38,6 +38,25 @@ def must_be_rejected(conn: psycopg.Connection, reason: str) -> Iterator[psycopg.
 
 
 @contextmanager
+def must_be_rejected_saying(conn: psycopg.Connection, needle: str) -> Iterator[psycopg.Cursor]:
+    """Like ``must_be_rejected``, but the refusal must SAY the expected thing.
+
+    Where several constraints could plausibly fire on the same statement, a test
+    that only asserts "something refused it" can pass for the wrong reason and
+    keep passing after the invariant it was written for has gone.
+    """
+    try:
+        with conn.transaction(force_rollback=True), conn.cursor() as cur:
+            yield cur
+    except REFUSALS as exc:
+        assert needle in str(exc), f"refused, but not for {needle!r}: {exc}"
+        return
+    except psycopg.Error as exc:
+        pytest.fail(f"{needle}: refused for the WRONG reason -> {exc.__class__.__name__}: {exc}")
+    pytest.fail(f"{needle}: the database ACCEPTED it. The invariant is gone.")
+
+
+@contextmanager
 def must_be_accepted(conn: psycopg.Connection) -> Iterator[psycopg.Cursor]:
     """Run the enclosed statements and roll them back; they must not raise."""
     with conn.transaction(force_rollback=True), conn.cursor() as cur:

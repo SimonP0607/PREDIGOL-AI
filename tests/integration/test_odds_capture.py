@@ -114,8 +114,9 @@ def prepared(db: psycopg.Connection, seed: Seed) -> Iterator[psycopg.Connection]
     yield db
     with db.cursor() as cur:
         cur.execute("DELETE FROM market.market_consensus")
-        cur.execute("DELETE FROM market.odds_snapshots")
+        # near-close first: it holds a foreign key onto the series it projects.
         cur.execute("DELETE FROM market.near_close_snapshots")
+        cur.execute("DELETE FROM market.odds_snapshots")
         cur.execute("DELETE FROM raw.ingestion_payloads WHERE hash <> 'h1'")
         cur.execute("DELETE FROM raw.ingestion_runs WHERE job_name = 'odds_capture'")
     db.commit()
@@ -238,10 +239,12 @@ async def test_a_closer_snapshot_replaces_a_more_distant_one_but_never_the_rever
             payload_hash="h1",
         )
 
-    repo.upsert_near_close([quote("2.10", 30)])
-    repo.upsert_near_close([quote("1.95", 12)])
-    repo.upsert_near_close([quote("9.99", 240)])  # further away: must be ignored
-    prepared.commit()
+    # Every projection must have a series row behind it - that is the point of
+    # the composite foreign key - so the series is written first, as capture does.
+    for q in (quote("2.10", 30), quote("1.95", 12), quote("9.99", 240)):
+        repo.write_snapshots([q])
+        repo.upsert_near_close([q])
+    prepared.commit()  # the last one is further away and must be ignored
 
     with prepared.cursor() as cur:
         cur.execute("SELECT odds_decimal, minutes_to_ko FROM market.near_close_snapshots")

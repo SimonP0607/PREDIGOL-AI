@@ -138,6 +138,12 @@ class OddsRepository:
     def upsert_near_close(self, quotes: Sequence[OddsQuote]) -> int:
         """Materialise the latest pre-kickoff price we managed to capture.
 
+        A PROJECTION OF THE SERIES, NOT A SECOND RECORDING. The values are read
+        back out of ``market.odds_snapshots`` rather than taken from the quote in
+        memory, so the near-close row cannot disagree with the price the series
+        holds - which is also what the schema now insists on, with a composite
+        foreign key onto the series and a trigger comparing the values.
+
         Deliberately NOT called a closing line. ``is_validated_close`` stays
         false and ``minutes_to_ko`` records how far from kick-off this actually
         was, so nobody downstream has to guess.
@@ -148,39 +154,46 @@ class OddsRepository:
         fixtures = self._fixture_ids(quotes)
         markets = self._known_markets()
 
-        rows = [
-            (
-                fixtures[q.provider_fixture_id],
-                bookmakers[q.provider_bookmaker_id],
-                q.market_key,
-                q.selection,
-                q.line,
-                q.odds_decimal,
-                q.captured_at,
-                q.minutes_to_ko,
-                q.source,
-            )
+        keys = [
+            (fixtures[q.provider_fixture_id], bookmakers[q.provider_bookmaker_id], q.market_key,
+             q.selection, q.line, q.captured_at)
             for q in quotes
             if q.provider_fixture_id in fixtures and q.market_key in markets
         ]
-        if not rows:
+        if not keys:
             return 0
+        columns = list(zip(*keys, strict=True))
         with self._conn.cursor() as cur:
-            cur.executemany(
-                "INSERT INTO market.near_close_snapshots "
-                "(fixture_id,bookmaker_id,market_key,selection,line,odds_decimal,"
-                " captured_at,minutes_to_ko,source) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) "
-                "ON CONFLICT (fixture_id,bookmaker_id,market_key,selection,line) DO UPDATE SET "
-                "  odds_decimal = EXCLUDED.odds_decimal,"
-                "  captured_at = EXCLUDED.captured_at,"
-                "  minutes_to_ko = EXCLUDED.minutes_to_ko,"
-                "  source = EXCLUDED.source "
-                "WHERE market.near_close_snapshots.minutes_to_ko > EXCLUDED.minutes_to_ko",
-                rows,
-                returning=False,
+            cur.execute(
+                """
+                WITH wanted AS (
+                    SELECT * FROM unnest(%s::bigint[], %s::integer[], %s::text[], %s::text[],
+                                         %s::numeric[], %s::timestamptz[])
+                        AS k(fixture_id, bookmaker_id, market_key, selection, line, captured_at)
+                )
+                INSERT INTO market.near_close_snapshots
+                    (fixture_id, bookmaker_id, market_key, selection, line, odds_decimal,
+                     captured_at, minutes_to_ko, source, payload_hash)
+                SELECT o.fixture_id, o.bookmaker_id, o.market_key, o.selection, o.line,
+                       o.odds_decimal, o.captured_at, o.minutes_to_ko, o.source, o.payload_hash
+                  FROM market.odds_snapshots o
+                  JOIN wanted k USING (fixture_id, bookmaker_id, market_key, selection, line,
+                                       captured_at)
+                ON CONFLICT (fixture_id, bookmaker_id, market_key, selection, line) DO UPDATE SET
+                    odds_decimal    = EXCLUDED.odds_decimal,
+                    captured_at     = EXCLUDED.captured_at,
+                    minutes_to_ko   = EXCLUDED.minutes_to_ko,
+                    source          = EXCLUDED.source,
+                    payload_hash    = EXCLUDED.payload_hash,
+                    materialised_at = now()
+                WHERE market.near_close_snapshots.minutes_to_ko > EXCLUDED.minutes_to_ko
+                """,
+                [list(col) for col in columns],
             )
-        return len(rows)
+            affected = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+        if affected < len(keys):
+            log.info("near_close.kept_closer_snapshot", offered=len(keys), written=affected)
+        return affected
 
     def observations_since(
         self, *, since: datetime, provider_fixture_ids: Sequence[int] | None = None

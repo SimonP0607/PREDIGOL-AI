@@ -88,15 +88,27 @@ def dataset(migrated_database: str, seed: Seed) -> Iterator[dict[str, int]]:
                         "VALUES (%s,%s,'1X2',%s,0,%s,%s,%s,'prematch',%s)",
                         (ids["f3"], bm, sel, round(price - drift, 3), captured, mtk, seed.payload_hash),
                     )
+        # A near-close row is a projection of the series, so the snapshot it
+        # projects goes in first - the same order the capture service uses - and
+        # it carries the /odds payload it came from, not the /fixtures one.
+        near_close_at = NOW - timedelta(days=3) - timedelta(minutes=10)
         cur.execute(
-            "INSERT INTO market.near_close_snapshots (fixture_id, bookmaker_id, market_key, selection, line, "
-            "odds_decimal, captured_at, minutes_to_ko, source) VALUES (%s,%s,'1X2','Home',0,1.95,%s,10,'live')",
-            (ids["f1"], seed.bookmaker_id, NOW - timedelta(days=3) - timedelta(minutes=10)),
+            "INSERT INTO raw.ingestion_payloads (hash, run_id, endpoint, params, fetched_at, "
+            "http_status, file_path, bytes) "
+            "VALUES ('api-odds-payload', %s, '/odds/live', '{\"fixture\": \"95001\"}'::jsonb, %s, 200, 'x', 1)",
+            (seed.run_id, near_close_at),
         )
+        for table in ("market.odds_snapshots", "market.near_close_snapshots"):
+            cur.execute(
+                f"INSERT INTO {table} (fixture_id, bookmaker_id, market_key, selection, line, "
+                "odds_decimal, captured_at, minutes_to_ko, source, payload_hash) "
+                "VALUES (%s,%s,'1X2','Home',0,1.95,%s,10,'live','api-odds-payload')",
+                (ids["f1"], seed.bookmaker_id, near_close_at),
+            )
     yield ids
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("DELETE FROM core.fixtures WHERE provider_fixture_id BETWEEN 95001 AND 95005")
-        cur.execute("DELETE FROM raw.ingestion_payloads WHERE hash = 'api-fx-payload'")
+        cur.execute("DELETE FROM raw.ingestion_payloads WHERE hash IN ('api-fx-payload', 'api-odds-payload')")
         cur.execute("DELETE FROM core.teams WHERE provider_team_id IN (9101, 9102)")
         cur.execute("DELETE FROM core.venues WHERE provider_venue_id = 9556")
         cur.execute("DELETE FROM market.bookmakers WHERE provider_bookmaker_id = 4")
@@ -184,13 +196,18 @@ def test_the_audit_trail_names_every_link_and_every_gap(client: TestClient, data
     assert [s["key"] for s in d["steps"]] == ["provider", "raw", "normalized", "features", "models", "predictions",
                                              "market", "picks", "settlement"]
     assert steps["provider"]["state"] == "recorded" and "/fixtures" in steps["provider"]["detail"]
-    (payload,) = steps["raw"]["items"]
-    assert payload["ref"] == "api-fx-payload" and payload["facts"]["roles"] == "fixture, result"
-    assert payload["facts"]["on_disk"] is False and steps["raw"]["state"] == "partial", \
+    raw = {i["ref"]: i for i in steps["raw"]["items"]}
+    assert set(raw) == {"api-fx-payload", "api-odds-payload"}, \
+        "the fixture came from /fixtures and the price from /odds/live: two payloads, both named"
+    assert raw["api-fx-payload"]["facts"]["roles"] == "fixture, result"
+    assert "odds_snapshot" in raw["api-odds-payload"]["facts"]["roles"]
+    assert all(i["facts"]["on_disk"] is False for i in raw.values()) and steps["raw"]["state"] == "partial", \
         "a payload whose file is not in the raw store is reported, not assumed"
     assert {i["kind"] for i in steps["normalized"]["items"]} == {"fixture", "result"}
     assert steps["features"]["state"] == "missing" and steps["predictions"]["state"] == "not_applicable"
-    assert steps["market"]["state"] == "recorded" and steps["market"]["items"][0]["kind"] == "near_close"
+    assert steps["market"]["state"] == "recorded"
+    assert {i["kind"] for i in steps["market"]["items"]} == {"odds_snapshots", "near_close"}, \
+        "the series and the projection of it are both reported, in that order"
     assert steps["picks"]["state"] == "not_applicable" and steps["settlement"]["state"] == "not_applicable"
     assert d["complete"] is False
     old = get(client, f"/api/v1/matches/{dataset['f5']}/audit")["data"]
@@ -210,7 +227,7 @@ def test_analytics_counts_what_is_stored_and_flags_small_samples(
     mine = next(r for r in rows if r["competition_id"] == seed.competition_id and r["season"] == 2025)
     assert mine["finished"] == 2 and mine["low_sample"] is True, "two results are shown with their n, flagged"
     assert (mine["home_win"], mine["draw"], mine["away_win"]) == (0.5, 0.5, 0.0)
-    assert mine["goals_per_match"] == 1.5 and mine["with_odds_snapshots"] == 1
+    assert mine["goals_per_match"] == 1.5 and mine["with_odds_snapshots"] == 2
     cov = next(r for r in get(client, "/api/v1/analytics/coverage")["data"]
                if r["competition_id"] == seed.competition_id and r["season"] == 2025)
     assert cov["with_result"] == 2 and cov["with_features"] == 0 and cov["with_team_stats"] == 0
@@ -286,7 +303,8 @@ def test_invalid_parameters_are_rejected_without_echoing_them(client: TestClient
 
 def test_the_odds_list_contains_only_fixtures_with_prices(client: TestClient, dataset: dict[str, int]) -> None:
     body = get(client, "/api/v1/odds")
-    assert [m["provider_fixture_id"] for m in body["data"]] == [95003]
+    assert [m["provider_fixture_id"] for m in body["data"]] == [95003, 95001], \
+        "95001 kept its near-close price, and a near-close price implies a captured one"
 
 
 def test_fixture_odds_give_series_near_close_and_an_honest_consensus(
