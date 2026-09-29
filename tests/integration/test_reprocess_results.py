@@ -37,7 +37,8 @@ def clean_slate(db: psycopg.Connection) -> Iterator[None]:
         cur.execute("DELETE FROM core.fixture_results r USING core.fixtures f "
                     "WHERE r.fixture_id = f.id AND f.provider_fixture_id BETWEEN 84000 AND 84999")
         cur.execute("DELETE FROM core.fixtures WHERE provider_fixture_id BETWEEN 84000 AND 84999")
-        cur.execute("DELETE FROM raw.ingestion_payloads WHERE endpoint = '/fixtures' AND params ? 'ids'")
+        cur.execute("DELETE FROM audit.data_quality_issues WHERE provider_entity_id BETWEEN 84000 AND 84999")
+        cur.execute("DELETE FROM raw.ingestion_payloads WHERE endpoint = '/fixtures'")
     db.commit()
 
 
@@ -109,7 +110,11 @@ def test_a_running_total_extratime_is_corrected_from_the_stored_payload(
     assert total == 3 and btts is True
 
 
-def test_the_disagreement_is_reported(db: psycopg.Connection, seed: Seed, raw_root: Path) -> None:
+def test_the_disagreement_becomes_a_quality_issue_not_just_a_printed_line(
+    db: psycopg.Connection, seed: Seed, raw_root: Path
+) -> None:
+    """The registry is where "the provider contradicted itself" belongs. A printed line
+    disappears; an operator asking later why a match settled oddly needs the record."""
     fixture_row(db, seed, 84002, "AET")
     store(db, seed, raw_root, score_body(84002, "AET", goals=(3, 1), fulltime=(2, 1),
                                          extratime=(3, 1)), ids="84002")
@@ -118,6 +123,29 @@ def test_the_disagreement_is_reported(db: psycopg.Connection, seed: Seed, raw_ro
 
     assert report.issues_opened == 1
     assert any("84002" in p for p in report.problems)
+    row = db.execute(
+        "SELECT code, entity_type, field, observed, detail FROM audit.data_quality_issues "
+        " WHERE provider_entity_id = 84002").fetchone()
+    assert row is not None
+    assert row[0] == "PROVIDER_INCONSISTENCY" and row[1] == "fixture_result"
+    assert "running total" in (row[4] or "")
+
+
+def test_a_self_contradictory_score_is_recorded_even_though_no_result_is_written(
+    db: psycopg.Connection, seed: Seed, raw_root: Path
+) -> None:
+    """Five finished AET fixtures on the machine give extratime greater than the final
+    score. No result can be derived, and the reason must not be a mystery."""
+    fixture_row(db, seed, 84009, "AET")
+    store(db, seed, raw_root, score_body(84009, "AET", goals=(2, 0), fulltime=(4, 0),
+                                         extratime=(0, 2)), ids="84009")
+
+    reprocess_results(db, raw_root, apply=True)
+
+    assert derived(db, 84009) == (), "nothing is invented"
+    row = db.execute("SELECT code, field, observed FROM audit.data_quality_issues "
+                     " WHERE provider_entity_id = 84009").fetchone()
+    assert row is not None and row[0] == "PROVIDER_INCONSISTENCY"
 
 
 def test_penalties_straight_from_ninety_minutes_gain_the_result_they_never_had(

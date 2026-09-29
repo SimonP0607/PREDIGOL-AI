@@ -41,7 +41,8 @@ from fbi.ingestion.fixtures import PayloadLineage
 from fbi.ingestion.payload_store import PayloadStore, body_hash
 from fbi.ingestion.results import ResultRepository
 from fbi.providers.api_football.details import iter_fixture_details
-from fbi.providers.api_football.normalize import iter_fixture_results
+from fbi.providers.api_football.normalize import ScoreDisagreement, iter_fixture_results
+from fbi.quality.issues import EntityType, IssueRegistry, inconsistency
 
 log = structlog.get_logger(__name__)
 
@@ -169,7 +170,7 @@ def reprocess_results(
     report = ReprocessReport()
     store = PayloadStore(raw_root)
     rows = result_payloads(conn, limit=limit)
-    disagreements: list[str] = []
+    disagreements: list[ScoreDisagreement] = []
     for row, body, fetched_at in _bodies(store, rows, report, verify=verify_hashes):
         results = list(iter_fixture_results(body, disagreements=disagreements))
         if not results:
@@ -183,9 +184,34 @@ def reprocess_results(
         )
         report.fixtures_touched += written
         conn.commit()  # a checkpoint per payload: a crash resumes, never restarts
-    for note in disagreements:
-        report.problems.append(note)
-    report.issues_opened = len(disagreements)
+
+    # The provider contradicting itself is a fact about the provider, and the registry is
+    # where facts like that belong. Without this, a finished match with no result row is a
+    # mystery an operator has to go and dig for in the raw store.
+    seen: dict[int, ScoreDisagreement] = {}
+    for d in disagreements:
+        seen.setdefault(d.provider_fixture_id, d)
+    report.issues_opened = len(seen)
+    report.problems.extend(
+        f"fixture {d.provider_fixture_id}: {d.observed}"
+        f"{' - no result written' if d.dropped else ''}"
+        for d in list(seen.values())[:20]
+    )
+    if apply and seen:
+        registry = IssueRegistry(conn)
+        registry.record_many([
+            inconsistency(
+                entity_type=EntityType.FIXTURE_RESULT,
+                entity_id=None,
+                provider_entity_id=d.provider_fixture_id,
+                field_name=d.field,
+                observed=d.observed,
+                expected=d.expected,
+                detail=d.detail,
+            )
+            for d in seen.values()
+        ])
+        conn.commit()
     log.info("reprocess.results_finished", **report.as_dict())
     if not apply:
         conn.rollback()

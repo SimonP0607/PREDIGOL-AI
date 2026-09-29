@@ -422,8 +422,26 @@ def _pair(block: Any) -> tuple[int | None, int | None]:
     return (home if isinstance(home, int) else None, away if isinstance(away, int) else None)
 
 
+@dataclass(frozen=True, slots=True)
+class ScoreDisagreement:
+    """The provider's own score fields contradicting each other, as a fact to record.
+
+    A string in a log line is not a record: these are the cases where an operator later
+    asks why a finished match has no result, and "the provider said fulltime 4-0 with a
+    final of 2-0" is the answer. ``dropped`` says whether the fixture was skipped
+    entirely or merely had one field ignored.
+    """
+
+    provider_fixture_id: int
+    field: str
+    observed: str
+    expected: str
+    detail: str
+    dropped: bool
+
+
 def iter_fixture_results(
-    body: dict[str, Any], *, disagreements: list[str] | None = None
+    body: dict[str, Any], *, disagreements: list[ScoreDisagreement] | None = None
 ) -> Iterator[FixtureResultRef]:
     """Scores, from the SAME /fixtures payload the fixture sync already reads.
 
@@ -461,10 +479,20 @@ def iter_fixture_results(
         et_h, et_a = _pair(score.get("extratime"))
         pk_h, pk_a = _pair(score.get("penalty"))
 
+        fid = fixture.get("id")
         if ft_h is not None and ft_a is not None and (ft_h > goals_home or ft_a > goals_away):
-            # The score at ninety minutes cannot exceed the final score.
-            log.warning("result.fulltime_exceeds_final", fixture=fixture.get("id"),
+            # Impossible: `goals` includes extra time, so it can only be greater or equal.
+            log.warning("result.fulltime_exceeds_final", fixture=fid,
                         fulltime=(ft_h, ft_a), final=(goals_home, goals_away))
+            if disagreements is not None and isinstance(fid, int):
+                disagreements.append(ScoreDisagreement(
+                    provider_fixture_id=fid, field="ft_goals_home",
+                    observed=f"fulltime {ft_h}-{ft_a} with a final of {goals_home}-{goals_away}",
+                    expected="a 90-minute score no greater than the final score",
+                    detail="goals includes extra time, so fulltime cannot exceed it; the stated "
+                           "fulltime is ignored",
+                    dropped=False,
+                ))
             ft_h = ft_a = None
         if (ft_h is None or ft_a is None) \
                 and status in EXTRA_TIME_STATUSES and (et_h is None or et_a is None):
@@ -472,10 +500,29 @@ def iter_fixture_results(
             # it from. `goals` includes extra time, so it is not the 90-minute score and
             # there is nothing here to settle a 1X2 on. Better an awaited result than a
             # wrong one.
-            log.warning("result.no_ninety_minute_score", fixture=fixture.get("id"), status=status)
+            log.warning("result.no_ninety_minute_score", fixture=fid, status=status)
+            if disagreements is not None and isinstance(fid, int):
+                disagreements.append(ScoreDisagreement(
+                    provider_fixture_id=fid, field="ft_goals_home",
+                    observed=f"status {status} with a final of {goals_home}-{goals_away}",
+                    expected="a stated fulltime or an extra-time score",
+                    detail="neither the 90-minute score nor a breakdown to derive it from, so no "
+                           "result is written rather than a wrong one",
+                    dropped=True,
+                ))
             continue
         if (et_h is not None and et_h > goals_home) or (et_a is not None and et_a > goals_away):
-            log.warning("result.extra_time_exceeds_final", fixture=fixture.get("id"))
+            log.warning("result.extra_time_exceeds_final", fixture=fid,
+                        extratime=(et_h, et_a), final=(goals_home, goals_away))
+            if disagreements is not None and isinstance(fid, int):
+                disagreements.append(ScoreDisagreement(
+                    provider_fixture_id=fid, field="et_goals_home",
+                    observed=f"extratime {et_h}-{et_a} with a final of {goals_home}-{goals_away}",
+                    expected="an extra-time score no greater than the final score",
+                    detail="the provider's own numbers contradict each other and there is no way "
+                           "to tell which is wrong, so no result is written",
+                    dropped=True,
+                ))
             continue
         if ft_h is not None and ft_a is not None and et_h is not None and et_a is not None \
                 and (ft_h + et_h, ft_a + et_a) != (goals_home, goals_away):
@@ -484,14 +531,19 @@ def iter_fixture_results(
             # three numbers do not add up. `fulltime` is used regardless - which is the
             # point of reading it - and the disagreement is recorded rather than hidden,
             # because it is the provider's fact and not our arithmetic.
-            log.info("result.score_parts_disagree", fixture=fixture.get("id"),
+            log.info("result.score_parts_disagree", fixture=fid,
                      fulltime=(ft_h, ft_a), extratime=(et_h, et_a), final=(goals_home, goals_away))
-            if disagreements is not None:
-                disagreements.append(
-                    f"fixture {fixture.get('id')}: fulltime {ft_h}-{ft_a} + extratime "
-                    f"{et_h}-{et_a} != goals {goals_home}-{goals_away}; the stated fulltime "
-                    "is used"
-                )
+            if disagreements is not None and isinstance(fid, int):
+                disagreements.append(ScoreDisagreement(
+                    provider_fixture_id=fid, field="et_goals_home",
+                    observed=f"fulltime {ft_h}-{ft_a} + extratime {et_h}-{et_a} != goals "
+                             f"{goals_home}-{goals_away}",
+                    expected="the three score blocks to add up",
+                    detail="extratime carries the running total rather than the increment on "
+                           "about 5% of the provider's extra-time fixtures; the stated fulltime "
+                           "is used regardless",
+                    dropped=False,
+                ))
         try:
             yield FixtureResultRef(
                 provider_fixture_id=int(fixture["id"]),
