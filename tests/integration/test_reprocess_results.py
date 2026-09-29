@@ -178,6 +178,32 @@ def test_reprocessing_twice_changes_nothing(
     assert derived(db, 84006) == first
 
 
+def test_a_season_payload_is_replayed_too_not_only_the_id_batches(
+    db: psycopg.Connection, seed: Seed, raw_root: Path
+) -> None:
+    """Scores arrive in both shapes /fixtures is called in, and the season pass is where
+    most of them come from. A replay restricted to ?ids= batches would correct a small
+    fraction and look finished."""
+    fixture_row(db, seed, 84008, "AET")
+    body = score_body(84008, "AET", goals=(3, 1), fulltime=(2, 1), extratime=(3, 1))
+    stored = PayloadStore(raw_root).store(
+        endpoint="/fixtures", params={"league": 39, "season": 2025}, fetched_at=FETCHED,
+        http_status=200, body=body)
+    db.execute(
+        "INSERT INTO raw.ingestion_payloads (hash, run_id, endpoint, params, fetched_at, "
+        " http_status, results_count, file_path, bytes) "
+        "VALUES (%s,%s,'/fixtures',%s::jsonb,%s,200,1,%s,%s) ON CONFLICT (hash) DO NOTHING",
+        (stored.hash, seed.run_id, json.dumps({"league": 39, "season": 2025}), FETCHED,
+         stored.file_path, stored.bytes_written))
+    db.commit()
+
+    report = reprocess_results(db, raw_root, apply=True)
+
+    assert report.fixtures_touched == 1, "a season payload carries scores just as a batch does"
+    ft_h, ft_a, reg_h, reg_a, outcome, _t, _b = derived(db, 84008)
+    assert (ft_h, ft_a) == (2, 1) and (reg_h, reg_a) == (2, 1) and outcome == "Home"
+
+
 def test_a_ninety_minute_score_above_the_final_score_never_reaches_the_table(
     db: psycopg.Connection, seed: Seed, raw_root: Path
 ) -> None:

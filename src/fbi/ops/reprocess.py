@@ -121,6 +121,30 @@ def _bodies(store: PayloadStore, rows: list[dict[str, Any]], report: ReprocessRe
         yield row, body, row["fetched_at"]
 
 
+def result_payloads(conn: psycopg.Connection, *, limit: int | None = None) -> list[dict[str, Any]]:
+    """Every stored /fixtures payload that can carry a score, oldest first.
+
+    Wider than ``detail_payloads`` on purpose. Scores arrive in BOTH shapes the endpoint
+    is called in: ``?ids=`` batches during the detail pass, and ``?league=&season=``
+    during the season pass - and the season pass is where most results come from, so a
+    replay restricted to the batches would correct a small fraction and look finished.
+
+    Oldest first, because the writers only accept a payload at least as new as what is
+    stored: replaying in fetch order reproduces the history instead of fighting it.
+    """
+    sql = ("SELECT hash, endpoint, params, fetched_at, file_path, results_count "
+           "FROM raw.ingestion_payloads "
+           "WHERE endpoint = %s AND http_status = 200 AND results_count > 0 "
+           "ORDER BY fetched_at, hash")
+    params: list[object] = [DETAIL_ENDPOINT]
+    if limit is not None:
+        sql += " LIMIT %s"
+        params.append(limit)
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql, params)
+        return [dict(r) for r in cur.fetchall()]
+
+
 def reprocess_results(
     conn: psycopg.Connection,
     raw_root: Path,
@@ -144,7 +168,7 @@ def reprocess_results(
     """
     report = ReprocessReport()
     store = PayloadStore(raw_root)
-    rows = detail_payloads(conn, limit=limit)
+    rows = result_payloads(conn, limit=limit)
     disagreements: list[str] = []
     for row, body, fetched_at in _bodies(store, rows, report, verify=verify_hashes):
         results = list(iter_fixture_results(body, disagreements=disagreements))
