@@ -3,6 +3,15 @@
 Written 2026-09-29, after closing the detail gap. Every figure is a query against
 the machine's database on that date.
 
+> **Superseded in part, same day.** The table below describes the state when only
+> 7 competitions were configured. The migration was then widened to **122
+> competitions** chosen on the provider's own coverage flags — see
+> [COMPETITION_SELECTION_2026-09-29.md](COMPETITION_SELECTION_2026-09-29.md) for
+> which, why, and what was refused — and priced at **991 league-seasons, 327,740
+> fixtures, 19,164 requests, 1,050 MB of raw storage**. The planner analysis in
+> this document is what made that widening safe, so it is kept rather than
+> rewritten.
+
 ## Where it stands
 
 | | fixtures |
