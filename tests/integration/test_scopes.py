@@ -212,6 +212,57 @@ def test_a_friendly_is_weighted_zero_whoever_plays_it(
     assert any(str(league) in entry for entry in report.friendlies_weighted_zero)
 
 
+def test_an_issue_is_closed_once_the_evidence_it_waited_for_arrives(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """The registry is what an operator reads to know what is still wrong. An entry saying
+    "undecided, needs /teams" that survives /teams answering costs them their trust in
+    every other entry."""
+    comp = competition(db, 91003, country="World")
+    row = db.execute("INSERT INTO core.competition_seasons (competition_id, season, is_current) "
+                     "VALUES (%s, 2026, true) RETURNING id", (comp,)).fetchone()
+    assert row is not None
+    season_id = int(row[0])
+
+    resolve_scopes(db)
+    opened = db.execute("SELECT status FROM audit.data_quality_issues "
+                        "WHERE provider_entity_id = 91003").fetchone()
+    assert opened is not None and opened[0] == "open"
+
+    for i in range(4):  # /teams arrives
+        db.execute("INSERT INTO core.team_season_memberships (team_id, competition_season_id) "
+                   "VALUES (%s, %s)", (team(db, 910701 + i, national=True), season_id))
+    report = resolve_scopes(db)
+
+    assert report.reopened_then_settled >= 1
+    closed = db.execute("SELECT status, resolution FROM audit.data_quality_issues "
+                        "WHERE provider_entity_id = 91003").fetchone()
+    assert closed is not None and closed[0] == "resolved"
+    assert "national" in (closed[1] or ""), "closed WITH the reason, which the schema requires"
+
+
+def test_settling_touches_only_this_competitions_own_codes(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """A sweep that closed whatever it found would be a way to lose a real problem."""
+    from fbi.quality.issues import EntityType, IssueRegistry, rejected
+
+    IssueRegistry(db).record(rejected(
+        entity_type=EntityType.COMPETITION, field_name="something_else",
+        observed="x", reason="unrelated", provider_entity_id=91004,
+    ))
+    a, b = team(db, 910801, national=True), team(db, 910802, national=True)
+    comp = competition(db, 91004, country="World")
+    season_with(db, comp, [(a, b)])
+
+    resolve_scopes(db)
+
+    row = db.execute("SELECT status FROM audit.data_quality_issues "
+                     "WHERE provider_entity_id = 91004 AND code = 'NORMALIZATION_REJECTED'"
+                     ).fetchone()
+    assert row is not None and row[0] == "open", "a different code is not this module's to close"
+
+
 def test_reporting_without_applying_changes_nothing(
     db: psycopg.Connection, seed: Seed
 ) -> None:

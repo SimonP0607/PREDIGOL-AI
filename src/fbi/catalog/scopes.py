@@ -61,9 +61,17 @@ class ScopeReport:
     no_evidence: list[str] = field(default_factory=list)
     contradictory: list[str] = field(default_factory=list)
     unchanged: int = 0
+    reopened_then_settled: int = 0
+    """Issues this run closed because the evidence it was waiting for arrived.
+
+    An issue that records "undecided, needs /teams" and stays open after /teams answered
+    is worse than no issue at all: the registry is what an operator reads to know what is
+    still wrong, and a stale entry there costs them the trust they need in the rest of it.
+    """
 
     def as_dict(self) -> dict[str, Any]:
-        return {"resolved_national": len(self.resolved_national),
+        return {"settled": self.reopened_then_settled,
+                "resolved_national": len(self.resolved_national),
                 "resolved_club": len(self.resolved_club),
                 "friendlies_weighted_zero": len(self.friendlies_weighted_zero),
                 "no_evidence": len(self.no_evidence),
@@ -107,6 +115,13 @@ SELECT c.id,
  ORDER BY c.provider_league_id
 """
 
+OPEN_FOR_COMPETITION_SQL = """
+SELECT fingerprint, code
+  FROM audit.data_quality_issues
+ WHERE status = 'open' AND entity_type = 'competition' AND provider_entity_id = %(league)s
+   AND code IN ('UNKNOWN_PROVIDER_ENTITY', 'PROVIDER_INCONSISTENCY')
+"""
+
 UPDATE_SQL = """
 UPDATE core.competitions
    SET entity_scope = %(scope)s, competition_type = %(comp_type)s,
@@ -131,6 +146,25 @@ def _intended(row: dict[str, Any], *, national: bool) -> tuple[str, str, str]:
         return "club", "continental", ELO_WEIGHT["continental"]
     kind = "domestic_cup" if row["type"] == "cup" else "domestic_league"
     return "club", kind, ELO_WEIGHT[kind]
+
+
+def _settle_open_issues(cur: Any, registry: IssueRegistry, *, league_id: int, scope: str,
+                        seen: int, national: int) -> int:
+    """Close the issues that were waiting for exactly this evidence.
+
+    Only the two codes this module opens, and only for this competition: a sweep that
+    closed anything it happened to find would be a way to lose a real problem.
+    """
+    cur.execute(OPEN_FOR_COMPETITION_SQL, {"league": league_id})
+    settled = 0
+    for issue in cur.fetchall():
+        ok = registry.resolve(
+            issue["fingerprint"],
+            resolution=(f"/teams answered: {national} of {seen} team(s) on record are national "
+                        f"teams, so this is {scope} football"),
+        )
+        settled += int(ok)
+    return settled
 
 
 def resolve_scopes(
@@ -208,6 +242,10 @@ def resolve_scopes(
                                      "comp_type": target[1], "elo": target[2]})
             if cur.rowcount == 0:
                 report.unchanged += 1
+            report.reopened_then_settled += _settle_open_issues(
+                cur, registry, league_id=league_id, scope=target[0], seen=int(row["teams_seen"]),
+                national=int(row["national_seen"]),
+            )
 
     if issues:
         registry.record_many(issues)
