@@ -71,10 +71,23 @@ def test_quarter_lines_are_valid(line: str) -> None:
     MarketLine(Decimal(line))
 
 
-@pytest.mark.parametrize("line", ["2.3", "-0.5", "nan"])
+@pytest.mark.parametrize("line", ["2.3", "0.1", "nan"])
 def test_impossible_lines_are_rejected(line: str) -> None:
     with pytest.raises(InvalidSelectionError):
         MarketLine(Decimal(line))
+
+
+def test_a_negative_line_is_rejected_by_the_market_not_by_the_line() -> None:
+    """The sign rule belongs where the market is known.
+
+    A handicap of -0.5 is an ordinary price; a goal total of -0.5 is nonsense.
+    MarketLine cannot tell them apart, so it accepts the sign and Selection
+    refuses it where it has no meaning.
+    """
+    MarketLine(Decimal("-0.5"))  # a handicap, in isolation: fine
+    with pytest.raises(InvalidSelectionError, match="does not take a negative line"):
+        Selection(MarketType.TOTAL_GOALS, Side.OVER, MarketLine(Decimal("-0.5")))
+    assert Selection(MarketType.ASIAN_HANDICAP, Side.HOME, MarketLine(Decimal("-0.5")))
 
 
 def test_selections_round_trip_through_the_three_schema_columns() -> None:
@@ -99,9 +112,85 @@ def test_garbage_from_storage_is_rejected() -> None:
         Selection.from_storage("1X2", "Home", Decimal("2.5"))
 
 
-def test_double_chance_is_the_non_exclusive_market() -> None:
-    assert not MarketType.DOUBLE_CHANCE.is_exclusive
-    assert all(m.is_exclusive for m in MarketType if m is not MarketType.DOUBLE_CHANCE)
+def test_the_non_exclusive_markets_are_double_chance_and_asian_handicap() -> None:
+    """Both for real reasons, and different ones.
+
+    Double Chance selections overlap. Asian Handicap selections do not overlap,
+    but on a whole-number handicap a bet can push, so the two sides do not
+    exhaust the outcome space either - devigging them as if they summed to 1
+    would invent value out of the push.
+    """
+    non_exclusive = {m for m in MarketType if not m.is_exclusive}
+    assert non_exclusive == {MarketType.DOUBLE_CHANCE, MarketType.ASIAN_HANDICAP}
+
+
+# ── asian handicap and quarter lines ────────────────────────────────────────
+
+
+def test_the_stored_line_is_the_handicap_of_the_stored_side() -> None:
+    """The four selections the platform has to be able to express."""
+    assert [
+        str(Selection(MarketType.ASIAN_HANDICAP, side, MarketLine(Decimal(line))))
+        for side, line in ((Side.HOME, "-0.25"), (Side.HOME, "-0.5"),
+                           (Side.HOME, "0.25"), (Side.AWAY, "0.75"))
+    ] == ["AH Home -0.25", "AH Home -0.5", "AH Home +0.25", "AH Away +0.75"]
+
+
+def test_a_level_handicap_is_a_line_not_an_absence() -> None:
+    level = Selection(MarketType.ASIAN_HANDICAP, Side.HOME, MarketLine(Decimal("0")))
+    assert level.line_for_storage == NO_LINE, "stored as 0, like an unlined market"
+    assert level.push_possible, "a draw returns the stake"
+    assert Selection.from_storage("AH", "Home", Decimal(0)) == level, \
+        "market_key is what tells a real 0 line from no line at all"
+
+
+def test_negating_a_level_handicap_does_not_produce_minus_zero() -> None:
+    assert MarketLine(-Decimal("0.00")).value == Decimal(0)
+    assert str(Selection(MarketType.ASIAN_HANDICAP, Side.AWAY, MarketLine(-Decimal(0)))) == "AH Away +0"
+
+
+@pytest.mark.parametrize(
+    ("market", "side", "line", "expected"),
+    [
+        (MarketType.ASIAN_HANDICAP, Side.HOME, "-0.25", ("AH Home -0.5", "AH Home +0")),
+        (MarketType.ASIAN_HANDICAP, Side.HOME, "-0.75", ("AH Home -1", "AH Home -0.5")),
+        (MarketType.ASIAN_HANDICAP, Side.AWAY, "0.75", ("AH Away +0.5", "AH Away +1")),
+        (MarketType.ASIAN_HANDICAP, Side.AWAY, "-1.25", ("AH Away -1.5", "AH Away -1")),
+        (MarketType.TOTAL_GOALS, Side.OVER, "2.25", ("OU Over 2", "OU Over 2.5")),
+        (MarketType.TOTAL_GOALS, Side.UNDER, "2.75", ("OU Under 2.5", "OU Under 3")),
+    ],
+)
+def test_a_quarter_line_is_two_half_stake_bets(market: MarketType, side: Side, line: str,
+                                               expected: tuple[str, str]) -> None:
+    """A quarter line splits the stake between the two neighbouring half-lines.
+    Returned low first, so the pair is ordered and comparable."""
+    s = Selection(market, side, MarketLine(Decimal(line)))
+    assert s.is_quarter_line and not s.push_possible
+    low, high = s.quarter_components()
+    assert (str(low), str(high)) == expected
+    assert high.line is not None and low.line is not None
+    assert high.line.value - low.line.value == Decimal("0.5")
+
+
+@pytest.mark.parametrize("line", ["0", "-1", "2", "2.5", "-0.5"])
+def test_asking_a_non_quarter_line_for_its_components_is_a_bug(line: str) -> None:
+    s = Selection(MarketType.ASIAN_HANDICAP, Side.HOME, MarketLine(Decimal(line)))
+    with pytest.raises(InvalidSelectionError, match="not a quarter line"):
+        s.quarter_components()
+
+
+@pytest.mark.parametrize(("line", "pushes"), [("0", True), ("-1", True), ("2", True),
+                                              ("-0.5", False), ("-0.25", False), ("0.75", False)])
+def test_only_a_whole_line_can_push(line: str, pushes: bool) -> None:
+    s = Selection(MarketType.ASIAN_HANDICAP, Side.HOME, MarketLine(Decimal(line)))
+    assert s.push_possible is pushes
+
+
+def test_asian_handicap_selections_round_trip_through_storage() -> None:
+    for side, line in ((Side.HOME, "-0.25"), (Side.AWAY, "0.75"), (Side.HOME, "0"),
+                       (Side.AWAY, "-1.25"), (Side.HOME, "-2.5")):
+        s = Selection(MarketType.ASIAN_HANDICAP, side, MarketLine(Decimal(line)))
+        assert Selection.from_storage("AH", s.side.value, s.line_for_storage) == s
 
 
 def test_selections_are_hashable_and_usable_as_keys() -> None:

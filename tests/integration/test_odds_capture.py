@@ -22,6 +22,7 @@ from fbi.odds.capture import OddsCaptureService
 from fbi.odds.repository import OddsRepository
 from fbi.odds.schedule import CapturePlanner, ScheduledFixture
 from fbi.providers.api_football.client import ApiFootballClient
+from fbi.providers.api_football.normalize import INPLAY_BETS, PREMATCH_BETS
 from fbi.providers.api_football.provider import ApiFootballProvider
 from fbi.providers.ratelimit import DailyQuota, TokenBucket
 from tests.integration.conftest import Seed
@@ -31,7 +32,15 @@ KICKOFF = datetime(2026, 9, 15, 19, 0, tzinfo=UTC)
 SECRET = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
 
 
-def odds_body(home: str, draw: str, away: str) -> dict:
+def odds_body(home: str, draw: str, away: str, *, scope: str = "prematch") -> dict:
+    """A 1X2 price list, in the bet namespace of the endpoint that serves it.
+
+    /odds and /odds/live number their bets DIFFERENTLY: the full-match winner is
+    pre-match bet 1 "Match Winner" and in-play bet 59 "Fulltime Result". A live
+    body built with the pre-match id is not a 1X2 body at all, and the boundary
+    is expected to yield nothing from it.
+    """
+    bet = PREMATCH_BETS["1X2"] if scope == "prematch" else INPLAY_BETS["1X2"]
     return {
         "response": [
             {
@@ -42,8 +51,8 @@ def odds_body(home: str, draw: str, away: str) -> dict:
                         "name": "Bet365",
                         "bets": [
                             {
-                                "id": 1,
-                                "name": "Match Winner",
+                                "id": bet.bet_id,
+                                "name": bet.name,
                                 "values": [
                                     {"value": "Home", "odd": home},
                                     {"value": "Draw", "odd": draw},
@@ -186,7 +195,9 @@ async def test_the_near_close_snapshot_is_recorded_without_claiming_to_be_a_clos
     prepared: psycopg.Connection, tmp_path: Path, clock: FrozenClock
 ) -> None:
     clock.advance(minutes=1427)  # T-12: the /odds/live band
-    service, _ = make_service(prepared, tmp_path, lambda _n: odds_body("1.90", "3.70", "4.20"))
+    service, _ = make_service(
+        prepared, tmp_path, lambda _n: odds_body("1.90", "3.70", "4.20", scope="inplay")
+    )
     report = await service.capture([ScheduledFixture(1001, KICKOFF)])
 
     assert report.near_close_written == 3
@@ -286,3 +297,27 @@ async def test_a_capture_computes_the_consensus_of_the_books_it_saw(
         cur.execute("SELECT max(captured_at) FROM market.odds_snapshots")
         assert as_of == scalar(cur), "the consensus is as of the capture, not of the computation"
     assert recompute_from_snapshots(prepared, fixture_ids=[seed.fixture_id]) == (1, 0), "idempotent"
+
+
+async def test_a_live_body_numbered_like_a_prematch_one_yields_nothing(
+    prepared: psycopg.Connection, tmp_path: Path, clock: FrozenClock
+) -> None:
+    """The latent bug, reproduced end to end.
+
+    /odds/live had never run, so nothing had ever exercised the in-play bet
+    namespace. With one shared id map, this body - in-play bet 1, which is
+    "Over/Under Extra Time" - would have been written into the near-close series
+    as a 1X2 price. It must produce no rows at all instead.
+    """
+    clock.advance(minutes=1427)  # T-12: the /odds/live band
+    service, _ = make_service(
+        prepared, tmp_path, lambda _n: odds_body("1.90", "3.70", "4.20", scope="prematch")
+    )
+    report = await service.capture([ScheduledFixture(1001, KICKOFF)])
+
+    assert report.api_calls == 1, "the request was made and the payload was stored"
+    assert report.payloads_stored == 1, "the raw answer is kept whatever we could read from it"
+    assert (report.quotes_seen, report.snapshots_written, report.near_close_written) == (0, 0, 0)
+    with prepared.cursor() as cur:
+        cur.execute("SELECT count(*) FROM market.near_close_snapshots")
+        assert scalar(cur) == 0

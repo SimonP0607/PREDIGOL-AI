@@ -43,6 +43,9 @@ class QualitySnapshot:
     bookmakers_active: int
     bookmakers_seen_24h: int
     markets_tracked: int
+    """Markets we store prices for. Not the same as the markets our models may
+    use: that is markets_model_enabled, and it is deliberately smaller."""
+    markets_model_enabled: int
     markets_seen_24h: int
     snapshots_24h: int
     stale_fixtures: int
@@ -124,6 +127,7 @@ def data_quality_snapshot(
         bookmakers_active = int(_scalar(cur, "SELECT count(*) FROM market.bookmakers WHERE is_active"))
         bookmakers_seen = int(_scalar(cur, "SELECT count(DISTINCT bookmaker_id) FROM market.odds_snapshots WHERE captured_at >= %s", (since,)))
         markets_tracked = int(_scalar(cur, "SELECT count(*) FROM market.markets WHERE is_tracked"))
+        markets_model_enabled = int(_scalar(cur, "SELECT count(*) FROM market.markets WHERE is_model_enabled"))
         markets_seen = int(_scalar(cur, "SELECT count(DISTINCT market_key) FROM market.odds_snapshots WHERE captured_at >= %s", (since,)))
         snapshots_24h = int(_scalar(cur, "SELECT count(*) FROM market.odds_snapshots WHERE captured_at >= %s", (since,)))
         stale = int(_scalar(cur, """
@@ -202,6 +206,7 @@ def data_quality_snapshot(
         bookmakers_active=bookmakers_active,
         bookmakers_seen_24h=bookmakers_seen,
         markets_tracked=markets_tracked,
+        markets_model_enabled=markets_model_enabled,
         markets_seen_24h=markets_seen,
         snapshots_24h=snapshots_24h,
         stale_fixtures=stale,

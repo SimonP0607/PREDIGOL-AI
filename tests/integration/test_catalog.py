@@ -11,6 +11,7 @@ from fbi.catalog import activation, legacy_import
 from fbi.catalog.activation import CompetitionToggle
 from fbi.catalog.legacy_import import CompetitionRow, MigrationReport
 from fbi.core.errors import ConfigError
+from fbi.domain.market import MarketType
 
 ROWS = [
     CompetitionRow(39, "Premier League", "England", "league", "club", "domestic_league", 1.0, 1, 2025, True),
@@ -39,7 +40,7 @@ def test_write_is_idempotent(catalog: psycopg.Connection) -> None:
     legacy_import.write(catalog, ROWS, BOOKS, MigrationReport(dry_run=False))
     assert _count(catalog, "SELECT count(*) FROM core.competitions") == before
     assert _count(catalog, "SELECT count(*) FROM core.competition_seasons WHERE season = 2025") >= 2
-    assert _count(catalog, "SELECT count(*) FROM market.markets") == 4
+    assert _count(catalog, "SELECT count(*) FROM market.markets") == len(MarketType)
 
 
 def test_the_importer_never_activates_anything(catalog: psycopg.Connection) -> None:

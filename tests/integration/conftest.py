@@ -99,8 +99,11 @@ def seed(migrated_database: str) -> Seed:
         )
         bookmaker_id = scalar(cur)
         cur.execute(
+            # Seeded by migration 0025; kept here so the fixture is explicit
+            # about what it depends on and still works if that ever changes.
             "INSERT INTO market.markets (key,name,n_outcomes,has_line,is_exclusive) VALUES "
-            "('1X2','Match Winner',3,false,true),('DC','Double Chance',3,false,false)"
+            "('1X2','Match Winner',3,false,true),('DC','Double Chance',3,false,false) "
+            "ON CONFLICT (key) DO NOTHING"
         )
         cur.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, finished_at) VALUES ('test', 'test_seed', 'completed', now()) RETURNING id")
         run_id = scalar(cur)

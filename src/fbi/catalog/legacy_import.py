@@ -45,12 +45,14 @@ PROVIDER_BET_IDS: dict[MarketType, int] = {
     MarketType.TOTAL_GOALS: 5,
     MarketType.BOTH_TEAMS_TO_SCORE: 8,
     MarketType.DOUBLE_CHANCE: 12,
+    MarketType.ASIAN_HANDICAP: 4,
 }
 MARKET_NAMES: dict[MarketType, str] = {
     MarketType.MATCH_WINNER: "Match Winner",
     MarketType.TOTAL_GOALS: "Goals Over/Under",
     MarketType.BOTH_TEAMS_TO_SCORE: "Both Teams Score",
     MarketType.DOUBLE_CHANCE: "Double Chance",
+    MarketType.ASIAN_HANDICAP: "Asian Handicap",
 }
 
 
@@ -228,13 +230,18 @@ def write(conn: psycopg.Connection, competitions: Sequence[CompetitionRow], book
             "ON CONFLICT (provider_bookmaker_id) DO UPDATE SET name = EXCLUDED.name",
             list(bookmakers),
         )
+        # is_model_enabled is deliberately NOT written here: which markets our
+        # models may use is an operational decision, not a catalogue fact, and
+        # re-importing the catalogue must never quietly enable a market.
         cur.executemany(
-            "INSERT INTO market.markets (key, name, n_outcomes, has_line, is_exclusive, provider_bet_id) "
-            "VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (key) DO UPDATE SET "
+            "INSERT INTO market.markets (key, name, n_outcomes, has_line, is_exclusive, provider_bet_id, "
+            " line_is_signed) VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (key) DO UPDATE SET "
             "name = EXCLUDED.name, n_outcomes = EXCLUDED.n_outcomes, has_line = EXCLUDED.has_line, "
-            "is_exclusive = EXCLUDED.is_exclusive, provider_bet_id = EXCLUDED.provider_bet_id",
+            "is_exclusive = EXCLUDED.is_exclusive, provider_bet_id = EXCLUDED.provider_bet_id, "
+            "line_is_signed = EXCLUDED.line_is_signed",
             [
-                (m.value, MARKET_NAMES[m], m.n_outcomes, m.has_line, m.is_exclusive, PROVIDER_BET_IDS[m])
+                (m.value, MARKET_NAMES[m], m.n_outcomes, m.has_line, m.is_exclusive, PROVIDER_BET_IDS[m],
+                 m.line_is_signed)
                 for m in MarketType
             ],
         )
