@@ -289,12 +289,27 @@ def test_more_offenders_than_the_population_is_refused(db: psycopg.Connection, s
 
 
 def _detail(fixture: int, team: int, values: dict[str, object], unknown: tuple[str, ...] = ()) -> FixtureDetail:
+    """A payload carrying ONLY the statistics block.
+
+    The three blocks it does not carry each raise a MISSING_DETAIL issue, which is
+    the point of recording per-dataset coverage - so the assertions below count by
+    code rather than in total.
+    """
     return FixtureDetail(
         provider_fixture_id=fixture,
         stats=(TeamStatsRef(provider_fixture_id=fixture, provider_team_id=team,
                             values=values, unknown_types=unknown),),  # type: ignore[arg-type]
         events=(), lineups=(), players=(), blocks_present=frozenset({"statistics"}),
     )
+
+
+BLOCKS_ABSENT_FROM_A_STATISTICS_ONLY_PAYLOAD = 3
+
+
+def _by_code(db: psycopg.Connection) -> dict[str, int]:
+    with db.cursor() as cur:
+        cur.execute("SELECT code, count(*) FROM audit.data_quality_issues GROUP BY 1")
+        return {str(c): int(n) for c, n in cur.fetchall()}
 
 
 @pytest.fixture()
@@ -322,7 +337,9 @@ def test_a_contradiction_is_recorded_and_the_null_is_explained(
         db, [_detail(fixture, team, {"shots": 5, "shots_on_target": 7, "corners": 4})],
         payload_hash=seed.payload_hash, fetched_at=FETCHED, run_id=seed.run_id,
     )
-    assert (report.stats_rows, report.issues_opened) == (1, 1)
+    assert report.stats_rows == 1
+    assert _by_code(db) == {"PROVIDER_INCONSISTENCY": 1,
+                            "MISSING_DETAIL": BLOCKS_ABSENT_FROM_A_STATISTICS_ONLY_PAYLOAD}
     with db.cursor() as cur:
         cur.execute("SELECT shots, shots_on_target, corners, dropped_fields FROM core.fixture_team_stats "
                     "WHERE fixture_id = %s AND team_side = 'home'", (seed.fixture_id,))
@@ -342,11 +359,11 @@ def test_a_negative_count_is_recorded_too(
     db: psycopg.Connection, seed: Seed, provider_ids: tuple[int, int]
 ) -> None:
     fixture, team = provider_ids
-    report = apply_fixture_details(
+    apply_fixture_details(
         db, [_detail(fixture, team, {"shots": 9, "corners": -2})],
         payload_hash=seed.payload_hash, fetched_at=FETCHED, run_id=seed.run_id,
     )
-    assert report.issues_opened == 1
+    assert _by_code(db)["PROVIDER_INCONSISTENCY"] == 1
     with db.cursor() as cur:
         cur.execute("SELECT field, observed, detail, dropped_fields FROM audit.data_quality_issues i "
                     "JOIN core.fixture_team_stats s ON s.fixture_id = i.entity_id "
@@ -367,14 +384,14 @@ def test_an_unknown_statistic_type_stops_being_only_a_log_line(
         payload_hash=seed.payload_hash, fetched_at=FETCHED, run_id=seed.run_id,
     )
     assert report.unknown_stat_types == {"Big Chances Created", "Total Duels"}
-    assert report.issues_opened == 2
+    assert _by_code(db)["UNKNOWN_PROVIDER_ENTITY"] == 2
     with db.cursor() as cur:
         cur.execute("SELECT observed FROM audit.data_quality_issues "
                     "WHERE code = 'UNKNOWN_PROVIDER_ENTITY' ORDER BY observed")
         assert [r[0] for r in cur.fetchall()] == ["Big Chances Created", "Total Duels"]
 
 
-def test_a_coherent_payload_records_nothing(
+def test_a_coherent_payload_reports_no_contradiction(
     db: psycopg.Connection, seed: Seed, provider_ids: tuple[int, int]
 ) -> None:
     fixture, team = provider_ids
@@ -383,13 +400,12 @@ def test_a_coherent_payload_records_nothing(
                                      "passes_accurate": 350})],
         payload_hash=seed.payload_hash, fetched_at=FETCHED, run_id=seed.run_id,
     )
-    assert (report.stats_rows, report.issues, report.issues_opened) == (1, [], 0)
+    assert report.stats_rows == 1
+    assert "PROVIDER_INCONSISTENCY" not in _by_code(db)
     with db.cursor() as cur:
         cur.execute("SELECT dropped_fields FROM core.fixture_team_stats WHERE fixture_id = %s",
                     (seed.fixture_id,))
-        assert cur.fetchone() == ([],)
-        cur.execute("SELECT count(*) FROM audit.data_quality_issues")
-        assert cur.fetchone() == (0,)
+        assert cur.fetchone() == ([],), "nothing was dropped, so nothing is named"
 
 
 def test_reapplying_the_same_payload_does_not_inflate_the_count(
@@ -401,5 +417,6 @@ def test_reapplying_the_same_payload_does_not_inflate_the_count(
         apply_fixture_details(db, [detail], payload_hash=seed.payload_hash, fetched_at=FETCHED,
                               run_id=seed.run_id)
     with db.cursor() as cur:
-        cur.execute("SELECT count(*), max(occurrences) FROM audit.data_quality_issues")
-        assert cur.fetchone() == (1, 3), "one problem, three sightings"
+        cur.execute("SELECT count(*), max(occurrences), min(occurrences) FROM audit.data_quality_issues")
+        assert cur.fetchone() == (1 + BLOCKS_ABSENT_FROM_A_STATISTICS_ONLY_PAYLOAD, 3, 3), \
+            "the same problems, three sightings each"

@@ -50,6 +50,7 @@ from fbi.ingestion.details import (
 )
 from fbi.ingestion.fixtures import PLAN_REFUSAL
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.migration.completeness import fixtures_missing_detail
 from fbi.providers.base import FootballDataProvider, RawResponse
 from fbi.providers.quota import read_usage
 
@@ -136,31 +137,54 @@ def add_unit(cur: psycopg.Cursor[Any], *, kind: str, league_id: int, season: int
 
 def expand_detail_batches(conn: psycopg.Connection, *, league_id: int, season: int, priority: int,
                           tier: int | None = None, plan_id: int | None = None) -> int:
-    """Detail units for the finished fixtures of a stored competition-season that
-    no detail unit covers yet, twenty per unit, in kick-off order."""
+    """Detail units for played fixtures whose detail has NEVER been fetched,
+    twenty per unit, in kick-off order.
+
+    What counts as "already handled" used to be the batch keys of
+    ``raw.backfill_tasks``, read regardless of their status - so a unit that was
+    pending, failed or refused counted as covered and was never regenerated, and
+    a season whose fixtures a previous plan had stored got no units at all.
+
+    It is now ``core.fixture_detail_coverage``: a fixture is skipped when a
+    payload has actually been applied for it, and only then. That also keeps the
+    work finite - a dataset the provider does not publish has a row saying so and
+    is not requested again.
+    """
+    todo = fixtures_missing_detail(conn, league_id=league_id, season=season)
+    created = 0
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(
-            "SELECT f.provider_fixture_id FROM core.fixtures f "
-            "JOIN core.competition_seasons cs ON cs.id = f.competition_season_id "
-            "JOIN core.competitions c ON c.id = cs.competition_id "
-            "WHERE c.provider_league_id = %s AND cs.season = %s AND f.status_group = 'finished' "
-            "ORDER BY f.kickoff_at, f.provider_fixture_id",
-            (league_id, season),
-        )
-        ids = [int(r[0]) for r in cur.fetchall()]
-        cur.execute("SELECT batch_key FROM raw.backfill_tasks WHERE kind = 'fixture_details' "
-                    "AND provider_league_id = %s AND season = %s", (league_id, season))
-        covered = {int(x) for (key,) in cur.fetchall() if key for x in str(key).split("-")}
-        todo = [i for i in ids if i not in covered]
-        created = 0
         for k in range(0, len(todo), DETAIL_BATCH):
             batch = sorted(todo[k:k + DETAIL_BATCH])
             key = "-".join(str(i) for i in batch)
-            created += add_unit(cur, kind="fixture_details", league_id=league_id, season=season,
-                                endpoint="/fixtures", params={"ids": key}, priority=priority, tier=tier,
-                                plan_id=plan_id, batch_key=key)
+            if add_unit(cur, kind="fixture_details", league_id=league_id, season=season,
+                        endpoint="/fixtures", params={"ids": key}, priority=priority, tier=tier,
+                        plan_id=plan_id, batch_key=key):
+                created += 1
+                continue
+            created += _revive(cur, kind="fixture_details", league_id=league_id, season=season,
+                               batch_key=key)
     conn.commit()
     return created
+
+
+def _revive(cur: psycopg.Cursor[Any], *, kind: str, league_id: int, season: int,
+            batch_key: str | None) -> int:
+    """Put a retryable unit that failed back in the queue. Returns 1 if it moved.
+
+    Without this, "regenerate what is missing" could not regenerate anything: the
+    unique key already holds a row, so the insert does nothing, and the fixtures
+    stay uncovered for ever. A unit marked ``refused`` is left alone - the
+    provider or the plan said no, and asking again in a loop is how quota is
+    wasted - and so is one already ``pending`` or ``running``.
+    """
+    cur.execute(
+        "UPDATE raw.backfill_tasks SET status = 'pending', started_at = NULL, updated_at = now() "
+        "WHERE kind = %s AND provider_league_id = %s AND season = %s "
+        "  AND coalesce(batch_key, '') = coalesce(%s, '') "
+        "  AND status = 'failed' AND retryable",
+        (kind, league_id, season, batch_key),
+    )
+    return 1 if cur.rowcount == 1 else 0
 
 
 def live_reserve(

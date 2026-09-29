@@ -14,6 +14,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 import psycopg
 from psycopg.rows import tuple_row
@@ -23,18 +24,34 @@ from fbi.providers.api_football.details import (
     AbsenceRef,
     CoverageRef,
     FixtureDetail,
+    LineupRef,
     StandingRef,
 )
 from fbi.quality.issues import (
     EntityType,
+    IssueCode,
     IssueRegistry,
     QualityIssue,
+    Severity,
     inconsistency,
     issues_from,
     unknown_entity,
 )
 
 SOURCE = "api-football"
+
+DATASET_OF_BLOCK: dict[str, str] = {
+    "events": "events",
+    "lineups": "lineups",
+    "statistics": "team_statistics",
+    "players": "player_statistics",
+}
+"""The provider's block names, and what we call the dataset they carry.
+/fixtures?ids= returns all four inline, and a league-season without the matching
+coverage flag simply has no block - which is why what ARRIVED is recorded per
+fixture rather than inferred from an empty table."""
+
+STARTERS_PER_SIDE = 11
 
 TEAM_STAT_COLUMNS = (
     "shots", "shots_on_target", "shots_off_target", "shots_blocked", "shots_inside_box", "shots_outside_box",
@@ -66,6 +83,8 @@ class DetailReport:
     audit.data_quality_issues, never silently dropped."""
     issues_opened: int = 0
     issues_seen_again: int = 0
+    coverage_rows: int = 0
+    """Rows written to core.fixture_detail_coverage: four per fixture, always."""
 
     @property
     def rows(self) -> int:
@@ -180,6 +199,7 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                 report.stale += 1  # a newer payload for this fixture is already applied
                 continue
             report.fixtures += 1
+            delivered: dict[str, int] = dict.fromkeys(DATASET_OF_BLOCK.values(), 0)
             if "statistics" in d.blocks_present:
                 for s in d.stats:
                     side = _side(s.provider_team_id, home, away)
@@ -212,6 +232,7 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                         (fixture_id, side, SOURCE, *vals, payload_hash, fetched_at, dropped),
                     )
                     report.stats_rows += max(cur.rowcount, 0)
+                    delivered["team_statistics"] += 1
             if "events" in d.blocks_present:
                 cur.execute("DELETE FROM core.fixture_events WHERE fixture_id = %s AND source = %s",
                             (fixture_id, SOURCE))
@@ -227,6 +248,7 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                          payload_hash, fetched_at),
                     )
                     report.events += 1
+                    delivered["events"] += 1
             if "lineups" in d.blocks_present:
                 for lu in d.lineups:
                     side = _side(lu.provider_team_id, home, away)
@@ -242,6 +264,7 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                          payload_hash, fetched_at),
                     )
                     report.lineups += 1
+                    delivered["lineups"] += 1
                     cur.execute("DELETE FROM core.fixture_lineup_players WHERE fixture_id = %s AND team_side = %s "
                                 "AND source = %s", (fixture_id, side, SOURCE))
                     seen: set[int] = set()
@@ -257,6 +280,9 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                              p.is_starter),
                         )
                         report.lineup_players += 1
+                    report.issues.extend(_lineup_issues(
+                        lu, side=side, fixture_id=fixture_id, payload_hash=payload_hash, run_id=run_id,
+                    ))
             if "players" in d.blocks_present:
                 for ps in d.players:
                     side = _side(ps.provider_team_id, home, away)
@@ -276,8 +302,79 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                         (fixture_id, SOURCE, ps.provider_player_id, side, ps.name, *vals2, payload_hash, fetched_at),
                     )
                     report.player_rows += max(cur.rowcount, 0)
+                    delivered["player_statistics"] += 1
+            report.coverage_rows += _write_coverage(
+                cur, fixture_id=fixture_id, blocks_present=d.blocks_present, delivered=delivered,
+                payload_hash=payload_hash, fetched_at=fetched_at, report=report, run_id=run_id,
+            )
     _record(conn, report)
     return report
+
+
+def _lineup_issues(lu: LineupRef, *, side: str, fixture_id: int, payload_hash: str,
+                   run_id: int | None) -> list[QualityIssue]:
+    """A line-up short of eleven starters, or missing its formation or coach.
+
+    NOT filled in. Eleven starters is what a line-up means, so fewer is a fact
+    about the provider's payload, recorded with what was actually there.
+    """
+    found: list[QualityIssue] = []
+    starters = sum(1 for p in lu.players if p.is_starter)
+    if starters != STARTERS_PER_SIDE:
+        found.append(QualityIssue(
+            code=IssueCode.INCOMPLETE_LINEUP, entity_type=EntityType.LINEUP,
+            severity=Severity.WARNING, entity_id=fixture_id,
+            provider_entity_id=lu.provider_team_id, payload_hash=payload_hash, run_id=run_id,
+            field="starters", observed=starters, expected=str(STARTERS_PER_SIDE),
+            detail=f"the {side} line-up arrived with {starters} starters and "
+                   f"{len(lu.players) - starters} substitutes; it is stored as received",
+        ))
+    for name, value in (("formation", lu.formation), ("coach_name", lu.coach_name)):
+        if value:
+            continue
+        found.append(QualityIssue(
+            code=IssueCode.INCOMPLETE_LINEUP, entity_type=EntityType.LINEUP,
+            severity=Severity.INFO, entity_id=fixture_id,
+            provider_entity_id=lu.provider_team_id, payload_hash=payload_hash, run_id=run_id,
+            field=name, observed=None, expected="a value",
+            detail=f"the {side} line-up arrived without {name}",
+        ))
+    return found
+
+
+def _write_coverage(cur: psycopg.Cursor[Any], *, fixture_id: int, blocks_present: frozenset[str],
+                    delivered: dict[str, int], payload_hash: str, fetched_at: datetime,
+                    report: DetailReport, run_id: int | None) -> int:
+    """Record what this payload carried for this fixture, block by block.
+
+    Always four rows, including the blocks that did not arrive: that absence is
+    the whole point. A dataset with no row has never been fetched; a dataset with
+    block_present = false has been fetched and is not published, and must not be
+    requested again.
+    """
+    written = 0
+    for block, dataset in DATASET_OF_BLOCK.items():
+        present = block in blocks_present
+        rows = delivered.get(dataset, 0) if present else 0
+        cur.execute(
+            "INSERT INTO core.fixture_detail_coverage (fixture_id, source, dataset, block_present, "
+            " rows_written, payload_hash, fetched_at) VALUES (%s,%s,%s,%s,%s,%s,%s) "
+            "ON CONFLICT (fixture_id, source, dataset) DO UPDATE SET "
+            "  block_present = EXCLUDED.block_present, rows_written = EXCLUDED.rows_written, "
+            "  payload_hash = EXCLUDED.payload_hash, fetched_at = EXCLUDED.fetched_at "
+            "WHERE core.fixture_detail_coverage.fetched_at <= EXCLUDED.fetched_at",
+            (fixture_id, SOURCE, dataset, present, rows, payload_hash, fetched_at),
+        )
+        written += max(cur.rowcount, 0)
+        if not present:
+            report.issues.append(QualityIssue(
+                code=IssueCode.MISSING_DETAIL, entity_type=EntityType.FIXTURE,
+                severity=Severity.WARNING, entity_id=fixture_id, payload_hash=payload_hash,
+                run_id=run_id, field=dataset, observed=None, expected="a block in the payload",
+                detail=f"the payload for this fixture carried no {block} block; recorded so the "
+                       f"planner does not spend quota asking for it again",
+            ))
+    return written
 
 
 def _record(conn: psycopg.Connection, report: DetailReport) -> None:

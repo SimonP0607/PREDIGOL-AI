@@ -57,9 +57,19 @@ class SeedReport:
 
 
 def seed_plan(conn: psycopg.Connection, plan: MigrationPlan, *, plan_id: int | None, current_season: int) -> SeedReport:
-    """Units for everything the plan prices. Detail units are created now for
-    seasons whose fixtures are already stored, and by the fixtures unit
-    otherwise (their ids are not known before it runs). Idempotent."""
+    """Units for everything the plan prices. Idempotent.
+
+    Detail units cannot always be created up front: the fixture ids are not known
+    until the fixtures unit has run. So the fixtures unit carries
+    ``then_details`` and expands them when it completes - AND detail units are
+    expanded here for whatever is already stored.
+
+    Both, not either. The bug this replaces was an ``if/elif``: when the plan
+    priced a fixtures unit, ``add_unit`` was called and the ``elif`` was skipped,
+    so a season whose fixtures a PREVIOUS plan had already stored created nothing
+    (the insert hit ON CONFLICT DO NOTHING) and expanded nothing. 1,893 played
+    fixtures ended up with no detail while every task row said done.
+    """
     report = SeedReport()
 
     def add(kind: str, league: int, season: int, tier: int, params: dict[str, Any], page: int | None = None) -> None:
@@ -83,7 +93,10 @@ def seed_plan(conn: psycopg.Connection, plan: MigrationPlan, *, plan_id: int | N
         base = {"league": s.league_id, "season": s.season}
         if "fixtures_season" in kinds:
             add("fixtures_season", s.league_id, s.season, s.tier, {**base, "then_details": wants_details})
-        elif wants_details:
+        if wants_details:
+            # Whatever is already stored gets its detail units now. Fixtures this
+            # season does not have yet are covered by then_details above, and
+            # expand_detail_batches only ever adds what is not already there.
             report.detail_units += expand_detail_batches(
                 conn, league_id=s.league_id, season=s.season, tier=s.tier, plan_id=plan_id,
                 priority=priority(s.tier, "fixture_details", s.season, current_season))
