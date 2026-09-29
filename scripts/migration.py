@@ -82,7 +82,15 @@ def main() -> int:
     dr.add_argument("--keep", action="store_true")
     run = sub.add_parser("run")
     run.add_argument("--yes", action="store_true")
-    run.add_argument("--max", type=int, default=100)
+    run.add_argument("--max", type=int, default=100, help="requests per chunk")
+    run.add_argument("--until-done", action="store_true",
+                     help="keep running chunks until nothing is pending or a chunk makes no "
+                          "progress; chunks are sequential, never concurrent")
+    run.add_argument("--pause", type=int, default=20,
+                     help="seconds between chunks with --until-done, so the worker's own ticks "
+                          "interleave instead of queueing behind the backfill")
+    run.add_argument("--max-chunks", type=int, default=100,
+                     help="hard stop with --until-done, so a bug cannot loop forever")
     args = parser.parse_args()
 
     if args.cmd == "dry-run":
@@ -148,16 +156,47 @@ def main() -> int:
             from fbi.providers.api_football.build import build_client
 
             async def go() -> None:
+                """Chunks run one after another, never at once.
+
+                run_backfill claims pending units without a lock, so two runners would hand
+                the same unit to both and pay for it twice. The pause between chunks is not
+                politeness either: the worker's odds capture must not queue behind a long
+                backfill, and live capture outranks history.
+                """
                 provider = ApiFootballProvider(build_client())
+                totals = {"attempted": 0, "done": 0, "refused": 0, "failed": 0, "rows": 0,
+                          "created": 0, "chunks": 0}
                 try:
-                    rep = await run_backfill(conn, provider, max_requests=args.max,
-                                             daily_budget=settings.provider_plan.effective_budget,
-                                             prematch_windows=settings.odds.prematch_windows)
+                    while True:
+                        rep = await run_backfill(conn, provider, max_requests=args.max,
+                                                 daily_budget=settings.provider_plan.effective_budget,
+                                                 prematch_windows=settings.odds.prematch_windows)
+                        totals["chunks"] += 1
+                        for key, value in (("attempted", rep.attempted), ("done", rep.done),
+                                           ("refused", rep.refused), ("failed", rep.failed),
+                                           ("rows", rep.rows_written), ("created", rep.units_created)):
+                            totals[key] += value
+                        print(f"chunk {totals['chunks']}: allowance {rep.allowance} "
+                              f"(reserve {rep.reserve}); attempted {rep.attempted}: done {rep.done}, "
+                              f"refused {rep.refused}, failed {rep.failed}; rows {rep.rows_written}; "
+                              f"new units {rep.units_created}; {rep.deferred_reason or ''}", flush=True)
+                        if not args.until_done:
+                            break
+                        if rep.attempted == 0:
+                            # Nothing pending, or the live reserve is holding the allowance at
+                            # zero. Either way another chunk would do the same thing.
+                            print(f"stopping: {rep.deferred_reason or 'no unit was attempted'}")
+                            break
+                        if totals["chunks"] >= args.max_chunks:
+                            print(f"stopping: reached --max-chunks {args.max_chunks}")
+                            break
+                        await asyncio.sleep(args.pause)
                 finally:
                     await provider.aclose()
-                print(f"allowance {rep.allowance} (reserve {rep.reserve}); attempted {rep.attempted}: "
-                      f"done {rep.done}, refused {rep.refused}, failed {rep.failed}; rows {rep.rows_written}; "
-                      f"new units {rep.units_created}; {rep.deferred_reason or ''}")
+                if args.until_done:
+                    print(f"total over {totals['chunks']} chunk(s): done {totals['done']}, "
+                          f"refused {totals['refused']}, failed {totals['failed']}, "
+                          f"rows {totals['rows']}, new units {totals['created']}")
 
             asyncio.run(go())
             return 0
