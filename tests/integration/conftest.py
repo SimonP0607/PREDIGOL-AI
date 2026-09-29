@@ -34,11 +34,13 @@ def _admin_url() -> str:
     explicit = os.environ.get("FBI_TEST_ADMIN_URL")
     if explicit:
         return explicit
-    configured = os.environ.get("FBI_DATABASE_URL")
-    if configured:
-        head, _, _ = configured.rpartition("/")
-        return f"{head}/postgres".replace("postgresql+psycopg://", "postgresql://")
-    return "postgresql://postgres:fbi_local_dev@127.0.0.1:5433/postgres"
+    # From the project's own settings, not os.environ: FBI_DATABASE_URL usually
+    # lives in .env, which pydantic-settings reads and the process environment does
+    # not. Reading os.environ alone is why the first attempt at this still failed.
+    from fbi.core.config import settings
+
+    head, _, _ = settings.database.psycopg_url.rpartition("/")
+    return f"{head}/postgres".replace("postgresql+psycopg://", "postgresql://")
 
 
 ADMIN_URL = _admin_url()
