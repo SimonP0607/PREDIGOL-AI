@@ -41,6 +41,8 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.catalog.scopes import FRIENDLY_LEAGUES
+
 MIN_FULL_DETAIL_SEASONS = 3
 """Below this a competition cannot support a model, and requesting it spends quota
 for a scoreline. Measured: 150 leagues have at least one such season, 124 have
@@ -55,6 +57,20 @@ TIER_BANDS: tuple[tuple[int, int, str], ...] = (
 REFERENCE_SET: frozenset[int] = frozenset({39, 140, 78, 135, 61, 2})
 """Tier 1, already migrated. Kept as tier 1 whatever the bands would say, because
 the rest of the platform is calibrated against it."""
+
+NO_HISTORY_WORTH_KEEPING: frozenset[int] = FRIENDLY_LEAGUES
+"""Competitions kept for their live prices but never backfilled.
+
+Friendlies clear the coverage bar easily - the provider records events, line-ups and both
+statistics blocks for them - and on the current season alone they are among the largest
+competitions on the account: 116 fixtures for Friendlies, 97 for Friendlies Clubs. Nine
+seasons of that is roughly a thousand fixtures whose results say nothing about strength,
+sitting in the same tables every feature computation reads. The mandate's own words are
+not to add competitions for the count.
+
+They stay tracked, because their odds are real markets and a pre-match window cannot be
+recovered. What is dropped is their history.
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +91,8 @@ class Candidate:
     @property
     def tier(self) -> int | None:
         """None means evaluated and excluded."""
+        if self.provider_league_id in NO_HISTORY_WORTH_KEEPING:
+            return None
         if self.provider_league_id in REFERENCE_SET:
             return 1
         for tier, threshold, _why in TIER_BANDS:
@@ -84,6 +102,10 @@ class Candidate:
 
     @property
     def reason(self) -> str:
+        if self.provider_league_id in NO_HISTORY_WORTH_KEEPING:
+            return (f"excluded from history: a friendly result says nothing about strength, and "
+                    f"{self.seasons_listed} season(s) of it would sit in every feature "
+                    "computation - still tracked for its odds")
         if self.provider_league_id in REFERENCE_SET:
             return "reference set: the platform is calibrated against it"
         for tier, threshold, why in TIER_BANDS:

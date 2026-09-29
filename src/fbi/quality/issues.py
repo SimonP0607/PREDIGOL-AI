@@ -70,6 +70,7 @@ class EntityType(StrEnum):
     PLAYER = "player"
     COACH = "coach"
     VENUE = "venue"
+    COMPETITION = "competition"
     LEAGUE_SEASON = "league_season"
     ODDS_SNAPSHOT = "odds_snapshot"
     BOOKMAKER = "bookmaker"
