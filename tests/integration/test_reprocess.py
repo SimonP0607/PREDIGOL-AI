@@ -236,3 +236,80 @@ def test_a_tampered_file_is_refused(db: psycopg.Connection, seed: Seed, raw_root
     with db.cursor() as cur:
         cur.execute("SELECT count(*) FROM core.fixture_detail_coverage")
         assert cur.fetchone() == (0,), "nothing derived from bytes that are not the provider's"
+
+
+# ── the same bytes fetched twice ────────────────────────────────────────────
+
+
+def test_a_payload_fetched_twice_keeps_its_first_index_time(
+    db: psycopg.Connection, seed: Seed, raw_root: Path, fixture_83000: int
+) -> None:
+    """The failure that hid 1,809 fixtures' detail.
+
+    PayloadStore stores identical bodies once and the index keeps the FIRST fetch.
+    A writer given the SECOND fetch time produces rows newer than their own
+    payload, and replaying that payload then reads as stale - so the monotonic
+    writers refuse it, correctly, and the coverage row is never written.
+    """
+    from fbi.ingestion.ledger import RunLedger
+
+    body = detail_body(83000, blocks={"statistics", "events"})
+    first = _store(db, seed, raw_root, body, ids="83000", fetched_at=FETCHED)
+    second = _store(db, seed, raw_root, body, ids="83000", fetched_at=FETCHED + timedelta(minutes=8))
+    assert first == second, "the same bytes are one payload"
+
+    with db.cursor() as cur:
+        cur.execute("SELECT fetched_at FROM raw.ingestion_payloads WHERE hash = %s", (first,))
+        row = cur.fetchone()
+    assert row is not None and row[0] == FETCHED, "the index keeps the first fetch"
+    assert RunLedger(db).indexed_at(first) == FETCHED, \
+        "and a writer can ask for it instead of using the time it happens to hold"
+
+
+def test_coverage_is_derived_for_detail_that_is_already_stored(
+    db: psycopg.Connection, seed: Seed, raw_root: Path, fixture_83000: int
+) -> None:
+    """A fixture with detail and no coverage row must not be requested again.
+
+    This is the state 1,809 fixtures were in: events, line-ups, team and player
+    statistics all present, and the replay of their payload refused as stale.
+    """
+    from fbi.ops.reprocess import derive_coverage_from_stored_detail
+
+    _store(db, seed, raw_root, detail_body(83000, blocks={"statistics", "events"}),
+           ids="83000", fetched_at=FETCHED)
+    reprocess_fixture_details(db, raw_root, apply=True)
+    # Simulate the real state: the rows are there, the coverage rows are not.
+    db.execute("DELETE FROM core.fixture_detail_coverage WHERE fixture_id = %s", (fixture_83000,))
+    db.commit()
+    assert fixtures_missing_detail(db, league_id=LEAGUE, season=SEASON) == [83000]
+
+    written = derive_coverage_from_stored_detail(db)
+    assert written["events"] == 1 and written["team_statistics"] == 1
+    assert fixtures_missing_detail(db, league_id=LEAGUE, season=SEASON) == []
+    with db.cursor() as cur:
+        cur.execute("SELECT dataset, block_present, rows_written, payload_hash IS NOT NULL, "
+                    "       fetched_at IS NOT NULL FROM core.fixture_detail_coverage "
+                    "WHERE fixture_id = %s ORDER BY dataset", (fixture_83000,))
+        rows = cur.fetchall()
+    assert rows == [("events", True, 1, True, True), ("team_statistics", True, 1, True, True)]
+    assert all(r[3] and r[4] for r in rows), \
+        "derived from the rows' own provenance: no timestamp invented, nothing backdated"
+
+
+def test_deriving_never_overwrites_what_a_replay_established(
+    db: psycopg.Connection, seed: Seed, raw_root: Path, fixture_83000: int
+) -> None:
+    """A replayed payload knows something deriving cannot: which blocks were ABSENT.
+    That knowledge must survive."""
+    from fbi.ops.reprocess import derive_coverage_from_stored_detail
+
+    _store(db, seed, raw_root, detail_body(83000, blocks={"statistics"}), ids="83000",
+           fetched_at=FETCHED)
+    reprocess_fixture_details(db, raw_root, apply=True)
+    derive_coverage_from_stored_detail(db)
+    with db.cursor() as cur:
+        cur.execute("SELECT dataset, block_present FROM core.fixture_detail_coverage "
+                    "WHERE fixture_id = %s ORDER BY dataset", (fixture_83000,))
+        assert cur.fetchall() == [("events", False), ("lineups", False),
+                                  ("player_statistics", False), ("team_statistics", True)]

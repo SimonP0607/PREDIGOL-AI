@@ -158,3 +158,56 @@ def reprocess_fixture_details(
     if not apply:
         conn.rollback()
     return report
+
+
+# ── coverage from what is already normalized ─────────────────────────────────
+
+DATASET_SOURCES: tuple[tuple[str, str], ...] = (
+    ("events", "core.fixture_events"),
+    ("lineups", "core.fixture_lineups"),
+    ("team_statistics", "core.fixture_team_stats"),
+    ("player_statistics", "core.fixture_player_stats"),
+)
+
+DERIVE = """
+INSERT INTO core.fixture_detail_coverage
+    (fixture_id, source, dataset, block_present, rows_written, payload_hash, fetched_at)
+SELECT d.fixture_id, %(source)s, %(dataset)s, true, d.rows_written, d.payload_hash, d.fetched_at
+  FROM (
+    SELECT fixture_id,
+           count(*)                                            AS rows_written,
+           (array_agg(payload_hash ORDER BY fetched_at DESC))[1] AS payload_hash,
+           max(fetched_at)                                      AS fetched_at
+      FROM {table}
+     WHERE source = %(source)s
+     GROUP BY fixture_id
+  ) AS d
+ON CONFLICT (fixture_id, source, dataset) DO NOTHING
+"""
+
+
+def derive_coverage_from_stored_detail(conn: psycopg.Connection, *, source: str = "api-football") -> dict[str, int]:
+    """Fill coverage for fixtures whose detail is already normalized.
+
+    Why this is needed as well as replaying payloads: ``PayloadStore`` deduplicates
+    identical bodies, so a payload fetched twice keeps the FIRST fetch time in the
+    index while the rows derived from the second carry the later one. Replaying the
+    indexed payload then looks stale - the writers refuse to go backwards, which is
+    right - and 1,809 fixtures that DO have events, line-ups, team statistics and
+    player statistics were left with no coverage row and would have been requested
+    again.
+
+    So coverage is also derived from the normalized rows themselves. Each detail
+    table carries its own ``payload_hash`` and ``fetched_at``, so the provenance is
+    real: no timestamp is invented and nothing is backdated. Existing coverage rows
+    are never overwritten, because a row written from a replayed payload knows
+    something this cannot - which blocks were ABSENT.
+    """
+    written: dict[str, int] = {}
+    with conn.cursor() as cur:
+        for dataset, table in DATASET_SOURCES:
+            cur.execute(DERIVE.format(table=table), {"source": source, "dataset": dataset})
+            written[dataset] = max(cur.rowcount, 0)
+    conn.commit()
+    log.info("reprocess.coverage_derived", **written)
+    return written

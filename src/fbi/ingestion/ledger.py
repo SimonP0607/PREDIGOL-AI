@@ -118,6 +118,22 @@ class RunLedger:
             )
         return len(raws)
 
+    def indexed_at(self, payload_hash: str) -> datetime | None:
+        """The ``fetched_at`` the INDEX holds for a payload, which is not always the
+        one the caller has.
+
+        ``PayloadStore`` deduplicates identical bodies and the index keeps the first
+        fetch, so a payload fetched twice leaves the caller holding the second time.
+        Writing that later time onto the derived rows makes a row newer than its own
+        payload - and made 1,809 fixtures' detail look absent, because replaying the
+        indexed payload then reads as stale and the monotonic writers refuse it,
+        correctly. Writers should use this instead of the response's own time.
+        """
+        with self._conn.cursor() as cur:
+            cur.execute("SELECT fetched_at FROM raw.ingestion_payloads WHERE hash = %s", (payload_hash,))
+            row = cur.fetchone()
+        return row[0] if row and isinstance(row[0], datetime) else None
+
     def close(self, run_id: int, counters: RunCounters, *, notes: str | None = None) -> None:
         """Write the outcome. Called while an exception is propagating - the usual
         ``finally:`` close - the run records that exception, so a crash is never

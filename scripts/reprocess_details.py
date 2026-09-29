@@ -24,7 +24,7 @@ import psycopg
 
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
-from fbi.ops.reprocess import reprocess_fixture_details
+from fbi.ops.reprocess import derive_coverage_from_stored_detail, reprocess_fixture_details
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -42,11 +42,25 @@ def main() -> int:
     parser.add_argument("--limit", type=int)
     parser.add_argument("--skip-hash-check", action="store_true",
                         help="faster, and gives up the guarantee that the bytes are unchanged")
+    parser.add_argument("--derive-only", action="store_true",
+                        help="skip the replay; only fill coverage from detail already normalized")
     args = parser.parse_args()
+
+    if args.derive_only:
+        if not args.apply:
+            print("--derive-only writes rows: add --apply")
+            return 2
+        with psycopg.connect(settings.database.psycopg_url) as conn:
+            written = derive_coverage_from_stored_detail(conn)
+        total = sum(written.values())
+        print(f"{total} coverage row(s) derived from detail already normalized: "
+              + ", ".join(f"{k} {v}" for k, v in written.items()))
+        return 0
 
     with psycopg.connect(settings.database.psycopg_url) as conn:
         report = reprocess_fixture_details(conn, _raw_root(), apply=args.apply, limit=args.limit,
                                            verify_hashes=not args.skip_hash_check)
+        derived = derive_coverage_from_stored_detail(conn) if args.apply else {}
 
     print(f"{report.payloads_seen} detail payload(s) in the raw index, {report.payloads_applied} usable")
     if report.payloads_missing_file or report.payloads_not_rehashing:
@@ -60,6 +74,9 @@ def main() -> int:
     print(f"fixtures touched {report.fixtures_touched}, coverage rows {report.coverage_rows}, "
           f"issues opened {report.issues_opened} (+{report.issues_seen_again} seen again), "
           f"stale skips {report.skipped_stale}")
+    if derived:
+        print(f"{sum(derived.values())} further coverage row(s) derived from detail already normalized "
+              "(a payload fetched twice keeps its first index time, so its replay reads as stale)")
     return 1 if report.payloads_missing_file or report.payloads_not_rehashing else 0
 
 

@@ -329,8 +329,13 @@ async def _execute(conn: psycopg.Connection, provider: Any, ledger: RunLedger, r
         ids = [int(x) for x in str(task.batch_key or "").split("-") if x]
         details, raw = await provider.fetch_fixture_details(provider_fixture_ids=ids)
         stored(raw)
+        # The INDEX's time, not the response's. Identical bytes are stored once and
+        # keep their first fetch time, so using the response's later time would make
+        # these rows newer than the payload they name - which is what left 1,809
+        # fixtures looking as though they had no detail at all.
+        observed_at = ledger.indexed_at(raw.payload_hash) or raw.fetched_at
         rep = apply_fixture_details(conn, details, payload_hash=raw.payload_hash,
-                                    fetched_at=raw.fetched_at, run_id=run_id)
+                                    fetched_at=observed_at, run_id=run_id)
         counters.rows_normalized += rep.fixtures
         counters.rows_inserted += rep.rows
         if rep.unknown_stat_types:
