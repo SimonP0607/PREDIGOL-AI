@@ -104,3 +104,56 @@ def lineage_gaps(conn: Conn) -> Row:
     """)
     assert r is not None
     return r
+
+
+REGISTERED_ISSUES = """
+SELECT id, code, severity, entity_type, entity_id, provider, provider_entity_id,
+       field AS field_name, observed, expected, detail, payload_hash, occurrences, status,
+       detected_at, last_seen_at
+  FROM audit.data_quality_issues
+ WHERE (%(code)s::text IS NULL OR code = %(code)s)
+   AND (%(status)s::text IS NULL OR status = %(status)s)
+   AND (NOT %(open_only)s OR status IN ('open','acknowledged'))
+ ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'error' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END,
+          last_seen_at DESC
+ LIMIT %(limit)s
+"""
+
+ISSUE_SUMMARY = """
+SELECT code, code_name, is_provider_fact, severity, entity_type, issues, occurrences,
+       first_detected_at, last_seen_at
+  FROM audit.open_quality_issues
+ ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'error' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END,
+          issues DESC
+"""
+
+CHECK_RUNS = """
+SELECT id, check_name, scope, severity, passed, population, offenders, issues_opened, checked_at,
+       CASE WHEN population IS NULL OR population = 0 OR offenders IS NULL THEN NULL
+            ELSE round(offenders::numeric / population, 6)::float8 END AS ratio
+  FROM audit.data_quality_checks
+ ORDER BY checked_at DESC
+ LIMIT %(limit)s
+"""
+
+QUOTA_TODAY = """
+SELECT quota_date, spent, budget, GREATEST(0, budget - spent) AS remaining, updated_at,
+       CASE WHEN budget = 0 THEN NULL ELSE round(spent::numeric / budget, 6)::float8 END AS used_fraction
+  FROM raw.provider_quota
+ WHERE provider = %(provider)s
+ ORDER BY quota_date DESC
+ LIMIT 1
+"""
+
+PROVIDER_FACTS = """
+SELECT (SELECT coalesce(sum(spent), 0) FROM raw.provider_quota
+         WHERE provider = %(provider)s AND quota_date >= current_date - 6) AS last_7_days_spent,
+       (SELECT count(*) FROM raw.ingestion_payloads) AS payloads_stored,
+       (SELECT max(fetched_at) FROM raw.ingestion_payloads) AS newest_payload_at,
+       (SELECT count(DISTINCT endpoint) FROM raw.ingestion_payloads) AS endpoints_seen,
+       (SELECT count(*) FROM market.provider_markets) AS provider_markets_known,
+       (SELECT count(*) FROM market.provider_markets WHERE market_key IS NOT NULL)
+           AS provider_markets_mapped,
+       (SELECT count(*) FROM market.provider_markets WHERE source = 'observed')
+           AS provider_markets_observed_only
+"""

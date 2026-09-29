@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import Field
@@ -141,3 +141,93 @@ class JobHealth(Contract):
     last_error: str | None
     mean_duration_ms: int | None
     next_run_at: datetime | None = Field(description="From the worker's last heartbeat; null for manual jobs.")
+
+
+class RegisteredIssue(Contract):
+    """One row of audit.data_quality_issues - the registry, not a derived summary.
+
+    Read-only and secret-free by construction: the fields are ids, a field name, an
+    observed value and a sentence. `payload_hash` is a hash, and the params of the
+    request it names are sanitised at the source.
+    """
+
+    id: int
+    code: str
+    severity: Literal["info", "warning", "error", "critical"]
+    entity_type: str
+    entity_id: int | None
+    provider: str
+    provider_entity_id: int | None
+    field_name: str | None
+    observed: str | None
+    expected: str | None
+    detail: str | None
+    payload_hash: str | None
+    occurrences: int
+    status: str
+    detected_at: datetime
+    last_seen_at: datetime
+
+
+class IssueSummaryRow(Contract):
+    """Issues and occurrences counted separately: fifteen line-ups seen three times
+    each are fifteen problems, not forty-five."""
+
+    code: str
+    code_name: str
+    is_provider_fact: bool
+    severity: str
+    entity_type: str
+    issues: int
+    occurrences: int
+    first_detected_at: datetime
+    last_seen_at: datetime
+
+
+class CheckRun(Contract):
+    """One execution of one data-quality check, WITH the denominator it ran against.
+
+    `population` is null when the check spans more than one population - two of the
+    seven do - and `ratio` is then null as well rather than an invented figure.
+    """
+
+    id: int
+    check_name: str
+    scope: str
+    severity: str
+    passed: bool
+    population: int | None
+    offenders: int | None
+    issues_opened: int
+    ratio: float | None
+    checked_at: datetime
+
+
+class QuotaDay(Contract):
+    """What we spent against the provider on one day, and the guard we set."""
+
+    quota_date: date
+    spent: int
+    budget: int
+    remaining: int
+    used_fraction: float | None
+    updated_at: datetime
+
+
+class ProviderStatus(Contract):
+    """Read-only provider posture. No credential is exposed, and none is read."""
+
+    provider: str
+    daily_guard: int
+    """Our own budget, below the plan's limit. The guard is data about the posture,
+    not metadata about the response."""
+    today: QuotaDay | None
+    last_7_days_spent: int
+    payloads_stored: int
+    newest_payload_at: datetime | None
+    endpoints_seen: int
+    provider_markets_known: int
+    provider_markets_mapped: int
+    provider_markets_observed_only: int
+    """Bets that turned up in a payload and were never in the catalogue: the signal
+    that the provider's own list moved."""

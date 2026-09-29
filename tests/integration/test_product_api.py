@@ -16,6 +16,7 @@ answering 0.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -470,3 +471,66 @@ def test_job_health_summarises_the_ledger(client: TestClient) -> None:
     assert body["status"] in ("ok", "empty")
     for j in body["data"]:
         assert j["runs_24h"] >= j["failed_24h"] >= 0 and j["job_type"] != "unspecified"
+
+
+# ── the read-only operational surface ───────────────────────────────────────
+
+
+def test_the_registry_is_readable_and_says_nothing_secret(
+    client: TestClient, dataset: dict[str, int]
+) -> None:
+    """The recorded issues, with their provenance, over a read-only connection.
+
+    Distinct from /data-quality/issues, which derives problems on every call: this
+    one shows what was RECORDED, including an issue that was resolved and why.
+    """
+    body = get(client, "/api/v1/data-quality/registry")
+    assert body["status"] in {"ok", "empty"}
+    assert isinstance(body["data"], list)
+    for issue in body["data"]:
+        assert set(issue) >= {"code", "severity", "entity_type", "occurrences", "status",
+                              "detected_at", "last_seen_at"}
+        text = json.dumps(issue).lower()
+        for forbidden in ("apisports", "authorization", "bearer ", "api_key", "password"):
+            assert forbidden not in text
+
+    summary = get(client, "/api/v1/data-quality/registry/summary")
+    assert summary["status"] in {"ok", "empty"}
+    filtered = get(client, "/api/v1/data-quality/registry?code=RESULT_UNRESOLVED&limit=5")
+    assert all(i["code"] == "RESULT_UNRESOLVED" for i in filtered["data"])
+
+
+def test_a_check_run_reports_its_denominator_or_none(client: TestClient,
+                                                     dataset: dict[str, int]) -> None:
+    body = get(client, "/api/v1/data-quality/checks")
+    assert body["status"] in {"ok", "empty"}
+    for run in body["data"]:
+        assert set(run) >= {"check_name", "population", "offenders", "ratio", "passed"}
+        if run["population"] is None:
+            assert run["ratio"] is None, "no denominator, no ratio"
+        elif run["offenders"] is not None:
+            assert run["offenders"] <= run["population"]
+
+
+def test_provider_status_shows_the_quota_and_the_catalogue_without_a_credential(
+    client: TestClient, dataset: dict[str, int]
+) -> None:
+    body = get(client, "/api/v1/provider")
+    data = body["data"]
+    assert data["provider"] == "api_football"
+    assert data["payloads_stored"] >= 1
+    assert data["provider_markets_known"] >= data["provider_markets_mapped"] >= 0
+    assert data["daily_guard"] >= 1
+    text = json.dumps(body).lower()
+    for forbidden in ("apisports", "authorization", "bearer ", "api_key", "password", "secret"):
+        assert forbidden not in text
+    if data["today"] is not None:
+        assert data["today"]["remaining"] >= 0
+        assert data["today"]["spent"] >= 0
+
+
+def test_the_operational_endpoints_cannot_write(client: TestClient, dataset: dict[str, int]) -> None:
+    """They run on the read-only connection like every other route; a POST is simply
+    not routed."""
+    for path in ("/api/v1/data-quality/registry", "/api/v1/data-quality/checks", "/api/v1/provider"):
+        assert client.post(path).status_code in {404, 405}

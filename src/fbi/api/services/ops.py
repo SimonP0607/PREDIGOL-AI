@@ -9,20 +9,25 @@ import psycopg
 
 from fbi.api.contracts.common import RunSummary
 from fbi.api.contracts.ops import (
+    CheckRun,
     ComponentHealth,
     CoverageRow,
     DatabaseStats,
     FixtureCounts,
     Freshness,
+    IssueSummaryRow,
     Overview,
     ProviderState,
+    ProviderStatus,
     QualityIssue,
     QualityReport,
+    QuotaDay,
+    RegisteredIssue,
     SystemHealth,
     WorkerState,
 )
 from fbi.api.envelope import DataStatus, Envelope, Section, listing, ok, section
-from fbi.api.repositories import Conn
+from fbi.api.repositories import Conn, fetch_all
 from fbi.api.repositories import fixtures as fixtures_repo
 from fbi.api.repositories import ops as repo
 from fbi.api.services.matches import summary
@@ -172,3 +177,58 @@ def issues(conn: Conn) -> Envelope[list[QualityIssue]]:
     order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
     found.sort(key=lambda i: (order[i.severity], i.key))
     return listing(found, empty_reason="No data-quality issue detected.")
+
+
+# ── the registry, as stored ──────────────────────────────────────────────────
+
+QUOTA_PROVIDER = "api_football"
+
+
+def registered_issues(conn: Conn, *, code: str | None = None, status: str | None = None,
+                      open_only: bool = True, limit: int = 100) -> Envelope[list[RegisteredIssue]]:
+    """audit.data_quality_issues as it is stored.
+
+    Distinct from ``issues`` above, which derives problems from the data on every
+    call. Both are useful and they answer different questions: that one says what is
+    wrong NOW, this one says what we have RECORDED, with the payload each was read
+    from and how many times it has been seen. Nothing here has been repaired.
+    """
+    rows = fetch_all(conn, repo.REGISTERED_ISSUES,
+                     {"code": code, "status": status, "open_only": open_only, "limit": limit})
+    return listing(
+        [RegisteredIssue(**row) for row in rows],
+        empty_reason="No data-quality issue has been recorded yet. Run scripts.quality_sweep.",
+    )
+
+
+def issue_summary(conn: Conn) -> Envelope[list[IssueSummaryRow]]:
+    """Issues and occurrences counted separately: fifteen line-ups seen three times
+    each are fifteen problems, not forty-five. ``is_provider_fact`` separates a fact
+    about the provider's data, which we record and do not fix, from a fault of ours.
+    """
+    rows = fetch_all(conn, repo.ISSUE_SUMMARY, {})
+    return listing([IssueSummaryRow(**row) for row in rows],
+                   empty_reason="No open data-quality issues.")
+
+
+def check_runs(conn: Conn, *, limit: int = 50) -> Envelope[list[CheckRun]]:
+    """Each run records the population it ran against. Where a check spans more than
+    one population it reports null rather than picking one, and the ratio is null as
+    well: a figure over the wrong denominator is worse than no figure.
+    """
+    rows = fetch_all(conn, repo.CHECK_RUNS, {"limit": limit})
+    return listing([CheckRun(**row) for row in rows],
+                   empty_reason="No data-quality check has run yet.")
+
+
+def provider_status(conn: Conn) -> Envelope[ProviderStatus]:
+    """Provider posture, read-only. No credential is exposed, and none is read."""
+    quota_rows = fetch_all(conn, repo.QUOTA_TODAY, {"provider": QUOTA_PROVIDER})
+    facts = fetch_all(conn, repo.PROVIDER_FACTS, {"provider": QUOTA_PROVIDER})[0]
+    today = QuotaDay(**quota_rows[0]) if quota_rows else None
+    return ok(ProviderStatus(
+        provider=QUOTA_PROVIDER,
+        daily_guard=settings.provider_plan.effective_budget,
+        today=today,
+        **facts,
+    ))

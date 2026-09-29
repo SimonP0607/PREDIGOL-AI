@@ -8,11 +8,15 @@ from fastapi import APIRouter, Depends, Query, Response
 from fbi.api.contracts.common import RunSummary
 from fbi.api.contracts.notify import NotificationRow, NotificationsOverview
 from fbi.api.contracts.ops import (
+    CheckRun,
     CoverageRow,
+    IssueSummaryRow,
     JobHealth,
     Overview,
+    ProviderStatus,
     QualityIssue,
     QualityReport,
+    RegisteredIssue,
     SystemHealth,
 )
 from fbi.api.deps import get_db, read_only_connection
@@ -68,6 +72,41 @@ def get_coverage(conn: Db) -> Envelope[list[CoverageRow]]:
 @router.get("/data-quality/issues", response_model=Envelope[list[QualityIssue]])
 def get_issues(conn: Db) -> Envelope[list[QualityIssue]]:
     return ops.issues(conn)
+
+
+@router.get("/data-quality/registry", response_model=Envelope[list[RegisteredIssue]])
+def get_registered_issues(
+    conn: Db,
+    code: Annotated[str | None, Query()] = None,
+    status: Annotated[str | None, Query()] = None,
+    open_only: Annotated[bool, Query()] = True,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> Envelope[list[RegisteredIssue]]:
+    """audit.data_quality_issues as stored: what we RECORDED, with its provenance.
+
+    /data-quality/issues derives problems from the data on every call. This reads the
+    registry, so an issue that was seen, recorded and then resolved is still visible
+    with the reason it was closed.
+    """
+    return ops.registered_issues(conn, code=code, status=status, open_only=open_only, limit=limit)
+
+
+@router.get("/data-quality/registry/summary", response_model=Envelope[list[IssueSummaryRow]])
+def get_issue_summary(conn: Db) -> Envelope[list[IssueSummaryRow]]:
+    return ops.issue_summary(conn)
+
+
+@router.get("/data-quality/checks", response_model=Envelope[list[CheckRun]])
+def get_check_runs(conn: Db,
+                   limit: Annotated[int, Query(ge=1, le=200)] = 50) -> Envelope[list[CheckRun]]:
+    """Every check run, with the denominator it ran against."""
+    return ops.check_runs(conn, limit=limit)
+
+
+@router.get("/provider", response_model=Envelope[ProviderStatus])
+def get_provider_status(conn: Db) -> Envelope[ProviderStatus]:
+    """Quota, raw store and provider catalogue. No credential is exposed or read."""
+    return ops.provider_status(conn)
 
 
 @router.get("/notifications", response_model=Envelope[NotificationsOverview])
