@@ -22,6 +22,7 @@ import psycopg
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.ingestion.fixtures import SyncStrategy, active_seasons, sync_fixtures
+from fbi.odds.horizons import DEFAULT_HORIZON_DAYS
 from fbi.providers.api_football import ApiFootballProvider
 from fbi.providers.api_football.build import build_client
 
@@ -66,7 +67,10 @@ async def _main(horizon_days: int, yes: bool, strategy: SyncStrategy) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="sync_fixtures", description=__doc__)
-    parser.add_argument("--horizon-days", type=int, default=7)
+    parser.add_argument("--horizon-days", type=int, default=DEFAULT_HORIZON_DAYS,
+                        help=f"default {DEFAULT_HORIZON_DAYS}: prices were measured at "
+                             "T-18.2 days, and under --strategy league a wider horizon "
+                             "costs nothing")
     parser.add_argument("--yes", action="store_true", help="actually spend the requests")
     parser.add_argument(
         "--strategy",

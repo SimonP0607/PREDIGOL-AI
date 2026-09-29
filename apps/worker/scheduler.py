@@ -46,6 +46,7 @@ from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.core.logging import new_run_id
 from fbi.core.version import code_version
+from fbi.odds.horizons import DEFAULT_HORIZON_DAYS
 from fbi.odds.partitions import ensure_partitions
 from fbi.ops.heartbeat import (
     HeartbeatWriter,
@@ -65,7 +66,15 @@ log = structlog.get_logger("worker")
 PAID_PLAN = settings.provider_plan.plan != "free"
 TICK_MINUTES = int(os.environ.get("FBI_ODDS_TICK_MINUTES", "15"))
 FIXTURES_SYNC_HOURS = int(os.environ.get("FBI_FIXTURES_SYNC_HOURS", "12"))
-FIXTURES_HORIZON_DAYS = int(os.environ.get("FBI_FIXTURES_HORIZON_DAYS", "4" if PAID_PLAN else "1"))
+FIXTURES_HORIZON_DAYS = int(os.environ.get(
+    "FBI_FIXTURES_HORIZON_DAYS", str(DEFAULT_HORIZON_DAYS) if PAID_PLAN else "1"))
+"""Four days was the Free-plan figure, kept after the upgrade by oversight.
+
+Prices were measured at T-18.2 days, so a four-day horizon meant a fixture ten days
+out was not in the database at all, the capture planner could not see it, and the
+earliest and least efficient part of its price series - the part no later request can
+recover - was never captured. Under the LEAGUE strategy the wider horizon costs the
+same one request per competition-season."""
 RESULTS_SYNC_HOURS = int(os.environ.get("FBI_RESULTS_SYNC_HOURS", "6"))
 RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
 BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "1" if PAID_PLAN else "6"))

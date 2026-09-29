@@ -39,6 +39,7 @@ from psycopg.rows import tuple_row
 from fbi.core.clock import now
 from fbi.core.errors import ProviderError
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.odds.horizons import DEFAULT_HORIZON_DAYS
 from fbi.providers.base import FixtureRef, FootballDataProvider, RawResponse
 
 if TYPE_CHECKING:
@@ -227,7 +228,7 @@ async def sync_fixtures(
     conn: psycopg.Connection,
     provider: FootballDataProvider,
     *,
-    horizon_days: int = 7,
+    horizon_days: int = DEFAULT_HORIZON_DAYS,
     at: datetime | None = None,
     strategy: SyncStrategy = SyncStrategy.AUTO,
 ) -> RunCounters:
