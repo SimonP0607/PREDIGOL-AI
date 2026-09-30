@@ -48,6 +48,7 @@ from fbi.core.logging import new_run_id
 from fbi.core.version import code_version
 from fbi.odds.horizons import DEFAULT_HORIZON_DAYS
 from fbi.odds.partitions import ensure_partitions
+from fbi.odds.schedule import NEAR_CLOSE_TOLERANCE_MINUTES
 from fbi.ops.heartbeat import (
     HeartbeatWriter,
     TickOutcome,
@@ -64,7 +65,23 @@ log = structlog.get_logger("worker")
 # four days ahead (so T-72h and T-48h become reachable) and the historical
 # migration runs every hour, always behind the live reserve it computes itself.
 PAID_PLAN = settings.provider_plan.plan != "free"
-TICK_MINUTES = int(os.environ.get("FBI_ODDS_TICK_MINUTES", "15"))
+NEAR_CLOSE_SPAN_MINUTES = 2 * NEAR_CLOSE_TOLERANCE_MINUTES
+"""Width of the near-close opportunity: the planner accepts a fixture within that many
+minutes either side of the configured window."""
+
+TICK_MINUTES = int(os.environ.get(
+    "FBI_ODDS_TICK_MINUTES", str(max(1, NEAR_CLOSE_SPAN_MINUTES - 1))))
+"""How often the capture tick runs, and it cannot be coarser than the near-close window.
+
+It was 15 minutes against a 6-minute window, so the closing price was captured on about
+40% of fixtures - and /odds/live keeps no history, so the other 60% are unrecoverable. The
+closing line is the most informative price there is: it is the market's final word and the
+benchmark any edge is measured against.
+
+Ticking more often is nearly free. The planner computes what is due from the database and
+a tick with nothing due issues no provider request at all, while the 45-minute prematch
+tolerance and the covered-key de-duplication keep the extra ticks from re-requesting a
+window already captured. The cost is a few database queries, not quota."""
 FIXTURES_SYNC_HOURS = int(os.environ.get("FBI_FIXTURES_SYNC_HOURS", "12"))
 FIXTURES_HORIZON_DAYS = int(os.environ.get(
     "FBI_FIXTURES_HORIZON_DAYS", str(DEFAULT_HORIZON_DAYS) if PAID_PLAN else "1"))

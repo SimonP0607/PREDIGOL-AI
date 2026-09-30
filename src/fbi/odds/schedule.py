@@ -23,6 +23,16 @@ from typing import Literal
 
 CaptureKind = Literal["prematch", "near_close"]
 
+NEAR_CLOSE_TOLERANCE_MINUTES = 3
+"""How far either side of the near-close window a fixture still counts as due.
+
+The provider publishes /odds/live only between T-15 and T-5 and keeps NO history, so a
+window that closes unobserved is gone for good. With the default window at T-12 this
+tolerance makes the opportunity T-15..T-9 - six minutes wide - and that width is what the
+worker's tick interval has to be no coarser than. apps.worker.scheduler derives its
+default from this constant for exactly that reason; a 15-minute tick against a 6-minute
+window hits it 40% of the time."""
+
 
 @dataclass(frozen=True, slots=True)
 class CaptureTask:
@@ -91,7 +101,7 @@ class CapturePlanner:
             if minutes < 0:
                 continue
 
-            if abs(minutes - self._near_close) <= 3:
+            if abs(minutes - self._near_close) <= NEAR_CLOSE_TOLERANCE_MINUTES:
                 task = CaptureTask(
                     provider_fixture_id=fixture.provider_fixture_id,
                     kickoff_at=fixture.kickoff_at,
@@ -161,7 +171,7 @@ class CapturePlanner:
         keys: set[str] = set()
         for fixture_id, source, minutes in observations:
             if source == "live":
-                if abs(minutes - self._near_close) <= 3:
+                if abs(minutes - self._near_close) <= NEAR_CLOSE_TOLERANCE_MINUTES:
                     keys.add(f"{fixture_id}:near_close:{self._near_close}")
                 continue
             for window in sorted(self._windows):  # same order as _due_window
