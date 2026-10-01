@@ -73,12 +73,41 @@ class ActiveSeason:
     name: str
 
 
+FINISHED_GRACE_DAYS = 30
+"""How long after its last known fixture a current season is still refreshed.
+
+Not zero: a postponed match can be rescheduled weeks later, and the point of
+refreshing is to see that. Not open-ended either - see below."""
+
+
 def active_seasons(conn: psycopg.Connection) -> list[ActiveSeason]:
+    """The seasons the LEAGUE strategy will spend a request on, one each.
+
+    ``is_current`` is the provider's answer and it is reliable - exactly one
+    current season per tracked competition, 124 of them. What it does not say is
+    whether that season is over. The World Cup qualifying seasons stay current
+    for years, and 25 of the 124 had already played their last fixture, 23 of
+    them more than a month ago: a quarter of this job's requests, every run,
+    asking a finished competition whether anything had changed.
+
+    So a season whose newest known fixture is more than FINISHED_GRACE_DAYS past
+    is left alone. A season with no fixtures at all is kept, because "we have
+    never fetched this one" is the opposite of "this one is over".
+    """
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(
             "SELECT cs.id, c.provider_league_id, cs.season, c.name "
-            "FROM core.competition_seasons cs JOIN core.competitions c ON c.id = cs.competition_id "
-            "WHERE c.is_tracked AND cs.is_current ORDER BY c.provider_league_id"
+            "FROM core.competition_seasons cs "
+            "JOIN core.competitions c ON c.id = cs.competition_id "
+            "LEFT JOIN LATERAL ("
+            "  SELECT max(f.kickoff_at) AS last_kickoff FROM core.fixtures f "
+            "  WHERE f.competition_season_id = cs.id"
+            ") k ON true "
+            "WHERE c.is_tracked AND cs.is_current "
+            "  AND (k.last_kickoff IS NULL "
+            "       OR k.last_kickoff > now() - make_interval(days => %s)) "
+            "ORDER BY c.provider_league_id",
+            (FINISHED_GRACE_DAYS,),
         )
         return [ActiveSeason(int(a), int(b), int(c), str(d)) for a, b, c, d in cur.fetchall()]
 

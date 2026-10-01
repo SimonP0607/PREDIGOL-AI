@@ -142,24 +142,26 @@ def models(conn: Conn) -> Envelope[ModelsOverview]:
                              models=listed))
 
 
-def picks(conn: Conn, *, limit: int, offset: int) -> Envelope[PicksOverview]:
+def picks(conn: Conn, *, limit: int, offset: int, public: bool = False) -> Envelope[PicksOverview]:
+    """``public`` is the client-facing view: only picks that passed qualification, and none of the
+    shadow-mode candidates or rejection detail. Shadow stays an internal instrument."""
     from fbi.picks.rules import RULE_V1
 
-    rows = repo.picks(conn, limit=limit, offset=offset)
+    rows = repo.picks(conn, limit=limit, offset=offset, qualified_only=public)
     events: dict[int, list[PickEvent]] = {}
     for e in repo.pick_events(conn, [int(r["id"]) for r in rows]):
         events.setdefault(int(e["pick_id"]), []).append(PickEvent(**{k: v for k, v in e.items() if k != "pick_id"}))
     items = [PickRow(**r, events=events.get(int(r["id"]), [])) for r in rows]
-    candidates = [CandidateRow(**c) for c in repo.recent_candidates(conn, limit=50)]
+    candidates = [] if public else [CandidateRow(**c) for c in repo.recent_candidates(conn, limit=50)]
     body = PicksOverview(
         lifecycle=Lifecycle(**{k: int(v) for k, v in repo.lifecycle(conn).items()}),
         rule=RULE_V1.as_dict(),
-        rejection_reasons=repo.rejection_reasons(conn),
+        rejection_reasons={} if public else repo.rejection_reasons(conn),
         candidates_by_decision=repo.candidate_counts(conn),
         picks_by_mode=repo.pick_counts(conn),
         picks=section(items) if items else section(
             items, status=DataStatus.NOT_AVAILABLE,
-            reason="No shadow pick yet: one needs a real-time forecast AND a price captured after it that passes "
+            reason="No qualified pick: none has beaten the market in walk-forward testing yet." if public else "No shadow pick yet: one needs a real-time forecast AND a price captured after it that passes "
                    f"{RULE_V1.version}. Publishing is disabled; every pick is shadow."),
         recent_candidates=section(candidates) if candidates else section(
             candidates, status=DataStatus.NOT_AVAILABLE,

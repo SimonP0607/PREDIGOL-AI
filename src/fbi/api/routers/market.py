@@ -8,7 +8,10 @@ from fastapi import APIRouter, Depends, Path, Query
 from fbi.api.contracts.analytics import ModelsOverview, PerformanceSummary, PicksOverview
 from fbi.api.contracts.matches import MatchSummary
 from fbi.api.contracts.odds import FixtureOdds, OddsIntelligence
-from fbi.api.deps import get_db
+from fbi.api.deps import (
+    get_db,
+    public_mode,
+)
 from fbi.api.envelope import Envelope
 from fbi.api.services import analytics, odds
 
@@ -52,7 +55,7 @@ def get_picks(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Envelope[PicksOverview]:
-    return analytics.picks(conn, limit=limit, offset=offset)
+    return analytics.picks(conn, limit=limit, offset=offset, public=public_mode())
 
 
 @router.get("/performance", response_model=Envelope[PerformanceSummary])

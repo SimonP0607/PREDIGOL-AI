@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from typing import Any
 
@@ -40,3 +41,8 @@ def get_db() -> Iterator[psycopg.Connection[Any]]:
     finally:
         conn.rollback()
         conn.close()
+
+
+def public_mode() -> bool:
+    """True on the client-facing deployment (FBI_API_PUBLIC=1): picks are limited to qualified ones."""
+    return os.environ.get("FBI_API_PUBLIC", "").strip().lower() in {"1", "true", "yes"}

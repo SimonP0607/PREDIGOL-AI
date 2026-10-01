@@ -21,7 +21,13 @@ from fbi.providers.api_football.live import (
 )
 from tests.integration.conftest import Seed
 
-AT = datetime(2026, 10, 1, 1, 14, 30, tzinfo=UTC)
+AT = datetime.now(UTC).replace(microsecond=0) - timedelta(minutes=30)
+"""Anchored to the wall clock, not to a date.
+
+LiveOddsRepository.last_known bounds its scan to the last four hours so one
+query per capture tick stays cheap. A fixed instant made these tests pass while
+it happened to fall inside that window and fail once it did not - a test that
+reports on the calendar rather than on the code."""
 PROVIDER_FIXTURE = 1001
 
 

@@ -15,3 +15,7 @@ backups
 .mypy_cache
 .ruff_cache
 node_modules
+data/archive
+data/backups
+**/.env
+deploy

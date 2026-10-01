@@ -1,0 +1,31 @@
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+
+	# ALLOWLIST. Only the product routes leave the box. System/ops, the
+	# analytics explorer and the AI analyst (which spends LLM budget) answer 404.
+	@product {
+		path /health
+		path /api/v1/matches /api/v1/matches/*
+		path /api/v1/competitions /api/v1/competitions/*
+		path /api/v1/teams /api/v1/teams/*
+		path /api/v1/search /api/v1/rankings
+		path /api/v1/odds /api/v1/odds/*
+		path /api/v1/models /api/v1/picks /api/v1/performance
+	}
+	handle @product {
+		reverse_proxy api:8000 {
+			health_uri /health
+			health_interval 30s
+			header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+		}
+	}
+	handle {
+		respond "not found" 404
+	}
+}

@@ -23,7 +23,8 @@ from fbi.odds.live_repository import LiveOddsRepository, LiveWriteResult
 from fbi.providers.api_football.live import LiveFixtureState, LiveOddsQuote
 from tests.integration.conftest import Seed
 
-AT = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
+AT = datetime.now(UTC).replace(microsecond=0) - timedelta(minutes=30)
+"""Anchored to the wall clock: last_known only looks back four hours."""
 PROVIDER_FIXTURE = 1001
 TICK = timedelta(seconds=30)
 

@@ -85,7 +85,15 @@ def pick_counts(conn: Conn) -> dict[str, int]:
     return {str(r["mode"]): int(r["n"]) for r in rows}
 
 
-def picks(conn: Conn, *, limit: int, offset: int) -> list[Row]:
+QUALIFIED_ONLY = """
+        WHERE p.status IN ('qualified', 'published')
+           OR EXISTS (SELECT 1 FROM picks.pick_events e WHERE e.pick_id = p.id
+                      AND e.to_status IN ('qualified', 'published'))
+"""
+
+
+def picks(conn: Conn, *, limit: int, offset: int, qualified_only: bool = False) -> list[Row]:
+    where = QUALIFIED_ONLY if qualified_only else ""
     return fetch_all(conn, """
         SELECT p.id, p.fixture_id, th.name || ' v ' || ta.name AS fixture, c.name AS competition, f.kickoff_at,
                p.market_key, p.selection, p.line, p.status, p.mode, m.name AS model, v.version AS model_version,
@@ -105,6 +113,7 @@ def picks(conn: Conn, *, limit: int, offset: int) -> list[Row]:
         JOIN models.model_versions v ON v.id = p.model_version_id JOIN models.model_registry m ON m.id = v.model_id
         JOIN market.bookmakers b ON b.id = p.bookmaker_id
         LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
+        """ + where + """
         ORDER BY p.created_at DESC, p.id DESC LIMIT %s OFFSET %s
     """, (limit, offset))
 
