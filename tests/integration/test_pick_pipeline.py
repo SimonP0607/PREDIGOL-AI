@@ -74,8 +74,11 @@ def league(db: psycopg.Connection, seed: object, migrated_database: str) -> Iter
                         (pb, name))
             books.append(scalar(cur))
         ids["books"] = books
-        cur.execute("INSERT INTO market.markets (key,name,n_outcomes,has_line,is_exclusive) VALUES "
-                    "('OU','Over/Under',2,true,true),('BTTS','Both teams to score',2,false,true) "
+        cur.execute("INSERT INTO market.markets (key,name,n_outcomes,has_line,is_exclusive,"
+                    " line_is_signed) VALUES "
+                    "('OU','Over/Under',2,true,true,false),"
+                    "('BTTS','Both teams to score',2,false,true,false),"
+                    "('AH','Asian Handicap',2,true,false,true) "
                     "ON CONFLICT DO NOTHING RETURNING key")
         ids["added_markets"] = [r[0] for r in cur.fetchall()]
         cur.execute(
@@ -112,7 +115,8 @@ def league(db: psycopg.Connection, seed: object, migrated_database: str) -> Iter
         cur.execute("DELETE FROM models.model_versions WHERE version LIKE '%%@pipetes' OR version LIKE '%%@pipenew'")
         cur.execute("DELETE FROM models.model_registry r WHERE NOT EXISTS "
                     "(SELECT 1 FROM models.model_versions v WHERE v.model_id = r.id)")
-        cur.execute("DELETE FROM raw.ingestion_payloads WHERE hash = 'pipeline-odds'")
+        cur.execute("DELETE FROM raw.ingestion_payloads "
+                    "WHERE hash IN ('pipeline-odds', 'pipeline-odds-early')")
         cur.execute("DELETE FROM raw.ingestion_runs WHERE id = %s OR job_type = 'shadow_picks'", (ids["capture_run"],))
         cur.execute("DELETE FROM market.bookmakers WHERE provider_bookmaker_id IN (99901, 99902)")
         cur.execute("DELETE FROM market.markets WHERE key = ANY(%s)", (ids["added_markets"],))
@@ -404,3 +408,145 @@ def test_a_model_re_versioned_by_a_code_change_is_judged_once(db: psycopg.Connec
         assert int(scalar(cur)) == n_picks + 1, "the premise: a repeated bet in the rows"
     summary = settled_summary(db)
     assert int(summary["pending"]) == n_picks, "the repeated bet is one bet, not two"
+
+
+EARLY = AT - timedelta(hours=1)
+"""An earlier capture, so the line is known BEFORE the forecast.
+
+This is how production works and the test has to match it: the model prices the
+lines the market has quoted, read from the stored snapshots, and the engine then
+refuses to compare that forecast with any price captured before it. A line is
+therefore established by one capture and judged against a later one - which is
+exactly what a four-day window ladder from T-4320 to T-180 provides.
+"""
+
+
+def _ah_snapshot(cur: psycopg.Cursor, fixture_id: int, book: int, sel: str,
+                 line: str, odds: str, *, at: datetime, payload: str) -> None:
+    cur.execute(
+        "INSERT INTO market.odds_snapshots (fixture_id, bookmaker_id, market_key, "
+        " selection, line, odds_decimal, captured_at, minutes_to_ko, source, payload_hash) "
+        "VALUES (%s,%s,'AH',%s,%s,%s,%s,%s,'prematch',%s)",
+        (fixture_id, book, sel, Decimal(line), Decimal(odds), at,
+         int((KO - at).total_seconds() // 60), payload),
+    )
+
+
+def test_a_whole_asian_handicap_line_reaches_a_pick_with_its_push(
+    db: psycopg.Connection, league: dict[str, object]
+) -> None:
+    """The end of the chain for a line that can push.
+
+    A whole handicap is the case that was impossible before tonight: the market
+    was not modelled, the consensus did not pair it, and a de-vigged two-way
+    probability would have been compared against an unconditional one. All four
+    links are checked here on one row.
+
+    Everything is real except the clock: the prices are placed after the
+    forecast, because the engine refuses to compare a forecast with a price
+    captured before it and the provider happened to be quoting nothing for
+    tonight's fixtures.
+    """
+    target = int(league["target"])  # type: ignore[call-overload]
+    books: list[int] = league["books"]  # type: ignore[assignment]
+
+    # An earlier capture establishes which lines the market quotes. Home -1
+    # pairs with Away +1 - the measured convention - and the two prices make a
+    # believable book (1/1.95 + 1/1.90 = 1.039).
+    with db.cursor() as cur:
+        cur.execute(
+            "INSERT INTO raw.ingestion_payloads (hash, run_id, endpoint, fetched_at, "
+            " http_status, file_path, bytes) "
+            "VALUES ('pipeline-odds-early', %s, '/odds', %s, 200, 'x', 1) "
+            "ON CONFLICT DO NOTHING",
+            (int(league["capture_run"]), EARLY),  # type: ignore[call-overload]
+        )
+        for book in books:
+            _ah_snapshot(cur, target, book, "Home", "-1", "1.97",
+                         at=EARLY, payload="pipeline-odds-early")
+            _ah_snapshot(cur, target, book, "Away", "1", "1.88",
+                         at=EARLY, payload="pipeline-odds-early")
+    db.commit()
+
+    forecast_upcoming(db, at=AT, code_version="pipetest")
+    db.commit()
+
+    # ...and a later capture is what the forecast is judged against.
+    with db.cursor() as cur:
+        for book in books:
+            _ah_snapshot(cur, target, book, "Home", "-1", "1.95",
+                         at=CAPTURED, payload="pipeline-odds")
+            _ah_snapshot(cur, target, book, "Away", "1", "1.90",
+                         at=CAPTURED, payload="pipeline-odds")
+    db.commit()
+
+    instants, rows = recompute_from_snapshots(db, fixture_ids=[target])
+    db.commit()
+    assert instants == 2 and rows > 0, "one consensus per capture"
+
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT selection, line, p_fair, overround FROM market.market_consensus "
+            "WHERE fixture_id = %s AND market_key = 'AH' AND devig_method = 'shin' "
+            "  AND as_of = %s ORDER BY selection",
+            (target, CAPTURED),
+        )
+        consensus = cur.fetchall()
+    assert len(consensus) == 2, "both sides of the pair, at opposite lines"
+    assert {(str(s), str(line)) for s, line, _, _ in consensus} == {
+        ("Away", "1.00"), ("Home", "-1.00")
+    }
+    assert sum(float(p) for _, _, p, _ in consensus) == pytest.approx(1.0, abs=1e-9), (
+        "a de-vigged pair sums to 1, which is why it is conditional on the bet "
+        "being settled"
+    )
+    assert all(1.0 < float(o) < 1.25 for _, _, _, o in consensus)
+
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT p_calibrated, p_push FROM models.predictions "
+            "WHERE fixture_id = %s AND market_key = 'AH' AND selection = 'Home' "
+            "  AND line = -1 AND backtest_session_id IS NULL LIMIT 1",
+            (target,),
+        )
+        prediction = cur.fetchone()
+    assert prediction is not None, "the model priced the quoted line"
+    p_win, p_push = float(prediction[0]), float(prediction[1])
+    assert p_push > 0, "a whole line can push, and the model says by how much"
+
+    ledger = RunLedger(db)
+    run = ledger.open("shadow_picks")
+    report = evaluate_captures(db, run_id=run, code_version="pipetest")
+    db.commit()
+    assert report.candidates > 0
+
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT p_calibrated, p_push, p_market_fair, edge, ev, market_odds "
+            "FROM picks.pick_candidates "
+            "WHERE fixture_id = %s AND market_key = 'AH' AND selection = 'Home' "
+            "  AND line = -1",
+            (target,),
+        )
+        candidate = cur.fetchone()
+    assert candidate is not None, "the handicap line became a candidate"
+    stored_p, stored_push, fair, edge, ev, odds = (float(x) for x in candidate)
+
+    # The comparison was made on the CONDITIONAL probability, which is what the
+    # market's de-vigged number is.
+    assert stored_push == pytest.approx(p_push, abs=1e-6)
+    assert stored_p == pytest.approx(p_win / (1 - p_push), abs=1e-5), (
+        "stored as P(win | settled), comparable with p_market_fair"
+    )
+    assert edge == pytest.approx(stored_p - fair, abs=1e-5)
+
+    # ...while the expected value used the unconditional pair, because the stake
+    # is risked whether the bet pushes or not.
+    expected_ev = p_win * (odds - 1) - (1 - p_win - p_push)
+    assert ev == pytest.approx(expected_ev, abs=1e-5)
+
+    # And it is not the same number the two-way formula would have given.
+    two_way_ev = stored_p * (odds - 1) - (1 - stored_p)
+    assert abs(ev - two_way_ev) > 1e-4, (
+        "the push changes the expected value; if these agreed, it was ignored"
+    )
