@@ -58,6 +58,28 @@ IDLE_RECHECK_SECONDS = 300
 """How long to wait before re-reading the fixture list when nothing is in play.
 Costs no provider request - it only re-asks the database."""
 
+WAKE_DIVISOR = 2
+"""The scheduler wakes this many times per capture interval.
+
+Measured the hard way. With the wake interval EQUAL to the capture interval, the
+first night ran at 60 s, not 30: a wake-up lands a few hundred milliseconds
+before the deadline it is meant to meet, the gate correctly says "not yet", and
+the next wake-up is a whole interval later. Every other tick was lost and half
+the provider's refreshes went with them - and a missed in-play refresh is
+unrecoverable, because /odds/live keeps no history.
+
+This is the same defect as the capture tick that ran every 15 minutes against a
+6-minute near-close window, in a different costume: one number serving as both
+the period of the alarm and the deadline it must beat. They are now two numbers,
+and the alarm is the finer of them."""
+
+JITTER_GRACE_SECONDS = 2
+"""How early a wake-up may still capture.
+
+The floor exists so we do not ask faster than the provider answers. Asking after
+29.8 s instead of 30 is not asking faster in any way that matters, and refusing
+to is how an interval silently becomes its own multiple."""
+
 MAX_MATCH_MINUTES = 150
 """A fixture is treated as possibly in play from kick-off until this long after:
 90 regulation + half-time + stoppages + a generous delay allowance. Extra time
@@ -67,6 +89,16 @@ DEFAULT_LIVE_DAILY_BUDGET = 12_000
 """Of the 60,000/day internal guard. At the 30 s floor this buys 100 hours of
 live football a day, far more than exists, so the budget is not the binding
 constraint - but it is enforced so a provider change cannot drain the day."""
+
+
+def wake_interval(capture_interval: int = POLL_FLOOR_SECONDS) -> int:
+    """How often the scheduler should wake to meet a given capture interval.
+
+    A wake-up costs a database query, not a request, so waking more often than
+    strictly needed is close to free; waking exactly as often as the deadline is
+    what is expensive, because it halves the rate the first time the clock slips.
+    """
+    return max(1, capture_interval // WAKE_DIVISOR)
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,7 +201,7 @@ def decide(
     # starting a fresh clock and over-spending.
     if last_capture_at is not None:
         since = (at - last_capture_at).total_seconds()
-        if since < interval:
+        if since < interval - JITTER_GRACE_SECONDS:
             wait = max(1, math.ceil(interval - since))
             return CadenceDecision(
                 False,

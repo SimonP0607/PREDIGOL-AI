@@ -47,7 +47,11 @@ from fbi.core.logging import configure as configure_logging
 from fbi.core.logging import new_run_id
 from fbi.core.version import code_version
 from fbi.odds.horizons import DEFAULT_HORIZON_DAYS
-from fbi.odds.live_cadence import DEFAULT_LIVE_DAILY_BUDGET, POLL_FLOOR_SECONDS
+from fbi.odds.live_cadence import (
+    DEFAULT_LIVE_DAILY_BUDGET,
+    POLL_FLOOR_SECONDS,
+    wake_interval,
+)
 from fbi.odds.partitions import ensure_partitions
 from fbi.odds.schedule import NEAR_CLOSE_TOLERANCE_MINUTES
 from fbi.ops.heartbeat import (
@@ -97,14 +101,18 @@ RESULTS_SYNC_HOURS = int(os.environ.get("FBI_RESULTS_SYNC_HOURS", "6"))
 RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
 BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "1" if PAID_PLAN else "6"))
 BACKFILL_MAX_PER_RUN = int(os.environ.get("FBI_BACKFILL_MAX_PER_RUN", "1500" if PAID_PLAN else "6"))
-LIVE_TICK_SECONDS = int(os.environ.get("FBI_LIVE_TICK_SECONDS", str(POLL_FLOOR_SECONDS)))
+LIVE_TICK_SECONDS = int(os.environ.get(
+    "FBI_LIVE_TICK_SECONDS", str(wake_interval(POLL_FLOOR_SECONDS))))
 """How often the live job WAKES. How often it CALLS is the cadence's decision.
 
-30 s is the provider's measured refresh period for /odds/live: 12 calls 10.4 s
-apart returned 5 distinct payloads, with every fixture's ``update`` stamp moving
-together once every three ticks. Waking faster cannot learn anything new; waking
-slower would miss a refresh that is gone for good, because /odds/live keeps no
-history of its own.
+HALF the 30 s capture interval, and the halving is the point. The provider's
+measured refresh period is ~31 s - 12 calls 10.4 s apart returned 5 distinct
+payloads, every fixture's ``update`` stamp moving together once every three
+ticks - so 30 s is the interval worth capturing at. Waking at 30 s to capture
+every 30 s produced 60 s: the wake-up arrives a fraction before its own
+deadline, the cadence correctly declines, and the next one is a full interval
+late. The first night of live capture ran at exactly half the intended rate for
+this reason, and a missed in-play refresh cannot be re-fetched.
 
 A wake-up is not a request. The job asks the database whether anything could be
 on the pitch and returns without calling the provider when nothing is - so a
