@@ -369,3 +369,116 @@ issue - the Double Chance leg at 1.00. One API call, 450 ms.
 
 `market.odds_snapshots` rows with `source = 'live'`: **0**.
 `market.near_close_snapshots`: **0**.
+
+---
+
+## 15. The pre-match markets, measured (2026-10-01)
+
+### 15.1 Asian Handicap: the stored lines collide, and the overround tells pairs apart
+
+The signing convention is real — the stored line is the handicap that applies to
+the stored selection — but it is not sufficient to pair a bet. The provider
+offers several handicap bets per bookmaker and their stored lines collide. One
+fixture, one book, one instant:
+
+```
+Home  +2.5  @ 1.020
+Away  -2.5  @ 11.000     <- the real partner, book 1.071
+Away  +2.5  @ 1.020      <- a different bet entirely
+```
+
+Pairing on the sign alone took the wrong partner. 119 of 948 pairs were affected
+and 58 of them devigged above 1.50 — a 50%+ margin no bookmaker carries — while
+others came out below 1.0, which is free money.
+
+Two near-certainties are never two sides of one bet, so the pairing is decided
+by the overround. Measured over the same payloads, the markets whose pairing is
+unambiguous:
+
+| market | avg overround | range |
+|---|---|---|
+| 1X2 | 1.0809 | 1.0591 – 1.1219 |
+| BTTS | 1.0809 | 1.0713 – 1.1284 |
+| OU | 1.0831 | 1.0246 – 1.1344 |
+| DC | 1.0672 | 1.0274 – 1.1016 |
+
+Asian Handicap, paired on the sign: **1.1372, up to 1.9513**.
+Asian Handicap, paired on the book: **1.0805, 1.0105 – 1.1217**.
+
+The handicap book now carries the same margin as every other market from the
+same bookmakers, and 1,271 pairs sum to exactly 1.000000. A quote with no
+believable partner takes no part in the consensus; its price is still stored.
+
+### 15.2 Most of the handicap and total series can push
+
+| market | half lines (no push) | quarter (half the stake) | whole (full push) |
+|---|---|---|---|
+| AH | 2,405 rows | 4,309 | 2,127 |
+| OU | 5,013 rows | 3,410 | 1,817 |
+
+66% of the Asian Handicap series and 51% of the Over/Under series sit on lines
+that can return the stake. Pricing only the clean half lines would have used 27%
+of the handicap series.
+
+A returned stake is not a loss the price has to cover, so the fair price is
+`(1 - push) / p_win` — **shorter** than `1/p_win`. Treating the two as the same
+overstates the edge on every whole and quarter line quoted.
+
+A quarter line needs no special representation. Its expected value is the mean
+of its two half-stake legs' expected values, so averaging their win and push
+probabilities reproduces it exactly:
+
+```
+EV = ½[w_a(d-1) - (1-w_a-u_a)] + ½[w_b(d-1) - (1-w_b-u_b)]
+   = w̄(d-1) - (1 - w̄ - ū)
+```
+
+Confirmed in the stored predictions: a quarter line's push comes out as exactly
+half the adjacent whole line's.
+
+### 15.3 A de-vigged two-way probability is conditional
+
+`market.market_consensus.p_fair` comes from de-vigging selections to sum to 1, so
+on a pushable line it is P(win | the bet is settled).
+`models.predictions.p_calibrated` is P(win) outright. Compared directly, a model
+agreeing *exactly* with the market reads as pessimistic by the push probability —
+and as disagreement, not as a bug.
+
+So the edge is computed on the conditional pair and the expected value on the
+unconditional one, with `p_win = p_conditional × (1 - push)` derived rather than
+passed alongside. Passed alongside, the point estimate and the lower bound
+converted differently and the lower-bound expected value came out *higher* than
+the point estimate.
+
+### 15.4 Double Chance sums to two
+
+Each of 1X, X2 and 12 covers two of three outcomes, so a fair book sums to 2 and
+`devig` cannot be pointed at it. The three prices map to the 1X2 book they imply
+— `P(home) = 1X + 12 - 1`, and the same linear map on the raw implied
+probabilities carries the same proportional margin — which the usual Shin
+estimator removes. 72 instants, all summing to 2.000000 ± 1e-6.
+
+A book implying a non-positive outcome is dropped, not clipped: X2 at 1.02
+against 1X at 3.00 and 12 at 4.00 implies a negative home probability, and
+clipping would turn a broken quote into a confident number.
+
+### 15.5 What this unlocked
+
+| market | predictions before | after | lines |
+|---|---|---|---|
+| 1X2 | yes | yes | 1 |
+| BTTS | yes | yes | 1 |
+| OU | 2.5 only | every quoted line | 25 |
+| AH | none | every quoted line | 43 |
+| DC | none | yes | 1 |
+
+8,841 Asian Handicap and 1,444 Double Chance prices had been captured, stored,
+and compared against nothing. Nothing new was fitted: both are exact projections
+of the score matrix the goal model already computes. The lines priced are the
+lines the market actually quotes, read from the stored snapshots — a handicap
+nobody quotes has nothing to compare against.
+
+Verified two ways: every probability against what `fbi.picks.settlement` would
+actually pay out, summed over the whole score distribution (two independent
+implementations of one convention agreeing), and the model's fair price shown to
+break even when settled.

@@ -3992,3 +3992,104 @@ Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:
 Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:00:22 UTC)" executed successfully
 Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:00:37 UTC)" (scheduled at 2026-10-01 03:00:22.043281+00:00)
 Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:00:37 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:00:52 UTC)" (scheduled at 2026-10-01 03:00:37.043281+00:00)
+{"job_type": "live_odds_capture", "attempt": 1, "scheduled_for": null, "event": "run.opened", "run_id": "437", "level": "info", "timestamp": "2026-10-01T03:00:37.079691Z"}
+{"endpoint": "/odds/live", "params": {}, "status": 200, "results": 1, "payload_hash": "973c079d198e", "cached": false, "quota_remaining": 54911, "event": "provider.ok", "run_id": "437", "level": "info", "timestamp": "2026-10-01T03:00:37.431411Z"}
+{"count": 1, "event": "live_odds.untracked_fixtures", "run_id": "437", "level": "info", "timestamp": "2026-10-01T03:00:37.435212Z"}
+{"status": "completed", "api_calls": 1, "payloads": 1, "normalized": 144, "inserted": 0, "updated": 0, "errors": 0, "event": "run.closed", "run_id": "437", "level": "info", "timestamp": "2026-10-01T03:00:37.449131Z"}
+{"fixtures": 1, "quotes": 144, "written": 0, "duplicate": 0, "suspended": 20, "refused": 0, "unmapped": 0, "untracked": 144, "accounting_holds": true, "next_in_seconds": 30, "event": "live_capture.finished", "run_id": "437", "level": "info", "timestamp": "2026-10-01T03:00:37.449279Z"}
+{"fixtures": 1, "written": 0, "duplicate": 0, "untracked": 144, "suspended": 20, "accounting_holds": true, "event": "live_tick.captured", "run_id": "437", "level": "info", "timestamp": "2026-10-01T03:00:37.449789Z"}
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:00:52 UTC)" executed successfully
+{"event": "worker.stopped", "run_id": "-", "level": "info", "timestamp": "2026-10-01T03:00:38.615357Z"}
+Scheduler has been shut down
+Adding job tentatively -- it will be properly scheduled when the scheduler starts
+Adding job tentatively -- it will be properly scheduled when the scheduler starts
+Adding job tentatively -- it will be properly scheduled when the scheduler starts
+Adding job tentatively -- it will be properly scheduled when the scheduler starts
+Adding job tentatively -- it will be properly scheduled when the scheduler starts
+Adding job tentatively -- it will be properly scheduled when the scheduler starts
+Adding job tentatively -- it will be properly scheduled when the scheduler starts
+Added job "_tick_with_heartbeat" to job store "default"
+Added job "_live_tick" to job store "default"
+Added job "_daily_fixtures_sync" to job store "default"
+Added job "_results_sync" to job store "default"
+Added job "_historical_backfill" to job store "default"
+Added job "_pipeline" to job store "default"
+Added job "_notify" to job store "default"
+Scheduler started
+{"tick_minutes": 5, "fixtures_sync_hours": 12, "results_sync_hours": 6, "daily_budget": 60000, "code_version": "a31a4f23f6db", "fixtures_sync_next": "2026-10-01T06:22:57.801297+00:00", "results_sync_next": "2026-10-01T06:22:58.816839+00:00", "event": "worker.started", "run_id": "-", "level": "info", "timestamp": "2026-10-01T03:00:39.844742Z"}
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:00:54 UTC)" (scheduled at 2026-10-01 03:00:39.818123+00:00)
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:00:54 UTC)" executed successfully
+Running job "_tick_with_heartbeat (trigger: interval[0:05:00], next run at: 2026-10-01 03:05:39 UTC)" (scheduled at 2026-10-01 03:00:39.818123+00:00)
+{"fixtures": 404, "next_window": "datetime.datetime(2026, 10, 1, 3, 10, tzinfo=datetime.timezone.utc)", "event": "tick.nothing_due", "run_id": "48e84505f9d0", "level": "info", "timestamp": "2026-10-01T03:00:39.963519Z"}
+Job "_tick_with_heartbeat (trigger: interval[0:05:00], next run at: 2026-10-01 03:05:39 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:01:09 UTC)" (scheduled at 2026-10-01 03:00:54.818123+00:00)
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:01:09 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:01:24 UTC)" (scheduled at 2026-10-01 03:01:09.818123+00:00)
+{"job_type": "live_odds_capture", "attempt": 1, "scheduled_for": null, "event": "run.opened", "run_id": "438", "level": "info", "timestamp": "2026-10-01T03:01:09.876332Z"}
+{"endpoint": "/odds/live", "params": {}, "status": 200, "results": 1, "payload_hash": "973c079d198e", "cached": true, "quota_remaining": 54910, "event": "provider.ok", "run_id": "438", "level": "info", "timestamp": "2026-10-01T03:01:10.241226Z"}
+{"count": 1, "event": "live_odds.untracked_fixtures", "run_id": "438", "level": "info", "timestamp": "2026-10-01T03:01:10.244804Z"}
+{"status": "completed", "api_calls": 1, "payloads": 1, "normalized": 144, "inserted": 0, "updated": 0, "errors": 0, "event": "run.closed", "run_id": "438", "level": "info", "timestamp": "2026-10-01T03:01:10.259310Z"}
+{"fixtures": 1, "quotes": 144, "written": 0, "duplicate": 0, "suspended": 20, "refused": 0, "unmapped": 0, "untracked": 144, "accounting_holds": true, "next_in_seconds": 30, "event": "live_capture.finished", "run_id": "438", "level": "info", "timestamp": "2026-10-01T03:01:10.259392Z"}
+{"fixtures": 1, "written": 0, "duplicate": 0, "untracked": 144, "suspended": 20, "accounting_holds": true, "event": "live_tick.captured", "run_id": "438", "level": "info", "timestamp": "2026-10-01T03:01:10.259766Z"}
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:01:24 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:01:39 UTC)" (scheduled at 2026-10-01 03:01:24.818123+00:00)
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:01:39 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:01:54 UTC)" (scheduled at 2026-10-01 03:01:39.818123+00:00)
+{"job_type": "live_odds_capture", "attempt": 1, "scheduled_for": null, "event": "run.opened", "run_id": "439", "level": "info", "timestamp": "2026-10-01T03:01:39.858954Z"}
+{"endpoint": "/odds/live", "params": {}, "status": 200, "results": 1, "payload_hash": "cf416e82b1f2", "cached": false, "quota_remaining": 54909, "event": "provider.ok", "run_id": "439", "level": "info", "timestamp": "2026-10-01T03:01:40.197078Z"}
+{"count": 1, "event": "live_odds.untracked_fixtures", "run_id": "439", "level": "info", "timestamp": "2026-10-01T03:01:40.202525Z"}
+{"status": "completed", "api_calls": 1, "payloads": 1, "normalized": 144, "inserted": 0, "updated": 0, "errors": 0, "event": "run.closed", "run_id": "439", "level": "info", "timestamp": "2026-10-01T03:01:40.214669Z"}
+{"fixtures": 1, "quotes": 144, "written": 0, "duplicate": 0, "suspended": 20, "refused": 0, "unmapped": 0, "untracked": 144, "accounting_holds": true, "next_in_seconds": 30, "event": "live_capture.finished", "run_id": "439", "level": "info", "timestamp": "2026-10-01T03:01:40.214751Z"}
+{"fixtures": 1, "written": 0, "duplicate": 0, "untracked": 144, "suspended": 20, "accounting_holds": true, "event": "live_tick.captured", "run_id": "439", "level": "info", "timestamp": "2026-10-01T03:01:40.215221Z"}
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:01:54 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:02:09 UTC)" (scheduled at 2026-10-01 03:01:54.818123+00:00)
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:02:09 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:02:24 UTC)" (scheduled at 2026-10-01 03:02:09.818123+00:00)
+{"job_type": "live_odds_capture", "attempt": 1, "scheduled_for": null, "event": "run.opened", "run_id": "440", "level": "info", "timestamp": "2026-10-01T03:02:09.860650Z"}
+{"endpoint": "/odds/live", "params": {}, "status": 200, "results": 1, "payload_hash": "cf416e82b1f2", "cached": true, "quota_remaining": 54908, "event": "provider.ok", "run_id": "440", "level": "info", "timestamp": "2026-10-01T03:02:10.198317Z"}
+{"count": 1, "event": "live_odds.untracked_fixtures", "run_id": "440", "level": "info", "timestamp": "2026-10-01T03:02:10.201386Z"}
+{"status": "completed", "api_calls": 1, "payloads": 1, "normalized": 144, "inserted": 0, "updated": 0, "errors": 0, "event": "run.closed", "run_id": "440", "level": "info", "timestamp": "2026-10-01T03:02:10.216259Z"}
+{"fixtures": 1, "quotes": 144, "written": 0, "duplicate": 0, "suspended": 20, "refused": 0, "unmapped": 0, "untracked": 144, "accounting_holds": true, "next_in_seconds": 30, "event": "live_capture.finished", "run_id": "440", "level": "info", "timestamp": "2026-10-01T03:02:10.216345Z"}
+{"fixtures": 1, "written": 0, "duplicate": 0, "untracked": 144, "suspended": 20, "accounting_holds": true, "event": "live_tick.captured", "run_id": "440", "level": "info", "timestamp": "2026-10-01T03:02:10.216691Z"}
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:02:24 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:02:39 UTC)" (scheduled at 2026-10-01 03:02:24.818123+00:00)
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:02:39 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:02:54 UTC)" (scheduled at 2026-10-01 03:02:39.818123+00:00)
+{"job_type": "live_odds_capture", "attempt": 1, "scheduled_for": null, "event": "run.opened", "run_id": "441", "level": "info", "timestamp": "2026-10-01T03:02:39.867086Z"}
+Running job "_pipeline (trigger: interval[0:30:00], next run at: 2026-10-01 03:32:39 UTC)" (scheduled at 2026-10-01 03:02:39.818123+00:00)
+{"endpoint": "/odds/live", "params": {}, "status": 200, "results": 1, "payload_hash": "0bb7d124039f", "cached": false, "quota_remaining": 54907, "event": "provider.ok", "run_id": "441", "level": "info", "timestamp": "2026-10-01T03:02:40.232953Z"}
+{"count": 1, "event": "live_odds.untracked_fixtures", "run_id": "441", "level": "info", "timestamp": "2026-10-01T03:02:40.244140Z"}
+{"status": "completed", "api_calls": 1, "payloads": 1, "normalized": 144, "inserted": 0, "updated": 0, "errors": 0, "event": "run.closed", "run_id": "441", "level": "info", "timestamp": "2026-10-01T03:02:40.263640Z"}
+{"fixtures": 1, "quotes": 144, "written": 0, "duplicate": 0, "suspended": 20, "refused": 0, "unmapped": 0, "untracked": 144, "accounting_holds": true, "next_in_seconds": 30, "event": "live_capture.finished", "run_id": "441", "level": "info", "timestamp": "2026-10-01T03:02:40.263715Z"}
+{"fixtures": 1, "written": 0, "duplicate": 0, "untracked": 144, "suspended": 20, "accounting_holds": true, "event": "live_tick.captured", "run_id": "441", "level": "info", "timestamp": "2026-10-01T03:02:40.264015Z"}
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:02:54 UTC)" executed successfully
+{"job_type": "pick_pipeline", "attempt": 1, "scheduled_for": null, "event": "run.opened", "run_id": "442", "level": "info", "timestamp": "2026-10-01T03:02:40.695898Z"}
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:03:09 UTC)" (scheduled at 2026-10-01 03:02:54.818123+00:00)
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:03:09 UTC)" executed successfully
+{"status": "completed", "api_calls": 0, "payloads": 0, "normalized": 0, "inserted": 10704, "updated": 0, "errors": 0, "event": "run.closed", "run_id": "442", "level": "info", "timestamp": "2026-10-01T03:03:04.790741Z"}
+{"run_id": "442", "forecasts": 10704, "candidates": 0, "selected": 0, "settled": 0, "apply": true, "event": "pipeline.done", "level": "info", "timestamp": "2026-10-01T03:03:04.790855Z"}
+Job "_pipeline (trigger: interval[0:30:00], next run at: 2026-10-01 03:32:39 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:03:24 UTC)" (scheduled at 2026-10-01 03:03:09.818123+00:00)
+{"job_type": "live_odds_capture", "attempt": 1, "scheduled_for": null, "event": "run.opened", "run_id": "443", "level": "info", "timestamp": "2026-10-01T03:03:09.845170Z"}
+{"endpoint": "/odds/live", "params": {}, "status": 200, "results": 1, "payload_hash": "0bb7d124039f", "cached": true, "quota_remaining": 54906, "event": "provider.ok", "run_id": "443", "level": "info", "timestamp": "2026-10-01T03:03:10.183797Z"}
+{"count": 1, "event": "live_odds.untracked_fixtures", "run_id": "443", "level": "info", "timestamp": "2026-10-01T03:03:10.188459Z"}
+{"status": "completed", "api_calls": 1, "payloads": 1, "normalized": 144, "inserted": 0, "updated": 0, "errors": 0, "event": "run.closed", "run_id": "443", "level": "info", "timestamp": "2026-10-01T03:03:10.198764Z"}
+{"fixtures": 1, "quotes": 144, "written": 0, "duplicate": 0, "suspended": 20, "refused": 0, "unmapped": 0, "untracked": 144, "accounting_holds": true, "next_in_seconds": 30, "event": "live_capture.finished", "run_id": "443", "level": "info", "timestamp": "2026-10-01T03:03:10.198839Z"}
+{"fixtures": 1, "written": 0, "duplicate": 0, "untracked": 144, "suspended": 20, "accounting_holds": true, "event": "live_tick.captured", "run_id": "443", "level": "info", "timestamp": "2026-10-01T03:03:10.199264Z"}
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:03:24 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:03:39 UTC)" (scheduled at 2026-10-01 03:03:24.818123+00:00)
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:03:39 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:03:54 UTC)" (scheduled at 2026-10-01 03:03:39.818123+00:00)
+{"job_type": "live_odds_capture", "attempt": 1, "scheduled_for": null, "event": "run.opened", "run_id": "444", "level": "info", "timestamp": "2026-10-01T03:03:39.856548Z"}
+Running job "_notify (trigger: interval[0:10:00], next run at: 2026-10-01 03:13:39 UTC)" (scheduled at 2026-10-01 03:03:39.818123+00:00)
+{"drafted": 303, "new": 0, "sent": 0, "skipped": 20, "failed": 0, "event": "notify.done", "run_id": "-", "level": "info", "timestamp": "2026-10-01T03:03:39.981934Z"}
+Job "_notify (trigger: interval[0:10:00], next run at: 2026-10-01 03:13:39 UTC)" executed successfully
+{"endpoint": "/odds/live", "params": {}, "status": 200, "results": 1, "payload_hash": "0bb7d124039f", "cached": true, "quota_remaining": 54905, "event": "provider.ok", "run_id": "444", "level": "info", "timestamp": "2026-10-01T03:03:40.200552Z"}
+{"count": 1, "event": "live_odds.untracked_fixtures", "run_id": "444", "level": "info", "timestamp": "2026-10-01T03:03:40.203745Z"}
+{"status": "completed", "api_calls": 1, "payloads": 1, "normalized": 144, "inserted": 0, "updated": 0, "errors": 0, "event": "run.closed", "run_id": "444", "level": "info", "timestamp": "2026-10-01T03:03:40.213251Z"}
+{"fixtures": 1, "quotes": 144, "written": 0, "duplicate": 0, "suspended": 20, "refused": 0, "unmapped": 0, "untracked": 144, "accounting_holds": true, "next_in_seconds": 30, "event": "live_capture.finished", "run_id": "444", "level": "info", "timestamp": "2026-10-01T03:03:40.213318Z"}
+{"fixtures": 1, "written": 0, "duplicate": 0, "untracked": 144, "suspended": 20, "accounting_holds": true, "event": "live_tick.captured", "run_id": "444", "level": "info", "timestamp": "2026-10-01T03:03:40.213710Z"}
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:03:54 UTC)" executed successfully
+Running job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:04:09 UTC)" (scheduled at 2026-10-01 03:03:54.818123+00:00)
+Job "_live_tick (trigger: interval[0:00:15], next run at: 2026-10-01 03:04:09 UTC)" executed successfully
