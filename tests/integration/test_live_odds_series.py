@@ -105,13 +105,19 @@ def test_re_running_the_same_capture_writes_nothing_new(
     db: psycopg.Connection, seed: Seed
 ) -> None:
     """Idempotency is a property of the primary key, so a replayed capture can
-    add history but never replace a price."""
+    add history but never replace a price.
+
+    Since the series stores only changes, a replay is now caught BEFORE the
+    insert - the price matches the last row for its key, so no row is offered -
+    and it lands in quotes_unchanged rather than quotes_duplicate. The primary
+    key is still the backstop; it just has less to do.
+    """
     repo = LiveOddsRepository(db)
     first = repo.write([state()], [quote()])
     second = repo.write([state()], [quote()])
     assert first.quotes_written == 1
     assert second.quotes_written == 0
-    assert second.quotes_duplicate == 1
+    assert second.quotes_unchanged == 1
     assert count(db, "market.live_odds_snapshots") == 1
 
 
@@ -359,7 +365,11 @@ def test_each_change_is_one_row_against_the_price_it_replaced(
     assert (rows[0][0], rows[0][1]) == (Decimal("2.500"), Decimal("2.100"))
     assert (rows[1][0], rows[1][1]) == (Decimal("2.100"), Decimal("2.200"))
     assert rows[0][2] == Decimal("-0.400"), "the delta is against the previous price"
-    assert rows[0][6] == Decimal("31.000"), "and so is the elapsed time"
+    assert rows[0][6] == Decimal("62.000"), (
+        "elapsed since the price was SET, not since the last observation - the "
+        "unchanged tick at 31s is not a row, and saying the move took 31s would "
+        "be claiming the price held until then when nothing says it did not"
+    )
 
 
 def test_a_goal_between_two_observations_is_marked(
@@ -402,19 +412,27 @@ def test_the_implied_probability_delta_is_what_ranks_a_move(
     the opposite, which is why both are exposed and the probability one is what
     the reader orders by."""
     repo = LiveOddsRepository(db)
-    write_series(repo, [(0, "2.00", False, 0, 0), (31, "1.90", False, 0, 0)])
-    repo.write(
-        [state(captured_at=AT + timedelta(seconds=62))],
-        [quote(captured_at=AT + timedelta(seconds=62), provider_bet_id=36,
-               market_key="OU", selection="Over", line=Decimal("2.5"),
-               odds_decimal=Decimal("10.00"))],
-    )
-    repo.write(
-        [state(captured_at=AT + timedelta(seconds=93))],
-        [quote(captured_at=AT + timedelta(seconds=93), provider_bet_id=36,
-               market_key="OU", selection="Over", line=Decimal("2.5"),
-               odds_decimal=Decimal("9.90"))],
-    )
+
+    def tick(offset: int, home: str, over: str) -> None:
+        """Both selections on every tick.
+
+        They have to be: a key missing from a capture is a WITHDRAWAL now, so
+        quoting only the Over would close the 1X2 market and the comparison
+        would be against a withdrawal row instead of a price.
+        """
+        when = AT + timedelta(seconds=offset)
+        repo.write(
+            [state(captured_at=when)],
+            [
+                quote(captured_at=when, odds_decimal=Decimal(home)),
+                quote(captured_at=when, provider_bet_id=36, market_key="OU",
+                      selection="Over", line=Decimal("2.5"),
+                      odds_decimal=Decimal(over)),
+            ],
+        )
+
+    tick(0, "2.00", "10.00")
+    tick(31, "1.90", "9.90")
     with db.cursor() as cur:
         cur.execute(
             "SELECT market_key, abs(odds_delta), abs(implied_prob_delta) "

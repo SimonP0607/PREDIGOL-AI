@@ -68,7 +68,11 @@ async def _once() -> int:
         return 0
     print(f"fixtures priced    : {report.fixtures_priced}")
     print(f"quotes seen        : {report.quotes_seen}")
-    print(f"quotes written     : {report.quotes_written}")
+    print(f"rows written       : {report.quotes_written} "
+          f"({report.withdrawals_written} of them withdrawals)")
+    print(f"unchanged, not kept: {report.quotes_unchanged}"
+          + (f"  ({100 * report.quotes_unchanged // report.quotes_seen}% of what "
+             "arrived)" if report.quotes_seen else ""))
     print(f"already had        : {report.quotes_duplicate}")
     print(f"states written     : {report.states_written}")
     print(f"values suspended   : {report.values_suspended}")

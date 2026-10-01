@@ -101,6 +101,13 @@ class LiveCaptureReport:
     states_written: int = 0
     unknown_fixtures: int = 0
     quotes_untracked: int = 0
+    quotes_unchanged: int = 0
+    """Read, compared against the last row for their key, and found identical.
+    No row written, nothing lost: market.live_fixture_states records that the
+    instant was observed, so the price is still answerable for it. Expected to
+    be about three quarters of what arrives."""
+    withdrawals_written: int = 0
+    """Keys that stopped being quoted, recorded with a NULL price."""
     unmapped_rows: int = 0
     markets_observed: int = 0
     markets_newly_catalogued: int = 0
@@ -111,12 +118,22 @@ class LiveCaptureReport:
 
     @property
     def accounting_holds(self) -> bool:
-        """Every quote read is written, already held, or from a fixture we do not
-        track. Nothing is unaccounted for - the same discipline the pre-match
-        capture uses, and the reason silent loss cannot hide here."""
+        """Every quote read is accounted for, in one of four ways.
+
+        It changed a price (written), it matched the last one (unchanged), the
+        row was already there (duplicate), or its fixture is not one we track
+        (untracked). Nothing else can happen to a quote, which is what makes
+        silent loss impossible to hide.
+
+        The withdrawals are not in this sum on purpose: they are rows written
+        for keys that were NOT in this payload, so they are not quotes that were
+        read. quotes_written counts both, hence the subtraction.
+        """
+        priced = self.quotes_written - self.withdrawals_written
         return (
             self.quotes_seen
-            == self.quotes_written + self.quotes_duplicate + self.quotes_untracked
+            == priced + self.quotes_unchanged + self.quotes_duplicate
+            + self.quotes_untracked
         )
 
     @property
@@ -273,6 +290,8 @@ class LiveCaptureService:
         report.states_written = written.states_written
         report.unknown_fixtures = written.unknown_fixtures
         report.quotes_untracked = written.quotes_untracked
+        report.quotes_unchanged = written.quotes_unchanged
+        report.withdrawals_written = written.withdrawals_written
         report.unmapped_rows = written.unmapped_markets_written
         report.markets_newly_catalogued = self._repo.record_live_markets(markets)
 
@@ -308,6 +327,8 @@ class LiveCaptureService:
             refused=report.refused,
             unmapped=report.unmapped_rows,
             untracked=report.quotes_untracked,
+            unchanged=report.quotes_unchanged,
+            withdrawn=report.withdrawals_written,
             accounting_holds=report.accounting_holds,
             next_in_seconds=report.next_in_seconds,
         )
@@ -316,6 +337,8 @@ class LiveCaptureService:
                 "live_capture.accounting_broken",
                 seen=report.quotes_seen,
                 written=report.quotes_written,
+                unchanged=report.quotes_unchanged,
+                withdrawn=report.withdrawals_written,
                 duplicate=report.quotes_duplicate,
                 untracked=report.quotes_untracked,
                 detail="quotes seen do not add up; a price may have been lost",
