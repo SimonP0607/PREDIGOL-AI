@@ -17,9 +17,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
 
 import psycopg
 import structlog
+from psycopg.rows import tuple_row
 
 from fbi.catalog.provider_markets import record_observed_bets
 from fbi.providers.api_football.live import (
@@ -29,6 +32,37 @@ from fbi.providers.api_football.live import (
 )
 
 log = structlog.get_logger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class LiveMovement:
+    """One observed in-play price change, with the match state around it.
+
+    Field order matches the SELECT in ``LiveOddsRepository.movements``.
+    """
+
+    provider_fixture_id: int
+    market_key: str | None
+    provider_bet_id: int
+    selection: str
+    line: Decimal
+    previous_odds: Decimal
+    odds: Decimal
+    implied_prob_delta: Decimal
+    """Change in implied probability, which is the number that means something:
+    2.00 -> 1.90 is a far bigger move than 10.0 -> 9.90, and the raw odds delta
+    says the opposite."""
+    seconds_elapsed: Decimal
+    previous_at: datetime
+    captured_at: datetime
+    elapsed_minute: int | None
+    score_home: int | None
+    score_away: int | None
+    score_changed: bool
+    """A goal fell between the two observations - the explanation for most large
+    moves, and the reason the score rides on every snapshot row."""
+    became_suspended: bool
+    became_available: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,6 +226,47 @@ class LiveOddsRepository:
         observed = {(m.provider_bet_id, m.name): m.values for m in markets}
         record_observed_bets(self._conn, observed, scope="inplay")
         return len(observed)
+
+    def movements(
+        self,
+        *,
+        provider_fixture_id: int | None = None,
+        mapped_only: bool = True,
+        since_minutes: int = 180,
+        limit: int = 500,
+    ) -> list[LiveMovement]:
+        """Observed in-play price changes, newest first.
+
+        Reads market.live_market_movement, which is a VIEW over the snapshot
+        series: movement is the difference between two rows of an append-only
+        table, so it is derived on demand rather than stored. A stored copy
+        would have to agree with the series it came from, and every defect this
+        project has repaired was two copies of a fact with nothing forcing them
+        to agree.
+        """
+        where = ["m.captured_at > now() - make_interval(mins => %(mins)s)"]
+        params: dict[str, object] = {"mins": since_minutes, "limit": limit}
+        if mapped_only:
+            where.append("m.market_key IS NOT NULL")
+        if provider_fixture_id is not None:
+            where.append("f.provider_fixture_id = %(fx)s")
+            params["fx"] = provider_fixture_id
+        sql = f"""
+            SELECT f.provider_fixture_id, m.market_key, m.provider_bet_id,
+                   m.selection, m.line, m.previous_odds, m.odds,
+                   m.implied_prob_delta, m.seconds_elapsed,
+                   m.previous_at, m.captured_at,
+                   m.elapsed_minute, m.score_home, m.score_away,
+                   m.score_changed, m.became_suspended, m.became_available
+            FROM market.live_market_movement m
+            JOIN core.fixtures f ON f.id = m.fixture_id
+            WHERE {" AND ".join(where)}
+            ORDER BY m.captured_at DESC, abs(m.implied_prob_delta) DESC
+            LIMIT %(limit)s
+        """
+        with self._conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(sql, params)
+            return [LiveMovement(*row) for row in cur.fetchall()]
 
     def fixtures_in_play(self, *, within_minutes: int) -> int:
         """How many fixtures the recent captures saw in play. Feeds the cadence."""

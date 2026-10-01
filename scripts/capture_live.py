@@ -4,8 +4,9 @@
     python scripts/capture_live.py once        # one tick
     python scripts/capture_live.py follow      # keep ticking at the measured cadence
     python scripts/capture_live.py coverage    # what has been captured so far, 0 requests
+    python scripts/capture_live.py movement    # the price changes observed, 0 requests
 
-``plan`` and ``coverage`` never call the provider, so they are safe to run at
+``plan``, ``coverage`` and ``movement`` never call the provider, so they are safe to run at
 any time to see what the live path is doing and what it has.
 """
 
@@ -140,6 +141,31 @@ def _coverage(hours: int) -> int:
     return 0
 
 
+def _movement(hours: int, fixture: int | None) -> int:
+    with _connect() as conn:
+        rows = LiveOddsRepository(conn).movements(
+            provider_fixture_id=fixture, since_minutes=hours * 60, limit=40
+        )
+    if not rows:
+        print("(no price change observed in that window)")
+        return 0
+    print(f"{'fixture':>9} {'market':>5} {'selection':>9} {'line':>6} "
+          f"{'from':>7} {'to':>7} {'d prob':>8} {'min':>4} score  why")
+    for m in rows:
+        why = []
+        if m.score_changed:
+            why.append("GOAL")
+        if m.became_suspended:
+            why.append("suspended")
+        if m.became_available:
+            why.append("reopened")
+        print(f"{m.provider_fixture_id:>9} {m.market_key or '-':>5} "
+              f"{m.selection:>9} {m.line:>6} {m.previous_odds:>7} {m.odds:>7} "
+              f"{m.implied_prob_delta:>+8.4f} {m.elapsed_minute or 0:>4} "
+              f"{m.score_home}-{m.score_away}  {' '.join(why)}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -149,6 +175,10 @@ def main() -> int:
     f.add_argument("--max-ticks", type=int, default=None)
     c = sub.add_parser("coverage", help="what has been captured (no requests)")
     c.add_argument("--hours", type=int, default=24)
+    mv = sub.add_parser("movement", help="observed price changes (no requests)")
+    mv.add_argument("--hours", type=int, default=3)
+    mv.add_argument("--fixture", type=int, default=None,
+                    help="one provider fixture id")
     args = ap.parse_args()
 
     if args.cmd == "plan":
@@ -157,6 +187,8 @@ def main() -> int:
         return asyncio.run(_once())
     if args.cmd == "follow":
         return asyncio.run(_follow(args.max_ticks))
+    if args.cmd == "movement":
+        return _movement(args.hours, args.fixture)
     return _coverage(args.hours)
 
 

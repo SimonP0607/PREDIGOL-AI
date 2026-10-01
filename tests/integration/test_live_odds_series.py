@@ -297,3 +297,180 @@ def test_fixtures_in_play_ignores_a_finished_match(
     assert repo.fixtures_in_play(within_minutes=60) == 0
     repo.write([state(captured_at=wall, is_finished=False)], [])
     assert repo.fixtures_in_play(within_minutes=60) == 1
+
+
+# --- LIVE MARKET MOVEMENT: derived, and only where something moved ----------
+
+
+def write_series(
+    repo: LiveOddsRepository, prices: list[tuple[int, str, bool, int, int]]
+) -> None:
+    """(offset seconds, odds, suspended, score_home, score_away) for one selection."""
+    for offset, odds, suspended, home, away in prices:
+        when = AT + timedelta(seconds=offset)
+        repo.write(
+            [state(captured_at=when, score_home=home, score_away=away)],
+            [
+                quote(
+                    captured_at=when,
+                    odds_decimal=Decimal(odds),
+                    is_suspended=suspended,
+                    score_home=home,
+                    score_away=away,
+                )
+            ],
+        )
+
+
+def movement_rows(conn: psycopg.Connection) -> list[tuple[object, ...]]:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT previous_odds, odds, odds_delta, score_changed, "
+            "       became_suspended, became_available, seconds_elapsed "
+            "FROM market.live_market_movement ORDER BY captured_at"
+        )
+        return list(cur.fetchall())
+
+
+def test_a_price_that_did_not_move_produces_no_movement_row(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """The provider sweeps its whole book every ~31 s and only about 27% of
+    prices move, so most consecutive snapshots carry the same number. 20.9% did
+    not move at all across a two-minute measurement. The snapshot series keeps
+    them - they are observations - and this view does not, because a reader
+    asking "when did this move" must not have to filter out when it did not.
+    """
+    write_series(LiveOddsRepository(db), [(0, "2.50", False, 0, 1),
+                                          (31, "2.50", False, 0, 1),
+                                          (62, "2.50", False, 0, 1)])
+    assert movement_rows(db) == []
+
+
+def test_each_change_is_one_row_against_the_price_it_replaced(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    write_series(LiveOddsRepository(db), [(0, "2.50", False, 0, 1),
+                                          (31, "2.50", False, 0, 1),
+                                          (62, "2.10", False, 0, 1),
+                                          (93, "2.20", False, 0, 1)])
+    rows = movement_rows(db)
+    assert len(rows) == 2
+    assert (rows[0][0], rows[0][1]) == (Decimal("2.500"), Decimal("2.100"))
+    assert (rows[1][0], rows[1][1]) == (Decimal("2.100"), Decimal("2.200"))
+    assert rows[0][2] == Decimal("-0.400"), "the delta is against the previous price"
+    assert rows[0][6] == Decimal("31.000"), "and so is the elapsed time"
+
+
+def test_a_goal_between_two_observations_is_marked(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """The explanation for most large moves, which is why the score rides on
+    every snapshot row rather than being joined at read time."""
+    write_series(LiveOddsRepository(db), [(0, "2.60", False, 1, 1),
+                                          (31, "8.00", False, 1, 2)])
+    rows = movement_rows(db)
+    assert len(rows) == 1
+    assert rows[0][3] is True, "score_changed"
+
+
+def test_a_move_with_no_goal_is_not_marked(db: psycopg.Connection, seed: Seed) -> None:
+    write_series(LiveOddsRepository(db), [(0, "2.60", False, 1, 1),
+                                          (31, "2.70", False, 1, 1)])
+    assert movement_rows(db)[0][3] is False
+
+
+def test_freezing_and_reopening_are_movement_even_at_the_same_price(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """Measured: up to 96 values thawed in a single provider sweep. A market
+    that stops accepting the bet has moved in the way that matters, even when
+    the number on it is unchanged."""
+    write_series(LiveOddsRepository(db), [(0, "2.50", False, 0, 1),
+                                          (31, "2.50", True, 0, 1),
+                                          (62, "2.50", False, 0, 1)])
+    rows = movement_rows(db)
+    assert len(rows) == 2
+    assert (rows[0][4], rows[0][5]) == (True, False), "froze"
+    assert (rows[1][4], rows[1][5]) == (False, True), "thawed"
+
+
+def test_the_implied_probability_delta_is_what_ranks_a_move(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """2.00 -> 1.90 is a bigger move than 10.0 -> 9.90; the raw odds delta says
+    the opposite, which is why both are exposed and the probability one is what
+    the reader orders by."""
+    repo = LiveOddsRepository(db)
+    write_series(repo, [(0, "2.00", False, 0, 0), (31, "1.90", False, 0, 0)])
+    repo.write(
+        [state(captured_at=AT + timedelta(seconds=62))],
+        [quote(captured_at=AT + timedelta(seconds=62), provider_bet_id=36,
+               market_key="OU", selection="Over", line=Decimal("2.5"),
+               odds_decimal=Decimal("10.00"))],
+    )
+    repo.write(
+        [state(captured_at=AT + timedelta(seconds=93))],
+        [quote(captured_at=AT + timedelta(seconds=93), provider_bet_id=36,
+               market_key="OU", selection="Over", line=Decimal("2.5"),
+               odds_decimal=Decimal("9.90"))],
+    )
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT market_key, abs(odds_delta), abs(implied_prob_delta) "
+            "FROM market.live_market_movement ORDER BY abs(implied_prob_delta) DESC"
+        )
+        rows = cur.fetchall()
+    assert rows[0][0] == "1X2", "the short-odds move ranks first on probability"
+    assert rows[0][1] == rows[1][1], "despite an identical odds delta"
+    assert rows[0][2] > rows[1][2]
+
+
+def test_the_movement_reader_returns_the_newest_first(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    repo = LiveOddsRepository(db)
+    write_series(repo, [(0, "2.50", False, 0, 1), (31, "2.10", False, 0, 1)])
+    # The view is time-filtered against now(), and AT may be older than the
+    # default window, so ask for a wide one.
+    moves = repo.movements(since_minutes=60 * 24 * 365)
+    assert len(moves) == 1
+    m = moves[0]
+    assert (m.previous_odds, m.odds) == (Decimal("2.500"), Decimal("2.100"))
+    assert m.provider_fixture_id == PROVIDER_FIXTURE
+    assert m.market_key == "1X2"
+    assert m.implied_prob_delta > 0, "a shorter price is a higher probability"
+
+
+def test_unmapped_markets_are_excluded_unless_asked_for(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    repo = LiveOddsRepository(db)
+    for offset, odds in ((0, "1.85"), (31, "1.75")):
+        when = AT + timedelta(seconds=offset)
+        repo.write(
+            [state(captured_at=when)],
+            [quote(captured_at=when, provider_bet_id=20, market_key=None,
+                   selection="Over", line=Decimal("9.5"),
+                   odds_decimal=Decimal(odds))],
+        )
+    year = 60 * 24 * 365
+    assert repo.movements(since_minutes=year) == []
+    unmapped = repo.movements(mapped_only=False, since_minutes=year)
+    assert len(unmapped) == 1
+    assert unmapped[0].market_key is None
+    assert unmapped[0].provider_bet_id == 20
+
+
+def test_movement_is_a_view_so_there_is_nothing_to_keep_in_sync(
+    db: psycopg.Connection,
+) -> None:
+    """Storing movement would be a second copy of a fact derived from the
+    snapshot series - the shape of every defect this project has repaired."""
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT table_type FROM information_schema.tables "
+            "WHERE table_schema = 'market' AND table_name = 'live_market_movement'"
+        )
+        row = cur.fetchone()
+    assert row is not None and row[0] == "VIEW"
