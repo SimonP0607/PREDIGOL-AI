@@ -19,6 +19,12 @@ from fbi.providers.api_football.details import (
     iter_injuries,
     iter_standings,
 )
+from fbi.providers.api_football.live import (
+    LiveFixtureState,
+    LiveMarketSeen,
+    LiveOddsQuote,
+    iter_live_odds,
+)
 from fbi.providers.api_football.normalize import (
     iter_fixture_results,
     iter_fixtures,
@@ -146,23 +152,28 @@ class ApiFootballProvider:
             page += 1
         return quotes, raws
 
-    async def fetch_live_odds(
-        self, *, provider_fixture_id: int, kickoff_at: datetime,
-        parse_log: OddsParseLog | None = None,
-    ) -> tuple[list[OddsQuote], RawResponse]:
-        response = await self._client.get("/odds/live", {"fixture": provider_fixture_id})
-        quotes = list(
-            iter_odds(
-                response.body,
-                kickoff_at=kickoff_at,
-                captured_at=response.fetched_at,
-                payload_hash=response.stored.hash,
-                source="live",
-                market_filter=self._market_filter or None,
-                parse_log=parse_log,
-            )
+    async def fetch_live_odds_all(
+        self, *, parse_log: OddsParseLog | None = None
+    ) -> tuple[list[LiveFixtureState], list[LiveOddsQuote], list[LiveMarketSeen], RawResponse]:
+        """Every fixture the provider is pricing in play, in ONE request.
+
+        Measured: an unfiltered /odds/live returns all of them - 8 fixtures
+        across 7 competitions on the probe call - so asking per fixture would
+        multiply the cost by the number of live matches for no extra data.
+
+        Returns live DTOs, never OddsQuote. A live price cannot reach
+        market.odds_snapshots through this method, which is the point: the two
+        series are different observations and the pre-match backtest must never
+        be able to read an in-play number.
+        """
+        response = await self._client.get("/odds/live", {})
+        states, quotes, markets = iter_live_odds(
+            response.body,
+            captured_at=response.fetched_at,
+            payload_hash=response.stored.hash,
+            parse_log=parse_log,
         )
-        return quotes, _raw(response)
+        return states, quotes, markets, _raw(response)
 
 
     # -- historical migration ------------------------------------------------

@@ -1,8 +1,12 @@
 """Monthly partition maintenance for the odds time series.
 
-``market.odds_snapshots`` is RANGE partitioned on ``captured_at``. Without a
-partition for the current month every row lands in the DEFAULT partition and the
-pruning that makes this table survivable does nothing.
+``market.odds_snapshots`` and ``market.live_odds_snapshots`` are RANGE partitioned on
+``captured_at``. Without a partition for the current month every row lands in the DEFAULT
+partition and the pruning that makes these tables survivable does nothing.
+
+Both series are maintained together on purpose: the live one grows faster - one capture
+of eight in-play fixtures carried 1,933 prices - and a table whose partitions are
+maintained only when someone remembers is the one that fills the default partition.
 
 Creating partitions AHEAD of time is the point: a partition created the moment
 it is needed is a partition created during an incident.
@@ -19,11 +23,14 @@ log = structlog.get_logger(__name__)
 
 PARTITION_MONTHS_AHEAD = 3
 
+PARTITIONED_TABLES: tuple[str, ...] = ("odds_snapshots", "live_odds_snapshots")
+"""Every RANGE-partitioned odds table, so adding one here maintains it everywhere."""
 
-def _month_bounds(year: int, month: int) -> tuple[str, str, str]:
+
+def _month_bounds(table: str, year: int, month: int) -> tuple[str, str, str]:
     nxt_year, nxt_month = (year + 1, 1) if month == 12 else (year, month + 1)
     return (
-        f"market.odds_snapshots_{year}_{month:02d}",
+        f"market.{table}_{year}_{month:02d}",
         f"{year:04d}-{month:02d}-01",
         f"{nxt_year:04d}-{nxt_month:02d}-01",
     )
@@ -32,19 +39,20 @@ def _month_bounds(year: int, month: int) -> tuple[str, str, str]:
 def ensure_partitions(conn: psycopg.Connection, *, today: date, months_ahead: int = PARTITION_MONTHS_AHEAD) -> list[str]:
     """Create the next N monthly partitions if they do not exist yet."""
     created: list[str] = []
-    year, month = today.year, today.month
-    for _ in range(months_ahead + 1):
-        name, start, end = _month_bounds(year, month)
-        with conn.cursor() as cur:
-            cur.execute("SELECT to_regclass(%s)", (name,))
-            row = cur.fetchone()
-            if row is not None and row[0] is None:
-                cur.execute(
-                    f"CREATE TABLE {name} PARTITION OF market.odds_snapshots "
-                    f"FOR VALUES FROM ('{start}') TO ('{end}')"
-                )
-                created.append(name)
-        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    for table in PARTITIONED_TABLES:
+        year, month = today.year, today.month
+        for _ in range(months_ahead + 1):
+            name, start, end = _month_bounds(table, year, month)
+            with conn.cursor() as cur:
+                cur.execute("SELECT to_regclass(%s)", (name,))
+                row = cur.fetchone()
+                if row is not None and row[0] is None:
+                    cur.execute(
+                        f"CREATE TABLE {name} PARTITION OF market.{table} "
+                        f"FOR VALUES FROM ('{start}') TO ('{end}')"
+                    )
+                    created.append(name)
+            year, month = (year + 1, 1) if month == 12 else (year, month + 1)
     conn.commit()
     if created:
         log.info("partitions.created", partitions=created)

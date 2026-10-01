@@ -18,12 +18,13 @@ import pytest
 from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.core.config.providers import ApiFootballSettings
 from fbi.ingestion.payload_store import PayloadStore
-from fbi.odds.capture import OddsCaptureService
+from fbi.odds.capture import CaptureReport, OddsCaptureService
 from fbi.odds.repository import OddsRepository
-from fbi.odds.schedule import CapturePlanner, ScheduledFixture
+from fbi.odds.schedule import CapturePlanner, CaptureTask, ScheduledFixture
 from fbi.providers.api_football.client import ApiFootballClient
 from fbi.providers.api_football.normalize import INPLAY_BETS, PREMATCH_BETS
 from fbi.providers.api_football.provider import ApiFootballProvider
+from fbi.providers.base import OddsParseLog
 from fbi.providers.ratelimit import DailyQuota, TokenBucket
 from tests.integration.conftest import Seed
 from tests.integration.helpers import scalar
@@ -197,30 +198,39 @@ async def test_a_later_window_appends_history_instead_of_overwriting_it(
         assert cur.fetchall() == [(Decimal("2.100"), 1439), (Decimal("1.950"), 360)]
 
 
-async def test_the_near_close_snapshot_is_recorded_without_claiming_to_be_a_close(
+async def test_the_prematch_capture_refuses_a_near_close_task(
     prepared: psycopg.Connection, tmp_path: Path, clock: FrozenClock
 ) -> None:
-    clock.advance(minutes=1427)  # T-12: the /odds/live band
-    service, _ = make_service(
+    """It used to serve this task from /odds/live.
+
+    /odds/live was then measured to return ONLY matches already in play: one
+    unfiltered call gave 11 fixtures, every one between the 6th and 93rd minute,
+    and two fixtures probed at T-14 and T-9 returned results: 0 with no errors.
+    So every row this path would have written was an in-play price filed in
+    market.odds_snapshots, which the model and the backtest read as pre-match.
+
+    The planner no longer emits the kind. If one ever arrives, the capture fails
+    here rather than mixing the two series, and the in-play pipeline
+    (odds.live_capture) is where those prices belong.
+    """
+    clock.advance(minutes=1427)  # T-12: what used to be the /odds/live band
+    service, calls = make_service(
         prepared, tmp_path, lambda _n: odds_body("1.90", "3.70", "4.20", scope="inplay")
     )
-    report = await service.capture([ScheduledFixture(1001, KICKOFF)])
+    task = CaptureTask(
+        provider_fixture_id=1001, kickoff_at=KICKOFF, kind="near_close",
+        window_minutes=12, minutes_to_ko=12,
+    )
+    report = CaptureReport(run_id=1)
+    with pytest.raises(ValueError, match="not served by the pre-match capture"):
+        await service._capture_one(task, report)
 
-    assert report.near_close_written == 3
+    assert calls["n"] == 0, "it must fail before spending a request"
     with prepared.cursor() as cur:
-        cur.execute(
-            "SELECT selection, odds_decimal, minutes_to_ko, source, is_validated_close, "
-            "       close_validation_method "
-            "FROM market.near_close_snapshots WHERE selection = 'Home'"
-        )
-        assert cur.fetchone() == (
-            "Home",
-            Decimal("1.900"),
-            12,
-            "live",
-            False,
-            None,
-        ), "a captured snapshot is near-close and unvalidated until proven otherwise"
+        cur.execute("SELECT count(*) FROM market.near_close_snapshots")
+        assert scalar(cur) == 0
+        cur.execute("SELECT count(*) FROM market.odds_snapshots WHERE source = 'live'")
+        assert scalar(cur) == 0
 
 
 async def test_a_closer_snapshot_replaces_a_more_distant_one_but_never_the_reverse(
@@ -307,53 +317,81 @@ async def test_a_capture_computes_the_consensus_of_the_books_it_saw(
     assert recompute_from_snapshots(prepared, fixture_ids=[seed.fixture_id]) == (1, 0), "idempotent"
 
 
-async def test_a_live_body_numbered_like_a_prematch_one_yields_nothing(
-    prepared: psycopg.Connection, tmp_path: Path, clock: FrozenClock
+async def test_a_live_body_numbered_like_a_prematch_one_yields_no_mapped_price(
+    prepared: psycopg.Connection, tmp_path: Path
 ) -> None:
-    """The latent bug, reproduced end to end.
+    """The latent bug, now exercised where live odds actually arrive.
 
-    /odds/live had never run, so nothing had ever exercised the in-play bet
-    namespace. With one shared id map, this body - in-play bet 1, which is
-    "Over/Under Extra Time" - would have been written into the near-close series
-    as a 1X2 price. It must produce no rows at all instead.
+    With one shared id map, in-play bet 1 - "Over/Under Extra Time" - would have
+    been read as a 1X2 price. The in-play boundary must not map it to any market
+    of ours. It still STORES it, with market_key NULL and the provider's own
+    words, because /odds/live keeps no history and a dropped row is gone: that
+    is the difference between the two pipelines, not an inconsistency.
     """
-    clock.advance(minutes=1427)  # T-12: the /odds/live band
-    service, _ = make_service(
-        prepared, tmp_path, lambda _n: odds_body("1.90", "3.70", "4.20", scope="prematch")
-    )
-    report = await service.capture([ScheduledFixture(1001, KICKOFF)])
+    from fbi.providers.api_football.live import iter_live_odds
 
-    assert report.api_calls == 1, "the request was made and the payload was stored"
-    assert report.payloads_stored == 1, "the raw answer is kept whatever we could read from it"
-    assert (report.quotes_seen, report.snapshots_written, report.near_close_written) == (0, 0, 0)
-    with prepared.cursor() as cur:
-        cur.execute("SELECT count(*) FROM market.near_close_snapshots")
-        assert scalar(cur) == 0
+    body = {
+        "response": [
+            {
+                "fixture": {"id": 1001, "status": {"long": "Second Half",
+                                                   "elapsed": 60, "seconds": "60:00"}},
+                "teams": {"home": {"id": 33, "goals": 1}, "away": {"id": 40, "goals": 0}},
+                "status": {"stopped": False, "blocked": False, "finished": False},
+                "update": "2026-10-01T01:14:30+00:00",
+                "odds": [
+                    {
+                        # The PRE-MATCH 1X2 id, on a live payload.
+                        "id": PREMATCH_BETS["1X2"].bet_id,
+                        "name": PREMATCH_BETS["1X2"].name,
+                        "values": [{"value": "Home", "odd": "1.90"}],
+                    }
+                ],
+            }
+        ]
+    }
+    parse_log = OddsParseLog()
+    states, quotes, markets = iter_live_odds(
+        body, captured_at=KICKOFF, payload_hash="h1", parse_log=parse_log
+    )
+    assert len(states) == 1
+    assert [q.market_key for q in quotes] == [None], "not mapped to any market of ours"
+    assert quotes[0].provider_bet_id == PREMATCH_BETS["1X2"].bet_id
+    assert parse_log.unmapped_bets[(1, "Match Winner")] == 1
+    assert [m.provider_bet_id for m in markets] == [1]
 
 
 async def test_a_bet_we_do_not_model_is_registered_rather_than_skipped(
     prepared: psycopg.Connection, tmp_path: Path, clock: FrozenClock
 ) -> None:
-    """The other half of the live-namespace fix.
+    """Refusing to store an unmapped bet is right; refusing silently is not.
 
-    Refusing to store an unmapped bet is right; refusing silently is not. The bet
-    lands in the provider catalogue as 'observed' and in the quality registry, so
-    "we do not model this" stops looking like "we lost this".
+    The bet lands in the provider catalogue as 'observed' and in the quality
+    registry, so "we do not model this" stops looking like "we lost this".
     """
-    clock.advance(minutes=1427)
-    body = odds_body("1.90", "3.70", "4.20", scope="prematch")  # prematch ids on /odds/live
+    body = odds_body("1.90", "3.70", "4.20")
+    # Bet 17 is a real pre-match bet we do not model. On the pre-match endpoint,
+    # in the pre-match namespace - no cross-endpoint trickery needed to make the
+    # point any more.
+    body["response"][0]["bookmakers"][0]["bets"][0]["id"] = 17
+    body["response"][0]["bookmakers"][0]["bets"][0]["name"] = "Home Team Score a Goal"
     service, _ = make_service(prepared, tmp_path, lambda _n: body)
     report = await service.capture([ScheduledFixture(1001, KICKOFF)])
 
     assert (report.snapshots_written, report.quality_issues_opened) == (0, 1)
     assert report.provider_bets_newly_observed == 1
     with prepared.cursor() as cur:
-        cur.execute("SELECT code, entity_type, provider_entity_id, observed, payload_hash IS NOT NULL "
+        cur.execute("SELECT code, entity_type, provider_entity_id, observed, "
+                    "       payload_hash IS NOT NULL "
                     "FROM audit.data_quality_issues")
-        assert cur.fetchall() == [("UNKNOWN_PROVIDER_ENTITY", "provider_market", 1, "Match Winner", True)]
-        cur.execute("SELECT scope, name, market_key, source FROM market.provider_markets "
-                    "WHERE source = 'observed'")
-        assert cur.fetchall() == [("inplay", "Match Winner", None, "observed")]
+        assert cur.fetchall() == [
+            ("UNKNOWN_PROVIDER_ENTITY", "provider_market", 17,
+             "Home Team Score a Goal", True)
+        ]
+        cur.execute("SELECT scope, name, market_key, source "
+                    "FROM market.provider_markets WHERE source = 'observed'")
+        assert cur.fetchall() == [
+            ("prematch", "Home Team Score a Goal", None, "observed")
+        ]
 
 
 async def test_an_unreadable_price_is_recorded_with_the_provider_s_own_words(

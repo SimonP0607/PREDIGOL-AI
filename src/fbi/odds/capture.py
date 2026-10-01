@@ -156,19 +156,25 @@ class OddsCaptureService:
         quotes: list[OddsQuote]
         raws: list[RawResponse]
         parse_log = OddsParseLog()
-        source: OddsSource = "live" if task.kind == "near_close" else "prematch"
+        source: OddsSource = "prematch"
 
         if task.kind == "near_close":
-            quotes, raw = await self._provider.fetch_live_odds(
-                provider_fixture_id=task.provider_fixture_id, kickoff_at=task.kickoff_at,
-                parse_log=parse_log,
+            # This service writes market.odds_snapshots, which the model and the
+            # backtest read as PRE-MATCH prices. It used to serve a near_close
+            # task from /odds/live - and /odds/live was then measured to return
+            # only matches already in play, so those rows would have been in-play
+            # prices filed as pre-match. The planner no longer emits this kind;
+            # if one ever arrives, it fails here rather than mixing the series.
+            raise ValueError(
+                "near_close tasks are not served by the pre-match capture: "
+                "/odds/live returns in-play prices and they belong in "
+                "market.live_odds_snapshots. See LiveCaptureService."
             )
-            raws = [raw]
-        else:
-            quotes, raws = await self._provider.fetch_prematch_odds(
-                provider_fixture_id=task.provider_fixture_id, kickoff_at=task.kickoff_at,
-                parse_log=parse_log,
-            )
+
+        quotes, raws = await self._provider.fetch_prematch_odds(
+            provider_fixture_id=task.provider_fixture_id, kickoff_at=task.kickoff_at,
+            parse_log=parse_log,
+        )
 
         report.executed += 1
         report.api_calls += len(raws)
@@ -179,8 +185,6 @@ class OddsCaptureService:
         report.snapshots_written += written.written
         report.duplicates_skipped += written.skipped_existing
 
-        if task.kind == "near_close":
-            report.near_close_written += self._repo.upsert_near_close(quotes)
 
         # What the boundary refused is part of this capture, not a footnote: the
         # unmapped bets, the renames and the unreadable values go in with the

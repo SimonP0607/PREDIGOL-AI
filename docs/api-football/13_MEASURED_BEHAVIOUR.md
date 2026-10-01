@@ -199,3 +199,173 @@ fixture that reaches kick-off, indefinitely.
 
 The cadence fix was still right: a tick that cannot hit its window is broken whatever the
 window holds. It simply revealed that the window was pointed at the wrong place.
+
+---
+
+## 14. /odds/live, measured end to end (2026-10-01)
+
+Everything below was measured against real payloads, not inferred from the
+documentation. Three findings changed the design; two of them would have
+corrupted the series silently.
+
+### 14.1 It serves matches already in play. There is no pre-kick-off price.
+
+One unfiltered call returned 11 fixtures, every one between the 6th and 93rd
+minute, with markets like "Last Corner". Two fixtures probed individually at
+T-14 and T-9 minutes returned `results: 0` with `errors: []` - a well-formed
+empty answer, not a refusal.
+
+**Therefore the closing line is UNSUPPORTED by this provider.** The latest price
+obtainable before kick-off is the 180-minute pre-match window. The last
+pre-match snapshot is NOT called a closing line anywhere, because it cannot be
+shown to be one; `near_close` capture stays off
+(`odds_capture_near_close=False`) and `market.near_close_snapshots` stays empty.
+
+### 14.2 There is no bookmaker dimension.
+
+Not one fixture carried a `bookmakers` key. Pre-match prices are quoted BY a
+named book; a live price here is the provider's single aggregated number. These
+are different kinds of observation, which is why
+`market.live_odds_snapshots` has no bookmaker column and is a separate table
+rather than more rows in `market.odds_snapshots`.
+
+Payload shape, per fixture:
+
+| key | contents |
+|---|---|
+| `fixture` | `id`, `status.long`, `status.elapsed`, `status.seconds` ("77:00") |
+| `league` | `id`, `season` |
+| `teams` | `home`/`away` with `id` and live `goals` |
+| `status` | `stopped`, `blocked`, `finished` |
+| `update` | the provider's own last-change time |
+| `odds` | flat list of markets, each with `values` |
+
+Each value carries `value`, `odd`, `handicap`, `main`, `suspended`.
+
+### 14.3 The handicap is signed per selection. Pre-match it is not.
+
+Pre-match repeats the home team's handicap on both rows of an Asian Handicap
+pair, so the pre-match parser negates the away row. Live sends the handicap that
+applies to the selection named:
+
+```
+{"value": "Home", "handicap": "-0.75", "odd": "1.90"}
+{"value": "Away", "handicap":  "0.75", "odd": "1.98"}
+```
+
+Settled by devigging 40 real pairs both ways:
+
+| reading | pairs formed | overround |
+|---|---|---|
+| away handicap already negated (as sent) | 40 | 1.0528 – 1.0827 |
+| away handicap repeats the home number | 7 | 0.8413 – 1.2937 |
+
+Only the first produces a possible book on every pair; the second barely forms
+pairs and yields overrounds below 1.0, which would be free money. **Live rows
+are stored as sent.** Reusing `normalize._selection()` here would have flipped
+the sign on every away line in the series.
+
+### 14.4 The bet ids are a different namespace.
+
+| concept | pre-match | live |
+|---|---|---|
+| 1X2 | 1 Match Winner | 59 Fulltime Result |
+| Asian Handicap | 4 Asian Handicap | 33 Asian Handicap |
+| Over/Under | 5 Goals Over/Under | 36 Over/Under Line |
+| Both teams to score | 8 Both Teams Score | 69 Both Teams to Score |
+| Double Chance | 12 Double Chance | 72 Double Chance |
+
+Pre-match bet 4 is Asian Handicap; **in-play bet 4 is "Extra Time Total Corners
+(3 Ways) (1st Half)"**. The catalogues are separate rows in
+`market.provider_markets` (scope `prematch` 338 entries, scope `inplay` 266), and
+`live_market_of()` consults the in-play map only.
+
+The vocabulary differs too: live Double Chance says "Home or Draw", pre-match
+says "Home/Draw".
+
+### 14.5 72 of 266 in-play markets were seen carrying prices.
+
+26–56 markets per fixture, 1,933 values across 8 fixtures. 5 map to markets we
+model; the other 67 are in-play only (Match Corners, Race to the 9th Corner,
+Last Team to Score, Anytime Goal Scorer) and are stored with `market_key` NULL
+and the provider's own selection text. **/odds/live keeps no history**, so a
+value not stored at the instant it was quoted does not exist anywhere - dropping
+an unmapped market would be an unrecoverable loss, which is why the live table's
+`market_key` is nullable and the pre-match one's is not.
+
+Bet 36 ("Over/Under Line") is the OU equivalent and carries quarter lines plus a
+`main` flag; bet 25 ("Match Goals") is a separate, coarser market.
+
+### 14.6 57 of 1,933 values were not prices.
+
+56 were `"odd": "0"` **and** suspended - the provider declining to quote - plus
+one Double Chance leg at exactly 1.00, not suspended. Both violate
+`odds_decimal > 1.0`. They are refused into the parse log, counted in the
+fixture state's `values_suspended`, and never coerced into a number we invented.
+
+210 values were suspended *with* a real price. Those ARE stored, with
+`is_suspended = true`: that is how the series shows a market freezing and what
+it reopened at.
+
+`main` was `null` on 1,575 values, `false` on 275 and `true` on 83 - hence a
+nullable boolean.
+
+### 14.7 The provider refreshes once every ~31 seconds.
+
+12 unfiltered calls, 10.4 s apart, 7 live fixtures:
+
+| gap | fixtures whose `update` moved | prices that moved |
+|---|---|---|
+| 10.6s | 7/7 | 387/1682 |
+| 10.4s | 0/7 | 0/1682 |
+| 10.4s | 0/7 | 0/1682 |
+| 10.4s | 7/7 | 518/1673 |
+| 10.4s | 0/7 | 0/1678 |
+| 10.4s | 0/7 | 0/1678 |
+| 10.4s | 7/7 | 303/1353 |
+| 10.4s | 0/7 | 0/1362 |
+| 10.4s | 0/7 | 0/1362 |
+| 10.4s | 7/7 | 334/1350 |
+| 10.4s | 0/7 | 0/1356 |
+
+Exactly one real refresh every three ticks, and `update` moves for ALL fixtures
+at once or for none: the provider sweeps its whole live book on a single cycle.
+**5 distinct payloads came back from 12 calls, so 58% of a 10-second poll is
+spent on bytes already in hand** - our payload dedup recognised them
+(`cached=True`), but the request was spent.
+
+So the capture floor is 30 s, and it is a floor on *information*: asking faster
+cannot return a price we do not already have. Not polling every 5 seconds turns
+out to be a lower bound the provider enforces anyway - at 5 s, five of every six
+calls would be waste.
+
+Movement worth capturing: 9.2% of prices moved per 10 s tick (~27% per refresh
+cycle); suspensions churn heavily (96 values thawed in one cycle); markets
+appear and vanish between cycles (one cycle dropped 325 values as a match wound
+down); and 20.9% of prices did not move at all across the two minutes.
+
+Reproduce from the stored payloads, no requests:
+
+```
+python scripts/measure_live_cadence.py
+```
+
+### 14.8 What a tick costs
+
+One unfiltered call covers every live fixture, so **cost is per tick, not per
+match**: 90 live matches cost the same as 2. At the 30 s floor that is 2,880
+calls per 24 h of continuous football - under 5% of the 60,000/day guard.
+
+What actually decides the daily spend is how many hours have any football at
+all, so the cadence returns SKIP when nothing can be on the pitch and says when
+to look again. That check reads `core.fixtures` and costs no request.
+
+### 14.9 First production capture (2026-10-01 01:38)
+
+6 fixtures priced, 1,188 quotes read, 772 written, 3 fixtures in competitions we
+do not track (416 quotes, counted not dropped silently), 245 suspended values,
+39 refused, 704 rows kept with `market_key` NULL, 56 markets observed, 1 quality
+issue - the Double Chance leg at 1.00. One API call, 450 ms.
+
+`market.odds_snapshots` rows with `source = 'live'`: **0**.
+`market.near_close_snapshots`: **0**.

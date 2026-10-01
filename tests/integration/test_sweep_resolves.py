@@ -17,7 +17,11 @@ from collections.abc import Iterator
 import psycopg
 import pytest
 
-from fbi.quality.detect import CheckOutcome, _close_what_the_check_no_longer_finds
+from fbi.quality.detect import (
+    CheckOutcome,
+    _close_what_the_check_no_longer_finds,
+    payload_dated_relations,
+)
 from fbi.quality.issues import (
     EntityType,
     IssueCode,
@@ -33,7 +37,8 @@ def clean_slate(db: psycopg.Connection) -> Iterator[None]:
     yield
     db.rollback()
     with db.cursor() as cur:
-        cur.execute("DELETE FROM audit.data_quality_issues WHERE provider_entity_id BETWEEN 95000 AND 95999")
+        cur.execute("DELETE FROM audit.data_quality_issues "
+                    "WHERE provider_entity_id BETWEEN 95000 AND 95999")
     db.commit()
 
 
@@ -170,12 +175,60 @@ def test_the_check_still_closes_its_own_field_on_that_shared_pair(
     assert status_of(db, mine.fingerprint)[0] == "resolved"
 
 
+def test_a_clean_run_closes_a_relation_the_schema_puts_in_scope(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """lineage_holds builds its field from a relation name, so it cannot be listed in
+    CHECK_SCOPES. It declares the scope from the schema instead - every core relation
+    that names a payload and carries its own fetch time - and that set is enumerable, so
+    a run finding zero offenders CAN say the problem is fixed.
+
+    Before this, a clean run could close nothing at all, because a clean run produces
+    nothing to union with. Three LINEAGE_BROKEN issues stayed open for two days after the
+    199,733 rows behind them were repaired and the check had gone to zero. A registry
+    that cannot report a fix is one an operator stops believing.
+    """
+    relations = payload_dated_relations(db)
+    assert relations, "the schema should put at least one relation in scope"
+    registry = IssueRegistry(db)
+    repaired = issue(IssueCode.LINEAGE_BROKEN, EntityType.PAYLOAD, 95014, "3618",
+                     field=relations[0])
+    registry.record(repaired)
+    db.commit()
+
+    clean = CheckOutcome("lineage_holds", "market_and_detail", Severity.ERROR,
+                         population=None, offenders=0, issues=[])
+    assert _close_what_the_check_no_longer_finds(db, registry, clean) == 1
+    db.commit()
+    status, resolution = status_of(db, repaired.fingerprint)
+    assert status == "resolved"
+    assert resolution is not None and "no longer finds it" in resolution
+
+
+def test_a_clean_run_still_cannot_close_a_field_outside_that_scope(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """The guard is unchanged in the direction that matters. A relation the schema query
+    does not return is not something this check examined, so it may not speak for it -
+    whatever code the issue carries."""
+    registry = IssueRegistry(db)
+    foreign = issue(IssueCode.LINEAGE_BROKEN, EntityType.PAYLOAD, 95015, "7",
+                    field="some_relation_this_check_never_examined")
+    registry.record(foreign)
+    db.commit()
+
+    clean = CheckOutcome("lineage_holds", "market_and_detail", Severity.ERROR,
+                         population=None, offenders=0, issues=[])
+    assert _close_what_the_check_no_longer_finds(db, registry, clean) == 0
+    db.commit()
+    assert status_of(db, foreign.fingerprint)[0] == "open"
+
+
 def test_a_run_time_field_is_closed_only_when_the_check_names_it_that_run(
     db: psycopg.Connection, seed: Seed
 ) -> None:
-    """lineage_holds builds its field from a relation name, so it cannot be declared up
-    front. Closing it relies on the check naming it in the same run; a clean run leaves it
-    open, which is the conservative direction."""
+    """A field that is neither declared by hand nor returned by the schema query can
+    still be closed by the run that produced it - but only by that run."""
     registry = IssueRegistry(db)
     dynamic = issue(IssueCode.LINEAGE_BROKEN, EntityType.PAYLOAD, 95012, "12",
                     field="market.odds_snapshots")

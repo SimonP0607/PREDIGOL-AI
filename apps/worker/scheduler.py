@@ -47,6 +47,7 @@ from fbi.core.logging import configure as configure_logging
 from fbi.core.logging import new_run_id
 from fbi.core.version import code_version
 from fbi.odds.horizons import DEFAULT_HORIZON_DAYS
+from fbi.odds.live_cadence import DEFAULT_LIVE_DAILY_BUDGET, POLL_FLOOR_SECONDS
 from fbi.odds.partitions import ensure_partitions
 from fbi.odds.schedule import NEAR_CLOSE_TOLERANCE_MINUTES
 from fbi.ops.heartbeat import (
@@ -96,6 +97,20 @@ RESULTS_SYNC_HOURS = int(os.environ.get("FBI_RESULTS_SYNC_HOURS", "6"))
 RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
 BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "1" if PAID_PLAN else "6"))
 BACKFILL_MAX_PER_RUN = int(os.environ.get("FBI_BACKFILL_MAX_PER_RUN", "1500" if PAID_PLAN else "6"))
+LIVE_TICK_SECONDS = int(os.environ.get("FBI_LIVE_TICK_SECONDS", str(POLL_FLOOR_SECONDS)))
+"""How often the live job WAKES. How often it CALLS is the cadence's decision.
+
+30 s is the provider's measured refresh period for /odds/live: 12 calls 10.4 s
+apart returned 5 distinct payloads, with every fixture's ``update`` stamp moving
+together once every three ticks. Waking faster cannot learn anything new; waking
+slower would miss a refresh that is gone for good, because /odds/live keeps no
+history of its own.
+
+A wake-up is not a request. The job asks the database whether anything could be
+on the pitch and returns without calling the provider when nothing is - so a
+night with no football costs a handful of queries and no quota at all."""
+LIVE_DAILY_BUDGET = int(os.environ.get(
+    "FBI_LIVE_DAILY_BUDGET", str(DEFAULT_LIVE_DAILY_BUDGET)))
 PIPELINE_MINUTES = int(os.environ.get("FBI_PIPELINE_MINUTES", "30"))
 NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
 
@@ -149,6 +164,50 @@ async def _tick() -> TickOutcome:
     # pipeline is database-only and idempotent, so running it here is free.
     await asyncio.to_thread(_pipeline_now)
     return "captured"
+
+
+async def _live_tick() -> None:
+    """In-play capture. Its own pipeline, sharing only client, quota and raw store.
+
+    This job can reach market.live_odds_snapshots and market.live_fixture_states
+    and nothing else - LiveCaptureService holds no pre-match repository - so an
+    in-play price cannot land in the pre-match series or the backtest from here.
+    """
+    from scripts.capture_odds import _client
+
+    from fbi.core.clock import today
+    from fbi.odds.live_capture import LiveCaptureService
+    from fbi.odds.partitions import ensure_partitions
+    from fbi.providers.api_football import ApiFootballProvider
+    from fbi.providers.quota import read_usage
+
+    new_run_id()
+    cfg = settings.api_football
+    with _connect() as conn:
+        remaining = read_usage(
+            conn, budget=min(cfg.daily_budget, cfg.per_day_limit)
+        ).remaining
+        service = LiveCaptureService(
+            conn, provider=None, live_daily_budget=LIVE_DAILY_BUDGET  # type: ignore[arg-type]
+        )
+        decision = service.plan(remaining_quota=remaining)
+        if not decision.should_capture:
+            log.debug("live_tick.skipped", reason=decision.reason,
+                      next_in_seconds=decision.next_in_seconds)
+            return
+        ensure_partitions(conn, today=today())
+        provider = ApiFootballProvider(_client())
+        try:
+            report = await LiveCaptureService(
+                conn, provider, live_daily_budget=LIVE_DAILY_BUDGET
+            ).capture(remaining_quota=remaining)
+        finally:
+            await provider.aclose()
+    if report.captured:
+        log.info("live_tick.captured", fixtures=report.fixtures_priced,
+                 written=report.quotes_written, duplicate=report.quotes_duplicate,
+                 untracked=report.quotes_untracked, suspended=report.values_suspended,
+                 accounting_holds=report.accounting_holds)
 
 
 async def _daily_fixtures_sync() -> None:
@@ -377,6 +436,13 @@ async def main() -> None:
     tick_grace = settings.odds.odds_window_tolerance * 60
     scheduler.add_job(_tick_with_heartbeat, "interval", minutes=TICK_MINUTES, id="odds_capture",
                       max_instances=1, coalesce=True, misfire_grace_time=tick_grace, next_run_time=moment)
+    # Live capture comes before everything else in priority, so it gets its own
+    # job rather than a slice of the odds tick: a long pre-match capture must
+    # never be the reason an in-play price was missed, and an in-play price
+    # missed is gone - /odds/live has no history to come back for.
+    scheduler.add_job(_live_tick, "interval", seconds=LIVE_TICK_SECONDS, id="live_odds",
+                      max_instances=1, coalesce=True,
+                      misfire_grace_time=LIVE_TICK_SECONDS, next_run_time=moment)
     scheduler.add_job(_daily_fixtures_sync, "interval", hours=FIXTURES_SYNC_HOURS, id="fixtures_sync",
                       max_instances=1, coalesce=True, misfire_grace_time=3600, next_run_time=fixtures_next)
     scheduler.add_job(_results_sync, "interval", hours=RESULTS_SYNC_HOURS, id="results_sync",

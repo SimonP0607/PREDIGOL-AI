@@ -529,10 +529,32 @@ entity for `possession_pct`. Same code, same entity type, different producer - a
 real records were resolved with a reason that was not true of them. They were reopened;
 the lesson is in the third element of these tuples.
 
-`lineage_holds` also opens issues whose field is a relation name computed at run time.
-Those are never in this table, so they are closed only when the check names them in the
-same run - see the union in _close_what_the_check_no_longer_finds. A check that goes
-completely clean therefore leaves them open, which is the conservative direction."""
+`lineage_holds` opens issues whose field is a relation name discovered at run time, so
+its scope cannot be written here. It declares it instead - see DISCOVERED_SCOPES - from
+the same schema query the check itself runs against. That is what makes a clean run able
+to close its own work: the scope is "every dated relation referencing a payload", which
+is enumerable, not "whatever this run happened to find".
+
+The earlier behaviour - union the declared scope with what the run produced - left a
+clean run unable to close anything, because a clean run produces nothing. Three
+LINEAGE_BROKEN issues stayed open for two days after the 199,733 rows behind them had
+been repaired and the check had gone to zero. A registry that cannot say a problem is
+fixed is a registry an operator learns to ignore, which costs as much as closing an issue
+wrongly - in the other direction."""
+
+
+DISCOVERED_SCOPES: dict[str, Callable[[psycopg.Connection], set[tuple[str, str, str]]]] = {
+    "lineage_holds": lambda conn: {
+        (IssueCode.LINEAGE_BROKEN.value, EntityType.PAYLOAD.value, relation)
+        for relation in payload_dated_relations(conn)
+    },
+}
+"""Scopes a check can only know by asking the database.
+
+Keyed the same way as CHECK_SCOPES and used in addition to it. The contract is the
+same and the guard is not loosened: a check may still close only triples it has
+enumerated. The difference is that here the enumeration comes from the schema, so
+it covers relations nobody has listed by hand - including ones added later."""
 
 
 OPEN_IN_SCOPE_SQL = """
@@ -562,14 +584,21 @@ def _close_what_the_check_no_longer_finds(
     what makes this safe. Scoped on the code and entity type alone, a clean
     ``values_are_possible`` closed 11,694 PROVIDER_INCONSISTENCY issues that detail
     ingestion had opened on the same entity for a different field. See CHECK_SCOPES.
+
+    A scope may be declared by hand (CHECK_SCOPES) or asked of the schema
+    (DISCOVERED_SCOPES) - the guard is the same either way. What a check may never do is
+    close an issue whose triple it has not enumerated.
     """
     if outcome.offenders > len(outcome.issues):
         return 0  # truncated listing: it cannot speak for what it did not enumerate
     declared = set(CHECK_SCOPES.get(outcome.name, ()))
+    discover = DISCOVERED_SCOPES.get(outcome.name)
+    if discover is not None:
+        declared |= discover(conn)
     if not declared:
         return 0
-    # Union with what this run actually produced, so a check whose field is computed at
-    # run time (lineage_holds names a relation) can still close its own work.
+    # Also whatever this run produced: a check may always close its own output, even
+    # when a field it reported is not in either scope above.
     observed = {(i.code.value, i.entity_type.value, i.field or "") for i in outcome.issues}
     scope = sorted(declared | observed)
     still_found = {issue.fingerprint for issue in outcome.issues}

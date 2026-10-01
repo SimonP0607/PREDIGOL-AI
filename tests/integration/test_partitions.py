@@ -13,13 +13,14 @@ import psycopg
 from fbi.odds.partitions import ensure_partitions
 
 
-def _partitions(conn: psycopg.Connection) -> set[str]:
+def _partitions(conn: psycopg.Connection, parent: str = "odds_snapshots") -> set[str]:
     with conn.cursor() as cur:
         cur.execute(
             "SELECT c.relname FROM pg_inherits i "
             "JOIN pg_class c ON c.oid = i.inhrelid "
             "JOIN pg_class p ON p.oid = i.inhparent "
-            "WHERE p.relname = 'odds_snapshots'"
+            "WHERE p.relname = %s",
+            (parent,),
         )
         return {row[0] for row in cur.fetchall()}
 
@@ -32,8 +33,16 @@ def test_partitions_are_created_ahead_of_time(db: psycopg.Connection) -> None:
             "market.odds_snapshots_2026_12",
             "market.odds_snapshots_2027_01",
             "market.odds_snapshots_2027_02",
-        ], "the year boundary must not be skipped"
+            "market.live_odds_snapshots_2026_11",
+            "market.live_odds_snapshots_2026_12",
+            "market.live_odds_snapshots_2027_01",
+            "market.live_odds_snapshots_2027_02",
+        ], "both series are maintained, and the year boundary must not be skipped"
         assert "odds_snapshots_2027_01" in _partitions(db)
+        # The in-play series is housekept by the same job. It had better be: it is
+        # the one series whose rows cannot be re-fetched if a write is refused,
+        # because /odds/live keeps no history of its own.
+        assert "live_odds_snapshots_2027_01" in _partitions(db, "live_odds_snapshots")
     finally:
         with db.cursor() as cur:
             for name in created:

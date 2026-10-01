@@ -195,9 +195,12 @@ class FootballDataProvider(Protocol):
         parse_log: OddsParseLog | None = None,
     ) -> tuple[list[OddsQuote], list[RawResponse]]: ...
 
-    async def fetch_live_odds(
-        self, *, provider_fixture_id: int, kickoff_at: datetime,
-        parse_log: OddsParseLog | None = None,
-    ) -> tuple[list[OddsQuote], RawResponse]: ...
+    # There is deliberately NO in-play method here. /odds/live is a different
+    # observation with its own DTOs, its own table and its own service, and
+    # odds.live_capture.LiveOddsSource is the protocol that describes it. Any
+    # consumer of FootballDataProvider - the backfill, the pre-match capture,
+    # the migration - therefore has no way to reach an in-play price at all,
+    # which is the separation the platform depends on rather than a convention
+    # somebody has to remember.
 
     async def aclose(self) -> None: ...
