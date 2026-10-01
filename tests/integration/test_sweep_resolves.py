@@ -280,3 +280,93 @@ def test_closing_is_idempotent(db: psycopg.Connection, seed: Seed) -> None:
     db.commit()
 
     assert first == 1 and second == 0, "an already-resolved issue is not resolved again"
+
+
+# --- a check with more offenders than it records ----------------------------
+
+
+def test_a_check_that_enumerated_every_row_may_close_even_when_it_recorded_few(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """The leak this closed: lineups_are_complete had 2,894 offenders against a
+    500-row recording cap, so the completeness guard refused to close anything
+    and 36,823 INCOMPLETE_LINEUP rows stood open while the check itself put the
+    real figure at 2,894.
+
+    Recording a sample and enumerating everything are different jobs. The guard
+    is unchanged in substance - a check may only speak for what it saw - it is
+    just measured against what was SEEN rather than what was WRITTEN.
+    """
+    registry = IssueRegistry(db)
+    stale = issue(IssueCode.STALE_DATA, EntityType.FIXTURE, 95020, "old",
+                  field="status_short")
+    registry.record(stale)
+    db.commit()
+
+    still_there = issue(IssueCode.STALE_DATA, EntityType.FIXTURE, 95021, "new",
+                        field="status_short")
+    outcome = CheckOutcome(
+        "results_are_not_stale", "unfinished_fixtures", Severity.WARNING,
+        population=100, offenders=900,
+        issues=[still_there],                     # one recorded
+        found=frozenset({still_there.fingerprint}),
+        enumerated_rows=900,                      # nine hundred seen
+    )
+    assert outcome.complete
+    assert _close_what_the_check_no_longer_finds(db, registry, outcome) == 1
+    db.commit()
+    assert status_of(db, stale.fingerprint)[0] == "resolved"
+
+
+def test_a_check_that_did_not_see_every_row_still_closes_nothing(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    registry = IssueRegistry(db)
+    stale = issue(IssueCode.STALE_DATA, EntityType.FIXTURE, 95022, "old",
+                  field="status_short")
+    registry.record(stale)
+    db.commit()
+
+    truncated = CheckOutcome(
+        "results_are_not_stale", "unfinished_fixtures", Severity.WARNING,
+        population=100, offenders=900, issues=[], found=frozenset(),
+        enumerated_rows=500,   # it only got through 500 of the 900
+    )
+    assert not truncated.complete
+    assert _close_what_the_check_no_longer_finds(db, registry, truncated) == 0
+    db.commit()
+    assert status_of(db, stale.fingerprint)[0] == "open"
+
+
+def test_completeness_is_counted_in_rows_not_in_fingerprints(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """Several offending rows can share one issue - two line-ups of a fixture
+    both naming ten starters produce the same fingerprint - so a complete run
+    has fewer fingerprints than offenders. Comparing the two made a complete run
+    look truncated, and that alone stopped 2,894 enumerated offenders from
+    closing anything."""
+    one = issue(IssueCode.STALE_DATA, EntityType.FIXTURE, 95023, "x",
+                field="status_short")
+    outcome = CheckOutcome(
+        "results_are_not_stale", "unfinished_fixtures", Severity.WARNING,
+        population=10, offenders=3,
+        issues=[one],
+        found=frozenset({one.fingerprint}),   # three rows, one fingerprint
+        enumerated_rows=3,
+    )
+    assert outcome.complete, "three rows seen, three offenders - complete"
+    assert len(outcome.enumerated) == 1
+
+
+def test_without_the_row_count_the_recorded_issues_are_the_measure(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """Every check whose offenders fit inside the cap passes nothing extra, and
+    must behave exactly as it did before."""
+    one = issue(IssueCode.STALE_DATA, EntityType.FIXTURE, 95024, "x",
+                field="status_short")
+    assert CheckOutcome("results_are_not_stale", "s", Severity.WARNING, 10, 1,
+                        issues=[one]).complete
+    assert not CheckOutcome("results_are_not_stale", "s", Severity.WARNING, 10, 2,
+                            issues=[one]).complete

@@ -48,7 +48,47 @@ class CheckOutcome:
     population: int | None
     offenders: int
     issues: list[QualityIssue] = field(default_factory=list)
+    """The issues to RECORD. Capped, because a check with a hundred thousand
+    offenders must not write a hundred thousand rows to say so - the count is
+    exact and the examples are the first ones seen."""
     detail: str = ""
+    enumerated_rows: int | None = None
+    """How many offending ROWS this run actually read, when that differs from the
+    number it recorded. ``offenders`` is a count of rows, so completeness has to
+    be measured in rows too - several offending rows can share one fingerprint
+    (two line-ups of one fixture both naming ten starters produce the same
+    issue), and comparing a row count against a fingerprint count made a
+    complete run look truncated. lineups_are_complete enumerated all 2,894 of
+    its offenders and still closed nothing for this reason."""
+    found: frozenset[str] = frozenset()
+    """The fingerprints the check still finds, COMPLETE even when ``issues`` was
+    capped. Separating the two is what lets a check close its own stale issues.
+
+    Before this they were the same list, so the completeness guard - a check may
+    not speak for what it did not enumerate - refused to close anything whenever
+    the offender count exceeded the listing cap. lineups_are_complete had 2,894
+    offenders against a cap of 500, so it had never closed one issue in its
+    life: 36,823 INCOMPLETE_LINEUP rows stood open while the check itself put the
+    real figure at 2,894. A registry that can only grow is one an operator stops
+    reading, which costs as much as closing an issue wrongly.
+
+    Empty means "not supplied", and the guard then falls back to ``issues`` -
+    which is correct for every check whose offenders fit inside the cap.
+    """
+
+    @property
+    def enumerated(self) -> frozenset[str]:
+        """Every fingerprint this run can speak for."""
+        return self.found or frozenset(i.fingerprint for i in self.issues)
+
+    @property
+    def complete(self) -> bool:
+        """Did this run see every offender? Only then may it close anything.
+
+        Measured in rows against ``offenders``, which is also a row count.
+        """
+        seen = self.enumerated_rows if self.enumerated_rows is not None else len(self.issues)
+        return self.offenders <= seen
 
     @property
     def passed(self) -> bool:
@@ -95,6 +135,21 @@ def _scalar(conn: psycopg.Connection, sql: str, params: Sequence[Any] = ()) -> i
 
 def _rows(conn: psycopg.Connection, sql: str, params: Sequence[Any] = (),
           limit: int = 500) -> list[dict[str, Any]]:
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql, params)
+        return [dict(r) for r in cur.fetchmany(limit)]
+
+
+def _all_rows(conn: psycopg.Connection, sql: str, params: Sequence[Any] = (),
+              limit: int = 200_000) -> list[dict[str, Any]]:
+    """Every offending row, for the fingerprints a check must speak for.
+
+    Separate from ``_rows`` on purpose: this feeds the resolution guard, not the
+    registry, so it is read in full while the rows actually RECORDED stay capped.
+    The outer limit is a safety rail, not a sample - a check that reaches it is
+    reported as incomplete and closes nothing, which is the conservative
+    direction.
+    """
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(sql, params)
         return [dict(r) for r in cur.fetchmany(limit)]
@@ -203,20 +258,26 @@ def check_lineups_are_complete(conn: psycopg.Connection) -> CheckOutcome:
     actually arrived.
     """
     population = _scalar(conn, "SELECT count(*) FROM core.fixture_lineups WHERE source = 'api-football'")
-    rows = _rows(conn, SHORT_LINEUP_SQL)
     offenders = _scalar(conn, f"SELECT count(*) FROM ({SHORT_LINEUP_SQL}) AS q")
-    issues = [
-        QualityIssue(
+
+    def issue_of(r: dict[str, Any]) -> QualityIssue:
+        return QualityIssue(
             code=IssueCode.INCOMPLETE_LINEUP, entity_type=EntityType.LINEUP, severity=Severity.WARNING,
             entity_id=int(r["fixture_id"]), provider_entity_id=r["provider_coach_id"],
             field="starters", observed=int(r["starters"]), expected="11",
             detail=f"the {r['team_side']} line-up names {r['named']} players, "
                    f"{r['starters']} of them starters; stored as received",
         )
-        for r in rows
-    ]
+
+    # Every offender is enumerated for the resolution guard, while only the
+    # first 500 are recorded. This check has thousands of offenders, so sharing
+    # one capped list meant it could never report that any of them were fixed.
+    every = _all_rows(conn, SHORT_LINEUP_SQL)
+    issues = [issue_of(r) for r in every[:500]]
+    found = frozenset(issue_of(r).fingerprint for r in every)
+    enumerated_rows = len(every)
     return CheckOutcome("lineups_are_complete", "api_football_lineups", Severity.WARNING, population,
-                        offenders, issues)
+                        offenders, issues, found=found, enumerated_rows=enumerated_rows)
 
 
 # ── detail coverage ─────────────────────────────────────────────────────────
@@ -240,20 +301,27 @@ def check_detail_has_been_fetched(conn: psycopg.Connection) -> CheckOutcome:
     is an answer, not a gap.
     """
     population = _scalar(conn, "SELECT count(*) FROM core.fixtures WHERE status_group = 'finished'")
-    rows = _rows(conn, MISSING_DETAIL_SQL)
     offenders = _scalar(conn, f"SELECT count(*) FROM ({MISSING_DETAIL_SQL}) AS q")
-    issues = [
-        QualityIssue(
+
+    def issue_of(r: dict[str, Any]) -> QualityIssue:
+        return QualityIssue(
             code=IssueCode.MISSING_DETAIL, entity_type=EntityType.FIXTURE, severity=Severity.WARNING,
             entity_id=int(r["fixture_id"]), provider_entity_id=int(r["provider_fixture_id"]),
             field="detail", observed=None, expected="a detail payload",
             detail=f"league {r['provider_league_id']} season {r['season']}: played and never "
                    "asked for; one /fixtures?ids= request covers twenty of these",
         )
-        for r in rows
-    ]
+
+    # As above: enumerate all, record the first 500. The backfill closes this
+    # gap steadily - 12,073 fixtures left of 201,421, all of them the oldest
+    # seasons of the lowest tier - so being able to say a fixture is no longer
+    # missing is most of the value.
+    every = _all_rows(conn, MISSING_DETAIL_SQL)
+    issues = [issue_of(r) for r in every[:500]]
+    found = frozenset(issue_of(r).fingerprint for r in every)
+    enumerated_rows = len(every)
     return CheckOutcome("detail_has_been_fetched", "finished_fixtures", Severity.WARNING, population,
-                        offenders, issues)
+                        offenders, issues, found=found, enumerated_rows=enumerated_rows)
 
 
 # ── impossible and contradictory values ─────────────────────────────────────
@@ -576,9 +644,13 @@ def _close_what_the_check_no_longer_finds(
 
     Two guards, and both matter.
 
-    Completeness: ``_rows`` truncates at 500, so a check with more offenders than it
-    listed has an INCOMPLETE issue set, and closing "what it did not produce" would
-    resolve real problems it simply did not reach.
+    Completeness: ``_rows`` truncates at 500, so a check that only RECORDS issues
+    cannot speak for the ones it never reached. A check may still close its work when
+    it enumerates every offender's fingerprint in ``CheckOutcome.found``, even though
+    it records a capped sample of them - which is how a check with thousands of
+    offenders becomes able to report a fix at all. Without the distinction,
+    lineups_are_complete had never closed a single issue: 2,894 offenders against a
+    cap of 500, and 36,823 rows left standing.
 
     Scope: a check may only close its own (code, entity_type, field) triples. The field is
     what makes this safe. Scoped on the code and entity type alone, a clean
@@ -589,7 +661,7 @@ def _close_what_the_check_no_longer_finds(
     (DISCOVERED_SCOPES) - the guard is the same either way. What a check may never do is
     close an issue whose triple it has not enumerated.
     """
-    if outcome.offenders > len(outcome.issues):
+    if not outcome.complete:
         return 0  # truncated listing: it cannot speak for what it did not enumerate
     declared = set(CHECK_SCOPES.get(outcome.name, ()))
     discover = DISCOVERED_SCOPES.get(outcome.name)
@@ -601,7 +673,7 @@ def _close_what_the_check_no_longer_finds(
     # when a field it reported is not in either scope above.
     observed = {(i.code.value, i.entity_type.value, i.field or "") for i in outcome.issues}
     scope = sorted(declared | observed)
-    still_found = {issue.fingerprint for issue in outcome.issues}
+    still_found = outcome.enumerated
     codes = [c for c, _e, _f in scope]
     entities = [e for _c, e, _f in scope]
     fields = [f for _c, _e, f in scope]
