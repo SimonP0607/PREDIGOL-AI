@@ -27,6 +27,7 @@ from fbi.core.logging import configure as configure_logging
 from fbi.ops.reprocess import (
     derive_coverage_from_stored_detail,
     derive_identity_from_stored_detail,
+    repair_payload_lineage,
     reprocess_fixture_details,
     reprocess_results,
     reprocess_teams,
@@ -50,6 +51,9 @@ def main() -> int:
                         help="faster, and gives up the guarantee that the bytes are unchanged")
     parser.add_argument("--derive-only", action="store_true",
                         help="skip the replay; only fill coverage and identity from what is normalized")
+    parser.add_argument("--fix-lineage", action="store_true",
+                        help="move derived rows' fetch time back to the payload's own, for the "
+                             "rows written before the writers started asking the index")
     parser.add_argument("--results", action="store_true",
                         help="re-derive the 90-minute score from score.fulltime in the stored "
                              "payloads: fixes the rows where extratime was the running total")
@@ -67,6 +71,19 @@ def main() -> int:
         print(f"{sum(coverage.values())} coverage row(s) derived: "
               + ", ".join(f"{k} {v}" for k, v in coverage.items()))
         print("identity derived: " + ", ".join(f"{k} {v}" for k, v in identity.items()))
+        return 0
+
+    if args.fix_lineage:
+        with psycopg.connect(settings.database.psycopg_url) as conn:
+            counts = repair_payload_lineage(conn, apply=args.apply)
+        total = sum(counts.values())
+        if not counts:
+            print("no row is dated after the payload it names")
+            return 0
+        for rel, n in sorted(counts.items(), key=lambda kv: -kv[1]):
+            print(f"  core.{rel:<26} {n:>8}")
+        print(f"{total} row(s) in {len(counts)} relation(s)"
+              + ("" if args.apply else " - re-run with --apply"))
         return 0
 
     if args.results:

@@ -24,7 +24,7 @@ from typing import Any
 
 import psycopg
 import structlog
-from psycopg.rows import dict_row
+from psycopg.rows import dict_row, tuple_row
 
 from fbi.core.clock import now
 from fbi.quality.issues import (
@@ -368,17 +368,39 @@ SELECT n.fixture_id, n.market_key, n.selection, n.line, n.captured_at
            AND o.line = n.line AND o.captured_at = n.captured_at)
 """
 
-ROW_NEWER_THAN_PAYLOAD_SQL = """
-SELECT 'fixture_team_stats' AS relation, count(*) AS offenders
-  FROM core.fixture_team_stats s JOIN raw.ingestion_payloads p ON p.hash = s.payload_hash
- WHERE s.fetched_at > p.fetched_at
-UNION ALL
-SELECT 'fixture_events', count(*) FROM core.fixture_events e
-  JOIN raw.ingestion_payloads p ON p.hash = e.payload_hash WHERE e.fetched_at > p.fetched_at
-UNION ALL
-SELECT 'fixture_lineups', count(*) FROM core.fixture_lineups l
-  JOIN raw.ingestion_payloads p ON p.hash = l.payload_hash WHERE l.fetched_at > p.fetched_at
+PAYLOAD_DATED_RELATIONS_SQL = """
+SELECT a.table_name
+  FROM information_schema.columns a
+  JOIN information_schema.columns b
+    ON b.table_schema = a.table_schema AND b.table_name = a.table_name
+   AND b.column_name = 'fetched_at'
+ WHERE a.table_schema = 'core' AND a.column_name = 'payload_hash'
+ ORDER BY a.table_name
 """
+
+
+def payload_dated_relations(conn: psycopg.Connection) -> list[str]:
+    """Every core table that names a payload AND carries its own fetch time.
+
+    Asked of the schema rather than listed by hand. The hand-written list held three
+    relations while six qualified, so the check under-reported by 76,305 rows in
+    core.fixture_player_stats alone - the largest offender was the one not on the list.
+    A table added later is covered without anyone remembering to add it.
+    """
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(PAYLOAD_DATED_RELATIONS_SQL)
+        return [str(r[0]) for r in cur.fetchall()]
+
+
+def row_newer_than_payload_sql(relations: Sequence[str]) -> str:
+    """One UNION ALL over the discovered relations. Identifiers come from
+    information_schema, so they are the server's own names, not caller input."""
+    return "\nUNION ALL\n".join(
+        f"SELECT '{rel}' AS relation, count(*) AS offenders FROM core.{rel} x "
+        f"JOIN raw.ingestion_payloads p ON p.hash = x.payload_hash "
+        f"WHERE x.fetched_at > p.fetched_at"
+        for rel in relations
+    )
 
 
 def check_lineage_holds(conn: psycopg.Connection) -> CheckOutcome:
@@ -391,6 +413,9 @@ def check_lineage_holds(conn: psycopg.Connection) -> CheckOutcome:
         The raw store keeps identical bodies once, so a payload fetched twice is
         indexed at the first fetch while the caller holds the second - and passing
         that later time to the writers made 1,809 fixtures' detail look absent.
+        The relations are discovered from the schema: the hand-written list named
+        three while six qualified, and the biggest offender was one of the three it
+        omitted. ``fbi.ops.reprocess.repair_payload_lineage`` repairs them.
 
     ``population`` is None for the same reason as above: near-close rows and three
     detail tables are not one population, and the first version of this check said
@@ -408,7 +433,8 @@ def check_lineage_holds(conn: psycopg.Connection) -> CheckOutcome:
                    "the series does not hold",
         ))
     drift = 0
-    for r in _rows(conn, ROW_NEWER_THAN_PAYLOAD_SQL):
+    relations = payload_dated_relations(conn)
+    for r in _rows(conn, row_newer_than_payload_sql(relations)) if relations else []:
         if not r["offenders"]:
             continue
         drift += int(r["offenders"])

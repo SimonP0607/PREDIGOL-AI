@@ -33,7 +33,7 @@ from typing import Any
 
 import psycopg
 import structlog
-from psycopg.rows import dict_row
+from psycopg.rows import dict_row, tuple_row
 
 from fbi.core.errors import FbiError
 from fbi.ingestion.details import apply_fixture_details
@@ -42,6 +42,7 @@ from fbi.ingestion.payload_store import PayloadStore, body_hash
 from fbi.ingestion.results import ResultRepository
 from fbi.providers.api_football.details import iter_fixture_details
 from fbi.providers.api_football.normalize import ScoreDisagreement, iter_fixture_results
+from fbi.quality.detect import payload_dated_relations
 from fbi.quality.issues import EntityType, IssueRegistry, inconsistency
 
 log = structlog.get_logger(__name__)
@@ -144,6 +145,50 @@ def result_payloads(conn: psycopg.Connection, *, limit: int | None = None) -> li
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(sql, params)
         return [dict(r) for r in cur.fetchall()]
+
+
+def repair_payload_lineage(conn: psycopg.Connection, *, apply: bool) -> dict[str, int]:
+    """Move a derived row's fetch time back to the time of the payload it names.
+
+    The raw store keeps identical bodies once and the index holds the FIRST fetch, so a
+    payload fetched twice left the caller holding the second time - and writing that onto
+    the derived rows made them newer than their own payload. Replaying the indexed payload
+    then reads as stale and the monotonic writers refuse it, correctly, which is how
+    1,809 fixtures' detail came to look absent.
+
+    The write path was fixed (the detail branch asks the ledger for ``indexed_at``), and
+    the newest offending row on this machine predates that fix - nothing new is created.
+    What remains is history, and it is repairable from the database alone: no provider
+    request, and the only change is a timestamp moving BACK to the payload's own time,
+    which is the value it should always have had. Idempotent by construction - a second
+    run finds nothing, because the invariant it restores is the condition it selects on.
+    """
+    counts: dict[str, int] = {}
+    relations = payload_dated_relations(conn)
+    for rel in relations:
+        with conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(
+                f"SELECT count(*) FROM core.{rel} x "
+                "JOIN raw.ingestion_payloads p ON p.hash = x.payload_hash "
+                "WHERE x.fetched_at > p.fetched_at"
+            )
+            row = cur.fetchone()
+            offenders = int(row[0]) if row else 0
+            if not offenders:
+                continue
+            counts[rel] = offenders
+            if apply:
+                cur.execute(
+                    f"UPDATE core.{rel} x SET fetched_at = p.fetched_at "
+                    "FROM raw.ingestion_payloads p "
+                    "WHERE p.hash = x.payload_hash AND x.fetched_at > p.fetched_at"
+                )
+    if apply:
+        conn.commit()
+    else:
+        conn.rollback()
+    log.info("reprocess.lineage_repaired", apply=apply, relations=len(relations), **counts)
+    return counts
 
 
 def reprocess_results(
