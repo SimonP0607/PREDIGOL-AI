@@ -50,3 +50,26 @@ def test_the_prematch_windows_stay_out_of_the_live_band() -> None:
     """/odds refreshes every three hours, so a prematch window below 180 minutes returns
     the same row and burns quota - the near-close window is what covers that ground."""
     assert min(settings.odds.prematch_windows) >= 180
+
+
+# ── how late a tick may still run ───────────────────────────────────────────
+
+
+def test_the_misfire_grace_comes_from_the_tolerance_not_the_interval() -> None:
+    """A tick that could not start on time is still worth running late, and how late is
+    a property of the capture window - not of how often the job is scheduled.
+
+    Tying the grace to the interval meant tightening the tick to 5 minutes for the
+    near-close window silently cut the grace from 900s to 300s. A database busy for
+    longer than that then dropped every tick instead of running them late: a restore
+    test on the live machine did exactly that for five hours and twenty minutes, and the
+    capture stopped dead. The two must not move together.
+    """
+    grace_minutes = settings.odds.odds_window_tolerance
+    assert grace_minutes > TICK_MINUTES, (
+        "a grace no wider than the interval turns any slowdown into dropped ticks"
+    )
+    assert grace_minutes >= 45, (
+        "a prematch capture stays valid for the whole tolerance band, so a tick that is "
+        "late by less than that is still worth running"
+    )

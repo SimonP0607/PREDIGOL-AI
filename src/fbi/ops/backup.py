@@ -246,6 +246,42 @@ class RestoreReport:
         return bool(self.checks) and all(c.passed for c in self.checks)
 
 
+def _compare_tables(
+    manifest: dict[str, Any], restored: dict[str, dict[str, Any]]
+) -> Check:
+    """Compare the restored database's fingerprints with the manifest's, fairly.
+
+    The manifest is taken AFTER the dump finishes, so a table written to in between
+    legitimately differs from what the dump holds: the dump is a consistent snapshot of an
+    earlier moment, which is the point of it. ``changed_during_dump`` already records
+    exactly which tables those were.
+
+    Failing on them reported "the database was live" as a corrupt backup. On this machine
+    that meant a red FAIL on every run against a working system - eight tables the backup
+    itself had just listed in a NOTE - while the files, the restore, the schema, the raw
+    store and the lineage all passed. A gate that cannot pass while the system runs is a
+    gate people learn to ignore, which costs more than it ever catches.
+
+    A quiescent table that does not come back identical is still a failure, and that is
+    what this check is for.
+    """
+    expected: dict[str, dict[str, Any]] = manifest["tables"]
+    live = set(manifest.get("changed_during_dump") or ())
+    diff = sorted(k for k in set(expected) | set(restored) if expected.get(k) != restored.get(k))
+    real = [k for k in diff if k not in live]
+    concurrent = [k for k in diff if k in live]
+
+    detail = f"{len(restored)} tables, {sum(v['rows'] for v in restored.values())} rows"
+    if real:
+        detail += f"; DIFFER: {', '.join(real[:8])}"
+    if concurrent:
+        detail += (f"; {len(concurrent)} not comparable, written to during the dump: "
+                   f"{', '.join(concurrent[:6])}")
+    if not diff:
+        detail += "; identical"
+    return Check("TABLES: every table's row count and content fingerprint", not real, detail)
+
+
 def restore_test(folder: Path, admin_url: str, *, keep: bool = False) -> RestoreReport:
     """Restore into a scratch database on the admin URL's server and prove it."""
     started = datetime.now(UTC)
@@ -276,11 +312,7 @@ def restore_test(folder: Path, admin_url: str, *, keep: bool = False) -> Restore
             with conn.cursor(row_factory=tuple_row) as cur:
                 cur.execute("SELECT hash, file_path FROM raw.ingestion_payloads")
                 index = [(str(h), str(p)) for h, p in cur.fetchall()]
-        expected: dict[str, dict[str, Any]] = manifest["tables"]
-        diff = sorted(k for k in set(expected) | set(restored) if expected.get(k) != restored.get(k))
-        c.append(Check("TABLES: every table's row count and content fingerprint", not diff,
-                       f"{len(restored)} tables, {sum(v['rows'] for v in restored.values())} rows"
-                       + (f"; differ: {', '.join(diff[:8])}" if diff else "; identical")))
+        c.append(_compare_tables(manifest, restored))
         c.append(Check("SCHEMA: the Alembic revision came back", revision == manifest["alembic_revision"],
                        f"{revision}"))
         raw_dir = work / "raw"

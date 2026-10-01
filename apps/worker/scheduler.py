@@ -368,9 +368,13 @@ async def main() -> None:
         results_next = next_run_after(last_success(conn, "results_sync"), timedelta(hours=RESULTS_SYNC_HOURS), moment)
         backfill_next = next_run_after(last_success(conn, "historical_backfill"), timedelta(hours=BACKFILL_HOURS), moment)
 
-    # A tick that could not start on time is still worth running late: the
-    # capture tolerance band is wider than any grace time given here.
-    tick_grace = TICK_MINUTES * 60
+    # A tick that could not start on time is still worth running late, and how late is
+    # set by the capture tolerance - NOT by the interval. Tying it to the interval made
+    # the grace shrink from 900s to 300s the moment the tick was tightened to 5 minutes
+    # for the near-close window, so a database busy for longer than that dropped every
+    # tick instead of running them late. A restore test on the live machine did exactly
+    # that for five hours and twenty minutes, and the capture simply stopped.
+    tick_grace = settings.odds.odds_window_tolerance * 60
     scheduler.add_job(_tick_with_heartbeat, "interval", minutes=TICK_MINUTES, id="odds_capture",
                       max_instances=1, coalesce=True, misfire_grace_time=tick_grace, next_run_time=moment)
     scheduler.add_job(_daily_fixtures_sync, "interval", hours=FIXTURES_SYNC_HOURS, id="fixtures_sync",
