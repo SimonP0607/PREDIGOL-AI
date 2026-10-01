@@ -105,7 +105,8 @@ SELECT c.id,
        c.competition_type,
        c.elo_weight,
        count(DISTINCT t.id)                              AS teams_seen,
-       count(DISTINCT t.id) FILTER (WHERE t.is_national) AS national_seen
+       count(DISTINCT t.id) FILTER (WHERE t.is_national) AS national_seen,
+       count(DISTINCT t.id) FILTER (WHERE t.is_national IS NULL) AS unknown_seen
   FROM core.competitions c
   LEFT JOIN participants p ON p.competition_id = c.id
   LEFT JOIN core.teams t   ON t.id = p.team_id

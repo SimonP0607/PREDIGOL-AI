@@ -433,7 +433,11 @@ class TeamRef:
     code: str | None
     country: str | None
     founded: int | None
-    is_national: bool
+    is_national: bool | None
+    """None when the payload did not say. Defaulting it to False asserted
+    "club" about sides nobody had described, three of which were national
+    youth teams - and the competition scope and the history weighting both
+    read this flag, so a wrong value does not stay in one column."""
     logo_url: str | None
     venue: VenueRef | None
 
@@ -473,7 +477,7 @@ def iter_teams(body: dict[str, Any]) -> Iterator[TeamRef]:
             code=_text(team, "code"),
             country=_text(team, "country"),
             founded=team["founded"] if isinstance(team.get("founded"), int) else None,
-            is_national=bool(national) if isinstance(national, bool) else False,
+            is_national=national if isinstance(national, bool) else None,
             logo_url=_text(team, "logo"),
             venue=venue,
         )

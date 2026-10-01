@@ -90,7 +90,7 @@ class Team:
     name: str
     short_name: str | None
     country: str | None
-    is_national: bool
+    is_national: bool | None
     venue_id: VenueId | None
 
 
