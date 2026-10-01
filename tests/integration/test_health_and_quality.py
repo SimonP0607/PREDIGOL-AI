@@ -10,6 +10,7 @@ import psycopg
 from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.domain.market import MarketType
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.picks.rules import CURRENT_RULE
 from fbi.quality.health import health
 from fbi.quality.metrics import data_quality_snapshot
 
@@ -96,7 +97,10 @@ def test_quality_snapshot_uses_null_ratios_when_nothing_is_expected(db: psycopg.
     assert d["fixtures_expected"] == 0
     assert d["fixture_odds_coverage"] is None, "nothing expected -> null, never 0 or 1"
     assert d["markets_tracked"] == len(MarketType), "every market the schema knows is tracked"
-    assert d["markets_model_enabled"] == 3, "1X2, OU and BTTS: what RULE_V1 covers"
+    assert d["markets_model_enabled"] == len(CURRENT_RULE.markets), (
+        "the snapshot counts what the current decision rule covers, not a "
+        "number written down beside it"
+    )
     assert any("null, not zero" in n for n in snap.notes)
 
 

@@ -80,10 +80,14 @@ class PriceEdge:
 class ExpectedValue:
     """Expected net return per unit staked, as a fraction.
 
-    ``per_unit = p * (odds - 1) - (1 - p)``. +0.05 means five hundredths of a
-    unit expected per unit risked. There is exactly one way to express this
+    ``per_unit = p_win * (odds - 1) - p_lose``. +0.05 means five hundredths of
+    a unit expected per unit staked. There is exactly one way to express this
     as a percentage (``as_percentage``) and exactly one way to build it from
     one (``from_percentage``), and both say what they do in their name.
+
+    Per unit STAKED, not per unit at risk. On a line that can push the two
+    differ by the push probability, and only the staked version is comparable
+    across markets - which is the whole point of ranking picks by it.
     """
 
     per_unit: Decimal
@@ -95,9 +99,31 @@ class ExpectedValue:
         object.__setattr__(self, "per_unit", d.quantize(VALUE_QUANTUM, rounding=ROUND_HALF_UP))
 
     @classmethod
-    def of(cls, probability: Probability, odds: DecimalOdds) -> ExpectedValue:
+    def of(
+        cls,
+        probability: Probability,
+        odds: DecimalOdds,
+        push: Probability | None = None,
+    ) -> ExpectedValue:
+        """Expected net return per unit STAKED, pushes included.
+
+        ``p_win(odds - 1) - p_lose``, where a push contributes nothing either
+        way because the stake comes back. With no push this is the two-way
+        formula unchanged, which is why every existing caller is unaffected.
+
+        The push is not a detail that can be left out. Measured over our own
+        stored prices, 66% of the Asian Handicap series and 51% of the
+        Over/Under series sit on lines that can push - whole lines outright, and
+        quarter lines for half the stake. Pricing those as two-way bets
+        overstates the expected value of every one of them.
+        """
         p = Decimal(str(probability.value))
-        return cls(p * odds.payout_per_unit() - (Decimal(1) - p))
+        u = Decimal(str(push.value)) if push is not None else Decimal(0)
+        if p + u > Decimal(1):
+            raise DomainError(
+                f"win and push probabilities cannot exceed 1 together; got {p} + {u}"
+            )
+        return cls(p * odds.payout_per_unit() - (Decimal(1) - p - u))
 
     @classmethod
     def from_percentage(cls, percent: Decimal | str | int) -> ExpectedValue:
@@ -111,10 +137,17 @@ class ExpectedValue:
     def is_positive(self) -> bool:
         return self.per_unit > 0
 
-    def adjusted_for_uncertainty(self, lower_bound: Probability, odds: DecimalOdds) -> ExpectedValue:
+    def adjusted_for_uncertainty(
+        self,
+        lower_bound: Probability,
+        odds: DecimalOdds,
+        push: Probability | None = None,
+    ) -> ExpectedValue:
         """EV recomputed at the LOWER end of the probability interval.
 
         This is the number a decision should use: a model that is not sure
-        gets less credit, not more.
+        gets less credit, not more. The push probability is not part of the
+        model's uncertainty - it is a property of the line - so it is carried
+        through unchanged.
         """
-        return ExpectedValue.of(lower_bound, odds)
+        return ExpectedValue.of(lower_bound, odds, push)

@@ -19,7 +19,7 @@ import pytest
 from fbi.catalog.provider_markets import load_bet_catalogue, load_bookmakers, record_observed_bets
 from fbi.domain.market import MarketType
 from fbi.odds.repository import OddsRepository
-from fbi.picks.rules import RULE_V1
+from fbi.picks.rules import CURRENT_RULE
 from fbi.picks.settlement import market_outcome
 from fbi.providers.base import OddsQuote
 from tests.integration.conftest import Seed
@@ -66,8 +66,20 @@ def test_tracking_a_market_is_not_the_same_as_modelling_it(db: psycopg.Connectio
         rows = {k: (t, m) for k, t, m in cur.fetchall()}
     assert set(rows) == {m.value for m in MarketType}
     assert all(tracked for tracked, _ in rows.values()), "we store prices for everything we can read"
-    assert {k for k, (_, modelled) in rows.items() if modelled} == {"1X2", "OU", "BTTS"}
-    assert rows["AH"] == (True, False), "Asian Handicap is captured from tonight and modelled by nobody"
+    assert {k for k, (_, modelled) in rows.items() if modelled} == {
+        "1X2", "OU", "BTTS", "AH", "DC"
+    }, (
+        "AH and DC joined the model in shadow-rule-v2: both are exact projections "
+        "of the score matrix the goal model already computes, and settlement has "
+        "handled their pushes and half-wins since settle-v1. 8,841 AH and 1,444 DC "
+        "prices had been captured with no model number opposite them."
+    )
+    assert rows["AH"] == (True, True), (
+        "Asian Handicap was captured and modelled by nobody for 8,841 prices. "
+        "It is modelled now: the handicap markets are a statement about the "
+        "goal-difference distribution, which is the score matrix the goal model "
+        "already computes, read along its diagonals."
+    )
 
 
 def test_no_market_is_model_enabled_without_a_rule_and_a_settlement(db: psycopg.Connection, seed: Seed) -> None:
@@ -80,11 +92,40 @@ def test_no_market_is_model_enabled_without_a_rule_and_a_settlement(db: psycopg.
     with db.cursor() as cur:
         cur.execute("SELECT key FROM market.markets WHERE is_model_enabled ORDER BY key")
         enabled = {r[0] for r in cur.fetchall()}
-    assert enabled == set(RULE_V1.markets)
+    assert enabled == set(CURRENT_RULE.markets)
+    # Every enabled market must settle, on a line it is actually quoted at -
+    # including the pushable ones, which is what AH and DC brought with them.
+    cases = {
+        "1X2": ("Home", Decimal(0)),
+        "BTTS": ("Yes", Decimal(0)),
+        "DC": ("1X", Decimal(0)),
+        "OU": ("Over", Decimal("2.5")),
+        "AH": ("Home", Decimal("-0.75")),
+    }
     for key in enabled:
-        selection = {"1X2": "Home", "OU": "Over", "BTTS": "Yes"}[key]
-        line = Decimal("2.5") if key == "OU" else Decimal(0)
+        selection, line = cases[key]
         market_outcome(key, selection, line, 2, 1)  # raises if there is no rule
+
+
+def test_every_enabled_market_settles_on_every_line_shape_it_is_quoted_at(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """Half, whole and quarter lines all settle, or the flag is a promise the
+    system cannot keep.
+
+    Over our stored prices, 66% of the Asian Handicap series and 51% of the
+    Over/Under series are on lines that can push - whole lines outright, quarter
+    lines for half the stake. A market enabled without those settling would
+    produce picks that could never be paid out.
+    """
+    for selection in ("Home", "Away"):
+        for text in ("-1.5", "-1", "-0.75", "-0.5", "0", "0.25", "1", "1.5"):
+            market_outcome("AH", selection, Decimal(text), 2, 1)
+    for selection in ("Over", "Under"):
+        for text in ("0.5", "1.75", "2", "2.5", "3.25", "4"):
+            market_outcome("OU", selection, Decimal(text), 2, 1)
+    for selection in ("1X", "X2", "12"):
+        market_outcome("DC", selection, Decimal(0), 2, 1)
 
 
 def test_a_market_cannot_be_modelled_without_being_tracked(db: psycopg.Connection, seed: Seed) -> None:

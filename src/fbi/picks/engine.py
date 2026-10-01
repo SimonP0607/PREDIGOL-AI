@@ -35,7 +35,14 @@ from fbi.domain.market_probability import DevigMethod, FairProbability
 from fbi.domain.odds import DecimalOdds
 from fbi.domain.probability import Probability
 from fbi.picks import settlement
-from fbi.picks.rules import RULE_V1, DecisionRule, VersionEvidence, decide, qualify, reason_kind
+from fbi.picks.rules import (
+    CURRENT_RULE,
+    DecisionRule,
+    VersionEvidence,
+    decide,
+    qualify,
+    reason_kind,
+)
 from fbi.picks.value import assess
 
 CONSENSUS_METHOD = DevigMethod.SHIN
@@ -57,6 +64,18 @@ class PickReport:
 
 def _q6(x: Decimal | float) -> Decimal:
     return Decimal(str(x)).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+
+def _conditional(p_win: float, settled: float) -> Probability:
+    """P(win) turned into P(win | the bet is settled).
+
+    The market's de-vigged probability is conditional - two selections summing
+    to 1 cannot express a push - so this is what the comparison has to be made
+    on. A line that cannot push leaves the number untouched.
+    """
+    if settled <= 0:
+        return Probability(0.0)
+    return Probability(min(1.0, p_win / settled))
 
 
 def _instants(conn: psycopg.Connection, since: datetime | None) -> list[dict[str, Any]]:
@@ -98,7 +117,7 @@ def _forecasts(conn: psycopg.Connection, fixture_id: int, as_of: datetime) -> li
                 ORDER BY model_id, data_cutoff_ts DESC, model_version_id DESC
             )
             SELECT p.id, p.model_version_id, p.market_key, p.selection, p.line, p.p_calibrated, p.p_lo, p.p_hi,
-                   p.feature_set_hash, p.data_cutoff_ts, p.calibrator_id
+                   p.feature_set_hash, p.data_cutoff_ts, p.calibrator_id, p.p_push
             FROM models.predictions p JOIN newest n ON n.model_version_id = p.model_version_id
                  AND n.data_cutoff_ts = p.data_cutoff_ts
             WHERE p.fixture_id = %s AND p.backtest_session_id IS NULL
@@ -147,7 +166,7 @@ def _odds_payload(conn: psycopg.Connection, fixture_id: int, bookmaker_id: int, 
 
 
 def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: str,
-                      since: datetime | None = None, rule: DecisionRule = RULE_V1) -> PickReport:
+                      since: datetime | None = None, rule: DecisionRule = CURRENT_RULE) -> PickReport:
     report = PickReport()
     for inst in _instants(conn, since):
         fixture_id, as_of = int(inst["fixture_id"]), inst["as_of"]
@@ -163,9 +182,32 @@ def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: st
                 continue  # the forecast must precede the very price it is compared with
             odds = DecimalOdds(Decimal(c["best_odds"]))
             fair = FairProbability(Probability(float(c["p_fair"])), CONSENSUS_METHOD, float(c["overround"]))
-            p = Probability(float(f["p_calibrated"]))
-            p_lo = Probability(float(f["p_lo"])) if f["p_lo"] is not None else None
-            a = assess(p, odds, fair, p_lo)
+
+            # A push is not a loss and not a win, and the two sides of the
+            # comparison count it differently:
+            #
+            #   market.market_consensus.p_fair comes from de-vigging two or three
+            #   selections to sum to 1, so on a line that can push it is
+            #   P(win | the bet is settled).
+            #
+            #   models.predictions.p_calibrated is P(win) outright, with P(push)
+            #   in its own column.
+            #
+            # Comparing them directly would understate the model on every
+            # pushable line by exactly the push probability - 66% of the Asian
+            # Handicap series and 51% of the Over/Under series - and it would
+            # look like a model that disagrees with the market, not like an
+            # error. So the EDGE is computed on the conditional probability,
+            # while the EXPECTED VALUE uses P(win) and P(push) as they are,
+            # because what is staked is staked whether the bet pushes or not.
+            push = Probability(float(f["p_push"] or 0))
+            settled = 1.0 - push.value
+            p_conditional = _conditional(float(f["p_calibrated"]), settled)
+            p_lo_conditional = (
+                _conditional(float(f["p_lo"]), settled)
+                if f["p_lo"] is not None else None
+            )
+            a = assess(p_conditional, odds, fair, p_lo_conditional, push=push)
             reason = decide(a, f["market_key"], rule)
             with conn.cursor() as cur:
                 cur.execute(
@@ -173,18 +215,19 @@ def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: st
                     INSERT INTO picks.pick_candidates (run_id, fixture_id, prediction_id, market_key, selection, line,
                         bookmaker_id, market_odds, p_calibrated, p_market_fair, edge, price_edge, ev, ev_adjusted,
                         decision, rejection_reason, decision_rule_version, odds_captured_at, odds_payload_hash,
-                        consensus_method, consensus_as_of, data_cutoff_ts)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        consensus_method, consensus_as_of, data_cutoff_ts, p_push)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (prediction_id, market_key, selection, line, odds_captured_at, decision_rule_version)
                     DO NOTHING RETURNING id
                     """,
                     (run_id, fixture_id, f["id"], f["market_key"], f["selection"], f["line"],
-                     c["best_bookmaker_id"], odds.value, _q6(p.value), _q6(fair.probability.value),
+                     c["best_bookmaker_id"], odds.value, _q6(p_conditional.value),
+                     _q6(fair.probability.value),
                      a.probability_edge.value if a.probability_edge else None,
                      a.price_edge.value if a.price_edge else None, a.expected_value.per_unit,
                      a.ev_at_lower_bound.per_unit if a.ev_at_lower_bound else None,
                      "rejected" if reason else "selected", reason, rule.version, payload[1], payload[0],
-                     CONSENSUS_METHOD.value, as_of, f["data_cutoff_ts"]),
+                     CONSENSUS_METHOD.value, as_of, f["data_cutoff_ts"], _q6(push.value)),
                 )
                 row = cur.fetchone()
             if row is None:
@@ -209,21 +252,22 @@ def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: st
                         bookmaker_id, market_odds, odds_captured_at, p_model, p_calibrated, p_calibrated_lo,
                         p_calibrated_hi, p_market_fair, fair_odds, edge, price_edge, ev, ev_adjusted, kelly_fraction,
                         stake_units, selection_reason, mode, prediction_id, odds_payload_hash, consensus_method,
-                        consensus_as_of, stake_policy, qualification, status)
+                        consensus_as_of, stake_policy, qualification, status, p_push)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'shadow',
-                            %s,%s,%s,%s,%s,%s,%s)
+                            %s,%s,%s,%s,%s,%s,%s,%s)
                     RETURNING id
                     """,
                     (row[0], fixture_id, f["market_key"], f["selection"], f["line"], f["model_version_id"],
                      f["calibrator_id"], f["feature_set_hash"], f["data_cutoff_ts"], rule.version, code_version,
-                     c["best_bookmaker_id"], odds.value, payload[1], _q6(p.value), _q6(p.value),
+                     c["best_bookmaker_id"], odds.value, payload[1], _q6(p_conditional.value),
+                     _q6(p_conditional.value),
                      f["p_lo"], f["p_hi"], _q6(fair.probability.value), a.model_fair_odds,
                      a.probability_edge.value if a.probability_edge else None,
                      a.price_edge.value if a.price_edge else None, a.expected_value.per_unit,
                      a.ev_at_lower_bound.per_unit if a.ev_at_lower_bound else None, a.kelly_fraction, STAKE,
                      json.dumps({"rule": rule.as_dict(), "consensus_bookmakers": int(c["n_bookmakers"])}),
                      f["id"], payload[0], CONSENSUS_METHOD.value, as_of, STAKE_POLICY,
-                     json.dumps(q.as_dict(evidence)), status),
+                     json.dumps(q.as_dict(evidence)), status, _q6(push.value)),
                 )
                 pick_row = cur.fetchone()
                 assert pick_row is not None

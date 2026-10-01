@@ -55,7 +55,10 @@ def test_the_lower_bound_gives_less_credit() -> None:
         (0.80, "1.40", 0.66, "1X2", "outside [1.50, 5.00]"),
         (0.50, "2.05", 0.47, "1X2", "expected value"),
         (0.48, "2.30", 0.47, "1X2", "probability edge"),
-        (0.55, "2.10", 0.46, "DC", "not covered"),
+        # DC is covered from shadow-rule-v2; a market the rule does not know
+        # still has to be refused, so the case moves to one that is not.
+        (0.55, "2.10", 0.46, "DC", None),
+        (0.55, "2.10", 0.46, "CORNERS_AH", "not covered"),
     ],
 )
 def test_the_rule_names_the_first_thing_that_failed(p: float, odds: str, f: float | None, market: str,

@@ -17,6 +17,7 @@ import pytest
 from fbi.ingestion.ledger import RunLedger
 from fbi.market.consensus import recompute_from_snapshots
 from fbi.picks.engine import evaluate_captures, settle_open_picks
+from fbi.picks.rules import CURRENT_RULE
 from fbi.predictions.forecast import forecast_upcoming
 from tests.integration.helpers import scalar
 
@@ -180,7 +181,10 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     assert status == "shadow" and mode == "shadow" and calib is None
     assert book == books[0] and odds == long_home, "the best price, with its bookmaker"
     assert cutoff < captured == CAPTURED and payload == "pipeline-odds" and has_prediction
-    assert method == "shin" and rule == "shadow-rule-v1"
+    assert method == "shin" and rule == CURRENT_RULE.version, (
+        "the pick names the exact rule that selected it, so a backtest of one "
+        "rule version is never contaminated by another"
+    )
     assert qual["qualified"] is False and "no stored walk-forward backtest" in qual["reasons"][0]
     with db.cursor() as cur:
         cur.execute("SELECT decision, count(*) FROM picks.pick_candidates WHERE fixture_id = %s GROUP BY decision",

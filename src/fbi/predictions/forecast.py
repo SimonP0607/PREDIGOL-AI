@@ -47,6 +47,7 @@ from fbi.features.engine import FEATURE_VERSION, walk_forward
 from fbi.features.store import ensure_registry, write_feature_sets
 from fbi.models.elo_ologit import OLogitObs, fit_ologit
 from fbi.models.goals import GoalObs, InvalidCorrectionError, fit_goal_model
+from fbi.models.quoted import price_quoted_lines, quoted_lines
 from fbi.models.scoring import MARKET_ROWS
 
 HORIZON = timedelta(days=4)
@@ -63,6 +64,11 @@ class ForecastReport:
     predicted: dict[str, int] = field(default_factory=lambda: defaultdict(int))
     uncovered: list[tuple[int, str, str]] = field(default_factory=list)
     skipped_models: dict[str, str] = field(default_factory=dict)
+    lines_priced: int = 0
+    """Rows for lines the market quoted that MARKET_ROWS does not cover: Asian
+    Handicap, Double Chance, and every Over/Under line but 2.5. Those prices
+    were being captured and stored with no model number opposite them - 8,841
+    AH, 1,444 DC, and 9,306 of 10,240 OU."""
     newest_result_at: datetime | None = None
 
 
@@ -120,7 +126,8 @@ def _write(conn: psycopg.Connection, rows: list[tuple[Any, ...]]) -> int:
     with conn.cursor() as cur:
         cur.executemany(
             "INSERT INTO models.predictions (fixture_id, model_version_id, market_key, selection, line, p_raw, "
-            "p_calibrated, p_lo, p_hi, feature_set_hash, data_cutoff_ts) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+            "p_calibrated, p_lo, p_hi, feature_set_hash, data_cutoff_ts, p_push) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
             "ON CONFLICT DO NOTHING", rows)
         return max(cur.rowcount, 0)
 
@@ -133,6 +140,8 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
     if not target_ids:
         return report
     spec = current_spec(conn)
+    # What the market quoted, read once for every target rather than per model.
+    quoted = quoted_lines(conn, target_ids)
     if spec is None:
         report.skipped_models["all"] = "no completed backtest session: no validated hyper-parameters to use"
         return report
@@ -187,7 +196,25 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
                 for k, (mk, sel, line) in enumerate(MARKET_ROWS):
                     rows.append((t.fixture_id, version_id, mk, sel, line, round(point[k], 6), round(point[k], 6),
                                  None if bounds is None else round(float(bounds[0][k]), 6),
-                                 None if bounds is None else round(float(bounds[1][k]), 6), th, at))
+                                 None if bounds is None else round(float(bounds[1][k]), 6), th, at, 0))
+
+                # Every other line the market quoted for this fixture, off the
+                # same matrix. 8,841 Asian Handicap and 1,444 Double Chance
+                # prices were stored with nothing to compare them against, and
+                # the model priced 1 of the 26 Over/Under lines we capture.
+                triples = quoted.get(t.fixture_id)
+                if triples:
+                    matrix, _, _ = model.score_matrix(
+                        t.home_team_id, t.away_team_id, neutral=t.is_neutral)
+                    for lp in price_quoted_lines(matrix, triples):
+                        # p_lo/p_hi stay NULL: no interval was computed for these,
+                        # and repeating the point estimate as a bound would read
+                        # as certainty the model never claimed.
+                        rows.append((t.fixture_id, version_id, lp.market_key,
+                                     lp.selection, lp.line, round(lp.p_win, 6),
+                                     round(lp.p_win, 6), None, None, th, at,
+                                     round(lp.p_push, 6)))
+                        report.lines_priced += 1
                 report.predicted[kind] += 1
 
     # --- Elo ordered logit ---------------------------------------------------
@@ -232,7 +259,7 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
                 rows.append((t.fixture_id, version_id, "1X2", sel, 0.0, round(p[k], 6), round(p[k], 6),
                              None if bounds is None else round(float(np.asarray(bounds[0])[k]), 6),
                              None if bounds is None else round(float(np.asarray(bounds[1])[k]), 6),
-                             v.input_hash, at))
+                             v.input_hash, at, 0))
             report.predicted["elo_ologit"] += 1
     report.written = _write(conn, rows)
     return report

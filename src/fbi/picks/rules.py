@@ -18,13 +18,27 @@ from decimal import Decimal
 
 from fbi.picks.value import ValueAssessment
 
-RULE_VERSION = "shadow-rule-v1"
+RULE_VERSION_V1 = "shadow-rule-v1"
+RULE_VERSION = "shadow-rule-v2"
+"""v2 widens the covered markets to the ones the model can now price.
+
+A threshold is never edited in place - a changed rule is a new version, so a
+pick always names the exact rule that selected it and a backtest of v1 remains a
+backtest of v1. Nothing else moved: the odds band, the minimum expected value
+and the minimum probability edge are v1's numbers.
+
+What changed is the market set. Asian Handicap and Double Chance were captured
+and stored - 8,841 and 1,444 prices - with no model number opposite them,
+because the goal model read seven fixed rows off its score matrix. They are
+exact projections of that same matrix (fbi.models.lines), settlement has handled
+them with their pushes and half-wins since settle-v1, so the only thing missing
+was a rule that covered them."""
 
 
 @dataclass(frozen=True, slots=True)
 class DecisionRule:
     version: str = RULE_VERSION
-    markets: frozenset[str] = frozenset({"1X2", "OU", "BTTS"})
+    markets: frozenset[str] = frozenset({"1X2", "OU", "BTTS", "AH", "DC"})
     min_odds: Decimal = Decimal("1.50")
     max_odds: Decimal = Decimal("5.00")
     min_ev: Decimal = Decimal("0.05")
@@ -37,10 +51,14 @@ class DecisionRule:
                 str(self.min_probability_edge), "require_market_consensus": self.require_market_consensus}
 
 
-RULE_V1 = DecisionRule()
+RULE_V2 = DecisionRule()
+RULE_V1 = DecisionRule(version=RULE_VERSION_V1, markets=frozenset({"1X2", "OU", "BTTS"}))
+"""Kept so a v1 pick can still be explained by the rule that produced it."""
+
+CURRENT_RULE = RULE_V2
 
 
-def decide(a: ValueAssessment, market_key: str, rule: DecisionRule = RULE_V1) -> str | None:
+def decide(a: ValueAssessment, market_key: str, rule: DecisionRule = CURRENT_RULE) -> str | None:
     """None when the candidate is selected; otherwise the first rule it failed."""
     if market_key not in rule.markets:
         return f"market {market_key} is not covered by {rule.version}"

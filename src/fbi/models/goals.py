@@ -97,7 +97,16 @@ class GoalModel:
         la = float(np.exp(self.mu + self.attack[a] - self.defence[h]))
         return lh, la
 
-    def predict(self, home_id: int, away_id: int, *, neutral: bool = False) -> MarketProbabilities:
+    def score_matrix(
+        self, home_id: int, away_id: int, *, neutral: bool = False
+    ) -> tuple[NDArray[np.float64], float, float]:
+        """The joint distribution over (home goals, away goals), and the lambdas.
+
+        Everything the model says about a match is in here. ``predict`` reads
+        seven numbers off it; fbi.models.lines reads the handicap, total and
+        double-chance markets off the same matrix, which is why those markets
+        need nothing fitted and were disabled only for want of this accessor.
+        """
         lh, la = self.lambdas(home_id, away_id, neutral=neutral)
         m = poisson_matrix(lh, la)
         if self.kind == "dixon_coles":
@@ -106,9 +115,14 @@ class GoalModel:
                 # max(-1/lh, -1/la) <= rho <= min(1/(lh*la), 1). Outside it a
                 # score gets a negative probability; clipping rho would be a
                 # different model, so the fixture is declined instead.
-                raise InvalidCorrectionError(f"Dixon-Coles correction rho={self.rho:.3f} is invalid for expected goals "
-                                 f"{lh:.2f}-{la:.2f}")
+                raise InvalidCorrectionError(
+                    f"Dixon-Coles correction rho={self.rho:.3f} is invalid for expected goals "
+                    f"{lh:.2f}-{la:.2f}")
             m = dc_tau(m, lh, la, self.rho)
+        return m, lh, la
+
+    def predict(self, home_id: int, away_id: int, *, neutral: bool = False) -> MarketProbabilities:
+        m, lh, la = self.score_matrix(home_id, away_id, neutral=neutral)
         return from_matrix(m, lh, la)
 
     def parameter_draws(self, draws: int = 200, seed: int = 7) -> NDArray[np.float64] | None:
