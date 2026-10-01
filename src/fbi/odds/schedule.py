@@ -65,6 +65,7 @@ class CapturePlanner:
         prematch_windows: Sequence[int],
         near_close_window: int,
         tolerance_minutes: int,
+        plan_near_close: bool = False,
     ) -> None:
         windows = sorted({int(w) for w in prematch_windows}, reverse=True)
         if not windows:
@@ -81,6 +82,7 @@ class CapturePlanner:
             )
         self._windows = windows
         self._near_close = near_close_window
+        self._plan_near_close = plan_near_close
         self._tolerance = tolerance_minutes
 
     def plan(
@@ -101,7 +103,7 @@ class CapturePlanner:
             if minutes < 0:
                 continue
 
-            if abs(minutes - self._near_close) <= NEAR_CLOSE_TOLERANCE_MINUTES:
+            if self._plan_near_close and abs(minutes - self._near_close) <= NEAR_CLOSE_TOLERANCE_MINUTES:
                 task = CaptureTask(
                     provider_fixture_id=fixture.provider_fixture_id,
                     kickoff_at=fixture.kickoff_at,
@@ -171,7 +173,8 @@ class CapturePlanner:
         keys: set[str] = set()
         for fixture_id, source, minutes in observations:
             if source == "live":
-                if abs(minutes - self._near_close) <= NEAR_CLOSE_TOLERANCE_MINUTES:
+                if self._plan_near_close \
+                        and abs(minutes - self._near_close) <= NEAR_CLOSE_TOLERANCE_MINUTES:
                     keys.add(f"{fixture_id}:near_close:{self._near_close}")
                 continue
             for window in sorted(self._windows):  # same order as _due_window

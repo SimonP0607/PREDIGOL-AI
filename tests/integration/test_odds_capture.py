@@ -98,7 +98,8 @@ def make_service(
         quota=DailyQuota(budget=50),
     )
     provider = ApiFootballProvider(client)
-    planner = CapturePlanner((4320, 1440, 720, 360, 180), 12, 45)
+    # near-close planning on: these tests drive the live-odds path itself.
+    planner = CapturePlanner((4320, 1440, 720, 360, 180), 12, 45, plan_near_close=True)
     return OddsCaptureService(conn, provider, planner), calls
 
 

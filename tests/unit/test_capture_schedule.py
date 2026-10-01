@@ -20,7 +20,11 @@ KICKOFF = datetime(2026, 9, 15, 19, 0, tzinfo=UTC)
 
 
 def planner(windows: tuple[int, ...] = (4320, 1440, 720, 360, 180), near: int = 12, tol: int = 45) -> CapturePlanner:
-    return CapturePlanner(windows, near, tol)
+    """plan_near_close is on here on purpose: these tests exercise the near-close
+    mechanics, which still work. Planning it is off in production because /odds/live was
+    measured to serve only fixtures in play - see test_capture_cadence - and that is a
+    statement about the provider, not about this code."""
+    return CapturePlanner(windows, near, tol, plan_near_close=True)
 
 
 def at(minutes_before: float) -> datetime:

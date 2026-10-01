@@ -73,3 +73,36 @@ def test_the_misfire_grace_comes_from_the_tolerance_not_the_interval() -> None:
         "a prematch capture stays valid for the whole tolerance band, so a tick that is "
         "late by less than that is still worth running"
     )
+
+
+# ── what /odds/live actually serves, measured ───────────────────────────────
+
+
+def test_near_close_is_not_planned_before_kick_off_by_default() -> None:
+    """MEASURED 2026-10-01: one unfiltered /odds/live call returned 11 fixtures, every
+    one in play (elapsed 6 to 93 minutes, in-play markets like "Last Corner"), and not
+    one before kick-off. Two fixtures probed at T-14 and again at T-9 each came back
+    `results: 0, errors: []`.
+
+    So a near-close task planned before kick-off spends a request to learn nothing, every
+    time, for every fixture that reaches kick-off. The capture path is kept - what is off
+    is asking for a price the provider does not hold yet.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from fbi.odds.schedule import CapturePlanner, ScheduledFixture
+
+    at = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
+    fixture = ScheduledFixture(provider_fixture_id=1, kickoff_at=at + timedelta(minutes=12),
+                               status_short="NS")
+
+    off = CapturePlanner([180], 12, 45).plan([fixture], at=at, already_done=set())
+    on = CapturePlanner([180], 12, 45, plan_near_close=True).plan([fixture], at=at,
+                                                                  already_done=set())
+
+    assert [t for t in off if t.kind == "near_close"] == [], "measured to return nothing"
+    assert [t.kind for t in on] == ["near_close"], "the capability is kept, not deleted"
+
+
+def test_the_setting_defaults_to_the_measured_answer() -> None:
+    assert settings.odds.odds_capture_near_close is False

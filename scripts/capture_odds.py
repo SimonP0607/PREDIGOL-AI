@@ -50,7 +50,9 @@ def _connect() -> psycopg.Connection:
 
 def _build_planner() -> CapturePlanner:
     cfg = settings.odds
-    return CapturePlanner(cfg.prematch_windows, cfg.odds_nearclose_window, cfg.odds_window_tolerance)
+    return CapturePlanner(cfg.prematch_windows, cfg.odds_nearclose_window,
+                          cfg.odds_window_tolerance,
+                          plan_near_close=cfg.odds_capture_near_close)
 
 
 def _upcoming(conn: psycopg.Connection, horizon_hours: int) -> list[ScheduledFixture]:

@@ -153,3 +153,49 @@ Two related observations from the same sweep:
 
 Cost of finding this: zero requests. Every payload needed was already in the raw store —
 which is the argument for keeping it.
+
+## 2026-10-01: `/odds/live` serves matches IN PLAY, not the minutes before kick-off
+
+This file previously recorded, and `config/odds.py` asserted, that `/odds/live` publishes
+a fixture between T-15 and T-5 minutes. That was never measured. It is wrong.
+
+One unfiltered `/odds/live` call — the authoritative probe, since it returns every fixture
+the provider currently prices live:
+
+| fixtures returned | elapsed (minutes) | status | markets |
+|---|---|---|---|
+| 11 | 6, 45, 45, 48, 57, 59, 83, 86, 86, 91, 93 | "Second Half" etc. | "Last Corner", "How many goals will Away Team score?" |
+
+**Not one fixture before kick-off.** A second unfiltered sample agreed. And two fixtures
+probed by id at T-14 and again at T-9 — Primera A (Colombia) and Friendlies Clubs, both
+with `has_odds` true for the season — returned `results: 0, errors: []` on every call.
+
+### What follows
+
+* **The closing price is UNSUPPORTED.** The last price before kick-off is not obtainable
+  from this provider. The latest pre-match price available is the **180-minute** window,
+  because `/odds` refreshes every three hours and a window below that returns the same
+  row. Anything written about capturing "the market's final word" has to be read against
+  that limit.
+* **In-play odds ARE available**, and they are a different product: live markets, after
+  the whistle, with no history kept. Capturing them is a decision about what the platform
+  is for, not a cadence setting.
+* `market.near_close_snapshots` being empty was never evidence of a bug in the capture.
+  It was the endpoint having nothing to give at the moment it was asked. The code half-knew
+  this: `normalize.py` already carried the note that no real `/odds/live` price payload had
+  ever been observed, with the live bet ids taken from the `/odds/live/bets` catalogue
+  instead.
+* `odds_capture_near_close` now defaults to **false**, so no request is spent on a call
+  measured to return nothing. The capture path is kept intact for whenever the window is
+  re-grounded on in-play.
+
+### What this cost before it was measured
+
+Nothing, until the capture tick was tightened to five minutes so that the six-minute
+near-close window would reliably be hit. That worked - the tasks fired at T-14 and T-9
+exactly as intended - and each one spent a request to receive `results: 0`. Two fixtures,
+four requests, no prices. Left on, it would have been one or two wasted requests for every
+fixture that reaches kick-off, indefinitely.
+
+The cadence fix was still right: a tick that cannot hit its window is broken whatever the
+window holds. It simply revealed that the window was pointed at the wrong place.
