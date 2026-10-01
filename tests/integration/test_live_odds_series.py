@@ -474,3 +474,30 @@ def test_movement_is_a_view_so_there_is_nothing_to_keep_in_sync(
         )
         row = cur.fetchone()
     assert row is not None and row[0] == "VIEW"
+
+
+def test_competition_coverage_answers_which_leagues_were_seen_in_play(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    """Coverage by competition, measured from what arrived rather than assumed
+    from the plan - the user-facing question "which of my 124 competitions does
+    this provider actually price live".
+
+    This reader shipped with a join onto tables that do not exist
+    (core.seasons, core.leagues) and the first `capture_live.py coverage` run
+    found it. Its sibling market_coverage was tested and this one was not, which
+    is the whole reason it got through.
+    """
+    repo = LiveOddsRepository(db)
+    repo.write([state()], [quote()])
+    rows = repo.competition_coverage(since_hours=24 * 365)
+    assert rows, "the seeded fixture's competition must appear"
+    league_id, name, fixtures = rows[0]
+    assert league_id == 39 and name == "Premier League"
+    assert fixtures == 1
+
+
+def test_competition_coverage_is_empty_before_anything_is_captured(
+    db: psycopg.Connection, seed: Seed
+) -> None:
+    assert LiveOddsRepository(db).competition_coverage(since_hours=1) == []

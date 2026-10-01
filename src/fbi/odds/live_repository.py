@@ -312,11 +312,11 @@ class LiveOddsRepository:
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT l.provider_league_id, l.name, count(DISTINCT st.fixture_id)
+                SELECT c.provider_league_id, c.name, count(DISTINCT st.fixture_id)
                 FROM market.live_fixture_states st
                 JOIN core.fixtures f ON f.id = st.fixture_id
-                JOIN core.seasons se ON se.id = f.season_id
-                JOIN core.leagues l ON l.id = se.league_id
+                JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+                JOIN core.competitions c ON c.id = cs.competition_id
                 WHERE st.captured_at > now() - make_interval(hours => %s)
                 GROUP BY 1, 2
                 ORDER BY 3 DESC
