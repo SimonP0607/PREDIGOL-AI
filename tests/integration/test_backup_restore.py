@@ -11,7 +11,15 @@ from pathlib import Path
 import psycopg
 
 from fbi.ingestion.payload_store import PayloadStore
-from fbi.ops.backup import MANIFEST, RAW, create_backup, fingerprints, restore_test, verify_files
+from fbi.ops.backup import (
+    MANIFEST,
+    RAW,
+    create_backup,
+    fingerprints,
+    live_worker,
+    restore_test,
+    verify_files,
+)
 from tests.integration.conftest import ADMIN_URL, Seed
 
 
@@ -62,3 +70,97 @@ def test_fingerprints_see_a_changed_value(db: psycopg.Connection, seed: Seed) ->
     assert before["core.teams"]["rows"] == after["core.teams"]["rows"]
     assert before["core.teams"]["md5"] != after["core.teams"]["md5"]
     assert before["core.fixtures"] == after["core.fixtures"]
+
+
+# --- the restore test must not be the reason the capture stopped ------------
+
+
+def test_a_restore_test_refuses_while_the_worker_is_beating(
+    db: psycopg.Connection, migrated_database: str, tmp_path: Path
+) -> None:
+    """The guard, and the outage behind it.
+
+    Run on the live machine, a restore test held the database server for 19,123
+    seconds - five hours and twenty-one minutes - and the capture stopped for
+    all of it. An in-play price missed cannot be re-fetched: /odds/live keeps no
+    history, and a pre-match window that closes is gone. The misfire grace is
+    derived from the capture tolerance now, so a short busy period is survived
+    by running ticks late; five hours is not a short busy period and no grace
+    should be asked to cover it.
+
+    The guard costs nothing and fires before any work is done - note that it
+    does not even need the backup folder to be valid.
+    """
+    with db.cursor() as cur:
+        cur.execute(
+            "INSERT INTO raw.worker_heartbeats "
+            "(worker_id, hostname, pid, code_version, started_at, last_beat_at, "
+            " tick_interval_s) "
+            "VALUES ('test:worker', 'test', 1, 'test', now(), now(), 300) "
+            "ON CONFLICT (worker_id) DO UPDATE SET last_beat_at = now(), "
+            "  stopped_at = NULL"
+        )
+    db.commit()
+    try:
+        assert live_worker(migrated_database) == "test:worker"
+        report = restore_test(tmp_path, "postgresql://nowhere/postgres",
+                              app_url=migrated_database)
+        assert not report.passed
+        assert any("WORKER" in c.name for c in report.checks)
+        assert report.scratch_db == "", "no scratch database was created"
+    finally:
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM raw.worker_heartbeats WHERE worker_id = 'test:worker'")
+        db.commit()
+
+
+def test_a_stopped_worker_does_not_block_a_restore_test(
+    db: psycopg.Connection, migrated_database: str
+) -> None:
+    with db.cursor() as cur:
+        cur.execute(
+            "INSERT INTO raw.worker_heartbeats "
+            "(worker_id, hostname, pid, code_version, started_at, last_beat_at, "
+            " tick_interval_s, stopped_at) "
+            "VALUES ('test:stopped', 'test', 1, 'test', now(), now(), 300, now()) "
+            "ON CONFLICT (worker_id) DO UPDATE SET last_beat_at = now(), stopped_at = now()"
+        )
+    db.commit()
+    try:
+        assert live_worker(migrated_database) is None
+    finally:
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM raw.worker_heartbeats WHERE worker_id = 'test:stopped'")
+        db.commit()
+
+
+def test_a_stale_heartbeat_does_not_block_a_restore_test(
+    db: psycopg.Connection, migrated_database: str
+) -> None:
+    """A worker that died without saying so must not lock maintenance out for
+    ever, so the guard asks whether it beat RECENTLY, not whether it ever did."""
+    with db.cursor() as cur:
+        cur.execute(
+            "INSERT INTO raw.worker_heartbeats "
+            "(worker_id, hostname, pid, code_version, started_at, last_beat_at, "
+            " tick_interval_s) "
+            "VALUES ('test:stale', 'test', 1, 'test', now() - interval '2 hours', "
+            "        now() - interval '2 hours', 300) "
+            "ON CONFLICT (worker_id) DO UPDATE SET "
+            "  last_beat_at = now() - interval '2 hours', stopped_at = NULL"
+        )
+    db.commit()
+    try:
+        assert live_worker(migrated_database) is None
+    finally:
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM raw.worker_heartbeats WHERE worker_id = 'test:stale'")
+        db.commit()
+
+
+def test_a_database_the_guard_cannot_read_does_not_block_it_either(
+    tmp_path: Path,
+) -> None:
+    """The guard refusing to speak must not become the guard refusing the work:
+    without a readable heartbeat it returns None and the test proceeds."""
+    assert live_worker("postgresql://127.0.0.1:1/nowhere") is None

@@ -282,8 +282,73 @@ def _compare_tables(
     return Check("TABLES: every table's row count and content fingerprint", not real, detail)
 
 
-def restore_test(folder: Path, admin_url: str, *, keep: bool = False) -> RestoreReport:
-    """Restore into a scratch database on the admin URL's server and prove it."""
+LIVE_WORKER_WINDOW_MINUTES = 10
+"""A heartbeat this recent means the worker is running right now."""
+
+
+def live_worker(app_url: str, *, within_minutes: int = LIVE_WORKER_WINDOW_MINUTES) -> str | None:
+    """The id of a worker that has beaten recently, or None.
+
+    Takes the APPLICATION database URL, not the admin one. The admin URL points
+    at ``postgres`` - it has to, since that is where a scratch database gets
+    created - and raw.worker_heartbeats does not exist there. Pointed at the
+    wrong one, this guard silently answered "no worker" every time, which is
+    exactly the failure mode a guard must not have.
+
+    Asked of raw.worker_heartbeats rather than of the process table, so it works
+    from anywhere and answers about the worker that matters: the one writing to
+    this database.
+    """
+    try:
+        with psycopg.connect(app_url) as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT worker_id FROM raw.worker_heartbeats "
+                "WHERE stopped_at IS NULL "
+                "  AND last_beat_at > now() - make_interval(mins => %s) "
+                "ORDER BY last_beat_at DESC LIMIT 1",
+                (within_minutes,),
+            )
+            row = cur.fetchone()
+            return str(row[0]) if row else None
+    except psycopg.Error:
+        # No heartbeat table, or no reachable database: the guard cannot speak,
+        # so it does not. The caller still gets its restore test.
+        return None
+
+
+def restore_test(folder: Path, admin_url: str, *, keep: bool = False,
+                 force: bool = False, app_url: str | None = None) -> RestoreReport:
+    """Restore into a scratch database on the admin URL's server and prove it.
+
+    REFUSES WHILE THE WORKER IS LIVE, and that refusal is the lesson from an
+    outage. Running this on the live machine took 19,123 seconds - five hours
+    and twenty-one minutes - of the same database server the capture tick needs,
+    and the capture simply stopped for the duration. Prices are not re-fetchable:
+    /odds/live keeps no history at all and a pre-match window that closes is
+    gone.
+
+    The misfire grace is now derived from the capture tolerance (45 minutes
+    rather than the 300 seconds it had shrunk to), so a short busy period is
+    survived by running ticks late. Five hours is not a short busy period, and
+    no grace should be expected to cover it. A restore test is a maintenance
+    window: stop the worker, run it, start the worker.
+
+    ``force`` is for a machine that is not the live one. ``app_url`` is where the
+    heartbeat lives; without it the guard cannot speak and the test proceeds.
+    """
+    worker = None if force or app_url is None else live_worker(app_url)
+    if worker is not None:
+        report = RestoreReport(folder, "")
+        report.checks.append(Check(
+            "WORKER: not running",
+            False,
+            f"worker {worker} has beaten within the last {LIVE_WORKER_WINDOW_MINUTES} "
+            "minutes. A restore test holds this database server for hours and the "
+            "capture tick needs it; an in-play price missed cannot be re-fetched. "
+            "Stop the worker and re-run, or pass force=True on a machine that is "
+            "not serving live capture.",
+        ))
+        return report
     started = datetime.now(UTC)
     manifest = json.loads((folder / MANIFEST).read_text())
     scratch = f"fbi_restore_{secrets.token_hex(4)}"

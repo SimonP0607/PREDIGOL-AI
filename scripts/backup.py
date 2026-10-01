@@ -5,6 +5,12 @@
     python -m scripts.backup restore-test <folder>       # restore into a scratch database and compare everything
     python -m scripts.backup create --restore-test       # both, in one go
 
+The restore test REFUSES while the worker is beating. It held the live database
+for 19,123 seconds once - five hours and twenty-one minutes - and the capture
+stopped for all of it; an in-play price missed cannot be re-fetched, because
+/odds/live keeps no history. Stop the worker, run it, start the worker, or pass
+--force on a machine that is not serving live capture.
+
 The restore test creates its own database (fbi_restore_<random>) on the same
 server, restores into it, compares every table's row count and content
 fingerprint with the manifest, re-hashes every archived raw file, checks the
@@ -52,10 +58,17 @@ def main() -> int:
     cr = sub.add_parser("create")
     cr.add_argument("--label", default="")
     cr.add_argument("--restore-test", action="store_true")
+    cr.add_argument("--force", action="store_true",
+                    help="run the restore test even while the worker is beating; "
+                         "it holds this database for hours and the capture tick "
+                         "needs it, so only on a machine that is not serving live "
+                         "capture")
     cr.add_argument("--keep", action="store_true")
     cr.add_argument("--out", default=str(BACKUP_DIR))
     sub.add_parser("verify").add_argument("folder")
     rt = sub.add_parser("restore-test")
+    rt.add_argument("--force", action="store_true",
+                    help="run even while the worker is beating; see create --force")
     rt.add_argument("folder")
     rt.add_argument("--keep", action="store_true")
     for p in (cr, rt):
@@ -82,10 +95,12 @@ def main() -> int:
                  "describes the state after; the dump is one consistent snapshot in between")
         if not args.restore_test:
             return 0
-        report = restore_test(rep.folder, admin, keep=args.keep)
+        report = restore_test(rep.folder, admin, keep=args.keep, force=args.force,
+                              app_url=db_url)
         _print_restore(report)
         return 0 if report.passed else 1
-    report = restore_test(Path(args.folder), admin, keep=args.keep)
+    report = restore_test(Path(args.folder), admin, keep=args.keep, force=args.force,
+                          app_url=db_url)
     _print_restore(report)
     return 0 if report.passed else 1
 
