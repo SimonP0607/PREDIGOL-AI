@@ -67,7 +67,20 @@ test("Overview → Match Center, every section", async ({ page }, info) => {
     note(info, "the overview lists no fixture on this database");
     return;
   }
-  await everyTab(page, w, ["Markets", "Models", "Timeline", "Lineage", "Audit", "Overview"]);
+  await everyTab(page, w, [
+    "Stats",
+    "Events",
+    "Line-ups",
+    "Players",
+    "Context",
+    "Markets",
+    "In-play",
+    "Models",
+    "Timeline",
+    "Lineage",
+    "Audit",
+    "Overview",
+  ]);
 });
 
 test("Match Center → Audit shows the chain exactly as the API reconstructs it", async ({

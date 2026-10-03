@@ -19,6 +19,17 @@ const LEAKS: ReadonlyArray<readonly [string, RegExp]> = [
   ["Infinity", /\bInfinity\b/],
 ];
 
+/** An API call, whether made to the API directly or through the web server's proxy. */
+function isApi(url: string): boolean {
+  if (url.startsWith(API_URL)) return true;
+  try {
+    const path = new URL(url).pathname;
+    return path.startsWith("/api/v1") || path === "/health";
+  } catch {
+    return false;
+  }
+}
+
 export interface Watch {
   problems: string[];
 }
@@ -33,14 +44,14 @@ export function watch(page: Page): Watch {
     const status = res.status();
     if (status === 429) {
       w.problems.push(`429 ${res.url()} - raise FBI_API_RATE_LIMIT on the API for an E2E run`);
-    } else if (status >= 500 && res.url().startsWith(API_URL)) {
+    } else if (status >= 500 && isApi(res.url())) {
       w.problems.push(`HTTP ${status} ${res.url()}`);
     }
   });
   page.on("requestfailed", (req) => {
     const why = req.failure()?.errorText ?? "";
     // A navigation cancels the previous page's fetches: that is not a failure.
-    if (req.url().startsWith(API_URL) && !why.includes("ERR_ABORTED")) {
+    if (isApi(req.url()) && !why.includes("ERR_ABORTED")) {
       w.problems.push(`request failed: ${req.url()} ${why}`);
     }
   });

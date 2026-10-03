@@ -17,8 +17,31 @@ import { dec, decPct, relative, shortHash, utcDateTime } from "./format";
 import { AuditTrail } from "./AuditTrail";
 import { HistoricalMarketTables } from "./HistoricalMarket";
 import { ScoreText, StatusGroupBadge } from "./shared";
+import {
+  ContextTab,
+  EventsTab,
+  LineupsTab,
+  LiveScoreLine,
+  LiveTab,
+  PlayersTab,
+  StatsTab,
+  WithCenter,
+} from "./MatchCenterExtra";
 
-const tabs = ["Overview", "Markets", "Models", "Timeline", "Lineage", "Audit"] as const;
+const tabs = [
+  "Overview",
+  "Stats",
+  "Events",
+  "Line-ups",
+  "Players",
+  "Context",
+  "Markets",
+  "In-play",
+  "Models",
+  "Timeline",
+  "Lineage",
+  "Audit",
+] as const;
 type Tab = (typeof tabs)[number];
 
 export function MatchCenterLive({ fixtureId }: { fixtureId: string }) {
@@ -51,6 +74,7 @@ export function MatchCenterLive({ fixtureId }: { fixtureId: string }) {
 
   const d = q.data.data;
   const m = d.match;
+  const sides = { home: m.home.name, away: m.away.name };
   return (
     <div className="space-y-4">
       <PageHeader
@@ -66,14 +90,41 @@ export function MatchCenterLive({ fixtureId }: { fixtureId: string }) {
       {m.awaiting_result ? (
         <WarningBanner>
           This fixture kicked off {relative(m.kickoff_at)} and is still recorded as {m.status_short}
-          . Its result has not been synced; on the free plan it becomes unreachable about a day
-          after kick-off.
+          . The live follower and the results sync should have moved it on; check System / Admin for
+          a failing job.
         </WarningBanner>
       ) : null}
 
       <SegmentedTabs label="Match sections" tabs={tabs} value={tab} onChange={setTab} />
 
-      {tab === "Overview" ? <OverviewTab d={d} /> : null}
+      {tab === "Overview" ? (
+        <div className="space-y-4">
+          {m.status_group === "live" || m.awaiting_result ? (
+            <WithCenter fixtureId={fixtureId}>
+              {(c) => <LiveScoreLine c={c} sides={sides} />}
+            </WithCenter>
+          ) : null}
+          <OverviewTab d={d} />
+        </div>
+      ) : null}
+      {tab === "Stats" ? (
+        <WithCenter fixtureId={fixtureId}>{(c) => <StatsTab c={c} sides={sides} />}</WithCenter>
+      ) : null}
+      {tab === "Events" ? (
+        <WithCenter fixtureId={fixtureId}>{(c) => <EventsTab c={c} sides={sides} />}</WithCenter>
+      ) : null}
+      {tab === "Line-ups" ? (
+        <WithCenter fixtureId={fixtureId}>{(c) => <LineupsTab c={c} sides={sides} />}</WithCenter>
+      ) : null}
+      {tab === "Players" ? (
+        <WithCenter fixtureId={fixtureId}>{(c) => <PlayersTab c={c} sides={sides} />}</WithCenter>
+      ) : null}
+      {tab === "Context" ? (
+        <WithCenter fixtureId={fixtureId}>{(c) => <ContextTab c={c} sides={sides} />}</WithCenter>
+      ) : null}
+      {tab === "In-play" ? (
+        <WithCenter fixtureId={fixtureId}>{(c) => <LiveTab c={c} />}</WithCenter>
+      ) : null}
       {tab === "Markets" ? <MarketsTab d={d} /> : null}
       {tab === "Models" ? <ModelsTab d={d} /> : null}
       {tab === "Timeline" ? (
@@ -158,9 +209,11 @@ function OverviewTab({ d }: { d: MatchDetail }) {
           <p className="text-center text-xs text-muted-foreground">
             {m.status_group === "postponed" || m.status_group === "cancelled"
               ? `Not played (${m.status_short}): there is no result to record.`
-              : m.awaiting_result
-                ? "Kicked off, but no result has been recorded yet."
-                : "Scheduled. The result is recorded after full time."}
+              : m.status_group === "live"
+                ? "In play: the live score is shown above and in the In-play tab. The result is recorded at full time."
+                : m.awaiting_result
+                  ? "Kicked off, but no result has been recorded yet."
+                  : "Scheduled. The result is recorded after full time."}
           </p>
         )}
       </Panel>

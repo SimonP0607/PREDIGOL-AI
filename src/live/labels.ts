@@ -11,6 +11,17 @@ export const JOB_LABEL: Record<string, string> = {
   backtest: "Backtest",
   pick_pipeline: "Decision pipeline",
   odds_import: "Odds import",
+  live_odds: "In-play odds (job)",
+  live_odds_capture: "In-play odds capture",
+  live_match: "Live match follow (job)",
+  live_match_capture: "Live match follow",
+  notifier: "Notifier",
+  quality_sweep: "Quality sweep",
+  team_identity_resolve: "Team identity resolve",
+  teams_sync: "Teams sync",
+  window_probe: "Window probe",
+  plan_probe: "Plan probe",
+  raw_transfer: "Raw transfer",
 };
 
 /** "pinnacle/closing/shin" -> "Pinnacle · closing · shin". */

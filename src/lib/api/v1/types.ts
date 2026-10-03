@@ -93,7 +93,7 @@ export interface RunSummary {
   id: number;
   job_type: string;
   job_name: string;
-  status: "running" | "completed" | "partial" | "failed" | "aborted";
+  status: "running" | "completed" | "partial" | "failed" | "aborted" | "interrupted";
   started_at: Iso;
   finished_at: Iso | null;
   duration_ms: number | null;
@@ -783,6 +783,19 @@ export interface PicksOverview {
   recent_candidates: Section<CandidateRow[]>;
 }
 
+export interface PerformanceSlice {
+  dimension: "market" | "model" | "rule" | "month" | "odds_band";
+  key: string;
+  settled: number;
+  staked_units: Dec | null;
+  profit_units: Dec | null;
+  roi_pct: Dec | null;
+  roi_ci95_pct: Dec | null;
+  hit_rate: Dec | null;
+  mean_odds: Dec | null;
+  expected_profit_units: Dec | null;
+}
+
 export interface PerformanceSummary {
   settled: number;
   pending: number;
@@ -791,6 +804,7 @@ export interface PerformanceSummary {
   roi_pct: Dec | null;
   hit_rate: Dec | null;
   note: string;
+  slices: PerformanceSlice[];
 }
 
 export interface SearchHit {

@@ -4,6 +4,7 @@ export const navGroups = [
     items: [
       { to: "/", label: "Overview", exact: true },
       { to: "/matches", label: "Matches" },
+      { to: "/live", label: "Live" },
       { to: "/picks", label: "Picks" },
       { to: "/odds", label: "Odds" },
       { to: "/performance", label: "Performance" },
@@ -22,6 +23,7 @@ export const navGroups = [
     items: [
       { to: "/competitions", label: "Competitions" },
       { to: "/teams", label: "Teams" },
+      { to: "/players", label: "Players" },
       { to: "/rankings", label: "Rankings" },
     ],
   },
@@ -30,6 +32,7 @@ export const navGroups = [
     items: [
       { to: "/ai-analyst", label: "AI Analyst" },
       { to: "/data-quality", label: "Data Quality" },
+      { to: "/admin", label: "System / Admin" },
       { to: "/settings", label: "Settings" },
     ],
   },

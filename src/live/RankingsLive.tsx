@@ -9,7 +9,7 @@ import { Panel } from "@/components/primitives/Panel";
 import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { Numeric } from "@/components/primitives/Indicators";
-import { SegmentedTabs } from "@/components/system/Filters";
+import { SelectFilter } from "@/components/system/Filters";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice, SectionView } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
@@ -19,9 +19,18 @@ import { utcDate, utcDateTime } from "./format";
 export function RankingsLive() {
   const comps = useLiveQuery(live.competitions);
   const options = (comps.data?.data ?? []).filter((c) => c.fixtures > 0);
-  const names = ["All", ...options.map((c) => c.name)];
-  const [scope, setScope] = useState("All");
-  const selected = options.find((c) => c.name === scope);
+  // By id: several competitions share a name ("Premier League", "Super Cup").
+  const choices = [
+    { value: "all", label: "All competitions" },
+    ...[...options]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((c) => ({
+        value: String(c.id),
+        label: `${c.name}${c.country ? ` (${c.country})` : ""}`,
+      })),
+  ];
+  const [scope, setScope] = useState("all");
+  const selected = options.find((c) => String(c.id) === scope);
   const q = useLiveQuery(live.rankings(selected?.id));
   const d = q.data;
   return (
@@ -32,7 +41,9 @@ export function RankingsLive() {
         description="Elo ratings from the stored rating history - the same numbers the Elo model reads. A rating stops where the data stops: check its last match. A competition filter keeps teams whose last rated match was there."
       />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
-      <SegmentedTabs label="Competition" tabs={names} value={scope} onChange={setScope} />
+      <div className="max-w-sm">
+        <SelectFilter label="Competition" value={scope} options={choices} onChange={setScope} />
+      </div>
       <Panel
         title="Elo"
         subtitle={

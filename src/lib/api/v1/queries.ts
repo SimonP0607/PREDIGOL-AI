@@ -4,6 +4,18 @@ import { v1, type MatchQuery } from "./client";
 const MINUTE = 60_000;
 
 export const live = {
+  center: (id: string) => ({
+    queryKey: ["v1", "center", id],
+    queryFn: () => v1.center(id),
+    refetchInterval: 30_000,
+  }),
+  liveBoard: { queryKey: ["v1", "live"], queryFn: v1.liveBoard, refetchInterval: 15_000 },
+  players: (q: { q?: string | undefined; team_id?: number | undefined }) => ({
+    queryKey: ["v1", "players", q.q ?? "", q.team_id ?? 0],
+    queryFn: () => v1.players(q),
+  }),
+  player: (id: string) => ({ queryKey: ["v1", "player", id], queryFn: () => v1.player(id) }),
+  admin: { queryKey: ["v1", "admin"], queryFn: v1.admin, refetchInterval: 30_000 },
   overview: { queryKey: ["v1", "overview"], queryFn: v1.overview, refetchInterval: MINUTE },
   health: { queryKey: ["v1", "health"], queryFn: v1.health, refetchInterval: MINUTE },
   quality: { queryKey: ["v1", "quality"], queryFn: v1.quality, refetchInterval: MINUTE },

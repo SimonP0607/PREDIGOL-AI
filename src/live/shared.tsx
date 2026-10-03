@@ -53,6 +53,7 @@ const runTone: Record<RunSummary["status"], BadgeTone> = {
   partial: "warning",
   failed: "negative",
   aborted: "neutral",
+  interrupted: "warning",
 };
 
 export function RunStatusBadge({ status }: { status: RunSummary["status"] }) {

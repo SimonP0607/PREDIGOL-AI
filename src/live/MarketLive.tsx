@@ -9,7 +9,7 @@ import { MetricLabel } from "@/components/system/InfoTip";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice, Nullable, SectionView, StatusNotice } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
-import type { MarketQuote, OddsSeries } from "@/lib/api/v1/types";
+import type { MarketQuote, OddsSeries, PerformanceSlice } from "@/lib/api/v1/types";
 import { int } from "@/lib/format";
 import { dec, decPct, relative, utcDate, utcDateTime } from "./format";
 import { bookLabel, seasonLabel } from "./labels";
@@ -497,7 +497,7 @@ export function PerformanceLive() {
       <PageHeader
         breadcrumb={[{ label: "Research" }, { label: "Performance" }]}
         title="Performance"
-        description="Economic metrics exist only when there are settled picks at recorded prices. Until then every figure here is withheld, not zero."
+        description="Shadow picks settled at the price that was captured when the pick was made. No money was staked: this measures whether the models' edge was real, nothing else."
       />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -518,6 +518,93 @@ export function PerformanceLive() {
         ) : null}
         {d ? <p className="mt-2 text-caption text-subtle-foreground">{d.note}</p> : null}
       </Panel>
+      {d && d.slices?.length ? <PerformanceSlices slices={d.slices} /> : null}
+    </div>
+  );
+}
+
+const SLICE_TITLE: Record<PerformanceSlice["dimension"], string> = {
+  market: "By market",
+  model: "By model",
+  rule: "By decision rule",
+  month: "By month of kick-off",
+  odds_band: "By price band",
+};
+
+function PerformanceSlices({ slices }: { slices: PerformanceSlice[] }) {
+  const dims = ["model", "market", "rule", "odds_band", "month"] as const;
+  return (
+    <div className="space-y-4">
+      <p className="text-caption text-muted-foreground">
+        ± is a 95% interval on the ROI from the spread of bet results (shown from 30 bets). An
+        interval that contains 0 means the result is not distinguishable from luck. &ldquo;Model
+        expected&rdquo; is what the model&apos;s own EV promised for the same bets.
+      </p>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {dims.map((dim) => {
+          const rows = slices.filter((s) => s.dimension === dim);
+          if (!rows.length) return null;
+          return (
+            <Panel key={dim} title={SLICE_TITLE[dim]} bodyClassName="">
+              <TableShell compact>
+                <THead>
+                  <TH>{dim === "odds_band" ? "Odds" : dim}</TH>
+                  <TH align="right">Bets</TH>
+                  <TH align="right">Hit</TH>
+                  <TH align="right">P&amp;L</TH>
+                  <TH align="right">ROI</TH>
+                  <TH align="right">Model expected</TH>
+                </THead>
+                <tbody>
+                  {rows.map((r) => {
+                    const roi = r.roi_pct === null ? null : Number(r.roi_pct);
+                    return (
+                      <TRow key={`${dim}-${r.key}`}>
+                        <TD className="text-sm">{r.key}</TD>
+                        <TD align="right">
+                          <Numeric className="text-xs">{r.settled}</Numeric>
+                        </TD>
+                        <TD align="right">
+                          <Numeric muted className="text-xs">
+                            {r.hit_rate !== null ? `${dec(r.hit_rate, 1)}%` : "—"}
+                          </Numeric>
+                        </TD>
+                        <TD align="right">
+                          <Numeric className="text-xs">{dec(r.profit_units, 2) ?? "—"}</Numeric>
+                        </TD>
+                        <TD align="right">
+                          <Numeric
+                            className={
+                              roi === null
+                                ? "text-xs"
+                                : roi > 0
+                                  ? "text-xs text-positive"
+                                  : "text-xs text-negative"
+                            }
+                          >
+                            {roi === null ? "—" : `${dec(r.roi_pct, 1)}%`}
+                            {r.roi_ci95_pct !== null ? (
+                              <span className="text-subtle-foreground">
+                                {" "}
+                                ±{dec(r.roi_ci95_pct, 0)}
+                              </span>
+                            ) : null}
+                          </Numeric>
+                        </TD>
+                        <TD align="right">
+                          <Numeric muted className="text-xs">
+                            {dec(r.expected_profit_units, 2) ?? "—"}
+                          </Numeric>
+                        </TD>
+                      </TRow>
+                    );
+                  })}
+                </tbody>
+              </TableShell>
+            </Panel>
+          );
+        })}
+      </div>
     </div>
   );
 }

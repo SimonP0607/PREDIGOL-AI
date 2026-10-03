@@ -10,6 +10,7 @@ const WIDTHS = [1440, 1280, 1024, 768, 390] as const;
 const ROUTES = [
   "/",
   "/matches",
+  "/live",
   "/odds",
   "/models",
   "/picks",
@@ -18,8 +19,10 @@ const ROUTES = [
   "/backtesting",
   "/competitions",
   "/teams",
+  "/players",
   "/rankings",
   "/data-quality",
+  "/admin",
   "/ai-analyst",
   "/settings",
 ] as const;
@@ -38,6 +41,16 @@ for (const width of WIDTHS) {
         await assertClean(page, w);
       });
     }
+
+    test("/players/:id", async ({ page }) => {
+      const list = await api<Array<{ id: number }>>("/api/v1/players?limit=1");
+      const first = list.data[0];
+      test.skip(first === undefined, "no player statistics in the last 30 days");
+      const w = watch(page);
+      await page.goto(`/players/${first!.id}`);
+      await settle(page);
+      await assertClean(page, w);
+    });
 
     test("/matches/:id", async ({ page }, info) => {
       const list = await api<Array<{ id: number }>>("/api/v1/matches?limit=1");

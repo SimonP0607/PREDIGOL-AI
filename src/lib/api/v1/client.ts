@@ -33,6 +33,13 @@ import type {
   TeamSummary,
   ToolResult,
 } from "./types";
+import type {
+  AdminOverview,
+  LiveBoard,
+  MatchCenter,
+  PlayerDetail,
+  PlayerSummary,
+} from "./types_center";
 
 /** An error the API itself reported, or a transport failure. */
 export class LiveApiError extends Error {
@@ -170,4 +177,14 @@ export const v1 = {
   experiments: () => getJson<Envelope<ExperimentSummary[]>>("/analytics/experiments"),
   dataCoverage: () => getJson<Envelope<CoverageCell[]>>("/analytics/coverage"),
   migration: () => getJson<Envelope<MigrationProgress>>("/analytics/migration"),
+  center: (id: number | string) => getJson<Envelope<MatchCenter | null>>(`/matches/${id}/center`),
+  liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
+  players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
+    getJson<Envelope<PlayerSummary[]>>("/players", {
+      q: q.q,
+      team_id: q.team_id,
+      limit: q.limit ?? 100,
+    }),
+  player: (id: number | string) => getJson<Envelope<PlayerDetail | null>>(`/players/${id}`),
+  admin: () => getJson<Envelope<AdminOverview>>("/admin/overview"),
 };

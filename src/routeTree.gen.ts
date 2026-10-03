@@ -10,11 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AiAnalystRouteImport } from './routes/ai-analyst'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as BacktestingRouteImport } from './routes/backtesting'
 import { Route as CompetitionsRouteImport } from './routes/competitions'
 import { Route as DataQualityRouteImport } from './routes/data-quality'
+import { Route as LiveRouteImport } from './routes/live'
 import { Route as ModelsRouteImport } from './routes/models'
 import { Route as OddsRouteImport } from './routes/odds'
 import { Route as PerformanceRouteImport } from './routes/performance'
@@ -24,10 +26,17 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TeamsRouteImport } from './routes/teams'
 import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
+import { Route as PlayersIndexRouteImport } from './routes/players.index'
+import { Route as PlayersPlayerIdRouteImport } from './routes/players.$playerId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiAnalystRoute = AiAnalystRouteImport.update({
@@ -53,6 +62,11 @@ const CompetitionsRoute = CompetitionsRouteImport.update({
 const DataQualityRoute = DataQualityRouteImport.update({
   id: '/data-quality',
   path: '/data-quality',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveRoute = LiveRouteImport.update({
+  id: '/live',
+  path: '/live',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModelsRoute = ModelsRouteImport.update({
@@ -100,14 +114,26 @@ const MatchesFixtureIdRoute = MatchesFixtureIdRouteImport.update({
   path: '/matches/$fixtureId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlayersIndexRoute = PlayersIndexRouteImport.update({
+  id: '/players/',
+  path: '/players/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlayersPlayerIdRoute = PlayersPlayerIdRouteImport.update({
+  id: '/players/$playerId',
+  path: '/players/$playerId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/ai-analyst': typeof AiAnalystRoute
   '/analytics': typeof AnalyticsRoute
   '/backtesting': typeof BacktestingRoute
   '/competitions': typeof CompetitionsRoute
   '/data-quality': typeof DataQualityRoute
+  '/live': typeof LiveRoute
   '/models': typeof ModelsRoute
   '/odds': typeof OddsRoute
   '/performance': typeof PerformanceRoute
@@ -116,15 +142,19 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/teams': typeof TeamsRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
+  '/players/$playerId': typeof PlayersPlayerIdRoute
   '/matches/': typeof MatchesIndexRoute
+  '/players/': typeof PlayersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/ai-analyst': typeof AiAnalystRoute
   '/analytics': typeof AnalyticsRoute
   '/backtesting': typeof BacktestingRoute
   '/competitions': typeof CompetitionsRoute
   '/data-quality': typeof DataQualityRoute
+  '/live': typeof LiveRoute
   '/models': typeof ModelsRoute
   '/odds': typeof OddsRoute
   '/performance': typeof PerformanceRoute
@@ -133,16 +163,20 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/teams': typeof TeamsRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
+  '/players/$playerId': typeof PlayersPlayerIdRoute
   '/matches': typeof MatchesIndexRoute
+  '/players': typeof PlayersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/ai-analyst': typeof AiAnalystRoute
   '/analytics': typeof AnalyticsRoute
   '/backtesting': typeof BacktestingRoute
   '/competitions': typeof CompetitionsRoute
   '/data-quality': typeof DataQualityRoute
+  '/live': typeof LiveRoute
   '/models': typeof ModelsRoute
   '/odds': typeof OddsRoute
   '/performance': typeof PerformanceRoute
@@ -151,17 +185,21 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/teams': typeof TeamsRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
+  '/players/$playerId': typeof PlayersPlayerIdRoute
   '/matches/': typeof MatchesIndexRoute
+  '/players/': typeof PlayersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/ai-analyst'
     | '/analytics'
     | '/backtesting'
     | '/competitions'
     | '/data-quality'
+    | '/live'
     | '/models'
     | '/odds'
     | '/performance'
@@ -170,15 +208,19 @@ export interface FileRouteTypes {
     | '/settings'
     | '/teams'
     | '/matches/$fixtureId'
+    | '/players/$playerId'
     | '/matches/'
+    | '/players/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/ai-analyst'
     | '/analytics'
     | '/backtesting'
     | '/competitions'
     | '/data-quality'
+    | '/live'
     | '/models'
     | '/odds'
     | '/performance'
@@ -187,15 +229,19 @@ export interface FileRouteTypes {
     | '/settings'
     | '/teams'
     | '/matches/$fixtureId'
+    | '/players/$playerId'
     | '/matches'
+    | '/players'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/ai-analyst'
     | '/analytics'
     | '/backtesting'
     | '/competitions'
     | '/data-quality'
+    | '/live'
     | '/models'
     | '/odds'
     | '/performance'
@@ -204,16 +250,20 @@ export interface FileRouteTypes {
     | '/settings'
     | '/teams'
     | '/matches/$fixtureId'
+    | '/players/$playerId'
     | '/matches/'
+    | '/players/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AiAnalystRoute: typeof AiAnalystRoute
   AnalyticsRoute: typeof AnalyticsRoute
   BacktestingRoute: typeof BacktestingRoute
   CompetitionsRoute: typeof CompetitionsRoute
   DataQualityRoute: typeof DataQualityRoute
+  LiveRoute: typeof LiveRoute
   ModelsRoute: typeof ModelsRoute
   OddsRoute: typeof OddsRoute
   PerformanceRoute: typeof PerformanceRoute
@@ -222,7 +272,9 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   TeamsRoute: typeof TeamsRoute
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
+  PlayersPlayerIdRoute: typeof PlayersPlayerIdRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
+  PlayersIndexRoute: typeof PlayersIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +284,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai-analyst': {
@@ -267,6 +326,13 @@ declare module '@tanstack/react-router' {
       path: '/data-quality'
       fullPath: '/data-quality'
       preLoaderRoute: typeof DataQualityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live': {
+      id: '/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof LiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/models': {
@@ -332,16 +398,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MatchesFixtureIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/players/': {
+      id: '/players/'
+      path: '/players'
+      fullPath: '/players/'
+      preLoaderRoute: typeof PlayersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/players/$playerId': {
+      id: '/players/$playerId'
+      path: '/players/$playerId'
+      fullPath: '/players/$playerId'
+      preLoaderRoute: typeof PlayersPlayerIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AiAnalystRoute: AiAnalystRoute,
   AnalyticsRoute: AnalyticsRoute,
   BacktestingRoute: BacktestingRoute,
   CompetitionsRoute: CompetitionsRoute,
   DataQualityRoute: DataQualityRoute,
+  LiveRoute: LiveRoute,
   ModelsRoute: ModelsRoute,
   OddsRoute: OddsRoute,
   PerformanceRoute: PerformanceRoute,
@@ -350,7 +432,9 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   TeamsRoute: TeamsRoute,
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,
+  PlayersPlayerIdRoute: PlayersPlayerIdRoute,
   MatchesIndexRoute: MatchesIndexRoute,
+  PlayersIndexRoute: PlayersIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
