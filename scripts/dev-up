@@ -114,6 +114,10 @@ start() {  # name, pattern, dir, command...
   say "$name: started (pid $(cat "$RUN/$name.pid"), log $RUN/$name.log)"
 }
 
+# Every browser request reaches the API through the web server's proxy, so all of
+# them come from 127.0.0.1 and share ONE rate-limit bucket: the API's default of
+# 240 a minute is a single busy tab. 3,000 still stops a runaway polling loop.
+export FBI_API_RATE_LIMIT="${FBI_API_RATE_LIMIT:-3000}"
 want api && start api "[u]vicorn apps.api.main" "$ROOT" "$ROOT/scripts/run-supervised" api "$ROOT/.venv/bin/uvicorn" apps.api.main:app --host 127.0.0.1 --port "$API_PORT" --log-level warning
 want worker && start worker "[a]pps.worker" "$ROOT" "$ROOT/scripts/run-supervised" worker "$PY" -m apps.worker.scheduler
 if want web; then
