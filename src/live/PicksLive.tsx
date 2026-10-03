@@ -3,7 +3,7 @@
  * rejected, nothing qualifies until a model has beaten the market, and
  * publishing does not exist - and every pick opens onto its lineage.
  */
-import { t } from "@/lib/i18n";
+import { t, translateOr } from "@/lib/i18n";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -19,6 +19,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { PickRow, PickStatus } from "@/lib/api/v1/types";
 import { int } from "@/lib/format";
 import { dec, decPct, shortHash, utcDateTime } from "./format";
+import { localFixed } from "@/lib/i18n/format";
 
 const statusTone: Record<PickStatus, BadgeTone> = {
   shadow: "neutral",
@@ -41,7 +42,7 @@ function signedPct(value: string | null | undefined, digits = 1): string | null 
   if (value === null || value === undefined) return null;
   const n = Number(value) * 100;
   if (!Number.isFinite(n)) return null;
-  return `${n > 0 ? "+" : n < 0 ? "−" : "±"}${Math.abs(n).toFixed(digits)}%`;
+  return `${n > 0 ? "+" : n < 0 ? "−" : "±"}${localFixed(Math.abs(n), digits)}%`;
 }
 
 const tabs = ["Picks", "Candidates"] as const;
@@ -131,7 +132,7 @@ export function PicksLive() {
             />
             <KeyValue
               label={t("ops.picks.rule.minEdge")}
-              value={`${(Number(d.rule["min_probability_edge"]) * 100).toFixed(0)} pp`}
+              value={`${localFixed(Number(d.rule["min_probability_edge"]) * 100, 0)} pp`}
             />
             <KeyValue label="Stake" value={t("ops.picks.rule.stakeValue")} />
           </div>
@@ -237,11 +238,16 @@ export function PicksLive() {
                           <Numeric>{signedPct(p.ev)}</Numeric>
                         </TD>
                         <TD>
-                          <StatusBadge tone={statusTone[p.status]}>{p.status}</StatusBadge>
+                          <StatusBadge tone={statusTone[p.status]}>
+                            {translateOr(`admin.status.pick.${p.status}`, p.status)}
+                          </StatusBadge>
                         </TD>
                         <TD>
                           <StatusBadge tone={resultTone[p.result_status] ?? "neutral"}>
-                            {p.result_status.replace("_", " ")}
+                            {translateOr(
+                              `admin.status.result.${p.result_status}`,
+                              p.result_status.replace("_", " "),
+                            )}
                           </StatusBadge>
                         </TD>
                       </TRow>,
@@ -396,7 +402,7 @@ function PickLineage({ p }: { p: PickRow }) {
         ))}
         <KeyValue
           label={t("ops.picks.lineage.result")}
-          value={`${p.result_status}${p.profit_units !== null ? ` · ${dec(p.profit_units, 2)} u` : ""}`}
+          value={`${translateOr(`admin.status.result.${p.result_status}`, p.result_status)}${p.profit_units !== null ? ` · ${dec(p.profit_units, 2)} u` : ""}`}
         />
         <KeyValue label={t("ops.picks.lineage.basis")} value={p.settlement_basis ?? "—"} />
         {p.review_reason ? (

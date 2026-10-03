@@ -1,5 +1,5 @@
 /** System / Admin: the private operations view. Everything here is read; nothing is triggered. */
-import { t } from "@/lib/i18n";
+import { t, translateOr } from "@/lib/i18n";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, MetricCard, Panel } from "@/components/primitives/Panel";
@@ -10,11 +10,12 @@ import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice, SectionView } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
 import type { ComponentStatus, Section } from "@/lib/api/v1/types";
-import type { BackfillProgress } from "@/lib/api/v1/types_center";
+import type { AdminCount, BackfillProgress } from "@/lib/api/v1/types_center";
 import { int } from "@/lib/format";
 import { relative, utcDateTime } from "./format";
 import { jobLabel } from "./labels";
 import { ComponentStatusBadge } from "./shared";
+import { localFixed } from "@/lib/i18n/format";
 
 const FRONTEND_VERSION = (import.meta.env["VITE_APP_VERSION"] as string | undefined) ?? "dev";
 
@@ -27,7 +28,17 @@ function bytes(n: number | null | undefined): string {
     v /= 1024;
     i++;
   }
-  return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  return `${localFixed(v, i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+/** A count from the API, named in the reader's language when its key is known (else the API's label). */
+function countLabel(group: "captures" | "quality", c: AdminCount): string {
+  return c.key ? translateOr(`system.${group}.labels.${c.key}`, c.label) : c.label;
+}
+
+function countNote(c: AdminCount): string | undefined {
+  if (!c.note) return undefined;
+  return c.key ? translateOr(`system.captures.notes.${c.key}`, c.note) : c.note;
 }
 
 export function AdminLive() {
@@ -117,10 +128,10 @@ export function AdminLive() {
               <div className="grid gap-x-6 sm:grid-cols-2">
                 {d.captures.map((c) => (
                   <KeyValue
-                    key={c.label}
-                    label={c.label}
+                    key={c.key ?? c.label}
+                    label={countLabel("captures", c)}
                     value={
-                      <span title={c.note ?? undefined}>
+                      <span title={countNote(c)}>
                         {int(c.value)}
                         {c.at ? (
                           <span className="ml-1.5 text-subtle-foreground">· {relative(c.at)}</span>
@@ -161,7 +172,7 @@ export function AdminLive() {
                             <TD className="text-xs">{jobLabel(e.job_type)}</TD>
                             <TD>
                               <StatusBadge tone={e.status === "failed" ? "negative" : "warning"}>
-                                {e.status}
+                                {translateOr(`admin.status.run.${e.status}`, e.status)}
                               </StatusBadge>
                             </TD>
                             <TD className="max-w-[28rem] truncate text-caption text-muted-foreground">
@@ -178,7 +189,11 @@ export function AdminLive() {
             <Panel title={t("system.quality.title")} subtitle={t("system.quality.subtitle")}>
               {d.quality.length ? (
                 d.quality.map((c) => (
-                  <KeyValue key={c.label} label={c.label} value={int(c.value)} />
+                  <KeyValue
+                    key={c.key ?? c.label}
+                    label={countLabel("quality", c)}
+                    value={int(c.value)}
+                  />
                 ))
               ) : (
                 <p className="text-xs text-muted-foreground">{t("system.quality.empty")}</p>

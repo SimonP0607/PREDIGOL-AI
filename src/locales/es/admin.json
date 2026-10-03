@@ -230,7 +230,7 @@
     "noValue": "Sin valor: {reason}"
   },
   "status": {
-    "awaitingResult": "Pendiente de resultado",
+    "awaitingResult": "Sin resultado",
     "awaitingResultHelp": "Ya empezó, pero el registro todavía dice que no: el resultado aún no se ha sincronizado.",
     "aet": "(prór.)",
     "component": {
@@ -295,6 +295,15 @@
       "pending": "Pendiente",
       "skipped": "Omitido",
       "failed": "Fallido"
+    },
+    "result": {
+      "win": "ganado",
+      "half_win": "medio ganado",
+      "loss": "perdido",
+      "half_loss": "medio perdido",
+      "push": "devuelto",
+      "void": "anulado",
+      "pending": "pendiente"
     }
   },
   "ui": {
@@ -309,7 +318,10 @@
     "predicted": "Predicha",
     "observed": "Observada",
     "infoTip": "Qué es {term}: {text}",
-    "infoTipNoTerm": "Definición: {text}"
+    "infoTipNoTerm": "Definición: {text}",
+    "showingRows": "Mostrando {shown} de {total}",
+    "showMore": "Mostrar {n} más",
+    "showAll": "Mostrar todo"
   },
   "glossary": {
     "modelProbability": "Probabilidad que produce un modelo estadístico a partir de sus variables. No es un nivel de confianza y no se deriva de los precios.",

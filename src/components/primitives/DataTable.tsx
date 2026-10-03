@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
+import { int } from "@/lib/format";
 
 export function TableShell({
   children,
@@ -232,5 +234,52 @@ export function CardRow({
       </dl>
       {footer ? <div className="mt-2">{footer}</div> : null}
     </Wrapper>
+  );
+}
+
+/**
+ * A long table, a page at a time: the first `step` rows, then a button for the next
+ * `step` and one for all of them. The rows are rendered by `children`.
+ */
+export function LimitedRows<T>({
+  rows,
+  step = 50,
+  children,
+}: {
+  rows: T[];
+  step?: number;
+  children: (shown: T[]) => React.ReactNode;
+}) {
+  const [limit, setLimit] = useState(step);
+  const shown = rows.length > limit ? rows.slice(0, limit) : rows;
+  const rest = rows.length - shown.length;
+  return (
+    <>
+      {children(shown)}
+      {rest > 0 ? (
+        <div
+          className="flex flex-wrap items-center justify-center gap-3 border-t border-border px-4 py-2.5 text-xs"
+          data-testid="limited-rows"
+        >
+          <span className="text-subtle-foreground">
+            {t("admin.ui.showingRows", { shown: int(shown.length), total: int(rows.length) })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setLimit((l) => l + step)}
+            className="rounded-md border border-border px-2.5 py-1 font-medium hover:bg-elevated focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {t("admin.ui.showMore", { n: int(Math.min(step, rest)) })}
+          </button>
+          <button
+            type="button"
+            onClick={() => setLimit(rows.length)}
+            className="rounded-md px-1.5 py-1 text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {t("admin.ui.showAll")}
+          </button>
+        </div>
+      ) : null}
+    </>
   );
 }

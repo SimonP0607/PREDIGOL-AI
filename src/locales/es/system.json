@@ -16,7 +16,23 @@
   },
   "captures": {
     "title": "Capturas",
-    "subtitle": "Lo que los pipelines escribieron recientemente."
+    "subtitle": "Lo que los pipelines escribieron recientemente.",
+    "labels": {
+      "prematch_1h": "Precios prepartido, última hora",
+      "prematch_24h": "Precios prepartido, últimas 24 h",
+      "live_1h": "Cambios de precio en vivo, última hora",
+      "live_24h": "Cambios de precio en vivo, últimas 24 h",
+      "live_priced_now": "Partidos con precio en vivo ahora",
+      "match_states_24h": "Estados de partido (feed de partidos), últimas 24 h",
+      "upcoming_7d": "Partidos en los próximos 7 días",
+      "finished_total": "Partidos finalizados almacenados",
+      "awaiting_result": "Empezaron hace > 3 h, aún programados",
+      "predictions_24h": "Predicciones escritas, últimas 24 h",
+      "candidates_24h": "Candidatos a pick evaluados, últimas 24 h"
+    },
+    "notes": {
+      "awaiting_result": "debería bajar a 0 tras la próxima sincronización de resultados"
+    }
   },
   "errors": {
     "title": "Errores, últimas 72 h",
@@ -32,7 +48,13 @@
     "title": "Calidad de datos",
     "subtitle": "Incidencias abiertas por gravedad.",
     "empty": "Ninguna incidencia abierta.",
-    "link": "Abrir Calidad de datos →"
+    "link": "Abrir Calidad de datos →",
+    "labels": {
+      "open_critical": "Incidencias críticas abiertas",
+      "open_error": "Incidencias de error abiertas",
+      "open_warning": "Avisos abiertos",
+      "open_info": "Incidencias informativas abiertas"
+    }
   },
   "backups": {
     "title": "Copias de seguridad",

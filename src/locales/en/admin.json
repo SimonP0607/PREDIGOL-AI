@@ -295,6 +295,15 @@
       "pending": "Pending",
       "skipped": "Skipped",
       "failed": "Failed"
+    },
+    "result": {
+      "win": "win",
+      "half_win": "half win",
+      "loss": "loss",
+      "half_loss": "half loss",
+      "push": "push",
+      "void": "void",
+      "pending": "pending"
     }
   },
   "ui": {
@@ -309,7 +318,10 @@
     "predicted": "Predicted",
     "observed": "Observed",
     "infoTip": "What is {term}: {text}",
-    "infoTipNoTerm": "Definition: {text}"
+    "infoTipNoTerm": "Definition: {text}",
+    "showingRows": "Showing {shown} of {total}",
+    "showMore": "Show {n} more",
+    "showAll": "Show all"
   },
   "glossary": {
     "modelProbability": "Probability produced by a statistical model from its feature snapshot. It is not a confidence level and it is not derived from prices.",

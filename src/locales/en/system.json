@@ -16,7 +16,23 @@
   },
   "captures": {
     "title": "Captures",
-    "subtitle": "What the pipelines wrote recently."
+    "subtitle": "What the pipelines wrote recently.",
+    "labels": {
+      "prematch_1h": "Pre-match prices, last hour",
+      "prematch_24h": "Pre-match prices, last 24 h",
+      "live_1h": "In-play price changes, last hour",
+      "live_24h": "In-play price changes, last 24 h",
+      "live_priced_now": "Matches priced in play now",
+      "match_states_24h": "Match states (fixture feed), last 24 h",
+      "upcoming_7d": "Fixtures in the next 7 days",
+      "finished_total": "Finished fixtures stored",
+      "awaiting_result": "Kicked off > 3 h ago, still scheduled",
+      "predictions_24h": "Predictions written, last 24 h",
+      "candidates_24h": "Pick candidates evaluated, last 24 h"
+    },
+    "notes": {
+      "awaiting_result": "should fall to 0 after the next results sync"
+    }
   },
   "errors": {
     "title": "Errors, last 72 h",
@@ -32,7 +48,13 @@
     "title": "Data quality",
     "subtitle": "Open issues by severity.",
     "empty": "No open issue.",
-    "link": "Open Data Quality →"
+    "link": "Open Data Quality →",
+    "labels": {
+      "open_critical": "Open critical issues",
+      "open_error": "Open error issues",
+      "open_warning": "Open warning issues",
+      "open_info": "Open info issues"
+    }
   },
   "backups": {
     "title": "Backups",

@@ -196,5 +196,11 @@
         "noReason": "sin motivo indicado"
       }
     }
+  },
+  "types": {
+    "domestic_league": "liga nacional",
+    "domestic_cup": "copa nacional",
+    "continental": "continental",
+    "international": "selecciones"
   }
 }

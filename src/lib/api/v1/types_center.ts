@@ -300,6 +300,8 @@ export interface AdminCount {
   value: number | null;
   at: Iso | null;
   note: string | null;
+  /** Stable machine name; the label is English text, the UI translates by this. */
+  key?: string | null;
 }
 
 export interface BackfillProgress {

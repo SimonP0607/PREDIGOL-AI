@@ -97,6 +97,11 @@ export function localPct(fraction: number, digits: number, signed = false): stri
   }).format(fraction);
 }
 
+/** A decimal the API sent as text ("29.85"): as is in English, "29,85" in Spanish. */
+export function localDecimalText(text: string): string {
+  return getLocale() === "en" ? text : text.replace(".", ",");
+}
+
 /** Thousands separators: 12,500 in English, 12.500 in Spanish. */
 export function localInt(n: number): string {
   if (getLocale() === "en") return n.toLocaleString("en-US");

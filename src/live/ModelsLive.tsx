@@ -39,6 +39,7 @@ import { int } from "@/lib/format";
 import { dec, shortHash, utcDate, utcDateTime } from "./format";
 import { baselineLabel, seasonLabel } from "./labels";
 import { Fact } from "./shared";
+import { localDecimalText, localFixed, localPct } from "@/lib/i18n/format";
 
 /** Display name of a model; Poisson and Dixon-Coles are proper names in both languages. */
 function modelLabel(name: string): string {
@@ -81,7 +82,7 @@ function signed(value: string | number | null | undefined, digits = 4): string |
   if (value === null || value === undefined) return null;
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return null;
-  return `${n > 0 ? "+" : n < 0 ? "−" : "±"}${Math.abs(n).toFixed(digits)}`;
+  return `${n > 0 ? "+" : n < 0 ? "−" : "±"}${localFixed(Math.abs(n), digits)}`;
 }
 
 function interval(c: MarketComparison): string {
@@ -551,9 +552,7 @@ function CalibrationView({ model }: { model: ModelVersionSummary }) {
                   borderRadius: 8,
                   fontSize: 12,
                 }}
-                formatter={(v: number, name: string) =>
-                  name === "n" ? int(v) : `${(v * 100).toFixed(1)}%`
-                }
+                formatter={(v: number, name: string) => (name === "n" ? int(v) : localPct(v, 1))}
               />
               <Line
                 type="linear"
@@ -592,16 +591,14 @@ function CalibrationView({ model }: { model: ModelVersionSummary }) {
               </TD>
               <TD align="right">
                 <Nullable
-                  value={
-                    b.mean_predicted === null ? null : `${(b.mean_predicted * 100).toFixed(1)}%`
-                  }
+                  value={b.mean_predicted === null ? null : localPct(b.mean_predicted, 1)}
                   reason={t("research.models.calibration.emptyBin")}
                   className="numeric"
                 />
               </TD>
               <TD align="right">
                 <Nullable
-                  value={b.observed_rate === null ? null : `${(b.observed_rate * 100).toFixed(1)}%`}
+                  value={b.observed_rate === null ? null : localPct(b.observed_rate, 1)}
                   reason={t("research.models.calibration.emptyBin")}
                   className="numeric"
                 />
@@ -640,10 +637,10 @@ function SplitTable({ rows, keyLabel }: { rows: SplitRow[]; keyLabel: string }) 
               <Numeric>{int(r.n)}</Numeric>
             </TD>
             <TD align="right">
-              <Numeric>{r.model_logloss.toFixed(4)}</Numeric>
+              <Numeric>{localFixed(r.model_logloss, 4)}</Numeric>
             </TD>
             <TD align="right">
-              <Numeric muted>{r.baseline_logloss.toFixed(4)}</Numeric>
+              <Numeric muted>{localFixed(r.baseline_logloss, 4)}</Numeric>
             </TD>
             <TD align="right">
               <span
@@ -672,7 +669,7 @@ function MonthlyView({ model }: { model: ModelVersionSummary }) {
             <YAxis
               stroke="var(--subtle-foreground)"
               fontSize={11}
-              tickFormatter={(v: number) => v.toFixed(2)}
+              tickFormatter={(v: number) => localFixed(v, 2)}
             />
             <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="4 4" />
             <Tooltip
@@ -782,9 +779,9 @@ function MarketsView({ model }: { model: ModelVersionSummary }) {
         {bt.btts ? (
           <div className="grid gap-x-8 sm:grid-cols-2 xl:grid-cols-4">
             <KeyValue label={t("research.common.fixtures")} value={int(bt.btts.n)} />
-            <KeyValue label="Log loss" value={bt.btts.log_loss.toFixed(4)} />
-            <KeyValue label="Brier" value={bt.btts.brier.toFixed(4)} />
-            <KeyValue label="ECE" value={bt.btts.ece.toFixed(4)} />
+            <KeyValue label="Log loss" value={localFixed(bt.btts.log_loss, 4)} />
+            <KeyValue label="Brier" value={localFixed(bt.btts.brier, 4)} />
+            <KeyValue label="ECE" value={localFixed(bt.btts.ece, 4)} />
           </div>
         ) : null}
         <p className="mt-2 text-caption text-muted-foreground">
@@ -836,7 +833,7 @@ function ProtocolView({
         <KeyValue label={t("research.common.finished")} value={utcDateTime(bt.finished_at)} />
         <KeyValue
           label={t("research.models.protocol.accuracy")}
-          value={`${Number(bt.accuracy_pct).toFixed(1)}%`}
+          value={`${localFixed(Number(bt.accuracy_pct), 1)}%`}
         />
       </div>
       <div>
@@ -1012,8 +1009,13 @@ function ShadowPicksLine() {
     <span>
       <span className="text-label text-subtle-foreground">{t("research.models.shadow.label")}</span>{" "}
       — {t("research.models.shadow.settled", { count: d.settled })}{" "}
-      <span className={roi > 0 ? "text-positive" : "text-negative"}>{d.roi_pct}%</span>,{" "}
-      {t("research.models.shadow.hitRate", { hitRate: d.hit_rate ?? "" })}
+      <span className={roi > 0 ? "text-positive" : "text-negative"}>
+        {localDecimalText(d.roi_pct)}%
+      </span>
+      ,{" "}
+      {t("research.models.shadow.hitRate", {
+        hitRate: d.hit_rate === null ? "" : localDecimalText(d.hit_rate),
+      })}
     </span>
   );
 }

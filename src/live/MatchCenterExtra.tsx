@@ -26,6 +26,7 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { dec, relative, utcDate, utcDateTime } from "./format";
 import { minuteText, quoteLabel } from "./liveText";
+import { localFixed } from "@/lib/i18n/format";
 
 export interface Sides {
   home: string;
@@ -113,7 +114,7 @@ export function StatComparison({
         const total = (h ?? 0) + (a ?? 0);
         const hShare = total > 0 ? ((h ?? 0) / total) * 100 : 50;
         const fmt = (v: number | null) =>
-          v === null ? null : r.pct ? `${v.toFixed(0)}%` : v.toFixed(r.decimals ?? 0);
+          v === null ? null : r.pct ? `${localFixed(v, 0)}%` : localFixed(v, r.decimals ?? 0);
         return (
           <div key={String(r.key)} data-stat={String(r.key)}>
             <div className="flex items-baseline justify-between text-xs">

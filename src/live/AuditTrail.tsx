@@ -13,6 +13,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { AuditItem, AuditScalar, AuditStepState, AuditTrailStep } from "@/lib/api/v1/types";
 import { t } from "@/lib/i18n";
 import { shortHash, utcDateTime } from "./format";
+import { localFixed } from "@/lib/i18n/format";
 
 const STATE_TONE: Record<AuditStepState, BadgeTone> = {
   recorded: "positive",
@@ -39,7 +40,8 @@ const HASHLIKE = /^[0-9a-f]{32,}$/;
 function show(value: AuditScalar): string {
   if (value === null) return "—";
   if (typeof value === "boolean") return value ? t("center.yes") : t("center.no");
-  if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(4);
+  if (typeof value === "number")
+    return Number.isInteger(value) ? String(value) : localFixed(value, 4);
   if (HASHLIKE.test(value)) return shortHash(value);
   if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return utcDateTime(value);
   return value;

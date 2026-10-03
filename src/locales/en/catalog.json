@@ -196,5 +196,11 @@
         "noReason": "no reason given"
       }
     }
+  },
+  "types": {
+    "domestic_league": "domestic league",
+    "domestic_cup": "domestic cup",
+    "continental": "continental",
+    "international": "international"
   }
 }

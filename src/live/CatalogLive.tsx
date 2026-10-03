@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { t } from "@/lib/i18n";
+import { t, translateOr } from "@/lib/i18n";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel } from "@/components/primitives/Panel";
@@ -107,7 +107,10 @@ export function CompetitionsLive() {
                       </div>
                     </TD>
                     <TD className="text-xs text-muted-foreground">
-                      {c.competition_type.replaceAll("_", " ")}
+                      {translateOr(
+                        `catalog.types.${c.competition_type}`,
+                        c.competition_type.replaceAll("_", " "),
+                      )}
                     </TD>
                     <TD align="right">
                       <Numeric>{int(c.seasons)}</Numeric>

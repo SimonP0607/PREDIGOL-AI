@@ -15,6 +15,7 @@ import { int } from "@/lib/format";
 import { dec, decPct, relative, utcDate, utcDateTime } from "./format";
 import { bookLabel, seasonLabel } from "./labels";
 import { FixtureLink, StatusGroupBadge } from "./shared";
+import { localFixed } from "@/lib/i18n/format";
 
 /* ------------------------------------------------------------------------ */
 /* Odds explorer                                                            */
@@ -372,7 +373,7 @@ function MovementTable({ series }: { series: OddsSeries[] }) {
                         : "text-negative"
                   }
                 >
-                  {change === null ? null : `${change > 0 ? "+" : ""}${change.toFixed(2)}`}
+                  {change === null ? null : `${change > 0 ? "+" : ""}${localFixed(change, 2)}`}
                 </Numeric>
               </TD>
               <TD align="right">

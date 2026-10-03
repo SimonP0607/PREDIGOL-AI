@@ -8,7 +8,15 @@ import { t } from "@/lib/i18n";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel, WarningBanner } from "@/components/primitives/Panel";
-import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
+import {
+  LimitedRows,
+  TableShell,
+  THead,
+  TH,
+  TRow,
+  TD,
+  TableSkeleton,
+} from "@/components/primitives/DataTable";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
 import { Numeric } from "@/components/primitives/Indicators";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
@@ -19,6 +27,7 @@ import { int } from "@/lib/format";
 import { shortHash, utcDate, utcDateTime } from "./format";
 import { baselineLabel, seasonLabel } from "./labels";
 import { Fact } from "./shared";
+import { localFixed } from "@/lib/i18n/format";
 
 const MODEL_LABEL: Record<string, string> = {
   poisson: "Poisson (Maher)",
@@ -184,7 +193,7 @@ function SearchGrid({ kind, sel }: { kind: string; sel: SelectionInfo }) {
                               : "numeric"
                         }
                       >
-                        {v.toFixed(5)}
+                        {localFixed(v, 5)}
                       </span>
                     )}
                   </TD>
@@ -333,38 +342,44 @@ export function SettingsLive() {
           subtitle={t("research.settings.recent.subtitle")}
           bodyClassName=""
         >
-          <TableShell>
-            <THead>
-              <TH>{t("research.settings.recent.created")}</TH>
-              <TH>{t("research.settings.recent.kind")}</TH>
-              <TH>{t("research.settings.recent.message")}</TH>
-              <TH>{t("research.settings.recent.status")}</TH>
-            </THead>
-            <tbody>
-              {notes.data.data.recent.map((n) => (
-                <TRow key={n.id}>
-                  <TD>
-                    <Numeric muted>{utcDateTime(n.created_at)}</Numeric>
-                  </TD>
-                  <TD className="text-xs text-muted-foreground">{n.kind}</TD>
-                  <TD>
-                    <div className="text-sm">{n.title}</div>
-                    <div className="whitespace-pre-line text-caption text-subtle-foreground">
-                      {n.body}
-                    </div>
-                  </TD>
-                  <TD>
-                    <StatusBadge tone={notifyTone[n.status] ?? "neutral"}>{n.status}</StatusBadge>
-                    {n.last_error ? (
-                      <div className="mt-0.5 text-caption text-subtle-foreground">
-                        {n.last_error}
-                      </div>
-                    ) : null}
-                  </TD>
-                </TRow>
-              ))}
-            </tbody>
-          </TableShell>
+          <LimitedRows rows={notes.data.data.recent} step={15}>
+            {(recent) => (
+              <TableShell>
+                <THead>
+                  <TH>{t("research.settings.recent.created")}</TH>
+                  <TH>{t("research.settings.recent.kind")}</TH>
+                  <TH>{t("research.settings.recent.message")}</TH>
+                  <TH>{t("research.settings.recent.status")}</TH>
+                </THead>
+                <tbody>
+                  {recent.map((n) => (
+                    <TRow key={n.id}>
+                      <TD>
+                        <Numeric muted>{utcDateTime(n.created_at)}</Numeric>
+                      </TD>
+                      <TD className="text-xs text-muted-foreground">{n.kind}</TD>
+                      <TD>
+                        <div className="text-sm">{n.title}</div>
+                        <div className="whitespace-pre-line text-caption text-subtle-foreground">
+                          {n.body}
+                        </div>
+                      </TD>
+                      <TD>
+                        <StatusBadge tone={notifyTone[n.status] ?? "neutral"}>
+                          {n.status}
+                        </StatusBadge>
+                        {n.last_error ? (
+                          <div className="mt-0.5 text-caption text-subtle-foreground">
+                            {n.last_error}
+                          </div>
+                        ) : null}
+                      </TD>
+                    </TRow>
+                  ))}
+                </tbody>
+              </TableShell>
+            )}
+          </LimitedRows>
         </Panel>
       ) : null}
       <WarningBanner tone="info">{t("research.settings.secrets")}</WarningBanner>

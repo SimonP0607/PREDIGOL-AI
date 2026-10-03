@@ -9,7 +9,15 @@ import { useState } from "react";
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel } from "@/components/primitives/Panel";
-import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
+import {
+  LimitedRows,
+  TableShell,
+  THead,
+  TH,
+  TRow,
+  TD,
+  TableSkeleton,
+} from "@/components/primitives/DataTable";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
 import { Numeric } from "@/components/primitives/Indicators";
 import { CalibrationChart, ChartContainer } from "@/components/analytics/Charts";
@@ -21,6 +29,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { Envelope, ExperimentSummary, TeamAnalytics } from "@/lib/api/v1/types";
 import { int } from "@/lib/format";
 import { ratio, shortHash, utcDate, utcDateTime } from "./format";
+import { localFixed, localPct } from "@/lib/i18n/format";
 
 const tabs = ["Competitions", "Teams", "Models", "Market", "Coverage", "Migration"] as const;
 type Tab = (typeof tabs)[number];
@@ -51,12 +60,12 @@ const STATUS_TONE: Record<ExperimentSummary["research_status"], BadgeTone> = {
 };
 
 function num(v: number | null | undefined, digits = 2): string | null {
-  return v === null || v === undefined || !Number.isFinite(v) ? null : v.toFixed(digits);
+  return v === null || v === undefined || !Number.isFinite(v) ? null : localFixed(v, digits);
 }
 
 function signed(v: number | null | undefined, digits = 4): string | null {
   if (v === null || v === undefined || !Number.isFinite(v)) return null;
-  return `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(digits)}`;
+  return `${v >= 0 ? "+" : "−"}${localFixed(Math.abs(v), digits)}`;
 }
 
 function Cell({ value, reason }: { value: string | null; reason?: string }) {
@@ -116,82 +125,88 @@ function CompetitionsTab() {
       bodyClassName=""
     >
       <Loading q={q}>
-        {(rows) => (
-          <TableShell>
-            <THead>
-              <TH>{t("analytics.common.competition")}</TH>
-              <TH align="right">{t("analytics.common.season")}</TH>
-              <TH align="right">{t("analytics.competitions.results")}</TH>
-              <TH align="right">{t("analytics.common.home")}</TH>
-              <TH align="right">{t("analytics.common.draw")}</TH>
-              <TH align="right">{t("analytics.common.away")}</TH>
-              <TH align="right">{t("analytics.competitions.goals")}</TH>
-              <TH align="right">{t("analytics.competitions.homeEdge")}</TH>
-              <TH align="right">BTTS</TH>
-              <TH align="right">{t("analytics.competitions.over25")}</TH>
-              <TH align="right">{t("analytics.competitions.stats")}</TH>
-              <TH align="right">{t("analytics.competitions.odds")}</TH>
-              <TH align="right">{t("analytics.common.features")}</TH>
-            </THead>
-            <tbody>
-              {rows.map((r) => (
-                <TRow key={`${r.competition_id}-${r.season}`}>
-                  <TD>
-                    <div className="flex items-center gap-2 text-sm">
-                      {r.competition}
-                      {r.low_sample ? (
-                        <StatusBadge tone="warning">
-                          {t("analytics.competitions.smallSample")}
-                        </StatusBadge>
-                      ) : null}
-                    </div>
-                    <div className="text-caption text-subtle-foreground">
-                      {r.country ?? t("analytics.competitions.international")}
-                    </div>
-                  </TD>
-                  <TD align="right">
-                    <Numeric muted>{r.season}</Numeric>
-                  </TD>
-                  <TD align="right">
-                    <Numeric>{int(r.finished)}</Numeric>
-                    <div className="text-caption text-subtle-foreground">
-                      {t("analytics.competitions.ofFixtures", { n: int(r.fixtures) })}
-                    </div>
-                  </TD>
-                  <TD align="right">
-                    <Cell value={ratio(r.home_win)} />
-                  </TD>
-                  <TD align="right">
-                    <Cell value={ratio(r.draw)} />
-                  </TD>
-                  <TD align="right">
-                    <Cell value={ratio(r.away_win)} />
-                  </TD>
-                  <TD align="right">
-                    <Cell value={num(r.goals_per_match)} />
-                  </TD>
-                  <TD align="right">
-                    <Cell value={signed(r.home_goal_difference, 2)} />
-                  </TD>
-                  <TD align="right">
-                    <Cell value={ratio(r.btts)} />
-                  </TD>
-                  <TD align="right">
-                    <Cell value={ratio(r.over_2_5)} />
-                  </TD>
-                  <TD align="right">
-                    <Numeric muted>{int(r.with_team_stats)}</Numeric>
-                  </TD>
-                  <TD align="right">
-                    <Numeric muted>{int(r.with_historical_odds + r.with_odds_snapshots)}</Numeric>
-                  </TD>
-                  <TD align="right">
-                    <Numeric muted>{int(r.with_features)}</Numeric>
-                  </TD>
-                </TRow>
-              ))}
-            </tbody>
-          </TableShell>
+        {(all) => (
+          <LimitedRows rows={all} step={60}>
+            {(rows) => (
+              <TableShell>
+                <THead>
+                  <TH>{t("analytics.common.competition")}</TH>
+                  <TH align="right">{t("analytics.common.season")}</TH>
+                  <TH align="right">{t("analytics.competitions.results")}</TH>
+                  <TH align="right">{t("analytics.common.home")}</TH>
+                  <TH align="right">{t("analytics.common.draw")}</TH>
+                  <TH align="right">{t("analytics.common.away")}</TH>
+                  <TH align="right">{t("analytics.competitions.goals")}</TH>
+                  <TH align="right">{t("analytics.competitions.homeEdge")}</TH>
+                  <TH align="right">BTTS</TH>
+                  <TH align="right">{t("analytics.competitions.over25")}</TH>
+                  <TH align="right">{t("analytics.competitions.stats")}</TH>
+                  <TH align="right">{t("analytics.competitions.odds")}</TH>
+                  <TH align="right">{t("analytics.common.features")}</TH>
+                </THead>
+                <tbody>
+                  {rows.map((r) => (
+                    <TRow key={`${r.competition_id}-${r.season}`}>
+                      <TD>
+                        <div className="flex items-center gap-2 text-sm">
+                          {r.competition}
+                          {r.low_sample ? (
+                            <StatusBadge tone="warning">
+                              {t("analytics.competitions.smallSample")}
+                            </StatusBadge>
+                          ) : null}
+                        </div>
+                        <div className="text-caption text-subtle-foreground">
+                          {r.country ?? t("analytics.competitions.international")}
+                        </div>
+                      </TD>
+                      <TD align="right">
+                        <Numeric muted>{r.season}</Numeric>
+                      </TD>
+                      <TD align="right">
+                        <Numeric>{int(r.finished)}</Numeric>
+                        <div className="text-caption text-subtle-foreground">
+                          {t("analytics.competitions.ofFixtures", { n: int(r.fixtures) })}
+                        </div>
+                      </TD>
+                      <TD align="right">
+                        <Cell value={ratio(r.home_win)} />
+                      </TD>
+                      <TD align="right">
+                        <Cell value={ratio(r.draw)} />
+                      </TD>
+                      <TD align="right">
+                        <Cell value={ratio(r.away_win)} />
+                      </TD>
+                      <TD align="right">
+                        <Cell value={num(r.goals_per_match)} />
+                      </TD>
+                      <TD align="right">
+                        <Cell value={signed(r.home_goal_difference, 2)} />
+                      </TD>
+                      <TD align="right">
+                        <Cell value={ratio(r.btts)} />
+                      </TD>
+                      <TD align="right">
+                        <Cell value={ratio(r.over_2_5)} />
+                      </TD>
+                      <TD align="right">
+                        <Numeric muted>{int(r.with_team_stats)}</Numeric>
+                      </TD>
+                      <TD align="right">
+                        <Numeric muted>
+                          {int(r.with_historical_odds + r.with_odds_snapshots)}
+                        </Numeric>
+                      </TD>
+                      <TD align="right">
+                        <Numeric muted>{int(r.with_features)}</Numeric>
+                      </TD>
+                    </TRow>
+                  ))}
+                </tbody>
+              </TableShell>
+            )}
+          </LimitedRows>
         )}
       </Loading>
     </Panel>
@@ -630,7 +645,7 @@ function MarketTab() {
                   <TRow key={b.lower}>
                     <TD>
                       <span className="numeric text-xs">
-                        {(b.lower * 100).toFixed(0)}–{(b.upper * 100).toFixed(0)}%
+                        {localFixed(b.lower * 100, 0)}–{localFixed(b.upper * 100, 0)}%
                       </span>
                     </TD>
                     <TD align="right">
@@ -693,7 +708,7 @@ function MarketTab() {
                         value={
                           s.mean_overround_closing === null
                             ? null
-                            : `${((s.mean_overround_closing - 1) * 100).toFixed(2)}%`
+                            : localPct(s.mean_overround_closing - 1, 2)
                         }
                         reason={t("analytics.market.closing.noPrices")}
                       />
