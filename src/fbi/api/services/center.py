@@ -277,23 +277,29 @@ def admin_overview(conn: Conn, *, frontend_version: str | None = None) -> Envelo
     progress = [BackfillProgress(**r) for r in fetch_all(conn, repo.BACKFILL_PROGRESS)]
     c = fetch_one(conn, repo.CAPTURES, {"at": moment}) or {}
     captures = [
-        AdminCount(label="Pre-match prices, last hour", value=c.get("prematch_1h"), at=c.get("prematch_last")),
-        AdminCount(label="Pre-match prices, last 24 h", value=c.get("prematch_24h")),
-        AdminCount(label="In-play price changes, last hour", value=c.get("live_1h"), at=c.get("live_last")),
-        AdminCount(label="In-play price changes, last 24 h", value=c.get("live_24h")),
-        AdminCount(label="Matches priced in play now", value=c.get("live_priced_now")),
-        AdminCount(label="Match states (fixture feed), last 24 h", value=c.get("match_states_24h"),
+        AdminCount(key="prematch_1h", label="Pre-match prices, last hour", value=c.get("prematch_1h"),
+                   at=c.get("prematch_last")),
+        AdminCount(key="prematch_24h", label="Pre-match prices, last 24 h", value=c.get("prematch_24h")),
+        AdminCount(key="live_1h", label="In-play price changes, last hour", value=c.get("live_1h"),
+                   at=c.get("live_last")),
+        AdminCount(key="live_24h", label="In-play price changes, last 24 h", value=c.get("live_24h")),
+        AdminCount(key="live_priced_now", label="Matches priced in play now", value=c.get("live_priced_now")),
+        AdminCount(key="match_states_24h", label="Match states (fixture feed), last 24 h",
+                   value=c.get("match_states_24h"),
                    at=c.get("match_states_last")),
-        AdminCount(label="Fixtures in the next 7 days", value=c.get("upcoming_7d")),
-        AdminCount(label="Finished fixtures stored", value=c.get("finished_total")),
-        AdminCount(label="Kicked off > 3 h ago, still scheduled", value=c.get("awaiting_result"),
+        AdminCount(key="upcoming_7d", label="Fixtures in the next 7 days", value=c.get("upcoming_7d")),
+        AdminCount(key="finished_total", label="Finished fixtures stored", value=c.get("finished_total")),
+        AdminCount(key="awaiting_result", label="Kicked off > 3 h ago, still scheduled",
+                   value=c.get("awaiting_result"),
                    note="should fall to 0 after the next results sync"),
-        AdminCount(label="Predictions written, last 24 h", value=c.get("predictions_24h")),
-        AdminCount(label="Pick candidates evaluated, last 24 h", value=c.get("candidates_24h")),
+        AdminCount(key="predictions_24h", label="Predictions written, last 24 h", value=c.get("predictions_24h")),
+        AdminCount(key="candidates_24h", label="Pick candidates evaluated, last 24 h",
+                   value=c.get("candidates_24h")),
     ]
     errors = [AdminError(**r) for r in fetch_all(conn, repo.RECENT_ERRORS, {"at": moment})]
     qrows = fetch_all(conn, repo.QUALITY_COUNTS)
-    quality = [AdminCount(label=f"Open {r['severity']} issues", value=r["n"], at=r["at"]) for r in
+    quality = [AdminCount(key=f"open_{r['severity']}", label=f"Open {r['severity']} issues", value=r["n"],
+                          at=r["at"]) for r in
                sorted(qrows, key=lambda r: ["critical", "error", "warning", "info"].index(r["severity"])
                       if r["severity"] in ("critical", "error", "warning", "info") else 9)]
     files = backups()

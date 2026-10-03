@@ -315,6 +315,8 @@ class AdminCount(Contract):
     value: int | None
     at: datetime | None = None
     note: str | None = None
+    #: Stable machine name of the count (the label is English text); the UI translates by it.
+    key: str | None = None
 
 
 class BackfillProgress(Contract):

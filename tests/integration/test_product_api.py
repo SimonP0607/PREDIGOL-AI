@@ -579,6 +579,9 @@ def test_admin_overview_reports_the_system(client: TestClient) -> None:
     d = body["data"]
     assert d["schema_revision"] and d["quota"]["budget"] >= 0
     assert {c["label"] for c in d["captures"]} >= {"Pre-match prices, last hour", "Matches priced in play now"}
+    # every count carries a stable key: the UI translates by it, never by the English label
+    assert all(c["key"] for c in d["captures"]) and len({c["key"] for c in d["captures"]}) == len(d["captures"])
+    assert all(q["key"].startswith("open_") for q in d["quality"])
     assert d["migration"]["status"] in ("ok", "not_available")
     assert d["errors"]["status"] in ("ok", "empty")
 
