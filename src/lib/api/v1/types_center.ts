@@ -335,3 +335,25 @@ export interface AdminOverview {
   quality: AdminCount[];
   backups: Section<BackupFile[]>;
 }
+
+export interface TableRow {
+  rank: number;
+  team_id: number;
+  team: string;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_for: number;
+  goals_against: number;
+  points: number;
+  form: string | null;
+  group: string | null;
+}
+
+export interface CompetitionTable {
+  competition_id: number;
+  season: number;
+  snapshot_at: Iso;
+  rows: TableRow[];
+}

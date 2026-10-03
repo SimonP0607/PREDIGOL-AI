@@ -93,9 +93,11 @@ export function OverviewLive() {
       </dl>
 
       <WarningBanner>
-        Research / shadow mode. No pick has been published, and no profitability figure is available
-        or implied.
+        Research / shadow mode. Picks are recorded in shadow only: nothing is published and nothing
+        is bet. What they would have done is measured in Performance.
       </WarningBanner>
+
+      <LiveStrip />
 
       <div className="grid gap-5 xl:grid-cols-3">
         <Panel
@@ -118,7 +120,7 @@ export function OverviewLive() {
           ) : upcoming.data && upcoming.data.status !== "ok" ? (
             <StatusNotice
               status={upcoming.data.status}
-              reason="No scheduled fixture is stored for today or later. On the free plan a fixture becomes visible about a day before kick-off; the worker syncs twice a day."
+              reason="No scheduled fixture is stored for today or later. The worker syncs the tracked competitions' fixtures every 12 hours."
             />
           ) : (
             <TableShell className="min-w-0">
@@ -126,17 +128,21 @@ export function OverviewLive() {
                 <TH>Kick-off</TH>
                 <TH>Competition</TH>
                 <TH>Fixture</TH>
-                <TH align="right">Snapshots</TH>
+                <TH align="right" title="Pre-match price snapshots captured so far">
+                  Prices
+                </TH>
                 <TH>Status</TH>
               </THead>
               <tbody>
                 {(upcoming.data?.data ?? []).map((m) => (
                   <TRow key={m.id}>
-                    <TD>
-                      <Numeric>{utcDateTime(m.kickoff_at)}</Numeric>
+                    <TD className="whitespace-nowrap">
+                      <Numeric className="text-xs">{utcDateTime(m.kickoff_at)}</Numeric>
                     </TD>
-                    <TD className="text-xs text-muted-foreground">{m.competition.name}</TD>
-                    <TD>
+                    <TD className="max-w-[9rem] truncate text-xs text-muted-foreground">
+                      <span title={m.competition.name}>{m.competition.name}</span>
+                    </TD>
+                    <TD className="max-w-[18rem]">
                       <FixtureLink match={m} />
                     </TD>
                     <TD align="right">
@@ -361,5 +367,59 @@ function Cell({
       </dd>
       <dd className="mt-0.5 text-caption text-muted-foreground">{hint}</dd>
     </div>
+  );
+}
+
+/** Matches in play right now, from GET /live - a door to the Live page. */
+function LiveStrip() {
+  const q = useLiveQuery(live.liveBoard);
+  const matches = q.data?.data.matches ?? [];
+  if (!q.data || q.isError) return null;
+  return (
+    <Panel
+      title={matches.length ? `In play now · ${matches.length}` : "In play now"}
+      subtitle="Tracked matches being played: score and minute from the live follow, refreshed every 15 seconds"
+      actions={
+        <Link to="/live" className="text-caption text-primary hover:underline">
+          Live
+        </Link>
+      }
+      bodyClassName={matches.length ? "p-0" : "p-4"}
+    >
+      {matches.length ? (
+        <ul className="grid divide-y divide-border sm:grid-cols-2 sm:divide-y-0 xl:grid-cols-3">
+          {matches.slice(0, 9).map((m) => (
+            <li key={m.fixture_id} className="min-w-0 border-border sm:border-b">
+              <Link
+                to="/matches/$fixtureId"
+                params={{ fixtureId: String(m.fixture_id) }}
+                className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-muted/40"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm">
+                    {m.home.name} <span className="text-subtle-foreground">v</span> {m.away.name}
+                  </span>
+                  <span className="block truncate text-caption text-muted-foreground">
+                    {m.competition}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="numeric text-sm">
+                    {m.goals_home ?? "?"}–{m.goals_away ?? "?"}
+                  </span>
+                  <StatusBadge tone="brand">
+                    {m.status === "HT" ? "HT" : m.elapsed !== null ? `${m.elapsed}'` : m.status}
+                  </StatusBadge>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          {q.data.reason ?? "No tracked match is in play."}
+        </p>
+      )}
+    </Panel>
   );
 }

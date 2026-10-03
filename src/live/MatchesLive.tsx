@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Panel } from "@/components/primitives/Panel";
 import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
 import { Numeric } from "@/components/primitives/Indicators";
+import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { FilterBar, SearchFilter, SegmentedTabs, SelectFilter } from "@/components/system/Filters";
 import { DateNav, formatDay } from "@/components/football/DateNav";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
@@ -12,16 +13,17 @@ import type { MatchQuery } from "@/lib/api/v1/client";
 import { int } from "@/lib/format";
 import { isoDay, relative, utcDateTime } from "./format";
 import { FixtureLink, ScoreText, StatusGroupBadge } from "./shared";
+import { minuteText } from "./liveText";
 
 const tabs = ["All", "Scheduled", "Live", "Finished", "Postponed"] as const;
 type Tab = (typeof tabs)[number];
-const views = ["All stored", "By day"] as const;
+const views = ["By day", "All stored"] as const;
 type View = (typeof views)[number];
 const PAGE = 50;
 
 export function MatchesLive() {
   const today = isoDay(new Date());
-  const [view, setView] = useState<View>("All stored");
+  const [view, setView] = useState<View>("By day");
   const [day, setDay] = useState(today);
   const [tab, setTab] = useState<Tab>("All");
   const [competition, setCompetition] = useState("all");
@@ -37,6 +39,12 @@ export function MatchesLive() {
     ...(competition !== "all" ? { competition_id: Number(competition) } : {}),
   };
   const matches = useLiveQuery(live.matches(query));
+  // Score and minute of matches in play come from the live follow, not the result row.
+  const board = useLiveQuery(live.liveBoard);
+  const inPlay = useMemo(
+    () => new Map((board.data?.data.matches ?? []).map((m) => [m.fixture_id, m])),
+    [board.data],
+  );
 
   const rows = useMemo(() => {
     const all = matches.data?.data ?? [];
@@ -142,30 +150,55 @@ export function MatchesLive() {
               <TH>Fixture</TH>
               <TH align="center">Score</TH>
               <TH>Status</TH>
-              <TH align="right">Snapshots</TH>
-              <TH align="right">Bookmakers</TH>
+              <TH align="right" title="Pre-match price snapshots captured">
+                Prices
+              </TH>
+              <TH align="right">Books</TH>
               <TH>Last capture</TH>
             </THead>
             <tbody>
               {rows.map((m) => (
                 <TRow key={m.id}>
-                  <TD>
-                    <Numeric>{utcDateTime(m.kickoff_at)}</Numeric>
+                  <TD className="whitespace-nowrap">
+                    <Numeric className="text-xs">
+                      {view === "By day"
+                        ? utcDateTime(m.kickoff_at).split(" ").slice(-2).join(" ")
+                        : utcDateTime(m.kickoff_at)}
+                    </Numeric>
                   </TD>
-                  <TD>
-                    <div className="text-xs">{m.competition.name}</div>
-                    <div className="text-caption text-subtle-foreground">
+                  <TD className="max-w-[11rem]">
+                    <div className="truncate text-xs" title={m.competition.name}>
+                      {m.competition.name}
+                    </div>
+                    <div className="truncate text-caption text-subtle-foreground">
                       {m.round ?? `season ${m.competition.season}`}
                     </div>
                   </TD>
-                  <TD>
+                  <TD className="max-w-[20rem]">
                     <FixtureLink match={m} />
                   </TD>
                   <TD align="center">
-                    <ScoreText score={m.score} />
+                    {inPlay.get(m.id) && !m.score ? (
+                      <span
+                        className="numeric font-medium text-primary"
+                        title="Live score from the match follow"
+                      >
+                        {inPlay.get(m.id)!.goals_home ?? "?"}–{inPlay.get(m.id)!.goals_away ?? "?"}
+                      </span>
+                    ) : (
+                      <ScoreText score={m.score} />
+                    )}
                   </TD>
-                  <TD>
-                    <StatusGroupBadge match={m} />
+                  <TD className="whitespace-nowrap">
+                    {inPlay.get(m.id) ? (
+                      <StatusBadge tone="brand">
+                        {inPlay.get(m.id)!.status === "HT"
+                          ? "half time"
+                          : `live ${minuteText(inPlay.get(m.id)!.elapsed, inPlay.get(m.id)!.extra)}`}
+                      </StatusBadge>
+                    ) : (
+                      <StatusGroupBadge match={m} />
+                    )}
                   </TD>
                   <TD align="right">
                     <Numeric muted={m.odds.snapshots === 0}>{int(m.odds.snapshots)}</Numeric>

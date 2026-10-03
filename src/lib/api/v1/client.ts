@@ -35,6 +35,7 @@ import type {
 } from "./types";
 import type {
   AdminOverview,
+  CompetitionTable,
   LiveBoard,
   MatchCenter,
   PlayerDetail,
@@ -152,8 +153,8 @@ export const v1 = {
       limit: 200,
     }),
   competition: (id: number | string) => getJson<Envelope<CompetitionDetail>>(`/competitions/${id}`),
-  teams: (competitionId?: number) =>
-    getJson<Envelope<TeamSummary[]>>("/teams", { competition_id: competitionId, limit: 200 }),
+  teams: (competitionId?: number, q?: string) =>
+    getJson<Envelope<TeamSummary[]>>("/teams", { competition_id: competitionId, q, limit: 200 }),
   team: (id: number | string) => getJson<Envelope<TeamDetail>>(`/teams/${id}`),
   odds: () => getJson<Envelope<MatchSummary[]>>("/odds"),
   fixtureOdds: (id: number | string, market?: string) =>
@@ -187,4 +188,6 @@ export const v1 = {
     }),
   player: (id: number | string) => getJson<Envelope<PlayerDetail | null>>(`/players/${id}`),
   admin: () => getJson<Envelope<AdminOverview>>("/admin/overview"),
+  standings: (competitionId: number | string) =>
+    getJson<Envelope<CompetitionTable | null>>(`/competitions/${competitionId}/standings`),
 };

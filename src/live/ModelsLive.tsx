@@ -180,9 +180,7 @@ export function ModelsLive() {
       >
         {!d ? <TableSkeleton rows={3} cols={7} /> : <BettingTable models={tested} />}
         <div className="border-t border-border px-4 py-3 text-caption text-muted-foreground">
-          <span className="text-label text-subtle-foreground">Live picks</span> — no pick has been
-          settled at a recorded price, so there is no live ROI, yield or line value to report. See
-          Performance.
+          <ShadowPicksLine />
         </div>
       </Panel>
     </div>
@@ -891,5 +889,29 @@ function BettingTable({ models }: { models: ModelVersionSummary[] }) {
         {rows[0]!.latest_backtest!.betting!.note}
       </p>
     </div>
+  );
+}
+
+/** What the shadow picks have actually done - read, not assumed. */
+function ShadowPicksLine() {
+  const q = useLiveQuery(live.performance);
+  const d = q.data?.data;
+  if (!q.data || !d) return <span className="text-subtle-foreground">Shadow picks: loading…</span>;
+  if (q.data.status !== "ok" || d.roi_pct === null) {
+    return (
+      <span>
+        <span className="text-label text-subtle-foreground">Shadow picks</span> —{" "}
+        {q.data.reason ?? d.note} See Performance.
+      </span>
+    );
+  }
+  const roi = Number(d.roi_pct);
+  return (
+    <span>
+      <span className="text-label text-subtle-foreground">Shadow picks</span> — {d.settled} settled
+      at the captured price: ROI{" "}
+      <span className={roi > 0 ? "text-positive" : "text-negative"}>{d.roi_pct}%</span>, hit rate{" "}
+      {d.hit_rate}%. Not a betting record; the breakdown by model is in Performance.
+    </span>
   );
 }

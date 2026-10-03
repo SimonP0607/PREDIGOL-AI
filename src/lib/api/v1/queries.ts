@@ -4,6 +4,10 @@ import { v1, type MatchQuery } from "./client";
 const MINUTE = 60_000;
 
 export const live = {
+  standings: (id: string) => ({
+    queryKey: ["v1", "standings", id],
+    queryFn: () => v1.standings(id),
+  }),
   center: (id: string) => ({
     queryKey: ["v1", "center", id],
     queryFn: () => v1.center(id),
@@ -32,6 +36,10 @@ export const live = {
     queryFn: () => v1.competition(id),
   }),
   teams: { queryKey: ["v1", "teams"], queryFn: () => v1.teams() },
+  teamSearch: (q: string) => ({
+    queryKey: ["v1", "teams", "search", q],
+    queryFn: () => v1.teams(undefined, q),
+  }),
   team: (id: string) => ({ queryKey: ["v1", "team", id], queryFn: () => v1.team(id) }),
   odds: { queryKey: ["v1", "odds"], queryFn: v1.odds },
   fixtureOdds: (id: string) => ({

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel } from "@/components/primitives/Panel";
 import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
@@ -241,6 +242,7 @@ function CompetitionDetailPanel({ id }: { id: number }) {
           </ul>
         )}
       </Panel>
+      <StandingsPanel competitionId={id} />
     </div>
   );
 }
@@ -248,9 +250,10 @@ function CompetitionDetailPanel({ id }: { id: number }) {
 export function TeamsLive() {
   const [term, setTerm] = useState("");
   const [selected, setSelected] = useState<number | null>(null);
-  const list = useLiveQuery(live.teams);
-  const q = term.trim().toLowerCase();
-  const rows = (list.data?.data ?? []).filter((t) => !q || t.name.toLowerCase().includes(q));
+  // Searched on the server: 8,000+ teams, and only the first 200 are listed without a search.
+  const q = useDebounced(term.trim(), 250);
+  const list = useLiveQuery(q.length >= 2 ? live.teamSearch(q) : live.teams);
+  const rows = list.data?.data ?? [];
   return (
     <div className="space-y-4">
       <PageHeader
@@ -264,7 +267,11 @@ export function TeamsLive() {
       <div className="grid gap-4 xl:grid-cols-5">
         <Panel
           title="Teams"
-          subtitle={list.data ? `${rows.length} shown` : "Loading…"}
+          subtitle={
+            list.data
+              ? `${rows.length} shown${q.length >= 2 ? ` for “${q}”` : " · type 2+ letters to search all teams"}`
+              : "Loading…"
+          }
           className="xl:col-span-2"
           bodyClassName=""
         >
@@ -358,6 +365,7 @@ function TeamDetailPanel({ id }: { id: number }) {
           }
         </SectionView>
       </Panel>
+      <SquadPanel teamId={id} />
       {(["recent", "upcoming"] as const).map((k) => (
         <Panel
           key={k}
@@ -404,5 +412,152 @@ function TeamDetailPanel({ id }: { id: number }) {
         </Panel>
       ))}
     </div>
+  );
+}
+
+function useDebounced<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
+/** Players with a stored appearance for this team in the last 400 days, by minutes. */
+function SquadPanel({ teamId }: { teamId: number }) {
+  const q = useLiveQuery(live.players({ team_id: teamId }));
+  const rows = (q.data?.data ?? []).slice(0, 30);
+  return (
+    <Panel
+      title="Squad"
+      subtitle="Players with a stored appearance in the last 400 days, by minutes"
+      bodyClassName=""
+    >
+      {q.isLoading ? (
+        <TableSkeleton rows={4} cols={5} />
+      ) : q.isError ? (
+        <div className="p-4">
+          <ApiErrorNotice error={q.error} />
+        </div>
+      ) : q.data && q.data.status !== "ok" ? (
+        <StatusNotice status={q.data.status} reason={q.data.reason} compact className="p-4" />
+      ) : (
+        <TableShell className="min-w-0" compact>
+          <THead>
+            <TH>Player</TH>
+            <TH>Pos</TH>
+            <TH align="right">Apps</TH>
+            <TH align="right">Min</TH>
+            <TH align="right">G</TH>
+            <TH align="right">A</TH>
+          </THead>
+          <tbody>
+            {rows.map((p) => (
+              <TRow key={p.id}>
+                <TD className="text-sm">
+                  <Link
+                    to="/players/$playerId"
+                    params={{ playerId: String(p.id) }}
+                    className="hover:text-primary"
+                  >
+                    {p.name}
+                  </Link>
+                </TD>
+                <TD className="text-xs text-muted-foreground">{p.position ?? "—"}</TD>
+                <TD align="right">
+                  <Numeric className="text-xs">{p.apps}</Numeric>
+                </TD>
+                <TD align="right">
+                  <Numeric muted className="text-xs">
+                    {p.minutes ?? "—"}
+                  </Numeric>
+                </TD>
+                <TD align="right">
+                  <Numeric className="text-xs">{p.goals ?? "—"}</Numeric>
+                </TD>
+                <TD align="right">
+                  <Numeric className="text-xs">{p.assists ?? "—"}</Numeric>
+                </TD>
+              </TRow>
+            ))}
+          </tbody>
+        </TableShell>
+      )}
+    </Panel>
+  );
+}
+
+/** The latest league table stored for the competition, refreshed every 12 h by the worker. */
+function StandingsPanel({ competitionId }: { competitionId: number }) {
+  const q = useLiveQuery(live.standings(String(competitionId)));
+  const t = q.data?.data ?? null;
+  return (
+    <Panel
+      title="League table"
+      subtitle={t ? `${t.season} · snapshot ${utcDateTime(t.snapshot_at)}` : "Latest stored table"}
+      bodyClassName=""
+    >
+      {q.isLoading ? (
+        <TableSkeleton rows={6} cols={6} />
+      ) : q.isError ? (
+        <div className="p-4">
+          <ApiErrorNotice error={q.error} />
+        </div>
+      ) : !t ? (
+        <StatusNotice
+          status={q.data?.status ?? "empty"}
+          reason={q.data?.reason ?? null}
+          compact
+          className="p-4"
+        />
+      ) : (
+        <TableShell className="min-w-0" compact>
+          <THead>
+            <TH align="right">#</TH>
+            <TH>Team</TH>
+            <TH align="right">P</TH>
+            <TH align="right">W-D-L</TH>
+            <TH align="right">GD</TH>
+            <TH align="right">Pts</TH>
+            <TH>Form</TH>
+          </THead>
+          <tbody>
+            {t.rows.map((r, i) => (
+              <TRow key={`${r.group ?? ""}-${r.team_id}`}>
+                <TD align="right">
+                  <Numeric className="text-xs">{r.rank}</Numeric>
+                </TD>
+                <TD className="text-sm">
+                  {r.team}
+                  {r.group &&
+                  (i === 0 || t.rows[i - 1]?.group !== r.group) &&
+                  t.rows.some((x) => x.group !== r.group) ? (
+                    <div className="text-caption text-subtle-foreground">{r.group}</div>
+                  ) : null}
+                </TD>
+                <TD align="right">
+                  <Numeric muted className="text-xs">
+                    {r.played}
+                  </Numeric>
+                </TD>
+                <TD align="right">
+                  <Numeric className="text-xs">
+                    {r.wins}-{r.draws}-{r.losses}
+                  </Numeric>
+                </TD>
+                <TD align="right">
+                  <Numeric className="text-xs">{r.goals_for - r.goals_against}</Numeric>
+                </TD>
+                <TD align="right">
+                  <Numeric>{r.points}</Numeric>
+                </TD>
+                <TD className="numeric text-caption text-muted-foreground">{r.form ?? "—"}</TD>
+              </TRow>
+            ))}
+          </tbody>
+        </TableShell>
+      )}
+    </Panel>
   );
 }
