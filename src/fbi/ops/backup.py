@@ -92,12 +92,34 @@ def pg_command(tool: str, url: str) -> tuple[list[str], dict[str, str]]:
         args, env = _libpq(url)
         return [local, *args], env
     container = os.environ.get(PG_CONTAINER_ENV, "").strip()
-    docker = shutil.which("docker") or shutil.which("docker.exe")
+    docker = docker_client()
     if container and docker:
         user = conninfo_to_dict(url).get("user") or "postgres"
         return [docker, "exec", "-i", container, tool, f"--username={user}"], dict(os.environ)
     raise FileNotFoundError(f"{tool} is not installed here; install the PostgreSQL client or set "
                             f"{PG_CONTAINER_ENV} to the database container's name")
+
+
+def _docker_works(path: str) -> bool:
+    """Whether this docker client reaches a daemon. On WSL with Docker Desktop's integration
+    switched off for the distro, ``docker`` is a stub that prints advice and exits 1, while the
+    Windows client ``docker.exe`` still works through interop."""
+    try:
+        probe = subprocess.run([path, "version", "--format", "{{.Server.Version}}"],
+                               capture_output=True, timeout=30, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return probe.returncode == 0
+
+
+def docker_client() -> str | None:
+    """The first docker client on PATH that answers; when none does, the first one found,
+    so the error it gives is the one reported."""
+    found = [p for p in (shutil.which("docker"), shutil.which("docker.exe")) if p]
+    for path in found:
+        if _docker_works(path):
+            return path
+    return found[0] if found else None
 
 
 def _dbname(url: str) -> str:
@@ -183,8 +205,10 @@ def create_backup(db_url: str, raw_root: Path, out_root: Path, *, label: str = "
         # a consistent snapshot: the dump runs in its own transaction; comparing the
         # fingerprints taken before and after tells whether anything wrote meanwhile
         with (folder / DUMP).open("wb") as out:
+            # stdin closed: `docker exec -i` would otherwise wait on an inherited stdin that never ends
             proc = subprocess.run([*dump_argv, "--format=custom", "--no-owner", "--no-privileges",
-                                   f"--dbname={dbname}"], env=env, stdout=out, stderr=subprocess.PIPE)
+                                   f"--dbname={dbname}"], env=env, stdin=subprocess.DEVNULL, stdout=out,
+                                  stderr=subprocess.PIPE)
         if proc.returncode != 0:
             raise RuntimeError(f"pg_dump failed: {proc.stderr.decode(errors='replace').strip()[-300:]}")
         after = fingerprints(conn)

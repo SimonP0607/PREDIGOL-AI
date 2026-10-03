@@ -29,6 +29,26 @@ def test_without_client_tools_the_container_runs_them(monkeypatch: pytest.Monkey
     assert not any("s3cret" in a for a in argv), "the container's local socket needs no password"
 
 
+def test_a_docker_stub_that_cannot_reach_the_daemon_is_passed_over(monkeypatch: pytest.MonkeyPatch) -> None:
+    """WSL with Docker Desktop's integration off: `docker` is a stub that only prints advice,
+    `docker.exe` works. A backup taken with the stub wrote that advice as the dump."""
+    tools = {"docker": "/mnt/c/Docker/resources/bin/docker", "docker.exe": "/mnt/c/Docker/resources/bin/docker.exe"}
+    monkeypatch.setattr("fbi.ops.backup.shutil.which", lambda name: tools.get(name))
+    monkeypatch.setattr("fbi.ops.backup._docker_works", lambda path: path.endswith(".exe"))
+    monkeypatch.setenv(backup.PG_CONTAINER_ENV, "fbi-postgres")
+    argv, _ = backup.pg_command("pg_dump", URL)
+    assert argv[0] == "/mnt/c/Docker/resources/bin/docker.exe"
+
+
+def test_when_no_docker_client_answers_the_first_is_kept_for_its_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    tools = {"docker": "/usr/bin/docker", "docker.exe": "/mnt/c/Docker/docker.exe"}
+    monkeypatch.setattr("fbi.ops.backup.shutil.which", lambda name: tools.get(name))
+    monkeypatch.setattr("fbi.ops.backup._docker_works", lambda path: False)
+    monkeypatch.setenv(backup.PG_CONTAINER_ENV, "fbi-postgres")
+    argv, _ = backup.pg_command("pg_dump", URL)
+    assert argv[0] == "/usr/bin/docker"
+
+
 def test_no_tools_and_no_container_is_a_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("fbi.ops.backup.shutil.which", lambda name: None)
     monkeypatch.delenv(backup.PG_CONTAINER_ENV, raising=False)
