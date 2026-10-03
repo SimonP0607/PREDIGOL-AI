@@ -35,9 +35,18 @@ async function open(page: Page, w: Watch, path: string, heading: string | RegExp
   await assertClean(page, w);
 }
 
-/** Click the first fixture link inside the page body; returns "Home v Away". */
-async function followFirstFixture(page: Page, w: Watch): Promise<string | null> {
-  const link = page.locator('main a[href^="/matches/"]').first();
+/**
+ * Click the first fixture link inside the page body (or inside the panel titled
+ * `panel`); returns "Home v Away". The Overview's live strip links carry the
+ * score and minute too, so its fixture table is targeted by title.
+ */
+async function followFirstFixture(page: Page, w: Watch, panel?: string): Promise<string | null> {
+  const scope = panel
+    ? page
+        .locator("main section")
+        .filter({ has: page.getByRole("heading", { name: panel, exact: true }) })
+    : page.locator("main");
+  const link = scope.locator('a[href^="/matches/"]').first();
   if ((await link.count()) === 0) return null;
   const name = (await link.innerText()).replace(/\s+/g, " ").trim();
   await link.click();
@@ -62,7 +71,7 @@ async function everyTab(page: Page, w: Watch, names: readonly string[]): Promise
 test("Overview → Match Center, every section", async ({ page }, info) => {
   const w = watch(page);
   await open(page, w, "/", "Overview");
-  const name = await followFirstFixture(page, w);
+  const name = await followFirstFixture(page, w, "Upcoming matches");
   if (name === null) {
     note(info, "the overview lists no fixture on this database");
     return;
