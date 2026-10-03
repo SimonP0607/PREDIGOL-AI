@@ -11,7 +11,7 @@ import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { Parlay, ParlayKind } from "@/lib/api/v1/types_product";
 import { ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
-import { ShadowToggle } from "@/product/home/ShadowToggle";
+import { ShadowToggle } from "@/product/shared/ShadowToggle";
 import { ParlayCard } from "./ParlayCard";
 import { PARLAY_ICON, parlayTitle } from "./parlayText";
 

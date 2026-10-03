@@ -3,7 +3,7 @@ import { Clock } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { formatDateLong, formatRelative } from "@/lib/time";
 import { SkeletonBlock } from "@/product/shared/States";
-import { ShadowToggle } from "./ShadowToggle";
+import { ShadowToggle } from "@/product/shared/ShadowToggle";
 
 export function HomeHeader({
   freshness,
