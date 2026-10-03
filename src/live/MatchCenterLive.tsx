@@ -240,10 +240,10 @@ function OverviewTab({ d }: { d: MatchDetail }) {
         <KeyValue label="Near-close captures" value={int(m.odds.near_close_snapshots)} />
         <KeyValue label="Predictions" value={int(m.predictions)} />
         <div className="mt-3 flex flex-wrap gap-2 text-caption">
-          <Link to="/teams" className="text-primary hover:underline">
+          <Link to="/admin/teams" className="text-primary hover:underline">
             Teams
           </Link>
-          <Link to="/odds" className="text-primary hover:underline">
+          <Link to="/admin/odds" className="text-primary hover:underline">
             Odds explorer
           </Link>
         </div>

@@ -1,35 +1,38 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
-  Link,
   createRootRouteWithContext,
+  useNavigate,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { ShieldAlert, WifiOff } from "lucide-react";
 
 import appCss from "../styles.css?url";
-import { AppShell } from "@/components/layout/AppShell";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthProvider, useAuth } from "@/lib/auth/AuthProvider";
+import { I18nProvider, t } from "@/lib/i18n";
+import { setTimeZone } from "@/lib/time";
+import { UserShell } from "@/components/layout/UserShell";
+import { AdminShell } from "@/components/layout/AdminShell";
+import { BrandMark } from "@/components/brand/Brand";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-[60vh] items-center justify-center px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
-        </div>
+        <h1 className="font-display text-6xl font-bold text-foreground">404</h1>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">{t("errors.pageNotFound")}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{t("errors.pageNotFoundBody")}</p>
+        <a
+          href="/home"
+          className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          {t("auth.goHome")}
+        </a>
       </div>
     </div>
   );
@@ -41,31 +44,28 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-[60vh] items-center justify-center px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          {t("errors.pageCrashed")}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{t("errors.pageCrashedBody")}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
-              router.invalidate();
+              void router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Try again
+            {t("common.retry")}
           </button>
           <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            href="/home"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
           >
-            Go home
+            {t("auth.goHome")}
           </a>
         </div>
       </div>
@@ -77,29 +77,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Football Intelligence Platform" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#0d1512" },
+      { title: "PrediGol — Football Intelligence" },
       {
         name: "description",
-        content:
-          "Private football intelligence workspace: models, market probabilities, edge detection and auditable pick research.",
+        content: "PrediGol: partidos, en vivo, picks con valor, parlays y las mejores cuotas.",
       },
-      { property: "og:title", content: "Football Intelligence Platform" },
-      {
-        property: "og:description",
-        content:
-          "Private football intelligence workspace: models, market probabilities, edge detection and auditable pick research.",
-      },
+      { property: "og:title", content: "PrediGol — Football Intelligence" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "robots", content: "noindex, nofollow" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -116,7 +108,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="es">
       <head>
         <HeadContent />
       </head>
@@ -128,15 +120,151 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+/** Logo on the background: what the server renders, and what shows while the session is checked. */
+function Splash() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background" aria-busy="true">
+      <BrandMark size={72} className="animate-pulse opacity-90" />
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
+  // Everything below depends on the browser: the session cookie, the reader's language
+  // and time zone. Rendering it only after mount keeps the server's HTML (the splash)
+  // and the client's first render identical.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <Splash />;
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <AppShell>
-        <Outlet />
-      </AppShell>
+      <AuthProvider>
+        <Localized>
+          <Gate />
+        </Localized>
+      </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function Localized({ children }: { children: ReactNode }) {
+  const auth = useAuth();
+  setTimeZone(auth.timeZone);
+  useEffect(() => {
+    document.documentElement.lang = auth.locale;
+  }, [auth.locale]);
+  return <I18nProvider locale={auth.locale}>{children}</I18nProvider>;
+}
+
+function ConnectionProblem({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+      <BrandMark size={64} />
+      <WifiOff aria-hidden className="h-5 w-5 text-warning" />
+      <p className="max-w-sm text-sm text-muted-foreground">{t("errors.unreachable")}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+      >
+        {t("common.retry")}
+      </button>
+    </div>
+  );
+}
+
+function Forbidden() {
+  const auth = useAuth();
+  return (
+    <div
+      className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center"
+      data-testid="forbidden"
+    >
+      <ShieldAlert aria-hidden className="h-8 w-8 text-warning" />
+      <h1 className="font-display text-xl font-semibold">{t("auth.forbiddenTitle")}</h1>
+      <p className="max-w-sm text-sm text-muted-foreground">
+        {auth.previewAsUser ? t("nav.previewing") : t("auth.forbiddenBody")}
+      </p>
+      <div className="flex gap-2">
+        <a
+          href="/home"
+          className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-elevated"
+        >
+          {t("auth.goHome")}
+        </a>
+        {auth.previewAsUser ? (
+          <button
+            type="button"
+            onClick={() => auth.setPreviewAsUser(false)}
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+          >
+            {t("nav.exitPreview")}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Who sees what. The server decides access for every request; this decides only where
+ * the reader is sent and which shell frames the page.
+ */
+function Gate() {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const location = useRouterState({ select: (s) => s.location });
+  const path = location.pathname;
+  const onLogin = path === "/login";
+  const onAdmin = path === "/admin" || path.startsWith("/admin/");
+
+  useEffect(() => {
+    if (auth.status === "anonymous" && !onLogin) {
+      const next = `${location.pathname}${location.searchStr ?? ""}`;
+      void navigate({
+        to: "/login",
+        search: { next, expired: auth.sessionExpired ? "1" : undefined } as never,
+        replace: true,
+      });
+    } else if (auth.status === "signed-in" && onLogin) {
+      const params = new URLSearchParams(location.searchStr ?? "");
+      const next = params.get("next");
+      const safe =
+        next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/login")
+          ? next
+          : "/home";
+      void navigate({ to: safe as never, replace: true });
+    }
+  }, [auth.status, auth.sessionExpired, onLogin, location.pathname, location.searchStr, navigate]);
+
+  if (auth.status === "loading") return <Splash />;
+  if (auth.status === "error") return <ConnectionProblem onRetry={auth.retry} />;
+  if (auth.status === "anonymous") return onLogin ? <Outlet /> : <Splash />;
+  if (onLogin) return <Splash />;
+
+  // A remount on a language or time-zone change re-renders every formatted string.
+  const key = `${auth.locale}|${auth.timeZone}`;
+  if (onAdmin) {
+    return (
+      <Fragment key={key}>
+        {auth.showAdmin ? (
+          <AdminShell>
+            <Outlet />
+          </AdminShell>
+        ) : (
+          <UserShell>
+            <Forbidden />
+          </UserShell>
+        )}
+      </Fragment>
+    );
+  }
+  return (
+    <Fragment key={key}>
+      <UserShell>
+        <Outlet />
+      </UserShell>
+    </Fragment>
   );
 }

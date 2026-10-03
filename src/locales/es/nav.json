@@ -1,0 +1,18 @@
+{
+  "home": "Inicio",
+  "matches": "Partidos",
+  "live": "En vivo",
+  "picks": "Picks",
+  "parlays": "Parlays",
+  "odds": "Cuotas",
+  "profile": "Perfil",
+  "adminConsole": "Admin Console",
+  "backToApp": "Volver a la app",
+  "previewAsUser": "Ver como USER",
+  "previewing": "Estás viendo la experiencia de USER",
+  "exitPreview": "Salir de la vista previa",
+  "previewNote": "Solo cambia la presentación; tus permisos reales no cambian.",
+  "signOut": "Cerrar sesión",
+  "mainNavigation": "Navegación principal",
+  "adminNavigation": "Navegación del Admin Console"
+}

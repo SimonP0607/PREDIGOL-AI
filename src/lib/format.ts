@@ -1,3 +1,5 @@
+import { formatDateTime, formatTime, zoneAbbrev } from "@/lib/time";
+
 export const EMPTY = "—";
 
 export function pct(value: number | null | undefined, digits = 1): string {
@@ -26,18 +28,12 @@ export function int(value: number | null | undefined): string {
   return value.toLocaleString("en-US");
 }
 
+/** HH:MM in the reader's time zone (their preference; the data itself stays UTC). */
 export function timeOf(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  });
+  return formatTime(iso);
 }
 
+/** "4 oct 18:00 CEST" in the reader's time zone. */
 export function dateTimeOf(iso: string): string {
-  return `${new Date(iso).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    timeZone: "UTC",
-  })} ${timeOf(iso)} UTC`;
+  return `${formatDateTime(iso)} ${zoneAbbrev(iso)}`;
 }

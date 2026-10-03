@@ -40,6 +40,8 @@ export interface TeamRef {
   id: number;
   name: string;
   provider_team_id: number;
+  /** The provider's crest URL, as stored. Null: not told. */
+  logo_url?: string | null;
 }
 
 export interface CompetitionRef {
@@ -50,6 +52,9 @@ export interface CompetitionRef {
   season: number;
   competition_type: string;
   is_tracked: boolean;
+  logo_url?: string | null;
+  flag_url?: string | null;
+  country_code?: string | null;
 }
 
 export interface VenueRef {
@@ -184,6 +189,13 @@ export interface MatchDetail {
   timeline: TimelineEvent[];
 }
 
+/** What the product shows for a fixture (GET /matches/{id}); MatchDetail is the Admin Console's. */
+export interface MatchView {
+  match: MatchSummary;
+  venue: VenueRef | null;
+  markets: Section<MarketQuote[]>;
+}
+
 export interface SeasonSummary {
   id: number;
   season: number;
@@ -209,6 +221,9 @@ export interface CompetitionSummary {
   current_season: number | null;
   fixtures: number;
   teams: number;
+  logo_url?: string | null;
+  flag_url?: string | null;
+  country_code?: string | null;
 }
 
 export interface CompetitionDetail {
@@ -224,6 +239,7 @@ export interface TeamSummary {
   country: string | null;
   fixtures: number;
   results: number;
+  logo_url?: string | null;
 }
 
 export interface TeamRecord {

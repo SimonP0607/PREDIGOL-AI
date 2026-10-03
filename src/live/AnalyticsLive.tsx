@@ -706,7 +706,7 @@ function CoverageTab() {
   );
 }
 
-function MigrationTab() {
+export function MigrationTab() {
   const q = useLiveQuery(live.migration);
   return (
     <Loading q={q}>

@@ -8,7 +8,8 @@ import { Numeric } from "@/components/primitives/Indicators";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice, SectionView } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
-import type { ComponentStatus } from "@/lib/api/v1/types";
+import type { ComponentStatus, Section } from "@/lib/api/v1/types";
+import type { BackfillProgress } from "@/lib/api/v1/types_center";
 import { int } from "@/lib/format";
 import { relative, utcDateTime } from "./format";
 import { JOB_LABEL } from "./labels";
@@ -104,7 +105,7 @@ export function AdminLive() {
                 </tbody>
               </TableShell>
               <div className="px-4 py-2 text-caption">
-                <Link to="/data-quality" className="text-primary hover:underline">
+                <Link to="/admin/data-quality" className="text-primary hover:underline">
                   Job ledger and run history →
                 </Link>
               </div>
@@ -133,81 +134,7 @@ export function AdminLive() {
             </Panel>
           </div>
 
-          <Panel
-            title="History migration"
-            subtitle="Seeded backfill tasks by kind. Each task is one provider request; nothing is re-requested that the raw store already holds."
-            bodyClassName=""
-          >
-            <SectionView section={d.migration}>
-              {(rows) => {
-                const total = rows.reduce((s, r) => s + r.total, 0);
-                const done = rows.reduce((s, r) => s + r.done, 0);
-                return (
-                  <>
-                    <div className="px-4 pt-3">
-                      <div className="flex items-baseline justify-between text-xs">
-                        <span>
-                          {int(done)} of {int(total)} tasks done
-                        </span>
-                        <StatusBadge tone={done === total ? "positive" : "info"}>
-                          {done === total ? "complete" : "running"}
-                        </StatusBadge>
-                      </div>
-                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full bg-primary"
-                          style={{ width: `${total ? (done / total) * 100 : 0}%` }}
-                        />
-                      </div>
-                    </div>
-                    <TableShell>
-                      <THead>
-                        <TH>Kind</TH>
-                        <TH align="right">Done</TH>
-                        <TH align="right">Pending</TH>
-                        <TH align="right">Running</TH>
-                        <TH align="right">Failed</TH>
-                        <TH>Last completed</TH>
-                      </THead>
-                      <tbody>
-                        {rows.map((r) => (
-                          <TRow key={r.kind}>
-                            <TD className="text-sm">{r.kind.replace(/_/g, " ")}</TD>
-                            <TD align="right">
-                              <Numeric className="text-xs">
-                                {int(r.done)} / {int(r.total)}
-                              </Numeric>
-                            </TD>
-                            <TD align="right">
-                              <Numeric muted={!r.pending} className="text-xs">
-                                {int(r.pending)}
-                              </Numeric>
-                            </TD>
-                            <TD align="right">
-                              <Numeric muted={!r.running} className="text-xs">
-                                {int(r.running)}
-                              </Numeric>
-                            </TD>
-                            <TD align="right">
-                              <Numeric
-                                className={r.failed ? "text-xs text-negative" : "text-xs"}
-                                muted={!r.failed}
-                              >
-                                {int(r.failed)}
-                              </Numeric>
-                            </TD>
-                            <TD className="text-xs text-muted-foreground">
-                              {r.last_completed_at ? utcDateTime(r.last_completed_at) : "—"}
-                            </TD>
-                          </TRow>
-                        ))}
-                      </tbody>
-                    </TableShell>
-                  </>
-                );
-              }}
-            </SectionView>
-          </Panel>
+          <BackfillPanel section={d.migration} />
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel
@@ -258,7 +185,7 @@ export function AdminLive() {
                 <p className="text-xs text-muted-foreground">No open issue.</p>
               )}
               <div className="mt-2 text-caption">
-                <Link to="/data-quality" className="text-primary hover:underline">
+                <Link to="/admin/data-quality" className="text-primary hover:underline">
                   Open Data Quality →
                 </Link>
               </div>
@@ -326,5 +253,86 @@ export function AdminLive() {
         </>
       ) : null}
     </div>
+  );
+}
+
+/** Seeded backfill tasks by kind - shared by System and Migration. */
+export function BackfillPanel({ section }: { section: Section<BackfillProgress[]> }) {
+  return (
+    <Panel
+      title="History migration"
+      subtitle="Seeded backfill tasks by kind. Each task is one provider request; nothing is re-requested that the raw store already holds."
+      bodyClassName=""
+    >
+      <SectionView section={section}>
+        {(rows) => {
+          const total = rows.reduce((s, r) => s + r.total, 0);
+          const done = rows.reduce((s, r) => s + r.done, 0);
+          return (
+            <>
+              <div className="px-4 pt-3">
+                <div className="flex items-baseline justify-between text-xs">
+                  <span>
+                    {int(done)} of {int(total)} tasks done
+                  </span>
+                  <StatusBadge tone={done === total ? "positive" : "info"}>
+                    {done === total ? "complete" : "running"}
+                  </StatusBadge>
+                </div>
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary"
+                    style={{ width: `${total ? (done / total) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+              <TableShell>
+                <THead>
+                  <TH>Kind</TH>
+                  <TH align="right">Done</TH>
+                  <TH align="right">Pending</TH>
+                  <TH align="right">Running</TH>
+                  <TH align="right">Failed</TH>
+                  <TH>Last completed</TH>
+                </THead>
+                <tbody>
+                  {rows.map((r) => (
+                    <TRow key={r.kind}>
+                      <TD className="text-sm">{r.kind.replace(/_/g, " ")}</TD>
+                      <TD align="right">
+                        <Numeric className="text-xs">
+                          {int(r.done)} / {int(r.total)}
+                        </Numeric>
+                      </TD>
+                      <TD align="right">
+                        <Numeric muted={!r.pending} className="text-xs">
+                          {int(r.pending)}
+                        </Numeric>
+                      </TD>
+                      <TD align="right">
+                        <Numeric muted={!r.running} className="text-xs">
+                          {int(r.running)}
+                        </Numeric>
+                      </TD>
+                      <TD align="right">
+                        <Numeric
+                          className={r.failed ? "text-xs text-negative" : "text-xs"}
+                          muted={!r.failed}
+                        >
+                          {int(r.failed)}
+                        </Numeric>
+                      </TD>
+                      <TD className="text-xs text-muted-foreground">
+                        {r.last_completed_at ? utcDateTime(r.last_completed_at) : "—"}
+                      </TD>
+                    </TRow>
+                  ))}
+                </tbody>
+              </TableShell>
+            </>
+          );
+        }}
+      </SectionView>
+    </Panel>
   );
 }

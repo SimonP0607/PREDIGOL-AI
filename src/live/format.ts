@@ -1,4 +1,5 @@
 import { EMPTY } from "@/lib/format";
+import { formatDateTime, formatDateYear, formatRelative, zoneAbbrev } from "@/lib/time";
 import type { Dec } from "@/lib/api/v1/types";
 
 /** A decimal string from the API, for display. Null stays null. */
@@ -19,30 +20,25 @@ export function ratio(value: number | null | undefined, digits = 0): string | nu
   return `${(value * 100).toFixed(digits)}%`;
 }
 
+/** Date in the reader's time zone (the name is historical: it used to be UTC). */
 export function utcDate(iso: string | null | undefined): string {
   if (!iso) return EMPTY;
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  return formatDateYear(iso);
 }
 
+/** Date and time in the reader's time zone, with the zone's abbreviation. */
 export function utcDateTime(iso: string | null | undefined): string {
   if (!iso) return EMPTY;
-  const d = new Date(iso);
-  const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" });
-  const time = d.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  });
-  return `${date} ${time} UTC`;
+  return `${formatDateTime(iso)} ${zoneAbbrev(iso)}`;
 }
 
-/** "12 min ago" / "in 3 h" relative to now. */
+/** "12 min ago" / "in 3 h" relative to now, in the reader's language. */
 export function relative(iso: string | null | undefined, now: number = Date.now()): string {
+  return formatRelative(iso, now);
+}
+
+/** The original English-only form, kept for tests that pin its output. */
+export function relativeEn(iso: string | null | undefined, now: number = Date.now()): string {
   if (!iso) return EMPTY;
   const diff = new Date(iso).getTime() - now;
   const abs = Math.abs(diff);

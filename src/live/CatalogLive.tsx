@@ -457,7 +457,7 @@ function SquadPanel({ teamId }: { teamId: number }) {
               <TRow key={p.id}>
                 <TD className="text-sm">
                   <Link
-                    to="/players/$playerId"
+                    to="/admin/players/$playerId"
                     params={{ playerId: String(p.id) }}
                     className="hover:text-primary"
                   >

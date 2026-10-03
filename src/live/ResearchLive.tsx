@@ -79,7 +79,7 @@ function SessionView({ s }: { s: BacktestSessionSummary }) {
           Every block is checked: a training result not public before the cut-off, or a cut-off not
           before the kick-off it predicts, stops the run. A test rewrites all later results and
           requires every earlier prediction to come out identical.{" "}
-          <Link to="/models" className="text-primary hover:underline">
+          <Link to="/admin/models" className="text-primary hover:underline">
             Results against the market →
           </Link>
         </p>

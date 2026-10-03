@@ -47,7 +47,7 @@ function PlayersTable({ rows }: { rows: PlayerSummary[] }) {
           <TRow key={p.id}>
             <TD className="text-sm">
               <Link
-                to="/players/$playerId"
+                to="/admin/players/$playerId"
                 params={{ playerId: String(p.id) }}
                 className="hover:text-primary"
               >
@@ -151,7 +151,10 @@ export function PlayerLive({ playerId }: { playerId: string }) {
   if (!q.data || !d) {
     return (
       <div className="space-y-4">
-        <PageHeader breadcrumb={[{ label: "Players", to: "/players" }]} title="Player not found" />
+        <PageHeader
+          breadcrumb={[{ label: "Players", to: "/admin/players" }]}
+          title="Player not found"
+        />
         {q.data ? <StatusNotice status={q.data.status} reason={q.data.reason} /> : null}
       </div>
     );
@@ -160,7 +163,7 @@ export function PlayerLive({ playerId }: { playerId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Players", to: "/players" }, { label: p.name }]}
+        breadcrumb={[{ label: "Players", to: "/admin/players" }, { label: p.name }]}
         title={p.name}
         description={[p.position, p.nationality, p.team].filter(Boolean).join(" · ") || undefined}
       />

@@ -11,23 +11,35 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AiAnalystRouteImport } from './routes/ai-analyst'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
-import { Route as BacktestingRouteImport } from './routes/backtesting'
-import { Route as CompetitionsRouteImport } from './routes/competitions'
-import { Route as DataQualityRouteImport } from './routes/data-quality'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as LiveRouteImport } from './routes/live'
-import { Route as ModelsRouteImport } from './routes/models'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as OddsRouteImport } from './routes/odds'
-import { Route as PerformanceRouteImport } from './routes/performance'
+import { Route as ParlaysRouteImport } from './routes/parlays'
 import { Route as PicksRouteImport } from './routes/picks'
-import { Route as RankingsRouteImport } from './routes/rankings'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as TeamsRouteImport } from './routes/teams'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAiAnalystRouteImport } from './routes/admin.ai-analyst'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as AdminBacktestingRouteImport } from './routes/admin.backtesting'
+import { Route as AdminCompetitionsRouteImport } from './routes/admin.competitions'
+import { Route as AdminDataQualityRouteImport } from './routes/admin.data-quality'
+import { Route as AdminMigrationRouteImport } from './routes/admin.migration'
+import { Route as AdminModelsRouteImport } from './routes/admin.models'
+import { Route as AdminOddsRouteImport } from './routes/admin.odds'
+import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
+import { Route as AdminPerformanceRouteImport } from './routes/admin.performance'
+import { Route as AdminPicksRouteImport } from './routes/admin.picks'
+import { Route as AdminRankingsRouteImport } from './routes/admin.rankings'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminSystemRouteImport } from './routes/admin.system'
+import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
-import { Route as PlayersIndexRouteImport } from './routes/players.index'
-import { Route as PlayersPlayerIdRouteImport } from './routes/players.$playerId'
+import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.index'
+import { Route as AdminPlayersPlayerIdRouteImport } from './routes/admin.players.$playerId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,29 +51,9 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AiAnalystRoute = AiAnalystRouteImport.update({
-  id: '/ai-analyst',
-  path: '/ai-analyst',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AnalyticsRoute = AnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BacktestingRoute = BacktestingRouteImport.update({
-  id: '/backtesting',
-  path: '/backtesting',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CompetitionsRoute = CompetitionsRouteImport.update({
-  id: '/competitions',
-  path: '/competitions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataQualityRoute = DataQualityRouteImport.update({
-  id: '/data-quality',
-  path: '/data-quality',
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LiveRoute = LiveRouteImport.update({
@@ -69,9 +61,9 @@ const LiveRoute = LiveRouteImport.update({
   path: '/live',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ModelsRoute = ModelsRouteImport.update({
-  id: '/models',
-  path: '/models',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OddsRoute = OddsRouteImport.update({
@@ -79,9 +71,9 @@ const OddsRoute = OddsRouteImport.update({
   path: '/odds',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PerformanceRoute = PerformanceRouteImport.update({
-  id: '/performance',
-  path: '/performance',
+const ParlaysRoute = ParlaysRouteImport.update({
+  id: '/parlays',
+  path: '/parlays',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PicksRoute = PicksRouteImport.update({
@@ -89,20 +81,100 @@ const PicksRoute = PicksRouteImport.update({
   path: '/picks',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RankingsRoute = RankingsRouteImport.update({
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAiAnalystRoute = AdminAiAnalystRouteImport.update({
+  id: '/ai-analyst',
+  path: '/ai-analyst',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBacktestingRoute = AdminBacktestingRouteImport.update({
+  id: '/backtesting',
+  path: '/backtesting',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCompetitionsRoute = AdminCompetitionsRouteImport.update({
+  id: '/competitions',
+  path: '/competitions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDataQualityRoute = AdminDataQualityRouteImport.update({
+  id: '/data-quality',
+  path: '/data-quality',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMigrationRoute = AdminMigrationRouteImport.update({
+  id: '/migration',
+  path: '/migration',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminModelsRoute = AdminModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOddsRoute = AdminOddsRouteImport.update({
+  id: '/odds',
+  path: '/odds',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOverviewRoute = AdminOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPerformanceRoute = AdminPerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPicksRoute = AdminPicksRouteImport.update({
+  id: '/picks',
+  path: '/picks',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRankingsRoute = AdminRankingsRouteImport.update({
   id: '/rankings',
   path: '/rankings',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AdminRoute,
 } as any)
-const SettingsRoute = SettingsRouteImport.update({
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AdminRoute,
 } as any)
-const TeamsRoute = TeamsRouteImport.update({
+const AdminSystemRoute = AdminSystemRouteImport.update({
+  id: '/system',
+  path: '/system',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTeamsRoute = AdminTeamsRouteImport.update({
   id: '/teams',
   path: '/teams',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
 } as any)
 const MatchesIndexRoute = MatchesIndexRouteImport.update({
   id: '/matches/',
@@ -114,167 +186,229 @@ const MatchesFixtureIdRoute = MatchesFixtureIdRouteImport.update({
   path: '/matches/$fixtureId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PlayersIndexRoute = PlayersIndexRouteImport.update({
+const AdminPlayersIndexRoute = AdminPlayersIndexRouteImport.update({
   id: '/players/',
   path: '/players/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AdminRoute,
 } as any)
-const PlayersPlayerIdRoute = PlayersPlayerIdRouteImport.update({
+const AdminPlayersPlayerIdRoute = AdminPlayersPlayerIdRouteImport.update({
   id: '/players/$playerId',
   path: '/players/$playerId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AdminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
-  '/ai-analyst': typeof AiAnalystRoute
-  '/analytics': typeof AnalyticsRoute
-  '/backtesting': typeof BacktestingRoute
-  '/competitions': typeof CompetitionsRoute
-  '/data-quality': typeof DataQualityRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/home': typeof HomeRoute
   '/live': typeof LiveRoute
-  '/models': typeof ModelsRoute
+  '/login': typeof LoginRoute
   '/odds': typeof OddsRoute
-  '/performance': typeof PerformanceRoute
+  '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
-  '/rankings': typeof RankingsRoute
-  '/settings': typeof SettingsRoute
-  '/teams': typeof TeamsRoute
+  '/profile': typeof ProfileRoute
+  '/admin/ai-analyst': typeof AdminAiAnalystRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/backtesting': typeof AdminBacktestingRoute
+  '/admin/competitions': typeof AdminCompetitionsRoute
+  '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/migration': typeof AdminMigrationRoute
+  '/admin/models': typeof AdminModelsRoute
+  '/admin/odds': typeof AdminOddsRoute
+  '/admin/overview': typeof AdminOverviewRoute
+  '/admin/performance': typeof AdminPerformanceRoute
+  '/admin/picks': typeof AdminPicksRoute
+  '/admin/rankings': typeof AdminRankingsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/system': typeof AdminSystemRoute
+  '/admin/teams': typeof AdminTeamsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
-  '/players/$playerId': typeof PlayersPlayerIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/matches/': typeof MatchesIndexRoute
-  '/players/': typeof PlayersIndexRoute
+  '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
+  '/admin/players/': typeof AdminPlayersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
-  '/ai-analyst': typeof AiAnalystRoute
-  '/analytics': typeof AnalyticsRoute
-  '/backtesting': typeof BacktestingRoute
-  '/competitions': typeof CompetitionsRoute
-  '/data-quality': typeof DataQualityRoute
+  '/home': typeof HomeRoute
   '/live': typeof LiveRoute
-  '/models': typeof ModelsRoute
+  '/login': typeof LoginRoute
   '/odds': typeof OddsRoute
-  '/performance': typeof PerformanceRoute
+  '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
-  '/rankings': typeof RankingsRoute
-  '/settings': typeof SettingsRoute
-  '/teams': typeof TeamsRoute
+  '/profile': typeof ProfileRoute
+  '/admin/ai-analyst': typeof AdminAiAnalystRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/backtesting': typeof AdminBacktestingRoute
+  '/admin/competitions': typeof AdminCompetitionsRoute
+  '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/migration': typeof AdminMigrationRoute
+  '/admin/models': typeof AdminModelsRoute
+  '/admin/odds': typeof AdminOddsRoute
+  '/admin/overview': typeof AdminOverviewRoute
+  '/admin/performance': typeof AdminPerformanceRoute
+  '/admin/picks': typeof AdminPicksRoute
+  '/admin/rankings': typeof AdminRankingsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/system': typeof AdminSystemRoute
+  '/admin/teams': typeof AdminTeamsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
-  '/players/$playerId': typeof PlayersPlayerIdRoute
+  '/admin': typeof AdminIndexRoute
   '/matches': typeof MatchesIndexRoute
-  '/players': typeof PlayersIndexRoute
+  '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
+  '/admin/players': typeof AdminPlayersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
-  '/ai-analyst': typeof AiAnalystRoute
-  '/analytics': typeof AnalyticsRoute
-  '/backtesting': typeof BacktestingRoute
-  '/competitions': typeof CompetitionsRoute
-  '/data-quality': typeof DataQualityRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/home': typeof HomeRoute
   '/live': typeof LiveRoute
-  '/models': typeof ModelsRoute
+  '/login': typeof LoginRoute
   '/odds': typeof OddsRoute
-  '/performance': typeof PerformanceRoute
+  '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
-  '/rankings': typeof RankingsRoute
-  '/settings': typeof SettingsRoute
-  '/teams': typeof TeamsRoute
+  '/profile': typeof ProfileRoute
+  '/admin/ai-analyst': typeof AdminAiAnalystRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/backtesting': typeof AdminBacktestingRoute
+  '/admin/competitions': typeof AdminCompetitionsRoute
+  '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/migration': typeof AdminMigrationRoute
+  '/admin/models': typeof AdminModelsRoute
+  '/admin/odds': typeof AdminOddsRoute
+  '/admin/overview': typeof AdminOverviewRoute
+  '/admin/performance': typeof AdminPerformanceRoute
+  '/admin/picks': typeof AdminPicksRoute
+  '/admin/rankings': typeof AdminRankingsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/system': typeof AdminSystemRoute
+  '/admin/teams': typeof AdminTeamsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
-  '/players/$playerId': typeof PlayersPlayerIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/matches/': typeof MatchesIndexRoute
-  '/players/': typeof PlayersIndexRoute
+  '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
+  '/admin/players/': typeof AdminPlayersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/admin'
-    | '/ai-analyst'
-    | '/analytics'
-    | '/backtesting'
-    | '/competitions'
-    | '/data-quality'
+    | '/home'
     | '/live'
-    | '/models'
+    | '/login'
     | '/odds'
-    | '/performance'
+    | '/parlays'
     | '/picks'
-    | '/rankings'
-    | '/settings'
-    | '/teams'
+    | '/profile'
+    | '/admin/ai-analyst'
+    | '/admin/analytics'
+    | '/admin/audit'
+    | '/admin/backtesting'
+    | '/admin/competitions'
+    | '/admin/data-quality'
+    | '/admin/migration'
+    | '/admin/models'
+    | '/admin/odds'
+    | '/admin/overview'
+    | '/admin/performance'
+    | '/admin/picks'
+    | '/admin/rankings'
+    | '/admin/settings'
+    | '/admin/system'
+    | '/admin/teams'
+    | '/admin/users'
     | '/matches/$fixtureId'
-    | '/players/$playerId'
+    | '/admin/'
     | '/matches/'
-    | '/players/'
+    | '/admin/players/$playerId'
+    | '/admin/players/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
-    | '/ai-analyst'
-    | '/analytics'
-    | '/backtesting'
-    | '/competitions'
-    | '/data-quality'
+    | '/home'
     | '/live'
-    | '/models'
+    | '/login'
     | '/odds'
-    | '/performance'
+    | '/parlays'
     | '/picks'
-    | '/rankings'
-    | '/settings'
-    | '/teams'
+    | '/profile'
+    | '/admin/ai-analyst'
+    | '/admin/analytics'
+    | '/admin/audit'
+    | '/admin/backtesting'
+    | '/admin/competitions'
+    | '/admin/data-quality'
+    | '/admin/migration'
+    | '/admin/models'
+    | '/admin/odds'
+    | '/admin/overview'
+    | '/admin/performance'
+    | '/admin/picks'
+    | '/admin/rankings'
+    | '/admin/settings'
+    | '/admin/system'
+    | '/admin/teams'
+    | '/admin/users'
     | '/matches/$fixtureId'
-    | '/players/$playerId'
+    | '/admin'
     | '/matches'
-    | '/players'
+    | '/admin/players/$playerId'
+    | '/admin/players'
   id:
     | '__root__'
     | '/'
     | '/admin'
-    | '/ai-analyst'
-    | '/analytics'
-    | '/backtesting'
-    | '/competitions'
-    | '/data-quality'
+    | '/home'
     | '/live'
-    | '/models'
+    | '/login'
     | '/odds'
-    | '/performance'
+    | '/parlays'
     | '/picks'
-    | '/rankings'
-    | '/settings'
-    | '/teams'
+    | '/profile'
+    | '/admin/ai-analyst'
+    | '/admin/analytics'
+    | '/admin/audit'
+    | '/admin/backtesting'
+    | '/admin/competitions'
+    | '/admin/data-quality'
+    | '/admin/migration'
+    | '/admin/models'
+    | '/admin/odds'
+    | '/admin/overview'
+    | '/admin/performance'
+    | '/admin/picks'
+    | '/admin/rankings'
+    | '/admin/settings'
+    | '/admin/system'
+    | '/admin/teams'
+    | '/admin/users'
     | '/matches/$fixtureId'
-    | '/players/$playerId'
+    | '/admin/'
     | '/matches/'
-    | '/players/'
+    | '/admin/players/$playerId'
+    | '/admin/players/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
-  AiAnalystRoute: typeof AiAnalystRoute
-  AnalyticsRoute: typeof AnalyticsRoute
-  BacktestingRoute: typeof BacktestingRoute
-  CompetitionsRoute: typeof CompetitionsRoute
-  DataQualityRoute: typeof DataQualityRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  HomeRoute: typeof HomeRoute
   LiveRoute: typeof LiveRoute
-  ModelsRoute: typeof ModelsRoute
+  LoginRoute: typeof LoginRoute
   OddsRoute: typeof OddsRoute
-  PerformanceRoute: typeof PerformanceRoute
+  ParlaysRoute: typeof ParlaysRoute
   PicksRoute: typeof PicksRoute
-  RankingsRoute: typeof RankingsRoute
-  SettingsRoute: typeof SettingsRoute
-  TeamsRoute: typeof TeamsRoute
+  ProfileRoute: typeof ProfileRoute
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
-  PlayersPlayerIdRoute: typeof PlayersPlayerIdRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
-  PlayersIndexRoute: typeof PlayersIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -293,39 +427,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ai-analyst': {
-      id: '/ai-analyst'
-      path: '/ai-analyst'
-      fullPath: '/ai-analyst'
-      preLoaderRoute: typeof AiAnalystRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/analytics': {
-      id: '/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof AnalyticsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/backtesting': {
-      id: '/backtesting'
-      path: '/backtesting'
-      fullPath: '/backtesting'
-      preLoaderRoute: typeof BacktestingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/competitions': {
-      id: '/competitions'
-      path: '/competitions'
-      fullPath: '/competitions'
-      preLoaderRoute: typeof CompetitionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-quality': {
-      id: '/data-quality'
-      path: '/data-quality'
-      fullPath: '/data-quality'
-      preLoaderRoute: typeof DataQualityRouteImport
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/live': {
@@ -335,11 +441,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LiveRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/models': {
-      id: '/models'
-      path: '/models'
-      fullPath: '/models'
-      preLoaderRoute: typeof ModelsRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/odds': {
@@ -349,11 +455,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OddsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/performance': {
-      id: '/performance'
-      path: '/performance'
-      fullPath: '/performance'
-      preLoaderRoute: typeof PerformanceRouteImport
+    '/parlays': {
+      id: '/parlays'
+      path: '/parlays'
+      fullPath: '/parlays'
+      preLoaderRoute: typeof ParlaysRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/picks': {
@@ -363,26 +469,138 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PicksRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/rankings': {
-      id: '/rankings'
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ai-analyst': {
+      id: '/admin/ai-analyst'
+      path: '/ai-analyst'
+      fullPath: '/admin/ai-analyst'
+      preLoaderRoute: typeof AdminAiAnalystRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/audit': {
+      id: '/admin/audit'
+      path: '/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/backtesting': {
+      id: '/admin/backtesting'
+      path: '/backtesting'
+      fullPath: '/admin/backtesting'
+      preLoaderRoute: typeof AdminBacktestingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/competitions': {
+      id: '/admin/competitions'
+      path: '/competitions'
+      fullPath: '/admin/competitions'
+      preLoaderRoute: typeof AdminCompetitionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/data-quality': {
+      id: '/admin/data-quality'
+      path: '/data-quality'
+      fullPath: '/admin/data-quality'
+      preLoaderRoute: typeof AdminDataQualityRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/migration': {
+      id: '/admin/migration'
+      path: '/migration'
+      fullPath: '/admin/migration'
+      preLoaderRoute: typeof AdminMigrationRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/models': {
+      id: '/admin/models'
+      path: '/models'
+      fullPath: '/admin/models'
+      preLoaderRoute: typeof AdminModelsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/odds': {
+      id: '/admin/odds'
+      path: '/odds'
+      fullPath: '/admin/odds'
+      preLoaderRoute: typeof AdminOddsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/overview': {
+      id: '/admin/overview'
+      path: '/overview'
+      fullPath: '/admin/overview'
+      preLoaderRoute: typeof AdminOverviewRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/performance': {
+      id: '/admin/performance'
+      path: '/performance'
+      fullPath: '/admin/performance'
+      preLoaderRoute: typeof AdminPerformanceRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/picks': {
+      id: '/admin/picks'
+      path: '/picks'
+      fullPath: '/admin/picks'
+      preLoaderRoute: typeof AdminPicksRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/rankings': {
+      id: '/admin/rankings'
       path: '/rankings'
-      fullPath: '/rankings'
-      preLoaderRoute: typeof RankingsRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/admin/rankings'
+      preLoaderRoute: typeof AdminRankingsRouteImport
+      parentRoute: typeof AdminRoute
     }
-    '/settings': {
-      id: '/settings'
+    '/admin/settings': {
+      id: '/admin/settings'
       path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
     }
-    '/teams': {
-      id: '/teams'
+    '/admin/system': {
+      id: '/admin/system'
+      path: '/system'
+      fullPath: '/admin/system'
+      preLoaderRoute: typeof AdminSystemRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/teams': {
+      id: '/admin/teams'
       path: '/teams'
-      fullPath: '/teams'
-      preLoaderRoute: typeof TeamsRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/admin/teams'
+      preLoaderRoute: typeof AdminTeamsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/matches/': {
       id: '/matches/'
@@ -398,43 +616,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MatchesFixtureIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/players/': {
-      id: '/players/'
+    '/admin/players/': {
+      id: '/admin/players/'
       path: '/players'
-      fullPath: '/players/'
-      preLoaderRoute: typeof PlayersIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/admin/players/'
+      preLoaderRoute: typeof AdminPlayersIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
-    '/players/$playerId': {
-      id: '/players/$playerId'
+    '/admin/players/$playerId': {
+      id: '/admin/players/$playerId'
       path: '/players/$playerId'
-      fullPath: '/players/$playerId'
-      preLoaderRoute: typeof PlayersPlayerIdRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/admin/players/$playerId'
+      preLoaderRoute: typeof AdminPlayersPlayerIdRouteImport
+      parentRoute: typeof AdminRoute
     }
   }
 }
 
+interface AdminRouteChildren {
+  AdminAiAnalystRoute: typeof AdminAiAnalystRoute
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminAuditRoute: typeof AdminAuditRoute
+  AdminBacktestingRoute: typeof AdminBacktestingRoute
+  AdminCompetitionsRoute: typeof AdminCompetitionsRoute
+  AdminDataQualityRoute: typeof AdminDataQualityRoute
+  AdminMigrationRoute: typeof AdminMigrationRoute
+  AdminModelsRoute: typeof AdminModelsRoute
+  AdminOddsRoute: typeof AdminOddsRoute
+  AdminOverviewRoute: typeof AdminOverviewRoute
+  AdminPerformanceRoute: typeof AdminPerformanceRoute
+  AdminPicksRoute: typeof AdminPicksRoute
+  AdminRankingsRoute: typeof AdminRankingsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSystemRoute: typeof AdminSystemRoute
+  AdminTeamsRoute: typeof AdminTeamsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  AdminPlayersPlayerIdRoute: typeof AdminPlayersPlayerIdRoute
+  AdminPlayersIndexRoute: typeof AdminPlayersIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAiAnalystRoute: AdminAiAnalystRoute,
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminAuditRoute: AdminAuditRoute,
+  AdminBacktestingRoute: AdminBacktestingRoute,
+  AdminCompetitionsRoute: AdminCompetitionsRoute,
+  AdminDataQualityRoute: AdminDataQualityRoute,
+  AdminMigrationRoute: AdminMigrationRoute,
+  AdminModelsRoute: AdminModelsRoute,
+  AdminOddsRoute: AdminOddsRoute,
+  AdminOverviewRoute: AdminOverviewRoute,
+  AdminPerformanceRoute: AdminPerformanceRoute,
+  AdminPicksRoute: AdminPicksRoute,
+  AdminRankingsRoute: AdminRankingsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminSystemRoute: AdminSystemRoute,
+  AdminTeamsRoute: AdminTeamsRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  AdminPlayersPlayerIdRoute: AdminPlayersPlayerIdRoute,
+  AdminPlayersIndexRoute: AdminPlayersIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
-  AiAnalystRoute: AiAnalystRoute,
-  AnalyticsRoute: AnalyticsRoute,
-  BacktestingRoute: BacktestingRoute,
-  CompetitionsRoute: CompetitionsRoute,
-  DataQualityRoute: DataQualityRoute,
+  AdminRoute: AdminRouteWithChildren,
+  HomeRoute: HomeRoute,
   LiveRoute: LiveRoute,
-  ModelsRoute: ModelsRoute,
+  LoginRoute: LoginRoute,
   OddsRoute: OddsRoute,
-  PerformanceRoute: PerformanceRoute,
+  ParlaysRoute: ParlaysRoute,
   PicksRoute: PicksRoute,
-  RankingsRoute: RankingsRoute,
-  SettingsRoute: SettingsRoute,
-  TeamsRoute: TeamsRoute,
+  ProfileRoute: ProfileRoute,
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,
-  PlayersPlayerIdRoute: PlayersPlayerIdRoute,
   MatchesIndexRoute: MatchesIndexRoute,
-  PlayersIndexRoute: PlayersIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

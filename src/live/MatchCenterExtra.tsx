@@ -176,7 +176,7 @@ function PlayerName({ name, id }: { name: string | null; id: number | null }) {
   if (id === null) return <span>{name}</span>;
   return (
     <Link
-      to="/players/$playerId"
+      to="/admin/players/$playerId"
       params={{ playerId: String(id) }}
       className="hover:text-primary hover:underline"
     >

@@ -182,6 +182,17 @@ export interface MatchCenter {
 export interface LiveTeam {
   id: number;
   name: string;
+  logo_url?: string | null;
+}
+
+/** How much of a live match can actually be shown (0-100), from what is stored. */
+export interface LiveCompleteness {
+  score: number;
+  level: "rich" | "partial" | "basic";
+  signals: Record<
+    "score" | "minute" | "events" | "stats" | "lineups" | "players" | "live_odds" | "markets",
+    boolean
+  >;
 }
 
 export interface LiveMatch {
@@ -189,6 +200,9 @@ export interface LiveMatch {
   kickoff_at: Iso;
   competition: string;
   country: string | null;
+  competition_id?: number | null;
+  competition_logo?: string | null;
+  competition_flag?: string | null;
   home: LiveTeam;
   away: LiveTeam;
   status: string;
@@ -206,6 +220,9 @@ export interface LiveMatch {
   statistics: TeamStatLine[];
   main_odds: LiveQuote[];
   data_status: "ok" | "stale" | "no_odds";
+  has_lineups?: boolean;
+  has_player_stats?: boolean;
+  completeness?: LiveCompleteness | null;
 }
 
 export interface LiveBoard {

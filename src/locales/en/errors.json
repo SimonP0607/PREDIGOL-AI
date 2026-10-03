@@ -1,0 +1,39 @@
+{
+  "generic": "Something went wrong. Please try again.",
+  "unreachable": "Cannot reach the PrediGol server.",
+  "loadFailed": "This could not be loaded.",
+  "notFound": "We could not find that.",
+  "pageNotFound": "Page not found",
+  "pageNotFoundBody": "The page you are looking for does not exist or has moved.",
+  "pageCrashed": "This page could not be shown",
+  "pageCrashedBody": "Something went wrong. You can try again or go back to Home.",
+  "requestId": "Reference: {id}",
+  "code": {
+    "invalid_credentials": "Wrong email or password.",
+    "too_many_attempts": "Too many attempts. Wait {seconds} s and try again.",
+    "account_disabled": "This account is disabled.",
+    "unauthenticated": "You need to sign in.",
+    "forbidden": "Your account is not allowed to do this.",
+    "csrf": "Request refused for security reasons. Reload the page.",
+    "rate_limited": "Too many requests. Wait a few seconds.",
+    "invalid_timezone": "That time zone is not valid.",
+    "invalid_language": "That language is not available.",
+    "invalid_display_name": "The name must be 1 to 80 characters.",
+    "wrong_password": "The current password is not right.",
+    "weak_password": "The new password is not strong enough.",
+    "email_taken": "An account with that email already exists.",
+    "invalid_email": "That email is not valid.",
+    "invalid_role": "That role does not exist.",
+    "last_super_admin": "You cannot leave the platform without an active SUPER_ADMIN.",
+    "cannot_disable_self": "You cannot disable your own account.",
+    "user_not_found": "That account does not exist.",
+    "unreachable": "Cannot reach the PrediGol server."
+  },
+  "problem": {
+    "password_too_short": "At least 10 characters.",
+    "password_too_long": "At most 128 characters.",
+    "password_edge_whitespace": "No spaces at the start or the end.",
+    "password_is_email": "It cannot be your email.",
+    "password_too_simple": "Use a wider mix of characters."
+  }
+}

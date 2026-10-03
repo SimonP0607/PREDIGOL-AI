@@ -9,7 +9,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { navGroups } from "@/components/layout/nav";
+import { adminNav } from "@/components/layout/nav";
+import { t } from "@/lib/i18n";
 import { DATA_MODE } from "@/lib/api/mode";
 import { v1 } from "@/lib/api/v1/client";
 import { searchIndex } from "@/mock/research";
@@ -66,8 +67,9 @@ export function searchEntities(term: string, limit = 8): SearchHit[] {
 export type Destination = NonNullable<LinkProps["to"]>;
 
 export function destinationFor(hit: SearchHit): Destination {
-  if (hit.type === "model") return "/models";
-  if (hit.type === "competition") return "/competitions";
+  if (hit.type === "model") return "/admin/models";
+  if (hit.type === "competition") return "/admin/competitions";
+  if (hit.type === "team") return "/admin/teams";
   if (hit.fixtureId) return "/matches/$fixtureId";
   return "/matches";
 }
@@ -135,15 +137,15 @@ export function CommandPalette({
             ))}
           </CommandGroup>
         ))}
-        {navGroups.map((group) => (
-          <CommandGroup key={group.label} heading={`Go to · ${group.label}`}>
+        {adminNav.map((group) => (
+          <CommandGroup key={group.label} heading={t(group.label)}>
             {group.items.map((item) => (
               <CommandItem
                 key={item.to}
-                value={`${group.label} ${item.label}`}
-                onSelect={() => go(item.to)}
+                value={`${t(group.label)} ${t(item.label)}`}
+                onSelect={() => go(item.to as Destination)}
               >
-                {item.label}
+                {t(item.label)}
               </CommandItem>
             ))}
           </CommandGroup>
