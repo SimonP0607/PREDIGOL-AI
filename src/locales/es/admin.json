@@ -28,24 +28,78 @@
     "settings": "Ajustes"
   },
   "pages": {
-    "overview": { "title": "Resumen", "description": "Estado operativo: capturas, partidos en juego, salud del sistema." },
-    "picks": { "title": "Picks (investigación)", "description": "Candidatos, rechazos, shadow y calificados, con la regla que decidió cada uno." },
-    "performance": { "title": "Rendimiento", "description": "Picks shadow liquidados al precio capturado. Sin dinero real: mide si la ventaja era real." },
-    "odds": { "title": "Explorador de cuotas", "description": "Series de precios capturados y el mercado histórico, cada fuente por separado." },
-    "models": { "title": "Modelos", "description": "Versiones, calibración, backtests y su comparación con el mercado." },
-    "backtesting": { "title": "Backtesting", "description": "Sesiones walk-forward y sus resultados por mercado." },
-    "analytics": { "title": "Analítica", "description": "Competiciones, equipos, mercado y cobertura de datos." },
-    "aiAnalyst": { "title": "AI Analyst", "description": "Herramientas de consulta sobre los datos. Sin IA activa por ahora." },
-    "competitions": { "title": "Competiciones", "description": "Catálogo de competiciones, temporadas y tablas." },
-    "teams": { "title": "Equipos", "description": "Equipos, plantillas y su historial." },
-    "players": { "title": "Jugadores", "description": "Jugadores con estadísticas almacenadas." },
-    "rankings": { "title": "Rankings", "description": "Elo actual por equipo a partir del historial de ratings." },
-    "dataQuality": { "title": "Calidad de datos", "description": "Cobertura, incidencias registradas y comprobaciones." },
-    "system": { "title": "Sistema", "description": "Worker, cuota del proveedor, capturas, errores, copias y versiones." },
-    "migration": { "title": "Migración", "description": "Progreso del backfill histórico por tipo de tarea." },
-    "users": { "title": "Usuarios", "description": "Cuentas, roles y estado. Solo SUPER_ADMIN." },
-    "audit": { "title": "Auditoría", "description": "Inicios de sesión, cambios de rol y de estado. Nunca contiene contraseñas." },
-    "settings": { "title": "Ajustes", "description": "Configuración de la plataforma." }
+    "overview": {
+      "title": "Resumen",
+      "description": "Estado operativo: capturas, partidos en juego, salud del sistema."
+    },
+    "picks": {
+      "title": "Picks (investigación)",
+      "description": "Candidatos, rechazos, shadow y calificados, con la regla que decidió cada uno."
+    },
+    "performance": {
+      "title": "Rendimiento",
+      "description": "Picks shadow liquidados al precio capturado. Sin dinero real: mide si la ventaja era real."
+    },
+    "odds": {
+      "title": "Explorador de cuotas",
+      "description": "Series de precios capturados y el mercado histórico, cada fuente por separado."
+    },
+    "models": {
+      "title": "Modelos",
+      "description": "Versiones, calibración, backtests y su comparación con el mercado."
+    },
+    "backtesting": {
+      "title": "Backtesting",
+      "description": "Sesiones walk-forward y sus resultados por mercado."
+    },
+    "analytics": {
+      "title": "Analítica",
+      "description": "Competiciones, equipos, mercado y cobertura de datos."
+    },
+    "aiAnalyst": {
+      "title": "AI Analyst",
+      "description": "Herramientas de consulta sobre los datos. Sin IA activa por ahora."
+    },
+    "competitions": {
+      "title": "Competiciones",
+      "description": "Catálogo de competiciones, temporadas y tablas."
+    },
+    "teams": {
+      "title": "Equipos",
+      "description": "Equipos, plantillas y su historial."
+    },
+    "players": {
+      "title": "Jugadores",
+      "description": "Jugadores con estadísticas almacenadas."
+    },
+    "rankings": {
+      "title": "Rankings",
+      "description": "Elo actual por equipo a partir del historial de ratings."
+    },
+    "dataQuality": {
+      "title": "Calidad de datos",
+      "description": "Cobertura, incidencias registradas y comprobaciones."
+    },
+    "system": {
+      "title": "Sistema",
+      "description": "Worker, cuota del proveedor, capturas, errores, copias y versiones."
+    },
+    "migration": {
+      "title": "Migración",
+      "description": "Progreso del backfill histórico por tipo de tarea."
+    },
+    "users": {
+      "title": "Usuarios",
+      "description": "Cuentas, roles y estado. Solo SUPER_ADMIN."
+    },
+    "audit": {
+      "title": "Auditoría",
+      "description": "Inicios de sesión, cambios de rol y de estado. Nunca contiene contraseñas."
+    },
+    "settings": {
+      "title": "Ajustes",
+      "description": "Configuración de la plataforma."
+    }
   },
   "users": {
     "user": "Usuario",
@@ -88,17 +142,17 @@
     "filter": "Filtrar por acción",
     "allActions": "Todas las acciones",
     "actions": {
-      "login.succeeded": "Inicio de sesión",
-      "login.failed": "Inicio de sesión fallido",
-      "login.refused": "Inicio rechazado (cuenta desactivada)",
+      "login_succeeded": "Inicio de sesión",
+      "login_failed": "Inicio de sesión fallido",
+      "login_refused": "Inicio rechazado (cuenta desactivada)",
       "logout": "Cierre de sesión",
-      "user.created": "Cuenta creada",
-      "user.role_changed": "Cambio de rol",
-      "user.status_changed": "Cambio de estado",
-      "password.changed": "Contraseña cambiada",
-      "password.change_refused": "Cambio de contraseña rechazado",
-      "password.reset": "Contraseña restablecida",
-      "preferences.updated": "Preferencias actualizadas"
+      "user_created": "Cuenta creada",
+      "user_role_changed": "Cambio de rol",
+      "user_status_changed": "Cambio de estado",
+      "password_changed": "Contraseña cambiada",
+      "password_change_refused": "Cambio de contraseña rechazado",
+      "password_reset": "Contraseña restablecida",
+      "preferences_updated": "Preferencias actualizadas"
     }
   },
   "migration": {

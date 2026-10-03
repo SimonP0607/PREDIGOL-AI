@@ -22,6 +22,11 @@ const ACTIONS = [
   "preferences.updated",
 ];
 
+/** Catalog keys cannot contain dots (they are paths): "user.role_changed" -> "user_role_changed". */
+function actionLabel(action: string): string {
+  return translateOr(`admin.audit.actions.${action.replace(/\./g, "_")}`, action);
+}
+
 const TONE: Record<string, string> = {
   "login.failed": "text-negative",
   "login.refused": "text-negative",
@@ -57,7 +62,7 @@ export function AuditPage() {
               <option value="">{t("admin.audit.allActions")}</option>
               {ACTIONS.map((a) => (
                 <option key={a} value={a}>
-                  {translateOr(`admin.audit.actions.${a}`, a)}
+                  {actionLabel(a)}
                 </option>
               ))}
             </select>
@@ -91,7 +96,7 @@ export function AuditPage() {
                       {formatRelative(e.at)}
                     </td>
                     <td className={cn("px-3 py-2 text-xs font-medium", TONE[e.action])}>
-                      {translateOr(`admin.audit.actions.${e.action}`, e.action)}
+                      {actionLabel(e.action)}
                     </td>
                     <td className="px-3 py-2 text-xs">{e.actor_email ?? "—"}</td>
                     <td className="px-3 py-2 text-xs">{e.target_email ?? e.email ?? "—"}</td>

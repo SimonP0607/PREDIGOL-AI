@@ -76,10 +76,10 @@ test("accounts: list, deactivate and reactivate, change a role - all audited", a
   await assertClean(page, w);
   await go(page, w, "/admin/audit");
   await expect(page.getByTestId("audit-table")).toContainText(
-    t.admin.audit.actions["user.status_changed"],
+    t.admin.audit.actions.user_status_changed,
   );
   await expect(page.getByTestId("audit-table")).toContainText(
-    t.admin.audit.actions["user.role_changed"],
+    t.admin.audit.actions.user_role_changed,
   );
 });
 
