@@ -34,7 +34,12 @@ while :; do
     echo "supervisor[$name]: another instance holds the lock - not restarting"; exit 75
   fi
   ran=$(( $(date +%s) - started ))
-  if (( ran > 300 )); then delay=5; else delay=$(( delay * 2 > 300 ? 300 : delay * 2 )); fi
+  if [[ $code -eq 143 || $code -eq 130 ]]; then
+    # Stopped on purpose (TERM/INT to the service alone, e.g. to load new code):
+    # come straight back, and do not count it as a crash.
+    delay=1
+  elif (( ran > 300 )); then delay=5
+  else delay=$(( delay * 2 > 300 ? 300 : delay * 2 )); fi
   echo "supervisor[$name]: exited with $code after ${ran}s; restarting in ${delay}s ($(date -u +%FT%TZ))"
   sleep "$delay" & wait $!
 done

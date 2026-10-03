@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.center import (
     AdminOverview,
+    CompetitionTable,
     LiveBoard,
     MatchCenter,
     PlayerDetail,
@@ -55,3 +56,13 @@ def get_player(conn: Db, player_id: Annotated[int, Path(ge=1)]) -> Envelope[Play
 def get_admin_overview(conn: Db) -> Envelope[AdminOverview]:
     """Private operations view: worker, quota, migration, captures, errors, quality, backups, versions."""
     return center.admin_overview(conn)
+
+
+@router.get("/competitions/{competition_id}/standings", response_model=Envelope[CompetitionTable | None])
+def get_competition_standings(
+    conn: Db,
+    competition_id: Annotated[int, Path(ge=1)],
+    season: Annotated[int | None, Query(ge=1900, le=2100)] = None,
+) -> Envelope[CompetitionTable | None]:
+    """The latest stored league table: the newest season that has one, or the season asked for."""
+    return center.competition_table(conn, competition_id, season=season)

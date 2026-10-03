@@ -232,19 +232,23 @@ SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_da
 """
 
 PLAYERS_OF_TEAM = """
+-- Figures FOR THIS TEAM only: a player's appearances elsewhere (an earlier club,
+-- the national side) are not this squad's.
 WITH squad AS (
-    SELECT DISTINCT ps.provider_player_id
+    SELECT ps.provider_player_id, count(*)::int AS apps, sum(ps.minutes)::int AS minutes,
+           sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists, round(avg(ps.rating), 2) AS avg_rating,
+           max(f.kickoff_at) AS last_played
       FROM core.fixture_player_stats ps JOIN core.fixtures f ON f.id = ps.fixture_id
      WHERE f.kickoff_at > %(since)s
        AND ((ps.team_side = 'home' AND f.home_team_id = %(team)s) OR (ps.team_side = 'away' AND f.away_team_id = %(team)s))
+     GROUP BY ps.provider_player_id
 )
 SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date,
-       a.team_id, t.name AS team, COALESCE(a.apps, 0) AS apps, a.minutes, a.goals, a.assists, a.avg_rating,
-       a.last_played
+       %(team)s::bigint AS team_id, t.name AS team, squad.apps, squad.minutes, squad.goals, squad.assists,
+       squad.avg_rating, squad.last_played
   FROM squad JOIN core.players p ON p.provider_player_id = squad.provider_player_id
-  LEFT JOIN LATERAL (""" + PLAYER_AGG + """) a ON true
-  LEFT JOIN core.teams t ON t.id = a.team_id
- ORDER BY a.minutes DESC NULLS LAST, p.name
+  LEFT JOIN core.teams t ON t.id = %(team)s::bigint
+ ORDER BY squad.minutes DESC NULLS LAST, p.name
  LIMIT %(limit)s OFFSET %(offset)s
 """
 
@@ -364,4 +368,24 @@ SELECT id AS run_id, job_type, status, started_at, last_error AS error
 QUALITY_COUNTS = """
 SELECT severity, count(*)::int AS n, max(last_seen_at) AS at
   FROM audit.data_quality_issues WHERE status = 'open' GROUP BY severity
+"""
+
+
+COMPETITION_TABLE = """
+WITH cs AS (
+    SELECT cs.id, cs.season FROM core.competition_seasons cs
+     WHERE cs.competition_id = %(c)s AND (%(season)s::int IS NULL OR cs.season = %(season)s::int)
+       AND EXISTS (SELECT 1 FROM core.standings s WHERE s.competition_season_id = cs.id)
+     ORDER BY cs.season DESC LIMIT 1
+), snap AS (
+    SELECT s.competition_season_id, max(s.snapshot_at) AS at
+      FROM core.standings s JOIN cs ON cs.id = s.competition_season_id GROUP BY 1
+)
+SELECT cs.season, s.snapshot_at, s.rank, s.team_id, t.name AS team, s.played, s.wins, s.draws, s.losses,
+       s.goals_for, s.goals_against, s.points, s.form, s."group"
+  FROM core.standings s
+  JOIN snap ON snap.competition_season_id = s.competition_season_id AND snap.at = s.snapshot_at
+  JOIN cs ON cs.id = s.competition_season_id
+  JOIN core.teams t ON t.id = s.team_id
+ ORDER BY s."group" NULLS FIRST, s.rank
 """

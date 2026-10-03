@@ -101,6 +101,8 @@ same one request per competition-season."""
 RESULTS_SYNC_HOURS = int(os.environ.get("FBI_RESULTS_SYNC_HOURS", "6"))
 RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
 QUALITY_SWEEP_HOURS = int(os.environ.get("FBI_QUALITY_SWEEP_HOURS", "6"))
+CONTEXT_REFRESH_HOURS = int(os.environ.get("FBI_CONTEXT_REFRESH_HOURS", "12"))
+"""League tables and injury reports for the active seasons (fbi.ingestion.context_refresh)."""
 LIVE_MATCH_SECONDS = int(os.environ.get("FBI_LIVE_MATCH_SECONDS", "60"))
 LIVE_MATCH_MAX_REQUESTS = int(os.environ.get("FBI_LIVE_MATCH_MAX_REQUESTS", "10"))
 LIVE_MATCH_RESERVE = int(os.environ.get("FBI_LIVE_MATCH_RESERVE", "3000"))
@@ -250,6 +252,22 @@ async def _live_match_tick() -> None:
         provider = ApiFootballProvider(_client())
         try:
             await capture_live_matches(conn, provider, max_requests=LIVE_MATCH_MAX_REQUESTS)
+        finally:
+            await provider.aclose()
+
+
+async def _context_refresh() -> None:
+    """Tables and injuries for the current seasons: what the Match Center shows as context."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.context_refresh import refresh_context
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await refresh_context(conn, provider)
         finally:
             await provider.aclose()
 
@@ -508,6 +526,8 @@ async def main() -> None:
         results_next = next_run_after(last_success(conn, "results_sync"), timedelta(hours=RESULTS_SYNC_HOURS), moment)
         backfill_next = next_run_after(last_success(conn, "historical_backfill"), timedelta(hours=BACKFILL_HOURS), moment)
         sweep_next = next_run_after(last_success(conn, "quality_sweep"), timedelta(hours=QUALITY_SWEEP_HOURS), moment)
+        context_next = next_run_after(last_success(conn, "context_refresh"),
+                                      timedelta(hours=CONTEXT_REFRESH_HOURS), moment)
 
     # A tick that could not start on time is still worth running late, and how late is
     # set by the capture tolerance - NOT by the interval. Tying it to the interval made
@@ -546,6 +566,9 @@ async def main() -> None:
     scheduler.add_job(_quality_sweep, "interval", hours=QUALITY_SWEEP_HOURS, id="quality_sweep",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(sweep_next, moment + timedelta(minutes=10)))
+    scheduler.add_job(_context_refresh, "interval", hours=CONTEXT_REFRESH_HOURS, id="context_refresh",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600,
+                      next_run_time=max(context_next, moment + timedelta(minutes=15)))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     scheduler.start()

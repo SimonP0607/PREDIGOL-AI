@@ -337,3 +337,25 @@ class AdminOverview(Contract):
     errors: Section[list[AdminError]]
     quality: list[AdminCount]
     backups: Section[list[BackupFile]]
+
+
+class TableRow(Contract):
+    rank: int
+    team_id: int
+    team: str
+    played: int
+    wins: int
+    draws: int
+    losses: int
+    goals_for: int
+    goals_against: int
+    points: int
+    form: str | None
+    group: str | None
+
+
+class CompetitionTable(Contract):
+    competition_id: int
+    season: int
+    snapshot_at: datetime
+    rows: list[TableRow]

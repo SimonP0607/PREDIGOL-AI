@@ -560,12 +560,16 @@ def test_live_board_says_when_nothing_is_in_play(client: TestClient) -> None:
     assert "in play" in body["reason"]
 
 
-def test_players_endpoints_answer_without_inventing(client: TestClient) -> None:
+def test_players_endpoints_answer_without_inventing(client: TestClient, dataset: dict[str, int]) -> None:
     body = get(client, "/api/v1/players?q=zzzz-nobody")
     assert body["status"] == "empty" and body["data"] == [] and body["reason"]
     missing = get(client, "/api/v1/players/99999999")
     assert missing["status"] == "empty" and missing["data"] is None
     get(client, "/api/v1/players?q=a&limit=500", status=422)
+    # Every query shape runs (the squad and the 30-day list each had their own SQL bug once).
+    for path in (f"/api/v1/players?team_id={dataset['alpha']}", "/api/v1/players"):
+        body = get(client, path)
+        assert body["status"] in ("ok", "empty"), path
 
 
 def test_admin_overview_reports_the_system(client: TestClient) -> None:
@@ -576,3 +580,8 @@ def test_admin_overview_reports_the_system(client: TestClient) -> None:
     assert {c["label"] for c in d["captures"]} >= {"Pre-match prices, last hour", "Matches priced in play now"}
     assert d["migration"]["status"] in ("ok", "not_available")
     assert d["errors"]["status"] in ("ok", "empty")
+
+
+def test_competition_standings_say_when_there_is_no_table(client: TestClient) -> None:
+    body = get(client, "/api/v1/competitions/99999999/standings")
+    assert body["status"] == "empty" and body["data"] is None and "table" in body["reason"]

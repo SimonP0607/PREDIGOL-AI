@@ -146,7 +146,7 @@ def models(conn: Conn) -> Envelope[ModelsOverview]:
 def picks(conn: Conn, *, limit: int, offset: int, public: bool = False) -> Envelope[PicksOverview]:
     """``public`` is the client-facing view: only picks that passed qualification, and none of the
     shadow-mode candidates or rejection detail. Shadow stays an internal instrument."""
-    from fbi.picks.rules import RULE_V1
+    from fbi.picks.rules import CURRENT_RULE
 
     rows = repo.picks(conn, limit=limit, offset=offset, qualified_only=public)
     events: dict[int, list[PickEvent]] = {}
@@ -156,14 +156,14 @@ def picks(conn: Conn, *, limit: int, offset: int, public: bool = False) -> Envel
     candidates = [] if public else [CandidateRow(**c) for c in repo.recent_candidates(conn, limit=50)]
     body = PicksOverview(
         lifecycle=Lifecycle(**{k: int(v) for k, v in repo.lifecycle(conn).items()}),
-        rule=RULE_V1.as_dict(),
+        rule=CURRENT_RULE.as_dict(),
         rejection_reasons={} if public else repo.rejection_reasons(conn),
         candidates_by_decision=repo.candidate_counts(conn),
         picks_by_mode=repo.pick_counts(conn),
         picks=section(items) if items else section(
             items, status=DataStatus.NOT_AVAILABLE,
             reason="No qualified pick: none has beaten the market in walk-forward testing yet." if public else "No shadow pick yet: one needs a real-time forecast AND a price captured after it that passes "
-                   f"{RULE_V1.version}. Publishing is disabled; every pick is shadow."),
+                   f"{CURRENT_RULE.version}. Publishing is disabled; every pick is shadow."),
         recent_candidates=section(candidates) if candidates else section(
             candidates, status=DataStatus.NOT_AVAILABLE,
             reason="No captured price has been evaluated yet: candidates appear after the first odds capture."),

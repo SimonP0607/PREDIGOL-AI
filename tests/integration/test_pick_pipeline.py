@@ -247,7 +247,7 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
         mp.undo()
         reset_cache()
     d = body["data"]
-    assert d["publishing_enabled"] is False and d["rule"]["version"] == "shadow-rule-v1"
+    assert d["publishing_enabled"] is False and d["rule"]["version"] == CURRENT_RULE.version
     assert d["lifecycle"]["settled"] == len(rows) and d["lifecycle"]["candidates"] == picks.candidates
     api_pick = next(p for p in d["picks"]["data"] if p["id"] == pick_id)
     assert api_pick["status"] == "settled" and api_pick["result_status"] == "loss"

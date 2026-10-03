@@ -14,6 +14,7 @@ from fbi.api.contracts.center import (
     AdminOverview,
     BackfillProgress,
     BackupFile,
+    CompetitionTable,
     FormMatch,
     H2HMatch,
     LineupPlayer,
@@ -32,6 +33,7 @@ from fbi.api.contracts.center import (
     PlayerSeason,
     PlayerSummary,
     StandingLine,
+    TableRow,
     TeamForm,
     TeamLineup,
     TeamStatLine,
@@ -288,3 +290,18 @@ def admin_overview(conn: Conn, *, frontend_version: str | None = None) -> Envelo
     )
     del frontend_version
     return ok(body, data_as_of=moment)
+
+
+def competition_table(conn: Conn, competition_id: int, *, season: int | None = None) -> Envelope[CompetitionTable | None]:
+    """The latest league table we hold for a competition (its newest season with one, or the season asked)."""
+    rows = fetch_all(conn, repo.COMPETITION_TABLE, {"c": competition_id, "season": season})
+    if not rows:
+        return unavailable(None, "No league table is stored for this competition"
+                                 + (f" in {season}" if season else "") + " (cups and friendlies usually have none).",
+                           status=DataStatus.EMPTY)
+    first = rows[0]
+    body = CompetitionTable(
+        competition_id=competition_id, season=int(first["season"]), snapshot_at=first["snapshot_at"],
+        rows=[TableRow(**{k: v for k, v in r.items() if k not in ("season", "snapshot_at")}) for r in rows],
+    )
+    return ok(body, data_as_of=first["snapshot_at"])
