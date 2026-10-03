@@ -81,23 +81,100 @@ def _libpq(url: str) -> tuple[list[str], dict[str, str]]:
     return args, env
 
 
-def pg_command(tool: str, url: str) -> tuple[list[str], dict[str, str]]:
-    """argv prefix and environment to run ``tool`` (pg_dump / pg_restore) against ``url``.
+@dataclass(frozen=True)
+class PgTool:
+    """How to run one pg_* tool: argv prefix and environment, and - when it runs inside the
+    database container - the docker client and the container's name."""
 
-    The host's own binary when there is one; otherwise, with FBI_PG_CONTAINER set,
+    argv: list[str]
+    env: dict[str, str]
+    docker: str | None = None
+    container: str | None = None
+
+
+def pg_tool(tool: str, url: str) -> PgTool:
+    """The host's own binary when there is one; otherwise, with FBI_PG_CONTAINER set,
     the container's, through docker - as the URL's user, over the container's
     local socket, so no password travels anywhere."""
     local = shutil.which(tool)
     if local:
         args, env = _libpq(url)
-        return [local, *args], env
+        return PgTool([local, *args], env)
     container = os.environ.get(PG_CONTAINER_ENV, "").strip()
     docker = docker_client()
     if container and docker:
         user = conninfo_to_dict(url).get("user") or "postgres"
-        return [docker, "exec", "-i", container, tool, f"--username={user}"], dict(os.environ)
+        return PgTool([docker, "exec", "-i", container, tool, f"--username={user}"], dict(os.environ),
+                      docker, container)
     raise FileNotFoundError(f"{tool} is not installed here; install the PostgreSQL client or set "
                             f"{PG_CONTAINER_ENV} to the database container's name")
+
+
+def pg_command(tool: str, url: str) -> tuple[list[str], dict[str, str]]:
+    """argv prefix and environment to run ``tool`` (pg_dump / pg_restore) against ``url``."""
+    t = pg_tool(tool, url)
+    return t.argv, t.env
+
+
+def _host_path(docker: str, path: Path) -> str:
+    """A host path as the docker client understands it: the Windows client (docker.exe,
+    reached from WSL) wants a Windows path."""
+    if docker.lower().endswith(".exe"):
+        out = subprocess.run(["wslpath", "-w", str(path)], capture_output=True, text=True, check=True,
+                             stdin=subprocess.DEVNULL)
+        return out.stdout.strip()
+    return str(path)
+
+
+def _in_container_file() -> str:
+    return f"/tmp/fbi-{secrets.token_hex(6)}.dump"
+
+
+def _drop_in_container(t: PgTool, inner: str) -> None:
+    assert t.docker and t.container
+    subprocess.run([t.docker, "exec", t.container, "rm", "-f", inner], capture_output=True,
+                   stdin=subprocess.DEVNULL)
+
+
+def run_dump(db_url: str, dest: Path) -> subprocess.CompletedProcess[bytes]:
+    """pg_dump of the URL's database into ``dest`` (custom format)."""
+    t = pg_tool("pg_dump", db_url)
+    args = ["--format=custom", "--no-owner", "--no-privileges", f"--dbname={_dbname(db_url)}"]
+    if not (t.docker and t.container):
+        with dest.open("wb") as out:
+            return subprocess.run([*t.argv, *args], env=t.env, stdin=subprocess.DEVNULL, stdout=out,
+                                  stderr=subprocess.PIPE)
+    # Written inside the container and copied out: streaming a large dump back through
+    # `docker exec` stalls under WSL interop (docker.exe) and never ends.
+    inner = _in_container_file()
+    try:
+        proc = subprocess.run([*t.argv, *args, f"--file={inner}"], env=t.env, capture_output=True,
+                              stdin=subprocess.DEVNULL)
+        if proc.returncode == 0:
+            proc = subprocess.run([t.docker, "cp", f"{t.container}:{inner}", _host_path(t.docker, dest)],
+                                  capture_output=True, stdin=subprocess.DEVNULL)
+        return proc
+    finally:
+        _drop_in_container(t, inner)
+
+
+def run_restore(admin_url: str, dbname: str, dump: Path) -> subprocess.CompletedProcess[str]:
+    """pg_restore of ``dump`` into the (existing, empty) database ``dbname``."""
+    t = pg_tool("pg_restore", admin_url)
+    args = ["--no-owner", "--no-privileges", "--exit-on-error", f"--dbname={dbname}"]
+    if not (t.docker and t.container):
+        with dump.open("rb") as fh:
+            return subprocess.run([*t.argv, *args], env=t.env, stdin=fh, capture_output=True, text=True)
+    inner = _in_container_file()
+    try:
+        proc = subprocess.run([t.docker, "cp", _host_path(t.docker, dump), f"{t.container}:{inner}"],
+                              capture_output=True, text=True, stdin=subprocess.DEVNULL)
+        if proc.returncode == 0:
+            proc = subprocess.run([*t.argv, *args, inner], env=t.env, capture_output=True, text=True,
+                                  stdin=subprocess.DEVNULL)
+        return proc
+    finally:
+        _drop_in_container(t, inner)
 
 
 def _docker_works(path: str) -> bool:
@@ -196,7 +273,6 @@ def create_backup(db_url: str, raw_root: Path, out_root: Path, *, label: str = "
     stamp = started.strftime("%Y%m%dT%H%M%SZ") + (f"-{label}" if label else "")
     folder = out_root / stamp
     folder.mkdir(parents=True, exist_ok=False)
-    dump_argv, env = pg_command("pg_dump", db_url)
     dbname = _dbname(db_url)
     with psycopg.connect(db_url) as conn:
         before = fingerprints(conn)
@@ -204,11 +280,7 @@ def create_backup(db_url: str, raw_root: Path, out_root: Path, *, label: str = "
         server = str(conn.info.parameter_status("server_version"))
         # a consistent snapshot: the dump runs in its own transaction; comparing the
         # fingerprints taken before and after tells whether anything wrote meanwhile
-        with (folder / DUMP).open("wb") as out:
-            # stdin closed: `docker exec -i` would otherwise wait on an inherited stdin that never ends
-            proc = subprocess.run([*dump_argv, "--format=custom", "--no-owner", "--no-privileges",
-                                   f"--dbname={dbname}"], env=env, stdin=subprocess.DEVNULL, stdout=out,
-                                  stderr=subprocess.PIPE)
+        proc = run_dump(db_url, folder / DUMP)
         if proc.returncode != 0:
             raise RuntimeError(f"pg_dump failed: {proc.stderr.decode(errors='replace').strip()[-300:]}")
         after = fingerprints(conn)
@@ -382,14 +454,12 @@ def restore_test(folder: Path, admin_url: str, *, keep: bool = False,
     c.append(Check("FILES: dump and raw archive match the manifest", not problems, "; ".join(problems) or "sha256 ok"))
     if problems:
         return report
-    restore_argv, env = pg_command("pg_restore", admin_url)
+    pg_tool("pg_restore", admin_url)  # fail before creating anything when there is no pg_restore
     with psycopg.connect(admin_url, autocommit=True) as admin:
         admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(scratch)))
     work = Path(tempfile.mkdtemp(prefix="fbi-restore-"))
     try:
-        with (folder / DUMP).open("rb") as dump:
-            proc = subprocess.run([*restore_argv, "--no-owner", "--no-privileges", "--exit-on-error",
-                                   f"--dbname={scratch}"], env=env, stdin=dump, capture_output=True, text=True)
+        proc = run_restore(admin_url, scratch, folder / DUMP)
         c.append(Check("RESTORE: pg_restore into a new, empty database", proc.returncode == 0,
                        proc.stderr.strip()[-300:] or f"into {scratch}"))
         if proc.returncode != 0:

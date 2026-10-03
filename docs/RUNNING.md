@@ -43,3 +43,13 @@ public deployment: [rebuild/PREDIGOL_ACCOUNTS_AND_EXPERIENCES.md](rebuild/PREDIG
 shutdown: quit Docker Desktop, move the stale socket files out of
 `%LOCALAPPDATA%\Docker\run` and `%LOCALAPPDATA%\docker-secrets-engine` (from WSL `mv` works where
 Windows refuses), start it again. Never use "Reset to factory defaults": it deletes the database volume.
+
+## `docker` inside WSL says "could not be found in this WSL 2 distro"
+
+Docker Desktop's WSL integration is off for this distro (it can switch itself off after a
+restart). The app keeps working - PostgreSQL is reached on localhost:5432 - and
+`scripts.backup` falls back to the Windows client (`docker.exe`), dumping inside the container
+and copying the file out with `docker cp`. `scripts/dev-up --migrate` refuses to migrate in this
+state (its backup step fails, so nothing is changed) and `scripts/dev-status` prints the notice
+instead of the containers. To fix: Docker Desktop -> Settings -> Resources -> WSL integration ->
+enable the Ubuntu distro -> Apply & restart.

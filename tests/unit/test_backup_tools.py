@@ -3,6 +3,8 @@ through docker - and in neither case does the password reach a command line."""
 
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -47,6 +49,66 @@ def test_when_no_docker_client_answers_the_first_is_kept_for_its_error(monkeypat
     monkeypatch.setenv(backup.PG_CONTAINER_ENV, "fbi-postgres")
     argv, _ = backup.pg_command("pg_dump", URL)
     assert argv[0] == "/usr/bin/docker"
+
+
+class _Calls:
+    """Records every subprocess.run of the backup module and answers like a working docker."""
+
+    def __init__(self) -> None:
+        self.argv: list[list[str]] = []
+
+    def __call__(self, argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[Any]:
+        self.argv.append(list(argv))
+        text = bool(kwargs.get("text"))
+        out: Any = "C:\\Users\\me\\backup\\db.dump\n" if argv[0] == "wslpath" else ("" if text else b"")
+        return subprocess.CompletedProcess(argv, 0, out, "" if text else b"")
+
+
+def _container(monkeypatch: pytest.MonkeyPatch, docker: str) -> _Calls:
+    monkeypatch.setattr("fbi.ops.backup.shutil.which", lambda name: docker if name.startswith("docker") else None)
+    monkeypatch.setattr("fbi.ops.backup._docker_works", lambda path: True)
+    monkeypatch.setenv(backup.PG_CONTAINER_ENV, "fbi-postgres")
+    calls = _Calls()
+    monkeypatch.setattr("fbi.ops.backup.subprocess.run", calls)
+    return calls
+
+
+def test_a_container_dump_is_written_inside_and_copied_out(monkeypatch: pytest.MonkeyPatch,
+                                                           tmp_path: Path) -> None:
+    """Streaming a multi-GB dump back through `docker exec` stalls under WSL interop and
+    never ends; the dump goes to a file in the container and `docker cp` brings it out."""
+    calls = _container(monkeypatch, "/usr/bin/docker")
+    proc = backup.run_dump(URL, tmp_path / "db.dump")
+    assert proc.returncode == 0
+    dump, copy, drop = calls.argv
+    assert dump[:5] == ["/usr/bin/docker", "exec", "-i", "fbi-postgres", "pg_dump"]
+    inner = next(a for a in dump if a.startswith("--file=")).removeprefix("--file=")
+    assert inner.startswith("/tmp/") and "--dbname=fbi" in dump
+    assert copy == ["/usr/bin/docker", "cp", f"fbi-postgres:{inner}", str(tmp_path / "db.dump")]
+    assert drop == ["/usr/bin/docker", "exec", "fbi-postgres", "rm", "-f", inner]
+    assert not any("s3cret" in a for argv in calls.argv for a in argv)
+
+
+def test_the_windows_docker_client_gets_a_windows_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    calls = _container(monkeypatch, "/mnt/c/Docker/docker.exe")
+    backup.run_dump(URL, tmp_path / "db.dump")
+    assert ["wslpath", "-w", str(tmp_path / "db.dump")] in calls.argv
+    copy = next(a for a in calls.argv if a[1:2] == ["cp"])
+    assert copy[-1] == "C:\\Users\\me\\backup\\db.dump"
+
+
+def test_a_container_restore_copies_the_dump_in_first(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    calls = _container(monkeypatch, "/usr/bin/docker")
+    dump = tmp_path / "db.dump"
+    dump.write_bytes(b"PGDMP")
+    proc = backup.run_restore(URL, "fbi_restore_x", dump)
+    assert proc.returncode == 0
+    copy, restore, drop = calls.argv
+    inner = copy[-1].removeprefix("fbi-postgres:")
+    assert copy == ["/usr/bin/docker", "cp", str(dump), f"fbi-postgres:{inner}"]
+    assert restore[:5] == ["/usr/bin/docker", "exec", "-i", "fbi-postgres", "pg_restore"]
+    assert restore[-1] == inner and "--dbname=fbi_restore_x" in restore
+    assert drop[-1] == inner
 
 
 def test_no_tools_and_no_container_is_a_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
