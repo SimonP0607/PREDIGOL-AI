@@ -1,1 +1,316 @@
-{}
+{
+  "back": "Partidos",
+  "title": "{home} vs {away}",
+  "notFound": {
+    "title": "Partido no encontrado",
+    "body": "Puede que el enlace no sea correcto o que el partido ya no esté disponible.",
+    "action": "Ver partidos"
+  },
+  "tabs": {
+    "label": "Secciones del partido",
+    "summary": "Resumen",
+    "stats": "Estadísticas",
+    "markets": "Mercados",
+    "lineups": "Alineaciones",
+    "advanced": "Avanzado / Auditoría"
+  },
+  "round": {
+    "matchday": "Jornada {n}",
+    "group": "Grupo {name}",
+    "league": "Liga {name}",
+    "qualifying": "Ronda previa {n}",
+    "preliminary": "Ronda preliminar {n}",
+    "round": "Ronda {n}",
+    "fraction": "1/{n} de final",
+    "stage": {
+      "regular_season": "Fase regular",
+      "group_stage": "Fase de grupos",
+      "club_friendlies": "Amistosos de clubes",
+      "friendly_international": "Amistoso internacional",
+      "final": "Final",
+      "semi_finals": "Semifinales",
+      "quarter_finals": "Cuartos de final",
+      "round_of_16": "Octavos de final",
+      "round_of_32": "Dieciseisavos de final",
+      "play_offs": "Play-offs",
+      "relegation_round": "Ronda por la permanencia",
+      "championship_round": "Ronda por el título",
+      "qualifying_round": "Ronda previa",
+      "preliminary_round": "Ronda preliminar",
+      "3rd_place_final": "Tercer puesto"
+    }
+  },
+  "header": {
+    "noScore": "Sin marcador",
+    "scoreAria": "Marcador: {home} {homeGoals}, {away} {awayGoals}",
+    "timeTbd": "Hora por confirmar",
+    "startsIn": "Empieza {when}",
+    "afterPenalties": "Final · penales",
+    "afterExtraTime": "Final · tiempo extra",
+    "penalties": "Penales {score}",
+    "halfTime": "Descanso {score}",
+    "scorers": "Goles de {team}"
+  },
+  "note": {
+    "noData": "Sin datos todavía",
+    "notAvailable": "No disponible para este partido"
+  },
+  "picks": {
+    "title": "Picks para este partido",
+    "none": "No hay picks calificados para este partido.",
+    "noneShadow": "No hay picks shadow para este partido.",
+    "showAll": "Ver los {count} picks",
+    "showLess": "Ver menos"
+  },
+  "prices": {
+    "title": "Mejores cuotas",
+    "none": "Todavía no hay cuotas para este partido.",
+    "noPrice": "Sin precio",
+    "ou25": "Más/Menos {line} goles",
+    "bestOf_one": "Mejor precio entre {count} casa",
+    "bestOf_other": "Mejor precio entre {count} casas",
+    "allMarkets": "Todos los mercados"
+  },
+  "markets": {
+    "books_one": "{count} casa",
+    "books_other": "{count} casas",
+    "line": "Línea",
+    "over": "Más de",
+    "under": "Menos de",
+    "mainLine": "línea principal",
+    "mainLineHelp": "Línea principal: la más equilibrada entre las dos opciones",
+    "mainLines": "Ver solo las principales",
+    "allLines": "Ver todas las líneas ({count})",
+    "live": "Cuotas en vivo",
+    "liveNote": "Precio en vivo de referencia. «Retirada»: sin precio en este momento. Candado: bloqueada por un momento.",
+    "prematch": "Antes del partido",
+    "prematchPlayed": "Cuotas antes del inicio",
+    "lastCapture": "Última actualización: {when}",
+    "bestHelp": "El mejor precio de cada opción entre todas las casas que la ofrecen.",
+    "none": "Todavía no hay cuotas para este partido.",
+    "movement": "Ver movimiento en Cuotas"
+  },
+  "liveOdds": {
+    "title": "Cuotas en vivo",
+    "suspended": "Suspendida",
+    "suspendedHelp": "Bloqueada por un momento, normalmente tras una jugada de peligro.",
+    "withdrawn": "Retirada",
+    "withdrawnHelp": "La casa ha retirado esta cuota por ahora.",
+    "atMinute": "Min. {minute}'",
+    "none": "No hay cuotas en vivo para este partido ahora mismo.",
+    "ouMain": "Más/Menos {line} goles",
+    "note": "Se actualizan durante el partido.",
+    "more": "Más cuotas en vivo"
+  },
+  "form": {
+    "title": "Forma reciente",
+    "lastFive": "Últimos 5",
+    "newestRight": "El más reciente, a la derecha",
+    "goals": "Goles: {scored} a favor · {conceded} en contra",
+    "aria": "Últimos resultados: {results}",
+    "chipTitle": "{result} · {date} · {opponent} ({venue}) {score}",
+    "long": {
+      "W": "Victoria",
+      "D": "Empate",
+      "L": "Derrota"
+    },
+    "short": {
+      "W": "G",
+      "D": "E",
+      "L": "P"
+    },
+    "venue": {
+      "H": "local",
+      "A": "visitante"
+    }
+  },
+  "standings": {
+    "title": "Tabla de posiciones",
+    "rank": "#",
+    "rankLong": "Posición",
+    "team": "Equipo",
+    "played": "PJ",
+    "playedLong": "Partidos jugados",
+    "goalDiff": "DG",
+    "goalDiffLong": "Diferencia de gol",
+    "points": "Pts",
+    "pointsLong": "Puntos",
+    "includesMatch": "La tabla ya incluye este partido."
+  },
+  "h2h": {
+    "title": "Enfrentamientos directos",
+    "wins": "Victorias {team}",
+    "draws": "Empates",
+    "meetings_one": "{count} partido",
+    "meetings_other": "{count} partidos"
+  },
+  "absences": {
+    "title": "Bajas",
+    "count_one": "{count} baja",
+    "count_other": "{count} bajas",
+    "unknownTeam": "Equipo sin identificar",
+    "kind": {
+      "missing": "Baja",
+      "questionable": "Duda",
+      "other": "Ausente"
+    },
+    "reason": {
+      "injury": "Lesión",
+      "suspension": "Sanción",
+      "illness": "Enfermedad",
+      "other": "Otro motivo"
+    }
+  },
+  "lineups": {
+    "title": "Alineaciones",
+    "unavailable": "Alineaciones aún no disponibles",
+    "hint": "Suelen publicarse una hora antes del inicio.",
+    "confirmed": "Alineaciones confirmadas",
+    "view": "Ver alineaciones",
+    "coach": "DT: {name}",
+    "starters": "Titulares ({count})",
+    "bench": "Suplentes ({count})",
+    "noBench": "Sin suplentes registrados.",
+    "pitchLabel": "Formaciones: {home} {homeFormation}, {away} {awayFormation}",
+    "position": {
+      "G": "ARQ",
+      "D": "DEF",
+      "M": "MED",
+      "F": "DEL"
+    }
+  },
+  "events": {
+    "title": "Eventos del partido",
+    "newestFirst": "Lo más reciente arriba",
+    "goal": "Gol",
+    "assist": "Asistencia: {name}",
+    "penalty": "Gol de penal",
+    "ownGoal": "Autogol",
+    "missedPenalty": "Penal fallado",
+    "yellow": "Tarjeta amarilla",
+    "red": "Tarjeta roja",
+    "secondYellow": "Doble amarilla",
+    "var": "VAR",
+    "varReview": "Revisión del VAR",
+    "sub": "Cambio",
+    "subWith": "Cambio con {name}",
+    "subIn": "Entra",
+    "subOut": "Sale",
+    "unknownPlayer": "Jugador sin identificar",
+    "penaltyShort": "(pen.)",
+    "ownGoalShort": "(autogol)",
+    "divider": {
+      "ht": "Descanso",
+      "et": "Tiempo extra",
+      "ft": "Final"
+    },
+    "comment": {
+      "foul": "Falta",
+      "argument": "Reclamos",
+      "time_wasting": "Pérdida de tiempo",
+      "handball": "Mano",
+      "unsportsmanlike_conduct": "Conducta antideportiva",
+      "simulation": "Simulación",
+      "roughing": "Juego brusco",
+      "violent_conduct": "Conducta violenta",
+      "serious_foul_play": "Juego brusco grave",
+      "professional_foul_last_man": "Último hombre",
+      "off_the_ball_foul": "Falta sin balón",
+      "holding": "Agarrón",
+      "tripping": "Zancadilla",
+      "pushing": "Empujón",
+      "elbowing": "Codazo",
+      "persistent_fouling": "Faltas reiteradas",
+      "delay_of_game": "Retrasar el juego"
+    },
+    "varDetail": {
+      "goal_cancelled": "Gol anulado",
+      "goal_disallowed_offside": "Gol anulado por fuera de lugar",
+      "goal_disallowed_handball": "Gol anulado por mano",
+      "goal_disallowed_foul": "Gol anulado por falta",
+      "goal_confirmed": "Gol confirmado",
+      "penalty_confirmed": "Penal confirmado",
+      "penalty_cancelled": "Penal anulado",
+      "card_upgrade": "Tarjeta cambiada",
+      "red_card_cancelled": "Roja anulada"
+    }
+  },
+  "stats": {
+    "title": "Estadísticas del partido",
+    "key": "Estadísticas clave",
+    "all": "Ver todas",
+    "notStarted": "Las estadísticas del partido aparecerán cuando empiece. Mientras tanto, así llegan los dos equipos.",
+    "season": "Temporada",
+    "recent": "Últimos 5 partidos",
+    "position": "{rank}.º en la tabla",
+    "label": {
+      "possession": "Posesión",
+      "xg": "Goles esperados (xG)",
+      "shots": "Remates totales",
+      "shotsOnTarget": "Remates al arco",
+      "shotsOffTarget": "Remates desviados",
+      "shotsBlocked": "Remates bloqueados",
+      "shotsInsideBox": "Remates dentro del área",
+      "shotsOutsideBox": "Remates fuera del área",
+      "corners": "Tiros de esquina",
+      "fouls": "Faltas",
+      "offsides": "Fueras de lugar",
+      "yellowCards": "Tarjetas amarillas",
+      "redCards": "Tarjetas rojas",
+      "saves": "Atajadas",
+      "passes": "Pases",
+      "passesAccurate": "Pases acertados",
+      "passAccuracy": "Precisión de pase",
+      "pointsPerGame": "Puntos por partido",
+      "goalsForPerGame": "Goles a favor por partido",
+      "goalsAgainstPerGame": "Goles en contra por partido",
+      "wins": "Victorias",
+      "draws": "Empates",
+      "losses": "Derrotas",
+      "recentGoalsFor": "Goles a favor",
+      "recentGoalsAgainst": "Goles en contra",
+      "recentWins": "Victorias"
+    }
+  },
+  "players": {
+    "title": "Mejores valorados",
+    "rating": "Valoración del partido (0–10)",
+    "minutes_one": "{count} min",
+    "minutes_other": "{count} min",
+    "goals_one": "{count} gol",
+    "goals_other": "{count} goles",
+    "assists_one": "{count} asistencia",
+    "assists_other": "{count} asistencias",
+    "saves_one": "{count} atajada",
+    "saves_other": "{count} atajadas",
+    "keyPasses_one": "{count} pase clave",
+    "keyPasses_other": "{count} pases clave",
+    "none": "Todavía no hay valoraciones de jugadores.",
+    "best": "Mejor valorado",
+    "showAll": "Ver todos ({count})",
+    "showLess": "Ver menos"
+  },
+  "result": {
+    "title": "Resultado",
+    "pending": "El resultado aún no está confirmado.",
+    "fullTime": "Final",
+    "halfTime": "Descanso",
+    "extraTime": "Tiempo extra",
+    "penalties": "Penales",
+    "totalGoals": "Goles totales",
+    "btts": "Ambos marcaron"
+  },
+  "context": {
+    "title": "Antes del partido",
+    "subtitle": "Forma, tabla y enfrentamientos directos"
+  },
+  "notPlayed": {
+    "postponed": "Partido aplazado",
+    "cancelled": "Partido cancelado",
+    "postponedBody": "La nueva fecha aparecerá aquí cuando se confirme.",
+    "cancelledBody": "Este partido no se jugará."
+  },
+  "advanced": {
+    "note": "Solo administradores: modelos y predicciones, capturas, linaje y auditoría de este partido."
+  }
+}

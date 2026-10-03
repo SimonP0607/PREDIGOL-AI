@@ -1,0 +1,424 @@
+/** The match in context: recent form, the table, head to head, absences, line-up status. */
+import { Link } from "@tanstack/react-router";
+import { CheckCircle2, Shirt, Swords, TrendingUp, Trophy, UserX } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
+import { fmtLine } from "@/lib/i18n/format";
+import { formatDateYear } from "@/lib/time";
+import type { TeamRef } from "@/lib/api/v1/types";
+import type { Absence, H2HMatch, Side, StandingLine } from "@/lib/api/v1/types_center";
+import { TeamName } from "@/components/football/Logos";
+import { ErrorState, SkeletonBlock } from "@/product/shared/States";
+import type { MatchCtx } from "./context";
+import { absenceKind, absenceReason, h2hSummary, lastFive } from "./model";
+import { Block, CenterSection, FormChips, MoreButton, PlayerName, SectionNote } from "./ui";
+
+const SIDES: readonly Side[] = ["home", "away"];
+
+function teamOf(ctx: MatchCtx, side: Side): TeamRef {
+  return side === "home" ? ctx.match.home : ctx.match.away;
+}
+
+// ── Form ────────────────────────────────────────────────────────────────────
+
+function FormBody({ ctx }: { ctx: MatchCtx }) {
+  const { center } = ctx;
+  if (center.loading) return <SkeletonBlock className="h-24" />;
+  if (center.error)
+    return <ErrorState error={center.error} onRetry={center.retry} className="py-5" />;
+  const c = center.data;
+  const forms = c?.form.status === "ok" ? c.form.data : [];
+  const table = c?.standings.status === "ok" ? c.standings.data : [];
+  const rows = SIDES.map((side) => ({
+    side,
+    chips: lastFive(
+      forms.find((f) => f.side === side),
+      table.find((s) => s.side === side),
+    ),
+  }));
+  if (rows.every((r) => r.chips.length === 0)) {
+    return <SectionNote status={c ? c.form.status : (center.status ?? "not_available")} />;
+  }
+  return (
+    <div>
+      <ul className="divide-y divide-border/60">
+        {rows.map(({ side, chips }) => {
+          const team = teamOf(ctx, side);
+          const withGoals = chips.filter((x) => x.goalsFor !== null && x.goalsAgainst !== null);
+          const gf = withGoals.reduce((n, x) => n + (x.goalsFor ?? 0), 0);
+          const ga = withGoals.reduce((n, x) => n + (x.goalsAgainst ?? 0), 0);
+          return (
+            <li key={side} className="flex items-center justify-between gap-3 py-2.5 first:pt-0">
+              <div className="min-w-0">
+                <TeamName
+                  name={team.name}
+                  logo={team.logo_url}
+                  size={22}
+                  strong
+                  className="text-sm"
+                />
+                {withGoals.length > 0 ? (
+                  <p className="mt-0.5 pl-[30px] text-caption text-muted-foreground">
+                    {t("match.form.goals", { scored: gf, conceded: ga })}
+                  </p>
+                ) : null}
+              </div>
+              {chips.length > 0 ? (
+                <FormChips chips={chips} className="shrink-0" />
+              ) : (
+                <span className="text-caption text-subtle-foreground">
+                  {t("match.note.noData")}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-1 text-right text-caption text-subtle-foreground">
+        {t("match.form.newestRight")}
+      </p>
+    </div>
+  );
+}
+
+export function FormBlock({ ctx }: { ctx: MatchCtx }) {
+  return (
+    <Block
+      title={t("match.form.title")}
+      icon={<TrendingUp />}
+      right={
+        <span className="text-caption text-subtle-foreground">{t("match.form.lastFive")}</span>
+      }
+    >
+      <FormBody ctx={ctx} />
+    </Block>
+  );
+}
+
+// ── Table ───────────────────────────────────────────────────────────────────
+
+function StandingsTable({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) {
+  const sorted = [...rows].sort((a, b) => a.rank - b.rank);
+  const after = rows.some((r) => !r.before_kickoff);
+  return (
+    <>
+      <table className="w-full table-fixed text-sm">
+        <thead>
+          <tr className="text-caption text-subtle-foreground">
+            <th scope="col" className="w-8 pb-1.5 text-left font-medium">
+              <abbr title={t("match.standings.rankLong")} className="no-underline">
+                {t("match.standings.rank")}
+              </abbr>
+            </th>
+            <th scope="col" className="pb-1.5 text-left font-medium">
+              {t("match.standings.team")}
+            </th>
+            <th scope="col" className="w-9 pb-1.5 text-right font-medium">
+              <abbr title={t("match.standings.playedLong")} className="no-underline">
+                {t("match.standings.played")}
+              </abbr>
+            </th>
+            <th scope="col" className="w-11 pb-1.5 text-right font-medium">
+              <abbr title={t("match.standings.goalDiffLong")} className="no-underline">
+                {t("match.standings.goalDiff")}
+              </abbr>
+            </th>
+            <th scope="col" className="w-10 pb-1.5 text-right font-medium">
+              <abbr title={t("match.standings.pointsLong")} className="no-underline">
+                {t("match.standings.points")}
+              </abbr>
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/60">
+          {sorted.map((s) => {
+            const team = teamOf(ctx, s.side);
+            return (
+              <tr key={s.side}>
+                <td className="numeric py-2 text-muted-foreground">{s.rank}</td>
+                <td className="py-2 pr-2">
+                  <TeamName name={team.name} logo={team.logo_url} size={20} className="min-w-0" />
+                </td>
+                <td className="numeric py-2 text-right text-muted-foreground">{s.played}</td>
+                <td className="numeric py-2 text-right">
+                  {fmtLine(s.goals_for - s.goals_against, true)}
+                </td>
+                <td className="numeric py-2 text-right font-semibold">{s.points}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {after ? (
+        <p className="mt-2 text-caption text-subtle-foreground">
+          {t("match.standings.includesMatch")}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+export function StandingsBlock({ ctx }: { ctx: MatchCtx }) {
+  return (
+    <Block title={t("match.standings.title")} icon={<Trophy />}>
+      <CenterSection center={ctx.center} pick={(c) => c.standings}>
+        {(rows) => <StandingsTable ctx={ctx} rows={rows} />}
+      </CenterSection>
+    </Block>
+  );
+}
+
+// ── Head to head ────────────────────────────────────────────────────────────
+
+function H2HBody({ ctx, rows }: { ctx: MatchCtx; rows: H2HMatch[] }) {
+  const { home, away } = ctx.match;
+  const recent = [...rows]
+    .sort((a, b) => Date.parse(b.kickoff_at) - Date.parse(a.kickoff_at))
+    .slice(0, 5);
+  const sum = h2hSummary(rows, home.name, away.name);
+  const pct = (n: number) => (sum.counted > 0 ? (n / sum.counted) * 100 : 0);
+  return (
+    <div className="space-y-3">
+      {sum.counted > 0 ? (
+        <div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {[
+              {
+                n: sum.homeWins,
+                label: t("match.h2h.wins", { team: home.name }),
+                tone: "text-primary",
+              },
+              { n: sum.draws, label: t("match.h2h.draws"), tone: "text-muted-foreground" },
+              {
+                n: sum.awayWins,
+                label: t("match.h2h.wins", { team: away.name }),
+                tone: "text-info",
+              },
+            ].map((x) => (
+              <div key={x.label} className="min-w-0">
+                <div className={cn("numeric text-xl font-semibold", x.tone)}>{x.n}</div>
+                <div className="truncate text-caption text-muted-foreground">{x.label}</div>
+              </div>
+            ))}
+          </div>
+          <div aria-hidden className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-muted">
+            <span className="h-full bg-primary" style={{ width: `${pct(sum.homeWins)}%` }} />
+            <span
+              className="h-full bg-subtle-foreground/60"
+              style={{ width: `${pct(sum.draws)}%` }}
+            />
+            <span className="h-full bg-info" style={{ width: `${pct(sum.awayWins)}%` }} />
+          </div>
+        </div>
+      ) : null}
+      <ul className="divide-y divide-border/60">
+        {recent.map((r) => (
+          <li key={r.fixture_id}>
+            <Link
+              to="/matches/$fixtureId"
+              params={{ fixtureId: String(r.fixture_id) }}
+              className="block rounded-md py-2 transition-colors hover:bg-elevated/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-sm">
+                <span
+                  className={cn(
+                    "truncate text-right",
+                    r.goals_home > r.goals_away ? "font-semibold" : "text-muted-foreground",
+                  )}
+                >
+                  {r.home}
+                </span>
+                <span className="numeric rounded-md bg-elevated px-2 py-0.5 text-xs font-semibold">
+                  {r.goals_home}–{r.goals_away}
+                </span>
+                <span
+                  className={cn(
+                    "truncate",
+                    r.goals_away > r.goals_home ? "font-semibold" : "text-muted-foreground",
+                  )}
+                >
+                  {r.away}
+                </span>
+              </div>
+              <div className="mt-0.5 truncate text-center text-caption text-subtle-foreground">
+                {formatDateYear(r.kickoff_at)} · {r.competition}
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function H2HBlock({ ctx }: { ctx: MatchCtx }) {
+  const rows = ctx.center.data?.h2h?.status === "ok" ? ctx.center.data.h2h.data : [];
+  return (
+    <Block
+      title={t("match.h2h.title")}
+      icon={<Swords />}
+      right={
+        rows.length > 0 ? (
+          <span className="text-caption text-subtle-foreground">
+            {t("match.h2h.meetings", { count: rows.length })}
+          </span>
+        ) : null
+      }
+    >
+      <CenterSection
+        center={ctx.center}
+        pick={(c) => c.h2h ?? { status: "not_available" as const, data: [], reason: null }}
+      >
+        {(data) => <H2HBody ctx={ctx} rows={data} />}
+      </CenterSection>
+    </Block>
+  );
+}
+
+// ── Absences ────────────────────────────────────────────────────────────────
+
+const KIND_TONE = {
+  missing: "border-negative/35 bg-negative-soft text-negative",
+  questionable: "border-warning/40 bg-warning-soft text-warning",
+  other: "border-border-strong bg-elevated text-muted-foreground",
+} as const;
+
+function AbsenceList({ ctx, rows }: { ctx: MatchCtx; rows: Absence[] }) {
+  const groups: Array<{ side: Side | null; rows: Absence[] }> = [
+    { side: "home", rows: rows.filter((a) => a.side === "home") },
+    { side: "away", rows: rows.filter((a) => a.side === "away") },
+    { side: null, rows: rows.filter((a) => a.side === null) },
+  ].filter((g) => g.rows.length > 0) as Array<{ side: Side | null; rows: Absence[] }>;
+  return (
+    <div className="space-y-3">
+      {groups.map((g) => {
+        const team = g.side ? teamOf(ctx, g.side) : null;
+        return (
+          <div key={g.side ?? "unknown"}>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              {team ? (
+                <TeamName
+                  name={team.name}
+                  logo={team.logo_url}
+                  size={18}
+                  strong
+                  className="text-xs"
+                />
+              ) : (
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {t("match.absences.unknownTeam")}
+                </span>
+              )}
+              <span className="numeric text-caption text-subtle-foreground">{g.rows.length}</span>
+            </div>
+            <ul className="divide-y divide-border/60">
+              {g.rows.map((a, i) => {
+                const kind = absenceKind(a);
+                return (
+                  <li
+                    key={`${a.player_id ?? a.player ?? "p"}-${i}`}
+                    className="flex items-center justify-between gap-2 py-1.5 text-sm"
+                  >
+                    <PlayerName
+                      name={a.player}
+                      id={a.player_id}
+                      admin={ctx.showAdmin}
+                      className="min-w-0 truncate"
+                    />
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      <span
+                        className="text-caption text-muted-foreground"
+                        title={a.reason ?? undefined}
+                      >
+                        {t(`match.absences.reason.${absenceReason(a.reason)}`)}
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full border px-1.5 py-px text-[0.65rem] font-semibold",
+                          KIND_TONE[kind],
+                        )}
+                      >
+                        {t(`match.absences.kind.${kind}`)}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function AbsencesBlock({ ctx }: { ctx: MatchCtx }) {
+  const n = ctx.center.data?.absences.status === "ok" ? ctx.center.data.absences.data.length : 0;
+  return (
+    <Block
+      title={t("match.absences.title")}
+      icon={<UserX />}
+      right={
+        n > 0 ? (
+          <span className="text-caption text-subtle-foreground">
+            {t("match.absences.count", { count: n })}
+          </span>
+        ) : null
+      }
+    >
+      <CenterSection center={ctx.center} pick={(c) => c.absences}>
+        {(rows) => <AbsenceList ctx={ctx} rows={rows} />}
+      </CenterSection>
+    </Block>
+  );
+}
+
+// ── Line-ups teaser ─────────────────────────────────────────────────────────
+
+export function LineupsTeaser({ ctx }: { ctx: MatchCtx }) {
+  return (
+    <Block title={t("match.lineups.title")} icon={<Shirt />}>
+      <CenterSection
+        center={ctx.center}
+        pick={(c) => c.lineups}
+        empty={() => (
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">{t("match.lineups.unavailable")}</p>
+            {ctx.phase === "scheduled" ? (
+              <p className="text-caption text-subtle-foreground">{t("match.lineups.hint")}</p>
+            ) : null}
+          </div>
+        )}
+      >
+        {(lineups) => (
+          <div className="space-y-2.5">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-positive">
+              <CheckCircle2 aria-hidden className="h-4 w-4" />
+              {t("match.lineups.confirmed")}
+            </p>
+            <ul className="space-y-1.5">
+              {SIDES.map((side) => {
+                const team = teamOf(ctx, side);
+                const l = lineups.find((x) => x.side === side);
+                return (
+                  <li key={side} className="flex items-center justify-between gap-2">
+                    <TeamName
+                      name={team.name}
+                      logo={team.logo_url}
+                      size={20}
+                      className="min-w-0 text-sm"
+                    />
+                    <span className="numeric shrink-0 rounded-md border border-border-strong bg-elevated px-1.5 py-0.5 text-xs">
+                      {l?.formation ?? "—"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <MoreButton onClick={() => ctx.goTo("lineups")}>{t("match.lineups.view")}</MoreButton>
+          </div>
+        )}
+      </CenterSection>
+    </Block>
+  );
+}

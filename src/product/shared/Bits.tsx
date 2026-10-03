@@ -157,23 +157,37 @@ export function RiskBadge({
   );
 }
 
-/** Shown on anything built from the admin's shadow preview: never a recommendation. */
-export function ShadowBadge({ className }: { className?: string | undefined }) {
+/** Shown on anything built from the admin's shadow preview: never a recommendation.
+ *  `compact`: icon only below the `sm` breakpoint, so it never squeezes a card's header. */
+export function ShadowBadge({
+  className,
+  compact = false,
+}: {
+  className?: string | undefined;
+  compact?: boolean;
+}) {
   return (
     <span
       title={t("common.source.shadowPreview")}
+      aria-label={t("common.source.shadowPreview")}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-info/40 bg-info-soft px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-info",
+        "inline-flex shrink-0 items-center gap-1 rounded-full border border-info/40 bg-info-soft px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-info",
+        compact && "px-1.5 sm:px-2",
         className,
       )}
     >
       <FlaskConical aria-hidden className="h-3 w-3" />
-      {t("common.source.shadowPreviewShort")}
+      <span className={cn(compact && "hidden sm:inline")}>
+        {t("common.source.shadowPreviewShort")}
+      </span>
     </span>
   );
 }
 
 const LIVE_STATUSES = new Set(["1H", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP"]);
+/** The odds feed names states in words; the fixture feed in short codes. Both mean the same. */
+const HALF_TIME = new Set(["HT", "Halftime", "Half Time", "Break Time", "BT"]);
+const NOT_STARTED = new Set(["NS", "TBD", "Not Started"]);
 
 /** 67' with a pulsing dot while live; HT at half-time. */
 export function LiveMinute({
@@ -187,10 +201,11 @@ export function LiveMinute({
   extra?: number | null | undefined;
   className?: string | undefined;
 }) {
-  const label =
-    status === "HT"
-      ? t("common.status.halftime")
-      : elapsed !== null && elapsed !== undefined
+  const label = HALF_TIME.has(status)
+    ? t("common.status.halftime")
+    : NOT_STARTED.has(status)
+      ? t("common.status.scheduled")
+      : elapsed !== null && elapsed !== undefined && elapsed > 0
         ? `${elapsed}${extra ? `+${extra}` : ""}'`
         : LIVE_STATUSES.has(status)
           ? t("common.status.live")

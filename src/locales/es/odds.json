@@ -1,1 +1,54 @@
-{}
+{
+  "subtitle": "El mejor precio de cada selección, comparado con su precio justo.",
+  "marketsLabel": "Mercado",
+  "tabs": {
+    "1X2": "1X2",
+    "OU": "Goles (Más/Menos)",
+    "BTTS": "Ambos marcan",
+    "AH": "Hándicap asiático",
+    "DC": "Doble oportunidad"
+  },
+  "window": {
+    "label": "Empiezan en",
+    "hours": "{count}\u00a0h"
+  },
+  "pricesUpdated": "Precios actualizados {when}",
+  "highlights": {
+    "title": "Mejores precios frente al mercado",
+    "subtitle": "Cuotas que ahora mismo pagan más que el precio justo.",
+    "vsFair": "{edge} vs justo"
+  },
+  "value": {
+    "title": "Oportunidades de valor",
+    "subtitle": "Selecciones calificadas con valor al mejor precio de ahora.",
+    "seeAll": "Ver picks",
+    "none": "Ahora mismo no hay oportunidades de valor calificadas en este mercado."
+  },
+  "board": {
+    "summary_one": "{count} partido en las próximas {hours}\u00a0h",
+    "summary_other": "{count} partidos en las próximas {hours}\u00a0h",
+    "line": "Línea",
+    "fair": "justa {odds}",
+    "noPrice": "Sin precio",
+    "bookmakers_one": "Mejor precio entre {count} casa",
+    "bookmakers_other": "Mejor precio entre {count} casas",
+    "edgeHelp": "Cuánto paga la mejor cuota por encima (o por debajo) del precio justo",
+    "cell": "{selection}: {odds} en {bookmaker}. Cuota justa {fair}; {edge} frente al precio justo.",
+    "cellNoPrice": "{selection}: sin precio.",
+    "bestSr": "Mejor valor del partido.",
+    "emptyTitle": "No hay partidos con cuotas en esta ventana",
+    "emptyBody": "Cuando las casas publiquen precios para los próximos partidos, aparecerán aquí.",
+    "widen": "Ver las próximas {hours}\u00a0h"
+  },
+  "movement": {
+    "toggle": "Movimiento",
+    "toggleLabel": "Movimiento: {match}",
+    "title": "Movimiento del mejor precio",
+    "help": "La mejor cuota disponible en cada actualización, antes del partido.",
+    "empty": "Todavía no hay suficientes actualizaciones para ver el movimiento.",
+    "from": "desde {odds}",
+    "time": "Hora"
+  },
+  "openMatch": "Abrir partido",
+  "openMatchLabel": "Abrir partido: {match}"
+}

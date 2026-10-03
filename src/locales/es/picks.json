@@ -1,1 +1,34 @@
-{}
+{
+  "subtitle": "Selecciones con valor frente al mercado, al mejor precio disponible ahora.",
+  "top": {
+    "title": "Top 5 hoy",
+    "subtitle": "Las selecciones con más valor que empiezan en las próximas 24\u00a0h.",
+    "emptyBody": "Solo mostramos selecciones de modelos que han batido al mercado, sin el margen de las casas, en su propio backtest. Nunca rellenamos la lista.",
+    "partial_one": "Hoy solo {count} selección cumple el criterio. No rellenamos la lista.",
+    "partial_other": "Hoy solo {count} selecciones cumplen el criterio. No rellenamos la lista."
+  },
+  "all": {
+    "title": "Todas las selecciones calificadas",
+    "subtitle": "Filtra por competición, mercado, cuota y hora de inicio.",
+    "emptyBody": "Cuando haya selecciones calificadas en esta ventana de tiempo, aparecerán aquí.",
+    "widen": "Ver los próximos {days}\u00a0días"
+  },
+  "count_one": "{count} selección",
+  "count_other": "{count} selecciones",
+  "pricesUpdated": "Precios actualizados {when}",
+  "showMore": "Ver {count} más",
+  "filters": {
+    "competition": "Competición",
+    "allCompetitions": "Todas las competiciones",
+    "market": "Mercado",
+    "odds": "Cuota",
+    "oddsAll": "Todas",
+    "oddsRange": "{min}–{max}",
+    "oddsFrom": "{min}+",
+    "window": "Empiezan en",
+    "hours": "{count}\u00a0h",
+    "days_one": "{count}\u00a0día",
+    "days_other": "{count}\u00a0días",
+    "reset": "Quitar filtros"
+  }
+}

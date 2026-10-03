@@ -1,1 +1,61 @@
-{}
+{
+  "inPlay_one": "{count} match in play",
+  "inPlay_other": "{count} matches in play",
+  "starting_one": "{count} starting soon",
+  "starting_other": "{count} starting soon",
+  "updated": "updated {when}",
+  "autoRefresh": "Updates every 15 s",
+  "refreshFailed": "Couldn't refresh; showing the latest data received.",
+  "emptyBody": "When a match from the competitions we follow kicks off, you'll see it here.",
+  "seeMatches": "See today's matches",
+  "lessInfo": "Matches with less information",
+  "lessInfoHint": "We have little live data for these matches.",
+  "aboutToStart": "Starting soon",
+  "stale": "Delayed data",
+  "clock": {
+    "BT": "Break",
+    "P": "Penalties",
+    "INT": "Interrupted",
+    "SUSP": "Suspended"
+  },
+  "events": {
+    "goal": "Goal",
+    "ownGoal": "OG",
+    "ownGoalLong": "Own goal",
+    "penalty": "pen",
+    "redCard": "Red card",
+    "unknownPlayer": "Unknown player",
+    "more_one": "+{count} earlier event",
+    "more_other": "+{count} earlier events"
+  },
+  "stats": {
+    "possession": "Possession",
+    "shots": "Shots",
+    "shotsOnTarget": "Shots on target",
+    "corners": "Corners"
+  },
+  "odds": {
+    "title": "Live odds",
+    "suspended": "Suspended",
+    "unavailable": "Unavailable"
+  },
+  "completeness": {
+    "title": "Available data",
+    "label": "Available data: {count} of {total}",
+    "rich": "Full coverage",
+    "partial": "Partial coverage",
+    "basic": "Basic coverage",
+    "available": "available",
+    "missing": "not available"
+  },
+  "signal": {
+    "score": "Score",
+    "minute": "Minute",
+    "events": "Events",
+    "stats": "Statistics",
+    "lineups": "Lineups",
+    "players": "Players",
+    "live_odds": "Live odds",
+    "markets": "Markets"
+  }
+}

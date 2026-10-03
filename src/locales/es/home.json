@@ -1,1 +1,38 @@
-{}
+{
+  "oddsUpdated": "Cuotas actualizadas {when}",
+  "oddsNone": "Aún no hay cuotas capturadas",
+  "picks": {
+    "title": "Top 5 value picks del día",
+    "seeAll": "Ver todos",
+    "list": "Top value picks del día",
+    "empty": "Hoy no hay picks para mostrar.",
+    "emptyBody": "Solo mostramos selecciones cuyo modelo ha superado al mercado.",
+    "emptyCta": "Ir a Picks",
+    "allTile": "Ver todos los picks"
+  },
+  "parlays": {
+    "seeDetail": "Ver detalle"
+  },
+  "live": {
+    "title": "En vivo ahora",
+    "updated": "Actualizado {when}",
+    "empty": "No hay partidos en juego ahora mismo.",
+    "notStarted": "Por empezar",
+    "finished": "Final"
+  },
+  "best": {
+    "title": "Mejores cuotas",
+    "subtitle": "Precios por encima del precio justo del mercado",
+    "seeAll": "Ver todas",
+    "overFair": "{pct} sobre el precio justo",
+    "empty": "Todavía no hay precios por encima del mercado."
+  },
+  "upcoming": {
+    "title": "Próximos partidos",
+    "seeAll": "Ver todos",
+    "bookmakers_one": "{count} casa",
+    "bookmakers_other": "{count} casas",
+    "bookmakersHelp": "Casas de apuestas con cuotas para este partido",
+    "empty": "No hay partidos próximos."
+  }
+}

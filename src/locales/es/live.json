@@ -1,1 +1,61 @@
-{}
+{
+  "inPlay_one": "{count} partido en juego",
+  "inPlay_other": "{count} partidos en juego",
+  "starting_one": "{count} por empezar",
+  "starting_other": "{count} por empezar",
+  "updated": "actualizado {when}",
+  "autoRefresh": "Se actualiza cada 15 s",
+  "refreshFailed": "No se pudo actualizar; mostramos los últimos datos recibidos.",
+  "emptyBody": "Cuando empiece un partido de las competiciones que seguimos, lo verás aquí.",
+  "seeMatches": "Ver partidos de hoy",
+  "lessInfo": "Partidos con menos información",
+  "lessInfoHint": "De estos partidos tenemos pocos datos en vivo.",
+  "aboutToStart": "Por empezar",
+  "stale": "Datos con retraso",
+  "clock": {
+    "BT": "Pausa",
+    "P": "Penales",
+    "INT": "Interrumpido",
+    "SUSP": "Suspendido"
+  },
+  "events": {
+    "goal": "Gol",
+    "ownGoal": "autogol",
+    "ownGoalLong": "Autogol",
+    "penalty": "pen.",
+    "redCard": "Tarjeta roja",
+    "unknownPlayer": "Jugador desconocido",
+    "more_one": "+{count} evento anterior",
+    "more_other": "+{count} eventos anteriores"
+  },
+  "stats": {
+    "possession": "Posesión",
+    "shots": "Tiros",
+    "shotsOnTarget": "Tiros al arco",
+    "corners": "Córners"
+  },
+  "odds": {
+    "title": "Cuotas en vivo",
+    "suspended": "Suspendida",
+    "unavailable": "No disponible"
+  },
+  "completeness": {
+    "title": "Datos disponibles",
+    "label": "Datos disponibles: {count} de {total}",
+    "rich": "Cobertura completa",
+    "partial": "Cobertura parcial",
+    "basic": "Cobertura básica",
+    "available": "disponible",
+    "missing": "no disponible"
+  },
+  "signal": {
+    "score": "Marcador",
+    "minute": "Minuto",
+    "events": "Eventos",
+    "stats": "Estadísticas",
+    "lineups": "Alineaciones",
+    "players": "Jugadores",
+    "live_odds": "Cuotas en vivo",
+    "markets": "Mercados"
+  }
+}

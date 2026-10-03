@@ -1,1 +1,64 @@
-{}
+{
+  "day": {
+    "label": "Día",
+    "prev": "Día anterior",
+    "next": "Día siguiente",
+    "pick": "Elegir fecha"
+  },
+  "status": {
+    "label": "Estado del partido",
+    "all": "Todos",
+    "live": "En vivo",
+    "upcoming": "Próximos",
+    "finished": "Finalizados"
+  },
+  "filters": {
+    "competition": "Competición",
+    "competitionAny": "Competición",
+    "allCompetitions": "Todas las competiciones",
+    "search": "Buscar por equipo o competición",
+    "searchPlaceholder": "Buscar equipo",
+    "clearSearch": "Borrar búsqueda",
+    "clear": "Quitar filtros"
+  },
+  "group": {
+    "live_one": "{count} en vivo",
+    "live_other": "{count} en vivo",
+    "count_one": "{count} partido",
+    "count_other": "{count} partidos"
+  },
+  "clock": {
+    "1H": "1T",
+    "2H": "2T",
+    "HT": "Desc.",
+    "ET": "Prór.",
+    "BT": "Pausa",
+    "P": "Pen.",
+    "INT": "Int.",
+    "SUSP": "Susp.",
+    "LIVE": "Vivo",
+    "FT": "Final",
+    "TBD": "Por def."
+  },
+  "row": {
+    "pens": "pen. {home}-{away}",
+    "aet": "Prórroga",
+    "bookmakers_one": "{count} casa",
+    "bookmakers_other": "{count} casas",
+    "oddsHelp_one": "Cuotas de {count} casa de apuestas",
+    "oddsHelp_other": "Cuotas de {count} casas de apuestas"
+  },
+  "empty": {
+    "dayTitle": "No hay partidos este día",
+    "dayBody": "Prueba con otra fecha.",
+    "goToday": "Ver los partidos de hoy",
+    "filtersTitle": "Ningún partido coincide con estos filtros",
+    "filtersBody": "Cambia el estado, la competición o la búsqueda."
+  },
+  "country": {
+    "GB-ENG": "Inglaterra",
+    "GB-SCT": "Escocia",
+    "GB-WLS": "Gales",
+    "GB-NIR": "Irlanda del Norte"
+  }
+}

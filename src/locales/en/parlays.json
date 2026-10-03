@@ -1,1 +1,49 @@
-{}
+{
+  "subtitle": "Combinations built only from selections that have value.",
+  "kind": {
+    "daily": "Parlay of the day",
+    "multiday": "Multi-day parlay"
+  },
+  "legs_one": "{count} selection",
+  "legs_other": "{count} selections",
+  "legsRange": "{min}–{max} selections",
+  "window": {
+    "hours_one": "next {count} h",
+    "hours_other": "next {count} h",
+    "days_one": "next day",
+    "days_other": "next {count} days"
+  },
+  "legsList": "Parlay selections",
+  "combinedOdds": "Combined odds",
+  "probAll": "Chance all legs win",
+  "oneIn": "≈ 1 in {n}",
+  "expectedValue": "Expected value",
+  "pricesAsOf": "Prices from {when}",
+  "empty": {
+    "title": "No valid parlay today",
+    "progress": "{eligible} of the {required} selections needed pass the value filter",
+    "notIndependent": "{eligible} selections pass the value filter, but not {required} that are independent of each other",
+    "never": "We never pad a parlay with selections that have no value.",
+    "reasons": "Why selections were left out"
+  },
+  "how": {
+    "title": "How we build the parlays",
+    "value": {
+      "title": "Value filter on every selection",
+      "qualified": "Qualified selection: its model has beaten the market",
+      "fresh": "Current price ≤ 3 h old",
+      "ev": "Positive expected value at the current price",
+      "consensus": "Market consensus from ≥ 2 bookmakers"
+    },
+    "independence": {
+      "title": "No related selections",
+      "oneMatch": "At most 1 selection per match",
+      "noTeam": "No team appears twice",
+      "independent": "That is why they are treated as independent"
+    },
+    "noPadding": {
+      "title": "No padding",
+      "body": "If there are not enough selections with value, we show no parlay: we never pad."
+    }
+  }
+}

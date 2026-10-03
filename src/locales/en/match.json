@@ -1,1 +1,316 @@
-{}
+{
+  "back": "Matches",
+  "title": "{home} vs {away}",
+  "notFound": {
+    "title": "Match not found",
+    "body": "The link may be wrong, or the match is no longer available.",
+    "action": "See matches"
+  },
+  "tabs": {
+    "label": "Match sections",
+    "summary": "Summary",
+    "stats": "Stats",
+    "markets": "Markets",
+    "lineups": "Line-ups",
+    "advanced": "Advanced / Audit"
+  },
+  "round": {
+    "matchday": "Matchday {n}",
+    "group": "Group {name}",
+    "league": "League {name}",
+    "qualifying": "Qualifying round {n}",
+    "preliminary": "Preliminary round {n}",
+    "round": "Round {n}",
+    "fraction": "1/{n} finals",
+    "stage": {
+      "regular_season": "Regular season",
+      "group_stage": "Group stage",
+      "club_friendlies": "Club friendlies",
+      "friendly_international": "International friendly",
+      "final": "Final",
+      "semi_finals": "Semi-finals",
+      "quarter_finals": "Quarter-finals",
+      "round_of_16": "Round of 16",
+      "round_of_32": "Round of 32",
+      "play_offs": "Play-offs",
+      "relegation_round": "Relegation round",
+      "championship_round": "Championship round",
+      "qualifying_round": "Qualifying round",
+      "preliminary_round": "Preliminary round",
+      "3rd_place_final": "Third place"
+    }
+  },
+  "header": {
+    "noScore": "No score yet",
+    "scoreAria": "Score: {home} {homeGoals}, {away} {awayGoals}",
+    "timeTbd": "Time to be confirmed",
+    "startsIn": "Starts {when}",
+    "afterPenalties": "Full time · penalties",
+    "afterExtraTime": "Full time · extra time",
+    "penalties": "Penalties {score}",
+    "halfTime": "Half-time {score}",
+    "scorers": "{team} goals"
+  },
+  "note": {
+    "noData": "No data yet",
+    "notAvailable": "Not available for this match"
+  },
+  "picks": {
+    "title": "Picks for this match",
+    "none": "No qualified picks for this match.",
+    "noneShadow": "No shadow picks for this match.",
+    "showAll": "See all {count} picks",
+    "showLess": "See less"
+  },
+  "prices": {
+    "title": "Best odds",
+    "none": "No odds for this match yet.",
+    "noPrice": "No price",
+    "ou25": "Over/Under {line} goals",
+    "bestOf_one": "Best price across {count} bookmaker",
+    "bestOf_other": "Best price across {count} bookmakers",
+    "allMarkets": "All markets"
+  },
+  "markets": {
+    "books_one": "{count} bookmaker",
+    "books_other": "{count} bookmakers",
+    "line": "Line",
+    "over": "Over",
+    "under": "Under",
+    "mainLine": "main line",
+    "mainLineHelp": "Main line: the most balanced between the two options",
+    "mainLines": "Main lines only",
+    "allLines": "All lines ({count})",
+    "live": "Live odds",
+    "liveNote": "Reference in-play price. “Withdrawn”: no price right now. Padlock: locked for a moment.",
+    "prematch": "Before the match",
+    "prematchPlayed": "Odds before kick-off",
+    "lastCapture": "Last update: {when}",
+    "bestHelp": "The best price for each option among every bookmaker offering it.",
+    "none": "No odds for this match yet.",
+    "movement": "See price movement in Odds"
+  },
+  "liveOdds": {
+    "title": "Live odds",
+    "suspended": "Suspended",
+    "suspendedHelp": "Locked for a moment, usually after a dangerous attack.",
+    "withdrawn": "Withdrawn",
+    "withdrawnHelp": "The bookmaker has withdrawn this price for now.",
+    "atMinute": "Min {minute}'",
+    "none": "No live odds for this match right now.",
+    "ouMain": "Over/Under {line} goals",
+    "note": "Updated during the match.",
+    "more": "More live odds"
+  },
+  "form": {
+    "title": "Recent form",
+    "lastFive": "Last 5",
+    "newestRight": "Most recent on the right",
+    "goals": "Goals: {scored} scored · {conceded} conceded",
+    "aria": "Recent results: {results}",
+    "chipTitle": "{result} · {date} · {opponent} ({venue}) {score}",
+    "long": {
+      "W": "Win",
+      "D": "Draw",
+      "L": "Loss"
+    },
+    "short": {
+      "W": "W",
+      "D": "D",
+      "L": "L"
+    },
+    "venue": {
+      "H": "home",
+      "A": "away"
+    }
+  },
+  "standings": {
+    "title": "Table",
+    "rank": "#",
+    "rankLong": "Position",
+    "team": "Team",
+    "played": "P",
+    "playedLong": "Played",
+    "goalDiff": "GD",
+    "goalDiffLong": "Goal difference",
+    "points": "Pts",
+    "pointsLong": "Points",
+    "includesMatch": "The table already includes this match."
+  },
+  "h2h": {
+    "title": "Head to head",
+    "wins": "{team} wins",
+    "draws": "Draws",
+    "meetings_one": "{count} match",
+    "meetings_other": "{count} matches"
+  },
+  "absences": {
+    "title": "Absences",
+    "count_one": "{count} absence",
+    "count_other": "{count} absences",
+    "unknownTeam": "Team not identified",
+    "kind": {
+      "missing": "Out",
+      "questionable": "Doubtful",
+      "other": "Absent"
+    },
+    "reason": {
+      "injury": "Injury",
+      "suspension": "Suspension",
+      "illness": "Illness",
+      "other": "Other reason"
+    }
+  },
+  "lineups": {
+    "title": "Line-ups",
+    "unavailable": "Line-ups not available yet",
+    "hint": "They are usually published about an hour before kick-off.",
+    "confirmed": "Line-ups confirmed",
+    "view": "See line-ups",
+    "coach": "Coach: {name}",
+    "starters": "Starting XI ({count})",
+    "bench": "Substitutes ({count})",
+    "noBench": "No substitutes listed.",
+    "pitchLabel": "Formations: {home} {homeFormation}, {away} {awayFormation}",
+    "position": {
+      "G": "GK",
+      "D": "DEF",
+      "M": "MID",
+      "F": "FWD"
+    }
+  },
+  "events": {
+    "title": "Match events",
+    "newestFirst": "Latest first",
+    "goal": "Goal",
+    "assist": "Assist: {name}",
+    "penalty": "Penalty goal",
+    "ownGoal": "Own goal",
+    "missedPenalty": "Missed penalty",
+    "yellow": "Yellow card",
+    "red": "Red card",
+    "secondYellow": "Second yellow",
+    "var": "VAR",
+    "varReview": "VAR review",
+    "sub": "Substitution",
+    "subWith": "Substitution with {name}",
+    "subIn": "On",
+    "subOut": "Off",
+    "unknownPlayer": "Unnamed player",
+    "penaltyShort": "(pen.)",
+    "ownGoalShort": "(o.g.)",
+    "divider": {
+      "ht": "Half-time",
+      "et": "Extra time",
+      "ft": "Full time"
+    },
+    "comment": {
+      "foul": "Foul",
+      "argument": "Dissent",
+      "time_wasting": "Time wasting",
+      "handball": "Handball",
+      "unsportsmanlike_conduct": "Unsporting behaviour",
+      "simulation": "Simulation",
+      "roughing": "Rough play",
+      "violent_conduct": "Violent conduct",
+      "serious_foul_play": "Serious foul play",
+      "professional_foul_last_man": "Last man",
+      "off_the_ball_foul": "Off-the-ball foul",
+      "holding": "Holding",
+      "tripping": "Tripping",
+      "pushing": "Pushing",
+      "elbowing": "Elbowing",
+      "persistent_fouling": "Persistent fouling",
+      "delay_of_game": "Delaying the restart"
+    },
+    "varDetail": {
+      "goal_cancelled": "Goal cancelled",
+      "goal_disallowed_offside": "Goal disallowed for offside",
+      "goal_disallowed_handball": "Goal disallowed for handball",
+      "goal_disallowed_foul": "Goal disallowed for a foul",
+      "goal_confirmed": "Goal confirmed",
+      "penalty_confirmed": "Penalty confirmed",
+      "penalty_cancelled": "Penalty cancelled",
+      "card_upgrade": "Card changed",
+      "red_card_cancelled": "Red card cancelled"
+    }
+  },
+  "stats": {
+    "title": "Match stats",
+    "key": "Key stats",
+    "all": "See all",
+    "notStarted": "Match stats will appear once it kicks off. Meanwhile, here is how both teams arrive.",
+    "season": "Season",
+    "recent": "Last 5 matches",
+    "position": "#{rank} in the table",
+    "label": {
+      "possession": "Possession",
+      "xg": "Expected goals (xG)",
+      "shots": "Total shots",
+      "shotsOnTarget": "Shots on target",
+      "shotsOffTarget": "Shots off target",
+      "shotsBlocked": "Blocked shots",
+      "shotsInsideBox": "Shots inside the box",
+      "shotsOutsideBox": "Shots outside the box",
+      "corners": "Corners",
+      "fouls": "Fouls",
+      "offsides": "Offsides",
+      "yellowCards": "Yellow cards",
+      "redCards": "Red cards",
+      "saves": "Saves",
+      "passes": "Passes",
+      "passesAccurate": "Accurate passes",
+      "passAccuracy": "Pass accuracy",
+      "pointsPerGame": "Points per match",
+      "goalsForPerGame": "Goals scored per match",
+      "goalsAgainstPerGame": "Goals conceded per match",
+      "wins": "Wins",
+      "draws": "Draws",
+      "losses": "Losses",
+      "recentGoalsFor": "Goals scored",
+      "recentGoalsAgainst": "Goals conceded",
+      "recentWins": "Wins"
+    }
+  },
+  "players": {
+    "title": "Top rated",
+    "rating": "Match rating (0–10)",
+    "minutes_one": "{count} min",
+    "minutes_other": "{count} min",
+    "goals_one": "{count} goal",
+    "goals_other": "{count} goals",
+    "assists_one": "{count} assist",
+    "assists_other": "{count} assists",
+    "saves_one": "{count} save",
+    "saves_other": "{count} saves",
+    "keyPasses_one": "{count} key pass",
+    "keyPasses_other": "{count} key passes",
+    "none": "No player ratings yet.",
+    "best": "Top rated player",
+    "showAll": "See all ({count})",
+    "showLess": "See less"
+  },
+  "result": {
+    "title": "Result",
+    "pending": "The result is not confirmed yet.",
+    "fullTime": "Full time",
+    "halfTime": "Half-time",
+    "extraTime": "Extra time",
+    "penalties": "Penalties",
+    "totalGoals": "Total goals",
+    "btts": "Both teams scored"
+  },
+  "context": {
+    "title": "Before the match",
+    "subtitle": "Form, table and head to head"
+  },
+  "notPlayed": {
+    "postponed": "Match postponed",
+    "cancelled": "Match cancelled",
+    "postponedBody": "The new date will show here once it is confirmed.",
+    "cancelledBody": "This match will not be played."
+  },
+  "advanced": {
+    "note": "Admins only: models and predictions, captures, lineage and the audit trail for this match."
+  }
+}

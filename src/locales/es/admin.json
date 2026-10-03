@@ -69,7 +69,7 @@
     "newUser": "Nueva cuenta",
     "create": "Crear cuenta",
     "creating": "Creando…",
-    "created": "Cuenta creada.",
+    "createdOk": "Cuenta creada.",
     "updated": "Cuenta actualizada.",
     "confirmDeactivate": "¿Desactivar {email}? Sus sesiones se cerrarán al momento.",
     "confirmRole": "¿Cambiar el rol de {email} a {role}?",

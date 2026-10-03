@@ -1,1 +1,49 @@
-{}
+{
+  "subtitle": "Combinadas armadas solo con selecciones que tienen valor.",
+  "kind": {
+    "daily": "Parlay del día",
+    "multiday": "Parlay multi-día"
+  },
+  "legs_one": "{count} selección",
+  "legs_other": "{count} selecciones",
+  "legsRange": "{min}–{max} selecciones",
+  "window": {
+    "hours_one": "próxima {count} h",
+    "hours_other": "próximas {count} h",
+    "days_one": "próximo día",
+    "days_other": "próximos {count} días"
+  },
+  "legsList": "Selecciones del parlay",
+  "combinedOdds": "Cuota combinada",
+  "probAll": "Prob. de acertar todas",
+  "oneIn": "≈ 1 de cada {n}",
+  "expectedValue": "Valor esperado",
+  "pricesAsOf": "Precios de {when}",
+  "empty": {
+    "title": "No hay parlay válido hoy",
+    "progress": "{eligible} de {required} selecciones necesarias pasan el filtro de valor",
+    "notIndependent": "{eligible} selecciones pasan el filtro de valor, pero no hay {required} independientes entre sí",
+    "never": "Nunca rellenamos un parlay con selecciones sin valor.",
+    "reasons": "Motivos de descarte"
+  },
+  "how": {
+    "title": "Cómo construimos los parlays",
+    "value": {
+      "title": "Filtro de valor en cada selección",
+      "qualified": "Selección calificada: su modelo ha superado al mercado",
+      "fresh": "Precio actual de hace ≤ 3 h",
+      "ev": "Valor esperado positivo al precio actual",
+      "consensus": "Consenso de mercado con ≥ 2 casas"
+    },
+    "independence": {
+      "title": "Sin selecciones relacionadas",
+      "oneMatch": "Máx. 1 selección por partido",
+      "noTeam": "Ningún equipo repetido",
+      "independent": "Por eso se tratan como independientes"
+    },
+    "noPadding": {
+      "title": "Sin relleno",
+      "body": "Si no hay suficientes selecciones con valor, no mostramos parlay: nunca rellenamos."
+    }
+  }
+}

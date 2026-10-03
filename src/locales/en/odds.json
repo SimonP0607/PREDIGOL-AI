@@ -1,1 +1,54 @@
-{}
+{
+  "subtitle": "The best price for each selection, next to its fair price.",
+  "marketsLabel": "Market",
+  "tabs": {
+    "1X2": "1X2",
+    "OU": "Goals (Over/Under)",
+    "BTTS": "Both teams to score",
+    "AH": "Asian handicap",
+    "DC": "Double chance"
+  },
+  "window": {
+    "label": "Kick-off within",
+    "hours": "{count}\u00a0h"
+  },
+  "pricesUpdated": "Prices updated {when}",
+  "highlights": {
+    "title": "Best prices against the market",
+    "subtitle": "Odds that pay more than the fair price right now.",
+    "vsFair": "{edge} vs fair"
+  },
+  "value": {
+    "title": "Value opportunities",
+    "subtitle": "Qualified selections with value at today's best price.",
+    "seeAll": "See picks",
+    "none": "No qualified value opportunity in this market right now."
+  },
+  "board": {
+    "summary_one": "{count} match in the next {hours}\u00a0h",
+    "summary_other": "{count} matches in the next {hours}\u00a0h",
+    "line": "Line",
+    "fair": "fair {odds}",
+    "noPrice": "No price",
+    "bookmakers_one": "Best price among {count} bookmaker",
+    "bookmakers_other": "Best price among {count} bookmakers",
+    "edgeHelp": "How much the best price pays above (or below) the fair price",
+    "cell": "{selection}: {odds} at {bookmaker}. Fair odds {fair}; {edge} against the fair price.",
+    "cellNoPrice": "{selection}: no price.",
+    "bestSr": "Best value in this match.",
+    "emptyTitle": "No matches with odds in this window",
+    "emptyBody": "Once bookmakers publish prices for the upcoming matches, they will show up here.",
+    "widen": "Show the next {hours}\u00a0h"
+  },
+  "movement": {
+    "toggle": "Movement",
+    "toggleLabel": "Movement: {match}",
+    "title": "Best price movement",
+    "help": "The best price available at each update, before kick-off.",
+    "empty": "Not enough updates yet to show any movement.",
+    "from": "from {odds}",
+    "time": "Time"
+  },
+  "openMatch": "Open match",
+  "openMatchLabel": "Open match: {match}"
+}

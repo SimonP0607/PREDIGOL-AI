@@ -44,14 +44,21 @@ const tabs = [
 ] as const;
 type Tab = (typeof tabs)[number];
 
-export function MatchCenterLive({ fixtureId }: { fixtureId: string }) {
+export function MatchCenterLive({
+  fixtureId,
+  hideHeader = false,
+}: {
+  fixtureId: string;
+  /** Embedded under another page's header (the product Match Center's admin tab). */
+  hideHeader?: boolean;
+}) {
   const [tab, setTab] = useState<Tab>("Overview");
   const q = useLiveQuery(live.match(fixtureId));
 
   if (q.isLoading) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Match Center" description="Loading fixture…" />
+        {hideHeader ? null : <PageHeader title="Match Center" description="Loading fixture…" />}
         <TableSkeleton rows={6} cols={4} />
       </div>
     );
@@ -60,13 +67,21 @@ export function MatchCenterLive({ fixtureId }: { fixtureId: string }) {
     const notFound = q.error instanceof LiveApiError && q.error.status === 404;
     return (
       <div className="space-y-4">
-        <PageHeader
-          breadcrumb={[{ label: "Matches", to: "/matches" }, { label: `Fixture ${fixtureId}` }]}
-          title={notFound ? "Fixture not found" : "Match Center"}
-          description={
-            notFound ? `No stored fixture has id ${fixtureId}.` : "The fixture could not be loaded."
-          }
-        />
+        {hideHeader ? (
+          notFound ? (
+            <p className="text-sm text-muted-foreground">No stored fixture has id {fixtureId}.</p>
+          ) : null
+        ) : (
+          <PageHeader
+            breadcrumb={[{ label: "Matches", to: "/matches" }, { label: `Fixture ${fixtureId}` }]}
+            title={notFound ? "Fixture not found" : "Match Center"}
+            description={
+              notFound
+                ? `No stored fixture has id ${fixtureId}.`
+                : "The fixture could not be loaded."
+            }
+          />
+        )}
         {!notFound ? <ApiErrorNotice error={q.error} /> : null}
       </div>
     );
@@ -77,15 +92,17 @@ export function MatchCenterLive({ fixtureId }: { fixtureId: string }) {
   const sides = { home: m.home.name, away: m.away.name };
   return (
     <div className="space-y-4">
-      <PageHeader
-        breadcrumb={[
-          { label: "Matches", to: "/matches" },
-          { label: `${m.home.name} v ${m.away.name}` },
-        ]}
-        title={`${m.home.name} v ${m.away.name}`}
-        description={`${m.competition.name}${m.round ? ` · ${m.round}` : ""} · ${utcDateTime(m.kickoff_at)}`}
-        actions={<StatusGroupBadge match={m} />}
-      />
+      {hideHeader ? null : (
+        <PageHeader
+          breadcrumb={[
+            { label: "Matches", to: "/matches" },
+            { label: `${m.home.name} v ${m.away.name}` },
+          ]}
+          title={`${m.home.name} v ${m.away.name}`}
+          description={`${m.competition.name}${m.round ? ` · ${m.round}` : ""} · ${utcDateTime(m.kickoff_at)}`}
+          actions={<StatusGroupBadge match={m} />}
+        />
+      )}
 
       {m.awaiting_result ? (
         <WarningBanner>
