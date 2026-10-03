@@ -16,6 +16,13 @@ scripts/dev-status          # what runs, and /health
 scripts/dev-down [api|worker|web]
 ```
 
+## Signing in
+
+The app asks for an account (FastAPI + PostgreSQL sessions; no external provider). The owner's
+SUPER_ADMIN credentials are in `~/.fbi/predigol-admin.txt` (mode 0600, never in Git). Accounts,
+roles, languages, time zones, the QA accounts used by the E2E suite and the checklist before a
+public deployment: [rebuild/PREDIGOL_ACCOUNTS_AND_EXPERIENCES.md](rebuild/PREDIGOL_ACCOUNTS_AND_EXPERIENCES.md).
+
 ## What survives what
 
 * **A crash of the API or the worker**: `scripts/run-supervised` restarts it after 5 s
