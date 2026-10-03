@@ -3,6 +3,7 @@
  * the platform captured and in the source's own words: "closing" and
  * "pre-closing" are its labels, and neither carries a timestamp.
  */
+import { t } from "@/lib/i18n";
 import { TableShell, THead, TH, TRow, TD } from "@/components/primitives/DataTable";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { Numeric } from "@/components/primitives/Indicators";
@@ -23,7 +24,9 @@ function price(b: HistoricalBook, selection: string) {
 }
 
 function kindLabel(kind: string): string {
-  return kind === "pre_closing" ? "pre-closing" : kind;
+  if (kind === "pre_closing") return t("analytics.common.preClosing");
+  if (kind === "closing") return t("analytics.common.closing");
+  return kind;
 }
 
 export function HistoricalMarketTables({ market }: { market: HistoricalMarket }) {
@@ -39,7 +42,7 @@ export function HistoricalMarketTables({ market }: { market: HistoricalMarket })
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3 text-caption text-muted-foreground">
-        <StatusBadge tone="info">Second source</StatusBadge>
+        <StatusBadge tone="info">{t("analytics.historicalTables.secondSource")}</StatusBadge>
         <InfoTip term="historicalClosing" className="text-caption">
           <span>{market.source}</span>
         </InfoTip>
@@ -47,16 +50,18 @@ export function HistoricalMarketTables({ market }: { market: HistoricalMarket })
       <p className="px-4 text-caption text-muted-foreground">{market.note}</p>
       <TableShell>
         <THead>
-          <TH>Book</TH>
-          <TH>Kind</TH>
-          <TH align="right">Home</TH>
-          <TH align="right">Draw</TH>
-          <TH align="right">Away</TH>
+          <TH>{t("analytics.common.book")}</TH>
+          <TH>{t("analytics.common.kind")}</TH>
+          <TH align="right">{t("analytics.common.home")}</TH>
+          <TH align="right">{t("analytics.common.draw")}</TH>
+          <TH align="right">{t("analytics.common.away")}</TH>
           <TH align="right">
             <MetricLabel term="overround">Overround</MetricLabel>
           </TH>
           <TH align="right">
-            <MetricLabel term="marketProbability">Fair H / D / A (Shin)</MetricLabel>
+            <MetricLabel term="marketProbability">
+              {t("analytics.historicalTables.fair")}
+            </MetricLabel>
           </TH>
         </THead>
         <tbody>
@@ -67,7 +72,11 @@ export function HistoricalMarketTables({ market }: { market: HistoricalMarket })
                 <TD>
                   <div className="flex items-center gap-2 text-sm">
                     {bookLabel(b.bookmaker_code)}
-                    {b.is_composite ? <StatusBadge tone="neutral">composite</StatusBadge> : null}
+                    {b.is_composite ? (
+                      <StatusBadge tone="neutral">
+                        {t("analytics.historicalTables.composite")}
+                      </StatusBadge>
+                    ) : null}
                   </div>
                 </TD>
                 <TD className="text-xs text-muted-foreground">{kindLabel(b.price_kind)}</TD>
@@ -77,7 +86,7 @@ export function HistoricalMarketTables({ market }: { market: HistoricalMarket })
                     <TD key={sel} align="right">
                       <Nullable
                         value={p ? dec(p.odds_decimal, 2) : null}
-                        reason="The source has no price for this selection."
+                        reason={t("analytics.historicalTables.noPrice")}
                         className="numeric"
                       />
                     </TD>
@@ -86,7 +95,7 @@ export function HistoricalMarketTables({ market }: { market: HistoricalMarket })
                 <TD align="right">
                   <Nullable
                     value={dec(b.overround, 3)}
-                    reason="A best-price composite is not a book: its prices were never offered together."
+                    reason={t("analytics.historicalTables.compositeNotBook")}
                     className="numeric"
                   />
                 </TD>
@@ -97,8 +106,8 @@ export function HistoricalMarketTables({ market }: { market: HistoricalMarket })
                     }
                     reason={
                       b.bookmaker_code === "MAX"
-                        ? "Not de-vigged: a composite of best prices has no margin to remove."
-                        : "No de-vigged baseline was computed for this book."
+                        ? t("analytics.historicalTables.notDevigged")
+                        : t("analytics.historicalTables.noBaseline")
                     }
                     className="numeric"
                   />
@@ -111,10 +120,10 @@ export function HistoricalMarketTables({ market }: { market: HistoricalMarket })
       {ou.length ? (
         <TableShell>
           <THead>
-            <TH>Over/Under 2.5</TH>
-            <TH>Kind</TH>
-            <TH align="right">Over</TH>
-            <TH align="right">Under</TH>
+            <TH>{t("analytics.common.ou25")}</TH>
+            <TH>{t("analytics.common.kind")}</TH>
+            <TH align="right">{t("analytics.historicalTables.over")}</TH>
+            <TH align="right">{t("analytics.historicalTables.under")}</TH>
             <TH align="right">
               <MetricLabel term="overround">Overround</MetricLabel>
             </TH>
@@ -132,7 +141,7 @@ export function HistoricalMarketTables({ market }: { market: HistoricalMarket })
                 <TD align="right">
                   <Nullable
                     value={dec(b.overround, 3)}
-                    reason="A best-price composite is not a book."
+                    reason={t("analytics.historicalTables.compositeNotBookShort")}
                     className="numeric"
                   />
                 </TD>

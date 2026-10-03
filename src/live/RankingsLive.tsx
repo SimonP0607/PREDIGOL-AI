@@ -22,7 +22,7 @@ export function RankingsLive() {
   const options = (comps.data?.data ?? []).filter((c) => c.fixtures > 0);
   // By id: several competitions share a name ("Premier League", "Super Cup").
   const choices = [
-    { value: "all", label: "All competitions" },
+    { value: "all", label: t("research.rankings.allCompetitions") },
     ...[...options]
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((c) => ({
@@ -42,13 +42,22 @@ export function RankingsLive() {
       />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       <div className="max-w-sm">
-        <SelectFilter label="Competition" value={scope} options={choices} onChange={setScope} />
+        <SelectFilter
+          label={t("research.common.competition")}
+          value={scope}
+          options={choices}
+          onChange={setScope}
+        />
       </div>
       <Panel
         title="Elo"
         subtitle={
           d?.data
-            ? `${d.data.parameters} · ${d.data.elo_version}, computed ${utcDateTime(d.data.computed_at)}`
+            ? t("research.rankings.subtitle", {
+                parameters: d.data.parameters,
+                version: d.data.elo_version,
+                when: utcDateTime(d.data.computed_at),
+              })
             : "World Football Elo"
         }
         bodyClassName=""
@@ -62,11 +71,11 @@ export function RankingsLive() {
                 <TableShell>
                   <THead>
                     <TH align="right">#</TH>
-                    <TH>Team</TH>
-                    <TH align="right">Rating</TH>
-                    <TH align="right">Last 5</TH>
-                    <TH align="right">Rated matches</TH>
-                    <TH>Last match</TH>
+                    <TH>{t("research.rankings.team")}</TH>
+                    <TH align="right">{t("research.rankings.rating")}</TH>
+                    <TH align="right">{t("research.rankings.last5")}</TH>
+                    <TH align="right">{t("research.rankings.ratedMatches")}</TH>
+                    <TH>{t("research.rankings.lastMatch")}</TH>
                   </THead>
                   <tbody>
                     {r.rows.map((row) => (
@@ -78,7 +87,9 @@ export function RankingsLive() {
                           <div className="flex items-center gap-2 text-sm">
                             {row.team}
                             {row.provisional ? (
-                              <StatusBadge tone="warning">provisional</StatusBadge>
+                              <StatusBadge tone="warning">
+                                {t("research.rankings.provisional")}
+                              </StatusBadge>
                             ) : null}
                           </div>
                         </TD>
@@ -89,7 +100,7 @@ export function RankingsLive() {
                           {row.change_last5 === null ? (
                             <span
                               className="text-subtle-foreground"
-                              title="Fewer than five rated matches."
+                              title={t("research.rankings.fewMatches")}
                             >
                               —
                             </span>

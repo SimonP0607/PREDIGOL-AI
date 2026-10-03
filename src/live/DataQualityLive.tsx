@@ -17,6 +17,22 @@ import { JobsPanel, RunsPanel } from "./RunsPanel";
 const tabs = ["Issues", "Coverage", "Jobs", "Ingestion runs", "Notes"] as const;
 type Tab = (typeof tabs)[number];
 
+/** A tab's text in the reader's language; the tab value itself stays the state key. */
+function tabLabel(tab: Tab): string {
+  switch (tab) {
+    case "Issues":
+      return t("system.dataQuality.tabs.issues");
+    case "Coverage":
+      return t("system.dataQuality.tabs.coverage");
+    case "Jobs":
+      return t("system.dataQuality.tabs.jobs");
+    case "Ingestion runs":
+      return t("system.dataQuality.tabs.runs");
+    case "Notes":
+      return t("system.dataQuality.tabs.notes");
+  }
+}
+
 /** A metric card whose value may be null for a stated reason. */
 function Metric({
   label,
@@ -36,7 +52,7 @@ function Metric({
       <div className="text-label text-subtle-foreground">{label}</div>
       <div className="mt-1.5 numeric-lg">
         {value === null ? (
-          <Nullable value={null} reason={why ?? "Not computable."} />
+          <Nullable value={null} reason={why ?? t("system.dataQuality.notComputable")} />
         ) : (
           <span
             className={
@@ -65,89 +81,105 @@ function Cards({ s, why }: { s: QualitySnapshot; why: Record<string, string> }) 
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Metric
-        label="Fixtures expected"
+        label={t("system.dataQuality.cards.fixturesExpected.label")}
         value={int(s.fixtures_expected)}
-        hint={`Scheduled, tracked competitions, next ${s.horizon_hours} h`}
+        hint={t("system.dataQuality.cards.fixturesExpected.hint", { hours: s.horizon_hours })}
       />
       <Metric
-        label="Fixtures with odds"
+        label={t("system.dataQuality.cards.fixturesWithOdds.label")}
         value={int(s.fixtures_with_odds)}
-        hint={`${int(s.fixtures_with_near_close)} with a near-close capture`}
+        hint={t("system.dataQuality.cards.fixturesWithOdds.hint", {
+          n: int(s.fixtures_with_near_close),
+        })}
       />
       <Metric
-        label="Odds coverage"
+        label={t("system.dataQuality.cards.oddsCoverage.label")}
         value={ratio(s.fixture_odds_coverage)}
         why={why["fixture_odds_coverage"]}
-        hint="Expected fixtures with at least one snapshot"
+        hint={t("system.dataQuality.cards.oddsCoverage.hint")}
       />
       <Metric
-        label="Capture windows (24 h)"
+        label={t("system.dataQuality.cards.captureWindows.label")}
         value={ratio(s.window_coverage_24h)}
         why={why["window_coverage_24h"]}
-        hint={`${s.windows_captured_24h} of ${s.windows_expected_24h} windows for fixtures that kicked off`}
+        hint={t("system.dataQuality.cards.captureWindows.hint", {
+          captured: s.windows_captured_24h,
+          expected: s.windows_expected_24h,
+        })}
       />
       <Metric
-        label="Bookmakers seen (24 h)"
+        label={t("system.dataQuality.cards.bookmakersSeen.label")}
         value={`${s.bookmakers_seen_24h} / ${s.bookmakers_active}`}
-        hint={`Coverage ${ratio(s.bookmaker_coverage) ?? "—"} of active bookmakers`}
+        hint={t("system.dataQuality.cards.bookmakersSeen.hint", {
+          ratio: ratio(s.bookmaker_coverage) ?? "—",
+        })}
         tone={s.bookmakers_seen_24h === 0 ? "muted" : "default"}
       />
       <Metric
-        label="Markets seen (24 h)"
+        label={t("system.dataQuality.cards.marketsSeen.label")}
         value={`${s.markets_seen_24h} / ${s.markets_tracked}`}
-        hint={`Coverage ${ratio(s.market_coverage) ?? "—"} of tracked markets`}
+        hint={t("system.dataQuality.cards.marketsSeen.hint", {
+          ratio: ratio(s.market_coverage) ?? "—",
+        })}
         tone={s.markets_seen_24h === 0 ? "muted" : "default"}
       />
       <Metric
-        label="Snapshots (24 h)"
+        label={t("system.dataQuality.cards.snapshots.label")}
         value={int(s.snapshots_24h)}
         hint={
           s.last_successful_capture
-            ? `Last capture ${relative(s.last_successful_capture)}`
+            ? t("system.dataQuality.cards.snapshots.hint", {
+                when: relative(s.last_successful_capture),
+              })
             : (why["last_successful_capture"] ?? "")
         }
         tone={s.snapshots_24h === 0 ? "muted" : "default"}
       />
       <Metric
-        label="Stale fixtures"
+        label={t("system.dataQuality.cards.staleFixtures.label")}
         value={int(s.stale_fixtures)}
-        hint="Upcoming, newest snapshot older than 4 h"
+        hint={t("system.dataQuality.cards.staleFixtures.hint")}
         tone={warn(s.stale_fixtures)}
       />
       <Metric
-        label="Awaiting result"
+        label={t("system.dataQuality.cards.awaitingResult.label")}
         value={int(s.fixtures_awaiting_result)}
-        hint={`${int(s.fixtures_with_result)} past fixtures have a score`}
+        hint={t("system.dataQuality.cards.awaitingResult.hint", {
+          n: int(s.fixtures_with_result),
+        })}
         tone={warn(s.fixtures_awaiting_result)}
       />
       <Metric
-        label="Partial jobs (24 h)"
+        label={t("system.dataQuality.cards.partialJobs.label")}
         value={int(s.partial_jobs_24h)}
-        hint="Wrote something and hit errors"
+        hint={t("system.dataQuality.cards.partialJobs.hint")}
         tone={warn(s.partial_jobs_24h)}
       />
       <Metric
-        label="Failed jobs (24 h)"
+        label={t("system.dataQuality.cards.failedJobs.label")}
         value={int(s.failed_jobs_24h)}
-        hint="Errors and nothing durable, or stopped at a cap"
+        hint={t("system.dataQuality.cards.failedJobs.hint")}
         tone={s.failed_jobs_24h ? "negative" : "default"}
       />
       <Metric
-        label="Provider errors (24 h)"
+        label={t("system.dataQuality.cards.providerErrors.label")}
         value={int(s.provider_errors_24h)}
-        hint="Refusals and failures recorded by runs"
+        hint={t("system.dataQuality.cards.providerErrors.hint")}
         tone={warn(s.provider_errors_24h)}
       />
       <Metric
-        label="Requests today"
+        label={t("system.dataQuality.cards.requestsToday.label")}
         value={`${s.requests_today} / ${s.daily_budget}`}
-        hint={`${s.requests_remaining_today} remaining · ${s.unattributed_requests_today} not claimed by a closed run`}
+        hint={t("system.dataQuality.cards.requestsToday.hint", {
+          remaining: s.requests_remaining_today,
+          unclaimed: s.unattributed_requests_today,
+        })}
         tone={s.requests_remaining_today === 0 ? "negative" : "default"}
       />
       <Metric
-        label="Runs stuck"
+        label={t("system.dataQuality.cards.runsStuck.label")}
         value={int(s.stale_running_jobs)}
-        hint="'running' for over 2 h: the owner likely died"
+        hint={t("system.dataQuality.cards.runsStuck.hint")}
         tone={s.stale_running_jobs ? "negative" : "default"}
       />
     </div>
@@ -178,8 +210,10 @@ export function DataQualityLive() {
 
       {high.length > 0 ? (
         <WarningBanner>
-          {high.length} high-severity issue{high.length > 1 ? "s" : ""} detected in the data right
-          now: {high.map((i) => i.title.toLowerCase()).join("; ")}.
+          {t("system.dataQuality.highIssues", {
+            count: high.length,
+            titles: high.map((i) => i.title.toLowerCase()).join("; "),
+          })}
         </WarningBanner>
       ) : null}
 
@@ -188,16 +222,17 @@ export function DataQualityLive() {
       ) : !quality.isError ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 8 }, (_, i) => (
-            <MetricCard key={i} label="Loading" value={null} tone="muted" />
+            <MetricCard key={i} label={t("system.dataQuality.loading")} value={null} tone="muted" />
           ))}
         </div>
       ) : null}
 
       <SegmentedTabs
-        label="Data quality sections"
+        label={t("system.dataQuality.sections")}
         tabs={tabs}
         value={tab}
         onChange={setTab}
+        format={tabLabel}
         counts={{
           Issues: issues.data?.data.length ?? 0,
           Coverage: coverage.data?.data.length ?? 0,
@@ -206,8 +241,8 @@ export function DataQualityLive() {
 
       {tab === "Issues" ? (
         <Panel
-          title="Issues"
-          subtitle="Derived from the data on every request - there is no list to go stale"
+          title={t("system.dataQuality.issues.title")}
+          subtitle={t("system.dataQuality.issues.subtitle")}
           bodyClassName=""
         >
           {issues.isLoading ? (
@@ -221,10 +256,10 @@ export function DataQualityLive() {
           ) : (
             <TableShell>
               <THead>
-                <TH>Severity</TH>
-                <TH>Issue</TH>
-                <TH align="right">Count</TH>
-                <TH>Detected</TH>
+                <TH>{t("system.dataQuality.issues.headers.severity")}</TH>
+                <TH>{t("system.dataQuality.issues.headers.issue")}</TH>
+                <TH align="right">{t("system.dataQuality.issues.headers.count")}</TH>
+                <TH>{t("system.dataQuality.issues.headers.detected")}</TH>
               </THead>
               <tbody>
                 {(issues.data?.data ?? []).map((i) => (
@@ -252,8 +287,8 @@ export function DataQualityLive() {
 
       {tab === "Coverage" ? (
         <Panel
-          title="Coverage by competition"
-          subtitle="Tracked competitions, current season"
+          title={t("system.dataQuality.coverage.title")}
+          subtitle={t("system.dataQuality.coverage.subtitle")}
           bodyClassName=""
         >
           {coverage.isError ? (
@@ -265,14 +300,14 @@ export function DataQualityLive() {
           ) : (
             <TableShell>
               <THead>
-                <TH>Competition</TH>
-                <TH align="right">In horizon</TH>
-                <TH align="right">With odds</TH>
-                <TH align="right">Coverage</TH>
-                <TH align="right">Bookmakers 24 h</TH>
-                <TH align="right">Markets 24 h</TH>
-                <TH>Last capture</TH>
-                <TH align="right">Awaiting result</TH>
+                <TH>{t("system.dataQuality.coverage.headers.competition")}</TH>
+                <TH align="right">{t("system.dataQuality.coverage.headers.inHorizon")}</TH>
+                <TH align="right">{t("system.dataQuality.coverage.headers.withOdds")}</TH>
+                <TH align="right">{t("system.dataQuality.coverage.headers.coverage")}</TH>
+                <TH align="right">{t("system.dataQuality.coverage.headers.bookmakers24h")}</TH>
+                <TH align="right">{t("system.dataQuality.coverage.headers.markets24h")}</TH>
+                <TH>{t("system.dataQuality.coverage.headers.lastCapture")}</TH>
+                <TH align="right">{t("system.dataQuality.coverage.headers.awaitingResult")}</TH>
               </THead>
               <tbody>
                 {(coverage.data?.data ?? []).map((c) => (
@@ -280,7 +315,7 @@ export function DataQualityLive() {
                     <TD>
                       <div className="text-sm">{c.competition}</div>
                       <div className="numeric text-caption text-subtle-foreground">
-                        season {c.season}
+                        {t("system.dataQuality.coverage.season", { season: c.season })}
                       </div>
                     </TD>
                     <TD align="right">
@@ -292,7 +327,7 @@ export function DataQualityLive() {
                     <TD align="right">
                       <Nullable
                         value={ratio(c.odds_coverage)}
-                        reason="No scheduled fixture of this competition in the evaluation horizon: nothing to cover."
+                        reason={t("system.dataQuality.coverage.noFixture")}
                         className="numeric"
                       />
                     </TD>
@@ -305,7 +340,7 @@ export function DataQualityLive() {
                     <TD>
                       <Nullable
                         value={c.last_capture_at ? utcDateTime(c.last_capture_at) : null}
-                        reason="No snapshot has ever been captured for this competition."
+                        reason={t("system.dataQuality.coverage.noSnapshot")}
                         className="numeric text-xs"
                       />
                     </TD>
@@ -339,7 +374,10 @@ export function DataQualityLive() {
       ) : null}
 
       {tab === "Notes" ? (
-        <Panel title="Notes" subtitle="What the snapshot itself flags">
+        <Panel
+          title={t("system.dataQuality.notes.title")}
+          subtitle={t("system.dataQuality.notes.subtitle")}
+        >
           {s && s.notes.length > 0 ? (
             <ul className="list-disc space-y-1.5 pl-5 text-xs text-muted-foreground">
               {s.notes.map((n) => (
@@ -347,7 +385,7 @@ export function DataQualityLive() {
               ))}
             </ul>
           ) : (
-            <StatusNotice status="empty" reason="The snapshot raises no note." compact />
+            <StatusNotice status="empty" reason={t("system.dataQuality.notes.empty")} compact />
           )}
         </Panel>
       ) : null}

@@ -9,7 +9,7 @@ const DESCRIPTION =
 export const Route = createFileRoute("/admin/system")({
   head: () => ({
     meta: [
-      { title: "System / Admin — Football Intelligence" },
+      { title: "System / Admin · PrediGol Admin" },
       { name: "description", content: DESCRIPTION },
     ],
   }),

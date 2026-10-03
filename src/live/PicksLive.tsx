@@ -53,13 +53,43 @@ export function PicksLive() {
   const [tab, setTab] = useState<Tab>("Picks");
   const [open, setOpen] = useState<number | null>(null);
   const lc = d?.lifecycle;
-  const stages: Array<[string, number | null, string]> = [
-    ["Candidates", lc ? lc.candidates : null, "every captured price evaluated"],
-    ["Rejected", lc ? lc.rejected : null, "failed the rule, with the reason"],
-    ["Shadow", lc ? lc.shadow : null, "selected, not qualified"],
-    ["Qualified", lc ? lc.qualified : null, "model beat the market in its backtest"],
-    ["Published", lc ? lc.published : null, "disabled in the schema"],
-    ["Settled", lc ? lc.settled : null, "on the 90-minute score"],
+  const stages: Array<[string, string, number | null, string]> = [
+    [
+      "candidates",
+      t("ops.picks.lifecycle.candidates.label"),
+      lc ? lc.candidates : null,
+      t("ops.picks.lifecycle.candidates.hint"),
+    ],
+    [
+      "rejected",
+      t("ops.picks.lifecycle.rejected.label"),
+      lc ? lc.rejected : null,
+      t("ops.picks.lifecycle.rejected.hint"),
+    ],
+    [
+      "shadow",
+      t("ops.picks.lifecycle.shadow.label"),
+      lc ? lc.shadow : null,
+      t("ops.picks.lifecycle.shadow.hint"),
+    ],
+    [
+      "qualified",
+      t("ops.picks.lifecycle.qualified.label"),
+      lc ? lc.qualified : null,
+      t("ops.picks.lifecycle.qualified.hint"),
+    ],
+    [
+      "published",
+      t("ops.picks.lifecycle.published.label"),
+      lc ? lc.published : null,
+      t("ops.picks.lifecycle.published.hint"),
+    ],
+    [
+      "settled",
+      t("ops.picks.lifecycle.settled.label"),
+      lc ? lc.settled : null,
+      t("ops.picks.lifecycle.settled.hint"),
+    ],
   ];
   return (
     <div className="space-y-4">
@@ -67,45 +97,49 @@ export function PicksLive() {
         title={t("admin.pages.picks.title")}
         description={t("admin.pages.picks.description")}
       />
-      <WarningBanner>
-        Publishing is disabled by a database constraint. Every pick here is shadow research output,
-        not advice, and no model has yet qualified: qualification needs the exact model version to
-        have beaten the de-vigged market in its own backtest.
-      </WarningBanner>
+      <WarningBanner>{t("ops.picks.banner")}</WarningBanner>
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        {stages.map(([label, value, hint]) => (
+        {stages.map(([stage, label, value, hint]) => (
           <MetricCard
-            key={label}
+            key={stage}
             label={label}
             value={value === null ? null : int(value)}
             hint={hint}
-            tone={label === "Published" ? "muted" : "default"}
+            tone={stage === "published" ? "muted" : "default"}
           />
         ))}
       </div>
       {d ? (
-        <Panel title="Decision rule" subtitle="Fixed and versioned before it sees a result">
+        <Panel title={t("ops.picks.rule.title")} subtitle={t("ops.picks.rule.subtitle")}>
           <div className="grid gap-x-8 sm:grid-cols-2 xl:grid-cols-3">
-            <KeyValue label="Version" value={String(d.rule["version"] ?? "—")} />
             <KeyValue
-              label="Markets"
+              label={t("ops.picks.rule.version")}
+              value={String(d.rule["version"] ?? "—")}
+            />
+            <KeyValue
+              label={t("ops.picks.rule.markets")}
               value={(d.rule["markets"] as string[] | undefined)?.join(", ") ?? "—"}
             />
             <KeyValue
-              label="Odds range"
+              label={t("ops.picks.rule.oddsRange")}
               value={(d.rule["odds"] as string[] | undefined)?.join(" – ") ?? "—"}
             />
-            <KeyValue label="Minimum EV" value={signedPct(String(d.rule["min_ev"]), 0) ?? "—"} />
             <KeyValue
-              label="Minimum probability edge"
+              label={t("ops.picks.rule.minEv")}
+              value={signedPct(String(d.rule["min_ev"]), 0) ?? "—"}
+            />
+            <KeyValue
+              label={t("ops.picks.rule.minEdge")}
               value={`${(Number(d.rule["min_probability_edge"]) * 100).toFixed(0)} pp`}
             />
-            <KeyValue label="Stake" value="flat, 1 unit (Kelly reported only)" />
+            <KeyValue label="Stake" value={t("ops.picks.rule.stakeValue")} />
           </div>
           {Object.keys(d.rejection_reasons).length ? (
             <div className="mt-3">
-              <div className="text-label text-subtle-foreground">Why prices were rejected</div>
+              <div className="text-label text-subtle-foreground">
+                {t("ops.picks.rule.rejections")}
+              </div>
               <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                 {Object.entries(d.rejection_reasons).map(([why, n]) => (
                   <li key={why} className="flex justify-between gap-4">
@@ -118,9 +152,19 @@ export function PicksLive() {
           ) : null}
         </Panel>
       ) : null}
-      <SegmentedTabs label="Picks view" tabs={tabs} value={tab} onChange={setTab} />
+      <SegmentedTabs
+        label={t("ops.picks.tabs.label")}
+        tabs={tabs}
+        value={tab}
+        onChange={setTab}
+        format={(v) => (v === "Picks" ? t("ops.picks.tabs.picks") : t("ops.picks.tabs.candidates"))}
+      />
       {tab === "Picks" ? (
-        <Panel title="Shadow picks" subtitle="Click a pick for its lineage" bodyClassName="">
+        <Panel
+          title={t("ops.picks.shadow.title")}
+          subtitle={t("ops.picks.shadow.subtitle")}
+          bodyClassName=""
+        >
           {!d ? (
             <TableSkeleton rows={3} cols={9} />
           ) : (
@@ -128,24 +172,28 @@ export function PicksLive() {
               {(rows) => (
                 <TableShell>
                   <THead>
-                    <TH>Fixture</TH>
-                    <TH>Selection</TH>
-                    <TH>Model</TH>
-                    <TH align="right">Odds</TH>
+                    <TH>{t("ops.picks.headers.fixture")}</TH>
+                    <TH>{t("ops.picks.headers.selection")}</TH>
+                    <TH>{t("ops.picks.headers.model")}</TH>
+                    <TH align="right">{t("ops.picks.headers.odds")}</TH>
                     <TH align="right">
-                      <MetricLabel term="modelProbability">Model p</MetricLabel>
+                      <MetricLabel term="modelProbability">
+                        {t("ops.picks.headers.modelP")}
+                      </MetricLabel>
                     </TH>
                     <TH align="right">
-                      <MetricLabel term="marketProbability">Market p</MetricLabel>
+                      <MetricLabel term="marketProbability">
+                        {t("ops.picks.headers.marketP")}
+                      </MetricLabel>
                     </TH>
                     <TH align="right">
-                      <MetricLabel term="edge">Edge</MetricLabel>
+                      <MetricLabel term="edge">{t("ops.picks.headers.edge")}</MetricLabel>
                     </TH>
                     <TH align="right">
-                      <MetricLabel term="ev">EV</MetricLabel>
+                      <MetricLabel term="ev">{t("ops.picks.headers.ev")}</MetricLabel>
                     </TH>
-                    <TH>Status</TH>
-                    <TH>Result</TH>
+                    <TH>{t("ops.picks.headers.status")}</TH>
+                    <TH>{t("ops.picks.headers.result")}</TH>
                   </THead>
                   <tbody>
                     {rows.flatMap((p) => [
@@ -213,8 +261,8 @@ export function PicksLive() {
         </Panel>
       ) : (
         <Panel
-          title="Recent candidates"
-          subtitle="The last 50 prices evaluated, selected or not"
+          title={t("ops.picks.candidates.title")}
+          subtitle={t("ops.picks.candidates.subtitle")}
           bodyClassName=""
         >
           {!d ? (
@@ -224,13 +272,13 @@ export function PicksLive() {
               {(rows) => (
                 <TableShell>
                   <THead>
-                    <TH>Evaluated</TH>
-                    <TH>Fixture</TH>
-                    <TH>Selection</TH>
-                    <TH>Model</TH>
-                    <TH align="right">Odds</TH>
-                    <TH align="right">EV</TH>
-                    <TH>Decision</TH>
+                    <TH>{t("ops.picks.headers.evaluated")}</TH>
+                    <TH>{t("ops.picks.headers.fixture")}</TH>
+                    <TH>{t("ops.picks.headers.selection")}</TH>
+                    <TH>{t("ops.picks.headers.model")}</TH>
+                    <TH align="right">{t("ops.picks.headers.odds")}</TH>
+                    <TH align="right">{t("ops.picks.headers.ev")}</TH>
+                    <TH>{t("ops.picks.headers.decision")}</TH>
                   </THead>
                   <tbody>
                     {rows.map((c) => (
@@ -247,14 +295,14 @@ export function PicksLive() {
                         <TD align="right">
                           <Nullable
                             value={dec(c.market_odds)}
-                            reason="No price."
+                            reason={t("ops.picks.candidates.noPrice")}
                             className="numeric"
                           />
                         </TD>
                         <TD align="right">
                           <Nullable
                             value={signedPct(c.ev)}
-                            reason="Not computed."
+                            reason={t("ops.picks.candidates.notComputed")}
                             className="numeric"
                           />
                         </TD>
@@ -288,60 +336,77 @@ function PickLineage({ p }: { p: PickRow }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <div>
-        <div className="mb-1 text-label text-subtle-foreground">Forecast</div>
-        <KeyValue label="Model version" value={p.model_version} />
-        <KeyValue label="Prediction" value={p.prediction_id ? `#${p.prediction_id}` : "—"} />
-        <KeyValue label="Data cut-off" value={utcDateTime(p.data_cutoff_ts)} />
-        <KeyValue label="Input hash" value={shortHash(p.feature_set_hash)} />
+        <div className="mb-1 text-label text-subtle-foreground">
+          {t("ops.picks.lineage.forecast")}
+        </div>
+        <KeyValue label={t("ops.picks.lineage.modelVersion")} value={p.model_version} />
         <KeyValue
-          label="Calibrated"
-          value={p.calibrated ? "yes" : "no (model's own probability)"}
+          label={t("ops.picks.lineage.prediction")}
+          value={p.prediction_id ? `#${p.prediction_id}` : "—"}
+        />
+        <KeyValue label={t("ops.picks.lineage.dataCutoff")} value={utcDateTime(p.data_cutoff_ts)} />
+        <KeyValue label={t("ops.picks.lineage.inputHash")} value={shortHash(p.feature_set_hash)} />
+        <KeyValue
+          label={t("ops.picks.lineage.calibrated")}
+          value={p.calibrated ? t("ops.common.yes") : t("ops.picks.lineage.uncalibrated")}
         />
         <KeyValue
-          label="Interval (90%)"
+          label={t("ops.picks.lineage.interval")}
           value={
             <Nullable
               value={p.p_lo && p.p_hi ? `${decPct(p.p_lo)} – ${decPct(p.p_hi)}` : null}
-              reason="No interval was computed for this forecast."
+              reason={t("ops.picks.lineage.noInterval")}
             />
           }
         />
       </div>
       <div>
-        <div className="mb-1 text-label text-subtle-foreground">Price</div>
-        <KeyValue label="Bookmaker" value={p.bookmaker} />
-        <KeyValue label="Odds" value={dec(p.market_odds)} />
-        <KeyValue label="Captured" value={utcDateTime(p.odds_captured_at)} />
+        <div className="mb-1 text-label text-subtle-foreground">{t("ops.picks.lineage.price")}</div>
+        <KeyValue label={t("ops.picks.lineage.bookmaker")} value={p.bookmaker} />
+        <KeyValue label={t("ops.picks.lineage.odds")} value={dec(p.market_odds)} />
+        <KeyValue label={t("ops.picks.lineage.captured")} value={utcDateTime(p.odds_captured_at)} />
         <KeyValue label="Payload" value={shortHash(p.odds_payload_hash)} />
         <KeyValue
-          label="Consensus"
+          label={t("ops.picks.lineage.consensus")}
           value={`${p.consensus_method ?? "—"} · ${utcDateTime(p.consensus_as_of)}`}
         />
-        <KeyValue label="Model fair odds" value={dec(p.fair_odds)} />
-        <KeyValue label="Price edge" value={signedPct(p.price_edge) ?? "—"} />
-        <KeyValue label="EV at lower bound" value={signedPct(p.ev_at_lower_bound) ?? "—"} />
+        <KeyValue label={t("ops.picks.lineage.fairOdds")} value={dec(p.fair_odds)} />
+        <KeyValue label={t("ops.picks.lineage.priceEdge")} value={signedPct(p.price_edge) ?? "—"} />
+        <KeyValue
+          label={t("ops.picks.lineage.evLowerBound")}
+          value={signedPct(p.ev_at_lower_bound) ?? "—"}
+        />
       </div>
       <div>
-        <div className="mb-1 text-label text-subtle-foreground">Decision & settlement</div>
-        <KeyValue label="Rule" value={p.decision_rule_version} />
-        <KeyValue label="Code" value={shortHash(p.code_version)} />
+        <div className="mb-1 text-label text-subtle-foreground">
+          {t("ops.picks.lineage.decision")}
+        </div>
+        <KeyValue label={t("ops.picks.lineage.rule")} value={p.decision_rule_version} />
+        <KeyValue label={t("ops.picks.lineage.code")} value={shortHash(p.code_version)} />
         <KeyValue label="Stake" value={`${dec(p.stake_units)} u · ${p.stake_policy}`} />
-        <KeyValue label="Kelly (reported only)" value={decPct(p.kelly_fraction)} />
-        <KeyValue label="Qualified" value={p.qualification.qualified ? "yes" : "no"} />
+        <KeyValue label={t("ops.picks.lineage.kelly")} value={decPct(p.kelly_fraction)} />
+        <KeyValue
+          label={t("ops.picks.lineage.qualified")}
+          value={p.qualification.qualified ? t("ops.common.yes") : t("ops.common.no")}
+        />
         {reasons.map((r) => (
           <p key={r} className="text-caption text-muted-foreground">
             · {r}
           </p>
         ))}
         <KeyValue
-          label="Result"
+          label={t("ops.picks.lineage.result")}
           value={`${p.result_status}${p.profit_units !== null ? ` · ${dec(p.profit_units, 2)} u` : ""}`}
         />
-        <KeyValue label="Basis" value={p.settlement_basis ?? "—"} />
+        <KeyValue label={t("ops.picks.lineage.basis")} value={p.settlement_basis ?? "—"} />
         {p.review_reason ? (
-          <p className="text-caption text-warning">Needs review: {p.review_reason}</p>
+          <p className="text-caption text-warning">
+            {t("ops.picks.lineage.needsReview", { reason: p.review_reason })}
+          </p>
         ) : null}
-        <div className="mt-2 text-label text-subtle-foreground">History</div>
+        <div className="mt-2 text-label text-subtle-foreground">
+          {t("ops.picks.lineage.history")}
+        </div>
         <ul className="mt-1 space-y-0.5 text-caption text-muted-foreground">
           {p.events.map((e) => (
             <li key={`${e.at}-${e.to_status}`}>

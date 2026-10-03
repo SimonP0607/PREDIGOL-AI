@@ -1,3 +1,5 @@
+import { translateOr } from "@/lib/i18n";
+
 /**
  * Single source of truth for quantitative terminology shown in the UI.
  * Never mix these definitions: model probability, market probability and
@@ -46,3 +48,8 @@ export const glossary = {
 } as const;
 
 export type GlossaryKey = keyof typeof glossary;
+
+/** A definition in the reader's language (the English text above is the fallback). */
+export function glossaryText(term: GlossaryKey): string {
+  return translateOr(`admin.glossary.${term}`, glossary[term]);
+}

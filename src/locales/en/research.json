@@ -1,0 +1,229 @@
+{
+  "common": {
+    "model": "Model",
+    "market": "Market",
+    "markets": "Markets",
+    "sample": "Sample",
+    "fixtures": "Fixtures",
+    "verdict": "Verdict",
+    "version": "Version",
+    "competition": "Competition",
+    "competitions": "Competitions",
+    "testSeason": "Test season",
+    "primaryBaseline": "Primary baseline",
+    "protocol": "Protocol",
+    "session": "Session",
+    "codeVersion": "Code version",
+    "datasetHash": "Dataset hash",
+    "finished": "Finished"
+  },
+  "models": {
+    "names": {
+      "elo_ologit": "Elo V2 + ordered logit",
+      "base_rates": "League base rates",
+      "mnlogit": "Multinomial logit (features v2)"
+    },
+    "verdict": {
+      "better": "Beats market",
+      "indistinguishable": "No detectable difference",
+      "worse": "Worse than market",
+      "noMarket": "No market price for this model's fixtures."
+    },
+    "noBacktest": "This model version has no stored walk-forward backtest.",
+    "overUnder": "Over/Under {line}",
+    "banner": {
+      "beating_one": "{models} scored better than {baseline} on the {season} test season, with the whole 95% interval below zero. One season is one sample; nothing is promoted automatically.",
+      "beating_other": "{models} scored better than {baseline} on the {season} test season, with the whole 95% interval below zero. One season is one sample; nothing is promoted automatically.",
+      "noneBeating_one": "No model beats the market. On {n} test fixtures ({season}), every model has a higher log loss than {baseline}, with the whole 95% interval above zero. All models stay experimental and none feeds a pick.",
+      "noneBeating_other": "No model beats the market. On {n} test fixtures ({season}), every model has a higher log loss than {baseline}, with the whole 95% interval above zero. All models stay experimental and none feeds a pick."
+    },
+    "baseline": {
+      "title": "Market baseline",
+      "subtitle": "The bar every model has to clear: bookmaker prices with the margin removed, scored like a model",
+      "liveConsensus": "Live consensus",
+      "consensusLine_one": "{n} fixtures · {methods} · last {when}",
+      "consensusLine_other": "{n} fixtures · {methods} · last {when}",
+      "baseline": "Baseline",
+      "source": "Source",
+      "primary": "Primary",
+      "overroundNotStored": "Two-way market de-vigged on the fly; overround not stored."
+    },
+    "quality": {
+      "title": "Predictive quality · 1X2",
+      "subtitle": "Walk-forward, out of sample. Lower log loss and Brier are better; ECE is calibration error. Accuracy is not a ranking metric."
+    },
+    "betting": {
+      "title": "Betting performance",
+      "subtitle": "Kept apart from predictive quality. A backtest simulation is not a betting record.",
+      "empty": "No backtest with historical prices has been stored.",
+      "hypothetical": "Hypothetical",
+      "simulation": "Backtest simulation · {rule} · prices: {source}",
+      "fixturesPriced": "Fixtures priced",
+      "bets": "Bets",
+      "profit": "Profit (units)",
+      "interval": "95% interval",
+      "drawdown": "Max drawdown",
+      "noBetMetRule": "No bet met the rule.",
+      "fewBets": "Fewer than 30 bets: no interval is reported.",
+      "noBets": "No bets."
+    },
+    "session": {
+      "chosenOn": "Hyper-parameters chosen on",
+      "seasonOnly": "{season} only",
+      "protocolValue": "walk-forward, refit daily"
+    },
+    "leaderboard": {
+      "vsMarket": "Δ log loss vs market",
+      "marketBaseline": "market baseline",
+      "reference": "reference",
+      "baseline": "Baseline",
+      "noCommon": "No common fixtures with the market."
+    },
+    "detail": {
+      "title": "Model detail",
+      "tabsLabel": "Detail",
+      "tabs": {
+        "calibration": "Calibration",
+        "leagues": "Leagues",
+        "temporal": "Temporal stability"
+      }
+    },
+    "calibration": {
+      "chartLabel": "Reliability diagram",
+      "axis": "Predicted probability",
+      "note": "Every outcome of every test fixture, in ten equal-width bins. The dashed diagonal is perfect calibration: below it the model was over-confident in that bin, above it under-confident. ECE {ece}.",
+      "bin": "Bin",
+      "predicted": "Predicted",
+      "observed": "Observed",
+      "emptyBin": "No prediction fell in this bin."
+    },
+    "split": {
+      "empty": "No split was stored for this run.",
+      "modelLogLoss": "Model log loss",
+      "marketLogLoss": "Market log loss",
+      "difference": "Difference"
+    },
+    "monthly": {
+      "chartLabel": "Monthly log-loss difference against the market",
+      "series": "model − market",
+      "note": "Log loss of the model minus the market, month by month. Above the dashed line the market was better that month. A model that only wins in one month has not shown anything.",
+      "month": "Month"
+    },
+    "comparison": {
+      "against": "Against",
+      "commonFixtures": "Common fixtures"
+    },
+    "markets": {
+      "oneXTwoOnly": "{model} prices 1X2 only: it has no goal distribution.",
+      "noOverUnder": "No Over/Under comparison was stored for this run.",
+      "btts": "Both teams to score",
+      "bttsNoBaseline": "No market baseline: the historical source publishes no BTTS prices, so this is scored against outcomes only and cannot be called better or worse than the market.",
+      "noBtts": "This model does not price BTTS."
+    },
+    "protocol": {
+      "lineage": "Lineage",
+      "modelVersion": "Model version",
+      "backtestRun": "Backtest run",
+      "trainedOn": "Trained on results",
+      "trainedRange_one": "{from} – {to} · {n} fixtures",
+      "trainedRange_other": "{from} – {to} · {n} fixtures",
+      "accuracy": "Accuracy (not ranked)",
+      "coverage": "Coverage",
+      "predicted": "Predicted",
+      "predictedValue": "{predicted} of {targets}",
+      "refits": "Refits",
+      "failedFits": "Failed fits",
+      "noInterval": "Without interval",
+      "notPredicted": "Not predicted · {n}",
+      "noCoverage": "Coverage was not recorded.",
+      "chosenOn": "Hyper-parameters · chosen on {season}",
+      "timeDecay": "Time decay ξ (per day)",
+      "shrinkage": "Shrinkage penalty",
+      "candidates": "Candidates scored",
+      "candidatesValue": "{n} (validation log loss)",
+      "notStored": "not stored in this session"
+    },
+    "shadow": {
+      "loading": "Shadow picks: loading…",
+      "label": "Shadow picks",
+      "unavailable": "{reason} See Performance.",
+      "settled_one": "{count} settled at the captured price: ROI",
+      "settled_other": "{count} settled at the captured price: ROI",
+      "hitRate": "hit rate {hitRate}%. Not a betting record; the breakdown by model is in Performance."
+    }
+  },
+  "backtesting": {
+    "protocol": {
+      "subtitle": "Fixed before the test season was touched",
+      "validationSeason": "Validation season",
+      "validationValue": "{season} — hyper-parameters only",
+      "testFixtures": "Test fixtures",
+      "refit": "Refit",
+      "refitValue": "every {days} day(s)",
+      "cutoff": "Cut-off",
+      "cutoffValue": "{minutes} min before a block's first kick-off",
+      "trainingWindow": "Training window",
+      "trainingWindowValue": "{days} days, results public 3 h after kick-off",
+      "checks": "Every block is checked: a training result not public before the cut-off, or a cut-off not before the kick-off it predicts, stops the run. A test rewrites all later results and requires every earlier prediction to come out identical.",
+      "resultsLink": "Results against the market →"
+    },
+    "search": {
+      "titleChosen": "{model} · hyper-parameters",
+      "subtitleChosen": "Chosen on {season}: ξ={xi}, penalty={penalty}.",
+      "notStored": "This session stored the chosen values only, not the validation score of every candidate, so the search itself cannot be shown.",
+      "title": "{model} · hyper-parameter search",
+      "subtitle": "Validation log loss on {season}, on the fixtures every candidate predicted. Chosen: ξ={xi}, penalty={penalty}.",
+      "extended": "The best candidate sat on the edge of the initial grid, so the grid was extended by a rule fixed in advance (validation scores only).",
+      "corner": "ξ (per day) \\ penalty"
+    }
+  },
+  "settings": {
+    "configured": "configured",
+    "notConfigured": "not configured",
+    "competitions": {
+      "title": "Tracked competitions",
+      "subtitle": "config/competitions.yaml, applied with scripts.manage_competitions",
+      "league": "league {id}"
+    },
+    "rule": {
+      "title": "Decision rule",
+      "subtitle": "Versioned; a threshold change is a new version",
+      "oddsRange": "Odds range",
+      "minEv": "Minimum EV",
+      "minEdge": "Minimum probability edge",
+      "publishing": "Publishing",
+      "publishingValue": "disabled in the schema"
+    },
+    "analyst": {
+      "title": "AI analyst",
+      "subtitle": "FBI_ANALYST_API_KEY / FBI_ANALYST_MODEL on the API host",
+      "languageModel": "Language model",
+      "unset": "Unset",
+      "tools": "Tools"
+    },
+    "notifications": {
+      "title": "Notifications (bot)",
+      "subtitle": "Informational only. FBI_TELEGRAM_BOT_TOKEN / FBI_TELEGRAM_CHAT_ID on the host"
+    },
+    "recent": {
+      "title": "Recent messages",
+      "subtitle": "What the bot produced and what happened to each",
+      "created": "Created",
+      "kind": "Kind",
+      "message": "Message",
+      "status": "Status"
+    },
+    "secrets": "Keys and tokens live only on the host. The browser receives whether something is configured, never its value."
+  },
+  "rankings": {
+    "allCompetitions": "All competitions",
+    "subtitle": "{parameters} · {version}, computed {when}",
+    "team": "Team",
+    "rating": "Rating",
+    "last5": "Last 5",
+    "ratedMatches": "Rated matches",
+    "lastMatch": "Last match",
+    "provisional": "provisional",
+    "fewMatches": "Fewer than five rated matches."
+  }
+}

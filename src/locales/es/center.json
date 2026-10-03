@@ -1,0 +1,295 @@
+{
+  "tabs": {
+    "label": "Secciones del partido",
+    "overview": "Resumen",
+    "stats": "Estadísticas",
+    "events": "Eventos",
+    "lineups": "Alineaciones",
+    "players": "Jugadores",
+    "context": "Contexto",
+    "markets": "Mercados",
+    "inPlay": "En vivo",
+    "models": "Modelos",
+    "timeline": "Cronología",
+    "lineage": "Linaje",
+    "audit": "Auditoría"
+  },
+  "header": {
+    "title": "Centro del partido",
+    "loading": "Cargando partido…",
+    "matches": "Partidos",
+    "fixture": "Partido {id}",
+    "notFound": "Partido no encontrado",
+    "noFixture": "No hay ningún partido guardado con el id {id}.",
+    "loadFailed": "No se pudo cargar el partido."
+  },
+  "versus": "{home} vs {away}",
+  "awaitingResult": "Este partido empezó {when} y sigue registrado como {status}. El seguimiento en vivo y la sincronización de resultados ya deberían haberlo actualizado; revisar en Sistema / Admin si alguna tarea está fallando.",
+  "yes": "sí",
+  "no": "no",
+  "columns": {
+    "market": "Mercado",
+    "selection": "Selección",
+    "bookmaker": "Casa",
+    "odds": "Cuota",
+    "implied": "Implícita (bruta)",
+    "captured": "Captura",
+    "feed": "Fuente",
+    "model": "Modelo",
+    "home": "Local",
+    "draw": "Empate",
+    "away": "Visitante",
+    "over25": "Más de 2,5",
+    "bttsYes": "BTTS sí",
+    "dataCutoff": "Corte de datos",
+    "player": "Jugador",
+    "position": "Pos.",
+    "grid": "Cuadrícula",
+    "minutesPlayed": "Min",
+    "rating": "Valoración",
+    "ratingHelp": "Valoración del proveedor, 0–10",
+    "goals": "G",
+    "assists": "A",
+    "shots": "Remates",
+    "onTarget": "Al arco",
+    "keyPasses": "Pases clave",
+    "tackles": "Entradas",
+    "saves": "Atajadas",
+    "cards": "Tarjetas",
+    "team": "Equipo",
+    "played": "PJ",
+    "wdl": "G-E-P",
+    "goalDiff": "DG",
+    "points": "Pts",
+    "form": "Forma",
+    "date": "Fecha",
+    "match": "Partido",
+    "score": "Marcador",
+    "type": "Tipo",
+    "reason": "Motivo",
+    "state": "Estado",
+    "lastChange": "Último cambio",
+    "minute": "Minuto",
+    "status": "Estado",
+    "at": "Hora",
+    "from": "Antes",
+    "to": "Después",
+    "change": "Cambio",
+    "record": "Registro",
+    "when": "Cuándo",
+    "facts": "Datos",
+    "computedFrom": "Calculado a partir de"
+  },
+  "overview": {
+    "result": {
+      "title": "Resultado",
+      "noScore": "No hay marcador registrado para este partido.",
+      "halfTime": "Descanso",
+      "noHalfTime": "No se proporcionó el marcador del descanso.",
+      "outcome": "Resultado (90 min)",
+      "extraTime": "Tiempo extra",
+      "noExtraTime": "No se jugó tiempo extra.",
+      "penalties": "Penales",
+      "noShootout": "No hubo tanda de penales.",
+      "totalGoals": "Goles totales",
+      "btts": "Ambos marcaron",
+      "notPlayed": "No se jugó ({status}): no hay resultado que registrar.",
+      "inPlay": "En juego: el marcador en vivo se muestra arriba y en la pestaña En vivo. El resultado se registra al final del partido.",
+      "awaiting": "Ya empezó, pero aún no se ha registrado el resultado.",
+      "scheduled": "Programado. El resultado se registra al final del partido."
+    },
+    "fixture": {
+      "title": "Partido",
+      "kickoff": "Inicio",
+      "status": "Estado",
+      "competition": "Competición",
+      "season": "Temporada",
+      "round": "Ronda",
+      "noRound": "El proveedor no indicó la ronda.",
+      "venue": "Estadio",
+      "noVenue": "El proveedor no identificó el estadio.",
+      "snapshots": "Capturas de cuotas",
+      "bookmakers": "Casas",
+      "nearClose": "Capturas cerca del cierre",
+      "predictions": "Predicciones",
+      "teams": "Equipos",
+      "oddsExplorer": "Explorador de cuotas"
+    }
+  },
+  "markets": {
+    "captured": {
+      "title": "Precios capturados",
+      "subtitle": "Último precio por casa que capturó ESTA plataforma. La probabilidad implícita es 1/cuota: todavía incluye el margen de la casa."
+    },
+    "historical": {
+      "title": "Mercado histórico",
+      "subtitle": "Publicado por una segunda fuente a posteriori. Se guarda aparte de nuestras capturas y nunca se mezcla con ellas."
+    }
+  },
+  "models": {
+    "title": "Predicciones de los modelos",
+    "subtitle": "Probabilidades con su corte de datos. La probabilidad no es confianza; el intervalo es la incertidumbre de los parámetros del propio modelo (90 %, Laplace).",
+    "backtest": "Reproducción de backtest",
+    "backtestNote": "Las generó el backtest walk-forward, usando solo resultados públicos antes de cada corte. No son pronósticos publicados antes del partido.",
+    "market": "Mercado · cierre de Pinnacle · Shin",
+    "marketNote": "sin margen, segunda fuente",
+    "only1x2": "Aquí solo se muestra la referencia 1X2.",
+    "noBtts": "La fuente no publica precios de BTTS.",
+    "atKickoff": "al inicio",
+    "notPriced": "Este modelo no cubre este mercado.",
+    "noInterval": "No se calculó un intervalo para esta predicción.",
+    "names": {
+      "poisson": "Poisson",
+      "dixonColes": "Dixon-Coles",
+      "eloOlogit": "Elo + logit ordenado",
+      "baseRates": "Tasas base de la liga",
+      "mnlogit": "Logit multinomial"
+    }
+  },
+  "timeline": {
+    "title": "Cronología",
+    "subtitle": "Lo que el sistema observó de este partido, en orden. Las ventanas que el plan no cubre se marcan; no cuentan como perdidas."
+  },
+  "lineage": {
+    "title": "Linaje",
+    "subtitle": "De los bytes del proveedor a la fila en pantalla",
+    "provider": "Proveedor: {provider}",
+    "providerDetail": "Partido {id} según lo identifica el proveedor.",
+    "providerRef": "partido {id}",
+    "payload": "Payload en bruto",
+    "payloadDetail": "{endpoint} {params}, guardado comprimido con gzip e indexado por su hash.",
+    "notRecorded": "No registrado.",
+    "notLinked": "sin vincular",
+    "run": "Ejecución de ingesta",
+    "runDetail": "Escrito por {job}; ver el registro de tareas.",
+    "aRun": "una ejecución",
+    "noRun": "Ninguna ejecución vinculada a esta fila.",
+    "runRef": "ejecución {id}",
+    "rowDetail": "Fila normalizada. Las escrituras son monótonas respecto a la hora de descarga del payload: un payload más antiguo nunca sobrescribe uno más reciente.",
+    "updated": "actualizado {when}",
+    "scoreFromPayload": "El marcador se leyó de este payload.",
+    "scoreBeforeLineage": "Marcador escrito antes de que se registrara el linaje (revisión 0015)."
+  },
+  "stats": {
+    "title": "Estadísticas de los equipos",
+    "asOfLive": "Datos al {when} — se actualizan cada minuto mientras se juega el partido.",
+    "asOfFinal": "Datos al {when} — definitivos.",
+    "fromProvider": "Del detalle del partido que da el proveedor.",
+    "notReported": "No reportado para este equipo.",
+    "labels": {
+      "possession": "Posesión",
+      "xg": "Goles esperados (xG)",
+      "shots": "Remates",
+      "shotsOnTarget": "Remates al arco",
+      "shotsOffTarget": "Remates desviados",
+      "shotsBlocked": "Remates bloqueados",
+      "shotsInsideBox": "Remates dentro del área",
+      "shotsOutsideBox": "Remates fuera del área",
+      "corners": "Tiros de esquina",
+      "fouls": "Faltas",
+      "offsides": "Fueras de lugar",
+      "yellowCards": "Tarjetas amarillas",
+      "redCards": "Tarjetas rojas",
+      "saves": "Atajadas del arquero",
+      "passes": "Pases",
+      "passesAccurate": "Pases acertados"
+    }
+  },
+  "events": {
+    "title": "Eventos",
+    "subtitle": "Goles, tarjetas, cambios y decisiones del VAR tal como los reporta el proveedor.",
+    "sub": "Cambio",
+    "card": "Tarjeta",
+    "ownGoal": "Autogol",
+    "penalty": "Penal",
+    "missedPenalty": "Penal fallado",
+    "goal": "Gol",
+    "noSide": "equipo no reportado",
+    "subFor": "por {name}",
+    "assist": "asistencia de {name}"
+  },
+  "lineups": {
+    "subtitle": "{formation} · DT {coach}",
+    "noFormation": "formación no reportada",
+    "noCoach": "no reportado",
+    "starting": "Titulares ({n})",
+    "bench": "Suplentes ({n})",
+    "noBench": "Sin suplentes registrados."
+  },
+  "players": {
+    "noName": "El proveedor no identificó al jugador.",
+    "sub": "supl.",
+    "notRated": "Sin valoración (pocos minutos o no reportada).",
+    "yellow": "A{n}",
+    "red": "R{n}"
+  },
+  "context": {
+    "table": {
+      "title": "Clasificación",
+      "subtitle": "La última clasificación que tenemos antes del inicio, para ambos equipos.",
+      "noForm": "El proveedor no indicó la forma reciente.",
+      "snapshot": "Captura del {when}",
+      "snapshotAfterKickoff": "Captura del {when} — tomada DESPUÉS del inicio, ya incluye este partido."
+    },
+    "form": {
+      "title": "Forma reciente",
+      "subtitle": "Los últimos seis partidos terminados antes de este, en cualquier competición.",
+      "home": "vs {opponent}",
+      "away": "@ {opponent}",
+      "none": "No hay ningún partido terminado guardado."
+    },
+    "h2h": {
+      "title": "Enfrentamientos directos",
+      "subtitle": "Enfrentamientos anteriores con resultado guardado."
+    },
+    "absences": {
+      "title": "Bajas",
+      "subtitle": "Lesiones y sanciones que el proveedor reportó para este partido."
+    }
+  },
+  "live": {
+    "note": "Los datos en vivo son un sistema aparte de los precios previos al partido: nunca se usan para evaluar, entrenar ni hacer backtest de un modelo prepartido, y el último precio en vivo no es una línea de cierre.",
+    "states": {
+      "title": "Evolución del estado del partido",
+      "subtitle": "Cada cambio de estado, minuto o marcador, con su fuente.",
+      "fixtures": "partidos",
+      "odds": "cuotas"
+    },
+    "quotes": {
+      "title": "Precios en vivo",
+      "subtitle": "El último precio de cada selección (esta fuente no distingue entre casas).",
+      "main": "principal",
+      "withdrawnReason": "Retirada por la casa en este momento.",
+      "withdrawn": "retirada",
+      "suspended": "suspendida",
+      "open": "abierta",
+      "others_one": "{count} precio en vivo más pertenece a una apuesta sin mercado nuestro; se guarda, pero no se muestra.",
+      "others_other": "{count} precios en vivo más pertenecen a apuestas sin mercado nuestro; se guardan, pero no se muestran."
+    },
+    "movement": {
+      "title": "Movimiento de precios",
+      "subtitle": "Cada cambio en nuestros mercados, del más reciente al más antiguo: movimientos, suspensiones, retiradas."
+    },
+    "score": {
+      "halfTime": "descanso",
+      "live": "en vivo {minute}",
+      "fixtureFeed": "fuente de partidos",
+      "oddsFeed": "fuente de cuotas"
+    }
+  },
+  "audit": {
+    "title": "Auditoría",
+    "subtitle": "Proveedor → payload en bruto → filas normalizadas → variables → modelo → predicción → mercado → pick → liquidación, solo a partir de hashes e identificadores guardados",
+    "complete": "Cadena completa: no falta nada de lo esperado",
+    "gaps_one": "{count} paso incompleto: {steps}. El motivo se indica más abajo.",
+    "gaps_other": "{count} pasos incompletos: {steps}. Cada uno indica el motivo más abajo.",
+    "state": {
+      "recorded": "Registrado",
+      "partial": "Parcial",
+      "missing": "Faltante",
+      "notApplicable": "No aplica"
+    },
+    "showFewer": "Mostrar menos",
+    "showAll": "Mostrar los {n} registros"
+  }
+}

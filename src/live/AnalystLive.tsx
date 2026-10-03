@@ -35,16 +35,11 @@ export function AnalystLive() {
       {status.isError ? <ApiErrorNotice error={status.error} /> : null}
       {s && !configured ? (
         <WarningBanner>
-          No language model is configured on the API host ({s.missing.join(", ")} unset), so the
-          analyst cannot answer. Nothing is sent anywhere. The tools below are exactly what it would
-          read, and they work now.
+          {t("ops.analyst.notConfigured", { missing: s.missing.join(", ") })}
         </WarningBanner>
       ) : null}
 
-      <Panel
-        title="Ask"
-        subtitle="Questions go to the API host, which calls the model and the tools. The browser never sees a key."
-      >
+      <Panel title={t("ops.analyst.ask.title")} subtitle={t("ops.analyst.ask.subtitle")}>
         <form
           className="flex flex-col gap-2 sm:flex-row"
           onSubmit={(e) => {
@@ -58,11 +53,9 @@ export function AnalystLive() {
             maxLength={1000}
             disabled={!configured}
             placeholder={
-              configured
-                ? "e.g. How did Dixon-Coles do against the market?"
-                : "Not configured on the API host"
+              configured ? t("ops.analyst.ask.placeholder") : t("ops.analyst.ask.placeholderOff")
             }
-            aria-label="Question for the analyst"
+            aria-label={t("ops.analyst.ask.label")}
             className="h-9 min-w-0 flex-1 rounded-md border border-border bg-card px-3 text-sm placeholder:text-subtle-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
           />
           <button
@@ -70,7 +63,7 @@ export function AnalystLive() {
             disabled={!configured || ask.isPending || !question.trim()}
             className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {ask.isPending ? "Asking…" : "Ask"}
+            {ask.isPending ? t("ops.analyst.ask.pending") : t("ops.analyst.ask.submit")}
           </button>
         </form>
         {ask.isError ? <ApiErrorNotice error={ask.error} className="mt-3" /> : null}
@@ -87,8 +80,9 @@ export function AnalystLive() {
             <p className="whitespace-pre-wrap text-sm leading-relaxed">{reply.text}</p>
             {reply.unverified_figures.length ? (
               <WarningBanner>
-                Unverified figures (not found in any tool result):{" "}
-                {reply.unverified_figures.join(", ")}
+                {t("ops.analyst.ask.unverified", {
+                  figures: reply.unverified_figures.join(", "),
+                })}
               </WarningBanner>
             ) : null}
             <div className="space-y-1">
@@ -111,7 +105,7 @@ export function AnalystLive() {
       {s ? (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <ToolConsole tools={s.tools} />
-          <Panel title="Rules the analyst works under">
+          <Panel title={t("ops.analyst.rules")}>
             <ul className="list-disc space-y-1.5 pl-4 text-xs text-muted-foreground">
               {s.rules.map((r) => (
                 <li key={r}>{r}</li>
@@ -141,8 +135,8 @@ function ToolConsole({ tools }: { tools: ToolSpec[] }) {
   const props = Object.entries(tool?.parameters.properties ?? {});
   return (
     <Panel
-      title="Tool console"
-      subtitle="Run any analyst tool by hand and see exactly what it would read"
+      title={t("ops.analyst.console.title")}
+      subtitle={t("ops.analyst.console.subtitle")}
       bodyClassName="p-4 space-y-3"
     >
       <SegmentedTabs
@@ -152,7 +146,7 @@ function ToolConsole({ tools }: { tools: ToolSpec[] }) {
           setName(n);
           setArgs({});
         }}
-        label="Tool"
+        label={t("ops.analyst.console.tool")}
       />
       <p className="text-caption text-muted-foreground">{tool?.description}</p>
       <form
@@ -178,7 +172,7 @@ function ToolConsole({ tools }: { tools: ToolSpec[] }) {
           type="submit"
           className="h-8 rounded-md border border-border px-3 text-xs hover:bg-elevated"
         >
-          Run
+          {t("ops.analyst.console.run")}
         </button>
       </form>
       {run.isError ? <ApiErrorNotice error={run.error} /> : null}
@@ -191,10 +185,16 @@ function ToolOutput({ result }: { result: ToolResult }) {
   return (
     <div className="space-y-2">
       <div className="grid gap-x-6 sm:grid-cols-2">
-        <KeyValue label="Status" value={result.status ?? "—"} />
+        <KeyValue label={t("ops.analyst.output.status")} value={result.status ?? "—"} />
         <KeyValue label="Endpoint" value={result.provenance.endpoint} />
-        <KeyValue label="Generated" value={utcDateTime(result.provenance.generated_at)} />
-        <KeyValue label="Data as of" value={utcDateTime(result.provenance.data_as_of)} />
+        <KeyValue
+          label={t("ops.analyst.output.generated")}
+          value={utcDateTime(result.provenance.generated_at)}
+        />
+        <KeyValue
+          label={t("ops.analyst.output.dataAsOf")}
+          value={utcDateTime(result.provenance.data_as_of)}
+        />
       </div>
       {result.reason ? (
         <StatusNotice status={result.status ?? "not_available"} reason={result.reason} compact />

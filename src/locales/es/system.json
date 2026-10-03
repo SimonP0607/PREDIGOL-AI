@@ -1,0 +1,205 @@
+{
+  "metrics": {
+    "worker": "Worker",
+    "apiFootball": "API-Football hoy",
+    "quotaHint": "{left} restantes bajo nuestro límite · plan {plan}/día",
+    "provider": "Proveedor",
+    "database": "Base de datos",
+    "schemaHint": "esquema {rev}"
+  },
+  "workerJobs": {
+    "title": "Tareas del worker",
+    "subtitle": "Próxima ejecución programada de cada tarea.",
+    "job": "Tarea",
+    "nextRun": "Próxima ejecución",
+    "ledgerLink": "Registro de tareas e historial de ejecuciones →"
+  },
+  "captures": {
+    "title": "Capturas",
+    "subtitle": "Lo que los pipelines escribieron recientemente."
+  },
+  "errors": {
+    "title": "Errores, últimas 72 h",
+    "subtitle": "Ejecuciones que fallaron, quedaron a medias, alcanzaron un tope o se interrumpieron.",
+    "headers": {
+      "when": "Cuándo",
+      "job": "Tarea",
+      "status": "Estado",
+      "error": "Error"
+    }
+  },
+  "quality": {
+    "title": "Calidad de datos",
+    "subtitle": "Incidencias abiertas por gravedad.",
+    "empty": "Ninguna incidencia abierta.",
+    "link": "Abrir Calidad de datos →"
+  },
+  "backups": {
+    "title": "Copias de seguridad",
+    "subtitle": "Volcados de la base de datos en esta máquina, los más recientes primero.",
+    "headers": {
+      "file": "Archivo",
+      "size": "Tamaño",
+      "written": "Guardado"
+    }
+  },
+  "versions": {
+    "title": "Versiones",
+    "backend": "Backend",
+    "backendCode": "Código del backend",
+    "schema": "Esquema",
+    "frontend": "Frontend",
+    "worker": "Worker",
+    "workerBuild": "Compilación del worker"
+  },
+  "backfill": {
+    "title": "Migración del histórico",
+    "subtitle": "Tareas de backfill precargadas, por tipo. Cada tarea es una petición al proveedor; nunca se vuelve a pedir lo que ya está en el almacén de datos crudos.",
+    "progress": "{done} de {total} tareas completadas",
+    "complete": "completado",
+    "running": "en curso",
+    "headers": {
+      "kind": "Tipo",
+      "done": "Hechas",
+      "pending": "Pendientes",
+      "running": "En curso",
+      "failed": "Fallidas",
+      "lastCompleted": "Última completada"
+    }
+  },
+  "runs": {
+    "title": "Ejecuciones de ingesta recientes",
+    "subtitle": "El registro de tareas: qué hizo el sistema y cuánto costó",
+    "empty": "Todavía no se ha registrado ninguna ejecución de ingesta.",
+    "runId": "ejecución {id}",
+    "headers": {
+      "job": "Tarea",
+      "status": "Estado",
+      "started": "Inicio",
+      "duration": "Duración",
+      "requests": "Peticiones",
+      "rows": "Filas escritas / actualizadas",
+      "errors": "Errores"
+    }
+  },
+  "jobs": {
+    "title": "Tareas",
+    "subtitle": "Por tipo de tarea: las últimas 24 horas según el registro y la próxima ejecución según el heartbeat del worker",
+    "empty": "Todavía no se ha ejecutado ninguna tarea.",
+    "lastError": "Último error: {error}",
+    "manual": "manual",
+    "headers": {
+      "job": "Tarea",
+      "last": "Última",
+      "runs24h": "Ejecuciones 24 h",
+      "failedPartial": "Fallidas / parciales",
+      "requests24h": "Peticiones 24 h",
+      "lastSuccess": "Último éxito",
+      "nextRun": "Próxima ejecución"
+    }
+  },
+  "dataQuality": {
+    "notComputable": "No se puede calcular.",
+    "loading": "Cargando",
+    "highIssues_one": "{count} incidencia de gravedad alta detectada ahora mismo en los datos: {titles}.",
+    "highIssues_other": "{count} incidencias de gravedad alta detectadas ahora mismo en los datos: {titles}.",
+    "sections": "Secciones de calidad de datos",
+    "tabs": {
+      "issues": "Incidencias",
+      "coverage": "Cobertura",
+      "jobs": "Tareas",
+      "runs": "Ejecuciones de ingesta",
+      "notes": "Notas"
+    },
+    "cards": {
+      "fixturesExpected": {
+        "label": "Partidos previstos",
+        "hint": "Programados, de competiciones seguidas, próximas {hours} h"
+      },
+      "fixturesWithOdds": {
+        "label": "Partidos con cuotas",
+        "hint": "{n} con captura cercana al cierre"
+      },
+      "oddsCoverage": {
+        "label": "Cobertura de cuotas",
+        "hint": "Partidos previstos con al menos una captura"
+      },
+      "captureWindows": {
+        "label": "Ventanas de captura (24 h)",
+        "hint": "{captured} de {expected} ventanas de partidos que ya empezaron"
+      },
+      "bookmakersSeen": {
+        "label": "Casas vistas (24 h)",
+        "hint": "Cobertura: {ratio} de las casas activas"
+      },
+      "marketsSeen": {
+        "label": "Mercados vistos (24 h)",
+        "hint": "Cobertura: {ratio} de los mercados seguidos"
+      },
+      "snapshots": {
+        "label": "Capturas (24 h)",
+        "hint": "Última captura {when}"
+      },
+      "staleFixtures": {
+        "label": "Partidos desactualizados",
+        "hint": "Próximos, con la última captura de hace más de 4 h"
+      },
+      "awaitingResult": {
+        "label": "Pendientes de resultado",
+        "hint": "{n} partidos pasados tienen marcador"
+      },
+      "partialJobs": {
+        "label": "Tareas parciales (24 h)",
+        "hint": "Escribieron algo y tuvieron errores"
+      },
+      "failedJobs": {
+        "label": "Tareas fallidas (24 h)",
+        "hint": "Errores sin nada guardado, o detenidas por un tope"
+      },
+      "providerErrors": {
+        "label": "Errores del proveedor (24 h)",
+        "hint": "Rechazos y fallos registrados por las ejecuciones"
+      },
+      "requestsToday": {
+        "label": "Peticiones hoy",
+        "hint": "{remaining} restantes · {unclaimed} sin asignar a una ejecución cerrada"
+      },
+      "runsStuck": {
+        "label": "Ejecuciones atascadas",
+        "hint": "En 'running' más de 2 h: probablemente su proceso murió"
+      }
+    },
+    "issues": {
+      "title": "Incidencias",
+      "subtitle": "Se calculan a partir de los datos en cada petición - no hay ninguna lista que se desactualice",
+      "headers": {
+        "severity": "Gravedad",
+        "issue": "Incidencia",
+        "count": "Cantidad",
+        "detected": "Detectada"
+      }
+    },
+    "coverage": {
+      "title": "Cobertura por competición",
+      "subtitle": "Competiciones seguidas, temporada actual",
+      "season": "temporada {season}",
+      "noFixture": "Ningún partido programado de esta competición en el horizonte de evaluación: no hay nada que cubrir.",
+      "noSnapshot": "Nunca se ha registrado una captura de esta competición.",
+      "headers": {
+        "competition": "Competición",
+        "inHorizon": "En el horizonte",
+        "withOdds": "Con cuotas",
+        "coverage": "Cobertura",
+        "bookmakers24h": "Casas 24 h",
+        "markets24h": "Mercados 24 h",
+        "lastCapture": "Última captura",
+        "awaitingResult": "Pendientes de resultado"
+      }
+    },
+    "notes": {
+      "title": "Notas",
+      "subtitle": "Lo que señala la propia captura",
+      "empty": "La captura no incluye ninguna nota."
+    }
+  }
+}

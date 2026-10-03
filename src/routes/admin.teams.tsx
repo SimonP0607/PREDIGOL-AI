@@ -6,12 +6,12 @@ import { TeamsLive } from "@/live/CatalogLive";
 export const Route = createFileRoute("/admin/teams")({
   head: () => ({
     meta: [
-      { title: "Teams — Football Intelligence" },
+      { title: "Teams · PrediGol Admin" },
       {
         name: "description",
         content: "Canonical team entities, provider mappings and rating history.",
       },
-      { property: "og:title", content: "Teams — Football Intelligence" },
+      { property: "og:title", content: "Teams · PrediGol Admin" },
       {
         property: "og:description",
         content: "Canonical team entities, provider mappings and rating history.",

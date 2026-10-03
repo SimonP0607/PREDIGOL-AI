@@ -11,6 +11,7 @@ import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
 import type { AuditItem, AuditScalar, AuditStepState, AuditTrailStep } from "@/lib/api/v1/types";
+import { t } from "@/lib/i18n";
 import { shortHash, utcDateTime } from "./format";
 
 const STATE_TONE: Record<AuditStepState, BadgeTone> = {
@@ -19,18 +20,25 @@ const STATE_TONE: Record<AuditStepState, BadgeTone> = {
   missing: "negative",
   not_applicable: "neutral",
 };
-const STATE_LABEL: Record<AuditStepState, string> = {
-  recorded: "Recorded",
-  partial: "Partial",
-  missing: "Missing",
-  not_applicable: "Not applicable",
-};
+/** A step's state in the reader's language. */
+function stateLabel(state: AuditStepState): string {
+  switch (state) {
+    case "recorded":
+      return t("center.audit.state.recorded");
+    case "partial":
+      return t("center.audit.state.partial");
+    case "missing":
+      return t("center.audit.state.missing");
+    case "not_applicable":
+      return t("center.audit.state.notApplicable");
+  }
+}
 const PREVIEW = 8;
 const HASHLIKE = /^[0-9a-f]{32,}$/;
 
 function show(value: AuditScalar): string {
   if (value === null) return "—";
-  if (typeof value === "boolean") return value ? "yes" : "no";
+  if (typeof value === "boolean") return value ? t("center.yes") : t("center.no");
   if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(4);
   if (HASHLIKE.test(value)) return shortHash(value);
   if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return utcDateTime(value);
@@ -69,10 +77,10 @@ function StepItems({ step }: { step: AuditTrailStep }) {
     <div className="mt-2">
       <TableShell>
         <THead>
-          <TH>Record</TH>
-          <TH>When</TH>
-          <TH>Facts</TH>
-          <TH>Computed from</TH>
+          <TH>{t("center.columns.record")}</TH>
+          <TH>{t("center.columns.when")}</TH>
+          <TH>{t("center.columns.facts")}</TH>
+          <TH>{t("center.columns.computedFrom")}</TH>
         </THead>
         <tbody>
           {items.map((it) => (
@@ -109,7 +117,7 @@ function StepItems({ step }: { step: AuditTrailStep }) {
           onClick={() => setAll((v) => !v)}
           className="mt-1.5 text-caption text-primary hover:underline"
         >
-          {all ? "Show fewer" : `Show all ${step.items.length} records`}
+          {all ? t("center.audit.showFewer") : t("center.audit.showAll", { n: step.items.length })}
         </button>
       ) : null}
     </div>
@@ -123,17 +131,16 @@ export function AuditTrail({ fixtureId }: { fixtureId: string }) {
   const a = q.data.data;
   const gaps = a.steps.filter((s) => s.state === "missing" || s.state === "partial");
   return (
-    <Panel
-      title="Audit"
-      subtitle="Provider → raw payload → normalised rows → features → model → prediction → market → pick → settlement, from stored hashes and ids only"
-    >
+    <Panel title={t("center.audit.title")} subtitle={t("center.audit.subtitle")}>
       <div className="mb-3" data-testid="audit-summary">
         {a.complete ? (
-          <StatusBadge tone="positive">Chain complete: nothing expected is missing</StatusBadge>
+          <StatusBadge tone="positive">{t("center.audit.complete")}</StatusBadge>
         ) : (
           <WarningBanner>
-            {gaps.length} step{gaps.length === 1 ? "" : "s"} with a gap:{" "}
-            {gaps.map((g) => g.label.toLowerCase()).join(", ")}. Each says why below.
+            {t("center.audit.gaps", {
+              count: gaps.length,
+              steps: gaps.map((g) => g.label.toLowerCase()).join(", "),
+            })}
           </WarningBanner>
         )}
       </div>
@@ -151,7 +158,7 @@ export function AuditTrail({ fixtureId }: { fixtureId: string }) {
             <div className="min-w-0 flex-1 rounded-md border border-border bg-elevated/40 px-3 py-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm">{s.label}</span>
-                <StatusBadge tone={STATE_TONE[s.state]}>{STATE_LABEL[s.state]}</StatusBadge>
+                <StatusBadge tone={STATE_TONE[s.state]}>{stateLabel(s.state)}</StatusBadge>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">{s.detail}</p>
               <StepItems step={s} />

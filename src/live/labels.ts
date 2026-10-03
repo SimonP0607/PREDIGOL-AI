@@ -1,4 +1,6 @@
-/** Human names for job types recorded in the ledger. */
+import { t, translateOr } from "@/lib/i18n";
+
+/** Human names (English) for job types recorded in the ledger; `jobLabel` translates them. */
 export const JOB_LABEL: Record<string, string> = {
   odds_capture: "Odds capture",
   fixtures_sync: "Fixtures sync",
@@ -22,14 +24,30 @@ export const JOB_LABEL: Record<string, string> = {
   window_probe: "Window probe",
   plan_probe: "Plan probe",
   raw_transfer: "Raw transfer",
+  context_refresh: "Context refresh",
+  results_repair: "Results repair",
 };
+
+/** A job type for display, in the reader's language. */
+export function jobLabel(kind: string): string {
+  return translateOr(`admin.jobs.${kind}`, JOB_LABEL[kind] ?? kind.replace(/_/g, " "));
+}
 
 /** "pinnacle/closing/shin" -> "Pinnacle · closing · shin". */
 export function baselineLabel(key: string): string {
   const [bm, kind, method] = key.split("/");
-  const book = bm === "AVG" ? "Market average" : bm === "MAX" ? "Best price" : titleCase(bm ?? key);
+  const book =
+    bm === "AVG"
+      ? t("admin.labels.marketAverage")
+      : bm === "MAX"
+        ? t("admin.labels.bestPrice")
+        : titleCase(bm ?? key);
   const when =
-    kind === "pre_closing" ? "pre-closing" : kind === "closing" ? "closing" : (kind ?? "");
+    kind === "pre_closing"
+      ? t("admin.labels.preClosing")
+      : kind === "closing"
+        ? t("admin.labels.closing")
+        : (kind ?? "");
   return `${book} · ${when}${method ? ` · ${method}` : ""}`;
 }
 
@@ -59,5 +77,7 @@ const BOOK_LABEL: Record<string, string> = {
 
 /** A Football-Data bookmaker code, for display. */
 export function bookLabel(code: string): string {
+  if (code === "AVG") return t("admin.labels.marketAverage");
+  if (code === "MAX") return t("admin.labels.bestPrice");
   return BOOK_LABEL[code] ?? code;
 }

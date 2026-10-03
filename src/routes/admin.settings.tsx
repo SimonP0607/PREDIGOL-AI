@@ -6,12 +6,12 @@ import { SettingsLive } from "@/live/ResearchLive";
 export const Route = createFileRoute("/admin/settings")({
   head: () => ({
     meta: [
-      { title: "Settings — Football Intelligence" },
+      { title: "Settings · PrediGol Admin" },
       {
         name: "description",
         content: "Workspace, thresholds, provider configuration and versioning preferences.",
       },
-      { property: "og:title", content: "Settings — Football Intelligence" },
+      { property: "og:title", content: "Settings · PrediGol Admin" },
       {
         property: "og:description",
         content: "Workspace, thresholds, provider configuration and versioning preferences.",

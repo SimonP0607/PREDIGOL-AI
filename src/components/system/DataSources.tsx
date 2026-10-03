@@ -12,6 +12,7 @@
  * a demo figure under a LIVE badge by forgetting to update a label.
  */
 import { useCallback, useMemo, useRef, useState } from "react";
+import { t } from "@/lib/i18n";
 import { Database, FlaskConical, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api/mode";
@@ -62,24 +63,24 @@ export function DemoRegion({ children }: { children: React.ReactNode }) {
 
 const LABELS: Record<
   PageLabel,
-  { text: string; title: string; tone: string; Icon: typeof Database }
+  { text: () => string; title: () => string; tone: string; Icon: typeof Database }
 > = {
   live: {
-    text: "Live data",
-    title: `Every figure on this page comes from the API at ${API_BASE_URL || "(not configured)"}.`,
+    text: () => t("admin.shell.liveData"),
+    title: () =>
+      t("admin.shell.liveTitle", { url: API_BASE_URL || t("admin.shell.notConfigured") }),
     tone: "border-positive/35 bg-positive-soft text-positive",
     Icon: Database,
   },
   demo: {
-    text: "Demo data",
-    title: "Demo data. Every figure on this page is synthetic and produced by the mock adapter.",
+    text: () => t("admin.shell.demoData"),
+    title: () => t("admin.shell.demoTitle"),
     tone: "border-warning/35 bg-warning-soft text-warning",
     Icon: FlaskConical,
   },
   hybrid: {
-    text: "Hybrid",
-    title:
-      "This page mixes live API data with demo data. Panels marked Demo are synthetic; everything else comes from the API.",
+    text: () => t("admin.shell.hybrid"),
+    title: () => t("admin.shell.hybridTitle"),
     tone: "border-info/35 bg-info-soft text-info",
     Icon: Layers,
   },
@@ -87,11 +88,13 @@ const LABELS: Record<
 
 export function PageDataModeBadge({ className }: { className?: string }) {
   const label = usePageDataLabel();
-  const { text, title, tone, Icon } = LABELS[label];
+  const { tone, Icon } = LABELS[label];
+  const text = LABELS[label].text();
+  const title = LABELS[label].title();
   return (
     <span
       role="status"
-      aria-label={`Data source: ${text}`}
+      aria-label={t("admin.shell.dataSource", { text })}
       title={title}
       data-testid="data-mode-badge"
       data-mode={label}

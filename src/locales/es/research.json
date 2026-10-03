@@ -1,0 +1,229 @@
+{
+  "common": {
+    "model": "Modelo",
+    "market": "Mercado",
+    "markets": "Mercados",
+    "sample": "Muestra",
+    "fixtures": "Partidos",
+    "verdict": "Veredicto",
+    "version": "Versión",
+    "competition": "Competición",
+    "competitions": "Competiciones",
+    "testSeason": "Temporada de prueba",
+    "primaryBaseline": "Línea base principal",
+    "protocol": "Protocolo",
+    "session": "Sesión",
+    "codeVersion": "Versión del código",
+    "datasetHash": "Hash de los datos",
+    "finished": "Finalizado"
+  },
+  "models": {
+    "names": {
+      "elo_ologit": "Elo V2 + logit ordenado",
+      "base_rates": "Tasas base de la liga",
+      "mnlogit": "Logit multinomial (features v2)"
+    },
+    "verdict": {
+      "better": "Supera al mercado",
+      "indistinguishable": "Sin diferencia detectable",
+      "worse": "Peor que el mercado",
+      "noMarket": "No hay precio de mercado para los partidos de este modelo."
+    },
+    "noBacktest": "Esta versión del modelo no tiene ningún backtest walk-forward guardado.",
+    "overUnder": "Más/Menos {line}",
+    "banner": {
+      "beating_one": "{models} obtuvo mejor puntuación que {baseline} en la temporada de prueba {season}, con todo el intervalo del 95% por debajo de cero. Una temporada es una sola muestra; nada se promueve automáticamente.",
+      "beating_other": "{models} obtuvieron mejor puntuación que {baseline} en la temporada de prueba {season}, con todo el intervalo del 95% por debajo de cero. Una temporada es una sola muestra; nada se promueve automáticamente.",
+      "noneBeating_one": "Ningún modelo supera al mercado. En {n} partido de prueba ({season}), todos los modelos tienen un log loss mayor que {baseline}, con todo el intervalo del 95% por encima de cero. Todos los modelos siguen siendo experimentales y ninguno se usa para generar picks.",
+      "noneBeating_other": "Ningún modelo supera al mercado. En {n} partidos de prueba ({season}), todos los modelos tienen un log loss mayor que {baseline}, con todo el intervalo del 95% por encima de cero. Todos los modelos siguen siendo experimentales y ninguno se usa para generar picks."
+    },
+    "baseline": {
+      "title": "Línea base del mercado",
+      "subtitle": "El nivel que todo modelo debe superar: precios de las casas sin el margen, evaluados como si fueran un modelo",
+      "liveConsensus": "Consenso en vivo",
+      "consensusLine_one": "{n} partido · {methods} · último: {when}",
+      "consensusLine_other": "{n} partidos · {methods} · último: {when}",
+      "baseline": "Línea base",
+      "source": "Fuente",
+      "primary": "Principal",
+      "overroundNotStored": "Mercado de dos resultados al que se quita el margen al vuelo; el overround no se guarda."
+    },
+    "quality": {
+      "title": "Calidad predictiva · 1X2",
+      "subtitle": "Walk-forward, fuera de muestra. En log loss y Brier, menor es mejor; ECE es el error de calibración. La tasa de acierto no se usa para ordenar."
+    },
+    "betting": {
+      "title": "Rendimiento en apuestas",
+      "subtitle": "Separado de la calidad predictiva. Una simulación de backtest no es un historial de apuestas.",
+      "empty": "No se ha guardado ningún backtest con precios históricos.",
+      "hypothetical": "Hipotético",
+      "simulation": "Simulación de backtest · {rule} · precios: {source}",
+      "fixturesPriced": "Partidos con precio",
+      "bets": "Apuestas",
+      "profit": "Beneficio (unidades)",
+      "interval": "Intervalo del 95%",
+      "drawdown": "Drawdown máximo",
+      "noBetMetRule": "Ninguna apuesta cumplió la regla.",
+      "fewBets": "Menos de 30 apuestas: no se muestra intervalo.",
+      "noBets": "Sin apuestas."
+    },
+    "session": {
+      "chosenOn": "Hiperparámetros elegidos en",
+      "seasonOnly": "solo {season}",
+      "protocolValue": "walk-forward, reajuste diario"
+    },
+    "leaderboard": {
+      "vsMarket": "Δ log loss vs mercado",
+      "marketBaseline": "línea base del mercado",
+      "reference": "referencia",
+      "baseline": "Línea base",
+      "noCommon": "Sin partidos en común con el mercado."
+    },
+    "detail": {
+      "title": "Detalle del modelo",
+      "tabsLabel": "Detalle",
+      "tabs": {
+        "calibration": "Calibración",
+        "leagues": "Ligas",
+        "temporal": "Estabilidad temporal"
+      }
+    },
+    "calibration": {
+      "chartLabel": "Diagrama de fiabilidad",
+      "axis": "Probabilidad predicha",
+      "note": "Cada resultado de cada partido de prueba, en diez tramos de igual ancho. La diagonal discontinua es la calibración perfecta: por debajo, el modelo tuvo exceso de confianza en ese tramo; por encima, le faltó confianza. ECE {ece}.",
+      "bin": "Tramo",
+      "predicted": "Predicha",
+      "observed": "Observada",
+      "emptyBin": "Ninguna predicción cayó en este tramo."
+    },
+    "split": {
+      "empty": "No se guardó ningún desglose para esta ejecución.",
+      "modelLogLoss": "Log loss del modelo",
+      "marketLogLoss": "Log loss del mercado",
+      "difference": "Diferencia"
+    },
+    "monthly": {
+      "chartLabel": "Diferencia mensual de log loss frente al mercado",
+      "series": "modelo − mercado",
+      "note": "Log loss del modelo menos el del mercado, mes a mes. Por encima de la línea discontinua, el mercado fue mejor ese mes. Un modelo que solo gana en un mes no ha demostrado nada.",
+      "month": "Mes"
+    },
+    "comparison": {
+      "against": "Frente a",
+      "commonFixtures": "Partidos en común"
+    },
+    "markets": {
+      "oneXTwoOnly": "{model} solo cotiza 1X2: no tiene distribución de goles.",
+      "noOverUnder": "No se guardó ninguna comparación de Más/Menos para esta ejecución.",
+      "btts": "Ambos marcan",
+      "bttsNoBaseline": "Sin línea base de mercado: la fuente histórica no publica precios de BTTS, así que se evalúa solo contra los resultados y no puede calificarse de mejor ni de peor que el mercado.",
+      "noBtts": "Este modelo no cotiza BTTS."
+    },
+    "protocol": {
+      "lineage": "Procedencia",
+      "modelVersion": "Versión del modelo",
+      "backtestRun": "Ejecución del backtest",
+      "trainedOn": "Entrenado con resultados",
+      "trainedRange_one": "{from} – {to} · {n} partido",
+      "trainedRange_other": "{from} – {to} · {n} partidos",
+      "accuracy": "Tasa de acierto (no se usa para ordenar)",
+      "coverage": "Cobertura",
+      "predicted": "Predichos",
+      "predictedValue": "{predicted} de {targets}",
+      "refits": "Reajustes",
+      "failedFits": "Ajustes fallidos",
+      "noInterval": "Sin intervalo",
+      "notPredicted": "No predichos · {n}",
+      "noCoverage": "No se registró la cobertura.",
+      "chosenOn": "Hiperparámetros · elegidos en {season}",
+      "timeDecay": "Decaimiento temporal ξ (por día)",
+      "shrinkage": "Penalización de contracción",
+      "candidates": "Candidatos evaluados",
+      "candidatesValue": "{n} (log loss de validación)",
+      "notStored": "no guardado en esta sesión"
+    },
+    "shadow": {
+      "loading": "Picks shadow: cargando…",
+      "label": "Picks shadow",
+      "unavailable": "{reason} Ver Rendimiento.",
+      "settled_one": "{count} liquidado al precio capturado: ROI",
+      "settled_other": "{count} liquidados al precio capturado: ROI",
+      "hitRate": "tasa de acierto {hitRate}%. No es un historial de apuestas; el desglose por modelo está en Rendimiento."
+    }
+  },
+  "backtesting": {
+    "protocol": {
+      "subtitle": "Fijado antes de tocar la temporada de prueba",
+      "validationSeason": "Temporada de validación",
+      "validationValue": "{season} — solo hiperparámetros",
+      "testFixtures": "Partidos de prueba",
+      "refit": "Reajuste",
+      "refitValue": "cada {days} día(s)",
+      "cutoff": "Corte",
+      "cutoffValue": "{minutes} min antes del inicio del primer partido del bloque",
+      "trainingWindow": "Ventana de entrenamiento",
+      "trainingWindowValue": "{days} días, resultados públicos 3 h después del inicio",
+      "checks": "Cada bloque se comprueba: un resultado de entrenamiento que no era público antes del corte, o un corte que no es anterior al inicio que predice, detiene la ejecución. Una prueba reescribe todos los resultados posteriores y exige que todas las predicciones anteriores salgan idénticas.",
+      "resultsLink": "Resultados frente al mercado →"
+    },
+    "search": {
+      "titleChosen": "{model} · hiperparámetros",
+      "subtitleChosen": "Elegidos en {season}: ξ={xi}, penalización={penalty}.",
+      "notStored": "Esta sesión solo guardó los valores elegidos, no la puntuación de validación de cada candidato, así que no se puede mostrar la búsqueda.",
+      "title": "{model} · búsqueda de hiperparámetros",
+      "subtitle": "Log loss de validación en {season}, sobre los partidos que predijeron todos los candidatos. Elegidos: ξ={xi}, penalización={penalty}.",
+      "extended": "El mejor candidato quedó en el borde de la rejilla inicial, así que la rejilla se amplió con una regla fijada de antemano (solo puntuaciones de validación).",
+      "corner": "ξ (por día) \\ penalización"
+    }
+  },
+  "settings": {
+    "configured": "configurado",
+    "notConfigured": "sin configurar",
+    "competitions": {
+      "title": "Competiciones seguidas",
+      "subtitle": "config/competitions.yaml, aplicado con scripts.manage_competitions",
+      "league": "liga {id}"
+    },
+    "rule": {
+      "title": "Regla de decisión",
+      "subtitle": "Versionada; un cambio de umbral es una versión nueva",
+      "oddsRange": "Rango de cuotas",
+      "minEv": "VE mínimo",
+      "minEdge": "Ventaja mínima de probabilidad",
+      "publishing": "Publicación",
+      "publishingValue": "desactivada en el esquema"
+    },
+    "analyst": {
+      "title": "AI Analyst",
+      "subtitle": "FBI_ANALYST_API_KEY / FBI_ANALYST_MODEL en el servidor de la API",
+      "languageModel": "Modelo de lenguaje",
+      "unset": "Sin definir",
+      "tools": "Herramientas"
+    },
+    "notifications": {
+      "title": "Notificaciones (bot)",
+      "subtitle": "Solo informativo. FBI_TELEGRAM_BOT_TOKEN / FBI_TELEGRAM_CHAT_ID en el servidor"
+    },
+    "recent": {
+      "title": "Mensajes recientes",
+      "subtitle": "Lo que generó el bot y qué pasó con cada mensaje",
+      "created": "Creado",
+      "kind": "Tipo",
+      "message": "Mensaje",
+      "status": "Estado"
+    },
+    "secrets": "Las claves y los tokens solo están en el servidor. El navegador solo recibe si algo está configurado, nunca su valor."
+  },
+  "rankings": {
+    "allCompetitions": "Todas las competiciones",
+    "subtitle": "{parameters} · {version}, calculado el {when}",
+    "team": "Equipo",
+    "rating": "Rating",
+    "last5": "Últimos 5",
+    "ratedMatches": "Partidos computados",
+    "lastMatch": "Último partido",
+    "provisional": "provisional",
+    "fewMatches": "Menos de cinco partidos computados."
+  }
+}

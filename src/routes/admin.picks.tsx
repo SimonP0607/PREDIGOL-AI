@@ -32,13 +32,13 @@ import type { PickCandidate, PickStatus } from "@/types/domain";
 export const Route = createFileRoute("/admin/picks")({
   head: () => ({
     meta: [
-      { title: "Picks Center — Football Intelligence" },
+      { title: "Picks Center · PrediGol Admin" },
       {
         name: "description",
         content:
           "Decision intelligence over pick candidates: model vs market, edge, expected value, reliability and full traceability. Shadow mode only.",
       },
-      { property: "og:title", content: "Picks Center — Football Intelligence" },
+      { property: "og:title", content: "Picks Center · PrediGol Admin" },
       {
         property: "og:description",
         content: "Candidate research in shadow mode, with edge, expected value and provenance.",

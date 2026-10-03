@@ -22,6 +22,7 @@ import type {
   Side,
   TeamStatLine,
 } from "@/lib/api/v1/types_center";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { dec, relative, utcDate, utcDateTime } from "./format";
 import { minuteText, quoteLabel } from "./liveText";
@@ -49,29 +50,34 @@ export function WithCenter({
 
 // ── Statistics ─────────────────────────────────────────────────────────────
 
-const STAT_ROWS: Array<{
+interface StatRow {
   key: keyof TeamStatLine;
   label: string;
   decimals?: number;
   pct?: boolean;
-}> = [
-  { key: "possession_pct", label: "Possession", pct: true },
-  { key: "expected_goals", label: "Expected goals (xG)", decimals: 2 },
-  { key: "shots", label: "Shots" },
-  { key: "shots_on_target", label: "Shots on target" },
-  { key: "shots_off_target", label: "Shots off target" },
-  { key: "shots_blocked", label: "Shots blocked" },
-  { key: "shots_inside_box", label: "Shots inside the box" },
-  { key: "shots_outside_box", label: "Shots outside the box" },
-  { key: "corners", label: "Corners" },
-  { key: "fouls", label: "Fouls" },
-  { key: "offsides", label: "Offsides" },
-  { key: "yellow_cards", label: "Yellow cards" },
-  { key: "red_cards", label: "Red cards" },
-  { key: "saves", label: "Goalkeeper saves" },
-  { key: "passes", label: "Passes" },
-  { key: "passes_accurate", label: "Accurate passes" },
-];
+}
+
+/** The compared statistics, labelled in the reader's language (built at render time). */
+function statRows(): StatRow[] {
+  return [
+    { key: "possession_pct", label: t("center.stats.labels.possession"), pct: true },
+    { key: "expected_goals", label: t("center.stats.labels.xg"), decimals: 2 },
+    { key: "shots", label: t("center.stats.labels.shots") },
+    { key: "shots_on_target", label: t("center.stats.labels.shotsOnTarget") },
+    { key: "shots_off_target", label: t("center.stats.labels.shotsOffTarget") },
+    { key: "shots_blocked", label: t("center.stats.labels.shotsBlocked") },
+    { key: "shots_inside_box", label: t("center.stats.labels.shotsInsideBox") },
+    { key: "shots_outside_box", label: t("center.stats.labels.shotsOutsideBox") },
+    { key: "corners", label: t("center.stats.labels.corners") },
+    { key: "fouls", label: t("center.stats.labels.fouls") },
+    { key: "offsides", label: t("center.stats.labels.offsides") },
+    { key: "yellow_cards", label: t("center.stats.labels.yellowCards") },
+    { key: "red_cards", label: t("center.stats.labels.redCards") },
+    { key: "saves", label: t("center.stats.labels.saves") },
+    { key: "passes", label: t("center.stats.labels.passes") },
+    { key: "passes_accurate", label: t("center.stats.labels.passesAccurate") },
+  ];
+}
 
 function statValue(line: TeamStatLine | undefined, key: keyof TeamStatLine): number | null {
   if (!line) return null;
@@ -84,11 +90,11 @@ function statValue(line: TeamStatLine | undefined, key: keyof TeamStatLine): num
 export function StatComparison({
   lines,
   sides,
-  rows = STAT_ROWS,
+  rows = statRows(),
 }: {
   lines: TeamStatLine[];
   sides: Sides;
-  rows?: typeof STAT_ROWS;
+  rows?: StatRow[];
 }) {
   const home = lines.find((l) => l.side === "home");
   const away = lines.find((l) => l.side === "away");
@@ -112,11 +118,11 @@ export function StatComparison({
           <div key={String(r.key)} data-stat={String(r.key)}>
             <div className="flex items-baseline justify-between text-xs">
               <Numeric className="text-xs">
-                <Nullable value={fmt(h)} reason="Not reported for this side." />
+                <Nullable value={fmt(h)} reason={t("center.stats.notReported")} />
               </Numeric>
               <span className="text-caption text-muted-foreground">{r.label}</span>
               <Numeric className="text-xs">
-                <Nullable value={fmt(a)} reason="Not reported for this side." />
+                <Nullable value={fmt(a)} reason={t("center.stats.notReported")} />
               </Numeric>
             </div>
             <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
@@ -133,13 +139,13 @@ export function StatComparison({
 export function StatsTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
   return (
     <Panel
-      title="Team statistics"
+      title={t("center.stats.title")}
       subtitle={
         c.statistics.status === "ok"
-          ? `As of ${utcDateTime(c.statistics.data[0]?.fetched_at)} — ${
-              c.status_group === "live" ? "updated every minute while the match is played" : "final"
-            }.`
-          : "From the provider's match detail."
+          ? c.status_group === "live"
+            ? t("center.stats.asOfLive", { when: utcDateTime(c.statistics.data[0]?.fetched_at) })
+            : t("center.stats.asOfFinal", { when: utcDateTime(c.statistics.data[0]?.fetched_at) })
+          : t("center.stats.fromProvider")
       }
     >
       <SectionView section={c.statistics}>
@@ -160,19 +166,19 @@ function eventTone(e: MatchEvent): BadgeTone {
 }
 
 function eventLabel(e: MatchEvent): string {
-  if (e.type === "subst") return "Sub";
-  if (e.type === "Card") return e.detail?.replace(" Card", "") ?? "Card";
+  if (e.type === "subst") return t("center.events.sub");
+  if (e.type === "Card") return e.detail?.replace(" Card", "") ?? t("center.events.card");
   if (e.type === "Goal") {
-    if (e.detail === "Own Goal") return "Own goal";
-    if (e.detail === "Penalty") return "Pen";
-    if (e.detail === "Missed Penalty") return "Pen missed";
-    return "Goal";
+    if (e.detail === "Own Goal") return t("center.events.ownGoal");
+    if (e.detail === "Penalty") return t("center.events.penalty");
+    if (e.detail === "Missed Penalty") return t("center.events.missedPenalty");
+    return t("center.events.goal");
   }
   return e.type;
 }
 
 function PlayerName({ name, id }: { name: string | null; id: number | null }) {
-  if (!name) return <Nullable value={null} reason="The provider did not name the player." />;
+  if (!name) return <Nullable value={null} reason={t("center.players.noName")} />;
   if (id === null) return <span>{name}</span>;
   return (
     <Link
@@ -206,9 +212,13 @@ export function EventList({ events, sides }: { events: MatchEvent[]; sides: Side
               </span>
             </div>
             <div className="mt-0.5 text-caption text-muted-foreground">
-              {e.side ? (e.side === "home" ? sides.home : sides.away) : "side not reported"}
-              {e.type === "subst" && e.assist ? ` · for ${e.assist}` : ""}
-              {e.type === "Goal" && e.assist ? ` · assist ${e.assist}` : ""}
+              {e.side ? (e.side === "home" ? sides.home : sides.away) : t("center.events.noSide")}
+              {e.type === "subst" && e.assist
+                ? ` · ${t("center.events.subFor", { name: e.assist })}`
+                : ""}
+              {e.type === "Goal" && e.assist
+                ? ` · ${t("center.events.assist", { name: e.assist })}`
+                : ""}
               {e.type === "Var" && e.detail ? ` · ${e.detail}` : ""}
               {e.comments ? ` · ${e.comments}` : ""}
             </div>
@@ -221,10 +231,7 @@ export function EventList({ events, sides }: { events: MatchEvent[]; sides: Side
 
 export function EventsTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
   return (
-    <Panel
-      title="Events"
-      subtitle="Goals, cards, substitutions and VAR decisions as the provider reports them."
-    >
+    <Panel title={t("center.events.title")} subtitle={t("center.events.subtitle")}>
       <SectionView section={c.events}>
         {(ev) => <EventList events={ev} sides={sides} />}
       </SectionView>
@@ -239,9 +246,9 @@ function LineupTable({ players }: { players: LineupPlayer[] }) {
     <TableShell compact>
       <THead>
         <TH align="right">#</TH>
-        <TH>Player</TH>
-        <TH>Pos</TH>
-        <TH>Grid</TH>
+        <TH>{t("center.columns.player")}</TH>
+        <TH>{t("center.columns.position")}</TH>
+        <TH>{t("center.columns.grid")}</TH>
       </THead>
       <tbody>
         {players.map((p) => (
@@ -275,20 +282,25 @@ export function LineupsTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
               <Panel
                 key={l.side}
                 title={l.side === "home" ? sides.home : sides.away}
-                subtitle={`${l.formation ?? "formation not reported"} · coach ${l.coach ?? "not reported"}`}
+                subtitle={t("center.lineups.subtitle", {
+                  formation: l.formation ?? t("center.lineups.noFormation"),
+                  coach: l.coach ?? t("center.lineups.noCoach"),
+                })}
                 bodyClassName=""
               >
                 <div className="px-4 pt-3 text-caption uppercase tracking-wider text-subtle-foreground">
-                  Starting XI ({starters.length})
+                  {t("center.lineups.starting", { n: starters.length })}
                 </div>
                 <LineupTable players={starters} />
                 <div className="px-4 pt-3 text-caption uppercase tracking-wider text-subtle-foreground">
-                  Bench ({bench.length})
+                  {t("center.lineups.bench", { n: bench.length })}
                 </div>
                 {bench.length ? (
                   <LineupTable players={bench} />
                 ) : (
-                  <p className="px-4 pb-3 text-xs text-muted-foreground">No substitutes listed.</p>
+                  <p className="px-4 pb-3 text-xs text-muted-foreground">
+                    {t("center.lineups.noBench")}
+                  </p>
                 )}
               </Panel>
             );
@@ -305,19 +317,19 @@ function PlayersTable({ rows }: { rows: PlayerLine[] }) {
   return (
     <TableShell>
       <THead>
-        <TH>Player</TH>
-        <TH align="right">Min</TH>
-        <TH align="right" title="Provider rating, 0–10">
-          Rating
+        <TH>{t("center.columns.player")}</TH>
+        <TH align="right">{t("center.columns.minutesPlayed")}</TH>
+        <TH align="right" title={t("center.columns.ratingHelp")}>
+          {t("center.columns.rating")}
         </TH>
-        <TH align="right">G</TH>
-        <TH align="right">A</TH>
-        <TH align="right">Shots</TH>
-        <TH align="right">On tgt</TH>
-        <TH align="right">Key passes</TH>
-        <TH align="right">Tackles</TH>
-        <TH align="right">Saves</TH>
-        <TH align="right">Cards</TH>
+        <TH align="right">{t("center.columns.goals")}</TH>
+        <TH align="right">{t("center.columns.assists")}</TH>
+        <TH align="right">{t("center.columns.shots")}</TH>
+        <TH align="right">{t("center.columns.onTarget")}</TH>
+        <TH align="right">{t("center.columns.keyPasses")}</TH>
+        <TH align="right">{t("center.columns.tackles")}</TH>
+        <TH align="right">{t("center.columns.saves")}</TH>
+        <TH align="right">{t("center.columns.cards")}</TH>
       </THead>
       <tbody>
         {rows.map((p) => (
@@ -325,7 +337,9 @@ function PlayersTable({ rows }: { rows: PlayerLine[] }) {
             <TD className="text-sm">
               <PlayerName name={p.name} id={p.player_id} />
               {p.substitute ? (
-                <span className="ml-1.5 text-caption text-subtle-foreground">sub</span>
+                <span className="ml-1.5 text-caption text-subtle-foreground">
+                  {t("center.players.sub")}
+                </span>
               ) : null}
             </TD>
             <TD align="right">
@@ -333,10 +347,7 @@ function PlayersTable({ rows }: { rows: PlayerLine[] }) {
             </TD>
             <TD align="right">
               <Numeric className="text-xs">
-                <Nullable
-                  value={dec(p.rating, 1)}
-                  reason="Not rated (too few minutes or not reported)."
-                />
+                <Nullable value={dec(p.rating, 1)} reason={t("center.players.notRated")} />
               </Numeric>
             </TD>
             {[p.goals, p.assists, p.shots, p.shots_on, p.key_passes, p.tackles, p.saves].map(
@@ -350,10 +361,14 @@ function PlayersTable({ rows }: { rows: PlayerLine[] }) {
             )}
             <TD align="right" className="text-xs">
               {(p.yellow_cards ?? 0) > 0 ? (
-                <span className="text-warning">Y{p.yellow_cards}</span>
+                <span className="text-warning">
+                  {t("center.players.yellow", { n: p.yellow_cards })}
+                </span>
               ) : null}
               {(p.red_cards ?? 0) > 0 ? (
-                <span className="ml-1 text-negative">R{p.red_cards}</span>
+                <span className="ml-1 text-negative">
+                  {t("center.players.red", { n: p.red_cards })}
+                </span>
               ) : null}
               {!p.yellow_cards && !p.red_cards ? (
                 <span className="text-subtle-foreground">—</span>
@@ -388,8 +403,8 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Panel
-        title="League table"
-        subtitle="The last table we hold before kick-off for both sides."
+        title={t("center.context.table.title")}
+        subtitle={t("center.context.table.subtitle")}
         bodyClassName=""
       >
         <SectionView section={c.standings}>
@@ -397,12 +412,12 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
             <TableShell>
               <THead>
                 <TH align="right">#</TH>
-                <TH>Team</TH>
-                <TH align="right">P</TH>
-                <TH align="right">W-D-L</TH>
-                <TH align="right">GD</TH>
-                <TH align="right">Pts</TH>
-                <TH>Form</TH>
+                <TH>{t("center.columns.team")}</TH>
+                <TH align="right">{t("center.columns.played")}</TH>
+                <TH align="right">{t("center.columns.wdl")}</TH>
+                <TH align="right">{t("center.columns.goalDiff")}</TH>
+                <TH align="right">{t("center.columns.points")}</TH>
+                <TH>{t("center.columns.form")}</TH>
               </THead>
               <tbody>
                 {rows.map((s) => (
@@ -443,7 +458,7 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
                             .slice(-5)}
                         />
                       ) : (
-                        <Nullable value={null} reason="The provider gave no form string." />
+                        <Nullable value={null} reason={t("center.context.table.noForm")} />
                       )}
                     </TD>
                   </TRow>
@@ -454,37 +469,40 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
         </SectionView>
         {c.standings.status === "ok" ? (
           <p className="px-4 py-2 text-caption text-subtle-foreground">
-            Snapshot {utcDateTime(c.standings.data[0]?.snapshot_at)}
             {c.standings.data.some((s) => !s.before_kickoff)
-              ? " — taken AFTER kick-off, it includes this match."
-              : ""}
+              ? t("center.context.table.snapshotAfterKickoff", {
+                  when: utcDateTime(c.standings.data[0]?.snapshot_at),
+                })
+              : t("center.context.table.snapshot", {
+                  when: utcDateTime(c.standings.data[0]?.snapshot_at),
+                })}
           </p>
         ) : null}
       </Panel>
 
-      <Panel
-        title="Recent form"
-        subtitle="Last six finished matches before this one, any competition."
-      >
+      <Panel title={t("center.context.form.title")} subtitle={t("center.context.form.subtitle")}>
         <SectionView section={c.form}>
           {(teams) => (
             <div className="space-y-4">
-              {teams.map((t) => (
-                <div key={t.side}>
+              {teams.map((team) => (
+                <div key={team.side}>
                   <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium">{t.team}</span>
-                    <FormStrip form={t.matches.map((m) => m.result).reverse()} />
+                    <span className="text-sm font-medium">{team.team}</span>
+                    <FormStrip form={team.matches.map((m) => m.result).reverse()} />
                   </div>
-                  {t.matches.length ? (
+                  {team.matches.length ? (
                     <ul className="space-y-1 text-xs">
-                      {t.matches.map((m) => (
+                      {team.matches.map((m) => (
                         <li key={m.fixture_id} className="flex items-center justify-between gap-2">
                           <Link
                             to="/matches/$fixtureId"
                             params={{ fixtureId: String(m.fixture_id) }}
                             className="min-w-0 truncate text-muted-foreground hover:text-primary"
                           >
-                            {utcDate(m.kickoff_at)} · {m.venue === "H" ? "v" : "@"} {m.opponent}
+                            {utcDate(m.kickoff_at)} ·{" "}
+                            {m.venue === "H"
+                              ? t("center.context.form.home", { opponent: m.opponent })
+                              : t("center.context.form.away", { opponent: m.opponent })}
                           </Link>
                           <span className="numeric shrink-0">
                             {m.goals_for}–{m.goals_against} {m.result}
@@ -493,7 +511,7 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs text-muted-foreground">No finished match stored.</p>
+                    <p className="text-xs text-muted-foreground">{t("center.context.form.none")}</p>
                   )}
                 </div>
               ))}
@@ -503,17 +521,17 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
       </Panel>
 
       <Panel
-        title="Head to head"
-        subtitle="Previous meetings with a stored result."
+        title={t("center.context.h2h.title")}
+        subtitle={t("center.context.h2h.subtitle")}
         bodyClassName=""
       >
         <SectionView section={c.h2h}>
           {(rows) => (
             <TableShell>
               <THead>
-                <TH>Date</TH>
-                <TH>Match</TH>
-                <TH align="right">Score</TH>
+                <TH>{t("center.columns.date")}</TH>
+                <TH>{t("center.columns.match")}</TH>
+                <TH align="right">{t("center.columns.score")}</TH>
               </THead>
               <tbody>
                 {rows.map((m) => (
@@ -525,7 +543,7 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
                         params={{ fixtureId: String(m.fixture_id) }}
                         className="hover:text-primary"
                       >
-                        {m.home} v {m.away}
+                        {t("center.versus", { home: m.home, away: m.away })}
                       </Link>
                       <div className="text-caption text-subtle-foreground">{m.competition}</div>
                     </TD>
@@ -543,18 +561,18 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
       </Panel>
 
       <Panel
-        title="Absences"
-        subtitle="Injuries and suspensions the provider reported for this match."
+        title={t("center.context.absences.title")}
+        subtitle={t("center.context.absences.subtitle")}
         bodyClassName=""
       >
         <SectionView section={c.absences}>
           {(rows) => (
             <TableShell>
               <THead>
-                <TH>Team</TH>
-                <TH>Player</TH>
-                <TH>Type</TH>
-                <TH>Reason</TH>
+                <TH>{t("center.columns.team")}</TH>
+                <TH>{t("center.columns.player")}</TH>
+                <TH>{t("center.columns.type")}</TH>
+                <TH>{t("center.columns.reason")}</TH>
               </THead>
               <tbody>
                 {rows.map((a, i) => (
@@ -595,10 +613,10 @@ function LiveQuotesTable({ quotes }: { quotes: LiveQuote[] }) {
     <>
       <TableShell>
         <THead>
-          <TH>Market</TH>
-          <TH align="right">Odds</TH>
-          <TH>State</TH>
-          <TH>Last change</TH>
+          <TH>{t("center.columns.market")}</TH>
+          <TH align="right">{t("center.columns.odds")}</TH>
+          <TH>{t("center.columns.state")}</TH>
+          <TH>{t("center.columns.lastChange")}</TH>
         </THead>
         <tbody>
           {ours.map((q) => (
@@ -606,24 +624,26 @@ function LiveQuotesTable({ quotes }: { quotes: LiveQuote[] }) {
               <TD className="text-sm">
                 {quoteLabel(q)}
                 {q.main_line ? (
-                  <span className="ml-1.5 text-caption text-primary">main</span>
+                  <span className="ml-1.5 text-caption text-primary">
+                    {t("center.live.quotes.main")}
+                  </span>
                 ) : null}
               </TD>
               <TD align="right">
                 <Numeric>
                   <Nullable
                     value={dec(q.odds, 2)}
-                    reason="Withdrawn by the bookmaker at this instant."
+                    reason={t("center.live.quotes.withdrawnReason")}
                   />
                 </Numeric>
               </TD>
               <TD>
                 {q.odds === null ? (
-                  <StatusBadge tone="neutral">withdrawn</StatusBadge>
+                  <StatusBadge tone="neutral">{t("center.live.quotes.withdrawn")}</StatusBadge>
                 ) : q.suspended ? (
-                  <StatusBadge tone="warning">suspended</StatusBadge>
+                  <StatusBadge tone="warning">{t("center.live.quotes.suspended")}</StatusBadge>
                 ) : (
-                  <StatusBadge tone="positive">open</StatusBadge>
+                  <StatusBadge tone="positive">{t("center.live.quotes.open")}</StatusBadge>
                 )}
               </TD>
               <TD className="text-xs text-muted-foreground">
@@ -636,8 +656,7 @@ function LiveQuotesTable({ quotes }: { quotes: LiveQuote[] }) {
       </TableShell>
       {others > 0 ? (
         <p className="px-4 py-2 text-caption text-subtle-foreground">
-          {others} more in-play prices belong to bets with no market of ours; they are stored, not
-          shown.
+          {t("center.live.quotes.others", { count: others })}
         </p>
       ) : null}
     </>
@@ -657,13 +676,12 @@ export function LiveTab({ c }: { c: MatchCenter }) {
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-info/30 bg-info-soft px-3 py-2 text-xs text-info">
-        In-play data is a separate system from the pre-match prices: it is never used to judge,
-        train or backtest a pre-match model, and the last in-play price is not a closing line.
+        {t("center.live.note")}
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel
-          title="Match state over time"
-          subtitle="Each change of status, minute or score, with its feed."
+          title={t("center.live.states.title")}
+          subtitle={t("center.live.states.subtitle")}
           bodyClassName=""
         >
           <SectionView section={c.live_states}>
@@ -671,11 +689,11 @@ export function LiveTab({ c }: { c: MatchCenter }) {
               <div className="max-h-[420px] overflow-auto">
                 <TableShell compact>
                   <THead>
-                    <TH>Minute</TH>
-                    <TH>Score</TH>
-                    <TH>Status</TH>
-                    <TH>Feed</TH>
-                    <TH>At</TH>
+                    <TH>{t("center.columns.minute")}</TH>
+                    <TH>{t("center.columns.score")}</TH>
+                    <TH>{t("center.columns.status")}</TH>
+                    <TH>{t("center.columns.feed")}</TH>
+                    <TH>{t("center.columns.at")}</TH>
                   </THead>
                   <tbody>
                     {states.map((s) => (
@@ -691,7 +709,9 @@ export function LiveTab({ c }: { c: MatchCenter }) {
                         <TD className="text-xs">{s.status}</TD>
                         <TD>
                           <StatusBadge tone={s.source === "fixture_feed" ? "brand" : "info"}>
-                            {s.source === "fixture_feed" ? "fixtures" : "odds"}
+                            {s.source === "fixture_feed"
+                              ? t("center.live.states.fixtures")
+                              : t("center.live.states.odds")}
                           </StatusBadge>
                         </TD>
                         <TD className="text-caption text-subtle-foreground">
@@ -706,16 +726,16 @@ export function LiveTab({ c }: { c: MatchCenter }) {
           </SectionView>
         </Panel>
         <Panel
-          title="In-play prices"
-          subtitle="The latest price of each selection (no bookmaker dimension in this feed)."
+          title={t("center.live.quotes.title")}
+          subtitle={t("center.live.quotes.subtitle")}
           bodyClassName=""
         >
           <SectionView section={c.live_odds}>{(q) => <LiveQuotesTable quotes={q} />}</SectionView>
         </Panel>
       </div>
       <Panel
-        title="Price movement"
-        subtitle="Every change in our markets, newest first: moves, suspensions, withdrawals."
+        title={t("center.live.movement.title")}
+        subtitle={t("center.live.movement.subtitle")}
         bodyClassName=""
       >
         <SectionView section={c.live_movement}>
@@ -723,13 +743,13 @@ export function LiveTab({ c }: { c: MatchCenter }) {
             <div className="max-h-[480px] overflow-auto">
               <TableShell compact>
                 <THead>
-                  <TH>Minute</TH>
-                  <TH>Score</TH>
-                  <TH>Market</TH>
-                  <TH align="right">From</TH>
-                  <TH align="right">To</TH>
+                  <TH>{t("center.columns.minute")}</TH>
+                  <TH>{t("center.columns.score")}</TH>
+                  <TH>{t("center.columns.market")}</TH>
+                  <TH align="right">{t("center.columns.from")}</TH>
+                  <TH align="right">{t("center.columns.to")}</TH>
                   <TH align="right">Δ</TH>
-                  <TH>Change</TH>
+                  <TH>{t("center.columns.change")}</TH>
                 </THead>
                 <tbody>
                   {moves.map((m, i) => (
@@ -800,11 +820,14 @@ export function LiveScoreLine({ c, sides }: { c: MatchCenter; sides: Sides }) {
           {finished
             ? s.status
             : s.status === "HT"
-              ? "half time"
-              : `live ${minuteText(s.elapsed, s.extra)}`}
+              ? t("center.live.score.halfTime")
+              : t("center.live.score.live", { minute: minuteText(s.elapsed, s.extra) })}
         </StatusBadge>
         <span>
-          {s.source === "fixture_feed" ? "fixture feed" : "odds feed"} · {relative(s.observed_at)}
+          {s.source === "fixture_feed"
+            ? t("center.live.score.fixtureFeed")
+            : t("center.live.score.oddsFeed")}{" "}
+          · {relative(s.observed_at)}
         </span>
       </div>
     </Panel>

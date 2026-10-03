@@ -1,4 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
+import { t, translateOr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { DataState, ModelStatus, PickStatus } from "@/types/domain";
 
@@ -48,16 +49,23 @@ const dataStateTone: Record<DataState, BadgeTone> = {
   unknown: "neutral",
 };
 
-const dataStateLabel: Record<DataState, string> = {
-  healthy: "Healthy",
-  warning: "Warning",
-  stale: "Stale",
-  failed: "Failed",
-  unknown: "Unknown",
-};
+function dataStateLabel(state: DataState): string {
+  switch (state) {
+    case "healthy":
+      return t("admin.status.data.healthy");
+    case "warning":
+      return t("admin.status.data.warning");
+    case "stale":
+      return t("admin.status.data.stale");
+    case "failed":
+      return t("admin.status.data.failed");
+    case "unknown":
+      return t("admin.status.data.unknown");
+  }
+}
 
 export function DataStateBadge({ state, label }: { state: DataState; label?: string }) {
-  return <StatusBadge tone={dataStateTone[state]}>{label ?? dataStateLabel[state]}</StatusBadge>;
+  return <StatusBadge tone={dataStateTone[state]}>{label ?? dataStateLabel(state)}</StatusBadge>;
 }
 
 const modelTone: Record<ModelStatus, BadgeTone> = {
@@ -69,17 +77,25 @@ const modelTone: Record<ModelStatus, BadgeTone> = {
   not_trained: "neutral",
 };
 
-const modelLabel: Record<ModelStatus, string> = {
-  market_baseline: "Market baseline",
-  validated: "Validated",
-  shadow: "Shadow",
-  research: "Research",
-  insufficient_data: "Insufficient data",
-  not_trained: "Not trained",
-};
+function modelLabel(status: ModelStatus): string {
+  switch (status) {
+    case "market_baseline":
+      return t("admin.status.model.market_baseline");
+    case "validated":
+      return t("admin.status.model.validated");
+    case "shadow":
+      return t("admin.status.model.shadow");
+    case "research":
+      return t("admin.status.model.research");
+    case "insufficient_data":
+      return t("admin.status.model.insufficient_data");
+    case "not_trained":
+      return t("admin.status.model.not_trained");
+  }
+}
 
 export function ModelBadge({ status }: { status: ModelStatus }) {
-  return <StatusBadge tone={modelTone[status]}>{modelLabel[status]}</StatusBadge>;
+  return <StatusBadge tone={modelTone[status]}>{modelLabel(status)}</StatusBadge>;
 }
 
 const pickTone: Record<PickStatus, BadgeTone> = {
@@ -92,5 +108,9 @@ const pickTone: Record<PickStatus, BadgeTone> = {
 };
 
 export function PickStatusBadge({ status }: { status: PickStatus }) {
-  return <StatusBadge tone={pickTone[status]}>{status}</StatusBadge>;
+  return (
+    <StatusBadge tone={pickTone[status]}>
+      {translateOr(`admin.status.pick.${status}`, status)}
+    </StatusBadge>
+  );
 }

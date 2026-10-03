@@ -18,13 +18,13 @@ import { dateTimeOf, pct } from "@/lib/format";
 export const Route = createFileRoute("/admin/data-quality")({
   head: () => ({
     meta: [
-      { title: "Data Quality — Football Intelligence" },
+      { title: "Data Quality · PrediGol Admin" },
       {
         name: "description",
         content:
           "Ingestion completeness, odds coverage, stale captures, provider errors and entity mapping gaps.",
       },
-      { property: "og:title", content: "Data Quality — Football Intelligence" },
+      { property: "og:title", content: "Data Quality · PrediGol Admin" },
       {
         property: "og:description",
         content: "Ingestion completeness and coverage monitoring for the football data pipeline.",

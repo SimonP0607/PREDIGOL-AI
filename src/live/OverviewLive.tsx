@@ -15,7 +15,7 @@ import { int } from "@/lib/format";
 import { durationMs, isoDay, relative, utcDate, utcDateTime } from "./format";
 import { ComponentStatusBadge, FixtureLink, StatusGroupBadge } from "./shared";
 import { RunsPanel } from "./RunsPanel";
-import { JOB_LABEL } from "./labels";
+import { jobLabel } from "./labels";
 
 function firstProblem(o: Overview): ComponentHealth | null {
   const parts = [o.system.database, o.system.worker, o.system.football_provider];
@@ -48,43 +48,49 @@ export function OverviewLive() {
       <PageHeader
         title={t("admin.pages.overview.title")}
         description={t("admin.pages.overview.description")}
-        actions={<StatusBadge tone="brand">Shadow mode</StatusBadge>}
+        actions={<StatusBadge tone="brand">{t("ops.overview.shadowMode")}</StatusBadge>}
       />
 
       <dl className="surface-panel grid grid-cols-2 divide-border sm:grid-cols-4 sm:divide-x">
         <Cell
-          label="Today"
+          label={t("ops.overview.cells.today")}
           value={o ? utcDate(overview.data?.meta.generated_at) : null}
           hint={`${getTimeZone()} · ${zoneAbbrev()}`}
         />
         <Cell
-          label="Fixtures stored"
+          label={t("ops.overview.cells.fixtures")}
           value={o ? int(o.database.fixtures) : null}
           hint={
             o
-              ? `${o.fixtures.upcoming_7d} upcoming in 7 days · ${o.database.competitions_tracked} tracked competition(s)`
+              ? t("ops.overview.cells.fixturesHint", {
+                  upcoming: o.fixtures.upcoming_7d,
+                  count: o.database.competitions_tracked,
+                })
               : ""
           }
         />
         <Cell
-          label="Last payload"
+          label={t("ops.overview.cells.lastPayload")}
           value={
             o
               ? o.freshness.last_payload_at
                 ? relative(o.freshness.last_payload_at)
-                : "never"
+                : t("ops.overview.cells.never")
               : null
           }
           hint={
             o
-              ? `Fixtures sync ${relative(o.freshness.last_fixtures_sync_at)} · results ${relative(o.freshness.last_results_sync_at)}`
+              ? t("ops.overview.cells.syncs", {
+                  fixtures: relative(o.freshness.last_fixtures_sync_at),
+                  results: relative(o.freshness.last_results_sync_at),
+                })
               : ""
           }
         />
         <Cell
-          label="System state"
+          label={t("ops.overview.cells.systemState")}
           value={o ? o.system.status.toUpperCase() : null}
-          hint={problem ? problem.detail : o ? "All components report ok" : ""}
+          hint={problem ? problem.detail : o ? t("ops.overview.cells.allOk") : ""}
           tone={
             o
               ? o.system.status === "ok"
@@ -97,22 +103,19 @@ export function OverviewLive() {
         />
       </dl>
 
-      <WarningBanner>
-        Research / shadow mode. Picks are recorded in shadow only: nothing is published and nothing
-        is bet. What they would have done is measured in Performance.
-      </WarningBanner>
+      <WarningBanner>{t("ops.overview.banner")}</WarningBanner>
 
       <LiveStrip />
 
       <div className="grid gap-5 xl:grid-cols-3">
         <Panel
-          title="Upcoming matches"
-          subtitle="Scheduled fixtures of the competitions the capturer tracks"
+          title={t("ops.overview.upcoming.title")}
+          subtitle={t("ops.overview.upcoming.subtitle")}
           className="xl:col-span-2"
           bodyClassName=""
           actions={
             <Link to="/matches" className="text-caption text-primary hover:underline">
-              All matches
+              {t("ops.overview.upcoming.all")}
             </Link>
           }
         >
@@ -123,20 +126,17 @@ export function OverviewLive() {
               <ApiErrorNotice error={upcoming.error} />
             </div>
           ) : upcoming.data && upcoming.data.status !== "ok" ? (
-            <StatusNotice
-              status={upcoming.data.status}
-              reason="No scheduled fixture is stored for today or later. The worker syncs the tracked competitions' fixtures every 12 hours."
-            />
+            <StatusNotice status={upcoming.data.status} reason={t("ops.overview.upcoming.empty")} />
           ) : (
             <TableShell className="min-w-0">
               <THead>
-                <TH>Kick-off</TH>
-                <TH>Competition</TH>
-                <TH>Fixture</TH>
-                <TH align="right" title="Pre-match price snapshots captured so far">
-                  Prices
+                <TH>{t("ops.overview.upcoming.headers.kickoff")}</TH>
+                <TH>{t("ops.overview.upcoming.headers.competition")}</TH>
+                <TH>{t("ops.overview.upcoming.headers.fixture")}</TH>
+                <TH align="right" title={t("ops.overview.upcoming.headers.pricesHelp")}>
+                  {t("ops.overview.upcoming.headers.prices")}
                 </TH>
-                <TH>Status</TH>
+                <TH>{t("ops.overview.upcoming.headers.status")}</TH>
               </THead>
               <tbody>
                 {(upcoming.data?.data ?? []).map((m) => (
@@ -163,7 +163,7 @@ export function OverviewLive() {
           )}
         </Panel>
 
-        <Panel title="System health" subtitle="From /health: never spends provider quota">
+        <Panel title={t("ops.overview.health.title")} subtitle={t("ops.overview.health.subtitle")}>
           {!o ? (
             <TableSkeleton rows={4} cols={2} />
           ) : (
@@ -171,9 +171,9 @@ export function OverviewLive() {
               {(
                 [
                   ["API", o.system.app],
-                  ["Database", o.system.database],
+                  [t("ops.overview.database.title"), o.system.database],
                   ["Worker", o.system.worker],
-                  ["Football provider", o.system.football_provider],
+                  [t("ops.overview.health.provider"), o.system.football_provider],
                 ] as const
               ).map(([label, c]) => (
                 <li key={label} className="flex items-start justify-between gap-3">
@@ -191,52 +191,49 @@ export function OverviewLive() {
 
       {o ? (
         <div className="grid gap-5 lg:grid-cols-3">
-          <Panel title="Worker" subtitle="Liveness from its heartbeat, written on every tick">
+          <Panel title="Worker" subtitle={t("ops.overview.worker.subtitle")}>
             <KeyValue
-              label="Alive"
+              label={t("ops.overview.worker.alive")}
               value={
                 o.worker.alive === null ? (
-                  <Nullable
-                    value={null}
-                    reason="No heartbeat has ever been written: the worker has not run with this version."
-                  />
+                  <Nullable value={null} reason={t("ops.overview.worker.neverBeat")} />
                 ) : o.worker.alive ? (
-                  "yes"
+                  t("ops.common.yes")
                 ) : (
-                  "no"
+                  t("ops.common.no")
                 )
               }
             />
             <KeyValue
-              label="Last beat"
+              label={t("ops.overview.worker.lastBeat")}
               value={
                 <Nullable
                   value={o.worker.last_beat_at ? relative(o.worker.last_beat_at) : null}
-                  reason="No heartbeat yet."
+                  reason={t("ops.overview.worker.noBeat")}
                 />
               }
             />
             <KeyValue
-              label="Running since"
+              label={t("ops.overview.worker.runningSince")}
               value={
                 <Nullable
                   value={o.worker.started_at ? utcDateTime(o.worker.started_at) : null}
-                  reason="No heartbeat yet."
+                  reason={t("ops.overview.worker.noBeat")}
                 />
               }
             />
-            <KeyValue label="Ticks" value={int(o.worker.ticks)} />
+            <KeyValue label={t("ops.overview.worker.ticks")} value={int(o.worker.ticks)} />
             <KeyValue
-              label="Last tick"
+              label={t("ops.overview.worker.lastTick")}
               value={
                 <Nullable
                   value={o.worker.last_tick_outcome?.replaceAll("_", " ") ?? null}
-                  reason="No tick has run since the worker started."
+                  reason={t("ops.overview.worker.noTick")}
                 />
               }
             />
             <KeyValue
-              label="Scheduler lag"
+              label={t("ops.overview.worker.lag")}
               value={
                 <Nullable
                   value={
@@ -244,37 +241,41 @@ export function OverviewLive() {
                       ? null
                       : durationMs(o.worker.scheduler_lag_ms)
                   }
-                  reason="Measured on the first tick."
+                  reason={t("ops.overview.worker.lagPending")}
                 />
               }
             />
             {Object.entries(o.worker.next_runs).map(([job, at]) => (
               <KeyValue
                 key={job}
-                label={`Next ${JOB_LABEL[job] ?? job}`}
+                label={t("ops.overview.worker.next", { job: jobLabel(job) })}
                 value={at ? relative(at) : "—"}
               />
             ))}
-            <KeyValue label="Code" value={o.worker.code_version ?? "—"} />
+            <KeyValue label={t("ops.overview.worker.code")} value={o.worker.code_version ?? "—"} />
           </Panel>
 
           <Panel
-            title="Provider & quota"
-            subtitle="Our budget, counted in the database before each request"
+            title={t("ops.overview.provider.title")}
+            subtitle={t("ops.overview.provider.subtitle")}
           >
             <MetricCard
-              label="Requests today"
+              label={t("ops.overview.provider.requestsToday")}
               value={`${o.provider.requests_today} / ${o.provider.daily_budget}`}
-              hint={`${o.provider.requests_remaining} remaining · plan ${o.provider.plan} allows ${int(o.provider.plan_daily_limit)}/day`}
+              hint={t("ops.overview.provider.requestsHint", {
+                remaining: o.provider.requests_remaining,
+                plan: o.provider.plan,
+                limit: int(o.provider.plan_daily_limit),
+              })}
               tone={o.provider.requests_remaining === 0 ? "negative" : "default"}
             />
             <div className="mt-3">
               <KeyValue
-                label="Last provider error"
+                label={t("ops.overview.provider.lastError")}
                 value={
                   <Nullable
                     value={o.provider.last_error_at ? relative(o.provider.last_error_at) : null}
-                    reason="No run has recorded a provider error."
+                    reason={t("ops.overview.provider.noError")}
                   />
                 }
               />
@@ -286,19 +287,46 @@ export function OverviewLive() {
             </div>
           </Panel>
 
-          <Panel title="Database" subtitle={`Schema revision ${o.database.revision}`}>
+          <Panel
+            title={t("ops.overview.database.title")}
+            subtitle={t("ops.overview.database.subtitle", { revision: o.database.revision })}
+          >
             <KeyValue
-              label="Competitions"
-              value={`${int(o.database.competitions_tracked)} tracked / ${int(o.database.competitions_known)} known`}
+              label={t("ops.overview.database.competitions")}
+              value={t("ops.overview.database.competitionsValue", {
+                tracked: int(o.database.competitions_tracked),
+                known: int(o.database.competitions_known),
+              })}
             />
-            <KeyValue label="Teams" value={int(o.database.teams)} />
-            <KeyValue label="Fixtures" value={int(o.database.fixtures)} />
-            <KeyValue label="With result" value={int(o.database.fixtures_with_result)} />
-            <KeyValue label="Awaiting result" value={int(o.fixtures.awaiting_result)} />
-            <KeyValue label="Odds snapshots" value={int(o.database.odds_snapshots)} />
-            <KeyValue label="Near-close snapshots" value={int(o.database.near_close_snapshots)} />
-            <KeyValue label="Raw payloads" value={int(o.database.raw_payloads)} />
-            <KeyValue label="Predictions" value={int(o.database.predictions)} />
+            <KeyValue label={t("ops.overview.database.teams")} value={int(o.database.teams)} />
+            <KeyValue
+              label={t("ops.overview.database.fixtures")}
+              value={int(o.database.fixtures)}
+            />
+            <KeyValue
+              label={t("ops.overview.database.withResult")}
+              value={int(o.database.fixtures_with_result)}
+            />
+            <KeyValue
+              label={t("ops.overview.database.awaitingResult")}
+              value={int(o.fixtures.awaiting_result)}
+            />
+            <KeyValue
+              label={t("ops.overview.database.oddsSnapshots")}
+              value={int(o.database.odds_snapshots)}
+            />
+            <KeyValue
+              label={t("ops.overview.database.nearClose")}
+              value={int(o.database.near_close_snapshots)}
+            />
+            <KeyValue
+              label={t("ops.overview.database.rawPayloads")}
+              value={int(o.database.raw_payloads)}
+            />
+            <KeyValue
+              label={t("ops.overview.database.predictions")}
+              value={int(o.database.predictions)}
+            />
           </Panel>
         </div>
       ) : null}
@@ -307,27 +335,27 @@ export function OverviewLive() {
 
       {o ? (
         <div className="grid gap-5 lg:grid-cols-2">
-          <Panel title="Picks" subtitle="Shadow picks only; publishing is disabled">
+          <Panel title="Picks" subtitle={t("ops.overview.picks.subtitle")}>
             <SectionView section={o.picks}>
               {(d) => <KeyValue label="Picks" value={int(d?.["picks"] ?? 0)} />}
             </SectionView>
           </Panel>
           <Panel
-            title="Performance"
-            subtitle="Reported only from settled picks with recorded prices"
+            title={t("ops.overview.performance.title")}
+            subtitle={t("ops.overview.performance.subtitle")}
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <MetricCard
-                label="P&L"
+                label={t("ops.overview.performance.pnl")}
                 value={null}
                 tone="muted"
-                hint="No settled pick with a recorded price"
+                hint={t("ops.overview.performance.pnlHint")}
               />
               <MetricCard
                 label="ROI"
                 value={null}
                 tone="muted"
-                hint="Not computable without a settled sample"
+                hint={t("ops.overview.performance.roiHint")}
               />
             </div>
             <StatusNotice
@@ -382,11 +410,15 @@ function LiveStrip() {
   if (!q.data || q.isError) return null;
   return (
     <Panel
-      title={matches.length ? `In play now · ${matches.length}` : "In play now"}
-      subtitle="Tracked matches being played: score and minute from the live follow, refreshed every 15 seconds"
+      title={
+        matches.length
+          ? t("ops.overview.live.titleCount", { n: matches.length })
+          : t("ops.overview.live.title")
+      }
+      subtitle={t("ops.overview.live.subtitle")}
       actions={
         <Link to="/live" className="text-caption text-primary hover:underline">
-          Live
+          {t("ops.overview.live.link")}
         </Link>
       }
       bodyClassName={matches.length ? "p-0" : "p-4"}
@@ -402,7 +434,9 @@ function LiveStrip() {
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm">
-                    {m.home.name} <span className="text-subtle-foreground">v</span> {m.away.name}
+                    {m.home.name}{" "}
+                    <span className="text-subtle-foreground">{t("ops.overview.live.versus")}</span>{" "}
+                    {m.away.name}
                   </span>
                   <span className="block truncate text-caption text-muted-foreground">
                     {m.competition}
@@ -422,7 +456,7 @@ function LiveStrip() {
         </ul>
       ) : (
         <p className="text-xs text-muted-foreground">
-          {q.data.reason ?? "No tracked match is in play."}
+          {q.data.reason ?? t("ops.overview.live.empty")}
         </p>
       )}
     </Panel>

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 import { EMPTY, odds as fmtOdds, pct, signedPct } from "@/lib/format";
 
 export function Numeric({
@@ -70,7 +71,9 @@ export function OddsCell({
 
 export function LineValueIndicator({ value }: { value: number | null }) {
   if (value === null) {
-    return <span className="text-caption text-subtle-foreground">Pending validation</span>;
+    return (
+      <span className="text-caption text-subtle-foreground">{t("admin.ui.pendingValidation")}</span>
+    );
   }
   return <EdgeIndicator value={value} />;
 }
@@ -133,10 +136,12 @@ export function ProbabilityComparison({
               ) : null}
             </div>
             <div className="mt-2 numeric-lg">{pct(o.model, 1)}</div>
-            <div className="text-caption text-subtle-foreground">Model probability</div>
+            <div className="text-caption text-subtle-foreground">
+              {t("admin.ui.modelProbability")}
+            </div>
             <div className="mt-3 space-y-1.5">
-              <ProbabilityBar value={o.model} variant="model" label="Model" />
-              <ProbabilityBar value={o.market} variant="market" label="Market" />
+              <ProbabilityBar value={o.model} variant="model" label={t("admin.ui.model")} />
+              <ProbabilityBar value={o.market} variant="market" label={t("admin.ui.market")} />
             </div>
           </div>
         );
@@ -152,7 +157,7 @@ export function FormStrip({ form }: { form: Array<"W" | "D" | "L"> }) {
     L: "bg-negative-soft text-negative",
   };
   return (
-    <div className="flex gap-1" aria-label={`Form: ${form.join(" ")}`}>
+    <div className="flex gap-1" aria-label={t("admin.ui.form", { form: form.join(" ") })}>
       {form.map((r, i) => (
         <span
           key={i}

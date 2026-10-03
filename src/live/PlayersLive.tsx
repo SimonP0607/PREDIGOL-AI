@@ -30,18 +30,18 @@ function PlayersTable({ rows }: { rows: PlayerSummary[] }) {
   return (
     <TableShell>
       <THead>
-        <TH>Player</TH>
-        <TH>Team (latest)</TH>
-        <TH>Pos</TH>
-        <TH align="right">Age</TH>
-        <TH align="right" title="Appearances with statistics in the window">
-          Apps
+        <TH>{t("catalog.columns.player")}</TH>
+        <TH>{t("catalog.players.list.headers.team")}</TH>
+        <TH>{t("catalog.columns.position")}</TH>
+        <TH align="right">{t("catalog.players.list.headers.age")}</TH>
+        <TH align="right" title={t("catalog.players.list.appsTitle")}>
+          {t("catalog.columns.apps")}
         </TH>
-        <TH align="right">Min</TH>
-        <TH align="right">G</TH>
-        <TH align="right">A</TH>
-        <TH align="right">Rating</TH>
-        <TH>Last played</TH>
+        <TH align="right">{t("catalog.columns.minutes")}</TH>
+        <TH align="right">{t("catalog.columns.goals")}</TH>
+        <TH align="right">{t("catalog.columns.assists")}</TH>
+        <TH align="right">{t("catalog.columns.rating")}</TH>
+        <TH>{t("catalog.players.list.headers.lastPlayed")}</TH>
       </THead>
       <tbody>
         {rows.map((p) => (
@@ -55,20 +55,23 @@ function PlayersTable({ rows }: { rows: PlayerSummary[] }) {
                 {p.name}
               </Link>
               <div className="text-caption text-subtle-foreground">
-                {p.nationality ?? "nationality not reported"}
+                {p.nationality ?? t("catalog.players.list.noNationality")}
               </div>
             </TD>
             <TD className="text-xs">
               {p.team_id ? (
                 <span className="text-muted-foreground">{p.team}</span>
               ) : (
-                <Nullable value={null} reason="No appearance with statistics in the window." />
+                <Nullable value={null} reason={t("catalog.players.list.noTeam")} />
               )}
             </TD>
             <TD className="text-xs text-muted-foreground">{p.position ?? "—"}</TD>
             <TD align="right">
               <Numeric muted className="text-xs">
-                <Nullable value={age(p.birth_date)} reason="Birth date not reported." />
+                <Nullable
+                  value={age(p.birth_date)}
+                  reason={t("catalog.players.list.noBirthDate")}
+                />
               </Numeric>
             </TD>
             <TD align="right">
@@ -87,7 +90,10 @@ function PlayersTable({ rows }: { rows: PlayerSummary[] }) {
             </TD>
             <TD align="right">
               <Numeric className="text-xs">
-                <Nullable value={dec(p.avg_rating, 2)} reason="No rated appearance." />
+                <Nullable
+                  value={dec(p.avg_rating, 2)}
+                  reason={t("catalog.players.list.noRating")}
+                />
               </Numeric>
             </TD>
             <TD className="text-xs text-muted-foreground">
@@ -112,16 +118,16 @@ export function PlayersLive() {
       />
       <div className="max-w-sm">
         <SearchFilter
-          label="Player search"
+          label={t("catalog.players.search.label")}
           value={q}
           onChange={setQ}
-          placeholder="Search a player (3+ letters)…"
+          placeholder={t("catalog.players.search.placeholder")}
         />
       </div>
       <Panel
-        title={term ? `Players matching “${term}”` : "Most productive, last 30 days"}
+        title={term ? t("catalog.players.list.matching", { term }) : t("catalog.players.list.top")}
         subtitle={
-          term ? "Ordered by appearances in the last 400 days." : "Ordered by goals, then rating."
+          term ? t("catalog.players.list.byAppearances") : t("catalog.players.list.byGoals")
         }
         bodyClassName=""
       >
@@ -153,7 +159,7 @@ export function PlayerLive({ playerId }: { playerId: string }) {
       <div className="space-y-4">
         <PageHeader
           breadcrumb={[{ label: t("admin.nav.players"), to: "/admin/players" }]}
-          title="Player not found"
+          title={t("catalog.players.detail.notFound")}
         />
         {q.data ? <StatusNotice status={q.data.status} reason={q.data.reason} /> : null}
       </div>
@@ -168,49 +174,77 @@ export function PlayerLive({ playerId }: { playerId: string }) {
         description={[p.position, p.nationality, p.team].filter(Boolean).join(" · ") || undefined}
       />
       <div className="grid gap-4 lg:grid-cols-3">
-        <Panel title="Profile">
+        <Panel title={t("catalog.players.detail.profile.title")}>
           <KeyValue
-            label="Full name"
+            label={t("catalog.players.detail.profile.fullName")}
             value={[d.firstname, d.lastname].filter(Boolean).join(" ") || "—"}
           />
           <KeyValue
-            label="Born"
-            value={p.birth_date ? `${p.birth_date} (age ${age(p.birth_date)})` : "—"}
+            label={t("catalog.players.detail.profile.born")}
+            value={
+              p.birth_date
+                ? t("catalog.players.detail.profile.bornValue", {
+                    date: p.birth_date,
+                    age: age(p.birth_date),
+                  })
+                : "—"
+            }
           />
-          <KeyValue label="Nationality" value={p.nationality ?? "—"} />
-          <KeyValue label="Position" value={p.position ?? "—"} />
-          <KeyValue label="Height" value={d.height_cm ? `${d.height_cm} cm` : "—"} />
-          <KeyValue label="Weight" value={d.weight_kg ? `${d.weight_kg} kg` : "—"} />
-          <KeyValue label="Latest team" value={p.team ?? "—"} />
-          <KeyValue label="Provider id" value={p.provider_player_id} />
+          <KeyValue
+            label={t("catalog.players.detail.profile.nationality")}
+            value={p.nationality ?? "—"}
+          />
+          <KeyValue
+            label={t("catalog.players.detail.profile.position")}
+            value={p.position ?? "—"}
+          />
+          <KeyValue
+            label={t("catalog.players.detail.profile.height")}
+            value={d.height_cm ? `${d.height_cm} cm` : "—"}
+          />
+          <KeyValue
+            label={t("catalog.players.detail.profile.weight")}
+            value={d.weight_kg ? `${d.weight_kg} kg` : "—"}
+          />
+          <KeyValue label={t("catalog.players.detail.profile.latestTeam")} value={p.team ?? "—"} />
+          <KeyValue
+            label={t("catalog.players.detail.profile.providerId")}
+            value={p.provider_player_id}
+          />
         </Panel>
-        <Panel title="Last 400 days" className="lg:col-span-2">
+        <Panel title={t("catalog.players.detail.totals.title")} className="lg:col-span-2">
           <div className="grid grid-cols-2 gap-x-6 sm:grid-cols-3">
-            <KeyValue label="Appearances" value={p.apps} />
-            <KeyValue label="Minutes" value={p.minutes ?? "—"} />
-            <KeyValue label="Goals" value={p.goals ?? "—"} />
-            <KeyValue label="Assists" value={p.assists ?? "—"} />
-            <KeyValue label="Avg rating" value={dec(p.avg_rating, 2) ?? "—"} />
-            <KeyValue label="Last played" value={p.last_played ? utcDate(p.last_played) : "—"} />
+            <KeyValue label={t("catalog.players.detail.totals.appearances")} value={p.apps} />
+            <KeyValue label={t("catalog.players.detail.totals.minutes")} value={p.minutes ?? "—"} />
+            <KeyValue label={t("catalog.players.detail.totals.goals")} value={p.goals ?? "—"} />
+            <KeyValue label={t("catalog.players.detail.totals.assists")} value={p.assists ?? "—"} />
+            <KeyValue
+              label={t("catalog.players.detail.totals.avgRating")}
+              value={dec(p.avg_rating, 2) ?? "—"}
+            />
+            <KeyValue
+              label={t("catalog.players.detail.totals.lastPlayed")}
+              value={p.last_played ? utcDate(p.last_played) : "—"}
+            />
           </div>
         </Panel>
       </div>
-      <Panel title="By competition and season" bodyClassName="">
+      <Panel title={t("catalog.players.detail.seasons.title")} bodyClassName="">
         <SectionView section={d.seasons}>
           {(rows) => (
             <TableShell>
               <THead>
-                <TH>Season</TH>
-                <TH>Competition</TH>
-                <TH>Team</TH>
-                <TH align="right">Apps</TH>
-                <TH align="right">Starts</TH>
-                <TH align="right">Min</TH>
-                <TH align="right">G</TH>
-                <TH align="right">A</TH>
-                <TH align="right">Y</TH>
-                <TH align="right">R</TH>
-                <TH align="right">Rating</TH>
+                <TH>{t("catalog.players.detail.seasons.headers.season")}</TH>
+                <TH>{t("catalog.players.detail.seasons.headers.competition")}</TH>
+                <TH>{t("catalog.players.detail.seasons.headers.team")}</TH>
+                <TH align="right">{t("catalog.columns.apps")}</TH>
+                <TH align="right">{t("catalog.columns.starts")}</TH>
+                <TH align="right">{t("catalog.columns.minutes")}</TH>
+                <TH align="right">{t("catalog.columns.goals")}</TH>
+                <TH align="right">{t("catalog.columns.assists")}</TH>
+                <TH align="right">{t("catalog.columns.yellowCards")}</TH>
+                <TH align="right">{t("catalog.columns.redCards")}</TH>
+                <TH align="right">{t("catalog.columns.rating")}</TH>
               </THead>
               <tbody>
                 {rows.map((s) => (
@@ -246,17 +280,21 @@ export function PlayerLive({ playerId }: { playerId: string }) {
         </SectionView>
       </Panel>
       <div className="grid gap-4 lg:grid-cols-3">
-        <Panel title="Recent matches" className="lg:col-span-2" bodyClassName="">
+        <Panel
+          title={t("catalog.players.detail.matches.title")}
+          className="lg:col-span-2"
+          bodyClassName=""
+        >
           <SectionView section={d.matches}>
             {(rows) => (
               <TableShell>
                 <THead>
-                  <TH>Date</TH>
-                  <TH>Match</TH>
-                  <TH align="right">Min</TH>
-                  <TH align="right">G</TH>
-                  <TH align="right">A</TH>
-                  <TH align="right">Rating</TH>
+                  <TH>{t("catalog.players.detail.matches.headers.date")}</TH>
+                  <TH>{t("catalog.players.detail.matches.headers.match")}</TH>
+                  <TH align="right">{t("catalog.columns.minutes")}</TH>
+                  <TH align="right">{t("catalog.columns.goals")}</TH>
+                  <TH align="right">{t("catalog.columns.assists")}</TH>
+                  <TH align="right">{t("catalog.columns.rating")}</TH>
                 </THead>
                 <tbody>
                   {rows.map((m) => (
@@ -268,11 +306,14 @@ export function PlayerLive({ playerId }: { playerId: string }) {
                           params={{ fixtureId: String(m.fixture_id) }}
                           className="hover:text-primary"
                         >
-                          {m.team ?? "?"} v {m.opponent ?? "?"}
+                          {t("catalog.players.detail.matches.versus", {
+                            team: m.team ?? "?",
+                            opponent: m.opponent ?? "?",
+                          })}
                         </Link>
                         <div className="text-caption text-subtle-foreground">
                           {m.competition}
-                          {m.substitute ? " · came on" : ""}
+                          {m.substitute ? ` · ${t("catalog.players.detail.matches.cameOn")}` : ""}
                         </div>
                       </TD>
                       <TD align="right">
@@ -294,15 +335,17 @@ export function PlayerLive({ playerId }: { playerId: string }) {
             )}
           </SectionView>
         </Panel>
-        <Panel title="Injuries and suspensions" bodyClassName="">
+        <Panel title={t("catalog.players.detail.absences.title")} bodyClassName="">
           <SectionView section={d.absences}>
             {(rows) => (
               <ul className="divide-y divide-border/60 text-xs">
                 {rows.map((a, i) => (
                   <li key={i} className="px-4 py-2">
-                    <div className="font-medium">{a.type ?? "Absence"}</div>
+                    <div className="font-medium">
+                      {a.type ?? t("catalog.players.detail.absences.absence")}
+                    </div>
                     <div className="text-muted-foreground">
-                      {a.reason ?? "no reason given"}
+                      {a.reason ?? t("catalog.players.detail.absences.noReason")}
                       {a.kickoff_at ? ` · ${utcDate(a.kickoff_at)}` : ""}
                     </div>
                   </li>

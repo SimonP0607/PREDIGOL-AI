@@ -16,18 +16,23 @@ import { v1 } from "@/lib/api/v1/client";
 import { searchIndex } from "@/mock/research";
 import type { SearchHit, SearchHitType } from "@/types/domain";
 
-const typeLabel: Record<SearchHitType, string> = {
-  fixture: "Fixtures",
-  team: "Teams",
-  competition: "Competitions",
-  model: "Models",
-};
+function typeLabel(type: SearchHitType): string {
+  switch (type) {
+    case "fixture":
+      return t("admin.shell.groups.fixture");
+    case "team":
+      return t("admin.shell.groups.team");
+    case "competition":
+      return t("admin.shell.groups.competition");
+    case "model":
+      return t("admin.shell.groups.model");
+  }
+}
 
 /** What an empty search says: in demo mode it searched the demo index, in live mode the API. */
-export const SEARCH_EMPTY =
-  DATA_MODE === "mock"
-    ? "No match in the indexed demo dataset."
-    : "No stored fixture, team or competition matches.";
+export function searchEmpty(): string {
+  return DATA_MODE === "mock" ? t("admin.shell.searchEmptyDemo") : t("admin.shell.searchEmptyLive");
+}
 
 /**
  * The entity search behind the topbar box and the command palette. Demo mode
@@ -115,14 +120,14 @@ export function CommandPalette({
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
       <CommandInput
-        placeholder="Search fixtures, teams, models or jump to a module…"
+        placeholder={t("admin.shell.palettePlaceholder")}
         value={term}
         onValueChange={setTerm}
       />
       <CommandList>
-        <CommandEmpty>{SEARCH_EMPTY}</CommandEmpty>
+        <CommandEmpty>{searchEmpty()}</CommandEmpty>
         {grouped.map(([type, list]) => (
-          <CommandGroup key={type} heading={typeLabel[type]}>
+          <CommandGroup key={type} heading={typeLabel(type)}>
             {list.map((h) => (
               <CommandItem
                 key={h.id}

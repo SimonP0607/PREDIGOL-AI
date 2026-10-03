@@ -6,7 +6,7 @@ import { PlayerLive } from "@/live/PlayersLive";
 export const Route = createFileRoute("/admin/players/$playerId")({
   head: () => ({
     meta: [
-      { title: "Player — Football Intelligence" },
+      { title: "Player · PrediGol Admin" },
       { name: "description", content: "A player's profile, seasons, recent matches and absences." },
     ],
   }),

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { t, translateOr } from "@/lib/i18n";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EMPTY, dateTimeOf } from "@/lib/format";
@@ -12,12 +13,18 @@ const stateTone: Record<TimelineState, string> = {
   failed: "bg-negative",
 };
 
-const stateLabel: Record<TimelineState, string> = {
-  done: "Recorded",
-  pending: "Pending",
-  skipped: "Skipped",
-  failed: "Failed",
-};
+function stateLabel(state: TimelineState): string {
+  switch (state) {
+    case "done":
+      return t("admin.status.timeline.done");
+    case "pending":
+      return t("admin.status.timeline.pending");
+    case "skipped":
+      return t("admin.status.timeline.skipped");
+    case "failed":
+      return t("admin.status.timeline.failed");
+  }
+}
 
 /** Fixture lifecycle: discovery → capture → prediction → kickoff. */
 export function EventTimeline({ events }: { events: TimelineEvent[] }) {
@@ -36,7 +43,7 @@ export function EventTimeline({ events }: { events: TimelineEvent[] }) {
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-sm">{e.label}</span>
             <span className="numeric text-caption text-subtle-foreground">
-              {e.at ? dateTimeOf(e.at) : `${EMPTY} ${stateLabel[e.state].toLowerCase()}`}
+              {e.at ? dateTimeOf(e.at) : `${EMPTY} ${stateLabel(e.state).toLowerCase()}`}
             </span>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">{e.detail}</p>
@@ -87,7 +94,7 @@ export function AuditTimeline({ steps }: { steps: AuditStep[] }) {
                   params={{ fixtureId: s.to.fixtureId }}
                   className="inline-flex items-center gap-0.5 text-caption text-primary hover:underline"
                 >
-                  Open record
+                  {t("admin.ui.openRecord")}
                   <ChevronRight aria-hidden className="h-3 w-3" />
                 </Link>
               ) : null}
@@ -137,5 +144,9 @@ export function SeverityBadge({ severity }: { severity: "critical" | "high" | "m
         : severity === "medium"
           ? "info"
           : "neutral";
-  return <StatusBadge tone={tone}>{severity}</StatusBadge>;
+  return (
+    <StatusBadge tone={tone}>
+      {translateOr(`admin.status.severity.${severity}`, severity)}
+    </StatusBadge>
+  );
 }

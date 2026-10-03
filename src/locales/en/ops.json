@@ -1,0 +1,217 @@
+{
+  "common": {
+    "yes": "yes",
+    "no": "no"
+  },
+  "overview": {
+    "shadowMode": "Shadow mode",
+    "banner": "Research / shadow mode. Picks are recorded in shadow only: nothing is published and nothing is bet. What they would have done is measured in Performance.",
+    "cells": {
+      "today": "Today",
+      "fixtures": "Fixtures stored",
+      "fixturesHint_one": "{upcoming} upcoming in 7 days · {count} tracked competition(s)",
+      "fixturesHint_other": "{upcoming} upcoming in 7 days · {count} tracked competition(s)",
+      "lastPayload": "Last payload",
+      "never": "never",
+      "syncs": "Fixtures sync {fixtures} · results {results}",
+      "systemState": "System state",
+      "allOk": "All components report ok"
+    },
+    "live": {
+      "title": "In play now",
+      "titleCount": "In play now · {n}",
+      "subtitle": "Tracked matches being played: score and minute from the live follow, refreshed every 15 seconds",
+      "link": "Live",
+      "versus": "v",
+      "empty": "No tracked match is in play."
+    },
+    "upcoming": {
+      "title": "Upcoming matches",
+      "subtitle": "Scheduled fixtures of the competitions the capturer tracks",
+      "all": "All matches",
+      "empty": "No scheduled fixture is stored for today or later. The worker syncs the tracked competitions' fixtures every 12 hours.",
+      "headers": {
+        "kickoff": "Kick-off",
+        "competition": "Competition",
+        "fixture": "Fixture",
+        "prices": "Prices",
+        "pricesHelp": "Pre-match price snapshots captured so far",
+        "status": "Status"
+      }
+    },
+    "health": {
+      "title": "System health",
+      "subtitle": "From /health: never spends provider quota",
+      "provider": "Football provider"
+    },
+    "worker": {
+      "subtitle": "Liveness from its heartbeat, written on every tick",
+      "alive": "Alive",
+      "neverBeat": "No heartbeat has ever been written: the worker has not run with this version.",
+      "lastBeat": "Last beat",
+      "noBeat": "No heartbeat yet.",
+      "runningSince": "Running since",
+      "ticks": "Ticks",
+      "lastTick": "Last tick",
+      "noTick": "No tick has run since the worker started.",
+      "lag": "Scheduler lag",
+      "lagPending": "Measured on the first tick.",
+      "next": "Next {job}",
+      "code": "Code"
+    },
+    "provider": {
+      "title": "Provider & quota",
+      "subtitle": "Our budget, counted in the database before each request",
+      "requestsToday": "Requests today",
+      "requestsHint": "{remaining} remaining · plan {plan} allows {limit}/day",
+      "lastError": "Last provider error",
+      "noError": "No run has recorded a provider error."
+    },
+    "database": {
+      "title": "Database",
+      "subtitle": "Schema revision {revision}",
+      "competitions": "Competitions",
+      "competitionsValue": "{tracked} tracked / {known} known",
+      "teams": "Teams",
+      "fixtures": "Fixtures",
+      "withResult": "With result",
+      "awaitingResult": "Awaiting result",
+      "oddsSnapshots": "Odds snapshots",
+      "nearClose": "Near-close snapshots",
+      "rawPayloads": "Raw payloads",
+      "predictions": "Predictions"
+    },
+    "picks": {
+      "subtitle": "Shadow picks only; publishing is disabled"
+    },
+    "performance": {
+      "title": "Performance",
+      "subtitle": "Reported only from settled picks with recorded prices",
+      "pnl": "P&L",
+      "pnlHint": "No settled pick with a recorded price",
+      "roiHint": "Not computable without a settled sample"
+    }
+  },
+  "picks": {
+    "banner": "Publishing is disabled by a database constraint. Every pick here is shadow research output, not advice, and no model has yet qualified: qualification needs the exact model version to have beaten the de-vigged market in its own backtest.",
+    "lifecycle": {
+      "candidates": {
+        "label": "Candidates",
+        "hint": "every captured price evaluated"
+      },
+      "rejected": {
+        "label": "Rejected",
+        "hint": "failed the rule, with the reason"
+      },
+      "shadow": {
+        "label": "Shadow",
+        "hint": "selected, not qualified"
+      },
+      "qualified": {
+        "label": "Qualified",
+        "hint": "model beat the market in its backtest"
+      },
+      "published": {
+        "label": "Published",
+        "hint": "disabled in the schema"
+      },
+      "settled": {
+        "label": "Settled",
+        "hint": "on the 90-minute score"
+      }
+    },
+    "rule": {
+      "title": "Decision rule",
+      "subtitle": "Fixed and versioned before it sees a result",
+      "version": "Version",
+      "markets": "Markets",
+      "oddsRange": "Odds range",
+      "minEv": "Minimum EV",
+      "minEdge": "Minimum probability edge",
+      "stakeValue": "flat, 1 unit (Kelly reported only)",
+      "rejections": "Why prices were rejected"
+    },
+    "tabs": {
+      "label": "Picks view",
+      "picks": "Picks",
+      "candidates": "Candidates"
+    },
+    "headers": {
+      "fixture": "Fixture",
+      "selection": "Selection",
+      "model": "Model",
+      "odds": "Odds",
+      "modelP": "Model p",
+      "marketP": "Market p",
+      "edge": "Edge",
+      "ev": "EV",
+      "status": "Status",
+      "result": "Result",
+      "evaluated": "Evaluated",
+      "decision": "Decision"
+    },
+    "shadow": {
+      "title": "Shadow picks",
+      "subtitle": "Click a pick for its lineage"
+    },
+    "candidates": {
+      "title": "Recent candidates",
+      "subtitle": "The last 50 prices evaluated, selected or not",
+      "noPrice": "No price.",
+      "notComputed": "Not computed."
+    },
+    "lineage": {
+      "forecast": "Forecast",
+      "modelVersion": "Model version",
+      "prediction": "Prediction",
+      "dataCutoff": "Data cut-off",
+      "inputHash": "Input hash",
+      "calibrated": "Calibrated",
+      "uncalibrated": "no (model's own probability)",
+      "interval": "Interval (90%)",
+      "noInterval": "No interval was computed for this forecast.",
+      "price": "Price",
+      "bookmaker": "Bookmaker",
+      "odds": "Odds",
+      "captured": "Captured",
+      "consensus": "Consensus",
+      "fairOdds": "Model fair odds",
+      "priceEdge": "Price edge",
+      "evLowerBound": "EV at lower bound",
+      "decision": "Decision & settlement",
+      "rule": "Rule",
+      "code": "Code",
+      "kelly": "Kelly (reported only)",
+      "qualified": "Qualified",
+      "result": "Result",
+      "basis": "Basis",
+      "needsReview": "Needs review: {reason}",
+      "history": "History"
+    }
+  },
+  "analyst": {
+    "notConfigured": "No language model is configured on the API host ({missing} unset), so the analyst cannot answer. Nothing is sent anywhere. The tools below are exactly what it would read, and they work now.",
+    "ask": {
+      "title": "Ask",
+      "subtitle": "Questions go to the API host, which calls the model and the tools. The browser never sees a key.",
+      "placeholder": "e.g. How did Dixon-Coles do against the market?",
+      "placeholderOff": "Not configured on the API host",
+      "label": "Question for the analyst",
+      "submit": "Ask",
+      "pending": "Asking…",
+      "unverified": "Unverified figures (not found in any tool result): {figures}"
+    },
+    "rules": "Rules the analyst works under",
+    "console": {
+      "title": "Tool console",
+      "subtitle": "Run any analyst tool by hand and see exactly what it would read",
+      "tool": "Tool",
+      "run": "Run"
+    },
+    "output": {
+      "status": "Status",
+      "generated": "Generated",
+      "dataAsOf": "Data as of"
+    }
+  }
+}

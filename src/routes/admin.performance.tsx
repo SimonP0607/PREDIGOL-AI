@@ -23,13 +23,13 @@ import type { GlossaryKey } from "@/lib/glossary";
 export const Route = createFileRoute("/admin/performance")({
   head: () => ({
     meta: [
-      { title: "Performance — Football Intelligence" },
+      { title: "Performance · PrediGol Admin" },
       {
         name: "description",
         content:
           "Realised results of published picks. No validated sample exists yet, so every economic metric reads as unavailable.",
       },
-      { property: "og:title", content: "Performance — Football Intelligence" },
+      { property: "og:title", content: "Performance · PrediGol Admin" },
       {
         property: "og:description",
         content: "Economic reporting gated behind a validated, settled sample.",

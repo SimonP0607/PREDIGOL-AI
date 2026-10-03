@@ -1,0 +1,284 @@
+{
+  "common": {
+    "competition": "Competition",
+    "season": "Season",
+    "fixtures": "Fixtures",
+    "status": "Status",
+    "market": "Market",
+    "selection": "Selection",
+    "bookmaker": "Bookmaker",
+    "book": "Book",
+    "kind": "Kind",
+    "home": "Home",
+    "draw": "Draw",
+    "away": "Away",
+    "features": "Features",
+    "snapshots": "Snapshots",
+    "ou25": "Over/Under 2.5",
+    "noValue": "No value recorded.",
+    "preClosing": "pre-closing",
+    "closing": "closing"
+  },
+  "tabs": {
+    "label": "Analytics sections",
+    "competitions": "Competitions",
+    "teams": "Teams",
+    "models": "Models",
+    "market": "Market",
+    "coverage": "Coverage",
+    "migration": "Migration"
+  },
+  "competitions": {
+    "title": "Competition profiles",
+    "subtitle": "Regulation-time outcomes of recorded results per competition and season, and how many fixtures carry each kind of data. Fewer than 30 results: shown with its n, flagged.",
+    "smallSample": "small sample",
+    "international": "International",
+    "ofFixtures": "of {n}",
+    "results": "Results",
+    "goals": "Goals",
+    "homeEdge": "Home edge",
+    "over25": "Over 2.5",
+    "stats": "Stats",
+    "odds": "Odds"
+  },
+  "teams": {
+    "team": "Team",
+    "noTeam": "No team has been ingested yet.",
+    "record": {
+      "title": "{team}: record",
+      "subtitle": "Regulation time, from recorded results only",
+      "split": "Split",
+      "played": "P",
+      "won": "W",
+      "drawn": "D",
+      "lost": "L",
+      "goalsFor": "GF",
+      "goalsAgainst": "GA",
+      "ppm": "PPM",
+      "ppmTitle": "Points per match",
+      "all": "All",
+      "noMatch": "No match in this split."
+    },
+    "elo": {
+      "title": "Elo after each rated match",
+      "subtitle_one": "{count} rated matches, {from} to {to}",
+      "subtitle_other": "{count} rated matches, {from} to {to}",
+      "rating": "rating",
+      "none": "No rated match for this team yet."
+    },
+    "features": {
+      "title": "As the models see it",
+      "subtitle": "Feature set {version} for fixture {fixture}, cut-off {cutoff} ({side} side)",
+      "home": "home",
+      "away": "away",
+      "newest": "Newest feature set",
+      "notEnough": "Not enough history for this feature.",
+      "none": "No feature set includes this team yet.",
+      "labels": {
+        "elo": "Elo",
+        "pi": "pi-rating (at this venue)",
+        "shotShare10": "Shot share, last 10",
+        "sotShare10": "On-target share, last 10",
+        "eloResid10": "Form beyond Elo, last 10",
+        "ppg5": "Points per match, last 5",
+        "restDays": "Rest days",
+        "historyN": "Matches in history"
+      }
+    },
+    "shots": {
+      "title": "Shots, last 10 matches with statistics",
+      "subtitle": "Team statistics as recorded, API-Football preferred over Football-Data when both exist",
+      "match": "Match",
+      "shots": "Shots",
+      "onTarget": "On target",
+      "source": "Source",
+      "none": "No match of this team has team statistics yet."
+    }
+  },
+  "models": {
+    "title": "Research registry",
+    "subtitle": "Every stored experiment and its model gate. A model leaves RESEARCH only with all six checks passed - out of sample, temporal validation, calibration, reproduction, stability, and beating the market.",
+    "experiment": "Experiment",
+    "vsMarket": "vs market (Δ, 95%)",
+    "verdict": "Verdict",
+    "gate": "Gate",
+    "session": "session {id}",
+    "reproduces": "reproduces #{id}",
+    "reproducedBy": "reproduced by #{id}",
+    "evidence": "evidence {value}",
+    "reruns_one": "{count} reproduction run not listed: each is linked from the experiment it re-ran.",
+    "reruns_other": "{count} reproduction runs not listed: each is linked from the experiment it re-ran."
+  },
+  "market": {
+    "calibration": {
+      "title": "Is the closing line calibrated?",
+      "subtitle": "{baseline}, one-vs-rest over home, draw and away on {n} fixtures. On the diagonal: stated probabilities come true at their rate."
+    },
+    "buckets": {
+      "title": "Calibration buckets",
+      "bucket": "Bucket",
+      "meanStated": "Mean stated",
+      "observed": "Observed",
+      "empty": "No selection in this bucket."
+    },
+    "closing": {
+      "title": "What the last hours of trading add",
+      "subtitle": "Log loss of the de-vigged Pinnacle pre-closing and closing prices on the same fixtures; the difference is what the market learned before kick-off.",
+      "preClosing": "Pre-closing",
+      "closing": "Closing",
+      "improvement": "Improvement",
+      "margin": "Margin",
+      "noPrices": "No closing prices for this season."
+    }
+  },
+  "coverage": {
+    "title": "Data coverage",
+    "subtitle": "Per competition and season, how many fixtures carry each kind of data. Events, lineups and player statistics arrive with the paid historical migration.",
+    "results": "Results",
+    "teamStats": "Team stats",
+    "events": "Events",
+    "lineups": "Lineups",
+    "players": "Players",
+    "histOdds": "Hist. odds",
+    "predictions": "Predictions"
+  },
+  "migration": {
+    "plan": {
+      "title": "Plan",
+      "subtitle": "The newest stored migration plan (python -m scripts.migration seed)",
+      "name": "Plan",
+      "none": "No plan stored yet - units seeded directly",
+      "created": "Created",
+      "plannedRequests": "Planned requests",
+      "requestsSpent": "Requests spent",
+      "rowsWritten": "Rows written",
+      "lastActivity": "Last activity"
+    },
+    "units": {
+      "title": "Units",
+      "subtitle": "Resumable units by kind and status"
+    }
+  },
+  "odds": {
+    "source": {
+      "label": "Odds source",
+      "captured": "Captured by us",
+      "historical": "Historical market"
+    },
+    "captured": {
+      "title": "Fixtures with captured prices",
+      "subtitle": "Implied probabilities are raw (1/odds); de-vigged probabilities appear only in the consensus.",
+      "kickoff": "Kick-off",
+      "fixture": "Fixture",
+      "bookmakers": "Bookmakers",
+      "markets": "Markets",
+      "lastCapture": "Last capture"
+    },
+    "fixture": {
+      "title": "Fixture odds",
+      "sections": "Odds sections",
+      "board": "Board",
+      "movement": "Movement",
+      "nearClose": "Near-close",
+      "consensus": "Consensus"
+    },
+    "board": {
+      "title": "{home} v {away}",
+      "subtitle": "Latest price per bookmaker, and the best available per selection",
+      "bestOdds": "Best odds",
+      "at": "At",
+      "implied": "Implied (raw)",
+      "summary_one": "{count} latest quotes from {books}.",
+      "summary_other": "{count} latest quotes from {books}.",
+      "books_one": "{count} bookmakers",
+      "books_other": "{count} bookmakers"
+    },
+    "movement": {
+      "title": "Line movement",
+      "subtitle": "First and last captured price per bookmaker and selection",
+      "first": "First",
+      "last": "Last",
+      "change": "Change",
+      "captures": "Captures"
+    },
+    "nearClose": {
+      "title": "Near-close",
+      "subtitle": "The capture closest to kick-off our cadence allowed. Not a closing line until validated.",
+      "odds": "Odds",
+      "captured": "Captured",
+      "validatedClose": "Validated close",
+      "yes": "yes",
+      "no": "no"
+    },
+    "consensus": {
+      "title": "Market consensus",
+      "subtitle": "De-vigged probability across bookmakers",
+      "method": "Method",
+      "fairProbability": "Fair probability",
+      "books": "Books"
+    },
+    "historical": {
+      "withPrices": "Fixtures with historical prices",
+      "seasons": "Seasons {seasons} · {source}",
+      "snapshots": "snapshots",
+      "liveConsensus": "Live consensus",
+      "liveConsensusHint": "fixtures with a de-vigged consensus from our captures",
+      "margins": {
+        "title": "Bookmaker margins",
+        "subtitle": "Overround per book and price kind: the sum of 1/odds across a market. Best-price share counts how often a named book had the top 1X2 price (ties count for each).",
+        "meanOverround": "Mean overround",
+        "median": "Median",
+        "best1x2": "Best 1X2 price",
+        "averageNotOffered": "An average is not a price anyone offered.",
+        "only1x2": "Only computed for 1X2."
+      },
+      "movement": {
+        "title": "Pre-closing → closing",
+        "subtitle": "Pinnacle, de-vigged with Shin. How far the price moved between the source's two collections, and which of the two predicted the result better.",
+        "meanShift": "Mean |Δ p(home)|",
+        "favouriteShortened": "Favourite shortened",
+        "preClosingLogLoss": "Pre-closing log loss",
+        "closingLogLoss": "Closing log loss",
+        "note": "The source collects pre-closing prices on Friday or Tuesday afternoons; neither kind has an exact timestamp, so this is movement between two labelled collections, not a line history."
+      }
+    }
+  },
+  "performance": {
+    "pnlUnits": "P&L (units)",
+    "hitRate": "Hit rate",
+    "stakedUnits": "Staked (units)",
+    "notComputable": "Not computable yet.",
+    "sample": "Sample",
+    "settledPicks": "Settled picks",
+    "pendingPicks": "Pending picks",
+    "slices": {
+      "intro": "± is a 95% interval on the ROI from the spread of bet results (shown from 30 bets). An interval that contains 0 means the result is not distinguishable from luck. “Model expected” is what the model's own EV promised for the same bets.",
+      "byMarket": "By market",
+      "byModel": "By model",
+      "byRule": "By decision rule",
+      "byMonth": "By month of kick-off",
+      "byOddsBand": "By price band",
+      "model": "model",
+      "market": "market",
+      "rule": "rule",
+      "month": "month",
+      "oddsBand": "Odds",
+      "bets": "Bets",
+      "hit": "Hit",
+      "pnl": "P&L",
+      "modelExpected": "Model expected"
+    }
+  },
+  "historicalTables": {
+    "secondSource": "Second source",
+    "composite": "composite",
+    "fair": "Fair H / D / A (Shin)",
+    "noPrice": "The source has no price for this selection.",
+    "compositeNotBook": "A best-price composite is not a book: its prices were never offered together.",
+    "compositeNotBookShort": "A best-price composite is not a book.",
+    "notDevigged": "Not de-vigged: a composite of best prices has no margin to remove.",
+    "noBaseline": "No de-vigged baseline was computed for this book.",
+    "over": "Over",
+    "under": "Under"
+  }
+}

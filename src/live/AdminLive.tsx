@@ -13,7 +13,7 @@ import type { ComponentStatus, Section } from "@/lib/api/v1/types";
 import type { BackfillProgress } from "@/lib/api/v1/types_center";
 import { int } from "@/lib/format";
 import { relative, utcDateTime } from "./format";
-import { JOB_LABEL } from "./labels";
+import { jobLabel } from "./labels";
 import { ComponentStatusBadge } from "./shared";
 
 const FRONTEND_VERSION = (import.meta.env["VITE_APP_VERSION"] as string | undefined) ?? "dev";
@@ -28,10 +28,6 @@ function bytes(n: number | null | undefined): string {
     i++;
   }
   return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
-
-function jobName(k: string): string {
-  return (JOB_LABEL as Record<string, string>)[k] ?? k.replace(/_/g, " ");
 }
 
 export function AdminLive() {
@@ -49,7 +45,7 @@ export function AdminLive() {
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <MetricCard
-              label="Worker"
+              label={t("system.metrics.worker")}
               value={d.worker.status.toUpperCase()}
               tone={
                 d.worker.status === "ok"
@@ -61,42 +57,45 @@ export function AdminLive() {
               hint={d.worker.detail}
             />
             <MetricCard
-              label="API-Football today"
+              label={t("system.metrics.apiFootball")}
               value={`${int(d.quota.spent)} / ${int(d.quota.budget)}`}
-              hint={`${int(d.quota.remaining)} left under our guard · plan ${int(d.quota.plan_limit_per_day)}/day`}
+              hint={t("system.metrics.quotaHint", {
+                left: int(d.quota.remaining),
+                plan: int(d.quota.plan_limit_per_day),
+              })}
               tone={d.quota.remaining < 3000 ? "warning" : "default"}
             />
             <MetricCard
-              label="Provider"
+              label={t("system.metrics.provider")}
               value={d.quota.provider_status.status.toUpperCase()}
               tone={d.quota.provider_status.status === "ok" ? "positive" : "warning"}
               hint={d.quota.provider_status.detail}
             />
             <MetricCard
-              label="Database"
+              label={t("system.metrics.database")}
               value={bytes(d.database_bytes)}
-              hint={`schema ${d.schema_revision ?? "?"}`}
+              hint={t("system.metrics.schemaHint", { rev: d.schema_revision ?? "?" })}
             />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel
-              title="Worker jobs"
-              subtitle="Next scheduled run of each job."
+              title={t("system.workerJobs.title")}
+              subtitle={t("system.workerJobs.subtitle")}
               className="lg:col-span-1"
               bodyClassName=""
             >
               <TableShell compact>
                 <THead>
-                  <TH>Job</TH>
-                  <TH>Next run</TH>
+                  <TH>{t("system.workerJobs.job")}</TH>
+                  <TH>{t("system.workerJobs.nextRun")}</TH>
                 </THead>
                 <tbody>
                   {Object.entries(d.jobs_next)
                     .sort((a, b) => (a[1] ?? "").localeCompare(b[1] ?? ""))
                     .map(([k, v]) => (
                       <TRow key={k}>
-                        <TD className="text-sm">{jobName(k)}</TD>
+                        <TD className="text-sm">{jobLabel(k)}</TD>
                         <TD className="text-xs text-muted-foreground">
                           {v ? utcDateTime(v) : "—"}
                         </TD>
@@ -106,13 +105,13 @@ export function AdminLive() {
               </TableShell>
               <div className="px-4 py-2 text-caption">
                 <Link to="/admin/data-quality" className="text-primary hover:underline">
-                  Job ledger and run history →
+                  {t("system.workerJobs.ledgerLink")}
                 </Link>
               </div>
             </Panel>
             <Panel
-              title="Captures"
-              subtitle="What the pipelines wrote recently."
+              title={t("system.captures.title")}
+              subtitle={t("system.captures.subtitle")}
               className="lg:col-span-2"
             >
               <div className="grid gap-x-6 sm:grid-cols-2">
@@ -138,8 +137,8 @@ export function AdminLive() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel
-              title="Errors, last 72 h"
-              subtitle="Runs that failed, half-succeeded, hit a cap or were cut off."
+              title={t("system.errors.title")}
+              subtitle={t("system.errors.subtitle")}
               className="lg:col-span-2"
               bodyClassName=""
             >
@@ -148,10 +147,10 @@ export function AdminLive() {
                   <div className="max-h-[360px] overflow-auto">
                     <TableShell compact>
                       <THead>
-                        <TH>When</TH>
-                        <TH>Job</TH>
-                        <TH>Status</TH>
-                        <TH>Error</TH>
+                        <TH>{t("system.errors.headers.when")}</TH>
+                        <TH>{t("system.errors.headers.job")}</TH>
+                        <TH>{t("system.errors.headers.status")}</TH>
+                        <TH>{t("system.errors.headers.error")}</TH>
                       </THead>
                       <tbody>
                         {rows.map((e) => (
@@ -159,7 +158,7 @@ export function AdminLive() {
                             <TD className="whitespace-nowrap text-xs text-muted-foreground">
                               {utcDateTime(e.started_at)}
                             </TD>
-                            <TD className="text-xs">{jobName(e.job_type)}</TD>
+                            <TD className="text-xs">{jobLabel(e.job_type)}</TD>
                             <TD>
                               <StatusBadge tone={e.status === "failed" ? "negative" : "warning"}>
                                 {e.status}
@@ -176,17 +175,17 @@ export function AdminLive() {
                 )}
               </SectionView>
             </Panel>
-            <Panel title="Data quality" subtitle="Open issues by severity.">
+            <Panel title={t("system.quality.title")} subtitle={t("system.quality.subtitle")}>
               {d.quality.length ? (
                 d.quality.map((c) => (
                   <KeyValue key={c.label} label={c.label} value={int(c.value)} />
                 ))
               ) : (
-                <p className="text-xs text-muted-foreground">No open issue.</p>
+                <p className="text-xs text-muted-foreground">{t("system.quality.empty")}</p>
               )}
               <div className="mt-2 text-caption">
                 <Link to="/admin/data-quality" className="text-primary hover:underline">
-                  Open Data Quality →
+                  {t("system.quality.link")}
                 </Link>
               </div>
             </Panel>
@@ -194,8 +193,8 @@ export function AdminLive() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel
-              title="Backups"
-              subtitle="Database dumps found on this machine, newest first."
+              title={t("system.backups.title")}
+              subtitle={t("system.backups.subtitle")}
               className="lg:col-span-2"
               bodyClassName=""
             >
@@ -203,9 +202,9 @@ export function AdminLive() {
                 {(rows) => (
                   <TableShell compact>
                     <THead>
-                      <TH>File</TH>
-                      <TH align="right">Size</TH>
-                      <TH>Written</TH>
+                      <TH>{t("system.backups.headers.file")}</TH>
+                      <TH align="right">{t("system.backups.headers.size")}</TH>
+                      <TH>{t("system.backups.headers.written")}</TH>
                     </THead>
                     <tbody>
                       {rows.map((b) => (
@@ -231,17 +230,17 @@ export function AdminLive() {
                 )}
               </SectionView>
             </Panel>
-            <Panel title="Versions">
-              <KeyValue label="Backend" value={d.backend_version} />
-              <KeyValue label="Backend code" value={d.code_version} />
-              <KeyValue label="Schema" value={d.schema_revision ?? "—"} />
-              <KeyValue label="Frontend" value={FRONTEND_VERSION} />
+            <Panel title={t("system.versions.title")}>
+              <KeyValue label={t("system.versions.backend")} value={d.backend_version} />
+              <KeyValue label={t("system.versions.backendCode")} value={d.code_version} />
+              <KeyValue label={t("system.versions.schema")} value={d.schema_revision ?? "—"} />
+              <KeyValue label={t("system.versions.frontend")} value={FRONTEND_VERSION} />
               <KeyValue
-                label="Worker"
+                label={t("system.versions.worker")}
                 value={<ComponentStatusBadge status={d.worker.status as ComponentStatus} />}
               />
               <KeyValue
-                label="Worker build"
+                label={t("system.versions.workerBuild")}
                 value={String(
                   ((d.worker.data["heartbeat"] as Record<string, unknown> | undefined)?.[
                     "code_version"
@@ -260,8 +259,8 @@ export function AdminLive() {
 export function BackfillPanel({ section }: { section: Section<BackfillProgress[]> }) {
   return (
     <Panel
-      title="History migration"
-      subtitle="Seeded backfill tasks by kind. Each task is one provider request; nothing is re-requested that the raw store already holds."
+      title={t("system.backfill.title")}
+      subtitle={t("system.backfill.subtitle")}
       bodyClassName=""
     >
       <SectionView section={section}>
@@ -273,10 +272,10 @@ export function BackfillPanel({ section }: { section: Section<BackfillProgress[]
               <div className="px-4 pt-3">
                 <div className="flex items-baseline justify-between text-xs">
                   <span>
-                    {int(done)} of {int(total)} tasks done
+                    {t("system.backfill.progress", { done: int(done), total: int(total) })}
                   </span>
                   <StatusBadge tone={done === total ? "positive" : "info"}>
-                    {done === total ? "complete" : "running"}
+                    {done === total ? t("system.backfill.complete") : t("system.backfill.running")}
                   </StatusBadge>
                 </div>
                 <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
@@ -288,12 +287,12 @@ export function BackfillPanel({ section }: { section: Section<BackfillProgress[]
               </div>
               <TableShell>
                 <THead>
-                  <TH>Kind</TH>
-                  <TH align="right">Done</TH>
-                  <TH align="right">Pending</TH>
-                  <TH align="right">Running</TH>
-                  <TH align="right">Failed</TH>
-                  <TH>Last completed</TH>
+                  <TH>{t("system.backfill.headers.kind")}</TH>
+                  <TH align="right">{t("system.backfill.headers.done")}</TH>
+                  <TH align="right">{t("system.backfill.headers.pending")}</TH>
+                  <TH align="right">{t("system.backfill.headers.running")}</TH>
+                  <TH align="right">{t("system.backfill.headers.failed")}</TH>
+                  <TH>{t("system.backfill.headers.lastCompleted")}</TH>
                 </THead>
                 <tbody>
                   {rows.map((r) => (

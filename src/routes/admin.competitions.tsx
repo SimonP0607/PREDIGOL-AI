@@ -6,12 +6,12 @@ import { CompetitionsLive } from "@/live/CatalogLive";
 export const Route = createFileRoute("/admin/competitions")({
   head: () => ({
     meta: [
-      { title: "Competitions — Football Intelligence" },
+      { title: "Competitions · PrediGol Admin" },
       {
         name: "description",
         content: "Coverage, calendar completeness and data readiness per competition.",
       },
-      { property: "og:title", content: "Competitions — Football Intelligence" },
+      { property: "og:title", content: "Competitions · PrediGol Admin" },
       {
         property: "og:description",
         content: "Coverage, calendar completeness and data readiness per competition.",

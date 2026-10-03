@@ -68,7 +68,7 @@ const LEAKS: ReadonlyArray<readonly [string, RegExp]> = [
   ["Infinity", /\bInfinity\b/],
   [
     "an untranslated key",
-    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors)\.[a-z][\w.]+[a-z]\b/,
+    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors|system|ops|research|analytics|catalog|center)\.[a-z][\w.]+[a-z]\b/,
   ],
 ];
 

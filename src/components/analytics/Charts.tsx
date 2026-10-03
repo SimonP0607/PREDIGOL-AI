@@ -14,6 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import type { CalibrationBin, LineMovementSeries, SeriesPoint } from "@/types/domain";
@@ -72,7 +73,7 @@ export function ChartContainer({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {actions}
-          {demo ? <StatusBadge tone="warning">Demo data</StatusBadge> : null}
+          {demo ? <StatusBadge tone="warning">{t("admin.shell.demoData")}</StatusBadge> : null}
         </div>
       </header>
       <div className="px-2 py-3" style={{ height }}>
@@ -134,7 +135,7 @@ export function CalibrationChart({ bins, width, height }: { bins: CalibrationBin
         type="number"
         dataKey="predicted"
         domain={[0, 100]}
-        name="Predicted"
+        name={t("admin.ui.predicted")}
         unit="%"
         {...axis}
       />
@@ -142,7 +143,7 @@ export function CalibrationChart({ bins, width, height }: { bins: CalibrationBin
         type="number"
         dataKey="observed"
         domain={[0, 100]}
-        name="Observed"
+        name={t("admin.ui.observed")}
         unit="%"
         width={46}
         {...axis}

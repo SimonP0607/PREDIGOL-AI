@@ -1,0 +1,295 @@
+{
+  "tabs": {
+    "label": "Match sections",
+    "overview": "Overview",
+    "stats": "Stats",
+    "events": "Events",
+    "lineups": "Line-ups",
+    "players": "Players",
+    "context": "Context",
+    "markets": "Markets",
+    "inPlay": "In-play",
+    "models": "Models",
+    "timeline": "Timeline",
+    "lineage": "Lineage",
+    "audit": "Audit"
+  },
+  "header": {
+    "title": "Match Center",
+    "loading": "Loading fixture…",
+    "matches": "Matches",
+    "fixture": "Fixture {id}",
+    "notFound": "Fixture not found",
+    "noFixture": "No stored fixture has id {id}.",
+    "loadFailed": "The fixture could not be loaded."
+  },
+  "versus": "{home} v {away}",
+  "awaitingResult": "This fixture kicked off {when} and is still recorded as {status}. The live follower and the results sync should have moved it on; check System / Admin for a failing job.",
+  "yes": "yes",
+  "no": "no",
+  "columns": {
+    "market": "Market",
+    "selection": "Selection",
+    "bookmaker": "Bookmaker",
+    "odds": "Odds",
+    "implied": "Implied (raw)",
+    "captured": "Captured",
+    "feed": "Feed",
+    "model": "Model",
+    "home": "Home",
+    "draw": "Draw",
+    "away": "Away",
+    "over25": "Over 2.5",
+    "bttsYes": "BTTS yes",
+    "dataCutoff": "Data cut-off",
+    "player": "Player",
+    "position": "Pos",
+    "grid": "Grid",
+    "minutesPlayed": "Min",
+    "rating": "Rating",
+    "ratingHelp": "Provider rating, 0–10",
+    "goals": "G",
+    "assists": "A",
+    "shots": "Shots",
+    "onTarget": "On tgt",
+    "keyPasses": "Key passes",
+    "tackles": "Tackles",
+    "saves": "Saves",
+    "cards": "Cards",
+    "team": "Team",
+    "played": "P",
+    "wdl": "W-D-L",
+    "goalDiff": "GD",
+    "points": "Pts",
+    "form": "Form",
+    "date": "Date",
+    "match": "Match",
+    "score": "Score",
+    "type": "Type",
+    "reason": "Reason",
+    "state": "State",
+    "lastChange": "Last change",
+    "minute": "Minute",
+    "status": "Status",
+    "at": "At",
+    "from": "From",
+    "to": "To",
+    "change": "Change",
+    "record": "Record",
+    "when": "When",
+    "facts": "Facts",
+    "computedFrom": "Computed from"
+  },
+  "overview": {
+    "result": {
+      "title": "Result",
+      "noScore": "No score has been recorded for this fixture.",
+      "halfTime": "Half time",
+      "noHalfTime": "Half-time score not provided.",
+      "outcome": "Outcome (90 min)",
+      "extraTime": "Extra time",
+      "noExtraTime": "No extra time was played.",
+      "penalties": "Penalties",
+      "noShootout": "No shoot-out.",
+      "totalGoals": "Total goals",
+      "btts": "Both teams scored",
+      "notPlayed": "Not played ({status}): there is no result to record.",
+      "inPlay": "In play: the live score is shown above and in the In-play tab. The result is recorded at full time.",
+      "awaiting": "Kicked off, but no result has been recorded yet.",
+      "scheduled": "Scheduled. The result is recorded after full time."
+    },
+    "fixture": {
+      "title": "Fixture",
+      "kickoff": "Kick-off",
+      "status": "Status",
+      "competition": "Competition",
+      "season": "Season",
+      "round": "Round",
+      "noRound": "The provider did not report a round.",
+      "venue": "Venue",
+      "noVenue": "The provider did not identify the venue.",
+      "snapshots": "Odds snapshots",
+      "bookmakers": "Bookmakers",
+      "nearClose": "Near-close captures",
+      "predictions": "Predictions",
+      "teams": "Teams",
+      "oddsExplorer": "Odds explorer"
+    }
+  },
+  "markets": {
+    "captured": {
+      "title": "Captured prices",
+      "subtitle": "Latest price per bookmaker that THIS platform captured. Implied probability is 1/odds: the bookmaker margin is still in it."
+    },
+    "historical": {
+      "title": "Historical market",
+      "subtitle": "Published by a second source after the fact. Kept apart from our captures, never mixed into them."
+    }
+  },
+  "models": {
+    "title": "Model predictions",
+    "subtitle": "Probabilities with their data cut-off. Probability is not confidence; the interval is the model's own parameter uncertainty (90%, Laplace).",
+    "backtest": "Backtest replay",
+    "backtestNote": "These were produced by the walk-forward backtest, using only results public before each cut-off. They are not forecasts that were published before the match.",
+    "market": "Market · Pinnacle closing · Shin",
+    "marketNote": "de-vigged, second source",
+    "only1x2": "Only the 1X2 baseline is shown here.",
+    "noBtts": "The source publishes no BTTS prices.",
+    "atKickoff": "at kick-off",
+    "notPriced": "This model does not price this market.",
+    "noInterval": "No interval was computed for this prediction.",
+    "names": {
+      "poisson": "Poisson",
+      "dixonColes": "Dixon-Coles",
+      "eloOlogit": "Elo + ordered logit",
+      "baseRates": "League base rates",
+      "mnlogit": "Multinomial logit"
+    }
+  },
+  "timeline": {
+    "title": "Timeline",
+    "subtitle": "What the system observed for this fixture, in order. Windows the plan cannot reach are marked, not counted as missed."
+  },
+  "lineage": {
+    "title": "Lineage",
+    "subtitle": "From the provider's bytes to the row on screen",
+    "provider": "Provider: {provider}",
+    "providerDetail": "Fixture {id} as the provider identifies it.",
+    "providerRef": "fixture {id}",
+    "payload": "Raw payload",
+    "payloadDetail": "{endpoint} {params}, stored gzipped and indexed by its hash.",
+    "notRecorded": "Not recorded.",
+    "notLinked": "not linked",
+    "run": "Ingestion run",
+    "runDetail": "Written by {job}; see the job ledger.",
+    "aRun": "a run",
+    "noRun": "No run linked to this row.",
+    "runRef": "run {id}",
+    "rowDetail": "Normalised row. Writes are monotonic on the payload fetch time: an older payload never overwrites a newer one.",
+    "updated": "updated {when}",
+    "scoreFromPayload": "The score was read from this payload.",
+    "scoreBeforeLineage": "Score written before lineage was recorded (revision 0015)."
+  },
+  "stats": {
+    "title": "Team statistics",
+    "asOfLive": "As of {when} — updated every minute while the match is played.",
+    "asOfFinal": "As of {when} — final.",
+    "fromProvider": "From the provider's match detail.",
+    "notReported": "Not reported for this side.",
+    "labels": {
+      "possession": "Possession",
+      "xg": "Expected goals (xG)",
+      "shots": "Shots",
+      "shotsOnTarget": "Shots on target",
+      "shotsOffTarget": "Shots off target",
+      "shotsBlocked": "Shots blocked",
+      "shotsInsideBox": "Shots inside the box",
+      "shotsOutsideBox": "Shots outside the box",
+      "corners": "Corners",
+      "fouls": "Fouls",
+      "offsides": "Offsides",
+      "yellowCards": "Yellow cards",
+      "redCards": "Red cards",
+      "saves": "Goalkeeper saves",
+      "passes": "Passes",
+      "passesAccurate": "Accurate passes"
+    }
+  },
+  "events": {
+    "title": "Events",
+    "subtitle": "Goals, cards, substitutions and VAR decisions as the provider reports them.",
+    "sub": "Sub",
+    "card": "Card",
+    "ownGoal": "Own goal",
+    "penalty": "Pen",
+    "missedPenalty": "Pen missed",
+    "goal": "Goal",
+    "noSide": "side not reported",
+    "subFor": "for {name}",
+    "assist": "assist {name}"
+  },
+  "lineups": {
+    "subtitle": "{formation} · coach {coach}",
+    "noFormation": "formation not reported",
+    "noCoach": "not reported",
+    "starting": "Starting XI ({n})",
+    "bench": "Bench ({n})",
+    "noBench": "No substitutes listed."
+  },
+  "players": {
+    "noName": "The provider did not name the player.",
+    "sub": "sub",
+    "notRated": "Not rated (too few minutes or not reported).",
+    "yellow": "Y{n}",
+    "red": "R{n}"
+  },
+  "context": {
+    "table": {
+      "title": "League table",
+      "subtitle": "The last table we hold before kick-off for both sides.",
+      "noForm": "The provider gave no form string.",
+      "snapshot": "Snapshot {when}",
+      "snapshotAfterKickoff": "Snapshot {when} — taken AFTER kick-off, it includes this match."
+    },
+    "form": {
+      "title": "Recent form",
+      "subtitle": "Last six finished matches before this one, any competition.",
+      "home": "v {opponent}",
+      "away": "@ {opponent}",
+      "none": "No finished match stored."
+    },
+    "h2h": {
+      "title": "Head to head",
+      "subtitle": "Previous meetings with a stored result."
+    },
+    "absences": {
+      "title": "Absences",
+      "subtitle": "Injuries and suspensions the provider reported for this match."
+    }
+  },
+  "live": {
+    "note": "In-play data is a separate system from the pre-match prices: it is never used to judge, train or backtest a pre-match model, and the last in-play price is not a closing line.",
+    "states": {
+      "title": "Match state over time",
+      "subtitle": "Each change of status, minute or score, with its feed.",
+      "fixtures": "fixtures",
+      "odds": "odds"
+    },
+    "quotes": {
+      "title": "In-play prices",
+      "subtitle": "The latest price of each selection (no bookmaker dimension in this feed).",
+      "main": "main",
+      "withdrawnReason": "Withdrawn by the bookmaker at this instant.",
+      "withdrawn": "withdrawn",
+      "suspended": "suspended",
+      "open": "open",
+      "others_one": "{count} more in-play prices belong to bets with no market of ours; they are stored, not shown.",
+      "others_other": "{count} more in-play prices belong to bets with no market of ours; they are stored, not shown."
+    },
+    "movement": {
+      "title": "Price movement",
+      "subtitle": "Every change in our markets, newest first: moves, suspensions, withdrawals."
+    },
+    "score": {
+      "halfTime": "half time",
+      "live": "live {minute}",
+      "fixtureFeed": "fixture feed",
+      "oddsFeed": "odds feed"
+    }
+  },
+  "audit": {
+    "title": "Audit",
+    "subtitle": "Provider → raw payload → normalised rows → features → model → prediction → market → pick → settlement, from stored hashes and ids only",
+    "complete": "Chain complete: nothing expected is missing",
+    "gaps_one": "{count} step with a gap: {steps}. Each says why below.",
+    "gaps_other": "{count} steps with a gap: {steps}. Each says why below.",
+    "state": {
+      "recorded": "Recorded",
+      "partial": "Partial",
+      "missing": "Missing",
+      "notApplicable": "Not applicable"
+    },
+    "showFewer": "Show fewer",
+    "showAll": "Show all {n} records"
+  }
+}

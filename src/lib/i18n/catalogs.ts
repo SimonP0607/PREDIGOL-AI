@@ -17,6 +17,12 @@ import esOdds from "@/locales/es/odds.json";
 import esParlays from "@/locales/es/parlays.json";
 import esPicks from "@/locales/es/picks.json";
 import esProfile from "@/locales/es/profile.json";
+import esSystem from "@/locales/es/system.json";
+import esOps from "@/locales/es/ops.json";
+import esResearch from "@/locales/es/research.json";
+import esAnalytics from "@/locales/es/analytics.json";
+import esCatalog from "@/locales/es/catalog.json";
+import esCenter from "@/locales/es/center.json";
 import enAdmin from "@/locales/en/admin.json";
 import enAuth from "@/locales/en/auth.json";
 import enCommon from "@/locales/en/common.json";
@@ -31,6 +37,12 @@ import enOdds from "@/locales/en/odds.json";
 import enParlays from "@/locales/en/parlays.json";
 import enPicks from "@/locales/en/picks.json";
 import enProfile from "@/locales/en/profile.json";
+import enSystem from "@/locales/en/system.json";
+import enOps from "@/locales/en/ops.json";
+import enResearch from "@/locales/en/research.json";
+import enAnalytics from "@/locales/en/analytics.json";
+import enCatalog from "@/locales/en/catalog.json";
+import enCenter from "@/locales/en/center.json";
 
 export type Locale = "es" | "en";
 export type Catalog = { [key: string]: string | Catalog };
@@ -51,6 +63,12 @@ export const CATALOGS: Record<Locale, Catalog> = {
     parlays: esParlays,
     picks: esPicks,
     profile: esProfile,
+    system: esSystem,
+    ops: esOps,
+    research: esResearch,
+    analytics: esAnalytics,
+    catalog: esCatalog,
+    center: esCenter,
   },
   en: {
     admin: enAdmin,
@@ -67,5 +85,11 @@ export const CATALOGS: Record<Locale, Catalog> = {
     parlays: enParlays,
     picks: enPicks,
     profile: enProfile,
+    system: enSystem,
+    ops: enOps,
+    research: enResearch,
+    analytics: enAnalytics,
+    catalog: enCatalog,
+    center: enCenter,
   },
 };

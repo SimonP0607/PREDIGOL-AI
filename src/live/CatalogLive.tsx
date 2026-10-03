@@ -17,6 +17,18 @@ import { FixtureLink, ScoreText, StatusGroupBadge } from "./shared";
 const scopes = ["Tracked", "With fixtures", "All known"] as const;
 type Scope = (typeof scopes)[number];
 
+/** Tab text for a scope, in the reader's language (the scope values stay as they are). */
+function scopeLabel(scope: Scope): string {
+  switch (scope) {
+    case "Tracked":
+      return t("catalog.competitions.scope.tracked");
+    case "With fixtures":
+      return t("catalog.competitions.scope.withFixtures");
+    case "All known":
+      return t("catalog.competitions.scope.allKnown");
+  }
+}
+
 export function CompetitionsLive() {
   const [scope, setScope] = useState<Scope>("With fixtures");
   const [term, setTerm] = useState("");
@@ -39,24 +51,30 @@ export function CompetitionsLive() {
       />
       <FilterBar>
         <SegmentedTabs
-          label="Scope"
+          label={t("catalog.competitions.scope.label")}
           tabs={scopes}
           value={scope}
           onChange={setScope}
+          format={scopeLabel}
           className="w-auto"
         />
         <SearchFilter
           value={term}
           onChange={setTerm}
-          placeholder="Name or country"
-          label="Filter"
+          placeholder={t("catalog.competitions.searchPlaceholder")}
+          label={t("catalog.filter")}
         />
       </FilterBar>
       <div className="grid gap-4 xl:grid-cols-5">
         <Panel
-          title="Catalogue"
+          title={t("catalog.competitions.list.title")}
           subtitle={
-            list.data ? `${rows.length} shown · ${int(list.data.meta.total)} known` : "Loading…"
+            list.data
+              ? `${t("catalog.competitions.list.shown", { count: rows.length })} · ${t(
+                  "catalog.competitions.list.known",
+                  { count: list.data.meta.total ?? 0, n: int(list.data.meta.total) },
+                )}`
+              : t("catalog.loading")
           }
           className="xl:col-span-3"
           bodyClassName=""
@@ -68,16 +86,16 @@ export function CompetitionsLive() {
               <ApiErrorNotice error={list.error} />
             </div>
           ) : rows.length === 0 ? (
-            <StatusNotice status="empty" reason="No competition in this scope." />
+            <StatusNotice status="empty" reason={t("catalog.competitions.list.empty")} />
           ) : (
             <TableShell>
               <THead>
-                <TH>Competition</TH>
-                <TH>Type</TH>
-                <TH align="right">Seasons</TH>
-                <TH align="right">Fixtures</TH>
-                <TH align="right">Teams</TH>
-                <TH>Tracking</TH>
+                <TH>{t("catalog.competitions.list.headers.competition")}</TH>
+                <TH>{t("catalog.competitions.list.headers.type")}</TH>
+                <TH align="right">{t("catalog.competitions.list.headers.seasons")}</TH>
+                <TH align="right">{t("catalog.competitions.list.headers.fixtures")}</TH>
+                <TH align="right">{t("catalog.competitions.list.headers.teams")}</TH>
+                <TH>{t("catalog.competitions.list.headers.tracking")}</TH>
               </THead>
               <tbody>
                 {rows.map((c) => (
@@ -85,7 +103,7 @@ export function CompetitionsLive() {
                     <TD>
                       <div className="text-sm">{c.name}</div>
                       <div className="text-caption text-subtle-foreground">
-                        {c.country ?? "International"}
+                        {c.country ?? t("catalog.competitions.international")}
                       </div>
                     </TD>
                     <TD className="text-xs text-muted-foreground">
@@ -102,9 +120,13 @@ export function CompetitionsLive() {
                     </TD>
                     <TD>
                       {c.is_tracked ? (
-                        <StatusBadge tone="positive">tracked</StatusBadge>
+                        <StatusBadge tone="positive">
+                          {t("catalog.competitions.list.tracked")}
+                        </StatusBadge>
                       ) : (
-                        <StatusBadge tone="neutral">catalogue</StatusBadge>
+                        <StatusBadge tone="neutral">
+                          {t("catalog.competitions.list.catalogue")}
+                        </StatusBadge>
                       )}
                     </TD>
                   </TRow>
@@ -115,11 +137,8 @@ export function CompetitionsLive() {
         </Panel>
         <div className="xl:col-span-2">
           {selected === null ? (
-            <Panel title="Details">
-              <StatusNotice
-                status="empty"
-                reason="Select a competition to see its seasons and teams."
-              />
+            <Panel title={t("catalog.competitions.detail.title")}>
+              <StatusNotice status="empty" reason={t("catalog.competitions.detail.select")} />
             </Panel>
           ) : (
             <CompetitionDetailPanel id={selected} />
@@ -134,13 +153,13 @@ function CompetitionDetailPanel({ id }: { id: number }) {
   const q = useLiveQuery(live.competition(String(id)));
   if (q.isLoading)
     return (
-      <Panel title="Details">
+      <Panel title={t("catalog.competitions.detail.title")}>
         <TableSkeleton rows={4} cols={3} />
       </Panel>
     );
   if (q.isError || !q.data)
     return (
-      <Panel title="Details">
+      <Panel title={t("catalog.competitions.detail.title")}>
         <ApiErrorNotice error={q.error} />
       </Panel>
     );
@@ -149,48 +168,54 @@ function CompetitionDetailPanel({ id }: { id: number }) {
     <div className="space-y-4">
       <Panel
         title={c.name}
-        subtitle={`${c.country ?? "International"} · provider league ${c.provider_league_id}`}
+        subtitle={`${c.country ?? t("catalog.competitions.international")} · ${t(
+          "catalog.competitions.detail.providerLeague",
+          { id: c.provider_league_id },
+        )}`}
       >
-        <KeyValue label="Tracked" value={c.is_tracked ? "yes" : "no"} />
         <KeyValue
-          label="Current season"
+          label={t("catalog.competitions.detail.tracked")}
+          value={c.is_tracked ? t("catalog.yes") : t("catalog.no")}
+        />
+        <KeyValue
+          label={t("catalog.competitions.detail.currentSeason")}
           value={
             <Nullable
               value={c.current_season === null ? null : String(c.current_season)}
-              reason="No season is marked current."
+              reason={t("catalog.competitions.detail.noCurrentSeason")}
             />
           }
         />
         <KeyValue
-          label="Tier"
+          label={t("catalog.competitions.detail.tier")}
           value={
             <Nullable
               value={c.tier === null ? null : String(c.tier)}
-              reason="Tier not set in the catalogue."
+              reason={t("catalog.competitions.detail.noTier")}
             />
           }
         />
       </Panel>
       <Panel
-        title="Seasons"
-        subtitle="Stored fixtures and how many have a recorded result"
+        title={t("catalog.competitions.seasons.title")}
+        subtitle={t("catalog.competitions.seasons.subtitle")}
         bodyClassName=""
       >
         {seasons.length === 0 ? (
           <StatusNotice
             status="empty"
-            reason="No season of this competition is stored."
+            reason={t("catalog.competitions.seasons.empty")}
             compact
             className="p-4"
           />
         ) : (
           <TableShell className="min-w-0">
             <THead>
-              <TH>Season</TH>
-              <TH align="right">Fixtures</TH>
-              <TH align="right">Finished</TH>
-              <TH align="right">With result</TH>
-              <TH>Odds</TH>
+              <TH>{t("catalog.competitions.seasons.headers.season")}</TH>
+              <TH align="right">{t("catalog.competitions.seasons.headers.fixtures")}</TH>
+              <TH align="right">{t("catalog.competitions.seasons.headers.finished")}</TH>
+              <TH align="right">{t("catalog.competitions.seasons.headers.withResult")}</TH>
+              <TH>{t("catalog.competitions.seasons.headers.odds")}</TH>
             </THead>
             <tbody>
               {seasons.map((s) => (
@@ -198,7 +223,9 @@ function CompetitionDetailPanel({ id }: { id: number }) {
                   <TD>
                     <Numeric>{s.season}</Numeric>
                     {s.is_current ? (
-                      <span className="ml-1.5 text-caption text-primary">current</span>
+                      <span className="ml-1.5 text-caption text-primary">
+                        {t("catalog.competitions.seasons.current")}
+                      </span>
                     ) : null}
                   </TD>
                   <TD align="right">
@@ -214,9 +241,11 @@ function CompetitionDetailPanel({ id }: { id: number }) {
                   </TD>
                   <TD>
                     {s.has_odds ? (
-                      <StatusBadge tone="info">covered</StatusBadge>
+                      <StatusBadge tone="info">
+                        {t("catalog.competitions.seasons.covered")}
+                      </StatusBadge>
                     ) : (
-                      <span className="text-caption text-subtle-foreground">no</span>
+                      <span className="text-caption text-subtle-foreground">{t("catalog.no")}</span>
                     )}
                   </TD>
                 </TRow>
@@ -225,13 +254,12 @@ function CompetitionDetailPanel({ id }: { id: number }) {
           </TableShell>
         )}
       </Panel>
-      <Panel title="Teams" subtitle="Teams appearing in stored fixtures">
+      <Panel
+        title={t("catalog.competitions.teams.title")}
+        subtitle={t("catalog.competitions.teams.subtitle")}
+      >
         {teams.length === 0 ? (
-          <StatusNotice
-            status="empty"
-            reason="No fixture of this competition is stored, so no team is known."
-            compact
-          />
+          <StatusNotice status="empty" reason={t("catalog.competitions.teams.empty")} compact />
         ) : (
           <ul className="flex flex-wrap gap-1.5">
             {teams.map((t) => (
@@ -261,15 +289,22 @@ export function TeamsLive() {
         description={t("admin.pages.teams.description")}
       />
       <FilterBar>
-        <SearchFilter value={term} onChange={setTerm} placeholder="Team name" label="Filter" />
+        <SearchFilter
+          value={term}
+          onChange={setTerm}
+          placeholder={t("catalog.teams.searchPlaceholder")}
+          label={t("catalog.filter")}
+        />
       </FilterBar>
       <div className="grid gap-4 xl:grid-cols-5">
         <Panel
-          title="Teams"
+          title={t("catalog.teams.list.title")}
           subtitle={
             list.data
-              ? `${rows.length} shown${q.length >= 2 ? ` for “${q}”` : " · type 2+ letters to search all teams"}`
-              : "Loading…"
+              ? q.length >= 2
+                ? t("catalog.teams.list.shownFor", { count: rows.length, q })
+                : t("catalog.teams.list.shownHint", { count: rows.length })
+              : t("catalog.loading")
           }
           className="xl:col-span-2"
           bodyClassName=""
@@ -285,9 +320,9 @@ export function TeamsLive() {
           ) : (
             <TableShell className="min-w-0">
               <THead>
-                <TH>Team</TH>
-                <TH align="right">Fixtures</TH>
-                <TH align="right">Results</TH>
+                <TH>{t("catalog.teams.list.headers.team")}</TH>
+                <TH align="right">{t("catalog.teams.list.headers.fixtures")}</TH>
+                <TH align="right">{t("catalog.teams.list.headers.results")}</TH>
               </THead>
               <tbody>
                 {rows.map((t) => (
@@ -307,8 +342,8 @@ export function TeamsLive() {
         </Panel>
         <div className="xl:col-span-3">
           {selected === null ? (
-            <Panel title="Team">
-              <StatusNotice status="empty" reason="Select a team to see its record and fixtures." />
+            <Panel title={t("catalog.teams.detail.title")}>
+              <StatusNotice status="empty" reason={t("catalog.teams.detail.select")} />
             </Panel>
           ) : (
             <TeamDetailPanel id={selected} />
@@ -323,13 +358,13 @@ function TeamDetailPanel({ id }: { id: number }) {
   const q = useLiveQuery(live.team(String(id)));
   if (q.isLoading)
     return (
-      <Panel title="Team">
+      <Panel title={t("catalog.teams.detail.title")}>
         <TableSkeleton rows={4} cols={3} />
       </Panel>
     );
   if (q.isError || !q.data)
     return (
-      <Panel title="Team">
+      <Panel title={t("catalog.teams.detail.title")}>
         <ApiErrorNotice error={q.error} />
       </Panel>
     );
@@ -338,7 +373,7 @@ function TeamDetailPanel({ id }: { id: number }) {
     <div className="space-y-4">
       <Panel
         title={d.team.name}
-        subtitle={`provider team ${d.team.provider_team_id}${d.venue ? ` · ${d.venue.name}` : ""}`}
+        subtitle={`${t("catalog.teams.detail.providerTeam", { id: d.team.provider_team_id })}${d.venue ? ` · ${d.venue.name}` : ""}`}
       >
         <SectionView section={d.record}>
           {(r) =>
@@ -346,12 +381,12 @@ function TeamDetailPanel({ id }: { id: number }) {
               <div className="grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
                 {(
                   [
-                    ["Played", r.played],
-                    ["Won", r.won],
-                    ["Drawn", r.drawn],
-                    ["Lost", r.lost],
-                    ["For", r.goals_for],
-                    ["Against", r.goals_against],
+                    [t("catalog.teams.detail.record.played"), r.played],
+                    [t("catalog.teams.detail.record.won"), r.won],
+                    [t("catalog.teams.detail.record.drawn"), r.drawn],
+                    [t("catalog.teams.detail.record.lost"), r.lost],
+                    [t("catalog.teams.detail.record.for"), r.goals_for],
+                    [t("catalog.teams.detail.record.against"), r.goals_against],
                   ] as const
                 ).map(([k, v]) => (
                   <div key={k} className="rounded border border-border px-2 py-1.5">
@@ -368,23 +403,31 @@ function TeamDetailPanel({ id }: { id: number }) {
       {(["recent", "upcoming"] as const).map((k) => (
         <Panel
           key={k}
-          title={k === "recent" ? "Recent fixtures" : "Upcoming fixtures"}
+          title={
+            k === "recent"
+              ? t("catalog.teams.fixtures.recent")
+              : t("catalog.teams.fixtures.upcoming")
+          }
           bodyClassName=""
         >
           {d[k].length === 0 ? (
             <StatusNotice
               status="empty"
-              reason={k === "recent" ? "No past fixture stored." : "No upcoming fixture stored."}
+              reason={
+                k === "recent"
+                  ? t("catalog.teams.fixtures.noRecent")
+                  : t("catalog.teams.fixtures.noUpcoming")
+              }
               compact
               className="p-4"
             />
           ) : (
             <TableShell className="min-w-0">
               <THead>
-                <TH>Date</TH>
-                <TH>Fixture</TH>
-                <TH align="center">Score</TH>
-                <TH>Status</TH>
+                <TH>{t("catalog.teams.fixtures.headers.date")}</TH>
+                <TH>{t("catalog.teams.fixtures.headers.fixture")}</TH>
+                <TH align="center">{t("catalog.teams.fixtures.headers.score")}</TH>
+                <TH>{t("catalog.teams.fixtures.headers.status")}</TH>
               </THead>
               <tbody>
                 {d[k].map((m) => (
@@ -429,8 +472,8 @@ function SquadPanel({ teamId }: { teamId: number }) {
   const rows = (q.data?.data ?? []).slice(0, 30);
   return (
     <Panel
-      title="Squad"
-      subtitle="Players with a stored appearance in the last 400 days, by minutes"
+      title={t("catalog.teams.squad.title")}
+      subtitle={t("catalog.teams.squad.subtitle")}
       bodyClassName=""
     >
       {q.isLoading ? (
@@ -444,12 +487,12 @@ function SquadPanel({ teamId }: { teamId: number }) {
       ) : (
         <TableShell className="min-w-0" compact>
           <THead>
-            <TH>Player</TH>
-            <TH>Pos</TH>
-            <TH align="right">Apps</TH>
-            <TH align="right">Min</TH>
-            <TH align="right">G</TH>
-            <TH align="right">A</TH>
+            <TH>{t("catalog.columns.player")}</TH>
+            <TH>{t("catalog.columns.position")}</TH>
+            <TH align="right">{t("catalog.columns.apps")}</TH>
+            <TH align="right">{t("catalog.columns.minutes")}</TH>
+            <TH align="right">{t("catalog.columns.goals")}</TH>
+            <TH align="right">{t("catalog.columns.assists")}</TH>
           </THead>
           <tbody>
             {rows.map((p) => (
@@ -490,11 +533,18 @@ function SquadPanel({ teamId }: { teamId: number }) {
 /** The latest league table stored for the competition, refreshed every 12 h by the worker. */
 function StandingsPanel({ competitionId }: { competitionId: number }) {
   const q = useLiveQuery(live.standings(String(competitionId)));
-  const t = q.data?.data ?? null;
+  const table = q.data?.data ?? null;
   return (
     <Panel
-      title="League table"
-      subtitle={t ? `${t.season} · snapshot ${utcDateTime(t.snapshot_at)}` : "Latest stored table"}
+      title={t("catalog.competitions.standings.title")}
+      subtitle={
+        table
+          ? t("catalog.competitions.standings.subtitle", {
+              season: table.season,
+              when: utcDateTime(table.snapshot_at),
+            })
+          : t("catalog.competitions.standings.latest")
+      }
       bodyClassName=""
     >
       {q.isLoading ? (
@@ -503,7 +553,7 @@ function StandingsPanel({ competitionId }: { competitionId: number }) {
         <div className="p-4">
           <ApiErrorNotice error={q.error} />
         </div>
-      ) : !t ? (
+      ) : !table ? (
         <StatusNotice
           status={q.data?.status ?? "empty"}
           reason={q.data?.reason ?? null}
@@ -514,15 +564,15 @@ function StandingsPanel({ competitionId }: { competitionId: number }) {
         <TableShell className="min-w-0" compact>
           <THead>
             <TH align="right">#</TH>
-            <TH>Team</TH>
-            <TH align="right">P</TH>
-            <TH align="right">W-D-L</TH>
-            <TH align="right">GD</TH>
-            <TH align="right">Pts</TH>
-            <TH>Form</TH>
+            <TH>{t("catalog.competitions.standings.headers.team")}</TH>
+            <TH align="right">{t("catalog.competitions.standings.headers.played")}</TH>
+            <TH align="right">{t("catalog.competitions.standings.headers.record")}</TH>
+            <TH align="right">{t("catalog.competitions.standings.headers.goalDiff")}</TH>
+            <TH align="right">{t("catalog.competitions.standings.headers.points")}</TH>
+            <TH>{t("catalog.competitions.standings.headers.form")}</TH>
           </THead>
           <tbody>
-            {t.rows.map((r, i) => (
+            {table.rows.map((r, i) => (
               <TRow key={`${r.group ?? ""}-${r.team_id}`}>
                 <TD align="right">
                   <Numeric className="text-xs">{r.rank}</Numeric>
@@ -530,8 +580,8 @@ function StandingsPanel({ competitionId }: { competitionId: number }) {
                 <TD className="text-sm">
                   {r.team}
                   {r.group &&
-                  (i === 0 || t.rows[i - 1]?.group !== r.group) &&
-                  t.rows.some((x) => x.group !== r.group) ? (
+                  (i === 0 || table.rows[i - 1]?.group !== r.group) &&
+                  table.rows.some((x) => x.group !== r.group) ? (
                     <div className="text-caption text-subtle-foreground">{r.group}</div>
                   ) : null}
                 </TD>

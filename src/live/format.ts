@@ -1,23 +1,24 @@
 import { EMPTY } from "@/lib/format";
 import { formatDateTime, formatDateYear, formatRelative, zoneAbbrev } from "@/lib/time";
 import type { Dec } from "@/lib/api/v1/types";
+import { localFixed, localPct } from "@/lib/i18n/format";
 
 /** A decimal string from the API, for display. Null stays null. */
 export function dec(value: Dec | null | undefined, digits = 2): string | null {
   if (value === null || value === undefined) return null;
   const n = Number(value);
-  return Number.isFinite(n) ? n.toFixed(digits) : null;
+  return Number.isFinite(n) ? localFixed(n, digits) : null;
 }
 
 export function decPct(value: Dec | number | null | undefined, digits = 1): string | null {
   if (value === null || value === undefined) return null;
   const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? `${(n * 100).toFixed(digits)}%` : null;
+  return Number.isFinite(n) ? localPct(n, digits) : null;
 }
 
 export function ratio(value: number | null | undefined, digits = 0): string | null {
   if (value === null || value === undefined || Number.isNaN(value)) return null;
-  return `${(value * 100).toFixed(digits)}%`;
+  return localPct(value, digits);
 }
 
 /** Date in the reader's time zone (the name is historical: it used to be UTC). */

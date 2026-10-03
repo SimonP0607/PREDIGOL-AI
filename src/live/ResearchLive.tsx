@@ -48,39 +48,57 @@ function SessionView({ s }: { s: BacktestSessionSummary }) {
   const cfg = s.config as Record<string, unknown>;
   return (
     <>
-      <Panel title="Protocol" subtitle="Fixed before the test season was touched">
+      <Panel
+        title={t("research.common.protocol")}
+        subtitle={t("research.backtesting.protocol.subtitle")}
+      >
         <dl className="grid gap-x-8 sm:grid-cols-2 xl:grid-cols-3">
-          <Fact label="Competitions" value={s.competitions.map((c) => c.name).join(", ")} />
           <Fact
-            label="Validation season"
-            value={`${seasonLabel(s.validation_season)} — hyper-parameters only`}
+            label={t("research.common.competitions")}
+            value={s.competitions.map((c) => c.name).join(", ")}
           />
           <Fact
-            label="Test season"
+            label={t("research.backtesting.protocol.validationSeason")}
+            value={t("research.backtesting.protocol.validationValue", {
+              season: seasonLabel(s.validation_season),
+            })}
+          />
+          <Fact
+            label={t("research.common.testSeason")}
             value={`${seasonLabel(s.test_season)} · ${utcDate(s.test_from)} – ${utcDate(s.test_to)}`}
           />
-          <Fact label="Test fixtures" value={int(s.n_targets)} />
-          <Fact label="Refit" value={`every ${String(cfg["refit_days"] ?? "?")} day(s)`} />
+          <Fact label={t("research.backtesting.protocol.testFixtures")} value={int(s.n_targets)} />
           <Fact
-            label="Cut-off"
-            value={`${String(cfg["cutoff_offset_minutes"] ?? "?")} min before a block's first kick-off`}
+            label={t("research.backtesting.protocol.refit")}
+            value={t("research.backtesting.protocol.refitValue", {
+              days: String(cfg["refit_days"] ?? "?"),
+            })}
           />
           <Fact
-            label="Training window"
-            value={`${String(cfg["history_days"] ?? "?")} days, results public 3 h after kick-off`}
+            label={t("research.backtesting.protocol.cutoff")}
+            value={t("research.backtesting.protocol.cutoffValue", {
+              minutes: String(cfg["cutoff_offset_minutes"] ?? "?"),
+            })}
           />
-          <Fact label="Primary baseline" value={baselineLabel(s.primary_baseline)} />
-          <Fact label="Finished" value={utcDateTime(s.finished_at)} />
-          <Fact label="Code version" value={shortHash(s.code_version)} />
-          <Fact label="Dataset hash" value={shortHash(s.dataset_hash)} />
-          <Fact label="Session" value={shortHash(s.session_uuid, 8)} />
+          <Fact
+            label={t("research.backtesting.protocol.trainingWindow")}
+            value={t("research.backtesting.protocol.trainingWindowValue", {
+              days: String(cfg["history_days"] ?? "?"),
+            })}
+          />
+          <Fact
+            label={t("research.common.primaryBaseline")}
+            value={baselineLabel(s.primary_baseline)}
+          />
+          <Fact label={t("research.common.finished")} value={utcDateTime(s.finished_at)} />
+          <Fact label={t("research.common.codeVersion")} value={shortHash(s.code_version)} />
+          <Fact label={t("research.common.datasetHash")} value={shortHash(s.dataset_hash)} />
+          <Fact label={t("research.common.session")} value={shortHash(s.session_uuid, 8)} />
         </dl>
         <p className="mt-3 text-caption text-muted-foreground">
-          Every block is checked: a training result not public before the cut-off, or a cut-off not
-          before the kick-off it predicts, stops the run. A test rewrites all later results and
-          requires every earlier prediction to come out identical.{" "}
+          {t("research.backtesting.protocol.checks")}{" "}
           <Link to="/admin/models" className="text-primary hover:underline">
-            Results against the market →
+            {t("research.backtesting.protocol.resultsLink")}
           </Link>
         </p>
       </Panel>
@@ -96,12 +114,15 @@ function SearchGrid({ kind, sel }: { kind: string; sel: SelectionInfo }) {
   if (Object.keys(scores).length === 0) {
     return (
       <Panel
-        title={`${MODEL_LABEL[kind] ?? kind} · hyper-parameters`}
-        subtitle={`Chosen on ${seasonLabel(sel.validation_season ?? null)}: ξ=${sel.chosen.xi}, penalty=${sel.chosen.penalty}.`}
+        title={t("research.backtesting.search.titleChosen", { model: MODEL_LABEL[kind] ?? kind })}
+        subtitle={t("research.backtesting.search.subtitleChosen", {
+          season: seasonLabel(sel.validation_season ?? null),
+          xi: sel.chosen.xi,
+          penalty: sel.chosen.penalty,
+        })}
       >
         <p className="text-caption text-muted-foreground">
-          This session stored the chosen values only, not the validation score of every candidate,
-          so the search itself cannot be shown.
+          {t("research.backtesting.search.notStored")}
         </p>
       </Panel>
     );
@@ -120,19 +141,22 @@ function SearchGrid({ kind, sel }: { kind: string; sel: SelectionInfo }) {
       sel.final_grid?.penalty.length !== sel.initial_grid.penalty.length);
   return (
     <Panel
-      title={`${MODEL_LABEL[kind] ?? kind} · hyper-parameter search`}
-      subtitle={`Validation log loss on ${seasonLabel(sel.validation_season ?? null)}, on the fixtures every candidate predicted. Chosen: ξ=${sel.chosen.xi}, penalty=${sel.chosen.penalty}.`}
+      title={t("research.backtesting.search.title", { model: MODEL_LABEL[kind] ?? kind })}
+      subtitle={t("research.backtesting.search.subtitle", {
+        season: seasonLabel(sel.validation_season ?? null),
+        xi: sel.chosen.xi,
+        penalty: sel.chosen.penalty,
+      })}
       bodyClassName=""
     >
       {extended ? (
         <p className="border-b border-border px-4 py-2 text-caption text-muted-foreground">
-          The best candidate sat on the edge of the initial grid, so the grid was extended by a rule
-          fixed in advance (validation scores only).
+          {t("research.backtesting.search.extended")}
         </p>
       ) : null}
       <TableShell>
         <THead>
-          <TH>ξ (per day) \ penalty</TH>
+          <TH>{t("research.backtesting.search.corner")}</TH>
           {pens.map((p) => (
             <TH key={p} align="right">
               {p}
@@ -195,8 +219,8 @@ export function SettingsLive() {
       />
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel
-          title="Tracked competitions"
-          subtitle="config/competitions.yaml, applied with scripts.manage_competitions"
+          title={t("research.settings.competitions.title")}
+          subtitle={t("research.settings.competitions.subtitle")}
         >
           {comps.data ? (
             <ul className="space-y-1 text-sm">
@@ -206,7 +230,7 @@ export function SettingsLive() {
                   <li key={c.id} className="flex justify-between gap-3">
                     <span>{c.name}</span>
                     <span className="numeric text-caption text-subtle-foreground">
-                      league {c.provider_league_id}
+                      {t("research.settings.competitions.league", { id: c.provider_league_id })}
                     </span>
                   </li>
                 ))}
@@ -215,49 +239,69 @@ export function SettingsLive() {
             <TableSkeleton rows={2} cols={2} />
           )}
         </Panel>
-        <Panel title="Decision rule" subtitle="Versioned; a threshold change is a new version">
+        <Panel
+          title={t("research.settings.rule.title")}
+          subtitle={t("research.settings.rule.subtitle")}
+        >
           {rule ? (
             <>
-              <KeyValue label="Version" value={String(rule["version"])} />
-              <KeyValue label="Markets" value={(rule["markets"] as string[]).join(", ")} />
-              <KeyValue label="Odds range" value={(rule["odds"] as string[]).join(" – ")} />
-              <KeyValue label="Minimum EV" value={String(rule["min_ev"])} />
+              <KeyValue label={t("research.common.version")} value={String(rule["version"])} />
               <KeyValue
-                label="Minimum probability edge"
+                label={t("research.common.markets")}
+                value={(rule["markets"] as string[]).join(", ")}
+              />
+              <KeyValue
+                label={t("research.settings.rule.oddsRange")}
+                value={(rule["odds"] as string[]).join(" – ")}
+              />
+              <KeyValue label={t("research.settings.rule.minEv")} value={String(rule["min_ev"])} />
+              <KeyValue
+                label={t("research.settings.rule.minEdge")}
                 value={String(rule["min_probability_edge"])}
               />
-              <KeyValue label="Publishing" value="disabled in the schema" />
+              <KeyValue
+                label={t("research.settings.rule.publishing")}
+                value={t("research.settings.rule.publishingValue")}
+              />
             </>
           ) : (
             <TableSkeleton rows={3} cols={2} />
           )}
         </Panel>
         <Panel
-          title="AI analyst"
-          subtitle="FBI_ANALYST_API_KEY / FBI_ANALYST_MODEL on the API host"
+          title={t("research.settings.analyst.title")}
+          subtitle={t("research.settings.analyst.subtitle")}
         >
           {analyst.data ? (
             <>
               <KeyValue
-                label="Language model"
+                label={t("research.settings.analyst.languageModel")}
                 value={
                   <StatusBadge tone={analyst.data.data.configured ? "positive" : "neutral"}>
-                    {analyst.data.data.configured ? "configured" : "not configured"}
+                    {analyst.data.data.configured
+                      ? t("research.settings.configured")
+                      : t("research.settings.notConfigured")}
                   </StatusBadge>
                 }
               />
               {analyst.data.data.missing.length ? (
-                <KeyValue label="Unset" value={analyst.data.data.missing.join(", ")} />
+                <KeyValue
+                  label={t("research.settings.analyst.unset")}
+                  value={analyst.data.data.missing.join(", ")}
+                />
               ) : null}
-              <KeyValue label="Tools" value={int(analyst.data.data.tools.length)} />
+              <KeyValue
+                label={t("research.settings.analyst.tools")}
+                value={int(analyst.data.data.tools.length)}
+              />
             </>
           ) : (
             <TableSkeleton rows={2} cols={2} />
           )}
         </Panel>
         <Panel
-          title="Notifications (bot)"
-          subtitle="Informational only. FBI_TELEGRAM_BOT_TOKEN / FBI_TELEGRAM_CHAT_ID on the host"
+          title={t("research.settings.notifications.title")}
+          subtitle={t("research.settings.notifications.subtitle")}
         >
           {notes.data ? (
             <>
@@ -265,7 +309,9 @@ export function SettingsLive() {
                 label="Telegram"
                 value={
                   <StatusBadge tone={notes.data.data.channel_configured ? "positive" : "neutral"}>
-                    {notes.data.data.channel_configured ? "configured" : "not configured"}
+                    {notes.data.data.channel_configured
+                      ? t("research.settings.configured")
+                      : t("research.settings.notConfigured")}
                   </StatusBadge>
                 }
               />
@@ -283,16 +329,16 @@ export function SettingsLive() {
       </div>
       {notes.data?.data.recent.length ? (
         <Panel
-          title="Recent messages"
-          subtitle="What the bot produced and what happened to each"
+          title={t("research.settings.recent.title")}
+          subtitle={t("research.settings.recent.subtitle")}
           bodyClassName=""
         >
           <TableShell>
             <THead>
-              <TH>Created</TH>
-              <TH>Kind</TH>
-              <TH>Message</TH>
-              <TH>Status</TH>
+              <TH>{t("research.settings.recent.created")}</TH>
+              <TH>{t("research.settings.recent.kind")}</TH>
+              <TH>{t("research.settings.recent.message")}</TH>
+              <TH>{t("research.settings.recent.status")}</TH>
             </THead>
             <tbody>
               {notes.data.data.recent.map((n) => (
@@ -321,10 +367,7 @@ export function SettingsLive() {
           </TableShell>
         </Panel>
       ) : null}
-      <WarningBanner tone="info">
-        Keys and tokens live only on the host. The browser receives whether something is configured,
-        never its value.
-      </WarningBanner>
+      <WarningBanner tone="info">{t("research.settings.secrets")}</WarningBanner>
     </div>
   );
 }

@@ -155,16 +155,185 @@
       "preferences_updated": "Preferencias actualizadas"
     }
   },
-  "migration": {
-    "progress": "Progreso del backfill",
-    "kind": "Tipo",
-    "total": "Total",
-    "done": "Hechas",
-    "pending": "Pendientes",
-    "running": "En curso",
-    "failed": "Fallidas",
-    "lastCompleted": "Última completada"
-  },
   "shadowToggle": "Mostrar picks shadow (solo admin)",
-  "shadowToggleHelp": "Vista previa interna con picks no calificados, para revisar el diseño. Nunca es lo que ve un USER."
+  "shadowToggleHelp": "Vista previa interna con picks no calificados, para revisar el diseño. Nunca es lo que ve un USER.",
+  "jobs": {
+    "odds_capture": "Captura de cuotas",
+    "fixtures_sync": "Sincronización de partidos",
+    "results_sync": "Sincronización de resultados",
+    "raw_replay": "Reproceso de datos crudos",
+    "seasons_refresh": "Actualización de temporadas",
+    "historical_backfill": "Backfill histórico",
+    "feature_build": "Cálculo de variables",
+    "historical_odds_import": "Importación de cuotas históricas",
+    "backtest": "Backtest",
+    "pick_pipeline": "Pipeline de decisión",
+    "odds_import": "Importación de cuotas",
+    "live_odds": "Cuotas en vivo (tarea)",
+    "live_odds_capture": "Captura de cuotas en vivo",
+    "live_match": "Seguimiento en vivo (tarea)",
+    "live_match_capture": "Seguimiento en vivo",
+    "notifier": "Notificador",
+    "quality_sweep": "Revisión de calidad",
+    "team_identity_resolve": "Resolución de identidad de equipos",
+    "teams_sync": "Sincronización de equipos",
+    "window_probe": "Sondeo de ventana",
+    "plan_probe": "Sondeo del plan",
+    "raw_transfer": "Transferencia de datos crudos",
+    "context_refresh": "Actualización de contexto",
+    "results_repair": "Reparación de resultados"
+  },
+  "labels": {
+    "marketAverage": "Promedio del mercado",
+    "bestPrice": "Mejor precio",
+    "preClosing": "pre-cierre",
+    "closing": "cierre"
+  },
+  "shell": {
+    "liveData": "Datos reales",
+    "demoData": "Datos demo",
+    "hybrid": "Mixto",
+    "liveTitle": "Todas las cifras de esta página vienen de la API ({url}).",
+    "demoTitle": "Datos de demostración: todas las cifras de esta página son sintéticas y las produce el adaptador de prueba.",
+    "hybridTitle": "Esta página mezcla datos reales de la API con datos de demostración. Los paneles marcados como Demo son sintéticos; todo lo demás viene de la API.",
+    "notConfigured": "(sin configurar)",
+    "dataSource": "Origen de los datos: {text}",
+    "researchMode": "Modo investigación",
+    "lastPayload": "Último dato {time}",
+    "checking": "Comprobando…",
+    "noPayload": "Aún no hay datos",
+    "apiUnreachable": "API no disponible",
+    "workerDown": "worker detenido",
+    "workerDownHelp": "El worker no está en marcha: no se capturará nada.",
+    "searchLabel": "Buscar partidos, equipos y modelos",
+    "openPalette": "Abrir la paleta de comandos",
+    "palettePlaceholder": "Busca partidos, equipos, modelos o ve a un módulo…",
+    "searchEmptyDemo": "Nada coincide en el conjunto de datos demo.",
+    "searchEmptyLive": "Ningún partido, equipo o competición guardado coincide.",
+    "groups": {
+      "fixture": "Partidos",
+      "team": "Equipos",
+      "competition": "Competiciones",
+      "model": "Modelos"
+    },
+    "shadow": "Shadow"
+  },
+  "state": {
+    "empty": "Todavía no hay nada",
+    "insufficient": "Datos insuficientes",
+    "notAvailable": "Aún no disponible",
+    "apiUnreachable": "La API no responde",
+    "apiError": "La API devolvió un error",
+    "unexpected": "Error inesperado.",
+    "request": "petición {id}",
+    "downNote": "Mientras la API no responda, nada de esta página se muestra desde memoria ni con datos demo.",
+    "noValue": "Sin valor: {reason}"
+  },
+  "status": {
+    "awaitingResult": "Pendiente de resultado",
+    "awaitingResultHelp": "Ya empezó, pero el registro todavía dice que no: el resultado aún no se ha sincronizado.",
+    "aet": "(prór.)",
+    "component": {
+      "ok": "ok",
+      "degraded": "degradado",
+      "down": "caído",
+      "unknown": "desconocido"
+    },
+    "run": {
+      "running": "en curso",
+      "completed": "completada",
+      "partial": "parcial",
+      "failed": "fallida",
+      "aborted": "abortada",
+      "interrupted": "interrumpida"
+    },
+    "data": {
+      "healthy": "Correcto",
+      "warning": "Aviso",
+      "stale": "Desactualizado",
+      "failed": "Fallido",
+      "unknown": "Desconocido"
+    },
+    "model": {
+      "market_baseline": "Referencia de mercado",
+      "validated": "Validado",
+      "shadow": "Shadow",
+      "research": "Investigación",
+      "insufficient_data": "Datos insuficientes",
+      "not_trained": "Sin entrenar"
+    },
+    "pick": {
+      "candidate": "candidato",
+      "shadow": "shadow",
+      "qualified": "calificado",
+      "published": "publicado",
+      "settled": "liquidado",
+      "rejected": "rechazado"
+    },
+    "severity": {
+      "critical": "crítica",
+      "high": "alta",
+      "medium": "media",
+      "low": "baja"
+    },
+    "freshness": {
+      "live": "En vivo",
+      "fresh": "Reciente",
+      "aging": "Envejeciendo",
+      "stale": "Desactualizado",
+      "unknown": "Desconocido"
+    },
+    "freshnessHelp": {
+      "live": "Actualizaciones en curso",
+      "fresh": "Capturado dentro del umbral de frescura",
+      "aging": "Cerca del umbral de frescura",
+      "stale": "Más antiguo que el umbral de frescura",
+      "unknown": "No hay captura registrada"
+    },
+    "timeline": {
+      "done": "Registrado",
+      "pending": "Pendiente",
+      "skipped": "Omitido",
+      "failed": "Fallido"
+    }
+  },
+  "ui": {
+    "breadcrumb": "Ruta de navegación",
+    "pendingValidation": "Pendiente de validación",
+    "modelProbability": "Probabilidad del modelo",
+    "model": "Modelo",
+    "market": "Mercado",
+    "form": "Forma: {form}",
+    "search": "Buscar",
+    "openRecord": "Abrir registro",
+    "predicted": "Predicha",
+    "observed": "Observada",
+    "infoTip": "Qué es {term}: {text}",
+    "infoTipNoTerm": "Definición: {text}"
+  },
+  "glossary": {
+    "modelProbability": "Probabilidad que produce un modelo estadístico a partir de sus variables. No es un nivel de confianza y no se deriva de los precios.",
+    "marketProbability": "Probabilidad de consenso entre las casas seguidas, después de quitar el margen (overround). No es la probabilidad implícita bruta de un solo precio.",
+    "impliedProbability": "1 / cuota de un solo precio de una casa. Aún incluye el margen de la casa, así que en un mercado siempre suma más del 100 %.",
+    "fairOdds": "Precio con el que una selección quedaría en equilibrio a la probabilidad del modelo: 1 / probabilidad del modelo. No es un precio disponible.",
+    "bestOdds": "El precio más alto capturado ahora para la selección entre las casas seguidas.",
+    "edge": "Probabilidad del modelo menos probabilidad del mercado, en puntos porcentuales. Requiere una probabilidad del modelo y un precio disponible.",
+    "ev": "Valor esperado: probabilidad del modelo multiplicada por el precio disponible, menos uno. Es una propiedad aritmética de los datos, no una promesa de rentabilidad.",
+    "brier": "Brier multiclase: error cuadrático entre las probabilidades predichas y el resultado, sumado sobre los resultados y promediado sobre los partidos. Cuanto menor, mejor; 1/3 para local, empate y visitante da 0,667.",
+    "logLoss": "Log-verosimilitud negativa de los resultados observados bajo la distribución predicha. Castiga mucho los errores con exceso de confianza. Cuanto menor, mejor.",
+    "calibration": "Concordancia entre la probabilidad predicha y la frecuencia observada. Un modelo perfectamente calibrado queda sobre la diagonal de la curva de fiabilidad.",
+    "calibrationError": "Error de calibración esperado (ECE): la diferencia entre probabilidad predicha y frecuencia observada en diez tramos de probabilidad de igual ancho, ponderada por cuántas predicciones caen en cada tramo (cuenta cada resultado de cada partido).",
+    "vsMarket": "Log loss del modelo menos el log loss del mercado sin margen en los partidos que ambos cotizaron, con un intervalo bootstrap pareado del 95 %. Negativo significa que el modelo puntuó mejor. Solo se dice «mejor» cuando todo el intervalo está por debajo de cero.",
+    "hypotheticalBetting": "Una simulación de backtest: stakes planos de una unidad al precio de cierre de la fuente histórica, con una regla fijada antes de la temporada de prueba. No es un registro de apuestas ni una previsión de rentabilidad.",
+    "historicalClosing": "Precios de cierre y pre-cierre tal como los publica Football-Data.co.uk. Son las etiquetas de la fuente, no precios capturados por esta plataforma, y no tienen hora exacta.",
+    "nearClose": "Precio capturado cerca del inicio (T-12m). No está validado como precio de cierre oficial y no debe presentarse como valor frente a la línea de cierre (CLV).",
+    "pickLineValue": "Diferencia entre el precio registrado en un pick y un precio de referencia posterior. Requiere una captura cercana al cierre validada antes de poder reportarse.",
+    "overround": "Suma de las probabilidades implícitas brutas de un mercado. Los valores por encima de 1 representan el margen de la casa.",
+    "reliability": "Valoración cualitativa de cuánto peso justifican la muestra, la cobertura y el estado del modelo. No es una probabilidad.",
+    "freshness": "Antigüedad de la última captura correcta respecto a los umbrales de frescura.",
+    "sampleSize": "Número de observaciones puntuadas detrás de una métrica. Con muestras pequeñas no se puede separar la habilidad del ruido.",
+    "drawdown": "La mayor caída de pico a valle de una serie acumulada.",
+    "yieldMetric": "Beneficio dividido entre el total apostado. Requiere picks publicados y liquidados.",
+    "roi": "Retorno de la inversión sobre los picks liquidados. No se puede calcular sin resultados validados."
+  }
 }

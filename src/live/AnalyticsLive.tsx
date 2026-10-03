@@ -25,6 +25,24 @@ import { ratio, shortHash, utcDate, utcDateTime } from "./format";
 const tabs = ["Competitions", "Teams", "Models", "Market", "Coverage", "Migration"] as const;
 type Tab = (typeof tabs)[number];
 
+/** A tab's name in the reader's language; the value itself stays the English id. */
+function tabLabel(tab: Tab): string {
+  switch (tab) {
+    case "Competitions":
+      return t("analytics.tabs.competitions");
+    case "Teams":
+      return t("analytics.tabs.teams");
+    case "Models":
+      return t("analytics.tabs.models");
+    case "Market":
+      return t("analytics.tabs.market");
+    case "Coverage":
+      return t("analytics.tabs.coverage");
+    case "Migration":
+      return t("analytics.tabs.migration");
+  }
+}
+
 const STATUS_TONE: Record<ExperimentSummary["research_status"], BadgeTone> = {
   RESEARCH: "neutral",
   CANDIDATE: "info",
@@ -43,7 +61,7 @@ function signed(v: number | null | undefined, digits = 4): string | null {
 
 function Cell({ value, reason }: { value: string | null; reason?: string }) {
   return value === null ? (
-    <span className="text-subtle-foreground" title={reason ?? "No value recorded."}>
+    <span className="text-subtle-foreground" title={reason ?? t("analytics.common.noValue")}>
       —
     </span>
   ) : (
@@ -72,7 +90,13 @@ export function AnalyticsLive() {
         title={t("admin.pages.analytics.title")}
         description={t("admin.pages.analytics.description")}
       />
-      <SegmentedTabs label="Analytics sections" tabs={tabs} value={tab} onChange={setTab} />
+      <SegmentedTabs
+        label={t("analytics.tabs.label")}
+        tabs={tabs}
+        value={tab}
+        onChange={setTab}
+        format={tabLabel}
+      />
       {tab === "Competitions" ? <CompetitionsTab /> : null}
       {tab === "Teams" ? <TeamsTab /> : null}
       {tab === "Models" ? <ModelsTab /> : null}
@@ -87,27 +111,27 @@ function CompetitionsTab() {
   const q = useLiveQuery(live.competitionProfiles);
   return (
     <Panel
-      title="Competition profiles"
-      subtitle="Regulation-time outcomes of recorded results per competition and season, and how many fixtures carry each kind of data. Fewer than 30 results: shown with its n, flagged."
+      title={t("analytics.competitions.title")}
+      subtitle={t("analytics.competitions.subtitle")}
       bodyClassName=""
     >
       <Loading q={q}>
         {(rows) => (
           <TableShell>
             <THead>
-              <TH>Competition</TH>
-              <TH align="right">Season</TH>
-              <TH align="right">Results</TH>
-              <TH align="right">Home</TH>
-              <TH align="right">Draw</TH>
-              <TH align="right">Away</TH>
-              <TH align="right">Goals</TH>
-              <TH align="right">Home edge</TH>
+              <TH>{t("analytics.common.competition")}</TH>
+              <TH align="right">{t("analytics.common.season")}</TH>
+              <TH align="right">{t("analytics.competitions.results")}</TH>
+              <TH align="right">{t("analytics.common.home")}</TH>
+              <TH align="right">{t("analytics.common.draw")}</TH>
+              <TH align="right">{t("analytics.common.away")}</TH>
+              <TH align="right">{t("analytics.competitions.goals")}</TH>
+              <TH align="right">{t("analytics.competitions.homeEdge")}</TH>
               <TH align="right">BTTS</TH>
-              <TH align="right">Over 2.5</TH>
-              <TH align="right">Stats</TH>
-              <TH align="right">Odds</TH>
-              <TH align="right">Features</TH>
+              <TH align="right">{t("analytics.competitions.over25")}</TH>
+              <TH align="right">{t("analytics.competitions.stats")}</TH>
+              <TH align="right">{t("analytics.competitions.odds")}</TH>
+              <TH align="right">{t("analytics.common.features")}</TH>
             </THead>
             <tbody>
               {rows.map((r) => (
@@ -115,10 +139,14 @@ function CompetitionsTab() {
                   <TD>
                     <div className="flex items-center gap-2 text-sm">
                       {r.competition}
-                      {r.low_sample ? <StatusBadge tone="warning">small sample</StatusBadge> : null}
+                      {r.low_sample ? (
+                        <StatusBadge tone="warning">
+                          {t("analytics.competitions.smallSample")}
+                        </StatusBadge>
+                      ) : null}
                     </div>
                     <div className="text-caption text-subtle-foreground">
-                      {r.country ?? "International"}
+                      {r.country ?? t("analytics.competitions.international")}
                     </div>
                   </TD>
                   <TD align="right">
@@ -126,7 +154,9 @@ function CompetitionsTab() {
                   </TD>
                   <TD align="right">
                     <Numeric>{int(r.finished)}</Numeric>
-                    <div className="text-caption text-subtle-foreground">of {int(r.fixtures)}</div>
+                    <div className="text-caption text-subtle-foreground">
+                      {t("analytics.competitions.ofFixtures", { n: int(r.fixtures) })}
+                    </div>
                   </TD>
                   <TD align="right">
                     <Cell value={ratio(r.home_win)} />
@@ -205,6 +235,7 @@ function EloChart({ points, width, height }: { points: TeamAnalytics["elo"] } & 
       <Line
         type="monotone"
         dataKey="rating"
+        name={t("analytics.teams.elo.rating")}
         stroke="var(--color-primary)"
         strokeWidth={1.6}
         dot={false}
@@ -221,16 +252,36 @@ const FEATURE_DIGITS: Record<string, number> = {
   ppg5: 2,
 };
 
-const FEATURE_LABEL: Record<string, string> = {
-  elo: "Elo",
-  pi: "pi-rating (at this venue)",
-  shot_share10: "Shot share, last 10",
-  sot_share10: "On-target share, last 10",
-  elo_resid10: "Form beyond Elo, last 10",
-  ppg5: "Points per match, last 5",
-  rest_days: "Rest days",
-  history_n: "Matches in history",
-};
+/** A feature shown in the team view, in the reader's language; null for one it leaves out. */
+function featureLabel(key: string): string | null {
+  switch (key) {
+    case "elo":
+      return t("analytics.teams.features.labels.elo");
+    case "pi":
+      return t("analytics.teams.features.labels.pi");
+    case "shot_share10":
+      return t("analytics.teams.features.labels.shotShare10");
+    case "sot_share10":
+      return t("analytics.teams.features.labels.sotShare10");
+    case "elo_resid10":
+      return t("analytics.teams.features.labels.eloResid10");
+    case "ppg5":
+      return t("analytics.teams.features.labels.ppg5");
+    case "rest_days":
+      return t("analytics.teams.features.labels.restDays");
+    case "history_n":
+      return t("analytics.teams.features.labels.historyN");
+    default:
+      return null;
+  }
+}
+
+/** The side a feature set was built for ("home" / "away" from the API), for display. */
+function sideLabel(side: string): string {
+  if (side === "home") return t("analytics.teams.features.home");
+  if (side === "away") return t("analytics.teams.features.away");
+  return side;
+}
 
 function TeamsTab() {
   const teams = useLiveQuery(live.teams);
@@ -242,7 +293,7 @@ function TeamsTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor="team-select" className="text-label text-subtle-foreground">
-          Team
+          {t("analytics.teams.team")}
         </label>
         <select
           id="team-select"
@@ -258,7 +309,7 @@ function TeamsTab() {
         </select>
       </div>
       {!chosen ? (
-        <StatusNotice status="empty" reason="No team has been ingested yet." />
+        <StatusNotice status="empty" reason={t("analytics.teams.noTeam")} />
       ) : q.isLoading ? (
         <TableSkeleton rows={6} cols={4} />
       ) : q.isError || !q.data ? (
@@ -283,8 +334,8 @@ function TeamView({
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <Panel
-        title={`${d.team.name}: record`}
-        subtitle="Regulation time, from recorded results only"
+        title={t("analytics.teams.record.title", { team: d.team.name })}
+        subtitle={t("analytics.teams.record.subtitle")}
         bodyClassName=""
       >
         {status !== "ok" ? (
@@ -292,15 +343,15 @@ function TeamView({
         ) : (
           <TableShell>
             <THead>
-              <TH>Split</TH>
-              <TH align="right">P</TH>
-              <TH align="right">W</TH>
-              <TH align="right">D</TH>
-              <TH align="right">L</TH>
-              <TH align="right">GF</TH>
-              <TH align="right">GA</TH>
-              <TH align="right" title="Points per match">
-                PPM
+              <TH>{t("analytics.teams.record.split")}</TH>
+              <TH align="right">{t("analytics.teams.record.played")}</TH>
+              <TH align="right">{t("analytics.teams.record.won")}</TH>
+              <TH align="right">{t("analytics.teams.record.drawn")}</TH>
+              <TH align="right">{t("analytics.teams.record.lost")}</TH>
+              <TH align="right">{t("analytics.teams.record.goalsFor")}</TH>
+              <TH align="right">{t("analytics.teams.record.goalsAgainst")}</TH>
+              <TH align="right" title={t("analytics.teams.record.ppmTitle")}>
+                {t("analytics.teams.record.ppm")}
               </TH>
             </THead>
             <tbody>
@@ -308,7 +359,13 @@ function TeamView({
                 const s = d.splits[k];
                 return (
                   <TRow key={k}>
-                    <TD>{k === "all" ? "All" : k === "home" ? "Home" : "Away"}</TD>
+                    <TD>
+                      {k === "all"
+                        ? t("analytics.teams.record.all")
+                        : k === "home"
+                          ? t("analytics.common.home")
+                          : t("analytics.common.away")}
+                    </TD>
                     <TD align="right">
                       <Numeric>{int(s.played)}</Numeric>
                     </TD>
@@ -328,7 +385,10 @@ function TeamView({
                       <Numeric>{int(s.goals_against)}</Numeric>
                     </TD>
                     <TD align="right">
-                      <Cell value={num(s.points_per_match)} reason="No match in this split." />
+                      <Cell
+                        value={num(s.points_per_match)}
+                        reason={t("analytics.teams.record.noMatch")}
+                      />
                     </TD>
                   </TRow>
                 );
@@ -339,57 +399,66 @@ function TeamView({
       </Panel>
       {d.elo.length ? (
         <ChartContainer
-          title="Elo after each rated match"
-          subtitle={`${d.elo.length} rated matches, ${utcDate(d.elo[0]?.kickoff_at)} to ${utcDate(d.elo[d.elo.length - 1]?.kickoff_at)}`}
+          title={t("analytics.teams.elo.title")}
+          subtitle={t("analytics.teams.elo.subtitle", {
+            count: d.elo.length,
+            from: utcDate(d.elo[0]?.kickoff_at),
+            to: utcDate(d.elo[d.elo.length - 1]?.kickoff_at),
+          })}
         >
           <EloChart points={d.elo} />
         </ChartContainer>
       ) : (
         <Panel title="Elo">
-          <StatusNotice status="empty" reason="No rated match for this team yet." compact />
+          <StatusNotice status="empty" reason={t("analytics.teams.elo.none")} compact />
         </Panel>
       )}
       <Panel
-        title="As the models see it"
+        title={t("analytics.teams.features.title")}
         subtitle={
           d.features
-            ? `Feature set ${d.features.feature_version} for fixture ${d.features.fixture_id}, cut-off ${utcDateTime(d.features.data_cutoff)} (${d.features.side} side)`
-            : "Newest feature set"
+            ? t("analytics.teams.features.subtitle", {
+                version: d.features.feature_version,
+                fixture: d.features.fixture_id,
+                cutoff: utcDateTime(d.features.data_cutoff),
+                side: sideLabel(d.features.side),
+              })
+            : t("analytics.teams.features.newest")
         }
       >
         {d.features ? (
           <div className="grid gap-x-8 sm:grid-cols-2">
             {Object.entries(d.features.values)
-              .filter(([k]) => k in FEATURE_LABEL)
+              .filter(([k]) => featureLabel(k) !== null)
               .map(([k, v]) => (
                 <KeyValue
                   key={k}
-                  label={FEATURE_LABEL[k] ?? k}
+                  label={featureLabel(k) ?? k}
                   value={
                     <Cell
                       value={num(v, FEATURE_DIGITS[k] ?? 3)}
-                      reason="Not enough history for this feature."
+                      reason={t("analytics.teams.features.notEnough")}
                     />
                   }
                 />
               ))}
           </div>
         ) : (
-          <StatusNotice status="empty" reason="No feature set includes this team yet." compact />
+          <StatusNotice status="empty" reason={t("analytics.teams.features.none")} compact />
         )}
       </Panel>
       <Panel
-        title="Shots, last 10 matches with statistics"
-        subtitle="Team statistics as recorded, API-Football preferred over Football-Data when both exist"
+        title={t("analytics.teams.shots.title")}
+        subtitle={t("analytics.teams.shots.subtitle")}
         bodyClassName=""
       >
         {last.length ? (
           <TableShell>
             <THead>
-              <TH>Match</TH>
-              <TH align="right">Shots</TH>
-              <TH align="right">On target</TH>
-              <TH>Source</TH>
+              <TH>{t("analytics.teams.shots.match")}</TH>
+              <TH align="right">{t("analytics.teams.shots.shots")}</TH>
+              <TH align="right">{t("analytics.teams.shots.onTarget")}</TH>
+              <TH>{t("analytics.teams.shots.source")}</TH>
             </THead>
             <tbody>
               {last.map((p) => (
@@ -417,7 +486,7 @@ function TeamView({
         ) : (
           <StatusNotice
             status="empty"
-            reason="No match of this team has team statistics yet."
+            reason={t("analytics.teams.shots.none")}
             compact
             className="px-4"
           />
@@ -431,8 +500,8 @@ function ModelsTab() {
   const q = useLiveQuery(live.experiments);
   return (
     <Panel
-      title="Research registry"
-      subtitle="Every stored experiment and its model gate. A model leaves RESEARCH only with all six checks passed - out of sample, temporal validation, calibration, reproduction, stability, and beating the market."
+      title={t("analytics.models.title")}
+      subtitle={t("analytics.models.subtitle")}
       bodyClassName=""
     >
       <Loading q={q}>
@@ -443,12 +512,12 @@ function ModelsTab() {
             <>
               <TableShell>
                 <THead>
-                  <TH>Experiment</TH>
-                  <TH>Status</TH>
+                  <TH>{t("analytics.models.experiment")}</TH>
+                  <TH>{t("analytics.common.status")}</TH>
                   <TH align="right">Log loss</TH>
-                  <TH align="right">vs market (Δ, 95%)</TH>
-                  <TH>Verdict</TH>
-                  <TH>Gate</TH>
+                  <TH align="right">{t("analytics.models.vsMarket")}</TH>
+                  <TH>{t("analytics.models.verdict")}</TH>
+                  <TH>{t("analytics.models.gate")}</TH>
                 </THead>
                 <tbody>
                   {rows.map((e) => (
@@ -456,9 +525,12 @@ function ModelsTab() {
                       <TD>
                         <div className="text-sm">{e.model_family}</div>
                         <div className="numeric text-caption text-subtle-foreground">
-                          #{e.id} · session {e.backtest_session_id ?? "—"} ·{" "}
+                          #{e.id} ·{" "}
+                          {t("analytics.models.session", { id: e.backtest_session_id ?? "—" })} ·{" "}
                           {shortHash(e.code_version, 7)}
-                          {e.reproduction_of ? ` · reproduces #${e.reproduction_of}` : ""}
+                          {e.reproduction_of
+                            ? ` · ${t("analytics.models.reproduces", { id: e.reproduction_of })}`
+                            : ""}
                         </div>
                       </TD>
                       <TD>
@@ -467,7 +539,7 @@ function ModelsTab() {
                         </StatusBadge>
                         {e.reproduced_by !== null ? (
                           <div className="mt-1 text-caption text-positive">
-                            reproduced by #{e.reproduced_by}
+                            {t("analytics.models.reproducedBy", { id: e.reproduced_by })}
                           </div>
                         ) : null}
                       </TD>
@@ -484,7 +556,7 @@ function ModelsTab() {
                       <TD>
                         <span className="text-xs">{e.verdict ?? "—"}</span>
                         <div className="text-caption text-subtle-foreground">
-                          evidence {e.evidence ?? "—"}
+                          {t("analytics.models.evidence", { value: e.evidence ?? "—" })}
                         </div>
                       </TD>
                       <TD>
@@ -510,8 +582,7 @@ function ModelsTab() {
               </TableShell>
               {reruns ? (
                 <p className="px-4 py-2 text-caption text-muted-foreground">
-                  {reruns} reproduction run{reruns === 1 ? "" : "s"} not listed: each is linked from
-                  the experiment it re-ran.
+                  {t("analytics.models.reruns", { count: reruns })}
                 </p>
               ) : null}
             </>
@@ -529,8 +600,11 @@ function MarketTab() {
       {(m) => (
         <div className="grid gap-4 xl:grid-cols-2">
           <ChartContainer
-            title="Is the closing line calibrated?"
-            subtitle={`${m.baseline}, one-vs-rest over home, draw and away on ${int(m.n_fixtures)} fixtures. On the diagonal: stated probabilities come true at their rate.`}
+            title={t("analytics.market.calibration.title")}
+            subtitle={t("analytics.market.calibration.subtitle", {
+              baseline: m.baseline,
+              n: int(m.n_fixtures),
+            })}
             height={260}
           >
             <CalibrationChart
@@ -543,13 +617,13 @@ function MarketTab() {
                 }))}
             />
           </ChartContainer>
-          <Panel title="Calibration buckets" subtitle={m.source} bodyClassName="">
+          <Panel title={t("analytics.market.buckets.title")} subtitle={m.source} bodyClassName="">
             <TableShell>
               <THead>
-                <TH>Bucket</TH>
+                <TH>{t("analytics.market.buckets.bucket")}</TH>
                 <TH align="right">n</TH>
-                <TH align="right">Mean stated</TH>
-                <TH align="right">Observed</TH>
+                <TH align="right">{t("analytics.market.buckets.meanStated")}</TH>
+                <TH align="right">{t("analytics.market.buckets.observed")}</TH>
               </THead>
               <tbody>
                 {m.calibration.map((b) => (
@@ -565,13 +639,13 @@ function MarketTab() {
                     <TD align="right">
                       <Cell
                         value={ratio(b.mean_probability, 1)}
-                        reason="No selection in this bucket."
+                        reason={t("analytics.market.buckets.empty")}
                       />
                     </TD>
                     <TD align="right">
                       <Cell
                         value={ratio(b.observed_rate, 1)}
-                        reason="No selection in this bucket."
+                        reason={t("analytics.market.buckets.empty")}
                       />
                     </TD>
                   </TRow>
@@ -580,20 +654,20 @@ function MarketTab() {
             </TableShell>
           </Panel>
           <Panel
-            title="What the last hours of trading add"
-            subtitle="Log loss of the de-vigged Pinnacle pre-closing and closing prices on the same fixtures; the difference is what the market learned before kick-off."
+            title={t("analytics.market.closing.title")}
+            subtitle={t("analytics.market.closing.subtitle")}
             bodyClassName=""
             className="xl:col-span-2"
           >
             <TableShell>
               <THead>
-                <TH>Competition</TH>
-                <TH align="right">Season</TH>
+                <TH>{t("analytics.common.competition")}</TH>
+                <TH align="right">{t("analytics.common.season")}</TH>
                 <TH align="right">n</TH>
-                <TH align="right">Pre-closing</TH>
-                <TH align="right">Closing</TH>
-                <TH align="right">Improvement</TH>
-                <TH align="right">Margin</TH>
+                <TH align="right">{t("analytics.market.closing.preClosing")}</TH>
+                <TH align="right">{t("analytics.market.closing.closing")}</TH>
+                <TH align="right">{t("analytics.market.closing.improvement")}</TH>
+                <TH align="right">{t("analytics.market.closing.margin")}</TH>
               </THead>
               <tbody>
                 {m.by_season.map((s) => (
@@ -621,7 +695,7 @@ function MarketTab() {
                             ? null
                             : `${((s.mean_overround_closing - 1) * 100).toFixed(2)}%`
                         }
-                        reason="No closing prices for this season."
+                        reason={t("analytics.market.closing.noPrices")}
                       />
                     </TD>
                   </TRow>
@@ -638,29 +712,29 @@ function MarketTab() {
 function CoverageTab() {
   const q = useLiveQuery(live.dataCoverage);
   const cols = [
-    ["with_result", "Results"],
-    ["with_team_stats", "Team stats"],
-    ["with_events", "Events"],
-    ["with_lineups", "Lineups"],
-    ["with_player_stats", "Players"],
-    ["with_historical_odds", "Hist. odds"],
-    ["with_odds_snapshots", "Snapshots"],
-    ["with_features", "Features"],
-    ["with_predictions", "Predictions"],
+    ["with_result", t("analytics.coverage.results")],
+    ["with_team_stats", t("analytics.coverage.teamStats")],
+    ["with_events", t("analytics.coverage.events")],
+    ["with_lineups", t("analytics.coverage.lineups")],
+    ["with_player_stats", t("analytics.coverage.players")],
+    ["with_historical_odds", t("analytics.coverage.histOdds")],
+    ["with_odds_snapshots", t("analytics.common.snapshots")],
+    ["with_features", t("analytics.common.features")],
+    ["with_predictions", t("analytics.coverage.predictions")],
   ] as const;
   return (
     <Panel
-      title="Data coverage"
-      subtitle="Per competition and season, how many fixtures carry each kind of data. Events, lineups and player statistics arrive with the paid historical migration."
+      title={t("analytics.coverage.title")}
+      subtitle={t("analytics.coverage.subtitle")}
       bodyClassName=""
     >
       <Loading q={q}>
         {(rows) => (
           <TableShell>
             <THead>
-              <TH>Competition</TH>
-              <TH align="right">Season</TH>
-              <TH align="right">Fixtures</TH>
+              <TH>{t("analytics.common.competition")}</TH>
+              <TH align="right">{t("analytics.common.season")}</TH>
+              <TH align="right">{t("analytics.common.fixtures")}</TH>
               {cols.map(([k, label]) => (
                 <TH key={k} align="right">
                   {label}
@@ -713,27 +787,43 @@ export function MigrationTab() {
       {(m) => (
         <div className="grid gap-4 xl:grid-cols-2">
           <Panel
-            title="Plan"
-            subtitle="The newest stored migration plan (python -m scripts.migration seed)"
+            title={t("analytics.migration.plan.title")}
+            subtitle={t("analytics.migration.plan.subtitle")}
           >
             <KeyValue
-              label="Plan"
-              value={m.plan_name ?? "No plan stored yet - units seeded directly"}
+              label={t("analytics.migration.plan.name")}
+              value={m.plan_name ?? t("analytics.migration.plan.none")}
             />
-            <KeyValue label="Created" value={utcDateTime(m.plan_created_at)} />
             <KeyValue
-              label="Planned requests"
+              label={t("analytics.migration.plan.created")}
+              value={utcDateTime(m.plan_created_at)}
+            />
+            <KeyValue
+              label={t("analytics.migration.plan.plannedRequests")}
               value={m.planned_requests === null ? "—" : int(m.planned_requests)}
             />
-            <KeyValue label="Requests spent" value={int(m.requests_spent)} />
-            <KeyValue label="Rows written" value={int(m.rows_written)} />
-            <KeyValue label="Last activity" value={utcDateTime(m.last_activity_at)} />
+            <KeyValue
+              label={t("analytics.migration.plan.requestsSpent")}
+              value={int(m.requests_spent)}
+            />
+            <KeyValue
+              label={t("analytics.migration.plan.rowsWritten")}
+              value={int(m.rows_written)}
+            />
+            <KeyValue
+              label={t("analytics.migration.plan.lastActivity")}
+              value={utcDateTime(m.last_activity_at)}
+            />
           </Panel>
-          <Panel title="Units" subtitle="Resumable units by kind and status" bodyClassName="">
+          <Panel
+            title={t("analytics.migration.units.title")}
+            subtitle={t("analytics.migration.units.subtitle")}
+            bodyClassName=""
+          >
             <TableShell>
               <THead>
-                <TH>Kind</TH>
-                <TH>Status</TH>
+                <TH>{t("analytics.common.kind")}</TH>
+                <TH>{t("analytics.common.status")}</TH>
               </THead>
               <tbody>
                 {Object.entries(m.units).map(([kind, states]) => (

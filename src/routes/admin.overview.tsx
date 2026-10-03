@@ -30,13 +30,13 @@ import { models as modelList } from "@/mock/data";
 export const Route = createFileRoute("/admin/overview")({
   head: () => ({
     meta: [
-      { title: "Overview — Football Intelligence" },
+      { title: "Overview · PrediGol Admin" },
       {
         name: "description",
         content:
           "Operations overview: monitored fixtures, model versus market candidates, system health and model status.",
       },
-      { property: "og:title", content: "Overview — Football Intelligence" },
+      { property: "og:title", content: "Overview · PrediGol Admin" },
       {
         property: "og:description",
         content: "Operations overview for the football intelligence workspace.",

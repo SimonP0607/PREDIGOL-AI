@@ -1,0 +1,205 @@
+{
+  "metrics": {
+    "worker": "Worker",
+    "apiFootball": "API-Football today",
+    "quotaHint": "{left} left under our guard · plan {plan}/day",
+    "provider": "Provider",
+    "database": "Database",
+    "schemaHint": "schema {rev}"
+  },
+  "workerJobs": {
+    "title": "Worker jobs",
+    "subtitle": "Next scheduled run of each job.",
+    "job": "Job",
+    "nextRun": "Next run",
+    "ledgerLink": "Job ledger and run history →"
+  },
+  "captures": {
+    "title": "Captures",
+    "subtitle": "What the pipelines wrote recently."
+  },
+  "errors": {
+    "title": "Errors, last 72 h",
+    "subtitle": "Runs that failed, half-succeeded, hit a cap or were cut off.",
+    "headers": {
+      "when": "When",
+      "job": "Job",
+      "status": "Status",
+      "error": "Error"
+    }
+  },
+  "quality": {
+    "title": "Data quality",
+    "subtitle": "Open issues by severity.",
+    "empty": "No open issue.",
+    "link": "Open Data Quality →"
+  },
+  "backups": {
+    "title": "Backups",
+    "subtitle": "Database dumps found on this machine, newest first.",
+    "headers": {
+      "file": "File",
+      "size": "Size",
+      "written": "Written"
+    }
+  },
+  "versions": {
+    "title": "Versions",
+    "backend": "Backend",
+    "backendCode": "Backend code",
+    "schema": "Schema",
+    "frontend": "Frontend",
+    "worker": "Worker",
+    "workerBuild": "Worker build"
+  },
+  "backfill": {
+    "title": "History migration",
+    "subtitle": "Seeded backfill tasks by kind. Each task is one provider request; nothing is re-requested that the raw store already holds.",
+    "progress": "{done} of {total} tasks done",
+    "complete": "complete",
+    "running": "running",
+    "headers": {
+      "kind": "Kind",
+      "done": "Done",
+      "pending": "Pending",
+      "running": "Running",
+      "failed": "Failed",
+      "lastCompleted": "Last completed"
+    }
+  },
+  "runs": {
+    "title": "Recent ingestion runs",
+    "subtitle": "The job ledger: what the system did, and what it cost",
+    "empty": "No ingestion run has been recorded yet.",
+    "runId": "run {id}",
+    "headers": {
+      "job": "Job",
+      "status": "Status",
+      "started": "Started",
+      "duration": "Duration",
+      "requests": "Requests",
+      "rows": "Rows written / updated",
+      "errors": "Errors"
+    }
+  },
+  "jobs": {
+    "title": "Jobs",
+    "subtitle": "Per job type: the last 24 hours from the ledger, and the next run from the worker's heartbeat",
+    "empty": "No job has run yet.",
+    "lastError": "Last error: {error}",
+    "manual": "manual",
+    "headers": {
+      "job": "Job",
+      "last": "Last",
+      "runs24h": "Runs 24 h",
+      "failedPartial": "Failed / partial",
+      "requests24h": "Requests 24 h",
+      "lastSuccess": "Last success",
+      "nextRun": "Next run"
+    }
+  },
+  "dataQuality": {
+    "notComputable": "Not computable.",
+    "loading": "Loading",
+    "highIssues_one": "{count} high-severity issue detected in the data right now: {titles}.",
+    "highIssues_other": "{count} high-severity issues detected in the data right now: {titles}.",
+    "sections": "Data quality sections",
+    "tabs": {
+      "issues": "Issues",
+      "coverage": "Coverage",
+      "jobs": "Jobs",
+      "runs": "Ingestion runs",
+      "notes": "Notes"
+    },
+    "cards": {
+      "fixturesExpected": {
+        "label": "Fixtures expected",
+        "hint": "Scheduled, tracked competitions, next {hours} h"
+      },
+      "fixturesWithOdds": {
+        "label": "Fixtures with odds",
+        "hint": "{n} with a near-close capture"
+      },
+      "oddsCoverage": {
+        "label": "Odds coverage",
+        "hint": "Expected fixtures with at least one snapshot"
+      },
+      "captureWindows": {
+        "label": "Capture windows (24 h)",
+        "hint": "{captured} of {expected} windows for fixtures that kicked off"
+      },
+      "bookmakersSeen": {
+        "label": "Bookmakers seen (24 h)",
+        "hint": "Coverage {ratio} of active bookmakers"
+      },
+      "marketsSeen": {
+        "label": "Markets seen (24 h)",
+        "hint": "Coverage {ratio} of tracked markets"
+      },
+      "snapshots": {
+        "label": "Snapshots (24 h)",
+        "hint": "Last capture {when}"
+      },
+      "staleFixtures": {
+        "label": "Stale fixtures",
+        "hint": "Upcoming, newest snapshot older than 4 h"
+      },
+      "awaitingResult": {
+        "label": "Awaiting result",
+        "hint": "{n} past fixtures have a score"
+      },
+      "partialJobs": {
+        "label": "Partial jobs (24 h)",
+        "hint": "Wrote something and hit errors"
+      },
+      "failedJobs": {
+        "label": "Failed jobs (24 h)",
+        "hint": "Errors and nothing durable, or stopped at a cap"
+      },
+      "providerErrors": {
+        "label": "Provider errors (24 h)",
+        "hint": "Refusals and failures recorded by runs"
+      },
+      "requestsToday": {
+        "label": "Requests today",
+        "hint": "{remaining} remaining · {unclaimed} not claimed by a closed run"
+      },
+      "runsStuck": {
+        "label": "Runs stuck",
+        "hint": "'running' for over 2 h: the owner likely died"
+      }
+    },
+    "issues": {
+      "title": "Issues",
+      "subtitle": "Derived from the data on every request - there is no list to go stale",
+      "headers": {
+        "severity": "Severity",
+        "issue": "Issue",
+        "count": "Count",
+        "detected": "Detected"
+      }
+    },
+    "coverage": {
+      "title": "Coverage by competition",
+      "subtitle": "Tracked competitions, current season",
+      "season": "season {season}",
+      "noFixture": "No scheduled fixture of this competition in the evaluation horizon: nothing to cover.",
+      "noSnapshot": "No snapshot has ever been captured for this competition.",
+      "headers": {
+        "competition": "Competition",
+        "inHorizon": "In horizon",
+        "withOdds": "With odds",
+        "coverage": "Coverage",
+        "bookmakers24h": "Bookmakers 24 h",
+        "markets24h": "Markets 24 h",
+        "lastCapture": "Last capture",
+        "awaitingResult": "Awaiting result"
+      }
+    },
+    "notes": {
+      "title": "Notes",
+      "subtitle": "What the snapshot itself flags",
+      "empty": "The snapshot raises no note."
+    }
+  }
+}

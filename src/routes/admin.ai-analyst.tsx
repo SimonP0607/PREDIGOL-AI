@@ -17,13 +17,13 @@ import type { AnalystAnswer } from "@/types/domain";
 export const Route = createFileRoute("/admin/ai-analyst")({
   head: () => ({
     meta: [
-      { title: "AI Analyst — Football Intelligence" },
+      { title: "AI Analyst · PrediGol Admin" },
       {
         name: "description",
         content:
           "Research assistant grounded in the platform's structured data: models, probabilities, prices and provenance.",
       },
-      { property: "og:title", content: "AI Analyst — Football Intelligence" },
+      { property: "og:title", content: "AI Analyst · PrediGol Admin" },
       {
         property: "og:description",
         content: "Research workspace answering only from structured, traceable platform data.",

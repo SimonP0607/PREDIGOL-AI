@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import { Panel } from "@/components/primitives/Panel";
 import { TableShell, THead, TH, TRow, TD } from "@/components/primitives/DataTable";
 import { Numeric } from "@/components/primitives/Indicators";
@@ -6,34 +7,32 @@ import type { JobHealth, RunSummary } from "@/lib/api/v1/types";
 import { int } from "@/lib/format";
 import { durationMs, utcDateTime } from "./format";
 import { RunStatusBadge } from "./shared";
-import { JOB_LABEL } from "./labels";
+import { jobLabel } from "./labels";
 
 export function RunsPanel({ runs }: { runs: RunSummary[] }) {
   return (
-    <Panel
-      title="Recent ingestion runs"
-      subtitle="The job ledger: what the system did, and what it cost"
-      bodyClassName=""
-    >
+    <Panel title={t("system.runs.title")} subtitle={t("system.runs.subtitle")} bodyClassName="">
       {runs.length === 0 ? (
-        <StatusNotice status="empty" reason="No ingestion run has been recorded yet." />
+        <StatusNotice status="empty" reason={t("system.runs.empty")} />
       ) : (
         <TableShell>
           <THead>
-            <TH>Job</TH>
-            <TH>Status</TH>
-            <TH>Started</TH>
-            <TH align="right">Duration</TH>
-            <TH align="right">Requests</TH>
-            <TH align="right">Rows written / updated</TH>
-            <TH align="right">Errors</TH>
+            <TH>{t("system.runs.headers.job")}</TH>
+            <TH>{t("system.runs.headers.status")}</TH>
+            <TH>{t("system.runs.headers.started")}</TH>
+            <TH align="right">{t("system.runs.headers.duration")}</TH>
+            <TH align="right">{t("system.runs.headers.requests")}</TH>
+            <TH align="right">{t("system.runs.headers.rows")}</TH>
+            <TH align="right">{t("system.runs.headers.errors")}</TH>
           </THead>
           <tbody>
             {runs.map((r) => (
               <TRow key={r.id}>
                 <TD>
-                  <div className="text-sm">{JOB_LABEL[r.job_type] ?? r.job_type}</div>
-                  <div className="numeric text-caption text-subtle-foreground">run {r.id}</div>
+                  <div className="text-sm">{jobLabel(r.job_type)}</div>
+                  <div className="numeric text-caption text-subtle-foreground">
+                    {t("system.runs.runId", { id: r.id })}
+                  </div>
                 </TD>
                 <TD>
                   <RunStatusBadge status={r.status} />
@@ -68,35 +67,31 @@ export function RunsPanel({ runs }: { runs: RunSummary[] }) {
 
 export function JobsPanel({ jobs }: { jobs: JobHealth[] }) {
   return (
-    <Panel
-      title="Jobs"
-      subtitle="Per job type: the last 24 hours from the ledger, and the next run from the worker's heartbeat"
-      bodyClassName=""
-    >
+    <Panel title={t("system.jobs.title")} subtitle={t("system.jobs.subtitle")} bodyClassName="">
       {jobs.length === 0 ? (
-        <StatusNotice status="empty" reason="No job has run yet." />
+        <StatusNotice status="empty" reason={t("system.jobs.empty")} />
       ) : (
         <TableShell>
           <THead>
-            <TH>Job</TH>
-            <TH>Last</TH>
-            <TH align="right">Runs 24 h</TH>
-            <TH align="right">Failed / partial</TH>
-            <TH align="right">Requests 24 h</TH>
-            <TH>Last success</TH>
-            <TH>Next run</TH>
+            <TH>{t("system.jobs.headers.job")}</TH>
+            <TH>{t("system.jobs.headers.last")}</TH>
+            <TH align="right">{t("system.jobs.headers.runs24h")}</TH>
+            <TH align="right">{t("system.jobs.headers.failedPartial")}</TH>
+            <TH align="right">{t("system.jobs.headers.requests24h")}</TH>
+            <TH>{t("system.jobs.headers.lastSuccess")}</TH>
+            <TH>{t("system.jobs.headers.nextRun")}</TH>
           </THead>
           <tbody>
             {jobs.map((j) => (
               <TRow key={j.job_type}>
                 <TD>
-                  <div className="text-sm">{JOB_LABEL[j.job_type] ?? j.job_type}</div>
+                  <div className="text-sm">{jobLabel(j.job_type)}</div>
                   {j.last_error ? (
                     <div
                       className="max-w-md truncate text-caption text-subtle-foreground"
                       title={j.last_error}
                     >
-                      Last error: {j.last_error}
+                      {t("system.jobs.lastError", { error: j.last_error })}
                     </div>
                   ) : null}
                 </TD>
@@ -122,7 +117,9 @@ export function JobsPanel({ jobs }: { jobs: JobHealth[] }) {
                   <Numeric muted>{utcDateTime(j.last_success_at)}</Numeric>
                 </TD>
                 <TD>
-                  <Numeric muted>{j.next_run_at ? utcDateTime(j.next_run_at) : "manual"}</Numeric>
+                  <Numeric muted>
+                    {j.next_run_at ? utcDateTime(j.next_run_at) : t("system.jobs.manual")}
+                  </Numeric>
                 </TD>
               </TRow>
             ))}

@@ -1,0 +1,200 @@
+{
+  "loading": "Cargando…",
+  "filter": "Filtrar",
+  "yes": "sí",
+  "no": "no",
+  "columns": {
+    "player": "Jugador",
+    "position": "Pos.",
+    "apps": "PJ",
+    "starts": "Titular",
+    "minutes": "Min.",
+    "goals": "G",
+    "assists": "A",
+    "yellowCards": "TA",
+    "redCards": "TR",
+    "rating": "Valoración"
+  },
+  "competitions": {
+    "scope": {
+      "label": "Ámbito",
+      "tracked": "Seguidas",
+      "withFixtures": "Con partidos",
+      "allKnown": "Todas las conocidas"
+    },
+    "searchPlaceholder": "Nombre o país",
+    "international": "Internacional",
+    "list": {
+      "title": "Catálogo",
+      "shown_one": "{count} mostrada",
+      "shown_other": "{count} mostradas",
+      "known_one": "{n} conocida",
+      "known_other": "{n} conocidas",
+      "empty": "Ninguna competición en este ámbito.",
+      "tracked": "seguida",
+      "catalogue": "catálogo",
+      "headers": {
+        "competition": "Competición",
+        "type": "Tipo",
+        "seasons": "Temporadas",
+        "fixtures": "Partidos",
+        "teams": "Equipos",
+        "tracking": "Seguimiento"
+      }
+    },
+    "detail": {
+      "title": "Detalles",
+      "select": "Seleccionar una competición para ver sus temporadas y equipos.",
+      "providerLeague": "liga del proveedor {id}",
+      "tracked": "Seguida",
+      "currentSeason": "Temporada actual",
+      "noCurrentSeason": "Ninguna temporada está marcada como actual.",
+      "tier": "Nivel",
+      "noTier": "Nivel no definido en el catálogo."
+    },
+    "seasons": {
+      "title": "Temporadas",
+      "subtitle": "Partidos almacenados y cuántos tienen un resultado registrado",
+      "empty": "No hay ninguna temporada almacenada de esta competición.",
+      "current": "actual",
+      "covered": "cubiertas",
+      "headers": {
+        "season": "Temporada",
+        "fixtures": "Partidos",
+        "finished": "Finalizados",
+        "withResult": "Con resultado",
+        "odds": "Cuotas"
+      }
+    },
+    "teams": {
+      "title": "Equipos",
+      "subtitle": "Equipos que aparecen en los partidos almacenados",
+      "empty": "No hay ningún partido almacenado de esta competición, así que no se conoce ningún equipo."
+    },
+    "standings": {
+      "title": "Clasificación",
+      "subtitle": "{season} · captura {when}",
+      "latest": "Última clasificación almacenada",
+      "headers": {
+        "team": "Equipo",
+        "played": "PJ",
+        "record": "G-E-P",
+        "goalDiff": "DG",
+        "points": "Pts",
+        "form": "Forma"
+      }
+    }
+  },
+  "teams": {
+    "searchPlaceholder": "Nombre del equipo",
+    "list": {
+      "title": "Equipos",
+      "shownFor_one": "{count} mostrado para «{q}»",
+      "shownFor_other": "{count} mostrados para «{q}»",
+      "shownHint_one": "{count} mostrado · escribir 2+ letras para buscar entre todos los equipos",
+      "shownHint_other": "{count} mostrados · escribir 2+ letras para buscar entre todos los equipos",
+      "headers": {
+        "team": "Equipo",
+        "fixtures": "Partidos",
+        "results": "Resultados"
+      }
+    },
+    "detail": {
+      "title": "Equipo",
+      "select": "Seleccionar un equipo para ver su historial y sus partidos.",
+      "providerTeam": "equipo del proveedor {id}",
+      "record": {
+        "played": "Jugados",
+        "won": "Ganados",
+        "drawn": "Empatados",
+        "lost": "Perdidos",
+        "for": "A favor",
+        "against": "En contra"
+      }
+    },
+    "fixtures": {
+      "recent": "Partidos recientes",
+      "upcoming": "Próximos partidos",
+      "noRecent": "No hay partidos pasados almacenados.",
+      "noUpcoming": "No hay próximos partidos almacenados.",
+      "headers": {
+        "date": "Fecha",
+        "fixture": "Partido",
+        "score": "Marcador",
+        "status": "Estado"
+      }
+    },
+    "squad": {
+      "title": "Plantilla",
+      "subtitle": "Jugadores con alguna participación almacenada en los últimos 400 días, ordenados por minutos"
+    }
+  },
+  "players": {
+    "search": {
+      "label": "Búsqueda de jugadores",
+      "placeholder": "Buscar un jugador (3+ letras)…"
+    },
+    "list": {
+      "matching": "Jugadores que coinciden con «{term}»",
+      "top": "Más productivos, últimos 30 días",
+      "byAppearances": "Ordenados por partidos jugados en los últimos 400 días.",
+      "byGoals": "Ordenados por goles y después por valoración.",
+      "appsTitle": "Partidos jugados con estadísticas en el periodo",
+      "noNationality": "nacionalidad no informada",
+      "noTeam": "Ninguna participación con estadísticas en el periodo.",
+      "noBirthDate": "Fecha de nacimiento no informada.",
+      "noRating": "Ninguna participación con valoración.",
+      "headers": {
+        "team": "Equipo (último)",
+        "age": "Edad",
+        "lastPlayed": "Último partido"
+      }
+    },
+    "detail": {
+      "notFound": "Jugador no encontrado",
+      "profile": {
+        "title": "Perfil",
+        "fullName": "Nombre completo",
+        "born": "Nacimiento",
+        "bornValue": "{date} ({age} años)",
+        "nationality": "Nacionalidad",
+        "position": "Posición",
+        "height": "Estatura",
+        "weight": "Peso",
+        "latestTeam": "Último equipo",
+        "providerId": "ID del proveedor"
+      },
+      "totals": {
+        "title": "Últimos 400 días",
+        "appearances": "Partidos jugados",
+        "minutes": "Minutos",
+        "goals": "Goles",
+        "assists": "Asistencias",
+        "avgRating": "Valoración media",
+        "lastPlayed": "Último partido"
+      },
+      "seasons": {
+        "title": "Por competición y temporada",
+        "headers": {
+          "season": "Temporada",
+          "competition": "Competición",
+          "team": "Equipo"
+        }
+      },
+      "matches": {
+        "title": "Partidos recientes",
+        "versus": "{team} vs {opponent}",
+        "cameOn": "entró como suplente",
+        "headers": {
+          "date": "Fecha",
+          "match": "Partido"
+        }
+      },
+      "absences": {
+        "title": "Lesiones y sanciones",
+        "absence": "Baja",
+        "noReason": "sin motivo indicado"
+      }
+    }
+  }
+}

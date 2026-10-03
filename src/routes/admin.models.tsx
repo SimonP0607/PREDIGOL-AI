@@ -35,13 +35,13 @@ import type { ModelSummary } from "@/types/domain";
 export const Route = createFileRoute("/admin/models")({
   head: () => ({
     meta: [
-      { title: "Models — Football Intelligence" },
+      { title: "Models · PrediGol Admin" },
       {
         name: "description",
         content:
           "Model research lab: leaderboard against the market baseline, calibration, sample sufficiency and version history.",
       },
-      { property: "og:title", content: "Models — Football Intelligence" },
+      { property: "og:title", content: "Models · PrediGol Admin" },
       {
         property: "og:description",
         content: "Model leaderboard and calibration against the market baseline.",

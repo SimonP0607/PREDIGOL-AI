@@ -27,12 +27,12 @@ import type { BacktestConfig, MarketKey } from "@/types/domain";
 export const Route = createFileRoute("/admin/backtesting")({
   head: () => ({
     meta: [
-      { title: "Backtesting — Football Intelligence" },
+      { title: "Backtesting · PrediGol Admin" },
       {
         name: "description",
         content: "Point-in-time replay of model versions against historical fixtures.",
       },
-      { property: "og:title", content: "Backtesting — Football Intelligence" },
+      { property: "og:title", content: "Backtesting · PrediGol Admin" },
       {
         property: "og:description",
         content: "Reproducible, versioned replay scored against the market baseline.",

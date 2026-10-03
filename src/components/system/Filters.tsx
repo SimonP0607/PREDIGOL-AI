@@ -1,4 +1,5 @@
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export interface Option {
@@ -77,7 +78,7 @@ export function SelectFilter({
 }
 
 export function SearchFilter({
-  label = "Search",
+  label: labelProp,
   value,
   onChange,
   placeholder,
@@ -89,6 +90,7 @@ export function SearchFilter({
   placeholder?: string;
   className?: string;
 }) {
+  const label = labelProp ?? t("admin.ui.search");
   const id = `search-${label.toLowerCase().replace(/\s+/g, "-")}`;
   return (
     <div className={cn("flex min-w-0 flex-col gap-1", className)}>

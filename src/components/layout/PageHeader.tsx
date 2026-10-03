@@ -1,5 +1,6 @@
 import { Link, type LinkProps } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 export function PageHeader({
   breadcrumb,
@@ -18,7 +19,10 @@ export function PageHeader({
     <div className={cn("flex flex-wrap items-end justify-between gap-4", className)}>
       <div className="min-w-0">
         {breadcrumb?.length ? (
-          <nav aria-label="Breadcrumb" className="mb-1.5 flex items-center gap-1.5 text-caption">
+          <nav
+            aria-label={t("admin.ui.breadcrumb")}
+            className="mb-1.5 flex items-center gap-1.5 text-caption"
+          >
             {breadcrumb.map((c, i) => (
               <span key={c.label} className="flex items-center gap-1.5">
                 {i > 0 ? <span className="text-subtle-foreground">/</span> : null}

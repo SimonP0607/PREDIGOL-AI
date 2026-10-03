@@ -23,8 +23,38 @@ import { FixtureLink, StatusGroupBadge } from "./shared";
 const oddsTabs = ["Board", "Movement", "Near-close", "Consensus"] as const;
 type OddsTab = (typeof oddsTabs)[number];
 
+/** A section's name in the reader's language; the value itself stays the English id. */
+function oddsTabLabel(tab: OddsTab): string {
+  switch (tab) {
+    case "Board":
+      return t("analytics.odds.fixture.board");
+    case "Movement":
+      return t("analytics.odds.fixture.movement");
+    case "Near-close":
+      return t("analytics.odds.fixture.nearClose");
+    case "Consensus":
+      return t("analytics.odds.fixture.consensus");
+  }
+}
+
 const pageTabs = ["Captured by us", "Historical market"] as const;
 type PageTab = (typeof pageTabs)[number];
+
+function pageTabLabel(tab: PageTab): string {
+  switch (tab) {
+    case "Captured by us":
+      return t("analytics.odds.source.captured");
+    case "Historical market":
+      return t("analytics.odds.source.historical");
+  }
+}
+
+/** A Football-Data price kind for display: "pre-closing" and "closing" are the source's labels. */
+function priceKindLabel(kind: string): string {
+  if (kind === "pre_closing") return t("analytics.common.preClosing");
+  if (kind === "closing") return t("analytics.common.closing");
+  return kind;
+}
 
 export function OddsLive() {
   const [page, setPage] = useState<PageTab>("Captured by us");
@@ -34,7 +64,13 @@ export function OddsLive() {
         title={t("admin.pages.odds.title")}
         description={t("admin.pages.odds.description")}
       />
-      <SegmentedTabs label="Odds source" tabs={pageTabs} value={page} onChange={setPage} />
+      <SegmentedTabs
+        label={t("analytics.odds.source.label")}
+        tabs={pageTabs}
+        value={page}
+        onChange={setPage}
+        format={pageTabLabel}
+      />
       {page === "Captured by us" ? <CapturedOdds /> : <HistoricalMarketLive />}
     </div>
   );
@@ -49,8 +85,8 @@ function CapturedOdds() {
   return (
     <div className="space-y-4">
       <Panel
-        title="Fixtures with captured prices"
-        subtitle="Implied probabilities are raw (1/odds); de-vigged probabilities appear only in the consensus."
+        title={t("analytics.odds.captured.title")}
+        subtitle={t("analytics.odds.captured.subtitle")}
         bodyClassName=""
       >
         {list.isLoading ? (
@@ -64,13 +100,13 @@ function CapturedOdds() {
         ) : (
           <TableShell>
             <THead>
-              <TH>Kick-off</TH>
-              <TH>Fixture</TH>
-              <TH>Status</TH>
-              <TH align="right">Snapshots</TH>
-              <TH align="right">Bookmakers</TH>
-              <TH align="right">Markets</TH>
-              <TH>Last capture</TH>
+              <TH>{t("analytics.odds.captured.kickoff")}</TH>
+              <TH>{t("analytics.odds.captured.fixture")}</TH>
+              <TH>{t("analytics.common.status")}</TH>
+              <TH align="right">{t("analytics.common.snapshots")}</TH>
+              <TH align="right">{t("analytics.odds.captured.bookmakers")}</TH>
+              <TH align="right">{t("analytics.odds.captured.markets")}</TH>
+              <TH>{t("analytics.odds.captured.lastCapture")}</TH>
             </THead>
             <tbody>
               {fixtures.map((m) => (
@@ -126,7 +162,7 @@ function FixtureOddsPanel({ id }: { id: number }) {
   );
   if (q.isLoading)
     return (
-      <Panel title="Fixture odds">
+      <Panel title={t("analytics.odds.fixture.title")}>
         <TableSkeleton rows={5} cols={5} />
       </Panel>
     );
@@ -134,11 +170,20 @@ function FixtureOddsPanel({ id }: { id: number }) {
   const d = q.data.data;
   return (
     <div className="space-y-3">
-      <SegmentedTabs label="Odds sections" tabs={oddsTabs} value={tab} onChange={setTab} />
+      <SegmentedTabs
+        label={t("analytics.odds.fixture.sections")}
+        tabs={oddsTabs}
+        value={tab}
+        onChange={setTab}
+        format={oddsTabLabel}
+      />
       {tab === "Board" ? (
         <Panel
-          title={`${d.match.home.name} v ${d.match.away.name}`}
-          subtitle="Latest price per bookmaker, and the best available per selection"
+          title={t("analytics.odds.board.title", {
+            home: d.match.home.name,
+            away: d.match.away.name,
+          })}
+          subtitle={t("analytics.odds.board.subtitle")}
           bodyClassName=""
         >
           <SectionView section={d.board}>
@@ -146,11 +191,11 @@ function FixtureOddsPanel({ id }: { id: number }) {
               <>
                 <TableShell>
                   <THead>
-                    <TH>Market</TH>
-                    <TH>Selection</TH>
-                    <TH align="right">Best odds</TH>
-                    <TH>At</TH>
-                    <TH align="right">Implied (raw)</TH>
+                    <TH>{t("analytics.common.market")}</TH>
+                    <TH>{t("analytics.common.selection")}</TH>
+                    <TH align="right">{t("analytics.odds.board.bestOdds")}</TH>
+                    <TH>{t("analytics.odds.board.at")}</TH>
+                    <TH align="right">{t("analytics.odds.board.implied")}</TH>
                   </THead>
                   <tbody>
                     {best.map((b) => (
@@ -169,8 +214,12 @@ function FixtureOddsPanel({ id }: { id: number }) {
                   </tbody>
                 </TableShell>
                 <p className="border-t border-border px-4 py-2 text-caption text-subtle-foreground">
-                  {quotes.length} latest quotes from{" "}
-                  {new Set(quotes.map((x) => x.bookmaker_id)).size} bookmakers.
+                  {t("analytics.odds.board.summary", {
+                    count: quotes.length,
+                    books: t("analytics.odds.board.books", {
+                      count: new Set(quotes.map((x) => x.bookmaker_id)).size,
+                    }),
+                  })}
                 </p>
               </>
             )}
@@ -179,8 +228,8 @@ function FixtureOddsPanel({ id }: { id: number }) {
       ) : null}
       {tab === "Movement" ? (
         <Panel
-          title="Line movement"
-          subtitle="First and last captured price per bookmaker and selection"
+          title={t("analytics.odds.movement.title")}
+          subtitle={t("analytics.odds.movement.subtitle")}
           bodyClassName=""
         >
           <SectionView section={d.series}>
@@ -190,20 +239,20 @@ function FixtureOddsPanel({ id }: { id: number }) {
       ) : null}
       {tab === "Near-close" ? (
         <Panel
-          title="Near-close"
-          subtitle="The capture closest to kick-off our cadence allowed. Not a closing line until validated."
+          title={t("analytics.odds.nearClose.title")}
+          subtitle={t("analytics.odds.nearClose.subtitle")}
           bodyClassName=""
         >
           <SectionView section={d.near_close}>
             {(rows) => (
               <TableShell>
                 <THead>
-                  <TH>Bookmaker</TH>
-                  <TH>Market</TH>
-                  <TH>Selection</TH>
-                  <TH align="right">Odds</TH>
-                  <TH>Captured</TH>
-                  <TH>Validated close</TH>
+                  <TH>{t("analytics.common.bookmaker")}</TH>
+                  <TH>{t("analytics.common.market")}</TH>
+                  <TH>{t("analytics.common.selection")}</TH>
+                  <TH align="right">{t("analytics.odds.nearClose.odds")}</TH>
+                  <TH>{t("analytics.odds.nearClose.captured")}</TH>
+                  <TH>{t("analytics.odds.nearClose.validatedClose")}</TH>
                 </THead>
                 <tbody>
                   {rows.map((r) => (
@@ -220,10 +269,12 @@ function FixtureOddsPanel({ id }: { id: number }) {
                       <TD>
                         {r.is_validated_close ? (
                           <StatusBadge tone="positive">
-                            {r.close_validation_method ?? "yes"}
+                            {r.close_validation_method ?? t("analytics.odds.nearClose.yes")}
                           </StatusBadge>
                         ) : (
-                          <StatusBadge tone="neutral">no</StatusBadge>
+                          <StatusBadge tone="neutral">
+                            {t("analytics.odds.nearClose.no")}
+                          </StatusBadge>
                         )}
                       </TD>
                     </TRow>
@@ -236,20 +287,20 @@ function FixtureOddsPanel({ id }: { id: number }) {
       ) : null}
       {tab === "Consensus" ? (
         <Panel
-          title="Market consensus"
-          subtitle="De-vigged probability across bookmakers"
+          title={t("analytics.odds.consensus.title")}
+          subtitle={t("analytics.odds.consensus.subtitle")}
           bodyClassName=""
         >
           <SectionView section={d.consensus}>
             {(rows) => (
               <TableShell>
                 <THead>
-                  <TH>Market</TH>
-                  <TH>Selection</TH>
-                  <TH>Method</TH>
-                  <TH align="right">Fair probability</TH>
+                  <TH>{t("analytics.common.market")}</TH>
+                  <TH>{t("analytics.common.selection")}</TH>
+                  <TH>{t("analytics.odds.consensus.method")}</TH>
+                  <TH align="right">{t("analytics.odds.consensus.fairProbability")}</TH>
                   <TH align="right">Overround</TH>
-                  <TH align="right">Books</TH>
+                  <TH align="right">{t("analytics.odds.consensus.books")}</TH>
                 </THead>
                 <tbody>
                   {rows.map((r) => (
@@ -282,13 +333,13 @@ function MovementTable({ series }: { series: OddsSeries[] }) {
   return (
     <TableShell>
       <THead>
-        <TH>Bookmaker</TH>
-        <TH>Market</TH>
-        <TH>Selection</TH>
-        <TH align="right">First</TH>
-        <TH align="right">Last</TH>
-        <TH align="right">Change</TH>
-        <TH align="right">Captures</TH>
+        <TH>{t("analytics.common.bookmaker")}</TH>
+        <TH>{t("analytics.common.market")}</TH>
+        <TH>{t("analytics.common.selection")}</TH>
+        <TH align="right">{t("analytics.odds.movement.first")}</TH>
+        <TH align="right">{t("analytics.odds.movement.last")}</TH>
+        <TH align="right">{t("analytics.odds.movement.change")}</TH>
+        <TH align="right">{t("analytics.odds.movement.captures")}</TH>
       </THead>
       <tbody>
         {series.map((s) => {
@@ -345,51 +396,60 @@ function HistoricalMarketLive() {
       <WarningBanner tone="info">{d.note}</WarningBanner>
       <div className="grid gap-3 sm:grid-cols-3">
         <MetricCard
-          label="Fixtures with historical prices"
+          label={t("analytics.odds.historical.withPrices")}
           value={int(d.fixtures_with_prices)}
-          hint={`Seasons ${d.seasons.map((y) => seasonLabel(y)).join(", ") || "—"} · ${d.source}`}
+          hint={t("analytics.odds.historical.seasons", {
+            seasons: d.seasons.map((y) => seasonLabel(y)).join(", ") || "—",
+            source: d.source,
+          })}
         />
         <MetricCard
-          label="Captured by us"
+          label={t("analytics.odds.source.captured")}
           value={d.live.status === "ok" ? int(d.live.data["snapshots"] ?? 0) : "0"}
-          hint={d.live.status === "ok" ? "snapshots" : (d.live.reason ?? "")}
+          hint={
+            d.live.status === "ok"
+              ? t("analytics.odds.historical.snapshots")
+              : (d.live.reason ?? "")
+          }
           tone={d.live.status === "ok" ? "default" : "muted"}
         />
         <MetricCard
-          label="Live consensus"
+          label={t("analytics.odds.historical.liveConsensus")}
           value={int(d.live.data["consensus_fixtures"] ?? 0)}
-          hint="fixtures with a de-vigged consensus from our captures"
+          hint={t("analytics.odds.historical.liveConsensusHint")}
           tone="muted"
         />
       </div>
       <Panel
-        title="Bookmaker margins"
-        subtitle="Overround per book and price kind: the sum of 1/odds across a market. Best-price share counts how often a named book had the top 1X2 price (ties count for each)."
+        title={t("analytics.odds.historical.margins.title")}
+        subtitle={t("analytics.odds.historical.margins.subtitle")}
         bodyClassName=""
       >
         <SectionView section={d.margins}>
           {(rows) => (
             <TableShell>
               <THead>
-                <TH>Book</TH>
-                <TH>Market</TH>
-                <TH>Kind</TH>
-                <TH align="right">Fixtures</TH>
+                <TH>{t("analytics.common.book")}</TH>
+                <TH>{t("analytics.common.market")}</TH>
+                <TH>{t("analytics.common.kind")}</TH>
+                <TH align="right">{t("analytics.common.fixtures")}</TH>
                 <TH align="right">
-                  <MetricLabel term="overround">Mean overround</MetricLabel>
+                  <MetricLabel term="overround">
+                    {t("analytics.odds.historical.margins.meanOverround")}
+                  </MetricLabel>
                 </TH>
-                <TH align="right">Median</TH>
-                <TH align="right">Best 1X2 price</TH>
+                <TH align="right">{t("analytics.odds.historical.margins.median")}</TH>
+                <TH align="right">{t("analytics.odds.historical.margins.best1x2")}</TH>
               </THead>
               <tbody>
                 {rows.map((r) => (
                   <TRow key={`${r.bookmaker_code}-${r.market_key}-${r.price_kind}`}>
                     <TD className="text-sm">{bookLabel(r.bookmaker_code)}</TD>
                     <TD className="text-xs text-muted-foreground">
-                      {r.market_key === "OU" ? "Over/Under 2.5" : r.market_key}
+                      {r.market_key === "OU" ? t("analytics.common.ou25") : r.market_key}
                     </TD>
                     <TD className="text-xs text-muted-foreground">
-                      {r.price_kind === "pre_closing" ? "pre-closing" : r.price_kind}
+                      {priceKindLabel(r.price_kind)}
                     </TD>
                     <TD align="right">
                       <Numeric>{int(r.fixtures)}</Numeric>
@@ -405,8 +465,8 @@ function HistoricalMarketLive() {
                         value={decPct(r.best_price_share)}
                         reason={
                           r.bookmaker_code === "AVG"
-                            ? "An average is not a price anyone offered."
-                            : "Only computed for 1X2."
+                            ? t("analytics.odds.historical.margins.averageNotOffered")
+                            : t("analytics.odds.historical.margins.only1x2")
                         }
                         className="numeric"
                       />
@@ -419,23 +479,25 @@ function HistoricalMarketLive() {
         </SectionView>
       </Panel>
       <Panel
-        title="Pre-closing → closing"
-        subtitle="Pinnacle, de-vigged with Shin. How far the price moved between the source's two collections, and which of the two predicted the result better."
+        title={t("analytics.odds.historical.movement.title")}
+        subtitle={t("analytics.odds.historical.movement.subtitle")}
         bodyClassName=""
       >
         <SectionView section={d.movement}>
           {(rows) => (
             <TableShell>
               <THead>
-                <TH>Competition</TH>
-                <TH>Season</TH>
-                <TH align="right">Fixtures</TH>
-                <TH align="right">Mean |Δ p(home)|</TH>
-                <TH align="right">Favourite shortened</TH>
+                <TH>{t("analytics.common.competition")}</TH>
+                <TH>{t("analytics.common.season")}</TH>
+                <TH align="right">{t("analytics.common.fixtures")}</TH>
+                <TH align="right">{t("analytics.odds.historical.movement.meanShift")}</TH>
+                <TH align="right">{t("analytics.odds.historical.movement.favouriteShortened")}</TH>
                 <TH align="right">
-                  <MetricLabel term="logLoss">Pre-closing log loss</MetricLabel>
+                  <MetricLabel term="logLoss">
+                    {t("analytics.odds.historical.movement.preClosingLogLoss")}
+                  </MetricLabel>
                 </TH>
-                <TH align="right">Closing log loss</TH>
+                <TH align="right">{t("analytics.odds.historical.movement.closingLogLoss")}</TH>
               </THead>
               <tbody>
                 {rows.map((r) => {
@@ -469,9 +531,7 @@ function HistoricalMarketLive() {
           )}
         </SectionView>
         <p className="border-t border-border px-4 py-2.5 text-caption text-muted-foreground">
-          The source collects pre-closing prices on Friday or Tuesday afternoons; neither kind has
-          an exact timestamp, so this is movement between two labelled collections, not a line
-          history.
+          {t("analytics.odds.historical.movement.note")}
         </p>
       </Panel>
     </div>
@@ -487,10 +547,10 @@ export function PerformanceLive() {
   const d = q.data?.data;
   const reason = q.data?.reason ?? null;
   const cards: Array<[string, string | null]> = [
-    ["P&L (units)", dec(d?.profit_units)],
+    [t("analytics.performance.pnlUnits"), dec(d?.profit_units)],
     ["ROI", d?.roi_pct ? `${dec(d.roi_pct)}%` : null],
-    ["Hit rate", d?.hit_rate ? `${dec(d.hit_rate)}%` : null],
-    ["Staked (units)", dec(d?.staked_units)],
+    [t("analytics.performance.hitRate"), d?.hit_rate ? `${dec(d.hit_rate)}%` : null],
+    [t("analytics.performance.stakedUnits"), dec(d?.staked_units)],
   ];
   return (
     <div className="space-y-4">
@@ -504,14 +564,14 @@ export function PerformanceLive() {
           <div key={label} className="surface-panel px-4 py-3">
             <div className="text-label text-subtle-foreground">{label}</div>
             <div className="mt-1.5 numeric-lg">
-              <Nullable value={value} reason={reason ?? "Not computable yet."} />
+              <Nullable value={value} reason={reason ?? t("analytics.performance.notComputable")} />
             </div>
           </div>
         ))}
       </div>
-      <Panel title="Sample">
-        <KeyValue label="Settled picks" value={int(d?.settled ?? null)} />
-        <KeyValue label="Pending picks" value={int(d?.pending ?? null)} />
+      <Panel title={t("analytics.performance.sample")}>
+        <KeyValue label={t("analytics.performance.settledPicks")} value={int(d?.settled ?? null)} />
+        <KeyValue label={t("analytics.performance.pendingPicks")} value={int(d?.pending ?? null)} />
         {q.data ? (
           <StatusNotice status={q.data.status} reason={q.data.reason} compact className="mt-2" />
         ) : null}
@@ -522,37 +582,59 @@ export function PerformanceLive() {
   );
 }
 
-const SLICE_TITLE: Record<PerformanceSlice["dimension"], string> = {
-  market: "By market",
-  model: "By model",
-  rule: "By decision rule",
-  month: "By month of kick-off",
-  odds_band: "By price band",
-};
+/** A slice panel's title, in the reader's language. */
+function sliceTitle(dim: PerformanceSlice["dimension"]): string {
+  switch (dim) {
+    case "market":
+      return t("analytics.performance.slices.byMarket");
+    case "model":
+      return t("analytics.performance.slices.byModel");
+    case "rule":
+      return t("analytics.performance.slices.byRule");
+    case "month":
+      return t("analytics.performance.slices.byMonth");
+    case "odds_band":
+      return t("analytics.performance.slices.byOddsBand");
+  }
+}
+
+/** The first column's header of a slice table. */
+function sliceHeader(dim: PerformanceSlice["dimension"]): string {
+  switch (dim) {
+    case "market":
+      return t("analytics.performance.slices.market");
+    case "model":
+      return t("analytics.performance.slices.model");
+    case "rule":
+      return t("analytics.performance.slices.rule");
+    case "month":
+      return t("analytics.performance.slices.month");
+    case "odds_band":
+      return t("analytics.performance.slices.oddsBand");
+  }
+}
 
 function PerformanceSlices({ slices }: { slices: PerformanceSlice[] }) {
   const dims = ["model", "market", "rule", "odds_band", "month"] as const;
   return (
     <div className="space-y-4">
       <p className="text-caption text-muted-foreground">
-        ± is a 95% interval on the ROI from the spread of bet results (shown from 30 bets). An
-        interval that contains 0 means the result is not distinguishable from luck. &ldquo;Model
-        expected&rdquo; is what the model&apos;s own EV promised for the same bets.
+        {t("analytics.performance.slices.intro")}
       </p>
       <div className="grid gap-4 xl:grid-cols-2">
         {dims.map((dim) => {
           const rows = slices.filter((s) => s.dimension === dim);
           if (!rows.length) return null;
           return (
-            <Panel key={dim} title={SLICE_TITLE[dim]} bodyClassName="">
+            <Panel key={dim} title={sliceTitle(dim)} bodyClassName="">
               <TableShell compact>
                 <THead>
-                  <TH>{dim === "odds_band" ? "Odds" : dim}</TH>
-                  <TH align="right">Bets</TH>
-                  <TH align="right">Hit</TH>
-                  <TH align="right">P&amp;L</TH>
+                  <TH>{sliceHeader(dim)}</TH>
+                  <TH align="right">{t("analytics.performance.slices.bets")}</TH>
+                  <TH align="right">{t("analytics.performance.slices.hit")}</TH>
+                  <TH align="right">{t("analytics.performance.slices.pnl")}</TH>
                   <TH align="right">ROI</TH>
-                  <TH align="right">Model expected</TH>
+                  <TH align="right">{t("analytics.performance.slices.modelExpected")}</TH>
                 </THead>
                 <tbody>
                   {rows.map((r) => {

@@ -40,15 +40,23 @@ import { dec, shortHash, utcDate, utcDateTime } from "./format";
 import { baselineLabel, seasonLabel } from "./labels";
 import { Fact } from "./shared";
 
-const NO_BACKTEST = "This model version has no stored walk-forward backtest.";
-
-const MODEL_LABEL: Record<string, string> = {
-  poisson: "Poisson (Maher)",
-  dixon_coles: "Dixon-Coles",
-  elo_ologit: "Elo V2 + ordered logit",
-  base_rates: "League base rates",
-  mnlogit: "Multinomial logit (features v2)",
-};
+/** Display name of a model; Poisson and Dixon-Coles are proper names in both languages. */
+function modelLabel(name: string): string {
+  switch (name) {
+    case "poisson":
+      return "Poisson (Maher)";
+    case "dixon_coles":
+      return "Dixon-Coles";
+    case "elo_ologit":
+      return t("research.models.names.elo_ologit");
+    case "base_rates":
+      return t("research.models.names.base_rates");
+    case "mnlogit":
+      return t("research.models.names.mnlogit");
+    default:
+      return name;
+  }
+}
 /** Families that price 1X2 only: no goal distribution, so no Over/Under or BTTS. */
 const ONE_X_TWO_ONLY = new Set(["elo_ologit", "base_rates", "mnlogit"]);
 
@@ -58,11 +66,16 @@ const verdictTone: Record<Verdict, BadgeTone> = {
   worse: "negative",
 };
 
-const VERDICT_TEXT: Record<Verdict, string> = {
-  better: "Beats market",
-  indistinguishable: "No detectable difference",
-  worse: "Worse than market",
-};
+function verdictText(verdict: Verdict): string {
+  switch (verdict) {
+    case "better":
+      return t("research.models.verdict.better");
+    case "indistinguishable":
+      return t("research.models.verdict.indistinguishable");
+    case "worse":
+      return t("research.models.verdict.worse");
+  }
+}
 
 function signed(value: string | number | null | undefined, digits = 4): string | null {
   if (value === null || value === undefined) return null;
@@ -76,8 +89,8 @@ function interval(c: MarketComparison): string {
 }
 
 function VerdictBadge({ c }: { c: MarketComparison | null | undefined }) {
-  if (!c) return <Nullable value={null} reason="No market price for this model's fixtures." />;
-  return <StatusBadge tone={verdictTone[c.verdict]}>{VERDICT_TEXT[c.verdict]}</StatusBadge>;
+  if (!c) return <Nullable value={null} reason={t("research.models.verdict.noMarket")} />;
+  return <StatusBadge tone={verdictTone[c.verdict]}>{verdictText(c.verdict)}</StatusBadge>;
 }
 
 export function ModelsLive() {
@@ -108,24 +121,28 @@ export function ModelsLive() {
       {session && tested.length ? (
         beating.length ? (
           <WarningBanner tone="info">
-            {beating.map((m) => MODEL_LABEL[m.name] ?? m.name).join(", ")} scored better than{" "}
-            {baselineLabel(session.primary_baseline)} on the {seasonLabel(session.test_season)} test
-            season, with the whole 95% interval below zero. One season is one sample; nothing is
-            promoted automatically.
+            {t("research.models.banner.beating", {
+              count: beating.length,
+              models: beating.map((m) => modelLabel(m.name)).join(", "),
+              baseline: baselineLabel(session.primary_baseline),
+              season: seasonLabel(session.test_season),
+            })}
           </WarningBanner>
         ) : (
           <WarningBanner>
-            No model beats the market. On {int(session.n_targets)} test fixtures (
-            {seasonLabel(session.test_season)}), every model has a higher log loss than{" "}
-            {baselineLabel(session.primary_baseline)}, with the whole 95% interval above zero. All
-            models stay experimental and none feeds a pick.
+            {t("research.models.banner.noneBeating", {
+              count: session.n_targets,
+              n: int(session.n_targets),
+              season: seasonLabel(session.test_season),
+              baseline: baselineLabel(session.primary_baseline),
+            })}
           </WarningBanner>
         )
       ) : null}
 
       <Panel
-        title="Market baseline"
-        subtitle="The bar every model has to clear: bookmaker prices with the margin removed, scored like a model"
+        title={t("research.models.baseline.title")}
+        subtitle={t("research.models.baseline.subtitle")}
         bodyClassName=""
       >
         {!d ? (
@@ -140,13 +157,19 @@ export function ModelsLive() {
             </SectionView>
             <div className="px-4 py-3">
               <div className="flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
-                <span className="text-label text-subtle-foreground">Live consensus</span>
+                <span className="text-label text-subtle-foreground">
+                  {t("research.models.baseline.liveConsensus")}
+                </span>
                 <SectionView section={d.market_baseline} compact>
                   {(b) =>
                     b ? (
                       <span className="numeric">
-                        {int(b.fixtures_with_consensus)} fixtures · {b.methods.join(", ")} · last{" "}
-                        {utcDateTime(b.last_as_of)}
+                        {t("research.models.baseline.consensusLine", {
+                          count: b.fixtures_with_consensus,
+                          n: int(b.fixtures_with_consensus),
+                          methods: b.methods.join(", "),
+                          when: utcDateTime(b.last_as_of),
+                        })}
                       </span>
                     ) : null
                   }
@@ -158,8 +181,8 @@ export function ModelsLive() {
       </Panel>
 
       <Panel
-        title="Predictive quality · 1X2"
-        subtitle="Walk-forward, out of sample. Lower log loss and Brier are better; ECE is calibration error. Accuracy is not a ranking metric."
+        title={t("research.models.quality.title")}
+        subtitle={t("research.models.quality.subtitle")}
         bodyClassName=""
       >
         {!d ? (
@@ -174,8 +197,8 @@ export function ModelsLive() {
       {tested.length ? <ModelDetail models={tested} session={session} /> : null}
 
       <Panel
-        title="Betting performance"
-        subtitle="Kept apart from predictive quality. A backtest simulation is not a betting record."
+        title={t("research.models.betting.title")}
+        subtitle={t("research.models.betting.subtitle")}
         bodyClassName=""
       >
         {!d ? <TableSkeleton rows={3} cols={7} /> : <BettingTable models={tested} />}
@@ -191,17 +214,28 @@ function SessionFacts({ session }: { session: BacktestSessionSummary }) {
   return (
     <dl className="grid gap-x-8 px-4 py-3 sm:grid-cols-2 xl:grid-cols-3">
       <Fact
-        label="Test season"
+        label={t("research.common.testSeason")}
         value={`${seasonLabel(session.test_season)} · ${utcDate(session.test_from)} – ${utcDate(session.test_to)}`}
       />
-      <Fact label="Fixtures" value={int(session.n_targets)} />
-      <Fact label="Competitions" value={session.competitions.map((c) => c.name).join(", ")} />
+      <Fact label={t("research.common.fixtures")} value={int(session.n_targets)} />
       <Fact
-        label="Hyper-parameters chosen on"
-        value={`${seasonLabel(session.validation_season)} only`}
+        label={t("research.common.competitions")}
+        value={session.competitions.map((c) => c.name).join(", ")}
       />
-      <Fact label="Protocol" value="walk-forward, refit daily" />
-      <Fact label="Primary baseline" value={baselineLabel(session.primary_baseline)} />
+      <Fact
+        label={t("research.models.session.chosenOn")}
+        value={t("research.models.session.seasonOnly", {
+          season: seasonLabel(session.validation_season),
+        })}
+      />
+      <Fact
+        label={t("research.common.protocol")}
+        value={t("research.models.session.protocolValue")}
+      />
+      <Fact
+        label={t("research.common.primaryBaseline")}
+        value={baselineLabel(session.primary_baseline)}
+      />
     </dl>
   );
 }
@@ -210,18 +244,18 @@ function BaselineTable({ rows }: { rows: BaselineScore[] }) {
   return (
     <TableShell>
       <THead>
-        <TH>Baseline</TH>
-        <TH>Market</TH>
+        <TH>{t("research.models.baseline.baseline")}</TH>
+        <TH>{t("research.common.market")}</TH>
         <TH>
           <InfoTip
             term="historicalClosing"
             className="text-label font-semibold text-subtle-foreground"
           >
-            Source
+            {t("research.models.baseline.source")}
           </InfoTip>
         </TH>
         <TH align="right">
-          <MetricLabel term="sampleSize">Sample</MetricLabel>
+          <MetricLabel term="sampleSize">{t("research.common.sample")}</MetricLabel>
         </TH>
         <TH align="right">
           <MetricLabel term="logLoss">Log loss</MetricLabel>
@@ -242,11 +276,15 @@ function BaselineTable({ rows }: { rows: BaselineScore[] }) {
             <TD>
               <div className="flex items-center gap-2 text-sm">
                 {baselineLabel(b.baseline_key)}
-                {b.is_primary ? <StatusBadge tone="brand">Primary</StatusBadge> : null}
+                {b.is_primary ? (
+                  <StatusBadge tone="brand">{t("research.models.baseline.primary")}</StatusBadge>
+                ) : null}
               </div>
             </TD>
             <TD className="text-xs text-muted-foreground">
-              {b.market_key === "OU" ? `Over/Under ${Number(b.line)}` : b.market_key}
+              {b.market_key === "OU"
+                ? t("research.models.overUnder", { line: Number(b.line) })
+                : b.market_key}
             </TD>
             <TD className="text-xs text-muted-foreground">{b.source}</TD>
             <TD align="right">
@@ -264,7 +302,7 @@ function BaselineTable({ rows }: { rows: BaselineScore[] }) {
             <TD align="right">
               <Nullable
                 value={dec(b.mean_overround, 3)}
-                reason="Two-way market de-vigged on the fly; overround not stored."
+                reason={t("research.models.baseline.overroundNotStored")}
                 className="numeric"
               />
             </TD>
@@ -284,12 +322,13 @@ function Leaderboard({
 }) {
   const primary =
     baselines.status === "ok" ? (baselines.data.find((b) => b.is_primary) ?? null) : null;
+  const noBacktest = t("research.models.noBacktest");
   return (
     <TableShell>
       <THead>
-        <TH>Model</TH>
+        <TH>{t("research.common.model")}</TH>
         <TH align="right">
-          <MetricLabel term="sampleSize">Sample</MetricLabel>
+          <MetricLabel term="sampleSize">{t("research.common.sample")}</MetricLabel>
         </TH>
         <TH align="right">
           <MetricLabel term="logLoss">Log loss</MetricLabel>
@@ -301,17 +340,19 @@ function Leaderboard({
           <MetricLabel term="calibrationError">ECE</MetricLabel>
         </TH>
         <TH align="right">
-          <MetricLabel term="vsMarket">Δ log loss vs market</MetricLabel>
+          <MetricLabel term="vsMarket">{t("research.models.leaderboard.vsMarket")}</MetricLabel>
         </TH>
-        <TH>Verdict</TH>
-        <TH>Version</TH>
+        <TH>{t("research.common.verdict")}</TH>
+        <TH>{t("research.common.version")}</TH>
       </THead>
       <tbody>
         {primary ? (
           <TRow selected>
             <TD>
               <div className="text-sm">{baselineLabel(primary.baseline_key)}</div>
-              <div className="text-caption text-subtle-foreground">market baseline</div>
+              <div className="text-caption text-subtle-foreground">
+                {t("research.models.leaderboard.marketBaseline")}
+              </div>
             </TD>
             <TD align="right">
               <Numeric>{int(primary.n_samples)}</Numeric>
@@ -326,10 +367,10 @@ function Leaderboard({
               <Numeric>{dec(primary.ece, 4)}</Numeric>
             </TD>
             <TD align="right" className="text-caption text-subtle-foreground">
-              reference
+              {t("research.models.leaderboard.reference")}
             </TD>
             <TD>
-              <StatusBadge tone="brand">Baseline</StatusBadge>
+              <StatusBadge tone="brand">{t("research.models.leaderboard.baseline")}</StatusBadge>
             </TD>
             <TD className="text-xs text-muted-foreground">{primary.source}</TD>
           </TRow>
@@ -340,7 +381,7 @@ function Leaderboard({
           return (
             <TRow key={m.version_id}>
               <TD>
-                <div className="text-sm">{MODEL_LABEL[m.name] ?? m.name}</div>
+                <div className="text-sm">{modelLabel(m.name)}</div>
                 <div className="text-caption text-subtle-foreground">
                   {m.family} · {m.status}
                 </div>
@@ -352,18 +393,18 @@ function Leaderboard({
                       ? `${int(bt.n_samples)}${bt.coverage ? ` / ${int(bt.coverage.targets)}` : ""}`
                       : null
                   }
-                  reason={NO_BACKTEST}
+                  reason={noBacktest}
                   className="numeric"
                 />
               </TD>
               <TD align="right">
-                <Nullable value={dec(bt?.logloss, 4)} reason={NO_BACKTEST} className="numeric" />
+                <Nullable value={dec(bt?.logloss, 4)} reason={noBacktest} className="numeric" />
               </TD>
               <TD align="right">
-                <Nullable value={dec(bt?.brier, 4)} reason={NO_BACKTEST} className="numeric" />
+                <Nullable value={dec(bt?.brier, 4)} reason={noBacktest} className="numeric" />
               </TD>
               <TD align="right">
-                <Nullable value={dec(bt?.ece, 4)} reason={NO_BACKTEST} className="numeric" />
+                <Nullable value={dec(bt?.ece, 4)} reason={noBacktest} className="numeric" />
               </TD>
               <TD align="right">
                 {c ? (
@@ -386,13 +427,11 @@ function Leaderboard({
                 ) : (
                   <Nullable
                     value={null}
-                    reason={bt ? "No common fixtures with the market." : NO_BACKTEST}
+                    reason={bt ? t("research.models.leaderboard.noCommon") : noBacktest}
                   />
                 )}
               </TD>
-              <TD>
-                {bt ? <VerdictBadge c={c} /> : <Nullable value={null} reason={NO_BACKTEST} />}
-              </TD>
+              <TD>{bt ? <VerdictBadge c={c} /> : <Nullable value={null} reason={noBacktest} />}</TD>
               <TD className="numeric text-caption text-muted-foreground">
                 <span title={m.version}>{shortVersion(m.version)}</span>
               </TD>
@@ -410,8 +449,23 @@ function shortVersion(v: string): string {
   return at > 0 ? `${semver} @${v.slice(at + 1)}` : semver;
 }
 
-const detailTabs = ["Calibration", "Leagues", "Temporal stability", "Markets", "Protocol"] as const;
+const detailTabs = ["calibration", "leagues", "temporal", "markets", "protocol"] as const;
 type DetailTab = (typeof detailTabs)[number];
+
+function detailTabLabel(tab: DetailTab): string {
+  switch (tab) {
+    case "calibration":
+      return t("research.models.detail.tabs.calibration");
+    case "leagues":
+      return t("research.models.detail.tabs.leagues");
+    case "temporal":
+      return t("research.models.detail.tabs.temporal");
+    case "markets":
+      return t("research.common.markets");
+    case "protocol":
+      return t("research.common.protocol");
+  }
+}
 
 function ModelDetail({
   models,
@@ -421,27 +475,35 @@ function ModelDetail({
   session: BacktestSessionSummary | null;
 }) {
   const [selected, setSelected] = useState(models[0]?.name ?? "");
-  const [tab, setTab] = useState<DetailTab>("Calibration");
+  const [tab, setTab] = useState<DetailTab>("calibration");
   const model = models.find((m) => m.name === selected) ?? models[0];
   if (!model?.latest_backtest) return null;
   const bt = model.latest_backtest;
   const names = models.map((m) => m.name);
   return (
-    <Panel title="Model detail" bodyClassName="p-4 space-y-4">
+    <Panel title={t("research.models.detail.title")} bodyClassName="p-4 space-y-4">
       <SegmentedTabs
         tabs={names}
         value={model.name}
         onChange={setSelected}
-        format={(n) => MODEL_LABEL[n] ?? n}
-        label="Model"
+        format={(n) => modelLabel(n)}
+        label={t("research.common.model")}
       />
       <p className="text-caption text-muted-foreground">{model.description}</p>
-      <SegmentedTabs tabs={detailTabs} value={tab} onChange={setTab} label="Detail" />
-      {tab === "Calibration" ? <CalibrationView model={model} /> : null}
-      {tab === "Leagues" ? <SplitTable rows={bt.by_competition} keyLabel="Competition" /> : null}
-      {tab === "Temporal stability" ? <MonthlyView model={model} /> : null}
-      {tab === "Markets" ? <MarketsView model={model} /> : null}
-      {tab === "Protocol" ? <ProtocolView model={model} session={session} /> : null}
+      <SegmentedTabs
+        tabs={detailTabs}
+        value={tab}
+        onChange={setTab}
+        format={detailTabLabel}
+        label={t("research.models.detail.tabsLabel")}
+      />
+      {tab === "calibration" ? <CalibrationView model={model} /> : null}
+      {tab === "leagues" ? (
+        <SplitTable rows={bt.by_competition} keyLabel={t("research.common.competition")} />
+      ) : null}
+      {tab === "temporal" ? <MonthlyView model={model} /> : null}
+      {tab === "markets" ? <MarketsView model={model} /> : null}
+      {tab === "protocol" ? <ProtocolView model={model} session={session} /> : null}
     </Panel>
   );
 }
@@ -454,7 +516,7 @@ function CalibrationView({ model }: { model: ModelVersionSummary }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
       <div>
-        <div className="h-64 w-full" aria-label="Reliability diagram">
+        <div className="h-64 w-full" aria-label={t("research.models.calibration.chartLabel")}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart margin={{ top: 8, right: 12, bottom: 24, left: 4 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
@@ -466,7 +528,7 @@ function CalibrationView({ model }: { model: ModelVersionSummary }) {
                 stroke="var(--subtle-foreground)"
                 fontSize={11}
                 label={{
-                  value: "Predicted probability",
+                  value: t("research.models.calibration.axis"),
                   position: "insideBottom",
                   offset: -12,
                   fill: "var(--subtle-foreground)",
@@ -512,17 +574,15 @@ function CalibrationView({ model }: { model: ModelVersionSummary }) {
           </ResponsiveContainer>
         </div>
         <p className="mt-2 text-caption text-muted-foreground">
-          Every outcome of every test fixture, in ten equal-width bins. The dashed diagonal is
-          perfect calibration: below it the model was over-confident in that bin, above it
-          under-confident. ECE {dec(bt.ece, 4)}.
+          {t("research.models.calibration.note", { ece: dec(bt.ece, 4) ?? "" })}
         </p>
       </div>
       <TableShell compact>
         <THead>
-          <TH>Bin</TH>
-          <TH align="right">Predicted</TH>
-          <TH align="right">Observed</TH>
-          <TH align="right">Sample</TH>
+          <TH>{t("research.models.calibration.bin")}</TH>
+          <TH align="right">{t("research.models.calibration.predicted")}</TH>
+          <TH align="right">{t("research.models.calibration.observed")}</TH>
+          <TH align="right">{t("research.common.sample")}</TH>
         </THead>
         <tbody>
           {bt.calibration.map((b) => (
@@ -535,14 +595,14 @@ function CalibrationView({ model }: { model: ModelVersionSummary }) {
                   value={
                     b.mean_predicted === null ? null : `${(b.mean_predicted * 100).toFixed(1)}%`
                   }
-                  reason="No prediction fell in this bin."
+                  reason={t("research.models.calibration.emptyBin")}
                   className="numeric"
                 />
               </TD>
               <TD align="right">
                 <Nullable
                   value={b.observed_rate === null ? null : `${(b.observed_rate * 100).toFixed(1)}%`}
-                  reason="No prediction fell in this bin."
+                  reason={t("research.models.calibration.emptyBin")}
                   className="numeric"
                 />
               </TD>
@@ -559,17 +619,17 @@ function CalibrationView({ model }: { model: ModelVersionSummary }) {
 
 function SplitTable({ rows, keyLabel }: { rows: SplitRow[]; keyLabel: string }) {
   if (!rows.length) {
-    return <StatusNotice status="empty" reason="No split was stored for this run." compact />;
+    return <StatusNotice status="empty" reason={t("research.models.split.empty")} compact />;
   }
   return (
     <TableShell>
       <THead>
         <TH>{keyLabel}</TH>
-        <TH align="right">Fixtures</TH>
-        <TH align="right">Model log loss</TH>
-        <TH align="right">Market log loss</TH>
+        <TH align="right">{t("research.common.fixtures")}</TH>
+        <TH align="right">{t("research.models.split.modelLogLoss")}</TH>
+        <TH align="right">{t("research.models.split.marketLogLoss")}</TH>
         <TH align="right">
-          <MetricLabel term="vsMarket">Difference</MetricLabel>
+          <MetricLabel term="vsMarket">{t("research.models.split.difference")}</MetricLabel>
         </TH>
       </THead>
       <tbody>
@@ -604,7 +664,7 @@ function MonthlyView({ model }: { model: ModelVersionSummary }) {
   const data = rows.map((r) => ({ month: r.key, diff: r.logloss_diff, n: r.n }));
   return (
     <div className="space-y-3">
-      <div className="h-52 w-full" aria-label="Monthly log-loss difference against the market">
+      <div className="h-52 w-full" aria-label={t("research.models.monthly.chartLabel")}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: 4 }}>
             <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
@@ -627,7 +687,7 @@ function MonthlyView({ model }: { model: ModelVersionSummary }) {
             <Line
               type="monotone"
               dataKey="diff"
-              name="model − market"
+              name={t("research.models.monthly.series")}
               stroke="var(--primary)"
               dot={{ r: 2 }}
               isAnimationActive={false}
@@ -635,11 +695,8 @@ function MonthlyView({ model }: { model: ModelVersionSummary }) {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-caption text-muted-foreground">
-        Log loss of the model minus the market, month by month. Above the dashed line the market was
-        better that month. A model that only wins in one month has not shown anything.
-      </p>
-      <SplitTable rows={rows} keyLabel="Month" />
+      <p className="text-caption text-muted-foreground">{t("research.models.monthly.note")}</p>
+      <SplitTable rows={rows} keyLabel={t("research.models.monthly.month")} />
     </div>
   );
 }
@@ -648,15 +705,15 @@ function ComparisonRows({ rows }: { rows: MarketComparison[] }) {
   return (
     <TableShell>
       <THead>
-        <TH>Against</TH>
-        <TH align="right">Common fixtures</TH>
-        <TH align="right">Model</TH>
-        <TH align="right">Market</TH>
+        <TH>{t("research.models.comparison.against")}</TH>
+        <TH align="right">{t("research.models.comparison.commonFixtures")}</TH>
+        <TH align="right">{t("research.common.model")}</TH>
+        <TH align="right">{t("research.common.market")}</TH>
         <TH align="right">
           <MetricLabel term="vsMarket">Δ log loss [95%]</MetricLabel>
         </TH>
         <TH align="right">Δ Brier</TH>
-        <TH>Verdict</TH>
+        <TH>{t("research.common.verdict")}</TH>
       </THead>
       <tbody>
         {rows.map((c) => (
@@ -701,7 +758,9 @@ function MarketsView({ model }: { model: ModelVersionSummary }) {
         <ComparisonRows rows={x12} />
       </div>
       <div>
-        <div className="mb-2 text-label text-subtle-foreground">Over/Under 2.5</div>
+        <div className="mb-2 text-label text-subtle-foreground">
+          {t("research.models.overUnder", { line: "2.5" })}
+        </div>
         {ou.length ? (
           <ComparisonRows rows={ou} />
         ) : (
@@ -709,18 +768,20 @@ function MarketsView({ model }: { model: ModelVersionSummary }) {
             status="not_available"
             reason={
               ONE_X_TWO_ONLY.has(model.name)
-                ? `${MODEL_LABEL[model.name] ?? model.name} prices 1X2 only: it has no goal distribution.`
-                : "No Over/Under comparison was stored for this run."
+                ? t("research.models.markets.oneXTwoOnly", { model: modelLabel(model.name) })
+                : t("research.models.markets.noOverUnder")
             }
             compact
           />
         )}
       </div>
       <div>
-        <div className="mb-2 text-label text-subtle-foreground">Both teams to score</div>
+        <div className="mb-2 text-label text-subtle-foreground">
+          {t("research.models.markets.btts")}
+        </div>
         {bt.btts ? (
           <div className="grid gap-x-8 sm:grid-cols-2 xl:grid-cols-4">
-            <KeyValue label="Fixtures" value={int(bt.btts.n)} />
+            <KeyValue label={t("research.common.fixtures")} value={int(bt.btts.n)} />
             <KeyValue label="Log loss" value={bt.btts.log_loss.toFixed(4)} />
             <KeyValue label="Brier" value={bt.btts.brier.toFixed(4)} />
             <KeyValue label="ECE" value={bt.btts.ece.toFixed(4)} />
@@ -728,8 +789,8 @@ function MarketsView({ model }: { model: ModelVersionSummary }) {
         ) : null}
         <p className="mt-2 text-caption text-muted-foreground">
           {bt.btts
-            ? "No market baseline: the historical source publishes no BTTS prices, so this is scored against outcomes only and cannot be called better or worse than the market."
-            : "This model does not price BTTS."}
+            ? t("research.models.markets.bttsNoBaseline")
+            : t("research.models.markets.noBtts")}
         </p>
       </div>
     </div>
@@ -749,51 +810,95 @@ function ProtocolView({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div>
-        <div className="mb-1 text-label text-subtle-foreground">Lineage</div>
-        <KeyValue label="Model version" value={model.version} />
-        <KeyValue label="Code version" value={shortHash(bt.code_version)} />
-        <KeyValue label="Backtest run" value={`#${bt.run_id}`} />
-        <KeyValue label="Session" value={session ? shortHash(session.session_uuid, 8) : "—"} />
-        <KeyValue label="Dataset hash" value={session ? shortHash(session.dataset_hash) : "—"} />
+        <div className="mb-1 text-label text-subtle-foreground">
+          {t("research.models.protocol.lineage")}
+        </div>
+        <KeyValue label={t("research.models.protocol.modelVersion")} value={model.version} />
+        <KeyValue label={t("research.common.codeVersion")} value={shortHash(bt.code_version)} />
+        <KeyValue label={t("research.models.protocol.backtestRun")} value={`#${bt.run_id}`} />
         <KeyValue
-          label="Trained on results"
-          value={`${utcDate(model.train_from)} – ${utcDate(model.train_to)} · ${int(model.n_train)} fixtures`}
+          label={t("research.common.session")}
+          value={session ? shortHash(session.session_uuid, 8) : "—"}
         />
-        <KeyValue label="Finished" value={utcDateTime(bt.finished_at)} />
-        <KeyValue label="Accuracy (not ranked)" value={`${Number(bt.accuracy_pct).toFixed(1)}%`} />
+        <KeyValue
+          label={t("research.common.datasetHash")}
+          value={session ? shortHash(session.dataset_hash) : "—"}
+        />
+        <KeyValue
+          label={t("research.models.protocol.trainedOn")}
+          value={t("research.models.protocol.trainedRange", {
+            count: model.n_train,
+            from: utcDate(model.train_from),
+            to: utcDate(model.train_to),
+            n: int(model.n_train),
+          })}
+        />
+        <KeyValue label={t("research.common.finished")} value={utcDateTime(bt.finished_at)} />
+        <KeyValue
+          label={t("research.models.protocol.accuracy")}
+          value={`${Number(bt.accuracy_pct).toFixed(1)}%`}
+        />
       </div>
       <div>
-        <div className="mb-1 text-label text-subtle-foreground">Coverage</div>
+        <div className="mb-1 text-label text-subtle-foreground">
+          {t("research.models.protocol.coverage")}
+        </div>
         {bt.coverage ? (
           <>
             <KeyValue
-              label="Predicted"
-              value={`${int(bt.coverage.predicted)} of ${int(bt.coverage.targets)}`}
+              label={t("research.models.protocol.predicted")}
+              value={t("research.models.protocol.predictedValue", {
+                predicted: int(bt.coverage.predicted),
+                targets: int(bt.coverage.targets),
+              })}
             />
-            <KeyValue label="Refits" value={int(bt.coverage.fits)} />
-            <KeyValue label="Failed fits" value={int(bt.coverage.failed_fits)} />
-            <KeyValue label="Without interval" value={int(bt.coverage.no_interval)} />
+            <KeyValue label={t("research.models.protocol.refits")} value={int(bt.coverage.fits)} />
+            <KeyValue
+              label={t("research.models.protocol.failedFits")}
+              value={int(bt.coverage.failed_fits)}
+            />
+            <KeyValue
+              label={t("research.models.protocol.noInterval")}
+              value={int(bt.coverage.no_interval)}
+            />
             {uncovered.map(([why, n]) => (
-              <KeyValue key={why} label={`Not predicted · ${int(n)}`} value={why} />
+              <KeyValue
+                key={why}
+                label={t("research.models.protocol.notPredicted", { n: int(n) })}
+                value={why}
+              />
             ))}
           </>
         ) : (
-          <StatusNotice status="not_available" reason="Coverage was not recorded." compact />
+          <StatusNotice
+            status="not_available"
+            reason={t("research.models.protocol.noCoverage")}
+            compact
+          />
         )}
         {selection ? (
           <div className="mt-4">
             <div className="mb-1 text-label text-subtle-foreground">
-              Hyper-parameters · chosen on{" "}
-              {seasonLabel(selection.validation_season ?? session?.validation_season)}
+              {t("research.models.protocol.chosenOn", {
+                season: seasonLabel(selection.validation_season ?? session?.validation_season),
+              })}
             </div>
-            <KeyValue label="Time decay ξ (per day)" value={String(selection.chosen.xi)} />
-            <KeyValue label="Shrinkage penalty" value={String(selection.chosen.penalty)} />
             <KeyValue
-              label="Candidates scored"
+              label={t("research.models.protocol.timeDecay")}
+              value={String(selection.chosen.xi)}
+            />
+            <KeyValue
+              label={t("research.models.protocol.shrinkage")}
+              value={String(selection.chosen.penalty)}
+            />
+            <KeyValue
+              label={t("research.models.protocol.candidates")}
               value={
                 selection.validation_logloss
-                  ? `${Object.keys(selection.validation_logloss).length} (validation log loss)`
-                  : "not stored in this session"
+                  ? t("research.models.protocol.candidatesValue", {
+                      n: Object.keys(selection.validation_logloss).length,
+                    })
+                  : t("research.models.protocol.notStored")
               }
             />
           </div>
@@ -806,37 +911,30 @@ function ProtocolView({
 function BettingTable({ models }: { models: ModelVersionSummary[] }) {
   const rows = models.filter((m) => m.latest_backtest?.betting);
   if (!rows.length) {
-    return (
-      <StatusNotice
-        status="not_available"
-        reason="No backtest with historical prices has been stored."
-      />
-    );
+    return <StatusNotice status="not_available" reason={t("research.models.betting.empty")} />;
   }
   const rule = rows[0]!.latest_backtest!.betting!.rule;
   const source = rows[0]!.latest_backtest!.betting!.odds_source;
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5 text-caption text-muted-foreground">
-        <StatusBadge tone="warning">Hypothetical</StatusBadge>
+        <StatusBadge tone="warning">{t("research.models.betting.hypothetical")}</StatusBadge>
         <InfoTip term="hypotheticalBetting" className="text-caption">
-          <span>
-            Backtest simulation · {rule} · prices: {source}
-          </span>
+          <span>{t("research.models.betting.simulation", { rule, source })}</span>
         </InfoTip>
       </div>
       <TableShell>
         <THead>
-          <TH>Model</TH>
-          <TH align="right">Fixtures priced</TH>
-          <TH align="right">Bets</TH>
-          <TH align="right">Profit (units)</TH>
+          <TH>{t("research.common.model")}</TH>
+          <TH align="right">{t("research.models.betting.fixturesPriced")}</TH>
+          <TH align="right">{t("research.models.betting.bets")}</TH>
+          <TH align="right">{t("research.models.betting.profit")}</TH>
           <TH align="right">
             <MetricLabel term="roi">ROI</MetricLabel>
           </TH>
-          <TH align="right">95% interval</TH>
+          <TH align="right">{t("research.models.betting.interval")}</TH>
           <TH align="right">
-            <MetricLabel term="drawdown">Max drawdown</MetricLabel>
+            <MetricLabel term="drawdown">{t("research.models.betting.drawdown")}</MetricLabel>
           </TH>
         </THead>
         <tbody>
@@ -845,7 +943,7 @@ function BettingTable({ models }: { models: ModelVersionSummary[] }) {
             const roi = b.roi_pct === null ? null : Number(b.roi_pct);
             return (
               <TRow key={m.version_id}>
-                <TD className="text-sm">{MODEL_LABEL[m.name] ?? m.name}</TD>
+                <TD className="text-sm">{modelLabel(m.name)}</TD>
                 <TD align="right">
                   <Numeric>{int(b.fixtures_priced)}</Numeric>
                 </TD>
@@ -858,7 +956,7 @@ function BettingTable({ models }: { models: ModelVersionSummary[] }) {
                 <TD align="right">
                   <Nullable
                     value={roi === null ? null : `${signed(roi, 1)}%`}
-                    reason="No bet met the rule."
+                    reason={t("research.models.betting.noBetMetRule")}
                     className={roi !== null && roi < 0 ? "numeric text-negative" : "numeric"}
                   />
                 </TD>
@@ -869,14 +967,14 @@ function BettingTable({ models }: { models: ModelVersionSummary[] }) {
                         ? null
                         : `[${signed(b.roi_ci_low, 1)}%, ${signed(b.roi_ci_high, 1)}%]`
                     }
-                    reason="Fewer than 30 bets: no interval is reported."
+                    reason={t("research.models.betting.fewBets")}
                     className="numeric text-muted-foreground"
                   />
                 </TD>
                 <TD align="right">
                   <Nullable
                     value={dec(b.max_drawdown_units, 1)}
-                    reason="No bets."
+                    reason={t("research.models.betting.noBets")}
                     className="numeric"
                   />
                 </TD>
@@ -896,22 +994,26 @@ function BettingTable({ models }: { models: ModelVersionSummary[] }) {
 function ShadowPicksLine() {
   const q = useLiveQuery(live.performance);
   const d = q.data?.data;
-  if (!q.data || !d) return <span className="text-subtle-foreground">Shadow picks: loading…</span>;
+  if (!q.data || !d) {
+    return <span className="text-subtle-foreground">{t("research.models.shadow.loading")}</span>;
+  }
   if (q.data.status !== "ok" || d.roi_pct === null) {
     return (
       <span>
-        <span className="text-label text-subtle-foreground">Shadow picks</span> —{" "}
-        {q.data.reason ?? d.note} See Performance.
+        <span className="text-label text-subtle-foreground">
+          {t("research.models.shadow.label")}
+        </span>{" "}
+        — {t("research.models.shadow.unavailable", { reason: q.data.reason ?? d.note })}
       </span>
     );
   }
   const roi = Number(d.roi_pct);
   return (
     <span>
-      <span className="text-label text-subtle-foreground">Shadow picks</span> — {d.settled} settled
-      at the captured price: ROI{" "}
-      <span className={roi > 0 ? "text-positive" : "text-negative"}>{d.roi_pct}%</span>, hit rate{" "}
-      {d.hit_rate}%. Not a betting record; the breakdown by model is in Performance.
+      <span className="text-label text-subtle-foreground">{t("research.models.shadow.label")}</span>{" "}
+      — {t("research.models.shadow.settled", { count: d.settled })}{" "}
+      <span className={roi > 0 ? "text-positive" : "text-negative"}>{d.roi_pct}%</span>,{" "}
+      {t("research.models.shadow.hitRate", { hitRate: d.hit_rate ?? "" })}
     </span>
   );
 }

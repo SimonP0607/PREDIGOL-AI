@@ -6,12 +6,12 @@ import { AnalyticsLive } from "@/live/AnalyticsLive";
 export const Route = createFileRoute("/admin/analytics")({
   head: () => ({
     meta: [
-      { title: "Analytics — Football Intelligence" },
+      { title: "Analytics · PrediGol Admin" },
       {
         name: "description",
         content: "Exploratory analysis across competitions, markets and time windows.",
       },
-      { property: "og:title", content: "Analytics — Football Intelligence" },
+      { property: "og:title", content: "Analytics · PrediGol Admin" },
       {
         property: "og:description",
         content: "Exploratory analysis across competitions, markets and time windows.",

@@ -16,7 +16,7 @@ import { formatTime, zoneAbbrev } from "@/lib/time";
 import {
   CommandPalette,
   destinationFor,
-  SEARCH_EMPTY,
+  searchEmpty,
   useEntitySearch,
 } from "@/components/system/CommandPalette";
 
@@ -87,7 +87,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
         <div className="flex items-center justify-between px-2">
           <span className="numeric text-caption text-subtle-foreground">local / {DATA_MODE}</span>
-          <StatusBadge tone="brand">Shadow</StatusBadge>
+          <StatusBadge tone="brand">{t("admin.shell.shadow")}</StatusBadge>
         </div>
       </div>
     </div>
@@ -112,7 +112,7 @@ function GlobalSearch({ onOpenPalette }: { onOpenPalette: () => void }) {
   return (
     <div ref={box} className="relative hidden min-w-0 flex-1 md:block md:max-w-md">
       <label className="relative flex items-center">
-        <span className="sr-only">Search fixtures, teams and models</span>
+        <span className="sr-only">{t("admin.shell.searchLabel")}</span>
         <Search
           aria-hidden
           className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-subtle-foreground"
@@ -144,7 +144,7 @@ function GlobalSearch({ onOpenPalette }: { onOpenPalette: () => void }) {
         <button
           type="button"
           onClick={onOpenPalette}
-          aria-label="Open command palette"
+          aria-label={t("admin.shell.openPalette")}
           className="numeric absolute right-1.5 rounded border border-border px-1 py-0.5 text-caption text-subtle-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           ⌘K
@@ -154,7 +154,7 @@ function GlobalSearch({ onOpenPalette }: { onOpenPalette: () => void }) {
       {open && term.trim() ? (
         <div className="absolute left-0 right-0 top-10 z-40 overflow-hidden rounded-md border border-border bg-card shadow-lg">
           {hits.length === 0 ? (
-            <p className="px-3 py-3 text-xs text-subtle-foreground">{SEARCH_EMPTY}</p>
+            <p className="px-3 py-3 text-xs text-subtle-foreground">{searchEmpty()}</p>
           ) : (
             <ul>
               {hits.map((h) => (
@@ -206,20 +206,22 @@ function LastSync() {
         ? "bg-positive"
         : "bg-subtle-foreground";
   const label = q.isError
-    ? "API unreachable"
+    ? t("admin.shell.apiUnreachable")
     : at
-      ? `Last payload ${formatTime(at)} ${zoneAbbrev(at)}`
+      ? t("admin.shell.lastPayload", { time: `${formatTime(at)} ${zoneAbbrev(at)}` })
       : q.isLoading
-        ? "Checking…"
-        : "No payload yet";
+        ? t("admin.shell.checking")
+        : t("admin.shell.noPayload");
   return (
     <span
       className="hidden items-center gap-1.5 text-caption text-muted-foreground lg:flex"
-      title={worker === false ? "The worker is not running: no capture will happen." : undefined}
+      title={worker === false ? t("admin.shell.workerDownHelp") : undefined}
     >
       <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", tone)} />
       <span className="numeric">{label}</span>
-      {worker === false ? <span className="text-negative">· worker down</span> : null}
+      {worker === false ? (
+        <span className="text-negative">· {t("admin.shell.workerDown")}</span>
+      ) : null}
     </span>
   );
 }
@@ -247,7 +249,7 @@ function Topbar({
       <div className="ml-auto flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
         <PageDataModeBadge />
         <span className="hidden xl:inline-flex">
-          <StatusBadge tone="warning">Research mode</StatusBadge>
+          <StatusBadge tone="warning">{t("admin.shell.researchMode")}</StatusBadge>
         </span>
         {LIVE_ENABLED ? <LastSync /> : null}
         <button

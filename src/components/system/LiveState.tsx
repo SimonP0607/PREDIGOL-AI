@@ -10,11 +10,12 @@ import { cn } from "@/lib/utils";
 import { EMPTY } from "@/lib/format";
 import { LiveApiError } from "@/lib/api/v1/client";
 import type { DataStatus, Section } from "@/lib/api/v1/types";
+import { t } from "@/lib/i18n";
 
-const STATUS: Record<Exclude<DataStatus, "ok">, { title: string; Icon: typeof Inbox }> = {
-  empty: { title: "Nothing here yet", Icon: Inbox },
-  insufficient_data: { title: "Insufficient data", Icon: Hourglass },
-  not_available: { title: "Not available yet", Icon: CircleSlash },
+const STATUS: Record<Exclude<DataStatus, "ok">, { title: () => string; Icon: typeof Inbox }> = {
+  empty: { title: () => t("admin.state.empty"), Icon: Inbox },
+  insufficient_data: { title: () => t("admin.state.insufficient"), Icon: Hourglass },
+  not_available: { title: () => t("admin.state.notAvailable"), Icon: CircleSlash },
 };
 
 export function StatusNotice({
@@ -29,7 +30,8 @@ export function StatusNotice({
   className?: string | undefined;
 }) {
   if (status === "ok") return null;
-  const { title, Icon } = STATUS[status];
+  const { title: titleOf, Icon } = STATUS[status];
+  const title = titleOf();
   return (
     <div
       data-status={status}
@@ -85,16 +87,16 @@ export function ApiErrorNotice({ error, className }: { error: unknown; className
       <Icon aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-negative" />
       <div className="text-foreground/85">
         <div className="font-medium text-foreground">
-          {unreachable ? "API not reachable" : "The API returned an error"}
+          {unreachable ? t("admin.state.apiUnreachable") : t("admin.state.apiError")}
         </div>
         <p className="mt-0.5">
-          {e ? e.message : "Unexpected error."}
-          {e?.requestId ? <span className="numeric"> · request {e.requestId}</span> : null}
+          {e ? e.message : t("admin.state.unexpected")}
+          {e?.requestId ? (
+            <span className="numeric"> · {t("admin.state.request", { id: e.requestId })}</span>
+          ) : null}
         </p>
         {unreachable ? (
-          <p className="mt-1 text-muted-foreground">
-            Nothing on this page is shown from memory or demo data while the API is down.
-          </p>
+          <p className="mt-1 text-muted-foreground">{t("admin.state.downNote")}</p>
         ) : null}
       </div>
     </div>
@@ -121,7 +123,7 @@ export function Nullable({
         <TooltipTrigger asChild>
           <button
             type="button"
-            aria-label={`No value: ${reason}`}
+            aria-label={t("admin.state.noValue", { reason })}
             className={cn(
               "cursor-help text-subtle-foreground underline decoration-dotted underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               className,

@@ -1,42 +1,60 @@
 import { Activity, Check, Clock, HelpCircle, TriangleAlert } from "lucide-react";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { DataState, Freshness } from "@/types/domain";
 
-const config: Record<
-  Freshness,
-  { label: string; className: string; Icon: typeof Check; description: string }
-> = {
+const config: Record<Freshness, { className: string; Icon: typeof Check }> = {
   live: {
-    label: "Live",
     className: "border-info/35 bg-info-soft text-info",
     Icon: Activity,
-    description: "Streaming updates in progress",
   },
   fresh: {
-    label: "Fresh",
     className: "border-positive/35 bg-positive-soft text-positive",
     Icon: Check,
-    description: "Captured within the freshness threshold",
   },
   aging: {
-    label: "Aging",
     className: "border-warning/35 bg-warning-soft text-warning",
     Icon: Clock,
-    description: "Approaching the freshness threshold",
   },
   stale: {
-    label: "Stale",
     className: "border-negative/35 bg-negative-soft text-negative",
     Icon: TriangleAlert,
-    description: "Older than the freshness threshold",
   },
   unknown: {
-    label: "Unknown",
     className: "border-border-strong bg-muted text-muted-foreground",
     Icon: HelpCircle,
-    description: "No capture recorded",
   },
 };
+
+function freshnessLabel(f: Freshness): string {
+  switch (f) {
+    case "live":
+      return t("admin.status.freshness.live");
+    case "fresh":
+      return t("admin.status.freshness.fresh");
+    case "aging":
+      return t("admin.status.freshness.aging");
+    case "stale":
+      return t("admin.status.freshness.stale");
+    case "unknown":
+      return t("admin.status.freshness.unknown");
+  }
+}
+
+function freshnessHelp(f: Freshness): string {
+  switch (f) {
+    case "live":
+      return t("admin.status.freshnessHelp.live");
+    case "fresh":
+      return t("admin.status.freshnessHelp.fresh");
+    case "aging":
+      return t("admin.status.freshnessHelp.aging");
+    case "stale":
+      return t("admin.status.freshnessHelp.stale");
+    case "unknown":
+      return t("admin.status.freshnessHelp.unknown");
+  }
+}
 
 /** Text + icon + colour. Colour is never the only carrier of meaning. */
 export function FreshnessBadge({
@@ -48,7 +66,9 @@ export function FreshnessBadge({
   detail?: string;
   className?: string;
 }) {
-  const { label, className: tone, Icon, description } = config[freshness];
+  const { className: tone, Icon } = config[freshness];
+  const label = freshnessLabel(freshness);
+  const description = freshnessHelp(freshness);
   return (
     <span
       title={detail ?? description}

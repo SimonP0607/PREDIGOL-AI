@@ -1,5 +1,5 @@
 /** Numbers in the reader's language: decimal odds, percentages, signed values. */
-import { intlTag } from "./index";
+import { getLocale, intlTag } from "./index";
 
 export const DASH = "—";
 
@@ -67,4 +67,38 @@ export function fmtLine(value: number | string | null | undefined, signed = fals
 
 export function toNumber(value: number | string | null | undefined): number | null {
   return num(value);
+}
+
+/*
+ * The Admin Console's research tables format with Number#toFixed. These keep that exact
+ * English output and give Spanish its own separators (2,10 · 52,3 % · 12.500).
+ */
+
+/** Like `n.toFixed(digits)`, in the reader's language. No thousands grouping. */
+export function localFixed(n: number, digits: number): string {
+  if (getLocale() === "en") return n.toFixed(digits);
+  return nf({
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+    useGrouping: false,
+  }).format(n);
+}
+
+/** `${(fraction * 100).toFixed(digits)}%` in English; "52,3 %" in Spanish. */
+export function localPct(fraction: number, digits: number, signed = false): string {
+  if (getLocale() === "en") {
+    return `${signed && fraction > 0 ? "+" : ""}${(fraction * 100).toFixed(digits)}%`;
+  }
+  return nf({
+    style: "percent",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+    ...(signed ? { signDisplay: "exceptZero" as const } : {}),
+  }).format(fraction);
+}
+
+/** Thousands separators: 12,500 in English, 12.500 in Spanish. */
+export function localInt(n: number): string {
+  if (getLocale() === "en") return n.toLocaleString("en-US");
+  return nf({}).format(n);
 }

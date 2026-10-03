@@ -8,9 +8,9 @@ const DESCRIPTION = "Players from line-ups and match statistics: search, squads 
 export const Route = createFileRoute("/admin/players/")({
   head: () => ({
     meta: [
-      { title: "Players — Football Intelligence" },
+      { title: "Players · PrediGol Admin" },
       { name: "description", content: DESCRIPTION },
-      { property: "og:title", content: "Players — Football Intelligence" },
+      { property: "og:title", content: "Players · PrediGol Admin" },
       { property: "og:description", content: DESCRIPTION },
     ],
   }),

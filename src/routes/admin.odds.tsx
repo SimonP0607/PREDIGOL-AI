@@ -31,13 +31,13 @@ import type { ValueRow } from "@/types/domain";
 export const Route = createFileRoute("/admin/odds")({
   head: () => ({
     meta: [
-      { title: "Odds Intelligence — Football Intelligence" },
+      { title: "Odds Intelligence · PrediGol Admin" },
       {
         name: "description",
         content:
           "Price capture, consensus construction and market movement across tracked bookmakers.",
       },
-      { property: "og:title", content: "Odds Intelligence — Football Intelligence" },
+      { property: "og:title", content: "Odds Intelligence · PrediGol Admin" },
       {
         property: "og:description",
         content: "Price capture, overround removal, movement and near-close snapshots.",

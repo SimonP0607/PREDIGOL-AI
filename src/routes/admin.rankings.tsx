@@ -6,12 +6,12 @@ import { RankingsLive } from "@/live/RankingsLive";
 export const Route = createFileRoute("/admin/rankings")({
   head: () => ({
     meta: [
-      { title: "Rankings — Football Intelligence" },
+      { title: "Rankings · PrediGol Admin" },
       {
         name: "description",
         content: "Model-derived strength rankings, separate from league tables.",
       },
-      { property: "og:title", content: "Rankings — Football Intelligence" },
+      { property: "og:title", content: "Rankings · PrediGol Admin" },
       {
         property: "og:description",
         content: "Model-derived strength rankings, separate from league tables.",

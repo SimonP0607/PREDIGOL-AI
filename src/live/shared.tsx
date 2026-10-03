@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { t, translateOr } from "@/lib/i18n";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
 import { cn } from "@/lib/utils";
 import type {
@@ -24,16 +25,31 @@ export function StatusGroupBadge({
 }) {
   if (match.awaiting_result) {
     return (
-      <span title="Kicked off, but the row still says it has not: the result has not been synced.">
-        <StatusBadge tone="warning">Awaiting result</StatusBadge>
+      <span title={t("admin.status.awaitingResultHelp")}>
+        <StatusBadge tone="warning">{t("admin.status.awaitingResult")}</StatusBadge>
       </span>
     );
   }
   return (
     <StatusBadge tone={groupTone[match.status_group]}>
-      {match.status_group === "finished" ? match.status_short : match.status_group}
+      {match.status_group === "finished" ? match.status_short : groupLabel(match.status_group)}
     </StatusBadge>
   );
+}
+
+function groupLabel(group: StatusGroup): string {
+  switch (group) {
+    case "scheduled":
+      return t("common.status.scheduled");
+    case "live":
+      return t("common.status.live");
+    case "finished":
+      return t("common.status.finished");
+    case "postponed":
+      return t("common.status.postponed");
+    case "cancelled":
+      return t("common.status.cancelled");
+  }
 }
 
 const componentTone: Record<ComponentStatus, BadgeTone> = {
@@ -44,7 +60,11 @@ const componentTone: Record<ComponentStatus, BadgeTone> = {
 };
 
 export function ComponentStatusBadge({ status }: { status: ComponentStatus }) {
-  return <StatusBadge tone={componentTone[status]}>{status}</StatusBadge>;
+  return (
+    <StatusBadge tone={componentTone[status]}>
+      {translateOr(`admin.status.component.${status}`, status)}
+    </StatusBadge>
+  );
 }
 
 const runTone: Record<RunSummary["status"], BadgeTone> = {
@@ -57,7 +77,11 @@ const runTone: Record<RunSummary["status"], BadgeTone> = {
 };
 
 export function RunStatusBadge({ status }: { status: RunSummary["status"] }) {
-  return <StatusBadge tone={runTone[status]}>{status}</StatusBadge>;
+  return (
+    <StatusBadge tone={runTone[status]}>
+      {translateOr(`admin.status.run.${status}`, status)}
+    </StatusBadge>
+  );
 }
 
 export function ScoreText({
@@ -72,7 +96,7 @@ export function ScoreText({
     score.pen_home !== null && score.pen_away !== null
       ? ` (${score.pen_home}-${score.pen_away} p)`
       : score.et_home !== null && score.et_away !== null
-        ? " (aet)"
+        ? ` ${t("admin.status.aet")}`
         : "";
   return (
     <span className={cn("numeric font-medium", className)}>
@@ -96,7 +120,7 @@ export function FixtureLink({
       className={cn("flex min-w-0 items-center gap-1.5 hover:text-primary", className)}
     >
       <span className="truncate">{match.home.name}</span>
-      <span className="shrink-0 text-subtle-foreground">v</span>
+      <span className="shrink-0 text-subtle-foreground">{t("common.vs")}</span>
       <span className="truncate">{match.away.name}</span>
     </Link>
   );
