@@ -182,7 +182,9 @@ def check_provider(conn: psycopg.Connection, daily_budget: int) -> Check:
         usage = read_usage(conn, budget=daily_budget)
         with conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(
-                "SELECT last_error, started_at FROM raw.ingestion_runs WHERE errors > 0 "
+                # Runs that spoke to the provider only: a database job's failure (a
+                # quality sweep, a pipeline) is not a provider error.
+                "SELECT last_error, started_at FROM raw.ingestion_runs WHERE errors > 0 AND api_calls > 0 "
                 "ORDER BY started_at DESC LIMIT 1"
             )
             err = cur.fetchone()

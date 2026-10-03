@@ -15,6 +15,8 @@ for name in "${targets[@]}"; do
   [[ -z "$pattern" ]] && { echo "unknown: $name (api, worker, web)"; continue; }
   pids="$(pgrep -f "$pattern" || true)"
   if [[ -z "$pids" ]]; then echo "$name: not running"; rm -f "$RUN/$name.pid"; continue; fi
+  # The supervisor (scripts/run-supervised) must not restart what we are stopping.
+  mkdir -p "$RUN"; touch "$RUN/$name.stop"
   kill -TERM $pids 2>/dev/null || true
   for _ in $(seq 1 20); do pgrep -f "$pattern" >/dev/null || break; sleep 0.5; done
   if pgrep -f "$pattern" >/dev/null; then kill -KILL $(pgrep -f "$pattern") 2>/dev/null || true; fi

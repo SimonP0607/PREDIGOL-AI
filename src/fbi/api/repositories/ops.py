@@ -31,7 +31,7 @@ def fixture_counts(conn: Conn, at: datetime) -> Row:
     r = fetch_one(conn, """
         SELECT count(*) FILTER (WHERE f.status_group = 'scheduled' AND f.kickoff_at BETWEEN %(at)s AND %(at)s + interval '24 hours') AS upcoming_24h,
                count(*) FILTER (WHERE f.status_group = 'scheduled' AND f.kickoff_at BETWEEN %(at)s AND %(at)s + interval '7 days') AS upcoming_7d,
-               count(*) FILTER (WHERE c.is_tracked AND f.kickoff_at < %(at)s AND f.status_group IN ('scheduled','live')) AS awaiting_result,
+               count(*) FILTER (WHERE c.is_tracked AND ((f.status_group = 'scheduled' AND f.kickoff_at < %(at)s - interval '15 minutes') OR (f.status_group = 'live' AND f.kickoff_at < %(at)s - interval '210 minutes'))) AS awaiting_result,
                count(*) FILTER (WHERE f.status_group = 'finished') AS finished,
                count(r.fixture_id) FILTER (WHERE f.status_group = 'finished') AS finished_with_result
         FROM core.fixtures f
@@ -88,7 +88,7 @@ def coverage_by_competition(conn: Conn, at: datetime, horizon_hours: int) -> lis
                   WHERE f2.competition_season_id = cs.id AND o.captured_at >= %(at)s - interval '24 hours') AS markets_seen_24h,
                (SELECT max(o.captured_at) FROM market.odds_snapshots o JOIN core.fixtures f2 ON f2.id = o.fixture_id
                   WHERE f2.competition_season_id = cs.id) AS last_capture_at,
-               count(DISTINCT f.id) FILTER (WHERE f.kickoff_at < %(at)s AND f.status_group IN ('scheduled','live')) AS fixtures_awaiting_result
+               count(DISTINCT f.id) FILTER (WHERE ((f.status_group = 'scheduled' AND f.kickoff_at < %(at)s - interval '15 minutes') OR (f.status_group = 'live' AND f.kickoff_at < %(at)s - interval '210 minutes'))) AS fixtures_awaiting_result
         FROM core.competitions c
         JOIN core.competition_seasons cs ON cs.competition_id = c.id
         LEFT JOIN core.fixtures f ON f.competition_season_id = cs.id

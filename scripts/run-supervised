@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Keep a host-mode service running: restart it when it dies, until it is stopped.
+#
+#   scripts/run-supervised NAME COMMAND [ARGS...]
+#
+# Used by scripts/dev-up for the API and the worker. A crash restarts the
+# service after 5 s, backing off to 5 min if it keeps crashing; a run that
+# lasted over 5 min resets the back-off. It does NOT restart:
+#   * after scripts/dev-down (which leaves $FBI_RUN_DIR/NAME.stop and sends TERM),
+#   * when the service exits 75 - the worker's "another worker holds the lock".
+# A machine restart is outside its reach: see docs/RUNNING.md for starting the
+# stack at Windows logon.
+set -uo pipefail
+name="$1"; shift
+RUN="${FBI_RUN_DIR:-$HOME/.fbi}"
+stop="$RUN/$name.stop"
+mkdir -p "$RUN"; rm -f "$stop"
+child=0
+on_term() {
+  touch "$stop"
+  if [[ $child -ne 0 ]]; then kill -TERM "$child" 2>/dev/null; wait "$child" 2>/dev/null; fi
+  exit 0
+}
+trap on_term TERM INT
+delay=5
+while :; do
+  started=$(date +%s)
+  "$@" &
+  child=$!
+  wait "$child"; code=$?
+  child=0
+  [[ -e "$stop" ]] && exit 0
+  if [[ $code -eq 75 ]]; then
+    echo "supervisor[$name]: another instance holds the lock - not restarting"; exit 75
+  fi
+  ran=$(( $(date +%s) - started ))
+  if (( ran > 300 )); then delay=5; else delay=$(( delay * 2 > 300 ? 300 : delay * 2 )); fi
+  echo "supervisor[$name]: exited with $code after ${ran}s; restarting in ${delay}s ($(date -u +%FT%TZ))"
+  sleep "$delay" & wait $!
+done

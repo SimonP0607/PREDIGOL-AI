@@ -147,8 +147,8 @@ def data_quality_snapshot(
             SELECT count(*) FROM core.fixtures f
             JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
             JOIN core.competitions c ON c.id = cs.competition_id
-            WHERE c.is_tracked AND f.kickoff_at < %s AND f.status_group IN ('scheduled','live')
-        """, (moment,)))
+            WHERE c.is_tracked AND ((f.status_group = 'scheduled' AND f.kickoff_at < %s - interval '15 minutes') OR (f.status_group = 'live' AND f.kickoff_at < %s - interval '210 minutes'))
+        """, (moment, moment)))
         with_result = int(_scalar(cur, """
             SELECT count(*) FROM core.fixtures f
             JOIN core.competition_seasons cs ON cs.id = f.competition_season_id

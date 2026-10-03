@@ -114,8 +114,8 @@ start() {  # name, pattern, dir, command...
   say "$name: started (pid $(cat "$RUN/$name.pid"), log $RUN/$name.log)"
 }
 
-want api && start api "[u]vicorn apps.api.main" "$ROOT" "$ROOT/.venv/bin/uvicorn" apps.api.main:app --host 127.0.0.1 --port "$API_PORT" --log-level warning
-want worker && start worker "[a]pps.worker" "$ROOT" "$PY" -m apps.worker.scheduler
+want api && start api "[u]vicorn apps.api.main" "$ROOT" "$ROOT/scripts/run-supervised" api "$ROOT/.venv/bin/uvicorn" apps.api.main:app --host 127.0.0.1 --port "$API_PORT" --log-level warning
+want worker && start worker "[a]pps.worker" "$ROOT" "$ROOT/scripts/run-supervised" worker "$PY" -m apps.worker.scheduler
 if want web; then
   if [[ -d "$WEB" ]]; then
     start web "[v]ite dev" "$WEB" bun run dev --host 127.0.0.1 --port "$WEB_PORT"
