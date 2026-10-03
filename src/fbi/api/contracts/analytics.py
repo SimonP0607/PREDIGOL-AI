@@ -279,6 +279,25 @@ class PicksOverview(Contract):
     recent_candidates: Section[list[CandidateRow]]
 
 
+class PerformanceSlice(Contract):
+    """Settled shadow bets in one group (a market, a model, a month...)."""
+
+    dimension: Literal["market", "model", "rule", "month", "odds_band"]
+    key: str
+    settled: int
+    staked_units: Decimal | None
+    profit_units: Decimal | None
+    roi_pct: Decimal | None
+    roi_ci95_pct: Decimal | None = Field(
+        description="Half-width of a normal 95% interval on the ROI from the spread of per-bet profits. "
+                    "Null below 30 bets: too few for the approximation.")
+    hit_rate: Decimal | None
+    mean_odds: Decimal | None
+    expected_profit_units: Decimal | None = Field(
+        description="What the model's own EV said these bets would make. Far above the real profit means the "
+                    "model's edge was not real.")
+
+
 class PerformanceSummary(Contract):
     settled: int
     pending: int
@@ -287,3 +306,4 @@ class PerformanceSummary(Contract):
     roi_pct: Decimal | None
     hit_rate: Decimal | None
     note: str
+    slices: list[PerformanceSlice] = Field(default_factory=list)

@@ -186,3 +186,43 @@ def settled_summary(conn: Conn) -> Row:
     """)
     assert r is not None
     return r
+
+
+PERFORMANCE_SLICES = """
+WITH bets AS (
+    SELECT DISTINCT ON (v.model_id, p.fixture_id, p.market_key, p.selection, p.line, p.odds_captured_at,
+                        p.decision_rule_version)
+           m.name AS model, p.market_key AS market, p.decision_rule_version AS rule,
+           to_char(date_trunc('month', f.kickoff_at), 'YYYY-MM') AS month,
+           CASE WHEN p.market_odds < 1.70 THEN '1: < 1.70' WHEN p.market_odds < 2.50 THEN '2: 1.70-2.49'
+                WHEN p.market_odds < 4.00 THEN '3: 2.50-3.99' ELSE '4: >= 4.00' END AS odds_band,
+           p.stake_units, p.market_odds, p.ev, pr.result_status, pr.profit_units
+      FROM picks.picks p
+      JOIN models.model_versions v ON v.id = p.model_version_id
+      JOIN models.model_registry m ON m.id = v.model_id
+      JOIN core.fixtures f ON f.id = p.fixture_id
+      LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
+     ORDER BY v.model_id, p.fixture_id, p.market_key, p.selection, p.line, p.odds_captured_at,
+              p.decision_rule_version, p.id
+), settled AS (
+    SELECT * FROM bets WHERE result_status IS NOT NULL AND result_status NOT IN ('pending')
+), keyed AS (
+    SELECT 'market' AS dimension, market AS key, * FROM settled
+    UNION ALL SELECT 'model', model, * FROM settled
+    UNION ALL SELECT 'rule', rule, * FROM settled
+    UNION ALL SELECT 'month', month, * FROM settled
+    UNION ALL SELECT 'odds_band', odds_band, * FROM settled
+)
+SELECT dimension, key, count(*)::int AS settled,
+       sum(stake_units) FILTER (WHERE result_status <> 'void') AS staked,
+       sum(profit_units) AS profit,
+       stddev_samp(profit_units) AS profit_sd,
+       count(*) FILTER (WHERE result_status IN ('win', 'half_win'))::int AS wins,
+       avg(market_odds) AS mean_odds,
+       sum(ev * stake_units) FILTER (WHERE result_status <> 'void') AS expected_profit
+  FROM keyed GROUP BY dimension, key ORDER BY dimension, key
+"""
+
+
+def performance_slices(conn: Conn) -> list[Row]:
+    return fetch_all(conn, PERFORMANCE_SLICES)

@@ -59,7 +59,7 @@ def get_runs(
     conn: Db,
     limit: Annotated[int, Query(ge=1, le=200)] = 20,
     job_type: Annotated[str | None, Query(max_length=40, pattern=r"^[a-z_]+$")] = None,
-    status: Literal["running", "completed", "partial", "failed", "aborted"] | None = None,
+    status: Literal["running", "completed", "partial", "failed", "aborted", "interrupted"] | None = None,
 ) -> Envelope[list[RunSummary]]:
     return ops.runs(conn, limit=limit, job_type=job_type, status=status)
 
@@ -138,7 +138,9 @@ JOBS_SQL = """
            (array_agg(status ORDER BY started_at DESC))[1] AS last_status,
            max(started_at) AS last_started_at,
            max(started_at) FILTER (WHERE status IN ('completed', 'partial')) AS last_success_at,
-           (array_agg(last_error ORDER BY started_at DESC) FILTER (WHERE last_error IS NOT NULL))[1] AS last_error,
+           -- the LAST run's error, not the latest error ever: a job that failed once
+           -- a week ago and has run cleanly since must not show that error as current.
+           (array_agg(last_error ORDER BY started_at DESC))[1] AS last_error,
            avg(duration_ms) FILTER (WHERE started_at > now() - interval '7 days')::int AS mean_duration_ms
     FROM raw.ingestion_runs WHERE job_type <> 'unspecified'
     GROUP BY job_type ORDER BY max(started_at) DESC

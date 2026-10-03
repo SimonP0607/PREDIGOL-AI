@@ -19,6 +19,7 @@ from fbi.api.contracts.analytics import (
     MarketComparison,
     ModelsOverview,
     ModelVersionSummary,
+    PerformanceSlice,
     PerformanceSummary,
     PickEvent,
     PickRow,
@@ -185,10 +186,33 @@ def performance(conn: Conn) -> Envelope[PerformanceSummary]:
         return unavailable(body, f"Insufficient sample: {settled} settled pick(s).",
                            status=DataStatus.INSUFFICIENT_DATA)
     roi = (profit or Decimal(0)) / staked * 100
-    body = PerformanceSummary(
+    body = PerformanceSummary(slices=_slices(conn),
         settled=settled, pending=pending, staked_units=staked, profit_units=profit,
         roi_pct=roi.quantize(Decimal("0.01")),
         hit_rate=(Decimal(int(s["wins"])) / settled * 100).quantize(Decimal("0.01")),
         note="Shadow picks at the captured price; not a betting record.",
     )
     return ok(body)
+
+
+def _slices(conn: Conn) -> list[PerformanceSlice]:
+    out: list[PerformanceSlice] = []
+    q2 = Decimal("0.01")
+    for r in repo.performance_slices(conn):
+        n = int(r["settled"])
+        staked = Decimal(r["staked"]) if r["staked"] is not None else None
+        profit = Decimal(r["profit"]) if r["profit"] is not None else None
+        roi = ci = None
+        if staked:
+            roi = ((profit or Decimal(0)) / staked * 100).quantize(q2)
+            if n >= 30 and r["profit_sd"] is not None:
+                ci = (Decimal("1.96") * Decimal(r["profit_sd"]) * Decimal(n).sqrt() / staked * 100).quantize(q2)
+        out.append(PerformanceSlice(
+            dimension=r["dimension"], key=str(r["key"]).split(": ", 1)[-1], settled=n, staked_units=staked,
+            profit_units=profit, roi_pct=roi, roi_ci95_pct=ci,
+            hit_rate=(Decimal(int(r["wins"])) / n * 100).quantize(q2) if n else None,
+            mean_odds=Decimal(r["mean_odds"]).quantize(q2) if r["mean_odds"] is not None else None,
+            expected_profit_units=Decimal(r["expected_profit"]).quantize(q2) if r["expected_profit"] is not None
+            else None,
+        ))
+    return out

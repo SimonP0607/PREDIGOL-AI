@@ -41,7 +41,8 @@ class MatchSummary(Contract):
     odds: OddsSummary
     predictions: int
     awaiting_result: bool = Field(
-        description="Kicked off but still recorded as scheduled or live: the row is out of date."
+        description="Kicked off and the row has not moved on: still scheduled 15 minutes after kick-off, "
+                    "or still live 3.5 hours after it. A match being played is live, not awaiting."
     )
 
 

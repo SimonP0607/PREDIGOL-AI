@@ -30,6 +30,25 @@ FREE_PLAN_HORIZON_MIN = 1440
 further out than this cannot be captured - it is not missed, it is unreachable."""
 
 
+STILL_SCHEDULED_AFTER = timedelta(minutes=15)
+STILL_LIVE_AFTER = timedelta(hours=3, minutes=30)
+
+
+def awaiting_result(kickoff_at: datetime, status_group: str, moment: datetime) -> bool:
+    """Kicked off and the row has not moved on as it should have.
+
+    A match being played is NOT awaiting its result - it is live, and the live
+    follower updates it every minute. What is suspicious is a row still
+    'scheduled' a quarter of an hour after kick-off, or still 'live' longer than
+    any match with extra time and penalties lasts.
+    """
+    if status_group == "scheduled":
+        return kickoff_at < moment - STILL_SCHEDULED_AFTER
+    if status_group == "live":
+        return kickoff_at < moment - STILL_LIVE_AFTER
+    return False
+
+
 def summary(row: Row, at: datetime | None = None) -> MatchSummary:
     moment = at or now()
     score = None
@@ -59,7 +78,7 @@ def summary(row: Row, at: datetime | None = None) -> MatchSummary:
             near_close_snapshots=row["near_close_snapshots"],
         ),
         predictions=row["predictions"],
-        awaiting_result=row["kickoff_at"] < moment and row["status_group"] in ("scheduled", "live"),
+        awaiting_result=awaiting_result(row["kickoff_at"], row["status_group"], moment),
     )
 
 

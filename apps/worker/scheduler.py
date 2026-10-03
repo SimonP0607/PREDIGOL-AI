@@ -61,6 +61,7 @@ from fbi.ops.heartbeat import (
     last_success,
     next_run_after,
 )
+from fbi.ops.reaper import boot_time, reap_interrupted_runs
 from fbi.ops.worker_lock import WorkerLock, holder
 
 log = structlog.get_logger("worker")
@@ -99,6 +100,17 @@ recover - was never captured. Under the LEAGUE strategy the wider horizon costs 
 same one request per competition-season."""
 RESULTS_SYNC_HOURS = int(os.environ.get("FBI_RESULTS_SYNC_HOURS", "6"))
 RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
+QUALITY_SWEEP_HOURS = int(os.environ.get("FBI_QUALITY_SWEEP_HOURS", "6"))
+LIVE_MATCH_SECONDS = int(os.environ.get("FBI_LIVE_MATCH_SECONDS", "60"))
+LIVE_MATCH_MAX_REQUESTS = int(os.environ.get("FBI_LIVE_MATCH_MAX_REQUESTS", "10"))
+LIVE_MATCH_RESERVE = int(os.environ.get("FBI_LIVE_MATCH_RESERVE", "3000"))
+"""Matches in play are followed through the fixture feed every minute: state, events,
+statistics and line-ups for 20 fixtures per request (fbi.ingestion.live_match). It stops
+when fewer than LIVE_MATCH_RESERVE requests are left today, so the odds capture - which
+comes first - always keeps its share."""
+"""The sweep reads the database only (about 10 s). It used to be run by hand, so the
+Data Quality page showed whatever the last manual run found - two days old after
+the machine was off."""
 BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "1" if PAID_PLAN else "6"))
 BACKFILL_MAX_PER_RUN = int(os.environ.get("FBI_BACKFILL_MAX_PER_RUN", "1500" if PAID_PLAN else "6"))
 LIVE_TICK_SECONDS = int(os.environ.get(
@@ -218,6 +230,30 @@ async def _live_tick() -> None:
                  accounting_holds=report.accounting_holds)
 
 
+async def _live_match_tick() -> None:
+    """Follow tracked matches in play. Spends nothing when none is."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.live_match import capture_live_matches, fixtures_to_follow
+    from fbi.providers.api_football import ApiFootballProvider
+    from fbi.providers.quota import read_usage
+
+    cfg = settings.api_football
+    with _connect() as conn:
+        if not fixtures_to_follow(conn, at=now()):
+            return
+        remaining = read_usage(conn, budget=min(cfg.daily_budget, cfg.per_day_limit)).remaining
+        if remaining < LIVE_MATCH_RESERVE:
+            log.warning("live_match.skipped", reason="quota reserve", remaining=remaining)
+            return
+        new_run_id()
+        provider = ApiFootballProvider(_client())
+        try:
+            await capture_live_matches(conn, provider, max_requests=LIVE_MATCH_MAX_REQUESTS)
+        finally:
+            await provider.aclose()
+
+
 async def _daily_fixtures_sync() -> None:
     """Refresh the fixture list for active competitions.
 
@@ -262,6 +298,9 @@ async def _results_sync() -> None:
         provider = ApiFootballProvider(_client())
         try:
             await sync_results(conn, provider, lookback_days=RESULTS_LOOKBACK_DAYS)
+            # What the date sweep left behind (a day the worker was off): by id.
+            from fbi.ingestion.live_match import repair_stale_results
+            await repair_stale_results(conn, provider)
         finally:
             await provider.aclose()
 
@@ -304,6 +343,34 @@ def _pipeline_now() -> None:
             run_pipeline(conn, at=now(), code_version=code_version())
     except Exception as exc:  # the capture has already been committed
         log.error("pipeline.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+def _quality_sweep_now() -> None:
+    """Record what is wrong, never repair it. Failures are logged and in the ledger."""
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+    from fbi.quality.detect import sweep
+
+    try:
+        with _connect() as conn:
+            ledger = RunLedger(conn)
+            run_id = ledger.open("quality_sweep", params={"apply": True, "source": "worker"})
+            counters = RunCounters()
+            report = None
+            try:
+                report = sweep(conn, run_id=run_id, apply=True)
+                counters.rows_inserted = report.issues_opened
+                counters.rows_updated = report.issues_seen_again
+            finally:
+                ledger.close(run_id, counters,
+                             notes=f"{len(report.checks)} checks" if report else "the sweep did not finish")
+                conn.commit()
+    except Exception as exc:  # a sweep problem must never stop the capture
+        log.error("quality_sweep.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _quality_sweep() -> None:
+    new_run_id()
+    await asyncio.to_thread(_quality_sweep_now)
 
 
 async def _pipeline() -> None:
@@ -423,6 +490,12 @@ async def main() -> None:
                   action="not starting: stop the other worker first (scripts/dev-down worker, "
                          "or docker compose stop worker)")
         raise SystemExit(EXIT_ANOTHER_WORKER)
+    # Holding the lock means no other worker is alive; runs older than this
+    # machine's boot belonged to a process that is gone (fbi.ops.reaper).
+    with _connect() as conn:
+        reaped = reap_interrupted_runs(conn, boot_time())
+    if reaped:
+        log.warning("worker.reaped_interrupted_runs", run_ids=reaped)
     scheduler = AsyncIOScheduler(timezone="UTC")
     _scheduler = scheduler
     moment = now()
@@ -434,6 +507,7 @@ async def main() -> None:
         fixtures_next = next_run_after(last_success(conn, "fixtures_sync"), timedelta(hours=FIXTURES_SYNC_HOURS), moment)
         results_next = next_run_after(last_success(conn, "results_sync"), timedelta(hours=RESULTS_SYNC_HOURS), moment)
         backfill_next = next_run_after(last_success(conn, "historical_backfill"), timedelta(hours=BACKFILL_HOURS), moment)
+        sweep_next = next_run_after(last_success(conn, "quality_sweep"), timedelta(hours=QUALITY_SWEEP_HOURS), moment)
 
     # A tick that could not start on time is still worth running late, and how late is
     # set by the capture tolerance - NOT by the interval. Tying it to the interval made
@@ -451,6 +525,9 @@ async def main() -> None:
     scheduler.add_job(_live_tick, "interval", seconds=LIVE_TICK_SECONDS, id="live_odds",
                       max_instances=1, coalesce=True,
                       misfire_grace_time=LIVE_TICK_SECONDS, next_run_time=moment)
+    scheduler.add_job(_live_match_tick, "interval", seconds=LIVE_MATCH_SECONDS, id="live_match",
+                      max_instances=1, coalesce=True, misfire_grace_time=LIVE_MATCH_SECONDS,
+                      next_run_time=moment + timedelta(seconds=20))
     scheduler.add_job(_daily_fixtures_sync, "interval", hours=FIXTURES_SYNC_HOURS, id="fixtures_sync",
                       max_instances=1, coalesce=True, misfire_grace_time=3600, next_run_time=fixtures_next)
     scheduler.add_job(_results_sync, "interval", hours=RESULTS_SYNC_HOURS, id="results_sync",
@@ -466,6 +543,9 @@ async def main() -> None:
                       next_run_time=moment + timedelta(minutes=2))
     scheduler.add_job(_notify, "interval", minutes=NOTIFY_MINUTES, id="notifier", max_instances=1, coalesce=True,
                       misfire_grace_time=NOTIFY_MINUTES * 60, next_run_time=moment + timedelta(minutes=3))
+    scheduler.add_job(_quality_sweep, "interval", hours=QUALITY_SWEEP_HOURS, id="quality_sweep",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600,
+                      next_run_time=max(sweep_next, moment + timedelta(minutes=10)))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     scheduler.start()

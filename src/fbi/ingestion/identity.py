@@ -41,6 +41,8 @@ class IdentityReport:
     memberships_written: int = 0
     lineups_linked: int = 0
     skipped_no_name: int = 0
+    skipped_no_id: int = 0
+    """People the provider sent with id 0: an unidentified player is not an identity."""
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -167,6 +169,11 @@ def apply_people(
     out = report if report is not None else IdentityReport()
     with conn.cursor(row_factory=tuple_row) as cur:
         for p in players:
+            if p.provider_id <= 0:
+                # The provider's "we do not know who this is". Writing it made one
+                # core.players row out of 3,926 different people across 3,926 matches.
+                out.skipped_no_id += 1
+                continue
             if not p.name:
                 out.skipped_no_name += 1
                 continue
@@ -186,6 +193,9 @@ def apply_people(
             if cur.fetchone() is not None:
                 out.players_written += 1
         for c in coaches:
+            if c.provider_id <= 0:
+                out.skipped_no_id += 1
+                continue
             if not c.name:
                 out.skipped_no_name += 1
                 continue

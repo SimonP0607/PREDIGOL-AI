@@ -17,6 +17,8 @@
 # addition to it: a service already running in a container is left to it, and
 # the worker itself refuses to start while another one holds its database lock.
 set -euo pipefail
+# bun lives in ~/.bun/bin, which only interactive shells (.bashrc) put on PATH.
+export PATH="$HOME/.bun/bin:$PATH"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB="${FBI_WEB_DIR:-$HOME/projects/football-intelligence-hub}"
@@ -44,7 +46,11 @@ running() { pgrep -f "$1" >/dev/null 2>&1; }
 # A service already running in compose mode (container fbi-<name>).
 in_compose() {
   command -v docker >/dev/null 2>&1 || return 1
-  [[ -n "$(docker ps -q --filter "name=^fbi-$1\$" --filter status=running 2>/dev/null)" ]]
+  # Exit status AND a container id: Docker Desktop's WSL shim prints a help
+  # text to stdout when integration is off, which is not a running container.
+  local ids
+  ids="$(docker ps -q --filter "name=^fbi-$1\$" --filter status=running 2>/dev/null)" || return 1
+  [[ "$ids" =~ ^[0-9a-f]{12} ]]
 }
 
 backup() {
@@ -53,7 +59,12 @@ backup() {
   mkdir -p "$dir"
   local ok=0
   if command -v docker >/dev/null 2>&1 && docker ps -q --filter "name=^fbi-postgres\$" | grep -q .; then
-    docker exec fbi-postgres pg_dump -U fbi -Fc fbi >"$file" && ok=1
+    # Dump inside the container and copy the file out: streaming docker.exe stdout
+    # through WSL interop stalls on a multi-GB database and leaves an empty file.
+    local tmp="/tmp/$(basename "$file")"
+    docker exec fbi-postgres pg_dump -U fbi -Fc -f "$tmp" fbi </dev/null \
+      && docker cp "fbi-postgres:$tmp" "$file" </dev/null && ok=1
+    docker exec fbi-postgres rm -f "$tmp" </dev/null || true
   else
     pg_dump -Fc -f "$file" "$(cd "$ROOT" && "$PY" -c 'from fbi.core.config import settings; print(settings.database.psycopg_url)')" && ok=1
   fi

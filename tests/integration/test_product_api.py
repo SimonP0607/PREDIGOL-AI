@@ -534,3 +534,45 @@ def test_the_operational_endpoints_cannot_write(client: TestClient, dataset: dic
     not routed."""
     for path in ("/api/v1/data-quality/registry", "/api/v1/data-quality/checks", "/api/v1/provider"):
         assert client.post(path).status_code in {404, 405}
+
+
+def test_match_center_detail_is_honest(client: TestClient, dataset: dict[str, int]) -> None:
+    body = get(client, f"/api/v1/matches/{dataset['f1']}/center")
+    assert body["status"] == "ok"
+    c = body["data"]
+    # No detail payload in the dataset: every detail block says so, with a reason, never a zero.
+    for block in ("statistics", "events", "lineups", "players", "absences", "standings", "live_odds"):
+        assert c[block]["status"] == "empty" and c[block]["data"] == [] and c[block]["reason"], block
+    # Form is computed from stored results only: Man Utd's one earlier match was the 0-0 (F5).
+    home_form = next(t for t in c["form"]["data"] if t["side"] == "home")
+    assert [m["result"] for m in home_form["matches"]] == ["D"]
+    assert home_form["matches"][0]["fixture_id"] == dataset["f5"]
+    assert c["h2h"]["status"] == "empty"
+    future = get(client, f"/api/v1/matches/{dataset['f3']}/center")["data"]
+    assert "not started" in future["statistics"]["reason"]
+    missing = get(client, "/api/v1/matches/99999999/center")
+    assert missing["status"] == "empty" and missing["data"] is None
+
+
+def test_live_board_says_when_nothing_is_in_play(client: TestClient) -> None:
+    body = get(client, "/api/v1/live")
+    assert body["status"] == "empty" and body["data"]["matches"] == []
+    assert "in play" in body["reason"]
+
+
+def test_players_endpoints_answer_without_inventing(client: TestClient) -> None:
+    body = get(client, "/api/v1/players?q=zzzz-nobody")
+    assert body["status"] == "empty" and body["data"] == [] and body["reason"]
+    missing = get(client, "/api/v1/players/99999999")
+    assert missing["status"] == "empty" and missing["data"] is None
+    get(client, "/api/v1/players?q=a&limit=500", status=422)
+
+
+def test_admin_overview_reports_the_system(client: TestClient) -> None:
+    body = get(client, "/api/v1/admin/overview")
+    assert body["status"] == "ok"
+    d = body["data"]
+    assert d["schema_revision"] and d["quota"]["budget"] >= 0
+    assert {c["label"] for c in d["captures"]} >= {"Pre-match prices, last hour", "Matches priced in play now"}
+    assert d["migration"]["status"] in ("ok", "not_available")
+    assert d["errors"]["status"] in ("ok", "empty")

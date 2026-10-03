@@ -67,17 +67,29 @@ def teams_of(conn: Conn, competition_id: int) -> list[Row]:
 
 
 _TEAMS = """
+-- Appearances as two plain joins (home side, away side) aggregated once. The
+-- previous form joined teams to fixtures ON t.id IN (home, away): a nested loop
+-- of 8,165 teams by 216,000 fixtures that hit the 10 s statement timeout, so the
+-- Teams page answered 500.
+WITH apps AS (
+    SELECT f.home_team_id AS team_id, f.id AS fixture_id, cs.competition_id
+      FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+    UNION ALL
+    SELECT f.away_team_id, f.id, cs.competition_id
+      FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+), agg AS (
+    SELECT a.team_id, count(DISTINCT a.fixture_id) AS fixtures, count(DISTINCT r.fixture_id) AS results
+      FROM apps a LEFT JOIN core.fixture_results r ON r.fixture_id = a.fixture_id
+     WHERE %(competition_id)s::bigint IS NULL OR a.competition_id = %(competition_id)s::bigint
+     GROUP BY a.team_id
+)
 SELECT t.id, t.provider_team_id, t.name, t.country, t.venue_id,
-       count(DISTINCT f.id) AS fixtures, count(DISTINCT r.fixture_id) AS results
+       COALESCE(agg.fixtures, 0) AS fixtures, COALESCE(agg.results, 0) AS results
 FROM core.teams t
-LEFT JOIN core.fixtures f ON t.id IN (f.home_team_id, f.away_team_id)
-LEFT JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
+LEFT JOIN agg ON agg.team_id = t.id
 WHERE (%(q)s::text IS NULL OR t.name ILIKE %(q)s::text)
   AND (%(team_id)s::bigint IS NULL OR t.id = %(team_id)s::bigint)
-  AND (%(competition_id)s::bigint IS NULL OR cs.competition_id = %(competition_id)s::bigint)
-GROUP BY t.id
-HAVING %(competition_id)s::bigint IS NULL OR count(DISTINCT f.id) > 0
+  AND (%(competition_id)s::bigint IS NULL OR agg.fixtures > 0)
 ORDER BY t.name
 LIMIT %(limit)s OFFSET %(offset)s
 """

@@ -74,7 +74,7 @@ class RunSummary(Contract):
     id: int
     job_type: str
     job_name: str
-    status: Literal["running", "completed", "partial", "failed", "aborted"]
+    status: Literal["running", "completed", "partial", "failed", "aborted", "interrupted"]
     started_at: datetime
     finished_at: datetime | None
     duration_ms: int | None

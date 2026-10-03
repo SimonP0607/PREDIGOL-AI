@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from fbi.api import errors
-from fbi.api.routers import analyst, explorer, football, market, system
+from fbi.api.routers import analyst, center, explorer, football, market, system
 from fbi.api.services.ops import VERSION
 from fbi.core.config import settings
 from fbi.core.logging import configure
@@ -116,7 +116,7 @@ def create_app() -> FastAPI:
                  ms=elapsed_ms, request_id=rid)
         return response
 
-    for r in (system.router, football.router, market.router, explorer.router, analyst.router):
+    for r in (system.router, football.router, market.router, explorer.router, analyst.router, center.router):
         app.include_router(r, prefix="/api/v1")
     # The original unversioned health endpoints stay where monitors expect them.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)
