@@ -4,6 +4,7 @@
  * betting performance are separate panels, and the betting one is labelled
  * hypothetical because it is a backtest simulation, not a record of bets.
  */
+import { t } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -100,9 +101,8 @@ export function ModelsLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Research" }, { label: "Models" }]}
-        title="Models"
-        description="A model is judged against the de-vigged market, on the same fixtures, out of sample. Predictive quality and betting performance are separate questions."
+        title={t("admin.pages.models.title")}
+        description={t("admin.pages.models.description")}
       />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       {session && tested.length ? (

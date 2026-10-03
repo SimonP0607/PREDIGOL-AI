@@ -1,4 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { getTimeZone, zoneAbbrev } from "@/lib/time";
+import { t } from "@/lib/i18n";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, MetricCard, Panel, WarningBanner } from "@/components/primitives/Panel";
 import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
@@ -30,7 +32,10 @@ export function OverviewLive() {
   if (overview.isError) {
     return (
       <div className="space-y-5">
-        <PageHeader title="Overview" description="Operations view, read from the API." />
+        <PageHeader
+          title={t("admin.pages.overview.title")}
+          description={t("admin.pages.overview.description")}
+        />
         <ApiErrorNotice error={overview.error} />
       </div>
     );
@@ -41,8 +46,8 @@ export function OverviewLive() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Overview"
-        description="Operations view. Every figure below is read from the API; nothing is estimated or filled in."
+        title={t("admin.pages.overview.title")}
+        description={t("admin.pages.overview.description")}
         actions={<StatusBadge tone="brand">Shadow mode</StatusBadge>}
       />
 
@@ -50,7 +55,7 @@ export function OverviewLive() {
         <Cell
           label="Today"
           value={o ? utcDate(overview.data?.meta.generated_at) : null}
-          hint="All timestamps in UTC"
+          hint={`${getTimeZone()} · ${zoneAbbrev()}`}
         />
         <Cell
           label="Fixtures stored"

@@ -14,18 +14,52 @@
     "DC": "Double ch."
   },
   "selection": {
-    "1X2": { "Home": "{home} to win", "Draw": "Draw", "Away": "{away} to win" },
-    "OU": { "Over": "Over {line} goals", "Under": "Under {line} goals" },
-    "BTTS": { "Yes": "Both teams score: Yes", "No": "Both teams score: No" },
-    "AH": { "Home": "{home} {line}", "Away": "{away} {line}" },
-    "DC": { "1X": "{home} or draw", "12": "{home} or {away}", "X2": "Draw or {away}" }
+    "1X2": {
+      "Home": "{home} to win",
+      "Draw": "Draw",
+      "Away": "{away} to win"
+    },
+    "OU": {
+      "Over": "Over {line} goals",
+      "Under": "Under {line} goals"
+    },
+    "BTTS": {
+      "Yes": "Both teams score: Yes",
+      "No": "Both teams score: No"
+    },
+    "AH": {
+      "Home": "{home} {line}",
+      "Away": "{away} {line}"
+    },
+    "DC": {
+      "1X": "{home} or draw",
+      "12": "{home} or {away}",
+      "X2": "Draw or {away}"
+    }
   },
   "selectionShort": {
-    "1X2": { "Home": "1", "Draw": "X", "Away": "2" },
-    "OU": { "Over": "Over {line}", "Under": "Under {line}" },
-    "BTTS": { "Yes": "Yes", "No": "No" },
-    "AH": { "Home": "1 {line}", "Away": "2 {line}" },
-    "DC": { "1X": "1X", "12": "12", "X2": "X2" }
+    "1X2": {
+      "Home": "1",
+      "Draw": "X",
+      "Away": "2"
+    },
+    "OU": {
+      "Over": "Over {line}",
+      "Under": "Under {line}"
+    },
+    "BTTS": {
+      "Yes": "Yes",
+      "No": "No"
+    },
+    "AH": {
+      "Home": "1 {line}",
+      "Away": "2 {line}"
+    },
+    "DC": {
+      "1X": "1X",
+      "12": "12",
+      "X2": "X2"
+    }
   },
   "gate": {
     "not_qualified": "The model has not beaten the market in its backtest",
@@ -40,7 +74,8 @@
     "non_positive_ev": "No value at the current price",
     "same_fixture": "Another selection from the same match",
     "shared_team": "Team already in another selection",
-    "duplicate_selection": "Duplicate selection"
+    "duplicate_selection": "Duplicate selection",
+    "price_outlier": "Price far above the market consensus"
   },
   "reason": {
     "no_qualified_picks": "There are not enough qualified selections today.",

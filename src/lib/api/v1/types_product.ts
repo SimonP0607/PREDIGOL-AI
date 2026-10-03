@@ -119,6 +119,8 @@ export interface BestPrice {
   fair_odds: Dec;
   /** best_odds * p_fair - 1. */
   price_edge: Dec;
+  /** More than 25% above fair: very likely one book's stale or mistaken quote. Never highlighted. */
+  outlier?: boolean;
   n_bookmakers: number;
   as_of: Iso;
 }

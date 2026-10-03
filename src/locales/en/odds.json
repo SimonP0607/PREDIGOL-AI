@@ -10,7 +10,7 @@
   },
   "window": {
     "label": "Kick-off within",
-    "hours": "{count}\u00a0h"
+    "hours": "{count} h"
   },
   "pricesUpdated": "Prices updated {when}",
   "highlights": {
@@ -25,8 +25,8 @@
     "none": "No qualified value opportunity in this market right now."
   },
   "board": {
-    "summary_one": "{count} match in the next {hours}\u00a0h",
-    "summary_other": "{count} matches in the next {hours}\u00a0h",
+    "summary_one": "{count} match in the next {hours} h",
+    "summary_other": "{count} matches in the next {hours} h",
     "line": "Line",
     "fair": "fair {odds}",
     "noPrice": "No price",
@@ -38,7 +38,9 @@
     "bestSr": "Best value in this match.",
     "emptyTitle": "No matches with odds in this window",
     "emptyBody": "Once bookmakers publish prices for the upcoming matches, they will show up here.",
-    "widen": "Show the next {hours}\u00a0h"
+    "widen": "Show the next {hours} h",
+    "outlier": "Unusual price",
+    "outlierHelp": "Far above the fair price: most likely one bookmaker's stale or mistaken quote."
   },
   "movement": {
     "toggle": "Movement",

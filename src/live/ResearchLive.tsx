@@ -4,6 +4,7 @@
  * only); the results live in Models. Settings shows the configuration the
  * running system actually uses - changed on the host, never from the browser.
  */
+import { t } from "@/lib/i18n";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel, WarningBanner } from "@/components/primitives/Panel";
@@ -30,9 +31,8 @@ export function BacktestingLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Research" }, { label: "Backtesting" }]}
-        title="Backtesting"
-        description="The walk-forward protocol as it was run. Nothing is re-run in the browser; results are in Models."
+        title={t("admin.pages.backtesting.title")}
+        description={t("admin.pages.backtesting.description")}
       />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       {!d ? (
@@ -190,9 +190,8 @@ export function SettingsLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "System" }, { label: "Settings" }]}
-        title="Settings"
-        description="The configuration the running system uses, read-only. It changes on the host (.env, config/competitions.yaml, a new rule version) - never from the browser."
+        title={t("admin.pages.settings.title")}
+        description={t("admin.pages.settings.description")}
       />
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel

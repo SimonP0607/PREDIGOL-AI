@@ -304,13 +304,29 @@ function PriceCell({
             title={t("odds.board.edgeHelp")}
             className={cn(
               "numeric shrink-0 text-[0.68rem] font-semibold",
-              edge !== null && edge > 0 ? "text-positive" : "text-subtle-foreground",
+              p.outlier
+                ? "text-warning"
+                : edge !== null && edge > 0
+                  ? "text-positive"
+                  : "text-subtle-foreground",
             )}
           >
             {fmtSignedPct(p.price_edge)}
           </span>
         </div>
-        <OddsPill odds={p.best_odds} best={slot.best} className="w-full" />
+        <OddsPill
+          odds={p.best_odds}
+          best={slot.best}
+          className={cn("w-full", p.outlier && "opacity-60")}
+        />
+        {p.outlier ? (
+          <span
+            title={t("odds.board.outlierHelp")}
+            className="truncate text-caption font-medium text-warning"
+          >
+            {t("odds.board.outlier")}
+          </span>
+        ) : null}
         <span
           title={t("odds.board.bookmakers", { count: p.n_bookmakers })}
           className="truncate text-caption text-muted-foreground"

@@ -14,18 +14,52 @@
     "DC": "Doble op."
   },
   "selection": {
-    "1X2": { "Home": "Gana {home}", "Draw": "Empate", "Away": "Gana {away}" },
-    "OU": { "Over": "Más de {line} goles", "Under": "Menos de {line} goles" },
-    "BTTS": { "Yes": "Ambos marcan: Sí", "No": "Ambos marcan: No" },
-    "AH": { "Home": "{home} {line}", "Away": "{away} {line}" },
-    "DC": { "1X": "{home} o empate", "12": "{home} o {away}", "X2": "Empate o {away}" }
+    "1X2": {
+      "Home": "Gana {home}",
+      "Draw": "Empate",
+      "Away": "Gana {away}"
+    },
+    "OU": {
+      "Over": "Más de {line} goles",
+      "Under": "Menos de {line} goles"
+    },
+    "BTTS": {
+      "Yes": "Ambos marcan: Sí",
+      "No": "Ambos marcan: No"
+    },
+    "AH": {
+      "Home": "{home} {line}",
+      "Away": "{away} {line}"
+    },
+    "DC": {
+      "1X": "{home} o empate",
+      "12": "{home} o {away}",
+      "X2": "Empate o {away}"
+    }
   },
   "selectionShort": {
-    "1X2": { "Home": "1", "Draw": "X", "Away": "2" },
-    "OU": { "Over": "Más {line}", "Under": "Menos {line}" },
-    "BTTS": { "Yes": "Sí", "No": "No" },
-    "AH": { "Home": "1 {line}", "Away": "2 {line}" },
-    "DC": { "1X": "1X", "12": "12", "X2": "X2" }
+    "1X2": {
+      "Home": "1",
+      "Draw": "X",
+      "Away": "2"
+    },
+    "OU": {
+      "Over": "Más {line}",
+      "Under": "Menos {line}"
+    },
+    "BTTS": {
+      "Yes": "Sí",
+      "No": "No"
+    },
+    "AH": {
+      "Home": "1 {line}",
+      "Away": "2 {line}"
+    },
+    "DC": {
+      "1X": "1X",
+      "12": "12",
+      "X2": "X2"
+    }
   },
   "gate": {
     "not_qualified": "El modelo no ha superado al mercado en su backtest",
@@ -40,7 +74,8 @@
     "non_positive_ev": "Sin valor al precio actual",
     "same_fixture": "Otra selección del mismo partido",
     "shared_team": "Equipo repetido en otra selección",
-    "duplicate_selection": "Selección repetida"
+    "duplicate_selection": "Selección repetida",
+    "price_outlier": "Precio atípico frente al consenso del mercado"
   },
   "reason": {
     "no_qualified_picks": "No hay suficientes selecciones calificadas hoy.",

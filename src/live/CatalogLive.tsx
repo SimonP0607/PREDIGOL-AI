@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "@/lib/i18n";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel } from "@/components/primitives/Panel";
@@ -33,9 +34,8 @@ export function CompetitionsLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Football" }, { label: "Competitions" }]}
-        title="Competitions"
-        description="The catalogue the system knows, which competitions it tracks, and how deep the stored history goes."
+        title={t("admin.pages.competitions.title")}
+        description={t("admin.pages.competitions.description")}
       />
       <FilterBar>
         <SegmentedTabs
@@ -257,9 +257,8 @@ export function TeamsLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Football" }, { label: "Teams" }]}
-        title="Teams"
-        description="Teams that appear in stored fixtures. Records count recorded results only: a match without a score is unknown, not a draw."
+        title={t("admin.pages.teams.title")}
+        description={t("admin.pages.teams.description")}
       />
       <FilterBar>
         <SearchFilter value={term} onChange={setTerm} placeholder="Team name" label="Filter" />

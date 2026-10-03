@@ -3,6 +3,7 @@
  * rejected, nothing qualifies until a model has beaten the market, and
  * publishing does not exist - and every pick opens onto its lineage.
  */
+import { t } from "@/lib/i18n";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -63,9 +64,8 @@ export function PicksLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Research" }, { label: "Picks" }]}
-        title="Picks"
-        description="Candidate → shadow → qualified → (published, disabled) → settled, or rejected with the rule that failed. A pick is only ever compared with a price captured after its forecast."
+        title={t("admin.pages.picks.title")}
+        description={t("admin.pages.picks.description")}
       />
       <WarningBanner>
         Publishing is disabled by a database constraint. Every pick here is shadow research output,

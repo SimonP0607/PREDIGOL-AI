@@ -1,27 +1,90 @@
 /**
  * What every page must satisfy, whatever the data: no value leaked through
- * unformatted, no horizontal page scroll, nothing still loading once the
- * network is quiet, and no console error, page error or failed API call.
+ * unformatted, no horizontal page scroll, nothing still loading once the network
+ * is quiet, and no console error, page error or failed API call.
  *
- * The suite reads the running stack (scripts/dev-up api web); it seeds and
- * mocks nothing. Where real data is too thin to exercise a flow - no captured
- * prices yet, no picks yet - the test says so in an annotation instead of
- * pretending.
+ * The suite reads the running stack (scripts/dev-up api web) and signs in with
+ * the QA accounts (e2e/accounts.ts). It seeds and mocks nothing: where real data
+ * is too thin to exercise a step, the test says so in an annotation.
  */
-import { expect, type Page, type TestInfo } from "@playwright/test";
+import { expect, type APIRequestContext, type Page, type TestInfo } from "@playwright/test";
+import esCatalogAdmin from "../src/locales/es/admin.json";
+import enCatalogAdmin from "../src/locales/en/admin.json";
+import esCommon from "../src/locales/es/common.json";
+import enCommon from "../src/locales/en/common.json";
+import esHome from "../src/locales/es/home.json";
+import enHome from "../src/locales/en/home.json";
+import esMarkets from "../src/locales/es/markets.json";
+import enMarkets from "../src/locales/en/markets.json";
+import esMatch from "../src/locales/es/match.json";
+import enMatch from "../src/locales/en/match.json";
+import esNav from "../src/locales/es/nav.json";
+import enNav from "../src/locales/en/nav.json";
+import esOdds from "../src/locales/es/odds.json";
+import enOdds from "../src/locales/en/odds.json";
+import esParlays from "../src/locales/es/parlays.json";
+import enParlays from "../src/locales/en/parlays.json";
+import esPicks from "../src/locales/es/picks.json";
+import enPicks from "../src/locales/en/picks.json";
+import esProfile from "../src/locales/es/profile.json";
+import enProfile from "../src/locales/en/profile.json";
+import esAuth from "../src/locales/es/auth.json";
+import enAuth from "../src/locales/en/auth.json";
+import esErrors from "../src/locales/es/errors.json";
+import enErrors from "../src/locales/en/errors.json";
+import esLive from "../src/locales/es/live.json";
+import enLive from "../src/locales/en/live.json";
+import esMatches from "../src/locales/es/matches.json";
+import enMatches from "../src/locales/en/matches.json";
 
-export const API_URL = (process.env["E2E_API_URL"] ?? "http://127.0.0.1:8010").replace(/\/$/, "");
+export const L = {
+  es: {
+    admin: esCatalogAdmin,
+    common: esCommon,
+    home: esHome,
+    markets: esMarkets,
+    match: esMatch,
+    nav: esNav,
+    odds: esOdds,
+    parlays: esParlays,
+    picks: esPicks,
+    profile: esProfile,
+    auth: esAuth,
+    errors: esErrors,
+    live: esLive,
+    matches: esMatches,
+  },
+  en: {
+    admin: enCatalogAdmin,
+    common: enCommon,
+    home: enHome,
+    markets: enMarkets,
+    match: enMatch,
+    nav: enNav,
+    odds: enOdds,
+    parlays: enParlays,
+    picks: enPicks,
+    profile: enProfile,
+    auth: enAuth,
+    errors: enErrors,
+    live: enLive,
+    matches: enMatches,
+  },
+} as const;
+export type Lang = keyof typeof L;
 
 const LEAKS: ReadonlyArray<readonly [string, RegExp]> = [
   ["NaN", /\bNaN\b/],
   ["undefined", /\bundefined\b/],
   ["[object Object]", /\[object Object\]/],
   ["Infinity", /\bInfinity\b/],
+  [
+    "an untranslated key",
+    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors)\.[a-z][\w.]+[a-z]\b/,
+  ],
 ];
 
-/** An API call, whether made to the API directly or through the web server's proxy. */
 function isApi(url: string): boolean {
-  if (url.startsWith(API_URL)) return true;
   try {
     const path = new URL(url).pathname;
     return path.startsWith("/api/v1") || path === "/health";
@@ -34,10 +97,17 @@ export interface Watch {
   problems: string[];
 }
 
-export function watch(page: Page): Watch {
+/**
+ * `expect401`: the sign-in screen asks /auth/me before anyone is signed in; that
+ * 401 is the expected answer, not a failure.
+ */
+export function watch(page: Page, { expect401 = false }: { expect401?: boolean } = {}): Watch {
   const w: Watch = { problems: [] };
   page.on("console", (msg) => {
-    if (msg.type() === "error") w.problems.push(`console.error: ${msg.text().slice(0, 300)}`);
+    if (msg.type() !== "error") return;
+    const text = msg.text();
+    if (expect401 && text.includes("401")) return;
+    w.problems.push(`console.error: ${text.slice(0, 300)}`);
   });
   page.on("pageerror", (err) => w.problems.push(`pageerror: ${err.message.slice(0, 300)}`));
   page.on("response", (res) => {
@@ -50,7 +120,6 @@ export function watch(page: Page): Watch {
   });
   page.on("requestfailed", (req) => {
     const why = req.failure()?.errorText ?? "";
-    // A navigation cancels the previous page's fetches: that is not a failure.
     if (isApi(req.url()) && !why.includes("ERR_ABORTED")) {
       w.problems.push(`request failed: ${req.url()} ${why}`);
     }
@@ -58,16 +127,17 @@ export function watch(page: Page): Watch {
   return w;
 }
 
-/** Wait until the page's queries have answered. */
+/** Wait until the page's queries have answered and no skeleton is left. */
 export async function settle(page: Page): Promise<void> {
   await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0);
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 20_000 });
 }
 
 export async function assertClean(page: Page, w: Watch): Promise<void> {
   const text = await page.locator("body").innerText();
   for (const [name, re] of LEAKS) {
-    expect(re.test(text), `"${name}" is rendered on ${page.url()}`).toBe(false);
+    const m = re.exec(text);
+    expect(m, `"${name}" is rendered on ${page.url()}: ${m?.[0] ?? ""}`).toBeNull();
   }
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -83,14 +153,10 @@ export function note(info: TestInfo, description: string): void {
   info.annotations.push({ type: "data", description });
 }
 
-interface Envelope<T> {
-  status: string;
-  data: T;
-  reason?: string | null;
-}
-
-export async function api<T>(path: string): Promise<Envelope<T>> {
-  const res = await fetch(`${API_URL}${path}`);
-  if (!res.ok && res.status !== 404) throw new Error(`${path}: HTTP ${res.status}`);
-  return (await res.json()) as Envelope<T>;
+export async function getJson<T>(
+  request: APIRequestContext,
+  path: string,
+): Promise<{ status: number; body: T }> {
+  const res = await request.get(path, { headers: { "x-requested-with": "predigol" } });
+  return { status: res.status(), body: (await res.json().catch(() => null)) as T };
 }

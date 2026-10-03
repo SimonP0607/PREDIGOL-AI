@@ -3,6 +3,7 @@
  * rating history. A rating built from fewer than ten matches is marked
  * provisional - it is still mostly the starting value every newcomer gets.
  */
+import { t } from "@/lib/i18n";
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Panel } from "@/components/primitives/Panel";
@@ -36,9 +37,8 @@ export function RankingsLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Football" }, { label: "Rankings" }]}
-        title="Rankings"
-        description="Elo ratings from the stored rating history - the same numbers the Elo model reads. A rating stops where the data stops: check its last match. A competition filter keeps teams whose last rated match was there."
+        title={t("admin.pages.rankings.title")}
+        description={t("admin.pages.rankings.description")}
       />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       <div className="max-w-sm">

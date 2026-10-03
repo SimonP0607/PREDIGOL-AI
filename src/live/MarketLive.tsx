@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { t } from "@/lib/i18n";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, MetricCard, Panel, WarningBanner } from "@/components/primitives/Panel";
 import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
@@ -30,9 +31,8 @@ export function OddsLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Market" }, { label: "Odds" }]}
-        title="Odds"
-        description="Two sources, never mixed: the prices this platform captured itself, with their capture time, and a second source's historical prices in that source's own terms."
+        title={t("admin.pages.odds.title")}
+        description={t("admin.pages.odds.description")}
       />
       <SegmentedTabs label="Odds source" tabs={pageTabs} value={page} onChange={setPage} />
       {page === "Captured by us" ? <CapturedOdds /> : <HistoricalMarketLive />}
@@ -495,9 +495,8 @@ export function PerformanceLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Research" }, { label: "Performance" }]}
-        title="Performance"
-        description="Shadow picks settled at the price that was captured when the pick was made. No money was staked: this measures whether the models' edge was real, nothing else."
+        title={t("admin.pages.performance.title")}
+        description={t("admin.pages.performance.description")}
       />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

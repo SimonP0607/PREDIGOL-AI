@@ -4,6 +4,7 @@
  * unverified. Without an LLM configured on the API host it says so, and the
  * same tools can be run by hand below - they are the analyst's only inputs.
  */
+import { t } from "@/lib/i18n";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -28,9 +29,8 @@ export function AnalystLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Research" }, { label: "AI Analyst" }]}
-        title="AI Analyst"
-        description="Answers only from the platform's own API, through tools that return provenance for every figure. It never recommends a bet."
+        title={t("admin.pages.aiAnalyst.title")}
+        description={t("admin.pages.aiAnalyst.description")}
       />
       {status.isError ? <ApiErrorNotice error={status.error} /> : null}
       {s && !configured ? (

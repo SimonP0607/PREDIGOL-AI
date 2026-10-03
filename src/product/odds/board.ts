@@ -36,7 +36,9 @@ export function priceSlots(market: BestMarket): PriceSlot[] {
   let best: string | null = null;
   let bestEdge = 0;
   for (const selection of order) {
-    const edge = toNumber(bySelection.get(selection)?.price_edge);
+    const price = bySelection.get(selection);
+    // An outlier (one book's stale or mistaken quote) is shown and flagged, never crowned.
+    const edge = price?.outlier ? null : toNumber(price?.price_edge);
     if (edge !== null && edge > bestEdge) {
       best = selection;
       bestEdge = edge;

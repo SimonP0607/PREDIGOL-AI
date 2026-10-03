@@ -10,7 +10,7 @@
   },
   "window": {
     "label": "Empiezan en",
-    "hours": "{count}\u00a0h"
+    "hours": "{count} h"
   },
   "pricesUpdated": "Precios actualizados {when}",
   "highlights": {
@@ -25,8 +25,8 @@
     "none": "Ahora mismo no hay oportunidades de valor calificadas en este mercado."
   },
   "board": {
-    "summary_one": "{count} partido en las próximas {hours}\u00a0h",
-    "summary_other": "{count} partidos en las próximas {hours}\u00a0h",
+    "summary_one": "{count} partido en las próximas {hours} h",
+    "summary_other": "{count} partidos en las próximas {hours} h",
     "line": "Línea",
     "fair": "justa {odds}",
     "noPrice": "Sin precio",
@@ -38,7 +38,9 @@
     "bestSr": "Mejor valor del partido.",
     "emptyTitle": "No hay partidos con cuotas en esta ventana",
     "emptyBody": "Cuando las casas publiquen precios para los próximos partidos, aparecerán aquí.",
-    "widen": "Ver las próximas {hours}\u00a0h"
+    "widen": "Ver las próximas {hours} h",
+    "outlier": "Precio atípico",
+    "outlierHelp": "Muy por encima del precio justo: probablemente una cuota desactualizada o errónea de una sola casa."
   },
   "movement": {
     "toggle": "Movimiento",

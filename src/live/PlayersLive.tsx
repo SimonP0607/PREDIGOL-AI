@@ -1,4 +1,5 @@
 /** Players: search, a team's squad, the most productive of the last 30 days, and a profile. */
+import { t } from "@/lib/i18n";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -106,9 +107,8 @@ export function PlayersLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Football" }, { label: "Players" }]}
-        title="Players"
-        description="Players from line-ups and match statistics. Without a search: the most productive players of the last 30 days. Figures cover the last 400 days."
+        title={t("admin.pages.players.title")}
+        description={t("admin.pages.players.description")}
       />
       <div className="max-w-sm">
         <SearchFilter
@@ -152,7 +152,7 @@ export function PlayerLive({ playerId }: { playerId: string }) {
     return (
       <div className="space-y-4">
         <PageHeader
-          breadcrumb={[{ label: "Players", to: "/admin/players" }]}
+          breadcrumb={[{ label: t("admin.nav.players"), to: "/admin/players" }]}
           title="Player not found"
         />
         {q.data ? <StatusNotice status={q.data.status} reason={q.data.reason} /> : null}
@@ -163,7 +163,7 @@ export function PlayerLive({ playerId }: { playerId: string }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Players", to: "/admin/players" }, { label: p.name }]}
+        breadcrumb={[{ label: t("admin.nav.players"), to: "/admin/players" }, { label: p.name }]}
         title={p.name}
         description={[p.position, p.nationality, p.team].filter(Boolean).join(" · ") || undefined}
       />

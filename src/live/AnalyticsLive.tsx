@@ -4,6 +4,7 @@
  * migration. Every figure is a count or a mean over stored rows, computed by
  * the API at request time; a small sample is shown with its n and flagged.
  */
+import { t } from "@/lib/i18n";
 import { useState } from "react";
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -68,9 +69,8 @@ export function AnalyticsLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "Intelligence" }, { label: "Analytics" }]}
-        title="Analytics"
-        description="Exploratory views over the stored data: competitions, teams, the market, the research registry, coverage and the historical migration. Counts and means over stored rows only - nothing estimated or filled."
+        title={t("admin.pages.analytics.title")}
+        description={t("admin.pages.analytics.description")}
       />
       <SegmentedTabs label="Analytics sections" tabs={tabs} value={tab} onChange={setTab} />
       {tab === "Competitions" ? <CompetitionsTab /> : null}

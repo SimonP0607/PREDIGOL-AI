@@ -34,3 +34,6 @@ dist-ssr
 # Playwright
 e2e-report/
 e2e-results/
+
+# Playwright sign-in states (session cookies of the QA accounts) - never commit
+e2e/.auth/

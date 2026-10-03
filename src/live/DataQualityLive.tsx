@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t } from "@/lib/i18n";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MetricCard, Panel, WarningBanner } from "@/components/primitives/Panel";
 import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
@@ -169,9 +170,8 @@ export function DataQualityLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "System" }, { label: "Data Quality" }]}
-        title="Data Quality"
-        description="Computed from the stored rows and the job ledger at request time. A ratio with no denominator is shown as —, never as 0%."
+        title={t("admin.pages.dataQuality.title")}
+        description={t("admin.pages.dataQuality.description")}
       />
 
       {quality.isError ? <ApiErrorNotice error={quality.error} /> : null}

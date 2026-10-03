@@ -1,4 +1,5 @@
 /** System / Admin: the private operations view. Everything here is read; nothing is triggered. */
+import { t } from "@/lib/i18n";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, MetricCard, Panel } from "@/components/primitives/Panel";
@@ -39,9 +40,8 @@ export function AdminLive() {
   return (
     <div className="space-y-4">
       <PageHeader
-        breadcrumb={[{ label: "System" }, { label: "System / Admin" }]}
-        title="System / Admin"
-        description="Private operations view: worker, provider quota, history migration, captures, errors, data quality, backups and versions. Read-only; refreshed every 30 seconds."
+        title={t("admin.pages.system.title")}
+        description={t("admin.pages.system.description")}
       />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       {q.isLoading ? <TableSkeleton rows={6} cols={4} /> : null}
@@ -82,7 +82,7 @@ export function AdminLive() {
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel
               title="Worker jobs"
-              subtitle="Next scheduled run of each job (UTC)."
+              subtitle="Next scheduled run of each job."
               className="lg:col-span-1"
               bodyClassName=""
             >
