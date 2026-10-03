@@ -68,10 +68,11 @@ test("accounts: list, deactivate and reactivate, change a role - all audited", a
   // USER -> SUPER_ADMIN -> USER
   await row.getByTestId(`role-${id}`).click();
   await row.getByTestId(`confirm-role-${id}`).click();
-  await expect(row).toContainText("SUPER_ADMIN");
+  const role = row.locator("td").nth(1);
+  await expect(role).toHaveText("SUPER_ADMIN");
   await row.getByTestId(`role-${id}`).click();
   await row.getByTestId(`confirm-role-${id}`).click();
-  await expect(row.getByText("SUPER_ADMIN")).toHaveCount(0);
+  await expect(role).toHaveText("USER");
   await assertClean(page, w);
   await go(page, w, "/admin/audit");
   await expect(page.getByTestId("audit-table")).toContainText(

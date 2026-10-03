@@ -40,7 +40,7 @@ test("navigation is the product's six destinations, in the account's language", 
     await expect(nav.getByRole("link", { name: t.nav[key], exact: true })).toBeVisible();
   }
   // nothing of the Admin Console
-  await expect(page.getByText(t.admin.groups.intelligence)).toHaveCount(0);
+  await expect(page.getByText(t.admin.groups.intelligence, { exact: true })).toHaveCount(0);
   await expect(page.getByTestId("shadow-toggle")).toHaveCount(0);
   await page.getByTestId("account-menu").click();
   await expect(page.getByTestId("go-admin")).toHaveCount(0);
