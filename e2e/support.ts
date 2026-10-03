@@ -8,69 +8,57 @@
  * is too thin to exercise a step, the test says so in an annotation.
  */
 import { expect, type APIRequestContext, type Page, type TestInfo } from "@playwright/test";
-import esCatalogAdmin from "../src/locales/es/admin.json";
-import enCatalogAdmin from "../src/locales/en/admin.json";
-import esCommon from "../src/locales/es/common.json";
-import enCommon from "../src/locales/en/common.json";
-import esHome from "../src/locales/es/home.json";
-import enHome from "../src/locales/en/home.json";
-import esMarkets from "../src/locales/es/markets.json";
-import enMarkets from "../src/locales/en/markets.json";
-import esMatch from "../src/locales/es/match.json";
-import enMatch from "../src/locales/en/match.json";
-import esNav from "../src/locales/es/nav.json";
-import enNav from "../src/locales/en/nav.json";
-import esOdds from "../src/locales/es/odds.json";
-import enOdds from "../src/locales/en/odds.json";
-import esParlays from "../src/locales/es/parlays.json";
-import enParlays from "../src/locales/en/parlays.json";
-import esPicks from "../src/locales/es/picks.json";
-import enPicks from "../src/locales/en/picks.json";
-import esProfile from "../src/locales/es/profile.json";
-import enProfile from "../src/locales/en/profile.json";
-import esAuth from "../src/locales/es/auth.json";
-import enAuth from "../src/locales/en/auth.json";
-import esErrors from "../src/locales/es/errors.json";
-import enErrors from "../src/locales/en/errors.json";
-import esLive from "../src/locales/es/live.json";
-import enLive from "../src/locales/en/live.json";
-import esMatches from "../src/locales/es/matches.json";
-import enMatches from "../src/locales/en/matches.json";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-export const L = {
-  es: {
-    admin: esCatalogAdmin,
-    common: esCommon,
-    home: esHome,
-    markets: esMarkets,
-    match: esMatch,
-    nav: esNav,
-    odds: esOdds,
-    parlays: esParlays,
-    picks: esPicks,
-    profile: esProfile,
-    auth: esAuth,
-    errors: esErrors,
-    live: esLive,
-    matches: esMatches,
-  },
-  en: {
-    admin: enCatalogAdmin,
-    common: enCommon,
-    home: enHome,
-    markets: enMarkets,
-    match: enMatch,
-    nav: enNav,
-    odds: enOdds,
-    parlays: enParlays,
-    picks: enPicks,
-    profile: enProfile,
-    auth: enAuth,
-    errors: enErrors,
-    live: enLive,
-    matches: enMatches,
-  },
-} as const;
+/**
+ * The UI catalogs, read from disk (Node's ESM loader would want import attributes for
+ * JSON); typed from the Spanish files, which have exactly the keys of the English ones.
+ */
+const NAMESPACES = [
+  "admin",
+  "auth",
+  "common",
+  "errors",
+  "home",
+  "live",
+  "markets",
+  "match",
+  "matches",
+  "nav",
+  "odds",
+  "parlays",
+  "picks",
+  "profile",
+] as const;
+interface Catalogs {
+  admin: typeof import("../src/locales/es/admin.json");
+  auth: typeof import("../src/locales/es/auth.json");
+  common: typeof import("../src/locales/es/common.json");
+  errors: typeof import("../src/locales/es/errors.json");
+  home: typeof import("../src/locales/es/home.json");
+  live: typeof import("../src/locales/es/live.json");
+  markets: typeof import("../src/locales/es/markets.json");
+  match: typeof import("../src/locales/es/match.json");
+  matches: typeof import("../src/locales/es/matches.json");
+  nav: typeof import("../src/locales/es/nav.json");
+  odds: typeof import("../src/locales/es/odds.json");
+  parlays: typeof import("../src/locales/es/parlays.json");
+  picks: typeof import("../src/locales/es/picks.json");
+  profile: typeof import("../src/locales/es/profile.json");
+}
+
+function catalogs(lang: "es" | "en"): Catalogs {
+  const dir = join(import.meta.dirname, "..", "src", "locales", lang);
+  return Object.fromEntries(
+    NAMESPACES.map((ns) => [
+      ns,
+      JSON.parse(readFileSync(join(dir, `${ns}.json`), "utf8")) as unknown,
+    ]),
+  ) as unknown as Catalogs;
+}
+
+export const L = { es: catalogs("es"), en: catalogs("en") } as const;
 export type Lang = keyof typeof L;
 
 const LEAKS: ReadonlyArray<readonly [string, RegExp]> = [
