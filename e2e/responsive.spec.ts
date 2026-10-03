@@ -14,9 +14,7 @@ test("every product page fits a 390 px phone", async ({ page }) => {
   for (const path of PAGES) {
     await page.goto(path);
     await settle(page);
-    await expect(
-      page.getByTestId(`tab-${path.slice(1)}`).or(page.getByTestId("tab-home")),
-    ).toBeVisible();
+    await expect(page.getByTestId("tab-home"), "the bottom tab bar").toBeVisible();
     await assertClean(page, w);
   }
 });
