@@ -20,6 +20,7 @@ from fbi.picks.engine import evaluate_captures, settle_open_picks
 from fbi.picks.rules import CURRENT_RULE
 from fbi.predictions.forecast import forecast_upcoming
 from tests.integration.helpers import scalar
+from tests.integration.signed_in import SAME_SITE, signed_in
 
 KO = datetime(2026, 10, 3, 14, 0, tzinfo=UTC)
 AT = KO - timedelta(hours=26)          # the forecast
@@ -238,11 +239,11 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     try:
         from fbi.api.app import create_app
 
-        with TestClient(create_app()) as client:
-            body = client.get("/api/v1/picks").json()
-            perf = client.get("/api/v1/performance").json()
-            match = client.get(f"/api/v1/matches/{target}").json()["data"]
-            audit = client.get(f"/api/v1/matches/{target}/audit").json()["data"]
+        with TestClient(signed_in(create_app()), headers=SAME_SITE) as client:
+            body = client.get("/api/v1/admin/picks").json()
+            perf = client.get("/api/v1/admin/performance").json()
+            match = client.get(f"/api/v1/admin/matches/{target}").json()["data"]
+            audit = client.get(f"/api/v1/admin/matches/{target}/audit").json()["data"]
     finally:
         mp.undo()
         reset_cache()

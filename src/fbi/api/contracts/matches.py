@@ -96,3 +96,12 @@ class MatchDetail(Contract):
     markets: Section[list[MarketQuote]]
     predictions: Section[list[PredictionRow]]
     timeline: list[TimelineEvent]
+
+
+class MatchView(Contract):
+    """What the product shows for a fixture: the match, where it is played, and its prices.
+    Model output, lineage and the capture timeline belong to the Admin Console's MatchDetail."""
+
+    match: MatchSummary
+    venue: VenueRef | None
+    markets: Section[list[MarketQuote]]

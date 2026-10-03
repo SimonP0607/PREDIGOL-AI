@@ -13,6 +13,7 @@ from fbi.api.contracts.matches import (
     MarketQuote,
     MatchDetail,
     MatchSummary,
+    MatchView,
     OddsSummary,
     PredictionRow,
     TimelineEvent,
@@ -68,9 +69,13 @@ def summary(row: Row, at: datetime | None = None) -> MatchSummary:
             id=row["competition_id"], name=row["competition_name"], country=row["competition_country"],
             provider_league_id=row["provider_league_id"], season=row["season"],
             competition_type=row["competition_type"], is_tracked=row["is_tracked"],
+            logo_url=row.get("competition_logo"), flag_url=row.get("competition_flag"),
+            country_code=row.get("competition_country_code"),
         ),
-        home=TeamRef(id=row["home_id"], name=row["home_name"], provider_team_id=row["home_provider_id"]),
-        away=TeamRef(id=row["away_id"], name=row["away_name"], provider_team_id=row["away_provider_id"]),
+        home=TeamRef(id=row["home_id"], name=row["home_name"], provider_team_id=row["home_provider_id"],
+                     logo_url=row.get("home_logo")),
+        away=TeamRef(id=row["away_id"], name=row["away_name"], provider_team_id=row["away_provider_id"],
+                     logo_url=row.get("away_logo")),
         score=score,
         odds=OddsSummary(
             snapshots=row["odds_snapshots"], bookmakers=row["odds_bookmakers"], markets=row["odds_markets"],
@@ -225,3 +230,17 @@ def match_detail(conn: Conn, fixture_id: int) -> Envelope[MatchDetail]:
         timeline=timeline(row, repo.capture_instants(conn, fixture_id), moment),
     )
     return Envelope[MatchDetail](status=DataStatus.OK, data=detail)
+
+
+def match_view(conn: Conn, fixture_id: int) -> Envelope[MatchView]:
+    row = repo.get_fixture(conn, fixture_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"fixture {fixture_id} not found")
+    quotes = [quote(q) for q in repo.latest_quotes(conn, fixture_id)]
+    venue_row = repo.get_venue(conn, row["venue_id"]) if row["venue_id"] else None
+    view = MatchView(
+        match=summary(row, now()),
+        venue=VenueRef(**venue_row) if venue_row else None,
+        markets=section(quotes) if quotes else section(quotes, status=DataStatus.EMPTY, reason=NO_MARKET_DATA),
+    )
+    return Envelope[MatchView](status=DataStatus.OK, data=view)

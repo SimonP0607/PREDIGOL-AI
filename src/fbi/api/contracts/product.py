@@ -1,0 +1,187 @@
+"""The product's own answers: home, qualified picks, parlays, best prices.
+
+These are built for the screens a signed-in user sees, so a page asks one endpoint
+instead of stitching twenty. Where a block has nothing to show, its ``reason`` is a
+machine-readable code (``no_qualified_picks``, ``no_valid_parlay``...) that the
+frontend translates - never a sentence in one language.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
+from typing import Literal
+
+from pydantic import Field
+
+from fbi.api.contracts.center import LiveMatch
+from fbi.api.contracts.common import Contract
+from fbi.api.envelope import Section
+
+Source = Literal["qualified", "shadow_preview"]
+Freshness = Literal["fresh", "aging", "stale", "none"]
+
+
+class TeamBadge(Contract):
+    id: int
+    name: str
+    logo_url: str | None
+
+
+class CompetitionBadge(Contract):
+    id: int
+    name: str
+    country: str | None
+    logo_url: str | None
+    flag_url: str | None
+
+
+class PickCard(Contract):
+    """A pick as the product shows it, re-priced at the best price available now."""
+
+    pick_id: int
+    fixture_id: int
+    kickoff_at: datetime
+    competition: CompetitionBadge
+    home: TeamBadge
+    away: TeamBadge
+    market_key: str
+    selection: str
+    line: Decimal
+    status: Literal["shadow", "qualified", "published"]
+    model: str
+    best_odds: Decimal | None = Field(description="Best price available now (latest de-vigged consensus).")
+    bookmaker: str | None
+    price_at: datetime | None
+    p_model: Decimal = Field(description="Model probability, conditional on the bet being settled.")
+    p_market: Decimal | None = Field(description="De-vigged market consensus probability (Shin).")
+    fair_odds: Decimal | None = Field(description="1 / p_market: the market's fair price.")
+    edge: Decimal | None = Field(description="p_model - p_market.")
+    ev: Decimal | None = Field(description="Expected value per unit at best_odds. Null without a price.")
+    freshness: Freshness
+    value_now: bool = Field(description="Passes the value gate at this moment.")
+    value_reason: str | None = Field(description="The gate it fails, as a code, when value_now is false.")
+
+
+class PicksBoard(Contract):
+    source: Source
+    top: list[PickCard] = Field(description="Up to five picks with value now, kicking off in the next 24 hours.")
+    picks: list[PickCard] = Field(description="Every pick in the window, best value first.")
+    competitions: list[CompetitionBadge]
+    markets: list[str]
+    window_hours: int
+    reason: str | None = Field(description="Why there is nothing to show, as a code.")
+
+
+class ParlayLeg(Contract):
+    pick_id: int
+    fixture_id: int
+    kickoff_at: datetime
+    competition: CompetitionBadge
+    home: TeamBadge
+    away: TeamBadge
+    market_key: str
+    selection: str
+    line: Decimal
+    odds: Decimal
+    bookmaker: str | None
+    price_at: datetime
+    p_model: Decimal
+    p_market: Decimal
+    p_win: Decimal = Field(description="Unconditional probability this leg wins (pushes excluded).")
+    edge: Decimal
+    ev: Decimal
+
+
+class Parlay(Contract):
+    kind: Literal["daily", "multiday"]
+    status: Literal["ok", "no_valid_parlay"]
+    source: Source
+    legs: list[ParlayLeg]
+    required_legs: int
+    max_legs: int
+    eligible_legs: int = Field(description="Selections that passed the value gate in the window.")
+    window_from: datetime
+    window_to: datetime
+    combined_odds: Decimal | None
+    probability_all_win: Decimal | None = Field(
+        description="Product of the legs' win probabilities - legs are distinct matches of distinct teams. "
+                    "Null when that independence does not hold.")
+    expected_value: Decimal | None = Field(description="Per unit: product of (1 + leg EV) minus one.")
+    risk: Literal["moderate", "high", "very_high"] | None
+    independence: Literal["distinct_fixtures_and_teams", "not_independent"] | None
+    prices_as_of: datetime | None = Field(description="The oldest price among the legs.")
+    rejections: dict[str, int] = Field(description="Selections left out, by the rule they failed.")
+    generated_at: datetime
+
+
+class BestPrice(Contract):
+    selection: str
+    best_odds: Decimal
+    bookmaker: str | None
+    p_fair: Decimal
+    fair_odds: Decimal
+    price_edge: Decimal = Field(description="best_odds * p_fair - 1: how far the best price sits above fair.")
+    n_bookmakers: int
+    as_of: datetime
+
+
+class BestMarket(Contract):
+    market_key: str
+    line: Decimal
+    selections: list[BestPrice]
+
+
+class BestOddsFixture(Contract):
+    fixture_id: int
+    kickoff_at: datetime
+    competition: CompetitionBadge
+    home: TeamBadge
+    away: TeamBadge
+    markets: list[BestMarket]
+    as_of: datetime
+
+
+class BestHighlight(Contract):
+    fixture_id: int
+    kickoff_at: datetime
+    competition: CompetitionBadge
+    home: TeamBadge
+    away: TeamBadge
+    market_key: str
+    line: Decimal
+    price: BestPrice
+
+
+class BestOddsBoard(Contract):
+    window_hours: int
+    markets: list[str]
+    fixtures: list[BestOddsFixture]
+    highlights: list[BestHighlight] = Field(description="Best prices furthest above the market's fair price.")
+    value: list[PickCard] = Field(description="Picks with value now (qualified only, unless a shadow preview).")
+    source: Source
+
+
+class UpcomingMatch(Contract):
+    fixture_id: int
+    kickoff_at: datetime
+    competition: CompetitionBadge
+    home: TeamBadge
+    away: TeamBadge
+    bookmakers: int
+
+
+class DataFreshness(Contract):
+    odds_at: datetime | None
+    live_at: datetime | None
+
+
+class Home(Contract):
+    source: Source
+    data_freshness: DataFreshness
+    top_picks: Section[list[PickCard]]
+    daily_parlay: Parlay
+    multiday_parlay: Parlay
+    live: Section[list[LiveMatch]]
+    best_prices: Section[list[BestHighlight]]
+    upcoming: Section[list[UpcomingMatch]]

@@ -19,6 +19,7 @@ from fbi.api.contracts.center import (
     H2HMatch,
     LineupPlayer,
     LiveBoard,
+    LiveCompleteness,
     LiveMatch,
     LiveMove,
     LiveQuote,
@@ -41,6 +42,7 @@ from fbi.api.contracts.center import (
 from fbi.api.envelope import DataStatus, Envelope, Section, listing, ok, section, unavailable
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
 from fbi.api.repositories import center as repo
+from fbi.api.services.live_quality import completeness
 from fbi.core.clock import now
 
 STALE_AFTER = timedelta(minutes=3)
@@ -146,19 +148,36 @@ def live_board(conn: Conn, *, at: datetime | None = None) -> Envelope[LiveBoard]
         age = int((moment - state_at).total_seconds())
         fid = int(r["fixture_id"])
         q = sorted(quotes.get(fid, []), key=lambda x: (x.market_key or "", x.line, x.selection))
+        elapsed = r["feed_elapsed"] if use_feed else r["odds_elapsed"]
+        gh = r["feed_gh"] if use_feed else r["odds_gh"]
+        ga = r["feed_ga"] if use_feed else r["odds_ga"]
+        fx_events, fx_stats = events.get(fid, []), stats.get(fid, [])
+        score, level, signals = completeness(
+            goals_home=gh, goals_away=ga, elapsed=elapsed, events=len(fx_events), stats=len(fx_stats),
+            lineups=bool(r.get("has_lineups")), players=bool(r.get("has_player_stats")),
+            live_quotes=sum(1 for x in q if x.odds is not None), markets_offered=r["markets_offered"])
         matches.append(LiveMatch(
             fixture_id=fid, kickoff_at=r["kickoff_at"], competition=r["competition"], country=r["country"],
-            home=LiveTeam(id=r["home_id"], name=r["home_name"]), away=LiveTeam(id=r["away_id"], name=r["away_name"]),
+            competition_id=r.get("competition_id"), competition_logo=r.get("competition_logo"),
+            competition_flag=r.get("competition_flag"),
+            home=LiveTeam(id=r["home_id"], name=r["home_name"], logo_url=r.get("home_logo")),
+            away=LiveTeam(id=r["away_id"], name=r["away_name"], logo_url=r.get("away_logo")),
             status=(r["feed_status"] if use_feed else r["odds_status"]) or "?",
-            elapsed=r["feed_elapsed"] if use_feed else r["odds_elapsed"],
+            elapsed=elapsed,
             extra=r["feed_extra"] if use_feed else None,
-            goals_home=r["feed_gh"] if use_feed else r["odds_gh"],
-            goals_away=r["feed_ga"] if use_feed else r["odds_ga"],
+            goals_home=gh,
+            goals_away=ga,
             state_at=state_at, state_source="fixture_feed" if use_feed else "odds_feed", state_age_seconds=age,
             odds_feed_at=odds_at, markets_offered=r["markets_offered"], values_suspended=r["values_suspended"],
-            events=events.get(fid, []), statistics=stats.get(fid, []), main_odds=q,
+            events=fx_events, statistics=fx_stats, main_odds=q,
             data_status="stale" if age > STALE_AFTER.total_seconds() else ("ok" if odds_at else "no_odds"),
+            has_lineups=bool(r.get("has_lineups")), has_player_stats=bool(r.get("has_player_stats")),
+            completeness=LiveCompleteness(score=score, level=level, signals=signals),
         ))
+    # Richest first: the matches we can show most of lead the board; within a level the
+    # board keeps its competition order (tier, then name) and kick-off.
+    order = {m.fixture_id: i for i, m in enumerate(matches)}
+    matches.sort(key=lambda m: (-(m.completeness.score if m.completeness else 0), order[m.fixture_id]))
     feeds = fetch_one(conn, repo.LIVE_FEEDS, {"at": moment}) or {}
     board = LiveBoard(matches=matches, followed_by_fixture_feed=sum(1 for m in matches if m.state_source ==
                                                                     "fixture_feed"),

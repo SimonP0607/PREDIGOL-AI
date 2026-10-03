@@ -19,7 +19,8 @@ from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.services import center
 
-router = APIRouter(tags=["match center, live, players, admin"])
+router = APIRouter(tags=["match center, live, players"])
+admin_router = APIRouter(tags=["admin: system"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 
 
@@ -52,7 +53,7 @@ def get_player(conn: Db, player_id: Annotated[int, Path(ge=1)]) -> Envelope[Play
     return center.player(conn, player_id)
 
 
-@router.get("/admin/overview", response_model=Envelope[AdminOverview])
+@admin_router.get("/system", response_model=Envelope[AdminOverview])
 def get_admin_overview(conn: Db) -> Envelope[AdminOverview]:
     """Private operations view: worker, quota, migration, captures, errors, quality, backups, versions."""
     return center.admin_overview(conn)

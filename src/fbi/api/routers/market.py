@@ -8,14 +8,12 @@ from fastapi import APIRouter, Depends, Path, Query
 from fbi.api.contracts.analytics import ModelsOverview, PerformanceSummary, PicksOverview
 from fbi.api.contracts.matches import MatchSummary
 from fbi.api.contracts.odds import FixtureOdds, OddsIntelligence
-from fbi.api.deps import (
-    get_db,
-    public_mode,
-)
+from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.services import analytics, odds
 
-router = APIRouter(tags=["market & analytics"])
+router = APIRouter(tags=["market"])
+admin_router = APIRouter(tags=["admin: market & research"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 
 
@@ -29,7 +27,7 @@ def get_odds(
     return odds.list_fixtures_with_odds(conn, limit=limit, offset=offset)
 
 
-@router.get("/odds/intelligence", response_model=Envelope[OddsIntelligence])
+@admin_router.get("/odds/intelligence", response_model=Envelope[OddsIntelligence])
 def get_odds_intelligence(conn: Db) -> Envelope[OddsIntelligence]:
     """Bookmaker margins and pre-closing -> closing movement from the historical source."""
     return odds.intelligence(conn)
@@ -44,20 +42,21 @@ def get_fixture_odds(
     return odds.fixture_odds(conn, fixture_id, market_key=market)
 
 
-@router.get("/models", response_model=Envelope[ModelsOverview])
+@admin_router.get("/models", response_model=Envelope[ModelsOverview])
 def get_models(conn: Db) -> Envelope[ModelsOverview]:
     return analytics.models(conn)
 
 
-@router.get("/picks", response_model=Envelope[PicksOverview])
+@admin_router.get("/picks", response_model=Envelope[PicksOverview])
 def get_picks(
     conn: Db,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Envelope[PicksOverview]:
-    return analytics.picks(conn, limit=limit, offset=offset, public=public_mode())
+    """Every pick the research pipeline made - candidates, rejections, shadow and qualified."""
+    return analytics.picks(conn, limit=limit, offset=offset, public=False)
 
 
-@router.get("/performance", response_model=Envelope[PerformanceSummary])
+@admin_router.get("/performance", response_model=Envelope[PerformanceSummary])
 def get_performance(conn: Db) -> Envelope[PerformanceSummary]:
     return analytics.performance(conn)

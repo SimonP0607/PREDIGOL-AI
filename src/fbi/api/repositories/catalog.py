@@ -6,6 +6,7 @@ from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
 
 _COMPETITIONS = """
 SELECT c.id, c.provider_league_id, c.name, c.country, c.type, c.competition_type, c.tier, c.is_tracked,
+       c.logo_url, c.flag_url, c.country_code,
        count(DISTINCT cs.id) AS seasons,
        max(cs.season) FILTER (WHERE cs.is_current) AS current_season,
        count(DISTINCT f.id) AS fixtures,
@@ -57,7 +58,7 @@ def seasons_of(conn: Conn, competition_id: int) -> list[Row]:
 
 def teams_of(conn: Conn, competition_id: int) -> list[Row]:
     return fetch_all(conn, """
-        SELECT DISTINCT t.id, t.name, t.provider_team_id
+        SELECT DISTINCT t.id, t.name, t.provider_team_id, t.logo_url
         FROM core.fixtures f
         JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
         JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
@@ -83,7 +84,7 @@ WITH apps AS (
      WHERE %(competition_id)s::bigint IS NULL OR a.competition_id = %(competition_id)s::bigint
      GROUP BY a.team_id
 )
-SELECT t.id, t.provider_team_id, t.name, t.country, t.venue_id,
+SELECT t.id, t.provider_team_id, t.name, t.country, t.venue_id, t.logo_url,
        COALESCE(agg.fixtures, 0) AS fixtures, COALESCE(agg.results, 0) AS results
 FROM core.teams t
 LEFT JOIN agg ON agg.team_id = t.id

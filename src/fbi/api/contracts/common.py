@@ -17,6 +17,7 @@ class TeamRef(Contract):
     id: int
     name: str
     provider_team_id: int
+    logo_url: str | None = Field(default=None, description="The provider's crest URL, as stored. Null: not told.")
 
 
 class CompetitionRef(Contract):
@@ -27,6 +28,9 @@ class CompetitionRef(Contract):
     season: int
     competition_type: str
     is_tracked: bool
+    logo_url: str | None = Field(default=None, description="The provider's league logo URL. Null: not stored.")
+    flag_url: str | None = Field(default=None, description="The country's flag as the provider published it.")
+    country_code: str | None = None
 
 
 class VenueRef(Contract):

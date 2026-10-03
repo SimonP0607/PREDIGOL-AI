@@ -29,6 +29,7 @@ from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.core.config import reset_cache
 from tests.integration.conftest import Seed
 from tests.integration.helpers import scalar
+from tests.integration.signed_in import SAME_SITE, signed_in
 
 NOW = datetime(2026, 9, 24, 12, 0, tzinfo=UTC)
 SECRET = "k3y-that-must-never-appear-in-a-response"
@@ -127,7 +128,7 @@ def client(dataset: dict[str, int], migrated_database: str) -> Iterator[TestClie
     set_clock(FrozenClock(NOW))
     from fbi.api.app import create_app
 
-    with TestClient(create_app()) as c:
+    with TestClient(signed_in(create_app()), headers=SAME_SITE) as c:
         yield c
     set_clock(SystemClock())
     mp.undo()
@@ -181,7 +182,7 @@ def test_pagination_is_reported(client: TestClient) -> None:
 
 
 def test_the_match_center_traces_the_score_to_its_payload(client: TestClient, dataset: dict[str, int]) -> None:
-    body = get(client, f"/api/v1/matches/{dataset['f1']}")
+    body = get(client, f"/api/v1/admin/matches/{dataset['f1']}")
     d = body["data"]
     assert d["venue"]["name"] == "Old Trafford"
     assert d["lineage"]["recorded"] is True
@@ -192,7 +193,7 @@ def test_the_match_center_traces_the_score_to_its_payload(client: TestClient, da
 
 
 def test_the_audit_trail_names_every_link_and_every_gap(client: TestClient, dataset: dict[str, int]) -> None:
-    d = get(client, f"/api/v1/matches/{dataset['f1']}/audit")["data"]
+    d = get(client, f"/api/v1/admin/matches/{dataset['f1']}/audit")["data"]
     steps = {s["key"]: s for s in d["steps"]}
     assert [s["key"] for s in d["steps"]] == ["provider", "raw", "normalized", "features", "models", "predictions",
                                              "market", "picks", "settlement"]
@@ -211,49 +212,49 @@ def test_the_audit_trail_names_every_link_and_every_gap(client: TestClient, data
         "the series and the projection of it are both reported, in that order"
     assert steps["picks"]["state"] == "not_applicable" and steps["settlement"]["state"] == "not_applicable"
     assert d["complete"] is False
-    old = get(client, f"/api/v1/matches/{dataset['f5']}/audit")["data"]
+    old = get(client, f"/api/v1/admin/matches/{dataset['f5']}/audit")["data"]
     by = {s["key"]: s for s in old["steps"]}
     assert by["provider"]["state"] == "partial" and "predates lineage" in by["provider"]["detail"]
     assert by["raw"]["state"] == "missing" and by["market"]["state"] == "missing"
-    upcoming = {s["key"]: s for s in get(client, f"/api/v1/matches/{dataset['f3']}/audit")["data"]["steps"]}
+    upcoming = {s["key"]: s for s in get(client, f"/api/v1/admin/matches/{dataset['f3']}/audit")["data"]["steps"]}
     assert upcoming["market"]["items"][0]["facts"]["quotes"] == 12
     assert "odds_snapshot" in upcoming["raw"]["items"][0]["facts"]["roles"]
-    body = get(client, "/api/v1/matches/999999999/audit", status=404)
+    body = get(client, "/api/v1/admin/matches/999999999/audit", status=404)
     assert body["status"] == "error" and body["error"]["code"] == "not_found"
 
 
 def test_analytics_counts_what_is_stored_and_flags_small_samples(
         client: TestClient, dataset: dict[str, int], seed: Seed) -> None:
-    rows = get(client, "/api/v1/analytics/competitions")["data"]
+    rows = get(client, "/api/v1/admin/analytics/competitions")["data"]
     mine = next(r for r in rows if r["competition_id"] == seed.competition_id and r["season"] == 2025)
     assert mine["finished"] == 2 and mine["low_sample"] is True, "two results are shown with their n, flagged"
     assert (mine["home_win"], mine["draw"], mine["away_win"]) == (0.5, 0.5, 0.0)
     assert mine["goals_per_match"] == 1.5 and mine["with_odds_snapshots"] == 2
-    cov = next(r for r in get(client, "/api/v1/analytics/coverage")["data"]
+    cov = next(r for r in get(client, "/api/v1/admin/analytics/coverage")["data"]
                if r["competition_id"] == seed.competition_id and r["season"] == 2025)
     assert cov["with_result"] == 2 and cov["with_features"] == 0 and cov["with_team_stats"] == 0
-    team = get(client, f"/api/v1/analytics/teams/{seed.home_team_id}")["data"]
+    team = get(client, f"/api/v1/admin/analytics/teams/{seed.home_team_id}")["data"]
     assert team["splits"]["home"]["played"] == 2 and team["splits"]["home"]["won"] == 1
     assert team["splits"]["away"] == {"played": 0, "won": 0, "drawn": 0, "lost": 0, "goals_for": 0,
                                       "goals_against": 0, "points_per_match": None}
     assert team["elo"] == [] and team["process"] == [] and team["features"] is None
-    market = get(client, "/api/v1/analytics/market")
+    market = get(client, "/api/v1/admin/analytics/market")
     assert market["status"] == "not_available" and "historical market baseline" in market["reason"]
-    exps = get(client, "/api/v1/analytics/experiments")
+    exps = get(client, "/api/v1/admin/analytics/experiments")
     assert exps["status"] == "empty" and "run_backtest --apply" in exps["reason"]
-    mig = get(client, "/api/v1/analytics/migration")
+    mig = get(client, "/api/v1/admin/analytics/migration")
     assert mig["status"] in ("ok", "not_available") and "units" in mig["data"]
-    assert get(client, "/api/v1/analytics/teams/999999999", status=404)["error"]["code"] == "not_found"
+    assert get(client, "/api/v1/admin/analytics/teams/999999999", status=404)["error"]["code"] == "not_found"
 
 
 def test_a_row_without_lineage_says_it_was_not_recorded(client: TestClient, dataset: dict[str, int]) -> None:
-    d = get(client, f"/api/v1/matches/{dataset['f5']}")["data"]
+    d = get(client, f"/api/v1/admin/matches/{dataset['f5']}")["data"]
     assert d["lineage"]["recorded"] is False
     assert "before lineage was recorded" in d["lineage"]["note"]
 
 
 def test_markets_say_there_is_no_data_instead_of_showing_zero(client: TestClient, dataset: dict[str, int]) -> None:
-    d = get(client, f"/api/v1/matches/{dataset['f2']}")["data"]
+    d = get(client, f"/api/v1/admin/matches/{dataset['f2']}")["data"]
     assert d["markets"] == {"status": "empty", "data": [], "reason": "No captured market data yet."}
     assert d["predictions"]["status"] == "not_available" and d["predictions"]["reason"]
 
@@ -261,7 +262,7 @@ def test_markets_say_there_is_no_data_instead_of_showing_zero(client: TestClient
 def test_the_board_shows_the_latest_price_per_bookmaker_with_raw_implied_probability(
     client: TestClient, dataset: dict[str, int]
 ) -> None:
-    d = get(client, f"/api/v1/matches/{dataset['f3']}")["data"]
+    d = get(client, f"/api/v1/admin/matches/{dataset['f3']}")["data"]
     board = d["markets"]["data"]
     assert d["markets"]["status"] == "ok" and len(board) == 6, "2 bookmakers x 3 selections, latest only"
     assert all(q["minutes_to_ko"] == 715 for q in board), "the newer capture wins"
@@ -273,7 +274,7 @@ def test_the_board_shows_the_latest_price_per_bookmaker_with_raw_implied_probabi
 def test_the_timeline_separates_captured_missed_unreachable_and_pending(
     client: TestClient, dataset: dict[str, int]
 ) -> None:
-    events = {e["key"]: e for e in get(client, f"/api/v1/matches/{dataset['f3']}")["data"]["timeline"]}
+    events = {e["key"]: e for e in get(client, f"/api/v1/admin/matches/{dataset['f3']}")["data"]["timeline"]}
     assert events["odds_1440"]["state"] == "done" and "T-1430" in events["odds_1440"]["detail"]
     assert events["odds_720"]["state"] == "done"
     assert events["odds_4320"]["state"] == "skipped" and "free plan" in events["odds_4320"]["detail"], (
@@ -281,12 +282,12 @@ def test_the_timeline_separates_captured_missed_unreachable_and_pending(
     assert events["odds_360"]["state"] == "skipped" and "without a capture" in events["odds_360"]["detail"]
     assert events["odds_180"]["state"] == "pending"
     assert events["result"]["state"] == "pending"
-    past = {e["key"]: e for e in get(client, f"/api/v1/matches/{dataset['f2']}")["data"]["timeline"]}
+    past = {e["key"]: e for e in get(client, f"/api/v1/admin/matches/{dataset['f2']}")["data"]["timeline"]}
     assert past["result"]["state"] == "failed", "kicked off yesterday, no result: that is a failure to show"
 
 
 def test_an_unknown_match_is_a_404_in_the_error_envelope(client: TestClient) -> None:
-    body = get(client, "/api/v1/matches/999999999", status=404)
+    body = get(client, "/api/v1/admin/matches/999999999", status=404)
     assert body["status"] == "error" and body["error"]["code"] == "not_found" and body["request_id"]
 
 
@@ -324,7 +325,7 @@ def test_fixture_odds_give_series_near_close_and_an_honest_consensus(
 
 
 def test_odds_intelligence_needs_the_historical_source_and_says_so(client: TestClient) -> None:
-    body = get(client, "/api/v1/odds/intelligence")
+    body = get(client, "/api/v1/admin/odds/intelligence")
     assert body["status"] == "not_available" and body["reason"]
     d = body["data"]
     assert d["margins"]["status"] == "not_available" and d["movement"]["status"] == "not_available"
@@ -373,7 +374,7 @@ def test_search_finds_teams_and_fixtures(client: TestClient) -> None:
 # ---------------------------------------------------------------------------
 
 def test_the_overview_reports_real_counts_and_withholds_what_does_not_exist(client: TestClient) -> None:
-    d = get(client, "/api/v1/overview")["data"]
+    d = get(client, "/api/v1/admin/overview")["data"]
     assert d["database"]["odds_snapshots"] >= 12 and d["database"]["fixtures_with_result"] >= 2
     assert d["provider"]["plan"] == "free" and d["provider"]["daily_budget"] == 60
     assert d["fixtures"]["awaiting_result"] >= 1
@@ -383,7 +384,7 @@ def test_the_overview_reports_real_counts_and_withholds_what_does_not_exist(clie
 
 
 def test_quality_explains_every_null_it_reports(client: TestClient) -> None:
-    body = get(client, "/api/v1/health/quality")
+    body = get(client, "/api/v1/admin/health/quality")
     snap, why = body["data"]["snapshot"], body["data"]["explanations"]
     for field in ("fixture_odds_coverage", "bookmaker_coverage", "market_coverage", "window_coverage_24h"):
         if snap[field] is None:
@@ -391,21 +392,21 @@ def test_quality_explains_every_null_it_reports(client: TestClient) -> None:
 
 
 def test_issues_are_derived_from_the_data(client: TestClient) -> None:
-    keys = {i["key"] for i in get(client, "/api/v1/data-quality/issues")["data"]}
+    keys = {i["key"] for i in get(client, "/api/v1/admin/data-quality/issues")["data"]}
     assert "awaiting_result" in keys
     assert "results_without_lineage" in keys
 
 
 def test_models_list_the_registry_and_the_baseline_says_it_has_no_odds(client: TestClient) -> None:
-    d = get(client, "/api/v1/models")["data"]
+    d = get(client, "/api/v1/admin/models")["data"]
     assert d["market_baseline"]["status"] == "insufficient_data"
     assert d["models"]["status"] == "ok" and d["models"]["data"][0]["latest_backtest"] is None
 
 
 def test_picks_and_performance_do_not_pretend(client: TestClient) -> None:
-    picks = get(client, "/api/v1/picks")
+    picks = get(client, "/api/v1/admin/picks")
     assert picks["status"] == "not_available" and picks["data"]["picks"]["data"] == []
-    perf = get(client, "/api/v1/performance")
+    perf = get(client, "/api/v1/admin/performance")
     assert perf["status"] == "insufficient_data"
     assert perf["data"]["roi_pct"] is None and perf["data"]["profit_units"] is None
 
@@ -429,10 +430,10 @@ def test_every_response_carries_a_request_id_and_safe_headers(client: TestClient
 
 
 def test_cors_allows_the_local_frontend_and_nobody_else(client: TestClient) -> None:
-    ok = client.options("/api/v1/overview", headers={
+    ok = client.options("/api/v1/admin/overview", headers={
         "origin": "http://localhost:5173", "access-control-request-method": "GET"})
     assert ok.headers.get("access-control-allow-origin") == "http://localhost:5173"
-    evil = client.options("/api/v1/overview", headers={
+    evil = client.options("/api/v1/admin/overview", headers={
         "origin": "https://evil.example", "access-control-request-method": "GET"})
     assert "access-control-allow-origin" not in evil.headers
 
@@ -454,20 +455,20 @@ def test_an_unexpected_error_is_a_json_500_that_the_browser_can_read(
         raise RuntimeError("database says: password=fbi_local_dev")
 
     monkeypatch.setattr(analytics, "performance", boom)
-    r = client.get("/api/v1/performance", headers={"origin": "http://localhost:5173"})
+    r = client.get("/api/v1/admin/performance", headers={"origin": "http://localhost:5173"})
     assert r.status_code == 500
     assert r.headers.get("access-control-allow-origin") == "http://localhost:5173"
     assert r.json()["error"]["code"] == "internal" and "password" not in r.text
 
 
 def test_rankings_need_an_elo_history_and_say_so(client: TestClient) -> None:
-    body = get(client, "/api/v1/rankings")
+    body = get(client, "/api/v1/admin/rankings")
     assert body["status"] == "not_available" and "build_features" in body["reason"]
-    assert client.get("/api/v1/rankings?limit=0").status_code == 422
+    assert client.get("/api/v1/admin/rankings?limit=0").status_code == 422
 
 
 def test_job_health_summarises_the_ledger(client: TestClient) -> None:
-    body = get(client, "/api/v1/ops/jobs")
+    body = get(client, "/api/v1/admin/ops/jobs")
     assert body["status"] in ("ok", "empty")
     for j in body["data"]:
         assert j["runs_24h"] >= j["failed_24h"] >= 0 and j["job_type"] != "unspecified"
@@ -484,7 +485,7 @@ def test_the_registry_is_readable_and_says_nothing_secret(
     Distinct from /data-quality/issues, which derives problems on every call: this
     one shows what was RECORDED, including an issue that was resolved and why.
     """
-    body = get(client, "/api/v1/data-quality/registry")
+    body = get(client, "/api/v1/admin/data-quality/registry")
     assert body["status"] in {"ok", "empty"}
     assert isinstance(body["data"], list)
     for issue in body["data"]:
@@ -494,15 +495,15 @@ def test_the_registry_is_readable_and_says_nothing_secret(
         for forbidden in ("apisports", "authorization", "bearer ", "api_key", "password"):
             assert forbidden not in text
 
-    summary = get(client, "/api/v1/data-quality/registry/summary")
+    summary = get(client, "/api/v1/admin/data-quality/registry/summary")
     assert summary["status"] in {"ok", "empty"}
-    filtered = get(client, "/api/v1/data-quality/registry?code=RESULT_UNRESOLVED&limit=5")
+    filtered = get(client, "/api/v1/admin/data-quality/registry?code=RESULT_UNRESOLVED&limit=5")
     assert all(i["code"] == "RESULT_UNRESOLVED" for i in filtered["data"])
 
 
 def test_a_check_run_reports_its_denominator_or_none(client: TestClient,
                                                      dataset: dict[str, int]) -> None:
-    body = get(client, "/api/v1/data-quality/checks")
+    body = get(client, "/api/v1/admin/data-quality/checks")
     assert body["status"] in {"ok", "empty"}
     for run in body["data"]:
         assert set(run) >= {"check_name", "population", "offenders", "ratio", "passed"}
@@ -515,7 +516,7 @@ def test_a_check_run_reports_its_denominator_or_none(client: TestClient,
 def test_provider_status_shows_the_quota_and_the_catalogue_without_a_credential(
     client: TestClient, dataset: dict[str, int]
 ) -> None:
-    body = get(client, "/api/v1/provider")
+    body = get(client, "/api/v1/admin/provider")
     data = body["data"]
     assert data["provider"] == "api_football"
     assert data["payloads_stored"] >= 1
@@ -532,7 +533,7 @@ def test_provider_status_shows_the_quota_and_the_catalogue_without_a_credential(
 def test_the_operational_endpoints_cannot_write(client: TestClient, dataset: dict[str, int]) -> None:
     """They run on the read-only connection like every other route; a POST is simply
     not routed."""
-    for path in ("/api/v1/data-quality/registry", "/api/v1/data-quality/checks", "/api/v1/provider"):
+    for path in ("/api/v1/admin/data-quality/registry", "/api/v1/admin/data-quality/checks", "/api/v1/admin/provider"):
         assert client.post(path).status_code in {404, 405}
 
 
@@ -573,7 +574,7 @@ def test_players_endpoints_answer_without_inventing(client: TestClient, dataset:
 
 
 def test_admin_overview_reports_the_system(client: TestClient) -> None:
-    body = get(client, "/api/v1/admin/overview")
+    body = get(client, "/api/v1/admin/system")
     assert body["status"] == "ok"
     d = body["data"]
     assert d["schema_revision"] and d["quota"]["budget"] >= 0

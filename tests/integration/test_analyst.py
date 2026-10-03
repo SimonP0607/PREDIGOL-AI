@@ -15,6 +15,7 @@ from fbi.analyst.agent import AnalystAgent, AnalystConfig, ToolCall, unverified_
 from fbi.analyst.tools import TOOLS, ToolError, run_tool
 from fbi.core.config import reset_cache
 from tests.integration.conftest import Seed
+from tests.integration.signed_in import SAME_SITE, signed_in
 
 KEY = "sk-analyst-key-that-must-never-leave-the-server"
 
@@ -30,7 +31,7 @@ def test_every_tool_has_a_schema_and_an_endpoint() -> None:
 def test_a_tool_result_carries_its_provenance(db: psycopg.Connection, seed: Seed) -> None:
     res = run_tool(db, "get_match", {"fixture_id": seed.fixture_id})
     assert res["status"] == "ok" and res["data"]["match"]["id"] == seed.fixture_id
-    assert res["provenance"]["endpoint"] == f"/api/v1/matches/{seed.fixture_id}"
+    assert res["provenance"]["endpoint"] == f"/api/v1/admin/matches/{seed.fixture_id}"
     assert res["provenance"]["read_only"] is True and res["provenance"]["generated_at"]
     quality = run_tool(db, "get_data_quality", {})
     assert quality["status"] in ("ok", "insufficient_data", "not_available", "empty")
@@ -92,29 +93,29 @@ def client(migrated_database: str) -> Iterator[TestClient]:
     reset_cache()
     from fbi.api.app import create_app
 
-    with TestClient(create_app()) as c:
+    with TestClient(signed_in(create_app()), headers=SAME_SITE) as c:
         yield c
     mp.undo()
     reset_cache()
 
 
 def test_without_a_key_the_analyst_says_so_and_sends_nothing(client: TestClient) -> None:
-    status = client.get("/api/v1/analyst").json()
+    status = client.get("/api/v1/admin/analyst").json()
     assert status["status"] == "not_available" and "FBI_ANALYST_API_KEY" in status["reason"]
     assert len(status["data"]["tools"]) == len(TOOLS)
-    r = client.post("/api/v1/analyst/ask", json={"question": "How are the models doing?"})
+    r = client.post("/api/v1/admin/analyst/ask", json={"question": "How are the models doing?"})
     assert r.status_code == 200 and r.json()["status"] == "not_available"
     assert "Nothing was sent anywhere" in r.json()["reason"]
-    assert client.post("/api/v1/analyst/ask", json={"question": ""}).status_code == 422
+    assert client.post("/api/v1/admin/analyst/ask", json={"question": ""}).status_code == 422
 
 
 def test_the_tool_console_and_a_configured_key_that_never_leaks(client: TestClient, seed: Seed,
                                                                  monkeypatch: pytest.MonkeyPatch) -> None:
-    r = client.get(f"/api/v1/analyst/tools/get_match?fixture_id={seed.fixture_id}")
+    r = client.get(f"/api/v1/admin/analyst/tools/get_match?fixture_id={seed.fixture_id}")
     assert r.status_code == 200 and r.json()["provenance"]["endpoint"].endswith(str(seed.fixture_id))
-    assert client.get("/api/v1/analyst/tools/drop_tables").status_code == 404
-    assert client.get("/api/v1/analyst/tools/get_match").status_code == 422
+    assert client.get("/api/v1/admin/analyst/tools/drop_tables").status_code == 404
+    assert client.get("/api/v1/admin/analyst/tools/get_match").status_code == 422
     monkeypatch.setenv("FBI_ANALYST_API_KEY", KEY)
     monkeypatch.setenv("FBI_ANALYST_MODEL", "test-model")
-    body = client.get("/api/v1/analyst")
+    body = client.get("/api/v1/admin/analyst")
     assert body.json()["data"]["configured"] is True and KEY not in body.text

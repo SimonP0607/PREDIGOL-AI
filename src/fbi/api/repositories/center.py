@@ -158,7 +158,11 @@ WITH feed AS (
     SELECT fixture_id FROM odds WHERE NOT COALESCE(is_finished, false) AND at > %(at)s - interval '5 minutes'
 )
 SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition, c.country,
-       th.id AS home_id, th.name AS home_name, ta.id AS away_id, ta.name AS away_name,
+       c.id AS competition_id, c.logo_url AS competition_logo, c.flag_url AS competition_flag,
+       th.id AS home_id, th.name AS home_name, th.logo_url AS home_logo,
+       ta.id AS away_id, ta.name AS away_name, ta.logo_url AS away_logo,
+       EXISTS (SELECT 1 FROM core.fixture_lineups l WHERE l.fixture_id = f.id) AS has_lineups,
+       EXISTS (SELECT 1 FROM core.fixture_player_stats ps WHERE ps.fixture_id = f.id) AS has_player_stats,
        feed.at AS feed_at, feed.status AS feed_status, feed.elapsed AS feed_elapsed, feed.extra AS feed_extra,
        feed.goals_home AS feed_gh, feed.goals_away AS feed_ga,
        odds.at AS odds_at, odds.status_long AS odds_status, odds.elapsed_minute AS odds_elapsed,

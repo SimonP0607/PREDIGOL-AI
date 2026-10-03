@@ -10,19 +10,28 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from fbi.api import errors
-from fbi.api.routers import analyst, center, explorer, football, market, system
+from fbi.api.routers import (
+    admin_users,
+    analyst,
+    auth,
+    center,
+    explorer,
+    football,
+    market,
+    product,
+    system,
+)
+from fbi.api.security import allowed_origins, require_admin, require_app, same_site_only
 from fbi.api.services.ops import VERSION
 from fbi.core.config import settings
 from fbi.core.logging import configure
 
 log = structlog.get_logger("api")
-
-DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 
 
 class _RateLimiter:
@@ -77,14 +86,13 @@ def create_app() -> FastAPI:
             return JSONResponse(errors.body("internal", "internal error; see the server log for this request id", rid),
                                 status_code=500)
 
-    origins = [o.strip() for o in os.environ.get("FBI_API_CORS_ORIGINS", DEFAULT_ORIGINS).split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=False,
-        # POST exists for one route only - /analyst/ask - and it writes nothing.
-        allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["accept", "content-type", "x-request-id"],
+        # Explicit origins only - never "*" - because the session cookie travels with credentials.
+        allow_origins=allowed_origins(),
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_headers=["accept", "content-type", "x-request-id", "x-requested-with"],
         expose_headers=["x-request-id"],
         max_age=600,
     )
@@ -116,9 +124,19 @@ def create_app() -> FastAPI:
                  ms=elapsed_ms, request_id=rid)
         return response
 
-    for r in (system.router, football.router, market.router, explorer.router, analyst.router, center.router):
+    # Three tiers, decided here and nowhere else (see fbi.api.security):
+    #   public  - health, sign-in, sign-out
+    #   app     - the product, for any signed-in account
+    #   admin   - /api/v1/admin/*, SUPER_ADMIN only
+    for r in (system.router, auth.public_router):
         app.include_router(r, prefix="/api/v1")
-    # The original unversioned health endpoints stay where monitors expect them.
+    app_tier = [Depends(same_site_only), Depends(require_app)]
+    for r in (auth.router, product.router, football.router, market.router, center.router):
+        app.include_router(r, prefix="/api/v1", dependencies=app_tier)
+    admin_tier = [Depends(same_site_only), Depends(require_admin)]
+    for r in (system.admin_router, football.admin_router, market.admin_router,
+              center.admin_router, explorer.router, analyst.router, admin_users.router):
+        app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
+    # The original unversioned health endpoint stays where monitors expect it.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)
-    app.add_api_route("/health/quality", system.get_quality, methods=["GET"], include_in_schema=False)
     return app

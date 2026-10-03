@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
 import psycopg
@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.audit import MatchAudit
 from fbi.api.contracts.catalog import CompetitionDetail, CompetitionSummary, TeamDetail, TeamSummary
-from fbi.api.contracts.matches import MatchDetail, MatchSummary
+from fbi.api.contracts.matches import MatchDetail, MatchSummary, MatchView
 from fbi.api.contracts.rankings import Rankings
 from fbi.api.contracts.search import SearchHit
 from fbi.api.deps import get_db
@@ -19,6 +19,7 @@ from fbi.api.services import rankings as rankings_service
 from fbi.api.services import search as search_service
 
 router = APIRouter(tags=["football"])
+admin_router = APIRouter(tags=["admin: football"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 Id = Annotated[int, Path(ge=1, le=2**62)]
 Limit = Annotated[int, Query(ge=1, le=200)]
@@ -31,6 +32,9 @@ def get_matches(
     conn: Db,
     date_from: date | None = None,
     date_to: date | None = None,
+    kickoff_after: Annotated[datetime | None, Query(description="Inclusive instant; with kickoff_before, a "
+                                                    "day in the reader's own time zone.")] = None,
+    kickoff_before: Annotated[datetime | None, Query(description="Exclusive instant.")] = None,
     status: StatusFilter | None = None,
     competition_id: Annotated[int | None, Query(ge=1)] = None,
     team_id: Annotated[int | None, Query(ge=1)] = None,
@@ -39,16 +43,23 @@ def get_matches(
     offset: Offset = 0,
 ) -> Envelope[list[MatchSummary]]:
     flt = FixtureFilter(date_from=date_from, date_to=date_to, status=status,
-                        competition_id=competition_id, team_id=team_id)
+                        competition_id=competition_id, team_id=team_id,
+                        kickoff_after=kickoff_after, kickoff_before=kickoff_before)
     return matches.list_matches(conn, flt, limit=limit, offset=offset, order=order)
 
 
-@router.get("/matches/{fixture_id}", response_model=Envelope[MatchDetail])
-def get_match(conn: Db, fixture_id: Id) -> Envelope[MatchDetail]:
+@router.get("/matches/{fixture_id}", response_model=Envelope[MatchView])
+def get_match(conn: Db, fixture_id: Id) -> Envelope[MatchView]:
+    """The match, its venue and its latest prices. Model output and lineage: /admin/matches/{id}."""
+    return matches.match_view(conn, fixture_id)
+
+
+@admin_router.get("/matches/{fixture_id}", response_model=Envelope[MatchDetail])
+def get_match_detail(conn: Db, fixture_id: Id) -> Envelope[MatchDetail]:
     return matches.match_detail(conn, fixture_id)
 
 
-@router.get("/matches/{fixture_id}/audit", response_model=Envelope[MatchAudit])
+@admin_router.get("/matches/{fixture_id}/audit", response_model=Envelope[MatchAudit])
 def get_match_audit(conn: Db, fixture_id: Id) -> Envelope[MatchAudit]:
     """The chain behind every number shown for a fixture, provider to settlement."""
     return audit.match_audit(conn, fixture_id)
@@ -95,7 +106,7 @@ def get_search(
     return search_service.search(conn, q, limit)
 
 
-@router.get("/rankings", response_model=Envelope[Rankings | None])
+@admin_router.get("/rankings", response_model=Envelope[Rankings | None])
 def get_rankings(
     conn: Db,
     competition_id: Annotated[int | None, Query(ge=1, description="Teams whose LAST rated match was here.")] = None,

@@ -24,6 +24,7 @@ from fbi.features.data import MatchRecord
 from fbi.models.scoring import MARKET_ROWS
 from tests.integration.conftest import Seed
 from tests.integration.helpers import must_be_accepted, must_be_rejected, scalar
+from tests.integration.signed_in import SAME_SITE, signed_in
 
 KO = datetime(2025, 3, 1, 15, 0, tzinfo=UTC)
 SCORES = [(2, 1), (0, 0), (1, 3), (1, 1), (4, 0), (0, 2)]
@@ -201,8 +202,8 @@ def test_the_models_endpoint_shows_the_market_first_and_labels_betting_hypotheti
     try:
         from fbi.api.app import create_app
 
-        with TestClient(create_app()) as client:
-            body = client.get("/api/v1/models").json()
+        with TestClient(signed_in(create_app()), headers=SAME_SITE) as client:
+            body = client.get("/api/v1/admin/models").json()
     finally:
         mp.undo()
         reset_cache()
@@ -255,10 +256,10 @@ def test_historical_prices_reach_the_match_and_the_market_pages_labelled_as_a_se
     try:
         from fbi.api.app import create_app
 
-        with TestClient(create_app()) as client:
+        with TestClient(signed_in(create_app()), headers=SAME_SITE) as client:
             odds = client.get(f"/api/v1/odds/fixtures/{target.fixture_id}").json()["data"]
-            intel = client.get("/api/v1/odds/intelligence").json()
-            match = client.get(f"/api/v1/matches/{target.fixture_id}").json()["data"]
+            intel = client.get("/api/v1/admin/odds/intelligence").json()
+            match = client.get(f"/api/v1/admin/matches/{target.fixture_id}").json()["data"]
     finally:
         mp.undo()
         reset_cache()

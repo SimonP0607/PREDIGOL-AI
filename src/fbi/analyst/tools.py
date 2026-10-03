@@ -137,22 +137,22 @@ TOOLS: dict[str, Tool] = {t.name: t for t in (
          "/api/v1/matches", _matches),
     Tool("get_match", "One fixture: teams, competition, kick-off, status, score (final and 90-minute basis), "
          "venue, lineage to the provider payload, and its capture timeline.", FIXTURE_ARG,
-         "/api/v1/matches/{fixture_id}", _match),
+         "/api/v1/admin/matches/{fixture_id}", _match),
     Tool("get_odds", "Prices for one fixture: what the platform captured (with capture time and payload), the "
          "near-close snapshot (not a closing line), the de-vigged consensus, and the historical market from the "
          "second source in its own terms.", FIXTURE_ARG, "/api/v1/odds/fixtures/{fixture_id}", _odds),
     Tool("get_model_prediction", "Model probabilities for one fixture with data cut-off, input hash and interval; "
          "each row says whether it is a backtest replay or a real-time forecast.", FIXTURE_ARG,
-         "/api/v1/matches/{fixture_id} (predictions)", _predictions),
+         "/api/v1/admin/matches/{fixture_id} (predictions)", _predictions),
     Tool("get_pick", "Shadow picks with the whole lifecycle, the decision rule and each pick's lineage.", NO_ARGS,
-         "/api/v1/picks", _picks),
+         "/api/v1/admin/picks", _picks),
     Tool("get_performance", "Settled shadow-pick performance; withheld below the minimum sample.", NO_ARGS,
-         "/api/v1/performance", _performance),
+         "/api/v1/admin/performance", _performance),
     Tool("get_data_quality", "Freshness, coverage, capture state, quota and worker status, with the reason for "
-         "every null.", NO_ARGS, "/api/v1/health/quality", _quality),
+         "every null.", NO_ARGS, "/api/v1/admin/health/quality", _quality),
     Tool("get_model_evaluation", "The latest walk-forward backtest: every model against the de-vigged market on "
          "the same fixtures, with intervals and verdicts; betting results are hypothetical.", NO_ARGS,
-         "/api/v1/models", _models),
+         "/api/v1/admin/models", _models),
 )}
 
 

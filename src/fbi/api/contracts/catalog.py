@@ -32,6 +32,9 @@ class CompetitionSummary(Contract):
     current_season: int | None
     fixtures: int
     teams: int
+    logo_url: str | None = None
+    flag_url: str | None = None
+    country_code: str | None = None
 
 
 class CompetitionDetail(Contract):
@@ -47,6 +50,7 @@ class TeamSummary(Contract):
     country: str | None
     fixtures: int
     results: int
+    logo_url: str | None = None
 
 
 class TeamRecord(Contract):

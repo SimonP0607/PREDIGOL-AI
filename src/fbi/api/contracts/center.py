@@ -194,6 +194,19 @@ class MatchCenter(Contract):
 class LiveTeam(Contract):
     id: int
     name: str
+    logo_url: str | None = None
+
+
+class LiveCompleteness(Contract):
+    """How much of the match we can actually show, from what is stored - not a guess.
+
+    Weights (sum 100): score 10, minute 10, key events 15, team statistics 20, line-ups 10,
+    player ratings 10, in-play prices 15, in-play market breadth 10.
+    """
+
+    score: int = Field(ge=0, le=100)
+    level: Literal["rich", "partial", "basic"]
+    signals: dict[str, bool]
 
 
 class LiveMatch(Contract):
@@ -201,6 +214,9 @@ class LiveMatch(Contract):
     kickoff_at: datetime
     competition: str
     country: str | None
+    competition_id: int | None = None
+    competition_logo: str | None = None
+    competition_flag: str | None = None
     home: LiveTeam
     away: LiveTeam
     status: str
@@ -219,6 +235,9 @@ class LiveMatch(Contract):
     main_odds: list[LiveQuote]
     data_status: Literal["ok", "stale", "no_odds"] = Field(
         description="stale: no state for 3 minutes; no_odds: in play but nobody quotes it in play.")
+    has_lineups: bool = False
+    has_player_stats: bool = False
+    completeness: LiveCompleteness | None = None
 
 
 class LiveBoard(Contract):

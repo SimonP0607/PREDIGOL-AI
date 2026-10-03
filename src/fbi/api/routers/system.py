@@ -24,6 +24,7 @@ from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
 from fbi.api.services import ops
 
 router = APIRouter(tags=["system"])
+admin_router = APIRouter(tags=["admin: operations & data quality"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 
 
@@ -44,17 +45,17 @@ def get_health(response: Response) -> SystemHealth:
     return h
 
 
-@router.get("/health/quality", response_model=Envelope[QualityReport])
+@admin_router.get("/health/quality", response_model=Envelope[QualityReport])
 def get_quality(conn: Db) -> Envelope[QualityReport]:
     return ops.quality(conn)
 
 
-@router.get("/overview", response_model=Envelope[Overview])
+@admin_router.get("/overview", response_model=Envelope[Overview])
 def get_overview(conn: Db) -> Envelope[Overview]:
     return ops.overview(conn)
 
 
-@router.get("/ingestion/runs", response_model=Envelope[list[RunSummary]])
+@admin_router.get("/ingestion/runs", response_model=Envelope[list[RunSummary]])
 def get_runs(
     conn: Db,
     limit: Annotated[int, Query(ge=1, le=200)] = 20,
@@ -64,17 +65,17 @@ def get_runs(
     return ops.runs(conn, limit=limit, job_type=job_type, status=status)
 
 
-@router.get("/data-quality/coverage", response_model=Envelope[list[CoverageRow]])
+@admin_router.get("/data-quality/coverage", response_model=Envelope[list[CoverageRow]])
 def get_coverage(conn: Db) -> Envelope[list[CoverageRow]]:
     return ops.coverage(conn)
 
 
-@router.get("/data-quality/issues", response_model=Envelope[list[QualityIssue]])
+@admin_router.get("/data-quality/issues", response_model=Envelope[list[QualityIssue]])
 def get_issues(conn: Db) -> Envelope[list[QualityIssue]]:
     return ops.issues(conn)
 
 
-@router.get("/data-quality/registry", response_model=Envelope[list[RegisteredIssue]])
+@admin_router.get("/data-quality/registry", response_model=Envelope[list[RegisteredIssue]])
 def get_registered_issues(
     conn: Db,
     code: Annotated[str | None, Query()] = None,
@@ -91,25 +92,25 @@ def get_registered_issues(
     return ops.registered_issues(conn, code=code, status=status, open_only=open_only, limit=limit)
 
 
-@router.get("/data-quality/registry/summary", response_model=Envelope[list[IssueSummaryRow]])
+@admin_router.get("/data-quality/registry/summary", response_model=Envelope[list[IssueSummaryRow]])
 def get_issue_summary(conn: Db) -> Envelope[list[IssueSummaryRow]]:
     return ops.issue_summary(conn)
 
 
-@router.get("/data-quality/checks", response_model=Envelope[list[CheckRun]])
+@admin_router.get("/data-quality/checks", response_model=Envelope[list[CheckRun]])
 def get_check_runs(conn: Db,
                    limit: Annotated[int, Query(ge=1, le=200)] = 50) -> Envelope[list[CheckRun]]:
     """Every check run, with the denominator it ran against."""
     return ops.check_runs(conn, limit=limit)
 
 
-@router.get("/provider", response_model=Envelope[ProviderStatus])
+@admin_router.get("/provider", response_model=Envelope[ProviderStatus])
 def get_provider_status(conn: Db) -> Envelope[ProviderStatus]:
     """Quota, raw store and provider catalogue. No credential is exposed or read."""
     return ops.provider_status(conn)
 
 
-@router.get("/notifications", response_model=Envelope[NotificationsOverview])
+@admin_router.get("/notifications", response_model=Envelope[NotificationsOverview])
 def get_notifications(conn: Db, limit: Annotated[int, Query(ge=1, le=200)] = 50) -> Envelope[NotificationsOverview]:
     """What the bot produced and what happened to each message. It informs; it cannot bet."""
     import os
@@ -147,7 +148,7 @@ JOBS_SQL = """
 """
 
 
-@router.get("/ops/jobs", response_model=Envelope[list[JobHealth]])
+@admin_router.get("/ops/jobs", response_model=Envelope[list[JobHealth]])
 def get_jobs(conn: Db) -> Envelope[list[JobHealth]]:
     """Every job type: what ran in the last 24 h, what failed, when it last succeeded, when it runs next."""
     from datetime import datetime
