@@ -122,6 +122,8 @@ class BestPrice(Contract):
     p_fair: Decimal
     fair_odds: Decimal
     price_edge: Decimal = Field(description="best_odds * p_fair - 1: how far the best price sits above fair.")
+    outlier: bool = Field(default=False, description="More than 25% above fair: very likely one book's stale or "
+                                                     "mistaken quote. Shown, flagged, never highlighted.")
     n_bookmakers: int
     as_of: datetime
 

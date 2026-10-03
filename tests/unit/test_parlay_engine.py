@@ -106,6 +106,7 @@ def test_one_leg_per_selection_keeps_the_best_price() -> None:
     ({"price": None}, Reject.NO_PRICE),
     ({"p_fair": None}, Reject.NO_CONSENSUS),
     ({"books": 1}, Reject.FEW_BOOKMAKERS),
+    ({"price": "2.80", "p_fair": "0.50"}, Reject.PRICE_OUTLIER),  # 40% above fair: one book's error
 ])
 def test_every_gate_names_the_rule_that_failed(kwargs: dict[str, object], reason: Reject) -> None:
     assert engine.assess(cand(1, **kwargs), NOW, GateConfig()) is reason  # type: ignore[arg-type]
@@ -139,7 +140,7 @@ def test_the_multiday_parlay_takes_six_or_seven_legs_in_two_days() -> None:
 
 
 def test_legs_are_chosen_by_value_not_by_order() -> None:
-    cands = [cand(i, price="2.05") for i in range(1, 6)] + [cand(6, price="2.60")]
+    cands = [cand(i, price="2.05") for i in range(1, 6)] + [cand(6, price="2.40")]
     p = build_daily(cands)
     assert p.status == "ok" and 6 in {leg.candidate.pick_id for leg in p.legs}
 

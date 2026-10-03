@@ -51,6 +51,7 @@ TOP_SIZE = 5
 HOME_WINDOW = timedelta(hours=48)
 HIGHLIGHT_MIN_BOOKS = 3
 HIGHLIGHT_MAX_AGE = timedelta(hours=6)
+OUTLIER_EDGE = GateConfig().max_price_edge
 
 
 def _source(include_shadow: bool) -> Source:
@@ -211,9 +212,10 @@ def parlay_board(conn: Conn, kind: engine.ParlayKind, *, include_shadow: bool,
 def _price(r: Row) -> BestPrice:
     p_fair = Decimal(r["p_fair"])
     odds = Decimal(r["best_odds"])
+    edge = (odds * p_fair - Decimal(1)).quantize(Q4, ROUND_HALF_UP)
     return BestPrice(selection=r["selection"], best_odds=odds, bookmaker=r.get("bookmaker"), p_fair=p_fair,
                      fair_odds=(Decimal(1) / p_fair).quantize(Q3, ROUND_HALF_UP) if p_fair > 0 else Decimal(0),
-                     price_edge=(odds * p_fair - Decimal(1)).quantize(Q4, ROUND_HALF_UP),
+                     price_edge=edge, outlier=edge > OUTLIER_EDGE,
                      n_bookmakers=int(r["n_bookmakers"]), as_of=r["as_of"])
 
 
@@ -252,7 +254,7 @@ def best_odds(rows: list[Row], *, moment: datetime) -> tuple[list[BestOddsFixtur
             prices = [_price(r) for r in lines[line]]
             markets.append(BestMarket(market_key=market_key, line=line, selections=prices))
             for p in prices:
-                if (p.n_bookmakers >= HIGHLIGHT_MIN_BOOKS and p.price_edge > 0
+                if (p.n_bookmakers >= HIGHLIGHT_MIN_BOOKS and p.price_edge > 0 and not p.outlier
                         and moment - p.as_of <= HIGHLIGHT_MAX_AGE):
                     highlights.append(BestHighlight(
                         fixture_id=fid, kickoff_at=first["kickoff_at"], competition=_competition(first),

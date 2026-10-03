@@ -9,7 +9,8 @@ Value gate - every leg must have, at the moment the parlay is built:
     walk-forward backtest), from a model version that is not retired;
   * a fixture still scheduled, kicking off later than ``min_minutes_to_kickoff``;
   * a current price, captured no longer ago than ``max_price_age``, quoted by at least
-    ``min_bookmakers`` books (the de-vigged consensus exists);
+    ``min_bookmakers`` books (the de-vigged consensus exists), and not an outlier more than
+    ``max_price_edge`` above that consensus (one book's stale or mistaken quote);
   * a positive expected value AT THAT CURRENT PRICE - the price the pick was made at
     does not count.
 
@@ -54,6 +55,7 @@ class Reject(StrEnum):
     STALE_PRICE = "stale_price"
     NO_CONSENSUS = "no_consensus"
     FEW_BOOKMAKERS = "few_bookmakers"
+    PRICE_OUTLIER = "price_outlier"
     NON_POSITIVE_EV = "non_positive_ev"
     SAME_FIXTURE = "same_fixture"
     SHARED_TEAM = "shared_team"
@@ -92,6 +94,10 @@ class GateConfig:
     min_ev: Decimal = Decimal("0")
     """A leg needs EV strictly greater than this at the current price."""
     min_bookmakers: int = 2
+    max_price_edge: Decimal = Decimal("0.25")
+    """A best price more than 25% above the de-vigged consensus is almost always one book's
+    stale or mistaken quote, not a price anyone can take: the leg is refused rather than
+    letting that number inflate its expected value."""
     min_minutes_to_kickoff: int = 10
     allow_unqualified: bool = False
     """Only the Admin Console's shadow preview sets this. A user's parlay never does."""
@@ -161,6 +167,8 @@ def assess(c: Candidate, now: datetime, cfg: GateConfig) -> Leg | Reject:
         return Reject.NO_CONSENSUS
     if (c.n_bookmakers or 0) < cfg.min_bookmakers:
         return Reject.FEW_BOOKMAKERS
+    if c.price * c.p_market_fair - Decimal(1) > cfg.max_price_edge:
+        return Reject.PRICE_OUTLIER
     push = c.p_push if c.p_push is not None else Decimal(0)
     ev, p_win = expected_value(c.p_model, c.p_push, c.price)
     if ev <= cfg.min_ev:
