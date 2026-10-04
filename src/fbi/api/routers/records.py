@@ -23,6 +23,7 @@ from fbi.api.contracts.records import (
     ParlayIn,
     ParlayValidation,
     SavePickIn,
+    UserOddsIn,
     UserParlay,
     UserPick,
 )
@@ -96,6 +97,18 @@ def remove_my_pick(principal: App, record_id: Annotated[int, Path(ge=1)]) -> Res
     return Response(status_code=204)
 
 
+@router.patch("/me/picks/{record_id}", status_code=204)
+def set_my_odds(body: UserOddsIn, principal: App, record_id: Annotated[int, Path(ge=1)]) -> Response:
+    """The price the user got at their own bookmaker, until the match starts."""
+    try:
+        with write_connection() as conn:
+            userdata.set_user_odds(conn, user_id=principal.user_id, record_id=record_id, user_odds=body.user_odds,
+                                   at=now())
+    except userdata.RecordError as exc:
+        raise _refused(exc) from exc
+    return Response(status_code=204)
+
+
 def _legs(body: ParlayIn) -> list[userdata.LegIn]:
     return [userdata.LegIn(fixture_id=leg.fixture_id, market_key=leg.market_key, selection=leg.selection,
                            line=leg.line, odds=leg.odds) for leg in body.legs]
@@ -117,6 +130,17 @@ def build_my_parlay(body: ParlayIn, principal: App) -> Envelope[dict[str, Any]]:
     except userdata.RecordError as exc:
         raise _refused(exc) from exc
     return ok(built)
+
+
+@router.delete("/me/parlays/{record_id}", status_code=204)
+def remove_my_parlay(principal: App, record_id: Annotated[int, Path(ge=1)]) -> Response:
+    """Only before its first match starts: after that a parlay is history."""
+    try:
+        with write_connection() as conn:
+            userdata.remove_parlay(conn, user_id=principal.user_id, record_id=record_id, at=now())
+    except userdata.RecordError as exc:
+        raise _refused(exc) from exc
+    return Response(status_code=204)
 
 
 @router.get("/me/parlays", response_model=Envelope[list[UserParlay]])

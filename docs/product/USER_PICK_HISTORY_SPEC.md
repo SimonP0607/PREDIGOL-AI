@@ -10,9 +10,11 @@ next to what PrediGol chose. Code: `src/fbi/userdata/records.py` (rules, writes,
 |---|---|
 | `GET /api/v1/me/picks[?status=open\|settled]` | the user's saved picks, newest match first |
 | `POST /api/v1/me/picks` | save one (`fixture_id`, `market_key`, `selection`, `line`, optional `pick_id`, optional `user_odds`) |
+| `PATCH /api/v1/me/picks/{id}` | set or clear the price the user got (`user_odds`), only before the match starts |
 | `DELETE /api/v1/me/picks/{id}` | remove one, only before its match starts |
 | `POST /api/v1/me/parlays/validate` | check a parlay against the rules without storing it |
 | `GET` / `POST /api/v1/me/parlays` | the user's parlays / build one |
+| `DELETE /api/v1/me/parlays/{id}` | remove one, only before its first match starts |
 | `GET /api/v1/me/history?period=today\|7d\|30d\|all` | the four groups below |
 
 Every write needs the same-site header (`x-requested-with: predigol`) and touches only the
@@ -33,7 +35,8 @@ when it was one of PrediGol's picks, the model's numbers (model, `p_model`, `p_l
   preview.
 * One save per selection (`already_saved`, 409). Only a match still to be played
   (`started`). Only selections we settle (`invalid_selection`).
-* Removal only before kick-off; after it, the pick is history.
+* The price the user got can be added, changed or cleared, and the pick removed, only before
+  kick-off; after it, the pick is history (no result can be "improved" afterwards).
 
 ## 2. Building a parlay
 
@@ -52,7 +55,7 @@ storing):
 
 Each leg keeps the price we showed (or the user's) and a snapshot. The parlay follows the
 same lifecycle and settlement as PrediGol's (`PARLAY_ENGINE_SPEC.md` section 4), from
-`READY`.
+`READY`. It can be removed until its first match starts.
 
 ## 3. History
 

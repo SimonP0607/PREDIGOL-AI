@@ -140,6 +140,28 @@ def remove_pick(conn: psycopg.Connection[Any], *, user_id: int, record_id: int, 
             raise RecordError("not_removable", "only your own pick, before its match starts, can be removed")
 
 
+def set_user_odds(conn: psycopg.Connection[Any], *, user_id: int, record_id: int, user_odds: Decimal | None,
+                  at: datetime) -> None:
+    """The price the user says they got at their own bookmaker - until the match starts; after
+    that the record is history and its price is what it settles at."""
+    with conn.cursor() as cur:
+        cur.execute("UPDATE picks.user_picks u SET user_odds = %s FROM core.fixtures f WHERE u.id = %s "
+                    "AND u.user_id = %s AND f.id = u.fixture_id AND f.kickoff_at > %s AND u.status = 'PENDING'",
+                    (user_odds, record_id, user_id, at))
+        if cur.rowcount == 0:
+            raise RecordError("not_editable", "only your own pick, before its match starts, can be changed")
+
+
+def remove_parlay(conn: psycopg.Connection[Any], *, user_id: int, record_id: int, at: datetime) -> None:
+    """Only before its first match starts: after that a parlay is history."""
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM picks.user_parlays p WHERE p.id = %s AND p.user_id = %s AND p.status = 'READY' "
+                    "AND NOT EXISTS (SELECT 1 FROM picks.user_parlay_legs l JOIN core.fixtures f ON f.id = l.fixture_id "
+                    "WHERE l.user_parlay_id = p.id AND f.kickoff_at <= %s)", (record_id, user_id, at))
+        if cur.rowcount == 0:
+            raise RecordError("not_removable", "only your own parlay, before its first match starts, can be removed")
+
+
 @dataclass
 class LegIn:
     fixture_id: int

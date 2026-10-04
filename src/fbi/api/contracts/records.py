@@ -117,6 +117,11 @@ class SavePickIn(BaseModel):
     user_odds: Decimal | None = Field(default=None, gt=1, lt=1000)
 
 
+class UserOddsIn(BaseModel):
+    user_odds: Decimal | None = Field(default=None, gt=1, lt=1000,
+                                      description="The price the user got at their own bookmaker; null clears it.")
+
+
 class UserPick(Contract):
     id: int
     match: MatchRef

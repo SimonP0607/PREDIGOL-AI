@@ -115,8 +115,32 @@ def test_a_user_saves_builds_and_reads_back(world: dict[str, Any]) -> None:
     assert c.get("/api/v1/daily", params={"preview": "shadow"}).status_code == 403
     assert c.get("/api/v1/me/history", params={"preview": "shadow"}).status_code == 403
 
+    assert c.patch(f"/api/v1/me/picks/{saved_id}", json={"user_odds": "2.40"}).status_code == 204
+    assert c.get("/api/v1/me/picks").json()["data"][0]["user_odds"] == "2.400"
+    assert c.patch(f"/api/v1/me/picks/{saved_id}", json={"user_odds": "0.9"}).status_code == 422
     assert c.delete(f"/api/v1/me/picks/{saved_id}").status_code == 204
     assert c.get("/api/v1/me/picks").json()["data"] == []
+
+    parlay_id = parlays[0]["id"]
+    assert client_for(999999).delete(f"/api/v1/me/parlays/{parlay_id}").status_code == 422, "not theirs"
+    assert c.delete(f"/api/v1/me/parlays/{parlay_id}").status_code == 204
+    assert c.get("/api/v1/me/parlays").json()["data"] == []
+
+
+def test_after_kickoff_a_pick_and_a_parlay_are_history(world: dict[str, Any]) -> None:
+    c = client_for(world["user"])
+    f1, f2 = world["fixtures"]
+    saved = c.post("/api/v1/me/picks", json={"fixture_id": f1, "market_key": "1X2", "selection": "Away"})
+    built = c.post("/api/v1/me/parlays", json={"legs": [
+        {"fixture_id": f1, "market_key": "1X2", "selection": "Draw"},
+        {"fixture_id": f2, "market_key": "1X2", "selection": "Draw"}]})
+    assert saved.status_code == 201 and built.status_code == 201
+    set_clock(FrozenClock(NOW + timedelta(hours=5, minutes=1)))  # f1 has kicked off
+    later = client_for(world["user"])
+    pick_id, parlay_id = saved.json()["data"]["id"], built.json()["data"]["id"]
+    assert later.patch(f"/api/v1/me/picks/{pick_id}", json={"user_odds": "3.10"}).status_code == 422
+    assert later.delete(f"/api/v1/me/picks/{pick_id}").status_code == 422
+    assert later.delete(f"/api/v1/me/parlays/{parlay_id}").status_code == 422
 
 
 def test_writes_need_the_same_site_header_and_touch_only_the_users_own(world: dict[str, Any]) -> None:
