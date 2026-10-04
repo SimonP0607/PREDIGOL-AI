@@ -52,6 +52,11 @@ from fbi.models.scoring import MARKET_ROWS
 
 HORIZON = timedelta(days=4)
 MIN_LEAD = timedelta(minutes=15)
+MAX_GOAL_TEAMS = 250
+"""A per-competition goal model estimates an attack and a defence per team, with their
+covariance: above this many teams (a year of club friendlies is thousands of sides with a
+handful of matches each) the fit means nothing and its covariance alone held the pipeline
+for minutes. Such a competition is reported as uncovered, never fitted."""
 """A forecast needs to exist before the last price we could compare it with (T-12)."""
 
 
@@ -164,6 +169,12 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
             if len(train) < MIN_GOAL_TRAIN:
                 report.uncovered.extend((t.fixture_id, kind, f"fewer than {MIN_GOAL_TRAIN} results in the last "
                                          f"{spec.cfg.history_days} days") for t in comp_targets)
+                continue
+            n_teams = len({m.home_team_id for m in train} | {m.away_team_id for m in train})
+            if n_teams > MAX_GOAL_TEAMS:
+                report.uncovered.extend((t.fixture_id, kind, f"{n_teams} teams in the training window: one attack "
+                                         "and one defence per team cannot be estimated from a few matches each "
+                                         "(club friendlies)") for t in comp_targets)
                 continue
             model = fit_goal_model(
                 [GoalObs(m.home_team_id, m.away_team_id, m.settle_home or 0, m.settle_away or 0,
