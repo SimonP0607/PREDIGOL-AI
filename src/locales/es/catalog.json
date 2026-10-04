@@ -13,7 +13,8 @@
     "assists": "A",
     "yellowCards": "TA",
     "redCards": "TR",
-    "rating": "Valoración"
+    "rating": "Valoración",
+    "ratingShort": "Val."
   },
   "competitions": {
     "scope": {

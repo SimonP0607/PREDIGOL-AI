@@ -13,7 +13,8 @@
     "assists": "A",
     "yellowCards": "Y",
     "redCards": "R",
-    "rating": "Rating"
+    "rating": "Rating",
+    "ratingShort": "Rtg."
   },
   "competitions": {
     "scope": {

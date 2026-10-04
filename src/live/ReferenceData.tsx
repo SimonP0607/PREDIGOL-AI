@@ -167,7 +167,7 @@ export function LeadersPanel({ data }: { data: CompetitionReference }) {
                     <TH align="right">{t("catalog.columns.apps")}</TH>
                     <TH align="right">{t(`catalog.reference.leaders.figure.${list.kind}`)}</TH>
                     <TH align="right" title={t("catalog.reference.leaders.ratingTitle")}>
-                      {t("catalog.columns.rating")}
+                      {t("catalog.columns.ratingShort")}
                     </TH>
                   </THead>
                   <tbody data-testid="leaders">
@@ -193,7 +193,16 @@ export function LeadersPanel({ data }: { data: CompetitionReference }) {
                           </span>
                         </TD>
                         <TD>
-                          {r.team ? <TeamName name={r.team} logo={r.team_logo} size={16} /> : "—"}
+                          {r.team ? (
+                            <TeamName
+                              name={r.team}
+                              logo={r.team_logo}
+                              size={16}
+                              className="max-w-[9rem]"
+                            />
+                          ) : (
+                            "—"
+                          )}
                         </TD>
                         <TD align="right">
                           <Numeric className="text-xs">{r.appearances ?? "—"}</Numeric>
