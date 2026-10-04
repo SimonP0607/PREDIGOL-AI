@@ -33,7 +33,8 @@ def committed(db: psycopg.Connection) -> Any:
     db.rollback()
     db.execute("DELETE FROM core.countries WHERE payload_hash LIKE 'fk%%'")
     db.execute("DELETE FROM core.person_trophies WHERE payload_hash LIKE 'pp%%'")
-    db.execute("DELETE FROM core.reference_checks WHERE feed IN ('countries', 'trophies_players')")
+    db.execute("DELETE FROM core.reference_checks WHERE feed IN ('countries', 'trophies_players', 'share_a', "
+               "'share_b')")
     db.execute("DELETE FROM raw.ingestion_payloads WHERE hash LIKE 'fk%%' OR hash LIKE 'pp%%'")
     db.execute("DELETE FROM raw.ingestion_runs WHERE job_type = 'reference_refresh'")
     db.commit()
@@ -258,3 +259,92 @@ async def test_people_due_are_asked_in_batches_and_checked_one_by_one(
     assert db.execute("SELECT count(DISTINCT provider_person_id) FROM core.person_trophies").fetchone() == (2,)
     again = await ref.refresh_reference(db, provider, daily_budget=60000, feeds=[feed], at=T0 + timedelta(days=2))
     assert again.deferred_reason == "nothing due" and len(provider.calls) == 2
+
+
+class EmptyProvider:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    async def fetch_raw(self, endpoint: str, params: dict[str, Any]) -> RawResponse:
+        self.calls.append((endpoint, params))
+        h = f"fk-share-{len(self.calls)}"
+        return RawResponse(endpoint=endpoint, params=params, fetched_at=T0, http_status=200, results_count=0,
+                           payload_hash=h, file_path=h, bytes_written=1, body={"response": []})
+
+
+@pytest.mark.asyncio
+async def test_a_backlog_in_one_feed_never_starves_the_feeds_after_it(
+        committed: psycopg.Connection, seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
+    """4 Oct 2026: the first worker run spent its 300 requests on the first feeds; the 5,525-team sweep of
+    /teams/statistics would then have held /sidelined and /trophies back for a day. Each feed with something
+    due gets a share first; what is left goes in priority order."""
+    db = committed
+    import fbi.ingestion.backfill as backfill
+    import fbi.providers.quota as quota
+
+    class Usage:
+        remaining = 1000
+
+    monkeypatch.setattr(backfill, "live_reserve", lambda *a, **k: 0)
+    monkeypatch.setattr(quota, "read_usage", lambda *a, **k: Usage())
+
+    def many(prefix: str, n: int) -> Any:
+        def targets(conn: psycopg.Connection, at: datetime) -> list[ref.Target]:
+            return [ref.Target(f"{prefix}:{i}", {prefix: i}, ref.WEEK, {}) for i in range(n)]
+        return targets
+
+    first = ref.Feed("share_a", "/a", many("a", 10), ref.apply_nothing, max_per_run=10)
+    second = ref.Feed("share_b", "/b", many("b", 1), ref.apply_nothing, max_per_run=10)
+    provider = EmptyProvider()
+    report = await ref.refresh_reference(db, provider, daily_budget=60000, max_requests=6, feeds=[first, second],
+                                         at=T0)
+    assert report.share == 3 and report.asked == {"share_a": 5, "share_b": 1}
+    assert [e for e, _ in provider.calls] == ["/a", "/a", "/a", "/b", "/a", "/a"], "a share each, then in order"
+    run = db.execute("SELECT status, last_error FROM raw.ingestion_runs WHERE job_type = 'reference_refresh' "
+                     "ORDER BY id DESC LIMIT 1").fetchone()
+    assert run == ("aborted", "allowance 6"), "a cap stopped it on purpose, with targets still due"
+
+
+def test_teams_playing_soonest_are_asked_first_and_transfers_skip_national_sides(db: psycopg.Connection,
+                                                                                seed: Seed) -> None:
+    """Asked on 4 Oct 2026 in provider id order, /transfers?team=1..4 (national sides) answered nothing."""
+    db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+    db.execute("UPDATE core.competition_seasons SET is_current = true WHERE id = %s", (seed.season_id,))
+    db.execute("UPDATE core.fixtures SET kickoff_at = %s, status_group = 'scheduled' WHERE id = %s",
+               (T0 + timedelta(hours=30), seed.fixture_id))
+    ids = {}
+    for pid, name, national in ((2, "France", True), (3, "Croatia", True), (50, "City", False)):
+        row = db.execute("INSERT INTO core.teams (provider_team_id, name, is_national) VALUES (%s, %s, %s) "
+                         "RETURNING id", (pid, name, national)).fetchone()
+        assert row is not None
+        ids[name] = int(row[0])
+    for pf, home, away, at, status in ((8001, ids["France"], ids["Croatia"], T0 + timedelta(days=10), "scheduled"),
+                                       (8002, ids["City"], seed.away_team_id, T0 - timedelta(days=5), "finished")):
+        db.execute("INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, "
+                   "away_team_id, kickoff_at, status_group) VALUES (%s, %s, %s, %s, %s, %s)",
+                   (pf, seed.season_id, home, away, at, status))
+    every = [t.key for t in ref.team_targets(daily_if_playing=False)(db, T0)]
+    assert every == ["team:33", "team:40", "team:2", "team:3", "team:50"], "next kick-off first, none last"
+    clubs = [t.key for t in ref.team_targets(daily_if_playing=False, clubs_only=True)(db, T0)]
+    assert clubs == ["team:33", "team:40", "team:50"]
+    seasons = [t.key for t in ref.team_season_targets(db, T0)]
+    assert seasons[:2] == ["team:39:2025:33", "team:39:2025:40"] and seasons[-1] == "team:39:2025:50"
+    transfers = next(f for f in ref.FEEDS if f.name == "transfers")
+    assert [t.key for t in transfers.targets(db, T0)] == clubs
+
+
+def test_people_seen_most_recently_are_asked_first(db: psycopg.Connection, seed: Seed) -> None:
+    db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+    db.execute("UPDATE core.competition_seasons SET is_current = true WHERE id = %s", (seed.season_id,))
+    db.execute("UPDATE core.fixtures SET kickoff_at = %s, status_group = 'finished' WHERE id = %s",
+               (T0 - timedelta(days=10), seed.fixture_id))
+    late = db.execute("INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, "
+                      "away_team_id, kickoff_at, status_group) VALUES (8003, %s, %s, %s, %s, 'finished') RETURNING id",
+                      (seed.season_id, seed.away_team_id, seed.home_team_id, T0 - timedelta(days=1))).fetchone()
+    assert late is not None
+    for fx, player in ((seed.fixture_id, 5), (seed.fixture_id, 9), (late[0], 9), (late[0], 7)):
+        db.execute("INSERT INTO core.fixture_player_stats (fixture_id, source, provider_player_id, team_side, minutes, "
+                   "payload_hash, fetched_at) VALUES (%s, 'api-football', %s, 'home', 90, %s, now())",
+                   (fx, player, seed.payload_hash))
+    keys = [t.key for t in ref.people_targets("player", "sidelined")(db, T0)]
+    assert keys == ["player:7", "player:9", "player:5"], "the latest appearance first, one target per person"

@@ -23,7 +23,7 @@ team_statistics        twice a day; 1/day if playing, else  daily for teams play
                        1/week
 coachs                 daily; 1 call/day                   weekly per tracked team (line-ups name the coach
                                                            of every match)
-transfers              several times a week; 1 call/day    weekly per tracked team
+transfers              several times a week; 1 call/day    weekly per tracked club (national sides have none)
 sidelined, trophies    several times a week; 1 call/day    weekly, 20 people a request
 countries              when a country is added; 1/day      weekly
 =====================  ==================================  ===============================================
@@ -32,6 +32,11 @@ Weekly instead of daily for people is deliberate: the tracked scope (4 Oct 2026:
 team-seasons, 30,742 players, 4,571 coaches) asked daily would cost ~20,000 requests a day for answers
 that change a few times a season; the first fill is ~23,500 requests (under two days at 300 a run), then
 about 3,500 a day. Predictions and tables that feed match pages stay on the documented cadence.
+
+Order: every feed with something due first gets a fair share of the run's allowance, then what is left
+goes feed by feed in the order below (predictions first), so the first sweep of one feed never starves
+the others. Within a feed, targets never asked come first, then the longest unasked; among the never
+asked, the teams playing soonest and the people seen most recently on a pitch or a bench.
 """
 
 from __future__ import annotations
@@ -525,46 +530,66 @@ SELECT f.id, f.provider_fixture_id, f.kickoff_at
  ORDER BY f.kickoff_at
 """
 
-TEAMS_SQL = """
-SELECT t.provider_team_id,
-       EXISTS (SELECT 1 FROM core.fixtures f WHERE (f.home_team_id = t.id OR f.away_team_id = t.id)
-                  AND f.status_group = 'scheduled' AND f.kickoff_at BETWEEN %(at)s AND %(at)s + interval '72 hours')
-  FROM core.teams t
- WHERE t.provider_team_id > 0 AND EXISTS (
-       SELECT 1 FROM core.fixtures f
-         JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-         JOIN core.competitions c ON c.id = cs.competition_id
-        WHERE c.is_tracked AND cs.is_current AND (f.home_team_id = t.id OR f.away_team_id = t.id))
- ORDER BY t.provider_team_id
+NEXT_KICKOFF = """
+WITH nxt AS (
+    SELECT team_id, min(kickoff_at) AS kickoff_at
+      FROM (SELECT home_team_id AS team_id, kickoff_at FROM core.fixtures
+             WHERE status_group = 'scheduled' AND kickoff_at > %(at)s
+            UNION ALL
+            SELECT away_team_id, kickoff_at FROM core.fixtures
+             WHERE status_group = 'scheduled' AND kickoff_at > %(at)s) x
+     GROUP BY team_id)
 """
+"""Each team's next scheduled kick-off: the teams playing soonest are asked first."""
+
+TEAMS_SQL = NEXT_KICKOFF + """, scope AS (
+    SELECT DISTINCT t.id FROM core.fixtures f
+      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+      JOIN core.competitions c ON c.id = cs.competition_id
+      JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
+     WHERE c.is_tracked AND cs.is_current)
+SELECT t.provider_team_id, COALESCE(n.kickoff_at <= %(at)s + interval '72 hours', false)
+  FROM scope JOIN core.teams t ON t.id = scope.id
+  LEFT JOIN nxt n ON n.team_id = t.id
+  LEFT JOIN core.team_kind k ON k.team_id = t.id
+ WHERE t.provider_team_id > 0 AND (NOT %(clubs_only)s OR NOT COALESCE(k.is_national, t.is_national, false))
+ ORDER BY n.kickoff_at NULLS LAST, t.provider_team_id
+"""
+"""Teams of the current tracked seasons, the soonest to play first. ``clubs_only`` leaves out national sides
+(PrediGol's classification, core.team_kind): the provider lists no transfer for them - asked on 4 Oct 2026,
+/transfers?team=1..4 answered nothing."""
 
 PEOPLE_SQL = {
     "player": """
-SELECT DISTINCT ps.provider_player_id FROM core.fixture_player_stats ps
+SELECT ps.provider_player_id FROM core.fixture_player_stats ps
   JOIN core.fixtures f ON f.id = ps.fixture_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
  WHERE c.is_tracked AND cs.is_current AND ps.provider_player_id > 0 AND coalesce(ps.minutes, 0) > 0
- ORDER BY 1""",
+ GROUP BY 1
+ ORDER BY max(f.kickoff_at) DESC, 1""",
     "coach": """
-SELECT DISTINCT l.provider_coach_id FROM core.fixture_lineups l
+SELECT l.provider_coach_id FROM core.fixture_lineups l
   JOIN core.fixtures f ON f.id = l.fixture_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
  WHERE c.is_tracked AND cs.is_current AND l.provider_coach_id > 0
- ORDER BY 1""",
+ GROUP BY 1
+ ORDER BY max(f.kickoff_at) DESC, 1""",
 }
+"""The people in scope, the most recently seen on a pitch or a bench first."""
 
-TEAM_SEASONS_SQL = """
+TEAM_SEASONS_SQL = NEXT_KICKOFF + """
 SELECT cs.id, c.provider_league_id, cs.season, t.id, t.provider_team_id,
        bool_or(f.status_group = 'scheduled' AND f.kickoff_at BETWEEN %(at)s AND %(at)s + interval '24 hours')
   FROM core.fixtures f
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
   JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
+  LEFT JOIN nxt n ON n.team_id = t.id
  WHERE c.is_tracked AND cs.is_current AND t.provider_team_id > 0
- GROUP BY 1, 2, 3, 4, 5
- ORDER BY 2, 5
+ GROUP BY 1, 2, 3, 4, 5, n.kickoff_at
+ ORDER BY n.kickoff_at NULLS LAST, 2, 5
 """
 
 PREDICTION_WINDOWS = (timedelta(hours=48), timedelta(hours=24), timedelta(hours=3))
@@ -618,10 +643,11 @@ def single_target(every: timedelta, **context: Any) -> Callable[[psycopg.Connect
     return targets
 
 
-def team_targets(daily_if_playing: bool) -> Callable[[psycopg.Connection, datetime], list[Target]]:
+def team_targets(daily_if_playing: bool, clubs_only: bool = False) -> Callable[[psycopg.Connection, datetime],
+                                                                              list[Target]]:
     def targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
         with conn.cursor(row_factory=tuple_row) as cur:
-            cur.execute(TEAMS_SQL, {"at": at})
+            cur.execute(TEAMS_SQL, {"at": at, "clubs_only": clubs_only})
             rows = cur.fetchall()
         return [Target(f"team:{tid}", {"team": int(tid)}, DAY if (daily_if_playing and playing) else WEEK, {})
                 for tid, playing in rows]
@@ -678,7 +704,8 @@ FEEDS: tuple[Feed, ...] = (
     Feed("topredcards", "/players/topredcards", leader_targets("topredcards", 5), apply_leaders, max_per_run=300),
     Feed("team_statistics", "/teams/statistics", team_season_targets, apply_team_statistics, max_per_run=400),
     Feed("coachs", "/coachs", team_targets(daily_if_playing=False), apply_coachs, max_per_run=500),
-    Feed("transfers", "/transfers", team_targets(daily_if_playing=False), apply_transfers, max_per_run=500),
+    Feed("transfers", "/transfers", team_targets(daily_if_playing=False, clubs_only=True), apply_transfers,
+         max_per_run=500),
     Feed("sidelined_players", "/sidelined", people_targets("player", "sidelined"), apply_sidelined, max_per_run=150, batch=BATCH_PEOPLE,
          batch_param="players"),
     Feed("sidelined_coachs", "/sidelined", people_targets("coach", "sidelined"), apply_sidelined, max_per_run=20, batch=BATCH_PEOPLE,
@@ -734,13 +761,17 @@ class ReferenceReport:
     asked: dict[str, int] = field(default_factory=dict)
     rows: dict[str, int] = field(default_factory=dict)
     due: dict[str, int] = field(default_factory=dict)
+    share: int = 0
+    """Requests each feed with something due may spend before any feed spends more: a backlog in one feed
+    (the first sweep of 5,525 teams) never starves the feeds after it."""
     deferred_reason: str | None = None
 
 
 async def refresh_reference(conn: psycopg.Connection, provider: Any, *, daily_budget: int, max_requests: int = 600,
                             feeds: Iterable[Feed] = FEEDS, at: datetime | None = None,
                             prematch_windows: Iterable[int] = (4320, 2880, 1440, 720, 360, 180)) -> ReferenceReport:
-    """Ask what is due, feed by feed in priority order, within ``max_requests`` and never into the live reserve."""
+    """Ask what is due within ``max_requests`` and never into the live reserve: first a fair share for every feed
+    with something due, then what is left feed by feed in priority order (predictions first)."""
     from fbi.ingestion.backfill import live_reserve
     from fbi.providers.quota import read_usage
 
@@ -764,16 +795,26 @@ async def refresh_reference(conn: psycopg.Connection, provider: Any, *, daily_bu
     run_id = ledger.open("reference_refresh", params={"due": report.due, "allowance": report.allowance},
                          scheduled_for=moment)
     counters = RunCounters()
+    queues = {f.name: [plan[f.name][i:i + f.batch] for i in range(0, len(plan[f.name]), f.batch)] for f in feeds}
+    active = [f for f in feeds if queues[f.name]]
+    report.share = max(1, report.allowance // len(active))
+    spent: dict[str, int] = {}
     try:
-        for feed in feeds:
-            due = plan[feed.name]
-            for i in range(0, len(due), feed.batch):
-                group = due[i:i + feed.batch]
-                if counters.api_calls >= report.allowance:
-                    counters.stopped_early = f"allowance {report.allowance}"
-                    break
-                if not await _ask(conn, provider, ledger, run_id, counters, report, feed,
-                                  merge(group, feed.batch_param), [g.key for g in group]):
+        for limit in (report.share, None):  # a share each first, then what is left in priority order
+            for feed in active:
+                queue = queues[feed.name]
+                while queue and (limit is None or spent.get(feed.name, 0) < limit):
+                    if counters.api_calls >= report.allowance:
+                        counters.stopped_early = f"allowance {report.allowance}"
+                        break
+                    group = queue.pop(0)
+                    before = counters.api_calls
+                    asked = await _ask(conn, provider, ledger, run_id, counters, report, feed,
+                                       merge(group, feed.batch_param), [g.key for g in group])
+                    spent[feed.name] = spent.get(feed.name, 0) + counters.api_calls - before
+                    if not asked:
+                        break
+                if counters.stopped_early:
                     break
             if counters.stopped_early:
                 break

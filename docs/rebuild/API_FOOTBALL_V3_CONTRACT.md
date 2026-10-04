@@ -37,6 +37,14 @@ times a season.
   statistics, coaches, transfers, sidelined, trophies, countries, the three odds catalogues and the odds mapping.
   Each answer is RAW first; rows are change-only with the payload hash and the normalizer version;
   `core.reference_checks` records every question, so "asked, nothing returned" is not "never asked".
+  Each feed with something due first gets a fair share of a run's requests, then the rest goes in priority
+  order (predictions first): the first worker run (6435, 19:10 UTC) spent all 300 on the first seven feeds, and
+  the 5,525-team sweep of `/teams/statistics` would have held `/sidelined` and `/trophies` back for a day.
+  Never-asked teams are taken by next kick-off, people by their latest appearance.
+* **Production check, 4 Oct 19:10-19:13 UTC**: every one of the 23 feeds answered with 0 errors (run 6435
+  plus one capped run per remaining feed, 4 requests each): 107 predictions, 2,566 rounds, 320 leader rows,
+  8 coaches with 40 career rows, 820 sidelined periods, 2,581 trophies, 171 countries, 2,814 odds-mapping
+  rows; the odds catalogues matched the stored ones (no rename).
 * **/predictions is auxiliary**: `core.provider_predictions` is labelled the provider's opinion; it is served only by
   an admin route (`/admin/matches/{id}/provider-prediction`) and a test fails if any feature, model, backtest,
   pick, parlay or validation module names it.
@@ -101,7 +109,7 @@ after it, and an empty file is rewritten from the same body instead of being tak
 | `/fixtures/rounds` | every day / 1 per day | `reference_refresh` | daily per current season (with dates; and `current`) |
 | `/players/top*` (4) | several times a week / 1 per day | `reference_refresh` | daily per current season the coverage flags allow |
 | `/teams/statistics` | twice a day / 1 per day if playing, else 1 per week | `reference_refresh` | daily within 24 h of a match, weekly otherwise |
-| `/coachs`, `/transfers` | daily / several a week; 1 per day | `reference_refresh` | weekly per tracked team |
+| `/coachs`, `/transfers` | daily / several a week; 1 per day | `reference_refresh` | weekly per tracked team (`/transfers`: clubs only - asked on 4 Oct, national sides answered nothing) |
 | `/sidelined`, `/trophies` | several times a week / 1 per day | `reference_refresh` | weekly per person in scope, 20 a request |
 | `/odds/bets`, `/odds/live/bets`, `/odds/bookmakers`, `/odds/mapping` | several a week - daily / 1 per day | `reference_refresh` | daily (mapping: every page) |
 | `/players/squads` | several times a week / 1 per week | `historical_backfill` (seeded weekly) | weekly per tracked team |
