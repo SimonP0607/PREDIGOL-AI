@@ -311,7 +311,8 @@
       "base_rates": "Frecuencias de liga",
       "mnlogit": "Logit multinomial",
       "hgb": "Gradient boosting",
-      "hgb_market": "Gradient boosting + mercado pre-cierre"
+      "hgb_market": "Gradient boosting + mercado pre-cierre",
+      "ensemble": "Ensamble (pool de modelos)"
     },
     "notJudged": "sin juzgar"
   }

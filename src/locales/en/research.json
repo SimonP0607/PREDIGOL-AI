@@ -311,7 +311,8 @@
       "base_rates": "League base rates",
       "mnlogit": "Multinomial logit",
       "hgb": "Gradient boosting",
-      "hgb_market": "Gradient boosting + pre-closing market"
+      "hgb_market": "Gradient boosting + pre-closing market",
+      "ensemble": "Ensemble (model pool)"
     },
     "notJudged": "not judged"
   }
