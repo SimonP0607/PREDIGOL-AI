@@ -55,9 +55,11 @@ SELECT endpoint, coalesce((SELECT string_agg(k, ',' ORDER BY k) FROM jsonb_objec
 SAMPLE_SQL = """
 SELECT hash, file_path, fetched_at FROM raw.ingestion_payloads
  WHERE endpoint = %(e)s AND coalesce((SELECT string_agg(k, ',' ORDER BY k) FROM jsonb_object_keys(params) k), '')
-       = %(f)s AND coalesce(results_count, 1) > 0
- ORDER BY fetched_at DESC LIMIT %(n)s
+       = %(f)s AND http_status = 200
+ ORDER BY (coalesce(results_count, 0) > 0) DESC, fetched_at DESC LIMIT %(n)s
 """
+"""Newest payloads with results first; results_count is 0 for object responses recorded before 4 Oct 2026
+(/teams/statistics), so they are not excluded."""
 
 
 def _type(v: Any) -> str:
@@ -144,8 +146,11 @@ def audit(conn: psycopg.Connection[Any], *, sample: int) -> dict[str, Any]:
                 except (OSError, ValueError, KeyError):
                     unreadable += 1
                     continue
+                response = body.get("response") if isinstance(body, dict) else None
+                if not response:
+                    continue
                 sampled += 1
-                for p, t in leaf_paths(body.get("response") if isinstance(body, dict) else None, "response"):
+                for p, t in leaf_paths(response, "response"):
                     seen[p].add(t)
         stats = raw.get(e.path)
         doc_seen = sorted(p for p in doc if p in seen)
@@ -166,7 +171,8 @@ def audit(conn: psycopg.Connection[Any], *, sample: int) -> dict[str, Any]:
             "undocumented_seen": extra,
             "type_differences": sorted(f"{p}: documented {doc[p]}, seen {'/'.join(sorted(seen[p]))}"
                                        for p in doc_seen
-                                       if doc[p] not in ("null", "array", "object") and seen[p] - {doc[p], "null"}),
+                                       if doc[p] not in ("null", "array", "object")
+                                       and seen[p] - {doc[p], "null", "array"}),
         })
     known = {e.path for e in endpoints()}
     others = sorted(k for k in raw if k not in known)
@@ -212,7 +218,7 @@ def evidence(result: dict[str, Any]) -> list[Evidence]:
 def markdown(result: dict[str, Any], summary: dict[str, Any]) -> str:
     lines = ["# API-Football v3 contract audit", "",
              f"{summary['endpoints']} documented endpoints: " + ", ".join(f"{k} {v}" for k, v in
-                                                                         sorted(summary["status"].items())) + ".",
+                                                                         sorted(summary["by_status"].items())) + ".",
              "", "| Endpoint | Status | Utility | Documented frequency / recommended | Our cadence | Params "
                  "(required) | Forms used (RAW) | RAW payloads | Fields documented / seen / doc-unseen / extra |",
              "|---|---|---|---|---|---|---|---|---|"]
@@ -256,7 +262,7 @@ def main(argv: list[str] | None = None) -> int:
         clear_unseen(conn, area="api_contract", scope_prefix="api_contract:", seen=[ev.key for ev in items], at=at)
         summary = {
             "endpoints": len(result["endpoints"]),
-            "status": dict(Counter(x["status"] for x in result["endpoints"])),
+            "by_status": dict(Counter(x["status"] for x in result["endpoints"])),
             "missing_useful": [x["path"] for x in result["endpoints"]
                                if x["status"] == "MISSING" and x["utility"] != "low"],
             "fields_documented": sum(x["fields_documented"] for x in result["endpoints"]),

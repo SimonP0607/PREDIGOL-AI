@@ -190,6 +190,87 @@ REGISTRY: dict[str, dict[str, Rule]] = {
 }
 
 
+_COVERAGE = ("events", "lineups", "statistics_fixtures", "statistics_players")
+REGISTRY.update({
+    "/leagues": {
+        "league.id": "core.competitions.provider_league_id", "league.name": "core.competitions.name",
+        "league.type": "core.competitions.type", "league.logo": "core.competitions.logo_url",
+        "country.name": "core.competitions.country", "country.code": "core.competitions.country_code",
+        "country.flag": "core.competitions.flag_url",
+        "seasons[].year": "core.competition_seasons.season", "seasons[].start": "core.competition_seasons.start_date",
+        "seasons[].end": "core.competition_seasons.end_date", "seasons[].current": "core.competition_seasons.is_current",
+        **{f"seasons[].coverage.fixtures.{k}": f"raw.league_coverage.{k}" for k in _COVERAGE},
+        **{f"seasons[].coverage.{k}": f"raw.league_coverage.{k}" for k in
+           ("standings", "players", "top_scorers", "top_assists", "top_cards", "injuries", "predictions", "odds")},
+    },
+    "/teams": {
+        "team.id": "core.teams.provider_team_id", "team.name": "core.teams.name", "team.code": "core.teams.short_name",
+        "team.country": "core.teams.country", "team.founded": "core.teams.founded",
+        "team.national": "core.teams.is_national", "team.logo": "core.teams.logo_url",
+        "venue.id": "core.venues.provider_venue_id", "venue.name": "core.venues.name",
+        "venue.address": "core.venues.address", "venue.city": "core.venues.city",
+        "venue.capacity": "core.venues.capacity", "venue.surface": "core.venues.surface",
+        "venue.image": "ignore:presentation (the URL is media.api-sports.io/football/venues/{id}.png)",
+    },
+    "/players/profiles": {
+        "player.id": "core.players.provider_player_id", "player.name": "core.players.name",
+        "player.firstname": "core.players.firstname", "player.lastname": "core.players.lastname",
+        "player.age": "ignore:derivable from player.birth.date at any date",
+        "player.birth.date": "core.players.birth_date", "player.birth.place": "core.players.birth_place",
+        "player.birth.country": "core.players.birth_country", "player.nationality": "core.players.nationality",
+        "player.height": "core.players.height_cm", "player.weight": "core.players.weight_kg",
+        "player.number": "ignore:held per team by /players/squads (core.squad_members.shirt_number)",
+        "player.position": "core.players.position", "player.photo": "core.players.photo_url",
+    },
+    "/players/squads": {
+        "team.id": "core.squad_members.team_id", "team.name": "ignore:catalogue", "team.logo": "ignore:presentation",
+        "players[].id": "core.squad_members.provider_player_id", "players[].name": "core.squad_members.player_name",
+        "players[].age": "core.squad_members.age", "players[].number": "core.squad_members.shirt_number",
+        "players[].position": "core.squad_members.position", "players[].photo": "core.squad_members.photo_url",
+    },
+    "/odds": {
+        "league.id": "ignore:held by the fixture", "league.name": "ignore:catalogue", "league.country": "ignore:catalogue",
+        "league.logo": "ignore:presentation", "league.flag": "ignore:presentation", "league.season": "ignore:held by the fixture",
+        "fixture.id": "market.odds_snapshots.fixture_id", "fixture.timezone": "ignore:UTC",
+        "fixture.date": "ignore:held by the fixture", "fixture.timestamp": "ignore:held by the fixture",
+        "update": "ignore:the provider's update stamp; our captured_at is the observation time",
+        "bookmakers[].id": "market.odds_snapshots.bookmaker_id", "bookmakers[].name": "market.bookmakers.name",
+        "bookmakers[].bets[].id": "market.odds_snapshots.market_key (the modelled bets; every bet id is catalogued in "
+                                  "market.provider_markets, the rest of the prices stay in RAW)",
+        "bookmakers[].bets[].name": "market.provider_markets.name",
+        "bookmakers[].bets[].values[].value": "market.odds_snapshots.selection",
+        "bookmakers[].bets[].values[].odd": "market.odds_snapshots.odds_decimal",
+    },
+    "/odds/live": {
+        "fixture.id": "market.live_odds_snapshots.fixture_id",
+        "fixture.status.long": "market.live_fixture_states.status_long",
+        "fixture.status.elapsed": "market.live_fixture_states.elapsed_minute",
+        "fixture.status.seconds": "market.live_fixture_states.elapsed_seconds",
+        "league.id": "ignore:held by the fixture", "league.season": "ignore:held by the fixture",
+        "teams.home.id": "ignore:held by the fixture", "teams.away.id": "ignore:held by the fixture",
+        "teams.home.goals": "market.live_fixture_states.score_home", "teams.away.goals": "market.live_fixture_states.score_away",
+        "status.stopped": "market.live_fixture_states.is_stopped", "status.blocked": "market.live_fixture_states.is_blocked",
+        "status.finished": "market.live_fixture_states.is_finished",
+        "update": "market.live_fixture_states.provider_updated_at",
+        "odds[].id": "market.live_odds_snapshots.provider_bet_id", "odds[].name": "market.provider_markets.name",
+        "odds[].values[].value": "market.live_odds_snapshots.selection",
+        "odds[].values[].odd": "market.live_odds_snapshots.odds_decimal",
+        "odds[].values[].handicap": "market.live_odds_snapshots.line",
+        "odds[].values[].main": "market.live_odds_snapshots.is_main_line",
+        "odds[].values[].suspended": "market.live_odds_snapshots.is_suspended",
+    },
+})
+RAW_ONLY: dict[str, str] = {
+    "/teams/statistics": "raw:audit only - PrediGol computes team records from its fixtures and checks them against it",
+    "/players": "raw:season pages kept by the players_season units; nothing normalizes them",
+    "/coachs": "raw:audit only - coach identity comes from line-ups (core.coaches)",
+    "/venues": "raw:audit only - venues are kept from /teams and /fixtures",
+    "/players/teams": "raw:audit only",
+    "/odds/bookmakers": "raw:catalogue read once (market.bookmakers holds id and name)",
+}
+"""Endpoints PrediGol requests without normalizing them: every field is kept in RAW only."""
+
+
 def flatten(value: Any, prefix: str = "") -> Iterator[tuple[str, bool]]:
     """(path, has a value) for every leaf; list items collapse to ``[]``."""
     if isinstance(value, dict):
@@ -220,8 +301,10 @@ class FieldRow:
 
     @property
     def klass(self) -> str:
-        if self.rule.startswith("core.") or self.rule.startswith("market."):
+        if self.rule.startswith(("core.", "market.", "raw.league_coverage")):
             return "stored"
+        if self.rule.startswith("raw:"):
+            return "RAW_ONLY"
         if self.rule.startswith("ignore:"):
             return "INTENTIONALLY_IGNORED"
         if self.rule.startswith("useful:"):
@@ -240,8 +323,8 @@ def inventory(endpoint: str, bodies: Sequence[Mapping[str, Any]], *, used_column
     reg = REGISTRY.get(endpoint, {})
     rows = []
     for path in sorted(seen):
-        rule = reg.get(path) or _stat_rule(endpoint, path) or "unmapped"
-        col = rule.split(".")[-1] if rule.startswith("core.") else None
+        rule = reg.get(path) or _stat_rule(endpoint, path) or RAW_ONLY.get(endpoint) or "unmapped"
+        col = rule.split(" ")[0].split(".")[-1] if rule.startswith(("core.", "market.", "raw.league")) else None
         rows.append(FieldRow(endpoint, path, seen[path], present[path], rule,
                              (col in used_columns) if col else None))
     return rows

@@ -48,7 +48,13 @@ class ApiResponse:
 
     @property
     def results_count(self) -> int:
-        return len(self.results)
+        """The provider's own count (``results``) when it gives one, else the rows of a list response. An
+        object response (/teams/statistics) was recorded as 0 results until 4 Oct 2026."""
+        given = self.body.get("results")
+        if isinstance(given, int) and not isinstance(given, bool):
+            return given
+        response = self.body.get("response")
+        return len(response) if isinstance(response, list) else int(bool(response))
 
 
 class ApiFootballClient:
