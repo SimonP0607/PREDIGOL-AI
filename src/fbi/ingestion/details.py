@@ -115,6 +115,15 @@ def _fixture_map(conn: psycopg.Connection, provider_ids: Iterable[int]) -> dict[
         return {int(a): (int(b), int(c), int(d)) for a, b, c, d in cur.fetchall()}
 
 
+EVENT_COLUMNS = ("seq, minute, extra_minute, team_side, provider_team_id, provider_player_id, player_name, "
+                 "provider_assist_id, assist_name, event_type, detail, comments")
+"""The provider's event, as compared and written: a list is replaced only when one of these differs."""
+
+
+def _player_key(row: tuple[Any, ...]) -> tuple[int, str]:
+    return (int(row[0] or 0), str(row[1] or ""))
+
+
 def _side(team_id: int | None, home: int, away: int) -> str | None:
     return "home" if team_id == home else "away" if team_id == away else None
 
@@ -196,7 +205,8 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                 continue
             fixture_id, home, away = known
             cur.execute(
-                "SELECT greatest((SELECT max(fetched_at) FROM core.fixture_events WHERE fixture_id = %(f)s "
+                "SELECT greatest((SELECT max(fetched_at) FROM core.fixture_detail_coverage WHERE fixture_id = %(f)s "
+                "AND source = %(s)s), (SELECT max(fetched_at) FROM core.fixture_events WHERE fixture_id = %(f)s "
                 "AND source = %(s)s), (SELECT max(fetched_at) FROM core.fixture_lineups WHERE fixture_id = %(f)s "
                 "AND source = %(s)s), (SELECT max(fetched_at) FROM core.fixture_team_stats WHERE fixture_id = %(f)s "
                 "AND source = %(s)s), (SELECT max(fetched_at) FROM core.fixture_player_stats "
@@ -243,21 +253,25 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                     report.stats_rows += max(cur.rowcount, 0)
                     delivered["team_statistics"] += 1
             if "events" in d.blocks_present:
-                cur.execute("DELETE FROM core.fixture_events WHERE fixture_id = %s AND source = %s",
-                            (fixture_id, SOURCE))
-                for e in d.events:
-                    cur.execute(
-                        "INSERT INTO core.fixture_events (fixture_id, source, seq, minute, extra_minute, team_side, "
-                        "provider_team_id, provider_player_id, player_name, provider_assist_id, assist_name, "
-                        "event_type, detail, comments, payload_hash, fetched_at) "
-                        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                        (fixture_id, SOURCE, e.seq, e.minute, e.extra_minute,
-                         _side(e.provider_team_id, home, away), e.provider_team_id, e.provider_player_id,
-                         e.player_name, e.provider_assist_id, e.assist_name, e.event_type, e.detail, e.comments,
-                         payload_hash, fetched_at),
-                    )
-                    report.events += 1
-                    delivered["events"] += 1
+                wanted = sorted(((e.seq, e.minute, e.extra_minute, _side(e.provider_team_id, home, away),
+                                  e.provider_team_id, e.provider_player_id, e.player_name, e.provider_assist_id,
+                                  e.assist_name, e.event_type, e.detail, e.comments) for e in d.events),
+                                key=lambda r: r[0])
+                delivered["events"] += len(wanted)
+                cur.execute(f"SELECT {EVENT_COLUMNS} FROM core.fixture_events WHERE fixture_id = %s AND source = %s "
+                            "ORDER BY seq", (fixture_id, SOURCE))
+                if [tuple(r) for r in cur.fetchall()] != wanted:
+                    # Change-only: the list is replaced only when the provider's list changed; a finished
+                    # match's previous list is kept by audit.keep_settled_detail (migration 0061).
+                    cur.execute("DELETE FROM core.fixture_events WHERE fixture_id = %s AND source = %s",
+                                (fixture_id, SOURCE))
+                    for row in wanted:
+                        cur.execute(
+                            f"INSERT INTO core.fixture_events (fixture_id, source, {EVENT_COLUMNS}, payload_hash, "
+                            "fetched_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                            (fixture_id, SOURCE, *row, payload_hash, fetched_at),
+                        )
+                        report.events += 1
             if "lineups" in d.blocks_present:
                 for lu in d.lineups:
                     side = _side(lu.provider_team_id, home, away)
@@ -274,21 +288,25 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                     )
                     report.lineups += 1
                     delivered["lineups"] += 1
-                    cur.execute("DELETE FROM core.fixture_lineup_players WHERE fixture_id = %s AND team_side = %s "
-                                "AND source = %s", (fixture_id, side, SOURCE))
                     seen: set[int] = set()
+                    squad: list[tuple[Any, ...]] = []
                     for p in lu.players:
                         if p.provider_player_id in seen:
                             continue
                         seen.add(p.provider_player_id)
-                        cur.execute(
-                            "INSERT INTO core.fixture_lineup_players (fixture_id, team_side, source, "
-                            "provider_player_id, player_name, shirt_number, position, grid, is_starter) "
-                            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                            (fixture_id, side, SOURCE, p.provider_player_id, p.name, p.number, p.position, p.grid,
-                             p.is_starter),
-                        )
-                        report.lineup_players += 1
+                        squad.append((p.provider_player_id, p.name, p.number, p.position, p.grid, p.is_starter))
+                    cur.execute("SELECT provider_player_id, player_name, shirt_number, position, grid, is_starter "
+                                "FROM core.fixture_lineup_players WHERE fixture_id = %s AND team_side = %s "
+                                "AND source = %s", (fixture_id, side, SOURCE))
+                    if sorted(map(tuple, cur.fetchall()), key=_player_key) != sorted(squad, key=_player_key):
+                        cur.execute("DELETE FROM core.fixture_lineup_players WHERE fixture_id = %s "
+                                    "AND team_side = %s AND source = %s", (fixture_id, side, SOURCE))
+                        for row in squad:
+                            cur.execute(
+                                "INSERT INTO core.fixture_lineup_players (fixture_id, team_side, source, "
+                                "provider_player_id, player_name, shirt_number, position, grid, is_starter) "
+                                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)", (fixture_id, side, SOURCE, *row))
+                            report.lineup_players += 1
                     report.issues.extend(_lineup_issues(
                         lu, side=side, fixture_id=fixture_id, payload_hash=payload_hash, run_id=run_id,
                     ))
