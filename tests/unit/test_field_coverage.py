@@ -45,6 +45,14 @@ def test_registry_covers_every_normalized_endpoint() -> None:
         assert fl.REGISTRY[endpoint], endpoint
     assert set(fl.RAW_ONLY) == {"/venues", "/players/teams", "/timezone", "/leagues/seasons", "/players/seasons",
                                 "/teams/countries", "/teams/seasons"}
+    assert all(rule.startswith("ignore:") for rule in fl.RAW_ONLY.values()), "every RAW-only list is a decision"
+
+
+def test_an_empty_list_is_the_container_of_mapped_fields_not_a_field() -> None:
+    rows = fl.inventory("/fixtures", [{"response": [{"fixture": {"id": 1}, "events": [], "lineups": [],
+                                                      "players": []}]}], used_columns=set())
+    assert {r.path: r.klass for r in rows if r.path.endswith("[]")} == {
+        "events[]": "INTENTIONALLY_IGNORED", "lineups[]": "INTENTIONALLY_IGNORED", "players[]": "INTENTIONALLY_IGNORED"}
 
 
 def test_every_field_of_the_contract_probe_answers_has_a_decision() -> None:

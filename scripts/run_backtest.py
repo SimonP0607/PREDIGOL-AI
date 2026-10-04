@@ -197,6 +197,14 @@ def main() -> int:
             _say(f"  {line}")
         return 2
     with psycopg.connect(settings.database.psycopg_url) as conn:
+        if args.apply:
+            from fbi.datasets.versions import DatasetNotModelReadyError, require_model_ready
+
+            try:
+                _say(f"dataset: {require_model_ready(conn)}")
+            except DatasetNotModelReadyError as exc:
+                _say(f"refusing to store: {exc}")
+                return 4
         provider_ids = [int(x) for x in args.competitions.split(",") if x.strip()]
         comps = eligible_competitions(conn, provider_ids, args.validation_season, args.test_season)
         if not comps:

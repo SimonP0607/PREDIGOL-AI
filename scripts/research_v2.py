@@ -75,6 +75,16 @@ def main() -> int:
     if args.apply and (why := frozen()):
         print(f"refusing --apply: research is frozen ({why})", file=sys.stderr)
         return 3
+    if args.apply:
+        from fbi.datasets.versions import DatasetNotModelReadyError, require_model_ready
+
+        try:
+            with psycopg.connect(settings.database.psycopg_url) as guard:
+                dataset = require_model_ready(guard)
+        except DatasetNotModelReadyError as exc:
+            print(f"refusing --apply: {exc}", file=sys.stderr)
+            return 4
+        print(f"dataset: {dataset}", flush=True)
     version = code_version()
     at = now()
     stamp = at.strftime("%Y%m%dT%H%M%SZ")

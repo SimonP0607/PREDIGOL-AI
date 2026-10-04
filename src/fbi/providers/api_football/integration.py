@@ -68,7 +68,7 @@ USES: dict[str, Use] = {
                   notes="team.national, code, founded, logo and the venue block are kept."),
     "/teams/statistics": Use("FULL", "medium", ("reference_refresh (team_statistics)", "truth audit"),
                              ("league,season,team",),
-                             "daily for teams playing within 72 h, weekly otherwise (documented: 1 call per day for "
+                             "daily for teams playing within 24 h, weekly otherwise (documented: 1 call per day for "
                              "teams with a match that day, else 1 per week)",
                              ("core.team_season_stats (change-only snapshots: averages and totals apart; raw = the "
                               "whole answer)",), ("Admin data truth (provider vs our records)",),
@@ -139,7 +139,7 @@ USES: dict[str, Use] = {
                               "made from it (a test checks the model and pick code never names the table). The "
                               "teams' last-5 / season blocks and h2h it carries stay in RAW."),
     "/coachs": Use("FULL", "medium", ("reference_refresh (coachs)", "truth audit (id)"), ("team", "id"),
-                   "daily for teams playing within 72 h, weekly otherwise (documented: 1 call per day)",
+                   "weekly per tracked team (documented: 1 call per day; line-ups name the coach of every match)",
                    ("core.coach_profiles (change-only)", "core.coach_careers (snapshots)",
                     "core.coaches (identity from line-ups)"),
                    ("Match Center line-ups (coach name and photo)",)),

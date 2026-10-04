@@ -363,6 +363,17 @@ REGISTRY.update({
     },
 })
 PREFIX: dict[str, tuple[tuple[str, Rule], ...]] = {
+    "/fixtures": (
+        ("lineups[].team.colors", "ignore:presentation (shirt colours, for a pitch graphic); kept in RAW"),
+    ),
+    "/fixtures/statistics": (
+        ("statistics[].", "ignore:the full-match block arrives with /fixtures?ids= (core.fixture_team_stats)"),
+        ("statistics_1h[].", "ignore:first-half statistics (half=true) are not requested on a schedule - one request "
+                             "per match, ~200 a day; the contract probe confirmed the block"),
+        ("statistics_2h[].", "ignore:second-half statistics (half=true) are not requested on a schedule - one request "
+                             "per match, ~200 a day; the contract probe confirmed the block"),
+        ("team.", "ignore:held by the fixture"),
+    ),
     "/players": (
         ("player.", "ignore:the profile is held by /players/profiles (core.players)"),
         ("statistics[].team.", "ignore:catalogue (/teams)"), ("statistics[].league.", "ignore:catalogue (/leagues)"),
@@ -393,8 +404,10 @@ PREFIX: dict[str, tuple[tuple[str, Rule], ...]] = {
 }
 """Rules for every path under a prefix, after the exact ones."""
 RAW_ONLY: dict[str, str] = {
-    "/venues": "raw:audit only - venues are kept from /teams and /fixtures",
-    "/players/teams": "raw:audit only",
+    "/venues": "ignore:kept as RAW (audit samples) - the same venue fields arrive with /teams?league&season "
+               "(core.venues)",
+    "/players/teams": "ignore:kept as RAW (audit samples) - one request per player; the club / national-team split "
+                      "comes from squads and appearances",
     "/timezone": "ignore:kept as RAW only - requests are made in UTC (reference_refresh, every 90 days)",
     "/leagues/seasons": "ignore:kept as RAW only - every season is listed per league by /leagues (weekly)",
     "/players/seasons": "ignore:kept as RAW only - the seasons the provider has player statistics for (weekly)",
@@ -456,12 +469,24 @@ def inventory(endpoint: str, bodies: Sequence[Mapping[str, Any]], *, used_column
     reg = REGISTRY.get(endpoint, {})
     rows = []
     for path in sorted(seen):
-        rule = (reg.get(path) or _stat_rule(endpoint, path) or _prefix_rule(endpoint, path) or RAW_ONLY.get(endpoint)
-                or "unmapped")
+        rule = (reg.get(path) or _stat_rule(endpoint, path) or _prefix_rule(endpoint, path)
+                or _container_rule(endpoint, path) or RAW_ONLY.get(endpoint) or "unmapped")
         col = rule.split(" ")[0].split(".")[-1] if rule.startswith(("core.", "market.", "raw.league")) else None
         rows.append(FieldRow(endpoint, path, seen[path], present[path], rule,
                              (col in used_columns) if col else None))
     return rows
+
+
+def _container_rule(endpoint: str, path: str) -> str | None:
+    """An empty list shows up as a leaf (``events[]``); it is the container of fields with their own rules."""
+    if not path.endswith("[]"):
+        return None
+    inner = path + "."
+    if any(k.startswith(inner) for k in REGISTRY.get(endpoint, {})) or any(
+            p.startswith(inner) or inner.startswith(p) for p, _ in PREFIX.get(endpoint, ())) or (
+            endpoint == "/fixtures" and path == "statistics[].statistics[]"):
+        return "ignore:an empty list - its items have their own rules"
+    return None
 
 
 def _prefix_rule(endpoint: str, path: str) -> str | None:

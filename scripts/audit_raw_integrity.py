@@ -42,11 +42,12 @@ SELECT hash, file_path, bytes, endpoint, params::text AS params, fetched_at FROM
 """
 
 REFERENCING_SQL = """
-SELECT table_schema, table_name, column_name FROM information_schema.columns
- WHERE column_name IN ('payload_hash', 'source_payload_hash') AND table_schema IN ('core', 'market', 'analytics')
-   AND table_name IN (SELECT table_name FROM information_schema.tables t
-                       WHERE t.table_schema = information_schema.columns.table_schema AND t.table_type = 'BASE TABLE')
+SELECT n.nspname, c.relname, a.attname FROM pg_attribute a
+  JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE a.attname IN ('payload_hash', 'source_payload_hash') AND NOT a.attisdropped
+   AND n.nspname IN ('core', 'market', 'analytics') AND c.relkind IN ('r', 'p') AND NOT c.relispartition
 """
+"""Tables (a partitioned table once, not each partition again) with a column naming a payload."""
 
 
 def check(root: str, rows: list[tuple[str, str, int | None]], with_hash: bool) -> list[dict[str, Any]]:

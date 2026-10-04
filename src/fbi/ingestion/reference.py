@@ -19,17 +19,19 @@ rounds, current_round  daily; 1 call/day                   daily per tracked cur
 leaders (4 lists)      several times a week; 1 call/day    daily per current season the coverage flags allow
 odds_bets/bookmakers   several times a week; 1 call/day    daily
 odds_mapping           daily (100 a page); 1 call/day      daily, every page
-team_statistics        twice a day; 1/day if playing, else  daily for teams playing in 72 h, else weekly
+team_statistics        twice a day; 1/day if playing, else  daily for teams playing within 24 h, else weekly
                        1/week
-coachs                 daily; 1 call/day                   daily for teams playing in 72 h, else weekly
+coachs                 daily; 1 call/day                   weekly per tracked team (line-ups name the coach
+                                                           of every match)
 transfers              several times a week; 1 call/day    weekly per tracked team
 sidelined, trophies    several times a week; 1 call/day    weekly, 20 people a request
 countries              when a country is added; 1/day      weekly
 =====================  ==================================  ===============================================
 
-Weekly instead of daily for people is deliberate: a tracked scope of ~2,600 teams and ~80,000 players
-asked daily would cost ~9,000 requests a day for answers that change a few times a season; the
-predictions and tables that feed match pages stay on the documented cadence.
+Weekly instead of daily for people is deliberate: the tracked scope (4 Oct 2026: 5,525 teams, 8,121
+team-seasons, 30,742 players, 4,571 coaches) asked daily would cost ~20,000 requests a day for answers
+that change a few times a season; the first fill is ~23,500 requests (under two days at 300 a run), then
+about 3,500 a day. Predictions and tables that feed match pages stay on the documented cadence.
 """
 
 from __future__ import annotations
@@ -555,7 +557,7 @@ SELECT DISTINCT l.provider_coach_id FROM core.fixture_lineups l
 
 TEAM_SEASONS_SQL = """
 SELECT cs.id, c.provider_league_id, cs.season, t.id, t.provider_team_id,
-       bool_or(f.status_group = 'scheduled' AND f.kickoff_at BETWEEN %(at)s AND %(at)s + interval '72 hours')
+       bool_or(f.status_group = 'scheduled' AND f.kickoff_at BETWEEN %(at)s AND %(at)s + interval '24 hours')
   FROM core.fixtures f
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
@@ -627,7 +629,7 @@ def team_targets(daily_if_playing: bool) -> Callable[[psycopg.Connection, dateti
 
 
 def team_season_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
-    """Each team of each current tracked season: daily while it plays within 72 h, weekly otherwise (documented:
+    """Each team of each current tracked season: daily while it plays within 24 h, weekly otherwise (documented:
     1 call a day for teams with a match that day, else 1 a week)."""
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(TEAM_SEASONS_SQL, {"at": at})
@@ -675,7 +677,7 @@ FEEDS: tuple[Feed, ...] = (
          max_per_run=300),
     Feed("topredcards", "/players/topredcards", leader_targets("topredcards", 5), apply_leaders, max_per_run=300),
     Feed("team_statistics", "/teams/statistics", team_season_targets, apply_team_statistics, max_per_run=400),
-    Feed("coachs", "/coachs", team_targets(daily_if_playing=True), apply_coachs, max_per_run=500),
+    Feed("coachs", "/coachs", team_targets(daily_if_playing=False), apply_coachs, max_per_run=500),
     Feed("transfers", "/transfers", team_targets(daily_if_playing=False), apply_transfers, max_per_run=500),
     Feed("sidelined_players", "/sidelined", people_targets("player", "sidelined"), apply_sidelined, max_per_run=150, batch=BATCH_PEOPLE,
          batch_param="players"),
