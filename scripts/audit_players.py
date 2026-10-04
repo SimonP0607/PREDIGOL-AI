@@ -60,7 +60,9 @@ SELECT count(*) AS players,
 
 CLUBS = SCOPE + """
 SELECT p.id, p.provider_player_id, p.name,""" + PLAYER_TEAMS_COLUMNS + """,
-       COALESCE(club.is_national, false) AS club_is_national, COALESCE(nat.is_national, true) AS national_is_national
+       COALESCE(ck.is_national, club.is_national, false) AS club_is_national,
+       COALESCE(nk.is_national, nat.is_national, true) AS national_is_national,
+       club.is_national AS club_provider_flag
   FROM scope JOIN core.players p ON p.provider_player_id = scope.provider_player_id
   LEFT JOIN LATERAL (""" + PLAYER_AGG + """) a ON true""" + TEAMS_OF_PLAYER + """
 """
@@ -90,7 +92,9 @@ def audit(conn: psycopg.Connection[Any]) -> tuple[dict[str, Any], list[Evidence]
             entity=f"{r['name']} ({r['provider_player_id']})",
             claim=f"{r['name']}'s national team is shown as {r['national_team']}, a club",
             db={"national_team_id": r["national_team_id"]}))
+    corrected = [r for r in rows if r["team_id"] is not None and r["club_provider_flag"] is True]
     summary = {"coverage": coverage, "players_checked": len(rows), "club_is_national": len(club_national),
+               "club_flagged_national_by_the_provider": len(corrected),
                "national_is_club": len(national_club), "national_team_only": len(no_club),
                "club_source": {k: sum(1 for r in rows if r["club_source"] == k) for k in ("squad", "appearances")}}
     return {"summary": summary, "club_is_national": club_national[:50], "national_is_club": national_club[:50],

@@ -39,3 +39,51 @@ def test_the_products_club_is_never_a_national_side(db: psycopg.Connection, seed
     assert s["coverage"]["players"] == 1 and s["players_checked"] == 1
     assert s["club_is_national"] == 0 and items == []
     assert s["club_source"]["appearances"] == 1
+
+
+def test_a_youth_national_side_the_provider_flags_as_a_club_is_never_a_players_club(db: psycopg.Connection,
+                                                                                   seed: Seed) -> None:
+    """Bolivia U20 is national=false at the provider. It plays only national-team competitions, so PrediGol
+    classifies it national (core.team_kind) and the player's club stays the club he plays for."""
+    from fbi.api.services import center
+    from fbi.catalog.team_kind import refresh_team_kind
+
+    now_ = datetime.now(UTC)
+    friendly = db.execute("INSERT INTO core.competitions (provider_league_id, name, type, entity_scope, "
+                          "competition_type) VALUES (10, 'Friendlies', 'cup', 'national_team', 'international') "
+                          "RETURNING id").fetchone()
+    assert friendly is not None
+    fs = db.execute("INSERT INTO core.competition_seasons (competition_id, season) VALUES (%s, 2026) RETURNING id",
+                    (friendly[0],)).fetchone()
+    assert fs is not None
+    teams = {}
+    for pid, name in ((16199, "Bolivia U20"), (16200, "Chile U20"), (3700, "Bolivar")):
+        row = db.execute("INSERT INTO core.teams (provider_team_id, name, is_national) VALUES (%s, %s, false) "
+                         "RETURNING id", (pid, name)).fetchone()
+        assert row is not None
+        teams[name] = int(row[0])
+    league_fx = db.execute("INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, "
+                           "away_team_id, kickoff_at, status_group) VALUES (7001, %s, %s, %s, %s, 'finished') "
+                           "RETURNING id", (seed.season_id, teams["Bolivar"], seed.away_team_id,
+                                            now_ - timedelta(days=20))).fetchone()
+    youth_fx = db.execute("INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, "
+                          "away_team_id, kickoff_at, status_group) VALUES (7002, %s, %s, %s, %s, 'finished') "
+                          "RETURNING id", (fs[0], teams["Bolivia U20"], teams["Chile U20"],
+                                           now_ - timedelta(days=3))).fetchone()
+    assert league_fx is not None and youth_fx is not None
+    player = db.execute("INSERT INTO core.players (provider_player_id, name) VALUES (5555, 'J. Joven') RETURNING id"
+                        ).fetchone()
+    assert player is not None
+    for fx in (league_fx[0], youth_fx[0]):
+        db.execute("INSERT INTO core.fixture_player_stats (fixture_id, source, provider_player_id, team_side, minutes, "
+                   "payload_hash, fetched_at) VALUES (%s, 'api-football', 5555, 'home', 90, %s, now())",
+                   (fx, seed.payload_hash))
+    refresh_team_kind(db, at=now_)
+    kinds: dict[str, bool] = dict(db.execute("SELECT t.name, k.is_national FROM core.team_kind k "
+                                             "JOIN core.teams t ON t.id = k.team_id "
+                                             "WHERE t.provider_team_id IN (16199, 3700)").fetchall())
+    assert kinds == {"Bolivia U20": True, "Bolivar": False}
+    detail = center.player(db, int(player[0])).data
+    assert detail is not None
+    assert (detail.player.team, detail.player.national_team, detail.player.last_team) == (
+        "Bolivar", "Bolivia U20", "Bolivia U20")

@@ -109,3 +109,25 @@ def test_a_line_up_carries_the_coachs_stored_photo(db: psycopg.Connection, seed:
     assert mc is not None and mc.lineups.data is not None
     home = next(lu for lu in mc.lineups.data if lu.side == "home")
     assert (home.coach_provider_id, home.coach_photo_url) == (2172, "https://media/coachs/2172.png")
+
+
+def test_the_match_audit_names_the_payloads_of_the_facts_extras_and_the_providers_prediction(
+        db: psycopg.Connection, seed: Seed) -> None:
+    from fbi.api.services.audit import match_audit
+    from fbi.ingestion.fixture_facts import apply_fixture_facts
+    from fbi.providers.api_football.details import iter_fixture_facts
+
+    payload(db, seed, "au-f")
+    payload(db, seed, "au-p")
+    body = {"response": [{"fixture": {"id": 1001, "referee": "M. Oliver, England", "periods": {}},
+                          "teams": {"home": {"id": 33, "winner": None}, "away": {"id": 40, "winner": None}}}]}
+    assert apply_fixture_facts(db, iter_fixture_facts(body), payload_hash="au-f", observed_at=T0) == 1
+    ref.apply_predictions(db, ref.Target("k", {}, timedelta(days=1), {"fixture_id": seed.fixture_id}),
+                          {"response": [{"predictions": {"advice": "x"}}]}, "au-p", T0)
+    audit = match_audit(db, seed.fixture_id).data
+    assert audit is not None
+    raw = next(s for s in audit.steps if s.key == "raw")
+    roles = {i.ref: i.facts.get("roles") for i in raw.items}
+    assert roles["au-f"] == "facts" and roles["au-p"] == "provider_prediction (auxiliary)"
+    normalized = next(s for s in audit.steps if s.key == "normalized")
+    assert any(i.kind == "facts" and "payload:au-f" in i.links for i in normalized.items)

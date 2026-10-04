@@ -52,7 +52,8 @@ CHECKS: dict[str, str] = {
                count(*) FILTER (WHERE NOT COALESCE(t.is_national, false) AND EXISTS (
                    SELECT 1 FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
                      JOIN core.competitions c ON c.id = cs.competition_id
-                    WHERE c.entity_scope = 'national' AND t.id IN (f.home_team_id, f.away_team_id))) AS club_rows_in_national_comps,
+                    WHERE c.entity_scope = 'national_team' AND t.id IN (f.home_team_id, f.away_team_id)))
+                   AS club_rows_in_national_comps,
                count(*) FILTER (WHERE t.is_national AND EXISTS (
                    SELECT 1 FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
                      JOIN core.competitions c ON c.id = cs.competition_id

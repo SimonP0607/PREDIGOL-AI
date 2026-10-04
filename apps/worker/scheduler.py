@@ -547,10 +547,15 @@ async def _pipeline() -> None:
 
 
 def _elo_refresh_now() -> None:
+    from fbi.catalog.team_kind import refresh_team_kind
     from fbi.features.elo_refresh import refresh_elo
     from fbi.validation.historical import run_validation
 
     with _connect() as conn:
+        # National or club, from the competitions each side plays (core.team_kind; read by the product's player
+        # pages, not by the models).
+        refresh_team_kind(conn, at=now())
+        conn.commit()
         refresh_elo(conn)
         # Approval needs the new ratings: validate the history right after them.
         run_validation(conn, at=now())

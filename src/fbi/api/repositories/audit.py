@@ -20,6 +20,14 @@ WITH refs(hash, role) AS (
         WHERE fixture_id = %(f)s AND odds_payload_hash IS NOT NULL
     UNION ALL SELECT r.result_payload_hash, 'settlement' FROM picks.pick_results r JOIN picks.picks p ON p.id = r.pick_id
         WHERE p.fixture_id = %(f)s AND r.result_payload_hash IS NOT NULL
+    UNION ALL SELECT payload_hash, 'facts' FROM core.fixture_facts WHERE fixture_id = %(f)s
+    UNION ALL SELECT DISTINCT payload_hash, 'player_extras' FROM core.fixture_player_extras WHERE fixture_id = %(f)s
+    UNION ALL SELECT payload_hash, 'provider_prediction (auxiliary)' FROM core.provider_predictions
+        WHERE fixture_id = %(f)s
+    UNION ALL SELECT DISTINCT s.payload_hash, 'standings (newest table of the season)' FROM core.standings s
+        JOIN core.fixtures fx ON fx.competition_season_id = s.competition_season_id AND fx.id = %(f)s
+        WHERE s.payload_hash IS NOT NULL AND s.snapshot_at = (SELECT max(snapshot_at) FROM core.standings x
+                                                               WHERE x.competition_season_id = s.competition_season_id)
 )
 SELECT r.hash, array_agg(DISTINCT r.role ORDER BY r.role) AS roles, count(*) AS references,
        p.provider, p.endpoint, p.params, p.fetched_at, p.http_status, p.file_path, p.bytes, p.run_id,
@@ -64,6 +72,12 @@ def detail_counts(conn: Conn, fixture_id: int) -> list[Row]:
             WHERE fixture_id = %(f)s GROUP BY source
         UNION ALL SELECT 'player_stats', source, count(*), max(fetched_at), min(payload_hash)
             FROM core.fixture_player_stats WHERE fixture_id = %(f)s GROUP BY source
+        UNION ALL SELECT 'facts', 'api-football', count(*), max(observed_at),
+               (array_agg(payload_hash ORDER BY observed_at DESC))[1] FROM core.fixture_facts WHERE fixture_id = %(f)s
+            HAVING count(*) > 0
+        UNION ALL SELECT 'player_extras', 'api-football', count(*), max(observed_at),
+               (array_agg(payload_hash ORDER BY observed_at DESC))[1] FROM core.fixture_player_extras
+            WHERE fixture_id = %(f)s HAVING count(*) > 0
         ORDER BY 1, 2
         """,
         {"f": fixture_id},

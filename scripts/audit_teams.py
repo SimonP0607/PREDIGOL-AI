@@ -5,8 +5,9 @@ aggregates of every team in a current tracked season.
 
 Checks - each an evidence entry when it finds something (area teams):
 
-* a team that plays national-team competitions but is not flagged national, or a club flagged national
-  (a national side shown as a club - or the reverse - starts here);
+* a side PrediGol classifies differently from the provider's national flag (``core.team_kind``, refreshed first:
+  a side that plays competitive club football is a club, one that plays only national-team competitions is a
+  national side) - the provider's flag is wrong both ways for some sides;
 * two provider ids for one name and country (possible duplicates; kept apart, reported);
 * coverage: logo, venue, a squad read in the last 14 days, the coach's stored profile and photo, the
   provider's season aggregate (core.team_season_stats).
@@ -25,6 +26,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.catalog.team_kind import refresh_team_kind
 from fbi.core.clock import now
 from fbi.core.config import settings
 from fbi.truth.v2.ledger import Evidence, clear_unseen, record_all
@@ -67,18 +69,14 @@ SELECT count(*) AS teams_with_coach,
 """
 
 NATIONAL_MISMATCH = """
-SELECT t.id, t.provider_team_id, t.name, t.is_national, string_agg(DISTINCT c.name, ', ') AS competitions,
-       bool_or(c.entity_scope = 'national_team') AS plays_national, bool_or(c.entity_scope = 'club') AS plays_club
-  FROM core.teams t
-  JOIN core.fixtures f ON t.id IN (f.home_team_id, f.away_team_id)
-  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-  JOIN core.competitions c ON c.id = cs.competition_id
- WHERE c.is_tracked AND f.kickoff_at > now() - interval '400 days'
- GROUP BY t.id, t.provider_team_id, t.name, t.is_national
-HAVING (bool_or(c.entity_scope = 'national_team') AND NOT COALESCE(t.is_national, false))
-    OR (bool_and(c.entity_scope = 'club') AND COALESCE(t.is_national, false))
+SELECT t.id, t.provider_team_id, t.name, t.is_national AS provider_national, k.is_national, k.basis,
+       k.competitive_club_matches, k.national_matches, k.club_friendly_matches
+  FROM core.team_kind k JOIN core.teams t ON t.id = k.team_id
+ WHERE k.is_national IS DISTINCT FROM t.is_national AND k.is_national IS NOT NULL
  ORDER BY t.name
 """
+"""Sides PrediGol classifies differently from the provider's flag (fbi.catalog.team_kind) - the product uses
+PrediGol's classification."""
 
 DUPLICATES = SCOPE + """
 SELECT lower(t.name) AS name, t.country, array_agg(t.provider_team_id ORDER BY t.provider_team_id) AS ids
@@ -88,6 +86,7 @@ SELECT lower(t.name) AS name, t.country, array_agg(t.provider_team_id ORDER BY t
 
 
 def audit(conn: psycopg.Connection[Any]) -> tuple[dict[str, Any], list[Evidence]]:
+    refresh_team_kind(conn, at=now())
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(COVERAGE)
         coverage = dict(cur.fetchone() or {})
@@ -99,12 +98,18 @@ def audit(conn: psycopg.Connection[Any]) -> tuple[dict[str, Any], list[Evidence]
         dupes = [dict(r) for r in cur.fetchall()]
     items: list[Evidence] = []
     for m in mismatch:
-        wrongly = "a national side not flagged national" if m["plays_national"] else "a club flagged national"
+        said = {False: "a club", True: "national", None: "neither (not told)"}[m["provider_national"]]
+        ours = "a national side" if m["is_national"] else "a club"
         items.append(Evidence(
             key=f"teams:national_flag:{m['provider_team_id']}", area="teams", issue_type="IDENTITY_MAPPING_ERROR",
-            severity="high", at_fault="undetermined", entity=f"{m['name']} ({m['provider_team_id']})",
-            claim=f"{m['name']} is {wrongly}: it plays {m['competitions']}",
-            db={"is_national": m["is_national"], "plays_national": m["plays_national"], "plays_club": m["plays_club"]}))
+            severity="medium", at_fault="provider", entity=f"{m['name']} ({m['provider_team_id']})", status="MONITOR",
+            claim=f"the provider flags {m['name']} as {said}; it {m['basis']} - PrediGol treats it as {ours} "
+                  "(core.team_kind) and the product never shows it in the other role",
+            db={"provider_national": m["provider_national"], "is_national": m["is_national"], "basis": m["basis"],
+                "competitive_club_matches": m["competitive_club_matches"],
+                "national_matches": m["national_matches"], "club_friendly_matches": m["club_friendly_matches"]},
+            fix="core.team_kind (migration 0060): national or club from the competitions a side plays",
+            test="tests/integration/test_team_player_audits.py"))
     for d in dupes:
         items.append(Evidence(
             key=f"teams:duplicate:{d['name']}:{d['country']}", area="teams", issue_type="DUPLICATE_ENTITY",
@@ -134,8 +139,9 @@ def markdown(result: dict[str, Any]) -> str:
         lines.append(f"| {k} | {c.get(k)} | {100 * int(c.get(k) or 0) / n:.0f}% |")
     lines += ["", f"National flag mismatches: {s['national_flag_mismatch']}; possible duplicates: "
                   f"{s['possible_duplicates']}.", ""]
-    for m in result["national_flag_mismatch"][:30]:
-        lines.append(f"* {m['name']} ({m['provider_team_id']}): national={m['is_national']}, plays {m['competitions']}")
+    for m in result["national_flag_mismatch"][:40]:
+        lines.append(f"* {m['name']} ({m['provider_team_id']}): provider national={m['provider_national']}, PrediGol "
+                     f"national={m['is_national']} - {m['basis']}")
     return "\n".join(lines) + "\n"
 
 

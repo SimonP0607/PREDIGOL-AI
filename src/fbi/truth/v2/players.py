@@ -154,7 +154,7 @@ def team_detail_gaps(conn: psycopg.Connection[Any], league: int, season: int, te
 
 PRODUCT_SQL = """
 SELECT a.apps, a.minutes, a.goals, a.assists, a.avg_rating, a.last_played,""" + PLAYER_TEAMS_COLUMNS + """,
-       COALESCE(club.is_national, false) AS team_is_national,
+       COALESCE(ck.is_national, club.is_national, false) AS team_is_national,
        w.rows, w.played_rows, w.bench_rows, w.competitions
   FROM (SELECT %(p)s::bigint AS provider_player_id) p
   LEFT JOIN LATERAL (""" + PLAYER_AGG + """) a ON true""" + TEAMS_OF_PLAYER + """

@@ -244,18 +244,20 @@ SELECT count(*) FILTER (WHERE ps.minutes > 0)::int AS apps, sum(ps.minutes)::int
        round(avg(ps.rating) FILTER (WHERE ps.minutes > 0), 2) AS avg_rating,
        max(f.kickoff_at) FILTER (WHERE ps.minutes > 0) AS last_played,
        (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE ps.minutes > 0))[1] AS last_team_id,
-       (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE ps.minutes > 0 AND NOT COALESCE(t.is_national, false)))[1]
-           AS last_club_id,
-       (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE ps.minutes > 0 AND COALESCE(t.is_national, false)))[1]
-           AS last_national_id
+       (array_agg(t.id ORDER BY f.kickoff_at DESC)
+            FILTER (WHERE ps.minutes > 0 AND NOT COALESCE(k.is_national, t.is_national, false)))[1] AS last_club_id,
+       (array_agg(t.id ORDER BY f.kickoff_at DESC)
+            FILTER (WHERE ps.minutes > 0 AND COALESCE(k.is_national, t.is_national, false)))[1] AS last_national_id
   FROM core.fixture_player_stats ps JOIN core.fixtures f ON f.id = ps.fixture_id
   JOIN core.teams t ON t.id = CASE ps.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
+  LEFT JOIN core.team_kind k ON k.team_id = t.id
  WHERE ps.provider_player_id = p.provider_player_id AND f.kickoff_at > %(since)s
 """
 
 SQUAD_OF = """
 SELECT m.team_id FROM core.squad_members m JOIN core.teams st ON st.id = m.team_id
- WHERE m.provider_player_id = p.provider_player_id AND COALESCE(st.is_national, false) = {national}
+  LEFT JOIN core.team_kind sk ON sk.team_id = st.id
+ WHERE m.provider_player_id = p.provider_player_id AND COALESCE(sk.is_national, st.is_national, false) = {national}
    AND m.last_seen_at = st.squad_checked_at
  ORDER BY m.last_seen_at DESC LIMIT 1
 """
@@ -266,7 +268,11 @@ TEAMS_OF_PLAYER = """
   LEFT JOIN core.teams club ON club.id = COALESCE(sq.team_id, a.last_club_id)
   LEFT JOIN core.teams nat ON nat.id = COALESCE(nsq.team_id, a.last_national_id)
   LEFT JOIN core.teams last ON last.id = a.last_team_id
+  LEFT JOIN core.team_kind ck ON ck.team_id = club.id
+  LEFT JOIN core.team_kind nk ON nk.team_id = nat.id
 """
+"""National or club is PrediGol's classification (core.team_kind: from the competitions a side plays), the
+provider's flag where there is none yet - the provider flags some youth national sides as clubs."""
 
 PLAYER_TEAMS_COLUMNS = """
        club.id AS team_id, club.name AS team, club.logo_url AS team_logo, nat.logo_url AS national_team_logo,
@@ -315,10 +321,13 @@ WITH recent AS (
            sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists, round(avg(ps.rating), 2) AS avg_rating,
            max(f.kickoff_at) AS last_played,
            (array_agg(t.id ORDER BY f.kickoff_at DESC))[1] AS last_team_id,
-           (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE NOT COALESCE(t.is_national, false)))[1] AS last_club_id,
-           (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE COALESCE(t.is_national, false)))[1] AS last_national_id
+           (array_agg(t.id ORDER BY f.kickoff_at DESC)
+                FILTER (WHERE NOT COALESCE(k.is_national, t.is_national, false)))[1] AS last_club_id,
+           (array_agg(t.id ORDER BY f.kickoff_at DESC)
+                FILTER (WHERE COALESCE(k.is_national, t.is_national, false)))[1] AS last_national_id
       FROM core.fixtures f JOIN core.fixture_player_stats ps ON ps.fixture_id = f.id
       JOIN core.teams t ON t.id = CASE ps.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
+      LEFT JOIN core.team_kind k ON k.team_id = t.id
      WHERE f.kickoff_at > %(recent)s AND f.kickoff_at <= %(at)s AND ps.minutes > 0
      GROUP BY ps.provider_player_id
 )
@@ -340,7 +349,7 @@ SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_da
 
 PLAYER_SEASONS = """
 -- One row per competition, season AND team - the provider's own scope (a transfer gives two).
-SELECT c.name AS competition, cs.season, t.name AS team, COALESCE(t.is_national, false) AS national,
+SELECT c.name AS competition, cs.season, t.name AS team, COALESCE(k.is_national, t.is_national, false) AS national,
        count(*) FILTER (WHERE ps.minutes > 0)::int AS apps,
        count(*) FILTER (WHERE ps.minutes > 0 AND NOT COALESCE(ps.is_substitute, false))::int AS starts,
        sum(ps.minutes)::int AS minutes, sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists,
@@ -351,8 +360,9 @@ SELECT c.name AS competition, cs.season, t.name AS team, COALESCE(t.is_national,
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
   JOIN core.teams t ON t.id = CASE ps.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
+  LEFT JOIN core.team_kind k ON k.team_id = t.id
  WHERE ps.provider_player_id = %(pid)s
- GROUP BY c.name, cs.season, t.name, COALESCE(t.is_national, false)
+ GROUP BY c.name, cs.season, t.name, COALESCE(k.is_national, t.is_national, false)
 HAVING count(*) FILTER (WHERE ps.minutes > 0) > 0
  ORDER BY cs.season DESC, count(*) FILTER (WHERE ps.minutes > 0) DESC
 """

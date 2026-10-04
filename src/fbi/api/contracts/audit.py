@@ -24,6 +24,7 @@ StepState = Literal["recorded", "partial", "missing", "not_applicable"]
 
 class AuditItem(Contract):
     kind: str = Field(description="payload | fixture | result | team_stats | events | lineups | player_stats | "
+                                  "facts | player_extras | "
                                   "feature_set | model_version | experiment | prediction | odds_snapshots | "
                                   "near_close | historical_odds | market_baseline | consensus | pick_candidate | "
                                   "pick | settlement")
