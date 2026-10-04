@@ -126,7 +126,14 @@ def evidence(problems: list[dict[str, Any]], meta: dict[str, dict[str, Any]],
                    f"{sum(refs.get(p['hash'], {}).values())} normalized rows name it and cannot be re-derived "
                    "from it"),
             db={"file": m["file_path"], "recorded_bytes": m["bytes"], "on_disk": p["size"],
-                "problem": p["problem"], "rows_naming_it": refs.get(p["hash"], {})}))
+                "problem": p["problem"], "rows_naming_it": refs.get(p["hash"], {})},
+            root_cause="the payload was renamed into place before its bytes reached the disk, and the machine "
+                       "stopped (every damaged payload of 4 Oct 2026 was written between 02:57:16 and 02:57:46 UTC)",
+            fix="the store syncs each payload before the rename and the directory after it, and rewrites an empty "
+                "file from the same body (be-58); the damaged file itself cannot be repaired - RAW is evidence - and "
+                "the rows written from it at the time are kept",
+            test="tests/unit/test_payload_store.py::test_an_empty_file_left_by_a_crash_is_not_taken_as_the_payload",
+            status="MONITOR"))
     return items
 
 
