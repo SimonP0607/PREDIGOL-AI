@@ -25,6 +25,7 @@ from fbi.api.routers import (
     market,
     product,
     system,
+    truth,
 )
 from fbi.api.security import allowed_origins, require_admin, require_app, same_site_only
 from fbi.api.services.ops import VERSION
@@ -135,7 +136,7 @@ def create_app() -> FastAPI:
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
     admin_tier = [Depends(same_site_only), Depends(require_admin)]
     for r in (system.admin_router, football.admin_router, market.admin_router,
-              center.admin_router, explorer.router, analyst.router, admin_users.router):
+              center.admin_router, explorer.router, analyst.router, admin_users.router, truth.router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)
