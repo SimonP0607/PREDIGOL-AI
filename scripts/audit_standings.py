@@ -167,11 +167,10 @@ async def run(args: argparse.Namespace) -> int:
                 run.finish({"error": "interrupted or failed", "seasons_done": len(audits)}, failed=True)
                 raise
             codes = record_all(conn, evidence, at=at, run_id=run.run_id) if not args.no_api else {}
-            if not args.no_api and not args.league and args.season is None and not run.stopped:
-                clear_unseen(conn, area="standings", scope_prefix="standings:", seen=codes.keys(), at=at,
-                             keep_containing=None if externals else ":official")
-            elif not args.no_api:
-                # a scoped run audited each of its seasons whole: what it no longer finds there is cleared
+            if not args.no_api:
+                # every season audited was audited whole: what the run no longer finds THERE is cleared.
+                # Never wider - a past season's entry (a golden season re-audited with --season) is not
+                # cleared by a run over the current seasons that never looked at it.
                 for a in audits:
                     if a.verdict != "not_asked":
                         clear_unseen(conn, area="standings", scope_prefix=f"standings:{a.league}:{a.season}:",
