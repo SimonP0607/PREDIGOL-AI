@@ -12,7 +12,7 @@
     "on": "Activo",
     "off": "Sin configurar",
     "budget": "Presupuesto de IA ({month})",
-    "spent": "{spent} de {cap}",
+    "spent": "{spent} de {cap} USD",
     "questions": "Preguntas hoy",
     "notConfigured": "Faltan claves en el servidor ({missing}): el informe diario lleva solo los datos de la plataforma y la revisión de picks aplica solo sus reglas. Crear una cuenta de proveedor es decisión del dueño; nada se ha contratado."
   },
@@ -156,6 +156,7 @@
     "lastV2": "Última investigación V2",
     "never": "Nunca",
     "due": "La investigación semanal correría ahora: {reason}.",
-    "notDue": "La investigación semanal no hace falta: mismo código y menos de 4 semanas."
+    "notDue": "La investigación semanal no hace falta: mismo código y menos de 4 semanas.",
+    "counts": "{proposed} por decidir · {decided} decididas"
   }
 }

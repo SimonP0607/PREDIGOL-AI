@@ -228,7 +228,15 @@ export function EvolutionLive() {
               />
               <KeyValue
                 label={t("ai.evolution.lastV2")}
-                value={d.last_v2 ? `${d.last_v2.name}` : t("ai.evolution.never")}
+                value={
+                  d.last_v2 ? (
+                    <span title={d.last_v2.name} className="block max-w-[14rem] truncate">
+                      {d.last_v2.finished_at ? utcDateTime(d.last_v2.finished_at) : d.last_v2.name}
+                    </span>
+                  ) : (
+                    t("ai.evolution.never")
+                  )
+                }
               />
               <p className="pt-1 text-caption text-subtle-foreground">
                 {d.v2_due ? t("ai.evolution.due", { reason: d.v2_due }) : t("ai.evolution.notDue")}
@@ -239,7 +247,10 @@ export function EvolutionLive() {
             <div className="space-y-4">
               <Panel
                 title={t("ai.evolution.hypotheses")}
-                subtitle={`${proposed.length} · ${decided.length}`}
+                subtitle={t("ai.evolution.counts", {
+                  proposed: localInt(proposed.length),
+                  decided: localInt(decided.length),
+                })}
               >
                 {d.hypotheses.length ? (
                   <ul className="space-y-2">

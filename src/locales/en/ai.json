@@ -12,7 +12,7 @@
     "on": "Active",
     "off": "Not configured",
     "budget": "AI budget ({month})",
-    "spent": "{spent} of {cap}",
+    "spent": "{spent} of {cap} USD",
     "questions": "Questions today",
     "notConfigured": "Keys missing on the server ({missing}): the daily report carries the platform's data only and the pick reviewer runs its rules only. Creating a provider account is the owner's decision; nothing has been purchased."
   },
@@ -156,6 +156,7 @@
     "lastV2": "Last research V2",
     "never": "Never",
     "due": "The weekly research would run now: {reason}.",
-    "notDue": "The weekly research is not needed: same code and under four weeks."
+    "notDue": "The weekly research is not needed: same code and under four weeks.",
+    "counts": "{proposed} to decide · {decided} decided"
   }
 }

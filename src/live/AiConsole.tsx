@@ -53,6 +53,11 @@ function usd(v: string | number): string {
   return Number.isFinite(n) ? `${localFixed(n, n < 1 ? 4 : 2)} USD` : "—";
 }
 
+/** Compact: two decimals, more only for a non-zero amount under a cent. */
+function money(n: number): string {
+  return localFixed(n, n > 0 && n < 0.01 ? 4 : 2);
+}
+
 function host(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -98,7 +103,7 @@ export function AiStatusStrip({ status }: { status: AiStatus }) {
             label={t("ai.status.budget", { month: status.budget.month })}
             value={
               <Numeric className="text-xs">
-                {t("ai.status.spent", { spent: usd(spent), cap: usd(cap) })}
+                {t("ai.status.spent", { spent: money(spent), cap: money(cap) })}
               </Numeric>
             }
           />
