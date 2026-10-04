@@ -31,6 +31,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.api.repositories.center import PLAYER_AGG, PLAYER_TEAMS_COLUMNS, TEAMS_OF_PLAYER
 from fbi.truth.v2.ledger import Evidence
 
 MINUTES_SLACK = 10
@@ -125,15 +126,23 @@ def our_blocks(conn: psycopg.Connection[Any], player: int, season: int) -> list[
 
 
 MISSING_DETAIL_SQL = """
-SELECT count(*) AS finished, count(*) FILTER (WHERE NOT EXISTS (
-           SELECT 1 FROM core.fixture_player_stats ps WHERE ps.fixture_id = f.id)) AS without_player_rows
-  FROM core.fixtures f
-  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-  JOIN core.competitions c ON c.id = cs.competition_id
-  JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
- WHERE c.provider_league_id = %(l)s AND cs.season = %(s)s AND t.provider_team_id = %(t)s
-   AND f.status_group = 'finished'
+SELECT count(*) AS finished,
+       count(*) FILTER (WHERE NOT has_rows) AS without_player_rows,
+       count(*) FILTER (WHERE NOT has_rows AND NOT fetched) AS never_fetched,
+       count(*) FILTER (WHERE NOT has_rows AND fetched) AS empty_at_provider
+  FROM (SELECT EXISTS (SELECT 1 FROM core.fixture_player_stats ps WHERE ps.fixture_id = f.id) AS has_rows,
+               EXISTS (SELECT 1 FROM core.fixture_detail_coverage dc
+                        WHERE dc.fixture_id = f.id AND dc.dataset = 'player_statistics') AS fetched
+          FROM core.fixtures f
+          JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+          JOIN core.competitions c ON c.id = cs.competition_id
+          JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
+         WHERE c.provider_league_id = %(l)s AND cs.season = %(s)s AND t.provider_team_id = %(t)s
+           AND f.status_group = 'finished') x
 """
+"""``empty_at_provider``: the match's detail WAS fetched (``core.fixture_detail_coverage``) and its players
+block came back empty - the provider publishes no per-match player statistics for it (early cup
+rounds, lower divisions, many friendlies), while its season figures may still count the player."""
 
 
 def team_detail_gaps(conn: psycopg.Connection[Any], league: int, season: int, team: int) -> dict[str, int]:
@@ -144,21 +153,26 @@ def team_detail_gaps(conn: psycopg.Connection[Any], league: int, season: int, te
 
 
 PRODUCT_SQL = """
-SELECT count(*)::int AS apps, sum(ps.minutes)::int AS minutes, sum(ps.goals)::int AS goals,
-       sum(ps.assists)::int AS assists, round(avg(ps.rating), 2) AS avg_rating, max(f.kickoff_at) AS last_played,
-       count(*) FILTER (WHERE ps.minutes IS NULL OR ps.minutes = 0)::int AS bench_rows,
-       count(DISTINCT cs.competition_id)::int AS competitions,
-       (array_agg(t.name ORDER BY f.kickoff_at DESC))[1] AS team,
-       (array_agg(COALESCE(t.is_national, false) ORDER BY f.kickoff_at DESC))[1] AS team_is_national
-  FROM core.fixture_player_stats ps JOIN core.fixtures f ON f.id = ps.fixture_id
-  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-  JOIN core.teams t ON t.id = CASE ps.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
- WHERE ps.provider_player_id = %(p)s AND f.kickoff_at > %(since)s
+SELECT a.apps, a.minutes, a.goals, a.assists, a.avg_rating, a.last_played,""" + PLAYER_TEAMS_COLUMNS + """,
+       COALESCE(club.is_national, false) AS team_is_national,
+       w.rows, w.played_rows, w.bench_rows, w.competitions
+  FROM (SELECT %(p)s::bigint AS provider_player_id) p
+  LEFT JOIN LATERAL (""" + PLAYER_AGG + """) a ON true""" + TEAMS_OF_PLAYER + """
+  LEFT JOIN LATERAL (
+       SELECT count(*)::int AS rows, count(*) FILTER (WHERE ps.minutes > 0)::int AS played_rows,
+              count(*) FILTER (WHERE ps.minutes IS NULL OR ps.minutes = 0)::int AS bench_rows,
+              count(DISTINCT cs.competition_id)::int AS competitions
+         FROM core.fixture_player_stats ps JOIN core.fixtures f ON f.id = ps.fixture_id
+         JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+        WHERE ps.provider_player_id = p.provider_player_id AND f.kickoff_at > %(since)s) w ON true
 """
+"""What the product shows NOW for a player (the player list and page read the same ``PLAYER_AGG`` and
+club / national team / last appearance columns), next to the match rows counted independently: the
+audit checks the product's figures, not a copy of an old definition."""
 
 
 def product_view(conn: psycopg.Connection[Any], player: int, since: datetime) -> dict[str, Any]:
-    """What PLAYER_AGG shows on the player list and page (same window and definitions)."""
+    """What the player list and page show (same window and definitions) and the raw row counts."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(PRODUCT_SQL, {"p": player, "since": since})
         row = cur.fetchone()
@@ -218,7 +232,8 @@ def refine(v: BlockVerdict, *, tracked: set[int], migrated: set[tuple[int, int]]
 
     * the competition is not tracked                         -> untracked (not an issue)
     * tracked, but the season was never migrated             -> season_not_migrated
-    * finished matches of his team without any player rows   -> details_missing (backfill)
+    * finished matches of his team never asked for detail    -> details_missing (backfill, PrediGol)
+    * asked for, the provider's players block was empty      -> provider_no_match_rows (provider coverage)
     * every match has player rows, he is not in some         -> player_rows_missing (provider)
     * only the number of starts differs (by 1-2)             -> starts_definition
     """
@@ -227,8 +242,10 @@ def refine(v: BlockVerdict, *, tracked: set[int], migrated: set[tuple[int, int]]
             v.verdict = "untracked"
         elif (v.league, v.season) not in migrated:
             v.verdict = "season_not_migrated"
-        elif v.gaps.get("without_player_rows"):
+        elif v.gaps.get("never_fetched"):
             v.verdict = "details_missing"
+        elif v.gaps.get("without_player_rows"):
+            v.verdict = "provider_no_match_rows"
         else:
             v.verdict = "player_rows_missing"
     elif v.verdict == "stats_mismatch" and set(v.differences) == {"lineups"}:
@@ -260,6 +277,16 @@ def player_evidence(player: int, name: str, verdicts: Sequence[BlockVerdict], pr
                                 db={"block": v.ours, "detail_gaps": v.gaps},
                                 root_cause="per-match player statistics not fetched for some finished fixtures",
                                 fix="backfill /fixtures/players for the listed fixtures"))
+        elif v.verdict == "provider_no_match_rows":
+            out.append(Evidence(key=f"{key}:provider_no_match_rows", area="player_stats",
+                                issue_type="PROVIDER_COVERAGE", severity="low", at_fault="provider", entity=entity,
+                                claim=f"{entity}: the provider's season figures count more than its own match data "
+                                      f"({diffs or 'no rows at all'}): {v.gaps.get('empty_at_provider', '?')} finished "
+                                      "match(es) of his team were fetched and came back with an empty players block",
+                                api={**(dict(api_ref) if api_ref else {}), "block": v.api},
+                                db={"block": v.ours, "detail_gaps": v.gaps},
+                                root_cause="provider coverage: no per-match player statistics for these matches "
+                                           "(core.fixture_detail_coverage: block present, 0 rows)"))
         elif v.verdict == "provider_behind":
             out.append(Evidence(key=f"{key}:provider_behind", area="player_stats", issue_type="PROVIDER_STALE",
                                 severity="low", at_fault="provider", entity=entity,
@@ -283,8 +310,8 @@ def player_evidence(player: int, name: str, verdicts: Sequence[BlockVerdict], pr
         out.append(Evidence(
             key=f"player_stats:{player}:product_team_label", area="player_stats", issue_type="PRODUCT_SCOPE",
             severity="high", at_fault="predigol", entity=label,
-            claim=f"{label}: the product shows '{product.get('team')}' (his last appearance, a national team) as his "
-                  f"team; his club is {(current_club or {}).get('name', 'unknown')}",
+            claim=f"{label}: the product shows '{product.get('team')}' (a national team) as his club; his club is "
+                  f"{(current_club or {}).get('name', 'unknown')}",
             db={"product": product}, api={"current_club": current_club},
             root_cause="PLAYER_AGG / PLAYERS_ACTIVE label a player with the team of his last appearance",
             fix="show current_club (squad / career), national_team and last_appearance_team as three fields"))
@@ -294,10 +321,11 @@ def player_evidence(player: int, name: str, verdicts: Sequence[BlockVerdict], pr
 def product_evidence(rows: Sequence[Mapping[str, Any]]) -> list[Evidence]:
     """Platform-wide definition bugs seen across the audited players (one entry each)."""
     out = []
-    inflated = [r for r in rows if int(r["product"].get("bench_rows") or 0) > 0]
+    inflated = [r for r in rows if int(r["product"].get("apps") or 0) > int(r["product"].get("played_rows") or 0)]
     if inflated:
         ex = [{"player": r["player"], "name": r["name"], "product_apps": r["product"].get("apps"),
-               "unused_bench_rows": r["product"].get("bench_rows")} for r in inflated[:8]]
+               "played_rows": r["product"].get("played_rows"), "unused_bench_rows": r["product"].get("bench_rows")}
+              for r in inflated[:8]]
         out.append(Evidence(
             key="player_stats:product:apps_counts_bench", area="player_stats", issue_type="PLAYER_STATS_MISMATCH",
             severity="high", at_fault="predigol", entity="PLAYER_AGG / PLAYERS_ACTIVE / PLAYERS_OF_TEAM",

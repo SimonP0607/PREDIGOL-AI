@@ -59,6 +59,11 @@ def test_the_team_page_record_mixing_competitions_is_a_product_scope_issue() -> 
                       product={"played": 338, "competitions": 6, "seasons": 9})
     ev = ts.scope_evidence([a])
     assert ev is not None and ev.issue_type == "PRODUCT_SCOPE" and ev.at_fault == "predigol"
+    # the page since 4 Oct: one competition and season as the headline, the lifetime labelled apart
+    fixed = ts.audit_team(None, [], league=39, season=2026, team=50, name="X", at=NOW,
+                          product={"played": 5, "scope": "competition_season", "competitions": 1,
+                                   "lifetime_played": 491, "lifetime_scope": "all"})
+    assert ts.scope_evidence([fixed]) is None
 
 
 def test_thin_histories_are_classified_against_tracked_seasons() -> None:
@@ -150,14 +155,20 @@ def test_a_shootout_counted_as_a_result_is_the_providers_rule_not_a_mismatch() -
 
 def test_why_our_side_lacks_a_block_is_named() -> None:
     def v(verdict: str, league: int = 10, season: int = 2026, gaps: int = 0,
-          diffs: dict[str, tuple[Any, Any]] | None = None) -> pl.BlockVerdict:
+          diffs: dict[str, tuple[Any, Any]] | None = None, fetched: bool = False) -> pl.BlockVerdict:
         b = pl.BlockVerdict(1, "T", league, "L", season, verdict, None, None, differences=diffs or {})
-        b.gaps = {"finished": 5, "without_player_rows": gaps}
+        b.gaps = {"finished": 5, "without_player_rows": gaps, "never_fetched": 0 if fetched else gaps,
+                  "empty_at_provider": gaps if fetched else 0}
         return b
 
     assert pl.refine(v("not_in_db", league=999), tracked={10}, migrated=set()).verdict == "untracked"
     assert pl.refine(v("not_in_db"), tracked={10}, migrated=set()).verdict == "season_not_migrated"
     assert pl.refine(v("ours_missing", gaps=4), tracked={10}, migrated={(10, 2026)}).verdict == "details_missing"
+    # asked for, and the provider's players block came back empty: its coverage, not our backfill
+    fetched = pl.refine(v("ours_missing", gaps=4, fetched=True), tracked={10}, migrated={(10, 2026)})
+    assert fetched.verdict == "provider_no_match_rows"
+    ev = pl.player_evidence(1, "P", [fetched], {}, None, None)
+    assert [(e.issue_type, e.at_fault) for e in ev] == [("PROVIDER_COVERAGE", "provider")]
     assert pl.refine(v("ours_missing"), tracked={10}, migrated={(10, 2026)}).verdict == "player_rows_missing"
     assert pl.refine(v("stats_mismatch", diffs={"lineups": (7, 6)}), tracked={10},
                      migrated={(10, 2026)}).verdict == "starts_definition"

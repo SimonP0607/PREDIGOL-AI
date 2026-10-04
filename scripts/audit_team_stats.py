@@ -159,7 +159,7 @@ async def history(run: V2Run, conn: psycopg.Connection[Any], n: int) -> tuple[di
 def markdown(audits: list[ts.TeamAudit], hist: dict[str, Any] | None, codes: dict[str, str], requests: int) -> str:
     lines = [f"# Team statistics truth audit - {len(audits)} team-seasons, {requests} requests", "",
              "| Team | League | Season | Verdict | Played API/ours | W-D-L API | W-D-L ours | GF-GA API | GF-GA ours | "
-             "Team page record (played, comps) |", "|---|---|---|---|---|---|---|---|---|---|"]
+             "Team page record: headline (lifetime) |", "|---|---|---|---|---|---|---|---|---|---|"]
     for a in sorted(audits, key=lambda a: (a.verdict == "ok", a.league, a.season)):
         def wdl(d: dict[str, int | None]) -> str:
             return f"{d.get('wins.total')}-{d.get('draws.total')}-{d.get('loses.total')}"
@@ -169,7 +169,8 @@ def markdown(audits: list[ts.TeamAudit], hist: dict[str, Any] | None, codes: dic
 
         lines.append(f"| {a.name} ({a.team}) | {a.league} | {a.season} | **{a.verdict}** | "
                      f"{a.api.get('played.total')}/{a.ours.get('played.total')} | {wdl(a.api)} | {wdl(a.ours)} | "
-                     f"{g(a.api)} | {g(a.ours)} | {a.product.get('played')}, {a.product.get('competitions')} |")
+                     f"{g(a.api)} | {g(a.ours)} | {a.product.get('played')} {a.product.get('competition') or ''} "
+                     f"{a.product.get('season') or ''} (lifetime {a.product.get('lifetime_played')}) |")
     if hist:
         lines += ["", f"## Thin histories - {hist['thin_teams']} teams under 20 fixtures, {hist['sampled']} sampled",
                   "", f"Distribution: {hist['distribution']['buckets']}", "", f"Labels: {hist['labels']}"]

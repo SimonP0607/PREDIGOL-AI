@@ -129,22 +129,26 @@ def our_fixtures(conn: psycopg.Connection[Any], *, league: int, season: int, tea
         return [dict(r) for r in cur.fetchall()]
 
 
-PRODUCT_RECORD_SQL = """
-SELECT count(*) AS played,
-       count(DISTINCT cs.competition_id) AS competitions, count(DISTINCT cs.id) AS seasons,
-       min(f.kickoff_at) AS first, max(f.kickoff_at) AS last
-  FROM core.fixtures f JOIN core.fixture_results r ON r.fixture_id = f.id
-  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
- WHERE %(t)s IN (f.home_team_id, f.away_team_id)
-"""
-
-
 def product_record(conn: psycopg.Connection[Any], team_id: int) -> dict[str, Any]:
-    """What the team page calls the team's record: every recorded result, every competition and season."""
-    with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(PRODUCT_RECORD_SQL, {"t": team_id})
-        row = cur.fetchone()
-    return dict(row) if row else {}
+    """What the team page shows NOW as the team's record - its headline (the domestic league's latest
+    season; a national side: its latest competition) and the lifetime figure it labels apart - read
+    through the product's own code (``team_records`` + ``team_record_sections``), not a copy of it.
+
+    ``competitions`` is how many competitions the HEADLINE adds up (1 when it is one competition and
+    season); ``lifetime_*`` describe the labelled lifetime line."""
+    from fbi.api.repositories.catalog import team_records
+    from fbi.api.services.catalog import team_record_sections
+
+    head, campaign, lifetime = team_record_sections(team_records(conn, team_id))
+    h, life = head.data, lifetime.data
+    if h is None:
+        return {}
+    return {"played": h.played, "won": h.won, "drawn": h.drawn, "lost": h.lost, "goals_for": h.goals_for,
+            "goals_against": h.goals_against, "scope": h.scope, "competition": h.competition, "season": h.season,
+            "competitions": h.competitions if h.scope == "all" else 1,
+            "campaign_rows": len(campaign.data or []),
+            "lifetime_played": life.played if life else None, "lifetime_competitions": life.competitions if life else None,
+            "lifetime_scope": life.scope if life else None}
 
 
 @dataclass
@@ -245,8 +249,10 @@ def shootout_evidence(audits: Sequence[TeamAudit]) -> Evidence | None:
 
 
 def scope_evidence(audits: list[TeamAudit]) -> Evidence | None:
-    """One entry for the product's scope: the team page's record mixes every competition and season."""
-    mixed = [a for a in audits if a.product and (a.product.get("competitions") or 0) > 1]
+    """One entry for the product's scope: the team page's headline record mixes competitions or seasons
+    (until 4 Oct 2026 it added every competition and season, unlabelled)."""
+    mixed = [a for a in audits if a.product and ((a.product.get("competitions") or 0) > 1
+                                                 or a.product.get("scope", "all") != "competition_season")]
     if not mixed:
         return None
     ex = [{"team": a.team, "name": a.name, "provider_league_season_played": a.api.get("played.total"),

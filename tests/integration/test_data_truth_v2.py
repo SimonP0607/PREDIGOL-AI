@@ -171,8 +171,11 @@ def test_the_team_and_player_queries_read_the_real_schema(migrated_database: str
         blocks = pl.our_blocks(conn, PLAYER, SEASON)
         assert len(blocks) == 1 and blocks[0]["appearances"] == 1 and blocks[0]["rows"] == 2
         product = pl.product_view(conn, PLAYER, NOW - timedelta(days=400))
-        assert product["apps"] == 2 and product["bench_rows"] == 1  # the bench row counted as an appearance
-        assert pl.team_detail_gaps(conn, LEAGUE, SEASON, TEAM_A) == {"finished": 2, "without_player_rows": 0}
+        # the product's apps are matches played; the bench row is counted apart, never as an appearance
+        assert (product["apps"], product["played_rows"], product["bench_rows"], product["rows"]) == (1, 1, 1, 2)
+        assert product["team_id"] == v2_league["team_a"] and not product["team_is_national"]
+        assert pl.team_detail_gaps(conn, LEAGUE, SEASON, TEAM_A) == {"finished": 2, "without_player_rows": 0,
+                                                                      "never_fetched": 0, "empty_at_provider": 0}
         counts = {t["provider_team_id"]: t for t in th.team_counts(conn)}
         assert counts[TEAM_A]["fixtures"] == 2
 

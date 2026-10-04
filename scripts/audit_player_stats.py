@@ -123,7 +123,10 @@ async def audit_player(run: V2Run, conn: psycopg.Connection[Any], player: int, n
     row = {"player": player, "name": name, "focus": focus, "profile": {k: profile.get(k) for k in (
         "name", "firstname", "lastname", "age", "nationality", "height", "weight") if profile},
            "current_club": club, "national_team": nat,
-           "last_appearance_team": {"name": product.get("team"), "is_national": product.get("team_is_national")},
+           "last_appearance_team": {"id": product.get("last_team_id"), "name": product.get("last_team")},
+           "product_club": {"id": product.get("team_id"), "name": product.get("team"),
+                            "source": product.get("club_source"), "is_national": product.get("team_is_national")},
+           "product_national_team": {"id": product.get("national_team_id"), "name": product.get("national_team")},
            "product": product, "blocks": [v.__dict__ for v in verdicts], **extra}
     return row, evidence
 
@@ -163,15 +166,18 @@ def external_evidence(ext: list[dict[str, Any]], rows: list[dict[str, Any]]) -> 
 def markdown(rows: list[dict[str, Any]], codes: dict[str, str], requests: int,
              checks: list[dict[str, Any]]) -> str:
     lines = [f"# Player statistics truth audit - {len(rows)} players, {requests} requests", "",
-             "| Player | Club (provider) | Shown team (last appearance) | Blocks ok / not | Product apps (bench rows) |",
+             "| Player | Club (provider) | Product: club · national team · last appearance | Blocks ok / not | "
+             "Product apps (played rows / bench rows) |",
              "|---|---|---|---|---|"]
     for r in rows:
         ok = sum(1 for b in r["blocks"] if b["verdict"] == "ok")
         bad = [f"{b['league_name']} {b['season']}: {b['verdict']}" for b in r["blocks"] if b["verdict"] != "ok"]
         club = (r.get("current_club") or {}).get("name", "-")
-        shown = r["last_appearance_team"].get("name")
+        shown = (f"{r['product_club'].get('name') or '-'} ({r['product_club'].get('source') or '-'}) · "
+                 f"{r['product_national_team'].get('name') or '-'} · {r['last_appearance_team'].get('name') or '-'}")
+        p = r["product"]
         lines.append(f"| {r['name']} ({r['player']}) | {club} | {shown} | {ok} / {len(bad)} {'; '.join(bad[:3])} | "
-                     f"{r['product'].get('apps')} ({r['product'].get('bench_rows')}) |")
+                     f"{p.get('apps')} ({p.get('played_rows')} / {p.get('bench_rows')}) |")
     if checks:
         lines += ["", "## External checks", ""]
         for c in checks:
