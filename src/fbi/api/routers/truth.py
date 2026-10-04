@@ -8,14 +8,17 @@ import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.truth import (
+    CompetitionScoreRow,
     DataRepair,
     FreshnessReport,
     GateReport,
     OddsCoverageReport,
+    QuarantinedFixture,
     StandingsAuditRow,
     TruthFinding,
     TruthRun,
     TruthSummary,
+    ValidationSummary,
 )
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
@@ -84,3 +87,33 @@ def get_odds_coverage(conn: Db, days: Annotated[int, Query(ge=1, le=30)] = 14) -
     """BOOKMAKER_COVERAGE_REPORT: who prices which competition, market and country, what our capture
     missed and why, the Colombian operators, and every price source evaluated."""
     return truth.odds_coverage(conn, days=days)
+
+
+@router.get("/data/validation", response_model=Envelope[ValidationSummary])
+def get_validation(conn: Db) -> Envelope[ValidationSummary]:
+    """Historical validation: finished matches by state (INGESTED, VALIDATED, HISTORICAL_APPROVED,
+    QUARANTINED), the rules they failed, and competition-seasons by data class."""
+    return truth.validation_summary(conn)
+
+
+@router.get("/data/validation/competitions", response_model=Envelope[list[CompetitionScoreRow]])
+def get_competition_scores(
+    conn: Db,
+    data_class: Annotated[Literal["MODEL_READY", "PARTIAL", "PRODUCT_ONLY", "INSUFFICIENT"] | None,
+                          Query(alias="class")] = None,
+    country: Annotated[str | None, Query(max_length=80)] = None,
+    q: Annotated[str | None, Query(max_length=80)] = None,
+    current: bool = False,
+    tracked: bool = True,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> Envelope[list[CompetitionScoreRow]]:
+    """Competition Data Score per competition-season, with its components and the thresholds it missed."""
+    return truth.competition_scores(conn, klass=data_class, country=country, q=q, current=current, tracked=tracked,
+                                    limit=limit, offset=offset)
+
+
+@router.get("/data/validation/quarantine", response_model=Envelope[list[QuarantinedFixture]])
+def get_quarantine(conn: Db, limit: Annotated[int, Query(ge=1, le=500)] = 200) -> Envelope[list[QuarantinedFixture]]:
+    """Matches excluded from every model and backtest, newest first, with the rules they failed."""
+    return truth.quarantined(conn, limit=limit)

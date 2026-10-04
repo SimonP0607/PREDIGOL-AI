@@ -15,6 +15,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.api.contracts.truth import (
+    CompetitionScoreRow,
     CoverageBookmaker,
     CoverageCompetition,
     CoverageCountry,
@@ -28,13 +29,16 @@ from fbi.api.contracts.truth import (
     GateReport,
     OddsCoverageReport,
     OddsSource,
+    QuarantinedFixture,
     StandingsAuditRow,
     TruthFinding,
     TruthMatrixRow,
     TruthRun,
     TruthSummary,
+    ValidationSummary,
 )
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, unavailable
+from fbi.catalog.segments import CompetitionFacts, segment_of
 from fbi.core.clock import now
 from fbi.market.coverage import build_report, is_critical
 from fbi.providers.odds_sources import ODDS_SOURCES
@@ -251,3 +255,97 @@ def odds_coverage(conn: psycopg.Connection[Any], *, days: int) -> Envelope[OddsC
         return unavailable(report, "No played match of a tracked competition in the window yet.",
                            status=DataStatus.EMPTY)
     return ok(report, data_as_of=report.measured_at)
+
+
+VALIDATION_SUMMARY_SQL = """
+SELECT max(v.rule_version) AS rule_version, max(v.validated_at) AS computed_at,
+       count(*) AS fixtures FROM analytics.fixture_validation v
+"""
+
+SCORES_SQL = """
+SELECT s.competition_season_id, cs.competition_id, c.name AS competition, c.country, cs.season, cs.is_current,
+       c.is_tracked, c.competition_type, c.entity_scope, c.tier, s.class AS data_class, s.score, s.finished,
+       s.approved, s.quarantined, s.components, s.reasons, s.computed_at
+  FROM analytics.competition_data_scores s
+  JOIN core.competition_seasons cs ON cs.id = s.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE (%(klass)s::text IS NULL OR s.class = %(klass)s)
+   AND (%(country)s::text IS NULL OR c.country = %(country)s)
+   AND (%(q)s::text IS NULL OR c.name ILIKE '%%' || %(q)s || '%%')
+   AND (NOT %(current)s OR cs.is_current)
+   AND (NOT %(tracked)s OR c.is_tracked)
+ ORDER BY c.is_tracked DESC, cs.is_current DESC, s.score DESC, c.name, cs.season DESC
+ LIMIT %(limit)s OFFSET %(offset)s
+"""
+
+
+def _segment(r: dict[str, Any]) -> str:
+    return segment_of(CompetitionFacts(str(r["competition"]), r["competition_type"], r["entity_scope"],
+                                       r["tier"])).value
+
+
+def validation_summary(conn: psycopg.Connection[Any]) -> Envelope[ValidationSummary]:
+    def compute() -> ValidationSummary:
+        _slow(conn)
+        head = _rows(conn, VALIDATION_SUMMARY_SQL)[0]
+        states = {str(r["state"]): int(r["n"]) for r in _rows(
+            conn, "SELECT state, count(*) AS n FROM analytics.fixture_validation GROUP BY 1")}
+        failed = {str(r["rule"]): int(r["n"]) for r in _rows(
+            conn, "SELECT f.rule, count(*) AS n FROM analytics.fixture_validation v, "
+                  "jsonb_array_elements_text(v.failed) AS f(rule) GROUP BY 1")}
+        classes = {str(r["class"]): int(r["n"]) for r in _rows(
+            conn, "SELECT class, count(*) AS n FROM analytics.competition_data_scores GROUP BY 1")}
+        by_segment: dict[str, int] = {}
+        for r in _rows(conn, "SELECT c.name AS competition, c.competition_type, c.entity_scope, c.tier, "
+                             "count(*) AS n FROM analytics.model_ready_fixtures m "
+                             "JOIN core.competitions c ON c.id = m.competition_id GROUP BY 1, 2, 3, 4"):
+            seg = _segment(r)
+            by_segment[seg] = by_segment.get(seg, 0) + int(r["n"])
+        return ValidationSummary(rule_version=head["rule_version"], computed_at=head["computed_at"],
+                                 fixtures=int(head["fixtures"]), states=states, failed=failed, classes=classes,
+                                 approved_by_segment=by_segment)
+
+    report = _cached("validation", compute)
+    if report.fixtures == 0:
+        return unavailable(report, "Historical validation has not run yet (python -m scripts.validate_history).",
+                           status=DataStatus.EMPTY)
+    return ok(report, data_as_of=report.computed_at)
+
+
+def competition_scores(conn: psycopg.Connection[Any], *, klass: str | None, country: str | None, q: str | None,
+                       current: bool, tracked: bool, limit: int, offset: int) -> Envelope[list[CompetitionScoreRow]]:
+    _slow(conn)
+    params: dict[str, Any] = {"klass": klass, "country": country, "q": q, "current": current, "tracked": tracked,
+                              "limit": limit, "offset": offset}
+    rows = _rows(conn, SCORES_SQL, params)
+    total = _rows(conn, "SELECT count(*) AS n FROM (" + SCORES_SQL.replace(
+        "LIMIT %(limit)s OFFSET %(offset)s", "") + ") x", params)[0]["n"]
+    out = [CompetitionScoreRow(
+        competition_season_id=r["competition_season_id"], competition_id=r["competition_id"],
+        competition=r["competition"], country=r["country"], season=r["season"], is_current=r["is_current"],
+        is_tracked=r["is_tracked"], segment=_segment(r), data_class=r["data_class"], score=float(r["score"]),
+        finished=r["finished"], approved=r["approved"], quarantined=r["quarantined"], components=r["components"],
+        reasons=list(r["reasons"] or []), computed_at=r["computed_at"]) for r in rows]
+    return listing(out, empty_reason="No competition-season matches this selection.", total=int(total), limit=limit,
+                   offset=offset)
+
+
+QUARANTINE_SQL = """
+SELECT v.fixture_id, f.provider_fixture_id, c.name AS competition, cs.season, f.kickoff_at, h.name AS home,
+       a.name AS away, f.status_short, v.failed
+  FROM analytics.fixture_validation v
+  JOIN core.fixtures f ON f.id = v.fixture_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+  JOIN core.teams h ON h.id = f.home_team_id JOIN core.teams a ON a.id = f.away_team_id
+ WHERE v.state = 'QUARANTINED'
+ ORDER BY f.kickoff_at DESC
+ LIMIT %(limit)s
+"""
+
+
+def quarantined(conn: psycopg.Connection[Any], *, limit: int) -> Envelope[list[QuarantinedFixture]]:
+    _slow(conn)
+    rows = _rows(conn, QUARANTINE_SQL, {"limit": limit})
+    return listing([QuarantinedFixture(**{**r, "failed": list(r["failed"] or [])}) for r in rows],
+                   empty_reason="No quarantined match.", total=len(rows), limit=limit, offset=0)

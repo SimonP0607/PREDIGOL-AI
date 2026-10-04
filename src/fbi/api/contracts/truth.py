@@ -243,3 +243,44 @@ class OddsCoverageReport(Contract):
     local: list[CoverageLocal]
     local_source: dict[str, str]
     sources: list[OddsSource]
+
+
+class CompetitionScoreRow(Contract):
+    competition_season_id: int
+    competition_id: int
+    competition: str
+    country: str | None
+    season: int
+    is_current: bool
+    is_tracked: bool
+    segment: str = Field(description="club league, cup, continental, national team, women, youth...")
+    data_class: Literal["MODEL_READY", "PARTIAL", "PRODUCT_ONLY", "INSUFFICIENT"]
+    score: float
+    finished: int
+    approved: int
+    quarantined: int
+    components: dict[str, float]
+    reasons: list[str]
+    computed_at: datetime
+
+
+class QuarantinedFixture(Contract):
+    fixture_id: int
+    provider_fixture_id: int
+    competition: str
+    season: int
+    kickoff_at: datetime
+    home: str
+    away: str
+    status_short: str
+    failed: list[str]
+
+
+class ValidationSummary(Contract):
+    rule_version: str | None
+    computed_at: datetime | None
+    fixtures: int
+    states: dict[str, int]
+    failed: dict[str, int]
+    classes: dict[str, int]
+    approved_by_segment: dict[str, int]

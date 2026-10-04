@@ -490,9 +490,12 @@ async def _pipeline() -> None:
 
 def _elo_refresh_now() -> None:
     from fbi.features.elo_refresh import refresh_elo
+    from fbi.validation.historical import run_validation
 
     with _connect() as conn:
         refresh_elo(conn)
+        # Approval needs the new ratings: validate the history right after them.
+        run_validation(conn, at=now())
 
 
 async def _elo_refresh() -> None:
