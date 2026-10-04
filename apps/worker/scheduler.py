@@ -103,6 +103,15 @@ RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
 QUALITY_SWEEP_HOURS = int(os.environ.get("FBI_QUALITY_SWEEP_HOURS", "6"))
 CONTEXT_REFRESH_HOURS = int(os.environ.get("FBI_CONTEXT_REFRESH_HOURS", "12"))
 """League tables and injury reports for the active seasons (fbi.ingestion.context_refresh)."""
+CONTEXT_DUE_MINUTES = int(os.environ.get("FBI_CONTEXT_DUE_MINUTES", "30"))
+"""Tables a finished match changed, injury lists of the next 48 hours (``refresh_due_context``).
+
+The provider updates a table every hour and injuries every four hours; the twelve-hour
+cycle above left a table up to half a day behind the match that changed it."""
+RESULTS_REPAIR_MINUTES = int(os.environ.get("FBI_RESULTS_REPAIR_MINUTES", "30"))
+"""Tracked fixtures over three hours past kick-off that still do not say they finished,
+re-read by id (20 per request). It rode along with the six-hourly results sync, so a
+match the live follower missed could stay "awaiting a result" for six hours."""
 LIVE_MATCH_SECONDS = int(os.environ.get("FBI_LIVE_MATCH_SECONDS", "60"))
 LIVE_MATCH_MAX_REQUESTS = int(os.environ.get("FBI_LIVE_MATCH_MAX_REQUESTS", "10"))
 LIVE_MATCH_RESERVE = int(os.environ.get("FBI_LIVE_MATCH_RESERVE", "3000"))
@@ -268,6 +277,38 @@ async def _context_refresh() -> None:
         provider = ApiFootballProvider(_client())
         try:
             await refresh_context(conn, provider)
+        finally:
+            await provider.aclose()
+
+
+async def _context_due() -> None:
+    """Only what a match made due: a changed table, the injury lists of the next two days."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.context_refresh import refresh_due_context
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await refresh_due_context(conn, provider)
+        finally:
+            await provider.aclose()
+
+
+async def _results_repair() -> None:
+    """Fixtures past kick-off that still do not say they finished, by id."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.live_match import repair_stale_results
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await repair_stale_results(conn, provider)
         finally:
             await provider.aclose()
 
@@ -569,6 +610,12 @@ async def main() -> None:
     scheduler.add_job(_context_refresh, "interval", hours=CONTEXT_REFRESH_HOURS, id="context_refresh",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(context_next, moment + timedelta(minutes=15)))
+    scheduler.add_job(_context_due, "interval", minutes=CONTEXT_DUE_MINUTES, id="context_due",
+                      max_instances=1, coalesce=True, misfire_grace_time=CONTEXT_DUE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=6))
+    scheduler.add_job(_results_repair, "interval", minutes=RESULTS_REPAIR_MINUTES, id="results_repair",
+                      max_instances=1, coalesce=True, misfire_grace_time=RESULTS_REPAIR_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=4))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     scheduler.start()

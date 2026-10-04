@@ -26,6 +26,7 @@ from fbi.providers.api_football.details import (
     CoverageRef,
     FixtureDetail,
     LineupRef,
+    SplitRecord,
     StandingRef,
     iter_lineup_people,
 )
@@ -448,26 +449,78 @@ def apply_coverage(conn: psycopg.Connection, refs: Iterable[CoverageRef], *, pay
     return written
 
 
-def apply_standings(conn: psycopg.Connection, refs: Iterable[StandingRef], *, fetched_at: datetime) -> int:
-    """One snapshot per (competition season, team) at the payload's instant."""
-    written = 0
+STANDING_SPLIT = ("played", "wins", "draws", "losses", "goals_for", "goals_against")
+STANDING_COLUMNS = (
+    "competition_season_id", "team_id", "snapshot_at", "rank", "points", "played", "wins", "draws", "losses",
+    "goals_for", "goals_against", "form", '"group"', "goals_diff", "zone_status", "description",
+    "provider_updated_at", "payload_hash",
+    *(f"{side}_{name}" for side in ("home", "away") for name in STANDING_SPLIT),
+)
+
+
+@dataclass
+class StandingsOutcome:
+    """What one /standings payload became. ``unknown_teams`` are rows skipped because the
+    team is not in core.teams yet - counted, because a table missing a row is wrong."""
+
+    written: int = 0
+    unknown_teams: list[int] = field(default_factory=list)
+    unknown_season: bool = False
+
+    def __int__(self) -> int:
+        return self.written
+
+
+def _split_values(split: SplitRecord | None) -> tuple[int | None, ...]:
+    if split is None:
+        return (None,) * len(STANDING_SPLIT)
+    return tuple(getattr(split, name) for name in STANDING_SPLIT)
+
+
+def apply_standings(conn: psycopg.Connection, refs: Iterable[StandingRef], *, fetched_at: datetime,
+                    payload_hash: str | None = None) -> int:
+    """One snapshot per (competition season, team, group) at the payload's instant.
+
+    Returns the rows written; ``apply_standings_outcome`` says what was skipped and why.
+    """
+    return apply_standings_outcome(conn, refs, fetched_at=fetched_at, payload_hash=payload_hash).written
+
+
+def apply_standings_outcome(conn: psycopg.Connection, refs: Iterable[StandingRef], *, fetched_at: datetime,
+                            payload_hash: str | None = None) -> StandingsOutcome:
+    outcome = StandingsOutcome()
+    rows = list(refs)
+    if not rows:
+        return outcome
+    placeholders = ",".join(["%s"] * len(STANDING_COLUMNS))
     with conn.cursor(row_factory=tuple_row) as cur:
-        for r in refs:
-            cur.execute(
-                "SELECT cs.id, t.id FROM core.competition_seasons cs "
-                "JOIN core.competitions c ON c.id = cs.competition_id JOIN core.teams t ON t.provider_team_id = %s "
-                "WHERE c.provider_league_id = %s AND cs.season = %s",
-                (r.provider_team_id, r.provider_league_id, r.season),
-            )
-            row = cur.fetchone()
-            if row is None:
+        seasons: dict[tuple[int, int], int | None] = {}
+        teams: dict[int, int] = {}
+        team_ids = sorted({r.provider_team_id for r in rows})
+        cur.execute("SELECT provider_team_id, id FROM core.teams WHERE provider_team_id = ANY(%s)", (team_ids,))
+        teams = {int(a): int(b) for a, b in cur.fetchall()}
+        for r in rows:
+            key = (r.provider_league_id, r.season)
+            if key not in seasons:
+                cur.execute(
+                    "SELECT cs.id FROM core.competition_seasons cs JOIN core.competitions c ON c.id = cs.competition_id "
+                    "WHERE c.provider_league_id = %s AND cs.season = %s", key)
+                found = cur.fetchone()
+                seasons[key] = int(found[0]) if found else None
+            season_id = seasons[key]
+            if season_id is None:
+                outcome.unknown_season = True
+                continue
+            team_id = teams.get(r.provider_team_id)
+            if team_id is None:
+                outcome.unknown_teams.append(r.provider_team_id)
                 continue
             cur.execute(
-                'INSERT INTO core.standings (competition_season_id, team_id, snapshot_at, rank, points, played, wins, '
-                'draws, losses, goals_for, goals_against, form, "group") VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) '
+                f"INSERT INTO core.standings ({', '.join(STANDING_COLUMNS)}) VALUES ({placeholders}) "
                 "ON CONFLICT DO NOTHING",
-                (int(row[0]), int(row[1]), fetched_at, r.rank, r.points, r.played, r.wins, r.draws, r.losses,
-                 r.goals_for, r.goals_against, r.form, r.group),
+                (season_id, team_id, fetched_at, r.rank, r.points, r.played, r.wins, r.draws, r.losses,
+                 r.goals_for, r.goals_against, r.form, r.group, r.goals_diff, r.zone_status, r.description,
+                 r.provider_updated_at, payload_hash, *_split_values(r.home), *_split_values(r.away)),
             )
-            written += max(cur.rowcount, 0)
-    return written
+            outcome.written += max(cur.rowcount, 0)
+    return outcome

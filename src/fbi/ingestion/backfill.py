@@ -346,7 +346,7 @@ async def _execute(conn: psycopg.Connection, provider: Any, ledger: RunLedger, r
     if task.kind == "standings_season":
         refs, raw = await provider.fetch_standings(league_id=task.league_id, season=task.season)
         stored(raw)
-        n = apply_standings(conn, refs, fetched_at=raw.fetched_at)
+        n = apply_standings(conn, refs, fetched_at=raw.fetched_at, payload_hash=raw.payload_hash)
         counters.rows_inserted += n
         return _Outcome(raw.payload_hash, n, len(refs))
     if task.kind == "injuries_season":

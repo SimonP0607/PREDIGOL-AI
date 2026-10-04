@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -371,6 +371,27 @@ def iter_coverage(body: dict[str, Any]) -> Iterator[CoverageRef]:
 
 
 @dataclass(frozen=True, slots=True)
+class SplitRecord:
+    """One side of a table row: home matches only, or away matches only."""
+
+    played: int | None
+    wins: int | None
+    draws: int | None
+    losses: int | None
+    goals_for: int | None
+    goals_against: int | None
+
+
+def _split(block: Any) -> SplitRecord | None:
+    b = _dict(block)
+    if not b:
+        return None
+    goals = _dict(b.get("goals"))
+    return SplitRecord(integer(b.get("played")), integer(b.get("win")), integer(b.get("draw")),
+                       integer(b.get("lose")), integer(goals.get("for")), integer(goals.get("against")))
+
+
+@dataclass(frozen=True, slots=True)
 class StandingRef:
     provider_league_id: int
     season: int
@@ -385,9 +406,30 @@ class StandingRef:
     goals_against: int
     form: str | None
     group: str | None
+    goals_diff: int | None = None
+    zone_status: str | None = None
+    """The provider's movement marker: "same", "up" or "down"."""
+    description: str | None = None
+    """The zone the rank falls in, as the provider words it: "Promotion - Champions League"."""
+    provider_updated_at: datetime | None = None
+    home: SplitRecord | None = None
+    away: SplitRecord | None = None
+
+
+def _instant(value: Any) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value)) if value else None
+    except ValueError:
+        return None
 
 
 def iter_standings(body: dict[str, Any]) -> Iterator[StandingRef]:
+    """Every row of every table in a /standings response.
+
+    A competition can serve several tables for one season (conferences, groups, a
+    regular season and a play-off round), and a team can appear in more than one of
+    them; each row is yielded with its group, which is part of the stored key.
+    """
     for entry in body.get("response") or []:
         league = _dict(entry.get("league")) if isinstance(entry, dict) else {}
         if not league:
@@ -409,7 +451,9 @@ def iter_standings(body: dict[str, Any]) -> Iterator[StandingRef]:
                     continue
                 rank, points, played, wins, draws, losses, gf, ga = (int(v) for v in values if v is not None)
                 yield StandingRef(lid, int(season), team, rank, points, played, wins, draws, losses, gf, ga,
-                                  _text(row, "form"), _text(row, "group"))
+                                  _text(row, "form"), _text(row, "group"), integer(row.get("goalsDiff")),
+                                  _text(row, "status"), _text(row, "description"), _instant(row.get("update")),
+                                  _split(row.get("home")), _split(row.get("away")))
 
 
 # ── identity: /teams, and what the detail payloads already tell us ───────────

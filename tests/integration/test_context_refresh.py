@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import psycopg
@@ -59,6 +59,7 @@ def current_league(migrated_database: str, seed: Seed) -> Iterator[dict[str, int
     yield {"league": int(league), "season": int(season), "home": int(home), "away": int(away)}
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("DELETE FROM core.standings WHERE competition_season_id = %s", (seed.season_id,))
+        cur.execute("DELETE FROM core.context_checks WHERE competition_season_id = %s", (seed.season_id,))
         cur.execute("SELECT id FROM raw.ingestion_runs WHERE job_type = 'context_refresh'")
         runs = [r[0] for r in cur.fetchall()]
         if runs:
@@ -86,3 +87,93 @@ async def test_tables_and_injuries_are_refreshed_and_counted(migrated_database: 
                         "ORDER BY id DESC LIMIT 1")
             status, calls = cur.fetchone()  # type: ignore[misc]
             assert calls == counters.api_calls and status in ("completed", "partial")
+
+
+# ── the whole table row, and the job that follows matches ───────────────────
+
+def _refs(league: int, season: int, team: int) -> list[StandingRef]:
+    from fbi.providers.api_football.details import SplitRecord
+
+    home = SplitRecord(2, 2, 0, 0, 5, 1)
+    away = SplitRecord(1, 1, 0, 0, 2, 0)
+    return [
+        StandingRef(league, season, team, 1, 9, 3, 3, 0, 0, 7, 1, "WWW", "Western Conference", 6, "same",
+                    "Promotion - Play Offs", datetime(2026, 10, 3, tzinfo=UTC), home, away),
+        StandingRef(league, season, team, 4, 9, 3, 3, 0, 0, 7, 1, "WWW", "Supporters Shield"),
+    ]
+
+
+def test_a_team_in_two_tables_keeps_both_rows_and_the_whole_row(migrated_database: str, seed: Seed,
+                                                                current_league: dict[str, int]) -> None:
+    from fbi.ingestion.details import apply_standings_outcome
+
+    at = datetime(2026, 10, 4, 6, 0, tzinfo=UTC)
+    with psycopg.connect(migrated_database) as conn:
+        out = apply_standings_outcome(conn, [*_refs(current_league["league"], current_league["season"],
+                                                    current_league["home"]),
+                                             StandingRef(current_league["league"], current_league["season"],
+                                                         987654, 2, 6, 3, 2, 0, 1, 4, 3, None, None)],
+                                      fetched_at=at, payload_hash="h1")
+        assert out.written == 2, "one team, two groups, two rows"
+        assert out.unknown_teams == [987654], "a row for a team we do not know is counted, not dropped silently"
+        rows = conn.execute(
+            'SELECT "group", description, zone_status, goals_diff, home_played, away_goals_for, provider_updated_at '
+            "FROM core.standings WHERE competition_season_id = %s AND snapshot_at = %s ORDER BY rank",
+            (seed.season_id, at)).fetchall()
+        assert rows[0][:6] == ("Western Conference", "Promotion - Play Offs", "same", 6, 2, 2)
+        assert rows[0][6] == datetime(2026, 10, 3, tzinfo=UTC)
+        assert rows[1][0] == "Supporters Shield" and rows[1][1] is None
+        conn.rollback()
+
+
+def test_a_check_moves_changed_at_only_when_the_answer_changes(migrated_database: str, seed: Seed) -> None:
+    from fbi.ingestion.context_refresh import record_check
+
+    t0 = datetime(2026, 10, 4, 6, 0, tzinfo=UTC)
+    with psycopg.connect(migrated_database) as conn:
+        conn.execute("DELETE FROM core.context_checks WHERE competition_season_id = %s", (seed.season_id,))
+        record_check(conn, competition_season_id=seed.season_id, dataset="standings", checked_at=t0,
+                     payload_hash="a", rows_seen=20)
+        record_check(conn, competition_season_id=seed.season_id, dataset="standings",
+                     checked_at=t0 + timedelta(hours=1), payload_hash="a", rows_seen=20)
+        got = conn.execute("SELECT checked_at, changed_at FROM core.context_checks WHERE competition_season_id = %s "
+                           "AND dataset = 'standings'", (seed.season_id,)).fetchone()
+        assert got == (t0 + timedelta(hours=1), t0), "asked again, nothing new"
+        record_check(conn, competition_season_id=seed.season_id, dataset="standings",
+                     checked_at=t0 + timedelta(hours=2), payload_hash="b", rows_seen=20)
+        record_check(conn, competition_season_id=seed.season_id, dataset="standings",
+                     checked_at=t0 + timedelta(minutes=30), payload_hash="z", rows_seen=1)
+        got = conn.execute("SELECT checked_at, changed_at, payload_hash FROM core.context_checks "
+                           "WHERE competition_season_id = %s AND dataset = 'standings'", (seed.season_id,)).fetchone()
+        assert got == (t0 + timedelta(hours=2), t0 + timedelta(hours=2), "b"), "a late, older answer changes nothing"
+        conn.rollback()
+
+
+def test_a_finished_match_makes_its_table_due_until_the_table_changes(migrated_database: str, seed: Seed,
+                                                                      current_league: dict[str, int]) -> None:
+    from fbi.ingestion.context_refresh import due_seasons, record_check
+
+    kickoff = datetime(2026, 9, 15, 19, 0, tzinfo=UTC)
+    with psycopg.connect(migrated_database) as conn:
+        conn.execute("DELETE FROM core.context_checks WHERE competition_season_id = %s", (seed.season_id,))
+        conn.execute("UPDATE core.fixtures SET status_short = 'FT', status_group = 'finished' WHERE id = %s",
+                     (seed.fixture_id,))
+        before_end = due_seasons(conn, at=kickoff + timedelta(hours=1))
+        assert seed.season_id not in [s.competition_season_id for s in before_end["standings"]]
+        after = due_seasons(conn, at=kickoff + timedelta(hours=3))
+        assert seed.season_id in [s.competition_season_id for s in after["standings"]]
+        # asked at +2h30 and the provider had not changed the table: due again only after the recheck interval
+        record_check(conn, competition_season_id=seed.season_id, dataset="standings",
+                     checked_at=kickoff + timedelta(hours=2, minutes=30), payload_hash="old", rows_seen=20)
+        conn.execute("UPDATE core.context_checks SET changed_at = %s WHERE competition_season_id = %s",
+                     (kickoff - timedelta(days=3), seed.season_id))
+        assert seed.season_id not in [s.competition_season_id
+                                      for s in due_seasons(conn, at=kickoff + timedelta(hours=3))["standings"]]
+        assert seed.season_id in [s.competition_season_id
+                                  for s in due_seasons(conn, at=kickoff + timedelta(hours=3, minutes=30))["standings"]]
+        # the table changed after the match ended: nothing more to follow
+        record_check(conn, competition_season_id=seed.season_id, dataset="standings",
+                     checked_at=kickoff + timedelta(hours=3, minutes=30), payload_hash="new", rows_seen=20)
+        assert seed.season_id not in [s.competition_season_id
+                                      for s in due_seasons(conn, at=kickoff + timedelta(hours=5))["standings"]]
+        conn.rollback()
