@@ -318,7 +318,11 @@ function TeamSheet({
       ) : (
         <div className="space-y-3">
           {lineup.coach ? (
-            <p className="text-caption text-muted-foreground">
+            <p
+              className="flex items-center gap-2 text-caption text-muted-foreground"
+              data-testid="lineup-coach"
+            >
+              <PlayerPhoto src={lineup.coach_photo_url} name={lineup.coach} size={22} />
               {t("match.lineups.coach", { name: lineup.coach })}
             </p>
           ) : null}

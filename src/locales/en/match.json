@@ -349,5 +349,17 @@
     "model": "Model (evaluation mode): {selection} {probability} · fair odds {fair}.",
     "minOdds": "At {min} or more at your bookmaker, the bet would carry the margin our rule asks for.",
     "notAPick": "Not a pick and not a bookmaker's price: no model has beaten the market yet."
+  },
+  "providerPrediction": {
+    "title": "Provider's prediction (API-Football)",
+    "label": "API-Football's own forecast (Poisson, form, comparison; no odds). Auxiliary: not PrediGol's model, not the market, never a model input or a pick.",
+    "none": "The provider's prediction has not been read for this match yet.",
+    "home": "Home",
+    "draw": "Draw",
+    "away": "Away",
+    "advice": "Provider's advice: {{advice}}",
+    "winner": "Provider's winner: {{team}} ({{comment}})",
+    "underOver": "Provider's goals line: {{line}}",
+    "versions": "{{count}} versions kept since {{first}}"
   }
 }

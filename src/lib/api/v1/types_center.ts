@@ -57,6 +57,9 @@ export interface TeamLineup {
   formation: string | null;
   coach: string | null;
   players: LineupPlayer[];
+  coach_provider_id?: number | null;
+  /** The coach's photo as /coachs stored it; null when none is stored (initials, never a guessed URL). */
+  coach_photo_url?: string | null;
 }
 
 export interface PlayerLine {
@@ -348,6 +351,40 @@ export interface PlayerAbsence {
   reason: string | null;
 }
 
+/** Where reference rows come from: the provider endpoint, the payload and when PrediGol last asked. */
+export interface Provenance {
+  source: string;
+  observed_at: Iso | null;
+  payload_hash: string | null;
+  normalizer_version: string | null;
+  checked_at: Iso | null;
+}
+
+export interface PlayerTransfer {
+  transfer_date: string | null;
+  /** The provider's text: a fee, "Loan", "Free", "N/A". */
+  type: string | null;
+  team_in_id: number | null;
+  team_in_provider_id: number | null;
+  team_in: string | null;
+  team_out_id: number | null;
+  team_out_provider_id: number | null;
+  team_out: string | null;
+}
+
+export interface PlayerSidelined {
+  type: string | null;
+  start: string | null;
+  end: string | null;
+}
+
+export interface PlayerTrophy {
+  league: string | null;
+  country: string | null;
+  season: string | null;
+  place: string | null;
+}
+
 export interface PlayerDetail {
   player: PlayerSummary;
   firstname: string | null;
@@ -357,6 +394,84 @@ export interface PlayerDetail {
   seasons: Section<PlayerSeason[]>;
   matches: Section<PlayerMatch[]>;
   absences: Section<PlayerAbsence[]>;
+  transfers?: Section<PlayerTransfer[]> | null;
+  sidelined?: Section<PlayerSidelined[]> | null;
+  trophies?: Section<PlayerTrophy[]> | null;
+  provenance?: Record<string, Provenance>;
+}
+
+export type LeaderListName = "topscorers" | "topassists" | "topyellowcards" | "topredcards";
+
+export interface Leader {
+  rank: number;
+  provider_player_id: number;
+  player_id: number | null;
+  name: string | null;
+  photo_url: string | null;
+  team_id: number | null;
+  provider_team_id: number | null;
+  team: string | null;
+  team_logo: string | null;
+  appearances: number | null;
+  minutes: number | null;
+  goals: number | null;
+  assists: number | null;
+  penalties_scored: number | null;
+  yellow_cards: number | null;
+  yellowred_cards: number | null;
+  red_cards: number | null;
+  /** The provider's rating (its own metric), as sent. */
+  rating: Dec | null;
+}
+
+export interface LeaderList {
+  kind: LeaderListName;
+  rows: Leader[];
+  provenance: Provenance;
+}
+
+export interface SeasonRound {
+  ordinal: number;
+  round: string;
+  stage: string;
+  phase: string;
+  dates: string[];
+  is_current: boolean;
+}
+
+export interface CompetitionReference {
+  competition_id: number;
+  season: number;
+  leaders: Section<LeaderList[]>;
+  rounds: Section<SeasonRound[]>;
+  rounds_provenance: Provenance | null;
+  current_rounds: string[];
+}
+
+export interface ProviderPrediction {
+  observed_at: Iso;
+  winner_team_id: number | null;
+  winner_name: string | null;
+  winner_comment: string | null;
+  win_or_draw: boolean | null;
+  under_over: string | null;
+  goals_home: string | null;
+  goals_away: string | null;
+  advice: string | null;
+  percent_home: Dec | null;
+  percent_draw: Dec | null;
+  percent_away: Dec | null;
+  comparison: Record<string, { home?: string; away?: string }> | null;
+  payload_hash: string;
+  normalizer_version: string;
+}
+
+/** Admin only: the provider's own forecast - auxiliary, never PrediGol's model, never a pick. */
+export interface ProviderPredictionView {
+  fixture_id: number;
+  label: string;
+  history: ProviderPrediction[];
+  checks: number;
 }
 
 export interface AdminCount {

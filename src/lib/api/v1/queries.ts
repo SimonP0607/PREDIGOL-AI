@@ -63,6 +63,14 @@ export const live = {
     queryKey: ["v1", "standings", id, season ?? "newest"],
     queryFn: () => v1.standings(id, season),
   }),
+  competitionReference: (id: string, season?: number) => ({
+    queryKey: ["v1", "competition-reference", id, season ?? "default"],
+    queryFn: () => v1.competitionReference(id, season),
+  }),
+  providerPrediction: (id: string) => ({
+    queryKey: ["v1", "admin", "provider-prediction", id],
+    queryFn: () => v1.providerPrediction(id),
+  }),
   center: (id: string) => ({
     queryKey: ["v1", "center", id],
     queryFn: () => v1.center(id),

@@ -349,5 +349,17 @@
     "model": "Modelo (modo evaluación): {selection} {probability} · cuota justa {fair}.",
     "minOdds": "Con {min} o más en tu casa, la apuesta tendría el margen que pide nuestra regla.",
     "notAPick": "No es un pick ni una cuota de casa: ningún modelo ha superado al mercado todavía."
+  },
+  "providerPrediction": {
+    "title": "Predicción del proveedor (API-Football)",
+    "label": "Pronóstico propio de API-Football (Poisson, forma, comparación; sin cuotas). Auxiliar: no es el modelo de PrediGol ni el mercado, y nunca alimenta un modelo ni un pick.",
+    "none": "La predicción del proveedor aún no se ha leído para este partido.",
+    "home": "Local",
+    "draw": "Empate",
+    "away": "Visitante",
+    "advice": "Consejo del proveedor: {{advice}}",
+    "winner": "Ganador según el proveedor: {{team}} ({{comment}})",
+    "underOver": "Goles según el proveedor: {{line}}",
+    "versions": "{{count}} versiones guardadas desde {{first}}"
   }
 }

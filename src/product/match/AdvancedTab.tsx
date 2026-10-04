@@ -5,6 +5,7 @@
 import { ShieldCheck } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { MatchCenterLive } from "@/live/MatchCenterLive";
+import { ProviderPredictionPanel } from "./ProviderPredictionPanel";
 
 export function AdvancedTab({ fixtureId }: { fixtureId: string }) {
   return (
@@ -13,6 +14,7 @@ export function AdvancedTab({ fixtureId }: { fixtureId: string }) {
         <ShieldCheck aria-hidden className="mt-px h-4 w-4 shrink-0" />
         {t("match.advanced.note")}
       </p>
+      <ProviderPredictionPanel fixtureId={fixtureId} />
       <MatchCenterLive fixtureId={fixtureId} hideHeader />
     </div>
   );

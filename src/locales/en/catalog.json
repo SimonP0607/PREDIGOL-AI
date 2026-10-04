@@ -235,5 +235,41 @@
     "domestic_cup": "domestic cup",
     "continental": "continental",
     "international": "international"
+  },
+  "reference": {
+    "payload": "payload {{hash}}",
+    "fetched": "fetched {{at}}",
+    "asked": "asked {{at}}",
+    "open": "no end date",
+    "transfers": {
+      "title": "Transfers (provider)"
+    },
+    "sidelined": {
+      "title": "Periods out (provider)",
+      "out": "Out"
+    },
+    "trophies": {
+      "title": "Trophies (provider)"
+    },
+    "leaders": {
+      "title": "Season leaders (provider)",
+      "description": "API-Football's lists with its own tie-breaks; the rating is the provider's.",
+      "topscorers": "Scorers",
+      "topassists": "Assists",
+      "topyellowcards": "Yellow cards",
+      "topredcards": "Red cards",
+      "ratingTitle": "The provider's rating (its own metric)",
+      "figure": {
+        "topscorers": "Goals",
+        "topassists": "Ast.",
+        "topyellowcards": "YC",
+        "topredcards": "RC"
+      }
+    },
+    "rounds": {
+      "title": "Round calendar",
+      "description": "Every round of the season with its dates (provider).",
+      "current": "Current round per the provider: {{rounds}}"
+    }
   }
 }

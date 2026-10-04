@@ -45,11 +45,13 @@ import type {
 } from "./types";
 import type {
   AdminOverview,
+  CompetitionReference,
   CompetitionTable,
   LiveBoard,
   MatchCenter,
   PlayerDetail,
   PlayerSummary,
+  ProviderPredictionView,
 } from "./types_center";
 import type { AdminUser, AdminUserCreate, AuditEvent, Me, PreferencesIn } from "./types_auth";
 import type {
@@ -268,6 +270,10 @@ export const v1 = {
     getJson<Envelope<CompetitionTable | null>>(`/competitions/${competitionId}/standings`, {
       season,
     }),
+  competitionReference: (competitionId: number | string, season?: number) =>
+    getJson<Envelope<CompetitionReference | null>>(`/competitions/${competitionId}/reference`, {
+      season,
+    }),
 
   // ── Admin Console (SUPER_ADMIN) ───────────────────────────────────────────
   overview: () => getJson<Envelope<Overview>>("/admin/overview"),
@@ -278,6 +284,8 @@ export const v1 = {
   jobs: () => getJson<Envelope<JobHealth[]>>("/admin/ops/jobs"),
   match: (id: number | string) => getJson<Envelope<MatchDetail>>(`/admin/matches/${id}`),
   audit: (id: number | string) => getJson<Envelope<MatchAudit>>(`/admin/matches/${id}/audit`),
+  providerPrediction: (id: number | string) =>
+    getJson<Envelope<ProviderPredictionView | null>>(`/admin/matches/${id}/provider-prediction`),
   oddsIntelligence: () => getJson<Envelope<OddsIntelligence>>("/admin/odds/intelligence"),
   analyst: () => getJson<Envelope<AnalystStatus>>("/admin/analyst"),
   analystTool: (name: string, args: Record<string, string | number | undefined>) =>

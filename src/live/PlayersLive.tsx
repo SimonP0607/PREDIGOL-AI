@@ -13,6 +13,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { PlayerSummary } from "@/lib/api/v1/types_center";
 import { PlayerPhoto, TeamName } from "@/components/football/Logos";
 import { dec, utcDate } from "./format";
+import { PlayerReferencePanels } from "./ReferenceData";
 
 function age(birth: string | null): string | null {
   if (!birth) return null;
@@ -400,6 +401,7 @@ export function PlayerLive({ playerId }: { playerId: string }) {
           </SectionView>
         </Panel>
       </div>
+      <PlayerReferencePanels d={d} />
     </div>
   );
 }

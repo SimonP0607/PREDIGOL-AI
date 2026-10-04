@@ -24,6 +24,7 @@ import {
   type Split,
   type TableSection,
 } from "@/product/shared/standings";
+import { LeadersPanel, RoundsPanel } from "./ReferenceData";
 
 const scopes = ["Tracked", "With fixtures", "All known"] as const;
 type Scope = (typeof scopes)[number];
@@ -285,6 +286,20 @@ function CompetitionDetailPanel({ id }: { id: number }) {
         )}
       </Panel>
       <StandingsPanel competitionId={id} />
+      <ReferencePanels competitionId={id} />
+    </div>
+  );
+}
+
+/** The provider's top lists and round calendar of the competition's newest season that has them. */
+function ReferencePanels({ competitionId }: { competitionId: number }) {
+  const q = useLiveQuery(live.competitionReference(String(competitionId)));
+  const data = q.data?.data;
+  if (!data) return null;
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <LeadersPanel data={data} />
+      <RoundsPanel data={data} />
     </div>
   );
 }

@@ -235,5 +235,41 @@
     "domestic_cup": "copa nacional",
     "continental": "continental",
     "international": "selecciones"
+  },
+  "reference": {
+    "payload": "payload {{hash}}",
+    "fetched": "obtenido {{at}}",
+    "asked": "consultado {{at}}",
+    "open": "sin fecha de fin",
+    "transfers": {
+      "title": "Traspasos (proveedor)"
+    },
+    "sidelined": {
+      "title": "Periodos de baja (proveedor)",
+      "out": "Baja"
+    },
+    "trophies": {
+      "title": "Títulos (proveedor)"
+    },
+    "leaders": {
+      "title": "Líderes de la temporada (proveedor)",
+      "description": "Listas de API-Football con sus propios desempates; la valoración es la del proveedor.",
+      "topscorers": "Goleadores",
+      "topassists": "Asistencias",
+      "topyellowcards": "Amarillas",
+      "topredcards": "Rojas",
+      "ratingTitle": "Valoración del proveedor (métrica propia)",
+      "figure": {
+        "topscorers": "Goles",
+        "topassists": "Asist.",
+        "topyellowcards": "Amar.",
+        "topredcards": "Rojas"
+      }
+    },
+    "rounds": {
+      "title": "Calendario de jornadas",
+      "description": "Todas las jornadas de la temporada con sus fechas (proveedor).",
+      "current": "Jornada actual según el proveedor: {{rounds}}"
+    }
   }
 }

@@ -1,0 +1,57 @@
+import { describe, expect, test } from "bun:test";
+import type { Leader, SeasonRound } from "@/lib/api/v1/types_center";
+import { leaderFigure, provenanceParts, roundSpan } from "./reference";
+
+const leader: Leader = {
+  rank: 1,
+  provider_player_id: 13491,
+  player_id: null,
+  name: "Y. Guzmán",
+  photo_url: null,
+  team_id: null,
+  provider_team_id: 1138,
+  team: "America de Cali",
+  team_logo: null,
+  appearances: 29,
+  minutes: 2397,
+  goals: 18,
+  assists: 4,
+  penalties_scored: 3,
+  yellow_cards: 4,
+  yellowred_cards: 0,
+  red_cards: 0,
+  rating: "7.55",
+};
+
+describe("reference helpers", () => {
+  test("each top list ranks by its own figure", () => {
+    expect(leaderFigure("topscorers", leader)).toBe(18);
+    expect(leaderFigure("topassists", leader)).toBe(4);
+    expect(leaderFigure("topyellowcards", leader)).toBe(4);
+    expect(leaderFigure("topredcards", leader)).toBe(0);
+  });
+
+  test("a round spans its first and last listed date, in any order", () => {
+    const r: SeasonRound = {
+      ordinal: 1,
+      round: "Apertura - 2",
+      stage: "Apertura",
+      phase: "Apertura",
+      dates: ["2026-04-07", "2026-01-23", "2026-01-26"],
+      is_current: false,
+    };
+    expect(roundSpan(r)).toEqual(["2026-01-23", "2026-04-07"]);
+    expect(roundSpan({ ...r, dates: [] })).toBeNull();
+  });
+
+  test("a provenance line names the source and only what is known", () => {
+    const parts = provenanceParts({
+      source: "API-Football /trophies",
+      observed_at: null,
+      payload_hash: null,
+      normalizer_version: null,
+      checked_at: "2026-10-04T18:00:00Z",
+    });
+    expect(parts.map((p) => p.key)).toEqual(["source", "asked"]);
+  });
+});
