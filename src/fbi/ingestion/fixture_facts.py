@@ -57,17 +57,42 @@ def _count(value: Any) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) and 0 <= value < 32768 else None
 
 
+FactsValues = tuple[str | None, str | None, bool | None, bool | None, datetime | None, datetime | None]
+"""referee, referee_country, home_winner, away_winner, first_half_at, second_half_at - the compared state."""
+ExtrasValues = tuple[str | None, str | None, int | None, int | None, int | None, int | None, int | None]
+"""team_side, position_played, offsides, dribbled_past, penalties_won, penalties_committed, penalties_saved."""
+
+
+def facts_values(r: FixtureFactsRef) -> FactsValues | None:
+    """The state a fixture entry says, or None when it says nothing usable (no field, or both sides
+    flagged as winner - a contradiction the table's CHECK refuses)."""
+    if r.empty or (r.home_winner and r.away_winner):
+        return None
+    return (r.referee, r.referee_country, r.home_winner, r.away_winner, r.first_half_at, r.second_half_at)
+
+
+def extras_values(ps: PlayerStatsRef, sides: Mapping[int, str]) -> ExtrasValues | None:
+    """A player's per-match extras, or None when the payload carries none of them."""
+    x = ps.extras
+    if not x or all(x.get(k) is None for k in EXTRA_KEYS):
+        return None
+    pos = x.get("position_played")
+    return (sides.get(ps.provider_team_id), pos if isinstance(pos, str) else None, _count(x.get("offsides")),
+            _count(x.get("dribbled_past")), _count(x.get("penalties_won")), _count(x.get("penalties_committed")),
+            _count(x.get("penalties_saved")))
+
+
 def apply_fixture_facts(conn: psycopg.Connection[Any], refs: Iterable[FixtureFactsRef], *, payload_hash: str,
                         observed_at: datetime) -> int:
     """Rows added (changes) for the fixtures of a /fixtures payload that we hold."""
     added = 0
     with conn.cursor() as cur:
         for r in refs:
-            if r.empty or (r.home_winner and r.away_winner):
+            v = facts_values(r)
+            if v is None:
                 continue
-            cur.execute(FACTS_SQL, {"pf": r.provider_fixture_id, "at": observed_at, "referee": r.referee,
-                                    "country": r.referee_country, "hw": r.home_winner, "aw": r.away_winner,
-                                    "h1": r.first_half_at, "h2": r.second_half_at, "hash": payload_hash,
+            cur.execute(FACTS_SQL, {"pf": r.provider_fixture_id, "at": observed_at, "referee": v[0], "country": v[1],
+                                    "hw": v[2], "aw": v[3], "h1": v[4], "h2": v[5], "hash": payload_hash,
                                     "version": NORMALIZER_VERSION})
             added += max(cur.rowcount, 0)
     return added
@@ -78,15 +103,12 @@ def apply_player_extras(cur: psycopg.Cursor[Any], fixture_id: int, sides: Mappin
     """Rows added for one fixture's players. ``sides`` maps a provider team id to 'home' / 'away'."""
     added = 0
     for ps in refs:
-        x = ps.extras
-        if not x or all(x.get(k) is None for k in EXTRA_KEYS):
+        v = extras_values(ps, sides)
+        if v is None:
             continue
-        pos = x.get("position_played")
         cur.execute(EXTRAS_SQL, {
-            "f": fixture_id, "p": ps.provider_player_id, "at": observed_at, "side": sides.get(ps.provider_team_id),
-            "pos": pos if isinstance(pos, str) else None, "off": _count(x.get("offsides")),
-            "past": _count(x.get("dribbled_past")), "won": _count(x.get("penalties_won")),
-            "com": _count(x.get("penalties_committed")), "saved": _count(x.get("penalties_saved")),
-            "hash": payload_hash, "version": NORMALIZER_VERSION})
+            "f": fixture_id, "p": ps.provider_player_id, "at": observed_at, "side": v[0], "pos": v[1], "off": v[2],
+            "past": v[3], "won": v[4], "com": v[5], "saved": v[6], "hash": payload_hash,
+            "version": NORMALIZER_VERSION})
         added += max(cur.rowcount, 0)
     return added

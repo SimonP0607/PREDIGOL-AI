@@ -83,3 +83,28 @@ def test_player_extras_reach_the_match_center(db: psycopg.Connection, seed: Seed
     line = next(p for p in mc.players.data if p.provider_player_id == 909)
     assert (line.position_played, line.offsides, line.dribbled_past, line.penalties_won, line.penalties_committed) \
         == ("F", 2, 1, 1, None)
+
+
+def test_the_raw_replay_fills_the_history_beside_live_rows_and_a_second_run_adds_nothing(
+        db: psycopg.Connection, seed: Seed) -> None:
+    from scripts.backfill_from_raw import Replay, flush
+
+    for i, h in enumerate(("rp0", "rp1", "rp2")):
+        payload(db, seed, h, T0 + timedelta(hours=i))
+    # the live writer saw the newest payload first (the table was empty when it was deployed)
+    assert apply_fixture_facts(db, iter_fixture_facts(body(referee="Michael Oliver, England", winner=True)),
+                               payload_hash="rp2", observed_at=T0 + timedelta(hours=2)) == 1
+    fixtures = {1001: (seed.fixture_id, 33, 40)}
+
+    def run() -> tuple[int, int]:
+        r = Replay(fixtures=fixtures)
+        r.feed(0, "rp0", T0, body(referee="Michael Oliver, England"), ())
+        r.feed(1, "rp1", T0 + timedelta(hours=1), body(referee="Michael Oliver, England"), ())
+        r.feed(2, "rp2", T0 + timedelta(hours=2), body(referee="Michael Oliver, England", winner=True), ())
+        return flush(db, r, commit=False)
+
+    assert run() == (1, 0), "the older change is added; the newest one is the live row already"
+    assert run() == (0, 0)
+    rows = db.execute("SELECT observed_at, home_winner, payload_hash FROM core.fixture_facts WHERE fixture_id = %s "
+                      "ORDER BY observed_at", (seed.fixture_id,)).fetchall()
+    assert rows == [(T0, None, "rp0"), (T0 + timedelta(hours=2), True, "rp2")]
