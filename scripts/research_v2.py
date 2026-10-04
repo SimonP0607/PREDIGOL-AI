@@ -28,7 +28,7 @@ from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.research.evolution import learn_from_v2
-from fbi.research.loop import model_ready
+from fbi.research.loop import frozen, model_ready
 from fbi.research.v2 import run_v2
 from fbi.research.v2_record import record_v2
 from fbi.research.v2_report import report_json, report_markdown
@@ -72,6 +72,9 @@ def main() -> int:
     if args.apply and dirty():
         print("refusing --apply: uncommitted changes under src/, scripts/ or migrations/", file=sys.stderr)
         return 2
+    if args.apply and (why := frozen()):
+        print(f"refusing --apply: research is frozen ({why})", file=sys.stderr)
+        return 3
     version = code_version()
     at = now()
     stamp = at.strftime("%Y%m%dT%H%M%SZ")

@@ -12,8 +12,10 @@ Neither changes a threshold, a model or a pick rule; both write results and prop
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -26,6 +28,20 @@ from fbi.research.pick_audit import audit_picks
 from fbi.research.prospective import evaluate_prospective
 
 STALE_AFTER = timedelta(days=28)
+FREEZE_FILE = Path(__file__).resolve().parents[3] / "data" / "research.frozen"
+"""While this file exists (its text says why), no research run trains or stores a model: the
+weekly job skips and ``scripts.research_v2 --apply`` refuses. Set during a data-truth audit -
+no new models until the data they would learn from is proven."""
+
+
+def frozen() -> str | None:
+    """Why research is frozen right now, or None."""
+    env = os.environ.get("FBI_RESEARCH_FROZEN", "").strip()
+    if env and env.lower() not in ("0", "false", "no", "off"):
+        return f"FBI_RESEARCH_FROZEN={env}"
+    if FREEZE_FILE.exists():
+        return FREEZE_FILE.read_text().strip() or str(FREEZE_FILE)
+    return None
 
 
 def model_ready(conn: psycopg.Connection[Any], validation: int, test: int) -> list[tuple[int, str]]:

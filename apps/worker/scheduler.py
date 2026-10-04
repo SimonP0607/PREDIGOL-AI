@@ -611,9 +611,13 @@ async def _research_monitor() -> None:
 
 def _research_weekly_now() -> None:
     """The full research-V2 run when it is due, in a child process. Never raises."""
-    from fbi.research.loop import v2_due
+    from fbi.research.loop import frozen, v2_due
 
     try:
+        why = frozen()
+        if why:
+            log.info("research.weekly.frozen", reason=why)
+            return
         with _connect() as conn:
             reason = v2_due(conn, at=now())
         if reason is None:
