@@ -52,7 +52,7 @@ Reason = Literal["fixture_stage", "phase_league_stage", "previous_stage"]
 
 MATCH_DAY = re.compile(r"\s*-\s*\d+\s*$")
 KNOCKOUT = re.compile(r"final|play-?offs?|knockout|round of|quarter|semi|8th|16th|1/\d|qualifying|qualification|preliminary|"
-                      r"promotion|relegation (?:play|deciding)|third place|super cup|repechage|elimination",
+                      r"promotion|relegation (?:play|deciding)|third place|3rd place|super cup|repechage|elimination",
                       re.IGNORECASE)
 """Rounds no league table counts (the truth audit's rule, shared)."""
 STRICT_KNOCKOUT = re.compile(r"final|semi|quarter|round of|1/\d|8th|16th|32nd|play-?offs?(?!\s*group)|knockout|"
@@ -61,6 +61,10 @@ STRICT_KNOCKOUT = re.compile(r"final|semi|quarter|round of|1/\d|8th|16th|32nd|pl
 LEAGUE_FORMAT = re.compile(r"\bgroups?\b|quadrangular|hexagonal|triangular|pentagonal|octagonal|"
                            r"league (?:stage|phase)|round robin|championship round|relegation round|regular season",
                            re.IGNORECASE)
+NUMBERED_LEAGUE = re.compile(r"final (?:round|stage|phase|tournament)", re.IGNORECASE)
+"""With match-day numbers these are round-robins ("Final Round - 3": CONCACAF's World Cup qualifying groups)."""
+GROUPISH = re.compile(r"^group\b", re.IGNORECASE)
+"""Phases that are one group of a group stage ("Group A - 2" in Euro 2024): together they are one phase."""
 QUALIFYING = re.compile(r"qualif|preliminary", re.IGNORECASE)
 UNNUMBERED_KNOCKOUT = re.compile(r"\b\d+(?:st|nd|rd|th) (?:round|phase)\b|\bround \d+\b", re.IGNORECASE)
 FRIENDLY = re.compile(r"friendl", re.IGNORECASE)
@@ -96,7 +100,7 @@ def stage_kind(stage: str, *, numbered: bool) -> StageKind:
     if LEAGUE_FORMAT.search(stage):
         return "league"
     if numbered:
-        return "knockout" if STRICT_KNOCKOUT.search(stage) else "league"
+        return "knockout" if STRICT_KNOCKOUT.search(stage) and not NUMBERED_LEAGUE.search(stage) else "league"
     if QUALIFYING.search(stage):
         return "qualifying"
     if KNOCKOUT.search(stage) or UNNUMBERED_KNOCKOUT.search(stage):
@@ -278,36 +282,72 @@ def _by_games(m: TableMap, league: Sequence[Stage], hi: Counts, lo: Counts, at: 
         m.stage = best[1][0] if len(best[1]) == 1 else None
 
 
-def _single(maps: Sequence[TableMap], league: Sequence[Stage], hi: Counts, lo: Counts) -> None:
-    if len(league) != 1:
-        return
-    only = league[0].name
-    if any(m.method == "games" and m.stage == only for m in maps):
-        return
-    same_teams: dict[frozenset[int], list[TableMap]] = defaultdict(list)
-    for m in maps:
-        if m.method == "unmapped" and m.teams:
-            same_teams[m.teams].append(m)
+def _teams_rule(maps: Sequence[TableMap], league: Sequence[Stage], matches: Sequence[Match], hi: Counts,
+                lo: Counts) -> None:
+    """A table its games could not place: the one league stage all its teams play in, when none of its
+    rows counts more games than that stage has had (a provider a match day behind still ranks the stage
+    it is about). A table with the same teams as one already placed there is a parallel table (a
+    period, an aggregate) and stays unplaced; of several such unplaced tables only the one counting the
+    most games is placed."""
+    playing: dict[str, set[int]] = defaultdict(set)
+    for x in matches:
+        playing[x.stage].update((x.home, x.away))
+    placed = {(m.stages, m.teams) for m in maps if m.method != "unmapped"}
 
-    def off(m: TableMap) -> int:
-        return sum(abs((p or 0) - hi.get(only, _NONE).get(t, 0)) for t, p in m.played.items())
+    def fits(m: TableMap, s: Stage) -> bool:
+        return (bool(m.teams) and m.teams <= playing.get(s.name, set())
+                and all((p or 0) <= hi.get(s.name, _NONE).get(t, 0) for t, p in m.played.items()))
 
-    for tables in same_teams.values():  # parallel tables of one team set: only the closest ranks the stage
-        best = min(tables, key=lambda m: (off(m), m.key))
+    loose = [m for m in maps if m.method == "unmapped"]
+    by_teams: dict[frozenset[int], list[TableMap]] = defaultdict(list)
+    for m in loose:
+        by_teams[m.teams].append(m)
+    for tables in by_teams.values():
+        best = max(tables, key=lambda m: (sum(p or 0 for p in m.played.values()), [-ord(c) for c in m.key]))
+        stages = [s for s in league if fits(best, s)]
+        if len(stages) != 1 or ((stages[0].name,), best.teams) in placed:
+            continue
+        only = stages[0].name
         best.stage, best.stages, best.method = only, (only,), "single"
         best.agree = agreement(best.played, (only,), hi, lo)
 
 
-def _kinds(maps: Sequence[TableMap]) -> None:
+def _kinds(maps: Sequence[TableMap], matches: Sequence[Match]) -> None:
+    stages_of: dict[int, set[str]] = defaultdict(set)
+    for x in matches:
+        stages_of[x.home].add(x.stage)
+        stages_of[x.away].add(x.stage)
     by_stage: dict[tuple[str, ...], list[TableMap]] = defaultdict(list)
     for m in maps:
         if m.method == "unmapped":
             continue
         if len(m.stages) > 1:
-            m.kind = "aggregate"
+            # one table over several stages: an aggregate when its teams played in more than one of them
+            # (Peru's Tabla Anual), else a ranking across groups that are stages of their own (Euro 2024)
+            spans = any(len(stages_of[t] & set(m.stages)) > 1 for t in m.teams)
+            m.kind = "aggregate" if spans else "ranking"
             continue
         by_stage[m.stages].append(m)
     for tables in by_stage.values():
+        # parallel tables (same teams, same stage): the one the label names, else the one counting the
+        # most games, ranks the stage; the others are period tables
+        same: dict[frozenset[int], list[TableMap]] = defaultdict(list)
+        for m in tables:
+            same[m.teams].append(m)
+        demoted: set[str] = set()
+        for twins in same.values():
+            if len(twins) < 2:
+                continue
+            primary = max(twins, key=lambda m: (m.method == "label", sum(p or 0 for p in m.played.values()),
+                                                [-ord(c) for c in m.key]))
+            for m in twins:
+                if m is not primary:
+                    m.kind = "other"
+                    m.note = (m.note + "; " if m.note else "") + f"parallel to {primary.label!r}: a period table"
+                    demoted.add(m.key)
+        tables = [m for m in tables if m.key not in demoted]
+        if not tables:
+            continue
         if len(tables) == 1:
             tables[0].kind = "full"
             continue
@@ -322,9 +362,9 @@ def _kinds(maps: Sequence[TableMap]) -> None:
                 m.kind = "ranking"
             else:
                 m.kind = "group"
-    loose = [m for m in maps if m.method == "unmapped"]
-    for m in loose:
-        m.kind = "full" if len(maps) == 1 else "other"
+    for m in maps:
+        if m.method == "unmapped":
+            m.kind = "full" if len(maps) == 1 else "other"
 
 
 def map_tables(tables: Sequence[TableIn], stages: Sequence[Stage], matches: Iterable[Match],
@@ -332,6 +372,7 @@ def map_tables(tables: Sequence[TableIn], stages: Sequence[Stage], matches: Iter
     """Each table of one snapshot (taken at ``at``) with the stage it ranks, how that was decided and
     its kind. Tables keep their order."""
     league = [s for s in stages if s.kind == "league"]
+    matches = list(matches)
     hi, lo = counts_at(matches, at)
     out = []
     for t in tables:
@@ -348,8 +389,8 @@ def map_tables(tables: Sequence[TableIn], stages: Sequence[Stage], matches: Iter
         else:
             _by_games(m, league, hi, lo, at)
         out.append(m)
-    _single(out, league, hi, lo)
-    _kinds(out)
+    _teams_rule(out, league, matches, hi, lo)
+    _kinds(out, matches)
     for m in out:
         m.phase = phase_of(m.stage) if m.stage else None
     return out
@@ -368,8 +409,9 @@ class Choice:
 
 def is_split(stages: Sequence[Stage]) -> bool:
     """Two or more phases with a league stage of their own (Apertura and Clausura; a regular season
-    and championship/relegation groups): a table of one phase is never shown for another."""
-    return len({s.phase for s in stages if s.kind == "league"}) > 1
+    and championship/relegation groups): a table of one phase is never shown for another. Groups that
+    are stages of their own ("Group A - 2", Euro 2024) count as one phase."""
+    return len({"group" if GROUPISH.search(s.phase) else s.phase for s in stages if s.kind == "league"}) > 1
 
 
 def choose(fixture_round: str | None, kickoff: datetime, stages: Sequence[Stage], maps: Sequence[TableMap],
@@ -415,11 +457,21 @@ def choose(fixture_round: str | None, kickoff: datetime, stages: Sequence[Stage]
         candidates, reason = before, "previous_stage"
     else:
         return None
-    for s in sorted(candidates, key=lambda s: s.first_kickoff or kickoff, reverse=True):
+    ordered = sorted(candidates, key=lambda s: s.first_kickoff or kickoff, reverse=True)
+    for s in ordered:  # the latest league stage both teams played in
         found = pick(s.name, reason)
-        if found is not None:
+        if found is not None and len(found.keys) == len(teams):
             return found
-    return None
+    keys: dict[int, str] = {}  # else each team's own latest one (groups that are stages of their own)
+    first: str | None = None
+    for t in teams:
+        for s in ordered:
+            mine = [m for m in usable if m.stage == s.name and t in m.teams]
+            if mine:
+                keys[t] = min(mine, key=lambda m: (len(m.teams), m.key)).key
+                first = first or s.name
+                break
+    return Choice(first, reason, keys) if first is not None else None
 
 
 def current_stage(stages: Sequence[Stage], at: datetime) -> Stage | None:

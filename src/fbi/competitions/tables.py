@@ -28,14 +28,19 @@ from fbi.competitions.phases import (
     stages_from_rounds,
 )
 
-ROUNDS_SQL = """
+DECIDED = "(f.status_group = 'finished' OR f.status_short IN ('AWD', 'WO'))"
+"""A match a table counts: played to the end, or decided off the pitch (a technical loss, a walkover:
+status group 'cancelled' in core.fixtures, but every table counts it - Libertadores 2026 Medellin v
+Flamengo)."""
+
+ROUNDS_SQL = f"""
 SELECT f.round, min(f.kickoff_at) AS first_kickoff, max(f.kickoff_at) AS last_kickoff, count(*) AS fixtures,
-       count(*) FILTER (WHERE f.status_group = 'finished') AS finished
+       count(*) FILTER (WHERE {DECIDED}) AS finished
   FROM core.fixtures f WHERE f.competition_season_id = %(cs)s GROUP BY f.round
 """
 
-MATCHES_SQL = """
-SELECT f.round, f.home_team_id, f.away_team_id, f.kickoff_at, f.status_group = 'finished' AS finished
+MATCHES_SQL = f"""
+SELECT f.round, f.home_team_id, f.away_team_id, f.kickoff_at, {DECIDED} AS finished
   FROM core.fixtures f WHERE f.competition_season_id = %(cs)s AND f.kickoff_at IS NOT NULL
 """
 

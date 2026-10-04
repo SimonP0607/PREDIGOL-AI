@@ -416,3 +416,77 @@ def test_label_with_accents_names_the_stage() -> None:
     maps = map_tables([TableIn("Primera División: Apertura", b.played(teams, ("Apertura",), NOW))], b.stages(),
                       b.matches(), NOW)
     assert maps[0].stage == "Apertura" and maps[0].method == "label"
+
+
+# ── structures found by the first audit run (4 Oct 2026) ───────────────────
+
+
+def test_euro_groups_as_stages_their_ranking_and_a_round_of_16() -> None:
+    """Euro 2024: rounds "Group A - 1" make each group a stage of its own; the provider's "Ranking of
+    third-placed teams" spans them (a ranking, not an aggregate: each team played in one group); a
+    Round of 16 match between two groups shows each team's group."""
+    groups = {"Group A": [1, 2, 3, 4], "Group B": [5, 6, 7, 8], "Group C": [9, 10, 11, 12]}
+    b = Build()
+    for i, (g, teams) in enumerate(groups.items()):
+        b.league(g, teams, datetime(2024, 6, 14, i, tzinfo=UTC))
+    b.tie("Round of 16", 1, 6, datetime(2024, 6, 29, tzinfo=UTC))
+    at = datetime(2024, 6, 28, tzinfo=UTC)
+    tables = [TableIn(g, b.played(t, (g,), at)) for g, t in groups.items()]
+    tables.append(TableIn("Ranking of third-placed teams", b.played([3, 7, 11], tuple(groups), at)))
+    maps = map_tables(tables, b.stages(), b.matches(), at)
+    assert keys(maps) == {"Group A": ("Group A", "full", "label"), "Group B": ("Group B", "full", "label"),
+                          "Group C": ("Group C", "full", "label"),
+                          "Ranking of third-placed teams": (None, "ranking", "games")}
+    assert not is_split(b.stages()), "groups that are stages of their own are one phase"
+    c = choose("Round of 16", datetime(2024, 6, 29, tzinfo=UTC), b.stages(), maps, (1, 6))
+    assert c is not None and c.reason == "previous_stage" and dict(c.keys) == {1: "Group A", 6: "Group B"}
+
+
+def test_a_period_table_equal_to_the_season_so_far_never_replaces_the_season_table() -> None:
+    """Eerste Divisie in its first period: "Period 1" counts the same games as the regular season, so both
+    agree with the stage; the season's table (named by its label) ranks it, the period table is "other"."""
+    teams = list(range(1, 9))
+    b = Build().league("Regular Season", teams, datetime(2026, 8, 7, tzinfo=UTC))
+    at = datetime(2026, 9, 1, tzinfo=UTC)
+    same = b.played(teams, ("Regular Season",), at)
+    maps = map_tables([TableIn("Eerste Divisie: Period 1", same), TableIn("Eerste Divisie: Regular season", same)],
+                      b.stages(), b.matches(), at)
+    assert keys(maps) == {"Eerste Divisie: Period 1": ("Regular Season", "other", "games"),
+                          "Eerste Divisie: Regular season": ("Regular Season", "full", "label")}
+    c = choose("Regular Season - 5", at, b.stages(), maps, (1, 2))
+    assert c is not None and set(c.keys.values()) == {"Eerste Divisie: Regular season"}
+
+
+def test_a_numbered_final_round_is_a_league_stage() -> None:
+    """CONCACAF World Cup qualifying: "Final Round - 1..6" is the round-robin of three groups, not a final.
+    Its tables must never be pinned on the 2nd Round, whose teams played fewer games."""
+    assert stage_kind("Final Round", numbered=True) == "league"
+    assert stage_kind("Final Round", numbered=False) == "knockout"
+    second = Build().league("2nd Round", [1, 2, 3, 4, 5], datetime(2024, 6, 5, tzinfo=UTC))
+    at = datetime(2025, 12, 1, tzinfo=UTC)
+    final_tables = [TableIn("Group A", {1: 6, 2: 6, 3: 6, 4: 6})]
+    maps = map_tables(final_tables, second.stages(), second.matches(), at)
+    assert keys(maps) == {"Group A": (None, "full", "unmapped")}, "6 games each: not the 2nd Round's table"
+    full = Build().league("2nd Round", [1, 2, 3, 4, 5], datetime(2024, 6, 5, tzinfo=UTC)) \
+                  .league("Final Round", [1, 2, 3, 4], datetime(2025, 9, 4, tzinfo=UTC)) \
+                  .league("Final Round", [1, 2, 3, 4], datetime(2025, 10, 30, tzinfo=UTC))
+    maps = map_tables([TableIn("Group A", full.played([1, 2, 3, 4], ("Final Round",), at))], full.stages(),
+                      full.matches(), at)
+    assert keys(maps) == {"Group A": ("Final Round", "full", "games")}
+
+
+def test_a_lagging_group_in_a_season_of_several_stages_is_placed_by_its_teams() -> None:
+    """Libertadores: knock-out qualifying rounds, then the group stage. A group whose table is a match day
+    behind is still the group stage's: all its teams play there and none counts more games."""
+    b = Build().tie("Qualification Round 1", 9, 10, datetime(2026, 2, 4, tzinfo=UTC))
+    b.league("Group Stage", [1, 2, 3, 4], datetime(2026, 4, 7, tzinfo=UTC))
+    b.league("Group Stage", [5, 6, 7, 8], datetime(2026, 4, 7, 2, tzinfo=UTC))
+    at = datetime(2026, 6, 1, tzinfo=UTC)
+    maps = map_tables([TableIn("Group A", b.played([1, 2, 3, 4], ("Group Stage",), at, lag=1)),
+                       TableIn("Group B", b.played([5, 6, 7, 8], ("Group Stage",), at))], b.stages(), b.matches(), at)
+    assert keys(maps) == {"Group A": ("Group Stage", "group", "single"), "Group B": ("Group Stage", "group", "games")}
+
+
+def test_third_place_match_is_a_knockout_round() -> None:
+    assert stage_kind("3rd place", numbered=False) == "knockout"
+    assert stage_kind("3rd Place Final", numbered=False) == "knockout"

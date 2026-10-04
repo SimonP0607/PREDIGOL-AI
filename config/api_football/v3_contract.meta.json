@@ -1,0 +1,22 @@
+{
+ "source": "https://www.api-football.com/public/doc/openapi.yaml (the OpenAPI 3.0.0 document behind https://www.api-football.com/documentation-v3)",
+ "spec_version": "3.9.3",
+ "server": "https://v3.football.api-sports.io",
+ "read_at": "2026-10-04T17:20:00Z",
+ "read_with": "Claude in Chrome on the documentation page (the owner's browser): the spec parsed in the page (js-yaml 4.1.0), every GET operation written out by the extraction below, the text checked byte for byte against the browser's SHA-256",
+ "sha256": "601485c80da5d290010613b108b20a77474814ff04869274004455eeda37047b",
+ "operations": 38,
+ "format": {
+  "## GET <path> [<tag>] <operationId> :: <summary>": "one block per operation, in the spec's order",
+  "P name|in|req|type|format|enum|pattern|minimum|maximum|minLength|maxLength|description": "one per parameter; enum values joined with '/', 'req' when required; a pattern may itself hold '|' (the last five columns are fixed)",
+  "D <line>": "the operation's description, one line each, table separators dropped, spaces collapsed",
+  "R <code> <description>": "documented responses",
+  "F <skeleton>": "the documented 200 example's `response` part as a typed tree: R = response, '[]' an array, s string, n number, b boolean, z null in the example (type unknown), a empty array, {} object",
+  "E <path>:<type> ...": "the example's envelope fields (get, parameters, errors, results, paging)",
+  "U <query>  // <comment>": "the documented request samples ('Use Cases')"
+ },
+ "notes": [
+  "The examples are the provider's illustrations, not a schema: fields added later (changelog 3.9.3: fixtures league.standings) and the per-fixture blocks returned by fixtures?id / ids (events, lineups, statistics, players) are not in them. The field-coverage audit adds the fields observed in RAW payloads.",
+  "The API key never appears here: the documentation's placeholder XxXxXxXx... was not kept."
+ ]
+}

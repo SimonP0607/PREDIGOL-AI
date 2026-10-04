@@ -138,3 +138,37 @@ def test_the_competition_page_keeps_apertura_and_clausura_apart(db: psycopg.Conn
     row = t.tables[1].rows[0]
     assert row.home is not None and row.home.played == 1 and row.away is None
     assert len(t.rows) == 12, "the deprecated flat list still carries every row"
+
+
+def test_a_match_awarded_off_the_pitch_counts_in_its_group(db: psycopg.Connection, seed: Seed, clock: None) -> None:
+    """Libertadores 2026: Medellin v Flamengo was awarded (AWD; core.fixtures keeps it as 'cancelled').
+    The provider's group table counts it; so must the games-played check, or the group goes unmapped."""
+    with db.cursor() as cur:
+        cur.execute("INSERT INTO core.competitions (provider_league_id, name, type, entity_scope, competition_type) "
+                    "VALUES (99013, 'Libertadores', 'cup', 'club', 'continental') RETURNING id")
+        comp = scalar(cur)
+        cur.execute("INSERT INTO core.competition_seasons (competition_id, season, is_current) VALUES (%s, 2026, true) "
+                    "RETURNING id", (comp,))
+        cs = scalar(cur)
+        team = {}
+        for n in range(1, 5):
+            cur.execute("INSERT INTO core.teams (provider_team_id, name) VALUES (%s, %s) RETURNING id",
+                        (990130 + n, f"Club {n}"))
+            team[n] = scalar(cur)
+        start = datetime(2026, 4, 7, tzinfo=UTC)
+        for r, pairs in enumerate(rr([1, 2, 3, 4]), 1):
+            for i, (h, a) in enumerate(pairs):
+                awarded = (r, i) == (2, 0)
+                cur.execute(
+                    "INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, away_team_id, "
+                    "kickoff_at, round, status_short, status_group) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    (99013000 + 10 * r + i, cs, team[h], team[a], start + (r - 1) * WEEK, f"Group Stage - {r}",
+                     "AWD" if awarded else "FT", "cancelled" if awarded else "finished"))
+        snap = start + 3 * WEEK
+        for rank, n in enumerate(sorted(team), 1):
+            cur.execute('INSERT INTO core.standings (competition_season_id, team_id, snapshot_at, rank, points, played, '
+                        'wins, draws, losses, goals_for, goals_against, "group") '
+                        "VALUES (%s, %s, %s, %s, 3, 3, 1, 0, 2, 1, 2, 'Group A')", (cs, team[n], snap, rank))
+    t = center.competition_table(db, comp).data
+    assert t is not None
+    assert [(x.label, x.stage, x.method, x.agreement) for x in t.tables] == [("Group A", "Group Stage", "games", "4/4")]
