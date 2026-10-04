@@ -88,8 +88,18 @@ CHECKS: dict[str, str] = {
          WHERE c.is_tracked AND f.status_group = 'scheduled'
            AND f.kickoff_at BETWEEN now() AND now() + interval '48 hours'""",
     "coach_career_stored": """
-        SELECT count(*) AS coaches, count(*) FILTER (WHERE source_payload_hash IS NOT NULL) AS from_provider
+        SELECT count(*) AS coaches, count(*) FILTER (WHERE source_payload_hash IS NOT NULL) AS from_provider,
+               (SELECT count(DISTINCT provider_coach_id) FROM core.coach_careers) AS coaches_with_career,
+               (SELECT count(*) FROM core.reference_checks WHERE feed = 'coachs') AS teams_asked
           FROM core.coaches""",
+    "team_kind": """
+        SELECT count(*) FILTER (WHERE k.is_national AND k.competitive_club_matches > 0) AS national_playing_club,
+               count(*) FILTER (WHERE NOT k.is_national AND k.national_matches > 0 AND k.club_friendly_matches = 0
+                                  AND k.competitive_club_matches = 0) AS club_playing_only_national,
+               count(*) FILTER (WHERE k.is_national IS DISTINCT FROM t.is_national AND k.is_national IS NOT NULL)
+                   AS differs_from_provider,
+               count(*) AS teams
+          FROM core.team_kind k JOIN core.teams t ON t.id = k.team_id""",
 }
 
 
@@ -187,14 +197,24 @@ def evidence(checks: Mapping[str, list[dict[str, Any]]], tallies: Mapping[str, T
                             severity="low", at_fault="predigol", entity=f"{orphans} players",
                             claim=f"{orphans} provider player ids have match rows but no core.players row",
                             fix="fetch their profiles (/players/profiles?player)"))
+    kinds = (checks.get("team_kind") or [{}])[0]
     flags = (checks.get("national_flags") or [{}])[0]
-    if flags.get("club_rows_in_national_comps") or flags.get("national_rows_in_club_comps"):
-        out.append(Evidence(key="identity:national_flags", area="identity", issue_type="MAPPING_ERROR",
-                            severity="medium", at_fault="predigol", entity="core.teams.is_national",
-                            claim=f"is_national contradicts the competitions: {flags.get('club_rows_in_national_comps')} "
-                                  f"non-national rows play national-team competitions, "
-                                  f"{flags.get('national_rows_in_club_comps')} national rows play club competitions",
-                            db=flags))
+    if not kinds.get("teams"):
+        if flags.get("club_rows_in_national_comps") or flags.get("national_rows_in_club_comps"):
+            out.append(Evidence(
+                key="identity:national_flags", area="identity", issue_type="MAPPING_ERROR", severity="medium",
+                at_fault="predigol", entity="core.teams.is_national",
+                claim=f"is_national contradicts the competitions: {flags.get('club_rows_in_national_comps')} "
+                      f"non-national rows play national-team competitions, {flags.get('national_rows_in_club_comps')} "
+                      "national rows play club competitions, and core.team_kind has not been computed", db=flags))
+    elif kinds.get("national_playing_club") or kinds.get("club_playing_only_national"):
+        out.append(Evidence(
+            key="identity:national_flags", area="identity", issue_type="MAPPING_ERROR", severity="high",
+            at_fault="predigol", entity="core.team_kind",
+            claim=f"PrediGol's own classification contradicts its rule: {kinds.get('national_playing_club')} national "
+                  f"sides play competitive club football, {kinds.get('club_playing_only_national')} clubs play only "
+                  "national-team competitions", db={**kinds, **flags}))
+    # the provider's flag differing from PrediGol's classification is a per-team teams-audit entry (teams:national_flag)
     for name, t in tallies.items():
         if t.total_findings or t.notes:
             out.append(Evidence(key=f"identity:sample:{name}", area="identity", issue_type="STALE_ENTITY",
@@ -202,12 +222,15 @@ def evidence(checks: Mapping[str, list[dict[str, Any]]], tallies: Mapping[str, T
                                 claim=f"{t.checked - t.matched} of {t.checked} sampled {name} differ from the provider's "
                                       f"current record ({t.total_findings or len(t.notes)} field difference(s))",
                                 api={"findings": [f.as_dict() for f in t.findings[:8]], "notes": t.notes[:8]}))
-    out.append(Evidence(key="identity:coach_career", area="coaches", issue_type="UNSUPPORTED_FIELD", severity="low",
-                        at_fault="predigol", entity="core.coaches",
-                        claim="/coachs returns each coach's career (team, start, end); PrediGol keeps only the person - "
-                              "a coach's tenure at a team cannot be read from the database",
-                        db=(checks.get("coach_career_stored") or [{}])[0],
-                        fix="store the career as dated rows (coach, team, start, end, payload hash)"))
+    careers = (checks.get("coach_career_stored") or [{}])[0]
+    if not careers.get("teams_asked"):
+        out.append(Evidence(key="identity:coach_career", area="coaches", issue_type="UNSUPPORTED_FIELD", severity="low",
+                            at_fault="predigol", entity="core.coaches",
+                            claim="/coachs returns each coach's career (team, start, end); the coachs reference feed "
+                                  "has not asked about any team yet, so no tenure can be read from the database",
+                            db=careers,
+                            fix="core.coach_profiles / core.coach_careers, filled weekly per tracked team by the "
+                                "coachs reference feed (be-58)"))
     out.append(Evidence(key="identity:keys", area="identity", issue_type="MAPPING_ERROR", severity="info",
                         at_fault="none", entity="core.* provider ids",
                         claim="Every entity is keyed by the provider's id column (provider_team_id, provider_player_id, "
