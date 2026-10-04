@@ -16,9 +16,40 @@ import { ApiErrorNotice, StatusNotice } from "@/components/system/LiveState";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { ToolResult, ToolSpec } from "@/lib/api/v1/types";
+import { AiStatusStrip, FlagsTab, ReportTab, UsageTab } from "./AiConsole";
 import { utcDateTime } from "./format";
 
+const TABS = ["report", "flags", "ask", "usage"] as const;
+type Tab = (typeof TABS)[number];
+
 export function AnalystLive() {
+  const ai = useLiveQuery(live.aiStatus);
+  const [tab, setTab] = useState<Tab>("report");
+  const aiStatus = ai.data?.data ?? null;
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title={t("admin.pages.aiAnalyst.title")}
+        description={t("admin.pages.aiAnalyst.description")}
+      />
+      {ai.isError ? <ApiErrorNotice error={ai.error} /> : null}
+      {aiStatus ? <AiStatusStrip status={aiStatus} /> : null}
+      <SegmentedTabs
+        tabs={TABS}
+        value={tab}
+        onChange={setTab}
+        label={t("ai.tabs.label")}
+        format={(x) => t(`ai.tabs.${x}`)}
+      />
+      {tab === "report" ? <ReportTab /> : null}
+      {tab === "flags" ? <FlagsTab /> : null}
+      {tab === "ask" ? <AskTab /> : null}
+      {tab === "usage" ? <UsageTab status={aiStatus} /> : null}
+    </div>
+  );
+}
+
+function AskTab() {
   const status = useLiveQuery(live.analyst);
   const s = status.data?.data;
   const configured = s?.configured ?? false;
@@ -28,10 +59,6 @@ export function AnalystLive() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title={t("admin.pages.aiAnalyst.title")}
-        description={t("admin.pages.aiAnalyst.description")}
-      />
       {status.isError ? <ApiErrorNotice error={status.error} /> : null}
       {s && !configured ? (
         <WarningBanner>

@@ -14,6 +14,7 @@ import {
   Database,
   FlaskConical,
   Gauge,
+  GitBranch,
   House,
   Layers,
   LineChart,
@@ -69,6 +70,7 @@ export const adminNav: Array<{ label: string; items: NavItem[] }> = [
       { to: "/admin/backtesting", label: "admin.nav.backtesting", icon: FlaskConical },
       { to: "/admin/analytics", label: "admin.nav.analytics", icon: BarChart3 },
       { to: "/admin/ai-analyst", label: "admin.nav.aiAnalyst", icon: Bot },
+      { to: "/admin/evolution", label: "admin.nav.evolution", icon: GitBranch },
     ],
   },
   {

@@ -1,5 +1,14 @@
 import { API_BASE_URL } from "@/lib/api/mode";
 import type {
+  AiFlags,
+  AiReport,
+  AiRunKind,
+  AiRunRow,
+  AiStatus,
+  EvolutionOverview,
+  SetSource,
+} from "./types_ai";
+import type {
   AnalystReply,
   AnalystStatus,
   CompetitionDetail,
@@ -271,6 +280,24 @@ export const v1 = {
     getJson<ToolResult>(`/admin/analyst/tools/${encodeURIComponent(name)}`, args),
   ask: (question: string) =>
     postJson<Envelope<AnalystReply | null>>("/admin/analyst/ask", { question }),
+  aiStatus: () => getJson<Envelope<AiStatus>>("/admin/ai/status"),
+  aiRuns: (kind?: AiRunKind) =>
+    getJson<Envelope<AiRunRow[]>>("/admin/ai/runs", { kind, limit: 50 }),
+  aiReport: (day?: string) => getJson<Envelope<AiReport | null>>("/admin/ai/report", { day }),
+  aiFlags: (source: SetSource, day?: string) =>
+    getJson<Envelope<AiFlags>>("/admin/ai/flags", { day, source }),
+  aiReportRun: (day?: string) =>
+    postJson<Envelope<AiReport | null>>("/admin/ai/report/run", day ? { day } : {}),
+  aiReviewRun: (source: SetSource, day?: string) =>
+    postJson<Envelope<AiFlags>>("/admin/ai/review/run", day ? { day, source } : { source }),
+  evolution: () => getJson<Envelope<EvolutionOverview>>("/admin/evolution"),
+  proposeHypothesis: (body: { title: string; hypothesis: string; rationale: string }) =>
+    postJson<Envelope<{ id: number }>>("/admin/evolution/hypotheses", body),
+  decideHypothesis: (id: number, decision: "accept" | "reject", note?: string) =>
+    postJson<Envelope<{ status: string }>>(`/admin/evolution/hypotheses/${id}/decision`, {
+      decision,
+      note: note || null,
+    }),
   notifications: () => getJson<Envelope<NotificationsOverview>>("/admin/notifications"),
   rankings: (competitionId?: number) =>
     getJson<Envelope<Rankings | null>>("/admin/rankings", {

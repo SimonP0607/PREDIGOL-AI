@@ -15,7 +15,7 @@
     "models": "Modelos",
     "backtesting": "Backtesting",
     "analytics": "Analítica",
-    "aiAnalyst": "AI Analyst",
+    "aiAnalyst": "IA e investigación",
     "competitions": "Competiciones",
     "teams": "Equipos",
     "players": "Jugadores",
@@ -26,7 +26,8 @@
     "migration": "Migración",
     "users": "Usuarios",
     "audit": "Auditoría",
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "evolution": "Evolución"
   },
   "pages": {
     "overview": {
@@ -58,8 +59,8 @@
       "description": "Competiciones, equipos, mercado y cobertura de datos."
     },
     "aiAnalyst": {
-      "title": "AI Analyst",
-      "description": "Herramientas de consulta sobre los datos. Sin IA activa por ahora."
+      "title": "IA e investigación",
+      "description": "Informe diario con fuentes, avisos sobre los picks, preguntas y costo. La IA solo informa y avisa: no cambia probabilidades, precios ni picks."
     },
     "competitions": {
       "title": "Competiciones",
@@ -100,6 +101,10 @@
     "settings": {
       "title": "Ajustes",
       "description": "Configuración de la plataforma."
+    },
+    "evolution": {
+      "title": "Evolución",
+      "description": "Los resultados se vuelven memoria y propuestas; solo el dueño decide. Ningún resultado cambia una regla por sí solo."
     }
   },
   "users": {

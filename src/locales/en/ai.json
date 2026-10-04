@@ -1,0 +1,161 @@
+{
+  "tabs": {
+    "label": "AI sections",
+    "report": "Daily report",
+    "flags": "Pick flags",
+    "ask": "Ask",
+    "usage": "Usage and cost"
+  },
+  "status": {
+    "llm": "Language model",
+    "search": "Web search",
+    "on": "Active",
+    "off": "Not configured",
+    "budget": "AI budget ({month})",
+    "spent": "{spent} of {cap}",
+    "questions": "Questions today",
+    "notConfigured": "Keys missing on the server ({missing}): the daily report carries the platform's data only and the pick reviewer runs its rules only. Creating a provider account is the owner's decision; nothing has been purchased."
+  },
+  "report": {
+    "title": "Daily research report",
+    "subtitle": "Written at 06:00 (Bogotá): the platform's data always; web research with sources when keys exist.",
+    "day": "Day",
+    "run": "Write now",
+    "running": "Writing…",
+    "meta": "{when} · model {model} · cost {cost}",
+    "claims": "Claims with a source",
+    "noClaims": "No claims: no web search configured, or nothing published about these matches. A claim without a source is never shown as fact.",
+    "noDate": "undated",
+    "cols": {
+      "claim": "Claim",
+      "grade": "Grade",
+      "source": "Source",
+      "published": "Published",
+      "retrieved": "Retrieved"
+    }
+  },
+  "grade": {
+    "CONFIRMED": "Confirmed",
+    "REPORTED": "Reported",
+    "RUMOR": "Rumour",
+    "help": "Confirmed: a dated official source, or two independent outlets. Reported: one reputable outlet. Rumour: anything else. The server can only lower the grade the AI proposes, never raise it."
+  },
+  "flags": {
+    "title": "Flags on the picks",
+    "subtitle": "Flags only: the reviewer cannot change a probability, a price or a pick. The rules always run; the AI only with keys and on sourced claims.",
+    "run": "Review now",
+    "sourceLabel": "Set",
+    "rank": "Pick #{rank}",
+    "claims": "Claims: {ids}",
+    "source": {
+      "evaluation": "Evaluation mode",
+      "qualified": "PrediGol Picks"
+    },
+    "engine": {
+      "rules": "Rules",
+      "model": "AI"
+    },
+    "severity": {
+      "info": "Info",
+      "warn": "Attention",
+      "review": "Review"
+    },
+    "code": {
+      "injury_news": "Injury",
+      "lineup_uncertain": "Line-up uncertain",
+      "suspension": "Suspension",
+      "rotation_risk": "Rotation",
+      "motivation": "Motivation",
+      "stale_price": "Price gone",
+      "data_gap": "Market not priced",
+      "kickoff_change": "Kick-off changed",
+      "weather": "Weather",
+      "other": "Other"
+    }
+  },
+  "usage": {
+    "title": "Every run, with its cost",
+    "subtitle": "Tokens and cost are recorded on every call; the monthly cap is checked before each one.",
+    "cols": {
+      "started": "Started",
+      "kind": "Kind",
+      "status": "Status",
+      "model": "Model",
+      "tokens": "Tokens (in/out)",
+      "cost": "Cost"
+    }
+  },
+  "kind": {
+    "ask": "Question",
+    "daily_report": "Daily report",
+    "pick_review": "Pick review"
+  },
+  "runStatus": {
+    "running": "Running",
+    "ok": "Completed",
+    "failed": "Failed",
+    "not_configured": "Not configured",
+    "over_budget": "Over budget"
+  },
+  "schedule": {
+    "title": "Schedule",
+    "daily_report": "Daily report: every day from 06:00 (Bogotá), and on demand.",
+    "pick_review": "Pick review: every hour on today's and tomorrow's sets.",
+    "research_monitor": "Research monitor: every day at 07:05 (Bogotá).",
+    "research_v2": "Research V2: weekly (Monday 04:20) when the code changed or four weeks passed."
+  },
+  "evolution": {
+    "loopTitle": "How it works",
+    "loop": {
+      "s1": "A result (research V2, the daily audit, the prospective evaluation) is written to memory with its evidence.",
+      "s2": "Where the evidence points somewhere, the system, the AI or the owner proposes a hypothesis.",
+      "s3": "Only the owner accepts or rejects it. Accepting opens an experiment in research; it changes no rule.",
+      "s4": "The experiment is judged by the same gate as every model: its role against the market.",
+      "s5": "Nothing reaches users without the gate AND an explicit promotion. A bad result never edits a rule."
+    },
+    "hypotheses": "Hypotheses",
+    "memory": "Memory",
+    "memoryHelp": "Each topic's current finding; earlier ones are kept as superseded, never deleted.",
+    "versions": "{count} versions",
+    "empty": "No hypotheses yet.",
+    "emptyMemory": "No memory yet.",
+    "status": {
+      "PROPOSED": "Proposed",
+      "ACCEPTED": "Accepted",
+      "REJECTED": "Rejected",
+      "RUNNING": "Running",
+      "DONE": "Done"
+    },
+    "by": {
+      "ai": "AI",
+      "owner": "Owner",
+      "system": "System"
+    },
+    "source": {
+      "research_v2": "Research V2",
+      "prospective": "Prospective",
+      "audit": "Audit",
+      "owner": "Owner"
+    },
+    "accept": "Accept (research it)",
+    "reject": "Reject",
+    "note": "Note (optional)",
+    "decided": "Decided by {who} · {when}",
+    "evidence": "Evidence",
+    "rationale": "Why",
+    "propose": {
+      "title": "Propose an experiment",
+      "subtitle": "A proposal stays Proposed until you decide it, like any other.",
+      "fieldTitle": "Title",
+      "fieldHypothesis": "Hypothesis",
+      "fieldRationale": "Why",
+      "submit": "Propose",
+      "done": "Proposal recorded."
+    },
+    "lastMonitor": "Last daily monitor",
+    "lastV2": "Last research V2",
+    "never": "Never",
+    "due": "The weekly research would run now: {reason}.",
+    "notDue": "The weekly research is not needed: same code and under four weeks."
+  }
+}

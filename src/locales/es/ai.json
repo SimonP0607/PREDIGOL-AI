@@ -1,0 +1,161 @@
+{
+  "tabs": {
+    "label": "Secciones de IA",
+    "report": "Informe diario",
+    "flags": "Avisos sobre picks",
+    "ask": "Preguntar",
+    "usage": "Uso y costo"
+  },
+  "status": {
+    "llm": "Modelo de lenguaje",
+    "search": "Búsqueda web",
+    "on": "Activo",
+    "off": "Sin configurar",
+    "budget": "Presupuesto de IA ({month})",
+    "spent": "{spent} de {cap}",
+    "questions": "Preguntas hoy",
+    "notConfigured": "Faltan claves en el servidor ({missing}): el informe diario lleva solo los datos de la plataforma y la revisión de picks aplica solo sus reglas. Crear una cuenta de proveedor es decisión del dueño; nada se ha contratado."
+  },
+  "report": {
+    "title": "Informe diario de investigación",
+    "subtitle": "Se escribe a las 06:00 (Bogotá): datos de la plataforma siempre; investigación web con fuentes cuando hay claves.",
+    "day": "Día",
+    "run": "Generar ahora",
+    "running": "Generando…",
+    "meta": "{when} · modelo {model} · costo {cost}",
+    "claims": "Afirmaciones con fuente",
+    "noClaims": "Sin afirmaciones: sin búsqueda web configurada, o nada publicado sobre estos partidos. Una afirmación sin fuente nunca se muestra como hecho.",
+    "noDate": "sin fecha",
+    "cols": {
+      "claim": "Afirmación",
+      "grade": "Grado",
+      "source": "Fuente",
+      "published": "Publicado",
+      "retrieved": "Consultado"
+    }
+  },
+  "grade": {
+    "CONFIRMED": "Confirmado",
+    "REPORTED": "Reportado",
+    "RUMOR": "Rumor",
+    "help": "Confirmado: fuente oficial con fecha, o dos medios independientes. Reportado: un medio reputado. Rumor: lo demás. El servidor solo puede bajar el grado que propone la IA, nunca subirlo."
+  },
+  "flags": {
+    "title": "Avisos sobre los picks",
+    "subtitle": "Solo avisos: el revisor no puede cambiar una probabilidad, un precio ni un pick. Las reglas corren siempre; la IA solo con claves y sobre afirmaciones con fuente.",
+    "run": "Revisar ahora",
+    "sourceLabel": "Conjunto",
+    "rank": "Pick #{rank}",
+    "claims": "Afirmaciones: {ids}",
+    "source": {
+      "evaluation": "Modo de evaluación",
+      "qualified": "PrediGol Picks"
+    },
+    "engine": {
+      "rules": "Reglas",
+      "model": "IA"
+    },
+    "severity": {
+      "info": "Info",
+      "warn": "Atención",
+      "review": "Revisar"
+    },
+    "code": {
+      "injury_news": "Lesión",
+      "lineup_uncertain": "Alineación incierta",
+      "suspension": "Sanción",
+      "rotation_risk": "Rotación",
+      "motivation": "Motivación",
+      "stale_price": "Precio ya no disponible",
+      "data_gap": "Mercado sin precio",
+      "kickoff_change": "Cambio de hora",
+      "weather": "Clima",
+      "other": "Otro"
+    }
+  },
+  "usage": {
+    "title": "Cada ejecución, con su costo",
+    "subtitle": "Tokens y costo se registran en cada llamada; el tope mensual se revisa antes de cada una.",
+    "cols": {
+      "started": "Inicio",
+      "kind": "Tipo",
+      "status": "Estado",
+      "model": "Modelo",
+      "tokens": "Tokens (ent./sal.)",
+      "cost": "Costo"
+    }
+  },
+  "kind": {
+    "ask": "Pregunta",
+    "daily_report": "Informe diario",
+    "pick_review": "Revisión de picks"
+  },
+  "runStatus": {
+    "running": "En curso",
+    "ok": "Completado",
+    "failed": "Falló",
+    "not_configured": "Sin configurar",
+    "over_budget": "Sin presupuesto"
+  },
+  "schedule": {
+    "title": "Calendario",
+    "daily_report": "Informe diario: todos los días desde las 06:00 (Bogotá), y a pedido.",
+    "pick_review": "Revisión de picks: cada hora sobre los conjuntos de hoy y mañana.",
+    "research_monitor": "Monitor de investigación: todos los días a las 07:05 (Bogotá).",
+    "research_v2": "Investigación V2: semanal (lunes 04:20) si cambió el código o pasaron 4 semanas."
+  },
+  "evolution": {
+    "loopTitle": "Cómo funciona",
+    "loop": {
+      "s1": "Un resultado (investigación V2, auditoría diaria, evaluación prospectiva) se guarda en la memoria con su evidencia.",
+      "s2": "Si la evidencia apunta a algo, el sistema, la IA o el dueño proponen una hipótesis.",
+      "s3": "Solo el dueño la acepta o la rechaza. Aceptar abre un experimento en investigación; no cambia ninguna regla.",
+      "s4": "El experimento se juzga con la misma puerta que cualquier modelo: su rol frente al mercado.",
+      "s5": "Nada llega a los usuarios sin pasar la puerta Y una promoción explícita. Un mal resultado nunca edita una regla."
+    },
+    "hypotheses": "Hipótesis",
+    "memory": "Memoria",
+    "memoryHelp": "El hallazgo vigente de cada tema; los anteriores se conservan como reemplazados, nunca se borran.",
+    "versions": "{count} versiones",
+    "empty": "Aún no hay hipótesis.",
+    "emptyMemory": "Aún no hay memoria.",
+    "status": {
+      "PROPOSED": "Propuesta",
+      "ACCEPTED": "Aceptada",
+      "REJECTED": "Rechazada",
+      "RUNNING": "En curso",
+      "DONE": "Hecha"
+    },
+    "by": {
+      "ai": "IA",
+      "owner": "Dueño",
+      "system": "Sistema"
+    },
+    "source": {
+      "research_v2": "Investigación V2",
+      "prospective": "Prospectivo",
+      "audit": "Auditoría",
+      "owner": "Dueño"
+    },
+    "accept": "Aceptar (investigar)",
+    "reject": "Rechazar",
+    "note": "Nota (opcional)",
+    "decided": "Decidida por {who} · {when}",
+    "evidence": "Evidencia",
+    "rationale": "Por qué",
+    "propose": {
+      "title": "Proponer un experimento",
+      "subtitle": "Una propuesta queda en «Propuesta» hasta que la decides, como cualquier otra.",
+      "fieldTitle": "Título",
+      "fieldHypothesis": "Hipótesis",
+      "fieldRationale": "Por qué",
+      "submit": "Proponer",
+      "done": "Propuesta registrada."
+    },
+    "lastMonitor": "Último monitor diario",
+    "lastV2": "Última investigación V2",
+    "never": "Nunca",
+    "due": "La investigación semanal correría ahora: {reason}.",
+    "notDue": "La investigación semanal no hace falta: mismo código y menos de 4 semanas."
+  }
+}

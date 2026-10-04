@@ -116,6 +116,17 @@ export const live = {
   models: { queryKey: ["v1", "models"], queryFn: v1.models },
   researchV2: { queryKey: ["v1", "research", "v2"], queryFn: v1.researchV2 },
   analyst: { queryKey: ["v1", "analyst"], queryFn: v1.analyst },
+  aiStatus: { queryKey: ["v1", "ai", "status"], queryFn: v1.aiStatus, refetchInterval: MINUTE },
+  aiRuns: { queryKey: ["v1", "ai", "runs"], queryFn: () => v1.aiRuns(), refetchInterval: MINUTE },
+  aiReport: (day: string) => ({
+    queryKey: ["v1", "ai", "report", day],
+    queryFn: () => v1.aiReport(day || undefined),
+  }),
+  aiFlags: (source: "qualified" | "evaluation", day: string) => ({
+    queryKey: ["v1", "ai", "flags", source, day],
+    queryFn: () => v1.aiFlags(source, day || undefined),
+  }),
+  evolution: { queryKey: ["v1", "evolution"], queryFn: v1.evolution, refetchInterval: MINUTE },
   notifications: {
     queryKey: ["v1", "notifications"],
     queryFn: v1.notifications,

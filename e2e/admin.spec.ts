@@ -17,6 +17,7 @@ const PAGES: Array<[string, keyof typeof t.admin.pages]> = [
   ["backtesting", "backtesting"],
   ["analytics", "analytics"],
   ["ai-analyst", "aiAnalyst"],
+  ["evolution", "evolution"],
   ["competitions", "competitions"],
   ["teams", "teams"],
   ["players", "players"],
@@ -191,4 +192,47 @@ test("the Match Center has the Advanced / Audit tab for the owner", async ({ pag
   await page.getByRole("tab", { name: t.match.tabs.advanced }).click();
   await settle(page);
   await assertClean(page, w);
+});
+
+test("AI research: what is configured and spent, the daily report, flags only, every run; the evolution loop", async ({
+  page,
+}, info) => {
+  test.setTimeout(120_000);
+  const w = watch(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await go(page, w, "/admin/ai-analyst");
+  await expect(page.getByTestId("ai-status")).toBeVisible();
+  await expect(page.getByText(t.ai.report.title, { exact: true })).toBeVisible();
+  const status = await getJson<{ data: { llm_configured: boolean; missing: string[] } }>(
+    page.request,
+    "/api/v1/admin/ai/status",
+  );
+  expect(status.status).toBe(200);
+  const ai = status.body.data;
+  note(info, `AI: llm ${ai.llm_configured}, missing ${ai.missing.join(", ") || "none"}`);
+  if (ai.missing.length) {
+    await expect(page.getByText(ai.missing[0]!, { exact: false }).first()).toBeVisible();
+  }
+  for (const tab of ["flags", "ask", "usage", "report"] as const) {
+    await page.getByRole("tab", { name: t.ai.tabs[tab], exact: true }).click();
+    await settle(page);
+    await assertClean(page, w);
+  }
+  await page.getByRole("tab", { name: t.ai.tabs.usage, exact: true }).click();
+  await expect(page.getByText(t.ai.schedule.daily_report)).toBeVisible();
+
+  await go(page, w, "/admin/evolution");
+  await expect(page.getByText(t.ai.evolution.loop.s5)).toBeVisible();
+  const evo = await getJson<{ data: { hypotheses: Array<{ status: string }>; memory: unknown[] } }>(
+    page.request,
+    "/api/v1/admin/evolution",
+  );
+  expect(evo.status).toBe(200);
+  note(
+    info,
+    `evolution: ${evo.body.data.hypotheses.length} hypotheses, ${evo.body.data.memory.length} findings`,
+  );
+  if (evo.body.data.hypotheses.length)
+    await expect(page.getByTestId("hypothesis").first()).toBeVisible();
+  if (evo.body.data.memory.length) await expect(page.getByTestId("memory")).toBeVisible();
 });

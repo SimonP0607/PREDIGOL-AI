@@ -15,7 +15,7 @@
     "models": "Models",
     "backtesting": "Backtesting",
     "analytics": "Analytics",
-    "aiAnalyst": "AI Analyst",
+    "aiAnalyst": "AI research",
     "competitions": "Competitions",
     "teams": "Teams",
     "players": "Players",
@@ -26,7 +26,8 @@
     "migration": "Migration",
     "users": "Users",
     "audit": "Audit",
-    "settings": "Settings"
+    "settings": "Settings",
+    "evolution": "Evolution"
   },
   "pages": {
     "overview": {
@@ -58,8 +59,8 @@
       "description": "Competitions, teams, market and data coverage."
     },
     "aiAnalyst": {
-      "title": "AI Analyst",
-      "description": "Query tools over the data. No AI is active for now."
+      "title": "AI research",
+      "description": "Daily research report with sources, flags on the picks, questions and cost. The AI only informs and flags: it changes no probability, price or pick."
     },
     "competitions": {
       "title": "Competitions",
@@ -100,6 +101,10 @@
     "settings": {
       "title": "Settings",
       "description": "Platform configuration."
+    },
+    "evolution": {
+      "title": "Evolution loop",
+      "description": "Results become memory and proposals; only the owner decides. No result changes a rule on its own."
     }
   },
   "users": {
