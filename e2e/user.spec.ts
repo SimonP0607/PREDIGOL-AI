@@ -182,103 +182,107 @@ async function chooseFirstPrice(page: Page, w: Watch, fixtureId: number): Promis
   await expect(page.getByTestId("price-menu-content")).toBeVisible();
 }
 
-test("My picks: a price saved from a match is kept with my own price, and can be removed before kick-off", async ({
-  page,
-}) => {
-  const w = watch(page);
-  const t = L[lang()];
-  const [fixture] = await pricedFixtures(page, 1);
-  if (!fixture) {
-    note(test.info(), "no upcoming match with a 1X2 price in the next 72 h");
-    return;
-  }
-  await clearMine(page, [fixture.fixture_id]);
-  await chooseFirstPrice(page, w, fixture.fixture_id);
-  const menu = page.getByTestId("price-menu-content");
-  await menu.getByTestId("save-pick").click();
-  await expect(menu.getByTestId("save-pick")).toHaveAttribute("aria-pressed", "true");
-  await page.keyboard.press("Escape");
-
-  await open(page, w, "/my-picks");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(t.records.mine.title);
-  const row = page.getByTestId("saved-pick").filter({ hasText: fixture.home.name }).first();
-  await expect(row).toBeVisible();
-  await expect(row.getByTestId("origin-mine")).toHaveText(t.records.labels.savedByMe);
-  await expect(row.getByTestId("result-badge")).toHaveAttribute("data-status", "PENDING");
-
-  await row.getByTestId("saved-pick-odds").click();
-  await row.getByTestId("user-odds-input").fill(lang() === "es" ? "2,35" : "2.35");
-  await row.getByTestId("user-odds-save").click();
-  await expect(row.getByTestId("saved-pick-user-odds")).toContainText(
-    lang() === "es" ? "2,35" : "2.35",
-  );
-
-  await row.getByTestId("saved-pick-remove").click();
-  await expect(page.getByTestId("saved-pick").filter({ hasText: fixture.home.name })).toHaveCount(
-    0,
-  );
-  await assertClean(page, w);
-});
-
-test("My parlay: two matches added from their prices, checked by the server, saved, then deleted", async ({
-  page,
-}) => {
-  const w = watch(page);
-  const t = L[lang()];
-  const fixtures = await pricedFixtures(page, 2);
-  if (fixtures.length < 2) {
-    note(test.info(), "fewer than two upcoming matches with a 1X2 price and distinct teams");
-    return;
-  }
-  for (const f of fixtures) {
-    await chooseFirstPrice(page, w, f.fixture_id);
-    const menu = page.getByTestId("price-menu-content");
-    await menu.getByTestId("add-to-parlay").click();
-    await expect(menu.getByTestId("add-to-parlay")).toHaveAttribute("aria-pressed", "true");
-    await page.keyboard.press("Escape");
-  }
-  await page.getByTestId("slip-open").click();
-  const sheet = page.getByTestId("slip-sheet");
-  await expect(sheet.getByTestId("slip-leg")).toHaveCount(2);
-  await expect(sheet.getByTestId("slip-save")).toBeEnabled();
-  await expect(sheet.getByTestId("slip-error")).toHaveCount(0);
-  const name = `E2E ${lang()} ${Date.now()}`;
-  await sheet.getByTestId("slip-name").fill(name);
-  await sheet.getByTestId("slip-save").click();
-  await expect(sheet).toHaveCount(0);
-  await expect(page.getByTestId("slip-open")).toHaveCount(0);
-
-  await open(page, w, "/my-picks");
-  const card = page.getByTestId("my-parlay").filter({ hasText: name });
-  await expect(card).toBeVisible();
-  await expect(card.getByTestId("parlay-status")).toHaveText(t.records.parlayStatus.READY);
-  await card.getByTestId("my-parlay-remove").click();
-  await expect(page.getByTestId("my-parlay").filter({ hasText: name })).toHaveCount(0);
-  await assertClean(page, w);
-});
-
-test("My results: today, 7 days, 30 days and everything, in four groups, as the API counts them", async ({
-  page,
-}) => {
-  const w = watch(page);
-  const t = L[lang()];
-  await open(page, w, "/my-picks");
-  const periods = page.getByTestId("history-period");
-  for (const period of ["today", "7d", "30d", "all"] as const) {
-    await periods.getByRole("button", { name: t.records.mine.results.period[period] }).click();
-    await settle(page);
-    const { body } = await getJson<{ data: { groups: Record<string, { total: number }> } }>(
-      page.request,
-      `/api/v1/me/history?period=${period}`,
-    );
-    const fmt = new Intl.NumberFormat(lang() === "es" ? "es-ES" : "en-GB");
-    for (const group of ["predigol_picks", "my_picks", "predigol_parlays", "my_parlays"]) {
-      await expect(page.getByTestId(`history-${group}-total`)).toHaveText(
-        fmt.format(body.data.groups[group]?.total ?? 0),
-      );
+// One account's own records: these three run one after another, so a parlay saved by one is
+// never half-counted by another.
+test.describe.serial("a user's own records", () => {
+  test("My picks: a price saved from a match is kept with my own price, and can be removed before kick-off", async ({
+    page,
+  }) => {
+    const w = watch(page);
+    const t = L[lang()];
+    const [fixture] = await pricedFixtures(page, 1);
+    if (!fixture) {
+      note(test.info(), "no upcoming match with a 1X2 price in the next 72 h");
+      return;
     }
-  }
-  await assertClean(page, w);
+    await clearMine(page, [fixture.fixture_id]);
+    await chooseFirstPrice(page, w, fixture.fixture_id);
+    const menu = page.getByTestId("price-menu-content");
+    await menu.getByTestId("save-pick").click();
+    await expect(menu.getByTestId("save-pick")).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Escape");
+
+    await open(page, w, "/my-picks");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(t.records.mine.title);
+    const row = page.getByTestId("saved-pick").filter({ hasText: fixture.home.name }).first();
+    await expect(row).toBeVisible();
+    await expect(row.getByTestId("origin-mine")).toHaveText(t.records.labels.savedByMe);
+    await expect(row.getByTestId("result-badge")).toHaveAttribute("data-status", "PENDING");
+
+    await row.getByTestId("saved-pick-odds").click();
+    await row.getByTestId("user-odds-input").fill(lang() === "es" ? "2,35" : "2.35");
+    await row.getByTestId("user-odds-save").click();
+    await expect(row.getByTestId("saved-pick-user-odds")).toContainText(
+      lang() === "es" ? "2,35" : "2.35",
+    );
+
+    await row.getByTestId("saved-pick-remove").click();
+    await expect(page.getByTestId("saved-pick").filter({ hasText: fixture.home.name })).toHaveCount(
+      0,
+    );
+    await assertClean(page, w);
+  });
+
+  test("My parlay: two matches added from their prices, checked by the server, saved, then deleted", async ({
+    page,
+  }) => {
+    const w = watch(page);
+    const t = L[lang()];
+    const fixtures = await pricedFixtures(page, 2);
+    if (fixtures.length < 2) {
+      note(test.info(), "fewer than two upcoming matches with a 1X2 price and distinct teams");
+      return;
+    }
+    for (const f of fixtures) {
+      await chooseFirstPrice(page, w, f.fixture_id);
+      const menu = page.getByTestId("price-menu-content");
+      await menu.getByTestId("add-to-parlay").click();
+      await expect(menu.getByTestId("add-to-parlay")).toHaveAttribute("aria-pressed", "true");
+      await page.keyboard.press("Escape");
+    }
+    await page.getByTestId("slip-open").click();
+    const sheet = page.getByTestId("slip-sheet");
+    await expect(sheet.getByTestId("slip-leg")).toHaveCount(2);
+    await expect(sheet.getByTestId("slip-save")).toBeEnabled();
+    await expect(sheet.getByTestId("slip-error")).toHaveCount(0);
+    const name = `E2E ${lang()} ${Date.now()}`;
+    await sheet.getByTestId("slip-name").fill(name);
+    await sheet.getByTestId("slip-save").click();
+    await expect(sheet).toHaveCount(0);
+    await expect(page.getByTestId("slip-open")).toHaveCount(0);
+
+    await open(page, w, "/my-picks");
+    const card = page.getByTestId("my-parlay").filter({ hasText: name });
+    await expect(card).toBeVisible();
+    await expect(card.getByTestId("parlay-status")).toHaveText(t.records.parlayStatus.READY);
+    await card.getByTestId("my-parlay-remove").click();
+    await expect(page.getByTestId("my-parlay").filter({ hasText: name })).toHaveCount(0);
+    await assertClean(page, w);
+  });
+
+  test("My results: today, 7 days, 30 days and everything, in four groups, as the API counts them", async ({
+    page,
+  }) => {
+    const w = watch(page);
+    const t = L[lang()];
+    await open(page, w, "/my-picks");
+    const periods = page.getByTestId("history-period");
+    for (const period of ["today", "7d", "30d", "all"] as const) {
+      await periods.getByRole("button", { name: t.records.mine.results.period[period] }).click();
+      await settle(page);
+      const { body } = await getJson<{ data: { groups: Record<string, { total: number }> } }>(
+        page.request,
+        `/api/v1/me/history?period=${period}`,
+      );
+      const fmt = new Intl.NumberFormat(lang() === "es" ? "es-ES" : "en-GB");
+      for (const group of ["predigol_picks", "my_picks", "predigol_parlays", "my_parlays"]) {
+        await expect(page.getByTestId(`history-${group}-total`)).toHaveText(
+          fmt.format(body.data.groups[group]?.total ?? 0),
+        );
+      }
+    }
+    await assertClean(page, w);
+  });
 });
 
 test("Odds: the best-odds board per market", async ({ page }) => {
