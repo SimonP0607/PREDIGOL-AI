@@ -95,3 +95,18 @@ def test_injuries_coverage_and_standings_follow_the_documented_shapes() -> None:
         {"rank": 1, "team": {"id": 40}, "points": 70, "group": "Premier League", "form": "WWDLW",
          "all": {"played": 29, "win": 22, "draw": 4, "lose": 3, "goals": {"for": 66, "against": 21}}}]]}}]})
     assert (st.rank, st.points, st.goals_for, st.goals_against, st.form) == (1, 70, 66, 21, "WWDLW")
+
+
+def test_a_profile_is_read_whole_and_implausible_measures_are_dropped() -> None:
+    from datetime import date
+
+    from fbi.providers.api_football.details import iter_player_profiles, iter_squad
+
+    [p] = iter_player_profiles({"response": [{"player": {
+        "id": 5, "name": "A. B", "firstname": "A", "lastname": "B", "birth": {"date": "2000-05-06", "place": "X",
+        "country": "Y"}, "nationality": "Y", "height": "185 cm", "weight": "999", "position": "Attacker",
+        "photo": "https://media/5.png"}}, {"player": {"id": 0, "name": "nobody"}}]})
+    assert (p.provider_player_id, p.birth_date, p.height_cm, p.weight_kg) == (5, date(2000, 5, 6), 185, None)
+    [(team, squad)] = iter_squad({"response": [{"team": {"id": 7}, "players": [
+        {"id": 1, "name": "X", "age": 23, "number": 9, "position": "Attacker"}, {"id": None, "name": "?"}]}]})
+    assert team == 7 and [(m.provider_player_id, m.number, m.age) for m in squad] == [(1, 9, 23)]

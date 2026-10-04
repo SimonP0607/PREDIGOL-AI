@@ -127,3 +127,77 @@ def test_the_elo_history_is_recomputed_and_older_refreshes_pruned(conn: psycopg.
         conn.execute("UPDATE core.fixtures SET status_short = 'NS', status_group = 'scheduled' WHERE id = %s",
                      (seed.fixture_id,))
         conn.commit()
+
+
+# ── people: profiles and squads ─────────────────────────────────────────────
+
+def test_a_profile_fills_the_player_we_know_and_skips_the_one_we_do_not(conn: psycopg.Connection) -> None:
+    from datetime import date
+
+    from fbi.ingestion.people import apply_player_profiles
+    from fbi.providers.api_football.details import iter_player_profiles
+
+    conn.execute("INSERT INTO core.players (provider_player_id, name, position) VALUES (777001, 'K. Known', 'G')")
+    body = {"response": [
+        {"player": {"id": 777001, "name": "K. Known", "firstname": "Kay", "lastname": "Known", "age": 30,
+                    "birth": {"date": "1996-02-03", "place": "Lima", "country": "Peru"}, "nationality": "Peru",
+                    "height": "181", "weight": None, "number": 1, "position": "Goalkeeper", "photo": "https://x/1.png"}},
+        {"player": {"id": 777002, "name": "U. Unknown", "birth": {"date": "2001-01-01"}}},
+    ]}
+    at = datetime(2026, 10, 4, 7, 0, tzinfo=UTC)
+    out = apply_player_profiles(conn, iter_player_profiles(body), payload_hash="h1", fetched_at=at)
+    assert (out.updated, out.unknown) == (1, 1), "the catalogue stays the players of our competitions"
+    row = conn.execute("SELECT birth_date, nationality, height_cm, weight_kg, birth_place, profile_fetched_at "
+                       "FROM core.players WHERE provider_player_id = 777001").fetchone()
+    assert row == (date(1996, 2, 3), "Peru", 181, None, "Lima", at)
+    older = {"response": [{"player": {"id": 777001, "nationality": "Chile"}}]}
+    apply_player_profiles(conn, iter_player_profiles(older), payload_hash="h1", fetched_at=at - timedelta(days=1))
+    nat = conn.execute("SELECT nationality FROM core.players WHERE provider_player_id = 777001").fetchone()
+    assert nat == ("Peru",), "an older profile changes nothing"
+    blank = {"response": [{"player": {"id": 777001, "nationality": None}}]}
+    apply_player_profiles(conn, iter_player_profiles(blank), payload_hash="h1", fetched_at=at + timedelta(days=1))
+    nat = conn.execute("SELECT nationality FROM core.players WHERE provider_player_id = 777001").fetchone()
+    assert nat == ("Peru",), "an empty value does not erase a known one"
+
+
+def test_a_squad_keeps_who_left_and_knows_who_is_current(conn: psycopg.Connection, seed: Seed) -> None:
+    from fbi.ingestion.people import apply_squad
+    from fbi.providers.api_football.details import iter_squad
+
+    def body(*ids: int) -> dict[str, Any]:
+        return {"response": [{"team": {"id": 33, "name": "Manchester United"},
+                              "players": [{"id": i, "name": f"P{i}", "age": 25, "number": n, "position": "Defender"}
+                                          for n, i in enumerate(ids, 2)]}]}
+
+    t1, t2 = datetime(2026, 10, 1, tzinfo=UTC), datetime(2026, 10, 8, tzinfo=UTC)
+    [(team, members)] = list(iter_squad(body(9001, 9002, 9003)))
+    assert apply_squad(conn, team, members, payload_hash="h1", fetched_at=t1).members == 3
+    [(team, members)] = list(iter_squad(body(9001, 9002, 9004)))
+    out = apply_squad(conn, team, members, payload_hash="h1", fetched_at=t2)
+    assert (out.members, out.left) == (3, 1)
+    current = {r[0] for r in conn.execute(
+        "SELECT m.provider_player_id FROM core.squad_members m JOIN core.teams t ON t.id = m.team_id "
+        "WHERE t.provider_team_id = 33 AND m.last_seen_at = t.squad_checked_at").fetchall()}
+    assert current == {9001, 9002, 9004}
+    gone = conn.execute("SELECT last_seen_at FROM core.squad_members WHERE provider_player_id = 9003").fetchone()
+    assert gone == (t1,), "a player who left stays on record"
+
+
+def test_the_people_refresh_is_seeded_once_per_month_and_week(conn: psycopg.Connection, seed: Seed) -> None:
+    from fbi.ingestion.people import seed_people_refresh
+
+    conn.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+    conn.execute("UPDATE core.competition_seasons SET is_current = true WHERE id = %s", (seed.season_id,))
+    conn.commit()
+    try:
+        first = seed_people_refresh(conn, at=NOW)
+        again = seed_people_refresh(conn, at=NOW + timedelta(hours=1))
+        assert (first.profile_units, first.squad_units) == (1, 2), "page 1, and both teams of the seeded fixture"
+        assert (again.profile_units, again.squad_units) == (0, 0), "the same month and week add nothing"
+        later = seed_people_refresh(conn, at=NOW + timedelta(days=7))
+        assert later.squad_units == 2 and later.profile_units == 0, "a new week, a new squad round"
+    finally:
+        conn.execute("DELETE FROM raw.backfill_tasks WHERE kind IN ('player_profiles', 'team_squad')")
+        conn.execute("UPDATE core.competitions SET is_tracked = false WHERE id = %s", (seed.competition_id,))
+        conn.execute("UPDATE core.competition_seasons SET is_current = false WHERE id = %s", (seed.season_id,))
+        conn.commit()

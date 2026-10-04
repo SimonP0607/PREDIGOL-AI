@@ -207,15 +207,26 @@ WITH appeared AS (
       FROM core.fixture_lineup_players lp JOIN core.fixtures f ON f.id = lp.fixture_id
      WHERE f.kickoff_at > %(at)s - interval '365 days' AND lp.provider_player_id > 0
 )
-SELECT 'players' AS dataset, count(*) AS total, count(p.birth_date) FILTER (WHERE p.birth_date IS NOT NULL
-       OR p.nationality IS NOT NULL) AS profiled, count(p.id) AS known
+SELECT 'players' AS dataset, count(*) AS total,
+       count(*) FILTER (WHERE p.profile_fetched_at > %(at)s - interval '45 days') AS profiled,
+       count(*) FILTER (WHERE p.profile_fetched_at <= %(at)s - interval '45 days') AS old_profile,
+       count(p.id) AS known
   FROM appeared a LEFT JOIN core.players p ON p.provider_player_id = a.provider_player_id
 UNION ALL
-SELECT 'coaches', count(*), count(*) FILTER (WHERE co.birth_date IS NOT NULL OR co.nationality IS NOT NULL),
+SELECT 'coaches', count(*), count(*) FILTER (WHERE co.birth_date IS NOT NULL OR co.nationality IS NOT NULL), 0,
        count(co.id)
   FROM (SELECT DISTINCT l.provider_coach_id FROM core.fixture_lineups l JOIN core.fixtures f ON f.id = l.fixture_id
          WHERE f.kickoff_at > %(at)s - interval '365 days' AND l.provider_coach_id > 0) x
   LEFT JOIN core.coaches co ON co.provider_coach_id = x.provider_coach_id
+"""
+
+SQUADS_SQL = """
+SELECT DISTINCT ON (t.id) c.name AS competition, cs.season, t.provider_team_id, t.squad_checked_at
+  FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+  JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
+ WHERE c.is_tracked AND cs.is_current AND c.name !~* 'friendl'
+ ORDER BY t.id, c.tier NULLS LAST
 """
 
 ELO_SQL = """
@@ -445,13 +456,31 @@ def _teams(rows: list[dict[str, Any]], at: datetime) -> DatasetFreshness:
 def _people(rows: list[dict[str, Any]]) -> list[DatasetFreshness]:
     out = []
     for r in rows:
-        d = DatasetFreshness(str(r["dataset"]), "a profile (birth date or nationality) has been read for everyone "
-                             "in a line-up in the last 365 days", "person")
-        d.add(Freshness.FRESH, int(r["profiled"] or 0))
-        d.add(Freshness.UNKNOWN, int(r["total"] or 0) - int(r["profiled"] or 0),
-              example=f"{int(r['total'] or 0) - int(r['profiled'] or 0):,} without a profile "
-                      f"({int(r['total'] or 0) - int(r['known'] or 0):,} not even an identity row)")
+        players = r["dataset"] == "players"
+        d = DatasetFreshness(str(r["dataset"]), "the profile of everyone in a line-up in the last 365 days was read "
+                             "in the last 45 days (monthly sweep of /players/profiles)" if players else
+                             "a profile (birth date or nationality) exists for every coach in a line-up in the last "
+                             "365 days", "person")
+        total, fresh, old = int(r["total"] or 0), int(r["profiled"] or 0), int(r["old_profile"] or 0)
+        d.add(Freshness.FRESH, fresh)
+        d.add(Freshness.STALE, old, example=f"{old:,} profiles older than 45 days" if old else None)
+        d.add(Freshness.UNKNOWN, total - fresh - old,
+              example=f"{total - fresh - old:,} without a profile "
+                      f"({total - int(r['known'] or 0):,} not even an identity row)")
         out.append(d)
+    return out
+
+
+def _squads(rows: list[dict[str, Any]], at: datetime) -> DatasetFreshness:
+    out = DatasetFreshness("squads", "every team of a current season had its squad read in the last 8 days (weekly "
+                           "round of /players/squads)", "team")
+    for r in rows:
+        age = _age_h(at, r["squad_checked_at"])
+        if age is None:
+            out.add(Freshness.UNKNOWN, competition=_label(r), example=f"team {r['provider_team_id']}: never read")
+        else:
+            out.add(Freshness.FRESH if age <= 8 * 24 else Freshness.STALE, competition=_label(r),
+                    example=f"team {r['provider_team_id']}: read {age / 24:.0f} days ago")
     return out
 
 
@@ -476,6 +505,7 @@ def _coverage(rows: list[dict[str, Any]], at: datetime) -> DatasetFreshness:
 SIMPLE: tuple[tuple[str, Callable[[list[dict[str, Any]], datetime], DatasetFreshness]], ...] = (
     (FIXTURES_SQL, _fixtures), (RESULTS_SQL, _results), (LIVE_SQL, _live), (STANDINGS_SQL, _standings),
     (INJURIES_SQL, _injuries), (ODDS_SQL, _odds), (TEAMS_SQL, _teams), (ELO_SQL, _elo), (COVERAGE_SQL, _coverage),
+    (SQUADS_SQL, _squads),
 )
 
 
@@ -491,5 +521,5 @@ def measure(conn: psycopg.Connection, *, at: datetime) -> list[DatasetFreshness]
         cur.execute(PEOPLE_SQL, {"at": at})
         out.extend(_people(cur.fetchall()))
     order = ["fixtures", "results", "live", "standings", "injuries", "lineups", "match_detail", "odds_prematch",
-             "elo", "teams", "players", "coaches", "coverage"]
+             "elo", "teams", "players", "squads", "coaches", "coverage"]
     return sorted(out, key=lambda d: order.index(d.dataset) if d.dataset in order else 99)

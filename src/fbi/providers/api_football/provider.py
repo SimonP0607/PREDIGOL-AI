@@ -203,6 +203,14 @@ class ApiFootballProvider:
         """Stored raw: team and venue identity per season (normalised later if a page needs it)."""
         return _raw(await self._client.get("/teams", {"league": league_id, "season": season}))
 
+    async def fetch_player_profiles_page(self, *, page: int) -> RawResponse:
+        """One page (250 players) of /players/profiles, every player the provider knows, by id."""
+        return _raw(await self._client.get("/players/profiles", {"page": page}))
+
+    async def fetch_squad(self, *, team_id: int) -> RawResponse:
+        """A team's current squad (/players/squads): shirt number, position, age."""
+        return _raw(await self._client.get("/players/squads", {"team": team_id}))
+
     async def fetch_players_page(self, *, league_id: int, season: int, page: int) -> RawResponse:
         """One page (20 players) of season player statistics. Stored raw."""
         return _raw(await self._client.get("/players", {"league": league_id, "season": season, "page": page}))

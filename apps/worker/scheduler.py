@@ -392,16 +392,22 @@ async def _historical_backfill() -> None:
 
     The backfill computes its own reserve for the next 24 h of odds windows
     and standing syncs, and defers entirely when the day's remaining budget is
-    inside it. Tasks are seeded deliberately with ``scripts.backfill seed``;
-    the worker never widens the scope on its own.
+    inside it. History is seeded deliberately with ``scripts.backfill seed``; the
+    worker never widens the scope on its own. What it does seed is the refresh of
+    the scope it already has: a monthly player-profile sweep and a weekly round of
+    current squads (fbi.ingestion.people).
     """
     from scripts.capture_odds import _client
 
     from fbi.ingestion.backfill import run_backfill
+    from fbi.ingestion.people import seed_people_refresh
     from fbi.providers.api_football import ApiFootballProvider
 
     new_run_id()
     with _connect() as conn:
+        # Player profiles monthly, current squads weekly: a refresh of the tracked scope,
+        # queued behind everything else in the same budget-guarded backfill.
+        seed_people_refresh(conn, at=now())
         provider = ApiFootballProvider(_client())
         try:
             report = await run_backfill(

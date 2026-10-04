@@ -560,3 +560,75 @@ def iter_lineup_people(detail: FixtureDetail) -> tuple[list[PersonRef], list[Per
         if ps.name:
             players.setdefault(ps.provider_player_id, PersonRef(ps.provider_player_id, ps.name))
     return list(players.values()), list(coaches.values())
+
+
+# ── people: /players/profiles and /players/squads ───────────────────────────
+
+
+@dataclass(frozen=True, slots=True)
+class PlayerProfileRef:
+    """A player's profile as the provider states it (/players/profiles). Unknown is None."""
+
+    provider_player_id: int
+    name: str | None
+    firstname: str | None
+    lastname: str | None
+    birth_date: date | None
+    birth_place: str | None
+    birth_country: str | None
+    nationality: str | None
+    height_cm: int | None
+    weight_kg: int | None
+    position: str | None
+    photo_url: str | None
+
+
+def _measure(value: Any) -> int | None:
+    """'187', '187 cm', 187 -> 187; anything implausible for a person -> None."""
+    if value is None or isinstance(value, bool):
+        return None
+    text = str(value).strip().split(" ")[0]
+    n = integer(text)
+    return n if n is not None and 0 < n < 300 else None
+
+
+def iter_player_profiles(body: dict[str, Any]) -> Iterator[PlayerProfileRef]:
+    for entry in body.get("response") or []:
+        player = _dict(entry.get("player")) if isinstance(entry, dict) else {}
+        pid = _int_id(player)
+        if pid is None or pid <= 0:
+            continue
+        birth = _dict(player.get("birth"))
+        yield PlayerProfileRef(pid, _text(player, "name"), _text(player, "firstname"), _text(player, "lastname"),
+                               _date(birth.get("date")), _text(birth, "place"), _text(birth, "country"),
+                               _text(player, "nationality"), _measure(player.get("height")),
+                               _measure(player.get("weight")), _text(player, "position"), _text(player, "photo"))
+
+
+@dataclass(frozen=True, slots=True)
+class SquadMemberRef:
+    provider_player_id: int
+    name: str | None
+    number: int | None
+    position: str | None
+    age: int | None
+    photo_url: str | None
+
+
+def iter_squad(body: dict[str, Any]) -> Iterator[tuple[int, list[SquadMemberRef]]]:
+    """(provider team id, its current squad) for each team in a /players/squads response."""
+    for entry in body.get("response") or []:
+        if not isinstance(entry, dict):
+            continue
+        team = _int_id(entry.get("team"))
+        if team is None:
+            continue
+        members = []
+        for p in entry.get("players") or []:
+            pid = _int_id(p)
+            if pid is None or pid <= 0:
+                continue
+            age = integer(p.get("age")) if isinstance(p, dict) else None
+            members.append(SquadMemberRef(pid, _text(p, "name"), integer(p.get("number")), _text(p, "position"),
+                                          age if age is not None and 0 < age < 80 else None, _text(p, "photo")))
+        yield team, members

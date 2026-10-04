@@ -478,7 +478,11 @@ async def _identities(ask: _Asker, conn: psycopg.Connection, result: AuditResult
         items = _items(body)
         players_in = [p for p in compare._l((items[0] if items else {}).get("players")) if isinstance(p, dict)]
         known = db_known_players(conn, [i for i in (compare._id(p) for p in players_in) if i is not None])
-        compare.compare_squad(items[0] if items else None, known, provider_team_id=tid, tally=squads)
+        stored = _rows(conn, """
+            SELECT m.provider_player_id FROM core.squad_members m JOIN core.teams t ON t.id = m.team_id
+             WHERE t.provider_team_id = %s AND m.last_seen_at = t.squad_checked_at""", (tid,))
+        compare.compare_squad(items[0] if items else None, known, provider_team_id=tid, tally=squads,
+                              stored=stored)
     result.side("squads", f"{len(result.sample.squads)} sampled squads (/players/squads)", "not stored",
                 "sampled_squads", "not_stored", n=len(result.sample.squads))
 

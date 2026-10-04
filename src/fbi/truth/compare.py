@@ -665,13 +665,27 @@ def compare_coach(api_item: Mapping[str, Any] | None, db: Mapping[str, Any] | No
 
 
 def compare_squad(api_item: Mapping[str, Any] | None, known: Mapping[int, Mapping[str, Any]], *,
-                  provider_team_id: int, tally: Tally) -> None:
-    """A squad is not stored at all; what can be measured is how much of it we know."""
+                  provider_team_id: int, tally: Tally, stored: Sequence[Mapping[str, Any]] | None = None) -> None:
+    """The provider's current squad against ours (``stored``: the members seen at the team's
+    latest squad read), or - when we hold none - how much of it we know at all."""
     entity = f"team {provider_team_id} squad"
     if api_item is None:
         return
     players = [p for p in _l(api_item.get("players")) if isinstance(p, dict) and _id(p)]
     tally.compared()
+    if stored:
+        want = {_id(p) for p in players}
+        have = {r.get("provider_player_id") for r in stored}
+        before = tally.total_findings
+        if want - have:
+            tally.add(Finding.of("squads", entity, "players", Kind.STALE, Severity.LOW,
+                                 api=f"{len(want - have)} players not in our squad", db=f"{len(have)} stored"))
+        if have - want:
+            tally.add(Finding.of("squads", entity, "players", Kind.MISSING_IN_API, Severity.LOW,
+                                 api=f"{len(want)} listed", db=f"{len(have - want)} no longer listed"))
+        if tally.total_findings == before:
+            tally.matched += 1
+        return
     unknown = [p for p in players if _id(p) not in known]
     no_profile = [p for p in players if _id(p) in known and not known[_id(p) or 0].get("birth_date")]
     tally.add(Finding.of("squads", entity, "squad", Kind.NOT_STORED, Severity.MEDIUM,

@@ -51,8 +51,9 @@ from fbi.ingestion.details import (
 from fbi.ingestion.fixtures import PLAN_REFUSAL
 from fbi.ingestion.identity import apply_teams
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.ingestion.people import apply_player_profiles, apply_squad
 from fbi.migration.completeness import fixtures_missing_detail
-from fbi.providers.api_football.details import iter_teams
+from fbi.providers.api_football.details import iter_player_profiles, iter_squad, iter_teams
 from fbi.providers.base import FootballDataProvider, RawResponse
 from fbi.providers.quota import read_usage
 
@@ -65,7 +66,7 @@ STALE_RUNNING = timedelta(minutes=30)
 """A unit 'running' for longer than this belonged to a process that died."""
 DETAIL_BATCH = 20
 KIND_ORDER = ("league_coverage", "fixtures_season", "fixture_details", "standings_season", "injuries_season",
-              "teams_season", "players_season")
+              "teams_season", "players_season", "player_profiles", "team_squad")
 
 
 @dataclass(frozen=True, slots=True)
@@ -381,6 +382,37 @@ async def _execute(conn: psycopg.Connection, provider: Any, ledger: RunLedger, r
                                                                      "season": task.season, "page": p},
                                         priority=task.priority, tier=task.tier, plan_id=task.plan_id, page=p)
         return _Outcome(raw.payload_hash, 0, raw.results_count, created=created)
+    if task.kind == "player_profiles":
+        page = task.page or 1
+        raw = await provider.fetch_player_profiles_page(page=page)
+        stored(raw)
+        observed_at = ledger.indexed_at(raw.payload_hash) or raw.fetched_at
+        profiles = apply_player_profiles(conn, iter_player_profiles(raw.body), payload_hash=raw.payload_hash,
+                                         fetched_at=observed_at)
+        counters.rows_updated += profiles.updated
+        created = 0
+        paging = raw.body.get("paging") if isinstance(raw.body, dict) else None
+        total = paging.get("total") if isinstance(paging, dict) else None
+        if page == 1 and isinstance(total, int) and total > 1:
+            with conn.cursor() as cur:
+                for p in range(2, total + 1):
+                    created += add_unit(cur, kind="player_profiles", league_id=0, season=task.season,
+                                        endpoint="/players/profiles", params={"page": p}, priority=task.priority,
+                                        tier=task.tier, page=p)
+        return _Outcome(raw.payload_hash, profiles.updated, raw.results_count, profiles.updated, created=created)
+    if task.kind == "team_squad":
+        team = int(task.params.get("team") or task.batch_key or 0)
+        raw = await provider.fetch_squad(team_id=team)
+        stored(raw)
+        observed_at = ledger.indexed_at(raw.payload_hash) or raw.fetched_at
+        members = 0
+        for provider_team, squad in iter_squad(raw.body):
+            if provider_team != team:
+                continue
+            out_squad = apply_squad(conn, team, squad, payload_hash=raw.payload_hash, fetched_at=observed_at)
+            members += out_squad.members
+        counters.rows_inserted += members
+        return _Outcome(raw.payload_hash, members, raw.results_count, members)
     if task.kind == "league_coverage":
         refs, raw = await provider.fetch_coverage(league_id=task.league_id or None)
         stored(raw)
