@@ -139,7 +139,30 @@
     "includesMatch": "The table already includes this match.",
     "updated": "Table updated {ago}.",
     "stale": "It does not include the last match played yet; it will be asked for again.",
-    "providerLag": "The provider has not updated it since the last match yet."
+    "providerLag": "The provider has not updated it since the last match yet.",
+    "kind": {
+      "full": "Table",
+      "group": "Group",
+      "ranking": "Ranking across groups",
+      "aggregate": "Aggregate table",
+      "other": "Other table"
+    },
+    "tableOf": "Table: {table}",
+    "eachGroup": "Each team in its own group.",
+    "selection": {
+      "phase_league_stage": "{stage} match: showing the league-phase table ({table}).",
+      "previous_stage": "{stage} match: showing {table}, the last league stage before this round."
+    },
+    "showFull": "Show full table",
+    "hideFull": "Hide full table",
+    "split": {
+      "all": "All",
+      "home": "Home",
+      "away": "Away"
+    },
+    "splitLabel": "Games",
+    "noSplit": "The provider gives no home and away games for this table.",
+    "phaseNever": "Never mixed with another phase's table."
   },
   "h2h": {
     "title": "Head to head",

@@ -82,7 +82,30 @@
         "goalDiff": "DG",
         "points": "Pts",
         "form": "Forma"
-      }
+      },
+      "season": "Temporada",
+      "phases": "Fases y grupos",
+      "aggregate": "Acumulada",
+      "other": "Otras tablas",
+      "teams": "{n} equipos",
+      "method": {
+        "label": "fase por su nombre",
+        "games": "fase por partidos jugados",
+        "single": "única fase de liga",
+        "unmapped": "sin fase identificada"
+      },
+      "agreement": "{agreement} filas cuadran con los partidos",
+      "current": "en juego",
+      "stale": "La captura es anterior al último partido terminado de esta fase: aún no lo incluye.",
+      "stages": "Rondas de la temporada",
+      "stageKind": {
+        "league": "liga",
+        "knockout": "eliminatoria",
+        "qualifying": "clasificación",
+        "friendly": "amistoso"
+      },
+      "noTable": "sin tabla",
+      "zone": "Zona"
     }
   },
   "teams": {

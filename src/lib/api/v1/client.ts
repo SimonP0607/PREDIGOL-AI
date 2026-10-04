@@ -264,8 +264,10 @@ export const v1 = {
       limit: q.limit ?? 100,
     }),
   player: (id: number | string) => getJson<Envelope<PlayerDetail | null>>(`/players/${id}`),
-  standings: (competitionId: number | string) =>
-    getJson<Envelope<CompetitionTable | null>>(`/competitions/${competitionId}/standings`),
+  standings: (competitionId: number | string, season?: number) =>
+    getJson<Envelope<CompetitionTable | null>>(`/competitions/${competitionId}/standings`, {
+      season,
+    }),
 
   // ── Admin Console (SUPER_ADMIN) ───────────────────────────────────────────
   overview: () => getJson<Envelope<Overview>>("/admin/overview"),

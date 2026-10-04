@@ -13,6 +13,17 @@ import { live } from "@/lib/api/v1/queries";
 import { int } from "@/lib/format";
 import { utcDate, utcDateTime } from "./format";
 import { FixtureLink, ScoreText, StatusGroupBadge } from "./shared";
+import { TeamName } from "@/components/football/Logos";
+import type { StandingsTable } from "@/lib/api/v1/types_center";
+import {
+  defaultSection,
+  hasSplits,
+  kindKey,
+  rankedRows,
+  tableSections,
+  type Split,
+  type TableSection,
+} from "@/product/shared/standings";
 
 const scopes = ["Tracked", "With fixtures", "All known"] as const;
 type Scope = (typeof scopes)[number];
@@ -594,10 +605,30 @@ function SquadPanel({ teamId }: { teamId: number }) {
   );
 }
 
-/** The latest league table stored for the competition, refreshed every 12 h by the worker. */
+/**
+ * A competition season's tables, each kept apart (refreshed by the worker): a split season's
+ * Apertura and Clausura, a phase's groups, conferences, a ranking across groups, an annual
+ * aggregate. Tabs by stage, all / home / away games, the season picker, and a note when the
+ * snapshot predates the stage's last finished match.
+ */
 function StandingsPanel({ competitionId }: { competitionId: number }) {
-  const q = useLiveQuery(live.standings(String(competitionId)));
+  const [season, setSeason] = useState<number | undefined>(undefined);
+  const q = useLiveQuery(live.standings(String(competitionId), season));
   const table = q.data?.data ?? null;
+  const sections = table ? tableSections(table) : [];
+  const [sectionId, setSectionId] = useState<string | null>(null);
+  const [split, setSplit] = useState<Split>("all");
+  const active =
+    sections.find((x) => x.id === sectionId) ??
+    sections.find((x) => x.id === defaultSection(sections)) ??
+    null;
+  const stage = table?.stages?.find((x) => active?.stage !== null && x.name === active?.stage);
+  const stale =
+    !!table &&
+    !!stage?.last_finished &&
+    Date.parse(table.snapshot_at) < Date.parse(stage.last_finished) + 2 * 3600 * 1000;
+  const splits = active ? hasSplits(active.tables.flatMap((x) => x.rows)) : false;
+  const seasons = table?.seasons ?? [];
   return (
     <Panel
       title={t("catalog.competitions.standings.title")}
@@ -609,6 +640,27 @@ function StandingsPanel({ competitionId }: { competitionId: number }) {
             })
           : t("catalog.competitions.standings.latest")
       }
+      actions={
+        seasons.length > 1 ? (
+          <label className="flex items-center gap-1.5 text-caption text-muted-foreground">
+            {t("catalog.competitions.standings.season")}
+            <select
+              className="rounded border border-border bg-card px-1.5 py-0.5 text-xs text-foreground"
+              value={season ?? table?.season ?? ""}
+              onChange={(e) => {
+                setSeason(Number(e.target.value));
+                setSectionId(null);
+              }}
+            >
+              {seasons.map((x) => (
+                <option key={x} value={x}>
+                  {x}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null
+      }
       bodyClassName=""
     >
       {q.isLoading ? (
@@ -617,7 +669,7 @@ function StandingsPanel({ competitionId }: { competitionId: number }) {
         <div className="p-4">
           <ApiErrorNotice error={q.error} />
         </div>
-      ) : !table ? (
+      ) : !table || !active ? (
         <StatusNotice
           status={q.data?.status ?? "empty"}
           reason={q.data?.reason ?? null}
@@ -625,52 +677,131 @@ function StandingsPanel({ competitionId }: { competitionId: number }) {
           className="p-4"
         />
       ) : (
-        <TableShell className="min-w-0" compact>
-          <THead>
-            <TH align="right">#</TH>
-            <TH>{t("catalog.competitions.standings.headers.team")}</TH>
-            <TH align="right">{t("catalog.competitions.standings.headers.played")}</TH>
-            <TH align="right">{t("catalog.competitions.standings.headers.record")}</TH>
-            <TH align="right">{t("catalog.competitions.standings.headers.goalDiff")}</TH>
-            <TH align="right">{t("catalog.competitions.standings.headers.points")}</TH>
-            <TH>{t("catalog.competitions.standings.headers.form")}</TH>
-          </THead>
-          <tbody>
-            {table.rows.map((r, i) => (
-              <TRow key={`${r.group ?? ""}-${r.team_id}`}>
-                <TD align="right">
-                  <Numeric className="text-xs">{r.rank}</Numeric>
-                </TD>
-                <TD className="text-sm">
-                  {r.team}
-                  {r.group &&
-                  (i === 0 || table.rows[i - 1]?.group !== r.group) &&
-                  table.rows.some((x) => x.group !== r.group) ? (
-                    <div className="text-caption text-subtle-foreground">{r.group}</div>
-                  ) : null}
-                </TD>
-                <TD align="right">
-                  <Numeric muted className="text-xs">
-                    {r.played}
-                  </Numeric>
-                </TD>
-                <TD align="right">
-                  <Numeric className="text-xs">
-                    {r.wins}-{r.draws}-{r.losses}
-                  </Numeric>
-                </TD>
-                <TD align="right">
-                  <Numeric className="text-xs">{r.goals_for - r.goals_against}</Numeric>
-                </TD>
-                <TD align="right">
-                  <Numeric>{r.points}</Numeric>
-                </TD>
-                <TD className="numeric text-caption text-muted-foreground">{r.form ?? "—"}</TD>
-              </TRow>
-            ))}
-          </tbody>
-        </TableShell>
+        <div className="space-y-3 py-3">
+          <div className="space-y-2 px-3">
+            {sections.length > 1 ? (
+              <SegmentedTabs
+                tabs={sections.map((x) => x.id)}
+                value={active.id}
+                onChange={setSectionId}
+                label={t("catalog.competitions.standings.phases")}
+                format={(id) => sectionTitle(sections.find((x) => x.id === id))}
+              />
+            ) : null}
+            {splits ? (
+              <SegmentedTabs
+                tabs={SPLITS}
+                value={split}
+                onChange={setSplit}
+                label={t("match.standings.splitLabel")}
+                format={(x) => t(`match.standings.split.${x}`)}
+              />
+            ) : null}
+            {stale ? (
+              <p className="text-caption text-warning">
+                {t("catalog.competitions.standings.stale")}
+              </p>
+            ) : null}
+          </div>
+          {active.tables.map((tb) => (
+            <StandingsGrid key={tb.key} table={tb} split={splits ? split : "all"} />
+          ))}
+          {table.stages && table.stages.length > 0 ? (
+            <p className="px-3 text-caption text-subtle-foreground">
+              {t("catalog.competitions.standings.stages")}:{" "}
+              {table.stages
+                .map(
+                  (x) =>
+                    `${x.name} (${t(`catalog.competitions.standings.stageKind.${x.kind}`)}, ${x.finished}/${x.fixtures}${
+                      x.kind === "league" && x.tables === 0
+                        ? `, ${t("catalog.competitions.standings.noTable")}`
+                        : ""
+                    })`,
+                )
+                .join(" · ")}
+            </p>
+          ) : null}
+        </div>
       )}
     </Panel>
+  );
+}
+
+const SPLITS = ["all", "home", "away"] as const satisfies readonly Split[];
+
+function sectionTitle(section: TableSection | undefined): string {
+  if (!section) return "";
+  const base =
+    section.kind === "stage"
+      ? (section.stage ?? "")
+      : section.kind === "aggregate"
+        ? (section.tables[0]?.label ?? t("catalog.competitions.standings.aggregate"))
+        : t("catalog.competitions.standings.other");
+  return section.current ? `${base} · ${t("catalog.competitions.standings.current")}` : base;
+}
+
+function StandingsGrid({ table, split }: { table: StandingsTable; split: Split }) {
+  const rows = rankedRows(table.rows, split);
+  return (
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-baseline gap-x-2 px-3 text-xs">
+        <span className="font-semibold">{table.label || table.stage || "—"}</span>
+        <span className="text-caption text-muted-foreground">
+          {t(kindKey(table.kind))} ·{" "}
+          {t("catalog.competitions.standings.teams", { n: table.rows.length })} ·{" "}
+          {t(`catalog.competitions.standings.method.${table.method}`)} ·{" "}
+          {t("catalog.competitions.standings.agreement", { agreement: table.agreement })}
+        </span>
+        {table.note ? (
+          <span className="text-caption text-subtle-foreground">{table.note}</span>
+        ) : null}
+      </div>
+      <TableShell className="min-w-0" compact>
+        <THead>
+          <TH align="right">#</TH>
+          <TH>{t("catalog.competitions.standings.headers.team")}</TH>
+          <TH align="right">{t("catalog.competitions.standings.headers.played")}</TH>
+          <TH align="right">{t("catalog.competitions.standings.headers.record")}</TH>
+          <TH align="right">{t("catalog.competitions.standings.headers.goalDiff")}</TH>
+          <TH align="right">{t("catalog.competitions.standings.headers.points")}</TH>
+          <TH>{t("catalog.competitions.standings.headers.form")}</TH>
+          <TH>{t("catalog.competitions.standings.zone")}</TH>
+        </THead>
+        <tbody>
+          {rows.map(({ rank, row: r, figures: f }) => (
+            <TRow key={`${table.key}-${r.team_id}`}>
+              <TD align="right">
+                <Numeric className="text-xs">{rank}</Numeric>
+              </TD>
+              <TD className="text-sm">
+                <TeamName name={r.team} logo={r.team_logo} size={18} />
+              </TD>
+              <TD align="right">
+                <Numeric muted className="text-xs">
+                  {f.played}
+                </Numeric>
+              </TD>
+              <TD align="right">
+                <Numeric className="text-xs">
+                  {f.wins}-{f.draws}-{f.losses}
+                </Numeric>
+              </TD>
+              <TD align="right">
+                <Numeric className="text-xs">{f.goalDiff}</Numeric>
+              </TD>
+              <TD align="right">
+                <Numeric>{f.points}</Numeric>
+              </TD>
+              <TD className="numeric text-caption text-muted-foreground">
+                {split === "all" ? (r.form ?? "—") : "—"}
+              </TD>
+              <TD className="max-w-48 truncate text-caption text-muted-foreground">
+                {split === "all" ? (r.description ?? "") : ""}
+              </TD>
+            </TRow>
+          ))}
+        </tbody>
+      </TableShell>
+    </div>
   );
 }

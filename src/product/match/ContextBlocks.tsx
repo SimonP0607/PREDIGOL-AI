@@ -1,4 +1,5 @@
 /** The match in context: recent form, the table, head to head, absences, line-up status. */
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Shirt, Swords, TrendingUp, Trophy, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ import { TeamName } from "@/components/football/Logos";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import { absenceKind, absenceReason, h2hSummary, lastFive } from "./model";
+import { matchTables, rankedRows } from "@/product/shared/standings";
 import { Block, CenterSection, FormChips, MoreButton, PlayerName, SectionNote } from "./ui";
 
 const SIDES: readonly Side[] = ["home", "away"];
@@ -97,11 +99,84 @@ export function FormBlock({ ctx }: { ctx: MatchCtx }) {
 
 // ── Table ───────────────────────────────────────────────────────────────────
 
+/** Which table the rows come from: "Tabla: Clausura", each team's group, and why for a knock-out round. */
+function TableCaption({ rows }: { rows: StandingLine[] }) {
+  const labels = [...new Set(rows.map((r) => r.table).filter((x): x is string => !!x))];
+  if (labels.length === 0) return null;
+  const first = rows.find((r) => r.table);
+  const stage = first?.fixture_stage ?? null;
+  const reason =
+    first?.selection && first.selection !== "fixture_stage" && stage
+      ? t(`match.standings.selection.${first.selection}`, { stage, table: labels.join(" / ") })
+      : null;
+  return (
+    <div className="mb-2 space-y-0.5" data-testid="table-caption">
+      <p className="text-caption text-muted-foreground">
+        {t("match.standings.tableOf", { table: labels.join(" · ") })}
+        {labels.length > 1 ? (
+          <span className="ml-1 text-subtle-foreground">{t("match.standings.eachGroup")}</span>
+        ) : null}
+      </p>
+      {reason ? <p className="text-caption text-subtle-foreground">{reason}</p> : null}
+    </div>
+  );
+}
+
+/** The whole table(s) the two rows come from, opened on demand; both teams highlighted. */
+function FullTables({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) {
+  const [open, setOpen] = useState(false);
+  const tables = matchTables(rows, ctx.center.data?.standings_tables);
+  if (tables.length === 0 || tables.every((tb) => tb.rows.length <= 2)) return null;
+  const mine = new Set([ctx.match.home.id, ctx.match.away.id]);
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        className="text-caption text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? t("match.standings.hideFull") : t("match.standings.showFull")}
+      </button>
+      {open
+        ? tables.map((tb) => (
+            <div key={tb.key} className="mt-2">
+              {tables.length > 1 ? (
+                <p className="mb-1 text-caption font-medium text-muted-foreground">{tb.label}</p>
+              ) : null}
+              <table className="w-full table-fixed text-xs">
+                <tbody className="divide-y divide-border/40">
+                  {rankedRows(tb.rows, "all").map(({ rank, row, figures: f }) => (
+                    <tr
+                      key={row.team_id}
+                      className={cn(mine.has(row.team_id) && "bg-primary/8 font-semibold")}
+                    >
+                      <td className="numeric w-7 py-1 text-muted-foreground">{rank}</td>
+                      <td className="py-1 pr-2">
+                        <TeamName name={row.team} logo={row.team_logo} size={16} />
+                      </td>
+                      <td className="numeric w-8 py-1 text-right text-muted-foreground">
+                        {f.played}
+                      </td>
+                      <td className="numeric w-10 py-1 text-right">{fmtLine(f.goalDiff, true)}</td>
+                      <td className="numeric w-9 py-1 text-right font-semibold">{f.points}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))
+        : null}
+    </div>
+  );
+}
+
 function StandingsTable({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) {
   const sorted = [...rows].sort((a, b) => a.rank - b.rank);
   const after = rows.some((r) => !r.before_kickoff);
   return (
     <>
+      <TableCaption rows={rows} />
       <table className="w-full table-fixed text-sm">
         <thead>
           <tr className="text-caption text-subtle-foreground">
@@ -155,6 +230,7 @@ function StandingsTable({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) 
         </p>
       ) : null}
       <TableFreshness rows={rows} />
+      <FullTables ctx={ctx} rows={rows} />
     </>
   );
 }

@@ -100,6 +100,13 @@ function PreMatchStats({ ctx }: { ctx: MatchCtx }) {
               return (
                 <div className="space-y-4">
                   <TeamsLegend home={home} away={away} />
+                  {h?.table || a?.table ? (
+                    <p className="-mt-2 text-caption text-subtle-foreground">
+                      {t("match.standings.tableOf", {
+                        table: [...new Set([h?.table, a?.table].filter(Boolean))].join(" · "),
+                      })}
+                    </p>
+                  ) : null}
                   <p className="numeric -mt-2 flex justify-between text-caption text-muted-foreground">
                     <span>{h ? t("match.stats.position", { rank: h.rank }) : ""}</span>
                     <span>{a ? t("match.stats.position", { rank: a.rank }) : ""}</span>

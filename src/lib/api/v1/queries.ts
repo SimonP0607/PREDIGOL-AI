@@ -59,9 +59,9 @@ export const live = {
   }),
 
   // ── football ──────────────────────────────────────────────────────────────
-  standings: (id: string) => ({
-    queryKey: ["v1", "standings", id],
-    queryFn: () => v1.standings(id),
+  standings: (id: string, season?: number) => ({
+    queryKey: ["v1", "standings", id, season ?? "newest"],
+    queryFn: () => v1.standings(id, season),
   }),
   center: (id: string) => ({
     queryKey: ["v1", "center", id],

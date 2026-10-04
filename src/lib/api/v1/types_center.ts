@@ -107,7 +107,25 @@ export interface StandingLine {
   /** Whether the table reflects every match played before this one. */
   table_state?: "FRESH" | "STALE" | "UNKNOWN" | "UNAVAILABLE";
   table_reason?: string;
+  /** The provider's label of the table the row comes from ("Clausura", "Apertura - Group A"). */
+  table?: string | null;
+  table_key?: string | null;
+  table_kind?: TableKind | null;
+  table_teams?: number | null;
+  /** The stage the table ranks, and its phase (null for an aggregate). */
+  stage?: string | null;
+  phase?: string | null;
+  /** This match's own stage, from its round label. */
+  fixture_stage?: string | null;
+  /** Why this table: the match's stage, its phase's league stage (knock-out), or the league stage before it. */
+  selection?: TableSelection | null;
+  team_logo?: string | null;
 }
+
+/** full: the stage's table; group: one of several (groups, conferences); ranking: across groups
+ * (third-placed teams); aggregate: several stages (an annual table); other: not a stage (periods). */
+export type TableKind = "full" | "group" | "ranking" | "aggregate" | "other";
+export type TableSelection = "fixture_stage" | "phase_league_stage" | "previous_stage";
 
 export interface FormMatch {
   fixture_id: number;
@@ -179,6 +197,8 @@ export interface MatchCenter {
   players: Section<PlayerLine[]>;
   absences: Section<Absence[]>;
   standings: Section<StandingLine[]>;
+  /** The whole table(s) the two rows come from. */
+  standings_tables?: StandingsTable[];
   form: Section<TeamForm[]>;
   h2h: Section<H2HMatch[]>;
   live_states: Section<LiveState[]>;
@@ -371,6 +391,16 @@ export interface AdminOverview {
   backups: Section<BackupFile[]>;
 }
 
+/** A row's home or away games; the provider gives no points for them (3 a win, 1 a draw). */
+export interface TableSplit {
+  played: number | null;
+  wins: number | null;
+  draws: number | null;
+  losses: number | null;
+  goals_for: number | null;
+  goals_against: number | null;
+}
+
 export interface TableRow {
   rank: number;
   team_id: number;
@@ -384,11 +414,54 @@ export interface TableRow {
   points: number;
   form: string | null;
   group: string | null;
+  team_logo?: string | null;
+  goals_diff?: number | null;
+  /** The provider's zone ("Promotion - Libertadores"). */
+  description?: string | null;
+  zone_status?: string | null;
+  home?: TableSplit | null;
+  away?: TableSplit | null;
+}
+
+/** One stage of the season, from the fixtures' round labels ("Clausura - 12" -> Clausura). */
+export interface SeasonStage {
+  name: string;
+  phase: string;
+  kind: "league" | "knockout" | "qualifying" | "friendly";
+  first_kickoff: Iso | null;
+  last_kickoff: Iso | null;
+  fixtures: number;
+  finished: number;
+  /** Kick-off of its last finished match. */
+  last_finished?: Iso | null;
+  tables: number;
+  is_current: boolean;
+}
+
+/** One table of the provider's answer, kept apart from the season's other tables. */
+export interface StandingsTable {
+  key: string;
+  label: string;
+  stage: string | null;
+  stages: string[];
+  phase: string | null;
+  kind: TableKind;
+  method: "label" | "games" | "single" | "unmapped";
+  agreement: string;
+  note: string;
+  is_current: boolean;
+  rows: TableRow[];
 }
 
 export interface CompetitionTable {
   competition_id: number;
   season: number;
   snapshot_at: Iso;
+  seasons?: number[];
+  stages?: SeasonStage[];
+  /** Each table apart, in stage order (Apertura, Clausura, groups, a ranking, an aggregate). */
+  tables?: StandingsTable[];
+  mapping_version?: string;
+  /** Deprecated: every table's rows flattened. */
   rows: TableRow[];
 }

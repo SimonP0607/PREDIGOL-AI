@@ -139,7 +139,30 @@
     "includesMatch": "La tabla ya incluye este partido.",
     "updated": "Tabla actualizada {ago}.",
     "stale": "Aún no incluye el último partido jugado; se pedirá de nuevo.",
-    "providerLag": "El proveedor todavía no la ha actualizado tras el último partido."
+    "providerLag": "El proveedor todavía no la ha actualizado tras el último partido.",
+    "kind": {
+      "full": "Tabla",
+      "group": "Grupo",
+      "ranking": "Ranking entre grupos",
+      "aggregate": "Tabla acumulada",
+      "other": "Otra tabla"
+    },
+    "tableOf": "Tabla: {table}",
+    "eachGroup": "Cada equipo en su grupo.",
+    "selection": {
+      "phase_league_stage": "Partido de {stage}: se muestra la tabla de la fase de liga ({table}).",
+      "previous_stage": "Partido de {stage}: se muestra {table}, la última fase de liga antes de esta ronda."
+    },
+    "showFull": "Ver tabla completa",
+    "hideFull": "Ocultar tabla completa",
+    "split": {
+      "all": "Total",
+      "home": "Local",
+      "away": "Visitante"
+    },
+    "splitLabel": "Partidos",
+    "noSplit": "El proveedor no da partidos de local y visitante para esta tabla.",
+    "phaseNever": "Nunca se mezcla con la tabla de otra fase."
   },
   "h2h": {
     "title": "Enfrentamientos directos",

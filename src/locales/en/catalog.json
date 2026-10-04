@@ -82,7 +82,30 @@
         "goalDiff": "GD",
         "points": "Pts",
         "form": "Form"
-      }
+      },
+      "season": "Season",
+      "phases": "Phases and groups",
+      "aggregate": "Aggregate",
+      "other": "Other tables",
+      "teams": "{n} teams",
+      "method": {
+        "label": "phase by its name",
+        "games": "phase by games played",
+        "single": "only league stage",
+        "unmapped": "no phase identified"
+      },
+      "agreement": "{agreement} rows agree with the matches",
+      "current": "being played",
+      "stale": "The snapshot predates this phase's last finished match: it does not include it yet.",
+      "stages": "Season rounds",
+      "stageKind": {
+        "league": "league",
+        "knockout": "knock-out",
+        "qualifying": "qualifying",
+        "friendly": "friendly"
+      },
+      "noTable": "no table",
+      "zone": "Zone"
     }
   },
   "teams": {
