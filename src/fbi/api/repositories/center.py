@@ -66,8 +66,13 @@ STANDINGS = """
 SELECT DISTINCT ON (s.team_id)
        CASE s.team_id WHEN %(home)s THEN 'home' ELSE 'away' END AS side, t.name AS team, s.rank, s.points,
        s.played, s.wins, s.draws, s.losses, s.goals_for, s.goals_against, s.form, s."group",
-       s.snapshot_at, s.snapshot_at <= %(ko)s AS before_kickoff
+       s.snapshot_at, s.snapshot_at <= %(ko)s AS before_kickoff, s.description, s.provider_updated_at,
+       k.checked_at,
+       (SELECT max(f.kickoff_at) FROM core.fixtures f
+         WHERE f.competition_season_id = s.competition_season_id AND f.status_group = 'finished'
+           AND f.kickoff_at < %(ko)s) AS last_finished_before
   FROM core.standings s JOIN core.teams t ON t.id = s.team_id
+  LEFT JOIN core.context_checks k ON k.competition_season_id = s.competition_season_id AND k.dataset = 'standings'
  WHERE s.competition_season_id = %(cs)s AND s.team_id IN (%(home)s, %(away)s)
  ORDER BY s.team_id, (s.snapshot_at <= %(ko)s) DESC,
           CASE WHEN s.snapshot_at <= %(ko)s THEN s.snapshot_at END DESC NULLS LAST, s.snapshot_at

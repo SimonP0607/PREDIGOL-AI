@@ -112,6 +112,12 @@ class StandingLine(Contract):
     group: str | None
     snapshot_at: datetime
     before_kickoff: bool = Field(description="False when the only table we hold was taken after kick-off.")
+    description: str | None = Field(default=None, description="The provider's zone: 'Promotion - Champions League'.")
+    checked_at: datetime | None = Field(default=None, description="When the provider was last asked for this table.")
+    table_state: Literal["FRESH", "STALE", "UNKNOWN", "UNAVAILABLE"] = Field(
+        default="UNKNOWN", description="Whether the table reflects every match played before this one.")
+    table_reason: str = Field(default="no_table", description="no_match_yet, reflects_last_match, "
+                              "provider_not_updated or not_asked_since (fbi.truth.freshness.table_reason).")
 
 
 class FormMatch(Contract):

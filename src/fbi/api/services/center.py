@@ -44,6 +44,7 @@ from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
 from fbi.api.repositories import center as repo
 from fbi.api.services.live_quality import completeness
 from fbi.core.clock import now
+from fbi.truth.freshness import table_reason
 
 STALE_AFTER = timedelta(minutes=3)
 PLAYER_WINDOW = timedelta(days=400)
@@ -81,7 +82,12 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
         "f": fixture_id, "home_pid": fx["home_pid"], "away_pid": fx["away_pid"]})]
     ctx = {"cs": fx["competition_season_id"], "home": fx["home_team_id"], "away": fx["away_team_id"],
            "ko": fx["kickoff_at"]}
-    standings = [StandingLine(**r) for r in fetch_all(conn, repo.STANDINGS, ctx)]
+    standings = []
+    for r in fetch_all(conn, repo.STANDINGS, ctx):
+        last = r.pop("last_finished_before")
+        r.pop("provider_updated_at", None)
+        state, reason = table_reason(r["snapshot_at"], last, r["checked_at"], None)
+        standings.append(StandingLine(**r, table_state=state.value, table_reason=reason))
     standings.sort(key=lambda s: 0 if s.side == "home" else 1)
     forms: list[TeamForm] = []
     for side, team_id, name in (("home", fx["home_team_id"], fx["home"]), ("away", fx["away_team_id"], fx["away"])):
