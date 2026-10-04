@@ -75,6 +75,10 @@ class CaptureReport:
         )
 
 
+CATCH_UP_LOOKBACK = timedelta(days=4)
+"""Asks older than the widest capture window (72 h) cannot stand for any window still ahead."""
+
+
 class OddsCaptureService:
     def __init__(
         self,
@@ -103,7 +107,10 @@ class OddsCaptureService:
             provider_fixture_ids=[f.provider_fixture_id for f in fixtures],
         )
         already_done = self._planner.covered_keys(observations)
-        tasks = self._planner.plan(fixtures, at=moment, already_done=already_done)
+        last_asked = self._repo.last_asked(
+            provider_fixture_ids=[f.provider_fixture_id for f in fixtures], since=moment - CATCH_UP_LOOKBACK
+        )
+        tasks = self._planner.plan(fixtures, at=moment, already_done=already_done, last_asked=last_asked)
 
         run_id = self._ledger.open(
             "odds_capture",

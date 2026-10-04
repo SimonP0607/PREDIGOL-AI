@@ -57,6 +57,11 @@ WORKER_SEEN_WITHIN = timedelta(minutes=35)
 it: the pick pipeline alone starts every 30 minutes while the worker runs."""
 
 
+KNOWN_BEFORE_CLOSE = timedelta(minutes=10)
+"""A fixture that reached the database in the last minutes of a window's band was not
+plannable in it: the capture tick runs every five minutes."""
+
+
 class CompetitionState(StrEnum):
     NOT_ASKED = "NOT_ASKED"
     NOT_COVERED = "NOT_COVERED"
@@ -318,14 +323,21 @@ def _competition_state(c: CompetitionCoverage) -> tuple[CompetitionState, str]:
 
 
 class Uptime:
-    """When the worker was running, from the instants its jobs started."""
+    """When the worker was running, from the instants its jobs started.
+
+    Up at an instant when jobs started on BOTH sides of it within WORKER_SEEN_WITHIN: the pick
+    pipeline alone starts every 30 minutes while the worker runs. One side is not enough - a
+    worker stopped a minute after its last job had, by the one-sided reading, been up for the
+    next half hour (measured on 30 Sep: stopped at 18:28, read as up until 19:03)."""
 
     def __init__(self, starts: list[datetime]) -> None:
         self._starts = sorted(starts)
 
     def up_at(self, at: datetime) -> bool:
-        i = bisect.bisect_left(self._starts, at - WORKER_SEEN_WITHIN)
-        return i < len(self._starts) and self._starts[i] <= at + WORKER_SEEN_WITHIN
+        i = bisect.bisect_right(self._starts, at)
+        before = i > 0 and self._starts[i - 1] >= at - WORKER_SEEN_WITHIN
+        after = i < len(self._starts) and self._starts[i] <= at + WORKER_SEEN_WITHIN
+        return before and after
 
     def down_hours(self, since: datetime, until: datetime) -> float:
         hours, t = 0.0, since
@@ -345,8 +357,8 @@ def miss_cause(*, kickoff: datetime, created_at: datetime | None, windows: list[
         return Miss.KNOWN_TOO_LATE
     for w in windows:
         opens = kickoff - timedelta(minutes=w)
-        if created_at is not None and opens + timedelta(minutes=tolerance) < created_at:
-            continue  # this window had closed before the fixture was known
+        if created_at is not None and opens + timedelta(minutes=tolerance) - KNOWN_BEFORE_CLOSE < created_at:
+            continue  # this window had closed (or was closing) before the fixture was known
         if uptime.up_at(opens + timedelta(minutes=tolerance / 2)):
             return Miss.MISSED_WHILE_UP
     return Miss.WORKER_DOWN

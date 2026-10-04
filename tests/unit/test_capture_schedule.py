@@ -184,3 +184,31 @@ def test_without_the_record_the_same_window_is_offered_again() -> None:
     p = planner()
     assert [t.window_minutes for t in p.plan([FIXTURE], at=at(180))] == [180]
     assert [t.window_minutes for t in p.plan([FIXTURE], at=at(150), already_done=set())] == [180]
+
+
+def test_a_window_that_closed_unasked_is_caught_up_once() -> None:
+    """The worker was down through the T-12 h band: at T-10 h it asks once, labelled with its real
+    distance from kick-off, and not again once the ask is on record."""
+    p = CapturePlanner((4320, 1440, 720, 360, 180), 12, 45)
+    tasks = p.plan([FIXTURE], at=at(600), last_asked={})
+    assert [(t.window_minutes, t.minutes_to_ko) for t in tasks] == [(720, 600)]
+    asked = {1001: at(600)}
+    assert p.plan([FIXTURE], at=at(590), last_asked=asked) == [], "asked since the band opened: done"
+    assert p.plan([FIXTURE], at=at(600)) == [], "no catch-up without the ask record (the old contract)"
+
+
+def test_an_ask_before_the_missed_band_does_not_count() -> None:
+    p = CapturePlanner((4320, 1440, 720, 360, 180), 12, 45)
+    asked_at_t24 = {1001: at(1430)}
+    assert [t.window_minutes for t in p.plan([FIXTURE], at=at(600), last_asked=asked_at_t24)] == [720]
+
+
+def test_the_last_band_missed_is_caught_up_before_kick_off_and_never_after() -> None:
+    p = CapturePlanner((4320, 1440, 720, 360, 180), 12, 45)
+    assert [t.window_minutes for t in p.plan([FIXTURE], at=at(60), last_asked={})] == [180]
+    assert p.plan([FIXTURE], at=at(-5), last_asked={}) == []
+
+
+def test_nothing_is_caught_up_before_the_first_window() -> None:
+    p = CapturePlanner((4320, 1440, 720, 360, 180), 12, 45)
+    assert p.plan([FIXTURE], at=at(5000), last_asked={}) == []

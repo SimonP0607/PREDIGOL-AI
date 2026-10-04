@@ -16,7 +16,7 @@ analysis can judge it.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal
@@ -86,12 +86,22 @@ class CapturePlanner:
         self._tolerance = tolerance_minutes
 
     def plan(
-        self, fixtures: Iterable[ScheduledFixture], *, at: datetime, already_done: set[str] | None = None
+        self, fixtures: Iterable[ScheduledFixture], *, at: datetime, already_done: set[str] | None = None,
+        last_asked: Mapping[int, datetime] | None = None,
     ) -> list[CaptureTask]:
         """Tasks due right now, nearest to kick-off first.
 
         ``already_done`` holds the window keys captured earlier; passing it is
         what makes repeated runs idempotent.
+
+        ``last_asked`` (provider fixture id -> when /odds was last asked for it) turns on the
+        catch-up: a fixture whose most recent window closed without being asked for - the
+        worker was down, the fixture reached the database late, or its kick-off moved - is
+        asked once, now, at its real distance from kick-off. Measured on 25 Sep - 4 Oct 2026:
+        493 of 675 played matches were never asked before kick-off, nearly all while the
+        machine was off; with the catch-up a worker that comes back before kick-off still
+        gets a price. The snapshot keeps its true ``minutes_to_ko``, so it is never filed
+        under the window it stands in for.
         """
         done = already_done or set()
         tasks: list[CaptureTask] = []
@@ -117,6 +127,19 @@ class CapturePlanner:
 
             window = self._due_window(minutes)
             if window is None:
+                missed = self._missed_window(minutes) if last_asked is not None else None
+                if missed is not None:
+                    asked = (last_asked or {}).get(fixture.provider_fixture_id)
+                    if asked is None or asked < fixture.kickoff_at - timedelta(minutes=missed):
+                        task = CaptureTask(
+                            provider_fixture_id=fixture.provider_fixture_id,
+                            kickoff_at=fixture.kickoff_at,
+                            kind="prematch",
+                            window_minutes=missed,
+                            minutes_to_ko=int(minutes),
+                        )
+                        if task.window_key not in done:
+                            tasks.append(task)
                 continue
             task = CaptureTask(
                 provider_fixture_id=fixture.provider_fixture_id,
@@ -156,6 +179,11 @@ class CapturePlanner:
             if window - self._tolerance <= minutes <= window:
                 return window
         return None
+
+    def _missed_window(self, minutes: float) -> int | None:
+        """The most recent window whose band has closed, or None before the first one opens."""
+        closed = [w for w in self._windows if minutes < w - self._tolerance]
+        return min(closed) if closed else None
 
     def covered_keys(self, observations: Iterable[tuple[int, str, int]]) -> set[str]:
         """Map stored snapshots back onto the windows they satisfy.

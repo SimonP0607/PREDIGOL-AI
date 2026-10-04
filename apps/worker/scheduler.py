@@ -180,13 +180,12 @@ async def _tick() -> TickOutcome:
             log.info("tick.nothing_scheduled")
             return "nothing_scheduled"
         planner = _build_planner()
-        covered = planner.covered_keys(
-            OddsRepository(conn).observations_since(
-                since=now() - timedelta(hours=24),
-                provider_fixture_ids=[f.provider_fixture_id for f in fixtures],
-            )
-        )
-        tasks = planner.plan(fixtures, at=now(), already_done=covered)
+        repo = OddsRepository(conn)
+        ids = [f.provider_fixture_id for f in fixtures]
+        covered = planner.covered_keys(repo.observations_since(since=now() - timedelta(hours=24),
+                                                               provider_fixture_ids=ids))
+        asked = repo.last_asked(provider_fixture_ids=ids, since=now() - timedelta(days=4))
+        tasks = planner.plan(fixtures, at=now(), already_done=covered, last_asked=asked)
         if not tasks:
             log.info("tick.nothing_due", fixtures=len(fixtures), next_window=planner.next_run_at(fixtures, at=now()))
             return "nothing_due"

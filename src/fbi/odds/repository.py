@@ -195,6 +195,20 @@ class OddsRepository:
             log.info("near_close.kept_closer_snapshot", offered=len(keys), written=affected)
         return affected
 
+    def last_asked(self, *, provider_fixture_ids: Sequence[int], since: datetime) -> dict[int, datetime]:
+        """When /odds was last asked for each fixture since ``since`` (provider id -> instant),
+        answered or not: the planner's catch-up asks a missed window once, not every tick."""
+        if not provider_fixture_ids:
+            return {}
+        with self._conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(
+                "SELECT (params->>'fixture')::bigint, max(fetched_at) FROM raw.ingestion_payloads "
+                "WHERE endpoint = '/odds' AND fetched_at >= %s AND params ? 'fixture' "
+                "AND params->>'fixture' = ANY(%s) GROUP BY 1",
+                (since, [str(i) for i in provider_fixture_ids]),
+            )
+            return {int(a): b for a, b in cur.fetchall()}
+
     def observations_since(
         self, *, since: datetime, provider_fixture_ids: Sequence[int] | None = None
     ) -> list[tuple[int, str, int]]:

@@ -104,9 +104,13 @@ class World:
                             (fid, self.books[book], sel, kickoff - timedelta(minutes=30), kickoff + timedelta(hours=4),
                              self.seed.payload_hash))
 
-    def worker_ran(self, at: datetime) -> None:
-        self.cur.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, started_at) "
-                         "VALUES ('pick_pipeline', 'pick_pipeline', %s)", (at,))
+    def worker_ran(self, start: datetime, hours: float) -> None:
+        """The pick pipeline every 30 minutes, as a running worker starts it."""
+        t = start
+        while t <= start + timedelta(hours=hours):
+            self.cur.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, started_at) "
+                             "VALUES ('pick_pipeline', 'pick_pipeline', %s)", (t,))
+            t += timedelta(minutes=30)
 
 
 def test_each_competition_gets_the_state_its_prices_earned(db: psycopg.Connection[Any], seed: Seed) -> None:
@@ -115,7 +119,7 @@ def test_each_competition_gets_the_state_its_prices_earned(db: psycopg.Connectio
     w.played(covered, 3, asked=True, prices={"Bet365": ["1X2", "OU"], "Betano": ["1X2"]})
     w.played(covered, 2, asked=True, prices={"Bet365": ["1X2"], "Betano": ["1X2", "OU"]})
     w.played(covered, 1, asked=False)  # its T-24 h window passed while the worker was running
-    w.worker_ran(AT - timedelta(days=2) + timedelta(minutes=20))
+    w.worker_ran(AT - timedelta(days=2) - timedelta(hours=1), hours=2)  # up across the T-24 h band only
     unpriced = w.competition(97002, "Liga Beta", "Peru", True)
     w.played(unpriced, 3, asked=True)
     w.played(unpriced, 1, asked=True)
@@ -211,3 +215,13 @@ def test_the_admin_console_reads_the_coverage_and_a_user_cannot(migrated_databas
         mp.undo()
         reset_cache()
         truth_service._cache.clear()
+
+
+def test_a_worker_is_up_only_between_two_job_starts() -> None:
+    from fbi.market.coverage import Uptime
+
+    t0 = datetime(2031, 1, 1, 18, tzinfo=UTC)
+    up = Uptime([t0, t0 + timedelta(minutes=30), t0 + timedelta(minutes=60)])
+    assert up.up_at(t0 + timedelta(minutes=45))
+    assert not up.up_at(t0 + timedelta(minutes=75)), "stopped after its last job: down, not up for half an hour"
+    assert not up.up_at(t0 - timedelta(minutes=10)), "nothing had started yet"
