@@ -98,3 +98,25 @@ python -m scripts.validate_history          # ~5 s, no provider request
 The worker runs it right after each Elo refresh; the Admin Console shows it under
 Data truth -> Validation (`GET /api/v1/admin/data/validation`, `/validation/competitions`,
 `/validation/quarantine`).
+
+## 7. Dataset versions — what a model may learn from (4 Oct 2026)
+
+`audit.dataset_versions` (migration 0057; `fbi/datasets/versions.py`; `python -m scripts.dataset_version
+show|build|promote`):
+
+| Version | Status | What it is |
+|---|---|---|
+| `PRE_DATA_TRUTH_AUDIT` | LEGACY | the data as normalized before the data-truth audits; never changed - its known defects are in the evidence ledger and `audit.data_repairs` |
+| `DATASET_V2` | **VALIDATED** (build of 4 Oct 18:57 UTC) | the same core tables corrected by repairs that kept the old rows, plus everything rebuilt from RAW (competition phases, fixture facts, player extras, reference feeds, the provider's season aggregates) |
+
+A build records counts and gates, each read from the newest audit run or the ledger: phases (0 matches shown a
+wrong table in 92 seasons), golden phases (41/41), standings (no verdict at PrediGol's fault), official tables (0
+differences), field coverage (0 dropped by a bug), RAW integrity (3 damaged payloads, recorded - a note), open
+critical/high ledger entries at PrediGol's fault (0), historical validation (15 MODEL_READY competition seasons),
+the API contract (0 missing endpoints; 4 partial - a note), research freeze (a note).
+
+**No version is MODEL_READY.** A build is CANDIDATE or VALIDATED, never more; only a person promotes a VALIDATED
+version (`promote --by NAME --confirm`), and promotion is refused while research is frozen. `scripts.research_v2
+--apply` and `scripts.run_backtest --apply` refuse to store anything without a MODEL_READY version (exit 4), so models
+learn only from a dataset someone declared fit for it (`tests/unit/test_model_guard.py`,
+`tests/integration/test_dataset_versions.py`).

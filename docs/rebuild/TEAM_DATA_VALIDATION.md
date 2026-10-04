@@ -103,3 +103,15 @@ fetched (`HISTORICAL_DATA_SAFETY_PLAN.md`).
 `tests/unit/test_team_record_scope.py`), `team_stats:provider_rule:shootout` (provider definition,
 ACCEPTED), `team_history:SEASON_NOT_MIGRATED`, `team_history:REAL_LOW_HISTORY` (ACCEPTED). Reports:
 `data/truth/20261004T142038Z-team_stats/`, `…T143829Z-team_stats/` and the post-fix run.
+
+## 6. Teams audit (database only) and the provider's season aggregates
+
+`python -m scripts.audit_teams` (report `data/truth/<stamp>-teams/`), over the 5,525 teams of current tracked
+seasons: logo 5,522, venue 4,970, a squad read in the last 14 days 2,286, a coach on a current line-up 4,007;
+possible duplicates 0. It refreshes `core.team_kind` first and records every side PrediGol classifies differently
+from the provider's national flag (64; see `PLAYER_DATA_VALIDATION.md` §7).
+
+`/teams/statistics` is now data: `core.team_season_stats` (0003, never written before) gets a snapshot per change
+from the `team_statistics` reference feed (daily for teams playing within 24 h, weekly otherwise - the documented
+rate), with averages and totals in separate columns and the whole answer in `raw`; 145 snapshots were replayed from
+the truth audit's payloads. Coaches' profiles and careers (`/coachs`) and transfers fill weekly per team.

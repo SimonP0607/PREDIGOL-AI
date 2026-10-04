@@ -113,3 +113,28 @@ asked for and is empty at the provider (§3).
 relation to the other players of the game or the season who occupy the same position". Our
 `avg_rating` is the mean of the provider's match ratings over matches played; the provider's season
 rating is its own number. They are shown, never compared, never fed to a model as ground truth.
+
+## 7. National side or club — PrediGol's own classification (4 Oct 2026, evening)
+
+The provider's `team.national` is wrong both ways for some sides: 61 sides that play **only** national-team
+competitions are flagged as clubs (youth national teams - Bolivia U20, Denmark U17, India U20 ... - and
+Guadeloupe), 3 that play competitive club football are flagged national (Alo Egypt, France Aizenay, ...). The
+product picked a player's club with that flag, so a youth national side could be shown as a player's club: **7 player
+pages** did (45 players had a national youth squad counted as their club squad).
+
+`core.team_kind` (migration 0060, `fbi/catalog/team_kind.py`, refreshed with the Elo job) decides from the
+competitions a side plays: competitive club football (club scope, not a friendly) makes a club; only national-team
+competitions, and no club friendly, make a national side; otherwise the provider's flag. Every product query that
+picks a club or a national team reads it; the provider's flag is never overwritten. After the fix the players
+audit (`python -m scripts.audit_players`, the product's own SQL over all 30,742 players of current tracked seasons)
+finds **0 players whose club is a national side and 0 whose national team is a club**; 812 have only a national
+side known (shown with no club). The 64 sides PrediGol classifies differently from the provider are evidence
+entries `teams:national_flag:*` (provider at fault, MONITOR). Test:
+`tests/integration/test_team_player_audits.py::test_a_youth_national_side_the_provider_flags_as_a_club_is_never_a_players_club`.
+
+## 8. The provider's reference lists
+
+Transfers, periods out (`/sidelined`) and trophies are read weekly for every player in scope (20 a request) and
+shown on the player page with the payload each comes from; the provider's season aggregate per team and
+competition (`/players?league&season`) is stored weekly in `core.player_season_stats` - its rating is the
+provider's metric, kept as sent.
