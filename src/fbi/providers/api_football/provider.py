@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
@@ -48,6 +49,28 @@ log = structlog.get_logger(__name__)
 MAX_PAGES = 10
 MAX_IDS = 20
 """/fixtures?ids= and /injuries?ids= accept at most 20 ids (documented)."""
+
+
+@dataclass(frozen=True, slots=True)
+class FinalPrematch:
+    """What /odds said about a played match: its last pre-match prices, or why there are none."""
+
+    update_at: datetime | None
+    quotes: list[OddsQuote]
+    raws: list[RawResponse]
+    refused_after_kickoff: bool
+    """The provider's stamp was at or after kick-off: possibly in-play prices, so none kept."""
+
+
+def _update_stamp(entry: dict[str, Any]) -> datetime | None:
+    value = entry.get("update")
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return stamp if stamp.tzinfo is not None else None
 
 
 class ApiFootballProvider:
@@ -151,6 +174,30 @@ class ApiFootballProvider:
                 break
             page += 1
         return quotes, raws
+
+    async def fetch_final_prematch_odds(
+        self, *, provider_fixture_id: int, kickoff_at: datetime, parse_log: OddsParseLog | None = None,
+    ) -> FinalPrematch:
+        """The provider's LAST pre-match prices for a match already played.
+
+        /odds keeps pre-match prices for 7 days. Each response item carries the provider's
+        own ``update`` stamp; the quotes are stamped with it rather than with our fetch time,
+        so ``minutes_to_ko`` is how long before kick-off the provider last moved them. A stamp
+        at or after kick-off could be an in-play price: nothing is returned for it.
+        """
+        response = await self._client.get("/odds", {"fixture": provider_fixture_id})
+        raw = _raw(response)
+        entries = [e for e in response.body.get("response") or [] if isinstance(e, dict)]
+        stamps = [s for s in (_update_stamp(e) for e in entries) if s is not None]
+        if not entries:
+            return FinalPrematch(None, [], [raw], refused_after_kickoff=False)
+        update_at = max(stamps) if stamps else None
+        if update_at is None or update_at >= kickoff_at:
+            return FinalPrematch(update_at, [], [raw], refused_after_kickoff=update_at is not None)
+        quotes = list(iter_odds(response.body, kickoff_at=kickoff_at, captured_at=update_at,
+                                payload_hash=response.stored.hash, source="prematch",
+                                market_filter=self._market_filter or None, parse_log=parse_log))
+        return FinalPrematch(update_at, quotes, [raw], refused_after_kickoff=False)
 
     async def fetch_live_odds_all(
         self, *, parse_log: OddsParseLog | None = None

@@ -88,12 +88,34 @@ class World:
                                  self.seed.payload_hash))
         return fid
 
+    def final(self, fid: int, books: list[str]) -> None:
+        cur = self.cur
+        cur.execute("SELECT kickoff_at FROM core.fixtures WHERE id = %s", (fid,))
+        kickoff = cur.fetchone()[0]  # type: ignore[index]
+        cur.execute("INSERT INTO market.final_prematch_checks (fixture_id, checked_at, outcome, provider_update_at, "
+                    "bookmakers, quotes, payload_hash) VALUES (%s, %s, 'priced', %s, %s, %s, %s)",
+                    (fid, kickoff + timedelta(hours=4), kickoff - timedelta(minutes=30), len(books), 3 * len(books),
+                     self.seed.payload_hash))
+        for book in books:
+            for sel in ("1", "X", "2"):
+                cur.execute("INSERT INTO market.final_prematch_odds (fixture_id, bookmaker_id, market_key, selection, "
+                            "line, odds_decimal, provider_update_at, minutes_to_ko, fetched_at, payload_hash) "
+                            "VALUES (%s, %s, '1X2', %s, 0, 2.30, %s, 30, %s, %s)",
+                            (fid, self.books[book], sel, kickoff - timedelta(minutes=30), kickoff + timedelta(hours=4),
+                             self.seed.payload_hash))
+
+    def worker_ran(self, at: datetime) -> None:
+        self.cur.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, started_at) "
+                         "VALUES ('pick_pipeline', 'pick_pipeline', %s)", (at,))
+
 
 def test_each_competition_gets_the_state_its_prices_earned(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
     covered = w.competition(97001, "Liga Alfa", "Colombia", True)
     w.played(covered, 3, asked=True, prices={"Bet365": ["1X2", "OU"], "Betano": ["1X2"]})
     w.played(covered, 2, asked=True, prices={"Bet365": ["1X2"], "Betano": ["1X2", "OU"]})
+    w.played(covered, 1, asked=False)  # its T-24 h window passed while the worker was running
+    w.worker_ran(AT - timedelta(days=2) + timedelta(minutes=20))
     unpriced = w.competition(97002, "Liga Beta", "Peru", True)
     w.played(unpriced, 3, asked=True)
     w.played(unpriced, 1, asked=True)
@@ -107,12 +129,19 @@ def test_each_competition_gets_the_state_its_prices_earned(db: psycopg.Connectio
     thin = w.competition(97006, "Liga Zeta", "Ecuador", True)
     w.played(thin, 5, asked=True, prices={"Betano": ["1X2"]})
     w.played(thin, 15, asked=True, prices={"Bet365": ["1X2"]})  # outside the 14-day window
+    recovered = w.competition(97007, "Liga Eta", "Colombia", True)
+    w.final(w.played(recovered, 3.5, asked=False), ["Bet365", "Betano"])  # missed, read after the match
 
     report = build_report(db, at=AT, days=14)
     mine = {c.competition: c for c in report.competitions if c.competition.startswith("Liga ")}
     assert mine["Liga Alfa"].state is CompetitionState.COVERED
     assert mine["Liga Alfa"].priced_two_plus == 2
     assert mine["Liga Alfa"].markets == {"1X2": 2, "OU": 2}
+    assert mine["Liga Alfa"].misses == {"missed_while_up": 1}
+    assert mine["Liga Gamma"].misses == {"worker_down": 1}
+    eta = mine["Liga Eta"]
+    assert (eta.asked, eta.priced, eta.captured, eta.recovered) == (1, 1, 0, 1)
+    assert eta.state is CompetitionState.COVERED and eta.misses == {"worker_down": 1}
     assert mine["Liga Beta"].state is CompetitionState.UNPRICED_BY_PROVIDER
     assert mine["Liga Gamma"].state is CompetitionState.NOT_ASKED
     assert mine["Liga Delta"].state is CompetitionState.NOT_COVERED
@@ -120,12 +149,15 @@ def test_each_competition_gets_the_state_its_prices_earned(db: psycopg.Connectio
     assert (mine["Liga Epsilon"].priced, mine["Liga Epsilon"].fixtures) == (1, 2)
     assert mine["Liga Zeta"].state is CompetitionState.THIN
     assert mine["Liga Zeta"].fixtures == 1, "a match before the window is not counted"
-    assert any("Liga Gamma" in c for c in is_critical(report))
-    assert not any("Liga Delta" in c for c in is_critical(report)), "the provider's 'no' is not our gap"
+    critical = is_critical(report)
+    assert any("Liga Gamma" in c for c in critical)
+    assert any("Liga Alfa" in c and "while the worker was running" in c for c in critical)
+    assert not any("Liga Delta" in c for c in critical), "the provider's 'no' is not our gap"
+    assert not any("Liga Eta" in c for c in critical), "a machine that was off is not a planner defect"
 
     books = {b.provider_bookmaker_id: b for b in report.bookmakers}
     assert books[9032].state is BookmakerState.ACTIVE
-    assert books[9032].fixtures == 4
+    assert books[9032].fixtures == 5, "a price read after the match still says the provider has the book"
     assert books[9006].state is BookmakerState.CATALOGUE_ONLY
     assert books[9037].name_missing and books[9037].name == "#9037"
 
@@ -136,7 +168,7 @@ def test_each_competition_gets_the_state_its_prices_earned(db: psycopg.Connectio
     assert local["Betplay"].state is LocalState.NOT_IN_PROVIDER
 
     colombia = next(c for c in report.countries if c.country == "Colombia")
-    assert (colombia.competitions, colombia.fixtures, colombia.priced) == (2, 4, 3)
+    assert (colombia.competitions, colombia.fixtures, colombia.priced, colombia.captured) == (3, 6, 4, 3)
     md = render_markdown(report)
     assert "# BOOKMAKER_COVERAGE_REPORT" in md and "| Liga Gamma 2031 | Chile | NOT_ASKED |" in md
 

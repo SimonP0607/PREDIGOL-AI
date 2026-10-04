@@ -120,6 +120,10 @@ RESULTS_REPAIR_MINUTES = int(os.environ.get("FBI_RESULTS_REPAIR_MINUTES", "30"))
 """Tracked fixtures over three hours past kick-off that still do not say they finished,
 re-read by id (20 per request). It rode along with the six-hourly results sync, so a
 match the live follower missed could stay "awaiting a result" for six hours."""
+FINAL_PREMATCH_MINUTES = int(os.environ.get("FBI_FINAL_PREMATCH_MINUTES", "60"))
+"""The provider's last pre-match prices for every tracked match played in the last six days,
+read once each (fbi.odds.final_prematch). It keeps them seven days, so the matches the capture
+missed while the worker was down are recovered as long as it comes back within the week."""
 LIVE_MATCH_SECONDS = int(os.environ.get("FBI_LIVE_MATCH_SECONDS", "60"))
 LIVE_MATCH_MAX_REQUESTS = int(os.environ.get("FBI_LIVE_MATCH_MAX_REQUESTS", "10"))
 LIVE_MATCH_RESERVE = int(os.environ.get("FBI_LIVE_MATCH_RESERVE", "3000"))
@@ -319,6 +323,22 @@ async def _results_repair() -> None:
         try:
             await repair_stale_results(conn, provider)
             await refresh_post_match(conn, provider)
+        finally:
+            await provider.aclose()
+
+
+async def _final_prematch() -> None:
+    """Each played match's last pre-match prices, once, for the closing-line benchmark."""
+    from scripts.capture_odds import _client
+
+    from fbi.odds.final_prematch import recover_final_prematch
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client(), market_filter=settings.odds.market_filter)
+        try:
+            await recover_final_prematch(conn, provider)
         finally:
             await provider.aclose()
 
@@ -665,6 +685,9 @@ async def main() -> None:
     scheduler.add_job(_results_repair, "interval", minutes=RESULTS_REPAIR_MINUTES, id="results_repair",
                       max_instances=1, coalesce=True, misfire_grace_time=RESULTS_REPAIR_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=4))
+    scheduler.add_job(_final_prematch, "interval", minutes=FINAL_PREMATCH_MINUTES, id="final_prematch",
+                      max_instances=1, coalesce=True, misfire_grace_time=FINAL_PREMATCH_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=7))
     scheduler.add_job(_catalogue_refresh, "interval", hours=CATALOGUE_REFRESH_HOURS, id="catalogue_refresh",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(catalogue_next, moment + timedelta(minutes=8)))
