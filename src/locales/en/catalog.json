@@ -259,6 +259,9 @@
       "topyellowcards": "Yellow cards",
       "topredcards": "Red cards",
       "ratingTitle": "The provider's rating (its own metric)",
+      "unrated_one": "The provider played him in {count} match of this season without rating him (rating 0) and averages it as 0",
+      "unrated_other": "The provider played him in {count} matches of this season without rating him (rating 0) and averages them as 0",
+      "unratedNote": "* The provider's season rating counts the matches it did not rate as 0; on PrediGol's pages a 0 is not a rating.",
       "figure": {
         "topscorers": "Goals",
         "topassists": "Ast.",

@@ -259,6 +259,9 @@
       "topyellowcards": "Amarillas",
       "topredcards": "Rojas",
       "ratingTitle": "Valoración del proveedor (métrica propia)",
+      "unrated_one": "El proveedor jugó {count} partido de esta temporada sin valorarlo (valoración 0) y lo promedia como 0",
+      "unrated_other": "El proveedor jugó {count} partidos de esta temporada sin valorarlo (valoración 0) y los promedia como 0",
+      "unratedNote": "* La valoración de temporada del proveedor cuenta como 0 los partidos que no valoró; en las páginas de PrediGol un 0 no es una valoración.",
       "figure": {
         "topscorers": "Goles",
         "topassists": "Asist.",

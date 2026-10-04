@@ -9,6 +9,11 @@ export function leaderFigure(kind: LeaderListName, r: Leader): number | null {
   return r.red_cards;
 }
 
+/** Whether the provider's season rating of a leader counts matches it did not rate (sent as 0) as 0. */
+export function ratingCountsUnrated(r: Leader): boolean {
+  return r.unrated_matches > 0;
+}
+
 /** A round's first and last date (the provider lists every day a match of the round is played). */
 export function roundSpan(r: SeasonRound): [string, string] | null {
   if (!r.dates.length) return null;

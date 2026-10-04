@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Leader, SeasonRound } from "@/lib/api/v1/types_center";
-import { leaderFigure, provenanceParts, roundSpan } from "./reference";
+import { leaderFigure, provenanceParts, ratingCountsUnrated, roundSpan } from "./reference";
 
 const leader: Leader = {
   rank: 1,
@@ -21,6 +21,7 @@ const leader: Leader = {
   yellowred_cards: 0,
   red_cards: 0,
   rating: "7.55",
+  unrated_matches: 0,
 };
 
 describe("reference helpers", () => {
@@ -29,6 +30,11 @@ describe("reference helpers", () => {
     expect(leaderFigure("topassists", leader)).toBe(4);
     expect(leaderFigure("topyellowcards", leader)).toBe(4);
     expect(leaderFigure("topredcards", leader)).toBe(0);
+  });
+
+  test("a season rating that counts unrated matches as 0 is marked (Reinaldo 2026: 3.98)", () => {
+    expect(ratingCountsUnrated(leader)).toBe(false);
+    expect(ratingCountsUnrated({ ...leader, rating: "3.98", unrated_matches: 2 })).toBe(true);
   });
 
   test("a round spans its first and last listed date, in any order", () => {

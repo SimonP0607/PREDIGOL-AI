@@ -420,8 +420,10 @@ export interface Leader {
   yellow_cards: number | null;
   yellowred_cards: number | null;
   red_cards: number | null;
-  /** The provider's rating (its own metric), as sent. */
+  /** The provider's rating (its own metric), as sent; null for its 0 (not rated). */
   rating: Dec | null;
+  /** Matches of this season the provider played him in but rated 0 (not rated): its season rating counts each as 0. */
+  unrated_matches: number;
 }
 
 export interface LeaderList {

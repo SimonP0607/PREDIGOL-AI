@@ -22,7 +22,7 @@ import type {
   Provenance,
   SeasonRound,
 } from "@/lib/api/v1/types_center";
-import { leaderFigure, roundSpan } from "@/product/shared/reference";
+import { leaderFigure, ratingCountsUnrated, roundSpan } from "@/product/shared/reference";
 import { dec, shortHash, utcDate, utcDateTime } from "./format";
 
 /** "API-Football /transfers · payload 1a2b3c4d5e6f · fetched 4 Oct 2026 18:30 UTC · asked 4 Oct ..." */
@@ -204,12 +204,33 @@ export function LeadersPanel({ data }: { data: CompetitionReference }) {
                           </Numeric>
                         </TD>
                         <TD align="right">
-                          <Numeric className="text-xs">{dec(r.rating, 2) ?? "—"}</Numeric>
+                          <span
+                            title={
+                              ratingCountsUnrated(r)
+                                ? t("catalog.reference.leaders.unrated", {
+                                    count: r.unrated_matches,
+                                  })
+                                : undefined
+                            }
+                          >
+                            <Numeric className="text-xs">
+                              {dec(r.rating, 2) ?? "—"}
+                              {ratingCountsUnrated(r) ? "*" : ""}
+                            </Numeric>
+                          </span>
                         </TD>
                       </TRow>
                     ))}
                   </tbody>
                 </TableShell>
+                {list.rows.some(ratingCountsUnrated) ? (
+                  <p
+                    className="px-4 text-[11px] text-muted-foreground"
+                    data-testid="leaders-unrated"
+                  >
+                    {t("catalog.reference.leaders.unratedNote")}
+                  </p>
+                ) : null}
                 <ProvenanceNote p={list.provenance} className="px-4 pb-3" />
               </>
             ) : null}
