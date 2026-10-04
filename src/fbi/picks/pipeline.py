@@ -16,7 +16,10 @@ import psycopg
 import structlog
 
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.parlays.persist import ParlayReport, build_parlays
+from fbi.picks.daily import DailyReport, build_daily_sets
 from fbi.picks.engine import PickReport, SettlementReport, evaluate_captures, settle_open_picks
+from fbi.picks.product_settlement import ProductSettlementReport, settle_products
 from fbi.predictions.forecast import ForecastReport, forecast_upcoming
 
 log = structlog.get_logger(__name__)
@@ -28,6 +31,9 @@ class PipelineReport:
     forecast: ForecastReport | None = None
     picks: PickReport | None = None
     settlement: SettlementReport | None = None
+    daily: DailyReport | None = None
+    parlays: ParlayReport | None = None
+    product: ProductSettlementReport | None = None
 
 
 def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, apply: bool = True) -> PipelineReport:
@@ -49,6 +55,11 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
             temp_run = run_id
         report.picks = evaluate_captures(conn, run_id=temp_run, code_version=code_version)
         report.settlement = settle_open_picks(conn, run_id=temp_run)
+        # What the product shows, as records: the day's picks and parlays, frozen when chosen,
+        # and everything already shown (PrediGol's and the users' own) settled.
+        report.daily = build_daily_sets(conn, at=at)
+        report.parlays = build_parlays(conn, at=at)
+        report.product = settle_products(conn, at=at)
         if apply:
             conn.commit()
         else:
@@ -64,10 +75,15 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
         raise
     if run_id is not None:
         f, p, s = report.forecast, report.picks, report.settlement
+        d, pl, ps = report.daily, report.parlays, report.product
+        assert d is not None and pl is not None and ps is not None
         ledger.close(run_id, counters, notes=(
             f"forecasts {f.written} written/{f.unchanged} unchanged for {f.targets} fixtures; "
             f"candidates {p.candidates} (selected {p.selected}, qualified {p.qualified}); "
-            f"settled {s.settled}, pending {s.still_pending} ({s.needs_review} need review); 0 requests"))
+            f"settled {s.settled}, pending {s.still_pending} ({s.needs_review} need review); "
+            f"daily items +{d.items_added} {d.by_source}; parlays built {pl.built}; product settled "
+            f"items {ps.items}, parlays {ps.parlays}, user picks {ps.user_picks}, user parlays {ps.user_parlays}; "
+            "0 requests"))
     log.info("pipeline.done", run_id=run_id, forecasts=report.forecast.written, candidates=report.picks.candidates,
              selected=report.picks.selected, settled=report.settlement.settled, apply=apply)
     return report
