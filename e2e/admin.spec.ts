@@ -51,7 +51,7 @@ test("every Admin Console page opens from the sidebar, translated", async ({ pag
   }
 });
 
-test("Data truth: the audit matrix, freshness, tables, model gate, odds coverage, findings, repairs and audits", async ({
+test("Data truth: the audit matrix, freshness, tables, model gate, validation, odds coverage, findings, repairs and audits", async ({
   page,
 }, info) => {
   test.setTimeout(180_000);
@@ -66,6 +66,7 @@ test("Data truth: the audit matrix, freshness, tables, model gate, odds coverage
     "freshness",
     "standings",
     "gate",
+    "validation",
     "odds",
     "findings",
     "repairs",

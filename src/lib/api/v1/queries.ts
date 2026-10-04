@@ -1,7 +1,7 @@
 /** TanStack Query option factories for the live API. */
 import { v1, type MatchQuery } from "./client";
 import type { ParlayKind, PicksQuery } from "./types_product";
-import type { FindingsQuery } from "./types_truth";
+import type { FindingsQuery, ScoresQuery } from "./types_truth";
 
 const MINUTE = 60_000;
 type Preview = "shadow" | undefined;
@@ -163,6 +163,21 @@ export const live = {
     refetchInterval: 5 * MINUTE,
   },
   repairs: { queryKey: ["v1", "data", "repairs"], queryFn: v1.repairs },
+  validation: {
+    queryKey: ["v1", "data", "validation"],
+    queryFn: v1.validation,
+    staleTime: MINUTE,
+  },
+  competitionScores: (q: ScoresQuery) => ({
+    queryKey: ["v1", "data", "validation", "competitions", q],
+    queryFn: () => v1.competitionScores(q),
+    staleTime: MINUTE,
+  }),
+  quarantine: {
+    queryKey: ["v1", "data", "validation", "quarantine"],
+    queryFn: v1.quarantine,
+    staleTime: MINUTE,
+  },
   oddsCoverage: (days: number) => ({
     queryKey: ["v1", "data", "odds-coverage", days],
     queryFn: () => v1.oddsCoverage(days),

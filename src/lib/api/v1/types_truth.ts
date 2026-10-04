@@ -288,3 +288,59 @@ export interface OddsCoverageReport {
   local_source: Record<string, string>;
   sources: OddsSourceProfile[];
 }
+
+// ── historical validation (GATE C) ────────────────────────────────────────────
+
+export type DataClass = "MODEL_READY" | "PARTIAL" | "PRODUCT_ONLY" | "INSUFFICIENT";
+export type ValidationState = "INGESTED" | "VALIDATED" | "HISTORICAL_APPROVED" | "QUARANTINED";
+
+export interface ValidationSummary {
+  rule_version: string | null;
+  computed_at: string | null;
+  fixtures: number;
+  states: Partial<Record<ValidationState, number>>;
+  failed: Record<string, number>;
+  classes: Partial<Record<DataClass, number>>;
+  approved_by_segment: Record<string, number>;
+}
+
+export interface CompetitionScoreRow {
+  competition_season_id: number;
+  competition_id: number;
+  competition: string;
+  country: string | null;
+  season: number;
+  is_current: boolean;
+  is_tracked: boolean;
+  segment: string;
+  data_class: DataClass;
+  score: number;
+  finished: number;
+  approved: number;
+  quarantined: number;
+  components: Record<string, number>;
+  reasons: string[];
+  computed_at: string;
+}
+
+export interface QuarantinedFixture {
+  fixture_id: number;
+  provider_fixture_id: number;
+  competition: string;
+  season: number;
+  kickoff_at: string;
+  home: string;
+  away: string;
+  status_short: string;
+  failed: string[];
+}
+
+export interface ScoresQuery {
+  class?: DataClass;
+  country?: string;
+  q?: string;
+  current?: boolean;
+  tracked?: boolean;
+  limit?: number;
+  offset?: number;
+}

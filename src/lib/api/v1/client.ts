@@ -44,15 +44,19 @@ import type {
 } from "./types_center";
 import type { AdminUser, AdminUserCreate, AuditEvent, Me, PreferencesIn } from "./types_auth";
 import type {
+  CompetitionScoreRow,
   DataRepair,
   FindingsQuery,
   FreshnessReport,
   GateReport,
   OddsCoverageReport,
+  QuarantinedFixture,
+  ScoresQuery,
   StandingsAuditRow,
   TruthFinding,
   TruthRun,
   TruthSummary,
+  ValidationSummary,
 } from "./types_truth";
 import type {
   BestOddsBoard,
@@ -270,6 +274,11 @@ export const v1 = {
   gate: (hours = 72) => getJson<Envelope<GateReport>>("/admin/data/gate", { horizon_hours: hours }),
   standingsAudit: () => getJson<Envelope<StandingsAuditRow[]>>("/admin/data/standings"),
   repairs: () => getJson<Envelope<DataRepair[]>>("/admin/data/repairs", { limit: 200 }),
+  validation: () => getJson<Envelope<ValidationSummary>>("/admin/data/validation"),
+  competitionScores: (q: ScoresQuery = {}) =>
+    getJson<Envelope<CompetitionScoreRow[]>>("/admin/data/validation/competitions", q as Params),
+  quarantine: () =>
+    getJson<Envelope<QuarantinedFixture[]>>("/admin/data/validation/quarantine", { limit: 200 }),
   oddsCoverage: (days = 14) =>
     getJson<Envelope<OddsCoverageReport>>("/admin/data/odds-coverage", { days }),
 };

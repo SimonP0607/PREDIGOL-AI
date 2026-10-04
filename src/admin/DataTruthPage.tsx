@@ -36,12 +36,14 @@ import { localInt, localPct } from "@/lib/i18n/format";
 import { formatDateTime, formatRelative } from "@/lib/time";
 import { EmptyState, ErrorState } from "@/product/shared/States";
 import { OddsCoverageTab } from "./OddsCoverageTab";
+import { ValidationTab } from "./ValidationTab";
 
 const TABS = [
   "matrix",
   "freshness",
   "standings",
   "gate",
+  "validation",
   "odds",
   "findings",
   "repairs",
@@ -223,6 +225,7 @@ export function DataTruthPage() {
       {tab === "gate" ? (
         <GateTab report={gate.data?.data ?? null} loading={gate.isPending} error={gate.error} />
       ) : null}
+      {tab === "validation" ? <ValidationTab /> : null}
       {tab === "odds" ? <OddsCoverageTab /> : null}
       {tab === "findings" ? <FindingsTab summary={summary} /> : null}
       {tab === "repairs" ? <RepairsTab /> : null}

@@ -10,7 +10,8 @@
     "findings": "Findings",
     "repairs": "Repairs",
     "runs": "Audits",
-    "odds": "Odds coverage"
+    "odds": "Odds coverage",
+    "validation": "Validation"
   },
   "cards": {
     "lastAudit": "Last audit",
@@ -385,6 +386,90 @@
         "cost": "-",
         "decision": "Never scraped: operator terms forbid bots and Ley 1273 de 2009 art. 269A penalises unauthorised access"
       }
+    }
+  },
+  "validation": {
+    "title": "Historical validation",
+    "subtitle": "Rule {version}, run {ago}: every finished match has one state, every competition-season a data score and a class. Recomputed after each Elo refresh.",
+    "never": "Historical validation has not run yet.",
+    "cards": {
+      "approved": "Approved for modelling",
+      "approvedHint": "{share} of {total} finished matches",
+      "validated": "Validated, not approved",
+      "validatedHint": "their competition-season is not fit for modelling",
+      "quarantined": "Quarantined",
+      "quarantinedHint": "excluded from every model and backtest",
+      "ingested": "Awaiting a result",
+      "ingestedHint": "stored, no usable result yet"
+    },
+    "classes": "Competition-seasons by class",
+    "classHints": {
+      "MODEL_READY": "train on it and judge against the market",
+      "PARTIAL": "train on it; too few prices to judge against the market",
+      "PRODUCT_ONLY": "show it, do not learn from it",
+      "INSUFFICIENT": "too few matches or results"
+    },
+    "classNames": {
+      "MODEL_READY": "Model ready",
+      "PARTIAL": "Partial",
+      "PRODUCT_ONLY": "Product only",
+      "INSUFFICIENT": "Insufficient"
+    },
+    "rules": "Rules failed",
+    "ruleNames": {
+      "provider_duplicate": "Provider duplicate (same pairing within 36 h)",
+      "halftime_exceeds_score": "More goals at half-time than at 90 minutes",
+      "no_regulation_score": "Extra-time result without its 90-minute score",
+      "finished_in_future": "Finished, kick-off still to come",
+      "no_result": "No result yet",
+      "not_rated": "No Elo rating",
+      "competition_not_fit": "Competition-season not fit for modelling"
+    },
+    "segments": "Approved matches by segment",
+    "segmentNames": {
+      "top_league": "Top leagues",
+      "other_league": "Other leagues",
+      "domestic_cup": "Domestic cups",
+      "continental_club": "Continental club",
+      "club_friendly": "Club friendlies",
+      "national_team": "National teams",
+      "women": "Women",
+      "youth": "Youth"
+    },
+    "competitions": "Competition data score",
+    "competitionsSubtitle": "Shares of finished matches with a result, passing integrity, with team statistics, line-ups, a market price and an Elo rating.",
+    "filters": {
+      "class": "Class",
+      "all": "All",
+      "search": "Competition",
+      "current": "Current seasons only",
+      "tracked": "Tracked competitions only"
+    },
+    "col": {
+      "competition": "Competition",
+      "class": "Class",
+      "score": "Score",
+      "finished": "Finished",
+      "approved": "Approved",
+      "quarantined": "Quarantined",
+      "results": "Results",
+      "stats": "Stats",
+      "odds": "Prices",
+      "elo": "Elo",
+      "why": "Thresholds missed",
+      "kickoff": "Kick-off",
+      "match": "Match",
+      "rules": "Rules"
+    },
+    "none": "—",
+    "quarantine": "Quarantined matches",
+    "quarantineSubtitle": "Newest first. Nothing is deleted: the rows stay, excluded from training and backtests.",
+    "why": {
+      "fewMatches": "{n} finished (needs {need})",
+      "results": "results {v} (needs {need})",
+      "integrity": "integrity {v} (needs {need})",
+      "prices": "prices {v} (needs {need} to judge against the market)",
+      "elo": "Elo {v} (needs {need})"
     }
   }
 }

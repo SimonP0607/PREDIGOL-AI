@@ -10,7 +10,8 @@
     "findings": "Hallazgos",
     "repairs": "Reparaciones",
     "runs": "Auditorías",
-    "odds": "Cobertura de cuotas"
+    "odds": "Cobertura de cuotas",
+    "validation": "Validación"
   },
   "cards": {
     "lastAudit": "Última auditoría",
@@ -385,6 +386,90 @@
         "cost": "-",
         "decision": "Nunca se hace scraping: los términos de los operadores prohíben bots y la Ley 1273 de 2009, art. 269A, castiga el acceso no autorizado"
       }
+    }
+  },
+  "validation": {
+    "title": "Validación histórica",
+    "subtitle": "Regla {version}, ejecutada {ago}: cada partido terminado tiene un estado y cada competición-temporada una puntuación y una clase. Se recalcula tras cada actualización de Elo.",
+    "never": "La validación histórica aún no se ha ejecutado.",
+    "cards": {
+      "approved": "Aprobados para modelar",
+      "approvedHint": "{share} de {total} partidos terminados",
+      "validated": "Validados, no aprobados",
+      "validatedHint": "su competición-temporada no sirve para modelar",
+      "quarantined": "En cuarentena",
+      "quarantinedHint": "excluidos de todo modelo y backtest",
+      "ingested": "A la espera de resultado",
+      "ingestedHint": "guardados, sin resultado utilizable aún"
+    },
+    "classes": "Competiciones-temporada por clase",
+    "classHints": {
+      "MODEL_READY": "entrenar con ella y compararla con el mercado",
+      "PARTIAL": "entrenar con ella; pocos precios para compararla con el mercado",
+      "PRODUCT_ONLY": "mostrarla, no aprender de ella",
+      "INSUFFICIENT": "muy pocos partidos o resultados"
+    },
+    "classNames": {
+      "MODEL_READY": "Lista para modelos",
+      "PARTIAL": "Parcial",
+      "PRODUCT_ONLY": "Solo producto",
+      "INSUFFICIENT": "Insuficiente"
+    },
+    "rules": "Reglas incumplidas",
+    "ruleNames": {
+      "provider_duplicate": "Duplicado del proveedor (mismo cruce en 36 h)",
+      "halftime_exceeds_score": "Más goles al descanso que a los 90 minutos",
+      "no_regulation_score": "Resultado con prórroga sin su marcador a los 90 minutos",
+      "finished_in_future": "Terminado con el inicio aún por llegar",
+      "no_result": "Sin resultado aún",
+      "not_rated": "Sin rating Elo",
+      "competition_not_fit": "Competición-temporada no apta para modelar"
+    },
+    "segments": "Partidos aprobados por segmento",
+    "segmentNames": {
+      "top_league": "Ligas top",
+      "other_league": "Otras ligas",
+      "domestic_cup": "Copas nacionales",
+      "continental_club": "Clubes continentales",
+      "club_friendly": "Amistosos de clubes",
+      "national_team": "Selecciones",
+      "women": "Femenino",
+      "youth": "Juveniles"
+    },
+    "competitions": "Puntuación de datos por competición",
+    "competitionsSubtitle": "Porción de partidos terminados con resultado, íntegros, con estadísticas de equipo, alineaciones, precio de mercado y rating Elo.",
+    "filters": {
+      "class": "Clase",
+      "all": "Todas",
+      "search": "Competición",
+      "current": "Solo temporadas actuales",
+      "tracked": "Solo competiciones seguidas"
+    },
+    "col": {
+      "competition": "Competición",
+      "class": "Clase",
+      "score": "Puntuación",
+      "finished": "Terminados",
+      "approved": "Aprobados",
+      "quarantined": "En cuarentena",
+      "results": "Resultados",
+      "stats": "Estadísticas",
+      "odds": "Precios",
+      "elo": "Elo",
+      "why": "Umbrales no alcanzados",
+      "kickoff": "Inicio",
+      "match": "Partido",
+      "rules": "Reglas"
+    },
+    "none": "—",
+    "quarantine": "Partidos en cuarentena",
+    "quarantineSubtitle": "Más recientes primero. No se borra nada: las filas siguen ahí, excluidas del entrenamiento y los backtests.",
+    "why": {
+      "fewMatches": "{n} terminados (necesita {need})",
+      "results": "resultados {v} (necesita {need})",
+      "integrity": "integridad {v} (necesita {need})",
+      "prices": "precios {v} (necesita {need} para compararla con el mercado)",
+      "elo": "Elo {v} (necesita {need})"
     }
   }
 }
