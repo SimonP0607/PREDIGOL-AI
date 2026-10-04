@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import psycopg
-
 from scripts.audit_api_contract import probes
+
 from tests.integration.conftest import Seed
 
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from scripts.audit_field_coverage import Field, classify
 
 from fbi.truth.v2 import fields as fl
@@ -36,7 +38,36 @@ def test_a_stored_column_far_emptier_than_its_payloads_is_a_dropped_field() -> N
 
 def test_registry_covers_every_normalized_endpoint() -> None:
     for endpoint in ("/fixtures", "/standings", "/injuries", "/leagues", "/teams", "/players/profiles",
-                     "/players/squads", "/odds", "/odds/live"):
+                     "/players/squads", "/odds", "/odds/live", "/predictions", "/fixtures/rounds", "/players/topscorers",
+                     "/players/topassists", "/players/topyellowcards", "/players/topredcards", "/coachs", "/transfers",
+                     "/sidelined", "/trophies", "/countries", "/odds/mapping", "/odds/bets", "/odds/live/bets",
+                     "/odds/bookmakers", "/players", "/teams/statistics"):
         assert fl.REGISTRY[endpoint], endpoint
-    assert set(fl.RAW_ONLY) == {"/teams/statistics", "/players", "/coachs", "/venues", "/players/teams",
-                                "/odds/bookmakers"}
+    assert set(fl.RAW_ONLY) == {"/venues", "/players/teams", "/timezone", "/leagues/seasons", "/players/seasons",
+                                "/teams/countries", "/teams/seasons"}
+
+
+def test_every_field_of_the_contract_probe_answers_has_a_decision() -> None:
+    """Shapes as the provider sent them on 4 Oct 2026 (contract probe), trimmed: no path is left unmapped."""
+    bodies: dict[str, dict[str, Any]] = {
+        "/predictions": {"response": [{"predictions": {"winner": {"id": 1, "name": "A", "comment": "Win or draw"},
+                                                       "win_or_draw": True, "under_over": None,
+                                                       "goals": {"home": "-2.5", "away": "-2.5"}, "advice": "x",
+                                                       "percent": {"home": "45%", "draw": "45%", "away": "10%"}},
+                                       "league": {"id": 239}, "teams": {"home": {"id": 1, "last_5": {"form": "47%"},
+                                                                                "league": {"form": "WW"}}},
+                                       "comparison": {"form": {"home": "70%"}}, "h2h": [{"fixture": {"id": 9}}]}]},
+        "/sidelined": {"response": [{"id": 5179, "sidelined": [{"type": "Injury", "start": "2021-07-25",
+                                                                "end": "2021-07-31"}]}]},
+        "/trophies": {"response": [{"id": 3470, "trophies": [{"league": "Primera B", "country": "Colombia",
+                                                              "season": "2022", "place": "Winner"}]}]},
+        "/fixtures/rounds": {"response": [{"round": "Apertura - 1", "dates": ["2026-01-16"]}]},
+        "/teams/statistics": {"response": {"league": {"id": 45}, "team": {"id": 50}, "form": "WW",
+                                           "fixtures": {"played": {"home": 4, "away": 2, "total": 6}},
+                                           "goals": {"for": {"minute": {"0-15": {"total": 1}}}},
+                                           "penalty": {"scored": {"total": 1, "percentage": "100%"}},
+                                           "lineups": [{"formation": "4-2-3-1", "played": 3}]}},
+    }
+    for endpoint, body in bodies.items():
+        rows = fl.inventory(endpoint, [body], used_columns=set())
+        assert [r.path for r in rows if r.klass == "UNSUPPORTED_FIELD"] == [], endpoint

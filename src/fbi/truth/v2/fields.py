@@ -259,13 +259,147 @@ REGISTRY.update({
         "odds[].values[].suspended": "market.live_odds_snapshots.is_suspended",
     },
 })
+_PRED = "core.provider_predictions."
+_LEAD = "core.season_leaders."
+_LEADERS = {
+    "player.id": _LEAD + "provider_player_id", "player.name": _LEAD + "player_name", "player.photo": _LEAD + "photo_url",
+    "statistics[].team.id": _LEAD + "provider_team_id", "statistics[].team.name": _LEAD + "team_name",
+    "statistics[].games.appearences": _LEAD + "appearances", "statistics[].games.minutes": _LEAD + "minutes",
+    "statistics[].games.rating": _LEAD + "rating", "statistics[].goals.total": _LEAD + "goals",
+    "statistics[].goals.assists": _LEAD + "assists", "statistics[].penalty.scored": _LEAD + "penalties_scored",
+    "statistics[].cards.yellow": _LEAD + "yellow_cards", "statistics[].cards.yellowred": _LEAD + "yellowred_cards",
+    "statistics[].cards.red": _LEAD + "red_cards",
+}
+REGISTRY.update({
+    "/predictions": {
+        "predictions.winner.id": _PRED + "winner_team_id", "predictions.winner.name": _PRED + "winner_name",
+        "predictions.winner.comment": _PRED + "winner_comment", "predictions.win_or_draw": _PRED + "win_or_draw",
+        "predictions.under_over": _PRED + "under_over", "predictions.goals.home": _PRED + "goals_home",
+        "predictions.goals.away": _PRED + "goals_away", "predictions.advice": _PRED + "advice",
+        "predictions.percent.home": _PRED + "percent_home", "predictions.percent.draw": _PRED + "percent_draw",
+        "predictions.percent.away": _PRED + "percent_away",
+    },
+    "/fixtures/rounds": {"round": "core.season_rounds.round", "dates[]": "core.season_rounds.dates",
+                         "": "core.season_rounds.round (current=true: core.season_current_round.rounds)"},
+    **{f"/players/top{k}": _LEADERS for k in ("scorers", "assists", "yellowcards", "redcards")},
+    "/coachs": {
+        "id": "core.coach_profiles.provider_coach_id", "name": "core.coach_profiles.name",
+        "firstname": "core.coach_profiles.firstname", "lastname": "core.coach_profiles.lastname",
+        "age": "ignore:derivable from birth.date at any date", "birth.date": "core.coach_profiles.birth_date",
+        "birth.place": "core.coach_profiles.birth_place", "birth.country": "core.coach_profiles.birth_country",
+        "nationality": "core.coach_profiles.nationality", "height": "core.coach_profiles.height",
+        "weight": "core.coach_profiles.weight", "photo": "core.coach_profiles.photo_url",
+        "team.id": "core.coach_profiles.provider_team_id", "team.name": "ignore:catalogue (/teams)",
+        "team.logo": "ignore:presentation", "career[].team.id": "core.coach_careers.provider_team_id",
+        "career[].team.name": "core.coach_careers.team_name", "career[].team.logo": "ignore:presentation",
+        "career[].start": "core.coach_careers.start_date", "career[].end": "core.coach_careers.end_date",
+    },
+    "/transfers": {
+        "player.id": "core.player_transfers.provider_player_id", "player.name": "ignore:catalogue (/players/profiles)",
+        "update": "core.player_transfers.provider_update_at", "transfers[].date": "core.player_transfers.transfer_date",
+        "transfers[].type": "core.player_transfers.type", "transfers[].teams.in.id": "core.player_transfers.team_in_id",
+        "transfers[].teams.in.name": "core.player_transfers.team_in_name",
+        "transfers[].teams.out.id": "core.player_transfers.team_out_id",
+        "transfers[].teams.out.name": "core.player_transfers.team_out_name",
+        "transfers[].teams.in.logo": "ignore:presentation", "transfers[].teams.out.logo": "ignore:presentation",
+    },
+    "/sidelined": {
+        "type": "core.person_sidelined.type", "start": "core.person_sidelined.start_date",
+        "end": "core.person_sidelined.end_date", "id": "core.person_sidelined.provider_person_id",
+        "sidelined[].type": "core.person_sidelined.type", "sidelined[].start": "core.person_sidelined.start_date",
+        "sidelined[].end": "core.person_sidelined.end_date",
+    },
+    "/trophies": {
+        "league": "core.person_trophies.league", "country": "core.person_trophies.country",
+        "season": "core.person_trophies.season", "place": "core.person_trophies.place",
+        "id": "core.person_trophies.provider_person_id", "trophies[].league": "core.person_trophies.league",
+        "trophies[].country": "core.person_trophies.country", "trophies[].season": "core.person_trophies.season",
+        "trophies[].place": "core.person_trophies.place",
+    },
+    "/countries": {"name": "core.countries.name", "code": "core.countries.code", "flag": "core.countries.flag_url"},
+    "/odds/mapping": {
+        "fixture.id": "market.odds_mapping_seen.provider_fixture_id",
+        "league.id": "market.odds_mapping_seen.provider_league_id", "league.season": "market.odds_mapping_seen.season",
+        "fixture.date": "market.odds_mapping_seen.fixture_date", "fixture.timestamp": "ignore:same instant as fixture.date",
+        "update": "market.odds_mapping_seen.provider_update_at",
+    },
+    "/odds/bets": {"id": "market.provider_markets.provider_bet_id", "name": "market.provider_markets.name"},
+    "/odds/live/bets": {"id": "market.provider_markets.provider_bet_id", "name": "market.provider_markets.name"},
+    "/odds/bookmakers": {"id": "market.bookmakers.provider_bookmaker_id", "name": "market.bookmakers.name"},
+})
+_PSS = "core.player_season_stats."
+_PLAYER_STATS = {
+    "games.appearences": "appearances", "games.lineups": "lineups", "games.minutes": "minutes",
+    "games.number": "shirt_number", "games.position": "position", "games.rating": "rating", "games.captain": "captain",
+    "substitutes.in": "subs_in", "substitutes.out": "subs_out", "substitutes.bench": "subs_bench",
+    "shots.total": "shots_total", "shots.on": "shots_on", "goals.total": "goals", "goals.conceded": "goals_conceded",
+    "goals.assists": "assists", "goals.saves": "saves", "passes.total": "passes_total", "passes.key": "passes_key",
+    "passes.accuracy": "passes_accuracy", "tackles.total": "tackles", "tackles.blocks": "blocks",
+    "tackles.interceptions": "interceptions", "duels.total": "duels_total", "duels.won": "duels_won",
+    "dribbles.attempts": "dribbles_attempts", "dribbles.success": "dribbles_success", "dribbles.past": "dribbled_past",
+    "fouls.drawn": "fouls_drawn", "fouls.committed": "fouls_committed", "cards.yellow": "yellow_cards",
+    "cards.yellowred": "yellowred_cards", "cards.red": "red_cards", "penalty.won": "penalties_won",
+    "penalty.commited": "penalties_committed", "penalty.scored": "penalties_scored",
+    "penalty.missed": "penalties_missed", "penalty.saved": "penalties_saved",
+}
+_TSS = "core.team_season_stats."
+REGISTRY.update({
+    "/players": {
+        "player.id": _PSS + "provider_player_id",
+        "statistics[].team.id": _PSS + "provider_team_id", "statistics[].league.id": _PSS + "provider_league_id",
+        "statistics[].league.season": _PSS + "season",
+        **{f"statistics[].{k}": _PSS + v for k, v in _PLAYER_STATS.items()},
+    },
+    "/teams/statistics": {
+        "team.id": _TSS + "team_id", "form": _TSS + "form",
+        **{f"fixtures.{k}.{side}": f"{_TSS}{c}_{side}" for k, c in
+           (("played", "played"), ("wins", "wins"), ("draws", "draws"), ("loses", "loses")) for side in ("home", "away")},
+        **{f"goals.{d}.average.{side}": f"{_TSS}goals_{d}_{side}" for d in ("for", "against") for side in ("home", "away")},
+        **{f"goals.{d}.total.{side}": f"{_TSS}goals_{d}_total_{side}" for d in ("for", "against")
+           for side in ("home", "away")},
+        **{f"clean_sheet.{side}": f"{_TSS}clean_sheets_{side}" for side in ("home", "away")},
+        **{f"failed_to_score.{side}": f"{_TSS}failed_to_score_{side}" for side in ("home", "away")},
+        "penalty.scored.total": _TSS + "penalties_scored", "penalty.missed.total": _TSS + "penalties_missed",
+    },
+})
+PREFIX: dict[str, tuple[tuple[str, Rule], ...]] = {
+    "/players": (
+        ("player.", "ignore:the profile is held by /players/profiles (core.players)"),
+        ("statistics[].team.", "ignore:catalogue (/teams)"), ("statistics[].league.", "ignore:catalogue (/leagues)"),
+    ),
+    "/teams/statistics": (
+        ("league.", "ignore:held by the competition season"), ("team.", "ignore:catalogue (/teams)"),
+        ("fixtures.", "ignore:the total is home + away"), ("goals.for.total.total", "ignore:home + away"),
+        ("goals.against.total.total", "ignore:home + away"), ("goals.for.average.total", "ignore:derivable"),
+        ("goals.against.average.total", "ignore:derivable"), ("clean_sheet.total", "ignore:home + away"),
+        ("failed_to_score.total", "ignore:home + away"), ("penalty.", "ignore:derivable (scored + missed)"),
+        ("goals.", _TSS + "raw"), ("biggest.", _TSS + "raw"), ("lineups[].", _TSS + "raw"), ("cards.", _TSS + "raw"),
+    ),
+    "/predictions": (
+        ("comparison.", _PRED + "comparison"),
+        ("league.", "ignore:held by the fixture"),
+        ("teams.home.last_5.", "ignore:the provider's form figures at prediction time - its team statistics "
+                               "(/teams/statistics, RAW) and our fixtures hold the same"),
+        ("teams.away.last_5.", "ignore:the provider's form figures at prediction time - its team statistics "
+                               "(/teams/statistics, RAW) and our fixtures hold the same"),
+        ("teams.home.league.", "ignore:the provider's season statistics at prediction time (/teams/statistics)"),
+        ("teams.away.league.", "ignore:the provider's season statistics at prediction time (/teams/statistics)"),
+        ("teams.", "ignore:held by the fixture"),
+        ("h2h[].", "ignore:past meetings - held by our fixtures (/fixtures), read with a date cut-off"),
+    ),
+    **{f"/players/top{k}": (("player.", "ignore:catalogue (/players/profiles)"),
+                            ("statistics[].", "core.season_leaders.statistics")) for k in
+       ("scorers", "assists", "yellowcards", "redcards")},
+}
+"""Rules for every path under a prefix, after the exact ones."""
 RAW_ONLY: dict[str, str] = {
-    "/teams/statistics": "raw:audit only - PrediGol computes team records from its fixtures and checks them against it",
-    "/players": "raw:season pages kept by the players_season units; nothing normalizes them",
-    "/coachs": "raw:audit only - coach identity comes from line-ups (core.coaches)",
     "/venues": "raw:audit only - venues are kept from /teams and /fixtures",
     "/players/teams": "raw:audit only",
-    "/odds/bookmakers": "raw:catalogue read once (market.bookmakers holds id and name)",
+    "/timezone": "ignore:kept as RAW only - requests are made in UTC (reference_refresh, every 90 days)",
+    "/leagues/seasons": "ignore:kept as RAW only - every season is listed per league by /leagues (weekly)",
+    "/players/seasons": "ignore:kept as RAW only - the seasons the provider has player statistics for (weekly)",
+    "/teams/countries": "ignore:kept as RAW only - /countries holds names, codes and flags (weekly)",
+    "/teams/seasons": "ignore:kept as RAW only - derivable from /teams?league&season and our fixtures",
 }
 """Endpoints PrediGol requests without normalizing them: every field is kept in RAW only."""
 
@@ -322,11 +456,16 @@ def inventory(endpoint: str, bodies: Sequence[Mapping[str, Any]], *, used_column
     reg = REGISTRY.get(endpoint, {})
     rows = []
     for path in sorted(seen):
-        rule = reg.get(path) or _stat_rule(endpoint, path) or RAW_ONLY.get(endpoint) or "unmapped"
+        rule = (reg.get(path) or _stat_rule(endpoint, path) or _prefix_rule(endpoint, path) or RAW_ONLY.get(endpoint)
+                or "unmapped")
         col = rule.split(" ")[0].split(".")[-1] if rule.startswith(("core.", "market.", "raw.league")) else None
         rows.append(FieldRow(endpoint, path, seen[path], present[path], rule,
                              (col in used_columns) if col else None))
     return rows
+
+
+def _prefix_rule(endpoint: str, path: str) -> str | None:
+    return next((rule for prefix, rule in PREFIX.get(endpoint, ()) if path.startswith(prefix)), None)
 
 
 def _stat_rule(endpoint: str, path: str) -> str | None:

@@ -14,9 +14,12 @@ from fbi.api.contracts.center import (
     AdminOverview,
     BackfillProgress,
     BackupFile,
+    CompetitionReference,
     CompetitionTable,
     FormMatch,
     H2HMatch,
+    Leader,
+    LeaderList,
     LineupPlayer,
     LiveBoard,
     LiveCompleteness,
@@ -33,7 +36,14 @@ from fbi.api.contracts.center import (
     PlayerLine,
     PlayerMatch,
     PlayerSeason,
+    PlayerSidelined,
     PlayerSummary,
+    PlayerTransfer,
+    PlayerTrophy,
+    Provenance,
+    ProviderPrediction,
+    ProviderPredictionView,
+    SeasonRound,
     SeasonStage,
     Side,
     StandingLine,
@@ -49,7 +59,7 @@ from fbi.api.repositories import Conn, Row, fetch_all, fetch_one, fetch_value
 from fbi.api.repositories import center as repo
 from fbi.api.services.live_quality import completeness
 from fbi.competitions.phases import VERSION as PHASES_VERSION
-from fbi.competitions.phases import TableMap, current_stage, stage_of
+from fbi.competitions.phases import TableMap, current_stage, phase_of, stage_of
 from fbi.competitions.tables import load_season, match_tables, newest_maps
 from fbi.core.clock import now
 from fbi.truth.freshness import table_reason
@@ -273,12 +283,97 @@ def player(conn: Conn, player_id: int, *, at: datetime | None = None) -> Envelop
     seasons = [PlayerSeason(**s) for s in fetch_all(conn, repo.PLAYER_SEASONS, pid)]
     matches = [PlayerMatch(**m) for m in fetch_all(conn, repo.PLAYER_MATCHES, pid)]
     absences = [PlayerAbsence(**a) for a in fetch_all(conn, repo.PLAYER_ABSENCES, pid)]
+    checks = {str(c["feed"]): c["checked_at"] for c in fetch_all(
+        conn, repo.PERSON_CHECKS, {"key": f"player:{r['provider_player_id']}"})}
+    provenance: dict[str, Provenance] = {}
+    lists: dict[str, list[Row]] = {}
+    for name, sql, source, feed in (("transfers", repo.PLAYER_TRANSFERS, "API-Football /transfers", None),
+                                    ("sidelined", repo.PLAYER_SIDELINED, "API-Football /sidelined",
+                                     "sidelined_players"),
+                                    ("trophies", repo.PLAYER_TROPHIES, "API-Football /trophies", "trophies_players")):
+        rows = fetch_all(conn, sql, pid)
+        lists[name] = rows
+        first = rows[0] if rows else {}
+        if rows or (feed and checks.get(feed)):
+            provenance[name] = Provenance(source=source, observed_at=first.get("observed_at"),
+                                          payload_hash=first.get("payload_hash"),
+                                          normalizer_version=first.get("normalizer_version"),
+                                          checked_at=checks.get(feed) if feed else None)
+    drop = ("observed_at", "payload_hash", "normalizer_version")
+    transfers = [PlayerTransfer(**_clean(x, drop)) for x in lists["transfers"]]
+    sidelined = [PlayerSidelined(**_clean(x, drop)) for x in lists["sidelined"]]
+    trophies = [PlayerTrophy(**_clean(x, drop)) for x in lists["trophies"]]
     return ok(PlayerDetail(
         player=PlayerSummary(**r), **extra,
         seasons=_sec(seasons, "No match statistics are stored for this player."),
         matches=_sec(matches, "No match statistics are stored for this player."),
         absences=_sec(absences, "No injury or suspension is recorded for this player."),
+        transfers=_sec(transfers, "No transfer is recorded for this player." if "transfers" in provenance
+                       else "The provider's transfers have not been read for this player yet."),
+        sidelined=_sec(sidelined, "The provider lists no period out for this player." if "sidelined" in provenance
+                       else "The provider's sidelined list has not been read for this player yet."),
+        trophies=_sec(trophies, "The provider lists no trophy for this player." if "trophies" in provenance
+                      else "The provider's trophies have not been read for this player yet."),
+        provenance=provenance,
     ))
+
+
+def competition_reference(conn: Conn, competition_id: int, *, season: int | None = None,
+                          at: datetime | None = None) -> Envelope[CompetitionReference | None]:
+    """The provider's top scorers, assists and cards and the round calendar of a competition season."""
+    seasons = fetch_all(conn, repo.REFERENCE_SEASONS, {"c": competition_id})
+    chosen = next((r for r in seasons if season is None or int(r["season"]) == season), None)
+    if chosen is None:
+        return unavailable(None, f"No season {season} is stored for this competition." if season
+                           else "No season is stored for this competition.", status=DataStatus.EMPTY)
+    cs = {"cs": int(chosen["id"])}
+    by_list: dict[str, list[Row]] = {}
+    for row in fetch_all(conn, repo.COMPETITION_LEADERS, cs):
+        by_list.setdefault(str(row["list"]), []).append(row)
+    lists: list[LeaderList] = []
+    for name in ("topscorers", "topassists", "topyellowcards", "topredcards"):
+        rows = by_list.get(name)
+        if not rows:
+            continue
+        first = rows[0]
+        lists.append(LeaderList(
+            kind=name,
+            rows=[Leader(**_clean(x, ("list", "observed_at", "payload_hash", "normalizer_version"))) for x in rows],
+            provenance=Provenance(source=f"API-Football /players/{name}", observed_at=first["observed_at"],
+                                  payload_hash=first["payload_hash"], normalizer_version=first["normalizer_version"])))
+    current_row = fetch_one(conn, repo.CURRENT_ROUNDS, cs)
+    current = list(current_row["rounds"]) if current_row and current_row["rounds"] else []
+    round_rows = fetch_all(conn, repo.COMPETITION_ROUNDS, cs)
+    rounds = [SeasonRound(ordinal=int(x["ordinal"]), round=str(x["round"]), stage=stage_of(str(x["round"])),
+                          phase=phase_of(str(x["round"])), dates=list(x["dates"] or []),
+                          is_current=str(x["round"]) in current) for x in round_rows]
+    provenance = None
+    if round_rows:
+        provenance = Provenance(source="API-Football /fixtures/rounds?dates=true",
+                                observed_at=round_rows[0]["observed_at"], payload_hash=round_rows[0]["payload_hash"],
+                                normalizer_version=round_rows[0]["normalizer_version"])
+    return ok(CompetitionReference(
+        competition_id=competition_id, season=int(chosen["season"]),
+        leaders=_sec(lists, "The provider's top scorers and cards have not been read for this season yet (or its "
+                            "coverage has none)."),
+        rounds=_sec(rounds, "The provider's round calendar has not been read for this season yet."),
+        rounds_provenance=provenance, current_rounds=current))
+
+
+def provider_prediction(conn: Conn, fixture_id: int) -> Envelope[ProviderPredictionView | None]:
+    """Admin only: the provider's own forecast of a match, every version kept, labelled as the provider's."""
+    fx = fetch_one(conn, "SELECT provider_fixture_id FROM core.fixtures WHERE id = %(f)s", {"f": fixture_id})
+    if fx is None:
+        return unavailable(None, f"No fixture {fixture_id} is stored.", status=DataStatus.EMPTY)
+    history = [ProviderPrediction(**x) for x in fetch_all(conn, repo.PROVIDER_PREDICTIONS, {"f": fixture_id})]
+    checks = int(fetch_value(conn, repo.PREDICTION_CHECKS, {"pf": str(fx["provider_fixture_id"])}) or 0)
+    view = ProviderPredictionView(fixture_id=fixture_id, history=history, checks=checks)
+    if not history:
+        return unavailable(view, "The provider's prediction has not been read for this match "
+                                 + ("(asked, nothing returned)." if checks else "yet (it is asked 48 h, 24 h and 3 h "
+                                                                                 "before kick-off)."),
+                           status=DataStatus.EMPTY)
+    return ok(view)
 
 
 # ── Admin ──────────────────────────────────────────────────────────────────

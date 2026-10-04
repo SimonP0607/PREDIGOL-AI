@@ -152,6 +152,36 @@ def _add(cur: psycopg.Cursor[Any], *, kind: str, season: int, endpoint: str, par
     return cur.fetchone() is not None
 
 
+PLAYER_SEASONS_SQL = """
+SELECT c.provider_league_id, cs.season FROM core.competition_seasons cs
+  JOIN core.competitions c ON c.id = cs.competition_id
+  LEFT JOIN raw.league_coverage lc ON lc.provider_league_id = c.provider_league_id AND lc.season = cs.season
+ WHERE c.is_tracked AND cs.is_current AND coalesce(lc.players, true)
+ ORDER BY c.provider_league_id
+"""
+
+
+def seed_player_seasons(conn: psycopg.Connection, *, at: datetime) -> int:
+    """The week's sweep of the provider's season player statistics (/players?league&season, 20 a page) for every
+    current tracked season its coverage says has them: page 1 of each, whose answer adds the other pages.
+    ``batch_key`` names the ISO week, so each week is one new set of units and never two."""
+    iso = at.isocalendar()
+    generation = f"w{iso.year}{iso.week:02d}"
+    added = 0
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(PLAYER_SEASONS_SQL)
+        for league, season in cur.fetchall():
+            cur.execute(
+                "INSERT INTO raw.backfill_tasks (kind, provider_league_id, season, priority, endpoint, params, page, "
+                "batch_key, tier) VALUES ('players_season', %s, %s, 70, '/players', %s, 1, %s, 1) "
+                "ON CONFLICT DO NOTHING RETURNING id",
+                (int(league), int(season), Json({"league": int(league), "season": int(season), "page": 1}),
+                 generation))
+            added += 1 if cur.fetchone() is not None else 0
+    conn.commit()
+    return added
+
+
 def seed_people_refresh(conn: psycopg.Connection, *, at: datetime) -> PeopleSeed:
     """The month's profile sweep (page 1; its answer adds the rest) and the week's squad round.
 

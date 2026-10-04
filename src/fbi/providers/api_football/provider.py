@@ -262,6 +262,11 @@ class ApiFootballProvider:
         """One page (20 players) of season player statistics. Stored raw."""
         return _raw(await self._client.get("/players", {"league": league_id, "season": season, "page": page}))
 
+    async def fetch_raw(self, endpoint: str, params: dict[str, Any]) -> RawResponse:
+        """Any documented GET, stored raw; the caller's normalizer reads ``body``. Used by the reference
+        feeds (fbi.ingestion.reference), whose endpoints carry no odds and no live state."""
+        return _raw(await self._client.get(endpoint, params))
+
 
 def _raw(response: Any) -> RawResponse:
     return RawResponse(

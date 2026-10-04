@@ -30,11 +30,13 @@ ISSUE_TYPES = frozenset({
     # 0057: competition phases, the API contract, field coverage
     "PHASE_TABLE_MIXED", "PHASE_TABLE_UNMAPPED", "BUG_DROPPED_FIELD", "STORED_NOT_USED", "API_CONTRACT_GAP",
     "MISSING_ENDPOINT",
+    # 0059: RAW integrity
+    "RAW_PAYLOAD_DAMAGED",
 })
 AREAS = frozenset({"baseline", "leagues", "fixtures", "standings", "teams", "team_stats", "team_history", "players",
                    "player_stats", "identity", "squads", "injuries", "coaches", "venues", "normalization", "golden",
                    "odds", "phases", "api_contract", "field_coverage", "predictions", "transfers", "trophies",
-                   "sidelined", "h2h", "media", "datasets"})
+                   "sidelined", "h2h", "media", "datasets", "raw_integrity", "reference"})
 SEVERITIES = ("critical", "high", "medium", "low", "info")
 FAULTS = frozenset({"provider", "predigol", "none", "undetermined"})
 

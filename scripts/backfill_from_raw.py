@@ -2,6 +2,8 @@
 
     python -m scripts.backfill_from_raw --fixture-facts            # core.fixture_facts + core.fixture_player_extras
     python -m scripts.backfill_from_raw --fixture-facts --dry-run  # count the rows the history holds, write nothing
+    python -m scripts.backfill_from_raw --season-stats             # /players and /teams/statistics payloads ->
+                                                                   # core.player_season_stats / core.team_season_stats
 
 Every stored /fixtures payload is replayed in the order it was fetched (``raw.ingestion_payloads.fetched_at``,
 then hash) through the value functions the live writers use (``facts_values`` / ``extras_values``): a
@@ -226,6 +228,58 @@ def fixture_facts(conn: psycopg.Connection[Any], *, dry_run: bool, progress_ever
     return {**replay.counts, **out}
 
 
+SEASON_PAYLOADS_SQL = """
+SELECT p.hash, p.file_path, p.fetched_at, p.endpoint, p.params FROM raw.ingestion_payloads p
+ WHERE p.endpoint IN ('/players', '/teams/statistics') AND p.http_status = 200
+ ORDER BY p.fetched_at, p.hash
+"""
+
+TEAM_SEASON_SQL = """
+SELECT cs.id, t.id FROM core.competition_seasons cs JOIN core.competitions c ON c.id = cs.competition_id,
+       core.teams t
+ WHERE c.provider_league_id = %(league)s AND cs.season = %(season)s AND t.provider_team_id = %(team)s
+"""
+
+
+def season_stats(conn: psycopg.Connection[Any], *, dry_run: bool) -> dict[str, Any]:
+    """Replay every stored /players and /teams/statistics payload, in fetch order, through the season-stats
+    writers (change-only; a payload no newer than the newest row adds nothing)."""
+    from fbi.ingestion.season_stats import apply_player_season_stats, apply_team_statistics
+
+    raw_root = Path(settings.runtime.raw_store_dir)
+    raw_root = raw_root if raw_root.is_absolute() else REPO / raw_root
+    with conn.cursor() as cur:
+        cur.execute(SEASON_PAYLOADS_SQL)
+        payloads = cur.fetchall()
+    out: dict[str, Any] = {"payloads": 0, "unreadable": 0, "player_rows": 0, "team_rows": 0,
+                           "team_unknown": 0, "unreadable_files": []}
+    for h, path, fetched_at, endpoint, params in payloads:
+        body, why = _body(raw_root, str(path))
+        if body is None:
+            out["unreadable"] += 1
+            out["unreadable_files"].append({"hash": str(h), "file": str(path), "why": why})
+            continue
+        out["payloads"] += 1
+        if endpoint == "/players":
+            out["player_rows"] += apply_player_season_stats(conn, body, payload_hash=str(h), observed_at=fetched_at)
+            continue
+        args = {k: int(str(params.get(k))) for k in ("league", "season", "team")
+                if isinstance(params, dict) and str(params.get(k, "")).isdigit()}
+        row = None
+        if len(args) == 3:
+            with conn.cursor() as cur:
+                cur.execute(TEAM_SEASON_SQL, args)
+                row = cur.fetchone()
+        if row is None:
+            out["team_unknown"] += 1
+            continue
+        out["team_rows"] += apply_team_statistics(conn, int(row[0]), int(row[1]), body, payload_hash=str(h),
+                                                  observed_at=fetched_at)
+    conn.rollback() if dry_run else conn.commit()
+    out["facts_added"] = out["extras_added"] = 0
+    return out
+
+
 def _terminate(signum: int, _frame: Any) -> None:
     raise SystemExit(128 + signum)
 
@@ -233,10 +287,28 @@ def _terminate(signum: int, _frame: Any) -> None:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--fixture-facts", action="store_true", help="core.fixture_facts and core.fixture_player_extras")
+    ap.add_argument("--season-stats", action="store_true", help="core.player_season_stats and core.team_season_stats")
     ap.add_argument("--dry-run", action="store_true", help="replay and count, write nothing")
     args = ap.parse_args(argv)
-    if not args.fixture_facts:
-        ap.error("nothing to do: give --fixture-facts")
+    if not (args.fixture_facts or args.season_stats):
+        ap.error("nothing to do: give --fixture-facts or --season-stats")
+    if args.season_stats:
+        signal.signal(signal.SIGTERM, _terminate)
+        with psycopg.connect(settings.database.psycopg_url) as conn:
+            ledger = RunLedger(conn)
+            run_id = None if args.dry_run else ledger.open("raw_backfill_season_stats", params={"mode": "replay"})
+            counters = RunCounters()
+            try:
+                stats = season_stats(conn, dry_run=args.dry_run)
+                counters.rows_normalized = stats["payloads"]
+                counters.rows_inserted = stats["player_rows"] + stats["team_rows"]
+            finally:
+                if run_id is not None:
+                    ledger.close(run_id, counters, notes="RAW -> core.player_season_stats / core.team_season_stats, "
+                                                         "change-only replay, 0 requests")
+        print(json.dumps({"dry_run": args.dry_run, **stats}, indent=1, default=str))
+        if not args.fixture_facts:
+            return 0
     signal.signal(signal.SIGTERM, _terminate)
     with psycopg.connect(settings.database.psycopg_url) as conn:
         ledger = RunLedger(conn)

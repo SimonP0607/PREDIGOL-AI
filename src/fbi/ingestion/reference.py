@@ -1,0 +1,845 @@
+"""Reference feeds: the API-Football endpoints about matches, seasons, people and the odds catalogue that
+PrediGol did not request before the contract audit (4 Oct 2026), refreshed on the provider's documented
+cadence and always behind the live reserve.
+
+A feed names an endpoint, the targets in scope now (an upcoming match, a current season, a tracked team,
+a batch of twenty players), how long an answer stays fresh for a target, and a normalizer. Every answer
+is a RAW payload first; the normalizer writes what it says into a typed table, change-only, naming that
+payload and ``NORMALIZER_VERSION``. ``core.reference_checks`` records each question - when it was asked,
+what answered, when the answer last changed - whatever the answer, so "asked and empty" and "never
+asked" are not confused.
+
+Cadences (documented update frequency -> ours):
+
+=====================  ==================================  ===============================================
+feed                   provider                            PrediGol
+=====================  ==================================  ===============================================
+predictions            hourly; 1 call/day per match        48 h, 24 h and 3 h before kick-off (3 per match)
+rounds, current_round  daily; 1 call/day                   daily per tracked current season
+leaders (4 lists)      several times a week; 1 call/day    daily per current season the coverage flags allow
+odds_bets/bookmakers   several times a week; 1 call/day    daily
+odds_mapping           daily (100 a page); 1 call/day      daily, every page
+team_statistics        twice a day; 1/day if playing, else  daily for teams playing in 72 h, else weekly
+                       1/week
+coachs                 daily; 1 call/day                   daily for teams playing in 72 h, else weekly
+transfers              several times a week; 1 call/day    weekly per tracked team
+sidelined, trophies    several times a week; 1 call/day    weekly, 20 people a request
+countries              when a country is added; 1/day      weekly
+=====================  ==================================  ===============================================
+
+Weekly instead of daily for people is deliberate: a tracked scope of ~2,600 teams and ~80,000 players
+asked daily would cost ~9,000 requests a day for answers that change a few times a season; the
+predictions and tables that feed match pages stay on the documented cadence.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
+from typing import Any
+
+import psycopg
+from psycopg.rows import tuple_row
+from psycopg.types.json import Jsonb
+
+from fbi.core.clock import now
+from fbi.core.errors import ProviderError, QuotaExhaustedError
+from fbi.core.logging import get_logger
+from fbi.ingestion.ledger import RunCounters, RunLedger
+
+log = get_logger(__name__)
+
+NORMALIZER_VERSION = "reference-1"
+RESERVE_MARGIN = 10
+MAX_PAGES = 30
+BATCH_PEOPLE = 20
+"""/sidelined and /trophies accept up to 20 ids (documented batch limit)."""
+
+
+@dataclass(frozen=True)
+class Target:
+    key: str
+    params: dict[str, Any]
+    every: timedelta
+    context: dict[str, Any] = field(default_factory=dict)
+    """What the normalizer needs besides the body (the fixture or season id, the people asked about)."""
+
+
+Apply = Callable[[psycopg.Connection, Target, dict[str, Any], str, datetime], int]
+
+
+@dataclass(frozen=True)
+class Feed:
+    name: str
+    endpoint: str
+    targets: Callable[[psycopg.Connection, datetime], list[Target]]
+    apply: Apply
+    max_per_run: int
+    """Requests a run may spend on this feed."""
+    paged: bool = False
+    batch: int = 1
+    """Targets asked together in one request (``batch_param`` joined with '-'): /sidelined and /trophies
+    take 20 people. Each target keeps its own check, so a batch is formed from the people due, not fixed."""
+    batch_param: str = ""
+
+
+# ── values ──────────────────────────────────────────────────────────────────────────────────────────
+
+
+def _int(v: Any) -> int | None:
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, int):
+        return v
+    if isinstance(v, str) and v.strip().lstrip("-").isdigit():
+        return int(v.strip())
+    return None
+
+
+def _small(v: Any) -> int | None:
+    n = _int(v)
+    return n if n is not None and 0 <= n < 32768 else None
+
+
+def _text(v: Any) -> str | None:
+    return v.strip() if isinstance(v, str) and v.strip() else None
+
+
+def _date(v: Any) -> date | None:
+    if not isinstance(v, str) or not v.strip():
+        return None
+    try:
+        return date.fromisoformat(v.strip()[:10])
+    except ValueError:
+        return None
+
+
+def _stamp(v: Any) -> datetime | None:
+    if not isinstance(v, str) or not v.strip():
+        return None
+    try:
+        d = datetime.fromisoformat(v.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return d if d.tzinfo is not None else d.replace(tzinfo=UTC)
+
+
+PERCENT = re.compile(r"^\s*(\d{1,3}(?:\.\d+)?)\s*%?\s*$")
+
+
+def _percent(v: Any) -> Decimal | None:
+    """'45%' -> 45. Anything else (None, '', 'n/a') -> None: never guessed."""
+    if isinstance(v, int | float) and not isinstance(v, bool):
+        d = Decimal(str(v))
+    elif isinstance(v, str) and (m := PERCENT.match(v)):
+        try:
+            d = Decimal(m.group(1))
+        except InvalidOperation:
+            return None
+    else:
+        return None
+    return d if 0 <= d <= 100 else None
+
+
+def _rating(v: Any) -> Decimal | None:
+    try:
+        d = Decimal(str(v)) if isinstance(v, str | int | float) and not isinstance(v, bool) else None
+    except InvalidOperation:
+        return None
+    return d if d is not None and 0 <= d < 100 else None
+
+
+def _response(body: Mapping[str, Any]) -> list[Any]:
+    r = body.get("response")
+    return r if isinstance(r, list) else []
+
+
+def _map(v: Any) -> Mapping[str, Any]:
+    return v if isinstance(v, Mapping) else {}
+
+
+def _dig(d: Any, *keys: str) -> Any:
+    for k in keys:
+        if not isinstance(d, Mapping):
+            return None
+        d = d.get(k)
+    return d
+
+
+# ── change-only writers ───────────────────────────────────────────────────────────────────────────────
+
+
+def _canon(v: Any) -> Any:
+    """One form for a value as written and as read back (Jsonb vs dict, 45 vs 45.00, list vs tuple)."""
+    if isinstance(v, Jsonb):
+        v = v.obj
+    if isinstance(v, dict):
+        return json.dumps(v, sort_keys=True, default=str)
+    if isinstance(v, Decimal):
+        return v.normalize()
+    if isinstance(v, list):
+        return tuple(_canon(x) for x in v)
+    return v
+
+
+def write_row_if_changed(cur: psycopg.Cursor[Any], table: str, keys: Mapping[str, Any], values: Mapping[str, Any],
+                         *, observed_at: datetime, payload_hash: str, version: str = NORMALIZER_VERSION,
+                         time_col: str = "observed_at") -> int:
+    """Add one row when ``values`` differ from the newest row for ``keys`` and the payload is newer than it."""
+    where = " AND ".join(f"{k} = %({k})s" for k in keys)
+    cols = list(values)
+    cur.execute(f"SELECT {time_col}, {', '.join(cols)} FROM {table} WHERE {where} ORDER BY {time_col} DESC LIMIT 1",
+                dict(keys))
+    row = cur.fetchone()
+    if row is not None:
+        if row[0] >= observed_at:
+            return 0
+        if tuple(_canon(x) for x in row[1:]) == tuple(_canon(values[c]) for c in cols):
+            return 0
+    allcols = [*keys, time_col, *cols, "payload_hash", "normalizer_version"]
+    cur.execute(f"INSERT INTO {table} ({', '.join(allcols)}) VALUES ({', '.join('%(' + c + ')s' for c in allcols)}) "
+                "ON CONFLICT DO NOTHING",
+                {**keys, **values, time_col: observed_at, "payload_hash": payload_hash, "normalizer_version": version})
+    return max(cur.rowcount, 0)
+
+
+def write_snapshot_if_changed(cur: psycopg.Cursor[Any], table: str, keys: Mapping[str, Any],
+                              rows: Sequence[Mapping[str, Any]], *, observed_at: datetime, payload_hash: str) -> int:
+    """Add the whole list under ``observed_at`` when it differs from the newest list stored for ``keys``.
+
+    An empty answer adds nothing here - it is visible in ``core.reference_checks`` (results 0) - so it
+    never erases a list held before.
+    """
+    if not rows:
+        return 0
+    cols = list(rows[0])
+    where = " AND ".join(f"{k} = %({k})s" for k in keys)
+    cur.execute(f"SELECT observed_at, {', '.join(cols)} FROM {table} WHERE {where} AND observed_at = "
+                f"(SELECT max(observed_at) FROM {table} WHERE {where}) ORDER BY ordinal", dict(keys))
+    held = cur.fetchall()
+    if held:
+        if held[0][0] >= observed_at:
+            return 0
+        if [tuple(_canon(x) for x in h[1:]) for h in held] == [tuple(_canon(r[c]) for c in cols) for r in rows]:
+            return 0
+    allcols = [*keys, "observed_at", "ordinal", *cols, "payload_hash", "normalizer_version"]
+    sql = (f"INSERT INTO {table} ({', '.join(allcols)}) VALUES ({', '.join('%(' + c + ')s' for c in allcols)}) "
+           "ON CONFLICT DO NOTHING")
+    added = 0
+    for i, r in enumerate(rows):
+        cur.execute(sql, {**keys, **r, "observed_at": observed_at, "ordinal": i, "payload_hash": payload_hash,
+                          "normalizer_version": NORMALIZER_VERSION})
+        added += max(cur.rowcount, 0)
+    return added
+
+
+# ── normalizers ───────────────────────────────────────────────────────────────────────────────────────
+
+
+def prediction_values(entry: Mapping[str, Any]) -> dict[str, Any] | None:
+    """What one /predictions entry forecasts; None when it forecasts nothing."""
+    p = entry.get("predictions")
+    if not isinstance(p, Mapping):
+        return None
+    winner, percent, goals = _map(p.get("winner")), _map(p.get("percent")), _map(p.get("goals"))
+    comparison = entry.get("comparison")
+    values = {
+        "winner_team_id": _int(winner.get("id")), "winner_name": _text(winner.get("name")),
+        "winner_comment": _text(winner.get("comment")),
+        "win_or_draw": p.get("win_or_draw") if isinstance(p.get("win_or_draw"), bool) else None,
+        "under_over": _text(p.get("under_over")), "goals_home": _text(goals.get("home")),
+        "goals_away": _text(goals.get("away")), "advice": _text(p.get("advice")),
+        "percent_home": _percent(percent.get("home")), "percent_draw": _percent(percent.get("draw")),
+        "percent_away": _percent(percent.get("away")),
+        "comparison": Jsonb(comparison) if isinstance(comparison, Mapping) and comparison else None,
+    }
+    return values if any(v is not None for v in values.values()) else None
+
+
+def apply_predictions(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                      observed_at: datetime) -> int:
+    added = 0
+    with conn.cursor() as cur:
+        for entry in _response(body):
+            v = prediction_values(entry) if isinstance(entry, Mapping) else None
+            if v is None:
+                continue
+            added += write_row_if_changed(cur, "core.provider_predictions", {"fixture_id": t.context["fixture_id"]}, v,
+                                          observed_at=observed_at, payload_hash=payload_hash)
+    return added
+
+
+def apply_rounds(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                 observed_at: datetime) -> int:
+    rows: list[dict[str, Any]] = []
+    for item in _response(body):
+        if isinstance(item, str) and item.strip():
+            rows.append({"round": item.strip(), "dates": None})
+        elif isinstance(item, Mapping) and _text(item.get("round")):
+            dates = [d for d in (_date(x) for x in item.get("dates") or []) if d is not None]
+            rows.append({"round": _text(item.get("round")), "dates": dates or None})
+    with conn.cursor() as cur:
+        return write_snapshot_if_changed(cur, "core.season_rounds", {"competition_season_id": t.context["cs_id"]},
+                                         rows, observed_at=observed_at, payload_hash=payload_hash)
+
+
+def apply_current_round(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                        observed_at: datetime) -> int:
+    rounds = [r.strip() for r in _response(body) if isinstance(r, str) and r.strip()]
+    if not rounds:
+        return 0
+    with conn.cursor() as cur:
+        return write_row_if_changed(cur, "core.season_current_round", {"competition_season_id": t.context["cs_id"]},
+                                    {"rounds": rounds}, observed_at=observed_at, payload_hash=payload_hash)
+
+
+def leader_row(entry: Mapping[str, Any], league_id: int, season: int) -> dict[str, Any] | None:
+    player = _map(entry.get("player"))
+    pid = _int(player.get("id"))
+    if pid is None or pid <= 0:
+        return None
+    stats = [s for s in entry.get("statistics") or [] if isinstance(s, Mapping)]
+    mine = [s for s in stats if _int(_dig(s, "league", "id")) == league_id
+            and _int(_dig(s, "league", "season")) in (season, None)] or stats[:1]
+    s = mine[0] if mine else {}
+    return {
+        "provider_player_id": pid, "player_name": _text(player.get("name")), "photo_url": _text(player.get("photo")),
+        "provider_team_id": _int(_dig(s, "team", "id")), "team_name": _text(_dig(s, "team", "name")),
+        "appearances": _small(_dig(s, "games", "appearences")), "minutes": _int(_dig(s, "games", "minutes")),
+        "goals": _small(_dig(s, "goals", "total")), "assists": _small(_dig(s, "goals", "assists")),
+        "penalties_scored": _small(_dig(s, "penalty", "scored")), "yellow_cards": _small(_dig(s, "cards", "yellow")),
+        "yellowred_cards": _small(_dig(s, "cards", "yellowred")), "red_cards": _small(_dig(s, "cards", "red")),
+        "rating": _rating(_dig(s, "games", "rating")), "statistics": Jsonb(mine if len(mine) > 1 else s),
+    }
+
+
+def apply_leaders(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                  observed_at: datetime) -> int:
+    rows = [r for r in (leader_row(e, t.params["league"], t.params["season"]) for e in _response(body)
+                        if isinstance(e, Mapping)) if r is not None]
+    with conn.cursor() as cur:
+        return write_snapshot_if_changed(cur, "core.season_leaders",
+                                         {"competition_season_id": t.context["cs_id"], "list": t.context["list"]},
+                                         rows, observed_at=observed_at, payload_hash=payload_hash)
+
+
+def apply_coachs(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                 observed_at: datetime) -> int:
+    added = 0
+    with conn.cursor() as cur:
+        for c in _response(body):
+            if not isinstance(c, Mapping) or (cid := _int(c.get("id"))) is None or cid <= 0:
+                continue
+            profile = {
+                "name": _text(c.get("name")), "firstname": _text(c.get("firstname")),
+                "lastname": _text(c.get("lastname")), "birth_date": _date(_dig(c, "birth", "date")),
+                "birth_place": _text(_dig(c, "birth", "place")), "birth_country": _text(_dig(c, "birth", "country")),
+                "nationality": _text(c.get("nationality")), "height": _text(c.get("height")),
+                "weight": _text(c.get("weight")), "photo_url": _text(c.get("photo")),
+                "provider_team_id": _int(_dig(c, "team", "id")),
+            }
+            added += write_row_if_changed(cur, "core.coach_profiles", {"provider_coach_id": cid}, profile,
+                                          observed_at=observed_at, payload_hash=payload_hash)
+            career = [{"provider_team_id": _int(_dig(x, "team", "id")), "team_name": _text(_dig(x, "team", "name")),
+                       "start_date": _date(x.get("start")), "end_date": _date(x.get("end"))}
+                      for x in c.get("career") or [] if isinstance(x, Mapping)]
+            added += write_snapshot_if_changed(cur, "core.coach_careers", {"provider_coach_id": cid}, career,
+                                               observed_at=observed_at, payload_hash=payload_hash)
+    return added
+
+
+def apply_transfers(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                    observed_at: datetime) -> int:
+    added = 0
+    with conn.cursor() as cur:
+        for e in _response(body):
+            if not isinstance(e, Mapping) or (pid := _int(_dig(e, "player", "id"))) is None or pid <= 0:
+                continue
+            update = _stamp(e.get("update"))
+            rows = [{"transfer_date": _date(x.get("date")), "type": _text(x.get("type")),
+                     "team_in_id": _int(_dig(x, "teams", "in", "id")),
+                     "team_in_name": _text(_dig(x, "teams", "in", "name")),
+                     "team_out_id": _int(_dig(x, "teams", "out", "id")),
+                     "team_out_name": _text(_dig(x, "teams", "out", "name")), "provider_update_at": update}
+                    for x in e.get("transfers") or [] if isinstance(x, Mapping)]
+            added += write_snapshot_if_changed(cur, "core.player_transfers", {"provider_player_id": pid}, rows,
+                                               observed_at=observed_at, payload_hash=payload_hash)
+    return added
+
+
+def _people_entries(body: dict[str, Any], t: Target) -> dict[int, list[Mapping[str, Any]]]:
+    """/sidelined and /trophies list entries for ONE person ({type,start,end} / {league,...}); a batched
+    request (``players=a-b``) answers one block per person, each naming the person. A single-person
+    answer is attributed to the person asked about; a batched answer without names is not attributed."""
+    out: dict[int, list[Mapping[str, Any]]] = {}
+    asked = list(t.context["ids"])
+    entries = [e for e in _response(body) if isinstance(e, Mapping)]
+    blocks = [e for e in entries if _int(e.get("id")) is not None and isinstance(e.get(t.context["list_key"]), list)]
+    if blocks:
+        for b in blocks:
+            pid = _int(b.get("id"))
+            if pid is not None and pid in asked:
+                out[pid] = [x for x in b[t.context["list_key"]] if isinstance(x, Mapping)]
+        return out
+    if len(asked) == 1:
+        out[asked[0]] = entries
+    return out
+
+
+def _apply_people(table: str, columns: Callable[[Mapping[str, Any]], dict[str, Any]]) -> Apply:
+    def apply(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+              observed_at: datetime) -> int:
+        added = 0
+        found = t.context.setdefault("found", {})
+        with conn.cursor() as cur:
+            for pid, entries in _people_entries(body, t).items():
+                found[pid] = len(entries)
+                rows = [columns(x) for x in entries]
+                added += write_snapshot_if_changed(cur, table, {"person_kind": t.context["kind"],
+                                                                "provider_person_id": pid}, rows,
+                                                   observed_at=observed_at, payload_hash=payload_hash)
+        return added
+    return apply
+
+
+apply_sidelined = _apply_people("core.person_sidelined", lambda x: {
+    "type": _text(x.get("type")), "start_date": _date(x.get("start")), "end_date": _date(x.get("end"))})
+apply_trophies = _apply_people("core.person_trophies", lambda x: {
+    "league": _text(x.get("league")), "country": _text(x.get("country")), "season": _text(x.get("season")),
+    "place": _text(x.get("place"))})
+
+
+def apply_countries(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                    observed_at: datetime) -> int:
+    added = 0
+    with conn.cursor() as cur:
+        for c in _response(body):
+            if isinstance(c, Mapping) and (name := _text(c.get("name"))):
+                added += write_row_if_changed(cur, "core.countries", {"name": name},
+                                              {"code": _text(c.get("code")), "flag_url": _text(c.get("flag"))},
+                                              observed_at=observed_at, payload_hash=payload_hash)
+    return added
+
+
+def apply_odds_mapping(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                       observed_at: datetime) -> int:
+    rows = []
+    for e in _response(body):
+        if isinstance(e, Mapping) and (fid := _int(_dig(e, "fixture", "id"))) is not None and fid > 0:
+            ts = _int(_dig(e, "fixture", "timestamp"))
+            rows.append((fid, _int(_dig(e, "league", "id")), _int(_dig(e, "league", "season")),
+                         datetime.fromtimestamp(ts, UTC) if ts and ts > 0 else _stamp(_dig(e, "fixture", "date")),
+                         observed_at, _stamp(e.get("update")), payload_hash, NORMALIZER_VERSION))
+    if not rows:
+        return 0
+    with conn.cursor() as cur:
+        cur.executemany(
+            "INSERT INTO market.odds_mapping_seen (provider_fixture_id, provider_league_id, season, fixture_date, "
+            "first_seen_at, provider_update_at, payload_hash, normalizer_version) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+            "ON CONFLICT (provider_fixture_id) DO NOTHING", rows)
+        return max(cur.rowcount, 0)
+
+
+def apply_catalogue(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                    observed_at: datetime) -> int:
+    """/odds/bets, /odds/live/bets, /odds/bookmakers into the existing catalogue tables; a rename is kept in
+    market.provider_catalogue_changes (the old name, the new one, this payload)."""
+    from fbi.catalog.provider_markets import PROVIDER, _mapping_for
+
+    entries = [(int(e["id"]), str(e.get("name") or "").strip()) for e in _response(body)
+               if isinstance(e, Mapping) and isinstance(e.get("id"), int) and not isinstance(e.get("id"), bool)]
+    catalogue = t.context["catalogue"]
+    added = 0
+    with conn.cursor(row_factory=tuple_row) as cur:
+        if catalogue == "bookmakers":
+            cur.execute("SELECT provider_bookmaker_id, name FROM market.bookmakers")
+        else:
+            cur.execute("SELECT provider_bet_id, name FROM market.provider_markets WHERE provider = %s AND scope = %s",
+                        (PROVIDER, catalogue))
+        held: dict[int, str] = {int(a): str(b) for a, b in cur.fetchall()}
+        mapping = {} if catalogue == "bookmakers" else _mapping_for(catalogue)
+        for pid, name in entries:
+            old = held.get(pid)
+            if old is not None and name and old != name:
+                cur.execute("INSERT INTO market.provider_catalogue_changes (catalogue, provider_id, observed_at, "
+                            "old_name, new_name, payload_hash, normalizer_version) VALUES (%s,%s,%s,%s,%s,%s,%s) "
+                            "ON CONFLICT DO NOTHING",
+                            (catalogue, pid, observed_at, old, name, payload_hash, NORMALIZER_VERSION))
+            if catalogue == "bookmakers":
+                cur.execute("INSERT INTO market.bookmakers (provider_bookmaker_id, name) VALUES (%s, %s) "
+                            "ON CONFLICT (provider_bookmaker_id) DO UPDATE SET name = EXCLUDED.name "
+                            "WHERE market.bookmakers.name IS DISTINCT FROM EXCLUDED.name", (pid, name or str(pid)))
+            else:
+                cur.execute(
+                    "INSERT INTO market.provider_markets (provider, scope, provider_bet_id, name, market_key, source, "
+                    "provider_version) VALUES (%s,%s,%s,%s,%s,'catalogue','v3.9.3') "
+                    "ON CONFLICT (provider, scope, provider_bet_id) DO UPDATE SET name = EXCLUDED.name, "
+                    "source = 'catalogue', last_seen_at = now()",
+                    (PROVIDER, catalogue, pid, name, mapping.get(pid)))
+            added += 1 if old is None else 0
+    return added
+
+
+def apply_team_statistics(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                          observed_at: datetime) -> int:
+    """/teams/statistics into core.team_season_stats (fbi.ingestion.season_stats)."""
+    from fbi.ingestion.season_stats import apply_team_statistics as write
+
+    return write(conn, t.context["cs_id"], t.context["team_id"], body, payload_hash=payload_hash,
+                 observed_at=observed_at)
+
+
+def apply_nothing(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                  observed_at: datetime) -> int:
+    """Kept as RAW only (a list the provider documents and PrediGol has no table for: timezones, the seasons
+    and countries the provider covers - each already implied by /leagues)."""
+    return 0
+
+
+# ── targets ───────────────────────────────────────────────────────────────────────────────────────────
+
+CURRENT_SEASONS_SQL = """
+SELECT cs.id, c.provider_league_id, cs.season,
+       coalesce(lc.top_scorers, false), coalesce(lc.top_assists, false), coalesce(lc.top_cards, false)
+  FROM core.competition_seasons cs
+  JOIN core.competitions c ON c.id = cs.competition_id
+  LEFT JOIN raw.league_coverage lc ON lc.provider_league_id = c.provider_league_id AND lc.season = cs.season
+ WHERE c.is_tracked AND cs.is_current
+ ORDER BY c.provider_league_id
+"""
+
+UPCOMING_SQL = """
+SELECT f.id, f.provider_fixture_id, f.kickoff_at
+  FROM core.fixtures f
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+  LEFT JOIN raw.league_coverage lc ON lc.provider_league_id = c.provider_league_id AND lc.season = cs.season
+ WHERE c.is_tracked AND f.status_group = 'scheduled' AND f.kickoff_at > %(at)s
+   AND f.kickoff_at <= %(at)s + interval '48 hours' AND coalesce(lc.predictions, true)
+ ORDER BY f.kickoff_at
+"""
+
+TEAMS_SQL = """
+SELECT t.provider_team_id,
+       EXISTS (SELECT 1 FROM core.fixtures f WHERE (f.home_team_id = t.id OR f.away_team_id = t.id)
+                  AND f.status_group = 'scheduled' AND f.kickoff_at BETWEEN %(at)s AND %(at)s + interval '72 hours')
+  FROM core.teams t
+ WHERE t.provider_team_id > 0 AND EXISTS (
+       SELECT 1 FROM core.fixtures f
+         JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+         JOIN core.competitions c ON c.id = cs.competition_id
+        WHERE c.is_tracked AND cs.is_current AND (f.home_team_id = t.id OR f.away_team_id = t.id))
+ ORDER BY t.provider_team_id
+"""
+
+PEOPLE_SQL = {
+    "player": """
+SELECT DISTINCT ps.provider_player_id FROM core.fixture_player_stats ps
+  JOIN core.fixtures f ON f.id = ps.fixture_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE c.is_tracked AND cs.is_current AND ps.provider_player_id > 0 AND coalesce(ps.minutes, 0) > 0
+ ORDER BY 1""",
+    "coach": """
+SELECT DISTINCT l.provider_coach_id FROM core.fixture_lineups l
+  JOIN core.fixtures f ON f.id = l.fixture_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE c.is_tracked AND cs.is_current AND l.provider_coach_id > 0
+ ORDER BY 1""",
+}
+
+TEAM_SEASONS_SQL = """
+SELECT cs.id, c.provider_league_id, cs.season, t.id, t.provider_team_id,
+       bool_or(f.status_group = 'scheduled' AND f.kickoff_at BETWEEN %(at)s AND %(at)s + interval '72 hours')
+  FROM core.fixtures f
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+  JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
+ WHERE c.is_tracked AND cs.is_current AND t.provider_team_id > 0
+ GROUP BY 1, 2, 3, 4, 5
+ ORDER BY 2, 5
+"""
+
+PREDICTION_WINDOWS = (timedelta(hours=48), timedelta(hours=24), timedelta(hours=3))
+NEVER_AGAIN = timedelta(days=3650)
+DAY = timedelta(hours=23)
+"""Just under a day, so a daily feed that ran a little late is not pushed a whole day later."""
+WEEK = timedelta(days=7) - timedelta(hours=1)
+
+
+def prediction_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+    """Each upcoming match once in each window it has entered (48 h, 24 h, 3 h before kick-off)."""
+    out = []
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(UPCOMING_SQL, {"at": at})
+        for fid, pf, kickoff in cur.fetchall():
+            opened = [w for w in PREDICTION_WINDOWS if at >= kickoff - w]
+            if opened:
+                w = min(opened)
+                out.append(Target(f"fixture:{pf}:{int(w.total_seconds() // 3600)}h", {"fixture": int(pf)},
+                                  NEVER_AGAIN, {"fixture_id": int(fid)}))
+    return out
+
+
+def _seasons(conn: psycopg.Connection) -> list[tuple[int, int, int, bool, bool, bool]]:
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(CURRENT_SEASONS_SQL)
+        return [(int(a), int(b), int(c), bool(d), bool(e), bool(f)) for a, b, c, d, e, f in cur.fetchall()]
+
+
+def round_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+    return [Target(f"season:{lg}:{s}", {"league": lg, "season": s, "dates": "true"}, DAY, {"cs_id": cs})
+            for cs, lg, s, *_ in _seasons(conn)]
+
+
+def current_round_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+    return [Target(f"season:{lg}:{s}", {"league": lg, "season": s, "current": "true"}, DAY, {"cs_id": cs})
+            for cs, lg, s, *_ in _seasons(conn)]
+
+
+def leader_targets(name: str, flag: int) -> Callable[[psycopg.Connection, datetime], list[Target]]:
+    def targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+        return [Target(f"season:{row[1]}:{row[2]}", {"league": row[1], "season": row[2]}, DAY,
+                       {"cs_id": row[0], "list": name})
+                for row in _seasons(conn) if row[flag]]
+    return targets
+
+
+def single_target(every: timedelta, **context: Any) -> Callable[[psycopg.Connection, datetime], list[Target]]:
+    def targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+        return [Target("-", {}, every, dict(context))]
+    return targets
+
+
+def team_targets(daily_if_playing: bool) -> Callable[[psycopg.Connection, datetime], list[Target]]:
+    def targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+        with conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(TEAMS_SQL, {"at": at})
+            rows = cur.fetchall()
+        return [Target(f"team:{tid}", {"team": int(tid)}, DAY if (daily_if_playing and playing) else WEEK, {})
+                for tid, playing in rows]
+    return targets
+
+
+def team_season_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+    """Each team of each current tracked season: daily while it plays within 72 h, weekly otherwise (documented:
+    1 call a day for teams with a match that day, else 1 a week)."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(TEAM_SEASONS_SQL, {"at": at})
+        rows = cur.fetchall()
+    return [Target(f"team:{lg}:{s}:{tp}", {"league": int(lg), "season": int(s), "team": int(tp)},
+                   DAY if soon else WEEK, {"cs_id": int(cs), "team_id": int(tid)})
+            for cs, lg, s, tid, tp, soon in rows]
+
+
+def people_targets(kind: str, list_key: str) -> Callable[[psycopg.Connection, datetime], list[Target]]:
+    """One target per person (a player who played in a current tracked season, a coach on a current line-up),
+    fresh for a week; the run asks the due ones twenty at a time."""
+    param = "players" if kind == "player" else "coachs"
+
+    def targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+        with conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(PEOPLE_SQL[kind])
+            ids = [int(r[0]) for r in cur.fetchall()]
+        return [Target(f"{kind}:{i}", {param: str(i)}, WEEK, {"kind": kind, "ids": [i], "list_key": list_key})
+                for i in ids]
+    return targets
+
+
+def merge(group: Sequence[Target], param: str) -> Target:
+    """Several people's targets as one request (``players=1-2-3``)."""
+    if len(group) == 1:
+        return group[0]
+    ids = [i for t in group for i in t.context["ids"]]
+    return Target("+".join(t.key for t in group), {param: "-".join(str(i) for i in ids)}, group[0].every,
+                  {**group[0].context, "ids": ids})
+
+
+FEEDS: tuple[Feed, ...] = (
+    Feed("predictions", "/predictions", prediction_targets, apply_predictions, max_per_run=400),
+    Feed("odds_bets", "/odds/bets", single_target(DAY, catalogue="prematch"), apply_catalogue, max_per_run=1),
+    Feed("odds_live_bets", "/odds/live/bets", single_target(DAY, catalogue="inplay"), apply_catalogue, max_per_run=1),
+    Feed("odds_bookmakers", "/odds/bookmakers", single_target(DAY, catalogue="bookmakers"), apply_catalogue,
+         max_per_run=1),
+    Feed("odds_mapping", "/odds/mapping", single_target(DAY), apply_odds_mapping, max_per_run=1, paged=True),
+    Feed("rounds", "/fixtures/rounds", round_targets, apply_rounds, max_per_run=300),
+    Feed("current_round", "/fixtures/rounds", current_round_targets, apply_current_round, max_per_run=300),
+    Feed("topscorers", "/players/topscorers", leader_targets("topscorers", 3), apply_leaders, max_per_run=300),
+    Feed("topassists", "/players/topassists", leader_targets("topassists", 4), apply_leaders, max_per_run=300),
+    Feed("topyellowcards", "/players/topyellowcards", leader_targets("topyellowcards", 5), apply_leaders,
+         max_per_run=300),
+    Feed("topredcards", "/players/topredcards", leader_targets("topredcards", 5), apply_leaders, max_per_run=300),
+    Feed("team_statistics", "/teams/statistics", team_season_targets, apply_team_statistics, max_per_run=400),
+    Feed("coachs", "/coachs", team_targets(daily_if_playing=True), apply_coachs, max_per_run=500),
+    Feed("transfers", "/transfers", team_targets(daily_if_playing=False), apply_transfers, max_per_run=500),
+    Feed("sidelined_players", "/sidelined", people_targets("player", "sidelined"), apply_sidelined, max_per_run=150, batch=BATCH_PEOPLE,
+         batch_param="players"),
+    Feed("sidelined_coachs", "/sidelined", people_targets("coach", "sidelined"), apply_sidelined, max_per_run=20, batch=BATCH_PEOPLE,
+         batch_param="coachs"),
+    Feed("trophies_players", "/trophies", people_targets("player", "trophies"), apply_trophies, max_per_run=150, batch=BATCH_PEOPLE,
+         batch_param="players"),
+    Feed("trophies_coachs", "/trophies", people_targets("coach", "trophies"), apply_trophies, max_per_run=20, batch=BATCH_PEOPLE,
+         batch_param="coachs"),
+    Feed("countries", "/countries", single_target(WEEK), apply_countries, max_per_run=1),
+    Feed("timezone", "/timezone", single_target(timedelta(days=90)), apply_nothing, max_per_run=1),
+    Feed("leagues_seasons", "/leagues/seasons", single_target(WEEK), apply_nothing, max_per_run=1),
+    Feed("players_seasons", "/players/seasons", single_target(WEEK), apply_nothing, max_per_run=1),
+    Feed("teams_countries", "/teams/countries", single_target(WEEK), apply_nothing, max_per_run=1),
+)
+
+
+# ── the run ───────────────────────────────────────────────────────────────────────────────────────────
+
+
+def last_checks(conn: psycopg.Connection, feed: str) -> dict[str, datetime]:
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute("SELECT target, checked_at FROM core.reference_checks WHERE feed = %s", (feed,))
+        return {str(a): b for a, b in cur.fetchall()}
+
+
+def due_targets(conn: psycopg.Connection, feed: Feed, at: datetime) -> list[Target]:
+    held = last_checks(conn, feed.name)
+    due = [t for t in feed.targets(conn, at) if t.key not in held or held[t.key] <= at - t.every]
+    due.sort(key=lambda t: held.get(t.key, datetime.min.replace(tzinfo=UTC)))
+    return due
+
+
+def record_check(conn: psycopg.Connection, feed: str, target: str, *, checked_at: datetime, payload_hash: str | None,
+                 results: int | None, rows_added: int, error: str | None = None) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO core.reference_checks (feed, target, checked_at, changed_at, payload_hash, results, rows_added, "
+            "error) VALUES (%(f)s, %(t)s, %(at)s, %(at)s, %(h)s, %(n)s, %(r)s, %(e)s) "
+            "ON CONFLICT (feed, target) DO UPDATE SET "
+            "  changed_at = CASE WHEN core.reference_checks.payload_hash IS DISTINCT FROM EXCLUDED.payload_hash "
+            "                    THEN EXCLUDED.checked_at ELSE core.reference_checks.changed_at END, "
+            "  checked_at = EXCLUDED.checked_at, payload_hash = EXCLUDED.payload_hash, results = EXCLUDED.results, "
+            "  rows_added = EXCLUDED.rows_added, error = EXCLUDED.error "
+            "WHERE core.reference_checks.checked_at <= EXCLUDED.checked_at",
+            {"f": feed, "t": target, "at": checked_at, "h": payload_hash, "n": results, "r": rows_added, "e": error})
+
+
+@dataclass
+class ReferenceReport:
+    allowance: int = 0
+    reserve: int = 0
+    remaining_before: int = 0
+    asked: dict[str, int] = field(default_factory=dict)
+    rows: dict[str, int] = field(default_factory=dict)
+    due: dict[str, int] = field(default_factory=dict)
+    deferred_reason: str | None = None
+
+
+async def refresh_reference(conn: psycopg.Connection, provider: Any, *, daily_budget: int, max_requests: int = 600,
+                            feeds: Iterable[Feed] = FEEDS, at: datetime | None = None,
+                            prematch_windows: Iterable[int] = (4320, 2880, 1440, 720, 360, 180)) -> ReferenceReport:
+    """Ask what is due, feed by feed in priority order, within ``max_requests`` and never into the live reserve."""
+    from fbi.ingestion.backfill import live_reserve
+    from fbi.providers.quota import read_usage
+
+    moment = at or now()
+    report = ReferenceReport()
+    report.reserve = live_reserve(conn, at=moment, prematch_windows=prematch_windows) + RESERVE_MARGIN
+    report.remaining_before = read_usage(conn, budget=daily_budget).remaining
+    report.allowance = max(0, min(max_requests, report.remaining_before - report.reserve))
+    feeds = list(feeds)
+    plan = {f.name: due_targets(conn, f, moment)[:f.max_per_run * f.batch] for f in feeds}
+    conn.commit()
+    report.due = {k: len(v) for k, v in plan.items() if v}
+    if not report.due:
+        report.deferred_reason = "nothing due"
+        return report
+    if not report.allowance:
+        report.deferred_reason = f"live reserve: {report.remaining_before} remaining, {report.reserve} reserved"
+        log.info("reference.deferred", reason=report.deferred_reason)
+        return report
+    ledger = RunLedger(conn)
+    run_id = ledger.open("reference_refresh", params={"due": report.due, "allowance": report.allowance},
+                         scheduled_for=moment)
+    counters = RunCounters()
+    try:
+        for feed in feeds:
+            due = plan[feed.name]
+            for i in range(0, len(due), feed.batch):
+                group = due[i:i + feed.batch]
+                if counters.api_calls >= report.allowance:
+                    counters.stopped_early = f"allowance {report.allowance}"
+                    break
+                if not await _ask(conn, provider, ledger, run_id, counters, report, feed,
+                                  merge(group, feed.batch_param), [g.key for g in group]):
+                    break
+            if counters.stopped_early:
+                break
+    finally:
+        ledger.close(run_id, counters, notes=", ".join(f"{k} {v} asked/{report.rows.get(k, 0)} rows"
+                                                       for k, v in report.asked.items()))
+        conn.commit()
+    log.info("reference.done", asked=report.asked, rows=report.rows, allowance=report.allowance)
+    return report
+
+
+async def _ask(conn: psycopg.Connection, provider: Any, ledger: RunLedger, run_id: int, counters: RunCounters,
+               report: ReferenceReport, feed: Feed, t: Target, keys: Sequence[str]) -> bool:
+    """One request (every page of it) for ``t``, checked under each of ``keys``. False when the run must stop."""
+    first_hash: str | None = None
+    results = 0
+    added = 0
+    checked_at: datetime | None = None
+    page = 1
+    while True:
+        params = {**t.params, "page": page} if feed.paged and page > 1 else dict(t.params)
+        try:
+            raw = await provider.fetch_raw(feed.endpoint, params)
+        except QuotaExhaustedError as exc:
+            counters.errors.append(str(exc))
+            counters.stopped_early = "quota"
+            return False
+        except ProviderError as exc:
+            counters.api_calls += 1
+            counters.errors.append(f"{feed.name} {t.key}: {exc}"[:300])
+            for k in keys:
+                record_check(conn, feed.name, k, checked_at=now(), payload_hash=None, results=None, rows_added=0,
+                             error=str(exc)[:300])
+            conn.commit()
+            return True
+        counters.api_calls += 1
+        report.asked[feed.name] = report.asked.get(feed.name, 0) + 1
+        counters.payloads_stored += ledger.record_payloads(run_id, [raw])
+        conn.commit()  # the payload is indexed whatever its normalizer then does
+        observed = ledger.indexed_at(raw.payload_hash) or raw.fetched_at
+        checked_at = checked_at or raw.fetched_at
+        first_hash = first_hash or raw.payload_hash
+        body = raw.body if isinstance(raw.body, dict) else {}
+        results += len(_response(body)) if isinstance(body.get("response"), list) else (1 if body.get("response") else 0)
+        try:
+            added += feed.apply(conn, t, body, raw.payload_hash, observed)
+        except (psycopg.Error, ValueError, KeyError, TypeError) as exc:
+            conn.rollback()
+            counters.errors.append(f"{feed.name} {t.key}: normalizer {type(exc).__name__}: {exc}"[:300])
+            for k in keys:
+                record_check(conn, feed.name, k, checked_at=raw.fetched_at, payload_hash=raw.payload_hash,
+                             results=results, rows_added=0, error=f"normalizer {type(exc).__name__}"[:300])
+            conn.commit()
+            return True
+        total = _int(_map(body.get("paging")).get("total")) or 1
+        if not feed.paged or page >= min(total, MAX_PAGES):
+            break
+        page += 1
+    report.rows[feed.name] = report.rows.get(feed.name, 0) + added
+    counters.rows_inserted += added
+    found = t.context.get("found")
+    for k in keys:
+        if isinstance(found, dict) and len(keys) > 1:
+            n = found.get(int(k.split(":")[-1]), 0)
+            record_check(conn, feed.name, k, checked_at=checked_at or now(), payload_hash=first_hash, results=n,
+                         rows_added=0)
+        else:
+            record_check(conn, feed.name, k, checked_at=checked_at or now(), payload_hash=first_hash,
+                         results=results, rows_added=added)
+    conn.commit()
+    return True

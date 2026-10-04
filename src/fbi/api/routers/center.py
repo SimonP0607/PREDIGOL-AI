@@ -9,11 +9,13 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.center import (
     AdminOverview,
+    CompetitionReference,
     CompetitionTable,
     LiveBoard,
     MatchCenter,
     PlayerDetail,
     PlayerSummary,
+    ProviderPredictionView,
 )
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
@@ -67,3 +69,20 @@ def get_competition_standings(
 ) -> Envelope[CompetitionTable | None]:
     """The latest stored league table: the newest season that has one, or the season asked for."""
     return center.competition_table(conn, competition_id, season=season)
+
+
+@router.get("/competitions/{competition_id}/reference", response_model=Envelope[CompetitionReference | None])
+def get_competition_reference(
+    conn: Db,
+    competition_id: Annotated[int, Path(ge=1)],
+    season: Annotated[int | None, Query(ge=1900, le=2100)] = None,
+) -> Envelope[CompetitionReference | None]:
+    """The provider's top scorers, assists and cards, and the round calendar, with the payload each comes from."""
+    return center.competition_reference(conn, competition_id, season=season)
+
+
+@admin_router.get("/matches/{fixture_id}/provider-prediction", response_model=Envelope[ProviderPredictionView | None])
+def get_provider_prediction(conn: Db, fixture_id: Annotated[int, Path(ge=1)]) -> Envelope[ProviderPredictionView | None]:
+    """The provider's own forecast of a match (auxiliary, labelled): every version kept. Admin only - it is
+    not PrediGol's model and never feeds a pick."""
+    return center.provider_prediction(conn, fixture_id)

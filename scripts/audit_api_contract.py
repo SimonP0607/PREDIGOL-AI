@@ -65,10 +65,11 @@ SAMPLE_SQL = """
 SELECT hash, file_path, fetched_at FROM raw.ingestion_payloads
  WHERE endpoint = %(e)s AND coalesce((SELECT string_agg(k, ',' ORDER BY k) FROM jsonb_object_keys(params) k), '')
        = %(f)s AND http_status = 200
- ORDER BY (coalesce(results_count, 0) > 0) DESC, fetched_at DESC LIMIT %(n)s
+ ORDER BY (coalesce(results_count, 0) > 0) DESC, bytes DESC NULLS LAST, fetched_at DESC LIMIT %(n)s
 """
-"""Newest payloads with results first; results_count is 0 for object responses recorded before 4 Oct 2026
-(/teams/statistics), so they are not excluded."""
+"""Payloads with results first, the largest first: results_count is 0 for object responses recorded before
+4 Oct 2026 (/teams/statistics), and the newest three of those happened to be empty answers, so the first
+audit sampled none of its 145 payloads."""
 
 
 PROBE_SQL = """
@@ -88,7 +89,7 @@ last AS (
      ORDER BY p.kickoff_at DESC LIMIT 1)
 SELECT f.fixture, f.team, f.opponent, f.league, f.season, last.provider_fixture_id AS finished,
        (SELECT array_agg(x ORDER BY x) FROM (SELECT DISTINCT ps.provider_player_id AS x FROM core.fixture_player_stats ps
-         WHERE ps.fixture_id = last.id ORDER BY 1 LIMIT 2) y) AS players,
+         WHERE ps.fixture_id = last.id AND ps.provider_player_id > 0 ORDER BY 1 LIMIT 2) y) AS players,
        (SELECT array_agg(DISTINCT l.provider_coach_id) FROM core.fixture_lineups l
          WHERE l.fixture_id = last.id AND l.provider_coach_id > 0) AS coaches
   FROM f LEFT JOIN last ON true

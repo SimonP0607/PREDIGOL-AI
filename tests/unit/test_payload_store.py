@@ -112,3 +112,18 @@ def test_credentials_inside_strings_are_redacted_and_httpx_is_quiet() -> None:
         "postgresql+psycopg://fbi:[REDACTED]@localhost:5433/fbi"
     configure("INFO")
     assert logging.getLogger("httpx").level == logging.WARNING
+
+
+def test_an_empty_file_left_by_a_crash_is_not_taken_as_the_payload(store: PayloadStore, tmp_path: Path) -> None:
+    """4 Oct 2026: a payload renamed into place before its bytes reached the disk was found empty after
+    the machine stopped. The same body arriving again rewrites it; a whole file is never rewritten."""
+    body = {"response": [{"fixture": {"id": 7}}]}
+    first = store.store(endpoint="/fixtures", params={"ids": "7"}, fetched_at=FETCHED, http_status=200, body=body)
+    path = tmp_path / first.file_path
+    path.write_bytes(b"")
+    again = store.store(endpoint="/fixtures", params={"ids": "7"}, fetched_at=FETCHED, http_status=200, body=body)
+    assert again.hash == first.hash and not again.already_present
+    assert store.load(again.file_path)["body"] == body
+    whole = path.stat().st_mtime_ns
+    third = store.store(endpoint="/fixtures", params={"ids": "7"}, fetched_at=FETCHED, http_status=200, body=body)
+    assert third.already_present and path.stat().st_mtime_ns == whole

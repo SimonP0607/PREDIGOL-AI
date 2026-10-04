@@ -17,6 +17,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -47,6 +48,33 @@ def body_hash(body: Any) -> str:
     which is what makes re-ingestion idempotent."""
     canonical = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _usable(path: Path) -> bool:
+    """An existing file counts as the payload only when it has content and is gzip. On 4 Oct 2026 a
+    payload written at 02:57 UTC was found empty (0 bytes on disk, 6,124 recorded): renamed into place
+    before its bytes reached the disk, then the machine stopped. Writes are now synced before the rename;
+    and a damaged file is rewritten from the same body (same hash, so the same evidence) instead of being
+    taken as already captured."""
+    try:
+        with open(path, "rb") as fh:
+            return fh.read(2) == b"\x1f\x8b"
+    except OSError:
+        return False
+
+
+def _fsync_dir(directory: Path) -> None:
+    """Make the rename itself durable (POSIX); a no-op where directories cannot be opened (Windows)."""
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,7 +114,7 @@ class PayloadStore:
         digest = body_hash(body)
         path = self.path_for(endpoint, fetched_at, digest)
 
-        if path.exists():
+        if _usable(path):
             # Same bytes already captured. Re-ingestion must not duplicate work.
             return StoredPayload(
                 hash=digest,
@@ -108,9 +136,13 @@ class PayloadStore:
 
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
-        with gzip.open(tmp, "wb", compresslevel=6) as fh:
-            fh.write(raw)
+        with open(tmp, "wb") as out:
+            with gzip.GzipFile(fileobj=out, mode="wb", compresslevel=6) as fh:
+                fh.write(raw)
+            out.flush()
+            os.fsync(out.fileno())
         tmp.replace(path)  # atomic: a reader never sees a half-written payload
+        _fsync_dir(path.parent)
 
         written = path.stat().st_size
         log.debug(

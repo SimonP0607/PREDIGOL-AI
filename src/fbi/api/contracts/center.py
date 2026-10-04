@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -71,6 +71,9 @@ class TeamLineup(Contract):
     formation: str | None
     coach: str | None
     players: list[LineupPlayer]
+    coach_provider_id: int | None = None
+    coach_photo_url: str | None = Field(default=None, description="The coach's photo URL as /coachs stored it; "
+                                        "null when none is stored.")
 
 
 class PlayerLine(Contract):
@@ -364,6 +367,41 @@ class PlayerAbsence(Contract):
     reason: str | None
 
 
+class Provenance(Contract):
+    """Where reference rows come from: the provider endpoint, the payload, when it was fetched and when
+    PrediGol last asked (an answer can be old and still be the newest one)."""
+
+    source: str
+    observed_at: datetime | None = None
+    payload_hash: str | None = None
+    normalizer_version: str | None = None
+    checked_at: datetime | None = None
+
+
+class PlayerTransfer(Contract):
+    transfer_date: date | None
+    type: str | None = Field(description="The provider's text: a fee, 'Loan', 'Free', 'N/A'.")
+    team_in_id: int | None
+    team_in_provider_id: int | None
+    team_in: str | None
+    team_out_id: int | None
+    team_out_provider_id: int | None
+    team_out: str | None
+
+
+class PlayerSidelined(Contract):
+    type: str | None
+    start: date | None
+    end: date | None
+
+
+class PlayerTrophy(Contract):
+    league: str | None
+    country: str | None
+    season: str | None
+    place: str | None
+
+
 class PlayerDetail(Contract):
     player: PlayerSummary
     firstname: str | None
@@ -373,6 +411,11 @@ class PlayerDetail(Contract):
     seasons: Section[list[PlayerSeason]]
     matches: Section[list[PlayerMatch]]
     absences: Section[list[PlayerAbsence]]
+    transfers: Section[list[PlayerTransfer]] | None = None
+    sidelined: Section[list[PlayerSidelined]] | None = None
+    trophies: Section[list[PlayerTrophy]] | None = None
+    provenance: dict[str, Provenance] = Field(default_factory=dict, description="Per list (transfers, sidelined, "
+                                              "trophies): the payload and time it comes from.")
 
 
 class AdminCount(Contract):
@@ -499,3 +542,80 @@ class CompetitionTable(Contract):
     tables: list[StandingsTable] = Field(default_factory=list, description="Each table apart, in stage order.")
     mapping_version: str = ""
     rows: list[TableRow] = Field(description="Deprecated: every table's rows flattened (use tables).")
+
+
+LeaderListName = Literal["topscorers", "topassists", "topyellowcards", "topredcards"]
+
+
+class Leader(Contract):
+    rank: int
+    provider_player_id: int
+    player_id: int | None
+    name: str | None
+    photo_url: str | None
+    team_id: int | None
+    provider_team_id: int | None
+    team: str | None
+    team_logo: str | None
+    appearances: int | None
+    minutes: int | None
+    goals: int | None
+    assists: int | None
+    penalties_scored: int | None
+    yellow_cards: int | None
+    yellowred_cards: int | None
+    red_cards: int | None
+    rating: Decimal | None = Field(description="The provider's rating (its own metric), as sent.")
+
+
+class LeaderList(Contract):
+    kind: LeaderListName
+    rows: list[Leader]
+    provenance: Provenance
+
+
+class SeasonRound(Contract):
+    ordinal: int
+    round: str
+    stage: str
+    phase: str
+    dates: list[date]
+    is_current: bool
+
+
+class CompetitionReference(Contract):
+    """The provider's lists for a competition season: top scorers, assists and cards, and the round calendar
+    (with the round it calls current). Each list says which payload it comes from."""
+
+    competition_id: int
+    season: int
+    leaders: Section[list[LeaderList]]
+    rounds: Section[list[SeasonRound]]
+    rounds_provenance: Provenance | None = None
+    current_rounds: list[str] = Field(default_factory=list)
+
+
+class ProviderPrediction(Contract):
+    observed_at: datetime
+    winner_team_id: int | None = Field(description="The provider's team id it expects to win (or not lose).")
+    winner_name: str | None
+    winner_comment: str | None
+    win_or_draw: bool | None
+    under_over: str | None
+    goals_home: str | None
+    goals_away: str | None
+    advice: str | None
+    percent_home: Decimal | None
+    percent_draw: Decimal | None
+    percent_away: Decimal | None
+    comparison: dict[str, Any] | None
+    payload_hash: str
+    normalizer_version: str
+
+
+class ProviderPredictionView(Contract):
+    fixture_id: int
+    label: str = ("API-Football's own forecast (Poisson, form, comparison; no odds). Auxiliary: not PrediGol's "
+                  "model, not the market, never a model input or a pick.")
+    history: list[ProviderPrediction]
+    checks: int = Field(default=0, description="How many times PrediGol asked for it.")

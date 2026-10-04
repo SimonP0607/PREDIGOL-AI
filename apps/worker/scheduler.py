@@ -22,6 +22,10 @@ at worst, and a duplicated tick costs nothing at all.
   * ``ai_daily_report`` / ``ai_pick_review``  the AI layer (``fbi.analyst``): the research
     report from 06:00 Bogotá and the pick reviewer's flags every hour. Zero API-Football
     requests; the LLM and search APIs only when the owner configured them, inside a monthly cap.
+  * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
+    the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
+    trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
+    ``FBI_REFERENCE_MAX_PER_RUN`` requests a run and never into the live reserve.
   * ``research_monitor`` (07:05 Bogotá) / ``research_v2_weekly`` (Monday 04:20 Bogotá)  the
     evolution loop (``fbi.research.loop``): results into memory and proposals for the owner.
     Database only; the weekly run only when the code changed or four weeks passed.
@@ -129,6 +133,11 @@ RESULTS_REPAIR_MINUTES = int(os.environ.get("FBI_RESULTS_REPAIR_MINUTES", "30"))
 """Tracked fixtures over three hours past kick-off that still do not say they finished,
 re-read by id (20 per request). It rode along with the six-hourly results sync, so a
 match the live follower missed could stay "awaiting a result" for six hours."""
+REFERENCE_MINUTES = int(os.environ.get("FBI_REFERENCE_MINUTES", "30"))
+REFERENCE_MAX_PER_RUN = int(os.environ.get("FBI_REFERENCE_MAX_PER_RUN", "300"))
+"""Reference feeds (fbi.ingestion.reference). 300 a run caps the first fill - ~80,000 players' sidelined
+and trophies, ~2,600 teams' coaches and transfers - at 14,400 requests a day; afterwards a day needs about
+3,000 (predictions three times a match, rounds and top lists daily, people weekly)."""
 FINAL_PREMATCH_MINUTES = int(os.environ.get("FBI_FINAL_PREMATCH_MINUTES", "60"))
 """The provider's last pre-match prices for every tracked match played in the last six days,
 read once each (fbi.odds.final_prematch). It keeps them seven days, so the matches the capture
@@ -368,6 +377,25 @@ async def _final_prematch() -> None:
             await provider.aclose()
 
 
+async def _reference_refresh() -> None:
+    """What the reference feeds have due: the provider's predictions (auxiliary, never a model input), rounds,
+    top lists, coaches, transfers, sidelined, trophies, the odds catalogues and mapping."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.reference import refresh_reference
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await refresh_reference(conn, provider, daily_budget=settings.provider_plan.effective_budget,
+                                    max_requests=REFERENCE_MAX_PER_RUN,
+                                    prematch_windows=settings.odds.prematch_windows)
+        finally:
+            await provider.aclose()
+
+
 async def _catalogue_refresh() -> None:
     """Which season is current, and the coverage flags: one /leagues request a day."""
     from scripts.capture_odds import _client
@@ -448,7 +476,7 @@ async def _historical_backfill() -> None:
     from scripts.capture_odds import _client
 
     from fbi.ingestion.backfill import run_backfill, seed_current_details
-    from fbi.ingestion.people import seed_people_refresh
+    from fbi.ingestion.people import seed_people_refresh, seed_player_seasons
     from fbi.providers.api_football import ApiFootballProvider
 
     new_run_id()
@@ -456,6 +484,8 @@ async def _historical_backfill() -> None:
         # Player profiles monthly, current squads weekly: a refresh of the tracked scope,
         # queued behind everything else in the same budget-guarded backfill.
         seed_people_refresh(conn, at=now())
+        # The provider's season player statistics of current seasons, weekly (core.player_season_stats).
+        seed_player_seasons(conn, at=now())
         # Played matches of the current seasons whose detail nobody fetched (the live follower missed them).
         seed_current_details(conn)
         provider = ApiFootballProvider(_client())
@@ -805,6 +835,9 @@ async def main() -> None:
     scheduler.add_job(_final_prematch, "interval", minutes=FINAL_PREMATCH_MINUTES, id="final_prematch",
                       max_instances=1, coalesce=True, misfire_grace_time=FINAL_PREMATCH_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=7))
+    scheduler.add_job(_reference_refresh, "interval", minutes=REFERENCE_MINUTES, id="reference_refresh",
+                      max_instances=1, coalesce=True, misfire_grace_time=REFERENCE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=14))
     scheduler.add_job(_catalogue_refresh, "interval", hours=CATALOGUE_REFRESH_HOURS, id="catalogue_refresh",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(catalogue_next, moment + timedelta(minutes=8)))

@@ -29,8 +29,11 @@ SELECT e.seq, e.minute, e.extra_minute, e.team_side AS side, e.player_name AS pl
 """
 
 LINEUPS = """
-SELECT team_side AS side, formation, coach_name AS coach
-  FROM core.fixture_lineups WHERE fixture_id = %(f)s AND team_side IN ('home', 'away') ORDER BY team_side DESC
+SELECT l.team_side AS side, l.formation, l.coach_name AS coach, l.provider_coach_id AS coach_provider_id,
+       cp.photo_url AS coach_photo_url
+  FROM core.fixture_lineups l
+  LEFT JOIN core.coach_profiles_latest cp ON cp.provider_coach_id = l.provider_coach_id AND l.provider_coach_id > 0
+ WHERE l.fixture_id = %(f)s AND l.team_side IN ('home', 'away') ORDER BY l.team_side DESC
 """
 
 LINEUP_PLAYERS = """
@@ -374,6 +377,76 @@ SELECT a.fixture_id, f.kickoff_at, a.absence_type AS type, a.reason
   FROM core.player_absences a LEFT JOIN core.fixtures f ON f.id = a.fixture_id
  WHERE a.provider_player_id = %(pid)s
  ORDER BY f.kickoff_at DESC NULLS LAST LIMIT 25
+"""
+
+PLAYER_TRANSFERS = """
+SELECT x.transfer_date, x.type, ti.id AS team_in_id, x.team_in_id AS team_in_provider_id, x.team_in_name AS team_in,
+       tout.id AS team_out_id, x.team_out_id AS team_out_provider_id, x.team_out_name AS team_out,
+       x.observed_at, x.payload_hash, x.normalizer_version
+  FROM core.player_transfers_latest x
+  LEFT JOIN core.teams ti ON ti.provider_team_id = x.team_in_id
+  LEFT JOIN core.teams tout ON tout.provider_team_id = x.team_out_id
+ WHERE x.provider_player_id = %(pid)s
+ ORDER BY x.ordinal
+"""
+
+PLAYER_SIDELINED = """
+SELECT type, start_date AS start, end_date AS "end", observed_at, payload_hash, normalizer_version
+  FROM core.person_sidelined_latest WHERE person_kind = 'player' AND provider_person_id = %(pid)s ORDER BY ordinal
+"""
+
+PLAYER_TROPHIES = """
+SELECT league, country, season, place, observed_at, payload_hash, normalizer_version
+  FROM core.person_trophies_latest WHERE person_kind = 'player' AND provider_person_id = %(pid)s ORDER BY ordinal
+"""
+
+PERSON_CHECKS = """
+SELECT feed, max(checked_at) AS checked_at FROM core.reference_checks
+ WHERE target = %(key)s AND feed IN ('sidelined_players', 'trophies_players') GROUP BY feed
+"""
+
+REFERENCE_SEASONS = """
+SELECT cs.id, cs.season, cs.is_current FROM core.competition_seasons cs WHERE cs.competition_id = %(c)s
+ ORDER BY (EXISTS (SELECT 1 FROM core.season_leaders l WHERE l.competition_season_id = cs.id)
+           OR EXISTS (SELECT 1 FROM core.season_rounds r WHERE r.competition_season_id = cs.id)) DESC,
+          cs.is_current DESC, cs.season DESC
+"""
+
+COMPETITION_LEADERS = """
+SELECT l.list, l.ordinal + 1 AS rank, l.provider_player_id, p.id AS player_id, l.player_name AS name,
+       coalesce(l.photo_url, p.photo_url) AS photo_url, t.id AS team_id, l.provider_team_id, l.team_name AS team,
+       t.logo_url AS team_logo, l.appearances, l.minutes, l.goals, l.assists, l.penalties_scored, l.yellow_cards,
+       l.yellowred_cards, l.red_cards, l.rating, l.observed_at, l.payload_hash, l.normalizer_version
+  FROM core.season_leaders_latest l
+  LEFT JOIN core.players p ON p.provider_player_id = l.provider_player_id
+  LEFT JOIN core.teams t ON t.provider_team_id = l.provider_team_id
+ WHERE l.competition_season_id = %(cs)s
+ ORDER BY l.list, l.ordinal
+"""
+
+COMPETITION_ROUNDS = """
+SELECT ordinal, round, dates, observed_at, payload_hash, normalizer_version
+  FROM core.season_rounds_latest WHERE competition_season_id = %(cs)s ORDER BY ordinal
+"""
+
+CURRENT_ROUNDS = """
+SELECT rounds, observed_at FROM core.season_current_round WHERE competition_season_id = %(cs)s
+ ORDER BY observed_at DESC LIMIT 1
+"""
+
+REFERENCE_CHECK = """
+SELECT max(checked_at) AS checked_at FROM core.reference_checks WHERE feed = %(feed)s AND target = %(key)s
+"""
+
+PROVIDER_PREDICTIONS = """
+SELECT observed_at, winner_team_id, winner_name, winner_comment, win_or_draw, under_over, goals_home, goals_away,
+       advice, percent_home, percent_draw, percent_away, comparison, payload_hash, normalizer_version
+  FROM core.provider_predictions WHERE fixture_id = %(f)s ORDER BY observed_at
+"""
+
+PREDICTION_CHECKS = """
+SELECT count(*) AS n FROM core.reference_checks
+ WHERE feed = 'predictions' AND target LIKE 'fixture:' || %(pf)s || ':%%'
 """
 
 # ── Admin ──────────────────────────────────────────────────────────────────

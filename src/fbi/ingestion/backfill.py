@@ -52,6 +52,7 @@ from fbi.ingestion.fixtures import PLAN_REFUSAL
 from fbi.ingestion.identity import apply_teams
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.ingestion.people import apply_player_profiles, apply_squad
+from fbi.ingestion.season_stats import apply_player_season_stats
 from fbi.migration.completeness import fixtures_missing_detail
 from fbi.providers.api_football.details import iter_player_profiles, iter_squad, iter_teams
 from fbi.providers.base import FootballDataProvider, RawResponse
@@ -393,17 +394,22 @@ async def _execute(conn: psycopg.Connection, provider: Any, ledger: RunLedger, r
         page = task.page or 1
         raw = await provider.fetch_players_page(league_id=task.league_id, season=task.season, page=page)
         stored(raw)
+        observed_at = ledger.indexed_at(raw.payload_hash) or raw.fetched_at
+        written = apply_player_season_stats(conn, raw.body, payload_hash=raw.payload_hash, observed_at=observed_at)
+        counters.rows_inserted += written
         created = 0
         paging = raw.body.get("paging") if isinstance(raw.body, dict) else None
         total = paging.get("total") if isinstance(paging, dict) else None
         if page == 1 and isinstance(total, int) and total > 1:
             with conn.cursor() as cur:
                 for p in range(2, total + 1):
+                    # the same generation (batch_key) as page 1, so next week's sweep is a new set of pages
                     created += add_unit(cur, kind="players_season", league_id=task.league_id, season=task.season,
                                         endpoint="/players", params={"league": task.league_id,
                                                                      "season": task.season, "page": p},
-                                        priority=task.priority, tier=task.tier, plan_id=task.plan_id, page=p)
-        return _Outcome(raw.payload_hash, 0, raw.results_count, created=created)
+                                        priority=task.priority, tier=task.tier, plan_id=task.plan_id, page=p,
+                                        batch_key=task.batch_key)
+        return _Outcome(raw.payload_hash, written, raw.results_count, created=created)
     if task.kind == "player_profiles":
         page = task.page or 1
         raw = await provider.fetch_player_profiles_page(page=page)
