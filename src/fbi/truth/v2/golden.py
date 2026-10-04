@@ -16,9 +16,11 @@ part is at least 99.5 % and nothing critical is unexplained. Nothing in core or 
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -110,22 +112,43 @@ def external_csv(conn: psycopg.Connection[Any], run: V2Run, http: httpx.Client |
         got = cur.fetchone()
     if got is not None:
         return str(store.load(str(got[0]))["body"]["text"])
+    local = os.environ.get("FBI_FD_CSV_DIR")
+    path = Path(local) / season_code(season) / f"{division}.csv" if local else None
+    text: str | None = None
+    if path is not None and path.is_file():
+        # A copy fetched elsewhere (the machine's network resets football-data.co.uk): stored as a NEW raw
+        # payload like a download, its origin in the parameters.
+        text = decode(path.read_bytes())
+        return _store_csv(conn, run, store, endpoint, division, season, text, origin=f"file:{path.name}")
     if http is None:
         return None
-    res = http.get(csv_url(division, season))
+    res = None
+    for _attempt in range(3):
+        try:
+            res = http.get(csv_url(division, season))
+            break
+        except httpx.HTTPError as exc:  # a reset or a timeout: noted, the season keeps its other checks
+            run.failures.append(f"{csv_url(division, season)}: {type(exc).__name__}: {exc}"[:200])
+    if res is None:
+        return None
     if res.status_code != 200:
         run.failures.append(f"{csv_url(division, season)}: HTTP {res.status_code}")
         return None
-    text = decode(res.content)
+    return _store_csv(conn, run, store, endpoint, division, season, decode(res.content), origin="download")
+
+
+def _store_csv(conn: psycopg.Connection[Any], run: V2Run, store: PayloadStore, endpoint: str, division: str,
+               season: int, text: str, *, origin: str) -> str:
     at = datetime.now(UTC)
-    stored = store.store(endpoint=endpoint, params={"division": division, "season": str(season)}, fetched_at=at,
-                         http_status=200, body={"format": "csv", "text": text})
+    params = {"division": division, "season": str(season), "origin": origin}
+    stored = store.store(endpoint=endpoint, params=params, fetched_at=at, http_status=200,
+                         body={"format": "csv", "text": text})
     with conn.cursor() as cur:
         cur.execute("INSERT INTO raw.ingestion_payloads (hash, run_id, provider, endpoint, params, fetched_at, "
                     "http_status, results_count, file_path, bytes) VALUES (%s,%s,'football_data',%s,%s,%s,200,%s,%s,%s) "
                     "ON CONFLICT (hash) DO NOTHING",
-                    (stored.hash, run.ingestion_run_id, endpoint, Json({"division": division, "season": str(season)}),
-                     at, text.count("\n"), stored.file_path, stored.bytes_written))
+                    (stored.hash, run.ingestion_run_id, endpoint, Json(params), at, text.count("\n"),
+                     stored.file_path, stored.bytes_written))
     conn.commit()
     return text
 
