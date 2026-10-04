@@ -107,13 +107,14 @@ show|build|promote`):
 | Version | Status | What it is |
 |---|---|---|
 | `PRE_DATA_TRUTH_AUDIT` | LEGACY | the data as normalized before the data-truth audits; never changed - its known defects are in the evidence ledger and `audit.data_repairs` |
-| `DATASET_V2` | **VALIDATED** (build of 4 Oct 18:57 UTC) | the same core tables corrected by repairs that kept the old rows, plus everything rebuilt from RAW (competition phases, fixture facts, player extras, reference feeds, the provider's season aggregates) |
+| `DATASET_V2` | **VALIDATED** (rebuilt 4 Oct 19:31 UTC, after the reference feeds ran in production) | the same core tables corrected by repairs that kept the old rows, plus everything rebuilt from RAW (competition phases, fixture facts, player extras, reference feeds, the provider's season aggregates) |
 
 A build records counts and gates, each read from the newest audit run or the ledger: phases (0 matches shown a
 wrong table in 92 seasons), golden phases (41/41), standings (no verdict at PrediGol's fault), official tables (0
 differences), field coverage (0 dropped by a bug), RAW integrity (3 damaged payloads, recorded - a note), open
 critical/high ledger entries at PrediGol's fault (0), historical validation (15 MODEL_READY competition seasons),
-the API contract (0 missing endpoints; 4 partial - a note), research freeze (a note).
+the API contract (0 missing endpoints; 4 partial - a note), research freeze (a note). The build also counts the
+reference tables (19:31: 320 leader rows, 2,581 trophies ... - growing with every `reference_refresh` run).
 
 **No version is MODEL_READY.** A build is CANDIDATE or VALIDATED, never more; only a person promotes a VALIDATED
 version (`promote --by NAME --confirm`), and promotion is refused while research is frozen. `scripts.research_v2

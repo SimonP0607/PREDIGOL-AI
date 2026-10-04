@@ -44,7 +44,9 @@ times a season.
 * **Production check, 4 Oct 19:10-19:13 UTC**: every one of the 23 feeds answered with 0 errors (run 6435
   plus one capped run per remaining feed, 4 requests each): 107 predictions, 2,566 rounds, 320 leader rows,
   8 coaches with 40 career rows, 820 sidelined periods, 2,581 trophies, 171 countries, 2,814 odds-mapping
-  rows; the odds catalogues matched the stored ones (no rename).
+  rows; the odds catalogues matched the stored ones (no rename). The first worker run with the fair share
+  (6542, 19:33 UTC, be-64) spread its 300 requests over 13 feeds (23 each, the rest to the current rounds),
+  0 errors: 2,087 leader rows, 102 coaches, 2,000 periods out, 7,662 trophies, 11,793 transfer rows in all.
 * **/predictions is auxiliary**: `core.provider_predictions` is labelled the provider's opinion; it is served only by
   an admin route (`/admin/matches/{id}/provider-prediction`) and a test fails if any feature, model, backtest,
   pick, parlay or validation module names it.
