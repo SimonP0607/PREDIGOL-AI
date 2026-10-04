@@ -28,7 +28,7 @@ from fbi.core.clock import now
 from fbi.core.config import settings
 from fbi.truth.v2 import team_history as th
 from fbi.truth.v2 import team_stats as ts
-from fbi.truth.v2.ledger import Evidence, record_all
+from fbi.truth.v2.ledger import Evidence, clear_unseen, record_all
 from fbi.truth.v2.runner import V2Run, write_report
 
 REPORTS = Path("data/truth")
@@ -117,9 +117,9 @@ async def stats(run: V2Run, conn: psycopg.Connection[Any], targets: list[tuple[i
                           payload_hash=answer.payload_hash if answer else None)
         audits.append(a)
         evidence += ts.evidence(a, answer.ref() if answer else None)
-    scope = ts.scope_evidence(audits)
-    if scope is not None:
-        evidence.append(scope)
+    for extra in (ts.scope_evidence(audits), ts.shootout_evidence(audits)):
+        if extra is not None:
+            evidence.append(extra)
     return audits, evidence
 
 
@@ -129,9 +129,12 @@ async def history(run: V2Run, conn: psycopg.Connection[Any], n: int) -> tuple[di
     dups = th.duplicates(teams)
     tracked = {int(r["provider_league_id"]) for r in _rows(conn, "SELECT provider_league_id FROM core.competitions "
                                                                  "WHERE is_tracked")}
+    # a season counts as held only when it was migrated: catalogue rows exist for seasons whose fixtures were
+    # never fetched (before 2018, Friendlies Clubs before the current season)
     held = {(int(r["provider_league_id"]), int(r["season"])): int(r["id"]) for r in _rows(
         conn, "SELECT cs.id, c.provider_league_id, cs.season FROM core.competition_seasons cs "
-              "JOIN core.competitions c ON c.id = cs.competition_id")}
+              "JOIN core.competitions c ON c.id = cs.competition_id "
+              "WHERE EXISTS (SELECT 1 FROM core.fixtures f WHERE f.competition_season_id = cs.id)")}
     thin = [t for t in teams if int(t["fixtures"]) < 20]
     rnd = random.Random(20261004)
     sample = rnd.sample(thin, min(n, len(thin)))
@@ -202,6 +205,10 @@ async def run(args: argparse.Namespace) -> int:
                 run.finish({"error": "interrupted or failed", "done": len(audits)}, failed=True)
                 raise
             codes = record_all(conn, evidence, at=at, run_id=run.run_id)
+            if not args.team and not args.no_stats and not run.stopped:
+                clear_unseen(conn, area="team_stats", scope_prefix="team_stats:", seen=codes.keys(), at=at)
+            if args.history and not run.stopped:
+                clear_unseen(conn, area="team_history", scope_prefix="team_history:", seen=codes.keys(), at=at)
             verdicts: dict[str, int] = {}
             for a in audits:
                 verdicts[a.verdict] = verdicts.get(a.verdict, 0) + 1

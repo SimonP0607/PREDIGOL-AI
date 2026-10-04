@@ -175,3 +175,23 @@ def test_the_team_and_player_queries_read_the_real_schema(migrated_database: str
         assert pl.team_detail_gaps(conn, LEAGUE, SEASON, TEAM_A) == {"finished": 2, "without_player_rows": 0}
         counts = {t["provider_team_id"]: t for t in th.team_counts(conn)}
         assert counts[TEAM_A]["fixtures"] == 2
+
+
+def test_identity_and_fixture_sample_queries_read_the_real_schema(migrated_database: str,
+                                                                  v2_league: dict[str, int]) -> None:
+    from fbi.truth.v2 import fixtures as fx
+    from fbi.truth.v2 import identity as idn
+    from fbi.truth.v2 import leagues as lg
+
+    with psycopg.connect(migrated_database, autocommit=True) as conn:
+        checks = idn.db_checks(conn)
+        assert set(checks) == set(idn.CHECKS)
+        assert checks["squads"][0]["teams"] == 0
+        strata = fx.sample_ids(conn, at=NOW)
+        assert 992001 in strata["FT"] or 992002 in strata["FT"]
+        assert fx.current_seasons(conn)
+        comps, seasons = lg.ours(conn)
+        assert LEAGUE in {int(c["provider_league_id"]) for c in comps}
+        assert seasons[LEAGUE][0]["fixtures"] == 2
+        ids = idn.sample(conn, n=4)
+        assert set(ids) == {"teams", "players", "coaches", "venues"}

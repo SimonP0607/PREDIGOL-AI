@@ -95,15 +95,22 @@ SELECT f.provider_fixture_id, f.kickoff_at, f.status_short, f.home_team_id = %(t
 """
 
 
-def recompute(rows: Sequence[Mapping[str, Any]]) -> Figures:
-    """Our fixtures' figures, the provider's way: the final score (extra time included, a shoot-out
-    not), wins/draws/losses from it, clean sheet = conceded 0, failed to score = scored 0."""
+def recompute(rows: Sequence[Mapping[str, Any]], *, shootout_decides: bool = False) -> Figures:
+    """Our fixtures' figures: the final score (extra time included), wins/draws/losses from it, clean
+    sheet = conceded 0, failed to score = scored 0. With ``shootout_decides`` a match settled on
+    penalties counts as won/lost and the shoot-out winner gets one goal - the provider's own rule for
+    /teams/statistics (found by this audit: Inter's 2025 Super Cup, City's and Barcelona's friendlies)."""
     acc = {k: dict.fromkeys(SIDES, 0) for k in KEYS}
     form = []
     for r in rows:
         side = "home" if r["at_home"] else "away"
         gf = int(r["goals_home"] if r["at_home"] else r["goals_away"])
         ga = int(r["goals_away"] if r["at_home"] else r["goals_home"])
+        pen_for = r.get("pen_home") if r["at_home"] else r.get("pen_away")
+        pen_against = r.get("pen_away") if r["at_home"] else r.get("pen_home")
+        if shootout_decides and gf == ga and pen_for is not None and pen_against is not None \
+                and pen_for != pen_against:
+            gf, ga = (gf + 1, ga) if pen_for > pen_against else (gf, ga + 1)
         res = "wins" if gf > ga else "draws" if gf == ga else "loses"
         form.append({"wins": "W", "draws": "D", "loses": "L"}[res])
         for s in (side, "total"):
@@ -148,7 +155,7 @@ class TeamAudit:
     """provider team id"""
     name: str
     verdict: str = "ok"
-    """ok | provider_behind | ours_missing | result_mismatch | provider_lag_expected | no_api | no_db"""
+    """ok | provider_behind | ours_missing | result_mismatch | shootout_rule | provider_lag_expected | no_api"""
     api: dict[str, int | None] = field(default_factory=dict)
     ours: dict[str, int | None] = field(default_factory=dict)
     differences: dict[str, tuple[int | None, int | None]] = field(default_factory=dict)
@@ -183,6 +190,10 @@ def audit_team(api_body: Mapping[str, Any] | None, rows: Sequence[Mapping[str, A
     ours = recompute(list(rows))
     last = max((r["kickoff_at"] for r in rows), default=None)
     verdict, differences = judge(api, ours, last_finished=last, at=at)
+    if verdict == "result_mismatch" and api is not None:
+        provider_way = recompute(list(rows), shootout_decides=True)
+        if judge(api, provider_way, last_finished=last, at=at)[0] == "ok":
+            verdict = "shootout_rule"
     return TeamAudit(league, season, team, name, verdict, api.flat() if api else {}, ours.flat(), differences,
                      api.form if api else None, ours.form, last, product or {}, payload_hash)
 
@@ -215,6 +226,22 @@ def evidence(a: TeamAudit, api_ref: Mapping[str, Any] | None) -> list[Evidence]:
                          root_cause="a result or a home/away side differs between /teams/statistics and "
                                     "/fixtures, or the provider counts a game differently (awarded, shoot-out)")]
     return []
+
+
+def shootout_evidence(audits: Sequence[TeamAudit]) -> Evidence | None:
+    """One entry: the provider's team statistics count a shoot-out as a win/loss (+1 goal)."""
+    hits = [a for a in audits if a.verdict == "shootout_rule"]
+    if not hits:
+        return None
+    ex = [{"team": a.team, "name": a.name, "league": a.league, "season": a.season, "differences":
+           {k: list(v) for k, v in a.differences.items()}} for a in hits[:6]]
+    return Evidence(
+        key="team_stats:provider_rule:shootout", area="team_stats", issue_type="PROVIDER_DEFINED_METRIC",
+        severity="info", at_fault="none", entity=f"{len(hits)} team-seasons",
+        claim="/teams/statistics counts a match settled on penalties as won/lost and gives the shoot-out winner one "
+              "goal; our fixtures (and football's result) keep it a draw - figures differ by definition only",
+        api={"examples": ex}, root_cause="provider definition", status="ACCEPTED",
+        fix="never compare those two numbers without saying which rule each uses")
 
 
 def scope_evidence(audits: list[TeamAudit]) -> Evidence | None:

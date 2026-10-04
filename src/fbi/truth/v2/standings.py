@@ -77,6 +77,7 @@ class Row:
     update: datetime | None = None
     home: Line | None = None
     away: Line | None = None
+    payload_hash: str | None = None
 
 
 def _int(v: Any) -> int | None:
@@ -199,7 +200,8 @@ def db_rows(conn: psycopg.Connection[Any], cs_id: int) -> list[Row]:
                 rank=_int(r.get("rank")), total=_db_line(r), gd=_int(r.get("goals_diff")), form=_text(r.get("form")),
                 description=_text(r.get("description")), update=r.get("provider_updated_at"),
                 home=_db_line(r, "home") if r.get("home_played") is not None else None,
-                away=_db_line(r, "away") if r.get("away_played") is not None else None) for r in rows]
+                away=_db_line(r, "away") if r.get("away_played") is not None else None,
+                payload_hash=r.get("payload_hash")) for r in rows]
 
 
 @dataclass(frozen=True)
@@ -263,35 +265,49 @@ class Recompute:
         return self.rows > 0 and (self.single_phase or self.agree * 2 >= self.rows)
 
 
-def recompute_group(rows: Sequence[Row], matches: Sequence[Played]) -> Recompute:
+def recompute_group(rows: Sequence[Row], matches: Sequence[Played], *, tables: int = 1) -> Recompute:
     """The table the fixtures imply for the teams of one provider table.
 
-    Candidates: every non-knockout match between two of its teams; then the same restricted to
-    one phase (the part of the round label before " - ", e.g. "Apertura", "League Stage"). The
-    candidate whose played counts agree with the provider's on the most rows wins; a phase named
-    in the group label wins ties. ``usable`` says whether the phase was identified at all.
+    Candidates, each with and without the phase filter (the part of the round label before
+    " - ", e.g. "Apertura", "League Stage"): the non-knockout matches between two of the table's
+    teams ("within": groups, a split season), and those with at least one of its teams ("any":
+    a conference, whose teams also meet the other conference). The candidate whose games-played
+    agree with the provider's on the most rows wins; a phase named in the group label, then
+    "within", wins ties.
+
+    When the season has ONE table and its matches ONE phase, the fixtures are the table whatever
+    the provider says (``single_phase``): a provider behind on a whole match day disagrees on
+    every row and must still be caught. Otherwise the phase is only trusted when at least half
+    of the rows agree (period tables, cumulative tables and play-off groups are left unjudged).
     """
     teams = {r.team for r in rows}
-    inside = [m for m in matches if m.home in teams and m.away in teams and not KNOCKOUT.search(m.round)]
+    league = [m for m in matches if not KNOCKOUT.search(m.round)]
+    within = [m for m in league if m.home in teams and m.away in teams]
+    anywhere = [m for m in league if m.home in teams or m.away in teams]
     group_label = _fold(" ".join(r.group or "" for r in rows[:1]))
-    phases = sorted({phase_of(m.round) for m in inside})
-    if len(phases) <= 1:
-        table = tally(inside)
-        agree = sum(1 for r in rows if (table.get(r.team) or Line(0, 0, 0, 0, 0, 0, 0)).played == r.total.played)
-        return Recompute(table, phases[0] if phases else "none", agree, len(rows), single_phase=bool(phases))
-    candidates: list[tuple[str, list[Played]]] = [("all non-knockout", inside)]
-    for phase in phases:
-        candidates.append((phase, [m for m in inside if phase_of(m.round) == phase]))
-    best: Recompute | None = None
-    for name, subset in candidates:
+    phases = sorted({phase_of(m.round) for m in within})
+    zero = Line(0, 0, 0, 0, 0, 0, 0)
+
+    def agree(table: dict[int, Line]) -> int:
+        return sum(1 for r in rows if (table.get(r.team) or zero).played == r.total.played)
+
+    if tables == 1 and len(phases) <= 1:
+        table = tally(within)
+        return Recompute(table, phases[0] if phases else "none", agree(table), len(rows), single_phase=bool(phases))
+    candidates: list[tuple[str, bool, list[Played]]] = []
+    for scope, subset in (("within", within), ("any", anywhere)):
+        candidates.append((f"all non-knockout ({scope})", False, subset))
+        for phase in sorted({phase_of(m.round) for m in subset}):
+            candidates.append((f"{phase} ({scope})", _fold(phase) in group_label,
+                               [m for m in subset if phase_of(m.round) == phase]))
+    best: tuple[int, bool, Recompute] | None = None
+    for name, named, subset in candidates:
         table = tally(subset)
-        agree = sum(1 for r in rows if (table.get(r.team) or Line(0, 0, 0, 0, 0, 0, 0)).played == r.total.played)
-        named = name != "all non-knockout" and _fold(name) in group_label
-        cand = Recompute(table, name, agree, len(rows))
-        if best is None or agree > best.agree or (agree == best.agree and named):
-            best = cand
+        cand = Recompute(table, name, agree(table), len(rows))
+        if best is None or cand.agree > best[0] or (cand.agree == best[0] and named and not best[1]):
+            best = (cand.agree, named, cand)
     assert best is not None
-    return best
+    return best[2]
 
 
 # ── comparison ─────────────────────────────────────────────────────────────
@@ -378,6 +394,9 @@ class SeasonAudit:
     recompute: dict[str, str] = field(default_factory=dict)
     rows: list[RowVerdict] = field(default_factory=list)
     extra_db_teams: list[int] = field(default_factory=list)
+    legacy_snapshot: bool = False
+    """Our newest snapshot has no payload hash: written before migration 0048 by the writer that kept
+    one row per team (a team's second table - Apertura/Clausura, a third-place ranking - dropped)."""
     payload_hash: str | None = None
     fetched_at: datetime | None = None
     verdict: str = "ok"
@@ -393,6 +412,7 @@ class SeasonAudit:
                 "snapshot_at": self.snapshot_at, "checked_at": self.checked_at, "last_finished": self.last_finished,
                 "product_season": self.product_season, "in_refresh_scope": self.in_refresh_scope,
                 "recompute": self.recompute, "extra_db_teams": self.extra_db_teams, "notes": self.notes,
+                "legacy_snapshot": self.legacy_snapshot,
                 "payload_hash": self.payload_hash}
 
 
@@ -407,6 +427,7 @@ def audit_season(facts: Mapping[str, Any], body: Mapping[str, Any] | None, db: S
     s.in_refresh_scope = bool(facts.get("is_tracked") and facts.get("is_current") and facts.get("type") == "league")
     api = api_rows(body or {})
     s.api_rows, s.db_rows = len(api), len(db)
+    s.legacy_snapshot = bool(db) and all(r.payload_hash is None for r in db)
     s.api_groups = sorted({r.group or "" for r in api})
     s.db_groups = sorted({r.group or "" for r in db})
     updates = [r.update for r in api if r.update]
@@ -425,7 +446,7 @@ def audit_season(facts: Mapping[str, Any], body: Mapping[str, Any] | None, db: S
     for r in db:
         db_by_team.setdefault(r.team, []).append(r)
     for group, rows in by_group.items():
-        rec = recompute_group(rows, matches) if matches else None
+        rec = recompute_group(rows, matches, tables=len(by_group)) if matches else None
         if rec is not None:
             s.recompute[group or ""] = f"{rec.phase}: {rec.agree}/{rec.rows} rows agree on games played"
         for r in rows:
@@ -466,6 +487,10 @@ def season_verdict(s: SeasonAudit, *, at: datetime) -> str:
 
 # ── evidence ───────────────────────────────────────────────────────────────
 
+ROOT_LEGACY = ("NORMALIZER_BUG fixed 4 Oct 06:46 UTC (migration 0048): the old writer keyed a table row by team "
+               "without its group, so a team's second table of the same season (Apertura/Clausura/annual, a "
+               "third-place ranking) was dropped - this snapshot was written by it")
+
 ROOT_SCOPE = ("our refresh reads tables only for tracked, current, league-type seasons "
               "(context_refresh: c.type = 'league'); this competition is a cup with a table "
               "(league phase / groups), so its table is never refreshed after the first load")
@@ -486,9 +511,14 @@ def evidence(s: SeasonAudit, api_ref: Mapping[str, Any] | None) -> list[Evidence
               "provider_update": s.api_update}
     counts = s.counts()
     if s.verdict in ("predigol_behind", "mismatch", "missing_in_db"):
-        cause = ROOT_SCOPE if not s.in_refresh_scope and s.type == "cup" else (
-            "our newest snapshot predates the provider's update: the due-refresh did not re-read this table "
-            "after the provider changed it (see core.context_checks)")
+        if not s.in_refresh_scope and s.type == "cup":
+            cause = ROOT_SCOPE
+        elif s.legacy_snapshot and counts.get("missing_in_db"):
+            cause = (ROOT_LEGACY + ("" if s.checked_at else "; the season has not been re-read since the fix "
+                                    "(no core.context_checks row)"))
+        else:
+            cause = ("our newest snapshot predates the provider's update: the due-refresh did not re-read this "
+                     "table after the provider changed it (see core.context_checks)")
         out.append(Evidence(
             key=f"{key}:predigol_behind", area="standings", issue_type="STANDINGS_MISMATCH", severity="high",
             at_fault="predigol", entity=label,

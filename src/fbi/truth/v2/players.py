@@ -213,6 +213,31 @@ def judge_block(api: Block | None, ours: Mapping[str, Any] | None) -> BlockVerdi
     return v
 
 
+def refine(v: BlockVerdict, *, tracked: set[int], migrated: set[tuple[int, int]]) -> BlockVerdict:
+    """Say WHY our side lacks what the provider has, or name a definition difference:
+
+    * the competition is not tracked                         -> untracked (not an issue)
+    * tracked, but the season was never migrated             -> season_not_migrated
+    * finished matches of his team without any player rows   -> details_missing (backfill)
+    * every match has player rows, he is not in some         -> player_rows_missing (provider)
+    * only the number of starts differs (by 1-2)             -> starts_definition
+    """
+    if v.verdict in ("not_in_db", "ours_missing"):
+        if v.league not in tracked:
+            v.verdict = "untracked"
+        elif (v.league, v.season) not in migrated:
+            v.verdict = "season_not_migrated"
+        elif v.gaps.get("without_player_rows"):
+            v.verdict = "details_missing"
+        else:
+            v.verdict = "player_rows_missing"
+    elif v.verdict == "stats_mismatch" and set(v.differences) == {"lineups"}:
+        a, b = v.differences["lineups"]
+        if a is not None and b is not None and abs(int(a) - int(b)) <= 2:
+            v.verdict = "starts_definition"
+    return v
+
+
 def player_evidence(player: int, name: str, verdicts: Sequence[BlockVerdict], product: Mapping[str, Any],
                     current_club: Mapping[str, Any] | None, api_ref: Mapping[str, Any] | None) -> list[Evidence]:
     out = []
@@ -223,7 +248,9 @@ def player_evidence(player: int, name: str, verdicts: Sequence[BlockVerdict], pr
         key = f"player_stats:{player}:{v.league}:{v.season}:{v.team}"
         diffs = {k: list(x) for k, x in v.differences.items()}
         entity = f"{label} - {v.team_name} in {v.league_name} {v.season}"
-        if v.verdict in ("ours_missing", "not_in_db"):
+        if v.verdict in ("untracked", "season_not_migrated", "starts_definition"):
+            continue  # summarised once per run (summary_evidence), not per player
+        if v.verdict in ("ours_missing", "not_in_db", "details_missing"):
             out.append(Evidence(key=f"{key}:ours_missing", area="player_stats", issue_type="MISSING_BACKFILL",
                                 severity="medium", at_fault="predigol", entity=entity,
                                 claim=f"{entity}: the provider counts more appearances than our match rows "
@@ -238,6 +265,13 @@ def player_evidence(player: int, name: str, verdicts: Sequence[BlockVerdict], pr
                                 severity="low", at_fault="provider", entity=entity,
                                 claim=f"{entity}: our match rows have more appearances than the provider's season "
                                       f"figures ({diffs}); its player statistics update several times a week",
+                                api={**(dict(api_ref) if api_ref else {}), "block": v.api}, db={"block": v.ours}))
+        elif v.verdict == "player_rows_missing":
+            out.append(Evidence(key=f"{key}:rows_missing", area="player_stats", issue_type="PLAYER_STATS_MISMATCH",
+                                severity="low", at_fault="provider", entity=entity,
+                                claim=f"{entity}: every finished match of his team has player rows, yet the provider's "
+                                      f"season figures count more appearances ({diffs}) - its per-match players "
+                                      "lists omit him where its aggregate counts him",
                                 api={**(dict(api_ref) if api_ref else {}), "block": v.api}, db={"block": v.ours}))
         elif v.verdict in ("stats_mismatch", "not_at_provider"):
             out.append(Evidence(key=f"{key}:mismatch", area="player_stats", issue_type="PLAYER_STATS_MISMATCH",
@@ -283,4 +317,34 @@ def product_evidence(rows: Sequence[Mapping[str, Any]]) -> list[Evidence]:
                   "team, league and season",
             db={"examples": ex}, root_cause="aggregation scope: a rolling window with no competition or season",
             fix="per competition and season blocks (the provider's scope), the rolling total labelled as such"))
+    return out
+
+
+def summary_evidence(rows: Sequence[Mapping[str, Any]]) -> list[Evidence]:
+    """One entry each for the definitional and scope verdicts across all audited players."""
+    tally: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        for b in r["blocks"]:
+            if b["verdict"] in ("season_not_migrated", "starts_definition", "untracked"):
+                tally.setdefault(b["verdict"], []).append({"player": r["player"], "name": r["name"],
+                                                          "league": b["league_name"], "season": b["season"],
+                                                          "differences": b["differences"]})
+    out = []
+    if tally.get("season_not_migrated"):
+        items = tally["season_not_migrated"]
+        out.append(Evidence(
+            key="player_stats:summary:season_not_migrated", area="player_stats", issue_type="SEASON_NOT_MIGRATED",
+            severity="low", at_fault="predigol", entity=f"{len(items)} player blocks",
+            claim=f"{len(items)} provider blocks belong to tracked competitions whose season was never migrated "
+                  "(Friendlies Clubs before the current season, seasons before 2018)",
+            api={"examples": items[:8]}, root_cause="historical migration scope",
+            fix="migrate those seasons if the product should show them; otherwise say the scope"))
+    if tally.get("starts_definition"):
+        items = tally["starts_definition"]
+        out.append(Evidence(
+            key="player_stats:summary:starts_definition", area="player_stats", issue_type="PROVIDER_DEFINED_METRIC",
+            severity="info", at_fault="none", entity=f"{len(items)} player blocks",
+            claim=f"Starts differ by 1-2 in {len(items)} blocks: the provider's season 'lineups' and its per-match "
+                  "substitute flag (which we count) disagree",
+            api={"examples": items[:8]}, status="ACCEPTED"))
     return out

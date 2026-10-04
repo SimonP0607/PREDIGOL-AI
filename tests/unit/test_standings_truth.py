@@ -94,7 +94,7 @@ def test_the_phase_named_by_the_group_is_the_one_recomputed() -> None:
                             row(2, 1, 0, 0, 1, 0, 1, group="Primera A: Clausura", rank=2)))
     games = [match(10, 1, 2, 0, 3, "Apertura - 1"), match(11, 1, 2, 1, 0, "Clausura - 1")]
     rec = st.recompute_group(rows, games)
-    assert rec.phase == "Clausura" and rec.usable
+    assert rec.phase.startswith("Clausura") and rec.usable
     assert rec.by_team[1].points == 3
 
 
@@ -118,3 +118,27 @@ def test_the_product_showing_an_older_season_is_wrong_season() -> None:
     a = st.audit_season({**FACTS, "product_season": 2025}, table, [], [], at=NOW)
     assert a.verdict == "missing_in_db"
     assert {"STANDINGS_MISMATCH", "WRONG_SEASON"} <= {e.issue_type for e in st.evidence(a, None)}
+
+
+def test_a_conference_table_counts_matches_against_the_other_conference() -> None:
+    east = st.api_rows(body(row(1, 2, 2, 0, 0, 3, 0, group="East"), row(2, 2, 0, 0, 2, 0, 3, group="East", rank=2)))
+    games = [match(10, 1, 2, 2, 0), match(11, 1, 3, 1, 0), match(12, 2, 4, 0, 1)]  # 3 and 4 are West
+    rec = st.recompute_group(east, games, tables=2)
+    assert rec.usable and rec.by_team[1].played == 2 and "any" in rec.phase
+
+
+def test_period_tables_that_match_no_phase_are_left_unjudged() -> None:
+    period = st.api_rows(body(row(1, 0, 0, 0, 0, 0, 0, group="Period 2"), row(2, 0, 0, 0, 0, 0, 0, group="Period 2")))
+    rec = st.recompute_group(period, [match(10, 1, 2, 2, 0)], tables=5)
+    assert not rec.usable
+
+
+def test_a_legacy_snapshot_missing_second_tables_names_the_old_writer() -> None:
+    table = {"response": [{"league": {"standings": [
+        [row(1, 1, 1, 0, 0, 2, 0, group="Annual"), row(2, 1, 0, 0, 1, 0, 2, group="Annual", rank=2)],
+        [row(1, 1, 1, 0, 0, 2, 0, group="Clausura"), row(2, 1, 0, 0, 1, 0, 2, group="Clausura", rank=2)]]}}]}
+    ours = st.api_rows(table)[:2]  # only the first table was kept, no payload hash
+    a = st.audit_season({**FACTS, "checked_at": None}, table, ours, [match(10, 1, 2, 2, 0)], at=NOW)
+    assert a.legacy_snapshot and a.counts().get("missing_in_db") == 2
+    cause = st.evidence(a, None)[0].root_cause or ""
+    assert "migration 0048" in cause and "not been re-read" in cause

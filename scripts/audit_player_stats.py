@@ -31,7 +31,7 @@ from psycopg.rows import dict_row
 from fbi.core.clock import now
 from fbi.core.config import settings
 from fbi.truth.v2 import players as pl
-from fbi.truth.v2.ledger import Evidence, record_all
+from fbi.truth.v2.ledger import Evidence, clear_unseen, record_all
 from fbi.truth.v2.runner import V2Run, write_report
 
 REPORTS = Path("data/truth")
@@ -87,7 +87,8 @@ def current_club(career: list[dict[str, Any]], national: set[int]) -> tuple[dict
 
 
 async def audit_player(run: V2Run, conn: psycopg.Connection[Any], player: int, name: str, seasons: tuple[int, ...],
-                       *, focus: bool, national: set[int]) -> tuple[dict[str, Any], list[Evidence]]:
+                       *, focus: bool, national: set[int], tracked: set[int],
+                       migrated: set[tuple[int, int]]) -> tuple[dict[str, Any], list[Evidence]]:
     verdicts: list[pl.BlockVerdict] = []
     refs = []
     profile: dict[str, Any] = {}
@@ -103,7 +104,7 @@ async def audit_player(run: V2Run, conn: psycopg.Connection[Any], player: int, n
             v = pl.judge_block(api_by.get(key), ours.get(key))
             if v.verdict in ("ours_missing", "not_in_db"):
                 v.gaps = pl.team_detail_gaps(conn, v.league, v.season, v.team)
-            verdicts.append(v)
+            verdicts.append(pl.refine(v, tracked=tracked, migrated=migrated))
     club = nat = None
     extra: dict[str, Any] = {}
     if focus:
@@ -195,6 +196,12 @@ async def run(args: argparse.Namespace) -> int:
             sample = {} if args.player else sample_players(conn, season, args.per_league)
             national = {int(r["provider_team_id"]) for r in _rows(conn, "SELECT provider_team_id FROM core.teams "
                                                                         "WHERE is_national")}
+            tracked = {int(r["provider_league_id"]) for r in _rows(conn, "SELECT provider_league_id FROM "
+                                                                         "core.competitions WHERE is_tracked")}
+            migrated = {(int(r["provider_league_id"]), int(r["season"])) for r in _rows(conn, """
+                SELECT c.provider_league_id, cs.season FROM core.competition_seasons cs
+                  JOIN core.competitions c ON c.id = cs.competition_id
+                 WHERE EXISTS (SELECT 1 FROM core.fixtures f WHERE f.competition_season_id = cs.id)""")}
             run = V2Run(conn, client, "player_stats", at, params={"focus": list(focus), "sample": len(sample),
                                                                   "seasons": list(seasons)})
             rows: list[dict[str, Any]] = []
@@ -202,18 +209,20 @@ async def run(args: argparse.Namespace) -> int:
             try:
                 for pid, name in [*focus.items(), *[(p, n) for p, n in sample.items() if p not in focus]]:
                     row, found = await audit_player(run, conn, pid, name, seasons, focus=pid in focus,
-                                                    national=national)
+                                                    national=national, tracked=tracked, migrated=migrated)
                     rows.append(row)
                     evidence += found
             except BaseException:
                 run.finish({"error": "interrupted or failed", "done": len(rows)}, failed=True)
                 raise
-            evidence += pl.product_evidence(rows)
+            evidence += pl.product_evidence(rows) + pl.summary_evidence(rows)
             checks: list[dict[str, Any]] = []
             if args.external:
                 checks, ext_ev = external_evidence(json.loads(Path(args.external).read_text()), rows)
                 evidence += ext_ev
             codes = record_all(conn, evidence, at=at, run_id=run.run_id)
+            if not args.player and not run.stopped:
+                clear_unseen(conn, area="player_stats", scope_prefix="player_stats:", seen=codes.keys(), at=at)
             verdicts: dict[str, int] = {}
             for r in rows:
                 for b in r["blocks"]:

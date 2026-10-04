@@ -132,3 +132,34 @@ def test_apps_counting_unused_substitutes_is_flagged_once() -> None:
             {"player": 2, "name": "B", "product": {"apps": 10, "bench_rows": 0, "competitions": 1}}]
     ev = {e.key: e for e in pl.product_evidence(rows)}
     assert set(ev) == {"player_stats:product:apps_counts_bench", "player_stats:product:window_scope"}
+
+
+def test_a_shootout_counted_as_a_result_is_the_providers_rule_not_a_mismatch() -> None:
+    drawn = {"at_home": True, "goals_home": 1, "goals_away": 1, "pen_home": 3, "pen_away": 4,
+             "kickoff_at": NOW - timedelta(days=30)}
+    one = {"home": 1, "away": 0, "total": 1}
+    none = {"home": 0, "away": 0, "total": 0}
+    body = {"response": {"fixtures": {"played": one, "wins": none, "draws": none, "loses": one},  # a loss, 1-2
+                         "goals": {"for": {"total": one}, "against": {"total": {"home": 2, "away": 0, "total": 2}}},
+                         "clean_sheet": none, "failed_to_score": none}}
+    a = ts.audit_team(body, [drawn], league=547, season=2025, team=505, name="Inter", at=NOW)
+    assert a.verdict == "shootout_rule"
+    ev = ts.shootout_evidence([a])
+    assert ev is not None and ev.issue_type == "PROVIDER_DEFINED_METRIC" and ev.status == "ACCEPTED"
+
+
+def test_why_our_side_lacks_a_block_is_named() -> None:
+    def v(verdict: str, league: int = 10, season: int = 2026, gaps: int = 0,
+          diffs: dict[str, tuple[Any, Any]] | None = None) -> pl.BlockVerdict:
+        b = pl.BlockVerdict(1, "T", league, "L", season, verdict, None, None, differences=diffs or {})
+        b.gaps = {"finished": 5, "without_player_rows": gaps}
+        return b
+
+    assert pl.refine(v("not_in_db", league=999), tracked={10}, migrated=set()).verdict == "untracked"
+    assert pl.refine(v("not_in_db"), tracked={10}, migrated=set()).verdict == "season_not_migrated"
+    assert pl.refine(v("ours_missing", gaps=4), tracked={10}, migrated={(10, 2026)}).verdict == "details_missing"
+    assert pl.refine(v("ours_missing"), tracked={10}, migrated={(10, 2026)}).verdict == "player_rows_missing"
+    assert pl.refine(v("stats_mismatch", diffs={"lineups": (7, 6)}), tracked={10},
+                     migrated={(10, 2026)}).verdict == "starts_definition"
+    assert pl.refine(v("stats_mismatch", diffs={"lineups": (7, 6), "goals": (2, 1)}), tracked={10},
+                     migrated={(10, 2026)}).verdict == "stats_mismatch"
