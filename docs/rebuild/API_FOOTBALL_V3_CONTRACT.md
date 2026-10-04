@@ -85,3 +85,29 @@ them at the time stay (40 rows name them: live odds and live states); their sour
 place before its bytes reached the disk. Fix: the store now syncs the file before the rename and the directory
 after it, and an empty file is rewritten from the same body instead of being taken as already captured
 (`tests/unit/test_payload_store.py`). RAW is never repaired; the three are evidence entries (`raw_integrity:*`).
+
+## 7. Cadences - the provider's documented rate and PrediGol's
+
+| Endpoint | Documented update / recommended call | Worker job | PrediGol's cadence |
+|---|---|---|---|
+| `/leagues` | several times a day / 1 per hour | `catalogue_refresh` | every 24 h (one request: every league, season and coverage flag) |
+| `/fixtures` (list) | every 15 s / 1 per minute in play, else 1 per day | `fixtures_sync`, `results_sync` | every 6 h per current season; results every 6 h, 1-day lookback |
+| `/fixtures?ids=` | every 15 s | `live_match`, `results_repair`, backfill | every minute while in play (20 ids a request); unfinished-past-kick-off every 30 min; one settled re-read |
+| `/odds` | every 3 h / 1 per 3 h | `odds_capture`, `final_prematch` | every 15 min inside the capture windows; the last pre-match prices once, after kick-off |
+| `/odds/live` | every 5 s | `live_odds` | adaptive 15-60 s within the live budget |
+| `/standings` | every hour / 1 per hour in play, else 1 per day | `context_due`, `context_refresh` | hourly after a finished match until the table changes (24 h at most); every 12 h otherwise |
+| `/injuries` | every 4 h / 1 per day | `context_due`, `context_refresh` | every 4 h for seasons with a match in 48 h; every 12 h otherwise |
+| `/predictions` | every hour / 1 per hour in play, else 1 per day | `reference_refresh` | 48 h, 24 h and 3 h before each tracked kick-off |
+| `/fixtures/rounds` | every day / 1 per day | `reference_refresh` | daily per current season (with dates; and `current`) |
+| `/players/top*` (4) | several times a week / 1 per day | `reference_refresh` | daily per current season the coverage flags allow |
+| `/teams/statistics` | twice a day / 1 per day if playing, else 1 per week | `reference_refresh` | daily within 24 h of a match, weekly otherwise |
+| `/coachs`, `/transfers` | daily / several a week; 1 per day | `reference_refresh` | weekly per tracked team |
+| `/sidelined`, `/trophies` | several times a week / 1 per day | `reference_refresh` | weekly per person in scope, 20 a request |
+| `/odds/bets`, `/odds/live/bets`, `/odds/bookmakers`, `/odds/mapping` | several a week - daily / 1 per day | `reference_refresh` | daily (mapping: every page) |
+| `/players/squads` | several times a week / 1 per week | `historical_backfill` (seeded weekly) | weekly per tracked team |
+| `/players/profiles` | several times a week / 1 per week | `historical_backfill` (seeded monthly) | monthly sweep of every page |
+| `/players?league&season` | several times a week / 1 per day | `historical_backfill` (seeded weekly) | weekly per current season |
+| `/countries`, `/leagues/seasons`, `/players/seasons`, `/teams/countries` | when added / 1 per day | `reference_refresh` | weekly (`/timezone` every 90 days) |
+
+Every requesting job spends behind the live reserve (`fbi.ingestion.backfill.live_reserve`: what odds capture and the
+standing syncs may need over the next 24 h) and inside the daily budget (60,000; the plan's limit is higher).
