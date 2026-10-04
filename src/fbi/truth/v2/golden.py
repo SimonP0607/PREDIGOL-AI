@@ -261,6 +261,8 @@ async def validate(run: V2Run, conn: psycopg.Connection[Any], league: int, seaso
         g.table_rows = len(audit.rows)
         g.table_ok = sum(1 for r in audit.rows if r.verdict in ("ok", "adjusted", "awarded"))
         g.table_verdict = audit.verdict
+        for r in [r for r in audit.rows if r.verdict not in ("ok", "adjusted", "awarded")][:5]:
+            g.notes.append(f"table {r.name} ({r.group}): {r.verdict}" + (f" - {'; '.join(r.notes)}" if r.notes else ""))
     # 3. Football-Data's results
     division = DIVISIONS.get(league)
     if division is not None:
@@ -290,10 +292,16 @@ def evidence(seasons: Sequence[GoldenSeason]) -> list[Evidence]:
         if g.verdict != "NEEDS_REVIEW":
             continue
         parts = {k: (None if v is None else round(v, 4)) for k, v in g.parts().items()}
+        if g.external_score_disagree or g.results_checked != g.results_matched:
+            issue, fault = "RESULT_MISMATCH", "undetermined"
+        elif (parts["fixtures"] or 1.0) < PASS:
+            issue, fault = "FIXTURE_MISMATCH", "undetermined"
+        else:  # the final table alone
+            issue = "STANDINGS_MISMATCH"
+            fault = {"provider_stale": "provider", "predigol_behind": "predigol", "mismatch": "predigol",
+                     "fixtures_missing": "predigol"}.get(g.table_verdict, "undetermined")
         out.append(Evidence(
-            key=f"golden:{g.league}:{g.season}", area="golden",
-            issue_type="RESULT_MISMATCH" if (g.external_score_disagree or g.results_checked != g.results_matched)
-            else "FIXTURE_MISMATCH", severity="high", at_fault="undetermined",
+            key=f"golden:{g.league}:{g.season}", area="golden", issue_type=issue, severity="high", at_fault=fault,
             entity=f"{g.name} {g.season} ({g.league})",
             claim=f"{g.name} {g.season}: golden checks below {PASS:.1%}: {parts}",
             api={"fixtures": [g.fixtures_api, g.fixtures_db], "table": g.table_verdict, "findings": g.findings[:8]},

@@ -593,11 +593,16 @@ def explain_official(s: SeasonAudit, changed: Sequence[Official], stored: Mappin
         m = o.match
         was = stored.get(m.fixture)
         for v in s.rows:
-            if (v.team in (m.home, m.away) and v.verdict == "ok" and v.fix is not None
-                    and m.fixture in used.get(v.group, frozenset())):
+            if (v.team not in (m.home, m.away) or v.fix is None
+                    or m.fixture not in used.get(v.group, frozenset())):
+                continue
+            stored_text = "-".join(map(str, was)) if was else "no result"
+            if v.verdict == "ok":
                 v.verdict = "awarded"
-                v.notes.append(f"fixture {m.fixture}: official {m.gh}-{m.ga}, stored "
-                               f"{'-'.join(map(str, was)) if was else 'no result'} ({o.basis})")
+                v.notes.append(f"fixture {m.fixture}: official {m.gh}-{m.ga}, stored {stored_text} ({o.basis})")
+            elif v.verdict == "provider_behind" and was is None:
+                v.notes.append(f"the provider's table does not count fixture {m.fixture}, decided off the pitch: "
+                               f"official {m.gh}-{m.ga} ({o.basis})")
 
 
 def explain_missing_games(s: SeasonAudit, api: Sequence[Row], matches: Sequence[Played],
@@ -703,11 +708,14 @@ def evidence(s: SeasonAudit, api_ref: Mapping[str, Any] | None) -> list[Evidence
             fix="refresh tables for every tracked current season whose coverage has standings (cups included), "
                 "hourly while matches end; product labels a table older than its last finished match as stale"))
     if s.verdict == "provider_stale":
+        decided = sorted({n for r in s.rows if r.verdict == "provider_behind" for n in r.notes
+                          if "decided off the pitch" in n})
         out.append(Evidence(
             key=f"{key}:provider_stale", area="standings", issue_type="PROVIDER_STALE", severity="medium",
             at_fault="provider", entity=label,
             claim=f"{label}: the provider's table does not count {counts.get('provider_behind', 0)} team-matches "
-                  f"our fixtures have finished (last finished kick-off {s.last_finished})",
+                  f"our fixtures have finished (last finished kick-off {s.last_finished})"
+                  + (f"; {'; '.join(decided[:2])}" if decided else ""),
             api={**api_ev, "examples": examples}, db=db_ev,
             root_cause="provider table lags its own fixtures beyond its hourly update",
             fix="show the table with its provider update time and a 'pending results' note; never call it current"))

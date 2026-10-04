@@ -263,3 +263,31 @@ def test_two_reports_in_the_same_second_never_overwrite_each_other(tmp_path: Any
     b = write_report(tmp_path, "standings", NOW, {"n": 2}, "# two")
     assert a != b and b.name.endswith("-standings-2")
     assert (a / "standings.md").read_text() == "# one" and (b / "standings.md").read_text() == "# two"
+
+
+def test_a_provider_table_missing_an_official_result_is_the_providers_stale_table() -> None:
+    # Ligue 1 2025/26: Nantes v Toulouse abandoned, 0-0 homologated by the LFP; the provider's final table
+    # still shows both on 33 games (the official one: 34)
+    nantes, toulouse = 83, 96
+    b = body(row(nantes, 1, 1, 0, 0, 2, 0), row(toulouse, 1, 0, 0, 1, 0, 2, rank=2))
+    played = [match(1, nantes, toulouse, 2, 0, ko=NOW - timedelta(days=30))]
+    decided = st.Official(st.Played(1388000, NOW - timedelta(days=20), "Regular Season - 2", nantes, toulouse, 0, 0),
+                          "LFP disciplinary commission, 28 May 2026")
+    facts = {**FACTS, "is_current": False, "last_finished": NOW - timedelta(days=30)}
+    a = st.audit_season(facts, b, st.api_rows(b), played, at=NOW, official=[decided])
+    assert a.verdict == "provider_stale" and a.counts() == {"provider_behind": 2}
+    assert "does not count fixture 1388000" in a.rows[0].notes[0]
+    ev = st.evidence(a, None)
+    assert ev[0].issue_type == "PROVIDER_STALE" and "LFP disciplinary commission" in ev[0].claim
+
+
+def test_a_golden_season_failing_on_the_table_alone_names_the_table() -> None:
+    from fbi.truth.v2.golden import GoldenSeason, evidence
+
+    g = GoldenSeason(61, 2025, "Ligue 1", fixtures_api=308, fixtures_db=308, fixtures_checked=308,
+                     fixtures_matched=308, results_checked=307, results_matched=307, table_rows=18, table_ok=16,
+                     table_verdict="provider_stale", external_rows=306, external_matched=306,
+                     external_score_disagree=0, external_other=0)
+    assert g.verdict == "NEEDS_REVIEW"
+    ev = evidence([g])
+    assert [(e.issue_type, e.at_fault) for e in ev] == [("STANDINGS_MISMATCH", "provider")]
