@@ -146,9 +146,10 @@
       "odds_prematch": "Un partido de las próximas 72 h tiene precio de la última ventana de captura alcanzada (T-72/48/24/12/6/3 h, alineadas con la actualización cada 3 h del proveedor).",
       "elo": "Cada partido terminado en los últimos 30 días tiene rating.",
       "teams": "La identidad (país, estadio, escudo) se leyó en los últimos 120 días.",
-      "players": "Hay perfil (fecha de nacimiento o nacionalidad) de cada jugador que figuró en una alineación en los últimos 365 días.",
+      "players": "El perfil de cada jugador que figuró en una alineación en los últimos 365 días se leyó en los últimos 45 días (barrido mensual de /players/profiles).",
       "coaches": "Hay perfil de cada entrenador que figuró en una alineación en los últimos 365 días.",
-      "coverage": "Las banderas de cobertura de cada temporada actual se leyeron en los últimos 8 días."
+      "coverage": "Las banderas de cobertura de cada temporada actual se leyeron en los últimos 8 días.",
+      "squads": "La plantilla de cada equipo de una temporada actual se leyó en los últimos 8 días (ronda semanal de /players/squads)."
     }
   },
   "standings": {

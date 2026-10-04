@@ -146,9 +146,10 @@
       "odds_prematch": "A match in the next 72 h was priced at the most recent capture window it reached (T-72/48/24/12/6/3 h, aligned on the provider's 3-hourly update).",
       "elo": "Every match finished in the last 30 days carries a rating.",
       "teams": "Identity (country, venue, crest) read in the last 120 days.",
-      "players": "A profile (birth date or nationality) has been read for everyone in a line-up in the last 365 days.",
+      "players": "The profile of everyone in a line-up in the last 365 days was read in the last 45 days (monthly sweep of /players/profiles).",
       "coaches": "A profile has been read for every coach in a line-up in the last 365 days.",
-      "coverage": "The provider's coverage flags for each current season read in the last 8 days."
+      "coverage": "The provider's coverage flags for each current season read in the last 8 days.",
+      "squads": "Every team of a current season had its squad read in the last 8 days (weekly round of /players/squads)."
     }
   },
   "standings": {
