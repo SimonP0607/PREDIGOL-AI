@@ -153,6 +153,35 @@ test("Matches: today in the reader's zone, and a match opens its centre", async 
   }
 });
 
+test("A league table in the Match Center says how current it is", async ({ page }) => {
+  const w = watch(page);
+  const t = L[lang()];
+  const after = new Date().toISOString();
+  const { body } = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    `/api/v1/matches?status=scheduled&order=asc&limit=30&kickoff_after=${encodeURIComponent(after)}`,
+  );
+  let id: number | null = null;
+  for (const m of body.data) {
+    const c = await getJson<{ data: { standings: { data: unknown[] } } | null }>(
+      page.request,
+      `/api/v1/matches/${m.id}/center`,
+    );
+    if ((c.body.data?.standings.data.length ?? 0) > 0) {
+      id = m.id;
+      break;
+    }
+  }
+  if (id === null) {
+    note(test.info(), "no upcoming match with a league table among the next 30");
+    return;
+  }
+  await open(page, w, `/matches/${id}`);
+  const freshness = page.getByTestId("table-freshness").first();
+  await expect(freshness).toBeVisible();
+  await expect(freshness).toContainText(t.match.standings.updated.split("{")[0]?.trim() ?? "");
+});
+
 test("Live: richest matches first, or an honest empty board", async ({ page }) => {
   const w = watch(page);
   const t = L[lang()];

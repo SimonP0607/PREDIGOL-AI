@@ -51,6 +51,30 @@ test("every Admin Console page opens from the sidebar, translated", async ({ pag
   }
 });
 
+test("Data truth: the audit matrix, freshness, tables, model gate, findings, repairs and audits", async ({
+  page,
+}, info) => {
+  test.setTimeout(180_000);
+  const w = watch(page);
+  await go(page, w, "/admin/overview");
+  await page.getByTestId("admin-nav-data-truth").click();
+  await expect(page).toHaveURL(/\/admin\/data-truth$/);
+  await expect(page.getByRole("heading", { level: 1 }).first()).toHaveText(t.truth.title);
+  await settle(page);
+  const tabs = ["matrix", "freshness", "standings", "gate", "findings", "repairs", "runs"] as const;
+  for (const tab of tabs) {
+    await page.getByRole("tab", { name: t.truth.tabs[tab] }).click();
+    await settle(page);
+    await assertClean(page, w);
+    await page.screenshot({ path: info.outputPath(`data-truth-${tab}.png`), fullPage: true });
+  }
+  const { body } = await getJson<{ data: { run: { id: number } } | null }>(
+    page.request,
+    "/api/v1/admin/truth/latest",
+  );
+  if (!body.data) note(info, "no truth audit has run on this database yet");
+});
+
 test("accounts: list, deactivate and reactivate, change a role - all audited", async ({ page }) => {
   const w = watch(page);
   const target = credentials("target").email;
