@@ -98,6 +98,32 @@ class MatchDetail(Contract):
     timeline: list[TimelineEvent]
 
 
+class ModelNoPriceView(Contract):
+    """The model's own number for a market no bookmaker of ours prices (rule no-price-watch-v1).
+    Never a pick and never a bookmaker's price: the odds at which the decision rule would accept
+    the bet, for a reader who can see a price we cannot."""
+
+    status: Literal["MODEL_INTERESTING_NO_PRICE", "PRICE_UNAVAILABLE"]
+    selection: str
+    probability: Decimal
+    fair_odds: Decimal = Field(description="1 / the model's probability.")
+    min_odds: Decimal = Field(description="(1 + the rule's minimum expected value) / the pessimistic "
+                                          "probability: the lowest price with the edge the rule asks for.")
+    model: str
+    rule_version: str
+    evaluation_mode: bool = Field(description="True while no model version has beaten the market in its backtest.")
+    data_cutoff_ts: datetime
+
+
+class MarketPriceStatus(Contract):
+    market_key: str
+    line: Decimal
+    status: Literal["PRICED", "THIN_PRICE", "PRICE_PENDING", "PRICE_UNAVAILABLE", "NOT_COVERED"]
+    bookmakers: int
+    last_capture: datetime | None
+    model_view: ModelNoPriceView | None = None
+
+
 class MatchView(Contract):
     """What the product shows for a fixture: the match, where it is played, and its prices.
     Model output, lineage and the capture timeline belong to the Admin Console's MatchDetail."""
@@ -105,3 +131,7 @@ class MatchView(Contract):
     match: MatchSummary
     venue: VenueRef | None
     markets: Section[list[MarketQuote]]
+    price_status: list[MarketPriceStatus] = Field(
+        default_factory=list, description="Before kick-off: whether each core market (1X2, Over/Under 2.5, BTTS) "
+                                          "has a price, and if not, why - with the model's view when no price "
+                                          "exists at all.")

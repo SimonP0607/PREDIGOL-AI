@@ -10,10 +10,12 @@ from fastapi import HTTPException
 
 from fbi.api.contracts.common import CompetitionRef, Lineage, Score, TeamRef, VenueRef
 from fbi.api.contracts.matches import (
+    MarketPriceStatus,
     MarketQuote,
     MatchDetail,
     MatchSummary,
     MatchView,
+    ModelNoPriceView,
     OddsSummary,
     PredictionRow,
     TimelineEvent,
@@ -23,6 +25,8 @@ from fbi.api.repositories import Conn, Row
 from fbi.api.repositories import fixtures as repo
 from fbi.core.clock import now
 from fbi.core.config import settings
+from fbi.market.price_status import market_prices
+from fbi.picks import no_price
 
 NO_MARKET_DATA = "No captured market data yet."
 NO_PREDICTION = "No model has produced a prediction for this match yet."
@@ -238,9 +242,28 @@ def match_view(conn: Conn, fixture_id: int) -> Envelope[MatchView]:
         raise HTTPException(status_code=404, detail=f"fixture {fixture_id} not found")
     quotes = [quote(q) for q in repo.latest_quotes(conn, fixture_id)]
     venue_row = repo.get_venue(conn, row["venue_id"]) if row["venue_id"] else None
+    moment = now()
     view = MatchView(
-        match=summary(row, now()),
+        match=summary(row, moment),
         venue=VenueRef(**venue_row) if venue_row else None,
         markets=section(quotes) if quotes else section(quotes, status=DataStatus.EMPTY, reason=NO_MARKET_DATA),
+        price_status=price_status(conn, fixture_id, moment) if row["kickoff_at"] > moment else [],
     )
     return Envelope[MatchView](status=DataStatus.OK, data=view)
+
+
+def price_status(conn: Conn, fixture_id: int, moment: datetime) -> list[MarketPriceStatus]:
+    """Each core market's price status before kick-off, and the model's view where nothing is priced."""
+    prices = market_prices(conn, [fixture_id], at=moment)
+    views = {(v.market_key, v.line): v for v in no_price.watch(conn, [fixture_id], at=moment, prices=prices)}
+    out = []
+    for p in prices:
+        v = views.get((p.market_key, p.line))
+        out.append(MarketPriceStatus(
+            market_key=p.market_key, line=p.line, status=p.status.value, bookmakers=p.bookmakers,
+            last_capture=p.last_capture,
+            model_view=None if v is None else ModelNoPriceView(
+                status=v.status.value, selection=v.selection, probability=v.probability, fair_odds=v.fair_odds,
+                min_odds=v.min_odds, model=v.model, rule_version=v.rule_version, evaluation_mode=v.evaluation_mode,
+                data_cutoff_ts=v.data_cutoff_ts)))
+    return out
