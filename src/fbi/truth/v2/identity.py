@@ -46,8 +46,8 @@ CHECKS: dict[str, str] = {
     "players_without_profile_fetch": """
         SELECT count(*) FILTER (WHERE profile_fetched_at IS NULL) AS never, count(*) AS total FROM core.players""",
     "national_flags": """
-        SELECT count(*) FILTER (WHERE t.is_national) AS national,
-               count(*) FILTER (WHERE NOT t.is_national AND EXISTS (
+        SELECT count(*) FILTER (WHERE t.is_national) AS national, count(*) FILTER (WHERE t.is_national IS NULL) AS unknown,
+               count(*) FILTER (WHERE NOT COALESCE(t.is_national, false) AND EXISTS (
                    SELECT 1 FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
                      JOIN core.competitions c ON c.id = cs.competition_id
                     WHERE c.entity_scope = 'national' AND t.id IN (f.home_team_id, f.away_team_id))) AS club_rows_in_national_comps,
@@ -71,7 +71,7 @@ CHECKS: dict[str, str] = {
     "players_in_two_club_squads": """
         WITH newest AS (
             SELECT m.provider_player_id, m.team_id FROM core.squad_members m JOIN core.teams t ON t.id = m.team_id
-             WHERE NOT t.is_national AND m.last_seen_at = t.squad_checked_at)
+             WHERE NOT COALESCE(t.is_national, false) AND m.last_seen_at = t.squad_checked_at)
         SELECT count(*) AS players FROM (SELECT provider_player_id FROM newest GROUP BY 1 HAVING count(*) > 1) x""",
     "injuries_freshness": """
         SELECT count(DISTINCT f.id) AS upcoming_48h,

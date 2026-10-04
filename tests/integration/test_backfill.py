@@ -187,3 +187,20 @@ async def test_a_competition_missing_from_the_catalogue_is_not_invented(
     with world.cursor() as cur:
         cur.execute("SELECT last_error FROM raw.backfill_tasks")
         assert "not in the catalogue" in scalar(cur)
+
+
+def test_a_current_seasons_played_match_never_fetched_gets_a_detail_unit(world: psycopg.Connection,
+                                                                         seed: Seed) -> None:
+    """Data truth audit V2: 8,113 played fixtures of current seasons had no detail at all."""
+    from fbi.ingestion.backfill import CURRENT_DETAIL_PRIORITY, seed_current_details
+
+    with world.cursor() as cur:
+        cur.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+        cur.execute("UPDATE core.competition_seasons SET is_current = true WHERE id = %s", (seed.season_id,))
+        cur.execute("UPDATE core.fixtures SET status_short = 'FT', status_group = 'finished' WHERE id = %s",
+                    (seed.fixture_id,))
+    assert seed_current_details(world) == 1
+    with world.cursor() as cur:
+        cur.execute("SELECT kind, priority, batch_key FROM raw.backfill_tasks WHERE kind = 'fixture_details'")
+        assert row(cur) == ("fixture_details", CURRENT_DETAIL_PRIORITY, "1001")
+    assert seed_current_details(world) == 0  # the same gap is queued once

@@ -149,7 +149,7 @@ SELECT count(*)::int AS apps, sum(ps.minutes)::int AS minutes, sum(ps.goals)::in
        count(*) FILTER (WHERE ps.minutes IS NULL OR ps.minutes = 0)::int AS bench_rows,
        count(DISTINCT cs.competition_id)::int AS competitions,
        (array_agg(t.name ORDER BY f.kickoff_at DESC))[1] AS team,
-       (array_agg(t.is_national ORDER BY f.kickoff_at DESC))[1] AS team_is_national
+       (array_agg(COALESCE(t.is_national, false) ORDER BY f.kickoff_at DESC))[1] AS team_is_national
   FROM core.fixture_player_stats ps JOIN core.fixtures f ON f.id = ps.fixture_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.teams t ON t.id = CASE ps.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END

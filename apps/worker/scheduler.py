@@ -447,7 +447,7 @@ async def _historical_backfill() -> None:
     """
     from scripts.capture_odds import _client
 
-    from fbi.ingestion.backfill import run_backfill
+    from fbi.ingestion.backfill import run_backfill, seed_current_details
     from fbi.ingestion.people import seed_people_refresh
     from fbi.providers.api_football import ApiFootballProvider
 
@@ -456,6 +456,8 @@ async def _historical_backfill() -> None:
         # Player profiles monthly, current squads weekly: a refresh of the tracked scope,
         # queued behind everything else in the same budget-guarded backfill.
         seed_people_refresh(conn, at=now())
+        # Played matches of the current seasons whose detail nobody fetched (the live follower missed them).
+        seed_current_details(conn)
         provider = ApiFootballProvider(_client())
         try:
             report = await run_backfill(

@@ -170,6 +170,28 @@ def expand_detail_batches(conn: psycopg.Connection, *, league_id: int, season: i
     return created
 
 
+CURRENT_DETAIL_PRIORITY = 8
+"""Ahead of history (10-70): a played match of the current season is what pages and checks read."""
+
+
+def seed_current_details(conn: psycopg.Connection, *, priority: int = CURRENT_DETAIL_PRIORITY) -> int:
+    """Detail units for every tracked CURRENT season's played fixtures whose detail was never fetched.
+
+    The live follower reads a match while it is played; a match it never saw - the worker was off,
+    or the competition was added later - had no other way to get its events, line-ups and player
+    rows: the data truth audit V2 found 8,113 finished fixtures since July 2025 never asked for
+    (all of the 2026 J1 League, most national-team friendlies). Called by the backfill job before
+    each run; the units run inside the backfill's budget and live-capture reserve.
+    """
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute("SELECT c.provider_league_id, cs.season FROM core.competition_seasons cs "
+                    "JOIN core.competitions c ON c.id = cs.competition_id WHERE c.is_tracked AND cs.is_current "
+                    "ORDER BY c.provider_league_id")
+        seasons = [(int(a), int(b)) for a, b in cur.fetchall()]
+    return sum(expand_detail_batches(conn, league_id=league, season=season, priority=priority)
+               for league, season in seasons)
+
+
 def _competition_season_id(conn: psycopg.Connection, league_id: int, season: int) -> int | None:
     """Our competition-season id for a provider league and season, or None.
 

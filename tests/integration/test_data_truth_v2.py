@@ -195,3 +195,50 @@ def test_identity_and_fixture_sample_queries_read_the_real_schema(migrated_datab
         assert seasons[LEAGUE][0]["fixtures"] == 2
         ids = idn.sample(conn, n=4)
         assert set(ids) == {"teams", "players", "coaches", "venues"}
+
+
+def test_a_player_is_shown_with_his_club_not_his_national_side_and_bench_rows_are_not_apps(
+        migrated_database: str, v2_league: dict[str, int], seed: Seed) -> None:
+    """Data truth audit V2: 'latest team' was Spain/Norway/England after an international window, and an
+    unused substitute counted as an appearance."""
+    from fbi.api.services import center as svc
+
+    with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
+        cur.execute("INSERT INTO core.players (provider_player_id, name, lastname) VALUES (%s, 'V2 Player', 'Player') "
+                    "RETURNING id", (PLAYER,))
+        player_id = cur.fetchone()[0]  # type: ignore[index]
+        cur.execute("INSERT INTO core.teams (provider_team_id, name, is_national) VALUES (99029, 'V2 Nation', true) "
+                    "RETURNING id")
+        nation = cur.fetchone()[0]  # type: ignore[index]
+        cur.execute("INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, "
+                    "away_team_id, kickoff_at, round, status_short, status_group, source_payload_hash, "
+                    "source_fetched_at) VALUES (992009, %s, %s, %s, %s, 'Friendly', 'FT', 'finished', %s, %s) "
+                    "RETURNING id", (v2_league["cs"], nation, v2_league["team_b"], NOW - timedelta(days=1),
+                                     seed.payload_hash, NOW))
+        fid = cur.fetchone()[0]  # type: ignore[index]
+        cur.execute("INSERT INTO core.fixture_player_stats (fixture_id, source, provider_player_id, team_side, minutes, "
+                    "is_substitute, goals, payload_hash, fetched_at) VALUES (%s,'api-football',%s,'home',30,true,0,%s,%s)",
+                    (fid, PLAYER, seed.payload_hash, NOW))
+        cur.execute("UPDATE core.teams SET squad_checked_at = %s WHERE id = %s", (NOW, v2_league["team_a"]))
+        cur.execute("INSERT INTO core.squad_members (team_id, provider_player_id, player_name, first_seen_at, "
+                    "last_seen_at, payload_hash) VALUES (%s, %s, 'V2 Player', %s, %s, %s)",
+                    (v2_league["team_a"], PLAYER, NOW, NOW, seed.payload_hash))
+        try:
+            detail = svc.player(conn, player_id, at=NOW).data
+            assert detail is not None
+            p = detail.player
+            assert (p.team, p.club_source, p.national_team, p.last_team) == ("V2 A", "squad", "V2 Nation", "V2 Nation")
+            assert p.apps == 2  # the 90 minutes for the club and the 30 for the nation; the bench row is not one
+            seasons = detail.seasons.data or []
+            assert {(s.team, s.apps) for s in seasons} == {("V2 A", 1), ("V2 Nation", 1)}
+            listed = svc.players(conn, q="V2 Player", team_id=None, limit=5, offset=0, at=NOW).data or []
+            assert listed and listed[0].team == "V2 A" and listed[0].apps == 2
+            active = svc.players(conn, q=None, team_id=None, limit=50, offset=0, at=NOW).data or []
+            mine = [x for x in active if x.provider_player_id == PLAYER]
+            assert mine and mine[0].team == "V2 A" and mine[0].last_team == "V2 Nation"
+        finally:
+            cur.execute("DELETE FROM core.squad_members WHERE provider_player_id = %s", (PLAYER,))
+            cur.execute("DELETE FROM core.fixture_player_stats WHERE fixture_id = %s", (fid,))
+            cur.execute("DELETE FROM core.fixtures WHERE id = %s", (fid,))
+            cur.execute("DELETE FROM core.teams WHERE id = %s", (nation,))
+            cur.execute("DELETE FROM core.players WHERE id = %s", (player_id,))

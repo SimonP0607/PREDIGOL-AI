@@ -227,6 +227,21 @@ def finished(conn: psycopg.Connection[Any], cs_id: int) -> list[Played]:
     return out
 
 
+AWARDED_SQL = """
+SELECT th.provider_team_id AS home, ta.provider_team_id AS away
+  FROM core.fixtures f JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
+ WHERE f.competition_season_id = %(cs)s AND f.status_short IN ('AWD', 'WO')
+"""
+
+
+def awarded(conn: psycopg.Connection[Any], cs_id: int) -> list[tuple[int, int]]:
+    """(home, away) of the season's matches decided off the pitch (technical loss, walkover): a table
+    counts them, our match data has no on-field score for them."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(AWARDED_SQL, {"cs": cs_id})
+        return [(int(r["home"]), int(r["away"])) for r in cur.fetchall()]
+
+
 # ── the table the fixtures imply ───────────────────────────────────────────
 
 
@@ -323,8 +338,8 @@ class RowVerdict:
     name: str
     group: str | None
     verdict: str
-    """ok | predigol_behind | provider_behind | provider_ahead_of_fixtures | fixtures_missing | adjusted |
-    db_ahead | missing_in_db | missing_in_api | provider_inconsistent"""
+    """ok | predigol_behind | provider_behind | fixtures_missing | adjusted | awarded | provider_identity |
+    db_ahead | missing_in_db | provider_inconsistent"""
     api: dict[str, int | None]
     db: dict[str, int | None] | None
     fix: dict[str, int | None] | None
@@ -418,7 +433,8 @@ class SeasonAudit:
 
 def audit_season(facts: Mapping[str, Any], body: Mapping[str, Any] | None, db: Sequence[Row],
                  matches: Sequence[Played], *, at: datetime, payload_hash: str | None = None,
-                 fetched_at: datetime | None = None) -> SeasonAudit:
+                 fetched_at: datetime | None = None,
+                 awarded_pairs: Sequence[tuple[int, int]] = ()) -> SeasonAudit:
     """Compare one competition season's three tables and give the season its verdict."""
     s = SeasonAudit(int(facts["provider_league_id"]), str(facts["name"]), int(facts["season"]), str(facts["type"]),
                     facts.get("cs_id"), payload_hash=payload_hash, fetched_at=fetched_at)
@@ -457,8 +473,43 @@ def audit_season(facts: Mapping[str, Any], body: Mapping[str, Any] | None, db: S
             s.rows.append(judge_row(r, mine, fix))
     api_teams = {r.team for r in api}
     s.extra_db_teams = sorted({r.team for r in db} - api_teams)
+    explain_missing_games(s, api, matches, awarded_pairs)
     s.verdict = season_verdict(s, at=at)
     return s
+
+
+def explain_missing_games(s: SeasonAudit, api: Sequence[Row], matches: Sequence[Played],
+                          awarded_pairs: Sequence[tuple[int, int]]) -> None:
+    """A table row with more games than our finished fixtures is not always a missing fixture:
+
+    * ``awarded`` - the difference is exactly the team's matches decided off the pitch (AWD/WO): the
+      table counts them, our match data rightly holds no on-field score;
+    * ``provider_identity`` - our fixtures never name this team, but a team absent from every table played
+      exactly its games: the provider's table and its fixtures use two different team ids for one club.
+    """
+    by_api = {r.team: r for r in api}
+    table_teams = set(by_api)
+    league = [m for m in matches if not KNOCKOUT.search(m.round)]
+    orphan_games: dict[int, int] = {}
+    for m in league:
+        for t in (m.home, m.away):
+            if t not in table_teams:
+                orphan_games[t] = orphan_games.get(t, 0) + 1
+    for v in s.rows:
+        if v.verdict != "fixtures_missing" or v.fix is None:
+            continue
+        missing = int(v.api.get("played") or 0) - int(v.fix.get("played") or 0)
+        off_pitch = sum(1 for h, a in awarded_pairs if v.team in (h, a))
+        if missing > 0 and off_pitch == missing:
+            v.verdict = "awarded"
+            v.notes.append(f"{off_pitch} match(es) decided off the pitch (AWD/WO) counted by the table")
+            continue
+        if not v.fix.get("played"):
+            twins = [t for t, n in orphan_games.items() if n == int(v.api.get("played") or 0)]
+            if twins:
+                v.verdict = "provider_identity"
+                v.notes.append(f"the provider's table names team {v.team}; its fixtures name team(s) {twins} "
+                               "for the same games")
 
 
 def season_verdict(s: SeasonAudit, *, at: datetime) -> str:
@@ -476,9 +527,11 @@ def season_verdict(s: SeasonAudit, *, at: datetime) -> str:
         return "provider_stale"
     if c.get("fixtures_missing"):
         return "fixtures_missing"
+    if c.get("provider_identity"):
+        return "provider_identity"
     if c.get("provider_inconsistent"):
         return "provider_inconsistent"
-    if c.get("adjusted"):
+    if c.get("adjusted") or c.get("awarded"):
         return "adjusted"
     if s.extra_db_teams:
         return "mismatch"
@@ -545,6 +598,17 @@ def evidence(s: SeasonAudit, api_ref: Mapping[str, Any] | None) -> list[Evidence
             api={**api_ev, "examples": examples}, db=db_ev,
             root_cause="finished fixtures or their results missing in core.fixtures / core.fixture_results",
             fix="re-sync the season's fixtures (full season list) from the provider"))
+    if counts.get("provider_identity"):
+        ids = [r for r in s.rows if r.verdict == "provider_identity"]
+        out.append(Evidence(
+            key=f"{key}:provider_identity", area="standings", issue_type="IDENTITY_MAPPING_ERROR", severity="medium",
+            at_fault="provider", entity=label,
+            claim=f"{label}: the provider's table and its own fixtures name different teams for the same games "
+                  f"({'; '.join(n for r in ids for n in r.notes)})",
+            api={**api_ev, "examples": examples}, db=db_ev,
+            root_cause="provider identity: /standings and /fixtures disagree on the team id",
+            fix="report to the provider; keep both ids, never merge them silently; the product shows the fixtures' "
+                "team and marks the table row"))
     if s.verdict == "provider_inconsistent":
         out.append(Evidence(
             key=f"{key}:provider_inconsistent", area="standings", issue_type="STANDINGS_MISMATCH", severity="medium",

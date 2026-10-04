@@ -4,6 +4,7 @@
     python -m scripts.backfill seed --league 141 --priority 70   # one named league, same seasons
     python -m scripts.backfill status               # progress and today's allowance (no request)
     python -m scripts.backfill run --yes --max 18   # spend at most 18, never the live reserve
+    python -m scripts.backfill seed-current-details # detail units for current seasons' played, never-fetched matches
 
 Default units: Premier League first, then La Liga, Bundesliga, Serie A,
 Ligue 1 and the Champions League, seasons 2024, 2023, 2022 - the seasons the
@@ -26,6 +27,7 @@ from fbi.ingestion.backfill import (
     live_reserve,
     progress,
     run_backfill,
+    seed_current_details,
     seed_tasks,
 )
 from fbi.providers.api_football import ApiFootballProvider
@@ -61,6 +63,7 @@ def main() -> int:
                     help="comma-separated seasons (default: the three the free plan serves)")
     sd.add_argument("--priority", type=int, default=70, help="lower runs first (defaults use 10-60)")
     sub.add_parser("status")
+    sub.add_parser("seed-current-details")
     run = sub.add_parser("run")
     run.add_argument("--yes", action="store_true")
     run.add_argument("--max", type=int, default=6)
@@ -74,6 +77,9 @@ def main() -> int:
             units = [BackfillUnit(league, season, prio) for league, prio in leagues for season in seasons]
             kind = "named" if args.league else "default"
             print(f"added {seed_tasks(conn, units)} task(s); {len(units)} {kind} units")
+            return 0
+        if args.cmd == "seed-current-details":
+            print(f"added {seed_current_details(conn)} detail unit(s) for current seasons")
             return 0
         if args.cmd == "status" or not args.yes:
             reserve = live_reserve(conn, prematch_windows=settings.odds.prematch_windows) + 10

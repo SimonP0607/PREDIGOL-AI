@@ -35,8 +35,8 @@ from fbi.truth.v2.ledger import Evidence, clear_unseen, record_all
 from fbi.truth.v2.runner import V2Run, write_report
 
 REPORTS = Path("data/truth")
-ORDER = ("predigol_behind", "mismatch", "missing_in_db", "provider_stale", "fixtures_missing", "provider_inconsistent",
-         "adjusted", "provider_lag_expected", "no_api_table", "no_table", "not_asked", "ok")
+ORDER = ("predigol_behind", "mismatch", "missing_in_db", "provider_stale", "fixtures_missing", "provider_identity",
+         "provider_inconsistent", "adjusted", "provider_lag_expected", "no_api_table", "no_table", "not_asked", "ok")
 
 SCOPE_CURRENT = """c.is_tracked AND cs.is_current AND (
     EXISTS (SELECT 1 FROM core.standings s WHERE s.competition_season_id = cs.id)
@@ -115,7 +115,8 @@ async def audit_one(run: V2Run, conn: psycopg.Connection[Any], facts: dict[str, 
                      "goals": {"for": r.total.gf, "against": r.total.ga}}} for r in db]]}}]}
     audit = st.audit_season(facts, body, db, matches, at=run.at,
                             payload_hash=answer.payload_hash if answer else None,
-                            fetched_at=answer.fetched_at if answer else None)
+                            fetched_at=answer.fetched_at if answer else None,
+                            awarded_pairs=st.awarded(conn, int(facts["cs_id"])))
     evidence: list[Evidence] = []
     if not no_api:
         evidence += st.evidence(audit, answer.ref() if answer else None)

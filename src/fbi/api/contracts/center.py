@@ -261,8 +261,17 @@ class PlayerSummary(Contract):
     nationality: str | None
     position: str | None
     birth_date: date | None
+    #: The player's CLUB now: the club whose newest squad lists him (``club_source`` "squad"), else the
+    #: club of his last appearance ("appearances"). Never a national team.
     team_id: int | None
     team: str | None
+    club_source: str | None = None
+    national_team_id: int | None = None
+    national_team: str | None = None
+    #: Whoever he last played for (a club or a national side) - kept apart from the club.
+    last_team_id: int | None = None
+    last_team: str | None = None
+    #: Matches he played (minutes > 0) - an unused substitute is not an appearance.
     apps: int
     minutes: int | None
     goals: int | None
@@ -275,6 +284,7 @@ class PlayerSeason(Contract):
     competition: str
     season: int
     team: str | None
+    national: bool | None = None
     apps: int
     starts: int
     minutes: int | None

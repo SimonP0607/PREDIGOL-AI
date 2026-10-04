@@ -219,22 +219,54 @@ SELECT (SELECT max(observed_at) FROM core.fixture_live_states) AS fixture_feed_a
 
 # ── Players ────────────────────────────────────────────────────────────────
 
+# A player's figures and his three teams (data truth audit V2, 4 Oct 2026):
+# * an appearance is a match he PLAYED (minutes > 0): the provider lists unused substitutes in
+#   /fixtures/players with no minutes, and counting those rows called a bench an appearance;
+# * club = the club whose newest squad (/players/squads) lists him, else the club of his last
+#   appearance; national_team likewise among national sides; last_team = his last appearance,
+#   whoever it was for. The old single "team" was the last appearance - Spain, Norway, England
+#   after an international window.
 PLAYER_AGG = """
-SELECT count(*)::int AS apps, sum(ps.minutes)::int AS minutes, sum(ps.goals)::int AS goals,
-       sum(ps.assists)::int AS assists, round(avg(ps.rating), 2) AS avg_rating, max(f.kickoff_at) AS last_played,
-       (array_agg(CASE ps.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
-                  ORDER BY f.kickoff_at DESC))[1] AS team_id
+SELECT count(*) FILTER (WHERE ps.minutes > 0)::int AS apps, sum(ps.minutes)::int AS minutes,
+       sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists,
+       round(avg(ps.rating) FILTER (WHERE ps.minutes > 0), 2) AS avg_rating,
+       max(f.kickoff_at) FILTER (WHERE ps.minutes > 0) AS last_played,
+       (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE ps.minutes > 0))[1] AS last_team_id,
+       (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE ps.minutes > 0 AND NOT COALESCE(t.is_national, false)))[1]
+           AS last_club_id,
+       (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE ps.minutes > 0 AND COALESCE(t.is_national, false)))[1]
+           AS last_national_id
   FROM core.fixture_player_stats ps JOIN core.fixtures f ON f.id = ps.fixture_id
+  JOIN core.teams t ON t.id = CASE ps.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
  WHERE ps.provider_player_id = p.provider_player_id AND f.kickoff_at > %(since)s
 """
 
+SQUAD_OF = """
+SELECT m.team_id FROM core.squad_members m JOIN core.teams st ON st.id = m.team_id
+ WHERE m.provider_player_id = p.provider_player_id AND COALESCE(st.is_national, false) = {national}
+   AND m.last_seen_at = st.squad_checked_at
+ ORDER BY m.last_seen_at DESC LIMIT 1
+"""
+
+TEAMS_OF_PLAYER = """
+  LEFT JOIN LATERAL (""" + SQUAD_OF.format(national="false") + """) sq ON true
+  LEFT JOIN LATERAL (""" + SQUAD_OF.format(national="true") + """) nsq ON true
+  LEFT JOIN core.teams club ON club.id = COALESCE(sq.team_id, a.last_club_id)
+  LEFT JOIN core.teams nat ON nat.id = COALESCE(nsq.team_id, a.last_national_id)
+  LEFT JOIN core.teams last ON last.id = a.last_team_id
+"""
+
+PLAYER_TEAMS_COLUMNS = """
+       club.id AS team_id, club.name AS team,
+       CASE WHEN sq.team_id IS NOT NULL THEN 'squad' WHEN a.last_club_id IS NOT NULL THEN 'appearances' END
+           AS club_source,
+       nat.id AS national_team_id, nat.name AS national_team, last.id AS last_team_id, last.name AS last_team"""
+
 PLAYERS_SEARCH = """
-SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date,
-       a.team_id, t.name AS team, COALESCE(a.apps, 0) AS apps, a.minutes, a.goals, a.assists, a.avg_rating,
-       a.last_played
+SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date,""" + PLAYER_TEAMS_COLUMNS + """,
+       COALESCE(a.apps, 0) AS apps, a.minutes, a.goals, a.assists, a.avg_rating, a.last_played
   FROM core.players p
-  LEFT JOIN LATERAL (""" + PLAYER_AGG + """) a ON true
-  LEFT JOIN core.teams t ON t.id = a.team_id
+  LEFT JOIN LATERAL (""" + PLAYER_AGG + """) a ON true""" + TEAMS_OF_PLAYER + """
  WHERE p.name ILIKE %(q)s OR p.lastname ILIKE %(q)s
  ORDER BY COALESCE(a.apps, 0) DESC, p.name
  LIMIT %(limit)s OFFSET %(offset)s
@@ -242,21 +274,24 @@ SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_da
 
 PLAYERS_OF_TEAM = """
 -- Figures FOR THIS TEAM only: a player's appearances elsewhere (an earlier club,
--- the national side) are not this squad's.
+-- the national side) are not this squad's. An appearance is a match played (minutes > 0).
 WITH squad AS (
-    SELECT ps.provider_player_id, count(*)::int AS apps, sum(ps.minutes)::int AS minutes,
-           sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists, round(avg(ps.rating), 2) AS avg_rating,
-           max(f.kickoff_at) AS last_played
+    SELECT ps.provider_player_id, count(*) FILTER (WHERE ps.minutes > 0)::int AS apps,
+           sum(ps.minutes)::int AS minutes, sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists,
+           round(avg(ps.rating) FILTER (WHERE ps.minutes > 0), 2) AS avg_rating,
+           max(f.kickoff_at) FILTER (WHERE ps.minutes > 0) AS last_played
       FROM core.fixture_player_stats ps JOIN core.fixtures f ON f.id = ps.fixture_id
      WHERE f.kickoff_at > %(since)s
        AND ((ps.team_side = 'home' AND f.home_team_id = %(team)s) OR (ps.team_side = 'away' AND f.away_team_id = %(team)s))
      GROUP BY ps.provider_player_id
 )
 SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date,
-       %(team)s::bigint AS team_id, t.name AS team, squad.apps, squad.minutes, squad.goals, squad.assists,
-       squad.avg_rating, squad.last_played
+       %(team)s::bigint AS team_id, t.name AS team, NULL::text AS club_source, NULL::bigint AS national_team_id,
+       NULL::text AS national_team, NULL::bigint AS last_team_id, NULL::text AS last_team,
+       squad.apps, squad.minutes, squad.goals, squad.assists, squad.avg_rating, squad.last_played
   FROM squad JOIN core.players p ON p.provider_player_id = squad.provider_player_id
   LEFT JOIN core.teams t ON t.id = %(team)s::bigint
+ WHERE squad.apps > 0
  ORDER BY squad.minutes DESC NULLS LAST, p.name
  LIMIT %(limit)s OFFSET %(offset)s
 """
@@ -266,45 +301,47 @@ WITH recent AS (
     SELECT ps.provider_player_id, count(*)::int AS apps, sum(ps.minutes)::int AS minutes,
            sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists, round(avg(ps.rating), 2) AS avg_rating,
            max(f.kickoff_at) AS last_played,
-           (array_agg(CASE ps.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
-                      ORDER BY f.kickoff_at DESC))[1] AS team_id
+           (array_agg(t.id ORDER BY f.kickoff_at DESC))[1] AS last_team_id,
+           (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE NOT COALESCE(t.is_national, false)))[1] AS last_club_id,
+           (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE COALESCE(t.is_national, false)))[1] AS last_national_id
       FROM core.fixtures f JOIN core.fixture_player_stats ps ON ps.fixture_id = f.id
-     WHERE f.kickoff_at > %(recent)s AND f.kickoff_at <= %(at)s
+      JOIN core.teams t ON t.id = CASE ps.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
+     WHERE f.kickoff_at > %(recent)s AND f.kickoff_at <= %(at)s AND ps.minutes > 0
      GROUP BY ps.provider_player_id
 )
-SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date,
-       r.team_id, t.name AS team, r.apps, r.minutes, r.goals, r.assists, r.avg_rating, r.last_played
-  FROM recent r JOIN core.players p ON p.provider_player_id = r.provider_player_id
-  LEFT JOIN core.teams t ON t.id = r.team_id
- ORDER BY r.goals DESC NULLS LAST, r.avg_rating DESC NULLS LAST, p.name
+SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date,""" + PLAYER_TEAMS_COLUMNS + """,
+       a.apps, a.minutes, a.goals, a.assists, a.avg_rating, a.last_played
+  FROM recent a JOIN core.players p ON p.provider_player_id = a.provider_player_id""" + TEAMS_OF_PLAYER + """
+ ORDER BY a.goals DESC NULLS LAST, a.avg_rating DESC NULLS LAST, p.name
  LIMIT %(limit)s OFFSET %(offset)s
 """
 
 PLAYER = """
 SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date, p.firstname, p.lastname,
-       p.height_cm, p.weight_kg, a.team_id, t.name AS team, COALESCE(a.apps, 0) AS apps, a.minutes, a.goals,
-       a.assists, a.avg_rating, a.last_played
+       p.height_cm, p.weight_kg,""" + PLAYER_TEAMS_COLUMNS + """,
+       COALESCE(a.apps, 0) AS apps, a.minutes, a.goals, a.assists, a.avg_rating, a.last_played
   FROM core.players p
-  LEFT JOIN LATERAL (""" + PLAYER_AGG + """) a ON true
-  LEFT JOIN core.teams t ON t.id = a.team_id
+  LEFT JOIN LATERAL (""" + PLAYER_AGG + """) a ON true""" + TEAMS_OF_PLAYER + """
  WHERE p.id = %(id)s
 """
 
 PLAYER_SEASONS = """
-SELECT c.name AS competition, cs.season,
-       (array_agg(t.name ORDER BY f.kickoff_at DESC))[1] AS team,
-       count(*)::int AS apps, count(*) FILTER (WHERE NOT COALESCE(ps.is_substitute, false))::int AS starts,
+-- One row per competition, season AND team - the provider's own scope (a transfer gives two).
+SELECT c.name AS competition, cs.season, t.name AS team, COALESCE(t.is_national, false) AS national,
+       count(*) FILTER (WHERE ps.minutes > 0)::int AS apps,
+       count(*) FILTER (WHERE ps.minutes > 0 AND NOT COALESCE(ps.is_substitute, false))::int AS starts,
        sum(ps.minutes)::int AS minutes, sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists,
        sum(ps.yellow_cards)::int AS yellow_cards, sum(ps.red_cards)::int AS red_cards,
-       round(avg(ps.rating), 2) AS avg_rating
+       round(avg(ps.rating) FILTER (WHERE ps.minutes > 0), 2) AS avg_rating
   FROM core.fixture_player_stats ps
   JOIN core.fixtures f ON f.id = ps.fixture_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
   JOIN core.teams t ON t.id = CASE ps.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
  WHERE ps.provider_player_id = %(pid)s
- GROUP BY c.name, cs.season
- ORDER BY cs.season DESC, count(*) DESC
+ GROUP BY c.name, cs.season, t.name, COALESCE(t.is_national, false)
+HAVING count(*) FILTER (WHERE ps.minutes > 0) > 0
+ ORDER BY cs.season DESC, count(*) FILTER (WHERE ps.minutes > 0) DESC
 """
 
 PLAYER_MATCHES = """

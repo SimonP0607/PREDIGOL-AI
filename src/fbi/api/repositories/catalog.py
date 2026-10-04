@@ -105,17 +105,35 @@ def list_teams(
     })
 
 
+TEAM_RECORDS = """
+-- One row per competition-season of the team's recorded results (final score, extra time included).
+WITH games AS (
+    SELECT cs.id AS cs_id, c.name AS competition, c.type AS competition_type, cs.season, f.kickoff_at,
+           CASE WHEN f.home_team_id = %(t)s THEN r.goals_home ELSE r.goals_away END AS gf,
+           CASE WHEN f.home_team_id = %(t)s THEN r.goals_away ELSE r.goals_home END AS ga
+      FROM core.fixtures f JOIN core.fixture_results r ON r.fixture_id = f.id
+      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+      JOIN core.competitions c ON c.id = cs.competition_id
+     WHERE %(t)s IN (f.home_team_id, f.away_team_id) AND r.goals_home IS NOT NULL AND r.goals_away IS NOT NULL
+)
+SELECT competition, competition_type, season, count(*) AS played, count(*) FILTER (WHERE gf > ga) AS won,
+       count(*) FILTER (WHERE gf = ga) AS drawn, count(*) FILTER (WHERE gf < ga) AS lost,
+       sum(gf) AS goals_for, sum(ga) AS goals_against, min(kickoff_at) AS first, max(kickoff_at) AS last
+  FROM games GROUP BY cs_id, competition, competition_type, season
+ ORDER BY max(kickoff_at) DESC
+"""
+
+
+def team_records(conn: Conn, team_id: int) -> list[Row]:
+    """The team's record per competition and season, newest first."""
+    return fetch_all(conn, TEAM_RECORDS, {"t": team_id})
+
+
 def team_record(conn: Conn, team_id: int) -> Row | None:
-    """W/D/L and goals over RECORDED results only."""
-    return fetch_one(conn, """
-        SELECT count(*) AS played,
-               count(*) FILTER (WHERE (f.home_team_id = %(t)s AND r.goals_home > r.goals_away)
-                                   OR (f.away_team_id = %(t)s AND r.goals_away > r.goals_home)) AS won,
-               count(*) FILTER (WHERE r.goals_home = r.goals_away) AS drawn,
-               count(*) FILTER (WHERE (f.home_team_id = %(t)s AND r.goals_home < r.goals_away)
-                                   OR (f.away_team_id = %(t)s AND r.goals_away < r.goals_home)) AS lost,
-               COALESCE(sum(CASE WHEN f.home_team_id = %(t)s THEN r.goals_home ELSE r.goals_away END), 0) AS goals_for,
-               COALESCE(sum(CASE WHEN f.home_team_id = %(t)s THEN r.goals_away ELSE r.goals_home END), 0) AS goals_against
-        FROM core.fixtures f JOIN core.fixture_results r ON r.fixture_id = f.id
-        WHERE %(t)s IN (f.home_team_id, f.away_team_id)
-    """, {"t": team_id})
+    """W/D/L and goals over RECORDED results only, every competition and season (the lifetime figure)."""
+    rows = team_records(conn, team_id)
+    if not rows:
+        return None
+    keys = ("played", "won", "drawn", "lost", "goals_for", "goals_against")
+    out: Row = {k: sum(int(r[k] or 0) for r in rows) for k in keys}
+    return {**out, "since": min(r["first"] for r in rows), "competitions": len({r["competition"] for r in rows})}

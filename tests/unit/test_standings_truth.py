@@ -142,3 +142,18 @@ def test_a_legacy_snapshot_missing_second_tables_names_the_old_writer() -> None:
     assert a.legacy_snapshot and a.counts().get("missing_in_db") == 2
     cause = st.evidence(a, None)[0].root_cause or ""
     assert "migration 0048" in cause and "not been re-read" in cause
+
+
+def test_a_match_awarded_off_the_pitch_explains_the_extra_game() -> None:
+    table = body(row(1, 2, 2, 0, 0, 5, 0), row(2, 2, 0, 0, 2, 0, 5, rank=2))
+    a = st.audit_season(FACTS, table, as_db(table), [match(10, 1, 2, 2, 0)], at=NOW, awarded_pairs=[(2, 1)])
+    assert {r.verdict for r in a.rows} == {"awarded"} and a.verdict == "adjusted"
+
+
+def test_a_table_and_fixtures_naming_two_ids_for_one_club_is_the_providers_identity_error() -> None:
+    table = body(row(1, 1, 1, 0, 0, 2, 0, group="G"), row(2, 1, 0, 0, 1, 0, 2, group="G", rank=2),
+                 row(5, 1, 0, 0, 1, 0, 2, group="H", rank=1), row(6, 1, 1, 0, 0, 2, 0, group="H", rank=2))
+    games = [match(10, 1, 2, 2, 0, "Group Stage - 1"), match(11, 6, 9, 2, 0, "Group Stage - 1")]  # 9 plays as 5
+    a = st.audit_season({**FACTS, "type": "cup"}, table, as_db(table), games, at=NOW)
+    assert [r.verdict for r in a.rows if r.team == 5] == ["provider_identity"]
+    assert any(e.issue_type == "IDENTITY_MAPPING_ERROR" and e.at_fault == "provider" for e in st.evidence(a, None))

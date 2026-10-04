@@ -8,7 +8,8 @@ Match Center's "context" was therefore context for a week ago.
 Two jobs share this module.
 
 ``refresh_context`` - every active season, every twelve hours: one ``/standings``
-(leagues only; a cup has no table) and one ``/injuries`` per season, about 400
+(every season with a table: leagues, and cups whose league phase or groups the provider
+tables) and one ``/injuries`` per season, about 400
 requests a day against a 60,000 guard.
 
 ``refresh_due_context`` - every half hour, only what a match made due. The
@@ -56,10 +57,23 @@ INJURY_RECHECK = timedelta(hours=4)
 INJURY_LOOKAHEAD = timedelta(hours=48)
 
 
-def _league_type(conn: psycopg.Connection) -> dict[int, str]:
+HAS_TABLE = """(c.type = 'league'
+       OR EXISTS (SELECT 1 FROM raw.league_coverage lc WHERE lc.provider_league_id = c.provider_league_id
+                     AND lc.season = cs.season AND lc.standings)
+       OR EXISTS (SELECT 1 FROM core.standings st WHERE st.competition_season_id = cs.id))"""
+"""A season has a table when its competition is a league, or the provider's coverage says it has
+standings, or we already hold one. Until 4 Oct 2026 only ``type = 'league'`` counted: a cup with a
+league phase or groups (Champions League, Nations League, Libertadores, the World Cup) was loaded
+once and never refreshed - the data truth audit V2 found the Nations League table five days behind
+(evidence ledger, area standings)."""
+
+
+def table_seasons(conn: psycopg.Connection) -> set[int]:
+    """The tracked current competition-seasons whose table is worth a request."""
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute("SELECT provider_league_id, type FROM core.competitions WHERE is_tracked")
-        return {int(a): str(b) for a, b in cur.fetchall()}
+        cur.execute("SELECT cs.id FROM core.competition_seasons cs JOIN core.competitions c ON c.id = cs.competition_id "
+                    f"WHERE c.is_tracked AND cs.is_current AND {HAS_TABLE}")
+        return {int(r[0]) for r in cur.fetchall()}
 
 
 def record_check(conn: psycopg.Connection, *, competition_season_id: int, dataset: str, checked_at: datetime,
@@ -135,7 +149,7 @@ async def refresh_context(conn: psycopg.Connection, provider: Any, *, at: dateti
                           max_requests: int = 400) -> RunCounters:
     moment = at or now()
     seasons = active_seasons(conn)
-    kinds = _league_type(conn)
+    tables = table_seasons(conn)
     ledger = RunLedger(conn)
     run_id = ledger.open("context_refresh", params={"seasons": len(seasons)}, scheduled_for=moment)
     counters = RunCounters()
@@ -143,7 +157,7 @@ async def refresh_context(conn: psycopg.Connection, provider: Any, *, at: dateti
     try:
         for s in seasons:
             for what in ("standings", "injuries"):
-                if what == "standings" and kinds.get(s.provider_league_id) != "league":
+                if what == "standings" and s.competition_season_id not in tables:
                     continue
                 if counters.api_calls >= max_requests:
                     counters.stopped_early = f"request cap {max_requests}"
@@ -171,7 +185,7 @@ SELECT cs.id, c.provider_league_id, cs.season, c.name
            AND f.kickoff_at > %(at)s - %(follow)s - %(match)s
   ) m ON m.last_end IS NOT NULL
   LEFT JOIN core.context_checks k ON k.competition_season_id = cs.id AND k.dataset = 'standings'
- WHERE c.is_tracked AND cs.is_current AND c.type = 'league'
+ WHERE c.is_tracked AND cs.is_current AND """ + HAS_TABLE + """
    AND m.last_end <= %(at)s AND m.last_end > %(at)s - %(follow)s
    AND (k.changed_at IS NULL OR k.changed_at < m.last_end)
    AND (k.checked_at IS NULL OR k.checked_at < %(at)s - %(recheck)s)

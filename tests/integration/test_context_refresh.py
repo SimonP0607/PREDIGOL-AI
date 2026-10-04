@@ -177,3 +177,35 @@ def test_a_finished_match_makes_its_table_due_until_the_table_changes(migrated_d
         assert seed.season_id not in [s.competition_season_id
                                       for s in due_seasons(conn, at=kickoff + timedelta(hours=5))["standings"]]
         conn.rollback()
+
+
+async def test_a_cup_with_a_table_is_refreshed_and_one_without_is_not(migrated_database: str, seed: Seed,
+                                                                      current_league: dict[str, int]) -> None:
+    """Data truth audit V2: cups with a league phase or groups were never refreshed (type = 'league' only)."""
+    from fbi.ingestion.context_refresh import due_seasons, table_seasons
+
+    provider = FakeProvider(current_league["league"], current_league["season"], current_league["home"],
+                            current_league["away"])
+    with psycopg.connect(migrated_database) as conn:
+        conn.execute("UPDATE core.competitions SET type = 'cup' WHERE id = %s", (seed.competition_id,))
+        conn.execute("DELETE FROM core.standings WHERE competition_season_id = %s", (seed.season_id,))
+        assert seed.season_id not in table_seasons(conn)  # a cup, no coverage flag, no table held
+        await refresh_context(conn, provider)
+        assert f"standings {current_league['league']}" not in provider.calls
+        conn.execute("INSERT INTO raw.league_coverage (provider_league_id, season, standings, payload_hash, "
+                     "observed_at) VALUES (%s, %s, true, %s, now()) ON CONFLICT DO NOTHING",
+                     (current_league["league"], current_league["season"], seed.payload_hash))
+        assert seed.season_id in table_seasons(conn)
+        await refresh_context(conn, provider)
+        assert f"standings {current_league['league']}" in provider.calls
+        kickoff = datetime(2026, 9, 15, 19, 0, tzinfo=UTC)
+        conn.execute("DELETE FROM core.context_checks WHERE competition_season_id = %s", (seed.season_id,))
+        conn.execute("UPDATE core.fixtures SET status_short = 'FT', status_group = 'finished' WHERE id = %s",
+                     (seed.fixture_id,))
+        due = due_seasons(conn, at=kickoff + timedelta(hours=3))
+        assert seed.season_id in [s.competition_season_id for s in due["standings"]]
+        conn.rollback()
+        conn.execute("DELETE FROM raw.league_coverage WHERE provider_league_id = %s AND season = %s",
+                     (current_league["league"], current_league["season"]))
+        conn.execute("UPDATE core.competitions SET type = 'league' WHERE id = %s", (seed.competition_id,))
+        conn.commit()
