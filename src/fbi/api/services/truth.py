@@ -29,7 +29,7 @@ from fbi.api.contracts.truth import (
 )
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, unavailable
 from fbi.core.clock import now
-from fbi.truth.freshness import measure, table_state
+from fbi.truth.freshness import measure, table_reason, table_state
 from fbi.truth.gate import MODEL_NEEDS, evaluate
 
 CACHE_SECONDS = 120.0
@@ -181,9 +181,11 @@ def standings(conn: psycopg.Connection[Any]) -> Envelope[list[StandingsAuditRow]
     out = []
     for r in _rows(conn, STANDINGS_SQL):
         state, why = table_state(r["snapshot_at"], r["last_finished"], r["checked_at"], r["covered"])
+        _, code = table_reason(r["snapshot_at"], r["last_finished"], r["checked_at"], r["covered"])
         out.append(StandingsAuditRow(
             competition_id=r["competition_id"], competition=r["competition"], country=r["country"],
-            provider_league_id=r["provider_league_id"], season=r["season"], status=state.value, reason=why,
+            provider_league_id=r["provider_league_id"], season=r["season"], status=state.value, reason_code=code,
+            reason=why,
             snapshot_at=r["snapshot_at"], checked_at=r["checked_at"], changed_at=r["changed_at"],
             provider_updated_at=r["provider_updated_at"], last_finished_at=r["last_finished"], rows=r["rows"],
             rows_skipped=r["rows_skipped"], groups=r["groups"], extended=r["extended"]))

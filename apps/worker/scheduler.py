@@ -108,6 +108,11 @@ CONTEXT_DUE_MINUTES = int(os.environ.get("FBI_CONTEXT_DUE_MINUTES", "30"))
 
 The provider updates a table every hour and injuries every four hours; the twelve-hour
 cycle above left a table up to half a day behind the match that changed it."""
+ELO_REFRESH_HOURS = int(os.environ.get("FBI_ELO_REFRESH_HOURS", "6"))
+"""Elo recomputed from every stored result (fbi.features.elo_refresh). The ratings were
+computed once and never extended; six hours keeps them within a matchday."""
+CATALOGUE_REFRESH_HOURS = int(os.environ.get("FBI_CATALOGUE_REFRESH_HOURS", "24"))
+"""Seasons and coverage flags from one /leagues request (fbi.ingestion.catalogue_refresh)."""
 RESULTS_REPAIR_MINUTES = int(os.environ.get("FBI_RESULTS_REPAIR_MINUTES", "30"))
 """Tracked fixtures over three hours past kick-off that still do not say they finished,
 re-read by id (20 per request). It rode along with the six-hourly results sync, so a
@@ -298,10 +303,11 @@ async def _context_due() -> None:
 
 
 async def _results_repair() -> None:
-    """Fixtures past kick-off that still do not say they finished, by id."""
+    """Fixtures past kick-off that still do not say they finished, by id; and one more read
+    of each finished match once it has settled (final statistics, corrected events)."""
     from scripts.capture_odds import _client
 
-    from fbi.ingestion.live_match import repair_stale_results
+    from fbi.ingestion.live_match import refresh_post_match, repair_stale_results
     from fbi.providers.api_football import ApiFootballProvider
 
     new_run_id()
@@ -309,6 +315,23 @@ async def _results_repair() -> None:
         provider = ApiFootballProvider(_client())
         try:
             await repair_stale_results(conn, provider)
+            await refresh_post_match(conn, provider)
+        finally:
+            await provider.aclose()
+
+
+async def _catalogue_refresh() -> None:
+    """Which season is current, and the coverage flags: one /leagues request a day."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.catalogue_refresh import refresh_catalogue
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await refresh_catalogue(conn, provider)
         finally:
             await provider.aclose()
 
@@ -435,6 +458,20 @@ async def _quality_sweep() -> None:
 async def _pipeline() -> None:
     new_run_id()
     await asyncio.to_thread(_pipeline_now)
+
+
+def _elo_refresh_now() -> None:
+    from fbi.features.elo_refresh import refresh_elo
+
+    with _connect() as conn:
+        refresh_elo(conn)
+
+
+async def _elo_refresh() -> None:
+    """The whole Elo history from every stored result (seconds of arithmetic, zero requests),
+    in a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_elo_refresh_now)
 
 
 def _notify_now() -> None:
@@ -569,6 +606,9 @@ async def main() -> None:
         sweep_next = next_run_after(last_success(conn, "quality_sweep"), timedelta(hours=QUALITY_SWEEP_HOURS), moment)
         context_next = next_run_after(last_success(conn, "context_refresh"),
                                       timedelta(hours=CONTEXT_REFRESH_HOURS), moment)
+        catalogue_next = next_run_after(last_success(conn, "catalogue_refresh"),
+                                        timedelta(hours=CATALOGUE_REFRESH_HOURS), moment)
+        elo_next = next_run_after(last_success(conn, "elo_refresh"), timedelta(hours=ELO_REFRESH_HOURS), moment)
 
     # A tick that could not start on time is still worth running late, and how late is
     # set by the capture tolerance - NOT by the interval. Tying it to the interval made
@@ -616,6 +656,12 @@ async def main() -> None:
     scheduler.add_job(_results_repair, "interval", minutes=RESULTS_REPAIR_MINUTES, id="results_repair",
                       max_instances=1, coalesce=True, misfire_grace_time=RESULTS_REPAIR_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=4))
+    scheduler.add_job(_catalogue_refresh, "interval", hours=CATALOGUE_REFRESH_HOURS, id="catalogue_refresh",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600,
+                      next_run_time=max(catalogue_next, moment + timedelta(minutes=8)))
+    scheduler.add_job(_elo_refresh, "interval", hours=ELO_REFRESH_HOURS, id="elo_refresh",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600,
+                      next_run_time=max(elo_next, moment + timedelta(minutes=12)))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     scheduler.start()

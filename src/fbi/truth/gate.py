@@ -11,8 +11,8 @@ Every model input is one of:
 
 The thresholds are the minimum a model can be honest with, not a tuning knob: a team
 with fewer than ten finished matches in two years has no form to read, a price older
-than the provider's own three-hour update cycle is not the market's current view, and
-a consensus of one bookmaker is not a consensus.
+than the capture window the match has reached is not the market's current view
+(``fbi.truth.freshness.price_state``), and a consensus of one bookmaker is not a consensus.
 """
 
 from __future__ import annotations
@@ -25,6 +25,8 @@ from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
+
+from fbi.truth.freshness import Freshness, price_state
 
 
 class Need(StrEnum):
@@ -63,7 +65,6 @@ MIN_HISTORY = 10
 """Finished matches with a score per team in the last two years."""
 MIN_DETAIL_HISTORY = 5
 """Matches with team statistics per team in the last year (for the shot features)."""
-MAX_PRICE_AGE_HOURS = 3.25
 MIN_BOOKMAKERS = 2
 
 
@@ -94,8 +95,13 @@ WITH up AS (
 ), price AS (
     SELECT o.fixture_id, max(o.captured_at) AS last_capture
       FROM market.odds_snapshots o JOIN up ON up.id = o.fixture_id GROUP BY 1
+), asked AS (
+    SELECT (p.params->>'fixture')::bigint AS provider_fixture_id, max(p.fetched_at) AS last_asked
+      FROM raw.ingestion_payloads p
+     WHERE p.endpoint = '/odds' AND p.params ? 'fixture' AND p.params->>'fixture' ~ '^[0-9]+$'
+     GROUP BY 1
 )
-SELECT up.*, p.last_capture,
+SELECT up.*, p.last_capture, a.last_asked,
        (SELECT count(DISTINCT o.bookmaker_id) FROM market.odds_snapshots o
          WHERE o.fixture_id = up.id AND o.market_key = '1X2'
            AND o.captured_at > p.last_capture - interval '20 minutes') AS bookmakers,
@@ -103,6 +109,7 @@ SELECT up.*, p.last_capture,
        th.last_rated AS home_rated, ta.last_rated AS away_rated
   FROM up
   LEFT JOIN price p ON p.fixture_id = up.id
+  LEFT JOIN asked a ON a.provider_fixture_id = up.provider_fixture_id
   LEFT JOIN team th ON th.team_id = up.home_team_id AND th.kickoff_at = up.kickoff_at
   LEFT JOIN team ta ON ta.team_id = up.away_team_id AND ta.kickoff_at = up.kickoff_at
  ORDER BY up.kickoff_at
@@ -147,13 +154,14 @@ def _evaluate(r: dict[str, Any], at: datetime) -> FixtureGate:
     else:
         g.datasets["match_detail"] = ("missing", f"a side has shot data for {detail} matches (needs "
                                                  f"{MIN_DETAIL_HISTORY})")
-    last = r["last_capture"]
-    if r["cov_odds"] is False and last is None:
-        g.datasets["odds_prematch"] = (Need.UNAVAILABLE_BY_PROVIDER, "the provider prices no matches here")
-    elif last is None:
-        g.datasets["odds_prematch"] = ("missing", "never priced")
-    elif (at - last).total_seconds() / 3600 > MAX_PRICE_AGE_HOURS:
-        g.datasets["odds_prematch"] = ("missing", f"newest price {(at - last).total_seconds() / 3600:.1f} h old")
+    state, why = price_state(kickoff=r["kickoff_at"], at=at, last_capture=r["last_capture"],
+                             last_asked=r["last_asked"], covered=r["cov_odds"])
+    if state is Freshness.UNAVAILABLE:
+        g.datasets["odds_prematch"] = (Need.UNAVAILABLE_BY_PROVIDER, why)
+    elif r["last_capture"] is None:
+        g.datasets["odds_prematch"] = ("missing", "not priced yet" if state is Freshness.FRESH else why)
+    elif state is Freshness.STALE:
+        g.datasets["odds_prematch"] = ("missing", why)
     elif int(r["bookmakers"] or 0) < MIN_BOOKMAKERS:
         g.datasets["odds_prematch"] = ("missing", f"{int(r['bookmakers'] or 0)} bookmaker(s) in the newest capture")
     else:

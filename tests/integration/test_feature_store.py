@@ -51,8 +51,11 @@ def insert_set(cur: psycopg.Cursor, fixture_id: int, cutoff: datetime, newest: d
 
 
 def test_a_cutoff_after_kickoff_is_refused_by_the_database(store: psycopg.Connection, seed: Seed) -> None:
+    # The seed fixture's kick-off as stored now: another module's sync may have moved it.
+    kickoff = store.execute("SELECT kickoff_at FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone()
+    assert kickoff is not None
     with must_be_rejected(store, "a pre-match feature set cannot be computed after kick-off") as cur:
-        insert_set(cur, seed.fixture_id, KO + timedelta(minutes=1), None)
+        insert_set(cur, seed.fixture_id, kickoff[0] + timedelta(minutes=1), None)
 
 
 def test_an_input_at_the_cutoff_is_refused_by_the_database(store: psycopg.Connection, seed: Seed) -> None:

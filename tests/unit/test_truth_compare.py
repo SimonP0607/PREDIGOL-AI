@@ -230,3 +230,35 @@ def test_the_report_leads_with_the_matrix() -> None:
     text = render_markdown(summary, [])
     assert "| Dataset | API | DB | Difference | Freshness | Model safe? |" in text
     assert "9/10 agree; 1 missing in db" in text
+
+
+def test_a_price_is_fresh_when_it_follows_the_capture_plan() -> None:
+    from fbi.truth.freshness import Freshness, price_state
+
+    windows, tol = [4320, 2880, 1440, 720, 360, 180], 45
+    ko = NOW + timedelta(hours=40)  # the T-48h window has been reached, T-24h has not
+
+    def state(last: datetime | None, asked: datetime | None = None, covered: bool | None = True) -> Freshness:
+        return price_state(kickoff=ko, at=NOW, last_capture=last, last_asked=asked, covered=covered, windows=windows,
+                           tolerance=tol)[0]
+
+    assert state(ko - timedelta(hours=47)) is Freshness.FRESH, "captured at the T-48h window"
+    assert state(ko - timedelta(hours=60)) is Freshness.STALE, "only the T-72h price: the T-48h one is missing"
+    assert state(None) is Freshness.STALE, "a window passed and nobody asked"
+    assert state(None, asked=NOW - timedelta(hours=7)) is Freshness.UNAVAILABLE, "asked; the provider had nothing"
+    far = price_state(kickoff=NOW + timedelta(days=5), at=NOW, last_capture=None, last_asked=None, covered=True,
+                      windows=windows, tolerance=tol)
+    assert far[0] is Freshness.FRESH and "no capture window" in far[1]
+
+
+def test_a_table_is_judged_against_the_last_match_it_should_show() -> None:
+    from fbi.truth.freshness import Freshness, table_reason
+
+    last = NOW - timedelta(hours=10)
+    assert table_reason(NOW - timedelta(hours=7), last, NOW - timedelta(hours=7), True) == \
+        (Freshness.FRESH, "reflects_last_match")
+    assert table_reason(NOW - timedelta(days=2), last, NOW - timedelta(hours=1), True) == \
+        (Freshness.UNAVAILABLE, "provider_not_updated")
+    assert table_reason(NOW - timedelta(days=2), last, NOW - timedelta(days=2), True) == \
+        (Freshness.STALE, "not_asked_since")
+    assert table_reason(None, last, None, False) == (Freshness.UNAVAILABLE, "not_covered")

@@ -74,6 +74,13 @@ class AuditResult:
     folder: Path | None = None
     sides: dict[str, tuple[str, str]] = field(default_factory=dict)
     """dataset -> (what the provider showed, what the database held) for the matrix."""
+    side_keys: dict[str, tuple[dict[str, Any], dict[str, Any]]] = field(default_factory=dict)
+    """The same two facts as a message key and its numbers, so a page can say them in its
+    reader's language (``truth.sides.<key>``)."""
+
+    def side(self, dataset: str, api: str, db: str, api_key: str, db_key: str, **params: Any) -> None:
+        self.sides[dataset] = (api, db)
+        self.side_keys[dataset] = ({"key": api_key, "params": params}, {"key": db_key, "params": params})
 
     def matrix(self) -> list[dict[str, Any]]:
         fresh = {f.dataset: f for f in self.freshness}
@@ -84,8 +91,12 @@ class AuditResult:
                 continue
             f = fresh.get(FRESHNESS_OF.get(name, name))
             api, db = self.sides.get(name, ("", ""))
+            api_key, db_key = self.side_keys.get(name, ({}, {}))
+            safe_code, safe_reasons = safety(name, t, f)
             rows.append({
-                "dataset": name, "api": api, "db": db,
+                "dataset": name, "api": api, "db": db, "api_key": api_key, "db_key": db_key,
+                "by_kind": t.by_kind() if t else {}, "freshness_counts": f.counts if f else {},
+                "safe_code": safe_code, "safe_reasons": safe_reasons,
                 "difference": t.difference() if t else "not compared",
                 "checked": t.checked if t else 0, "matched": t.matched if t else 0,
                 "findings": t.total_findings if t else 0, "worst": (t.worst.value if t and t.worst else None),
@@ -102,22 +113,30 @@ FRESHNESS_OF = {"events": "match_detail", "team_stats": "match_detail", "player_
                 "odds": "odds_prematch", "bookmakers": "odds_prematch", "competitions": "coverage"}
 
 
-def model_safe(dataset: str, tally: Tally | None, fresh: DatasetFreshness | None) -> str:
-    """YES / PARTIAL / NO for the models that read this dataset; n/a when none does."""
+def safety(dataset: str, tally: Tally | None, fresh: DatasetFreshness | None) -> tuple[str, list[str]]:
+    """(code, reasons): yes / yes_optional / partial / no / na, and why ("critical", "high", "stale")."""
     role = dataset_role(FRESHNESS_OF.get(dataset, dataset))
     if role is Need.NOT_USED:
-        return "n/a - no model reads it"
+        return "na", []
     worst = tally.worst if tally else None
-    reasons = []
+    reasons: list[str] = []
     if worst in (Severity.CRITICAL, Severity.HIGH):
-        reasons.append(f"{worst.value} findings")
+        reasons.append(worst.value)
     if fresh is not None and fresh.status.value == "STALE":
         reasons.append("stale")
     if not reasons:
-        return "YES" if role is Need.REQUIRED else "YES (optional input)"
+        return ("yes" if role is Need.REQUIRED else "yes_optional"), []
     if role is Need.REQUIRED and worst is Severity.CRITICAL:
-        return "NO - " + ", ".join(reasons)
-    return "PARTIAL - " + ", ".join(reasons)
+        return "no", reasons
+    return "partial", reasons
+
+
+def model_safe(dataset: str, tally: Tally | None, fresh: DatasetFreshness | None) -> str:
+    """YES / PARTIAL / NO for the models that read this dataset; n/a when none does."""
+    code, reasons = safety(dataset, tally, fresh)
+    text = {"na": "n/a - no model reads it", "yes": "YES", "yes_optional": "YES (optional input)",
+            "partial": "PARTIAL", "no": "NO"}[code]
+    return text + (" - " + ", ".join(f"{r} findings" if r != "stale" else r for r in reasons) if reasons else "")
 
 
 # ── database readers ────────────────────────────────────────────────────────
@@ -315,8 +334,9 @@ async def _competitions(ask: _Asker, conn: psycopg.Connection, result: AuditResu
             continue
         listed += 1
         compare.compare_league(item, comps[lid], seasons.get(lid, {}), coverage.get(lid, {}), tally=tally)
-    result.sides["competitions"] = (f"{len(_items(body)):,} competitions listed, {listed} of ours among them",
-                                    f"{len(comps)} tracked")
+    result.side("competitions", f"{len(_items(body)):,} competitions listed, {listed} of ours among them",
+                f"{len(comps)} tracked", "leagues_listed", "tracked", listed=len(_items(body)), ours=listed,
+                tracked=len(comps))
 
 
 async def _fixture_lists(ask: _Asker, conn: psycopg.Connection, result: AuditResult, now: datetime) -> None:
@@ -340,6 +360,13 @@ async def _fixture_lists(ask: _Asker, conn: psycopg.Connection, result: AuditRes
                 continue
             seen.add(pid)
             compare.compare_fixture(item, ours.get(pid), now=now, tally=fixtures, results=results)
+        absent = [i for i in items if compare._id(i.get("fixture")) not in ours]
+        if absent:
+            played = sum(1 for i in absent if str(compare._d(compare._d(i.get("fixture")).get("status")).get("short"))
+                         .upper() in compare.FINISHED)
+            name = compare._d(items[0].get("league")).get("name") if items else league
+            fixtures.notes.append(f"{name} {season} ({league}): the provider lists {len(items):,}, we hold "
+                                  f"{len(ours):,}; {len(absent):,} missing, {played:,} of them played")
         for pid, row in ours.items():
             if pid not in seen:
                 fixtures.compared()
@@ -349,9 +376,12 @@ async def _fixture_lists(ask: _Asker, conn: psycopg.Connection, result: AuditRes
                     db=f"{row['status_short']} {row['kickoff_at']:%Y-%m-%d %H:%M}Z",
                     note="we hold a fixture the provider no longer lists for this season (re-numbered or "
                          "deleted); a scheduled one would be captured and predicted for nothing"))
-    result.sides["fixtures"] = (f"{api_total:,} fixtures in {len(seasons)} seasons "
-                                f"({len(result.sample.current_seasons)} current)", f"{db_total:,} stored for them")
-    result.sides["results"] = ("scores of the finished fixtures in those lists", "core.fixture_results")
+    result.side("fixtures", f"{api_total:,} fixtures in {len(seasons)} seasons "
+                f"({len(result.sample.current_seasons)} current)", f"{db_total:,} stored for them",
+                "fixture_lists", "stored_for_them", n=api_total, seasons=len(seasons),
+                current=len(result.sample.current_seasons), stored=db_total)
+    result.side("results", "scores of the finished fixtures in those lists", "core.fixture_results",
+                "finished_scores", "result_rows")
 
 
 async def _details(ask: _Asker, conn: psycopg.Connection, result: AuditResult, now: datetime) -> None:
@@ -385,7 +415,8 @@ async def _details(ask: _Asker, conn: psycopg.Connection, result: AuditResult, n
             compare.compare_player_stats(item, detail["player_stats"].get(pid, []), home_provider_id=home,
                                          tally=tallies["player_stats"])
     for n in names:
-        result.sides[n] = (f"{len(ids)} sampled fixtures (/fixtures?ids=)", "the rows stored for them")
+        result.side(n, f"{len(ids)} sampled fixtures (/fixtures?ids=)", "the rows stored for them",
+                    "sampled_fixtures", "rows_for_them", n=len(ids))
 
 
 async def _standings(ask: _Asker, conn: psycopg.Connection, result: AuditResult, now: datetime) -> None:
@@ -408,8 +439,9 @@ async def _standings(ask: _Asker, conn: psycopg.Connection, result: AuditResult,
                                   stored_extended=extended and any(r.get("description") is not None
                                                                    or r.get("home_played") is not None
                                                                    for r in ours))
-    result.sides["standings"] = (f"{rows_api:,} table rows in {len(result.sample.standings_seasons)} league seasons",
-                                 f"{rows_db:,} rows in our newest snapshots")
+    result.side("standings", f"{rows_api:,} table rows in {len(result.sample.standings_seasons)} league seasons",
+                f"{rows_db:,} rows in our newest snapshots", "table_rows", "newest_snapshot_rows", n=rows_api,
+                seasons=len(result.sample.standings_seasons), stored=rows_db)
 
 
 async def _identities(ask: _Asker, conn: psycopg.Connection, result: AuditResult) -> None:
@@ -420,7 +452,8 @@ async def _identities(ask: _Asker, conn: psycopg.Connection, result: AuditResult
             break
         items = _items(body)
         compare.compare_team(items[0] if items else None, db_team(conn, tid), provider_team_id=tid, tally=teams)
-    result.sides["teams"] = (f"{len(result.sample.teams)} sampled teams (/teams?id)", "core.teams + core.venues")
+    result.side("teams", f"{len(result.sample.teams)} sampled teams (/teams?id)", "core.teams + core.venues",
+                "sampled_teams", "teams_table", n=len(result.sample.teams))
 
     players = result.tallies.setdefault("players", Tally("players"))
     for pid, season in result.sample.players:
@@ -428,14 +461,16 @@ async def _identities(ask: _Asker, conn: psycopg.Connection, result: AuditResult
         items = _items(body)
         compare.compare_player(items[0] if items else None, db_player(conn, pid), provider_player_id=pid,
                                tally=players)
-    result.sides["players"] = (f"{len(result.sample.players)} sampled players (/players?id&season)", "core.players")
+    result.side("players", f"{len(result.sample.players)} sampled players (/players?id&season)", "core.players",
+                "sampled_players", "players_table", n=len(result.sample.players))
 
     coaches = result.tallies.setdefault("coaches", Tally("coaches"))
     for cid in result.sample.coaches:
         body = await ask.get("/coachs", {"id": cid}, coaches)
         items = _items(body)
         compare.compare_coach(items[0] if items else None, db_coach(conn, cid), provider_coach_id=cid, tally=coaches)
-    result.sides["coaches"] = (f"{len(result.sample.coaches)} sampled coaches (/coachs?id)", "core.coaches")
+    result.side("coaches", f"{len(result.sample.coaches)} sampled coaches (/coachs?id)", "core.coaches",
+                "sampled_coaches", "coaches_table", n=len(result.sample.coaches))
 
     squads = result.tallies.setdefault("squads", Tally("squads"))
     for tid in result.sample.squads:
@@ -444,7 +479,8 @@ async def _identities(ask: _Asker, conn: psycopg.Connection, result: AuditResult
         players_in = [p for p in compare._l((items[0] if items else {}).get("players")) if isinstance(p, dict)]
         known = db_known_players(conn, [i for i in (compare._id(p) for p in players_in) if i is not None])
         compare.compare_squad(items[0] if items else None, known, provider_team_id=tid, tally=squads)
-    result.sides["squads"] = (f"{len(result.sample.squads)} sampled squads (/players/squads)", "not stored")
+    result.side("squads", f"{len(result.sample.squads)} sampled squads (/players/squads)", "not stored",
+                "sampled_squads", "not_stored", n=len(result.sample.squads))
 
 
 async def _upcoming(ask: _Asker, conn: psycopg.Connection, result: AuditResult, now: datetime) -> None:
@@ -465,7 +501,8 @@ async def _upcoming(ask: _Asker, conn: psycopg.Connection, result: AuditResult, 
         absences = db_absences(conn, batch)
         for fid in batch:
             compare.compare_injuries(by_fixture[fid], absences.get(fid, []), provider_fixture_id=fid, tally=injuries)
-    result.sides["injuries"] = (f"{len(ids)} sampled upcoming fixtures (/injuries?ids)", "core.player_absences")
+    result.side("injuries", f"{len(ids)} sampled upcoming fixtures (/injuries?ids)", "core.player_absences",
+                "sampled_upcoming", "absences_table", n=len(ids))
 
     books_seen: dict[int, str] = {}
     priced = 0
@@ -493,8 +530,9 @@ async def _upcoming(ask: _Asker, conn: psycopg.Connection, result: AuditResult, 
         db_books = {int(r["provider_bookmaker_id"]): str(r["bookmaker"]) for r in latest}
         compare.compare_odds(quotes, api_books, compare._when(items[0].get("update")), latest, db_books,
                              provider_fixture_id=fid, kickoff=kickoff, now=now, tally=odds)
-    result.sides["odds"] = (f"{priced} of {len(ids)} sampled upcoming fixtures priced; {len(books_seen)} bookmakers",
-                            "our newest price per bookmaker, market, selection and line")
+    result.side("odds", f"{priced} of {len(ids)} sampled upcoming fixtures priced; {len(books_seen)} bookmakers",
+                "our newest price per bookmaker, market, selection and line", "priced_upcoming", "newest_prices",
+                priced=priced, n=len(ids), books=len(books_seen))
 
     books = result.tallies.setdefault("bookmakers", Tally("bookmakers"))
     body = await ask.get("/odds/bookmakers", {}, books)
@@ -512,8 +550,9 @@ async def _upcoming(ask: _Asker, conn: psycopg.Connection, result: AuditResult, 
             "bookmakers", f"bookmaker {bid} {name}", "prices", Kind.MISSING_IN_DB, Severity.INFO,
             api="offered by the provider", db="known, never priced" if bid in ours_books else "never seen",
             note="seen in today's sample" if bid in books_seen else "absent from every /odds payload we stored"))
-    result.sides["bookmakers"] = (f"{len(provider_books)} bookmakers offered (/odds/bookmakers)",
-                                  f"{len(seen_ever)} with at least one stored price")
+    result.side("bookmakers", f"{len(provider_books)} bookmakers offered (/odds/bookmakers)",
+                f"{len(seen_ever)} with at least one stored price", "bookmakers_offered", "bookmakers_priced",
+                n=len(provider_books), priced=len(seen_ever))
 
 
 async def run_audit(conn: psycopg.Connection, client: Any, *, at: datetime, seed: float,
@@ -559,7 +598,8 @@ async def run_audit(conn: psycopg.Connection, client: Any, *, at: datetime, seed
             for key, n in t.counts.items():
                 target.counts[key] = target.counts.get(key, 0) + n
             target.notes.extend(f"internal {n}" for n in t.notes)
-        result.sides.setdefault("elo", ("finished fixtures", "features.elo_ratings"))
+        if "elo" not in result.sides:
+            result.side("elo", "finished fixtures", "features.elo_ratings", "finished_fixtures", "elo_rows")
         result.freshness = measure(conn, at=at)
         result.gate, _ = evaluate(conn, at=at, horizon_hours=72)
         if result.stopped or result.failures:

@@ -190,6 +190,44 @@ async def repair_stale_results(conn: psycopg.Connection, provider: Any, *, at: d
                          moment=moment, max_requests=max_requests)
 
 
+POST_MATCH_SQL = """
+SELECT f.id, f.provider_fixture_id
+  FROM core.fixtures f
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE c.is_tracked AND f.status_group = 'finished'
+   AND f.kickoff_at BETWEEN %(at)s - %(oldest)s AND %(at)s - %(settled)s
+   AND NOT EXISTS (SELECT 1 FROM core.fixture_detail_coverage d
+                    WHERE d.fixture_id = f.id AND d.dataset = 'team_statistics'
+                      AND d.fetched_at >= f.kickoff_at + %(settled)s)
+ ORDER BY f.kickoff_at DESC
+"""
+POST_MATCH_SETTLED = timedelta(minutes=150)
+"""Kick-off to a detail worth keeping: the final whistle, plus the provider's own corrections.
+
+The live follower's last read lands at the final whistle, when the statistics are still
+being completed and the timeline still corrected: the truth audit found 63% of last
+week's matches with their detail read only then (passes, possession and events that the
+provider has since changed). One more read, once the match has settled, costs one
+request per 20 matches."""
+POST_MATCH_OLDEST = timedelta(days=7)
+
+
+def post_match_to_refresh(conn: psycopg.Connection, *, at: datetime) -> list[tuple[int, int]]:
+    """Finished tracked matches of the last week whose detail was never read after they settled."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(POST_MATCH_SQL, {"at": at, "settled": POST_MATCH_SETTLED, "oldest": POST_MATCH_OLDEST})
+        return [(int(a), int(b)) for a, b in cur.fetchall()]
+
+
+async def refresh_post_match(conn: psycopg.Connection, provider: Any, *, at: datetime | None = None,
+                             max_requests: int = 10) -> LiveMatchReport:
+    """Read each finished match once more after it settled: final statistics, events, line-ups."""
+    moment = at or now()
+    return await _follow(conn, provider, post_match_to_refresh(conn, at=moment), job_type="post_match_detail",
+                         moment=moment, max_requests=max_requests)
+
+
 async def capture_live_matches(conn: psycopg.Connection, provider: Any, *, at: datetime | None = None,
                                max_requests: int = 10) -> LiveMatchReport:
     """One pass over every match that may be in play. Opens its own ledger run

@@ -37,6 +37,12 @@ class TruthMatrixRow(Contract):
     freshness_status: FreshnessState | None
     model_safe: str
     role: str = Field(description="REQUIRED, OPTIONAL or NOT_USED: the strongest need any model has for it.")
+    api_key: dict[str, Any] = Field(default_factory=dict, description="{key, params}: the api column as a message.")
+    db_key: dict[str, Any] = Field(default_factory=dict)
+    by_kind: dict[str, int] = Field(default_factory=dict)
+    freshness_counts: dict[str, int] = Field(default_factory=dict)
+    safe_code: str | None = Field(default=None, description="yes, yes_optional, partial, no or na.")
+    safe_reasons: list[str] = Field(default_factory=list)
 
 
 class FreshnessDataset(Contract):
@@ -108,6 +114,8 @@ class StandingsAuditRow(Contract):
     provider_league_id: int
     season: int
     status: FreshnessState
+    reason_code: str = Field(description="not_covered, no_table, no_match_yet, reflects_last_match, "
+                                         "provider_not_updated or not_asked_since.")
     reason: str
     snapshot_at: datetime | None = Field(description="When the newest table content was first seen.")
     checked_at: datetime | None = Field(description="When the provider was last asked for this table.")

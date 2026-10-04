@@ -3,8 +3,8 @@
 The capturer only captures fixtures that exist in core.fixtures; this is what
 puts them there. Two strategies, because one provider plan refuses the other:
 
-  LEAGUE  ``/fixtures?league=&season=&from=&to=`` - one call per active
-          competition-season. Cheapest for one league over a long horizon.
+  LEAGUE  ``/fixtures?league=&season=`` - one call per active competition-season,
+          the whole season: identities, kick-offs, statuses and scores.
   DATE    ``/fixtures?date=`` - one call per calendar day, every league at
           once, filtered locally to the competitions we track. The only
           fixtures query a restricted plan serves: league+season comes back
@@ -217,6 +217,10 @@ class FixtureRepository:
         inserted = updated = 0
         venue_ids = venue_ids or {}
         with self._conn.cursor(row_factory=tuple_row) as cur:
+            known = {r.provider_fixture_id for r in refs}
+            cur.execute("SELECT provider_fixture_id, id, home_team_id, away_team_id FROM core.fixtures "
+                        "WHERE provider_fixture_id = ANY(%s)", (sorted(known),))
+            sides = {int(a): (int(b), int(c), int(d)) for a, b, c, d in cur.fetchall()}
             for r in refs:
                 season_id = season_ids.get((r.provider_league_id, r.season))
                 if season_id is None:
@@ -229,6 +233,7 @@ class FixtureRepository:
                        source_payload_hash, source_fetched_at)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (provider_fixture_id) DO UPDATE SET
+                      home_team_id = EXCLUDED.home_team_id, away_team_id = EXCLUDED.away_team_id,
                       kickoff_at = EXCLUDED.kickoff_at, status_short = EXCLUDED.status_short,
                       status_group = EXCLUDED.status_group,
                       round = COALESCE(EXCLUDED.round, core.fixtures.round),
@@ -255,6 +260,18 @@ class FixtureRepository:
                     inserted += 1
                 else:
                     updated += 1
+                    before = sides.get(r.provider_fixture_id)
+                    after = (team_ids[r.provider_home_team_id], team_ids[r.provider_away_team_id])
+                    if before is not None and before[1:] != after:
+                        # The provider corrected who plays whom. The row follows it - the
+                        # provider's fixture id is the identity - and the change is kept.
+                        cur.execute(
+                            "INSERT INTO audit.data_repairs (rule, entity, entity_id, provider_ref, field, "
+                            "before_value, after_value, reason, evidence) VALUES ('fixture_sides', 'core.fixtures', "
+                            "%s, %s, 'home_team_id/away_team_id', %s, %s, %s, %s)",
+                            (before[0], r.provider_fixture_id, f"{before[1]} v {before[2]}", f"{after[0]} v {after[1]}",
+                             "the provider changed the sides of this fixture", lineage.payload_hash if lineage else None),
+                        )
         return inserted, updated
 
 
@@ -307,15 +324,17 @@ async def _sync_by_league(
     as one."""
     seasons = active_seasons(conn)
     season_ids = tracked_season_ids(conn)
-    date_from = moment.date().isoformat()
-    date_to = (moment + timedelta(days=horizon_days)).date().isoformat()
     plan_refused = False
 
+    # The WHOLE season, not today..today+horizon. Same one request per season, and it is
+    # the only way a season stays complete: the window left every match before the day a
+    # season was first synced unknown (the 2026-27 J1 League had 40 of its 380 fixtures,
+    # 80 of them already played; club friendlies 177 of 8,327), and a match rescheduled
+    # beyond the window kept its old kick-off until it came back into it. Statuses and
+    # scores of the past arrive in the same payload.
     for s in seasons:
         try:
-            refs, raw = await provider.fetch_fixtures(
-                league_id=s.provider_league_id, season=s.season, date_from=date_from, date_to=date_to
-            )
+            refs, raw = await provider.fetch_fixtures(league_id=s.provider_league_id, season=s.season)
         except ProviderError as exc:
             # The request WAS issued, so it is counted even though it failed.
             counters.api_calls += 1

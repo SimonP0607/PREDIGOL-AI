@@ -175,11 +175,19 @@ SELECT c.name AS competition, cs.season, f.provider_fixture_id, f.kickoff_at, d.
 """
 
 ODDS_SQL = """
+WITH asked AS (
+    SELECT (p.params->>'fixture')::bigint AS provider_fixture_id, max(p.fetched_at) AS last_asked
+      FROM raw.ingestion_payloads p
+     WHERE p.endpoint = '/odds' AND p.params ? 'fixture' AND p.params->>'fixture' ~ '^[0-9]+$'
+     GROUP BY 1
+)
 SELECT c.name AS competition, cs.season, f.provider_fixture_id, f.kickoff_at, lc.odds AS covered,
-       (SELECT max(o.captured_at) FROM market.odds_snapshots o WHERE o.fixture_id = f.id) AS last_capture
+       (SELECT max(o.captured_at) FROM market.odds_snapshots o WHERE o.fixture_id = f.id) AS last_capture,
+       a.last_asked
   FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
   LEFT JOIN raw.league_coverage lc ON lc.provider_league_id = c.provider_league_id AND lc.season = cs.season
+  LEFT JOIN asked a ON a.provider_fixture_id = f.provider_fixture_id
  WHERE c.is_tracked AND f.status_group = 'scheduled'
    AND f.kickoff_at BETWEEN %(at)s AND %(at)s + interval '72 hours'
 """
@@ -277,6 +285,26 @@ TABLE_REFLECTS_AFTER = 2 * HOURS
 """Seconds from a match's kick-off after which a table can include it."""
 
 
+TABLE_REASONS = ("not_covered", "no_table", "no_match_yet", "reflects_last_match", "provider_not_updated",
+                 "not_asked_since")
+"""Stable codes for ``table_state``'s reasons, so a page can say them in its reader's language."""
+
+
+def table_reason(snapshot: datetime | None, last_finished: datetime | None, checked: datetime | None,
+                 covered: bool | None) -> tuple[Freshness, str]:
+    """``table_state`` as (state, reason code)."""
+    if snapshot is None:
+        return (Freshness.UNAVAILABLE, "not_covered") if covered is False else (Freshness.UNKNOWN, "no_table")
+    if last_finished is None:
+        return Freshness.FRESH, "no_match_yet"
+    ended = last_finished.timestamp() + TABLE_REFLECTS_AFTER
+    if snapshot.timestamp() >= ended:
+        return Freshness.FRESH, "reflects_last_match"
+    if checked is not None and checked.timestamp() >= ended:
+        return Freshness.UNAVAILABLE, "provider_not_updated"
+    return Freshness.STALE, "not_asked_since"
+
+
 def table_state(snapshot: datetime | None, last_finished: datetime | None, checked: datetime | None,
                 covered: bool | None) -> tuple[Freshness, str]:
     """Whether a league table is current, and why - the rule the Match Center and the audit share.
@@ -363,19 +391,43 @@ def _detail(rows: list[dict[str, Any]], at: datetime) -> tuple[DatasetFreshness,
     return lineups, detail
 
 
+def price_state(*, kickoff: datetime, at: datetime, last_capture: datetime | None, last_asked: datetime | None,
+                covered: bool | None, windows: list[int] | None = None,
+                tolerance: int | None = None) -> tuple[Freshness, str]:
+    """Whether a match's pre-match price is as current as the capture plan says it should be.
+
+    Prices are captured at fixed windows before kick-off (T-72h ... T-3h), aligned on the
+    provider's three-hourly update; between two windows nothing newer exists to ask for. So a
+    price is FRESH when it was captured at or after the most recent window the match has
+    reached (with the planner's tolerance), and a match no window has reached yet is not due.
+    Asked and answered with nothing is the provider not pricing it: UNAVAILABLE.
+    """
+    from fbi.core.config import settings
+
+    windows = windows if windows is not None else settings.odds.prematch_windows
+    tolerance = tolerance if tolerance is not None else settings.odds.odds_window_tolerance
+    minutes = (kickoff - at).total_seconds() / 60
+    reached = [w for w in windows if w >= minutes]
+    if not reached:
+        return Freshness.FRESH, "no capture window reached yet"
+    due_from = kickoff.timestamp() - (min(reached) + tolerance) * 60
+    if last_capture is not None and last_capture.timestamp() >= due_from:
+        return Freshness.FRESH, f"captured at the T-{min(reached) // 60} h window or later"
+    if last_capture is None and (last_asked is not None or covered is False):
+        return Freshness.UNAVAILABLE, "asked; the provider had no prices" if last_asked else "not covered"
+    if last_capture is None:
+        return Freshness.STALE, f"the T-{min(reached) // 60} h window passed and it was never asked for"
+    return Freshness.STALE, f"newest price {(at - last_capture).total_seconds() / 3600:.1f} h old; the " \
+                            f"T-{min(reached) // 60} h window passed without a capture"
+
+
 def _odds(rows: list[dict[str, Any]], at: datetime) -> DatasetFreshness:
-    out = DatasetFreshness("odds_prematch", "a match in the next 72 h was priced in the last 3 h (the provider "
-                           "updates pre-match prices every 3 h)", "fixture")
+    out = DatasetFreshness("odds_prematch", "a match in the next 72 h was priced at the most recent capture window "
+                           "it reached (T-72/48/24/12/6/3 h, aligned on the provider's 3-hourly update)", "fixture")
     for r in rows:
-        age = _age_h(at, r["last_capture"])
-        if r["covered"] is False:
-            out.add(Freshness.UNAVAILABLE, competition=_label(r))
-        elif age is None:
-            out.add(Freshness.UNKNOWN, competition=_label(r),
-                    example=f"fixture {r['provider_fixture_id']}: never priced (kick-off {r['kickoff_at']:%d %b %H:%M}Z)")
-        else:
-            out.add(Freshness.FRESH if age <= 3.25 else Freshness.STALE, competition=_label(r),
-                    example=f"fixture {r['provider_fixture_id']}: last price {age:.1f} h ago")
+        state, why = price_state(kickoff=r["kickoff_at"], at=at, last_capture=r["last_capture"],
+                                 last_asked=r["last_asked"], covered=r["covered"])
+        out.add(state, competition=_label(r), example=f"fixture {r['provider_fixture_id']}: {why}")
     return out
 
 

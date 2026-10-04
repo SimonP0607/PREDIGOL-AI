@@ -103,7 +103,9 @@ async def test_sync_writes_fixtures_teams_payload_and_a_ledger_row(active: psyco
 
     assert counters.api_calls == 1 and counters.rows_inserted == 2 and counters.rows_updated == 0
     assert counters.status == "completed"
-    assert "from=2026-09-06" in urls[0] and "to=2026-09-13" in urls[0]
+    # the whole season in one request: no date window that leaves earlier matches unknown
+    assert "league=39" in urls[0] and "season=2025" in urls[0]
+    assert "from=" not in urls[0] and "to=" not in urls[0]
     assert SECRET not in urls[0]
 
     with active.cursor() as cur:

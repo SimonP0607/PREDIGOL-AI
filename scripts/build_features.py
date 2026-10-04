@@ -45,7 +45,22 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--competitions", type=str, default="", help="comma-separated competition ids (core.competitions.id)")
     parser.add_argument("--offset-min", type=int, default=60)
+    parser.add_argument("--elo-only", action="store_true",
+                        help="recompute and store the Elo history only (fbi.features.elo_refresh), no feature sets")
     args = parser.parse_args()
+
+    if args.elo_only:
+        from fbi.features.elo_refresh import refresh_elo
+
+        with psycopg.connect(settings.database.psycopg_url) as conn:
+            if not args.apply:
+                history = load_matches(conn)
+                print(f"would rate {sum(1 for m in history if m.has_result):,} matches (use --apply)")
+                return 0
+            done = refresh_elo(conn)
+        print(f"elo run {done.run_id}: {done.matches:,} matches, {done.rows:,} rows; pruned {done.pruned_runs} "
+              f"older refresh run(s), {done.pruned_rows:,} rows")
+        return 0
 
     moment = now()
     offset = timedelta(minutes=args.offset_min)
