@@ -553,3 +553,55 @@ def test_a_whole_asian_handicap_line_reaches_a_pick_with_its_push(
     assert abs(ev - two_way_ev) > 1e-4, (
         "the push changes the expected value; if these agreed, it was ignored"
     )
+
+
+def test_a_whole_line_pick_keeps_its_interval_on_its_own_footing(
+    db: psycopg.Connection, league: dict[str, object]
+) -> None:
+    """A whole handicap's pick stores P(win | settled) - and its interval must be on that
+    footing too. Stored unconditional, the upper bound sat below the conditional point; the
+    table's interval check refused the row and, with it, every pipeline run (4 Oct 2026,
+    from the day quoted lines got intervals). The price here is generous on purpose, so the
+    rule selects the line and the pick row is actually written."""
+    target = int(league["target"])  # type: ignore[call-overload]
+    books: list[int] = league["books"]  # type: ignore[assignment]
+    with db.cursor() as cur:
+        cur.execute(
+            "INSERT INTO raw.ingestion_payloads (hash, run_id, endpoint, fetched_at, http_status, file_path, bytes) "
+            "VALUES ('pipeline-odds-early', %s, '/odds', %s, 200, 'x', 1) ON CONFLICT DO NOTHING",
+            (int(league["capture_run"]), EARLY),  # type: ignore[call-overload]
+        )
+        for book in books:
+            _ah_snapshot(cur, target, book, "Home", "-1", "1.97", at=EARLY, payload="pipeline-odds-early")
+            _ah_snapshot(cur, target, book, "Away", "1", "1.88", at=EARLY, payload="pipeline-odds-early")
+    db.commit()
+    forecast_upcoming(db, at=AT, code_version="pipetest")
+    db.commit()
+    with db.cursor() as cur:
+        for book in books:
+            _ah_snapshot(cur, target, book, "Home", "-1", "4.20", at=CAPTURED, payload="pipeline-odds")
+            _ah_snapshot(cur, target, book, "Away", "1", "1.27", at=CAPTURED, payload="pipeline-odds")
+    db.commit()
+    recompute_from_snapshots(db, fixture_ids=[target])
+    db.commit()
+
+    ledger = RunLedger(db)
+    run = ledger.open("shadow_picks")
+    report = evaluate_captures(db, run_id=run, code_version="pipetest")
+    db.commit()
+    assert report.selected > 0, "the premise: the generous price is selected"
+    with db.cursor() as cur:
+        cur.execute("SELECT p_calibrated, p_push, p_lo, p_hi FROM models.predictions WHERE fixture_id = %s AND "
+                    "market_key = 'AH' AND selection = 'Home' AND line = -1 AND backtest_session_id IS NULL LIMIT 1",
+                    (target,))
+        pred = cur.fetchone()
+        cur.execute("SELECT p_calibrated, p_calibrated_lo, p_calibrated_hi, p_push FROM picks.picks WHERE "
+                    "fixture_id = %s AND market_key = 'AH' AND selection = 'Home' AND line = -1", (target,))
+        pick = cur.fetchone()
+    assert pred is not None and pick is not None, "the whole-line pick was written"
+    p, lo, hi, push = (float(x) for x in pick)
+    assert push > 0 and lo <= p <= hi, "the interval brackets the point, on one footing"
+    settled = 1 - float(pred[1])
+    assert lo == pytest.approx(float(pred[2]) / settled, abs=2e-6)
+    assert hi == pytest.approx(min(1.0, float(pred[3]) / settled), abs=2e-6)
+    assert p == pytest.approx(float(pred[0]) / settled, abs=2e-6)

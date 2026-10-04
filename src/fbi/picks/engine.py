@@ -207,6 +207,14 @@ def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: st
                 _conditional(float(f["p_lo"]), settled)
                 if f["p_lo"] is not None else None
             )
+            # The pick stores its interval on the SAME footing as its probability (conditional
+            # on the bet settling): a whole line's unconditional upper bound sits below its
+            # conditional point, which the table's interval check rightly refuses - and did,
+            # for every whole-line pick, from the day quoted lines got intervals (4 Oct 2026).
+            p_hi_conditional = (
+                _conditional(float(f["p_hi"]), settled)
+                if f["p_hi"] is not None else None
+            )
             a = assess(p_conditional, odds, fair, p_lo_conditional, push=push)
             reason = decide(a, f["market_key"], rule)
             with conn.cursor() as cur:
@@ -261,7 +269,9 @@ def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: st
                      f["calibrator_id"], f["feature_set_hash"], f["data_cutoff_ts"], rule.version, code_version,
                      c["best_bookmaker_id"], odds.value, payload[1], _q6(p_conditional.value),
                      _q6(p_conditional.value),
-                     f["p_lo"], f["p_hi"], _q6(fair.probability.value), a.model_fair_odds,
+                     None if p_lo_conditional is None else _q6(p_lo_conditional.value),
+                     None if p_hi_conditional is None else _q6(p_hi_conditional.value),
+                     _q6(fair.probability.value), a.model_fair_odds,
                      a.probability_edge.value if a.probability_edge else None,
                      a.price_edge.value if a.price_edge else None, a.expected_value.per_unit,
                      a.ev_at_lower_bound.per_unit if a.ev_at_lower_bound else None, a.kelly_fraction, STAKE,

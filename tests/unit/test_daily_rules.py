@@ -86,12 +86,16 @@ def test_a_probability_without_an_interval_is_not_ranked() -> None:
     assert [x.p_low for x in measured] == [D("0.40")]
 
 
-def test_a_stored_lower_bound_is_put_on_the_conditional_footing() -> None:
+def test_a_stored_lower_bound_is_already_on_the_conditional_footing() -> None:
+    """The pick stores its bounds as it stores its probability - conditional on the bet
+    settling (fbi.picks.engine) - so the bound is used as stored, never converted twice."""
     at = datetime(2032, 8, 1, 15, tzinfo=UTC)
     row = {"pick_id": 1, "fixture_id": 1, "kickoff_at": at + timedelta(hours=5), "fixture_status": "scheduled",
            "home_team_id": 10, "away_team_id": 11, "market_key": "AH", "selection": "Home", "line": D("-1"),
            "pick_status": "qualified", "model_status": "active", "p_model": D("0.60"), "p_push": D("0.20"),
            "p_fair": D("0.50"), "best_odds": D("2.10"), "price_at": at - timedelta(minutes=20), "n_bookmakers": 3,
-           "p_low": D("0.40")}
+           "p_low": D("0.50")}
     (x,) = passing([row], at=at, source="qualified")
-    assert x.p_low == D("0.5"), "0.40 unconditional with a 20% push is 0.50 given the bet settles"
+    assert x.p_low == D("0.50")
+    (y,) = passing([row | {"p_low": D("0.6000004")}], at=at, source="qualified")
+    assert y.p_low == D("0.60"), "a bound is never above its own point"
