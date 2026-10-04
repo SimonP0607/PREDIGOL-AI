@@ -35,6 +35,20 @@ describe("catalogs", () => {
     expect({ onlyEs, onlyEn }).toEqual({ onlyEs: [], onlyEn: [] });
   });
 
+  test("placeholders use one brace: {name} (a {{name}} rendered as {value} on the player page)", () => {
+    const doubled = [
+      ...keys(CATALOGS.es).map((k) => `es ${k}`),
+      ...keys(CATALOGS.en).map((k) => `en ${k}`),
+    ].filter((entry) => {
+      const [locale, key] = entry.split(" ") as ["es" | "en", string];
+      return /\{\{\w+\}\}/.test(translate(key, undefined, locale));
+    });
+    expect(doubled).toEqual([]);
+    expect(
+      translate("catalog.players.detail.profile.clubFromSquad", { team: "Deportivo Pasto" }, "es"),
+    ).toBe("Deportivo Pasto (plantilla)");
+  });
+
   test("no value is empty", () => {
     for (const locale of ["es", "en"] as const) {
       const empty = keys(CATALOGS[locale]).filter(

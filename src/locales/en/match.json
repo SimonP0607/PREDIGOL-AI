@@ -357,9 +357,9 @@
     "home": "Home",
     "draw": "Draw",
     "away": "Away",
-    "advice": "Provider's advice: {{advice}}",
-    "winner": "Provider's winner: {{team}} ({{comment}})",
-    "underOver": "Provider's goals line: {{line}}",
-    "versions": "{{count}} versions kept since {{first}}"
+    "advice": "Provider's advice: {advice}",
+    "winner": "Provider's winner: {team} ({comment})",
+    "underOver": "Provider's goals line: {line}",
+    "versions": "{count} versions kept since {first}"
   }
 }

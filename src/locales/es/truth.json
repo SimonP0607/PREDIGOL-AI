@@ -517,7 +517,7 @@
       "decide": "Veredicto",
       "cause": "Causa",
       "fix": "Arreglo",
-      "seen": "visto {{n}} veces, último {{when}}"
+      "seen": "visto {n} veces, último {when}"
     },
     "status": {
       "OPEN": "Abierta",

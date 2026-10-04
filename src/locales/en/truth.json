@@ -517,7 +517,7 @@
       "decide": "Verdict",
       "cause": "Cause",
       "fix": "Fix",
-      "seen": "seen {{n}} times, last {{when}}"
+      "seen": "seen {n} times, last {when}"
     },
     "status": {
       "OPEN": "Open",

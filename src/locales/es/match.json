@@ -357,9 +357,9 @@
     "home": "Local",
     "draw": "Empate",
     "away": "Visitante",
-    "advice": "Consejo del proveedor: {{advice}}",
-    "winner": "Ganador según el proveedor: {{team}} ({{comment}})",
-    "underOver": "Goles según el proveedor: {{line}}",
-    "versions": "{{count}} versiones guardadas desde {{first}}"
+    "advice": "Consejo del proveedor: {advice}",
+    "winner": "Ganador según el proveedor: {team} ({comment})",
+    "underOver": "Goles según el proveedor: {line}",
+    "versions": "{count} versiones guardadas desde {first}"
   }
 }

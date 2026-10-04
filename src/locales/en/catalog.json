@@ -133,12 +133,12 @@
         "lost": "Lost",
         "for": "For",
         "against": "Against",
-        "scopeSeason": "{{competition}} · season {{season}}",
+        "scopeSeason": "{competition} · season {season}",
         "scopeAll": "All competitions",
         "campaign": "This campaign, by competition",
         "competition": "Competition",
         "season": "Season",
-        "lifetime": "Everything stored: {{played}} played ({{won}}-{{drawn}}-{{lost}}) in {{competitions}} competitions since {{since}} - not a season table"
+        "lifetime": "Everything stored: {played} played ({won}-{drawn}-{lost}) in {competitions} competitions since {since} - not a season table"
       }
     },
     "fixtures": {
@@ -192,8 +192,8 @@
         "weight": "Weight",
         "providerId": "Provider id",
         "club": "Club",
-        "clubFromSquad": "{{team}} (squad)",
-        "clubFromApps": "{{team}} (last club match)",
+        "clubFromSquad": "{team} (squad)",
+        "clubFromApps": "{team} (last club match)",
         "nationalTeam": "National team",
         "lastAppearance": "Last appearance"
       },
@@ -237,9 +237,9 @@
     "international": "international"
   },
   "reference": {
-    "payload": "payload {{hash}}",
-    "fetched": "fetched {{at}}",
-    "asked": "asked {{at}}",
+    "payload": "payload {hash}",
+    "fetched": "fetched {at}",
+    "asked": "asked {at}",
     "open": "no end date",
     "transfers": {
       "title": "Transfers (provider)"
@@ -269,7 +269,7 @@
     "rounds": {
       "title": "Round calendar",
       "description": "Every round of the season with its dates (provider).",
-      "current": "Current round per the provider: {{rounds}}"
+      "current": "Current round per the provider: {rounds}"
     }
   }
 }

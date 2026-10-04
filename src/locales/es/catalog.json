@@ -133,12 +133,12 @@
         "lost": "Perdidos",
         "for": "A favor",
         "against": "En contra",
-        "scopeSeason": "{{competition}} · temporada {{season}}",
+        "scopeSeason": "{competition} · temporada {season}",
         "scopeAll": "Todas las competiciones",
         "campaign": "Esta campaña, por competición",
         "competition": "Competición",
         "season": "Temporada",
-        "lifetime": "Todo lo almacenado: {{played}} partidos ({{won}}-{{drawn}}-{{lost}}) en {{competitions}} competiciones desde {{since}} - no es una tabla de temporada"
+        "lifetime": "Todo lo almacenado: {played} partidos ({won}-{drawn}-{lost}) en {competitions} competiciones desde {since} - no es una tabla de temporada"
       }
     },
     "fixtures": {
@@ -192,8 +192,8 @@
         "weight": "Peso",
         "providerId": "ID del proveedor",
         "club": "Club",
-        "clubFromSquad": "{{team}} (plantilla)",
-        "clubFromApps": "{{team}} (último partido con el club)",
+        "clubFromSquad": "{team} (plantilla)",
+        "clubFromApps": "{team} (último partido con el club)",
         "nationalTeam": "Selección",
         "lastAppearance": "Última aparición"
       },
@@ -237,9 +237,9 @@
     "international": "selecciones"
   },
   "reference": {
-    "payload": "payload {{hash}}",
-    "fetched": "obtenido {{at}}",
-    "asked": "consultado {{at}}",
+    "payload": "payload {hash}",
+    "fetched": "obtenido {at}",
+    "asked": "consultado {at}",
     "open": "sin fecha de fin",
     "transfers": {
       "title": "Traspasos (proveedor)"
@@ -269,7 +269,7 @@
     "rounds": {
       "title": "Calendario de jornadas",
       "description": "Todas las jornadas de la temporada con sus fechas (proveedor).",
-      "current": "Jornada actual según el proveedor: {{rounds}}"
+      "current": "Jornada actual según el proveedor: {rounds}"
     }
   }
 }
