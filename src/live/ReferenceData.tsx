@@ -159,7 +159,7 @@ export function LeadersPanel({ data }: { data: CompetitionReference }) {
             ) : null}
             {list ? (
               <>
-                <TableShell>
+                <TableShell compact>
                   <THead>
                     <TH align="right">#</TH>
                     <TH>{t("catalog.columns.player")}</TH>
