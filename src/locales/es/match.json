@@ -315,5 +315,14 @@
   },
   "advanced": {
     "note": "Solo administradores: modelos y predicciones, capturas, linaje y auditoría de este partido."
+  },
+  "priceStatus": {
+    "title": "Sin cuota de casas",
+    "PRICE_PENDING": "Aún no hay cuotas: se piden desde 3 días antes del partido.",
+    "PRICE_UNAVAILABLE": "Ninguna casa que recibimos cotiza este mercado.",
+    "NOT_COVERED": "Nuestro proveedor de cuotas no cubre esta competición.",
+    "model": "Modelo (modo evaluación): {selection} {probability} · cuota justa {fair}.",
+    "minOdds": "Con {min} o más en tu casa, la apuesta tendría el margen que pide nuestra regla.",
+    "notAPick": "No es un pick ni una cuota de casa: ningún modelo ha superado al mercado todavía."
   }
 }

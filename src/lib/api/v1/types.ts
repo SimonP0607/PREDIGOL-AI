@@ -190,10 +190,37 @@ export interface MatchDetail {
 }
 
 /** What the product shows for a fixture (GET /matches/{id}); MatchDetail is the Admin Console's. */
+export type PriceStatus =
+  "PRICED" | "THIN_PRICE" | "PRICE_PENDING" | "PRICE_UNAVAILABLE" | "NOT_COVERED";
+
+/** The model's own number for a market no bookmaker of ours prices (never a price, never a pick). */
+export interface ModelNoPriceView {
+  status: "MODEL_INTERESTING_NO_PRICE" | "PRICE_UNAVAILABLE";
+  selection: string;
+  probability: Dec;
+  fair_odds: Dec;
+  min_odds: Dec;
+  model: string;
+  rule_version: string;
+  evaluation_mode: boolean;
+  data_cutoff_ts: Iso;
+}
+
+export interface MarketPriceStatus {
+  market_key: string;
+  line: Dec;
+  status: PriceStatus;
+  bookmakers: number;
+  last_capture: Iso | null;
+  model_view: ModelNoPriceView | null;
+}
+
 export interface MatchView {
   match: MatchSummary;
   venue: VenueRef | null;
   markets: Section<MarketQuote[]>;
+  /** Before kick-off: each core market's price status (absent from older APIs). */
+  price_status?: MarketPriceStatus[];
 }
 
 export interface SeasonSummary {

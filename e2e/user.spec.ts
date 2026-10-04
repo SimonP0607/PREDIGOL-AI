@@ -183,6 +183,40 @@ test("A league table in the Match Center says how current it is", async ({ page 
   await expect(freshness).toContainText(t.match.standings.updated.split("{")[0]?.trim() ?? "");
 });
 
+test("A market without a bookmaker price says why, and never shows a made-up price", async ({
+  page,
+}) => {
+  const w = watch(page);
+  const t = L[lang()];
+  const after = new Date().toISOString();
+  const { body } = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    `/api/v1/matches?status=scheduled&order=asc&limit=40&kickoff_after=${encodeURIComponent(after)}`,
+  );
+  let found: { id: number; market: string; status: string } | null = null;
+  for (const m of body.data) {
+    const v = await getJson<{
+      data: { price_status?: Array<{ market_key: string; status: string }> };
+    }>(page.request, `/api/v1/matches/${m.id}`);
+    const unpriced = (v.body.data.price_status ?? []).find((p) =>
+      ["PRICE_PENDING", "PRICE_UNAVAILABLE", "NOT_COVERED"].includes(p.status),
+    );
+    if (unpriced) {
+      found = { id: m.id, market: unpriced.market_key, status: unpriced.status };
+      break;
+    }
+  }
+  if (!found) {
+    note(test.info(), "every upcoming match among the next 40 has a price in each core market");
+    return;
+  }
+  await open(page, w, `/matches/${found.id}`);
+  const row = page.locator(`[data-testid="price-status-${found.market}"]:visible`).first();
+  await expect(row).toBeVisible();
+  const reason = t.match.priceStatus[found.status as "PRICE_PENDING"];
+  await expect(row).toContainText(reason);
+});
+
 test("Live: richest matches first, or an honest empty board", async ({ page }) => {
   const w = watch(page);
   const t = L[lang()];

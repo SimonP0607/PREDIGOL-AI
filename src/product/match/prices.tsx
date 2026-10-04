@@ -6,7 +6,8 @@ import type { ReactNode } from "react";
 import { Lock, Radio, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtLine, fmtOdds } from "@/lib/i18n/format";
+import { fmtLine, fmtOdds, fmtPct } from "@/lib/i18n/format";
+import type { MarketPriceStatus } from "@/lib/api/v1/types";
 import { OddsPill } from "@/product/shared/Bits";
 import { marketName } from "@/product/shared/markets";
 import type { MatchCtx } from "./context";
@@ -159,9 +160,13 @@ export function QuickPricesBlock({ ctx }: { ctx: MatchCtx }) {
       right={updated ? <FreshnessLabel at={updated} level={ageLevel(updated, 60, 360)} /> : null}
     >
       {nothing ? (
-        <SectionNote status={markets.status === "ok" ? "empty" : markets.status}>
-          {t("match.prices.none")}
-        </SectionNote>
+        ctx.priceStatus.length ? (
+          <PriceStatusNotes ctx={ctx} />
+        ) : (
+          <SectionNote status={markets.status === "ok" ? "empty" : markets.status}>
+            {t("match.prices.none")}
+          </SectionNote>
+        )
       ) : (
         <div className="space-y-3.5">
           {one ? (
@@ -197,6 +202,7 @@ export function QuickPricesBlock({ ctx }: { ctx: MatchCtx }) {
               ))}
             </TileRow>
           ) : null}
+          <PriceStatusNotes ctx={ctx} />
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border/70 pt-2">
             <span className="text-caption text-subtle-foreground">
               {t("match.prices.bestOf", { count: books })}
@@ -208,6 +214,68 @@ export function QuickPricesBlock({ ctx }: { ctx: MatchCtx }) {
         </div>
       )}
     </Block>
+  );
+}
+
+const UNPRICED = new Set(["PRICE_PENDING", "PRICE_UNAVAILABLE", "NOT_COVERED"]);
+
+function statusTitle(p: MarketPriceStatus): string {
+  return p.market_key === "OU"
+    ? t("match.prices.ou25", { line: fmtLine(Number(p.line)) })
+    : marketName(p.market_key);
+}
+
+/**
+ * Before kick-off, for each core market without a price: why (not in yet, no bookmaker we
+ * receive prices it, not covered) and, where nothing is priced at all, the model's own number
+ * - its fair odds and the minimum odds that would carry the rule's margin. Never a price.
+ */
+export function PriceStatusNotes({ ctx }: { ctx: MatchCtx }) {
+  const rows = ctx.priceStatus.filter((p) => UNPRICED.has(p.status));
+  if (rows.length === 0) return null;
+  const sides = { home: ctx.match.home.name, away: ctx.match.away.name };
+  const evaluation = rows.some((p) => p.model_view?.evaluation_mode);
+  return (
+    <div className="space-y-2" data-testid="price-status">
+      <h3 className="text-label text-subtle-foreground">{t("match.priceStatus.title")}</h3>
+      {rows.map((p) => {
+        const v = p.model_view;
+        return (
+          <div
+            key={`${p.market_key}-${p.line}`}
+            className="rounded-lg border border-border/70 bg-elevated/30 px-3 py-2"
+            data-testid={`price-status-${p.market_key}`}
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+              <span className="text-xs font-medium">{statusTitle(p)}</span>
+              <span className="text-caption text-subtle-foreground">
+                {t(`match.priceStatus.${p.status}`)}
+              </span>
+            </div>
+            {v ? (
+              <p className="mt-1 text-caption text-muted-foreground">
+                {t("match.priceStatus.model", {
+                  selection: tileLabel(
+                    p.market_key,
+                    v.selection,
+                    p.market_key === "OU" ? Number(p.line) : null,
+                    sides,
+                  ),
+                  probability: fmtPct(v.probability, 0),
+                  fair: fmtOdds(v.fair_odds),
+                })}{" "}
+                {v.status === "MODEL_INTERESTING_NO_PRICE"
+                  ? t("match.priceStatus.minOdds", { min: fmtOdds(v.min_odds) })
+                  : null}
+              </p>
+            ) : null}
+          </div>
+        );
+      })}
+      {evaluation ? (
+        <p className="text-caption text-subtle-foreground">{t("match.priceStatus.notAPick")}</p>
+      ) : null}
+    </div>
   );
 }
 

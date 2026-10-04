@@ -1,5 +1,12 @@
 /** What every part of the Match Center receives: the match, its detail and the page state. */
-import type { DataStatus, MarketQuote, MatchSummary, Section, VenueRef } from "@/lib/api/v1/types";
+import type {
+  DataStatus,
+  MarketPriceStatus,
+  MarketQuote,
+  MatchSummary,
+  Section,
+  VenueRef,
+} from "@/lib/api/v1/types";
 import type { MatchCenter } from "@/lib/api/v1/types_center";
 import type { Goals, LiveSnapshot, Phase } from "./model";
 
@@ -21,6 +28,8 @@ export interface MatchCtx {
   match: MatchSummary;
   venue: VenueRef | null;
   markets: Section<MarketQuote[]>;
+  /** Before kick-off: why a core market has no price, and the model's view where none exists. */
+  priceStatus: MarketPriceStatus[];
   phase: Phase;
   live: LiveSnapshot | null;
   score: Goals | null;

@@ -212,7 +212,7 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     return <PageSkeleton />;
   }
 
-  const { match, venue, markets } = view.data.data;
+  const { match, venue, markets, price_status: priceStatus = [] } = view.data.data;
   const phase = matchPhase(match);
   const detail = center.data?.data ?? null;
   const states = detail?.live_states.status === "ok" ? detail.live_states.data : [];
@@ -222,6 +222,7 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     match,
     venue,
     markets,
+    priceStatus,
     phase,
     live: snapshot,
     score: shownScore(match, snapshot, phase),
