@@ -156,8 +156,8 @@
       "preferences_updated": "Preferences updated"
     }
   },
-  "shadowToggle": "Show shadow picks (admin only)",
-  "shadowToggleHelp": "Internal preview with unqualified picks, to review the design. Never what a USER sees.",
+  "shadowToggle": "Evaluation mode (admin only)",
+  "shadowToggleHelp": "Shows the evaluation records, built from picks of models that have not beaten the market. Never what a USER sees.",
   "jobs": {
     "odds_capture": "Odds capture",
     "fixtures_sync": "Fixtures sync",

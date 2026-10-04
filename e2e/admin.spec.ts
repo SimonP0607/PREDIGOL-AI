@@ -133,24 +133,46 @@ test("Preview as USER shows the product only, until it is switched off", async (
   await assertClean(page, w);
 });
 
-test("the shadow preview is the owner's and is labelled on every block it changes", async ({
+test("evaluation mode is the owner's: the recorded evaluation picks and parlays, labelled, kept after kick-off", async ({
   page,
 }) => {
   const w = watch(page);
-  const shadow = await getJson<{ data: { top_picks: { status: string } } }>(
-    page.request,
-    "/api/v1/home?preview=shadow",
-  );
-  await go(page, w, "/home");
+  const evaluation = await getJson<{
+    data: {
+      evaluation_mode: boolean;
+      set: { items: Array<{ match: { kickoff_at: string } }> } | null;
+      daily_parlay: { legs: unknown[] } | null;
+    };
+  }>(page.request, "/api/v1/daily?preview=shadow");
+  expect(evaluation.status).toBe(200);
+  expect(evaluation.body.data.evaluation_mode).toBe(true);
+  await go(page, w, "/picks");
   const toggle = page.getByTestId("shadow-toggle").first();
   await expect(toggle).toBeVisible();
   await toggle.click();
   await expect(page.getByTestId("shadow-strip")).toBeVisible();
   await settle(page);
-  if (shadow.body.data.top_picks.status === "ok") {
-    await expect(page.getByTestId("home-top-picks").getByTestId("pick-card").first()).toBeVisible();
+  const items = evaluation.body.data.set?.items ?? [];
+  const daily = page.getByTestId("daily-set");
+  await expect(daily.getByTestId("daily-item")).toHaveCount(items.length);
+  if (items.length > 0) {
+    await expect(daily.getByTestId("evaluation-note")).toBeVisible();
+    const started = items.filter((i) => Date.parse(i.match.kickoff_at) <= Date.now()).length;
+    note(
+      test.info(),
+      `${items.length} evaluation picks today, ${started} already kicked off and still shown`,
+    );
   } else {
-    note(test.info(), "no shadow pick in the window either");
+    note(test.info(), "no evaluation pick recorded today");
+  }
+  await assertClean(page, w);
+
+  await go(page, w, "/parlays");
+  const legs = evaluation.body.data.daily_parlay?.legs.length ?? 0;
+  const card = page.getByTestId("parlay-record-daily");
+  if (legs > 0) {
+    await expect(card.getByTestId("parlay-leg")).toHaveCount(legs);
+    await expect(card.getByTestId("evaluation-badge")).toBeVisible();
   }
   await assertClean(page, w);
   await page.getByTestId("shadow-toggle").first().click();

@@ -88,7 +88,8 @@
     "lastCapture": "Última actualización: {when}",
     "bestHelp": "El mejor precio de cada opción entre todas las casas que la ofrecen.",
     "none": "Todavía no hay cuotas para este partido.",
-    "movement": "Ver movimiento en Cuotas"
+    "movement": "Ver movimiento en Cuotas",
+    "chooseHelp": "Toca una cuota para guardarla o agregarla a tu parlay."
   },
   "liveOdds": {
     "title": "Cuotas en vivo",

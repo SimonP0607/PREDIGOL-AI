@@ -25,7 +25,9 @@ import {
   type MarketBoard,
   type PriceRow,
 } from "./model";
-import { LiveOdds, LiveTile, PriceInline, PriceTile } from "./prices";
+import { LiveOdds, LiveTile, PriceInline, PriceTile, type PriceWrap } from "./prices";
+import type { Pickable } from "@/product/records/pickable";
+import { PriceMenu } from "@/product/records/SelectionActions";
 import { Block, CenterSection, FreshnessLabel, MoreButton, SectionNote } from "./ui";
 
 type Sides = { home: string; away: string };
@@ -143,9 +145,21 @@ function LinesTable<T>({
   );
 }
 
-function BookCard({ board, sides }: { board: MarketBoard; sides: Sides }) {
+function BookCard({
+  board,
+  sides,
+  choose,
+}: {
+  board: MarketBoard;
+  sides: Sides;
+  /** Before kick-off: what choosing a price saves or adds to the parlay. */
+  choose?: ((price: BestPrice) => Pickable) | undefined;
+}) {
   const sels = SELECTIONS[board.market] ?? [];
   const row = board.rows[0];
+  const wrap: PriceWrap | undefined = choose
+    ? (pill, price) => <PriceMenu sel={choose(price)}>{pill}</PriceMenu>
+    : undefined;
   return (
     <Block level={3} title={marketName(board.market)} right={<Books count={board.books} />}>
       {LINE_MARKETS.has(board.market) ? (
@@ -154,7 +168,7 @@ function BookCard({ board, sides }: { board: MarketBoard; sides: Sides }) {
           rows={board.rows}
           main={board.main}
           sides={sides}
-          cell={(p, prefix) => <PriceInline price={p} prefix={prefix} />}
+          cell={(p, prefix) => <PriceInline price={p} prefix={prefix} wrap={wrap} />}
         />
       ) : (
         <div className={cn("grid gap-2", sels.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
@@ -164,6 +178,7 @@ function BookCard({ board, sides }: { board: MarketBoard; sides: Sides }) {
               label={tileLabel(board.market, sel, null, sides)}
               price={row?.cells[i] ?? null}
               showBooks
+              wrap={wrap}
             />
           ))}
         </div>
@@ -302,6 +317,20 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
   const boards = marketBoards(quotes, "prematch");
   const updated = latestCapture(quotes, "prematch");
   const before = phase === "scheduled";
+  const choose = before
+    ? (p: BestPrice): Pickable => ({
+        fixture_id: m.id,
+        market_key: p.market as Pickable["market_key"],
+        selection: p.selection,
+        line: p.line,
+        kickoff_at: m.kickoff_at,
+        status_group: m.status_group,
+        home: m.home.name,
+        away: m.away.name,
+        odds: p.odds,
+        bookmaker: p.bookmaker,
+      })
+    : undefined;
 
   return (
     <div className="space-y-8">
@@ -326,13 +355,13 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
         {boards.length > 0 ? (
           <>
             <p className="-mt-1.5 mb-3 text-xs text-muted-foreground">
-              {t("match.markets.bestHelp")}
+              {t("match.markets.bestHelp")} {before ? t("match.markets.chooseHelp") : null}
             </p>
             <CardGrid
               items={boards.map((b) => ({
                 key: b.market,
                 lines: LINE_MARKETS.has(b.market),
-                node: <BookCard board={b} sides={sides} />,
+                node: <BookCard board={b} sides={sides} choose={choose} />,
               }))}
             />
           </>

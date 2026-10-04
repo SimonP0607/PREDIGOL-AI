@@ -88,7 +88,8 @@
     "lastCapture": "Last update: {when}",
     "bestHelp": "The best price for each option among every bookmaker offering it.",
     "none": "No odds for this match yet.",
-    "movement": "See price movement in Odds"
+    "movement": "See price movement in Odds",
+    "chooseHelp": "Tap a price to save it or add it to your parlay."
   },
   "liveOdds": {
     "title": "Live odds",

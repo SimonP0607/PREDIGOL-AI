@@ -5,7 +5,16 @@
 import { expect, test } from "@playwright/test";
 import { assertClean, settle, watch } from "./support";
 
-const PAGES = ["/home", "/matches", "/live", "/picks", "/parlays", "/odds", "/profile"];
+const PAGES = [
+  "/home",
+  "/matches",
+  "/live",
+  "/picks",
+  "/parlays",
+  "/odds",
+  "/my-picks",
+  "/profile",
+];
 
 test("every product page fits a 390 px phone", async ({ page }) => {
   test.setTimeout(120_000);

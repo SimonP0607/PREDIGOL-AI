@@ -156,8 +156,8 @@
       "preferences_updated": "Preferencias actualizadas"
     }
   },
-  "shadowToggle": "Mostrar picks shadow (solo admin)",
-  "shadowToggleHelp": "Vista previa interna con picks no calificados, para revisar el diseño. Nunca es lo que ve un USER.",
+  "shadowToggle": "Modo de evaluación (solo admin)",
+  "shadowToggleHelp": "Muestra los registros de evaluación, armados con picks de modelos que no han superado al mercado. Nunca es lo que ve un USER.",
   "jobs": {
     "odds_capture": "Captura de cuotas",
     "fixtures_sync": "Sincronización de partidos",

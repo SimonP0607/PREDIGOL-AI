@@ -27,7 +27,16 @@
     "last_super_admin": "You cannot leave the platform without an active SUPER_ADMIN.",
     "cannot_disable_self": "You cannot disable your own account.",
     "user_not_found": "That account does not exist.",
-    "unreachable": "Cannot reach the PrediGol server."
+    "unreachable": "Cannot reach the PrediGol server.",
+    "already_saved": "This selection is already in your picks.",
+    "started": "The match has started: it can no longer be changed.",
+    "not_removable": "It can only be removed before the match starts.",
+    "not_editable": "It can only be changed before the match starts.",
+    "invalid_parlay": "The parlay breaks a rule.",
+    "invalid_selection": "That is not a selection we settle.",
+    "unknown_fixture": "That match does not exist.",
+    "unknown_pick": "That PrediGol pick is not available to your account.",
+    "validation_error": "Some of the data is not valid."
   },
   "problem": {
     "password_too_short": "At least 10 characters.",

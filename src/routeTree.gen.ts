@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MyPicksRouteImport } from './routes/my-picks'
 import { Route as OddsRouteImport } from './routes/odds'
 import { Route as ParlaysRouteImport } from './routes/parlays'
 import { Route as PicksRouteImport } from './routes/picks'
@@ -65,6 +66,11 @@ const LiveRoute = LiveRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyPicksRoute = MyPicksRouteImport.update({
+  id: '/my-picks',
+  path: '/my-picks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OddsRoute = OddsRouteImport.update({
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof HomeRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
+  '/my-picks': typeof MyPicksRoute
   '/odds': typeof OddsRoute
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
@@ -242,6 +249,7 @@ export interface FileRoutesByTo {
   '/home': typeof HomeRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
+  '/my-picks': typeof MyPicksRoute
   '/odds': typeof OddsRoute
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/home': typeof HomeRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
+  '/my-picks': typeof MyPicksRoute
   '/odds': typeof OddsRoute
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
@@ -313,6 +322,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/live'
     | '/login'
+    | '/my-picks'
     | '/odds'
     | '/parlays'
     | '/picks'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/live'
     | '/login'
+    | '/my-picks'
     | '/odds'
     | '/parlays'
     | '/picks'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/live'
     | '/login'
+    | '/my-picks'
     | '/odds'
     | '/parlays'
     | '/picks'
@@ -415,6 +427,7 @@ export interface RootRouteChildren {
   HomeRoute: typeof HomeRoute
   LiveRoute: typeof LiveRoute
   LoginRoute: typeof LoginRoute
+  MyPicksRoute: typeof MyPicksRoute
   OddsRoute: typeof OddsRoute
   ParlaysRoute: typeof ParlaysRoute
   PicksRoute: typeof PicksRoute
@@ -458,6 +471,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-picks': {
+      id: '/my-picks'
+      path: '/my-picks'
+      fullPath: '/my-picks'
+      preLoaderRoute: typeof MyPicksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/odds': {
@@ -708,6 +728,7 @@ const rootRouteChildren: RootRouteChildren = {
   HomeRoute: HomeRoute,
   LiveRoute: LiveRoute,
   LoginRoute: LoginRoute,
+  MyPicksRoute: MyPicksRoute,
   OddsRoute: OddsRoute,
   ParlaysRoute: ParlaysRoute,
   PicksRoute: PicksRoute,

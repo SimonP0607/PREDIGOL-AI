@@ -7,24 +7,10 @@
   "legs_one": "{count} selección",
   "legs_other": "{count} selecciones",
   "legsRange": "{min}–{max} selecciones",
-  "window": {
-    "hours_one": "próxima {count} h",
-    "hours_other": "próximas {count} h",
-    "days_one": "próximo día",
-    "days_other": "próximos {count} días"
-  },
   "legsList": "Selecciones del parlay",
   "combinedOdds": "Cuota combinada",
-  "probAll": "Prob. de acertar todas",
-  "oneIn": "≈ 1 de cada {n}",
-  "expectedValue": "Valor esperado",
-  "pricesAsOf": "Precios de {when}",
   "empty": {
-    "title": "No hay parlay válido hoy",
-    "progress": "{eligible} de {required} selecciones necesarias pasan el filtro de valor",
-    "notIndependent": "{eligible} selecciones pasan el filtro de valor, pero no hay {required} independientes entre sí",
-    "never": "Nunca rellenamos un parlay con selecciones sin valor.",
-    "reasons": "Motivos de descarte"
+    "never": "Nunca rellenamos un parlay con selecciones sin valor."
   },
   "how": {
     "title": "Cómo construimos los parlays",
@@ -33,17 +19,29 @@
       "qualified": "Selección calificada: su modelo ha superado al mercado",
       "fresh": "Precio actual de hace ≤ 3 h",
       "ev": "Valor esperado positivo al precio actual",
-      "consensus": "Consenso de mercado con ≥ 2 casas"
+      "consensus": "Consenso de mercado con ≥ 2 casas",
+      "interval": "Una probabilidad sin intervalo medido no entra"
     },
     "independence": {
       "title": "Sin selecciones relacionadas",
       "oneMatch": "Máx. 1 selección por partido",
       "noTeam": "Ningún equipo repetido",
-      "independent": "Por eso se tratan como independientes"
+      "independent": "Por eso se tratan como independientes",
+      "noQuarter": "Sin líneas de cuarto (.25 / .75)"
     },
     "noPadding": {
       "title": "Sin relleno",
       "body": "Si no hay suficientes selecciones con valor, no mostramos parlay: nunca rellenamos."
+    },
+    "choice": {
+      "title": "Cómo se eligen",
+      "growth": "Por crecimiento esperado con la probabilidad prudente de cada selección (el extremo bajo del intervalo del modelo)",
+      "positive": "Solo se arma si ese crecimiento es positivo, y cada selección añadida tiene que aumentarlo",
+      "frozen": "Se congela al armarse: precios y probabilidades no cambian después, y se sigue hasta su resultado"
     }
+  },
+  "own": {
+    "title": "¿Prefieres armar el tuyo?",
+    "body": "Agrega selecciones desde los partidos o los picks: comprobamos las reglas y lo guardamos en Mis picks."
   }
 }

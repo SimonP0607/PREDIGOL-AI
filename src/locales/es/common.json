@@ -66,8 +66,8 @@
     "none": "Sin precio"
   },
   "source": {
-    "shadowPreview": "Vista previa interna (shadow): no es una recomendación",
-    "shadowPreviewShort": "VISTA SHADOW"
+    "shadowPreview": "Modo de evaluación: modelos que todavía no han superado al mercado. No es una recomendación.",
+    "shadowPreviewShort": "MODO EVALUACIÓN"
   },
   "minute": "{minute}'",
   "minutesShort": "{count} min",

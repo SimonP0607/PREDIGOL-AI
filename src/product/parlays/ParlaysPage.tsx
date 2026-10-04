@@ -1,54 +1,20 @@
 /**
- * Parlays: the parlay of the day and the multi-day parlay in full, and how they are
- * built. With too few selections that have value there is no parlay - never a padded one.
+ * Parlays: the day's parlay and the multi-day parlay as PrediGol recorded them - built once,
+ * frozen, followed to their result - how they are chosen, and the way to build one's own.
+ * With too few selections worth combining there is no parlay: never a padded one.
  */
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { BadgeCheck, Check, ChevronDown, Info, ListX, Unlink } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { BadgeCheck, Check, ChevronDown, Info, Layers, ListX, Sigma, Unlink } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
-import type { Envelope } from "@/lib/api/v1/types";
-import type { Parlay, ParlayKind } from "@/lib/api/v1/types_product";
-import { ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
+import type { RecordKind } from "@/lib/api/v1/types_records";
+import { Card, ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
 import { ShadowToggle } from "@/product/shared/ShadowToggle";
-import { ParlayCard } from "./ParlayCard";
-import { PARLAY_ICON, parlayTitle } from "./parlayText";
-
-function ParlaySlot({
-  kind,
-  query,
-}: {
-  kind: ParlayKind;
-  query: UseQueryResult<Envelope<Parlay>>;
-}) {
-  const parlay = query.data?.data;
-  if (parlay) return <ParlayCard parlay={parlay} variant="full" />;
-  const Icon = PARLAY_ICON[kind];
-  return (
-    <section
-      aria-label={parlayTitle(kind)}
-      aria-busy={query.isPending || undefined}
-      className="rounded-xl border border-gold/25 bg-card"
-    >
-      <h2 className="flex items-center gap-2 px-4 pt-4 font-display text-lg font-semibold tracking-tight sm:px-5">
-        <Icon aria-hidden className="h-5 w-5 shrink-0 text-gold" />
-        {parlayTitle(kind)}
-      </h2>
-      {query.isError ? (
-        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
-      ) : (
-        <div className="space-y-3 px-4 pb-5 pt-4 sm:px-5">
-          <SkeletonBlock className="h-3.5 w-40" />
-          {[0, 1, 2].map((i) => (
-            <SkeletonBlock key={i} className="h-16" />
-          ))}
-          <SkeletonBlock className="h-20" />
-        </div>
-      )}
-    </section>
-  );
-}
+import { EvaluationNote } from "@/product/records/DailySetBlock";
+import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
+import { useSlip } from "@/product/records/slipContext";
 
 function RuleGroup({
   icon: Icon,
@@ -90,7 +56,7 @@ function HowWeBuild() {
           className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
         />
       </summary>
-      <div className="grid gap-6 border-t border-border px-4 py-5 sm:px-5 md:grid-cols-3 md:gap-8">
+      <div className="grid gap-6 border-t border-border px-4 py-5 sm:px-5 md:grid-cols-2 md:gap-8 xl:grid-cols-4">
         <RuleGroup
           icon={BadgeCheck}
           title={t("parlays.how.value.title")}
@@ -99,6 +65,7 @@ function HowWeBuild() {
             t("parlays.how.value.fresh"),
             t("parlays.how.value.ev"),
             t("parlays.how.value.consensus"),
+            t("parlays.how.value.interval"),
           ]}
         />
         <RuleGroup
@@ -107,7 +74,17 @@ function HowWeBuild() {
           lines={[
             t("parlays.how.independence.oneMatch"),
             t("parlays.how.independence.noTeam"),
+            t("parlays.how.independence.noQuarter"),
             t("parlays.how.independence.independent"),
+          ]}
+        />
+        <RuleGroup
+          icon={Sigma}
+          title={t("parlays.how.choice.title")}
+          lines={[
+            t("parlays.how.choice.growth"),
+            t("parlays.how.choice.positive"),
+            t("parlays.how.choice.frozen"),
           ]}
         />
         <RuleGroup
@@ -120,11 +97,34 @@ function HowWeBuild() {
   );
 }
 
+function BuildYourOwn() {
+  const slip = useSlip();
+  return (
+    <Card className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
+      <div className="min-w-0">
+        <p className="font-display text-sm font-semibold">{t("parlays.own.title")}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{t("parlays.own.body")}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => slip.setOpen(true)}
+        data-testid="parlays-build-own"
+        className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-gold/50 bg-gold-soft px-4 text-sm font-semibold text-gold-strong transition-colors hover:bg-gold-soft/70"
+      >
+        <Layers aria-hidden className="h-4 w-4" />
+        {t("records.mine.parlays.build")}
+      </button>
+    </Card>
+  );
+}
+
+const KINDS: readonly RecordKind[] = ["daily", "multiday"];
+
 export function ParlaysPage() {
   const auth = useAuth();
   const preview = usePreviewParam();
-  const daily = useQuery(live.parlay("daily", preview));
-  const multiday = useQuery(live.parlay("multiday", preview));
+  const board = useQuery(live.daily(preview));
+  const data = board.data?.data;
   const adminToggle = auth.showAdmin && auth.can("admin.shadow_preview");
   return (
     <div className="space-y-6" data-testid="parlays-page">
@@ -133,8 +133,24 @@ export function ParlaysPage() {
         subtitle={t("parlays.subtitle")}
         right={adminToggle ? <ShadowToggle /> : undefined}
       />
-      <ParlaySlot kind="daily" query={daily} />
-      <ParlaySlot kind="multiday" query={multiday} />
+      {data?.evaluation_mode ? <EvaluationNote /> : null}
+      {KINDS.map((kind) =>
+        data ? (
+          <ParlayRecordCard
+            key={kind}
+            kind={kind}
+            parlay={kind === "daily" ? data.daily_parlay : data.multiday_parlay}
+            evaluation={data.evaluation_mode}
+          />
+        ) : board.isError ? (
+          <Card key={kind}>
+            <ErrorState error={board.error} onRetry={() => void board.refetch()} />
+          </Card>
+        ) : (
+          <SkeletonBlock key={kind} className="h-80 rounded-xl" />
+        ),
+      )}
+      <BuildYourOwn />
       <HowWeBuild />
       {/* Wide screens already carry it in the page footer. */}
       <p className="text-center text-caption text-subtle-foreground lg:hidden">

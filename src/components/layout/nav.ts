@@ -6,6 +6,7 @@
 import {
   Activity,
   BarChart3,
+  Bookmark,
   Bot,
   CalendarDays,
   ClipboardList,
@@ -46,6 +47,7 @@ export const userNav: NavItem[] = [
   { to: "/picks", label: "nav.picks", icon: Target },
   { to: "/parlays", label: "nav.parlays", icon: Layers },
   { to: "/odds", label: "nav.odds", icon: TrendingUp },
+  { to: "/my-picks", label: "nav.myPicks", icon: Bookmark },
 ];
 
 export const profileNav: NavItem = { to: "/profile", label: "nav.profile", icon: UserRound };

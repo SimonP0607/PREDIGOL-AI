@@ -27,7 +27,16 @@
     "last_super_admin": "No puedes dejar la plataforma sin ningún SUPER_ADMIN activo.",
     "cannot_disable_self": "No puedes desactivar tu propia cuenta.",
     "user_not_found": "Esa cuenta no existe.",
-    "unreachable": "No hay conexión con el servidor de PrediGol."
+    "unreachable": "No hay conexión con el servidor de PrediGol.",
+    "already_saved": "Esta selección ya está en tus picks.",
+    "started": "El partido ya empezó: ya no se puede cambiar.",
+    "not_removable": "Solo se puede quitar antes de que empiece el partido.",
+    "not_editable": "Solo se puede cambiar antes de que empiece el partido.",
+    "invalid_parlay": "El parlay no cumple las reglas.",
+    "invalid_selection": "Esa selección no es una que liquidemos.",
+    "unknown_fixture": "Ese partido no existe.",
+    "unknown_pick": "Ese pick de PrediGol no está disponible para tu cuenta.",
+    "validation_error": "Algún dato no es válido."
   },
   "problem": {
     "password_too_short": "Mínimo 10 caracteres.",

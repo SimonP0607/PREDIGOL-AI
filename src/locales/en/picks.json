@@ -1,17 +1,10 @@
 {
   "subtitle": "Selections with value against the market, at the best price available now.",
-  "top": {
-    "title": "Today's top 5",
-    "subtitle": "The selections with the most value kicking off in the next 24\u00a0h.",
-    "emptyBody": "We only show selections from models that have beaten the market, with the bookmaker margin removed, in their own backtest. We never pad the list.",
-    "partial_one": "Only {count} selection meets the bar today. We don't pad the list.",
-    "partial_other": "Only {count} selections meet the bar today. We don't pad the list."
-  },
   "all": {
     "title": "All qualified selections",
     "subtitle": "Filter by competition, market, odds and kick-off time.",
     "emptyBody": "Qualified selections in this time window will show up here.",
-    "widen": "Show the next {days}\u00a0days"
+    "widen": "Show the next {days} days"
   },
   "count_one": "{count} selection",
   "count_other": "{count} selections",
@@ -26,9 +19,9 @@
     "oddsRange": "{min}–{max}",
     "oddsFrom": "{min}+",
     "window": "Kick-off within",
-    "hours": "{count}\u00a0h",
-    "days_one": "{count}\u00a0day",
-    "days_other": "{count}\u00a0days",
+    "hours": "{count} h",
+    "days_one": "{count} day",
+    "days_other": "{count} days",
     "reset": "Clear filters"
   }
 }

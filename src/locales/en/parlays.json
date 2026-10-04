@@ -7,24 +7,10 @@
   "legs_one": "{count} selection",
   "legs_other": "{count} selections",
   "legsRange": "{min}–{max} selections",
-  "window": {
-    "hours_one": "next {count} h",
-    "hours_other": "next {count} h",
-    "days_one": "next day",
-    "days_other": "next {count} days"
-  },
   "legsList": "Parlay selections",
   "combinedOdds": "Combined odds",
-  "probAll": "Chance all legs win",
-  "oneIn": "≈ 1 in {n}",
-  "expectedValue": "Expected value",
-  "pricesAsOf": "Prices from {when}",
   "empty": {
-    "title": "No valid parlay today",
-    "progress": "{eligible} of the {required} selections needed pass the value filter",
-    "notIndependent": "{eligible} selections pass the value filter, but not {required} that are independent of each other",
-    "never": "We never pad a parlay with selections that have no value.",
-    "reasons": "Why selections were left out"
+    "never": "We never pad a parlay with selections that have no value."
   },
   "how": {
     "title": "How we build the parlays",
@@ -33,17 +19,29 @@
       "qualified": "Qualified selection: its model has beaten the market",
       "fresh": "Current price ≤ 3 h old",
       "ev": "Positive expected value at the current price",
-      "consensus": "Market consensus from ≥ 2 bookmakers"
+      "consensus": "Market consensus from ≥ 2 bookmakers",
+      "interval": "A probability without a measured interval is left out"
     },
     "independence": {
       "title": "No related selections",
       "oneMatch": "At most 1 selection per match",
       "noTeam": "No team appears twice",
-      "independent": "That is why they are treated as independent"
+      "independent": "That is why they are treated as independent",
+      "noQuarter": "No quarter lines (.25 / .75)"
     },
     "noPadding": {
       "title": "No padding",
       "body": "If there are not enough selections with value, we show no parlay: we never pad."
+    },
+    "choice": {
+      "title": "How they are chosen",
+      "growth": "By expected growth at each selection's cautious probability (the low end of the model's interval)",
+      "positive": "Built only if that growth is positive, and each added selection has to raise it",
+      "frozen": "Frozen once built: prices and probabilities do not change afterwards, and it is followed to its result"
     }
+  },
+  "own": {
+    "title": "Rather build your own?",
+    "body": "Add selections from matches or picks: we check the rules and keep it in My picks."
   }
 }

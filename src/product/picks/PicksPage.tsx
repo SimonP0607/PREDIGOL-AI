@@ -1,7 +1,9 @@
 /**
- * Picks: today's Top 5 and every qualified selection in the window, re-priced at the best
- * price available now. A USER only ever sees qualified picks; when none qualifies the page
- * says so plainly - it never fills the list.
+ * Picks: the day's picks as PrediGol recorded them (up to five, frozen when chosen, kept
+ * after kick-off with their results), then every qualified selection in the window,
+ * re-priced at the best price available now - each one can be saved or added to a parlay.
+ * A USER only ever sees qualified picks; when none qualifies the page says so plainly - it
+ * never fills the list.
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
@@ -25,6 +27,9 @@ import {
   SkeletonBlock,
 } from "@/product/shared/States";
 import { MARKETS, emptyReason, marketShort } from "@/product/shared/markets";
+import { DailySetBlock } from "@/product/records/DailySetBlock";
+import { pickableOfCard } from "@/product/records/pickable";
+import { SelectionActions } from "@/product/records/SelectionActions";
 import { ChipGroup, ShadowToggle, type ChipOption } from "./Controls";
 import {
   DEFAULT_FILTERS,
@@ -47,9 +52,7 @@ export function PicksPage() {
   const preview = usePreviewParam();
   const [filters, setFilters] = useState<PickFilters>(DEFAULT_FILTERS);
   const q = useMemo(() => toQuery(filters), [filters]);
-  // The Top 5 is today's whatever the filters below say, so it reads the unfiltered board.
-  // With no filter set the list asks for that very same board: one request answers both.
-  const top = useQuery(live.productPicks({}, preview));
+  const daily = useQuery(live.daily(preview));
   const list = useQuery({ ...live.productPicks(q, preview), placeholderData: keepPreviousData });
 
   return (
@@ -59,7 +62,7 @@ export function PicksPage() {
         subtitle={t("picks.subtitle")}
         right={auth.showAdmin ? <ShadowToggle /> : undefined}
       />
-      <TopFive query={top} />
+      <DailySetBlock query={daily} />
       <AllPicks query={list} filters={filters} onChange={setFilters} />
     </div>
   );
@@ -95,60 +98,6 @@ function CardsSkeleton({ count, tall = false }: { count: number; tall?: boolean 
         <SkeletonBlock key={i} className={tall ? "h-64" : "h-44"} />
       ))}
     </div>
-  );
-}
-
-function TopFive({ query }: { query: BoardQuery }) {
-  const board = query.data?.data;
-  const shadow = board?.source === "shadow_preview";
-  let body: ReactNode;
-  if (query.isPending) {
-    body = <CardsSkeleton count={3} tall />;
-  } else if (query.isError) {
-    body = (
-      <Card>
-        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
-      </Card>
-    );
-  } else if (board && board.top.length > 0) {
-    body = (
-      <>
-        <div
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
-          data-testid="picks-top-list"
-        >
-          {board.top.map((pick, i) => (
-            <PickCard key={pick.pick_id} pick={pick} rank={i + 1} shadow={shadow} />
-          ))}
-        </div>
-        {board.top.length < 5 ? (
-          <p className="text-caption text-muted-foreground">
-            {t("picks.top.partial", { count: board.top.length })}
-          </p>
-        ) : null}
-      </>
-    );
-  } else {
-    body = (
-      <Card>
-        <EmptyState
-          icon={<Trophy aria-hidden className="h-6 w-6" />}
-          title={emptyReason(board?.reason ?? "no_qualified_picks")}
-          body={t("picks.top.emptyBody")}
-        />
-      </Card>
-    );
-  }
-  return (
-    <section className="space-y-3" data-testid="picks-top">
-      <BlockHeader
-        title={t("picks.top.title")}
-        subtitle={t("picks.top.subtitle")}
-        icon={<Trophy aria-hidden className="h-4 w-4 text-gold" />}
-        shadow={shadow}
-      />
-      {body}
-    </section>
   );
 }
 
@@ -235,7 +184,13 @@ function AllPicks({
           )}
         >
           {visible.map((pick) => (
-            <PickCard key={pick.pick_id} pick={pick} compact shadow={shadow} />
+            <PickCard
+              key={pick.pick_id}
+              pick={pick}
+              compact
+              shadow={shadow}
+              actions={<SelectionActions sel={pickableOfCard(pick)} />}
+            />
           ))}
         </div>
         {remaining > 0 ? (

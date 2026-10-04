@@ -30,6 +30,7 @@ const NAMESPACES = [
   "parlays",
   "picks",
   "profile",
+  "records",
   "truth",
 ] as const;
 interface Catalogs {
@@ -47,6 +48,7 @@ interface Catalogs {
   parlays: typeof import("../src/locales/es/parlays.json");
   picks: typeof import("../src/locales/es/picks.json");
   profile: typeof import("../src/locales/es/profile.json");
+  records: typeof import("../src/locales/es/records.json");
   truth: typeof import("../src/locales/es/truth.json");
 }
 
@@ -70,7 +72,7 @@ const LEAKS: ReadonlyArray<readonly [string, RegExp]> = [
   ["Infinity", /\bInfinity\b/],
   [
     "an untranslated key",
-    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors|system|ops|research|analytics|catalog|center|truth)\.[a-z][\w.]+[a-z]\b/,
+    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors|system|ops|research|analytics|catalog|center|truth|records)\.[a-z][\w.]+[a-z]\b/,
   ],
 ];
 
@@ -141,6 +143,21 @@ export async function assertClean(page: Page, w: Watch): Promise<void> {
 /** Say, in the report, that real data did not allow a step - never fake it. */
 export function note(info: TestInfo, description: string): void {
   info.annotations.push({ type: "data", description });
+}
+
+/** A request that changes state, as the app makes it: same-site header, the account's cookie. */
+export async function sendJson<T>(
+  request: APIRequestContext,
+  method: "POST" | "PATCH" | "DELETE",
+  path: string,
+  data?: unknown,
+): Promise<{ status: number; body: T }> {
+  const res = await request.fetch(path, {
+    method,
+    headers: { "x-requested-with": "predigol", "content-type": "application/json" },
+    ...(data === undefined ? {} : { data }),
+  });
+  return { status: res.status(), body: (await res.json().catch(() => null)) as T };
 }
 
 export async function getJson<T>(

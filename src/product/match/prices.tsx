@@ -22,15 +22,20 @@ import {
 } from "./model";
 import { Block, CenterSection, FreshnessLabel, MoreButton, SectionNote } from "./ui";
 
+/** Wraps a price so it can be chosen (save it, add it to a parlay); absent once played. */
+export type PriceWrap = (pill: ReactNode, price: BestPrice) => ReactNode;
+
 /** One selection, stacked: label, best price, who offers it (and how many quote it). */
 export function PriceTile({
   label,
   price,
   showBooks = false,
+  wrap,
 }: {
   label: string;
   price: BestPrice | null;
   showBooks?: boolean;
+  wrap?: PriceWrap | undefined;
 }) {
   return (
     <div className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg border border-border bg-elevated/40 px-1.5 py-2.5 text-center">
@@ -38,7 +43,11 @@ export function PriceTile({
         {label}
       </span>
       {price ? (
-        <OddsPill odds={price.odds} />
+        wrap ? (
+          wrap(<OddsPill odds={price.odds} />, price)
+        ) : (
+          <OddsPill odds={price.odds} />
+        )
       ) : (
         <span className="numeric py-1 text-sm text-subtle-foreground">—</span>
       )}
@@ -55,13 +64,22 @@ export function PriceTile({
 }
 
 /** One selection on a line row: price, then bookmaker and how many quote it. */
-export function PriceInline({ price, prefix }: { price: BestPrice | null; prefix?: ReactNode }) {
+export function PriceInline({
+  price,
+  prefix,
+  wrap,
+}: {
+  price: BestPrice | null;
+  prefix?: ReactNode;
+  wrap?: PriceWrap | undefined;
+}) {
   if (!price) return <span className="numeric text-sm text-subtle-foreground">—</span>;
+  const pill = <OddsPill odds={price.odds} size="sm" />;
   return (
     <div className="flex min-w-0 flex-col items-start gap-0.5">
       <span className="flex items-center gap-1.5">
         {prefix}
-        <OddsPill odds={price.odds} size="sm" />
+        {wrap ? wrap(pill, price) : pill}
       </span>
       <span className="max-w-full truncate text-[0.65rem] text-subtle-foreground">
         {price.bookmaker} · {t("match.markets.books", { count: price.books })}

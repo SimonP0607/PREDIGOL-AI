@@ -2,12 +2,7 @@
   "oddsUpdated": "Odds updated {when}",
   "oddsNone": "No odds captured yet",
   "picks": {
-    "title": "Top 5 value picks of the day",
     "seeAll": "See all",
-    "list": "Today's top value picks",
-    "empty": "No picks to show today.",
-    "emptyBody": "We only show selections whose model has beaten the market.",
-    "emptyCta": "Go to Picks",
     "allTile": "See all picks"
   },
   "parlays": {

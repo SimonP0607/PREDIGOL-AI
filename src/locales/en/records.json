@@ -1,0 +1,184 @@
+{
+  "labels": {
+    "predigolPick": "PrediGol Pick",
+    "savedByMe": "Saved by me",
+    "result": "Result"
+  },
+  "status": {
+    "PENDING": "Pending",
+    "WIN": "Won",
+    "LOSS": "Lost",
+    "PUSH": "Refunded",
+    "VOID": "Void",
+    "HALF_WIN": "Half won",
+    "HALF_LOSS": "Half lost"
+  },
+  "parlayStatus": {
+    "BUILDING": "Being built",
+    "READY": "Ready",
+    "ACTIVE": "In play",
+    "WON": "Won",
+    "LOST": "Lost",
+    "VOID": "Void",
+    "PARTIAL_VOID": "Won with voids"
+  },
+  "stage": {
+    "T-24h": "Chosen ≈24 h before",
+    "T-12h": "Chosen ≈12 h before",
+    "T-6h": "Chosen ≈6 h before",
+    "T-3h": "Chosen ≈3 h before"
+  },
+  "units": "{value} u",
+  "profit": "Profit",
+  "frozenHelp": "Price and probabilities frozen when chosen: they do not change afterwards.",
+  "score": "Full time {home}–{away}",
+  "evaluation": {
+    "badge": "Evaluation mode",
+    "title": "Evaluation mode",
+    "body": "Evaluation records, built from picks of models that have not yet beaten the market. Only the administrator sees them; they are not a recommendation."
+  },
+  "daily": {
+    "title": "Picks of the day",
+    "subtitle": "Chosen by PrediGol for {date}: they stay after kick-off and are settled when the match ends.",
+    "count": "{count} of 5",
+    "partial_one": "Only {count} selection met the criteria today. We never pad the list.",
+    "partial_other": "Only {count} selections met the criteria today. We never pad the list.",
+    "emptyBody": "We only choose selections from models that have beaten the market, without the bookmakers' margin, in their own backtest. A day without any stays empty.",
+    "list": "Picks of the day",
+    "reason": {
+      "no_qualified_picks": "No PrediGol picks today",
+      "no_shadow_picks": "No evaluation records for this day"
+    }
+  },
+  "parlay": {
+    "pAllLow": "Cautious chance all win",
+    "pAllLowHelp": "Product of each selection's cautious probability: the low end of the model's interval.",
+    "builtAt": "Built {when}",
+    "settledAt": "Settled {when}",
+    "legsResult": "{won} of {total} won",
+    "building": {
+      "title": "Looking for the parlay",
+      "body": "There are selections with value, but no combination grows at their cautious probability. We never pad a parlay."
+    },
+    "none": {
+      "title": "No parlay yet",
+      "body": "It is built when there are selections with value in its window."
+    },
+    "void": {
+      "title": "There was no parlay this day",
+      "body": "No combination met the criteria before the day ended."
+    }
+  },
+  "actions": {
+    "save": "Save",
+    "saved": "Saved",
+    "unsave": "Remove from my picks",
+    "addToParlay": "Add to parlay",
+    "inParlay": "In your parlay",
+    "removeFromParlay": "Remove from parlay",
+    "started": "The match has started",
+    "choose": "What would you like to do with this price?",
+    "priceAt": "{odds} at {bookmaker}",
+    "quarterLine": "Quarter lines (.25 / .75) cannot go in a parlay"
+  },
+  "toast": {
+    "saved": "Saved to My picks",
+    "unsaved": "Removed from My picks",
+    "added": "Added to your parlay",
+    "replaced": "We changed that match's selection: one per match",
+    "removedLeg": "Removed from your parlay",
+    "full": "A parlay takes at most {max} selections",
+    "parlaySaved": "Parlay saved",
+    "parlayRemoved": "Parlay deleted",
+    "oddsSaved": "Price saved",
+    "oddsCleared": "Price removed"
+  },
+  "slip": {
+    "title": "My parlay",
+    "subtitle": "One selection per match, {min} to {max}.",
+    "open_one": "My parlay · {count}",
+    "open_other": "My parlay · {count}",
+    "empty": "Your parlay is empty",
+    "emptyBody": "Tap a price on a match, or “Add to parlay” on a pick.",
+    "name": "Name (optional)",
+    "namePlaceholder": "My parlay",
+    "save": "Save parlay",
+    "saving": "Saving…",
+    "clear": "Clear",
+    "remove": "Remove",
+    "combined": "Combined odds",
+    "noCombined": "No combined odds: a selection has no price",
+    "checking": "Checking…",
+    "needMore_one": "Add at least {count} more selection",
+    "needMore_other": "Add at least {count} more selections",
+    "priceNow": "Current price",
+    "noPrice": "No price",
+    "note": "Each selection's price is the best current price we know; it is saved with the parlay.",
+    "error": {
+      "leg_count": "A parlay needs between {min} and {max} selections.",
+      "invalid_selection": "Selection {leg}: not a selection we settle.",
+      "quarter_line": "Selection {leg}: quarter lines (.25 / .75) are not allowed in a parlay.",
+      "unknown_fixture": "Selection {leg}: that match does not exist.",
+      "started": "Selection {leg}: the match has started.",
+      "same_fixture": "Selections {with} and {leg}: they are the same match."
+    },
+    "warning": {
+      "shared_team": "Selections {with} and {leg} share a team: their results are related.",
+      "no_price": "Selection {leg}: we have no current price."
+    }
+  },
+  "mine": {
+    "title": "My picks",
+    "subtitle": "What you saved and how it went, next to what PrediGol chose.",
+    "results": {
+      "title": "My results",
+      "periods": "Period",
+      "period": {
+        "today": "Today",
+        "7d": "7 days",
+        "30d": "30 days",
+        "all": "All"
+      },
+      "group": {
+        "predigol_picks": "PrediGol picks",
+        "my_picks": "My picks",
+        "predigol_parlays": "PrediGol parlays",
+        "my_parlays": "My parlays"
+      },
+      "total": "Total",
+      "pending": "Pending",
+      "record": "{won} W · {lost} L",
+      "hitRate": "Hit rate",
+      "roi": "ROI",
+      "empty": "Nothing in this period.",
+      "note": "By the day the match kicks off in your time zone ({zone}). Profit in units of one stake, at the recorded price. PrediGol handles no money and takes no bets."
+    },
+    "picks": {
+      "title": "Saved picks",
+      "empty": "You have not saved a pick yet",
+      "emptyBody": "Tap a price on a match, or “Save” on a PrediGol pick.",
+      "shown": "Price shown",
+      "yours": "Your price",
+      "addYours": "Add your price",
+      "editYours": "Change",
+      "oddsLabel": "Price you got at your bookmaker",
+      "oddsPlaceholder": "e.g. 2.10",
+      "oddsInvalid": "Enter decimal odds greater than 1.",
+      "saveOdds": "Save",
+      "clearOdds": "Remove",
+      "cancel": "Cancel",
+      "savedAt": "Saved {when}",
+      "remove": "Remove",
+      "settlesAt": "Settled at your price if you give one; otherwise at the price shown."
+    },
+    "parlays": {
+      "title": "My parlays",
+      "empty": "You have not built a parlay yet",
+      "emptyBody": "Add selections to your parlay from matches or picks.",
+      "build": "Build a parlay",
+      "remove": "Delete",
+      "createdAt": "Created {when}",
+      "unnamed": "Unnamed parlay"
+    }
+  }
+}

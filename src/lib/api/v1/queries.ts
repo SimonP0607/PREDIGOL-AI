@@ -1,6 +1,7 @@
 /** TanStack Query option factories for the live API. */
 import { v1, type MatchQuery } from "./client";
 import type { ParlayKind, PicksQuery } from "./types_product";
+import type { HistoryPeriod } from "./types_records";
 import type { FindingsQuery, ScoresQuery } from "./types_truth";
 
 const MINUTE = 60_000;
@@ -29,6 +30,26 @@ export const live = {
   bestOdds: (q: { market?: string | undefined; hours?: number | undefined }, preview: Preview) => ({
     queryKey: ["v1", "best-odds", q, preview ?? "qualified"],
     queryFn: () => v1.bestOdds({ ...q, preview }),
+    refetchInterval: 2 * MINUTE,
+  }),
+  daily: (preview: Preview, day?: string) => ({
+    queryKey: ["v1", "daily", day ?? "today", preview ?? "qualified"],
+    queryFn: () => v1.daily({ day, preview }),
+    refetchInterval: 2 * MINUTE,
+  }),
+  myPicks: {
+    queryKey: ["v1", "me", "picks"],
+    queryFn: () => v1.myPicks(),
+    refetchInterval: 2 * MINUTE,
+  },
+  myParlays: {
+    queryKey: ["v1", "me", "parlays"],
+    queryFn: () => v1.myParlays(),
+    refetchInterval: 2 * MINUTE,
+  },
+  history: (period: HistoryPeriod, preview: Preview) => ({
+    queryKey: ["v1", "me", "history", period, preview ?? "qualified"],
+    queryFn: () => v1.history(period, { preview }),
     refetchInterval: 2 * MINUTE,
   }),
   matchView: (id: string) => ({

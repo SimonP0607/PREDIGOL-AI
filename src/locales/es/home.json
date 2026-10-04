@@ -2,12 +2,7 @@
   "oddsUpdated": "Cuotas actualizadas {when}",
   "oddsNone": "Aún no hay cuotas capturadas",
   "picks": {
-    "title": "Top 5 value picks del día",
     "seeAll": "Ver todos",
-    "list": "Top value picks del día",
-    "empty": "Hoy no hay picks para mostrar.",
-    "emptyBody": "Solo mostramos selecciones cuyo modelo ha superado al mercado.",
-    "emptyCta": "Ir a Picks",
     "allTile": "Ver todos los picks"
   },
   "parlays": {

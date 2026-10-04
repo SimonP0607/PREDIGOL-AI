@@ -66,6 +66,17 @@ import type {
   PicksBoard,
   PicksQuery,
 } from "./types_product";
+import type {
+  DailyBoard,
+  History,
+  HistoryPeriod,
+  LegIn,
+  ParlayIn,
+  ParlayValidation,
+  SavePickIn,
+  UserParlay,
+  UserPick,
+} from "./types_records";
 
 /** An error the API itself reported, or a transport failure. `code` is machine-readable. */
 export class LiveApiError extends Error {
@@ -91,7 +102,7 @@ type Params = Record<string, string | number | boolean | undefined | null>;
  * the same-site header the API requires on anything that changes state.
  */
 async function request<T>(
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   { params, body }: { params?: Params | undefined; body?: unknown } = {},
 ): Promise<T> {
@@ -149,6 +160,7 @@ async function request<T>(
 const getJson = <T>(path: string, params?: Params) => request<T>("GET", path, { params });
 const postJson = <T>(path: string, body: unknown) => request<T>("POST", path, { body });
 const patchJson = <T>(path: string, body: unknown) => request<T>("PATCH", path, { body });
+const deleteJson = <T>(path: string) => request<T>("DELETE", path);
 
 export interface MatchQuery {
   date_from?: string;
@@ -194,6 +206,25 @@ export const v1 = {
   parlay: (kind: ParlayKind, q: Preview = {}) => getJson<Envelope<Parlay>>(`/parlays/${kind}`, q),
   bestOdds: (q: { market?: string | undefined; hours?: number | undefined } & Preview = {}) =>
     getJson<Envelope<BestOddsBoard>>("/odds/best", q as Params),
+
+  // ── records: the day as persisted, and the user's own ──────────────────────
+  daily: (q: { day?: string | undefined } & Preview = {}) =>
+    getJson<Envelope<DailyBoard>>("/daily", q as Params),
+  myPicks: (status?: "open" | "settled") =>
+    getJson<Envelope<UserPick[]>>("/me/picks", { status, limit: 500 }),
+  savePick: (body: SavePickIn) =>
+    postJson<Envelope<{ id: number; snapshot: unknown }>>("/me/picks", body),
+  setPickOdds: (id: number, userOdds: string | number | null) =>
+    patchJson<void>(`/me/picks/${id}`, { user_odds: userOdds }),
+  removePick: (id: number) => deleteJson<void>(`/me/picks/${id}`),
+  validateParlay: (legs: LegIn[]) =>
+    postJson<Envelope<ParlayValidation>>("/me/parlays/validate", { legs }),
+  createParlay: (body: ParlayIn) =>
+    postJson<Envelope<{ id: number; combined_odds: string | null }>>("/me/parlays", body),
+  myParlays: () => getJson<Envelope<UserParlay[]>>("/me/parlays", { limit: 200 }),
+  removeParlay: (id: number) => deleteJson<void>(`/me/parlays/${id}`),
+  history: (period: HistoryPeriod, q: Preview = {}) =>
+    getJson<Envelope<History>>("/me/history", { period, ...q }),
 
   // ── football (any signed-in account) ───────────────────────────────────────
   health: () => getJson<SystemHealth>("/health"),
