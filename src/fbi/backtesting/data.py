@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -38,14 +39,22 @@ class BacktestData:
         return self.prices.get(key, {}).get(fixture_id, {}).get(selection)
 
 
-def load_backtest_data(conn: psycopg.Connection, *, feature_version: str) -> BacktestData:
+def load_backtest_data(conn: psycopg.Connection, *, feature_version: str,
+                       feature_competitions: Sequence[int] | None = None) -> BacktestData:
+    """``feature_competitions``: read feature sets only for the fixtures of these competitions.
+    Every match is still read (the goal models and ratings need the whole history); the
+    feature-based models read features only where they train and predict, and the whole
+    matrix - every fixture since 2015, ~10 million values - costs gigabytes to hold."""
     matches = load_matches(conn)
-    matrix = load_feature_matrix(conn, version=feature_version)
+    wanted = None if feature_competitions is None else set(feature_competitions)
+    ids = None if wanted is None else [m.fixture_id for m in matches if m.competition_id in wanted]
+    matrix = load_feature_matrix(conn, version=feature_version, fixture_ids=ids)
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(
             "SELECT DISTINCT ON (fixture_id) fixture_id, input_hash FROM features.feature_sets "
-            "WHERE feature_version = %s ORDER BY fixture_id, n_inputs DESC, generated_at DESC, id DESC",
-            (feature_version,),
+            "WHERE feature_version = %s AND (%s::bigint[] IS NULL OR fixture_id = ANY(%s::bigint[])) "
+            "ORDER BY fixture_id, n_inputs DESC, generated_at DESC, id DESC",
+            (feature_version, ids, ids),
         )
         hashes = {int(a): str(b) for a, b in cur.fetchall()}
         cur.execute(

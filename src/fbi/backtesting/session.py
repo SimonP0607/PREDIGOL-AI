@@ -83,7 +83,7 @@ def run_session(conn: psycopg.Connection, cfg: WalkForwardConfig, competitions: 
                 progress: Progress | None = None) -> SessionResult:
     say = progress or (lambda _m: None)
     started = time.monotonic()
-    data = load_backtest_data(conn, feature_version=FEATURE_VERSION)
+    data = load_backtest_data(conn, feature_version=FEATURE_VERSION, feature_competitions=cfg.competition_ids)
     targets = [m for m in data.matches if m.competition_id in cfg.competition_ids
                and m.season == cfg.test_season and m.has_result]
     say(f"{len(data.matches)} fixtures loaded; {len(targets)} test fixtures with results")

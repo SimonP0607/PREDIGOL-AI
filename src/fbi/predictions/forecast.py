@@ -151,7 +151,9 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
     if spec is None:
         report.skipped_models["all"] = "no completed backtest session: no validated hyper-parameters to use"
         return report
-    data = load_backtest_data(conn, feature_version=FEATURE_VERSION)
+    # Features only where the feature-based model trains (the domestic leagues of the latest
+    # backtest): the targets' own vectors are computed fresh below.
+    data = load_backtest_data(conn, feature_version=FEATURE_VERSION, feature_competitions=spec.competition_ids)
     by_id = {m.fixture_id: m for m in data.matches}
     targets = [by_id[i] for i in target_ids if i in by_id]
     known = [m for m in data.matches if known_before(m, at)]
