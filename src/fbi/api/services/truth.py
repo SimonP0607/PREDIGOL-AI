@@ -15,12 +15,19 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.api.contracts.truth import (
+    CoverageBookmaker,
+    CoverageCompetition,
+    CoverageCountry,
+    CoverageLocal,
+    CoverageMarket,
     DataRepair,
     FreshnessDataset,
     FreshnessReport,
     GateFixture,
     GateModel,
     GateReport,
+    OddsCoverageReport,
+    OddsSource,
     StandingsAuditRow,
     TruthFinding,
     TruthMatrixRow,
@@ -29,6 +36,8 @@ from fbi.api.contracts.truth import (
 )
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, unavailable
 from fbi.core.clock import now
+from fbi.market.coverage import build_report, is_critical
+from fbi.providers.odds_sources import ODDS_SOURCES
 from fbi.truth.freshness import measure, table_reason, table_state
 from fbi.truth.gate import MODEL_NEEDS, evaluate
 
@@ -198,3 +207,47 @@ def repairs(conn: psycopg.Connection[Any], *, limit: int) -> Envelope[list[DataR
     rows = _rows(conn, "SELECT id, repaired_at, rule, entity, entity_id, provider_ref, field, before_value, "
                        "after_value, reason FROM audit.data_repairs ORDER BY id DESC LIMIT %s", (limit,))
     return listing([DataRepair(**r) for r in rows], empty_reason="No stored value has been repaired.")
+
+
+def odds_coverage(conn: psycopg.Connection[Any], *, days: int) -> Envelope[OddsCoverageReport]:
+    """BOOKMAKER_COVERAGE_REPORT measured now (kept for two minutes)."""
+    def compute() -> OddsCoverageReport:
+        _slow(conn)
+        r = build_report(conn, at=now(), days=days)
+        return OddsCoverageReport(
+            measured_at=r.measured_at, since=r.since, until=r.until, days=r.days, first_capture=r.first_capture,
+            fixtures=r.fixtures, asked=r.asked, priced=r.priced, captured=r.captured, recovered=r.recovered,
+            misses=r.misses, worker_down_hours=round(r.worker_down_hours, 1), critical=is_critical(r),
+            competitions=[CoverageCompetition(
+                competition_id=c.competition_id, competition=c.competition, country=c.country, season=c.season,
+                provider_league_id=c.provider_league_id, flag_odds=c.flag_odds, fixtures=c.fixtures, asked=c.asked,
+                priced=c.priced, captured=c.captured, recovered=c.recovered, priced_two_plus=c.priced_two_plus,
+                median_bookmakers=c.median_bookmakers, provider_share=round(c.provider_share, 4),
+                capture_share=round(c.capture_share, 4), bookmakers=c.bookmakers, markets=c.markets,
+                misses=c.misses, upcoming=c.upcoming, state=c.state.value, reason=c.reason)
+                for c in r.competitions],
+            bookmakers=[CoverageBookmaker(
+                provider_bookmaker_id=b.provider_bookmaker_id, name=b.name, state=b.state.value, fixtures=b.fixtures,
+                share=b.share, competitions=b.competitions, countries=b.countries, markets=b.markets,
+                first_seen=b.first_seen, last_seen=b.last_seen, name_missing=b.name_missing) for b in r.bookmakers],
+            markets=[CoverageMarket(market_key=m.market_key, fixtures=m.fixtures, share=m.share,
+                                    bookmakers=m.bookmakers, median_bookmakers=m.median_bookmakers)
+                     for m in r.markets],
+            countries=[CoverageCountry(country=c.country, competitions=c.competitions, fixtures=c.fixtures,
+                                       priced=c.priced, captured=c.captured, bookmakers=c.bookmakers)
+                       for c in r.countries],
+            local=[CoverageLocal(brand=x.brand, domain=x.domain, company=x.company, state=x.state.value,
+                                 provider_names=x.provider_names, priced_fixtures=x.priced_fixtures,
+                                 colombian_edition_confirmed=x.colombian_edition_confirmed, note=x.note)
+                   for x in r.local],
+            local_source=r.local_source,
+            sources=[OddsSource(key=s.key, name=s.name, kind=s.kind.value, access=s.access.value,
+                                bookmakers=s.bookmakers, colombian_books=list(s.colombian_books),
+                                closing_line=s.closing_line, cost=s.cost, decision=s.decision,
+                                sources=list(s.sources)) for s in ODDS_SOURCES])
+
+    report = _cached(f"odds_coverage:{days}", compute)
+    if report.fixtures == 0:
+        return unavailable(report, "No played match of a tracked competition in the window yet.",
+                           status=DataStatus.EMPTY)
+    return ok(report, data_as_of=report.measured_at)

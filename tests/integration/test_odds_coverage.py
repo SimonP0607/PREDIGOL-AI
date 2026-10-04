@@ -182,3 +182,32 @@ def test_operators_match_by_whole_brand_name() -> None:
     assert by_brand["Rushbet"] == [4]
     assert by_brand["bwin"] == [5]
     assert normalise("Méga  Puesta!") == "mega puesta"
+
+
+def test_the_admin_console_reads_the_coverage_and_a_user_cannot(migrated_database: str) -> None:
+    import pytest
+    from fastapi.testclient import TestClient
+
+    from fbi.api.app import create_app
+    from fbi.api.services import truth as truth_service
+    from fbi.core.config import reset_cache
+    from tests.integration.signed_in import SAME_SITE, admin_app, signed_in
+
+    truth_service._cache.clear()
+    mp = pytest.MonkeyPatch()
+    mp.setenv("FBI_DATABASE_URL", migrated_database.replace("postgresql://", "postgresql+psycopg://"))
+    reset_cache()
+    try:
+        res = TestClient(admin_app(), headers=SAME_SITE).get("/api/v1/admin/data/odds-coverage", params={"days": 7})
+        assert res.status_code == 200
+        data = res.json()["data"]
+        assert data["days"] == 7
+        assert len(data["local"]) == len(COLJUEGOS_OPERATORS)
+        access = {s["key"]: s["access"] for s in data["sources"]}
+        assert access["api_football"] == "ACTIVE" and access["odds_api_io"] == "PAYMENT_REQUIRED"
+        user = TestClient(signed_in(create_app(), "USER"), headers=SAME_SITE)
+        assert user.get("/api/v1/admin/data/odds-coverage").status_code == 403
+    finally:
+        mp.undo()
+        reset_cache()
+        truth_service._cache.clear()

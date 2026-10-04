@@ -11,6 +11,7 @@ from fbi.api.contracts.truth import (
     DataRepair,
     FreshnessReport,
     GateReport,
+    OddsCoverageReport,
     StandingsAuditRow,
     TruthFinding,
     TruthRun,
@@ -76,3 +77,10 @@ def get_standings_audit(conn: Db) -> Envelope[list[StandingsAuditRow]]:
 def get_repairs(conn: Db, limit: Annotated[int, Query(ge=1, le=500)] = 100) -> Envelope[list[DataRepair]]:
     """Every correction applied to stored data outside normal ingestion."""
     return truth.repairs(conn, limit=limit)
+
+
+@router.get("/data/odds-coverage", response_model=Envelope[OddsCoverageReport])
+def get_odds_coverage(conn: Db, days: Annotated[int, Query(ge=1, le=30)] = 14) -> Envelope[OddsCoverageReport]:
+    """BOOKMAKER_COVERAGE_REPORT: who prices which competition, market and country, what our capture
+    missed and why, the Colombian operators, and every price source evaluated."""
+    return truth.odds_coverage(conn, days=days)

@@ -139,3 +139,107 @@ class DataRepair(Contract):
     before_value: str | None
     after_value: str | None
     reason: str
+
+
+class CoverageCompetition(Contract):
+    competition_id: int
+    competition: str
+    country: str | None
+    season: int
+    provider_league_id: int | None
+    flag_odds: bool | None = Field(description="The provider's own coverage flag for odds, as last read.")
+    fixtures: int = Field(description="Played matches in the window.")
+    asked: int = Field(description="Asked for at all: before kick-off (capture) or after it (final prices).")
+    priced: int = Field(description="The provider priced it: captured before kick-off or read after it.")
+    captured: int = Field(description="Captured before kick-off - the only prices a pick can use.")
+    recovered: int = Field(description="Not captured; the provider's final pre-match prices read after the match.")
+    priced_two_plus: int
+    median_bookmakers: float | None
+    provider_share: float
+    capture_share: float
+    bookmakers: dict[str, int]
+    markets: dict[str, int]
+    misses: dict[str, int] = Field(description="Never asked for before kick-off, by cause: worker_down, "
+                                               "known_too_late, missed_while_up.")
+    upcoming: dict[str, int] = Field(description="Next 72 h by capture-plan state.")
+    state: Literal["NOT_ASKED", "NOT_COVERED", "UNPRICED_BY_PROVIDER", "THIN", "PARTIAL", "COVERED"]
+    reason: str
+
+
+class CoverageBookmaker(Contract):
+    provider_bookmaker_id: int
+    name: str
+    state: Literal["ACTIVE", "DORMANT", "CATALOGUE_ONLY"]
+    fixtures: int
+    share: float
+    competitions: int
+    countries: int
+    markets: dict[str, int]
+    first_seen: datetime | None
+    last_seen: datetime | None
+    name_missing: bool
+
+
+class CoverageMarket(Contract):
+    market_key: str
+    fixtures: int
+    share: float
+    bookmakers: int
+    median_bookmakers: float | None
+
+
+class CoverageCountry(Contract):
+    country: str
+    competitions: int
+    fixtures: int
+    priced: int
+    captured: int
+    bookmakers: int
+
+
+class CoverageLocal(Contract):
+    brand: str
+    domain: str
+    company: str
+    state: Literal["PRICED_BY_PROVIDER_BRAND", "CATALOGUE_ONLY", "NOT_IN_PROVIDER"]
+    provider_names: list[str]
+    priced_fixtures: int
+    colombian_edition_confirmed: bool
+    note: str
+
+
+class OddsSource(Contract):
+    key: str
+    name: str
+    kind: str
+    access: Literal["ACTIVE", "FREE_NEEDS_OWNER", "PAYMENT_REQUIRED", "CLOSED", "REJECTED"]
+    bookmakers: str
+    colombian_books: list[str]
+    closing_line: str
+    cost: str
+    decision: str
+    sources: list[str]
+
+
+class OddsCoverageReport(Contract):
+    measured_at: datetime
+    since: datetime
+    until: datetime
+    days: int
+    first_capture: datetime | None
+    fixtures: int
+    asked: int
+    priced: int
+    captured: int
+    recovered: int
+    misses: dict[str, int]
+    worker_down_hours: float
+    critical: list[str] = Field(description="Our gaps: a competition never asked for, or matches missed while "
+                                            "the worker was running.")
+    competitions: list[CoverageCompetition]
+    bookmakers: list[CoverageBookmaker]
+    markets: list[CoverageMarket]
+    countries: list[CoverageCountry]
+    local: list[CoverageLocal]
+    local_source: dict[str, str]
+    sources: list[OddsSource]
