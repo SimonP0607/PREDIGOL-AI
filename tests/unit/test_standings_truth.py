@@ -304,3 +304,23 @@ def test_our_table_one_hourly_check_behind_after_todays_matches_is_expected_lag(
     # not re-read for hours after the match: our fault
     stale = {**recent, "checked_at": NOW - timedelta(hours=3)}
     assert st.audit_season(stale, new, as_db(old), games, at=NOW).verdict == "predigol_behind"
+
+
+def test_an_official_table_is_compared_with_its_own_table_only() -> None:
+    """Colombia 2026: each team has an Apertura row and a Clausura row. The official Clausura table must be
+    compared with the provider's Clausura rows; matching by team alone took whichever row came last."""
+    from scripts.audit_standings import external_evidence
+
+    b = {"response": [{"league": {"standings": [
+        [row(1, 19, 10, 3, 6, 30, 20, group="Apertura"), row(2, 19, 5, 4, 10, 18, 25, group="Apertura", rank=2)],
+        [row(1, 11, 8, 0, 3, 20, 4, group="Clausura"), row(2, 11, 4, 2, 5, 12, 12, group="Clausura", rank=2)]]}}]}
+    a = st.audit_season({**FACTS, "provider_league_id": 239}, b, as_db(b), [], at=NOW)
+    official = {"league": 239, "season": 2026, "table": "Clausura", "source": "dimayor.com.co", "kind": "official",
+                "rows": [{"team": 1, "played": 11, "points": 24, "gd": 16}, {"team": 2, "played": 11, "points": 14,
+                                                                           "gd": 0}]}
+    assert external_evidence(official, a, st.api_rows(b), as_db(b)) == []
+    wrong = {**official, "rows": [{"team": 1, "played": 11, "points": 25, "gd": 16}]}
+    ev = external_evidence(wrong, a, st.api_rows(b), as_db(b))
+    assert [e.key for e in ev] == ["standings:239:2026:official:Clausura:provider",
+                                   "standings:239:2026:official:Clausura:predigol"]
+    assert ev[0].api is not None and ev[0].api["rows"][0]["provider"] == (11, 24, 16)

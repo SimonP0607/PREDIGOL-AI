@@ -11,9 +11,11 @@ One /standings request per season, stored as a NEW raw payload. Writes audit.tru
 evidence ledger (audit.evidence_ledger) and data/truth/<stamp>-standings/. Nothing in core is
 changed.
 
-External file: a JSON list of {"league", "season", "source", "url", "accessed_at",
-"rows": [{"team": <provider team id>, "name", "played", "points", "gd"}]} transcribed from the
-league's official site; each row is compared with the provider's table and with ours (tolerance 0).
+External file: a JSON list of {"league", "season", "table" (the provider's label of the table, when the
+season has several: "Clausura", "Clausura - Group A"), "source", "url", "accessed_at", "kind"
+(official | secondary), "rows": [{"team": <provider team id>, "name", "played", "points", "gd"}]}
+transcribed from the league's site; each row is compared with the provider's table and with ours
+(played, points and, when given, goal difference; tolerance 0).
 
 Exit status: 0 completed, 1 partial (a request failed or the cap stopped it).
 """
@@ -47,9 +49,20 @@ SCOPE_CURRENT = """c.is_tracked AND cs.is_current AND (
                   AND lc.season = cs.season AND lc.standings))"""
 
 
+def _facts(r: st.Row, with_gd: bool) -> tuple[int | None, ...]:
+    gd = r.gd if r.gd is not None else (None if r.total.gf is None or r.total.ga is None else r.total.gf - r.total.ga)
+    return (r.total.played, r.total.points, gd) if with_gd else (r.total.played, r.total.points)
+
+
 def external_evidence(ext: dict[str, Any], audit: st.SeasonAudit, api: list[st.Row], db: list[st.Row]) -> list[Evidence]:
-    """An official table against the provider's and ours: played and points, tolerance 0."""
+    """An official table against the provider's and ours: played and points (and goal difference when
+    the source gives it), tolerance 0. ``table`` names the provider's table the official one is (a
+    season can hold several: "Clausura", "Clausura - Group A"); rows are matched within it only."""
     out: list[Evidence] = []
+    table = ext.get("table")
+    if table is not None:
+        api = [r for r in api if (r.group or "") == table]
+        db = [r for r in db if (r.group or "") == table]
     api_by = {r.team: r for r in api}
     db_by = {r.team: r for r in db}
     api_off, db_off, compared = [], [], 0
@@ -57,18 +70,20 @@ def external_evidence(ext: dict[str, Any], audit: st.SeasonAudit, api: list[st.R
         team = int(row["team"])
         compared += 1
         a, d = api_by.get(team), db_by.get(team)
-        want = (int(row["played"]), int(row["points"]))
-        if a is None or (a.total.played, a.total.points) != want:
+        with_gd = row.get("gd") is not None
+        want = (int(row["played"]), int(row["points"]), int(row["gd"])) if with_gd else (
+            int(row["played"]), int(row["points"]))
+        if a is None or _facts(a, with_gd) != want:
             api_off.append({"team": team, "name": row.get("name"), "official": want,
-                            "provider": None if a is None else (a.total.played, a.total.points)})
-        if d is None or (d.total.played, d.total.points) != want:
+                            "provider": None if a is None else _facts(a, with_gd)})
+        if d is None or _facts(d, with_gd) != want:
             db_off.append({"team": team, "name": row.get("name"), "official": want,
-                           "predigol": None if d is None else (d.total.played, d.total.points)})
-    source = {k: ext.get(k) for k in ("source", "url", "accessed_at")}
-    label = f"{audit.name} {audit.season} ({audit.league})"
-    key = f"standings:{audit.league}:{audit.season}:official"
-    audit.notes.append(f"official table ({ext.get('source')}): {compared} rows, provider differs on {len(api_off)}, "
-                       f"ours on {len(db_off)}")
+                           "predigol": None if d is None else _facts(d, with_gd)})
+    source = {k: ext.get(k) for k in ("source", "url", "accessed_at", "kind")}
+    label = f"{audit.name} {audit.season} ({audit.league})" + (f" {table}" if table else "")
+    key = f"standings:{audit.league}:{audit.season}:official" + (f":{table}" if table else "")
+    audit.notes.append(f"official table ({ext.get('source')}{', ' + table if table else ''}): {compared} rows, "
+                       f"provider differs on {len(api_off)}, ours on {len(db_off)}")
     if api_off:
         out.append(Evidence(
             key=f"{key}:provider", area="standings", issue_type="PROVIDER_EXTERNAL_MISMATCH", severity="high",
@@ -102,7 +117,7 @@ def markdown(audits: list[st.SeasonAudit], codes: dict[str, str], requests: int)
 
 
 async def audit_one(run: V2Run, conn: psycopg.Connection[Any], facts: dict[str, Any], *, no_api: bool,
-                    externals: dict[tuple[int, int], dict[str, Any]],
+                    externals: dict[tuple[int, int], list[dict[str, Any]]],
                     decisions: dict[int, st.Decision] | None = None) -> tuple[st.SeasonAudit, list[Evidence]]:
     answer = None
     if run.client is not None:
@@ -126,9 +141,9 @@ async def audit_one(run: V2Run, conn: psycopg.Connection[Any], facts: dict[str, 
     evidence: list[Evidence] = []
     if not no_api:
         evidence += st.evidence(audit, answer.ref() if answer else None)
-        ext = externals.get((audit.league, audit.season))
-        if ext is not None and answer is not None:
-            evidence += external_evidence(ext, audit, st.api_rows(answer.body), db)
+        for ext in externals.get((audit.league, audit.season), []):
+            if answer is not None:
+                evidence += external_evidence(ext, audit, st.api_rows(answer.body), db)
     return audit, evidence
 
 
@@ -137,10 +152,10 @@ async def run(args: argparse.Namespace) -> int:
 
     at = now()
     client = None if args.no_api else build_client(max_requests=args.max_requests)
-    externals: dict[tuple[int, int], dict[str, Any]] = {}
-    if args.external:
-        for ext in json.loads(Path(args.external).read_text()):
-            externals[(int(ext["league"]), int(ext["season"]))] = ext
+    externals: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    for path in args.external or []:
+        for ext in json.loads(Path(path).read_text()):
+            externals.setdefault((int(ext["league"]), int(ext["season"])), []).append(ext)
     decisions = st.load_decisions(args.decisions)
     try:
         with psycopg.connect(settings.database.psycopg_url, autocommit=True) as conn:
@@ -199,7 +214,8 @@ def main() -> int:
     parser.add_argument("--league", type=int, action="append", help="provider league id (repeatable)")
     parser.add_argument("--season", type=int, help="a past season instead of the current ones")
     parser.add_argument("--no-api", action="store_true", help="0 requests: our table vs our fixtures")
-    parser.add_argument("--external", help="official tables to compare (JSON)")
+    parser.add_argument("--external", action="append",
+                        help="official tables to compare (JSON); repeat for several files")
     parser.add_argument("--decisions", help="official results decided off the pitch (JSON, see fbi.truth.v2.standings."
                                             "load_decisions)")
     parser.add_argument("--max-requests", type=int, default=400)
