@@ -163,22 +163,23 @@ def market_outcome(market_key: str, selection: str, line: Decimal, home: int, aw
 
 def settle(market_key: str, selection: str, line: Decimal, odds: Decimal, stake: Decimal,
            state: MatchState) -> Settlement:
-    if state.status_short in VOID_STATUSES:
+    status = state.status_short.strip().upper()  # the provider spells "CANC" and "Canc"
+    if status in VOID_STATUSES:
         return Settlement(Status.VOID, Decimal(0))
-    if state.status_short in REVIEW:
-        return Settlement(Status.PENDING, None, REVIEW[state.status_short])
-    if state.status_short not in FINISHED:
+    if status in REVIEW:
+        return Settlement(Status.PENDING, None, REVIEW[status])
+    if status not in FINISHED:
         return Settlement(Status.PENDING, None, None)  # not played yet, or in play
     if state.reg_home is None or state.reg_away is None:
         return Settlement(Status.PENDING, None, "finished, but no regulation score is recorded")
-    if state.status_short in DECIDED_AFTER_NINETY and state.et_home is None:
+    if status in DECIDED_AFTER_NINETY and state.et_home is None:
         # reg_goals_* = goals - COALESCE(et_goals, 0), so with no extra-time score
         # it equals the after-extra-time score. Settling 1X2, Over/Under or BTTS on
         # that would quietly treat extra-time goals as regulation goals. The match
         # is left unsettled and recorded as RESULT_UNRESOLVED instead.
         return Settlement(
             Status.PENDING, None,
-            f"{state.status_short}: the match went past 90 minutes and the extra-time score is not "
+            f"{status}: the match went past 90 minutes and the extra-time score is not "
             "recorded, so the regulation result cannot be derived",
         )
     try:

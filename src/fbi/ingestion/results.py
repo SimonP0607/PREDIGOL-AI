@@ -43,7 +43,7 @@ from psycopg.rows import tuple_row
 
 from fbi.core.clock import now
 from fbi.core.errors import ProviderError
-from fbi.ingestion.fixtures import MONOTONIC_SQL, PLAN_REFUSAL, STATUS_GROUP, PayloadLineage
+from fbi.ingestion.fixtures import MONOTONIC_SQL, PLAN_REFUSAL, PayloadLineage, status_group
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.providers.base import FixtureResultRef, FootballDataProvider
 
@@ -123,7 +123,7 @@ class ResultRepository:
                     "  (%(at)s::timestamptz IS NOT NULL AND (source_fetched_at IS NULL OR %(at)s >= source_fetched_at))"
                     ") RETURNING id",
                     {
-                        "s": r.status_short, "g": STATUS_GROUP.get(r.status_short, "finished"),
+                        "s": r.status_short, "g": status_group(r.status_short, "finished"),
                         "h": lineage_hash, "at": lineage_at, "id": fixture_id,
                     },
                 )

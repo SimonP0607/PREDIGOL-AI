@@ -65,6 +65,11 @@ STATUS_GROUP: dict[str, str] = {
 }
 
 
+def status_group(status_short: str, default: str = "scheduled") -> str:
+    """The group of a short status, whatever its spelling (see ``canonical_status``)."""
+    return STATUS_GROUP.get(status_short.strip().upper(), default)
+
+
 @dataclass(frozen=True)
 class ActiveSeason:
     competition_season_id: int
@@ -237,7 +242,7 @@ class FixtureRepository:
                     (
                         r.provider_fixture_id, season_id, team_ids[r.provider_home_team_id],
                         team_ids[r.provider_away_team_id], r.kickoff_at, r.status_short,
-                        STATUS_GROUP.get(r.status_short, "scheduled"), r.round,
+                        status_group(r.status_short), r.round,
                         venue_ids.get(r.provider_venue_id) if r.provider_venue_id is not None else None,
                         lineage.payload_hash if lineage else None,
                         lineage.fetched_at if lineage else None,

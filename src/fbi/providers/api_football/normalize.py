@@ -34,10 +34,12 @@ from fbi.providers.base import (
 
 __all__ = [
     "BETS_BY_SOURCE",
+    "CANONICAL_STATUSES",
     "INPLAY_BETS",
     "PREMATCH_BETS",
     "OddsParseLog",
     "ProviderBet",
+    "canonical_status",
     "iter_fixture_results",
     "iter_fixtures",
     "iter_league_seasons",
@@ -328,6 +330,30 @@ def _quote(
     )
 
 
+CANONICAL_STATUSES = frozenset({
+    "TBD", "NS", "1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "FT", "AET", "PEN",
+    "PST", "CANC", "ABD", "AWD", "WO", "LIVE",
+})
+"""Every short status the v3 documentation lists, spelled the way it lists them."""
+
+
+def canonical_status(value: Any, default: str = "NS") -> str:
+    """The provider's short status, spelled one way.
+
+    It is not spelled one way at the source. Fixture 1438655 (AFC Champions League
+    Two 2025) arrives as ``"Canc"``, most cancelled fixtures as ``"CANC"``; ``"Abd"``
+    and ``"ABD"`` likewise. Every map downstream (status group, settlement, the live
+    follower) is keyed on the documented upper-case codes, so a mixed-case code fell
+    through to each map's default: 78 cancelled fixtures and one abandoned one sat
+    as *scheduled*, past kick-off, waiting for a result that was never coming.
+
+    Upper-casing here, once, is what keeps that from depending on every reader
+    remembering to do it.
+    """
+    text = value.strip().upper() if isinstance(value, str) else ""
+    return text or default
+
+
 def _text(value: Any) -> str | None:
     """A non-empty string, or None. The provider sends "" and null interchangeably."""
     return value.strip() if isinstance(value, str) and value.strip() else None
@@ -355,7 +381,7 @@ def iter_fixtures(body: dict[str, Any]) -> Iterator[FixtureRef]:
                 kickoff_at=kickoff,
                 provider_home_team_id=int(home["id"]),
                 provider_away_team_id=int(away["id"]),
-                status_short=str((fixture.get("status") or {}).get("short") or "NS"),
+                status_short=canonical_status((fixture.get("status") or {}).get("short")),
                 round=str(round_name) if isinstance(round_name, str) and round_name else None,
                 provider_venue_id=int(venue_id) if isinstance(venue_id, int) else None,
                 venue_name=_text(venue.get("name")),
@@ -465,7 +491,7 @@ def iter_fixture_results(
         fixture = entry.get("fixture")
         if not isinstance(fixture, dict):
             continue
-        status = str((fixture.get("status") or {}).get("short") or "")
+        status = canonical_status((fixture.get("status") or {}).get("short"), default="")
         if status not in FINISHED_STATUSES:
             continue
         goals_home, goals_away = _pair(entry.get("goals"))

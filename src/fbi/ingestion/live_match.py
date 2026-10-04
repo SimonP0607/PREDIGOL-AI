@@ -38,6 +38,7 @@ from fbi.ingestion.apply import apply_fixtures_payload
 from fbi.ingestion.details import apply_fixture_details
 from fbi.ingestion.fixtures import tracked_season_ids
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.providers.api_football.normalize import canonical_status
 from fbi.providers.api_football.provider import MAX_IDS
 
 log = get_logger(__name__)
@@ -100,7 +101,7 @@ def iter_live_states(body: dict[str, Any]) -> Iterator[LiveMatchState]:
         if fid is None or not isinstance(short, str) or not short:
             continue
         goals: dict[str, Any] = entry["goals"] if isinstance(entry.get("goals"), dict) else {}
-        yield LiveMatchState(fid, short, _int(status.get("elapsed")), _int(status.get("extra")),
+        yield LiveMatchState(fid, canonical_status(short), _int(status.get("elapsed")), _int(status.get("extra")),
                              _int(goals.get("home")), _int(goals.get("away")))
 
 
