@@ -1,16 +1,20 @@
 """Historical validation (GATE C): which played matches a model may learn from or be judged on.
 
 Every finished match gets one state, recomputed from the data each run (rule version
-``historical-validation-v1``; nothing is deleted, and ``failed`` names every rule a match
+``historical-validation-v2``; nothing is deleted, and ``failed`` names every rule a match
 failed):
 
   INGESTED             stored, but no result row yet (a result awaited beats a wrong one)
   QUARANTINED          fails an integrity rule - excluded from every model and backtest:
                          provider_duplicate        the same pairing twice within 36 hours
                          halftime_exceeds_score    more goals at half-time than at 90 minutes
-                         penalties_without_level   decided on penalties after an unlevel score
-                         no_regulation_score       an extra-time match with no 90-minute score
+                         no_regulation_score       an extra-time result with no 90-minute score
                          finished_in_future        finished, with a kick-off still to come
+
+v1 (4 Oct 2026) also quarantined a penalty decision after an unlevel score, and found 241: the
+second legs of two-legged ties, level on aggregate, not on the night - not an inconsistency.
+It also read an extra-time match with no result row at all as "no 90-minute score"; that
+match is INGESTED (awaiting a usable result), not quarantined.
   VALIDATED            passes every integrity rule
   HISTORICAL_APPROVED  validated, rated by Elo, and in a competition-season whose data score
                        class is MODEL_READY or PARTIAL
@@ -42,9 +46,8 @@ from psycopg import sql
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-RULE_VERSION = "historical-validation-v1"
-HARD_RULES = ("provider_duplicate", "halftime_exceeds_score", "penalties_without_level", "no_regulation_score",
-              "finished_in_future")
+RULE_VERSION = "historical-validation-v2"
+HARD_RULES = ("provider_duplicate", "halftime_exceeds_score", "no_regulation_score", "finished_in_future")
 SOFT_RULES = ("no_result", "not_rated", "competition_not_fit")
 WEIGHTS = {"results": 0.35, "integrity": 0.15, "stats": 0.15, "lineups": 0.05, "odds": 0.20, "elo": 0.10}
 FIT_CLASSES = ("MODEL_READY", "PARTIAL")
@@ -72,9 +75,8 @@ SELECT f.id AS fixture_id, f.competition_season_id AS cs,
        f.id IN (SELECT id FROM dup) AS provider_duplicate,
        COALESCE(r.ht_goals_home > r.reg_goals_home OR r.ht_goals_away > r.reg_goals_away, false)
            AS halftime_exceeds_score,
-       COALESCE(upper(f.status_short) = 'PEN' AND r.goals_home <> r.goals_away, false) AS penalties_without_level,
-       COALESCE(upper(f.status_short) IN ('AET', 'PEN') AND r.ft_goals_home IS NULL AND r.et_goals_home IS NULL,
-                false) AS no_regulation_score,
+       (r.fixture_id IS NOT NULL AND upper(f.status_short) IN ('AET', 'PEN') AND r.ft_goals_home IS NULL
+            AND r.et_goals_home IS NULL) AS no_regulation_score,
        f.kickoff_at > {at} AS finished_in_future,
        s.fixture_id IS NOT NULL AS has_stats,
        l.fixture_id IS NOT NULL AS has_lineups,
@@ -92,8 +94,8 @@ SELECT f.id AS fixture_id, f.competition_season_id AS cs,
 AGGREGATE_SQL = """
 SELECT cs, count(*) AS finished,
        count(*) FILTER (WHERE has_result) AS results,
-       count(*) FILTER (WHERE provider_duplicate OR halftime_exceeds_score OR penalties_without_level
-                          OR no_regulation_score OR finished_in_future) AS quarantined,
+       count(*) FILTER (WHERE provider_duplicate OR halftime_exceeds_score OR no_regulation_score
+                          OR finished_in_future) AS quarantined,
        count(*) FILTER (WHERE has_stats) AS stats,
        count(*) FILTER (WHERE has_lineups) AS lineups,
        count(*) FILTER (WHERE has_price) AS odds,
@@ -104,8 +106,8 @@ SELECT cs, count(*) AS finished,
 WRITE_SQL = """
 INSERT INTO analytics.fixture_validation (fixture_id, state, rule_version, failed, validated_at)
 SELECT h.fixture_id,
-       CASE WHEN h.provider_duplicate OR h.halftime_exceeds_score OR h.penalties_without_level
-                 OR h.no_regulation_score OR h.finished_in_future THEN 'QUARANTINED'
+       CASE WHEN h.provider_duplicate OR h.halftime_exceeds_score OR h.no_regulation_score
+                 OR h.finished_in_future THEN 'QUARANTINED'
             WHEN NOT h.has_result THEN 'INGESTED'
             WHEN h.is_rated AND s.class = ANY(%(fit)s) THEN 'HISTORICAL_APPROVED'
             ELSE 'VALIDATED' END,
@@ -113,7 +115,6 @@ SELECT h.fixture_id,
        to_jsonb(array_remove(ARRAY[
            CASE WHEN h.provider_duplicate THEN 'provider_duplicate' END,
            CASE WHEN h.halftime_exceeds_score THEN 'halftime_exceeds_score' END,
-           CASE WHEN h.penalties_without_level THEN 'penalties_without_level' END,
            CASE WHEN h.no_regulation_score THEN 'no_regulation_score' END,
            CASE WHEN h.finished_in_future THEN 'finished_in_future' END,
            CASE WHEN NOT h.has_result THEN 'no_result' END,

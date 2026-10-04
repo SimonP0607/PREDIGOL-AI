@@ -82,21 +82,24 @@ def test_every_finished_match_gets_one_state_and_the_reasons(db: psycopg.Connect
     dup_b = w.match(thin, AT - timedelta(days=20) + timedelta(hours=5))
     no_result = w.match(thin, AT - timedelta(days=1), score=None)
     halftime = w.match(thin, AT - timedelta(days=4), score=(1, 0), ht=(2, 0))
-    pens = w.match(thin, AT - timedelta(days=7), status="PEN", score=(2, 1), ft=(1, 1))
+    pens = w.match(thin, AT - timedelta(days=7), status="PEN", score=(2, 1), ft=(2, 1))  # a second leg
     aet = w.match(thin, AT - timedelta(days=10), status="AET", score=(2, 1))
+    aet_awaited = w.match(thin, AT - timedelta(days=13), status="AET", score=None)
     future = w.match(thin, AT + timedelta(days=2))
 
     report = validate_history(db, at=AT)
-    assert report.fixtures >= 79
+    assert report.fixtures >= 80
     rows = {int(f): (s, set(failed)) for f, s, failed in db.execute(
         "SELECT fixture_id, state, failed FROM analytics.fixture_validation WHERE rule_version = %s AND fixture_id = "
-        "ANY(%s)", (RULE_VERSION, [*ready_ids, dup_a, dup_b, *thin_ids, no_result, halftime, pens, aet, future]))}
+        "ANY(%s)", (RULE_VERSION, [*ready_ids, dup_a, dup_b, *thin_ids, no_result, halftime, pens, aet, aet_awaited,
+                                    future]))}
     assert {rows[f][0] for f in ready_ids} == {"HISTORICAL_APPROVED"}
     assert rows[dup_a][0] == "QUARANTINED" and "provider_duplicate" in rows[dup_a][1]
     assert rows[dup_b][0] == "QUARANTINED"
     assert rows[no_result][0] == "INGESTED" and "no_result" in rows[no_result][1]
     assert rows[halftime][0] == "QUARANTINED" and "halftime_exceeds_score" in rows[halftime][1]
-    assert rows[pens][0] == "QUARANTINED" and "penalties_without_level" in rows[pens][1]
+    assert rows[pens][0] == "VALIDATED", "a second leg decided on penalties is level on aggregate, not on the night"
+    assert rows[aet_awaited][0] == "INGESTED", "an extra-time match awaiting its result is not quarantined"
     assert rows[aet][0] == "QUARANTINED" and "no_regulation_score" in rows[aet][1]
     assert rows[future][0] == "QUARANTINED" and "finished_in_future" in rows[future][1]
     assert {rows[f][0] for f in thin_ids} == {"VALIDATED"}, "valid, but the season is not fit for modelling"
@@ -108,8 +111,8 @@ def test_every_finished_match_gets_one_state_and_the_reasons(db: psycopg.Connect
     klass, comp, n, approved, quarantined = scores[ready]
     assert (klass, n, approved, quarantined) == ("MODEL_READY", 60, 60, 0)
     assert comp["odds"] == 0.7
-    assert scores[thin][0] == "PRODUCT_ONLY", "19 matches, 1 without a result and 6 quarantined"
-    assert scores[thin][4] == 6
+    assert scores[thin][0] == "PRODUCT_ONLY", "20 matches, 2 without a result and 5 quarantined"
+    assert scores[thin][4] == 5
     ready_view = db.execute("SELECT count(*) FROM analytics.model_ready_fixtures WHERE competition_season_id = %s",
                             (ready,)).fetchone()
     assert ready_view == (60,)
