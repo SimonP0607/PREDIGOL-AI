@@ -63,10 +63,10 @@ def _world(db: psycopg.Connection[Any], seed: Seed) -> dict[str, int]:
                     "odds_decimal, captured_at, minutes_to_ko, source, payload_hash) VALUES "
                     "(%s, %s, 'OU', %s, 2.5, 1.90, %s, 720, 'prematch', %s)",
                     (ids["priced"], seed.bookmaker_id, sel, captured, seed.payload_hash))
-    preds = (("1X2", "home", 0, "0.50", "0.44", "0.56"), ("1X2", "draw", 0, "0.27", "0.22", "0.32"),
-             ("1X2", "away", 0, "0.23", "0.18", "0.28"), ("OU", "over", 2.5, "0.55", "0.50", "0.60"),
-             ("OU", "under", 2.5, "0.45", "0.40", "0.50"), ("BTTS", "yes", 0, "0.52", "0.40", "0.60"),
-             ("BTTS", "no", 0, "0.48", "0.40", "0.60"))
+    preds = (("1X2", "Home", 0, "0.50", "0.44", "0.56"), ("1X2", "Draw", 0, "0.27", "0.22", "0.32"),
+             ("1X2", "Away", 0, "0.23", "0.18", "0.28"), ("OU", "Over", 2.5, "0.55", "0.50", "0.60"),
+             ("OU", "Under", 2.5, "0.45", "0.40", "0.50"), ("BTTS", "Yes", 0, "0.52", "0.40", "0.60"),
+             ("BTTS", "No", 0, "0.48", "0.40", "0.60"))
     for cutoff, scale in ((AT - timedelta(hours=3), Decimal(1)), (AT + timedelta(hours=1), Decimal("0.5"))):
         for market, sel, line, p, lo, hi in preds:  # the second forecast is made after AT: never read
             cur.execute("INSERT INTO models.predictions (fixture_id, model_version_id, market_key, selection, line, "
@@ -95,9 +95,9 @@ def test_the_model_view_is_its_own_number_and_never_a_price(db: psycopg.Connecti
     assert set(views) == {(ids["asked"], m) for m in ("1X2", "OU", "BTTS")}, \
         "only markets with no price at all, and only where the watch model forecast before now"
     home = views[(ids["asked"], "1X2")]
-    assert home.selection == "home" and home.status is WatchStatus.MODEL_INTERESTING_NO_PRICE
+    assert home.selection == "Home" and home.status is WatchStatus.MODEL_INTERESTING_NO_PRICE
     assert home.fair_odds == Decimal("2.00") and home.min_odds == Decimal("2.39"), "1.05 / 0.44"
     assert home.evaluation_mode and home.rule_version == "no-price-watch-v1"
     assert views[(ids["asked"], "OU")].min_odds == Decimal("2.10")
-    assert views[(ids["asked"], "BTTS")].selection == "yes", "the model's most likely outcome"
+    assert views[(ids["asked"], "BTTS")].selection == "Yes", "the model's most likely outcome"
     assert all(v.data_cutoff_ts < AT for v in views.values()), "a forecast made after now is never read"
