@@ -8,9 +8,10 @@ from fastapi import APIRouter, Depends, Path, Query
 from fbi.api.contracts.analytics import ModelsOverview, PerformanceSummary, PicksOverview
 from fbi.api.contracts.matches import MatchSummary
 from fbi.api.contracts.odds import FixtureOdds, OddsIntelligence
+from fbi.api.contracts.research import ResearchOverview
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
-from fbi.api.services import analytics, odds
+from fbi.api.services import analytics, odds, research
 
 router = APIRouter(tags=["market"])
 admin_router = APIRouter(tags=["admin: market & research"])
@@ -45,6 +46,14 @@ def get_fixture_odds(
 @admin_router.get("/models", response_model=Envelope[ModelsOverview])
 def get_models(conn: Db) -> Envelope[ModelsOverview]:
     return analytics.models(conn)
+
+
+@admin_router.get("/research/v2", response_model=Envelope[ResearchOverview])
+def get_research_v2(conn: Db) -> Envelope[ResearchOverview]:
+    """The latest research-V2 run: every model's role against the market (CHAMPION, CHALLENGER,
+    RESEARCH, REJECTED) with its evidence, the prospective evaluation by segment, the shadow-pick
+    audit - and the runs kept from before the rebuild (LEGACY_RESEARCH_RUN)."""
+    return research.overview(conn)
 
 
 @admin_router.get("/picks", response_model=Envelope[PicksOverview])

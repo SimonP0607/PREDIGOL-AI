@@ -67,3 +67,46 @@ def test_only_forecasts_stored_before_kickoff_are_judged(db: psycopg.Connection,
     assert c.model.log_loss == pytest.approx(-__import__("math").log(0.5), abs=1e-6), \
         "the forecast stored before kick-off (Home 0.50), not the one written after it (0.95)"
     db.rollback()
+
+
+def test_the_admin_console_reads_the_roles_of_the_latest_run(db: psycopg.Connection, migrated_database: str
+                                                              ) -> None:
+    from fastapi.testclient import TestClient
+
+    from fbi.api.app import create_app
+    from fbi.core.config import reset_cache
+    from tests.integration.signed_in import SAME_SITE, signed_in
+
+    run = "research-v2-2024-20311231T000000Z"
+    with db.cursor() as cur:
+        for name, kind, family, role, metrics in (
+            (f"{run}:market:pinnacle/closing/shin", "market", "market", "CHAMPION",
+             '{"common_logloss": 0.95, "n_common": 1700}'),
+            (f"{run}:dixon_coles", "backtest", "dixon_coles", "REJECTED",
+             '{"own_sample": {"n": 1700, "log_loss": 0.98, "ece": 0.02}, "research_v2": {"champion": '
+             '"pinnacle/closing/shin", "vs_champion": {"n": 1700, "diff": [0.02, 0.01, 0.03]}, "blends": {}}}'),
+            (f"{run}:audit:shadow-picks", "audit", "shadow_picks", None, '{"overall": {"n": 3}}'),
+        ):
+            cur.execute("INSERT INTO analytics.experiments (name, kind, question, model_family, config, code_version, "
+                        "metrics, status, finished_at, run_label, role, role_reason) VALUES (%s, %s, 'q', %s, '{}', "
+                        "'x', %s, 'completed', now(), 'RESEARCH_V2', %s, 'because')", (name, kind, family, metrics,
+                                                                                        role))
+    db.commit()
+    mp = pytest.MonkeyPatch()
+    mp.setenv("FBI_DATABASE_URL", migrated_database.replace("postgresql://", "postgresql+psycopg://"))
+    reset_cache()
+    try:
+        with TestClient(signed_in(create_app()), headers=SAME_SITE) as client:
+            body = client.get("/api/v1/admin/research/v2").json()
+    finally:
+        mp.undo()
+        reset_cache()
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM analytics.experiments WHERE name LIKE %s", (f"{run}%",))
+        db.commit()
+    d = body["data"]
+    assert d["run"] == run and d["champion"] == "pinnacle/closing/shin"
+    assert d["qualified_models"] == 0 and d["challengers"] == 0
+    assert [m["role"] for m in d["models"]] == ["REJECTED"]
+    assert d["models"][0]["metrics"]["vs_champion"]["diff"] == [0.02, 0.01, 0.03]
+    assert d["audit"]["metrics"]["overall"] == {"n": 3}
