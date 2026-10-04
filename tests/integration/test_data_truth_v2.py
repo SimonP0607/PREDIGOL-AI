@@ -242,3 +242,39 @@ def test_a_player_is_shown_with_his_club_not_his_national_side_and_bench_rows_ar
             cur.execute("DELETE FROM core.fixtures WHERE id = %s", (fid,))
             cur.execute("DELETE FROM core.teams WHERE id = %s", (nation,))
             cur.execute("DELETE FROM core.players WHERE id = %s", (player_id,))
+
+
+def test_the_admin_reads_the_ledger_and_records_a_verdict(migrated_database: str, seed: Seed) -> None:
+    from fbi.core.config import reset_cache
+    from tests.integration.helpers import scalar
+    from tests.integration.test_records_api import client_for
+
+    with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
+        cur.execute("INSERT INTO auth.users (email, display_name, password_hash) VALUES "
+                    "('owner-truth-v2@test.local', 'Owner', '$argon2id$x') RETURNING id")
+        user = scalar(cur)
+        code = record(conn, ev("test:api:a", "a table five days behind"), at=NOW)
+        run = V2Run(conn, None, "standings", NOW)
+        run.finish({"seasons": 3, "verdicts": {"ok": 3}, "by_season": [{"x": 1}]})
+    mp = pytest.MonkeyPatch()
+    mp.setenv("FBI_DATABASE_URL", migrated_database.replace("postgresql://", "postgresql+psycopg://"))
+    reset_cache()
+    try:
+        owner = client_for(user, role="SUPER_ADMIN")
+        body = owner.get("/api/v1/admin/truth/v2").json()
+        assert body["status"] == "ok"
+        assert any(r["kind"] == "standings" and "by_season" not in r["summary"] for r in body["data"]["runs"])
+        assert any(e["code"] == code and e["status"] == "OPEN" for e in body["data"]["ledger"])
+        res = owner.post(f"/api/v1/admin/truth/v2/ledger/{code}", json={"status": "ACCEPTED", "note": "provider rule"})
+        assert res.status_code == 200 and res.json()["data"]["status"] == "ACCEPTED"
+        assert owner.post("/api/v1/admin/truth/v2/ledger/E-99999", json={"status": "FIXED"}).json()["status"] == "empty"
+        user_client = client_for(user, role="USER")
+        assert user_client.get("/api/v1/admin/truth/v2").status_code == 403
+    finally:
+        mp.undo()
+        reset_cache()
+        with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM audit.evidence_ledger WHERE key LIKE 'test:api:%'")
+            cur.execute("DELETE FROM audit.truth_v2_runs")
+            cur.execute("DELETE FROM raw.ingestion_runs WHERE job_type LIKE 'truth_v2_%'")
+            cur.execute("DELETE FROM auth.users WHERE id = %s", (user,))

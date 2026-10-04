@@ -22,6 +22,8 @@ from fbi.api.contracts.truth import (
     CoverageLocal,
     CoverageMarket,
     DataRepair,
+    EvidenceDecision,
+    EvidenceEntry,
     FreshnessDataset,
     FreshnessReport,
     GateFixture,
@@ -35,6 +37,8 @@ from fbi.api.contracts.truth import (
     TruthMatrixRow,
     TruthRun,
     TruthSummary,
+    TruthV2Overview,
+    TruthV2Run,
     ValidationSummary,
 )
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, unavailable
@@ -349,3 +353,59 @@ def quarantined(conn: psycopg.Connection[Any], *, limit: int) -> Envelope[list[Q
     rows = _rows(conn, QUARANTINE_SQL, {"limit": limit})
     return listing([QuarantinedFixture(**{**r, "failed": list(r["failed"] or [])}) for r in rows],
                    empty_reason="No quarantined match.", total=len(rows), limit=limit, offset=0)
+
+
+# ── data truth audit V2 ─────────────────────────────────────────────────────
+
+V2_RUNS_SQL = """
+SELECT DISTINCT ON (kind) id, kind, started_at, finished_at, status, requests, summary, report_dir
+  FROM audit.truth_v2_runs ORDER BY kind, started_at DESC
+"""
+LEDGER_SQL = """
+SELECT code, key, area, issue_type, severity, at_fault, entity, claim, api_evidence, db_evidence, external_evidence,
+       root_cause, fix, test, status, first_seen_at, last_seen_at, times_seen
+  FROM audit.evidence_ledger
+ WHERE (%(area)s::text IS NULL OR area = %(area)s) AND (%(status)s::text IS NULL OR status = %(status)s)
+ ORDER BY status <> 'OPEN', array_position(ARRAY['critical','high','medium','low','info'], severity), id
+ LIMIT %(limit)s
+"""
+
+
+def _small(summary: dict[str, Any]) -> dict[str, Any]:
+    """A run's summary without its bulky lists (by-season rows, evidence maps)."""
+    return {k: v for k, v in (summary or {}).items() if k not in ("by_season", "rows", "players_detail", "audits",
+                                                                  "evidence", "checks")}
+
+
+def v2_overview(conn: psycopg.Connection[Any], *, area: str | None, status: str | None,
+                limit: int) -> Envelope[TruthV2Overview]:
+    runs = [TruthV2Run(**{**r, "summary": _small(r["summary"])}) for r in _rows(conn, V2_RUNS_SQL)]
+    ledger = [EvidenceEntry(**r) for r in _rows(conn, LEDGER_SQL, {"area": area, "status": status, "limit": limit})]
+    counts: dict[str, dict[str, int]] = {}
+    for r in _rows(conn, "SELECT status, severity, count(*) AS n FROM audit.evidence_ledger GROUP BY 1, 2"):
+        counts.setdefault(str(r["status"]), {})[str(r["severity"])] = int(r["n"])
+    if not runs and not ledger:
+        return unavailable(TruthV2Overview(runs=[], ledger=[], counts={}),
+                           "No data truth audit V2 has run yet (python -m scripts.audit_standings ...).",
+                           status=DataStatus.EMPTY)
+    return ok(TruthV2Overview(runs=runs, ledger=ledger, counts=counts))
+
+
+def decide_evidence(code: str, decision: EvidenceDecision) -> Envelope[EvidenceEntry | None]:
+    """The owner's verdict on one entry (FIXED / ACCEPTED / MONITOR / OPEN). A later run that sees the
+    issue again re-opens a FIXED entry; ACCEPTED stays. The only write this page makes: the API's own
+    connections are read-only, so it opens a writer for this one statement."""
+    from fbi.analyst.db import write_connection
+
+    with write_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE audit.evidence_ledger SET status = %s, cleared_at = NULL, "
+                        "fix = CASE WHEN %s::text IS NULL THEN fix ELSE concat_ws(' | ', fix, %s::text) END "
+                        "WHERE code = %s", (decision.status, decision.note, decision.note, code))
+            found = cur.rowcount
+        conn.commit()
+        if not found:
+            return unavailable(None, f"No evidence entry {code}.", status=DataStatus.EMPTY)
+        rows = _rows(conn, LEDGER_SQL.replace("WHERE (", "WHERE code = %(code)s AND ("),
+                     {"code": code, "area": None, "status": None, "limit": 1})
+    return ok(EvidenceEntry(**rows[0]))

@@ -284,3 +284,53 @@ class ValidationSummary(Contract):
     failed: dict[str, int]
     classes: dict[str, int]
     approved_by_segment: dict[str, int]
+
+
+class TruthV2Run(Contract):
+    """One data truth audit V2 command (standings, team stats, player stats, leagues, fixtures, identity,
+    fields): when, how many provider requests (each a new raw payload), and its summary."""
+
+    id: int
+    kind: str
+    started_at: datetime
+    finished_at: datetime | None
+    status: str
+    requests: int
+    summary: dict[str, Any]
+    report_dir: str | None
+
+
+class EvidenceEntry(Contract):
+    """One E-XXX entry of the evidence ledger: an established discrepancy with its evidence."""
+
+    code: str
+    key: str
+    area: str
+    issue_type: str
+    severity: Literal["critical", "high", "medium", "low", "info"]
+    at_fault: Literal["provider", "predigol", "none", "undetermined"]
+    entity: str | None
+    claim: str
+    api_evidence: dict[str, Any] | None
+    db_evidence: dict[str, Any] | None
+    external_evidence: dict[str, Any] | None
+    root_cause: str | None
+    fix: str | None
+    test: str | None
+    status: Literal["OPEN", "FIXED", "ACCEPTED", "MONITOR", "CLEARED"]
+    first_seen_at: datetime
+    last_seen_at: datetime
+    times_seen: int
+
+
+class TruthV2Overview(Contract):
+    runs: list[TruthV2Run]
+    """The newest run of each kind."""
+    ledger: list[EvidenceEntry]
+    counts: dict[str, dict[str, int]]
+    """status -> severity -> entries, over the whole ledger."""
+
+
+class EvidenceDecision(Contract):
+    status: Literal["OPEN", "FIXED", "ACCEPTED", "MONITOR"]
+    note: str | None = Field(default=None, max_length=500)

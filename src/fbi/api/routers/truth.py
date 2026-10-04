@@ -10,6 +10,8 @@ from fastapi import APIRouter, Depends, Path, Query
 from fbi.api.contracts.truth import (
     CompetitionScoreRow,
     DataRepair,
+    EvidenceDecision,
+    EvidenceEntry,
     FreshnessReport,
     GateReport,
     OddsCoverageReport,
@@ -18,6 +20,7 @@ from fbi.api.contracts.truth import (
     TruthFinding,
     TruthRun,
     TruthSummary,
+    TruthV2Overview,
     ValidationSummary,
 )
 from fbi.api.deps import get_db
@@ -117,3 +120,21 @@ def get_competition_scores(
 def get_quarantine(conn: Db, limit: Annotated[int, Query(ge=1, le=500)] = 200) -> Envelope[list[QuarantinedFixture]]:
     """Matches excluded from every model and backtest, newest first, with the rules they failed."""
     return truth.quarantined(conn, limit=limit)
+
+
+@router.get("/truth/v2", response_model=Envelope[TruthV2Overview])
+def get_truth_v2(
+    conn: Db,
+    area: Annotated[str | None, Query(max_length=40)] = None,
+    status: Annotated[Literal["OPEN", "FIXED", "ACCEPTED", "MONITOR", "CLEARED"] | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 200,
+) -> Envelope[TruthV2Overview]:
+    """Data truth audit V2: the newest run of each kind and the evidence ledger (E-XXX), open entries first."""
+    return truth.v2_overview(conn, area=area, status=status, limit=limit)
+
+
+@router.post("/truth/v2/ledger/{code}", response_model=Envelope[EvidenceEntry | None])
+def post_evidence_decision(code: Annotated[str, Path(pattern=r"^E-\d{3,}$")],
+                           decision: EvidenceDecision) -> Envelope[EvidenceEntry | None]:
+    """The owner's verdict on one evidence entry."""
+    return truth.decide_evidence(code, decision)
