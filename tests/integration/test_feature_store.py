@@ -112,3 +112,35 @@ def test_feature_sets_are_append_only_and_the_newest_information_set_is_read(
     cut, values = matrix[seed.fixture_id]
     assert cut == cutoff and set(values) == set(FEATURE_NAMES)
     assert values["home_history_n"] == 2.0, "the reader takes the vector with the most inputs"
+
+
+def test_the_history_is_the_validated_one(store: psycopg.Connection, seed: Seed) -> None:
+    """A quarantined or unsettled result is not read by any rating, feature or model."""
+    ids = []
+    with store.cursor() as cur:
+        for i in range(3):
+            cur.execute(
+                "INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, away_team_id, "
+                "kickoff_at, status_short, status_group) VALUES (%s,%s,%s,%s,%s,'FT','finished') RETURNING id",
+                (55100 + i, seed.season_id, seed.home_team_id, seed.away_team_id, KO - timedelta(days=30 + i)),
+            )
+            fid = scalar(cur)
+            ids.append(fid)
+            cur.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away) VALUES (%s, 2, 1)",
+                        (fid,))
+        for fid, state in zip(ids, ("HISTORICAL_APPROVED", "QUARANTINED", "INGESTED"), strict=True):
+            cur.execute("INSERT INTO analytics.fixture_validation (fixture_id, state, rule_version, validated_at) "
+                        "VALUES (%s, %s, 'test', now())", (fid, state))
+    store.commit()
+    try:
+        read = {m.fixture_id: m for m in load_matches(store)}
+        assert ids[0] in read and ids[1] not in read and ids[2] not in read
+        assert seed.fixture_id in read, "a fixture not validated yet (upcoming) is read as it is"
+        assert read[ids[0]].segment in {"top_league", "other_league", "domestic_cup", "continental_club",
+                                        "club_friendly", "national_team", "women", "youth"}
+        everything = {m.fixture_id for m in load_matches(store, validated=False)}
+        assert {ids[1], ids[2]} <= everything, "the audits can still read them"
+    finally:
+        with store.cursor() as cur:
+            cur.execute("DELETE FROM analytics.fixture_validation WHERE fixture_id = ANY(%s)", (ids,))
+        store.commit()

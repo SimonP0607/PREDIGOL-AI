@@ -47,6 +47,7 @@ from fbi.features.engine import FEATURE_VERSION, walk_forward
 from fbi.features.store import ensure_registry, write_feature_sets
 from fbi.models.elo_ologit import OLogitObs, fit_ologit
 from fbi.models.goals import GoalObs, InvalidCorrectionError, fit_goal_model
+from fbi.models.line_intervals import line_intervals
 from fbi.models.quoted import price_quoted_lines, quoted_lines
 from fbi.models.scoring import MARKET_ROWS
 
@@ -217,13 +218,18 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
                 if triples:
                     matrix, _, _ = model.score_matrix(
                         t.home_team_id, t.away_team_id, neutral=t.is_neutral)
+                    # The same 200 parameter draws as the fixed rows, projected through every
+                    # quoted line at once (fbi.models.line_intervals). None: the fit has no
+                    # covariance, and the bounds stay NULL rather than repeat the point.
+                    line_bounds = line_intervals(model, t.home_team_id, t.away_team_id, triples,
+                                                 neutral=t.is_neutral)
                     for lp in price_quoted_lines(matrix, triples):
-                        # p_lo/p_hi stay NULL: no interval was computed for these,
-                        # and repeating the point estimate as a bound would read
-                        # as certainty the model never claimed.
+                        b = None if line_bounds is None else line_bounds.get((lp.market_key, lp.selection, lp.line))
                         rows.append((t.fixture_id, version_id, lp.market_key,
                                      lp.selection, lp.line, round(lp.p_win, 6),
-                                     round(lp.p_win, 6), None, None, th, at,
+                                     round(lp.p_win, 6),
+                                     None if b is None else round(min(b[0], lp.p_win), 6),
+                                     None if b is None else round(max(b[1], lp.p_win), 6), th, at,
                                      round(lp.p_push, 6)))
                         report.lines_priced += 1
                 report.predicted[kind] += 1

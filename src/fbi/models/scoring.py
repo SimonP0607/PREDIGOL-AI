@@ -88,14 +88,9 @@ def from_matrix(m: NDArray[np.float64], lam_home: float, lam_away: float) -> Mar
                                lam_home, lam_away, max(0.0, 1.0 - total))
 
 
-def market_rows_batch(lam_home: NDArray[np.float64], lam_away: NDArray[np.float64],
-                      rho: NDArray[np.float64] | None = None) -> NDArray[np.float64]:
-    """The same arithmetic as ``from_matrix``, for many (lambda_home, lambda_away) pairs at once.
-
-    Returns shape (n, 7) in MARKET_ROWS order. Used for interval draws, where
-    the scalar path would build hundreds of matrices one by one. A test holds
-    the two paths equal.
-    """
+def matrices_batch(lam_home: NDArray[np.float64], lam_away: NDArray[np.float64],
+                   rho: NDArray[np.float64] | None = None) -> NDArray[np.float64]:
+    """Normalised score matrices for many (lambda_home, lambda_away[, rho]) at once: shape (n, 11, 11)."""
     lh = np.asarray(lam_home, dtype=np.float64)[:, None]
     la = np.asarray(lam_away, dtype=np.float64)[:, None]
     ph = np.exp(_GOALS[None, :] * np.log(lh) - lh - _LOG_FACT[None, :])
@@ -110,6 +105,18 @@ def market_rows_batch(lam_home: NDArray[np.float64], lam_away: NDArray[np.float6
         m[:, 1, 1] *= 1.0 - r
     m = np.clip(m, 0.0, None)
     m /= m.sum(axis=(1, 2), keepdims=True)
+    return np.asarray(m, dtype=np.float64)
+
+
+def market_rows_batch(lam_home: NDArray[np.float64], lam_away: NDArray[np.float64],
+                      rho: NDArray[np.float64] | None = None) -> NDArray[np.float64]:
+    """The same arithmetic as ``from_matrix``, for many (lambda_home, lambda_away) pairs at once.
+
+    Returns shape (n, 7) in MARKET_ROWS order. Used for interval draws, where
+    the scalar path would build hundreds of matrices one by one. A test holds
+    the two paths equal.
+    """
+    m = matrices_batch(lam_home, lam_away, rho)
     home = m[:, _HOME_WIN].sum(axis=1)
     draw = m[:, _DRAW].sum(axis=1)
     away = m[:, _AWAY_WIN].sum(axis=1)

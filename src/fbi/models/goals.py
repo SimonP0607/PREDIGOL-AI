@@ -137,6 +137,28 @@ class GoalModel:
                 return None
         return self._draws
 
+    def lambda_draws(self, home_id: int, away_id: int, *, neutral: bool = False, draws: int = 200
+                     ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64] | None] | None:
+        """(lambda_home, lambda_away, rho) for each parameter draw that is inside the model, or None
+        when there is no covariance or too few draws are valid."""
+        theta = self.parameter_draws(draws)
+        if theta is None:
+            return None
+        n = len(self.teams)
+        h, a = self.index[home_id], self.index[away_id]
+        att = np.concatenate([theta[:, 2:n + 1], -theta[:, 2:n + 1].sum(axis=1, keepdims=True)], axis=1)
+        dfn = np.concatenate([theta[:, n + 1:2 * n], -theta[:, n + 1:2 * n].sum(axis=1, keepdims=True)], axis=1)
+        adv = 0.0 if neutral else 1.0
+        lh = np.exp(theta[:, 0] + adv * theta[:, 1] + att[:, h] - dfn[:, a])
+        la = np.exp(theta[:, 0] + att[:, a] - dfn[:, h])
+        rho = theta[:, 2 * n] if self.kind == "dixon_coles" else None
+        if rho is not None:
+            ok = (1 - lh * la * rho > 0) & (1 + lh * rho > 0) & (1 + la * rho > 0) & (1 - rho > 0)
+            lh, la, rho = lh[ok], la[ok], rho[ok]
+            if len(lh) < draws // 2:
+                return None
+        return lh, la, rho
+
     def interval_rows(self, home_id: int, away_id: int, *, neutral: bool = False, draws: int = 200,
                       level: float = INTERVAL_LEVEL) -> tuple[NDArray[np.float64], NDArray[np.float64]] | None:
         """(lo, hi) for every MARKET_ROWS probability, or None when there is no covariance.

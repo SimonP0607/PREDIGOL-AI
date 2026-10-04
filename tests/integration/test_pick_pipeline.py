@@ -505,7 +505,7 @@ def test_a_whole_asian_handicap_line_reaches_a_pick_with_its_push(
 
     with db.cursor() as cur:
         cur.execute(
-            "SELECT p_calibrated, p_push FROM models.predictions "
+            "SELECT p_calibrated, p_push, p_lo, p_hi FROM models.predictions "
             "WHERE fixture_id = %s AND market_key = 'AH' AND selection = 'Home' "
             "  AND line = -1 AND backtest_session_id IS NULL LIMIT 1",
             (target,),
@@ -514,6 +514,8 @@ def test_a_whole_asian_handicap_line_reaches_a_pick_with_its_push(
     assert prediction is not None, "the model priced the quoted line"
     p_win, p_push = float(prediction[0]), float(prediction[1])
     assert p_push > 0, "a whole line can push, and the model says by how much"
+    assert prediction[2] is not None and prediction[3] is not None, "a quoted line carries its interval (GATE E)"
+    assert float(prediction[2]) <= p_win <= float(prediction[3]) and float(prediction[2]) < float(prediction[3])
 
     ledger = RunLedger(db)
     run = ledger.open("shadow_picks")

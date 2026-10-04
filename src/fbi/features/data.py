@@ -1,4 +1,11 @@
-"""The match history the feature engine reads: fixtures and, where recorded, scores."""
+"""The match history the feature engine reads: fixtures and, where recorded, scores.
+
+Since GATE E (feature version fv2.1.0) the history is the VALIDATED one: a played match
+the historical validation quarantined (a duplicate, a half-time score above the final
+one) or left INGESTED (an extra-time result without its 90-minute score) is not read at
+all - it enters no rating, no form, no fit and no backtest (``fbi.validation.historical``).
+A fixture not yet validated (upcoming, or played since the last validation run) is read
+as it is."""
 
 from __future__ import annotations
 
@@ -7,6 +14,11 @@ from datetime import datetime
 
 import psycopg
 from psycopg.rows import tuple_row
+
+from fbi.catalog.segments import CompetitionFacts, segment_of
+
+EXCLUDED_STATES = ("QUARANTINED", "INGESTED")
+"""Validation states whose result no model, rating or backtest may read."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +38,9 @@ class MatchRecord:
     """Regulation (90-minute) score - what 1X2, Over/Under and BTTS settle on.
     goals_* are the final score after extra time; they differ only after extra time."""
     reg_goals_away: int | None = None
+    segment: str = "other_league"
+    """``fbi.catalog.segments``: top_league, other_league, domestic_cup, continental_club,
+    club_friendly, national_team, women, youth. Models are judged per segment."""
 
     @property
     def settle_home(self) -> int | None:
@@ -41,29 +56,42 @@ class MatchRecord:
         return self.status_group == "finished" and self.goals_home is not None and self.goals_away is not None
 
 
-def load_matches(conn: psycopg.Connection, *, competition_ids: list[int] | None = None) -> list[MatchRecord]:
-    """Every stored fixture (optionally restricted), oldest first, with its score if any."""
+def load_matches(conn: psycopg.Connection, *, competition_ids: list[int] | None = None,
+                 validated: bool = True) -> list[MatchRecord]:
+    """Every stored fixture (optionally restricted), oldest first, with its score if any.
+
+    ``validated`` (the default) leaves out the played matches the historical validation
+    quarantined or could not settle (``EXCLUDED_STATES``); ``False`` reads them too, for the
+    audits that need to see them."""
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(
             """
             SELECT f.id, f.kickoff_at, c.id, c.competition_type, cs.season, f.home_team_id, f.away_team_id,
                    r.goals_home, r.goals_away, (f.is_neutral OR c.neutral_venue), f.status_group,
-                   r.reg_goals_home, r.reg_goals_away
+                   r.reg_goals_home, r.reg_goals_away, c.name, c.entity_scope, c.tier
             FROM core.fixtures f
             JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
             JOIN core.competitions c ON c.id = cs.competition_id
             LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
             WHERE (%s::bigint[] IS NULL OR c.id = ANY(%s::bigint[]))
+              AND (NOT %s OR NOT EXISTS (SELECT 1 FROM analytics.fixture_validation v
+                                          WHERE v.fixture_id = f.id AND v.state = ANY(%s)))
             ORDER BY f.kickoff_at, f.id
             """,
-            (competition_ids, competition_ids),
+            (competition_ids, competition_ids, validated, list(EXCLUDED_STATES)),
         )
-        return [
-            MatchRecord(int(a), b, int(c), str(d), int(e), int(f), int(g),
-                        None if h is None else int(h), None if i is None else int(i), bool(j), str(k),
-                        None if rh is None else int(rh), None if ra is None else int(ra))
-            for a, b, c, d, e, f, g, h, i, j, k, rh, ra in cur.fetchall()
-        ]
+        segments: dict[int, str] = {}
+        out: list[MatchRecord] = []
+        for a, b, c, d, e, f, g, h, i, j, k, rh, ra, name, scope, tier in cur.fetchall():
+            comp = int(c)
+            if comp not in segments:
+                segments[comp] = segment_of(CompetitionFacts(str(name), d, scope,
+                                                             None if tier is None else int(tier))).value
+            out.append(MatchRecord(int(a), b, comp, str(d), int(e), int(f), int(g),
+                                   None if h is None else int(h), None if i is None else int(i), bool(j), str(k),
+                                   None if rh is None else int(rh), None if ra is None else int(ra),
+                                   segments[comp]))
+        return out
 
 
 @dataclass(frozen=True, slots=True)

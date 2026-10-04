@@ -26,7 +26,7 @@ def match(fid: int, days: float, home: int, away: int, gh: int | None, ga: int |
 
 
 def test_version_two_extends_version_one() -> None:
-    assert FEATURE_VERSION == "fv2.0.0"
+    assert FEATURE_VERSION == "fv2.1.0"
     for name in ("elo_diff", "home_ppg5", "pi_home", "pi_expected_gd", "home_sot_share10", "league_elo_mean"):
         assert name in FEATURE_NAMES
     assert len(FEATURE_NAMES) == len(set(FEATURE_NAMES))

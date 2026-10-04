@@ -10,15 +10,13 @@ compare it to, and the whole point of the model is Model VERSUS Market: a
 prediction is useful exactly where there is a price opposite it. So this asks
 market.odds_snapshots what was quoted, per fixture, and prices that.
 
-NO INTERVALS ON THESE ROWS, AND THAT IS DELIBERATE
---------------------------------------------------
-The seven fixed rows carry p_lo and p_hi from 200 parameter draws through the
-same projection. Doing that for every quoted line would mean projecting 200
-matrices across up to 70 lines per fixture. Until that is worth its cost, these
-rows leave the interval NULL rather than carrying a copy of the point estimate
-dressed up as a bound - which would read as certainty the model never claimed.
-``picks.value.assess`` already treats a missing lower bound as "no uncertainty
-adjustment available", so nothing downstream has to special-case it.
+INTERVALS
+---------
+Since GATE E these rows carry p_lo and p_hi too: the forecast projects the fit's 200
+parameter draws through every quoted line at once (``fbi.models.line_intervals``). Before,
+they were NULL on purpose - repeating the point estimate as a bound would have read as
+certainty the model never claimed - which left them unrankable by their pessimistic
+probability. A fit without a covariance still leaves them NULL.
 """
 
 from __future__ import annotations

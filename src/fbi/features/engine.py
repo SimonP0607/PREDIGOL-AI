@@ -36,6 +36,12 @@ live provider's timing (API-Football publishes final statistics shortly after
 full time); the Football-Data files that stand in for it historically were
 published a few days later, which does not matter for what a fixture could
 have known in live operation, only for when we could have downloaded it.
+
+VERSION 2.1 (fv2.1.0, GATE E) computes the same features from the VALIDATED history:
+the matches the historical validation quarantined or could not settle are no longer
+read (``fbi.features.data.load_matches``), so a duplicated result no longer counts twice
+in two teams' ratings and form. Different inputs, so a new version: fv2.0.0 vectors are
+kept as they were and stay the inputs of the runs that used them.
 """
 
 from __future__ import annotations
@@ -50,7 +56,7 @@ from fbi.features.data import MatchRecord, TeamStatsPair
 from fbi.features.elo import EloBook, EloParams, expected_score
 from fbi.features.pi import PiBook, PiParams
 
-FEATURE_VERSION = "fv2.0.0"
+FEATURE_VERSION = "fv2.1.0"
 SHOTS_N = 10
 RESULT_AVAILABLE_AFTER = timedelta(hours=3)
 FORM_N = 5
