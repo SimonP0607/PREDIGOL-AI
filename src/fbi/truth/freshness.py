@@ -230,10 +230,12 @@ SELECT DISTINCT ON (t.id) c.name AS competition, cs.season, t.provider_team_id, 
 """
 
 ELO_SQL = """
-SELECT c.name AS competition, NULL::int AS season, f.provider_fixture_id, r.fixture_id IS NOT NULL AS rated
+SELECT c.name AS competition, NULL::int AS season, f.provider_fixture_id, f.kickoff_at,
+       r.fixture_id IS NOT NULL AS rated, fr.fixture_id IS NOT NULL AS scored
   FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
   LEFT JOIN (SELECT DISTINCT fixture_id FROM features.elo_ratings) r ON r.fixture_id = f.id
+  LEFT JOIN core.fixture_results fr ON fr.fixture_id = f.id
  WHERE c.is_tracked AND f.status_group = 'finished' AND f.kickoff_at > %(at)s - interval '30 days'
 """
 
@@ -489,11 +491,25 @@ def _squads(rows: list[dict[str, Any]], at: datetime) -> DatasetFreshness:
     return out
 
 
+ELO_REFRESH_GRACE_HOURS = 7.0
+"""The full Elo recompute runs every 6 hours; a match that ended since the last one is
+waiting for the next, not missed."""
+
+
 def _elo(rows: list[dict[str, Any]], at: datetime) -> DatasetFreshness:
-    out = DatasetFreshness("elo", "every match finished in the last 30 days carries a rating", "fixture")
+    out = DatasetFreshness("elo", "every match finished in the last 30 days carries a rating once the next "
+                           "6-hourly recompute has run; a match without a stored score cannot be rated", "fixture")
     for r in rows:
-        out.add(Freshness.FRESH if r["rated"] else Freshness.STALE, competition=_label(r),
-                example=None if r["rated"] else f"{r['competition']}: fixture {r['provider_fixture_id']} unrated")
+        if r["rated"]:
+            out.add(Freshness.FRESH, competition=_label(r))
+        elif not r.get("scored", True):
+            out.add(Freshness.UNAVAILABLE, competition=_label(r),
+                    example=f"{r['competition']}: fixture {r['provider_fixture_id']} has no stored score")
+        else:
+            ended = _age_h(at, r.get("kickoff_at"))
+            pending = ended is not None and ended - MATCH_ENDS_AFTER / HOURS <= ELO_REFRESH_GRACE_HOURS
+            out.add(Freshness.FRESH if pending else Freshness.STALE, competition=_label(r),
+                    example=None if pending else f"{r['competition']}: fixture {r['provider_fixture_id']} unrated")
     return out
 
 

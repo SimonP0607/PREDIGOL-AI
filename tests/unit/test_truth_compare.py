@@ -262,3 +262,24 @@ def test_a_table_is_judged_against_the_last_match_it_should_show() -> None:
     assert table_reason(NOW - timedelta(days=2), last, NOW - timedelta(days=2), True) == \
         (Freshness.STALE, "not_asked_since")
     assert table_reason(None, last, None, False) == (Freshness.UNAVAILABLE, "not_covered")
+
+
+def test_an_unrated_match_is_stale_only_after_the_next_elo_recompute() -> None:
+    from fbi.truth.freshness import Freshness, _elo
+
+    at = datetime(2026, 10, 4, 12, tzinfo=UTC)
+    rows = [
+        {"competition": "L", "season": None, "provider_fixture_id": 1, "kickoff_at": at - timedelta(days=3),
+         "rated": True, "scored": True},
+        {"competition": "L", "season": None, "provider_fixture_id": 2, "kickoff_at": at - timedelta(hours=5),
+         "rated": False, "scored": True},   # ended 3 h ago: waiting for the next recompute
+        {"competition": "L", "season": None, "provider_fixture_id": 3, "kickoff_at": at - timedelta(hours=12),
+         "rated": False, "scored": True},   # a recompute has run since it ended: missed
+        {"competition": "L", "season": None, "provider_fixture_id": 4, "kickoff_at": at - timedelta(days=2),
+         "rated": False, "scored": False},  # no score to rate (an AET match without its 90-minute score)
+    ]
+    out = _elo(rows, at)
+    assert out.counts[Freshness.FRESH] == 2
+    assert out.counts[Freshness.STALE] == 1
+    assert out.counts[Freshness.UNAVAILABLE] == 1
+    assert out.status is Freshness.STALE

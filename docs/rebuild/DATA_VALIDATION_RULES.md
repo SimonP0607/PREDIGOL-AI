@@ -52,7 +52,7 @@ event and it had not published). Service levels follow the provider's own update
 | injuries | every 4 h | read in the last 6 h for a season playing in the next 48 h |
 | lineups / match detail | 15 min / 1 min | a played match has them, read after it settled (≥ 150 min after kick-off) |
 | pre-match odds | every 3 h | captured at the most recent window the match reached (T-72/48/24/12/6/3 h ± 45 min) |
-| Elo | ours | every match finished in the last 30 days is rated (full recompute every 6 h) |
+| Elo | ours | every match finished in the last 30 days is rated once the next full recompute has run (every 6 h; 7 h grace after the match ends); a match with no stored score cannot be rated (UNAVAILABLE) |
 | teams | several times a week | identity read in the last 120 days |
 | player profiles | several times a week | read in the last 45 days (monthly sweep) |
 | squads | several times a week | read in the last 8 days (weekly round) |
