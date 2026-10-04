@@ -111,6 +111,45 @@
         "https://www.clarosports.com/colombia/liga-bet-play/dimayor-publica-fallo-por-los-hechos-de-violencia-en-atletico-nacional-vs-junior-perdida-de-puntos-y-sanciones/",
         "https://www.elheraldo.co/deportes/rincon-juniorista/2024/10/21/junior-escala-a-la-septima-posicion-con-los-tres-puntos-en-el-escritorio/"
       ]
+    },
+    {
+      "fixture": 1505349,
+      "league": 265,
+      "season": 2026,
+      "match": "Everton de Vina del Mar v Union La Calera, Liga de Primera 2026 round 1, 2 Feb 2026",
+      "played": [
+        0,
+        1
+      ],
+      "official": [
+        3,
+        0
+      ],
+      "basis": "ANFP Tribunal de Disciplina: La Calera fielded more foreigners than allowed; the match awarded 3-0 to Everton (6 points taken from La Calera in two matches; ratified 8 Apr 2026; La Calera appealed to CAS, pending on 30 Sep 2026)",
+      "sources": [
+        "https://www.theclinic.cl/2026/04/08/tribunal-de-disciplina-de-la-anfp-ratifica-sancion-contra-union-la-calera-perderan-seis-puntos-por-exceder-el-numero-de-extranjeros-en-cancha/",
+        "https://www.encancha.cl/futbol-chileno/primera/2026/04/08/anfp-hace-oficial-la-resta-de-puntos-a-union-la-calera-asi-quedo-la-tabla-la-liga-de-primera/",
+        "https://www.emol.com/noticias/Deportes/2026/09/30/1212857/lacalera-tas-resta-puntos-anfp.html"
+      ]
+    },
+    {
+      "fixture": 1505362,
+      "league": 265,
+      "season": 2026,
+      "match": "Union La Calera v Cobresal, Liga de Primera 2026 round 2, 9 Feb 2026",
+      "played": [
+        3,
+        1
+      ],
+      "official": [
+        0,
+        3
+      ],
+      "basis": "ANFP Tribunal de Disciplina: La Calera fielded more foreigners than allowed; the match awarded 0-3 to Cobresal (ratified 8 Apr 2026; CAS appeal pending on 30 Sep 2026)",
+      "sources": [
+        "https://www.theclinic.cl/2026/04/08/tribunal-de-disciplina-de-la-anfp-ratifica-sancion-contra-union-la-calera-perderan-seis-puntos-por-exceder-el-numero-de-extranjeros-en-cancha/",
+        "https://www.encancha.cl/futbol-chileno/primera/2026/04/08/anfp-hace-oficial-la-resta-de-puntos-a-union-la-calera-asi-quedo-la-tabla-la-liga-de-primera/"
+      ]
     }
   ]
 }

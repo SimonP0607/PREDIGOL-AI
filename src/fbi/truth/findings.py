@@ -38,6 +38,9 @@ class Kind(StrEnum):
     """The provider itself has not caught up (a match still NS hours after kick-off)."""
     INCONSISTENT = "inconsistent"
     """The database contradicts itself; no provider call was needed to see it."""
+    PROVIDER_CONTRADICTION = "provider_contradiction"
+    """The provider's answer contradicts itself (a 90-minute or extra-time score above the final one):
+    the writer keeps no result rather than a wrong one."""
 
 
 class Severity(StrEnum):

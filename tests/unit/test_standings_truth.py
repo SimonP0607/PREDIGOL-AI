@@ -291,3 +291,15 @@ def test_a_golden_season_failing_on_the_table_alone_names_the_table() -> None:
     assert g.verdict == "NEEDS_REVIEW"
     ev = evidence([g])
     assert [(e.issue_type, e.at_fault) for e in ev] == [("STANDINGS_MISMATCH", "provider")]
+
+
+def test_our_table_one_hourly_check_behind_after_todays_matches_is_expected_lag() -> None:
+    old = body(row(1, 1, 1, 0, 0, 2, 0), row(2, 1, 0, 0, 1, 0, 2, rank=2))
+    new = body(row(1, 2, 2, 0, 0, 3, 0), row(2, 2, 0, 0, 2, 0, 3, rank=2))
+    games = [match(10, 1, 2, 2, 0), match(11, 2, 1, 0, 1, "Regular Season - 2", ko=NOW - timedelta(hours=3))]
+    recent = {**FACTS, "checked_at": NOW - timedelta(minutes=40), "last_finished": NOW - timedelta(hours=3)}
+    a = st.audit_season(recent, new, as_db(old), games, at=NOW)
+    assert a.verdict == "predigol_lag_expected" and st.evidence(a, None) == []
+    # not re-read for hours after the match: our fault
+    stale = {**recent, "checked_at": NOW - timedelta(hours=3)}
+    assert st.audit_season(stale, new, as_db(old), games, at=NOW).verdict == "predigol_behind"

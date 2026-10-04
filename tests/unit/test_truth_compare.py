@@ -283,3 +283,19 @@ def test_an_unrated_match_is_stale_only_after_the_next_elo_recompute() -> None:
     assert out.counts[Freshness.STALE] == 1
     assert out.counts[Freshness.UNAVAILABLE] == 1
     assert out.status is Freshness.STALE
+
+
+def test_no_result_for_a_self_contradicting_provider_score_is_the_providers_fault() -> None:
+    # UEFA Europa League 2026, Pafos v Hajduk: final 2-0 after extra time, "fulltime" 4-0, "extratime" 0-2
+    item = api_fixture("AET", (2, 0))
+    item["score"] = {"halftime": {"home": 1, "away": 0}, "fulltime": {"home": 4, "away": 0},
+                     "extratime": {"home": 0, "away": 2}, "penalty": {"home": None, "away": None}}
+    results = Tally("results")
+    compare.compare_result(item, db_fixture("AET", result=None), tally=results, now=NOW)
+    [f] = results.findings
+    assert (f.kind, f.severity) == (Kind.PROVIDER_CONTRADICTION, Severity.MEDIUM)
+    assert "fulltime 4-0" in (f.api or "") and "extratime 0-2" in (f.api or "")
+    from fbi.truth.v2.fixtures import evidence
+
+    [ev] = evidence(Tally("fixtures"), results, {})
+    assert (ev.issue_type, ev.at_fault) == ("RESULT_MISMATCH", "provider")

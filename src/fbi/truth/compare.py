@@ -234,6 +234,18 @@ def compare_result(api: Mapping[str, Any], db: Mapping[str, Any], *, tally: Tall
     tally.compared()
     gh, ga = _int(goals.get("home")), _int(goals.get("away"))
     if not has_db:
+        parts = {k: (_int(_d(score.get(k)).get("home")), _int(_d(score.get(k)).get("away")))
+                 for k in ("fulltime", "extratime")}
+        above = [k for k, (h, a) in parts.items() if None not in (h, a, gh, ga)
+                 and ((h or 0) > (gh or 0) or (a or 0) > (ga or 0))]
+        if above:  # the writer's rule: no result rather than a wrong one (normalize.iter_results)
+            tally.add(Finding.of("results", entity, "result", Kind.PROVIDER_CONTRADICTION, Severity.MEDIUM,
+                                 api=f"{short} final {gh}-{ga}, " + ", ".join(
+                                     f"{k} {parts[k][0]}-{parts[k][1]}" for k in above),
+                                 db=f"{db.get('status_short')} (no result row)",
+                                 note="the provider's score blocks contradict each other; no result is stored "
+                                      "rather than a wrong one"))
+            return
         tally.add(Finding.of("results", entity, "result", Kind.MISSING_IN_DB, Severity.CRITICAL,
                              api=f"{short} {gh}-{ga}", db=f"{db.get('status_short')} (no result row)"))
         return

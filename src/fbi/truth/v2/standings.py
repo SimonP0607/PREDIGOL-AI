@@ -45,6 +45,10 @@ from fbi.truth.v2.ledger import Evidence
 MATCH_LENGTH = timedelta(hours=2)
 PROVIDER_GRACE = timedelta(hours=3)
 """Kick-off + 2 h (the match is over) + the provider's hourly update + slack."""
+OUR_GRACE = timedelta(minutes=75)
+"""Our side of the same lag: after a finished match we re-read the table hourly until it changes
+(``context_refresh.DUE_TABLES_SQL``); a provider update since our last check, under an hour old, is
+expected lag, not a fault."""
 FIELDS = ("played", "win", "draw", "lose", "gf", "ga", "points")
 KNOCKOUT = re.compile(r"final|play-?offs?|knockout|round of|quarter|semi|8th|16th|1/\d|qualifying|qualification|preliminary|"
                       r"promotion|relegation (?:play|deciding)|third place|super cup|repechage|elimination",
@@ -646,6 +650,12 @@ def season_verdict(s: SeasonAudit, *, at: datetime) -> str:
     if s.extra_db_teams:
         s.notes.append(f"{len(s.extra_db_teams)} team(s) in our table are not in the provider's: season or group mixed")
     if c.get("predigol_behind") or c.get("db_ahead") or c.get("missing_in_db"):
+        if (c.get("predigol_behind") and not c.get("db_ahead") and not c.get("missing_in_db") and s.is_current
+                and s.checked_at is not None and at - s.checked_at < OUR_GRACE
+                and s.last_finished is not None and at - (s.last_finished + MATCH_LENGTH) < PROVIDER_GRACE):
+            s.notes.append(f"our hourly re-read after the last match (checked {s.checked_at:%H:%M}) has not run since "
+                           "the provider's update")
+            return "predigol_lag_expected"
         return "predigol_behind" if c.get("predigol_behind") else "mismatch"
     if c.get("provider_behind"):
         if s.last_finished and at - (s.last_finished + MATCH_LENGTH) < PROVIDER_GRACE:
@@ -749,11 +759,14 @@ def evidence(s: SeasonAudit, api_ref: Mapping[str, Any] | None) -> list[Evidence
             root_cause="a result differs between /standings and /fixtures, or the table uses another phase"))
     if s.verdict == "adjusted":
         decided = sorted({n for r in s.rows if r.verdict == "awarded" for n in r.notes})
-        claim = (f"{label}: points differ from the results for {counts.get('adjusted', 0)} team(s) - a deduction "
-                 "or an award; to confirm with the official table")
+        parts = []
+        if counts.get("adjusted"):
+            parts.append(f"points differ from the results for {counts['adjusted']} team(s) - a deduction or an "
+                         "award; to confirm with the official table")
         if decided:
-            claim += (f"; {counts.get('awarded', 0)} row(s) agree once results decided off the pitch are counted: "
-                      + "; ".join(decided[:3]))
+            parts.append(f"{counts.get('awarded', 0)} row(s) agree once results decided off the pitch are counted: "
+                         + "; ".join(decided[:3]))
+        claim = f"{label}: " + "; ".join(parts)
         out.append(Evidence(
             key=f"{key}:adjusted", area="standings", issue_type="STANDINGS_MISMATCH", severity="low",
             at_fault="none", entity=label, claim=claim,

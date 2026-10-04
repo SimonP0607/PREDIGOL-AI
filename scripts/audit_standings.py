@@ -37,7 +37,8 @@ from fbi.truth.v2.runner import V2Run, write_report
 
 REPORTS = Path("data/truth")
 ORDER = ("predigol_behind", "mismatch", "missing_in_db", "provider_stale", "fixtures_missing", "provider_identity",
-         "provider_inconsistent", "adjusted", "provider_lag_expected", "no_api_table", "no_table", "not_asked", "ok")
+         "provider_inconsistent", "adjusted", "predigol_lag_expected", "provider_lag_expected", "no_api_table",
+         "no_table", "not_asked", "ok")
 
 SCOPE_CURRENT = """c.is_tracked AND cs.is_current AND (
     EXISTS (SELECT 1 FROM core.standings s WHERE s.competition_season_id = cs.id)

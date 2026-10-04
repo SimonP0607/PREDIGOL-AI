@@ -189,8 +189,8 @@ def evidence(checks: Mapping[str, list[dict[str, Any]]], tallies: Mapping[str, T
         if t.total_findings or t.notes:
             out.append(Evidence(key=f"identity:sample:{name}", area="identity", issue_type="STALE_ENTITY",
                                 severity="low", at_fault="undetermined", entity=f"{t.checked} sampled {name}",
-                                claim=f"{t.total_findings or len(t.notes)} of {t.checked} sampled {name} differ from the "
-                                      "provider's current record",
+                                claim=f"{t.checked - t.matched} of {t.checked} sampled {name} differ from the provider's "
+                                      f"current record ({t.total_findings or len(t.notes)} field difference(s))",
                                 api={"findings": [f.as_dict() for f in t.findings[:8]], "notes": t.notes[:8]}))
     out.append(Evidence(key="identity:coach_career", area="coaches", issue_type="UNSUPPORTED_FIELD", severity="low",
                         at_fault="predigol", entity="core.coaches",

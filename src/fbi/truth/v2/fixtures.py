@@ -127,6 +127,7 @@ ISSUE = {
     ("fixtures", "competition", "mismatch"): ("SEASON_MISMATCH", "predigol"),
     ("fixtures", "round", "mismatch"): ("FIXTURE_MISMATCH", "undetermined"),
     ("fixtures", "venue", "mismatch"): ("FIXTURE_MISMATCH", "undetermined"),
+    ("results", "result", "provider_contradiction"): ("RESULT_MISMATCH", "provider"),
 }
 
 
