@@ -56,10 +56,17 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
         report.picks = evaluate_captures(conn, run_id=temp_run, code_version=code_version)
         report.settlement = settle_open_picks(conn, run_id=temp_run)
         # What the product shows, as records: the day's picks and parlays, frozen when chosen,
-        # and everything already shown (PrediGol's and the users' own) settled.
-        report.daily = build_daily_sets(conn, at=at)
-        report.parlays = build_parlays(conn, at=at)
-        report.product = settle_products(conn, at=at)
+        # and everything already shown (PrediGol's and the users' own) settled. In a savepoint:
+        # a defect here is recorded and must not cost the forecasts, candidates and settlement.
+        try:
+            with conn.transaction():
+                report.daily = build_daily_sets(conn, at=at)
+                report.parlays = build_parlays(conn, at=at)
+                report.product = settle_products(conn, at=at)
+        except Exception as exc:  # recorded on the run, and logged; the core pipeline still commits
+            counters.errors.append(f"product records: {type(exc).__name__}: {exc}"[:500])
+            log.error("pipeline.product_records_failed", error=type(exc).__name__, detail=str(exc)[:300])
+            report.daily, report.parlays, report.product = DailyReport(), ParlayReport(), ProductSettlementReport()
         if apply:
             conn.commit()
         else:
