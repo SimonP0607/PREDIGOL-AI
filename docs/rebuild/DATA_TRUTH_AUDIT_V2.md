@@ -286,10 +286,10 @@ feature row — must be built from RAW and pass the golden set first, and the ow
 | `pytest -q` (unit + integration against a scratch PostgreSQL) | **1,400 passed** |
 | Standings / team / player / identity truth tests | `test_standings_truth.py` 25 · `test_team_player_truth.py` 14 · `test_truth_compare.py` 20 · `test_data_truth_v2.py` 10 (real schema: ledger, standings run, relabel repair, decisions, player recheck, admin endpoints) · `test_team_record_scope.py` 3 · `test_catalog_truth.py` 6 · `test_research_freeze.py` 6 |
 | Frontend | typecheck clean, lint 0 errors (26 warnings, the baseline), production build, 91 unit tests |
-| Backup | pre-audit: verified dump + RAW archive + sha256 + **restore test**; post-audit: dump + RAW archive + sha256 + tags `post-data-truth-audit-v2` (`~/backups/SHA256SUMS-post-data-truth-audit-v2`) |
+| Backup | pre-audit (13:46 UTC): verified dump + RAW archive + sha256 + **restore test**; post-audit (16:00 UTC): dump `fbi-20261004T160044Z-post-data-truth-audit-v2.dump` (1,053 TOC entries, 512 MB), RAW archive (27,494 entries), sha256 in `~/backups/SHA256SUMS-post-data-truth-audit-v2` (re-verified OK), tags `post-data-truth-audit-v2` (backend e8e64ac, frontend 27b1da8) and a **restore test**: rc 0 in 61 s, 93 tables, 74 equal, 19 grew since the dump (live capture), 0 fewer, 39,250,328 rows |
 | RAW untouched | content-addressed store, keyed by hash; the audit only added payloads |
 | Secret scan | the key's value only in `.env` |
-| Deployed | backend through `be-48`/`be-49` bundles (migrations at head 0056), API and worker restarted, health 200; never pushed to GitHub |
+| Deployed | backend through the `be-43` … `be-50` bundles (migrations at head 0056), API and worker restarted, health 200; never pushed to GitHub |
 
 ## 19. Remaining issues and the next safe action
 
