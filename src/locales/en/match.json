@@ -135,7 +135,10 @@
     "goalDiffLong": "Goal difference",
     "points": "Pts",
     "pointsLong": "Points",
-    "includesMatch": "The table already includes this match."
+    "includesMatch": "The table already includes this match.",
+    "updated": "Table updated {ago}.",
+    "stale": "It does not include the last match played yet; it will be asked for again.",
+    "providerLag": "The provider has not updated it since the last match yet."
   },
   "h2h": {
     "title": "Head to head",

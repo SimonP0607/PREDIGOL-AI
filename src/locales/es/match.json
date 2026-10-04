@@ -135,7 +135,10 @@
     "goalDiffLong": "Diferencia de gol",
     "points": "Pts",
     "pointsLong": "Puntos",
-    "includesMatch": "La tabla ya incluye este partido."
+    "includesMatch": "La tabla ya incluye este partido.",
+    "updated": "Tabla actualizada {ago}.",
+    "stale": "Aún no incluye el último partido jugado; se pedirá de nuevo.",
+    "providerLag": "El proveedor todavía no la ha actualizado tras el último partido."
   },
   "h2h": {
     "title": "Enfrentamientos directos",

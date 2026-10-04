@@ -4,7 +4,7 @@ import { CheckCircle2, Shirt, Swords, TrendingUp, Trophy, UserX } from "lucide-r
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { fmtLine } from "@/lib/i18n/format";
-import { formatDateYear } from "@/lib/time";
+import { formatDateYear, formatRelative } from "@/lib/time";
 import type { TeamRef } from "@/lib/api/v1/types";
 import type { Absence, H2HMatch, Side, StandingLine } from "@/lib/api/v1/types_center";
 import { TeamName } from "@/components/football/Logos";
@@ -154,7 +154,28 @@ function StandingsTable({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) 
           {t("match.standings.includesMatch")}
         </p>
       ) : null}
+      <TableFreshness rows={rows} />
     </>
+  );
+}
+
+/** "Tabla actualizada hace 2 h", and a plain note when it does not show the last match yet. */
+function TableFreshness({ rows }: { rows: StandingLine[] }) {
+  const newest = rows.reduce<string | null>(
+    (acc, r) => (acc === null || r.snapshot_at > acc ? r.snapshot_at : acc),
+    null,
+  );
+  if (!newest) return null;
+  const state = rows.find((r) => r.table_state && r.table_state !== "FRESH")?.table_state;
+  return (
+    <p className="mt-2 text-caption text-subtle-foreground" data-testid="table-freshness">
+      {t("match.standings.updated", { ago: formatRelative(newest) })}
+      {state === "STALE" ? (
+        <span className="ml-1 text-warning">{t("match.standings.stale")}</span>
+      ) : state === "UNAVAILABLE" ? (
+        <span className="ml-1">{t("match.standings.providerLag")}</span>
+      ) : null}
+    </p>
   );
 }
 

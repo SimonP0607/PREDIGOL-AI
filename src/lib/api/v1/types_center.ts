@@ -100,6 +100,13 @@ export interface StandingLine {
   group: string | null;
   snapshot_at: Iso;
   before_kickoff: boolean;
+  /** The provider's zone ("Promotion - Champions League"), as it words it. */
+  description?: string | null;
+  /** When the provider was last asked for this table (an unchanged answer moves only this). */
+  checked_at?: Iso | null;
+  /** Whether the table reflects every match played before this one. */
+  table_state?: "FRESH" | "STALE" | "UNKNOWN" | "UNAVAILABLE";
+  table_reason?: string;
 }
 
 export interface FormMatch {
