@@ -39,6 +39,7 @@ import { int } from "@/lib/format";
 import { dec, shortHash, utcDate, utcDateTime } from "./format";
 import { baselineLabel, seasonLabel } from "./labels";
 import { Fact } from "./shared";
+import { ResearchV2Panel } from "./ResearchV2Panel";
 import { localDecimalText, localFixed, localPct } from "@/lib/i18n/format";
 
 /** Display name of a model; Poisson and Dixon-Coles are proper names in both languages. */
@@ -140,6 +141,8 @@ export function ModelsLive() {
           </WarningBanner>
         )
       ) : null}
+
+      <ResearchV2Panel />
 
       <Panel
         title={t("research.models.baseline.title")}

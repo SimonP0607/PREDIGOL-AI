@@ -114,6 +114,7 @@ export const live = {
     staleTime: 10 * MINUTE,
   },
   models: { queryKey: ["v1", "models"], queryFn: v1.models },
+  researchV2: { queryKey: ["v1", "research", "v2"], queryFn: v1.researchV2 },
   analyst: { queryKey: ["v1", "analyst"], queryFn: v1.analyst },
   notifications: {
     queryKey: ["v1", "notifications"],

@@ -77,6 +77,7 @@ import type {
   UserParlay,
   UserPick,
 } from "./types_records";
+import type { ResearchOverview } from "./types_research";
 
 /** An error the API itself reported, or a transport failure. `code` is machine-readable. */
 export class LiveApiError extends Error {
@@ -277,6 +278,7 @@ export const v1 = {
       limit: 200,
     }),
   models: () => getJson<Envelope<ModelsOverview>>("/admin/models"),
+  researchV2: () => getJson<Envelope<ResearchOverview>>("/admin/research/v2"),
   picks: () => getJson<Envelope<PicksOverview>>("/admin/picks"),
   performance: () => getJson<Envelope<PerformanceSummary>>("/admin/performance"),
   competitionProfiles: () =>

@@ -225,5 +225,90 @@
     "lastMatch": "Last match",
     "provisional": "provisional",
     "fewMatches": "Fewer than five rated matches."
+  },
+  "v2": {
+    "title": "Research V2 - roles against the market",
+    "subtitle": "The latest run on the validated history: every forecast's role, with the evidence it was read from. Nothing is promoted automatically.",
+    "noRun": "No research V2 run has been stored yet.",
+    "noneBeats": "No model beats the market or adds information to it: qualified picks stay at 0, and every pick stays shadow (evaluation mode).",
+    "challengersWait_one": "{count} challenger waits for an explicit promotion; until then no pick is qualified.",
+    "challengersWait_other": "{count} challengers wait for an explicit promotion; until then no pick is qualified.",
+    "role": {
+      "CHAMPION": "Champion",
+      "CHALLENGER": "Challenger",
+      "RESEARCH": "Research",
+      "REJECTED": "Rejected"
+    },
+    "facts": {
+      "run": "Run",
+      "dataAsOf": "Data as of",
+      "features": "Feature version",
+      "champion": "Champion",
+      "challengers": "Challengers",
+      "qualified": "Qualified models"
+    },
+    "sections": {
+      "models": "Models against the champion",
+      "markets": "Market baselines (E1)",
+      "prospective": "Prospective: forecasts stored before kick-off, by segment",
+      "audit": "Shadow picks: price, edge or luck (E0)"
+    },
+    "notes": {
+      "models": "Difference = model minus champion log loss on the same fixtures (negative is better), 95% interval over match days. Weight w: what a blend with the market gives the model - above 0 means it adds information. Blend: the validation-fitted weight applied to the test season.",
+      "markets": "Every de-vigged 1X2 price scored as a forecast on the fixtures all of them priced; the lowest log loss is the champion.",
+      "prospective": "Since 25 Sep 2026, against the last consensus before kick-off. Grey: too few matches to judge.",
+      "audit": "Per settled pick, against the last de-vigged consensus before kick-off: EV at the close is what the bet was worth by the market's view; luck is the realised return minus that. Means per one-unit pick ± standard error."
+    },
+    "cols": {
+      "model": "Model",
+      "role": "Role",
+      "logloss": "Log loss",
+      "vsChampion": "vs champion [95%]",
+      "weight": "Weight w [95%]",
+      "blend": "Blend vs champion [95%]",
+      "weightPreClosing": "w vs pre-closing [95%]",
+      "baseline": "Baseline",
+      "segment": "Segment",
+      "matches": "Matches",
+      "modelLogloss": "Model log loss",
+      "closeLogloss": "Close log loss",
+      "difference": "Difference [95%]"
+    },
+    "audit": {
+      "odds": "Odds",
+      "picks": "Picks",
+      "realised": "Realised ROI",
+      "claimed": "Claimed EV",
+      "atClose": "EV at the close",
+      "luck": "Luck",
+      "all": "All"
+    },
+    "prospective": {
+      "none": "No forecast stored before kick-off has a closing price yet."
+    },
+    "legacy": {
+      "summary_one": "{count} run from before the rebuild, kept as it was (LEGACY_RESEARCH_RUN)",
+      "summary_other": "{count} runs from before the rebuild, kept as they were (LEGACY_RESEARCH_RUN)"
+    },
+    "segment": {
+      "all": "All",
+      "top_league": "Top leagues",
+      "other_league": "Other leagues",
+      "domestic_cup": "Domestic cups",
+      "continental_club": "Continental club",
+      "club_friendly": "Club friendlies",
+      "national_team": "National teams",
+      "women": "Women",
+      "youth": "Youth"
+    },
+    "models": {
+      "poisson": "Poisson (Maher)",
+      "dixon_coles": "Dixon-Coles",
+      "elo_ologit": "Elo V2 + ordered logit",
+      "base_rates": "League base rates",
+      "mnlogit": "Multinomial logit",
+      "hgb": "Gradient boosting",
+      "hgb_market": "Gradient boosting + pre-closing market"
+    }
   }
 }

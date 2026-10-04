@@ -225,5 +225,90 @@
     "lastMatch": "Último partido",
     "provisional": "provisional",
     "fewMatches": "Menos de cinco partidos computados."
+  },
+  "v2": {
+    "title": "Investigación V2 - roles frente al mercado",
+    "subtitle": "La última ejecución sobre el histórico validado: el rol de cada pronóstico, con la evidencia de la que se leyó. Nada se promociona automáticamente.",
+    "noRun": "Todavía no se ha guardado ninguna ejecución de la investigación V2.",
+    "noneBeats": "Ningún modelo supera al mercado ni le aporta información: los picks calificados siguen en 0 y todo pick sigue en shadow (modo de evaluación).",
+    "challengersWait_one": "{count} challenger espera una promoción explícita; hasta entonces ningún pick está calificado.",
+    "challengersWait_other": "{count} challengers esperan una promoción explícita; hasta entonces ningún pick está calificado.",
+    "role": {
+      "CHAMPION": "Champion",
+      "CHALLENGER": "Challenger",
+      "RESEARCH": "Research",
+      "REJECTED": "Rejected"
+    },
+    "facts": {
+      "run": "Ejecución",
+      "dataAsOf": "Datos a",
+      "features": "Versión de features",
+      "champion": "Champion",
+      "challengers": "Challengers",
+      "qualified": "Modelos calificados"
+    },
+    "sections": {
+      "models": "Modelos frente al champion",
+      "markets": "Líneas base de mercado (E1)",
+      "prospective": "Prospectivo: pronósticos guardados antes del inicio, por segmento",
+      "audit": "Picks shadow: precio, ventaja o suerte (E0)"
+    },
+    "notes": {
+      "models": "Diferencia = log loss del modelo menos la del champion en los mismos partidos (negativo es mejor), intervalo del 95 % sobre jornadas. Peso w: lo que una mezcla con el mercado le da al modelo; por encima de 0 significa que aporta información. Mezcla: el peso ajustado en la temporada de validación, aplicado a la de test.",
+      "markets": "Cada cuota 1X2 sin margen evaluada como pronóstico en los partidos que todas cotizaron; la menor log loss es el champion.",
+      "prospective": "Desde el 25 sep 2026, frente al último consenso antes del inicio. En gris: muy pocos partidos para juzgar.",
+      "audit": "Por pick liquidado, frente al último consenso sin margen antes del inicio: el EV al cierre es lo que valía la apuesta según el mercado; la suerte es el retorno realizado menos eso. Medias por pick de una unidad ± error estándar."
+    },
+    "cols": {
+      "model": "Modelo",
+      "role": "Rol",
+      "logloss": "Log loss",
+      "vsChampion": "vs champion [95 %]",
+      "weight": "Peso w [95 %]",
+      "blend": "Mezcla vs champion [95 %]",
+      "weightPreClosing": "w vs pre-cierre [95 %]",
+      "baseline": "Línea base",
+      "segment": "Segmento",
+      "matches": "Partidos",
+      "modelLogloss": "Log loss modelo",
+      "closeLogloss": "Log loss cierre",
+      "difference": "Diferencia [95 %]"
+    },
+    "audit": {
+      "odds": "Cuota",
+      "picks": "Picks",
+      "realised": "ROI realizado",
+      "claimed": "EV declarado",
+      "atClose": "EV al cierre",
+      "luck": "Suerte",
+      "all": "Todos"
+    },
+    "prospective": {
+      "none": "Ningún pronóstico guardado antes del inicio tiene todavía precio de cierre."
+    },
+    "legacy": {
+      "summary_one": "{count} ejecución anterior a la reconstrucción, conservada tal cual (LEGACY_RESEARCH_RUN)",
+      "summary_other": "{count} ejecuciones anteriores a la reconstrucción, conservadas tal cual (LEGACY_RESEARCH_RUN)"
+    },
+    "segment": {
+      "all": "Todos",
+      "top_league": "Ligas top",
+      "other_league": "Otras ligas",
+      "domestic_cup": "Copas nacionales",
+      "continental_club": "Clubes continental",
+      "club_friendly": "Amistosos de clubes",
+      "national_team": "Selecciones",
+      "women": "Femenino",
+      "youth": "Juveniles"
+    },
+    "models": {
+      "poisson": "Poisson (Maher)",
+      "dixon_coles": "Dixon-Coles",
+      "elo_ologit": "Elo V2 + logit ordenado",
+      "base_rates": "Frecuencias de liga",
+      "mnlogit": "Logit multinomial",
+      "hgb": "Gradient boosting",
+      "hgb_market": "Gradient boosting + mercado pre-cierre"
+    }
   }
 }
