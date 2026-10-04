@@ -69,7 +69,8 @@ def test_roles_follow_the_evidence() -> None:
 def test_the_audit_separates_the_price_from_luck() -> None:
     ko = datetime(2026, 9, 30, 18, tzinfo=UTC)
     base = {"competition": "Premier League", "competition_type": "domestic_league", "entity_scope": "club",
-            "tier": 1, "model": "dixon_coles", "market_key": "1X2", "kickoff_at": ko, "p_push": None}
+            "tier": 1, "model": "dixon_coles", "market_key": "1X2", "kickoff_at": ko, "p_push": None,
+            "fixture_id": 9}
     rows = [
         base | {"id": 1, "market_odds": Decimal("3.00"), "profit_units": Decimal("-1"), "ev": Decimal("0.20"),
                 "p_close": Decimal("0.30"), "close_at": ko - timedelta(minutes=30)},
@@ -115,3 +116,14 @@ def test_the_trees_are_walk_forward_and_take_the_pre_closing_price_only() -> Non
         for block in run.blocks:
             assert block.newest_train_kickoff is None or block.newest_train_kickoff < block.cutoff
     assert len(FEATURE_NAMES) > 30
+
+
+def test_picks_on_one_match_are_one_cluster() -> None:
+    from fbi.research.pick_audit import mean_se
+
+    independent = [(i, x) for i, x in enumerate([1.0, -1.0, 1.0, -1.0, 1.0, -1.0])]
+    together = [(i // 3, x) for i, x in enumerate([1.0, 1.0, 1.0, -1.0, -1.0, -1.0])]
+    _, se_ind = mean_se(independent)
+    _, se_tog = mean_se(together)
+    assert se_ind is not None and se_tog is not None and se_tog > se_ind, \
+        "three picks that win or lose together are one piece of evidence, not three"

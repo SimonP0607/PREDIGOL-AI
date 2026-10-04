@@ -17,7 +17,7 @@ from fbi.backtesting.persist import config_hash, config_json, hgb_hyper, scores_
 from fbi.backtesting.session import hypers_for
 from fbi.features.engine import FEATURE_VERSION
 from fbi.research.experiments import environment, record_session
-from fbi.research.prospective import MIN_SEGMENT, SegmentResult
+from fbi.research.prospective import MIN_DAYS, MIN_SEGMENT, SegmentResult
 from fbi.research.v2 import V2Result
 
 QUESTION = ("Research V2 on the validated history: does any model family - alone, or blended with the market - "
@@ -41,8 +41,10 @@ def _insert(cur: psycopg.Cursor[Any], *, name: str, kind: str, family: str, ques
 
 def prospective_role(r: SegmentResult) -> tuple[str, str]:
     c = r.comparison
-    if c is None or r.n_common < MIN_SEGMENT:
-        return "RESEARCH", f"{r.n_common} matches with a forecast and a closing price: fewer than {MIN_SEGMENT}"
+    if c is None or not r.judged:
+        return "RESEARCH", (f"{r.n_common} matches with a forecast and a closing price on "
+                            f"{0 if c is None else c.n_blocks} days: fewer than {MIN_SEGMENT} matches or "
+                            f"{MIN_DAYS} days, not judged")
     d = c.logloss_diff
     w = "no blend weight" if r.w is None else f"blend weight {r.w[0]:+.3f} [{r.w[1]:+.3f}, {r.w[2]:+.3f}]"
     alone = f"log loss vs the close {d.mean:+.4f} [{d.lo:+.4f}, {d.hi:+.4f}] on {c.n_common} matches"

@@ -13,7 +13,12 @@ A realised return well below zero with an EV at the close near zero is bad luck;
 EV at the close itself well below zero, the picks were bets the market priced correctly and
 the model did not - adverse selection, the "finding value on longshots" pattern
 (``docs/research/MODEL_RESEARCH_V2_2026.md`` section 2). Standard errors are of the mean
-per pick (flat one-unit stakes), so the reading carries its uncertainty.
+per pick (flat one-unit stakes) and CLUSTERED BY MATCH: several picks on one match (its
+handicap lines, its totals) win and lose together, and treating them as independent would
+shrink the error bars.
+
+"The close" is the last consensus WE captured before kick-off, not necessarily the market's
+final price (the report gives how long before kick-off it was, as a median).
 
 Read only. No threshold is changed here: this is a diagnosis of the inputs, not a fix.
 """
@@ -61,6 +66,7 @@ SELECT s.*, c.p_close, c.close_at, c.n_bookmakers FROM settled s LEFT JOIN close
 @dataclass(frozen=True, slots=True)
 class AuditedPick:
     pick_id: int
+    fixture_id: int
     market_key: str
     model: str
     segment: str
@@ -73,45 +79,60 @@ class AuditedPick:
     minutes_before: float | None
 
 
+Obs = list[tuple[int, float]]
+"""(cluster - the fixture id, value)."""
+
+
+def mean_se(xs: Obs) -> tuple[float | None, float | None]:
+    """The mean and its standard error, clustered: the variance of the mean is the sum over
+    clusters of their summed deviations squared, over n squared, with the small-sample
+    correction C / (C - 1). With one observation per cluster it is the ordinary error."""
+    if not xs:
+        return None, None
+    n = len(xs)
+    mean = sum(v for _, v in xs) / n
+    clusters: dict[int, float] = defaultdict(float)
+    for c, v in xs:
+        clusters[c] += v - mean
+    k = len(clusters)
+    if k < 2:
+        return mean, None
+    var = sum(d * d for d in clusters.values()) / (n * n) * k / (k - 1)
+    return mean, math.sqrt(var)
+
+
 @dataclass
 class Group:
     n: int = 0
-    profits: list[float] = field(default_factory=list)
+    profits: Obs = field(default_factory=list)
     odds: list[float] = field(default_factory=list)
-    claimed: list[float] = field(default_factory=list)
-    ev_close: list[float] = field(default_factory=list)
-    luck: list[float] = field(default_factory=list)
-    clv: list[float] = field(default_factory=list)
+    claimed: Obs = field(default_factory=list)
+    ev_close: Obs = field(default_factory=list)
+    luck: Obs = field(default_factory=list)
+    clv: Obs = field(default_factory=list)
+    fixtures: set[int] = field(default_factory=set)
 
     def add(self, p: AuditedPick) -> None:
         self.n += 1
-        self.profits.append(p.profit)
+        self.fixtures.add(p.fixture_id)
+        self.profits.append((p.fixture_id, p.profit))
         self.odds.append(p.odds)
-        self.claimed.append(p.claimed_ev)
+        self.claimed.append((p.fixture_id, p.claimed_ev))
         if p.ev_close is not None:
-            self.ev_close.append(p.ev_close)
-            self.luck.append(p.profit - p.ev_close)
+            self.ev_close.append((p.fixture_id, p.ev_close))
+            self.luck.append((p.fixture_id, p.profit - p.ev_close))
         if p.clv is not None:
-            self.clv.append(p.clv)
-
-    @staticmethod
-    def _mean_se(xs: list[float]) -> tuple[float | None, float | None]:
-        if not xs:
-            return None, None
-        mean = sum(xs) / len(xs)
-        if len(xs) < 2:
-            return mean, None
-        var = sum((x - mean) ** 2 for x in xs) / (len(xs) - 1)
-        return mean, math.sqrt(var / len(xs))
+            self.clv.append((p.fixture_id, p.clv))
 
     def summary(self) -> dict[str, Any]:
-        roi, roi_se = self._mean_se(self.profits)
-        evc, evc_se = self._mean_se(self.ev_close)
-        luck, luck_se = self._mean_se(self.luck)
-        clv, clv_se = self._mean_se(self.clv)
-        claimed, _ = self._mean_se(self.claimed)
-        return {"n": self.n, "mean_odds": None if not self.odds else round(sum(self.odds) / len(self.odds), 3),
-                "profit_units": round(sum(self.profits), 2), "roi": roi, "roi_se": roi_se,
+        roi, roi_se = mean_se(self.profits)
+        evc, evc_se = mean_se(self.ev_close)
+        luck, luck_se = mean_se(self.luck)
+        clv, clv_se = mean_se(self.clv)
+        claimed, _ = mean_se(self.claimed)
+        return {"n": self.n, "fixtures": len(self.fixtures),
+                "mean_odds": None if not self.odds else round(sum(self.odds) / len(self.odds), 3),
+                "profit_units": round(sum(v for _, v in self.profits), 2), "roi": roi, "roi_se": roi_se,
                 "claimed_ev": claimed, "n_with_close": len(self.ev_close), "ev_at_close": evc,
                 "ev_at_close_se": evc_se, "luck": luck, "luck_se": luck_se, "clv": clv, "clv_se": clv_se}
 
@@ -134,7 +155,8 @@ def audited(rows: list[dict[str, Any]]) -> list[AuditedPick]:
         minutes = None if r["close_at"] is None else (r["kickoff_at"] - r["close_at"]).total_seconds() / 60
         seg = segment_of(CompetitionFacts(str(r["competition"]), r["competition_type"], r["entity_scope"],
                                           None if r["tier"] is None else int(r["tier"]))).value
-        out.append(AuditedPick(int(r["id"]), str(r["market_key"]), str(r["model"]), seg, o, u,
+        out.append(AuditedPick(int(r["id"]), int(r["fixture_id"]), str(r["market_key"]), str(r["model"]), seg, o,
+                               u,
                                float(r["profit_units"]), float(r["ev"]), ev_close, clv, minutes))
     return out
 
@@ -155,7 +177,8 @@ class AuditResult:
                 "by_market": self.by_market, "by_segment": self.by_segment, "by_model": self.by_model,
                 "median_close_minutes_before_kickoff": self.median_minutes_before,
                 "method": "EV at the close = p_close*(1-push)*odds + push - 1, p_close the last Shin consensus "
-                          "before kick-off; luck = realised - EV at the close; SE of the mean per pick"}
+                          "captured before kick-off; luck = realised - EV at the close; SE of the mean per pick, "
+                          "clustered by match"}
 
 
 def audit_picks(conn: psycopg.Connection[Any], *, at: datetime) -> AuditResult:

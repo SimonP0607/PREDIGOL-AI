@@ -33,6 +33,8 @@ from fbi.research.blend import weight_interval
 SINCE = datetime.fromisoformat("2026-09-25T00:00:00+00:00")
 MIN_SEGMENT = 50
 """Fewer matches than this in a segment: reported, not judged."""
+MIN_DAYS = 5
+"""Fewer match days than this: the day-block interval has nothing to resample - not judged."""
 
 PROSPECTIVE_SQL = """
 WITH played AS (
@@ -106,11 +108,16 @@ class SegmentResult:
     comparison: Comparison | None
     w: tuple[float, float, float] | None
 
+    @property
+    def judged(self) -> bool:
+        c = self.comparison
+        return c is not None and self.n_common >= MIN_SEGMENT and (c.n_blocks or 0) >= MIN_DAYS
+
     def as_json(self) -> dict[str, Any]:
         c = self.comparison
         return {"segment": self.segment, "model": self.model, "played": self.n_played,
                 "forecast": self.n_forecast, "with_market": self.n_common,
-                "judged": c is not None and self.n_common >= MIN_SEGMENT,
+                "days": None if c is None else c.n_blocks, "judged": self.judged,
                 "model_logloss": None if c is None else c.model.log_loss,
                 "market_logloss": None if c is None else c.baseline.log_loss,
                 "diff": None if c is None else [c.logloss_diff.mean, c.logloss_diff.lo, c.logloss_diff.hi],

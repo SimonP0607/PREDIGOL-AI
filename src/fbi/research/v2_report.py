@@ -6,7 +6,7 @@ from typing import Any
 
 from fbi.backtesting.persist import comparison_json, scores_json
 from fbi.features.engine import FEATURE_VERSION
-from fbi.research.prospective import MIN_SEGMENT
+from fbi.research.prospective import MIN_DAYS, MIN_SEGMENT
 from fbi.research.v2 import V2Result
 from fbi.research.v2_record import prospective_role
 
@@ -97,9 +97,10 @@ def report_markdown(result: V2Result, *, title: str) -> str:
     if result.audit is not None:
         a = result.audit
         lines += ["", "## E0 - the shadow picks' returns: price, edge or luck", "",
-                  "Per settled pick, against the last de-vigged consensus before kick-off "
-                  f"(median {_f(a.median_minutes_before, 0)} min before): EV at the close = what the bet was worth "
-                  "by the market's view; luck = realised minus that. Means per one-unit pick, with standard errors.",
+                  "Per settled pick, against the last de-vigged consensus we captured before kick-off "
+                  f"(median {_f(a.median_minutes_before, 0)} min before - not necessarily the final price): EV at "
+                  "the close = what the bet was worth by the market's view; luck = realised minus that. Means per "
+                  "one-unit pick, with standard errors clustered by match.",
                   "", "| Odds | Picks | Mean odds | Realised ROI | Claimed EV | EV at the close | Luck |",
                   "|---|---:|---:|---|---:|---|---|"]
 
@@ -120,15 +121,17 @@ def report_markdown(result: V2Result, *, title: str) -> str:
         p = result.prospective
         lines += ["", f"## Prospective - forecasts stored before kick-off, {p.since:%d %b} to {p.until:%d %b %Y}", "",
                   f"{p.played} matches played and validated, {p.priced} with a closing 1X2 consensus of 2+ books. "
-                  f"A segment with fewer than {MIN_SEGMENT} matches is reported, not judged.", "",
+                  f"A segment with fewer than {MIN_SEGMENT} matches or {MIN_DAYS} match days is reported, not "
+                  "judged.", "",
                   "| Segment | Model | Matches | Model LL | Close LL | Difference [95%] | w [95%] | Reading |",
                   "|---|---|---:|---:|---:|---|---|---|"]
         for sr in sorted(p.rows, key=lambda x: (x.segment != "all", x.segment, x.model)):
             c = sr.comparison
             if c is None:
                 continue
-            diff = f"{c.logloss_diff.mean:+.4f} [{c.logloss_diff.lo:+.4f}, {c.logloss_diff.hi:+.4f}]"
-            w = "-" if sr.w is None else f"{sr.w[0]:+.2f} [{sr.w[1]:+.2f}, {sr.w[2]:+.2f}]"
+            diff = (f"{c.logloss_diff.mean:+.4f} [{c.logloss_diff.lo:+.4f}, {c.logloss_diff.hi:+.4f}]" if sr.judged
+                    else f"{c.logloss_diff.mean:+.4f} (not judged)")
+            w = "-" if sr.w is None or not sr.judged else f"{sr.w[0]:+.2f} [{sr.w[1]:+.2f}, {sr.w[2]:+.2f}]"
             lines.append(f"| {sr.segment} | {sr.model} | {sr.n_common} | {c.model.log_loss:.4f} | "
                          f"{c.baseline.log_loss:.4f} | {diff} | {w} | {prospective_role(sr)[0]} |")
     challengers = [m for m, r in result.roles.items() if r.role == "CHALLENGER"]
