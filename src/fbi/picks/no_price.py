@@ -16,7 +16,8 @@ the edge the rule asks for. Rule ``no-price-watch-v1`` (versioned like the pick 
   provider was asked and had none (PRICE_UNAVAILABLE) or does not cover the competition
   (NOT_COVERED) - a price still PENDING is waited for, not replaced;
 * the forecast is the newest real-time one of the watch model, made before now;
-* one selection per market: the model's most likely outcome;
+* one selection per market: the model's most likely outcome, and only a forecast WITH a
+  measured interval (without one there is no pessimistic end, so no honest minimum price);
 * MODEL_INTERESTING_NO_PRICE when ``min_odds`` falls inside the rule's odds band, so a
   bookmaker could plausibly offer it; otherwise the market stays PRICE_UNAVAILABLE with the
   model's view attached.
@@ -106,14 +107,14 @@ def watch(conn: psycopg.Connection[Any], fixture_ids: list[int], *, at: datetime
     best: dict[tuple[int, str, Decimal], dict[str, Any]] = {}
     for r in rows:
         key = (int(r["fixture_id"]), str(r["market_key"]), Decimal(r["line"]))
-        if key not in unpriced or r["p_calibrated"] is None:
+        if key not in unpriced or r["p_calibrated"] is None or r["p_lo"] is None:
             continue
         if key not in best or Decimal(r["p_calibrated"]) > Decimal(best[key]["p_calibrated"]):
             best[key] = r
     out: list[NoPriceView] = []
     for key, r in sorted(best.items(), key=lambda kv: (kv[0][0], [m for m, _ in CORE_MARKETS].index(kv[0][1]))):
         p = Decimal(r["p_calibrated"])
-        p_low = Decimal(r["p_lo"]) if r["p_lo"] is not None else p
+        p_low = Decimal(r["p_lo"])
         if p <= 0 or p_low <= 0:
             continue
         min_odds = _q((1 + rule.min_ev) / p_low)

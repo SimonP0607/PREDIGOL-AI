@@ -295,7 +295,9 @@ def period_bounds(period: Period, *, at: datetime, tz: str) -> tuple[datetime, d
 def history(conn: psycopg.Connection[Any], *, user_id: int, period: Period, tz: str, at: datetime,
             include_evaluation: bool) -> dict[str, GroupStats]:
     since, until = period_bounds(period, at=at, tz=tz)
-    sources = ["qualified", "evaluation"] if include_evaluation else ["qualified"]
+    # The evaluation records are their own superset view (qualified picks are in it too): the
+    # preview shows them alone, as the board does, never added to the qualified ones.
+    sources = ["evaluation"] if include_evaluation else ["qualified"]
     out: dict[str, GroupStats] = {}
     for group, sql in GROUP_SQL.items():
         stats = GroupStats()

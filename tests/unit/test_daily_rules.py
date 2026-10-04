@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from fbi.parlays.persist import quarter_line
-from fbi.picks.daily import product_day, single_elg, stage_of
+from fbi.parlays.engine import Candidate, Leg
+from fbi.parlays.persist import SPECS, choose, quarter_line
+from fbi.picks.daily import Ranked, passing, product_day, single_elg, stage_of
 from fbi.picks.product_settlement import parlay_outcome
 from fbi.userdata.records import period_bounds, valid_selection
 
@@ -51,3 +52,35 @@ def test_history_periods_end_at_the_users_midnight() -> None:
     assert (since.isoformat(), until.isoformat()) == ("2032-08-01T00:00:00-05:00", "2032-08-02T00:00:00-05:00")
     since7, _ = period_bounds("7d", at=at, tz="America/Bogota")
     assert since7.isoformat() == "2032-07-26T00:00:00-05:00"
+
+
+def _ranked(n: int, kickoff: datetime, p_low: str = "0.45", price: str = "2.30") -> Ranked:
+    c = Candidate(pick_id=n, fixture_id=n, kickoff_at=kickoff, fixture_status="scheduled", home_team_id=100 + 2 * n,
+                  away_team_id=101 + 2 * n, market_key="1X2", selection="Home", line=D(0), qualified=True,
+                  model_status="active", p_model=D("0.50"), p_push=None, p_market_fair=D("0.43"), price=D(price),
+                  price_at=kickoff - timedelta(hours=1), n_bookmakers=5)
+    leg = Leg(candidate=c, p_win=D("0.50"), p_push=D(0), ev=D("0.15"), probability_edge=D("0.07"))
+    return Ranked(leg, {}, D(p_low), single_elg(D(price), D(p_low), None))
+
+
+def test_a_multiday_parlay_takes_a_leg_from_another_day_when_it_must() -> None:
+    today = datetime(2032, 8, 1, 15, tzinfo=UTC)
+    pool = [_ranked(1, today, "0.48"), _ranked(2, today + timedelta(hours=1), "0.48"),
+            _ranked(3, today + timedelta(hours=2), "0.48"), _ranked(4, today + timedelta(days=1), "0.45")]
+    legs = choose(pool, SPECS["multiday"])
+    assert legs is not None
+    days = {product_day(x.leg.candidate.kickoff_at) for x in legs}
+    assert len(days) == 2 and 4 in {x.leg.candidate.fixture_id for x in legs}
+    assert choose(pool[:3], SPECS["multiday"]) is None, "one day only: no multi-day parlay"
+
+
+def test_a_probability_without_an_interval_is_not_ranked() -> None:
+    at = datetime(2032, 8, 1, 15, tzinfo=UTC)
+    row = {"pick_id": 1, "fixture_id": 1, "kickoff_at": at + timedelta(hours=5), "fixture_status": "scheduled",
+           "home_team_id": 10, "away_team_id": 11, "market_key": "AH", "selection": "Away", "line": D("0.5"),
+           "pick_status": "qualified", "model_status": "active", "p_model": D("0.58"), "p_push": None,
+           "p_fair": D("0.19"), "best_odds": D("4.50"), "price_at": at - timedelta(minutes=20), "n_bookmakers": 3,
+           "p_low": None}
+    assert passing([row], at=at, source="qualified") == [], "no low end to rank by: not ranked as if certain"
+    measured = passing([{**row, "fixture_id": 2, "p_low": D("0.40")}], at=at, source="qualified")
+    assert [x.p_low for x in measured] == [D("0.40")]

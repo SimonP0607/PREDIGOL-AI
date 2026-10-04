@@ -1,6 +1,7 @@
 """DAILY_PICK_SET: up to five picks per product day, chosen progressively and then frozen.
 
-Rule ``daily-set-v1``. The product day runs midnight to midnight in America/Bogota, where
+Rule ``daily-set-v2`` (v1, 2026-10-04 only, let a probability without an interval stand in
+for its own low end; its records are kept as they were chosen). The product day runs midnight to midnight in America/Bogota, where
 the platform's users are. Every pipeline run (and every price capture) revisits the next
 24 hours:
 
@@ -11,7 +12,10 @@ the platform's users are. Every pipeline run (and every price capture) revisits 
 * Candidates are ranked by expected log growth of a 1% stake computed with the PESSIMISTIC
   end of the model's interval (``p_low``): an uncertain probability pays for its
   uncertainty before it can outrank a firmer one, and a pick whose pessimistic growth is
-  not positive is not worth taking at all, whatever its expected value.
+  not positive is not worth taking at all, whatever its expected value. A probability
+  WITHOUT a measured interval has no pessimistic end: it is not ranked, rather than ranked
+  as if it were certain (its point estimate standing in for the low end would make the
+  least-measured probabilities look the firmest).
 * The set fills up to five, one pick per match, in rank order. Never padded: a day with
   two picks worth taking has two.
 * An item is FROZEN when it enters the set: the price, bookmaker, probabilities, expected
@@ -40,7 +44,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.parlays.engine import Candidate, GateConfig, Leg, assess
 
-RULE_VERSION = "daily-set-v1"
+RULE_VERSION = "daily-set-v2"
 DAY_TZ = ZoneInfo("America/Bogota")
 MAX_ITEMS = 5
 HORIZON = timedelta(hours=24)
@@ -112,12 +116,14 @@ def passing(rows: list[dict[str, Any]], *, at: datetime, source: Source) -> list
     cfg = GateConfig(allow_unqualified=source == "evaluation")
     best: dict[tuple[int, str, str, Decimal], Ranked] = {}
     for r in rows:
+        if r.get("p_low") is None:
+            continue  # no measured interval: no pessimistic end to rank by
         verdict = assess(candidate_of(r), at, cfg)
         if not isinstance(verdict, Leg):
             continue
         c = verdict.candidate
         assert c.price is not None
-        p_low = Decimal(r["p_low"]) if r.get("p_low") is not None else c.p_model
+        p_low = Decimal(r["p_low"])
         ranked = Ranked(verdict, r, p_low, single_elg(c.price, p_low, c.p_push))
         key = c.selection_key
         if key not in best or ranked.elg > best[key].elg:

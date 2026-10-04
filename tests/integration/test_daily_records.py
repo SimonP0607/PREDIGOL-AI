@@ -215,3 +215,40 @@ def test_a_user_saves_picks_builds_a_parlay_and_reads_the_history(db: psycopg.Co
     assert (mine.total, mine.won, mine.lost) == (2, 2, 0)
     assert mine.profit == Decimal("2.7500") and mine.roi == pytest.approx(1.375)
     assert hist["my_parlays"].lost == 1
+
+
+def test_a_parlay_never_built_is_void_once_its_day_is_over(db: psycopg.Connection[Any], seed: Seed) -> None:
+    w = World(db, seed)
+    build_parlays(db, at=AT)
+    multiday = "SELECT id, status, window_from, window_to FROM picks.parlays WHERE kind = 'multiday' AND source = %s " \
+               "AND day = %s"
+    qualified = db.execute(multiday, ("qualified", product_day(AT))).fetchone()
+    assert qualified is not None and qualified[1] == "BUILDING", "every qualified match is today: no two-day parlay"
+    evaluation = db.execute(multiday, ("evaluation", product_day(AT))).fetchone()
+    assert evaluation is not None and evaluation[1] == "READY", "F7 tomorrow makes a two-day parlay possible"
+    assert (evaluation[2], evaluation[3]) == (AT, AT + timedelta(hours=72)), "the window its legs came from"
+    assert w.fixtures["F7"] in [r[0] for r in db.execute(
+        "SELECT fixture_id FROM picks.parlay_legs WHERE parlay_id = %s", (evaluation[0],)).fetchall()]
+
+    report = build_parlays(db, at=AT + timedelta(hours=24))
+    after = db.execute("SELECT status, profit_units, settled_at FROM picks.parlays WHERE id = %s",
+                       (qualified[0],)).fetchone()
+    assert after == ("VOID", Decimal("0.0000"), AT + timedelta(hours=24)), \
+        "the day ended without one: the record says there was no parlay, not a parlay still being built"
+    assert report.voided_unbuilt >= 1
+    assert db.execute("SELECT status FROM picks.parlays WHERE id = %s", (evaluation[0],)).fetchone() == ("READY",), \
+        "a built parlay is never voided for its day ending"
+
+
+def test_the_preview_history_reads_the_evaluation_records_alone(db: psycopg.Connection[Any], seed: Seed) -> None:
+    World(db, seed)
+    build_daily_sets(db, at=AT)
+    user = db.execute("INSERT INTO auth.users (email, display_name, password_hash) VALUES "
+                      "('preview-history@test.local', 'Preview', '$argon2id$x') RETURNING id").fetchone()
+    assert user is not None
+    as_user = userdata.history(db, user_id=int(user[0]), period="today", tz="America/Bogota", at=AT,
+                               include_evaluation=False)
+    preview = userdata.history(db, user_id=int(user[0]), period="today", tz="America/Bogota", at=AT,
+                               include_evaluation=True)
+    assert as_user["predigol_picks"].total == 2
+    assert preview["predigol_picks"].total == 5, "the evaluation set alone: the qualified items are not added again"

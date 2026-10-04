@@ -1,6 +1,7 @@
 """DAILY_PARLAY and MULTIDAY_PARLAY as records: built once, frozen, then followed to the end.
 
-Rule ``parlay-v2``. Legs come from the same gate the daily set uses (a current price from two
+Rule ``parlay-v3`` (v2, 2026-10-04 only, ranked legs without a measured interval as if certain
+and checked the day rule only after choosing; its records are kept as built). Legs come from the same gate the daily set uses (a current price from two
 or more books, not an outlier, positive expected value at that price), one per match and no
 team twice (``fbi.parlays.engine.guard``: distinct matches between distinct teams, so the legs
 are treated as independent). Quarter lines (.25 / .75) are left out: a half-won leg has no
@@ -19,8 +20,8 @@ multiplies the uncertainty in.
 Lifecycle: BUILDING (the day's parlay is being looked for: some candidates, not yet a
 parlay that grows) -> READY (built; legs frozen, nothing kicked off) -> ACTIVE (a leg has
 kicked off) -> WON / LOST / VOID / PARTIAL_VOID (settled; ``fbi.picks.product_settlement``).
-A BUILDING parlay whose window passes without one is VOID with no legs: there was no parlay
-that day, and the record says so.
+A BUILDING parlay whose product day ends (or whose window passes) without one is VOID with no
+legs: there was no parlay that day, and the record says so.
 """
 
 from __future__ import annotations
@@ -48,7 +49,7 @@ from fbi.picks.daily import (
     win_probability,
 )
 
-RULE_VERSION = "parlay-v2"
+RULE_VERSION = "parlay-v3"
 Kind = Literal["daily", "multiday"]
 
 
@@ -81,7 +82,12 @@ def quarter_line(line: Decimal) -> bool:
 
 
 def choose(pool: list[Ranked], spec: Spec) -> list[Ranked] | None:
-    """The legs, or None when no parlay of at least ``min_legs`` grows."""
+    """The legs, or None when no parlay of at least ``min_legs`` grows.
+
+    The day rule is honoured while choosing, not checked afterwards: once the slots left before
+    ``min_legs`` are only enough to reach ``min_days``, the next leg must come from a day the
+    parlay does not have yet (a multi-day parlay of three legs takes its third from another day
+    when its first two share one)."""
     legs: list[Ranked] = []
     fixtures: set[int] = set()
     teams: set[int] = set()
@@ -93,6 +99,10 @@ def choose(pool: list[Ranked], spec: Spec) -> list[Ranked] | None:
 
     while len(legs) < spec.max_legs:
         options = [x for x in pool if allowed(x)]
+        have = {product_day(x.leg.candidate.kickoff_at) for x in legs}
+        need_days = spec.min_days - len(have)
+        if need_days > 0 and spec.min_legs - len(legs) <= need_days:
+            options = [x for x in options if product_day(x.leg.candidate.kickoff_at) not in have]
         if not options:
             break
         best = max(options, key=lambda x: parlay_elg([*legs, x]))
@@ -175,16 +185,23 @@ def build_parlays(conn: psycopg.Connection[Any], *, at: datetime) -> ParlayRepor
                         (parlay_id, n, c.pick_id, c.fixture_id, c.market_key, c.selection, c.line, at, c.price,
                          r.get("bookmaker_id"), c.price_at, c.p_model, x.p_low, c.p_push or 0, c.p_market_fair,
                          x.leg.ev, Jsonb(frozen_inputs(x, at=at, source=source, rule=RULE_VERSION))))
+                # The window recorded is the one the legs were actually chosen from (a multi-day
+                # parlay looks 72 hours ahead of the moment it is built, not of the moment it was
+                # first looked for).
                 cur.execute(
                     "UPDATE picks.parlays SET status = 'READY', ready_at = %s, combined_odds = %s, p_all_low = %s, "
-                    "expected_log_growth = %s WHERE id = %s AND status = 'BUILDING'",
-                    (at, round(odds, 3), round(p_all, 8), round(Decimal(str(parlay_elg(legs))), 8), parlay_id))
+                    "expected_log_growth = %s, window_from = %s, window_to = %s, rule_version = %s "
+                    "WHERE id = %s AND status = 'BUILDING'",
+                    (at, round(odds, 3), round(p_all, 8), round(Decimal(str(parlay_elg(legs))), 8), frm, to,
+                     RULE_VERSION, parlay_id))
                 report.built += 1
                 report.by_kind[spec.kind] = report.by_kind.get(spec.kind, 0) + 1
     with conn.cursor() as cur:
+        # Looked for and never built: once its product day is over (or its window has passed)
+        # the record says there was no parlay that day.
         cur.execute("UPDATE picks.parlays p SET status = 'VOID', settled_at = %s, profit_units = 0 "
-                    "WHERE p.status = 'BUILDING' AND p.window_to <= %s "
-                    "AND NOT EXISTS (SELECT 1 FROM picks.parlay_legs l WHERE l.parlay_id = p.id)", (at, at))
+                    "WHERE p.status = 'BUILDING' AND (p.window_to <= %s OR p.day < %s) "
+                    "AND NOT EXISTS (SELECT 1 FROM picks.parlay_legs l WHERE l.parlay_id = p.id)", (at, at, today))
         report.voided_unbuilt = max(cur.rowcount, 0)
     return report
 
