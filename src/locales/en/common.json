@@ -81,5 +81,6 @@
   "disclaimer": "PrediGol shows information and analysis; it guarantees no result. Please gamble responsibly (18+).",
   "openMenu": "Open menu",
   "closeMenu": "Close menu",
-  "account": "Account"
+  "account": "Account",
+  "photoAlt": "Photo of {name}"
 }

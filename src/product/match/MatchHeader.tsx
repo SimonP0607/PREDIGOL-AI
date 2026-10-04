@@ -1,6 +1,6 @@
 /** The match at a glance: competition, crests, score or kick-off, state and venue. */
 import type { ReactNode } from "react";
-import { CalendarDays, MapPin } from "lucide-react";
+import { CalendarDays, MapPin, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { formatDate, formatDateLong, formatRelative, formatTime, relativeDay } from "@/lib/time";
@@ -265,6 +265,15 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
             <span className="truncate">
               {venue.name}
               {venue.city ? `, ${venue.city}` : ""}
+            </span>
+          </span>
+        ) : null}
+        {center?.facts?.referee ? (
+          <span className="inline-flex min-w-0 items-center gap-1.5" data-testid="match-referee">
+            <UserRound aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtle-foreground" />
+            <span className="truncate">
+              {t("match.header.referee", { name: center.facts.referee })}
+              {center.facts.referee_country ? ` (${center.facts.referee_country})` : ""}
             </span>
           </span>
         ) : null}

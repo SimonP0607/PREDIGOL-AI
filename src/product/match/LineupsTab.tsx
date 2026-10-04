@@ -11,7 +11,7 @@ import type {
   TeamLineup,
 } from "@/lib/api/v1/types_center";
 import type { TeamRef } from "@/lib/api/v1/types";
-import { TeamName } from "@/components/football/Logos";
+import { PlayerPhoto, TeamName } from "@/components/football/Logos";
 import { Card, EmptyState } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import { AbsencesBlock } from "./ContextBlocks";
@@ -257,6 +257,7 @@ function PlayerRows({
             <span className="numeric w-6 shrink-0 text-right text-xs text-subtle-foreground">
               {p.number ?? "—"}
             </span>
+            <PlayerPhoto src={p.photo_url} name={p.name ?? "?"} size={22} />
             <PlayerName
               name={p.name}
               id={p.player_id}

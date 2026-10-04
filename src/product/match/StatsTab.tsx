@@ -1,10 +1,10 @@
 /** Every team figure we have for the match side by side, and the best-rated players. */
 import { useState } from "react";
 import { BarChart3, History, Star, Trophy } from "lucide-react";
-import { t } from "@/lib/i18n";
+import { t, translateOr } from "@/lib/i18n";
 import { toNumber } from "@/lib/i18n/format";
 import type { PlayerLine } from "@/lib/api/v1/types_center";
-import { TeamLogo } from "@/components/football/Logos";
+import { PlayerPhoto, TeamLogo } from "@/components/football/Logos";
 import type { MatchCtx } from "./context";
 import { ageLevel, ratedPlayers, recentRows, seasonRows, statRows } from "./model";
 import {
@@ -21,6 +21,9 @@ import {
 
 function PlayerFacts({ p }: { p: PlayerLine }) {
   const facts = [
+    p.position_played
+      ? translateOr(`match.lineups.position.${p.position_played}`, p.position_played)
+      : null,
     p.minutes !== null ? t("match.players.minutes", { count: p.minutes }) : null,
     p.goals ? t("match.players.goals", { count: p.goals }) : null,
     p.assists ? t("match.players.assists", { count: p.assists }) : null,
@@ -46,7 +49,15 @@ function TopPlayers({ ctx, players }: { ctx: MatchCtx; players: PlayerLine[] }) 
               <span className="numeric w-4 shrink-0 text-right text-caption text-subtle-foreground">
                 {i + 1}
               </span>
-              <TeamLogo src={team.logo_url} name={team.name} size={20} />
+              <span className="relative shrink-0">
+                <PlayerPhoto src={p.photo_url} name={p.name ?? "?"} size={30} />
+                <TeamLogo
+                  src={team.logo_url}
+                  name={team.name}
+                  size={14}
+                  className="absolute -bottom-1 -right-1"
+                />
+              </span>
               <div className="min-w-0 flex-1">
                 <PlayerName
                   name={p.name}

@@ -48,6 +48,8 @@ export interface LineupPlayer {
   position: string | null;
   grid: string | null;
   starter: boolean;
+  /** The provider's photo URL as stored; null: initials, never a guessed URL. */
+  photo_url?: string | null;
 }
 
 export interface TeamLineup {
@@ -75,6 +77,27 @@ export interface PlayerLine {
   red_cards: number | null;
   saves: number | null;
   substitute: boolean | null;
+  photo_url?: string | null;
+  /** The position he played in this match (G, D, M, F). */
+  position_played?: string | null;
+  offsides?: number | null;
+  dribbled_past?: number | null;
+  penalties_won?: number | null;
+  penalties_committed?: number | null;
+  penalties_saved?: number | null;
+}
+
+/** What the fixture's payloads say beyond the score: referee, winner flags, half starts. */
+export interface MatchFacts {
+  referee: string | null;
+  referee_country: string | null;
+  home_winner: boolean | null;
+  away_winner: boolean | null;
+  first_half_at: Iso | null;
+  second_half_at: Iso | null;
+  observed_at: Iso;
+  payload_hash: string;
+  normalizer_version: string;
 }
 
 export interface Absence {
@@ -204,6 +227,7 @@ export interface MatchCenter {
   live_states: Section<LiveState[]>;
   live_odds: Section<LiveQuote[]>;
   live_movement: Section<LiveMove[]>;
+  facts?: MatchFacts | null;
 }
 
 export interface LiveTeam {
@@ -267,6 +291,10 @@ export interface PlayerSummary {
   nationality: string | null;
   position: string | null;
   birth_date: string | null;
+  /** The provider's photo URL as stored (profiles); null: initials. */
+  photo_url?: string | null;
+  team_logo?: string | null;
+  national_team_logo?: string | null;
   /** The player's CLUB now (newest squad, else last club appearance) - never a national side. */
   team_id: number | null;
   team: string | null;

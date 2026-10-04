@@ -11,6 +11,7 @@ import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice, Nullable, SectionView, StatusNotice } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
 import type { PlayerSummary } from "@/lib/api/v1/types_center";
+import { PlayerPhoto, TeamName } from "@/components/football/Logos";
 import { dec, utcDate } from "./format";
 
 function age(birth: string | null): string | null {
@@ -47,25 +48,40 @@ function PlayersTable({ rows }: { rows: PlayerSummary[] }) {
         {rows.map((p) => (
           <TRow key={p.id}>
             <TD className="text-sm">
-              <Link
-                to="/admin/players/$playerId"
-                params={{ playerId: String(p.id) }}
-                className="hover:text-primary"
-              >
-                {p.name}
-              </Link>
-              <div className="text-caption text-subtle-foreground">
-                {p.nationality ?? t("catalog.players.list.noNationality")}
+              <div className="flex items-center gap-2">
+                <PlayerPhoto src={p.photo_url} name={p.name} size={28} />
+                <div className="min-w-0">
+                  <Link
+                    to="/admin/players/$playerId"
+                    params={{ playerId: String(p.id) }}
+                    className="hover:text-primary"
+                  >
+                    {p.name}
+                  </Link>
+                  <div className="text-caption text-subtle-foreground">
+                    {p.nationality ?? t("catalog.players.list.noNationality")}
+                  </div>
+                </div>
               </div>
             </TD>
             <TD className="text-xs">
-              {p.team_id ? (
-                <span className="text-muted-foreground">{p.team}</span>
+              {p.team_id && p.team ? (
+                <TeamName
+                  name={p.team}
+                  logo={p.team_logo}
+                  size={16}
+                  className="text-muted-foreground"
+                />
               ) : (
                 <Nullable value={null} reason={t("catalog.players.list.noTeam")} />
               )}
               {p.national_team ? (
-                <div className="text-caption text-subtle-foreground">{p.national_team}</div>
+                <TeamName
+                  name={p.national_team}
+                  logo={p.national_team_logo}
+                  size={14}
+                  className="mt-0.5 text-caption text-subtle-foreground"
+                />
               ) : null}
             </TD>
             <TD className="text-xs text-muted-foreground">{p.position ?? "—"}</TD>
@@ -178,6 +194,15 @@ export function PlayerLive({ playerId }: { playerId: string }) {
       />
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel title={t("catalog.players.detail.profile.title")}>
+          <div className="mb-3 flex items-center gap-3">
+            <PlayerPhoto src={p.photo_url} name={p.name} size={72} />
+            <div className="min-w-0 space-y-1 text-xs">
+              {p.team ? <TeamName name={p.team} logo={p.team_logo} size={18} /> : null}
+              {p.national_team ? (
+                <TeamName name={p.national_team} logo={p.national_team_logo} size={18} />
+              ) : null}
+            </div>
+          </div>
           <KeyValue
             label={t("catalog.players.detail.profile.fullName")}
             value={[d.firstname, d.lastname].filter(Boolean).join(" ") || "—"}

@@ -81,5 +81,6 @@
   "disclaimer": "PrediGol muestra información y análisis; no garantiza resultados. Juega con responsabilidad (+18).",
   "openMenu": "Abrir menú",
   "closeMenu": "Cerrar menú",
-  "account": "Cuenta"
+  "account": "Cuenta",
+  "photoAlt": "Foto de {name}"
 }

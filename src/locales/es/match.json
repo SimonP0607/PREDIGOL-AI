@@ -49,7 +49,8 @@
     "afterExtraTime": "Final · tiempo extra",
     "penalties": "Penales {score}",
     "halfTime": "Descanso {score}",
-    "scorers": "Goles de {team}"
+    "scorers": "Goles de {team}",
+    "referee": "Árbitro: {name}"
   },
   "note": {
     "noData": "Sin datos todavía",

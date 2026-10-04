@@ -89,6 +89,40 @@ export function TeamLogo({
   );
 }
 
+/**
+ * A player's photo: the URL the provider published in his profile, as stored. None, or one that does
+ * not load, shows his initials - never a broken image and never a guessed URL.
+ */
+export function PlayerPhoto({
+  src,
+  name,
+  size = 28,
+  className,
+}: {
+  src: string | null | undefined;
+  name: string;
+  size?: number;
+  className?: string | undefined;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <Fallback name={name} size={size} className={className} round />;
+  return (
+    <img
+      src={src}
+      alt={t("common.photoAlt", { name })}
+      width={size}
+      height={size}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      className={cn("shrink-0 select-none rounded-full bg-muted object-cover", className)}
+      style={{ width: size, height: size }}
+      draggable={false}
+    />
+  );
+}
+
 export function CompetitionLogo({
   src,
   name,
