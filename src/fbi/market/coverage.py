@@ -636,6 +636,6 @@ def render_markdown(report: CoverageReport) -> str:
                    f"{x.priced_fixtures} | {x.note} |")
     critical = is_critical(report)
     out += ["", "## Our gaps (critical)", ""]
-    out += [f"- {c}" for c in critical] or ["- none: every miss is explained by the machine being off or a fixture "
-                                            "announced after its last window"]
+    out += [f"- {c}" for c in critical] or ["- none: every miss is explained by the machine being off, a fixture "
+                                            "announced after its last window or a kick-off the provider moved"]
     return "\n".join(out) + "\n"

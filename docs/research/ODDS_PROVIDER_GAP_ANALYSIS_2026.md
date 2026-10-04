@@ -17,9 +17,10 @@ that nothing is bought without the owner.*
 2. **The provider keeps the last pre-match prices for 7 days, readable after the match.**
    Measured today: a match 5 days old answered with 9 bookmakers stamped 30 minutes before
    kick-off; one 8 days old answered with nothing. The new hourly `final_prematch` job reads
-   them once per played match: its first run asked 300 matches - **192 priced (60,130
-   prices), median stamp 76 minutes before kick-off (7 to 284)**, 90 empty, 18 refused because
-   the stamp was after kick-off. This is the near-closing line the platform did not have.
+   them once per played match: its first two runs asked 453 matches - **289 priced (89,961
+   prices), stamped a median 76-118 minutes before kick-off (as close as 7)**, 135 empty, 29
+   refused because the stamp was after kick-off. This is the near-closing line the platform
+   did not have.
 3. **9 of the 33 bookmakers API-Football lists price our matches**: Marathonbet, 1xBet,
    Betfair, Bet365, **Betano**, Pinnacle, BetVictor, William Hill, SBO. **bwin and 23 others
    never priced a single match** in our stored payloads. One catalogue entry (id 37) has no
@@ -56,20 +57,24 @@ Console (Data truth -> Odds coverage) and at `GET /api/v1/admin/data/odds-covera
   planner defect and the only one listed as critical.
 * **Upcoming matches** (next 72 h) are judged by the capture plan (`price_state`).
 
-## 3. Measured coverage (4 Oct 2026, 08:39 UTC; 25 Sep 06:32 - 4 Oct 08:39)
+## 3. Measured coverage (4 Oct 2026, 09:00 UTC; 25 Sep 06:32 - 4 Oct 09:00)
 
 | | Matches |
 |---|---:|
 | Played, tracked competitions | 675 |
-| Asked for at all (before kick-off or after it) | 447 |
-| Priced by the provider | 299 (67% of asked) |
+| Asked for at all (before kick-off or after it) | 455 |
+| Priced by the provider | 308 (68% of asked) |
 | Captured before kick-off | 182 (27% of played) |
-| Read only after the match (final pre-match) | 117 |
+| Read only after the match (final pre-match) | 126 |
 | Not asked before kick-off: fixture known too late | 305 |
 | Not asked before kick-off: machine off | 101 |
-| Not asked before kick-off: planner, worker running | 1 (a friendly whose kick-off the provider moved from 12:00 to 08:30 after the match; recorded before the change log existed) |
+| Not asked before kick-off: kick-off moved by the provider | 1 (a club friendly published at 12:00 and played at 08:30; the change was recovered from the stored payloads) |
+| Not asked before kick-off: planner, worker running | **0** |
 
-The `final_prematch` backlog was still being read when this was measured (300 per hourly run).
+The two `final_prematch` runs that cleared the backlog asked 453 matches: 289 priced (89,961
+prices, median stamp 76 and 118 minutes before kick-off), 135 empty, 29 refused as stamped
+after kick-off. Matches older than six days (Liga MX 9, 3. Liga 1, K League 1 1, Taça de
+Portugal 1) were beyond the provider's history: those prices are lost.
 
 ### Bookmakers
 
