@@ -62,6 +62,12 @@ export interface AuditGroup {
   ev_at_close_se: number | null;
   luck: number | null;
   luck_se: number | null;
+  /** From the audit of 4 Oct 2026 on: the price paid and the market's move after the pick. */
+  ev_at_pick?: number | null;
+  movement?: number | null;
+  /** The spread luck would have if the closing prices were right (an upper bound), and luck over it. */
+  luck_se_if_close_right?: number | null;
+  luck_z?: number | null;
 }
 
 export interface ProspectiveRow {

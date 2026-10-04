@@ -223,6 +223,13 @@ function ProspectiveTable({ entries }: { entries: ResearchEntry[] }) {
   );
 }
 
+function luckCell(g: AuditGroup): string {
+  const se = g.luck_se_if_close_right;
+  if (se === undefined || se === null) return pctSe(g.luck, g.luck_se);
+  const z = g.luck_z;
+  return `${pctSe(g.luck, se)}${z === undefined || z === null ? "" : ` (z ${signed(z, 1)})`}`;
+}
+
 function AuditTable({ audit }: { audit: ResearchEntry }) {
   const byOdds = (audit.metrics["by_odds"] as Record<string, AuditGroup> | undefined) ?? {};
   const overall = audit.metrics["overall"] as AuditGroup | undefined;
@@ -230,6 +237,10 @@ function AuditTable({ audit }: { audit: ResearchEntry }) {
     ...Object.entries(byOdds),
     ...(overall ? ([[t("research.v2.audit.all"), overall]] as Array<[string, AuditGroup]>) : []),
   ];
+  // audits stored before 4 Oct 2026 have no price-paid / movement split
+  const split = rows.some(([, g]) => g.ev_at_pick !== undefined);
+  const pct = (v: number | null | undefined) =>
+    v === undefined || v === null ? "—" : localPct(v, 1, true);
   return (
     <TableShell>
       <THead>
@@ -237,8 +248,10 @@ function AuditTable({ audit }: { audit: ResearchEntry }) {
         <TH align="right">{t("research.v2.audit.picks")}</TH>
         <TH align="right">{t("research.v2.audit.realised")}</TH>
         <TH align="right">{t("research.v2.audit.claimed")}</TH>
+        {split ? <TH align="right">{t("research.v2.audit.atPick")}</TH> : null}
+        {split ? <TH align="right">{t("research.v2.audit.movement")}</TH> : null}
         <TH align="right">{t("research.v2.audit.atClose")}</TH>
-        <TH align="right">{t("research.v2.audit.luck")}</TH>
+        <TH align="right">{split ? t("research.v2.audit.luckZ") : t("research.v2.audit.luck")}</TH>
       </THead>
       <tbody>
         {rows.map(([label, g]) => (
@@ -257,11 +270,21 @@ function AuditTable({ audit }: { audit: ResearchEntry }) {
                 {g.claimed_ev === null ? "—" : localPct(g.claimed_ev, 1, true)}
               </Numeric>
             </TD>
+            {split ? (
+              <TD align="right">
+                <Numeric className="text-xs">{pct(g.ev_at_pick)}</Numeric>
+              </TD>
+            ) : null}
+            {split ? (
+              <TD align="right">
+                <Numeric className="text-xs">{pct(g.movement)}</Numeric>
+              </TD>
+            ) : null}
             <TD align="right">
               <Numeric className="text-xs">{pctSe(g.ev_at_close, g.ev_at_close_se)}</Numeric>
             </TD>
             <TD align="right">
-              <Numeric className="text-xs">{pctSe(g.luck, g.luck_se)}</Numeric>
+              <Numeric className="text-xs">{luckCell(g)}</Numeric>
             </TD>
           </TRow>
         ))}

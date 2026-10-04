@@ -257,7 +257,7 @@
       "models": "Difference = model minus champion log loss on the same fixtures (negative is better), 95% interval over match days. Weight w: what a blend with the market gives the model - above 0 means it adds information. Blend: the validation-fitted weight applied to the test season.",
       "markets": "Every de-vigged 1X2 price scored as a forecast on the fixtures all of them priced; the lowest log loss is the champion.",
       "prospective": "Since 25 Sep 2026, against the last consensus before kick-off. Grey: too few matches to judge.",
-      "audit": "Per settled pick, against the last de-vigged consensus before kick-off: EV at the close is what the bet was worth by the market's view; luck is the realised return minus that. Means per one-unit pick ± standard error."
+      "audit": "Per settled pick (one unit): the claimed EV is the model's; EV at the pick is the price taken against the market's de-vigged view at that moment; movement is how that view changed until the last consensus before kick-off; EV at the close is what the bet was worth then; luck is the realised return minus that. Realised = EV at the pick + movement + luck. Means ± standard error clustered by match; luck's error is the spread it would have if the closing prices were right."
     },
     "cols": {
       "model": "Model",
@@ -281,7 +281,10 @@
       "claimed": "Claimed EV",
       "atClose": "EV at the close",
       "luck": "Luck",
-      "all": "All"
+      "all": "All",
+      "atPick": "EV at the pick",
+      "movement": "Movement",
+      "luckZ": "Luck (z)"
     },
     "prospective": {
       "none": "No forecast stored before kick-off has a closing price yet."

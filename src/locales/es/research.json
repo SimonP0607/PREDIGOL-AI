@@ -257,7 +257,7 @@
       "models": "Diferencia = log loss del modelo menos la del champion en los mismos partidos (negativo es mejor), intervalo del 95 % sobre jornadas. Peso w: lo que una mezcla con el mercado le da al modelo; por encima de 0 significa que aporta información. Mezcla: el peso ajustado en la temporada de validación, aplicado a la de test.",
       "markets": "Cada cuota 1X2 sin margen evaluada como pronóstico en los partidos que todas cotizaron; la menor log loss es el champion.",
       "prospective": "Desde el 25 sep 2026, frente al último consenso antes del inicio. En gris: muy pocos partidos para juzgar.",
-      "audit": "Por pick liquidado, frente al último consenso sin margen antes del inicio: el EV al cierre es lo que valía la apuesta según el mercado; la suerte es el retorno realizado menos eso. Medias por pick de una unidad ± error estándar."
+      "audit": "Por pick liquidado (una unidad): el EV declarado es el del modelo; el EV al elegir es el precio tomado frente a la visión sin margen del mercado en ese momento; el movimiento es cuánto cambió esa visión hasta el último consenso antes del inicio; el EV al cierre es lo que valía la apuesta entonces; la suerte es el retorno realizado menos eso. Realizado = EV al elegir + movimiento + suerte. Medias ± error estándar agrupado por partido; el error de la suerte es la dispersión que tendría si los precios de cierre fueran correctos."
     },
     "cols": {
       "model": "Modelo",
@@ -281,7 +281,10 @@
       "claimed": "EV declarado",
       "atClose": "EV al cierre",
       "luck": "Suerte",
-      "all": "Todos"
+      "all": "Todos",
+      "atPick": "EV al elegir",
+      "movement": "Movimiento",
+      "luckZ": "Suerte (z)"
     },
     "prospective": {
       "none": "Ningún pronóstico guardado antes del inicio tiene todavía precio de cierre."
