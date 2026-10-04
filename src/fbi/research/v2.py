@@ -6,7 +6,8 @@ One run, fixed protocol, nothing tuned on the test season:
    them priced; the lowest log loss is the CHAMPION.
 2. The walk-forward session (``fbi.backtesting.session``): base rates, Poisson,
    Dixon-Coles, the Elo ordered logit, the multinomial logit - plus the E5 challengers,
-   gradient-boosted trees without and with the pre-closing market as an input
+   gradient-boosted trees without and with the pre-closing market as an input, and the
+   ensemble rung: an equal-weight log pool of the models that read no market
    (``fbi.research.v2_models``).
 3. E2 - for every model, its walk-forward predictions on the VALIDATION season too, to fit
    the weight a logarithmic opinion pool gives it next to the market
@@ -50,7 +51,7 @@ from fbi.research.blend import BlendResult, blend_analysis
 from fbi.research.pick_audit import AuditResult, audit_picks
 from fbi.research.prospective import MIN_SEGMENT, ProspectiveResult, evaluate_prospective
 from fbi.research.roles import Role, model_role
-from fbi.research.v2_models import MARKET_INPUT, run_hgb, validation_targets
+from fbi.research.v2_models import MARKET_INPUT, ensemble_run, run_hgb, validation_targets
 
 Progress = Callable[[str], None]
 HGB_REFIT_DAYS = 30
@@ -152,6 +153,9 @@ def run_v2(conn: psycopg.Connection[Any], cfg: WalkForwardConfig, competitions: 
         run = run_hgb(data, targets, cfg=cfg, refit_days=HGB_REFIT_DAYS, with_market=with_market)
         session.runs.append(run)
         say(f"{run.model}: {len(run.predictions)} predictions in {time.monotonic() - t0:.0f}s")
+    ensemble = ensemble_run(session.runs)
+    session.runs.append(ensemble)
+    say(f"ensemble: {len(ensemble.predictions)} predictions ({ensemble.spec})")
     session.evaluation = evaluate_session(data, targets, session.runs)
 
     champion = choose_champion(session.evaluation, data.market)
@@ -168,6 +172,7 @@ def run_v2(conn: psycopg.Connection[Any], cfg: WalkForwardConfig, competitions: 
     for with_market in (False, True):
         r = run_hgb(data, val, cfg=cfg, refit_days=HGB_REFIT_DAYS, with_market=with_market)
         val_runs[r.model] = r
+    val_runs["ensemble"] = ensemble_run(list(val_runs.values()))
     say("validation predictions: " + ", ".join(f"{k} {len(v.predictions)}" for k, v in sorted(val_runs.items())))
 
     y_test = {m.fixture_id: outcome_index(m) for m in targets if m.has_result}

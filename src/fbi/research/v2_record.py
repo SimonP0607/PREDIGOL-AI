@@ -13,7 +13,14 @@ import psycopg
 from psycopg.rows import tuple_row
 from psycopg.types.json import Json
 
-from fbi.backtesting.persist import config_hash, config_json, hgb_hyper, scores_json, store_session
+from fbi.backtesting.persist import (
+    config_hash,
+    config_json,
+    ensemble_hyper,
+    hgb_hyper,
+    scores_json,
+    store_session,
+)
 from fbi.backtesting.session import hypers_for
 from fbi.features.engine import FEATURE_VERSION
 from fbi.research.experiments import environment, record_session
@@ -64,6 +71,7 @@ def record_v2(conn: psycopg.Connection[Any], result: V2Result, *, name: str, cod
     hypers = hypers_for(s, code_version)
     hypers["hgb"] = hgb_hyper(code_version, with_market=False)
     hypers["hgb_market"] = hgb_hyper(code_version, with_market=True)
+    hypers["ensemble"] = ensemble_hyper(code_version)
     payload = config_json(cfg) | {"competitions": [i for i, _ in s.competitions], "feature_version": FEATURE_VERSION,
                                   "research": "v2"}
     session_id = store_session(conn, name=name, cfg=cfg, data=s.data, evaluation=s.evaluation,

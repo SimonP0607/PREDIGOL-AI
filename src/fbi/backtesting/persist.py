@@ -58,6 +58,9 @@ CATALOGUE: dict[str, tuple[str, str, str]] = {
     "hgb_market": ("hgb_market", "ml",
                    "The same gradient-boosted trees with the de-vigged average pre-closing price as an input: what "
                    "a bettor could see at the cut-off, never the closing line."),
+    "ensemble": ("ensemble", "ensemble",
+                 "Equal-weight logarithmic pool of the walk-forward Poisson, Dixon-Coles, Elo ordered logit, "
+                 "multinomial logit and gradient-boosted forecasts: no fitting of its own, no market input."),
 }
 
 
@@ -197,6 +200,13 @@ def mnlogit_hyper(code_version: str) -> dict[str, Any]:
 
     return {"features": list(MNLOGIT_FEATURES), "l2": MNLOGIT_L2, "feature_version": FEATURE_VERSION,
             "min_train": MIN_MNLOGIT_TRAIN, "imputation": "training mean", "code_version": code_version}
+
+
+def ensemble_hyper(code_version: str) -> dict[str, Any]:
+    from fbi.research.v2_models import ENSEMBLE_MEMBERS
+
+    return {"members": list(ENSEMBLE_MEMBERS), "weights": "equal", "pool": "logarithmic",
+            "code_version": code_version}
 
 
 def hgb_hyper(code_version: str, *, with_market: bool) -> dict[str, Any]:

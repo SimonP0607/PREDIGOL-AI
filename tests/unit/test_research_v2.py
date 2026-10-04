@@ -152,3 +152,31 @@ def test_picks_on_one_match_are_one_cluster() -> None:
     _, se_tog = mean_se(together)
     assert se_ind is not None and se_tog is not None and se_tog > se_ind, \
         "three picks that win or lose together are one piece of evidence, not three"
+
+
+def test_the_ensemble_pools_only_what_every_member_forecast_before_kickoff() -> None:
+    from fbi.backtesting.walkforward import ModelRun, Prediction
+    from fbi.research.v2_models import ensemble_run
+
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
+
+    def run(name: str, preds: dict[int, tuple[float, float, float]], lag: int) -> ModelRun:
+        r = ModelRun(name, "spec")
+        r.train_from, r.train_to = t0 - timedelta(days=400 + lag), t0 - timedelta(days=lag)
+        r.train_ids = {lag}
+        for fid, p in preds.items():
+            r.predictions[fid] = Prediction(fid, name, t0 + timedelta(hours=lag), p, (), f"h{lag}", 100 + lag)
+        return r
+
+    a = run("poisson", {1: (0.5, 0.3, 0.2), 2: (0.4, 0.3, 0.3)}, 1)
+    b = run("elo_ologit", {1: (0.2, 0.3, 0.5)}, 2)
+    market = run("hgb_market", {1: (0.9, 0.05, 0.05)}, 3)
+    e = ensemble_run([a, b, market])
+    assert set(e.predictions) == {1} and e.uncovered == [(2, "a member model did not predict this fixture")]
+    p = e.predictions[1]
+    raw = np.sqrt(np.array([0.5 * 0.2, 0.3 * 0.3, 0.2 * 0.5]))
+    assert p.p == pytest.approx(tuple(raw / raw.sum())), "a geometric mean, renormalised"
+    assert p.data_cutoff == t0 + timedelta(hours=2), "the latest member cut-off, never later"
+    assert "hgb_market" not in e.spec, "no market input in the ensemble"
+    assert e.train_ids == {1, 2} and e.train_from == t0 - timedelta(days=402), "the widest training window"
+    assert ensemble_run([a]).predictions == {}, "one member is not an ensemble"

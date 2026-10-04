@@ -18,6 +18,7 @@ if its cut-off is before kick-off (the store refuses anything else).
 
 from __future__ import annotations
 
+import hashlib
 import math
 from collections.abc import Sequence
 
@@ -112,9 +113,48 @@ def run_hgb(data: BacktestData, targets: Sequence[MatchRecord], *, cfg: WalkForw
     return run
 
 
+ENSEMBLE_MEMBERS: tuple[str, ...] = ("poisson", "dixon_coles", "elo_ologit", "mnlogit", "hgb")
+"""The ensemble rung: the models of the ladder that read no market, pooled with equal weights."""
+
+
+def ensemble_run(runs: Sequence[ModelRun], *, members: tuple[str, ...] = ENSEMBLE_MEMBERS,
+                 name: str = "ensemble") -> ModelRun:
+    """An equal-weight logarithmic pool of the members' walk-forward forecasts - no fitting of
+    its own, so nothing to leak: each member's forecast was made before kick-off, and the pool
+    takes the latest member cut-off as its own. Only fixtures every member predicted."""
+    by = {r.model: r for r in runs if r.model in members}
+    run = ModelRun(name, "equal-weight log pool of " + "+".join(sorted(by)))
+    if len(by) < 2:
+        return run
+    ids = [set(r.predictions) for r in by.values()]
+    common = set.intersection(*ids)
+    for fid in sorted(set.union(*ids) - common):
+        run.uncovered.append((fid, "a member model did not predict this fixture"))
+    for fid in sorted(common):
+        ps = [by[m].predictions[fid] for m in sorted(by)]
+        logp = np.mean([np.log(np.clip(np.array(x.p, dtype=float), 1e-12, 1.0)) for x in ps], axis=0)
+        q = np.exp(logp)
+        q /= q.sum()
+        probs = (float(q[0]), float(q[1]), float(q[2]))
+        rows = tuple(PredRow("1X2", sel, 0.0, probs[k], None, None)
+                     for k, sel in enumerate(("Home", "Draw", "Away")))
+        digest = hashlib.sha256("|".join(sorted(x.input_hash for x in ps)).encode()).hexdigest()
+        run.no_interval += 1
+        run.predictions[fid] = Prediction(fid, name, max(x.data_cutoff for x in ps), probs, rows, digest,
+                                          min(x.n_train for x in ps))
+    froms = [r.train_from for r in by.values() if r.train_from is not None]
+    tos = [r.train_to for r in by.values() if r.train_to is not None]
+    run.train_from = min(froms) if froms else None
+    run.train_to = max(tos) if tos else None
+    for r in by.values():
+        run.train_ids |= r.train_ids
+    return run
+
+
 def validation_targets(data: BacktestData, cfg: WalkForwardConfig) -> list[MatchRecord]:
     return [m for m in data.matches if m.competition_id in cfg.competition_ids
             and m.season == cfg.validation_season and m.has_result]
 
 
-__all__ = ["HGB_FEATURES", "HGB_PARAMS", "MARKET_INPUT", "run_hgb", "validation_targets"]
+__all__ = ["ENSEMBLE_MEMBERS", "HGB_FEATURES", "HGB_PARAMS", "MARKET_INPUT", "ensemble_run", "run_hgb",
+           "validation_targets"]
