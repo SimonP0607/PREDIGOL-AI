@@ -46,6 +46,14 @@ points per team, provider team ids):
 | UEFA Champions League 2026/27 (league phase) | uefa.com | 36 | 0 | 0 |
 | **Total** | | **132** | **0** | **0** |
 
+Second read, 4 Oct 2026 17:33–17:35 UTC, **per table** (`config/truth/external_standings_20261004b.json`; the audit
+now compares an official table only with the provider's and our table of the same label):
+
+| Competition | Table | Source | Rows | Provider vs official | PrediGol vs official |
+|---|---|---|---:|---|---|
+| Primera A (Colombia) 2026 | Clausura | DIMAYOR (official) | 20 | 0 differences | 0 differences |
+| Liga Profesional Argentina 2026 | Clausura - Group A / B | futbolargentino.com (secondary: the LPF site's Opta widgets did not load) | 30 | 0 | 0 |
+
 Tolerance 0 on played and points. The comparison is repeated by every run given `--external` (ledger keys
 `standings:<league>:<season>:official:*`); none has ever been recorded.
 
@@ -74,6 +82,7 @@ CAS was pending on 30 Sep). With those two decisions the three rows agree (`awar
 | 2 | The pre-0048 writer kept one row per team | a team's second table (Apertura/Clausura, a third-place ranking, a championship round) was dropped: World Cup 2026 third-place ranking 48→60 rows, Euro 2024 24→30, AFCON 2025 24→30 … | `refresh_tables --legacy`: the rows were ADDED to the same snapshot from the very payload it was written from | **156 seasons**, each a row in `audit.data_repairs` (`standings_dropped_tables`, before/after) |
 | 3 | A label the provider gives two tables merged them | Colombia 2022–2024: the Apertura and Clausura play-off groups are both "Group A"/"Group B" — a team in both kept one row; tables with no label (Colombia and Peru 2018, Challenger Pro League 2018) collided on ""; Nations League 2018–2022 "Group 1–4" of Leagues A–D merged into one table each | `labelled_rows` (parser and audit): the n-th table with a label is "&lt;label&gt; #n"; `refresh_tables --relabel` rebuilt each damaged snapshot as a **new** snapshot from its own payload, the old one kept | **16 seasons**, 616 → 669 rows (53 dropped rows back, 10 seasons un-merged); `audit.data_repairs` (`standings_group_label_collision`); tests below |
 | 4 | Several tables of one season were judged as one by the audit itself (quadrangular rounds counted in the phase table) | false `provider_stale` / `predigol_behind` on Colombia | stages split from phases (`stage_of`) | golden Colombia 2023–2025 now 56/56, 56/56, 28/28 |
+| 5 | The Match Center read each team's newest row from **any** table of the season (P0) | a Clausura match could show one team from the Apertura table: 1,628 fixtures of 18 current seasons (Llaneros v América de Cali) | phases, stages and tables kept apart; a match shows its own stage's table ([`COMPETITION_PHASES.md`](COMPETITION_PHASES.md)) | 0 wrong tables in 92 seasons; golden 41/41 |
 
 Tests: `tests/unit/test_standings_truth.py` (25: three tables, lags on both sides, deductions, AWD, decisions off the
 pitch, repeated labels, play-off stages, identity), `tests/integration/test_data_truth_v2.py` (the real schema, the

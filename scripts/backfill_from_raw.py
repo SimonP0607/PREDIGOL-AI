@@ -144,17 +144,19 @@ class Replay:
                 self.extras_state.pop(pf, None)
 
 
-def _body(raw_root: Path, file_path: str) -> dict[str, Any] | None:
+def _body(raw_root: Path, file_path: str) -> tuple[dict[str, Any] | None, str | None]:
+    """The stored body, or (None, why) for a file that is missing, empty, truncated or not JSON. The file is
+    reported, never repaired: RAW is evidence."""
     f = Path(file_path) if Path(file_path).is_absolute() else raw_root / file_path
     try:
         data = f.read_bytes()
-    except OSError:
-        return None
-    if data[:2] == b"\x1f\x8b":
-        data = gzip.decompress(data)
-    doc = json.loads(data)
+        if data[:2] == b"\x1f\x8b":
+            data = gzip.decompress(data)
+        doc = json.loads(data)
+    except (OSError, EOFError, ValueError) as exc:
+        return None, f"{type(exc).__name__}: {exc}"[:160]
     body = doc.get("body", doc) if isinstance(doc, dict) else None
-    return body if isinstance(body, dict) else None
+    return (body, None) if isinstance(body, dict) else (None, "no body object")
 
 
 def flush(conn: psycopg.Connection[Any], replay: Replay, *, commit: bool = True) -> tuple[int, int]:
@@ -181,7 +183,7 @@ def flush(conn: psycopg.Connection[Any], replay: Replay, *, commit: bool = True)
     return added[0], added[1]
 
 
-def fixture_facts(conn: psycopg.Connection[Any], *, dry_run: bool, progress_every: int = 1000) -> dict[str, int]:
+def fixture_facts(conn: psycopg.Connection[Any], *, dry_run: bool, progress_every: int = 1000) -> dict[str, Any]:
     raw_root = Path(settings.runtime.raw_store_dir)
     raw_root = raw_root if raw_root.is_absolute() else REPO / raw_root
     with conn.cursor() as cur:
@@ -196,11 +198,13 @@ def fixture_facts(conn: psycopg.Connection[Any], *, dry_run: bool, progress_ever
         for pf in ids:
             last[pf] = i
     replay = Replay(fixtures=fixtures, last_naming=last)
-    out = {"unreadable": 0, "facts_added": 0, "extras_added": 0}
+    out: dict[str, Any] = {"unreadable": 0, "facts_added": 0, "extras_added": 0, "unreadable_files": []}
     for i, (h, path, fetched_at, _params) in enumerate(payloads):
-        body = _body(raw_root, str(path))
+        body, why = _body(raw_root, str(path))
         if body is None:
             out["unreadable"] += 1
+            out["unreadable_files"].append({"hash": str(h), "file": str(path), "fetched_at": str(fetched_at),
+                                            "why": why})
             continue
         replay.feed(i, str(h), fetched_at, body, named[i])
         if len(replay.facts_rows) + len(replay.extras_rows) >= BATCH:
@@ -213,7 +217,8 @@ def fixture_facts(conn: psycopg.Connection[Any], *, dry_run: bool, progress_ever
                 out["extras_added"] += b
         if (i + 1) % progress_every == 0:
             print(json.dumps({"progress": i + 1, "of": len(payloads), "in_flight_fixtures": len(replay.extras_state),
-                              **replay.counts, **out}), flush=True)
+                              **replay.counts, **{k: v for k, v in out.items() if k != "unreadable_files"}}),
+                  flush=True)
     if not dry_run:
         a, b = flush(conn, replay)
         out["facts_added"] += a
@@ -242,6 +247,8 @@ def main(argv: list[str] | None = None) -> int:
             result = fixture_facts(conn, dry_run=args.dry_run)
             counters.rows_normalized = result["payloads"]
             counters.rows_inserted = result["facts_added"] + result["extras_added"]
+            counters.errors += [f"unreadable RAW payload {u['hash']} ({u['file']}): {u['why']}"
+                                for u in result["unreadable_files"][:20]]
         finally:
             if run_id is not None:
                 ledger.close(run_id, counters, notes="RAW -> core.fixture_facts / core.fixture_player_extras, "

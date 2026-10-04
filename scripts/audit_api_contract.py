@@ -3,6 +3,7 @@
     python -m scripts.audit_api_contract                    # RAW statistics + observed fields (3 payloads per form)
     python -m scripts.audit_api_contract --sample 8
     python -m scripts.audit_api_contract --export config/api_football/v3_contract.json   # the documented side only
+    python -m scripts.audit_api_contract --probe            # first: one request per endpoint form never stored
 
 Sources: ``config/api_football/v3_contract.txt`` (the provider's OpenAPI v3.9.3: 38 GET operations, their
 parameters, update frequencies, recommended calls, pagination, id batch limits and documented response
@@ -15,11 +16,19 @@ and never seen in the sample, sent but not documented.
 Writes audit.truth_v2_runs (kind api_contract), the evidence ledger (area api_contract) and
 data/truth/<stamp>-api_contract/ (api_contract.json, api_contract.md). 0 provider requests; nothing in
 core is changed. ``--export`` writes the documented contract as JSON and touches no database.
+
+``--probe`` first spends one request on each endpoint form PrediGol has never stored (``PROBES``: the
+documented examples, with ids taken from the database - an upcoming tracked match, its season, its home
+team, two of that team's players and two coaches), so the comparison of documented and actual fields
+covers all 38 endpoints and the batched forms (``players=a-b``, ``coachs=a-b``) whose response shape the
+documentation does not show. Each answer is a RAW payload like any other (run kind api_contract); about
+30 requests, within the daily budget; nothing else is written.
 """
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import sys
 from collections import Counter, defaultdict
@@ -60,6 +69,88 @@ SELECT hash, file_path, fetched_at FROM raw.ingestion_payloads
 """
 """Newest payloads with results first; results_count is 0 for object responses recorded before 4 Oct 2026
 (/teams/statistics), so they are not excluded."""
+
+
+PROBE_SQL = """
+WITH f AS (
+    SELECT f.provider_fixture_id AS fixture, th.provider_team_id AS team, ta.provider_team_id AS opponent,
+           c.provider_league_id AS league, cs.season, cs.id AS cs_id, f.home_team_id
+      FROM core.fixtures f
+      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+      JOIN core.competitions c ON c.id = cs.competition_id
+      JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
+     WHERE c.is_tracked AND f.status_group = 'scheduled' AND f.kickoff_at BETWEEN now() AND now() + interval '5 days'
+     ORDER BY (c.provider_league_id = 239) DESC, c.provider_league_id, f.kickoff_at LIMIT 1),
+last AS (
+    SELECT p.id, p.provider_fixture_id FROM core.fixtures p, f
+     WHERE p.competition_season_id = f.cs_id AND p.status_group = 'finished'
+       AND f.home_team_id IN (p.home_team_id, p.away_team_id)
+     ORDER BY p.kickoff_at DESC LIMIT 1)
+SELECT f.fixture, f.team, f.opponent, f.league, f.season, last.provider_fixture_id AS finished,
+       (SELECT array_agg(x ORDER BY x) FROM (SELECT DISTINCT ps.provider_player_id AS x FROM core.fixture_player_stats ps
+         WHERE ps.fixture_id = last.id ORDER BY 1 LIMIT 2) y) AS players,
+       (SELECT array_agg(DISTINCT l.provider_coach_id) FROM core.fixture_lineups l
+         WHERE l.fixture_id = last.id AND l.provider_coach_id > 0) AS coaches
+  FROM f LEFT JOIN last ON true
+"""
+
+
+def probes(conn: psycopg.Connection[Any]) -> list[tuple[str, dict[str, Any]]]:
+    """One request per endpoint form never stored; ids from the database, never invented."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(PROBE_SQL)
+        t = cur.fetchone()
+    if t is None:
+        return []
+    players = [int(x) for x in (t["players"] or [])]
+    coaches = [int(x) for x in (t["coaches"] or [])]
+    season = {"league": t["league"], "season": t["season"]}
+    out: list[tuple[str, dict[str, Any]]] = [
+        ("/timezone", {}), ("/countries", {}), ("/leagues/seasons", {}), ("/teams/countries", {}),
+        ("/players/seasons", {}), ("/odds/bookmakers", {}), ("/odds/bets", {}), ("/odds/live/bets", {}),
+        ("/odds/mapping", {}), ("/teams/seasons", {"team": t["team"]}),
+        ("/fixtures/rounds", {**season, "dates": "true"}), ("/fixtures/rounds", {**season, "current": "true"}),
+        ("/predictions", {"fixture": t["fixture"]}),
+        ("/players/topscorers", season), ("/players/topassists", season), ("/players/topyellowcards", season),
+        ("/players/topredcards", season), ("/transfers", {"team": t["team"]}), ("/coachs", {"team": t["team"]}),
+    ]
+    if t["finished"] is not None:
+        out.append(("/fixtures/statistics", {"fixture": t["finished"], "half": "true"}))
+    if players:
+        out += [("/transfers", {"player": players[0]}), ("/players/teams", {"player": players[0]}),
+                ("/sidelined", {"player": players[0]}), ("/trophies", {"player": players[0]})]
+    if len(players) > 1:
+        both = "-".join(str(x) for x in players[:2])
+        out += [("/sidelined", {"players": both}), ("/trophies", {"players": both})]
+    if coaches:
+        out += [("/sidelined", {"coach": coaches[0]}), ("/trophies", {"coach": coaches[0]})]
+    if len(coaches) > 1:
+        both = "-".join(str(x) for x in sorted(coaches)[:2])
+        out += [("/sidelined", {"coachs": both}), ("/trophies", {"coachs": both})]
+    return out
+
+
+def _form(params: dict[str, Any]) -> str:
+    return ",".join(sorted(params))
+
+
+async def probe(conn: psycopg.Connection[Any], run: V2Run, *, limit: int) -> list[dict[str, Any]]:
+    """Request each planned form that RAW does not hold yet. Returns what was asked and what came back."""
+    with conn.cursor() as cur:
+        cur.execute(FORMS_SQL)
+        stored = {(r[0], r[1]) for r in cur.fetchall()}
+    done: list[dict[str, Any]] = []
+    for endpoint, params in probes(conn):
+        if (endpoint, _form(params)) in stored or len(done) >= limit:
+            continue
+        answer = await run.get(endpoint, params)
+        body = answer.body if answer is not None else {}
+        response = body.get("response")
+        done.append({"endpoint": endpoint, "form": _form(params), "params": {k: str(v) for k, v in params.items()},
+                     "results": body.get("results"), "errors": body.get("errors") or None,
+                     "shape": type(response).__name__, "payload_hash": answer.payload_hash if answer else None})
+        stored.add((endpoint, _form(params)))
+    return done
 
 
 def _type(v: Any) -> str:
@@ -230,6 +321,12 @@ def markdown(result: dict[str, Any], summary: dict[str, Any]) -> str:
             f"({', '.join(x['params_required']) or '-'}) | {'; '.join(x['forms_used']) or '-'} | "
             f"{raw['payloads'] if raw else 0} | {x['fields_documented']} / {x['fields_seen']} / "
             f"{len(x['documented_unseen'])} / {len(x['undocumented_seen'])} |")
+    if result.get("probed"):
+        lines += ["", "## Probe requests (endpoint forms never stored before this run)", "",
+                  "| Endpoint | Parameters | Results | Response | Errors |", "|---|---|---:|---|---|"]
+        for x in result["probed"]:
+            params = ", ".join(f"{k}={v}" for k, v in x["params"].items()) or "-"
+            lines.append(f"| `{x['endpoint']}` | {params} | {x['results']} | {x['shape']} | {x['errors'] or '-'} |")
     lines += ["", "## Fields sent but not in the documentation's examples", ""]
     for x in result["endpoints"]:
         if x["undocumented_seen"]:
@@ -248,34 +345,56 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sample", type=int, default=3, help="payloads read per endpoint and parameter form")
     ap.add_argument("--export", help="write the documented contract as JSON to this path and stop")
+    ap.add_argument("--probe", action="store_true", help="first request each endpoint form never stored (~30)")
+    ap.add_argument("--probe-max", type=int, default=40, help="at most this many probe requests")
     args = ap.parse_args(argv)
     if args.export:
         export(Path(args.export))
         return 0
+    return asyncio.run(run_audit(args))
+
+
+async def run_audit(args: argparse.Namespace) -> int:
     at = now()
-    with psycopg.connect(settings.database.psycopg_url, autocommit=True) as conn:
-        conn.execute("SET statement_timeout = '300s'")
-        run = V2Run(conn, None, "api_contract", at, params={"sample": args.sample})
-        result = audit(conn, sample=args.sample)
-        items = evidence(result)
-        codes = record_all(conn, items, at=at, run_id=run.run_id)
-        clear_unseen(conn, area="api_contract", scope_prefix="api_contract:", seen=[ev.key for ev in items], at=at)
-        summary = {
-            "endpoints": len(result["endpoints"]),
-            "by_status": dict(Counter(x["status"] for x in result["endpoints"])),
-            "missing_useful": [x["path"] for x in result["endpoints"]
-                               if x["status"] == "MISSING" and x["utility"] != "low"],
-            "fields_documented": sum(x["fields_documented"] for x in result["endpoints"]),
-            "fields_seen": sum(x["fields_seen"] for x in result["endpoints"]),
-            "documented_unseen": sum(len(x["documented_unseen"]) for x in result["endpoints"] if x["payloads_sampled"]),
-            "undocumented_seen": sum(len(x["undocumented_seen"]) for x in result["endpoints"]),
-            "payloads_sampled": sum(x["payloads_sampled"] for x in result["endpoints"]),
-            "other_raw_endpoints": len(result["other_raw_endpoints"]),
-            "requested_without_raw": result["requested_without_raw"], "raw_without_use": result["raw_without_use"],
-            "evidence": len(codes),
-        }
-        folder = write_report(REPORTS, "api_contract", at, {"summary": summary, **result}, markdown(result, summary))
-        status = run.finish(summary, report_dir=folder)
+    client = None
+    if args.probe:
+        from fbi.providers.api_football.build import build_client
+
+        client = build_client(max_requests=args.probe_max)
+    try:
+        with psycopg.connect(settings.database.psycopg_url, autocommit=True) as conn:
+            conn.execute("SET statement_timeout = '300s'")
+            run = V2Run(conn, client, "api_contract", at, params={"sample": args.sample, "probe": args.probe})
+            probed = await probe(conn, run, limit=args.probe_max) if args.probe else []
+            return _audit_and_report(conn, run, at, args, probed)
+    finally:
+        if client is not None:
+            await client.aclose()
+
+
+def _audit_and_report(conn: psycopg.Connection[Any], run: V2Run, at: Any, args: argparse.Namespace,
+                      probed: list[dict[str, Any]]) -> int:
+    result = audit(conn, sample=args.sample)
+    result["probed"] = probed
+    items = evidence(result)
+    codes = record_all(conn, items, at=at, run_id=run.run_id)
+    clear_unseen(conn, area="api_contract", scope_prefix="api_contract:", seen=[ev.key for ev in items], at=at)
+    summary = {
+        "endpoints": len(result["endpoints"]),
+        "by_status": dict(Counter(x["status"] for x in result["endpoints"])),
+        "missing_useful": [x["path"] for x in result["endpoints"]
+                           if x["status"] == "MISSING" and x["utility"] != "low"],
+        "fields_documented": sum(x["fields_documented"] for x in result["endpoints"]),
+        "fields_seen": sum(x["fields_seen"] for x in result["endpoints"]),
+        "documented_unseen": sum(len(x["documented_unseen"]) for x in result["endpoints"] if x["payloads_sampled"]),
+        "undocumented_seen": sum(len(x["undocumented_seen"]) for x in result["endpoints"]),
+        "payloads_sampled": sum(x["payloads_sampled"] for x in result["endpoints"]),
+        "other_raw_endpoints": len(result["other_raw_endpoints"]),
+        "requested_without_raw": result["requested_without_raw"], "raw_without_use": result["raw_without_use"],
+        "probed": len(probed), "probe_requests": run.requests, "evidence": len(codes),
+    }
+    folder = write_report(REPORTS, "api_contract", at, {"summary": summary, **result}, markdown(result, summary))
+    status = run.finish(summary, report_dir=folder)
     print(json.dumps({**summary, "report": str(folder), "status": status}, indent=1, default=str))
     return 0 if status == "completed" else 1
 

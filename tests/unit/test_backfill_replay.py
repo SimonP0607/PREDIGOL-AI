@@ -3,7 +3,10 @@ memory and drops a fixture's players once the last payload naming it is read (sc
 
 from __future__ import annotations
 
+import gzip
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from scripts.backfill_from_raw import Replay, detail_ids
@@ -46,3 +49,16 @@ def test_an_instant_already_held_adds_nothing_and_unknown_fixtures_are_counted()
     other = Replay(fixtures={})
     other.feed(0, "a", T0, entry("A. Rojas"), ())
     assert other.facts_rows == [] and other.counts["unknown_fixtures"] == 1
+
+
+def test_an_unreadable_payload_file_is_reported_not_fatal(tmp_path: Path) -> None:
+    from scripts.backfill_from_raw import _body
+
+    (tmp_path / "empty.json.gz").write_bytes(b"")
+    good = gzip.compress(json.dumps({"endpoint": "/fixtures", "body": {"response": []}}).encode())
+    (tmp_path / "good.json.gz").write_bytes(good)
+    (tmp_path / "cut.json.gz").write_bytes(good[: len(good) // 2])
+    assert _body(tmp_path, "good.json.gz") == ({"response": []}, None)
+    for name in ("empty.json.gz", "cut.json.gz", "missing.json.gz"):
+        body, why = _body(tmp_path, name)
+        assert body is None and why, name
