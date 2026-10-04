@@ -1,8 +1,8 @@
 # Backtest V2 — champion / challenger on the validated history (GATE G)
 
-*Written 4 October 2026 from the stored runs `research-v2-2024-20261004T100808Z` and
-`research-v2-2024-20261004T102001Z` (both `run_label = RESEARCH_V2`) and the read-only audit of
-10:30 UTC. Data as of 04 Oct 2026 02:00 UTC. Nothing in this gate changes a pick rule or promotes
+*Written 4 October 2026 from the stored runs `research-v2-2024-20261004T100808Z`,
+`research-v2-2024-20261004T102001Z` and `research-v2-2024-20261004T111558Z` (the last adds the
+ensemble rung; all `run_label = RESEARCH_V2`) and the read-only audit of 10:30 UTC. Data as of 04 Oct 2026 02:00 UTC. Nothing in this gate changes a pick rule or promotes
 a model.*
 
 ## 1. What changed from the legacy backtests
@@ -15,7 +15,7 @@ a model.*
 | Comparison sample | each model on its own matched subset | paired: model and champion on the fixtures both priced |
 | Interval | per-match bootstrap | block bootstrap by match day (2,000 draws) + Diebold–Mariano (Newey–West, HLN) |
 | Blend | — | **E2**: logarithmic opinion pool, weight fitted on the validation season, applied unchanged to the test season; test-season weight with a match-day bootstrap interval |
-| Models | base rates, Poisson, Dixon–Coles, Elo ordered logit, multinomial logit | the same + **E5** gradient-boosted trees without / with the pre-closing market as an input |
+| Models | base rates, Poisson, Dixon–Coles, Elo ordered logit, multinomial logit | the same + **E5** gradient-boosted trees without / with the pre-closing market as an input + the **ensemble** rung (equal-weight log pool of the five models that read no market) |
 | Outcome | a table | a **role** per model with its evidence, stored per experiment (`analytics.experiments.role`, `role_reason`, `segment`, `data_as_of`) |
 | Picks | realised ROI | **E0**: realised = price paid + market movement + luck, standard errors clustered by match |
 | Live check | — | **prospective**: the forecasts stored before kick-off since 25 Sep 2026 vs the closing consensus, per segment |
@@ -63,6 +63,7 @@ worse than closing).
 
 | Model | Predicted | Log loss | vs champion [95 %] | ECE | Blend weight *w* (test) [95 %] | Role |
 |---|---:|---:|---|---:|---|---|
+| **Ensemble** (log pool of Poisson, DC, Elo, logit, trees) | 1748 | 0.97928 | +0.0182 [+0.0105, +0.0261] | 0.0081 | −0.197 [−0.507, +0.084] | REJECTED |
 | Multinomial logit | 1756 | 0.98176 | +0.0210 [+0.0127, +0.0290] | 0.0125 | −0.206 [−0.467, +0.060] | REJECTED |
 | Elo ordered logit | 1756 | 0.98619 | +0.0256 [+0.0177, +0.0336] | 0.0087 | −0.266 [−0.530, −0.034] | REJECTED |
 | Poisson | 1748 | 0.98708 | +0.0261 [+0.0170, +0.0353] | 0.0163 | −0.213 [−0.454, +0.019] | REJECTED |
@@ -71,7 +72,9 @@ worse than closing).
 | Trees + pre-closing market | 1751 | 1.02370 | +0.0640 [+0.0437, +0.0836] | 0.0541 | +0.052 [−0.065, +0.187] | REJECTED |
 | League base rates | 1756 | 1.07975 | +0.1193 [+0.1016, +0.1379] | 0.0138 | −0.102 [−0.210, +0.019] | REJECTED |
 
-* Every model is worse than the closing market by 0.021–0.119 nats, with intervals far from zero.
+* Every model is worse than the closing market by 0.018–0.119 nats, with intervals far from zero.
+  The ensemble is the best of ours (0.97928; pooling helps by 0.003 over the best single model)
+  and still 0.018 behind the close.
 * No blend weight is reliably above zero. Elo's is reliably **below** zero: where Elo disagrees
   with the market, the outcome sides with the market — more strongly than the market itself.
   Against the pre-closing price (what a pick would have taken) the four classical models' weights

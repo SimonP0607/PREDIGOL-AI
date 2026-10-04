@@ -176,9 +176,10 @@ on the test season, or the result flips under another de-vig method.
 
 ## 9. Results of the first V2 runs (4 October 2026)
 
-Runs `research-v2-2024-20261004T100808Z` and `research-v2-2024-20261004T102001Z`
-(`run_label = RESEARCH_V2`; the second adds match-clustered errors and the 50-match / 5-day
-rule for prospective segments), plus the read-only E0 audit of 10:30 UTC. Data as of
+Runs `research-v2-2024-20261004T100808Z`, `research-v2-2024-20261004T102001Z` and
+`research-v2-2024-20261004T111558Z` (`run_label = RESEARCH_V2`; the second adds match-clustered
+errors and the 50-match / 5-day rule for prospective segments, the third the ensemble rung),
+plus the read-only E0 audit of 10:30 UTC. Data as of
 04 Oct 2026 02:00 UTC, features `fv2.1.0` on the validated history, validation 2023/24, test
 2024/25, 1,756 test fixtures in the five leagues whose seasons are `MODEL_READY`. Full tables:
 `docs/rebuild/BACKTEST_V2.md`.
@@ -190,6 +191,7 @@ rule for prospective segments), plus the read-only E0 audit of 10:30 UTC. Data a
 | **E2** blend | Test-season weight intervals all include or lie below 0; Elo −0.266 [−0.530, −0.034]; vs the pre-closing price all four classical models are below 0 (Poisson, Dixon–Coles and Elo with intervals excluding 0) | Our models add nothing to the price — consistent with [2][3] |
 | **E3** structural | Dixon–Coles = Poisson on 1X2 (0.98708 both; ECE 0.0068 vs 0.0163) | DC improves calibration, not ranking |
 | **E5** trees | HGB 0.99663 (+0.036); with the pre-closing market as input 1.02370 (+0.064, ECE 0.054) | No gain, consistent with [5]; the market input overfits |
+| Ensemble | Equal-weight log pool of Poisson, DC, Elo, logit and trees: 0.97928, +0.0182 [+0.0105, +0.0261]; *w* −0.197 [−0.507, +0.084] (run `…T111558Z`) | The best of our models, still behind the close |
 | Prospective (25 Sep – 4 Oct) | 680 played, 181 priced; Elo +0.034 [+0.014, +0.073] (157), Poisson +0.063 (130), Dixon–Coles +0.060 (128); every sub-segment < 50 | Live forecasts agree with the backtest |
 
 **Decision: no CHALLENGER; qualified models 0; qualified picks 0.** Every model family is

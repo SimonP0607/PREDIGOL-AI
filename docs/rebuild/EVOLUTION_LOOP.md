@@ -64,12 +64,18 @@ be decided again (HTTP 409).
 
 ## State on 4 October 2026
 
-* Research V2: no CHALLENGER, qualified models 0 (`docs/rebuild/BACKTEST_V2.md`) → the three
-  plan proposals apply once the weekly run (or the next `--apply`) records them.
-* Audit: EV at the pick −4.7 % ± 0.2 % (z ≈ −20) and the last capture a median 12 h before
-  kick-off → `audit:price_only:v1` and `audit:close_capture:v1` are proposed by the first monitor.
+* The first monitor (11:09 UTC) wrote 5 findings (the audit and four judged prospective rows) and
+  proposed `audit:price_only:v1` (EV at the pick −4.7 % ± 0.2 %, z ≈ −20) and
+  `audit:close_capture:v1` (our last capture a median 12 h before kick-off).
+* Research V2 run `…T111558Z` (no CHALLENGER, qualified models 0, `docs/rebuild/BACKTEST_V2.md`)
+  wrote the champion and every model's role to memory and proposed the three plan items
+  (E4 shots, E6 line-ups, historical totals prices).
 * Prospective: only the "all" rows are judged (Elo and Poisson worse than the close); no segment
   proposal.
+* All proposals wait for the owner (Admin → Evolución). Note for `audit:close_capture:v1`: the
+  provider's final pre-match prices (`market.final_prematch_odds`, stamped a median 76-118 min
+  before kick-off, GATE B) already exist for played matches - a consensus from them is the
+  cheapest way to test it.
 * AI proposals: none until an LLM key exists (owner's decision).
 
 ## Promotion (not automated, by design)
