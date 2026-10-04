@@ -118,6 +118,24 @@ pick reviews saves $1.58/month. Haiku alone stays ≤ $15/month with ≤ ~30 que
   5. every model and tool call logged (request id, tool, arguments, result hash, latency,
      tokens, cost), with an alert at 80 % of the monthly budget.
 
+## 6. Implementation (GATE H, 4 October 2026)
+
+Built and tested with a mocked model and search API (`tests/integration/test_ai_layer.py`,
+`test_analyst.py`, `tests/unit/test_provenance.py`); **live use waits for the owner's keys**
+(`FBI_ANALYST_API_KEY` + `FBI_ANALYST_MODEL=claude-haiku-4-5`, and `EXA_API_KEY` for web
+research) — creating those accounts is the owner's decision and nothing was purchased.
+
+| Piece | Where | What it guarantees |
+|---|---|---|
+| Tools | `fbi/analyst/tools.py` | exactly the 12 mandated tools + `search`/`list_matches`; typed, bounded arguments, `additionalProperties: false`; read-only services; provenance block on every result; no SQL |
+| Web research | `fbi/analyst/search.py` | Exa, last N ≤ 14 days, publication date kept; results registered as source ids; page text labelled untrusted |
+| Provenance | `fbi/analyst/provenance.py` | a claim must cite source ids retrieved in the same run; CONFIRMED only for official domains (dated) or two independent reputable outlets; the server only lowers a grade; refused claims are listed |
+| Agent loop | `fbi/analyst/agent.py` | ≤ 6 rounds (12 for the report), tool results cut at 12k characters, numbers not found in tool results flagged, structured outputs validated with strict Pydantic models |
+| Cost | `fbi/analyst/budget.py`, `store.py` | every call's tokens and cost written to `analytics.ai_runs` as it happens; the month's spend checked before every call against `FBI_ANALYST_MONTHLY_BUDGET_USD` (default 20); unknown models priced at the highest rate; 30 admin questions/day |
+| Daily report | `fbi/analyst/research.py` | platform data always; research as graded claims; raw URLs removed from the summary; `not_configured` recorded, never silent |
+| Pick reviewer | `fbi/analyst/reviewer.py` | flags only: rules (kick-off change, price gone, market no longer priced) + the model on claims (never raw web text, no tools); news flags must cite a claim; a probability field is refused by the schema and has no column |
+| Admin API | `/api/v1/admin/ai/{status,runs,report,flags}`, `POST /ai/report/run`, `/ai/review/run` | SUPER_ADMIN only; key values never returned |
+
 ## Sources (accessed 2026-10-04)
 
 1. https://platform.claude.com/docs/en/about-claude/pricing

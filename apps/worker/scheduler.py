@@ -19,6 +19,12 @@ at worst, and a duplicated tick costs nothing at all.
     shadow picks, settlement. Database only, zero requests.
   * ``notifier``       every 10 min: new events -> audit.notifications ->
     Telegram when a token is configured, 'skipped' otherwise.
+  * ``ai_daily_report`` / ``ai_pick_review``  the AI layer (``fbi.analyst``): the research
+    report from 06:00 Bogotá and the pick reviewer's flags every hour. Zero API-Football
+    requests; the LLM and search APIs only when the owner configured them, inside a monthly cap.
+  * ``research_monitor`` (07:05 Bogotá) / ``research_v2_weekly`` (Monday 04:20 Bogotá)  the
+    evolution loop (``fbi.research.loop``): results into memory and proposals for the owner.
+    Database only; the weekly run only when the code changed or four weeks passed.
 
 Standing cost is therefore about 12 requests/day, leaving roughly 48 of the
 60-request budget for odds capture - enough for a Premier League matchday at
@@ -32,8 +38,11 @@ from __future__ import annotations
 import asyncio
 import os
 import signal
+import subprocess
+import sys
 import time
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -156,6 +165,23 @@ LIVE_DAILY_BUDGET = int(os.environ.get(
     "FBI_LIVE_DAILY_BUDGET", str(DEFAULT_LIVE_DAILY_BUDGET)))
 PIPELINE_MINUTES = int(os.environ.get("FBI_PIPELINE_MINUTES", "30"))
 NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
+AI_REPORT_HOUR = int(os.environ.get("FBI_AI_REPORT_HOUR", "6"))
+"""The daily research report is written from this hour (Bogotá), once a day: a check every
+AI_CHECK_MINUTES writes it when the hour has passed and the day has none - so a worker that was
+down at six writes it when it comes back. Database, plus the LLM and search APIs when the owner
+configured them; zero API-Football requests."""
+AI_CHECK_MINUTES = int(os.environ.get("FBI_AI_CHECK_MINUTES", "15"))
+AI_REVIEW_MINUTES = int(os.environ.get("FBI_AI_REVIEW_MINUTES", "60"))
+RESEARCH_MONITOR_HOUR = int(os.environ.get("FBI_RESEARCH_MONITOR_HOUR", "7"))
+"""The evolution loop's daily monitor (Bogotá): the shadow-pick audit and the prospective
+evaluation, turned into memory and proposals. Seconds of database reads, zero requests."""
+RESEARCH_V2_WEEKDAY = os.environ.get("FBI_RESEARCH_V2_WEEKDAY", "mon")
+RESEARCH_V2_HOUR = int(os.environ.get("FBI_RESEARCH_V2_HOUR", "4"))
+"""The weekly research-V2 run (Bogotá), in its own process so its memory is returned; it runs
+only when the code changed or the last run is four weeks old (``fbi.research.loop.v2_due``)."""
+REPO_ROOT = Path(__file__).resolve().parents[2]
+"""The pick reviewer over today's and tomorrow's sets: rules every run (stored only when the
+flags change), the model only when the picks or the day's claims changed."""
 
 
 async def _tick() -> TickOutcome:
@@ -524,6 +550,88 @@ async def _notify() -> None:
     await asyncio.to_thread(_notify_now)
 
 
+def _ai_report_now() -> None:
+    """Today's research report, once, after AI_REPORT_HOUR in Bogotá. Never raises."""
+    from fbi.analyst.research import due, run_daily_report
+
+    try:
+        with _connect() as conn:
+            if not due(conn, at=now(), hour=AI_REPORT_HOUR):
+                return
+            r = run_daily_report(conn, at=now())
+        log.info("ai.daily_report", status=r.status, day=r.day.isoformat(), source=r.source, claims=len(r.claims))
+    except Exception as exc:  # the AI layer must never stop the worker
+        log.error("ai.daily_report.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_report() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_report_now)
+
+
+def _ai_review_now() -> None:
+    """Flags on today's and tomorrow's pick sets. Never raises."""
+    from fbi.analyst.reviewer import review_days, run_pick_review
+
+    try:
+        moment = now()
+        with _connect() as conn:
+            for day in review_days(moment):
+                for source in ("evaluation", "qualified"):
+                    r = run_pick_review(conn, at=moment, day=day, source=source)
+                    if r.rules_run or r.model_run:
+                        log.info("ai.pick_review", day=day.isoformat(), source=source, flags=len(r.flags),
+                                 status=r.status)
+    except Exception as exc:  # the AI layer must never stop the worker
+        log.error("ai.pick_review.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_review() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_review_now)
+
+
+def _research_monitor_now() -> None:
+    """Audit + prospective -> memory and proposals. Never raises."""
+    from fbi.research.loop import run_monitor
+
+    try:
+        with _connect() as conn:
+            r = run_monitor(conn, at=now())
+        log.info("research.monitor", picks=r.settled_picks, played=r.prospective_played, memory=len(r.memory),
+                 proposals=len(r.proposals))
+    except Exception as exc:  # research must never stop the worker
+        log.error("research.monitor.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _research_monitor() -> None:
+    new_run_id()
+    await asyncio.to_thread(_research_monitor_now)
+
+
+def _research_weekly_now() -> None:
+    """The full research-V2 run when it is due, in a child process. Never raises."""
+    from fbi.research.loop import v2_due
+
+    try:
+        with _connect() as conn:
+            reason = v2_due(conn, at=now())
+        if reason is None:
+            log.info("research.weekly.skipped", reason="same code, last run under four weeks old")
+            return
+        proc = subprocess.run([sys.executable, "-m", "scripts.research_v2", "--apply"], cwd=REPO_ROOT,
+                              capture_output=True, text=True, timeout=3600, check=False)
+        log.info("research.weekly", reason=reason, exit=proc.returncode,
+                 tail=(proc.stdout or "")[-300:] if proc.returncode == 0 else (proc.stderr or "")[-300:])
+    except Exception as exc:  # research must never stop the worker
+        log.error("research.weekly.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _research_weekly() -> None:
+    new_run_id()
+    await asyncio.to_thread(_research_weekly_now)
+
+
 _scheduler: AsyncIOScheduler | None = None
 _lock: WorkerLock | None = None
 _stop: asyncio.Event | None = None
@@ -640,6 +748,7 @@ async def main() -> None:
         catalogue_next = next_run_after(last_success(conn, "catalogue_refresh"),
                                         timedelta(hours=CATALOGUE_REFRESH_HOURS), moment)
         elo_next = next_run_after(last_success(conn, "elo_refresh"), timedelta(hours=ELO_REFRESH_HOURS), moment)
+        monitor_last = last_success(conn, "research_monitor")
 
     # A tick that could not start on time is still worth running late, and how late is
     # set by the capture tolerance - NOT by the interval. Tying it to the interval made
@@ -696,6 +805,21 @@ async def main() -> None:
     scheduler.add_job(_elo_refresh, "interval", hours=ELO_REFRESH_HOURS, id="elo_refresh",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(elo_next, moment + timedelta(minutes=12)))
+    scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
+                      max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=9))
+    scheduler.add_job(_ai_review, "interval", minutes=AI_REVIEW_MINUTES, id="ai_pick_review",
+                      max_instances=1, coalesce=True, misfire_grace_time=AI_REVIEW_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=11))
+    scheduler.add_job(_research_monitor, "cron", hour=RESEARCH_MONITOR_HOUR, minute=5, timezone="America/Bogota",
+                      id="research_monitor", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    if monitor_last is None or moment - monitor_last > timedelta(hours=26):
+        # missed while the worker was down: once now, then on the clock
+        scheduler.add_job(_research_monitor, "date", run_date=moment + timedelta(minutes=13),
+                          id="research_monitor_catch_up", misfire_grace_time=3600)
+    scheduler.add_job(_research_weekly, "cron", day_of_week=RESEARCH_V2_WEEKDAY, hour=RESEARCH_V2_HOUR, minute=20,
+                      timezone="America/Bogota", id="research_v2_weekly", max_instances=1, coalesce=True,
+                      misfire_grace_time=12 * 3600)
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     scheduler.start()

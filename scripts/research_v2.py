@@ -20,7 +20,6 @@ import sys
 from pathlib import Path
 
 import psycopg
-from psycopg.rows import tuple_row
 
 from fbi.backtesting.walkforward import WalkForwardConfig
 from fbi.core.clock import now
@@ -28,25 +27,14 @@ from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.research.evolution import learn_from_v2
+from fbi.research.loop import model_ready
 from fbi.research.v2 import run_v2
 from fbi.research.v2_record import record_v2
 from fbi.research.v2_report import report_json, report_markdown
 
 REPO = Path(__file__).resolve().parents[1]
 REPORT_DIR = REPO / "data" / "reports"
-
-
-def model_ready(conn: psycopg.Connection, validation: int, test: int) -> list[tuple[int, str]]:
-    with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(
-            """
-            SELECT c.id, c.name FROM core.competitions c
-              JOIN core.competition_seasons cs ON cs.competition_id = c.id
-              JOIN analytics.competition_data_scores s ON s.competition_season_id = cs.id
-             WHERE c.competition_type = 'domestic_league' AND s.class = 'MODEL_READY' AND cs.season IN (%s, %s)
-             GROUP BY c.id, c.name HAVING count(DISTINCT cs.season) = 2 ORDER BY c.id
-            """, (validation, test))
-        return [(int(a), str(b)) for a, b in cur.fetchall()]
 
 
 def dirty() -> list[str]:
@@ -110,7 +98,10 @@ def main() -> int:
             print(f"report: {md_path}", flush=True)
             if args.apply:
                 written = record_v2(conn, result, name=name, code_version=version, report_path=json_path)
+                learned = learn_from_v2(conn, run=name, champion=result.champion.key,
+                                        roles={m: (r.role, r.reason) for m, r in result.roles.items()}, at=at)
                 conn.commit()
+                written["proposals"] = learned.proposals
                 counters.rows_inserted = len(written.get("models", {}))
                 print(json.dumps(written, indent=2, default=str), flush=True)
             else:
