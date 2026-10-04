@@ -354,3 +354,37 @@ def test_an_official_decision_is_read_against_the_real_schema(migrated_database:
             (992002, TEAM_B, TEAM_A, 0, 2)]
         variants = official_variants(conn, got)
         assert [(v.home, v.away, v.goals_home, v.goals_away) for v in variants] == [("V2 B", "V2 A", 0, 2)]
+
+
+def test_a_player_block_is_settled_by_re_reading_its_matches(migrated_database: str,
+                                                            v2_league: dict[str, int]) -> None:
+    from types import SimpleNamespace
+
+    class MatchesClient:
+        def __init__(self, goals_first: int) -> None:
+            self.goals_first = goals_first
+            self.asked: list[str] = []
+
+        async def get(self, endpoint: str, params: dict[str, Any]) -> Any:
+            self.asked.append(params["ids"])
+            items = [{"fixture": {"id": fid}, "players": [{"team": {"id": TEAM_A}, "players": [
+                {"player": {"id": PLAYER}, "statistics": [{"games": {"minutes": minutes, "substitute": sub},
+                                                           "goals": {"total": goals, "assists": 0},
+                                                           "cards": {"yellow": 0, "red": 0}}]}]}]}
+                     for fid, minutes, sub, goals in ((992001, 90, False, self.goals_first),
+                                                      (992002, None, True, 1))]
+            return SimpleNamespace(body={"response": items}, params=params, fetched_at=NOW, http_status=200,
+                                   results_count=len(items), stored=None)
+
+    def block() -> pl.BlockVerdict:
+        return pl.BlockVerdict(TEAM_A, "V2 A", LEAGUE, "V2 League", SEASON, "stats_mismatch", {"goals": 3},
+                               {"goals": 2}, differences={"goals": (3, 2)})
+
+    with psycopg.connect(migrated_database, autocommit=True) as conn:
+        same = MatchesClient(goals_first=1)
+        v = asyncio.run(pl.recheck(V2Run(conn, same, "player_stats", NOW), conn, PLAYER, block()))
+        assert same.asked == ["992001-992002"]
+        assert v.verdict == "provider_aggregate_differs" and v.recheck["our_match_rows"]["goals"] == 2
+        changed = MatchesClient(goals_first=2)
+        assert asyncio.run(pl.recheck(V2Run(conn, changed, "player_stats", NOW), conn, PLAYER,
+                                      block())).verdict == "ours_stale"

@@ -187,13 +187,15 @@ class BlockVerdict:
     league_name: str
     season: int
     verdict: str
-    """ok | ours_missing | provider_behind | stats_mismatch | not_in_db | not_at_provider"""
+    """ok | ours_missing | provider_behind | stats_mismatch | not_in_db | not_at_provider, then refined
+    (``refine``) and settled by re-reading the matches (``recheck``): provider_aggregate_differs | ours_stale"""
     api: dict[str, int | None] | None
     ours: dict[str, Any] | None
     differences: dict[str, tuple[Any, Any]] = field(default_factory=dict)
     gaps: dict[str, int] = field(default_factory=dict)
     rating_api: str | None = None
     rating_ours: Any = None
+    recheck: dict[str, Any] = field(default_factory=dict)
 
 
 def judge_block(api: Block | None, ours: Mapping[str, Any] | None) -> BlockVerdict:
@@ -255,6 +257,92 @@ def refine(v: BlockVerdict, *, tracked: set[int], migrated: set[tuple[int, int]]
     return v
 
 
+# ── who is wrong when the season figures and our match rows disagree ───────
+
+RECHECK_VERDICTS = ("stats_mismatch", "not_at_provider")
+"""Blocks with the same appearances but different figures, or ours without a provider block: the
+provider's season aggregate and its per-match data disagree, or our stored match rows are older
+than the provider's per-match data. Re-reading the matches tells which."""
+
+TEAM_MATCHES_SQL = """
+SELECT f.provider_fixture_id FROM core.fixtures f
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+  JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
+ WHERE c.provider_league_id = %(l)s AND cs.season = %(s)s AND t.provider_team_id = %(t)s
+   AND f.status_group = 'finished'
+ ORDER BY f.kickoff_at
+"""
+
+STORED_MATCHES_SQL = """
+SELECT f.provider_fixture_id AS fixture, ps.minutes, ps.is_substitute, ps.goals, ps.assists, ps.yellow_cards,
+       ps.red_cards
+  FROM core.fixture_player_stats ps JOIN core.fixtures f ON f.id = ps.fixture_id
+ WHERE ps.provider_player_id = %(p)s AND f.provider_fixture_id = ANY(%(ids)s)
+"""
+
+
+def match_line(rows: Sequence[Mapping[str, Any]]) -> dict[str, int]:
+    """Season figures added up from per-match rows (ours or the provider's), same definitions."""
+    played = [r for r in rows if (r.get("minutes") or 0) > 0]
+    return {"appearances": len(played),
+            "lineups": sum(1 for r in played if not r.get("is_substitute")),
+            "minutes": sum(int(r.get("minutes") or 0) for r in played),
+            "goals": sum(int(r.get("goals") or 0) for r in rows),
+            "assists": sum(int(r.get("assists") or 0) for r in rows),
+            "yellow": sum(int(r.get("yellow_cards") or 0) for r in rows),
+            "red": sum(int(r.get("red_cards") or 0) for r in rows)}
+
+
+def provider_match_rows(items: Sequence[Mapping[str, Any]], player: int) -> list[dict[str, Any]]:
+    """The player's per-match rows in /fixtures?ids answers (the ``players`` block of each fixture)."""
+    out = []
+    for item in items:
+        fid = _int(_d(item.get("fixture")).get("id"))
+        for team_block in item.get("players") or []:
+            for entry in _d(team_block).get("players") or []:
+                entry = _d(entry)
+                stats = entry.get("statistics")
+                if _int(_d(entry.get("player")).get("id")) != player or not isinstance(stats, list) or not stats:
+                    continue
+                st = _d(stats[0])
+                games, goals, cards = _d(st.get("games")), _d(st.get("goals")), _d(st.get("cards"))
+                sub = games.get("substitute")
+                out.append({"fixture": fid, "minutes": _int(games.get("minutes")),
+                            "is_substitute": sub if isinstance(sub, bool) else None,
+                            "goals": _int(goals.get("total")), "assists": _int(goals.get("assists")),
+                            "yellow_cards": _int(cards.get("yellow")), "red_cards": _int(cards.get("red"))})
+    return out
+
+
+def settle(v: BlockVerdict, fresh: Mapping[str, int], stored: Mapping[str, int], fixtures: int) -> BlockVerdict:
+    """The recheck's verdict: our rows equal the provider's per-match data now -> the provider's season
+    aggregate is what differs (its two endpoints disagree); otherwise our stored rows are older than its
+    per-match data (a re-fetch is due)."""
+    v.recheck = {"fixtures": fixtures, "provider_matches_now": dict(fresh), "our_match_rows": dict(stored)}
+    v.verdict = "provider_aggregate_differs" if dict(fresh) == dict(stored) else "ours_stale"
+    return v
+
+
+async def recheck(run: Any, conn: psycopg.Connection[Any], player: int, v: BlockVerdict,
+                  batch: int = 20) -> BlockVerdict:
+    """Re-read the block's finished matches (/fixtures?ids, NEW raw payloads) and settle who differs."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(TEAM_MATCHES_SQL, {"l": v.league, "s": v.season, "t": v.team})
+        ids = [int(r["provider_fixture_id"]) for r in cur.fetchall()]
+        cur.execute(STORED_MATCHES_SQL, {"p": player, "ids": ids})
+        stored = [dict(r) for r in cur.fetchall()]
+    if not ids:
+        return v
+    fresh: list[dict[str, Any]] = []
+    for k in range(0, len(ids), batch):
+        answer = await run.get("/fixtures", {"ids": "-".join(str(i) for i in ids[k:k + batch])})
+        if answer is None:
+            return v  # a failed request leaves the block as it was
+        fresh += provider_match_rows(answer.items, player)
+    return settle(v, match_line(fresh), match_line(stored), len(ids))
+
+
 def player_evidence(player: int, name: str, verdicts: Sequence[BlockVerdict], product: Mapping[str, Any],
                     current_club: Mapping[str, Any] | None, api_ref: Mapping[str, Any] | None) -> list[Evidence]:
     out = []
@@ -300,6 +388,31 @@ def player_evidence(player: int, name: str, verdicts: Sequence[BlockVerdict], pr
                                       f"season figures count more appearances ({diffs}) - its per-match players "
                                       "lists omit him where its aggregate counts him",
                                 api={**(dict(api_ref) if api_ref else {}), "block": v.api}, db={"block": v.ours}))
+        elif v.verdict == "provider_aggregate_differs":
+            out.append(Evidence(key=f"{key}:aggregate_differs", area="player_stats", issue_type="PLAYER_STATS_MISMATCH",
+                                severity="low", at_fault="provider", entity=entity,
+                                claim=f"{entity}: the provider's season figures ({diffs}) disagree with its own "
+                                      f"per-match data, which our rows equal exactly (re-read today: "
+                                      f"{v.recheck.get('fixtures')} matches)",
+                                api={**(dict(api_ref) if api_ref else {}), "block": v.api,
+                                     "per_match_now": v.recheck.get("provider_matches_now")},
+                                db={"block": v.ours, "our_match_rows": v.recheck.get("our_match_rows")},
+                                root_cause="provider: /players (season aggregate) and /fixtures?ids (per match) "
+                                           "disagree; ours follow the per-match data"))
+        elif v.verdict == "ours_stale":
+            out.append(Evidence(key=f"{key}:ours_stale", area="player_stats", issue_type="STALE_ENTITY",
+                                severity="medium", at_fault="predigol", entity=entity,
+                                claim=f"{entity}: our stored match rows differ from the provider's per-match data "
+                                      f"today ({v.recheck.get('our_match_rows')} vs "
+                                      f"{v.recheck.get('provider_matches_now')}): the provider corrected matches "
+                                      "after we stored them",
+                                api={**(dict(api_ref) if api_ref else {}), "block": v.api,
+                                     "per_match_now": v.recheck.get("provider_matches_now")},
+                                db={"block": v.ours, "our_match_rows": v.recheck.get("our_match_rows")},
+                                root_cause="per-match player rows are fetched once; later provider corrections are "
+                                           "not re-read",
+                                fix="re-fetch the season's match details (fixture_details units) - new rows, the old "
+                                    "kept in RAW"))
         elif v.verdict in ("stats_mismatch", "not_at_provider"):
             out.append(Evidence(key=f"{key}:mismatch", area="player_stats", issue_type="PLAYER_STATS_MISMATCH",
                                 severity="medium", at_fault="undetermined", entity=entity,

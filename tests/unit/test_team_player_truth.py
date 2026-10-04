@@ -174,3 +174,40 @@ def test_why_our_side_lacks_a_block_is_named() -> None:
                      migrated={(10, 2026)}).verdict == "starts_definition"
     assert pl.refine(v("stats_mismatch", diffs={"lineups": (7, 6), "goals": (2, 1)}), tracked={10},
                      migrated={(10, 2026)}).verdict == "stats_mismatch"
+
+
+def test_identity_duplicates_report_every_group_not_the_examples() -> None:
+    from fbi.truth.v2 import identity as idn
+
+    examples = [{"full_name": f"p{i}", "birth_date": "2000-01-01", "ids": [i, i + 1000], "groups_total": 155,
+                 "rows_total": 311} for i in range(50)]
+    ev = {e.key: e for e in idn.evidence({"player_duplicates": examples}, {}, NOW)}
+    assert "155 people" in ev["identity:player_duplicates"].claim and "311 rows" in ev["identity:player_duplicates"].claim
+
+
+def test_re_reading_the_matches_says_who_differs() -> None:
+    items = [{"fixture": {"id": 1}, "players": [{"team": {"id": 529}, "players": [
+                 {"player": {"id": 1496}, "statistics": [{"games": {"minutes": 90, "substitute": False},
+                                                          "goals": {"total": 2, "assists": 0},
+                                                          "cards": {"yellow": 1, "red": 0}}]},
+                 {"player": {"id": 7}, "statistics": [{"games": {"minutes": 90, "substitute": False}}]}]}]},
+             {"fixture": {"id": 2}, "players": [{"team": {"id": 529}, "players": [
+                 {"player": {"id": 1496}, "statistics": [{"games": {"minutes": None, "substitute": True},
+                                                          "goals": {"total": None}, "cards": {}}]}]}]}]
+    rows = pl.provider_match_rows(items, 1496)
+    assert [r["fixture"] for r in rows] == [1, 2]
+    fresh = pl.match_line(rows)
+    assert fresh == {"appearances": 1, "lineups": 1, "minutes": 90, "goals": 2, "assists": 0, "yellow": 1, "red": 0}
+
+    def block() -> pl.BlockVerdict:
+        return pl.BlockVerdict(529, "Barcelona", 556, "Super Cup", 2025, "stats_mismatch",
+                               {"goals": 1}, {"goals": 2}, differences={"goals": (1, 2)})
+
+    same = pl.settle(block(), fresh, dict(fresh), 2)
+    assert same.verdict == "provider_aggregate_differs" and same.recheck["fixtures"] == 2
+    ev = pl.player_evidence(1496, "Raphinha", [same], {}, None, None)
+    assert [(e.issue_type, e.at_fault) for e in ev] == [("PLAYER_STATS_MISMATCH", "provider")]
+    older = pl.settle(block(), fresh, {**fresh, "goals": 1}, 2)
+    assert older.verdict == "ours_stale"
+    assert [(e.issue_type, e.at_fault) for e in pl.player_evidence(1496, "R", [older], {}, None, None)] == [
+        ("STALE_ENTITY", "predigol")]

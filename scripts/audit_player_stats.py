@@ -104,7 +104,10 @@ async def audit_player(run: V2Run, conn: psycopg.Connection[Any], player: int, n
             v = pl.judge_block(api_by.get(key), ours.get(key))
             if v.verdict in ("ours_missing", "not_in_db"):
                 v.gaps = pl.team_detail_gaps(conn, v.league, v.season, v.team)
-            verdicts.append(pl.refine(v, tracked=tracked, migrated=migrated))
+            v = pl.refine(v, tracked=tracked, migrated=migrated)
+            if v.verdict in pl.RECHECK_VERDICTS and v.league in tracked:
+                v = await pl.recheck(run, conn, player, v)
+            verdicts.append(v)
     club = nat = None
     extra: dict[str, Any] = {}
     if focus:

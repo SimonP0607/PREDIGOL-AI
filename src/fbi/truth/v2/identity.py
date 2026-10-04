@@ -27,14 +27,16 @@ from fbi.truth.v2.runner import V2Run
 
 CHECKS: dict[str, str] = {
     "team_duplicates": """
-        SELECT lower(unaccent_name) AS name, country, array_agg(provider_team_id ORDER BY provider_team_id) AS ids
+        SELECT lower(unaccent_name) AS name, country, array_agg(provider_team_id ORDER BY provider_team_id) AS ids,
+               count(*) OVER () AS groups_total, sum(count(*)) OVER () AS rows_total
           FROM (SELECT provider_team_id, country, regexp_replace(lower(translate(name,
                 'áàâäãåéèêëíìîïóòôöõúùûüñçÁÀÂÄÃÅÉÈÊËÍÌÎÏÓÒÔÖÕÚÙÛÜÑÇ', 'aaaaaaeeeeiiiiooooouuuuncAAAAAAEEEEIIIIOOOOOUUUUNC')),
                 '[^a-z0-9]+', ' ', 'g') AS unaccent_name FROM core.teams) t
          GROUP BY 1, 2 HAVING count(*) > 1 ORDER BY 1 LIMIT 50""",
     "player_duplicates": """
         SELECT lower(coalesce(firstname, '') || ' ' || coalesce(lastname, '')) AS full_name, birth_date,
-               array_agg(provider_player_id ORDER BY provider_player_id) AS ids
+               array_agg(provider_player_id ORDER BY provider_player_id) AS ids,
+               count(*) OVER () AS groups_total, sum(count(*)) OVER () AS rows_total
           FROM core.players WHERE birth_date IS NOT NULL AND lastname IS NOT NULL
          GROUP BY 1, 2 HAVING count(*) > 1 ORDER BY 1 LIMIT 50""",
     "player_name_collisions": """
@@ -58,10 +60,12 @@ CHECKS: dict[str, str] = {
                       AND t.id IN (f.home_team_id, f.away_team_id))) AS national_rows_in_club_comps
           FROM core.teams t""",
     "coach_duplicates": """
-        SELECT lower(name) AS name, birth_date, array_agg(provider_coach_id) AS ids FROM core.coaches
+        SELECT lower(name) AS name, birth_date, array_agg(provider_coach_id) AS ids,
+               count(*) OVER () AS groups_total, sum(count(*)) OVER () AS rows_total FROM core.coaches
          WHERE birth_date IS NOT NULL GROUP BY 1, 2 HAVING count(*) > 1 LIMIT 20""",
     "venue_duplicates": """
-        SELECT lower(name) AS name, lower(city) AS city, array_agg(provider_venue_id) AS ids FROM core.venues
+        SELECT lower(name) AS name, lower(city) AS city, array_agg(provider_venue_id) AS ids,
+               count(*) OVER () AS groups_total, sum(count(*)) OVER () AS rows_total FROM core.venues
          WHERE name IS NOT NULL GROUP BY 1, 2 HAVING count(*) > 1 LIMIT 20""",
     "squads": """
         SELECT count(DISTINCT team_id) AS teams, count(*) AS rows, min(first_seen_at) AS first_capture,
@@ -155,20 +159,25 @@ async def provider_samples(run: V2Run, conn: psycopg.Connection[Any], ids: Mappi
 def evidence(checks: Mapping[str, list[dict[str, Any]]], tallies: Mapping[str, Tally], at: datetime
              ) -> list[Evidence]:
     out = []
+    def total(rows: list[dict[str, Any]], key: str = "groups_total") -> int:
+        """All groups, not the examples the check returns (LIMIT 50 / 20)."""
+        return int(rows[0].get(key) or len(rows)) if rows else 0
+
     dup_teams = checks.get("team_duplicates", [])
     if dup_teams:
         out.append(Evidence(key="identity:team_duplicates", area="identity", issue_type="DUPLICATE_ENTITY",
-                            severity="medium", at_fault="undetermined", entity=f"{len(dup_teams)} names",
-                            claim=f"{len(dup_teams)} team names occur twice in one country under different provider "
+                            severity="medium", at_fault="undetermined", entity=f"{total(dup_teams)} names",
+                            claim=f"{total(dup_teams)} team names occur twice in one country under different provider "
                                   "ids (a club and its namesake, or one club split in two)",
                             db={"examples": dup_teams[:10]},
                             fix="check each pair on the provider's team page; merge only through an alias map"))
     dup_players = checks.get("player_duplicates", [])
     if dup_players:
         out.append(Evidence(key="identity:player_duplicates", area="identity", issue_type="DUPLICATE_ENTITY",
-                            severity="medium", at_fault="provider", entity=f"{len(dup_players)} people",
-                            claim=f"{len(dup_players)} people (same full name and birth date) have two or more "
-                                  "provider player ids: their statistics are split",
+                            severity="medium", at_fault="provider", entity=f"{total(dup_players)} people",
+                            claim=f"{total(dup_players)} people (same full name and birth date) have two or more "
+                                  f"provider player ids ({total(dup_players, 'rows_total')} rows): their statistics "
+                                  "are split",
                             db={"examples": dup_players[:10]},
                             fix="an alias table provider_player_id -> canonical id, per provider evidence"))
     orphans = (checks.get("player_rows_without_profile") or [{}])[0].get("players") or 0
