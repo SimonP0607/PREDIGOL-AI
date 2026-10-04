@@ -1,0 +1,241 @@
+{
+  "title": "Data truth",
+  "description": "What the provider says today against what we hold: every difference with both values, how current each dataset is, and whether a model may use it.",
+  "breadcrumb": "Data truth",
+  "tabs": {
+    "matrix": "Matrix",
+    "freshness": "Freshness",
+    "standings": "Tables",
+    "gate": "Model gate",
+    "findings": "Findings",
+    "repairs": "Repairs",
+    "runs": "Audits"
+  },
+  "cards": {
+    "lastAudit": "Last audit",
+    "lastAuditHint": "#{id} · {requests} provider requests",
+    "serious": "Critical and high findings",
+    "seriousHint": "{total} findings in all",
+    "fresh": "Datasets up to date",
+    "freshHint": "against each service level, measured now",
+    "gate": "Matches the market baseline can price",
+    "gateHint": "{pass} of {total} in the next {hours} h"
+  },
+  "noAudit": "No truth audit has been run yet (python -m scripts.truth_audit).",
+  "matrix": {
+    "title": "API vs DB matrix",
+    "subtitle": "Audit #{id}, {date}. API: what the provider showed; DB: what we held for the same scope.",
+    "dataset": "Dataset",
+    "api": "API",
+    "db": "DB",
+    "difference": "Difference",
+    "freshness": "Freshness",
+    "safe": "Model safe?",
+    "agree": "{matched} of {checked} agree",
+    "noDifference": "no differences",
+    "notCompared": "not compared"
+  },
+  "role": {
+    "REQUIRED": "Required",
+    "OPTIONAL": "Optional",
+    "NOT_USED": "Not used",
+    "UNAVAILABLE_BY_PROVIDER": "Unavailable at the provider"
+  },
+  "safe": {
+    "yes": "YES",
+    "yes_optional": "YES (optional input)",
+    "partial": "PARTIAL",
+    "no": "NO",
+    "na": "n/a — no model reads it"
+  },
+  "safeReason": {
+    "critical": "critical findings",
+    "high": "high findings",
+    "stale": "stale"
+  },
+  "datasets": {
+    "competitions": "Competitions & coverage",
+    "fixtures": "Fixtures (schedule)",
+    "results": "Results",
+    "events": "Events",
+    "lineups": "Line-ups",
+    "team_stats": "Team statistics",
+    "player_stats": "Player statistics",
+    "standings": "League tables",
+    "teams": "Teams",
+    "players": "Players (profiles)",
+    "coaches": "Coaches",
+    "squads": "Squads",
+    "injuries": "Injuries & absences",
+    "odds": "Pre-match odds",
+    "bookmakers": "Bookmakers",
+    "elo": "Elo",
+    "live": "Live",
+    "match_detail": "Match detail",
+    "odds_prematch": "Pre-match odds",
+    "coverage": "Provider coverage"
+  },
+  "kinds": {
+    "mismatch": "mismatch",
+    "missing_in_db": "missing in DB",
+    "missing_in_api": "missing in API",
+    "not_stored": "not stored",
+    "stale": "stale",
+    "provider_lag": "provider lag",
+    "inconsistent": "inconsistent"
+  },
+  "state": {
+    "FRESH": "Fresh",
+    "STALE": "Stale",
+    "UNKNOWN": "Unknown",
+    "UNAVAILABLE": "Unavailable"
+  },
+  "sides": {
+    "leagues_listed": "{listed} competitions listed; {ours} of ours",
+    "tracked": "{tracked} tracked",
+    "fixture_lists": "{n} fixtures in {seasons} seasons ({current} current)",
+    "stored_for_them": "{stored} stored for them",
+    "finished_scores": "scores of the finished fixtures in those lists",
+    "result_rows": "core.fixture_results",
+    "sampled_fixtures": "{n} sampled fixtures (/fixtures?ids=)",
+    "rows_for_them": "the rows stored for them",
+    "table_rows": "{n} table rows in {seasons} league seasons",
+    "newest_snapshot_rows": "{stored} rows in our newest tables",
+    "sampled_teams": "{n} sampled teams",
+    "teams_table": "core.teams + core.venues",
+    "sampled_players": "{n} sampled players",
+    "players_table": "core.players",
+    "sampled_coaches": "{n} sampled coaches",
+    "coaches_table": "core.coaches",
+    "sampled_squads": "{n} sampled squads",
+    "not_stored": "not stored",
+    "sampled_upcoming": "{n} sampled upcoming fixtures",
+    "absences_table": "core.player_absences",
+    "priced_upcoming": "{priced} of {n} upcoming fixtures priced; {books} bookmakers",
+    "newest_prices": "our newest price per bookmaker, market, selection and line",
+    "bookmakers_offered": "{n} bookmakers offered (/odds/bookmakers)",
+    "bookmakers_priced": "{priced} with at least one stored price",
+    "finished_fixtures": "finished fixtures",
+    "elo_rows": "features.elo_ratings"
+  },
+  "freshness": {
+    "title": "Freshness by dataset",
+    "subtitle": "Measured now, against each dataset's service level (derived from API-Football's real update cadence).",
+    "measured": "Measured {ago}",
+    "dataset": "Dataset",
+    "status": "Status",
+    "share": "Share",
+    "rule": "Rule",
+    "entities": "{n} {entity}",
+    "worst": "Competitions with most outstanding",
+    "examples": "Examples",
+    "entity": {
+      "competition-season": "seasons",
+      "fixture": "fixtures",
+      "team": "teams",
+      "person": "people"
+    },
+    "sla": {
+      "fixtures": "Every current season's fixture list read in the last 26 h (sync every 12 h; the provider updates every 15 s).",
+      "results": "A match 3 h past kick-off carries a final status; if we re-read it and the provider still says NS, that is its lag.",
+      "live": "A match in play was read in the last 3 minutes (follower every 60 s).",
+      "standings": "The table was read after the season's last match ended (the provider updates hourly); asked after and unchanged = its lag.",
+      "injuries": "A season playing in the next 48 h had its list read in the last 6 h (the provider updates every 4 h).",
+      "lineups": "A match played in the last 7 days has its line-ups.",
+      "match_detail": "A match played in the last 7 days had its events and statistics read after it ended.",
+      "odds_prematch": "A match in the next 72 h was priced at the most recent capture window it reached (T-72/48/24/12/6/3 h, aligned on the provider's 3-hourly update).",
+      "elo": "Every match finished in the last 30 days carries a rating.",
+      "teams": "Identity (country, venue, crest) read in the last 120 days.",
+      "players": "A profile (birth date or nationality) has been read for everyone in a line-up in the last 365 days.",
+      "coaches": "A profile has been read for every coach in a line-up in the last 365 days.",
+      "coverage": "The provider's coverage flags for each current season read in the last 8 days."
+    }
+  },
+  "standings": {
+    "title": "League table audit",
+    "subtitle": "Every current league table: when it was read, when it changed, and whether it reflects the last match played.",
+    "competition": "Competition",
+    "status": "Status",
+    "reason": "Reason",
+    "snapshot": "Content since",
+    "checked": "Last asked",
+    "lastMatch": "Last match",
+    "rows": "Rows",
+    "groups": "Groups",
+    "extended": "Home/away",
+    "yes": "yes",
+    "no": "no",
+    "skipped": "{n} skipped (unknown team)",
+    "reasons": {
+      "not_covered": "The provider publishes no table for this season.",
+      "no_table": "No table stored.",
+      "no_match_yet": "No match has been played yet.",
+      "reflects_last_match": "The table reflects the last match played.",
+      "provider_not_updated": "Asked after the last match; the provider had not updated it yet.",
+      "not_asked_since": "Not asked again since the last match ended."
+    }
+  },
+  "gate": {
+    "title": "MODEL_DATA_GATE",
+    "subtitle": "What each model needs before it may price a match. Next {hours} h, {n} matches.",
+    "model": "Model",
+    "pass": "Pass",
+    "blocked": "Blocked",
+    "blockedBy": "Blocked by",
+    "needs": "Needs",
+    "fixtures": "Matches",
+    "kickoff": "Kick-off",
+    "competition": "Competition",
+    "why": "Why",
+    "models": {
+      "market_baseline": "Market baseline",
+      "goals_poisson_dc": "Poisson / Dixon-Coles",
+      "elo_ordered_logit": "Elo + ordered logit",
+      "logit_features_v2": "Logit (features v2)"
+    },
+    "states": {
+      "ok": "ok",
+      "missing": "missing",
+      "UNAVAILABLE_BY_PROVIDER": "unavailable at the provider"
+    }
+  },
+  "findings": {
+    "title": "Findings of audit #{id}",
+    "dataset": "Dataset",
+    "severity": "Severity",
+    "kind": "Kind",
+    "entity": "Entity",
+    "field": "Field",
+    "api": "API",
+    "db": "DB",
+    "note": "Technical detail",
+    "all": "All",
+    "total": "{n} findings",
+    "prev": "Previous",
+    "next": "Next",
+    "page": "{from}–{to} of {total}"
+  },
+  "repairs": {
+    "title": "Data repairs",
+    "subtitle": "Every correction applied to stored data outside normal ingestion: what, before, after and why.",
+    "when": "When",
+    "rule": "Rule",
+    "entity": "Entity",
+    "before": "Before",
+    "after": "After",
+    "reason": "Reason",
+    "rules": {
+      "status_spelling": "Status spelling",
+      "fixture_sides": "Sides corrected by the provider"
+    }
+  },
+  "runs": {
+    "title": "Audits",
+    "id": "#",
+    "started": "Started",
+    "status": "Status",
+    "requests": "Requests",
+    "findings": "Findings",
+    "open": "Open"
+  }
+}

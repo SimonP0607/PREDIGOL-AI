@@ -1,6 +1,7 @@
 /** TanStack Query option factories for the live API. */
 import { v1, type MatchQuery } from "./client";
 import type { ParlayKind, PicksQuery } from "./types_product";
+import type { FindingsQuery } from "./types_truth";
 
 const MINUTE = 60_000;
 type Preview = "shadow" | undefined;
@@ -136,4 +137,30 @@ export const live = {
     queryFn: () => v1.authAudit({ action, limit: 200 }),
     refetchInterval: MINUTE,
   }),
+
+  // ── data truth ────────────────────────────────────────────────────────────
+  truthLatest: { queryKey: ["v1", "truth", "latest"], queryFn: v1.truthLatest },
+  truthRuns: { queryKey: ["v1", "truth", "runs"], queryFn: v1.truthRuns },
+  truthFindings: (runId: number, q: FindingsQuery) => ({
+    queryKey: ["v1", "truth", "findings", runId, q],
+    queryFn: () => v1.truthFindings(runId, q),
+    enabled: runId > 0,
+  }),
+  freshness: {
+    queryKey: ["v1", "data", "freshness"],
+    queryFn: v1.freshness,
+    refetchInterval: 2 * MINUTE,
+    staleTime: MINUTE,
+  },
+  gate: (hours: number) => ({
+    queryKey: ["v1", "data", "gate", hours],
+    queryFn: () => v1.gate(hours),
+    staleTime: MINUTE,
+  }),
+  standingsAudit: {
+    queryKey: ["v1", "data", "standings"],
+    queryFn: v1.standingsAudit,
+    refetchInterval: 5 * MINUTE,
+  },
+  repairs: { queryKey: ["v1", "data", "repairs"], queryFn: v1.repairs },
 } as const;

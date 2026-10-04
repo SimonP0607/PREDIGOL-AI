@@ -1,0 +1,241 @@
+{
+  "title": "Verdad de datos",
+  "description": "Lo que el proveedor dice hoy frente a lo que guardamos: cada diferencia con los dos valores, qué tan al día está cada dataset y si un modelo puede usarlo.",
+  "breadcrumb": "Verdad de datos",
+  "tabs": {
+    "matrix": "Matriz",
+    "freshness": "Frescura",
+    "standings": "Tablas",
+    "gate": "Gate de modelos",
+    "findings": "Hallazgos",
+    "repairs": "Reparaciones",
+    "runs": "Auditorías"
+  },
+  "cards": {
+    "lastAudit": "Última auditoría",
+    "lastAuditHint": "#{id} · {requests} peticiones al proveedor",
+    "serious": "Hallazgos críticos y altos",
+    "seriousHint": "{total} hallazgos en total",
+    "fresh": "Datasets al día",
+    "freshHint": "según su nivel de servicio, medido ahora",
+    "gate": "Partidos que el baseline de mercado puede valorar",
+    "gateHint": "{pass} de {total} en las próximas {hours} h"
+  },
+  "noAudit": "Aún no se ha ejecutado ninguna auditoría de verdad (python -m scripts.truth_audit).",
+  "matrix": {
+    "title": "Matriz API frente a BD",
+    "subtitle": "Auditoría #{id}, {date}. API: lo que mostró el proveedor; BD: lo que teníamos para el mismo alcance.",
+    "dataset": "Dataset",
+    "api": "API",
+    "db": "BD",
+    "difference": "Diferencia",
+    "freshness": "Frescura",
+    "safe": "¿Seguro para modelos?",
+    "agree": "{matched} de {checked} coinciden",
+    "noDifference": "sin diferencias",
+    "notCompared": "no comparado"
+  },
+  "role": {
+    "REQUIRED": "Requerido",
+    "OPTIONAL": "Opcional",
+    "NOT_USED": "No usado",
+    "UNAVAILABLE_BY_PROVIDER": "No disponible en el proveedor"
+  },
+  "safe": {
+    "yes": "SÍ",
+    "yes_optional": "SÍ (entrada opcional)",
+    "partial": "PARCIAL",
+    "no": "NO",
+    "na": "n/a — ningún modelo lo lee"
+  },
+  "safeReason": {
+    "critical": "hallazgos críticos",
+    "high": "hallazgos altos",
+    "stale": "desactualizado"
+  },
+  "datasets": {
+    "competitions": "Competiciones y cobertura",
+    "fixtures": "Partidos (calendario)",
+    "results": "Resultados",
+    "events": "Eventos",
+    "lineups": "Alineaciones",
+    "team_stats": "Estadísticas de equipo",
+    "player_stats": "Estadísticas de jugador",
+    "standings": "Tablas de posiciones",
+    "teams": "Equipos",
+    "players": "Jugadores (perfiles)",
+    "coaches": "Entrenadores",
+    "squads": "Plantillas",
+    "injuries": "Lesiones y bajas",
+    "odds": "Cuotas pre-partido",
+    "bookmakers": "Casas de apuestas",
+    "elo": "Elo",
+    "live": "En vivo",
+    "match_detail": "Detalle del partido",
+    "odds_prematch": "Cuotas pre-partido",
+    "coverage": "Cobertura del proveedor"
+  },
+  "kinds": {
+    "mismatch": "discrepancia",
+    "missing_in_db": "falta en BD",
+    "missing_in_api": "falta en API",
+    "not_stored": "no se guarda",
+    "stale": "desactualizado",
+    "provider_lag": "retraso del proveedor",
+    "inconsistent": "incoherente"
+  },
+  "state": {
+    "FRESH": "Al día",
+    "STALE": "Desactualizado",
+    "UNKNOWN": "Desconocido",
+    "UNAVAILABLE": "No disponible"
+  },
+  "sides": {
+    "leagues_listed": "{listed} competiciones listadas; {ours} de las nuestras",
+    "tracked": "{tracked} seguidas",
+    "fixture_lists": "{n} partidos en {seasons} temporadas ({current} actuales)",
+    "stored_for_them": "{stored} guardados para ellas",
+    "finished_scores": "marcadores de los partidos terminados de esas listas",
+    "result_rows": "core.fixture_results",
+    "sampled_fixtures": "{n} partidos de muestra (/fixtures?ids=)",
+    "rows_for_them": "las filas guardadas para ellos",
+    "table_rows": "{n} filas de tabla en {seasons} temporadas de liga",
+    "newest_snapshot_rows": "{stored} filas en nuestras tablas más recientes",
+    "sampled_teams": "{n} equipos de muestra",
+    "teams_table": "core.teams + core.venues",
+    "sampled_players": "{n} jugadores de muestra",
+    "players_table": "core.players",
+    "sampled_coaches": "{n} entrenadores de muestra",
+    "coaches_table": "core.coaches",
+    "sampled_squads": "{n} plantillas de muestra",
+    "not_stored": "no se guarda",
+    "sampled_upcoming": "{n} próximos partidos de muestra",
+    "absences_table": "core.player_absences",
+    "priced_upcoming": "{priced} de {n} próximos partidos con cuotas; {books} casas",
+    "newest_prices": "nuestro último precio por casa, mercado, selección y línea",
+    "bookmakers_offered": "{n} casas ofrecidas (/odds/bookmakers)",
+    "bookmakers_priced": "{priced} con al menos un precio guardado",
+    "finished_fixtures": "partidos terminados",
+    "elo_rows": "features.elo_ratings"
+  },
+  "freshness": {
+    "title": "Frescura por dataset",
+    "subtitle": "Medida ahora, contra el nivel de servicio de cada dataset (derivado de la cadencia real de API-Football).",
+    "measured": "Medido {ago}",
+    "dataset": "Dataset",
+    "status": "Estado",
+    "share": "Reparto",
+    "rule": "Regla",
+    "entities": "{n} {entity}",
+    "worst": "Competiciones con más pendientes",
+    "examples": "Ejemplos",
+    "entity": {
+      "competition-season": "temporadas",
+      "fixture": "partidos",
+      "team": "equipos",
+      "person": "personas"
+    },
+    "sla": {
+      "fixtures": "La lista de partidos de cada temporada actual se leyó en las últimas 26 h (sincronización cada 12 h; el proveedor actualiza cada 15 s).",
+      "results": "Un partido 3 h después del inicio tiene estado final; si lo releímos y el proveedor sigue en NS, es su retraso.",
+      "live": "Un partido en juego se leyó en los últimos 3 minutos (seguimiento cada 60 s).",
+      "standings": "La tabla se leyó después de que terminara el último partido de la temporada (el proveedor actualiza cada hora); preguntada después y sin cambios = retraso del proveedor.",
+      "injuries": "Una temporada con partidos en las próximas 48 h leyó su lista en las últimas 6 h (el proveedor actualiza cada 4 h).",
+      "lineups": "Un partido jugado en los últimos 7 días tiene sus alineaciones.",
+      "match_detail": "Un partido jugado en los últimos 7 días tiene eventos y estadísticas leídos después de terminar.",
+      "odds_prematch": "Un partido de las próximas 72 h tiene precio de la última ventana de captura alcanzada (T-72/48/24/12/6/3 h, alineadas con la actualización cada 3 h del proveedor).",
+      "elo": "Cada partido terminado en los últimos 30 días tiene rating.",
+      "teams": "La identidad (país, estadio, escudo) se leyó en los últimos 120 días.",
+      "players": "Hay perfil (fecha de nacimiento o nacionalidad) de cada jugador que figuró en una alineación en los últimos 365 días.",
+      "coaches": "Hay perfil de cada entrenador que figuró en una alineación en los últimos 365 días.",
+      "coverage": "Las banderas de cobertura de cada temporada actual se leyeron en los últimos 8 días."
+    }
+  },
+  "standings": {
+    "title": "Auditoría de tablas",
+    "subtitle": "Cada tabla de liga actual: cuándo se leyó, cuándo cambió y si refleja el último partido jugado.",
+    "competition": "Competición",
+    "status": "Estado",
+    "reason": "Motivo",
+    "snapshot": "Contenido desde",
+    "checked": "Última consulta",
+    "lastMatch": "Último partido",
+    "rows": "Filas",
+    "groups": "Grupos",
+    "extended": "Local/visitante",
+    "yes": "sí",
+    "no": "no",
+    "skipped": "{n} omitidas (equipo desconocido)",
+    "reasons": {
+      "not_covered": "El proveedor no publica tabla para esta temporada.",
+      "no_table": "No hay tabla guardada.",
+      "no_match_yet": "Aún no se ha jugado ningún partido.",
+      "reflects_last_match": "La tabla refleja el último partido jugado.",
+      "provider_not_updated": "Consultada después del último partido; el proveedor todavía no la había actualizado.",
+      "not_asked_since": "No se ha vuelto a consultar desde que terminó el último partido."
+    }
+  },
+  "gate": {
+    "title": "MODEL_DATA_GATE",
+    "subtitle": "Qué datos necesita cada modelo antes de poder valorar un partido. Próximas {hours} h, {n} partidos.",
+    "model": "Modelo",
+    "pass": "Pasan",
+    "blocked": "Bloqueados",
+    "blockedBy": "Bloqueados por",
+    "needs": "Necesita",
+    "fixtures": "Partidos",
+    "kickoff": "Inicio",
+    "competition": "Competición",
+    "why": "Motivo",
+    "models": {
+      "market_baseline": "Baseline de mercado",
+      "goals_poisson_dc": "Poisson / Dixon-Coles",
+      "elo_ordered_logit": "Elo + logit ordenado",
+      "logit_features_v2": "Logit (features v2)"
+    },
+    "states": {
+      "ok": "ok",
+      "missing": "falta",
+      "UNAVAILABLE_BY_PROVIDER": "no disponible en el proveedor"
+    }
+  },
+  "findings": {
+    "title": "Hallazgos de la auditoría #{id}",
+    "dataset": "Dataset",
+    "severity": "Severidad",
+    "kind": "Tipo",
+    "entity": "Entidad",
+    "field": "Campo",
+    "api": "API",
+    "db": "BD",
+    "note": "Detalle técnico",
+    "all": "Todos",
+    "total": "{n} hallazgos",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "page": "{from}–{to} de {total}"
+  },
+  "repairs": {
+    "title": "Reparaciones de datos",
+    "subtitle": "Cada corrección aplicada a datos guardados fuera de la ingesta normal: qué, antes, después y por qué.",
+    "when": "Cuándo",
+    "rule": "Regla",
+    "entity": "Entidad",
+    "before": "Antes",
+    "after": "Después",
+    "reason": "Motivo",
+    "rules": {
+      "status_spelling": "Ortografía del estado",
+      "fixture_sides": "Equipos corregidos por el proveedor"
+    }
+  },
+  "runs": {
+    "title": "Auditorías",
+    "id": "#",
+    "started": "Inicio",
+    "status": "Estado",
+    "requests": "Peticiones",
+    "findings": "Hallazgos",
+    "open": "Ver"
+  }
+}

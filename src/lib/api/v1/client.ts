@@ -44,6 +44,16 @@ import type {
 } from "./types_center";
 import type { AdminUser, AdminUserCreate, AuditEvent, Me, PreferencesIn } from "./types_auth";
 import type {
+  DataRepair,
+  FindingsQuery,
+  FreshnessReport,
+  GateReport,
+  StandingsAuditRow,
+  TruthFinding,
+  TruthRun,
+  TruthSummary,
+} from "./types_truth";
+import type {
   BestOddsBoard,
   Home,
   Parlay,
@@ -248,4 +258,15 @@ export const v1 = {
     patchJson<Envelope<AdminUser>>(`/admin/users/${id}`, body),
   authAudit: (q: { action?: string | undefined; limit?: number; offset?: number } = {}) =>
     getJson<Envelope<AuditEvent[]>>("/admin/audit", q as Params),
+
+  // ── data truth ────────────────────────────────────────────────────────────
+  truthLatest: () => getJson<Envelope<TruthSummary | null>>("/admin/truth/latest"),
+  truthRun: (id: number) => getJson<Envelope<TruthSummary | null>>(`/admin/truth/runs/${id}`),
+  truthRuns: () => getJson<Envelope<TruthRun[]>>("/admin/truth/runs", { limit: 30 }),
+  truthFindings: (runId: number, q: FindingsQuery = {}) =>
+    getJson<Envelope<TruthFinding[]>>(`/admin/truth/runs/${runId}/findings`, q as Params),
+  freshness: () => getJson<Envelope<FreshnessReport>>("/admin/data/freshness"),
+  gate: (hours = 72) => getJson<Envelope<GateReport>>("/admin/data/gate", { horizon_hours: hours }),
+  standingsAudit: () => getJson<Envelope<StandingsAuditRow[]>>("/admin/data/standings"),
+  repairs: () => getJson<Envelope<DataRepair[]>>("/admin/data/repairs", { limit: 200 }),
 };

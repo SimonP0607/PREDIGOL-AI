@@ -18,6 +18,7 @@ import {
   LineChart,
   ListChecks,
   Radio,
+  ScanSearch,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -80,6 +81,7 @@ export const adminNav: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "admin.groups.system",
     items: [
+      { to: "/admin/data-truth", label: "admin.nav.dataTruth", icon: ScanSearch },
       { to: "/admin/data-quality", label: "admin.nav.dataQuality", icon: Database },
       { to: "/admin/system", label: "admin.nav.system", icon: ClipboardList },
       { to: "/admin/migration", label: "admin.nav.migration", icon: Workflow },

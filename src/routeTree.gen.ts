@@ -25,6 +25,7 @@ import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminBacktestingRouteImport } from './routes/admin.backtesting'
 import { Route as AdminCompetitionsRouteImport } from './routes/admin.competitions'
 import { Route as AdminDataQualityRouteImport } from './routes/admin.data-quality'
+import { Route as AdminDataTruthRouteImport } from './routes/admin.data-truth'
 import { Route as AdminMigrationRouteImport } from './routes/admin.migration'
 import { Route as AdminModelsRouteImport } from './routes/admin.models'
 import { Route as AdminOddsRouteImport } from './routes/admin.odds'
@@ -121,6 +122,11 @@ const AdminDataQualityRoute = AdminDataQualityRouteImport.update({
   path: '/data-quality',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDataTruthRoute = AdminDataTruthRouteImport.update({
+  id: '/data-truth',
+  path: '/data-truth',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMigrationRoute = AdminMigrationRouteImport.update({
   id: '/migration',
   path: '/migration',
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/admin/backtesting': typeof AdminBacktestingRoute
   '/admin/competitions': typeof AdminCompetitionsRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/data-truth': typeof AdminDataTruthRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
@@ -245,6 +252,7 @@ export interface FileRoutesByTo {
   '/admin/backtesting': typeof AdminBacktestingRoute
   '/admin/competitions': typeof AdminCompetitionsRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/data-truth': typeof AdminDataTruthRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   '/admin/backtesting': typeof AdminBacktestingRoute
   '/admin/competitions': typeof AdminCompetitionsRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/data-truth': typeof AdminDataTruthRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
@@ -314,6 +323,7 @@ export interface FileRouteTypes {
     | '/admin/backtesting'
     | '/admin/competitions'
     | '/admin/data-quality'
+    | '/admin/data-truth'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/admin/backtesting'
     | '/admin/competitions'
     | '/admin/data-quality'
+    | '/admin/data-truth'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/admin/backtesting'
     | '/admin/competitions'
     | '/admin/data-quality'
+    | '/admin/data-truth'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
@@ -525,6 +537,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDataQualityRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/data-truth': {
+      id: '/admin/data-truth'
+      path: '/data-truth'
+      fullPath: '/admin/data-truth'
+      preLoaderRoute: typeof AdminDataTruthRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/migration': {
       id: '/admin/migration'
       path: '/migration'
@@ -640,6 +659,7 @@ interface AdminRouteChildren {
   AdminBacktestingRoute: typeof AdminBacktestingRoute
   AdminCompetitionsRoute: typeof AdminCompetitionsRoute
   AdminDataQualityRoute: typeof AdminDataQualityRoute
+  AdminDataTruthRoute: typeof AdminDataTruthRoute
   AdminMigrationRoute: typeof AdminMigrationRoute
   AdminModelsRoute: typeof AdminModelsRoute
   AdminOddsRoute: typeof AdminOddsRoute
@@ -663,6 +683,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminBacktestingRoute: AdminBacktestingRoute,
   AdminCompetitionsRoute: AdminCompetitionsRoute,
   AdminDataQualityRoute: AdminDataQualityRoute,
+  AdminDataTruthRoute: AdminDataTruthRoute,
   AdminMigrationRoute: AdminMigrationRoute,
   AdminModelsRoute: AdminModelsRoute,
   AdminOddsRoute: AdminOddsRoute,
