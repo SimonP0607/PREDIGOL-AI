@@ -206,12 +206,14 @@ function ProspectiveTable({ entries }: { entries: ResearchEntry[] }) {
             </TD>
             <TD>
               <Numeric className="text-xs" muted={!r.judged}>
-                {interval(r.diff)}
+                {r.judged || !r.diff
+                  ? interval(r.diff)
+                  : `${signed(r.diff[0])} · ${t("research.v2.notJudged")}`}
               </Numeric>
             </TD>
             <TD>
               <Numeric className="text-xs" muted={!r.judged}>
-                {r.blend_w ? interval(r.blend_w, 2) : "—"}
+                {r.blend_w && r.judged ? interval(r.blend_w, 2) : "—"}
               </Numeric>
             </TD>
           </TRow>

@@ -309,6 +309,7 @@
       "mnlogit": "Logit multinomial",
       "hgb": "Gradient boosting",
       "hgb_market": "Gradient boosting + mercado pre-cierre"
-    }
+    },
+    "notJudged": "sin juzgar"
   }
 }

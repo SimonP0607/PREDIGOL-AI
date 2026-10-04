@@ -309,6 +309,7 @@
       "mnlogit": "Multinomial logit",
       "hgb": "Gradient boosting",
       "hgb_market": "Gradient boosting + pre-closing market"
-    }
+    },
+    "notJudged": "not judged"
   }
 }

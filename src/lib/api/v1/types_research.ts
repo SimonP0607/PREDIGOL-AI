@@ -70,6 +70,7 @@ export interface ProspectiveRow {
   played: number;
   forecast: number;
   with_market: number;
+  days: number | null;
   judged: boolean;
   model_logloss: number | null;
   market_logloss: number | null;
