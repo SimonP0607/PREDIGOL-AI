@@ -11,7 +11,8 @@
     "repairs": "Reparaciones",
     "runs": "Auditorías",
     "odds": "Cobertura de cuotas",
-    "validation": "Validación"
+    "validation": "Validación",
+    "audit_v2": "Auditoría V2"
   },
   "cards": {
     "lastAudit": "Última auditoría",
@@ -470,6 +471,83 @@
       "integrity": "integridad {v} (necesita {need})",
       "prices": "precios {v} (necesita {need} para compararla con el mercado)",
       "elo": "Elo {v} (necesita {need})"
+    }
+  },
+  "v2": {
+    "none": "Todavía no corre ninguna auditoría V2 (python -m scripts.audit_standings ...).",
+    "open": {
+      "critical": "Abiertas críticas",
+      "high": "Abiertas altas",
+      "medium": "Abiertas medias",
+      "low": "Abiertas bajas"
+    },
+    "runs": {
+      "title": "Últimas corridas por auditoría",
+      "subtitle": "Cada respuesta del proveedor queda como payload RAW nuevo; nada en core cambia.",
+      "kind": "Auditoría",
+      "when": "Cuándo",
+      "status": "Estado",
+      "requests": "Requests",
+      "verdicts": "Veredictos"
+    },
+    "kinds": {
+      "standings": "Tablas",
+      "team_stats": "Estadísticas de equipo",
+      "player_stats": "Estadísticas de jugador",
+      "leagues": "Ligas y temporadas",
+      "fixtures": "Partidos y resultados",
+      "identity": "Identidad",
+      "fields": "Campos perdidos",
+      "team_history": "Historial de equipos",
+      "golden": "Dataset dorado",
+      "baseline": "Línea base",
+      "external": "Fuentes externas"
+    },
+    "ledger": {
+      "title": "Registro de evidencia (E-XXX)",
+      "subtitle": "Cada discrepancia establecida: quién está mal, por qué, cómo se arregla. Una entrada no se borra: se marca.",
+      "area": "Área",
+      "status": "Estado",
+      "empty": "Ninguna entrada con estos filtros.",
+      "code": "Código",
+      "severity": "Severidad",
+      "issue": "Tipo",
+      "fault": "Responsable",
+      "claim": "Afirmación",
+      "decide": "Veredicto",
+      "cause": "Causa",
+      "fix": "Arreglo",
+      "seen": "visto {{n}} veces, último {{when}}"
+    },
+    "status": {
+      "OPEN": "Abierta",
+      "MONITOR": "En seguimiento",
+      "ACCEPTED": "Aceptada",
+      "FIXED": "Arreglada",
+      "CLEARED": "Ya no se reproduce"
+    },
+    "fault": {
+      "predigol": "PrediGol",
+      "provider": "Proveedor",
+      "none": "Nadie",
+      "undetermined": "Sin determinar"
+    },
+    "decide": {
+      "ACCEPTED": "Aceptar",
+      "MONITOR": "Seguir",
+      "FIXED": "Arreglada",
+      "OPEN": "Reabrir"
+    },
+    "areas": {
+      "standings": "Tablas",
+      "team_stats": "Estadísticas de equipo",
+      "team_history": "Historial de equipos",
+      "player_stats": "Estadísticas de jugador",
+      "leagues": "Ligas",
+      "fixtures": "Partidos",
+      "identity": "Identidad",
+      "normalization": "Normalización",
+      "coaches": "Entrenadores"
     }
   }
 }

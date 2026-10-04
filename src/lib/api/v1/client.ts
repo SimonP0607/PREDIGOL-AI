@@ -64,6 +64,8 @@ import type {
   StandingsAuditRow,
   TruthFinding,
   TruthRun,
+  TruthV2Overview,
+  EvidenceEntry,
   TruthSummary,
   ValidationSummary,
 } from "./types_truth";
@@ -328,6 +330,12 @@ export const v1 = {
   truthLatest: () => getJson<Envelope<TruthSummary | null>>("/admin/truth/latest"),
   truthRun: (id: number) => getJson<Envelope<TruthSummary | null>>(`/admin/truth/runs/${id}`),
   truthRuns: () => getJson<Envelope<TruthRun[]>>("/admin/truth/runs", { limit: 30 }),
+  truthV2: () => getJson<Envelope<TruthV2Overview>>("/admin/truth/v2", { limit: 300 }),
+  decideEvidence: (
+    code: string,
+    status: "OPEN" | "FIXED" | "ACCEPTED" | "MONITOR",
+    note?: string,
+  ) => postJson<Envelope<EvidenceEntry | null>>(`/admin/truth/v2/ledger/${code}`, { status, note }),
   truthFindings: (runId: number, q: FindingsQuery = {}) =>
     getJson<Envelope<TruthFinding[]>>(`/admin/truth/runs/${runId}/findings`, q as Params),
   freshness: () => getJson<Envelope<FreshnessReport>>("/admin/data/freshness"),

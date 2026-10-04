@@ -174,6 +174,7 @@ export const live = {
   // ── data truth ────────────────────────────────────────────────────────────
   truthLatest: { queryKey: ["v1", "truth", "latest"], queryFn: v1.truthLatest },
   truthRuns: { queryKey: ["v1", "truth", "runs"], queryFn: v1.truthRuns },
+  truthV2: { queryKey: ["v1", "truth", "v2"], queryFn: v1.truthV2 },
   truthFindings: (runId: number, q: FindingsQuery) => ({
     queryKey: ["v1", "truth", "findings", runId, q],
     queryFn: () => v1.truthFindings(runId, q),

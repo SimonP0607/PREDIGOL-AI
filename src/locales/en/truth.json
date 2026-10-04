@@ -11,7 +11,8 @@
     "repairs": "Repairs",
     "runs": "Audits",
     "odds": "Odds coverage",
-    "validation": "Validation"
+    "validation": "Validation",
+    "audit_v2": "Audit V2"
   },
   "cards": {
     "lastAudit": "Last audit",
@@ -470,6 +471,83 @@
       "integrity": "integrity {v} (needs {need})",
       "prices": "prices {v} (needs {need} to judge against the market)",
       "elo": "Elo {v} (needs {need})"
+    }
+  },
+  "v2": {
+    "none": "No V2 audit has run yet (python -m scripts.audit_standings ...).",
+    "open": {
+      "critical": "Open critical",
+      "high": "Open high",
+      "medium": "Open medium",
+      "low": "Open low"
+    },
+    "runs": {
+      "title": "Latest run of each audit",
+      "subtitle": "Every provider answer is kept as a NEW raw payload; nothing in core changes.",
+      "kind": "Audit",
+      "when": "When",
+      "status": "Status",
+      "requests": "Requests",
+      "verdicts": "Verdicts"
+    },
+    "kinds": {
+      "standings": "Tables",
+      "team_stats": "Team statistics",
+      "player_stats": "Player statistics",
+      "leagues": "Leagues and seasons",
+      "fixtures": "Fixtures and results",
+      "identity": "Identity",
+      "fields": "Dropped fields",
+      "team_history": "Team histories",
+      "golden": "Golden dataset",
+      "baseline": "Baseline",
+      "external": "External sources"
+    },
+    "ledger": {
+      "title": "Evidence ledger (E-XXX)",
+      "subtitle": "Every established discrepancy: who is wrong, why, how it is fixed. An entry is never deleted: it is marked.",
+      "area": "Area",
+      "status": "Status",
+      "empty": "No entry with these filters.",
+      "code": "Code",
+      "severity": "Severity",
+      "issue": "Type",
+      "fault": "At fault",
+      "claim": "Claim",
+      "decide": "Verdict",
+      "cause": "Cause",
+      "fix": "Fix",
+      "seen": "seen {{n}} times, last {{when}}"
+    },
+    "status": {
+      "OPEN": "Open",
+      "MONITOR": "Monitoring",
+      "ACCEPTED": "Accepted",
+      "FIXED": "Fixed",
+      "CLEARED": "No longer reproduced"
+    },
+    "fault": {
+      "predigol": "PrediGol",
+      "provider": "Provider",
+      "none": "Nobody",
+      "undetermined": "Undetermined"
+    },
+    "decide": {
+      "ACCEPTED": "Accept",
+      "MONITOR": "Monitor",
+      "FIXED": "Fixed",
+      "OPEN": "Reopen"
+    },
+    "areas": {
+      "standings": "Tables",
+      "team_stats": "Team statistics",
+      "team_history": "Team histories",
+      "player_stats": "Player statistics",
+      "leagues": "Leagues",
+      "fixtures": "Fixtures",
+      "identity": "Identity",
+      "normalization": "Normalization",
+      "coaches": "Coaches"
     }
   }
 }

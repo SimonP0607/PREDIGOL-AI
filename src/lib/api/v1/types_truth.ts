@@ -344,3 +344,47 @@ export interface ScoresQuery {
   limit?: number;
   offset?: number;
 }
+
+/** Data truth audit V2 (GATE: DATA TRUTH AUDIT V2) - one run per audit command. */
+export interface TruthV2Run {
+  id: number;
+  kind: string;
+  started_at: string;
+  finished_at: string | null;
+  status: string;
+  requests: number;
+  summary: Record<string, unknown>;
+  report_dir: string | null;
+}
+
+export type EvidenceStatus = "OPEN" | "FIXED" | "ACCEPTED" | "MONITOR" | "CLEARED";
+export type EvidenceFault = "provider" | "predigol" | "none" | "undetermined";
+
+/** One E-XXX entry of the evidence ledger. */
+export interface EvidenceEntry {
+  code: string;
+  key: string;
+  area: string;
+  issue_type: string;
+  severity: Severity;
+  at_fault: EvidenceFault;
+  entity: string | null;
+  claim: string;
+  api_evidence: Record<string, unknown> | null;
+  db_evidence: Record<string, unknown> | null;
+  external_evidence: Record<string, unknown> | null;
+  root_cause: string | null;
+  fix: string | null;
+  test: string | null;
+  status: EvidenceStatus;
+  first_seen_at: string;
+  last_seen_at: string;
+  times_seen: number;
+}
+
+export interface TruthV2Overview {
+  runs: TruthV2Run[];
+  ledger: EvidenceEntry[];
+  /** status -> severity -> entries */
+  counts: Record<string, Record<string, number>>;
+}

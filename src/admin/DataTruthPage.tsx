@@ -36,9 +36,11 @@ import { localInt, localPct } from "@/lib/i18n/format";
 import { formatDateTime, formatRelative } from "@/lib/time";
 import { EmptyState, ErrorState } from "@/product/shared/States";
 import { OddsCoverageTab } from "./OddsCoverageTab";
+import { TruthV2Tab } from "./TruthV2Tab";
 import { ValidationTab } from "./ValidationTab";
 
 const TABS = [
+  "audit_v2",
   "matrix",
   "freshness",
   "standings",
@@ -139,7 +141,7 @@ function safeText(row: TruthMatrixRow): { text: string; tone: BadgeTone } {
 }
 
 export function DataTruthPage() {
-  const [tab, setTab] = useState<Tab>("matrix");
+  const [tab, setTab] = useState<Tab>("audit_v2");
   const latest = useQuery({ ...live.truthLatest });
   const fresh = useQuery({ ...live.freshness });
   const gate = useQuery({ ...live.gate(72) });
@@ -210,6 +212,7 @@ export function DataTruthPage() {
         format={(v) => t(`truth.tabs.${v}`)}
       />
 
+      {tab === "audit_v2" ? <TruthV2Tab /> : null}
       {tab === "matrix" ? (
         <MatrixTab summary={summary} loading={latest.isPending} error={latest.error} />
       ) : null}

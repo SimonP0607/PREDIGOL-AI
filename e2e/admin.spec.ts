@@ -52,7 +52,7 @@ test("every Admin Console page opens from the sidebar, translated", async ({ pag
   }
 });
 
-test("Data truth: the audit matrix, freshness, tables, model gate, validation, odds coverage, findings, repairs and audits", async ({
+test("Data truth: audit V2 ledger, the audit matrix, freshness, tables, model gate, validation, odds coverage, findings, repairs and audits", async ({
   page,
 }, info) => {
   test.setTimeout(180_000);
@@ -63,6 +63,7 @@ test("Data truth: the audit matrix, freshness, tables, model gate, validation, o
   await expect(page.getByRole("heading", { level: 1 }).first()).toHaveText(t.truth.title);
   await settle(page);
   const tabs = [
+    "audit_v2",
     "matrix",
     "freshness",
     "standings",
