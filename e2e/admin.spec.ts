@@ -51,7 +51,7 @@ test("every Admin Console page opens from the sidebar, translated", async ({ pag
   }
 });
 
-test("Data truth: the audit matrix, freshness, tables, model gate, findings, repairs and audits", async ({
+test("Data truth: the audit matrix, freshness, tables, model gate, odds coverage, findings, repairs and audits", async ({
   page,
 }, info) => {
   test.setTimeout(180_000);
@@ -61,7 +61,16 @@ test("Data truth: the audit matrix, freshness, tables, model gate, findings, rep
   await expect(page).toHaveURL(/\/admin\/data-truth$/);
   await expect(page.getByRole("heading", { level: 1 }).first()).toHaveText(t.truth.title);
   await settle(page);
-  const tabs = ["matrix", "freshness", "standings", "gate", "findings", "repairs", "runs"] as const;
+  const tabs = [
+    "matrix",
+    "freshness",
+    "standings",
+    "gate",
+    "odds",
+    "findings",
+    "repairs",
+    "runs",
+  ] as const;
   for (const tab of tabs) {
     await page.getByRole("tab", { name: t.truth.tabs[tab] }).click();
     await settle(page);

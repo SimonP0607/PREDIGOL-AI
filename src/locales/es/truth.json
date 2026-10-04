@@ -9,7 +9,8 @@
     "gate": "Gate de modelos",
     "findings": "Hallazgos",
     "repairs": "Reparaciones",
-    "runs": "Auditorías"
+    "runs": "Auditorías",
+    "odds": "Cobertura de cuotas"
   },
   "cards": {
     "lastAudit": "Última auditoría",
@@ -238,5 +239,151 @@
     "requests": "Peticiones",
     "findings": "Hallazgos",
     "open": "Ver"
+  },
+  "coverage": {
+    "title": "Cobertura de cuotas",
+    "subtitle": "Partidos jugados de los últimos {days} días ({since} - {until}): quién los cotizó, qué capturamos antes del inicio y por qué faltó el resto.",
+    "cards": {
+      "provider": "Cotizados por el proveedor",
+      "providerHint": "{priced} de los {asked} partidos consultados; {recovered} solo después del partido",
+      "capture": "Capturados antes del inicio",
+      "captureHint": "{captured} de {fixtures} partidos jugados: los únicos precios que un pick puede usar",
+      "misses": "No consultados a tiempo",
+      "missesHint": "worker apagado {down} · conocido tarde {late} · perdido con el worker en marcha {up}",
+      "downtime": "Worker apagado",
+      "downtimeHint": "de la ventana, sin ningún trabajo iniciado (el equipo estaba apagado)"
+    },
+    "critical": "Brechas nuestras",
+    "noCritical": "Ninguna brecha nuestra: cada falta se explica por el equipo apagado o por un partido anunciado después de su última ventana.",
+    "bookmakers": "Casas de apuestas",
+    "bookmakersSubtitle": "Cada casa que lista API-Football y cuántos de nuestros partidos jugados cotizó.",
+    "competitions": "Competiciones",
+    "competitionsSubtitle": "La cobertura del proveedor se juzga sobre los partidos consultados; la captura, sobre cada partido jugado.",
+    "markets": "Mercados",
+    "countries": "Países",
+    "local": "Operadores autorizados en Colombia",
+    "localSubtitle": "Las {n} marcas autorizadas por Coljuegos (lista del {asOf}) frente a las casas que cotiza API-Football. Que coincida la marca no confirma que sea la casa colombiana.",
+    "sources": "Fuentes de cuotas evaluadas",
+    "sourcesSubtitle": "Investigación del 3-4 oct 2026 (docs/research/ODDS_PROVIDER_GAP_ANALYSIS_2026.md). Nada se contrata sin el dueño.",
+    "col": {
+      "bookmaker": "Casa",
+      "state": "Estado",
+      "matches": "Partidos",
+      "share": "Cuota",
+      "competitions": "Competiciones",
+      "countries": "Países",
+      "markets": "Mercados",
+      "competition": "Competición",
+      "played": "Jugados",
+      "asked": "Consultados",
+      "priced": "Cotizados",
+      "captured": "Capturados",
+      "recovered": "Leídos después",
+      "books": "Casas (mediana)",
+      "misses": "No consultados a tiempo",
+      "upcoming": "Próximas 72 h",
+      "why": "Motivo",
+      "market": "Mercado",
+      "country": "País",
+      "brand": "Marca",
+      "providerBook": "Casa del proveedor",
+      "note": "Nota",
+      "source": "Fuente",
+      "access": "Acceso",
+      "colombian": "Casas colombianas",
+      "closing": "Línea de cierre",
+      "cost": "Costo",
+      "decision": "Decisión"
+    },
+    "states": {
+      "NOT_ASKED": "Sin consultar",
+      "NOT_COVERED": "Sin cobertura",
+      "UNPRICED_BY_PROVIDER": "Sin precios",
+      "THIN": "Escasa",
+      "PARTIAL": "Parcial",
+      "COVERED": "Cubierta"
+    },
+    "reasons": {
+      "NOT_ASKED": "{fixtures} partidos jugados, ninguno consultado antes ni después del inicio.",
+      "NOT_COVERED": "El indicador de cobertura del proveedor dice que no hay cuotas, y no las tuvo.",
+      "UNPRICED_BY_PROVIDER": "Se consultaron {asked} de {fixtures}; no volvió ningún precio.",
+      "THIN": "El partido típico tuvo {books} casa(s).",
+      "PARTIAL": "El proveedor cotizó {priced} de los {asked} partidos consultados.",
+      "COVERED": "El proveedor cotizó {priced} de {asked} consultados, normalmente con {books} casas."
+    },
+    "bookStates": {
+      "ACTIVE": "Activa",
+      "DORMANT": "Inactiva",
+      "CATALOGUE_ONLY": "Solo listada"
+    },
+    "noName": "sin nombre en el catálogo del proveedor",
+    "localStates": {
+      "PRICED_BY_PROVIDER_BRAND": "Marca cotizada por el proveedor",
+      "CATALOGUE_ONLY": "Listada, nunca cotizó",
+      "NOT_IN_PROVIDER": "No está en API-Football"
+    },
+    "localNotes": {
+      "PRICED_BY_PROVIDER_BRAND": "El feed de esta marca en el proveedor cotiza nuestros partidos; no está confirmado que sea la casa colombiana (mismos precios, mismos mercados).",
+      "CATALOGUE_ONLY": "El proveedor la lista, pero nunca cotizó un partido nuestro.",
+      "NOT_IN_PROVIDER": "API-Football no la ofrece."
+    },
+    "misses": {
+      "worker_down": "worker apagado",
+      "known_too_late": "conocido tarde",
+      "missed_while_up": "perdido con el worker en marcha"
+    },
+    "access": {
+      "ACTIVE": "En uso",
+      "FREE_NEEDS_OWNER": "Gratis - requiere cuenta del dueño",
+      "PAYMENT_REQUIRED": "Requiere pago - no contratado",
+      "CLOSED": "Cerrada",
+      "REJECTED": "Excluida"
+    },
+    "kinds": {
+      "LIVE_API": "API en vivo",
+      "HISTORICAL_FILES": "Archivos históricos"
+    },
+    "sourceText": {
+      "api_football": {
+        "cost": "Plan contratado, 75.000 peticiones/día, hasta el 29 oct 2026",
+        "decision": "Fuente principal; precios finales pre-partido recuperados para cada partido jugado"
+      },
+      "football_data_co_uk": {
+        "cost": "Gratis para particulares; sin bots, scrapers ni IA automatizados para productos comerciales o de entrenamiento",
+        "decision": "Solo backtests históricos (ya importados); sin liga colombiana; consultar al dueño antes de automatizar descargas"
+      },
+      "the_odds_api": {
+        "cost": "Plan gratuito de 500 créditos/mes con una cuenta a nombre del dueño; de pago desde USD 30/mes",
+        "decision": "Posible segunda opinión gratuita en precios europeos; sin liga ni casas colombianas: no se activa sin el dueño"
+      },
+      "odds_api_io": {
+        "cost": "Desde GBP 49/mes por 2 casas; claves gratuitas nuevas suspendidas",
+        "decision": "La única vía investigada hacia precios de operadores colombianos; requiere pago, no contratado"
+      },
+      "opticodds": {
+        "cost": "Cotización a medida (estimación de terceros ~USD 5.000/mes por deporte, sin verificar)",
+        "decision": "Requiere pago, no contratado"
+      },
+      "sportmonks": {
+        "cost": "EUR 29-249/mes más un complemento de cuotas desde EUR 24/mes",
+        "decision": "Requiere pago, no contratado"
+      },
+      "betsapi": {
+        "cost": "USD 100-300/mes",
+        "decision": "Requiere pago, no contratado (la única vía de pago investigada hacia precios de bwin)"
+      },
+      "betfair_exchange": {
+        "cost": "Clave diferida gratuita para desarrollo; clave en vivo GBP 499 una vez; requiere cuenta Betfair, quizá no permitida desde Colombia (sin verificar)",
+        "decision": "No se activa: la cuenta y la jurisdicción son decisión del dueño"
+      },
+      "pinnacle_api": {
+        "cost": "Cerrada al público desde el 23 jul 2025",
+        "decision": "No disponible"
+      },
+      "operator_websites": {
+        "cost": "-",
+        "decision": "Nunca se hace scraping: los términos de los operadores prohíben bots y la Ley 1273 de 2009, art. 269A, castiga el acceso no autorizado"
+      }
+    }
   }
 }

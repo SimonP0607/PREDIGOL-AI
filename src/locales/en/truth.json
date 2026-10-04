@@ -9,7 +9,8 @@
     "gate": "Model gate",
     "findings": "Findings",
     "repairs": "Repairs",
-    "runs": "Audits"
+    "runs": "Audits",
+    "odds": "Odds coverage"
   },
   "cards": {
     "lastAudit": "Last audit",
@@ -238,5 +239,151 @@
     "requests": "Requests",
     "findings": "Findings",
     "open": "Open"
+  },
+  "coverage": {
+    "title": "Odds coverage",
+    "subtitle": "Played matches of the last {days} days ({since} - {until}): who priced them, what our capture got before kick-off, and why it missed the rest.",
+    "cards": {
+      "provider": "Priced by the provider",
+      "providerHint": "{priced} of the {asked} matches asked for; {recovered} only after the match",
+      "capture": "Captured before kick-off",
+      "captureHint": "{captured} of {fixtures} played matches - the only prices a pick can use",
+      "misses": "Not asked in time",
+      "missesHint": "worker down {down} · known too late {late} · missed while running {up}",
+      "downtime": "Worker down",
+      "downtimeHint": "of the window, with no job started (the machine was off)"
+    },
+    "critical": "Our gaps",
+    "noCritical": "No gap of ours: every miss is explained by the machine being off or a match announced after its last window.",
+    "bookmakers": "Bookmakers",
+    "bookmakersSubtitle": "Every bookmaker API-Football lists, and how many of our played matches it priced.",
+    "competitions": "Competitions",
+    "competitionsSubtitle": "Provider coverage judged on the matches asked for; capture judged on every played match.",
+    "markets": "Markets",
+    "countries": "Countries",
+    "local": "Colombian licensed operators",
+    "localSubtitle": "The {n} brands authorised by Coljuegos (list of {asOf}) against the bookmakers API-Football prices. The same brand is not confirmed to be the Colombian book.",
+    "sources": "Price sources evaluated",
+    "sourcesSubtitle": "Research of 3-4 Oct 2026 (docs/research/ODDS_PROVIDER_GAP_ANALYSIS_2026.md). Nothing is contracted without the owner.",
+    "col": {
+      "bookmaker": "Bookmaker",
+      "state": "State",
+      "matches": "Matches",
+      "share": "Share",
+      "competitions": "Competitions",
+      "countries": "Countries",
+      "markets": "Markets",
+      "competition": "Competition",
+      "played": "Played",
+      "asked": "Asked",
+      "priced": "Priced",
+      "captured": "Captured",
+      "recovered": "Read after",
+      "books": "Books (median)",
+      "misses": "Not asked in time",
+      "upcoming": "Next 72 h",
+      "why": "Why",
+      "market": "Market",
+      "country": "Country",
+      "brand": "Brand",
+      "providerBook": "Provider bookmaker",
+      "note": "Note",
+      "source": "Source",
+      "access": "Access",
+      "colombian": "Colombian books",
+      "closing": "Closing line",
+      "cost": "Cost",
+      "decision": "Decision"
+    },
+    "states": {
+      "NOT_ASKED": "Not asked",
+      "NOT_COVERED": "Not covered",
+      "UNPRICED_BY_PROVIDER": "No prices",
+      "THIN": "Thin",
+      "PARTIAL": "Partial",
+      "COVERED": "Covered"
+    },
+    "reasons": {
+      "NOT_ASKED": "{fixtures} played matches, none asked for before or after kick-off.",
+      "NOT_COVERED": "The provider's coverage flag says no odds, and it had none.",
+      "UNPRICED_BY_PROVIDER": "Asked for {asked} of {fixtures}; no price came back.",
+      "THIN": "The typical match had {books} bookmaker(s).",
+      "PARTIAL": "The provider priced {priced} of the {asked} matches asked for.",
+      "COVERED": "The provider priced {priced} of {asked} asked, typically by {books} books."
+    },
+    "bookStates": {
+      "ACTIVE": "Active",
+      "DORMANT": "Dormant",
+      "CATALOGUE_ONLY": "Listed only"
+    },
+    "noName": "no name in the provider's catalogue",
+    "localStates": {
+      "PRICED_BY_PROVIDER_BRAND": "Brand priced by the provider",
+      "CATALOGUE_ONLY": "Listed, never priced",
+      "NOT_IN_PROVIDER": "Not in API-Football"
+    },
+    "localNotes": {
+      "PRICED_BY_PROVIDER_BRAND": "The provider's feed of this brand prices our matches; that it is the Colombian book (same prices, same markets) is not confirmed.",
+      "CATALOGUE_ONLY": "Listed by the provider, never priced a match for us.",
+      "NOT_IN_PROVIDER": "Not offered by API-Football."
+    },
+    "misses": {
+      "worker_down": "worker down",
+      "known_too_late": "known too late",
+      "missed_while_up": "missed while running"
+    },
+    "access": {
+      "ACTIVE": "In use",
+      "FREE_NEEDS_OWNER": "Free - needs the owner's account",
+      "PAYMENT_REQUIRED": "Payment required - not contracted",
+      "CLOSED": "Closed",
+      "REJECTED": "Excluded"
+    },
+    "kinds": {
+      "LIVE_API": "Live API",
+      "HISTORICAL_FILES": "Historical files"
+    },
+    "sourceText": {
+      "api_football": {
+        "cost": "Contracted plan, 75,000 requests/day, until 29 Oct 2026",
+        "decision": "Primary source; final pre-match prices recovered for every played match"
+      },
+      "football_data_co_uk": {
+        "cost": "Free for private individuals; no automated bots, scrapers or AI for commercial or data-training products",
+        "decision": "Historical backtests only (already imported); no Colombian league; ask the owner before automating downloads"
+      },
+      "the_odds_api": {
+        "cost": "Free tier 500 credits/month with an account in the owner's name; paid from USD 30/month",
+        "decision": "Possible free second opinion on European prices; no Colombian league or book - not pursued without the owner"
+      },
+      "odds_api_io": {
+        "cost": "From GBP 49/month for 2 books; new free keys paused",
+        "decision": "The only researched route to Colombian operator prices; requires payment - not contracted"
+      },
+      "opticodds": {
+        "cost": "Custom quote (third-party estimate ~USD 5,000/month per sport, unverified)",
+        "decision": "Requires payment - not contracted"
+      },
+      "sportmonks": {
+        "cost": "EUR 29-249/month plus an odds add-on from EUR 24/month",
+        "decision": "Requires payment - not contracted"
+      },
+      "betsapi": {
+        "cost": "USD 100-300/month",
+        "decision": "Requires payment - not contracted (the only researched paid route to bwin prices)"
+      },
+      "betfair_exchange": {
+        "cost": "Delayed key free for development; live key GBP 499 one-off; needs a Betfair account, possibly not allowed from Colombia (unverified)",
+        "decision": "Not pursued: account and jurisdiction are the owner's question"
+      },
+      "pinnacle_api": {
+        "cost": "Closed to the public since 23 Jul 2025",
+        "decision": "Unavailable"
+      },
+      "operator_websites": {
+        "cost": "-",
+        "decision": "Never scraped: operator terms forbid bots and Ley 1273 de 2009 art. 269A penalises unauthorised access"
+      }
+    }
   }
 }

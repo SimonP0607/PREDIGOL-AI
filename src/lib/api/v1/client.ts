@@ -48,6 +48,7 @@ import type {
   FindingsQuery,
   FreshnessReport,
   GateReport,
+  OddsCoverageReport,
   StandingsAuditRow,
   TruthFinding,
   TruthRun,
@@ -269,4 +270,6 @@ export const v1 = {
   gate: (hours = 72) => getJson<Envelope<GateReport>>("/admin/data/gate", { horizon_hours: hours }),
   standingsAudit: () => getJson<Envelope<StandingsAuditRow[]>>("/admin/data/standings"),
   repairs: () => getJson<Envelope<DataRepair[]>>("/admin/data/repairs", { limit: 200 }),
+  oddsCoverage: (days = 14) =>
+    getJson<Envelope<OddsCoverageReport>>("/admin/data/odds-coverage", { days }),
 };

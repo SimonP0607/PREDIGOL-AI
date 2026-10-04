@@ -1,7 +1,8 @@
 /**
  * Data truth: the provider against the database (the last audit), how current every
- * dataset is (measured now), every league table, the model data gate, the findings
- * and every repair applied to stored data. Read-only: the audit itself runs as
+ * dataset is (measured now), every league table, the model data gate, odds coverage
+ * (who prices what, what the capture missed and why), the findings and every repair
+ * applied to stored data. Read-only: the audit itself runs as
  * `python -m scripts.truth_audit` on the machine.
  */
 import { useMemo, useState } from "react";
@@ -34,8 +35,18 @@ import { t, translateOr } from "@/lib/i18n";
 import { localInt, localPct } from "@/lib/i18n/format";
 import { formatDateTime, formatRelative } from "@/lib/time";
 import { EmptyState, ErrorState } from "@/product/shared/States";
+import { OddsCoverageTab } from "./OddsCoverageTab";
 
-const TABS = ["matrix", "freshness", "standings", "gate", "findings", "repairs", "runs"] as const;
+const TABS = [
+  "matrix",
+  "freshness",
+  "standings",
+  "gate",
+  "odds",
+  "findings",
+  "repairs",
+  "runs",
+] as const;
 type Tab = (typeof TABS)[number];
 const SEVERITIES: Severity[] = ["critical", "high", "medium", "low", "info"];
 const KINDS: FindingKind[] = [
@@ -212,6 +223,7 @@ export function DataTruthPage() {
       {tab === "gate" ? (
         <GateTab report={gate.data?.data ?? null} loading={gate.isPending} error={gate.error} />
       ) : null}
+      {tab === "odds" ? <OddsCoverageTab /> : null}
       {tab === "findings" ? <FindingsTab summary={summary} /> : null}
       {tab === "repairs" ? <RepairsTab /> : null}
       {tab === "runs" ? <RunsTab /> : null}

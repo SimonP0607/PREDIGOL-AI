@@ -176,3 +176,115 @@ export interface FindingsQuery {
   limit?: number;
   offset?: number;
 }
+
+// ── odds coverage (BOOKMAKER_COVERAGE_REPORT) ─────────────────────────────────
+
+export type CoverageState =
+  "NOT_ASKED" | "NOT_COVERED" | "UNPRICED_BY_PROVIDER" | "THIN" | "PARTIAL" | "COVERED";
+export type BookmakerCoverageState = "ACTIVE" | "DORMANT" | "CATALOGUE_ONLY";
+export type LocalCoverageState = "PRICED_BY_PROVIDER_BRAND" | "CATALOGUE_ONLY" | "NOT_IN_PROVIDER";
+export type SourceAccess =
+  "ACTIVE" | "FREE_NEEDS_OWNER" | "PAYMENT_REQUIRED" | "CLOSED" | "REJECTED";
+export type MissCause = "worker_down" | "known_too_late" | "missed_while_up";
+
+export interface CoverageCompetition {
+  competition_id: number;
+  competition: string;
+  country: string | null;
+  season: number;
+  provider_league_id: number | null;
+  flag_odds: boolean | null;
+  fixtures: number;
+  asked: number;
+  priced: number;
+  captured: number;
+  recovered: number;
+  priced_two_plus: number;
+  median_bookmakers: number | null;
+  provider_share: number;
+  capture_share: number;
+  bookmakers: Record<string, number>;
+  markets: Record<string, number>;
+  misses: Partial<Record<MissCause, number>>;
+  upcoming: Partial<Record<FreshnessState, number>>;
+  state: CoverageState;
+  reason: string;
+}
+
+export interface CoverageBookmaker {
+  provider_bookmaker_id: number;
+  name: string;
+  state: BookmakerCoverageState;
+  fixtures: number;
+  share: number;
+  competitions: number;
+  countries: number;
+  markets: Record<string, number>;
+  first_seen: string | null;
+  last_seen: string | null;
+  name_missing: boolean;
+}
+
+export interface CoverageMarket {
+  market_key: string;
+  fixtures: number;
+  share: number;
+  bookmakers: number;
+  median_bookmakers: number | null;
+}
+
+export interface CoverageCountry {
+  country: string;
+  competitions: number;
+  fixtures: number;
+  priced: number;
+  captured: number;
+  bookmakers: number;
+}
+
+export interface CoverageLocal {
+  brand: string;
+  domain: string;
+  company: string;
+  state: LocalCoverageState;
+  provider_names: string[];
+  priced_fixtures: number;
+  colombian_edition_confirmed: boolean;
+  note: string;
+}
+
+export interface OddsSourceProfile {
+  key: string;
+  name: string;
+  kind: string;
+  access: SourceAccess;
+  bookmakers: string;
+  colombian_books: string[];
+  closing_line: string;
+  cost: string;
+  decision: string;
+  sources: string[];
+}
+
+export interface OddsCoverageReport {
+  measured_at: string;
+  since: string;
+  until: string;
+  days: number;
+  first_capture: string | null;
+  fixtures: number;
+  asked: number;
+  priced: number;
+  captured: number;
+  recovered: number;
+  misses: Partial<Record<MissCause, number>>;
+  worker_down_hours: number;
+  critical: string[];
+  competitions: CoverageCompetition[];
+  bookmakers: CoverageBookmaker[];
+  markets: CoverageMarket[];
+  countries: CoverageCountry[];
+  local: CoverageLocal[];
+  local_source: Record<string, string>;
+  sources: OddsSourceProfile[];
+}

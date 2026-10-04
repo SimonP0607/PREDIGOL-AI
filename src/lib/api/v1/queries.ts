@@ -163,4 +163,9 @@ export const live = {
     refetchInterval: 5 * MINUTE,
   },
   repairs: { queryKey: ["v1", "data", "repairs"], queryFn: v1.repairs },
+  oddsCoverage: (days: number) => ({
+    queryKey: ["v1", "data", "odds-coverage", days],
+    queryFn: () => v1.oddsCoverage(days),
+    staleTime: MINUTE,
+  }),
 } as const;
