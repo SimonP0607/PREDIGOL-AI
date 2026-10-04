@@ -177,7 +177,8 @@ test("A league table in the Match Center says how current it is", async ({ page 
     return;
   }
   await open(page, w, `/matches/${id}`);
-  const freshness = page.getByTestId("table-freshness").first();
+  // before kick-off the table is laid out twice (phone column and wide column); read the one shown
+  const freshness = page.locator('[data-testid="table-freshness"]:visible').first();
   await expect(freshness).toBeVisible();
   await expect(freshness).toContainText(t.match.standings.updated.split("{")[0]?.trim() ?? "");
 });

@@ -136,7 +136,7 @@
       "person": "personas"
     },
     "sla": {
-      "fixtures": "La lista de partidos de cada temporada actual se leyó en las últimas 26 h (sincronización cada 12 h; el proveedor actualiza cada 15 s).",
+      "fixtures": "La lista de partidos de cada temporada actual se leyó en las últimas 14 h (sincronización cada 6 h; el proveedor actualiza cada 15 s).",
       "results": "Un partido 3 h después del inicio tiene estado final; si lo releímos y el proveedor sigue en NS, es su retraso.",
       "live": "Un partido en juego se leyó en los últimos 3 minutos (seguimiento cada 60 s).",
       "standings": "La tabla se leyó después de que terminara el último partido de la temporada (el proveedor actualiza cada hora); preguntada después y sin cambios = retraso del proveedor.",
@@ -144,7 +144,7 @@
       "lineups": "Un partido jugado en los últimos 7 días tiene sus alineaciones.",
       "match_detail": "Un partido jugado en los últimos 7 días tiene eventos y estadísticas leídos después de terminar.",
       "odds_prematch": "Un partido de las próximas 72 h tiene precio de la última ventana de captura alcanzada (T-72/48/24/12/6/3 h, alineadas con la actualización cada 3 h del proveedor).",
-      "elo": "Cada partido terminado en los últimos 30 días tiene rating.",
+      "elo": "Cada partido terminado en los últimos 30 días tiene rating tras el siguiente recálculo (cada 6 h); un partido sin marcador guardado no puede tener rating.",
       "teams": "La identidad (país, estadio, escudo) se leyó en los últimos 120 días.",
       "players": "El perfil de cada jugador que figuró en una alineación en los últimos 365 días se leyó en los últimos 45 días (barrido mensual de /players/profiles).",
       "coaches": "Hay perfil de cada entrenador que figuró en una alineación en los últimos 365 días.",

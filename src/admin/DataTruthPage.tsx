@@ -77,7 +77,12 @@ function shareLabel(counts: Partial<Record<FreshnessState, number>> | undefined)
   if (!counts || total === 0) return "—";
   return order
     .filter((k) => (counts[k] ?? 0) > 0)
-    .map((k) => `${t(`truth.state.${k}`)} ${localPct((counts[k] ?? 0) / total, 0)}`)
+    .map((k) => {
+      const n = counts[k] ?? 0;
+      // a handful out of thousands rounds to 0 %: say how many instead of a misleading zero
+      const share = n / total < 0.005 ? localInt(n) : localPct(n / total, 0);
+      return `${t(`truth.state.${k}`)} ${share}`;
+    })
     .join(" · ");
 }
 
