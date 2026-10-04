@@ -27,9 +27,12 @@ Teams audited (145 team-seasons, 225 requests with the thin-history sample):
 
 | Verdict | Team-seasons |
 |---|---:|
-| **ok** — every field equal | **141** |
+| **ok** — every field equal | **140** |
 | shootout_rule — equal under the provider's own rule (below) | 4 |
+| provider_lag_expected — Chelsea W: a WSL match of that afternoon not yet in the provider's figures (it updates twice a day) | 1 |
 | ours_missing / provider_behind / result_mismatch | **0** |
+
+(Final run `20261004T153914Z`; the first runs had 141 ok — the Chelsea W match was played between them.)
 
 **The data is right.** Same scope, same numbers, for every audited team — including Real Madrid's 14
 Champions League matches of 2025/26 (9-0-5, 33-20), Bayern's 34 Bundesliga matches (28-5-1,
@@ -60,6 +63,10 @@ national side) every competition. Fixed (`c65d8af`, frontend `f753b28`):
 * `records` lists every competition of the current campaign, one row each;
 * `lifetime` keeps the old figure, written as "Todo lo almacenado: N partidos … en K competiciones
   desde … — no es una tabla de temporada".
+
+The audit reads the page **through the product's own service** (`team_records` + `team_record_sections`), not a copy
+of its query: the PRODUCT_SCOPE entry is FIXED in the ledger (E-025, commit and tests recorded) and a regression
+would re-open it.
 
 A second definition inside the product, **not changed** in this audit: the explorer's team analytics
 (`explorer.team_results`) use the 90-minute score (what the models read), the record uses the final

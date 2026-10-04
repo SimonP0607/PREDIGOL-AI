@@ -15,9 +15,12 @@ provider's own corrections), goals, assists, yellow and red cards. The provider'
 position-relative algorithm (`PROVIDER_DEFINED_METRIC`): compared to nothing, averaged by nobody else.
 
 Sample: the four players the mandate named — Raphinha (1496), Lamine Yamal (386828), Erling Haaland
-(1100), Harry Kane (184) — plus 20 random players per golden league (104 players, 717 blocks over the
-2025 and 2026 seasons, 220 requests). For the four: `/players/teams` (career), `/players/squads`
-(current squads), `/injuries?player&season`.
+(1100), Harry Kane (184) — plus 20 random players per golden league (104 players, **737 blocks** over the
+2025 and 2026 seasons, 260 requests in the final run). For the four: `/players/teams` (career), `/players/squads`
+(current squads), `/injuries?player&season`. Blocks that still differ after the checks below are **settled by
+re-reading their matches** (`/fixtures?ids`, the per-match players block, as NEW raw payloads): if our rows equal the
+provider's per-match data today, the provider's season aggregate is what differs; if not, our rows are older than
+its corrections and a re-fetch is due.
 
 ## 2. External verification (FBref, Opta-based)
 
@@ -45,23 +48,23 @@ Current club, national team and injuries for the four, from the provider and our
 | Erling Haaland | Manchester City | Norway | Norway | 0 / 0 |
 | Harry Kane | Bayern München | England | England | 0 / 0 |
 
-## 3. Blocks by verdict (second run, before the detail backfill)
+## 3. Blocks by verdict (final run, 4 Oct 15:54 UTC, after the detail backfill)
 
 | Verdict | Blocks | Meaning — who |
 |---|---:|---|
-| ok | 501 | equal |
+| ok | **523** | equal |
 | starts_definition | 46 | only starts differ, by 1–2: the provider's season "lineups" and its per-match substitute flag disagree (provider definition, ACCEPTED) |
-| details_missing | 53 | finished matches of his team without any player rows — national friendlies before the live follower existed, early Copa del Rey/Taça rounds (PrediGol: MISSING_BACKFILL) |
+| provider_aggregate_differs | 28 | **re-read on 4 Oct: our match rows equal the provider's per-match data in 28 of 28**; its `/players` season figures differ (a yellow card, minutes, a League Cup block it does not publish, Raphinha's 2025 Super Cup goals: aggregate 2, its matches 4) — provider |
+| provider_no_match_rows | 30 | his team's matches WERE fetched and the provider's players block came back empty (early Copa del Rey / Taça rounds, 2026 national friendlies, Europa League qualifiers) while its aggregate counts him — provider coverage |
+| player_rows_missing | 17 | every match of his team has player rows, he is in none of some, yet the provider's season figures count him (provider) |
+| provider_behind | 14 | our rows have more appearances than the provider's season figures (Club World Cup 2025): its player statistics update "several times a week" (provider) |
 | season_not_migrated | 47 | Friendlies Clubs before 2026 and friendlies before 2026 were never migrated (scope) |
 | untracked | 32 | U21/U19 qualifiers, Premier League Summer Series, Emirates Cup — not tracked (not an issue) |
-| stats_mismatch | 24 | small provider-internal differences: a yellow card (10), minutes on blocks where the provider has none (10), starts by > 2 (4), Raphinha's 2025 Spanish Super Cup goals (provider 2, our rows 4) |
-| player_rows_missing | 16 | every match of his team has player rows, he is in none of some, yet the provider's season figures count him (provider) |
-| provider_behind | 14 | our rows have more appearances than the provider's season figures (Club World Cup 2025: 7) — its player statistics update "several times a week" (provider) |
-| not_at_provider | 4 | we have rows, the provider has no block (League Cup) |
 
-The per-match data and the provider's season data agree for the competitions that matter to the
-product and the models; where they differ it is overwhelmingly a definition (starts) or the provider's
-own aggregation lag.
+**No block shows a wrong figure of ours.** Before the backfill, 53 blocks were "details missing"; the backfill
+fetched the never-asked matches (23 blocks became equal) and the remaining 30 turned out to be matches the
+provider serves without player data: across tracked competitions, **14,450 finished matches of the last 450 days
+were fetched with an empty players block** and only 20 were never fetched (`core.fixture_detail_coverage`).
 
 ## 4. What the user saw — PrediGol bugs, fixed
 
@@ -88,6 +91,11 @@ competition, season **and team** — the provider's own scope (a transfer gives 
 
 Tests: `tests/integration/test_data_truth_v2.py::test_a_player_is_shown_with_his_club_not_his_national_side_and_bench_rows_are_not_apps`.
 
+The audit reads the product **through the product's own SQL** (`PLAYER_AGG`, the club / national team / last
+appearance columns), next to the match rows counted independently — so a fixed bug stays fixed in the ledger:
+the 31 per-player "national team shown as team" entries and the "apps counted the bench" entry are **FIXED** (commit
+and test recorded), the rolling-window scope is ACCEPTED as labelled.
+
 ## 5. Match details nobody fetched — fixed
 
 8,113 finished fixtures since July 2025 had never been asked for their detail (events, line-ups,
@@ -96,7 +104,8 @@ Clubs. The live follower reads matches while they are played; a match it never s
 in. `fbi.ingestion.backfill.seed_current_details` now queues detail units for every tracked current
 season's played, never-fetched fixture before each backfill tick (priority 8, ahead of history,
 inside the live-capture reserve); the first seeding queued **407 units** (≈ 8,100 fixtures) and the
-backfill run of 4 Oct fetched them (see `DATA_TRUTH_AUDIT_V2.md` §after).
+backfill of 4 Oct fetched them all (19,156 backfill tasks done, 0 failed). What is still without player rows was
+asked for and is empty at the provider (§3).
 
 ## 6. Rating
 

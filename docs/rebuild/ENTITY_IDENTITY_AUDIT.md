@@ -21,15 +21,16 @@ provider's dashboard were not opened: the dashboard is the account page that als
 | Check | Result | Who / class |
 |---|---|---|
 | Team rows sharing a name and country | **2 pairs**: Nyasa Big Bullets (4596, 4599, Malawi), St Blazey (12112, 28344, England) | provider duplicates — `DUPLICATE_ENTITY`, to confirm on the provider's pages; merge only through an alias map, never silently |
-| Players with the same full name **and** birth date under two ids | **155 people, 311 rows** (e.g. Afonso Sousa 2007-04-17: 561571 / 620093) | provider duplicates — their statistics are split between two ids; `DUPLICATE_ENTITY` |
+| Players with the same full name **and** birth date under two ids | **155 people, 311 rows** (e.g. Afonso Sousa 2007-04-17: 561571 / 620093; the audit now reports the total, not its 50 examples) | provider duplicates — their statistics are split between two ids; `DUPLICATE_ENTITY` (E-470) |
 | Display names shared by different people | 11,891 names over 33,701 players (three "Raphinha": 1496, 350428, 354362 — three different men) | harmless while every join is by id; the search box lists all of them |
 | Match rows of a player without a `core.players` row | 1 | `MAPPING_ERROR`, low |
 | Players never profiled | 16 of 179,298 (37,052 without a birth date — the provider has none) | fine |
 | `is_national` flag | 453 national, 7,709 club, **3 unknown** (NULL); 3 national rows play club competitions | the product now reads an unknown flag as a club |
-| Venue rows sharing a name and city | 80 groups (Allianz Stadium Sydney 7955/20808, Arena Khimki, Arena Lviv …) | provider duplicates, `DUPLICATE_ENTITY`, low |
+| Venue rows sharing a name and city | 80 groups, 162 rows (Allianz Stadium Sydney 7955/20808, Arena Khimki, Arena Lviv …) | provider duplicates, `DUPLICATE_ENTITY`, low |
+| A fixture the provider moved to another competition | 1632353 Panama v New Zealand (1 Oct 2026, 1-1, 3-5 pens): the provider now lists it in the **Kirin Cup** (916, untracked, semi-final); we hold it under Friendlies 2026 | PrediGol `STALE_ENTITY` (E-466): a held fixture missing from its season list is not re-read by id; re-home it through `audit.data_repairs` (DATASET_V2) |
 | Coaches without nationality / birth date | 12,866 — created from line-ups (name only); `/coachs` never asked for them | `STALE_ENTITY`; the sample of 5 coaches: 1 matches, 4 lack fields or differ (coach 3933's current team: provider Stockholm Internazionale, ours the team of his last line-up) |
 | Coach career (team, start, end) | **not stored** — `/coachs` returns it, `core.coaches` keeps only the person | `UNSUPPORTED_FIELD` — a coach's tenure cannot be read from the database |
-| Provider samples | teams 10/10 equal, player profiles 10/10, venues 4/5 (Stade Saputo: "Montreal, Quebec" vs "Montreal"), coaches 1/5 | — |
+| Provider samples (random, two runs) | teams 10/10 equal, player profiles 10/10, venues 4/5 then 5/5 (Stade Saputo: "Montreal, Quebec" vs "Montreal"), coaches 1/5 (the other four lack nationality and birth date: created from line-ups) | — |
 
 ## 3. Squads
 
