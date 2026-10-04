@@ -45,7 +45,7 @@ event and it had not published). Service levels follow the provider's own update
 
 | Dataset | Provider updates | FRESH when |
 |---|---|---|
-| fixtures (schedule) | every 15 s | the season's full list was read in the last 26 h (sync every 12 h, whole season per request) |
+| fixtures (schedule) | every 15 s | the season's full list was read in the last 14 h (sync every 6 h, whole season per request) |
 | results | every 15 s; some competitions up to 48 h | a match 3 h past kick-off has a final status; re-read and still NS = provider lag |
 | live | every 15 s | a match in play was read in the last 3 min |
 | standings | hourly | the table was read after the last match ended (re-asked hourly for 24 h after each match) |

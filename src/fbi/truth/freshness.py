@@ -9,7 +9,7 @@ of date, derived from the provider's own update cadence
 ======================  ====================================  ===========================
 dataset                 provider updates                      ours is FRESH when
 ======================  ====================================  ===========================
-fixtures (schedule)     every 15 s                            the season's list was read in the last 26 h
+fixtures (schedule)     every 15 s                            the season's list was read in the last 14 h
 results                 every 15 s (some competitions: 48 h)  a match 3 h past kick-off has a final status
 live                    every 15 s                            a match in play was read in the last 3 min
 standings               every hour                            the table was read after the last match ended
@@ -255,13 +255,18 @@ def _age_h(at: datetime, then: datetime | None) -> float | None:
     return None if then is None else (at - then).total_seconds() / HOURS
 
 
+FIXTURES_FRESH_HOURS = 14
+"""Two six-hour fixture syncs plus two hours: one missed run is tolerated, two are not."""
+
+
 def _fixtures(rows: list[dict[str, Any]], at: datetime) -> DatasetFreshness:
-    out = DatasetFreshness("fixtures", "every current season's fixture list read in the last 26 h "
-                           "(sync every 12 h; the provider updates every 15 s)", "competition-season")
+    out = DatasetFreshness("fixtures", f"every current season's fixture list read in the last "
+                           f"{FIXTURES_FRESH_HOURS} h (sync every 6 h; the provider updates every 15 s)",
+                           "competition-season")
     for r in rows:
         age = _age_h(at, r["last_read"])
         state = (Freshness.UNKNOWN if r["n"] == 0 or age is None
-                 else Freshness.FRESH if age <= 26 else Freshness.STALE)
+                 else Freshness.FRESH if age <= FIXTURES_FRESH_HOURS else Freshness.STALE)
         out.add(state, competition=_label(r), example=f"{_label(r)}: read {age:.0f} h ago" if age else _label(r))
     return out
 

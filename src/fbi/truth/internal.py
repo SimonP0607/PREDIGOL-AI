@@ -197,9 +197,15 @@ WITH latest AS (
       JOIN core.competitions c ON c.id = cs.competition_id
      WHERE c.is_tracked AND cs.is_current AND c.type = 'league'
      ORDER BY s.competition_season_id, s.snapshot_at DESC
+), single AS (
+    -- Only one-table seasons: a conference, period or phase table counts the matches of its
+    -- own phase, which a season-wide count of fixtures cannot be compared with.
+    SELECT l.cs FROM latest l JOIN core.standings s ON s.competition_season_id = l.cs AND s.snapshot_at = l.snapshot_at
+     GROUP BY l.cs HAVING count(DISTINCT s.group_key) = 1
 ), rows AS (
     SELECT s.competition_season_id AS cs, s.team_id, s."group", s.played, s.snapshot_at
       FROM core.standings s JOIN latest l ON l.cs = s.competition_season_id AND l.snapshot_at = s.snapshot_at
+     WHERE l.cs IN (SELECT cs FROM single)
 ), counted AS (
     SELECT r.cs, r.team_id, r."group", r.played, r.snapshot_at,
            (SELECT count(*) FROM core.fixtures f

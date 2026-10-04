@@ -88,7 +88,10 @@ Ticking more often is nearly free. The planner computes what is due from the dat
 a tick with nothing due issues no provider request at all, while the 45-minute prematch
 tolerance and the covered-key de-duplication keep the extra ticks from re-requesting a
 window already captured. The cost is a few database queries, not quota."""
-FIXTURES_SYNC_HOURS = int(os.environ.get("FBI_FIXTURES_SYNC_HOURS", "12"))
+FIXTURES_SYNC_HOURS = int(os.environ.get("FBI_FIXTURES_SYNC_HOURS", "6" if PAID_PLAN else "12"))
+"""Every current season's whole fixture list, one request each (~124 a run). Six hours, not
+twelve: a cup draw published in the morning reached the database at the next run, and a
+match announced 3 days out had already missed its T-72h price window."""
 FIXTURES_HORIZON_DAYS = int(os.environ.get(
     "FBI_FIXTURES_HORIZON_DAYS", str(DEFAULT_HORIZON_DAYS) if PAID_PLAN else "1"))
 """Four days was the Free-plan figure, kept after the upgrade by oversight.
