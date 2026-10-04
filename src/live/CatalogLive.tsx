@@ -291,13 +291,14 @@ function CompetitionDetailPanel({ id }: { id: number }) {
   );
 }
 
-/** The provider's top lists and round calendar of the competition's newest season that has them. */
+/** The provider's top lists and round calendar of the competition's newest season that has them - stacked: the
+ * detail column is two fifths of the page, too narrow for the top list's figure and rating side by side. */
 function ReferencePanels({ competitionId }: { competitionId: number }) {
   const q = useLiveQuery(live.competitionReference(String(competitionId)));
   const data = q.data?.data;
   if (!data) return null;
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+    <div className="grid gap-4">
       <LeadersPanel data={data} />
       <RoundsPanel data={data} />
     </div>
