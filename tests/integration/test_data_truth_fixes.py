@@ -44,6 +44,20 @@ def test_a_fixture_whose_sides_the_provider_corrects_follows_it_and_says_so(conn
     assert repair is not None and repair[0] == "fixture_sides" and repair[1] != repair[2]
 
 
+def test_a_moved_kick_off_is_kept_with_both_times(conn: psycopg.Connection, seed: Seed) -> None:
+    repo = FixtureRepository(conn)
+    old = conn.execute("SELECT kickoff_at FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone()
+    assert old is not None
+    moved = old[0] - timedelta(hours=3, minutes=30)
+    ref = FixtureRef(1001, 39, 2025, moved, 33, 40, "NS")
+    teams = repo.ensure_teams([ref], {33: "Manchester United", 40: "Liverpool"})
+    repo.upsert_fixtures([ref], {(39, 2025): seed.season_id}, teams,
+                         lineage=PayloadLineage(seed.payload_hash, NOW + timedelta(minutes=1)))
+    row = conn.execute("SELECT before_kickoff, after_kickoff, payload_hash FROM core.fixture_kickoff_changes "
+                       "WHERE fixture_id = %s", (seed.fixture_id,)).fetchone()
+    assert row == (old[0], moved, seed.payload_hash)
+
+
 class CatalogueProvider:
     def __init__(self, body: dict[str, Any]) -> None:
         self.body = body

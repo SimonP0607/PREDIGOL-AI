@@ -160,7 +160,7 @@ class CoverageCompetition(Contract):
     bookmakers: dict[str, int]
     markets: dict[str, int]
     misses: dict[str, int] = Field(description="Never asked for before kick-off, by cause: worker_down, "
-                                               "known_too_late, missed_while_up.")
+                                               "known_too_late, kickoff_moved, missed_while_up.")
     upcoming: dict[str, int] = Field(description="Next 72 h by capture-plan state.")
     state: Literal["NOT_ASKED", "NOT_COVERED", "UNPRICED_BY_PROVIDER", "THIN", "PARTIAL", "COVERED"]
     reason: str
@@ -234,8 +234,8 @@ class OddsCoverageReport(Contract):
     recovered: int
     misses: dict[str, int]
     worker_down_hours: float
-    critical: list[str] = Field(description="Our gaps: a competition never asked for, or matches missed while "
-                                            "the worker was running.")
+    critical: list[str] = Field(description="Our gaps: matches missed while the worker was running, knew "
+                                            "about them in time and had their final kick-off.")
     competitions: list[CoverageCompetition]
     bookmakers: list[CoverageBookmaker]
     markets: list[CoverageMarket]

@@ -13,7 +13,9 @@ Two questions, kept apart because they have different owners:
 * **Did we capture it in time?** Only a price captured before kick-off can feed a pick. A
   match never asked for before kick-off is a capture miss, attributed to one cause:
   ``worker_down`` (no worker run near any of its capture windows - the machine was off),
-  ``known_too_late`` (the fixture reached the database after its last window), or
+  ``known_too_late`` (the fixture reached the database after its last window),
+  ``kickoff_moved`` (the provider changed its kick-off, so the windows were planned on
+  another time - core.fixture_kickoff_changes, kept from 4 Oct 2026), or
   ``missed_while_up`` (the worker was running and did not ask: a planner defect, critical).
 
 Played matches (kicked off in the last ``days``, bounded below by the first stored pre-match
@@ -57,6 +59,9 @@ WORKER_SEEN_WITHIN = timedelta(minutes=35)
 it: the pick pipeline alone starts every 30 minutes while the worker runs."""
 
 
+MOVED_LOOKBACK = timedelta(days=4)
+"""A kick-off change observed within this of the first window explains a miss: the windows
+before it were planned on the old time."""
 KNOWN_BEFORE_CLOSE = timedelta(minutes=10)
 """A fixture that reached the database in the last minutes of a window's band was not
 plannable in it: the capture tick runs every five minutes."""
@@ -91,6 +96,7 @@ class LocalState(StrEnum):
 class Miss(StrEnum):
     WORKER_DOWN = "worker_down"
     KNOWN_TOO_LATE = "known_too_late"
+    KICKOFF_MOVED = "kickoff_moved"
     MISSED_WHILE_UP = "missed_while_up"
 
 
@@ -127,6 +133,13 @@ SELECT o.fixture_id, b.provider_bookmaker_id, o.market_key, max(o.provider_updat
   JOIN core.fixtures f ON f.id = o.fixture_id
  WHERE f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
  GROUP BY 1, 2, 3
+"""
+
+MOVED_SQL = """
+SELECT k.fixture_id, min(k.observed_at) AS first_moved FROM core.fixture_kickoff_changes k
+  JOIN core.fixtures f ON f.id = k.fixture_id
+ WHERE f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
+ GROUP BY 1
 """
 
 CHECKED_SQL = """
@@ -350,7 +363,7 @@ class Uptime:
 
 
 def miss_cause(*, kickoff: datetime, created_at: datetime | None, windows: list[int], tolerance: int,
-               uptime: Uptime) -> Miss:
+               uptime: Uptime, moved_at: datetime | None = None) -> Miss:
     """Why a played match was never asked for before kick-off."""
     last_window_closes = kickoff - timedelta(minutes=min(windows) - tolerance)
     if created_at is not None and created_at > last_window_closes:
@@ -360,6 +373,8 @@ def miss_cause(*, kickoff: datetime, created_at: datetime | None, windows: list[
         if created_at is not None and opens + timedelta(minutes=tolerance) - KNOWN_BEFORE_CLOSE < created_at:
             continue  # this window had closed (or was closing) before the fixture was known
         if uptime.up_at(opens + timedelta(minutes=tolerance / 2)):
+            if moved_at is not None and moved_at >= kickoff - timedelta(minutes=max(windows)) - MOVED_LOOKBACK:
+                return Miss.KICKOFF_MOVED
             return Miss.MISSED_WHILE_UP
     return Miss.WORKER_DOWN
 
@@ -391,6 +406,8 @@ def build_report(conn: psycopg.Connection[Any], *, at: datetime, days: int = DEF
         final_rows = list(cur.fetchall())
         cur.execute(CHECKED_SQL, params)
         checked = {int(r["fixture_id"]) for r in cur.fetchall()}
+        cur.execute(MOVED_SQL, params)
+        moved = {int(r["fixture_id"]): r["first_moved"] for r in cur.fetchall()}
         cur.execute(RUNS_SQL, params)
         uptime = Uptime([r["started_at"] for r in cur.fetchall()])
         cur.execute(BOOKMAKERS_SQL)
@@ -443,7 +460,7 @@ def build_report(conn: psycopg.Connection[Any], *, at: datetime, days: int = DEF
             report.asked += 1
         if not asked_before:
             cause = miss_cause(kickoff=kickoff, created_at=f["created_at"], windows=windows, tolerance=tolerance,
-                               uptime=uptime)
+                               uptime=uptime, moved_at=moved.get(fid))
             c.misses[cause.value] = c.misses.get(cause.value, 0) + 1
             misses[cause.value] += 1
         if fid in captured:
@@ -540,13 +557,14 @@ def build_report(conn: psycopg.Connection[Any], *, at: datetime, days: int = DEF
 
 
 def is_critical(report: CoverageReport) -> list[str]:
-    """What, in this report, is our fault rather than the provider's or the machine's: a
-    competition never asked for at all, and matches the worker was running for and missed."""
-    out = [f"{c.competition} {c.season}: {c.reason}" for c in report.competitions
-           if c.state is CompetitionState.NOT_ASKED]
-    out += [f"{c.competition} {c.season}: {c.misses[Miss.MISSED_WHILE_UP.value]} match(es) not asked for while "
+    """What, in this report, is our fault rather than the provider's or the machine's: matches the
+    worker was running for, knew about in time and on their final kick-off, and did not ask for.
+
+    A competition nobody asked for (NOT_ASKED) is reported, not counted here: each of its matches
+    carries its own cause, and the hourly final pre-match read covers it within the provider's
+    7-day history."""
+    return [f"{c.competition} {c.season}: {c.misses[Miss.MISSED_WHILE_UP.value]} match(es) not asked for while "
             f"the worker was running" for c in report.competitions if c.misses.get(Miss.MISSED_WHILE_UP.value)]
-    return out
 
 
 def upcoming_unavailable_share(report: CoverageReport) -> float | None:

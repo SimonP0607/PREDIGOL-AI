@@ -154,7 +154,7 @@ def test_each_competition_gets_the_state_its_prices_earned(db: psycopg.Connectio
     assert mine["Liga Zeta"].state is CompetitionState.THIN
     assert mine["Liga Zeta"].fixtures == 1, "a match before the window is not counted"
     critical = is_critical(report)
-    assert any("Liga Gamma" in c for c in critical)
+    assert not any("Liga Gamma" in c for c in critical), "nobody asked, but the machine was off: explained"
     assert any("Liga Alfa" in c and "while the worker was running" in c for c in critical)
     assert not any("Liga Delta" in c for c in critical), "the provider's 'no' is not our gap"
     assert not any("Liga Eta" in c for c in critical), "a machine that was off is not a planner defect"
@@ -225,3 +225,17 @@ def test_a_worker_is_up_only_between_two_job_starts() -> None:
     assert up.up_at(t0 + timedelta(minutes=45))
     assert not up.up_at(t0 + timedelta(minutes=75)), "stopped after its last job: down, not up for half an hour"
     assert not up.up_at(t0 - timedelta(minutes=10)), "nothing had started yet"
+
+
+def test_a_moved_kick_off_explains_a_miss_the_planner_could_not_see(db: psycopg.Connection[Any], seed: Seed) -> None:
+    w = World(db, seed)
+    cs = w.competition(97008, "Liga Theta", "Colombia", True)
+    fid = w.played(cs, 1, asked=False)
+    w.worker_ran(AT - timedelta(days=2) - timedelta(hours=1), hours=2)
+    kickoff = AT - timedelta(days=1)
+    w.cur.execute("INSERT INTO core.fixture_kickoff_changes (fixture_id, observed_at, before_kickoff, after_kickoff) "
+                  "VALUES (%s, %s, %s, %s)", (fid, kickoff - timedelta(hours=10), kickoff + timedelta(hours=3), kickoff))
+    report = build_report(db, at=AT, days=14)
+    theta = next(c for c in report.competitions if c.competition == "Liga Theta")
+    assert theta.misses == {"kickoff_moved": 1}
+    assert not any("Liga Theta" in c for c in is_critical(report))

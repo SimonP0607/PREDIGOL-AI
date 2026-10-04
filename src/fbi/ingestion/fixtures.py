@@ -218,9 +218,11 @@ class FixtureRepository:
         venue_ids = venue_ids or {}
         with self._conn.cursor(row_factory=tuple_row) as cur:
             known = {r.provider_fixture_id for r in refs}
-            cur.execute("SELECT provider_fixture_id, id, home_team_id, away_team_id FROM core.fixtures "
+            cur.execute("SELECT provider_fixture_id, id, home_team_id, away_team_id, kickoff_at FROM core.fixtures "
                         "WHERE provider_fixture_id = ANY(%s)", (sorted(known),))
-            sides = {int(a): (int(b), int(c), int(d)) for a, b, c, d in cur.fetchall()}
+            existing = cur.fetchall()
+            sides = {int(a): (int(b), int(c), int(d)) for a, b, c, d, _ in existing}
+            kickoffs = {int(a): e for a, _, _, _, e in existing}
             for r in refs:
                 season_id = season_ids.get((r.provider_league_id, r.season))
                 if season_id is None:
@@ -260,6 +262,15 @@ class FixtureRepository:
                     inserted += 1
                 else:
                     updated += 1
+                    moved_from = kickoffs.get(r.provider_fixture_id)
+                    if moved_from is not None and moved_from != r.kickoff_at:
+                        # Kept so a capture planned on the old time can be explained later.
+                        cur.execute(
+                            "INSERT INTO core.fixture_kickoff_changes (fixture_id, observed_at, before_kickoff, "
+                            "after_kickoff, payload_hash) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
+                            (sides[r.provider_fixture_id][0], lineage.fetched_at if lineage else now(), moved_from,
+                             r.kickoff_at, lineage.payload_hash if lineage else None),
+                        )
                     before = sides.get(r.provider_fixture_id)
                     after = (team_ids[r.provider_home_team_id], team_ids[r.provider_away_team_id])
                     if before is not None and before[1:] != after:
