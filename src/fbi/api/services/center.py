@@ -27,6 +27,7 @@ from fbi.api.contracts.center import (
     LiveTeam,
     MatchCenter,
     MatchEvent,
+    MatchFacts,
     PlayerAbsence,
     PlayerDetail,
     PlayerLine,
@@ -90,6 +91,7 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
     ctx = {"cs": fx["competition_season_id"], "home": fx["home_team_id"], "away": fx["away_team_id"],
            "ko": fx["kickoff_at"]}
     standings, no_table, standing_tables = _match_standings(conn, fx)
+    facts_row = fetch_one(conn, repo.FIXTURE_FACTS, f)
     forms: list[TeamForm] = []
     for side, team_id, name in (("home", fx["home_team_id"], fx["home"]), ("away", fx["away_team_id"], fx["away"])):
         rows = fetch_all(conn, repo.FORM, {"team": team_id, "ko": fx["kickoff_at"]})
@@ -116,6 +118,7 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
                                 "the same as nobody being absent."),
         standings=_sec(standings, no_table),
         standings_tables=standing_tables,
+        facts=MatchFacts(**facts_row) if facts_row else None,
         form=section(forms) if any(t.matches for t in forms) else section(
             forms, status=DataStatus.EMPTY, reason="Neither team has a finished match with a result before this one."),
         h2h=_sec(h2h, "No previous meeting with a result is stored."),

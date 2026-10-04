@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -140,6 +140,9 @@ class PlayerStatsRef:
     provider_player_id: int
     name: str | None
     values: dict[str, Decimal | int | bool | None]
+    extras: dict[str, str | int | None] = field(default_factory=dict)
+    """Fields the statistics table has no column for (position played, offsides, dribbled past, penalties
+    won / committed / saved): written to core.fixture_player_extras."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -256,6 +259,18 @@ def _player_values(stat: dict[str, Any]) -> dict[str, Decimal | int | bool | Non
     }
 
 
+def _player_extras(stat: dict[str, Any]) -> dict[str, str | int | None]:
+    games, dribbles, penalty = _dict(stat.get("games")), _dict(stat.get("dribbles")), _dict(stat.get("penalty"))
+    return {
+        "position_played": _text(games, "position"),
+        "offsides": integer(stat.get("offsides")),
+        "dribbled_past": integer(dribbles.get("past")),
+        "penalties_won": integer(penalty.get("won")),
+        "penalties_committed": integer(penalty.get("commited")),  # the provider's spelling
+        "penalties_saved": integer(penalty.get("saved")),
+    }
+
+
 def _players(fixture_id: int, block: Any) -> Iterator[PlayerStatsRef]:
     for entry in block if isinstance(block, list) else []:
         if not isinstance(entry, dict):
@@ -271,10 +286,64 @@ def _players(fixture_id: int, block: Any) -> Iterator[PlayerStatsRef]:
             if pid is None or not isinstance(stats, list) or not stats or not isinstance(stats[0], dict):
                 continue
             yield PlayerStatsRef(fixture_id, team_id, pid, _text(item.get("player"), "name"),
-                                 _player_values(stats[0]))
+                                 _player_values(stats[0]), _player_extras(stats[0]))
 
 
 DETAIL_BLOCKS = ("events", "lineups", "statistics", "players")
+
+
+@dataclass(frozen=True, slots=True)
+class FixtureFactsRef:
+    """What a /fixtures entry says about a match beyond its identity, status and score: the referee, the
+    sides' winner flags (who won, or went through on penalties), when each half started."""
+
+    provider_fixture_id: int
+    referee: str | None
+    referee_country: str | None
+    home_winner: bool | None
+    away_winner: bool | None
+    first_half_at: datetime | None
+    second_half_at: datetime | None
+
+    @property
+    def empty(self) -> bool:
+        return all(v is None for v in (self.referee, self.referee_country, self.home_winner, self.away_winner,
+                                       self.first_half_at, self.second_half_at))
+
+
+def split_referee(value: Any) -> tuple[str | None, str | None]:
+    """'Michael Oliver, England' -> ('Michael Oliver', 'England'); 'A. Rojas' -> ('A. Rojas', None)."""
+    if not isinstance(value, str) or not value.strip():
+        return None, None
+    name, _, country = value.partition(",")
+    return name.strip() or None, country.strip() or None
+
+
+def _epoch(value: Any) -> datetime | None:
+    n = integer(value)
+    return datetime.fromtimestamp(n, tz=UTC) if n is not None and n > 0 else None
+
+
+def _winner(team: Any) -> bool | None:
+    v = _dict(team).get("winner")
+    return v if isinstance(v, bool) else None
+
+
+def iter_fixture_facts(body: dict[str, Any]) -> Iterator[FixtureFactsRef]:
+    """One FixtureFactsRef per entry of any /fixtures response (calendar, date, live, ids)."""
+    response = body.get("response") if isinstance(body, dict) else None
+    for entry in response if isinstance(response, list) else []:
+        if not isinstance(entry, dict):
+            continue
+        fixture = _dict(entry.get("fixture"))
+        fid = _int_id(fixture)
+        if fid is None:
+            continue
+        referee, country = split_referee(fixture.get("referee"))
+        periods = _dict(fixture.get("periods"))
+        teams = _dict(entry.get("teams"))
+        yield FixtureFactsRef(fid, referee, country, _winner(teams.get("home")), _winner(teams.get("away")),
+                              _epoch(periods.get("first")), _epoch(periods.get("second")))
 
 
 def iter_fixture_details(body: dict[str, Any]) -> Iterator[FixtureDetail]:

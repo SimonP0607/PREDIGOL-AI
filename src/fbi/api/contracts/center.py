@@ -62,6 +62,8 @@ class LineupPlayer(Contract):
     position: str | None
     grid: str | None
     starter: bool
+    photo_url: str | None = Field(default=None, description="The provider's photo URL as stored (profiles); "
+                                  "null when none is stored - pages show initials, never a guessed URL.")
 
 
 class TeamLineup(Contract):
@@ -89,6 +91,29 @@ class PlayerLine(Contract):
     red_cards: int | None
     saves: int | None
     substitute: bool | None
+    photo_url: str | None = None
+    position_played: str | None = Field(default=None, description="The position he played in this match (G, D, "
+                                        "M, F), from the provider's player statistics.")
+    offsides: int | None = None
+    dribbled_past: int | None = None
+    penalties_won: int | None = None
+    penalties_committed: int | None = None
+    penalties_saved: int | None = None
+
+
+class MatchFacts(Contract):
+    """What the fixture's payloads say beyond the score (core.fixture_facts, newest change)."""
+
+    referee: str | None
+    referee_country: str | None
+    home_winner: bool | None = Field(description="The provider's winner flag: the side that won, or went through "
+                                     "on penalties; null for a draw or a match not over.")
+    away_winner: bool | None
+    first_half_at: datetime | None
+    second_half_at: datetime | None
+    observed_at: datetime
+    payload_hash: str
+    normalizer_version: str
 
 
 class Absence(Contract):
@@ -210,6 +235,7 @@ class MatchCenter(Contract):
     standings: Section[list[StandingLine]]
     standings_tables: list[StandingsTable] = Field(
         default_factory=list, description="The whole table(s) the two rows come from (one, or each team's group).")
+    facts: MatchFacts | None = None
     form: Section[list[TeamForm]]
     h2h: Section[list[H2HMatch]]
     live_states: Section[list[LiveState]]
@@ -281,6 +307,9 @@ class PlayerSummary(Contract):
     nationality: str | None
     position: str | None
     birth_date: date | None
+    photo_url: str | None = None
+    team_logo: str | None = None
+    national_team_logo: str | None = None
     #: The player's CLUB now: the club whose newest squad lists him (``club_source`` "squad"), else the
     #: club of his last appearance ("appearances"). Never a national team.
     team_id: int | None

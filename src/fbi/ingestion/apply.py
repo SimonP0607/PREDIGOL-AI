@@ -27,8 +27,10 @@ from datetime import datetime
 
 import psycopg
 
+from fbi.ingestion.fixture_facts import apply_fixture_facts
 from fbi.ingestion.fixtures import FixtureRepository, PayloadLineage, team_names
 from fbi.ingestion.results import ResultRepository
+from fbi.providers.api_football.details import iter_fixture_facts
 from fbi.providers.base import FootballDataProvider
 
 
@@ -44,6 +46,8 @@ class PayloadOutcome:
     """Finished fixtures in the payload, every league."""
     results_written: int
     """Scores written or refreshed for fixtures we hold."""
+    facts_written: int = 0
+    """Rows added to core.fixture_facts (referee, winner flags, half starts; change-only)."""
 
 
 def apply_fixtures_payload(
@@ -69,6 +73,7 @@ def apply_fixtures_payload(
         )
     results = provider.parse_results(body)
     _, written = ResultRepository(conn).apply(results, lineage=lineage)
+    facts = apply_fixture_facts(conn, iter_fixture_facts(body), payload_hash=payload_hash, observed_at=fetched_at)
     return PayloadOutcome(
         seen=len(refs),
         ours=len(ours),
@@ -76,4 +81,5 @@ def apply_fixtures_payload(
         fixtures_updated=updated,
         finished_seen=len(results),
         results_written=written,
+        facts_written=facts,
     )

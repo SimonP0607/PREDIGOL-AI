@@ -56,7 +56,10 @@ REPO = Path(__file__).resolve().parents[1]
 PRODUCT_DIRS = ("api", "userdata", "parlays", "analyst", "competitions")
 MODEL_DIRS = ("features", "models", "research", "backtesting", "picks", "predictions", "validation")
 DB_CHECKED = {"fixtures", "fixture_results", "fixture_events", "fixture_lineups", "fixture_lineup_players",
-              "fixture_team_stats", "fixture_player_stats", "standings", "player_absences"}
+              "fixture_team_stats", "fixture_player_stats", "standings", "player_absences", "fixture_facts",
+              "fixture_player_extras"}
+ONLY = {("fixture_lineup_players", "grid"): sql.SQL(" AND x.is_starter")}
+"""Rows a column applies to: the grid is a starter's (substitutes have none)."""
 COLUMN = re.compile(r"^core\.([a-z_]+)\.([a-z_]+)$")
 
 PAYLOADS_SQL = """
@@ -154,7 +157,8 @@ def db_fill(conn: psycopg.Connection[Any], fields: list[Field], hashes: list[str
             args = (hashes,)
         else:
             q = sql.SQL("SELECT count(*), count(x.{c}) FROM {t} x JOIN core.fixtures fx ON fx.id = x.fixture_id "
-                        "WHERE fx.provider_fixture_id = ANY(%s)").format(c=col, t=ident)
+                        "WHERE fx.provider_fixture_id = ANY(%s){only}").format(
+                c=col, t=ident, only=ONLY.get((table, column), sql.SQL("")))
             args = (fixture_ids,)
         try:
             with conn.cursor() as cur:

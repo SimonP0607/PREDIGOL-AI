@@ -19,6 +19,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import tuple_row
 
+from fbi.ingestion.fixture_facts import apply_player_extras
 from fbi.ingestion.identity import IdentityReport, apply_people, link_lineup_coaches
 from fbi.providers.api_football.details import (
     COVERAGE_FLAGS,
@@ -88,6 +89,8 @@ class DetailReport:
     issues_seen_again: int = 0
     coverage_rows: int = 0
     """Rows written to core.fixture_detail_coverage: four per fixture, always."""
+    player_extras: int = 0
+    """Rows added to core.fixture_player_extras (change-only)."""
     identity: IdentityReport = field(default_factory=IdentityReport)
     """Players and coaches the payload named. They arrive with the detail, so
     recording them costs nothing extra."""
@@ -309,6 +312,8 @@ def apply_fixture_details(conn: psycopg.Connection, details: Iterable[FixtureDet
                     )
                     report.player_rows += max(cur.rowcount, 0)
                     delivered["player_statistics"] += 1
+                report.player_extras += apply_player_extras(cur, fixture_id, {home: "home", away: "away"}, d.players,
+                                                            payload_hash=payload_hash, observed_at=fetched_at)
             # The payload already names every player and coach it mentions, so
             # identity comes free with the detail: no extra request, and the
             # "players without a mapping" gap closes itself.

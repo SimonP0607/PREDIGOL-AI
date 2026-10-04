@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+import pytest
+
 from fbi.truth.v2 import fields as fl
 from fbi.truth.v2 import leagues as lg
 
@@ -52,14 +54,16 @@ def test_duplicate_competitions_share_a_folded_name_and_country() -> None:
     assert lg.duplicates(comps) == [[1, 2]]
 
 
-def test_the_inventory_classifies_every_path() -> None:
-    body = {"response": [{"fixture": {"id": 1, "referee": "A. Ref", "timezone": "UTC"},
+def test_the_inventory_classifies_every_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    body = {"response": [{"fixture": {"id": 1, "referee": "A. Ref", "timezone": "UTC", "attendance": 41000},
                           "teams": {"home": {"id": 5, "winner": True}},
                           "players": [{"players": [{"statistics": [{"games": {"minutes": 90}, "offsides": None,
                                                                      "new_metric": 3}]}]}]}]}
+    monkeypatch.setitem(fl.REGISTRY["/fixtures"], "fixture.attendance", "useful:crowd size (a hypothetical field)")
     rows = {r.path: r for r in fl.inventory("/fixtures", [body], used_columns={"minutes"})}
     assert rows["fixture.id"].klass == "stored"
-    assert rows["fixture.referee"].klass == "DROPPED_USEFUL_FIELD" and rows["fixture.referee"].present == 1
+    assert rows["fixture.referee"].klass == "stored", "kept in core.fixture_facts since 4 Oct 2026"
+    assert rows["fixture.attendance"].klass == "DROPPED_USEFUL_FIELD" and rows["fixture.attendance"].present == 1
     assert rows["fixture.timezone"].klass == "INTENTIONALLY_IGNORED"
     assert rows["players[].players[].statistics[].new_metric"].klass == "UNSUPPORTED_FIELD"
     assert rows["players[].players[].statistics[].games.minutes"].used is True

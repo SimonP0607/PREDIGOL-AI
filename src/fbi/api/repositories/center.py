@@ -35,7 +35,7 @@ SELECT team_side AS side, formation, coach_name AS coach
 
 LINEUP_PLAYERS = """
 SELECT lp.team_side AS side, lp.provider_player_id, p.id AS player_id, lp.player_name AS name,
-       lp.shirt_number AS number, lp.position, lp.grid, lp.is_starter AS starter
+       lp.shirt_number AS number, lp.position, lp.grid, lp.is_starter AS starter, p.photo_url
   FROM core.fixture_lineup_players lp
   LEFT JOIN core.players p ON p.provider_player_id = lp.provider_player_id
  WHERE lp.fixture_id = %(f)s
@@ -46,9 +46,12 @@ PLAYER_STATS = """
 SELECT ps.provider_player_id, p.id AS player_id, ps.team_side AS side, ps.player_name AS name, ps.minutes,
        ps.rating, ps.goals, ps.assists, ps.shots_total AS shots, ps.shots_on, ps.passes_total AS passes,
        ps.passes_key AS key_passes, ps.tackles, ps.yellow_cards, ps.red_cards, ps.saves,
-       ps.is_substitute AS substitute
+       ps.is_substitute AS substitute, p.photo_url, x.position_played, x.offsides, x.dribbled_past,
+       x.penalties_won, x.penalties_committed, x.penalties_saved
   FROM core.fixture_player_stats ps
   LEFT JOIN core.players p ON p.provider_player_id = ps.provider_player_id
+  LEFT JOIN core.fixture_player_extras_latest x
+         ON x.fixture_id = ps.fixture_id AND x.provider_player_id = ps.provider_player_id
  WHERE ps.fixture_id = %(f)s AND ps.team_side IN ('home', 'away')
  ORDER BY ps.team_side DESC, ps.minutes DESC NULLS LAST, ps.rating DESC NULLS LAST
 """
@@ -60,6 +63,12 @@ SELECT CASE a.provider_team_id WHEN %(home_pid)s THEN 'home' WHEN %(away_pid)s T
   LEFT JOIN core.players p ON p.provider_player_id = a.provider_player_id
  WHERE a.fixture_id = %(f)s
  ORDER BY 1 DESC NULLS LAST, a.player_name
+"""
+
+FIXTURE_FACTS = """
+SELECT referee, referee_country, home_winner, away_winner, first_half_at, second_half_at, observed_at, payload_hash,
+       normalizer_version
+  FROM core.fixture_facts_latest WHERE fixture_id = %(f)s
 """
 
 STANDING_ROWS = """
@@ -257,13 +266,13 @@ TEAMS_OF_PLAYER = """
 """
 
 PLAYER_TEAMS_COLUMNS = """
-       club.id AS team_id, club.name AS team,
+       club.id AS team_id, club.name AS team, club.logo_url AS team_logo, nat.logo_url AS national_team_logo,
        CASE WHEN sq.team_id IS NOT NULL THEN 'squad' WHEN a.last_club_id IS NOT NULL THEN 'appearances' END
            AS club_source,
        nat.id AS national_team_id, nat.name AS national_team, last.id AS last_team_id, last.name AS last_team"""
 
 PLAYERS_SEARCH = """
-SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date,""" + PLAYER_TEAMS_COLUMNS + """,
+SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date, p.photo_url,""" + PLAYER_TEAMS_COLUMNS + """,
        COALESCE(a.apps, 0) AS apps, a.minutes, a.goals, a.assists, a.avg_rating, a.last_played
   FROM core.players p
   LEFT JOIN LATERAL (""" + PLAYER_AGG + """) a ON true""" + TEAMS_OF_PLAYER + """
@@ -285,8 +294,9 @@ WITH squad AS (
        AND ((ps.team_side = 'home' AND f.home_team_id = %(team)s) OR (ps.team_side = 'away' AND f.away_team_id = %(team)s))
      GROUP BY ps.provider_player_id
 )
-SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date,
-       %(team)s::bigint AS team_id, t.name AS team, NULL::text AS club_source, NULL::bigint AS national_team_id,
+SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date, p.photo_url,
+       %(team)s::bigint AS team_id, t.name AS team, t.logo_url AS team_logo, NULL::text AS national_team_logo,
+       NULL::text AS club_source, NULL::bigint AS national_team_id,
        NULL::text AS national_team, NULL::bigint AS last_team_id, NULL::text AS last_team,
        squad.apps, squad.minutes, squad.goals, squad.assists, squad.avg_rating, squad.last_played
   FROM squad JOIN core.players p ON p.provider_player_id = squad.provider_player_id
@@ -309,7 +319,7 @@ WITH recent AS (
      WHERE f.kickoff_at > %(recent)s AND f.kickoff_at <= %(at)s AND ps.minutes > 0
      GROUP BY ps.provider_player_id
 )
-SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date,""" + PLAYER_TEAMS_COLUMNS + """,
+SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date, p.photo_url,""" + PLAYER_TEAMS_COLUMNS + """,
        a.apps, a.minutes, a.goals, a.assists, a.avg_rating, a.last_played
   FROM recent a JOIN core.players p ON p.provider_player_id = a.provider_player_id""" + TEAMS_OF_PLAYER + """
  ORDER BY a.goals DESC NULLS LAST, a.avg_rating DESC NULLS LAST, p.name
@@ -317,8 +327,8 @@ SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_da
 """
 
 PLAYER = """
-SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date, p.firstname, p.lastname,
-       p.height_cm, p.weight_kg,""" + PLAYER_TEAMS_COLUMNS + """,
+SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_date, p.photo_url, p.firstname,
+       p.lastname, p.height_cm, p.weight_kg,""" + PLAYER_TEAMS_COLUMNS + """,
        COALESCE(a.apps, 0) AS apps, a.minutes, a.goals, a.assists, a.avg_rating, a.last_played
   FROM core.players p
   LEFT JOIN LATERAL (""" + PLAYER_AGG + """) a ON true""" + TEAMS_OF_PLAYER + """
