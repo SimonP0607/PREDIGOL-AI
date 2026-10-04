@@ -5,6 +5,7 @@
     python -m scripts.audit_data_truth fixtures    # every current season's list + a sample per status
     python -m scripts.audit_data_truth identity    # duplicates, collisions, flags, squads + provider samples
     python -m scripts.audit_data_truth fields      # what the normalizers drop (RAW on disk, 0 requests)
+    python -m scripts.audit_data_truth golden      # golden dataset: 7 competitions x 3 seasons, three ways
     python -m scripts.audit_data_truth ledger      # the evidence ledger, open entries first (read only)
 
 The provider-facing audits of the three priorities have their own commands:
@@ -163,6 +164,33 @@ async def _fields(run: V2Run, conn: psycopg.Connection[Any]) -> tuple[dict[str, 
     return summary, fl.evidence(rows), "\n".join(md) + "\n"
 
 
+async def _golden(run: V2Run, conn: psycopg.Connection[Any]) -> tuple[dict[str, Any], list[Any], str]:
+    import httpx
+
+    from fbi.ingestion.payload_store import PayloadStore
+    from fbi.truth.v2 import golden as gd
+
+    store = PayloadStore(settings.runtime.raw_store_dir, provider="football-data")
+    seasons = []
+    with httpx.Client(timeout=30, headers={"user-agent": gd.USER_AGENT}, follow_redirects=True) as http:
+        for league in gd.GOLDEN:
+            for season in gd.SEASONS:
+                seasons.append(await gd.validate(run, conn, league, season, http=http, store=store))
+    rows = gd.summary_rows(seasons)
+    verdicts: dict[str, int] = {}
+    for g in seasons:
+        verdicts[g.verdict] = verdicts.get(g.verdict, 0) + 1
+    md = [f"# Golden validation dataset - {len(seasons)} competition-seasons", "",
+          "| Competition | Season | Verdict | Score | Fixtures (matched/checked) | Results | Final table | "
+          "Football-Data (matched / rows / score disagree / other) |", "|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        f, res, tb, ex = r["fixtures"], r["results"], r["table"], r["external"]
+        md.append(f"| {r['name']} ({r['league']}) | {r['season']} | **{r['verdict']}** | {r['score']} | {f[2]}/{f[3]} "
+                  f"(API {f[0]}, DB {f[1]}) | {res[0]}/{res[1]} | {tb[0]}/{tb[1]} {tb[2]} | "
+                  f"{'-' if ex[1] is None else f'{ex[0]} / {ex[1]} / {ex[2]} / {ex[3]}'} |")
+    return {"verdicts": verdicts, "labels": verdicts, "rows": rows}, gd.evidence(seasons), "\n".join(md) + "\n"
+
+
 def cmd_ledger(_: argparse.Namespace) -> int:
     with _connect(read_only=True) as conn, conn.cursor(row_factory=dict_row) as cur:
         cur.execute("SELECT code, status, severity, at_fault, area, issue_type, claim FROM audit.evidence_ledger "
@@ -174,7 +202,8 @@ def cmd_ledger(_: argparse.Namespace) -> int:
     return 0
 
 
-ASYNC = {"leagues": (_leagues, 5), "fixtures": (_fixtures, 400), "identity": (_identity, 60), "fields": (_fields, 0)}
+ASYNC = {"leagues": (_leagues, 5), "fixtures": (_fixtures, 400), "identity": (_identity, 60), "fields": (_fields, 0),
+         "golden": (_golden, 60)}
 
 
 def main() -> int:

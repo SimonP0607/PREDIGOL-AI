@@ -43,7 +43,7 @@ MATCH_LENGTH = timedelta(hours=2)
 PROVIDER_GRACE = timedelta(hours=3)
 """Kick-off + 2 h (the match is over) + the provider's hourly update + slack."""
 FIELDS = ("played", "win", "draw", "lose", "gf", "ga", "points")
-KNOCKOUT = re.compile(r"final|play-?offs?|knockout|round of|quarter|semi|8th|16th|1/\d|qualifying|preliminary|"
+KNOCKOUT = re.compile(r"final|play-?offs?|knockout|round of|quarter|semi|8th|16th|1/\d|qualifying|qualification|preliminary|"
                       r"promotion|relegation (?:play|deciding)|third place|super cup|repechage|elimination",
                       re.IGNORECASE)
 

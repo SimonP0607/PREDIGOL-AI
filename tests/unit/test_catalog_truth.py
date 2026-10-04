@@ -66,3 +66,16 @@ def test_the_inventory_classifies_every_path() -> None:
     assert rows["players[].players[].statistics[].offsides"].present == 0
     keys = {e.key for e in fl.evidence(list(rows.values()))}
     assert {"normalization:DROPPED_USEFUL_FIELD", "normalization:UNSUPPORTED_FIELD"} <= keys
+
+
+def test_a_golden_season_passes_only_when_every_part_agrees() -> None:
+    from fbi.truth.v2.golden import GoldenSeason, evidence
+
+    g = GoldenSeason(39, 2024, "Premier League", fixtures_api=380, fixtures_db=380, fixtures_checked=380,
+                     fixtures_matched=380, results_checked=380, results_matched=380, table_rows=20, table_ok=20,
+                     external_rows=380, external_matched=380, external_score_disagree=0, external_other=0)
+    assert g.verdict == "GOLDEN_VALIDATED" and g.score == 1.0 and evidence([g]) == []
+    g.external_matched, g.external_score_disagree = 376, 4
+    assert g.verdict == "NEEDS_REVIEW"
+    assert [e.issue_type for e in evidence([g])] == ["RESULT_MISMATCH"]
+    assert GoldenSeason(2, 2024).verdict == "NOT_CHECKED"
