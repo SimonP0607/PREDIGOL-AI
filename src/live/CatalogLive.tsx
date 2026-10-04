@@ -381,26 +381,87 @@ function TeamDetailPanel({ id }: { id: number }) {
         <SectionView section={d.record}>
           {(r) =>
             r ? (
-              <div className="grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
-                {(
-                  [
-                    [t("catalog.teams.detail.record.played"), r.played],
-                    [t("catalog.teams.detail.record.won"), r.won],
-                    [t("catalog.teams.detail.record.drawn"), r.drawn],
-                    [t("catalog.teams.detail.record.lost"), r.lost],
-                    [t("catalog.teams.detail.record.for"), r.goals_for],
-                    [t("catalog.teams.detail.record.against"), r.goals_against],
-                  ] as const
-                ).map(([k, v]) => (
-                  <div key={k} className="rounded border border-border px-2 py-1.5">
-                    <div className="text-caption text-subtle-foreground">{k}</div>
-                    <div className="numeric text-base">{v}</div>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                <div
+                  className="text-caption text-subtle-foreground"
+                  data-testid="team-record-scope"
+                >
+                  {r.competition
+                    ? t("catalog.teams.detail.record.scopeSeason", {
+                        competition: r.competition,
+                        season: r.season ?? "",
+                      })
+                    : t("catalog.teams.detail.record.scopeAll")}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
+                  {(
+                    [
+                      [t("catalog.teams.detail.record.played"), r.played],
+                      [t("catalog.teams.detail.record.won"), r.won],
+                      [t("catalog.teams.detail.record.drawn"), r.drawn],
+                      [t("catalog.teams.detail.record.lost"), r.lost],
+                      [t("catalog.teams.detail.record.for"), r.goals_for],
+                      [t("catalog.teams.detail.record.against"), r.goals_against],
+                    ] as const
+                  ).map(([k, v]) => (
+                    <div key={k} className="rounded border border-border px-2 py-1.5">
+                      <div className="text-caption text-subtle-foreground">{k}</div>
+                      <div className="numeric text-base">{v}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null
           }
         </SectionView>
+        {d.records?.data && d.records.data.length > 0 ? (
+          <div className="mt-3">
+            <div className="mb-1 text-caption text-subtle-foreground">
+              {t("catalog.teams.detail.record.campaign")}
+            </div>
+            <TableShell>
+              <THead>
+                <TH>{t("catalog.teams.detail.record.competition")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.season")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.played")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.won")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.drawn")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.lost")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.for")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.against")}</TH>
+              </THead>
+              <tbody>
+                {d.records.data.map((r) => (
+                  <TRow key={`${r.competition}-${r.season}`}>
+                    <TD className="text-sm">{r.competition}</TD>
+                    {[r.season, r.played, r.won, r.drawn, r.lost, r.goals_for, r.goals_against].map(
+                      (v, i) => (
+                        <TD key={i} align="right">
+                          <Numeric className="text-xs">{v ?? "—"}</Numeric>
+                        </TD>
+                      ),
+                    )}
+                  </TRow>
+                ))}
+              </tbody>
+            </TableShell>
+          </div>
+        ) : null}
+        {d.lifetime?.data ? (
+          <div
+            className="mt-3 text-caption text-subtle-foreground"
+            data-testid="team-record-lifetime"
+          >
+            {t("catalog.teams.detail.record.lifetime", {
+              played: d.lifetime.data.played,
+              won: d.lifetime.data.won,
+              drawn: d.lifetime.data.drawn,
+              lost: d.lifetime.data.lost,
+              competitions: d.lifetime.data.competitions ?? 0,
+              since: d.lifetime.data.since ? utcDate(d.lifetime.data.since) : "—",
+            })}
+          </div>
+        ) : null}
       </Panel>
       <SquadPanel teamId={id} />
       {(["recent", "upcoming"] as const).map((k) => (

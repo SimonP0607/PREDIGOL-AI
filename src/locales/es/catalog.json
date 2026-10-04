@@ -109,7 +109,13 @@
         "drawn": "Empatados",
         "lost": "Perdidos",
         "for": "A favor",
-        "against": "En contra"
+        "against": "En contra",
+        "scopeSeason": "{{competition}} · temporada {{season}}",
+        "scopeAll": "Todas las competiciones",
+        "campaign": "Esta campaña, por competición",
+        "competition": "Competición",
+        "season": "Temporada",
+        "lifetime": "Todo lo almacenado: {{played}} partidos ({{won}}-{{drawn}}-{{lost}}) en {{competitions}} competiciones desde {{since}} - no es una tabla de temporada"
       }
     },
     "fixtures": {
@@ -139,7 +145,7 @@
       "top": "Más productivos, últimos 30 días",
       "byAppearances": "Ordenados por partidos jugados en los últimos 400 días.",
       "byGoals": "Ordenados por goles y después por valoración.",
-      "appsTitle": "Partidos jugados con estadísticas en el periodo",
+      "appsTitle": "Partidos jugados (minutos > 0) en el periodo; un suplente que no entró no es una aparición",
       "noNationality": "nacionalidad no informada",
       "noTeam": "Ninguna participación con estadísticas en el periodo.",
       "noBirthDate": "Fecha de nacimiento no informada.",
@@ -161,8 +167,12 @@
         "position": "Posición",
         "height": "Estatura",
         "weight": "Peso",
-        "latestTeam": "Último equipo",
-        "providerId": "ID del proveedor"
+        "providerId": "ID del proveedor",
+        "club": "Club",
+        "clubFromSquad": "{{team}} (plantilla)",
+        "clubFromApps": "{{team}} (último partido con el club)",
+        "nationalTeam": "Selección",
+        "lastAppearance": "Última aparición"
       },
       "totals": {
         "title": "Últimos 400 días",

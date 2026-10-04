@@ -109,7 +109,13 @@
         "drawn": "Drawn",
         "lost": "Lost",
         "for": "For",
-        "against": "Against"
+        "against": "Against",
+        "scopeSeason": "{{competition}} · season {{season}}",
+        "scopeAll": "All competitions",
+        "campaign": "This campaign, by competition",
+        "competition": "Competition",
+        "season": "Season",
+        "lifetime": "Everything stored: {{played}} played ({{won}}-{{drawn}}-{{lost}}) in {{competitions}} competitions since {{since}} - not a season table"
       }
     },
     "fixtures": {
@@ -139,7 +145,7 @@
       "top": "Most productive, last 30 days",
       "byAppearances": "Ordered by appearances in the last 400 days.",
       "byGoals": "Ordered by goals, then rating.",
-      "appsTitle": "Appearances with statistics in the window",
+      "appsTitle": "Matches played (minutes > 0) in the window; an unused substitute is not an appearance",
       "noNationality": "nationality not reported",
       "noTeam": "No appearance with statistics in the window.",
       "noBirthDate": "Birth date not reported.",
@@ -161,8 +167,12 @@
         "position": "Position",
         "height": "Height",
         "weight": "Weight",
-        "latestTeam": "Latest team",
-        "providerId": "Provider id"
+        "providerId": "Provider id",
+        "club": "Club",
+        "clubFromSquad": "{{team}} (squad)",
+        "clubFromApps": "{{team}} (last club match)",
+        "nationalTeam": "National team",
+        "lastAppearance": "Last appearance"
       },
       "totals": {
         "title": "Last 400 days",

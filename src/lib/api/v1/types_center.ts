@@ -247,8 +247,17 @@ export interface PlayerSummary {
   nationality: string | null;
   position: string | null;
   birth_date: string | null;
+  /** The player's CLUB now (newest squad, else last club appearance) - never a national side. */
   team_id: number | null;
   team: string | null;
+  /** "squad" | "appearances" - where the club came from. */
+  club_source?: string | null;
+  national_team_id?: number | null;
+  national_team?: string | null;
+  /** Whoever he last played for (club or national side). */
+  last_team_id?: number | null;
+  last_team?: string | null;
+  /** Matches PLAYED (minutes > 0); an unused substitute is not an appearance. */
   apps: number;
   minutes: number | null;
   goals: number | null;

@@ -64,6 +64,9 @@ function PlayersTable({ rows }: { rows: PlayerSummary[] }) {
               ) : (
                 <Nullable value={null} reason={t("catalog.players.list.noTeam")} />
               )}
+              {p.national_team ? (
+                <div className="text-caption text-subtle-foreground">{p.national_team}</div>
+              ) : null}
             </TD>
             <TD className="text-xs text-muted-foreground">{p.position ?? "—"}</TD>
             <TD align="right">
@@ -206,7 +209,24 @@ export function PlayerLive({ playerId }: { playerId: string }) {
             label={t("catalog.players.detail.profile.weight")}
             value={d.weight_kg ? `${d.weight_kg} kg` : "—"}
           />
-          <KeyValue label={t("catalog.players.detail.profile.latestTeam")} value={p.team ?? "—"} />
+          <KeyValue
+            label={t("catalog.players.detail.profile.club")}
+            value={
+              p.team
+                ? p.club_source === "squad"
+                  ? t("catalog.players.detail.profile.clubFromSquad", { team: p.team })
+                  : t("catalog.players.detail.profile.clubFromApps", { team: p.team })
+                : "—"
+            }
+          />
+          <KeyValue
+            label={t("catalog.players.detail.profile.nationalTeam")}
+            value={p.national_team ?? "—"}
+          />
+          <KeyValue
+            label={t("catalog.players.detail.profile.lastAppearance")}
+            value={p.last_team ?? "—"}
+          />
           <KeyValue
             label={t("catalog.players.detail.profile.providerId")}
             value={p.provider_player_id}
@@ -248,7 +268,7 @@ export function PlayerLive({ playerId }: { playerId: string }) {
               </THead>
               <tbody>
                 {rows.map((s) => (
-                  <TRow key={`${s.season}-${s.competition}`}>
+                  <TRow key={`${s.season}-${s.competition}-${s.team ?? ""}`}>
                     <TD>
                       <Numeric className="text-xs">{s.season}</Numeric>
                     </TD>

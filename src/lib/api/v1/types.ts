@@ -276,12 +276,24 @@ export interface TeamRecord {
   lost: number;
   goals_for: number;
   goals_against: number;
+  /** "competition_season" (one competition, one season) or "all" (everything stored, from `since`). */
+  scope?: string;
+  competition?: string | null;
+  competition_type?: string | null;
+  season?: number | null;
+  since?: Iso | null;
+  competitions?: number | null;
 }
 
 export interface TeamDetail {
   team: TeamSummary;
   venue: VenueRef | null;
+  /** The domestic league's current season (a national side: its latest competition). */
   record: Section<TeamRecord | null>;
+  /** Every competition of the current campaign. */
+  records?: Section<TeamRecord[]> | null;
+  /** Everything stored, labelled as such. */
+  lifetime?: Section<TeamRecord | null> | null;
   recent: MatchSummary[];
   upcoming: MatchSummary[];
 }
