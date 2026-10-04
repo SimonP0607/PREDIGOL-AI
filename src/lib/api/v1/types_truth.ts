@@ -185,7 +185,7 @@ export type BookmakerCoverageState = "ACTIVE" | "DORMANT" | "CATALOGUE_ONLY";
 export type LocalCoverageState = "PRICED_BY_PROVIDER_BRAND" | "CATALOGUE_ONLY" | "NOT_IN_PROVIDER";
 export type SourceAccess =
   "ACTIVE" | "FREE_NEEDS_OWNER" | "PAYMENT_REQUIRED" | "CLOSED" | "REJECTED";
-export type MissCause = "worker_down" | "known_too_late" | "missed_while_up";
+export type MissCause = "worker_down" | "known_too_late" | "kickoff_moved" | "missed_while_up";
 
 export interface CoverageCompetition {
   competition_id: number;

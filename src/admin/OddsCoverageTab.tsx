@@ -31,7 +31,7 @@ import { formatDateTime } from "@/lib/time";
 import { EmptyState, ErrorState } from "@/product/shared/States";
 
 const DAYS = 14;
-const MISSES: MissCause[] = ["worker_down", "known_too_late", "missed_while_up"];
+const MISSES: MissCause[] = ["worker_down", "known_too_late", "kickoff_moved", "missed_while_up"];
 
 const COVERAGE_TONE: Record<CoverageState, BadgeTone> = {
   NOT_ASKED: "negative",
@@ -140,6 +140,7 @@ function Cards({ r }: { r: OddsCoverageReport }) {
         hint={t("truth.coverage.cards.missesHint", {
           down: localInt(r.misses.worker_down ?? 0),
           late: localInt(r.misses.known_too_late ?? 0),
+          moved: localInt(r.misses.kickoff_moved ?? 0),
           up: localInt(r.misses.missed_while_up ?? 0),
         })}
         tone={(r.misses.missed_while_up ?? 0) > 0 ? "negative" : "default"}

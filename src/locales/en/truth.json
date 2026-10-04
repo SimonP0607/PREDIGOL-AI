@@ -249,12 +249,12 @@
       "capture": "Captured before kick-off",
       "captureHint": "{captured} of {fixtures} played matches - the only prices a pick can use",
       "misses": "Not asked in time",
-      "missesHint": "worker down {down} · known too late {late} · missed while running {up}",
+      "missesHint": "worker down {down} · known too late {late} · kick-off moved {moved} · missed while running {up}",
       "downtime": "Worker down",
       "downtimeHint": "of the window, with no job started (the machine was off)"
     },
     "critical": "Our gaps",
-    "noCritical": "No gap of ours: every miss is explained by the machine being off or a match announced after its last window.",
+    "noCritical": "No gap of ours: every miss is explained by the machine being off, a match announced after its last window or a kick-off the provider moved.",
     "bookmakers": "Bookmakers",
     "bookmakersSubtitle": "Every bookmaker API-Football lists, and how many of our played matches it priced.",
     "competitions": "Competitions",
@@ -330,7 +330,8 @@
     "misses": {
       "worker_down": "worker down",
       "known_too_late": "known too late",
-      "missed_while_up": "missed while running"
+      "missed_while_up": "missed while running",
+      "kickoff_moved": "kick-off moved"
     },
     "access": {
       "ACTIVE": "In use",

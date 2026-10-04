@@ -249,12 +249,12 @@
       "capture": "Capturados antes del inicio",
       "captureHint": "{captured} de {fixtures} partidos jugados: los únicos precios que un pick puede usar",
       "misses": "No consultados a tiempo",
-      "missesHint": "worker apagado {down} · conocido tarde {late} · perdido con el worker en marcha {up}",
+      "missesHint": "worker apagado {down} · conocido tarde {late} · hora cambiada {moved} · perdido con el worker en marcha {up}",
       "downtime": "Worker apagado",
       "downtimeHint": "de la ventana, sin ningún trabajo iniciado (el equipo estaba apagado)"
     },
     "critical": "Brechas nuestras",
-    "noCritical": "Ninguna brecha nuestra: cada falta se explica por el equipo apagado o por un partido anunciado después de su última ventana.",
+    "noCritical": "Ninguna brecha nuestra: cada falta se explica por el equipo apagado, un partido anunciado después de su última ventana o una hora que el proveedor cambió.",
     "bookmakers": "Casas de apuestas",
     "bookmakersSubtitle": "Cada casa que lista API-Football y cuántos de nuestros partidos jugados cotizó.",
     "competitions": "Competiciones",
@@ -330,7 +330,8 @@
     "misses": {
       "worker_down": "worker apagado",
       "known_too_late": "conocido tarde",
-      "missed_while_up": "perdido con el worker en marcha"
+      "missed_while_up": "perdido con el worker en marcha",
+      "kickoff_moved": "hora cambiada"
     },
     "access": {
       "ACTIVE": "En uso",
