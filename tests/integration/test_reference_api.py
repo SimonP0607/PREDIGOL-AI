@@ -131,3 +131,65 @@ def test_the_match_audit_names_the_payloads_of_the_facts_extras_and_the_provider
     assert roles["au-f"] == "facts" and roles["au-p"] == "provider_prediction (auxiliary)"
     normalized = next(s for s in audit.steps if s.key == "normalized")
     assert any(i.kind == "facts" and "payload:au-f" in i.links for i in normalized.items)
+
+
+def test_the_providers_season_less_group_row_is_not_shown_as_another_trophy(db: psycopg.Connection,
+                                                                           seed: Seed) -> None:
+    """A. Morata, 4 Oct 2026: 70 entries, 28 of them a null-season row after the dated ones of the same
+    competition and place. Stored as sent; the page lists 42 trophies."""
+    pid = a_player(db)
+    payload(db, seed, "tg-1")
+    t = ref.Target("k", {}, timedelta(days=7), {"kind": "player", "ids": [13491], "list_key": "trophies"})
+    body = {"response": [{"league": "Copa del Rey", "country": "Spain", "season": "2013/2014", "place": "Winner"},
+                         {"league": "Copa del Rey", "country": "Spain", "season": "2010/2011", "place": "Winner"},
+                         {"league": "Copa del Rey", "country": "Spain", "season": None, "place": "Winner"},
+                         {"league": "Copa del Rey", "country": "Spain", "season": None, "place": "2nd Place"},
+                         {"league": "Trofeo X", "country": "World", "season": None, "place": "Winner"}]}
+    assert ref.apply_trophies(db, t, body, "tg-1", T0) == 5, "every entry is stored as the provider sent it"
+    detail = center.player(db, pid).data
+    assert detail is not None and detail.trophies is not None
+    shown = [(x.league, x.season, x.place) for x in detail.trophies.data]
+    assert shown == [("Copa del Rey", "2013/2014", "Winner"), ("Copa del Rey", "2010/2011", "Winner"),
+                     ("Copa del Rey", None, "2nd Place"), ("Trofeo X", None, "Winner")], \
+        "the group row is hidden only where dated entries of the same competition and place exist"
+
+
+def test_a_rating_of_0_is_not_a_rating_and_the_providers_season_average_says_it_counts_one(
+        db: psycopg.Connection, seed: Seed) -> None:
+    """Reinaldo, UEFA Champions League 2026: two qualifiers rated 0 (67 and 75 minutes) and three rated; the
+    provider's season rating 3.98 is (0 + 0 + 7.3 + 6.3 + 6.3) / 5. The page shows no rating for a 0, averages
+    real ratings only, and says how many unrated matches the provider's figure counts."""
+    db.execute("UPDATE core.fixtures SET kickoff_at = now() - interval '3 days', status_group = 'finished' "
+               "WHERE id = %s", (seed.fixture_id,))
+    player = db.execute("INSERT INTO core.players (provider_player_id, name) VALUES (9650, 'Reinaldo') RETURNING id"
+                        ).fetchone()
+    assert player is not None
+    second = db.execute("INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, "
+                        "away_team_id, kickoff_at, status_group) VALUES (8101, %s, %s, %s, now() - interval '10 days', "
+                        "'finished') RETURNING id", (seed.season_id, seed.away_team_id, seed.home_team_id)).fetchone()
+    assert second is not None
+    for fx, minutes, rating in ((seed.fixture_id, 83, "7.3"), (second[0], 67, "0")):
+        db.execute("INSERT INTO core.fixture_player_stats (fixture_id, source, provider_player_id, team_side, minutes, "
+                   "rating, payload_hash, fetched_at) VALUES (%s, 'api-football', 9650, 'home', %s, %s, %s, now())",
+                   (fx, minutes, rating, seed.payload_hash))
+    detail = center.player(db, int(player[0])).data
+    assert detail is not None and detail.player.avg_rating == Decimal("7.30"), "the 0 is not averaged in"
+    assert [m.rating for m in detail.matches.data] == [Decimal("7.30"), None]
+    payload(db, seed, "rz-1")
+    t = ref.Target("k", {"league": 39, "season": 2025}, timedelta(days=1), {"cs_id": seed.season_id,
+                                                                             "list": "topscorers"})
+    ref.apply_leaders(db, t, {"response": [
+        {"player": {"id": 9650, "name": "Reinaldo"}, "statistics": [
+            {"team": {"id": 33}, "league": {"id": 39, "season": 2025}, "games": {"appearences": 2, "rating": "3.65"},
+             "goals": {"total": 3}}]},
+        {"player": {"id": 44850, "name": "V. Slivka"}, "statistics": [
+            {"team": {"id": 33}, "league": {"id": 39, "season": 2025}, "games": {"appearences": 6, "rating": "0"},
+             "goals": {"total": 2}}]}]}, "rz-1", T0)
+    data = center.competition_reference(db, seed.competition_id, season=2025).data
+    assert data is not None
+    rows = data.leaders.data[0].rows
+    assert (rows[0].rating, rows[0].unrated_matches) == (Decimal("3.6500"), 1)
+    assert (rows[1].rating, rows[1].unrated_matches) == (None, 0), "the provider's 0 is not shown as a rating"
+    stored = db.execute("SELECT rating FROM core.season_leaders WHERE payload_hash = 'rz-1' ORDER BY ordinal"
+                        ).fetchall()
+    assert stored == [(Decimal("3.6500"),), (Decimal("0.0000"),)], "stored as sent"

@@ -45,9 +45,15 @@ SELECT lp.team_side AS side, lp.provider_player_id, p.id AS player_id, lp.player
  ORDER BY lp.team_side DESC, lp.is_starter DESC, lp.grid NULLS LAST, lp.shirt_number NULLS LAST
 """
 
+RATING_NOTE = """The provider sends a rating of 0 for a player it did not rate (4 Oct 2026: 13,788 match rows, 999 of
+them with minutes - UEFA Champions League 2026 qualifiers among them) and averages those zeros into its season
+rating (Reinaldo, 2026: 3.98 = (0 + 0 + 7.3 + 6.3 + 6.3) / 5). Rows keep the value as sent; every product
+read shows no rating for a 0 (NULLIF) and averages only real ratings."""
+
 PLAYER_STATS = """
 SELECT ps.provider_player_id, p.id AS player_id, ps.team_side AS side, ps.player_name AS name, ps.minutes,
-       ps.rating, ps.goals, ps.assists, ps.shots_total AS shots, ps.shots_on, ps.passes_total AS passes,
+       NULLIF(ps.rating, 0) AS rating, ps.goals, ps.assists, ps.shots_total AS shots, ps.shots_on,
+       ps.passes_total AS passes,
        ps.passes_key AS key_passes, ps.tackles, ps.yellow_cards, ps.red_cards, ps.saves,
        ps.is_substitute AS substitute, p.photo_url, x.position_played, x.offsides, x.dribbled_past,
        x.penalties_won, x.penalties_committed, x.penalties_saved
@@ -56,7 +62,7 @@ SELECT ps.provider_player_id, p.id AS player_id, ps.team_side AS side, ps.player
   LEFT JOIN core.fixture_player_extras_latest x
          ON x.fixture_id = ps.fixture_id AND x.provider_player_id = ps.provider_player_id
  WHERE ps.fixture_id = %(f)s AND ps.team_side IN ('home', 'away')
- ORDER BY ps.team_side DESC, ps.minutes DESC NULLS LAST, ps.rating DESC NULLS LAST
+ ORDER BY ps.team_side DESC, ps.minutes DESC NULLS LAST, NULLIF(ps.rating, 0) DESC NULLS LAST
 """
 
 ABSENCES = """
@@ -241,7 +247,7 @@ SELECT (SELECT max(observed_at) FROM core.fixture_live_states) AS fixture_feed_a
 PLAYER_AGG = """
 SELECT count(*) FILTER (WHERE ps.minutes > 0)::int AS apps, sum(ps.minutes)::int AS minutes,
        sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists,
-       round(avg(ps.rating) FILTER (WHERE ps.minutes > 0), 2) AS avg_rating,
+       round(avg(NULLIF(ps.rating, 0)) FILTER (WHERE ps.minutes > 0), 2) AS avg_rating,
        max(f.kickoff_at) FILTER (WHERE ps.minutes > 0) AS last_played,
        (array_agg(t.id ORDER BY f.kickoff_at DESC) FILTER (WHERE ps.minutes > 0))[1] AS last_team_id,
        (array_agg(t.id ORDER BY f.kickoff_at DESC)
@@ -296,7 +302,7 @@ PLAYERS_OF_TEAM = """
 WITH squad AS (
     SELECT ps.provider_player_id, count(*) FILTER (WHERE ps.minutes > 0)::int AS apps,
            sum(ps.minutes)::int AS minutes, sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists,
-           round(avg(ps.rating) FILTER (WHERE ps.minutes > 0), 2) AS avg_rating,
+           round(avg(NULLIF(ps.rating, 0)) FILTER (WHERE ps.minutes > 0), 2) AS avg_rating,
            max(f.kickoff_at) FILTER (WHERE ps.minutes > 0) AS last_played
       FROM core.fixture_player_stats ps JOIN core.fixtures f ON f.id = ps.fixture_id
      WHERE f.kickoff_at > %(since)s
@@ -318,7 +324,8 @@ SELECT p.id, p.provider_player_id, p.name, p.nationality, p.position, p.birth_da
 PLAYERS_ACTIVE = """
 WITH recent AS (
     SELECT ps.provider_player_id, count(*)::int AS apps, sum(ps.minutes)::int AS minutes,
-           sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists, round(avg(ps.rating), 2) AS avg_rating,
+           sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists,
+           round(avg(NULLIF(ps.rating, 0)), 2) AS avg_rating,
            max(f.kickoff_at) AS last_played,
            (array_agg(t.id ORDER BY f.kickoff_at DESC))[1] AS last_team_id,
            (array_agg(t.id ORDER BY f.kickoff_at DESC)
@@ -354,7 +361,7 @@ SELECT c.name AS competition, cs.season, t.name AS team, COALESCE(k.is_national,
        count(*) FILTER (WHERE ps.minutes > 0 AND NOT COALESCE(ps.is_substitute, false))::int AS starts,
        sum(ps.minutes)::int AS minutes, sum(ps.goals)::int AS goals, sum(ps.assists)::int AS assists,
        sum(ps.yellow_cards)::int AS yellow_cards, sum(ps.red_cards)::int AS red_cards,
-       round(avg(ps.rating) FILTER (WHERE ps.minutes > 0), 2) AS avg_rating
+       round(avg(NULLIF(ps.rating, 0)) FILTER (WHERE ps.minutes > 0), 2) AS avg_rating
   FROM core.fixture_player_stats ps
   JOIN core.fixtures f ON f.id = ps.fixture_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
@@ -371,7 +378,7 @@ PLAYER_MATCHES = """
 SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition,
        CASE ps.team_side WHEN 'home' THEN th.name ELSE ta.name END AS team,
        CASE ps.team_side WHEN 'home' THEN ta.name ELSE th.name END AS opponent,
-       ps.minutes, ps.rating, ps.goals, ps.assists, ps.is_substitute AS substitute
+       ps.minutes, NULLIF(ps.rating, 0) AS rating, ps.goals, ps.assists, ps.is_substitute AS substitute
   FROM core.fixture_player_stats ps
   JOIN core.fixtures f ON f.id = ps.fixture_id
   JOIN core.teams th ON th.id = f.home_team_id
@@ -406,9 +413,19 @@ SELECT type, start_date AS start, end_date AS "end", observed_at, payload_hash, 
 """
 
 PLAYER_TROPHIES = """
-SELECT league, country, season, place, observed_at, payload_hash, normalizer_version
-  FROM core.person_trophies_latest WHERE person_kind = 'player' AND provider_person_id = %(pid)s ORDER BY ordinal
+SELECT t.league, t.country, t.season, t.place, t.observed_at, t.payload_hash, t.normalizer_version
+  FROM core.person_trophies_latest t
+ WHERE t.person_kind = 'player' AND t.provider_person_id = %(pid)s
+   AND NOT (t.season IS NULL AND EXISTS (
+        SELECT 1 FROM core.person_trophies_latest d
+         WHERE d.person_kind = t.person_kind AND d.provider_person_id = t.provider_person_id AND d.season IS NOT NULL
+           AND d.league IS NOT DISTINCT FROM t.league AND d.country IS NOT DISTINCT FROM t.country
+           AND d.place IS NOT DISTINCT FROM t.place))
+ ORDER BY t.ordinal
 """
+"""The provider's trophies, without its group rows: /trophies follows the dated entries of a competition and
+place with one more entry whose season is null (4 Oct 2026: 672 of 1,285 groups, never a group on its own) - a
+summary of the group, not another trophy. Stored as sent; a season-less entry with no dated sibling is shown."""
 
 PERSON_CHECKS = """
 SELECT feed, max(checked_at) AS checked_at FROM core.reference_checks
@@ -426,7 +443,11 @@ COMPETITION_LEADERS = """
 SELECT l.list, l.ordinal + 1 AS rank, l.provider_player_id, p.id AS player_id, l.player_name AS name,
        coalesce(l.photo_url, p.photo_url) AS photo_url, t.id AS team_id, l.provider_team_id, l.team_name AS team,
        t.logo_url AS team_logo, l.appearances, l.minutes, l.goals, l.assists, l.penalties_scored, l.yellow_cards,
-       l.yellowred_cards, l.red_cards, l.rating, l.observed_at, l.payload_hash, l.normalizer_version
+       l.yellowred_cards, l.red_cards, NULLIF(l.rating, 0) AS rating,
+       (SELECT count(*)::int FROM core.fixture_player_stats ps JOIN core.fixtures f ON f.id = ps.fixture_id
+         WHERE f.competition_season_id = l.competition_season_id AND ps.provider_player_id = l.provider_player_id
+           AND ps.rating = 0 AND COALESCE(ps.minutes, 0) > 0) AS unrated_matches,
+       l.observed_at, l.payload_hash, l.normalizer_version
   FROM core.season_leaders_latest l
   LEFT JOIN core.players p ON p.provider_player_id = l.provider_player_id
   LEFT JOIN core.teams t ON t.provider_team_id = l.provider_team_id

@@ -114,6 +114,15 @@ relation to the other players of the game or the season who occupy the same posi
 `avg_rating` is the mean of the provider's match ratings over matches played; the provider's season
 rating is its own number. They are shown, never compared, never fed to a model as ground truth.
 
+**A rating of 0 is not a rating** (found 4 Oct 2026 on the competition page): the provider sends `0` for a player
+it did not rate in some matches - 13,788 match rows, 999 of them with minutes (Reinaldo, Levski Sofia, UEFA
+Champions League 2026 qualifiers: 67 and 75 minutes, rated 0) - and its season rating averages those zeros
+(Reinaldo 2026: 3.98 = (0 + 0 + 7.3 + 6.3 + 6.3) / 5; V. Slivka: "0" after six matches). Rows keep the value as
+sent; every product read shows no rating for a 0 and averages only real ratings (`NULLIF`, documented in
+`fbi.api.repositories.center.RATING_NOTE`); the top lists show the provider's season rating with a mark and the
+number of unrated matches it counts (`unrated_matches`). Evidence `players:rating_zero` (provider, MONITOR) from
+`scripts.audit_players`; tests in `tests/integration/test_reference_api.py`.
+
 ## 7. National side or club — PrediGol's own classification (4 Oct 2026, evening)
 
 The provider's `team.national` is wrong both ways for some sides: 61 sides that play **only** national-team
@@ -138,3 +147,9 @@ Transfers, periods out (`/sidelined`) and trophies are read weekly for every pla
 shown on the player page with the payload each comes from; the provider's season aggregate per team and
 competition (`/players?league&season`) is stored weekly in `core.player_season_stats` - its rating is the
 provider's metric, kept as sent.
+
+**Trophies: the provider's group rows.** `/trophies` follows the dated entries of a competition and place with one
+more entry whose season is null - a summary of the group, not another trophy (4 Oct 2026: 672 of 1,285 groups;
+never a group on its own; A. Morata: 70 entries, 28 of them group rows, 42 trophies). Every entry is stored as
+sent; the player page leaves out a season-less entry only where dated entries of the same competition and place
+exist, so a trophy whose season the provider does not give is still shown.

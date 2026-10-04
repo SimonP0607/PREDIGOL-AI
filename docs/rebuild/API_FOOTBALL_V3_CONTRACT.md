@@ -69,6 +69,11 @@ asked about player id 0 - a placeholder the first probe query did not exclude, f
 * **Cards by minute** in `/teams/statistics` and `/predictions` carry an empty-string bucket (`""`: cards without a
   minute); kept as sent in the `raw` document.
 * Numbers sent as strings: `last_5.goals.*.average` in `/predictions`, statistics values (`"44%"`), odds values.
+* **A rating of `0` means "not rated"** (match players and the season lists): 13,788 match rows, 999 with minutes;
+  the provider's season rating averages those zeros. Stored as sent, never shown or averaged as a rating
+  (`PLAYER_DATA_VALIDATION.md` §6).
+* **`/trophies` adds a season-less row after the dated rows of each competition and place** (672 of 1,285
+  groups): a group summary, stored as sent and not listed as another trophy.
 
 Fields sent but undocumented, by endpoint: `/predictions` 187 (per-minute goals and cards, under/over, line-ups
 of both teams), `/fixtures` 82 (the detail blocks of `?ids=`), `/trophies` 5 and `/sidelined` 4 (batched shapes),

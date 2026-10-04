@@ -565,7 +565,11 @@ class Leader(Contract):
     yellow_cards: int | None
     yellowred_cards: int | None
     red_cards: int | None
-    rating: Decimal | None = Field(description="The provider's rating (its own metric), as sent.")
+    rating: Decimal | None = Field(description="The provider's rating (its own metric), as sent; none for its 0 "
+                                               "(not rated).")
+    unrated_matches: int = Field(0, description="Matches of this season in which the provider played him but sent a "
+                                                "rating of 0 (it did not rate him): its season rating counts each "
+                                                "as 0.")
 
 
 class LeaderList(Contract):

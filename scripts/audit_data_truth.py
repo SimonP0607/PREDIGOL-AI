@@ -62,6 +62,18 @@ def cmd_baseline(_: argparse.Namespace) -> int:
     return 0
 
 
+AREAS_WRITTEN = {"fields": ("normalization",), "identity": ("identity", "coaches")}
+"""The ledger areas each command writes when they are not its own name: an entry a later run no longer
+reproduces is cleared in every one of them (identity:coach_career lives in area coaches - it stayed OPEN on
+4 Oct 2026 after the coachs feed had asked)."""
+
+
+def clearing_scopes(kind: str) -> list[tuple[str, str]]:
+    """(area, key prefix) pairs whose unseen entries a completed run of ``kind`` clears."""
+    prefix = f"{AREAS_WRITTEN.get(kind, (kind,))[0]}:"
+    return [(area, prefix) for area in AREAS_WRITTEN.get(kind, (kind,))]
+
+
 async def _with_client(kind: str, body: Any, max_requests: int) -> int:
     from fbi.providers.api_football.build import build_client
 
@@ -76,9 +88,8 @@ async def _with_client(kind: str, body: Any, max_requests: int) -> int:
                 raise
             codes = record_all(conn, evidence, at=run.at, run_id=run.run_id)
             if not run.stopped and not run.failures:
-                clear_unseen(conn, area=kind if kind != "fields" else "normalization",
-                             scope_prefix=f"{kind if kind != 'fields' else 'normalization'}:", seen=codes.keys(),
-                             at=run.at)
+                for area, prefix in clearing_scopes(kind):
+                    clear_unseen(conn, area=area, scope_prefix=prefix, seen=codes.keys(), at=run.at)
             summary = {**summary, "requests": run.requests, "stopped": run.stopped, "failures": run.failures[:20],
                        "evidence": codes}
             folder = write_report(REPORTS, kind, run.at, summary, md + ("\nEvidence: " + " ".join(sorted(

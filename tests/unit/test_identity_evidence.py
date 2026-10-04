@@ -30,3 +30,12 @@ def test_national_flags_follow_the_classification_not_the_providers_flag() -> No
 def test_coach_careers_are_a_gap_only_until_the_feed_asks() -> None:
     assert "identity:coach_career" in keys({"coach_career_stored": [{"coaches": 4571, "teams_asked": 0}]})
     assert "identity:coach_career" not in keys({"coach_career_stored": [{"coaches": 4571, "teams_asked": 120}]})
+
+
+def test_a_completed_identity_run_clears_the_entries_it_writes_in_area_coaches_too() -> None:
+    """identity:coach_career is an area-coaches entry; clearing only area identity left it OPEN."""
+    from scripts.audit_data_truth import clearing_scopes
+
+    assert clearing_scopes("identity") == [("identity", "identity:"), ("coaches", "identity:")]
+    assert clearing_scopes("fields") == [("normalization", "normalization:")]
+    assert clearing_scopes("fixtures") == [("fixtures", "fixtures:")]

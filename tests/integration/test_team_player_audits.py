@@ -39,6 +39,9 @@ def test_the_products_club_is_never_a_national_side(db: psycopg.Connection, seed
     assert s["coverage"]["players"] == 1 and s["players_checked"] == 1
     assert s["club_is_national"] == 0 and items == []
     assert s["club_source"]["appearances"] == 1
+    db.execute("UPDATE core.fixture_player_stats SET rating = 0 WHERE provider_player_id = 909")
+    _, items = audit_players.audit(db)
+    assert [(e.key, e.at_fault, e.status) for e in items] == [("players:rating_zero", "provider", "MONITOR")]
 
 
 def test_a_youth_national_side_the_provider_flags_as_a_club_is_never_a_players_club(db: psycopg.Connection,
