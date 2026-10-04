@@ -16,6 +16,8 @@ from fbi.api.contracts.common import Contract
 from fbi.api.envelope import Section
 
 Side = Literal["home", "away"]
+TableKind = Literal["full", "group", "ranking", "aggregate", "other"]
+TableSelection = Literal["fixture_stage", "phase_league_stage", "previous_stage"]
 
 
 class TeamStatLine(Contract):
@@ -118,6 +120,22 @@ class StandingLine(Contract):
         default="UNKNOWN", description="Whether the table reflects every match played before this one.")
     table_reason: str = Field(default="no_table", description="no_match_yet, reflects_last_match, "
                               "provider_not_updated or not_asked_since (fbi.truth.freshness.table_reason).")
+    table: str | None = Field(default=None, description="The provider's label of the table this row comes from "
+                              "('Clausura', 'Apertura - Group A', 'Eastern Conference'). A season can hold several "
+                              "tables; a row is never taken from another phase's table.")
+    table_key: str | None = Field(default=None, description="The stored table key (the label, '#n' for the n-th "
+                                  "table under a repeated label).")
+    table_kind: TableKind | None = Field(default=None, description="full, group, ranking, aggregate or other "
+                                         "(fbi.competitions.phases).")
+    table_teams: int | None = Field(default=None, description="Teams in that table.")
+    stage: str | None = Field(default=None, description="The stage the table ranks ('Clausura', 'Group Stage').")
+    phase: str | None = Field(default=None, description="Its phase ('Clausura'); null for an aggregate.")
+    fixture_stage: str | None = Field(default=None, description="This match's stage, from its round label.")
+    selection: TableSelection | None = Field(
+        default=None, description="fixture_stage: the match's own stage's table; phase_league_stage: a knock-out "
+        "round shown with its phase's league table; previous_stage: a knock-out round shown with the last league "
+        "stage before it (a single-phase season).")
+    team_logo: str | None = None
 
 
 class FormMatch(Contract):
@@ -190,6 +208,8 @@ class MatchCenter(Contract):
     players: Section[list[PlayerLine]]
     absences: Section[list[Absence]]
     standings: Section[list[StandingLine]]
+    standings_tables: list[StandingsTable] = Field(
+        default_factory=list, description="The whole table(s) the two rows come from (one, or each team's group).")
     form: Section[list[TeamForm]]
     h2h: Section[list[H2HMatch]]
     live_states: Section[list[LiveState]]
@@ -376,6 +396,17 @@ class AdminOverview(Contract):
     backups: Section[list[BackupFile]]
 
 
+class TableSplit(Contract):
+    """A row's home or away games (the provider gives no points for them: 3 a win, 1 a draw)."""
+
+    played: int | None
+    wins: int | None
+    draws: int | None
+    losses: int | None
+    goals_for: int | None
+    goals_against: int | None
+
+
 class TableRow(Contract):
     rank: int
     team_id: int
@@ -389,10 +420,53 @@ class TableRow(Contract):
     points: int
     form: str | None
     group: str | None
+    team_logo: str | None = None
+    goals_diff: int | None = None
+    description: str | None = Field(default=None, description="The provider's zone ('Promotion - Libertadores').")
+    zone_status: str | None = Field(default=None, description="The provider's move since the last round: same, up, down.")
+    home: TableSplit | None = None
+    away: TableSplit | None = None
+
+
+class SeasonStage(Contract):
+    """One stage of the season, from the fixtures' round labels ("Clausura - 12" -> Clausura)."""
+
+    name: str
+    phase: str
+    kind: Literal["league", "knockout", "qualifying", "friendly"]
+    first_kickoff: datetime | None
+    last_kickoff: datetime | None
+    fixtures: int
+    finished: int
+    last_finished: datetime | None = Field(default=None, description="Kick-off of its last finished match.")
+    tables: int = Field(description="Tables of the shown snapshot that rank this stage.")
+    is_current: bool = Field(description="The league stage being played now (the last one started).")
+
+
+class StandingsTable(Contract):
+    """One table of the provider's answer, kept apart from the season's other tables."""
+
+    key: str
+    label: str
+    stage: str | None = Field(description="The stage it ranks; null for an aggregate or an unmapped table.")
+    stages: list[str] = Field(description="Every stage it counts (several for an aggregate).")
+    phase: str | None
+    kind: TableKind
+    method: Literal["label", "games", "single", "unmapped"] = Field(
+        description="How its stage was found: its label names it, its games played agree with the stage's "
+                    "matches, the season's only league stage, or not found.")
+    agreement: str = Field(description="Rows whose games played agree with the stage's finished matches ('20/20').")
+    note: str = ""
+    is_current: bool
+    rows: list[TableRow]
 
 
 class CompetitionTable(Contract):
     competition_id: int
     season: int
     snapshot_at: datetime
-    rows: list[TableRow]
+    seasons: list[int] = Field(default_factory=list, description="Seasons of this competition with a stored table.")
+    stages: list[SeasonStage] = Field(default_factory=list)
+    tables: list[StandingsTable] = Field(default_factory=list, description="Each table apart, in stage order.")
+    mapping_version: str = ""
+    rows: list[TableRow] = Field(description="Deprecated: every table's rows flattened (use tables).")

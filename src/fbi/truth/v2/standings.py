@@ -27,7 +27,6 @@ expected lag (reported, not an issue).
 from __future__ import annotations
 
 import json
-import re
 import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
@@ -39,6 +38,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.competitions.phases import KNOCKOUT, phase_of, stage_of
 from fbi.providers.api_football.details import labelled_rows
 from fbi.truth.v2.ledger import Evidence
 
@@ -50,9 +50,6 @@ OUR_GRACE = timedelta(minutes=75)
 (``context_refresh.DUE_TABLES_SQL``); a provider update since our last check, under an hour old, is
 expected lag, not a fault."""
 FIELDS = ("played", "win", "draw", "lose", "gf", "ga", "points")
-KNOCKOUT = re.compile(r"final|play-?offs?|knockout|round of|quarter|semi|8th|16th|1/\d|qualifying|qualification|preliminary|"
-                      r"promotion|relegation (?:play|deciding)|third place|super cup|repechage|elimination",
-                      re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -336,20 +333,6 @@ def tally(matches: Iterable[Played]) -> dict[int, Line]:
 
 def _fold(s: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFKD", s.lower()) if not unicodedata.combining(c))
-
-
-def phase_of(round_label: str) -> str:
-    return round_label.split(" - ")[0].strip()
-
-
-MATCH_DAY = re.compile(r"\s*-\s*\d+\s*$")
-
-
-def stage_of(round_label: str) -> str:
-    """The round label without its match-day number: "Apertura - 7" -> "Apertura", "Apertura -
-    Quadrangular - 3" -> "Apertura - Quadrangular". A phase can hold a regular season AND a
-    play-off group stage (Colombia's quadrangulars), which the provider tables separately."""
-    return MATCH_DAY.sub("", round_label).strip()
 
 
 @dataclass

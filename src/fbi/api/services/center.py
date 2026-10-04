@@ -33,16 +33,23 @@ from fbi.api.contracts.center import (
     PlayerMatch,
     PlayerSeason,
     PlayerSummary,
+    SeasonStage,
+    Side,
     StandingLine,
+    StandingsTable,
     TableRow,
+    TableSplit,
     TeamForm,
     TeamLineup,
     TeamStatLine,
 )
 from fbi.api.envelope import DataStatus, Envelope, Section, listing, ok, section, unavailable
-from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
+from fbi.api.repositories import Conn, Row, fetch_all, fetch_one, fetch_value
 from fbi.api.repositories import center as repo
 from fbi.api.services.live_quality import completeness
+from fbi.competitions.phases import VERSION as PHASES_VERSION
+from fbi.competitions.phases import TableMap, current_stage, stage_of
+from fbi.competitions.tables import load_season, match_tables, newest_maps
 from fbi.core.clock import now
 from fbi.truth.freshness import table_reason
 
@@ -82,13 +89,7 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
         "f": fixture_id, "home_pid": fx["home_pid"], "away_pid": fx["away_pid"]})]
     ctx = {"cs": fx["competition_season_id"], "home": fx["home_team_id"], "away": fx["away_team_id"],
            "ko": fx["kickoff_at"]}
-    standings = []
-    for r in fetch_all(conn, repo.STANDINGS, ctx):
-        last = r.pop("last_finished_before")
-        r.pop("provider_updated_at", None)
-        state, reason = table_reason(r["snapshot_at"], last, r["checked_at"], None)
-        standings.append(StandingLine(**r, table_state=state.value, table_reason=reason))
-    standings.sort(key=lambda s: 0 if s.side == "home" else 1)
+    standings, no_table, standing_tables = _match_standings(conn, fx)
     forms: list[TeamForm] = []
     for side, team_id, name in (("home", fx["home_team_id"], fx["home"]), ("away", fx["away_team_id"], fx["away"])):
         rows = fetch_all(conn, repo.FORM, {"team": team_id, "ko": fx["kickoff_at"]})
@@ -113,7 +114,8 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
         players=_sec(player_lines, no_detail if played else not_yet),
         absences=_sec(absences, "No injury or suspension report is stored for this match. That is not "
                                 "the same as nobody being absent."),
-        standings=_sec(standings, "No league table is stored for this competition-season (cups often have none)."),
+        standings=_sec(standings, no_table),
+        standings_tables=standing_tables,
         form=section(forms) if any(t.matches for t in forms) else section(
             forms, status=DataStatus.EMPTY, reason="Neither team has a finished match with a result before this one."),
         h2h=_sec(h2h, "No previous meeting with a result is stored."),
@@ -123,6 +125,52 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
         live_movement=_sec(moves, "No in-play price movement recorded." if played else not_yet),
     )
     return ok(body)
+
+
+def _match_standings(conn: Conn, fx: Row) -> tuple[list[StandingLine], str, list[StandingsTable]]:
+    """Both teams' rows from the table that ranks this match's stage (``fbi.competitions``): a
+    Clausura match is shown with the Clausura table, a knock-out round with its phase's league table,
+    a match between two groups with each team's group. Never a row from another phase's table."""
+    cs = int(fx["competition_season_id"])
+    home, away = int(fx["home_team_id"]), int(fx["away_team_id"])
+    stage = stage_of(fx.get("round"))
+    found = match_tables(conn, cs, fx.get("round"), fx["kickoff_at"], home, away)
+    if found is None:
+        if not fetch_value(conn, repo.SEASON_HAS_TABLE, {"cs": cs}):
+            return [], "No league table is stored for this competition-season (cups often have none).", []
+        return [], (f"No stored table ranks this match's stage ({stage or 'no round label'}): the provider tables "
+                    "each phase and group apart, and none of them covers this round. A table of another phase is "
+                    "never shown in its place."), []
+    rows = {(int(r["team_id"]), str(r["group_key"])): r
+            for r in fetch_all(conn, repo.STANDING_ROWS, {"cs": cs, "at": found.snapshot_at, "teams": [home, away]})}
+    checked = fetch_value(conn, repo.TABLE_CHECKED, {"cs": cs})
+    state, reason = table_reason(found.snapshot_at, found.last_finished_before, checked, None)
+    lines = []
+    sides: tuple[tuple[Side, int], ...] = (("home", home), ("away", away))
+    for side, team in sides:
+        key = found.choice.keys.get(team)
+        r = rows.get((team, key)) if key is not None else None
+        if key is None or r is None:
+            continue
+        m = found.maps[key]
+        lines.append(StandingLine(
+            side=side, team=r["team"], rank=r["rank"], points=r["points"], played=r["played"], wins=r["wins"],
+            draws=r["draws"], losses=r["losses"], goals_for=r["goals_for"], goals_against=r["goals_against"],
+            form=r["form"], group=r["group"], snapshot_at=found.snapshot_at,
+            before_kickoff=found.snapshot_at <= fx["kickoff_at"], description=r["description"], checked_at=checked,
+            table_state=state.value, table_reason=reason, table=m.label, table_key=key, table_kind=m.kind,
+            table_teams=m.rows, stage=m.stage, phase=m.phase, fixture_stage=stage or None,
+            selection=found.choice.reason, team_logo=r["team_logo"]))
+    keys = list(dict.fromkeys(found.choice.keys.values()))
+    full: dict[str, list[TableRow]] = {}
+    for r in fetch_all(conn, repo.COMPETITION_TABLE, {"cs": cs, "at": found.snapshot_at}):
+        if r["group_key"] in keys:
+            full.setdefault(str(r["group_key"]), []).append(_table_row(r))
+    tables = [StandingsTable(key=k, label=found.maps[k].label, stage=found.maps[k].stage,
+                             stages=list(found.maps[k].stages), phase=found.maps[k].phase, kind=found.maps[k].kind,
+                             method=found.maps[k].method, agreement=f"{found.maps[k].agree}/{found.maps[k].counted}",
+                             note=found.maps[k].note, is_current=False, rows=full.get(k, [])) for k in keys]
+    return lines, "No row for either team in the table of this match's stage.", tables
 
 
 # ── Live board ─────────────────────────────────────────────────────────────
@@ -324,15 +372,66 @@ def admin_overview(conn: Conn, *, frontend_version: str | None = None) -> Envelo
 
 
 def competition_table(conn: Conn, competition_id: int, *, season: int | None = None) -> Envelope[CompetitionTable | None]:
-    """The latest league table we hold for a competition (its newest season with one, or the season asked)."""
-    rows = fetch_all(conn, repo.COMPETITION_TABLE, {"c": competition_id, "season": season})
-    if not rows:
+    """A competition season's tables, each kept apart and mapped to the stage it ranks (its newest
+    season with a table, or the season asked): Apertura and Clausura, groups, conferences, a ranking
+    of third-placed teams, an annual aggregate - never one table built from all of them."""
+    seasons = fetch_all(conn, repo.COMPETITION_SEASONS, {"c": competition_id})
+    chosen = next((r for r in seasons if season is None or int(r["season"]) == season), None)
+    newest = None
+    if chosen is not None:
+        structure = load_season(conn, int(chosen["id"]))
+        newest = newest_maps(conn, structure)
+    if chosen is None or newest is None:
         return unavailable(None, "No league table is stored for this competition"
                                  + (f" in {season}" if season else "") + " (cups and friendlies usually have none).",
                            status=DataStatus.EMPTY)
-    first = rows[0]
+    at, maps = newest
+    rows_by_key: dict[str, list[TableRow]] = {}
+    flat: list[TableRow] = []
+    for r in fetch_all(conn, repo.COMPETITION_TABLE, {"cs": int(chosen["id"]), "at": at}):
+        row = _table_row(r)
+        rows_by_key.setdefault(str(r["group_key"]), []).append(row)
+        flat.append(row)
+    current = current_stage(structure.stages, now())
+    order = {s.name: s.ordinal for s in structure.stages}
+
+    def rank(m: TableMap) -> tuple[int, int, str]:
+        first = min((order.get(x, 999) for x in m.stages), default=999)
+        kind = {"full": 0, "group": 1, "ranking": 2, "aggregate": 3, "other": 4}[m.kind]
+        return (first if m.stages else 1000, kind, m.key)
+
+    tables = [StandingsTable(
+        key=m.key, label=m.label, stage=m.stage, stages=list(m.stages), phase=m.phase, kind=m.kind, method=m.method,
+        agreement=f"{m.agree}/{m.counted}", note=m.note,
+        is_current=current is not None and m.stage == current.name,
+        rows=rows_by_key.get(m.key, [])) for m in sorted(maps, key=rank)]
+    per_stage = {s.name: sum(1 for m in maps if m.stage == s.name) for s in structure.stages}
+    last_finished: dict[str, datetime] = {}
+    for match in structure.matches:
+        if match.finished and (match.stage not in last_finished or match.kickoff > last_finished[match.stage]):
+            last_finished[match.stage] = match.kickoff
+    stages = [SeasonStage(name=s.name, phase=s.phase, kind=s.kind, first_kickoff=s.first_kickoff,
+                          last_kickoff=s.last_kickoff, fixtures=s.fixtures, finished=s.finished,
+                          last_finished=last_finished.get(s.name),
+                          tables=per_stage.get(s.name, 0), is_current=current is not None and s.name == current.name)
+              for s in structure.stages]
     body = CompetitionTable(
-        competition_id=competition_id, season=int(first["season"]), snapshot_at=first["snapshot_at"],
-        rows=[TableRow(**{k: v for k, v in r.items() if k not in ("season", "snapshot_at")}) for r in rows],
-    )
-    return ok(body, data_as_of=first["snapshot_at"])
+        competition_id=competition_id, season=int(chosen["season"]), snapshot_at=at,
+        seasons=[int(r["season"]) for r in seasons], stages=stages, tables=tables, mapping_version=PHASES_VERSION,
+        rows=flat)
+    return ok(body, data_as_of=at)
+
+
+def _split(r: Row, side: str) -> TableSplit | None:
+    if r.get(f"{side}_played") is None:
+        return None
+    return TableSplit(**{k: r.get(f"{side}_{k}") for k in ("played", "wins", "draws", "losses", "goals_for",
+                                                          "goals_against")})
+
+
+def _table_row(r: Row) -> TableRow:
+    return TableRow(rank=r["rank"], team_id=r["team_id"], team=r["team"], played=r["played"], wins=r["wins"],
+                    draws=r["draws"], losses=r["losses"], goals_for=r["goals_for"], goals_against=r["goals_against"],
+                    points=r["points"], form=r["form"], group=r["group"], team_logo=r["team_logo"],
+                    goals_diff=r["goals_diff"], description=r["description"], zone_status=r["zone_status"],
+                    home=_split(r, "home"), away=_split(r, "away"))

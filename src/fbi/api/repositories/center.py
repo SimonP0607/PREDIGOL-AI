@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 FIXTURE = """
-SELECT f.id, f.kickoff_at, f.status_group, f.competition_season_id, f.home_team_id, f.away_team_id,
+SELECT f.id, f.kickoff_at, f.status_group, f.round, f.competition_season_id, f.home_team_id, f.away_team_id,
        th.name AS home, ta.name AS away, th.provider_team_id AS home_pid, ta.provider_team_id AS away_pid
   FROM core.fixtures f
   JOIN core.teams th ON th.id = f.home_team_id
@@ -62,21 +62,21 @@ SELECT CASE a.provider_team_id WHEN %(home_pid)s THEN 'home' WHEN %(away_pid)s T
  ORDER BY 1 DESC NULLS LAST, a.player_name
 """
 
-STANDINGS = """
-SELECT DISTINCT ON (s.team_id)
-       CASE s.team_id WHEN %(home)s THEN 'home' ELSE 'away' END AS side, t.name AS team, s.rank, s.points,
-       s.played, s.wins, s.draws, s.losses, s.goals_for, s.goals_against, s.form, s."group",
-       s.snapshot_at, s.snapshot_at <= %(ko)s AS before_kickoff, s.description, s.provider_updated_at,
-       k.checked_at,
-       (SELECT max(f.kickoff_at) FROM core.fixtures f
-         WHERE f.competition_season_id = s.competition_season_id AND f.status_group = 'finished'
-           AND f.kickoff_at < %(ko)s) AS last_finished_before
+STANDING_ROWS = """
+SELECT s.team_id, s.group_key, t.name AS team, t.logo_url AS team_logo, s.rank, s.points, s.played, s.wins,
+       s.draws, s.losses, s.goals_for, s.goals_against, s.form, s."group", s.description
   FROM core.standings s JOIN core.teams t ON t.id = s.team_id
-  LEFT JOIN core.context_checks k ON k.competition_season_id = s.competition_season_id AND k.dataset = 'standings'
- WHERE s.competition_season_id = %(cs)s AND s.team_id IN (%(home)s, %(away)s)
- ORDER BY s.team_id, (s.snapshot_at <= %(ko)s) DESC,
-          CASE WHEN s.snapshot_at <= %(ko)s THEN s.snapshot_at END DESC NULLS LAST, s.snapshot_at
+ WHERE s.competition_season_id = %(cs)s AND s.snapshot_at = %(at)s AND s.team_id = ANY(%(teams)s)
 """
+"""Both teams' rows of one snapshot; ``fbi.competitions.tables.match_tables`` says which table each
+row must come from (until 4 Oct 2026 this query took each team's newest row across ALL the season's
+tables with DISTINCT ON (team): a Clausura row for one side and an Apertura row for the other)."""
+
+TABLE_CHECKED = """
+SELECT checked_at FROM core.context_checks WHERE competition_season_id = %(cs)s AND dataset = 'standings'
+"""
+
+SEASON_HAS_TABLE = "SELECT EXISTS (SELECT 1 FROM core.standings WHERE competition_season_id = %(cs)s) AS has_table"
 
 FORM = """
 SELECT f.id AS fixture_id, f.kickoff_at,
@@ -417,21 +417,21 @@ SELECT severity, count(*)::int AS n, max(last_seen_at) AS at
 """
 
 
-COMPETITION_TABLE = """
-WITH cs AS (
-    SELECT cs.id, cs.season FROM core.competition_seasons cs
-     WHERE cs.competition_id = %(c)s AND (%(season)s::int IS NULL OR cs.season = %(season)s::int)
-       AND EXISTS (SELECT 1 FROM core.standings s WHERE s.competition_season_id = cs.id)
-     ORDER BY cs.season DESC LIMIT 1
-), snap AS (
-    SELECT s.competition_season_id, max(s.snapshot_at) AS at
-      FROM core.standings s JOIN cs ON cs.id = s.competition_season_id GROUP BY 1
-)
-SELECT cs.season, s.snapshot_at, s.rank, s.team_id, t.name AS team, s.played, s.wins, s.draws, s.losses,
-       s.goals_for, s.goals_against, s.points, s.form, s."group"
-  FROM core.standings s
-  JOIN snap ON snap.competition_season_id = s.competition_season_id AND snap.at = s.snapshot_at
-  JOIN cs ON cs.id = s.competition_season_id
-  JOIN core.teams t ON t.id = s.team_id
- ORDER BY s."group" NULLS FIRST, s.rank
+COMPETITION_SEASONS = """
+SELECT cs.id, cs.season FROM core.competition_seasons cs
+ WHERE cs.competition_id = %(c)s
+   AND EXISTS (SELECT 1 FROM core.standings s WHERE s.competition_season_id = cs.id)
+ ORDER BY cs.season DESC
 """
+
+COMPETITION_TABLE = """
+SELECT s.group_key, s.rank, s.team_id, t.name AS team, t.logo_url AS team_logo, s.played, s.wins, s.draws,
+       s.losses, s.goals_for, s.goals_against, s.points, s.form, s."group", s.goals_diff, s.description,
+       s.zone_status, s.home_played, s.home_wins, s.home_draws, s.home_losses, s.home_goals_for,
+       s.home_goals_against, s.away_played, s.away_wins, s.away_draws, s.away_losses, s.away_goals_for,
+       s.away_goals_against
+  FROM core.standings s JOIN core.teams t ON t.id = s.team_id
+ WHERE s.competition_season_id = %(cs)s AND s.snapshot_at = %(at)s
+ ORDER BY s.group_key, s.rank NULLS LAST, t.name
+"""
+"""One snapshot's rows of every table; the service keeps each table apart (``group_key``)."""

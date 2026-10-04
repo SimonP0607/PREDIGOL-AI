@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from fbi.competitions import phases
 from fbi.truth.v2 import standings as st
 
 NOW = datetime(2026, 10, 4, 12, 0, tzinfo=UTC)
@@ -196,8 +197,8 @@ def test_a_play_off_group_stage_inside_a_phase_is_not_counted_in_the_phase_table
     assert a.counts() == {"ok": 6}, a.rows
     assert a.recompute["Primera A: Apertura"].startswith("Apertura rounds only")
     assert a.recompute["Group A"].startswith("Apertura - Quadrangular rounds only")
-    assert st.stage_of("Apertura - Quadrangular - 3") == "Apertura - Quadrangular"
-    assert st.stage_of("Regular Season - 34") == "Regular Season"
+    assert phases.stage_of("Apertura - Quadrangular - 3") == "Apertura - Quadrangular"
+    assert phases.stage_of("Regular Season - 34") == "Regular Season"
 
 
 def test_a_result_decided_off_the_pitch_is_counted_at_its_official_score() -> None:
