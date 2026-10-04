@@ -142,8 +142,14 @@ class V2Run:
 
 
 def write_report(root: Path, kind: str, at: datetime, body: dict[str, Any], md: str) -> Path:
+    """``<root>/<stamp>-<kind>/``; two runs of one kind started in the same second get "-2", "-3"
+    (each report is evidence: one never overwrites another)."""
     folder = root / f"{at:%Y%m%dT%H%M%SZ}-{kind}"
-    folder.mkdir(parents=True, exist_ok=True)
+    n = 1
+    while folder.exists():
+        n += 1
+        folder = root / f"{at:%Y%m%dT%H%M%SZ}-{kind}-{n}"
+    folder.mkdir(parents=True)
     (folder / f"{kind}.json").write_text(json.dumps(body, indent=1, default=str))
     (folder / f"{kind}.md").write_text(md)
     return folder

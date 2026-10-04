@@ -157,3 +157,109 @@ def test_a_table_and_fixtures_naming_two_ids_for_one_club_is_the_providers_ident
     a = st.audit_season({**FACTS, "type": "cup"}, table, as_db(table), games, at=NOW)
     assert [r.verdict for r in a.rows if r.team == 5] == ["provider_identity"]
     assert any(e.issue_type == "IDENTITY_MAPPING_ERROR" and e.at_fault == "provider" for e in st.evidence(a, None))
+
+
+# ── 4 Oct 2026, second round: what the golden seasons taught ──────────────
+
+
+def tables(*groups: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"response": [{"league": {"id": 239, "season": 2024, "standings": [list(g) for g in groups]}}]}
+
+
+def test_a_label_the_provider_gives_two_tables_is_made_unique_per_table() -> None:
+    from fbi.providers.api_football.details import iter_standings
+
+    # Colombia 2024: the Clausura play-off groups, then the Apertura ones, both "Group A"
+    b = tables([row(1, 6, 3, 1, 2, 9, 6, group="Group A"), row(2, 6, 2, 2, 2, 6, 5, group="Group A", rank=2)],
+               [row(1, 19, 10, 4, 5, 25, 12, group="Primera A: Clausura")],
+               [row(1, 6, 2, 2, 2, 6, 5, group="Group A"), row(3, 6, 4, 1, 1, 9, 4, group="Group A", rank=2)])
+    assert st.repeated_labels(b) == {"Group A": 2}
+    assert [(r.team, r.group) for r in st.api_rows(b)] == [
+        (1, "Group A"), (2, "Group A"), (1, "Primera A: Clausura"), (1, "Group A #2"), (3, "Group A #2")]
+    # the writer stores exactly the labels the audit compares: team 1 keeps both play-off rows
+    assert [(r.provider_team_id, r.group) for r in iter_standings(b)] == [
+        (r.team, r.group) for r in st.api_rows(b)]
+
+
+def test_a_play_off_group_stage_inside_a_phase_is_not_counted_in_the_phase_table() -> None:
+    # four teams play three match days, then 1 and 2 meet twice in the quadrangular
+    games = [match(1, 1, 2, 1, 0, "Apertura - 1"), match(2, 3, 4, 0, 0, "Apertura - 1"),
+             match(3, 1, 3, 2, 0, "Apertura - 2"), match(4, 2, 4, 1, 1, "Apertura - 2"),
+             match(5, 1, 4, 0, 1, "Apertura - 3"), match(6, 2, 3, 3, 0, "Apertura - 3"),
+             match(7, 1, 2, 0, 0, "Apertura - Quadrangular - 1"), match(8, 2, 1, 2, 1, "Apertura - Quadrangular - 2")]
+    b = tables([row(1, 3, 2, 0, 1, 3, 1, group="Primera A: Apertura"),
+                row(2, 3, 1, 1, 1, 4, 2, group="Primera A: Apertura", rank=2),
+                row(3, 3, 0, 1, 2, 0, 5, group="Primera A: Apertura", rank=3),
+                row(4, 3, 1, 2, 0, 2, 1, group="Primera A: Apertura", rank=4)],
+               [row(2, 2, 1, 1, 0, 2, 1, group="Group A"), row(1, 2, 0, 1, 1, 1, 2, group="Group A", rank=2)])
+    a = st.audit_season({**FACTS, "provider_league_id": 239}, b, st.api_rows(b), games, at=NOW)
+    assert a.counts() == {"ok": 6}, a.rows
+    assert a.recompute["Primera A: Apertura"].startswith("Apertura rounds only")
+    assert a.recompute["Group A"].startswith("Apertura - Quadrangular rounds only")
+    assert st.stage_of("Apertura - Quadrangular - 3") == "Apertura - Quadrangular"
+    assert st.stage_of("Regular Season - 34") == "Regular Season"
+
+
+def test_a_result_decided_off_the_pitch_is_counted_at_its_official_score() -> None:
+    # Union Berlin 1-1 Bochum on the pitch (the provider's fixture), 0-2 by the DFB's sports court (its table)
+    union, bochum = 182, 176
+    b = body(row(bochum, 1, 1, 0, 0, 2, 0), row(union, 1, 0, 0, 1, 0, 2, rank=2))
+    played = [match(1224099, union, bochum, 1, 1)]
+    plain = st.audit_season(FACTS, b, st.api_rows(b), played, at=NOW)
+    assert plain.verdict == "provider_inconsistent"
+    decision = st.Official(st.Played(1224099, NOW - timedelta(days=1), "Regular Season - 1", union, bochum, 0, 2),
+                           "DFB Sports Court 9 Jan 2025")
+    a = st.audit_season(FACTS, b, st.api_rows(b), played, at=NOW, official=[decision])
+    assert {r.verdict for r in a.rows} == {"awarded"} and a.verdict == "adjusted"
+    assert "official 0-2, stored 1-1 (DFB Sports Court 9 Jan 2025)" in a.rows[0].notes[0]
+    ev = st.evidence(a, None)
+    assert ev[0].status == "MONITOR" and "DFB Sports Court" in ev[0].claim
+    # an official decision the stored fixture already carries changes nothing
+    same = st.Official(st.Played(1224099, NOW, "Regular Season - 1", union, bochum, 1, 1), "x")
+    assert st.audit_season(FACTS, b, st.api_rows(b), played, at=NOW, official=[same]).verdict == "provider_inconsistent"
+
+
+def test_decisions_are_read_from_the_official_file(tmp_path: Any) -> None:
+    import json as _json
+
+    f = tmp_path / "decisions.json"
+    f.write_text(_json.dumps({"decisions": [{"fixture": 1224099, "league": 78, "season": 2024, "official": [0, 2],
+                                             "played": [1, 1], "basis": "DFB", "sources": ["https://www.dfb.de/x"]},
+                                            {"fixture": 1388000, "league": 61, "season": 2025, "official": [0, 0],
+                                             "played": None, "basis": "LFP"}]}))
+    d = st.load_decisions(f)
+    assert d[1224099].official == (0, 2) and d[1224099].played == (1, 1) and d[1224099].sources == ("https://www.dfb.de/x",)
+    assert d[1388000].played is None and st.load_decisions(None) == {}
+
+
+def test_a_past_season_is_never_the_wrong_season_of_the_product() -> None:
+    table = body(row(1, 1, 1, 0, 0, 2, 0), row(2, 1, 0, 0, 1, 0, 2, rank=2))
+    past = {**FACTS, "season": 2024, "is_current": False, "product_season": 2026}
+    a = st.audit_season(past, table, as_db(table), [match(10, 1, 2, 2, 0)], at=NOW)
+    assert "WRONG_SEASON" not in {e.issue_type for e in st.evidence(a, None)}
+
+
+def test_the_provider_awarded_score_is_read_from_its_fixture_list() -> None:
+    from fbi.truth.v2.golden import provider_awards
+
+    items = [{"fixture": {"id": 1388000, "date": "2026-05-17T19:00:00+00:00", "status": {"short": "AWD"}},
+              "league": {"round": "Regular Season - 34"}, "teams": {"home": {"id": 83}, "away": {"id": 96}},
+              "goals": {"home": 0, "away": 0}},
+             {"fixture": {"id": 1, "date": "2026-05-17T19:00:00+00:00", "status": {"short": "FT"}},
+              "league": {"round": "Regular Season - 34"}, "teams": {"home": {"id": 1}, "away": {"id": 2}},
+              "goals": {"home": 2, "away": 1}},
+             {"fixture": {"id": 2, "date": "2026-05-17T19:00:00+00:00", "status": {"short": "AWD"}},
+              "league": {"round": "x"}, "teams": {"home": {"id": 1}, "away": {"id": 2}},
+              "goals": {"home": None, "away": None}}]
+    got = provider_awards(items)
+    assert [(o.match.fixture, o.match.home, o.match.away, o.match.gh, o.match.ga) for o in got] == [
+        (1388000, 83, 96, 0, 0)]
+
+
+def test_two_reports_in_the_same_second_never_overwrite_each_other(tmp_path: Any) -> None:
+    from fbi.truth.v2.runner import write_report
+
+    a = write_report(tmp_path, "standings", NOW, {"n": 1}, "# one")
+    b = write_report(tmp_path, "standings", NOW, {"n": 2}, "# two")
+    assert a != b and b.name.endswith("-standings-2")
+    assert (a / "standings.md").read_text() == "# one" and (b / "standings.md").read_text() == "# two"

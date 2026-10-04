@@ -26,17 +26,20 @@ expected lag (reported, not an issue).
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.providers.api_football.details import labelled_rows
 from fbi.truth.v2.ledger import Evidence
 
 MATCH_LENGTH = timedelta(hours=2)
@@ -112,26 +115,35 @@ def _line(block: Any, points: Any = None) -> Line:
 
 
 def api_rows(body: Mapping[str, Any]) -> list[Row]:
-    """Every row of every table in a /standings answer."""
+    """Every row of every table in a /standings answer, each table under the label the writer
+    stores it with (a label the provider repeats within the season gets " #n": ``labelled_rows``)."""
     out: list[Row] = []
     response = body.get("response")
     for entry in response if isinstance(response, list) else []:
         league = _d(_d(entry).get("league"))
-        tables = league.get("standings")
-        for table in tables if isinstance(tables, list) else []:
-            for r in table if isinstance(table, list) else []:
-                if not isinstance(r, dict):
-                    continue
-                team = _d(r.get("team"))
-                tid = _int(team.get("id"))
-                if tid is None:
-                    continue
-                out.append(Row(team=tid, name=str(team.get("name") or tid), group=_text(r.get("group")),
-                               rank=_int(r.get("rank")), total=_line(r.get("all"), r.get("points")),
-                               gd=_int(r.get("goalsDiff")), form=_text(r.get("form")),
-                               description=_text(r.get("description")), update=_when(r.get("update")),
-                               home=_line(r.get("home")), away=_line(r.get("away"))))
+        for r, group in labelled_rows(league.get("standings")):
+            team = _d(r.get("team"))
+            tid = _int(team.get("id"))
+            if tid is None:
+                continue
+            out.append(Row(team=tid, name=str(team.get("name") or tid), group=group,
+                           rank=_int(r.get("rank")), total=_line(r.get("all"), r.get("points")),
+                           gd=_int(r.get("goalsDiff")), form=_text(r.get("form")),
+                           description=_text(r.get("description")), update=_when(r.get("update")),
+                           home=_line(r.get("home")), away=_line(r.get("away"))))
     return out
+
+
+def repeated_labels(body: Mapping[str, Any]) -> dict[str, int]:
+    """Group labels the provider gives to more than one table of the answer, with how many tables."""
+    response = body.get("response")
+    tables_of: Counter[str] = Counter()
+    for entry in response if isinstance(response, list) else []:
+        tables = _d(_d(entry).get("league")).get("standings")
+        for table in tables if isinstance(tables, list) else []:
+            labels = {_text(r.get("group")) or "" for r in table if isinstance(r, dict)} if isinstance(table, list) else set()
+            tables_of.update(labels)
+    return {label: n for label, n in tables_of.items() if n > 1}
 
 
 def _text(v: Any) -> str | None:
@@ -234,6 +246,67 @@ SELECT th.provider_team_id AS home, ta.provider_team_id AS away
 """
 
 
+@dataclass(frozen=True)
+class Decision:
+    """An official result that is not the played one, read on the competition's or the court's own
+    site: a match awarded by a sports court after it was played (the provider keeps the played score
+    in /fixtures and counts the award in /standings), or a match abandoned and homologated."""
+
+    fixture: int
+    league: int
+    season: int
+    official: tuple[int, int]
+    played: tuple[int, int] | None
+    basis: str
+    sources: tuple[str, ...] = ()
+
+
+def load_decisions(path: str | Path | None) -> dict[int, Decision]:
+    """``{"decisions": [{"fixture", "league", "season", "official": [h, a], "played": [h, a] | null,
+    "basis", "sources": [...]}]}`` keyed by the provider's fixture id."""
+    if not path:
+        return {}
+    data = json.loads(Path(path).read_text())
+    out = {}
+    for d in data.get("decisions", []):
+        played = d.get("played")
+        out[int(d["fixture"])] = Decision(int(d["fixture"]), int(d["league"]), int(d["season"]),
+                                          (int(d["official"][0]), int(d["official"][1])),
+                                          (int(played[0]), int(played[1])) if played else None,
+                                          str(d["basis"]), tuple(str(s) for s in d.get("sources", [])))
+    return out
+
+
+@dataclass(frozen=True)
+class Official:
+    """A match as the table counts it, with why: an official decision, or the provider's AWD/WO score."""
+
+    match: Played
+    basis: str
+
+
+DECIDED_SQL = """
+SELECT f.provider_fixture_id, f.kickoff_at, f.round, th.provider_team_id AS home, ta.provider_team_id AS away
+  FROM core.fixtures f JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
+ WHERE f.competition_season_id = %(cs)s AND f.provider_fixture_id = ANY(%(ids)s)
+"""
+
+
+def decided(conn: psycopg.Connection[Any], cs_id: int, decisions: Mapping[int, Decision]) -> list[Official]:
+    """The season's matches with an official decision, at their official score."""
+    if not decisions:
+        return []
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(DECIDED_SQL, {"cs": cs_id, "ids": list(decisions)})
+        rows = cur.fetchall()
+    out = []
+    for r in rows:
+        d = decisions[int(r["provider_fixture_id"])]
+        out.append(Official(Played(d.fixture, r["kickoff_at"], str(r["round"] or ""), int(r["home"]), int(r["away"]),
+                                   d.official[0], d.official[1]), d.basis))
+    return out
+
+
 def awarded(conn: psycopg.Connection[Any], cs_id: int) -> list[tuple[int, int]]:
     """(home, away) of the season's matches decided off the pitch (technical loss, walkover): a table
     counts them, our match data has no on-field score for them."""
@@ -265,6 +338,16 @@ def phase_of(round_label: str) -> str:
     return round_label.split(" - ")[0].strip()
 
 
+MATCH_DAY = re.compile(r"\s*-\s*\d+\s*$")
+
+
+def stage_of(round_label: str) -> str:
+    """The round label without its match-day number: "Apertura - 7" -> "Apertura", "Apertura -
+    Quadrangular - 3" -> "Apertura - Quadrangular". A phase can hold a regular season AND a
+    play-off group stage (Colombia's quadrangulars), which the provider tables separately."""
+    return MATCH_DAY.sub("", round_label).strip()
+
+
 @dataclass
 class Recompute:
     by_team: dict[int, Line]
@@ -274,6 +357,8 @@ class Recompute:
     single_phase: bool = False
     """Only one phase was played among these teams: the fixtures ARE the table, whatever the
     provider's counts say (a provider behind on a whole match day disagrees on every row)."""
+    fixtures: frozenset[int] = frozenset()
+    """The matches this table was recomputed from."""
 
     @property
     def usable(self) -> bool:
@@ -301,24 +386,31 @@ def recompute_group(rows: Sequence[Row], matches: Sequence[Played], *, tables: i
     anywhere = [m for m in league if m.home in teams or m.away in teams]
     group_label = _fold(" ".join(r.group or "" for r in rows[:1]))
     phases = sorted({phase_of(m.round) for m in within})
+    stages = {stage_of(m.round) for m in within}
     zero = Line(0, 0, 0, 0, 0, 0, 0)
 
     def agree(table: dict[int, Line]) -> int:
         return sum(1 for r in rows if (table.get(r.team) or zero).played == r.total.played)
 
-    if tables == 1 and len(phases) <= 1:
+    if tables == 1 and len(phases) <= 1 and len(stages) <= 1:
         table = tally(within)
-        return Recompute(table, phases[0] if phases else "none", agree(table), len(rows), single_phase=bool(phases))
+        return Recompute(table, phases[0] if phases else "none", agree(table), len(rows), single_phase=bool(phases),
+                         fixtures=frozenset(m.fixture for m in within))
     candidates: list[tuple[str, bool, list[Played]]] = []
     for scope, subset in (("within", within), ("any", anywhere)):
         candidates.append((f"all non-knockout ({scope})", False, subset))
         for phase in sorted({phase_of(m.round) for m in subset}):
-            candidates.append((f"{phase} ({scope})", _fold(phase) in group_label,
-                               [m for m in subset if phase_of(m.round) == phase]))
+            games = [m for m in subset if phase_of(m.round) == phase]
+            candidates.append((f"{phase} ({scope})", _fold(phase) in group_label, games))
+            phase_stages = sorted({stage_of(m.round) for m in games})
+            if len(phase_stages) > 1:  # a regular season and a play-off group stage under one phase name
+                for stage in phase_stages:
+                    candidates.append((f"{stage} rounds only ({scope})", _fold(stage) in group_label,
+                                       [m for m in games if stage_of(m.round) == stage]))
     best: tuple[int, bool, Recompute] | None = None
     for name, named, subset in candidates:
         table = tally(subset)
-        cand = Recompute(table, name, agree(table), len(rows))
+        cand = Recompute(table, name, agree(table), len(rows), fixtures=frozenset(m.fixture for m in subset))
         if best is None or cand.agree > best[0] or (cand.agree == best[0] and named and not best[1]):
             best = (cand.agree, named, cand)
     assert best is not None
@@ -406,6 +498,7 @@ class SeasonAudit:
     last_finished: datetime | None = None
     product_season: int | None = None
     in_refresh_scope: bool = False
+    is_current: bool = False
     recompute: dict[str, str] = field(default_factory=dict)
     rows: list[RowVerdict] = field(default_factory=list)
     extra_db_teams: list[int] = field(default_factory=list)
@@ -434,13 +527,19 @@ class SeasonAudit:
 def audit_season(facts: Mapping[str, Any], body: Mapping[str, Any] | None, db: Sequence[Row],
                  matches: Sequence[Played], *, at: datetime, payload_hash: str | None = None,
                  fetched_at: datetime | None = None,
-                 awarded_pairs: Sequence[tuple[int, int]] = ()) -> SeasonAudit:
-    """Compare one competition season's three tables and give the season its verdict."""
+                 awarded_pairs: Sequence[tuple[int, int]] = (),
+                 official: Sequence[Official] = ()) -> SeasonAudit:
+    """Compare one competition season's three tables and give the season its verdict.
+
+    ``official`` - matches whose official result is not the stored one (a sports court's award, the
+    provider's AWD score): the table counts the official result, so the recompute does too, and a row
+    that agrees only through it is ``awarded`` (explained, with the basis), never silently ``ok``."""
     s = SeasonAudit(int(facts["provider_league_id"]), str(facts["name"]), int(facts["season"]), str(facts["type"]),
                     facts.get("cs_id"), payload_hash=payload_hash, fetched_at=fetched_at)
     s.snapshot_at, s.checked_at = facts.get("snapshot_at"), facts.get("checked_at")
     s.last_finished, s.product_season = facts.get("last_finished"), facts.get("product_season")
     s.in_refresh_scope = bool(facts.get("is_tracked") and facts.get("is_current") and facts.get("type") == "league")
+    s.is_current = bool(facts.get("is_current"))
     api = api_rows(body or {})
     s.api_rows, s.db_rows = len(api), len(db)
     s.legacy_snapshot = bool(db) and all(r.payload_hash is None for r in db)
@@ -454,6 +553,11 @@ def audit_season(facts: Mapping[str, Any], body: Mapping[str, Any] | None, db: S
     if not api:
         s.verdict = "no_api_table" if db else "no_table"
         return s
+    stored = {m.fixture: (m.gh, m.ga) for m in matches}
+    changed = [o for o in official if stored.get(o.match.fixture) != (o.match.gh, o.match.ga)]
+    if changed:
+        replaced = {o.match.fixture for o in changed}
+        matches = [m for m in matches if m.fixture not in replaced] + [o.match for o in changed]
     by_group: dict[str | None, list[Row]] = {}
     for r in api:
         by_group.setdefault(r.group, []).append(r)
@@ -461,10 +565,12 @@ def audit_season(facts: Mapping[str, Any], body: Mapping[str, Any] | None, db: S
     db_by_team: dict[int, list[Row]] = {}
     for r in db:
         db_by_team.setdefault(r.team, []).append(r)
+    used: dict[str | None, frozenset[int]] = {}
     for group, rows in by_group.items():
         rec = recompute_group(rows, matches, tables=len(by_group)) if matches else None
         if rec is not None:
             s.recompute[group or ""] = f"{rec.phase}: {rec.agree}/{rec.rows} rows agree on games played"
+            used[group] = rec.fixtures if rec.usable else frozenset()
         for r in rows:
             mine = db_by_key.get((r.team, r.group))
             if mine is None and len(db_by_team.get(r.team, [])) == 1 and sum(1 for x in api if x.team == r.team) == 1:
@@ -474,8 +580,24 @@ def audit_season(facts: Mapping[str, Any], body: Mapping[str, Any] | None, db: S
     api_teams = {r.team for r in api}
     s.extra_db_teams = sorted({r.team for r in db} - api_teams)
     explain_missing_games(s, api, matches, awarded_pairs)
+    explain_official(s, changed, stored, used)
     s.verdict = season_verdict(s, at=at)
     return s
+
+
+def explain_official(s: SeasonAudit, changed: Sequence[Official], stored: Mapping[int, tuple[int, int]],
+                     used: Mapping[str | None, frozenset[int]]) -> None:
+    """A row that agrees with the fixtures only once an official result replaces the stored one (the
+    official match is one its table was recomputed from)."""
+    for o in changed:
+        m = o.match
+        was = stored.get(m.fixture)
+        for v in s.rows:
+            if (v.team in (m.home, m.away) and v.verdict == "ok" and v.fix is not None
+                    and m.fixture in used.get(v.group, frozenset())):
+                v.verdict = "awarded"
+                v.notes.append(f"fixture {m.fixture}: official {m.gh}-{m.ga}, stored "
+                               f"{'-'.join(map(str, was)) if was else 'no result'} ({o.basis})")
 
 
 def explain_missing_games(s: SeasonAudit, api: Sequence[Row], matches: Sequence[Played],
@@ -618,11 +740,15 @@ def evidence(s: SeasonAudit, api_ref: Mapping[str, Any] | None) -> list[Evidence
             api={**api_ev, "examples": examples}, db=db_ev,
             root_cause="a result differs between /standings and /fixtures, or the table uses another phase"))
     if s.verdict == "adjusted":
+        decided = sorted({n for r in s.rows if r.verdict == "awarded" for n in r.notes})
+        claim = (f"{label}: points differ from the results for {counts.get('adjusted', 0)} team(s) - a deduction "
+                 "or an award; to confirm with the official table")
+        if decided:
+            claim += (f"; {counts.get('awarded', 0)} row(s) agree once results decided off the pitch are counted: "
+                      + "; ".join(decided[:3]))
         out.append(Evidence(
             key=f"{key}:adjusted", area="standings", issue_type="STANDINGS_MISMATCH", severity="low",
-            at_fault="none", entity=label,
-            claim=f"{label}: points differ from the results for {counts.get('adjusted', 0)} team(s) - a deduction "
-                  "or an award; to confirm with the official table",
+            at_fault="none", entity=label, claim=claim,
             api={**api_ev, "examples": examples}, db=db_ev, status="MONITOR"))
     if s.extra_db_teams:
         out.append(Evidence(
@@ -630,7 +756,7 @@ def evidence(s: SeasonAudit, api_ref: Mapping[str, Any] | None) -> list[Evidence
             at_fault="predigol", entity=label,
             claim=f"{label}: {len(s.extra_db_teams)} team(s) in our newest table are not in the provider's",
             api=api_ev, db={**db_ev, "extra_teams": s.extra_db_teams}))
-    if s.product_season is not None and s.product_season != s.season and s.api_rows:
+    if s.is_current and s.product_season is not None and s.product_season != s.season and s.api_rows:
         out.append(Evidence(
             key=f"{key}:product_season", area="standings", issue_type="WRONG_SEASON", severity="high",
             at_fault="predigol", entity=label,

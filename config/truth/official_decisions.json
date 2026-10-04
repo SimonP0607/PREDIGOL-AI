@@ -1,0 +1,32 @@
+{
+  "about": "Results decided off the pitch, read on the competition's or the sports court's own site. The audits count them at their official score in table and Football-Data checks; our fixtures keep the played score (bookmakers settle on it; the models read it). Keyed by the provider's fixture id.",
+  "accessed_at": "2026-10-04T15:20:00Z",
+  "decisions": [
+    {
+      "fixture": 1224099,
+      "league": 78,
+      "season": 2024,
+      "match": "1. FC Union Berlin v VfL Bochum, Bundesliga 2024/25 match day 14, 14 Dec 2024",
+      "played": [1, 1],
+      "official": [0, 2],
+      "basis": "DFB Sports Court, 9 Jan 2025: awarded 0-2 to Bochum (lighter thrown at Bochum's goalkeeper); appeal rejected by the DFB Federal Court, 28 Feb 2025",
+      "sources": [
+        "https://www.dfb.de/news/dfb-sportgericht-wertet-bundesligaspiel-in-berlin-fuer-bochum",
+        "https://www.dfb.de/news/dfb-bundesgericht-weist-berufung-von-union-berlin-zurueck",
+        "https://www.bundesliga.com/de/bundesliga/tabelle/2024-2025"
+      ]
+    },
+    {
+      "fixture": 1388000,
+      "league": 61,
+      "season": 2025,
+      "match": "FC Nantes v Toulouse FC, Ligue 1 2025/26 match day 34, 17 May 2026",
+      "played": null,
+      "official": [0, 0],
+      "basis": "abandoned after a pitch invasion; the LFP disciplinary commission (28 May 2026) homologated the 0-0 at the interruption (the provider: AWD 0-0)",
+      "sources": [
+        "https://ligue1.com/fr/articles/l1_article_5189-"
+      ]
+    }
+  ]
+}

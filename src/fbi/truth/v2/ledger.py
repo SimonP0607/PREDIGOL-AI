@@ -116,14 +116,17 @@ def record_all(conn: psycopg.Connection[Any], items: Iterable[Evidence], *, at: 
 
 
 def clear_unseen(conn: psycopg.Connection[Any], *, area: str, scope_prefix: str, seen: Iterable[str],
-                 at: datetime) -> int:
+                 at: datetime, keep_containing: str | None = None) -> int:
     """Entries of this area whose key starts with ``scope_prefix`` and that this run did not see:
-    CLEARED (kept). Returns how many."""
+    CLEARED (kept). ``keep_containing`` spares keys this run could not have seen (an official-table
+    comparison when no official table was given). Returns how many."""
+    keep = "" if keep_containing is None else " AND position(%(keep)s in key) = 0"
     with conn.cursor() as cur:
         cur.execute("UPDATE audit.evidence_ledger SET status = 'CLEARED', cleared_at = %(at)s "
                     "WHERE area = %(area)s AND key LIKE %(prefix)s AND NOT (key = ANY(%(seen)s)) "
-                    "AND status IN ('OPEN', 'MONITOR')",
-                    {"at": at, "area": area, "prefix": scope_prefix.replace("%", r"\%") + "%", "seen": list(seen)})
+                    "AND status IN ('OPEN', 'MONITOR')" + keep,
+                    {"at": at, "area": area, "prefix": scope_prefix.replace("%", r"\%") + "%", "seen": list(seen),
+                     "keep": keep_containing})
         return cur.rowcount
 
 

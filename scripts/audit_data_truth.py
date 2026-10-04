@@ -6,6 +6,7 @@
     python -m scripts.audit_data_truth identity    # duplicates, collisions, flags, squads + provider samples
     python -m scripts.audit_data_truth fields      # what the normalizers drop (RAW on disk, 0 requests)
     python -m scripts.audit_data_truth golden      # golden dataset: 7 competitions x 3 seasons, three ways
+    python -m scripts.audit_data_truth golden --decisions FILE.json   # + official decisions off the pitch
     python -m scripts.audit_data_truth ledger      # the evidence ledger, open entries first (read only)
 
 The provider-facing audits of the three priorities have their own commands:
@@ -18,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import functools
 import json
 import sys
 from pathlib import Path
@@ -164,18 +166,22 @@ async def _fields(run: V2Run, conn: psycopg.Connection[Any]) -> tuple[dict[str, 
     return summary, fl.evidence(rows), "\n".join(md) + "\n"
 
 
-async def _golden(run: V2Run, conn: psycopg.Connection[Any]) -> tuple[dict[str, Any], list[Any], str]:
+async def _golden(run: V2Run, conn: psycopg.Connection[Any], decisions: str | None = None,
+                  ) -> tuple[dict[str, Any], list[Any], str]:
     import httpx
 
     from fbi.ingestion.payload_store import PayloadStore
     from fbi.truth.v2 import golden as gd
+    from fbi.truth.v2 import standings as st
 
     store = PayloadStore(settings.runtime.raw_store_dir, provider="football-data")
+    official = st.load_decisions(decisions)
     seasons = []
     with httpx.Client(timeout=30, headers={"user-agent": gd.USER_AGENT}, follow_redirects=True) as http:
         for league in gd.GOLDEN:
             for season in gd.SEASONS:
-                seasons.append(await gd.validate(run, conn, league, season, http=http, store=store))
+                seasons.append(await gd.validate(run, conn, league, season, http=http, store=store,
+                                                 decisions=official))
     rows = gd.summary_rows(seasons)
     verdicts: dict[str, int] = {}
     for g in seasons:
@@ -188,6 +194,10 @@ async def _golden(run: V2Run, conn: psycopg.Connection[Any]) -> tuple[dict[str, 
         md.append(f"| {r['name']} ({r['league']}) | {r['season']} | **{r['verdict']}** | {r['score']} | {f[2]}/{f[3]} "
                   f"(API {f[0]}, DB {f[1]}) | {res[0]}/{res[1]} | {tb[0]}/{tb[1]} {tb[2]} | "
                   f"{'-' if ex[1] is None else f'{ex[0]} / {ex[1]} / {ex[2]} / {ex[3]}'} |")
+    decided = [(r, o) for r in rows for o in r["official"]]
+    if decided:
+        md += ["", "Results decided off the pitch, counted at their official score (our fixtures keep the played one):",
+               ""] + [f"* {r['name']} {r['season']} - {o}" for r, o in decided]
     return {"verdicts": verdicts, "labels": verdicts, "rows": rows}, gd.evidence(seasons), "\n".join(md) + "\n"
 
 
@@ -211,12 +221,15 @@ def main() -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=sorted(["baseline", "ledger", *ASYNC]))
     parser.add_argument("--max-requests", type=int, default=None)
+    parser.add_argument("--decisions", help="golden: official results decided off the pitch (JSON)")
     args = parser.parse_args()
     if args.command == "baseline":
         return cmd_baseline(args)
     if args.command == "ledger":
         return cmd_ledger(args)
     body, cap = ASYNC[args.command]
+    if args.command == "golden":
+        body = functools.partial(_golden, decisions=args.decisions)
     return asyncio.run(_with_client(args.command, body, args.max_requests if args.max_requests is not None else cap))
 
 

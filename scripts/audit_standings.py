@@ -5,6 +5,7 @@
     python -m scripts.audit_standings --season 2025 --league 39   # a past season (golden validation)
     python -m scripts.audit_standings --no-api              # ours vs the fixtures only, 0 requests
     python -m scripts.audit_standings --external FILE.json  # also compare an official table (see below)
+    python -m scripts.audit_standings --decisions FILE.json # results decided off the pitch (sports courts)
 
 One /standings request per season, stored as a NEW raw payload. Writes audit.truth_v2_runs, the
 evidence ledger (audit.evidence_ledger) and data/truth/<stamp>-standings/. Nothing in core is
@@ -100,7 +101,8 @@ def markdown(audits: list[st.SeasonAudit], codes: dict[str, str], requests: int)
 
 
 async def audit_one(run: V2Run, conn: psycopg.Connection[Any], facts: dict[str, Any], *, no_api: bool,
-                    externals: dict[tuple[int, int], dict[str, Any]]) -> tuple[st.SeasonAudit, list[Evidence]]:
+                    externals: dict[tuple[int, int], dict[str, Any]],
+                    decisions: dict[int, st.Decision] | None = None) -> tuple[st.SeasonAudit, list[Evidence]]:
     answer = None
     if run.client is not None:
         answer = await run.get("/standings", {"league": facts["provider_league_id"], "season": facts["season"]})
@@ -113,10 +115,13 @@ async def audit_one(run: V2Run, conn: psycopg.Connection[Any], facts: dict[str, 
             {"team": {"id": r.team, "name": r.name}, "group": r.group, "rank": r.rank, "points": r.total.points,
              "all": {"played": r.total.played, "win": r.total.win, "draw": r.total.draw, "lose": r.total.lose,
                      "goals": {"for": r.total.gf, "against": r.total.ga}}} for r in db]]}}]}
+    mine = {f: d for f, d in (decisions or {}).items()
+            if (d.league, d.season) == (int(facts["provider_league_id"]), int(facts["season"]))}
     audit = st.audit_season(facts, body, db, matches, at=run.at,
                             payload_hash=answer.payload_hash if answer else None,
                             fetched_at=answer.fetched_at if answer else None,
-                            awarded_pairs=st.awarded(conn, int(facts["cs_id"])))
+                            awarded_pairs=st.awarded(conn, int(facts["cs_id"])),
+                            official=st.decided(conn, int(facts["cs_id"]), mine))
     evidence: list[Evidence] = []
     if not no_api:
         evidence += st.evidence(audit, answer.ref() if answer else None)
@@ -135,6 +140,7 @@ async def run(args: argparse.Namespace) -> int:
     if args.external:
         for ext in json.loads(Path(args.external).read_text()):
             externals[(int(ext["league"]), int(ext["season"]))] = ext
+    decisions = st.load_decisions(args.decisions)
     try:
         with psycopg.connect(settings.database.psycopg_url, autocommit=True) as conn:
             conn.execute("SET statement_timeout = '120s'")
@@ -152,7 +158,8 @@ async def run(args: argparse.Namespace) -> int:
             evidence: list[Evidence] = []
             try:
                 for facts in seasons:
-                    audit, found = await audit_one(run, conn, facts, no_api=args.no_api, externals=externals)
+                    audit, found = await audit_one(run, conn, facts, no_api=args.no_api, externals=externals,
+                                                   decisions=decisions)
                     audits.append(audit)
                     evidence += found
             except BaseException:
@@ -160,7 +167,15 @@ async def run(args: argparse.Namespace) -> int:
                 raise
             codes = record_all(conn, evidence, at=at, run_id=run.run_id) if not args.no_api else {}
             if not args.no_api and not args.league and args.season is None and not run.stopped:
-                clear_unseen(conn, area="standings", scope_prefix="standings:", seen=codes.keys(), at=at)
+                clear_unseen(conn, area="standings", scope_prefix="standings:", seen=codes.keys(), at=at,
+                             keep_containing=None if externals else ":official")
+            elif not args.no_api:
+                # a scoped run audited each of its seasons whole: what it no longer finds there is cleared
+                for a in audits:
+                    if a.verdict != "not_asked":
+                        clear_unseen(conn, area="standings", scope_prefix=f"standings:{a.league}:{a.season}:",
+                                     seen=codes.keys(), at=at,
+                                     keep_containing=None if (a.league, a.season) in externals else ":official")
             verdicts: dict[str, int] = {}
             for a in audits:
                 verdicts[a.verdict] = verdicts.get(a.verdict, 0) + 1
@@ -185,6 +200,8 @@ def main() -> int:
     parser.add_argument("--season", type=int, help="a past season instead of the current ones")
     parser.add_argument("--no-api", action="store_true", help="0 requests: our table vs our fixtures")
     parser.add_argument("--external", help="official tables to compare (JSON)")
+    parser.add_argument("--decisions", help="official results decided off the pitch (JSON, see fbi.truth.v2.standings."
+                                            "load_decisions)")
     parser.add_argument("--max-requests", type=int, default=400)
     return asyncio.run(run(parser.parse_args()))
 

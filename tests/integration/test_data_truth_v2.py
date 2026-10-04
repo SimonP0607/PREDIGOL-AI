@@ -278,3 +278,76 @@ def test_the_admin_reads_the_ledger_and_records_a_verdict(migrated_database: str
             cur.execute("DELETE FROM audit.truth_v2_runs")
             cur.execute("DELETE FROM raw.ingestion_runs WHERE job_type LIKE 'truth_v2_%'")
             cur.execute("DELETE FROM auth.users WHERE id = %s", (user,))
+
+
+def test_a_snapshot_that_merged_two_tables_labelled_alike_is_rebuilt_beside_it(
+        migrated_database: str, seed: Seed, v2_league: dict[str, int], tmp_path: Any) -> None:
+    """Colombia 2024: the Clausura and the Apertura play-off groups are both "Group A". The old writer
+    kept team A's first "Group A" row and dropped its second; the repair writes a NEW snapshot from the
+    same payload and leaves the damaged one as it was."""
+    from dataclasses import replace
+
+    from psycopg.types.json import Json
+
+    from fbi.ingestion.details import apply_standings_outcome
+    from fbi.ingestion.payload_store import PayloadStore
+    from fbi.ingestion.standings_repair import RULE, find_collisions, rebuild
+    from fbi.providers.api_football.details import iter_standings
+
+    def line(team: int, group: str, played: int, rank: int) -> dict[str, Any]:
+        return {"rank": rank, "team": {"id": team, "name": str(team)}, "points": played, "group": group,
+                "all": {"played": played, "win": 0, "draw": played, "lose": 0, "goals": {"for": 0, "against": 0}}}
+
+    body = {"response": [{"league": {"id": LEAGUE, "season": SEASON, "standings": [
+        [line(TEAM_A, "Group A", 6, 1), line(TEAM_B, "Group A", 6, 2)],
+        [line(TEAM_A, "V2 League", 2, 1), line(TEAM_B, "V2 League", 2, 2)],
+        [line(TEAM_A, "Group A", 4, 1)]]}}]}
+    t0 = NOW - timedelta(days=1)
+    store = PayloadStore(tmp_path)
+    stored = store.store(endpoint="/standings", params={"league": LEAGUE, "season": SEASON}, fetched_at=t0,
+                         http_status=200, body=body)
+    cs = v2_league["cs"]
+    with psycopg.connect(migrated_database) as conn:
+        conn.execute("INSERT INTO raw.ingestion_payloads (hash, run_id, endpoint, params, fetched_at, http_status, "
+                     "results_count, file_path, bytes) VALUES (%s,%s,'/standings',%s,%s,200,1,%s,%s)",
+                     (stored.hash, seed.run_id, Json({"league": str(LEAGUE), "season": str(SEASON)}), t0,
+                      stored.file_path, stored.bytes_written))
+        # the old writer: bare labels, ON CONFLICT DO NOTHING - team A's second "Group A" row is lost
+        old = [replace(r, group=(r.group or "").split(" #")[0]) for r in iter_standings(body)]
+        assert apply_standings_outcome(conn, old, fetched_at=t0, payload_hash=stored.hash).written == 4
+        conn.commit()
+        try:
+            cases = find_collisions(conn, store, seasons=[cs])
+            assert [(c.league, c.season, c.rows_before, c.rows_expected, c.missing) for c in cases] == [
+                (LEAGUE, SEASON, 4, 5, [f"{TEAM_A}|Group A #2"])]
+            written = rebuild(conn, cases[0], store, at=NOW)
+            assert written == 5
+            snaps = conn.execute("SELECT snapshot_at, count(*) FROM core.standings WHERE competition_season_id = %s "
+                                 "GROUP BY 1 ORDER BY 1", (cs,)).fetchall()
+            assert [n for _, n in snaps][-2:] == [4, 5]  # the damaged snapshot kept, the rebuilt one beside it
+            assert conn.execute("SELECT played FROM core.standings WHERE competition_season_id = %s AND "
+                                "snapshot_at = %s AND \"group\" = 'Group A #2'", (cs, NOW)).fetchone() == (4,)
+            repair = conn.execute("SELECT before_value, after_value, evidence FROM audit.data_repairs WHERE rule = %s "
+                                  "AND entity_id = %s", (RULE, cs)).fetchone()
+            assert repair is not None and repair[0].startswith("4 rows") and repair[1].startswith("5 rows")
+            assert stored.hash in repair[2]
+            assert find_collisions(conn, store, seasons=[cs]) == []  # the newest snapshot is whole now
+        finally:
+            conn.execute("DELETE FROM audit.data_repairs WHERE rule = %s AND entity_id = %s", (RULE, cs))
+            conn.execute("DELETE FROM core.standings WHERE competition_season_id = %s AND snapshot_at IN (%s, %s)",
+                         (cs, t0, NOW))
+            conn.execute("DELETE FROM raw.ingestion_payloads WHERE hash = %s", (stored.hash,))
+            conn.commit()
+
+
+def test_an_official_decision_is_read_against_the_real_schema(migrated_database: str,
+                                                               v2_league: dict[str, int]) -> None:
+    from fbi.truth.v2.golden import official_variants
+
+    with psycopg.connect(migrated_database) as conn:
+        decisions = {992002: st.Decision(992002, LEAGUE, SEASON, (0, 2), (1, 1), "a sports court")}
+        got = st.decided(conn, v2_league["cs"], decisions)
+        assert [(o.match.fixture, o.match.home, o.match.away, o.match.gh, o.match.ga) for o in got] == [
+            (992002, TEAM_B, TEAM_A, 0, 2)]
+        variants = official_variants(conn, got)
+        assert [(v.home, v.away, v.goals_home, v.goals_away) for v in variants] == [("V2 B", "V2 A", 0, 2)]

@@ -5,6 +5,11 @@
                                                   # by the pre-0048 writer (one row per team: a second table -
                                                   # Apertura/Clausura, a third-place ranking - was dropped)
     python -m scripts.refresh_tables --dry-run    # list the seasons, no request
+    python -m scripts.refresh_tables --relabel [--dry-run]
+                                                  # no request: every season whose newest snapshot merged two
+                                                  # tables the provider labels alike (Colombia 2023-24 "Group A"
+                                                  # twice) gets a NEW snapshot rebuilt from the same payload
+                                                  # (fbi.ingestion.standings_repair; audit.data_repairs)
 
 One /standings request per season through the normal refresh path: the answer is a raw payload,
 the check is recorded in core.context_checks, rows go through the same writer. When the provider's
@@ -64,6 +69,25 @@ def snapshot_rows(conn: psycopg.Connection[Any], cs_id: int) -> tuple[Any, int]:
         return at, int(cur.fetchone()[0])  # type: ignore[index]
 
 
+def relabel(args: argparse.Namespace) -> int:
+    from fbi.ingestion.payload_store import PayloadStore
+    from fbi.ingestion.standings_repair import find_collisions, rebuild
+
+    store = PayloadStore(settings.runtime.raw_store_dir)
+    with psycopg.connect(settings.database.psycopg_url) as conn:
+        cases = find_collisions(conn, store)
+        done = []
+        if not args.dry_run:
+            at = now()
+            for case in cases:
+                done.append((case.league, case.season, case.rows_before, rebuild(conn, case, store, at=at)))
+    print(json.dumps({"seasons": [{"league": c.league, "season": c.season, "name": c.name, "labels": c.labels,
+                                   "rows_before": c.rows_before, "rows_expected": c.rows_expected,
+                                   "missing": c.missing[:8], "payload": c.payload_hash[:12]} for c in cases],
+                      "rebuilt": done, "dry_run": args.dry_run}, indent=1, default=str))
+    return 0
+
+
 async def run(args: argparse.Namespace) -> int:
     from fbi.providers.api_football import ApiFootballProvider
     from fbi.providers.api_football.build import build_client
@@ -113,9 +137,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="refresh_tables", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--legacy", action="store_true")
+    parser.add_argument("--relabel", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--max-requests", type=int, default=400)
-    return asyncio.run(run(parser.parse_args()))
+    args = parser.parse_args()
+    if args.relabel:
+        return relabel(args)
+    return asyncio.run(run(args))
 
 
 if __name__ == "__main__":

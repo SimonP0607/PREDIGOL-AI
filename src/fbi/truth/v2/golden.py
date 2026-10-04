@@ -10,6 +10,10 @@ Primera A; three complete seasons):
    a row whose score disagrees with ours is a result mismatch. The CSVs already in the raw store
    are re-read; a missing season is downloaded once and kept as a NEW raw payload.
 
+A result decided off the pitch is counted at its official score by checks 2 and 3 and listed
+(``GoldenSeason.official``): the provider's AWD/WO score, or an official decision read on the
+competition's or the sports court's site (``--decisions``). Our fixtures keep the played result.
+
 The season's score is the share of checks that agree; a season is GOLDEN_VALIDATED when every
 part is at least 99.5 % and nothing critical is unexplained. Nothing in core or market is written.
 """
@@ -28,7 +32,13 @@ import psycopg
 from psycopg.rows import tuple_row
 from psycopg.types.json import Json
 
-from fbi.ingestion.historical_odds import SOURCE, load_aliases, load_our_fixtures, match_rows
+from fbi.ingestion.historical_odds import (
+    SOURCE,
+    OurFixture,
+    load_aliases,
+    load_our_fixtures,
+    match_rows,
+)
 from fbi.ingestion.payload_store import PayloadStore
 from fbi.providers.football_data.parse import DIVISIONS, csv_url, decode, parse_csv, season_code
 from fbi.truth import compare
@@ -62,6 +72,8 @@ class GoldenSeason:
     external_matched: int | None = None
     external_score_disagree: int | None = None
     external_other: int | None = None
+    official: list[str] = field(default_factory=list)
+    """Results decided off the pitch, counted at their official score (table and Football-Data)."""
     notes: list[str] = field(default_factory=list)
     findings: list[dict[str, Any]] = field(default_factory=list)
 
@@ -100,6 +112,53 @@ def _cs_id(conn: psycopg.Connection[Any], competition_id: int, season: int) -> i
                     (competition_id, season))
         row = cur.fetchone()
     return int(row[0]) if row else None
+
+
+PROVIDER_AWARD = "AWD/WO at the provider: its /fixtures answer carries the official score"
+
+
+def _kickoff(value: Any) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value)) if value else None
+    except ValueError:
+        return None
+
+
+def provider_awards(items: Sequence[Mapping[str, Any]]) -> list[st.Official]:
+    """Matches the provider lists as decided off the pitch (AWD, WO) with the score it awards: we keep
+    no result for them (they were not played out), the competition's table counts them."""
+    out = []
+    for item in items:
+        fx, teams, goals = item.get("fixture") or {}, item.get("teams") or {}, item.get("goals") or {}
+        status = str((fx.get("status") or {}).get("short") or "").upper()
+        gh, ga = goals.get("home"), goals.get("away")
+        home, away = (teams.get("home") or {}).get("id"), (teams.get("away") or {}).get("id")
+        ko, fid = _kickoff(fx.get("date")), fx.get("id")
+        if (status not in ("AWD", "WO") or not isinstance(gh, int) or not isinstance(ga, int)
+                or not isinstance(home, int) or not isinstance(away, int) or not isinstance(fid, int) or ko is None):
+            continue
+        out.append(st.Official(st.Played(fid, ko, str((item.get("league") or {}).get("round") or ""),
+                                         home, away, gh, ga), PROVIDER_AWARD))
+    return out
+
+
+OFFICIAL_FIXTURES_SQL = """
+SELECT f.provider_fixture_id, f.id, (f.kickoff_at AT TIME ZONE 'UTC')::date, th.id, th.name, ta.id, ta.name
+  FROM core.fixtures f JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
+ WHERE f.provider_fixture_id = ANY(%s)
+"""
+
+
+def official_variants(conn: psycopg.Connection[Any], official: Sequence[st.Official]) -> list[OurFixture]:
+    """Our fixtures again at their official score, for a source that records the official result."""
+    by_id = {o.match.fixture: o.match for o in official}
+    if not by_id:
+        return []
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(OFFICIAL_FIXTURES_SQL, (list(by_id),))
+        rows = cur.fetchall()
+    return [OurFixture(int(fid), day, int(hid), str(hn), int(aid), str(an), by_id[int(pid)].gh, by_id[int(pid)].ga)
+            for pid, fid, day, hid, hn, aid, an in rows]
 
 
 def external_csv(conn: psycopg.Connection[Any], run: V2Run, http: httpx.Client | None, store: PayloadStore,
@@ -154,7 +213,11 @@ def _store_csv(conn: psycopg.Connection[Any], run: V2Run, store: PayloadStore, e
 
 
 async def validate(run: V2Run, conn: psycopg.Connection[Any], league: int, season: int, *,
-                   http: httpx.Client | None, store: PayloadStore) -> GoldenSeason:
+                   http: httpx.Client | None, store: PayloadStore,
+                   decisions: Mapping[int, st.Decision] | None = None) -> GoldenSeason:
+    """``decisions`` - official results not in the provider's fixtures (a sports court's award), read on
+    the competition's or the court's site; with the provider's own AWD/WO scores they are counted at
+    their official score by the table check and the Football-Data check, and listed."""
     g = GoldenSeason(league, season)
     comp = _competition(conn, league)
     if comp is None:
@@ -181,13 +244,20 @@ async def validate(run: V2Run, conn: psycopg.Connection[Any], league: int, seaso
     g.fixtures_checked, g.fixtures_matched = fixtures.checked, fixtures.matched
     g.results_checked, g.results_matched = results.checked, results.matched
     g.findings = [f.as_dict() for f in (fixtures.findings + results.findings)[:20]]
-    # 2. the final table against the fixtures
+    # results decided off the pitch: the provider's AWD/WO scores, then the official decisions (which win)
+    official = {o.match.fixture: o for o in provider_awards(answer.items if answer is not None else [])}
     cs = _cs_id(conn, comp[0], season)
+    if cs is not None:
+        mine = {f: d for f, d in (decisions or {}).items() if (d.league, d.season) == (league, season)}
+        official |= {o.match.fixture: o for o in st.decided(conn, cs, mine)}
+    g.official = [f"fixture {o.match.fixture}: official {o.match.gh}-{o.match.ga} ({o.basis})"
+                  for o in official.values()]
+    # 2. the final table against the fixtures
     if cs is not None:
         table = await run.get("/standings", {"league": league, "season": season})
         facts = {"provider_league_id": league, "name": comp[1], "season": season, "type": "league", "cs_id": cs}
         audit = st.audit_season(facts, table.body if table else None, st.db_rows(conn, cs), st.finished(conn, cs),
-                                at=run.at, awarded_pairs=st.awarded(conn, cs))
+                                at=run.at, awarded_pairs=st.awarded(conn, cs), official=list(official.values()))
         g.table_rows = len(audit.rows)
         g.table_ok = sum(1 for r in audit.rows if r.verdict in ("ok", "adjusted", "awarded"))
         g.table_verdict = audit.verdict
@@ -197,7 +267,13 @@ async def validate(run: V2Run, conn: psycopg.Connection[Any], league: int, seaso
         text = external_csv(conn, run, http, store, division, season)
         if text is not None:
             rows, _skipped = parse_csv(text)
-            report = match_rows(rows, load_our_fixtures(conn, comp[0], season), load_aliases(conn))
+            variants = official_variants(conn, list(official.values()))
+            report = match_rows(rows, load_our_fixtures(conn, comp[0], season) + variants, load_aliases(conn))
+            decided_keys = {(v.fixture_id, v.goals_home, v.goals_away) for v in variants}
+            for row, f in report.matched:
+                if (f.fixture_id, f.goals_home, f.goals_away) in decided_keys:
+                    g.notes.append(f"football-data {row.match_date} {row.home} v {row.away} "
+                                   f"{row.goals_home}-{row.goals_away}: the official result (decided off the pitch)")
             g.external_rows = len(rows)
             g.external_matched = len(report.matched)
             g.external_score_disagree = sum(1 for _, why in report.unmatched if why.startswith("score disagreement"))
@@ -232,4 +308,4 @@ def summary_rows(seasons: Sequence[GoldenSeason]) -> list[Mapping[str, Any]]:
              "fixtures": [g.fixtures_api, g.fixtures_db, g.fixtures_matched, g.fixtures_checked],
              "results": [g.results_matched, g.results_checked], "table": [g.table_ok, g.table_rows, g.table_verdict],
              "external": [g.external_matched, g.external_rows, g.external_score_disagree, g.external_other],
-             "notes": g.notes[:8]} for g in seasons]
+             "official": g.official, "notes": g.notes[:8]} for g in seasons]

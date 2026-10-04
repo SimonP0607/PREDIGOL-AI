@@ -423,12 +423,36 @@ def _instant(value: Any) -> datetime | None:
         return None
 
 
+def labelled_rows(tables: Any) -> Iterator[tuple[dict[str, Any], str | None]]:
+    """Every row of a /standings answer's tables, with its group label made unique per table.
+
+    The label is part of the stored key (a team can sit in several tables of one season), and the
+    provider can give two tables of one season the same label: Colombia's Primera A 2023 and 2024
+    serve the Apertura and the Clausura play-off groups as "Group A" and "Group B" twice. Keyed by
+    the bare label, the second table merged into the first and the rows of a team in both were
+    dropped. The first table with a label keeps it; the n-th table with the same label is
+    "<label> #n" (the provider's own label stays in the raw payload).
+    """
+    tables_of: dict[str | None, list[int]] = {}
+    for index, table in enumerate(tables if isinstance(tables, list) else []):
+        for row in table if isinstance(table, list) else []:
+            if not isinstance(row, dict):
+                continue
+            label = _text(row, "group")
+            seen = tables_of.setdefault(label, [])
+            if index not in seen:
+                seen.append(index)
+            nth = seen.index(index) + 1
+            yield row, label if nth == 1 else f"{label or ''} #{nth}".strip()
+
+
 def iter_standings(body: dict[str, Any]) -> Iterator[StandingRef]:
     """Every row of every table in a /standings response.
 
     A competition can serve several tables for one season (conferences, groups, a
     regular season and a play-off round), and a team can appear in more than one of
-    them; each row is yielded with its group, which is part of the stored key.
+    them; each row is yielded with its group, which is part of the stored key - unique
+    per table even when the provider repeats a label (``labelled_rows``).
     """
     for entry in body.get("response") or []:
         league = _dict(entry.get("league")) if isinstance(entry, dict) else {}
@@ -437,23 +461,20 @@ def iter_standings(body: dict[str, Any]) -> Iterator[StandingRef]:
         lid, season = _int_id(league), league.get("season")
         if lid is None or not isinstance(season, int):
             continue
-        for table in league.get("standings") or []:
-            for row in table if isinstance(table, list) else []:
-                if not isinstance(row, dict):
-                    continue
-                team = _int_id(row.get("team"))
-                total = _dict(row.get("all"))
-                goals = _dict(total.get("goals"))
-                values = (integer(row.get("rank")), integer(row.get("points")), integer(total.get("played")),
-                          integer(total.get("win")), integer(total.get("draw")), integer(total.get("lose")),
-                          integer(goals.get("for")), integer(goals.get("against")))
-                if team is None or any(v is None for v in values):
-                    continue
-                rank, points, played, wins, draws, losses, gf, ga = (int(v) for v in values if v is not None)
-                yield StandingRef(lid, int(season), team, rank, points, played, wins, draws, losses, gf, ga,
-                                  _text(row, "form"), _text(row, "group"), integer(row.get("goalsDiff")),
-                                  _text(row, "status"), _text(row, "description"), _instant(row.get("update")),
-                                  _split(row.get("home")), _split(row.get("away")))
+        for row, group in labelled_rows(league.get("standings") or []):
+            team = _int_id(row.get("team"))
+            total = _dict(row.get("all"))
+            goals = _dict(total.get("goals"))
+            values = (integer(row.get("rank")), integer(row.get("points")), integer(total.get("played")),
+                      integer(total.get("win")), integer(total.get("draw")), integer(total.get("lose")),
+                      integer(goals.get("for")), integer(goals.get("against")))
+            if team is None or any(v is None for v in values):
+                continue
+            rank, points, played, wins, draws, losses, gf, ga = (int(v) for v in values if v is not None)
+            yield StandingRef(lid, int(season), team, rank, points, played, wins, draws, losses, gf, ga,
+                              _text(row, "form"), group, integer(row.get("goalsDiff")),
+                              _text(row, "status"), _text(row, "description"), _instant(row.get("update")),
+                              _split(row.get("home")), _split(row.get("away")))
 
 
 # ── identity: /teams, and what the detail payloads already tell us ───────────
