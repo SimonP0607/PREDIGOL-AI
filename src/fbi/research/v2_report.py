@@ -97,26 +97,36 @@ def report_markdown(result: V2Result, *, title: str) -> str:
     if result.audit is not None:
         a = result.audit
         lines += ["", "## E0 - the shadow picks' returns: price, edge or luck", "",
-                  "Per settled pick, against the last de-vigged consensus we captured before kick-off "
-                  f"(median {_f(a.median_minutes_before, 0)} min before - not necessarily the final price): EV at "
-                  "the close = what the bet was worth by the market's view; luck = realised minus that. Means per "
-                  "one-unit pick, with standard errors clustered by match.",
-                  "", "| Odds | Picks | Mean odds | Realised ROI | Claimed EV | EV at the close | Luck |",
-                  "|---|---:|---:|---|---:|---|---|"]
+                  "Per settled pick (flat one unit): the model's claimed EV; the EV at the pick - the price taken "
+                  "against the market's de-vigged view at that moment; the movement - how that view changed until "
+                  "the last consensus we captured before kick-off (median "
+                  f"{_f(a.median_minutes_before, 0)} min before, not necessarily the final price); the EV at the "
+                  "close; and luck = realised minus the EV at the close. Realised = EV at the pick + movement + "
+                  "luck. Means with standard errors clustered by match; luck's error is the spread it would have "
+                  "if the closing prices were right (z = luck over it).", "",
+                  "| Odds | Picks | Mean odds | Realised ROI | Claimed EV | EV at the pick | Movement | "
+                  "EV at the close | Luck (z) |", "|---|---:|---:|---|---:|---:|---:|---|---|"]
+
+        def luck(g: dict[str, Any]) -> str:
+            se = g.get("luck_se_if_close_right")
+            z = g.get("luck_z")
+            return (f"{_pct(g['luck'])} ± {_pct(se)[1:]}" + ("" if z is None else f" (z {z:+.1f})")
+                    if se is not None else f"{_pct(g['luck'])}")
 
         def row(label: str, g: dict[str, Any]) -> str:
             return (f"| {label} | {g['n']} | {_f(g['mean_odds'], 2)} | {_pct(g['roi'])} ± {_pct(g['roi_se'])[1:]} | "
-                    f"{_pct(g['claimed_ev'])} | {_pct(g['ev_at_close'])} ± {_pct(g['ev_at_close_se'])[1:]} | "
-                    f"{_pct(g['luck'])} ± {_pct(g['luck_se'])[1:]} |")
+                    f"{_pct(g['claimed_ev'])} | {_pct(g.get('ev_at_pick'))} | {_pct(g.get('movement'))} | "
+                    f"{_pct(g['ev_at_close'])} ± {_pct(g['ev_at_close_se'])[1:]} | {luck(g)} |")
 
         for k, g in a.by_odds.items():
             lines.append(row(k, g))
         lines.append(row("**all**", a.overall))
-        lines += ["", "| Market | Picks | Realised ROI | EV at the close | Luck |", "|---|---:|---|---|---|"]
+        lines += ["", "| Market | Picks | Realised ROI | EV at the pick | Movement | EV at the close | Luck (z) |",
+                  "|---|---:|---|---:|---:|---|---|"]
         for k, g in a.by_market.items():
             lines.append(f"| {k} | {g['n']} | {_pct(g['roi'])} ± {_pct(g['roi_se'])[1:]} | "
-                         f"{_pct(g['ev_at_close'])} ± {_pct(g['ev_at_close_se'])[1:]} | "
-                         f"{_pct(g['luck'])} ± {_pct(g['luck_se'])[1:]} |")
+                         f"{_pct(g.get('ev_at_pick'))} | {_pct(g.get('movement'))} | "
+                         f"{_pct(g['ev_at_close'])} ± {_pct(g['ev_at_close_se'])[1:]} | {luck(g)} |")
     if result.prospective is not None:
         p = result.prospective
         lines += ["", f"## Prospective - forecasts stored before kick-off, {p.since:%d %b} to {p.until:%d %b %Y}", "",

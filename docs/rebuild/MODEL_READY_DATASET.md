@@ -86,7 +86,7 @@ leagues. Women's and youth football are never pooled with the senior men's game.
 | Limit | Effect | Remedy |
 |---|---|---|
 | Prices for history exist only for the big-5 leagues 2022-24 | 15 seasons can judge a model against the market | the final pre-match prices, from 25 Sep 2026 on, for every priced league; more football-data.co.uk seasons would need the owner's decision on its terms |
-| The Elo walk still reads the 19 quarantined results | a duplicate counts twice in two teams' ratings | GATE E: the Elo rebuild reads approved and validated results only |
+| ~~The Elo walk still reads the 19 quarantined results~~ | ~~a duplicate counts twice in two teams' ratings~~ | **Done (GATE E, 4 Oct):** `load_matches` leaves out QUARANTINED and INGESTED results; the Elo history (209,891 matches = approved + validated) and every feature set were rebuilt as `fv2.1.0` |
 | A season's class is recomputed, not frozen | a backtest run today and next month may read different populations | every backtest records the rule version and the run instant; GATE G freezes the population per run |
 
 ## 6. Re-running

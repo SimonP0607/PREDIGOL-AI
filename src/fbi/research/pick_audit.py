@@ -5,17 +5,29 @@ the de-vigged consensus (Shin) for the same selection and line, the last one cap
 the match. With the price the pick took (o), its push probability (u) and that closing
 probability (p, conditional on the bet settling):
 
-    EV at the close   = p (1 - u) o + u - 1     what the bet was worth by the market's view
     claimed EV        = the model's own EV when the pick was made
+    EV at the pick    = q (1 - u) o + u - 1     q the market's fair probability THEN (stored on
+                                                the pick): the price paid against the market
+    EV at the close   = p (1 - u) o + u - 1     what the bet was worth by the market's last view
+    movement          = EV at the close - EV at the pick: did the market move to the pick
+                        (an informed bet) or away from it?
     luck              = realised return - EV at the close
 
-A realised return well below zero with an EV at the close near zero is bad luck; with the
-EV at the close itself well below zero, the picks were bets the market priced correctly and
-the model did not - adverse selection, the "finding value on longshots" pattern
-(``docs/research/MODEL_RESEARCH_V2_2026.md`` section 2). Standard errors are of the mean
-per pick (flat one-unit stakes) and CLUSTERED BY MATCH: several picks on one match (its
-handicap lines, its totals) win and lose together, and treating them as independent would
-shrink the error bars.
+so that realised = EV at the pick + movement + luck. A realised return well below zero with
+an EV at the close near zero is bad luck; with the EV at the close itself well below zero,
+the picks were bets the market priced correctly and the model did not - adverse selection,
+the "finding value on longshots" pattern (``docs/research/MODEL_RESEARCH_V2_2026.md``
+section 2). Standard errors are of the mean per pick (flat one-unit stakes) and CLUSTERED
+BY MATCH: several picks on one match (its handicap lines, its totals) win and lose
+together, and treating them as independent would shrink the error bars.
+
+Luck gets a second error, the one that answers "could this be luck?": the spread realised
+returns WOULD have if the closing prices were exactly right - per pick the variance of its
+return under p, summed per match as if its picks were perfectly correlated (an upper bound:
+covariances never exceed the product of the deviations). Unlike the empirical error it does
+not collapse to zero on a small group whose picks happened to share a result (twelve
+longshots, all lost). Quarter lines (half wins, half losses) are treated as whole ones there:
+an approximation of their spread, not of their returns.
 
 "The close" is the last consensus WE captured before kick-off, not necessarily the market's
 final price (the report gives how long before kick-off it was, as a median).
@@ -74,7 +86,10 @@ class AuditedPick:
     push: float
     profit: float
     claimed_ev: float
+    ev_pick: float | None
     ev_close: float | None
+    var_close: float | None
+    """The variance of this pick's return if the closing probability were the truth."""
     clv: float | None
     minutes_before: float | None
 
@@ -101,14 +116,29 @@ def mean_se(xs: Obs) -> tuple[float | None, float | None]:
     return mean, math.sqrt(var)
 
 
+def null_se(sds: list[tuple[int, float]]) -> float | None:
+    """The standard error of a mean return if the closing prices were right: per match the
+    picks' standard deviations ADDED (perfect correlation, the upper bound), the matches
+    independent."""
+    if not sds:
+        return None
+    per_match: dict[int, float] = defaultdict(float)
+    for c, sd in sds:
+        per_match[c] += sd
+    return math.sqrt(sum(v * v for v in per_match.values())) / len(sds)
+
+
 @dataclass
 class Group:
     n: int = 0
     profits: Obs = field(default_factory=list)
     odds: list[float] = field(default_factory=list)
     claimed: Obs = field(default_factory=list)
+    ev_pick: Obs = field(default_factory=list)
     ev_close: Obs = field(default_factory=list)
+    movement: Obs = field(default_factory=list)
     luck: Obs = field(default_factory=list)
+    sd_close: Obs = field(default_factory=list)
     clv: Obs = field(default_factory=list)
     fixtures: set[int] = field(default_factory=set)
 
@@ -118,23 +148,36 @@ class Group:
         self.profits.append((p.fixture_id, p.profit))
         self.odds.append(p.odds)
         self.claimed.append((p.fixture_id, p.claimed_ev))
+        if p.ev_pick is not None:
+            self.ev_pick.append((p.fixture_id, p.ev_pick))
         if p.ev_close is not None:
             self.ev_close.append((p.fixture_id, p.ev_close))
             self.luck.append((p.fixture_id, p.profit - p.ev_close))
+            if p.ev_pick is not None:
+                self.movement.append((p.fixture_id, p.ev_close - p.ev_pick))
+        if p.var_close is not None:
+            self.sd_close.append((p.fixture_id, math.sqrt(max(p.var_close, 0.0))))
         if p.clv is not None:
             self.clv.append((p.fixture_id, p.clv))
 
     def summary(self) -> dict[str, Any]:
         roi, roi_se = mean_se(self.profits)
+        evp, evp_se = mean_se(self.ev_pick)
         evc, evc_se = mean_se(self.ev_close)
+        mov, mov_se = mean_se(self.movement)
         luck, luck_se = mean_se(self.luck)
+        luck_null = null_se(self.sd_close)
         clv, clv_se = mean_se(self.clv)
         claimed, _ = mean_se(self.claimed)
         return {"n": self.n, "fixtures": len(self.fixtures),
                 "mean_odds": None if not self.odds else round(sum(self.odds) / len(self.odds), 3),
                 "profit_units": round(sum(v for _, v in self.profits), 2), "roi": roi, "roi_se": roi_se,
-                "claimed_ev": claimed, "n_with_close": len(self.ev_close), "ev_at_close": evc,
-                "ev_at_close_se": evc_se, "luck": luck, "luck_se": luck_se, "clv": clv, "clv_se": clv_se}
+                "claimed_ev": claimed, "n_with_pick_price": len(self.ev_pick), "ev_at_pick": evp,
+                "ev_at_pick_se": evp_se, "n_with_close": len(self.ev_close), "ev_at_close": evc,
+                "ev_at_close_se": evc_se, "movement": mov, "movement_se": mov_se, "luck": luck, "luck_se": luck_se,
+                "luck_se_if_close_right": luck_null,
+                "luck_z": None if luck is None or not luck_null else luck / luck_null,
+                "clv": clv, "clv_se": clv_se}
 
 
 def bucket_of(odds: float) -> str:
@@ -150,14 +193,18 @@ def audited(rows: list[dict[str, Any]]) -> list[AuditedPick]:
         o = float(r["market_odds"])
         u = float(r["p_push"] or 0)
         p_close = None if r["p_close"] is None else float(r["p_close"])
+        p_pick = None if r["p_market_fair"] is None else float(r["p_market_fair"])
         ev_close = None if p_close is None else p_close * (1 - u) * o + u - 1
+        ev_pick = None if p_pick is None else p_pick * (1 - u) * o + u - 1
+        var_close = (None if p_close is None or ev_close is None else
+                     p_close * (1 - u) * (o - 1) ** 2 + (1 - p_close) * (1 - u) - ev_close ** 2)
         clv = None if p_close is None else o * p_close - 1
         minutes = None if r["close_at"] is None else (r["kickoff_at"] - r["close_at"]).total_seconds() / 60
         seg = segment_of(CompetitionFacts(str(r["competition"]), r["competition_type"], r["entity_scope"],
                                           None if r["tier"] is None else int(r["tier"]))).value
         out.append(AuditedPick(int(r["id"]), int(r["fixture_id"]), str(r["market_key"]), str(r["model"]), seg, o,
-                               u,
-                               float(r["profit_units"]), float(r["ev"]), ev_close, clv, minutes))
+                               u, float(r["profit_units"]), float(r["ev"]), ev_pick, ev_close, var_close, clv,
+                               minutes))
     return out
 
 
@@ -176,9 +223,11 @@ class AuditResult:
         return {"at": self.at.isoformat(), "overall": self.overall, "by_odds": self.by_odds,
                 "by_market": self.by_market, "by_segment": self.by_segment, "by_model": self.by_model,
                 "median_close_minutes_before_kickoff": self.median_minutes_before,
-                "method": "EV at the close = p_close*(1-push)*odds + push - 1, p_close the last Shin consensus "
-                          "captured before kick-off; luck = realised - EV at the close; SE of the mean per pick, "
-                          "clustered by match"}
+                "method": "EV at the pick / at the close = q*(1-push)*odds + push - 1 with q the Shin consensus "
+                          "stored on the pick / the last one captured before kick-off; movement = EV at the close - "
+                          "EV at the pick; luck = realised - EV at the close; SE of the mean per pick, clustered by "
+                          "match; luck_se_if_close_right = the spread of luck if the closing prices were right "
+                          "(picks on one match perfectly correlated, an upper bound)"}
 
 
 def audit_picks(conn: psycopg.Connection[Any], *, at: datetime) -> AuditResult:

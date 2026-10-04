@@ -3,6 +3,7 @@ the gradient-boosted challenger's protocol."""
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -73,22 +74,46 @@ def test_the_audit_separates_the_price_from_luck() -> None:
             "fixture_id": 9}
     rows = [
         base | {"id": 1, "market_odds": Decimal("3.00"), "profit_units": Decimal("-1"), "ev": Decimal("0.20"),
-                "p_close": Decimal("0.30"), "close_at": ko - timedelta(minutes=30)},
+                "p_close": Decimal("0.30"), "p_market_fair": Decimal("0.32"), "close_at": ko - timedelta(minutes=30)},
         base | {"id": 2, "market_odds": Decimal("3.00"), "profit_units": Decimal("2"), "ev": Decimal("0.20"),
-                "p_close": Decimal("0.30"), "close_at": ko - timedelta(minutes=30)},
+                "p_close": Decimal("0.30"), "p_market_fair": Decimal("0.32"), "close_at": ko - timedelta(minutes=30)},
         base | {"id": 3, "market_odds": Decimal("1.50"), "profit_units": Decimal("0.5"), "ev": Decimal("0.05"),
-                "p_close": None, "close_at": None},
+                "p_close": None, "p_market_fair": None, "close_at": None},
     ]
     picks = audited(rows)
     assert picks[0].ev_close == pytest.approx(-0.10) and picks[0].segment == "top_league"
-    assert picks[2].ev_close is None and picks[0].minutes_before == 30
+    assert picks[0].ev_pick == pytest.approx(-0.04), "the price paid, against the market's view when the pick was made"
+    assert picks[2].ev_close is None and picks[2].ev_pick is None and picks[0].minutes_before == 30
     g = Group()
     for p in picks[:2]:
         g.add(p)
     s = g.summary()
     assert s["roi"] == pytest.approx(0.5) and s["ev_at_close"] == pytest.approx(-0.10)
     assert s["luck"] == pytest.approx(0.6), "won more than the market's view of the bets said"
+    assert s["movement"] == pytest.approx(-0.06), "the market moved away from the selection after the pick"
+    assert s["ev_at_pick"] + s["movement"] + s["luck"] == pytest.approx(s["roi"]), \
+        "realised = the price paid + the market's move + luck"
+    # both picks on one match: their spreads add (perfect correlation, the upper bound)
+    sd = math.sqrt(0.3 * 4 + 0.7 - 0.01)
+    assert s["luck_se_if_close_right"] == pytest.approx(2 * sd / 2)
+    assert s["luck_z"] == pytest.approx(0.6 / sd)
     assert bucket_of(1.5) == "1.0-1.6" and bucket_of(7.0) == "5.0+"
+
+
+def test_a_small_group_that_all_lost_is_not_certain_bad_luck() -> None:
+    ko = datetime(2026, 9, 30, 18, tzinfo=UTC)
+    rows = [{"competition": "Premier League", "competition_type": "domestic_league", "entity_scope": "club",
+             "tier": 1, "model": "poisson", "market_key": "1X2", "kickoff_at": ko, "p_push": None,
+             "fixture_id": 100 + i, "id": i, "market_odds": Decimal("5.00"), "profit_units": Decimal("-1"),
+             "ev": Decimal("0.40"), "p_close": Decimal("0.185"), "p_market_fair": Decimal("0.19"),
+             "close_at": ko - timedelta(hours=2)} for i in range(12)]
+    g = Group()
+    for p in audited(rows):
+        g.add(p)
+    s = g.summary()
+    assert s["luck_se"] is not None and s["luck_se"] < 1e-9, "every pick lost: the empirical spread is nil"
+    assert s["luck_se_if_close_right"] > 0.5, "twelve longshots losing is well within what luck does"
+    assert -2 < s["luck_z"] < -1
 
 
 def test_the_trees_are_walk_forward_and_take_the_pre_closing_price_only() -> None:

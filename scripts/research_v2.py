@@ -4,6 +4,7 @@
     python -m scripts.research_v2 --apply      # store the session, one experiment per model with its role,
                                                # the market baselines, the prospective evaluation and the
                                                # pick audit (refuses on uncommitted code)
+    python -m scripts.research_v2 --audit-only # E0 and the prospective evaluation only (seconds, read only)
 
 Competitions: the domestic leagues whose validation AND test seasons are MODEL_READY (results,
 integrity, Elo and market prices; ``analytics.competition_data_scores``) - the only seasons
@@ -57,6 +58,18 @@ def dirty() -> list[str]:
     return [line for line in out.splitlines() if line.strip()]
 
 
+def audit_only() -> int:
+    from fbi.research.pick_audit import audit_picks
+    from fbi.research.prospective import evaluate_prospective
+
+    at = now()
+    with psycopg.connect(settings.database.psycopg_url) as conn:
+        audit = audit_picks(conn, at=at)
+        prospective = evaluate_prospective(conn, until=at)
+    print(json.dumps({"audit": audit.as_json(), "prospective": prospective.as_json()}, indent=2, default=str))
+    return 0
+
+
 def main() -> int:
     configure_logging(settings.runtime.log_level)
     parser = argparse.ArgumentParser(prog="research_v2", description=__doc__)
@@ -64,7 +77,10 @@ def main() -> int:
     parser.add_argument("--validation-season", type=int, default=2023)
     parser.add_argument("--test-season", type=int, default=2024)
     parser.add_argument("--refit-days", type=int, default=1)
+    parser.add_argument("--audit-only", action="store_true")
     args = parser.parse_args()
+    if args.audit_only:
+        return audit_only()
     if args.apply and dirty():
         print("refusing --apply: uncommitted changes under src/, scripts/ or migrations/", file=sys.stderr)
         return 2
