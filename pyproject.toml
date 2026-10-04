@@ -93,3 +93,9 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["scipy", "scipy.*"]
 ignore_missing_imports = true
+
+# scikit-learn (the optional `ml` extra) ships no type information either; it is used
+# only by the research-V2 challengers, whose numbers the tests check.
+[[tool.mypy.overrides]]
+module = ["sklearn", "sklearn.*"]
+ignore_missing_imports = true

@@ -30,6 +30,7 @@ from fbi.backtesting.evaluate import (
     SessionEvaluation,
 )
 from fbi.backtesting.walkforward import ModelRun, WalkForwardConfig, outcome_index
+from fbi.features.engine import FEATURE_NAMES
 from fbi.models.families import MNLOGIT_SOURCE_FEATURES
 
 MODEL_SEMVER = "2.0.0"
@@ -51,6 +52,12 @@ CATALOGUE: dict[str, tuple[str, str, str]] = {
     "mnlogit": ("mnlogit", "ml",
                 "Multinomial logistic regression (L2 = 1, fixed a priori) on Elo and pi-rating differences, shot and "
                 "shot-on-target share differences, Elo-residual form, rest and league home advantage."),
+    "hgb": ("hgb", "ml",
+            "Gradient-boosted trees (scikit-learn HistGradientBoosting, hyper-parameters fixed a priori) on every "
+            "feature of the feature version; refitted monthly, walk-forward."),
+    "hgb_market": ("hgb_market", "ml",
+                   "The same gradient-boosted trees with the de-vigged average pre-closing price as an input: what "
+                   "a bettor could see at the cut-off, never the closing line."),
 }
 
 
@@ -58,6 +65,8 @@ FEATURE_LINEAGE: dict[str, list[str]] = {
     # the feature-set columns a model version reads (models.model_versions.feature_names)
     "elo_ologit": ["elo_diff"],
     "mnlogit": list(MNLOGIT_SOURCE_FEATURES),
+    "hgb": list(FEATURE_NAMES),
+    "hgb_market": [*FEATURE_NAMES, "market:AVG/pre_closing/shin"],
 }
 
 
@@ -188,6 +197,14 @@ def mnlogit_hyper(code_version: str) -> dict[str, Any]:
 
     return {"features": list(MNLOGIT_FEATURES), "l2": MNLOGIT_L2, "feature_version": FEATURE_VERSION,
             "min_train": MIN_MNLOGIT_TRAIN, "imputation": "training mean", "code_version": code_version}
+
+
+def hgb_hyper(code_version: str, *, with_market: bool) -> dict[str, Any]:
+    from fbi.features.engine import FEATURE_VERSION
+    from fbi.research.v2_models import HGB_PARAMS, MARKET_INPUT, MIN_HGB_TRAIN
+
+    return {"params": dict(HGB_PARAMS), "feature_version": FEATURE_VERSION, "min_train": MIN_HGB_TRAIN,
+            "market_input": MARKET_INPUT if with_market else None, "refit_days": 30, "code_version": code_version}
 
 
 def store_session(

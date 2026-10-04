@@ -19,7 +19,7 @@ import platform
 import sys
 import uuid
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +34,7 @@ from fbi.backtesting.persist import FEATURE_LINEAGE, comparison_json, config_jso
 from fbi.backtesting.session import SEEDS, SessionResult
 from fbi.backtesting.walkforward import outcome_index
 from fbi.research.gate import evaluate_gate, status_for
+from fbi.research.roles import Role, model_role
 
 REPO = Path(__file__).resolve().parents[3]
 EXPERIMENT_DIR = REPO / "data" / "experiments"
@@ -135,11 +136,16 @@ class Recorded:
 def record_session(conn: psycopg.Connection, *, result: SessionResult, session_id: int | None, name: str,
                    question: str, code_version: str, hypers: dict[str, dict[str, Any]],
                    report_path: Path | None = None, reproduction: dict[str, dict[str, Any]] | None = None,
-                   root: Path | None = None) -> list[Recorded]:
+                   root: Path | None = None, roles: dict[str, Role] | None = None,
+                   extra_metrics: dict[str, dict[str, Any]] | None = None,
+                   data_as_of: datetime | None = None) -> list[Recorded]:
     """One completed experiment per model run of the session. The caller commits.
 
     ``reproduction``: model -> {"of": original experiment id, "identical": bool,
-    "differences": [...]} when this session re-ran a recorded one."""
+    "differences": [...]} when this session re-ran a recorded one. ``roles``: the research-V2
+    role per model (``fbi.research.roles``); without it each model's role is read from its
+    comparison with the primary market baseline alone. ``extra_metrics`` are merged into a
+    model's metrics (the V2 blend analysis)."""
     cfg = result.cfg
     val = [m for m in result.data.matches if m.competition_id in cfg.competition_ids
            and m.season == cfg.validation_season and m.has_result]
@@ -169,6 +175,8 @@ def record_session(conn: psycopg.Connection, *, result: SessionResult, session_i
         if rep is not None:
             metrics["reproduction"] = rep
         gate = evaluate_gate(ev, result.evaluation, refit_days=cfg.refit_days)
+        metrics.update((extra_metrics or {}).get(run.model, {}))
+        role = (roles or {}).get(run.model) or model_role(ev.primary(), None, champion=PRIMARY_BASELINE)
         exp_uuid = str(uuid.uuid4())
         folder = (root or EXPERIMENT_DIR) / exp_uuid
         _write_artifacts(folder, ev, result, metrics, config, report_path)
@@ -183,15 +191,17 @@ def record_session(conn: psycopg.Connection, *, result: SessionResult, session_i
                 "model_version_id, backtest_session_id, feature_version, feature_names, train_from, train_to, "
                 "validation_from, validation_to, test_from, test_to, config, dataset_hash, code_version, seed, "
                 "environment, metrics, artifact_path, artifact_manifest, status, research_status, gate, "
-                "reproduced_from, finished_at, notes) VALUES (%s,%s,'backtest',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
-                "%s,%s,%s,%s,%s,%s,%s,%s,'completed',%s,%s,%s,now(),%s) RETURNING id",
+                "reproduced_from, finished_at, notes, role, role_reason, segment, data_as_of) VALUES "
+                "(%s,%s,'backtest',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
+                "%s,%s,%s,%s,%s,%s,%s,%s,'completed',%s,%s,%s,now(),%s,%s,%s,%s,%s) RETURNING id",
                 (exp_uuid, f"{name}:{run.model}", question, run.model, version_id, session_id, result.feature_version,
                  FEATURE_LINEAGE.get(run.model, []), run.train_from.date(), run.train_to.date(),
                  min(m.kickoff_at for m in val).date() if goal and val else None,
                  max(m.kickoff_at for m in val).date() if goal and val else None,
                  test_from, test_to, Json(config), result.evaluation.dataset_hash, code_version,
                  SEEDS["comparison_bootstrap"], Json(environment()), Json(metrics), str(folder), Json(files),
-                 status_for(gate), Json(gate), origin, notes),
+                 status_for(gate), Json(gate), origin, notes, role.role, role.reason,
+                 ",".join(sorted({m.segment for m in result.targets})) or None, data_as_of),
             )
             row = cur.fetchone()
             assert row is not None

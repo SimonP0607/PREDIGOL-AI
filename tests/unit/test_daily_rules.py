@@ -84,3 +84,14 @@ def test_a_probability_without_an_interval_is_not_ranked() -> None:
     assert passing([row], at=at, source="qualified") == [], "no low end to rank by: not ranked as if certain"
     measured = passing([{**row, "fixture_id": 2, "p_low": D("0.40")}], at=at, source="qualified")
     assert [x.p_low for x in measured] == [D("0.40")]
+
+
+def test_a_stored_lower_bound_is_put_on_the_conditional_footing() -> None:
+    at = datetime(2032, 8, 1, 15, tzinfo=UTC)
+    row = {"pick_id": 1, "fixture_id": 1, "kickoff_at": at + timedelta(hours=5), "fixture_status": "scheduled",
+           "home_team_id": 10, "away_team_id": 11, "market_key": "AH", "selection": "Home", "line": D("-1"),
+           "pick_status": "qualified", "model_status": "active", "p_model": D("0.60"), "p_push": D("0.20"),
+           "p_fair": D("0.50"), "best_odds": D("2.10"), "price_at": at - timedelta(minutes=20), "n_bookmakers": 3,
+           "p_low": D("0.40")}
+    (x,) = passing([row], at=at, source="qualified")
+    assert x.p_low == D("0.5"), "0.40 unconditional with a 20% push is 0.50 given the bet settles"

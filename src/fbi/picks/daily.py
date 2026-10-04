@@ -123,7 +123,12 @@ def passing(rows: list[dict[str, Any]], *, at: datetime, source: Source) -> list
             continue
         c = verdict.candidate
         assert c.price is not None
+        # The pick stores its lower bound as the prediction gave it, UNCONDITIONAL (the
+        # probability of winning, pushes included in the denominator), while p_model is
+        # conditional on the bet settling: put the bound on the same footing.
         p_low = Decimal(r["p_low"])
+        if c.p_push:
+            p_low = min(Decimal(1), p_low / (Decimal(1) - c.p_push))
         ranked = Ranked(verdict, r, p_low, single_elg(c.price, p_low, c.p_push))
         key = c.selection_key
         if key not in best or ranked.elg > best[key].elg:
