@@ -47,6 +47,9 @@ Two things to fix before any new model is judged:
   strongest favourite-longshot bias [9]; blindly backing prices above 5.00 historically returned
   80 % or less of stakes [10]. Next step: split pick ROI by odds bucket into price-vs-close,
   EV implied by the close, and luck.
+  *(Corrected in §9 after the E0 audit: break-even is the wrong null and picks on one match
+  are not independent; the expected return was −4.7 % and the rest is within 1–2 standard
+  errors of luck. The text above is kept as written.)*
 
 ## 3. The model ladder
 
@@ -170,6 +173,45 @@ outcome, or ECE worse than the champion's; (4) the gain appears in fewer than ha
 seasons/leagues or in one league only; (5) shadow-pick CLV ≤ 0 or t < 2 after ≥ 300 picks —
 realised ROI alone never qualifies a model; (6) any leakage check fails, the model was tuned
 on the test season, or the result flips under another de-vig method.
+
+## 9. Results of the first V2 runs (4 October 2026)
+
+Runs `research-v2-2024-20261004T100808Z` and `research-v2-2024-20261004T102001Z`
+(`run_label = RESEARCH_V2`; the second adds match-clustered errors and the 50-match / 5-day
+rule for prospective segments), plus the read-only E0 audit of 10:30 UTC. Data as of
+04 Oct 2026 02:00 UTC, features `fv2.1.0` on the validated history, validation 2023/24, test
+2024/25, 1,756 test fixtures in the five leagues whose seasons are `MODEL_READY`. Full tables:
+`docs/rebuild/BACKTEST_V2.md`.
+
+| Experiment | Result | Reading |
+|---|---|---|
+| **E0** harness and audit | Paired fixtures (the market's log loss is identical across models); 925 settled shadow picks: realised −22.3 % ± 8.7 %, claimed EV +23.9 %, **EV at the pick −4.7 % ± 0.2 %**, movement +0.0 % ± 0.2 %, EV at our last capture −4.7 %, luck −17.6 % (z −2.1 empirical, −1.0 conservative) | The value gate picked bets the market already priced as losing ones; the model's "edge" was disagreement, not information |
+| **E1** market champion | `pinnacle/closing/power` 0.95967 = `AVG/closing/shin`; Shin +0.0001, proportional +0.0005, bet365 +0.0010; pre-closing +0.003 | De-vig method hardly matters; timing does |
+| **E2** blend | Test-season weight intervals all include or lie below 0; Elo −0.266 [−0.530, −0.034]; vs the pre-closing price all four classical models are below 0 (Poisson, Dixon–Coles and Elo with intervals excluding 0) | Our models add nothing to the price — consistent with [2][3] |
+| **E3** structural | Dixon–Coles = Poisson on 1X2 (0.98708 both; ECE 0.0068 vs 0.0163) | DC improves calibration, not ranking |
+| **E5** trees | HGB 0.99663 (+0.036); with the pre-closing market as input 1.02370 (+0.064, ECE 0.054) | No gain, consistent with [5]; the market input overfits |
+| Prospective (25 Sep – 4 Oct) | 680 played, 181 priced; Elo +0.034 [+0.014, +0.073] (157), Poisson +0.063 (130), Dixon–Coles +0.060 (128); every sub-segment < 50 | Live forecasts agree with the backtest |
+
+**Decision: no CHALLENGER; qualified models 0; qualified picks 0.** Every model family is
+REJECTED as a competitor to the market in these five leagues (it remains the way we price
+fixtures without a market and derive O/U, BTTS, AH and DC consistently). Not done to reach this:
+no threshold changed, no model hidden, the legacy runs kept.
+
+**Correction to §2.** "−22 % is very unlikely to be bad luck (3–7 standard errors)" used
+break-even as the null and treated 923 picks as independent. The audit shows (a) the right null
+is the market's own expectation, −4.7 %, and (b) the picks sit on 128 matches (about 7 per
+match: handicap lines, totals) that win and lose together. Against the expectation, the
+shortfall is −17.6 %: 2.1 standard errors with the match-clustered empirical error, 1.0 with
+the upper-bound error under the closing prices. The systematic part is the −4.7 % paid at the
+moment of the pick; the rest is plausibly luck.
+
+**What it changes in the plan (§8).** E4 (shots/xG) and E6 (line-ups) stay the best hope —
+new information, not new algorithms. Two items are added: a *price-only* selection experiment
+(a candidate only where the best available price beats the de-vigged consensus — the one rule
+with a non-negative expectation by E0) and a consensus capture close to kick-off for fixtures
+with picks, so that closing-line value can be measured (our last capture is a median 12 h
+before kick-off). Both enter the evolution loop as hypotheses for the owner to accept or
+reject (`docs/rebuild/EVOLUTION_LOOP.md`).
 
 ## Sources
 
