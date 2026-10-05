@@ -128,6 +128,10 @@ def _same_number(a: Any, b: Any) -> bool:
 # ── fixtures and results ────────────────────────────────────────────────────
 
 
+CAPTURE_HORIZON = timedelta(hours=96)
+"""How far ahead the odds capture plans its windows (``scripts.capture_odds``: 96 h)."""
+
+
 def compare_fixture(api: Mapping[str, Any], db: Mapping[str, Any] | None, *, now: datetime,
                     tally: Tally, results: Tally | None = None) -> None:
     """One /fixtures item against one core.fixtures row (+ its core.fixture_results row).
@@ -169,9 +173,15 @@ def compare_fixture(api: Mapping[str, Any], db: Mapping[str, Any] | None, *, now
     db_kickoff = _when(db.get("kickoff_at"))
     if kickoff and db_kickoff and kickoff != db_kickoff:
         upcoming = kickoff > now
-        tally.add(Finding.of(ds, entity, "kickoff_at", Kind.STALE if upcoming else Kind.MISMATCH,
-                             Severity.HIGH if upcoming or abs((kickoff - db_kickoff).total_seconds()) > 3600
-                             else Severity.MEDIUM,
+        if upcoming:
+            # A wrong kick-off matters once a capture window can be planned on it: within the capture horizon.
+            # Further ahead the next fixtures sync (6-hourly) corrects it before any window opens - on 5 Oct 2026
+            # twelve Segunda División kick-offs set for 23-26 Oct moved hours after our read and were HIGH.
+            soon = min(kickoff, db_kickoff) - now <= CAPTURE_HORIZON
+            severity = Severity.HIGH if soon else Severity.MEDIUM
+        else:
+            severity = Severity.HIGH if abs((kickoff - db_kickoff).total_seconds()) > 3600 else Severity.MEDIUM
+        tally.add(Finding.of(ds, entity, "kickoff_at", Kind.STALE if upcoming else Kind.MISMATCH, severity,
                              api=f"{kickoff:%Y-%m-%d %H:%M}Z", db=f"{db_kickoff:%Y-%m-%d %H:%M}Z",
                              note=f"row last written {db.get('source_fetched_at') or db.get('updated_at')}"))
     _compare_status(entity, raw_short, short, api_group, kickoff, db, now, tally)

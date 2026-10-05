@@ -20,7 +20,7 @@ import os
 import sys
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -82,6 +82,22 @@ def check(root: str, rows: list[tuple[str, str, int | None]], with_hash: bool) -
 
 DAMAGE = ("missing", "empty", "unreadable", "hash_mismatch")
 
+STORE_SYNCED_SINCE = datetime(2026, 10, 4, 18, 35, 44, tzinfo=UTC)
+"""Since this commit (e4385bc) the store syncs each payload before renaming it into place, and the directory after.
+Damage to a payload written later means the fix did not hold: HIGH. Damage written before it is the bounded
+residue of the 4 Oct 2026 02:57 UTC stop - three files; its severity follows what the rows naming it feed."""
+
+NO_MODEL_TABLES = frozenset({"market.live_odds_snapshots", "market.live_fixture_states", "core.fixture_live_states"})
+"""In-play tables: shown on the live page, never a model or backtest input (``fbi.odds.live_capture``)."""
+
+
+def severity_of(fetched_at: datetime, rows_naming_it: dict[str, int]) -> str:
+    """HIGH for damage the fixed store let through; before the fix, LOW when every row naming the payload is in-play
+    data no model reads, MEDIUM otherwise (rows a model may read that can no longer be re-derived)."""
+    if fetched_at >= STORE_SYNCED_SINCE:
+        return "high"
+    return "low" if set(rows_naming_it) <= NO_MODEL_TABLES else "medium"
+
 
 def scan(rows: list[dict[str, Any]], *, root: str, with_hash: bool, workers: int) -> list[dict[str, Any]]:
     items = [(str(r["hash"]), str(r["file_path"]), r["bytes"]) for r in rows]
@@ -118,13 +134,18 @@ def evidence(problems: list[dict[str, Any]], meta: dict[str, dict[str, Any]],
     items = []
     for p in problems:
         m = meta[p["hash"]]
+        naming = refs.get(p["hash"], {})
+        severity = severity_of(m["fetched_at_dt"], naming)
+        bounded = "" if severity == "high" else (
+            "; written before the store synced its files (e4385bc, 4 Oct 2026 18:35 UTC): the cause is fixed and the "
+            "damage bounded" + (", and every row naming it is in-play data no model reads" if severity == "low"
+                                else ""))
         items.append(Evidence(
             key=f"raw_integrity:{p['hash']}", area="raw_integrity", issue_type="RAW_PAYLOAD_DAMAGED",
-            severity="high", at_fault="predigol", entity=f"{m['endpoint']} {m['params']}",
+            severity=severity, at_fault="predigol", entity=f"{m['endpoint']} {m['params']}",
             claim=(f"RAW payload {p['hash'][:12]} ({m['endpoint']} {m['params']}, fetched {m['fetched_at']}) is "
                    f"{p['problem'].replace('_', ' ')}: {p['size']} bytes on disk, {m['bytes']} recorded; "
-                   f"{sum(refs.get(p['hash'], {}).values())} normalized rows name it and cannot be re-derived "
-                   "from it"),
+                   f"{sum(naming.values())} normalized rows name it and cannot be re-derived from it{bounded}"),
             db={"file": m["file_path"], "recorded_bytes": m["bytes"], "on_disk": p["size"],
                 "problem": p["problem"], "rows_naming_it": refs.get(p["hash"], {})},
             root_cause="the payload was renamed into place before its bytes reached the disk, and the machine "
@@ -133,7 +154,7 @@ def evidence(problems: list[dict[str, Any]], meta: dict[str, dict[str, Any]],
                 "file from the same body (be-58); the damaged file itself cannot be repaired - RAW is evidence - and "
                 "the rows written from it at the time are kept",
             test="tests/unit/test_payload_store.py::test_an_empty_file_left_by_a_crash_is_not_taken_as_the_payload",
-            status="MONITOR"))
+            status="MONITOR" if severity != "high" else "OPEN"))
     return items
 
 
@@ -173,7 +194,8 @@ def main(argv: list[str] | None = None) -> int:
         found = scan(rows, root=str(root), with_hash=not args.no_hash, workers=args.workers)
         problems = [p for p in found if p["problem"] in DAMAGE]
         noted = Counter(p["problem"] for p in found if p["problem"] not in DAMAGE)
-        meta = {str(r["hash"]): {**r, "fetched_at": str(r["fetched_at"])} for r in rows}
+        meta = {str(r["hash"]): {**r, "fetched_at": str(r["fetched_at"]), "fetched_at_dt": r["fetched_at"]}
+                for r in rows}
         refs = referencing(conn, [p["hash"] for p in problems])
         items = evidence(problems, meta, refs)
         codes = record_all(conn, items, at=at, run_id=run.run_id)

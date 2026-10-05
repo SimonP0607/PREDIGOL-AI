@@ -286,6 +286,17 @@ async def validate(run: V2Run, conn: psycopg.Connection[Any], league: int, seaso
     return g
 
 
+def severity_of(g: GoldenSeason, issue: str, fault: str) -> str:
+    """HIGH, unless only the PROVIDER's final table is behind while our fixtures and results agree with the provider's
+    own fixture list and with the independent source (every other part at ``PASS`` or more): then what PrediGol holds
+    is confirmed twice, the wrong table is the provider's, and the competition page already shows the table's
+    agreement with our matches - MEDIUM, the same as the standings audit rates that same gap (Ligue 1 2025 on
+    5 Oct 2026: the provider's table leaves out Toulouse-Nantes, abandoned, 0-0 homologated by the LFP)."""
+    others = [v for k, v in g.parts().items() if k != "table"]
+    confirmed = all(v is not None and v >= PASS for v in others)
+    return "medium" if issue == "STANDINGS_MISMATCH" and fault == "provider" and confirmed else "high"
+
+
 def evidence(seasons: Sequence[GoldenSeason]) -> list[Evidence]:
     out = []
     for g in seasons:
@@ -301,7 +312,8 @@ def evidence(seasons: Sequence[GoldenSeason]) -> list[Evidence]:
             fault = {"provider_stale": "provider", "predigol_behind": "predigol", "mismatch": "predigol",
                      "fixtures_missing": "predigol"}.get(g.table_verdict, "undetermined")
         out.append(Evidence(
-            key=f"golden:{g.league}:{g.season}", area="golden", issue_type=issue, severity="high", at_fault=fault,
+            key=f"golden:{g.league}:{g.season}", area="golden", issue_type=issue, severity=severity_of(g, issue, fault),
+            at_fault=fault,
             entity=f"{g.name} {g.season} ({g.league})",
             claim=f"{g.name} {g.season}: golden checks below {PASS:.1%}: {parts}",
             api={"fixtures": [g.fixtures_api, g.fixtures_db], "table": g.table_verdict, "findings": g.findings[:8]},

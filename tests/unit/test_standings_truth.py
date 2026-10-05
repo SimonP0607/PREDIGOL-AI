@@ -291,7 +291,15 @@ def test_a_golden_season_failing_on_the_table_alone_names_the_table() -> None:
                      external_score_disagree=0, external_other=0)
     assert g.verdict == "NEEDS_REVIEW"
     ev = evidence([g])
-    assert [(e.issue_type, e.at_fault) for e in ev] == [("STANDINGS_MISMATCH", "provider")]
+    assert [(e.issue_type, e.at_fault, e.severity) for e in ev] == [("STANDINGS_MISMATCH", "provider", "medium")], \
+        "our fixtures and results confirmed by the provider's list and by Football-Data: the wrong table is the " \
+        "provider's - medium, as the standings audit rates the same gap"
+    g.external_score_disagree = 1
+    assert evidence([g])[0].severity == "high", "a result Football-Data disagrees with: ours may be wrong"
+    unconfirmed = GoldenSeason(61, 2025, "Ligue 1", fixtures_api=308, fixtures_db=308, fixtures_checked=308,
+                               fixtures_matched=308, results_checked=307, results_matched=307, table_rows=18,
+                               table_ok=16, table_verdict="provider_stale")
+    assert evidence([unconfirmed])[0].severity == "high", "no independent source read: not confirmed"
 
 
 def test_our_table_one_hourly_check_behind_after_todays_matches_is_expected_lag() -> None:

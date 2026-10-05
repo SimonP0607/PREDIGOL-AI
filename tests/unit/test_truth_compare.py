@@ -104,6 +104,25 @@ def test_kickoff_moved_for_an_upcoming_match_is_stale_and_high() -> None:
     assert (f.kind, f.severity) == (Kind.STALE, Severity.HIGH)
 
 
+def test_a_kickoff_moved_beyond_the_capture_horizon_is_stale_and_medium() -> None:
+    """Twelve Segunda División kick-offs set for 23-26 Oct moved hours after our read (5 Oct 2026): the next
+    6-hourly sync corrects them long before any capture window opens."""
+    far = NOW + timedelta(days=20)
+    item = api_fixture("NS", (None, None))
+    item["fixture"]["date"] = far.isoformat()
+    row = db_fixture("NS", "scheduled", None)
+    row["kickoff_at"] = far + timedelta(hours=21)
+    fixtures = Tally("fixtures")
+    compare.compare_fixture(item, row, now=NOW, tally=fixtures)
+    [f] = [f for f in fixtures.findings if f.field == "kickoff_at"]
+    assert (f.kind, f.severity) == (Kind.STALE, Severity.MEDIUM)
+    row["kickoff_at"] = NOW + timedelta(hours=50)
+    near = Tally("fixtures")
+    compare.compare_fixture(item, row, now=NOW, tally=near)
+    [g] = [f for f in near.findings if f.field == "kickoff_at"]
+    assert g.severity is Severity.HIGH, "our time falls inside the capture horizon: a window may be planned on it"
+
+
 def test_events_compare_as_a_multiset() -> None:
     item = api_fixture(events=[
         {"time": {"elapsed": 10, "extra": None}, "team": {"id": 1}, "player": {"id": 7}, "type": "Goal",
