@@ -10,7 +10,9 @@ from scripts.shadow_evaluation import (
     calibration,
     clv,
     edge_reliability,
+    ev_at_pinnacle_close,
     evaluate,
+    fair_close,
     roi_with_interval,
 )
 
@@ -55,3 +57,21 @@ def test_edge_reliability_is_zero_when_the_market_was_right() -> None:
         rows.append(pick(i, "win" if i % 2 else "loss", "1" if i % 2 else "-1"))
     r = edge_reliability(rows, random.Random(3))
     assert r["n"] == 200 and r["lambda"] == 0.0 and r["ci95"][0] < 0 < r["ci95"][1]
+
+
+def test_pinnacles_close_is_de_vigged_before_it_judges_a_price() -> None:
+    d = Decimal
+    book = {("OU", "Over", d("2.5")): 1.95, ("OU", "Under", d("2.5")): 1.95,
+            ("AH", "Home", d("-0.5")): 2.00, ("AH", "Away", d("0.5")): 1.90, ("AH", "Away", d("-0.5")): 3.40,
+            ("1X2", "Home", d("0")): 2.0, ("1X2", "Draw", d("0")): 3.5}
+    assert fair_close(book, "OU", "Over", d("2.5")) == 0.5, "a symmetric two-way book: 50/50 once the margin goes"
+    p_home = fair_close(book, "AH", "Home", d("-0.5"))
+    assert p_home is not None and abs(p_home - (1 / 2.0) / (1 / 2.0 + 1 / 1.90)) < 1e-12, (
+        "Home -0.5 pairs with Away +0.5, not with Away -0.5 (a 79% 'book')")
+    assert fair_close(book, "1X2", "Home", d("0")) is None, "an incomplete book is not guessed"
+    assert fair_close(book, "DC", "1X", d("0")) is None
+    rows = [{**pick(1, "win", "1", odds="2.10"), "line": d("2.5"), "selection": "Over"},
+            {**pick(2, "loss", "-1", odds="1.90"), "line": d("2.5"), "selection": "Over"}]
+    ev = ev_at_pinnacle_close(rows, {1: book, 2: book}, random.Random(1))
+    assert ev["n"] == 2 and ev["fixtures"] == 2 and ev["mean"] == 0.0, "2.10 x 0.5 - 1 = +5%, 1.90 x 0.5 - 1 = -5%"
+    assert ev_at_pinnacle_close(rows, {}, random.Random(1))["n"] == 0

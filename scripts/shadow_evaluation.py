@@ -18,6 +18,7 @@ import random
 import statistics
 from collections import defaultdict
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +50,76 @@ SELECT p.id, p.fixture_id, p.market_key, p.selection, p.line, p.market_odds, p.p
   JOIN market.bookmakers b ON b.id = p.bookmaker_id
  WHERE p.status = 'settled' AND pr.result_status <> 'pending'
 """
+
+
+PINNACLE_CLOSE_SQL = """
+SELECT o.fixture_id, o.market_key, o.selection, o.line, o.odds_decimal
+  FROM market.final_prematch_odds o JOIN market.bookmakers b ON b.id = o.bookmaker_id
+ WHERE b.name = 'Pinnacle' AND o.fixture_id = ANY(%s)
+"""
+
+EXCLUSIVE = {"1X2": ("Home", "Draw", "Away"), "OU": ("Over", "Under"), "BTTS": ("Yes", "No")}
+MAX_TWO_WAY_BOOK = 1.25
+"""As in fbi.market.consensus: a two-way book above this margin is two prices that merely share a number."""
+
+Book = dict[tuple[str, str, Decimal], float]
+
+
+def fair_close(book: Book, market: str, selection: str, line: Decimal) -> float | None:
+    """Pinnacle's de-vigged probability for one pick, from its final pre-match book (proportional de-vig).
+
+    1X2, Over/Under and BTTS: the selections at the same line. Asian Handicap: (Home, h) pairs with (Away, -h), as
+    the consensus pairs them, and only a believable two-way book counts. Double Chance and an incomplete book:
+    None - not guessed."""
+    if market in EXCLUSIVE:
+        sides = EXCLUSIVE[market]
+        odds = [book.get((market, s, line)) for s in sides]
+        if selection not in sides or any(o is None or o <= 1 for o in odds):
+            return None
+        inv = [1 / o for o in odds if o is not None]
+        return inv[sides.index(selection)] / sum(inv)
+    if market == "AH" and selection in ("Home", "Away"):
+        mine = book.get((market, selection, line))
+        if mine is None or mine <= 1:
+            return None
+        other = "Away" if selection == "Home" else "Home"
+        books = [1 / mine + 1 / c for c in (book.get((market, other, -line)), book.get((market, other, line)))
+                 if c is not None and c > 1]
+        believable = [b for b in books if 1 < b <= MAX_TWO_WAY_BOOK]
+        return (1 / mine) / min(believable) if believable else None
+    return None
+
+
+def clustered_mean(values: list[tuple[int, float]], rng: random.Random) -> dict[str, Any]:
+    """Mean of per-pick values and a 95% interval from resampling fixtures (picks on one match move together)."""
+    if not values:
+        return {"n": 0, "fixtures": 0, "mean": None, "ci95": None}
+    by_fixture: dict[int, list[float]] = defaultdict(list)
+    for fixture, v in values:
+        by_fixture[fixture].append(v)
+    groups = list(by_fixture.values())
+    samples = []
+    for _ in range(BOOTSTRAP):
+        draw = [groups[rng.randrange(len(groups))] for _ in groups]
+        n = sum(len(g) for g in draw)
+        samples.append(sum(sum(g) for g in draw) / n)
+    samples.sort()
+    return {"n": len(values), "fixtures": len(groups), "mean": round(statistics.mean(v for _, v in values), 4),
+            "ci95": [round(samples[int(0.025 * BOOTSTRAP)], 4), round(samples[int(0.975 * BOOTSTRAP) - 1], 4)]}
+
+
+def ev_at_pinnacle_close(rows: list[dict[str, Any]], books: dict[int, Book], rng: random.Random) -> dict[str, Any]:
+    """EV of the price taken against Pinnacle's de-vigged final pre-match price: odds x p_fair - 1.
+
+    The raw ratio to Pinnacle's price (``clv_pinnacle``) compares the best of several books with one book that keeps
+    a margin, so it flatters every pick; this is the figure a sharp close says the pick was worth."""
+    values = []
+    for r in rows:
+        p = fair_close(books.get(r["fixture_id"], {}), r["market_key"], r["selection"],
+                       Decimal(str(r.get("line") or 0)))
+        if p is not None:
+            values.append((r["fixture_id"], float(r["market_odds"]) * p - 1))
+    return clustered_mean(values, rng)
 
 
 def roi_with_interval(rows: list[dict[str, Any]], rng: random.Random) -> dict[str, Any]:
@@ -123,10 +194,12 @@ def band(odds: float) -> str:
     return ">=6.00"
 
 
-def evaluate(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def evaluate(rows: list[dict[str, Any]], books: dict[int, Book] | None = None) -> dict[str, Any]:
     rng = random.Random(SEED)
+    books = books or {}
     out: dict[str, Any] = {"overall": {**roi_with_interval(rows, rng), "clv_same_book": clv(rows, "close_same_book"),
                                        "clv_pinnacle": clv(rows, "close_pinnacle"),
+                                       "ev_at_pinnacle_close": ev_at_pinnacle_close(rows, books, rng),
                                        "edge_reliability": edge_reliability(rows, rng)}}
     for name, key in (("by_market", lambda r: r["market_key"]), ("by_odds_band", lambda r: band(float(r["market_odds"]))),
                       ("by_market_side", lambda r: f"{r['market_key']} {r['selection']}"),
@@ -135,6 +208,7 @@ def evaluate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         for r in rows:
             groups[key(r)].append(r)
         out[name] = {g: {**roi_with_interval(v, rng), "clv_same_book": clv(v, "close_same_book"),
+                         "ev_at_pinnacle_close": ev_at_pinnacle_close(v, books, rng),
                          "calibration": calibration(v), "edge_reliability": edge_reliability(v, rng)}
                      for g, v in sorted(groups.items())}
     days = sorted({r["kickoff_at"].date().isoformat() for r in rows})
@@ -149,8 +223,12 @@ def main() -> int:
         conn.read_only = True
         cur.execute(PICKS_SQL)
         rows = cur.fetchall()
+        cur.execute(PINNACLE_CLOSE_SQL, (sorted({r["fixture_id"] for r in rows}),))
+        books: dict[int, Book] = defaultdict(dict)
+        for b in cur.fetchall():
+            books[b["fixture_id"]][(b["market_key"], b["selection"], Decimal(str(b["line"])))] = float(b["odds_decimal"])
     report = {"at": at.isoformat(), "code_version": code_version(), "bootstrap": BOOTSTRAP, "seed": SEED,
-              "note": "shadow picks only; none was shown to a user", **evaluate(rows)}
+              "note": "shadow picks only; none was shown to a user", **evaluate(rows, books)}
     folder = OUT_ROOT / at.strftime("%Y%m%dT%H%M%SZ")
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "shadow_evaluation.json").write_text(json.dumps(report, indent=2, default=str))
@@ -158,6 +236,7 @@ def main() -> int:
     print(folder / "shadow_evaluation.json")
     print(f"picks {o['picks']} fixtures {o['fixtures']} roi {o['roi']} ci95 {o['ci95']} "
           f"clv_same_book {o['clv_same_book']} clv_pinnacle {o['clv_pinnacle']} "
+          f"ev_at_pinnacle_close {o['ev_at_pinnacle_close']} "
           f"edge_reliability {o['edge_reliability']}")
     return 0
 
