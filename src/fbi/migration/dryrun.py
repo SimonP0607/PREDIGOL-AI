@@ -155,7 +155,7 @@ def _replay(conn: psycopg.Connection, provider: ApiFootballProvider, store: Payl
         elif endpoint == "/fixtures":
             apply_fixtures_payload(conn, provider, body, payload_hash=h, fetched_at=fetched_at, season_ids=seasons)
         elif endpoint == "/standings":
-            apply_standings(conn, iter_standings(body), fetched_at=fetched_at)
+            apply_standings(conn, iter_standings(body), fetched_at=fetched_at, payload_hash=h)
         elif endpoint == "/injuries":
             apply_injuries(conn, iter_injuries(body), payload_hash=h, fetched_at=fetched_at)
         elif endpoint == "/leagues":
