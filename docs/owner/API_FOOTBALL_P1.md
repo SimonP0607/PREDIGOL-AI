@@ -74,8 +74,9 @@ instantánea de 113 tablas) y `PRE_VENUE_REPAIR_20261005` (dump 604,7 MB). Relle
 
 ## 6. Pendiente de confirmar en esta fase
 
-* Los 12 altos de Segunda División: sincronización manual de fixtures lanzada a las 15:34 UTC (≈102 peticiones);
-  se re-verifican al terminar.
+* Los 12 altos de Segunda División: **resueltos**. La sincronización manual de fixtures (15:34 UTC, 102 peticiones)
+  recogió los 12 horarios nuevos (12 filas en `core.fixture_kickoff_changes`); las auditorías nº 8 y nº 9 (16:37 y
+  16:50 UTC) dan 0 altos en fixtures.
 * `/odds/mapping` con el nuevo tope: el barrido diario toca ~18:11 UTC.
 * `/players/teams`: primer llenado ~30.756 peticiones a ≤100 por ejecución (≈6–7 días), sin tocar la reserva en vivo.
 
