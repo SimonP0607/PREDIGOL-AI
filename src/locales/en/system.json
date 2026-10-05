@@ -131,7 +131,8 @@
       "coverage": "Coverage",
       "jobs": "Jobs",
       "runs": "Ingestion runs",
-      "notes": "Notes"
+      "notes": "Notes",
+      "states": "State by dataset"
     },
     "cards": {
       "fixturesExpected": {
@@ -140,11 +141,11 @@
       },
       "fixturesWithOdds": {
         "label": "Fixtures with odds",
-        "hint": "{n} with a near-close capture"
+        "hint": "{priced} priced by the provider · {unpriced} without a provider price"
       },
       "oddsCoverage": {
         "label": "Odds coverage",
-        "hint": "Expected fixtures with at least one snapshot"
+        "hint": "Of the ones the provider prices · {all} over every expected fixture"
       },
       "captureWindows": {
         "label": "Capture windows (24 h)",
@@ -163,12 +164,12 @@
         "hint": "Last capture {when}"
       },
       "staleFixtures": {
-        "label": "Stale fixtures",
-        "hint": "Upcoming, newest snapshot older than 4 h"
+        "label": "Prices behind schedule",
+        "hint": "A capture window closed after the newest price and /odds was not asked again · {missed} priced fixtures with no price at all"
       },
       "awaitingResult": {
-        "label": "Awaiting result",
-        "hint": "{n} past fixtures have a score"
+        "label": "Awaiting a result",
+        "hint": "{provider} not finalised by the provider yet (its lag) · {n} past fixtures have a score"
       },
       "partialJobs": {
         "label": "Partial jobs (24 h)",
@@ -193,6 +194,10 @@
       "cappedJobs": {
         "label": "Stopped at their cap (24 h)",
         "hint": "By design: the rest is due next run · {interrupted} interrupted (restart or deadline) and recovered"
+      },
+      "finalPrematch": {
+        "label": "Last pre-match price (7 d)",
+        "hint": "{priced} of {finished} finished · {empty} with no provider price · {refused} refused (stamped after kick-off) · median {minutes} min before kick-off"
       }
     },
     "issues": {
@@ -226,6 +231,21 @@
       "title": "Notes",
       "subtitle": "What the snapshot itself flags",
       "empty": "The snapshot raises no note."
+    },
+    "states": {
+      "title": "Data state by dataset",
+      "subtitle": "Six answers per dataset: what is valid, what is behind, what we did not ask for, what the provider does not have, what we asked for and failed, and what we hold but could not normalise.",
+      "dataset": "Dataset",
+      "empty": "No dataset register yet.",
+      "headers": {
+        "VALID": "Valid",
+        "STALE": "Behind",
+        "NOT_REQUESTED": "Not requested",
+        "PROVIDER_HAS_NO_DATA": "Provider does not have it",
+        "REQUEST_FAILED": "Request failed (24 h)",
+        "NORMALIZATION_FAILED": "Normalisation failed"
+      },
+      "legend": "Valid, behind, not requested and provider-without-data count entities (fixtures, teams, players...). Request failed counts failed or partial runs in the last 24 h. Normalisation failed counts open issues: rejected rows, unknown provider entities and unresolved results. The provider's lag or absence is not our failure."
     }
   }
 }

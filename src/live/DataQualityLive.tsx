@@ -12,9 +12,10 @@ import { live } from "@/lib/api/v1/queries";
 import type { QualitySnapshot } from "@/lib/api/v1/types";
 import { int } from "@/lib/format";
 import { ratio, relative, utcDateTime } from "./format";
+import { DatasetStatesPanel } from "./DatasetStatesPanel";
 import { JobsPanel, RunsPanel } from "./RunsPanel";
 
-const tabs = ["Issues", "Coverage", "Jobs", "Ingestion runs", "Notes"] as const;
+const tabs = ["Issues", "States", "Coverage", "Jobs", "Ingestion runs", "Notes"] as const;
 type Tab = (typeof tabs)[number];
 
 /** A tab's text in the reader's language; the tab value itself stays the state key. */
@@ -22,6 +23,8 @@ function tabLabel(tab: Tab): string {
   switch (tab) {
     case "Issues":
       return t("system.dataQuality.tabs.issues");
+    case "States":
+      return t("system.dataQuality.tabs.states");
     case "Coverage":
       return t("system.dataQuality.tabs.coverage");
     case "Jobs":
@@ -89,14 +92,32 @@ function Cards({ s, why }: { s: QualitySnapshot; why: Record<string, string> }) 
         label={t("system.dataQuality.cards.fixturesWithOdds.label")}
         value={int(s.fixtures_with_odds)}
         hint={t("system.dataQuality.cards.fixturesWithOdds.hint", {
-          n: int(s.fixtures_with_near_close),
+          priced: int(s.fixtures_provider_prices ?? 0),
+          unpriced: int(s.fixtures_expected - (s.fixtures_provider_prices ?? 0)),
         })}
       />
       <Metric
         label={t("system.dataQuality.cards.oddsCoverage.label")}
-        value={ratio(s.fixture_odds_coverage)}
-        why={why["fixture_odds_coverage"]}
-        hint={t("system.dataQuality.cards.oddsCoverage.hint")}
+        value={ratio(s.fixture_odds_coverage_priced ?? s.fixture_odds_coverage)}
+        why={why["fixture_odds_coverage_priced"] ?? why["fixture_odds_coverage"]}
+        hint={t("system.dataQuality.cards.oddsCoverage.hint", {
+          all: ratio(s.fixture_odds_coverage) ?? "—",
+        })}
+      />
+      <Metric
+        label={t("system.dataQuality.cards.finalPrematch.label")}
+        value={ratio(s.final_prematch_coverage ?? null)}
+        why={why["final_prematch_coverage"]}
+        hint={t("system.dataQuality.cards.finalPrematch.hint", {
+          priced: int(s.final_prematch_priced ?? 0),
+          finished: int(s.final_prematch_finished_7d ?? 0),
+          empty: int(s.final_prematch_empty ?? 0),
+          refused: int(s.final_prematch_after_kickoff ?? 0),
+          minutes:
+            s.final_prematch_median_minutes == null
+              ? "—"
+              : int(Math.round(s.final_prematch_median_minutes)),
+        })}
       />
       <Metric
         label={t("system.dataQuality.cards.captureWindows.label")}
@@ -138,16 +159,19 @@ function Cards({ s, why }: { s: QualitySnapshot; why: Record<string, string> }) 
       <Metric
         label={t("system.dataQuality.cards.staleFixtures.label")}
         value={int(s.stale_fixtures)}
-        hint={t("system.dataQuality.cards.staleFixtures.hint")}
-        tone={warn(s.stale_fixtures)}
+        hint={t("system.dataQuality.cards.staleFixtures.hint", {
+          missed: int(s.missed_fixtures ?? 0),
+        })}
+        tone={warn(s.stale_fixtures + (s.missed_fixtures ?? 0))}
       />
       <Metric
         label={t("system.dataQuality.cards.awaitingResult.label")}
         value={int(s.fixtures_awaiting_result)}
         hint={t("system.dataQuality.cards.awaitingResult.hint", {
           n: int(s.fixtures_with_result),
+          provider: int(s.awaiting_result_provider ?? 0),
         })}
-        tone={warn(s.fixtures_awaiting_result)}
+        tone={warn(s.fixtures_awaiting_result - (s.awaiting_result_provider ?? 0))}
       />
       <Metric
         label={t("system.dataQuality.cards.partialJobs.label")}
@@ -292,6 +316,8 @@ export function DataQualityLive() {
           )}
         </Panel>
       ) : null}
+
+      {tab === "States" ? <DatasetStatesPanel /> : null}
 
       {tab === "Coverage" ? (
         <Panel

@@ -88,7 +88,19 @@ export interface DatasetRegisterRow {
   open_findings: number;
   blockers: string[];
   notes: string[];
+  /** The six answers per dataset; entity counts except REQUEST_FAILED (runs, 24 h) and NORMALIZATION_FAILED (issues). */
+  states?: Partial<Record<DatasetState, number>>;
 }
+
+export const DATASET_STATES = [
+  "VALID",
+  "STALE",
+  "NOT_REQUESTED",
+  "PROVIDER_HAS_NO_DATA",
+  "REQUEST_FAILED",
+  "NORMALIZATION_FAILED",
+] as const;
+export type DatasetState = (typeof DATASET_STATES)[number];
 
 export interface DatasetRegister {
   measured_at: string;

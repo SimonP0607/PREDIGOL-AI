@@ -540,8 +540,27 @@ export interface QualitySnapshot {
   last_successful_capture: Iso | null;
   windows_expected_24h: number;
   windows_captured_24h: number;
+  /** Of fixtures_expected: listed as priced by the provider (/odds/mapping) or priced by us. */
+  fixtures_provider_prices?: number;
+  /** Priced by the provider, a capture window closed, no price, not asked since: ours. */
+  missed_fixtures?: number;
+  /** Asked since the last window opened and nothing came back, or never listed as priced: the provider's. */
+  unpriced_fixtures?: number;
+  not_due_fixtures?: number;
+  /** Of fixtures_awaiting_result: asked again after the match should have ended; the provider has no outcome yet. */
+  awaiting_result_provider?: number;
+  final_prematch_finished_7d?: number;
+  final_prematch_asked?: number;
+  final_prematch_priced?: number;
+  final_prematch_empty?: number;
+  final_prematch_after_kickoff?: number;
+  final_prematch_median_minutes?: number | null;
   notes: string[];
   fixture_odds_coverage: number | null;
+  /** Fixtures with a price over the ones the provider prices. */
+  fixture_odds_coverage_priced?: number | null;
+  /** Finished in 7 days with the provider's last pre-match price, over all finished in 7 days. */
+  final_prematch_coverage?: number | null;
   bookmaker_coverage: number | null;
   market_coverage: number | null;
   window_coverage_24h: number | null;

@@ -131,7 +131,8 @@
       "coverage": "Cobertura",
       "jobs": "Tareas",
       "runs": "Ejecuciones de ingesta",
-      "notes": "Notas"
+      "notes": "Notas",
+      "states": "Estado por dataset"
     },
     "cards": {
       "fixturesExpected": {
@@ -140,11 +141,11 @@
       },
       "fixturesWithOdds": {
         "label": "Partidos con cuotas",
-        "hint": "{n} con captura cercana al cierre"
+        "hint": "{priced} el proveedor los cotiza · {unpriced} sin precio del proveedor"
       },
       "oddsCoverage": {
         "label": "Cobertura de cuotas",
-        "hint": "Partidos previstos con al menos una captura"
+        "hint": "De los que el proveedor cotiza · {all} sobre todos los previstos"
       },
       "captureWindows": {
         "label": "Ventanas de captura (24 h)",
@@ -163,12 +164,12 @@
         "hint": "Última captura {when}"
       },
       "staleFixtures": {
-        "label": "Partidos desactualizados",
-        "hint": "Próximos, con la última captura de hace más de 4 h"
+        "label": "Precios atrasados",
+        "hint": "Una ventana de captura cerró después del último precio y no se volvió a pedir · {missed} cotizados sin ningún precio"
       },
       "awaitingResult": {
         "label": "Pendientes de resultado",
-        "hint": "{n} partidos pasados tienen marcador"
+        "hint": "{provider} los tiene el proveedor sin cerrar (su retraso) · {n} pasados con marcador"
       },
       "partialJobs": {
         "label": "Tareas parciales (24 h)",
@@ -193,6 +194,10 @@
       "cappedJobs": {
         "label": "Detenidas por tope (24 h)",
         "hint": "Por diseño: lo pendiente va en la siguiente · {interrupted} interrumpidas (reinicio o plazo) y recuperadas"
+      },
+      "finalPrematch": {
+        "label": "Último precio pre-partido (7 d)",
+        "hint": "{priced} de {finished} terminados · {empty} sin precio del proveedor · {refused} rechazados (sello tras el inicio) · mediana {minutes} min antes del inicio"
       }
     },
     "issues": {
@@ -226,6 +231,21 @@
       "title": "Notas",
       "subtitle": "Lo que señala la propia captura",
       "empty": "La captura no incluye ninguna nota."
+    },
+    "states": {
+      "title": "Estado de los datos por dataset",
+      "subtitle": "Seis respuestas por dataset: qué es válido, qué está atrasado, qué no pedimos, qué no tiene el proveedor, qué pedimos y falló y qué tenemos pero no se pudo normalizar.",
+      "dataset": "Dataset",
+      "empty": "No hay registro de datasets todavía.",
+      "headers": {
+        "VALID": "Válido",
+        "STALE": "Atrasado",
+        "NOT_REQUESTED": "No solicitado",
+        "PROVIDER_HAS_NO_DATA": "El proveedor no lo tiene",
+        "REQUEST_FAILED": "Petición fallida (24 h)",
+        "NORMALIZATION_FAILED": "Normalización fallida"
+      },
+      "legend": "Válido, atrasado, no solicitado y sin datos del proveedor cuentan entidades (partidos, equipos, jugadores...). Petición fallida cuenta ejecuciones fallidas o parciales de las últimas 24 h. Normalización fallida cuenta incidencias abiertas: filas rechazadas, entidades del proveedor desconocidas y resultados sin resolver. El retraso o la ausencia del proveedor no es un fallo nuestro."
     }
   }
 }
