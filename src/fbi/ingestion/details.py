@@ -128,12 +128,19 @@ def _side(team_id: int | None, home: int, away: int) -> str | None:
     return "home" if team_id == home else "away" if team_id == away else None
 
 
-def _clean(value: Decimal | int | bool | None) -> Decimal | int | bool | None:
-    """Negative counts are the provider's error, not a statistic: dropped.
+SIGNED_COLUMNS = frozenset({"goals_prevented"})
+"""Metrics that are differences, not counts. Goals prevented is the expected goals of the shots on target a keeper
+faced minus the goals he let in: negative whenever he concedes more than expected, which is a statistic, not an error.
+Until 5 Oct 2026 every negative value was dropped as "not a statistic" - 14,442 of them, although the column never had
+a sign check (scripts/repair_signed_team_stats.py restores them from RAW)."""
+
+
+def _clean(value: Decimal | int | bool | None, *, signed: bool = False) -> Decimal | int | bool | None:
+    """Negative counts are the provider's error, not a statistic: dropped. A signed metric keeps its sign.
 
     The caller records what was dropped; see ``_team_stat_values``.
     """
-    if isinstance(value, bool) or value is None:
+    if isinstance(value, bool) or value is None or signed:
         return value
     return None if value < 0 else value
 
@@ -166,7 +173,7 @@ def _team_stat_values(
     issues: list[QualityIssue] = []
     for name in TEAM_STAT_COLUMNS:
         original = raw.get(name)
-        cleaned = _clean(original)
+        cleaned = _clean(original, signed=name in SIGNED_COLUMNS)
         if cleaned is None and original is not None:
             dropped.append(name)
             issues.append(inconsistency(

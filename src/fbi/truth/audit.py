@@ -594,14 +594,7 @@ async def run_audit(conn: psycopg.Connection, client: Any, *, at: datetime, seed
             await step()
         internal = run_internal(conn, at=at)
         for name, t in internal.items():
-            target = result.tallies.setdefault(name, Tally(name))
-            target.checked += t.checked
-            target.matched += t.matched
-            for f in t.findings:
-                target.findings.append(f)
-            for key, n in t.counts.items():
-                target.counts[key] = target.counts.get(key, 0) + n
-            target.notes.extend(f"internal {n}" for n in t.notes)
+            merge_internal(result.tallies.setdefault(name, Tally(name)), t)
         if "elo" not in result.sides:
             result.side("elo", "finished fixtures", "features.elo_ratings", "finished_fixtures", "elo_rows")
         result.freshness = measure(conn, at=at)
@@ -631,6 +624,26 @@ async def run_audit(conn: psycopg.Connection, client: Any, *, at: datetime, seed
                 cur.execute("UPDATE audit.truth_runs SET report_dir = %s WHERE id = %s", (str(result.folder), run_id))
             conn.commit()
     return result
+
+
+def merge_internal(target: Tally, internal: Tally) -> None:
+    """Add the database's own checks to a dataset's tally. A finding the provider sample already reported for the
+    same entity, field and kind is not added twice: the provider's answer is the more direct evidence (5 Oct 2026:
+    three NS fixtures were listed both as provider lag, from the sample, and as our staleness, from the database)."""
+    target.checked += internal.checked
+    target.matched += internal.matched
+    known = {(f.entity, f.field, f.kind) for f in target.findings}
+    kept: dict[tuple[str, str, str], int] = {}
+    for f in internal.findings:
+        key = (f.field, f.kind.value, f.severity.value)
+        kept[key] = kept.get(key, 0) + 1
+        if (f.entity, f.field, f.kind) not in known:
+            target.add(f)
+    for key, n in internal.counts.items():
+        hidden = n - kept.get(key, 0)
+        if hidden > 0:
+            target.counts[key] = target.counts.get(key, 0) + hidden
+    target.notes.extend(f"internal {n}" for n in internal.notes)
 
 
 def summary_of(result: AuditResult) -> dict[str, Any]:

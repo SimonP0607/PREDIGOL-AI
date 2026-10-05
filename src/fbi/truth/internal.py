@@ -46,6 +46,33 @@ def _fx(r: Mapping[str, Any]) -> str:
     return f"fixture {r['provider_fixture_id']} ({r.get('competition')} {r.get('season')})"
 
 
+EXCLUDED_VALIDATION = ("QUARANTINED", "INGESTED")
+"""The historical validation states no model, rating or backtest reads (``fbi.features.data.EXCLUDED_STATES``)."""
+
+PROVIDER_SCORE_CONTRADICTION_SQL = """EXISTS (
+    SELECT 1 FROM audit.data_quality_issues q
+     WHERE q.entity_type = 'fixture_result' AND q.code = 'PROVIDER_INCONSISTENCY' AND q.status = 'open'
+       AND q.provider_entity_id = f.provider_fixture_id)"""
+"""The result writer recorded that the provider's own score blocks contradict each other for this fixture
+(``fbi.providers.api_football.normalize``: a 90-minute or extra-time score above the final one)."""
+
+DUPLICATE_PAIRING_SQL = """SELECT a.provider_fixture_id, b.provider_fixture_id AS other, a.kickoff_at,
+                  b.kickoff_at AS other_kickoff, a.status_short, b.status_short AS other_status,
+                  c.name AS competition, cs.season, count(*) OVER () AS n_total
+             FROM core.fixtures a
+             JOIN core.fixtures b ON b.home_team_id = a.home_team_id AND b.away_team_id = a.away_team_id
+                                  AND b.id > a.id AND abs(extract(epoch FROM b.kickoff_at - a.kickoff_at)) < 36 * 3600
+             JOIN core.competition_seasons cs ON cs.id = a.competition_season_id
+             JOIN core.competitions c ON c.id = cs.competition_id
+            WHERE a.status_group NOT IN ('cancelled', 'postponed') AND b.status_group NOT IN ('cancelled', 'postponed')
+              AND {handled} (EXISTS (SELECT 1 FROM analytics.fixture_validation v WHERE v.fixture_id = a.id
+                                        AND v.state IN ('QUARANTINED', 'INGESTED'))
+                         AND EXISTS (SELECT 1 FROM analytics.fixture_validation v WHERE v.fixture_id = b.id
+                                        AND v.state IN ('QUARANTINED', 'INGESTED')))"""
+"""Two fixtures with the same home and away team within 36 hours. ``{handled}`` is ``NOT`` for the pairs nothing
+keeps out of the models (HIGH), empty for the pairs the historical validation quarantined both of (LOW)."""
+
+
 CHECKS: tuple[Check, ...] = (
     Check(
         "status_spelling", "fixtures", "status_short", Kind.INCONSISTENT, Severity.HIGH,
@@ -70,17 +97,38 @@ CHECKS: tuple[Check, ...] = (
     ),
     Check(
         "finished_without_result", "results", "result", Kind.MISSING_IN_DB, Severity.HIGH,
-        """SELECT f.provider_fixture_id, f.status_short, f.kickoff_at, c.name AS competition, cs.season,
-                  count(*) OVER () AS n_total
-             FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-             JOIN core.competitions c ON c.id = cs.competition_id
-            WHERE f.status_group = 'finished'
-              AND NOT EXISTS (SELECT 1 FROM core.fixture_results r WHERE r.fixture_id = f.id)
-            ORDER BY f.kickoff_at DESC""",
+        f"""SELECT f.provider_fixture_id, f.status_short, f.kickoff_at, c.name AS competition, cs.season,
+                   count(*) OVER () AS n_total
+              FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+              JOIN core.competitions c ON c.id = cs.competition_id
+             WHERE f.status_group = 'finished'
+               AND NOT EXISTS (SELECT 1 FROM core.fixture_results r WHERE r.fixture_id = f.id)
+               AND NOT {PROVIDER_SCORE_CONTRADICTION_SQL}
+             ORDER BY f.kickoff_at DESC""",
         lambda r: (_fx(r), f"{r['status_short']}: a score", "no result row",
-                   "finished, but nothing to settle or train on (often an extra-time match whose 90-minute "
-                   "score the provider never stated)"),
-        "SELECT count(*) FROM core.fixtures WHERE status_group = 'finished'",
+                   "finished, the provider's score blocks agree, and still no result: ours to fix"),
+        f"SELECT count(*) FROM core.fixtures f WHERE f.status_group = 'finished' "
+        f"AND NOT {PROVIDER_SCORE_CONTRADICTION_SQL}",
+    ),
+    Check(
+        "finished_score_contradiction", "results", "result", Kind.PROVIDER_CONTRADICTION, Severity.MEDIUM,
+        f"""SELECT f.provider_fixture_id, f.status_short, f.kickoff_at, c.name AS competition, cs.season,
+                   (SELECT q.observed FROM audit.data_quality_issues q
+                     WHERE q.entity_type = 'fixture_result' AND q.code = 'PROVIDER_INCONSISTENCY'
+                       AND q.status = 'open' AND q.provider_entity_id = f.provider_fixture_id
+                     ORDER BY q.last_seen_at DESC LIMIT 1) AS observed,
+                   count(*) OVER () AS n_total
+              FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+              JOIN core.competitions c ON c.id = cs.competition_id
+             WHERE f.status_group = 'finished'
+               AND NOT EXISTS (SELECT 1 FROM core.fixture_results r WHERE r.fixture_id = f.id)
+               AND {PROVIDER_SCORE_CONTRADICTION_SQL}
+             ORDER BY f.kickoff_at DESC""",
+        lambda r: (_fx(r), f"{r['status_short']}: {r['observed']}", "no result row (by design)",
+                   "the provider's own score blocks contradict each other, so no 90-minute score can be told; "
+                   "the writer keeps no result rather than a wrong one, and models, ratings and settlement "
+                   "leave the match out"),
+        f"SELECT count(*) FROM core.fixtures f WHERE f.status_group = 'finished' AND {PROVIDER_SCORE_CONTRADICTION_SQL}",
     ),
     Check(
         "result_without_finish", "results", "result", Kind.INCONSISTENT, Severity.CRITICAL,
@@ -112,15 +160,45 @@ CHECKS: tuple[Check, ...] = (
     ),
     Check(
         "past_kickoff_not_final", "fixtures", "status_short", Kind.STALE, Severity.HIGH,
-        """SELECT f.provider_fixture_id, f.status_short, f.kickoff_at, c.name AS competition, cs.season,
-                  count(*) OVER () AS n_total
+        """SELECT f.provider_fixture_id, f.status_short, f.kickoff_at, f.source_fetched_at, c.name AS competition,
+                  cs.season, count(*) OVER () AS n_total
              FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
              JOIN core.competitions c ON c.id = cs.competition_id
             WHERE c.is_tracked AND f.status_group IN ('scheduled', 'live')
               AND f.kickoff_at < %(at)s - interval '3 hours'
+              AND (f.source_fetched_at IS NULL OR f.source_fetched_at < f.kickoff_at + interval '3 hours')
             ORDER BY f.kickoff_at DESC""",
         lambda r: (_fx(r), "a final status", f"{r['status_short']}, kicked off {r['kickoff_at']:%Y-%m-%d %H:%M}Z",
-                   "the provider can take up to 48 h for some competitions; the API sample says whose lag it is"),
+                   "not asked again since the match should have ended"
+                   + (f" (last asked {r['source_fetched_at']:%Y-%m-%d %H:%M}Z)" if r["source_fetched_at"] else "")),
+    ),
+    Check(
+        "past_kickoff_provider_lag", "fixtures", "status_short", Kind.PROVIDER_LAG, Severity.INFO,
+        """SELECT f.provider_fixture_id, f.status_short, f.kickoff_at, f.source_fetched_at, c.name AS competition,
+                  cs.season, count(*) OVER () AS n_total
+             FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+             JOIN core.competitions c ON c.id = cs.competition_id
+            WHERE c.is_tracked AND f.status_group IN ('scheduled', 'live')
+              AND f.kickoff_at < %(at)s - interval '3 hours' AND f.kickoff_at >= %(at)s - interval '48 hours'
+              AND f.source_fetched_at >= f.kickoff_at + interval '3 hours'
+            ORDER BY f.kickoff_at DESC""",
+        lambda r: (_fx(r), r["status_short"], f"{r['status_short']}, asked {r['source_fetched_at']:%Y-%m-%d %H:%M}Z",
+                   f"kicked off {r['kickoff_at']:%Y-%m-%d %H:%M}Z; asked again after it should have ended and the "
+                   "provider still says so (a result can take up to 48 h for some competitions)"),
+    ),
+    Check(
+        "past_kickoff_provider_silent", "fixtures", "status_short", Kind.PROVIDER_LAG, Severity.MEDIUM,
+        """SELECT f.provider_fixture_id, f.status_short, f.kickoff_at, f.source_fetched_at, c.name AS competition,
+                  cs.season, count(*) OVER () AS n_total
+             FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+             JOIN core.competitions c ON c.id = cs.competition_id
+            WHERE c.is_tracked AND f.status_group IN ('scheduled', 'live')
+              AND f.kickoff_at < %(at)s - interval '48 hours'
+              AND f.source_fetched_at >= f.kickoff_at + interval '3 hours'
+            ORDER BY f.kickoff_at DESC""",
+        lambda r: (_fx(r), r["status_short"], f"{r['status_short']}, asked {r['source_fetched_at']:%Y-%m-%d %H:%M}Z",
+                   f"kicked off {r['kickoff_at']:%Y-%m-%d %H:%M}Z, more than 48 h ago, and the provider still has "
+                   "no outcome: postponed or abandoned without saying so? Pages show it as not played"),
     ),
     Check(
         "live_stuck", "fixtures", "status_group", Kind.STALE, Severity.HIGH,
@@ -133,17 +211,16 @@ CHECKS: tuple[Check, ...] = (
     ),
     Check(
         "duplicate_fixture", "fixtures", "identity", Kind.INCONSISTENT, Severity.HIGH,
-        """SELECT a.provider_fixture_id, b.provider_fixture_id AS other, a.kickoff_at, b.kickoff_at AS other_kickoff,
-                  a.status_short, b.status_short AS other_status, c.name AS competition, cs.season,
-                  count(*) OVER () AS n_total
-             FROM core.fixtures a
-             JOIN core.fixtures b ON b.home_team_id = a.home_team_id AND b.away_team_id = a.away_team_id
-                                  AND b.id > a.id AND abs(extract(epoch FROM b.kickoff_at - a.kickoff_at)) < 36 * 3600
-             JOIN core.competition_seasons cs ON cs.id = a.competition_season_id
-             JOIN core.competitions c ON c.id = cs.competition_id
-            WHERE a.status_group NOT IN ('cancelled', 'postponed') AND b.status_group NOT IN ('cancelled', 'postponed')""",
+        DUPLICATE_PAIRING_SQL.format(handled="NOT"),
         lambda r: (_fx(r), "one fixture", f"also {r['other']} ({r['other_status']}, {r['other_kickoff']:%Y-%m-%d %H:%M}Z)",
-                   "the same pairing twice within 36 hours"),
+                   "the same pairing twice within 36 hours, and nothing keeps both out of the models"),
+    ),
+    Check(
+        "duplicate_fixture_quarantined", "fixtures", "identity", Kind.INCONSISTENT, Severity.LOW,
+        DUPLICATE_PAIRING_SQL.format(handled=""),
+        lambda r: (_fx(r), "one fixture", f"also {r['other']} ({r['other_status']}, {r['other_kickoff']:%Y-%m-%d %H:%M}Z)",
+                   "the provider lists the pairing twice within 36 hours; the historical validation quarantined "
+                   "both, so no model, rating or backtest reads either"),
     ),
     Check(
         "prematch_price_after_kickoff", "odds", "captured_at", Kind.INCONSISTENT, Severity.CRITICAL,
@@ -221,22 +298,36 @@ SELECT c.name AS competition, cs.season, t.provider_team_id, t.name AS team, x."
 """
 
 ELO_COVERAGE_SQL = """
-WITH fin AS (
-    SELECT cs.competition_id, count(*) AS finished, max(f.kickoff_at) AS last_finished
+WITH refreshed AS (
+    SELECT max(started_at) AS at FROM raw.ingestion_runs WHERE job_type = 'elo_refresh' AND status = 'completed'
+), fin AS (
+    SELECT cs.competition_id, f.kickoff_at,
+           EXISTS (SELECT 1 FROM features.elo_ratings e WHERE e.fixture_id = f.id) AS rated,
+           EXISTS (SELECT 1 FROM analytics.fixture_validation v
+                    WHERE v.fixture_id = f.id AND v.state = ANY(%(excluded)s)) AS excluded,
+           r.fixture_id IS NULL AS no_result,
+           (refreshed.at IS NOT NULL AND (f.kickoff_at >= refreshed.at
+                                          OR coalesce(r.source_fetched_at, f.updated_at) >= refreshed.at)) AS late
       FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-     WHERE f.status_group = 'finished' GROUP BY 1
-), rated AS (
-    SELECT cs.competition_id, count(DISTINCT e.fixture_id) AS rated, max(e.kickoff_at) AS last_rated
-      FROM features.elo_ratings e JOIN core.fixtures f ON f.id = e.fixture_id
-      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-     GROUP BY 1
+      LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
+      CROSS JOIN refreshed
+     WHERE f.status_group = 'finished'
+), per AS (
+    SELECT competition_id, count(*) AS finished, count(*) FILTER (WHERE rated) AS rated,
+           count(*) FILTER (WHERE NOT rated AND excluded) AS excluded,
+           count(*) FILTER (WHERE NOT rated AND NOT excluded AND no_result) AS no_result,
+           count(*) FILTER (WHERE NOT rated AND NOT excluded AND NOT no_result AND late) AS late,
+           count(*) FILTER (WHERE NOT rated AND NOT excluded AND NOT no_result AND NOT late) AS missing,
+           max(kickoff_at) AS last_finished, max(kickoff_at) FILTER (WHERE rated) AS last_rated
+      FROM fin GROUP BY 1
 )
-SELECT c.name AS competition, c.provider_league_id, c.is_tracked, fin.finished, COALESCE(rated.rated, 0) AS rated,
-       fin.last_finished, rated.last_rated
-  FROM fin JOIN core.competitions c ON c.id = fin.competition_id
-  LEFT JOIN rated ON rated.competition_id = fin.competition_id
- ORDER BY fin.finished DESC
+SELECT c.name AS competition, c.provider_league_id, c.is_tracked, per.*, (SELECT at FROM refreshed) AS refreshed_at
+  FROM per JOIN core.competitions c ON c.id = per.competition_id
+ ORDER BY per.missing DESC, per.finished DESC
 """
+"""Per competition: finished fixtures, rated ones, and why the others carry no rating - excluded by the historical
+validation (by design), no result to rate (the results dataset's finding), finished or settled after the last
+refresh (rated by the next one), or none of these: a real gap."""
 
 PLAYER_PROFILE_SQL = """
 WITH recent AS (
@@ -324,15 +415,23 @@ def standings_played(conn: psycopg.Connection, tally: Tally) -> None:
 
 
 def elo_coverage(conn: psycopg.Connection, tally: Tally) -> None:
+    """Elo is recomputed from every stored result by ``elo_refresh`` (``fbi.features.elo_refresh``); a finished
+    fixture without a rating is a finding only when no reason explains it.
+
+    5 Oct 2026: the audit reported 13 tracked competitions "missing" ratings with the note "computed once and never
+    extended", written before the 6-hourly refresh existed. Of the 25 unrated fixtures, 19 were quarantined by the
+    historical validation (pairings the provider lists twice, and others), 5 had no result (the provider's score
+    blocks contradict each other) and one finished after the last refresh. None was a gap."""
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(ELO_COVERAGE_SQL)
+        cur.execute(ELO_COVERAGE_SQL, {"excluded": list(EXCLUDED_VALIDATION)})
         rows = cur.fetchall()
-    total_finished = sum(int(r["finished"]) for r in rows)
-    total_rated = sum(int(r["rated"]) for r in rows)
-    tally.checked += total_finished
-    tally.matched += total_rated
+    totals = {k: sum(int(r[k]) for r in rows) for k in ("finished", "rated", "excluded", "no_result", "late",
+                                                         "missing")}
+    tally.checked += totals["finished"]
+    tally.matched += totals["finished"] - totals["missing"]
+    refreshed = rows[0]["refreshed_at"] if rows else None
     for r in rows:
-        missing = int(r["finished"]) - int(r["rated"])
+        missing = int(r["missing"])
         if missing <= 0:
             continue
         tally.add(Finding.of(
@@ -340,8 +439,13 @@ def elo_coverage(conn: psycopg.Connection, tally: Tally) -> None:
             Severity.HIGH if r["is_tracked"] else Severity.LOW,
             api=f"{r['finished']:,} finished (last {r['last_finished']:%Y-%m-%d})",
             db=f"{r['rated']:,} rated" + (f" (last {r['last_rated']:%Y-%m-%d})" if r["last_rated"] else ""),
-            note="ratings were computed once and never extended"))
-    tally.notes.append(f"{total_rated:,} of {total_finished:,} finished fixtures carry an Elo rating")
+            note=f"{missing:,} finished with a result, not quarantined and older than the last refresh"
+                 + (f" ({refreshed:%Y-%m-%d %H:%M}Z)" if refreshed else " (no refresh has completed)")
+                 + ", yet unrated"))
+    tally.notes.append(
+        f"{totals['rated']:,} of {totals['finished']:,} finished fixtures carry an Elo rating; unrated by design: "
+        f"{totals['excluded']:,} excluded by the historical validation, {totals['no_result']:,} without a result, "
+        f"{totals['late']:,} finished or settled after the last refresh; unexplained: {totals['missing']:,}")
 
 
 def player_profiles(conn: psycopg.Connection, at: datetime, tally: Tally) -> None:

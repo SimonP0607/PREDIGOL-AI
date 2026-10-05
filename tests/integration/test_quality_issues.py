@@ -374,6 +374,24 @@ def test_a_negative_count_is_recorded_too(
     assert "not a statistic" in row[2]
 
 
+def test_a_signed_metric_keeps_its_sign(
+    db: psycopg.Connection, seed: Seed, provider_ids: tuple[int, int]
+) -> None:
+    """5 Oct 2026: goals prevented (expected goals on target faced minus goals conceded) is negative whenever a keeper
+    lets in more than expected. 14,442 of those were dropped as "not a statistic", although the column never had a
+    sign check."""
+    fixture, team = provider_ids
+    apply_fixture_details(
+        db, [_detail(fixture, team, {"shots": 9, "goals_prevented": Decimal("-0.48"), "expected_goals": Decimal("1.2")})],
+        payload_hash=seed.payload_hash, fetched_at=FETCHED, run_id=seed.run_id,
+    )
+    assert "PROVIDER_INCONSISTENCY" not in _by_code(db)
+    with db.cursor() as cur:
+        cur.execute("SELECT goals_prevented, expected_goals, dropped_fields FROM core.fixture_team_stats "
+                    "WHERE fixture_id = %s AND team_side = 'home'", (seed.fixture_id,))
+        assert cur.fetchone() == (Decimal("-0.480"), Decimal("1.200"), [])
+
+
 def test_an_unknown_statistic_type_stops_being_only_a_log_line(
     db: psycopg.Connection, seed: Seed, provider_ids: tuple[int, int]
 ) -> None:

@@ -129,6 +129,45 @@ def test_quality_snapshot_counts_a_captured_fixture(db: psycopg.Connection) -> N
         db.rollback()
 
 
+def test_quality_snapshot_judges_odds_by_capture_window_and_tells_the_providers_gaps(db: psycopg.Connection) -> None:
+    """5 Oct 2026: a fixed 4-hour rule called 40 of 73 priced fixtures stale while every due window had been captured,
+    and "0 near-close" hid the 344 last pre-match prices the provider gave after the matches."""
+    set_clock(FrozenClock(NOW))
+    try:
+        with db.cursor() as cur:
+            cur.execute("UPDATE core.competitions SET is_tracked = true WHERE provider_league_id = 39")
+            cur.execute("UPDATE core.fixtures SET kickoff_at = %s, status_short = 'NS', status_group = 'scheduled' "
+                        "WHERE provider_fixture_id = 1001", (NOW + timedelta(hours=20),))
+            cur.execute("INSERT INTO market.odds_mapping_seen (provider_fixture_id, first_seen_at, payload_hash, "
+                        "normalizer_version) VALUES (1001, %s, 'h1', 't')", (NOW - timedelta(days=2),))
+            cur.execute(
+                "INSERT INTO market.odds_snapshots "
+                "SELECT f.id, b.id, '1X2', 'Home', 0, 2.10, %s, 3000, 'prematch', 'h1' "
+                "FROM core.fixtures f, market.bookmakers b WHERE f.provider_fixture_id = 1001 "
+                "AND b.provider_bookmaker_id = 8 ON CONFLICT DO NOTHING", (NOW - timedelta(hours=30),))
+        snap = data_quality_snapshot(db)
+        assert (snap.fixtures_provider_prices, snap.stale_fixtures, snap.missed_fixtures) == (1, 1, 0), \
+            "T-24 h closed; the newest price is from T-50 h and /odds was not asked since"
+        assert snap.as_dict()["fixture_odds_coverage_priced"] == 1.0
+        with db.cursor() as cur:
+            cur.execute("INSERT INTO raw.ingestion_payloads (hash, run_id, endpoint, params, fetched_at, http_status, "
+                        "file_path, bytes) SELECT 'odds-asked', run_id, '/odds', '{\"fixture\": \"1001\"}', %s, 200, "
+                        "'x', 1 FROM raw.ingestion_payloads WHERE hash = 'h1'", (NOW - timedelta(hours=1),))
+        asked = data_quality_snapshot(db)
+        assert (asked.stale_fixtures, asked.unpriced_fixtures) == (0, 1), "asked, nothing came back: the provider's"
+        with db.cursor() as cur:
+            cur.execute("UPDATE core.fixtures SET kickoff_at = %s, status_short = 'FT', status_group = 'finished' "
+                        "WHERE provider_fixture_id = 1001", (NOW - timedelta(days=2),))
+            cur.execute("INSERT INTO market.final_prematch_checks (fixture_id, checked_at, outcome, quotes) "
+                        "SELECT id, %s, 'empty', 0 FROM core.fixtures WHERE provider_fixture_id = 1001", (NOW,))
+        after = data_quality_snapshot(db)
+        assert (after.final_prematch_finished_7d, after.final_prematch_asked, after.final_prematch_empty) == (1, 1, 1)
+        assert after.as_dict()["final_prematch_coverage"] == 0.0
+    finally:
+        set_clock(SystemClock())
+        db.rollback()
+
+
 def test_requests_today_uses_the_application_clock_not_the_database_clock(
     db: psycopg.Connection,
 ) -> None:

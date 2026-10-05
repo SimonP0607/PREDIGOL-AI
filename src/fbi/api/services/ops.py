@@ -118,6 +118,10 @@ def _explain(s: QualitySnapshot) -> dict[str, str]:
         e["last_successful_capture"] = "No odds capture run has completed yet."
     if s.snapshots_24h == 0:
         e["snapshots_24h"] = "No snapshot in the last 24 h. Captures happen only inside pre-match windows of tracked fixtures."
+    if s.fixtures_provider_prices == 0 and s.fixtures_expected:
+        e["fixture_odds_coverage_priced"] = "The provider lists none of the upcoming fixtures as priced yet."
+    if s.final_prematch_finished_7d == 0:
+        e["final_prematch_coverage"] = "No tracked fixture finished in the last 7 days."
     if s.unattributed_requests_today:
         e["unattributed_requests_today"] = (
             "Requests billed today that no closed run claims: ad-hoc calls such as a status check, "
@@ -125,12 +129,18 @@ def _explain(s: QualitySnapshot) -> dict[str, str]:
     return e
 
 
-def quality(conn: Conn) -> Envelope[QualityReport]:
-    snap = data_quality_snapshot(
+def _snapshot(conn: Conn) -> QualitySnapshot:
+    return data_quality_snapshot(
         conn, horizon_hours=QUALITY_HORIZON_HOURS,
         prematch_windows=len(settings.odds.prematch_windows),
         daily_budget=settings.provider_plan.effective_budget,
+        windows=settings.odds.prematch_windows,
+        tolerance_minutes=settings.odds.odds_window_tolerance,
     )
+
+
+def quality(conn: Conn) -> Envelope[QualityReport]:
+    snap = _snapshot(conn)
     return ok(QualityReport(snapshot=snap.as_dict(), explanations=_explain(snap)), data_as_of=snap.computed_at)
 
 
@@ -144,9 +154,7 @@ def coverage(conn: Conn) -> Envelope[list[CoverageRow]]:
 def issues(conn: Conn) -> Envelope[list[QualityIssue]]:
     """Problems derived from the data itself, now - not a stored list that can go stale."""
     moment = now()
-    snap = data_quality_snapshot(conn, horizon_hours=QUALITY_HORIZON_HOURS,
-                                 prematch_windows=len(settings.odds.prematch_windows),
-                                 daily_budget=settings.provider_plan.effective_budget)
+    snap = _snapshot(conn)
     gaps = repo.lineage_gaps(conn)
     found: list[QualityIssue] = []
 
@@ -155,9 +163,12 @@ def issues(conn: Conn) -> Envelope[list[QualityIssue]]:
             found.append(QualityIssue(key=key, severity=severity,  # type: ignore[arg-type]
                                       title=title, detail=detail, count=count, detected_at=at))
 
-    add("awaiting_result", "high", "Fixtures past kick-off without a result",
-        "Recorded as scheduled or live after kick-off. On the free plan a result becomes unreachable "
-        "about a day after the match.", snap.fixtures_awaiting_result)
+    add("awaiting_result", "high", "Fixtures past kick-off without a result, not asked again",
+        "Recorded as scheduled or live after kick-off and not re-asked since the match should have ended: "
+        "results_repair is behind.", snap.fixtures_awaiting_result - snap.awaiting_result_provider)
+    add("awaiting_result_provider", "low", "Fixtures the provider has not finalised yet",
+        "Asked again after the match should have ended; the provider still says not played. A result can take "
+        "up to 48 h for some competitions; nothing for us to fix.", snap.awaiting_result_provider)
     add("stale_running_jobs", "critical", "Runs stuck in 'running'",
         "Open past their deadline: the process that owned them most likely died. The run watchdog closes "
         "them within five minutes; one that stays here means the watchdog itself is not running.",
@@ -169,8 +180,12 @@ def issues(conn: Conn) -> Envelope[list[QualityIssue]]:
         "Open past their deadline and closed by the run watchdog: a job that hangs.", snap.stale_jobs_24h)
     add("partial_jobs_24h", "medium", "Partially successful runs (24 h)",
         "Runs that wrote something AND hit errors.", snap.partial_jobs_24h)
-    add("stale_fixtures", "high", "Upcoming fixtures with stale odds",
-        "Newest snapshot older than 4 h for a fixture still to be played.", snap.stale_fixtures)
+    add("stale_fixtures", "high", "Upcoming fixtures with a price older than their last capture window",
+        "A capture window has closed since the newest price and /odds was not asked again: the capture is "
+        "behind.", snap.stale_fixtures)
+    add("missed_fixtures", "high", "Priced fixtures that passed a capture window without a price",
+        "The provider lists them as priced, a window has closed and /odds was not asked: the next capture "
+        "run catches them up while they are still to be played.", snap.missed_fixtures)
     add("fixtures_without_lineage", "low", "Fixtures without payload lineage",
         "Last written before revision 0015; the payload that wrote them is not linked. "
         "The next sync or a raw replay records it.", int(gaps["fixtures_without_lineage"]))

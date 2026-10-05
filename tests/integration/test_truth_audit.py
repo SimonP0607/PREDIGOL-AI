@@ -205,6 +205,8 @@ def _read_back(client: Any, run_id: int) -> None:
     assert all(r["klass"] in ("FRESH", "STALE", "INCOMPLETE", "INVALID", "UNKNOWN") for r in rows.values())
     assert rows["teams"]["model"] == "NOT_USED" and rows["odds_prematch"]["role"] == "REQUIRED"
     assert rows["fixtures"]["model"] in ("MODEL_READY", "NOT_MODEL_READY") and rows["fixtures"]["model_reason"]
+    assert set(rows["fixtures"]["states"]) == {"VALID", "STALE", "NOT_REQUESTED", "PROVIDER_HAS_NO_DATA",
+                                               "REQUEST_FAILED", "NORMALIZATION_FAILED"}, "the six answers, per dataset"
     tables = client.get("/api/v1/admin/data/standings").json()
     mine = [r for r in tables["data"] if r["provider_league_id"] == LEAGUE]
     assert mine and mine[0]["status"] in ("STALE", "FRESH", "UNAVAILABLE", "UNKNOWN") and mine[0]["reason"]

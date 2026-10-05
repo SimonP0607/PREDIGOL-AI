@@ -87,6 +87,11 @@ class DatasetRegisterRow(Contract):
     open_findings: int
     blockers: list[str]
     notes: list[str]
+    states: dict[str, int] = Field(
+        default_factory=dict,
+        description="VALID, STALE, NOT_REQUESTED, PROVIDER_HAS_NO_DATA (entities); REQUEST_FAILED (failed or partial "
+                    "runs, 24 h); NORMALIZATION_FAILED (open issues: rejected rows, unknown provider entities, "
+                    "unresolved results).")
 
 
 class DatasetRegister(Contract):

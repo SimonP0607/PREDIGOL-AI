@@ -64,6 +64,22 @@ ENDPOINT_PREFIX = {"/fixtures?league&season": "/fixtures", "/fixtures?ids": "/fi
 
 INCOMPLETE_SHARE = 0.05
 
+ISSUE_DATASET = {"fixture": "fixtures", "fixture_result": "results", "lineup": "lineups",
+                 "team_statistics": "match_detail", "player_statistics": "match_detail",
+                 "match_event": "match_detail", "odds_snapshot": "odds_prematch", "provider_market": "odds_prematch",
+                 "bookmaker": "odds_prematch", "team": "teams", "player": "players", "coach": "coaches",
+                 "competition": "coverage", "league_season": "coverage"}
+"""audit.data_quality_issues entity types -> the dataset they belong to."""
+
+NORMALIZATION_CODES = ("NORMALIZATION_REJECTED", "UNKNOWN_PROVIDER_ENTITY", "RESULT_UNRESOLVED")
+"""Issue codes that mean "we hold the provider's answer but could not turn (part of) it into rows"."""
+
+STATES = ("VALID", "STALE", "NOT_REQUESTED", "PROVIDER_HAS_NO_DATA", "REQUEST_FAILED", "NORMALIZATION_FAILED")
+"""The six answers the Data Quality page gives per dataset (5 Oct 2026 mandate): valid; we have it but it is stale;
+we did not request it; the provider does not have it; we requested it and it failed; we have it but normalization
+failed. The first four count entities (``fbi.truth.freshness``); REQUEST_FAILED counts failed or partial runs and
+their errors in 24 h; NORMALIZATION_FAILED counts open issues of the codes above."""
+
 
 @dataclass
 class RegisterRow:
@@ -87,6 +103,8 @@ class RegisterRow:
     open_findings: int
     blockers: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    states: dict[str, int] = field(default_factory=dict)
+    """One count per ``STATES`` answer."""
 
 
 def classify(f: DatasetFreshness, open_findings: int) -> tuple[str, float | None, float | None, list[str]]:
@@ -137,6 +155,11 @@ SELECT area, count(*) AS n FROM audit.evidence_ledger
 
 DATASET_VERSION_SQL = "SELECT name, status FROM audit.dataset_versions ORDER BY (status = 'MODEL_READY') DESC LIMIT 1"
 
+NORMALIZATION_SQL = """
+SELECT entity_type, count(*) AS n FROM audit.data_quality_issues
+ WHERE status = 'open' AND code = ANY(%(codes)s) GROUP BY 1
+"""
+
 
 def build(conn: psycopg.Connection[Any], freshness: list[DatasetFreshness], *, at: datetime) -> list[RegisterRow]:
     jobs = sorted({j for s in SPECS.values() for j in s.jobs})
@@ -151,6 +174,12 @@ def build(conn: psycopg.Connection[Any], freshness: list[DatasetFreshness], *, a
         findings = {r["area"]: int(r["n"]) for r in cur.fetchall()}
         cur.execute(DATASET_VERSION_SQL)
         version = cur.fetchone()
+        cur.execute(NORMALIZATION_SQL, {"codes": list(NORMALIZATION_CODES)})
+        normalization: dict[str, int] = {}
+        for r in cur.fetchall():
+            ds = ISSUE_DATASET.get(str(r["entity_type"]))
+            if ds is not None:
+                normalization[ds] = normalization.get(ds, 0) + int(r["n"])
     version_ready = bool(version and version["status"] == "MODEL_READY")
     out: list[RegisterRow] = []
     by_name = {f.dataset: f for f in freshness}
@@ -173,12 +202,17 @@ def build(conn: psycopg.Connection[Any], freshness: list[DatasetFreshness], *, a
         job_rows = [runs[j] for j in spec.jobs if j in runs]
         notes = [f"the provider has no data for {gap:.0%} of the {f.entity}s (its coverage flag or its lag)"] \
             if gap else []
+        c = f.counts
+        failed_runs = sum(int(r["bad"]) for r in job_rows)
+        states = {"VALID": c[Freshness.FRESH.value], "STALE": c[Freshness.STALE.value],
+                  "NOT_REQUESTED": c[Freshness.UNKNOWN.value], "PROVIDER_HAS_NO_DATA": c[Freshness.UNAVAILABLE.value],
+                  "REQUEST_FAILED": failed_runs, "NORMALIZATION_FAILED": normalization.get(name, 0)}
         out.append(RegisterRow(
             dataset=name, klass=klass, model=model, model_reason=reason, role=role.value,
             endpoints=list(spec.endpoints), sla=f.sla, freshness=f.label(), coverage=coverage, provider_gap=gap,
             last_capture=last_capture,
             last_write=max((r["last_write"] for r in job_rows if r["last_write"] is not None), default=None),
             rows=rows.get(spec.table, 0), errors_24h=sum(int(r["errors"]) for r in job_rows),
-            failed_runs_24h=sum(int(r["bad"]) for r in job_rows), open_findings=open_findings, blockers=blockers,
-            notes=notes))
+            failed_runs_24h=failed_runs, open_findings=open_findings, blockers=blockers,
+            notes=notes, states=states))
     return out
