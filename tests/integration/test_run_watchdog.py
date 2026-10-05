@@ -135,3 +135,21 @@ def test_the_per_minute_limit_is_shared_by_every_process(conn: psycopg.Connectio
         assert 49 <= waited <= 52 and len(slept) == 1, "waits for the next minute, then goes"
     finally:
         set_clock(SystemClock())
+
+
+def test_an_audit_row_whose_ledger_run_ended_is_closed_too(conn: psycopg.Connection) -> None:
+    """5 Oct 2026: a truth audit crashed while storing its findings; its ledger run ended, audit.truth_runs 3 stayed
+    'running' and the Data Truth page kept a 21-hour-old audit as the latest."""
+    ledger = RunLedger(conn)
+    run_id = ledger.open("wd_truth")
+    audit = conn.execute("INSERT INTO audit.truth_runs (started_at, ingestion_run_id) VALUES (now(), %s) RETURNING id",
+                         (run_id,)).fetchone()
+    assert audit is not None
+    conn.commit()
+    ledger.close(run_id, RunCounters(errors=["CheckViolation"]))
+    recover_runs(conn, at=datetime.now(UTC))
+    row = conn.execute("SELECT status, finished_at IS NOT NULL FROM audit.truth_runs WHERE id = %s", (audit[0],)
+                       ).fetchone()
+    assert row == ("interrupted", True)
+    conn.execute("DELETE FROM audit.truth_runs WHERE id = %s", (audit[0],))
+    conn.commit()

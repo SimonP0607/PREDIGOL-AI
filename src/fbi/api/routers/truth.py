@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Path, Query
 from fbi.api.contracts.truth import (
     CompetitionScoreRow,
     DataRepair,
+    DatasetRegister,
     EvidenceDecision,
     EvidenceEntry,
     FreshnessReport,
@@ -65,6 +66,13 @@ def get_truth_findings(
 def get_freshness(conn: Db) -> Envelope[FreshnessReport]:
     """Every dataset against its service level, measured now (kept for two minutes)."""
     return truth.freshness(conn)
+
+
+@router.get("/data/datasets", response_model=Envelope[DatasetRegister])
+def get_datasets(conn: Db) -> Envelope[DatasetRegister]:
+    """The fourteen datasets: class (FRESH/STALE/INCOMPLETE/INVALID/UNKNOWN), model eligibility, endpoint, service
+    level, last capture and write, rows, coverage, errors and blockers."""
+    return truth.datasets(conn)
 
 
 @router.get("/data/gate", response_model=Envelope[GateReport])

@@ -199,6 +199,12 @@ def _read_back(client: Any, run_id: int) -> None:
     assert client.get("/api/v1/admin/truth/runs").json()["data"][0]["id"] == run_id
     fresh = client.get("/api/v1/admin/data/freshness").json()
     assert fresh["status"] == "ok" and {d["dataset"] for d in fresh["data"]["datasets"]} >= {"standings", "results"}
+    register = client.get("/api/v1/admin/data/datasets").json()
+    rows = {r["dataset"]: r for r in register["data"]["rows"]}
+    assert register["status"] == "ok" and len(rows) == 14
+    assert all(r["klass"] in ("FRESH", "STALE", "INCOMPLETE", "INVALID", "UNKNOWN") for r in rows.values())
+    assert rows["teams"]["model"] == "NOT_USED" and rows["odds_prematch"]["role"] == "REQUIRED"
+    assert rows["fixtures"]["model"] in ("MODEL_READY", "NOT_MODEL_READY") and rows["fixtures"]["model_reason"]
     tables = client.get("/api/v1/admin/data/standings").json()
     mine = [r for r in tables["data"] if r["provider_league_id"] == LEAGUE]
     assert mine and mine[0]["status"] in ("STALE", "FRESH", "UNAVAILABLE", "UNKNOWN") and mine[0]["reason"]

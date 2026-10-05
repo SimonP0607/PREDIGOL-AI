@@ -182,6 +182,18 @@ def judge(row: dict[str, Any], *, at: datetime, host: str, worker_started_at: da
     return None
 
 
+LINKED_SQL = (
+    """UPDATE audit.truth_runs t SET status = 'interrupted', finished_at = COALESCE(t.finished_at, %(at)s)
+         FROM raw.ingestion_runs r
+        WHERE t.ingestion_run_id = r.id AND t.status = 'running' AND r.status <> 'running' RETURNING t.id""",
+    """UPDATE audit.truth_v2_runs t SET status = 'failed', finished_at = COALESCE(t.finished_at, %(at)s)
+         FROM raw.ingestion_runs r
+        WHERE t.ingestion_run_id = r.id AND t.status = 'running' AND r.status <> 'running' RETURNING t.id""",
+)
+"""An audit run whose ledger run is closed cannot be running: 5 Oct 2026, a truth audit that crashed while storing
+its findings left audit.truth_runs 3 'running' after its ledger run had ended."""
+
+
 def recover_runs(conn: psycopg.Connection[Any], *, at: datetime, worker_started_at: datetime | None = None,
                  worker_job_types: Iterable[str] = (), booted_at: datetime | None = None,
                  proc: Path = PROC) -> list[Recovered]:
@@ -204,7 +216,13 @@ def recover_runs(conn: psycopg.Connection[Any], *, at: datetime, worker_started_
             cur.execute(CLOSE_SQL, {"status": status, "at": at, "reason": reason, "id": row["id"]})
             if cur.rowcount:
                 out.append(Recovered(int(row["id"]), str(row["job_type"]), status, reason))
+        linked = []
+        for sql in LINKED_SQL:
+            cur.execute(sql, {"at": at})
+            linked += [int(r[0]) for r in cur.fetchall()]
     conn.commit()
     if out:
         log.warning("runs.recovered", runs=[(r.run_id, r.job_type, r.status) for r in out])
+    if linked:
+        log.warning("runs.recovered_audit_rows", audit_runs=linked)
     return out

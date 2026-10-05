@@ -213,12 +213,17 @@ SELECT 'players' AS dataset, count(*) AS total,
        count(p.id) AS known
   FROM appeared a LEFT JOIN core.players p ON p.provider_player_id = a.provider_player_id
 UNION ALL
-SELECT 'coaches', count(*), count(*) FILTER (WHERE co.birth_date IS NOT NULL OR co.nationality IS NOT NULL), 0,
-       count(co.id)
+SELECT 'coaches', count(*),
+       count(*) FILTER (WHERE co.birth_date IS NOT NULL OR co.nationality IS NOT NULL OR cp.birth_date IS NOT NULL
+                          OR cp.nationality IS NOT NULL),
+       0, count(co.id)
   FROM (SELECT DISTINCT l.provider_coach_id FROM core.fixture_lineups l JOIN core.fixtures f ON f.id = l.fixture_id
          WHERE f.kickoff_at > %(at)s - interval '365 days' AND l.provider_coach_id > 0) x
   LEFT JOIN core.coaches co ON co.provider_coach_id = x.provider_coach_id
+  LEFT JOIN core.coach_profiles_latest cp ON cp.provider_coach_id = x.provider_coach_id
 """
+"""Coaches: a profile from the line-ups' identity rows or from /coachs (the reference feed, weekly per tracked team,
+since 4 Oct 2026 - before it, no coach had a profile and the dataset read UNKNOWN 100%)."""
 
 SQUADS_SQL = """
 SELECT DISTINCT ON (t.id) c.name AS competition, cs.season, t.provider_team_id, t.squad_checked_at
@@ -466,8 +471,8 @@ def _people(rows: list[dict[str, Any]]) -> list[DatasetFreshness]:
         players = r["dataset"] == "players"
         d = DatasetFreshness(str(r["dataset"]), "the profile of everyone in a line-up in the last 365 days was read "
                              "in the last 45 days (monthly sweep of /players/profiles)" if players else
-                             "a profile (birth date or nationality) exists for every coach in a line-up in the last "
-                             "365 days", "person")
+                             "a profile (birth date or nationality, /coachs weekly per tracked team) exists for "
+                             "every coach in a line-up in the last 365 days", "person")
         total, fresh, old = int(r["total"] or 0), int(r["profiled"] or 0), int(r["old_profile"] or 0)
         d.add(Freshness.FRESH, fresh)
         d.add(Freshness.STALE, old, example=f"{old:,} profiles older than 45 days" if old else None)

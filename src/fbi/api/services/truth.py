@@ -22,6 +22,8 @@ from fbi.api.contracts.truth import (
     CoverageLocal,
     CoverageMarket,
     DataRepair,
+    DatasetRegister,
+    DatasetRegisterRow,
     EvidenceDecision,
     EvidenceEntry,
     FreshnessDataset,
@@ -140,6 +142,26 @@ def freshness(conn: psycopg.Connection[Any]) -> Envelope[FreshnessReport]:
         return FreshnessReport(measured_at=at, datasets=[FreshnessDataset(**d.as_dict()) for d in measure(conn, at=at)])
 
     report = _cached("freshness", compute)
+    return ok(report, data_as_of=report.measured_at)
+
+
+def datasets(conn: psycopg.Connection[Any]) -> Envelope[DatasetRegister]:
+    """The fourteen datasets classified, with their evidence (fbi.truth.register), kept for two minutes."""
+    from dataclasses import asdict
+
+    from fbi.truth.register import build
+
+    def compute() -> DatasetRegister:
+        _slow(conn)
+        at = now()
+        rows = build(conn, measure(conn, at=at), at=at)
+        version = _rows(conn, "SELECT name, status FROM audit.dataset_versions "
+                              "ORDER BY (status = 'MODEL_READY') DESC, (name = 'DATASET_V2') DESC LIMIT 1")
+        return DatasetRegister(measured_at=at, dataset_version=version[0]["name"] if version else None,
+                               dataset_version_status=version[0]["status"] if version else None,
+                               rows=[DatasetRegisterRow(**asdict(r)) for r in rows])
+
+    report = _cached("datasets", compute)
     return ok(report, data_as_of=report.measured_at)
 
 

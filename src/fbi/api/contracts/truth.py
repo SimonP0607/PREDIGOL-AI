@@ -62,6 +62,40 @@ class FreshnessReport(Contract):
     datasets: list[FreshnessDataset]
 
 
+DatasetClass = Literal["FRESH", "STALE", "INCOMPLETE", "INVALID", "UNKNOWN"]
+ModelEligibility = Literal["MODEL_READY", "NOT_MODEL_READY", "NOT_USED"]
+
+
+class DatasetRegisterRow(Contract):
+    dataset: str
+    klass: DatasetClass = Field(description="FRESH, STALE (the provider has newer data and asking was our job), "
+                                            "INCOMPLETE (5%+ never read), INVALID (open critical/high finding at "
+                                            "PrediGol's fault), UNKNOWN (nothing to measure now).")
+    model: ModelEligibility
+    model_reason: str
+    role: str = Field(description="The strongest need any model has for it: REQUIRED, OPTIONAL, NOT_USED.")
+    endpoints: list[str]
+    sla: str
+    freshness: str
+    coverage: float | None = Field(description="Fresh share of what we are responsible for (provider gaps excluded).")
+    provider_gap: float | None = Field(description="Share the provider does not have (coverage flag or its lag).")
+    last_capture: datetime | None
+    last_write: datetime | None
+    rows: int
+    errors_24h: int
+    failed_runs_24h: int
+    open_findings: int
+    blockers: list[str]
+    notes: list[str]
+
+
+class DatasetRegister(Contract):
+    measured_at: datetime
+    dataset_version: str | None
+    dataset_version_status: str | None
+    rows: list[DatasetRegisterRow]
+
+
 class GateModel(Contract):
     model: str
     passing: int

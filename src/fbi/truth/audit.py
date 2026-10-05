@@ -615,7 +615,15 @@ async def run_audit(conn: psycopg.Connection, client: Any, *, at: datetime, seed
         status = "interrupted"
         raise
     finally:
-        _persist(conn, result, status)
+        try:
+            _persist(conn, result, status)
+        except psycopg.Error as exc:  # the run must still close: a crash here left it 'running' (5 Oct 2026)
+            conn.rollback()
+            counters.errors.append(f"findings not stored: {type(exc).__name__}: {exc}"[:500])
+            with conn.cursor() as cur:
+                cur.execute("UPDATE audit.truth_runs SET finished_at = now(), status = 'failed', requests = %s "
+                            "WHERE id = %s", (result.requests, run_id))
+            conn.commit()
         ledger.close(ingestion_run, counters, notes=f"truth audit {run_id}: {result.requests} requests")
         if out_root is not None:
             result.folder = write_report(result, out_root)
