@@ -15,7 +15,7 @@ import { int } from "@/lib/format";
 import { durationMs, isoDay, relative, utcDate, utcDateTime } from "./format";
 import { ComponentStatusBadge, FixtureLink, StatusGroupBadge } from "./shared";
 import { RunsPanel } from "./RunsPanel";
-import { jobLabel } from "./labels";
+import { healthReason, jobLabel } from "./labels";
 
 function firstProblem(o: Overview): ComponentHealth | null {
   const parts = [o.system.database, o.system.worker, o.system.football_provider];
@@ -179,7 +179,7 @@ export function OverviewLive() {
                 <li key={label} className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm">{label}</div>
-                    <div className="text-caption text-subtle-foreground">{c.detail}</div>
+                    <div className="text-caption text-subtle-foreground">{healthReason(c)}</div>
                   </div>
                   <ComponentStatusBadge status={c.status} />
                 </li>

@@ -183,7 +183,8 @@
     "competitions": {
       "title": "Competiciones seguidas",
       "subtitle": "config/competitions.yaml, aplicado con scripts.manage_competitions",
-      "league": "liga {id}"
+      "league": "liga {id}",
+      "count": "{n} competiciones seguidas, con su país: dos ligas con el mismo nombre son ligas distintas"
     },
     "rule": {
       "title": "Regla de decisión",

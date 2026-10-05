@@ -159,6 +159,25 @@
       "password_change_refused": "Cambio de contraseña rechazado",
       "password_reset": "Contraseña restablecida",
       "preferences_updated": "Preferencias actualizadas"
+    },
+    "keys": {
+      "fields": "campos",
+      "reason": "motivo",
+      "from": "antes",
+      "to": "ahora",
+      "role": "rol",
+      "by": "por",
+      "other_sessions_revoked": "otras sesiones cerradas"
+    },
+    "values": {
+      "language": "idioma",
+      "timezone": "zona horaria",
+      "display_name": "nombre visible",
+      "unknown_email": "email desconocido",
+      "wrong_password": "contraseña incorrecta",
+      "disabled": "desactivada",
+      "active": "activa",
+      "command_line": "línea de comandos"
     }
   },
   "shadowToggle": "Modo de evaluación (solo admin)",

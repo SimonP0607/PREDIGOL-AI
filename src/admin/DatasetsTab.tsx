@@ -99,7 +99,7 @@ export function DatasetsTab() {
               </TD>
               <TD align="right" className="text-xs">
                 <div className="numeric">{r.coverage === null ? "—" : localPct(r.coverage, 0)}</div>
-                {r.provider_gap ? (
+                {r.provider_gap !== null && r.provider_gap >= 0.005 ? (
                   <div className="text-caption text-subtle-foreground">
                     {t("truth.register.gap", { share: localPct(r.provider_gap, 0) })}
                   </div>

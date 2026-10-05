@@ -13,7 +13,7 @@ import type { ComponentStatus, Section } from "@/lib/api/v1/types";
 import type { AdminCount, BackfillProgress } from "@/lib/api/v1/types_center";
 import { int } from "@/lib/format";
 import { relative, utcDateTime } from "./format";
-import { jobLabel } from "./labels";
+import { healthReason, jobLabel } from "./labels";
 import { ComponentStatusBadge } from "./shared";
 import { localFixed } from "@/lib/i18n/format";
 
@@ -65,7 +65,7 @@ export function AdminLive() {
                     ? "negative"
                     : "warning"
               }
-              hint={d.worker.detail}
+              hint={healthReason(d.worker)}
             />
             <MetricCard
               label={t("system.metrics.apiFootball")}
@@ -80,7 +80,7 @@ export function AdminLive() {
               label={t("system.metrics.provider")}
               value={d.quota.provider_status.status.toUpperCase()}
               tone={d.quota.provider_status.status === "ok" ? "positive" : "warning"}
-              hint={d.quota.provider_status.detail}
+              hint={healthReason(d.quota.provider_status)}
             />
             <MetricCard
               label={t("system.metrics.database")}

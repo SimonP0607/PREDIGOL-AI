@@ -159,6 +159,25 @@
       "password_change_refused": "Password change refused",
       "password_reset": "Password reset",
       "preferences_updated": "Preferences updated"
+    },
+    "keys": {
+      "fields": "fields",
+      "reason": "reason",
+      "from": "from",
+      "to": "to",
+      "role": "role",
+      "by": "by",
+      "other_sessions_revoked": "other sessions signed out"
+    },
+    "values": {
+      "language": "language",
+      "timezone": "time zone",
+      "display_name": "display name",
+      "unknown_email": "unknown email",
+      "wrong_password": "wrong password",
+      "disabled": "disabled",
+      "active": "active",
+      "command_line": "command line"
     }
   },
   "shadowToggle": "Evaluation mode (admin only)",

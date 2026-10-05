@@ -246,6 +246,76 @@
         "NORMALIZATION_FAILED": "Normalización fallida"
       },
       "legend": "Válido, atrasado, no solicitado y sin datos del proveedor cuentan entidades (partidos, equipos, jugadores...). Petición fallida cuenta ejecuciones fallidas o parciales de las últimas 24 h. Normalización fallida cuenta incidencias abiertas: filas rechazadas, entidades del proveedor desconocidas y resultados sin resolver. El retraso o la ausencia del proveedor no es un fallo nuestro."
+    },
+    "issueText": {
+      "awaiting_result": {
+        "title": "Partidos pasada la hora de inicio sin resultado y sin volver a preguntar",
+        "detail": "Siguen como programados o en juego después del inicio y no se han vuelto a pedir desde que el partido debió terminar: results_repair va atrasado."
+      },
+      "awaiting_result_provider": {
+        "title": "Partidos que el proveedor aún no ha cerrado",
+        "detail": "Se volvieron a pedir después de la hora de fin; el proveedor sigue sin darlos por jugados. En algunas competiciones un resultado tarda hasta 48 h; no hay nada que arreglar de nuestro lado."
+      },
+      "stale_running_jobs": {
+        "title": "Ejecuciones atascadas en «running»",
+        "detail": "Abiertas más allá de su plazo: el proceso que las llevaba probablemente murió. El vigilante de ejecuciones las cierra en menos de cinco minutos; si una sigue aquí, el vigilante no está corriendo."
+      },
+      "failed_jobs_24h": {
+        "title": "Ejecuciones fallidas (24 h)",
+        "detail": "Terminaron con errores y sin nada duradero. Las detenidas en su tope planificado no son fallos y se cuentan aparte."
+      },
+      "stale_jobs_24h": {
+        "title": "Ejecuciones cerradas como colgadas (24 h)",
+        "detail": "Abiertas más allá de su plazo y cerradas por el vigilante: una tarea que se cuelga."
+      },
+      "partial_jobs_24h": {
+        "title": "Ejecuciones con éxito parcial (24 h)",
+        "detail": "Ejecuciones que escribieron algo Y tuvieron errores."
+      },
+      "stale_fixtures": {
+        "title": "Próximos partidos con un precio anterior a su última ventana de captura",
+        "detail": "Se cerró una ventana desde el precio más reciente y no se volvió a pedir /odds: la captura va atrasada."
+      },
+      "missed_fixtures": {
+        "title": "Partidos con precio que pasaron una ventana de captura sin precio",
+        "detail": "El proveedor los marca con cuotas, se cerró una ventana y no se pidió /odds: la próxima captura los recupera mientras sigan por jugarse."
+      },
+      "fixtures_without_lineage": {
+        "title": "Partidos sin trazabilidad de payload",
+        "detail": "Escritos por última vez antes de la revisión 0015; el payload que los escribió no está enlazado. La próxima sincronización o una reproducción desde RAW lo registra."
+      },
+      "results_without_lineage": {
+        "title": "Resultados sin trazabilidad de payload",
+        "detail": "Escritos antes de la revisión 0015."
+      },
+      "budget_exhausted": {
+        "title": "Presupuesto diario de peticiones agotado",
+        "detail": "No se hará ninguna petición al proveedor hasta que cambie el día UTC."
+      }
     }
+  },
+  "health": {
+    "app_running": "en marcha (versión {version})",
+    "database_ok": "accesible, esquema {revision}",
+    "database_error": "error de base de datos ({error})",
+    "database_unreachable": "sin conexión a la base de datos",
+    "needs_database": "sin base de datos no se puede comprobar",
+    "ledger_unreadable": "no se pudo leer el registro de ejecuciones ({error})",
+    "worker_alive": "vivo, último latido hace {minutes} min",
+    "worker_stopped": "worker detenido hace {minutes} min",
+    "worker_silent": "sin latido desde hace {minutes} min: el worker no está corriendo",
+    "worker_overdue_runs": "{n} ejecución(es) abiertas más allá de su plazo (el vigilante las cierra)",
+    "worker_last_tick": "último ciclo: {outcome}",
+    "worker_last_failed": "la última «{job}» falló",
+    "worker_last_partial": "la última «{job}» salió solo en parte",
+    "worker_never_seen": "sin latido y sin ninguna ejecución registrada todavía",
+    "ledger_overdue_runs": "sin latido (¿worker antiguo?); según el registro: {n} ejecución(es) fuera de plazo",
+    "ledger_quiet": "sin latido (¿worker antiguo?); según el registro: última ejecución hace {minutes} min",
+    "ledger_last_failed": "sin latido (¿worker antiguo?); según el registro: la última «{job}» falló",
+    "ledger_last_partial": "sin latido (¿worker antiguo?); según el registro: la última «{job}» salió solo en parte",
+    "ledger_ok": "sin latido (¿worker antiguo?); según el registro: última ejecución hace {minutes} min",
+    "provider_ok": "{spent} de {budget} peticiones hoy (nuestro límite)",
+    "provider_budget_exhausted": "presupuesto diario agotado ({spent} de {budget})",
+    "provider_recent_error": "error del proveedor en la última hora"
   }
 }

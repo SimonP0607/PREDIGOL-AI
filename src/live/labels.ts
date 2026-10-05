@@ -1,4 +1,4 @@
-import { t, translateOr } from "@/lib/i18n";
+import { intlTag, t, translateOr } from "@/lib/i18n";
 
 /** Human names (English) for job types recorded in the ledger; `jobLabel` translates them. */
 export const JOB_LABEL: Record<string, string> = {
@@ -100,4 +100,23 @@ export function positionLabel(position: string | null | undefined): string {
   if (!position) return "—";
   const key = POSITION_KEY[position.trim().toLowerCase()];
   return key ? t(`catalog.positions.${key}`) : position;
+}
+
+/**
+ * A health reason in the reader's language: the backend's stable code with its values (a job name shown as its
+ * label), falling back to the English detail when this page does not know the code.
+ */
+export function healthReason(c: {
+  detail: string;
+  code?: string | undefined;
+  vars?: Record<string, string | number | null> | undefined;
+}): string {
+  if (!c.code) return c.detail;
+  const vars: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(c.vars ?? {})) {
+    if (v === null || v === undefined) continue;
+    vars[k] =
+      k === "job" ? jobLabel(String(v)) : typeof v === "number" ? v.toLocaleString(intlTag()) : v;
+  }
+  return translateOr(`system.health.${c.code}`, c.detail, vars);
 }

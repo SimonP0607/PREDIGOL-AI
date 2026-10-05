@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { t } from "@/lib/i18n";
+import { t, translateOr } from "@/lib/i18n";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MetricCard, Panel, WarningBanner } from "@/components/primitives/Panel";
 import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
@@ -218,6 +218,15 @@ function Cards({ s, why }: { s: QualitySnapshot; why: Record<string, string> }) 
   );
 }
 
+/** An issue in the reader's language by its stable key; the backend's English when the key is new. */
+function issueTitle(i: { key: string; title: string }): string {
+  return translateOr(`system.dataQuality.issueText.${i.key}.title`, i.title);
+}
+
+function issueDetail(i: { key: string; detail: string }): string {
+  return translateOr(`system.dataQuality.issueText.${i.key}.detail`, i.detail);
+}
+
 export function DataQualityLive() {
   const [tab, setTab] = useState<Tab>("Issues");
   const quality = useLiveQuery(live.quality);
@@ -244,7 +253,7 @@ export function DataQualityLive() {
         <WarningBanner>
           {t("system.dataQuality.highIssues", {
             count: high.length,
-            titles: high.map((i) => i.title.toLowerCase()).join("; "),
+            titles: high.map((i) => issueTitle(i).toLowerCase()).join("; "),
           })}
         </WarningBanner>
       ) : null}
@@ -300,8 +309,10 @@ export function DataQualityLive() {
                       <SeverityBadge severity={i.severity} />
                     </TD>
                     <TD>
-                      <div className="text-sm">{i.title}</div>
-                      <div className="max-w-xl text-caption text-muted-foreground">{i.detail}</div>
+                      <div className="text-sm">{issueTitle(i)}</div>
+                      <div className="max-w-xl text-caption text-muted-foreground">
+                        {issueDetail(i)}
+                      </div>
                     </TD>
                     <TD align="right">
                       <Numeric>{int(i.count)}</Numeric>

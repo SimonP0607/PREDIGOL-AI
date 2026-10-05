@@ -27,6 +27,8 @@ import { int } from "@/lib/format";
 import { shortHash, utcDate, utcDateTime } from "./format";
 import { baselineLabel, seasonLabel } from "./labels";
 import { Fact } from "./shared";
+import { CompetitionLogo, CountryFlag } from "@/components/football/Logos";
+import type { CompetitionSummary } from "@/lib/api/v1/types";
 import { localFixed } from "@/lib/i18n/format";
 
 const MODEL_LABEL: Record<string, string> = {
@@ -232,18 +234,7 @@ export function SettingsLive() {
           subtitle={t("research.settings.competitions.subtitle")}
         >
           {comps.data ? (
-            <ul className="space-y-1 text-sm">
-              {comps.data.data
-                .filter((c) => c.is_tracked)
-                .map((c) => (
-                  <li key={c.id} className="flex justify-between gap-3">
-                    <span>{c.name}</span>
-                    <span className="numeric text-caption text-subtle-foreground">
-                      {t("research.settings.competitions.league", { id: c.provider_league_id })}
-                    </span>
-                  </li>
-                ))}
-            </ul>
+            <TrackedCompetitions rows={comps.data.data} />
           ) : (
             <TableSkeleton rows={2} cols={2} />
           )}
@@ -384,5 +375,43 @@ export function SettingsLive() {
       ) : null}
       <WarningBanner tone="info">{t("research.settings.secrets")}</WarningBanner>
     </div>
+  );
+}
+
+/**
+ * The tracked competitions with their country: two "Bundesliga" or two "Serie A" are different leagues and the
+ * list must say which. Sorted by country (international last), then name.
+ */
+export function TrackedCompetitions({ rows }: { rows: CompetitionSummary[] }) {
+  const tracked = rows
+    .filter((c) => c.is_tracked)
+    .sort(
+      (a, b) =>
+        (a.country ?? "\uffff").localeCompare(b.country ?? "\uffff") ||
+        a.name.localeCompare(b.name),
+    );
+  return (
+    <>
+      <p className="mb-2 text-caption text-subtle-foreground">
+        {t("research.settings.competitions.count", { n: tracked.length })}
+      </p>
+      <ul className="space-y-1 text-sm">
+        {tracked.map((c) => (
+          <li key={c.id} className="flex items-center justify-between gap-3">
+            <span className="flex min-w-0 items-center gap-2">
+              <CompetitionLogo src={c.logo_url} name={c.name} size={16} />
+              <span className="truncate">{c.name}</span>
+              <span className="flex shrink-0 items-center gap-1 text-caption text-subtle-foreground">
+                <CountryFlag src={c.flag_url} name={c.country} height={10} />
+                {c.country ?? t("catalog.competitions.international")}
+              </span>
+            </span>
+            <span className="numeric shrink-0 text-caption text-subtle-foreground">
+              {t("research.settings.competitions.league", { id: c.provider_league_id })}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

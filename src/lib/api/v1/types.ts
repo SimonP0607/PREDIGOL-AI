@@ -427,8 +427,12 @@ export type ComponentStatus = "ok" | "degraded" | "down" | "unknown";
 
 export interface ComponentHealth {
   status: ComponentStatus;
+  /** The reason in English (logs, command line). Shown only when the code is unknown to this page. */
   detail: string;
   data: Record<string, unknown>;
+  /** Stable name of the reason (worker_alive, provider_ok...). Absent from older backends. */
+  code?: string;
+  vars?: Record<string, string | number | null>;
 }
 
 export interface SystemHealth {

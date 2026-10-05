@@ -7,6 +7,7 @@ import { t, translateOr } from "@/lib/i18n";
 import { formatDateTime, formatRelative } from "@/lib/time";
 import { Card, EmptyState, ErrorState, SkeletonCards } from "@/product/shared/States";
 import { cn } from "@/lib/utils";
+import { detailText } from "./auditDetail";
 
 const ACTIONS = [
   "login.succeeded",
@@ -34,13 +35,6 @@ const TONE: Record<string, string> = {
   "user.role_changed": "text-gold",
   "user.status_changed": "text-warning",
 };
-
-function detailText(detail: Record<string, unknown>): string {
-  const parts = Object.entries(detail).map(
-    ([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`,
-  );
-  return parts.join(" · ");
-}
 
 export function AuditPage() {
   const [action, setAction] = useState<string>("");

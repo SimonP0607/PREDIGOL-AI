@@ -183,7 +183,8 @@
     "competitions": {
       "title": "Tracked competitions",
       "subtitle": "config/competitions.yaml, applied with scripts.manage_competitions",
-      "league": "league {id}"
+      "league": "league {id}",
+      "count": "{n} tracked competitions, with their country: two leagues with the same name are different leagues"
     },
     "rule": {
       "title": "Decision rule",
