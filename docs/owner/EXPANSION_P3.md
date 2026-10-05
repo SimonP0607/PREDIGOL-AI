@@ -4,7 +4,20 @@ Mandato: añadir las 50 ligas adicionales **solo después de validar consumo, co
 progresiva. Código: backend `1d0caca` (sonda), `8a89f85` (tandas). Lista de candidatas: `config/expansion.yaml`
 (las 50 del informe de capacidad, `API_CAPACITY.md`).
 
-__RESULT__
+**Resultado medido (5 oct, 17:30 UTC):**
+
+* **Validación previa hecha con datos reales**: consumo (el recurrente usa ~10 % del presupuesto interno), cobertura
+  y calidad de las 50 candidatas con una sonda de 156 peticiones. Los datos que sirve el proveedor son **coherentes**
+  en todas (0 resultados sin resolver; goles = eventos en 48 de 50), pero **41 no tienen estadísticas** de equipo ni
+  de jugador y **14 no tienen alineaciones**.
+* **Tanda 1 activa**: 8 de las 50 que pasan la regla de datos + la Apertura paraguaya (la otra mitad de la temporada
+  de la Clausura) → **9 ligas seguidas** (124 → 133). Historia 2018–2026: 81 temporadas, **18.657 partidos
+  terminados, 100 % con resultado, 18.655 aprobados** por la validación histórica; 1.807 peticiones.
+* **Sin regresión**: auditoría de verdad nº 10 con la tanda dentro, **0 críticos / 0 altos**; registro **14/14
+  FRESH**; los 7 partidos próximos de la tanda ya tienen cuotas.
+* **Tanda 2: no hoy.** Se decide tras un día completo medido con la tanda 1 (consumo real por liga, cuotas en cada
+  ventana, frescura). Las demás candidatas no pasan hoy la regla de datos o esperan a su división completa o a su
+  próxima temporada (§5). Añadirlas ahora solo inflaría el número de ligas.
 
 ## 1. Consumo: hay margen
 
@@ -75,10 +88,42 @@ alineaciones.
    disco; seguidas 124 → **133**; ninguna otra competición cambió de estado. Logos y banderas desde RAW (0 peticiones).
 3. **Historia** como su propio nivel de migración (nivel 5): 81 temporadas, ~30.780 partidos, **1.789 peticiones**
    presupuestadas (calendarios 81, detalle 1.539, tablas 80, equipos 81, lesiones 7), 99 MB de RAW.
-   __MIGRATION__
+   Ejecutada entre 17:02 y 17:25 UTC por el motor de migración (y el job del worker en paralelo, con la cuota
+   compartida): **1.807 peticiones** reales (calendarios 108, detalle 1.531, tablas 80, equipos 81, lesiones 7), 0
+   rechazadas, 0 fallidas, más de 558.000 filas escritas. Una unidad (Championship escocesa 2021) quedó "running" cuando el worker
+   se reinició a mitad (despliegue be-99); el motor la retoma sola a los 30 min (`STALE_RUNNING`).
+
+| Liga | Temporadas | Partidos | Terminados | Con resultado | Con eventos | Con alineaciones | Con estadísticas |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| J2 League (99) | 9 (2018–2026) | 3.929 | 3.639 | 3.639 | 3.636 | 3.591 | 0 |
+| J3 League (100) | 9 | 2.928 | 2.638 | 2.638 | 2.624 | 2.361 | 0 |
+| Championship SCO (180) | 9 (falta 2021) | 1.605 | 1.424 | 1.424 | 1.424 | 1.424 | 0 |
+| League One SCO (183) | 9 | 1.636 | 1.414 | 1.414 | 1.413 | 1.404 | 0 |
+| Veikkausliiga (244) | 9 | 1.524 | 1.497 | 1.497 | 1.497 | 1.497 | 1.000 |
+| Apertura PAR (250) | 9 | 1.146 | 1.145 | 1.145 | 1.145 | 1.145 | 131 |
+| Clausura PAR (252) | 9 | 1.087 | 1.029 | 1.029 | 1.029 | 1.023 | 206 |
+| USL Championship (255) | 9 | 4.082 | 4.034 | 4.034 | 4.034 | 4.034 | 20 |
+| 2. liga SVK (506) | 9 | 1.990 | 1.837 | 1.837 | 1.652 | 1.651 | 0 |
+| **Total** | **81** | **19.927** | **18.657** | **18.657 (100 %)** | | | |
+
+4. **Validación de lo cargado (0 peticiones salvo la auditoría):**
+   * Validación histórica: de los 18.657 partidos terminados, **18.655 HISTORICAL_APPROVED** y 2 en cuarentena; las
+     81 temporadas quedan **PARTIAL** con una única razón: sin precios históricos (el proveedor no los da; ver §5).
+   * Elo recalculado: 228.632 partidos (antes 209.997), 2 filas por partido en todas las ligas nuevas.
+   * Auditoría de verdad nº 10 (17:25 UTC, 392 peticiones, 0 fallos): **0 críticos, 0 altos**; 133/133
+     competiciones; calendarios de 153 temporadas 283.700/283.704 campos iguales; resultados 480.480/480.487 (las
+     diferencias son las incoherencias y contradicciones del proveedor ya conocidas, una más en las ligas nuevas).
+   * Registro: **14/14 datasets FRESH** con la tanda dentro.
+   * Cuotas: los 7 partidos de la tanda en las próximas 72 h (Veikkausliiga 3, Clausura paraguaya 4) ya tienen precio
+     capturado (7/7) en su primera ventana, sin tocar el planificador.
+   * Calidad: 34.068 avisos *info* `INCOMPLETE_LINEUP` (alineaciones de ligas menores sin posición o rejilla para
+     algún jugador; nada se inventa) y 35 *warning*.
 
 ## 5. Qué falta para la tanda 2
 
+* **Trabajo de fondo que trae la tanda** (lo absorbe la asignación normal de los feeds de referencia, 300 peticiones
+  cada 30 min y nunca la reserva en vivo): 2.274 perfiles de jugadores de sus alineaciones, entrenadores y
+  estadísticas de temporada de sus equipos.
 * **Un día completo medido** con la tanda 1 dentro: peticiones reales por liga y partido contra el modelo de coste,
   cobertura de cuotas de sus partidos (precio en cada ventana alcanzada) y frescura en el registro. Hasta entonces no
   se añade la tanda 2.
