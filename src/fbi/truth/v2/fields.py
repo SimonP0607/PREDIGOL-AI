@@ -42,8 +42,8 @@ REGISTRY: dict[str, dict[str, Rule]] = {
         "fixture.periods.first": "core.fixture_facts.first_half_at",
         "fixture.periods.second": "core.fixture_facts.second_half_at",
         "fixture.venue.id": "core.fixtures.venue_id",
-        "fixture.venue.name": "core.venues.name",
-        "fixture.venue.city": "core.venues.city",
+        "fixture.venue.name": "core.fixtures.venue_name",
+        "fixture.venue.city": "core.fixtures.venue_city",
         "fixture.status.short": "core.fixtures.status_short",
         "fixture.status.long": "ignore:label of status.short",
         "fixture.status.elapsed": "ignore:live minute (live tables keep their own)",
@@ -209,7 +209,7 @@ REGISTRY.update({
         "venue.id": "core.venues.provider_venue_id", "venue.name": "core.venues.name",
         "venue.address": "core.venues.address", "venue.city": "core.venues.city",
         "venue.capacity": "core.venues.capacity", "venue.surface": "core.venues.surface",
-        "venue.image": "ignore:presentation (the URL is media.api-sports.io/football/venues/{id}.png)",
+        "venue.image": "core.venues.image_url",
     },
     "/players/profiles": {
         "player.id": "core.players.provider_player_id", "player.name": "core.players.name",
@@ -220,6 +220,15 @@ REGISTRY.update({
         "player.height": "core.players.height_cm", "player.weight": "core.players.weight_kg",
         "player.number": "ignore:held per team by /players/squads (core.squad_members.shirt_number)",
         "player.position": "core.players.position", "player.photo": "core.players.photo_url",
+    },
+    "/venues": {
+        "id": "core.venues.provider_venue_id", "name": "core.venues.name", "address": "core.venues.address",
+        "city": "core.venues.city", "country": "core.venues.country", "capacity": "core.venues.capacity",
+        "surface": "core.venues.surface", "image": "core.venues.image_url",
+    },
+    "/players/teams": {
+        "team.id": "core.player_team_seasons.provider_team_id", "team.name": "core.player_team_seasons.team_name",
+        "team.logo": "core.player_team_seasons.team_logo", "seasons[]": "core.player_team_seasons.seasons",
     },
     "/players/squads": {
         "team.id": "core.squad_members.team_id", "team.name": "ignore:catalogue", "team.logo": "ignore:presentation",
@@ -404,10 +413,6 @@ PREFIX: dict[str, tuple[tuple[str, Rule], ...]] = {
 }
 """Rules for every path under a prefix, after the exact ones."""
 RAW_ONLY: dict[str, str] = {
-    "/venues": "ignore:kept as RAW (audit samples) - the same venue fields arrive with /teams?league&season "
-               "(core.venues)",
-    "/players/teams": "ignore:kept as RAW (audit samples) - one request per player; the club / national-team split "
-                      "comes from squads and appearances",
     "/timezone": "ignore:kept as RAW only - requests are made in UTC (reference_refresh, every 90 days)",
     "/leagues/seasons": "ignore:kept as RAW only - every season is listed per league by /leagues (weekly)",
     "/players/seasons": "ignore:kept as RAW only - the seasons the provider has player statistics for (weekly)",

@@ -266,14 +266,42 @@ def db_absences(conn: psycopg.Connection, provider_ids: Sequence[int]) -> dict[i
 
 
 def db_latest_odds(conn: psycopg.Connection, provider_fixture_id: int) -> list[dict[str, Any]]:
-    return _rows(conn, """
+    """Our newest price per key, with the ``update`` stamp of the RAW answer it came from (``provider_update``)."""
+    rows = _rows(conn, """
         SELECT DISTINCT ON (o.bookmaker_id, o.market_key, o.selection, o.line)
                b.provider_bookmaker_id, b.name AS bookmaker, o.market_key, o.selection, o.line, o.odds_decimal,
-               o.captured_at
+               o.captured_at, o.payload_hash
           FROM market.odds_snapshots o JOIN core.fixtures f ON f.id = o.fixture_id
           JOIN market.bookmakers b ON b.id = o.bookmaker_id
          WHERE f.provider_fixture_id = %s
          ORDER BY o.bookmaker_id, o.market_key, o.selection, o.line, o.captured_at DESC""", (provider_fixture_id,))
+    stamps = payload_update_stamps(conn, {str(r["payload_hash"]) for r in rows if r.get("payload_hash")})
+    for r in rows:
+        r["provider_update"] = stamps.get(str(r.get("payload_hash")))
+    return rows
+
+
+def payload_update_stamps(conn: psycopg.Connection, hashes: set[str]) -> dict[str, datetime | None]:
+    """The provider's ``update`` stamp inside each stored /odds answer (None when the file cannot be read)."""
+    from fbi.core.config import settings
+    from fbi.ingestion.payload_store import PayloadStore
+
+    if not hashes:
+        return {}
+    root = Path(settings.runtime.raw_store_dir)
+    store = PayloadStore(root if root.is_absolute() else Path.cwd() / root)
+    out: dict[str, datetime | None] = {}
+    for r in _rows(conn, "SELECT hash, file_path FROM raw.ingestion_payloads WHERE hash = ANY(%s)", (sorted(hashes),)):
+        stamp = None
+        try:
+            body = store.load(str(r["file_path"])).get("body")
+            items = body.get("response") if isinstance(body, dict) else None
+            if isinstance(items, list) and items and isinstance(items[0], dict):
+                stamp = compare._when(items[0].get("update"))
+        except (OSError, ValueError):
+            stamp = None
+        out[str(r["hash"])] = stamp
+    return out
 
 
 # ── the run ─────────────────────────────────────────────────────────────────

@@ -597,7 +597,8 @@ def iter_teams(body: dict[str, Any]) -> Iterator[TeamRef]:
         venue: VenueRef | None = None
         if isinstance(raw_venue, dict) and (raw_venue.get("id") is not None or _text(raw_venue, "name")):
             venue = VenueRef(
-                provider_venue_id=raw_venue["id"] if isinstance(raw_venue.get("id"), int) else None,
+                provider_venue_id=raw_venue["id"] if isinstance(raw_venue.get("id"), int) and raw_venue["id"] > 0
+                else None,
                 name=_text(raw_venue, "name"),
                 city=_text(raw_venue, "city"),
                 country=_text(team, "country"),

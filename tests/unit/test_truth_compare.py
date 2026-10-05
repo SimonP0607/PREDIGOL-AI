@@ -205,6 +205,19 @@ def test_odds_captured_after_the_provider_update_must_match_exactly() -> None:
                          kickoff=NOW + timedelta(days=3), now=NOW, tally=t2)
     [f] = t2.findings
     assert (f.kind, f.severity) == (Kind.STALE, Severity.LOW)
+    cached = [dict(after[0], provider_update=update - timedelta(hours=4))]
+    t3 = Tally("odds")
+    compare.compare_odds(quotes, {8: "Bet365"}, update, cached, {8: "Bet365"}, provider_fixture_id=1,
+                         kickoff=NOW + timedelta(hours=5), now=NOW, tally=t3)
+    [f] = t3.findings
+    assert (f.kind, f.severity) == (Kind.STALE, Severity.MEDIUM), \
+        "captured after the provider's update, but the answer was an older one (5 Oct 2026: the provider served a " \
+        "cached answer): stale, not a mismatch"
+    current = [dict(after[0], provider_update=update)]
+    t4 = Tally("odds")
+    compare.compare_odds(quotes, {8: "Bet365"}, update, current, {8: "Bet365"}, provider_fixture_id=1,
+                         kickoff=NOW + timedelta(hours=5), now=NOW, tally=t4)
+    assert [(f.kind, f.severity) for f in t4.findings] == [(Kind.MISMATCH, Severity.HIGH)]
 
 
 def test_a_player_without_a_profile_is_reported_as_never_fetched() -> None:

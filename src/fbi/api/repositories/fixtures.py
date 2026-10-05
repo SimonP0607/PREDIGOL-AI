@@ -116,13 +116,28 @@ def get_venue(conn: Conn, venue_id: int) -> Row | None:
                            "WHERE id = %s", (venue_id,))
 
 
+def _same_place(a: object, b: object) -> bool:
+    """Two spellings of one name: case, accents, punctuation and spacing aside."""
+    import unicodedata
+
+    def norm(x: object) -> str:
+        text = unicodedata.normalize("NFKD", str(x or "")).encode("ascii", "ignore").decode().lower()
+        return "".join(ch for ch in text if ch.isalnum())
+
+    return bool(norm(a)) and norm(a) == norm(b)
+
+
 def fixture_venue(conn: Conn, row: Row) -> Row | None:
-    """The match's venue: the identified one with its details, else the name and city the fixture payload gave."""
-    if row.get("venue_id"):
-        return get_venue(conn, int(row["venue_id"]))
-    if row.get("venue_name"):
-        return {"id": None, "name": row["venue_name"], "city": row.get("venue_city")}
-    return None
+    """The match's venue AS ITS PAYLOAD NAMES IT, with the venue's details (capacity, surface...) only when the venue
+    the provider's id points at is that same ground. The id alone is not enough: the provider keeps a club's venue
+    id for a home match played elsewhere (Milan v Como at Optus Stadium, Perth, carries San Siro's id) and uses one
+    venue id for different grounds. A fixture with no name of its own falls back to the identified venue."""
+    venue = get_venue(conn, int(row["venue_id"])) if row.get("venue_id") else None
+    if not row.get("venue_name"):
+        return venue
+    if venue is not None and _same_place(venue["name"], row["venue_name"]):
+        return {**venue, "name": row["venue_name"], "city": row.get("venue_city") or venue.get("city")}
+    return {"id": None, "name": row["venue_name"], "city": row.get("venue_city")}
 
 
 def latest_quotes(conn: Conn, fixture_id: int) -> list[Row]:

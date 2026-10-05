@@ -764,8 +764,13 @@ def compare_odds(api_quotes: Sequence[Mapping[str, Any]], api_books: Mapping[int
 
     ``api_quotes`` are the provider's prices for the markets we model, keyed the way we
     store them (bookmaker, market, selection, line, odds). ``db_latest`` is our newest
-    price per key, with ``captured_at``. When our capture is at or after the provider's
-    own ``update`` stamp the two must be identical; before it, ours is merely older.
+    price per key, with ``captured_at`` and, when its RAW payload could be read, that
+    payload's own ``provider_update`` stamp. The two must be identical only when the answer
+    we captured was the provider's current one: its ``update`` stamp at or after the stamp
+    the provider sends now. Our capture TIME is not enough - on 5 Oct 2026 a capture at
+    12:49 UTC got an answer stamped 08:14 while the provider's data was already stamped
+    12:17 (it serves cached answers), and the audit called 280 such prices a HIGH mismatch.
+    Without the payload's stamp, the capture time stands in for it.
     """
     entity = f"fixture {provider_fixture_id}"
     soon = kickoff is not None and kickoff - now < timedelta(hours=24)
@@ -790,21 +795,25 @@ def compare_odds(api_quotes: Sequence[Mapping[str, Any]], api_books: Mapping[int
         captured = _when(db.get("captured_at"))
         if _num(db.get("odds_decimal")) == _num(q.get("odds_decimal")):
             continue
-        if api_update is not None and captured is not None and captured >= api_update:
+        basis = _when(db.get("provider_update")) or captured
+        if api_update is not None and basis is not None and basis >= api_update:
             mismatched += 1
             example.setdefault("mismatch", f"{key}: provider {q.get('odds_decimal')}, ours {db.get('odds_decimal')} "
-                                           f"captured {captured:%H:%M}Z after the provider's update {api_update:%H:%M}Z")
+                                           f"from an answer stamped {basis:%H:%M}Z, the provider's now "
+                                           f"{api_update:%H:%M}Z")
         else:
             stale += 1
             example.setdefault("stale", f"{key}: provider {q.get('odds_decimal')} (update {api_update}), ours "
-                                        f"{db.get('odds_decimal')} captured {captured}")
+                                        f"{db.get('odds_decimal')} captured {captured} from an answer stamped "
+                                        f"{db.get('provider_update') or 'unknown'}")
     if absent:
         tally.add(Finding.of("odds", entity, "prices", Kind.MISSING_IN_DB, Severity.MEDIUM if soon else Severity.LOW,
                              api=f"{absent} of {len(api_quotes)} prices never captured", db=example.get("absent")))
     if mismatched:
         tally.add(Finding.of("odds", entity, "prices", Kind.MISMATCH, Severity.HIGH,
                              api=f"{mismatched} prices differ", db=example.get("mismatch"),
-                             note="captured after the provider's last update, so they should be identical"))
+                             note="our answer carried the provider's current update stamp, so they should be "
+                                  "identical"))
     if stale:
         tally.add(Finding.of("odds", entity, "prices", Kind.STALE, Severity.MEDIUM if soon else Severity.LOW,
                              api=f"{stale} prices moved since our last capture", db=example.get("stale")))

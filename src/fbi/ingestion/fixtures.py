@@ -178,15 +178,23 @@ class FixtureRepository:
 
         A venue the provider does not identify is not created: a name without
         an id cannot be deduplicated, and a duplicated venue is worse than none.
+        Neither is one with id 0, the provider's "no id" (until 5 Oct 2026 it made
+        one venue of 154 stadiums).
+
+        A fixture's venue block names a new venue; it never changes a known one.
+        It is what the provider called the ground for that match - a Milan home
+        match played in Perth keeps San Siro's id and says "Optus Stadium" - and
+        the fixture keeps that name itself (venue_name). The venue's own name comes
+        from /venues or /teams.
         """
-        venues = {r.provider_venue_id: r for r in refs if r.provider_venue_id is not None and r.venue_name}
+        venues = {r.provider_venue_id: r for r in refs
+                  if r.provider_venue_id is not None and r.provider_venue_id > 0 and r.venue_name}
         if not venues:
             return {}
         with self._conn.cursor(row_factory=tuple_row) as cur:
             cur.executemany(
                 "INSERT INTO core.venues (provider_venue_id, name, city) VALUES (%s, %s, %s) "
-                "ON CONFLICT (provider_venue_id) DO UPDATE SET name = EXCLUDED.name, "
-                "city = COALESCE(EXCLUDED.city, core.venues.city)",
+                "ON CONFLICT (provider_venue_id) DO NOTHING",
                 [(vid, r.venue_name, r.venue_city) for vid, r in venues.items()],
             )
             cur.execute(

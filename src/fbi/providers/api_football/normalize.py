@@ -383,7 +383,8 @@ def iter_fixtures(body: dict[str, Any]) -> Iterator[FixtureRef]:
                 provider_away_team_id=int(away["id"]),
                 status_short=canonical_status((fixture.get("status") or {}).get("short")),
                 round=str(round_name) if isinstance(round_name, str) and round_name else None,
-                provider_venue_id=int(venue_id) if isinstance(venue_id, int) else None,
+                # 0 is the provider's "no id", not a venue: keyed on it, 154 stadiums became one (5 Oct 2026).
+                provider_venue_id=int(venue_id) if isinstance(venue_id, int) and venue_id > 0 else None,
                 venue_name=_text(venue.get("name")),
                 venue_city=_text(venue.get("city")),
             )

@@ -41,10 +41,10 @@ def test_registry_covers_every_normalized_endpoint() -> None:
                      "/players/squads", "/odds", "/odds/live", "/predictions", "/fixtures/rounds", "/players/topscorers",
                      "/players/topassists", "/players/topyellowcards", "/players/topredcards", "/coachs", "/transfers",
                      "/sidelined", "/trophies", "/countries", "/odds/mapping", "/odds/bets", "/odds/live/bets",
-                     "/odds/bookmakers", "/players", "/teams/statistics"):
+                     "/odds/bookmakers", "/players", "/teams/statistics", "/venues", "/players/teams"):
         assert fl.REGISTRY[endpoint], endpoint
-    assert set(fl.RAW_ONLY) == {"/venues", "/players/teams", "/timezone", "/leagues/seasons", "/players/seasons",
-                                "/teams/countries", "/teams/seasons"}
+    assert set(fl.RAW_ONLY) == {"/timezone", "/leagues/seasons", "/players/seasons", "/teams/countries",
+                                "/teams/seasons"}, "/venues and /players/teams are normalized since 5 Oct 2026"
     assert all(rule.startswith("ignore:") for rule in fl.RAW_ONLY.values()), "every RAW-only list is a decision"
 
 

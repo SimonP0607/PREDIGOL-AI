@@ -274,3 +274,90 @@ def test_the_player_page_shows_the_providers_aggregate_and_teams_labelled_as_the
     assert [c.team for c in d.career.data] == ["America de Cali", "Manchester United", "Colombia"]
     assert d.career.data[1].team_id == seed.home_team_id and d.career.data[0].team_id is None
     assert d.provenance["career"].checked_at == T0 + timedelta(hours=1)
+
+
+# ── venue identity (found while completing /venues) ─────────────────────────────────────────────────
+
+
+def test_id_zero_is_not_a_venue_and_a_fixture_block_never_renames_one(db: psycopg.Connection, seed: Seed) -> None:
+    from fbi.providers.api_football.normalize import iter_fixtures
+
+    body = {"response": [{"fixture": {"id": 86301, "date": "2026-10-08T19:00:00+00:00", "status": {"short": "NS"},
+                                      "venue": {"id": 0, "name": "Allianz Arena", "city": "Munich"}},
+                          "league": {"id": 39, "season": 2025}, "teams": {"home": {"id": 33}, "away": {"id": 40}}}]}
+    parsed = next(iter_fixtures(body))
+    assert parsed.provider_venue_id is None and parsed.venue_name == "Allianz Arena", "0 is the provider's 'no id'"
+    repo = FixtureRepository(db)
+    assert repo.ensure_venues([ref_(86302, 0, "Estadio Banorte", "Mexico City")]) == {}
+    db.execute("INSERT INTO core.venues (provider_venue_id, name, city) VALUES (907, 'Stadio Giuseppe Meazza', NULL)")
+    perth = ref_(86302, 907, "Optus Stadium", "Perth")
+    venues = repo.ensure_venues([perth])
+    assert db.execute("SELECT name, city FROM core.venues WHERE provider_venue_id = 907").fetchone() == (
+        "Stadio Giuseppe Meazza", None), "a fixture block never changes a known venue (not even a missing city)"
+    repo.upsert_fixtures([perth], {(39, 2025): seed.season_id}, {33: seed.home_team_id, 40: seed.away_team_id},
+                         venue_ids=venues)
+    fx = db.execute("SELECT id FROM core.fixtures WHERE provider_fixture_id = 86302").fetchone()
+    assert fx is not None
+    full = get_fixture(db, int(fx[0]))
+    assert full is not None and full["venue_id"] == venues[907]
+    shown = fixture_venue(db, full)
+    assert shown == {"id": None, "name": "Optus Stadium", "city": "Perth"}, \
+        "the match is shown where its payload says it is played; San Siro's details are not attached to Perth"
+    db.execute("UPDATE core.venues SET capacity = 75817 WHERE provider_venue_id = 907")
+    db.execute("UPDATE core.fixtures SET venue_name = 'Stadio Giuseppe  Meazza', venue_city = 'Milano' "
+               "WHERE provider_fixture_id = 86302")
+    full = get_fixture(db, int(fx[0]))
+    assert full is not None
+    same = fixture_venue(db, full)
+    assert same is not None and same["id"] == venues[907] and same["capacity"] == 75817, \
+        "the same ground (spelling aside): its details are shown"
+
+
+def test_the_venue_identity_repair_unpoints_id_zero_and_restores_described_names(db: psycopg.Connection, seed: Seed,
+                                                                                tmp_path: Path) -> None:
+    from scripts.repair_venue_identity import repair
+
+    teams_body = {"response": [{"team": {"id": 33, "name": "Manchester United"},
+                                "venue": {"id": 7101, "name": "Old Trafford", "city": "Manchester"}}]}
+    stored = PayloadStore(tmp_path).store(endpoint="/teams", params={"league": 39, "season": 2025}, fetched_at=T0,
+                                          http_status=200, body=teams_body)
+    db.execute("INSERT INTO raw.ingestion_payloads (hash, run_id, endpoint, params, fetched_at, http_status, "
+               "results_count, file_path, bytes) VALUES (%s, %s, '/teams', '{}', %s, 200, 1, %s, %s)",
+               (stored.hash, seed.run_id, T0, stored.file_path, stored.bytes_written))
+    zero = db.execute("INSERT INTO core.venues (provider_venue_id, name, city) VALUES (0, 'Estadio Banorte', "
+                      "'Mexico City') RETURNING id").fetchone()
+    real = db.execute("INSERT INTO core.venues (provider_venue_id, name, city, source_payload_hash, source_fetched_at) "
+                      "VALUES (7101, 'Optus Stadium', 'Perth', %s, %s) RETURNING id", (stored.hash, T0)).fetchone()
+    assert zero is not None and real is not None
+    db.execute("UPDATE core.fixtures SET venue_id = %s WHERE id = %s", (zero[0], seed.fixture_id))
+    db.execute("UPDATE core.teams SET venue_id = %s WHERE id = %s", (zero[0], seed.away_team_id))
+    db.commit()
+    try:
+        dry = repair(db, tmp_path, apply=False)
+        assert dry.pointers == {"core.fixtures": 1, "core.teams": 1} and dry.renamed == 1 and dry.city_restored == 1
+        assert db.execute("SELECT venue_id FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone() \
+            == (zero[0],), "a dry run writes nothing"
+        done = repair(db, tmp_path, apply=True)
+        assert not done.problems
+        assert db.execute("SELECT venue_id FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone() == (None,)
+        assert db.execute("SELECT venue_id FROM core.teams WHERE id = %s", (seed.away_team_id,)).fetchone() == (None,)
+        assert db.execute("SELECT name, city FROM core.venues WHERE id = %s", (real[0],)).fetchone() \
+            == ("Old Trafford", "Manchester")
+        assert db.execute("SELECT count(*) FROM core.venues WHERE id = %s", (zero[0],)).fetchone() == (1,), \
+            "the id-0 row is kept, unreferenced"
+        rows = db.execute("SELECT rule, entity, field, before_value, after_value FROM audit.data_repairs "
+                          "WHERE rule IN ('venue_id_zero', 'venue_name_from_source') ORDER BY entity, field").fetchall()
+        assert rows == [("venue_id_zero", "core.fixtures", "venue_id", str(zero[0]), None),
+                        ("venue_id_zero", "core.teams", "venue_id", str(zero[0]), None),
+                        ("venue_name_from_source", "core.venues", "city", "Perth", "Manchester"),
+                        ("venue_name_from_source", "core.venues", "name", "Optus Stadium", "Old Trafford")]
+        again = repair(db, tmp_path, apply=True)
+        assert again.pointers == {} and again.renamed == 0, "idempotent"
+    finally:
+        db.rollback()
+        db.execute("UPDATE core.fixtures SET venue_id = NULL WHERE id = %s", (seed.fixture_id,))
+        db.execute("UPDATE core.teams SET venue_id = NULL WHERE id = %s", (seed.away_team_id,))
+        db.execute("DELETE FROM audit.data_repairs WHERE rule IN ('venue_id_zero', 'venue_name_from_source')")
+        db.execute("DELETE FROM core.venues WHERE id IN (%s, %s)", (zero[0], real[0]))
+        db.execute("DELETE FROM raw.ingestion_payloads WHERE hash = %s", (stored.hash,))
+        db.commit()
