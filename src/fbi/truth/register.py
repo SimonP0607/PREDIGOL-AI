@@ -158,7 +158,10 @@ SELECT area, count(*) AS n FROM audit.evidence_ledger
  WHERE status = 'OPEN' AND at_fault = 'predigol' AND severity IN ('critical', 'high') GROUP BY area
 """
 
-DATASET_VERSION_SQL = "SELECT name, status FROM audit.dataset_versions ORDER BY (status = 'MODEL_READY') DESC LIMIT 1"
+DATASET_VERSION_SQL = ("SELECT name, status FROM audit.dataset_versions "
+                       "ORDER BY (status = 'MODEL_READY') DESC, created_at DESC, name DESC LIMIT 1")
+"""The version models train on, or - when none is MODEL_READY - the newest one, which is what a person would promote
+(until 5 Oct 2026 the tie fell on an arbitrary row: the register named the LEGACY version as the one to train on)."""
 
 NORMALIZATION_SQL = """
 SELECT entity_type, count(*) AS n FROM audit.data_quality_issues
@@ -196,8 +199,9 @@ def build(conn: psycopg.Connection[Any], freshness: list[DatasetFreshness], *, a
         if role in (Need.NOT_USED, Need.UNAVAILABLE_BY_PROVIDER):
             model, reason = "NOT_USED", "no model reads it (product and reference only)"
         elif not version_ready:
-            model, reason = "NOT_MODEL_READY", (f"the dataset version models train on ({version['name'] if version else '-'}"
-                                                f") is {version['status'] if version else 'missing'}, not MODEL_READY")
+            model, reason = "NOT_MODEL_READY", (f"no dataset version is MODEL_READY (the newest, "
+                                                f"{version['name'] if version else '-'}, is "
+                                                f"{version['status'] if version else 'missing'}): models may not train")
         elif klass != "FRESH":
             model, reason = "NOT_MODEL_READY", f"the dataset is {klass}"
         else:

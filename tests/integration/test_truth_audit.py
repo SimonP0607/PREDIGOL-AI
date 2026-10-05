@@ -230,3 +230,20 @@ def test_the_register_counts_the_rows_of_a_partitioned_table(migrated_database: 
             assert row is not None and row[1] >= 500
         finally:
             conn.execute("DROP TABLE public.register_part")
+
+
+def test_the_register_names_the_newest_version_when_none_is_model_ready(migrated_database: str) -> None:
+    """With a LEGACY and a VALIDATED version, the register named the LEGACY one as 'the version models train on'."""
+    from fbi.truth.register import DATASET_VERSION_SQL, build
+
+    with psycopg.connect(migrated_database) as conn:
+        try:
+            conn.execute("INSERT INTO audit.dataset_versions (name, status, model_ready, built_from, code_version, "
+                         "created_at) VALUES ('T_LEGACY', 'LEGACY', false, 'x', 'x', now() - interval '1 day'), "
+                         "('T_V2', 'VALIDATED', false, 'x', 'x', now())")
+            assert conn.execute(DATASET_VERSION_SQL).fetchone() == ("T_V2", "VALIDATED")
+            rows = {r.dataset: r for r in build(conn, measure(conn, at=NOW), at=NOW)}
+            assert rows["results"].model == "NOT_MODEL_READY"
+            assert "the newest, T_V2, is VALIDATED" in rows["results"].model_reason
+        finally:
+            conn.rollback()
