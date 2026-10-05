@@ -58,6 +58,7 @@ import type {
   CompetitionScoreRow,
   DataRepair,
   FindingsQuery,
+  DatasetRegister,
   FreshnessReport,
   GateReport,
   OddsCoverageReport,
@@ -349,6 +350,7 @@ export const v1 = {
   truthFindings: (runId: number, q: FindingsQuery = {}) =>
     getJson<Envelope<TruthFinding[]>>(`/admin/truth/runs/${runId}/findings`, q as Params),
   freshness: () => getJson<Envelope<FreshnessReport>>("/admin/data/freshness"),
+  datasets: () => getJson<Envelope<DatasetRegister>>("/admin/data/datasets"),
   gate: (hours = 72) => getJson<Envelope<GateReport>>("/admin/data/gate", { horizon_hours: hours }),
   standingsAudit: () => getJson<Envelope<StandingsAuditRow[]>>("/admin/data/standings"),
   repairs: () => getJson<Envelope<DataRepair[]>>("/admin/data/repairs", { limit: 200 }),

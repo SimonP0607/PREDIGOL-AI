@@ -194,6 +194,12 @@ export const live = {
     refetchInterval: 2 * MINUTE,
     staleTime: MINUTE,
   },
+  datasets: {
+    queryKey: ["v1", "data", "datasets"],
+    queryFn: v1.datasets,
+    refetchInterval: 2 * MINUTE,
+    staleTime: MINUTE,
+  },
   gate: (hours: number) => ({
     queryKey: ["v1", "data", "gate", hours],
     queryFn: () => v1.gate(hours),

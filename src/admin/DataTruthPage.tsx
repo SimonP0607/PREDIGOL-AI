@@ -35,12 +35,14 @@ import { t, translateOr } from "@/lib/i18n";
 import { localInt, localPct } from "@/lib/i18n/format";
 import { formatDateTime, formatRelative } from "@/lib/time";
 import { EmptyState, ErrorState } from "@/product/shared/States";
+import { DatasetsTab } from "./DatasetsTab";
 import { OddsCoverageTab } from "./OddsCoverageTab";
 import { TruthV2Tab } from "./TruthV2Tab";
 import { ValidationTab } from "./ValidationTab";
 
 const TABS = [
   "audit_v2",
+  "datasets",
   "matrix",
   "freshness",
   "standings",
@@ -61,6 +63,7 @@ const KINDS: FindingKind[] = [
   "stale",
   "provider_lag",
   "inconsistent",
+  "provider_contradiction",
 ];
 
 const STATE_TONE: Record<FreshnessState, BadgeTone> = {
@@ -144,14 +147,18 @@ export function DataTruthPage() {
   const [tab, setTab] = useState<Tab>("audit_v2");
   const latest = useQuery({ ...live.truthLatest });
   const fresh = useQuery({ ...live.freshness });
+  const register = useQuery({ ...live.datasets });
+  const v2 = useQuery({ ...live.truthV2 });
   const gate = useQuery({ ...live.gate(72) });
   const summary = latest.data?.data ?? null;
 
-  const serious = summary
-    ? (summary.run.by_severity.critical ?? 0) + (summary.run.by_severity.high ?? 0)
-    : null;
+  // The evidence ledger is the record of what is open now; a sample audit's findings are a snapshot of its day.
+  const open = v2.data?.data?.counts?.["OPEN"];
+  const serious = v2.data?.data ? (open?.["critical"] ?? 0) + (open?.["high"] ?? 0) : null;
   const datasets = fresh.data?.data?.datasets ?? [];
-  const freshCount = datasets.filter((d) => d.status === "FRESH").length;
+  const rows = register.data?.data?.rows ?? [];
+  const measurable = rows.filter((r) => r.klass !== "UNKNOWN");
+  const freshCount = measurable.filter((r) => r.klass === "FRESH").length;
   const baseline = gate.data?.data?.models.find((m) => m.model === "market_baseline");
 
   return (
@@ -178,16 +185,22 @@ export function DataTruthPage() {
         <MetricCard
           label={t("truth.cards.serious")}
           value={serious === null ? "—" : localInt(serious)}
-          hint={
-            summary ? t("truth.cards.seriousHint", { total: localInt(summary.run.findings) }) : ""
-          }
+          hint={t("truth.cards.seriousHint", {
+            sample: summary
+              ? localInt(
+                  (summary.run.by_severity.critical ?? 0) + (summary.run.by_severity.high ?? 0),
+                )
+              : "—",
+          })}
           tone={serious ? "negative" : "default"}
         />
         <MetricCard
           label={t("truth.cards.fresh")}
-          value={datasets.length ? `${freshCount} / ${datasets.length}` : "—"}
-          hint={t("truth.cards.freshHint")}
-          tone={datasets.length && freshCount < datasets.length ? "warning" : "default"}
+          value={measurable.length ? `${freshCount} / ${measurable.length}` : "—"}
+          hint={t("truth.cards.freshHint", {
+            unknown: rows.length - measurable.length,
+          })}
+          tone={measurable.length && freshCount < measurable.length ? "warning" : "default"}
         />
         <MetricCard
           label={t("truth.cards.gate")}
@@ -213,6 +226,7 @@ export function DataTruthPage() {
       />
 
       {tab === "audit_v2" ? <TruthV2Tab /> : null}
+      {tab === "datasets" ? <DatasetsTab /> : null}
       {tab === "matrix" ? (
         <MatrixTab summary={summary} loading={latest.isPending} error={latest.error} />
       ) : null}

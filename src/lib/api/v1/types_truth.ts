@@ -9,7 +9,8 @@ export type FindingKind =
   | "not_stored"
   | "stale"
   | "provider_lag"
-  | "inconsistent";
+  | "inconsistent"
+  | "provider_contradiction";
 
 export interface TruthRun {
   id: number;
@@ -60,6 +61,40 @@ export interface FreshnessDataset {
 export interface FreshnessReport {
   measured_at: string;
   datasets: FreshnessDataset[];
+}
+
+export type DatasetClass = "FRESH" | "STALE" | "INCOMPLETE" | "INVALID" | "UNKNOWN";
+export type ModelEligibility = "MODEL_READY" | "NOT_MODEL_READY" | "NOT_USED";
+
+/** One of the fourteen datasets with the evidence for its class (GET /admin/data/datasets). */
+export interface DatasetRegisterRow {
+  dataset: string;
+  klass: DatasetClass;
+  model: ModelEligibility;
+  model_reason: string;
+  role: string;
+  endpoints: string[];
+  sla: string;
+  freshness: string;
+  /** Fresh share of what we are responsible for (the provider's own gaps excluded). */
+  coverage: number | null;
+  /** Share the provider does not have (its coverage flag or its lag). */
+  provider_gap: number | null;
+  last_capture: string | null;
+  last_write: string | null;
+  rows: number;
+  errors_24h: number;
+  failed_runs_24h: number;
+  open_findings: number;
+  blockers: string[];
+  notes: string[];
+}
+
+export interface DatasetRegister {
+  measured_at: string;
+  dataset_version: string | null;
+  dataset_version_status: string | null;
+  rows: DatasetRegisterRow[];
 }
 
 export interface GateModel {

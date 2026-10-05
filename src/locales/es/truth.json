@@ -12,15 +12,16 @@
     "runs": "Auditorías",
     "odds": "Cobertura de cuotas",
     "validation": "Validación",
-    "audit_v2": "Auditoría V2"
+    "audit_v2": "Auditoría V2",
+    "datasets": "Datasets"
   },
   "cards": {
     "lastAudit": "Última auditoría",
     "lastAuditHint": "#{id} · {requests} peticiones al proveedor",
     "serious": "Hallazgos críticos y altos",
-    "seriousHint": "{total} hallazgos en total",
+    "seriousHint": "abiertos en el registro de evidencias · la última auditoría de muestra halló {sample}",
     "fresh": "Datasets al día",
-    "freshHint": "según su nivel de servicio, medido ahora",
+    "freshHint": "medibles ahora, según su nivel de servicio · {unknown} sin nada que medir",
     "gate": "Partidos que el baseline de mercado puede valorar",
     "gateHint": "{pass} de {total} en las próximas {hours} h"
   },
@@ -85,7 +86,8 @@
     "not_stored": "no se guarda",
     "stale": "desactualizado",
     "provider_lag": "retraso del proveedor",
-    "inconsistent": "incoherente"
+    "inconsistent": "incoherente",
+    "provider_contradiction": "el proveedor se contradice"
   },
   "state": {
     "FRESH": "Al día",
@@ -548,6 +550,37 @@
       "identity": "Identidad",
       "normalization": "Normalización",
       "coaches": "Entrenadores"
+    }
+  },
+  "register": {
+    "title": "Los 14 datasets",
+    "subtitle": "Clase, si un modelo puede usarlo y la evidencia. Versión de datos para modelos: {version} ({status}). Medido {when}.",
+    "empty": "No hay datasets que medir.",
+    "dataset": "Dataset",
+    "class": "Clase",
+    "model": "Modelos",
+    "endpoint": "Endpoint",
+    "capture": "Captura / escritura",
+    "rows": "Filas",
+    "coverage": "Cobertura",
+    "errors": "Errores 24 h",
+    "blockers": "Bloqueos",
+    "captured": "captura",
+    "written": "escritura",
+    "gap": "el proveedor no tiene {share}",
+    "badRuns": "{n} ejecuciones fallidas o parciales",
+    "legend": "FRESH: al día. STALE: el proveedor tiene datos más nuevos y pedirlos era nuestro trabajo. INCOMPLETE: un 5 % o más nunca se leyó. INVALID: hay un hallazgo crítico o alto abierto atribuible a PrediGol. UNKNOWN: nada que medir ahora. Lo que el proveedor no tiene no cuenta contra nosotros. Un modelo solo puede usar un dataset FRESH dentro de una versión de datos MODEL_READY.",
+    "classes": {
+      "FRESH": "al día",
+      "STALE": "desactualizado",
+      "INCOMPLETE": "incompleto",
+      "INVALID": "inválido",
+      "UNKNOWN": "sin medir"
+    },
+    "models": {
+      "MODEL_READY": "apto para modelos",
+      "NOT_MODEL_READY": "no apto aún",
+      "NOT_USED": "no lo usa ningún modelo"
     }
   }
 }
