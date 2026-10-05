@@ -91,7 +91,7 @@ LEFT JOIN agg ON agg.team_id = t.id
 WHERE (%(q)s::text IS NULL OR t.name ILIKE %(q)s::text)
   AND (%(team_id)s::bigint IS NULL OR t.id = %(team_id)s::bigint)
   AND (%(competition_id)s::bigint IS NULL OR agg.fixtures > 0)
-ORDER BY t.name
+ORDER BY COALESCE(agg.fixtures, 0) DESC, t.name
 LIMIT %(limit)s OFFSET %(offset)s
 """
 
