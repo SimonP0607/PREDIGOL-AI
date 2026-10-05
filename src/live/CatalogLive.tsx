@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { countryLabel } from "@/product/matches/country";
 import { t, translateOr } from "@/lib/i18n";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -115,7 +116,8 @@ export function CompetitionsLive() {
                     <TD>
                       <div className="text-sm">{c.name}</div>
                       <div className="text-caption text-subtle-foreground">
-                        {c.country ?? t("catalog.competitions.international")}
+                        {countryLabel(c.country, c.country_code) ??
+                          t("catalog.competitions.international")}
                       </div>
                     </TD>
                     <TD className="text-xs text-muted-foreground">
@@ -183,7 +185,7 @@ function CompetitionDetailPanel({ id }: { id: number }) {
     <div className="space-y-4">
       <Panel
         title={c.name}
-        subtitle={`${c.country ?? t("catalog.competitions.international")} · ${t(
+        subtitle={`${countryLabel(c.country, c.country_code) ?? t("catalog.competitions.international")} · ${t(
           "catalog.competitions.detail.providerLeague",
           { id: c.provider_league_id },
         )}`}

@@ -2,6 +2,7 @@
 import { v1, type MatchQuery } from "./client";
 import type { ParlayKind, PicksQuery } from "./types_product";
 import type { HistoryPeriod } from "./types_records";
+import type { RatingPool } from "./types";
 import type { FindingsQuery, ScoresQuery } from "./types_truth";
 
 const MINUTE = 60_000;
@@ -140,9 +141,9 @@ export const live = {
     queryFn: v1.notifications,
     refetchInterval: MINUTE,
   },
-  rankings: (competitionId?: number) => ({
-    queryKey: ["v1", "rankings", competitionId ?? "all"],
-    queryFn: () => v1.rankings(competitionId),
+  rankings: (competitionId?: number, pool: RatingPool = "men") => ({
+    queryKey: ["v1", "rankings", competitionId ?? "all", pool],
+    queryFn: () => v1.rankings(competitionId, pool),
   }),
   picks: { queryKey: ["v1", "picks"], queryFn: v1.picks },
   performance: { queryKey: ["v1", "performance"], queryFn: v1.performance },

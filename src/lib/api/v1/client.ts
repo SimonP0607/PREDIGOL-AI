@@ -35,6 +35,7 @@ import type {
   QualityIssue,
   QualityReport,
   Rankings,
+  RatingPool,
   RunSummary,
   SearchHit,
   SystemHealth,
@@ -312,9 +313,10 @@ export const v1 = {
       note: note || null,
     }),
   notifications: () => getJson<Envelope<NotificationsOverview>>("/admin/notifications"),
-  rankings: (competitionId?: number) =>
+  rankings: (competitionId?: number, pool: RatingPool = "men") =>
     getJson<Envelope<Rankings | null>>("/admin/rankings", {
       competition_id: competitionId,
+      pool,
       limit: 200,
     }),
   models: () => getJson<Envelope<ModelsOverview>>("/admin/models"),

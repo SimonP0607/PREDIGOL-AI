@@ -988,6 +988,9 @@ export interface RatingRow {
   provisional: boolean;
 }
 
+/** Elo rating pools that never play each other (senior men, women, youth), or all in one list. */
+export type RatingPool = "men" | "women" | "youth" | "all";
+
 export interface Rankings {
   elo_version: string;
   run_id: number;

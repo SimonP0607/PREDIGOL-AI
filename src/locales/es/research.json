@@ -225,7 +225,15 @@
     "ratedMatches": "Partidos computados",
     "lastMatch": "Último partido",
     "provisional": "provisional",
-    "fewMatches": "Menos de cinco partidos computados."
+    "fewMatches": "Menos de cinco partidos computados.",
+    "pool": "Grupo",
+    "pools": {
+      "men": "Masculino absoluto",
+      "women": "Femenino",
+      "youth": "Juveniles",
+      "all": "Todos (no comparables entre sí)"
+    },
+    "poolNote": "Hombres, mujeres y juveniles nunca juegan entre sí: sus Elo salen de recorridos separados y no se comparan en una misma lista."
   },
   "v2": {
     "title": "Investigación V2 - roles frente al mercado",

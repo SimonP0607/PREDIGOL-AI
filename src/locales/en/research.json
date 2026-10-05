@@ -225,7 +225,15 @@
     "ratedMatches": "Rated matches",
     "lastMatch": "Last match",
     "provisional": "provisional",
-    "fewMatches": "Fewer than five rated matches."
+    "fewMatches": "Fewer than five rated matches.",
+    "pool": "Pool",
+    "pools": {
+      "men": "Senior men",
+      "women": "Women",
+      "youth": "Youth",
+      "all": "All (not comparable)"
+    },
+    "poolNote": "Men's, women's and youth sides never play each other: their ratings come from separate walks and are not one list."
   },
   "v2": {
     "title": "Research V2 - roles against the market",

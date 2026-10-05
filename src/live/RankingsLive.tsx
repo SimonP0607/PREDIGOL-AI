@@ -14,6 +14,7 @@ import { SelectFilter } from "@/components/system/Filters";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice, SectionView } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
+import type { RatingPool } from "@/lib/api/v1/types";
 import { int } from "@/lib/format";
 import { utcDate, utcDateTime } from "./format";
 
@@ -31,8 +32,14 @@ export function RankingsLive() {
       })),
   ];
   const [scope, setScope] = useState("all");
+  const [pool, setPool] = useState<RatingPool>("men");
   const selected = options.find((c) => String(c.id) === scope);
-  const q = useLiveQuery(live.rankings(selected?.id));
+  const q = useLiveQuery(live.rankings(selected?.id, pool));
+  // Senior men, women and youth sides never play each other: their ratings are not one list.
+  const pools = (["men", "women", "youth", "all"] as const).map((p) => ({
+    value: p,
+    label: t(`research.rankings.pools.${p}`),
+  }));
   const d = q.data;
   return (
     <div className="space-y-4">
@@ -41,14 +48,25 @@ export function RankingsLive() {
         description={t("admin.pages.rankings.description")}
       />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
-      <div className="max-w-sm">
-        <SelectFilter
-          label={t("research.common.competition")}
-          value={scope}
-          options={choices}
-          onChange={setScope}
-        />
+      <div className="flex max-w-2xl flex-wrap gap-3">
+        <div className="min-w-[12rem]">
+          <SelectFilter
+            label={t("research.rankings.pool")}
+            value={pool}
+            options={pools}
+            onChange={(v) => setPool(v as RatingPool)}
+          />
+        </div>
+        <div className="min-w-[16rem] flex-1">
+          <SelectFilter
+            label={t("research.common.competition")}
+            value={scope}
+            options={choices}
+            onChange={setScope}
+          />
+        </div>
       </div>
+      <p className="text-caption text-subtle-foreground">{t("research.rankings.poolNote")}</p>
       <Panel
         title="Elo"
         subtitle={
