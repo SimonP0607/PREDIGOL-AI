@@ -1,7 +1,12 @@
 """The migration and plan configuration, read from config/migration.yaml and
 config/api_plans.yaml. Validated on load: a tier without competitions, a plan
 without a quota or an endpoint without a classification is an error, not a
-default."""
+default.
+
+The expansion batches of config/expansion.yaml (P3, 5 Oct 2026) are merged as the
+tiers after the selector's: the selector regenerates the ``tiers:`` block of
+migration.yaml from the provider's coverage, so a batch decided by a probe lives in
+its own file and is not overwritten."""
 
 from __future__ import annotations
 
@@ -14,6 +19,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[3]
 MIGRATION_FILE = ROOT / "config" / "migration.yaml"
 PLANS_FILE = ROOT / "config" / "api_plans.yaml"
+EXPANSION_FILE = ROOT / "config" / "expansion.yaml"
+EXPANSION_FIXTURES = 380
+"""Planning estimate for an expansion league's season; the fixtures unit replaces it with the real count."""
 
 CLASSIFICATIONS = ("MODEL_REQUIRED", "PRODUCT_REQUIRED", "OPTIONAL", "NOT_NEEDED", "NOT_AVAILABLE")
 UNIT_KINDS = ("league_coverage", "fixtures_season", "fixture_details", "standings_season", "injuries_season",
@@ -117,7 +125,22 @@ def _req(d: dict[str, Any], key: str, where: str) -> Any:
     return d[key]
 
 
-def load_migration_config(path: Path = MIGRATION_FILE) -> MigrationConfig:
+def expansion_batches(path: Path = EXPANSION_FILE) -> list[dict[str, Any]]:
+    """The decided batches of config/expansion.yaml: ``{batch, tier, leagues, ...}``, in batch order."""
+    if not path.exists():
+        return []
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    batches = sorted(raw.get("batches") or [], key=lambda b: int(b["batch"]))
+    names = {int(c["league_id"]): str(c.get("name") or c["league_id"]) for c in raw.get("candidates") or []}
+    for b in batches:
+        b["names"] = {int(lid): names.get(int(lid), str(lid)) for lid in b.get("leagues") or []}
+    return batches
+
+
+def load_migration_config(path: Path = MIGRATION_FILE, *, expansion: Path | None = None) -> MigrationConfig:
+    """``expansion`` defaults to config/expansion.yaml when the default migration file is read."""
+    if expansion is None and path == MIGRATION_FILE:
+        expansion = EXPANSION_FILE
     raw = yaml.safe_load(path.read_text())
     seasons, budget = _req(raw, "seasons", "migration"), _req(raw, "budget", "migration")
     endpoints: dict[str, EndpointSpec] = {}
@@ -150,6 +173,16 @@ def load_migration_config(path: Path = MIGRATION_FILE) -> MigrationConfig:
             if fixtures <= 0:
                 raise ConfigError(f"league {lid}: fixtures estimate must be positive")
             comps.append(CompetitionSpec(int(tier), lid, str(c.get("name", lid)), fixtures))
+    for batch in expansion_batches(expansion) if expansion is not None else []:
+        tier = int(batch["tier"])
+        if tier in tiers:
+            raise ConfigError(f"expansion batch {batch['batch']}: tier {tier} is already a tier of the selection")
+        tiers[tier] = f"P3 expansion - batch {batch['batch']}"
+        for lid, name in batch["names"].items():
+            if lid in seen:
+                continue  # the selector already migrates it in its own tier
+            seen.add(lid)
+            comps.append(CompetitionSpec(tier, lid, name, EXPANSION_FIXTURES))
     lv = _req(raw, "live", "migration")
     live = LiveSpec(tuple(int(x) for x in lv["tiers"]), int(lv["season_days"]), float(lv["peak_share_of_week"]),
                     int(lv["prematch_windows"]), int(lv["near_close"]), int(lv["lineup_polls"]),

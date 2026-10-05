@@ -54,3 +54,24 @@ candidates:
   - {rank: 48, league_id: 180, name: Championship, country: Scotland}
   - {rank: 49, league_id: 593, name: Division 2 - Norra Svealand, country: Sweden}
   - {rank: 50, league_id: 75, name: Serie C, country: Brazil}
+  # Companions: the other part of a candidate's competition, so a club's season is never followed by halves.
+  - {rank: 51, league_id: 250, name: División Profesional - Apertura, country: Paraguay, note: "first half of #4's season (the provider splits the league in two ids)"}
+  - {rank: 52, league_id: 942, name: Serie C - Girone B, country: Italy, note: "the third group of #24 and #28: Serie C is added whole or not at all"}
+
+# Batches, each decided on a probe (scripts.probe_leagues) and tracked with scripts.expand_leagues. Each is migrated
+# as its own tier after the selector's tiers 1-4 (fbi.migration.config merges them), so the migration planner prices
+# and seeds it like any other tier. A batch is added only after the previous one was measured for a day.
+batches:
+  - batch: 1
+    tier: 5
+    decided: "2026-10-05"
+    probe: data/expansion/20261005T165323Z-probe
+    rule: >-
+      club league; on the 20 latest finished matches: events present, both line-ups with eleven starters in at least
+      80 %, goal events adding up to the score in at least 95 %, no unresolved result; at least 25 fixtures ahead or a
+      season running into 2027; at least 7 bookmakers on average (capacity probe)
+    leagues: [252, 250, 244, 99, 100, 180, 183, 255, 506]
+    notes: >-
+      250 (Apertura) is the first half of 252's season: tracked together so Paraguayan clubs' history has no
+      half-year gaps. Serie C Girone A (138) passed the rule but waits for its other two groups (942, 943): a
+      division is added whole, or club histories break when a club changes group.
