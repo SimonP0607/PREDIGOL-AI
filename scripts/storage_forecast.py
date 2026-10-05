@@ -51,6 +51,7 @@ GB = 1024 * MB
 FIXTURE_DRIVEN = {"live_odds", "prematch_odds", "consensus", "final_prematch", "predictions", "feature_sets",
                   "candidates", "match_detail", "events", "player_extras", "lineups", "quality_issues",
                   "payload_index"}
+"""The rest (the run ledger, the reference allowance) follows the number of leagues."""
 """Tables whose growth follows the number of tracked fixtures; the rest follows the number of leagues."""
 
 ONE_OFF_JOBS = ("historical_backfill", "raw_backfill_fixture_facts", "raw_backfill_season_stats", "truth_audit",
@@ -78,25 +79,43 @@ class Grower:
     per_fixture: bool = False
     """Match data: rows per match that has them x tracked matches played per day (28 d) x the share that has them.
     Its day-by-day count is no guide - the history migration wrote years of it on the days measured."""
+    lifetime_sql: str | None = None
+    """Rows a tracked match leaves over its whole life (forecasts, prices, candidates from days before kick-off to the
+    final read), for the matches played in the basis window: ``%(start)s``/``%(end)s`` bound the kick-off. Steadier
+    than counting by day while deploys and backfills still come in bursts."""
 
+
+LIFETIME = ("SELECT count(*) FROM {table} x JOIN core.fixtures f ON f.id = x.fixture_id "
+            "JOIN core.competition_seasons cs ON cs.id = f.competition_season_id JOIN core.competitions c "
+            "ON c.id = cs.competition_id WHERE c.is_tracked AND f.status_group = 'finished' "
+            "AND f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s{extra}")
+REFERENCE_STEADY_BYTES_PER_DAY = 2 * 1024 * 1024
+"""The reference feeds' tables (transfers, trophies, sidelined, coaches, leaders...) once their first fill is done:
+change-only, people re-asked weekly - an allowance, not a measurement (the first fill is all the window shows)."""
 
 GROWERS: tuple[Grower, ...] = (
     Grower("live_odds", "in-play prices (change-only)", "market.live_odds_snapshots", "captured_at"),
-    Grower("prematch_odds", "pre-match prices", "market.odds_snapshots", "captured_at"),
-    Grower("consensus", "market consensus", "market.market_consensus", "as_of"),
-    Grower("final_prematch", "final pre-match prices", "market.final_prematch_odds", "fetched_at"),
-    Grower("predictions", "forecasts", "models.predictions", "created_at"),
+    Grower("prematch_odds", "pre-match prices", "market.odds_snapshots", "captured_at",
+           lifetime_sql=LIFETIME.format(table="market.odds_snapshots", extra="")),
+    Grower("consensus", "market consensus", "market.market_consensus", "as_of",
+           lifetime_sql=LIFETIME.format(table="market.market_consensus", extra="")),
+    Grower("final_prematch", "final pre-match prices", "market.final_prematch_odds", "fetched_at",
+           lifetime_sql=LIFETIME.format(table="market.final_prematch_odds", extra="")),
+    Grower("predictions", "forecasts (real time)", "models.predictions", "created_at",
+           lifetime_sql=LIFETIME.format(table="models.predictions", extra=" AND x.backtest_session_id IS NULL")),
     Grower("feature_sets", "real-time feature sets (+ their values)", "features.feature_sets", "generated_at",
            "SELECT date_trunc('day', generated_at) AS d, count(DISTINCT (fixture_id, input_hash, code_version)) "
            "FROM features.feature_sets WHERE generated_at >= %(start)s AND generated_at < %(end)s "
-           "AND lineage->>'purpose' = 'real-time forecast' GROUP BY 1"),
-    Grower("candidates", "pick candidates", "picks.pick_candidates", "evaluated_at"),
+           "AND lineage->>'purpose' = 'real-time forecast' GROUP BY 1",
+           lifetime_sql=LIFETIME.format(table="(SELECT DISTINCT fixture_id, input_hash, code_version FROM "
+                                              "features.feature_sets WHERE lineage->>'purpose' = 'real-time "
+                                              "forecast')", extra="")),
+    Grower("candidates", "pick candidates", "picks.pick_candidates", "evaluated_at",
+           lifetime_sql=LIFETIME.format(table="picks.pick_candidates", extra="")),
     Grower("match_detail", "player match statistics", "core.fixture_player_stats", "fetched_at", per_fixture=True),
     Grower("events", "match events", "core.fixture_events", "fetched_at", per_fixture=True),
     Grower("player_extras", "player match extras", "core.fixture_player_extras", "observed_at", per_fixture=True),
     Grower("lineups", "line-up players", "core.fixture_lineup_players", "", per_fixture=True),
-    Grower("transfers", "transfers (reference feeds)", "core.player_transfers", "observed_at"),
-    Grower("trophies", "trophies (reference feeds)", "core.person_trophies", "observed_at"),
     Grower("quality_issues", "data-quality issues (routine jobs; audits apart)", "audit.data_quality_issues",
            "detected_at",
            "SELECT date_trunc('day', q.detected_at) AS d, count(*) FROM audit.data_quality_issues q "
@@ -238,6 +257,13 @@ def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str,
         t = TableGrowth(g.key, g.label, g.table, round(per_row, 1), round(per_row * rows_now),
                         [daily.get(d, 0) for d in complete])
         t.steady_rows_per_day = median(t.rows_per_day)
+        if g.lifetime_sql:
+            matches = fixtures_per_day(conn, start, end) * max((end - start).days, 1)
+            rows = float(_scalar(conn, g.lifetime_sql, {"start": start, "end": end}) or 0)
+            per_match = rows / matches if matches else 0.0
+            t.steady_rows_per_day = per_match * fixtures_per_day(conn, month_ago, end)
+            t.basis = (f"{per_match:,.1f} rows per tracked match played since {start:%d %b} (its whole life) x "
+                       "matches per day (28 d)")
         if g.per_fixture:
             per, share = _per_fixture(conn, g.table, month_ago, end)
             t.steady_rows_per_day = per * share * fixtures_per_day(conn, month_ago, end)
@@ -245,6 +271,9 @@ def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str,
                        "matches per day")
         tables.append(t)
 
+    tables.append(TableGrowth("reference", "reference feeds after their first fill (allowance)",
+                              "core.player_transfers, core.person_trophies, ...", 0.0, 0.0, [],
+                              basis="allowance: change-only, people re-asked weekly"))
     # In-play prices: the structural model, steadier than a median of two or three days.
     fixtures_28d = fixtures_per_day(conn, month_ago, end)
     live = {"fixtures_per_day_28d": round(fixtures_28d, 1)}
@@ -268,7 +297,8 @@ def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str,
                 t.steady_rows_per_day = fixtures_28d * share * per_fixture
                 t.basis = "tracked fixtures per day (28 d) x share priced in play x rows per such match"
     for t in tables:
-        t.steady_bytes_per_day = t.steady_rows_per_day * t.bytes_per_row
+        t.steady_bytes_per_day = (REFERENCE_STEADY_BYTES_PER_DAY if t.key == "reference"
+                                  else t.steady_rows_per_day * t.bytes_per_row)
 
     # RAW: bytes a day by the job that fetched them; one-off loads apart, the reference feeds at their steady state.
     raw_days: dict[str, list[int]] = {"recurring": [], "one_off": []}

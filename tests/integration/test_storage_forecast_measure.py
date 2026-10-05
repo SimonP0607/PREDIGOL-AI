@@ -13,7 +13,8 @@ def test_measure_reads_every_growing_table_and_forecasts(migrated_database: str)
         conn.read_only = True
         conn.execute("SET TIME ZONE 'UTC'")
         m = sf.measure(conn, datetime(2030, 1, 10, 12, tzinfo=UTC), days=7)
-    assert {t["key"] for t in m["tables"]} == {g.key for g in sf.GROWERS}, "no table skipped by an SQL error"
+    assert {t["key"] for t in m["tables"]} == {g.key for g in sf.GROWERS} | {"reference"}, (
+        "no table skipped by an SQL error")
     assert m["database_bytes"] > 0 and m["backups"]["dump_ratio"] > 0
     f = sf.forecast(m)
     assert set(f["scenarios"]) == {"current", "current_retention", "plus_50", "plus_50_retention"}
