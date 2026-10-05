@@ -287,7 +287,8 @@
       "national": "national team",
       "club": "club",
       "seasons_one": "{count} season",
-      "seasons_other": "{count} seasons"
+      "seasons_other": "{count} seasons",
+      "noSeasons": "seasons not given by the provider"
     }
   },
   "positions": {

@@ -133,15 +133,19 @@ export function PlayerReferencePanels({ d }: { d: PlayerDetail }) {
                     <div className="min-w-0">
                       <TeamName name={x.team ?? "?"} logo={x.team_logo} size={16} />
                       <div className="mt-0.5 text-muted-foreground">
-                        {x.seasons.length ? careerSpan(x.seasons) : "—"}
+                        {x.seasons.length
+                          ? careerSpan(x.seasons)
+                          : t("catalog.reference.career.noSeasons")}
                         {x.national === null
                           ? ""
                           : ` · ${x.national ? t("catalog.reference.career.national") : t("catalog.reference.career.club")}`}
                       </div>
                     </div>
-                    <span className="shrink-0 text-caption text-subtle-foreground">
-                      {t("catalog.reference.career.seasons", { count: x.seasons.length })}
-                    </span>
+                    {x.seasons.length ? (
+                      <span className="shrink-0 text-caption text-subtle-foreground">
+                        {t("catalog.reference.career.seasons", { count: x.seasons.length })}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
