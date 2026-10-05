@@ -342,9 +342,15 @@ SELECT count(*) AS appeared,
        count(p.id) AS known,
        count(p.birth_date) AS with_birth_date,
        count(p.nationality) AS with_nationality,
-       count(p.height_cm) AS with_height
+       count(p.height_cm) AS with_height,
+       count(*) FILTER (WHERE p.birth_date IS NULL AND p.profile_payload_hash IS NOT NULL) AS asked_birth_date,
+       count(*) FILTER (WHERE p.nationality IS NULL AND p.profile_payload_hash IS NOT NULL) AS asked_nationality,
+       count(*) FILTER (WHERE p.height_cm IS NULL AND p.profile_payload_hash IS NOT NULL) AS asked_height
   FROM recent r LEFT JOIN core.players p ON p.provider_player_id = r.provider_player_id
 """
+"""``asked_*``: the player's profile was read (``profile_payload_hash``) and the field is still empty - the provider's
+profile does not have it (5 Oct 2026: 20,566 of 20,577 players without a birth date had been asked; their profiles
+say ``"birth": {"date": null}``). Only the rest is ours to fetch."""
 
 
 def _run_check(conn: psycopg.Connection, check: Check, at: datetime, tally: Tally) -> None:
@@ -457,15 +463,24 @@ def player_profiles(conn: psycopg.Connection, at: datetime, tally: Tally) -> Non
         r = cur.fetchone() or {}
     appeared = int(r.get("appeared") or 0)
     tally.checked += appeared
-    tally.matched += int(r.get("with_birth_date") or 0)
-    for column, label in (("known", "identity"), ("with_birth_date", "birth_date"),
-                          ("with_nationality", "nationality"), ("with_height", "height_cm")):
+    tally.matched += int(r.get("with_birth_date") or 0) + int(r.get("asked_birth_date") or 0)
+    entity = "players in a line-up in the last 365 days"
+    for column, label, asked_column in (("known", "identity", None), ("with_birth_date", "birth_date", "asked_birth_date"),
+                                        ("with_nationality", "nationality", "asked_nationality"),
+                                        ("with_height", "height_cm", "asked_height")):
         have = int(r.get(column) or 0)
-        if have < appeared:
-            tally.add(Finding.of("players", "players in a line-up in the last 365 days", label, Kind.MISSING_IN_DB,
+        not_served = int(r.get(asked_column) or 0) if asked_column else 0
+        ours = appeared - have - not_served
+        if ours > 0:
+            tally.add(Finding.of("players", entity, label, Kind.MISSING_IN_DB,
                                  Severity.MEDIUM if label in ("birth_date", "nationality") else Severity.LOW,
                                  api=f"{appeared:,} players", db=f"{have:,} with {label}",
-                                 note="season profiles (/players) were never fetched" if label != "identity" else ""))
+                                 note=f"{ours:,} whose profile (/players/profiles) was never read"
+                                 if label != "identity" else ""))
+        if not_served > 0:
+            tally.add(Finding.of("players", entity, label, Kind.PROVIDER_LAG, Severity.INFO,
+                                 api=f"{not_served:,} profiles read without {label}", db=f"{have:,} with {label}",
+                                 note="the provider's profile does not have it: asked, nothing to store"))
 
 
 def run_internal(conn: psycopg.Connection, *, at: datetime) -> dict[str, Tally]:
