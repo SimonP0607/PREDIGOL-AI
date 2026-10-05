@@ -44,6 +44,41 @@ def test_a_fixture_whose_sides_the_provider_corrects_follows_it_and_says_so(conn
     assert repair is not None and repair[0] == "fixture_sides" and repair[1] != repair[2]
 
 
+def test_a_fixture_the_provider_moves_to_another_tracked_season_goes_with_it_and_says_so(
+        conn: psycopg.Connection, seed: Seed) -> None:
+    repo = FixtureRepository(conn)
+    other = conn.execute("INSERT INTO core.competition_seasons (competition_id, season) VALUES (%s, 2026) "
+                         "RETURNING id", (seed.competition_id,)).fetchone()
+    assert other is not None
+    ref = FixtureRef(1001, 39, 2026, datetime(2026, 9, 15, 19, 0, tzinfo=UTC), 33, 40, "NS")
+    teams = repo.ensure_teams([ref], {33: "Manchester United", 40: "Liverpool"})
+    inserted, updated = repo.upsert_fixtures([ref], {(39, 2025): seed.season_id, (39, 2026): other[0]}, teams,
+                                             lineage=PayloadLineage(seed.payload_hash, NOW))
+    assert (inserted, updated) == (0, 1)
+    held = conn.execute("SELECT competition_season_id FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone()
+    assert held == (other[0],), "until 5 Oct 2026 the update never touched the competition season"
+    repair = conn.execute("SELECT before_value, after_value, evidence FROM audit.data_repairs "
+                          "WHERE entity_id = %s AND rule = 'fixture_competition'", (seed.fixture_id,)).fetchone()
+    assert repair == (str(seed.season_id), str(other[0]), seed.payload_hash)
+
+
+def test_a_fixture_moved_out_of_the_tracked_set_stays_where_it_was_and_is_flagged(
+        conn: psycopg.Connection, seed: Seed) -> None:
+    repo = FixtureRepository(conn)
+    moved = FixtureRef(1001, 916, 2026, datetime(2026, 9, 15, 19, 0, tzinfo=UTC), 33, 40, "PEN")
+    stranger = FixtureRef(99_123, 916, 2026, datetime(2026, 9, 15, 19, 0, tzinfo=UTC), 33, 40, "NS")
+    assert repo.note_left_tracked([moved, stranger], {(39, 2025): seed.season_id},
+                                  payload_hash=seed.payload_hash) == 1, "only a fixture we hold is ours to flag"
+    held = conn.execute("SELECT competition_season_id FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone()
+    assert held == (seed.season_id,), "no season row is invented for a competition we do not track"
+    issue = conn.execute("SELECT code, observed, expected, payload_hash FROM audit.data_quality_issues "
+                         "WHERE entity_type = 'fixture' AND entity_id = %s AND field = 'competition'",
+                         (seed.fixture_id,)).fetchone()
+    assert issue == ("STALE_DATA", "league 916 season 2026", "league 39 season 2025", seed.payload_hash)
+    same = FixtureRef(1001, 39, 2025, datetime(2026, 9, 15, 19, 0, tzinfo=UTC), 33, 40, "NS")
+    assert repo.note_left_tracked([same], {}) == 0, "a competition we stopped tracking is not a move"
+
+
 def test_a_moved_kick_off_is_kept_with_both_times(conn: psycopg.Connection, seed: Seed) -> None:
     repo = FixtureRepository(conn)
     old = conn.execute("SELECT kickoff_at FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone()

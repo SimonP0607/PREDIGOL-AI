@@ -213,11 +213,20 @@ class FixtureRepository:
         venue_ids: Mapping[int, int] | None = None,
     ) -> tuple[int, int]:
         """Returns (inserted, updated). Kick-off, status, round and venue are
-        the things that legitimately change; the identity never does.
+        the things that legitimately change; the provider's fixture id is the
+        identity and never does.
 
         ``season_ids`` maps (provider_league_id, season) to the row in
         core.competition_seasons. A ref with no entry is skipped: we do not
-        invent a season row for a competition we are not tracking.
+        invent a season row for a competition we are not tracking (a fixture we
+        hold that the provider moved out of the tracked set is flagged by
+        ``note_left_tracked`` instead).
+
+        The competition season follows the provider like the sides do: a fixture
+        it moves to another tracked competition or season goes with it, and the
+        move is one ``audit.data_repairs`` row (rule ``fixture_competition``).
+        Until 5 Oct 2026 the update never touched it, so a moved fixture stayed
+        listed under the competition it had left.
 
         A ref older than what the row already holds is skipped too, and counted
         in neither total - see ``PayloadLineage``.
@@ -226,11 +235,13 @@ class FixtureRepository:
         venue_ids = venue_ids or {}
         with self._conn.cursor(row_factory=tuple_row) as cur:
             known = {r.provider_fixture_id for r in refs}
-            cur.execute("SELECT provider_fixture_id, id, home_team_id, away_team_id, kickoff_at FROM core.fixtures "
-                        "WHERE provider_fixture_id = ANY(%s)", (sorted(known),))
+            cur.execute("SELECT provider_fixture_id, id, home_team_id, away_team_id, kickoff_at, "
+                        "competition_season_id FROM core.fixtures WHERE provider_fixture_id = ANY(%s)",
+                        (sorted(known),))
             existing = cur.fetchall()
-            sides = {int(a): (int(b), int(c), int(d)) for a, b, c, d, _ in existing}
-            kickoffs = {int(a): e for a, _, _, _, e in existing}
+            sides = {int(a): (int(b), int(c), int(d)) for a, b, c, d, _, _ in existing}
+            kickoffs = {int(a): e for a, _, _, _, e, _ in existing}
+            held_in = {int(a): int(s) for a, _, _, _, _, s in existing}
             for r in refs:
                 season_id = season_ids.get((r.provider_league_id, r.season))
                 if season_id is None:
@@ -243,6 +254,7 @@ class FixtureRepository:
                        source_payload_hash, source_fetched_at)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (provider_fixture_id) DO UPDATE SET
+                      competition_season_id = EXCLUDED.competition_season_id,
                       home_team_id = EXCLUDED.home_team_id, away_team_id = EXCLUDED.away_team_id,
                       kickoff_at = EXCLUDED.kickoff_at, status_short = EXCLUDED.status_short,
                       status_group = EXCLUDED.status_group,
@@ -282,6 +294,17 @@ class FixtureRepository:
                             (sides[r.provider_fixture_id][0], lineage.fetched_at if lineage else now(), moved_from,
                              r.kickoff_at, lineage.payload_hash if lineage else None),
                         )
+                    was_in = held_in.get(r.provider_fixture_id)
+                    if was_in is not None and was_in != season_id:
+                        # The provider moved the fixture to another competition season we track.
+                        cur.execute(
+                            "INSERT INTO audit.data_repairs (rule, entity, entity_id, provider_ref, field, "
+                            "before_value, after_value, reason, evidence) VALUES ('fixture_competition', "
+                            "'core.fixtures', %s, %s, 'competition_season_id', %s, %s, %s, %s)",
+                            (sides[r.provider_fixture_id][0], r.provider_fixture_id, str(was_in), str(season_id),
+                             f"the provider moved this fixture to league {r.provider_league_id} season {r.season}",
+                             lineage.payload_hash if lineage else None),
+                        )
                     before = sides.get(r.provider_fixture_id)
                     after = (team_ids[r.provider_home_team_id], team_ids[r.provider_away_team_id])
                     if before is not None and before[1:] != after:
@@ -295,6 +318,49 @@ class FixtureRepository:
                              "the provider changed the sides of this fixture", lineage.payload_hash if lineage else None),
                         )
         return inserted, updated
+
+    def note_left_tracked(self, refs: Sequence[FixtureRef], season_ids: Mapping[tuple[int, int], int], *,
+                          payload_hash: str | None = None) -> int:
+        """Flag the fixtures we hold that the provider now lists under a competition we do not track.
+
+        The row is not moved - that would mean inventing a season row - and not deleted: it stays
+        where it was, and one quality issue (``STALE_DATA`` on the field ``competition``, provider's
+        league and season against ours) says so until the destination is tracked or the move is
+        accepted. Seen on 4 Oct 2026: Panama v New Zealand (1632353), moved from Friendlies to the
+        Kirin Cup semi-finals. Returns how many were flagged.
+        """
+        others = {r.provider_fixture_id: r for r in refs if (r.provider_league_id, r.season) not in season_ids}
+        if not others:
+            return 0
+        # Imported here: the quality registry is not needed on the common path.
+        from fbi.quality.issues import EntityType, IssueCode, IssueRegistry, QualityIssue
+
+        with self._conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(
+                "SELECT f.provider_fixture_id, f.id, c.provider_league_id, cs.season FROM core.fixtures f "
+                "JOIN core.competition_seasons cs ON cs.id = f.competition_season_id "
+                "JOIN core.competitions c ON c.id = cs.competition_id WHERE f.provider_fixture_id = ANY(%s)",
+                (sorted(others),),
+            )
+            held = cur.fetchall()
+        registry = IssueRegistry(self._conn)
+        flagged = 0
+        for pfid, fid, league, season in held:
+            r = others[int(pfid)]
+            if (int(league), int(season)) == (r.provider_league_id, r.season):
+                continue  # held in a competition we stopped tracking: not a move
+            flagged += 1
+            registry.record(QualityIssue(
+                code=IssueCode.STALE_DATA, entity_type=EntityType.FIXTURE, entity_id=int(fid),
+                provider_entity_id=int(pfid), payload_hash=payload_hash, field="competition",
+                observed=f"league {r.provider_league_id} season {r.season}",
+                expected=f"league {league} season {season}",
+                detail="the provider moved this fixture to a competition we do not track; the row stays "
+                       "where it was (no season row is invented) until that competition is tracked or the "
+                       "move is accepted"))
+            log.warning("fixtures.left_tracked", fixture=int(pfid), held_in=f"{league}/{season}",
+                        provider_now=f"{r.provider_league_id}/{r.season}")
+        return flagged
 
 
 async def sync_fixtures(
@@ -371,7 +437,8 @@ async def _sync_by_league(
         conn.commit()
         log.info("fixtures.synced", strategy="league", league=s.provider_league_id,
                  name=s.name, seen=len(refs), inserted=outcome.fixtures_inserted,
-                 updated=outcome.fixtures_updated, results_written=outcome.results_written)
+                 updated=outcome.fixtures_updated, results_written=outcome.results_written,
+                 left_tracked=outcome.left_tracked)
     return plan_refused
 
 
@@ -405,7 +472,8 @@ async def _sync_by_date(
         log.info("fixtures.synced", strategy="date", date=on.isoformat(),
                  seen_all_leagues=outcome.seen, seen_ours=outcome.ours,
                  inserted=outcome.fixtures_inserted, updated=outcome.fixtures_updated,
-                 results_written=outcome.results_written)
+                 results_written=outcome.results_written,
+                 left_tracked=outcome.left_tracked)
 
 
 def _apply(

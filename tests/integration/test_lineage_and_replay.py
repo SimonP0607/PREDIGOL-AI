@@ -230,6 +230,31 @@ def test_an_older_payload_cannot_regress_a_finished_match(
     assert result_row(tracked)[:2] == (3, 0)  # type: ignore[index]
 
 
+def test_a_payload_listing_a_held_fixture_under_an_untracked_competition_flags_it(
+    tracked: psycopg.Connection, tmp_path: Path
+) -> None:
+    provider = provider_for(tmp_path)
+    seasons = tracked_season_ids(tracked)
+    first = body(entry(FID, "NS"))
+    apply_fixtures_payload(tracked, provider, first, payload_hash=index(tracked, first, T0), fetched_at=T0,
+                           season_ids=seasons)
+    later = T0 + timedelta(days=1)
+    moved = body(entry(FID, "PEN", (1, 1), league=916), entry(FID + 1, "NS", league=916))
+    outcome = apply_fixtures_payload(tracked, provider, moved, payload_hash=index(tracked, moved, later),
+                                     fetched_at=later, season_ids=seasons)
+    assert (outcome.ours, outcome.left_tracked) == (0, 1)
+    with tracked.cursor() as cur:
+        cur.execute("SELECT c.provider_league_id, cs.season FROM core.fixtures f "
+                    "JOIN core.competition_seasons cs ON cs.id = f.competition_season_id "
+                    "JOIN core.competitions c ON c.id = cs.competition_id WHERE f.provider_fixture_id = %s", (FID,))
+        assert row(cur) == (39, 2025)
+        cur.execute("SELECT code, observed FROM audit.data_quality_issues WHERE entity_type = 'fixture' "
+                    "AND provider_entity_id = %s AND field = 'competition'", (FID,))
+        assert row(cur) == ("STALE_DATA", "league 916 season 2025")
+        cur.execute("SELECT count(*) FROM core.fixtures WHERE provider_fixture_id = %s", (FID + 1,))
+        assert scalar(cur) == 0, "a fixture of an untracked competition is still not ours"
+
+
 def test_the_same_payload_applied_twice_is_idempotent(tracked: psycopg.Connection, tmp_path: Path) -> None:
     provider = provider_for(tmp_path)
     seasons = tracked_season_ids(tracked)

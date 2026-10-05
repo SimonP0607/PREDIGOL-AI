@@ -48,6 +48,8 @@ class PayloadOutcome:
     """Scores written or refreshed for fixtures we hold."""
     facts_written: int = 0
     """Rows added to core.fixture_facts (referee, winner flags, half starts; change-only)."""
+    left_tracked: int = 0
+    """Fixtures we hold that the payload lists under a competition we do not track (flagged, not moved)."""
 
 
 def apply_fixtures_payload(
@@ -64,13 +66,14 @@ def apply_fixtures_payload(
     refs = provider.parse_fixtures(body)
     ours = [r for r in refs if (r.provider_league_id, r.season) in season_ids]
     inserted = updated = 0
+    repo = FixtureRepository(conn)
     if ours:
-        repo = FixtureRepository(conn)
         team_ids = repo.ensure_teams(ours, team_names(body))
         venue_ids = repo.ensure_venues(ours)
         inserted, updated = repo.upsert_fixtures(
             ours, season_ids, team_ids, lineage=lineage, venue_ids=venue_ids
         )
+    left = repo.note_left_tracked(refs, season_ids, payload_hash=payload_hash) if len(ours) < len(refs) else 0
     results = provider.parse_results(body)
     _, written = ResultRepository(conn).apply(results, lineage=lineage)
     facts = apply_fixture_facts(conn, iter_fixture_facts(body), payload_hash=payload_hash, observed_at=fetched_at)
@@ -82,4 +85,5 @@ def apply_fixtures_payload(
         finished_seen=len(results),
         results_written=written,
         facts_written=facts,
+        left_tracked=left,
     )
