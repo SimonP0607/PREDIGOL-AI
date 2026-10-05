@@ -252,7 +252,7 @@
     "settledPicks": "Picks liquidados",
     "pendingPicks": "Picks pendientes",
     "slices": {
-      "intro": "± es un intervalo del 95% sobre el ROI, a partir de la dispersión de los resultados de las apuestas (se muestra desde 30 apuestas). Un intervalo que contiene el 0 significa que el resultado no se distingue de la suerte. «Esperado (modelo)» es lo que prometía el VE del propio modelo para esas mismas apuestas.",
+      "intro": "± es un intervalo del 95 % sobre el ROI agrupado por partido: varios picks de un mismo partido (líneas de un mismo total, varios modelos) ganan o pierden juntos, así que cuenta cada partido como una sola observación (se muestra desde 20 partidos). Un intervalo que contiene el 0 —o el −5 % del margen típico— significa que el resultado no se distingue de la suerte. «Esperado (modelo)» es lo que prometía el VE del propio modelo para esas apuestas.",
       "byMarket": "Por mercado",
       "byModel": "Por modelo",
       "byRule": "Por regla de decisión",
@@ -266,8 +266,12 @@
       "bets": "Apuestas",
       "hit": "Acierto",
       "pnl": "G/P",
-      "modelExpected": "Esperado (modelo)"
-    }
+      "modelExpected": "Esperado (modelo)",
+      "matches": "Partidos"
+    },
+    "fixtures": "Partidos distintos (muestra independiente)",
+    "roiInterval": "ROI con intervalo del 95 % (por partido)",
+    "note": "Picks en sombra liquidados al precio capturado: no es un historial de apuestas reales y no se ha apostado dinero."
   },
   "historicalTables": {
     "secondSource": "Segunda fuente",

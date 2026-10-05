@@ -252,7 +252,7 @@
     "settledPicks": "Settled picks",
     "pendingPicks": "Pending picks",
     "slices": {
-      "intro": "± is a 95% interval on the ROI from the spread of bet results (shown from 30 bets). An interval that contains 0 means the result is not distinguishable from luck. “Model expected” is what the model's own EV promised for the same bets.",
+      "intro": "± is a 95% interval on the ROI clustered by match: several picks on one match (lines of one total, several models) win or lose together, so each match counts as one observation (shown from 20 matches). An interval that contains 0 - or the typical -5% margin - means the result cannot be told from luck. \"Expected (model)\" is what the model's own EV promised for those bets.",
       "byMarket": "By market",
       "byModel": "By model",
       "byRule": "By decision rule",
@@ -266,8 +266,12 @@
       "bets": "Bets",
       "hit": "Hit",
       "pnl": "P&L",
-      "modelExpected": "Model expected"
-    }
+      "modelExpected": "Model expected",
+      "matches": "Matches"
+    },
+    "fixtures": "Distinct matches (the independent sample)",
+    "roiInterval": "ROI with a 95% interval (by match)",
+    "note": "Shadow picks settled at the captured price: not a betting record, and no money was staked."
   },
   "historicalTables": {
     "secondSource": "Second source",

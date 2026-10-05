@@ -576,7 +576,20 @@ export function PerformanceLive() {
         {q.data ? (
           <StatusNotice status={q.data.status} reason={q.data.reason} compact className="mt-2" />
         ) : null}
-        {d ? <p className="mt-2 text-caption text-subtle-foreground">{d.note}</p> : null}
+        {d?.fixtures ? (
+          <KeyValue label={t("analytics.performance.fixtures")} value={int(d.fixtures)} />
+        ) : null}
+        {d?.roi_ci95_pct != null ? (
+          <KeyValue
+            label={t("analytics.performance.roiInterval")}
+            value={`${dec(d.roi_pct, 1)}% ± ${dec(d.roi_ci95_pct, 0)}`}
+          />
+        ) : null}
+        {d ? (
+          <p className="mt-2 text-caption text-subtle-foreground">
+            {t("analytics.performance.note")}
+          </p>
+        ) : null}
       </Panel>
       {d && d.slices?.length ? <PerformanceSlices slices={d.slices} /> : null}
     </div>
@@ -632,6 +645,7 @@ function PerformanceSlices({ slices }: { slices: PerformanceSlice[] }) {
                 <THead>
                   <TH>{sliceHeader(dim)}</TH>
                   <TH align="right">{t("analytics.performance.slices.bets")}</TH>
+                  <TH align="right">{t("analytics.performance.slices.matches")}</TH>
                   <TH align="right">{t("analytics.performance.slices.hit")}</TH>
                   <TH align="right">{t("analytics.performance.slices.pnl")}</TH>
                   <TH align="right">ROI</TH>
@@ -645,6 +659,11 @@ function PerformanceSlices({ slices }: { slices: PerformanceSlice[] }) {
                         <TD className="text-sm">{r.key}</TD>
                         <TD align="right">
                           <Numeric className="text-xs">{r.settled}</Numeric>
+                        </TD>
+                        <TD align="right">
+                          <Numeric muted className="text-xs">
+                            {r.fixtures != null ? r.fixtures : "—"}
+                          </Numeric>
                         </TD>
                         <TD align="right">
                           <Numeric muted className="text-xs">

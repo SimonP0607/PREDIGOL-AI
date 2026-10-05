@@ -456,7 +456,9 @@ function LiveStrip() {
         </ul>
       ) : (
         <p className="text-xs text-muted-foreground">
-          {q.data.reason ?? t("ops.overview.live.empty")}
+          {q.data.status === "empty" || !q.data.reason
+            ? t("ops.overview.live.empty")
+            : q.data.reason}
         </p>
       )}
     </Panel>

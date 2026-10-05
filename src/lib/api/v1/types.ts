@@ -876,7 +876,10 @@ export interface PerformanceSlice {
   staked_units: Dec | null;
   profit_units: Dec | null;
   roi_pct: Dec | null;
+  /** Half-width of the 95% interval, clustered by match (picks on one match win or lose together). */
   roi_ci95_pct: Dec | null;
+  /** Distinct matches behind the bets: the independent sample. */
+  fixtures?: number | null;
   hit_rate: Dec | null;
   mean_odds: Dec | null;
   expected_profit_units: Dec | null;
@@ -891,6 +894,8 @@ export interface PerformanceSummary {
   hit_rate: Dec | null;
   note: string;
   slices: PerformanceSlice[];
+  roi_ci95_pct?: Dec | null;
+  fixtures?: number | null;
 }
 
 export interface SearchHit {
