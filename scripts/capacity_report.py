@@ -143,12 +143,12 @@ CANDIDATES_SQL = """
 WITH cur AS (
     SELECT DISTINCT ON (lc.provider_league_id) lc.*
       FROM raw.league_coverage lc
-     WHERE lc.provider = 'api-football' AND lc.is_current
+     WHERE lc.is_current
      ORDER BY lc.provider_league_id, lc.season DESC, lc.observed_at DESC
 ), hist AS (
     SELECT provider_league_id, count(DISTINCT season) FILTER (WHERE statistics_fixtures) AS stats_seasons,
            count(DISTINCT season) FILTER (WHERE odds) AS odds_seasons
-      FROM raw.league_coverage WHERE provider = 'api-football' GROUP BY 1
+      FROM raw.league_coverage GROUP BY 1
 ), mapped AS (
     SELECT provider_league_id, count(*) AS n FROM market.odds_mapping_seen
      WHERE fixture_date BETWEEN %(since)s AND %(until)s GROUP BY 1
