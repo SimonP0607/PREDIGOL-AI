@@ -129,12 +129,21 @@ SELECT c.name AS competition, cs.season, f.provider_fixture_id, f.status_group, 
 
 LIVE_SQL = """
 SELECT c.name AS competition, cs.season, f.provider_fixture_id, f.status_short,
-       GREATEST(f.source_fetched_at, (SELECT max(s.observed_at) FROM core.fixture_live_states s
-                                       WHERE s.fixture_id = f.id)) AS last_read
+       GREATEST(f.source_fetched_at,
+                (SELECT max(s.observed_at) FROM core.fixture_live_states s WHERE s.fixture_id = f.id),
+                (SELECT max(r.started_at) FROM raw.ingestion_runs r
+                  WHERE r.job_type = 'live_match_capture' AND r.status = 'completed'
+                    AND r.started_at BETWEEN f.kickoff_at - interval '2 minutes'
+                                         AND f.kickoff_at + interval '3 hours')) AS last_read
   FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
  WHERE c.is_tracked AND f.status_group = 'live'
 """
+"""When a match in play was last read. A byte-identical answer (half-time: nothing moves for 15 minutes) keeps
+its first index time, so neither the fixture's lineage nor its live states move although the follower asked
+every minute: on 5 Oct 2026 a friendly at half-time read as STALE 6 minutes after it was last *changed*. A
+completed (uncapped, error-free) ``live_match_capture`` pass in the follower's window - from 2 minutes before
+kick-off to 3 hours after, ``fbi.ingestion.live_match.FOLLOW_*`` - asked every tracked match in play."""
 
 STANDINGS_SQL = """
 WITH snap AS (SELECT competition_season_id AS cs, max(snapshot_at) AS at FROM core.standings GROUP BY 1),
