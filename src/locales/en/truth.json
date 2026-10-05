@@ -582,5 +582,21 @@
       "NOT_MODEL_READY": "not model-ready yet",
       "NOT_USED": "no model uses it"
     }
+  },
+  "sla": {
+    "fixtures": "Every current season's fixture list read in the last 14 h (sync every 6 h; the provider updates every 15 s).",
+    "results": "A match 3 h past kick-off carries a final status (finished, cancelled, postponed); if we re-read it and the provider still says NS, that is its lag.",
+    "live": "A match in play was read in the last 3 minutes (follower every 60 s).",
+    "standings": "The table was read after the season's last match ended (the provider updates hourly); asked after and unchanged = its lag.",
+    "injuries": "A season playing in the next 48 h had its list read in the last 6 h (the provider updates every 4 h).",
+    "lineups": "A match played in the last 7 days has its line-ups.",
+    "match_detail": "A match played in the last 7 days had its events and statistics read after it ended.",
+    "odds_prematch": "A match in the next 72 h was priced at the most recent capture window it reached (T-72/48/24/12/6/3 h, aligned on the provider's 3-hourly update).",
+    "elo": "Every match finished in the last 30 days carries a rating once the next 6-hourly recompute has run; a match without a stored score cannot be rated.",
+    "teams": "Identity (country, venue, logo) read in the last 120 days.",
+    "players": "The profile of everyone in a line-up in the last 365 days was read in the last 45 days (monthly sweep of /players/profiles).",
+    "squads": "Every team of a current season had its squad read in the last 8 days (weekly round of /players/squads).",
+    "coaches": "A profile (birth date or nationality; /coachs weekly per tracked team) exists for every coach in a line-up in the last 365 days.",
+    "coverage": "The provider's coverage flags for each current season read in the last 8 days."
   }
 }

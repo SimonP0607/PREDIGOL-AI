@@ -63,7 +63,9 @@ export function DatasetsTab() {
                 <div className="text-sm font-medium">
                   {translateOr(`truth.datasets.${r.dataset}`, r.dataset)}
                 </div>
-                <div className="max-w-[16rem] text-caption text-subtle-foreground">{r.sla}</div>
+                <div className="max-w-[16rem] text-caption text-subtle-foreground">
+                  {translateOr(`truth.sla.${r.dataset}`, r.sla)}
+                </div>
               </TD>
               <TD>
                 <StatusBadge tone={CLASS_TONE[r.klass]}>

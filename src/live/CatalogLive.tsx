@@ -348,7 +348,7 @@ export function TeamsLive() {
           ) : list.data && list.data.status !== "ok" ? (
             <StatusNotice status={list.data.status} reason={list.data.reason} />
           ) : (
-            <TableShell className="min-w-0">
+            <TableShell className="min-w-0" compact>
               <THead>
                 <TH>{t("catalog.teams.list.headers.team")}</TH>
                 <TH align="right">{t("catalog.teams.list.headers.fixtures")}</TH>

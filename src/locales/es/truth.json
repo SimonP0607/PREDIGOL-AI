@@ -582,5 +582,21 @@
       "NOT_MODEL_READY": "no apto aún",
       "NOT_USED": "no lo usa ningún modelo"
     }
+  },
+  "sla": {
+    "fixtures": "El calendario de cada temporada en curso, leído en las últimas 14 h (sincronización cada 6 h; el proveedor actualiza cada 15 s).",
+    "results": "Un partido 3 h después del inicio tiene estado final (terminado, cancelado, aplazado); si lo volvemos a leer y el proveedor sigue diciendo NS, el retraso es suyo.",
+    "live": "Un partido en juego leído en los últimos 3 minutos (seguimiento cada 60 s).",
+    "standings": "La tabla se leyó después de que terminara el último partido de la temporada (el proveedor actualiza cada hora); pedida después y sin cambios = retraso del proveedor.",
+    "injuries": "Una temporada que juega en las próximas 48 h tiene su lista leída en las últimas 6 h (el proveedor actualiza cada 4 h).",
+    "lineups": "Un partido jugado en los últimos 7 días tiene sus alineaciones.",
+    "match_detail": "Un partido jugado en los últimos 7 días tiene sus eventos y estadísticas leídos después de terminar.",
+    "odds_prematch": "Un partido de las próximas 72 h tiene precio en la última ventana de captura alcanzada (T-72/48/24/12/6/3 h, alineadas con la actualización cada 3 h del proveedor).",
+    "elo": "Todo partido terminado en los últimos 30 días tiene rating tras el siguiente recálculo de 6 h; un partido sin marcador guardado no se puede valorar.",
+    "teams": "Identidad (país, estadio, escudo) leída en los últimos 120 días.",
+    "players": "El perfil de todos los que aparecieron en una alineación en los últimos 365 días se leyó en los últimos 45 días (barrido mensual de /players/profiles).",
+    "squads": "Cada equipo de una temporada en curso tiene su plantilla leída en los últimos 8 días (ronda semanal de /players/squads).",
+    "coaches": "Existe un perfil (fecha de nacimiento o nacionalidad; /coachs semanal por equipo seguido) para cada entrenador que apareció en una alineación en los últimos 365 días.",
+    "coverage": "Las marcas de cobertura del proveedor para cada temporada en curso, leídas en los últimos 8 días."
   }
 }
