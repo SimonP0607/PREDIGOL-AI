@@ -81,3 +81,23 @@ export function bookLabel(code: string): string {
   if (code === "MAX") return t("admin.labels.bestPrice");
   return BOOK_LABEL[code] ?? code;
 }
+
+const POSITION_KEY: Record<string, string> = {
+  g: "goalkeeper",
+  gk: "goalkeeper",
+  goalkeeper: "goalkeeper",
+  d: "defender",
+  defender: "defender",
+  m: "midfielder",
+  midfielder: "midfielder",
+  f: "attacker",
+  attacker: "attacker",
+  forward: "attacker",
+};
+
+/** A position as the provider writes it in a line-up ("G", "D", "M", "F") or a profile ("Attacker"), one way. */
+export function positionLabel(position: string | null | undefined): string {
+  if (!position) return "—";
+  const key = POSITION_KEY[position.trim().toLowerCase()];
+  return key ? t(`catalog.positions.${key}`) : position;
+}

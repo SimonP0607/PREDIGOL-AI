@@ -275,5 +275,11 @@
       "description": "Todas las jornadas de la temporada con sus fechas (proveedor).",
       "current": "Jornada actual según el proveedor: {rounds}"
     }
+  },
+  "positions": {
+    "goalkeeper": "Portero",
+    "defender": "Defensa",
+    "midfielder": "Centrocampista",
+    "attacker": "Delantero"
   }
 }

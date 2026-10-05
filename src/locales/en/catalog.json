@@ -275,5 +275,11 @@
       "description": "Every round of the season with its dates (provider).",
       "current": "Current round per the provider: {rounds}"
     }
+  },
+  "positions": {
+    "goalkeeper": "Goalkeeper",
+    "defender": "Defender",
+    "midfielder": "Midfielder",
+    "attacker": "Attacker"
   }
 }

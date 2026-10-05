@@ -14,6 +14,7 @@ import type { PlayerSummary } from "@/lib/api/v1/types_center";
 import { PlayerPhoto, TeamName } from "@/components/football/Logos";
 import { dec, utcDate } from "./format";
 import { PlayerReferencePanels } from "./ReferenceData";
+import { positionLabel } from "./labels";
 
 function age(birth: string | null): string | null {
   if (!birth) return null;
@@ -85,7 +86,7 @@ function PlayersTable({ rows }: { rows: PlayerSummary[] }) {
                 />
               ) : null}
             </TD>
-            <TD className="text-xs text-muted-foreground">{p.position ?? "—"}</TD>
+            <TD className="text-xs text-muted-foreground">{positionLabel(p.position)}</TD>
             <TD align="right">
               <Numeric muted className="text-xs">
                 <Nullable
@@ -191,7 +192,11 @@ export function PlayerLive({ playerId }: { playerId: string }) {
       <PageHeader
         breadcrumb={[{ label: t("admin.nav.players"), to: "/admin/players" }, { label: p.name }]}
         title={p.name}
-        description={[p.position, p.nationality, p.team].filter(Boolean).join(" · ") || undefined}
+        description={
+          [p.position ? positionLabel(p.position) : null, p.nationality, p.team]
+            .filter(Boolean)
+            .join(" · ") || undefined
+        }
       />
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel title={t("catalog.players.detail.profile.title")}>
@@ -225,7 +230,7 @@ export function PlayerLive({ playerId }: { playerId: string }) {
           />
           <KeyValue
             label={t("catalog.players.detail.profile.position")}
-            value={p.position ?? "—"}
+            value={positionLabel(p.position)}
           />
           <KeyValue
             label={t("catalog.players.detail.profile.height")}
