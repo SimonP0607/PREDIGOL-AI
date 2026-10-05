@@ -202,6 +202,7 @@ def db_detail(conn: psycopg.Connection, provider_ids: Sequence[int]) -> dict[str
 
 
 def db_standings(conn: psycopg.Connection, league: int, season: int) -> tuple[list[dict[str, Any]], datetime | None]:
+    """Our newest snapshot of a table and the kick-off of the season's last finished match."""
     rows = _rows(conn, """
         WITH cs AS (SELECT cs.id FROM core.competition_seasons cs JOIN core.competitions c ON c.id = cs.competition_id
                      WHERE c.provider_league_id = %(l)s AND cs.season = %(s)s),
@@ -215,6 +216,16 @@ def db_standings(conn: psycopg.Connection, league: int, season: int) -> tuple[li
             ON cs.id = f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
          WHERE c.provider_league_id = %s AND cs.season = %s AND f.status_group = 'finished'""", (league, season))
     return rows, (last[0]["at"] if last else None)
+
+
+def standings_checked_at(conn: psycopg.Connection, league: int, season: int) -> datetime | None:
+    """When we last asked the provider for this table (core.context_checks), changed or not."""
+    rows = _rows(conn, """
+        SELECT max(k.checked_at) AS at FROM core.context_checks k
+          JOIN core.competition_seasons cs ON cs.id = k.competition_season_id
+          JOIN core.competitions c ON c.id = cs.competition_id
+         WHERE c.provider_league_id = %s AND cs.season = %s AND k.dataset = 'standings'""", (league, season))
+    return rows[0]["at"] if rows else None
 
 
 def db_team(conn: psycopg.Connection, provider_team_id: int) -> dict[str, Any] | None:
@@ -436,6 +447,7 @@ async def _standings(ask: _Asker, conn: psycopg.Connection, result: AuditResult,
         if name:
             label = f"{name} {season} ({league})"
         compare.compare_standings(body, ours, label=label, last_finished=last_finished, now=now, tally=tally,
+                                  checked_at=standings_checked_at(conn, league, season),
                                   stored_extended=extended and any(r.get("description") is not None
                                                                    or r.get("home_played") is not None
                                                                    for r in ours))

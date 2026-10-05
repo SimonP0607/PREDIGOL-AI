@@ -160,6 +160,23 @@ def test_a_table_behind_the_provider_is_stale() -> None:
     assert any(f.kind is Kind.NOT_STORED for f in t.findings), "home/away and description were dropped"
 
 
+def test_a_table_the_provider_updated_after_our_last_ask_is_its_lag_not_ours() -> None:
+    """5 Oct 2026: twelve "stale" rows were tables the provider updated after our last ask."""
+    later = row(1, "Western Conference", played=27, points=53)
+    later["update"] = (NOW - timedelta(minutes=20)).isoformat()
+    t = Tally("standings")
+    compare.compare_standings(standings_body([[later]]), [db_row(1, "Western Conference")], label="MLS 2026",
+                              last_finished=NOW - timedelta(hours=5), now=NOW, tally=t,
+                              checked_at=NOW - timedelta(minutes=45))
+    played = [f for f in t.findings if f.field == "played"]
+    assert [(f.kind, f.severity) for f in played] == [(Kind.PROVIDER_LAG, Severity.INFO)]
+    t2 = Tally("standings")
+    compare.compare_standings(standings_body([[later]]), [db_row(1, "Western Conference")], label="MLS 2026",
+                              last_finished=NOW - timedelta(hours=5), now=NOW, tally=t2,
+                              checked_at=NOW - timedelta(minutes=5))
+    assert [f.kind for f in t2.findings if f.field == "played"] == [Kind.STALE], "asked after it changed: ours"
+
+
 def test_a_snapshot_older_than_the_last_match_is_stale() -> None:
     body = standings_body([[row(1, "West")]])
     old = db_row(1, "West")

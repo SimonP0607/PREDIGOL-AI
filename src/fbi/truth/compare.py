@@ -480,12 +480,15 @@ def api_standing_rows(api_body: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 def compare_standings(api_body: Mapping[str, Any], db_rows: Sequence[Mapping[str, Any]], *, label: str,
                       last_finished: datetime | None, now: datetime, tally: Tally,
-                      stored_extended: bool = False) -> None:
+                      stored_extended: bool = False, checked_at: datetime | None = None) -> None:
     """The provider's current table against our newest snapshot of it.
 
     ``db_rows`` is the newest snapshot only (every row sharing the latest snapshot_at).
     ``last_finished`` is the kick-off of the competition-season's last finished fixture:
     a snapshot taken before that match ended cannot reflect it, whatever it says.
+    ``checked_at`` is when we last asked for the table: a row behind the provider's is the provider's lag when the
+    provider's own update stamp is later than that ask (5 Oct 2026: twelve "stale" rows were tables the provider
+    updated between our 05:47 ask and the audit's 06:30 one).
     """
     api_rows = api_standing_rows(api_body)
     if not api_rows:
@@ -533,10 +536,17 @@ def compare_standings(api_body: Mapping[str, Any], db_rows: Sequence[Mapping[str
         goals = _d(total.get("goals"))
         api_played, db_played = _int(total.get("played")), db.get("played")
         before = tally.total_findings
+        row_update = _when(row.get("update")) or api_update
         if api_played is not None and isinstance(db_played, int) and api_played > db_played:
-            tally.add(Finding.of("standings", entity, "played", Kind.STALE,
-                                 Severity.HIGH if api_played - db_played >= 2 else Severity.MEDIUM,
-                                 api=api_played, db=db_played, note="our table is behind the provider's"))
+            if checked_at is not None and row_update is not None and row_update > checked_at:
+                tally.add(Finding.of("standings", entity, "played", Kind.PROVIDER_LAG, Severity.INFO,
+                                     api=api_played, db=db_played,
+                                     note=f"the provider updated its table at {row_update:%Y-%m-%d %H:%M}Z, after our "
+                                          f"last ask at {checked_at:%Y-%m-%d %H:%M}Z; the next refresh takes it"))
+            else:
+                tally.add(Finding.of("standings", entity, "played", Kind.STALE,
+                                     Severity.HIGH if api_played - db_played >= 2 else Severity.MEDIUM,
+                                     api=api_played, db=db_played, note="our table is behind the provider's"))
         else:
             for name, a, b in (("rank", row.get("rank"), db.get("rank")), ("points", row.get("points"), db.get("points")),
                                ("played", api_played, db_played), ("wins", total.get("win"), db.get("wins")),
