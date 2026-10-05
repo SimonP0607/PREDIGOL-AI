@@ -142,9 +142,13 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     db.commit()
     assert report.predicted["poisson"] >= 1 and report.predicted["dixon_coles"] >= 1
     assert "elo_ologit" in report.skipped_models, "too few Elo-labelled results: said, not faked"
+    sets_before = scalar(db.execute("SELECT count(*) FROM features.feature_sets WHERE fixture_id = %s", (target,)))
     again = forecast_upcoming(db, at=AT + timedelta(hours=1), code_version="pipetest")
     db.commit()
     assert again.written == 0 and again.unchanged >= 2, "no new information, no new forecast"
+    assert again.feature_sets_written == 0 and again.feature_sets_unchanged >= 1
+    assert scalar(db.execute("SELECT count(*) FROM features.feature_sets WHERE fixture_id = %s", (target,))) == (
+        sets_before), "no new information, no new feature set: the same vector is not stored at every run's cut-off"
     with db.cursor() as cur:
         cur.execute("SELECT p.p_calibrated FROM models.predictions p JOIN models.model_versions v ON "
                     "v.id = p.model_version_id JOIN models.model_registry m ON m.id = v.model_id WHERE p.fixture_id = %s "

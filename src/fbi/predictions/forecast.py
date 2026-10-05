@@ -76,6 +76,11 @@ class ForecastReport:
     were being captured and stored with no model number opposite them - 8,841
     AH, 1,444 DC, and 9,306 of 10,240 OU."""
     newest_result_at: datetime | None = None
+    feature_sets_written: int = 0
+    feature_sets_unchanged: int = 0
+    """Target vectors identical to the fixture's newest stored set (same inputs, same code): not stored again.
+    Every 30-minute run used to store every target's vector anew under the run's cut-off - about 50,000 feature
+    sets and 2 million values a day of exact copies (5 Oct 2026)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +129,19 @@ def _latest_hashes(conn: psycopg.Connection, fixture_ids: list[int]) -> dict[tup
             (fixture_ids,),
         )
         return {(int(a), int(b)): str(c) for a, b, c in cur.fetchall()}
+
+
+def _latest_feature_inputs(conn: psycopg.Connection, fixture_ids: list[int]) -> dict[int, tuple[str, str]]:
+    """fixture -> (input hash, code version) of its newest stored feature set of the current feature version."""
+    if not fixture_ids:
+        return {}
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(
+            "SELECT DISTINCT ON (fixture_id) fixture_id, input_hash, code_version FROM features.feature_sets "
+            "WHERE feature_version = %s AND fixture_id = ANY(%s) ORDER BY fixture_id, data_cutoff DESC, id DESC",
+            (FEATURE_VERSION, fixture_ids),
+        )
+        return {int(a): (str(b), str(c)) for a, b, c in cur.fetchall()}
 
 
 def _write(conn: psycopg.Connection, rows: list[tuple[Any, ...]]) -> int:
@@ -239,8 +257,14 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
     # --- Elo ordered logit ---------------------------------------------------
     vectors, _ = walk_forward(data.matches, [(t, at) for t in targets], EloParams(), load_team_stats(conn))
     ensure_registry(conn)
-    write_feature_sets(conn, vectors, version=FEATURE_VERSION, code_version=code_version, run_id=None,
-                       lineage={"purpose": "real-time forecast", "cutoff": at.isoformat()})
+    # No new information, no new feature set: a vector computed from the same inputs by the same code as the
+    # fixture's newest stored one is that vector again, whatever this run's cut-off.
+    stored = _latest_feature_inputs(conn, [v.fixture_id for v in vectors])
+    fresh = [v for v in vectors if stored.get(v.fixture_id) != (v.input_hash, code_version)]
+    report.feature_sets_unchanged = len(vectors) - len(fresh)
+    report.feature_sets_written, _ = write_feature_sets(
+        conn, fresh, version=FEATURE_VERSION, code_version=code_version, run_id=None,
+        lineage={"purpose": "real-time forecast", "cutoff": at.isoformat()})
     elo = {v.fixture_id: v for v in vectors}
     domestic = set(spec.competition_ids)
     labelled = [m for m in known if m.competition_id in domestic
