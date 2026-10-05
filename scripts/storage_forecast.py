@@ -49,7 +49,8 @@ MB = 1024 * 1024
 GB = 1024 * MB
 
 FIXTURE_DRIVEN = {"live_odds", "prematch_odds", "consensus", "final_prematch", "predictions", "feature_sets",
-                  "candidates", "match_detail", "quality_issues", "payload_index"}
+                  "candidates", "match_detail", "events", "player_extras", "lineups", "quality_issues",
+                  "payload_index"}
 """Tables whose growth follows the number of tracked fixtures; the rest follows the number of leagues."""
 
 ONE_OFF_JOBS = ("historical_backfill", "raw_backfill_fixture_facts", "raw_backfill_season_stats", "truth_audit",
@@ -74,6 +75,9 @@ class Grower:
     ts: str
     count_sql: str | None = None
     """Rows per day, when it is not a plain count over ``ts`` (feature sets count distinct vectors)."""
+    per_fixture: bool = False
+    """Match data: rows per match that has them x tracked matches played per day (28 d) x the share that has them.
+    Its day-by-day count is no guide - the history migration wrote years of it on the days measured."""
 
 
 GROWERS: tuple[Grower, ...] = (
@@ -87,13 +91,18 @@ GROWERS: tuple[Grower, ...] = (
            "FROM features.feature_sets WHERE generated_at >= %(start)s AND generated_at < %(end)s "
            "AND lineage->>'purpose' = 'real-time forecast' GROUP BY 1"),
     Grower("candidates", "pick candidates", "picks.pick_candidates", "evaluated_at"),
-    Grower("match_detail", "player statistics (stands for all match detail)", "core.fixture_player_stats",
-           "fetched_at"),
-    Grower("events", "match events", "core.fixture_events", "fetched_at"),
-    Grower("player_extras", "player extras", "core.fixture_player_extras", "observed_at"),
+    Grower("match_detail", "player match statistics", "core.fixture_player_stats", "fetched_at", per_fixture=True),
+    Grower("events", "match events", "core.fixture_events", "fetched_at", per_fixture=True),
+    Grower("player_extras", "player match extras", "core.fixture_player_extras", "observed_at", per_fixture=True),
+    Grower("lineups", "line-up players", "core.fixture_lineup_players", "", per_fixture=True),
     Grower("transfers", "transfers (reference feeds)", "core.player_transfers", "observed_at"),
     Grower("trophies", "trophies (reference feeds)", "core.person_trophies", "observed_at"),
-    Grower("quality_issues", "data-quality issues", "audit.data_quality_issues", "detected_at"),
+    Grower("quality_issues", "data-quality issues (routine jobs; audits apart)", "audit.data_quality_issues",
+           "detected_at",
+           "SELECT date_trunc('day', q.detected_at) AS d, count(*) FROM audit.data_quality_issues q "
+           "LEFT JOIN raw.ingestion_runs r ON r.id = q.run_id WHERE q.detected_at >= %(start)s "
+           "AND q.detected_at < %(end)s AND (r.job_type IS NULL OR NOT (r.job_type = ANY(%(oneoff)s) "
+           "OR r.job_type LIKE 'truth%%')) GROUP BY 1"),
     Grower("payload_index", "RAW payload index", "raw.ingestion_payloads", "fetched_at"),
     Grower("runs", "run ledger", "raw.ingestion_runs", "started_at"),
 )
@@ -164,9 +173,25 @@ def _bytes_per_row(conn: psycopg.Connection[Any], table: str) -> tuple[float, fl
 def _daily_rows(conn: psycopg.Connection[Any], g: Grower, start: datetime, end: datetime) -> dict[datetime, int]:
     sql = g.count_sql or (f"SELECT date_trunc('day', {g.ts}) AS d, count(*) FROM {g.table} "
                           f"WHERE {g.ts} >= %(start)s AND {g.ts} < %(end)s GROUP BY 1")
+    if g.per_fixture and not g.ts:
+        return {}
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(sql, {"start": start, "end": end})
+        cur.execute(sql, {"start": start, "end": end, "oneoff": list(ONE_OFF_JOBS)})
         return {r[0]: int(r[1]) for r in cur.fetchall()}
+
+
+def _per_fixture(conn: psycopg.Connection[Any], table: str, start: datetime, end: datetime) -> tuple[float, float]:
+    """(rows per match that has them, share of the tracked matches played in [start, end) that have them)."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(f"SELECT count(*)::float / nullif(count(DISTINCT fixture_id), 0) FROM {table}")
+        per = float((cur.fetchone() or (0,))[0] or 0.0)
+        cur.execute(
+            f"SELECT avg((EXISTS (SELECT 1 FROM {table} x WHERE x.fixture_id = f.id))::int)::float "
+            "FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id "
+            "JOIN core.competitions c ON c.id = cs.competition_id WHERE c.is_tracked AND f.status_group = 'finished' "
+            "AND f.kickoff_at >= %s AND f.kickoff_at < %s", (start, end))
+        share = float((cur.fetchone() or (0,))[0] or 0.0)
+    return per, share
 
 
 def _scalar(conn: psycopg.Connection[Any], sql: str, params: Any = None) -> Any:
@@ -192,7 +217,12 @@ def _backup_dirs() -> list[Path]:
 def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str, Any]:
     end = at.replace(hour=0, minute=0, second=0, microsecond=0)
     start = end - timedelta(days=days)
+    # Basis days run the pipeline as it is now: from the first whole day of in-play capture on.
+    first_live = _scalar(conn, "SELECT min(captured_at) FROM market.live_odds_snapshots")
+    if first_live is not None:
+        start = max(start, first_live.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1))
     complete = _complete_days(conn, start, end)
+    month_ago = end - timedelta(days=28)
     tables: list[TableGrowth] = []
     for g in GROWERS:
         with conn.transaction():
@@ -208,15 +238,17 @@ def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str,
         t = TableGrowth(g.key, g.label, g.table, round(per_row, 1), round(per_row * rows_now),
                         [daily.get(d, 0) for d in complete])
         t.steady_rows_per_day = median(t.rows_per_day)
+        if g.per_fixture:
+            per, share = _per_fixture(conn, g.table, month_ago, end)
+            t.steady_rows_per_day = per * share * fixtures_per_day(conn, month_ago, end)
+            t.basis = (f"{per:,.1f} rows per match x {share:.0%} of tracked matches played (28 d) have them x "
+                       "matches per day")
         tables.append(t)
 
     # In-play prices: the structural model, steadier than a median of two or three days.
-    fixtures_28d = float(_scalar(
-        conn, "SELECT count(*) / 28.0 FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = "
-              "f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id WHERE c.is_tracked AND "
-              "f.status_group = 'finished' AND f.kickoff_at >= %s AND f.kickoff_at < %s",
-        (end - timedelta(days=28), end)) or 0.0)
+    fixtures_28d = fixtures_per_day(conn, month_ago, end)
     live = {"fixtures_per_day_28d": round(fixtures_28d, 1)}
+    finished = 0
     if complete:
         with conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(
@@ -257,7 +289,10 @@ def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str,
             cur.execute("SELECT avg(p.bytes) FROM raw.ingestion_payloads p JOIN raw.ingestion_runs r ON "
                         "r.id = p.run_id WHERE r.job_type = 'reference_refresh'")
             reference_bytes_per_request = float((cur.fetchone() or (0,))[0] or 0.0)
-    raw_per_day = median(raw_days["recurring"]) + STEADY_REFERENCE_REQUESTS * reference_bytes_per_request
+    # Recurring RAW follows the matches (in-play prices and states are most of it): bytes per tracked match played
+    # on the basis days x matches per day (28 d), plus the reference feeds at their steady state.
+    raw_per_fixture = sum(raw_days["recurring"]) / finished if finished else 0.0
+    raw_per_day = raw_per_fixture * fixtures_28d + STEADY_REFERENCE_REQUESTS * reference_bytes_per_request
 
     backups = []
     for d in _backup_dirs():
@@ -275,12 +310,22 @@ def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str,
         "raw": {"on_disk_bytes": _folder_bytes(RAW_ROOT), "recurring_bytes_per_day": raw_days["recurring"],
                 "one_off_bytes_per_day": raw_days["one_off"],
                 "reference_bytes_per_request": round(reference_bytes_per_request),
+                "recurring_bytes_per_match": round(raw_per_fixture),
                 "steady_bytes_per_day": round(raw_per_day)},
         "backups": {"files": len(backups), "bytes": sum(b[1] for b in backups),
                     "newest_dump": None if not dumps else {"name": dumps[-1][0], "bytes": dumps[-1][1]},
                     "dump_ratio": round(dumps[-1][1] / db_bytes, 4) if dumps and db_bytes else 0.06},
         "logs_bytes": _folder_bytes(Path.home() / ".fbi") + _folder_bytes(Path("logs")),
     }
+
+
+def fixtures_per_day(conn: psycopg.Connection[Any], start: datetime, end: datetime) -> float:
+    """Tracked matches played per day in [start, end)."""
+    days = max((end - start).total_seconds() / 86400, 1.0)
+    n = _scalar(conn, "SELECT count(*) FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = "
+                      "f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id WHERE c.is_tracked "
+                      "AND f.status_group = 'finished' AND f.kickoff_at >= %s AND f.kickoff_at < %s", (start, end))
+    return float(n or 0) / days
 
 
 def _wal_bytes(conn: psycopg.Connection[Any]) -> int | None:
