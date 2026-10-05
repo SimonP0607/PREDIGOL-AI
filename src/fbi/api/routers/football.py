@@ -111,6 +111,8 @@ def get_rankings(
     conn: Db,
     competition_id: Annotated[int | None, Query(ge=1, description="Teams whose LAST rated match was here.")] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    pool: Annotated[Literal["men", "women", "youth", "all"], Query(
+        description="Rating pool: senior men (default), women, youth, or all of them in one list.")] = "men",
 ) -> Envelope[Rankings | None]:
-    """Current Elo per team from the stored rating history."""
-    return rankings_service.rankings(conn, competition_id=competition_id, limit=limit)
+    """Current Elo per team from the stored rating history, one rating pool at a time."""
+    return rankings_service.rankings(conn, competition_id=competition_id, limit=limit, pool=pool)
