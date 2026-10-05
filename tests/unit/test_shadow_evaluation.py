@@ -6,7 +6,13 @@ import random
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from scripts.shadow_evaluation import calibration, clv, evaluate, roi_with_interval
+from scripts.shadow_evaluation import (
+    calibration,
+    clv,
+    edge_reliability,
+    evaluate,
+    roi_with_interval,
+)
 
 KO = datetime(2026, 10, 4, 18, 0, tzinfo=UTC)
 
@@ -41,3 +47,11 @@ def test_the_report_splits_by_market_band_side_and_bookmaker() -> None:
     out = evaluate([pick(1, "win", "1"), pick(2, "loss", "-1", odds="3.00")])
     assert set(out) >= {"overall", "by_market", "by_odds_band", "by_market_side", "by_bookmaker", "period"}
     assert set(out["by_odds_band"]) == {"2.00-2.49", "2.50-3.49"}
+
+
+def test_edge_reliability_is_zero_when_the_market_was_right() -> None:
+    rows = []
+    for i in range(200):  # model says 0.55, market 0.50, and half of them win: the market was right
+        rows.append(pick(i, "win" if i % 2 else "loss", "1" if i % 2 else "-1"))
+    r = edge_reliability(rows, random.Random(3))
+    assert r["n"] == 200 and r["lambda"] == 0.0 and r["ci95"][0] < 0 < r["ci95"][1]

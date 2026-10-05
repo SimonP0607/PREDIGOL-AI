@@ -92,6 +92,30 @@ def calibration(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "observed": round(won / len(decided), 4)}
 
 
+def edge_reliability(rows: list[dict[str, Any]], rng: random.Random) -> dict[str, Any]:
+    """lambda in y - q = lambda (p - q): how much of the model's disagreement with the market came true.
+
+    1 means the model's edge was real, 0 that the market was right all along, below 0 that the model pointed the
+    wrong way. Decided bets only (win / loss); interval from resampling fixtures. Selecting the bets with the
+    largest p - q selects the model's errors too (the optimizer's curse), which is what this measures."""
+    decided = [(r["fixture_id"], 1.0 if r["result_status"] == "win" else 0.0, float(r["p_calibrated"]),
+                float(r["p_market_fair"])) for r in rows if r["result_status"] in ("win", "loss")]
+    if not decided:
+        return {"n": 0, "lambda": None, "ci95": None}
+
+    def fit(sample: list[tuple[int, float, float, float]]) -> float:
+        den = sum((p - q) ** 2 for _, _, p, q in sample)
+        return sum((y - q) * (p - q) for _, y, p, q in sample) / den if den else 0.0
+
+    by_fixture: dict[int, list[tuple[int, float, float, float]]] = defaultdict(list)
+    for d in decided:
+        by_fixture[d[0]].append(d)
+    groups = list(by_fixture.values())
+    samples = sorted(fit([x for _ in groups for x in groups[rng.randrange(len(groups))]]) for _ in range(BOOTSTRAP))
+    return {"n": len(decided), "fixtures": len(groups), "lambda": round(fit(decided), 3),
+            "ci95": [round(samples[int(0.025 * BOOTSTRAP)], 3), round(samples[int(0.975 * BOOTSTRAP) - 1], 3)]}
+
+
 def band(odds: float) -> str:
     for hi, label in ((1.6, "<1.60"), (2.0, "1.60-1.99"), (2.5, "2.00-2.49"), (3.5, "2.50-3.49"), (6.0, "3.50-5.99")):
         if odds < hi:
@@ -102,7 +126,8 @@ def band(odds: float) -> str:
 def evaluate(rows: list[dict[str, Any]]) -> dict[str, Any]:
     rng = random.Random(SEED)
     out: dict[str, Any] = {"overall": {**roi_with_interval(rows, rng), "clv_same_book": clv(rows, "close_same_book"),
-                                       "clv_pinnacle": clv(rows, "close_pinnacle")}}
+                                       "clv_pinnacle": clv(rows, "close_pinnacle"),
+                                       "edge_reliability": edge_reliability(rows, rng)}}
     for name, key in (("by_market", lambda r: r["market_key"]), ("by_odds_band", lambda r: band(float(r["market_odds"]))),
                       ("by_market_side", lambda r: f"{r['market_key']} {r['selection']}"),
                       ("by_bookmaker", lambda r: r["bookmaker"])):
@@ -110,7 +135,8 @@ def evaluate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         for r in rows:
             groups[key(r)].append(r)
         out[name] = {g: {**roi_with_interval(v, rng), "clv_same_book": clv(v, "close_same_book"),
-                         "calibration": calibration(v)} for g, v in sorted(groups.items())}
+                         "calibration": calibration(v), "edge_reliability": edge_reliability(v, rng)}
+                     for g, v in sorted(groups.items())}
     days = sorted({r["kickoff_at"].date().isoformat() for r in rows})
     out["period"] = {"first_kickoff": days[0] if days else None, "last_kickoff": days[-1] if days else None,
                      "days": len(days)}
@@ -131,7 +157,8 @@ def main() -> int:
     o = report["overall"]
     print(folder / "shadow_evaluation.json")
     print(f"picks {o['picks']} fixtures {o['fixtures']} roi {o['roi']} ci95 {o['ci95']} "
-          f"clv_same_book {o['clv_same_book']} clv_pinnacle {o['clv_pinnacle']}")
+          f"clv_same_book {o['clv_same_book']} clv_pinnacle {o['clv_pinnacle']} "
+          f"edge_reliability {o['edge_reliability']}")
     return 0
 
 
