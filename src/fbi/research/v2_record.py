@@ -33,14 +33,15 @@ QUESTION = ("Research V2 on the validated history: does any model family - alone
 
 def _insert(cur: psycopg.Cursor[Any], *, name: str, kind: str, family: str, question: str, config: dict[str, Any],
             metrics: dict[str, Any], code_version: str, role: str | None, reason: str | None, segment: str | None,
-            result: V2Result, session_id: int | None) -> int:
+            result: V2Result, session_id: int | None, dataset_version: str | None = None) -> int:
     cur.execute(
         "INSERT INTO analytics.experiments (name, kind, question, model_family, backtest_session_id, feature_version, "
         "config, dataset_hash, code_version, environment, metrics, status, research_status, gate, finished_at, "
         "run_label, role, role_reason, segment, data_as_of) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'completed',"
         "'RESEARCH','{}'::jsonb,now(),'RESEARCH_V2',%s,%s,%s,%s) RETURNING id",
         (name, kind, question, family, session_id, FEATURE_VERSION, Json(config), result.evaluation.dataset_hash,
-         code_version, Json(environment()), Json(metrics), role, reason, segment, result.data_as_of))
+         code_version, Json(environment(**({'dataset_version': dataset_version} if dataset_version else {}))),
+         Json(metrics), role, reason, segment, result.data_as_of))
     row = cur.fetchone()
     assert row is not None
     return int(row[0])
@@ -64,7 +65,7 @@ def prospective_role(r: SegmentResult) -> tuple[str, str]:
 
 
 def record_v2(conn: psycopg.Connection[Any], result: V2Result, *, name: str, code_version: str,
-              report_path: Path | None) -> dict[str, Any]:
+              report_path: Path | None, dataset_version: str | None = None) -> dict[str, Any]:
     """Store everything; the caller commits. Returns what was written."""
     s = result.session
     cfg = s.cfg
@@ -79,7 +80,8 @@ def record_v2(conn: psycopg.Connection[Any], result: V2Result, *, name: str, cod
                                cfg_hash=config_hash(payload))
     recorded = record_session(conn, result=s, session_id=session_id, name=name, question=QUESTION,
                               code_version=code_version, hypers=hypers, report_path=report_path,
-                              roles=result.roles, extra_metrics=result.model_metrics(), data_as_of=result.data_as_of)
+                              roles=result.roles, extra_metrics=result.model_metrics(), data_as_of=result.data_as_of,
+                              dataset_version=dataset_version)
     written: dict[str, Any] = {"session_id": session_id,
                                "models": {r.model: {"id": r.id, "role": result.roles[r.model].role}
                                           for r in recorded}}
@@ -101,7 +103,8 @@ def record_v2(conn: psycopg.Connection[Any], result: V2Result, *, name: str, cod
                                             "own_sample": None if base is None else scores_json(base.scores),
                                             "mean_overround": None if base is None else base.mean_overround},
                                    code_version=code_version, role="CHAMPION" if is_champion else "RESEARCH",
-                                   reason=reason, segment=None, result=result, session_id=session_id)
+                                   reason=reason, segment=None, result=result, session_id=session_id,
+                                   dataset_version=dataset_version)
         written["markets"] = markets
         if result.prospective is not None:
             p = result.prospective
@@ -118,7 +121,7 @@ def record_v2(conn: psycopg.Connection[Any], result: V2Result, *, name: str, cod
                     metrics={"played": p.played, "priced": p.priced, "segments": [r.as_json() for r in rows],
                              "segment_roles": {r.segment: prospective_role(r)[0] for r in rows}},
                     code_version=code_version, role=role, reason=reason, segment="all", result=result,
-                    session_id=None)
+                    session_id=None, dataset_version=dataset_version)
             written["prospective"] = prosp
         if result.audit is not None:
             written["audit"] = _insert(
@@ -126,5 +129,5 @@ def record_v2(conn: psycopg.Connection[Any], result: V2Result, *, name: str, cod
                 question="Where did the shadow picks' returns come from: the price, the edge, or luck (E0)?",
                 config={"method": "EV at the last Shin consensus before kick-off"},
                 metrics=result.audit.as_json(), code_version=code_version, role=None,
-                reason=None, segment=None, result=result, session_id=None)
+                reason=None, segment=None, result=result, session_id=None, dataset_version=dataset_version)
     return written

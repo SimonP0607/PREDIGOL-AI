@@ -41,9 +41,15 @@ EXPERIMENT_DIR = REPO / "data" / "experiments"
 MANIFEST_ALGORITHM = "sha256"
 
 
-def environment() -> dict[str, str]:
+def environment(**extra: str) -> dict[str, str]:
+    """The interpreter and libraries a run used, the model code it ran (``model_code``: the fingerprint of the model
+    packages, which is what decides whether a later run would differ) and anything the caller adds (the dataset
+    version it learned from)."""
+    from fbi.core.version import model_code_version
+
     return {"python": sys.version.split()[0], "numpy": np.__version__, "scipy": scipy.__version__,
-            "psycopg": psycopg.__version__, "platform": platform.platform()}
+            "psycopg": psycopg.__version__, "platform": platform.platform(), "model_code": model_code_version(),
+            **extra}
 
 
 def sha256_file(path: Path) -> str:
@@ -138,14 +144,15 @@ def record_session(conn: psycopg.Connection, *, result: SessionResult, session_i
                    report_path: Path | None = None, reproduction: dict[str, dict[str, Any]] | None = None,
                    root: Path | None = None, roles: dict[str, Role] | None = None,
                    extra_metrics: dict[str, dict[str, Any]] | None = None,
-                   data_as_of: datetime | None = None) -> list[Recorded]:
+                   data_as_of: datetime | None = None, dataset_version: str | None = None) -> list[Recorded]:
     """One completed experiment per model run of the session. The caller commits.
 
     ``reproduction``: model -> {"of": original experiment id, "identical": bool,
     "differences": [...]} when this session re-ran a recorded one. ``roles``: the research-V2
     role per model (``fbi.research.roles``); without it each model's role is read from its
     comparison with the primary market baseline alone. ``extra_metrics`` are merged into a
-    model's metrics (the V2 blend analysis)."""
+    model's metrics (the V2 blend analysis). ``dataset_version`` (the MODEL_READY version it learned from) is kept in
+    the row's environment beside the model code."""
     cfg = result.cfg
     val = [m for m in result.data.matches if m.competition_id in cfg.competition_ids
            and m.season == cfg.validation_season and m.has_result]
@@ -199,7 +206,9 @@ def record_session(conn: psycopg.Connection, *, result: SessionResult, session_i
                  min(m.kickoff_at for m in val).date() if goal and val else None,
                  max(m.kickoff_at for m in val).date() if goal and val else None,
                  test_from, test_to, Json(config), result.evaluation.dataset_hash, code_version,
-                 SEEDS["comparison_bootstrap"], Json(environment()), Json(metrics), str(folder), Json(files),
+                 SEEDS["comparison_bootstrap"],
+                 Json(environment(**({"dataset_version": dataset_version} if dataset_version else {}))),
+                 Json(metrics), str(folder), Json(files),
                  status_for(gate), Json(gate), origin, notes, role.role, role.reason,
                  ",".join(sorted({m.segment for m in result.targets})) or None, data_as_of),
             )

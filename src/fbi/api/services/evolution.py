@@ -18,7 +18,7 @@ from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.core.clock import now
 from fbi.research import evolution
-from fbi.research.loop import latest_v2, v2_due
+from fbi.research.loop import frozen, latest_v2, v2_due_reason
 
 LOOP = [
     "A result (research V2, the daily audit, the prospective evaluation) is written to memory with its evidence.",
@@ -49,13 +49,16 @@ SELECT m.id, m.topic, m.finding, m.evidence, m.source, m.created_at,
 def overview(conn: Conn, *, at: datetime | None = None) -> Envelope[EvolutionOverview]:
     at = at or now()
     last = latest_v2(conn)
+    due = v2_due_reason(conn, at=at)
     monitor = fetch_one(conn, "SELECT max(finished_at) AS at FROM raw.ingestion_runs WHERE job_type = "
                               "'research_monitor' AND status = 'completed'")
     return ok(EvolutionOverview(
         loop=LOOP, hypotheses=[Hypothesis.model_validate(r) for r in fetch_all(conn, HYPOTHESES_SQL)],
         memory=[MemoryEntry.model_validate(r) for r in fetch_all(conn, MEMORY_SQL)],
         last_monitor=monitor["at"] if monitor else None,
-        last_v2=None if last is None else LastRun.model_validate(last), v2_due=v2_due(conn, at=at)))
+        last_v2=None if last is None else LastRun.model_validate(last), v2_due=None if due is None else due.text,
+        research_frozen=frozen(), v2_due_code=None if due is None else due.code,
+        v2_due_vars={} if due is None else due.vars))
 
 
 def propose(body: HypothesisIn, *, at: datetime | None = None) -> int:

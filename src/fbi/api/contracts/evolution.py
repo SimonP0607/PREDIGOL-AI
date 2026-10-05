@@ -40,6 +40,10 @@ class MemoryEntry(Contract):
 class LastRun(Contract):
     name: str
     code_version: str | None
+    model_code: str | None = Field(default=None, description="Fingerprint of the model code the run used; null "
+                                   "for runs stored before 5 Oct 2026.")
+    dataset_version: str | None = Field(default=None, description="The MODEL_READY dataset version it learned "
+                                        "from; null for runs stored before dataset versions existed.")
     finished_at: datetime | None
 
 
@@ -50,6 +54,11 @@ class EvolutionOverview(Contract):
     last_monitor: datetime | None
     last_v2: LastRun | None
     v2_due: str | None = Field(description="Why the weekly research-V2 job would run now, or null.")
+    research_frozen: str | None = Field(default=None, description="Why research is frozen (no run stores a model), "
+                                        "or null. While frozen, v2_due says what WOULD make a run due.")
+    v2_due_code: str | None = Field(default=None, description="Stable name of the v2_due reason (no_run, new_dataset, "
+                                    "unknown_model_code, model_code_changed, four_weeks), for the reader's language.")
+    v2_due_vars: dict[str, str] = Field(default_factory=dict, description="The values the v2_due reason names.")
 
 
 class HypothesisIn(Contract):

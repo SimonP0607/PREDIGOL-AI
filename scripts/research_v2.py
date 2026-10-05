@@ -75,6 +75,7 @@ def main() -> int:
     if args.apply and (why := frozen()):
         print(f"refusing --apply: research is frozen ({why})", file=sys.stderr)
         return 3
+    dataset: str | None = None
     if args.apply:
         from fbi.datasets.versions import DatasetNotModelReadyError, require_model_ready
 
@@ -110,7 +111,8 @@ def main() -> int:
             md_path.write_text(report_markdown(result, title=f"Research V2 - {at:%d %b %Y}"))
             print(f"report: {md_path}", flush=True)
             if args.apply:
-                written = record_v2(conn, result, name=name, code_version=version, report_path=json_path)
+                written = record_v2(conn, result, name=name, code_version=version, report_path=json_path,
+                                    dataset_version=dataset)
                 learned = learn_from_v2(conn, run=name, champion=result.champion.key,
                                         roles={m: (r.role, r.reason) for m, r in result.roles.items()}, at=at)
                 conn.commit()
