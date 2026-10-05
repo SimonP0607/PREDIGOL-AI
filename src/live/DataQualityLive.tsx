@@ -201,10 +201,10 @@ function Cards({ s, why }: { s: QualitySnapshot; why: Record<string, string> }) 
       />
       <Metric
         label={t("system.dataQuality.cards.requestsToday.label")}
-        value={`${s.requests_today} / ${s.daily_budget}`}
+        value={`${int(s.requests_today)} / ${int(s.daily_budget)}`}
         hint={t("system.dataQuality.cards.requestsToday.hint", {
-          remaining: s.requests_remaining_today,
-          unclaimed: s.unattributed_requests_today,
+          remaining: int(s.requests_remaining_today),
+          unclaimed: int(s.unattributed_requests_today),
         })}
         tone={s.requests_remaining_today === 0 ? "negative" : "default"}
       />
