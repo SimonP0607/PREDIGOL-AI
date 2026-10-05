@@ -231,15 +231,17 @@ class FixtureRepository:
                     """
                     INSERT INTO core.fixtures
                       (provider_fixture_id, competition_season_id, home_team_id, away_team_id,
-                       kickoff_at, status_short, status_group, round, venue_id,
+                       kickoff_at, status_short, status_group, round, venue_id, venue_name, venue_city,
                        source_payload_hash, source_fetched_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (provider_fixture_id) DO UPDATE SET
                       home_team_id = EXCLUDED.home_team_id, away_team_id = EXCLUDED.away_team_id,
                       kickoff_at = EXCLUDED.kickoff_at, status_short = EXCLUDED.status_short,
                       status_group = EXCLUDED.status_group,
                       round = COALESCE(EXCLUDED.round, core.fixtures.round),
                       venue_id = COALESCE(EXCLUDED.venue_id, core.fixtures.venue_id),
+                      venue_name = COALESCE(EXCLUDED.venue_name, core.fixtures.venue_name),
+                      venue_city = COALESCE(EXCLUDED.venue_city, core.fixtures.venue_city),
                       source_payload_hash = EXCLUDED.source_payload_hash,
                       source_fetched_at = EXCLUDED.source_fetched_at,
                       updated_at = now()
@@ -251,6 +253,7 @@ class FixtureRepository:
                         team_ids[r.provider_away_team_id], r.kickoff_at, r.status_short,
                         status_group(r.status_short), r.round,
                         venue_ids.get(r.provider_venue_id) if r.provider_venue_id is not None else None,
+                        r.venue_name, r.venue_city,
                         lineage.payload_hash if lineage else None,
                         lineage.fetched_at if lineage else None,
                     ),

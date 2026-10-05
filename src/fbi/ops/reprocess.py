@@ -474,6 +474,76 @@ def reprocess_teams(conn: psycopg.Connection, raw_root: Path, *, apply: bool,
     return report
 
 
+VENUE_PAYLOADS_SQL = """
+SELECT p.hash, p.endpoint, p.params, p.fetched_at, p.file_path, p.results_count,
+       array_agg(f.provider_fixture_id ORDER BY f.provider_fixture_id) AS fixtures
+  FROM core.fixtures f JOIN raw.ingestion_payloads p ON p.hash = f.source_payload_hash
+ WHERE f.venue_name IS NULL AND p.http_status = 200
+ GROUP BY p.hash ORDER BY p.fetched_at, p.hash
+"""
+
+
+def _venue_text(v: Any) -> str | None:
+    return v.strip() if isinstance(v, str) and v.strip() else None
+
+
+def reprocess_fixture_venues(conn: psycopg.Connection, raw_root: Path, *, apply: bool, verify_hashes: bool = True,
+                             limit: int | None = None) -> ReprocessReport:
+    """Fill ``core.fixtures.venue_name`` / ``venue_city`` (0065) from each fixture's OWN source payload: the venue as
+    that payload names it, also when it gives no venue id. Only rows still without a name are touched, only from the
+    payload the row already names as its source - so the new columns agree with the rest of the row - and no other
+    column changes. A payload that names no venue for the fixture leaves it empty: nothing is inferred (not from the
+    home team's ground, not from another payload)."""
+    from fbi.core.version import code_version
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+
+    report = ReprocessReport()
+    store = PayloadStore(raw_root)
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(VENUE_PAYLOADS_SQL + (f" LIMIT {int(limit)}" if limit else ""))
+        rows = [dict(r) for r in cur.fetchall()]
+    ledger = RunLedger(conn) if apply else None
+    run_id = ledger.open("reprocess_fixture_venues", params={"payloads": len(rows), "code": code_version()}) \
+        if ledger else None
+    counters = RunCounters()
+    try:
+        for row, body, _ in _bodies(store, rows, report, verify=verify_hashes):
+            wanted = set(row["fixtures"])
+            found: list[tuple[str, str | None, int]] = []
+            for item in body.get("response") or []:
+                fixture = item.get("fixture") if isinstance(item, dict) else None
+                if not isinstance(fixture, dict) or fixture.get("id") not in wanted:
+                    continue
+                raw_venue = fixture.get("venue")
+                venue: dict[str, Any] = raw_venue if isinstance(raw_venue, dict) else {}
+                name = _venue_text(venue.get("name"))
+                if name is not None:
+                    found.append((name, _venue_text(venue.get("city")), int(fixture["id"])))
+            if found:
+                report.payloads_applied += 1
+                report.fixtures_touched += len(found)
+            if apply and found:
+                with conn.cursor() as cur:
+                    cur.executemany(
+                        "UPDATE core.fixtures SET venue_name = %s, venue_city = %s WHERE provider_fixture_id = %s "
+                        "AND venue_name IS NULL AND source_payload_hash = %s",
+                        [(n, c, fid, row["hash"]) for n, c, fid in found])
+                    report.coverage_rows += max(cur.rowcount, 0)
+                conn.commit()
+        counters.rows_updated = report.coverage_rows
+        counters.rows_normalized = report.fixtures_touched
+    finally:
+        if ledger is not None and run_id is not None:
+            ledger.close(run_id, counters, notes=f"RAW -> core.fixtures.venue_name/venue_city (0065): "
+                                                 f"{report.payloads_seen} payload(s) read, "
+                                                 f"{report.fixtures_touched} fixture(s) named a venue")
+            conn.commit()
+    if not apply:
+        conn.rollback()
+    log.info("reprocess.fixture_venues_finished", **report.as_dict())
+    return report
+
+
 def _competition_season(conn: psycopg.Connection, league: Any, season: Any) -> int | None:
     try:
         league_id, season_year = int(league), int(season)

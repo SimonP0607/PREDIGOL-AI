@@ -558,6 +558,7 @@ class VenueRef:
     capacity: int | None = None
     surface: str | None = None
     address: str | None = None
+    image_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -603,6 +604,7 @@ def iter_teams(body: dict[str, Any]) -> Iterator[TeamRef]:
                 capacity=raw_venue["capacity"] if isinstance(raw_venue.get("capacity"), int) else None,
                 surface=_text(raw_venue, "surface"),
                 address=_text(raw_venue, "address"),
+                image_url=_text(raw_venue, "image"),
             )
         national = team.get("national")
         yield TeamRef(

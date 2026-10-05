@@ -165,13 +165,19 @@ FIRST_CAPTURE_SQL = "SELECT min(captured_at) FROM market.odds_snapshots WHERE so
 
 UPCOMING_SQL = """
 WITH asked AS (
-    SELECT (p.params->>'fixture')::bigint AS provider_fixture_id, max(p.fetched_at) AS last_asked
-      FROM raw.ingestion_payloads p
-     WHERE p.endpoint = '/odds' AND p.params ? 'fixture' AND p.params->>'fixture' ~ '^[0-9]+$'
-       AND p.fetched_at >= %(at)s - interval '4 days'
+    SELECT pid AS provider_fixture_id, max(at) AS last_asked FROM (
+        SELECT (p.params->>'fixture')::bigint AS pid, p.fetched_at AS at
+          FROM raw.ingestion_payloads p
+         WHERE p.endpoint = '/odds' AND p.params ? 'fixture' AND p.params->>'fixture' ~ '^[0-9]+$'
+           AND p.fetched_at >= %(at)s - interval '4 days'
+        UNION ALL
+        SELECT a.provider_fixture_id, a.asked_at FROM market.odds_asks a
+         WHERE a.asked_at >= %(at)s - interval '4 days') x
      GROUP BY 1
 )
-SELECT c.id AS competition_id, f.kickoff_at, lc.odds AS covered, a.last_asked,
+SELECT c.id AS competition_id, f.kickoff_at,
+       CASE WHEN EXISTS (SELECT 1 FROM market.odds_mapping_seen m WHERE m.provider_fixture_id = f.provider_fixture_id)
+            THEN true ELSE lc.odds END AS covered, a.last_asked,
        (SELECT max(o.captured_at) FROM market.odds_snapshots o WHERE o.fixture_id = f.id) AS last_capture
   FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id

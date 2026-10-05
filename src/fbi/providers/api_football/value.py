@@ -75,7 +75,8 @@ VALUES: dict[str, Value] = {
     "/players": Value("MODEL_FEATURE", "P1", "player season aggregates: priors for player ratings",
                       "complete the current season for tracked leagues before any player-based model"),
     "/players/squads": Value("REFERENCE", "P1", "current squads: who can play"),
-    "/players/teams": Value("LOW_VALUE", "P3", "a player's clubs by season (also in transfers and squads)"),
+    "/players/teams": Value("PRODUCT_ONLY", "P3", "a player's career on the player page: clubs and national sides "
+                            "by season, beyond the seasons PrediGol tracks"),
     "/players/topscorers": Value("PRODUCT_ONLY", "P2", "competition page leaders"),
     "/players/topassists": Value("PRODUCT_ONLY", "P2", "competition page leaders"),
     "/players/topyellowcards": Value("PRODUCT_ONLY", "P3", "competition page leaders"),
@@ -90,8 +91,10 @@ VALUES: dict[str, Value] = {
     "/odds": Value("MODEL_FEATURE", "P0", "pre-match prices by bookmaker: the market baseline every model must beat, "
                    "the consensus, the price a pick is taken at; 5 of 338 bet types normalized",
                    "normalize more markets from RAW only when a model targets them (team totals, HT/FT, corners)"),
-    "/odds/mapping": Value("INGEST_NOW", "P1", "which fixtures the provider prices: the capture can skip the rest",
-                           "let the capture planner skip fixtures absent from a fresh mapping (saves requests)"),
+    "/odds/mapping": Value("REFERENCE", "P2", "which fixtures the provider prices: overrules a stale coverage flag, "
+                           "and splits a missing price into ours (listed) and the provider's (never listed)",
+                           "never a skip list: the daily listing lags the prices (5 Oct 2026: 4 of 10 unlisted "
+                           "fixtures were priced before the listing was read)"),
     "/odds/bookmakers": Value("REFERENCE", "P2", "bookmaker catalogue (33)"),
     "/odds/bets": Value("REFERENCE", "P2", "pre-match bet catalogue (338)"),
 }

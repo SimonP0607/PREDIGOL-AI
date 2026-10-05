@@ -3,6 +3,7 @@
     python -m scripts.reprocess_details                # verify only, write nothing
     python -m scripts.reprocess_details --apply
     python -m scripts.reprocess_details --apply --limit 50
+    python -m scripts.reprocess_details --venues [--apply]   # fixtures' venue name/city from their own payload
 
 No provider request is made: every /fixtures?ids= payload we have ever fetched is
 still in the raw store, so per-fixture detail coverage (revision 0028) and the
@@ -29,6 +30,7 @@ from fbi.ops.reprocess import (
     derive_identity_from_stored_detail,
     repair_payload_lineage,
     reprocess_fixture_details,
+    reprocess_fixture_venues,
     reprocess_results,
     reprocess_teams,
 )
@@ -59,7 +61,21 @@ def main() -> int:
                              "payloads: fixes the rows where extratime was the running total")
     parser.add_argument("--teams", action="store_true",
                         help="normalise the /teams payloads that were only ever stored as bytes")
+    parser.add_argument("--venues", action="store_true",
+                        help="fill core.fixtures.venue_name/venue_city from each fixture's own source payload")
     args = parser.parse_args()
+
+    if args.venues:
+        with psycopg.connect(settings.database.psycopg_url) as conn:
+            rep = reprocess_fixture_venues(conn, _raw_root(), apply=args.apply, limit=args.limit,
+                                           verify_hashes=not args.skip_hash_check)
+        print(f"{rep.payloads_seen} source payload(s) read, {rep.payloads_applied} naming a venue, "
+              f"{rep.fixtures_touched} fixture(s) named a venue, {rep.coverage_rows} row(s) written")
+        for problem in rep.problems[:10]:
+            print(f"  {problem}")
+        if not args.apply:
+            print("re-run with --apply")
+        return 1 if rep.payloads_missing_file or rep.payloads_not_rehashing else 0
 
     if args.derive_only:
         if not args.apply:

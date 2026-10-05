@@ -32,9 +32,11 @@ from fbi.api.contracts.center import (
     MatchEvent,
     MatchFacts,
     PlayerAbsence,
+    PlayerCareerTeam,
     PlayerDetail,
     PlayerLine,
     PlayerMatch,
+    PlayerProviderSeason,
     PlayerSeason,
     PlayerSidelined,
     PlayerSummary,
@@ -303,6 +305,22 @@ def player(conn: Conn, player_id: int, *, at: datetime | None = None) -> Envelop
     transfers = [PlayerTransfer(**_clean(x, drop)) for x in lists["transfers"]]
     sidelined = [PlayerSidelined(**_clean(x, drop)) for x in lists["sidelined"]]
     trophies = [PlayerTrophy(**_clean(x, drop)) for x in lists["trophies"]]
+    provider_rows = fetch_all(conn, repo.PLAYER_PROVIDER_SEASONS, pid)
+    if provider_rows:
+        newest = max(provider_rows, key=lambda x: x["observed_at"])
+        provenance["provider_seasons"] = Provenance(source="API-Football /players", observed_at=newest["observed_at"],
+                                                    payload_hash=newest["payload_hash"],
+                                                    normalizer_version=newest["normalizer_version"])
+    provider_seasons = [PlayerProviderSeason(**_clean(x, ("payload_hash", "normalizer_version")))
+                        for x in provider_rows]
+    career_rows = fetch_all(conn, repo.PLAYER_CAREER, pid)
+    if career_rows or checks.get("players_teams"):
+        first = career_rows[0] if career_rows else {}
+        provenance["career"] = Provenance(source="API-Football /players/teams", observed_at=first.get("observed_at"),
+                                          payload_hash=first.get("payload_hash"),
+                                          normalizer_version=first.get("normalizer_version"),
+                                          checked_at=checks.get("players_teams"))
+    career = [PlayerCareerTeam(**_clean(x, drop)) for x in career_rows]
     return ok(PlayerDetail(
         player=PlayerSummary(**r), **extra,
         seasons=_sec(seasons, "No match statistics are stored for this player."),
@@ -314,6 +332,11 @@ def player(conn: Conn, player_id: int, *, at: datetime | None = None) -> Envelop
                        else "The provider's sidelined list has not been read for this player yet."),
         trophies=_sec(trophies, "The provider lists no trophy for this player." if "trophies" in provenance
                       else "The provider's trophies have not been read for this player yet."),
+        provider_seasons=_sec(provider_seasons, "The provider's season statistics list no entry for this player "
+                                                "(they are read weekly for the current seasons of tracked "
+                                                "competitions)."),
+        career=_sec(career, "The provider lists no team for this player." if "career" in provenance
+                    else "The provider's list of this player's teams has not been read yet."),
         provenance=provenance,
     ))
 

@@ -34,9 +34,17 @@ class CompetitionRef(Contract):
 
 
 class VenueRef(Contract):
-    id: int
+    """Where a match is played or a team plays. ``id`` is null when the provider named the stadium without
+    identifying it (the fixture payload's name and city, as sent); the details come from /venues or /teams."""
+
+    id: int | None = None
     name: str
-    city: str | None
+    city: str | None = None
+    country: str | None = None
+    capacity: int | None = None
+    surface: str | None = Field(default=None, description="The provider's text: 'grass', 'artificial turf'...")
+    address: str | None = None
+    image_url: str | None = None
 
 
 class Score(Contract):

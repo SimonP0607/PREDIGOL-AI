@@ -18,7 +18,8 @@ predictions            hourly; 1 call/day per match        48 h, 24 h and 3 h be
 rounds, current_round  daily; 1 call/day                   daily per tracked current season
 leaders (4 lists)      several times a week; 1 call/day    daily per current season the coverage flags allow
 odds_bets/bookmakers   several times a week; 1 call/day    daily
-odds_mapping           daily (100 a page); 1 call/day      daily, every page
+odds_mapping           daily (100 a page); 1 call/day      daily, every page (up to 200); read by the capture
+                                                           planner and the price status (see scripts.capture_odds)
 team_statistics        twice a day; 1/day if playing, else  daily for teams playing within 24 h, else weekly
                        1/week
 coachs                 daily; 1 call/day                   weekly per tracked team (line-ups name the coach
@@ -26,6 +27,10 @@ coachs                 daily; 1 call/day                   weekly per tracked te
 transfers              several times a week; 1 call/day    weekly per tracked club (national sides have none)
 sidelined, trophies    several times a week; 1 call/day    weekly, 20 people a request
 countries              when a country is added; 1/day      weekly
+venues                 several times a week; 1 call/day    by id, the venues of current tracked seasons not
+                                                           described within 90 days (next matches first)
+players_teams          several times a week; 1/day-1/week  every 60 days per player in scope, and at once when
+                                                           the player's /transfers list changed since
 =====================  ==================================  ===============================================
 
 Weekly instead of daily for people is deliberate: the tracked scope (4 Oct 2026: 5,525 teams, 8,121
@@ -63,6 +68,9 @@ log = get_logger(__name__)
 NORMALIZER_VERSION = "reference-1"
 RESERVE_MARGIN = 10
 MAX_PAGES = 30
+MAPPING_MAX_PAGES = 200
+"""/odds/mapping lists every priced fixture, 100 a page: 29 pages on 4 Oct 2026, one short of ``MAX_PAGES``. A busier
+day would have been cut at 3,000 fixtures without a word; 200 pages is 20,000 fixtures."""
 BATCH_PEOPLE = 20
 """/sidelined and /trophies accept up to 20 ids (documented batch limit)."""
 
@@ -92,6 +100,9 @@ class Feed:
     """Targets asked together in one request (``batch_param`` joined with '-'): /sidelined and /trophies
     take 20 people. Each target keeps its own check, so a batch is formed from the people due, not fixed."""
     batch_param: str = ""
+    max_pages: int = 0
+    """Pages a paged answer may be read to (0 = ``MAX_PAGES``). An answer with more pages than that is read to the
+    cap and its check records the truncation as an error - never a silent partial sweep."""
 
 
 # ── values ──────────────────────────────────────────────────────────────────────────────────────────
@@ -451,6 +462,77 @@ def apply_odds_mapping(conn: psycopg.Connection, t: Target, body: dict[str, Any]
         return max(cur.rowcount, 0)
 
 
+MAX_CAPACITY = 250_000
+"""A stadium's capacity above this (or 0) is not a capacity: stored as unknown, never guessed."""
+
+
+def venue_values(v: Mapping[str, Any]) -> dict[str, Any] | None:
+    """One /venues entry; None without an id or a name (an unkeyable venue is not stored)."""
+    vid = _int(v.get("id"))
+    name = _text(v.get("name"))
+    if vid is None or vid <= 0 or name is None:
+        return None
+    capacity = _int(v.get("capacity"))
+    return {"provider_venue_id": vid, "name": name, "city": _text(v.get("city")), "country": _text(v.get("country")),
+            "capacity": capacity if capacity is not None and 0 < capacity <= MAX_CAPACITY else None,
+            "surface": _text(v.get("surface")), "address": _text(v.get("address")),
+            "image_url": _text(v.get("image"))}
+
+
+def apply_venues(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                 observed_at: datetime) -> int:
+    """/venues?id into core.venues, the identity table the fixtures and teams point at: the newest payload wins, and
+    a value the provider leaves empty does not erase one already held (the venue block of /teams may have sent it)."""
+    written = 0
+    with conn.cursor() as cur:
+        for entry in _response(body):
+            v = venue_values(entry) if isinstance(entry, Mapping) else None
+            if v is None:
+                continue
+            cur.execute(
+                "INSERT INTO core.venues (provider_venue_id, name, city, country, capacity, surface, address, image_url, "
+                "source_payload_hash, source_fetched_at) VALUES (%(provider_venue_id)s, %(name)s, %(city)s, "
+                "%(country)s, %(capacity)s, %(surface)s, %(address)s, %(image_url)s, %(h)s, %(at)s) "
+                "ON CONFLICT (provider_venue_id) DO UPDATE SET name = EXCLUDED.name, "
+                "  city = COALESCE(EXCLUDED.city, core.venues.city), "
+                "  country = COALESCE(EXCLUDED.country, core.venues.country), "
+                "  capacity = COALESCE(EXCLUDED.capacity, core.venues.capacity), "
+                "  surface = COALESCE(EXCLUDED.surface, core.venues.surface), "
+                "  address = COALESCE(EXCLUDED.address, core.venues.address), "
+                "  image_url = COALESCE(EXCLUDED.image_url, core.venues.image_url), "
+                "  source_payload_hash = EXCLUDED.source_payload_hash, source_fetched_at = EXCLUDED.source_fetched_at "
+                "WHERE core.venues.source_fetched_at IS NULL OR core.venues.source_fetched_at <= EXCLUDED.source_fetched_at",
+                {**v, "h": payload_hash, "at": observed_at})
+            written += max(cur.rowcount, 0)
+    return written
+
+
+def player_team_rows(body: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """/players/teams: ``[{"team": {id, name, logo}, "seasons": [2024, 2023]}]`` in the provider's order. Seasons are
+    kept newest first (one canonical form, so a reordering alone is not a change); a year that is not a season
+    (outside 1850-2100) is left out, never corrected."""
+    rows = []
+    for e in _response(body):
+        if not isinstance(e, Mapping):
+            continue
+        team = _map(e.get("team"))
+        seasons = sorted({y for y in (_int(x) for x in e.get("seasons") or []) if y is not None and 1850 <= y <= 2100},
+                         reverse=True)
+        tid = _int(team.get("id"))
+        if (tid is None or tid <= 0) and not seasons:
+            continue
+        rows.append({"provider_team_id": tid if tid and tid > 0 else None, "team_name": _text(team.get("name")),
+                     "team_logo": _text(team.get("logo")), "seasons": seasons})
+    return rows
+
+
+def apply_player_teams(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                       observed_at: datetime) -> int:
+    with conn.cursor() as cur:
+        return write_snapshot_if_changed(cur, "core.player_team_seasons", {"provider_player_id": t.context["ids"][0]},
+                                         player_team_rows(body), observed_at=observed_at, payload_hash=payload_hash)
+
+
 def apply_catalogue(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
                     observed_at: datetime) -> int:
     """/odds/bets, /odds/live/bets, /odds/bookmakers into the existing catalogue tables; a rename is kept in
@@ -679,6 +761,69 @@ def people_targets(kind: str, list_key: str) -> Callable[[psycopg.Connection, da
     return targets
 
 
+VENUE_REFRESH = timedelta(days=90)
+"""A stadium's capacity, surface, address and picture change seldom; a venue described within 90 days (by /venues or
+by the venue block of /teams) is not asked again."""
+
+VENUES_SQL = """
+WITH cur AS (
+    SELECT f.venue_id, f.home_team_id, f.away_team_id, f.kickoff_at FROM core.fixtures f
+      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+      JOIN core.competitions c ON c.id = cs.competition_id
+     WHERE c.is_tracked AND cs.is_current),
+scope AS (
+    SELECT venue_id AS id, min(kickoff_at) FILTER (WHERE kickoff_at > %(at)s) AS next_at FROM cur
+     WHERE venue_id IS NOT NULL GROUP BY 1
+    UNION ALL
+    SELECT t.venue_id, NULL FROM core.teams t
+     WHERE t.venue_id IS NOT NULL AND t.id IN (SELECT home_team_id FROM cur UNION SELECT away_team_id FROM cur))
+SELECT v.provider_venue_id FROM scope s JOIN core.venues v ON v.id = s.id
+ WHERE v.provider_venue_id > 0
+   AND (v.source_fetched_at IS NULL OR v.source_fetched_at < %(at)s - %(refresh)s)
+ GROUP BY 1
+ ORDER BY min(s.next_at) NULLS LAST, 1
+"""
+"""Venues of the current seasons of tracked competitions (where their matches are played, and the tracked teams'
+grounds) not described within ``VENUE_REFRESH``: the ones hosting the next matches first."""
+
+
+def venue_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(VENUES_SQL, {"at": at, "refresh": VENUE_REFRESH})
+        return [Target(f"venue:{vid}", {"id": int(vid)}, VENUE_REFRESH, {}) for (vid,) in cur.fetchall()]
+
+
+CAREER_REFRESH = timedelta(days=60)
+"""/players/teams changes when a player moves, a couple of times a year at most: asked every 60 days, and at once
+when the player's /transfers list changed after the last ask."""
+
+CAREER_SQL = """
+WITH people AS (
+    SELECT ps.provider_player_id, max(f.kickoff_at) AS seen FROM core.fixture_player_stats ps
+      JOIN core.fixtures f ON f.id = ps.fixture_id
+      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+      JOIN core.competitions c ON c.id = cs.competition_id
+     WHERE c.is_tracked AND cs.is_current AND ps.provider_player_id > 0 AND coalesce(ps.minutes, 0) > 0
+     GROUP BY 1)
+SELECT p.provider_player_id,
+       EXISTS (SELECT 1 FROM core.player_transfers x WHERE x.provider_player_id = p.provider_player_id
+                 AND x.observed_at > k.checked_at) AS moved
+  FROM people p
+  LEFT JOIN core.reference_checks k ON k.feed = 'players_teams' AND k.target = 'player:' || p.provider_player_id
+ ORDER BY p.seen DESC, 1
+"""
+"""The players of the people feeds (played in a current season of a tracked competition), the latest seen first;
+``moved``: their transfers changed after /players/teams was last asked for them."""
+
+
+def player_team_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(CAREER_SQL)
+        rows = cur.fetchall()
+    return [Target(f"player:{pid}", {"player": int(pid)}, timedelta(0) if moved else CAREER_REFRESH,
+                   {"ids": [int(pid)]}) for pid, moved in rows]
+
+
 def merge(group: Sequence[Target], param: str) -> Target:
     """Several people's targets as one request (``players=1-2-3``)."""
     if len(group) == 1:
@@ -694,7 +839,8 @@ FEEDS: tuple[Feed, ...] = (
     Feed("odds_live_bets", "/odds/live/bets", single_target(DAY, catalogue="inplay"), apply_catalogue, max_per_run=1),
     Feed("odds_bookmakers", "/odds/bookmakers", single_target(DAY, catalogue="bookmakers"), apply_catalogue,
          max_per_run=1),
-    Feed("odds_mapping", "/odds/mapping", single_target(DAY), apply_odds_mapping, max_per_run=1, paged=True),
+    Feed("odds_mapping", "/odds/mapping", single_target(DAY), apply_odds_mapping, max_per_run=1, paged=True,
+         max_pages=MAPPING_MAX_PAGES),
     Feed("rounds", "/fixtures/rounds", round_targets, apply_rounds, max_per_run=300),
     Feed("current_round", "/fixtures/rounds", current_round_targets, apply_current_round, max_per_run=300),
     Feed("topscorers", "/players/topscorers", leader_targets("topscorers", 3), apply_leaders, max_per_run=300),
@@ -714,6 +860,8 @@ FEEDS: tuple[Feed, ...] = (
          batch_param="players"),
     Feed("trophies_coachs", "/trophies", people_targets("coach", "trophies"), apply_trophies, max_per_run=20, batch=BATCH_PEOPLE,
          batch_param="coachs"),
+    Feed("venues", "/venues", venue_targets, apply_venues, max_per_run=100),
+    Feed("players_teams", "/players/teams", player_team_targets, apply_player_teams, max_per_run=100),
     Feed("countries", "/countries", single_target(WEEK), apply_countries, max_per_run=1),
     Feed("timezone", "/timezone", single_target(timedelta(days=90)), apply_nothing, max_per_run=1),
     Feed("leagues_seasons", "/leagues/seasons", single_target(WEEK), apply_nothing, max_per_run=1),
@@ -870,9 +1018,15 @@ async def _ask(conn: psycopg.Connection, provider: Any, ledger: RunLedger, run_i
             conn.commit()
             return True
         total = _int(_map(body.get("paging")).get("total")) or 1
-        if not feed.paged or page >= min(total, MAX_PAGES):
+        cap = feed.max_pages or MAX_PAGES
+        if not feed.paged or page >= min(total, cap):
             break
         page += 1
+    truncated = None
+    if feed.paged and total > cap:
+        truncated = f"truncated: read {page} of {total} pages (cap {cap})"
+        counters.errors.append(f"{feed.name} {t.key}: {truncated}")
+        log.warning("reference.truncated", feed=feed.name, target=t.key, pages=page, total=total)
     report.rows[feed.name] = report.rows.get(feed.name, 0) + added
     counters.rows_inserted += added
     found = t.context.get("found")
@@ -883,6 +1037,6 @@ async def _ask(conn: psycopg.Connection, provider: Any, ledger: RunLedger, run_i
                          rows_added=0)
         else:
             record_check(conn, feed.name, k, checked_at=checked_at or now(), payload_hash=first_hash,
-                         results=results, rows_added=added)
+                         results=results, rows_added=added, error=truncated)
     conn.commit()
     return True

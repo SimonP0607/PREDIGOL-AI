@@ -41,7 +41,8 @@ _WHERE = """
 
 _SELECT = """
 SELECT f.id, f.provider_fixture_id, f.kickoff_at, f.status_short, f.status_group, f.round,
-       f.created_at, f.updated_at, f.source_payload_hash, f.source_fetched_at, f.venue_id,
+       f.created_at, f.updated_at, f.source_payload_hash, f.source_fetched_at, f.venue_id, f.venue_name,
+       f.venue_city,
        c.id AS competition_id, c.name AS competition_name, c.country AS competition_country,
        c.provider_league_id, c.competition_type, c.is_tracked, cs.season,
        c.logo_url AS competition_logo, c.flag_url AS competition_flag, c.country_code AS competition_country_code,
@@ -111,7 +112,17 @@ def get_lineage(conn: Conn, payload_hash: str) -> Row | None:
 
 
 def get_venue(conn: Conn, venue_id: int) -> Row | None:
-    return fetch_one(conn, "SELECT id, name, city FROM core.venues WHERE id = %s", (venue_id,))
+    return fetch_one(conn, "SELECT id, name, city, country, capacity, surface, address, image_url FROM core.venues "
+                           "WHERE id = %s", (venue_id,))
+
+
+def fixture_venue(conn: Conn, row: Row) -> Row | None:
+    """The match's venue: the identified one with its details, else the name and city the fixture payload gave."""
+    if row.get("venue_id"):
+        return get_venue(conn, int(row["venue_id"]))
+    if row.get("venue_name"):
+        return {"id": None, "name": row["venue_name"], "city": row.get("venue_city")}
+    return None
 
 
 def latest_quotes(conn: Conn, fixture_id: int) -> list[Row]:

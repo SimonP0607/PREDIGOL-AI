@@ -80,9 +80,17 @@ USES: dict[str, Use] = {
                           covered_by="/teams?league&season and our fixtures (the seasons a team played)"),
     "/teams/countries": Use("FULL", "low", ("reference_refresh",), ("<none>",), "weekly", ("raw only (by decision)",),
                             (), notes="/countries holds names, codes and flags; kept as RAW."),
-    "/venues": Use("PARTIAL", "low", ("truth audit (id)",), ("id",), "audit only", ("core.venues (from /teams and "
-                   "/fixtures venue blocks)",), ("match header (venue name, city)",),
-                   gaps=("capacity, surface, address and image only for venues met through /teams",)),
+    "/venues": Use("FULL", "low", ("reference_refresh (venues, by id)", "truth audit (id)"), ("id",),
+                   "the venues of current tracked seasons not described within 90 days, next matches first "
+                   "(documented: 1 call per day; a stadium's details seldom change)",
+                   ("core.venues (capacity, surface, address, image; lineage, newest payload wins, an empty value "
+                    "never erases a known one)", "core.fixtures.venue_name / venue_city (the venue as the fixture "
+                    "payload names it, also without an id)"),
+                   ("match header (venue, city, capacity)", "team page (ground)"),
+                   notes="a venue the provider names without an id cannot be keyed: its name and city stay on the "
+                         "fixture (5 Oct 2026: 7,095 current tracked fixtures), no venue row is invented for it",
+                   fixed=("PARTIAL until 5 Oct 2026: capacity, surface, address and image only for venues met "
+                          "through /teams; the image was dropped; a fixture's venue named without an id was lost",)),
     "/standings": Use("FULL", "high", ("context_refresh (every 12 h)", "context_due (hourly after a finished match)",
                                        "truth audit"), ("league,season",),
                       "hourly after a match until the table changes, every 12 h otherwise (documented: 1 call per "
@@ -149,23 +157,29 @@ USES: dict[str, Use] = {
     "/players/profiles": Use("FULL", "high", ("historical_backfill (catalogue pages)", "truth audit"),
                              ("page (250 per page)", "player"), "monthly sweep (2,741 pages on 4 Oct 2026)",
                              ("core.players",), ("player pages (photo, birth, nationality, height, weight)",)),
-    "/players": Use("PARTIAL", "high", ("historical_backfill (players_season units, weekly for current seasons)",
-                                        "truth audit (id,season)"),
-                    ("league,season,page", "id,season"), "weekly per current tracked season (documented: 1 call "
-                    "per day)", ("core.player_season_stats (change-only, the provider's aggregate per team and "
-                                 "competition)",),
-                    ("truth audit (provider vs our aggregate)",),
-                    gaps=("the product's player pages still show PrediGol's own aggregate of the per-match "
-                          "statistics; the provider's (with its rating) is stored and audited, not yet displayed",
-                          "the rating is the provider's own metric: kept labelled, never re-derived",),
+    "/players": Use("FULL", "high", ("historical_backfill (players_season units, weekly for current seasons)",
+                                     "truth audit (id,season)"),
+                    ("league,season,page", "id,season"), "weekly per current tracked season, at least six days "
+                    "apart (documented: 1 call per day; the provider refreshes it several times a week)",
+                    ("core.player_season_stats (change-only, the provider's aggregate per team and competition)",),
+                    ("player page: the provider's season aggregate, labelled as the provider's, next to PrediGol's "
+                     "own", "truth audit (provider vs our aggregate)"),
+                    notes="the rating is the provider's own metric: kept labelled, never re-derived",
                     fixed=("no players_season unit had ever been seeded (4 Oct 2026): the integration map claimed "
-                           "a requester that never ran",)),
+                           "a requester that never ran",
+                           "PARTIAL until 5 Oct 2026: stored and audited, not displayed; two sweeps ran seven hours "
+                           "apart across the ISO-week boundary (3,192 of 3,200 pages identical)")),
     "/players/squads": Use("FULL", "high", ("historical_backfill (team_squad units)", "truth audit"),
                            ("team", "player"), "weekly for the teams of current tracked seasons",
                            ("core.squad_members (first and last seen)",), ("team pages, current club",)),
-    "/players/teams": Use("PARTIAL", "medium", ("truth audit",), ("player",), "audit only", ("raw only",),
-                          gaps=("a player's clubs and national teams by season not stored: the club / national-"
-                                "team split is computed from squads and appearances",)),
+    "/players/teams": Use("FULL", "medium", ("reference_refresh (players_teams)", "truth audit"), ("player",),
+                          "every 60 days per player who played in a current tracked season, at once after his "
+                          "/transfers list changed (documented: 1 call per day to 1 per week)",
+                          ("core.player_team_seasons (snapshot per change, in the provider's order)",),
+                          ("player page: career (teams and seasons; club or national side by core.team_kind)",),
+                          notes="the current club / national team on the player page is still computed from squads "
+                                "and appearances: the provider's list says where a player played, not where he is",
+                          fixed=("PARTIAL until 5 Oct 2026: audit samples only, not stored",)),
     **{f"/players/top{k}": Use("FULL", u, (f"reference_refresh (top{k})",), ("league,season",),
                                "daily per current season whose coverage has top lists (documented: 1 call per day)",
                                ("core.season_leaders (snapshots in the provider's order)",),
@@ -201,11 +215,18 @@ USES: dict[str, Use] = {
                  "every 15 min within capture windows (documented: updated every 3 h)",
                  ("market.odds_snapshots", "market.market_consensus"), ("odds board, picks, settlement, backtests",),
                  notes="pre-match odds 1-14 days before kick-off, 7-day history at the provider (documented)."),
-    "/odds/mapping": Use("PARTIAL", "medium", ("reference_refresh (odds_mapping, every page)",), ("page",),
+    "/odds/mapping": Use("FULL", "medium", ("reference_refresh (odds_mapping, every page up to 200)",), ("page",),
                          "daily (documented: 1 call per day; 100 a page)",
-                         ("market.odds_mapping_seen (first listing of each fixture)",), (),
-                         gaps=("not yet read by the odds capture planner (it still asks for every tracked fixture in "
-                               "its windows)",)),
+                         ("market.odds_mapping_seen (first listing of each fixture)",),
+                         ("odds capture planner (a listed fixture is asked even where the season's coverage flag "
+                          "says no odds)", "price status and odds freshness (listed = covered)",
+                          "data quality (a listed fixture without a price is ours to catch; never listed is the "
+                          "provider's)"),
+                         notes="never used to leave a fixture out: on 5 Oct 2026 10 of the 76 priced fixtures of the "
+                               "next 96 h were not in the newest listing, four of them priced 25-86 minutes before "
+                               "it was read (the daily listing lags the prices)",
+                         fixed=("PARTIAL until 5 Oct 2026: not read by the capture planner; a sweep longer than 30 "
+                                "pages would have been cut without a word (29 on 4 Oct)",)),
     "/odds/bookmakers": Use("FULL", "medium", ("reference_refresh (odds_bookmakers)", "catalogue"), ("<none>",),
                             "daily (documented: 1 call per day)",
                             ("market.bookmakers", "market.provider_catalogue_changes (renames)"), ("odds board",)),

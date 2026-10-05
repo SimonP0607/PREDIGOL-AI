@@ -429,7 +429,33 @@ summary of the group, not another trophy. Stored as sent; a season-less entry wi
 
 PERSON_CHECKS = """
 SELECT feed, max(checked_at) AS checked_at FROM core.reference_checks
- WHERE target = %(key)s AND feed IN ('sidelined_players', 'trophies_players') GROUP BY feed
+ WHERE target = %(key)s AND feed IN ('sidelined_players', 'trophies_players', 'players_teams') GROUP BY feed
+"""
+
+PLAYER_PROVIDER_SEASONS = """
+SELECT s.season, s.provider_league_id, c.id AS competition_id, c.name AS competition, s.provider_team_id,
+       t.id AS team_id, t.name AS team, COALESCE(k.is_national, t.is_national) AS national, s.appearances, s.lineups,
+       s.minutes, s.goals, s.assists, s.yellow_cards, s.red_cards, NULLIF(s.rating, 0) AS rating, s.observed_at,
+       s.payload_hash, s.normalizer_version
+  FROM core.player_season_stats_latest s
+  LEFT JOIN core.competitions c ON c.provider_league_id = s.provider_league_id
+  LEFT JOIN core.teams t ON t.provider_team_id = s.provider_team_id
+  LEFT JOIN core.team_kind k ON k.team_id = t.id
+ WHERE s.provider_player_id = %(pid)s
+ ORDER BY s.season DESC, s.appearances DESC NULLS LAST, c.name, s.provider_team_id
+"""
+"""The provider's season aggregates of a player (newest row per player, competition, season and team). A rating of 0
+is the provider's "not rated", shown as none."""
+
+PLAYER_CAREER = """
+SELECT x.provider_team_id, t.id AS team_id, COALESCE(x.team_name, t.name) AS team,
+       COALESCE(x.team_logo, t.logo_url) AS team_logo, COALESCE(k.is_national, t.is_national) AS national, x.seasons,
+       x.observed_at, x.payload_hash, x.normalizer_version
+  FROM core.player_team_seasons_latest x
+  LEFT JOIN core.teams t ON t.provider_team_id = x.provider_team_id
+  LEFT JOIN core.team_kind k ON k.team_id = t.id
+ WHERE x.provider_player_id = %(pid)s
+ ORDER BY x.ordinal
 """
 
 REFERENCE_SEASONS = """

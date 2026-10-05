@@ -62,17 +62,18 @@ def _venue_id(cur: psycopg.Cursor[tuple[int]], team: TeamRef, *, payload_hash: s
     if v is None or v.provider_venue_id is None or v.name is None:
         return None
     cur.execute(
-        "INSERT INTO core.venues (provider_venue_id, name, city, country, capacity, surface, address, "
-        " source_payload_hash, source_fetched_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+        "INSERT INTO core.venues (provider_venue_id, name, city, country, capacity, surface, address, image_url, "
+        " source_payload_hash, source_fetched_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
         "ON CONFLICT (provider_venue_id) DO UPDATE SET "
         "  name = EXCLUDED.name, city = EXCLUDED.city, country = EXCLUDED.country, "
         "  capacity = EXCLUDED.capacity, surface = EXCLUDED.surface, address = EXCLUDED.address, "
+        "  image_url = COALESCE(EXCLUDED.image_url, core.venues.image_url), "
         "  source_payload_hash = EXCLUDED.source_payload_hash, "
         "  source_fetched_at = EXCLUDED.source_fetched_at "
         "WHERE core.venues.source_fetched_at IS NULL "
         "   OR core.venues.source_fetched_at <= EXCLUDED.source_fetched_at "
         "RETURNING id",
-        (v.provider_venue_id, v.name, v.city, v.country, v.capacity, v.surface, v.address,
+        (v.provider_venue_id, v.name, v.city, v.country, v.capacity, v.surface, v.address, v.image_url,
          payload_hash, fetched_at),
     )
     row = cur.fetchone()

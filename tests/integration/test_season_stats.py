@@ -66,14 +66,16 @@ def test_a_teams_statistics_keep_averages_and_totals_apart(db: psycopg.Connectio
     assert row == (Decimal("4.500"), 18, 2, "WWDL", [{"formation": "4-2-3-1", "played": 3}], False, "ts0")
 
 
-def test_the_weekly_player_sweep_is_one_set_of_units_per_week(db: psycopg.Connection, seed: Seed) -> None:
+def test_the_weekly_player_sweep_is_one_set_of_units_per_week_and_six_days_apart(db: psycopg.Connection, seed: Seed) -> None:
     """The seed commits (it is a worker step), so the test puts back what it changed."""
     try:
         db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
         db.execute("UPDATE core.competition_seasons SET is_current = true WHERE id = %s", (seed.season_id,))
         assert seed_player_seasons(db, at=T0) == 1
         assert seed_player_seasons(db, at=T0 - timedelta(hours=6)) == 0, "same ISO week"
-        assert seed_player_seasons(db, at=T0 + timedelta(days=1)) == 1, "Monday: a new week"
+        assert seed_player_seasons(db, at=T0 + timedelta(days=1)) == 0, \
+            "Monday is a new ISO week, but the season was swept a day ago (4-5 Oct 2026: 3,200 requests for nothing)"
+        assert seed_player_seasons(db, at=T0 + timedelta(days=6, hours=1)) == 1, "six days on: the next sweep"
         keys = db.execute("SELECT batch_key, params->>'page' FROM raw.backfill_tasks WHERE kind = 'players_season' "
                           "ORDER BY batch_key").fetchall()
         assert keys == [("w202640", "1"), ("w202641", "1")]

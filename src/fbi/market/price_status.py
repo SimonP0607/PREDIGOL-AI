@@ -62,20 +62,29 @@ class MarketPrice:
 
 
 FIXTURES_SQL = """
-SELECT f.id, f.provider_fixture_id, f.kickoff_at, lc.odds AS covered
+SELECT f.id, f.provider_fixture_id, f.kickoff_at,
+       CASE WHEN EXISTS (SELECT 1 FROM market.odds_mapping_seen m WHERE m.provider_fixture_id = f.provider_fixture_id)
+            THEN true ELSE lc.odds END AS covered
   FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
   LEFT JOIN raw.league_coverage lc ON lc.provider_league_id = c.provider_league_id AND lc.season = cs.season
  WHERE f.id = ANY(%(ids)s)
 """
+"""``covered``: the provider's coverage flag for the season, overruled by /odds/mapping when it lists the fixture."""
 
 ASKED_SQL = """
-SELECT (p.params->>'fixture')::bigint AS provider_fixture_id, max(p.fetched_at) AS last_asked
-  FROM raw.ingestion_payloads p
- WHERE p.endpoint = '/odds' AND p.fetched_at >= %(since)s
-   AND p.params ? 'fixture' AND p.params->>'fixture' = ANY(%(pids)s)
+SELECT pid AS provider_fixture_id, max(at) AS last_asked FROM (
+    SELECT (p.params->>'fixture')::bigint AS pid, p.fetched_at AS at
+      FROM raw.ingestion_payloads p
+     WHERE p.endpoint = '/odds' AND p.fetched_at >= %(since)s
+       AND p.params ? 'fixture' AND p.params->>'fixture' = ANY(%(pids)s)
+    UNION ALL
+    SELECT a.provider_fixture_id, a.asked_at FROM market.odds_asks a
+     WHERE a.asked_at >= %(since)s AND a.provider_fixture_id = ANY(%(ipids)s)) x
  GROUP BY 1
 """
+"""When /odds was last asked for each fixture. The RAW index keeps one row per distinct answer, so an empty answer
+asked again leaves no new row there; market.odds_asks (0064, 5 Oct 2026) records every ask."""
 
 BOOKS_SQL = """
 WITH latest AS (
@@ -106,7 +115,7 @@ def market_prices(conn: psycopg.Connection[Any], fixture_ids: list[int], *, at: 
             return []
         pids = [str(r["provider_fixture_id"]) for r in fixtures.values()]
         since = min(r["kickoff_at"] for r in fixtures.values()) - ASKED_LOOKBACK
-        cur.execute(ASKED_SQL, {"pids": pids, "since": since})
+        cur.execute(ASKED_SQL, {"pids": pids, "ipids": [int(p) for p in pids], "since": since})
         asked = {int(r["provider_fixture_id"]): r["last_asked"] for r in cur.fetchall()}
         cur.execute(BOOKS_SQL, {"ids": fixture_ids})
         books: dict[int, dict[tuple[str, Decimal], dict[str, Any]]] = defaultdict(dict)

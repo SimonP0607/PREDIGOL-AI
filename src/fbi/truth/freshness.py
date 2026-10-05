@@ -176,12 +176,19 @@ SELECT c.name AS competition, cs.season, f.provider_fixture_id, f.kickoff_at, d.
 
 ODDS_SQL = """
 WITH asked AS (
-    SELECT (p.params->>'fixture')::bigint AS provider_fixture_id, max(p.fetched_at) AS last_asked
-      FROM raw.ingestion_payloads p
-     WHERE p.endpoint = '/odds' AND p.params ? 'fixture' AND p.params->>'fixture' ~ '^[0-9]+$'
+    SELECT pid AS provider_fixture_id, max(at) AS last_asked FROM (
+        SELECT (p.params->>'fixture')::bigint AS pid, p.fetched_at AS at
+          FROM raw.ingestion_payloads p
+         WHERE p.endpoint = '/odds' AND p.params ? 'fixture' AND p.params->>'fixture' ~ '^[0-9]+$'
+           AND p.fetched_at >= %(at)s - interval '20 days'
+        UNION ALL
+        SELECT a.provider_fixture_id, a.asked_at FROM market.odds_asks a
+         WHERE a.asked_at >= %(at)s - interval '20 days') x
      GROUP BY 1
 )
-SELECT c.name AS competition, cs.season, f.provider_fixture_id, f.kickoff_at, lc.odds AS covered,
+SELECT c.name AS competition, cs.season, f.provider_fixture_id, f.kickoff_at,
+       CASE WHEN EXISTS (SELECT 1 FROM market.odds_mapping_seen m WHERE m.provider_fixture_id = f.provider_fixture_id)
+            THEN true ELSE lc.odds END AS covered,
        (SELECT max(o.captured_at) FROM market.odds_snapshots o WHERE o.fixture_id = f.id) AS last_capture,
        a.last_asked
   FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
@@ -191,6 +198,9 @@ SELECT c.name AS competition, cs.season, f.provider_fixture_id, f.kickoff_at, lc
  WHERE c.is_tracked AND f.status_group = 'scheduled'
    AND f.kickoff_at BETWEEN %(at)s AND %(at)s + interval '72 hours'
 """
+"""``last_asked``: the RAW index keeps one row per distinct answer, so an empty answer asked again is only in
+market.odds_asks (0064). ``covered``: the season's coverage flag, overruled by /odds/mapping when it lists the fixture.
+Asks older than 20 days cannot concern a match of the next 72 h (prices appear up to ~19 days ahead)."""
 
 TEAMS_SQL = """
 SELECT DISTINCT ON (t.id) c.name AS competition, cs.season, t.provider_team_id, t.country, t.source_fetched_at

@@ -104,15 +104,22 @@ CAPTURE_STATE_SQL = """
 SELECT f.kickoff_at,
        (SELECT max(o.captured_at) FROM market.odds_snapshots o WHERE o.fixture_id = f.id AND o.source = 'prematch')
            AS last_capture,
-       (SELECT max(p.fetched_at) FROM raw.ingestion_payloads p
-         WHERE p.endpoint = '/odds' AND p.params ? 'fixture' AND p.params->>'fixture' = f.provider_fixture_id::text
-           AND p.fetched_at > f.kickoff_at - interval '8 days') AS last_asked,
+       GREATEST(
+           (SELECT max(p.fetched_at) FROM raw.ingestion_payloads p
+             WHERE p.endpoint = '/odds' AND p.params ? 'fixture' AND p.params->>'fixture' = f.provider_fixture_id::text
+               AND p.fetched_at > f.kickoff_at - interval '8 days'),
+           (SELECT max(a.asked_at) FROM market.odds_asks a
+             WHERE a.provider_fixture_id = f.provider_fixture_id AND a.asked_at > f.kickoff_at - interval '8 days'))
+           AS last_asked,
        EXISTS (SELECT 1 FROM market.odds_mapping_seen m WHERE m.provider_fixture_id = f.provider_fixture_id) AS mapped
   FROM core.fixtures f
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
  WHERE c.is_tracked AND f.status_group = 'scheduled' AND f.kickoff_at BETWEEN %s AND %s
 """
+"""``last_asked`` is the newest of the RAW index and market.odds_asks: the index keeps one row per distinct answer, so
+an empty answer asked again left no trace there, and a fixture the provider did not price looked 'not asked' (missed,
+ours) instead of 'asked, nothing came back' (provider_unpriced)."""
 
 FINAL_PREMATCH_SQL = """
 WITH fin AS (

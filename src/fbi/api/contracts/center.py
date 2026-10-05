@@ -402,6 +402,42 @@ class PlayerTrophy(Contract):
     place: str | None
 
 
+class PlayerProviderSeason(Contract):
+    """The PROVIDER's season aggregate of a player for one team in one competition (/players?league&season), as sent.
+    Its rating is the provider's own metric. PrediGol's aggregate from the per-match statistics is ``PlayerSeason``;
+    the two can differ (the provider counts matches PrediGol may not hold), and the audit compares them."""
+
+    season: int
+    provider_league_id: int
+    competition_id: int | None = None
+    competition: str | None = None
+    provider_team_id: int
+    team_id: int | None = None
+    team: str | None = None
+    national: bool | None = None
+    appearances: int | None = None
+    lineups: int | None = None
+    minutes: int | None = None
+    goals: int | None = None
+    assists: int | None = None
+    yellow_cards: int | None = None
+    red_cards: int | None = None
+    rating: Decimal | None = None
+    observed_at: datetime
+
+
+class PlayerCareerTeam(Contract):
+    """One team of a player's career as /players/teams lists it, with the seasons (newest first)."""
+
+    provider_team_id: int | None = None
+    team_id: int | None = None
+    team: str | None = None
+    team_logo: str | None = None
+    national: bool | None = Field(default=None, description="PrediGol's classification of the side (core.team_kind), "
+                                  "else the provider's flag; null when the team is not held.")
+    seasons: list[int] = Field(default_factory=list)
+
+
 class PlayerDetail(Contract):
     player: PlayerSummary
     firstname: str | None
@@ -414,8 +450,11 @@ class PlayerDetail(Contract):
     transfers: Section[list[PlayerTransfer]] | None = None
     sidelined: Section[list[PlayerSidelined]] | None = None
     trophies: Section[list[PlayerTrophy]] | None = None
+    provider_seasons: Section[list[PlayerProviderSeason]] | None = None
+    career: Section[list[PlayerCareerTeam]] | None = None
     provenance: dict[str, Provenance] = Field(default_factory=dict, description="Per list (transfers, sidelined, "
-                                              "trophies): the payload and time it comes from.")
+                                              "trophies, provider_seasons, career): the payload and time it comes "
+                                              "from.")
 
 
 class AdminCount(Contract):

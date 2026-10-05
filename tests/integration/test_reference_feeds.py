@@ -33,8 +33,9 @@ def committed(db: psycopg.Connection) -> Any:
     db.rollback()
     db.execute("DELETE FROM core.countries WHERE payload_hash LIKE 'fk%%'")
     db.execute("DELETE FROM core.person_trophies WHERE payload_hash LIKE 'pp%%'")
+    db.execute("DELETE FROM market.odds_mapping_seen WHERE payload_hash LIKE 'fk%%'")
     db.execute("DELETE FROM core.reference_checks WHERE feed IN ('countries', 'trophies_players', 'share_a', "
-               "'share_b')")
+               "'share_b', 'odds_mapping')")
     db.execute("DELETE FROM raw.ingestion_payloads WHERE hash LIKE 'fk%%' OR hash LIKE 'pp%%'")
     db.execute("DELETE FROM raw.ingestion_runs WHERE job_type = 'reference_refresh'")
     db.commit()
@@ -348,3 +349,56 @@ def test_people_seen_most_recently_are_asked_first(db: psycopg.Connection, seed:
                    (fx, player, seed.payload_hash))
     keys = [t.key for t in ref.people_targets("player", "sidelined")(db, T0)]
     assert keys == ["player:7", "player:9", "player:5"], "the latest appearance first, one target per person"
+
+
+class PagedProvider:
+    """/odds/mapping as the provider pages it: 100 fixtures a page, ``paging.total`` pages."""
+
+    def __init__(self, total: int) -> None:
+        self.total = total
+        self.calls: list[dict[str, Any]] = []
+
+    async def fetch_raw(self, endpoint: str, params: dict[str, Any]) -> RawResponse:
+        self.calls.append(params)
+        page = int(params.get("page", 1))
+        h = f"fk-pg-{page}"
+        body: dict[str, Any] = {"response": [{"league": {"id": 850, "season": 2027},
+                                              "fixture": {"id": 9900000 + page, "timestamp": 1790613000},
+                                              "update": "2026-09-28T12:00:19+00:00"}],
+                                "paging": {"current": page, "total": self.total}}
+        return RawResponse(endpoint=endpoint, params=params, fetched_at=T0, http_status=200, results_count=1,
+                           payload_hash=h, file_path=h, bytes_written=1, body=body)
+
+
+@pytest.mark.asyncio
+async def test_a_paged_answer_past_its_cap_is_read_to_the_cap_and_recorded_as_truncated(
+        committed: psycopg.Connection, seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
+    """4 Oct 2026: /odds/mapping answered 29 pages and every paged feed stopped at 30 without a word. A sweep cut
+    short is now an error on its check and on the run, never a silent partial listing."""
+    db = committed
+    import fbi.ingestion.backfill as backfill
+    import fbi.providers.quota as quota
+
+    class Usage:
+        remaining = 1000
+
+    monkeypatch.setattr(backfill, "live_reserve", lambda *a, **k: 0)
+    monkeypatch.setattr(quota, "read_usage", lambda *a, **k: Usage())
+    feed = ref.Feed("odds_mapping", "/odds/mapping", ref.single_target(ref.DAY), ref.apply_odds_mapping,
+                    max_per_run=1, paged=True, max_pages=2)
+    provider = PagedProvider(total=3)
+    await ref.refresh_reference(db, provider, daily_budget=60000, feeds=[feed], at=T0)
+    assert [c.get("page", 1) for c in provider.calls] == [1, 2]
+    assert db.execute("SELECT results, rows_added, error FROM core.reference_checks WHERE feed = 'odds_mapping'"
+                      ).fetchone() == (2, 2, "truncated: read 2 of 3 pages (cap 2)")
+    run = db.execute("SELECT last_error FROM raw.ingestion_runs WHERE job_type = 'reference_refresh' "
+                     "ORDER BY id DESC LIMIT 1").fetchone()
+    assert run is not None and "truncated" in str(run[0])
+    whole = PagedProvider(total=2)
+    await ref.refresh_reference(db, whole, daily_budget=60000, feeds=[feed], at=T0 + timedelta(days=1))
+    assert db.execute("SELECT error FROM core.reference_checks WHERE feed = 'odds_mapping'").fetchone() == (None,)
+
+
+def test_the_mapping_sweep_is_not_capped_at_the_default_page_limit() -> None:
+    mapping = next(f for f in ref.FEEDS if f.name == "odds_mapping")
+    assert mapping.paged and mapping.max_pages == ref.MAPPING_MAX_PAGES and mapping.max_pages >= 100 > ref.MAX_PAGES

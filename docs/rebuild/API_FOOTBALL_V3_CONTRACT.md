@@ -18,9 +18,9 @@ documented field of every endpoint PrediGol has a payload for was seen in the sa
 
 | Status | Endpoints |
 |---|---|
-| **FULL** (28) - requested on a schedule, normalized, read | `/timezone` `/countries` `/leagues` `/leagues/seasons` `/teams` `/teams/statistics` `/teams/countries` `/standings` `/fixtures/rounds` `/fixtures` `/injuries` `/predictions` (auxiliary) `/coachs` `/players/seasons` `/players/profiles` `/players/squads` `/players/topscorers` `/players/topassists` `/players/topyellowcards` `/players/topredcards` `/transfers` `/trophies` `/sidelined` `/odds/live` `/odds/live/bets` `/odds` `/odds/bookmakers` `/odds/bets` |
+| **FULL** (32) - requested on a schedule, normalized, read | `/timezone` `/countries` `/leagues` `/leagues/seasons` `/teams` `/teams/statistics` `/teams/countries` `/venues` `/standings` `/fixtures/rounds` `/fixtures` `/injuries` `/predictions` (auxiliary) `/coachs` `/players/seasons` `/players/profiles` `/players` `/players/squads` `/players/teams` `/players/topscorers` `/players/topassists` `/players/topyellowcards` `/players/topredcards` `/transfers` `/trophies` `/sidelined` `/odds/live` `/odds/live/bets` `/odds` `/odds/mapping` `/odds/bookmakers` `/odds/bets` |
 | **COVERED** (6) - its data arrives through another endpoint | `/fixtures/events`, `/fixtures/lineups`, `/fixtures/statistics`, `/fixtures/players` (all in `/fixtures?ids=`, 20 matches a request); `/fixtures/headtohead` (our stored fixtures, read with a date cut-off); `/teams/seasons` (`/teams?league&season` and our fixtures) |
-| **PARTIAL** (4) | `/players` - the provider's season aggregates are stored weekly (`core.player_season_stats`) and audited, not yet shown on player pages; `/odds/mapping` - stored daily (`market.odds_mapping_seen`), not yet read by the capture planner; `/players/teams`, `/venues` - RAW from audits only (one request per player / venue; the same data arrives with squads, appearances and `/teams`) |
+| **PARTIAL** | none since 5 Oct 2026 (`/players`, `/odds/mapping`, `/players/teams`, `/venues` were - see `docs/owner/API_FOOTBALL_P1.md`) |
 | **MISSING** | none (16 on the morning of 4 Oct 2026) |
 | **WRONG** | none (`/standings` was misread until 4 Oct 2026 - see `COMPETITION_PHASES.md`) |
 
@@ -118,10 +118,12 @@ after it, and an empty file is rewritten from the same body instead of being tak
 | `/teams/statistics` | twice a day / 1 per day if playing, else 1 per week | `reference_refresh` | daily within 24 h of a match, weekly otherwise |
 | `/coachs`, `/transfers` | daily / several a week; 1 per day | `reference_refresh` | weekly per tracked team (`/transfers`: clubs only - asked on 4 Oct, national sides answered nothing) |
 | `/sidelined`, `/trophies` | several times a week / 1 per day | `reference_refresh` | weekly per person in scope, 20 a request |
-| `/odds/bets`, `/odds/live/bets`, `/odds/bookmakers`, `/odds/mapping` | several a week - daily / 1 per day | `reference_refresh` | daily (mapping: every page) |
+| `/odds/bets`, `/odds/live/bets`, `/odds/bookmakers`, `/odds/mapping` | several a week - daily / 1 per day | `reference_refresh` | daily (mapping: every page, up to 200; read by the capture planner as a coverage override, never as a skip list) |
+| `/venues` | several times a week / 1 per day | `reference_refresh` | by id, the venues of current tracked seasons not described within 90 days |
+| `/players/teams` | several times a week / 1 per day - 1 per week | `reference_refresh` | every 60 days per player in scope; at once after his `/transfers` list changed |
 | `/players/squads` | several times a week / 1 per week | `historical_backfill` (seeded weekly) | weekly per tracked team |
 | `/players/profiles` | several times a week / 1 per week | `historical_backfill` (seeded monthly) | monthly sweep of every page |
-| `/players?league&season` | several times a week / 1 per day | `historical_backfill` (seeded weekly) | weekly per current season |
+| `/players?league&season` | several times a week / 1 per day | `historical_backfill` (seeded weekly) | weekly per current season, six days apart at least |
 | `/countries`, `/leagues/seasons`, `/players/seasons`, `/teams/countries` | when added / 1 per day | `reference_refresh` | weekly (`/timezone` every 90 days) |
 
 Every requesting job spends behind the live reserve (`fbi.ingestion.backfill.live_reserve`: what odds capture and the

@@ -152,11 +152,21 @@ def _add(cur: psycopg.Cursor[Any], *, kind: str, season: int, endpoint: str, par
     return cur.fetchone() is not None
 
 
+PLAYER_SWEEP_GAP_DAYS = 6
+"""Days a season's sweep waits after the previous one. The ISO week alone let two sweeps run seven hours apart
+(Sunday 4 Oct 2026 18:46-21:46 UTC, Monday 01:50-04:46): 3,200 requests, and 3,192 of the 3,200 pages came back
+byte-identical (the other 8 differed only in a player's birth block) - the provider refreshes /players several
+times a week, not hourly."""
+
 PLAYER_SEASONS_SQL = """
 SELECT c.provider_league_id, cs.season FROM core.competition_seasons cs
   JOIN core.competitions c ON c.id = cs.competition_id
   LEFT JOIN raw.league_coverage lc ON lc.provider_league_id = c.provider_league_id AND lc.season = cs.season
  WHERE c.is_tracked AND cs.is_current AND coalesce(lc.players, true)
+   AND NOT EXISTS (SELECT 1 FROM raw.backfill_tasks t
+                    WHERE t.kind = 'players_season' AND t.provider_league_id = c.provider_league_id
+                      AND t.season = cs.season AND t.page = 1
+                      AND t.created_at > %(at)s - make_interval(days => %(gap)s) AND t.created_at <= %(at)s)
  ORDER BY c.provider_league_id
 """
 
@@ -164,19 +174,20 @@ SELECT c.provider_league_id, cs.season FROM core.competition_seasons cs
 def seed_player_seasons(conn: psycopg.Connection, *, at: datetime) -> int:
     """The week's sweep of the provider's season player statistics (/players?league&season, 20 a page) for every
     current tracked season its coverage says has them: page 1 of each, whose answer adds the other pages.
-    ``batch_key`` names the ISO week, so each week is one new set of units and never two."""
+    ``batch_key`` names the ISO week, so a week is never two sets of units; and a season swept within
+    ``PLAYER_SWEEP_GAP_DAYS`` is not swept again, across a week boundary too."""
     iso = at.isocalendar()
     generation = f"w{iso.year}{iso.week:02d}"
     added = 0
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(PLAYER_SEASONS_SQL)
+        cur.execute(PLAYER_SEASONS_SQL, {"at": at, "gap": PLAYER_SWEEP_GAP_DAYS})
         for league, season in cur.fetchall():
             cur.execute(
                 "INSERT INTO raw.backfill_tasks (kind, provider_league_id, season, priority, endpoint, params, page, "
-                "batch_key, tier) VALUES ('players_season', %s, %s, 70, '/players', %s, 1, %s, 1) "
+                "batch_key, tier, created_at) VALUES ('players_season', %s, %s, 70, '/players', %s, 1, %s, 1, %s) "
                 "ON CONFLICT DO NOTHING RETURNING id",
                 (int(league), int(season), Json({"league": int(league), "season": int(season), "page": 1}),
-                 generation))
+                 generation, at))
             added += 1 if cur.fetchone() is not None else 0
     conn.commit()
     return added

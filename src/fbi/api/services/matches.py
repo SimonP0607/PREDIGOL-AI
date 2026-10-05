@@ -221,7 +221,7 @@ def match_detail(conn: Conn, fixture_id: int) -> Envelope[MatchDetail]:
     moment = now()
     quotes = [quote(q) for q in repo.latest_quotes(conn, fixture_id)]
     predictions = [PredictionRow(**p) for p in repo.predictions_for(conn, fixture_id)]
-    venue_row = repo.get_venue(conn, row["venue_id"]) if row["venue_id"] else None
+    venue_row = repo.fixture_venue(conn, row)
     detail = MatchDetail(
         match=summary(row, moment),
         venue=VenueRef(**venue_row) if venue_row else None,
@@ -241,7 +241,7 @@ def match_view(conn: Conn, fixture_id: int) -> Envelope[MatchView]:
     if row is None:
         raise HTTPException(status_code=404, detail=f"fixture {fixture_id} not found")
     quotes = [quote(q) for q in repo.latest_quotes(conn, fixture_id)]
-    venue_row = repo.get_venue(conn, row["venue_id"]) if row["venue_id"] else None
+    venue_row = repo.fixture_venue(conn, row)
     moment = now()
     view = MatchView(
         match=summary(row, moment),

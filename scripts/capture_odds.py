@@ -66,22 +66,32 @@ def _upcoming(conn: psycopg.Connection, horizon_hours: int) -> list[ScheduledFix
         log.warning("capture.no_active_competitions", hint="enable one in config/competitions.yaml and run manage_competitions apply")
         return []
     with conn.cursor(row_factory=tuple_row) as cur:
-        # A league-season the provider flags as having no odds is not asked: every answer would be empty.
-        cur.execute(
-            "SELECT f.provider_fixture_id, f.kickoff_at, f.status_short "
-            "FROM core.fixtures f "
-            "JOIN core.competition_seasons cs ON cs.id = f.competition_season_id "
-            "JOIN core.competitions c ON c.id = cs.competition_id "
-            "LEFT JOIN raw.league_coverage lc ON lc.provider_league_id = c.provider_league_id "
-            "     AND lc.season = cs.season "
-            "WHERE c.is_tracked "
-            "  AND f.kickoff_at BETWEEN %s AND %s "
-            "  AND f.status_group = 'scheduled' "
-            "  AND lc.odds IS NOT FALSE "
-            "ORDER BY f.kickoff_at",
-            (now(), now() + timedelta(hours=horizon_hours)),
-        )
+        cur.execute(UPCOMING_SQL, (now(), now() + timedelta(hours=horizon_hours)))
         return [ScheduledFixture(int(a), b, str(c)) for a, b, c in cur.fetchall()]
+
+
+UPCOMING_SQL = """
+SELECT f.provider_fixture_id, f.kickoff_at, f.status_short
+  FROM core.fixtures f
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+  LEFT JOIN raw.league_coverage lc ON lc.provider_league_id = c.provider_league_id AND lc.season = cs.season
+ WHERE c.is_tracked
+   AND f.kickoff_at BETWEEN %s AND %s
+   AND f.status_group = 'scheduled'
+   AND (lc.odds IS NOT FALSE
+        OR EXISTS (SELECT 1 FROM market.odds_mapping_seen m WHERE m.provider_fixture_id = f.provider_fixture_id))
+ ORDER BY f.kickoff_at
+"""
+"""The fixtures the capture asks /odds for. A league-season the provider's coverage flags as having no odds is not
+asked (every answer would be empty) - unless /odds/mapping lists the fixture as priced: the flag is per season and can
+be stale, the mapping names the fixture.
+
+The mapping is NOT used to leave a fixture out. Measured on 5 Oct 2026 (``docs/owner/API_FOOTBALL_P1.md``): of the 76
+tracked fixtures of the next 96 h with a price, 10 were absent from the newest mapping, and four of those had already
+been captured with prices 25 to 86 minutes BEFORE that mapping was read - the provider's daily listing lags its
+prices. Skipping unlisted fixtures would have lost those prices to save ~43 empty requests a day (0.07 % of the
+internal budget)."""
 
 
 def _client(max_requests: int | None = None) -> ApiFootballClient:
