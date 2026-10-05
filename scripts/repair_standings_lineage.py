@@ -2,6 +2,9 @@
 
     python -m scripts.repair_standings_lineage            # dry run: what would be traced, nothing written
     python -m scripts.repair_standings_lineage --apply    # write it, one audit.data_repairs row per snapshot
+    python -m scripts.repair_standings_lineage --complete [--apply]
+                                                          # add to each traced snapshot the rows of its own payload
+                                                          # that the pre-0048 writer dropped (one row per team)
 
 ``core.standings.payload_hash`` arrived with revision 0048 (4 Oct 2026). The rows written before it - the v2
 migration's replay of RAW (29 Sep) and the context refresh until 4 Oct, 15,385 rows in 840 snapshots on 5 Oct -
@@ -183,14 +186,128 @@ def repair(conn: psycopg.Connection[Any], raw_root: Path, *, apply: bool) -> Rep
     return report
 
 
+COMPLETE_RULE = "standings_dropped_tables"
+"""The rule ``refresh_tables --legacy`` used for the newest snapshots (156 rows on 5 Oct 2026); the same repair."""
+
+TRACED_SNAPSHOTS_SQL = """
+SELECT s.competition_season_id AS cs, s.snapshot_at, c.provider_league_id AS league, cs.season,
+       min(s.payload_hash) AS hash, count(*) AS rows, p.file_path
+  FROM core.standings s JOIN core.competition_seasons cs ON cs.id = s.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+  JOIN raw.ingestion_payloads p ON p.hash = s.payload_hash
+ GROUP BY 1, 2, 3, 4, p.file_path
+HAVING count(DISTINCT s.payload_hash) = 1
+ ORDER BY 1, 2
+"""
+
+
+@dataclass
+class Completion:
+    snapshots: int = 0
+    completed: int = 0
+    rows_added: int = 0
+    examples: list[str] = field(default_factory=list)
+    problems: list[str] = field(default_factory=list)
+
+
+def complete(conn: psycopg.Connection[Any], raw_root: Path, *, apply: bool) -> Completion:
+    """Each snapshot traced to one payload gets the rows of that payload it lacks - the pre-0048 writer kept one row
+    per team, so a team's row in a second table was dropped. Rows are added with the payload's own values, at the
+    snapshot's instant and with its hash; nothing is updated or deleted. A row is added only if its team, table (by
+    the provider's label) and values are absent from the snapshot, so a table the old writer stored under its bare
+    label is not stored twice."""
+    from fbi.ingestion.details import apply_standings_outcome
+
+    out = Completion()
+    version = code_version()
+    store = PayloadStore(raw_root)
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(TRACED_SNAPSHOTS_SQL)
+        snapshots = cur.fetchall()
+        cur.execute("SELECT provider_team_id FROM core.teams")
+        held = {int(r["provider_team_id"]) for r in cur.fetchall()}
+    out.snapshots = len(snapshots)
+    bodies: dict[str, dict[str, Any] | None] = {}
+    with conn.cursor(row_factory=dict_row) as cur:
+        for snap in snapshots:
+            h = str(snap["hash"])
+            if h not in bodies:
+                try:
+                    raw = store.load(str(snap["file_path"])).get("body")
+                    bodies[h] = raw if isinstance(raw, dict) and body_hash(raw) == h else None
+                    if bodies[h] is None:
+                        out.problems.append(f"{snap['file_path']}: does not re-hash to {h[:12]} - skipped")
+                except FileNotFoundError:
+                    bodies[h] = None
+                    out.problems.append(f"{snap['file_path']}: indexed but not in the raw store")
+            body = bodies[h]
+            if body is None:
+                continue
+            refs = [r for r in iter_standings(body)
+                    if (r.provider_league_id, r.season) == (int(snap["league"]), int(snap["season"]))
+                    and r.provider_team_id in held]
+            cur.execute(ROWS_SQL, {"cs": snap["cs"], "at": snap["snapshot_at"]})
+            whole = Counter(_key(r["provider_team_id"], r["group"], r["rank"], r["points"], r["played"], r["wins"],
+                                 r["draws"], r["losses"], r["goals_for"], r["goals_against"], r["form"])
+                            for r in cur.fetchall())
+            missing = Counter(_key(r.provider_team_id, r.group, r.rank, r.points, r.played, r.wins, r.draws, r.losses,
+                                   r.goals_for, r.goals_against, r.form) for r in refs) - whole
+            if not missing:
+                continue
+            add = []
+            for r in refs:
+                k = _key(r.provider_team_id, r.group, r.rank, r.points, r.played, r.wins, r.draws, r.losses,
+                         r.goals_for, r.goals_against, r.form)
+                if missing[k] > 0:
+                    missing[k] -= 1
+                    add.append(r)
+            out.completed += 1
+            before = int(snap["rows"])
+            if len(out.examples) < 10:
+                out.examples.append(f"season {snap['cs']} ({snap['league']}/{snap['season']}) at "
+                                    f"{snap['snapshot_at']:%Y-%m-%d %H:%M:%S}: {before} rows + {len(add)}")
+            if not apply:
+                out.rows_added += len(add)
+                continue
+            written = apply_standings_outcome(conn, add, fetched_at=snap["snapshot_at"], payload_hash=h).written
+            out.rows_added += written
+            cur.execute(
+                "INSERT INTO audit.data_repairs (rule, entity, entity_id, provider_ref, field, before_value, "
+                "after_value, reason, evidence) VALUES (%s, 'core.standings', %s, %s, 'rows in snapshot', %s, %s, %s, "
+                "%s)",
+                (COMPLETE_RULE, snap["cs"], snap["league"], f"{before} rows at {snap['snapshot_at']}",
+                 f"{before + written} rows at {snap['snapshot_at']}",
+                 "the pre-0048 writer kept one row per team; the rows of the season's other tables were added from "
+                 "the same provider payload (nothing updated or deleted)",
+                 f"/standings league={snap['league']} season={snap['season']}: payload {h} ({snap['file_path']}, "
+                 f"hash verified); code {version}"))
+    if apply:
+        conn.commit()
+    else:
+        conn.rollback()
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     configure_logging(settings.runtime.log_level)
     ap = argparse.ArgumentParser(prog="repair_standings_lineage", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--complete", action="store_true", help="add the rows the pre-0048 writer dropped")
     args = ap.parse_args(argv)
     root = Path(settings.runtime.raw_store_dir)
     root = root if root.is_absolute() else REPO / root
+    if args.complete:
+        with psycopg.connect(settings.database.psycopg_url) as conn:
+            c = complete(conn, root, apply=args.apply)
+        print(f"snapshots traced to one payload: {c.snapshots}; lacking rows of it: {c.completed}; rows "
+              f"{'added' if args.apply else 'to add'}: {c.rows_added}")
+        for e in c.examples:
+            print("  " + e)
+        for p in c.problems[:10]:
+            print("  PROBLEM " + p)
+        print("written" if args.apply else "dry run: re-run with --apply")
+        return 1 if c.problems else 0
     with psycopg.connect(settings.database.psycopg_url) as conn:
         r = repair(conn, root, apply=args.apply)
     print(f"snapshots without a payload: {r.snapshots} ({r.rows} rows); traced: {r.traced} ({r.rows_traced} rows, "

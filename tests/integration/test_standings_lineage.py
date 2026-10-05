@@ -75,9 +75,28 @@ def test_a_snapshot_is_traced_only_to_the_payload_whose_rows_it_holds(db: psycop
         assert audit == [(seed.season_id, 39, None, hashes[0], False), (seed.season_id, 39, None, hashes[1], True)]
         again = repair(db, tmp_path, apply=True)
         assert (again.snapshots, again.traced) == (1, 0), "idempotent: only the table no payload says is left"
+
+        from scripts.repair_standings_lineage import complete
+
+        dry_fill = complete(db, tmp_path, apply=False)
+        assert (dry_fill.completed, dry_fill.rows_added) == (1, 1), "only the short snapshot lacks a row"
+        filled = complete(db, tmp_path, apply=True)
+        assert (filled.completed, filled.rows_added, filled.problems) == (1, 1, [])
+        added = db.execute("SELECT team_id, \"group\", points, payload_hash FROM core.standings WHERE "
+                           "competition_season_id = %s AND snapshot_at = %s ORDER BY \"group\", team_id",
+                           (seed.season_id, short)).fetchall()
+        assert [(g, pts, h) for _, g, pts, h in added] == [("Premier League", 6, hashes[1]),
+                                                           ("Premier League", 3, hashes[1]),
+                                                           ("Premier League #2", 3, hashes[1])], \
+            "the dropped row of the second table, with the parser's label and the payload's hash"
+        note = db.execute("SELECT before_value, after_value FROM audit.data_repairs WHERE rule = "
+                          "'standings_dropped_tables' AND entity_id = %s", (seed.season_id,)).fetchone()
+        assert note is not None and note[0].startswith("2 rows") and note[1].startswith("3 rows")
+        assert complete(db, tmp_path, apply=True).completed == 0, "idempotent"
     finally:
         db.rollback()
-        db.execute("DELETE FROM audit.data_repairs WHERE rule = 'standings_lineage'")
+        db.execute("DELETE FROM audit.data_repairs WHERE rule IN ('standings_lineage', 'standings_dropped_tables') "
+                   "AND entity_id = %s", (seed.season_id,))
         db.execute("DELETE FROM core.standings WHERE competition_season_id = %s AND snapshot_at IN (%s, %s, %s)",
                    (seed.season_id, T0, later, short))
         db.execute("DELETE FROM raw.ingestion_payloads WHERE hash = ANY(%s)", (hashes,))
