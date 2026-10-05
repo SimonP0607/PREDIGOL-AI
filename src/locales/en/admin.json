@@ -250,8 +250,9 @@
       "completed": "completed",
       "partial": "partial",
       "failed": "failed",
-      "aborted": "aborted",
-      "interrupted": "interrupted"
+      "aborted": "stopped at cap",
+      "interrupted": "interrupted (recovered)",
+      "stale": "stale"
     },
     "data": {
       "healthy": "Healthy",

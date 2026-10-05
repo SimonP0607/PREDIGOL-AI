@@ -250,8 +250,9 @@
       "completed": "completada",
       "partial": "parcial",
       "failed": "fallida",
-      "aborted": "abortada",
-      "interrupted": "interrumpida"
+      "aborted": "detenida por tope",
+      "interrupted": "interrumpida (recuperada)",
+      "stale": "vencida"
     },
     "data": {
       "healthy": "Correcto",

@@ -176,11 +176,11 @@
       },
       "failedJobs": {
         "label": "Failed jobs (24 h)",
-        "hint": "Errors and nothing durable, or stopped at a cap"
+        "hint": "Errors and nothing durable. Runs stopped at their cap are not counted here"
       },
       "providerErrors": {
         "label": "Provider errors (24 h)",
-        "hint": "Refusals and failures recorded by runs"
+        "hint": "Refusals and failures of runs that called the provider"
       },
       "requestsToday": {
         "label": "Requests today",
@@ -188,7 +188,11 @@
       },
       "runsStuck": {
         "label": "Runs stuck",
-        "hint": "'running' for over 2 h: the owner likely died"
+        "hint": "Open past their deadline: the run watchdog closes them within 5 min"
+      },
+      "cappedJobs": {
+        "label": "Stopped at their cap (24 h)",
+        "hint": "By design: the rest is due next run · {interrupted} interrupted (restart or deadline) and recovered"
       }
     },
     "issues": {

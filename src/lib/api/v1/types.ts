@@ -98,7 +98,7 @@ export interface RunSummary {
   id: number;
   job_type: string;
   job_name: string;
-  status: "running" | "completed" | "partial" | "failed" | "aborted" | "interrupted";
+  status: "running" | "completed" | "partial" | "failed" | "aborted" | "interrupted" | "stale";
   started_at: Iso;
   finished_at: Iso | null;
   duration_ms: number | null;
@@ -109,6 +109,12 @@ export interface RunSummary {
   errors: number;
   last_error: string | null;
   notes: string | null;
+  /** host:pid of the process that opened the run (since 5 Oct 2026). */
+  owner?: string | null;
+  /** Last sign of life of the run. */
+  heartbeat_at?: Iso | null;
+  /** Past it, the run watchdog closes a still-open run as stale. */
+  deadline_at?: Iso | null;
 }
 
 export interface OddsSummary {
@@ -517,6 +523,12 @@ export interface QualitySnapshot {
   failed_jobs_24h: number;
   partial_jobs_24h: number;
   provider_errors_24h: number;
+  /** Runs stopped at their planned request cap ("aborted"): not failures. */
+  capped_jobs_24h?: number;
+  /** Runs whose process ended first (restart, deadline), closed by the run watchdog. */
+  interrupted_jobs_24h?: number;
+  /** Runs closed by the run watchdog past their deadline. */
+  stale_jobs_24h?: number;
   requests_today: number;
   ledger_api_calls_today: number;
   daily_budget: number;

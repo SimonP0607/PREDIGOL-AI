@@ -162,6 +162,14 @@ function Cards({ s, why }: { s: QualitySnapshot; why: Record<string, string> }) 
         tone={s.failed_jobs_24h ? "negative" : "default"}
       />
       <Metric
+        label={t("system.dataQuality.cards.cappedJobs.label")}
+        value={int(s.capped_jobs_24h ?? 0)}
+        hint={t("system.dataQuality.cards.cappedJobs.hint", {
+          interrupted: int(s.interrupted_jobs_24h ?? 0),
+        })}
+        tone="default"
+      />
+      <Metric
         label={t("system.dataQuality.cards.providerErrors.label")}
         value={int(s.provider_errors_24h)}
         hint={t("system.dataQuality.cards.providerErrors.hint")}
