@@ -159,9 +159,14 @@ def issues(conn: Conn) -> Envelope[list[QualityIssue]]:
         "Recorded as scheduled or live after kick-off. On the free plan a result becomes unreachable "
         "about a day after the match.", snap.fixtures_awaiting_result)
     add("stale_running_jobs", "critical", "Runs stuck in 'running'",
-        "Open for over two hours: the process that owned them most likely died.", snap.stale_running_jobs)
-    add("failed_jobs_24h", "high", "Failed or aborted runs (24 h)",
-        "Runs that finished with errors and nothing durable, or stopped at a cap.", snap.failed_jobs_24h)
+        "Open past their deadline: the process that owned them most likely died. The run watchdog closes "
+        "them within five minutes; one that stays here means the watchdog itself is not running.",
+        snap.stale_running_jobs)
+    add("failed_jobs_24h", "high", "Failed runs (24 h)",
+        "Runs that finished with errors and nothing durable. Runs stopped at their planned cap are not "
+        "failures and are counted apart.", snap.failed_jobs_24h)
+    add("stale_jobs_24h", "medium", "Runs closed as stale (24 h)",
+        "Open past their deadline and closed by the run watchdog: a job that hangs.", snap.stale_jobs_24h)
     add("partial_jobs_24h", "medium", "Partially successful runs (24 h)",
         "Runs that wrote something AND hit errors.", snap.partial_jobs_24h)
     add("stale_fixtures", "high", "Upcoming fixtures with stale odds",

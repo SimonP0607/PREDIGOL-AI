@@ -252,8 +252,9 @@ async def _follow(conn: psycopg.Connection, provider: Any, follow: list[tuple[in
     try:
         for start in range(0, len(provider_ids), MAX_IDS):
             if report.requests >= max_requests:
-                counters.errors.append(f"request cap {max_requests} reached; "
-                                       f"{len(provider_ids) - start} fixtures not followed this pass")
+                # A cap is a plan, not an error: the run is 'aborted' (capped), not 'partial' (5 Oct 2026).
+                counters.stopped_early = (f"request cap {max_requests} reached; "
+                                          f"{len(provider_ids) - start} fixtures not followed this pass")
                 break
             batch = provider_ids[start:start + MAX_IDS]
             try:

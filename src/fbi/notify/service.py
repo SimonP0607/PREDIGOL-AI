@@ -85,6 +85,17 @@ def _fmt_pct(x: Any) -> str:
     return f"{float(x) * 100:.1f}%" if x is not None else "—"
 
 
+REPEATED_FAILURES_SQL = """
+SELECT job_type, max(started_at) AS last_at, (array_agg(last_error ORDER BY started_at DESC))[1] AS last_error
+  FROM (SELECT job_type, status, started_at, last_error,
+               row_number() OVER (PARTITION BY job_type ORDER BY started_at DESC) AS rn
+          FROM raw.ingestion_runs WHERE started_at > %s - interval '2 days' AND status <> 'running') x
+ WHERE rn <= 3
+ GROUP BY job_type HAVING count(*) = 3 AND bool_and(status = 'failed')
+"""
+"""A job whose last three runs all failed: one failure is noise, three in a row is a broken job."""
+
+
 def collect(conn: psycopg.Connection, *, at: datetime) -> list[Draft]:
     drafts: list[Draft] = []
     with conn.cursor(row_factory=dict_row) as cur:
@@ -129,6 +140,19 @@ def collect(conn: psycopg.Connection, *, at: datetime) -> list[Draft]:
         for r in cur.fetchall():
             drafts.append(Draft("capture_failed", f"run:{r['id']}:failed", f"Odds capture run {r['id']} failed",
                                 f"At {r['started_at']:%d %b %H:%M} UTC: {(r['last_error'] or '')[:300]}", {}))
+        cur.execute("SELECT id, job_type, status, last_error, finished_at FROM raw.ingestion_runs "
+                    "WHERE status IN ('interrupted', 'stale') AND finished_at > %s - interval '2 days' "
+                    "AND last_error LIKE '%%run watchdog%%'", (at,))
+        for r in cur.fetchall():
+            drafts.append(Draft("run_recovered", f"run:{r['id']}:{r['status']}",
+                                f"Run {r['id']} ({r['job_type']}) closed as {r['status']} by the run watchdog",
+                                (r["last_error"] or "")[-400:], {"run_id": r["id"]}))
+        cur.execute(REPEATED_FAILURES_SQL, (at,))
+        for r in cur.fetchall():
+            drafts.append(Draft("job_failing", f"job_failing:{r['job_type']}:{r['last_at']:%Y%m%d%H}",
+                                f"{r['job_type']}: the last 3 runs failed",
+                                f"Last at {r['last_at']:%d %b %H:%M} UTC: {(r['last_error'] or '')[:300]}",
+                                {"job_type": r["job_type"]}))
         cur.execute("SELECT worker_id, last_beat_at, tick_interval_s FROM raw.worker_heartbeats "
                     "ORDER BY last_beat_at DESC LIMIT 1")
         hb = cur.fetchone()

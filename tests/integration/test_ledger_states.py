@@ -176,7 +176,9 @@ def test_an_error_the_caller_recorded_is_not_recorded_twice(clean: psycopg.Conne
     assert _closed(clean, run_id)[:2] == ("failed", 1)
 
 
-def test_an_interrupt_is_aborted(clean: psycopg.Connection, runs: list[int]) -> None:
+def test_an_interrupt_is_interrupted_not_aborted(clean: psycopg.Connection, runs: list[int]) -> None:
+    """'aborted' means a cap stopped the run on purpose; a run its process could not finish (Ctrl-C, a shutdown,
+    a job deadline) is 'interrupted' (5 Oct 2026: shutdown cancellations were counted with the capped runs)."""
     ledger = RunLedger(clean)
     run_id = ledger.open("odds_capture")
     runs.append(run_id)
@@ -187,7 +189,7 @@ def test_an_interrupt_is_aborted(clean: psycopg.Connection, runs: list[int]) -> 
         finally:
             ledger.close(run_id, counters)
     status, _, last_error = _closed(clean, run_id)
-    assert status == "aborted" and last_error == "interrupted (KeyboardInterrupt)"
+    assert status == "interrupted" and last_error == "interrupted (KeyboardInterrupt)"
 
 
 def test_a_failed_transaction_does_not_hide_the_run(clean: psycopg.Connection, runs: list[int]) -> None:

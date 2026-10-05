@@ -17,6 +17,7 @@ from psycopg.rows import tuple_row
 from fbi.core.clock import now
 from fbi.ops.heartbeat import latest_heartbeat
 from fbi.providers.quota import read_usage
+from fbi.quality.metrics import STUCK_RUNS_SQL
 
 Status = Literal["ok", "degraded", "down", "unknown"]
 
@@ -94,7 +95,7 @@ def check_worker(conn: psycopg.Connection) -> Check:
                 "ORDER BY started_at DESC LIMIT 1"
             )
             ok = cur.fetchone()
-            cur.execute("SELECT count(*) FROM raw.ingestion_runs WHERE status = 'running' AND started_at < %s", (now() - timedelta(hours=2),))
+            cur.execute(STUCK_RUNS_SQL, (now(), now() - timedelta(hours=2)))
             zombies = int(cur.fetchone()[0])  # type: ignore[index]
             cur.execute(
                 "SELECT status, count(*) FROM raw.ingestion_runs WHERE started_at >= %s "
@@ -126,7 +127,7 @@ def check_worker(conn: psycopg.Connection) -> Check:
             return Check("down", f"worker stopped {silent} min ago", data)
         return Check("down", f"no heartbeat for {silent} min: worker is not running", data)
     if zombies:
-        return Check("degraded", f"{zombies} run(s) stuck in 'running' for over 2 h", data)
+        return Check("degraded", f"{zombies} run(s) open past their deadline (the run watchdog closes them)", data)
     if beat.last_tick_outcome in ("failed", "plan_rejected"):
         return Check("degraded", f"last tick: {beat.last_tick_outcome}", data)
     if last is not None:
@@ -138,8 +139,6 @@ def check_worker(conn: psycopg.Connection) -> Check:
             # errors happened, which the old two-state rule recorded as
             # 'completed' and read as healthy.
             return Check("degraded", f"last {last[0]} only partly succeeded", data)
-        if status == "aborted":
-            return Check("degraded", f"last {last[0]} stopped at a cap before finishing", data)
     beat_age = int((now() - beat.last_beat_at).total_seconds() // 60)
     return Check("ok", f"alive, last beat {beat_age} min ago", data)
 
@@ -158,15 +157,13 @@ def _judge_from_ledger(last: tuple[Any, ...] | None, zombies: int, data: dict[st
     age = now() - started_at
     prefix = "no heartbeat (older worker build?); from the ledger: "
     if zombies:
-        return Check("degraded", f"{prefix}{zombies} run(s) stuck in 'running' for over 2 h", data)
+        return Check("degraded", f"{prefix}{zombies} run(s) open past their deadline", data)
     if age > LEDGER_STALE_AFTER:
         return Check("degraded", f"{prefix}last run {int(age.total_seconds() // 60)} min ago", data)
     if status == "failed":
         return Check("degraded", f"{prefix}last {job_type} failed", data)
     if status == "partial":
         return Check("degraded", f"{prefix}last {job_type} only partly succeeded", data)
-    if status == "aborted":
-        return Check("degraded", f"{prefix}last {job_type} stopped at a cap before finishing", data)
     return Check("ok", f"{prefix}last run {int(age.total_seconds() // 60)} min ago", data)
 
 

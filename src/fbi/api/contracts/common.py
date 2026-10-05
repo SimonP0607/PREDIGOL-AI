@@ -78,7 +78,7 @@ class RunSummary(Contract):
     id: int
     job_type: str
     job_name: str
-    status: Literal["running", "completed", "partial", "failed", "aborted", "interrupted"]
+    status: Literal["running", "completed", "partial", "failed", "aborted", "interrupted", "stale"]
     started_at: datetime
     finished_at: datetime | None
     duration_ms: int | None
@@ -89,3 +89,7 @@ class RunSummary(Contract):
     errors: int
     last_error: str | None
     notes: str | None
+    owner: str | None = Field(None, description="host:pid of the process that opened the run (since 0062).")
+    heartbeat_at: datetime | None = Field(None, description="Last sign of life: a payload indexed, a beat.")
+    deadline_at: datetime | None = Field(None, description="Past it, the run watchdog closes a still-open run as "
+                                                           "stale.")

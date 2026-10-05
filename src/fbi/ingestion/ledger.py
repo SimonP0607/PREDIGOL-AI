@@ -50,20 +50,25 @@ class RunCounters:
 
     @property
     def status(self) -> str:
-        """One of running/completed/partial/failed/aborted - see the comment on
+        """One of completed/partial/failed/aborted/interrupted - see the comment on
         raw.ingestion_runs.status, which this must agree with.
 
-            stopped deliberately          -> aborted
-            no errors                     -> completed
-            errors + something durable    -> partial
-            errors + nothing durable      -> failed
+            its process stopped it (signal, shutdown, deadline)  -> interrupted
+            a cap stopped it on purpose                          -> aborted
+            no errors                                            -> completed
+            errors + something durable                           -> partial
+            errors + nothing durable                             -> failed
 
         ``partial`` exists because the old two-state rule called a fixtures
         sync with 7 refusals out of 9 requests 'completed', which reads as if
         nothing had gone wrong. An operator scanning statuses would never look
         at it. 'aborted' stays separate and orthogonal: it means a cap stopped
-        the run on purpose, not that the run broke.
+        the run on purpose, not that the run broke. 'interrupted' (since 5 Oct
+        2026; 'aborted' before) is a run its process could not finish - a
+        shutdown, Ctrl-C, a job deadline - which is neither a cap nor an error.
         """
+        if self.stopped_early and self.stopped_early.startswith("interrupted"):
+            return "interrupted"
         if self.stopped_early:
             return "aborted"
         if not self.errors:
@@ -83,13 +88,19 @@ class RunLedger:
         scheduled_for: datetime | None = None,
         attempt: int = 1,
     ) -> int:
+        from fbi.ops.run_watchdog import process_identity, timeout_for
+
+        owner = process_identity()
+        started = now()
         with self._conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO raw.ingestion_runs (job_name, job_type, params, scheduled_for, attempt, started_at) "
-                "VALUES (%s, %s, %s::jsonb, %s, %s, %s) RETURNING id",
+                "INSERT INTO raw.ingestion_runs (job_name, job_type, params, scheduled_for, attempt, started_at, "
+                "owner_host, owner_pid, owner_started, heartbeat_at, deadline_at) "
+                "VALUES (%s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
                 # started_at from the application clock, not the database default:
                 # one source of time, and the ledger stays testable under FrozenClock.
-                (job_type, job_type, Json(params or {}), scheduled_for, attempt, now()),
+                (job_type, job_type, Json(params or {}), scheduled_for, attempt, started, owner.host, owner.pid,
+                 owner.started, started, started + timeout_for(job_type)),
             )
             row = cur.fetchone()
             assert row is not None
@@ -116,7 +127,14 @@ class RunLedger:
                 ],
                 returning=False,
             )
+            cur.execute("UPDATE raw.ingestion_runs SET heartbeat_at = %s WHERE id = %s", (now(), run_id))
         return len(raws)
+
+    def beat(self, run_id: int) -> None:
+        """A sign of life from a long loop that indexes no payload (fbi.ops.run_watchdog)."""
+        with self._conn.cursor() as cur:
+            cur.execute("UPDATE raw.ingestion_runs SET heartbeat_at = %s WHERE id = %s", (now(), run_id))
+        self._conn.commit()
 
     def indexed_at(self, payload_hash: str) -> datetime | None:
         """The ``fetched_at`` the INDEX holds for a payload, which is not always the
@@ -139,7 +157,9 @@ class RunLedger:
         ``finally:`` close - the run records that exception, so a crash is never
         'completed' (on 25 Sep 2026 a Football-Data import whose download was reset
         closed as 'completed' with nothing done). An interrupt (KeyboardInterrupt,
-        SystemExit, cancellation) is 'aborted'. An error the caller already recorded
+        SystemExit, cancellation, a job deadline) is 'interrupted'. A run the watchdog
+        had already closed as stale or interrupted gets its real outcome, with a note.
+        An error the caller already recorded
         is not recorded twice. A transaction the failure left aborted is rolled back
         first, so the ledger row is still written instead of a second error hiding
         the first."""
@@ -148,16 +168,21 @@ class RunLedger:
             _record_in_flight(counters, in_flight)
         if self._conn.info.transaction_status == TransactionStatus.INERROR:
             self._conn.rollback()
+        last_error = counters.errors[-1] if counters.errors else counters.stopped_early
         with self._conn.cursor() as cur:
             cur.execute(
                 "UPDATE raw.ingestion_runs SET finished_at = %s, status = %s, api_calls = %s, "
                 "payloads_stored = %s, rows_normalized = %s, rows_written = %s, rows_updated = %s, "
-                "errors = %s, last_error = %s, notes = %s WHERE id = %s",
+                "errors = %s, notes = %s, heartbeat_at = %s, "
+                "last_error = CASE WHEN status IN ('stale', 'interrupted') "
+                "  THEN concat_ws(' | ', last_error, %s::text, "
+                "                 'closed by its job after the watchdog had marked it ' || status) "
+                "  ELSE %s::text END "
+                "WHERE id = %s",
                 (
                     now(), counters.status, counters.api_calls, counters.payloads_stored,
                     counters.rows_normalized, counters.rows_inserted, counters.rows_updated,
-                    len(counters.errors), (counters.errors[-1] if counters.errors else counters.stopped_early),
-                    notes, run_id,
+                    len(counters.errors), notes, now(), last_error, last_error, run_id,
                 ),
             )
         self._conn.commit()
@@ -171,7 +196,11 @@ class RunLedger:
 def _record_in_flight(counters: RunCounters, exc: BaseException) -> None:
     """Fold an exception that is escaping the run into its counters."""
     if not isinstance(exc, Exception):
-        counters.stopped_early = counters.stopped_early or f"interrupted ({type(exc).__name__})"
+        from fbi.core.deadline import cancel_reason
+
+        why = cancel_reason()
+        counters.stopped_early = counters.stopped_early or (
+            f"interrupted: {why}" if why else f"interrupted ({type(exc).__name__})")
         return
     key = str(exc)[:200] or type(exc).__name__
     if not any(key in e for e in counters.errors):

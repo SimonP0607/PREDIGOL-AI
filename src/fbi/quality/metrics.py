@@ -31,6 +31,14 @@ class CoverageMetric:
         return None if self.expected == 0 else round(self.available / self.expected, 4)
 
 
+STUCK_RUNS_SQL = """
+SELECT count(*) FROM raw.ingestion_runs
+ WHERE status = 'running' AND (deadline_at < %s OR (deadline_at IS NULL AND started_at < %s))
+"""
+"""Open past their deadline (fbi.ops.run_watchdog), or, for a run opened before 0062, for over two hours. A
+long backfill inside its deadline is working, not stuck."""
+
+
 @dataclass(frozen=True, slots=True)
 class QualitySnapshot:
     computed_at: datetime
@@ -51,11 +59,14 @@ class QualitySnapshot:
     stale_fixtures: int
     """Upcoming fixtures whose newest snapshot is older than STALE_CAPTURE_AFTER."""
     failed_jobs_24h: int
-    """Runs that finished with errors and nothing durable to show (plus aborted)."""
+    """Runs that finished with errors and nothing durable to show. Since 5 Oct 2026 NOT the capped ones:
+    a run stopped at its planned request cap did what it was told (capped_jobs_24h)."""
     partial_jobs_24h: int
     """Runs that wrote something AND hit errors. Invisible before revision 0012,
     when they were recorded as 'completed'."""
     provider_errors_24h: int
+    """Errors of runs that spoke to the provider (api_calls > 0). A database error in a pipeline is not
+    the provider's: it is in failed_jobs_24h."""
     requests_today: int
     """From raw.provider_quota - requests ISSUED, the number the budget bills
     against. ledger_api_calls_today is the same figure summed over closed runs;
@@ -76,6 +87,12 @@ class QualitySnapshot:
     last_successful_capture: datetime | None
     windows_expected_24h: int
     windows_captured_24h: int
+    capped_jobs_24h: int = 0
+    """Runs stopped at their request cap on purpose ('aborted'): the rest is due next run."""
+    interrupted_jobs_24h: int = 0
+    """Runs whose process ended before they did (a restart, a deadline) - recovered by the watchdog."""
+    stale_jobs_24h: int = 0
+    """Runs the watchdog found open past their deadline."""
     notes: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -140,9 +157,11 @@ def data_quality_snapshot(
               GROUP BY f.id
             ) t WHERE last_seen < %s
         """, (moment, until, moment - STALE_CAPTURE_AFTER)))
-        failed_jobs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status IN ('failed','aborted') AND started_at >= %s", (since,)))
-        partial_jobs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status = 'partial' AND started_at >= %s", (since,)))
-        stale_runs = int(_scalar(cur, "SELECT count(*) FROM raw.ingestion_runs WHERE status = 'running' AND started_at < %s", (moment - timedelta(hours=2),)))
+        cur.execute("SELECT status, count(*) FROM raw.ingestion_runs WHERE started_at >= %s GROUP BY 1", (since,))
+        by_status = {str(k): int(v) for k, v in cur.fetchall()}
+        failed_jobs = by_status.get("failed", 0)
+        partial_jobs = by_status.get("partial", 0)
+        stale_runs = int(_scalar(cur, STUCK_RUNS_SQL, (moment, moment - timedelta(hours=2))))
         awaiting_result = int(_scalar(cur, """
             SELECT count(*) FROM core.fixtures f
             JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
@@ -156,7 +175,8 @@ def data_quality_snapshot(
             JOIN core.fixture_results r ON r.fixture_id = f.id
             WHERE c.is_tracked AND f.kickoff_at < %s
         """, (moment,)))
-        provider_errors = int(_scalar(cur, "SELECT coalesce(sum(errors), 0) FROM raw.ingestion_runs WHERE started_at >= %s", (since,)))
+        provider_errors = int(_scalar(cur, "SELECT coalesce(sum(errors), 0) FROM raw.ingestion_runs "
+                                           "WHERE started_at >= %s AND api_calls > 0", (since,)))
         last_ok = _scalar(cur, "SELECT max(finished_at) FROM raw.ingestion_runs WHERE job_type = 'odds_capture' AND status = 'completed'")
         # Windows: for fixtures that kicked off in the last 24 h, how many
         # distinct prematch windows did we actually record vs the configured cadence.
@@ -186,7 +206,7 @@ def data_quality_snapshot(
     elif usage.unattributed > 0 and stale_runs:
         notes.append(
             f"{usage.unattributed} request(s) today belong to no closed run, and "
-            f"{stale_runs} run(s) have been 'running' for over 2 h: likely a crash"
+            f"{stale_runs} run(s) are open past their deadline: likely a crash (the run watchdog closes them)"
         )
     if awaiting_result:
         notes.append(
@@ -213,6 +233,9 @@ def data_quality_snapshot(
         failed_jobs_24h=failed_jobs,
         partial_jobs_24h=partial_jobs,
         provider_errors_24h=provider_errors,
+        capped_jobs_24h=by_status.get("aborted", 0),
+        interrupted_jobs_24h=by_status.get("interrupted", 0),
+        stale_jobs_24h=by_status.get("stale", 0),
         requests_today=usage.spent,
         ledger_api_calls_today=usage.ledger_api_calls,
         daily_budget=usage.budget,

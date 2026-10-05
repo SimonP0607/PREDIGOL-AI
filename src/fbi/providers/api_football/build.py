@@ -17,7 +17,12 @@ import psycopg
 from fbi.core.config import settings
 from fbi.ingestion.payload_store import PayloadStore
 from fbi.providers.api_football.client import ApiFootballClient
-from fbi.providers.quota import PersistentDailyQuota, RunCappedQuota
+from fbi.providers.quota import (
+    MINUTE_SHARE,
+    PersistentDailyQuota,
+    PersistentMinuteLimiter,
+    RunCappedQuota,
+)
 
 
 def _connect() -> psycopg.Connection:
@@ -51,4 +56,11 @@ def build_client(max_requests: int | None = None) -> ApiFootballClient:
         settings.api_football,
         PayloadStore(settings.runtime.raw_store_dir),
         quota=quota,
+        rate_limiter=build_minute_limiter(),
     )
+
+
+def build_minute_limiter() -> PersistentMinuteLimiter:
+    """The plan's per-minute limit, shared by every process (MINUTE_SHARE of it)."""
+    cfg = settings.api_football
+    return PersistentMinuteLimiter(limit=max(1, int(cfg.per_minute_limit * MINUTE_SHARE)), connect=_connect)

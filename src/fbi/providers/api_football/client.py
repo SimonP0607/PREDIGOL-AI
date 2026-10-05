@@ -67,12 +67,14 @@ class ApiFootballClient:
         quota: Any = None,
         breaker: Any = None,
         transport: httpx.AsyncBaseTransport | None = None,
+        sleep: Any = None,
     ) -> None:
         from fbi.providers.circuit import CircuitBreaker
         from fbi.providers.ratelimit import DailyQuota, TokenBucket
 
         self._settings = settings
         self._store = store
+        self._sleep = sleep or asyncio.sleep
         # A margin below the published limit: being throttled costs more than
         # the handful of calls this leaves on the table.
         self._bucket = rate_limiter or TokenBucket(max(1, int(settings.per_minute_limit * 0.9)))
@@ -163,7 +165,7 @@ class ApiFootballClient:
                         retry_after=retry_after,
                     )
                     if attempt < self._settings.max_retries:
-                        await asyncio.sleep(self._backoff(attempt, retry_after))
+                        await self._sleep(self._backoff(attempt, retry_after))
                     continue
 
                 if response.status_code >= 400:
@@ -171,10 +173,18 @@ class ApiFootballClient:
                     raise ProviderError(f"{endpoint}: HTTP {response.status_code} (not retryable)")
 
                 self._breaker.record_success()
-                return self._finalise(endpoint, params, safe_params, response)
+                try:
+                    return self._finalise(endpoint, params, safe_params, response)
+                except RateLimitError as exc:
+                    last_error = exc
+                    log.warning("provider.rate_limited", endpoint=endpoint, params=safe_params, attempt=attempt)
+                    if attempt < self._settings.max_retries:
+                        moment = now()
+                        await self._sleep(60.0 - moment.second + random.uniform(0.5, 3.0))
+                    continue
 
             if attempt < self._settings.max_retries:
-                await asyncio.sleep(self._backoff(attempt, None))
+                await self._sleep(self._backoff(attempt, None))
 
         raise last_error or ProviderError(f"{endpoint}: exhausted retries")
 
@@ -197,6 +207,9 @@ class ApiFootballClient:
         # silently stored empty days.
         errors = body.get("errors")
         if errors and not isinstance(errors, list):
+            if isinstance(errors, dict) and "rateLimit" in errors:
+                # The per-minute limit, answered with HTTP 200 and an error object: as retryable as a 429.
+                raise RateLimitError(f"{endpoint}: provider reported errors: {errors}")
             raise ProviderError(f"{endpoint}: provider reported errors: {errors}")
 
         fetched_at = now()

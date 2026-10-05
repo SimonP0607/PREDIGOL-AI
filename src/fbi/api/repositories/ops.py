@@ -66,7 +66,9 @@ def freshness(conn: Conn) -> Row:
 def recent_runs(conn: Conn, *, limit: int, job_type: str | None = None, status: str | None = None) -> list[Row]:
     return fetch_all(conn, """
         SELECT id, job_type, job_name, status, started_at, finished_at, duration_ms, api_calls,
-               payloads_stored, rows_written, rows_updated, errors, last_error, notes
+               payloads_stored, rows_written, rows_updated, errors, last_error, notes,
+               CASE WHEN owner_pid IS NOT NULL THEN owner_host || ':' || owner_pid END AS owner,
+               heartbeat_at, deadline_at
         FROM raw.ingestion_runs
         WHERE (%(job_type)s::text IS NULL OR job_type = %(job_type)s::text)
           AND (%(status)s::text IS NULL OR status = %(status)s::text)

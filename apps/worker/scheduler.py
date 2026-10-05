@@ -40,12 +40,13 @@ does.
 from __future__ import annotations
 
 import asyncio
+import functools
 import os
 import signal
 import subprocess
 import sys
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from fbi.core.clock import now
 from fbi.core.config import settings
+from fbi.core.deadline import run_with_deadline
 from fbi.core.logging import configure as configure_logging
 from fbi.core.logging import new_run_id
 from fbi.core.version import code_version
@@ -74,7 +76,8 @@ from fbi.ops.heartbeat import (
     last_success,
     next_run_after,
 )
-from fbi.ops.reaper import boot_time, reap_interrupted_runs
+from fbi.ops.reaper import boot_time
+from fbi.ops.run_watchdog import recover_runs, timeout_for
 from fbi.ops.worker_lock import WorkerLock, holder
 
 log = structlog.get_logger("worker")
@@ -681,6 +684,34 @@ EXIT_ANOTHER_WORKER = 75
 """EX_TEMPFAIL: not an error in this worker, and worth trying again later."""
 
 
+WORKER_JOB_TYPES = frozenset({
+    "odds_capture", "live_odds_capture", "live_match_capture", "fixtures_sync", "results_sync", "historical_backfill",
+    "pick_pipeline", "quality_sweep", "context_refresh", "context_due", "results_repair", "final_prematch",
+    "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
+    "research_monitor", "research_v2", "feature_build",
+})
+"""The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
+worker process and recorded without an owner, belonged to a previous worker)."""
+WATCHDOG_MINUTES = 5
+_worker_started_at: datetime | None = None
+
+
+def _run_watchdog_now() -> None:
+    with _connect() as conn:
+        recover_runs(conn, at=now(), worker_started_at=_worker_started_at, worker_job_types=WORKER_JOB_TYPES,
+                     booted_at=boot_time())
+
+
+async def _run_watchdog() -> None:
+    """Close every run whose process is gone or whose deadline passed (fbi.ops.run_watchdog)."""
+    await asyncio.to_thread(_run_watchdog_now)
+
+
+def _deadline(job_id: str, job_type: str, fn: Any) -> Any:
+    """The job wrapped with its deadline (fbi.core.deadline): it can never block its own next run for ever."""
+    return functools.partial(run_with_deadline, job_id, fn, timeout_for(job_type).total_seconds())
+
+
 def _connect() -> psycopg.Connection:
     return psycopg.connect(settings.database.psycopg_url, connect_timeout=5)
 
@@ -766,12 +797,15 @@ async def main() -> None:
                   action="not starting: stop the other worker first (scripts/dev-down worker, "
                          "or docker compose stop worker)")
         raise SystemExit(EXIT_ANOTHER_WORKER)
-    # Holding the lock means no other worker is alive; runs older than this
-    # machine's boot belonged to a process that is gone (fbi.ops.reaper).
+    # Holding the lock means no other worker is alive: runs a previous worker or a dead process left open are
+    # closed now, and every five minutes after (fbi.ops.run_watchdog).
+    global _worker_started_at
+    _worker_started_at = now()
     with _connect() as conn:
-        reaped = reap_interrupted_runs(conn, boot_time())
-    if reaped:
-        log.warning("worker.reaped_interrupted_runs", run_ids=reaped)
+        recovered = recover_runs(conn, at=now(), worker_started_at=_worker_started_at,
+                                 worker_job_types=WORKER_JOB_TYPES, booted_at=boot_time())
+    if recovered:
+        log.warning("worker.recovered_runs", runs=[(r.run_id, r.job_type, r.status) for r in recovered])
     scheduler = AsyncIOScheduler(timezone="UTC")
     _scheduler = scheduler
     moment = now()
@@ -798,24 +832,24 @@ async def main() -> None:
     # tick instead of running them late. A restore test on the live machine did exactly
     # that for five hours and twenty minutes, and the capture simply stopped.
     tick_grace = settings.odds.odds_window_tolerance * 60
-    scheduler.add_job(_tick_with_heartbeat, "interval", minutes=TICK_MINUTES, id="odds_capture",
+    scheduler.add_job(_deadline("odds_capture", "odds_capture", _tick_with_heartbeat), "interval", minutes=TICK_MINUTES, id="odds_capture",
                       max_instances=1, coalesce=True, misfire_grace_time=tick_grace, next_run_time=moment)
     # Live capture comes before everything else in priority, so it gets its own
     # job rather than a slice of the odds tick: a long pre-match capture must
     # never be the reason an in-play price was missed, and an in-play price
     # missed is gone - /odds/live has no history to come back for.
-    scheduler.add_job(_live_tick, "interval", seconds=LIVE_TICK_SECONDS, id="live_odds",
+    scheduler.add_job(_deadline("live_odds", "live_odds_capture", _live_tick), "interval", seconds=LIVE_TICK_SECONDS, id="live_odds",
                       max_instances=1, coalesce=True,
                       misfire_grace_time=LIVE_TICK_SECONDS, next_run_time=moment)
-    scheduler.add_job(_live_match_tick, "interval", seconds=LIVE_MATCH_SECONDS, id="live_match",
+    scheduler.add_job(_deadline("live_match", "live_match_capture", _live_match_tick), "interval", seconds=LIVE_MATCH_SECONDS, id="live_match",
                       max_instances=1, coalesce=True, misfire_grace_time=LIVE_MATCH_SECONDS,
                       next_run_time=moment + timedelta(seconds=20))
-    scheduler.add_job(_daily_fixtures_sync, "interval", hours=FIXTURES_SYNC_HOURS, id="fixtures_sync",
+    scheduler.add_job(_deadline("fixtures_sync", "fixtures_sync", _daily_fixtures_sync), "interval", hours=FIXTURES_SYNC_HOURS, id="fixtures_sync",
                       max_instances=1, coalesce=True, misfire_grace_time=3600, next_run_time=fixtures_next)
-    scheduler.add_job(_results_sync, "interval", hours=RESULTS_SYNC_HOURS, id="results_sync",
+    scheduler.add_job(_deadline("results_sync", "results_sync", _results_sync), "interval", hours=RESULTS_SYNC_HOURS, id="results_sync",
                       max_instances=1, coalesce=True, misfire_grace_time=3600, next_run_time=results_next)
     # History waits a few minutes after start so the catch-up syncs go first.
-    scheduler.add_job(_historical_backfill, "interval", hours=BACKFILL_HOURS, id="historical_backfill",
+    scheduler.add_job(_deadline("historical_backfill", "historical_backfill", _historical_backfill), "interval", hours=BACKFILL_HOURS, id="historical_backfill",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(backfill_next, moment + timedelta(minutes=5)))
     # Database only: forecasts for new fixtures or new results, shadow picks for
@@ -828,22 +862,22 @@ async def main() -> None:
     scheduler.add_job(_quality_sweep, "interval", hours=QUALITY_SWEEP_HOURS, id="quality_sweep",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(sweep_next, moment + timedelta(minutes=10)))
-    scheduler.add_job(_context_refresh, "interval", hours=CONTEXT_REFRESH_HOURS, id="context_refresh",
+    scheduler.add_job(_deadline("context_refresh", "context_refresh", _context_refresh), "interval", hours=CONTEXT_REFRESH_HOURS, id="context_refresh",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(context_next, moment + timedelta(minutes=15)))
-    scheduler.add_job(_context_due, "interval", minutes=CONTEXT_DUE_MINUTES, id="context_due",
+    scheduler.add_job(_deadline("context_due", "context_due", _context_due), "interval", minutes=CONTEXT_DUE_MINUTES, id="context_due",
                       max_instances=1, coalesce=True, misfire_grace_time=CONTEXT_DUE_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=6))
-    scheduler.add_job(_results_repair, "interval", minutes=RESULTS_REPAIR_MINUTES, id="results_repair",
+    scheduler.add_job(_deadline("results_repair", "results_repair", _results_repair), "interval", minutes=RESULTS_REPAIR_MINUTES, id="results_repair",
                       max_instances=1, coalesce=True, misfire_grace_time=RESULTS_REPAIR_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=4))
-    scheduler.add_job(_final_prematch, "interval", minutes=FINAL_PREMATCH_MINUTES, id="final_prematch",
+    scheduler.add_job(_deadline("final_prematch", "final_prematch", _final_prematch), "interval", minutes=FINAL_PREMATCH_MINUTES, id="final_prematch",
                       max_instances=1, coalesce=True, misfire_grace_time=FINAL_PREMATCH_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=7))
-    scheduler.add_job(_reference_refresh, "interval", minutes=REFERENCE_MINUTES, id="reference_refresh",
+    scheduler.add_job(_deadline("reference_refresh", "reference_refresh", _reference_refresh), "interval", minutes=REFERENCE_MINUTES, id="reference_refresh",
                       max_instances=1, coalesce=True, misfire_grace_time=REFERENCE_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=14))
-    scheduler.add_job(_catalogue_refresh, "interval", hours=CATALOGUE_REFRESH_HOURS, id="catalogue_refresh",
+    scheduler.add_job(_deadline("catalogue_refresh", "catalogue_refresh", _catalogue_refresh), "interval", hours=CATALOGUE_REFRESH_HOURS, id="catalogue_refresh",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(catalogue_next, moment + timedelta(minutes=8)))
     scheduler.add_job(_elo_refresh, "interval", hours=ELO_REFRESH_HOURS, id="elo_refresh",
@@ -864,6 +898,9 @@ async def main() -> None:
     scheduler.add_job(_research_weekly, "cron", day_of_week=RESEARCH_V2_WEEKDAY, hour=RESEARCH_V2_HOUR, minute=20,
                       timezone="America/Bogota", id="research_v2_weekly", max_instances=1, coalesce=True,
                       misfire_grace_time=12 * 3600)
+    scheduler.add_job(_run_watchdog, "interval", minutes=WATCHDOG_MINUTES, id="run_watchdog", max_instances=1,
+                      coalesce=True, misfire_grace_time=WATCHDOG_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=WATCHDOG_MINUTES))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     scheduler.start()

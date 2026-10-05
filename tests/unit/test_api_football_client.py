@@ -149,3 +149,30 @@ async def test_a_200_carrying_a_provider_error_object_is_not_treated_as_success(
     async with client:
         with pytest.raises(ProviderError, match="provider reported errors"):
             await client.get("/odds", {"fixture": 1})
+
+
+async def test_the_per_minute_limit_answered_in_the_body_is_waited_out_and_retried(tmp_path: Path) -> None:
+    """5 Oct 2026 02:46 UTC: HTTP 200 with errors {"rateLimit": ...} was taken as a plain error and a backfill
+    unit was lost. It is a rate limit: wait for the next minute and ask again (within the retry budget)."""
+    calls = {"n": 0}
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(200, json={"errors": {"rateLimit": "Too many requests. You have exceeded the "
+                                                                      "limit of requests per minute of your "
+                                                                      "subscription."}, "response": []})
+        return httpx.Response(200, json=OK_BODY)
+
+    slept: list[float] = []
+
+    async def _sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    settings = ApiFootballSettings(key=SECRET, plan="pro", daily_budget=10, max_retries=2, timeout_seconds=1.0)
+    client = ApiFootballClient(settings, PayloadStore(tmp_path), transport=httpx.MockTransport(handler),
+                               rate_limiter=TokenBucket(100, sleep=_sleep), quota=DailyQuota(budget=10), sleep=_sleep)
+    async with client:
+        response = await client.get("/players", {"league": 32, "season": 2024})
+    assert response.results_count == 1 and calls["n"] == 2
+    assert len(slept) == 1 and 48 <= slept[0] <= 63, "until the next minute (the clock is frozen at :00)"

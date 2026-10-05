@@ -521,7 +521,7 @@ SELECT
 RECENT_ERRORS = """
 SELECT id AS run_id, job_type, status, started_at, last_error AS error
   FROM raw.ingestion_runs
- WHERE started_at > %(at)s - interval '72 hours' AND status IN ('failed', 'partial', 'aborted', 'interrupted')
+ WHERE started_at > %(at)s - interval '72 hours' AND status IN ('failed', 'partial', 'aborted', 'interrupted', 'stale')
  ORDER BY started_at DESC LIMIT 30
 """
 

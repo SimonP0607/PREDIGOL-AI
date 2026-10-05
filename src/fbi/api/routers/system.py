@@ -60,7 +60,7 @@ def get_runs(
     conn: Db,
     limit: Annotated[int, Query(ge=1, le=200)] = 20,
     job_type: Annotated[str | None, Query(max_length=40, pattern=r"^[a-z_]+$")] = None,
-    status: Literal["running", "completed", "partial", "failed", "aborted", "interrupted"] | None = None,
+    status: Literal["running", "completed", "partial", "failed", "aborted", "interrupted", "stale"] | None = None,
 ) -> Envelope[list[RunSummary]]:
     return ops.runs(conn, limit=limit, job_type=job_type, status=status)
 

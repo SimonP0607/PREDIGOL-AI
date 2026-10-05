@@ -34,9 +34,11 @@ rows back, which is a refusal - not a silent overspend.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import asyncio
+import random
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 import psycopg
 import structlog
@@ -287,3 +289,60 @@ class RunCappedQuota:
             )
         self._inner.spend(calls)
         self._spent_here += calls
+
+
+MINUTE_SHARE = 0.8
+"""The share of the plan's per-minute limit every process together may use."""
+
+_MINUTE_SPEND = """
+INSERT INTO raw.provider_minute_usage (provider, minute, spent) VALUES (%(provider)s, %(minute)s, %(n)s)
+ON CONFLICT (provider, minute) DO UPDATE SET spent = raw.provider_minute_usage.spent + EXCLUDED.spent
+ WHERE raw.provider_minute_usage.spent + EXCLUDED.spent <= %(limit)s
+RETURNING spent
+"""
+
+_MINUTE_PRUNE = "DELETE FROM raw.provider_minute_usage WHERE provider = %(provider)s AND minute < %(before)s"
+
+
+class PersistentMinuteLimiter:
+    """The provider's per-minute limit, shared by every process (raw.provider_minute_usage, migration 0062).
+
+    Each process used to keep its own token bucket at 90% of the limit, so two jobs at full speed went over it
+    together: on 5 Oct 2026 at 02:46 UTC the provider answered "Too many requests ... per minute" during the
+    historical backfill, while the reference feeds were also running, and a backfill unit was lost. The counter
+    is one atomic statement per request, like the daily budget: a process that finds the minute full waits for
+    the next one. Interface-compatible with ``TokenBucket.acquire``.
+    """
+
+    def __init__(self, *, limit: int, connect: Callable[[], psycopg.Connection], provider: str = DEFAULT_PROVIDER,
+                 sleep: Callable[[float], Awaitable[None]] | None = None) -> None:
+        if limit < 1:
+            raise ValueError("the per-minute limit must be at least 1 request")
+        self.limit = limit
+        self._connect = connect
+        self._provider = provider
+        self._sleep = sleep or asyncio.sleep
+
+    def try_spend(self, tokens: int = 1) -> bool:
+        """Reserve ``tokens`` in the current minute, or refuse without spending."""
+        moment = now()
+        minute = moment.replace(second=0, microsecond=0)
+        with self._connect() as conn:
+            row = conn.execute(_MINUTE_SPEND, {"provider": self._provider, "minute": minute, "n": tokens,
+                                               "limit": self.limit}).fetchone()
+            if row is not None and int(row[0]) == tokens and minute.minute == 0:
+                conn.execute(_MINUTE_PRUNE, {"provider": self._provider, "before": minute - timedelta(days=2)})
+        return row is not None
+
+    async def acquire(self, tokens: int = 1) -> float:
+        """Wait until the shared minute has room for ``tokens``. Returns the seconds waited."""
+        if tokens > self.limit:
+            raise ValueError(f"cannot acquire {tokens} requests in a minute limited to {self.limit}")
+        waited = 0.0
+        while not self.try_spend(tokens):
+            moment = now()
+            delay = 60.0 - moment.second - moment.microsecond / 1e6 + random.uniform(0.05, 1.5)
+            log.info("quota.minute_full", limit=self.limit, wait_seconds=round(delay, 1))
+            await self._sleep(delay)
+            waited += delay
+        return waited
