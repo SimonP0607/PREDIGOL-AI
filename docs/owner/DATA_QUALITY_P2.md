@@ -2,7 +2,7 @@
 
 Mandato: dejar **0 errores críticos/altos**, datasets **actuales y trazables**, y no entrenar con datos dudosos.
 Código: backend `b7168d3`, `7c04c9c` (be-93) y `2739b21`, `8bf1409`, `a518a27`, `c7a1bd9`, `9d1214f`, `629dad7`,
-`616e6a3` (be-94..97). Sin migración nueva. Tests: 1.619 en verde (14 nuevos en esta fase).
+`616e6a3`, `6143d19` (0066), `e9741e7` (be-94..100). Tests: 1.623 en verde (18 nuevos en esta fase).
 
 **Resultado medido (5 oct, 16:39 UTC):**
 
@@ -53,7 +53,7 @@ evidencia:
 
 | Hallazgo | Alcance | Corrección | Traza |
 |---|---|---|---|
-| **Tablas sin linaje**: `core.standings.payload_hash` llegó con la revisión 0048; lo escrito antes no nombraba su payload | 15.385 filas en 840 instantáneas (77 % de la tabla) | cada instantánea se compara, valor a valor, con el `/standings` de su liga y temporada leído en su mismo instante (786) o el anterior más reciente (54), verificado contra su hash; solo entonces se escribe el hash. **840/840 trazadas**; 17 instantáneas antiguas son subconjuntos de su payload (515 filas que el escritor anterior descartó: una fila por equipo) — se informan, no se rellenan | 840 filas `standings_lineage` en `audit.data_repairs`; respaldo `PRE_STANDINGS_LINEAGE_20261005` |
+| **Tablas sin linaje**: `core.standings.payload_hash` llegó con la revisión 0048; lo escrito antes no nombraba su payload | 15.385 filas en 840 instantáneas (77 % de la tabla) | cada instantánea se compara, valor a valor, con el `/standings` de su liga y temporada leído en su mismo instante (786) o el anterior más reciente (54), verificado contra su hash; solo entonces se escribe el hash. **840/840 trazadas**; 17 instantáneas antiguas eran subconjuntos de su payload (515 filas que el escritor anterior descartó: una fila por equipo) — **completadas** después desde ese mismo payload (17 filas `standings_dropped_tables`, la regla de `refresh_tables --legacy`; respaldo `PRE_STANDINGS_COMPLETE_20261005`; nada actualizado ni borrado) | 840 filas `standings_lineage` en `audit.data_repairs`; respaldo `PRE_STANDINGS_LINEAGE_20261005` |
 | **Un partido que el proveedor cambia de competición no se movía** (la actualización nunca tocaba `competition_season_id`) | latente; 1 caso real (E-466: Panamá–Nueva Zelanda pasó de Amistosos a la Kirin Cup) | sigue al proveedor entre temporadas seguidas (`fixture_competition` en `audit.data_repairs`); si la nueva competición no se sigue, la fila se queda y se marca (`STALE_DATA`, campo `competition`) sin inventar una temporada | 3 tests nuevos |
 | **Vivo "STALE" en el descanso**: una respuesta idéntica conserva su primera hora de índice | el registro marcaba STALE un partido en juego leído cada minuto | cuenta como lectura una pasada completa del seguidor dentro de su ventana | 3 tests nuevos; el registro pasó a FRESH |
 | **Personas nunca descritas** (P2, be-93) | 6.260 jugadores y 4.137 entrenadores de alineaciones sin perfil | petición por id, con presupuesto y sin tocar la reserva en vivo: 6.249 perfiles de jugador y 7.306 filas de entrenador escritos | `reference_refresh` 15:48–16:29 UTC, 10.397 peticiones |
@@ -140,9 +140,10 @@ petición cada 20 partidos. Cada lectura queda en `core.detail_asks` (partido y 
 +26 h), porque una respuesta idéntica conserva su primera hora de índice y sin ese registro se volvería a pedir en
 bucle. Tests: `test_a_finished_match_is_read_again_a_day_later_once_…`, `test_a_late_read_is_asked_once_…`.
 
-**Historia de tablas:** 17 instantáneas antiguas (29 sep–4 oct) carecen de 515 filas que el escritor anterior a 0048
-descartaba (un equipo en dos tablas). Ningún modelo lee tablas; solo afecta a "la tabla en el momento del partido" de
-partidos de esas fechas. Se informan en la reparación; completarlas desde RAW es posible sin peticiones.
+**Historia de tablas (completada):** las 17 instantáneas antiguas (29 sep–4 oct) a las que el escritor anterior a 0048
+había quitado 515 filas (un equipo en dos tablas: Apertura/Clausura, grupos de Argentina, Colombia, Perú, periodos de
+la Eerste Divisie) se completaron desde su propio payload, en su mismo instante y con su hash (`e9741e7`, 0
+peticiones). Una nueva pasada en seco da 0 instantáneas incompletas de 991.
 
 ## 7. Respaldos, despliegues y consumo
 
