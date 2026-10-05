@@ -17,7 +17,7 @@ from psycopg.rows import tuple_row
 from fbi.core.clock import now
 from fbi.ops.heartbeat import latest_heartbeat
 from fbi.providers.quota import read_usage
-from fbi.quality.metrics import STUCK_RUNS_SQL
+from fbi.quality.metrics import PROVIDER_ERROR_PARAMS, PROVIDER_ERROR_SQL, STUCK_RUNS_SQL
 
 Status = Literal["ok", "degraded", "down", "unknown"]
 
@@ -179,10 +179,10 @@ def check_provider(conn: psycopg.Connection, daily_budget: int) -> Check:
         usage = read_usage(conn, budget=daily_budget)
         with conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(
-                # Runs that spoke to the provider only: a database job's failure (a
-                # quality sweep, a pipeline) is not a provider error.
+                # Runs that spoke to the provider, and an error that came from it: a database error, a planned
+                # cap or a deadline inside such a run is not the provider's (fbi.quality.metrics).
                 "SELECT last_error, started_at FROM raw.ingestion_runs WHERE errors > 0 AND api_calls > 0 "
-                "ORDER BY started_at DESC LIMIT 1"
+                f"AND {PROVIDER_ERROR_SQL} ORDER BY started_at DESC LIMIT 1", PROVIDER_ERROR_PARAMS,
             )
             err = cur.fetchone()
             cur.execute("SELECT max(fetched_at) FROM raw.ingestion_payloads")

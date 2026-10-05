@@ -69,6 +69,29 @@ class CoverageMetric:
         return None if self.expected == 0 else round(self.available / self.expected, 4)
 
 
+PROVIDER_ERROR_PATTERN = (r"provider|http|rate ?limit|connect|timed? ?out|read ?error|\y429\y|\y5[0-9]{2}\y|quota|"
+                          r"circuit|ssl|dns|remote ?protocol")
+"""A run's last error that came from talking to the provider (a Postgres regex, case-insensitive; ``y`` escapes are
+word bounds there)."""
+NOT_PROVIDER_ERROR_PATTERN = (r"QueryCanceled|statement timeout|Violation|psycopg|IntegrityError|OperationalError|"
+                              r"run cap|request cap|allowance|job deadline|watchdog")
+"""...unless it is a database error, a planned cap or a deadline: 5 Oct 2026, a truth audit's statement timeout
+(a run that had also made 370 provider requests) put the provider at "degraded" for an hour."""
+PROVIDER_ERROR_SQL = "(last_error ~* %(provider_error)s AND last_error !~* %(not_provider_error)s)"
+PROVIDER_ERROR_PARAMS = {"provider_error": PROVIDER_ERROR_PATTERN, "not_provider_error": NOT_PROVIDER_ERROR_PATTERN}
+
+
+def is_provider_error(text: str | None) -> bool:
+    """The same judgement as PROVIDER_ERROR_SQL, in Python (Postgres word bounds become Python ones)."""
+    import re
+
+    if not text:
+        return False
+    provider = PROVIDER_ERROR_PATTERN.replace(r"\y", r"\b")
+    return bool(re.search(provider, text, re.IGNORECASE)) and not re.search(NOT_PROVIDER_ERROR_PATTERN, text,
+                                                                          re.IGNORECASE)
+
+
 STUCK_RUNS_SQL = """
 SELECT count(*) FROM raw.ingestion_runs
  WHERE status = 'running' AND (deadline_at < %s OR (deadline_at IS NULL AND started_at < %s))
@@ -281,8 +304,9 @@ def data_quality_snapshot(
         """, (moment, moment)))
         cur.execute(FINAL_PREMATCH_SQL, {"since": moment - timedelta(days=FINAL_PREMATCH_DAYS), "at": moment})
         fp = cur.fetchone() or (0, 0, 0, 0, 0, None)
-        provider_errors = int(_scalar(cur, "SELECT coalesce(sum(errors), 0) FROM raw.ingestion_runs "
-                                           "WHERE started_at >= %s AND api_calls > 0", (since,)))
+        cur.execute("SELECT coalesce(sum(errors), 0) FROM raw.ingestion_runs WHERE started_at >= %(since)s "
+                    f"AND api_calls > 0 AND {PROVIDER_ERROR_SQL}", {"since": since, **PROVIDER_ERROR_PARAMS})
+        provider_errors = int((cur.fetchone() or (0,))[0])
         last_ok = _scalar(cur, "SELECT max(finished_at) FROM raw.ingestion_runs WHERE job_type = 'odds_capture' AND status = 'completed'")
         # Windows: for fixtures that kicked off in the last 24 h, how many
         # distinct prematch windows did we actually record vs the configured cadence.

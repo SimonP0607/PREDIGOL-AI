@@ -77,6 +77,25 @@ def test_a_failed_run_degrades_the_worker_and_the_provider(db: psycopg.Connectio
         db.commit()
 
 
+def test_a_database_error_in_a_run_that_called_the_provider_is_not_a_provider_error(db: psycopg.Connection) -> None:
+    """5 Oct 2026: a truth audit's statement timeout (370 provider requests in that run) set the provider to
+    'degraded' for an hour."""
+    set_clock(FrozenClock(NOW))
+    try:
+        ledger = RunLedger(db)
+        run_id = ledger.open("truth_audit")
+        ledger.close(run_id, RunCounters(api_calls=370, errors=["QueryCanceled: canceling statement due to "
+                                                                "statement timeout"]))
+        h = health(db, version="t", daily_budget=100_000)
+        assert h.football_provider.status == "ok", h.football_provider.detail
+        assert data_quality_snapshot(db, daily_budget=100_000).provider_errors_24h == 0
+    finally:
+        set_clock(SystemClock())
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM raw.ingestion_runs WHERE id = %s", (run_id,))
+        db.commit()
+
+
 def test_the_health_endpoint_never_spends_quota(db: psycopg.Connection) -> None:
     """The provider check is derived from the ledger. If it ever called
     /status, requests_today would move on its own."""
@@ -282,8 +301,8 @@ def test_the_quality_snapshot_separates_partial_runs_from_failed_ones(db: psycop
     try:
         ledger = RunLedger(db)
         for counters in (
-            RunCounters(api_calls=9, payloads_stored=2, rows_inserted=9, errors=["r"] * 7),
-            RunCounters(api_calls=1, errors=["dead"]),
+            RunCounters(api_calls=9, payloads_stored=2, rows_inserted=9, errors=["HTTP 503"] * 7),
+            RunCounters(api_calls=1, errors=["ConnectError: [Errno 104] Connection reset by peer"]),
             RunCounters(api_calls=2, rows_inserted=3),
         ):
             run_id = ledger.open("odds_capture", scheduled_for=NOW)
