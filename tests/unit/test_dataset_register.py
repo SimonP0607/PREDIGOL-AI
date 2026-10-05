@@ -16,7 +16,7 @@ def ds(**counts: int) -> DatasetFreshness:
 
 def test_the_provider_gap_is_not_ours_and_a_stale_entity_is() -> None:
     assert classify(ds(fresh=60, unavailable=40), 0)[0] == "FRESH"
-    klass, coverage, gap, _ = classify(ds(fresh=60, unavailable=40), 0)
+    _, coverage, gap, _ = classify(ds(fresh=60, unavailable=40), 0)
     assert (coverage, gap) == (1.0, 0.4)
     stale = classify(ds(fresh=99, stale=1), 0)
     assert stale[0] == "STALE" and "stale" in stale[3][0]
