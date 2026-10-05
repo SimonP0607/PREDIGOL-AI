@@ -127,15 +127,22 @@ def find_completed_session(conn: psycopg.Connection, *, name: str, dataset_hash:
 
 
 def version_string(model: str, spec: str, code_version: str) -> str:
-    return f"{MODEL_SEMVER}/{spec}@{code_version[:7]}"
+    return f"{MODEL_SEMVER}/{spec}@{code_version[:12] if code_version.startswith('mc') else code_version[:7]}"
 
 
 def ensure_version(conn: psycopg.Connection, *, model: str, spec: str, hyper: dict[str, Any], code_version: str,
                    feature_names: Sequence[str], train_from: date, train_to: date, n_train: int) -> int:
     """The id of (model, version), created on first use. A version is immutable:
-    the same version string with other hyper-parameters is a conflict."""
+    the same version string with other hyper-parameters is a conflict.
+
+    The version is keyed by the model code's fingerprint (``model_code_version``), not by the repository commit
+    ``code_version``, which is still recorded on the row (the first commit that ran this model code)."""
+    from fbi.core.version import model_code_version
+
     reg_name, family, description = CATALOGUE[model]
-    version = version_string(model, spec, code_version)
+    model_code = model_code_version()
+    hyper = {**hyper, "code_version": model_code} if "code_version" in hyper else hyper
+    version = version_string(model, spec, model_code)
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(
             "INSERT INTO models.model_registry (name, family, description) VALUES (%s, %s, %s) "

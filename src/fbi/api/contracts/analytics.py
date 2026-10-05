@@ -289,8 +289,9 @@ class PerformanceSlice(Contract):
     profit_units: Decimal | None
     roi_pct: Decimal | None
     roi_ci95_pct: Decimal | None = Field(
-        description="Half-width of a normal 95% interval on the ROI from the spread of per-bet profits. "
-                    "Null below 30 bets: too few for the approximation.")
+        description="Half-width of a normal 95% interval on the ROI, clustered by fixture (the spread of per-match "
+                    "profits): several picks on one match win or lose together. Null below 20 matches.")
+    fixtures: int | None = Field(default=None, description="Distinct matches behind the bets: the independent sample.")
     hit_rate: Decimal | None
     mean_odds: Decimal | None
     expected_profit_units: Decimal | None = Field(
@@ -307,3 +308,5 @@ class PerformanceSummary(Contract):
     hit_rate: Decimal | None
     note: str
     slices: list[PerformanceSlice] = Field(default_factory=list)
+    roi_ci95_pct: Decimal | None = Field(default=None, description="Clustered by fixture, as in the slices.")
+    fixtures: int | None = Field(default=None, description="Distinct matches behind the settled bets.")

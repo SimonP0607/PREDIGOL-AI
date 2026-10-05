@@ -318,16 +318,42 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     assert quiet.skipped == failing.new and quiet.sent == 0
 
 
+def test_a_deploy_that_does_not_touch_the_model_code_keeps_the_model_version(db: psycopg.Connection,
+                                                                            league: dict[str, object]) -> None:
+    """5 Oct 2026: every deploy made a new version of every model, so none could gather a backtest and a prospective
+    record. Two commits, the same model code: one version per model."""
+    target = int(league["target"])  # type: ignore[call-overload]
+    forecast_upcoming(db, at=AT, code_version="commit-a")
+    forecast_upcoming(db, at=AT + timedelta(minutes=30), code_version="commit-b")  # a page changed, not a model
+    db.commit()
+    with db.cursor() as cur:
+        cur.execute("SELECT m.name, count(DISTINCT p.model_version_id) FROM models.predictions p "
+                    "JOIN models.model_versions v ON v.id = p.model_version_id "
+                    "JOIN models.model_registry m ON m.id = v.model_id WHERE p.fixture_id = %s GROUP BY m.name",
+                    (target,))
+        assert dict(cur.fetchall()) == {"poisson": 1, "dixon_coles": 1}
+
+
 def test_a_model_re_versioned_by_a_code_change_is_judged_once(db: psycopg.Connection,
-                                                               league: dict[str, object]) -> None:
+                                                               league: dict[str, object],
+                                                               monkeypatch: pytest.MonkeyPatch) -> None:
     """25 Sep 2026, first real capture: three versions of one Elo model (the worker restarted
     on three commits) each had a forecast, and one price became three identical shadow picks.
     One model, one judgement per price - through its newest forecast - and the economic summary
-    counts a bet once even where old rows repeat it."""
+    counts a bet once even where old rows repeat it. (Since 5 Oct 2026 only a change of the model code makes a new
+    version; the change is simulated here.)"""
+    from fbi.core.version import model_code_version
+
     target = int(league["target"])  # type: ignore[call-overload]
     books: list[int] = league["books"]  # type: ignore[assignment]
+    monkeypatch.setenv("FBI_MODEL_CODE_VERSION", "mcpipetest")
+    model_code_version.cache_clear()
     forecast_upcoming(db, at=AT, code_version="pipetest")
+    monkeypatch.setenv("FBI_MODEL_CODE_VERSION", "mcpipenew")  # the model code changed
+    model_code_version.cache_clear()
     forecast_upcoming(db, at=AT + timedelta(minutes=30), code_version="pipenew")  # same inputs, new version
+    monkeypatch.delenv("FBI_MODEL_CODE_VERSION")
+    model_code_version.cache_clear()
     db.commit()
     with db.cursor() as cur:
         cur.execute("SELECT m.name, count(DISTINCT p.model_version_id) FROM models.predictions p "
@@ -339,7 +365,7 @@ def test_a_model_re_versioned_by_a_code_change_is_judged_once(db: psycopg.Connec
         cur.execute("SELECT p.p_calibrated FROM models.predictions p JOIN models.model_versions v ON "
                     "v.id = p.model_version_id JOIN models.model_registry m ON m.id = v.model_id WHERE p.fixture_id = %s "
                     "AND m.name = 'poisson' AND p.market_key = '1X2' AND p.selection = 'Home' "
-                    "AND v.version LIKE '%%@pipenew'", (target,))
+                    "AND v.version LIKE '%%@mcpipenew'", (target,))
         p_home = float(scalar(cur))
         long_home = (Decimal("1.15") / Decimal(str(p_home))).quantize(Decimal("0.01"))
         for book in books:
@@ -355,7 +381,7 @@ def test_a_model_re_versioned_by_a_code_change_is_judged_once(db: psycopg.Connec
     db.commit()
     assert picks.candidates == 6, "3 selections x 2 models - not x 4 versions"
     with db.cursor() as cur:
-        cur.execute("SELECT DISTINCT v.version LIKE '%%@pipenew' FROM picks.pick_candidates c "
+        cur.execute("SELECT DISTINCT v.version LIKE '%%@mcpipenew' FROM picks.pick_candidates c "
                     "JOIN models.predictions p ON p.id = c.prediction_id "
                     "JOIN models.model_versions v ON v.id = p.model_version_id WHERE c.fixture_id = %s", (target,))
         assert cur.fetchall() == [(True,)], "judged through the newest forecast of each model"
@@ -378,7 +404,7 @@ def test_a_model_re_versioned_by_a_code_change_is_judged_once(db: psycopg.Connec
         first, cand, market, selection, model_id = cur.fetchone()  # type: ignore[misc]
         cur.execute("SELECT p.id, p.model_version_id FROM models.predictions p "
                     "JOIN models.model_versions v ON v.id = p.model_version_id WHERE p.fixture_id = %s "
-                    "AND p.market_key = %s AND p.selection = %s AND v.model_id = %s AND v.version LIKE '%%@pipetes'",
+                    "AND p.market_key = %s AND p.selection = %s AND v.model_id = %s AND v.version LIKE '%%@mcpipetest'",
                     (target, market, selection, model_id))
         old_prediction, old_version = cur.fetchone()  # type: ignore[misc]
         cur.execute("""

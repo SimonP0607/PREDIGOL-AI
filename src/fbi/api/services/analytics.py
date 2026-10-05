@@ -186,13 +186,27 @@ def performance(conn: Conn) -> Envelope[PerformanceSummary]:
         return unavailable(body, f"Insufficient sample: {settled} settled pick(s).",
                            status=DataStatus.INSUFFICIENT_DATA)
     roi = (profit or Decimal(0)) / staked * 100
+    fixtures = int(s["fixtures"] or 0)
     body = PerformanceSummary(slices=_slices(conn),
         settled=settled, pending=pending, staked_units=staked, profit_units=profit,
         roi_pct=roi.quantize(Decimal("0.01")),
         hit_rate=(Decimal(int(s["wins"])) / settled * 100).quantize(Decimal("0.01")),
         note="Shadow picks at the captured price; not a betting record.",
+        roi_ci95_pct=_clustered_ci(fixtures, s["fixture_profit_sd"], staked), fixtures=fixtures,
     )
     return ok(body)
+
+
+MIN_FIXTURES_FOR_INTERVAL = 20
+
+
+def _clustered_ci(fixtures: int, fixture_profit_sd: Any, staked: Decimal | None) -> Decimal | None:
+    """Half-width of the 95% interval on ROI (%) from the spread of per-match profits: the sum over m matches has
+    variance m * var(match profit). Null below MIN_FIXTURES_FOR_INTERVAL matches."""
+    if not staked or fixtures < MIN_FIXTURES_FOR_INTERVAL or fixture_profit_sd is None:
+        return None
+    return (Decimal("1.96") * Decimal(fixture_profit_sd) * Decimal(fixtures).sqrt() / staked * 100).quantize(
+        Decimal("0.01"))
 
 
 def _slices(conn: Conn) -> list[PerformanceSlice]:
@@ -205,11 +219,10 @@ def _slices(conn: Conn) -> list[PerformanceSlice]:
         roi = ci = None
         if staked:
             roi = ((profit or Decimal(0)) / staked * 100).quantize(q2)
-            if n >= 30 and r["profit_sd"] is not None:
-                ci = (Decimal("1.96") * Decimal(r["profit_sd"]) * Decimal(n).sqrt() / staked * 100).quantize(q2)
+            ci = _clustered_ci(int(r["fixtures"] or 0), r["fixture_profit_sd"], staked)
         out.append(PerformanceSlice(
             dimension=r["dimension"], key=str(r["key"]).split(": ", 1)[-1], settled=n, staked_units=staked,
-            profit_units=profit, roi_pct=roi, roi_ci95_pct=ci,
+            profit_units=profit, roi_pct=roi, roi_ci95_pct=ci, fixtures=int(r["fixtures"] or 0),
             hit_rate=(Decimal(int(r["wins"])) / n * 100).quantize(q2) if n else None,
             mean_odds=Decimal(r["mean_odds"]).quantize(q2) if r["mean_odds"] is not None else None,
             expected_profit_units=Decimal(r["expected_profit"]).quantize(q2) if r["expected_profit"] is not None
