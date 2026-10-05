@@ -223,7 +223,11 @@ export function ReportTab() {
       {run.isError ? <ApiErrorNotice error={run.error} /> : null}
       {report.isLoading ? <TableSkeleton rows={4} cols={3} /> : null}
       {report.data && report.data.status !== "ok" ? (
-        <StatusNotice status={report.data.status} reason={report.data.reason} compact />
+        <StatusNotice
+          status={report.data.status}
+          reason={report.data.status === "empty" ? t("ai.report.notYet") : report.data.reason}
+          compact
+        />
       ) : null}
       {r ? (
         <>

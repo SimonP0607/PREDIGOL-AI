@@ -32,7 +32,8 @@
       "source": "Source",
       "published": "Published",
       "retrieved": "Retrieved"
-    }
+    },
+    "notYet": "No report for this day yet: it is written at 06:00 (Bogotá), or when you press “Write now”."
   },
   "grade": {
     "CONFIRMED": "Confirmed",

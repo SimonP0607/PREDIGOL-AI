@@ -32,7 +32,8 @@
       "source": "Fuente",
       "published": "Publicado",
       "retrieved": "Consultado"
-    }
+    },
+    "notYet": "Todavía no hay informe para este día: se escribe a las 06:00 (Bogotá), o cuando pulsas «Generar ahora»."
   },
   "grade": {
     "CONFIRMED": "Confirmado",
