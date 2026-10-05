@@ -274,6 +274,20 @@
       "title": "Calendario de jornadas",
       "description": "Todas las jornadas de la temporada con sus fechas (proveedor).",
       "current": "Jornada actual según el proveedor: {rounds}"
+    },
+    "providerSeasons": {
+      "title": "Estadísticas de temporada (proveedor)",
+      "description": "El agregado de API-Football por equipo y competición, tal como lo envía; su valoración es la métrica propia del proveedor. La tabla de arriba es la de PrediGol, calculada partido a partido: pueden diferir.",
+      "headers": {
+        "lineups": "Titular"
+      }
+    },
+    "career": {
+      "title": "Trayectoria (proveedor)",
+      "national": "selección",
+      "club": "club",
+      "seasons_one": "{count} temporada",
+      "seasons_other": "{count} temporadas"
     }
   },
   "positions": {

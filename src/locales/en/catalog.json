@@ -274,6 +274,20 @@
       "title": "Round calendar",
       "description": "Every round of the season with its dates (provider).",
       "current": "Current round per the provider: {rounds}"
+    },
+    "providerSeasons": {
+      "title": "Season statistics (provider)",
+      "description": "API-Football's aggregate per team and competition, as sent; its rating is the provider's own metric. The table above is PrediGol's, computed match by match: they can differ.",
+      "headers": {
+        "lineups": "Starts"
+      }
+    },
+    "career": {
+      "title": "Career (provider)",
+      "national": "national team",
+      "club": "club",
+      "seasons_one": "{count} season",
+      "seasons_other": "{count} seasons"
     }
   },
   "positions": {

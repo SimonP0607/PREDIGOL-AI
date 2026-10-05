@@ -22,7 +22,12 @@ import type {
   Provenance,
   SeasonRound,
 } from "@/lib/api/v1/types_center";
-import { leaderFigure, ratingCountsUnrated, roundSpan } from "@/product/shared/reference";
+import {
+  careerSpan,
+  leaderFigure,
+  ratingCountsUnrated,
+  roundSpan,
+} from "@/product/shared/reference";
 import { dec, shortHash, utcDate, utcDateTime } from "./format";
 
 /** "API-Football /transfers · payload 1a2b3c4d5e6f · fetched 4 Oct 2026 18:30 UTC · asked 4 Oct ..." */
@@ -50,10 +55,101 @@ export function ProvenanceNote({
   );
 }
 
+/** The provider's own season aggregate (/players), next to PrediGol's: labelled, with its own rating. */
+export function PlayerProviderSeasonsPanel({ d }: { d: PlayerDetail }) {
+  if (!d.provider_seasons) return null;
+  return (
+    <Panel
+      title={t("catalog.reference.providerSeasons.title")}
+      subtitle={t("catalog.reference.providerSeasons.description")}
+      bodyClassName=""
+    >
+      <SectionView section={d.provider_seasons}>
+        {(rows) => (
+          <TableShell>
+            <THead>
+              <TH>{t("catalog.players.detail.seasons.headers.season")}</TH>
+              <TH>{t("catalog.players.detail.seasons.headers.competition")}</TH>
+              <TH>{t("catalog.players.detail.seasons.headers.team")}</TH>
+              <TH align="right">{t("catalog.columns.apps")}</TH>
+              <TH align="right">{t("catalog.reference.providerSeasons.headers.lineups")}</TH>
+              <TH align="right">{t("catalog.columns.minutes")}</TH>
+              <TH align="right">{t("catalog.columns.goals")}</TH>
+              <TH align="right">{t("catalog.columns.assists")}</TH>
+              <TH align="right">{t("catalog.columns.yellowCards")}</TH>
+              <TH align="right">{t("catalog.columns.redCards")}</TH>
+              <TH align="right">{t("catalog.columns.rating")}</TH>
+            </THead>
+            <tbody data-testid="player-provider-seasons">
+              {rows.map((s) => (
+                <TRow key={`${s.season}-${s.provider_league_id}-${s.provider_team_id}`}>
+                  <TD>
+                    <Numeric className="text-xs">{s.season}</Numeric>
+                  </TD>
+                  <TD className="text-sm">{s.competition ?? `#${s.provider_league_id}`}</TD>
+                  <TD className="text-xs text-muted-foreground">
+                    {s.team ?? `#${s.provider_team_id}`}
+                  </TD>
+                  {[
+                    s.appearances,
+                    s.lineups,
+                    s.minutes,
+                    s.goals,
+                    s.assists,
+                    s.yellow_cards,
+                    s.red_cards,
+                  ].map((v, i) => (
+                    <TD key={i} align="right">
+                      <Numeric className="text-xs" muted={!v}>
+                        {v ?? "—"}
+                      </Numeric>
+                    </TD>
+                  ))}
+                  <TD align="right">
+                    <Numeric className="text-xs">{dec(s.rating, 2) ?? "—"}</Numeric>
+                  </TD>
+                </TRow>
+              ))}
+            </tbody>
+          </TableShell>
+        )}
+      </SectionView>
+      <ProvenanceNote p={d.provenance?.["provider_seasons"]} className="px-4 pb-3 pt-2" />
+    </Panel>
+  );
+}
+
 export function PlayerReferencePanels({ d }: { d: PlayerDetail }) {
   const prov = d.provenance ?? {};
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Panel title={t("catalog.reference.career.title")} bodyClassName="">
+        {d.career ? (
+          <SectionView section={d.career}>
+            {(rows) => (
+              <ul className="divide-y divide-border/60 text-xs" data-testid="player-career">
+                {rows.map((x, i) => (
+                  <li key={i} className="flex items-start justify-between gap-3 px-4 py-2">
+                    <div className="min-w-0">
+                      <TeamName name={x.team ?? "?"} logo={x.team_logo} size={16} />
+                      <div className="mt-0.5 text-muted-foreground">
+                        {x.seasons.length ? careerSpan(x.seasons) : "—"}
+                        {x.national === null
+                          ? ""
+                          : ` · ${x.national ? t("catalog.reference.career.national") : t("catalog.reference.career.club")}`}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-caption text-subtle-foreground">
+                      {t("catalog.reference.career.seasons", { count: x.seasons.length })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionView>
+        ) : null}
+        <ProvenanceNote p={prov["career"]} className="px-4 pb-3 pt-2" />
+      </Panel>
       <Panel title={t("catalog.reference.transfers.title")} bodyClassName="">
         {d.transfers ? (
           <SectionView section={d.transfers}>

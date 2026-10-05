@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { Leader, SeasonRound } from "@/lib/api/v1/types_center";
-import { leaderFigure, provenanceParts, ratingCountsUnrated, roundSpan } from "./reference";
+import {
+  careerSpan,
+  leaderFigure,
+  provenanceParts,
+  ratingCountsUnrated,
+  roundSpan,
+} from "./reference";
 
 const leader: Leader = {
   rank: 1,
@@ -59,5 +65,15 @@ describe("reference helpers", () => {
       checked_at: "2026-10-04T18:00:00Z",
     });
     expect(parts.map((p) => p.key)).toEqual(["source", "asked"]);
+  });
+});
+
+describe("careerSpan", () => {
+  test("a run of consecutive seasons reads as a span, gaps as a list, newest first", () => {
+    expect(careerSpan([2022, 2023, 2024, 2025, 2026])).toBe("2026–2022");
+    expect(careerSpan([2024, 2026, 2021])).toBe("2026, 2024, 2021");
+    expect(careerSpan([2026, 2025])).toBe("2026, 2025");
+    expect(careerSpan([2026, 2026])).toBe("2026");
+    expect(careerSpan([])).toBe("");
   });
 });

@@ -8,6 +8,7 @@ import type { TeamRef } from "@/lib/api/v1/types";
 import { CompetitionTag, TeamLogo } from "@/components/football/Logos";
 import { Freshness, LiveMinute } from "@/product/shared/Bits";
 import { Card } from "@/product/shared/States";
+import { venueFacts, venuePlace } from "@/product/shared/venue";
 import type { MatchCtx } from "./context";
 import {
   ageLevel,
@@ -260,11 +261,15 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
           )}
         </span>
         {venue ? (
-          <span className="inline-flex min-w-0 items-center gap-1.5">
+          <span
+            className="inline-flex min-w-0 items-center gap-1.5"
+            data-testid="match-venue"
+            title={[venuePlace(venue), ...venueFacts(venue)].join(" · ")}
+          >
             <MapPin aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtle-foreground" />
             <span className="truncate">
-              {venue.name}
-              {venue.city ? `, ${venue.city}` : ""}
+              {venuePlace(venue)}
+              {venue.capacity ? ` · ${venueFacts(venue)[0]}` : ""}
             </span>
           </span>
         ) : null}

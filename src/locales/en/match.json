@@ -361,5 +361,13 @@
     "winner": "Provider's winner: {team} ({comment})",
     "underOver": "Provider's goals line: {line}",
     "versions": "{count} versions kept since {first}"
+  },
+  "venue": {
+    "capacity": "{n} seats",
+    "surface": {
+      "grass": "grass",
+      "artificial_turf": "artificial turf",
+      "artificial": "artificial turf"
+    }
   }
 }

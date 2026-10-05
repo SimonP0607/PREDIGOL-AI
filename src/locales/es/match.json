@@ -361,5 +361,13 @@
     "winner": "Ganador según el proveedor: {team} ({comment})",
     "underOver": "Goles según el proveedor: {line}",
     "versions": "{count} versiones guardadas desde {first}"
+  },
+  "venue": {
+    "capacity": "{n} espectadores",
+    "surface": {
+      "grass": "césped",
+      "artificial_turf": "césped artificial",
+      "artificial": "césped artificial"
+    }
   }
 }

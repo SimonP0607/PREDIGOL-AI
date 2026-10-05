@@ -13,7 +13,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { PlayerSummary } from "@/lib/api/v1/types_center";
 import { PlayerPhoto, TeamName } from "@/components/football/Logos";
 import { dec, utcDate } from "./format";
-import { PlayerReferencePanels } from "./ReferenceData";
+import { PlayerProviderSeasonsPanel, PlayerReferencePanels } from "./ReferenceData";
 import { positionLabel } from "./labels";
 
 function age(birth: string | null): string | null {
@@ -330,6 +330,7 @@ export function PlayerLive({ playerId }: { playerId: string }) {
           )}
         </SectionView>
       </Panel>
+      <PlayerProviderSeasonsPanel d={d} />
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel
           title={t("catalog.players.detail.matches.title")}

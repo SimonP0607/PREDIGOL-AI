@@ -57,10 +57,18 @@ export interface CompetitionRef {
   country_code?: string | null;
 }
 
+/** Where a match is played or a team plays. `id` is null when the provider named the stadium without identifying
+ * it (the fixture payload's name and city, as sent); the details come from /venues or /teams. */
 export interface VenueRef {
-  id: number;
+  id: number | null;
   name: string;
   city: string | null;
+  country?: string | null;
+  capacity?: number | null;
+  /** The provider's text: "grass", "artificial turf"... */
+  surface?: string | null;
+  address?: string | null;
+  image_url?: string | null;
 }
 
 export interface Score {

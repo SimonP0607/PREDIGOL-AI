@@ -25,6 +25,7 @@ import {
   type Split,
   type TableSection,
 } from "@/product/shared/standings";
+import { venueFacts, venuePlace } from "@/product/shared/venue";
 import { LeadersPanel, RoundsPanel } from "./ReferenceData";
 
 const scopes = ["Tracked", "With fixtures", "All known"] as const;
@@ -405,7 +406,10 @@ function TeamDetailPanel({ id }: { id: number }) {
     <div className="space-y-4">
       <Panel
         title={d.team.name}
-        subtitle={`${t("catalog.teams.detail.providerTeam", { id: d.team.provider_team_id })}${d.venue ? ` · ${d.venue.name}` : ""}`}
+        subtitle={[
+          t("catalog.teams.detail.providerTeam", { id: d.team.provider_team_id }),
+          ...(d.venue ? [venuePlace(d.venue), ...venueFacts(d.venue)] : []),
+        ].join(" · ")}
       >
         <SectionView section={d.record}>
           {(r) =>

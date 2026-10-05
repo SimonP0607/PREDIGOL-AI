@@ -29,3 +29,12 @@ export function provenanceParts(p: Provenance): { key: string; value: string }[]
   if (p.checked_at) out.push({ key: "asked", value: p.checked_at });
   return out;
 }
+
+/** Seasons as the provider lists them, newest first: "2026–2022" when consecutive, else "2026, 2024, 2021". */
+export function careerSpan(seasons: number[]): string {
+  const ys = [...new Set(seasons)].sort((a, b) => b - a);
+  if (ys.length === 0) return "";
+  const consecutive = ys.every((y, i) => i === 0 || (ys[i - 1] ?? y) - y === 1);
+  if (consecutive && ys.length > 2) return `${ys[0]}–${ys[ys.length - 1]}`;
+  return ys.join(", ");
+}

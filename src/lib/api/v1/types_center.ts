@@ -385,6 +385,38 @@ export interface PlayerTrophy {
   place: string | null;
 }
 
+/** The PROVIDER's season aggregate for one team in one competition (/players?league&season), as sent; its
+ * rating is the provider's own metric. PrediGol's aggregate from the per-match statistics is `PlayerSeason`. */
+export interface PlayerProviderSeason {
+  season: number;
+  provider_league_id: number;
+  competition_id: number | null;
+  competition: string | null;
+  provider_team_id: number;
+  team_id: number | null;
+  team: string | null;
+  national: boolean | null;
+  appearances: number | null;
+  lineups: number | null;
+  minutes: number | null;
+  goals: number | null;
+  assists: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
+  rating: Dec | null;
+  observed_at: Iso;
+}
+
+/** One team of a player's career as /players/teams lists it, seasons newest first. */
+export interface PlayerCareerTeam {
+  provider_team_id: number | null;
+  team_id: number | null;
+  team: string | null;
+  team_logo: string | null;
+  national: boolean | null;
+  seasons: number[];
+}
+
 export interface PlayerDetail {
   player: PlayerSummary;
   firstname: string | null;
@@ -397,6 +429,8 @@ export interface PlayerDetail {
   transfers?: Section<PlayerTransfer[]> | null;
   sidelined?: Section<PlayerSidelined[]> | null;
   trophies?: Section<PlayerTrophy[]> | null;
+  provider_seasons?: Section<PlayerProviderSeason[]> | null;
+  career?: Section<PlayerCareerTeam[]> | null;
   provenance?: Record<string, Provenance>;
 }
 

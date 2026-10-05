@@ -17,6 +17,7 @@ import { t } from "@/lib/i18n";
 import { dec, decPct, relative, shortHash, utcDateTime } from "./format";
 import { AuditTrail } from "./AuditTrail";
 import { HistoricalMarketTables } from "./HistoricalMarket";
+import { venueFacts, venuePlace } from "@/product/shared/venue";
 import { ScoreText, StatusGroupBadge } from "./shared";
 import {
   ContextTab,
@@ -295,7 +296,7 @@ function OverviewTab({ d }: { d: MatchDetail }) {
           label={t("center.overview.fixture.venue")}
           value={
             <Nullable
-              value={d.venue ? `${d.venue.name}${d.venue.city ? `, ${d.venue.city}` : ""}` : null}
+              value={d.venue ? [venuePlace(d.venue), ...venueFacts(d.venue)].join(" · ") : null}
               reason={t("center.overview.fixture.noVenue")}
             />
           }
