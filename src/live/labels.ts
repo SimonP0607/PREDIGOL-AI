@@ -138,3 +138,18 @@ export function healthReason(c: {
   }
   return translateOr(`system.health.${c.code}`, c.detail, vars);
 }
+
+const REJECTIONS: [RegExp, string][] = [
+  [/^odds outside \[([\d.]+), ([\d.]+)\]$/, "oddsOutside"],
+  [/^expected value below ([\d.]+)$/, "evBelow"],
+  [/^probability edge below ([\d.]+)$/, "edgeBelow"],
+];
+
+/** Why the decision rule rejected a price, in the reader's language ("odds outside [1.50, 5.00]"). */
+export function rejectionReason(why: string): string {
+  for (const [re, key] of REJECTIONS) {
+    const m = re.exec(why);
+    if (m) return translateOr(`ops.picks.rejection.${key}`, why, { a: m[1] ?? "", b: m[2] ?? "" });
+  }
+  return why;
+}

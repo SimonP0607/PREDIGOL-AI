@@ -20,6 +20,8 @@ import type { PickRow, PickStatus } from "@/lib/api/v1/types";
 import { int } from "@/lib/format";
 import { dec, decPct, shortHash, utcDateTime } from "./format";
 import { localFixed } from "@/lib/i18n/format";
+import { marketShort, selectionLabel } from "@/product/shared/markets";
+import { rejectionReason } from "./labels";
 
 const statusTone: Record<PickStatus, BadgeTone> = {
   shadow: "neutral",
@@ -144,7 +146,7 @@ export function PicksLive() {
               <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                 {Object.entries(d.rejection_reasons).map(([why, n]) => (
                   <li key={why} className="flex justify-between gap-4">
-                    <span>{why}</span>
+                    <span>{rejectionReason(why)}</span>
                     <span className="numeric">{int(n)}</span>
                   </li>
                 ))}
@@ -217,8 +219,7 @@ export function PicksLive() {
                           </div>
                         </TD>
                         <TD className="text-sm">
-                          {p.market_key} · {p.selection}
-                          {Number(p.line) !== 0 ? ` ${dec(p.line, 2)}` : ""}
+                          {marketShort(p.market_key)} · {selectionLabel(p)}
                         </TD>
                         <TD className="text-xs text-muted-foreground">{p.model}</TD>
                         <TD align="right">
@@ -294,8 +295,7 @@ export function PicksLive() {
                         </TD>
                         <TD className="text-sm">{c.fixture}</TD>
                         <TD className="text-sm">
-                          {c.market_key} · {c.selection}
-                          {Number(c.line) !== 0 ? ` ${dec(c.line, 2)}` : ""}
+                          {marketShort(c.market_key)} · {selectionLabel(c)}
                         </TD>
                         <TD className="text-xs text-muted-foreground">{c.model}</TD>
                         <TD align="right">

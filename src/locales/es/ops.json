@@ -194,6 +194,11 @@
       "basis": "Base de liquidación",
       "needsReview": "Requiere revisión: {reason}",
       "history": "Historial"
+    },
+    "rejection": {
+      "oddsOutside": "cuota fuera de [{a}, {b}]",
+      "evBelow": "valor esperado por debajo de {a}",
+      "edgeBelow": "ventaja de probabilidad por debajo de {a}"
     }
   },
   "analyst": {

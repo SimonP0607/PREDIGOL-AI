@@ -43,3 +43,16 @@ describe("health reasons", () => {
     );
   });
 });
+
+describe("decision-rule rejections", () => {
+  test("known reasons in Spanish with their numbers; an unknown one as it came", async () => {
+    const { rejectionReason } = await import("./labels");
+    setLocale("es");
+    expect(rejectionReason("odds outside [1.50, 5.00]")).toBe("cuota fuera de [1.50, 5.00]");
+    expect(rejectionReason("expected value below 0.05")).toBe("valor esperado por debajo de 0.05");
+    expect(rejectionReason("probability edge below 0.02")).toBe(
+      "ventaja de probabilidad por debajo de 0.02",
+    );
+    expect(rejectionReason("something new")).toBe("something new");
+  });
+});

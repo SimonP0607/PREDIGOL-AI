@@ -194,6 +194,11 @@
       "basis": "Basis",
       "needsReview": "Needs review: {reason}",
       "history": "History"
+    },
+    "rejection": {
+      "oddsOutside": "odds outside [{a}, {b}]",
+      "evBelow": "expected value below {a}",
+      "edgeBelow": "probability edge below {a}"
     }
   },
   "analyst": {
