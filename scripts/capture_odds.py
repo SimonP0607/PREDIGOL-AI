@@ -66,14 +66,18 @@ def _upcoming(conn: psycopg.Connection, horizon_hours: int) -> list[ScheduledFix
         log.warning("capture.no_active_competitions", hint="enable one in config/competitions.yaml and run manage_competitions apply")
         return []
     with conn.cursor(row_factory=tuple_row) as cur:
+        # A league-season the provider flags as having no odds is not asked: every answer would be empty.
         cur.execute(
             "SELECT f.provider_fixture_id, f.kickoff_at, f.status_short "
             "FROM core.fixtures f "
             "JOIN core.competition_seasons cs ON cs.id = f.competition_season_id "
             "JOIN core.competitions c ON c.id = cs.competition_id "
+            "LEFT JOIN raw.league_coverage lc ON lc.provider_league_id = c.provider_league_id "
+            "     AND lc.season = cs.season "
             "WHERE c.is_tracked "
             "  AND f.kickoff_at BETWEEN %s AND %s "
             "  AND f.status_group = 'scheduled' "
+            "  AND lc.odds IS NOT FALSE "
             "ORDER BY f.kickoff_at",
             (now(), now() + timedelta(hours=horizon_hours)),
         )
@@ -114,10 +118,11 @@ def _plan_only(conn: psycopg.Connection, horizon_hours: int) -> tuple[list[Sched
     fixtures = _upcoming(conn, horizon_hours)
     planner = _build_planner()
     repo = OddsRepository(conn)
-    covered = planner.covered_keys(
-        repo.observations_since(since=now() - timedelta(hours=24), provider_fixture_ids=[f.provider_fixture_id for f in fixtures])
-    )
-    tasks = planner.plan(fixtures, at=now(), already_done=covered)
+    ids = [f.provider_fixture_id for f in fixtures]
+    covered = planner.covered_keys(repo.window_observations_since(since=now() - timedelta(hours=24),
+                                                                  provider_fixture_ids=ids))
+    asked = repo.last_asked(provider_fixture_ids=ids, since=now() - timedelta(days=4))
+    tasks = planner.plan(fixtures, at=now(), already_done=covered, last_asked=asked)
     known = {f.provider_fixture_id for f in fixtures}
     cfg = settings.api_football
     # REMAINING, not the whole budget: the guard is

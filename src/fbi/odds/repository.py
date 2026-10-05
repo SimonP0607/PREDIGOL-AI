@@ -197,17 +197,54 @@ class OddsRepository:
 
     def last_asked(self, *, provider_fixture_ids: Sequence[int], since: datetime) -> dict[int, datetime]:
         """When /odds was last asked for each fixture since ``since`` (provider id -> instant),
-        answered or not: the planner's catch-up asks a missed window once, not every tick."""
+        answered or not: the planner's catch-up asks a missed window once, not every tick.
+
+        Read from market.odds_asks, which records every request. The RAW index is read too, for asks made before
+        that table existed - but alone it cannot answer: it keeps one row per distinct answer, so an empty answer
+        repeated left the first ask as the "last" one and the fixture was asked again on every tick (5 Oct 2026)."""
         if not provider_fixture_ids:
             return {}
         with self._conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(
-                "SELECT (params->>'fixture')::bigint, max(fetched_at) FROM raw.ingestion_payloads "
-                "WHERE endpoint = '/odds' AND fetched_at >= %s AND params ? 'fixture' "
-                "AND params->>'fixture' = ANY(%s) GROUP BY 1",
-                (since, [str(i) for i in provider_fixture_ids]),
+                "SELECT fid, max(at) FROM ("
+                "  SELECT provider_fixture_id AS fid, asked_at AS at FROM market.odds_asks "
+                "   WHERE asked_at >= %(since)s AND provider_fixture_id = ANY(%(ids)s) "
+                "  UNION ALL "
+                "  SELECT (params->>'fixture')::bigint, fetched_at FROM raw.ingestion_payloads "
+                "   WHERE endpoint = '/odds' AND fetched_at >= %(since)s AND params ? 'fixture' "
+                "     AND params->>'fixture' = ANY(%(texts)s)) x GROUP BY 1",
+                {"since": since, "ids": list(provider_fixture_ids), "texts": [str(i) for i in provider_fixture_ids]},
             )
             return {int(a): b for a, b in cur.fetchall()}
+
+    def record_ask(self, *, provider_fixture_id: int, asked_at: datetime, minutes_to_ko: int,
+                   window_minutes: int | None, results: int, quotes: int, payload_hash: str | None,
+                   run_id: int | None) -> None:
+        """One /odds request of the capture, whatever came back."""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO market.odds_asks (provider_fixture_id, asked_at, minutes_to_ko, window_minutes, results, "
+                "quotes, payload_hash, run_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+                "ON CONFLICT (provider_fixture_id, asked_at) DO NOTHING",
+                (provider_fixture_id, asked_at, minutes_to_ko, window_minutes, results, quotes, payload_hash, run_id),
+            )
+
+    def window_observations_since(
+        self, *, since: datetime, provider_fixture_ids: Sequence[int] | None = None
+    ) -> list[tuple[int, str, int]]:
+        """What the planner marks windows done from: every price stored AND every ask made, as
+        (provider_fixture_id, source, minutes_to_ko). A window asked in its band is done even when the provider had
+        nothing; the next window asks again, because a fixture can be priced later."""
+        out = self.observations_since(since=since, provider_fixture_ids=provider_fixture_ids)
+        sql = "SELECT DISTINCT provider_fixture_id, minutes_to_ko FROM market.odds_asks WHERE asked_at >= %s"
+        params: list[object] = [since]
+        if provider_fixture_ids:
+            sql += " AND provider_fixture_id = ANY(%s)"
+            params.append(list(provider_fixture_ids))
+        with self._conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute(sql, params)
+            out.extend((int(a), "prematch", int(b)) for a, b in cur.fetchall())
+        return out
 
     def observations_since(
         self, *, since: datetime, provider_fixture_ids: Sequence[int] | None = None

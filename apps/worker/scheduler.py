@@ -220,8 +220,8 @@ async def _tick() -> TickOutcome:
         planner = _build_planner()
         repo = OddsRepository(conn)
         ids = [f.provider_fixture_id for f in fixtures]
-        covered = planner.covered_keys(repo.observations_since(since=now() - timedelta(hours=24),
-                                                               provider_fixture_ids=ids))
+        covered = planner.covered_keys(repo.window_observations_since(since=now() - timedelta(hours=24),
+                                                                      provider_fixture_ids=ids))
         asked = repo.last_asked(provider_fixture_ids=ids, since=now() - timedelta(days=4))
         tasks = planner.plan(fixtures, at=now(), already_done=covered, last_asked=asked)
         if not tasks:

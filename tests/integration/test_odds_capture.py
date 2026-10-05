@@ -119,6 +119,7 @@ def prepared(db: psycopg.Connection, seed: Seed) -> Iterator[psycopg.Connection]
         # near-close first: it holds a foreign key onto the series it projects.
         cur.execute("DELETE FROM market.near_close_snapshots")
         cur.execute("DELETE FROM market.odds_snapshots")
+        cur.execute("DELETE FROM market.odds_asks")
         # Quality issues reference the payloads that produced them, and that is
         # the point of them: they go first.
         cur.execute("DELETE FROM audit.data_quality_issues")
@@ -174,6 +175,31 @@ async def test_running_the_same_window_twice_makes_no_second_call(
     with prepared.cursor() as cur:
         cur.execute("SELECT count(*) FROM market.odds_snapshots")
         assert scalar(cur) == 3
+
+
+async def test_a_fixture_the_provider_does_not_price_is_asked_once_per_window_not_every_tick(
+    prepared: psycopg.Connection, tmp_path: Path, clock: FrozenClock
+) -> None:
+    """5 Oct 2026: an empty answer is the same bytes every time, so the RAW index kept only the first ask, no price
+    marked the window done, and the planner asked again on every 5-minute tick - ~8,600 requests a day for 0 rows."""
+    empty = {"response": [], "errors": [], "results": 0, "paging": {"current": 1, "total": 1}}
+    service, calls = make_service(prepared, tmp_path, lambda _n: empty)
+    fixtures = [ScheduledFixture(1001, KICKOFF)]
+
+    first = await service.capture(fixtures)  # T-1439: the 1440 window
+    assert (first.executed, first.snapshots_written, calls["n"]) == (1, 0, 1)
+    clock.advance(minutes=10)  # T-1429: same band
+    assert (await service.capture(fixtures)).planned == 0, "asked in this band: done, though empty"
+    clock.advance(minutes=129)  # T-1300: the band has closed; the catch-up sees the ask
+    assert (await service.capture(fixtures)).planned == 0, "the missed-window catch-up does not re-ask either"
+    clock.advance(minutes=600)  # T-700: the 720 window - the provider may price it by now
+    later = await service.capture(fixtures)
+    assert (later.executed, calls["n"]) == (1, 2), "each window is asked once"
+    clock.advance(minutes=5)
+    assert (await service.capture(fixtures)).planned == 0
+    with prepared.cursor() as cur:
+        cur.execute("SELECT minutes_to_ko, window_minutes, results, quotes FROM market.odds_asks ORDER BY asked_at")
+        assert cur.fetchall() == [(1439, 1440, 0, 0), (700, 720, 0, 0)]
 
 
 async def test_a_later_window_appends_history_instead_of_overwriting_it(

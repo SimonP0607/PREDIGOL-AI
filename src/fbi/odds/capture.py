@@ -102,7 +102,7 @@ class OddsCaptureService:
         self, fixtures: Sequence[ScheduledFixture], *, at: datetime | None = None
     ) -> CaptureReport:
         moment = at or now()
-        observations = self._repo.observations_since(
+        observations = self._repo.window_observations_since(
             since=moment - self._lookback,
             provider_fixture_ids=[f.provider_fixture_id for f in fixtures],
         )
@@ -188,6 +188,12 @@ class OddsCaptureService:
         report.quotes_seen += len(quotes)
 
         report.payloads_stored += self._ledger.record_payloads(report.run_id, raws)
+        if raws:
+            self._repo.record_ask(
+                provider_fixture_id=task.provider_fixture_id, asked_at=raws[0].fetched_at,
+                minutes_to_ko=task.minutes_to_ko, window_minutes=task.window_minutes,
+                results=sum(r.results_count for r in raws), quotes=len(quotes),
+                payload_hash=raws[0].payload_hash, run_id=report.run_id)
         written = self._repo.write_snapshots(quotes)
         report.snapshots_written += written.written
         report.duplicates_skipped += written.skipped_existing

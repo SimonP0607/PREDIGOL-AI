@@ -300,16 +300,19 @@ SELECT c.name AS competition, cs.season, t.provider_team_id, t.name AS team, x."
 ELO_COVERAGE_SQL = """
 WITH refreshed AS (
     SELECT max(started_at) AS at FROM raw.ingestion_runs WHERE job_type = 'elo_refresh' AND status = 'completed'
+), rated AS (
+    SELECT DISTINCT fixture_id FROM features.elo_ratings
 ), fin AS (
     SELECT cs.competition_id, f.kickoff_at,
-           EXISTS (SELECT 1 FROM features.elo_ratings e WHERE e.fixture_id = f.id) AS rated,
-           EXISTS (SELECT 1 FROM analytics.fixture_validation v
-                    WHERE v.fixture_id = f.id AND v.state = ANY(%(excluded)s)) AS excluded,
+           rt.fixture_id IS NOT NULL AS rated,
+           coalesce(v.state = ANY(%(excluded)s), false) AS excluded,
            r.fixture_id IS NULL AS no_result,
            (refreshed.at IS NOT NULL AND (f.kickoff_at >= refreshed.at
                                           OR coalesce(r.source_fetched_at, f.updated_at) >= refreshed.at)) AS late
       FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
       LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
+      LEFT JOIN rated rt ON rt.fixture_id = f.id
+      LEFT JOIN analytics.fixture_validation v ON v.fixture_id = f.id
       CROSS JOIN refreshed
      WHERE f.status_group = 'finished'
 ), per AS (
