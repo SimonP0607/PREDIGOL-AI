@@ -115,7 +115,7 @@ ellas usa). La migración de prueba (`fbi.migration.dryrun`) también pasa ya el
 | Proveedor (7) | E-017, E-470, E-481, E-636, E-791, E-792, E-923 | tablas del proveedor que no cuentan partidos ya jugados (265, Ligue 1 2025), su tabla y sus partidos con equipos distintos (ACL Two, Sudamericana), 155 personas con dos ids, un resultado AET con bloques contradictorios | nuestros datos coinciden con los partidos y resultados; nada se "corrige" inventando |
 | PrediGol (2) | E-318, E-465 | temporadas pasadas de Amistosos (10) y Amistosos de clubes (667) nunca migradas | **decisión de diseño** (`NO_HISTORY_WORTH_KEEPING`): los amistosos se siguen por sus cuotas pero su historia no se migra (peso Elo 0). Propuesta: que el dueño las marque ACCEPTED |
 | PrediGol (1) | E-466 | el partido 1632353 sigue en Amistosos aunque el proveedor lo pasó a la Kirin Cup | el código ya sigue estos cambios (§3); seguir la Kirin Cup o aceptar el cambio es decisión del dueño |
-| Sin determinar (1) | E-469 | 2 nombres de equipo repetidos en un país con ids distintos | revisar en la página del proveedor; solo se fusiona mediante el mapa de alias |
+| Ya determinado: del proveedor (1) | E-469 | 2 nombres de equipo repetidos en un país con ids distintos | comprobado con `/teams?id` (4 peticiones): cada par es **un solo club** que el proveedor partió en dos ids (Nyasa Big Bullets 4596/4599: mismo nombre, país y estadio; St Blazey 12112/28344). No se fusiona solo: un alias en el mapa de equipos (continuidad de Elo de 12 y 5 partidos) es decisión tuya |
 
 **Medios de la auditoría nº 8 (sin culpa asignada por la auditoría v1; analizados uno a uno):**
 
