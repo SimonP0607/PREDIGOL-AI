@@ -36,6 +36,11 @@ def test_health_with_an_empty_ledger_is_honest_not_green(db: psycopg.Connection)
     )
     assert h.worker.status == "unknown", "no run yet is 'unknown', never 'ok'"
     assert h.football_provider.status == "ok" and h.football_provider.data["requests_today"] == 0
+    # Every reason carries a stable code and its values, so a page can say it in its reader's language.
+    assert (h.database.code, h.database.vars) == ("database_ok", {"revision": head_revision()})
+    assert h.worker.code == "worker_never_seen"
+    assert (h.football_provider.code, h.football_provider.vars) == ("provider_ok", {"spent": 0, "budget": 60})
+    assert h.app.code == "app_running"
     assert h.status == "degraded"
     payload = h.as_dict()
     assert "password" not in str(payload) and "@" not in str(payload.get("database"))
@@ -54,6 +59,7 @@ def test_health_reports_the_last_run_and_goes_stale_after_three_ticks(db: psycop
         clock.advance(minutes=50)
         stale = health(db, version="t", daily_budget=60)
         assert stale.worker.status == "degraded" and "min ago" in stale.worker.detail
+        assert (stale.worker.code, stale.worker.vars) == ("ledger_quiet", {"minutes": 50})
     finally:
         set_clock(SystemClock())
         with db.cursor() as cur:
@@ -235,6 +241,7 @@ def test_a_partial_run_degrades_the_worker_instead_of_reading_as_healthy(db: psy
         h = health(db, version="t", daily_budget=60)
         assert h.worker.status == "degraded"
         assert "partly succeeded" in h.worker.detail
+        assert (h.worker.code, h.worker.vars) == ("ledger_last_partial", {"job": "fixtures_sync"})
         assert h.worker.data["last_status"] == "partial"
         assert h.worker.data["partial_runs_24h"] == 1
         assert h.worker.data["last_successful_run"] != h.worker.data["last_started_at"], (
@@ -289,6 +296,8 @@ def test_an_exhausted_budget_degrades_the_provider_check(db: psycopg.Connection)
         h = health(db, version="t", daily_budget=60)
         assert h.football_provider.status == "degraded"
         assert h.football_provider.detail == "daily budget exhausted"
+        assert (h.football_provider.code, h.football_provider.vars) == ("provider_budget_exhausted",
+                                                                        {"spent": 60, "budget": 60})
         assert h.football_provider.data["remaining"] == 0
     finally:
         set_clock(SystemClock())

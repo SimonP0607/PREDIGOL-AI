@@ -16,6 +16,9 @@ class ComponentHealth(Contract):
     status: ComponentStatus
     detail: str
     data: dict[str, Any]
+    code: str = Field(default="", description="Stable name of the reason (worker_alive, provider_ok...): the page "
+                      "says it in the reader's language and falls back to detail.")
+    vars: dict[str, Any] = Field(default_factory=dict, description="The values the reason names.")
 
 
 class SystemHealth(Contract):
