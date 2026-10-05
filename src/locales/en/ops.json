@@ -57,7 +57,14 @@
       "lag": "Scheduler lag",
       "lagPending": "Measured on the first tick.",
       "next": "Next {job}",
-      "code": "Code"
+      "code": "Code",
+      "outcomes": {
+        "nothing_scheduled": "nothing scheduled",
+        "nothing_due": "nothing due",
+        "captured": "captured prices",
+        "plan_rejected": "plan rejected",
+        "failed": "failed"
+      }
     },
     "provider": {
       "title": "Provider & quota",

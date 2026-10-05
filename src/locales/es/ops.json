@@ -57,7 +57,14 @@
       "lag": "Retraso del planificador",
       "lagPending": "Se mide en el primer ciclo.",
       "next": "Siguiente {job}",
-      "code": "Código"
+      "code": "Código",
+      "outcomes": {
+        "nothing_scheduled": "nada programado",
+        "nothing_due": "nada pendiente",
+        "captured": "capturó precios",
+        "plan_rejected": "plan rechazado",
+        "failed": "falló"
+      }
     },
     "provider": {
       "title": "Proveedor y cuota",

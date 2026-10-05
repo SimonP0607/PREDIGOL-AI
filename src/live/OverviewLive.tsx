@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { getTimeZone, zoneAbbrev } from "@/lib/time";
-import { t } from "@/lib/i18n";
+import { t, translateOr } from "@/lib/i18n";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, MetricCard, Panel, WarningBanner } from "@/components/primitives/Panel";
 import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
@@ -227,7 +227,9 @@ export function OverviewLive() {
               label={t("ops.overview.worker.lastTick")}
               value={
                 <Nullable
-                  value={o.worker.last_tick_outcome?.replaceAll("_", " ") ?? null}
+                  value={
+                    o.worker.last_tick_outcome ? tickOutcome(o.worker.last_tick_outcome) : null
+                  }
                   reason={t("ops.overview.worker.noTick")}
                 />
               }
@@ -261,7 +263,7 @@ export function OverviewLive() {
           >
             <MetricCard
               label={t("ops.overview.provider.requestsToday")}
-              value={`${o.provider.requests_today} / ${o.provider.daily_budget}`}
+              value={`${int(o.provider.requests_today)} / ${int(o.provider.daily_budget)}`}
               hint={t("ops.overview.provider.requestsHint", {
                 remaining: o.provider.requests_remaining,
                 plan: o.provider.plan,
@@ -463,4 +465,9 @@ function LiveStrip() {
       )}
     </Panel>
   );
+}
+
+/** The worker's last tick, in the reader's language ("nothing_due" -> "nada pendiente"). */
+function tickOutcome(outcome: string): string {
+  return translateOr(`ops.overview.worker.outcomes.${outcome}`, outcome.replaceAll("_", " "));
 }
