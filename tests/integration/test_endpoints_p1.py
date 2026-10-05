@@ -361,3 +361,46 @@ def test_the_venue_identity_repair_unpoints_id_zero_and_restores_described_names
         db.execute("DELETE FROM core.venues WHERE id IN (%s, %s)", (zero[0], real[0]))
         db.execute("DELETE FROM raw.ingestion_payloads WHERE hash = %s", (stored.hash,))
         db.commit()
+
+
+# ── P2: people the sweeps never described, asked by id ─────────────────────────────────────────────
+
+
+def test_people_without_a_profile_are_asked_by_id_the_latest_seen_first(db: psycopg.Connection, seed: Seed) -> None:
+    db.execute("UPDATE core.fixtures SET kickoff_at = %s WHERE id = %s", (T0 - timedelta(days=3), seed.fixture_id))
+    late = db.execute("INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, "
+                      "away_team_id, kickoff_at) VALUES (86401, %s, %s, %s, %s) RETURNING id",
+                      (seed.season_id, seed.home_team_id, seed.away_team_id, T0 - timedelta(days=1))).fetchone()
+    assert late is not None
+    for pid, name, profiled in ((501, "A", None), (502, "B", T0 - timedelta(days=2)), (503, "C", None)):
+        db.execute("INSERT INTO core.players (provider_player_id, name, profile_fetched_at) VALUES (%s, %s, %s)",
+                   (pid, name, profiled))
+    for fx in (seed.fixture_id, late[0]):
+        db.execute("INSERT INTO core.fixture_lineups (fixture_id, team_side, source, payload_hash, fetched_at) "
+                   "VALUES (%s, 'home', 'api-football', %s, now())", (fx, seed.payload_hash))
+    for fx, pid in ((seed.fixture_id, 501), (seed.fixture_id, 502), (late[0], 503)):
+        db.execute("INSERT INTO core.fixture_lineup_players (fixture_id, team_side, source, provider_player_id, "
+                   "is_starter) VALUES (%s, 'home', 'api-football', %s, true)", (fx, pid))
+    assert [t.key for t in ref.missing_player_profile_targets(db, T0)] == ["player:503", "player:501"], \
+        "only the unprofiled, the latest seen first"
+    payload(db, seed, "pf-1", T0, "/players/profiles")
+    body = {"response": [{"player": {"id": 503, "name": "C. Player", "birth": {"date": "2001-02-03"},
+                                     "nationality": "Colombia", "height": "180 cm"}}]}
+    assert ref.apply_player_profile(db, target(ids=[503]), body, "pf-1", T0) == 1
+    assert db.execute("SELECT birth_date::text, nationality, height_cm, profile_payload_hash FROM core.players "
+                      "WHERE provider_player_id = 503").fetchone() == ("2001-02-03", "Colombia", 180, "pf-1")
+    assert [t.key for t in ref.missing_player_profile_targets(db, T0)] == ["player:501"]
+    feed = next(f for f in ref.FEEDS if f.name == "profiles_players")
+    assert feed.endpoint == "/players/profiles" and feed.targets(db, T0)[0].params == {"player": 501}
+
+
+def test_coaches_without_a_birth_date_or_nationality_are_asked_by_id(db: psycopg.Connection, seed: Seed) -> None:
+    db.execute("UPDATE core.fixtures SET kickoff_at = %s WHERE id = %s", (T0 - timedelta(days=3), seed.fixture_id))
+    for side, coach in (("home", 9101), ("away", 9102)):
+        db.execute("INSERT INTO core.fixture_lineups (fixture_id, team_side, source, provider_coach_id, coach_name, "
+                   "payload_hash, fetched_at) VALUES (%s, %s, 'api-football', %s, 'X', %s, now())",
+                   (seed.fixture_id, side, coach, seed.payload_hash))
+    db.execute("INSERT INTO core.coaches (provider_coach_id, name, nationality) VALUES (9102, 'Y', 'Spain')")
+    assert [t.key for t in ref.missing_coach_profile_targets(db, T0)] == ["coach:9101"]
+    feed = next(f for f in ref.FEEDS if f.name == "coachs_by_id")
+    assert feed.endpoint == "/coachs" and feed.apply is ref.apply_coachs

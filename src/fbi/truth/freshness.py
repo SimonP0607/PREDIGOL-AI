@@ -220,29 +220,46 @@ WITH appeared AS (
 SELECT 'players' AS dataset, count(*) AS total,
        count(*) FILTER (WHERE p.profile_fetched_at > %(at)s - interval '45 days') AS profiled,
        count(*) FILTER (WHERE p.profile_fetched_at <= %(at)s - interval '45 days') AS old_profile,
-       count(p.id) AS known
+       count(p.id) AS known,
+       count(*) FILTER (WHERE p.profile_fetched_at IS NULL AND k.results = 0) AS provider_none
   FROM appeared a LEFT JOIN core.players p ON p.provider_player_id = a.provider_player_id
+  LEFT JOIN core.reference_checks k ON k.feed = 'profiles_players' AND k.target = 'player:' || a.provider_player_id
 UNION ALL
 SELECT 'coaches', count(*),
        count(*) FILTER (WHERE co.birth_date IS NOT NULL OR co.nationality IS NOT NULL OR cp.birth_date IS NOT NULL
                           OR cp.nationality IS NOT NULL),
-       0, count(co.id)
+       0, count(co.id),
+       count(*) FILTER (WHERE NOT COALESCE(co.birth_date IS NOT NULL OR co.nationality IS NOT NULL
+                                           OR cp.birth_date IS NOT NULL OR cp.nationality IS NOT NULL, false)
+                          AND k.checked_at IS NOT NULL AND k.error IS NULL)
   FROM (SELECT DISTINCT l.provider_coach_id FROM core.fixture_lineups l JOIN core.fixtures f ON f.id = l.fixture_id
          WHERE f.kickoff_at > %(at)s - interval '365 days' AND l.provider_coach_id > 0) x
   LEFT JOIN core.coaches co ON co.provider_coach_id = x.provider_coach_id
   LEFT JOIN core.coach_profiles_latest cp ON cp.provider_coach_id = x.provider_coach_id
+  LEFT JOIN core.reference_checks k ON k.feed = 'coachs_by_id' AND k.target = 'coach:' || x.provider_coach_id
 """
 """Coaches: a profile from the line-ups' identity rows or from /coachs (the reference feed, weekly per tracked team,
-since 4 Oct 2026 - before it, no coach had a profile and the dataset read UNKNOWN 100%)."""
+since 4 Oct 2026 - before it, no coach had a profile and the dataset read UNKNOWN 100%). ``provider_none``: asked by
+id (``profiles_players``, ``coachs_by_id``, 5 Oct 2026) and the provider gave no profile - or, for a coach, one with
+neither birth date nor nationality: the provider's gap, not one we never read."""
 
 SQUADS_SQL = """
-SELECT DISTINCT ON (t.id) c.name AS competition, cs.season, t.provider_team_id, t.squad_checked_at
+SELECT DISTINCT ON (t.id) c.name AS competition, cs.season, t.provider_team_id, t.squad_checked_at,
+       k.asked_at, k.asked_results
   FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
   JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
+  LEFT JOIN LATERAL (
+      SELECT b.updated_at AS asked_at, p.results_count AS asked_results
+        FROM raw.backfill_tasks b LEFT JOIN raw.ingestion_payloads p ON p.hash = b.last_payload_hash
+       WHERE b.kind = 'team_squad' AND b.batch_key = t.provider_team_id::text AND b.status = 'done'
+       ORDER BY b.updated_at DESC LIMIT 1) k ON true
  WHERE c.is_tracked AND cs.is_current AND c.name !~* 'friendl'
  ORDER BY t.id, c.tier NULLS LAST
 """
+"""``asked_at``/``asked_results``: the newest done unit of the weekly /players/squads round and how many entries its
+answer had. A team asked and answered with nothing is the provider's gap, not a team never read (5 Oct 2026: all
+300 'never read' teams had been asked twice and answered nothing)."""
 
 ELO_SQL = """
 SELECT c.name AS competition, NULL::int AS season, f.provider_fixture_id, f.kickoff_at,
@@ -484,10 +501,13 @@ def _people(rows: list[dict[str, Any]]) -> list[DatasetFreshness]:
                              "a profile (birth date or nationality, /coachs weekly per tracked team) exists for "
                              "every coach in a line-up in the last 365 days", "person")
         total, fresh, old = int(r["total"] or 0), int(r["profiled"] or 0), int(r["old_profile"] or 0)
+        none = int(r.get("provider_none") or 0)
         d.add(Freshness.FRESH, fresh)
         d.add(Freshness.STALE, old, example=f"{old:,} profiles older than 45 days" if old else None)
-        d.add(Freshness.UNKNOWN, total - fresh - old,
-              example=f"{total - fresh - old:,} without a profile "
+        d.add(Freshness.UNAVAILABLE, none,
+              example=f"{none:,} asked by id: the provider has no profile for them" if none else None)
+        d.add(Freshness.UNKNOWN, total - fresh - old - none,
+              example=f"{total - fresh - old - none:,} without a profile, not asked by id yet "
                       f"({total - int(r['known'] or 0):,} not even an identity row)")
         out.append(d)
     return out
@@ -498,7 +518,11 @@ def _squads(rows: list[dict[str, Any]], at: datetime) -> DatasetFreshness:
                            "round of /players/squads)", "team")
     for r in rows:
         age = _age_h(at, r["squad_checked_at"])
-        if age is None:
+        asked = _age_h(at, r.get("asked_at"))
+        if age is None and asked is not None and asked <= 8 * 24 and not r.get("asked_results"):
+            out.add(Freshness.UNAVAILABLE, competition=_label(r),
+                    example=f"team {r['provider_team_id']}: asked {asked / 24:.0f} days ago, the provider has no squad")
+        elif age is None:
             out.add(Freshness.UNKNOWN, competition=_label(r), example=f"team {r['provider_team_id']}: never read")
         else:
             out.add(Freshness.FRESH if age <= 8 * 24 else Freshness.STALE, competition=_label(r),

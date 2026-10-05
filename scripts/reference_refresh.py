@@ -3,6 +3,7 @@
     python -m scripts.reference_refresh --plan                         # due targets per feed, no request
     python -m scripts.reference_refresh --feed predictions --feed rounds --max-requests 50
     python -m scripts.reference_refresh --max-requests 300             # what the worker does every 30 min
+    python -m scripts.reference_refresh --feed profiles_players --per-feed 2000 --max-requests 2000   # a catch-up
 
 Same budget rules as the worker: never into the live reserve, never past ``--max-requests``.
 """
@@ -13,6 +14,7 @@ import argparse
 import asyncio
 import json
 import sys
+from dataclasses import replace
 
 import psycopg
 
@@ -23,6 +25,8 @@ from fbi.ingestion.reference import FEEDS, due_targets, refresh_reference
 
 async def run(args: argparse.Namespace) -> int:
     feeds = [f for f in FEEDS if not args.feed or f.name in args.feed]
+    if args.per_feed:
+        feeds = [replace(f, max_per_run=args.per_feed) for f in feeds]
     unknown = set(args.feed or []) - {f.name for f in FEEDS}
     if unknown:
         print(f"unknown feed(s): {', '.join(sorted(unknown))}; known: {', '.join(f.name for f in FEEDS)}")
@@ -56,6 +60,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--plan", action="store_true", help="show the due targets per feed and stop")
     ap.add_argument("--feed", action="append", help="only this feed (repeatable)")
     ap.add_argument("--max-requests", type=int, default=100)
+    ap.add_argument("--per-feed", type=int, default=0,
+                    help="raise each feed's per-run request cap for a catch-up (still inside --max-requests, the "
+                         "daily budget and the live reserve)")
     return asyncio.run(run(ap.parse_args(argv)))
 
 

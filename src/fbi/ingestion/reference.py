@@ -31,6 +31,9 @@ venues                 several times a week; 1 call/day    by id, the venues of 
                                                            described within 90 days (next matches first)
 players_teams          several times a week; 1/day-1/week  every 60 days per player in scope, and at once when
                                                            the player's /transfers list changed since
+profiles_players,      several times a week; 1/day         by id, the people of the last 365 days' line-ups
+coachs_by_id                                               no sweep or round described; again after 30 days if
+                                                           the provider had nothing
 =====================  ==================================  ===============================================
 
 Weekly instead of daily for people is deliberate: the tracked scope (4 Oct 2026: 5,525 teams, 8,121
@@ -824,6 +827,64 @@ def player_team_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
                    {"ids": [int(pid)]}) for pid, moved in rows]
 
 
+PROFILE_RETRY = timedelta(days=30)
+"""A person the provider had no profile for is asked again a month later (a profile can appear); one it described is
+then kept current by the monthly /players/profiles sweep or the weekly /coachs round."""
+
+MISSING_PLAYER_PROFILES_SQL = """
+WITH appeared AS (
+    SELECT lp.provider_player_id, max(f.kickoff_at) AS seen
+      FROM core.fixture_lineup_players lp JOIN core.fixtures f ON f.id = lp.fixture_id
+     WHERE f.kickoff_at > %(at)s - interval '365 days' AND lp.provider_player_id > 0
+     GROUP BY 1)
+SELECT a.provider_player_id FROM appeared a JOIN core.players p ON p.provider_player_id = a.provider_player_id
+ WHERE p.profile_fetched_at IS NULL
+ ORDER BY a.seen DESC, 1
+"""
+"""Players in a line-up of the last 365 days whose profile no sweep of /players/profiles gave (5 Oct 2026: 6,260 -
+the register's 'players: never read'). Asked one by one (``?player=``), the latest seen first."""
+
+MISSING_COACH_PROFILES_SQL = """
+SELECT x.provider_coach_id
+  FROM (SELECT l.provider_coach_id, max(f.kickoff_at) AS seen FROM core.fixture_lineups l
+          JOIN core.fixtures f ON f.id = l.fixture_id
+         WHERE f.kickoff_at > %(at)s - interval '365 days' AND l.provider_coach_id > 0 GROUP BY 1) x
+  LEFT JOIN core.coaches co ON co.provider_coach_id = x.provider_coach_id
+  LEFT JOIN core.coach_profiles_latest cp ON cp.provider_coach_id = x.provider_coach_id
+ WHERE NOT COALESCE(co.birth_date IS NOT NULL OR co.nationality IS NOT NULL OR cp.birth_date IS NOT NULL
+                    OR cp.nationality IS NOT NULL, false)
+ ORDER BY x.seen DESC, 1
+"""
+"""Coaches on a line-up of the last 365 days without a birth date or nationality (5 Oct 2026: 4,206): the weekly
+/coachs round asks per tracked team, which misses coaches of teams outside the current seasons and those who left.
+Asked by id."""
+
+
+def missing_player_profile_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(MISSING_PLAYER_PROFILES_SQL, {"at": at})
+        return [Target(f"player:{pid}", {"player": int(pid)}, PROFILE_RETRY, {"ids": [int(pid)]})
+                for (pid,) in cur.fetchall()]
+
+
+def missing_coach_profile_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(MISSING_COACH_PROFILES_SQL, {"at": at})
+        return [Target(f"coach:{cid}", {"id": int(cid)}, PROFILE_RETRY, {"ids": [int(cid)]})
+                for (cid,) in cur.fetchall()]
+
+
+def apply_player_profile(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                         observed_at: datetime) -> int:
+    """/players/profiles?player=: the same normalizer as the monthly sweep (a value the provider leaves empty does not
+    erase one held)."""
+    from fbi.ingestion.people import apply_player_profiles
+    from fbi.providers.api_football.details import iter_player_profiles
+
+    return apply_player_profiles(conn, iter_player_profiles(body), payload_hash=payload_hash,
+                                 fetched_at=observed_at).updated
+
+
 def merge(group: Sequence[Target], param: str) -> Target:
     """Several people's targets as one request (``players=1-2-3``)."""
     if len(group) == 1:
@@ -860,6 +921,9 @@ FEEDS: tuple[Feed, ...] = (
          batch_param="players"),
     Feed("trophies_coachs", "/trophies", people_targets("coach", "trophies"), apply_trophies, max_per_run=20, batch=BATCH_PEOPLE,
          batch_param="coachs"),
+    Feed("profiles_players", "/players/profiles", missing_player_profile_targets, apply_player_profile,
+         max_per_run=100),
+    Feed("coachs_by_id", "/coachs", missing_coach_profile_targets, apply_coachs, max_per_run=60),
     Feed("venues", "/venues", venue_targets, apply_venues, max_per_run=100),
     Feed("players_teams", "/players/teams", player_team_targets, apply_player_teams, max_per_run=100),
     Feed("countries", "/countries", single_target(WEEK), apply_countries, max_per_run=1),
