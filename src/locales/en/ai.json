@@ -157,6 +157,29 @@
     "never": "Never",
     "due": "The weekly research would run now: {reason}.",
     "notDue": "The weekly research is not needed: same code and under four weeks.",
-    "counts": "{proposed} to decide · {decided} decided"
+    "counts": "{proposed} to decide · {decided} decided",
+    "today": {
+      "title": "What this is today",
+      "deterministic": "Today: a deterministic monitor",
+      "aiOn": "AI configured: proposes only",
+      "aiOff": "AI: not configured",
+      "body": "Today this page is fed by a monitor with fixed rules: every day it compares the prospective results and the audits with the market and, when a figure is 3 or more standard errors from zero, it stores the finding in memory and proposes a hypothesis (shown as \"System\"). There is no machine learning here: nothing, neither the system nor an AI, \"learns by itself\".",
+      "never": "No result changes a rule, a threshold, a model or a pick on its own. Accepting a hypothesis opens an isolated research experiment; only an explicit promotion by the owner, after the market gate is passed, changes production.",
+      "futureTitle": "Future architecture (not built: needs your approval and a provider account)",
+      "future": {
+        "f1": "OBSERVE: results, prices, closes and new data.",
+        "f2": "MEASURE: metrics against the market (log loss, Brier, CLV) with intervals.",
+        "f3": "AI RESEARCHES: reads the database (read-only) and cited web sources.",
+        "f4": "AI PROPOSES: a hypothesis with its evidence; never a direct change.",
+        "f5": "ISOLATED EXPERIMENT: in research, on MODEL_READY data.",
+        "f6": "BACKTEST: walk-forward, leakage-free, against the de-vigged close.",
+        "f7": "PROSPECTIVE SHADOW: shadow picks, invisible to users.",
+        "f8": "COMPARISON WITH THE CHAMPION: same period, same matches.",
+        "f9": "PROPOSAL: a report with the evidence and the risk.",
+        "f10": "HUMAN APPROVAL: the owner decides.",
+        "f11": "PROMOTION: only then does production change, versioned and reversible."
+      },
+      "futureNote": "Never: \"bad result → the AI changes production automatically\". The AI will have no write access to production."
+    }
   }
 }

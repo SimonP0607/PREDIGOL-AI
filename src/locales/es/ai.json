@@ -157,6 +157,29 @@
     "never": "Nunca",
     "due": "La investigación semanal correría ahora: {reason}.",
     "notDue": "La investigación semanal no hace falta: mismo código y menos de 4 semanas.",
-    "counts": "{proposed} por decidir · {decided} decididas"
+    "counts": "{proposed} por decidir · {decided} decididas",
+    "today": {
+      "title": "Qué es esto hoy",
+      "deterministic": "Hoy: monitor determinista",
+      "aiOn": "IA configurada: solo propone",
+      "aiOff": "IA: sin configurar",
+      "body": "Hoy esta página la alimenta un monitor con reglas fijas: cada día compara los resultados prospectivos y las auditorías con el mercado y, si una cifra está a 3 o más errores estándar de cero, guarda el hallazgo en la memoria y propone una hipótesis (aparecen como «Sistema»). No hay aprendizaje automático aquí: nadie, ni el sistema ni una IA, «aprende solo».",
+      "never": "Ningún resultado cambia una regla, un umbral, un modelo o un pick por sí mismo. Aceptar una hipótesis abre un experimento aislado en investigación; solo una promoción explícita del dueño, tras pasar la puerta frente al mercado, cambia producción.",
+      "futureTitle": "Arquitectura futura (no implementada: requiere tu aprobación y una cuenta de proveedor)",
+      "future": {
+        "f1": "OBSERVAR: resultados, precios, cierres y datos nuevos.",
+        "f2": "MEDIR: métricas frente al mercado (log loss, Brier, CLV) con intervalos.",
+        "f3": "IA INVESTIGA: lee la base de datos (solo lectura) y fuentes web citadas.",
+        "f4": "IA PROPONE: una hipótesis con su evidencia; nunca un cambio directo.",
+        "f5": "EXPERIMENTO AISLADO: en investigación, con datos MODEL_READY.",
+        "f6": "BACKTEST: walk-forward, sin fuga, contra el cierre de-vigged.",
+        "f7": "PROSPECTIVE SHADOW: picks en sombra, invisibles para usuarios.",
+        "f8": "COMPARACIÓN CON EL CAMPEÓN: mismo periodo, mismos partidos.",
+        "f9": "PROPUESTA: informe con la evidencia y el riesgo.",
+        "f10": "APROBACIÓN HUMANA: el dueño decide.",
+        "f11": "PROMOCIÓN: solo entonces cambia producción, versionado y reversible."
+      },
+      "futureNote": "Nunca: «mal resultado → la IA cambia producción automáticamente». La IA no tendrá permisos de escritura en producción."
+    }
   }
 }

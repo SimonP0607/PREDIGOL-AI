@@ -198,6 +198,39 @@ function MemoryList({ memory }: { memory: MemoryEntry[] }) {
   );
 }
 
+const FUTURE = ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11"] as const;
+
+/** What this page is today - a deterministic monitor, not a learning AI - and what it is meant to become. */
+function Honesty() {
+  const ai = useLiveQuery(live.aiStatus);
+  const configured = ai.data?.data?.llm_configured ?? false;
+  return (
+    <Panel title={t("ai.evolution.today.title")} bodyClassName="p-4 space-y-3">
+      <div className="flex flex-wrap items-center gap-1.5" data-testid="evolution-today">
+        <StatusBadge tone="neutral">{t("ai.evolution.today.deterministic")}</StatusBadge>
+        <StatusBadge tone={configured ? "brand" : "neutral"}>
+          {configured ? t("ai.evolution.today.aiOn") : t("ai.evolution.today.aiOff")}
+        </StatusBadge>
+      </div>
+      <p className="text-xs text-muted-foreground">{t("ai.evolution.today.body")}</p>
+      <p className="text-xs text-muted-foreground">{t("ai.evolution.today.never")}</p>
+      <details className="text-xs text-muted-foreground">
+        <summary className="cursor-pointer text-foreground">
+          {t("ai.evolution.today.futureTitle")}
+        </summary>
+        <ol className="mt-2 list-decimal space-y-1 pl-4">
+          {FUTURE.map((f) => (
+            <li key={f}>{t(`ai.evolution.today.future.${f}`)}</li>
+          ))}
+        </ol>
+        <p className="mt-2 text-caption text-subtle-foreground">
+          {t("ai.evolution.today.futureNote")}
+        </p>
+      </details>
+    </Panel>
+  );
+}
+
 export function EvolutionLive() {
   const q = useLiveQuery(live.evolution);
   const d = q.data?.data ?? null;
@@ -209,6 +242,7 @@ export function EvolutionLive() {
         title={t("admin.pages.evolution.title")}
         description={t("admin.pages.evolution.description")}
       />
+      <Honesty />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       {q.isLoading ? <TableSkeleton rows={5} cols={3} /> : null}
       {d ? (
