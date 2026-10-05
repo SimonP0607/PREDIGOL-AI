@@ -5,16 +5,22 @@
 
 ``core.standings.payload_hash`` arrived with revision 0048 (4 Oct 2026). The rows written before it - the v2
 migration's replay of RAW (29 Sep) and the context refresh until 4 Oct, 15,385 rows in 840 snapshots on 5 Oct -
-name no payload, so a table a model reads could not be traced to what the provider said.
+name no payload, so those tables could not be traced to what the provider said.
 
 A snapshot is one competition season at one instant (``snapshot_at`` is the fetch instant of the payload that
 wrote it). It is matched to the ``/standings`` payload of its league and season fetched at that instant, or the
 newest one before it (an identical answer keeps its first index time). The payload is read from RAW, verified
-against its indexed hash, parsed with the writer's own parser (``iter_standings``), and every row of the snapshot
-must equal a row of the payload - team, table label, rank, points, played, won, drawn, lost, goals for and
-against, form - with as many rows as the payload has for teams we hold. Only then is the hash written. A snapshot
-no payload reproduces keeps NULL and is reported (for instance a table written before the label fix of E-779,
-whose repeated labels were merged).
+against its indexed hash and parsed with the writer's own parser (``iter_standings``); every row of the snapshot
+must equal a row of the payload - team, table, rank, points, played, won, drawn, lost, goals for and against,
+form - before the hash is written. The table is compared by the provider's own label: the parser now calls the
+n-th table under a repeated label "<label> #n" (E-779), the rows written before kept the bare label.
+
+The pre-0048 writer kept one row per team, so a team in two tables of one snapshot (Apertura and Clausura, a
+regular season and a play-off round, a third-place ranking) lost the second: such a snapshot is a strict subset of
+its payload. Its rows are still that payload's, value for value, and are traced to it; the rows it lacks are
+counted and reported (``incomplete``), not added - the newest snapshot of every tracked season was completed by
+``refresh_tables --legacy`` (rule ``standings_dropped_tables``), the older ones are history and stay as written.
+A snapshot with a row no payload has keeps NULL and is reported.
 
 Only ``payload_hash`` is written. The columns that came with 0048 (goal difference, zone, description, update
 stamp, home/away splits) stay NULL on those rows: filling them would rewrite what the snapshot held, and the
@@ -24,6 +30,7 @@ snapshots written since carry them. RAW is only read; nothing is deleted.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
@@ -63,16 +70,18 @@ SELECT hash, file_path, fetched_at FROM raw.ingestion_payloads
 
 ROWS_SQL = """
 SELECT t.provider_team_id, s."group", s.rank, s.points, s.played, s.wins, s.draws, s.losses, s.goals_for,
-       s.goals_against, s.form
+       s.goals_against, s.form, (s.payload_hash IS NULL) AS untraced
   FROM core.standings s JOIN core.teams t ON t.id = s.team_id
- WHERE s.competition_season_id = %(cs)s AND s.snapshot_at = %(at)s AND s.payload_hash IS NULL
+ WHERE s.competition_season_id = %(cs)s AND s.snapshot_at = %(at)s
 """
 
 Key = tuple[Any, ...]
+REPEATED_LABEL = re.compile(r" #\d+$")
 
 
 def _key(team: int, group: str | None, *values: Any) -> Key:
-    return (int(team), group or "", *values)
+    """A row as compared: the table by the provider's own label (a "#n" the parser adds is dropped)."""
+    return (int(team), REPEATED_LABEL.sub("", group or ""), *values)
 
 
 @dataclass
@@ -82,6 +91,9 @@ class Report:
     traced: int = 0
     rows_traced: int = 0
     exact_instant: int = 0
+    incomplete: int = 0
+    """Traced snapshots that lack rows of their payload (dropped by the pre-0048 writer)."""
+    rows_missing: int = 0
     payloads_read: int = 0
     untraced: list[str] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)
@@ -109,12 +121,15 @@ def repair(conn: psycopg.Connection[Any], raw_root: Path, *, apply: bool) -> Rep
     with conn.cursor(row_factory=dict_row) as cur:
         for snap in snapshots:
             cur.execute(ROWS_SQL, {"cs": snap["cs"], "at": snap["snapshot_at"]})
-            stored = Counter(_key(r["provider_team_id"], r["group"], r["rank"], r["points"], r["played"], r["wins"],
-                                  r["draws"], r["losses"], r["goals_for"], r["goals_against"], r["form"])
-                             for r in cur.fetchall())
+            rows = cur.fetchall()
+            keys = [(_key(r["provider_team_id"], r["group"], r["rank"], r["points"], r["played"], r["wins"],
+                          r["draws"], r["losses"], r["goals_for"], r["goals_against"], r["form"]), r["untraced"])
+                    for r in rows]
+            stored = Counter(k for k, untraced in keys if untraced)
+            whole = Counter(k for k, _ in keys)
             cur.execute(CANDIDATES_SQL, {"league": str(snap["league"]), "season": str(snap["season"]),
                                          "at": snap["snapshot_at"], "n": CANDIDATES})
-            match = None
+            match, lacking = None, 0
             for cand in cur.fetchall():
                 h = str(cand["hash"])
                 if h not in bodies:
@@ -130,8 +145,11 @@ def repair(conn: psycopg.Connection[Any], raw_root: Path, *, apply: bool) -> Rep
                     bodies[h] = body
                     report.payloads_read += 1
                 body = bodies[h]
-                if body is not None and _payload_rows(body, int(snap["league"]), int(snap["season"]), held) == stored:
-                    match = cand
+                if body is None:
+                    continue
+                said = _payload_rows(body, int(snap["league"]), int(snap["season"]), held)
+                if not stored - said:
+                    match, lacking = cand, sum((said - whole).values())
                     break
             label = f"season {snap['cs']} ({snap['league']}/{snap['season']}) at {snap['snapshot_at']:%Y-%m-%d %H:%M:%S}"
             if match is None:
@@ -140,6 +158,8 @@ def repair(conn: psycopg.Connection[Any], raw_root: Path, *, apply: bool) -> Rep
             report.traced += 1
             report.rows_traced += int(snap["rows"])
             report.exact_instant += int(match["fetched_at"] == snap["snapshot_at"])
+            report.incomplete += int(lacking > 0)
+            report.rows_missing += lacking
             if apply:
                 cur.execute("UPDATE core.standings SET payload_hash = %s WHERE competition_season_id = %s "
                             "AND snapshot_at = %s AND payload_hash IS NULL",
@@ -151,9 +171,11 @@ def repair(conn: psycopg.Connection[Any], raw_root: Path, *, apply: bool) -> Rep
                     "%s, %s)",
                     (RULE, snap["cs"], snap["league"], match["hash"],
                      f"table snapshot of {snap['snapshot_at'].isoformat()} written before revision 0048 recorded "
-                     "the payload; traced to the /standings payload that reproduces it value for value",
-                     f"{updated} rows equal to {match['file_path']} (fetched {match['fetched_at'].isoformat()}, "
-                     f"hash verified); code {version}"))
+                     "the payload; traced to the /standings payload whose rows it holds value for value",
+                     f"{updated} rows each equal to a row of {match['file_path']} (fetched "
+                     f"{match['fetched_at'].isoformat()}, hash verified)"
+                     + (f"; the snapshot lacks {lacking} of the payload's rows (dropped by the pre-0048 writer, one "
+                        "row per team)" if lacking else "") + f"; code {version}"))
     if apply:
         conn.commit()
     else:
@@ -172,8 +194,8 @@ def main(argv: list[str] | None = None) -> int:
     with psycopg.connect(settings.database.psycopg_url) as conn:
         r = repair(conn, root, apply=args.apply)
     print(f"snapshots without a payload: {r.snapshots} ({r.rows} rows); traced: {r.traced} ({r.rows_traced} rows, "
-          f"{r.exact_instant} at the payload's own instant); untraced: {len(r.untraced)}; "
-          f"payloads read: {r.payloads_read}")
+          f"{r.exact_instant} at the payload's own instant; {r.incomplete} lack {r.rows_missing} of their payload's "
+          f"rows); untraced: {len(r.untraced)}; payloads read: {r.payloads_read}")
     for u in r.untraced[:20]:
         print("  UNTRACED " + u)
     for p in r.problems[:10]:
