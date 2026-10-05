@@ -153,6 +153,29 @@ def test_a_finished_match_read_only_at_the_whistle_is_read_again(conn: psycopg.C
     assert (seed.fixture_id, 1001) not in post_match_to_refresh(conn, at=NOW), "read after it settled"
 
 
+def test_a_finished_match_is_read_again_a_day_later_once_and_an_unchanged_answer_ends_the_stage(
+        conn: psycopg.Connection, seed: Seed) -> None:
+    from fbi.ingestion.live_match import post_match_stages, record_detail_asks
+
+    kickoff = NOW - timedelta(hours=30)
+    conn.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+    conn.execute("UPDATE core.fixtures SET status_short = 'FT', status_group = 'finished', kickoff_at = %s "
+                 "WHERE id = %s", (kickoff, seed.fixture_id))
+    conn.execute("INSERT INTO core.fixture_detail_coverage (fixture_id, source, dataset, block_present, "
+                 "rows_written, payload_hash, fetched_at) VALUES (%s, 'api-football', 'team_statistics', true, 2, "
+                 "%s, %s)", (seed.fixture_id, seed.payload_hash, kickoff + timedelta(minutes=163)))
+    assert (seed.fixture_id, 1001, "late") in post_match_stages(conn, at=NOW), \
+        "settled at +163 min, but the provider revises after that: a day later it is read again"
+    record_detail_asks(conn, [(seed.fixture_id, "late")], at=NOW, payload_hash=seed.payload_hash, run_id=None)
+    assert (seed.fixture_id, 1001) not in post_match_to_refresh(conn, at=NOW + timedelta(minutes=5)), \
+        "asked: an answer identical to the last one keeps its first fetch time, the ask says the stage is done"
+    early = NOW - timedelta(hours=4)
+    conn.execute("UPDATE core.fixtures SET kickoff_at = %s WHERE id = %s", (early, seed.fixture_id))
+    conn.execute("UPDATE core.fixture_detail_coverage SET fetched_at = %s WHERE fixture_id = %s",
+                 (early + timedelta(minutes=110), seed.fixture_id))
+    assert (seed.fixture_id, 1001, "settled") in post_match_stages(conn, at=NOW), "before a day: the settled stage"
+
+
 def test_the_elo_history_is_recomputed_and_older_refreshes_pruned(conn: psycopg.Connection, seed: Seed) -> None:
     conn.execute("UPDATE core.fixtures SET status_short = 'FT', status_group = 'finished' WHERE id = %s",
                  (seed.fixture_id,))

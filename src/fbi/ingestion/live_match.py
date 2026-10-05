@@ -23,7 +23,7 @@ one row per change.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
@@ -40,6 +40,7 @@ from fbi.ingestion.fixtures import tracked_season_ids
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.providers.api_football.normalize import canonical_status
 from fbi.providers.api_football.provider import MAX_IDS
+from fbi.providers.base import RawResponse
 
 log = get_logger(__name__)
 
@@ -191,15 +192,22 @@ async def repair_stale_results(conn: psycopg.Connection, provider: Any, *, at: d
 
 
 POST_MATCH_SQL = """
-SELECT f.id, f.provider_fixture_id
+SELECT f.id, f.provider_fixture_id,
+       CASE WHEN f.kickoff_at <= %(at)s - %(late)s THEN 'late' ELSE 'settled' END AS stage
   FROM core.fixtures f
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
  WHERE c.is_tracked AND f.status_group = 'finished'
    AND f.kickoff_at BETWEEN %(at)s - %(oldest)s AND %(at)s - %(settled)s
-   AND NOT EXISTS (SELECT 1 FROM core.fixture_detail_coverage d
-                    WHERE d.fixture_id = f.id AND d.dataset = 'team_statistics'
-                      AND d.fetched_at >= f.kickoff_at + %(settled)s)
+   AND NOT EXISTS (
+       SELECT 1 FROM core.fixture_detail_coverage d
+        WHERE d.fixture_id = f.id AND d.dataset = 'team_statistics'
+          AND d.fetched_at >= f.kickoff_at + CASE WHEN f.kickoff_at <= %(at)s - %(late)s
+                                                  THEN %(late)s ELSE %(settled)s END)
+   AND NOT EXISTS (
+       SELECT 1 FROM core.detail_asks a
+        WHERE a.fixture_id = f.id
+          AND a.stage = CASE WHEN f.kickoff_at <= %(at)s - %(late)s THEN 'late' ELSE 'settled' END)
  ORDER BY f.kickoff_at DESC
 """
 POST_MATCH_SETTLED = timedelta(minutes=150)
@@ -210,22 +218,55 @@ being completed and the timeline still corrected: the truth audit found 63% of l
 week's matches with their detail read only then (passes, possession and events that the
 provider has since changed). One more read, once the match has settled, costs one
 request per 20 matches."""
+POST_MATCH_LATE = timedelta(hours=26)
+"""Kick-off to the late read. The settled read was not the provider's last word: on 5 Oct 2026 the truth audits found
+team statistics revised after it (passes 444 -> 434, a red card count withdrawn), players identified in line-ups that
+had come without ids, and a line-up published 21 hours after the match. A second read a day later costs one request
+per 20 matches."""
 POST_MATCH_OLDEST = timedelta(days=7)
 
 
 def post_match_to_refresh(conn: psycopg.Connection, *, at: datetime) -> list[tuple[int, int]]:
-    """Finished tracked matches of the last week whose detail was never read after they settled."""
+    """Finished tracked matches of the last week whose detail was not read at their current stage: once settled
+    (kick-off + 150 min), and once more a day later (kick-off + 26 h). A stage asked is done (``core.detail_asks``),
+    so an answer identical to the last one is not asked for again."""
+    return [(fid, pid) for fid, pid, _ in post_match_stages(conn, at=at)]
+
+
+def post_match_stages(conn: psycopg.Connection, *, at: datetime) -> list[tuple[int, int, str]]:
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(POST_MATCH_SQL, {"at": at, "settled": POST_MATCH_SETTLED, "oldest": POST_MATCH_OLDEST})
-        return [(int(a), int(b)) for a, b in cur.fetchall()]
+        cur.execute(POST_MATCH_SQL, {"at": at, "settled": POST_MATCH_SETTLED, "late": POST_MATCH_LATE,
+                                     "oldest": POST_MATCH_OLDEST})
+        return [(int(a), int(b), str(c)) for a, b, c in cur.fetchall()]
+
+
+def record_detail_asks(conn: psycopg.Connection, asks: Sequence[tuple[int, str]], *, at: datetime,
+                       payload_hash: str | None, run_id: int | None) -> None:
+    """One row per (fixture, stage) asked; asking again updates the time."""
+    if not asks:
+        return
+    with conn.cursor() as cur:
+        cur.executemany(
+            "INSERT INTO core.detail_asks (fixture_id, stage, asked_at, payload_hash, run_id) VALUES (%s, %s, %s, %s, %s) "
+            "ON CONFLICT (fixture_id, stage) DO UPDATE SET asked_at = EXCLUDED.asked_at, "
+            "payload_hash = EXCLUDED.payload_hash, run_id = EXCLUDED.run_id",
+            [(fid, stage, at, payload_hash, run_id) for fid, stage in asks])
 
 
 async def refresh_post_match(conn: psycopg.Connection, provider: Any, *, at: datetime | None = None,
                              max_requests: int = 10) -> LiveMatchReport:
-    """Read each finished match once more after it settled: final statistics, events, line-ups."""
+    """Read each finished match once more after it settled, and once more a day later: final statistics, events,
+    line-ups."""
     moment = at or now()
-    return await _follow(conn, provider, post_match_to_refresh(conn, at=moment), job_type="post_match_detail",
-                         moment=moment, max_requests=max_requests)
+    due = post_match_stages(conn, at=moment)
+    stage_of = {pid: (fid, stage) for fid, pid, stage in due}
+
+    def asked(provider_ids: Sequence[int], raw: RawResponse, run_id: int | None) -> None:
+        record_detail_asks(conn, [stage_of[p] for p in provider_ids if p in stage_of], at=moment,
+                           payload_hash=raw.payload_hash, run_id=run_id)
+
+    return await _follow(conn, provider, [(fid, pid) for fid, pid, _ in due], job_type="post_match_detail",
+                         moment=moment, max_requests=max_requests, on_batch=asked)
 
 
 async def capture_live_matches(conn: psycopg.Connection, provider: Any, *, at: datetime | None = None,
@@ -238,7 +279,8 @@ async def capture_live_matches(conn: psycopg.Connection, provider: Any, *, at: d
 
 
 async def _follow(conn: psycopg.Connection, provider: Any, follow: list[tuple[int, int]], *, job_type: str,
-                  moment: datetime, max_requests: int) -> LiveMatchReport:
+                  moment: datetime, max_requests: int,
+                  on_batch: Callable[[Sequence[int], RawResponse, int | None], None] | None = None) -> LiveMatchReport:
     report = LiveMatchReport()
     report.followed = len(follow)
     if not follow:
@@ -279,6 +321,8 @@ async def _follow(conn: psycopg.Connection, provider: Any, follow: list[tuple[in
             report.detail_fixtures += rep.fixtures
             report.states_written += write_states(conn, list(iter_live_states(raw.body)),
                                                   observed_at=observed_at, payload_hash=raw.payload_hash)
+            if on_batch is not None:
+                on_batch(batch, raw, run_id)
             conn.commit()
         counters.rows_normalized = report.detail_fixtures
         counters.rows_inserted = report.states_written

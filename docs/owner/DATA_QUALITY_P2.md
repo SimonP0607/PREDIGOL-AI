@@ -134,10 +134,11 @@ ellas usa). La migración de prueba (`fbi.migration.dryrun`) también pasa ya el
   La auditoría lo atribuía a "perfiles nunca pedidos"; ahora separa lo nuestro (nunca pedido, medio) de lo suyo
   (pedido y sin el dato, info) (`616e6a3`).
 
-**Mejora propuesta (no implementada):** una segunda lectura del detalle ~26 h después del partido recogería las
-revisiones tardías del proveedor (estadísticas, ids de jugadores, alineaciones publicadas tarde) por ~1 petición cada
-20 partidos. Requiere registrar las peticiones aunque la respuesta sea idéntica (como `market.odds_asks`), o se
-repetiría en bucle.
+**Mejora aplicada después (migración 0066):** una segunda lectura del detalle 26 h después del inicio del partido
+recoge esas revisiones tardías del proveedor (estadísticas, ids de jugadores, alineaciones publicadas tarde) por ~1
+petición cada 20 partidos. Cada lectura queda en `core.detail_asks` (partido y etapa: *settled* a +150 min, *late* a
++26 h), porque una respuesta idéntica conserva su primera hora de índice y sin ese registro se volvería a pedir en
+bucle. Tests: `test_a_finished_match_is_read_again_a_day_later_once_…`, `test_a_late_read_is_asked_once_…`.
 
 **Historia de tablas:** 17 instantáneas antiguas (29 sep–4 oct) carecen de 515 filas que el escritor anterior a 0048
 descartaba (un equipo en dos tablas). Ningún modelo lee tablas; solo afecta a "la tabla en el momento del partido" de

@@ -15,6 +15,8 @@ from fbi.ingestion.live_match import (
     capture_live_matches,
     fixtures_to_follow,
     iter_live_states,
+    post_match_to_refresh,
+    refresh_post_match,
     repair_stale_results,
     stale_to_repair,
     write_states,
@@ -88,8 +90,8 @@ def fixture_in_play(migrated_database: str, seed: Seed) -> Iterator[tuple[int, i
     yield fid, pid, {"league": int(league), "season": int(season), "kickoff": int(kickoff.timestamp())}
     # Leave the shared test database as it was: other suites count runs, quota and live states.
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute("SELECT id FROM raw.ingestion_runs WHERE job_type IN ('live_match_capture', 'results_repair') "
-                    "OR job_name = 't'")
+        cur.execute("SELECT id FROM raw.ingestion_runs WHERE job_type IN ('live_match_capture', 'results_repair', "
+                    "'post_match_detail') OR job_name = 't'")
         runs = [r[0] for r in cur.fetchall()]
         cur.execute("DELETE FROM core.fixtures WHERE id = %s", (fid,))
         if runs:
@@ -184,3 +186,24 @@ async def test_a_match_the_date_sweep_missed_is_repaired_by_id(
             cur.execute("SELECT status_group FROM core.fixtures WHERE id = %s", (fid,))
             assert cur.fetchone()[0] == "finished"  # type: ignore[index]
         assert (fid, pid) not in stale_to_repair(conn, at=datetime.now(UTC))
+
+
+async def test_a_late_read_is_asked_once_even_when_the_answer_did_not_change(
+        migrated_database: str, fixture_in_play: tuple[int, int, dict[str, int]]) -> None:
+    fid, pid, meta = fixture_in_play
+    yesterday = datetime.now(UTC) - timedelta(hours=30)
+    body = _body(pid, meta["league"], meta["season"], 77001, 77002, short="FT", elapsed=90, gh=1, ga=0,
+                 kickoff=yesterday)
+    with psycopg.connect(migrated_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE core.fixtures SET kickoff_at = %s, status_short = 'FT', status_group = 'finished' "
+                        "WHERE id = %s", (yesterday, fid))
+        conn.commit()
+        provider = FakeProvider(conn, [body, body])
+        first = await refresh_post_match(conn, provider)
+        assert first.requests == 1 and provider.calls == [[pid]]
+        stage = conn.execute("SELECT stage FROM core.detail_asks WHERE fixture_id = %s", (fid,)).fetchone()
+        assert stage == ("late",)
+        assert (fid, pid) not in post_match_to_refresh(conn, at=datetime.now(UTC)), "the late stage is done"
+        again = await refresh_post_match(conn, provider)
+        assert again.requests == 0 and len(provider.calls) == 1
