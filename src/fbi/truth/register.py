@@ -144,9 +144,14 @@ SELECT job_type,
 CAPTURE_SQL = "SELECT endpoint, max(fetched_at) AS last FROM raw.ingestion_payloads GROUP BY endpoint"
 
 ROWS_SQL = """
-SELECT n.nspname || '.' || c.relname AS rel, greatest(c.reltuples, 0)::bigint AS n
+SELECT n.nspname || '.' || c.relname AS rel,
+       greatest(c.reltuples, 0)::bigint
+       + coalesce((SELECT sum(greatest(ch.reltuples, 0))::bigint FROM pg_inherits i JOIN pg_class ch ON ch.oid = i.inhrelid
+                    WHERE i.inhparent = c.oid), 0) AS n
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname || '.' || c.relname = ANY(%(rels)s)
 """
+"""Estimated rows (planner statistics), partitions included: market.odds_snapshots is partitioned by month, and its
+parent alone showed 0 rows on the register (5 Oct 2026)."""
 
 FINDINGS_SQL = """
 SELECT area, count(*) AS n FROM audit.evidence_ledger
@@ -201,7 +206,7 @@ def build(conn: psycopg.Connection[Any], freshness: list[DatasetFreshness], *, a
                             if captures.get(ENDPOINT_PREFIX.get(e, e.split('?')[0])) is not None), default=None)
         job_rows = [runs[j] for j in spec.jobs if j in runs]
         notes = [f"the provider has no data for {gap:.0%} of the {f.entity}s (its coverage flag or its lag)"] \
-            if gap else []
+            if gap is not None and gap >= 0.005 else []
         c = f.counts
         failed_runs = sum(int(r["bad"]) for r in job_rows)
         states = {"VALID": c[Freshness.FRESH.value], "STALE": c[Freshness.STALE.value],

@@ -213,3 +213,20 @@ def _read_back(client: Any, run_id: int) -> None:
     gate = client.get("/api/v1/admin/data/gate").json()
     assert gate["status"] in ("ok", "empty") and {m["model"] for m in gate["data"]["models"]} == set(MODEL_NEEDS)
     assert client.get("/api/v1/admin/data/repairs").json()["status"] in ("ok", "empty")
+
+
+def test_the_register_counts_the_rows_of_a_partitioned_table(migrated_database: str) -> None:
+    """market.odds_snapshots is partitioned by month: its parent alone showed 0 rows on the register."""
+    from fbi.truth.register import ROWS_SQL
+
+    with psycopg.connect(migrated_database, autocommit=True) as conn:
+        conn.execute("DROP TABLE IF EXISTS public.register_part")
+        conn.execute("CREATE TABLE public.register_part (id int) PARTITION BY RANGE (id)")
+        conn.execute("CREATE TABLE public.register_part_1 PARTITION OF public.register_part FOR VALUES FROM (0) TO (1000)")
+        conn.execute("INSERT INTO public.register_part SELECT g FROM generate_series(1, 500) g")
+        conn.execute("ANALYZE public.register_part_1")
+        try:
+            row = conn.execute(ROWS_SQL, {"rels": ["public.register_part"]}).fetchone()
+            assert row is not None and row[1] >= 500
+        finally:
+            conn.execute("DROP TABLE public.register_part")
