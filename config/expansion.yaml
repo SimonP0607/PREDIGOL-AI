@@ -1,0 +1,56 @@
+# P3 - the 50 candidate leagues for the expansion (docs/owner/API_CAPACITY.md, capacity report of 5 Oct 2026:
+# market, liquidity, data, depth, interest, utility). Read by `python -m scripts.probe_leagues`. Listing a league here
+# tracks nothing: tracking is a separate, explicit step, batch by batch, after the probe.
+version: 1
+source: data/capacity/20261005T063217Z/CAPACITY.md
+candidates:
+  - {rank: 1, league_id: 244, name: Veikkausliiga, country: Finland}
+  - {rank: 2, league_id: 268, name: Primera División, country: Uruguay}
+  - {rank: 3, league_id: 36, name: Africa Cup of Nations - Qualification, country: World}
+  - {rank: 4, league_id: 252, name: División Profesional - Clausura, country: Paraguay}
+  - {rank: 5, league_id: 200, name: Botola Pro, country: Morocco}
+  - {rank: 6, league_id: 1247, name: FIFA Asean Cup, country: World}
+  - {rank: 7, league_id: 43, name: National League, country: England}
+  - {rank: 8, league_id: 487, name: First Amateur Division, country: Belgium}
+  - {rank: 9, league_id: 129, name: Primera Nacional, country: Argentina}
+  - {rank: 10, league_id: 236, name: First League, country: Russia}
+  - {rank: 11, league_id: 255, name: USL Championship, country: USA}
+  - {rank: 12, league_id: 436, name: Primera División RFEF - Group 2, country: Spain}
+  - {rank: 13, league_id: 99, name: J2 League, country: Japan}
+  - {rank: 14, league_id: 435, name: Primera División RFEF - Group 1, country: Spain}
+  - {rank: 15, league_id: 287, name: Prva Liga, country: Serbia}
+  - {rank: 16, league_id: 100, name: J3 League, country: Japan}
+  - {rank: 17, league_id: 63, name: Ligue 3, country: France}
+  - {rank: 18, league_id: 60, name: Non League Premier - Southern South, country: England}
+  - {rank: 19, league_id: 506, name: 2. liga, country: Slovakia}
+  - {rank: 20, league_id: 875, name: Segunda División RFEF - Group 1, country: Spain}
+  - {rank: 21, league_id: 492, name: Tweede Divisie, country: Netherlands}
+  - {rank: 22, league_id: 564, name: Ettan - Södra, country: Sweden}
+  - {rank: 23, league_id: 263, name: Liga de Expansión MX, country: Mexico}
+  - {rank: 24, league_id: 943, name: Serie C - Girone C, country: Italy}
+  - {rank: 25, league_id: 132, name: Primera C, country: Argentina}
+  - {rank: 26, league_id: 877, name: Segunda División RFEF - Group 3, country: Spain}
+  - {rank: 27, league_id: 887, name: Second League, country: Egypt}
+  - {rank: 28, league_id: 138, name: Serie C - Girone A, country: Italy}
+  - {rank: 29, league_id: 876, name: Segunda División RFEF - Group 2, country: Spain}
+  - {rank: 30, league_id: 563, name: Ettan - Norra, country: Sweden}
+  - {rank: 31, league_id: 878, name: Segunda División RFEF - Group 4, country: Spain}
+  - {rank: 32, league_id: 489, name: USL League One, country: USA}
+  - {rank: 33, league_id: 358, name: First Division, country: Ireland}
+  - {rank: 34, league_id: 134, name: Torneo Federal A, country: Argentina}
+  - {rank: 35, league_id: 59, name: Non League Premier - Northern, country: England}
+  - {rank: 36, league_id: 473, name: 2. Division - Group 1, country: Norway}
+  - {rank: 37, league_id: 101, name: J-League Cup, country: Japan}
+  - {rank: 38, league_id: 104, name: 1. Division, country: Norway}
+  - {rank: 39, league_id: 183, name: League One, country: Scotland}
+  - {rank: 40, league_id: 474, name: 2. Division - Group 2, country: Norway}
+  - {rank: 41, league_id: 269, name: Segunda División, country: Uruguay}
+  - {rank: 42, league_id: 295, name: K3 League, country: South-Korea}
+  - {rank: 43, league_id: 711, name: Segunda División, country: Chile}
+  - {rank: 44, league_id: 349, name: 3. liga - MSFL, country: Czech-Republic}
+  - {rank: 45, league_id: 374, name: 2. SNL, country: Slovenia}
+  - {rank: 46, league_id: 803, name: Asian Games, country: World}
+  - {rank: 47, league_id: 494, name: Super League 2, country: Greece}
+  - {rank: 48, league_id: 180, name: Championship, country: Scotland}
+  - {rank: 49, league_id: 593, name: Division 2 - Norra Svealand, country: Sweden}
+  - {rank: 50, league_id: 75, name: Serie C, country: Brazil}
