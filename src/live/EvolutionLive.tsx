@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
 import { localInt } from "@/lib/i18n/format";
+import { dueReason } from "./evolutionDue";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel } from "@/components/primitives/Panel";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
@@ -272,8 +273,17 @@ export function EvolutionLive() {
                   )
                 }
               />
+              {d.research_frozen ? (
+                <p className="pt-1 text-caption text-warning">
+                  {t("ai.evolution.frozen", { reason: d.research_frozen })}
+                </p>
+              ) : null}
               <p className="pt-1 text-caption text-subtle-foreground">
-                {d.v2_due ? t("ai.evolution.due", { reason: d.v2_due }) : t("ai.evolution.notDue")}
+                {d.v2_due
+                  ? t(d.research_frozen ? "ai.evolution.dueWhenUnfrozen" : "ai.evolution.due", {
+                      reason: dueReason(d),
+                    })
+                  : t("ai.evolution.notDue")}
               </p>
             </Panel>
           </div>

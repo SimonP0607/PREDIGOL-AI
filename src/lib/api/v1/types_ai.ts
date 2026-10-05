@@ -123,6 +123,17 @@ export interface EvolutionOverview {
   hypotheses: Hypothesis[];
   memory: MemoryEntry[];
   last_monitor: string | null;
-  last_v2: { name: string; code_version: string | null; finished_at: string | null } | null;
+  last_v2: {
+    name: string;
+    code_version: string | null;
+    /** Fingerprint of the model code the run used; null for runs stored before 5 Oct 2026. */
+    model_code?: string | null;
+    dataset_version?: string | null;
+    finished_at: string | null;
+  } | null;
   v2_due: string | null;
+  /** Why research is frozen (no run stores a model), or null. */
+  research_frozen?: string | null;
+  v2_due_code?: string | null;
+  v2_due_vars?: Record<string, string>;
 }

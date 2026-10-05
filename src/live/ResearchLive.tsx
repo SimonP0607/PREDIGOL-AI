@@ -28,6 +28,7 @@ import { shortHash, utcDate, utcDateTime } from "./format";
 import { baselineLabel, seasonLabel } from "./labels";
 import { Fact } from "./shared";
 import { CompetitionLogo, CountryFlag } from "@/components/football/Logos";
+import { countryLabel } from "@/product/matches/country";
 import type { CompetitionSummary } from "@/lib/api/v1/types";
 import { localFixed } from "@/lib/i18n/format";
 
@@ -383,13 +384,10 @@ export function SettingsLive() {
  * list must say which. Sorted by country (international last), then name.
  */
 export function TrackedCompetitions({ rows }: { rows: CompetitionSummary[] }) {
+  const country = (c: CompetitionSummary) => countryLabel(c.country, c.country_code) ?? "\uffff";
   const tracked = rows
     .filter((c) => c.is_tracked)
-    .sort(
-      (a, b) =>
-        (a.country ?? "\uffff").localeCompare(b.country ?? "\uffff") ||
-        a.name.localeCompare(b.name),
-    );
+    .sort((a, b) => country(a).localeCompare(country(b)) || a.name.localeCompare(b.name));
   return (
     <>
       <p className="mb-2 text-caption text-subtle-foreground">
@@ -403,7 +401,7 @@ export function TrackedCompetitions({ rows }: { rows: CompetitionSummary[] }) {
               <span className="truncate">{c.name}</span>
               <span className="flex shrink-0 items-center gap-1 text-caption text-subtle-foreground">
                 <CountryFlag src={c.flag_url} name={c.country} height={10} />
-                {c.country ?? t("catalog.competitions.international")}
+                {countryLabel(c.country, c.country_code) ?? t("catalog.competitions.international")}
               </span>
             </span>
             <span className="numeric shrink-0 text-caption text-subtle-foreground">

@@ -180,6 +180,16 @@
         "f11": "PROMOCIÓN: solo entonces cambia producción, versionado y reversible."
       },
       "futureNote": "Nunca: «mal resultado → la IA cambia producción automáticamente». La IA no tendrá permisos de escritura en producción."
+    },
+    "frozen": "Investigación congelada: {reason}. Ninguna ejecución guarda un modelo hasta que la descongeles tú.",
+    "dueWhenUnfrozen": "Al descongelarla, la investigación semanal correría porque {reason}.",
+    "noneRecorded": "ninguna registrada",
+    "dueReasons": {
+      "no_run": "no hay ninguna ejecución de investigación V2 guardada",
+      "new_dataset": "hay una versión de datos MODEL_READY nueva ({before} → {after})",
+      "unknown_model_code": "la última ejecución ({commit}) es anterior a la huella del código de modelos: no se sabe qué código de modelos usó (ahora {now})",
+      "model_code_changed": "cambió el código de los modelos ({before} → {after})",
+      "four_weeks": "la última ejecución tiene cuatro semanas"
     }
   }
 }

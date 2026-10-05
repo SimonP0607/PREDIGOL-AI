@@ -180,6 +180,16 @@
         "f11": "PROMOTION: only then does production change, versioned and reversible."
       },
       "futureNote": "Never: \"bad result → the AI changes production automatically\". The AI will have no write access to production."
+    },
+    "frozen": "Research frozen: {reason}. No run stores a model until you unfreeze it.",
+    "dueWhenUnfrozen": "Once unfrozen, the weekly research would run because {reason}.",
+    "noneRecorded": "none recorded",
+    "dueReasons": {
+      "no_run": "no research-V2 run is stored",
+      "new_dataset": "a new dataset version is MODEL_READY ({before} → {after})",
+      "unknown_model_code": "the last run ({commit}) predates the model-code fingerprint: the model code it ran is unknown (now {now})",
+      "model_code_changed": "the model code changed ({before} → {after})",
+      "four_weeks": "the last run is four weeks old"
     }
   }
 }
