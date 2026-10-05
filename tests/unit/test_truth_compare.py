@@ -143,6 +143,40 @@ def test_events_compare_as_a_multiset() -> None:
     assert same.matched == 1, "case of the type and detail does not matter"
 
 
+def test_a_substitution_the_provider_renumbered_is_the_same_substitution() -> None:
+    def sub(n: int, minute: int = 62, player: int = 76161) -> dict:
+        return {"time": {"elapsed": minute, "extra": None}, "team": {"id": 1}, "player": {"id": player},
+                "type": "subst", "detail": f"Substitution {n}"}
+
+    item = api_fixture(events=[sub(1), sub(2, 70, 5)])
+    stored = [{"minute": 62, "extra_minute": None, "event_type": "subst", "detail": "Substitution 5",
+               "provider_team_id": 1, "provider_player_id": 76161},
+              {"minute": 70, "extra_minute": None, "event_type": "subst", "detail": "Substitution 6",
+               "provider_team_id": 1, "provider_player_id": 5}]
+    t = Tally("events")
+    compare.compare_events(item, stored, {"fetched_at": KICKOFF + timedelta(days=900), "kickoff_at": KICKOFF},
+                           tally=t)
+    [f] = t.findings
+    assert (f.severity, f.field, f.api) == (Severity.LOW, "substitution number", "2 substitution(s) numbered differently")
+    moved = Tally("events")
+    compare.compare_events(api_fixture(events=[sub(1, minute=63)]), stored[:1], None, tally=moved)
+    assert {(x.kind, x.severity) for x in moved.findings} == {(Kind.MISMATCH, Severity.MEDIUM),
+                                                              (Kind.MISSING_IN_API, Severity.LOW)}, \
+        "a substitution at another minute is still a difference"
+
+
+def test_a_side_the_provider_lists_no_statistics_for_is_not_missing() -> None:
+    item = api_fixture(statistics=[{"team": {"id": 1}, "statistics": []},
+                                   {"team": {"id": 2}, "statistics": [{"type": "Total passes", "value": None}]}])
+    t = Tally("team_stats")
+    compare.compare_team_stats(item, [], home_provider_id=1, coverage=None, tally=t)
+    assert (t.findings, t.matched) == ([], 2)
+    some = api_fixture(statistics=[{"team": {"id": 1}, "statistics": [{"type": "Total passes", "value": 434}]}])
+    m = Tally("team_stats")
+    compare.compare_team_stats(some, [], home_provider_id=1, coverage=None, tally=m)
+    assert [f.kind for f in m.findings] == [Kind.MISSING_IN_DB]
+
+
 def standings_body(rows: list[list[dict]]) -> dict:
     return {"response": [{"league": {"id": 253, "name": "Major League Soccer", "season": 2026, "standings": rows}}]}
 

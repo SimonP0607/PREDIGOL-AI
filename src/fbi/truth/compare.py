@@ -13,6 +13,7 @@ literals.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import date, datetime, timedelta
@@ -292,6 +293,22 @@ def _event_key(e: Mapping[str, Any]) -> tuple[Any, ...]:
             str(e.get("detail") or "").casefold(), e.get("team"), e.get("player"))
 
 
+SUBSTITUTION_ORDINAL = re.compile(r"^substitution \d+$")
+
+
+def _without_ordinal(key: tuple[Any, ...]) -> tuple[Any, ...]:
+    """The event without the provider's substitution number ("Substitution 5" -> "substitution").
+
+    The provider numbers a side's substitutions and re-numbers them when it revises an old timeline: on 5 Oct
+    2026 the truth audit found matches of 2019 whose "Substitution 5" had become "Substitution 1" - same minute,
+    same team, same player. The substitution is the same fact; only its ordinal moved.
+    """
+    minute, extra, kind, detail, team, player = key
+    if kind == "subst" and SUBSTITUTION_ORDINAL.match(detail):
+        detail = "substitution"
+    return (minute, extra, kind, detail, team, player)
+
+
 def api_events(api: Mapping[str, Any]) -> list[dict[str, Any]]:
     out = []
     for e in _l(api.get("events")):
@@ -327,6 +344,17 @@ def compare_events(api: Mapping[str, Any], db_events: Sequence[Mapping[str, Any]
                              api=f"{sum(a.values())} events", db="none", note=_detail_note(coverage)))
         return
     missing, extra = a - b, b - a
+    renumbered = Counter(map(_without_ordinal, missing.elements())) & Counter(map(_without_ordinal, extra.elements()))
+    if renumbered:
+        tally.add(Finding.of("events", entity, "substitution number", Kind.MISMATCH, Severity.LOW,
+                             api=f"{sum(renumbered.values())} substitution(s) numbered differently",
+                             db=f"{sum(b.values())} stored",
+                             note="the provider re-numbered its substitutions after we stored them: same minute, "
+                                  "team and player"))
+        missing = Counter(map(_without_ordinal, missing.elements())) - renumbered
+        extra = Counter(map(_without_ordinal, extra.elements())) - renumbered
+    if not missing and not extra:
+        return
     if missing:
         tally.add(Finding.of("events", entity, "events", Kind.STALE if _fetched_early(coverage) else Kind.MISMATCH,
                              Severity.MEDIUM, api=f"{sum(missing.values())} not stored, e.g. {next(iter(missing))}",
@@ -407,6 +435,9 @@ def compare_team_stats(api: Mapping[str, Any], db_stats: Sequence[Mapping[str, A
         entity = f"fixture {pid} {side}"
         tally.compared()
         db = by_side.get(side)
+        if db is None and not any(_d(item).get("value") is not None for item in _l(block.get("statistics"))):
+            tally.matched += 1  # the provider lists no value for this side: there was nothing to store
+            continue
         if db is None:
             tally.add(Finding.of("team_stats", entity, "statistics", Kind.MISSING_IN_DB, Severity.MEDIUM,
                                  api=f"{len(_l(block.get('statistics')))} values", db="none",
