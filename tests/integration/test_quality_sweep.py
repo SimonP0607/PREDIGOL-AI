@@ -10,21 +10,24 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import psycopg
 import pytest
 
 from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.quality.detect import (
+    CHECKS,
     check_lineage_holds,
     check_lineups_are_complete,
     check_results_are_not_stale,
     check_results_are_resolved,
     check_values_are_possible,
     sweep,
+    sweep_connection,
 )
 from fbi.quality.issues import IssueCode, Severity
-from tests.integration.conftest import Seed
+from tests.integration.conftest import REPO_ROOT, Seed
 
 NOW = datetime(2026, 9, 25, 12, 0, tzinfo=UTC)
 FETCHED = datetime(2026, 9, 20, 18, 0, tzinfo=UTC)
@@ -328,3 +331,18 @@ def test_running_the_sweep_twice_does_not_inflate_its_own_numbers(
         rows = cur.fetchall()
     assert rows == [("MISSING_DETAIL", 1, 2), ("RESULT_UNRESOLVED", 1, 2)], \
         "two different problems about one fixture, each seen twice - not four problems"
+
+
+def test_the_sweep_plans_serially_on_its_own_connection(migrated_database: str, seed: Seed) -> None:
+    """A parallel plan needs /dev/shm - 64 MB in a Docker container made without shm_size - and from 6 Oct 2026
+    19:44 UTC every sweep failed there (DiskFull). The sweep's connection plans serially, from its first statement
+    and through any rollback, and both callers - the worker and the script - run the sweep on it."""
+    with sweep_connection(migrated_database) as conn:
+        assert conn.execute("SHOW max_parallel_workers_per_gather").fetchone() == ("0",)
+        conn.rollback()
+        assert conn.execute("SHOW max_parallel_workers_per_gather").fetchone() == ("0",)
+        report = sweep(conn, run_id=seed.run_id, apply=False)
+        assert [c.name for c in report.checks] == [c.__name__.removeprefix("check_") for c in CHECKS]
+        conn.rollback()
+    for caller in ("apps/worker/scheduler.py", "scripts/quality_sweep.py"):
+        assert "sweep_connection(settings.database.psycopg_url)" in (Path(REPO_ROOT) / caller).read_text(), caller

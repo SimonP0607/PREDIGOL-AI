@@ -522,10 +522,10 @@ def _pipeline_now() -> None:
 def _quality_sweep_now() -> None:
     """Record what is wrong, never repair it. Failures are logged and in the ledger."""
     from fbi.ingestion.ledger import RunCounters, RunLedger
-    from fbi.quality.detect import sweep
+    from fbi.quality.detect import sweep, sweep_connection
 
     try:
-        with _connect() as conn:
+        with sweep_connection(settings.database.psycopg_url) as conn:  # serial plans: see detect.SERIAL_PLANS
             ledger = RunLedger(conn)
             run_id = ledger.open("quality_sweep", params={"apply": True, "source": "worker"})
             counters = RunCounters()

@@ -19,12 +19,10 @@ import argparse
 import json
 import sys
 
-import psycopg
-
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.quality.detect import sweep
+from fbi.quality.detect import sweep, sweep_connection
 from fbi.quality.issues import Severity
 
 
@@ -36,7 +34,7 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    with psycopg.connect(settings.database.psycopg_url) as conn:
+    with sweep_connection(settings.database.psycopg_url) as conn:  # serial plans: see detect.SERIAL_PLANS
         ledger = RunLedger(conn)
         run_id = ledger.open("quality_sweep", params={"apply": args.apply})
         counters = RunCounters()

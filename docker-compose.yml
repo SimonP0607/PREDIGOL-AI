@@ -35,6 +35,10 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: fbi-postgres
+    # Docker's default /dev/shm is 64 MB; PostgreSQL's parallel plans keep their shared hash tables there. From
+    # 6 Oct 2026 19:44 UTC the quality sweep outgrew it (DiskFull). Same size as deploy/primary. Takes effect when
+    # the container is next recreated (`docker compose up -d postgres`), not on a restart.
+    shm_size: 512mb
     environment:
       POSTGRES_USER: fbi
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fbi_local_dev}

@@ -691,6 +691,22 @@ def _close_what_the_check_no_longer_finds(
     return closed
 
 
+SERIAL_PLANS = "-c max_parallel_workers_per_gather=0"
+"""Connection option for the sweep: plans without parallel workers.
+
+The checks join the largest tables (fixture events, player statistics, the payload index). A parallel plan builds
+its shared hash table in dynamic shared memory - /dev/shm, which is 64 MB in a Docker container created without
+``shm_size``. From 6 Oct 2026 19:44 UTC the tables outgrew it and every sweep failed with DiskFull ("could not
+resize shared memory segment ... No space left on device"), so Data Quality stopped being refreshed. A serial plan
+needs no such segment. Measured on the machine that day: the parallel sweep failed after 5 s, the serial one
+finished in 8.9 s. (deploy/primary/docker-compose.yml gives the server 512 MB of /dev/shm all the same.)"""
+
+
+def sweep_connection(url: str) -> psycopg.Connection:
+    """The connection a sweep runs on: serial plans, set when the session starts (no transaction can undo it)."""
+    return psycopg.connect(url, connect_timeout=5, options=SERIAL_PLANS)
+
+
 def sweep(conn: psycopg.Connection, *, run_id: int, apply: bool = True) -> SweepReport:
     """Run every check, record what it found, and say what it ran against.
 
