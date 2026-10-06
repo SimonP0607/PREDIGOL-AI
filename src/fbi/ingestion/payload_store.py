@@ -81,8 +81,13 @@ def _fsync_dir(directory: Path) -> None:
 class StoredPayload:
     hash: str
     file_path: str
+    """Where the payload is - or, when ``persisted`` is False, where it would go if it were kept."""
     bytes_written: int
     already_present: bool
+    persisted: bool = True
+    """False for an ephemeral response (``PayloadStore.describe``): hashed, never written. The in-play book is
+    read every 30 s and only its present is kept (revision 0068), so its bodies are not evidence of any stored row;
+    one is written only when it carries evidence of an anomaly."""
 
 
 class PayloadStore:
@@ -99,6 +104,29 @@ class PayloadStore:
             / f"{fetched_at:%m}"
             / f"{fetched_at:%d}"
             / f"{slug}__{digest[:12]}.json.gz"
+        )
+
+    def describe(
+        self,
+        *,
+        endpoint: str,
+        fetched_at: datetime,
+        body: Any,
+    ) -> StoredPayload:
+        """The hash and the path a body WOULD have, without writing anything.
+
+        For responses whose content is kept only as the present state (``/odds/live``): the hash still identifies
+        the body in logs and in the current rows, and ``store`` can still keep it later - with the same hash and
+        path - if it turns out to be evidence.
+        """
+        digest = body_hash(body)
+        path = self.path_for(endpoint, fetched_at, digest)
+        return StoredPayload(
+            hash=digest,
+            file_path=str(path.relative_to(self._root)),
+            bytes_written=0,
+            already_present=False,
+            persisted=False,
         )
 
     def store(

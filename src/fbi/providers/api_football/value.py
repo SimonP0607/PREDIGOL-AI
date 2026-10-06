@@ -85,8 +85,8 @@ VALUES: dict[str, Value] = {
                         "watch storage: whole histories per team (422k rows in a day)"),
     "/trophies": Value("PRODUCT_ONLY", "P3", "player and coach honours"),
     "/sidelined": Value("STORE_FOR_FUTURE", "P2", "injury and suspension history per person: availability priors"),
-    "/odds/live": Value("PRODUCT_ONLY", "P1", "in-play prices and states for the live page; never a pre-match input "
-                        "(it serves fixtures in play only)"),
+    "/odds/live": Value("PRODUCT_ONLY", "P1", "the current in-play price and state for the live page; never a "
+                        "pre-match input (it serves fixtures in play only) and never kept as history (revision 0068)"),
     "/odds/live/bets": Value("REFERENCE", "P3", "the in-play bet catalogue"),
     "/odds": Value("MODEL_FEATURE", "P0", "pre-match prices by bookmaker: the market baseline every model must beat, "
                    "the consensus, the price a pick is taken at; 5 of 338 bet types normalized",

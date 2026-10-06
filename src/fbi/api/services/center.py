@@ -135,9 +135,11 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
             forms, status=DataStatus.EMPTY, reason="Neither team has a finished match with a result before this one."),
         h2h=_sec(h2h, "No previous meeting with a result is stored."),
         live_states=_sec(states, "No in-play state was captured for this match." if played else not_yet),
-        live_odds=_sec(quotes, "No in-play price was captured for this match: the provider prices only some "
-                               "matches in play, and capture began on 30 Sep 2026." if played else not_yet),
-        live_movement=_sec(moves, "No in-play price movement recorded." if played else not_yet),
+        live_odds=_sec(quotes, "In-play prices are shown only while the match is being played, and the provider "
+                               "prices only some matches in play. They are not kept after the match."
+                       if played else not_yet),
+        live_movement=_sec(moves, "No in-play price has moved in this match's current book. Movement is shown "
+                                  "while the match is played and not kept afterwards." if played else not_yet),
     )
     return ok(body)
 
@@ -455,10 +457,12 @@ def admin_overview(conn: Conn, *, frontend_version: str | None = None) -> Envelo
         AdminCount(key="prematch_1h", label="Pre-match prices, last hour", value=c.get("prematch_1h"),
                    at=c.get("prematch_last")),
         AdminCount(key="prematch_24h", label="Pre-match prices, last 24 h", value=c.get("prematch_24h")),
-        AdminCount(key="live_1h", label="In-play price changes, last hour", value=c.get("live_1h"),
+        AdminCount(key="live_priced_now", label="Matches priced in play now", value=c.get("live_priced_now"),
                    at=c.get("live_last")),
-        AdminCount(key="live_24h", label="In-play price changes, last 24 h", value=c.get("live_24h")),
-        AdminCount(key="live_priced_now", label="Matches priced in play now", value=c.get("live_priced_now")),
+        AdminCount(key="live_quotes_now", label="In-play prices held now (current book, not kept)",
+                   value=c.get("live_quotes_now"), at=c.get("live_tick_last"),
+                   note="in-play odds are ephemeral: the book holds the current price only and is emptied "
+                        "when the match ends (revision 0068)"),
         AdminCount(key="match_states_24h", label="Match states (fixture feed), last 24 h",
                    value=c.get("match_states_24h"),
                    at=c.get("match_states_last")),

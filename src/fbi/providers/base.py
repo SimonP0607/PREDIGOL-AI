@@ -23,7 +23,7 @@ OddsSource = Literal["prematch", "live"]
 
 @dataclass(frozen=True, slots=True)
 class RawResponse:
-    """One provider response, already persisted to the raw store."""
+    """One provider response, persisted to the raw store - unless ``persisted`` says otherwise."""
 
     endpoint: str
     params: dict[str, str]
@@ -34,6 +34,9 @@ class RawResponse:
     file_path: str
     bytes_written: int
     body: dict[str, object]
+    persisted: bool = True
+    """False for an ephemeral in-play response: hashed, not written (``PayloadStore.describe``). Such a response
+    cannot be indexed in raw.ingestion_payloads - there is no file - and ``RunLedger.record_payloads`` refuses it."""
 
 
 @dataclass(frozen=True, slots=True)

@@ -125,7 +125,10 @@ class ApiFootballClient:
         ceiling = min(2.0**attempt, 30.0)
         return random.uniform(0.0, ceiling)  # jitter, not cryptography
 
-    async def get(self, endpoint: str, params: dict[str, Any]) -> ApiResponse:
+    async def get(self, endpoint: str, params: dict[str, Any], *, persist: bool = True) -> ApiResponse:
+        """One request, retried and rate-limited. ``persist=False`` hashes the body but writes nothing to the RAW
+        store: for the in-play book, whose present is all that is kept (revision 0068). The quota, the circuit
+        breaker and the logs see the request exactly as any other."""
         safe_params = sanitize(params)
         last_error: Exception | None = None
 
@@ -174,7 +177,7 @@ class ApiFootballClient:
 
                 self._breaker.record_success()
                 try:
-                    return self._finalise(endpoint, params, safe_params, response)
+                    return self._finalise(endpoint, params, safe_params, response, persist=persist)
                 except RateLimitError as exc:
                     last_error = exc
                     log.warning("provider.rate_limited", endpoint=endpoint, params=safe_params, attempt=attempt)
@@ -194,6 +197,8 @@ class ApiFootballClient:
         params: dict[str, Any],
         safe_params: dict[str, str],
         response: httpx.Response,
+        *,
+        persist: bool = True,
     ) -> ApiResponse:
         try:
             body = response.json()
@@ -213,13 +218,16 @@ class ApiFootballClient:
             raise ProviderError(f"{endpoint}: provider reported errors: {errors}")
 
         fetched_at = now()
-        stored = self._store.store(
-            endpoint=endpoint,
-            params=params,
-            fetched_at=fetched_at,
-            http_status=response.status_code,
-            body=body,
-        )
+        if persist:
+            stored = self._store.store(
+                endpoint=endpoint,
+                params=params,
+                fetched_at=fetched_at,
+                http_status=response.status_code,
+                body=body,
+            )
+        else:
+            stored = self._store.describe(endpoint=endpoint, fetched_at=fetched_at, body=body)
         log.info(
             "provider.ok",
             endpoint=endpoint,
@@ -228,6 +236,7 @@ class ApiFootballClient:
             results=len(body.get("response") or []),
             payload_hash=stored.hash[:12],
             cached=stored.already_present,
+            persisted=stored.persisted,
             quota_remaining=self._quota.remaining,
         )
         return ApiResponse(

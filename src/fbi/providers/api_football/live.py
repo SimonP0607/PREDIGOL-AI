@@ -15,7 +15,8 @@ One unfiltered /odds/live call, 8 fixtures, 7 competitions, 72 distinct bet ids,
 
 There is NO bookmaker dimension - no fixture carried a ``bookmakers`` key. A
 live price is the provider's single aggregated number, which is why these rows
-live in market.live_odds_snapshots and not in market.odds_snapshots.
+live in the in-play book (market.live_odds_current, ephemeral since revision
+0068) and never in market.odds_snapshots.
 
 THE HANDICAP IS SIGNED PER SELECTION HERE. PRE-MATCH IT IS NOT.
 ---------------------------------------------------------------
@@ -43,7 +44,7 @@ VALUES THAT ARE NOT PRICES
 57 of the 1,933 values were at or below 1.0: 56 of them ``"odd": "0"`` and
 ``suspended: true``, plus one Double Chance leg at exactly 1.00 and not
 suspended. Zero is not a price - it is the provider declining to quote - and
-market.live_odds_snapshots CHECKs odds_decimal > 1.0. Those values are refused
+market.live_odds_current CHECKs odds_decimal > 1.0. Those values are refused
 into the parse log and counted in the fixture state's ``values_suspended``,
 never stored as a quote and never coerced to a number we invented.
 
@@ -119,7 +120,7 @@ cannot write unbounded text into the primary key."""
 
 @dataclass(frozen=True, slots=True)
 class LiveOddsQuote:
-    """One in-play price, as observed. Append-only: never updated in place."""
+    """One in-play price, as observed in one /odds/live answer."""
 
     provider_fixture_id: int
     provider_bet_id: int

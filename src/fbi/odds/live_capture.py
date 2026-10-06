@@ -1,21 +1,28 @@
 """The in-play capture use case. A pipeline of its own, start to finish.
 
-    LIVE FIXTURE -> LIVE ODDS -> RAW PAYLOAD -> NORMALISATION
-                 -> LIVE MARKET SNAPSHOT -> (LIVE MARKET MOVEMENT)
+    LIVE FIXTURE -> LIVE ODDS -> NORMALISATION -> THE BOOK AS IT STANDS NOW
+                    (market.live_fixture_current, market.live_odds_current)
 
-It shares the client, the quota ledger and the raw store with the pre-match
-pipeline - those are infrastructure - and shares nothing else. It reads no
-pre-match table and writes none. In particular it never touches
-market.odds_snapshots, market.near_close_snapshots or market.market_consensus,
-so no in-play price can reach the model or the backtest from here.
+It shares the client and the quota ledger with the pre-match pipeline - those are infrastructure - and shares
+nothing else. It reads no pre-match table and writes none. In particular it never touches market.odds_snapshots,
+market.final_prematch_odds, market.near_close_snapshots or market.market_consensus, so no in-play price can reach
+a model, a pick or the backtest from here.
 
-Nothing in this module decides a bet. It records what the in-play market said
-and when, and that is all it is allowed to do.
+EPHEMERAL SINCE REVISION 0068 (owner's decision, 6 Oct 2026)
+------------------------------------------------------------
+Only the present of the in-play book is kept: the price each key is quoted at now, with the one it replaced. A
+withdrawn key is deleted, a fixture that left the live book is purged (``live_repository.STALE_AFTER``), and the
+/odds/live body is hashed but not written to the RAW store - it is evidence of nothing that is stored. It IS
+written, and indexed, when the parse found an anomaly worth an incident (a renamed bet, a price refused for a
+reason other than a normal suspension): the quality issue then points to the bytes that raised it.
+
+Nothing in this module decides a bet. It shows what the in-play market says now, and that is all it is allowed
+to do.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from typing import Protocol
 
@@ -26,6 +33,7 @@ from psycopg.rows import tuple_row
 from fbi.core.clock import now
 from fbi.core.errors import CircuitOpenError, ProviderError, QuotaExhaustedError
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.ingestion.payload_store import PayloadStore
 from fbi.odds.live_cadence import (
     DEFAULT_LIVE_DAILY_BUDGET,
     MAX_MATCH_MINUTES,
@@ -33,14 +41,15 @@ from fbi.odds.live_cadence import (
     CadenceDecision,
     decide,
 )
-from fbi.odds.live_repository import LiveOddsRepository
+from fbi.odds.live_repository import LiveOddsRepository, PurgeResult
 from fbi.providers.api_football.live import (
     LiveFixtureState,
     LiveMarketSeen,
     LiveOddsQuote,
 )
 from fbi.providers.base import OddsParseLog, RawResponse
-from fbi.quality.provider_signals import record_parse_log
+from fbi.quality.issues import IssueRegistry
+from fbi.quality.provider_signals import issues_from_parse_log
 
 log = structlog.get_logger(__name__)
 
@@ -54,7 +63,7 @@ class LiveOddsSource(Protocol):
     """
 
     async def fetch_live_odds_all(
-        self, *, parse_log: OddsParseLog | None = None
+        self, *, parse_log: OddsParseLog | None = None, persist_raw: bool = False
     ) -> tuple[
         list[LiveFixtureState], list[LiveOddsQuote], list[LiveMarketSeen], RawResponse
     ]: ...
@@ -102,12 +111,20 @@ class LiveCaptureReport:
     unknown_fixtures: int = 0
     quotes_untracked: int = 0
     quotes_unchanged: int = 0
-    """Read, compared against the last row for their key, and found identical.
-    No row written, nothing lost: market.live_fixture_states records that the
-    instant was observed, so the price is still answerable for it. Expected to
-    be about three quarters of what arrives."""
+    """Read, compared against what the book holds for their key, and found identical: nothing written.
+    About three quarters of what arrives."""
     withdrawals_written: int = 0
-    """Keys that stopped being quoted, recorded with a NULL price."""
+    """Keys a fixture of this tick stopped quoting: deleted from the book."""
+    quotes_inserted: int = 0
+    quotes_updated: int = 0
+    book_fixtures: int = 0
+    """Fixtures in the in-play book after this tick - bounded by what is in play, never a history."""
+    book_quotes: int = 0
+    """Prices in the in-play book after this tick."""
+    purged_fixtures: int = 0
+    purged_quotes: int = 0
+    raw_kept: bool = False
+    """Whether this tick's /odds/live body was written to the RAW store: only as evidence of an anomaly."""
     unmapped_rows: int = 0
     markets_observed: int = 0
     markets_newly_catalogued: int = 0
@@ -120,19 +137,15 @@ class LiveCaptureReport:
     def accounting_holds(self) -> bool:
         """Every quote read is accounted for, in one of four ways.
 
-        It changed a price (written), it matched the last one (unchanged), the
-        row was already there (duplicate), or its fixture is not one we track
-        (untracked). Nothing else can happen to a quote, which is what makes
-        silent loss impossible to hide.
+        It changed the book (written: inserted or updated), it matched what the book held (unchanged), this
+        payload had already quoted its key (duplicate), or its fixture is not one we track (untracked). Nothing
+        else can happen to a quote, which is what makes silent loss impossible to hide.
 
-        The withdrawals are not in this sum on purpose: they are rows written
-        for keys that were NOT in this payload, so they are not quotes that were
-        read. quotes_written counts both, hence the subtraction.
+        The withdrawals are not in this sum on purpose: they are keys that were NOT in this payload.
         """
-        priced = self.quotes_written - self.withdrawals_written
         return (
             self.quotes_seen
-            == priced + self.quotes_unchanged + self.quotes_duplicate
+            == self.quotes_written + self.quotes_unchanged + self.quotes_duplicate
             + self.quotes_untracked
         )
 
@@ -161,6 +174,7 @@ class LiveCaptureService:
         live_daily_budget: int = DEFAULT_LIVE_DAILY_BUDGET,
         floor_seconds: int = POLL_FLOOR_SECONDS,
         max_match_minutes: int = MAX_MATCH_MINUTES,
+        raw_store: PayloadStore | None = None,
     ) -> None:
         self._conn = conn
         self._provider = provider
@@ -169,6 +183,54 @@ class LiveCaptureService:
         self._budget = live_daily_budget
         self._floor = floor_seconds
         self._max_match_minutes = max_match_minutes
+        self._raw_store = raw_store
+
+    def purge_stale(self, *, at: datetime | None = None) -> PurgeResult:
+        """Drop what left the live book, and commit. No request: safe on every wake-up, played or not."""
+        result = self._repo.purge_stale(at=at)
+        self._conn.commit()
+        return result
+
+    def _record_anomalies(self, anomalies: OddsParseLog, raw: RawResponse, run_id: int,
+                          report: LiveCaptureReport) -> None:
+        """Record what the parse refused for a real reason - keeping the body only when it is new evidence.
+
+        An issue's fingerprint does not include its payload, so the same anomaly on the next tick is the same issue
+        seen again: it needs no new bytes, and its row keeps pointing to the payload that first showed it. A body
+        is written to the RAW store, and indexed, only when this tick opens an issue nobody has recorded yet - so a
+        quirk the provider repeats every 30 s costs one payload, not one per tick.
+        """
+        issues = issues_from_parse_log(anomalies, source="live", run_id=run_id)
+        if not issues:
+            return
+        with self._conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute("SELECT fingerprint, payload_hash FROM audit.data_quality_issues WHERE fingerprint = ANY(%s)",
+                        ([i.fingerprint for i in issues],))
+            known: dict[str, str | None] = {str(f): (None if h is None else str(h)) for f, h in cur.fetchall()}
+        kept_hash: str | None = None
+        if any(i.fingerprint not in known for i in issues):
+            kept = self._keep(raw)
+            report.payloads_stored = self._ledger.record_payloads(run_id, [kept])
+            report.raw_kept = True
+            kept_hash = kept.payload_hash
+        # Each issue names the evidence it already has, or the body kept now: a seen-again issue is not re-pointed
+        # at bytes that were never written.
+        final = [replace(i, payload_hash=known.get(i.fingerprint) or kept_hash) for i in issues]
+        result = IssueRegistry(self._conn).record_many(final)
+        report.quality_issues_opened = result.opened
+
+    def _keep(self, raw: RawResponse) -> RawResponse:
+        """Write an in-play body to the RAW store after all - it is evidence of an anomaly - and return it as a
+        persisted response the ledger can index. Same body, so the same hash and the same path."""
+        if raw.persisted:
+            return raw
+        if self._raw_store is None:
+            from fbi.core.config import settings
+
+            self._raw_store = PayloadStore(settings.runtime.raw_store_dir)
+        stored = self._raw_store.store(endpoint=raw.endpoint, params=raw.params, fetched_at=raw.fetched_at,
+                                       http_status=raw.http_status, body=raw.body)
+        return replace(raw, file_path=stored.file_path, bytes_written=stored.bytes_written, persisted=True)
 
     # -- cadence -------------------------------------------------------------
 
@@ -248,6 +310,8 @@ class LiveCaptureService:
         )
         if not decision.should_capture:
             report.skipped_reason = decision.reason
+            purged = self.purge_stale(at=at)
+            report.purged_fixtures, report.purged_quotes = purged.fixtures, purged.quotes
             log.info(
                 "live_capture.skipped",
                 reason=decision.reason,
@@ -283,9 +347,10 @@ class LiveCaptureService:
         report.values_suspended = sum(s.values_suspended for s in states)
         report.refused = parse_log.rejected_total
 
-        report.payloads_stored = self._ledger.record_payloads(run_id, [raw])
         written = self._repo.write(states, quotes)
         report.quotes_written = written.quotes_written
+        report.quotes_inserted = written.quotes_inserted
+        report.quotes_updated = written.quotes_updated
         report.quotes_duplicate = written.quotes_duplicate
         report.states_written = written.states_written
         report.unknown_fixtures = written.unknown_fixtures
@@ -294,26 +359,14 @@ class LiveCaptureService:
         report.withdrawals_written = written.withdrawals_written
         report.unmapped_rows = written.unmapped_markets_written
         report.markets_newly_catalogued = self._repo.record_live_markets(markets)
+        purged = self._repo.purge_stale(at=at)
+        report.purged_fixtures, report.purged_quotes = purged.fixtures, purged.quotes
+        report.book_fixtures, report.book_quotes = self._repo.book_size()
 
-        # The catalogue was updated by the repository, with every bet observed -
-        # not only the unmapped ones. What does NOT happen here is the other
-        # half: an unmapped in-play bet is information, not a defect. 67 of the
-        # 72 live bets have no market of ours, that is the documented design,
-        # and unlike pre-match their prices ARE stored (market_key NULL), so the
-        # pre-match wording "the prices are not stored" would be false.
-
-        # What is left is genuinely anomalous, and goes in with the prices in the
-        # same transaction. source='live' keeps these signals apart from
-        # pre-match ones so a live-only quirk never reads as a pre-match
-        # regression.
-        signals = record_parse_log(
-            self._conn,
-            _anomalies_only(parse_log),
-            source="live",
-            payload_hash=raw.payload_hash,
-            run_id=run_id,
-        )
-        report.quality_issues_opened = signals.issues_opened
+        # An unmapped in-play bet is information, not a defect: 140 of the 145 in-play markets seen have no market
+        # of ours, by design. What is left after _anomalies_only is genuinely anomalous. source='live' keeps these
+        # signals apart from pre-match ones so a live-only quirk never reads as a pre-match regression.
+        self._record_anomalies(_anomalies_only(parse_log), raw, run_id, report)
         self._conn.commit()
 
         self._ledger.close(run_id, self._counters(report))
@@ -322,6 +375,8 @@ class LiveCaptureService:
             fixtures=report.fixtures_priced,
             quotes=report.quotes_seen,
             written=report.quotes_written,
+            inserted=report.quotes_inserted,
+            updated=report.quotes_updated,
             duplicate=report.quotes_duplicate,
             suspended=report.values_suspended,
             refused=report.refused,
@@ -329,6 +384,10 @@ class LiveCaptureService:
             untracked=report.quotes_untracked,
             unchanged=report.quotes_unchanged,
             withdrawn=report.withdrawals_written,
+            book_fixtures=report.book_fixtures,
+            book_quotes=report.book_quotes,
+            purged_fixtures=report.purged_fixtures,
+            raw_kept=report.raw_kept,
             accounting_holds=report.accounting_holds,
             next_in_seconds=report.next_in_seconds,
         )
@@ -350,7 +409,7 @@ class LiveCaptureService:
             api_calls=report.api_calls,
             payloads_stored=report.payloads_stored,
             rows_normalized=report.quotes_seen,
-            rows_inserted=report.quotes_written + report.states_written,
-            rows_updated=0,
+            rows_inserted=report.quotes_inserted,
+            rows_updated=report.quotes_updated + report.states_written,
             errors=list(report.errors),
         )

@@ -28,6 +28,8 @@ PREMATCH_TABLES = (
     "market.odds_snapshots",
     "market.near_close_snapshots",
     "market.market_consensus",
+    "market.final_prematch_odds",
+    "market.historical_odds",
 )
 
 
@@ -98,15 +100,23 @@ def test_the_live_pipeline_queries_no_prematch_table(module: ModuleType) -> None
 
 
 def test_the_live_pipeline_writes_only_its_own_two_tables() -> None:
-    """Two tables, and no third. The catalogue is not written from here either:
-    catalog.provider_markets owns market.provider_markets, so an observation
-    cannot acquire a second writer with a second policy."""
+    """Two tables, and no third - the current in-play book (revision 0068). The catalogue is not written from
+    here either: catalog.provider_markets owns market.provider_markets, so an observation cannot acquire a second
+    writer with a second policy. Inserted, updated and deleted alike."""
     blob = " ".join(sql_literals(live_repository))
     inserted = set(re.findall(r"INSERT INTO\s+([\w.]+)", blob))
-    assert inserted == {
-        "market.live_fixture_states",
-        "market.live_odds_snapshots",
-    }
+    updated = set(re.findall(r"UPDATE\s+([\w.]+)\s+SET", blob))
+    deleted = set(re.findall(r"DELETE FROM\s+([\w.]+)", blob))
+    book = {"market.live_fixture_current", "market.live_odds_current"}
+    assert inserted == book
+    assert updated <= book and deleted <= book
+
+
+def test_the_live_pipeline_keeps_no_inplay_history() -> None:
+    """The append-only series is gone (owner's decision, 6 Oct 2026): nothing names it any more."""
+    for module in (live_capture, live_repository):
+        blob = " ".join(sql_literals(module))
+        assert "live_odds_snapshots" not in blob and "live_fixture_states" not in blob, module.__name__
 
 
 def test_the_live_service_holds_no_prematch_repository() -> None:

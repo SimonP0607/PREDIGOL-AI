@@ -174,8 +174,8 @@ class OddsCaptureService:
             # if one ever arrives, it fails here rather than mixing the series.
             raise ValueError(
                 "near_close tasks are not served by the pre-match capture: "
-                "/odds/live returns in-play prices and they belong in "
-                "market.live_odds_snapshots. See LiveCaptureService."
+                "/odds/live returns in-play prices and they belong to the "
+                "in-play pipeline. See LiveCaptureService."
             )
 
         quotes, raws = await self._provider.fetch_prematch_odds(

@@ -3,11 +3,12 @@
     python scripts/capture_live.py plan        # what the cadence would do, 0 requests
     python scripts/capture_live.py once        # one tick
     python scripts/capture_live.py follow      # keep ticking at the measured cadence
-    python scripts/capture_live.py coverage    # what has been captured so far, 0 requests
-    python scripts/capture_live.py movement    # the price changes observed, 0 requests
+    python scripts/capture_live.py coverage    # what the in-play book holds now, 0 requests
+    python scripts/capture_live.py movement    # the last change of each price in the book, 0 requests
 
 ``plan``, ``coverage`` and ``movement`` never call the provider, so they are safe to run at
-any time to see what the live path is doing and what it has.
+any time to see what the live path is doing. The in-play book is ephemeral (revision 0068):
+it holds what is being quoted NOW, and nothing once the matches are over.
 """
 
 from __future__ import annotations
@@ -127,46 +128,37 @@ async def _follow(max_ticks: int | None) -> int:
     return 0
 
 
-def _coverage(hours: int) -> int:
+def _coverage() -> int:
     with _connect() as conn:
         repo = LiveOddsRepository(conn)
-        markets = repo.market_coverage(since_hours=hours)
-        comps = repo.competition_coverage(since_hours=hours)
-    print(f"=== in-play markets actually priced, last {hours}h "
-          f"({len(markets)} distinct bets)")
+        markets = repo.market_coverage()
+        comps = repo.competition_coverage()
+    print(f"=== in-play markets priced now ({len(markets)} distinct bets)")
     print(f"{'bet':>5}  {'fixtures':>8}  {'values':>8}  name")
     for bet_id, name, fixtures, values in markets[:40]:
         print(f"{bet_id:>5}  {fixtures:>8}  {values:>8}  {name}")
-    print(f"\n=== competitions seen in play, last {hours}h ({len(comps)})")
+    print(f"\n=== competitions priced in play now ({len(comps)})")
     for league_id, name, fixtures in comps[:40]:
         print(f"{league_id:>6}  {fixtures:>4}  {name}")
     if not markets:
-        print("(nothing captured yet)")
+        print("(the in-play book is empty: nothing is being priced in play)")
     return 0
 
 
-def _movement(hours: int, fixture: int | None) -> int:
+def _movement(fixture: int | None) -> int:
     with _connect() as conn:
-        rows = LiveOddsRepository(conn).movements(
-            provider_fixture_id=fixture, since_minutes=hours * 60, limit=40
-        )
+        rows = LiveOddsRepository(conn).changes(provider_fixture_id=fixture, limit=40)
     if not rows:
-        print("(no price change observed in that window)")
+        print("(no price in the current in-play book has changed since it was first quoted)")
         return 0
     print(f"{'fixture':>9} {'market':>5} {'selection':>9} {'line':>6} "
-          f"{'from':>7} {'to':>7} {'d prob':>8} {'min':>4} score  why")
+          f"{'from':>7} {'to':>7} {'d prob':>8} {'min':>4} score  kind")
     for m in rows:
-        why = []
-        if m.score_changed:
-            why.append("GOAL")
-        if m.became_suspended:
-            why.append("suspended")
-        if m.became_available:
-            why.append("reopened")
+        delta = f"{m.implied_prob_delta:>+8.4f}" if m.implied_prob_delta is not None else f"{'-':>8}"
         print(f"{m.provider_fixture_id:>9} {m.market_key or '-':>5} "
-              f"{m.selection:>9} {m.line:>6} {m.previous_odds:>7} {m.odds:>7} "
-              f"{m.implied_prob_delta:>+8.4f} {m.elapsed_minute or 0:>4} "
-              f"{m.score_home}-{m.score_away}  {' '.join(why)}")
+              f"{m.selection:>9} {m.line:>6} {m.previous_odds or '-':>7} {m.odds:>7} "
+              f"{delta} {m.minute or 0:>4} "
+              f"{m.score_home}-{m.score_away}  {m.change_kind}")
     return 0
 
 
@@ -177,10 +169,8 @@ def main() -> int:
     sub.add_parser("once", help="one capture tick")
     f = sub.add_parser("follow", help="capture continuously at the measured cadence")
     f.add_argument("--max-ticks", type=int, default=None)
-    c = sub.add_parser("coverage", help="what has been captured (no requests)")
-    c.add_argument("--hours", type=int, default=24)
-    mv = sub.add_parser("movement", help="observed price changes (no requests)")
-    mv.add_argument("--hours", type=int, default=3)
+    sub.add_parser("coverage", help="what the in-play book holds now (no requests)")
+    mv = sub.add_parser("movement", help="the last change of each price in the book (no requests)")
     mv.add_argument("--fixture", type=int, default=None,
                     help="one provider fixture id")
     args = ap.parse_args()
@@ -192,8 +182,8 @@ def main() -> int:
     if args.cmd == "follow":
         return asyncio.run(_follow(args.max_ticks))
     if args.cmd == "movement":
-        return _movement(args.hours, args.fixture)
-    return _coverage(args.hours)
+        return _movement(args.fixture)
+    return _coverage()
 
 
 if __name__ == "__main__":

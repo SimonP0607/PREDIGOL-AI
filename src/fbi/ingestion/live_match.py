@@ -58,7 +58,7 @@ SELECT f.id, f.provider_fixture_id
    AND f.status_group IN ('scheduled', 'live')
 UNION
 SELECT f.id, f.provider_fixture_id
-  FROM market.live_fixture_states s
+  FROM market.live_fixture_current s
   JOIN core.fixtures f ON f.id = s.fixture_id
  WHERE s.captured_at > %(at)s - %(recent)s
    AND NOT COALESCE(s.is_finished, false)

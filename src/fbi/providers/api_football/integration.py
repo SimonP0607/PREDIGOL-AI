@@ -204,9 +204,11 @@ USES: dict[str, Use] = {
                             "Batched answers are one block per person ({id, sidelined})."),
     "/odds/live": Use("FULL", "high", ("live_odds tick",), ("<none> (all fixtures in play)", "fixture"),
                       "adaptive, every 15-60 s within the live budget (documented: updated every 5-60 s)",
-                      ("market.live_odds_snapshots (change-only)", "market.live_fixture_states"),
-                      ("Live page, Match Center live odds and movement",),
-                      notes="no history at the provider: what is not captured live is lost."),
+                      ("market.live_odds_current (the book now, ephemeral)", "market.live_fixture_current"),
+                      ("Live page, Match Center live odds and last movement",),
+                      notes="no history at the provider, and none kept by PrediGol since revision 0068 (6 Oct "
+                            "2026): the current price is shown while the match is played and purged after it. "
+                            "The body is not kept in RAW unless it is new evidence of an anomaly."),
     "/odds/live/bets": Use("FULL", "medium", ("reference_refresh (odds_live_bets)", "catalogue file load"),
                            ("<none>",), "daily (documented: updated every 60 s, no call rate given)",
                            ("market.provider_markets (scope inplay)", "market.provider_catalogue_changes (renames)"),

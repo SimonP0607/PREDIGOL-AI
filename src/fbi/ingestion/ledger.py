@@ -112,9 +112,15 @@ class RunLedger:
 
     def record_payloads(self, run_id: int, raws: Sequence[RawResponse], *, provider: str = "api_football") -> int:
         """Index the raw files. A price cannot exist without the bytes it came
-        from: market.odds_snapshots.payload_hash references this table."""
+        from: market.odds_snapshots.payload_hash references this table.
+
+        An ephemeral response (``RawResponse.persisted`` False: hashed, never written) has no file, and an index row
+        for it would be a reference to nothing - the RAW integrity audit would call it missing. It is refused."""
         if not raws:
             return 0
+        ephemeral = [r.endpoint for r in raws if not getattr(r, "persisted", True)]
+        if ephemeral:
+            raise ValueError(f"cannot index payloads that were never written to the RAW store: {ephemeral}")
         with self._conn.cursor() as cur:
             cur.executemany(
                 "INSERT INTO raw.ingestion_payloads "

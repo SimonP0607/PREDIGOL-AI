@@ -1,12 +1,11 @@
 """Monthly partition maintenance for the odds time series.
 
-``market.odds_snapshots`` and ``market.live_odds_snapshots`` are RANGE partitioned on
-``captured_at``. Without a partition for the current month every row lands in the DEFAULT
-partition and the pruning that makes these tables survivable does nothing.
+``market.odds_snapshots`` is RANGE partitioned on ``captured_at``. Without a partition for the
+current month every row lands in the DEFAULT partition and the pruning that makes the table
+survivable does nothing.
 
-Both series are maintained together on purpose: the live one grows faster - one capture
-of eight in-play fixtures carried 1,933 prices - and a table whose partitions are
-maintained only when someone remembers is the one that fills the default partition.
+The in-play series (``market.live_odds_snapshots``) was maintained here too until revision 0068
+made in-play odds a bounded current book: it receives no row since, and revision 0069 drops it.
 
 Creating partitions AHEAD of time is the point: a partition created the moment
 it is needed is a partition created during an incident.
@@ -23,7 +22,7 @@ log = structlog.get_logger(__name__)
 
 PARTITION_MONTHS_AHEAD = 3
 
-PARTITIONED_TABLES: tuple[str, ...] = ("odds_snapshots", "live_odds_snapshots")
+PARTITIONED_TABLES: tuple[str, ...] = ("odds_snapshots",)
 """Every RANGE-partitioned odds table, so adding one here maintains it everywhere."""
 
 

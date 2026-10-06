@@ -133,34 +133,36 @@ SELECT observed_at, 'fixture_feed' AS source, status_short AS status, elapsed, e
   FROM core.fixture_live_states WHERE fixture_id = %(f)s
 UNION ALL
 SELECT captured_at, 'odds_feed', COALESCE(status_long, '?'), elapsed_minute, NULL, score_home, score_away
-  FROM (SELECT *, lag((elapsed_minute, score_home, score_away, status_long))
-                    OVER (ORDER BY captured_at) AS prev
-          FROM market.live_fixture_states WHERE fixture_id = %(f)s) s
- WHERE prev IS DISTINCT FROM (elapsed_minute, score_home, score_away, status_long)
+  FROM market.live_fixture_current WHERE fixture_id = %(f)s
 ORDER BY 1 DESC LIMIT 400
 """
+"""The match as it was played comes from the fixture feed, kept permanently (core.fixture_live_states). The odds
+feed adds at most ONE row - its state now, while the match is in the live book: since revision 0068 the in-play
+book keeps no history."""
 
 LIVE_LATEST_QUOTES = """
-SELECT DISTINCT ON (provider_bet_id, selection, line)
-       market_key, provider_bet_id, selection, line, odds_decimal AS odds, is_suspended AS suspended,
-       is_main_line AS main_line, captured_at, elapsed_minute AS minute
-  FROM market.live_odds_snapshots
- WHERE fixture_id = %(f)s AND captured_at > %(since)s
- ORDER BY provider_bet_id, selection, line, captured_at DESC
+SELECT o.market_key, o.provider_bet_id, o.selection, o.line, o.odds_decimal AS odds, o.is_suspended AS suspended,
+       o.is_main_line AS main_line, o.changed_at AS captured_at, o.changed_minute AS minute
+  FROM market.live_odds_current o
+ WHERE o.fixture_id = %(f)s AND o.changed_at > %(since)s
 """
+"""The in-play prices being quoted NOW (market.live_odds_current), each with the instant and minute its price was
+set. Empty once the match has left the live book: in-play prices are shown while the match is played and not kept
+afterwards (revision 0068)."""
 
 LIVE_MOVEMENT = """
-SELECT market_key, selection, line, captured_at, elapsed_minute AS minute,
-       CASE WHEN score_home IS NULL THEN NULL ELSE score_home || '-' || score_away END AS score,
-       previous_odds, odds, odds_delta AS delta,
-       CASE WHEN became_withdrawn THEN 'withdrawn' WHEN became_offered THEN 'offered'
-            WHEN became_suspended THEN 'suspended' WHEN became_available THEN 'available'
-            WHEN price_moved THEN 'moved' ELSE 'other' END AS kind
-  FROM market.live_market_movement
- WHERE fixture_id = %(f)s AND market_key IS NOT NULL
-   AND (price_moved OR became_withdrawn OR became_offered OR became_suspended OR became_available)
- ORDER BY captured_at DESC LIMIT %(limit)s
+SELECT market_key, selection, line, changed_at AS captured_at, changed_minute AS minute,
+       CASE WHEN changed_score_home IS NULL THEN NULL ELSE changed_score_home || '-' || changed_score_away END AS score,
+       previous_odds, odds_decimal AS odds,
+       CASE WHEN change_kind = 'moved' THEN odds_decimal - previous_odds END AS delta,
+       change_kind AS kind
+  FROM market.live_odds_current
+ WHERE fixture_id = %(f)s AND market_key IS NOT NULL AND change_kind <> 'offered'
+ ORDER BY changed_at DESC LIMIT %(limit)s
 """
+"""The LAST change of each of our markets' selections still in the book - which price moved, from what, at which
+minute and score - newest first. One row per selection at most: the in-play book keeps the price a key replaced,
+not a series (revision 0068)."""
 
 # ── Live board ─────────────────────────────────────────────────────────────
 
@@ -171,10 +173,9 @@ WITH feed AS (
       FROM core.fixture_live_states WHERE observed_at > %(at)s - interval '4 hours'
      ORDER BY fixture_id, observed_at DESC
 ), odds AS (
-    SELECT DISTINCT ON (fixture_id) fixture_id, captured_at AS at, status_long, elapsed_minute, score_home,
+    SELECT fixture_id, captured_at AS at, status_long, elapsed_minute, score_home,
            score_away, is_finished, markets_offered, values_suspended
-      FROM market.live_fixture_states WHERE captured_at > %(at)s - interval '30 minutes'
-     ORDER BY fixture_id, captured_at DESC
+      FROM market.live_fixture_current WHERE captured_at > %(at)s - interval '30 minutes'
 ), live AS (
     SELECT fixture_id FROM feed WHERE status IN ('1H','HT','2H','ET','BT','P','LIVE','INT','SUSP')
     UNION
@@ -219,19 +220,20 @@ SELECT fixture_id, team_side AS side, shots, shots_on_target, shots_off_target, 
 """
 
 LIVE_BOARD_ODDS = """
-SELECT DISTINCT ON (fixture_id, provider_bet_id, selection, line)
-       fixture_id, market_key, provider_bet_id, selection, line, odds_decimal AS odds,
-       is_suspended AS suspended, is_main_line AS main_line, captured_at, elapsed_minute AS minute
-  FROM market.live_odds_snapshots
- WHERE fixture_id = ANY(%(ids)s) AND captured_at > %(at)s - interval '30 minutes'
-   AND market_key IN ('1X2', 'OU') AND COALESCE(is_main_line, market_key = '1X2')
- ORDER BY fixture_id, provider_bet_id, selection, line, captured_at DESC
+SELECT o.fixture_id, o.market_key, o.provider_bet_id, o.selection, o.line, o.odds_decimal AS odds,
+       o.is_suspended AS suspended, o.is_main_line AS main_line, o.changed_at AS captured_at,
+       o.changed_minute AS minute
+  FROM market.live_odds_current o
+  JOIN market.live_fixture_current s ON s.fixture_id = o.fixture_id
+ WHERE o.fixture_id = ANY(%(ids)s) AND s.captured_at > %(at)s - interval '30 minutes'
+   AND o.market_key IN ('1X2', 'OU') AND COALESCE(o.is_main_line, o.market_key = '1X2')
+ ORDER BY o.fixture_id, o.provider_bet_id, o.selection, o.line
 """
 
 LIVE_FEEDS = """
 SELECT (SELECT max(observed_at) FROM core.fixture_live_states) AS fixture_feed_at,
-       (SELECT max(captured_at) FROM market.live_fixture_states) AS odds_feed_at,
-       (SELECT count(DISTINCT fixture_id) FROM market.live_fixture_states
+       (SELECT max(captured_at) FROM market.live_fixture_current) AS odds_feed_at,
+       (SELECT count(*) FROM market.live_fixture_current
          WHERE captured_at > %(at)s - interval '5 minutes') AS priced
 """
 
@@ -529,11 +531,12 @@ SELECT
   (SELECT count(*) FROM market.odds_snapshots WHERE captured_at > %(at)s - interval '1 hour') AS prematch_1h,
   (SELECT count(*) FROM market.odds_snapshots WHERE captured_at > %(at)s - interval '24 hours') AS prematch_24h,
   (SELECT max(captured_at) FROM market.odds_snapshots WHERE captured_at > %(at)s - interval '7 days') AS prematch_last,
-  (SELECT count(*) FROM market.live_odds_snapshots WHERE captured_at > %(at)s - interval '1 hour') AS live_1h,
-  (SELECT count(*) FROM market.live_odds_snapshots WHERE captured_at > %(at)s - interval '24 hours') AS live_24h,
-  (SELECT max(captured_at) FROM market.live_odds_snapshots WHERE captured_at > %(at)s - interval '7 days') AS live_last,
-  (SELECT count(DISTINCT fixture_id) FROM market.live_fixture_states
+  (SELECT count(*) FROM market.live_odds_current) AS live_quotes_now,
+  (SELECT max(captured_at) FROM market.live_fixture_current) AS live_last,
+  (SELECT count(*) FROM market.live_fixture_current
     WHERE captured_at > %(at)s - interval '5 minutes') AS live_priced_now,
+  (SELECT max(finished_at) FROM raw.ingestion_runs
+    WHERE job_type = 'live_odds_capture' AND status = 'completed') AS live_tick_last,
   (SELECT count(*) FROM core.fixture_live_states WHERE observed_at > %(at)s - interval '24 hours') AS match_states_24h,
   (SELECT max(observed_at) FROM core.fixture_live_states) AS match_states_last,
   (SELECT count(*) FROM core.fixtures WHERE kickoff_at BETWEEN %(at)s AND %(at)s + interval '7 days') AS upcoming_7d,

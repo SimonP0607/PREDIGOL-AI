@@ -200,7 +200,7 @@ class ApiFootballProvider:
         return FinalPrematch(update_at, quotes, [raw], refused_after_kickoff=False)
 
     async def fetch_live_odds_all(
-        self, *, parse_log: OddsParseLog | None = None
+        self, *, parse_log: OddsParseLog | None = None, persist_raw: bool = False
     ) -> tuple[list[LiveFixtureState], list[LiveOddsQuote], list[LiveMarketSeen], RawResponse]:
         """Every fixture the provider is pricing in play, in ONE request.
 
@@ -212,8 +212,12 @@ class ApiFootballProvider:
         market.odds_snapshots through this method, which is the point: the two
         series are different observations and the pre-match backtest must never
         be able to read an in-play number.
+
+        The body is NOT written to the RAW store unless ``persist_raw``: only the present of the in-play book is
+        kept (revision 0068), so its payloads are evidence of nothing stored. The returned RawResponse carries the
+        body, so the caller can still keep it (``PayloadStore.store``) when it holds evidence of an anomaly.
         """
-        response = await self._client.get("/odds/live", {})
+        response = await self._client.get("/odds/live", {}, persist=persist_raw)
         states, quotes, markets = iter_live_odds(
             response.body,
             captured_at=response.fetched_at,
@@ -279,4 +283,5 @@ def _raw(response: Any) -> RawResponse:
         file_path=response.stored.file_path,
         bytes_written=response.stored.bytes_written,
         body=response.body,
+        persisted=getattr(response.stored, "persisted", True),
     )

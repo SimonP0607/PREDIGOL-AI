@@ -33,16 +33,11 @@ def test_partitions_are_created_ahead_of_time(db: psycopg.Connection) -> None:
             "market.odds_snapshots_2026_12",
             "market.odds_snapshots_2027_01",
             "market.odds_snapshots_2027_02",
-            "market.live_odds_snapshots_2026_11",
-            "market.live_odds_snapshots_2026_12",
-            "market.live_odds_snapshots_2027_01",
-            "market.live_odds_snapshots_2027_02",
-        ], "both series are maintained, and the year boundary must not be skipped"
+        ], "the pre-match series is maintained, and the year boundary must not be skipped"
         assert "odds_snapshots_2027_01" in _partitions(db)
-        # The in-play series is housekept by the same job. It had better be: it is
-        # the one series whose rows cannot be re-fetched if a write is refused,
-        # because /odds/live keeps no history of its own.
-        assert "live_odds_snapshots_2027_01" in _partitions(db, "live_odds_snapshots")
+        # The in-play series is not: since revision 0068 in-play odds are a bounded current book, and
+        # nothing is partitioned for a history that is no longer kept.
+        assert not any("live_odds" in name for name in created)
     finally:
         with db.cursor() as cur:
             for name in created:

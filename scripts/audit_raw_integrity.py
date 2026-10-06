@@ -87,8 +87,10 @@ STORE_SYNCED_SINCE = datetime(2026, 10, 4, 18, 35, 44, tzinfo=UTC)
 Damage to a payload written later means the fix did not hold: HIGH. Damage written before it is the bounded
 residue of the 4 Oct 2026 02:57 UTC stop - three files; its severity follows what the rows naming it feed."""
 
-NO_MODEL_TABLES = frozenset({"market.live_odds_snapshots", "market.live_fixture_states", "core.fixture_live_states"})
-"""In-play tables: shown on the live page, never a model or backtest input (``fbi.odds.live_capture``)."""
+NO_MODEL_TABLES = frozenset({"market.live_odds_snapshots", "market.live_fixture_states", "core.fixture_live_states",
+                             "market.live_odds_current", "market.live_fixture_current"})
+"""In-play tables: shown on the live page, never a model or backtest input (``fbi.odds.live_capture``). The first two
+held the in-play history until revision 0069 dropped it; the current book (0068) keeps no RAW link of its own."""
 
 
 def severity_of(fetched_at: datetime, rows_naming_it: dict[str, int]) -> str:

@@ -94,7 +94,6 @@ REFERENCE_STEADY_BYTES_PER_DAY = 2 * 1024 * 1024
 change-only, people re-asked weekly - an allowance, not a measurement (the first fill is all the window shows)."""
 
 GROWERS: tuple[Grower, ...] = (
-    Grower("live_odds", "in-play prices (change-only)", "market.live_odds_snapshots", "captured_at"),
     Grower("prematch_odds", "pre-match prices", "market.odds_snapshots", "captured_at",
            lifetime_sql=LIFETIME.format(table="market.odds_snapshots", extra="")),
     Grower("consensus", "market consensus", "market.market_consensus", "as_of",
@@ -236,8 +235,9 @@ def _backup_dirs() -> list[Path]:
 def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str, Any]:
     end = at.replace(hour=0, minute=0, second=0, microsecond=0)
     start = end - timedelta(days=days)
-    # Basis days run the pipeline as it is now: from the first whole day of in-play capture on.
-    first_live = _scalar(conn, "SELECT min(captured_at) FROM market.live_odds_snapshots")
+    # Basis days run the pipeline as it is now: from the first whole day of in-play capture on (the ledger records
+    # every live tick; the in-play prices themselves are not kept since revision 0068).
+    first_live = _scalar(conn, "SELECT min(started_at) FROM raw.ingestion_runs WHERE job_type = 'live_odds_capture'")
     if first_live is not None:
         start = max(start, first_live.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1))
     complete = _complete_days(conn, start, end)
@@ -274,28 +274,25 @@ def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str,
     tables.append(TableGrowth("reference", "reference feeds after their first fill (allowance)",
                               "core.player_transfers, core.person_trophies, ...", 0.0, 0.0, [],
                               basis="allowance: change-only, people re-asked weekly"))
-    # In-play prices: the structural model, steadier than a median of two or three days.
+    # In-play prices: since revision 0068 only the current book is kept - bounded by what is in play at one
+    # instant, emptied as matches end - so they add nothing a day. Shown as a row so the report says so.
     fixtures_28d = fixtures_per_day(conn, month_ago, end)
-    live = {"fixtures_per_day_28d": round(fixtures_28d, 1)}
+    book_fixtures = int(_scalar(conn, "SELECT count(*) FROM market.live_fixture_current") or 0)
+    book_quotes = int(_scalar(conn, "SELECT count(*) FROM market.live_odds_current") or 0)
+    live = {"fixtures_per_day_28d": round(fixtures_28d, 1), "in_play_book": "ephemeral (revision 0068)",
+            "book_fixtures_now": book_fixtures, "book_quotes_now": book_quotes}
+    tables.append(TableGrowth("live_book", "in-play prices (current book only, ephemeral)", "market.live_odds_current",
+                              0.0, float(_scalar(conn, "SELECT pg_total_relation_size('market.live_odds_current') + "
+                                                       "pg_total_relation_size('market.live_fixture_current')") or 0),
+                              [], basis="bounded by the matches in play at one instant; emptied when they end"))
     finished = 0
     if complete:
         with conn.cursor(row_factory=tuple_row) as cur:
-            cur.execute(
-                "SELECT count(*), count(DISTINCT (fixture_id, date_trunc('day', captured_at))) FROM "
-                "market.live_odds_snapshots WHERE date_trunc('day', captured_at) = ANY(%s)", (complete,))
-            rows, live_fixture_days = cur.fetchone() or (0, 0)
             cur.execute(
                 "SELECT count(*) FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = "
                 "f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id WHERE c.is_tracked "
                 "AND f.status_group = 'finished' AND date_trunc('day', f.kickoff_at) = ANY(%s)", (complete,))
             finished = int((cur.fetchone() or (0,))[0])
-        per_fixture = rows / live_fixture_days if live_fixture_days else 0.0
-        share = min(1.0, live_fixture_days / finished) if finished else 0.0
-        live |= {"rows_per_live_fixture": round(per_fixture), "live_share_of_finished": round(share, 3)}
-        for t in tables:
-            if t.key == "live_odds":
-                t.steady_rows_per_day = fixtures_28d * share * per_fixture
-                t.basis = "tracked fixtures per day (28 d) x share priced in play x rows per such match"
     for t in tables:
         t.steady_bytes_per_day = (REFERENCE_STEADY_BYTES_PER_DAY if t.key == "reference"
                                   else t.steady_rows_per_day * t.bytes_per_row)
@@ -307,8 +304,8 @@ def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str,
         with conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(
                 "SELECT date_trunc('day', p.fetched_at) AS d, "
-                "coalesce(sum(p.bytes) FILTER (WHERE r.job_type IS NULL OR NOT (r.job_type = ANY(%(oneoff)s) "
-                "OR r.job_type = 'reference_refresh')), 0), "
+                "coalesce(sum(p.bytes) FILTER (WHERE (r.job_type IS NULL OR NOT (r.job_type = ANY(%(oneoff)s) "
+                "OR r.job_type = 'reference_refresh')) AND r.job_type IS DISTINCT FROM 'live_odds_capture'), 0), "
                 "coalesce(sum(p.bytes) FILTER (WHERE r.job_type = ANY(%(oneoff)s) OR r.job_type = 'reference_refresh'), 0) "
                 "FROM raw.ingestion_payloads p LEFT JOIN raw.ingestion_runs r ON r.id = p.run_id "
                 "WHERE date_trunc('day', p.fetched_at) = ANY(%(days)s) GROUP BY 1",
@@ -319,7 +316,7 @@ def measure(conn: psycopg.Connection[Any], at: datetime, days: int) -> dict[str,
             cur.execute("SELECT avg(p.bytes) FROM raw.ingestion_payloads p JOIN raw.ingestion_runs r ON "
                         "r.id = p.run_id WHERE r.job_type = 'reference_refresh'")
             reference_bytes_per_request = float((cur.fetchone() or (0,))[0] or 0.0)
-    # Recurring RAW follows the matches (in-play prices and states are most of it): bytes per tracked match played
+    # Recurring RAW follows the matches (the in-play payloads are no longer kept, revision 0068): bytes per tracked match played
     # on the basis days x matches per day (28 d), plus the reference feeds at their steady state.
     raw_per_fixture = sum(raw_days["recurring"]) / finished if finished else 0.0
     raw_per_day = raw_per_fixture * fixtures_28d + STEADY_REFERENCE_REQUESTS * reference_bytes_per_request
@@ -439,8 +436,9 @@ def markdown(report: dict[str, Any]) -> str:
         lines.append("")
     lines += [f"+{f['added_leagues']} leagues: +{f['added_fixtures_per_day']:.1f} fixtures/day (capacity report), "
               f"fixture-driven growth x{f['fixture_factor']}, league-driven x{f['league_factor']}.", "",
-              "Retention assumed in the *_retention rows: in-play prices older than "
-              f"{HOT_DAYS_LIVE} days leave PostgreSQL for monthly Parquet (zstd, ~{PARQUET_RATIO:.0%} of their size); "
+              "In-play prices are not kept since revision 0068 (only the current book, bounded). Retention assumed in "
+              f"the *_retention rows: in-play prices older than {HOT_DAYS_LIVE} days would leave PostgreSQL for "
+              f"monthly Parquet (zstd, ~{PARQUET_RATIO:.0%} of their size); "
               f"dumps kept {DUMP_POLICY[0]} daily / {DUMP_POLICY[1]} weekly / {DUMP_POLICY[2]} monthly; RAW and the "
               "archive copied off-site once (append-only, never deleted without a verified copy).", ""]
     return "\n".join(lines)

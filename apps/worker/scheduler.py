@@ -247,11 +247,12 @@ async def _tick() -> TickOutcome:
 
 
 async def _live_tick() -> None:
-    """In-play capture. Its own pipeline, sharing only client, quota and raw store.
+    """In-play capture: the book as it stands NOW. Its own pipeline, sharing only client and quota.
 
-    This job can reach market.live_odds_snapshots and market.live_fixture_states
-    and nothing else - LiveCaptureService holds no pre-match repository - so an
-    in-play price cannot land in the pre-match series or the backtest from here.
+    This job can reach market.live_fixture_current and market.live_odds_current and nothing else -
+    LiveCaptureService holds no pre-match repository - so an in-play price cannot land in the pre-match series,
+    a model or the backtest from here. Both tables are ephemeral (revision 0068): a wake-up with nothing in play
+    still purges what left the live book, at the cost of one DELETE and no request.
     """
     from scripts.capture_odds import _client
 
@@ -272,8 +273,9 @@ async def _live_tick() -> None:
         )
         decision = service.plan(remaining_quota=remaining)
         if not decision.should_capture:
+            purged = service.purge_stale()
             log.debug("live_tick.skipped", reason=decision.reason,
-                      next_in_seconds=decision.next_in_seconds)
+                      next_in_seconds=decision.next_in_seconds, purged_fixtures=purged.fixtures)
             return
         ensure_partitions(conn, today=today())
         provider = ApiFootballProvider(_client())
@@ -287,7 +289,8 @@ async def _live_tick() -> None:
         log.info("live_tick.captured", fixtures=report.fixtures_priced,
                  written=report.quotes_written, duplicate=report.quotes_duplicate,
                  untracked=report.quotes_untracked, suspended=report.values_suspended,
-                 accounting_holds=report.accounting_holds)
+                 book_fixtures=report.book_fixtures, book_quotes=report.book_quotes,
+                 raw_kept=report.raw_kept, accounting_holds=report.accounting_holds)
 
 
 async def _live_match_tick() -> None:

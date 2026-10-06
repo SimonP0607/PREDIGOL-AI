@@ -41,7 +41,7 @@ SPECS: dict[str, Spec] = {
                                                                    "live_match_capture"),
                     "core.fixture_results", ("fixtures", "golden")),
     "live": Spec(("/fixtures?ids (in play)", "/odds/live"), ("live_match_capture", "live_odds_capture"),
-                 "market.live_fixture_states"),
+                 "core.fixture_live_states"),
     "standings": Spec(("/standings",), ("context_due", "context_refresh"), "core.standings", ("standings",)),
     "injuries": Spec(("/injuries",), ("context_due", "context_refresh"), "core.player_absences", ("injuries",)),
     "lineups": Spec(("/fixtures?ids (lineups)",), ("post_match_detail", "historical_backfill", "live_match_capture"),
