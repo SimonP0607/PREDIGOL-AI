@@ -276,3 +276,49 @@ def test_an_indexed_payload_already_absent_from_the_store_is_named_and_its_row_p
     with psycopg.connect(raw_world["dsn"]) as conn, conn.cursor() as cur:
         cur.execute("SELECT hash FROM raw.ingestion_payloads WHERE endpoint = '/odds/live'")
         assert [r[0] for r in cur.fetchall()] == [raw_world["stored"][0].hash], "only the issue's evidence remains"
+
+
+def test_purge_raw_deletes_nothing_when_a_payload_becomes_referenced_during_the_purge(
+    raw_world: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The per-row foreign-key checks are skipped for the delete and replaced by one check per table AFTER it, in the
+    same transaction: a reference the first look missed (here: the quality issue's, hidden from it) is found there,
+    and the whole purge is rolled back - index rows, files and the record."""
+    _record_archive(raw_world["dsn"], raw_world["out"])
+    real, looks = ic._named, []
+
+    def first_look_misses(cur: Any, referencing: Any, hashes: list[str]) -> set[str]:
+        looks.append(len(hashes))
+        return set() if len(looks) == 1 else real(cur, referencing, hashes)
+
+    monkeypatch.setattr(ic, "_named", first_look_misses)
+    assert ic.purge_raw(raw_world["out"], confirm=True) == 2
+    assert len(looks) == 2, "checked before and after the delete"
+    assert all((raw_world["root"] / s.file_path).is_file() for s in raw_world["stored"])
+    with psycopg.connect(raw_world["dsn"]) as conn, conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM raw.ingestion_payloads WHERE endpoint = '/odds/live'")
+        assert cur.fetchone() == (3,)
+        cur.execute("SELECT count(*) FROM audit.storage_cleanups WHERE kind = 'inplay_raw_purge'")
+        assert cur.fetchone() == (0,)
+
+
+def test_purge_raw_removes_the_files_an_interrupted_purge_left(raw_world: dict[str, Any]) -> None:
+    """Killed after its commit and before its last unlink: the index rows are gone, some files are not. Run again,
+    the archived bytes still on disk are removed - and only those."""
+    _record_archive(raw_world["dsn"], raw_world["out"])
+    left = raw_world["stored"][1]
+    with psycopg.connect(raw_world["dsn"], autocommit=True) as conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM raw.ingestion_payloads WHERE hash = %s", (left.hash,))
+    stranger = raw_world["root"] / "api-football" / "odds-live__not-archived.json.gz"
+    stranger.parent.mkdir(parents=True, exist_ok=True)
+    stranger.write_bytes(b"not in the archive")
+    assert ic.purge_raw(raw_world["out"], confirm=True) == 0
+    assert not (raw_world["root"] / left.file_path).exists()
+    assert not (raw_world["root"] / raw_world["stored"][2].file_path).exists()
+    assert (raw_world["root"] / raw_world["stored"][0].file_path).is_file(), "the issue's evidence stays"
+    assert stranger.read_bytes() == b"not in the archive", "a file the archive does not hold is never touched"
+    with psycopg.connect(raw_world["dsn"]) as conn, conn.cursor() as cur:
+        cur.execute("SELECT rows, details->'unindexed_files_removed' FROM audit.storage_cleanups "
+                    "WHERE kind = 'inplay_raw_purge'")
+        assert cur.fetchone() == (1, 1)
+    assert ic.purge_raw(raw_world["out"], confirm=True) == 0, "a third run finds nothing to do"

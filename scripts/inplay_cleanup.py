@@ -385,6 +385,24 @@ def verify(out: Path) -> int:
 # -- purge the RAW store ---------------------------------------------------------------------------------------------
 
 
+def _referencing(cur: psycopg.Cursor[Any]) -> list[tuple[str, str]]:
+    """Every (table, column) with a foreign key into the RAW payload index."""
+    cur.execute("SELECT conrelid::regclass::text, a.attname FROM pg_constraint c JOIN pg_attribute a "
+                "ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1] WHERE c.contype = 'f' "
+                "AND c.confrelid = 'raw.ingestion_payloads'::regclass ORDER BY 1, 2")
+    return [(str(t), str(c)) for t, c in cur.fetchall()]
+
+
+def _named(cur: psycopg.Cursor[Any], referencing: list[tuple[str, str]], hashes: list[str]) -> set[str]:
+    """Which of these payload hashes some row still names - one scan per referencing table."""
+    named: set[str] = set()
+    for table, column in referencing:
+        cur.execute(sql.SQL("SELECT DISTINCT {c} FROM {t} WHERE {c} = ANY(%s)").format(
+            c=sql.Identifier(column), t=sql.SQL(table)), (hashes,))
+        named |= {str(r[0]) for r in cur.fetchall()}
+    return named
+
+
 def purge_raw(out: Path, *, confirm: bool) -> int:
     manifest = json.loads((out / "manifest.json").read_text())
     with _connect() as conn:
@@ -407,15 +425,8 @@ def purge_raw(out: Path, *, confirm: bool) -> int:
         absent = {m["payload_hash"]: m["file_path"] for m in manifest["raw"].get("missing", [])
                   if isinstance(m, dict)}
         with conn.cursor(row_factory=tuple_row) as cur:
-            cur.execute("SELECT conrelid::regclass::text, a.attname FROM pg_constraint c JOIN pg_attribute a "
-                        "ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1] WHERE c.contype = 'f' "
-                        "AND c.confrelid = 'raw.ingestion_payloads'::regclass")
-            referencing = cur.fetchall()
-            named: set[str] = set()
-            for table, column in referencing:
-                cur.execute(sql.SQL("SELECT DISTINCT {c} FROM {t} WHERE {c} = ANY(%s)").format(
-                    c=sql.Identifier(column), t=sql.SQL(table)), (list(archived) + list(absent),))
-                named |= {str(r[0]) for r in cur.fetchall()}
+            referencing = _referencing(cur)
+            named = _named(cur, referencing, list(archived) + list(absent))
             cur.execute("SELECT hash FROM raw.ingestion_payloads WHERE endpoint = %s AND hash = ANY(%s)",
                         (LIVE_ENDPOINT, list(archived) + list(absent)))
             indexed = {str(r[0]) for r in cur.fetchall()}
@@ -434,26 +445,66 @@ def purge_raw(out: Path, *, confirm: bool) -> int:
                 print(f"refused: {name} on disk differs from the archived copy")
                 return 2
             targets.append((digest, path, f["bytes"]))
+        # Archived files whose index row is already gone: left by a purge interrupted between its commit and its
+        # last unlink (only purge-raw removes these rows, and every archived file had one when it was archived).
+        # Nothing can name a payload that is not indexed, so they go once they are the archived bytes.
+        leftovers = []
+        for digest, (name, f) in sorted(archived.items()):
+            path = root / name
+            if digest in indexed or not path.is_file():
+                continue
+            if _sha256_file(path) != f["sha256"]:
+                print(f"refused: {name} on disk differs from the archived copy")
+                return 2
+            leftovers.append((digest, path, f["bytes"]))
         kept = sorted(indexed & named)
-        freed = sum(b for _, p, b in targets if p.is_file())
+        freed = sum(b for _, p, b in targets + leftovers if p.is_file())
         print(f"/odds/live payloads archived and indexed: {len(indexed):,}; kept as evidence of quality issues or other "
-              f"references: {len(kept)}; to purge: {len(targets):,} ({freed:,} bytes)")
+              f"references: {len(kept)}; to purge: {len(targets):,} index rows and {len(leftovers):,} files already "
+              f"unindexed ({freed:,} bytes)")
         if not confirm:
             print("dry run: pass --confirm to purge")
             return 0
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM raw.ingestion_payloads WHERE endpoint = %s AND hash = ANY(%s)",
+        if not targets and not leftovers:
+            print("nothing to purge")
+            return 0
+        with conn.cursor(row_factory=tuple_row) as cur:
+            # Deleting an index row makes PostgreSQL look, row by row, in every table that can name a payload - 51
+            # foreign keys on 6 Oct 2026 (partitions counted), 49 on columns with no index (5.2 M rows the largest):
+            # 7,167 rows would have taken hours (the first --confirm was cancelled after 3 min; nothing deleted). The
+            # references are checked here instead, once per table, in this same transaction and AFTER the delete:
+            # while the deleted rows are locked by this transaction no other session can add a row naming them
+            # (its own foreign-key check waits for this transaction and then fails), so what the check finds is
+            # final. Anything found - or a role that may not skip the per-row checks - and nothing is deleted.
+            try:
+                cur.execute("SET LOCAL session_replication_role = replica")
+            except psycopg.errors.InsufficientPrivilege:
+                conn.rollback()
+                print("refused: this role may not set session_replication_role; nothing deleted")
+                return 2
+            cur.execute("DELETE FROM raw.ingestion_payloads WHERE endpoint = %s AND hash = ANY(%s) RETURNING hash",
                         (LIVE_ENDPOINT, [d for d, _, _ in targets]))
-            deleted = cur.rowcount or 0
+            gone = [str(r[0]) for r in cur.fetchall()]
+            cur.execute("SET LOCAL session_replication_role = origin")
+            still_named = _named(cur, referencing, gone) if gone else set()
+            if still_named:
+                conn.rollback()
+                print(f"refused: {len(still_named)} payload(s) became referenced during the purge "
+                      f"{sorted(still_named)[:5]}; nothing deleted")
+                return 2
+            deleted = len(gone)
             cur.execute(
                 "INSERT INTO audit.storage_cleanups (kind, subject, rows, bytes, archive_path, archive_sha256, "
                 "backup_label, verified, details, code_version) VALUES ('inplay_raw_purge', %s, %s, %s, %s, %s, %s, "
                 "true, %s, %s)",
                 (RAW_SUBJECT, deleted, freed, str(out), _sha256_file(out / "manifest.json"), manifest["backup_label"],
-                 Jsonb({"kept_as_evidence": kept, "index_rows_deleted": deleted}), code_version()))
+                 Jsonb({"kept_as_evidence": kept, "index_rows_deleted": deleted,
+                        "unindexed_files_removed": len(leftovers),
+                        "reference_check": f"after the delete, in its transaction: 0 rows in {len(referencing)} "
+                                           "referencing tables name a deleted payload"}), code_version()))
         conn.commit()
     removed = failed = 0
-    for _, path, _ in targets:
+    for _, path, _ in targets + leftovers:
         try:
             path.unlink()
             removed += 1
