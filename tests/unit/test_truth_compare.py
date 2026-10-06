@@ -271,6 +271,18 @@ def test_odds_captured_after_the_provider_update_must_match_exactly() -> None:
     compare.compare_odds(quotes, {8: "Bet365"}, update, current, {8: "Bet365"}, provider_fixture_id=1,
                          kickoff=NOW + timedelta(hours=5), now=NOW, tally=t4)
     assert [(f.kind, f.severity) for f in t4.findings] == [(Kind.MISMATCH, Severity.HIGH)]
+    newer = [dict(after[0], provider_update=update + timedelta(hours=4))]
+    t5 = Tally("odds")
+    compare.compare_odds(quotes, {8: "Bet365"}, update, newer, {8: "Bet365"}, provider_fixture_id=1,
+                         kickoff=NOW + timedelta(hours=5), now=NOW, tally=t5)
+    assert [(f.kind, f.severity) for f in t5.findings] == [(Kind.PROVIDER_LAG, Severity.LOW)], \
+        "6 Oct 2026: the provider's answer was stamped before ours (its cache per URL): ours is the newer price"
+    unstamped = [dict(after[0], captured_at=update + timedelta(hours=4))]
+    t6 = Tally("odds")
+    compare.compare_odds(quotes, {8: "Bet365"}, update, unstamped, {8: "Bet365"}, provider_fixture_id=1,
+                         kickoff=NOW + timedelta(hours=5), now=NOW, tally=t6)
+    assert [(f.kind, f.severity) for f in t6.findings] == [(Kind.MISMATCH, Severity.HIGH)], \
+        "without the answer's own stamp the capture time stands in, and it says nothing about which answer is older"
 
 
 def test_a_player_without_a_profile_is_reported_as_never_fetched() -> None:

@@ -812,6 +812,11 @@ def compare_odds(api_quotes: Sequence[Mapping[str, Any]], api_books: Mapping[int
     12:49 UTC got an answer stamped 08:14 while the provider's data was already stamped
     12:17 (it serves cached answers), and the audit called 280 such prices a HIGH mismatch.
     Without the payload's stamp, the capture time stands in for it.
+
+    The cache works both ways. On 6 Oct 2026 the capture's answer for a fixture (``fixture`` and ``page=1``) was
+    stamped 00:45 and eight minutes later the audit's (``fixture`` alone, another URL to the provider's cache) was
+    stamped 20:47 the day before: the provider's answer was the OLDER one. A price from an answer stamped strictly
+    after the provider's current stamp is the newer price, not a wrong one: PROVIDER_LAG, never HIGH.
     """
     entity = f"fixture {provider_fixture_id}"
     soon = kickoff is not None and kickoff - now < timedelta(hours=24)
@@ -824,7 +829,7 @@ def compare_odds(api_quotes: Sequence[Mapping[str, Any]], api_books: Mapping[int
                              db=f"{len(db_books)} bookmakers captured"))
     db_by_key = {(r["provider_bookmaker_id"], r["market_key"], r["selection"], _num(r.get("line"))): r
                  for r in db_latest}
-    stale = mismatched = absent = 0
+    stale = mismatched = absent = older = 0
     example: dict[str, str] = {}
     for q in api_quotes:
         key = (q["provider_bookmaker_id"], q["market_key"], q["selection"], _num(q.get("line")))
@@ -836,8 +841,14 @@ def compare_odds(api_quotes: Sequence[Mapping[str, Any]], api_books: Mapping[int
         captured = _when(db.get("captured_at"))
         if _num(db.get("odds_decimal")) == _num(q.get("odds_decimal")):
             continue
-        basis = _when(db.get("provider_update")) or captured
-        if api_update is not None and basis is not None and basis >= api_update:
+        stamp = _when(db.get("provider_update"))
+        basis = stamp or captured
+        if api_update is not None and stamp is not None and stamp > api_update:
+            older += 1
+            example.setdefault("older", f"{key}: provider {q.get('odds_decimal')} from an answer stamped "
+                                        f"{api_update:%m-%d %H:%M}Z, ours {db.get('odds_decimal')} from one stamped "
+                                        f"{stamp:%m-%d %H:%M}Z")
+        elif api_update is not None and basis is not None and basis >= api_update:
             mismatched += 1
             example.setdefault("mismatch", f"{key}: provider {q.get('odds_decimal')}, ours {db.get('odds_decimal')} "
                                            f"from an answer stamped {basis:%H:%M}Z, the provider's now "
@@ -858,6 +869,11 @@ def compare_odds(api_quotes: Sequence[Mapping[str, Any]], api_books: Mapping[int
     if stale:
         tally.add(Finding.of("odds", entity, "prices", Kind.STALE, Severity.MEDIUM if soon else Severity.LOW,
                              api=f"{stale} prices moved since our last capture", db=example.get("stale")))
+    if older:
+        tally.add(Finding.of("odds", entity, "prices", Kind.PROVIDER_LAG, Severity.LOW,
+                             api=f"{older} prices from an answer older than ours", db=example.get("older"),
+                             note="the provider answered with an update stamp older than the answer we captured (it "
+                                  "caches each URL): ours is the newer price"))
     if tally.total_findings == before:
         tally.matched += 1
 
