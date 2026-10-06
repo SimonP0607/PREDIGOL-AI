@@ -232,9 +232,21 @@ def _archive_raw(conn: psycopg.Connection[Any], out: Path) -> dict[str, Any]:
                 continue
             tar.add(src, arcname=rel, recursive=False)
             files[rel] = {"payload_hash": digest, "sha256": _sha256_file(src), "bytes": src.stat().st_size,
-                          "recorded_bytes": recorded}
+                          "recorded_bytes": recorded, "readable": _readable_as(src.read_bytes(), digest)}
+    damaged = sorted(name for name, f in files.items() if not f["readable"])
     return {"tar": RAW_TAR, "index_rows": len(index), "files": files, "missing": missing,
-            "tar_sha256": _sha256_file(tar_path), "tar_bytes": tar_path.stat().st_size}
+            "damaged_at_source": damaged, "tar_sha256": _sha256_file(tar_path), "tar_bytes": tar_path.stat().st_size}
+
+
+def _readable_as(data: bytes, payload_hash: str) -> bool:
+    """Whether these bytes are the payload: gzip JSON whose body hashes to the index's hash. A file damaged in the
+    store (the 4 Oct 2026 02:57 UTC stop left a few empty or truncated) is archived byte for byte all the same, and
+    marked: the archive reproduces the store exactly, it does not repair it."""
+    try:
+        envelope = json.loads(gzip.decompress(data))
+    except (OSError, EOFError, ValueError):
+        return False
+    return isinstance(envelope, dict) and body_hash(envelope.get("body")) == payload_hash
 
 
 def _verify_raw(out: Path, raw: dict[str, Any]) -> list[str]:
@@ -257,9 +269,9 @@ def _verify_raw(out: Path, raw: dict[str, Any]) -> list[str]:
             if hashlib.sha256(data).hexdigest() != expect["sha256"]:
                 problems.append(f"{member.name}: sha256 differs")
                 continue
-            envelope = json.loads(gzip.decompress(data))
-            if body_hash(envelope.get("body")) != expect["payload_hash"]:
-                problems.append(f"{member.name}: its body is not payload {expect['payload_hash'][:12]}")
+            if _readable_as(data, expect["payload_hash"]) != expect.get("readable", True):
+                problems.append(f"{member.name}: its body is not payload {expect['payload_hash'][:12]} "
+                                "(or a file recorded as damaged now reads)")
     absent = set(raw["files"]) - seen
     problems += [f"{name}: in the manifest, not in the tar" for name in sorted(absent)[:20]]
     return problems
@@ -335,7 +347,8 @@ def archive(out: Path, backup_label: str) -> int:
             "INSERT INTO audit.storage_cleanups (kind, subject, rows, bytes, archive_path, archive_sha256, backup_label, "
             "verified, details, code_version) VALUES ('inplay_archive', %s, %s, %s, %s, %s, %s, true, %s, %s)",
             (RAW_SUBJECT, len(raw["files"]), sum(f["bytes"] for f in raw["files"].values()), str(out), manifest_sha,
-             backup_label, Jsonb({"tar": raw["tar"], "tar_sha256": raw["tar_sha256"], "index_rows": raw["index_rows"]}),
+             backup_label, Jsonb({"tar": raw["tar"], "tar_sha256": raw["tar_sha256"], "index_rows": raw["index_rows"],
+                                  "damaged_at_source": raw["damaged_at_source"]}),
              code_version()))
         conn.commit()
     total = sum(e["file_bytes"] for e in manifest["tables"].values()) + raw["tar_bytes"]
@@ -344,7 +357,8 @@ def archive(out: Path, backup_label: str) -> int:
         print(f"  {table}: {entry['rows']:,} rows ({entry['database']['bytes']:,} bytes in PostgreSQL) -> "
               f"{entry['file_bytes']:,} bytes gzip CSV")
     print(f"  /odds/live payloads: {len(raw['files']):,} files ({sum(f['bytes'] for f in raw['files'].values()):,} "
-          f"bytes) -> {raw['tar']}")
+          f"bytes) -> {raw['tar']}; damaged in the store before (archived as they are): "
+          f"{len(raw['damaged_at_source'])}")
     print(f"  archive total {total:,} bytes; manifest sha256 {manifest_sha}")
     return 0
 
