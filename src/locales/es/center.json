@@ -248,27 +248,27 @@
     }
   },
   "live": {
-    "note": "Los datos en vivo son un sistema aparte de los precios previos al partido: nunca se usan para evaluar, entrenar ni hacer backtest de un modelo prepartido, y el último precio en vivo no es una línea de cierre.",
+    "note": "Los datos en vivo son un sistema aparte de los precios previos al partido: nunca se usan para evaluar, entrenar ni hacer backtest de un modelo prepartido, y el último precio en vivo no es una línea de cierre. Las cuotas en vivo se muestran mientras se juega el partido y no se guardan después.",
     "states": {
       "title": "Evolución del estado del partido",
-      "subtitle": "Cada cambio de estado, minuto o marcador, con su fuente.",
+      "subtitle": "Cada cambio de estado, minuto o marcador de la fuente de partidos, y el estado actual de la fuente de cuotas mientras el partido está en juego.",
       "fixtures": "partidos",
       "odds": "cuotas"
     },
     "quotes": {
       "title": "Precios en vivo",
-      "subtitle": "El último precio de cada selección (esta fuente no distingue entre casas).",
+      "subtitle": "El precio actual de cada selección (esta fuente no distingue entre casas). Se vacía al terminar el partido.",
       "main": "principal",
       "withdrawnReason": "Retirada por la casa en este momento.",
       "withdrawn": "retirada",
       "suspended": "suspendida",
       "open": "abierta",
-      "others_one": "{count} precio en vivo más pertenece a una apuesta sin mercado nuestro; se guarda, pero no se muestra.",
-      "others_other": "{count} precios en vivo más pertenecen a apuestas sin mercado nuestro; se guardan, pero no se muestran."
+      "others_one": "{count} precio en vivo más pertenece a una apuesta sin mercado nuestro; no se muestra.",
+      "others_other": "{count} precios en vivo más pertenecen a apuestas sin mercado nuestro; no se muestran."
     },
     "movement": {
       "title": "Movimiento de precios",
-      "subtitle": "Cada cambio en nuestros mercados, del más reciente al más antiguo: movimientos, suspensiones, retiradas."
+      "subtitle": "El último cambio de cada selección de nuestros mercados mientras se juega el partido, del más reciente al más antiguo: movimientos y suspensiones."
     },
     "score": {
       "halfTime": "descanso",

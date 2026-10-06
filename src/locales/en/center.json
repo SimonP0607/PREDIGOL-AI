@@ -248,27 +248,27 @@
     }
   },
   "live": {
-    "note": "In-play data is a separate system from the pre-match prices: it is never used to judge, train or backtest a pre-match model, and the last in-play price is not a closing line.",
+    "note": "In-play data is a separate system from the pre-match prices: it is never used to judge, train or backtest a pre-match model, and the last in-play price is not a closing line. In-play odds are shown while the match is played and not kept afterwards.",
     "states": {
       "title": "Match state over time",
-      "subtitle": "Each change of status, minute or score, with its feed.",
+      "subtitle": "Each change of status, minute or score from the fixture feed, and the odds feed's current state while the match is in play.",
       "fixtures": "fixtures",
       "odds": "odds"
     },
     "quotes": {
       "title": "In-play prices",
-      "subtitle": "The latest price of each selection (no bookmaker dimension in this feed).",
+      "subtitle": "The current price of each selection (no bookmaker dimension in this feed). Emptied when the match ends.",
       "main": "main",
       "withdrawnReason": "Withdrawn by the bookmaker at this instant.",
       "withdrawn": "withdrawn",
       "suspended": "suspended",
       "open": "open",
-      "others_one": "{count} more in-play prices belong to bets with no market of ours; they are stored, not shown.",
-      "others_other": "{count} more in-play prices belong to bets with no market of ours; they are stored, not shown."
+      "others_one": "{count} more in-play price belongs to a bet with no market of ours; it is not shown.",
+      "others_other": "{count} more in-play prices belong to bets with no market of ours; they are not shown."
     },
     "movement": {
       "title": "Price movement",
-      "subtitle": "Every change in our markets, newest first: moves, suspensions, withdrawals."
+      "subtitle": "The last change of each selection in our markets while the match is played, newest first: moves and suspensions."
     },
     "score": {
       "halfTime": "half time",

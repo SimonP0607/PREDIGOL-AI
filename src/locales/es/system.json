@@ -20,9 +20,8 @@
     "labels": {
       "prematch_1h": "Precios prepartido, última hora",
       "prematch_24h": "Precios prepartido, últimas 24 h",
-      "live_1h": "Cambios de precio en vivo, última hora",
-      "live_24h": "Cambios de precio en vivo, últimas 24 h",
       "live_priced_now": "Partidos con precio en vivo ahora",
+      "live_quotes_now": "Precios en vivo en el libro actual (no se guardan)",
       "match_states_24h": "Estados de partido (feed de partidos), últimas 24 h",
       "upcoming_7d": "Partidos en los próximos 7 días",
       "finished_total": "Partidos finalizados almacenados",
@@ -31,7 +30,8 @@
       "candidates_24h": "Candidatos a pick evaluados, últimas 24 h"
     },
     "notes": {
-      "awaiting_result": "debería bajar a 0 tras la próxima sincronización de resultados"
+      "awaiting_result": "debería bajar a 0 tras la próxima sincronización de resultados",
+      "live_quotes_now": "Las cuotas en vivo son efímeras: el libro guarda solo el precio actual y se vacía al terminar el partido."
     }
   },
   "errors": {
