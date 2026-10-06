@@ -6,6 +6,11 @@ lo que solo dan terceros va marcado. Cambio 1 EUR = 1,1225 USD (BCE, 2 oct 2026)
 En Colombia los servicios digitales del exterior pueden causar IVA del 19 %: no está incluido.
 **No se ha contratado ni desplegado nada.** Contratar es decisión del dueño.
 
+> **Corrección del 6 oct 2026:** las cuotas en vivo crecen bastante más de lo que suponía la tabla de abajo: ≈ 125 GB
+> al año con 133 ligas (ver `LIVE_ODDS_STORAGE_2026-10-06.md`). Con la captura en vivo como está, el VPS-2 de 75 GB
+> del escenario MVP llegaría al 90 % el 9 ene 2027; sin cuotas en vivo, el 28 ago 2027. Antes de contratar, el dueño
+> decide qué hacer con la captura en vivo.
+
 ## 1. Qué hay que alojar (medido el 6 oct)
 
 | Pieza | Hoy | Crece |

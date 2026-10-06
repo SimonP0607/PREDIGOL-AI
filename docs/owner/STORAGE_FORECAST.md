@@ -4,6 +4,11 @@ Medido el 5 oct 2026 a las 08:12 UTC con `python -m scripts.storage_forecast` (s
 proveedor; código `8f054a2`). El informe completo, tabla a tabla, queda en `data/storage/<fecha>/STORAGE.md` y se
 puede regenerar cuando se quiera. Nada se ha borrado ni movido.
 
+> **Corrección del 6 oct 2026:** la fila de precios en vivo se quedó corta. Se midió en días con el worker apagado a
+> ratos. Con partidos completos son 65 % de partidos con cuotas en vivo, 15.851 filas por partido y 306 B por fila: de
+> media **~270 MB/día en PostgreSQL y ~70 MB/día de RAW** (≈ 125 GB al año con 133 ligas), no 147 MB/día. El detalle,
+> las fechas en que se llena un VPS y las opciones están en `LIVE_ODDS_STORAGE_2026-10-06.md`.
+
 ## Hoy
 
 | Qué | Tamaño |
