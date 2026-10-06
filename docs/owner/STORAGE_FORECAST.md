@@ -8,6 +8,11 @@ puede regenerar cuando se quiera. Nada se ha borrado ni movido.
 > ratos. Con partidos completos son 65 % de partidos con cuotas en vivo, 15.851 filas por partido y 306 B por fila: de
 > media **~270 MB/día en PostgreSQL y ~70 MB/día de RAW** (≈ 125 GB al año con 133 ligas), no 147 MB/día. El detalle,
 > las fechas en que se llena un VPS y las opciones están en `LIVE_ODDS_STORAGE_2026-10-06.md`.
+>
+> **Aplicado el 6 oct 2026 (23:09–23:41 UTC):** las cuotas en vivo ya no se guardan. Solo queda el libro actual,
+> acotado; el histórico in-play quedó archivado y retirado. La medición nueva da 95 MB/día de PostgreSQL y 19 MB/día
+> de RAW, con 0 de cuotas en vivo: ≈ 51 GB a 12 meses y ≈ 91 GB a 24 con 133 ligas. Detalle en
+> `LIVE_ODDS_CLEANUP_2026-10-06.md`.
 
 ## Hoy
 

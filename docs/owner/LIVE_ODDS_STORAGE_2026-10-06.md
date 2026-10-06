@@ -4,6 +4,10 @@ Medido el 6 oct 2026 sobre la base del portátil, en solo lectura y sin ninguna 
 está activa desde el 1 oct 2026 a las 01:38 UTC. **No se ha cambiado ni borrado nada.** Qué hacer con la captura es
 decisión del dueño.
 
+> **Decidido y aplicado el mismo 6 oct:** las cuotas en vivo se siguen consultando y mostrando, pero solo como libro
+> actual, sin histórico. El histórico (2,44 M filas, 0,72 GB de PostgreSQL y 0,17 GB de RAW) quedó archivado,
+> verificado y retirado. Ver `LIVE_ODDS_CLEANUP_2026-10-06.md`.
+
 ## 1. Qué se captura por partido
 
 | Qué | Medido (94 partidos observados de principio a fin, 1–6 oct) |

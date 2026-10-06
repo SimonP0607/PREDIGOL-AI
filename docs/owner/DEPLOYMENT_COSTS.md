@@ -10,6 +10,9 @@ En Colombia los servicios digitales del exterior pueden causar IVA del 19 %: no 
 > al año con 133 ligas (ver `LIVE_ODDS_STORAGE_2026-10-06.md`). Con la captura en vivo como está, el VPS-2 de 75 GB
 > del escenario MVP llegaría al 90 % el 9 ene 2027; sin cuotas en vivo, el 28 ago 2027. Antes de contratar, el dueño
 > decide qué hacer con la captura en vivo.
+>
+> **Decidido y aplicado el 6 oct 2026:** cuotas en vivo efímeras, sin histórico (`LIVE_ODDS_CLEANUP_2026-10-06.md`).
+> PostgreSQL + RAW crecen ≈ 0,11 GB/día. Un VPS de 100 GB llega al 90 % hacia abr 2028 con 133 ligas.
 
 ## 1. Qué hay que alojar (medido el 6 oct)
 
