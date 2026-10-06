@@ -23,7 +23,7 @@ INPLAY_RELATIONS = (
     "live_market_movement", "live_odds_at_instant",
 )
 INPLAY_MODULES = ("fbi.odds.live_capture", "fbi.odds.live_repository", "fbi.odds.live_cadence",
-                  "fbi.odds.live_archive", "fbi.providers.api_football.live")
+                  "fbi.providers.api_football.live")
 
 PREMATCH_PACKAGES = (
     "fbi.features", "fbi.models", "fbi.picks", "fbi.parlays", "fbi.backtesting", "fbi.predictions",
