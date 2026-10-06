@@ -46,6 +46,10 @@ public deployment: [rebuild/PREDIGOL_ACCOUNTS_AND_EXPERIENCES.md](rebuild/PREDIG
    Windows events 1074 / 41 / 6008. The worker log may end in NUL bytes (it is not synced): read it with `grep -a`.
 3. Back up (`backup_label.sh PRE_...`): dump, RAW archive, checksums, tags.
 4. `scripts/dev-up worker`: it closes the runs left open and its syncs, anchored on the ledger, run at once.
+   Started from a tool that runs inside the Claude desktop app, the stack lives in that app's process tree and
+   dies when the app updates (6 Oct 2026, 02:36 UTC). Start it outside: the logon task, or from PowerShell
+   `Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine =
+   'C:\Windows\System32\wsl.exe -e bash <path>/sh_up.sh'}` (the process then hangs off WmiPrvSE.exe).
 5. Audits: lineage, RAW integrity, the truth audit, the register. Windows that passed while the machine was off stay
    lost and are listed (`docs/owner/OFFLINE_RECOVERY_2026-10-06.md`), never back-filled.
 

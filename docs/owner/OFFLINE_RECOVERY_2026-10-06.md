@@ -22,6 +22,8 @@ inventar ni retrofechar nada, marcando lo irrecuperable; reparar inconsistencias
   auditoría llamaba "alto" a un precio nuestro más nuevo que la respuesta en caché del proveedor.
 * **Auditoría tras la recuperación**: linaje 100 %, RAW sin daños nuevos, auditoría de verdad nº 12 con **0 críticos
   y 0 altos**, registro **14/14 FRESH**, libro de evidencias sin críticos ni altos abiertos (§10).
+* **Segunda caída** de 02:37 a 05:27 UTC: una actualización de la app de Claude cerró los procesos de WSL que
+  había lanzado. Pila relanzada fuera del árbol de la app; perdido y marcado en §12.
 * `PICKS READY: NO` · `SHADOW: ON`.
 
 ## 1. Cronología (UTC)
@@ -298,3 +300,21 @@ Siguiente:
 3. Vigilar las dos ejecuciones simultáneas del pipeline (§6.4).
 4. P4 (reentrenar con backtesting walk-forward contra el mercado) necesita un dataset MODEL_READY: la promoción de
    `DATASET_V2` es decisión del dueño.
+
+## 12. Segunda caída: una actualización de la app de Claude (6 oct, 02:36:50 UTC)
+
+* **Qué pasó**: a las 02:36:50 UTC Windows instaló una actualización de la app de escritorio de Claude
+  (`Claude_2.19675.1.0`, eventos 7045 y 2562; servicio CoworkVMService parado y arrancado) y cerró los `wslhost.exe`
+  de esa app (evento 1002, "wslhost.exe ... stopped interacting with Windows and was closed"). La API, el worker y la
+  web se habían lanzado a través del puente de la app, así que cayeron con ellos sin cerrar nada (sin
+  `worker.stopped`). PostgreSQL siguió en marcha (vive en la distribución de Docker Desktop).
+* **Hueco**: última ejecución 02:37:02,78 (run 10619) → worker de nuevo a las 05:27:02 (`ec5a0c9`): **2 h 50 min**.
+  Ningún run quedó abierto. Perdido y marcado: el directo de Honduras – Jamaica (1639998, CONCACAF Nations League)
+  y Australia U23 – Corea U23 (1643012, amistoso), 78 minutos cada uno; ventanas T-720 (21 partidos) y T-360 (7)
+  pasaron sin pedirse y las cubre la pregunta de catch-up a su distancia real. Tras el arranque: cuotas (11
+  peticiones), resultados, detalle post-partido, tablas y cuotas finales pre-partido (2 con precio, 712 precios; 4
+  rechazadas por estar selladas después del inicio, como debe ser).
+* **Corrección**: la pila se relanzó con `Win32_Process.Create` (WMI): el proceso cuelga de `WmiPrvSE.exe`, fuera
+  del árbol de la app, y sobrevive a sus actualizaciones (comprobado con un proceso de prueba). Un reinicio de
+  Windows todavía la para: la tarea de arranque automático (`scripts\windows\install-autostart.ps1`) sigue siendo
+  decisión del dueño. Es otra razón para sacar producción del portátil (`DEPLOYMENT_COSTS.md`).
