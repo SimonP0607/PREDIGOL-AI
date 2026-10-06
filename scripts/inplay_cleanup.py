@@ -223,12 +223,14 @@ def _archive_raw(conn: psycopg.Connection[Any], out: Path) -> dict[str, Any]:
     tar_path = out / RAW_TAR
     tar_path.parent.mkdir(parents=True, exist_ok=True)
     files: dict[str, dict[str, Any]] = {}
-    missing: list[str] = []
+    missing: list[dict[str, str]] = []
     with tarfile.open(tar_path, "w") as tar:
         for digest, rel, recorded in index:
             src = root / rel
             if not src.is_file():
-                missing.append(rel)
+                # Indexed, and not in the store: a gap the RAW integrity audit already reports (the 4 Oct 2026
+                # 02:57 UTC stop). Nothing to copy; named in the manifest so the gap is not mistaken for ours.
+                missing.append({"file_path": rel, "payload_hash": digest})
                 continue
             tar.add(src, arcname=rel, recursive=False)
             files[rel] = {"payload_hash": digest, "sha256": _sha256_file(src), "bytes": src.stat().st_size,
@@ -326,8 +328,6 @@ def archive(out: Path, backup_label: str) -> int:
     (out / "SHA256SUMS").write_text("".join(f"{v}  {k}\n" for k, v in sorted(sums.items())))
 
     problems = _verify_tables(out, manifest, db) + _verify_raw(out, raw)
-    if raw["missing"]:
-        problems.append(f"{len(raw['missing'])} indexed /odds/live files are not on disk: {raw['missing'][:5]}")
     if problems:
         print("ARCHIVE NOT VERIFIED - nothing recorded:\n  " + "\n  ".join(problems[:30]))
         return 1
@@ -348,7 +348,8 @@ def archive(out: Path, backup_label: str) -> int:
             "verified, details, code_version) VALUES ('inplay_archive', %s, %s, %s, %s, %s, %s, true, %s, %s)",
             (RAW_SUBJECT, len(raw["files"]), sum(f["bytes"] for f in raw["files"].values()), str(out), manifest_sha,
              backup_label, Jsonb({"tar": raw["tar"], "tar_sha256": raw["tar_sha256"], "index_rows": raw["index_rows"],
-                                  "damaged_at_source": raw["damaged_at_source"]}),
+                                  "damaged_at_source": raw["damaged_at_source"],
+                                  "missing_at_source": raw["missing"]}),
              code_version()))
         conn.commit()
     total = sum(e["file_bytes"] for e in manifest["tables"].values()) + raw["tar_bytes"]
@@ -358,7 +359,8 @@ def archive(out: Path, backup_label: str) -> int:
               f"{entry['file_bytes']:,} bytes gzip CSV")
     print(f"  /odds/live payloads: {len(raw['files']):,} files ({sum(f['bytes'] for f in raw['files'].values()):,} "
           f"bytes) -> {raw['tar']}; damaged in the store before (archived as they are): "
-          f"{len(raw['damaged_at_source'])}")
+          f"{len(raw['damaged_at_source'])}; indexed but absent from the store before: {len(raw['missing'])} "
+          f"{[m['file_path'] for m in raw['missing']]}")
     print(f"  archive total {total:,} bytes; manifest sha256 {manifest_sha}")
     return 0
 
@@ -399,6 +401,8 @@ def purge_raw(out: Path, *, confirm: bool) -> int:
             print("refused: the archive no longer verifies:\n  " + "\n  ".join(problems[:20]))
             return 2
         archived = {f["payload_hash"]: (name, f) for name, f in manifest["raw"]["files"].items()}
+        absent = {m["payload_hash"]: m["file_path"] for m in manifest["raw"].get("missing", [])
+                  if isinstance(m, dict)}
         with conn.cursor(row_factory=tuple_row) as cur:
             cur.execute("SELECT conrelid::regclass::text, a.attname FROM pg_constraint c JOIN pg_attribute a "
                         "ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1] WHERE c.contype = 'f' "
@@ -407,14 +411,20 @@ def purge_raw(out: Path, *, confirm: bool) -> int:
             named: set[str] = set()
             for table, column in referencing:
                 cur.execute(sql.SQL("SELECT DISTINCT {c} FROM {t} WHERE {c} = ANY(%s)").format(
-                    c=sql.Identifier(column), t=sql.SQL(table)), (list(archived),))
+                    c=sql.Identifier(column), t=sql.SQL(table)), (list(archived) + list(absent),))
                 named |= {str(r[0]) for r in cur.fetchall()}
             cur.execute("SELECT hash FROM raw.ingestion_payloads WHERE endpoint = %s AND hash = ANY(%s)",
-                        (LIVE_ENDPOINT, list(archived)))
+                        (LIVE_ENDPOINT, list(archived) + list(absent)))
             indexed = {str(r[0]) for r in cur.fetchall()}
         root = _raw_root()
         targets = []
         for digest in sorted(indexed - named):
+            if digest in absent:
+                if (root / absent[digest]).exists():
+                    print(f"refused: {absent[digest]} was absent when archived and is on disk now - archive again")
+                    return 2
+                targets.append((digest, root / absent[digest], 0))  # no file to remove: only its index row
+                continue
             name, f = archived[digest]
             path = root / name
             if path.is_file() and _sha256_file(path) != f["sha256"]:
