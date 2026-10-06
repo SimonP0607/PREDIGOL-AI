@@ -77,7 +77,10 @@ instantánea de 113 tablas) y `PRE_VENUE_REPAIR_20261005` (dump 604,7 MB). Relle
 * Los 12 altos de Segunda División: **resueltos**. La sincronización manual de fixtures (15:34 UTC, 102 peticiones)
   recogió los 12 horarios nuevos (12 filas en `core.fixture_kickoff_changes`); las auditorías nº 8 y nº 9 (16:37 y
   16:50 UTC) dan 0 altos en fixtures.
-* `/odds/mapping` con el nuevo tope: el barrido diario toca ~18:11 UTC.
+* `/odds/mapping` con el nuevo tope: **confirmado**. El barrido diario del 5 oct (18:19:10–18:19:18 UTC) leyó
+  26 páginas, 2.598 partidos listados, 237 nuevos, sin error en su comprobación: completo, por debajo del tope de
+  200 páginas (el del 4 oct tenía 29 con un tope de 30). El apagado de 18:38 UTC no se llevó ninguna lectura (cadencia
+  de 23 h; la siguiente, 6 oct ~17:19 UTC). Ver `OFFLINE_RECOVERY_2026-10-06.md` §9.
 * `/players/teams`: primer llenado ~30.756 peticiones a ≤100 por ejecución (≈6–7 días), sin tocar la reserva en vivo.
 
 ## 7. Incidente operativo

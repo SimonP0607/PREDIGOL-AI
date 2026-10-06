@@ -37,6 +37,22 @@ public deployment: [rebuild/PREDIGOL_ACCOUNTS_AND_EXPERIENCES.md](rebuild/PREDIG
   (from `\\wsl.localhost\Ubuntu\home\<you>\projects\football-intelligence-v2`). It runs
   `scripts/windows/start-fbi.ps1` one minute after logon. Docker Desktop must be allowed to start.
 
+## After the machine was off (the order used on 6 Oct 2026)
+
+1. Docker Desktop and `fbi-postgres` first; `scripts/dev-up api web` (no worker yet). After an unclean power-off
+   PostgreSQL replays its WAL by itself (`docker logs fbi-postgres`: "automatic recovery ... redo done"); run
+   `ANALYZE` afterwards, because the crash recovery resets the statistics autovacuum reads.
+2. Measure the gap read-only: the last finished run in `raw.ingestion_runs`, the last payload, `raw.worker_heartbeats`,
+   Windows events 1074 / 41 / 6008. The worker log may end in NUL bytes (it is not synced): read it with `grep -a`.
+3. Back up (`backup_label.sh PRE_...`): dump, RAW archive, checksums, tags.
+4. `scripts/dev-up worker`: it closes the runs left open and its syncs, anchored on the ledger, run at once.
+5. Audits: lineage, RAW integrity, the truth audit, the register. Windows that passed while the machine was off stay
+   lost and are listed (`docs/owner/OFFLINE_RECOVERY_2026-10-06.md`), never back-filled.
+
+The heavy jobs (fixture and results syncs, history, reference feeds, context, final pre-match prices) run on an event
+loop of their own in a thread, so their database work cannot stall the in-play capture (`OWN_LOOP_JOBS` in
+`apps/worker/scheduler.py`).
+
 ## Docker Desktop will not start
 
 "starting services: ... sailor-ingest.sock ... The file cannot be accessed" after an unclean

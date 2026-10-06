@@ -156,3 +156,15 @@ peticiones). Una nueva pasada en seco da 0 instantáneas incompletas de 991.
   16:39 UTC: 32.805 de 60.000 internas (75.000 del plan); la reserva en vivo nunca se tocó.
 * **Libro:** E-466 actualizado con la corrección y sus tests (sigue OPEN: la decisión sobre la Kirin Cup es del dueño).
   Ninguna entrada se marcó ACCEPTED (decisión del dueño).
+
+## 8. Re-verificación tras el apagado del 5–6 oct
+
+El equipo estuvo apagado de 18:38 UTC del 5 oct a 01:12 UTC del 6 oct (`OFFLINE_RECOVERY_2026-10-06.md`). Tras el
+catch-up, el estado de P2 se volvió a medir con datos reales (6 oct, 02:09–02:18 UTC):
+
+* Linaje: las 10 tablas siguen **100 % trazadas a RAW**; RAW: 63.125 payloads, los mismos 3 dañados de siempre.
+* Auditoría de verdad nº 12 (394 peticiones, 0 fallos): **0 críticos, 0 altos**. La nº 11 había dado un alto falso
+  en cuotas (una respuesta en caché del proveedor más vieja que nuestro precio); corregido el comparador
+  (`f964d3a`) con tests.
+* Registro: **14/14 FRESH**. Libro de evidencias: 0 críticos y 0 altos abiertos o vigilados (OPEN medio 11, bajo 93).
+* `DATASET_V2` sigue VALIDATED; ningún modelo puede entrenar mientras no sea MODEL_READY (decisión del dueño).

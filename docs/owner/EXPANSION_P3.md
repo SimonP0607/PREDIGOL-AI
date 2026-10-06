@@ -91,13 +91,15 @@ alineaciones.
    Ejecutada entre 17:02 y 17:25 UTC por el motor de migración (y el job del worker en paralelo, con la cuota
    compartida): **1.807 peticiones** reales (calendarios 108, detalle 1.531, tablas 80, equipos 81, lesiones 7), 0
    rechazadas, 0 fallidas, más de 558.000 filas escritas. Una unidad (Championship escocesa 2021) quedó "running" cuando el worker
-   se reinició a mitad (despliegue be-99); el motor la retoma sola a los 30 min (`STALE_RUNNING`).
+   se reinició a mitad (despliegue be-99); el motor la retomó solo (`STALE_RUNNING`): **hecha el 5 oct a las 18:22:25
+   UTC** (unidad 171537, run 10340, segundo intento, 1 petición). La temporada tiene 186 partidos, todos terminados con
+   resultado, eventos y alineaciones (comprobado el 6 oct tras el apagado).
 
 | Liga | Temporadas | Partidos | Terminados | Con resultado | Con eventos | Con alineaciones | Con estadísticas |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | J2 League (99) | 9 (2018–2026) | 3.929 | 3.639 | 3.639 | 3.636 | 3.591 | 0 |
 | J3 League (100) | 9 | 2.928 | 2.638 | 2.638 | 2.624 | 2.361 | 0 |
-| Championship SCO (180) | 9 (falta 2021) | 1.605 | 1.424 | 1.424 | 1.424 | 1.424 | 0 |
+| Championship SCO (180) | 9 | 1.605 | 1.424 | 1.424 | 1.424 | 1.424 | 0 |
 | League One SCO (183) | 9 | 1.636 | 1.414 | 1.414 | 1.413 | 1.404 | 0 |
 | Veikkausliiga (244) | 9 | 1.524 | 1.497 | 1.497 | 1.497 | 1.497 | 1.000 |
 | Apertura PAR (250) | 9 | 1.146 | 1.145 | 1.145 | 1.145 | 1.145 | 131 |
@@ -138,3 +140,20 @@ alineaciones.
   sus temporadas pasadas quedarán PARTIAL para juzgar contra el mercado; servirán para entrenar modelos de resultados
   y, desde hoy, cada partido suyo se captura con precio. Football-Data publica cuotas históricas de tres de ellas
   (Championship y League One escocesas, Veikkausliiga): importarlas es una descarga externa que requiere tu permiso.
+
+## 6. Tras el apagado del 5–6 oct (comprobado el 6 oct, 01:50 UTC)
+
+El equipo estuvo apagado de 18:38 UTC del 5 oct a 01:12 UTC del 6 oct (hueco de captura de 6 h 57 min; detalle en
+`OFFLINE_RECOVERY_2026-10-06.md`). Estado real de la tanda 1 después del catch-up:
+
+* 9 ligas seguidas (nivel 5), 81 temporadas, 19.927 partidos; **0 terminados sin resultado, 0 atrasados**. Unidades
+  de migración de la tanda: **1.223 hechas** (calendarios 81, equipos 81, tablas 80, lesiones 7, detalle 974), ninguna
+  pendiente ni en curso; en todo el sistema, 29.554 hechas y 0 pendientes.
+* Los 2 partidos de la Clausura paraguaya jugados durante el apagado tienen resultado, detalle y su último precio
+  pre-partido recuperado después del partido (aparte, nunca usable por un pick); sus ventanas near-close y en vivo
+  se perdieron y están marcadas.
+* Validación histórica (01:46 UTC): las 81 temporadas siguen `PARTIAL` (sin cuotas históricas); 18.655 aprobados y
+  2 en cuarentena, sin cambios.
+* **El día completo de medición que pide la tanda 2 vuelve a empezar**: el apagado cortó el del 5 oct. Se mide desde
+  el 6 oct 01:34 UTC (worker de nuevo en marcha).
+
