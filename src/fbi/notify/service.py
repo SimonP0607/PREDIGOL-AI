@@ -31,6 +31,12 @@ log = structlog.get_logger(__name__)
 SEND_BATCH = 20
 WEB_BASE = os.environ.get("FBI_WEB_BASE_URL", "http://localhost:5173")
 
+# Every kind collect() drafts. audit.notifications.kind is CHECKed against this same list (revision 0067). The two
+# run-watchdog kinds were drafted from 5 Oct 2026 05:45 UTC without it: the database refused them, and the refusal
+# rolled back every other message of the run, every run, until 6 Oct 01:35 UTC - logged only as notify.failed.
+KINDS = ("shadow_pick", "pick_settled", "first_capture", "capture_failed", "worker_down", "run_recovered",
+         "job_failing")
+
 
 @dataclass(frozen=True, slots=True)
 class Draft:
@@ -39,6 +45,10 @@ class Draft:
     title: str
     body: str
     payload: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.kind not in KINDS:
+            raise ValueError(f"notification kind {self.kind!r} is not in KINDS (and not in the database CHECK)")
 
 
 class Channel(Protocol):
@@ -167,6 +177,7 @@ def collect(conn: psycopg.Connection, *, at: datetime) -> list[Draft]:
 class NotifyReport:
     drafted: int = 0
     new: int = 0
+    refused: int = 0
     sent: int = 0
     skipped: int = 0
     failed: int = 0
@@ -179,9 +190,18 @@ def run_notifier(conn: psycopg.Connection, channel: Channel | None, *, at: datet
     report.drafted = len(drafts)
     with conn.cursor() as cur:
         for d in drafts:
-            cur.execute("INSERT INTO audit.notifications (kind, dedup_key, title, body, payload) "
-                        "VALUES (%s,%s,%s,%s,%s) ON CONFLICT (dedup_key) DO NOTHING",
-                        (d.kind, d.dedup_key, d.title, d.body, json.dumps(d.payload)))
+            try:
+                # A savepoint per message: one the database refuses is reported, and does not take the rest of
+                # the run's messages with it.
+                with conn.transaction():
+                    cur.execute("INSERT INTO audit.notifications (kind, dedup_key, title, body, payload) "
+                                "VALUES (%s,%s,%s,%s,%s) ON CONFLICT (dedup_key) DO NOTHING",
+                                (d.kind, d.dedup_key, d.title, d.body, json.dumps(d.payload)))
+            except psycopg.Error as exc:
+                report.refused += 1
+                log.error("notify.draft_refused", kind=d.kind, dedup_key=d.dedup_key, error=type(exc).__name__,
+                          detail=str(exc).splitlines()[0][:200])
+                continue
             report.new += max(cur.rowcount, 0)
         cur.execute("SELECT id, title, body FROM audit.notifications WHERE status = 'queued' ORDER BY id LIMIT %s",
                     (SEND_BATCH,))
@@ -203,6 +223,6 @@ def run_notifier(conn: psycopg.Connection, channel: Channel | None, *, at: datet
                         "channel = %s, last_error = NULL WHERE id = %s", (channel.name, nid))
             report.sent += 1
     conn.commit()
-    log.info("notify.done", drafted=report.drafted, new=report.new, sent=report.sent, skipped=report.skipped,
-             failed=report.failed)
+    log.info("notify.done", drafted=report.drafted, new=report.new, refused=report.refused, sent=report.sent,
+             skipped=report.skipped, failed=report.failed)
     return report
