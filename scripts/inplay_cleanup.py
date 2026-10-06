@@ -80,10 +80,13 @@ def _exists(conn: psycopg.Connection[Any], relation: str) -> bool:
 
 
 def _relation_bytes(conn: psycopg.Connection[Any], relation: str) -> int:
-    """Heap, TOAST and indexes of a table and of every partition under it."""
+    """Heap, TOAST and indexes of a table and of every partition under it.
+
+    pg_partition_tree() lists nothing for a table that is not partitioned (market.live_fixture_states): its size is
+    then its own. Before this was handled, the archive of 6 Oct 2026 recorded 0 bytes for that table."""
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute("SELECT coalesce(sum(pg_total_relation_size(relid)), 0) FROM pg_partition_tree(%s::regclass)",
-                    (relation,))
+        cur.execute("SELECT coalesce((SELECT sum(pg_total_relation_size(relid)) FROM pg_partition_tree(%s::regclass)), "
+                    "pg_total_relation_size(%s::regclass))", (relation, relation))
         row = cur.fetchone()
         return int(row[0]) if row else 0
 
