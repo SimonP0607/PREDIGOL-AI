@@ -409,6 +409,73 @@ test("Live: richest matches first, or an honest empty board", async ({ page }) =
   }
 });
 
+interface CenterLiveBody {
+  data: {
+    status_group: string;
+    events: { status: string; data: unknown[] };
+    live_odds: { status: string; data: Array<{ captured_at: string }>; reason: string | null };
+    live_movement: { status: string; data: unknown[] };
+  } | null;
+}
+
+test("A match in play: its centre is live, with the in-play prices of the current book or a note that there are none", async ({
+  page,
+}) => {
+  const w = watch(page);
+  const t = L[lang()];
+  const { body } = await getJson<{ data: { matches: Array<{ fixture_id: number }> } }>(
+    page.request,
+    "/api/v1/live",
+  );
+  const live = body.data.matches[0];
+  if (!live) {
+    note(test.info(), "no match in play now");
+    return;
+  }
+  const center = await getJson<CenterLiveBody>(
+    page.request,
+    `/api/v1/matches/${live.fixture_id}/center`,
+  );
+  await open(page, w, `/matches/${live.fixture_id}`);
+  const root = page.getByTestId("match-center");
+  await expect(root).toBeVisible();
+  if (center.body.data?.status_group !== "live") {
+    note(test.info(), "the match finished between the two reads");
+    return;
+  }
+  await expect(root).toHaveAttribute("data-phase", "live");
+  await expect(page.getByText(t.match.liveOdds.title).first()).toBeVisible();
+  // the block shows 1X2 / the main over-under from the current book, or says it has none for this match now
+  await expect(
+    page.getByText(t.match.liveOdds.note).or(page.getByText(t.match.liveOdds.none)).first(),
+  ).toBeVisible();
+  await assertClean(page, w);
+});
+
+test("A finished match keeps its result and events, and no in-play prices", async ({ page }) => {
+  const w = watch(page);
+  const before = new Date(Date.now() - 4 * 3600_000).toISOString();
+  const { body } = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    `/api/v1/matches?status=finished&order=desc&limit=5&kickoff_before=${encodeURIComponent(before)}`,
+  );
+  const done = body.data[0];
+  if (!done) {
+    note(test.info(), "no match finished more than four hours ago");
+    return;
+  }
+  const center = await getJson<CenterLiveBody>(page.request, `/api/v1/matches/${done.id}/center`);
+  const c = center.body.data;
+  expect(c?.status_group).toBe("finished");
+  // the in-play book drops a match minutes after its last tick: nothing of it outlives the match
+  expect(c?.live_odds.data).toEqual([]);
+  expect(c?.live_odds.status).not.toBe("ok");
+  expect(c?.live_movement.data).toEqual([]);
+  await open(page, w, `/matches/${done.id}`);
+  await expect(page.getByTestId("match-center")).toHaveAttribute("data-phase", "finished");
+  await assertClean(page, w);
+});
+
 test("Profile shows the account's language and time zone", async ({ page }) => {
   const w = watch(page);
   const t = L[lang()];
