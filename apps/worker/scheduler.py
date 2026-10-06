@@ -57,7 +57,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from fbi.core.clock import now
 from fbi.core.config import settings
-from fbi.core.deadline import run_with_deadline
+from fbi.core.deadline import run_in_own_loop, run_with_deadline
 from fbi.core.logging import configure as configure_logging
 from fbi.core.logging import new_run_id
 from fbi.core.version import code_version
@@ -707,9 +707,17 @@ async def _run_watchdog() -> None:
     await asyncio.to_thread(_run_watchdog_now)
 
 
+OWN_LOOP_JOBS = frozenset({"fixtures_sync", "results_sync", "historical_backfill", "reference_refresh",
+                           "catalogue_refresh", "final_prematch", "context_refresh", "context_due", "results_repair"})
+"""Jobs run on an event loop of their own, in a thread (fbi.core.deadline.run_in_own_loop): their blocking database
+work - a season of 8,327 club friendlies, a page of 40,000 transfers - must not hold the loop the in-play capture
+runs on. The live jobs and the pre-match tick stay on the scheduler's loop."""
+
+
 def _deadline(job_id: str, job_type: str, fn: Any) -> Any:
     """The job wrapped with its deadline (fbi.core.deadline): it can never block its own next run for ever."""
-    return functools.partial(run_with_deadline, job_id, fn, timeout_for(job_type).total_seconds())
+    job = functools.partial(run_in_own_loop, fn) if job_type in OWN_LOOP_JOBS else fn
+    return functools.partial(run_with_deadline, job_id, job, timeout_for(job_type).total_seconds())
 
 
 def _connect() -> psycopg.Connection:
