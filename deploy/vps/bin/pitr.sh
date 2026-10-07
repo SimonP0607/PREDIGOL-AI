@@ -28,7 +28,7 @@ set -Eeuo pipefail
 [[ -n "${PITR_S3_BUCKET:-}" ]] || { log "pitr: not configured (PITR_S3_BUCKET is empty)"; exit 3; }
 PG=predigol-postgres
 # The database's image (a new server after a loss has no container yet: the one compose builds).
-IMAGE="$(docker inspect -f '{{.Config.Image}}' "$PG" 2> /dev/null || echo predigol-postgres:16)"
+IMAGE="$(docker inspect -f '{{.Config.Image}}' "$PG" 2> /dev/null || echo "predigol-postgres:$PREDIGOL_PG_VERSION")"
 BOX=predigol-pitr-test
 VOL=predigol-pitr-test-data
 pgbr() { docker exec -u postgres "$PG" predigol-pitr "$@"; }

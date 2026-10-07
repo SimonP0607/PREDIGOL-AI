@@ -46,7 +46,9 @@ x-backend-env: &backend-env
 
 services:
   postgres:
-    image: predigol-postgres:16
+    # Tagged with the git tree of postgres/ (lib.sh): the image changes only when its definition does, so a
+    # deploy never restarts the database for nothing.
+    image: predigol-postgres:${PREDIGOL_PG_VERSION:-16}
     build:
       context: ./postgres
     container_name: predigol-postgres

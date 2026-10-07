@@ -30,6 +30,13 @@ if [[ -r "$STATE/versions.env" ]]; then
   set +a
 fi
 
+# The database image's version: the git tree of deploy/vps/postgres, which changes only when that folder does.
+# (A rebuild of unchanged files still yields a new image id - build attestations carry a timestamp - and compose
+# would then recreate the container: the database restarted on every deploy. Found by the rehearsal.)
+pg_version() { git -C "$KIT/../.." rev-parse --short=12 HEAD:deploy/vps/postgres 2> /dev/null || echo 16; }
+export PREDIGOL_PG_VERSION="${PREDIGOL_PG_VERSION:-$(pg_version)}"
+export BUILDX_NO_DEFAULT_ATTESTATIONS=1
+
 compose() {
   docker compose --project-directory "$KIT" --env-file "$PREDIGOL_ENV_FILE" -f "$KIT/docker-compose.yml" \
     ${PREDIGOL_COMPOSE_EXTRA:+-f "$PREDIGOL_COMPOSE_EXTRA"} "$@"

@@ -36,8 +36,9 @@ wait_healthy() {
   done
 }
 
-record_versions() {
-  printf 'PREDIGOL_VERSION=%s\nPREDIGOL_WEB_VERSION=%s\n' "$1" "$2" > "$STATE/versions.env.new"
+record_versions() {  # backend web [postgres image]
+  printf 'PREDIGOL_VERSION=%s\nPREDIGOL_WEB_VERSION=%s\nPREDIGOL_PG_VERSION=%s\n' "$1" "$2" "${3:-$PREDIGOL_PG_VERSION}" \
+    > "$STATE/versions.env.new"
   mv "$STATE/versions.env.new" "$STATE/versions.env"
 }
 
@@ -47,10 +48,15 @@ cmd_deploy() {
   new_web="$(git -C "$WEB_DIR" rev-parse --short=12 HEAD)"
   [[ -z "$(git -C "$BACKEND_DIR" status --porcelain --untracked-files=no)" ]] || { log "backend checkout has local changes: refusing"; exit 1; }
   [[ -z "$(git -C "$WEB_DIR" status --porcelain --untracked-files=no)" ]] || { log "web checkout has local changes: refusing"; exit 1; }
-  export PREDIGOL_VERSION="$new_be" PREDIGOL_WEB_VERSION="$new_web"
-  log "deploy: backend $old_be -> $new_be, web $old_web -> $new_web"
-  # postgres too: an unchanged Dockerfile rebuilds to the same image, and compose then leaves the database alone.
-  compose build postgres api web
+  PREDIGOL_PG_VERSION="$(pg_version)"
+  export PREDIGOL_VERSION="$new_be" PREDIGOL_WEB_VERSION="$new_web" PREDIGOL_PG_VERSION
+  log "deploy: backend $old_be -> $new_be, web $old_web -> $new_web, database image $PREDIGOL_PG_VERSION"
+  # The database image only when its definition changed (a new tag): otherwise the database keeps running.
+  if docker image inspect "predigol-postgres:$PREDIGOL_PG_VERSION" > /dev/null 2>&1; then
+    compose build api web
+  else
+    compose build postgres api web
+  fi
   if [[ "$(docker inspect -f '{{.State.Status}}' predigol-postgres 2> /dev/null || true)" == running ]]; then
     "$BIN/backup.sh" --label "pre-deploy-$new_be"
   fi
