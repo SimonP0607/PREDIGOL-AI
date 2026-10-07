@@ -13,6 +13,10 @@ En Colombia los servicios digitales del exterior pueden causar IVA del 19 %: no 
 >
 > **Decidido y aplicado el 6 oct 2026:** cuotas en vivo efímeras, sin histórico (`LIVE_ODDS_CLEANUP_2026-10-06.md`).
 > PostgreSQL + RAW crecen ≈ 0,11 GB/día. Un VPS de 100 GB llega al 90 % hacia abr 2028 con 133 ligas.
+>
+> **Preparado el 7 oct 2026:** el despliegue en un solo VPS (web + PWA, HTTPS, copias, monitoreo, arranque
+> automático) está en `deploy/vps/` y fue ensayado de punta a punta. Resumen: `VPS_DEPLOY_READY_2026-10-07.md`.
+> Sigue sin contratarse nada.
 
 ## 1. Qué hay que alojar (medido el 6 oct)
 
