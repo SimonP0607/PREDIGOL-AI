@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Annotated, Any, Literal
 
 import psycopg
@@ -30,7 +31,11 @@ Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 
 @router.get("/health", response_model=SystemHealth)
 def get_health(response: Response) -> SystemHealth:
-    """Never 5xx because the database is down: it reports it."""
+    """Never 5xx because the database is down: it reports it.
+
+    Anyone may ask, so a deployment answers HOW each part is, not WHY (FBI_API_HEALTH_DETAIL=0): the
+    reasons name the schema revision, the provider's quota and its last error. The Admin Console reads
+    the full picture through /api/v1/admin/overview."""
     try:
         conn: psycopg.Connection[Any] | None = read_only_connection()
     except psycopg.OperationalError:
@@ -42,6 +47,9 @@ def get_health(response: Response) -> SystemHealth:
             conn.close()
     if h.status == "down":
         response.status_code = 503
+    if os.environ.get("FBI_API_HEALTH_DETAIL", "1").strip().lower() in {"0", "false", "no", "off"}:
+        h = h.model_copy(update={part: getattr(h, part).model_copy(update={"detail": "", "data": {}, "vars": {}})
+                                 for part in ("app", "database", "worker", "football_provider")})
     return h
 
 
@@ -113,8 +121,6 @@ def get_provider_status(conn: Db) -> Envelope[ProviderStatus]:
 @admin_router.get("/notifications", response_model=Envelope[NotificationsOverview])
 def get_notifications(conn: Db, limit: Annotated[int, Query(ge=1, le=200)] = 50) -> Envelope[NotificationsOverview]:
     """What the bot produced and what happened to each message. It informs; it cannot bet."""
-    import os
-
     from fbi.api.repositories import fetch_all
 
     rows = fetch_all(conn, "SELECT id, kind, title, body, created_at, channel, status, attempts, sent_at, last_error "

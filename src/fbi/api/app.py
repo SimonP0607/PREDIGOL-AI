@@ -57,16 +57,27 @@ class _RateLimiter:
         return True
 
 
+def _flag(name: str, *, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         configure(settings.runtime.log_level)
         yield
 
+    # A deployment closes the interactive docs and the schema (FBI_API_DOCS=0): they list every route,
+    # admin ones included. Locally they stay open.
+    docs = _flag("FBI_API_DOCS", default=True)
     app = FastAPI(
         title="Football Intelligence Platform",
         version=VERSION,
-        docs_url="/docs",
+        docs_url="/docs" if docs else None,
+        openapi_url="/openapi.json" if docs else None,
         redoc_url=None,
         lifespan=lifespan,
         description=(
