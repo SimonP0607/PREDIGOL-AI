@@ -111,8 +111,8 @@ cmd_test() {
   exclusive pitr
   local stamp name before after failures=() started=$SECONDS need free
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"; name="predigol-pitr-test-$stamp"
-  # A restore needs the database's size again on this disk, plus room to breathe.
-  need=$(( $(sql "SELECT pg_database_size('fbi')") * 12 / 10 / 1024 + 5 * 1024 * 1024 ))
+  # A restore needs the database's size again on this disk, plus room to breathe (PITR_TEST_MARGIN_GB, default 5).
+  need=$(( $(sql "SELECT pg_database_size('fbi')") * 12 / 10 / 1024 + ${PITR_TEST_MARGIN_GB:-5} * 1024 * 1024 ))
   free=$(df -Pk "$PREDIGOL_DATA" | awk 'NR==2 {print $4}')
   if (( free < need )); then
     log "pitr test SKIPPED: $(( free / 1024 / 1024 )) GB free, $(( need / 1024 / 1024 )) GB needed"

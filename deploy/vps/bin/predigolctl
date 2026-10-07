@@ -48,7 +48,8 @@ cmd_deploy() {
   [[ -z "$(git -C "$WEB_DIR" status --porcelain --untracked-files=no)" ]] || { log "web checkout has local changes: refusing"; exit 1; }
   export PREDIGOL_VERSION="$new_be" PREDIGOL_WEB_VERSION="$new_web"
   log "deploy: backend $old_be -> $new_be, web $old_web -> $new_web"
-  compose build api web
+  # postgres too: an unchanged Dockerfile rebuilds to the same image, and compose then leaves the database alone.
+  compose build postgres api web
   if [[ "$(docker inspect -f '{{.State.Status}}' predigol-postgres 2> /dev/null || true)" == running ]]; then
     "$BIN/backup.sh" --label "pre-deploy-$new_be"
   fi

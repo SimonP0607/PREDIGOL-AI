@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Move PrediGol's data onto this server: ONCE, into an EMPTY database, from a backup folder made on the old
-# machine with `python -m scripts.backup create` (db.dump, raw.tar, manifest.json). README.md, "Corte".
+# Move PrediGol's data onto this server: ONCE, into an EMPTY database, from the folder the old machine's
+# deploy/cutover/export.sh wrote (db.dump, raw.tar, manifest.json). README.md, "Corte".
 #
 #   bin/import.sh /root/import/<stamp>       (then: predigolctl deploy)
 #
 # Refuses unless: the two files match the manifest's sha256; the worker is not running here; this database holds
-# no table at all (a fresh server). Then pg_restore, every table's row count compared with the manifest, the
-# RAW payloads extracted without overwriting anything, their number compared with the manifest.
+# no table at all (a fresh server). Then pg_restore (WAL archiving paused meanwhile), every table's row count
+# compared with the manifest, the RAW payloads extracted without overwriting anything, their number compared with
+# the manifest, every session from the old machine ended. With PITR configured, the stanza and a FULL backup
+# follow at once: the recovery window starts at the imported data.
 # Exit 0 imported and verified, 1 refused or failed (nothing half-done is left running).
 set -Eeuo pipefail
 # shellcheck source=bin/lib.sh
@@ -36,7 +38,10 @@ tables="$(psql_q "SELECT count(*) FROM information_schema.tables WHERE table_sch
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 cp "$SRC/db.dump" "$DB_BACKUPS/import-$stamp.dump"
-trap 'rm -f "$DB_BACKUPS/import-$stamp.dump"' EXIT
+# The restore's WAL is not archived (postgres/predigol-archive.sh): the full PITR backup below starts the window.
+PAUSE="$PREDIGOL_DATA/pgbackrest-spool/archive-paused"
+install -o 70 -g 70 -m 0644 /dev/null "$PAUSE"
+trap 'rm -f "$DB_BACKUPS/import-$stamp.dump" "$PAUSE"' EXIT
 log "import: pg_restore as the owner fbi (this takes a while)"
 # Objects come back owned by fbi whatever the old machine called its role; privileges are this server's own
 # (db/grants.sql), applied right after.
@@ -67,6 +72,22 @@ got_files="$(find "$PREDIGOL_DATA/raw" -type f | wc -l)"
 jq -n --arg at "$(date -u +%FT%TZ)" --arg src "$SRC" --arg rev "$(jq -r .alembic_revision "$MANIFEST")" \
   --argjson rows "$(jq .rows_total "$MANIFEST")" --argjson raw "$got_files" \
   '{imported_at: $at, source: $src, alembic_revision: $rev, rows: $rows, raw_files: $raw}' > "$STATE/import.json"
-# Sessions opened on the old machine are worthless here; end them all (accounts sign in again on this server).
-ops python -m scripts.accounts revoke-sessions --all
+# Sessions opened on the old machine are worthless here: end them all (accounts sign in again on this server).
+# Plain SQL, valid at any revision since 0045 - the imported schema may be older than this checkout's code.
+ended="$(compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qAtX -c "
+  WITH s AS (UPDATE auth.sessions SET revoked_at = now(), revoked_reason = 'imported_to_new_server'
+             WHERE revoked_at IS NULL RETURNING 1),
+       n AS (SELECT count(*) AS c FROM s),
+       e AS (INSERT INTO auth.audit_events (action, detail)
+             SELECT 'session.revoked', jsonb_build_object('by', 'import', 'count', c) FROM n WHERE c > 0)
+  SELECT c FROM n" | tail -n 1)"
+log "import: $ended session(s) from the old machine ended"
+
+# The recovery window starts here: archiving resumes, stanza (if new) and a full backup of the imported data.
+rm -f "$PAUSE"
+if [[ -n "${PITR_S3_BUCKET:-}" ]]; then
+  if ! { "$KIT/bin/pitr.sh" init && "$KIT/bin/pitr.sh" backup; }; then
+    log "import: WARNING - PITR could not start (run: predigolctl pitr init && predigolctl pitr backup)"
+  fi
+fi
 log "import: done and verified ($(jq -r .rows_total "$MANIFEST") rows, $got_files RAW files). Next: predigolctl deploy"

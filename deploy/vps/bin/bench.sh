@@ -20,7 +20,10 @@ DIR="${BENCH_DIR:-/var/tmp/predigol-bench}"
 mkdir -p "$DIR"
 log() { printf '%s %s\n' "$(date -u +%T)" "$*"; }
 
-MIN_CPU1="${BENCH_MIN_CPU1:-250}"          # sysbench events/s, one thread (prime 20000)
+# One sysbench thread (prime 20000): 1053 events/s on the rehearsal machine (Xeon 2.8 GHz). Published Geekbench 6
+# single-core scores put Contabo's Cloud VPS at 840-1170 and OVH's VPS-2 at 700, i.e. roughly 600-1000 events/s.
+# Half the rehearsal machine is the floor: below it the host is oversold or throttled.
+MIN_CPU1="${BENCH_MIN_CPU1:-500}"
 MAX_STEAL="${BENCH_MAX_STEAL:-10}"         # % of CPU time taken by the host, under full load
 MIN_READ_IOPS="${BENCH_MIN_READ_IOPS:-5000}"
 MIN_WRITE_IOPS="${BENCH_MIN_WRITE_IOPS:-2500}"
@@ -29,6 +32,7 @@ MIN_FSYNC="${BENCH_MIN_FSYNC:-400}"        # fdatasync ops/s (2.5 ms each)
 MIN_RAM_GB="${BENCH_MIN_RAM_GB:-7.5}"
 MIN_DISK_GB="${BENCH_MIN_DISK_GB:-90}"
 MIN_DOWN_MBIT="${BENCH_MIN_DOWN_MBIT:-100}"
+DOWN_URL="${BENCH_DOWN_URL:-https://speed.cloudflare.com/__down?bytes=200000000}"
 
 if ! command -v fio > /dev/null || ! command -v sysbench > /dev/null; then
   log "installing fio and sysbench"
@@ -89,9 +93,14 @@ rm -f "$DIR/fsync.test" "$DIR/fsync.dat"
 check "fsync (commit)" "${fsync:-0}" ">=" "$MIN_FSYNC" "ops/s"
 
 log "network"
-down="$(curl -fsS -m 60 -o /dev/null -w '%{speed_download}' 'https://speed.cloudflare.com/__down?bytes=200000000' |
-  awk '{printf "%.0f", $1 * 8 / 1000000}')"
-check "download" "${down:-0}" ">=" "$MIN_DOWN_MBIT" "Mbit/s"
+if speed="$(curl -fsS -m 60 -o /dev/null -w '%{speed_download}' "$DOWN_URL")"; then
+  down="$(awk -v b="$speed" 'BEGIN { printf "%.0f", b * 8 / 1000000 }')"
+else
+  # Unreachable is a failure too: re-run, or point BENCH_DOWN_URL at another large file (e.g. a mirror's ISO).
+  log "the download test could not reach $DOWN_URL"
+  down=0
+fi
+check "download" "$down" ">=" "$MIN_DOWN_MBIT" "Mbit/s"
 apif="$(curl -sS -m 20 -o /dev/null -w '%{time_connect}' https://v3.football.api-sports.io/status 2> /dev/null || echo 9)"
 results+=("$(jq -nc --arg v "$apif" '{name: "connect to API-Football", value: ($v | tonumber), unit: "s"}')")
 log "connect to API-Football: ${apif}s"
