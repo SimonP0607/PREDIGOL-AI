@@ -133,7 +133,11 @@ vacía antes: `predigolctl stop` y se borran `pgdata` y `raw` de ese ensayo. `im
    vivo.
 7. **DNS.** Ahora, no antes: el dominio apunta al servidor (proxy de Cloudflare). Prueba desde fuera, desde la PWA en
    Android y en iPhone, y que solo hay un worker latiendo (`raw.worker_heartbeats`).
-8. **Portátil.** Queda 7 días como respaldo frío, con el worker parado.
+8. **Cuentas.** Pasadas las pruebas:
+   * las de QA, apagadas: `predigolctl accounts disable --domain predigol.local --confirm`;
+   * el dueño elige una contraseña nueva al entrar (`predigolctl accounts require-password-change --email TU@CORREO`)
+     y configura su segundo factor.
+9. **Portátil.** Queda 7 días como respaldo frío, con el worker parado.
 
 Vuelta atrás: mientras no se borre nada en el portátil, basta con encender allí el worker (`scripts/dev-up worker`)
 y devolver el DNS. El servidor se vacía y se repite.
