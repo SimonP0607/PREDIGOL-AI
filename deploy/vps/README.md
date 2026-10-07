@@ -106,7 +106,8 @@ cada secreto: `docs/owner/SECRETS_AND_ROTATION.md`.
 11. **Comprobar.** `predigolctl status` y `predigolctl health`; `https://DOMINIO/health` dice `"ok"`; la PWA se
     instala en Android y en iPhone (§10).
 12. **Avisos.** Healthchecks.io: un check por tarea (`HC_PING_*`). UptimeRobot vigila `https://DOMINIO/health` y
-    busca `"ok"`. Telegram con `FBI_TELEGRAM_BOT_TOKEN` y `FBI_TELEGRAM_CHAT_ID`.
+    busca `"ok"`. Telegram con `FBI_TELEGRAM_BOT_TOKEN` y `FBI_TELEGRAM_CHAT_ID`. Sentry (errores de la API y del
+    worker, sin datos personales): el DSN de un proyecto en `FBI_SENTRY_DSN` de `app.env`.
 
 ## 4. Corte desde el portátil, sin dos workers a la vez
 
