@@ -97,7 +97,7 @@ throwaway() {  # throwaway <pgbackrest restore options...>: restore into a new v
   docker volume rm -f "$VOL" > /dev/null 2>&1 || true
   local env=() v
   for v in $(compgen -v PITR_); do env+=(-e "$v"); done
-  docker run -d --name "$BOX" --network "${PITR_TEST_NETWORK:-bridge}" "${env[@]}" -v "$VOL:/var/lib/postgresql/data" \
+  docker run -d --init --name "$BOX" --network "${PITR_TEST_NETWORK:-bridge}" "${env[@]}" -v "$VOL:/var/lib/postgresql/data" \
     ${PITR_TEST_PUBLISH:+-p "$PITR_TEST_PUBLISH"} \
     --entrypoint sh "$IMAGE" -c "
       set -e

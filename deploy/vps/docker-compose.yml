@@ -23,6 +23,8 @@ x-logging: &logging
 
 x-backend: &backend
   image: predigol-backend:${PREDIGOL_VERSION:-local}
+  # A real PID 1 (tini) reaps whatever a child leaves behind.
+  init: true
   build:
     context: ../..
     args:
@@ -49,6 +51,10 @@ services:
       context: ./postgres
     container_name: predigol-postgres
     restart: unless-stopped
+    # tini as PID 1, NOT the postmaster: pgBackRest's asynchronous archiver daemonises, and an orphan reparented
+    # to a postmaster running as PID 1 is reaped as an unknown "server process" - any non-zero exit (the
+    # repository unreachable, no stanza yet) then crash-restarts the whole database. Found by the rehearsal.
+    init: true
     # Parallel plans keep their hash tables in /dev/shm (64 MB by default in Docker).
     shm_size: 512mb
     stop_grace_period: 120s
