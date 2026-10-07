@@ -97,6 +97,11 @@ throwaway() {  # throwaway <pgbackrest restore options...>: restore into a new v
   docker volume rm -f "$VOL" > /dev/null 2>&1 || true
   local env=() v
   for v in $(compgen -v PITR_); do env+=(-e "$v"); done
+  # A repository behind its own CA (PITR_S3_CA_FILE, a path inside the database container): the same file here.
+  if [[ -n "${PITR_S3_CA_FILE:-}" ]]; then
+    docker exec "$PG" cat "$PITR_S3_CA_FILE" > "$STATE/pitr-ca.crt"
+    env+=(-v "$STATE/pitr-ca.crt:$PITR_S3_CA_FILE:ro")
+  fi
   docker run -d --init --name "$BOX" --network "${PITR_TEST_NETWORK:-bridge}" "${env[@]}" -v "$VOL:/var/lib/postgresql/data" \
     ${PITR_TEST_PUBLISH:+-p "$PITR_TEST_PUBLISH"} \
     --entrypoint sh "$IMAGE" -c "
