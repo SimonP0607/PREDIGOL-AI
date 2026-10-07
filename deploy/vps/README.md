@@ -264,7 +264,52 @@ en `127.0.0.1:55432`, sin tocar la base en marcha.
 
 ## 11. Ensayo realizado (7 oct 2026)
 
-ENSAYO_PENDIENTE
+En un sandbox de 2 vCPU con el mismo `docker-compose.yml`, el mismo `Caddyfile` y los **datos reales saneados**
+del portátil (8,4 GB, 117 tablas, 49,8 millones de filas, 81.739 ficheros RAW; sin cuentas ni datos personales). Lo
+que cambiaba (`rehearsal/`): el dominio `predigol.localhost` con la autoridad local de Caddy, un simulador vacío de
+API-Football (sin clave ni peticiones) y un S3 local en lugar de R2.
+
+| Prueba | Resultado |
+|---|---|
+| `export.sh` sobre una copia del "portátil" | OK: 117 tablas, 49.763.561 filas, nada cambió durante el volcado |
+| `import`: sha256, restauración como `fbi`, cada tabla comparada, RAW, sesiones, stanza + copia completa PITR | OK en 5 min |
+| Despliegue sobre lo importado (migraciones 0069 → 0071 con datos reales) y desde cero (0001 → 0071) | OK |
+| PITR: copia completa (8,8 GB → 1,1 GB cifrados) | 62 s |
+| PITR: verificación del repositorio; restauración a un punto en un servidor desechable | OK |
+| Desastre: carpeta de la base borrada → `pitr recover --name` | base abierta en 69 s, línea temporal 2; las 118 tablas como en el punto de restauración; el marcador escrito después no está |
+| Linaje del RAW | 72.174 de 72.287 payloads con su fichero y su tamaño; 112 posteriores a la copia (esperado); 1 fichero vacío en el portátil (§ riesgos) |
+| Caída de PostgreSQL (SIGKILL al postmaster) | vuelve solo en 7 s, datos intactos |
+| Reinicio (el demonio Docker cae y vuelve; `up` y post-boot) | todo vuelve solo; el monitor avisó del WAL sin archivar mientras el S3 estaba parado, y se recuperó solo |
+| `rollback` | 3 s; sano en 9 s |
+| Copias cifradas fuera, rotación, prueba de restauración del volcado, RAW inmutable | OK |
+| Playwright contra HTTPS con datos reales (anónimo, USER es/en, admin, seguridad y 2FA, preferencias, móvil, PWA) | 61 de 62. Falla Admin → Analítica: su primera carga pasa de los 20 s del test en 2 vCPU (informes de 4–9 s). Después queda 5 min en caché |
+| Carga, 200 personas a la vez con sesión (3–10 s entre páginas) | 0 errores; p50 20 ms, p95 139 ms, p99 280 ms; 62 peticiones/s |
+
+**Fallos que encontró el ensayo y quedaron corregidos:**
+
+* La base entraba en un bucle de reinicios en cuanto el repositorio PITR fallaba. pgBackRest dejaba procesos
+  huérfanos y PostgreSQL, como PID 1, los tomaba por propios. Ahora corre bajo `tini`.
+* `import` comparaba con el manifiesto una sola tabla, no todas (en el ensayo anterior también). Además fallaba al
+  cerrar sesiones de un esquema anterior.
+* Cada despliegue reiniciaba PostgreSQL. Ahora su imagen solo cambia si cambia su definición.
+* La API abría una conexión por petición, sin límite. Con 200 personas se agotaron las conexiones: 30 % de errores y
+  p95 de 12 s. Ahora usa un pool acotado y guarda unos segundos lo que es igual para todos.
+* La lista de cuotas superaba los 30 s con los datos reales; la frescura de plantillas tardaba 10 s; la búsqueda
+  recorría todos los partidos. Ahora tardan milisegundos.
+* Perfil → Seguridad mostraba las acciones del historial sin traducir.
+* Otros menores: `export.sh` (pipefail), nombre del `archive_command`, CA del S3 en la restauración, límites de CPU
+  por encima de los vCPU de la máquina, primera pasada del monitor.
+
+**Lo que solo se puede probar en el servidor real (FASE 12 del día 1):**
+
+* `bench.sh` en la máquina comprada;
+* Cloudflare con certificado de origen, o Let's Encrypt;
+* R2 real, Telegram y Healthchecks;
+* el arranque con systemd;
+* la prueba de carga desde fuera (aquí el generador compartía los 2 vCPU con el servidor);
+* `pitr test` y la prueba del volcado con los datos completos, que necesitan el doble de disco que este sandbox.
+
+Resultados completos: `docs/owner/BETA_DEPLOY_REPORT_2026-10-07.md`.
 
 ## 12. Ficheros
 

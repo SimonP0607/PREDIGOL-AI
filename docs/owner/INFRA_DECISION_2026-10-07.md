@@ -121,6 +121,10 @@ Medido en el portátil el 7 oct. Ver `BETA_FASE0_BASELINE_2026-10-07.md`.
 
 **Elección: Cloud VPS 6, 200 GB SSD, US Central.**
 
+**Prueba de carga del ensayo (7 oct, `BETA_DEPLOY_REPORT_2026-10-07.md` §3).** En 2 vCPU, con el generador en la
+misma máquina, 200 personas con sesión navegando a la vez: 0 errores, p95 139 ms, RAM 3,3 GB, 19 conexiones. La CPU
+y la RAM del VPS 4 bastan para la beta. Lo que lo descarta es el disco a 24 meses.
+
 * El VPS 4 con +100 GB costaría $8,38/mes (24 meses, Centro) frente a $9,20. Por $0,82 más, el VPS 6 da 6 vCPU y
   12 GB.
 * La RAM extra cubre la caché de una base que pasará de 9 a 51 GB en un año.
