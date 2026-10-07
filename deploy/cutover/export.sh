@@ -66,7 +66,8 @@ dexec "rm -f /tmp/cut.rc /tmp/cut.err; nohup sh -c 'pg_dump -U $DB_USER -Fc -f /
 started=$SECONDS
 while :; do
   sleep 5
-  rc="$(dexec "cat /tmp/cut.rc 2>/dev/null" | tr -d '\r\n ')"
+  # (no rc file yet is not an error: under pipefail a failing cat would end the script here)
+  rc="$(dexec "cat /tmp/cut.rc 2>/dev/null || true" | tr -d '\r\n ')"
   [[ -n "$rc" ]] && break
   (( SECONDS - started > 7200 )) && { log "FAILED: the dump did not finish in 2 h"; exit 1; }
 done
