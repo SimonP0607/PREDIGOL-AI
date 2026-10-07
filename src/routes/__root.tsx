@@ -19,6 +19,7 @@ import { setTimeZone } from "@/lib/time";
 import { UserShell } from "@/components/layout/UserShell";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { BrandMark } from "@/components/brand/Brand";
+import { registerServiceWorker } from "@/lib/pwa";
 
 function NotFoundComponent() {
   return (
@@ -87,9 +88,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "PrediGol — Football Intelligence" },
       { property: "og:type", content: "website" },
       { name: "robots", content: "noindex, nofollow" },
+      // Installed on a phone's home screen (PWA): full screen, its own name and status bar.
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "PrediGol" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", href: "/favicon.ico", sizes: "any" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -136,6 +143,9 @@ function RootComponent() {
   // and the client's first render identical.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    void registerServiceWorker();
+  }, []);
   if (!mounted) return <Splash />;
   return (
     <QueryClientProvider client={queryClient}>

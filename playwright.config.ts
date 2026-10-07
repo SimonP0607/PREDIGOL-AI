@@ -13,6 +13,7 @@
  *   admin     the Admin Console as SUPER_ADMIN, in English
  *   prefs     language and time-zone changes, serially, on their own account
  *   mobile    the product at 390 px
+ *   pwa       manifest, service worker and offline page (E2E_PWA=1, production build only)
  * A full run loads a few hundred pages: the API's per-client limit must allow it
  * (dev-up sets FBI_API_RATE_LIMIT=3000).
  */
@@ -71,6 +72,13 @@ export default defineConfig({
       fullyParallel: false,
       use: { ...desktop, storageState: statePath("switch") },
       dependencies: ["setup"],
+    },
+    {
+      // The installable app (manifest, service worker, offline page). Needs a PRODUCTION build: the dev server
+      // never registers the worker. Run with E2E_PWA=1 against the deployed stack (deploy/vps).
+      name: "pwa",
+      testMatch: /pwa\.spec\.ts/,
+      use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
     },
     {
       name: "mobile",
