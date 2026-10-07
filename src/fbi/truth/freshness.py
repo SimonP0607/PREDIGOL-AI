@@ -252,19 +252,24 @@ since 4 Oct 2026 - before it, no coach had a profile and the dataset read UNKNOW
 id (``profiles_players``, ``coachs_by_id``, 5 Oct 2026) and the provider gave no profile - or, for a coach, one with
 neither birth date nor nationality: the provider's gap, not one we never read."""
 
+# The last finished squad request per team, computed once (DISTINCT ON batch_key) and joined: as a LATERAL
+# subquery it scanned every team_squad task for each of ~2,800 teams (10-30 s on the real data, the rehearsal of
+# 7 Oct 2026); the same rows now take a fraction of a second.
 SQUADS_SQL = """
+WITH asked AS (
+    SELECT DISTINCT ON (b.batch_key) b.batch_key, b.updated_at AS asked_at, p.results_count AS asked_results
+      FROM raw.backfill_tasks b LEFT JOIN raw.ingestion_payloads p ON p.hash = b.last_payload_hash
+     WHERE b.kind = 'team_squad' AND b.status = 'done'
+     ORDER BY b.batch_key, b.updated_at DESC
+)
 SELECT DISTINCT ON (t.id) c.name AS competition, cs.season, t.provider_team_id, t.squad_checked_at,
        k.asked_at, k.asked_results
   FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
   JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
-  LEFT JOIN LATERAL (
-      SELECT b.updated_at AS asked_at, p.results_count AS asked_results
-        FROM raw.backfill_tasks b LEFT JOIN raw.ingestion_payloads p ON p.hash = b.last_payload_hash
-       WHERE b.kind = 'team_squad' AND b.batch_key = t.provider_team_id::text AND b.status = 'done'
-       ORDER BY b.updated_at DESC LIMIT 1) k ON true
+  LEFT JOIN asked k ON k.batch_key = t.provider_team_id::text
  WHERE c.is_tracked AND cs.is_current AND c.name !~* 'friendl'
- ORDER BY t.id, c.tier NULLS LAST
+ ORDER BY t.id, c.tier NULLS LAST, c.id
 """
 """``asked_at``/``asked_results``: the newest done unit of the weekly /players/squads round and how many entries its
 answer had. A team asked and answered with nothing is the provider's gap, not a team never read (5 Oct 2026: all

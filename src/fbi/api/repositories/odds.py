@@ -6,9 +6,12 @@ from fbi.api.repositories import Conn, Row, fetch_all
 
 
 def fixtures_with_odds(conn: Conn, *, limit: int, offset: int) -> list[int]:
+    # From the small side: the few hundred fixtures that have snapshots, then their kick-offs. Walking every
+    # fixture by kick-off and probing each snapshot partition (the EXISTS form) took over 30 s on the real data
+    # (440 of 245k fixtures have prices) - the rehearsal of 7 Oct 2026; this takes ~40 ms.
     rows = fetch_all(conn, """
         SELECT f.id FROM core.fixtures f
-        WHERE EXISTS (SELECT 1 FROM market.odds_snapshots o WHERE o.fixture_id = f.id)
+        JOIN (SELECT DISTINCT fixture_id FROM market.odds_snapshots) o ON o.fixture_id = f.id
         ORDER BY f.kickoff_at DESC, f.id DESC LIMIT %s OFFSET %s
     """, (limit, offset))
     return [int(r["id"]) for r in rows]
