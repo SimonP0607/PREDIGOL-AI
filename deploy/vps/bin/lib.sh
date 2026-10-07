@@ -73,9 +73,11 @@ ping_hc() {
 
 # One at a time: `exclusive deploy` takes $STATE/deploy.lock for the rest of the script, or exits saying another
 # run holds it. (A deploy that was still waiting for health once recorded its versions after a newer deploy.)
+# A second lock in the same script needs its own descriptor: `exclusive pitr` after `exclusive deploy 8`.
 exclusive() {
-  exec 9> "$STATE/$1.lock"
-  flock -n 9 || { log "another $1 is running (lock $STATE/$1.lock)"; exit 1; }
+  local fd="${2:-9}"
+  eval "exec $fd> \"\$STATE/\$1.lock\""
+  flock -n "$fd" || { log "another $1 is running (lock $STATE/$1.lock)"; exit 1; }
 }
 
 # True while a deploy, a rollback or an import runs: the monitor then leaves the containers alone.

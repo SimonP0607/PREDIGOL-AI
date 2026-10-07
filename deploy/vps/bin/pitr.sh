@@ -12,6 +12,12 @@
 #   bin/pitr.sh restore --time "2026-10-08 12:00:00+00" | --name NAME
 #                                    restore into a NEW throwaway server (port 127.0.0.1:55432) to inspect or copy
 #                                    data from; the live database is never touched (README: "Recuperación")
+#   bin/pitr.sh recover --confirm [--time T | --name NAME]
+#                                    DISASTER RECOVERY on THIS server (a lost or broken database, a new server after
+#                                    losing the old one): the stack is stopped, the current data folder MOVED aside
+#                                    (pgdata.before-recover-<stamp>, never deleted), the repository's copy restored
+#                                    into a new one - to the end of the archived WAL, or to T / NAME - and the stack
+#                                    started again; a FULL backup then starts the new timeline's window.
 #
 # Results go to $PREDIGOL_DATA/state/pitr-*.json; failures ping Healthchecks.io (HC_PING_PITR) and Telegram.
 # Exit 0 good, 1 failed, 3 PITR not configured.
@@ -21,7 +27,8 @@ set -Eeuo pipefail
 
 [[ -n "${PITR_S3_BUCKET:-}" ]] || { log "pitr: not configured (PITR_S3_BUCKET is empty)"; exit 3; }
 PG=predigol-postgres
-IMAGE="$(docker inspect -f '{{.Config.Image}}' "$PG")"
+# The database's image (a new server after a loss has no container yet: the one compose builds).
+IMAGE="$(docker inspect -f '{{.Config.Image}}' "$PG" 2> /dev/null || echo predigol-postgres:16)"
 BOX=predigol-pitr-test
 VOL=predigol-pitr-test-data
 pgbr() { docker exec -u postgres "$PG" predigol-pitr "$@"; }
@@ -45,10 +52,11 @@ cmd_init() {
   log "pitr: WAL archiving works; first full backup next: bin/pitr.sh backup"
 }
 
-cmd_backup() {
+cmd_backup() {  # [full]
   exclusive pitr
   local type=diff
-  if [[ "$(date -u +%u)" == 7 ]] || ! pgbr info --output=json | jq -e '.[0].backup | map(select(.type == "full")) | length > 0' > /dev/null; then
+  if [[ "${1:-}" == full || "$(date -u +%u)" == 7 ]] \
+      || ! pgbr info --output=json | jq -e '.[0].backup | map(select(.type == "full")) | length > 0' > /dev/null; then
     type=full
   fi
   trap 'log "pitr backup FAILED"; ping_hc "${HC_PING_PITR:-}" fail; notify "la copia PITR ($type) FALLÓ"' ERR
@@ -92,16 +100,21 @@ wait_promoted() {
   return 1
 }
 
+# A repository behind its own CA (PITR_S3_CA_FILE, a path inside the database container): the same file for a
+# restore container, copied out of the database container (running or not) or left at $STATE/pitr-ca.crt.
+ca_mount() {
+  [[ -n "${PITR_S3_CA_FILE:-}" ]] || return 0
+  docker cp "$PG:$PITR_S3_CA_FILE" "$STATE/pitr-ca.crt" > /dev/null 2>&1 || true
+  [[ -s "$STATE/pitr-ca.crt" ]] || { log "pitr: PITR_S3_CA_FILE is set: put that CA at $STATE/pitr-ca.crt"; exit 1; }
+  env+=(-v "$STATE/pitr-ca.crt:$PITR_S3_CA_FILE:ro")
+}
+
 throwaway() {  # throwaway <pgbackrest restore options...>: restore into a new volume and start a server on it
   docker rm -f "$BOX" > /dev/null 2>&1 || true
   docker volume rm -f "$VOL" > /dev/null 2>&1 || true
   local env=() v
   for v in $(compgen -v PITR_); do env+=(-e "$v"); done
-  # A repository behind its own CA (PITR_S3_CA_FILE, a path inside the database container): the same file here.
-  if [[ -n "${PITR_S3_CA_FILE:-}" ]]; then
-    docker exec "$PG" cat "$PITR_S3_CA_FILE" > "$STATE/pitr-ca.crt"
-    env+=(-v "$STATE/pitr-ca.crt:$PITR_S3_CA_FILE:ro")
-  fi
+  ca_mount
   docker run -d --init --name "$BOX" --network "${PITR_TEST_NETWORK:-bridge}" "${env[@]}" -v "$VOL:/var/lib/postgresql/data" \
     ${PITR_TEST_PUBLISH:+-p "$PITR_TEST_PUBLISH"} \
     --entrypoint sh "$IMAGE" -c "
@@ -184,6 +197,54 @@ cmd_restore() {
   fi
 }
 
+cmd_recover() {
+  local target=() confirm=0 stamp aside v env=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --time) target=(--type=time "--target=${2:?time}" --target-action=promote); shift 2 ;;
+      --name) target=(--type=name "--target=${2:?name}" --target-action=promote); shift 2 ;;
+      --confirm) confirm=1; shift ;;
+      *) echo "usage: pitr.sh recover --confirm [--time 'YYYY-MM-DD HH:MM:SS+00' | --name NAME]" >&2; exit 2 ;;
+    esac
+  done
+  (( confirm )) || { log "recover REPLACES this server's database with the repository's copy: add --confirm"; exit 2; }
+  exclusive deploy 8
+  exclusive pitr
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  log "recover: stopping the stack"
+  compose stop > /dev/null 2>&1 || true
+  docker image inspect "$IMAGE" > /dev/null 2>&1 || compose build postgres
+  if [[ -d "$PREDIGOL_DATA/pgdata" ]] && [[ -n "$(ls -A "$PREDIGOL_DATA/pgdata" 2> /dev/null)" ]]; then
+    aside="$PREDIGOL_DATA/pgdata.before-recover-$stamp"
+    mv "$PREDIGOL_DATA/pgdata" "$aside"
+    log "recover: the current data folder is kept at $aside (delete it yourself once satisfied)"
+  fi
+  install -d -m 0700 -o 70 -g 70 "$PREDIGOL_DATA/pgdata"
+  for v in $(compgen -v PITR_); do env+=(-e "$v"); done
+  ca_mount
+  log "recover: restoring from the repository ${target[*]:-(to the end of the archived WAL)}"
+  # The rehearsal's S3 stand-in is a service of the stack itself: it must be up for the restore to reach it.
+  if compose config --services 2> /dev/null | grep -qx s3; then compose up -d s3 > /dev/null; fi
+  docker run --rm --init --network "${PITR_TEST_NETWORK:-bridge}" "${env[@]}" \
+    -v "$PREDIGOL_DATA/pgdata:/var/lib/postgresql/data" --entrypoint sh "$IMAGE" -c "
+      set -e
+      predigol-entrypoint true
+      su-exec postgres pgbackrest --stanza=predigol restore ${target[*]}
+    "
+  log "recover: starting the database (it replays the archived WAL, then opens on a new timeline)"
+  compose up -d postgres > /dev/null
+  local deadline=$(( SECONDS + 7200 ))
+  until [[ "$(docker exec -u postgres "$PG" psql -qAtX -c 'SELECT pg_is_in_recovery()' 2> /dev/null)" == f ]]; do
+    (( SECONDS < deadline )) || { log "recover: the database did not finish recovering (docker logs $PG)"; exit 1; }
+    sleep 5
+  done
+  log "recover: database open - revision $(sql "SELECT version_num FROM public.alembic_version"), timeline $(sql "SELECT timeline_id FROM pg_control_checkpoint()")"
+  compose up -d --no-build > /dev/null
+  log "recover: stack started; a full backup starts the new timeline's window"
+  cmd_backup full
+  "$KIT/bin/healthcheck.sh" || true
+}
+
 case "${1:-}" in
   init) cmd_init ;;
   backup) cmd_backup ;;
@@ -191,5 +252,6 @@ case "${1:-}" in
   test) cmd_test ;;
   status) pgbr info --output=json | jq . ;;
   restore) shift; cmd_restore "$@" ;;
+  recover) shift; cmd_recover "$@" ;;
   *) sed -n '2,20p' "$0"; exit 2 ;;
 esac
