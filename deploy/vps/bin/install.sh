@@ -87,6 +87,15 @@ for name in POSTGRES_ADMIN_PASSWORD POSTGRES_PASSWORD POSTGRES_WORKER_PASSWORD P
 done
 fill /etc/predigol/predigol.env PITR_CIPHER_PASS "$(openssl rand -base64 48 | tr -d '\n/+=' | cut -c1-48)"
 fill /etc/predigol/app.env FBI_AUTH_SECRET_KEY "$(openssl rand -base64 32)"
+# Docker refuses a CPU cap above the machine's vCPUs: cap the defaults at nproc (a 4-vCPU plan, a rehearsal box).
+cpus="$(nproc)"
+for name in PG_CPUS WORKER_CPUS API_CPUS; do
+  v="$(grep -E "^$name=" /etc/predigol/predigol.env | cut -d= -f2)"
+  if [[ -n "$v" ]] && awk -v v="$v" -v c="$cpus" 'BEGIN { exit !(v > c) }'; then
+    sed -i "s|^$name=.*|$name=$cpus|" /etc/predigol/predigol.env
+    log "$name lowered to $cpus (this machine's vCPUs)"
+  fi
+done
 log "fill in the rest of /etc/predigol/predigol.env and /etc/predigol/app.env before the first deploy"
 
 log "journald: at most 500 MB of logs"
