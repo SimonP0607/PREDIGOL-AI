@@ -22,6 +22,10 @@ import { statePath } from "./e2e/accounts";
 
 const desktop = { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } };
 
+// The pwa project cuts the service worker's own network (e2e/pwa.spec.ts): Playwright routes a worker's requests
+// only with this switch, and it must be set before the browser starts.
+if (process.env["E2E_PWA"]) process.env["PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS"] ??= "1";
+
 export default defineConfig({
   testDir: "e2e",
   timeout: 60_000,

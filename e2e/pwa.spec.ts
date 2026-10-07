@@ -88,10 +88,18 @@ test("offline, a page shows the offline page - never a stale copy - and online a
     await navigator.serviceWorker.ready;
   });
   await page.reload();
+  // Chromium's offline emulation does not reach the service worker's own requests, so the network is cut for
+  // them explicitly: every page request fails as it would with no connection (the worker's network events are
+  // routed when PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1, as the pwa project sets).
+  await context.route(
+    (url) => !url.pathname.startsWith("/assets/") && !url.pathname.startsWith("/brand/"),
+    (route) => route.abort("internetdisconnected"),
+  );
   await context.setOffline(true);
   await page.goto("/home");
   await expect(page.getByTestId("offline-page")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sin conexión");
+  await context.unrouteAll();
   await context.setOffline(false);
   await page.goto("/login");
   await expect(page.getByTestId("offline-page")).toHaveCount(0);
