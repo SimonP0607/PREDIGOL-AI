@@ -8,11 +8,15 @@ if [[ ! -r "$PREDIGOL_ENV_FILE" ]]; then
   echo "predigol: cannot read $PREDIGOL_ENV_FILE (run as root; see README.md)" >&2
   exit 2
 fi
+# The application's settings (FBI_*), for the notices below; the containers get them through docker-compose.yml.
+PREDIGOL_APP_ENV_FILE="${PREDIGOL_APP_ENV_FILE:-/etc/predigol/app.env}"
 set -a
 # shellcheck disable=SC1090
 . "$PREDIGOL_ENV_FILE"
+# shellcheck disable=SC1090
+[[ -r "$PREDIGOL_APP_ENV_FILE" ]] && . "$PREDIGOL_APP_ENV_FILE"
 set +a
-export PREDIGOL_ENV_FILE
+export PREDIGOL_ENV_FILE PREDIGOL_APP_ENV_FILE
 PREDIGOL_DATA="${PREDIGOL_DATA:-/srv/predigol}"
 STATE="$PREDIGOL_DATA/state"
 DB_BACKUPS="$PREDIGOL_DATA/backups/db"
@@ -31,10 +35,20 @@ compose() {
     ${PREDIGOL_COMPOSE_EXTRA:+-f "$PREDIGOL_COMPOSE_EXTRA"} "$@"
 }
 
-# One value from the database, read-only, through the postgres container (no port is published).
+# One value from the database, read-only, through the postgres container (no port is published), as the owner.
 psql_q() {
   compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qAtX \
     -c "SET default_transaction_read_only = on" -c "$1" | tail -n 1
+}
+
+# What the worker and the API may do in the database (db/grants.sql), applied as the owner. Idempotent.
+apply_grants() {
+  compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qX -f /predigol/grants.sql > /dev/null
+}
+
+# A one-off command in the backend image, as the database owner (the `ops` service).
+ops() {
+  compose --profile ops run --rm --no-deps -T ops "$@"
 }
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }

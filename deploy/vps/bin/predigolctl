@@ -8,9 +8,14 @@
 #   predigolctl deploy             build the checked-out code, back up, migrate, restart, verify
 #   predigolctl rollback           start the previous versions again (the database is NOT downgraded)
 #   predigolctl backup | restore-test | health | raw-sync
-#   predigolctl import FOLDER      ONCE, on a fresh server: the old machine's backup (scripts.backup create)
+#   predigolctl pitr init|backup|verify|test|status|restore ...   point-in-time recovery (bin/pitr.sh)
+#   predigolctl maint              the owner's daily maintenance: partitions ahead, retention (scripts/db_maintenance)
+#   predigolctl import FOLDER      ONCE, on a fresh server: the old machine's export (deploy/cutover/export.sh)
 #   predigolctl psql               a read-only psql session
 #   predigolctl create-user --email E [--role USER|SUPER_ADMIN] ...   an account; its password goes to a 0600 file
+#   predigolctl accounts ...       scripts/accounts.py: list, disable --domain, revoke-sessions --all, unlock, ...
+#   predigolctl bench              measure THIS machine (CPU, steal, disk, fsync, network) against the minimums
+#   predigolctl cloudflare trust|firewall|open    Cloudflare in front (bin/cloudflare-ips.sh)
 set -Eeuo pipefail
 # shellcheck source=bin/lib.sh
 . "$(dirname "$0")/lib.sh"
@@ -51,10 +56,13 @@ cmd_deploy() {
   wait_healthy postgres 300
   local tries
   for tries in 1 2 3 4 5; do
-    if compose run --rm --no-deps -T api alembic upgrade head; then break; fi
+    # As the database owner (ops): the API's and the worker's roles may not change the schema.
+    if ops alembic upgrade head; then break; fi
     (( tries == 5 )) && { log "MIGRATION FAILED - the running services were not touched"; notify "despliegue $new_be: la migración FALLÓ; nada cambió"; exit 1; }
     sleep 10
   done
+  apply_grants || { log "GRANTS FAILED - the running services were not touched"; notify "despliegue $new_be: los permisos de la base FALLARON"; exit 1; }
+  ops python -m scripts.db_maintenance partitions > /dev/null
   compose up -d --remove-orphans
   if ! wait_healthy "api web caddy" 300; then
     log "deploy: not healthy - roll back with: predigolctl rollback"
@@ -88,7 +96,7 @@ cmd_create_user() {
   for (( i = 0; i < ${#args[@]}; i++ )); do [[ "${args[i]}" == --email ]] && email="${args[i+1]:-}"; done
   [[ "$email" =~ ^[^/[:space:]]+@[^/[:space:]]+$ ]] || { echo "usage: predigolctl create-user --email E [--role USER|SUPER_ADMIN] [--name N] [--language es|en] [--timezone TZ]" >&2; exit 2; }
   install -d -m 0700 -o 1000 -g 1000 "$out"
-  compose run --rm --no-deps -T -v "$out:/out" api python -m scripts.create_user "$@" --generate --out "/out/$email.txt"
+  compose --profile ops run --rm --no-deps -T -v "$out:/out" ops python -m scripts.create_user "$@" --generate --out "/out/$email.txt"
   chown -R root:root "$out"
   chmod 600 "$out/$email.txt"
   log "credentials in $out/$email.txt (0600): hand them over by a safe channel, then delete the file"
@@ -110,7 +118,13 @@ case "${1:-}" in
   health) shift; exec "$BIN/healthcheck.sh" "$@" ;;
   raw-sync) exec "$BIN/raw-sync.sh" ;;
   import) shift; exec "$BIN/import.sh" "$@" ;;
+  pitr) shift; exec "$BIN/pitr.sh" "$@" ;;
+  maint) shift; exec "$BIN/maint.sh" "$@" ;;
+  bench) shift; exec "$BIN/bench.sh" "$@" ;;
+  cloudflare) shift; exec "$BIN/cloudflare-ips.sh" "$@" ;;
+  accounts) shift; ops python -m scripts.accounts "$@" ;;
+  grants) apply_grants && log "grants applied" ;;
   psql) compose exec -e PGOPTIONS="-c default_transaction_read_only=on" postgres psql -U fbi -d fbi ;;
   create-user) shift; cmd_create_user "$@" ;;
-  *) sed -n '2,15p' "$0"; exit 2 ;;
+  *) sed -n '2,21p' "$0"; exit 2 ;;
 esac

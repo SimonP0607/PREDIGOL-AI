@@ -1,0 +1,10 @@
+[Unit]
+Description=PrediGol: re-read and check every PITR backup and WAL file in the repository
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/pitr.sh verify
+SuccessExitStatus=3
+Nice=10

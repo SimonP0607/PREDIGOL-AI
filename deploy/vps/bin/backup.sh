@@ -60,8 +60,30 @@ cat > "$DB_BACKUPS/$NAME.json" <<JSON
 JSON
 log "backup $NAME: $bytes bytes in ${seconds}s, sha256 ${sha:0:16}, revision $revision"
 
+# Off the server, encrypted with the owner's age public key (the private key never touches this machine), then
+# CHECKED there (the object exists with the size just written) before anything local may be rotated out.
+offsite=0
+if [[ -n "${BACKUP_RCLONE_REMOTE:-}" && -n "${BACKUP_AGE_RECIPIENT:-}" ]]; then
+  offsite=1
+  age -r "$BACKUP_AGE_RECIPIENT" -o "$DB_BACKUPS/$NAME.dump.age" "$DB_BACKUPS/$NAME.dump"
+  age_bytes="$(stat -c %s "$DB_BACKUPS/$NAME.dump.age")"
+  rclone copy --immutable "$DB_BACKUPS/$NAME.dump.age" "$BACKUP_RCLONE_REMOTE/db/"
+  rclone copy --immutable "$DB_BACKUPS/$NAME.json" "$BACKUP_RCLONE_REMOTE/db/"
+  remote_bytes="$(rclone lsjson "$BACKUP_RCLONE_REMOTE/db/$NAME.dump.age" | jq -r '.[0].Size // -1')"
+  rm -f "$DB_BACKUPS/$NAME.dump.age"
+  if [[ "$remote_bytes" != "$age_bytes" ]]; then
+    log "off-server copy NOT verified ($remote_bytes bytes there, $age_bytes here)"; false
+  fi
+  jq --arg remote "$BACKUP_RCLONE_REMOTE/db/$NAME.dump.age" --argjson bytes "$age_bytes" --arg at "$(date -u +%FT%TZ)" \
+    '. + {offsite: {remote: $remote, bytes: $bytes, verified_at: $at}}' "$DB_BACKUPS/$NAME.json" > "$DB_BACKUPS/$NAME.json.new"
+  mv "$DB_BACKUPS/$NAME.json.new" "$DB_BACKUPS/$NAME.json"
+  log "copied off the server to $BACKUP_RCLONE_REMOTE/db/ (age-encrypted, $age_bytes bytes, checked)"
+else
+  log "NOTE: no off-server copy configured (BACKUP_RCLONE_REMOTE + BACKUP_AGE_RECIPIENT): this dump exists only here"
+fi
+
 # Rotation on this server: the newest BACKUP_KEEP_DAILY dumps, plus the newest dump of each of the last
-# BACKUP_KEEP_WEEKLY ISO weeks. Off-server copies follow the bucket's own retention rules.
+# BACKUP_KEEP_WEEKLY ISO weeks. With an off-server copy configured, a dump whose copy was never checked is KEPT.
 keep_daily="${BACKUP_KEEP_DAILY:-3}"
 keep_weekly="${BACKUP_KEEP_WEEKLY:-2}"
 mapfile -t dumps < <(find "$DB_BACKUPS" -maxdepth 1 -name 'predigol-*.dump' -printf '%f\n' | sort -r)
@@ -74,18 +96,30 @@ for i in "${!dumps[@]}"; do
   if [[ -z "${weeks[$week]:-}" && ${#weeks[@]} -lt $keep_weekly ]]; then weeks["$week"]=1; keep["$d"]=1; fi
 done
 for d in "${dumps[@]}"; do
-  if [[ -z "${keep[$d]:-}" ]]; then rm -f "$DB_BACKUPS/$d" "$DB_BACKUPS/${d%.dump}.json"; log "rotated out $d"; fi
+  [[ -n "${keep[$d]:-}" ]] && continue
+  if (( offsite )) && ! jq -e '.offsite.verified_at' "$DB_BACKUPS/${d%.dump}.json" > /dev/null 2>&1; then
+    log "kept $d: its off-server copy was never checked"; continue
+  fi
+  rm -f "$DB_BACKUPS/$d" "$DB_BACKUPS/${d%.dump}.json"; log "rotated out $d"
 done
 
-# Off the server, encrypted with the owner's age public key (the private key never touches this machine).
-if [[ -n "${BACKUP_RCLONE_REMOTE:-}" && -n "${BACKUP_AGE_RECIPIENT:-}" ]]; then
-  age -r "$BACKUP_AGE_RECIPIENT" -o "$DB_BACKUPS/$NAME.dump.age" "$DB_BACKUPS/$NAME.dump"
-  rclone copy --immutable "$DB_BACKUPS/$NAME.dump.age" "$BACKUP_RCLONE_REMOTE/db/"
-  rclone copy --immutable "$DB_BACKUPS/$NAME.json" "$BACKUP_RCLONE_REMOTE/db/"
-  rm -f "$DB_BACKUPS/$NAME.dump.age"
-  log "copied off the server to $BACKUP_RCLONE_REMOTE/db/ (age-encrypted)"
-else
-  log "NOTE: no off-server copy configured (BACKUP_RCLONE_REMOTE + BACKUP_AGE_RECIPIENT): this dump exists only here"
+# Retention off the server: daily copies for BACKUP_REMOTE_DAYS days, the Sunday ones for BACKUP_REMOTE_WEEKS
+# weeks, the first of each month for BACKUP_REMOTE_MONTHS months. Nothing else is ever deleted there.
+if (( offsite )); then
+  now_s="$(date -u +%s)"
+  while read -r remote_name; do
+    stamp="${remote_name#predigol-}"; stamp="${stamp:0:8}"
+    [[ "$stamp" =~ ^[0-9]{8}$ ]] || continue
+    age_days=$(( (now_s - $(date -u -d "$stamp" +%s)) / 86400 ))
+    keep_it=0
+    (( age_days < ${BACKUP_REMOTE_DAYS:-14} )) && keep_it=1
+    [[ "$(date -u -d "$stamp" +%u)" == 7 ]] && (( age_days < 7 * ${BACKUP_REMOTE_WEEKS:-8} )) && keep_it=1
+    [[ "${stamp:6:2}" == 01 ]] && (( age_days < 31 * ${BACKUP_REMOTE_MONTHS:-12} )) && keep_it=1
+    if (( ! keep_it )); then
+      rclone deletefile "$BACKUP_RCLONE_REMOTE/db/$remote_name" && log "off-server retention: removed $remote_name"
+      rclone deletefile "$BACKUP_RCLONE_REMOTE/db/${remote_name%.dump.age}.json" 2> /dev/null || true
+    fi
+  done < <(rclone lsf "$BACKUP_RCLONE_REMOTE/db/" --include 'predigol-*.dump.age')
 fi
 trap - ERR
 ping_hc "${HC_PING_BACKUP:-}"

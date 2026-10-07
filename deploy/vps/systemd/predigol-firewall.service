@@ -1,0 +1,12 @@
+[Unit]
+Description=PrediGol: 80/443 only from Cloudflare (re-applied after Docker starts)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/predigol/backend/deploy/vps/bin/cloudflare-ips.sh apply
+
+[Install]
+WantedBy=multi-user.target

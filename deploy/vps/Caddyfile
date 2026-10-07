@@ -6,9 +6,22 @@
 # predigol.localhost in the rehearsal (Caddy then signs with its own local authority).
 {
 	email {$PREDIGOL_ACME_EMAIL}
+	servers {
+		# Slow-client limits: a request has 10 s to send its headers and 30 s its body.
+		timeouts {
+			read_header 10s
+			read_body 30s
+			idle 2m
+		}
+		# Who may tell Caddy the client's real address: nobody by default; Cloudflare's ranges when it proxies
+		# (PREDIGOL_TRUSTED_PROXIES, written by bin/cloudflare-ips.sh). From them, CF-Connecting-IP is believed.
+		trusted_proxies static {$PREDIGOL_TRUSTED_PROXIES}
+		client_ip_headers CF-Connecting-IP X-Forwarded-For
+	}
 }
 
 {$PREDIGOL_SITE} {
+	import /etc/caddy/snippets/tls-{$PREDIGOL_TLS_MODE}.caddy
 	encode zstd gzip
 
 	header {
@@ -27,11 +40,19 @@
 	@closed path /docs /docs/* /openapi.json /redoc /redoc/*
 	respond @closed 404
 
+	# The API sees exactly one client address: the one Caddy determined (never a header the client made up).
 	handle /api/* {
-		reverse_proxy api:8000
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy api:8000 {
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 	handle /health {
-		reverse_proxy api:8000
+		reverse_proxy api:8000 {
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 
 	# The service worker must be re-read on every visit, or an update would wait up to a day. (The web server

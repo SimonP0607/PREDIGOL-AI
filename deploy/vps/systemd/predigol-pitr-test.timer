@@ -1,0 +1,9 @@
+[Unit]
+Description=PrediGol: PITR restore test, monthly (first Tuesday)
+
+[Timer]
+OnCalendar=Tue *-*-01..07 06:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

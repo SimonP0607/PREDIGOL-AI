@@ -31,6 +31,16 @@ want_sha="$(jq -r .sha256 "$MANIFEST")"
 got_sha="$(sha256sum "$DUMP" | cut -d' ' -f1)"
 [[ "$want_sha" == "$got_sha" ]] || fail "sha256 differs from the backup's record"
 
+# The restored copy needs about the live database's size on this disk: skip (and say so) rather than fill it.
+need_kb=$(( $(psql_q "SELECT pg_database_size('fbi')") * 11 / 10 / 1024 + 5 * 1024 * 1024 ))
+free_kb="$(df -Pk /var/lib/docker | awk 'NR==2 {print $4}')"
+if (( free_kb < need_kb )); then
+  log "restore-test SKIPPED: $(( free_kb / 1048576 )) GB free, $(( need_kb / 1048576 )) GB needed"
+  jq -n --arg dump "$NAME" --arg at "$(date -u +%FT%TZ)" '{dump: $dump, tested_at: $at, passed: null, skipped: "not enough disk"}' > "$RESULT"
+  notify "prueba de restauración omitida: falta espacio en disco"
+  exit 0
+fi
+
 cleanup
 pw="$(openssl rand -hex 16)"
 docker run -d --name "$BOX" --network none --shm-size 256m -e POSTGRES_PASSWORD="$pw" -e POSTGRES_DB=restore \

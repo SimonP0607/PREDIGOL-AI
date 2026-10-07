@@ -1,9 +1,18 @@
-# PrediGol on ONE server (a VPS with Ubuntu 24.04 LTS): PostgreSQL 16, the API, the worker (exactly one), the
-# web app and Caddy - HTTPS and the only public ports. The procedure, in Spanish, is README.md beside this file.
+# PrediGol on ONE server (a VPS with Ubuntu 24.04 LTS): PostgreSQL 16 (with pgBackRest for point-in-time recovery),
+# the API, the worker (exactly one), the web app and Caddy - HTTPS and the only public ports. The procedure, in
+# Spanish, is README.md beside this file.
 #
 #   bin/predigolctl up        (docker compose --env-file /etc/predigol/predigol.env -f docker-compose.yml up -d)
 #
-# Nothing secret is in this file or in the images. Every secret comes from /etc/predigol/predigol.env (root, 600).
+# Nothing secret is in this file or in the images. Secrets live in two files (root, 600), and each container gets
+# only what it needs:
+#   /etc/predigol/predigol.env  the server's: database passwords (one per role), PITR repository, backups, monitors.
+#                               Read by the scripts and interpolated here; NEVER handed whole to an application
+#                               container.
+#   /etc/predigol/app.env       the application's FBI_* settings (API-Football, Telegram, the second-factor key...):
+#                               handed to the API, the worker and one-off commands (ops).
+# The database roles (db/grants.sql): the API connects as predigol_api, the worker as predigol_worker, migrations
+# and maintenance as the owner fbi - never as a superuser.
 # Data lives under PREDIGOL_DATA (default /srv/predigol): the database, the RAW store, the backups, Caddy's
 # certificates. Removing the containers loses nothing; removing that folder loses everything.
 name: predigol
@@ -20,7 +29,7 @@ x-backend: &backend
       FBI_CODE_VERSION: ${PREDIGOL_VERSION:-unknown}
       FBI_UID: "1000"
   env_file:
-    - path: ${PREDIGOL_ENV_FILE:-/etc/predigol/predigol.env}
+    - path: ${PREDIGOL_APP_ENV_FILE:-/etc/predigol/app.env}
       required: true
   depends_on:
     postgres: { condition: service_healthy }
@@ -29,35 +38,54 @@ x-backend: &backend
 
 x-backend-env: &backend-env
   FBI_ENV: production
-  FBI_DATABASE_URL: postgresql+psycopg://fbi:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}@postgres:5432/fbi
   FBI_RAW_STORE_DIR: /app/data/raw
   FBI_WEB_BASE_URL: https://${PREDIGOL_DOMAIN:?set PREDIGOL_DOMAIN in the env file}
   TZ: UTC
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: predigol-postgres:16
+    build:
+      context: ./postgres
     container_name: predigol-postgres
     restart: unless-stopped
     # Parallel plans keep their hash tables in /dev/shm (64 MB by default in Docker).
     shm_size: 512mb
     stop_grace_period: 120s
     environment:
-      POSTGRES_USER: fbi
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}
-      POSTGRES_DB: fbi
+      # The only superuser: for the operator inside this container. No application uses it.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?set POSTGRES_ADMIN_PASSWORD in the env file}
+      POSTGRES_DB: postgres
+      # Read once, when the data folder is new (db/initdb): the roles' passwords.
+      PREDIGOL_DB_OWNER_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}
+      PREDIGOL_DB_WORKER_PASSWORD: ${POSTGRES_WORKER_PASSWORD:?set POSTGRES_WORKER_PASSWORD in the env file}
+      PREDIGOL_DB_API_PASSWORD: ${POSTGRES_API_PASSWORD:?set POSTGRES_API_PASSWORD in the env file}
+      # Point-in-time recovery (empty PITR_S3_BUCKET = off; WAL is then not kept).
+      PITR_S3_BUCKET: ${PITR_S3_BUCKET:-}
+      PITR_S3_ENDPOINT: ${PITR_S3_ENDPOINT:-}
+      PITR_S3_PORT: ${PITR_S3_PORT:-443}
+      PITR_S3_REGION: ${PITR_S3_REGION:-auto}
+      PITR_S3_KEY: ${PITR_S3_KEY:-}
+      PITR_S3_KEY_SECRET: ${PITR_S3_KEY_SECRET:-}
+      PITR_S3_PATH: ${PITR_S3_PATH:-/pgbackrest}
+      PITR_S3_URI_STYLE: ${PITR_S3_URI_STYLE:-path}
+      PITR_S3_VERIFY_TLS: ${PITR_S3_VERIFY_TLS:-y}
+      PITR_S3_CA_FILE: ${PITR_S3_CA_FILE:-}
+      PITR_CIPHER_PASS: ${PITR_CIPHER_PASS:-}
+      PITR_RETENTION_FULL: ${PITR_RETENTION_FULL:-4}
       TZ: UTC
-    # Sized for an 8 GB server that also runs the API, the worker and the web (about 2 GB together).
+    # Defaults for a 12 GB server that also runs the API, the worker and the web (about 4 GB together).
     command:
       - postgres
       - -c
-      - shared_buffers=2GB
+      - shared_buffers=${PG_SHARED_BUFFERS:-3GB}
       - -c
-      - effective_cache_size=5GB
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-7GB}
       - -c
-      - work_mem=16MB
+      - work_mem=${PG_WORK_MEM:-16MB}
       - -c
-      - maintenance_work_mem=512MB
+      - maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-512MB}
       - -c
       - max_connections=100
       - -c
@@ -66,6 +94,14 @@ services:
       - effective_io_concurrency=200
       - -c
       - wal_compression=on
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=predigol-archive %p
+      - -c
+      - archive_timeout=300
       - -c
       - max_wal_size=2GB
       - -c
@@ -79,29 +115,39 @@ services:
     volumes:
       - ${PREDIGOL_DATA:-/srv/predigol}/pgdata:/var/lib/postgresql/data
       - ${PREDIGOL_DATA:-/srv/predigol}/backups/db:/backups
+      - ${PREDIGOL_DATA:-/srv/predigol}/pgbackrest-spool:/var/spool/pgbackrest
+      - ./db/initdb:/docker-entrypoint-initdb.d:ro
+      - ./db/grants.sql:/predigol/grants.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fbi -d fbi"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 60s
+    mem_limit: ${PG_MEM_LIMIT:-6g}
+    cpus: ${PG_CPUS:-4}
     logging: *logging
-    # No ports: only the API and the worker reach it, on the stack's own network.
+    # No ports: only the API, the worker and the operator (docker exec) reach it.
 
   api:
     <<: *backend
     container_name: predigol-api
-    # Behind Caddy: the client's address comes from X-Forwarded-For (the rate limit and the sign-in audit use it).
-    # The API is not published, so only Caddy can set that header.
+    # Behind Caddy: the client's address comes from X-Forwarded-For, which Caddy always sets itself (from
+    # CF-Connecting-IP when Cloudflare proxies). The API is not published, so only Caddy can reach it.
     command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2",
               "--proxy-headers", "--forwarded-allow-ips", "*", "--log-level", "warning"]
     environment:
       <<: *backend-env
+      FBI_DATABASE_URL: postgresql+psycopg://predigol_api:${POSTGRES_API_PASSWORD}@postgres:5432/fbi
       FBI_API_DOCS: "0"
       FBI_API_HEALTH_DETAIL: "0"
       FBI_SESSION_COOKIE_SECURE: "1"
+      FBI_SESSION_COOKIE_NAME: __Host-predigol_session
+      FBI_SESSION_COOKIE_SAMESITE: strict
       FBI_API_CORS_ORIGINS: https://${PREDIGOL_DOMAIN}
       FBI_API_RATE_LIMIT: ${PREDIGOL_API_RATE_LIMIT:-600}
+      FBI_API_USER_RATE_LIMIT: ${PREDIGOL_API_USER_RATE_LIMIT:-300}
+      FBI_API_LOGIN_RATE_LIMIT: ${PREDIGOL_API_LOGIN_RATE_LIMIT:-20}
       # The Admin Console's System page lists the backups it can see.
       FBI_BACKUP_DIRS: /backups
     volumes:
@@ -113,6 +159,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    mem_limit: ${API_MEM_LIMIT:-1536m}
+    cpus: ${API_CPUS:-2}
 
   worker:
     <<: *backend
@@ -122,6 +170,7 @@ services:
     command: ["python", "-m", "apps.worker.main"]
     environment:
       <<: *backend-env
+      FBI_DATABASE_URL: postgresql+psycopg://predigol_worker:${POSTGRES_WORKER_PASSWORD}@postgres:5432/fbi
     volumes:
       - ${PREDIGOL_DATA:-/srv/predigol}/raw:/app/data/raw
     stop_grace_period: 60s
@@ -131,6 +180,23 @@ services:
       timeout: 20s
       retries: 3
       start_period: 15m
+    mem_limit: ${WORKER_MEM_LIMIT:-3g}
+    cpus: ${WORKER_CPUS:-3}
+
+  # One-off commands as the database OWNER: migrations, maintenance, accounts. Never started by `up`.
+  #   docker compose run --rm ops alembic upgrade head
+  ops:
+    <<: *backend
+    container_name: predigol-ops
+    profiles: ["ops"]
+    restart: "no"
+    command: ["python", "-c", "print('run a command: docker compose run --rm ops <command>')"]
+    environment:
+      <<: *backend-env
+      FBI_DATABASE_URL: postgresql+psycopg://fbi:${POSTGRES_PASSWORD}@postgres:5432/fbi
+    volumes:
+      - ${PREDIGOL_DATA:-/srv/predigol}/raw:/app/data/raw:ro
+      - ${PREDIGOL_DATA:-/srv/predigol}/backups/db:/backups:ro
 
   web:
     image: predigol-web:${PREDIGOL_WEB_VERSION:-local}
@@ -144,6 +210,8 @@ services:
     environment:
       NODE_ENV: production
       TZ: UTC
+    mem_limit: ${WEB_MEM_LIMIT:-512m}
+    cpus: ${WEB_CPUS:-1}
     logging: *logging
 
   caddy:
@@ -159,8 +227,16 @@ services:
       PREDIGOL_DOMAIN: ${PREDIGOL_DOMAIN}
       PREDIGOL_SITE: ${PREDIGOL_SITE:-${PREDIGOL_DOMAIN}}
       PREDIGOL_ACME_EMAIL: ${PREDIGOL_ACME_EMAIL:?set PREDIGOL_ACME_EMAIL in the env file}
+      # acme: Let's Encrypt (default). origin: a Cloudflare Origin CA certificate in /etc/predigol/origin.
+      PREDIGOL_TLS_MODE: ${PREDIGOL_TLS_MODE:-acme}
+      # Who may say who the client is: Cloudflare's ranges when it proxies (bin/cloudflare-ips.sh writes them).
+      PREDIGOL_TRUSTED_PROXIES: ${PREDIGOL_TRUSTED_PROXIES:-127.0.0.1/32}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy:/etc/caddy/snippets:ro
+      - ${PREDIGOL_ORIGIN_CERT_DIR:-/etc/predigol/origin}:/etc/caddy/origin:ro
       - ${PREDIGOL_DATA:-/srv/predigol}/caddy/data:/data
       - ${PREDIGOL_DATA:-/srv/predigol}/caddy/config:/config
+    mem_limit: ${CADDY_MEM_LIMIT:-256m}
+    cpus: ${CADDY_CPUS:-1}
     logging: *logging

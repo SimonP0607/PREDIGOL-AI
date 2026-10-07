@@ -1,0 +1,13 @@
+[Unit]
+Description=PrediGol: a real point-in-time restore into a throwaway container
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/pitr.sh test
+SuccessExitStatus=3
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=3h

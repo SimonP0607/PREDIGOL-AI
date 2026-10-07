@@ -59,17 +59,40 @@ fi
 
 log "folders under $DATA"
 install -d -m 0750 "$DATA" "$DATA/caddy" "$DATA/caddy/data" "$DATA/caddy/config" "$DATA/state"
+# pgBackRest's local queue for WAL on its way to the repository (the postgres image's uid 70).
+install -d -m 0750 -o 70 -g 70 "$DATA/pgbackrest-spool"
 # The API (uid 1000) lists the dumps for the Admin Console's System page: it may read the folders, not write.
 install -d -m 0750 -o root -g 1000 "$DATA" "$DATA/backups" "$DATA/backups/db"
 install -d -m 0700 "$DATA/pgdata"
 # The worker writes the RAW store as uid 1000 (the image's user).
 install -d -m 0750 -o 1000 -g 1000 "$DATA/raw"
 
-install -d -m 0700 /etc/predigol
-if [[ ! -f /etc/predigol/predigol.env ]]; then
-  install -m 0600 "$KIT/predigol.env.example" /etc/predigol/predigol.env
-  log "fill in /etc/predigol/predigol.env (chmod 600) before the first deploy"
-fi
+install -d -m 0700 /etc/predigol /etc/predigol/origin
+# Two env files, both root 600: the server's (passwords per database role, PITR, backups, monitors) and the
+# application's (FBI_*). Every password and key is GENERATED here, never typed or shown: the owner copies them to
+# a password manager from these files.
+fill() {  # fill FILE NAME VALUE: set NAME only where it is still empty
+  local file=$1 name=$2 value=$3
+  if grep -q "^$name=$" "$file"; then
+    sed -i "s|^$name=$|$name=$value|" "$file"
+    log "generated $name in $file"
+  fi
+}
+for f in predigol app; do
+  [[ -f "/etc/predigol/$f.env" ]] || install -m 0600 "$KIT/$f.env.example" "/etc/predigol/$f.env"
+  chmod 600 "/etc/predigol/$f.env"
+done
+for name in POSTGRES_ADMIN_PASSWORD POSTGRES_PASSWORD POSTGRES_WORKER_PASSWORD POSTGRES_API_PASSWORD; do
+  fill /etc/predigol/predigol.env "$name" "$(openssl rand -hex 24)"
+done
+fill /etc/predigol/predigol.env PITR_CIPHER_PASS "$(openssl rand -base64 48 | tr -d '\n/+=' | cut -c1-48)"
+fill /etc/predigol/app.env FBI_AUTH_SECRET_KEY "$(openssl rand -base64 32)"
+log "fill in the rest of /etc/predigol/predigol.env and /etc/predigol/app.env before the first deploy"
+
+log "journald: at most 500 MB of logs"
+install -d /etc/systemd/journald.conf.d
+printf '[Journal]\nSystemMaxUse=500M\n' > /etc/systemd/journald.conf.d/60-predigol.conf
+systemctl restart systemd-journald
 
 log "systemd units"
 for unit in "$KIT"/systemd/*.service "$KIT"/systemd/*.timer; do
@@ -78,6 +101,7 @@ done
 ln -sf "$KIT/bin/predigolctl" /usr/local/bin/predigolctl
 systemctl daemon-reload
 systemctl enable predigol.service predigol-post-boot.service
-systemctl enable --now predigol-health.timer predigol-backup.timer predigol-restore-test.timer predigol-raw-sync.timer
+systemctl enable --now predigol-health.timer predigol-backup.timer predigol-restore-test.timer predigol-raw-sync.timer \
+  predigol-pitr.timer predigol-pitr-verify.timer predigol-pitr-test.timer predigol-maint.timer
 
 log "done. Next (README.md): fill /etc/predigol/predigol.env, point the domain's DNS here, then: predigolctl deploy"

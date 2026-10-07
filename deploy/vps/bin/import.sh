@@ -37,8 +37,12 @@ tables="$(psql_q "SELECT count(*) FROM information_schema.tables WHERE table_sch
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 cp "$SRC/db.dump" "$DB_BACKUPS/import-$stamp.dump"
 trap 'rm -f "$DB_BACKUPS/import-$stamp.dump"' EXIT
-log "import: pg_restore (this takes a while)"
-compose exec -T postgres pg_restore -U fbi -d fbi --exit-on-error --jobs=4 "/backups/import-$stamp.dump"
+log "import: pg_restore as the owner fbi (this takes a while)"
+# Objects come back owned by fbi whatever the old machine called its role; privileges are this server's own
+# (db/grants.sql), applied right after.
+compose exec -T postgres pg_restore -U fbi -d fbi --no-owner --no-privileges --exit-on-error --jobs=4 \
+  "/backups/import-$stamp.dump"
+apply_grants
 
 log "import: comparing every table's row count with the manifest"
 bad=0
@@ -63,4 +67,6 @@ got_files="$(find "$PREDIGOL_DATA/raw" -type f | wc -l)"
 jq -n --arg at "$(date -u +%FT%TZ)" --arg src "$SRC" --arg rev "$(jq -r .alembic_revision "$MANIFEST")" \
   --argjson rows "$(jq .rows_total "$MANIFEST")" --argjson raw "$got_files" \
   '{imported_at: $at, source: $src, alembic_revision: $rev, rows: $rows, raw_files: $raw}' > "$STATE/import.json"
+# Sessions opened on the old machine are worthless here; end them all (accounts sign in again on this server).
+ops python -m scripts.accounts revoke-sessions --all
 log "import: done and verified ($(jq -r .rows_total "$MANIFEST") rows, $got_files RAW files). Next: predigolctl deploy"

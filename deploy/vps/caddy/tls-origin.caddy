@@ -1,0 +1,4 @@
+# PREDIGOL_TLS_MODE=origin: behind Cloudflare's proxy with SSL "Full (strict)", the certificate is a Cloudflare
+# Origin CA certificate (15 years, trusted only by Cloudflare) in /etc/predigol/origin/{cert,key}.pem on the
+# server. No ACME: the firewall can then accept HTTPS from Cloudflare's ranges only (bin/cloudflare-ips.sh).
+tls /etc/caddy/origin/cert.pem /etc/caddy/origin/key.pem

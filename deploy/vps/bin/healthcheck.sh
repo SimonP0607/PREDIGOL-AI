@@ -84,7 +84,8 @@ else say "ok   backup $(( ($(date +%s) - ${newest%.*}) / 3600 )) h old"; fi
 if [[ -r "$STATE/restore-test.json" ]]; then
   passed="$(jq -r .passed "$STATE/restore-test.json")"
   tested="$(date -d "$(jq -r .tested_at "$STATE/restore-test.json")" +%s 2> /dev/null || echo 0)"
-  if [[ "$passed" != true ]]; then problem "the last restore test failed"
+  if [[ "$passed" == null ]]; then warning "the last restore test was skipped: $(jq -r '.skipped // "?"' "$STATE/restore-test.json")"
+  elif [[ "$passed" != true ]]; then problem "the last restore test failed"
   elif (( $(date +%s) - tested > 8 * 86400 )); then warning "no restore test in 8 days"
   else say "ok   restore test passed"; fi
 else
@@ -99,6 +100,88 @@ if [[ "$DOMAIN" != *.localhost ]]; then
     if (( days < 7 )); then problem "certificate expires in $days days"; elif (( days < 14 )); then warning "certificate expires in $days days"; else say "ok   certificate $days days"; fi
   else
     problem "no certificate served on 443"
+  fi
+fi
+
+# 8. The machine: CPU steal (a noisy neighbour on a shared host), load, memory, swap.
+read -r _ u n sy id io irq sirq st _ < /proc/stat
+total=$(( u + n + sy + id + io + irq + sirq + st ))
+if read -r ptotal psteal < "$STATE/cpu.prev" 2> /dev/null && (( total > ptotal )); then
+  steal=$(( 100 * (st - psteal) / (total - ptotal) ))
+  streak="$(cat "$STATE/steal.streak" 2> /dev/null || echo 0)"
+  if (( steal >= 15 )); then streak=$(( streak + 1 )); else streak=0; fi
+  echo "$streak" > "$STATE/steal.streak"
+  if (( streak >= 3 )); then problem "CPU steal ${steal}% for $(( streak * 5 )) min: the host is overloaded (INFRA_DECISION: plan B)"
+  elif (( steal >= 15 )); then warning "CPU steal ${steal}%"
+  else say "ok   CPU steal ${steal}%"; fi
+fi
+echo "$total $st" > "$STATE/cpu.prev"
+mem_total="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"; mem_avail="$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)"
+swap_total="$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)"; swap_free="$(awk '/^SwapFree:/ {print $2}' /proc/meminfo)"
+mem_pct=$(( 100 * mem_avail / mem_total ))
+if (( mem_pct < 8 )); then problem "memory: ${mem_pct}% available"; elif (( mem_pct < 15 )); then warning "memory: ${mem_pct}% available"; else say "ok   memory ${mem_pct}% available"; fi
+if (( swap_total > 0 )) && (( 100 * (swap_total - swap_free) / swap_total > 50 )); then warning "swap more than half used"; fi
+load1="$(cut -d' ' -f1 /proc/loadavg)"
+if awk -v l="$load1" -v c="$(nproc)" 'BEGIN { exit !(l > 2 * c) }'; then warning "load $load1 on $(nproc) CPUs"; fi
+
+# 9. PostgreSQL: connections, WAL archiving and the PITR backups (when configured).
+conn_pct="$(psql_q "SELECT count(*) * 100 / current_setting('max_connections')::int FROM pg_stat_activity" 2> /dev/null || echo "?")"
+if [[ "$conn_pct" =~ ^[0-9]+$ ]]; then
+  if (( conn_pct >= 80 )); then warning "PostgreSQL connections at ${conn_pct}% of the maximum"; else say "ok   connections ${conn_pct}%"; fi
+fi
+if [[ -n "${PITR_S3_BUCKET:-}" ]]; then
+  arch="$(psql_q "SELECT coalesce(extract(epoch FROM now() - last_archived_time)::int, -1) || ' ' || (coalesce(last_failed_time, 'epoch') > coalesce(last_archived_time, 'epoch'))::text FROM pg_stat_archiver" 2> /dev/null || echo "? ?")"
+  arch_age="${arch%% *}"; arch_failing="${arch##* }"
+  if [[ "$arch_failing" == true ]]; then problem "WAL archiving to the PITR repository is FAILING"
+  elif [[ "$arch_age" =~ ^-?[0-9]+$ ]] && (( arch_age < 0 || arch_age > 3600 )); then problem "no WAL archived for over an hour"
+  elif [[ "$arch_age" =~ ^[0-9]+$ ]] && (( arch_age > 900 )); then warning "last WAL archived ${arch_age}s ago"
+  else say "ok   WAL archived ${arch_age}s ago"; fi
+  if [[ -r "$STATE/pitr-backup.json" ]]; then
+    pitr_at="$(date -d "$(jq -r .backed_up_at "$STATE/pitr-backup.json")" +%s 2> /dev/null || echo 0)"
+    if (( $(date +%s) - pitr_at > 26 * 3600 )); then problem "PITR base backup older than 26 h"; else say "ok   PITR backup $(( ($(date +%s) - pitr_at) / 3600 )) h old"; fi
+  else
+    warning "no PITR base backup yet (bin/pitr.sh init, then backup)"
+  fi
+  [[ "$(jq -r .passed "$STATE/pitr-verify.json" 2> /dev/null)" == false ]] && problem "the last PITR repository verification failed"
+  [[ "$(jq -r .passed "$STATE/pitr-test.json" 2> /dev/null)" == false ]] && problem "the last PITR restore test failed"
+fi
+
+# 10. The data: API-Football quota, runs stuck or failing.
+quota="$(psql_q "SELECT coalesce(max(spent * 100 / budget), 0) FROM raw.provider_quota WHERE quota_date = (now() AT TIME ZONE 'UTC')::date" 2> /dev/null || echo "?")"
+if [[ "$quota" =~ ^[0-9]+$ ]]; then
+  if (( quota >= 100 )); then problem "API-Football daily budget spent (${quota}%)"
+  elif (( quota >= 90 )); then warning "API-Football daily budget at ${quota}%"
+  else say "ok   API-Football budget ${quota}%"; fi
+fi
+stuck="$(psql_q "SELECT count(*) FROM raw.ingestion_runs WHERE status = 'running' AND started_at < now() - interval '2 hours'" 2> /dev/null || echo "?")"
+[[ "$stuck" =~ ^[0-9]+$ ]] && (( stuck > 0 )) && warning "$stuck run(s) running for more than 2 h"
+failed="$(psql_q "SELECT count(*) FROM raw.ingestion_runs WHERE status = 'failed' AND started_at > now() - interval '1 hour'" 2> /dev/null || echo "?")"
+if [[ "$failed" =~ ^[0-9]+$ ]]; then
+  if (( failed >= 20 )); then problem "$failed failed runs in the last hour (provider or network?)"
+  elif (( failed >= 5 )); then warning "$failed failed runs in the last hour"; fi
+fi
+
+# 11. What visitors got: server errors in the last 5 minutes (Caddy's access log).
+ACCESS="$PREDIGOL_DATA/caddy/data/access.log"
+if [[ -r "$ACCESS" ]]; then
+  since=$(( $(date +%s) - 300 ))
+  errors="$(tail -n 20000 "$ACCESS" | jq -r --argjson since "$since" 'select((.ts // 0) >= $since and (.status // 0) >= 500) | .status' 2> /dev/null | wc -l)"
+  if (( errors >= 50 )); then problem "$errors server errors (5xx) in 5 min"
+  elif (( errors >= 10 )); then warning "$errors server errors (5xx) in 5 min"
+  else say "ok   $errors server errors in 5 min"; fi
+fi
+
+# 12. Disk forecast: one sample a day; warn when 90% is under 30 days away at the last week's pace.
+today="$(date -u +%F)"
+used_kb="$(df -Pk "$PREDIGOL_DATA" | awk 'NR==2 {print $3}')"; size_kb="$(df -Pk "$PREDIGOL_DATA" | awk 'NR==2 {print $2}')"
+grep -q "^$today " "$STATE/disk.history" 2> /dev/null || echo "$today $used_kb" >> "$STATE/disk.history"
+if (( $(wc -l < "$STATE/disk.history") >= 8 )); then
+  read -r d0 u0 < <(tail -n 8 "$STATE/disk.history" | head -n 1)
+  per_day=$(( (used_kb - u0) / 7 ))
+  if (( per_day > 0 )); then
+    days_left=$(( (size_kb * 9 / 10 - used_kb) / per_day ))
+    if (( days_left < 30 )); then warning "disk at 90% in about $days_left days (+$(( per_day / 1024 )) MB/day since $d0)"
+    else say "ok   disk 90% in about $days_left days"; fi
   fi
 fi
 
