@@ -13,6 +13,7 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
+from fbi.api.cache import shared
 from fbi.api.contracts.product import (
     BestHighlight,
     BestMarket,
@@ -142,6 +143,7 @@ def _top(all_cards: list[PickCard], moment: datetime) -> list[PickCard]:
     return [p for p in all_cards if p.value_now and p.kickoff_at < moment + TOP_WINDOW][:TOP_SIZE]
 
 
+@shared(30)
 def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None, market: str | None,
                 min_odds: Decimal | None, max_odds: Decimal | None, hours: int,
                 at: datetime | None = None) -> Envelope[PicksBoard]:
@@ -198,6 +200,7 @@ def parlay(rows: list[Row], spec: engine.ParlaySpec, *, include_shadow: bool, mo
     )
 
 
+@shared(30)
 def parlay_board(conn: Conn, kind: engine.ParlayKind, *, include_shadow: bool,
                  at: datetime | None = None) -> Envelope[Parlay]:
     moment = at or clock_now()
@@ -271,6 +274,7 @@ def best_odds(rows: list[Row], *, moment: datetime) -> tuple[list[BestOddsFixtur
     return fixtures, sorted(best_per_fixture.values(), key=lambda h: -h.price.price_edge)
 
 
+@shared(30)
 def best_odds_board(conn: Conn, *, hours: int, market: str | None, include_shadow: bool,
                     at: datetime | None = None) -> Envelope[BestOddsBoard]:
     moment = at or clock_now()
@@ -296,6 +300,7 @@ def _upcoming(r: Row) -> UpcomingMatch:
                          home=_home(r), away=_away(r), bookmakers=int(r["bookmakers"]))
 
 
+@shared(30)
 def home(conn: Conn, *, include_shadow: bool, at: datetime | None = None) -> Envelope[Home]:
     moment = at or clock_now()
     cfg = GateConfig(allow_unqualified=include_shadow)

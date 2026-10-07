@@ -10,6 +10,7 @@ from collections import defaultdict
 from datetime import date, datetime
 from decimal import Decimal
 
+from fbi.api.cache import shared
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 from fbi.api.contracts.records import (
     DailyBoard,
@@ -97,6 +98,7 @@ def _parlay(conn: Conn, kind: str, day: date, source: SetSource) -> ParlayRecord
         profit_units=p["profit_units"], legs=legs)
 
 
+@shared(30)
 def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datetime | None = None
                 ) -> Envelope[DailyBoard]:
     moment = at or clock_now()

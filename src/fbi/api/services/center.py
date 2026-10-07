@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from fbi.api.cache import shared
 from fbi.api.contracts.center import (
     Absence,
     AdminCount,
@@ -502,6 +503,7 @@ def admin_overview(conn: Conn, *, frontend_version: str | None = None) -> Envelo
     return ok(body, data_as_of=moment)
 
 
+@shared(60)
 def competition_table(conn: Conn, competition_id: int, *, season: int | None = None) -> Envelope[CompetitionTable | None]:
     """A competition season's tables, each kept apart and mapped to the stage it ranks (its newest
     season with a table, or the season asked): Apertura and Clausura, groups, conferences, a ranking

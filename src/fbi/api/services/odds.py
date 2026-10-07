@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from fbi.api.cache import shared
 from fbi.api.contracts.matches import MatchSummary
 from fbi.api.contracts.odds import (
     BookmakerMargin,
@@ -44,6 +45,7 @@ NO_SNAPSHOTS = (
 )
 
 
+@shared(60)
 def list_fixtures_with_odds(conn: Conn, *, limit: int, offset: int) -> Envelope[list[MatchSummary]]:
     ids = repo.fixtures_with_odds(conn, limit=limit, offset=offset)
     rows, _ = fixtures_repo.list_fixtures(

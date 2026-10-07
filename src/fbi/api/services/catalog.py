@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from fbi.api.cache import shared
 from fbi.api.contracts.catalog import (
     CompetitionDetail,
     CompetitionSummary,
@@ -24,6 +25,7 @@ from fbi.api.services.matches import summary
 from fbi.core.clock import now
 
 
+@shared(300)
 def list_competitions(
     conn: Conn, *, tracked: bool | None, q: str | None, limit: int, offset: int
 ) -> Envelope[list[CompetitionSummary]]:
@@ -36,6 +38,7 @@ def list_competitions(
     )
 
 
+@shared(300)
 def competition_detail(conn: Conn, competition_id: int) -> Envelope[CompetitionDetail]:
     rows = repo.list_competitions(conn, tracked=None, q=None, limit=1, offset=0, competition_id=competition_id)
     if not rows:
@@ -47,6 +50,7 @@ def competition_detail(conn: Conn, competition_id: int) -> Envelope[CompetitionD
     ))
 
 
+@shared(300)
 def list_teams(
     conn: Conn, *, q: str | None, competition_id: int | None, limit: int, offset: int
 ) -> Envelope[list[TeamSummary]]:
@@ -59,6 +63,7 @@ def list_teams(
     )
 
 
+@shared(120)
 def team_detail(conn: Conn, team_id: int) -> Envelope[TeamDetail]:
     rows = repo.list_teams(conn, q=None, competition_id=None, limit=1, offset=0, team_id=team_id)
     if not rows:

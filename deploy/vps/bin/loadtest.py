@@ -63,6 +63,7 @@ class Catalog:
     competitions: list[int] = field(default_factory=list)
     teams: list[int] = field(default_factory=list)
     words: list[str] = field(default_factory=lambda: ["madrid", "united", "nacional", "milan", "boca"])
+    day: tuple[str, str] = ("", "")  # today, UTC: [start, end)
 
 
 class Client:
@@ -135,9 +136,10 @@ def page_paths(page: str, cat: Catalog, rnd: random.Random) -> list[str]:
     if page == "home":
         return [f"{API}/auth/me", f"{API}/home"]
     if page == "picks":
-        return [f"{API}/picks", f"{API}/daily", f"{API}/parlays/safe"]
-    if page == "matches":
-        return [f"{API}/matches"]
+        return [f"{API}/picks", f"{API}/daily", f"{API}/parlays/{rnd.choice(['daily', 'multiday'])}"]
+    if page == "matches":  # the day's matches, as the Matches page asks for them (src/product/matches/query.ts)
+        return [f"{API}/matches?" + urlencode({"kickoff_after": cat.day[0], "kickoff_before": cat.day[1],
+                                                 "order": "asc", "limit": 200, "offset": 0})]
     if page == "match" and fid:
         return [f"{API}/matches/{fid}", f"{API}/matches/{fid}/center", f"{API}/odds/fixtures/{fid}"]
     if page == "live":
@@ -168,22 +170,31 @@ def ints_under(obj: Any, keys: set[str], out: set[int]) -> None:
 
 
 def discover(client: Client) -> Catalog:
+    """The matches people open: today's, the latest finished ones and those with prices; their teams."""
     cat = Catalog()
-    status, body, _ = client.request("GET", f"{API}/matches")
+    start = time.strftime("%Y-%m-%dT00:00:00Z", time.gmtime())
+    end = time.strftime("%Y-%m-%dT00:00:00Z", time.gmtime(time.time() + 86400))
+    cat.day = (start, end)
+    fixtures: set[int] = set()
+    teams: set[int] = set()
+    for query in ({"kickoff_after": start, "kickoff_before": end, "order": "asc", "limit": 200},
+                  {"status": "finished", "order": "desc", "limit": 100}):
+        status, body, _ = client.request("GET", f"{API}/matches?" + urlencode(query))
+        data = json.loads(body).get("data") if status == 200 else None
+        for m in data if isinstance(data, list) else []:
+            if isinstance(m, dict) and isinstance(m.get("id"), int):
+                fixtures.add(m["id"])
+                for side in ("home", "away"):
+                    team = m.get(side)
+                    if isinstance(team, dict) and isinstance(team.get("id"), int):
+                        teams.add(team["id"])
+    status, body, _ = client.request("GET", f"{API}/odds")
     if status == 200:
-        found: set[int] = set()
-        data = json.loads(body).get("data")
-        if isinstance(data, list):
-            for m in data:
-                if isinstance(m, dict):
-                    for k in ("fixture_id", "id"):
-                        if isinstance(m.get(k), int):
-                            found.add(m[k])
-                            break
-        cat.fixtures = sorted(found)[:300]
-        teams: set[int] = set()
-        ints_under(data, {"home_team_id", "away_team_id", "team_id"}, teams)
-        cat.teams = sorted(teams)[:300]
+        for m in json.loads(body).get("data") or []:
+            if isinstance(m, dict) and isinstance(m.get("id"), int):
+                fixtures.add(m["id"])
+    cat.fixtures = sorted(fixtures)[:400]
+    cat.teams = sorted(teams)[:400]
     status, body, _ = client.request("GET", f"{API}/competitions")
     if status == 200:
         found = set()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from fbi.api.cache import shared
 from fbi.api.contracts.rankings import Rankings, RatingRow
 from fbi.api.envelope import Envelope, ok, unavailable
 from fbi.api.repositories import Conn, fetch_all, fetch_one
@@ -46,6 +47,7 @@ RATINGS = """
 """
 
 
+@shared(300)
 def rankings(conn: Conn, *, competition_id: int | None, limit: int, pool: str = "men") -> Envelope[Rankings | None]:
     latest = fetch_one(conn, LATEST_RUN)
     if latest is None:

@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from fastapi import HTTPException
 
+from fbi.api.cache import shared
 from fbi.api.contracts.common import CompetitionRef, Lineage, Score, TeamRef, VenueRef
 from fbi.api.contracts.matches import (
     MarketPriceStatus,
@@ -91,6 +92,7 @@ def summary(row: Row, at: datetime | None = None) -> MatchSummary:
     )
 
 
+@shared(15)
 def list_matches(
     conn: Conn, flt: repo.FixtureFilter, *, limit: int, offset: int, order: Literal["asc", "desc"]
 ) -> Envelope[list[MatchSummary]]:

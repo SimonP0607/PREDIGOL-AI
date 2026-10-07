@@ -9,6 +9,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from fbi.api.cache import shared
 from fbi.api.contracts.common import TeamRef
 from fbi.api.contracts.explorer import (
     LOW_SAMPLE,
@@ -42,6 +43,7 @@ def _f(x: Any) -> float | None:
     return v if math.isfinite(v) else None
 
 
+@shared(300)
 def competitions(conn: Conn) -> Envelope[list[CompetitionProfile]]:
     rows = repo.competition_profiles(conn, FEATURE_VERSION)
     items = []
@@ -59,6 +61,7 @@ def competitions(conn: Conn) -> Envelope[list[CompetitionProfile]]:
     return listing(items, empty_reason="No fixtures have been ingested yet.")
 
 
+@shared(300)
 def coverage(conn: Conn) -> Envelope[list[CoverageCell]]:
     items = [CoverageCell(**r) for r in repo.coverage(conn, FEATURE_VERSION)]
     return listing(items, empty_reason="No fixtures have been ingested yet.")

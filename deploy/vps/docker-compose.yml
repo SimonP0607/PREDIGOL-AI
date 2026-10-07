@@ -156,6 +156,9 @@ services:
       FBI_API_RATE_LIMIT: ${PREDIGOL_API_RATE_LIMIT:-600}
       FBI_API_USER_RATE_LIMIT: ${PREDIGOL_API_USER_RATE_LIMIT:-300}
       FBI_API_LOGIN_RATE_LIMIT: ${PREDIGOL_API_LOGIN_RATE_LIMIT:-20}
+      # Read connections per API process (a bounded pool) and the shared boards kept 15-300 s (fbi/api/cache.py).
+      FBI_API_DB_POOL_MAX: ${PREDIGOL_API_DB_POOL_MAX:-8}
+      FBI_API_CACHE: "1"
       # The Admin Console's System page lists the backups it can see.
       FBI_BACKUP_DIRS: /backups
     volumes:
