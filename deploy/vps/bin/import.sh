@@ -38,7 +38,7 @@ tables="$(psql_q "SELECT count(*) FROM information_schema.tables WHERE table_sch
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 cp "$SRC/db.dump" "$DB_BACKUPS/import-$stamp.dump"
-# The restore's WAL is not archived (postgres/predigol-archive.sh): the full PITR backup below starts the window.
+# The restore's WAL is not archived (postgres/pgbackrest-archive-push.sh): the full PITR backup below starts the window.
 PAUSE="$PREDIGOL_DATA/pgbackrest-spool/archive-paused"
 install -o 70 -g 70 -m 0644 /dev/null "$PAUSE"
 trap 'rm -f "$DB_BACKUPS/import-$stamp.dump" "$PAUSE"' EXIT

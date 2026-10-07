@@ -1,6 +1,6 @@
 #!/bin/sh
 # Writes pgBackRest's configuration from the environment (PITR_*), readable only by postgres, then hands over to
-# the official entrypoint. Without PITR_S3_BUCKET nothing is written and WAL is not archived (predigol-archive
+# the official entrypoint. Without PITR_S3_BUCKET nothing is written and WAL is not archived (pgbackrest-archive-push
 # then accepts and drops each segment, so pg_wal never fills up): logical dumps remain the only backups.
 set -eu
 CONF=/etc/pgbackrest/pgbackrest.conf

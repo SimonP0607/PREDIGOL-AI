@@ -14,7 +14,8 @@ RUN --mount=type=secret,id=ca,required=false \
  && pgbackrest version
 
 COPY --chmod=0755 predigol-entrypoint.sh /usr/local/bin/predigol-entrypoint
-COPY --chmod=0755 predigol-archive.sh /usr/local/bin/predigol-archive
+# The archive_command. Its name must contain "pgbackrest": `pgbackrest check` and `backup` refuse otherwise.
+COPY --chmod=0755 pgbackrest-archive-push.sh /usr/local/bin/pgbackrest-archive-push
 COPY --chmod=0755 predigol-pitr.sh /usr/local/bin/predigol-pitr
 
 ENTRYPOINT ["predigol-entrypoint"]

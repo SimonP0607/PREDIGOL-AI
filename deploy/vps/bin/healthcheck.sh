@@ -106,7 +106,7 @@ fi
 # 8. The machine: CPU steal (a noisy neighbour on a shared host), load, memory, swap.
 read -r _ u n sy id io irq sirq st _ < /proc/stat
 total=$(( u + n + sy + id + io + irq + sirq + st ))
-if read -r ptotal psteal < "$STATE/cpu.prev" 2> /dev/null && (( total > ptotal )); then
+if [[ -r "$STATE/cpu.prev" ]] && read -r ptotal psteal < "$STATE/cpu.prev" && (( total > ptotal )); then
   steal=$(( 100 * (st - psteal) / (total - ptotal) ))
   streak="$(cat "$STATE/steal.streak" 2> /dev/null || echo 0)"
   if (( steal >= 15 )); then streak=$(( streak + 1 )); else streak=0; fi
