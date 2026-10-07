@@ -414,9 +414,15 @@ def _backup_dirs() -> list[Path]:
 def backups(limit: int = 15) -> list[BackupFile]:
     found: list[BackupFile] = []
     for d in _backup_dirs():
-        if not d.is_dir():
+        # A folder this process may not read lists nothing; it never turns the System page into a 500 (on the
+        # server the backups belong to root and the API runs as an unprivileged user).
+        try:
+            if not d.is_dir():
+                continue
+            entries = list(d.iterdir())
+        except OSError:
             continue
-        for p in d.iterdir():
+        for p in entries:
             try:
                 st = p.stat()
             except OSError:
