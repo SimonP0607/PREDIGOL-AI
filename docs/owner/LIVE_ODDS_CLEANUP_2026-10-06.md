@@ -156,6 +156,11 @@ restauraciones mueven 0,9 GB menos hoy y ~125 GB menos al año.
   * Las cuotas que el proveedor retira salen del libro: el partido 476908 pasó de 199 a 140 precios entre el min 45 y
     el 76.
   * Marcador, minuto y eventos siguen guardándose: 157 estados de 6 partidos y 25 eventos desde el cambio.
+* **Finalización con el cambio en marcha.** El partido 476908 terminó 1-1 a las 00:13:37 UTC del 7 oct:
+  * el resultado quedó guardado en ese mismo instante, con 17 eventos, estadísticas de equipo, alineaciones y su
+    último estado;
+  * salió del libro de cuotas a los 10 min de su último tick (00:13:17 → fuera a las 00:23:59), sin dejar ninguna
+    fila permanente de cuotas.
 * **Integridad RAW** (`audit_raw_integrity`, 23:51): 70.088 payloads con hash verificado.
   * Antes había 3 dañados: 2 de `/odds/live` y 1 de `/fixtures`, todos del corte del 4 oct a las 02:57.
   * Queda solo el de `/fixtures`, que es previo y ajeno a esta fase.
