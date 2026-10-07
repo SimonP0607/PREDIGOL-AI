@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from fbi.api.limits import BodyTooLargeError
 from fbi.auth.service import AuthError
 
 log = structlog.get_logger("api")
@@ -59,8 +60,16 @@ def install(app: FastAPI) -> None:
     async def _auth(request: Request, exc: AuthError) -> JSONResponse:
         headers = {"retry-after": str(exc.retry_after)} if exc.retry_after else {}
         extra: dict[str, object] = {"problems": exc.problems} if exc.problems else {}
+        extra.update(exc.extra)
+        if exc.retry_after:
+            extra["retry_after"] = exc.retry_after
         return JSONResponse(body(exc.code, exc.code.replace("_", " "), request_id(request), **extra),
                             status_code=exc.status, headers=headers)
+
+    @app.exception_handler(BodyTooLargeError)
+    async def _too_large(request: Request, exc: BodyTooLargeError) -> JSONResponse:
+        return JSONResponse(body("payload_too_large", "request body too large", request_id(request)),
+                            status_code=413, headers={"connection": "close"})
 
     @app.exception_handler(RequestValidationError)
     async def _invalid(request: Request, exc: RequestValidationError) -> JSONResponse:

@@ -29,6 +29,9 @@ COOKIE = "predigol_session"
 def accounts(migrated_database: str) -> Iterator[dict[str, int]]:
     mp = pytest.MonkeyPatch()
     mp.setenv("FBI_DATABASE_URL", migrated_database.replace("postgresql://", "postgresql+psycopg://"))
+    # Roles and permissions, not the second factor: that is test_auth_mfa.py, with the production policy
+    # (SUPER_ADMIN must use one). Here the owner signs in with the password alone.
+    mp.setenv("FBI_AUTH_MFA_ROLES", "")
     reset_cache()
     reset_session_settings()
     with psycopg.connect(migrated_database, autocommit=True) as conn:
@@ -46,6 +49,7 @@ def accounts(migrated_database: str) -> Iterator[dict[str, int]]:
         conn.execute("DELETE FROM auth.users")
     mp.undo()
     reset_cache()
+    reset_session_settings()
 
 
 @pytest.fixture()
@@ -100,6 +104,11 @@ def test_repeated_failures_are_throttled_but_never_block_the_right_password_befo
     assert r.status_code == 429 and r.json()["error"]["code"] == "too_many_attempts"
     assert int(r.headers["retry-after"]) > 0
     throttle.reset_all()
+    # The five failures also locked the account in the database (test_auth_mfa.py covers that lock): lift it.
+    from fbi.auth.db import write_connection
+
+    with write_connection() as conn:
+        conn.execute("UPDATE auth.users SET failed_logins = 0, locked_until = NULL")
 
 
 def test_a_user_reaches_the_product_and_gets_403_on_every_admin_route(app_client: TestClient) -> None:
@@ -195,7 +204,8 @@ def test_the_owner_manages_accounts_and_cannot_lock_everyone_out(app_client: Tes
     login(app_client, ADMIN_EMAIL, ADMIN_PW)
     users = app_client.get("/api/v1/admin/users").json()["data"]
     assert {u["email"] for u in users} >= {ADMIN_EMAIL, USER_EMAIL}
-    assert all("password" not in k for u in users for k in u)
+    assert not any(k in ("password", "password_hash", "totp_secret") or "hash" in k or "secret" in k
+                   for u in users for k in u)
     # the only SUPER_ADMIN can neither demote nor disable themself
     me = accounts["admin"]
     r = app_client.patch(f"/api/v1/admin/users/{me}", json={"role": "USER"})

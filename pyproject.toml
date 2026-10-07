@@ -19,6 +19,9 @@ dependencies = [
   "pyyaml>=6.0",
   "polars>=1.17",
   "argon2-cffi>=23.1",
+  # Second factor: AES-GCM for the TOTP secrets at rest, and the enrolment QR drawn on the server.
+  "cryptography>=43",
+  "segno>=1.6",
   "tzdata>=2024.1",
 ]
 
