@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from fbi.core import sentry
+from fbi.core.version import code_version
 
 
 def test_off_without_a_dsn(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -16,7 +17,6 @@ def test_off_without_a_dsn(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_nothing_personal_and_no_tracing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FBI_SENTRY_DSN", "https://public@o0.ingest.example.invalid/1")
     monkeypatch.setenv("FBI_ENV", "production")
-    monkeypatch.setenv("FBI_CODE_VERSION", "abc123")
     opts = sentry.options("worker")
     assert opts is not None
     assert opts["send_default_pii"] is False
@@ -24,5 +24,5 @@ def test_nothing_personal_and_no_tracing(monkeypatch: pytest.MonkeyPatch) -> Non
     assert opts["max_request_body_size"] == "never"
     assert opts["traces_sample_rate"] == 0.0
     assert opts["environment"] == "production"
-    assert opts["release"] == "predigol-backend@abc123"
+    assert opts["release"] == f"predigol-backend@{code_version()}"  # the running tree (cached once per process)
     assert opts["server_name"] == "worker"
