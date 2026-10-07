@@ -8,7 +8,11 @@
 FROM oven/bun:1.3.13-alpine AS build
 WORKDIR /app
 COPY package.json bun.lock bunfig.toml ./
-RUN bun install --frozen-lockfile
+# Behind a TLS-inspecting proxy the install can trust its CA: docker build --secret id=ca,src=/path/to/ca.pem
+# (mounted for this step only, never in the image). Without it, nothing changes.
+RUN --mount=type=secret,id=ca \
+    if [ -s /run/secrets/ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/ca; fi; \
+    bun install --frozen-lockfile
 COPY . .
 ARG VITE_API_BASE_URL
 ARG VITE_APP_VERSION=unknown
