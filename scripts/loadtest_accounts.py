@@ -52,6 +52,12 @@ def cmd_create(args: argparse.Namespace) -> int:
             if exc.code != "email_taken":
                 raise
             set_password_unattended(email=email, password=password)
+            with write_connection() as conn:  # a previous test disabled it: active again for this one
+                row = store.user_by_email(conn, email)
+                if row is not None and row["status"] != "active":
+                    store.update_user(conn, int(row["id"]), {"status": "active"})
+                    store.record_event(conn, "user.status_changed", target_user_id=row["id"],
+                                       detail={"by": "command_line", "status": "active", "reason": "load_test"})
             reset += 1
         lines.append(f"{email}\t{password}\n")
     out: Path = args.out.expanduser()
