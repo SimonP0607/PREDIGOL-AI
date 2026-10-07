@@ -51,7 +51,9 @@ apply_grants
 
 log "import: comparing every table's row count with the manifest"
 bad=0
+compared=0
 while IFS=$'\t' read -r table rows; do
+  compared=$(( compared + 1 ))
   got="$(psql_q "SELECT count(*) FROM $table")"
   if [[ "$got" != "$rows" ]]; then
     if jq -e --arg t "$table" '.changed_during_dump | index($t)' "$MANIFEST" > /dev/null; then
@@ -61,7 +63,10 @@ while IFS=$'\t' read -r table rows; do
     fi
   fi
 done < <(jq -r '.tables | to_entries[] | [.key, .value.rows] | @tsv' "$MANIFEST")
+want_tables="$(jq '.tables | length' "$MANIFEST")"
+(( compared == want_tables )) || { log "import FAILED: compared $compared tables, the manifest lists $want_tables"; exit 1; }
 (( bad == 0 )) || { log "import FAILED: row counts differ (the database is left as restored, for inspection)"; exit 1; }
+log "import: $compared tables, every row count as in the manifest"
 
 log "import: RAW payloads into $PREDIGOL_DATA/raw (nothing existing is overwritten)"
 tar -xf "$SRC/raw.tar" -C "$PREDIGOL_DATA/raw" --keep-old-files

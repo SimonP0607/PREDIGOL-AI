@@ -15,6 +15,7 @@
 #   predigolctl create-user --email E [--role USER|SUPER_ADMIN] ...   an account; its password goes to a 0600 file
 #   predigolctl accounts ...       scripts/accounts.py: list, disable --domain, revoke-sessions --all, unlock, ...
 #   predigolctl bench              measure THIS machine (CPU, steal, disk, fsync, network) against the minimums
+#   predigolctl loadtest [--users 100,200] [--minutes 5]   the rehearsal's load test (bin/loadtest.sh); BEFORE the cut-over
 #   predigolctl cloudflare trust|firewall|open    Cloudflare in front (bin/cloudflare-ips.sh)
 set -Eeuo pipefail
 # shellcheck source=bin/lib.sh
@@ -122,10 +123,11 @@ case "${1:-}" in
   pitr) shift; exec "$BIN/pitr.sh" "$@" ;;
   maint) shift; exec "$BIN/maint.sh" "$@" ;;
   bench) shift; exec "$BIN/bench.sh" "$@" ;;
+  loadtest) shift; exec "$BIN/loadtest.sh" "$@" ;;
   cloudflare) shift; exec "$BIN/cloudflare-ips.sh" "$@" ;;
   accounts) shift; ops python -m scripts.accounts "$@" ;;
   grants) apply_grants && log "grants applied" ;;
   psql) compose exec -e PGOPTIONS="-c default_transaction_read_only=on" postgres psql -U fbi -d fbi ;;
   create-user) shift; cmd_create_user "$@" ;;
-  *) sed -n '2,21p' "$0"; exit 2 ;;
+  *) sed -n '2,22p' "$0"; exit 2 ;;
 esac

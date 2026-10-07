@@ -36,19 +36,21 @@ compose() {
 }
 
 # One value from the database, read-only, through the postgres container (no port is published), as the owner.
+# stdin is /dev/null: `compose exec` would otherwise swallow the rest of a `while read` loop's input (the
+# rehearsal caught import.sh comparing ONE table with the manifest instead of all of them).
 psql_q() {
   compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qAtX \
-    -c "SET default_transaction_read_only = on" -c "$1" | tail -n 1
+    -c "SET default_transaction_read_only = on" -c "$1" < /dev/null | tail -n 1
 }
 
 # What the worker and the API may do in the database (db/grants.sql), applied as the owner. Idempotent.
 apply_grants() {
-  compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qX -f /predigol/grants.sql > /dev/null
+  compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qX -f /predigol/grants.sql < /dev/null > /dev/null
 }
 
-# A one-off command in the backend image, as the database owner (the `ops` service).
+# A one-off command in the backend image, as the database owner (the `ops` service). Never reads stdin.
 ops() {
-  compose --profile ops run --rm --no-deps -T ops "$@"
+  compose --profile ops run --rm --no-deps -T ops "$@" < /dev/null
 }
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
