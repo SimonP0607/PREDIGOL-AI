@@ -21,6 +21,7 @@ Exit 0 when every phase stayed under --max-error-rate (default 1 %), 1 otherwise
 from __future__ import annotations
 
 import argparse
+import gzip
 import http.client
 import json
 import math
@@ -77,6 +78,7 @@ class Client:
         self.timeout = timeout
         self.cookie = ""
         self.conn: http.client.HTTPSConnection | None = None
+        self.wire_bytes = 0  # the last response's size as transferred (compressed)
 
     def _connect(self) -> http.client.HTTPSConnection:
         conn = http.client.HTTPSConnection(self.host, self.port, context=self.ctx, timeout=self.timeout)
@@ -103,6 +105,9 @@ class Client:
                 res = self.conn.getresponse()
                 payload = res.read()
                 elapsed = time.perf_counter() - started
+                self.wire_bytes = len(payload)
+                if res.getheader("Content-Encoding", "").lower() == "gzip":
+                    payload = gzip.decompress(payload)
             except (http.client.HTTPException, OSError):
                 self.close()
                 if attempt == 2:
@@ -232,8 +237,9 @@ class Run:
                 if self.stop.is_set():
                     break
                 try:
-                    status, body, secs = client.request("GET", path)
-                    self.record(Sample(page, re.sub(r"/\d+", "/{id}", path.split("?")[0]), status, secs, len(body)))
+                    status, _, secs = client.request("GET", path)
+                    self.record(Sample(page, re.sub(r"/\d+", "/{id}", path.split("?")[0]), status, secs,
+                                       client.wire_bytes))
                 except Exception as exc:
                     with self.lock:
                         self.failures[f"{page}: {type(exc).__name__}"] += 1
