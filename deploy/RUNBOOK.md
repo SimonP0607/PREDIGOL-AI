@@ -1,3 +1,4 @@
+> **Sustituido el 7 oct 2026 por `deploy/vps/` (un solo VPS, ensayado; ver `deploy/vps/README.md`).**
 > **Desactualizado (6 oct 2026).** Este diseño pone la API sobre una réplica de solo lectura, incompatible con las
 > sesiones y la auditoría de accesos (la API escribe en `auth`), y el Caddyfile no deja pasar las rutas actuales
 > (`/api/v1/auth`, `/home`, `/daily`, `/parlays`, `/live`, `/admin`). Precios y series de Hetzner también

@@ -1,0 +1,11 @@
+[Unit]
+Description=PrediGol: daily database backup
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/backup.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

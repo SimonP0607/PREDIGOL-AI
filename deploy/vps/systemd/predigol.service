@@ -1,0 +1,17 @@
+[Unit]
+Description=PrediGol stack (PostgreSQL, API, worker, web, Caddy)
+Documentation=file:///opt/predigol/backend/deploy/vps/README.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/predigol/backend/deploy/vps/bin/predigolctl up
+ExecStop=/opt/predigol/backend/deploy/vps/bin/predigolctl stop
+TimeoutStartSec=900
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target

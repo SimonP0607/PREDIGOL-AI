@@ -1,0 +1,11 @@
+[Unit]
+Description=PrediGol: health check (every 5 min)
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/healthcheck.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

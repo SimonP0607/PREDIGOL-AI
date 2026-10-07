@@ -1,0 +1,10 @@
+[Unit]
+Description=PrediGol: daily database backup
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 UTC
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

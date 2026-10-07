@@ -1,0 +1,9 @@
+[Unit]
+Description=PrediGol: hourly copy of the RAW store off the server
+
+[Timer]
+OnCalendar=*-*-* *:20:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,166 @@
+# PrediGol on ONE server (a VPS with Ubuntu 24.04 LTS): PostgreSQL 16, the API, the worker (exactly one), the
+# web app and Caddy - HTTPS and the only public ports. The procedure, in Spanish, is README.md beside this file.
+#
+#   bin/predigolctl up        (docker compose --env-file /etc/predigol/predigol.env -f docker-compose.yml up -d)
+#
+# Nothing secret is in this file or in the images. Every secret comes from /etc/predigol/predigol.env (root, 600).
+# Data lives under PREDIGOL_DATA (default /srv/predigol): the database, the RAW store, the backups, Caddy's
+# certificates. Removing the containers loses nothing; removing that folder loses everything.
+name: predigol
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "20m", max-file: "5" }
+
+x-backend: &backend
+  image: predigol-backend:${PREDIGOL_VERSION:-local}
+  build:
+    context: ../..
+    args:
+      FBI_CODE_VERSION: ${PREDIGOL_VERSION:-unknown}
+      FBI_UID: "1000"
+  env_file:
+    - path: ${PREDIGOL_ENV_FILE:-/etc/predigol/predigol.env}
+      required: true
+  depends_on:
+    postgres: { condition: service_healthy }
+  restart: unless-stopped
+  logging: *logging
+
+x-backend-env: &backend-env
+  FBI_ENV: production
+  FBI_DATABASE_URL: postgresql+psycopg://fbi:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}@postgres:5432/fbi
+  FBI_RAW_STORE_DIR: /app/data/raw
+  FBI_WEB_BASE_URL: https://${PREDIGOL_DOMAIN:?set PREDIGOL_DOMAIN in the env file}
+  TZ: UTC
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: predigol-postgres
+    restart: unless-stopped
+    # Parallel plans keep their hash tables in /dev/shm (64 MB by default in Docker).
+    shm_size: 512mb
+    stop_grace_period: 120s
+    environment:
+      POSTGRES_USER: fbi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}
+      POSTGRES_DB: fbi
+      TZ: UTC
+    # Sized for an 8 GB server that also runs the API, the worker and the web (about 2 GB together).
+    command:
+      - postgres
+      - -c
+      - shared_buffers=2GB
+      - -c
+      - effective_cache_size=5GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=512MB
+      - -c
+      - max_connections=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - wal_compression=on
+      - -c
+      - max_wal_size=2GB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - log_min_duration_statement=2000
+      - -c
+      - log_timezone=UTC
+      - -c
+      - timezone=UTC
+    volumes:
+      - ${PREDIGOL_DATA:-/srv/predigol}/pgdata:/var/lib/postgresql/data
+      - ${PREDIGOL_DATA:-/srv/predigol}/backups/db:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fbi -d fbi"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    logging: *logging
+    # No ports: only the API and the worker reach it, on the stack's own network.
+
+  api:
+    <<: *backend
+    container_name: predigol-api
+    # Behind Caddy: the client's address comes from X-Forwarded-For (the rate limit and the sign-in audit use it).
+    # The API is not published, so only Caddy can set that header.
+    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2",
+              "--proxy-headers", "--forwarded-allow-ips", "*", "--log-level", "warning"]
+    environment:
+      <<: *backend-env
+      FBI_API_DOCS: "0"
+      FBI_API_HEALTH_DETAIL: "0"
+      FBI_SESSION_COOKIE_SECURE: "1"
+      FBI_API_CORS_ORIGINS: https://${PREDIGOL_DOMAIN}
+      FBI_API_RATE_LIMIT: ${PREDIGOL_API_RATE_LIMIT:-600}
+      # The Admin Console's System page lists the backups it can see.
+      FBI_BACKUP_DIRS: /backups
+    volumes:
+      - ${PREDIGOL_DATA:-/srv/predigol}/raw:/app/data/raw:ro
+      - ${PREDIGOL_DATA:-/srv/predigol}/backups/db:/backups:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *backend
+    container_name: predigol-worker
+    # One heartbeat row per server (worker_id = <hostname>:worker). The database lock refuses a second worker.
+    hostname: predigol-worker
+    command: ["python", "-m", "apps.worker.main"]
+    environment:
+      <<: *backend-env
+    volumes:
+      - ${PREDIGOL_DATA:-/srv/predigol}/raw:/app/data/raw
+    stop_grace_period: 60s
+    healthcheck:
+      test: ["CMD", "python", "-m", "scripts.worker_alive"]
+      interval: 2m
+      timeout: 20s
+      retries: 3
+      start_period: 15m
+
+  web:
+    image: predigol-web:${PREDIGOL_WEB_VERSION:-local}
+    container_name: predigol-web
+    build:
+      context: ${PREDIGOL_WEB_SRC:-/opt/predigol/web}
+      args:
+        VITE_API_BASE_URL: https://${PREDIGOL_DOMAIN}
+        VITE_APP_VERSION: ${PREDIGOL_WEB_VERSION:-unknown}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      TZ: UTC
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: predigol-caddy
+    restart: unless-stopped
+    depends_on: [api, web]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      PREDIGOL_DOMAIN: ${PREDIGOL_DOMAIN}
+      PREDIGOL_SITE: ${PREDIGOL_SITE:-${PREDIGOL_DOMAIN}}
+      PREDIGOL_ACME_EMAIL: ${PREDIGOL_ACME_EMAIL:?set PREDIGOL_ACME_EMAIL in the env file}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${PREDIGOL_DATA:-/srv/predigol}/caddy/data:/data
+      - ${PREDIGOL_DATA:-/srv/predigol}/caddy/config:/config
+    logging: *logging

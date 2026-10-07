@@ -1,0 +1,12 @@
+[Unit]
+Description=PrediGol: check the stack after the server starts, and tell the owner
+Requires=predigol.service
+After=predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/post-boot.sh
+TimeoutStartSec=1200
+
+[Install]
+WantedBy=multi-user.target
