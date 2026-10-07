@@ -445,10 +445,23 @@ test("A match in play: its centre is live, with the in-play prices of the curren
   }
   await expect(root).toHaveAttribute("data-phase", "live");
   await expect(page.getByText(t.match.liveOdds.title).first()).toBeVisible();
-  // the block shows 1X2 / the main over-under from the current book, or says it has none for this match now
-  await expect(
-    page.getByText(t.match.liveOdds.note).or(page.getByText(t.match.liveOdds.none)).first(),
-  ).toBeVisible();
+  // the block shows 1X2 / the main over-under from the current book, or says it has none for this match now;
+  // before the first capture of the match (or with the provider silent) it says there is nothing yet
+  const liveOdds = center.body.data.live_odds;
+  if (liveOdds.status === "ok" && liveOdds.data.length > 0) {
+    await expect(
+      page.getByText(t.match.liveOdds.note).or(page.getByText(t.match.liveOdds.none)).first(),
+    ).toBeVisible();
+  } else {
+    await expect(
+      page
+        .getByTestId("match-center")
+        .getByText(t.match.note.noData)
+        .or(page.getByText(t.match.note.notAvailable))
+        .or(page.getByText(t.match.liveOdds.none))
+        .first(),
+    ).toBeVisible();
+  }
   await assertClean(page, w);
 });
 

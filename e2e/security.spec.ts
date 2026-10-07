@@ -45,7 +45,8 @@ test("a new account: authenticator from the QR's key, recovery codes, its own pa
   expect(created.status).toBe(201);
   const id = created.body.data.id;
   try {
-    const w = watch(page, { expect401: true });
+    // the reused temporary password below is refused on purpose (422)
+    const w = watch(page, { expect401: true, expectStatus: [422] });
     await signIn(page, email, "E2e-initial-pass-26");
 
     // 1. the authenticator, set up from the key under the QR (what a phone that cannot scan would type)

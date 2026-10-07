@@ -93,14 +93,19 @@ export interface Watch {
 
 /**
  * `expect401`: the sign-in screen asks /auth/me before anyone is signed in; that
- * 401 is the expected answer, not a failure.
+ * 401 is the expected answer, not a failure. `expectStatus`: other refusals the
+ * test provokes on purpose (a reused password is a 422).
  */
-export function watch(page: Page, { expect401 = false }: { expect401?: boolean } = {}): Watch {
+export function watch(
+  page: Page,
+  { expect401 = false, expectStatus = [] }: { expect401?: boolean; expectStatus?: number[] } = {},
+): Watch {
   const w: Watch = { problems: [] };
   page.on("console", (msg) => {
     if (msg.type() !== "error") return;
     const text = msg.text();
     if (expect401 && text.includes("401")) return;
+    if (expectStatus.some((s) => text.includes(`status of ${s}`))) return;
     w.problems.push(`console.error: ${text.slice(0, 300)}`);
   });
   page.on("pageerror", (err) => w.problems.push(`pageerror: ${err.message.slice(0, 300)}`));
