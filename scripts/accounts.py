@@ -9,6 +9,7 @@ phone with no other SUPER_ADMIN). Everything it changes is recorded in auth.audi
     python -m scripts.accounts revoke-sessions --all                       # everyone signs in again
     python -m scripts.accounts unlock --email owner@example.com
     python -m scripts.accounts mfa-reset --email owner@example.com         # a lost phone
+    python -m scripts.accounts mfa-reset --all                            # after rotating FBI_AUTH_SECRET_KEY
     python -m scripts.accounts mfa-enroll --email qa.admin@predigol.local --secret-out ~/.fbi/qa-admin-totp.txt
 
 mfa-enroll is for TEST accounts (E2E against a server that requires a second factor): it writes the authenticator
@@ -119,12 +120,22 @@ def cmd_unlock(args: argparse.Namespace) -> int:
 
 
 def cmd_mfa_reset(args: argparse.Namespace) -> int:
+    """One account (--email), or every account with a second factor (--all: after rotating FBI_AUTH_SECRET_KEY,
+    which the stored authenticator secrets are sealed with - docs/owner/SECRETS_AND_ROTATION.md)."""
     with write_connection() as conn:
-        row = _one(conn, args.email)
-        store.clear_totp(conn, int(row["id"]))
-        n = store.revoke_user_sessions(conn, int(row["id"]), "mfa_reset")
-        store.record_event(conn, "mfa.reset", target_user_id=row["id"], detail=BY | {"sessions_revoked": n})
-    print(f"{masked(row['email'])}: second factor removed; it is set up again at the next sign-in when required")
+        if args.all:
+            rows = [r for r in store.list_users(conn) if r["totp_enabled_at"] is not None]
+        elif args.email:
+            rows = [_one(conn, args.email)]
+        else:
+            raise SystemExit("name the account: --email, or --all")
+        for row in rows:
+            store.clear_totp(conn, int(row["id"]))
+            n = store.revoke_user_sessions(conn, int(row["id"]), "mfa_reset")
+            store.record_event(conn, "mfa.reset", target_user_id=row["id"], detail=BY | {"sessions_revoked": n})
+            print(f"{masked(row['email'])}: second factor removed; it is set up again at the next sign-in when required")
+    if args.all:
+        print(f"{len(rows)} account(s) reset")
     return 0
 
 
@@ -162,8 +173,11 @@ def main() -> int:
     p.add_argument("--email", action="append", default=[])
     p.add_argument("--domain")
     p.add_argument("--confirm", action="store_true")
-    for name in ("require-password-change", "unlock", "mfa-reset"):
+    for name in ("require-password-change", "unlock"):
         sub.add_parser(name).add_argument("--email", required=True)
+    p = sub.add_parser("mfa-reset")
+    p.add_argument("--email")
+    p.add_argument("--all", action="store_true", help="every account with a second factor")
     p = sub.add_parser("revoke-sessions")
     p.add_argument("--email", action="append", default=[])
     p.add_argument("--domain")

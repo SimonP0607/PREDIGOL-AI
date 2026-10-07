@@ -103,3 +103,19 @@ def test_a_test_account_gets_an_authenticator_secret_in_a_private_file(people: s
         assert row == (True, 0)
         by = conn.execute("SELECT count(*) FROM auth.audit_events WHERE detail->>'by' = 'command_line'").fetchone()
         assert by is not None and by[0] >= 3
+
+
+def test_mfa_reset_all_clears_every_second_factor(people: str, tmp_path: Path,
+                                                  monkeypatch: pytest.MonkeyPatch) -> None:
+    """After rotating FBI_AUTH_SECRET_KEY the sealed secrets cannot be opened: every account sets it up again."""
+    out = tmp_path / "totp.txt"
+    assert run("mfa-enroll", "--email", "qa.admin@predigol.local", "--secret-out", str(out),
+               monkeypatch=monkeypatch) == 0
+    with pytest.raises(SystemExit):
+        run("mfa-reset", monkeypatch=monkeypatch)
+    assert run("mfa-reset", "--all", monkeypatch=monkeypatch) == 0
+    with psycopg.connect(people) as conn:
+        left = conn.execute("SELECT count(*) FROM auth.users WHERE totp_secret IS NOT NULL").fetchone()
+        assert left == (0,)
+        resets = conn.execute("SELECT count(*) FROM auth.audit_events WHERE action = 'mfa.reset'").fetchone()
+        assert resets is not None and resets[0] >= 1
