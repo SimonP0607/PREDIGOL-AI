@@ -36,22 +36,33 @@ def _month_bounds(table: str, year: int, month: int) -> tuple[str, str, str]:
 
 
 def ensure_partitions(conn: psycopg.Connection, *, today: date, months_ahead: int = PARTITION_MONTHS_AHEAD) -> list[str]:
-    """Create the next N monthly partitions if they do not exist yet."""
+    """Create the next N monthly partitions if they do not exist yet.
+
+    On the server the worker is not the tables' owner (deploy/vps/db: least privilege), so it may not create a
+    partition: the owner's daily maintenance (scripts/db_maintenance.py) does, three months ahead. When the worker
+    finds one missing it says so and carries on - the rows land in the DEFAULT partition, nothing is lost.
+    """
     created: list[str] = []
-    for table in PARTITIONED_TABLES:
-        year, month = today.year, today.month
-        for _ in range(months_ahead + 1):
-            name, start, end = _month_bounds(table, year, month)
-            with conn.cursor() as cur:
-                cur.execute("SELECT to_regclass(%s)", (name,))
-                row = cur.fetchone()
-                if row is not None and row[0] is None:
-                    cur.execute(
-                        f"CREATE TABLE {name} PARTITION OF market.{table} "
-                        f"FOR VALUES FROM ('{start}') TO ('{end}')"
-                    )
-                    created.append(name)
-            year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    try:
+        for table in PARTITIONED_TABLES:
+            year, month = today.year, today.month
+            for _ in range(months_ahead + 1):
+                name, start, end = _month_bounds(table, year, month)
+                with conn.cursor() as cur:
+                    cur.execute("SELECT to_regclass(%s)", (name,))
+                    row = cur.fetchone()
+                    if row is not None and row[0] is None:
+                        cur.execute(
+                            f"CREATE TABLE {name} PARTITION OF market.{table} "
+                            f"FOR VALUES FROM ('{start}') TO ('{end}')"
+                        )
+                        created.append(name)
+                year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    except psycopg.errors.InsufficientPrivilege:
+        conn.rollback()
+        log.warning("partitions.not_owner", missing=name,
+                    hint="the owner's maintenance creates partitions (python -m scripts.db_maintenance)")
+        return []
     conn.commit()
     if created:
         log.info("partitions.created", partitions=created)
