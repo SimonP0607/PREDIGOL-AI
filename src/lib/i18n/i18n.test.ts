@@ -88,6 +88,16 @@ describe("translate", () => {
     expect(translate("common.updated", { when: "ahora" }, "es")).toBe("Actualizado ahora");
   });
 
+  test("a leaf whose own name has dots (an audit action) is found", () => {
+    expect(translate("profile.securityPanel.action.login.succeeded", undefined, "es")).toBe(
+      "Inicio de sesión",
+    );
+    expect(translate("profile.securityPanel.action.mfa.enrolled", undefined, "en")).toBe(
+      "Two-step verification turned on",
+    );
+    expect(hasKey("profile.securityPanel.action.not.an.action")).toBe(false);
+  });
+
   test("a missing key falls back to the key itself, never throws", () => {
     setLocale("en");
     expect(translate("nope.not.here")).toBe("nope.not.here");

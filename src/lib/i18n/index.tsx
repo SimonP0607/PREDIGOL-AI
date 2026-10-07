@@ -36,11 +36,22 @@ export function intlTag(locale: Locale = current): string {
   return INTL_TAG[locale];
 }
 
+/**
+ * Dots separate levels, but a leaf may contain dots itself: audit actions are keys like "login.succeeded"
+ * under `profile.securityPanel.action`. When a level has no child with the next part, the rest of the key is
+ * tried whole at that level.
+ */
 function lookup(locale: Locale, key: string): string | undefined {
+  const parts = key.split(".");
   let node: string | Catalog | undefined = CATALOGS[locale];
-  for (const part of key.split(".")) {
+  for (let i = 0; i < parts.length; i++) {
     if (node === undefined || typeof node === "string") return undefined;
-    node = node[part];
+    const next: string | Catalog | undefined = node[parts[i] as string];
+    if (next === undefined) {
+      const rest = node[parts.slice(i).join(".")];
+      return typeof rest === "string" ? rest : undefined;
+    }
+    node = next;
   }
   return typeof node === "string" ? node : undefined;
 }
