@@ -9,7 +9,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
-import { ShieldAlert, WifiOff } from "lucide-react";
+import { RefreshCw, ShieldAlert, WifiOff } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -19,7 +19,8 @@ import { setTimeZone } from "@/lib/time";
 import { UserShell } from "@/components/layout/UserShell";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { BrandMark } from "@/components/brand/Brand";
-import { registerServiceWorker } from "@/lib/pwa";
+import { applyUpdate, registerServiceWorker, UPDATE_EVENT } from "@/lib/pwa";
+import { SecurityStep } from "@/product/auth/SecurityStep";
 
 function NotFoundComponent() {
   return (
@@ -152,9 +153,50 @@ function RootComponent() {
       <AuthProvider>
         <Localized>
           <Gate />
+          <UpdateToast />
         </Localized>
       </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+/** A new version of the app is installed and waiting: the reader decides when to switch (public/sw.js). */
+function UpdateToast() {
+  const [worker, setWorker] = useState<{ postMessage: (m: unknown) => void } | null>(null);
+  useEffect(() => {
+    function onReady(event: Event) {
+      setWorker((event as CustomEvent<{ postMessage: (m: unknown) => void }>).detail);
+    }
+    window.addEventListener(UPDATE_EVENT, onReady);
+    return () => window.removeEventListener(UPDATE_EVENT, onReady);
+  }, []);
+  if (!worker) return null;
+  return (
+    <div
+      role="status"
+      data-testid="update-toast"
+      className="fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-lg border border-primary/40 bg-card px-4 py-3 text-sm shadow-xl sm:inset-x-auto sm:right-4"
+    >
+      <span>{t("common.updateReady")}</span>
+      <span className="flex shrink-0 gap-2">
+        <button
+          type="button"
+          onClick={() => setWorker(null)}
+          className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          {t("common.updateLater")}
+        </button>
+        <button
+          type="button"
+          onClick={() => applyUpdate(worker)}
+          data-testid="update-now"
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+        >
+          <RefreshCw aria-hidden className="h-3.5 w-3.5" />
+          {t("common.updateNow")}
+        </button>
+      </span>
+    </div>
   );
 }
 
@@ -250,6 +292,9 @@ function Gate() {
 
   if (auth.status === "loading") return <Splash />;
   if (auth.status === "error") return <ConnectionProblem onRetry={auth.retry} />;
+  // The password was right but a step is owed (second factor, setting it up, a new password): that step,
+  // whatever the address; the page the reader wanted shows once it is done.
+  if (auth.status === "staged") return <SecurityStep />;
   if (auth.status === "anonymous") return onLogin ? <Outlet /> : <Splash />;
   if (onLogin) return <Splash />;
 

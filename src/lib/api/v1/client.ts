@@ -54,7 +54,18 @@ import type {
   PlayerSummary,
   ProviderPredictionView,
 } from "./types_center";
-import type { AdminUser, AdminUserCreate, AuditEvent, Me, PreferencesIn } from "./types_auth";
+import type {
+  AccessEvent,
+  AdminPasswordResult,
+  AdminUser,
+  AdminUserCreate,
+  AuditEvent,
+  Me,
+  MfaEnrolled,
+  MfaEnrollment,
+  PreferencesIn,
+  SessionInfo,
+} from "./types_auth";
 import type {
   CompetitionScoreRow,
   DataRepair,
@@ -102,14 +113,33 @@ export class LiveApiError extends Error {
     readonly code: string,
     readonly requestId: string | null,
     readonly problems: string[] = [],
+    /** Extra fields of the error: attempts_left, retry_after (seconds). */
+    readonly details: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = "LiveApiError";
+  }
+
+  get retryAfter(): number | null {
+    const v = this.details["retry_after"];
+    return typeof v === "number" ? v : null;
+  }
+
+  get attemptsLeft(): number | null {
+    const v = this.details["attempts_left"];
+    return typeof v === "number" ? v : null;
   }
 }
 
 /** Fired when the API says the session is gone; the auth layer sends the reader to sign in. */
 export const UNAUTHENTICATED_EVENT = "predigol:unauthenticated";
+/** Fired when the API says a step of signing in is still owed; the auth layer asks /auth/me which one. */
+export const STAGE_EVENT = "predigol:stage";
+const STAGE_CODES = new Set([
+  "mfa_required",
+  "mfa_enrollment_required",
+  "password_change_required",
+]);
 
 type Params = Record<string, string | number | boolean | undefined | null>;
 
@@ -155,19 +185,24 @@ async function request<T>(
   }
   if (!res.ok) {
     const err = (parsed ?? {}) as {
-      error?: { code?: string; message?: string; problems?: string[] };
+      error?: { code?: string; message?: string; problems?: string[] } & Record<string, unknown>;
       request_id?: string;
     };
     const code = err.error?.code ?? "error";
     if (res.status === 401 && typeof window !== "undefined" && !path.startsWith("/auth/")) {
       window.dispatchEvent(new Event(UNAUTHENTICATED_EVENT));
     }
+    if (res.status === 403 && STAGE_CODES.has(code) && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(STAGE_EVENT));
+    }
+    const { code: _c, message: _m, problems, ...details } = err.error ?? {};
     throw new LiveApiError(
       err.error?.message ?? `${method} ${path} failed (${res.status})`,
       res.status,
       code,
       err.request_id ?? res.headers.get("x-request-id"),
-      err.error?.problems ?? [],
+      (problems as string[] | undefined) ?? [],
+      details,
     );
   }
   return parsed as T;
@@ -214,6 +249,24 @@ export const v1 = {
   updatePreferences: (prefs: PreferencesIn) => patchJson<Me>("/auth/me/preferences", prefs),
   changePassword: (current_password: string, new_password: string) =>
     postJson<void>("/auth/me/password", { current_password, new_password }),
+  // the steps of signing in
+  verifyMfa: (body: { code?: string; recovery_code?: string }) =>
+    postJson<Me>("/auth/mfa/verify", body),
+  startMfaEnrollment: (password?: string) =>
+    postJson<MfaEnrollment>("/auth/mfa/enroll/start", password ? { password } : {}),
+  confirmMfaEnrollment: (code: string) =>
+    postJson<MfaEnrolled>("/auth/mfa/enroll/confirm", { code }),
+  setRequiredPassword: (new_password: string) =>
+    postJson<Me>("/auth/password/required", { new_password }),
+  // my security
+  disableMfa: (password: string, code: string) =>
+    postJson<void>("/auth/me/mfa/disable", { password, code }),
+  renewRecoveryCodes: (password: string, code: string) =>
+    postJson<{ recovery_codes: string[] }>("/auth/me/mfa/recovery-codes", { password, code }),
+  mySessions: () => getJson<SessionInfo[]>("/auth/me/sessions"),
+  revokeMySession: (id: string) => postJson<void>(`/auth/me/sessions/${id}/revoke`, {}),
+  revokeMyOtherSessions: () => postJson<{ revoked: number }>("/auth/me/sessions/revoke-others", {}),
+  myAccess: (limit = 50) => getJson<AccessEvent[]>("/auth/me/access", { limit }),
 
   // ── product ───────────────────────────────────────────────────────────────
   home: (q: Preview = {}) => getJson<Envelope<Home>>("/home", q),
@@ -334,8 +387,19 @@ export const v1 = {
   admin: () => getJson<Envelope<AdminOverview>>("/admin/system"),
   users: () => getJson<Envelope<AdminUser[]>>("/admin/users"),
   createUser: (body: AdminUserCreate) => postJson<Envelope<AdminUser>>("/admin/users", body),
-  updateUser: (id: number, body: { role?: string; status?: "active" | "disabled" }) =>
-    patchJson<Envelope<AdminUser>>(`/admin/users/${id}`, body),
+  resetUserPassword: (id: number, password?: string) =>
+    postJson<Envelope<AdminPasswordResult>>(
+      `/admin/users/${id}/password`,
+      password ? { password } : {},
+    ),
+  resetUserMfa: (id: number) => postJson<Envelope<AdminUser>>(`/admin/users/${id}/mfa/reset`, {}),
+  unlockUser: (id: number) => postJson<Envelope<AdminUser>>(`/admin/users/${id}/unlock`, {}),
+  revokeUserSessions: (id: number) =>
+    postJson<Envelope<{ revoked: number }>>(`/admin/users/${id}/sessions/revoke`, {}),
+  updateUser: (
+    id: number,
+    body: { role?: string; status?: "active" | "disabled"; mfa_required?: boolean },
+  ) => patchJson<Envelope<AdminUser>>(`/admin/users/${id}`, body),
   authAudit: (q: { action?: string | undefined; limit?: number; offset?: number } = {}) =>
     getJson<Envelope<AuditEvent[]>>("/admin/audit", q as Params),
 

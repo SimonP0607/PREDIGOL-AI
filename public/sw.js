@@ -9,9 +9,13 @@
  *     shown - never a stale copy of a page;
  *   - anything from another origin (fonts, team logos): the browser's own HTTP cache handles those.
  *
+ * Updates are CONTROLLED: a new version of this file installs in the background and then WAITS. The page shows
+ * "a new version is ready" and only when the reader accepts does it send SKIP_WAITING; the page reloads once the new
+ * worker takes over. An open tab never has its scripts swapped under it in the middle of a match.
+ *
  * Bump VERSION to retire every cache at the next visit.
  */
-const VERSION = "predigol-v1";
+const VERSION = "predigol-v2";
 const STATIC_CACHE = `${VERSION}-static`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/brand/predigol-mark-128.png", "/manifest.webmanifest"];
@@ -74,12 +78,12 @@ async function networkOrOffline(request) {
 }
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting()),
-  );
+  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)));
+});
+
+// The page asks for the switch when the reader accepts the update (src/lib/pwa.ts).
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {

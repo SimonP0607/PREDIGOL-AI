@@ -11,16 +11,28 @@ import { detailText } from "./auditDetail";
 
 const ACTIONS = [
   "login.succeeded",
+  "login.password_ok",
   "login.failed",
   "login.refused",
+  "login.locked",
   "logout",
+  "mfa.verified",
+  "mfa.failed",
+  "mfa.enrolled",
+  "mfa.recovery_code_used",
+  "mfa.reset",
+  "mfa.disabled",
   "user.created",
   "user.role_changed",
   "user.status_changed",
+  "user.unlocked",
+  "user.mfa_requirement_changed",
   "password.changed",
   "password.change_refused",
   "password.reset",
+  "session.revoked",
   "preferences.updated",
+  "admin.write",
 ];
 
 /** Catalog keys cannot contain dots (they are paths): "user.role_changed" -> "user_role_changed". */
@@ -31,9 +43,13 @@ function actionLabel(action: string): string {
 const TONE: Record<string, string> = {
   "login.failed": "text-negative",
   "login.refused": "text-negative",
+  "login.locked": "text-negative",
+  "mfa.failed": "text-negative",
   "password.change_refused": "text-negative",
   "user.role_changed": "text-gold",
   "user.status_changed": "text-warning",
+  "mfa.reset": "text-warning",
+  "password.reset": "text-warning",
 };
 
 export function AuditPage() {

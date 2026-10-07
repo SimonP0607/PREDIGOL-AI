@@ -82,5 +82,8 @@
   "openMenu": "Open menu",
   "closeMenu": "Close menu",
   "account": "Account",
-  "photoAlt": "Photo of {name}"
+  "photoAlt": "Photo of {name}",
+  "updateReady": "A new version of PrediGol is ready.",
+  "updateNow": "Update",
+  "updateLater": "Later"
 }

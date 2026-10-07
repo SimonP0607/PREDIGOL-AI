@@ -21,5 +21,39 @@
   "passwordRules": "Mínimo 10 caracteres, sin espacios al principio o al final.",
   "signOut": "Cerrar sesión",
   "saved": "Preferencias guardadas.",
-  "sessionLabel": "Sesión válida hasta"
+  "sessionLabel": "Sesión válida hasta",
+  "securityPanel": {
+    "mfaTitle": "Verificación en dos pasos",
+    "mfaOn": "Activada",
+    "mfaOff": "Desactivada",
+    "mfaRequired": "Obligatoria para tu cuenta",
+    "mfaHelp": "Además de la contraseña, al entrar se pide un código de tu app de autenticación.",
+    "codesLeft_one": "{count} código de recuperación sin usar",
+    "codesLeft_other": "{count} códigos de recuperación sin usar",
+    "enable": "Activar",
+    "disable": "Desactivar",
+    "newCodes": "Nuevos códigos de recuperación",
+    "sessionsTitle": "Sesiones abiertas",
+    "thisDevice": "este dispositivo",
+    "lastSeen": "última actividad",
+    "end": "Cerrar",
+    "endOthers": "Cerrar las demás sesiones",
+    "unknownDevice": "Dispositivo desconocido",
+    "browserOn": "{browser} en {os}",
+    "accessTitle": "Actividad reciente de acceso",
+    "noActivity": "Sin actividad registrada.",
+    "action": {
+      "login.succeeded": "Inicio de sesión",
+      "login.failed": "Intento fallido",
+      "login.refused": "Acceso rechazado",
+      "login.locked": "Cuenta bloqueada temporalmente",
+      "mfa.verified": "Código verificado",
+      "mfa.failed": "Código incorrecto",
+      "mfa.recovery_code_used": "Código de recuperación usado",
+      "mfa.enrolled": "Verificación en dos pasos activada",
+      "logout": "Cierre de sesión",
+      "password.changed": "Contraseña cambiada",
+      "session.revoked": "Sesión cerrada"
+    }
+  }
 }

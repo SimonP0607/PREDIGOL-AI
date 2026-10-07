@@ -36,13 +36,28 @@
     "invalid_selection": "Esa selección no es una que liquidemos.",
     "unknown_fixture": "Ese partido no existe.",
     "unknown_pick": "Ese pick de PrediGol no está disponible para tu cuenta.",
-    "validation_error": "Algún dato no es válido."
+    "validation_error": "Algún dato no es válido.",
+    "invalid_code": "Código incorrecto.",
+    "code_missing": "Escribe el código.",
+    "mfa_required": "Falta la verificación en dos pasos.",
+    "mfa_enrollment_required": "Tu cuenta necesita activar la verificación en dos pasos.",
+    "password_change_required": "Antes de continuar, elige una contraseña propia.",
+    "mfa_unavailable": "La verificación en dos pasos no está disponible ahora en el servidor. Avisa al administrador.",
+    "wrong_stage": "Ese paso ya no corresponde. Recarga la página.",
+    "enrollment_not_started": "Empieza la configuración otra vez.",
+    "mfa_already_enabled": "La verificación en dos pasos ya está activada.",
+    "mfa_not_enabled": "La verificación en dos pasos no está activada.",
+    "mfa_required_by_policy": "Tu cuenta debe usar verificación en dos pasos: no se puede desactivar.",
+    "session_not_found": "Esa sesión ya no existe.",
+    "invalid_session_id": "Sesión no válida.",
+    "payload_too_large": "La petición es demasiado grande."
   },
   "problem": {
     "password_too_short": "Mínimo 10 caracteres.",
     "password_too_long": "Máximo 128 caracteres.",
     "password_edge_whitespace": "Sin espacios al principio o al final.",
     "password_is_email": "No puede ser tu correo.",
-    "password_too_simple": "Usa más variedad de caracteres."
+    "password_too_simple": "Usa más variedad de caracteres.",
+    "password_reused": "Debe ser distinta de la actual."
   }
 }

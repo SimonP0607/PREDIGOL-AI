@@ -1,7 +1,18 @@
 /** Account, language, time zone and password. Preferences are stored on the account. */
 import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Check, Globe2, KeyRound, Languages, Loader2, LogOut, MapPin } from "lucide-react";
+import {
+  Check,
+  Globe2,
+  History,
+  KeyRound,
+  Languages,
+  Loader2,
+  LogOut,
+  MapPin,
+  MonitorSmartphone,
+  ShieldCheck,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { v1 } from "@/lib/api/v1/client";
 import { LOCALES, t, useI18n } from "@/lib/i18n";
@@ -9,6 +20,7 @@ import { detectTimeZone, formatDateTime, formatTime, listTimeZones, zoneAbbrev }
 import { Card, PageTitle, errorMessage } from "@/product/shared/States";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { cn } from "@/lib/utils";
+import { AccessPanel, SessionsPanel, TwoFactorPanel } from "./SecurityPanels";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -265,6 +277,30 @@ export function ProfilePage() {
           {t("profile.security")}
         </h2>
         <PasswordForm />
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
+          <ShieldCheck aria-hidden className="h-4 w-4 text-primary" />
+          {t("profile.securityPanel.mfaTitle")}
+        </h2>
+        <TwoFactorPanel user={user} />
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
+          <MonitorSmartphone aria-hidden className="h-4 w-4 text-primary" />
+          {t("profile.securityPanel.sessionsTitle")}
+        </h2>
+        <SessionsPanel />
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
+          <History aria-hidden className="h-4 w-4 text-primary" />
+          {t("profile.securityPanel.accessTitle")}
+        </h2>
+        <AccessPanel />
       </Card>
 
       <button

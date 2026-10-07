@@ -36,13 +36,28 @@
     "invalid_selection": "That is not a selection we settle.",
     "unknown_fixture": "That match does not exist.",
     "unknown_pick": "That PrediGol pick is not available to your account.",
-    "validation_error": "Some of the data is not valid."
+    "validation_error": "Some of the data is not valid.",
+    "invalid_code": "Wrong code.",
+    "code_missing": "Type the code.",
+    "mfa_required": "Two-step verification is still needed.",
+    "mfa_enrollment_required": "Your account must turn on two-step verification.",
+    "password_change_required": "Choose your own password before continuing.",
+    "mfa_unavailable": "Two-step verification is not available on the server right now. Tell the administrator.",
+    "wrong_stage": "That step no longer applies. Reload the page.",
+    "enrollment_not_started": "Start the set-up again.",
+    "mfa_already_enabled": "Two-step verification is already on.",
+    "mfa_not_enabled": "Two-step verification is not on.",
+    "mfa_required_by_policy": "Your account must use two-step verification: it cannot be turned off.",
+    "session_not_found": "That session no longer exists.",
+    "invalid_session_id": "Invalid session.",
+    "payload_too_large": "The request is too large."
   },
   "problem": {
     "password_too_short": "At least 10 characters.",
     "password_too_long": "At most 128 characters.",
     "password_edge_whitespace": "No spaces at the start or the end.",
     "password_is_email": "It cannot be your email.",
-    "password_too_simple": "Use a wider mix of characters."
+    "password_too_simple": "Use a wider mix of characters.",
+    "password_reused": "It must differ from the current one."
   }
 }

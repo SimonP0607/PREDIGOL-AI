@@ -11,6 +11,7 @@
  *   user-es   the product as a USER, in Spanish (America/Bogota)
  *   user-en   the product as a USER, in English (Europe/Madrid)
  *   admin     the Admin Console as SUPER_ADMIN, in English
+ *   security  two-step verification: set-up, recovery codes, required password, codes; the owner's resets
  *   prefs     language and time-zone changes, serially, on their own account
  *   mobile    the product at 390 px
  *   pwa       manifest, service worker and offline page (E2E_PWA=1, production build only)
@@ -68,6 +69,13 @@ export default defineConfig({
       name: "admin",
       testMatch: /admin\.spec\.ts/,
       use: { ...desktop, storageState: statePath("admin"), locale: "en-GB" },
+      dependencies: ["setup"],
+    },
+    {
+      // Two-step verification and the staged sign-in, on an account the test creates and switches off.
+      name: "security",
+      testMatch: /security\.spec\.ts/,
+      use: desktop,
       dependencies: ["setup"],
     },
     {

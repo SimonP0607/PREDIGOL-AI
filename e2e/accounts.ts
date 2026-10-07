@@ -49,3 +49,16 @@ export function credentials(name: AccountName): { email: string; password: strin
 export function statePath(name: AccountName): string {
   return join(import.meta.dirname, ".auth", `${name}.json`);
 }
+
+/**
+ * The authenticator secret of a QA account that must use a second factor (the SUPER_ADMIN): written on the
+ * machine by `python -m scripts.accounts mfa-enroll --email <qa admin> --secret-out ~/.fbi/qa-admin-totp.txt`
+ * (mode 0600), or E2E_<NAME>_TOTP. Null when the account has none.
+ */
+export function totpSecret(name: AccountName): string | null {
+  const env = name.replace(/[A-Z]/g, (c) => `_${c}`).toUpperCase();
+  const fromEnv = process.env[`E2E_${env}_TOTP`];
+  if (fromEnv) return fromEnv.trim();
+  const path = join(DIR, ACCOUNTS[name].file.replace(/\.txt$/, "-totp.txt"));
+  return existsSync(path) ? readFileSync(path, "utf8").trim() : null;
+}

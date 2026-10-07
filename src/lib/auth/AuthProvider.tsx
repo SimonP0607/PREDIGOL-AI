@@ -15,13 +15,14 @@ import {
   type ReactNode,
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LiveApiError, UNAUTHENTICATED_EVENT, v1 } from "@/lib/api/v1/client";
+import { LiveApiError, STAGE_EVENT, UNAUTHENTICATED_EVENT, v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { Language, Me, PermissionKey, PreferencesIn } from "@/lib/api/v1/types_auth";
 import { browserLocale, isLocale, rememberLocale, type Locale } from "@/lib/i18n";
 import { detectTimeZone, isValidTimeZone } from "@/lib/time";
 
-export type AuthStatus = "loading" | "anonymous" | "signed-in" | "error";
+/** staged: the password was right, but a step of signing in is still owed (user.stage). */
+export type AuthStatus = "loading" | "anonymous" | "staged" | "signed-in" | "error";
 
 interface AuthValue {
   status: AuthStatus;
@@ -42,6 +43,8 @@ interface AuthValue {
   locale: Locale;
   timeZone: string;
   signIn: (email: string, password: string) => Promise<Me>;
+  /** A step of signing in answered with the next Me (a new session): store it. */
+  completeStep: (who: Me) => void;
   signOut: () => Promise<void>;
   updatePreferences: (prefs: PreferencesIn) => Promise<Me>;
   setLocale: (locale: Locale) => Promise<void>;
@@ -82,7 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const status: AuthStatus = me.isPending
     ? "loading"
     : user
-      ? "signed-in"
+      ? user.stage && user.stage !== "full"
+        ? "staged"
+        : "signed-in"
       : error && error.status !== 401
         ? "error"
         : "anonymous";
@@ -93,8 +98,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["auth", "me"], null);
       void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
     }
+    function onStage() {
+      void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+    }
     window.addEventListener(UNAUTHENTICATED_EVENT, onUnauthenticated);
-    return () => window.removeEventListener(UNAUTHENTICATED_EVENT, onUnauthenticated);
+    window.addEventListener(STAGE_EVENT, onStage);
+    return () => {
+      window.removeEventListener(UNAUTHENTICATED_EVENT, onUnauthenticated);
+      window.removeEventListener(STAGE_EVENT, onStage);
+    };
   }, [queryClient]);
 
   const setPreviewAsUser = useCallback((on: boolean) => {
@@ -107,16 +119,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     writeFlag(SHADOW_KEY, on);
   }, []);
 
-  const signIn = useCallback(
-    async (email: string, password: string) => {
-      const who = await v1.login(email, password);
+  const completeStep = useCallback(
+    (who: Me) => {
+      // A new session (each step issues one): nothing cached under the old one is kept.
       queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== "auth" });
       queryClient.setQueryData(["auth", "me"], who);
       setSessionExpired(false);
       rememberLocale(who.language);
-      return who;
     },
     [queryClient],
+  );
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const who = await v1.login(email, password);
+      completeStep(who);
+      return who;
+    },
+    [completeStep],
   );
 
   const signOut = useCallback(async () => {
@@ -173,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       locale,
       timeZone,
       signIn,
+      completeStep,
       signOut,
       updatePreferences,
       setLocale,
@@ -189,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setShadowPreview,
     anonLocale,
     signIn,
+    completeStep,
     signOut,
     updatePreferences,
     setLocale,

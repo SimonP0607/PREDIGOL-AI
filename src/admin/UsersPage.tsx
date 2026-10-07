@@ -1,7 +1,20 @@
 /** Accounts: who can sign in, with which role. SUPER_ADMIN only (enforced by the API). */
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, RefreshCw, ShieldCheck, UserRound, Wand2 } from "lucide-react";
+import {
+  Copy,
+  KeyRound,
+  Loader2,
+  Lock,
+  LogOut,
+  Plus,
+  RefreshCw,
+  ShieldCheck,
+  ShieldOff,
+  Unlock,
+  UserRound,
+  Wand2,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
@@ -63,6 +76,8 @@ function CreateForm({ onDone }: { onDone: () => void }) {
     password: generated(),
     language: "es",
     timezone: detectTimeZone(),
+    must_change_password: true,
+    mfa_required: false,
   });
   const [error, setError] = useState<string | null>(null);
   const create = useMutation({
@@ -172,6 +187,30 @@ function CreateForm({ onDone }: { onDone: () => void }) {
           {t("admin.users.passwordHint")}
         </span>
       </label>
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs sm:col-span-2 lg:col-span-3">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={form.must_change_password ?? true}
+            onChange={(e) => setForm({ ...form, must_change_password: e.target.checked })}
+            data-testid="create-must-change"
+          />
+          {t("admin.users.mustChangeOnCreate")}
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={form.role === "SUPER_ADMIN" || (form.mfa_required ?? false)}
+            disabled={form.role === "SUPER_ADMIN"}
+            onChange={(e) => setForm({ ...form, mfa_required: e.target.checked })}
+            data-testid="create-mfa-required"
+          />
+          {t("admin.users.requireMfa")}
+          {form.role === "SUPER_ADMIN" ? (
+            <span className="text-subtle-foreground">({t("admin.users.mfaByRole")})</span>
+          ) : null}
+        </label>
+      </div>
       {error ? (
         <p role="alert" className="text-xs text-negative sm:col-span-2 lg:col-span-3">
           {error}
@@ -284,6 +323,174 @@ function RowActions({ user, self }: { user: AdminUser; self: boolean }) {
   );
 }
 
+function SecurityBadges({ user }: { user: AdminUser }) {
+  const chip =
+    "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.65rem] font-semibold";
+  return (
+    <div className="flex flex-wrap gap-1" data-testid={`security-${user.id}`}>
+      {user.mfa_enabled ? (
+        <span className={cn(chip, "border-positive/40 text-positive")}>
+          <ShieldCheck aria-hidden className="h-3 w-3" />
+          2FA
+        </span>
+      ) : user.mfa_required ? (
+        <span className={cn(chip, "border-warning/50 text-warning")}>
+          <ShieldOff aria-hidden className="h-3 w-3" />
+          {t("admin.users.mfaPending")}
+        </span>
+      ) : (
+        <span className={cn(chip, "border-border-strong text-muted-foreground")}>
+          {t("admin.users.mfaOff")}
+        </span>
+      )}
+      {user.locked_until ? (
+        <span className={cn(chip, "border-negative/50 text-negative")}>
+          <Lock aria-hidden className="h-3 w-3" />
+          {t("admin.users.locked")}
+        </span>
+      ) : null}
+      {user.must_change_password ? (
+        <span className={cn(chip, "border-gold/45 text-gold-strong")}>
+          <KeyRound aria-hidden className="h-3 w-3" />
+          {t("admin.users.mustChange")}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+type SecurityAction = "password" | "mfa" | "sessions" | "unlock" | "requireMfa";
+
+function SecurityActions({ user, self }: { user: AdminUser; self: boolean }) {
+  const qc = useQueryClient();
+  const [confirm, setConfirm] = useState<SecurityAction | null>(null);
+  const [temporary, setTemporary] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const act = useMutation({
+    mutationFn: async (action: SecurityAction): Promise<string | null> => {
+      switch (action) {
+        case "password": {
+          const r = await v1.resetUserPassword(user.id);
+          setTemporary(r.data?.temporary_password ?? null);
+          return null;
+        }
+        case "mfa":
+          await v1.resetUserMfa(user.id);
+          return t("admin.users.mfaResetDone");
+        case "sessions": {
+          const r = await v1.revokeUserSessions(user.id);
+          return t("admin.users.sessionsEnded", { count: r.data?.revoked ?? 0 });
+        }
+        case "unlock":
+          await v1.unlockUser(user.id);
+          return t("admin.users.unlocked");
+        case "requireMfa":
+          await v1.updateUser(user.id, { mfa_required: !user.mfa_required });
+          return null;
+      }
+    },
+    onSuccess: (msg) => {
+      setConfirm(null);
+      setError(null);
+      setNotice(msg);
+      void qc.invalidateQueries({ queryKey: live.users.queryKey });
+    },
+    onError: (err) => setError(errorMessage(err)),
+  });
+  const btn = "rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50";
+  const labels: Record<SecurityAction, string> = {
+    password: t("admin.users.resetPassword"),
+    mfa: t("admin.users.resetMfa"),
+    sessions: t("admin.users.endSessions"),
+    unlock: t("admin.users.unlock"),
+    requireMfa: user.mfa_required
+      ? t("admin.users.dropMfaRequirement")
+      : t("admin.users.requireMfa"),
+  };
+  const available: SecurityAction[] = [
+    "password",
+    ...(user.mfa_enabled ? (["mfa"] as const) : []),
+    ...(user.active_sessions > 0 && !self ? (["sessions"] as const) : []),
+    ...(user.locked_until ? (["unlock"] as const) : []),
+    ...(user.role !== "SUPER_ADMIN" ? (["requireMfa"] as const) : []),
+  ];
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex flex-wrap gap-1.5">
+        {available.map((a) =>
+          confirm === a ? (
+            <button
+              key={a}
+              type="button"
+              disabled={act.isPending}
+              onClick={() => act.mutate(a)}
+              data-testid={`confirm-${a}-${user.id}`}
+              className={cn(btn, "border-negative/50 bg-negative-soft text-negative")}
+            >
+              {t("common.confirm")} · {labels[a]}
+            </button>
+          ) : (
+            <button
+              key={a}
+              type="button"
+              disabled={act.isPending || (self && a !== "requireMfa" && a !== "password")}
+              onClick={() => {
+                setNotice(null);
+                setTemporary(null);
+                setConfirm(a);
+              }}
+              data-testid={`${a}-${user.id}`}
+              className={cn(btn, "border-border-strong hover:bg-elevated")}
+            >
+              {a === "unlock" ? <Unlock aria-hidden className="mr-1 inline h-3 w-3" /> : null}
+              {a === "sessions" ? <LogOut aria-hidden className="mr-1 inline h-3 w-3" /> : null}
+              {labels[a]}
+            </button>
+          ),
+        )}
+        {confirm ? (
+          <button
+            type="button"
+            onClick={() => setConfirm(null)}
+            className={cn(btn, "border-transparent text-muted-foreground")}
+          >
+            {t("common.cancel")}
+          </button>
+        ) : null}
+      </div>
+      {temporary ? (
+        <div
+          className="mt-1 rounded-md border border-gold/45 bg-gold-soft p-2 text-xs"
+          data-testid={`temporary-password-${user.id}`}
+        >
+          <div className="text-gold-strong">{t("admin.users.temporaryPassword")}</div>
+          <div className="mt-1 flex items-center gap-2">
+            <code className="numeric font-mono text-sm tracking-wider">{temporary}</code>
+            <button
+              type="button"
+              aria-label={t("auth.steps.copy")}
+              onClick={() => void navigator.clipboard?.writeText(temporary)}
+              className="rounded border border-border-strong p-1 hover:bg-elevated"
+            >
+              <Copy aria-hidden className="h-3 w-3" />
+            </button>
+          </div>
+          <div className="mt-1 text-caption text-muted-foreground">
+            {t("admin.users.temporaryHint")}
+          </div>
+        </div>
+      ) : null}
+      {notice ? <span className="text-caption text-positive">{notice}</span> : null}
+      {error ? (
+        <span role="alert" className="text-caption text-negative">
+          {error}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function UsersPage() {
   const auth = useAuth();
   const q = useQuery({ ...live.users });
@@ -338,6 +545,7 @@ export function UsersPage() {
                     <th className="px-4 py-2 font-medium">{t("admin.users.user")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.role")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.status")}</th>
+                    <th className="px-3 py-2 font-medium">{t("admin.users.security")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.language")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.timezone")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.created")}</th>
@@ -369,6 +577,9 @@ export function UsersPage() {
                       <td className="px-3 py-3">
                         <StatusDot status={u.status} />
                       </td>
+                      <td className="px-3 py-3">
+                        <SecurityBadges user={u} />
+                      </td>
                       <td className="px-3 py-3 text-xs uppercase">{u.language}</td>
                       <td className="px-3 py-3 text-xs">{u.timezone}</td>
                       <td className="numeric px-3 py-3 text-xs text-muted-foreground">
@@ -377,8 +588,9 @@ export function UsersPage() {
                       <td className="numeric px-3 py-3 text-xs text-muted-foreground">
                         {u.last_login_at ? formatRelative(u.last_login_at) : t("admin.users.never")}
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="space-y-2 px-3 py-3">
                         <RowActions user={u} self={u.id === auth.user?.id} />
+                        <SecurityActions user={u} self={u.id === auth.user?.id} />
                       </td>
                     </tr>
                   ))}
@@ -404,7 +616,9 @@ export function UsersPage() {
                       {u.last_login_at ? formatRelative(u.last_login_at) : t("admin.users.never")}
                     </span>
                   </div>
+                  <SecurityBadges user={u} />
                   <RowActions user={u} self={u.id === auth.user?.id} />
+                  <SecurityActions user={u} self={u.id === auth.user?.id} />
                 </li>
               ))}
             </ul>

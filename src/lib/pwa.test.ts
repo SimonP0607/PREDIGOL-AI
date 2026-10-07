@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { registerServiceWorker, SERVICE_WORKER_URL } from "@/lib/pwa";
+import { registerServiceWorker, SERVICE_WORKER_URL, watchForUpdates } from "@/lib/pwa";
 
 const ORIGIN = "https://predigol.example";
 type Route = "bypass" | "navigate" | "static";
@@ -107,6 +107,81 @@ describe("registration", () => {
     } finally {
       console.warn = warn;
     }
+  });
+});
+
+describe("controlled updates", () => {
+  type Listener = (event?: unknown) => void;
+  function loadWorker() {
+    const listeners: Record<string, Listener> = {};
+    let skipped = 0;
+    const self = {
+      location: new URL(ORIGIN),
+      addEventListener: (type: string, fn: Listener) => {
+        listeners[type] = fn;
+      },
+      skipWaiting: () => {
+        skipped += 1;
+      },
+      clients: { claim: () => Promise.resolve() },
+    };
+    const source = readFileSync(join(import.meta.dir, "..", "..", "public", "sw.js"), "utf8");
+    const caches = { open: () => Promise.resolve({ addAll: () => Promise.resolve() }) };
+    new Function("self", "caches", "fetch", source)(self, caches, () => undefined);
+    return { listeners, skipped: () => skipped };
+  }
+
+  test("a new worker installs and WAITS; it takes over only when the page asks", async () => {
+    const w = loadWorker();
+    let pending: Promise<unknown> = Promise.resolve();
+    w.listeners["install"]?.({ waitUntil: (p: Promise<unknown>) => (pending = p) });
+    await pending;
+    expect(w.skipped()).toBe(0);
+    w.listeners["message"]?.({ data: { type: "something-else" } });
+    expect(w.skipped()).toBe(0);
+    w.listeners["message"]?.({ data: { type: "SKIP_WAITING" } });
+    expect(w.skipped()).toBe(1);
+  });
+
+  test("the page is told about a waiting version only when an older one controls it", () => {
+    const ready: unknown[] = [];
+    const waiting = { postMessage: () => undefined };
+    watchForUpdates(
+      { waiting },
+      { serviceWorker: { register: () => Promise.resolve(), controller: {} } },
+      (w) => ready.push(w),
+    );
+    expect(ready).toEqual([waiting]);
+    watchForUpdates({ waiting }, { serviceWorker: { register: () => Promise.resolve() } }, (w) =>
+      ready.push(w),
+    );
+    expect(ready).toHaveLength(1);
+    // found later: announced when the new worker reaches "installed"
+    let found: (() => void) | undefined;
+    let changed: (() => void) | undefined;
+    const installing = {
+      state: "installing",
+      postMessage: () => undefined,
+      addEventListener: (_: "statechange", fn: () => void) => {
+        changed = fn;
+      },
+    };
+    watchForUpdates(
+      {
+        installing,
+        addEventListener: (_: "updatefound", fn: () => void) => {
+          found = fn;
+        },
+      },
+      { serviceWorker: { register: () => Promise.resolve(), controller: {} } },
+      (w) => ready.push(w),
+    );
+    found?.();
+    changed?.();
+    expect(ready).toHaveLength(1);
+    installing.state = "installed";
+    changed?.();
+    expect(ready).toEqual([waiting, installing]);
   });
 });
 
