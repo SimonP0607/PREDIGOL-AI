@@ -51,13 +51,17 @@ class World:
         self.fixtures: dict[str, int] = {}
         self.picks: dict[str, int] = {}
         cur = self.cur
-        cur.execute("INSERT INTO core.competitions (provider_league_id, name, country, type, entity_scope, "
-                    "competition_type, is_tracked) VALUES (97401, 'Daily League', 'Colombia', 'league', 'club', "
-                    "'domestic_league', true) RETURNING id")
-        comp = scalar(cur)
-        cur.execute("INSERT INTO core.competition_seasons (competition_id, season, is_current) VALUES (%s, 2032, true) "
-                    "RETURNING id", (comp,))
-        season = scalar(cur)
+        # Two leagues (F1-F3 in one, F4-F7 in the other): a parlay holds at most two legs of one competition
+        # (parlay-v4's exposure cap), so the multi-day parlay needs the second league.
+        seasons = []
+        for league, name in ((97401, "Daily League"), (97402, "Daily League B")):
+            cur.execute("INSERT INTO core.competitions (provider_league_id, name, country, type, entity_scope, "
+                        "competition_type, is_tracked) VALUES (%s, %s, 'Colombia', 'league', 'club', "
+                        "'domestic_league', true) RETURNING id", (league, name))
+            comp = scalar(cur)
+            cur.execute("INSERT INTO core.competition_seasons (competition_id, season, is_current) VALUES "
+                        "(%s, 2032, true) RETURNING id", (comp,))
+            seasons.append(scalar(cur))
         cur.execute(
             "INSERT INTO models.calibrators (model_version_id,market_key,scope,method,params,n_train,train_from,"
             "train_to,n_val,val_from,val_to,val_ece,val_mce,val_brier,val_logloss,reliability_weight) VALUES "
@@ -72,7 +76,8 @@ class World:
                 teams.append(scalar(cur))
             cur.execute("INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, "
                         "away_team_id, kickoff_at) VALUES (%s, %s, %s, %s, %s) RETURNING id",
-                        (7340100 + n, season, teams[0], teams[1], AT + timedelta(hours=hours)))
+                        (7340100 + n, seasons[0] if n < 3 else seasons[1], teams[0], teams[1],
+                         AT + timedelta(hours=hours)))
             fid = self.fixtures[name] = scalar(cur)
             cutoff = AT - timedelta(days=1)
             cur.execute("INSERT INTO models.predictions (fixture_id,model_version_id,calibrator_id,market_key,"

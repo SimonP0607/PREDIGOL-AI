@@ -27,6 +27,12 @@ Two sets per day: ``qualified`` (picks whose model version beat the market in it
 backtest - the only set a user sees) and ``evaluation`` (shadow picks too - the owner's
 preview, labelled evaluation mode). While no model has qualified, the qualified set stays
 empty, honestly.
+
+``daily-set-v3`` (8 Oct 2026) adds the AI review (``fbi.ai``): every item freezes the newest combined
+review of its selection (decision, confidence, reason, mode). The review changes the choice only when it
+is ENFORCED - the owner's ``FBI_AI_MODE=enforce`` and the AI's own shadow gate passed
+(``fbi.ai.gating``): then a REJECTED selection is left out and a DOWNGRADED one ranks after the rest.
+Until then the set is exactly what the quantitative rule chooses and the review is a record beside it.
 """
 
 from __future__ import annotations
@@ -44,7 +50,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.parlays.engine import Candidate, GateConfig, Leg, assess
 
-RULE_VERSION = "daily-set-v2"
+RULE_VERSION = "daily-set-v3"
 DAY_TZ = ZoneInfo("America/Bogota")
 MAX_ITEMS = 5
 HORIZON = timedelta(hours=24)
@@ -135,7 +141,57 @@ def passing(rows: list[dict[str, Any]], *, at: datetime, source: Source) -> list
                                                  x.leg.candidate.pick_id))
 
 
-def frozen_inputs(x: Ranked, *, at: datetime, source: Source, rule: str) -> dict[str, Any]:
+@dataclass(frozen=True)
+class AiView:
+    """The newest combined AI review of each candidate, and whether reviews may change the choice."""
+
+    reviews: dict[tuple[int, str, str, Decimal], dict[str, Any]] = field(default_factory=dict)
+    enforced: bool = False
+    mode: str = "off"
+    reason: str = "ai_unavailable"
+
+    def decision(self, x: Ranked) -> str | None:
+        r = self.reviews.get(x.leg.candidate.selection_key)
+        return None if r is None else str(r["decision"])
+
+    def record(self, x: Ranked) -> dict[str, Any]:
+        r = self.reviews.get(x.leg.candidate.selection_key)
+        base: dict[str, Any] = {"mode": self.mode, "enforced": self.enforced, "why": self.reason}
+        if r is None:
+            return base | {"decision": None}
+        out = dict(r.get("output") or {})
+        return base | {"decision": r["decision"], "review_id": int(r["id"]), "engine_version": r["engine_version"],
+                       "model": r.get("model"), "reviewed_at": r["reviewed_at"].isoformat(),
+                       "confidence": str(r["confidence"]), "reason": out.get("reason")}
+
+    def apply(self, ranked: list[Ranked], *, drop_downgraded: bool = False) -> list[Ranked]:
+        """In enforce mode: rejected selections out (downgraded ones too for parlays), downgraded ones after the
+        rest; otherwise the list unchanged."""
+        if not self.enforced:
+            return ranked
+        bad = {"REJECT", "DOWNGRADE"} if drop_downgraded else {"REJECT"}
+        kept = [x for x in ranked if self.decision(x) not in bad]
+        return sorted(kept, key=lambda x: self.decision(x) == "DOWNGRADE")  # stable: rank order otherwise
+
+
+def ai_view(conn: psycopg.Connection[Any], ranked: list[Ranked], *, at: datetime) -> AiView:
+    """Read in a savepoint: without the AI tables (an older database) the set is built as before."""
+    from fbi.ai.config import AiSettings
+    from fbi.ai.gating import enforcement
+    from fbi.ai.review import latest_reviews
+
+    settings = AiSettings.from_env()
+    fixtures = sorted({x.leg.candidate.fixture_id for x in ranked})
+    try:
+        with conn.transaction():
+            reviews = latest_reviews(conn, fixtures, at=at)
+            enf = enforcement(conn, settings)
+    except psycopg.errors.UndefinedTable:
+        return AiView(mode=settings.mode)
+    return AiView(reviews, enf.enforced, settings.mode, enf.reason)
+
+
+def frozen_inputs(x: Ranked, *, at: datetime, source: Source, rule: str, ai: AiView | None = None) -> dict[str, Any]:
     c, r = x.leg.candidate, x.row
     return {
         "rule_version": rule, "source": source, "selected_at": at.isoformat(), "model": r.get("model"),
@@ -148,7 +204,7 @@ def frozen_inputs(x: Ranked, *, at: datetime, source: Source, rule: str) -> dict
         "gate": {"max_price_age_h": GATE.max_price_age.total_seconds() / 3600, "min_bookmakers": GATE.min_bookmakers,
                  "max_price_edge": str(GATE.max_price_edge), "min_minutes_to_kickoff": GATE.min_minutes_to_kickoff,
                  "min_ev": str(GATE.min_ev)},
-    }
+    } | ({} if ai is None else {"ai": ai.record(x)})
 
 
 def load_candidates(conn: psycopg.Connection[Any], *, at: datetime, until: datetime,
@@ -187,6 +243,8 @@ def build_daily_sets(conn: psycopg.Connection[Any], *, at: datetime) -> DailyRep
         rows = load_candidates(conn, at=at, until=at + HORIZON, include_shadow=source == "evaluation")
         ranked = [x for x in passing(rows, at=at, source=source)
                   if x.elg > 0 and stage_of((x.leg.candidate.kickoff_at - at).total_seconds() / 60) is not None]
+        ai = ai_view(conn, ranked, at=at)
+        ranked = ai.apply(ranked)
         by_day: dict[date, list[Ranked]] = {}
         for x in ranked:
             by_day.setdefault(product_day(x.leg.candidate.kickoff_at), []).append(x)
@@ -226,7 +284,7 @@ def build_daily_sets(conn: psycopg.Connection[Any], *, at: datetime) -> DailyRep
                         (set_id, n, c.pick_id, c.fixture_id, c.market_key, c.selection, c.line, stage, at, c.price,
                          r.get("bookmaker_id"), c.price_at, c.p_model, x.p_low, c.p_push or 0, c.p_market_fair,
                          x.leg.ev, int(r["model_version_id"]),
-                         Jsonb(frozen_inputs(x, at=at, source=source, rule=RULE_VERSION))))
+                         Jsonb(frozen_inputs(x, at=at, source=source, rule=RULE_VERSION, ai=ai))))
                     report.items_added += max(cur.rowcount, 0)
                     report.by_source[source] = report.by_source.get(source, 0) + max(cur.rowcount, 0)
                 cur.execute("UPDATE picks.daily_sets SET updated_at = %s WHERE id = %s", (at, set_id))

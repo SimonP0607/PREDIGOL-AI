@@ -22,7 +22,7 @@ from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
-from psycopg.types.json import Json
+from psycopg.types.json import Json, Jsonb
 
 from fbi.research.pick_audit import AuditResult
 from fbi.research.prospective import ProspectiveResult, SegmentResult
@@ -63,33 +63,57 @@ def remember(conn: psycopg.Connection[Any], *, topic: str, finding: str, evidenc
     return new_id
 
 
+TARGETS = ("models", "backtesting", "analytics", "features", "rankings", "pick_engine", "decision_rules", "data",
+           "ai", "other")
+"""What a hypothesis would change if it were ever promoted (``analytics.research_hypotheses.target``)."""
+
+
 def propose(conn: psycopg.Connection[Any], *, title: str, hypothesis: str, rationale: str,
-            evidence: dict[str, Any], proposed_by: str, at: datetime, key: str | None = None) -> int | None:
+            evidence: dict[str, Any], proposed_by: str, at: datetime, key: str | None = None,
+            target: str = "other") -> int | None:
     """A hypothesis for the owner. A keyed proposal is made once. Returns its id, or None
     when the same key was proposed before."""
     if proposed_by not in ("ai", "owner", "system"):
         raise ValueError("proposed_by is ai, owner or system")
+    if target not in TARGETS:
+        raise ValueError(f"unknown target {target!r}")
     if proposed_by == "ai" and key is None:
         key = "ai:" + hashlib.sha256(" ".join(title.lower().split()).encode()).hexdigest()[:24]
     with conn.cursor() as cur:
         cur.execute(
             "INSERT INTO analytics.research_hypotheses (proposed_by, title, hypothesis, rationale, evidence, "
-            "dedup_key, created_at) VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (dedup_key) WHERE dedup_key IS NOT "
-            "NULL DO NOTHING RETURNING id",
-            (proposed_by, title[:160], hypothesis, rationale, Json(evidence), key, at))
+            "dedup_key, created_at, target) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (dedup_key) WHERE dedup_key "
+            "IS NOT NULL DO NOTHING RETURNING id",
+            (proposed_by, title[:160], hypothesis, rationale, Json(evidence), key, at, target))
         row = cur.fetchone()
     return None if row is None else int(row[0])
 
 
-def decide(conn: psycopg.Connection[Any], hypothesis_id: int, *, accept: bool, user_id: int, note: str | None,
-           at: datetime) -> str:
-    """The owner's decision on a PROPOSED hypothesis. Accepting queues an experiment in
-    research; it changes no rule, model or pick."""
-    status = "ACCEPTED" if accept else "REJECTED"
+DECISIONS = {"reject": "REJECTED", "investigate": "INVESTIGATING", "accept": "ACCEPTED",
+             "approve_experiment": "ACCEPTED"}
+"""The owner's three answers: RECHAZAR, INVESTIGAR (look further before deciding), APROBAR EXPERIMENTO.
+``accept`` is the earlier name of approve_experiment."""
+DECIDABLE = {"PROPOSED": ("REJECTED", "INVESTIGATING", "ACCEPTED"), "INVESTIGATING": ("REJECTED", "ACCEPTED")}
+
+
+def decide(conn: psycopg.Connection[Any], hypothesis_id: int, *, accept: bool | None = None, user_id: int,
+           note: str | None, at: datetime, decision: str | None = None) -> str:
+    """The owner's decision on a PROPOSED (or INVESTIGATING) hypothesis. Approving queues an experiment in
+    research; investigating asks for more evidence first; neither changes a rule, a model or a pick. Every
+    decision is appended to the hypothesis' stage history."""
+    if decision is None:
+        decision = "accept" if accept else "reject"
+    status = DECISIONS.get(decision)
+    if status is None:
+        raise DecisionError(f"unknown decision {decision!r}")
+    allowed_from = [s for s, to in DECIDABLE.items() if status in to]
     with conn.cursor() as cur:
         cur.execute("UPDATE analytics.research_hypotheses SET status = %s, decided_at = %s, decided_by = %s, "
-                    "decision_note = %s WHERE id = %s AND status = 'PROPOSED' RETURNING id",
-                    (status, at, user_id, None if note is None else note[:500], hypothesis_id))
+                    "decision_note = %s, stage_history = stage_history || jsonb_build_array(jsonb_build_object("
+                    "'from', status, 'to', %s::text, 'at', %s::timestamptz, 'by', %s::bigint, 'note', %s::text)) "
+                    "WHERE id = %s AND status = ANY(%s) RETURNING id",
+                    (status, at, user_id, None if note is None else note[:500], status, at, user_id,
+                     None if note is None else note[:500], hypothesis_id, allowed_from))
         if cur.fetchone() is None:
             cur.execute("SELECT status FROM analytics.research_hypotheses WHERE id = %s", (hypothesis_id,))
             row = cur.fetchone()
@@ -101,8 +125,53 @@ def link_experiment(conn: psycopg.Connection[Any], hypothesis_id: int, experimen
     """An experiment that tests an ACCEPTED hypothesis: RUNNING while it runs, DONE after."""
     with conn.cursor() as cur:
         cur.execute("UPDATE analytics.research_hypotheses SET experiment_ids = array_append(experiment_ids, %s), "
-                    "status = %s WHERE id = %s AND status IN ('ACCEPTED', 'RUNNING')",
+                    "status = %s WHERE id = %s AND status IN ('ACCEPTED', 'RUNNING', 'SHADOW')",
                     (experiment_id, "DONE" if done else "RUNNING", hypothesis_id))
+
+
+STAGES = ("RUNNING", "SHADOW", "DONE")
+
+
+def advance(conn: psycopg.Connection[Any], hypothesis_id: int, *, stage: str, at: datetime,
+            outcome: dict[str, Any] | None = None, note: str | None = None) -> str:
+    """An accepted experiment moves on: RUNNING (backtest) -> SHADOW (prospective) -> DONE (judged, with its
+    outcome). Research records this; PROMOTED is set only by the owner's explicit promotion (``promote``)."""
+    order = {"ACCEPTED": 0, "RUNNING": 1, "SHADOW": 2, "DONE": 3}
+    if stage not in STAGES:
+        raise DecisionError(f"unknown stage {stage!r}")
+    earlier = [s for s, n in order.items() if n < order[stage]]
+    with conn.cursor() as cur:
+        cur.execute("UPDATE analytics.research_hypotheses SET status = %s, outcome = COALESCE(%s, outcome), "
+                    "stage_history = stage_history || jsonb_build_array(jsonb_build_object('from', status, "
+                    "'to', %s::text, 'at', %s::timestamptz, 'note', %s::text)) WHERE id = %s AND status = ANY(%s) "
+                    "RETURNING id", (stage, None if outcome is None else Jsonb(outcome), stage, at, note,
+                                     hypothesis_id, earlier))
+        if cur.fetchone() is None:
+            cur.execute("SELECT status FROM analytics.research_hypotheses WHERE id = %s", (hypothesis_id,))
+            row = cur.fetchone()
+            raise DecisionError("no such hypothesis" if row is None else f"cannot move from {row[0]} to {stage}")
+    return stage
+
+
+def promote(conn: psycopg.Connection[Any], hypothesis_id: int, *, user_id: int, at: datetime,
+            note: str | None = None) -> str:
+    """The owner's explicit promotion of a DONE experiment whose outcome passed its gate - the only way a
+    hypothesis reaches PROMOTED. It records the decision; putting the change in production is the owner's
+    deliberate, separate act (a model promotion through its own gate, a rule's new version)."""
+    with conn.cursor() as cur:
+        cur.execute("UPDATE analytics.research_hypotheses SET status = 'PROMOTED', stage_history = stage_history || "
+                    "jsonb_build_array(jsonb_build_object('from', status, 'to', 'PROMOTED', 'at', %s::timestamptz, "
+                    "'by', %s::bigint, 'note', %s::text)) WHERE id = %s AND status = 'DONE' "
+                    "AND (outcome->>'gate_passed')::boolean IS TRUE RETURNING id",
+                    (at, user_id, note, hypothesis_id))
+        if cur.fetchone() is None:
+            cur.execute("SELECT status, outcome FROM analytics.research_hypotheses WHERE id = %s", (hypothesis_id,))
+            row = cur.fetchone()
+            if row is None:
+                raise DecisionError("no such hypothesis")
+            raise DecisionError(f"not promotable: status {row[0]}, gate passed: "
+                                f"{bool((row[1] or {}).get('gate_passed'))}")
+    return "PROMOTED"
 
 
 # ── what the system learns from the results ─────────────────────────────────

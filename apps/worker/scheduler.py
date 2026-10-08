@@ -22,6 +22,10 @@ at worst, and a duplicated tick costs nothing at all.
   * ``ai_daily_report`` / ``ai_pick_review``  the AI layer (``fbi.analyst``): the research
     report from 06:00 Bogotá and the pick reviewer's flags every hour. Zero API-Football
     requests; the LLM and search APIs only when the owner configured them, inside a monthly cap.
+  * ``ai_cycle`` (every 30 min) / ``ai_learn`` (07:35 Bogotá) / ``ai_requests`` (every 2 min)  the AI
+    decision layer (``fbi.ai``): match packets, evidence, reviews and analyses; post-mortems, memory,
+    patterns, the parlays' measured dependence and the AI's own shadow report; the owner's "run now".
+    Zero API-Football requests; a language model and a search API only when configured, inside the caps.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -184,6 +188,12 @@ down at six writes it when it comes back. Database, plus the LLM and search APIs
 configured them; zero API-Football requests."""
 AI_CHECK_MINUTES = int(os.environ.get("FBI_AI_CHECK_MINUTES", "15"))
 AI_REVIEW_MINUTES = int(os.environ.get("FBI_AI_REVIEW_MINUTES", "60"))
+AI_CYCLE_MINUTES = int(os.environ.get("FBI_AI_CYCLE_MINUTES", "30"))
+"""The AI decision layer's analysis cycle (``fbi.ai.cycle``): packets, evidence, reviews and the per-match
+analyses of the next days. Database only unless a model or a search API is configured."""
+AI_LEARN_HOUR = int(os.environ.get("FBI_AI_LEARN_HOUR", "7"))
+"""Post-mortems, memory, patterns and the AI's shadow report, daily at HH:35 Bogotá (after the monitor)."""
+AI_REQUESTS_MINUTES = 2
 RESEARCH_MONITOR_HOUR = int(os.environ.get("FBI_RESEARCH_MONITOR_HOUR", "7"))
 """The evolution loop's daily monitor (Bogotá): the shadow-pick audit and the prospective
 evaluation, turned into memory and proposals. Seconds of database reads, zero requests."""
@@ -634,6 +644,72 @@ async def _ai_review() -> None:
     await asyncio.to_thread(_ai_review_now)
 
 
+def _ai_cycle_now() -> None:
+    """Packets, evidence, reviews, analyses. Never raises: the AI layer must never stop the worker."""
+    from fbi.ai.cycle import run_analysis_cycle
+
+    try:
+        with _connect() as conn:
+            r = run_analysis_cycle(conn, at=now())
+        log.info("ai.cycle", status=r.status, cost_usd=str(r.cost_usd), **{k: v for k, v in dict(r.counts).items()
+                                                                           if k in ("fixtures", "shortlist", "reviews",
+                                                                                    "llm_reviews", "packets")})
+    except Exception as exc:
+        log.error("ai.cycle.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_cycle() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_cycle_now)
+
+
+def _ai_learn_now() -> None:
+    """Post-mortems, patterns, dependence, the AI's shadow report. Never raises."""
+    from fbi.ai.cycle import run_learning_cycle
+
+    try:
+        with _connect() as conn:
+            r = run_learning_cycle(conn, at=now())
+        log.info("ai.learning", status=r.status, **{k: v for k, v in dict(r.counts).items()
+                                                     if k in ("postmortems", "memory_events", "hypotheses_proposed")})
+    except Exception as exc:
+        log.error("ai.learning.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+def _last_ai_cycle(conn: psycopg.Connection[Any], kind: str) -> datetime | None:
+    """When the AI layer last finished a cycle of this kind (``ai.cycles``); None on an older database."""
+    try:
+        with conn.transaction(), conn.cursor() as cur:
+            cur.execute("SELECT max(finished_at) FROM ai.cycles WHERE kind = %s AND status IN ('ok', 'partial')",
+                        (kind,))
+            row = cur.fetchone()
+    except psycopg.errors.UndefinedTable:
+        return None
+    return None if row is None else row[0]
+
+
+async def _ai_learn() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_learn_now)
+
+
+def _ai_requests_now() -> None:
+    """The owner's "run now" from the Admin Console. Never raises."""
+    from fbi.ai.cycle import process_requests
+
+    try:
+        with _connect() as conn:
+            n = process_requests(conn, at=now())
+        if n:
+            log.info("ai.requests", processed=n)
+    except Exception as exc:
+        log.error("ai.requests.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_requests() -> None:
+    await asyncio.to_thread(_ai_requests_now)
+
+
 def _research_monitor_now() -> None:
     """Audit + prospective -> memory and proposals. Never raises."""
     from fbi.research.loop import run_monitor
@@ -835,6 +911,7 @@ async def main() -> None:
                                         timedelta(hours=CATALOGUE_REFRESH_HOURS), moment)
         elo_next = next_run_after(last_success(conn, "elo_refresh"), timedelta(hours=ELO_REFRESH_HOURS), moment)
         monitor_last = last_success(conn, "research_monitor")
+        learn_last = _last_ai_cycle(conn, "learning")
 
     # A tick that could not start on time is still worth running late, and how late is
     # set by the capture tolerance - NOT by the interval. Tying it to the interval made
@@ -900,6 +977,16 @@ async def main() -> None:
     scheduler.add_job(_ai_review, "interval", minutes=AI_REVIEW_MINUTES, id="ai_pick_review",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_REVIEW_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=11))
+    scheduler.add_job(_ai_cycle, "interval", minutes=AI_CYCLE_MINUTES, id="ai_cycle", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_CYCLE_MINUTES * 60, next_run_time=moment + timedelta(minutes=8))
+    scheduler.add_job(_ai_learn, "cron", hour=AI_LEARN_HOUR, minute=35, timezone="America/Bogota", id="ai_learn",
+                      max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    if learn_last is None or moment - learn_last > timedelta(hours=26):
+        scheduler.add_job(_ai_learn, "date", run_date=moment + timedelta(minutes=16), id="ai_learn_catch_up",
+                          misfire_grace_time=3600)
+    scheduler.add_job(_ai_requests, "interval", minutes=AI_REQUESTS_MINUTES, id="ai_requests", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_REQUESTS_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=1))
     scheduler.add_job(_research_monitor, "cron", hour=RESEARCH_MONITOR_HOUR, minute=5, timezone="America/Bogota",
                       id="research_monitor", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
     if monitor_last is None or moment - monitor_last > timedelta(hours=26):

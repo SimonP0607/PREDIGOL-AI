@@ -45,7 +45,7 @@ WITH fx AS (
 SELECT p.id AS pick_id, p.fixture_id, """ + _BADGES + """,
        p.market_key, p.selection, p.line, p.status AS pick_status, p.created_at AS pick_created_at,
        v.status AS model_status, m.name AS model, p.p_calibrated AS p_model, p.p_push,
-       p.p_calibrated_lo AS p_low, p.model_version_id,
+       p.p_calibrated_lo AS p_low, p.p_calibrated_hi AS p_high, p.model_version_id,
        lc.p_fair, lc.best_odds, lc.best_bookmaker_id AS bookmaker_id, b.name AS bookmaker, lc.as_of AS price_at,
        lc.n_bookmakers
   FROM picks.picks p

@@ -9,6 +9,12 @@
   selections on one match are dependent), no quarter lines (a half-won leg has no clean
   meaning inside a parlay), every match still to start. A team appearing in two legs is
   allowed with a warning: two matches of one team share its news.
+* A parlay being built is also MEASURED (no AI call - everything is already stored): the combined odds,
+  the probability every leg wins by the de-vigged market (the best estimate there is, and the one shown as
+  "estimated"), the PrediGol model's own estimate where it has one (labelled evaluation: no model has beaten
+  the market yet), the expected value at the market's probability, a risk label, and dependence warnings -
+  two legs from one competition's matchday share its environment (with the measured correlation when there
+  is one), legs whose combined probability is tiny.
 * History groups four kinds of record - PrediGol's picks (the daily set), the user's picks,
   PrediGol's parlays, the user's parlays - over today, the last 7 days, the last 30 days or
   everything, by the day the match kicks off in the user's own time zone.
@@ -54,7 +60,16 @@ def quarter_line(line: Decimal) -> bool:
 
 
 FIXTURE_SQL = """
-SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, f.away_team_id FROM core.fixtures f WHERE f.id = %s
+SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, f.away_team_id, cs.competition_id
+  FROM core.fixtures f JOIN core.competition_seasons cs ON cs.id = f.competition_season_id WHERE f.id = %s
+"""
+
+MODEL_SQL = """
+SELECT p.p_calibrated, p.p_push FROM models.predictions p
+  JOIN models.model_versions v ON v.id = p.model_version_id JOIN models.model_registry m ON m.id = v.model_id
+ WHERE p.fixture_id = %(fixture)s AND p.market_key = %(market)s AND p.selection = %(selection)s AND p.line = %(line)s
+   AND p.backtest_session_id IS NULL AND m.name = 'dixon_coles' AND p.data_cutoff_ts <= %(at)s
+ ORDER BY p.data_cutoff_ts DESC LIMIT 1
 """
 
 PRICE_SQL = """
@@ -178,6 +193,14 @@ class Validation:
     warnings: list[dict[str, Any]] = field(default_factory=list)
     legs: list[dict[str, Any]] = field(default_factory=list)
     combined_odds: Decimal | None = None
+    fair_probability: Decimal | None = None
+    """Every leg wins, by the de-vigged market (legs of different matches treated as independent)."""
+    model_probability: Decimal | None = None
+    """The same by PrediGol's model, where it priced every leg - evaluation, not a recommendation."""
+    expected_value: Decimal | None = None
+    """combined odds x fair probability - 1: what the market's own view says the parlay is worth."""
+    risk: str | None = None
+    correlation: dict[str, Any] = field(default_factory=dict)
 
 
 def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: datetime) -> Validation:
@@ -220,10 +243,59 @@ def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: dat
             v.warnings.append({"code": "no_price", "leg": n})
         else:
             odds_product *= odds
+        entry["p_fair"] = None if price is None or price.get("p_fair") is None else str(price["p_fair"])
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(MODEL_SQL, {"fixture": leg.fixture_id, "market": leg.market_key, "selection": leg.selection,
+                                    "line": leg.line, "at": at})
+            model = cur.fetchone()
+        entry["p_model"] = None if model is None else str(model["p_calibrated"])
+        entry["competition_id"] = f.get("competition_id")
         v.legs.append(entry)
     v.ok = not v.errors
     v.combined_odds = odds_product.quantize(Decimal("0.001")) if all_priced and legs else None
+    _measure(conn, v)
     return v
+
+
+def _measure(conn: psycopg.Connection[Any], v: Validation) -> None:
+    """Probabilities, value, risk and dependence of a parlay being built - from stored numbers only."""
+    from fbi.parlays import correlation
+    from fbi.parlays.engine import risk_of
+    from fbi.picks.daily import product_day
+
+    legs = [leg for leg in v.legs if "kickoff_at" in leg]
+    if not legs or len(legs) != len(v.legs):
+        return
+    if all(leg.get("p_fair") for leg in legs):
+        fair = Decimal(1)
+        for leg in legs:
+            fair *= Decimal(leg["p_fair"])
+        v.fair_probability = fair.quantize(Decimal("0.000001"))
+        v.risk = risk_of(fair)
+        if v.combined_odds is not None:
+            v.expected_value = (v.combined_odds * fair - 1).quantize(Decimal("0.0001"))
+    if all(leg.get("p_model") for leg in legs):
+        model = Decimal(1)
+        for leg in legs:
+            model *= Decimal(leg["p_model"])
+        v.model_probability = model.quantize(Decimal("0.000001"))
+    estimates = correlation.latest(conn)
+    groups: dict[tuple[Any, Any], list[int]] = {}
+    for leg in legs:
+        day = product_day(datetime.fromisoformat(leg["kickoff_at"]))
+        groups.setdefault((leg.get("competition_id"), day), []).append(int(leg["leg"]))
+    clusters = [ids for (comp, _), ids in groups.items() if comp is not None and len(ids) >= 2]
+    for ids in clusters:
+        markets = {correlation.market_of(v.legs[i - 1]["market_key"], v.legs[i - 1]["selection"]) for i in ids}
+        measured = [estimates[m] for m in markets if m is not None and m in estimates]
+        v.warnings.append({"code": "same_competition_day", "legs": ids,
+                           "rho": None if not measured else measured[0].rho,
+                           "significant": bool(measured and abs(measured[0].rho) > 1.96 * measured[0].se)})
+    v.correlation = {"clusters": clusters, "independent": not clusters}
+    if v.fair_probability is not None and v.fair_probability < Decimal("0.02"):
+        v.warnings.append({"code": "very_unlikely", "probability": str(v.fair_probability)})
+    for leg in legs:
+        leg.pop("competition_id", None)
 
 
 def create_parlay(conn: psycopg.Connection[Any], *, user_id: int, name: str | None, legs: list[LegIn],

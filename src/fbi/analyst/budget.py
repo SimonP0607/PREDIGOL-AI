@@ -19,9 +19,11 @@ import psycopg
 
 PRICES: dict[str, tuple[Decimal, Decimal]] = {
     # model id prefix -> (USD per 1M input tokens, per 1M output tokens)
+    "claude-haiku-5-5": (Decimal("0.10"), Decimal("0.50")),
     "claude-haiku-4-5": (Decimal("1.00"), Decimal("5.00")),
     "claude-sonnet-5-5": (Decimal("2.00"), Decimal("10.00")),
     "claude-sonnet-4-5": (Decimal("3.00"), Decimal("15.00")),
+    "claude-opus-5-5": (Decimal("4.00"), Decimal("20.00")),
 }
 UNKNOWN_PRICE = (Decimal("15.00"), Decimal("75.00"))
 DEFAULT_BUDGET = Decimal("20")
@@ -52,9 +54,12 @@ def monthly_budget() -> Decimal:
 
 
 def spent_this_month(conn: psycopg.Connection[Any], *, at: datetime) -> Decimal:
+    """The month's spend of the WHOLE AI layer: these runs and the decision layer's calls (``ai.usage``) -
+    one cap for both (``fbi.ai.usage``)."""
     start = at.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     with conn.cursor() as cur:
-        cur.execute("SELECT COALESCE(sum(cost_usd), 0) FROM analytics.ai_runs WHERE started_at >= %s", (start,))
+        cur.execute("SELECT COALESCE((SELECT sum(cost_usd) FROM analytics.ai_runs WHERE started_at >= %(s)s), 0) "
+                    "+ COALESCE((SELECT sum(cost_usd) FROM ai.usage WHERE at >= %(s)s), 0)", {"s": start})
         row = cur.fetchone()
     return Decimal(row[0]) if row else Decimal(0)
 
