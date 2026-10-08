@@ -55,7 +55,11 @@ class JsonRequest:
     schema: dict[str, Any]
     schema_name: str
     max_tokens: int = 1500
+    """A hard limit on everything the model writes - its thinking included, where it thinks."""
     timeout_s: float = 60.0
+    effort: str | None = None
+    """How much the model may think and write: low | medium | high (Anthropic ``output_config.effort``). Set from
+    the tier by ``fbi.ai.usage.with_effort``; a provider without such a control ignores it."""
 
 
 class LlmProvider(Protocol):

@@ -11,7 +11,9 @@ from __future__ import annotations
 
 from typing import Any
 
-REVIEW_VERSION = "review-v1"
+REVIEW_VERSION = "review-v2"
+"""v2 (8 Oct 2026): the same prompt asked with a set effort and room for thinking - on Claude 5.5 every v1 answer was
+cut at max_tokens by the thinking before it. A last review of an older version does not hold off a new one."""
 EXTRACT_VERSION = "extract-v1"
 POSTMORTEM_VERSION = "postmortem-v1"
 

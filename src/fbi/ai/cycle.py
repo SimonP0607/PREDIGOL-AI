@@ -33,6 +33,7 @@ from fbi.ai.collectors import SearchFn, collect_provider, collect_web
 from fbi.ai.config import AiSettings, Tier
 from fbi.ai.evidence import seed_sources
 from fbi.ai.packet import PacketBuilder, store_packet
+from fbi.ai.prompts import REVIEW_VERSION
 from fbi.ai.providers.base import LlmProvider
 from fbi.ai.review import Candidate, Reviewed, carried_review, review_candidate
 from fbi.ai.usage import UsageLedger
@@ -77,9 +78,10 @@ SELECT DISTINCT ON (r.market_key, r.selection, r.line) r.id, r.market_key, r.sel
 """
 
 LLM_TODAY_SQL = """
-SELECT count(*) FILTER (WHERE r.engine = 'llm' AND r.status <> 'over_budget' AND NOT r.output ? 'reused_from') AS llm,
+SELECT count(*) FILTER (WHERE r.engine = 'llm' AND r.status NOT IN ('over_budget', 'failed')
+                        AND NOT r.output ? 'reused_from') AS llm,
        count(*) FILTER (WHERE r.engine = 'llm' AND r.model IS NOT NULL AND r.output->>'tier' = 'final'
-                        AND NOT r.output ? 'reused_from') AS deep
+                        AND r.status <> 'failed' AND NOT r.output ? 'reused_from') AS deep
   FROM ai.pick_reviews r WHERE r.reviewed_at >= %(day)s
 """
 
@@ -137,8 +139,11 @@ def value_option(x: Ranked) -> ValueOption:
 def needs_llm(last: dict[str, Any] | None, cand: Candidate, *, at: datetime, evidence_ids: set[int],
               lineups_confirmed: bool) -> bool:
     """A new model review only when something material changed: the price moved more than 3 %, new evidence,
-    the line-ups were confirmed since, or the last one is older than six hours."""
+    the line-ups were confirmed since, the last one is older than six hours - or was made by an older version of
+    the reviewer."""
     if last is None:
+        return True
+    if last.get("engine_version") != REVIEW_VERSION:
         return True
     if at - last["reviewed_at"] >= RE_REVIEW_AFTER:
         return True

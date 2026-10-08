@@ -223,7 +223,7 @@ def run_patterns(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSet
                             "result": e["result"], "evidence": e["evidence"]} for e in sample], default=str,
                           ensure_ascii=False)
         call = call_json(conn, settings, tier="analysis", purpose="pattern_review",
-                         request=JsonRequest(AI_SYSTEM, body, AI_SCHEMA, "submit_hypotheses", max_tokens=1200),
+                         request=JsonRequest(AI_SYSTEM, body, AI_SCHEMA, "submit_hypotheses", max_tokens=8000),
                          at=at, prompt_version=VERSION, input_hash=str(max(ids)), ledger=ledger,
                          transport=transport, provider=provider)
         if call.result is not None:

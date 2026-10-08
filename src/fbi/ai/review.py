@@ -428,7 +428,7 @@ def llm_review(conn: psycopg.Connection[Any], settings: AiSettings, c: Candidate
                             existing["error"], existing["provider"], existing["model"], list(existing["usage_ids"]),
                             Decimal(0), h)
     request = JsonRequest(system=REVIEW_SYSTEM, user=content, schema=REVIEW_SCHEMA, schema_name="submit_review",
-                          max_tokens=1200, timeout_s=60.0)
+                          max_tokens=8000, timeout_s=120.0)
     outcome = call_json(conn, settings, tier=tier, purpose="pick_review", request=request, at=at,
                         prompt_version=REVIEW_VERSION, input_hash=h, fixture_id=c.fixture_id, ledger=ledger,
                         transport=transport, provider=provider)
@@ -441,6 +441,8 @@ def llm_review(conn: psycopg.Connection[Any], settings: AiSettings, c: Candidate
         parsed = ReviewOut.model_validate(outcome.result.data)
     except ValidationError as exc:
         detail = "; ".join(f"{'.'.join(str(x) for x in e['loc'])}: {e['msg']}" for e in exc.errors()[:6])
+        if outcome.result.extra.get("stop_reason") == "max_tokens":
+            detail = f"cut at max_tokens ({detail})"
         return EngineResult("llm", REVIEW_VERSION, "ABSTAIN", {"reason": "respuesta inválida", "detail": detail},
                             "invalid_output", detail[:300], outcome.provider, outcome.model, usage_ids, outcome.cost, h)
     checked: Checked = check(parsed, packet_content=packet.content, evidence_status=evidence_status,

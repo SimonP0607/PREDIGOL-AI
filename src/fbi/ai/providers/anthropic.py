@@ -1,11 +1,16 @@
 """Claude through the Messages API: the JSON answer is a call of one tool whose input schema is the output schema
 (the same technique ``fbi.analyst`` uses), so the answer arrives as an object.
 
-The call is forced (``tool_choice: tool``) where the model allows it. Claude 5.5 refuses a forced tool choice
-("tool_choice: type "tool" and "any" are not supported for this model", HTTP 400 - seen on 8 Oct 2026 with the
-first real calls): such a model is asked with ``tool_choice: auto`` and the instruction to answer only through the
-tool, and is remembered, so the refused attempt (which costs nothing) is made once per process. An answer without
-the tool call is still ``invalid_output``: the review then abstains, as for any failure."""
+What Claude 5.5 changed (seen with the first real calls, 8 Oct 2026):
+
+* A forced tool choice is refused ("tool_choice: type "tool" and "any" are not supported for this model", HTTP 400).
+  Such a model is asked with ``tool_choice: auto`` and the instruction to answer only through the tool.
+* The model thinks before it answers (adaptive thinking, billed as output and counted in ``max_tokens``). How much is
+  set with ``output_config.effort`` (``JsonRequest.effort``, from the tier); ``max_tokens`` must leave room for it.
+
+Each adjustment is made once per model and process: the refused attempt costs nothing, and the model is remembered.
+An answer without the tool call is ``invalid_output`` (the review then abstains); a cut answer keeps its
+``stop_reason`` in ``LlmResult.extra`` so the caller can say why it did not validate."""
 
 from __future__ import annotations
 
@@ -20,26 +25,34 @@ ANTHROPIC_VERSION = "2023-06-01"
 
 AUTO_ONLY: set[str] = set()
 """Models that refused a forced tool choice in this process."""
+NO_EFFORT: set[str] = set()
+"""Models that refused ``output_config.effort`` in this process (older models)."""
 
 ANSWER_THROUGH_TOOL = ("\n\nAnswer only by calling the tool `{name}` exactly once, with the complete answer as its "
                        "input. Write nothing outside that call.")
 
 
-class _ForcedChoiceRefusedError(Exception):
-    pass
+class _UnsupportedError(Exception):
+    def __init__(self, what: str) -> None:
+        super().__init__(what)
+        self.what = what
 
 
-def _forced_choice_refused(r: httpx.Response) -> bool:
-    """A 400 that says the model does not take a forced tool choice. Only the error's type and message are read,
-    to classify it; they are never logged or raised (a body can echo the prompt)."""
+def _unsupported(r: httpx.Response) -> str | None:
+    """Which request option a 400 refuses, if it is one we can drop: 'tool_choice' or 'effort'. Only the error's
+    message is read, to classify it; it is never logged or raised (a body can echo the prompt)."""
     if r.status_code != 400:
-        return False
+        return None
     try:
         err = (r.json() or {}).get("error") or {}
     except ValueError:
-        return False
+        return None
     message = str(err.get("message") or "")
-    return "tool_choice" in message and "not supported" in message
+    if "tool_choice" in message and "not supported" in message:
+        return "tool_choice"
+    if "output_config" in message or "effort" in message:
+        return "effort"
+    return None
 
 
 class AnthropicProvider:
@@ -53,14 +66,21 @@ class AnthropicProvider:
         self._transport = transport
 
     def complete_json(self, model: str, request: JsonRequest) -> LlmResult:
-        if model not in AUTO_ONLY:
+        for _ in range(3):
+            forced = model not in AUTO_ONLY
+            effort = None if model in NO_EFFORT else request.effort
             try:
-                return self._complete(model, request, forced=True)
-            except _ForcedChoiceRefusedError:
-                AUTO_ONLY.add(model)
-        return self._complete(model, request, forced=False)
+                return self._complete(model, request, forced=forced, effort=effort)
+            except _UnsupportedError as exc:
+                if exc.what == "tool_choice" and forced:
+                    AUTO_ONLY.add(model)
+                elif exc.what == "effort" and effort is not None:
+                    NO_EFFORT.add(model)
+                else:
+                    raise status_error(400) from None
+        raise status_error(400)
 
-    def _complete(self, model: str, request: JsonRequest, *, forced: bool) -> LlmResult:
+    def _complete(self, model: str, request: JsonRequest, *, forced: bool, effort: str | None) -> LlmResult:
         body: dict[str, Any] = {
             "model": model, "max_tokens": request.max_tokens,
             "system": request.system if forced else request.system + ANSWER_THROUGH_TOOL.format(name=request.schema_name),
@@ -69,6 +89,8 @@ class AnthropicProvider:
                        "input_schema": request.schema}],
             "tool_choice": {"type": "tool", "name": request.schema_name} if forced else {"type": "auto"},
         }
+        if effort is not None:
+            body["output_config"] = {"effort": effort}
         started = time.monotonic()
         try:
             with httpx.Client(base_url=self._base, timeout=request.timeout_s, transport=self._transport) as http:
@@ -80,8 +102,9 @@ class AnthropicProvider:
             raise ProviderError("unavailable", f"the provider could not be reached ({type(exc).__name__})") from exc
         latency = int((time.monotonic() - started) * 1000)
         if r.status_code != 200:
-            if forced and _forced_choice_refused(r):
-                raise _ForcedChoiceRefusedError
+            what = _unsupported(r)
+            if what is not None:
+                raise _UnsupportedError(what)
             raise status_error(r.status_code)
         out = r.json()
         uses = [c for c in out.get("content") or [] if c.get("type") == "tool_use"
@@ -93,5 +116,7 @@ class AnthropicProvider:
         written = int(u.get("cache_creation_input_tokens") or 0)
         usage = LlmUsage(input_tokens=int(u.get("input_tokens") or 0) + cached + written,
                          output_tokens=int(u.get("output_tokens") or 0), cached_tokens=cached)
+        thinking = int(((u.get("output_tokens_details") or {}).get("thinking_tokens")) or 0)
         return LlmResult(dict(uses[0]["input"]), usage, self.name, str(out.get("model") or model), latency,
-                         request_id=r.headers.get("request-id"))
+                         request_id=r.headers.get("request-id"),
+                         extra={"stop_reason": out.get("stop_reason"), "thinking_tokens": thinking})

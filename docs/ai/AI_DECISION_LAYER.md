@@ -1,6 +1,6 @@
 # Capa de decisión IA de PrediGol (`fbi.ai`)
 
-*Versión de la capa: packet-v1 · rules-review-v1 · review-v1 · match-analysis-v1 · pm-v1 · patterns-v1 ·
+*Versión de la capa: packet-v1 · rules-review-v1 · review-v2 · match-analysis-v1 · pm-v1 · patterns-v1 ·
 ai-gate-v1 · icc-v1 · daily-set-v3 · parlay-v4. Migración 0072. Escrito el 8 oct 2026.*
 
 La IA es la capa de razonamiento **sobre** el pipeline cuantitativo, no un reemplazo de él. Lee lo que la
@@ -52,6 +52,12 @@ registrado después del momento del paquete. Probabilidades redondeadas a 3 deci
 Niveles: `bulk` (extracción de noticias, narrativas), `analysis` (revisiones de las próximas 24 h), `final`
 (las mejores del día, máx. `FBI_AI_MAX_DEEP_PER_DAY`). Presupuesto diario y mensual único para toda la IA:
 NORMAL < 70 % · REDUCED ≥ 70 % (sin nivel final) · CHEAP_ONLY ≥ 90 % · EXHAUSTED ≥ 100 % (solo reglas).
+
+**Claude 5.5 (8-oct-2026, primeras llamadas reales).** No acepta un `tool_choice` forzado: se le pide con `auto` y la
+instrucción de responder solo con la herramienta. Piensa antes de responder (pensamiento adaptativo, cobrado como
+salida y contado en `max_tokens`): el esfuerzo se fija por nivel (`output_config.effort`: masivo `low`, análisis y
+final `medium`) y `max_tokens` deja sitio (revisión 8.000). Con 1.200 las respuestas de `review-v1` salían cortadas;
+`review-v2` es la misma consigna con estos parámetros, y una revisión de una versión anterior no frena una nueva.
 
 ## 4. Producto
 

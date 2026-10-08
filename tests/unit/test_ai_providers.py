@@ -117,6 +117,46 @@ def test_a_claude_model_that_refuses_a_forced_tool_is_asked_with_auto_once_and_r
     assert len(seen) == 3 and json.loads(seen[2].content)["tool_choice"] == {"type": "auto"}
 
 
+def test_effort_goes_as_output_config_and_a_model_without_it_is_asked_again_without() -> None:
+    from dataclasses import replace
+
+    seen: list[httpx.Request] = []
+    answered = httpx.Response(200, json={"model": "claude-x", "stop_reason": "tool_use", "content": [
+        {"type": "tool_use", "name": "submit_review", "input": {"decision": "APPROVE", "claims": []}}],
+        "usage": {"input_tokens": 10, "output_tokens": 900, "output_tokens_details": {"thinking_tokens": 600}}})
+    p = AnthropicProvider("k", "https://api.example", transport=recorder(answered, seen))
+    out = p.complete_json("claude-test-effort", replace(REQ, effort="medium"))
+    assert json.loads(seen[0].content)["output_config"] == {"effort": "medium"}
+    assert out.extra == {"stop_reason": "tool_use", "thinking_tokens": 600}
+
+    seen2: list[httpx.Request] = []
+    refused = httpx.Response(400, json={"error": {"type": "invalid_request_error",
+                                                  "message": "output_config.effort: Extra inputs are not permitted"}})
+    replies = iter([refused, answered, answered])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen2.append(request)
+        return next(replies)
+
+    old = AnthropicProvider("k", "https://api.example", transport=httpx.MockTransport(handler))
+    old.complete_json("claude-test-no-effort", replace(REQ, effort="low"))
+    old.complete_json("claude-test-no-effort", replace(REQ, effort="low"))
+    bodies = [json.loads(r.content) for r in seen2]
+    assert "output_config" in bodies[0] and "output_config" not in bodies[1] and "output_config" not in bodies[2]
+    assert len(bodies) == 3  # the refused attempt is made once, then the model is remembered
+
+
+def test_the_tier_sets_the_effort_unless_the_request_already_has_one() -> None:
+    from dataclasses import replace
+
+    from fbi.ai.usage import with_effort
+
+    assert with_effort(REQ, "bulk").effort == "low"
+    assert with_effort(REQ, "analysis").effort == "medium" and with_effort(REQ, "final").effort == "medium"
+    assert with_effort(replace(REQ, effort="high"), "bulk").effort == "high"
+    assert with_effort(REQ, None) is REQ
+
+
 # ── OpenAI-compatible ────────────────────────────────────────────────────────
 
 def chat_reply(content: Any, **usage: Any) -> httpx.Response:

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Literal
@@ -167,6 +167,19 @@ class CallOutcome:
     """A stable code: not_configured, over_budget, timeout, unavailable, rate_limited, refused, invalid_output."""
 
 
+TIER_EFFORT: dict[str, str] = {"bulk": "low", "analysis": "medium", "final": "medium"}
+"""Thinking spent per tier. Claude 5.5 thinks before it answers (adaptive thinking, billed as output): at the API's
+default a review's 1,200 tokens went to thinking and the answer was cut (8 Oct 2026). Extraction needs little;
+reviews a balanced amount - to be raised only when the shadow evaluation shows that more thinking pays."""
+
+
+def with_effort(request: JsonRequest, tier: Tier | None) -> JsonRequest:
+    """The request with the effort of the tier that will answer it (the budget may have lowered the tier)."""
+    if request.effort is not None or tier is None:
+        return request
+    return replace(request, effort=TIER_EFFORT[tier])
+
+
 def call_json(conn: psycopg.Connection[Any], settings: AiSettings, *, tier: Tier, purpose: Purpose,
               request: JsonRequest, at: datetime, prompt_version: str, input_hash: str,
               fixture_id: int | None = None, ledger: UsageLedger | None = None,
@@ -187,6 +200,7 @@ def call_json(conn: psycopg.Connection[Any], settings: AiSettings, *, tier: Tier
             else "not_configured"
         return CallOutcome(None, None, None, None, None, Decimal(0), code)
     impl, model = chosen
+    request = with_effort(request, used)
     try:
         result = impl.complete_json(model, request)
     except ProviderError as exc:

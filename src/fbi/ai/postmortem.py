@@ -307,7 +307,7 @@ def run_postmortems(conn: psycopg.Connection[Any], *, at: datetime, settings: Ai
                                   ensure_ascii=False)
                 call = call_json(conn, settings, tier="bulk", purpose="postmortem",
                                  request=JsonRequest(POSTMORTEM_SYSTEM, body, POSTMORTEM_SCHEMA, "submit_postmortem",
-                                                     max_tokens=700), at=at, prompt_version=POSTMORTEM_VERSION,
+                                                     max_tokens=3000), at=at, prompt_version=POSTMORTEM_VERSION,
                                  input_hash=str(fid), fixture_id=fid, ledger=ledger, transport=transport,
                                  provider=provider)
                 if call.usage_id:
