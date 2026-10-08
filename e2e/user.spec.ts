@@ -388,6 +388,79 @@ test("A market without a bookmaker price says why, and never shows a made-up pri
   await expect(row).toContainText(reason);
 });
 
+test("A match's PrediGol analysis: only what a user may see, never value without a price, read from storage", async ({
+  page,
+}) => {
+  const w = watch(page);
+  const t = L[lang()];
+  const after = new Date().toISOString();
+  const { body } = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    `/api/v1/matches?status=scheduled&order=asc&limit=40&kickoff_after=${encodeURIComponent(after)}`,
+  );
+  let found: {
+    id: number;
+    cards: Array<{
+      verdict: string;
+      kind: string;
+      qualified: boolean;
+      odds: string | null;
+      edge: string | null;
+    }>;
+    withheld: number;
+  } | null = null;
+  for (const m of body.data) {
+    const a = await getJson<{
+      status: string;
+      data: {
+        audience: string;
+        cards: Array<{
+          verdict: string;
+          kind: string;
+          qualified: boolean;
+          odds: string | null;
+          edge: string | null;
+        }>;
+        withheld: number;
+      } | null;
+    }>(page.request, `/api/v1/matches/${m.id}/analysis`);
+    expect(a.status).toBe(200);
+    if (a.body.data) {
+      expect(a.body.data.audience).toBe("user");
+      for (const c of a.body.data.cards) {
+        expect(c.kind === "no_market" || c.qualified).toBe(true);
+        if (c.kind === "no_market") expect([c.odds, c.edge]).toEqual([null, null]);
+      }
+      found = { id: m.id, cards: a.body.data.cards, withheld: a.body.data.withheld };
+      break;
+    }
+  }
+  const denied = await getJson<unknown>(
+    page.request,
+    `/api/v1/matches/${body.data[0]?.id ?? 1}/analysis?preview=shadow`,
+  );
+  expect(denied.status).toBe(403);
+  if (!found) {
+    note(
+      test.info(),
+      "no upcoming match has an analysis yet (the AI cycle has not run on this database)",
+    );
+    return;
+  }
+  await open(page, w, `/matches/${found.id}`);
+  await expect(page.getByRole("heading", { name: t.match.analysis.title })).toBeVisible();
+  if (found.cards.length) {
+    await expect(page.getByTestId("analysis-card").first()).toBeVisible();
+    if (found.cards.some((c) => c.verdict === "no_market"))
+      await expect(page.getByText(t.match.analysis.noMarketBanner).first()).toBeVisible();
+  }
+  await expect(page.getByTestId("analysis-footer")).toBeVisible();
+  note(
+    test.info(),
+    `analysis of ${found.id}: ${found.cards.length} cards, ${found.withheld} in evaluation`,
+  );
+});
+
 test("Live: richest matches first, or an honest empty board", async ({ page }) => {
   const w = watch(page);
   const t = L[lang()];

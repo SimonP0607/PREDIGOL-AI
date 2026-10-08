@@ -369,5 +369,60 @@
       "artificial_turf": "césped artificial",
       "artificial": "césped artificial"
     }
+  },
+  "analysis": {
+    "title": "Análisis PrediGol",
+    "verdict": {
+      "recommended": "Recomendado",
+      "caution": "Con cautela",
+      "not_recommended": "No recomendado",
+      "no_market": "Sin mercado"
+    },
+    "noMarketBanner": "Mercado no observado · No es posible confirmar value todavía",
+    "noMarketHelp": "Sin un precio observado no hay ventaja que medir: la cuota mínima es la que haría falta para que valga la pena según la probabilidad prudente del modelo.",
+    "odds": "Cuota",
+    "oddsAt": "Cuota · {bookmaker}",
+    "model": "Prob. modelo",
+    "market": "Prob. mercado",
+    "fair": "Cuota justa",
+    "minimum": "Cuota mínima",
+    "edge": "Ventaja",
+    "decision": {
+      "APPROVE": "La revisión de contexto lo confirma",
+      "DOWNGRADE": "La revisión pide cautela",
+      "REJECT": "La revisión no lo recomienda",
+      "ABSTAIN": "La revisión no pudo juzgarlo"
+    },
+    "confidence": "confianza {value}",
+    "risks": "Riesgos",
+    "reason": {
+      "value": "Pasa el filtro de valor al precio actual.",
+      "edge_insufficient": "La ventaja del modelo no alcanza para recomendarlo.",
+      "context_negative": "El contexto del partido va en contra.",
+      "context_caution": "El contexto del partido pide cautela.",
+      "market_unobserved": "No hay un precio observado para este mercado."
+    },
+    "byAi": "Analizado por PrediGol AI",
+    "byRules": "Revisado por las reglas de PrediGol",
+    "updated": "actualizado {when}",
+    "shadowNote": "las revisiones aún no filtran picks (modo evaluación)",
+    "notYet": "PrediGol aún no ha analizado este partido.",
+    "none": "Hoy PrediGol no tiene un análisis que mostrar para este partido.",
+    "inEvaluation_one": "{count} selección de este partido está en evaluación: se publicará cuando un modelo supere al mercado.",
+    "inEvaluation_other": "{count} selecciones de este partido están en evaluación: se publicarán cuando un modelo supere al mercado.",
+    "withheld_one": "{count} selección más está en evaluación y no se muestra.",
+    "withheld_other": "{count} selecciones más están en evaluación y no se muestran.",
+    "missing": "Datos que aún no tenemos: {blocks}.",
+    "block": {
+      "absences": "bajas",
+      "elo": "Elo",
+      "form": "forma",
+      "h2h": "historial directo",
+      "lineups": "alineaciones",
+      "market": "mercado",
+      "models": "modelos",
+      "standings": "tabla",
+      "stats": "estadísticas"
+    }
   }
 }

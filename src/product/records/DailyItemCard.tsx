@@ -11,6 +11,7 @@ import type { DailyItem } from "@/lib/api/v1/types_records";
 import { CompetitionTag, TeamName } from "@/components/football/Logos";
 import { EvBadge, Kickoff, OddsPill, ProbCompare } from "@/product/shared/Bits";
 import { marketName, selectionLabel } from "@/product/shared/markets";
+import { AiNote } from "./AiNote";
 import { OriginLabel, ResultBadge, Units } from "./Badges";
 import { hasStarted } from "./model";
 import { pickableOfItem } from "./pickable";
@@ -131,6 +132,11 @@ export function DailyItemCard({
           </div>
           {!compact ? (
             <ProbCompare model={item.p_model} market={item.p_market} className="mt-3" />
+          ) : null}
+          {item.ai ? (
+            <div className="mt-3">
+              <AiNote ai={item.ai} compact={compact} />
+            </div>
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <EvBadge ev={item.ev} />

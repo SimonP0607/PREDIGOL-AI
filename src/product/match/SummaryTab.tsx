@@ -15,6 +15,7 @@ import type { PickCard as PickCardData } from "@/lib/api/v1/types_product";
 import { PickCard } from "@/product/shared/PickCard";
 import { ShadowBadge } from "@/product/shared/Bits";
 import { Card, EmptyState, ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { AnalysisBlock } from "./AnalysisBlock";
 import type { MatchCtx } from "./context";
 import { AbsencesBlock, FormBlock, H2HBlock, LineupsTeaser, StandingsBlock } from "./ContextBlocks";
 import { EventsBlock } from "./EventsTimeline";
@@ -207,6 +208,7 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
   return (
     <div className={TWO_COLUMNS}>
       <div className="min-w-0 space-y-4">
+        <AnalysisBlock ctx={ctx} />
         <PicksBlock ctx={ctx} />
         <QuickPricesBlock ctx={ctx} />
         <div className="space-y-4 lg:hidden">

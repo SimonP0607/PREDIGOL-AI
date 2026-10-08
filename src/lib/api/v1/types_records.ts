@@ -11,6 +11,23 @@ export type ParlayStatus =
   "BUILDING" | "READY" | "ACTIVE" | "WON" | "LOST" | "VOID" | "PARTIAL_VOID";
 export type SetSource = "qualified" | "evaluation";
 export type Stage = "T-24h" | "T-12h" | "T-6h" | "T-3h";
+/** A parlay as its legs stand: a lost leg makes it lost at once, but it stays on the board until the rest play. */
+export type ParlayProgress = "OPEN" | "PARTIAL_WON" | "PARTIAL_LOST" | "WON" | "LOST" | "VOID";
+
+/** The AI decision layer's review of a selection, frozen when it entered the set or the parlay. */
+export interface ItemAi {
+  /** Null when no review existed when the selection was frozen. */
+  decision: "APPROVE" | "DOWNGRADE" | "REJECT" | "ABSTAIN" | null;
+  mode: "off" | "shadow" | "enforce";
+  enforced: boolean;
+  review_id?: number | null;
+  confidence?: Dec | null;
+  reason?: string | null;
+  /** A language model took part; otherwise the rules reviewer alone. */
+  by_llm?: boolean;
+  positives?: string[];
+  risks?: string[];
+}
 
 export interface MatchRef {
   fixture_id: number;
@@ -45,6 +62,7 @@ export interface DailyItem {
   status: ResultStatus;
   profit_units: Dec | null;
   settled_at: Iso | null;
+  ai?: ItemAi | null;
 }
 
 export interface DailySet {
@@ -71,6 +89,7 @@ export interface ParlayRecordLeg {
   p_market: Dec;
   ev: Dec;
   status: ResultStatus;
+  ai?: ItemAi | null;
 }
 
 export type RecordKind = "daily" | "multiday";
@@ -95,6 +114,8 @@ export interface ParlayRecord {
   settled_at: Iso | null;
   profit_units: Dec | null;
   legs: ParlayRecordLeg[];
+  progress?: ParlayProgress;
+  legs_pending?: number;
 }
 
 export interface DailyBoard {
@@ -181,6 +202,12 @@ export interface ValidationIssue {
   min?: number;
   max?: number;
   got?: number;
+  /** same_competition_day: the legs involved, the measured dependence and whether it is significant. */
+  legs?: number[];
+  rho?: number | null;
+  significant?: boolean;
+  /** very_unlikely: the market's probability that every leg wins. */
+  probability?: string;
 }
 
 export interface ParlayValidation {
@@ -196,8 +223,19 @@ export interface ParlayValidation {
     odds?: string | null;
     kickoff_at?: string;
     price?: { odds: string; bookmaker: string | null; as_of: string } | null;
+    p_fair?: string | null;
+    p_model?: string | null;
   }>;
   combined_odds: Dec | null;
+  /** Every leg wins, by the de-vigged market. */
+  fair_probability?: Dec | null;
+  /** The same by PrediGol's model where it priced every leg: evaluation, not a recommendation. */
+  model_probability?: Dec | null;
+  /** Combined odds x fair probability - 1. */
+  expected_value?: Dec | null;
+  risk?: "moderate" | "high" | "very_high" | null;
+  n_legs?: number;
+  correlation?: { clusters?: number[][]; independent?: boolean };
 }
 
 export interface UserParlayLeg {

@@ -27,7 +27,8 @@
     "users": "Usuarios",
     "audit": "Auditoría",
     "settings": "Ajustes",
-    "evolution": "Evolución"
+    "evolution": "Evolución",
+    "aiLayer": "Capa de decisión IA"
   },
   "pages": {
     "overview": {
@@ -105,6 +106,10 @@
     "evolution": {
       "title": "Evolución",
       "description": "Los resultados se vuelven memoria y propuestas; solo el dueño decide. Ningún resultado cambia una regla por sí solo."
+    },
+    "aiLayer": {
+      "title": "Capa de decisión IA",
+      "description": "Qué analiza la IA, con qué fuentes, qué decide cada revisión, cuánto cuesta y si su filtro mejora frente al modelo solo y al mercado. Nunca cambia un pick por sí misma."
     }
   },
   "users": {

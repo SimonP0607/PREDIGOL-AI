@@ -107,13 +107,6 @@
   },
   "evolution": {
     "loopTitle": "Cómo funciona",
-    "loop": {
-      "s1": "Un resultado (investigación V2, auditoría diaria, evaluación prospectiva) se guarda en la memoria con su evidencia.",
-      "s2": "Si la evidencia apunta a algo, el sistema, la IA o el dueño proponen una hipótesis.",
-      "s3": "Solo el dueño la acepta o la rechaza. Aceptar abre un experimento en investigación; no cambia ninguna regla.",
-      "s4": "El experimento se juzga con la misma puerta que cualquier modelo: su rol frente al mercado.",
-      "s5": "Nada llega a los usuarios sin pasar la puerta Y una promoción explícita. Un mal resultado nunca edita una regla."
-    },
     "hypotheses": "Hipótesis",
     "memory": "Memoria",
     "memoryHelp": "El hallazgo vigente de cada tema; los anteriores se conservan como reemplazados, nunca se borran.",
@@ -122,10 +115,13 @@
     "emptyMemory": "Aún no hay memoria.",
     "status": {
       "PROPOSED": "Propuesta",
-      "ACCEPTED": "Aceptada",
+      "ACCEPTED": "Experimento aprobado",
       "REJECTED": "Rechazada",
       "RUNNING": "En curso",
-      "DONE": "Hecha"
+      "DONE": "Hecha",
+      "INVESTIGATING": "Investigando",
+      "SHADOW": "En shadow",
+      "PROMOTED": "Promovida"
     },
     "by": {
       "ai": "IA",
@@ -151,7 +147,8 @@
       "fieldHypothesis": "Hipótesis",
       "fieldRationale": "Por qué",
       "submit": "Proponer",
-      "done": "Propuesta registrada."
+      "done": "Propuesta registrada.",
+      "fieldTarget": "Qué cambiaría"
     },
     "lastMonitor": "Último monitor diario",
     "lastV2": "Última investigación V2",
@@ -164,8 +161,8 @@
       "deterministic": "Hoy: monitor determinista",
       "aiOn": "IA configurada: solo propone",
       "aiOff": "IA: sin configurar",
-      "body": "Hoy esta página la alimenta un monitor con reglas fijas: cada día compara los resultados prospectivos y las auditorías con el mercado y, si una cifra está a 3 o más errores estándar de cero, guarda el hallazgo en la memoria y propone una hipótesis (aparecen como «Sistema»). No hay aprendizaje automático aquí: nadie, ni el sistema ni una IA, «aprende solo».",
-      "never": "Ningún resultado cambia una regla, un umbral, un modelo o un pick por sí mismo. Aceptar una hipótesis abre un experimento aislado en investigación; solo una promoción explícita del dueño, tras pasar la puerta frente al mercado, cambia producción.",
+      "body": "Cada 30 minutos la capa de decisión arma el paquete de contexto de cada partido próximo (con la fuente de cada dato), revisa las selecciones que pasan el filtro de valor y guarda un análisis por partido. Cada día, tras los resultados, escribe post-mortems y memoria, y propone hipótesis solo con evidencia suficiente.",
+      "never": "Ningún resultado cambia una regla, un umbral, un modelo o un pick por sí mismo. Mientras la puerta shadow de la IA no se supere (y tú no actives el modo enforce), sus revisiones no filtran nada de lo que ven los usuarios.",
       "futureTitle": "Arquitectura futura (no implementada: requiere tu aprobación y una cuenta de proveedor)",
       "future": {
         "f1": "OBSERVAR: resultados, precios, cierres y datos nuevos.",
@@ -180,7 +177,8 @@
         "f10": "APROBACIÓN HUMANA: el dueño decide.",
         "f11": "PROMOCIÓN: solo entonces cambia producción, versionado y reversible."
       },
-      "futureNote": "Nunca: «mal resultado → la IA cambia producción automáticamente». La IA no tendrá permisos de escritura en producción."
+      "futureNote": "Nunca: «mal resultado → la IA cambia producción automáticamente». La IA no tendrá permisos de escritura en producción.",
+      "mode": "Modo: {mode}"
     },
     "frozen": "Investigación congelada: {reason}. Ninguna ejecución guarda un modelo hasta que la descongeles tú.",
     "dueWhenUnfrozen": "Al descongelarla, la investigación semanal correría porque {reason}.",
@@ -191,6 +189,343 @@
       "unknown_model_code": "la última ejecución ({commit}) es anterior a la huella del código de modelos: no se sabe qué código de modelos usó (ahora {now})",
       "model_code_changed": "cambió el código de los modelos ({before} → {after})",
       "four_weeks": "la última ejecución tiene cuatro semanas"
+    },
+    "noAuto": "Aquí no existe «activar automáticamente». La IA y el sistema solo proponen; tú decides: RECHAZAR, INVESTIGAR o APROBAR EXPERIMENTO. Un experimento aprobado pasa por backtest y shadow, y solo con su puerta superada puedes PROMOVERLO tú mismo.",
+    "dashboard": {
+      "title": "El día en PrediGol AI",
+      "subtitle": "Lo que la capa de decisión hizo este día (hora de Bogotá).",
+      "day": "Día",
+      "counts": {
+        "matches_analyzed": "Partidos analizados",
+        "packets": "Paquetes",
+        "news": "Noticias",
+        "injuries": "Lesiones y sanciones",
+        "lineups": "Alineaciones",
+        "market_moves": "Movimientos de mercado",
+        "picks_evaluated": "Picks evaluados",
+        "approved": "Aprobados",
+        "downgraded": "Con cautela",
+        "rejected": "Rechazados",
+        "abstained": "Sin juicio",
+        "llm_reviews": "Revisiones con modelo",
+        "postmortems": "Post-mortems",
+        "hypotheses": "Hipótesis nuevas"
+      },
+      "cost": "Costo IA del día",
+      "gate": "Puerta shadow de la IA:",
+      "gateHelp": "mientras no pase, las revisiones se registran pero no filtran nada para los usuarios."
+    },
+    "findings": {
+      "title": "Hallazgos",
+      "subtitle": "Lo que los resultados enseñaron (memoria de la IA).",
+      "empty": "Sin hallazgos este día."
+    },
+    "errors": {
+      "title": "Errores detectados",
+      "subtitle": "Selecciones aprobadas que perdieron y rechazadas que ganaron, con lo que la revisión vio.",
+      "empty": "Sin errores detectados este día.",
+      "settled": {
+        "win": "ganó",
+        "loss": "perdió"
+      }
+    },
+    "hypothesesHelp": "Una hipótesis nunca cambia producción: se investiga, se prueba en backtest y shadow, y solo tú la promueves.",
+    "groups": {
+      "pending": "Por decidir",
+      "promotable": "Lista para promover",
+      "experiment": "En experimento",
+      "closed": "Cerradas"
+    },
+    "decide": {
+      "reject": "Rechazar",
+      "investigate": "Investigar",
+      "approve_experiment": "Aprobar experimento"
+    },
+    "promote": {
+      "help": "La puerta del experimento se superó. Promover registra tu decisión; el cambio sale después como su propia versión. Escribe {word} para confirmar.",
+      "type": "Escribe {word}",
+      "button": "Promover"
+    },
+    "history": "Historial de etapas",
+    "outcome": "Resultado del experimento: {verdict}",
+    "target": {
+      "models": "Modelos",
+      "backtesting": "Backtesting",
+      "analytics": "Analítica",
+      "features": "Features",
+      "rankings": "Rankings",
+      "pick_engine": "Motor de picks",
+      "decision_rules": "Reglas de decisión",
+      "data": "Datos",
+      "ai": "Capa IA",
+      "other": "Otro"
+    },
+    "loop": {
+      "s1": "OBSERVAR: un resultado (investigación V2, auditoría diaria, evaluación prospectiva, post-mortem de un partido).",
+      "s2": "MEMORIA: se guarda con su evidencia, sus fuentes y la versión que lo produjo.",
+      "s3": "HIPÓTESIS: si la evidencia apunta a algo, el sistema, la IA o tú proponen una hipótesis.",
+      "s4": "ADMIN: solo tú la rechazas, pides investigarla o apruebas un experimento. Nada de eso cambia una regla.",
+      "s5": "EXPERIMENTO y BACKTEST: corre en investigación y se juzga con la misma puerta que cualquier modelo.",
+      "s6": "SHADOW y MERCADO: lo que supera su backtest se sigue en sombra frente al mercado antes de mostrarse.",
+      "s7": "EVALUACIÓN: el resultado se juzga contra su puerta y queda con la hipótesis.",
+      "s8": "PROMOCIÓN: nada llega a usuarios sin puerta superada Y tu promoción explícita. La IA nunca promueve."
+    }
+  },
+  "layer": {
+    "tabs": {
+      "label": "Vistas de la capa IA",
+      "reviews": "Revisiones",
+      "evidence": "Evidencias",
+      "costs": "Costos",
+      "shadow": "Shadow",
+      "memory": "Memoria"
+    },
+    "mode": {
+      "off": "apagada",
+      "shadow": "evaluación (shadow)",
+      "enforce": "aplicación (enforce)"
+    },
+    "modeLabel": "Modo",
+    "enforcement": "Filtra lo que ven los usuarios",
+    "enforced": "Sí: aplicando",
+    "notEnforced": "No: solo registra",
+    "enforcementReason": {
+      "mode_off": "La capa está apagada.",
+      "mode_shadow": "Modo evaluación: registra y no filtra.",
+      "no_shadow_report": "Modo enforce pedido, pero aún no hay evaluación shadow.",
+      "shadow_gate_not_passed": "Modo enforce pedido, pero la puerta shadow no se ha superado.",
+      "enforced": "Modo enforce con la puerta superada."
+    },
+    "noModel": "Ningún modelo de lenguaje configurado: trabaja solo el revisor de reglas (sin costo). Falta: {missing}.",
+    "notConfigured": "sin configurar",
+    "keyMissing": "falta la clave del proveedor",
+    "search": "Búsqueda web",
+    "tier": {
+      "bulk": "Nivel masivo",
+      "analysis": "Nivel análisis",
+      "final": "Nivel final"
+    },
+    "budget": {
+      "state": "Presupuesto",
+      "today": "Hoy",
+      "month": "Mes",
+      "NORMAL": "Normal",
+      "REDUCED": "Reducido (sin nivel final)",
+      "CHEAP_ONLY": "Solo el modelo barato",
+      "EXHAUSTED": "Agotado (solo reglas)"
+    },
+    "caps": "Topes diarios",
+    "capsValue": "{reviews} revisiones · {deep} profundas",
+    "noCycle": "Aún no ha corrido ningún ciclo.",
+    "cycle": {
+      "analysis": "Último análisis",
+      "learning": "Último aprendizaje",
+      "postmortem": "Último post-mortem",
+      "evaluation": "Última evaluación"
+    },
+    "cycleStatus": {
+      "running": "corriendo",
+      "ok": "bien",
+      "partial": "parcial",
+      "failed": "falló"
+    },
+    "today": {
+      "packets": "Paquetes hoy",
+      "matches": "Partidos hoy",
+      "analyses": "Análisis hoy",
+      "evidence": "Evidencias hoy",
+      "reviews": "Revisiones hoy",
+      "llm_reviews": "Con modelo hoy"
+    },
+    "run": {
+      "title": "Ejecutar ahora",
+      "subtitle": "Queda en cola y el worker lo corre en menos de dos minutos, con el mismo presupuesto y topes.",
+      "analysis": "Analizar ahora",
+      "learning": "Aprender ahora",
+      "status": {
+        "queued": "en cola",
+        "running": "corriendo",
+        "done": "hecho",
+        "failed": "falló"
+      }
+    },
+    "engine": {
+      "combined": "Combinada",
+      "rules": "Reglas",
+      "llm": "Modelo de lenguaje"
+    },
+    "decision": {
+      "APPROVE": "Aprobar",
+      "DOWNGRADE": "Cautela",
+      "REJECT": "Rechazar",
+      "ABSTAIN": "Abstenerse"
+    },
+    "filters": {
+      "engine": "Motor",
+      "decision": "Decisión",
+      "day": "Día",
+      "status": "Estado",
+      "all": "Todas"
+    },
+    "reviews": {
+      "empty": "Sin revisiones con estos filtros.",
+      "match": "Partido",
+      "selection": "Selección",
+      "odds": "Cuota",
+      "model": "Modelo %",
+      "market": "Mercado %",
+      "decision": "Decisión",
+      "reason": "Razón",
+      "detail": "Revisión #{id}"
+    },
+    "claimType": {
+      "DATA": "Dato",
+      "INFERENCE": "Inferencia",
+      "NEWS": "Noticia",
+      "OPINION": "Opinión",
+      "UNKNOWN": "Desconocido"
+    },
+    "claims": {
+      "positive_evidence": "A favor",
+      "negative_evidence": "En contra",
+      "uncertainties": "Incertidumbres",
+      "contradictions": "Contradicciones",
+      "rejected": "Afirmaciones rechazadas por el servidor"
+    },
+    "audit": {
+      "engines": "Motores combinados",
+      "packet": "Paquete leído",
+      "hash": "Hash",
+      "asOf": "Datos hasta",
+      "tokens": "Tokens aprox.",
+      "missing": "Bloques faltantes",
+      "content": "Ver contenido",
+      "usage": "Llamadas y costo",
+      "noUsage": "Sin llamadas a un modelo (revisor de reglas o reutilizada).",
+      "call": "Llamada",
+      "in": "Entrada",
+      "out": "Salida",
+      "cached": "Caché",
+      "cost": "Costo",
+      "evidence": "Evidencias citadas",
+      "inputHash": "Hash de entrada"
+    },
+    "evidence": {
+      "empty": "Sin evidencias en los últimos días.",
+      "claim": "Afirmación",
+      "source": "Fuente",
+      "when": "Publicada / leída",
+      "status": "Estado"
+    },
+    "evidenceStatus": {
+      "CONFIRMED": "Confirmada",
+      "PROBABLE": "Probable",
+      "RUMOR": "Rumor",
+      "CONTRADICTORY": "Contradictoria",
+      "OUTDATED": "Desactualizada"
+    },
+    "evidenceKind": {
+      "injury": "Lesión",
+      "suspension": "Sanción",
+      "doubtful": "Duda",
+      "lineup": "Alineación",
+      "coach": "Entrenador",
+      "news": "Noticia",
+      "transfer": "Fichaje",
+      "motivation": "Motivación",
+      "weather": "Clima",
+      "travel": "Viaje",
+      "schedule": "Calendario",
+      "other": "Otra"
+    },
+    "tierName": {
+      "official": "Oficial",
+      "competition": "Competición",
+      "club": "Club",
+      "provider": "Proveedor de datos",
+      "journalist": "Periodista",
+      "media": "Medio",
+      "aggregator": "Agregador",
+      "social": "Red social",
+      "unknown": "Desconocida"
+    },
+    "costs": {
+      "measured": "Gasto medido",
+      "measuredHelp": "Cada llamada a un modelo o búsqueda queda registrada con sus tokens y su costo.",
+      "period": "Periodo",
+      "requests": "Llamadas",
+      "tokens": "Tokens (entrada / salida)",
+      "cost": "Costo",
+      "perMatch": "Por partido",
+      "perReview": "Por revisión",
+      "perApproved": "Por aprobada",
+      "periods": {
+        "today": "Hoy",
+        "7d": "7 días",
+        "30d": "30 días",
+        "month": "Este mes"
+      },
+      "simulation": "Simulación por proveedor",
+      "simulationHelp": "Con el volumen real de PrediGol (partidos, candidatos, tokens por paquete) y los precios verificados. Peor caso: todos los topes cada día.",
+      "profile": "Perfil",
+      "day": "Por día",
+      "month": "Por mes",
+      "worstMonth": "Peor caso / mes"
+    },
+    "profile": {
+      "economico": "Económico (Anthropic)",
+      "economico_openai": "Económico (OpenAI)",
+      "equilibrado": "Equilibrado (Anthropic)",
+      "equilibrado_gemini": "Equilibrado (Gemini)",
+      "maxima_calidad": "Máxima calidad"
+    },
+    "shadow": {
+      "empty": "Aún no hay evaluación shadow: se calcula cada día con los partidos terminados.",
+      "help": "Modelo solo frente a modelo + IA (sin lo rechazado) y frente al mercado. La IA solo podrá filtrar si lo que rechaza rinde peor de forma significativa, sin perder valor al cierre ni calibración.",
+      "window": "Ventana {from} → {to}",
+      "armLabel": "Grupo",
+      "hit": "Acierto",
+      "logloss": "Log loss modelo / mercado",
+      "drawdown": "Drawdown",
+      "arm": {
+        "model": "Modelo solo",
+        "model_ai": "Modelo + IA",
+        "approved": "Aprobadas",
+        "downgraded": "Con cautela",
+        "rejected": "Rechazadas",
+        "abstained": "Sin juicio"
+      },
+      "check": {
+        "selections": "Selecciones",
+        "days": "Días",
+        "rejected": "Rechazos",
+        "rejection_quality": "Calidad del rechazo",
+        "clv": "CLV",
+        "calibration": "Calibración"
+      }
+    },
+    "gate": {
+      "pass": "Superada",
+      "fail": "No superada",
+      "insufficient": "Datos insuficientes",
+      "none": "Sin evaluación"
+    },
+    "memory": {
+      "empty": "Aún no hay memoria: se escribe tras los partidos terminados."
+    },
+    "memoryKind": {
+      "match_result": "Resultado",
+      "pick_result": "Resultado de pick",
+      "context_error": "Error de contexto",
+      "news_signal": "Señal de noticias",
+      "injury_signal": "Señal de bajas",
+      "market_signal": "Señal de mercado",
+      "model_failure": "Fallo del modelo",
+      "model_success": "Acierto del modelo",
+      "league_pattern": "Patrón de liga",
+      "team_pattern": "Patrón de equipo",
+      "player_pattern": "Patrón de jugador",
+      "review_quality": "Calidad de revisión"
     }
   }
 }

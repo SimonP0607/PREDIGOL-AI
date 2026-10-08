@@ -369,5 +369,60 @@
       "artificial_turf": "artificial turf",
       "artificial": "artificial turf"
     }
+  },
+  "analysis": {
+    "title": "PrediGol analysis",
+    "verdict": {
+      "recommended": "Recommended",
+      "caution": "With caution",
+      "not_recommended": "Not recommended",
+      "no_market": "No market"
+    },
+    "noMarketBanner": "Market not observed · Value cannot be confirmed yet",
+    "noMarketHelp": "Without an observed price there is no edge to measure: the minimum odds are what it would take to be worth it at the model's prudent probability.",
+    "odds": "Odds",
+    "oddsAt": "Odds · {bookmaker}",
+    "model": "Model prob.",
+    "market": "Market prob.",
+    "fair": "Fair odds",
+    "minimum": "Minimum odds",
+    "edge": "Edge",
+    "decision": {
+      "APPROVE": "The context review confirms it",
+      "DOWNGRADE": "The review advises caution",
+      "REJECT": "The review does not recommend it",
+      "ABSTAIN": "The review could not judge it"
+    },
+    "confidence": "confidence {value}",
+    "risks": "Risks",
+    "reason": {
+      "value": "Passes the value filter at the current price.",
+      "edge_insufficient": "The model's edge is not enough to recommend it.",
+      "context_negative": "The match context goes against it.",
+      "context_caution": "The match context advises caution.",
+      "market_unobserved": "No price has been observed for this market."
+    },
+    "byAi": "Analysed by PrediGol AI",
+    "byRules": "Reviewed by PrediGol's rules",
+    "updated": "updated {when}",
+    "shadowNote": "reviews do not filter picks yet (evaluation mode)",
+    "notYet": "PrediGol has not analysed this match yet.",
+    "none": "PrediGol has no analysis to show for this match today.",
+    "inEvaluation_one": "{count} selection of this match is in evaluation: it will be published once a model beats the market.",
+    "inEvaluation_other": "{count} selections of this match are in evaluation: they will be published once a model beats the market.",
+    "withheld_one": "{count} more selection is in evaluation and not shown.",
+    "withheld_other": "{count} more selections are in evaluation and not shown.",
+    "missing": "Data we do not have yet: {blocks}.",
+    "block": {
+      "absences": "absences",
+      "elo": "Elo",
+      "form": "form",
+      "h2h": "head to head",
+      "lineups": "line-ups",
+      "market": "market",
+      "models": "models",
+      "standings": "table",
+      "stats": "statistics"
+    }
   }
 }

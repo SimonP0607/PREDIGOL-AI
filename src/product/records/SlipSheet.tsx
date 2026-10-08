@@ -9,7 +9,7 @@ import { AlertTriangle, Layers, Trash2, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { t, translateOr } from "@/lib/i18n";
-import { fmtOdds } from "@/lib/i18n/format";
+import { fmtOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatKickoff } from "@/lib/time";
 import { v1 } from "@/lib/api/v1/client";
 import type { ParlayValidation, ValidationIssue } from "@/lib/api/v1/types_records";
@@ -22,18 +22,82 @@ import {
 } from "@/components/ui/sheet";
 import { OddsPill } from "@/product/shared/Bits";
 import { errorMessage } from "@/product/shared/States";
-import { selectionLabel } from "@/product/shared/markets";
+import { riskLabel, selectionLabel } from "@/product/shared/markets";
 import { useRefreshMine } from "./hooks";
 import { MAX_SLIP_LEGS, MIN_SLIP_LEGS, slipOdds, type SlipLeg } from "./model";
 import { useSlip } from "./slipContext";
 
 function issueText(kind: "error" | "warning", issue: ValidationIssue): string {
-  return translateOr(`records.slip.${kind}.${issue.code}`, issue.code, {
+  const code =
+    issue.code === "same_competition_day" && issue.significant
+      ? "same_competition_day_measured"
+      : issue.code;
+  return translateOr(`records.slip.${kind}.${code}`, issue.code, {
     leg: issue.leg,
     with: issue.with,
     min: issue.min ?? MIN_SLIP_LEGS,
     max: issue.max ?? MAX_SLIP_LEGS,
+    legs: (issue.legs ?? []).join(", "),
+    rho: issue.rho === null || issue.rho === undefined ? "—" : issue.rho.toFixed(3),
+    probability: fmtPct(issue.probability, 2),
   });
+}
+
+/** What the parlay is worth by the numbers we hold - no extra model call: market and model probabilities,
+ * the value at the combined odds, the risk and whether legs depend on each other. */
+function Measures({ validation }: { validation: ParlayValidation }) {
+  const fair = toNumber(validation.fair_probability);
+  const model = toNumber(validation.model_probability);
+  const ev = toNumber(validation.expected_value);
+  if (fair === null && model === null) return null;
+  return (
+    <dl
+      className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border border-border bg-card/60 p-3"
+      data-testid="slip-measures"
+    >
+      <div>
+        <dt className="text-caption text-subtle-foreground">{t("records.slip.measures.fair")}</dt>
+        <dd className="numeric text-sm font-semibold">
+          {fmtPct(fair, fair !== null && fair < 0.01 ? 2 : 1)}
+        </dd>
+      </div>
+      <div>
+        <dt
+          className="text-caption text-subtle-foreground"
+          title={t("records.slip.measures.modelHelp")}
+        >
+          {t("records.slip.measures.model")}
+        </dt>
+        <dd className="numeric text-sm font-semibold">
+          {fmtPct(model, model !== null && model < 0.01 ? 2 : 1)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-caption text-subtle-foreground">{t("records.slip.measures.ev")}</dt>
+        <dd
+          className={cn(
+            "numeric text-sm font-semibold",
+            ev !== null && (ev > 0 ? "text-positive" : "text-negative"),
+          )}
+        >
+          {ev === null ? "—" : fmtSignedPct(ev)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-caption text-subtle-foreground">{t("records.slip.measures.risk")}</dt>
+        <dd className="text-sm font-semibold">
+          {validation.risk ? riskLabel(validation.risk) : "—"}
+        </dd>
+      </div>
+      <div className="col-span-2 text-caption text-subtle-foreground">
+        {validation.correlation?.independent === false
+          ? t("records.slip.measures.dependent")
+          : t("records.slip.measures.independent")}
+        {" · "}
+        {t("records.slip.measures.legs", { count: validation.n_legs ?? validation.legs.length })}
+      </div>
+    </dl>
+  );
 }
 
 function legsBody(legs: readonly SlipLeg[]) {
@@ -200,6 +264,7 @@ export function SlipSheet() {
                     {t("records.slip.needMore", { count: missing })}
                   </p>
                 ) : null}
+                {validation ? <Measures validation={validation} /> : null}
                 {validation ? <Issues validation={validation} /> : null}
                 {check.isError ? (
                   <p className="text-xs text-negative">{errorMessage(check.error)}</p>

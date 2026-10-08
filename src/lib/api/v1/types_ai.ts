@@ -91,7 +91,38 @@ export interface AiFlags {
   flags: AiFlagRow[];
 }
 
-export type HypothesisStatus = "PROPOSED" | "ACCEPTED" | "REJECTED" | "RUNNING" | "DONE";
+/** PROPOSED -> (INVESTIGATING) -> ACCEPTED -> RUNNING -> SHADOW -> DONE -> PROMOTED, or REJECTED. */
+export type HypothesisStatus =
+  | "PROPOSED"
+  | "INVESTIGATING"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "RUNNING"
+  | "SHADOW"
+  | "DONE"
+  | "PROMOTED";
+
+export type HypothesisTarget =
+  | "models"
+  | "backtesting"
+  | "analytics"
+  | "features"
+  | "rankings"
+  | "pick_engine"
+  | "decision_rules"
+  | "data"
+  | "ai"
+  | "other";
+
+export type HypothesisDecision = "reject" | "investigate" | "approve_experiment";
+
+export interface StageMove {
+  from: string;
+  to: string;
+  at: string;
+  by?: number | null;
+  note?: string | null;
+}
 
 export interface Hypothesis {
   id: number;
@@ -106,6 +137,11 @@ export interface Hypothesis {
   decided_at: string | null;
   decided_by: string | null;
   decision_note: string | null;
+  /** What it would change if ever promoted. */
+  target?: HypothesisTarget;
+  stage_history?: StageMove[];
+  /** The experiment's judged result; gate_passed decides whether it can be promoted. */
+  outcome?: Record<string, unknown> | null;
 }
 
 export interface MemoryEntry {

@@ -124,7 +124,21 @@
     },
     "warning": {
       "shared_team": "Selections {with} and {leg} share a team: their results are related.",
-      "no_price": "Selection {leg}: we have no current price."
+      "no_price": "Selection {leg}: we have no current price.",
+      "same_competition_day": "Selections {legs}: same competition and day; the measured dependence is not significant.",
+      "same_competition_day_measured": "Selections {legs}: same competition and day; their results are correlated (ρ {rho}).",
+      "very_unlikely": "All of them winning is very unlikely ({probability})."
+    },
+    "measures": {
+      "fair": "Probability (market)",
+      "model": "Probability (model)",
+      "modelHelp": "PrediGol's model estimate, in evaluation: not a recommendation.",
+      "ev": "Expected value",
+      "risk": "Risk",
+      "independent": "No selections depend on each other",
+      "dependent": "Some selections may depend on each other",
+      "legs_one": "{count} selection",
+      "legs_other": "{count} selections"
     }
   },
   "mine": {
@@ -180,5 +194,25 @@
       "createdAt": "Created {when}",
       "unnamed": "Unnamed parlay"
     }
+  },
+  "ai": {
+    "byAi": "Analysed by PrediGol AI",
+    "byRules": "Reviewed by rules",
+    "decision": {
+      "APPROVE": "confirmed",
+      "DOWNGRADE": "with caution",
+      "REJECT": "not recommended",
+      "ABSTAIN": "no judgement"
+    }
+  },
+  "progress": {
+    "OPEN": "Open",
+    "PARTIAL_WON": "Winning so far",
+    "PARTIAL_LOST": "Lost (matches to play)",
+    "WON": "Won",
+    "LOST": "Lost",
+    "VOID": "Void",
+    "pending_one": "{count} selection still to be played",
+    "pending_other": "{count} selections still to be played"
   }
 }

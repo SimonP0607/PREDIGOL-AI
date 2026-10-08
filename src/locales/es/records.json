@@ -124,7 +124,21 @@
     },
     "warning": {
       "shared_team": "Selecciones {with} y {leg} comparten un equipo: sus resultados están relacionados.",
-      "no_price": "Selección {leg}: no tenemos un precio actual."
+      "no_price": "Selección {leg}: no tenemos un precio actual.",
+      "same_competition_day": "Selecciones {legs}: misma competición y mismo día; la dependencia medida no es significativa.",
+      "same_competition_day_measured": "Selecciones {legs}: misma competición y mismo día; sus resultados están correlacionados (ρ {rho}).",
+      "very_unlikely": "Que todas acierten es muy poco probable ({probability})."
+    },
+    "measures": {
+      "fair": "Probabilidad (mercado)",
+      "model": "Probabilidad (modelo)",
+      "modelHelp": "Estimación del modelo de PrediGol, en evaluación: no es una recomendación.",
+      "ev": "Valor esperado",
+      "risk": "Riesgo",
+      "independent": "Sin selecciones dependientes entre sí",
+      "dependent": "Hay selecciones que pueden depender entre sí",
+      "legs_one": "{count} selección",
+      "legs_other": "{count} selecciones"
     }
   },
   "mine": {
@@ -180,5 +194,25 @@
       "createdAt": "Creado {when}",
       "unnamed": "Parlay sin nombre"
     }
+  },
+  "ai": {
+    "byAi": "Analizado por PrediGol AI",
+    "byRules": "Revisado por reglas",
+    "decision": {
+      "APPROVE": "confirmado",
+      "DOWNGRADE": "con cautela",
+      "REJECT": "no recomendado",
+      "ABSTAIN": "sin juicio"
+    }
+  },
+  "progress": {
+    "OPEN": "Abierto",
+    "PARTIAL_WON": "Va ganando",
+    "PARTIAL_LOST": "Perdido (faltan partidos)",
+    "WON": "Ganado",
+    "LOST": "Perdido",
+    "VOID": "Anulado",
+    "pending_one": "Falta {count} selección por jugarse",
+    "pending_other": "Faltan {count} selecciones por jugarse"
   }
 }

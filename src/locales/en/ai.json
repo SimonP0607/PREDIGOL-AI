@@ -107,13 +107,6 @@
   },
   "evolution": {
     "loopTitle": "How it works",
-    "loop": {
-      "s1": "A result (research V2, the daily audit, the prospective evaluation) is written to memory with its evidence.",
-      "s2": "Where the evidence points somewhere, the system, the AI or the owner proposes a hypothesis.",
-      "s3": "Only the owner accepts or rejects it. Accepting opens an experiment in research; it changes no rule.",
-      "s4": "The experiment is judged by the same gate as every model: its role against the market.",
-      "s5": "Nothing reaches users without the gate AND an explicit promotion. A bad result never edits a rule."
-    },
     "hypotheses": "Hypotheses",
     "memory": "Memory",
     "memoryHelp": "Each topic's current finding; earlier ones are kept as superseded, never deleted.",
@@ -122,10 +115,13 @@
     "emptyMemory": "No memory yet.",
     "status": {
       "PROPOSED": "Proposed",
-      "ACCEPTED": "Accepted",
+      "ACCEPTED": "Experiment approved",
       "REJECTED": "Rejected",
       "RUNNING": "Running",
-      "DONE": "Done"
+      "DONE": "Done",
+      "INVESTIGATING": "Investigating",
+      "SHADOW": "In shadow",
+      "PROMOTED": "Promoted"
     },
     "by": {
       "ai": "AI",
@@ -151,7 +147,8 @@
       "fieldHypothesis": "Hypothesis",
       "fieldRationale": "Why",
       "submit": "Propose",
-      "done": "Proposal recorded."
+      "done": "Proposal recorded.",
+      "fieldTarget": "What it would change"
     },
     "lastMonitor": "Last daily monitor",
     "lastV2": "Last research V2",
@@ -164,8 +161,8 @@
       "deterministic": "Today: a deterministic monitor",
       "aiOn": "AI configured: proposes only",
       "aiOff": "AI: not configured",
-      "body": "Today this page is fed by a monitor with fixed rules: every day it compares the prospective results and the audits with the market and, when a figure is 3 or more standard errors from zero, it stores the finding in memory and proposes a hypothesis (shown as \"System\"). There is no machine learning here: nothing, neither the system nor an AI, \"learns by itself\".",
-      "never": "No result changes a rule, a threshold, a model or a pick on its own. Accepting a hypothesis opens an isolated research experiment; only an explicit promotion by the owner, after the market gate is passed, changes production.",
+      "body": "Every 30 minutes the decision layer builds the context packet of each upcoming match (with the source of every figure), reviews the selections that pass the value filter and stores one analysis per match. Every day, after the results, it writes post-mortems and memory, and proposes hypotheses only on sufficient evidence.",
+      "never": "No result changes a rule, a threshold, a model or a pick by itself. Until the AI's shadow gate passes (and you switch enforce on), its reviews filter nothing users see.",
       "futureTitle": "Future architecture (not built: needs your approval and a provider account)",
       "future": {
         "f1": "OBSERVE: results, prices, closes and new data.",
@@ -180,7 +177,8 @@
         "f10": "HUMAN APPROVAL: the owner decides.",
         "f11": "PROMOTION: only then does production change, versioned and reversible."
       },
-      "futureNote": "Never: \"bad result → the AI changes production automatically\". The AI will have no write access to production."
+      "futureNote": "Never: \"bad result → the AI changes production automatically\". The AI will have no write access to production.",
+      "mode": "Mode: {mode}"
     },
     "frozen": "Research frozen: {reason}. No run stores a model until you unfreeze it.",
     "dueWhenUnfrozen": "Once unfrozen, the weekly research would run because {reason}.",
@@ -191,6 +189,343 @@
       "unknown_model_code": "the last run ({commit}) predates the model-code fingerprint: the model code it ran is unknown (now {now})",
       "model_code_changed": "the model code changed ({before} → {after})",
       "four_weeks": "the last run is four weeks old"
+    },
+    "noAuto": "There is no \"activate automatically\" here. The AI and the system only propose; you decide: REJECT, INVESTIGATE or APPROVE EXPERIMENT. An approved experiment goes through backtest and shadow, and only with its gate passed can you PROMOTE it yourself.",
+    "dashboard": {
+      "title": "The day in PrediGol AI",
+      "subtitle": "What the decision layer did on this day (Bogota time).",
+      "day": "Day",
+      "counts": {
+        "matches_analyzed": "Matches analysed",
+        "packets": "Packets",
+        "news": "News",
+        "injuries": "Injuries and suspensions",
+        "lineups": "Line-ups",
+        "market_moves": "Market moves",
+        "picks_evaluated": "Picks evaluated",
+        "approved": "Approved",
+        "downgraded": "With caution",
+        "rejected": "Rejected",
+        "abstained": "No judgement",
+        "llm_reviews": "Model reviews",
+        "postmortems": "Post-mortems",
+        "hypotheses": "New hypotheses"
+      },
+      "cost": "AI cost of the day",
+      "gate": "The AI's shadow gate:",
+      "gateHelp": "until it passes, reviews are recorded but filter nothing users see."
+    },
+    "findings": {
+      "title": "Findings",
+      "subtitle": "What the results taught (the AI's memory).",
+      "empty": "No findings on this day."
+    },
+    "errors": {
+      "title": "Errors detected",
+      "subtitle": "Approved selections that lost and rejected ones that won, with what the review saw.",
+      "empty": "No errors detected on this day.",
+      "settled": {
+        "win": "won",
+        "loss": "lost"
+      }
+    },
+    "hypothesesHelp": "A hypothesis never changes production: it is investigated, tested in backtest and shadow, and only you promote it.",
+    "groups": {
+      "pending": "To decide",
+      "promotable": "Ready to promote",
+      "experiment": "In experiment",
+      "closed": "Closed"
+    },
+    "decide": {
+      "reject": "Reject",
+      "investigate": "Investigate",
+      "approve_experiment": "Approve experiment"
+    },
+    "promote": {
+      "help": "The experiment's gate passed. Promoting records your decision; the change ships later as its own version. Type {word} to confirm.",
+      "type": "Type {word}",
+      "button": "Promote"
+    },
+    "history": "Stage history",
+    "outcome": "Experiment result: {verdict}",
+    "target": {
+      "models": "Models",
+      "backtesting": "Backtesting",
+      "analytics": "Analytics",
+      "features": "Features",
+      "rankings": "Rankings",
+      "pick_engine": "Pick engine",
+      "decision_rules": "Decision rules",
+      "data": "Data",
+      "ai": "AI layer",
+      "other": "Other"
+    },
+    "loop": {
+      "s1": "OBSERVE: a result (research V2, the daily audit, the prospective evaluation, a match post-mortem).",
+      "s2": "MEMORY: it is stored with its evidence, its sources and the version that produced it.",
+      "s3": "HYPOTHESIS: where the evidence points somewhere, the system, the AI or you propose a hypothesis.",
+      "s4": "ADMIN: only you reject it, ask to investigate it or approve an experiment. None of that changes a rule.",
+      "s5": "EXPERIMENT and BACKTEST: it runs in research and is judged by the same gate as every model.",
+      "s6": "SHADOW and MARKET: what passes its backtest is followed in shadow against the market before anyone sees it.",
+      "s7": "EVALUATION: the result is judged against its gate and kept with the hypothesis.",
+      "s8": "PROMOTION: nothing reaches users without a passed gate AND your explicit promotion. The AI never promotes."
+    }
+  },
+  "layer": {
+    "tabs": {
+      "label": "AI layer views",
+      "reviews": "Reviews",
+      "evidence": "Evidence",
+      "costs": "Costs",
+      "shadow": "Shadow",
+      "memory": "Memory"
+    },
+    "mode": {
+      "off": "off",
+      "shadow": "evaluation (shadow)",
+      "enforce": "enforce"
+    },
+    "modeLabel": "Mode",
+    "enforcement": "Filters what users see",
+    "enforced": "Yes: enforcing",
+    "notEnforced": "No: records only",
+    "enforcementReason": {
+      "mode_off": "The layer is off.",
+      "mode_shadow": "Evaluation mode: it records and does not filter.",
+      "no_shadow_report": "Enforce mode asked for, but there is no shadow evaluation yet.",
+      "shadow_gate_not_passed": "Enforce mode asked for, but the shadow gate has not passed.",
+      "enforced": "Enforce mode with the gate passed."
+    },
+    "noModel": "No language model configured: only the rules reviewer works (no cost). Missing: {missing}.",
+    "notConfigured": "not configured",
+    "keyMissing": "the provider's key is missing",
+    "search": "Web search",
+    "tier": {
+      "bulk": "Bulk tier",
+      "analysis": "Analysis tier",
+      "final": "Final tier"
+    },
+    "budget": {
+      "state": "Budget",
+      "today": "Today",
+      "month": "Month",
+      "NORMAL": "Normal",
+      "REDUCED": "Reduced (no final tier)",
+      "CHEAP_ONLY": "Cheapest model only",
+      "EXHAUSTED": "Exhausted (rules only)"
+    },
+    "caps": "Daily caps",
+    "capsValue": "{reviews} reviews · {deep} deep",
+    "noCycle": "No cycle has run yet.",
+    "cycle": {
+      "analysis": "Last analysis",
+      "learning": "Last learning",
+      "postmortem": "Last post-mortem",
+      "evaluation": "Last evaluation"
+    },
+    "cycleStatus": {
+      "running": "running",
+      "ok": "ok",
+      "partial": "partial",
+      "failed": "failed"
+    },
+    "today": {
+      "packets": "Packets today",
+      "matches": "Matches today",
+      "analyses": "Analyses today",
+      "evidence": "Evidence today",
+      "reviews": "Reviews today",
+      "llm_reviews": "With a model today"
+    },
+    "run": {
+      "title": "Run now",
+      "subtitle": "It is queued and the worker runs it within two minutes, under the same budget and caps.",
+      "analysis": "Analyse now",
+      "learning": "Learn now",
+      "status": {
+        "queued": "queued",
+        "running": "running",
+        "done": "done",
+        "failed": "failed"
+      }
+    },
+    "engine": {
+      "combined": "Combined",
+      "rules": "Rules",
+      "llm": "Language model"
+    },
+    "decision": {
+      "APPROVE": "Approve",
+      "DOWNGRADE": "Caution",
+      "REJECT": "Reject",
+      "ABSTAIN": "Abstain"
+    },
+    "filters": {
+      "engine": "Engine",
+      "decision": "Decision",
+      "day": "Day",
+      "status": "Status",
+      "all": "All"
+    },
+    "reviews": {
+      "empty": "No reviews with these filters.",
+      "match": "Match",
+      "selection": "Selection",
+      "odds": "Odds",
+      "model": "Model %",
+      "market": "Market %",
+      "decision": "Decision",
+      "reason": "Reason",
+      "detail": "Review #{id}"
+    },
+    "claimType": {
+      "DATA": "Data",
+      "INFERENCE": "Inference",
+      "NEWS": "News",
+      "OPINION": "Opinion",
+      "UNKNOWN": "Unknown"
+    },
+    "claims": {
+      "positive_evidence": "For",
+      "negative_evidence": "Against",
+      "uncertainties": "Uncertainties",
+      "contradictions": "Contradictions",
+      "rejected": "Claims refused by the server"
+    },
+    "audit": {
+      "engines": "Engines combined",
+      "packet": "Packet read",
+      "hash": "Hash",
+      "asOf": "Data up to",
+      "tokens": "Approx. tokens",
+      "missing": "Missing blocks",
+      "content": "Show content",
+      "usage": "Calls and cost",
+      "noUsage": "No model call (rules reviewer, or reused).",
+      "call": "Call",
+      "in": "Input",
+      "out": "Output",
+      "cached": "Cached",
+      "cost": "Cost",
+      "evidence": "Evidence cited",
+      "inputHash": "Input hash"
+    },
+    "evidence": {
+      "empty": "No evidence in the last days.",
+      "claim": "Claim",
+      "source": "Source",
+      "when": "Published / read",
+      "status": "Status"
+    },
+    "evidenceStatus": {
+      "CONFIRMED": "Confirmed",
+      "PROBABLE": "Probable",
+      "RUMOR": "Rumour",
+      "CONTRADICTORY": "Contradictory",
+      "OUTDATED": "Outdated"
+    },
+    "evidenceKind": {
+      "injury": "Injury",
+      "suspension": "Suspension",
+      "doubtful": "Doubt",
+      "lineup": "Line-up",
+      "coach": "Coach",
+      "news": "News",
+      "transfer": "Transfer",
+      "motivation": "Motivation",
+      "weather": "Weather",
+      "travel": "Travel",
+      "schedule": "Schedule",
+      "other": "Other"
+    },
+    "tierName": {
+      "official": "Official",
+      "competition": "Competition",
+      "club": "Club",
+      "provider": "Data provider",
+      "journalist": "Journalist",
+      "media": "Media",
+      "aggregator": "Aggregator",
+      "social": "Social network",
+      "unknown": "Unknown"
+    },
+    "costs": {
+      "measured": "Measured spend",
+      "measuredHelp": "Every model or search call is recorded with its tokens and cost.",
+      "period": "Period",
+      "requests": "Calls",
+      "tokens": "Tokens (in / out)",
+      "cost": "Cost",
+      "perMatch": "Per match",
+      "perReview": "Per review",
+      "perApproved": "Per approval",
+      "periods": {
+        "today": "Today",
+        "7d": "7 days",
+        "30d": "30 days",
+        "month": "This month"
+      },
+      "simulation": "Simulation per provider",
+      "simulationHelp": "On PrediGol's real volume (matches, candidates, tokens per packet) and verified prices. Worst case: every cap reached every day.",
+      "profile": "Profile",
+      "day": "Per day",
+      "month": "Per month",
+      "worstMonth": "Worst case / month"
+    },
+    "profile": {
+      "economico": "Economy (Anthropic)",
+      "economico_openai": "Economy (OpenAI)",
+      "equilibrado": "Balanced (Anthropic)",
+      "equilibrado_gemini": "Balanced (Gemini)",
+      "maxima_calidad": "Maximum quality"
+    },
+    "shadow": {
+      "empty": "No shadow evaluation yet: it is computed every day from finished matches.",
+      "help": "The model alone against model + AI (without what it rejected) and against the market. The AI may only filter if what it rejects does significantly worse, without losing closing-line value or calibration.",
+      "window": "Window {from} → {to}",
+      "armLabel": "Group",
+      "hit": "Hit rate",
+      "logloss": "Log loss model / market",
+      "drawdown": "Drawdown",
+      "arm": {
+        "model": "Model alone",
+        "model_ai": "Model + AI",
+        "approved": "Approved",
+        "downgraded": "With caution",
+        "rejected": "Rejected",
+        "abstained": "No judgement"
+      },
+      "check": {
+        "selections": "Selections",
+        "days": "Days",
+        "rejected": "Rejections",
+        "rejection_quality": "Rejection quality",
+        "clv": "CLV",
+        "calibration": "Calibration"
+      }
+    },
+    "gate": {
+      "pass": "Passed",
+      "fail": "Not passed",
+      "insufficient": "Not enough data",
+      "none": "No evaluation"
+    },
+    "memory": {
+      "empty": "No memory yet: it is written after finished matches."
+    },
+    "memoryKind": {
+      "match_result": "Result",
+      "pick_result": "Pick result",
+      "context_error": "Context error",
+      "news_signal": "News signal",
+      "injury_signal": "Injury signal",
+      "market_signal": "Market signal",
+      "model_failure": "Model failure",
+      "model_success": "Model success",
+      "league_pattern": "League pattern",
+      "team_pattern": "Team pattern",
+      "player_pattern": "Player pattern",
+      "review_quality": "Review quality"
     }
   }
 }

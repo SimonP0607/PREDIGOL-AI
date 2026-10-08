@@ -77,6 +77,11 @@ export const live = {
     queryFn: () => v1.center(id),
     refetchInterval: 30_000,
   }),
+  matchAnalysis: (id: string, preview: Preview) => ({
+    queryKey: ["v1", "match-analysis", id, preview ?? "qualified"],
+    queryFn: () => v1.matchAnalysis(id, { preview }),
+    refetchInterval: 5 * MINUTE,
+  }),
   liveBoard: { queryKey: ["v1", "live"], queryFn: v1.liveBoard, refetchInterval: 15_000 },
   players: (q: { q?: string | undefined; team_id?: number | undefined }) => ({
     queryKey: ["v1", "players", q.q ?? "", q.team_id ?? 0],
@@ -136,6 +141,52 @@ export const live = {
     queryFn: () => v1.aiFlags(source, day || undefined),
   }),
   evolution: { queryKey: ["v1", "evolution"], queryFn: v1.evolution, refetchInterval: MINUTE },
+  evolutionDashboard: (day?: string) => ({
+    queryKey: ["v1", "evolution", "dashboard", day ?? "today"],
+    queryFn: () => v1.evolutionDashboard(day),
+    refetchInterval: MINUTE,
+  }),
+  aiOverview: {
+    queryKey: ["v1", "ai-layer", "overview"],
+    queryFn: v1.aiOverview,
+    refetchInterval: MINUTE,
+  },
+  aiReviews: (q: Parameters<typeof v1.aiReviews>[0]) => ({
+    queryKey: ["v1", "ai-layer", "reviews", q],
+    queryFn: () => v1.aiReviews(q),
+    refetchInterval: MINUTE,
+  }),
+  aiReview: (id: number) => ({
+    queryKey: ["v1", "ai-layer", "review", id],
+    queryFn: () => v1.aiReview(id),
+    enabled: id > 0,
+  }),
+  aiPacket: (fixtureId: string) => ({
+    queryKey: ["v1", "ai-layer", "packet", fixtureId],
+    queryFn: () => v1.aiPacket(fixtureId),
+    enabled: fixtureId !== "",
+  }),
+  aiEvidence: (q: Parameters<typeof v1.aiEvidence>[0]) => ({
+    queryKey: ["v1", "ai-layer", "evidence", q],
+    queryFn: () => v1.aiEvidence(q),
+    refetchInterval: 2 * MINUTE,
+  }),
+  aiCosts: {
+    queryKey: ["v1", "ai-layer", "costs"],
+    queryFn: v1.aiCosts,
+    refetchInterval: 5 * MINUTE,
+  },
+  aiShadow: { queryKey: ["v1", "ai-layer", "shadow"], queryFn: v1.aiShadow, staleTime: 5 * MINUTE },
+  aiMemory: (kind?: string) => ({
+    queryKey: ["v1", "ai-layer", "memory", kind ?? "all"],
+    queryFn: () => v1.aiMemory(kind),
+    refetchInterval: 5 * MINUTE,
+  }),
+  aiRunRequests: {
+    queryKey: ["v1", "ai-layer", "run-requests"],
+    queryFn: v1.aiRunRequests,
+    refetchInterval: 30_000,
+  },
   notifications: {
     queryKey: ["v1", "notifications"],
     queryFn: v1.notifications,

@@ -27,7 +27,8 @@
     "users": "Users",
     "audit": "Audit",
     "settings": "Settings",
-    "evolution": "Evolution"
+    "evolution": "Evolution",
+    "aiLayer": "AI decision layer"
   },
   "pages": {
     "overview": {
@@ -105,6 +106,10 @@
     "evolution": {
       "title": "Evolution loop",
       "description": "Results become memory and proposals; only the owner decides. No result changes a rule on its own."
+    },
+    "aiLayer": {
+      "title": "AI decision layer",
+      "description": "What the AI analyses, from which sources, what each review decides, what it costs and whether its filter beats the model alone and the market. It never changes a pick by itself."
     }
   },
   "users": {

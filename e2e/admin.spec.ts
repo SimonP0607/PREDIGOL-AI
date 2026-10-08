@@ -16,6 +16,7 @@ const PAGES: Array<[string, keyof typeof t.admin.pages]> = [
   ["models", "models"],
   ["backtesting", "backtesting"],
   ["analytics", "analytics"],
+  ["ai-layer", "aiLayer"],
   ["ai-analyst", "aiAnalyst"],
   ["evolution", "evolution"],
   ["competitions", "competitions"],
@@ -236,4 +237,66 @@ test("AI research: what is configured and spent, the daily report, flags only, e
   if (evo.body.data.hypotheses.length)
     await expect(page.getByTestId("hypothesis").first()).toBeVisible();
   if (evo.body.data.memory.length) await expect(page.getByTestId("memory")).toBeVisible();
+});
+
+test("AI decision layer: mode, models and budget without a key, every view, the owner's run now; Evolución as the decision center", async ({
+  page,
+}, info) => {
+  test.setTimeout(150_000);
+  const w = watch(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await go(page, w, "/admin/ai-layer");
+  await expect(page.getByTestId("ai-layer-status")).toBeVisible();
+  const overview = await getJson<{
+    data: {
+      settings: { mode: string; llm_configured: boolean; missing: string[] };
+      enforcement: { enforced: boolean };
+    };
+  }>(page.request, "/api/v1/admin/ai/overview");
+  expect(overview.status).toBe(200);
+  const o = overview.body.data;
+  note(
+    info,
+    `AI layer: mode ${o.settings.mode}, llm ${o.settings.llm_configured}, enforced ${o.enforcement.enforced}`,
+  );
+  expect(JSON.stringify(overview.body)).not.toMatch(/sk-[A-Za-z0-9]/);
+  await expect(page.getByText(t.ai.layer.mode[o.settings.mode as "shadow"]).first()).toBeVisible();
+  for (const tab of ["evidence", "costs", "shadow", "memory", "reviews"] as const) {
+    await page.getByRole("tab", { name: t.ai.layer.tabs[tab], exact: true }).click();
+    await settle(page);
+    await assertClean(page, w);
+  }
+  await page.getByRole("tab", { name: t.ai.layer.tabs.costs, exact: true }).click();
+  await expect(page.getByText(t.ai.layer.profile.economico, { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: t.ai.layer.tabs.reviews, exact: true }).click();
+  const reviews = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    "/api/v1/admin/ai/reviews",
+  );
+  note(info, `reviews today: ${reviews.body.data.length}`);
+  if (reviews.body.data.length) {
+    await page.locator("tbody tr").first().click();
+    await expect(page.getByTestId("ai-review-detail")).toBeVisible();
+    await settle(page);
+    await assertClean(page, w);
+  }
+
+  await go(page, w, "/admin/evolution");
+  await expect(page.getByTestId("evolution-counts")).toBeVisible();
+  await expect(page.getByText(t.ai.evolution.loop.s8)).toBeVisible();
+  await expect(page.getByText(t.ai.evolution.noAuto)).toBeVisible();
+  await expect(page.getByRole("button", { name: /activ/i })).toHaveCount(0);
+  const evo = await getJson<{ data: { hypotheses: Array<{ status: string }> } }>(
+    page.request,
+    "/api/v1/admin/evolution",
+  );
+  const pending = evo.body.data.hypotheses.filter((h) => h.status === "PROPOSED");
+  if (pending.length) {
+    const first = page.locator('[data-group="pending"]').getByTestId("hypothesis").first();
+    for (const d of ["reject", "investigate", "approve_experiment"] as const) {
+      await expect(first.locator(`[data-decision="${d}"]`)).toHaveText(t.ai.evolution.decide[d]);
+    }
+  } else {
+    note(info, "no proposed hypothesis to show the owner's three answers on");
+  }
 });

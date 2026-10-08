@@ -21,6 +21,7 @@ import { Route as PicksRouteImport } from './routes/picks'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiAnalystRouteImport } from './routes/admin.ai-analyst'
+import { Route as AdminAiLayerRouteImport } from './routes/admin.ai-layer'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminBacktestingRouteImport } from './routes/admin.backtesting'
@@ -102,6 +103,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminAiAnalystRoute = AdminAiAnalystRouteImport.update({
   id: '/ai-analyst',
   path: '/ai-analyst',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAiLayerRoute = AdminAiLayerRouteImport.update({
+  id: '/ai-layer',
+  path: '/ai-layer',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
+  '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/backtesting': typeof AdminBacktestingRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
+  '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/backtesting': typeof AdminBacktestingRoute
@@ -299,6 +307,7 @@ export interface FileRoutesById {
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
+  '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/backtesting': typeof AdminBacktestingRoute
@@ -337,6 +346,7 @@ export interface FileRouteTypes {
     | '/picks'
     | '/profile'
     | '/admin/ai-analyst'
+    | '/admin/ai-layer'
     | '/admin/analytics'
     | '/admin/audit'
     | '/admin/backtesting'
@@ -372,6 +382,7 @@ export interface FileRouteTypes {
     | '/picks'
     | '/profile'
     | '/admin/ai-analyst'
+    | '/admin/ai-layer'
     | '/admin/analytics'
     | '/admin/audit'
     | '/admin/backtesting'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '/picks'
     | '/profile'
     | '/admin/ai-analyst'
+    | '/admin/ai-layer'
     | '/admin/analytics'
     | '/admin/audit'
     | '/admin/backtesting'
@@ -532,6 +544,13 @@ declare module '@tanstack/react-router' {
       path: '/ai-analyst'
       fullPath: '/admin/ai-analyst'
       preLoaderRoute: typeof AdminAiAnalystRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ai-layer': {
+      id: '/admin/ai-layer'
+      path: '/ai-layer'
+      fullPath: '/admin/ai-layer'
+      preLoaderRoute: typeof AdminAiLayerRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/analytics': {
@@ -693,6 +712,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminAiAnalystRoute: typeof AdminAiAnalystRoute
+  AdminAiLayerRoute: typeof AdminAiLayerRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAuditRoute: typeof AdminAuditRoute
   AdminBacktestingRoute: typeof AdminBacktestingRoute
@@ -718,6 +738,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAiAnalystRoute: AdminAiAnalystRoute,
+  AdminAiLayerRoute: AdminAiLayerRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAuditRoute: AdminAuditRoute,
   AdminBacktestingRoute: AdminBacktestingRoute,

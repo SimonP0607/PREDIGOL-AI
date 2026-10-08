@@ -6,8 +6,26 @@ import type {
   AiRunRow,
   AiStatus,
   EvolutionOverview,
+  HypothesisDecision,
+  HypothesisTarget,
   SetSource,
 } from "./types_ai";
+import type {
+  AiCosts,
+  AiDecision,
+  AiEvidenceRow,
+  AiMemoryEvent,
+  AiOverview,
+  AiPacketView,
+  AiReviewDetail,
+  AiReviewRow,
+  AiRunQueued,
+  AiRunRequest,
+  EvidenceStatus,
+  EvolutionDashboard,
+  MatchAnalysis,
+  ShadowReportRow,
+} from "./types_ai_layer";
 import type {
   AnalystReply,
   AnalystStatus,
@@ -313,6 +331,9 @@ export const v1 = {
     getJson<Envelope<FixtureOdds>>(`/odds/fixtures/${id}`, { market }),
   search: (q: string) => getJson<Envelope<SearchHit[]>>("/search", { q, limit: 8 }),
   center: (id: number | string) => getJson<Envelope<MatchCenter | null>>(`/matches/${id}/center`),
+  /** ANÁLISIS PREDIGOL: up to three cards, computed once per match by the worker and read by everyone. */
+  matchAnalysis: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<MatchAnalysis | null>>(`/matches/${id}/analysis`, q),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {
@@ -358,13 +379,49 @@ export const v1 = {
   aiReviewRun: (source: SetSource, day?: string) =>
     postJson<Envelope<AiFlags>>("/admin/ai/review/run", day ? { day, source } : { source }),
   evolution: () => getJson<Envelope<EvolutionOverview>>("/admin/evolution"),
-  proposeHypothesis: (body: { title: string; hypothesis: string; rationale: string }) =>
-    postJson<Envelope<{ id: number }>>("/admin/evolution/hypotheses", body),
-  decideHypothesis: (id: number, decision: "accept" | "reject", note?: string) =>
+  evolutionDashboard: (day?: string) =>
+    getJson<Envelope<EvolutionDashboard>>("/admin/evolution/dashboard", { day }),
+  proposeHypothesis: (body: {
+    title: string;
+    hypothesis: string;
+    rationale: string;
+    target?: HypothesisTarget;
+  }) => postJson<Envelope<{ id: number }>>("/admin/evolution/hypotheses", body),
+  /** RECHAZAR, INVESTIGAR or APROBAR EXPERIMENTO. None of them changes a rule, a model or a pick. */
+  decideHypothesis: (id: number, decision: HypothesisDecision | "accept", note?: string) =>
     postJson<Envelope<{ status: string }>>(`/admin/evolution/hypotheses/${id}/decision`, {
       decision,
       note: note || null,
     }),
+  /** Only a DONE experiment whose gate passed; the owner types PROMOTE. */
+  promoteHypothesis: (id: number, note?: string) =>
+    postJson<Envelope<{ status: string }>>(`/admin/evolution/hypotheses/${id}/promote`, {
+      confirm: "PROMOTE",
+      note: note || null,
+    }),
+
+  // ── the AI decision layer (Admin Console) ─────────────────────────────────
+  aiOverview: () => getJson<Envelope<AiOverview>>("/admin/ai/overview"),
+  aiReviews: (
+    q: {
+      day?: string | undefined;
+      engine?: "combined" | "rules" | "llm";
+      decision?: AiDecision | undefined;
+      fixture_id?: number | undefined;
+      limit?: number;
+    } = {},
+  ) => getJson<Envelope<AiReviewRow[]>>("/admin/ai/reviews", q as Params),
+  aiReview: (id: number) => getJson<Envelope<AiReviewDetail>>(`/admin/ai/reviews/${id}`),
+  aiPacket: (fixtureId: number | string) =>
+    getJson<Envelope<AiPacketView | null>>(`/admin/ai/packets/${fixtureId}`),
+  aiEvidence: (q: { fixture_id?: number | undefined; status?: EvidenceStatus | undefined } = {}) =>
+    getJson<Envelope<AiEvidenceRow[]>>("/admin/ai/evidence", q as Params),
+  aiCosts: () => getJson<Envelope<AiCosts>>("/admin/ai/costs"),
+  aiShadow: () => getJson<Envelope<ShadowReportRow[]>>("/admin/ai/shadow"),
+  aiMemory: (kind?: string) => getJson<Envelope<AiMemoryEvent[]>>("/admin/ai/memory", { kind }),
+  aiRunRequests: () => getJson<Envelope<AiRunRequest[]>>("/admin/ai/run-requests"),
+  requestAiRun: (body: { kind: "analysis" | "learning"; fixture_id?: number | null }) =>
+    postJson<Envelope<AiRunQueued>>("/admin/ai/run-requests", body),
   notifications: () => getJson<Envelope<NotificationsOverview>>("/admin/notifications"),
   rankings: (competitionId?: number, pool: RatingPool = "men") =>
     getJson<Envelope<Rankings | null>>("/admin/rankings", {
