@@ -8,19 +8,22 @@ noise (at least three standard errors from "no effect", and a minimum sample):
 * REVIEW SIGNALS - whether selections carrying a review signal (market against, key absence, models
   disagree...) did worse than those without it, by ROI at the price taken;
 * LEAGUE PATTERNS - where the model's match forecasts were consistently better or worse than the market's
-  closing consensus (log loss).
+  closing consensus (log loss);
+* LOSS CLASSES (V2) - when one class of the post-mortems' losses (``fbi.ai.pick_postmortem``: model, context,
+  market, execution, data) takes far more than its share (at least 20 losses, z >= 2 against a fifth each).
 
 Each pattern found becomes a hypothesis PROPOSED by the system (``fbi.research.evolution.propose``), keyed so
-it is proposed once, with its evidence and what it would change (``target``). A language model, when
-configured, may add at most two hypotheses a week citing the memory events they rest on (refused when they
-cite none). Accepting, investigating or rejecting is the owner's; promotion needs an experiment and its gate.
+it is proposed once, with its evidence, what it would change (``target``), how many matches it rests on
+(``n_matches``), its potential impact and what investigating it would cost (``investigation_cost``). A language
+model, when configured, may add at most two hypotheses a day citing the memory events they rest on (refused when
+they cite none). Accepting, investigating or rejecting is the owner's; promotion needs an experiment and its gate.
 """
 
 from __future__ import annotations
 
 import json
 import math
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
@@ -42,6 +45,27 @@ MIN_SOURCE_N = 30
 SOURCE_BASELINE = 0.10
 MIN_SIGNAL_N = 50
 MIN_LEAGUE_N = 30
+MIN_LOSSES = 20
+LOSS_Z = 2.0
+LOSS_BASELINE = 0.2
+INVESTIGATION = "US$0 en IA: backtesting local y luego unos 30 días de shadow"
+LOSS_HYPOTHESES: dict[str, tuple[str, str, str]] = {
+    "MODEL_ERROR": ("models", "Las pérdidas por error del modelo pesan demasiado",
+                    "Recalibrar el modelo en los mercados donde queda lejos del cierre mejoraría su log loss frente al "
+                    "mercado sin perder las selecciones buenas."),
+    "CONTEXT_ERROR": ("decision_rules", "Las pérdidas por error de contexto pesan demasiado",
+                      "Exigir la alineación confirmada (o una fuente oficial) antes de aprobar selecciones con bajas "
+                      "dudosas reduciría las pérdidas por información que falló."),
+    "MARKET_ERROR": ("pick_engine", "El mercado se mueve en contra de las cuotas tomadas",
+                     "Elegir más cerca del cierre (tras las alineaciones) mejoraría el CLV de los picks sin perder "
+                     "valor."),
+    "EXECUTION_ERROR": ("data", "Precios viejos o cambios de horario detrás de las pérdidas",
+                        "Exigir precios más frescos y volver a revisar tras un cambio de horario evitaría pérdidas de "
+                        "ejecución."),
+    "DATA_ERROR": ("data", "Datos no aptos detrás de las pérdidas",
+                   "Excluir de los candidatos las competiciones o partidos con datos no aptos evitaría pérdidas por "
+                   "datos."),
+}
 
 MEMORY_SQL = """
 SELECT id, kind, entity_type, entity_id, fixture_id, evidence, result, created_at
@@ -98,7 +122,9 @@ def source_reliability(events: list[dict[str, Any]]) -> list[Found]:
                            "confirmarse con la alineación.",
                 rationale=f"{wrong[tier]} de {n} reportes de bajas de este nivel resultaron falsos (el jugador fue "
                           f"titular); z {z:.1f} frente a un 10 % de referencia.",
-                evidence={"tier": tier, "wrong": wrong[tier], "right": right[tier], "z": round(z, 2)}))
+                evidence={"tier": tier, "wrong": wrong[tier], "right": right[tier], "z": round(z, 2), "n_matches": n,
+                          "impact": f"{100 * (rate - SOURCE_BASELINE):.0f} puntos más de reportes falsos que la "
+                                    "referencia", "investigation_cost": INVESTIGATION}))
     return out
 
 
@@ -135,7 +161,9 @@ def review_signals(events: list[dict[str, Any]]) -> list[Found]:
                           f"({len(without)}); z {z:.1f}. Una diferencia observada no es una regla: requiere "
                           "experimento y shadow.",
                 evidence={"signal": code, "roi_with": round(m1, 4), "roi_without": round(m0, 4), "n_with": len(with_),
-                          "n_without": len(without), "z": round(z, 2)}))
+                          "n_without": len(without), "z": round(z, 2), "n_matches": len(with_) + len(without),
+                          "impact": f"{100 * (m0 - m1):.1f} puntos de ROI en {len(with_)} selecciones con la señal",
+                          "investigation_cost": INVESTIGATION}))
     return out
 
 
@@ -163,7 +191,33 @@ def league_patterns(rows: list[dict[str, Any]]) -> list[Found]:
                 hypothesis=(f"El modelo aporta información frente al cierre en {name}." if better else
                             f"El modelo no debería generar candidatos en {name} hasta corregir su sesgo."),
                 rationale=f"Log loss del modelo menos el del cierre: {mean:+.3f} en {n} partidos (z {z:.1f}).",
-                evidence={"competition_id": cid, "mean_logloss_diff": round(mean, 4), "n": n, "z": round(z, 2)}))
+                evidence={"competition_id": cid, "mean_logloss_diff": round(mean, 4), "n": n, "z": round(z, 2),
+                          "n_matches": n, "impact": f"log loss {mean:+.3f} por partido frente al cierre",
+                          "investigation_cost": INVESTIGATION}))
+    return out
+
+
+def loss_classes(events: list[dict[str, Any]]) -> list[Found]:
+    """When one class of the post-mortems' losses takes far more than its share."""
+    losses = [e for e in events if e["kind"] == "pick_postmortem" and e["result"] in LOSS_HYPOTHESES]
+    n = len(losses)
+    if n < MIN_LOSSES:
+        return []
+    counts = Counter(str(e["result"]) for e in losses)
+    out = []
+    for cls, k in sorted(counts.items()):
+        share = k / n
+        z = (share - LOSS_BASELINE) / math.sqrt(LOSS_BASELINE * (1 - LOSS_BASELINE) / n)
+        if z < LOSS_Z:
+            continue
+        target, title, hypothesis = LOSS_HYPOTHESES[cls]
+        out.append(Found(
+            key=f"pattern:loss:{cls}", target=target, title=title, hypothesis=hypothesis,
+            rationale=f"{k} de {n} pérdidas clasificadas ({100 * share:.0f} %) son {cls}; z {z:.1f} frente a un "
+                      "reparto parejo. Un patrón no es una regla: requiere experimento y shadow.",
+            evidence={"class": cls, "losses": n, "count": k, "share": round(share, 4), "z": round(z, 2),
+                      "memory_ids": [int(e["id"]) for e in losses if e["result"] == cls][:50], "n_matches": n,
+                      "impact": f"hasta {k} de {n} pérdidas en la ventana", "investigation_cost": INVESTIGATION}))
     return out
 
 
@@ -209,7 +263,8 @@ def run_patterns(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSet
         events = [dict(r) for r in cur.fetchall()]
         cur.execute(LEAGUE_SQL, {"since": at - WINDOW})
         league_rows = [dict(r) for r in cur.fetchall()]
-    report.found = source_reliability(events) + review_signals(events) + league_patterns(league_rows)
+    report.found = (source_reliability(events) + review_signals(events) + league_patterns(league_rows)
+                    + loss_classes(events))
     for f in report.found:
         hid = propose(conn, title=f.title, hypothesis=f.hypothesis, rationale=f.rationale,
                       evidence=f.evidence | {"pattern_version": VERSION}, proposed_by="system", at=at, key=f.key,
@@ -238,8 +293,9 @@ def run_patterns(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSet
                     report.ai_rejected.append(h.title)
                     continue
                 hid = propose(conn, title=h.title, hypothesis=h.hypothesis, rationale=h.rationale,
-                              evidence={"memory_refs": refs, "pattern_version": VERSION}, proposed_by="ai", at=at,
-                              target=h.target)
+                              evidence={"memory_refs": refs, "pattern_version": VERSION, "n_matches": len(refs),
+                                        "impact": "por medir en el experimento", "investigation_cost": INVESTIGATION},
+                              proposed_by="ai", at=at, target=h.target)
                 if hid is not None:
                     report.ai_proposed.append(hid)
     return report

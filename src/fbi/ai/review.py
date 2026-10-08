@@ -417,7 +417,7 @@ class EngineResult:
 def llm_review(conn: psycopg.Connection[Any], settings: AiSettings, c: Candidate, packet: Packet,
                signals: list[Signal], *, at: datetime, tier: Tier = "analysis", ledger: UsageLedger | None = None,
                transport: httpx.BaseTransport | None = None,
-               provider: tuple[LlmProvider, str] | None = None) -> EngineResult:
+               provider: tuple[LlmProvider, str] | None = None, role: str = "candidate") -> EngineResult:
     evidence_status = {int(e["id"]): str(e["status"]) for e in packet.content.get("evidence", [])}
     content = prompt_content(c, packet, signals, at=at)
     h = input_hash(REVIEW_VERSION, packet.hash, c.as_json(), sorted(evidence_status.items()), tier)
@@ -454,6 +454,9 @@ def llm_review(conn: psycopg.Connection[Any], settings: AiSettings, c: Candidate
     output["minimum_playable_odds"] = None if minimum is None else float(minimum)
     output["rejected_claims"] = checked.rejected
     output["tier"] = outcome.tier
+    output["role"] = role
+    output["seen_evidence"] = sorted(evidence_status)
+    output["lineups_seen"] = bool((packet.content.get("lineups") or {}).get("confirmed"))
     if checked.decision_changed:
         output["decision_changed"] = checked.decision_changed
     return EngineResult("llm", REVIEW_VERSION, checked.review.decision, output, "ok", None, outcome.provider,
@@ -564,7 +567,7 @@ def review_candidate(conn: psycopg.Connection[Any], settings: AiSettings, c: Can
                      *, at: datetime, use_llm: bool, tier: Tier = "analysis", mode: str | None = None,
                      ledger: UsageLedger | None = None, transport: httpx.BaseTransport | None = None,
                      provider: tuple[LlmProvider, str] | None = None,
-                     prior_llm: EngineResult | None = None) -> Reviewed:
+                     prior_llm: EngineResult | None = None, role: str = "candidate") -> Reviewed:
     """Rules always; the model when asked and configured (or its earlier review still in force,
     ``prior_llm``); the combined decision stored last."""
     mode = mode or settings.mode
@@ -577,7 +580,7 @@ def review_candidate(conn: psycopg.Connection[Any], settings: AiSettings, c: Can
     carried: EngineResult | None = None
     if use_llm:
         llm = llm_review(conn, settings, c, packet, signals, at=at, tier=tier, ledger=ledger, transport=transport,
-                         provider=provider)
+                         provider=provider, role=role)
         llm.review_id = store_review(conn, llm, c, packet=packet, packet_id=packet_id, at=at, mode=mode)
         results.append(llm)
     elif prior_llm is not None and prior_llm.status == "ok":

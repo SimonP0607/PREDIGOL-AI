@@ -1,16 +1,33 @@
-"""The AI analysis cycle (worker job ``ai_cycle``, every 30 minutes; also on the owner's request).
+"""The AI analysis cycle (worker job ``ai_cycle`` every 15 minutes, ``ai_day_start`` at 00:05 Bogotá, and the
+owner's "run now").
 
-    1  evidence     the provider's injury reports and confirmed line-ups of the matches in the next 48 h
-                    (free), and - when configured - web team news for the best opportunities (paid, cached)
-    2  shortlist    every selection passing the value gate at the current price in the next 72 h
-                    (``fbi.picks.daily.passing``: the same gate as the picks of the day and the parlays)
-    3  packets      one per match in the horizon, rebuilt only when its inputs changed (hash)
-    4  reviews      rules for every shortlisted selection; a language model, when configured and the budget
-                    allows, for the shortlist of the next 24 h - the strong (final) tier only for the day's
-                    best few; a selection is re-reviewed by the model only when its context changed materially
-    5  analyses     the per-match cards (``fbi.ai.analysis``)
+Two parts, one loop over the matches of the next four days:
 
-Commits after each match: a failure part-way keeps what was done and is recorded in ``ai.cycles``. Nothing
+FREE, for every match of the horizon: the provider's injury reports and line-ups as evidence (next 48 h), the
+shortlist (every selection passing the value gate at the current price, ``fbi.picks.daily.passing``), the packet
+when its inputs changed, the rules' review of every shortlisted selection and the per-match analysis cards
+(``fbi.ai.analysis``). No model, no search.
+
+PAID, only for TODAY's matches (Bogotá) that HAVE A MARKET, at their passes (``fbi.ai.day``: first from 00:05, pre
+6-4 h before, final after the line-ups):
+
+    L1  brief    every match of the day at each of its passes, when its input changed - the economical model, or
+                 the rules when no model may answer (``fbi.ai.brief``); the brief comes first and says whether the
+                 match escalates
+    web          first pass: the candidates' matches and the most important ones (FBI_AI_MAX_WEB_FIRST); pre pass:
+                 the escalated ones (FBI_AI_MAX_WEB_PRE) - only when the cached answer is stale
+    L2  review   the candidates of the day (intermediate model), again only after a material change (the price
+                 moved more than 3 %, new evidence, the line-ups); an escalated match without a candidate gets at
+                 most one review of its nearest-to-value selection (a watch, FBI_AI_MAX_WATCH_PER_DAY)
+    L3  review   the strong model only for the best potential picks: the top five candidates of the day (one per
+                 match), the picks of the day, the parlays' legs, a candidate whose match is contradictory or has
+                 important news, and an L2 review the rules contradict outright
+
+Between its passes a match is analysed for free and keeps its last model review while it is in force. Money: the
+day's state (``fbi.ai.usage``) and each pass's share of the day. One cycle at a time (an advisory lock), so the same
+analysis is never paid twice by two runs.
+
+Commits after each step that paid: a failure part-way keeps what was done and is recorded in ``ai.cycles``. Nothing
 here writes a pick, a probability, a parlay or a rule.
 """
 
@@ -29,14 +46,17 @@ from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.analysis import ValueOption, build_cards, store_analysis
+from fbi.ai.brief import Brief, make_brief
+from fbi.ai.calendar import day_bounds, day_start, local_day
 from fbi.ai.collectors import SearchFn, collect_provider, collect_web
 from fbi.ai.config import AiSettings, Tier
+from fbi.ai.day import Due, due_passes, open_day, universe
 from fbi.ai.evidence import seed_sources
-from fbi.ai.packet import PacketBuilder, store_packet
+from fbi.ai.packet import CORE_KEYS, Packet, PacketBuilder, store_packet
 from fbi.ai.prompts import REVIEW_VERSION
 from fbi.ai.providers.base import LlmProvider
-from fbi.ai.review import Candidate, Reviewed, carried_review, review_candidate
-from fbi.ai.usage import UsageLedger
+from fbi.ai.review import Candidate, Reviewed, carried_review, latest_reviews, review_candidate
+from fbi.ai.usage import UsageLedger, check_alerts
 from fbi.ai.usage import budget as budget_of
 from fbi.core.clock import now
 from fbi.picks.daily import Ranked, load_candidates, passing
@@ -44,17 +64,23 @@ from fbi.picks.daily import Ranked, load_candidates, passing
 log = structlog.get_logger(__name__)
 
 SHORTLIST_HORIZON = timedelta(hours=72)
-LLM_HORIZON = timedelta(hours=24)
 EVIDENCE_HORIZON = timedelta(hours=48)
-WEB_HORIZON = timedelta(hours=36)
 MAX_FIXTURES = 400
-MAX_WEB_FIXTURES = 12
-RE_REVIEW_AFTER = timedelta(hours=6)
+CARRY_FOR = timedelta(hours=12)
+"""A model review is carried (combined again, not paid again) this long after it was made, while nothing material
+changed."""
 PRICE_CHANGE = Decimal("0.03")
 FAR_REFRESH = timedelta(hours=3)
 """A match more than a day away with nothing shortlisted: its packet is looked at again only after this long."""
 NEAR_REFRESH = timedelta(hours=1)
 """Within the day, a match with nothing shortlisted: hourly (a shortlisted one is looked at every cycle)."""
+TOP_L3 = 5
+TRANSIENT = frozenset({"timeout", "unavailable", "rate_limited", "failed"})
+"""A provider error that says nothing about the input: the provider is down for the rest of the cycle, and the pass is
+tried again at the next one (what was paid is reused through its input hash, never paid twice)."""
+NEAR_VALUE_EV = Decimal("-0.02")
+"""A watch review is made only for a selection this close to value at the current price."""
+CYCLE_LOCK = 7310073
 
 NEWEST_PACKETS_SQL = """
 SELECT DISTINCT ON (fixture_id) fixture_id, as_of FROM ai.match_packets
@@ -77,12 +103,33 @@ SELECT DISTINCT ON (r.market_key, r.selection, r.line) r.id, r.market_key, r.sel
  ORDER BY r.market_key, r.selection, r.line, r.reviewed_at DESC, r.id DESC
 """
 
-LLM_TODAY_SQL = """
+USED_TODAY_SQL = """
 SELECT count(*) FILTER (WHERE r.engine = 'llm' AND r.status NOT IN ('over_budget', 'failed')
                         AND NOT r.output ? 'reused_from') AS llm,
        count(*) FILTER (WHERE r.engine = 'llm' AND r.model IS NOT NULL AND r.output->>'tier' = 'final'
-                        AND r.status <> 'failed' AND NOT r.output ? 'reused_from') AS deep
+                        AND r.status <> 'failed' AND NOT r.output ? 'reused_from') AS deep,
+       count(*) FILTER (WHERE r.engine = 'llm' AND r.output->>'role' = 'watch' AND r.status NOT IN ('over_budget', 'failed')
+                        AND NOT r.output ? 'reused_from') AS watch
   FROM ai.pick_reviews r WHERE r.reviewed_at >= %(day)s
+"""
+
+WEB_USED_SQL = """
+SELECT pass, count(*) FROM ai.fixture_passes
+ WHERE day = %(day)s AND COALESCE((counts->>'web_searches')::int, 0) > 0 GROUP BY pass
+"""
+
+L3_TARGETS_SQL = """
+SELECT i.fixture_id, i.market_key, i.selection, i.line FROM picks.daily_set_items i
+  JOIN picks.daily_sets s ON s.id = i.set_id WHERE s.day = %(day)s
+UNION
+SELECT l.fixture_id, l.market_key, l.selection, l.line FROM picks.parlay_legs l
+  JOIN picks.parlays p ON p.id = l.parlay_id
+ WHERE p.day = %(day)s OR (p.window_from < %(end)s AND p.window_to >= %(start)s)
+"""
+
+ESCALATED_SQL = """
+SELECT DISTINCT ON (fixture_id) fixture_id, escalate FROM ai.match_briefs
+ WHERE fixture_id = ANY(%(fixtures)s) ORDER BY fixture_id, created_at DESC, id DESC
 """
 
 
@@ -136,53 +183,135 @@ def value_option(x: Ranked) -> ValueOption:
                        c.p_market_fair, x.leg.ev, x.elg, r.get("model"), c.pick_id, c.qualified)
 
 
-def needs_llm(last: dict[str, Any] | None, cand: Candidate, *, at: datetime, evidence_ids: set[int],
-              lineups_confirmed: bool) -> bool:
-    """A new model review only when something material changed: the price moved more than 3 %, new evidence,
-    the line-ups were confirmed since, the last one is older than six hours - or was made by an older version of
-    the reviewer."""
-    if last is None:
+def watch_candidate(packet: Packet) -> Candidate | None:
+    """The main selection of a match nearest to value at the current price (the model above the market, the expected
+    value not below -2 %), for a watch review; None when there is none."""
+    content = packet.content
+    market = {(s["market"], s["selection"], Decimal(s["line"])): s for s in (content.get("market") or {}).get("selections", [])}
+    models = content.get("models") or {}
+    name = "dixon_coles" if "dixon_coles" in models else next(iter(models), None)
+    if name is None:
+        return None
+    best: tuple[Decimal, Candidate] | None = None
+    kickoff = datetime.fromisoformat(str((content.get("fixture") or {}).get("kickoff_at")))
+    for s in models[name].get("selections", []):
+        key = (s["market"], s["selection"], Decimal(s["line"]))
+        m = market.get(key)
+        if key not in CORE_KEYS or m is None or s.get("p") is None or m.get("p_fair") is None or not m.get("best_odds"):
+            continue
+        p, odds = Decimal(str(s["p"])), Decimal(str(m["best_odds"]))
+        ev = p * odds - 1
+        if p <= Decimal(str(m["p_fair"])) or ev < NEAR_VALUE_EV:
+            continue
+        cand = Candidate(fixture_id=packet.fixture_id, market_key=key[0], selection=key[1], line=key[2], p_model=p,
+                         kickoff_at=kickoff, odds=odds, bookmaker=m.get("bookmaker"),
+                         p_low=None if s.get("p_lo") is None else Decimal(str(s["p_lo"])),
+                         p_high=None if s.get("p_hi") is None else Decimal(str(s["p_hi"])),
+                         p_market=Decimal(str(m["p_fair"])), ev=ev, model=name, n_bookmakers=m.get("n_bookmakers"))
+        if best is None or ev > best[0]:
+            best = (ev, cand)
+    return None if best is None else best[1]
+
+
+def needs_llm(last: dict[str, Any] | None, cand: Candidate, *, evidence_ids: set[int], lineups_confirmed: bool) -> bool:
+    """A new model review only when something material changed since the last one: the price moved more than 3 %,
+    evidence it had not seen, the line-ups confirmed since - or it was made by an older version of the reviewer, or
+    it did not answer."""
+    if last is None or last.get("status") != "ok":
         return True
     if last.get("engine_version") != REVIEW_VERSION:
-        return True
-    if at - last["reviewed_at"] >= RE_REVIEW_AFTER:
         return True
     if cand.odds is not None and last["odds"] is not None and \
             abs(cand.odds - Decimal(last["odds"])) / Decimal(last["odds"]) > PRICE_CHANGE:
         return True
-    if evidence_ids - set(last["evidence_ids"] or []):
+    output = last.get("output") or {}
+    seen = set(output.get("seen_evidence") or last.get("evidence_ids") or [])
+    if evidence_ids - seen:
         return True
-    return lineups_confirmed and at - last["reviewed_at"] > timedelta(minutes=30)
+    return lineups_confirmed and not output.get("lineups_seen")
 
 
 def run_analysis_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings | None = None,
                        ledger: UsageLedger | None = None, only_fixtures: list[int] | None = None,
                        search: SearchFn | None = None, provider: tuple[LlmProvider, str] | None = None,
-                       transport: httpx.BaseTransport | None = None) -> CycleReport:
+                       transport: httpx.BaseTransport | None = None, request: bool = False) -> CycleReport:
     settings = settings or AiSettings.from_env()
     report = CycleReport()
     if settings.mode == "off":
         report.status = "ok"
         report.counts["skipped_mode_off"] = 1
         return report
-    seed_sources(conn, at=at)
-    conn.commit()
-    report.cycle_id = open_cycle(conn, "analysis", at=at, settings=settings)
-    ledger = ledger or UsageLedger()
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute("SELECT pg_try_advisory_lock(%s)", (CYCLE_LOCK,))
+        row = cur.fetchone()
+    if not (row and row[0]):
+        report.counts["skipped_busy"] = 1  # another cycle is running: it will do this one's work
+        return report
     try:
-        _run(conn, settings, report, at=at, ledger=ledger, only=only_fixtures, search=search, provider=provider,
-             transport=transport)
-    except Exception as exc:  # the cycle records its own failure; the worker carries on
-        report.status = "failed"
-        report.errors.append(f"{type(exc).__name__}: {exc}"[:300])
-        log.error("ai.cycle.failed", error=report.errors[-1])
-    close_cycle(conn, report.cycle_id, report, at=at)
+        seed_sources(conn, at=at)
+        conn.commit()
+        report.cycle_id = open_cycle(conn, "analysis", at=at, settings=settings)
+        ledger = ledger or UsageLedger()
+        try:
+            _run(conn, settings, report, at=at, ledger=ledger, only=only_fixtures, search=search, provider=provider,
+                 transport=transport, request=request)
+        except Exception as exc:  # the cycle records its own failure; the worker carries on
+            report.status = "failed"
+            report.errors.append(f"{type(exc).__name__}: {exc}"[:300])
+            log.error("ai.cycle.failed", error=report.errors[-1])
+        close_cycle(conn, report.cycle_id, report, at=at)
+    finally:
+        conn.rollback()
+        with conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute("SELECT pg_advisory_unlock(%s)", (CYCLE_LOCK,))
+        conn.commit()
     return report
+
+
+@dataclass
+class Allowance:
+    """What today may still pay for (counted in Bogotá's day)."""
+
+    llm: int
+    deep: int
+    watch: int
+    web_first: int
+    web_pre: int
+
+
+def _allowance(conn: psycopg.Connection[Any], settings: AiSettings, *, at: datetime) -> Allowance:
+    day = local_day(at)
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(USED_TODAY_SQL, {"day": day_start(day)})
+        used = cur.fetchone() or {}
+        cur.execute(WEB_USED_SQL, {"day": day})
+        web = {str(r["pass"]): int(r["count"]) for r in cur.fetchall()}
+    return Allowance(llm=max(0, settings.max_llm_reviews_per_day - int(used.get("llm") or 0)),
+                     deep=max(0, settings.max_deep_per_day - int(used.get("deep") or 0)),
+                     watch=max(0, settings.max_watch_per_day - int(used.get("watch") or 0)),
+                     web_first=max(0, settings.max_web_first - web.get("first", 0)),
+                     web_pre=max(0, settings.max_web_pre - web.get("pre", 0)))
+
+
+def _l3_keys(conn: psycopg.Connection[Any], by_fixture: dict[int, list[Ranked]], universe_ids: set[int], *,
+             at: datetime) -> set[tuple[int, str, str, Decimal]]:
+    """The best potential picks of the day: the top candidates (one per match), the picks of the day and the
+    parlays' legs."""
+    best: dict[int, Ranked] = {}
+    for fid, xs in by_fixture.items():
+        if fid in universe_ids and xs:
+            best[fid] = max(xs, key=lambda x: x.elg)
+    keys = {x.leg.candidate.selection_key for x in sorted(best.values(), key=lambda x: -x.elg)[:TOP_L3]}
+    start, end = day_bounds(local_day(at))
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(L3_TARGETS_SQL, {"day": local_day(at), "start": start, "end": end})
+        keys |= {(int(r[0]), str(r[1]), str(r[2]), Decimal(r[3])) for r in cur.fetchall()}
+    return keys
 
 
 def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, *, at: datetime,
          ledger: UsageLedger, only: list[int] | None, search: SearchFn | None,
-         provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None) -> None:
+         provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None, request: bool) -> None:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(FIXTURES_SQL, {"start": at + timedelta(minutes=10),
                                    "until": at + timedelta(hours=settings.horizon_hours), "limit": MAX_FIXTURES})
@@ -191,7 +320,7 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
         fixtures = [f for f in fixtures if f[0] in set(only)]
     report.counts["fixtures"] = len(fixtures)
 
-    # 1. evidence from the provider
+    # 1. evidence from the provider (free)
     for fid, kickoff in fixtures:
         if kickoff - at <= EVIDENCE_HORIZON:
             try:
@@ -214,88 +343,55 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
             by_fixture[x.leg.candidate.fixture_id].append(x)
     report.counts["shortlist"] = sum(len(v) for v in by_fixture.values())
 
-    # web team news for the best opportunities (paid: configured, budgeted, cached)
-    if settings.search_configured or search is not None:
-        best = sorted(((max(x.elg for x in xs), fid) for fid, xs in by_fixture.items()), reverse=True)
-        kickoffs = dict(fixtures)
-        for _, fid in best[:MAX_WEB_FIXTURES]:
-            if kickoffs[fid] - at > WEB_HORIZON:
-                continue
-            got = collect_web(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider,
-                              transport=transport)
-            report.counts["web_searches"] += got.searches
-            report.counts["web_items"] += got.extracted
-            report.cost_usd += Decimal(str(got.cost_usd))
-            if got.skipped:
-                report.counts[f"web_skipped_{got.skipped}"] += 1
-            conn.commit()
-
-    # the day's model allowance
-    day = at.replace(hour=0, minute=0, second=0, microsecond=0)
-    with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(LLM_TODAY_SQL, {"day": day})
-        today = cur.fetchone() or {"llm": 0, "deep": 0}
-    llm_left = max(0, settings.max_llm_reviews_per_day - int(today["llm"] or 0))
-    deep_left = max(0, settings.max_deep_per_day - int(today["deep"] or 0))
-    soon = sorted((x for xs in by_fixture.values() for x in xs if x.leg.candidate.kickoff_at - at <= LLM_HORIZON),
-                  key=lambda x: -x.elg)
-    deep_keys = {x.leg.candidate.selection_key for x in soon[:deep_left]}
+    # 3. today: the day opened, its universe (matches with a market), the passes due now
+    if open_day(conn, at=at, settings=settings) is not None:
+        report.counts["day_opened"] = 1
+    check_alerts(conn, at=at, settings=settings)
+    conn.commit()
+    today = [f for f in universe(conn, day=local_day(at), at=at) if f.has_market]
+    universe_ids = {f.fixture_id for f in today}
+    report.counts["universe"] = len(universe_ids)
+    dues: dict[int, Due] = {d.fixture.fixture_id: d for d in due_passes(conn, at=at, only=set(only) if only else None)}
+    if request and only:
+        for f in today:
+            if f.fixture_id in set(only):
+                dues[f.fixture_id] = Due(f, "request")
+    report.counts["passes_due"] = len(dues)
     llm_ready = settings.llm_configured or provider is not None
+    allow = _allowance(conn, settings, at=at)
+    l3 = _l3_keys(conn, by_fixture, universe_ids, at=at) if dues and llm_ready else set()
+    web_ready = settings.search_configured or search is not None
+    web: set[int] = set()
+    if dues and web_ready:
+        with conn.cursor(row_factory=tuple_row) as tcur:
+            tcur.execute(ESCALATED_SQL, {"fixtures": list(dues)})
+            escalated = {int(r[0]) for r in tcur.fetchall() if r[1]}
 
-    # 3-5. packets, reviews, analyses
+        def rank(d: Due) -> tuple[int, float, datetime]:
+            return (-int(d.fixture.fixture_id in by_fixture), -d.fixture.priority, d.fixture.kickoff_at)
+        firsts = sorted((d for d in dues.values() if d.pass_kind in ("first", "request")), key=rank)
+        pres = sorted((d for d in dues.values() if d.pass_kind == "pre"
+                       and (d.fixture.fixture_id in by_fixture or d.fixture.fixture_id in escalated)), key=rank)
+        web = {d.fixture.fixture_id for d in firsts[:allow.web_first]} | \
+              {d.fixture.fixture_id for d in pres[:allow.web_pre]}
+
+    # 4-5. packets, briefs, reviews, analyses - the paid ones first, by priority
     builder = PacketBuilder(conn)
-    with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(NEWEST_PACKETS_SQL, {"fixtures": [f[0] for f in fixtures]})
-        newest = {int(r[0]): r[1] for r in cur.fetchall()}
-    for fid, kickoff in fixtures:
+    with conn.cursor(row_factory=tuple_row) as tcur:
+        tcur.execute(NEWEST_PACKETS_SQL, {"fixtures": [f[0] for f in fixtures]})
+        newest = {int(r[0]): r[1] for r in tcur.fetchall()}
+    order = sorted(fixtures, key=lambda f: (f[0] not in dues, -(dues[f[0]].fixture.priority if f[0] in dues else 0),
+                                            f[1]))
+    health = {"llm_down": False}
+    for fid, kickoff in order:
+        due = dues.get(fid)
         try:
-            options = by_fixture.get(fid, [])
-            last_packet = newest.get(fid)
-            every = FAR_REFRESH if kickoff - at > LLM_HORIZON else NEAR_REFRESH
-            if not options and last_packet is not None and timedelta(0) <= at - last_packet < every:
-                report.counts["packets_not_due"] += 1
-                continue
-            extra = [(x.leg.candidate.market_key, x.leg.candidate.selection, x.leg.candidate.line) for x in options]
-            packet = builder.build(fid, at=at, extra_keys=extra)
-            if packet is None:
-                continue
-            packet_id = store_packet(conn, packet, built_at=at)
-            report.counts["packets"] += 1
-            reviews: dict[tuple[str, str, Decimal], Reviewed] = {}
-            if options:
-                with conn.cursor(row_factory=dict_row) as cur:
-                    cur.execute(LAST_LLM_SQL, {"fixture": fid})
-                    last_llm = {(r["market_key"], r["selection"], Decimal(r["line"])): r for r in cur.fetchall()}
-                evidence_ids = {int(e["id"]) for e in packet.content.get("evidence", [])}
-                confirmed = bool(packet.content.get("lineups", {}).get("confirmed"))
-                for x in options:
-                    cand = candidate_of(x, packet.content.get("models") or {})
-                    key = (cand.market_key, cand.selection, cand.line)
-                    use_llm = (llm_ready and llm_left > 0 and kickoff - at <= LLM_HORIZON
-                               and needs_llm(last_llm.get(key), cand, at=at, evidence_ids=evidence_ids,
-                                             lineups_confirmed=confirmed))
-                    tier: Tier = "final" if x.leg.candidate.selection_key in deep_keys else "analysis"
-                    last = last_llm.get(key)
-                    prior = None
-                    if not use_llm and last is not None and last["status"] == "ok" \
-                            and at - last["reviewed_at"] < RE_REVIEW_AFTER:
-                        prior = carried_review(last)  # still in force: combined again, not paid again
-                    reviewed = review_candidate(conn, settings, cand, packet, packet_id, at=at, use_llm=use_llm,
-                                                tier=tier, ledger=ledger, transport=transport, provider=provider,
-                                                prior_llm=prior)
-                    reviews[key] = reviewed
-                    report.counts["reviews"] += 1
-                    report.counts[f"decision_{reviewed.decision.lower()}"] += 1
-                    if reviewed.llm is not None:
-                        llm_left -= 1
-                        report.counts["llm_reviews"] += 1
-                        report.cost_usd += reviewed.llm.cost
-                        if reviewed.llm.status != "ok":
-                            report.counts[f"llm_{reviewed.llm.status}"] += 1
-            cards = build_cards(packet, [value_option(x) for x in options], reviews)
-            engines = ["rules"] + (["llm"] if any(r.by_llm for r in reviews.values()) else [])
-            _, created = store_analysis(conn, packet, packet_id, cards, at=at, engines=engines)
-            report.counts["analyses_new" if created else "analyses_same"] += 1
+            if due is not None:
+                _pass(conn, settings, report, due, by_fixture.get(fid, []), builder, at=at, ledger=ledger,
+                      search=search, provider=provider, transport=transport, allow=allow, l3=l3,
+                      web=fid in web, llm_ready=llm_ready, health=health)
+            else:
+                _free(conn, settings, report, fid, kickoff, by_fixture.get(fid, []), builder, newest, at=at)
             conn.commit()
         except Exception as exc:
             conn.rollback()
@@ -304,18 +400,232 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
             log.warning("ai.cycle.fixture_failed", fixture=fid, error=f"{type(exc).__name__}: {exc}"[:200])
 
 
-# ── learning: post-mortems, patterns, dependence, the AI's shadow evaluation ──
+def _last_llm(conn: psycopg.Connection[Any], fixture_id: int) -> dict[tuple[str, str, Decimal], dict[str, Any]]:
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(LAST_LLM_SQL, {"fixture": fixture_id})
+        return {(r["market_key"], r["selection"], Decimal(r["line"])): dict(r) for r in cur.fetchall()}
+
+
+def _carried(last: dict[str, Any] | None, *, at: datetime) -> Any:
+    if last is not None and last["status"] == "ok" and at - last["reviewed_at"] < CARRY_FOR \
+            and last.get("engine_version") == REVIEW_VERSION:
+        return carried_review(last)
+    return None
+
+
+def _free(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, fid: int, kickoff: datetime,
+          options: list[Ranked], builder: PacketBuilder, newest: dict[int, datetime], *, at: datetime) -> None:
+    """A match outside its passes: the packet on its cadence, the rules (and a model review still in force), the
+    cards. No model call, no search."""
+    last_packet = newest.get(fid)
+    every = FAR_REFRESH if kickoff - at > timedelta(hours=24) else NEAR_REFRESH
+    if not options and last_packet is not None and timedelta(0) <= at - last_packet < every:
+        report.counts["packets_not_due"] += 1
+        return
+    extra = [(x.leg.candidate.market_key, x.leg.candidate.selection, x.leg.candidate.line) for x in options]
+    packet = builder.build(fid, at=at, extra_keys=extra)
+    if packet is None:
+        return
+    packet_id = store_packet(conn, packet, built_at=at)
+    report.counts["packets"] += 1
+    reviews: dict[tuple[str, str, Decimal], Reviewed] = {}
+    if options:
+        last_llm = _last_llm(conn, fid)
+        for x in options:
+            cand = candidate_of(x, packet.content.get("models") or {})
+            key = (cand.market_key, cand.selection, cand.line)
+            reviewed = review_candidate(conn, settings, cand, packet, packet_id, at=at, use_llm=False,
+                                        prior_llm=_carried(last_llm.get(key), at=at))
+            reviews[key] = reviewed
+            report.counts["reviews"] += 1
+            report.counts[f"decision_{reviewed.decision.lower()}"] += 1
+    cards = build_cards(packet, [value_option(x) for x in options], reviews)
+    engines = ["rules"] + (["llm"] if any(r.by_llm for r in reviews.values()) else [])
+    _, created = store_analysis(conn, packet, packet_id, cards, at=at, engines=engines)
+    report.counts["analyses_new" if created else "analyses_same"] += 1
+
+
+def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, due: Due, options: list[Ranked],
+          builder: PacketBuilder, *, at: datetime, ledger: UsageLedger, search: SearchFn | None,
+          provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None, allow: Allowance,
+          l3: set[tuple[int, str, str, Decimal]], web: bool, llm_ready: bool, health: dict[str, bool]) -> None:
+    """One pass of one match of the day: web (when chosen), packet, L1 brief, L2/L3 reviews, cards, the pass row.
+    A pass the provider failed (down, timing out) is not recorded: the next cycle tries it again."""
+    fid, kind = due.fixture.fixture_id, due.pass_kind
+    started = now()
+    counts: dict[str, int] = defaultdict(int)
+    cost = Decimal(0)
+    report.counts[f"pass_{kind}"] += 1
+    llm_ready = llm_ready and not health["llm_down"]
+    transient = False
+
+    # the web (first and pre passes; the most important matches; only a stale cached answer is asked again)
+    if web and kind in ("first", "pre", "request") and budget_of(conn, at=at, settings=settings).pass_allows(kind):
+        got = collect_web(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider,
+                          transport=transport)
+        counts["web_searches"] += got.searches
+        counts["web_items"] += got.extracted
+        counts["web_new"] += got.created
+        cost += Decimal(str(got.cost_usd))
+        report.counts["web_searches"] += got.searches
+        report.counts["web_items"] += got.extracted
+        if got.skipped:
+            report.counts[f"web_skipped_{got.skipped}"] += 1
+        conn.commit()
+
+    extra = [(x.leg.candidate.market_key, x.leg.candidate.selection, x.leg.candidate.line) for x in options]
+    packet = builder.build(fid, at=at, extra_keys=extra)
+    if packet is None:
+        return
+    packet_id = store_packet(conn, packet, built_at=at)
+    report.counts["packets"] += 1
+
+    # L1: the brief, on the cards as the last reviews leave them
+    known = latest_reviews(conn, [fid], at=at, window=CARRY_FOR)
+    preview = build_cards(packet, [value_option(x) for x in options],
+                          {(k[1], k[2], k[3]): v for k, v in known.items()})
+    brief: Brief = make_brief(conn, settings, packet, packet_id, cards=preview, candidates=len(options),
+                              pass_kind=kind, at=at, use_llm=llm_ready, ledger=ledger, transport=transport,
+                              provider=provider)
+    if brief.engine == "rules" and brief.error in TRANSIENT:
+        health["llm_down"], transient, llm_ready = True, True, False
+    counts["brief_reused" if brief.reused else f"brief_{brief.engine}"] += 1
+    report.counts["briefs_llm" if brief.engine == "llm" and not brief.reused else
+                  "briefs_reused" if brief.reused else "briefs_rules"] += 1
+    if brief.escalate:
+        report.counts["escalated"] += 1
+    cost += brief.cost
+    conn.commit()
+
+    # L2 / L3: the candidates' reviews, after a material change only
+    evidence_ids = {int(e["id"]) for e in packet.content.get("evidence", [])}
+    confirmed = bool(packet.content.get("lineups", {}).get("confirmed"))
+    last_llm = _last_llm(conn, fid)
+    material = {"contradiction", "important_news"} & set(brief.reasons)
+    best_key = max(options, key=lambda x: x.elg).leg.candidate.selection_key if options else None
+    reviews: dict[tuple[str, str, Decimal], Reviewed] = {}
+    for x in options:
+        cand = candidate_of(x, packet.content.get("models") or {})
+        key = (cand.market_key, cand.selection, cand.line)
+        sel_key = x.leg.candidate.selection_key
+        strong = sel_key in l3 or (bool(material) and sel_key == best_key)
+        tier: Tier = "final" if strong and allow.deep > 0 else "analysis"
+        last = last_llm.get(key)
+        b = budget_of(conn, at=at, settings=settings)
+        use_llm = (llm_ready and allow.llm > 0 and b.pass_allows(kind) and b.allows("bulk")
+                   and needs_llm(last, cand, evidence_ids=evidence_ids, lineups_confirmed=confirmed))
+        reviewed = review_candidate(conn, settings, cand, packet, packet_id, at=at, use_llm=use_llm, tier=tier,
+                                    ledger=ledger, transport=transport, provider=provider,
+                                    prior_llm=None if use_llm else _carried(last, at=at),
+                                    role="pick" if sel_key in l3 else "candidate")
+        if use_llm and reviewed.llm is not None and reviewed.llm.status == "ok" and tier == "analysis" \
+                and {reviewed.rules.decision, reviewed.llm.decision} == {"APPROVE", "REJECT"} and allow.deep > 0 \
+                and budget_of(conn, at=at, settings=settings).pass_allows(kind):
+            # the rules and the intermediate model contradict each other outright: the strong model decides
+            _count_llm(report, counts, reviewed, allow, "analysis")
+            cost += reviewed.llm.cost
+            conn.commit()
+            tier = "final"
+            reviewed = review_candidate(conn, settings, cand, packet, packet_id, at=at, use_llm=True, tier=tier,
+                                        ledger=ledger, transport=transport, provider=provider, role="contradiction")
+        reviews[key] = reviewed
+        report.counts["reviews"] += 1
+        report.counts[f"decision_{reviewed.decision.lower()}"] += 1
+        if reviewed.llm is not None:
+            _count_llm(report, counts, reviewed, allow, tier)
+            cost += reviewed.llm.cost
+            if reviewed.llm.status == "failed" and (reviewed.llm.error or "failed") in TRANSIENT:
+                health["llm_down"], transient, llm_ready = True, True, False
+        conn.commit()
+
+    # an escalated match without a candidate: one watch review of its nearest-to-value selection
+    if not options and brief.escalate and llm_ready and allow.watch > 0 and allow.llm > 0 and kind != "final":
+        b = budget_of(conn, at=at, settings=settings)
+        watch = watch_candidate(packet)
+        if watch is not None and b.pass_allows(kind):
+            key = (watch.market_key, watch.selection, watch.line)
+            if needs_llm(last_llm.get(key), watch, evidence_ids=evidence_ids, lineups_confirmed=confirmed):
+                reviewed = review_candidate(conn, settings, watch, packet, packet_id, at=at, use_llm=True,
+                                            tier="analysis", ledger=ledger, transport=transport, provider=provider,
+                                            role="watch")
+                reviews[key] = reviewed
+                if reviewed.llm is not None:
+                    allow.watch -= 1
+                    counts["watch"] += 1
+                    report.counts["watch_reviews"] += 1
+                    _count_llm(report, counts, reviewed, allow, "analysis")
+                    cost += reviewed.llm.cost
+                conn.commit()
+
+    cards = build_cards(packet, [value_option(x) for x in options], reviews)
+    engines = ["rules"] + (["llm"] if any(r.by_llm for r in reviews.values()) or brief.engine == "llm" else [])
+    _, created = store_analysis(conn, packet, packet_id, cards, at=at, engines=engines)
+    report.counts["analyses_new" if created else "analyses_same"] += 1
+    report.cost_usd += cost
+    if transient:
+        report.counts["passes_to_retry"] += 1
+        return
+    if kind == "request":
+        return
+    counts["reviews"] = len(reviews)
+    counts["candidates"] = len(options)
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute("INSERT INTO ai.fixture_passes (fixture_id, day, pass, started_at, finished_at, kickoff_at, status, "
+                    "escalated, reasons, brief_id, packet_id, counts, cost_usd) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (fixture_id, day, pass) DO NOTHING",
+                    (fid, local_day(at), kind, min(started, at), max(now(), at), due.fixture.kickoff_at, "ok",
+                     brief.escalate, brief.reasons, brief.id, packet_id, Jsonb(dict(counts)), cost))
+
+
+def _count_llm(report: CycleReport, counts: dict[str, int], reviewed: Reviewed, allow: Allowance, tier: str) -> None:
+    assert reviewed.llm is not None
+    if reviewed.llm.output.get("reused_from") is not None:
+        report.counts["llm_reused"] += 1
+        return
+    if reviewed.llm.status == "over_budget":
+        report.counts["llm_over_budget"] += 1
+        return
+    allow.llm -= 1
+    level = "l3" if (reviewed.llm.output.get("tier") or tier) == "final" else "l2"
+    if level == "l3":
+        allow.deep -= 1
+    counts[level] += 1
+    report.counts["llm_reviews"] += 1
+    report.counts[f"llm_{level}"] += 1
+    if reviewed.llm.status != "ok":
+        report.counts[f"llm_{reviewed.llm.status}"] += 1
+
+
+# ── learning: post-mortems, notes, patterns, dependence, the AI's shadow evaluation, tomorrow ──
 
 CORRELATION_EVERY = timedelta(days=7)
 CORRELATION_WINDOW = timedelta(days=730)
+
+PAID_TODAY_SQL = """
+SELECT count(*) FROM ai.usage WHERE purpose = %(purpose)s AND status = 'ok' AND at >= %(since)s
+"""
+
+
+def _paid_today(conn: psycopg.Connection[Any], purpose: str, *, at: datetime) -> bool:
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(PAID_TODAY_SQL, {"purpose": purpose, "since": day_start(local_day(at))})
+        row = cur.fetchone()
+    return bool(row and row[0])
 
 
 def run_learning_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings | None = None,
                        ledger: UsageLedger | None = None, provider: tuple[LlmProvider, str] | None = None,
                        transport: httpx.BaseTransport | None = None) -> CycleReport:
-    """Daily (worker job ``ai_learn``): what the finished matches taught, written down; patterns proposed as
-    hypotheses; the parlays' dependence re-measured weekly; the AI's own shadow report."""
+    """Daily (worker job ``ai_learn``, 07:35 Bogotá): what the finished matches taught, written down - the
+    post-mortems of every match (pm-v1) and of every studied selection (pm-v2), yesterday's notes and lessons
+    (QUÉ APRENDIÓ PREDIGOL HOY), the sources' day, patterns proposed as hypotheses (never applied), the parlays'
+    dependence re-measured weekly, the AI's own shadow report, the month's budget alerts - and tomorrow prepared
+    without any model or search."""
+    from fbi.ai.day import prepare_day
+    from fbi.ai.learning import learn_day, refresh_source_stats
     from fbi.ai.patterns import run_patterns
+    from fbi.ai.pick_postmortem import run_pick_postmortems
     from fbi.ai.postmortem import run_postmortems
     from fbi.ai.shadow import run_shadow
     from fbi.parlays import correlation
@@ -328,14 +638,33 @@ def run_learning_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings:
     report.cycle_id = open_cycle(conn, "learning", at=at, settings=settings)
     ledger = ledger or UsageLedger()
     steps = 0
+    today = local_day(at)
+    yesterday = today - timedelta(days=1)
     try:
         pm = run_postmortems(conn, at=at, settings=settings, ledger=ledger, provider=provider, transport=transport)
         report.counts.update({"postmortems": pm.fixtures, "memory_events": pm.memory_events,
                               "context_errors": pm.context_errors, "narratives": pm.narratives})
         report.errors += pm.errors[:5]
         steps += 1
-        pat = run_patterns(conn, at=at, settings=settings, ledger=ledger, use_llm=at.weekday() == 0,
-                           provider=provider, transport=transport)
+        pp = run_pick_postmortems(conn, at=at, settings=settings, ledger=ledger, provider=provider,
+                                  transport=transport)
+        report.counts.update({"pick_postmortems": pp.studied, "losses_studied": pp.losses, "wins_studied": pp.wins,
+                              "pick_narratives": pp.narratives, "pick_memory_events": pp.memory_events})
+        for cls, n in pp.by_class.items():
+            report.counts[f"class_{cls.lower()}"] = n
+        report.errors += pp.errors[:5]
+        steps += 1
+        for d in (yesterday, today):
+            report.counts["source_domains"] = refresh_source_stats(conn, day=d, at=at)
+        conn.commit()
+        lr = learn_day(conn, day=yesterday, at=at, settings=settings, ledger=ledger, provider=provider,
+                       transport=transport, use_llm=not _paid_today(conn, "learning", at=at))
+        report.counts.update({"learning_notes": lr.notes, "lessons": lr.lessons})
+        conn.commit()
+        steps += 1
+        pat = run_patterns(conn, at=at, settings=settings, ledger=ledger,
+                           use_llm=not _paid_today(conn, "pattern_review", at=at), provider=provider,
+                           transport=transport)
         report.counts.update({"patterns_found": len(pat.found), "hypotheses_proposed": len(pat.proposed),
                               "ai_hypotheses": len(pat.ai_proposed)})
         conn.commit()
@@ -354,6 +683,11 @@ def run_learning_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings:
             report.counts[f"shadow_{engine}_n"] = int(r["arms"]["model"].get("n") or 0)
         conn.commit()
         steps += 1
+        report.counts["budget_alerts"] = len(check_alerts(conn, at=at, settings=settings))
+        if prepare_day(conn, day=today + timedelta(days=1), at=at, settings=settings) is not None:
+            report.counts["tomorrow_prepared"] = 1
+        conn.commit()
+        steps += 1
     except Exception as exc:
         conn.rollback()
         report.status = "partial" if steps else "failed"
@@ -361,6 +695,13 @@ def run_learning_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings:
         log.error("ai.learning.failed", error=report.errors[-1])
     close_cycle(conn, report.cycle_id, report, at=at)
     return report
+
+
+def run_day_start(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings | None = None) -> CycleReport:
+    """00:05 Bogotá (worker job ``ai_day_start``): the day opened, the month's alerts, then the analysis cycle -
+    whose first passes are today's first reading."""
+    settings = settings or AiSettings.from_env()
+    return run_analysis_cycle(conn, at=at, settings=settings)
 
 
 def process_requests(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings | None = None) -> int:
@@ -380,8 +721,9 @@ def process_requests(conn: psycopg.Connection[Any], *, at: datetime, settings: A
         cycle_id: int | None = None
         try:
             if req["kind"] == "analysis":
+                one = req["fixture_id"] is not None
                 r = run_analysis_cycle(conn, at=at, settings=settings,
-                                       only_fixtures=None if req["fixture_id"] is None else [int(req["fixture_id"])])
+                                       only_fixtures=[int(req["fixture_id"])] if one else None, request=one)
                 cycle_id = r.cycle_id
                 status = "done" if r.status in ("ok", "partial") else "failed"
             elif req["kind"] in ("learning", "postmortem", "evaluation"):

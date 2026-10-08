@@ -201,6 +201,11 @@ class Validation:
     """combined odds x fair probability - 1: what the market's own view says the parlay is worth."""
     risk: str | None = None
     correlation: dict[str, Any] = field(default_factory=dict)
+    estimated_probability: Decimal | None = None
+    """Every leg wins by PrediGol's model (the market's where the model did not price a leg), adjusted for the
+    measured dependence of legs of the same competition and day - never a blind product of dependent legs."""
+    dependency: dict[str, Any] = field(default_factory=dict)
+    """low / medium / high and why: legs sharing a team, legs of the same competition and day, measured dependence."""
 
 
 def validate_parlay(conn: psycopg.Connection[Any], legs: list[LegIn], *, at: datetime) -> Validation:
@@ -285,13 +290,43 @@ def _measure(conn: psycopg.Connection[Any], v: Validation) -> None:
         day = product_day(datetime.fromisoformat(leg["kickoff_at"]))
         groups.setdefault((leg.get("competition_id"), day), []).append(int(leg["leg"]))
     clusters = [ids for (comp, _), ids in groups.items() if comp is not None and len(ids) >= 2]
+    pairs: list[tuple[int, int, float]] = []
+    significant = False
     for ids in clusters:
         markets = {correlation.market_of(v.legs[i - 1]["market_key"], v.legs[i - 1]["selection"]) for i in ids}
         measured = [estimates[m] for m in markets if m is not None and m in estimates]
+        is_significant = bool(measured and abs(measured[0].rho) > 1.96 * measured[0].se)
+        significant = significant or is_significant
         v.warnings.append({"code": "same_competition_day", "legs": ids,
-                           "rho": None if not measured else measured[0].rho,
-                           "significant": bool(measured and abs(measured[0].rho) > 1.96 * measured[0].se)})
+                           "rho": None if not measured else measured[0].rho, "significant": is_significant})
+        if measured:
+            rho = float(measured[0].rho)
+            pairs += [(a - 1, b - 1, rho) for n, a in enumerate(ids) for b in ids[n + 1:]]
     v.correlation = {"clusters": clusters, "independent": not clusters}
+    shared = [w for w in v.warnings if w.get("code") == "shared_team"]
+    reasons = []
+    if shared:
+        reasons.append("shared_team")
+    if significant:
+        reasons.append("measured_dependence")
+    if clusters:
+        reasons.append("same_competition_day")
+    level = "high" if shared or significant else "medium" if clusters else "low"
+    v.dependency = {"level": level, "reasons": reasons}
+    probs: list[float] = []
+    for leg in legs:
+        p = leg.get("p_model") or leg.get("p_fair")
+        if p is None:
+            probs = []
+            break
+        probs.append(float(p))
+    if probs:
+        from fbi.parlays.correlation import joint_probability
+
+        v.estimated_probability = Decimal(str(round(joint_probability(probs, pairs), 6)))
+        for leg, p in zip(legs, probs, strict=True):
+            leg["p_used"] = str(round(p, 6))
+            leg["fair_odds"] = str(round(1 / p, 3)) if p > 0 else None
     if v.fair_probability is not None and v.fair_probability < Decimal("0.02"):
         v.warnings.append({"code": "very_unlikely", "probability": str(v.fair_probability)})
     for leg in legs:

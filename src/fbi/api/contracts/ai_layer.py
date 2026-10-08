@@ -33,6 +33,11 @@ class CardAi(Contract):
     engines: list[str] = Field(default_factory=list)
 
 
+class CardNotes(Contract):
+    why: list[Claim] = Field(default_factory=list)
+    risks: list[Claim] = Field(default_factory=list)
+
+
 class AnalysisCard(Contract):
     market: str
     selection: str
@@ -53,6 +58,25 @@ class AnalysisCard(Contract):
     verdict: Verdict
     verdict_reason: str
     ai: CardAi | None
+    notes: CardNotes | None = Field(default=None, description="The brief's why / what could go wrong for this card "
+                                                              "(evaluation view, or enforced).")
+
+
+class BriefView(Contract):
+    id: int
+    created_at: datetime
+    pass_kind: str
+    engine: Literal["llm", "rules"]
+    model: str | None
+    status: str
+    escalate: bool
+    reasons: list[str]
+    uncertainty: str | None
+    data_quality: str | None
+    summary: str | None
+    context: list[Claim] = Field(default_factory=list)
+    injuries: list[dict[str, Any]] = Field(default_factory=list)
+    changes: list[Claim] = Field(default_factory=list)
 
 
 class MatchAnalysis(Contract):
@@ -67,6 +91,10 @@ class MatchAnalysis(Contract):
     cards: list[AnalysisCard]
     withheld: int = Field(description="Cards a user does not see: their pick is in evaluation (shadow).")
     missing: list[str] = Field(default_factory=list, description="Context blocks the packet could not fill.")
+    brief: BriefView | None = Field(default=None, description="The L1 brief of the match (evaluation view, or "
+                                                              "enforced): never a probability.")
+    updated_at: datetime | None = Field(default=None, description="The newest of the analysis and its brief.")
+    in_ai_day: bool = Field(default=False, description="A match of today with a market: the AI works on it.")
 
 
 class AiTier(Contract):
@@ -95,6 +123,12 @@ class AiOverview(Contract):
     last_cycles: list[CycleRow]
     today: dict[str, Any]
     shadow: list[dict[str, Any]]
+    projection: dict[str, Any] = Field(default_factory=dict)
+    alerts: list[dict[str, Any]] = Field(default_factory=list)
+    stack: list[dict[str, Any]] = Field(default_factory=list, description="The configured models per level and the "
+                                                                          "search API - from the configuration.")
+    efficiency: dict[str, Any] = Field(default_factory=dict)
+    day: dict[str, Any] | None = None
 
 
 class ReviewRow(Contract):
@@ -210,6 +244,130 @@ class RunQueued(Contract):
     requested_at: datetime
 
 
+class DayFixtureRow(Contract):
+    fixture_id: int
+    match: str
+    competition: str
+    kickoff_at: datetime
+    has_market: bool
+    odds_age_minutes: int | None
+    priority: float
+    important: bool
+    passes: list[dict[str, Any]]
+    brief: dict[str, Any] | None
+    selections: list[dict[str, Any]]
+    cost_usd: float
+
+
+class AiToday(Contract):
+    day: date
+    plan: dict[str, Any] | None
+    fixtures: list[DayFixtureRow]
+    without_market: int
+    totals: dict[str, Any]
+
+
+class ResearchRow(Contract):
+    fixture_id: int
+    match: str
+    kickoff_at: datetime
+    searches: list[dict[str, Any]]
+    evidence: list[dict[str, Any]]
+    cost_usd: float
+
+
+class PickPostmortemRow(Contract):
+    id: int
+    fixture_id: int
+    match: str
+    competition: str | None
+    kickoff_at: datetime
+    market_key: str
+    selection: str
+    line: Decimal
+    roles: list[str]
+    decision: str | None
+    settled: str
+    verdict: str
+    classification: str | None
+    odds: Decimal | None
+    close_odds: Decimal | None
+    clv: Decimal | None
+    p_model: Decimal | None
+    p_market: Decimal | None
+    answers: dict[str, Any]
+    narrative: str | None
+    created_at: datetime
+
+
+class LearningNote(Contract):
+    id: int
+    day: date
+    created_at: datetime
+    kind: str
+    title: str
+    body: str
+    n: int
+    evidence: dict[str, Any]
+    engine: str
+
+
+class Proposal(Contract):
+    id: int
+    created_at: datetime
+    title: str
+    hypothesis: str
+    rationale: str | None
+    target: str
+    status: str
+    proposed_by: str
+    n_matches: int | None
+    impact: str | None
+    investigation_cost: str | None
+    evidence: dict[str, Any]
+
+
+class AiLearning(Contract):
+    day: date
+    notes: list[LearningNote]
+    proposals: list[Proposal]
+
+
+class SourceRow(Contract):
+    domain: str
+    tier: str
+    results: int
+    evidence: int
+    useful: int
+    discarded: int
+    cost_usd: float
+    utility: float | None
+
+
+class ComparisonRow(Contract):
+    arm: Literal["model", "model_rules", "model_ai", "market"]
+    label: str
+    n: int
+    logloss: float | None
+    brier: float | None
+    ece: float | None
+    roi: float | None
+    clv: float | None
+    ev_claimed: float | None
+    ev_market: float | None
+    hit_rate: float | None
+    max_drawdown: float | None
+
+
+class AiComparison(Contract):
+    rows: list[ComparisonRow]
+    window_from: date | None
+    window_to: date | None
+    verdict: str | None
+    sample: dict[str, Any]
+    shadow: bool = True
+
+
 class EvolutionDashboard(Contract):
     day: date
     counts: dict[str, Any]
@@ -217,3 +375,5 @@ class EvolutionDashboard(Contract):
     errors: list[dict[str, Any]]
     shadow: list[dict[str, Any]]
     cost_usd: Decimal
+    learned: list[LearningNote] = Field(default_factory=list, description="QUÉ APRENDIÓ PREDIGOL HOY.")
+    proposals: list[Proposal] = Field(default_factory=list, description="MEJORAS PROPUESTAS awaiting the owner.")

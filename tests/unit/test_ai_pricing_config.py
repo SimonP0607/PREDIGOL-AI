@@ -65,7 +65,20 @@ def test_without_configuration_the_layer_is_in_shadow_and_calls_no_model(clean_e
     s = AiSettings.from_env()
     assert s.mode == "shadow" and not s.llm_configured and s.search is None
     assert s.missing() == ["FBI_AI_MODEL_ANALYSIS", "FBI_AI_MODEL_BULK", "FBI_AI_MODEL_FINAL"]
-    assert (s.daily_budget, s.monthly_budget) == (Decimal("1.00"), Decimal("20"))
+    # the soft daily target defaults to the month over thirty days
+    assert (s.daily_budget, s.monthly_budget) == (Decimal("0.67"), Decimal("20"))
+    assert (s.daily_max_factor, s.max_web_first, s.max_web_pre, s.max_watch_per_day) == (Decimal(2), 20, 12, 8)
+
+
+def test_the_owners_budget_and_the_daily_target(clean_env: pytest.MonkeyPatch) -> None:
+    clean_env.setenv("FBI_AI_MONTHLY_BUDGET_USD", "150")
+    s = AiSettings.from_env()
+    assert (s.monthly_budget, s.daily_budget) == (Decimal("150"), Decimal("5.00"))
+    clean_env.setenv("FBI_AI_DAILY_BUDGET_USD", "3.50")  # the older name still counts...
+    assert AiSettings.from_env().daily_budget == Decimal("3.50")
+    clean_env.setenv("FBI_AI_DAILY_TARGET_USD", "5")  # ...but the new one wins
+    assert AiSettings.from_env().daily_budget == Decimal("5")
+    assert AiSettings.from_env().public()["daily_target_usd"] == "5"
 
 
 def test_the_earlier_analyst_model_never_switches_the_decision_layer_on(clean_env: pytest.MonkeyPatch) -> None:
@@ -97,7 +110,7 @@ def test_bad_numbers_fall_back_to_the_defaults_and_an_unknown_mode_to_shadow(cle
     clean_env.setenv("FBI_AI_MAX_LLM_REVIEWS_PER_DAY", "-5")
     clean_env.setenv("FBI_AI_MODE", "yolo")
     s = AiSettings.from_env()
-    assert s.daily_budget == Decimal("1.00") and s.max_llm_reviews_per_day == 0 and s.mode == "shadow"
+    assert s.daily_budget == Decimal("0.67") and s.max_llm_reviews_per_day == 0 and s.mode == "shadow"
 
 
 def test_the_simulation_prices_a_day_and_the_worst_case_takes_every_cap() -> None:

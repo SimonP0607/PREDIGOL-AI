@@ -18,21 +18,27 @@ import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.ai_layer import (
+    AiComparison,
+    AiLearning,
     AiOverview,
+    AiToday,
     EvidenceRow,
     MatchAnalysis,
     MemoryEvent,
     PacketView,
+    PickPostmortemRow,
+    ResearchRow,
     ReviewDetail,
     ReviewRow,
     RunIn,
     RunQueued,
+    SourceRow,
 )
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.security import Admin, App
-from fbi.api.services import ai_layer
+from fbi.api.services import ai_layer, ai_v2
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
 
@@ -45,7 +51,12 @@ DecisionQ = Literal["APPROVE", "DOWNGRADE", "REJECT", "ABSTAIN"]
 EvidenceStatus = Literal["CONFIRMED", "PROBABLE", "RUMOR", "CONTRADICTORY", "OUTDATED"]
 MemoryKind = Literal["match_result", "pick_result", "context_error", "news_signal", "injury_signal", "market_signal",
                      "model_failure", "model_success", "league_pattern", "team_pattern", "player_pattern",
-                     "review_quality"]
+                     "review_quality", "pick_postmortem"]
+Verdict = Literal["approved_won", "approved_lost", "caution_won", "caution_lost", "rejected_would_have_won",
+                  "rejected_correctly", "unreviewed_won", "unreviewed_lost", "push"]
+LossClass = Literal["MODEL_ERROR", "CONTEXT_ERROR", "DATA_ERROR", "MARKET_ERROR", "EXECUTION_ERROR", "NORMAL_VARIANCE",
+                    "UNKNOWN"]
+Day = Annotated[date | None, Query(description="A Bogotá day (default: today, or yesterday for what was learned).")]
 Preview = Annotated[Literal["shadow"] | None, Query(
     description="SUPER_ADMIN only: every card, the evaluation ones included. Never a user's view.")]
 
@@ -121,6 +132,48 @@ def get_shadow(conn: Db) -> Envelope[list[dict[str, Any]]]:
 def get_memory(conn: Db, kind: MemoryKind | None = None,
                limit: Annotated[int, Query(ge=1, le=500)] = 200) -> Envelope[list[MemoryEvent]]:
     return ai_layer.memory(conn, kind=kind, limit=limit)
+
+
+@admin_router.get("/ai/today", response_model=Envelope[AiToday])
+def get_today(conn: Db, day: Day = None) -> Envelope[AiToday]:
+    """HOY: today's matches with a market (Bogotá), each with its passes (first, pre, final), its L1 brief, its
+    candidates and their decisions, and what it cost; the day's plan and budget."""
+    return ai_v2.today_view(conn, day=day)
+
+
+@admin_router.get("/ai/research", response_model=Envelope[list[ResearchRow]])
+def get_research(conn: Db, day: Day = None) -> Envelope[list[ResearchRow]]:
+    """INVESTIGACIONES: per match, the searches (when, cost, outcome) and the evidence with its source, link, dates,
+    level, status, first and last seen."""
+    return ai_v2.research(conn, day=day)
+
+
+@admin_router.get("/ai/postmortems", response_model=Envelope[list[PickPostmortemRow]])
+def get_postmortems(conn: Db, day: Day = None, verdict: Verdict | None = None,
+                    classification: LossClass | None = None,
+                    limit: Annotated[int, Query(ge=1, le=500)] = 200) -> Envelope[list[PickPostmortemRow]]:
+    """POST-MORTEMS of a day's selections (default yesterday): the ten questions, the class of a loss, the
+    narrative."""
+    return ai_v2.postmortems(conn, day=day, verdict=verdict, classification=classification, limit=limit)
+
+
+@admin_router.get("/ai/learning", response_model=Envelope[AiLearning])
+def get_learning(conn: Db, day: Day = None) -> Envelope[AiLearning]:
+    """APRENDIZAJE: what a day's results taught (default yesterday's, learned this morning) and the improvements
+    proposed, awaiting the owner. Nothing here changes a model or a rule."""
+    return ai_v2.learning(conn, day=day)
+
+
+@admin_router.get("/ai/sources", response_model=Envelope[list[SourceRow]])
+def get_sources(conn: Db, days: Annotated[int, Query(ge=1, le=60)] = 7) -> Envelope[list[SourceRow]]:
+    """FUENTES: per domain - how often it came up, useful and discarded evidence, cost, utility rate."""
+    return ai_v2.sources(conn, days=days)
+
+
+@admin_router.get("/ai/comparison", response_model=Envelope[AiComparison])
+def get_comparison(conn: Db) -> Envelope[AiComparison]:
+    """MODELO SOLO / MODELO + REGLAS / MODELO + IA / MERCADO on the same settled selections (shadow)."""
+    return ai_v2.comparison(conn)
 
 
 @admin_router.get("/ai/run-requests", response_model=Envelope[list[dict[str, Any]]])

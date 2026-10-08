@@ -11,13 +11,22 @@ from a request, never sent to a client.
     FBI_AI_KEY_<PROVIDER>       the provider's API key (ANTHROPIC, OPENAI, GEMINI, MISTRAL, DEEPSEEK, TOGETHER,
                                 GROQ, DEEPINFRA); FBI_ANALYST_API_KEY still counts for Anthropic
     FBI_AI_BASE_URL_<PROVIDER>  another endpoint for that provider (a proxy, a regional endpoint)
-    FBI_AI_DAILY_BUDGET_USD     default 1.00 - the day's spend cap
-    FBI_AI_MONTHLY_BUDGET_USD   default FBI_ANALYST_MONTHLY_BUDGET_USD or 20 - one cap for the whole AI layer
-    FBI_AI_MAX_LLM_REVIEWS_PER_DAY  default 60
+    FBI_AI_MONTHLY_BUDGET_USD   default FBI_ANALYST_MONTHLY_BUDGET_USD or 20 - the month's HARD cap for the whole
+                                AI layer (the owner's machine: 150)
+    FBI_AI_DAILY_TARGET_USD     the day's SOFT target (FBI_AI_DAILY_BUDGET_USD is the older name); default the
+                                monthly budget / 30. The day's real budget adapts to it (``fbi.ai.usage``): the pace
+                                left in the month times the day's load, at most FBI_AI_DAILY_MAX_FACTOR times it
+    FBI_AI_DAILY_MAX_FACTOR     default 2 - how much an important day may spend over the target
+    FBI_AI_MAX_LLM_REVIEWS_PER_DAY  default 60 (a safety cap: the budget decides first)
     FBI_AI_MAX_DEEP_PER_DAY     default 10 (final-tier reviews)
+    FBI_AI_MAX_WEB_FIRST        default 20 - matches searched on the web in the first pass of the day
+    FBI_AI_MAX_WEB_PRE          default 12 - matches searched again before kick-off (only escalated ones)
+    FBI_AI_MAX_WATCH_PER_DAY    default 8 - intermediate reviews of escalated matches without a candidate
     FBI_AI_MULTIMODAL           off (default) | on - images only for selected matches, each one logged
-    FBI_AI_HORIZON_HOURS        default 96 - how far ahead matches are analysed
+    FBI_AI_HORIZON_HOURS        default 96 - how far ahead the free part (packets, rules, analyses) looks
     FBI_AI_SEARCH               exa | brave | tavily | none (default exa when EXA_API_KEY is set, else none)
+
+A model or a search is used only for TODAY's matches (America/Bogota) that have a market (``fbi.ai.day``).
 
 No tier configured = the layer runs its deterministic reviewer only and says so (``status()``). A tier is
 switched on only by its own FBI_AI_MODEL_* variable: the earlier analyst's FBI_ANALYST_MODEL never turns the
@@ -92,9 +101,14 @@ class AiSettings:
     keys: dict[str, str] = field(default_factory=dict, repr=False)
     base_urls: dict[str, str] = field(default_factory=dict)
     daily_budget: Decimal = Decimal("1.00")
+    """The day's soft target (the adaptive budget is built around it, ``fbi.ai.usage.budget``)."""
     monthly_budget: Decimal = Decimal("20")
     max_llm_reviews_per_day: int = 60
     max_deep_per_day: int = 10
+    daily_max_factor: Decimal = Decimal("2")
+    max_web_first: int = 20
+    max_web_pre: int = 12
+    max_watch_per_day: int = 8
     multimodal: bool = False
     horizon_hours: int = 96
     search: str | None = None
@@ -117,12 +131,19 @@ class AiSettings:
         if not search_raw:
             search_raw = "exa" if env.get("EXA_API_KEY") else "none"
         monthly_default = env.get("FBI_ANALYST_MONTHLY_BUDGET_USD") or "20"
+        monthly = _decimal("FBI_AI_MONTHLY_BUDGET_USD", monthly_default, env)
+        target_name = "FBI_AI_DAILY_TARGET_USD" if env.get("FBI_AI_DAILY_TARGET_USD") else "FBI_AI_DAILY_BUDGET_USD"
+        target_default = str((monthly / 30).quantize(Decimal("0.01")))
         return cls(
             mode=mode, tiers=tiers, keys=keys, base_urls=base_urls,
-            daily_budget=_decimal("FBI_AI_DAILY_BUDGET_USD", "1.00", env),
-            monthly_budget=_decimal("FBI_AI_MONTHLY_BUDGET_USD", monthly_default, env),
+            daily_budget=_decimal(target_name, target_default, env),
+            monthly_budget=monthly,
             max_llm_reviews_per_day=_int("FBI_AI_MAX_LLM_REVIEWS_PER_DAY", 60, env),
             max_deep_per_day=_int("FBI_AI_MAX_DEEP_PER_DAY", 10, env),
+            daily_max_factor=max(Decimal(1), _decimal("FBI_AI_DAILY_MAX_FACTOR", "2", env)),
+            max_web_first=_int("FBI_AI_MAX_WEB_FIRST", 20, env),
+            max_web_pre=_int("FBI_AI_MAX_WEB_PRE", 12, env),
+            max_watch_per_day=_int("FBI_AI_MAX_WATCH_PER_DAY", 8, env),
             multimodal=(env.get("FBI_AI_MULTIMODAL") or "").strip().lower() in ("1", "on", "true", "yes"),
             horizon_hours=max(1, _int("FBI_AI_HORIZON_HOURS", 96, env)),
             search=None if search_raw in ("", "none", "off") else search_raw,
@@ -158,9 +179,14 @@ class AiSettings:
                       for t in TIERS},
             "missing": self.missing(),
             "daily_budget_usd": str(self.daily_budget),
+            "daily_target_usd": str(self.daily_budget),
+            "daily_max_factor": str(self.daily_max_factor),
             "monthly_budget_usd": str(self.monthly_budget),
             "max_llm_reviews_per_day": self.max_llm_reviews_per_day,
             "max_deep_per_day": self.max_deep_per_day,
+            "max_web_first": self.max_web_first,
+            "max_web_pre": self.max_web_pre,
+            "max_watch_per_day": self.max_watch_per_day,
             "multimodal": self.multimodal,
             "horizon_hours": self.horizon_hours,
             "search": self.search,

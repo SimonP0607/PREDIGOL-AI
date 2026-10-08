@@ -42,6 +42,7 @@ AVAILABILITY = frozenset({"injury", "suspension", "doubtful", "lineup"})
 STALE_AFTER = timedelta(days=10)
 """A report about who plays, published this long before the match, is too old to stand on its own."""
 CHECK_MARGIN = timedelta(hours=2)
+SEEN_EVERY = timedelta(hours=1)
 
 LEAGUES = frozenset({"premierleague.com", "efl.com", "laliga.com", "legaseriea.it", "bundesliga.com", "ligue1.com",
                      "dimayor.com.co", "ligamx.net", "mlssoccer.com", "ligaportugal.pt", "eredivisie.nl", "spfl.co.uk",
@@ -54,6 +55,28 @@ AGGREGATORS = frozenset({"transfermarkt.com", "transfermarkt.es", "sofascore.com
                          "rotowire.com", "fbref.com"})
 SOCIAL = frozenset({"twitter.com", "x.com", "instagram.com", "facebook.com", "tiktok.com", "youtube.com", "threads.net",
                     "reddit.com", "t.me"})
+MEDIA = frozenset({
+    # Spanish-speaking (Colombia first: the owner's market), Spain, Mexico, Argentina, Chile, Peru, Ecuador, Uruguay
+    "eltiempo.com", "elespectador.com", "semana.com", "futbolred.com", "antena2.com", "golcaracol.com",
+    "noticiascaracol.com", "caracol.com.co", "rcnradio.com", "winsports.co", "bluradio.com", "pulzo.com", "as.com",
+    "marca.com", "mundodeportivo.com", "sport.es", "relevo.com", "elpais.com", "elmundo.es", "abc.es",
+    "estadiodeportivo.com", "eldesmarque.com", "record.com.mx", "mediotiempo.com", "espn.com.mx", "espn.com.co",
+    "espn.com.ar", "tycsports.com", "ole.com.ar", "lanacion.com.ar", "clarin.com", "infobae.com", "latercera.com",
+    "emol.com", "redgol.cl", "depor.com", "libero.pe", "elcomercio.pe", "eluniverso.com", "elcomercio.com",
+    "ovacion.com.uy", "tenfield.com.uy",
+    # Portuguese
+    "ge.globo.com", "globoesporte.globo.com", "lance.com.br", "uol.com.br", "espn.com.br", "terra.com.br",
+    "abola.pt", "record.pt", "ojogo.pt", "maisfutebol.iol.pt",
+    # English and the rest of Europe
+    "bbc.co.uk", "bbc.com", "skysports.com", "theguardian.com", "telegraph.co.uk", "independent.co.uk",
+    "theathletic.com", "nytimes.com", "espn.com", "espn.co.uk", "goal.com", "football.london", "manchestereveningnews.co.uk",
+    "liverpoolecho.co.uk", "standard.co.uk", "mirror.co.uk", "dailymail.co.uk", "thesun.co.uk", "talksport.com",
+    "90min.com", "reuters.com", "apnews.com", "kicker.de", "sport1.de", "bild.de", "transfermarkt.de",
+    "gazzetta.it", "corrieredellosport.it", "tuttosport.com", "football-italia.net", "lequipe.fr", "footmercato.net",
+    "rmcsport.bfmtv.com", "voetbalinternational.nl", "nos.nl", "fanatik.com.tr", "fotomac.com.tr",
+    "mlssoccer.com", "cbssports.com", "foxsports.com", "si.com", "theathletic.co.uk",
+})
+JOURNALISTS = frozenset({"fabrizioromano.com"})
 
 
 def seed_rows() -> list[tuple[str, str]]:
@@ -61,7 +84,8 @@ def seed_rows() -> list[tuple[str, str]]:
     rows += [(d, "official") for d in sorted(FEDERATIONS)]
     rows += [(d, "competition") for d in sorted(LEAGUES)]
     rows += [(d, "club") for d in sorted(OFFICIAL_DOMAINS - LEAGUES - FEDERATIONS)]
-    rows += [(d, "media") for d in sorted(REPUTABLE_DOMAINS)]
+    rows += [(d, "journalist") for d in sorted(JOURNALISTS)]
+    rows += [(d, "media") for d in sorted((REPUTABLE_DOMAINS | MEDIA) - LEAGUES - FEDERATIONS - OFFICIAL_DOMAINS)]
     rows += [(d, "aggregator") for d in sorted(AGGREGATORS)]
     rows += [(d, "social") for d in sorted(SOCIAL)]
     return rows
@@ -161,7 +185,10 @@ def store(conn: psycopg.Connection[Any], item: EvidenceIn, *, at: datetime) -> t
         cur.execute("SELECT id FROM ai.evidence WHERE story_key = %s AND content_hash = %s",
                     (item.story_key, item.content_hash()))
         found = cur.fetchone()
-    assert found is not None
+        assert found is not None
+        # seen again: counted, never stored twice (at most once an hour, so a re-read report is not a write storm)
+        cur.execute("UPDATE ai.evidence SET last_seen_at = %s, seen_count = seen_count + 1 WHERE id = %s "
+                    "AND (last_seen_at IS NULL OR last_seen_at < %s)", (at, found[0], at - SEEN_EVERY))
     return int(found[0]), False
 
 

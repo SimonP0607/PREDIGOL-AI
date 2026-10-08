@@ -206,7 +206,8 @@ def analyse(conn: psycopg.Connection[Any], fixture_id: int) -> tuple[dict[str, A
         verdict = ("wrong" if started and assertion == "out" else
                    "right" if not started and assertion == "out" else
                    "started" if started else "did_not_start")
-        findings["evidence"].append({"evidence_id": int(e["id"]), "tier": e["source_tier"], "origin": e["origin"],
+        findings["evidence"].append({"evidence_id": int(e["id"]), "side": side, "tier": e["source_tier"],
+                                     "origin": e["origin"],
                                      "kind": e["kind"], "status": e["status"], "assertion": assertion, "verdict": verdict,
                                      "claim": e["claim"][:160]})
     reported = {(side_of_team.get(e["team_id"]), e["provider_player_id"]) for e in

@@ -35,7 +35,7 @@ WEB_BASE = os.environ.get("FBI_WEB_BASE_URL", "http://localhost:5173")
 # run-watchdog kinds were drafted from 5 Oct 2026 05:45 UTC without it: the database refused them, and the refusal
 # rolled back every other message of the run, every run, until 6 Oct 01:35 UTC - logged only as notify.failed.
 KINDS = ("shadow_pick", "pick_settled", "first_capture", "capture_failed", "worker_down", "run_recovered",
-         "job_failing")
+         "job_failing", "ai_budget")
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,6 +163,19 @@ def collect(conn: psycopg.Connection, *, at: datetime) -> list[Draft]:
                                 f"{r['job_type']}: the last 3 runs failed",
                                 f"Last at {r['last_at']:%d %b %H:%M} UTC: {(r['last_error'] or '')[:300]}",
                                 {"job_type": r["job_type"]}))
+        cur.execute("SELECT to_regclass('ai.budget_alerts') IS NOT NULL AS present")
+        present = cur.fetchone()
+        if present and present["present"]:
+            cur.execute("SELECT month, threshold, spent_usd, budget_usd, created_at FROM ai.budget_alerts "
+                        "WHERE created_at > %s - interval '40 days'", (at,))
+            for r in cur.fetchall():
+                drafts.append(Draft(
+                    "ai_budget", f"ai_budget:{r['month']:%Y-%m}:{r['threshold']}",
+                    f"Presupuesto de IA: {r['threshold']} % del mes",
+                    f"Gastado US${r['spent_usd']:.2f} de US${r['budget_usd']:.2f} en {r['month']:%Y-%m}. "
+                    + ("La IA se detiene hasta el próximo mes; las reglas siguen." if r["threshold"] >= 100 else
+                       "El presupuesto diario se adapta para no pasar el tope del mes."),
+                    {"threshold": int(r["threshold"])}))
         cur.execute("SELECT worker_id, last_beat_at, tick_interval_s FROM raw.worker_heartbeats "
                     "ORDER BY last_beat_at DESC LIMIT 1")
         hb = cur.fetchone()

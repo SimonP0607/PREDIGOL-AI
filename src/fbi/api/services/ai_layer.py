@@ -23,6 +23,9 @@ from fbi.analyst.db import write_connection
 from fbi.api.contracts.ai_layer import (
     AiOverview,
     AnalysisCard,
+    BriefView,
+    CardNotes,
+    Claim,
     CycleRow,
     EvidenceRow,
     EvolutionDashboard,
@@ -38,6 +41,7 @@ from fbi.api.contracts.ai_layer import (
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, unavailable
 from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
+from fbi.api.services import ai_v2
 from fbi.core.clock import now
 from fbi.picks.daily import DAY_TZ
 
@@ -48,6 +52,28 @@ SELECT a.id, a.fixture_id, a.built_at, a.market_observed, a.cards, a.summary, a.
 """
 
 
+BRIEF_SQL = """
+SELECT b.id, b.created_at, b.pass, b.engine, b.model, b.status, b.escalate, b.reasons, b.uncertainty, b.data_quality,
+       b.content
+  FROM ai.match_briefs b WHERE b.fixture_id = %(fixture)s ORDER BY b.created_at DESC, b.id DESC LIMIT 1
+"""
+
+IN_DAY_SQL = """
+SELECT EXISTS (SELECT 1 FROM ai.fixture_passes WHERE fixture_id = %(fixture)s AND day = %(day)s) AS in_day
+"""
+
+
+def _notes_for(card: AnalysisCard, notes: list[dict[str, Any]]) -> CardNotes | None:
+    from fbi.ai.brief import line_text
+
+    key = (card.market, card.selection, line_text(card.line))
+    for n in notes:
+        if (n.get("market"), n.get("selection"), str(n.get("line"))) == key:
+            return CardNotes(why=[Claim.model_validate(c) for c in n.get("why", [])],
+                             risks=[Claim.model_validate(c) for c in n.get("risks", [])])
+    return None
+
+
 def match_analysis(conn: Conn, fixture_id: int, *, evaluation: bool) -> Envelope[MatchAnalysis | None]:
     settings = AiSettings.from_env()
     row = fetch_one(conn, ANALYSIS_SQL, {"fixture": fixture_id})
@@ -56,15 +82,35 @@ def match_analysis(conn: Conn, fixture_id: int, *, evaluation: bool) -> Envelope
     enf = enforcement(conn, settings)
     cards = [AnalysisCard.model_validate(c) for c in (row["cards"] or [])]
     shown = cards if evaluation else [c for c in cards if c.kind == "no_market" or c.qualified]
+    brief_row = fetch_one(conn, BRIEF_SQL, {"fixture": fixture_id})
+    ai_visible = evaluation or enf.enforced
     if not evaluation and not enf.enforced:
         # Shadow: a user sees nothing the AI decided - the value gate's own verdict, never a review's.
         shown = [c.model_copy(update={"ai": None, "verdict": "recommended", "verdict_reason": "value"})
                  if c.kind == "value" else c.model_copy(update={"ai": None}) for c in shown]
+    brief: BriefView | None = None
+    if brief_row is not None and ai_visible:
+        content = brief_row["content"] or {}
+        notes = list(content.get("cards") or [])
+        shown = [c.model_copy(update={"notes": _notes_for(c, notes)}) for c in shown]
+        brief = BriefView(id=brief_row["id"], created_at=brief_row["created_at"], pass_kind=brief_row["pass"],
+                          engine=brief_row["engine"], model=brief_row["model"], status=brief_row["status"],
+                          escalate=bool(brief_row["escalate"]), reasons=list(brief_row["reasons"] or []),
+                          uncertainty=brief_row["uncertainty"], data_quality=brief_row["data_quality"],
+                          summary=content.get("summary"),
+                          context=[Claim.model_validate(c) for c in content.get("context", [])],
+                          injuries=list(content.get("injuries") or []),
+                          changes=[Claim.model_validate(c) for c in content.get("changes", [])])
+    updated = row["built_at"]
+    if brief is not None and brief.created_at > updated:
+        updated = brief.created_at
+    in_day = fetch_one(conn, IN_DAY_SQL, {"fixture": fixture_id, "day": now().astimezone(DAY_TZ).date()}) or {}
     return ok(MatchAnalysis(
         fixture_id=fixture_id, built_at=row["built_at"], audience="evaluation" if evaluation else "user",
         mode=settings.mode, enforced=enf.enforced, market_observed=bool(row["market_observed"]),
         engines=list(row["engines"] or []), analyzed_by_llm="llm" in (row["engines"] or []), cards=shown,
-        withheld=len(cards) - len(shown), missing=list((row["summary"] or {}).get("missing") or [])))
+        withheld=len(cards) - len(shown), missing=list((row["summary"] or {}).get("missing") or []), brief=brief,
+        updated_at=updated, in_ai_day=bool(in_day.get("in_day"))))
 
 
 # ── Admin Console ────────────────────────────────────────────────────────────
@@ -90,13 +136,14 @@ def overview(conn: Conn, *, at: datetime | None = None) -> Envelope[AiOverview]:
     day = datetime.combine(at.astimezone(DAY_TZ).date(), time(0), tzinfo=DAY_TZ)
     enf = enforcement(conn, settings)
     today = fetch_one(conn, TODAY_SQL, {"since": day}) or {}
+    extra = ai_v2.overview_extra(conn, at=at, settings=settings)
     return ok(AiOverview(
         settings=settings.public(), budget=budget(conn, at=at, settings=settings).as_json(),
         enforcement={"enforced": enf.enforced, "reason": enf.reason,
                      "gate_verdict": (enf.gate or {}).get("verdict")},
         last_cycles=[CycleRow.model_validate(r) for r in fetch_all(conn, CYCLES_SQL)],
         today={k: int(v or 0) for k, v in today.items()},
-        shadow=[_shadow_row(r) for r in ai_shadow.latest(conn)]))
+        shadow=[_shadow_row(r) for r in ai_shadow.latest(conn)], **extra))
 
 
 def _shadow_row(r: dict[str, Any]) -> dict[str, Any]:
@@ -341,6 +388,8 @@ def dashboard(conn: Conn, *, day: date | None = None) -> Envelope[EvolutionDashb
     until = since + timedelta(days=1)
     counts = fetch_one(conn, DASHBOARD_SQL, {"since": since, "until": until}) or {}
     cost = Decimal(counts.pop("cost_usd", 0) or 0)
+    v2 = ai_v2.day_counts(conn, day=d)
+    v2.pop("cost", None)
     errors = []
     for r in fetch_all(conn, ERRORS_SQL, {"since": since, "until": until}):
         s = r["selection"] or {}
@@ -350,6 +399,7 @@ def dashboard(conn: Conn, *, day: date | None = None) -> Envelope[EvolutionDashb
                        "settled": s.get("settled"), "p_model": s.get("p_model"), "p_market": s.get("p_market"),
                        "signals": s.get("signals") or [], "narrative": r["narrative"]})
     return ok(EvolutionDashboard(
-        day=d, counts={k: int(v or 0) for k, v in counts.items()},
+        day=d, counts={k: int(v or 0) for k, v in counts.items()} | v2,
         findings=[MemoryEvent.model_validate(r) for r in fetch_all(conn, FINDINGS_SQL, {"since": since, "until": until})],
-        errors=errors, shadow=[_shadow_row(r) for r in ai_shadow.latest(conn)], cost_usd=cost))
+        errors=errors, shadow=[_shadow_row(r) for r in ai_shadow.latest(conn)], cost_usd=cost,
+        learned=ai_v2.notes_learned_on(conn, d), proposals=ai_v2.proposals(conn)))

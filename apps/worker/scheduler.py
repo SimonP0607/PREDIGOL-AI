@@ -22,10 +22,12 @@ at worst, and a duplicated tick costs nothing at all.
   * ``ai_daily_report`` / ``ai_pick_review``  the AI layer (``fbi.analyst``): the research
     report from 06:00 Bogotá and the pick reviewer's flags every hour. Zero API-Football
     requests; the LLM and search APIs only when the owner configured them, inside a monthly cap.
-  * ``ai_cycle`` (every 30 min) / ``ai_learn`` (07:35 Bogotá) / ``ai_requests`` (every 2 min)  the AI
-    decision layer (``fbi.ai``): match packets, evidence, reviews and analyses; post-mortems, memory,
-    patterns, the parlays' measured dependence and the AI's own shadow report; the owner's "run now".
-    Zero API-Football requests; a language model and a search API only when configured, inside the caps.
+  * ``ai_cycle`` (every 15 min) / ``ai_day_start`` (00:05 Bogotá) / ``ai_learn`` (07:35 Bogotá) /
+    ``ai_requests`` (every 2 min)  the AI decision layer (``fbi.ai``): packets, evidence, reviews and analyses
+    for free over four days; models and the web only for TODAY's matches with a market, at their three passes
+    (from 00:05, 6-4 h before, after the line-ups); post-mortems, yesterday's notes, patterns as hypotheses, the
+    parlays' measured dependence, the AI's own shadow report and tomorrow prepared; the owner's "run now".
+    Zero API-Football requests; a language model and a search API only when configured, inside the budget.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -188,7 +190,7 @@ down at six writes it when it comes back. Database, plus the LLM and search APIs
 configured them; zero API-Football requests."""
 AI_CHECK_MINUTES = int(os.environ.get("FBI_AI_CHECK_MINUTES", "15"))
 AI_REVIEW_MINUTES = int(os.environ.get("FBI_AI_REVIEW_MINUTES", "60"))
-AI_CYCLE_MINUTES = int(os.environ.get("FBI_AI_CYCLE_MINUTES", "30"))
+AI_CYCLE_MINUTES = int(os.environ.get("FBI_AI_CYCLE_MINUTES", "15"))
 """The AI decision layer's analysis cycle (``fbi.ai.cycle``): packets, evidence, reviews and the per-match
 analyses of the next days. Database only unless a model or a search API is configured."""
 AI_LEARN_HOUR = int(os.environ.get("FBI_AI_LEARN_HOUR", "7"))
@@ -653,7 +655,9 @@ def _ai_cycle_now() -> None:
             r = run_analysis_cycle(conn, at=now())
         log.info("ai.cycle", status=r.status, cost_usd=str(r.cost_usd), **{k: v for k, v in dict(r.counts).items()
                                                                            if k in ("fixtures", "shortlist", "reviews",
-                                                                                    "llm_reviews", "packets")})
+                                                                                    "llm_reviews", "packets", "universe",
+                                                                                    "passes_due", "briefs_llm",
+                                                                                    "web_searches")})
     except Exception as exc:
         log.error("ai.cycle.failed", error=f"{type(exc).__name__}: {exc}"[:300])
 
@@ -661,6 +665,29 @@ def _ai_cycle_now() -> None:
 async def _ai_cycle() -> None:
     new_run_id()
     await asyncio.to_thread(_ai_cycle_now)
+
+
+def _ai_day_start_now() -> None:
+    """00:05 Bogotá: the day opened and its first passes. Never raises."""
+    from fbi.ai.cycle import run_day_start
+
+    try:
+        for _ in range(10):  # a cycle already running holds the lock: wait for it, then open the day
+            with _connect() as conn:
+                r = run_day_start(conn, at=now())
+            if not r.counts.get("skipped_busy"):
+                break
+            time.sleep(30)
+        log.info("ai.day_start", status=r.status, **{k: v for k, v in dict(r.counts).items()
+                                                      if k in ("universe", "passes_due", "pass_first", "briefs_llm",
+                                                               "llm_reviews", "web_searches")})
+    except Exception as exc:
+        log.error("ai.day_start.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_day_start() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_day_start_now)
 
 
 def _ai_learn_now() -> None:
@@ -979,6 +1006,8 @@ async def main() -> None:
                       next_run_time=moment + timedelta(minutes=11))
     scheduler.add_job(_ai_cycle, "interval", minutes=AI_CYCLE_MINUTES, id="ai_cycle", max_instances=1,
                       coalesce=True, misfire_grace_time=AI_CYCLE_MINUTES * 60, next_run_time=moment + timedelta(minutes=8))
+    scheduler.add_job(_ai_day_start, "cron", hour=0, minute=5, timezone="America/Bogota", id="ai_day_start",
+                      max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
     scheduler.add_job(_ai_learn, "cron", hour=AI_LEARN_HOUR, minute=35, timezone="America/Bogota", id="ai_learn",
                       max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
     if learn_last is None or moment - learn_last > timedelta(hours=26):

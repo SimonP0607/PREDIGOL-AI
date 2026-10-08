@@ -76,8 +76,21 @@ def review_reply(decision: str = "APPROVE", **over: Any) -> dict[str, Any]:
     return body | over
 
 
+def brief_reply(**over: Any) -> dict[str, Any]:
+    body: dict[str, Any] = {"summary": "Partido de prueba con mercado observado.", "context": [], "injuries": [],
+                            "changes": [], "data_quality": "good", "uncertainty": "low", "contradiction": False,
+                            "escalate": False, "cards": []}
+    return body | over
+
+
 def fake(decision: str = "APPROVE", **kw: Any) -> FakeProvider:
-    return FakeProvider(lambda r: review_reply(decision), name="anthropic", **kw)
+    """A model that answers each kind of request in its own shape (a brief, a review)."""
+    return FakeProvider(lambda r: brief_reply() if r.schema_name == "submit_brief" else review_reply(decision),
+                        name="anthropic", **kw)
+
+
+def reviews_asked(model: FakeProvider) -> list[JsonRequest]:
+    return [r for r in model.requests if r.schema_name == "submit_review"]
 
 
 def cycle(conn: Any, *, at: Any = AT, provider: FakeProvider | None = None, model: str = "claude-haiku-5-5",
@@ -192,8 +205,9 @@ def test_a_model_review_is_validated_combined_conservatively_and_paid_once(db: p
     model = fake("REJECT")
     only = [world.fixtures["F1"]]
     report = cycle(conn, provider=model, only=only)
-    assert report.counts["llm_reviews"] == 1 and len(model.requests) == 1
-    sent = json.loads(model.requests[0].user)
+    assert report.counts["llm_reviews"] == 1 and len(reviews_asked(model)) == 1
+    assert [r.schema_name for r in model.requests] == ["submit_brief", "submit_review"], "the L1 brief comes first"
+    sent = json.loads(reviews_asked(model)[0].user)
     assert sent["candidate"]["fixture_id"] == only[0] and "packet" in sent and "untrusted" in sent["note"]
     rows = {r[0]: r for r in db.execute(
         "SELECT engine, decision, status, cost_usd, output FROM ai.pick_reviews WHERE fixture_id = %s", (only[0],))}
@@ -201,11 +215,11 @@ def test_a_model_review_is_validated_combined_conservatively_and_paid_once(db: p
     assert rows["combined"][1] == "REJECT", "the most conservative opinion wins"
     out = rows["llm"][4]
     assert out["fair_odds"] != 1.01 and out["model_fair_odds"] == 1.01, "the server's own odds, not the model's"
-    usage = db.execute("SELECT purpose, status, input_tokens > 0, cost_usd > 0 FROM ai.usage").fetchall()
-    assert usage == [("pick_review", "ok", True, True)]
+    usage = db.execute("SELECT purpose, status, input_tokens > 0, cost_usd > 0 FROM ai.usage ORDER BY id").fetchall()
+    assert usage == [("match_brief", "ok", True, True), ("pick_review", "ok", True, True)]
     # ten minutes later, nothing changed: the review stays in force and is not bought again
     cycle(conn, at=AT + timedelta(minutes=10), provider=model, only=only)
-    assert len(model.requests) == 1
+    assert len(model.requests) == 2
     newest = db.execute("SELECT decision, output->'engines' FROM ai.pick_reviews WHERE fixture_id = %s AND "
                         "engine = 'combined' ORDER BY reviewed_at DESC, id DESC LIMIT 1", (only[0],)).fetchone()
     assert newest is not None and newest[0] == "REJECT"
@@ -226,11 +240,14 @@ def test_an_invalid_answer_or_a_timeout_falls_back_to_the_rules(db: psycopg.Conn
 
     slow = fake(fail="timeout")
     cycle(conn, provider=slow, only=[world.fixtures["F3"]])
-    assert len(slow.requests) == 1
-    row = db.execute("SELECT status FROM ai.pick_reviews WHERE engine = 'llm' AND fixture_id = %s",
-                     (world.fixtures["F3"],)).fetchone()
-    assert row == ("failed",)
+    assert len(slow.requests) == 1, "the provider timed out on the brief: nothing more is asked of it this cycle"
+    assert db.execute("SELECT count(*) FROM ai.pick_reviews WHERE engine = 'llm' AND fixture_id = %s",
+                      (world.fixtures["F3"],)).fetchone() == (0,)
     assert ("timeout",) in db.execute("SELECT status FROM ai.usage").fetchall()
+    assert db.execute("SELECT engine, status FROM ai.match_briefs WHERE fixture_id = %s ORDER BY id DESC LIMIT 1",
+                      (world.fixtures["F3"],)).fetchone() == ("rules", "failed"), "the rules wrote the brief"
+    assert count(db, "SELECT count(*) FROM ai.fixture_passes WHERE fixture_id = %s", world.fixtures["F3"]) == 0, \
+        "a pass the provider failed is not recorded"
     # a timeout is tried again at the next cycle (an answer would have been reused)
     cycle(conn, at=AT + timedelta(minutes=30), provider=slow, only=[world.fixtures["F3"]])
     assert len(slow.requests) == 2
@@ -243,9 +260,12 @@ def test_an_exhausted_budget_calls_no_model_and_the_rules_carry_on(db: psycopg.C
     model = fake()
     report = cycle(conn, provider=model, only=[world.fixtures["F1"]])
     assert model.requests == [] and report.status == "ok"
-    row = db.execute("SELECT status, decision FROM ai.pick_reviews WHERE engine = 'llm' AND fixture_id = %s",
-                     (world.fixtures["F1"],)).fetchone()
-    assert row == ("over_budget", "ABSTAIN")
+    assert db.execute("SELECT count(*) FROM ai.pick_reviews WHERE engine = 'llm' AND fixture_id = %s",
+                      (world.fixtures["F1"],)).fetchone() == (0,), "an exhausted day does not even ask"
+    assert db.execute("SELECT engine, status FROM ai.match_briefs WHERE fixture_id = %s",
+                      (world.fixtures["F1"],)).fetchone() == ("rules", "over_budget")
+    assert db.execute("SELECT decision FROM ai.pick_reviews WHERE engine = 'combined' AND fixture_id = %s",
+                      (world.fixtures["F1"],)).fetchone() is not None, "the rules carry on"
     assert db.execute("SELECT budget_state FROM ai.cycles ORDER BY id DESC LIMIT 1").fetchone() == ("EXHAUSTED",)
 
 
@@ -391,6 +411,12 @@ def test_cost_per_purpose_is_measured(db: psycopg.Connection[Any], world: World)
     cycle(conn, provider=fake(), only=[world.fixtures["F1"]])
     s = summary(db, at=AT + timedelta(minutes=1), settings=SHADOW)
     today = s["periods"]["today"]
-    assert today["requests"] == 1 and today["llm_reviews"] == 1 and today["cost_usd"] > 0
-    assert today["cost_per_review"] == pytest.approx(today["cost_usd"], rel=1e-6)
+    assert today["requests"] == 2 and today["llm_reviews"] == 1 and today["briefs"] == 1 and today["cost_usd"] > 0
+    review = next(x for x in today["by_purpose"] if x["key"] == "pick_review")
+    brief = next(x for x in today["by_purpose"] if x["key"] == "match_brief")
+    assert today["cost_per_review"] == pytest.approx(review["cost_usd"], rel=1e-6)
+    assert today["cost_per_analysis"] == pytest.approx(brief["cost_usd"], rel=1e-6)
+    assert today["cost_per_match"] == pytest.approx(today["cost_usd"], rel=1e-6), "one match analysed"
+    assert {x["key"] for x in today["by_level"]} <= {"L1", "L2", "L3", "web"}
     assert Decimal(s["budget"]["spent_today_usd"]) > 0 and s["budget"]["state"] == "NORMAL"
+    assert s["projection"]["monthly_budget_usd"] == 20.0 and s["thresholds"] == [70, 85, 95, 100]

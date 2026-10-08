@@ -86,6 +86,17 @@ def world(migrated_database: str, seed: Seed) -> Iterator[dict[str, Any]]:
                     "'shadow', 'ok') RETURNING id",
                     (NOW - timedelta(minutes=5), priced, Jsonb({"reason": "ok", "engines": []}), packets[0]))
         ids["review"] = scalar(cur)
+        cur.execute("INSERT INTO ai.match_briefs (fixture_id, created_at, pass, version, engine, provider, model, "
+                    "packet_id, input_hash, status, escalate, reasons, uncertainty, data_quality, content) VALUES "
+                    "(%s, %s, 'first', 'brief-v1', 'llm', 'anthropic', 'claude-haiku-5-5', %s, 'bh', 'ok', true, "
+                    "'{candidate}', 'medium', 'good', %s)",
+                    (priced, NOW - timedelta(minutes=4), packets[0], Jsonb({
+                        "summary": "Local favorito; el mercado coincide.", "context": [], "injuries": [],
+                        "changes": [], "cards": [{"market": "1X2", "selection": "Home", "line": "0",
+                                                  "why": [{"text": "Modelo 52 % frente a 45 %.", "type": "DATA",
+                                                           "refs": ["P:models"]}],
+                                                  "risks": [{"text": "Mercado delgado.", "type": "DATA",
+                                                             "refs": ["P:market"]}]}]})))
     mp = pytest.MonkeyPatch()
     mp.setenv("FBI_DATABASE_URL", migrated_database.replace("postgresql://", "postgresql+psycopg://"))
     mp.setenv("FBI_AI_KEY_ANTHROPIC", "sk-must-never-leak")
@@ -98,7 +109,7 @@ def world(migrated_database: str, seed: Seed) -> Iterator[dict[str, Any]]:
     reset_cache()
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("SET fbi.ai_maintenance = 'on'")
-        for table in ("match_analyses", "pick_reviews", "match_packets"):
+        for table in ("match_analyses", "match_briefs", "pick_reviews", "match_packets"):
             cur.execute(f"DELETE FROM ai.{table} WHERE fixture_id = ANY(%s)", (ids["fixtures"],))
         cur.execute("DELETE FROM ai.run_requests WHERE requested_by = %s", (ids["user"],))
         cur.execute("DELETE FROM auth.users WHERE id = %s", (ids["user"],))
@@ -127,6 +138,7 @@ def test_a_user_sees_only_qualified_cards_and_the_unpriced_view(world: dict[str,
     assert a["data"]["cards"][0]["ai"] is None and a["data"]["cards"][0]["verdict"] == "recommended", \
         "in shadow a user sees nothing the AI decided"
     assert a["data"]["analyzed_by_llm"] is False and a["data"]["missing"] == ["absences"]
+    assert a["data"]["brief"] is None and a["data"]["cards"][0]["notes"] is None, "nor what the AI wrote"
     b = user.get(f"/api/v1/matches/{unpriced}/analysis").json()["data"]
     assert b["market_observed"] is False and b["cards"][0]["verdict"] == "no_market" and b["cards"][0]["odds"] is None
     empty = user.get(f"/api/v1/matches/{nothing}/analysis").json()
@@ -136,6 +148,10 @@ def test_a_user_sees_only_qualified_cards_and_the_unpriced_view(world: dict[str,
     full = owner.get(f"/api/v1/matches/{priced}/analysis", params={"preview": "shadow"}).json()["data"]
     assert full["audience"] == "evaluation" and len(full["cards"]) == 3 and full["withheld"] == 0
     assert full["cards"][0]["ai"]["decision"] == "APPROVE", "the owner's preview shows the review"
+    assert full["brief"]["summary"].startswith("Local favorito") and full["brief"]["escalate"] is True
+    assert full["cards"][0]["notes"]["why"][0]["text"] == "Modelo 52 % frente a 45 %."
+    assert full["cards"][0]["notes"]["risks"][0]["text"] == "Mercado delgado." and full["cards"][1]["notes"] is None
+    assert full["updated_at"] is not None
 
 
 def test_the_admin_views_are_the_owners_and_never_show_a_key(world: dict[str, Any]) -> None:
@@ -145,7 +161,9 @@ def test_the_admin_views_are_the_owners_and_never_show_a_key(world: dict[str, An
     paths = ["/api/v1/admin/ai/overview", "/api/v1/admin/ai/reviews", f"/api/v1/admin/ai/reviews/{world['review']}",
              f"/api/v1/admin/ai/packets/{priced}", "/api/v1/admin/ai/evidence", "/api/v1/admin/ai/costs",
              "/api/v1/admin/ai/shadow", "/api/v1/admin/ai/memory", "/api/v1/admin/ai/run-requests",
-             "/api/v1/admin/evolution/dashboard"]
+             "/api/v1/admin/evolution/dashboard", "/api/v1/admin/ai/today", "/api/v1/admin/ai/research",
+             "/api/v1/admin/ai/postmortems", "/api/v1/admin/ai/learning", "/api/v1/admin/ai/sources",
+             "/api/v1/admin/ai/comparison"]
     for path in paths:
         assert user.get(path).status_code == 403, path
         res = owner.get(path)
@@ -155,6 +173,18 @@ def test_the_admin_views_are_the_owners_and_never_show_a_key(world: dict[str, An
     assert overview["settings"]["tiers"]["analysis"] == {"provider": "anthropic", "model": "claude-haiku-5-5",
                                                          "key_present": True}
     assert overview["enforcement"]["enforced"] is False
+    levels = {x["level"]: x for x in overview["stack"]}
+    assert levels["L2"]["model"] == "claude-haiku-5-5" and levels["L1"]["configured"] is False, \
+        "the stack is read from the configuration"
+    assert {"with_market", "analyzed", "candidates", "approved", "cost_per_match"} <= set(overview["efficiency"])
+    assert overview["projection"]["monthly_budget_usd"] > 0 and overview["alerts"] == []
+    today = owner.get("/api/v1/admin/ai/today", params={"day": "2033-10-01"}).json()["data"]
+    assert today["day"] == "2033-10-01" and isinstance(today["fixtures"], list)
+    comparison = owner.get("/api/v1/admin/ai/comparison").json()["data"]
+    assert [r["arm"] for r in comparison["rows"]] == ["model", "model_rules", "model_ai", "market"]
+    dash = owner.get("/api/v1/admin/evolution/dashboard").json()["data"]
+    assert {"learned", "proposals"} <= set(dash) and "losses_investigated" in dash["counts"]
+    assert owner.get("/api/v1/admin/ai/postmortems", params={"verdict": "nonsense"}).status_code == 422
     reviews = owner.get("/api/v1/admin/ai/reviews", params={"fixture_id": priced, "day": "2033-10-01"}).json()["data"]
     assert [r["id"] for r in reviews] == [world["review"]]
     detail = owner.get(f"/api/v1/admin/ai/reviews/{world['review']}").json()["data"]

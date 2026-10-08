@@ -191,6 +191,10 @@ class ParlayValidation(Contract):
     risk: Literal["moderate", "high", "very_high"] | None = None
     n_legs: int = 0
     correlation: dict[str, Any] = Field(default_factory=dict)
+    estimated_probability: Decimal | None = Field(default=None, description=(
+        "Every leg wins by PrediGol's model (the market's where the model did not price a leg), adjusted for the "
+        "measured dependence of legs of the same competition and day."))
+    dependency: dict[str, Any] = Field(default_factory=dict, description="level low / medium / high and its reasons.")
 
 
 class UserParlayLeg(Contract):

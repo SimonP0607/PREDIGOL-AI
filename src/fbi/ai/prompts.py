@@ -16,6 +16,10 @@ REVIEW_VERSION = "review-v2"
 cut at max_tokens by the thinking before it. A last review of an older version does not hold off a new one."""
 EXTRACT_VERSION = "extract-v1"
 POSTMORTEM_VERSION = "postmortem-v1"
+BRIEF_VERSION = "brief-v1"
+"""L1 (V2, 8 Oct 2026): the economical model reads a match of the day with a market and says what matters."""
+PICK_PM_VERSION = "pick-postmortem-v1"
+LEARNING_VERSION = "learning-v1"
 
 COMMON = """You are the last quality filter of PrediGol, a private football analytics platform.
 Rules you never break:
@@ -79,4 +83,85 @@ POSTMORTEM_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False, "required": ["summary", "lessons"],
     "properties": {"summary": {"type": "string", "maxLength": 900},
                    "lessons": {"type": "array", "maxItems": 3, "items": {"type": "string", "maxLength": 240}}},
+}
+
+BRIEF_SYSTEM = COMMON + """
+
+Your task: the first reading (L1) of ONE match of today that has a market. You receive the match packet, the evidence,
+the three selections PrediGol shows for it (cards) and the reasons the server already found to look closer. Write:
+- summary: two or three sentences on what matters for this match (context, who is missing, what the market says).
+- context: up to five typed, cited claims that matter (form, standings, rest, stakes, absences, market movement).
+- injuries: who is out or doubtful (or returns, or starts) as the evidence or the packet says, each with its refs.
+- changes: what changed since the previous reading (given as previous_summary, if any): news, line-ups, price moves.
+- data_quality: good / fair / poor - how complete and trustworthy the data in the packet is.
+- uncertainty: low / medium / high - how uncertain this match is beyond the numbers.
+- contradiction: true when sources contradict each other or the context contradicts the models.
+- escalate: true when the match deserves a deeper review (a strong reason, not curiosity).
+- cards: for each given card (same market, selection and line), why it could be right and what could go wrong, at most
+  three typed, cited claims each. Never say a card is value or not: the server decides that.
+You never give a probability, a stake or a pick. Submit with the tool exactly once."""
+
+BRIEF_CLAIM: dict[str, Any] = {
+    "type": "object", "additionalProperties": False, "required": ["text", "type", "refs"],
+    "properties": {"text": {"type": "string", "maxLength": 240},
+                   "type": {"type": "string", "enum": ["DATA", "INFERENCE", "NEWS", "OPINION", "UNKNOWN"]},
+                   "refs": {"type": "array", "maxItems": 6, "items": {"type": "string"}}},
+}
+
+BRIEF_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "required": ["summary", "context", "injuries", "changes", "data_quality", "uncertainty", "contradiction",
+                 "escalate", "cards"],
+    "properties": {
+        "summary": {"type": "string", "maxLength": 500},
+        "context": {"type": "array", "maxItems": 5, "items": BRIEF_CLAIM},
+        "injuries": {"type": "array", "maxItems": 10, "items": {
+            "type": "object", "additionalProperties": False, "required": ["side", "player", "status", "refs"],
+            "properties": {"side": {"type": "string", "enum": ["home", "away"]},
+                           "player": {"type": "string", "maxLength": 80},
+                           "status": {"type": "string", "enum": ["out", "doubtful", "returns", "starts"]},
+                           "refs": {"type": "array", "maxItems": 4, "items": {"type": "string"}}}}},
+        "changes": {"type": "array", "maxItems": 4, "items": BRIEF_CLAIM},
+        "data_quality": {"type": "string", "enum": ["good", "fair", "poor"]},
+        "uncertainty": {"type": "string", "enum": ["low", "medium", "high"]},
+        "contradiction": {"type": "boolean"},
+        "escalate": {"type": "boolean"},
+        "cards": {"type": "array", "maxItems": 3, "items": {
+            "type": "object", "additionalProperties": False, "required": ["market", "selection", "line", "why", "risks"],
+            "properties": {"market": {"type": "string"}, "selection": {"type": "string"}, "line": {"type": "string"},
+                           "why": {"type": "array", "maxItems": 3, "items": BRIEF_CLAIM},
+                           "risks": {"type": "array", "maxItems": 3, "items": BRIEF_CLAIM}}}},
+    },
+}
+
+PICK_PM_SYSTEM = COMMON + """
+
+Your task: the post-mortem of ONE selection after its match, for the platform's owner. You get what PrediGol expected
+(model, market, price, the review and its evidence), what happened (score, line-ups, the closing price) and the server's
+own answers to ten questions and its class for the result (MODEL_ERROR, CONTEXT_ERROR, DATA_ERROR, MARKET_ERROR,
+EXECUTION_ERROR, NORMAL_VARIANCE, UNKNOWN). Explain in at most five sentences what happened and why, agreeing or
+disagreeing with the server's class only with the data given. A single match is never a rule: do not recommend
+changing a rule, a threshold or a model. Then at most two short lessons, each one an observation to keep watching."""
+
+PICK_PM_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False, "required": ["summary", "agrees_with_class", "lessons"],
+    "properties": {"summary": {"type": "string", "maxLength": 900},
+                   "agrees_with_class": {"type": "boolean"},
+                   "lessons": {"type": "array", "maxItems": 2, "items": {"type": "string", "maxLength": 240}}},
+}
+
+LEARNING_SYSTEM = COMMON + """
+
+Your task: from the notes of yesterday's results below (JSON data: counts, post-mortems, evidence checks, each with an
+id), write at most three lessons for the owner - what PrediGol learned yesterday. Each lesson cites the ids of the
+notes it rests on (note_refs) and says how many matches support it. An observation is not a rule: never recommend
+changing a rule, a threshold or a model; say what deserves watching. Prefer fewer, solid lessons to many weak ones."""
+
+LEARNING_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False, "required": ["lessons"],
+    "properties": {"lessons": {"type": "array", "maxItems": 3, "items": {
+        "type": "object", "additionalProperties": False, "required": ["title", "body", "note_refs", "n"],
+        "properties": {"title": {"type": "string", "maxLength": 160}, "body": {"type": "string", "maxLength": 600},
+                       "note_refs": {"type": "array", "minItems": 1, "maxItems": 10, "items": {"type": "integer"}},
+                       "n": {"type": "integer", "minimum": 0}}}}},
 }

@@ -115,6 +115,38 @@ def _unverified(text: str, stored: set[float]) -> list[str]:
     return out
 
 
+def corpus_numbers(packet_content: dict[str, Any], extra: dict[str, Any] | None = None) -> set[float]:
+    """Every number a claim about this packet may use."""
+    return _corpus_numbers(packet_content, extra or {})
+
+
+def refused(c: ClaimOut, *, stored: set[float], evidence_status: dict[int, str]) -> str | None:
+    """Why a claim cannot stand (its references, its type's rule, its numbers), or None when it can."""
+    refs = [r.strip() for r in c.refs]
+    bad_ref = next((r for r in refs if not REF.match(r)), None)
+    if bad_ref is not None:
+        return f"unknown reference {bad_ref!r}"
+    p_refs = [r for r in refs if r.startswith("P:")]
+    e_refs = [int(r[2:]) for r in refs if r.startswith("E:")]
+    if any(r[2:].split(".")[0] not in BLOCKS for r in p_refs):
+        return "cites a packet block that does not exist"
+    missing = [e for e in e_refs if e not in evidence_status]
+    if missing:
+        return f"cites evidence not given: {missing}"
+    if c.type == "DATA":
+        if not p_refs:
+            return "a DATA claim must cite the packet"
+        figures = _unverified(c.text, stored)
+        if figures:
+            return f"numbers not in the packet: {', '.join(figures)}"
+    if c.type == "NEWS":
+        if not e_refs:
+            return "a NEWS claim must cite evidence"
+        if all(evidence_status[e] == "OUTDATED" for e in e_refs):
+            return "rests only on outdated evidence"
+    return None
+
+
 def check(review: ReviewOut, *, packet_content: dict[str, Any], evidence_status: dict[int, str],
           extra: dict[str, Any] | None = None) -> Checked:
     """Validate every claim against the packet and the evidence the review was given; drop the invalid
@@ -124,37 +156,11 @@ def check(review: ReviewOut, *, packet_content: dict[str, Any], evidence_status:
     kept: dict[str, list[ClaimOut]] = {g: [] for g in GROUPS}
     for group in GROUPS:
         for c in getattr(review, group):
-            refs = [r.strip() for r in c.refs]
-            bad_ref = next((r for r in refs if not REF.match(r)), None)
-            if bad_ref is not None:
-                rejected.append({"group": group, "text": c.text, "why": f"unknown reference {bad_ref!r}"})
+            why = refused(c, stored=stored, evidence_status=evidence_status)
+            if why is not None:
+                rejected.append({"group": group, "text": c.text, "why": why})
                 continue
-            p_refs = [r for r in refs if r.startswith("P:")]
-            e_refs = [int(r[2:]) for r in refs if r.startswith("E:")]
-            if any(r[2:].split(".")[0] not in BLOCKS for r in p_refs):
-                rejected.append({"group": group, "text": c.text, "why": "cites a packet block that does not exist"})
-                continue
-            missing = [e for e in e_refs if e not in evidence_status]
-            if missing:
-                rejected.append({"group": group, "text": c.text, "why": f"cites evidence not given: {missing}"})
-                continue
-            if c.type == "DATA":
-                if not p_refs:
-                    rejected.append({"group": group, "text": c.text, "why": "a DATA claim must cite the packet"})
-                    continue
-                figures = _unverified(c.text, stored)
-                if figures:
-                    rejected.append({"group": group, "text": c.text,
-                                     "why": f"numbers not in the packet: {', '.join(figures)}"})
-                    continue
-            if c.type == "NEWS":
-                if not e_refs:
-                    rejected.append({"group": group, "text": c.text, "why": "a NEWS claim must cite evidence"})
-                    continue
-                if all(evidence_status[e] == "OUTDATED" for e in e_refs):
-                    rejected.append({"group": group, "text": c.text, "why": "rests only on outdated evidence"})
-                    continue
-            kept[group].append(ClaimOut(text=" ".join(c.text.split()), type=c.type, refs=refs))
+            kept[group].append(ClaimOut(text=" ".join(c.text.split()), type=c.type, refs=[r.strip() for r in c.refs]))
     cleaned = review.model_copy(update=kept)
     changed: str | None = None
     if cleaned.decision == "APPROVE" and not any(c.type == "DATA" for c in cleaned.positive_evidence):

@@ -3,39 +3,54 @@
 The ledger (``ai.usage``) is written through its own connection, committed at once: a review that
 fails later, or a transaction that rolls back, cannot hide what a call cost. Spend counts the whole AI
 layer - these rows and the earlier ``analytics.ai_runs`` (the admin questions and the daily report) -
-against ONE daily and ONE monthly cap.
+against ONE monthly budget, its hard cap (the owner's machine: US$150).
 
-Degradation, never breakage (the ratio is the larger of the day's and the month's spend over its cap):
+The day and the month are Bogotá's (``fbi.ai.calendar``). The day's budget ADAPTS (V2, 8 Oct 2026):
 
-    NORMAL      < 70 %   every tier
-    REDUCED     >= 70 %  no final (strong) tier and no images: the best opportunities get the analysis tier
-    CHEAP_ONLY  >= 90 %  the bulk (cheapest) tier only, no web search
-    EXHAUSTED   >= 100 % no call at all: the deterministic reviewer alone, every model review ABSTAINs
+    pace    = what is left of the month before today / the days left (today included)
+    load    = today's matches with a market / a typical day's (median of the last 14 opened days),
+              between 0.5 and FBI_AI_DAILY_MAX_FACTOR (2): a light day spends less, an important one more
+    budget  = pace x load, at most the soft target x the max factor, never more than what is left
+    ceiling = 1.5 x the day's budget, never more than what is left: the month is never exceeded
+
+Degradation, never breakage (by today's spend against today's budget; the month's cap stops everything):
+
+    NORMAL      below the day's budget          every tier
+    REDUCED     past 100 % of it                no final (strong) tier and no images
+    CHEAP_ONLY  past 125 % of it                the bulk (cheapest) tier only, no web search
+    EXHAUSTED   at the day's ceiling, or the    no call at all: the deterministic reviewer alone, every
+                month's budget spent            model review ABSTAINs
+
+Inside the day the passes share it (``PASS_SHARE``): the first pass may take 55 %, the second up to 75 %, the
+last one the rest - the line-ups are never left without money. The month's spend crossing 70, 85, 95 and 100 %
+is recorded once each (``ai.budget_alerts``) and sent through the notifier.
 
 The quantitative pipeline does not depend on any of this.
 """
 
 from __future__ import annotations
 
+import statistics
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass, replace
-from datetime import datetime, timedelta
-from decimal import Decimal
+from datetime import date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
 import httpx
 import psycopg
 from psycopg.rows import tuple_row
 
+from fbi.ai.calendar import day_start, days_left_in_month, local_day, month_start
 from fbi.ai.config import AiSettings, Tier
 from fbi.ai.pricing import token_cost
 from fbi.ai.providers import provider_for
 from fbi.ai.providers.base import JsonRequest, LlmProvider, LlmResult, LlmUsage, ProviderError
 
 BudgetState = Literal["NORMAL", "REDUCED", "CHEAP_ONLY", "EXHAUSTED"]
-Purpose = Literal["evidence_extraction", "pick_review", "match_analysis", "postmortem", "pattern_review",
-                  "web_search", "daily_report", "ask", "other"]
+Purpose = Literal["evidence_extraction", "pick_review", "match_analysis", "match_brief", "postmortem",
+                  "pattern_review", "learning", "web_search", "daily_report", "ask", "other"]
 Connect = Callable[[], AbstractContextManager[psycopg.Connection[Any]]]
 ALLOWED: dict[BudgetState, frozenset[str]] = {
     "NORMAL": frozenset({"bulk", "analysis", "final", "search"}),
@@ -69,32 +84,82 @@ def shared(conn: psycopg.Connection[Any]) -> Connect:
     return _cm
 
 
+REDUCED_AT = Decimal("1.00")
+CHEAP_AT = Decimal("1.25")
+HARD_FACTOR = Decimal("1.5")
+LOAD_MIN = 0.5
+TYPICAL_DAYS = 14
+MIN_TYPICAL = 3
+ALERT_THRESHOLDS = (70, 85, 95, 100)
+PASS_SHARE: dict[str, Decimal] = {"first": Decimal("0.55"), "pre": Decimal("0.75"), "final": Decimal("1.00"),
+                                  "request": Decimal("1.00")}
+"""How much of the day's budget may be spent by the end of each pass on the intermediate and strong models and the
+web (the economical L1 brief only stops with the day's state)."""
+
+
+def _money(x: Decimal) -> Decimal:
+    return x.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+
+
 @dataclass(frozen=True, slots=True)
 class Budget:
     state: BudgetState
     spent_today: Decimal
     spent_month: Decimal
     daily: Decimal
+    """Today's adaptive budget."""
     monthly: Decimal
+    cap: Decimal = Decimal(0)
+    """Today's ceiling (EXHAUSTED there)."""
+    pace: Decimal = Decimal(0)
+    load: float = 1.0
+    days_left: int = 1
+    target: Decimal = Decimal(0)
+    """The owner's soft daily target (``FBI_AI_DAILY_TARGET_USD``)."""
+    day: date | None = None
 
     @property
     def ratio(self) -> float:
+        """How far the day's budget and the month's are spent - the larger of the two."""
         parts = [float(self.spent_today / self.daily) if self.daily > 0 else 1.0,
                  float(self.spent_month / self.monthly) if self.monthly > 0 else 1.0]
         return max(parts)
 
+    @property
+    def month_ratio(self) -> float:
+        return float(self.spent_month / self.monthly) if self.monthly > 0 else 1.0
+
+    @property
+    def remaining_month(self) -> Decimal:
+        return max(Decimal(0), self.monthly - self.spent_month)
+
     def allows(self, tier: str) -> bool:
         return tier in ALLOWED[self.state]
 
+    def pass_allows(self, pass_kind: str) -> bool:
+        """Whether a paid step beyond the L1 brief (intermediate or strong model, web search) still fits the share
+        of today's budget this pass may reach."""
+        share = PASS_SHARE.get(pass_kind, Decimal(1))
+        return self.state != "EXHAUSTED" and self.spent_today < self.daily * share
+
     def as_json(self) -> dict[str, Any]:
-        return {"state": self.state, "spent_today_usd": str(self.spent_today), "spent_month_usd": str(self.spent_month),
-                "daily_budget_usd": str(self.daily), "monthly_budget_usd": str(self.monthly),
-                "ratio": round(self.ratio, 4)}
+        return {"state": self.state, "spent_today_usd": str(_money(self.spent_today)),
+                "spent_month_usd": str(_money(self.spent_month)), "daily_budget_usd": str(self.daily),
+                "daily_cap_usd": str(self.cap), "daily_target_usd": str(self.target),
+                "monthly_budget_usd": str(self.monthly), "remaining_month_usd": str(_money(self.remaining_month)),
+                "pace_usd": str(_money(self.pace)), "load": round(self.load, 3), "days_left": self.days_left,
+                "ratio": round(self.ratio, 4), "month_ratio": round(self.month_ratio, 4),
+                "day": None if self.day is None else self.day.isoformat()}
 
 
 SPENT_SQL = """
 SELECT COALESCE((SELECT sum(cost_usd) FROM ai.usage WHERE at >= %(since)s AND at < %(until)s), 0)
      + COALESCE((SELECT sum(cost_usd) FROM analytics.ai_runs WHERE started_at >= %(since)s AND started_at < %(until)s), 0)
+"""
+
+LOAD_SQL = """
+SELECT day, fixtures_with_market FROM ai.day_plans
+ WHERE stage = 'opened' AND day >= %(since)s AND day <= %(day)s
 """
 
 
@@ -105,23 +170,65 @@ def spent(conn: psycopg.Connection[Any], since: datetime, until: datetime) -> De
     return Decimal(row[0]) if row and row[0] is not None else Decimal(0)
 
 
-def state_for(ratio: float) -> BudgetState:
-    if ratio >= 1.0:
+def state_of(*, spent_today: Decimal, daily: Decimal, cap: Decimal, spent_month: Decimal,
+             monthly: Decimal) -> BudgetState:
+    if monthly <= 0 or spent_month >= monthly or daily <= 0 or spent_today >= cap:
         return "EXHAUSTED"
-    if ratio >= 0.9:
+    r = spent_today / daily
+    if r >= CHEAP_AT:
         return "CHEAP_ONLY"
-    if ratio >= 0.7:
+    if r >= REDUCED_AT:
         return "REDUCED"
     return "NORMAL"
 
 
+def load_factor(conn: psycopg.Connection[Any], day: date, settings: AiSettings) -> float:
+    """Today's matches with a market against a typical day's (the median of the last two weeks' opened days); 1 when
+    today is not opened yet or there are fewer than three days to compare with."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(LOAD_SQL, {"since": day - timedelta(days=TYPICAL_DAYS), "day": day})
+        rows = [(r[0], int(r[1])) for r in cur.fetchall()]
+    today = next((n for d, n in rows if d == day), None)
+    history = [n for d, n in rows if d < day and n > 0]
+    if today is None or len(history) < MIN_TYPICAL:
+        return 1.0
+    typical = statistics.median(history)
+    return max(LOAD_MIN, min(float(settings.daily_max_factor), today / typical))
+
+
 def budget(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings) -> Budget:
-    day = at.replace(hour=0, minute=0, second=0, microsecond=0)
-    month = day.replace(day=1)
+    day = local_day(at)
+    start = day_start(day)
     end = at + timedelta(seconds=1)
-    today, this_month = spent(conn, day, end), spent(conn, month, end)
-    b = Budget("NORMAL", today, this_month, settings.daily_budget, settings.monthly_budget)
-    return Budget(state_for(b.ratio), today, this_month, settings.daily_budget, settings.monthly_budget)
+    before = spent(conn, day_start(month_start(day)), start)
+    today = spent(conn, start, end)
+    monthly = settings.monthly_budget
+    remaining_before = max(Decimal(0), monthly - before)
+    days_left = days_left_in_month(day)
+    pace = remaining_before / days_left
+    load = load_factor(conn, day, settings)
+    ceiling = settings.daily_budget * settings.daily_max_factor
+    daily = _money(min(pace * Decimal(str(round(load, 4))), ceiling, remaining_before))
+    cap = _money(min(remaining_before, daily * HARD_FACTOR))
+    state = state_of(spent_today=today, daily=daily, cap=cap, spent_month=before + today, monthly=monthly)
+    return Budget(state, today, before + today, daily, monthly, cap, pace, load, days_left, settings.daily_budget, day)
+
+
+def check_alerts(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings) -> list[int]:
+    """Record the month's thresholds crossed (70 / 85 / 95 / 100 %), each once a month. Returns the new ones."""
+    b = budget(conn, at=at, settings=settings)
+    if b.monthly <= 0:
+        return []
+    crossed = [t for t in ALERT_THRESHOLDS if b.spent_month * 100 >= b.monthly * t]
+    new: list[int] = []
+    with conn.cursor(row_factory=tuple_row) as cur:
+        for t in crossed:
+            cur.execute("INSERT INTO ai.budget_alerts (month, threshold, created_at, spent_usd, budget_usd) "
+                        "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (month, threshold) DO NOTHING RETURNING threshold",
+                        (month_start(local_day(at)), t, at, _money(b.spent_month), b.monthly))
+            if cur.fetchone() is not None:
+                new.append(t)
+    return new
 
 
 def effective_tier(b: Budget, wanted: Tier, settings: AiSettings) -> Tier | None:

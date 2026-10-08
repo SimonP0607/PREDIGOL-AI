@@ -18,6 +18,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 import httpx
@@ -27,7 +28,15 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from fbi.ai import cache
 from fbi.ai.config import AiSettings
-from fbi.ai.evidence import EvidenceIn, normalize_name, refresh_statuses, store
+from fbi.ai.evidence import (
+    TIER_RANK,
+    EvidenceIn,
+    domain_of,
+    normalize_name,
+    refresh_statuses,
+    store,
+    tier_of,
+)
 from fbi.ai.pricing import search_cost
 from fbi.ai.prompts import EXTRACT_SCHEMA, EXTRACT_SYSTEM, EXTRACT_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
@@ -40,7 +49,7 @@ SUSPENSION_WORDS = ("suspen", "red card", "yellow card", "sancion", "expuls")
 FIXTURE_SQL = """
 SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, th.name AS home_name, ta.name AS away_name,
        th.provider_team_id AS home_provider_id, ta.provider_team_id AS away_provider_id, f.competition_season_id,
-       c.name AS competition
+       c.name AS competition, c.country
   FROM core.fixtures f JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
  WHERE f.id = %(fixture)s
@@ -162,11 +171,48 @@ class Extracted(BaseModel):
 
 
 SearchFn = Callable[[str, datetime], list[SearchResult]]
-SEARCH_TTL = timedelta(hours=36)
 LATE_WINDOW = timedelta(hours=12)
-"""At most two searches per match: one while kick-off is more than twelve hours away (the week's news), one
-inside the last twelve hours (the team news and the probable line-ups). Each is answered once and cached."""
+EARLY_TTL = timedelta(hours=24)
+LATE_TTL = timedelta(hours=4)
+"""Two buckets per match: while kick-off is more than twelve hours away (the week's news, fresh for a day) and inside
+the last twelve hours (the team news and the probable line-ups, fresh for four hours). A search whose cached answer is
+still fresh is never asked again."""
+SEARCH_TTL = EARLY_TTL
 EXTRACT_TTL = timedelta(days=7)
+MAX_READ = 6
+"""Results read per search, the most authoritative sources first."""
+SPANISH = frozenset({"colombia", "argentina", "spain", "mexico", "chile", "peru", "ecuador", "uruguay", "paraguay",
+                     "bolivia", "venezuela", "costa-rica", "costa rica", "honduras", "guatemala", "el-salvador",
+                     "el salvador", "panama", "nicaragua", "dominican-republic", "cuba"})
+PORTUGUESE = frozenset({"brazil", "portugal"})
+
+
+def query_for(home: str, away: str, kickoff: datetime, country: str | None) -> str:
+    """The search in the competition's language: the local press reports team news first."""
+    c = (country or "").strip().lower()
+    when = f"{kickoff:%Y-%m-%d}"
+    if c in SPANISH:
+        return f"{home} vs {away} noticias lesionados convocados alineación {when}"
+    if c in PORTUGUESE:
+        return f"{home} x {away} notícias lesionados desfalques escalação {when}"
+    return f"{home} vs {away} team news injuries lineup {when}"
+
+
+def record_source_results(conn: psycopg.Connection[Any], results: list[SearchResult], *, at: datetime,
+                          cost: Any) -> None:
+    """Per day and domain: how often a source came up and its share of what the search cost (``ai.source_stats``)."""
+    from fbi.ai.calendar import local_day
+
+    domains = [d for d in (domain_of(r.url) for r in results) if d]
+    if not domains:
+        return
+    share = Decimal(str(cost)) / len(domains)
+    with conn.cursor() as cur:
+        for d in domains:
+            cur.execute("INSERT INTO ai.source_stats (day, domain, tier, results, cost_usd, computed_at) "
+                        "VALUES (%s, %s, %s, 1, %s, %s) ON CONFLICT (day, domain) DO UPDATE SET "
+                        "results = ai.source_stats.results + 1, cost_usd = ai.source_stats.cost_usd + EXCLUDED.cost_usd, "
+                        "computed_at = EXCLUDED.computed_at", (local_day(at), d, tier_of(conn, d), share, at))
 
 
 def default_search(settings: AiSettings, transport: httpx.BaseTransport | None = None) -> SearchFn | None:
@@ -192,7 +238,9 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
                 provider: tuple[LlmProvider, str] | None = None,
                 transport: httpx.BaseTransport | None = None) -> Collected:
     """Team news for one match from the web, when a search API and a model are configured and the budget
-    allows - otherwise nothing is fetched and the reason is returned."""
+    allows - otherwise nothing is fetched and the reason is returned. A search whose cached answer is fresh is not
+    asked again; a page already read for this match is not read again; a search that fails costs nothing and is
+    recorded."""
     out = Collected()
     search = search or default_search(settings, transport)
     if search is None:
@@ -212,28 +260,40 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
         out.skipped = "no such fixture"
         return out
     ledger = ledger or UsageLedger()
-    query = f"{f['home_name']} vs {f['away_name']} team news injuries lineup {f['kickoff_at']:%Y-%m-%d}"
-    bucket = "late" if f["kickoff_at"] - at <= LATE_WINDOW else "early"
+    query = query_for(f["home_name"], f["away_name"], f["kickoff_at"], f.get("country"))
+    late = f["kickoff_at"] - at <= LATE_WINDOW
+    bucket = "late" if late else "early"
     key = hashlib.sha256(f"{query}|{bucket}".lower().encode()).hexdigest()[:40]
     cached = cache.get(conn, "search", key, at=at)
     if cached is None:
-        results = search(query, at)
+        engine = settings.search or "exa"
+        try:
+            results = search(query, at)
+        except Exception as exc:  # an outage of the search API: recorded, free, the day goes on
+            ledger.record(at=at, purpose="web_search", tier="search", provider=engine, model=engine, usage=None,
+                          cost=Decimal(0), status="failed", fixture_id=fixture_id, input_hash=key,
+                          error=f"search failed: {type(exc).__name__}")
+            out.skipped = "search_failed"
+            return out
         out.searches += 1
-        cost = search_cost(settings.search or "exa", 1)
+        cost = search_cost(engine, 1)
         out.cost_usd += float(cost)
-        ledger.record(at=at, purpose="web_search", tier="search", provider=settings.search or "exa",
-                      model=settings.search or "exa", usage=None, cost=cost, status="ok", fixture_id=fixture_id,
-                      input_hash=key)
+        ledger.record(at=at, purpose="web_search", tier="search", provider=engine, model=engine, usage=None,
+                      cost=cost, status="ok", fixture_id=fixture_id, input_hash=key)
+        record_source_results(conn, results, at=at, cost=cost)
         payload = {"query": query, "results": [r.as_json() for r in results]}
-        cache.put(conn, "search", key, payload, at=at, ttl=SEARCH_TTL)
+        cache.put(conn, "search", key, payload, at=at, ttl=LATE_TTL if late else EARLY_TTL)
     else:
         payload = cached
+        out.skipped = "cached"
     results = [SearchResult(**dict(r)) for r in payload.get("results", []) if isinstance(r, dict)]
     if not results:
         return out
     fresh = [r for r in results if cache.get(conn, "url", f"{fixture_id}:{r.url}", at=at) is None]
     if not fresh:
         return out
+    fresh.sort(key=lambda r: TIER_RANK.get(tier_of(conn, domain_of(r.url)), 8))  # the most authoritative first
+    fresh = fresh[:MAX_READ]
     numbered = {f"R{i}": r for i, r in enumerate(fresh, start=1)}
     user = json.dumps({"match": {"home": f["home_name"], "away": f["away_name"], "kickoff_at": f["kickoff_at"].isoformat(),
                                  "competition": f["competition"]},
@@ -269,7 +329,8 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
             story_key=f"web:{fixture_id}:{item.side}:{who}:{item.kind}:{item.assertion}",
             assertion=item.assertion,  # type: ignore[arg-type]
             event_at=f["kickoff_at"], confidence=0.5, relevance=0.6,
-            attributes={"player_name": item.player, "result_title": r.title[:200], "extract_version": EXTRACT_VERSION})
+            attributes={"player_name": item.player, "result_title": r.title[:200], "extract_version": EXTRACT_VERSION,
+                        "query_bucket": bucket})
         _, created = store(conn, ev, at=at)
         out.created += int(created)
         out.extracted += 1

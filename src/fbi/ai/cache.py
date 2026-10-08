@@ -23,8 +23,8 @@ def get(conn: psycopg.Connection[Any], scope: str, key: str, *, at: datetime) ->
     if scope not in SCOPES:
         raise ValueError(f"unknown cache scope {scope!r}")
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute("UPDATE ai.research_cache SET hits = hits + 1 WHERE scope = %s AND key = %s AND expires_at > %s "
-                    "RETURNING payload", (scope, key[:500], at))
+        cur.execute("UPDATE ai.research_cache SET hits = hits + 1, last_hit_at = %s WHERE scope = %s AND key = %s "
+                    "AND expires_at > %s RETURNING payload", (at, scope, key[:500], at))
         row = cur.fetchone()
     return None if row is None else dict(row[0])
 

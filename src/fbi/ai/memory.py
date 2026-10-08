@@ -16,7 +16,8 @@ from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
 Kind = Literal["match_result", "pick_result", "context_error", "news_signal", "injury_signal", "market_signal",
-               "model_failure", "model_success", "league_pattern", "team_pattern", "player_pattern", "review_quality"]
+               "model_failure", "model_success", "league_pattern", "team_pattern", "player_pattern", "review_quality",
+               "pick_postmortem"]
 EntityType = Literal["fixture", "pick", "team", "player", "competition", "market", "model", "source", "reviewer"]
 
 
