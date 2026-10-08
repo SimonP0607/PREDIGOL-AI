@@ -81,6 +81,8 @@ export interface SlipLeg {
   /** The best price we showed when it was added (null: none known). */
   odds: string | null;
   bookmaker: string | null;
+  /** PrediGol's probability for it when it was added (null or absent: not known). Shown, never sent to a model. */
+  p_model?: string | null;
 }
 
 export type SlipAction =
@@ -157,6 +159,7 @@ export function parseSlip(raw: string | null): SlipLeg[] {
       kickoff_at: x["kickoff_at"],
       odds: typeof x["odds"] === "string" ? x["odds"] : null,
       bookmaker: typeof x["bookmaker"] === "string" ? x["bookmaker"] : null,
+      p_model: typeof x["p_model"] === "string" ? x["p_model"] : null,
     };
     out.push({ ...leg, key: selectionKey(leg) });
   }
