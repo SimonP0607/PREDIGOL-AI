@@ -1,5 +1,7 @@
 # IA en PrediGol: qué hay hoy, cuánto costaría y cómo debería funcionar (sin implementar)
 
+> **Superado el 8-oct-2026** por `docs/owner/PREDIGOL_AI_REPORT_2026-10-08.md` (precios verificados de nuevo, volumen real medido y la capa de decisión IA ya implementada en modo shadow) y `docs/ai/AI_DECISION_LAYER.md`. Se conserva como registro de la decisión anterior.
+
 **Estado: DEFERRED.** No se ha creado ninguna cuenta ni se ha configurado ninguna clave. Hoy la página *Evolución* la
 alimenta un **monitor determinista** (reglas fijas), no una IA, y la página *IA e investigación* funciona sin modelo
 de lenguaje: el informe diario lleva solo datos de la plataforma y la revisión de picks aplica solo sus reglas. El
