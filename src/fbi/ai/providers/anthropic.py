@@ -1,5 +1,11 @@
-"""Claude through the Messages API: the JSON answer is a forced call of one tool whose input schema
-is the output schema (the same technique ``fbi.analyst`` uses), so the answer arrives as an object."""
+"""Claude through the Messages API: the JSON answer is a call of one tool whose input schema is the output schema
+(the same technique ``fbi.analyst`` uses), so the answer arrives as an object.
+
+The call is forced (``tool_choice: tool``) where the model allows it. Claude 5.5 refuses a forced tool choice
+("tool_choice: type "tool" and "any" are not supported for this model", HTTP 400 - seen on 8 Oct 2026 with the
+first real calls): such a model is asked with ``tool_choice: auto`` and the instruction to answer only through the
+tool, and is remembered, so the refused attempt (which costs nothing) is made once per process. An answer without
+the tool call is still ``invalid_output``: the review then abstains, as for any failure."""
 
 from __future__ import annotations
 
@@ -11,6 +17,29 @@ import httpx
 from fbi.ai.providers.base import JsonRequest, LlmResult, LlmUsage, ProviderError, status_error
 
 ANTHROPIC_VERSION = "2023-06-01"
+
+AUTO_ONLY: set[str] = set()
+"""Models that refused a forced tool choice in this process."""
+
+ANSWER_THROUGH_TOOL = ("\n\nAnswer only by calling the tool `{name}` exactly once, with the complete answer as its "
+                       "input. Write nothing outside that call.")
+
+
+class _ForcedChoiceRefusedError(Exception):
+    pass
+
+
+def _forced_choice_refused(r: httpx.Response) -> bool:
+    """A 400 that says the model does not take a forced tool choice. Only the error's type and message are read,
+    to classify it; they are never logged or raised (a body can echo the prompt)."""
+    if r.status_code != 400:
+        return False
+    try:
+        err = (r.json() or {}).get("error") or {}
+    except ValueError:
+        return False
+    message = str(err.get("message") or "")
+    return "tool_choice" in message and "not supported" in message
 
 
 class AnthropicProvider:
@@ -24,12 +53,21 @@ class AnthropicProvider:
         self._transport = transport
 
     def complete_json(self, model: str, request: JsonRequest) -> LlmResult:
+        if model not in AUTO_ONLY:
+            try:
+                return self._complete(model, request, forced=True)
+            except _ForcedChoiceRefusedError:
+                AUTO_ONLY.add(model)
+        return self._complete(model, request, forced=False)
+
+    def _complete(self, model: str, request: JsonRequest, *, forced: bool) -> LlmResult:
         body: dict[str, Any] = {
-            "model": model, "max_tokens": request.max_tokens, "system": request.system,
+            "model": model, "max_tokens": request.max_tokens,
+            "system": request.system if forced else request.system + ANSWER_THROUGH_TOOL.format(name=request.schema_name),
             "messages": [{"role": "user", "content": request.user}],
             "tools": [{"name": request.schema_name, "description": "Submit the answer. Call exactly once.",
                        "input_schema": request.schema}],
-            "tool_choice": {"type": "tool", "name": request.schema_name},
+            "tool_choice": {"type": "tool", "name": request.schema_name} if forced else {"type": "auto"},
         }
         started = time.monotonic()
         try:
@@ -42,6 +80,8 @@ class AnthropicProvider:
             raise ProviderError("unavailable", f"the provider could not be reached ({type(exc).__name__})") from exc
         latency = int((time.monotonic() - started) * 1000)
         if r.status_code != 200:
+            if forced and _forced_choice_refused(r):
+                raise _ForcedChoiceRefusedError
             raise status_error(r.status_code)
         out = r.json()
         uses = [c for c in out.get("content") or [] if c.get("type") == "tool_use"

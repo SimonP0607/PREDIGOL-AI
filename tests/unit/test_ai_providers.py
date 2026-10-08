@@ -91,6 +91,32 @@ def test_anthropic_timeout_outage_and_a_missing_answer() -> None:
     assert e.value.code == "not_configured"
 
 
+def test_a_claude_model_that_refuses_a_forced_tool_is_asked_with_auto_once_and_remembered() -> None:
+    # Claude 5.5, 8 Oct 2026: HTTP 400 'tool_choice: type "tool" and "any" are not supported for this model'
+    seen: list[httpx.Request] = []
+    refused = httpx.Response(400, json={"type": "error", "error": {
+        "type": "invalid_request_error",
+        "message": 'tool_choice: type "tool" and "any" are not supported for this model.'}})
+    answered = httpx.Response(200, json={"model": "claude-sonnet-5-5", "content": [
+        {"type": "tool_use", "name": "submit_review", "input": {"decision": "REJECT", "claims": []}}],
+        "usage": {"input_tokens": 2106, "output_tokens": 467}})
+    replies = iter([refused, answered, answered])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return next(replies)
+
+    p = AnthropicProvider("k", "https://api.example", transport=httpx.MockTransport(handler))
+    out = p.complete_json("claude-test-auto-only", REQ)
+    first, second = (json.loads(r.content) for r in seen)
+    assert first["tool_choice"] == {"type": "tool", "name": "submit_review"} and first["system"] == REQ.system
+    assert second["tool_choice"] == {"type": "auto"}
+    assert second["system"].startswith(REQ.system) and "`submit_review` exactly once" in second["system"]
+    assert out.data == {"decision": "REJECT", "claims": []} and out.usage.input_tokens == 2106
+    p.complete_json("claude-test-auto-only", REQ)  # remembered: straight to auto, no refused attempt first
+    assert len(seen) == 3 and json.loads(seen[2].content)["tool_choice"] == {"type": "auto"}
+
+
 # ── OpenAI-compatible ────────────────────────────────────────────────────────
 
 def chat_reply(content: Any, **usage: Any) -> httpx.Response:
