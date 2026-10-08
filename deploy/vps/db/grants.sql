@@ -5,7 +5,8 @@
 --                    audit, analytics ...). No DDL, nothing in auth, never the migration ledger.
 --   predigol_api     the API: reads what it shows; writes only accounts (auth), a user's own records
 --                    (picks.user_*) and the Admin Console's few tables (AI layer, research decisions, the
---                    evidence-ledger verdicts).
+--                    evidence-ledger verdicts, the AI decision layer's run requests). Never ai.* results: those
+--                    are the worker's, append-only.
 --
 -- Run as the owner after EVERY migration (bin/predigolctl does: deploy, import). Idempotent. A table a future
 -- migration adds is covered at once by the default privileges below, and re-granted explicitly the next run.
@@ -59,6 +60,8 @@ BEGIN
     'analytics.ai_runs:INSERT, UPDATE', 'analytics.ai_claims:INSERT, UPDATE', 'analytics.ai_reports:INSERT, UPDATE',
     'analytics.ai_pick_flags:INSERT, UPDATE', 'analytics.research_hypotheses:INSERT, UPDATE',
     'analytics.research_memory:INSERT, UPDATE',
+    -- the owner's "run now" for the AI decision layer: a queued request the worker picks up (fbi.ai.cycle)
+    'ai.run_requests:INSERT',
     -- the owner's verdict on an evidence-ledger entry (Admin Console, Data truth)
     'audit.evidence_ledger:UPDATE'
   ]

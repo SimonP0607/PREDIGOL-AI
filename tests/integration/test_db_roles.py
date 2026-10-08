@@ -65,6 +65,13 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "audit.evidence_ledger", "UPDATE", True),
     ("predigol_api", "audit.evidence_ledger", "INSERT", False),
     ("predigol_api", "public.alembic_version", "UPDATE", False),
+    ("predigol_api", "ai.run_requests", "INSERT", True),
+    ("predigol_api", "ai.pick_reviews", "SELECT", True),
+    ("predigol_api", "ai.pick_reviews", "INSERT", False),
+    ("predigol_api", "ai.usage", "INSERT", False),
+    ("predigol_api", "ai.match_analyses", "UPDATE", False),
+    ("predigol_worker", "ai.pick_reviews", "INSERT", True),
+    ("predigol_worker", "ai.usage", "INSERT", True),
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,
                                             expected: bool) -> None:

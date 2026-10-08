@@ -125,7 +125,8 @@ def owner_api(migrated_database: str, seed: Seed) -> Iterator[tuple[TestClient, 
 def test_the_owner_proposes_and_decides_over_http(owner_api: tuple[TestClient, int]) -> None:
     c, user = owner_api
     overview = c.get("/api/v1/admin/evolution").json()
-    assert overview["status"] == "ok" and len(overview["data"]["loop"]) == 5
+    assert overview["status"] == "ok" and len(overview["data"]["loop"]) == 8
+    assert overview["data"]["loop"][-1].startswith("PROMOTION")
     assert overview["data"]["v2_due"] == "no research-V2 run is stored"
     assert overview["data"]["v2_due_code"] == "no_run" and overview["data"]["v2_due_vars"] == {}
     assert "research_frozen" in overview["data"], "frozen or not, the page is told (null when not frozen)"

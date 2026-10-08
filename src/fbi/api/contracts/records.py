@@ -14,7 +14,25 @@ from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 
 ResultStatus = Literal["PENDING", "WIN", "LOSS", "PUSH", "VOID", "HALF_WIN", "HALF_LOSS"]
 ParlayStatus = Literal["BUILDING", "READY", "ACTIVE", "WON", "LOST", "VOID", "PARTIAL_VOID"]
+ParlayProgress = Literal["OPEN", "PARTIAL_WON", "PARTIAL_LOST", "WON", "LOST", "VOID"]
 SetSource = Literal["qualified", "evaluation"]
+
+
+class ItemAi(Contract):
+    """The AI decision layer's review of a selection, frozen when the selection entered the set or parlay.
+    In shadow mode it is shown and recorded but changed nothing; only with enforcement on (the owner's switch AND
+    a passed shadow gate) can a REJECT keep a selection out."""
+
+    decision: Literal["APPROVE", "DOWNGRADE", "REJECT", "ABSTAIN"] | None = Field(
+        description="Null when no review existed when the selection was frozen.")
+    mode: Literal["off", "shadow", "enforce"]
+    enforced: bool
+    review_id: int | None = None
+    confidence: Decimal | None = None
+    reason: str | None = None
+    by_llm: bool = Field(default=False, description="A language model took part; otherwise the rules reviewer alone.")
+    positives: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
 
 
 class MatchRef(Contract):
@@ -48,6 +66,7 @@ class DailyItem(Contract):
     status: ResultStatus
     profit_units: Decimal | None
     settled_at: datetime | None
+    ai: ItemAi | None = None
 
 
 class DailySet(Contract):
@@ -74,6 +93,7 @@ class ParlayRecordLeg(Contract):
     p_market: Decimal
     ev: Decimal
     status: ResultStatus
+    ai: ItemAi | None = None
 
 
 class ParlayRecord(Contract):
@@ -94,6 +114,10 @@ class ParlayRecord(Contract):
     settled_at: datetime | None
     profit_units: Decimal | None
     legs: list[ParlayRecordLeg]
+    progress: ParlayProgress = Field(default="OPEN", description="From the legs: OPEN (none settled), PARTIAL_WON "
+                                     "(some won, none lost), PARTIAL_LOST (a leg lost, others still to play), WON, "
+                                     "LOST, VOID. A parlay stays on the board until every leg is settled.")
+    legs_pending: int = 0
 
 
 class DailyBoard(Contract):
@@ -160,6 +184,13 @@ class ParlayValidation(Contract):
     warnings: list[dict[str, Any]]
     legs: list[dict[str, Any]]
     combined_odds: Decimal | None
+    fair_probability: Decimal | None = Field(default=None, description="Every leg wins, by the de-vigged market.")
+    model_probability: Decimal | None = Field(default=None, description="The same by PrediGol's model where it priced "
+                                                                        "every leg: evaluation, not a recommendation.")
+    expected_value: Decimal | None = Field(default=None, description="Combined odds x fair probability - 1.")
+    risk: Literal["moderate", "high", "very_high"] | None = None
+    n_legs: int = 0
+    correlation: dict[str, Any] = Field(default_factory=dict)
 
 
 class UserParlayLeg(Contract):

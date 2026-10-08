@@ -119,7 +119,9 @@ def validate_my_parlay(body: ParlayIn, conn: Db, principal: App) -> Envelope[Par
     """Check a parlay against the rules without storing it."""
     v = userdata.validate_parlay(conn, _legs(body), at=now())
     return ok(ParlayValidation(ok=v.ok, errors=v.errors, warnings=v.warnings, legs=v.legs,
-                               combined_odds=v.combined_odds))
+                               combined_odds=v.combined_odds, fair_probability=v.fair_probability,
+                               model_probability=v.model_probability, expected_value=v.expected_value,
+                               risk=v.risk, n_legs=len(v.legs), correlation=v.correlation))  # type: ignore[arg-type]
 
 
 @router.post("/me/parlays", response_model=Envelope[dict[str, Any]], status_code=201)

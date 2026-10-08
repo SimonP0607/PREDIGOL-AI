@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from fbi.api.cache import shared
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
@@ -18,7 +19,9 @@ from fbi.api.contracts.records import (
     DailySet,
     History,
     HistoryGroup,
+    ItemAi,
     MatchRef,
+    ParlayProgress,
     ParlayRecord,
     ParlayRecordLeg,
     SetSource,
@@ -81,21 +84,75 @@ SELECT l.*, b.name AS bookmaker, """ + MATCH_COLS + """
 """
 
 
+CLAIMS_SQL = "SELECT id, output FROM ai.pick_reviews WHERE id = ANY(%(ids)s)"
+CLAIM_GROUPS = {"positives": ("positive_evidence",), "risks": ("negative_evidence", "contradictions", "uncertainties")}
+
+
+def ai_items(conn: Conn, rows: list[Row], *, reveal: bool) -> dict[int, ItemAi]:
+    """Each row's frozen AI review (``inputs.ai``) with the review's own claims, read in one query. Unless
+    ``reveal`` (the owner's preview) or the review was enforced, only that a review happened is said: in shadow
+    a user sees nothing the AI decided."""
+    frozen = {i: (r.get("inputs") or {}).get("ai") for i, r in enumerate(rows)}
+    ids = sorted({int(a["review_id"]) for a in frozen.values() if a and a.get("review_id")})
+    claims: dict[int, dict[str, Any]] = {}
+    if ids:
+        claims = {int(c["id"]): dict(c["output"] or {}) for c in fetch_all(conn, CLAIMS_SQL, {"ids": ids})}
+    out = {}
+    for i, a in frozen.items():
+        if not a:
+            continue
+        review = claims.get(int(a.get("review_id") or 0), {})
+        texts = {k: [str(c.get("text")) for g in groups for c in review.get(g, []) if c.get("text")][:4]
+                 for k, groups in CLAIM_GROUPS.items()}
+        version = str(a.get("engine_version") or "")
+        by_llm = bool(version) and not version.endswith("+none")
+        enforced = bool(a.get("enforced"))
+        if not reveal and not enforced:
+            out[i] = ItemAi(decision=None, mode=a.get("mode") or "off", enforced=False, by_llm=by_llm)
+            continue
+        out[i] = ItemAi(decision=a.get("decision"), mode=a.get("mode") or "off", enforced=enforced,
+                        review_id=a.get("review_id"), confidence=a.get("confidence"), reason=a.get("reason"),
+                        by_llm=by_llm, positives=texts["positives"], risks=texts["risks"])
+    return out
+
+
+WON, LOST, VOIDED = frozenset({"WIN", "HALF_WIN"}), frozenset({"LOSS", "HALF_LOSS"}), frozenset({"VOID", "PUSH"})
+
+
+def progress_of(status: str, legs: list[str]) -> ParlayProgress:
+    """The parlay as the legs stand: a lost leg makes it lost at once, but it stays on the board, PARTIAL_LOST,
+    until the other legs are played."""
+    pending = sum(1 for s in legs if s == "PENDING")
+    if status == "VOID" or (legs and all(s in VOIDED for s in legs)):
+        return "VOID"
+    if status == "LOST" or any(s in LOST for s in legs):
+        return "PARTIAL_LOST" if pending else "LOST"
+    if pending == 0 and legs:
+        return "WON"
+    if any(s in WON for s in legs):
+        return "PARTIAL_WON"
+    return "OPEN"
+
+
 def _parlay(conn: Conn, kind: str, day: date, source: SetSource) -> ParlayRecord | None:
     p = fetch_one(conn, PARLAY_SQL, {"kind": kind, "day": day, "source": source})
     if p is None:
         return None
+    rows = fetch_all(conn, LEGS_SQL, {"parlay": p["id"]})
+    ai = ai_items(conn, rows, reveal=source == "evaluation")
     legs = [ParlayRecordLeg(
         leg_no=r["leg_no"], pick_id=r["pick_id"], match=match_of(r), market_key=r["market_key"],
         selection=r["selection"], line=r["line"], odds=r["odds"], bookmaker=r["bookmaker"], p_model=r["p_model"],
-        p_low=r["p_low"], p_market=r["p_market"], ev=r["ev"], status=r["status"])
-        for r in fetch_all(conn, LEGS_SQL, {"parlay": p["id"]})]
+        p_low=r["p_low"], p_market=r["p_market"], ev=r["ev"], status=r["status"], ai=ai.get(i))
+        for i, r in enumerate(rows)]
+    statuses = [str(r["status"]) for r in rows]
     return ParlayRecord(
         id=p["id"], kind=p["kind"], day=p["day"], source=p["source"], rule_version=p["rule_version"],
         status=p["status"], min_legs=p["min_legs"], max_legs=p["max_legs"], window_from=p["window_from"],
         window_to=p["window_to"], combined_odds=p["combined_odds"], p_all_low=p["p_all_low"],
         expected_log_growth=p["expected_log_growth"], ready_at=p["ready_at"], settled_at=p["settled_at"],
-        profit_units=p["profit_units"], legs=legs)
+        profit_units=p["profit_units"], legs=legs, progress=progress_of(str(p["status"]), statuses),
+        legs_pending=sum(1 for x in statuses if x == "PENDING"))
 
 
 @shared(30)
@@ -107,13 +164,15 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
     s = fetch_one(conn, SET_SQL, {"day": the_day, "source": source})
     daily_set = None
     if s is not None:
+        rows = fetch_all(conn, ITEMS_SQL, {"set": s["id"]})
+        ai = ai_items(conn, rows, reveal=include_shadow)
         items = [DailyItem(
             rank=r["rank"], pick_id=r["pick_id"], match=match_of(r), market_key=r["market_key"],
             selection=r["selection"], line=r["line"], stage=r["stage"], selected_at=r["selected_at"], odds=r["odds"],
             bookmaker=r["bookmaker"], price_at=r["price_at"], p_model=r["p_model"], p_low=r["p_low"],
             p_market=r["p_market"], ev=r["ev"], model=r["model"], status=r["status"],
-            profit_units=r["profit_units"], settled_at=r["settled_at"])
-            for r in fetch_all(conn, ITEMS_SQL, {"set": s["id"]})]
+            profit_units=r["profit_units"], settled_at=r["settled_at"], ai=ai.get(i))
+            for i, r in enumerate(rows)]
         daily_set = DailySet(id=s["id"], day=s["day"], timezone=s["timezone"], source=s["source"],
                              rule_version=s["rule_version"], status=s["status"], items=items)
     board = DailyBoard(

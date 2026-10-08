@@ -9,7 +9,12 @@ from pydantic import Field
 
 from fbi.api.contracts.common import Contract
 
-HypothesisStatus = Literal["PROPOSED", "ACCEPTED", "REJECTED", "RUNNING", "DONE"]
+HypothesisStatus = Literal["PROPOSED", "INVESTIGATING", "ACCEPTED", "REJECTED", "RUNNING", "SHADOW", "DONE",
+                           "PROMOTED"]
+"""PROPOSED -> (INVESTIGATING) -> ACCEPTED -> RUNNING (backtest) -> SHADOW -> DONE -> PROMOTED, or REJECTED.
+Only the owner moves a hypothesis out of PROPOSED/INVESTIGATING and into PROMOTED."""
+Target = Literal["models", "backtesting", "analytics", "features", "rankings", "pick_engine", "decision_rules", "data",
+                 "ai", "other"]
 
 
 class Hypothesis(Contract):
@@ -25,6 +30,10 @@ class Hypothesis(Contract):
     decided_at: datetime | None
     decided_by: str | None = Field(description="The deciding account's email.")
     decision_note: str | None
+    target: Target = Field(default="other", description="What the hypothesis would change if ever promoted.")
+    stage_history: list[dict[str, Any]] = Field(default_factory=list, description="Every move, who and when.")
+    outcome: dict[str, Any] | None = Field(default=None, description="The experiment's judged result "
+                                           "(gate_passed decides whether it can be promoted).")
 
 
 class MemoryEntry(Contract):
@@ -65,8 +74,16 @@ class HypothesisIn(Contract):
     title: str = Field(min_length=5, max_length=160)
     hypothesis: str = Field(min_length=5, max_length=600)
     rationale: str = Field(min_length=5, max_length=1000)
+    target: Target = "other"
 
 
 class DecisionIn(Contract):
-    decision: Literal["accept", "reject"]
+    decision: Literal["reject", "investigate", "approve_experiment", "accept"] = Field(
+        description="RECHAZAR, INVESTIGAR or APROBAR EXPERIMENTO (``accept`` is its earlier name). None of them "
+                    "changes a rule, a model or a pick.")
     note: str | None = Field(default=None, max_length=500)
+
+
+class PromoteIn(Contract):
+    note: str | None = Field(default=None, max_length=500)
+    confirm: Literal["PROMOTE"] = Field(description="Typed by the owner: promotion is never a single click.")

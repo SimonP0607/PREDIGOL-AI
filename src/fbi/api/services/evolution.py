@@ -21,18 +21,23 @@ from fbi.research import evolution
 from fbi.research.loop import frozen, latest_v2, v2_due_reason
 
 LOOP = [
-    "A result (research V2, the daily audit, the prospective evaluation) is written to memory with its evidence.",
-    "Where the evidence points somewhere, the system - or the AI, or the owner - proposes a hypothesis.",
-    "Only the owner accepts or rejects it. Accepting queues an experiment in research; it changes no rule.",
-    "The experiment runs in research and is judged by the same gate as every model (roles vs the market).",
-    "Nothing reaches users without a passed gate AND an explicit promotion. A bad result never edits a rule.",
+    "OBSERVE: a result (research V2, the daily audit, the prospective evaluation, a match post-mortem) is observed.",
+    "MEMORY: it is written to memory with its evidence, its sources and the version that produced it.",
+    "HYPOTHESIS: where the evidence points somewhere, the system - or the AI, or the owner - proposes a hypothesis.",
+    "ADMIN: only the owner rejects it, asks to investigate further, or approves an experiment. None of them "
+    "changes a rule.",
+    "EXPERIMENT and BACKTEST: an approved experiment runs in research, judged by the same gate as every model.",
+    "SHADOW and MARKET: what passes its backtest is followed prospectively against the market before anyone sees it.",
+    "EVALUATION: the result is judged against its gate and recorded with the hypothesis.",
+    "PROMOTION: nothing reaches users without a passed gate AND the owner's explicit promotion. A bad result never "
+    "edits a rule, and the AI never promotes anything.",
 ]
 
 HYPOTHESES_SQL = """
 SELECT h.id, h.proposed_by, h.title, h.hypothesis, h.rationale, h.evidence, h.status, h.experiment_ids, h.created_at,
-       h.decided_at, u.email AS decided_by, h.decision_note
+       h.decided_at, u.email AS decided_by, h.decision_note, h.target, h.stage_history, h.outcome
   FROM analytics.research_hypotheses h LEFT JOIN auth.users u ON u.id = h.decided_by
- ORDER BY (h.status = 'PROPOSED') DESC, h.created_at DESC, h.id DESC
+ ORDER BY (h.status IN ('PROPOSED', 'INVESTIGATING')) DESC, h.created_at DESC, h.id DESC
  LIMIT 200
 """
 
@@ -64,16 +69,30 @@ def overview(conn: Conn, *, at: datetime | None = None) -> Envelope[EvolutionOve
 def propose(body: HypothesisIn, *, at: datetime | None = None) -> int:
     with write_connection() as conn:
         hid = evolution.propose(conn, title=body.title, hypothesis=body.hypothesis, rationale=body.rationale,
-                                evidence={}, proposed_by="owner", at=at or now())
+                                evidence={}, proposed_by="owner", at=at or now(), target=body.target)
     assert hid is not None
     return hid
 
 
-def decide(hypothesis_id: int, *, accept: bool, user_id: int, note: str | None, at: datetime | None = None) -> str:
+def _refused(exc: evolution.DecisionError) -> ApiError:
+    status = 404 if "no such" in str(exc) else 409
+    return ApiError(status, "not_found" if status == 404 else "conflict", str(exc))
+
+
+def decide(hypothesis_id: int, *, decision: str, user_id: int, note: str | None, at: datetime | None = None) -> str:
     try:
         with write_connection() as conn:
-            return evolution.decide(conn, hypothesis_id, accept=accept, user_id=user_id, note=note,
+            return evolution.decide(conn, hypothesis_id, decision=decision, user_id=user_id, note=note,
                                     at=at or now())
     except evolution.DecisionError as exc:
-        status = 404 if "no such" in str(exc) else 409
-        raise ApiError(status, "not_found" if status == 404 else "conflict", str(exc)) from exc
+        raise _refused(exc) from exc
+
+
+def promote(hypothesis_id: int, *, user_id: int, note: str | None, at: datetime | None = None) -> str:
+    """Records the owner's promotion of an experiment whose gate passed. It does not change production by
+    itself: the change ships as its own versioned release (a model promotion, a rule's new version)."""
+    try:
+        with write_connection() as conn:
+            return evolution.promote(conn, hypothesis_id, user_id=user_id, at=at or now(), note=note)
+    except evolution.DecisionError as exc:
+        raise _refused(exc) from exc
