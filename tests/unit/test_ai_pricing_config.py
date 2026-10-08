@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -41,7 +42,7 @@ def test_an_unknown_model_is_budgeted_at_the_most_expensive_known_price() -> Non
 
 
 def test_searches_and_token_estimates() -> None:
-    assert search_cost("exa", 1000) == Decimal("7.000000")
+    assert search_cost("exa", 1000) == Decimal("15.000000")  # 7 a search + the text of up to 8 pages at 1 per 1,000
     assert search_cost("brave", 1) == Decimal("0.005000")
     assert search_cost("nobody-knows", 1000) == Decimal("30.000000")  # unknown backend: the dearest
     text = "x" * 4000
@@ -50,12 +51,13 @@ def test_searches_and_token_estimates() -> None:
 
 
 @pytest.fixture()
-def clean_env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
+def clean_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> pytest.MonkeyPatch:
     import os
 
     for k in list(os.environ):
         if k.startswith(("FBI_AI_", "FBI_ANALYST_", "EXA_API_KEY")):
             monkeypatch.delenv(k, raising=False)
+    monkeypatch.chdir(tmp_path)  # no .env of the machine running the tests (the owner's holds real keys)
     return monkeypatch
 
 
@@ -105,7 +107,7 @@ def test_the_simulation_prices_a_day_and_the_worst_case_takes_every_cap() -> Non
     sim = costs.simulate(w, eco, day=date(2026, 10, 8))
     # 10 Haiku reviews + 2 Sonnet reviews + 6 extractions + 10 post-mortems + patterns + 6 Exa searches
     expected = (10 * (6000 * 0.10 + 700 * 0.50) + 2 * (6000 * 2 + 700 * 10) + 6 * (2500 * 0.10 + 600 * 0.50)
-                + 10 * (2500 * 0.10 + 450 * 0.50) + (12000 * 0.10 + 900 * 0.50) / 7) / 1e6 + 6 * 0.007
+                + 10 * (2500 * 0.10 + 450 * 0.50) + (12000 * 0.10 + 900 * 0.50) / 7) / 1e6 + 6 * 0.015
     assert sim["day_usd"] == pytest.approx(expected, abs=1e-4)
     assert sim["month_usd"] == pytest.approx(30 * sim["day_usd"], abs=0.01)
     worst = costs.worst_case(AiSettings(), w)
@@ -117,3 +119,21 @@ def test_gemini_searches_inside_the_free_allowance_cost_nothing() -> None:
     w = costs.Workload(matches=90, shortlist=20, llm_reviews=0, deep_reviews=0, web_fixtures=12)
     gem = next(p for p in costs.PROFILES if p.name == "equilibrado_gemini")
     assert costs.simulate(w, gem, day=date(2026, 10, 8))["per_day"]["searches"] == 0.0
+
+
+def test_the_env_file_counts_like_the_process_environment_and_the_process_wins(clean_env: pytest.MonkeyPatch) -> None:
+    # host mode (scripts/dev-up) exports nothing: the owner's keys live in .env, which pydantic reads - so must we
+    Path(".env").write_text("FBI_AI_MODEL_ANALYSIS=anthropic:claude-sonnet-5-5\nFBI_AI_KEY_ANTHROPIC=sk-ant-from-file\n"
+                            "FBI_AI_MONTHLY_BUDGET_USD=75\nEXA_API_KEY=exa-from-file\n# a comment\n", encoding="utf-8")
+    s = AiSettings.from_env()
+    assert s.tier("analysis") is not None and s.monthly_budget == Decimal("75")
+    assert s.search == "exa" and s.search_configured
+    assert "sk-ant-from-file" not in repr(s.public()) + repr(s)
+    clean_env.setenv("FBI_AI_MONTHLY_BUDGET_USD", "60")
+    assert AiSettings.from_env().monthly_budget == Decimal("60")
+
+    from fbi.analyst import search as web
+    from fbi.core.env import environment
+
+    assert web.configured()
+    assert environment("missing.env").get("FBI_AI_KEY_ANTHROPIC") is None  # no file is no file

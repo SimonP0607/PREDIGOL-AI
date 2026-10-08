@@ -1,4 +1,5 @@
-"""The AI layer's settings - from the environment only, never from a request, never sent to a client.
+"""The AI layer's settings - from the environment (the process, over the ``.env`` file: ``fbi.core.env``), never
+from a request, never sent to a client.
 
     FBI_AI_MODE                 off | shadow (default) | enforce
                                 shadow: every decision is recorded and shown to the owner, users see nothing
@@ -25,10 +26,12 @@ decision layer's model calls on by itself (its key still counts once a tier name
 
 from __future__ import annotations
 
-import os
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
+
+from fbi.core.env import environment
 
 Mode = Literal["off", "shadow", "enforce"]
 Tier = Literal["bulk", "analysis", "final"]
@@ -67,17 +70,17 @@ def _tier_model(raw: str | None) -> TierModel | None:
     return TierModel(provider, model)
 
 
-def _decimal(name: str, default: str) -> Decimal:
+def _decimal(name: str, default: str, env: Mapping[str, str]) -> Decimal:
     try:
-        value = Decimal(os.environ.get(name) or default)
+        value = Decimal(env.get(name) or default)
     except InvalidOperation:
         value = Decimal(default)
     return max(Decimal(0), value)
 
 
-def _int(name: str, default: int) -> int:
+def _int(name: str, default: int, env: Mapping[str, str]) -> int:
     try:
-        return max(0, int(os.environ.get(name) or default))
+        return max(0, int(env.get(name) or default))
     except ValueError:
         return default
 
@@ -98,29 +101,30 @@ class AiSettings:
 
     @classmethod
     def from_env(cls) -> AiSettings:
-        raw_mode = (os.environ.get("FBI_AI_MODE") or "shadow").strip().lower()
+        env = environment()
+        raw_mode = (env.get("FBI_AI_MODE") or "shadow").strip().lower()
         mode: Mode = raw_mode if raw_mode in ("off", "shadow", "enforce") else "shadow"  # type: ignore[assignment]
-        keys = {p: v for p in PROVIDERS if (v := os.environ.get(f"FBI_AI_KEY_{p.upper()}") or "")}
-        if "anthropic" not in keys and os.environ.get("FBI_ANALYST_API_KEY"):
-            keys["anthropic"] = os.environ["FBI_ANALYST_API_KEY"]
-        tiers: dict[str, TierModel | None] = {t: _tier_model(os.environ.get(f"FBI_AI_MODEL_{t.upper()}"))
+        keys = {p: v for p in PROVIDERS if (v := env.get(f"FBI_AI_KEY_{p.upper()}") or "")}
+        if "anthropic" not in keys and env.get("FBI_ANALYST_API_KEY"):
+            keys["anthropic"] = env["FBI_ANALYST_API_KEY"]
+        tiers: dict[str, TierModel | None] = {t: _tier_model(env.get(f"FBI_AI_MODEL_{t.upper()}"))
                                              for t in TIERS}
-        base_urls = {p: (os.environ.get(f"FBI_AI_BASE_URL_{p.upper()}") or BASE_URLS[p]).rstrip("/")
+        base_urls = {p: (env.get(f"FBI_AI_BASE_URL_{p.upper()}") or BASE_URLS[p]).rstrip("/")
                      for p in PROVIDERS}
-        if os.environ.get("FBI_ANALYST_BASE_URL") and not os.environ.get("FBI_AI_BASE_URL_ANTHROPIC"):
-            base_urls["anthropic"] = os.environ["FBI_ANALYST_BASE_URL"].rstrip("/")
-        search_raw = (os.environ.get("FBI_AI_SEARCH") or "").strip().lower()
+        if env.get("FBI_ANALYST_BASE_URL") and not env.get("FBI_AI_BASE_URL_ANTHROPIC"):
+            base_urls["anthropic"] = env["FBI_ANALYST_BASE_URL"].rstrip("/")
+        search_raw = (env.get("FBI_AI_SEARCH") or "").strip().lower()
         if not search_raw:
-            search_raw = "exa" if os.environ.get("EXA_API_KEY") else "none"
-        monthly_default = os.environ.get("FBI_ANALYST_MONTHLY_BUDGET_USD") or "20"
+            search_raw = "exa" if env.get("EXA_API_KEY") else "none"
+        monthly_default = env.get("FBI_ANALYST_MONTHLY_BUDGET_USD") or "20"
         return cls(
             mode=mode, tiers=tiers, keys=keys, base_urls=base_urls,
-            daily_budget=_decimal("FBI_AI_DAILY_BUDGET_USD", "1.00"),
-            monthly_budget=_decimal("FBI_AI_MONTHLY_BUDGET_USD", monthly_default),
-            max_llm_reviews_per_day=_int("FBI_AI_MAX_LLM_REVIEWS_PER_DAY", 60),
-            max_deep_per_day=_int("FBI_AI_MAX_DEEP_PER_DAY", 10),
-            multimodal=(os.environ.get("FBI_AI_MULTIMODAL") or "").strip().lower() in ("1", "on", "true", "yes"),
-            horizon_hours=max(1, _int("FBI_AI_HORIZON_HOURS", 96)),
+            daily_budget=_decimal("FBI_AI_DAILY_BUDGET_USD", "1.00", env),
+            monthly_budget=_decimal("FBI_AI_MONTHLY_BUDGET_USD", monthly_default, env),
+            max_llm_reviews_per_day=_int("FBI_AI_MAX_LLM_REVIEWS_PER_DAY", 60, env),
+            max_deep_per_day=_int("FBI_AI_MAX_DEEP_PER_DAY", 10, env),
+            multimodal=(env.get("FBI_AI_MULTIMODAL") or "").strip().lower() in ("1", "on", "true", "yes"),
+            horizon_hours=max(1, _int("FBI_AI_HORIZON_HOURS", 96, env)),
             search=None if search_raw in ("", "none", "off") else search_raw,
         )
 
@@ -165,8 +169,9 @@ class AiSettings:
 
     @property
     def search_configured(self) -> bool:
+        env = environment()
         if self.search == "exa":
-            return bool(os.environ.get("EXA_API_KEY"))
+            return bool(env.get("EXA_API_KEY"))
         if self.search in ("brave", "tavily"):
-            return bool(os.environ.get(f"FBI_AI_KEY_{self.search.upper()}"))
+            return bool(env.get(f"FBI_AI_KEY_{self.search.upper()}"))
         return False

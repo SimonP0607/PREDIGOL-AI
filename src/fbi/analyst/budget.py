@@ -10,12 +10,13 @@ cap bite earlier, never later. Before every call the month's spend is read; at o
 
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
 import psycopg
+
+from fbi.core.env import environment
 
 PRICES: dict[str, tuple[Decimal, Decimal]] = {
     # model id prefix -> (USD per 1M input tokens, per 1M output tokens)
@@ -46,7 +47,7 @@ def cost(model: str | None, input_tokens: int, output_tokens: int) -> Decimal:
 
 
 def monthly_budget() -> Decimal:
-    raw = os.environ.get("FBI_ANALYST_MONTHLY_BUDGET_USD")
+    raw = environment().get("FBI_ANALYST_MONTHLY_BUDGET_USD")
     try:
         return Decimal(raw) if raw else DEFAULT_BUDGET
     except ArithmeticError:

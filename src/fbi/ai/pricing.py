@@ -89,7 +89,8 @@ SEARCH_PRICES: dict[str, Decimal] = {
     "openai": Decimal("10"),     # + search content billed at model rates
     "gemini": Decimal("14"),     # after 5,000 free a month (shared by Gemini 3.x)
     "mistral": Decimal("30"),
-    "exa": Decimal("7"),
+    "exa": Decimal("15"),        # 7 a search + 1 per 1,000 pages of text, and each search asks the text of up
+                                 # to 8 results (fbi.analyst.search.MAX_RESULTS): budgeted at the full 8
     "brave": Decimal("5"),
     "tavily": Decimal("8"),
 }

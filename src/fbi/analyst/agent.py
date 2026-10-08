@@ -20,7 +20,6 @@ staying silent); the tools still work on their own.
 from __future__ import annotations
 
 import json
-import os
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -36,6 +35,7 @@ from fbi.analyst.store import AiStore, Usage
 from fbi.analyst.tools import TOOLS, Tool, ToolContext, ToolError, run_tool
 from fbi.api.repositories import Conn
 from fbi.core.clock import now
+from fbi.core.env import environment
 
 MAX_ROUNDS = 6
 MAX_QUESTION = 1000
@@ -79,13 +79,14 @@ class AnalystConfig:
 
     @classmethod
     def from_env(cls) -> AnalystConfig:
-        key = os.environ.get("FBI_ANALYST_API_KEY") or None
-        model = os.environ.get("FBI_ANALYST_MODEL") or None
+        env = environment()
+        key = env.get("FBI_ANALYST_API_KEY") or None
+        model = env.get("FBI_ANALYST_MODEL") or None
         try:
-            per_day = int(os.environ.get("FBI_ANALYST_MAX_QUESTIONS_PER_DAY") or DEFAULT_QUESTIONS_PER_DAY)
+            per_day = int(env.get("FBI_ANALYST_MAX_QUESTIONS_PER_DAY") or DEFAULT_QUESTIONS_PER_DAY)
         except ValueError:
             per_day = DEFAULT_QUESTIONS_PER_DAY
-        return cls(key, model, os.environ.get("FBI_ANALYST_BASE_URL", "https://api.anthropic.com").rstrip("/"),
+        return cls(key, model, env.get("FBI_ANALYST_BASE_URL", "https://api.anthropic.com").rstrip("/"),
                    max(0, per_day))
 
     @property

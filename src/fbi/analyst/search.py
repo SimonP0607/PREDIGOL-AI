@@ -12,13 +12,14 @@ the same run (``fbi.analyst.provenance``).
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
+
+from fbi.core.env import environment
 
 EXA_URL = "https://api.exa.ai/search"
 MAX_RESULTS = 8
@@ -43,12 +44,12 @@ class SearchResult:
 
 
 def configured() -> bool:
-    return bool(os.environ.get("EXA_API_KEY"))
+    return bool(environment().get("EXA_API_KEY"))
 
 
 def search(query: str, *, at: datetime, days: int = 7, transport: httpx.BaseTransport | None = None
            ) -> list[SearchResult]:
-    key = os.environ.get("EXA_API_KEY")
+    key = environment().get("EXA_API_KEY")
     if not key:
         raise SearchNotConfiguredError("web research is not configured (EXA_API_KEY unset: an owner decision)")
     since = at.timestamp() - days * 86400

@@ -88,6 +88,11 @@ por partido), CLV de lo conservado ≥ CLV de lo rechazado y calibración no peo
 | none) · `FBI_AI_HORIZON_HOURS` (96) · `FBI_AI_MULTIMODAL` (off). Un modelo solo se activa con su
 `FBI_AI_MODEL_*`: la configuración antigua del analista no enciende esta capa.
 
+Se leen del entorno del proceso **y** del `.env` del backend (`fbi.core.env`: el proceso gana), como el resto de
+la configuración; en el portátil (`scripts/dev-up`) nada exporta el `.env`. Cada ciclo relee el archivo: una clave
+nueva se usa desde el ciclo siguiente, sin reiniciar. Las claves se guardan con `scripts/set-secret NOMBRE`
+(entrada oculta, archivo solo legible por su dueño, nunca se imprimen).
+
 ## 8. Herramientas
 
 * `python -m scripts.ai_replay --dsn …` — replay del revisor de reglas sobre los picks históricos (as-of).

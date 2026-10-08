@@ -135,3 +135,39 @@ Sugerencia: si quieres comparar, 7 días en shadow con Anthropic y OpenAI a la v
 3. **Búsqueda web** con Exa: sí/no.
 4. **Activar la capa en el portátil** (beta en vivo) para empezar a acumular la evidencia shadow de 30 días:
    requiere aplicar las migraciones 0070–0072 (la 0070 obliga al SUPER_ADMIN a enrolar el segundo factor).
+
+## 8. Con presupuesto de US$60–80/mes (8-oct, tarde)
+
+El dueño fijó US$60–80 al mes y prioriza la calidad del análisis. Medí de nuevo en la copia (4–6 oct, sáb–lun,
+207 partidos) **sin el tope diario**, para conocer la demanda real: el revisor pediría 97–171 revisiones de modelo
+al día en las próximas 24 h (más 15 «finales»), 33–61 búsquedas y 18–52 extracciones. El tope de 60 cubría un
+tercio de la demanda de un sábado.
+
+**Corrección:** Exa cobra US$7 por 1.000 búsquedas **más US$1 por 1.000 páginas de texto**, y cada búsqueda pide el
+texto de hasta 8 resultados: son ≈ US$15 por 1.000, no 7 (`fbi.ai.pricing` corregido). Exa da US$10 de crédito
+al mes sin tarjeta.
+
+Costo mensual con el mismo reparto para todos (75 revisiones de análisis + 15 finales al día; precios oficiales
+verificados el 8-oct; la muestra incluye un fin de semana, así que es conservadora):
+
+| Proveedor | Masivo / Análisis / Final | Mes típico | Peor caso sin tope |
+|---|---|---:|---:|
+| **Anthropic** | Haiku 5.5 / Sonnet 5.5 / Opus 5.5 | **US$71** (≈ 61 con el crédito de Exa) | US$109 |
+| OpenAI | gpt-6-luna / gpt-6.1-sol / gpt-6-astra | US$82 | US$120 |
+| Google | 3.1 Flash-Lite / 3.8 Flash / 3.1 Pro (preview) | US$20 (US$31 desde ene-2027) | US$27 |
+| DeepSeek | V4.1 Flash / V4 Pro / V4 Pro | US$42 | US$72 |
+
+Del costo de Anthropic: Sonnet ≈ US$36, Opus ≈ US$13,5, Exa ≈ US$21 (11 tras el crédito), Haiku < US$1.
+
+**Recomendación:** Anthropic con Haiku 5.5 (noticias), Sonnet 5.5 (revisiones) y Opus 5.5 (las 15 mejores del día);
+topes `FBI_AI_MAX_LLM_REVIEWS_PER_DAY=90`, `FBI_AI_MAX_DEEP_PER_DAY=15`, `FBI_AI_DAILY_BUDGET_USD=3.50`,
+`FBI_AI_MONTHLY_BUDGET_USD=75`, y en la consola de Anthropic un límite de gasto de US$80 como segunda barrera.
+Por qué: por token, los dos primeros niveles cuestan lo mismo que en OpenAI (con el tokenizador de Claude, ≈ 30 %
+más tokens, una revisión de Sonnet sale ≈ 15 % más cara que una de gpt-6.1-sol) y el nivel final cuesta 60 % menos
+(Opus 5.5 US$4/20 frente a Astra US$10/50): en total, ≈ US$11/mes menos; ya está integrado de forma nativa y
+probado; una sola cuenta. Gemini es la alternativa barata, pero su nivel alto sigue en preview, el Flash duplica
+precio en enero y los términos de la búsqueda con Google limitan guardar resultados. DeepSeek procesa los datos en China. La calidad real de
+las revisiones se medirá en shadow (puerta `ai-gate-v1`) antes de que afecte a los usuarios.
+
+Medición: `python -m scripts.ai_simulate --dsn <copia> --start 2026-10-04T00:00:00+00:00 --days 3 --search
+--max-reviews 1000 --max-deep 15`, repreciada con topes de 60/10, 80/15, 90/15 y 100/15.

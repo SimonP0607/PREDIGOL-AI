@@ -122,9 +122,15 @@ PROFILES: tuple[Profile, ...] = (
             "exa", "alternativa de precio equivalente; requiere cuenta nueva"),
     Profile("equilibrado", ("anthropic", "claude-haiku-5-5"), ("anthropic", "claude-sonnet-5-5"),
             ("anthropic", "claude-opus-5-5"), "exa", "Sonnet revisa la shortlist del día; Opus solo los mejores"),
+    Profile("equilibrado_openai", ("openai", "gpt-6-luna"), ("openai", "gpt-6.1-sol"), ("openai", "gpt-6-astra"),
+            "exa", "el mismo esquema con OpenAI; Astra cuesta 2,5 veces lo que Opus 5.5"),
     Profile("equilibrado_gemini", ("gemini", "gemini-3.1-flash-lite"), ("gemini", "gemini-3.8-flash"),
             ("gemini", "gemini-3.1-pro-preview"), "gemini", "búsqueda de Google incluida (5.000/mes); términos de "
             "almacenamiento de resultados con grounding: revisar"),
+    Profile("equilibrado_deepseek", ("deepseek", "deepseek-flash"), ("deepseek", "deepseek-v4-pro"),
+            ("deepseek", "deepseek-v4-pro"), "exa", "precio de hora punta; datos procesados en China"),
+    Profile("alta_calidad", ("anthropic", "claude-haiku-5-5"), ("anthropic", "claude-opus-5-5"),
+            ("anthropic", "claude-opus-5-5"), "exa", "Opus revisa todo; Haiku solo extrae noticias"),
     Profile("maxima_calidad", ("anthropic", "claude-sonnet-5-5"), ("anthropic", "claude-opus-5-5"),
             ("anthropic", "claude-fable-5-1"), "anthropic", "los modelos más fuertes en cada nivel"),
 )

@@ -10,6 +10,7 @@ and how many tokens each one sends. Those calls are priced with each candidate s
 It WRITES the ai.* tables of the database it is given: point it at a copy, never at production.
 
     python -m scripts.ai_simulate --dsn postgresql://...copy... --start 2026-10-03T00:00:00+00:00 --days 3 --search
+    python -m scripts.ai_simulate ... --max-reviews 1000 --max-deep 15   # the demand when the daily cap does not bind
 """
 
 from __future__ import annotations
@@ -87,13 +88,19 @@ def as_of_queries() -> Iterator[None]:
         cycle.FIXTURES_SQL, product.PICK_CANDIDATES = saved
 
 
-def simulate_calls(dsn: str, *, start: datetime, days: int, search: bool) -> dict[str, Any]:
+def simulate_calls(dsn: str, *, start: datetime, days: int, search: bool,
+                   settings: AiSettings | None = None) -> dict[str, Any]:
     with as_of_queries():
-        return _simulate_calls(dsn, start=start, days=days, search=search)
+        return _simulate_calls(dsn, start=start, days=days, search=search, settings=settings or sim_settings())
 
 
-def _simulate_calls(dsn: str, *, start: datetime, days: int, search: bool) -> dict[str, Any]:
-    settings = AiSettings(mode="shadow", daily_budget=Decimal(10_000), monthly_budget=Decimal(1_000_000))
+def sim_settings(max_reviews: int = 60, max_deep: int = 10) -> AiSettings:
+    """The layer's daily caps as configured; the money caps out of the way (the point is to count calls)."""
+    return AiSettings(mode="shadow", daily_budget=Decimal(10_000), monthly_budget=Decimal(1_000_000),
+                      max_llm_reviews_per_day=max_reviews, max_deep_per_day=max_deep)
+
+
+def _simulate_calls(dsn: str, *, start: datetime, days: int, search: bool, settings: AiSettings) -> dict[str, Any]:
     model = FakeProvider(answer, name="anthropic")
     timings: list[float] = []
     with psycopg.connect(dsn) as conn:
@@ -124,7 +131,9 @@ def _simulate_calls(dsn: str, *, start: datetime, days: int, search: bool) -> di
         key = f"{purpose}:{tier}"
         per_day[str(day)][key]["calls"] += int(n)
         per_day[str(day)][key]["input_tokens"] += int(tokens or 0)
-    return {"days": days, "cycles": len(timings), "cycle_seconds_avg": round(sum(timings) / len(timings), 2),
+    return {"days": days, "max_llm_reviews_per_day": settings.max_llm_reviews_per_day,
+            "max_deep_per_day": settings.max_deep_per_day,
+            "cycles": len(timings), "cycle_seconds_avg": round(sum(timings) / len(timings), 2),
             "cycle_seconds_max": round(max(timings), 2), "matches": int(matches[0]) if matches else 0,
             "per_day": {d: dict(v) for d, v in per_day.items()}}
 
@@ -190,10 +199,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--start", required=True)
     ap.add_argument("--days", type=int, default=3)
     ap.add_argument("--search", action="store_true")
+    ap.add_argument("--max-reviews", type=int, default=60, help="FBI_AI_MAX_LLM_REVIEWS_PER_DAY to simulate")
+    ap.add_argument("--max-deep", type=int, default=10, help="FBI_AI_MAX_DEEP_PER_DAY to simulate")
     ap.add_argument("--out")
     args = ap.parse_args(argv)
-    sim = simulate_calls(args.dsn, start=datetime.fromisoformat(args.start), days=args.days, search=args.search)
-    text = json.dumps(report(sim, AiSettings()), indent=1, default=str, ensure_ascii=False)
+    settings = sim_settings(args.max_reviews, args.max_deep)
+    sim = simulate_calls(args.dsn, start=datetime.fromisoformat(args.start), days=args.days, search=args.search,
+                         settings=settings)
+    text = json.dumps(report(sim, settings), indent=1, default=str, ensure_ascii=False)
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(text)
