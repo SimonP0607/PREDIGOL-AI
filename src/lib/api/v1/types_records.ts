@@ -225,6 +225,9 @@ export interface ParlayValidation {
     price?: { odds: string; bookmaker: string | null; as_of: string } | null;
     p_fair?: string | null;
     p_model?: string | null;
+    /** The probability used for the estimate: the model's, else the market's. */
+    p_used?: string | null;
+    fair_odds?: string | null;
   }>;
   combined_odds: Dec | null;
   /** Every leg wins, by the de-vigged market. */
@@ -236,6 +239,11 @@ export interface ParlayValidation {
   risk?: "moderate" | "high" | "very_high" | null;
   n_legs?: number;
   correlation?: { clusters?: number[][]; independent?: boolean };
+  /** Every leg wins by PrediGol's model (the market's where the model did not price a leg), adjusted for the
+   * measured dependence of legs of the same competition and day - never a blind product of dependent legs. */
+  estimated_probability?: Dec | null;
+  /** low / medium / high and why (shared_team, measured_dependence, same_competition_day). */
+  dependency?: { level?: "low" | "medium" | "high"; reasons?: string[] };
 }
 
 export interface UserParlayLeg {

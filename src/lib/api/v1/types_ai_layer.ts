@@ -29,6 +29,11 @@ export interface CardAi {
   engines: string[];
 }
 
+export interface CardNotes {
+  why: AiClaim[];
+  risks: AiClaim[];
+}
+
 export interface AnalysisCard {
   market: string;
   selection: string;
@@ -49,6 +54,35 @@ export interface AnalysisCard {
   verdict: CardVerdict;
   verdict_reason: string;
   ai: CardAi | null;
+  /** The L1 brief's "why" and "what could go wrong" for this card (the owner's view, or enforced). */
+  notes?: CardNotes | null;
+}
+
+export type EscalationReason =
+  | "candidate"
+  | "model_market_gap"
+  | "market_move"
+  | "important_news"
+  | "high_uncertainty"
+  | "contradiction"
+  | "brief_flag";
+
+/** L1: the economical model's (or the rules') reading of a match of the day. Never a probability. */
+export interface BriefView {
+  id: number;
+  created_at: Iso;
+  pass_kind: string;
+  engine: "llm" | "rules";
+  model: string | null;
+  status: string;
+  escalate: boolean;
+  reasons: EscalationReason[] | string[];
+  uncertainty: "low" | "medium" | "high" | null;
+  data_quality: "good" | "fair" | "poor" | null;
+  summary: string | null;
+  context: AiClaim[];
+  injuries: Array<{ side: "home" | "away"; player: string; status: string; refs?: string[] }>;
+  changes: AiClaim[];
 }
 
 export interface MatchAnalysis {
@@ -66,6 +100,12 @@ export interface MatchAnalysis {
   /** Cards a user does not see: their pick is in evaluation (shadow). */
   withheld: number;
   missing: string[];
+  /** The L1 brief (the owner's view, or enforced). */
+  brief?: BriefView | null;
+  /** The newest of the analysis and its brief. */
+  updated_at?: Iso | null;
+  /** A match of today with a market: the AI works on it. */
+  in_ai_day?: boolean;
 }
 
 export interface AiTierView {
@@ -91,9 +131,85 @@ export interface AiBudgetView {
   state: "NORMAL" | "REDUCED" | "CHEAP_ONLY" | "EXHAUSTED";
   spent_today_usd: string;
   spent_month_usd: string;
+  /** Today's adaptive budget (pace left in the month x the day's load). */
   daily_budget_usd: string;
   monthly_budget_usd: string;
   ratio: number;
+  /** Today's ceiling (EXHAUSTED there). */
+  daily_cap_usd?: string;
+  /** The owner's soft daily target. */
+  daily_target_usd?: string;
+  remaining_month_usd?: string;
+  pace_usd?: string;
+  load?: number;
+  days_left?: number;
+  month_ratio?: number;
+  day?: string | null;
+}
+
+export interface AiProjection {
+  run_rate_usd: number;
+  projected_today_usd: number;
+  projected_month_usd: number;
+  monthly_budget_usd: number;
+  projected_share: number | null;
+  days_in_month: number;
+  days_left: number;
+  last_days: Array<{ day: string; cost_usd: number }>;
+}
+
+export interface AiBudgetAlert {
+  month: string;
+  threshold: 70 | 85 | 95 | 100 | number;
+  at: Iso;
+  spent_usd: number;
+  budget_usd: number;
+}
+
+export interface AiStackRow {
+  level: "L1" | "L2" | "L3" | "web";
+  tier: string;
+  role: string;
+  provider: string | null;
+  model: string | null;
+  configured: boolean;
+}
+
+export interface AiEfficiency {
+  day: string;
+  matches_today: number;
+  with_market: number;
+  analyzed: number;
+  briefs_llm: number;
+  briefs_rules: number;
+  escalated: number;
+  intermediate: number;
+  deep: number;
+  candidates: number;
+  approved: number;
+  caution: number;
+  rejected: number;
+  abstained: number;
+  searches: number;
+  news: number;
+  cost_usd: number;
+  cost_per_match: number | null;
+  cost_per_candidate: number | null;
+  cost_per_approved: number | null;
+}
+
+export interface AiDayPlan {
+  day: string;
+  stages: Record<
+    string,
+    {
+      created_at: Iso;
+      fixtures_total: number;
+      fixtures_with_market: number;
+      budget: Partial<AiBudgetView>;
+      notes: Record<string, unknown>;
+    }
+  >;
 }
 
 export interface AiSettingsView {
@@ -105,6 +221,11 @@ export interface AiSettingsView {
   monthly_budget_usd: string;
   max_llm_reviews_per_day: number;
   max_deep_per_day: number;
+  daily_target_usd?: string;
+  daily_max_factor?: string;
+  max_web_first?: number;
+  max_web_pre?: number;
+  max_watch_per_day?: number;
   multimodal: boolean;
   horizon_hours: number;
   search: string | null;
@@ -153,6 +274,12 @@ export interface AiOverview {
   last_cycles: AiCycleRow[];
   today: Record<string, number>;
   shadow: ShadowReportRow[];
+  projection?: AiProjection;
+  alerts?: AiBudgetAlert[];
+  /** The configured models per level and the search API - read from the configuration. */
+  stack?: AiStackRow[];
+  efficiency?: AiEfficiency;
+  day?: AiDayPlan | null;
 }
 
 export interface AiReviewRow {
@@ -297,6 +424,12 @@ export interface AiCostPeriod {
   cost_per_match: number | null;
   cost_per_review: number | null;
   cost_per_approved: number | null;
+  briefs?: number;
+  selected?: number;
+  cost_per_analysis?: number | null;
+  cost_per_search?: number | null;
+  cost_per_selected?: number | null;
+  by_level?: Array<{ key: string; tier: string; requests: number; cost_usd: number }>;
   by_purpose: Array<{ key: string; requests: number; cost_usd: number }>;
   by_model: Array<{
     key: string;
@@ -320,6 +453,9 @@ export interface AiSimulation {
 export interface AiCosts {
   periods: Record<"today" | "7d" | "30d" | "month", AiCostPeriod>;
   budget: AiBudgetView;
+  projection?: AiProjection;
+  alerts?: AiBudgetAlert[];
+  thresholds?: number[];
   workload: Record<string, unknown>;
   simulation: AiSimulation[];
   worst_case: AiSimulation[];
@@ -364,6 +500,44 @@ export interface EvolutionError {
   narrative: string | null;
 }
 
+export interface LearningNote {
+  id: number;
+  day: string;
+  created_at: Iso;
+  kind:
+    | "summary"
+    | "approved"
+    | "rejected"
+    | "context"
+    | "news"
+    | "injuries"
+    | "market"
+    | "model"
+    | "sources"
+    | "lesson"
+    | string;
+  title: string;
+  body: string;
+  n: number;
+  evidence: Record<string, unknown>;
+  engine: "rules" | "llm" | string;
+}
+
+export interface Proposal {
+  id: number;
+  created_at: Iso;
+  title: string;
+  hypothesis: string;
+  rationale: string | null;
+  target: string;
+  status: "PROPOSED" | "INVESTIGATING" | string;
+  proposed_by: string;
+  n_matches: number | null;
+  impact: string | null;
+  investigation_cost: string | null;
+  evidence: Record<string, unknown>;
+}
+
 export interface EvolutionDashboard {
   day: string;
   counts: Record<string, number>;
@@ -371,4 +545,198 @@ export interface EvolutionDashboard {
   errors: EvolutionError[];
   shadow: ShadowReportRow[];
   cost_usd: Dec;
+  /** QUÉ APRENDIÓ PREDIGOL HOY. */
+  learned?: LearningNote[];
+  /** MEJORAS PROPUESTAS awaiting the owner. */
+  proposals?: Proposal[];
+}
+
+export interface AiPassRow {
+  pass: "first" | "pre" | "final";
+  at: Iso;
+  status: string;
+  escalated: boolean;
+  reasons: string[];
+  counts: Record<string, number>;
+  cost_usd: number;
+}
+
+export interface AiDayBrief {
+  id: number;
+  created_at: Iso;
+  pass: string;
+  engine: "llm" | "rules";
+  model: string | null;
+  status: string;
+  escalate: boolean;
+  reasons: string[];
+  uncertainty: string | null;
+  data_quality: string | null;
+  summary: string | null;
+  injuries: Array<{ side: string; player: string; status: string }>;
+  changes: AiClaim[];
+  context: AiClaim[];
+}
+
+export interface AiDaySelection {
+  review_id: number;
+  market: string;
+  selection: string;
+  line: string;
+  odds: number | null;
+  p_model: number | null;
+  p_market: number | null;
+  edge: number | null;
+  decision: AiDecision;
+  by_llm: boolean;
+  model: string | null;
+  reason: string | null;
+  reviewed_at: Iso;
+}
+
+export interface AiDayFixture {
+  fixture_id: number;
+  match: string;
+  competition: string;
+  kickoff_at: Iso;
+  has_market: boolean;
+  odds_age_minutes: number | null;
+  priority: number;
+  important: boolean;
+  passes: AiPassRow[];
+  brief: AiDayBrief | null;
+  selections: AiDaySelection[];
+  cost_usd: number;
+}
+
+export interface AiToday {
+  day: string;
+  plan: AiDayPlan | null;
+  fixtures: AiDayFixture[];
+  without_market: number;
+  totals: { with_market: number; passes: number; escalated: number; stale_odds: number; cost_usd: number };
+}
+
+export interface AiResearchEvidence {
+  id: number;
+  kind: string;
+  claim: string;
+  origin: "provider" | "web" | "owner";
+  team: string | null;
+  source: string;
+  url: string | null;
+  domain: string | null;
+  tier: string;
+  published_at: Iso | null;
+  retrieved_at: Iso;
+  last_seen_at: Iso | null;
+  seen_count: number;
+  status: EvidenceStatus;
+  status_reason: string;
+  confidence: number;
+  relevance: number;
+  title: string | null;
+  player: string | null;
+}
+
+export interface AiResearchRow {
+  fixture_id: number;
+  match: string;
+  kickoff_at: Iso;
+  searches: Array<{ at: Iso; status: string; cost_usd: number; error: string | null }>;
+  evidence: AiResearchEvidence[];
+  cost_usd: number;
+}
+
+export type LossClass =
+  | "MODEL_ERROR"
+  | "CONTEXT_ERROR"
+  | "DATA_ERROR"
+  | "MARKET_ERROR"
+  | "EXECUTION_ERROR"
+  | "NORMAL_VARIANCE"
+  | "UNKNOWN";
+
+export type PostmortemVerdict =
+  | "approved_won"
+  | "approved_lost"
+  | "caution_won"
+  | "caution_lost"
+  | "rejected_would_have_won"
+  | "rejected_correctly"
+  | "unreviewed_won"
+  | "unreviewed_lost"
+  | "push";
+
+export interface PostmortemAnswer {
+  answer: string;
+  detail: string;
+  data: Record<string, unknown>;
+}
+
+export interface PickPostmortem {
+  id: number;
+  fixture_id: number;
+  match: string;
+  competition: string | null;
+  kickoff_at: Iso;
+  market_key: string;
+  selection: string;
+  line: Dec;
+  roles: string[];
+  decision: AiDecision | null;
+  settled: string;
+  verdict: PostmortemVerdict;
+  classification: LossClass | null;
+  odds: Dec | null;
+  close_odds: Dec | null;
+  clv: Dec | null;
+  p_model: Dec | null;
+  p_market: Dec | null;
+  /** The ten questions: expected, happened, model, information, ignored_signal, odds_moved, key_absence,
+   * lineup_changed, uncertainty, variance. */
+  answers: Record<string, PostmortemAnswer>;
+  narrative: string | null;
+  created_at: Iso;
+}
+
+export interface AiLearning {
+  day: string;
+  notes: LearningNote[];
+  proposals: Proposal[];
+}
+
+export interface AiSourceRow {
+  domain: string;
+  tier: string;
+  results: number;
+  evidence: number;
+  useful: number;
+  discarded: number;
+  cost_usd: number;
+  utility: number | null;
+}
+
+export interface AiComparisonRow {
+  arm: "model" | "model_rules" | "model_ai" | "market";
+  label: string;
+  n: number;
+  logloss: number | null;
+  brier: number | null;
+  ece: number | null;
+  roi: number | null;
+  clv: number | null;
+  ev_claimed: number | null;
+  ev_market: number | null;
+  hit_rate: number | null;
+  max_drawdown: number | null;
+}
+
+export interface AiComparison {
+  rows: AiComparisonRow[];
+  window_from: string | null;
+  window_to: string | null;
+  verdict: string | null;
+  sample: Record<string, unknown>;
+  shadow: boolean;
 }

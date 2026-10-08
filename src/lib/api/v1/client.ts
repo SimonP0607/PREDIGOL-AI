@@ -11,19 +11,25 @@ import type {
   SetSource,
 } from "./types_ai";
 import type {
+  AiComparison,
   AiCosts,
   AiDecision,
   AiEvidenceRow,
+  AiLearning,
   AiMemoryEvent,
   AiOverview,
   AiPacketView,
+  AiResearchRow,
   AiReviewDetail,
   AiReviewRow,
   AiRunQueued,
   AiRunRequest,
+  AiSourceRow,
+  AiToday,
   EvidenceStatus,
   EvolutionDashboard,
   MatchAnalysis,
+  PickPostmortem,
   ShadowReportRow,
 } from "./types_ai_layer";
 import type {
@@ -420,6 +426,14 @@ export const v1 = {
   aiShadow: () => getJson<Envelope<ShadowReportRow[]>>("/admin/ai/shadow"),
   aiMemory: (kind?: string) => getJson<Envelope<AiMemoryEvent[]>>("/admin/ai/memory", { kind }),
   aiRunRequests: () => getJson<Envelope<AiRunRequest[]>>("/admin/ai/run-requests"),
+  aiToday: (day?: string) => getJson<Envelope<AiToday>>("/admin/ai/today", { day }),
+  aiResearch: (day?: string) => getJson<Envelope<AiResearchRow[]>>("/admin/ai/research", { day }),
+  aiPostmortems: (
+    q: { day?: string | undefined; verdict?: string | undefined; classification?: string | undefined } = {},
+  ) => getJson<Envelope<PickPostmortem[]>>("/admin/ai/postmortems", q as Params),
+  aiLearning: (day?: string) => getJson<Envelope<AiLearning>>("/admin/ai/learning", { day }),
+  aiSources: (days = 7) => getJson<Envelope<AiSourceRow[]>>("/admin/ai/sources", { days }),
+  aiComparison: () => getJson<Envelope<AiComparison>>("/admin/ai/comparison"),
   requestAiRun: (body: { kind: "analysis" | "learning"; fixture_id?: number | null }) =>
     postJson<Envelope<AiRunQueued>>("/admin/ai/run-requests", body),
   notifications: () => getJson<Envelope<NotificationsOverview>>("/admin/notifications"),

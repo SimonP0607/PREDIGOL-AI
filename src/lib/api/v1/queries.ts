@@ -146,6 +146,33 @@ export const live = {
     queryFn: () => v1.evolutionDashboard(day),
     refetchInterval: MINUTE,
   }),
+  aiToday: (day?: string) => ({
+    queryKey: ["v1", "ai-layer", "today", day ?? "today"],
+    queryFn: () => v1.aiToday(day),
+    refetchInterval: MINUTE,
+  }),
+  aiResearch: (day?: string) => ({
+    queryKey: ["v1", "ai-layer", "research", day ?? "today"],
+    queryFn: () => v1.aiResearch(day),
+    refetchInterval: 2 * MINUTE,
+  }),
+  aiPostmortems: (q: Parameters<typeof v1.aiPostmortems>[0]) => ({
+    queryKey: ["v1", "ai-layer", "postmortems", q],
+    queryFn: () => v1.aiPostmortems(q),
+  }),
+  aiLearning: (day?: string) => ({
+    queryKey: ["v1", "ai-layer", "learning", day ?? "yesterday"],
+    queryFn: () => v1.aiLearning(day),
+  }),
+  aiSources: (days = 7) => ({
+    queryKey: ["v1", "ai-layer", "sources", days],
+    queryFn: () => v1.aiSources(days),
+  }),
+  aiComparison: {
+    queryKey: ["v1", "ai-layer", "comparison"],
+    queryFn: v1.aiComparison,
+    refetchInterval: 10 * MINUTE,
+  },
   aiOverview: {
     queryKey: ["v1", "ai-layer", "overview"],
     queryFn: v1.aiOverview,
