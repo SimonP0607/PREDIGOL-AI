@@ -65,14 +65,42 @@ def test_anthropic_forces_one_tool_call_and_reads_the_cached_tokens() -> None:
     assert (out.usage.input_tokens, out.usage.cached_tokens, out.usage.output_tokens) == (5300, 4000, 300)
 
 
-@pytest.mark.parametrize(("status", "code"), [(429, "rate_limited"), (401, "refused"), (400, "refused"),
-                                              (529, "unavailable"), (500, "unavailable")])
-def test_anthropic_errors_become_stable_codes_without_the_body(status: int, code: str) -> None:
+@pytest.mark.parametrize(("status", "code", "asked"), [(429, "rate_limited", 2), (401, "refused", 1),
+                                                       (400, "refused", 1), (529, "unavailable", 2),
+                                                       (500, "unavailable", 1)])
+def test_anthropic_errors_become_stable_codes_without_the_body(status: int, code: str, asked: int,
+                                                               monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbi.ai.providers import anthropic
+
+    waits: list[float] = []
+    monkeypatch.setattr(anthropic, "_sleep", waits.append)
+    seen: list[httpx.Request] = []
     reply = httpx.Response(status, json={"error": {"message": "echo of the secret prompt"}})
-    p = AnthropicProvider("k", "https://api.example", transport=recorder(reply, []))
+    p = AnthropicProvider("k", "https://api.example", transport=recorder(reply, seen))
     with pytest.raises(ProviderError) as e:
         p.complete_json("m", REQ)
     assert e.value.code == code and e.value.status == status and "secret prompt" not in str(e.value)
+    assert len(seen) == asked, "a rate limit or an overload is asked once more, nothing else is"
+    assert len(waits) == asked - 1
+
+
+def test_a_rate_limit_waits_what_the_api_says_once_and_the_answer_is_kept(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbi.ai.providers import anthropic
+
+    waits: list[float] = []
+    monkeypatch.setattr(anthropic, "_sleep", waits.append)
+    replies = iter([httpx.Response(429, headers={"retry-after": "7"}, json={}),
+                    httpx.Response(200, json={"content": [{"type": "tool_use", "name": "submit_review",
+                                                           "input": {"decision": "REJECT", "claims": []}}],
+                                              "usage": {"input_tokens": 10, "output_tokens": 5}})])
+    p = AnthropicProvider("k", "https://api.example", transport=httpx.MockTransport(lambda _r: next(replies)))
+    assert p.complete_json("m", REQ).data["decision"] == "REJECT" and waits == [7.0]
+    long_wait = iter([httpx.Response(529, headers={"retry-after": "600"}, json={}),
+                      httpx.Response(529, json={})])
+    p = AnthropicProvider("k", "https://api.example", transport=httpx.MockTransport(lambda _r: next(long_wait)))
+    with pytest.raises(ProviderError) as e:
+        p.complete_json("m", REQ)
+    assert e.value.code == "unavailable" and waits[-1] == anthropic.RETRY_MAX_S, "never more than the cap"
 
 
 def test_anthropic_timeout_outage_and_a_missing_answer() -> None:

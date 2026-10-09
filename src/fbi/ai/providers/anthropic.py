@@ -9,6 +9,9 @@ What Claude 5.5 changed (seen with the first real calls, 8 Oct 2026):
   set with ``output_config.effort`` (``JsonRequest.effort``, from the tier); ``max_tokens`` must leave room for it.
 
 Each adjustment is made once per model and process: the refused attempt costs nothing, and the model is remembered.
+A rate limit (429) or an overload (503/529) bills nothing and usually passes in seconds: the request is made once
+more after the ``retry-after`` the API sends (at most ``RETRY_MAX_S``), so a busy minute at the day's first pass
+does not cost the pass; a second refusal is the error.
 An answer without the tool call is ``invalid_output`` (the review then abstains); a cut answer keeps its
 ``stop_reason`` in ``LlmResult.extra`` so the caller can say why it did not validate."""
 
@@ -28,8 +31,28 @@ AUTO_ONLY: set[str] = set()
 NO_EFFORT: set[str] = set()
 """Models that refused ``output_config.effort`` in this process (older models)."""
 
+RETRYABLE = {429: 5.0, 503: 3.0, 529: 3.0}
+"""Statuses asked once more, with the wait used when the API sends no ``retry-after`` (seconds)."""
+RETRY_MAX_S = 20.0
+_sleep = time.sleep  # replaced in tests
+
 ANSWER_THROUGH_TOOL = ("\n\nAnswer only by calling the tool `{name}` exactly once, with the complete answer as its "
                        "input. Write nothing outside that call.")
+
+
+class _RetryError(Exception):
+    def __init__(self, status: int, wait: float) -> None:
+        super().__init__(status)
+        self.status = status
+        self.wait = wait
+
+
+def _retry_after(r: httpx.Response) -> float:
+    try:
+        wait = float(r.headers.get("retry-after") or RETRYABLE[r.status_code])
+    except ValueError:
+        wait = RETRYABLE[r.status_code]
+    return max(0.0, min(RETRY_MAX_S, wait))
 
 
 class _UnsupportedError(Exception):
@@ -66,11 +89,17 @@ class AnthropicProvider:
         self._transport = transport
 
     def complete_json(self, model: str, request: JsonRequest) -> LlmResult:
-        for _ in range(3):
+        retried = False
+        for _ in range(4):
             forced = model not in AUTO_ONLY
             effort = None if model in NO_EFFORT else request.effort
             try:
                 return self._complete(model, request, forced=forced, effort=effort)
+            except _RetryError as exc:
+                if retried:
+                    raise status_error(exc.status) from None
+                retried = True
+                _sleep(exc.wait)
             except _UnsupportedError as exc:
                 if exc.what == "tool_choice" and forced:
                     AUTO_ONLY.add(model)
@@ -101,6 +130,8 @@ class AnthropicProvider:
         except httpx.HTTPError as exc:
             raise ProviderError("unavailable", f"the provider could not be reached ({type(exc).__name__})") from exc
         latency = int((time.monotonic() - started) * 1000)
+        if r.status_code in RETRYABLE:
+            raise _RetryError(r.status_code, _retry_after(r))
         if r.status_code != 200:
             what = _unsupported(r)
             if what is not None:
