@@ -39,6 +39,7 @@ from fbi.ai.calendar import day_bounds
 from fbi.ai.config import AiSettings
 from fbi.ai.prompts import LEARNING_SCHEMA, LEARNING_SYSTEM, LEARNING_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
+from fbi.ai.text import plain
 from fbi.ai.usage import UsageLedger, call_json
 
 VERSION = "learning-v1"
@@ -264,7 +265,8 @@ def learn_day(conn: psycopg.Connection[Any], *, day: date, at: datetime, setting
         if not refs:
             report.rejected.append(lesson.title)
             continue
-        if _store(conn, Note("lesson", lesson.title, lesson.body, lesson.n, {"note_refs": refs}), day=day, at=at,
+        if _store(conn, Note("lesson", plain(lesson.title), plain(lesson.body), lesson.n, {"note_refs": refs}), day=day,
+                  at=at,
                   engine="llm", key=f"ln:{day}:lesson:{i}",
                   usage_ids=[call.usage_id] if call.usage_id else []) is not None:
             report.lessons += 1

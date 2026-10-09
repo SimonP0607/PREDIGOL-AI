@@ -32,12 +32,12 @@ import httpx
 import psycopg
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from fbi.ai.config import AiSettings
 from fbi.ai.memory import remember
 from fbi.ai.prompts import POSTMORTEM_SCHEMA, POSTMORTEM_SYSTEM, POSTMORTEM_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
+from fbi.ai.text import narrative_of
 from fbi.ai.usage import UsageLedger, call_json
 from fbi.picks.settlement import Status, market_outcome
 
@@ -148,12 +148,6 @@ def _rows(conn: psycopg.Connection[Any], sql: str, params: dict[str, Any]) -> li
 def logloss(p: float, won: bool) -> float:
     q = min(max(p if won else 1 - p, 1e-6), 1.0)
     return -math.log(q)
-
-
-class NarrativeOut(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    summary: str = Field(min_length=3, max_length=900)
-    lessons: list[str] = Field(default_factory=list, max_length=3)
 
 
 @dataclass
@@ -325,13 +319,12 @@ def run_postmortems(conn: psycopg.Connection[Any], *, at: datetime, settings: Ai
                 if call.usage_id:
                     usage_ids.append(call.usage_id)
                 if call.result is not None:
-                    try:
-                        parsed = NarrativeOut.model_validate(call.result.data)
-                        narrative = parsed.summary + ("\n- " + "\n- ".join(parsed.lessons) if parsed.lessons else "")
+                    read = narrative_of(call.result.data, max_lessons=3)
+                    if read is not None:
+                        summary, _, lessons = read
+                        narrative = summary + ("\n- " + "\n- ".join(lessons) if lessons else "")
                         narratives_left -= 1
                         report.narratives += 1
-                    except ValidationError:
-                        narrative = None
             with conn.cursor(row_factory=tuple_row) as cur:
                 cur.execute("INSERT INTO ai.postmortems (fixture_id, created_at, version, outcome, expected, findings, "
                             "narrative, usage_ids) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",

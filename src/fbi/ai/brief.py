@@ -37,6 +37,7 @@ from fbi.ai.config import AiSettings
 from fbi.ai.packet import Packet, canonical
 from fbi.ai.prompts import BRIEF_SCHEMA, BRIEF_SYSTEM, BRIEF_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
+from fbi.ai.text import plain
 from fbi.ai.usage import UsageLedger, call_json
 
 GAP = 0.20
@@ -249,7 +250,8 @@ def validate(out: BriefOut, packet: Packet, cards: list[dict[str, Any]]) -> tupl
         for c in claims:
             why = refused(c, stored=stored, evidence_status=status)
             if why is None:
-                kept.append({"text": " ".join(c.text.split()), "type": c.type, "refs": [r.strip() for r in c.refs]})
+                kept.append({"text": plain(" ".join(c.text.split())), "type": c.type,
+                             "refs": [r.strip() for r in c.refs]})
             else:
                 rejected.append({"group": group, "text": c.text, "why": why})
         return kept
@@ -274,7 +276,7 @@ def validate(out: BriefOut, packet: Packet, cards: list[dict[str, Any]]) -> tupl
             continue
         notes.append({"market": key[0], "selection": key[1], "line": key[2],
                       "why": keep("cards.why", n.why), "risks": keep("cards.risks", n.risks)})
-    content = {"summary": " ".join(out.summary.split()), "context": keep("context", out.context),
+    content = {"summary": plain(" ".join(out.summary.split())), "context": keep("context", out.context),
                "injuries": injuries, "changes": keep("changes", out.changes), "data_quality": out.data_quality,
                "uncertainty": out.uncertainty, "contradiction": out.contradiction, "escalate": out.escalate,
                "cards": notes}

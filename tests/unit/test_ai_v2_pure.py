@@ -257,3 +257,16 @@ def test_a_block_with_a_digit_can_be_cited() -> None:
     assert refused(ok, stored=set(), evidence_status={}) is None
     bad = ClaimOut(text="Otro dato.", type="DATA", refs=["P:2h"])
     assert refused(bad, stored=set(), evidence_status={}) is not None
+
+
+def test_the_owner_reads_plain_prose_and_a_good_narrative_is_not_lost() -> None:
+    from fbi.ai.text import narrative_of, plain
+
+    assert plain("P:market dio 33.0 % y P:models 40.8 % (E:12).") == "el mercado dio 33.0 % y los modelos 40.8 %."
+    assert plain("Ganó en P:h2h.") == "Ganó en los cruces directos."
+    assert plain("Sin etiquetas.") == "Sin etiquetas."
+    read = narrative_of({"summary": "Perdió por P:market.", "class": "x", "lessons": ["a", "b", "c"]}, max_lessons=2)
+    assert read == ("Perdió por el mercado.", True, ["a", "b"]), "an extra key and a lesson too many lose nothing"
+    assert narrative_of({"lessons": ["x"]}, max_lessons=2) is None, "no summary, nothing to read"
+    assert narrative_of({"answer": {"summary": "Envuelto.", "agrees_with_class": False}}, max_lessons=2) == \
+        ("Envuelto.", False, [])

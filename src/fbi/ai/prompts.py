@@ -15,7 +15,8 @@ REVIEW_VERSION = "review-v2"
 """v2 (8 Oct 2026): the same prompt asked with a set effort and room for thinking - on Claude 5.5 every v1 answer was
 cut at max_tokens by the thinking before it. A last review of an older version does not hold off a new one."""
 EXTRACT_VERSION = "extract-v1"
-POSTMORTEM_VERSION = "postmortem-v1"
+POSTMORTEM_VERSION = "postmortem-v2"
+"""v2 (9 Oct 2026): plain prose for the owner (no reference tags in a narrative)."""
 BRIEF_VERSION = "brief-v3"
 """L1 (V2, 8 Oct 2026): the economical model reads a match of the day with a market and says what matters.
 v2 (9 Oct 2026, after the first real answer): the references it may cite are listed (it cited "P:cards.BTTS"), and
@@ -23,7 +24,9 @@ probabilities are written as percentages (it wrote "0.525").
 v3 (9 Oct 2026, six real briefs, all valid): a card is a «selección» in Spanish (it wrote «carta»); its own
 contradiction flag no longer escalates a match (it called every model-market disagreement a contradiction: the server
 escalates contradictory evidence itself, and the rules and the L2 review contradicting each other)."""
-PICK_PM_VERSION = "pick-postmortem-v1"
+PICK_PM_VERSION = "pick-postmortem-v2"
+"""v2 (9 Oct 2026, after the first real ones): plain prose with no reference tags, and what the closing-line value
+means (one narrative read a +21.5 % CLV as the market moving against the selection)."""
 LEARNING_VERSION = "learning-v1"
 
 COMMON = """You are the last quality filter of PrediGol, a private football analytics platform.
@@ -82,7 +85,8 @@ POSTMORTEM_SYSTEM = COMMON + """
 Your task: a short post-mortem of one finished match for the platform's owner. You get what was expected (model,
 market, the review and its evidence) and what happened (the result and the facts recorded after the match). Say what
 the evidence got right, what was noise, what was missing, which forecast was closer, and what - if anything - deserves
-a hypothesis. One finding is not a rule: never recommend changing a rule or a threshold. At most 6 sentences."""
+a hypothesis. One finding is not a rule: never recommend changing a rule or a threshold. At most 6 sentences.
+Write plain prose for the owner: no reference tags (no "P:market", no "E:12") inside the text."""
 
 POSTMORTEM_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False, "required": ["summary", "lessons"],
@@ -151,7 +155,10 @@ Your task: the post-mortem of ONE selection after its match, for the platform's 
 own answers to ten questions and its class for the result (MODEL_ERROR, CONTEXT_ERROR, DATA_ERROR, MARKET_ERROR,
 EXECUTION_ERROR, NORMAL_VARIANCE, UNKNOWN). Explain in at most five sentences what happened and why, agreeing or
 disagreeing with the server's class only with the data given. A single match is never a rule: do not recommend
-changing a rule, a threshold or a model. Then at most two short lessons, each one an observation to keep watching."""
+changing a rule, a threshold or a model. Then at most two short lessons, each one an observation to keep watching.
+Write plain prose for the owner: no reference tags (no "P:market", no "E:12") inside the text. The closing-line value
+(clv) is the price taken against the closing price: POSITIVE means the price taken beat the close (the market moved
+TOWARD the selection after it was taken), NEGATIVE means the market moved AGAINST it."""
 
 PICK_PM_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False, "required": ["summary", "agrees_with_class", "lessons"],
