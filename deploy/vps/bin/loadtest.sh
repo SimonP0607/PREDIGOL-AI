@@ -47,8 +47,8 @@ for _ in $(seq 1 60); do
 done
 
 cacert=()
-if [[ "$PREDIGOL_DOMAIN" == *.localhost ]]; then
-  cacert=(--cacert "$PREDIGOL_DATA/caddy/data/caddy/pki/authorities/local/root.crt")
+if uses_local_ca; then
+  cacert=(--cacert "$LOCAL_CA")
 fi
 rc=0
 python3 "$KIT/bin/loadtest.py" --base "https://$PREDIGOL_DOMAIN" --resolve 127.0.0.1 "${cacert[@]}" \

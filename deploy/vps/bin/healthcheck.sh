@@ -21,9 +21,9 @@ warning() { warnings+=("$1"); say "warning $1"; }
 
 DOMAIN="${PREDIGOL_DOMAIN:?PREDIGOL_DOMAIN}"
 CURL=(curl -fsS -m 15 --resolve "$DOMAIN:443:127.0.0.1")
-LOCAL_CA="$PREDIGOL_DATA/caddy/data/caddy/pki/authorities/local/root.crt"
-# The rehearsal (*.localhost) is signed by Caddy's own authority; production by Let's Encrypt.
-[[ "$DOMAIN" == *.localhost && -r "$LOCAL_CA" ]] && CURL+=(--cacert "$LOCAL_CA")
+# Internal mode (no domain yet) and the rehearsal (*.localhost) are signed by Caddy's own authority (lib.sh);
+# production by Let's Encrypt or Cloudflare's origin authority.
+if uses_local_ca && [[ -r "$LOCAL_CA" ]]; then CURL+=(--cacert "$LOCAL_CA"); fi
 
 # 1. Containers: running, and not unhealthy.
 for svc in postgres api worker web caddy; do
@@ -92,8 +92,9 @@ else
   warning "no restore test yet"
 fi
 
-# 7. The certificate (Let's Encrypt renews it from 30 days before; under 14 something is wrong).
-if [[ "$DOMAIN" != *.localhost ]]; then
+# 7. The certificate (Let's Encrypt renews it from 30 days before; under 14 something is wrong). Caddy's own
+# authority issues 12-hour certificates and renews them itself: nothing to count in days there.
+if ! uses_local_ca; then
   end="$(echo | openssl s_client -connect 127.0.0.1:443 -servername "$DOMAIN" 2> /dev/null | openssl x509 -noout -enddate 2> /dev/null | cut -d= -f2)"
   if [[ -n "$end" ]]; then
     days=$(( ($(date -d "$end" +%s) - $(date +%s)) / 86400 ))

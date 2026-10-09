@@ -2,10 +2,13 @@
 # the domain's DNS points at this server and ports 80 and 443 are open. One origin: the API under /api/v1, the
 # web app everywhere else - the session cookie and the API's same-site check depend on it.
 #
-# PREDIGOL_SITE is the address served: the domain in production (predigol.example.com), or
-# predigol.localhost in the rehearsal (Caddy then signs with its own local authority).
+# PREDIGOL_SITE is the address served: the domain in production (predigol.example.com), the server's IP while
+# there is no domain yet (PREDIGOL_TLS_MODE=internal), or predigol.localhost in the rehearsal (Caddy then signs
+# with its own local authority).
 {
 	email {$PREDIGOL_ACME_EMAIL}
+	# A client that sends no SNI (an IP address in the URL, a check through --resolve) gets the site's certificate.
+	default_sni {$PREDIGOL_DOMAIN}
 	servers {
 		# Slow-client limits: a request has 10 s to send its headers and 30 s its body.
 		timeouts {

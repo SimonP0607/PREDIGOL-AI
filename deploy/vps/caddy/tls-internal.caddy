@@ -1,0 +1,5 @@
+# PREDIGOL_TLS_MODE=internal: no domain yet - the site is the server's IP address (PREDIGOL_DOMAIN=203.0.113.10)
+# and the certificate comes from Caddy's own local authority (root in $PREDIGOL_DATA/caddy/data/caddy/pki/
+# authorities/local/root.crt). Browsers warn until that root is trusted; the PWA needs a domain. Switch to acme or
+# origin as soon as the domain exists (README "Sin dominio todavía").
+tls internal

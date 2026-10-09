@@ -119,7 +119,16 @@ start() {  # name, pattern, dir, command...
 # 240 a minute is a single busy tab. 3,000 still stops a runaway polling loop.
 export FBI_API_RATE_LIMIT="${FBI_API_RATE_LIMIT:-3000}"
 want api && start api "[u]vicorn apps.api.main" "$ROOT" "$ROOT/scripts/run-supervised" api "$ROOT/.venv/bin/uvicorn" apps.api.main:app --host 127.0.0.1 --port "$API_PORT" --log-level warning
-want worker && start worker "[a]pps.worker" "$ROOT" "$ROOT/scripts/run-supervised" worker "$PY" -m apps.worker.scheduler
+# After the cut-over the worker runs on the server (deploy/cutover/export.sh leaves this marker): it never starts
+# here as well - two workers would be two databases capturing, the provider's quota spent twice, data diverging.
+MOVED="$RUN/worker-moved-to-server"
+if want worker; then
+  if [[ -e "$MOVED" ]]; then
+    say "worker: NOT started - it runs on the server ($(head -c 200 "$MOVED")). Only to bring it back here (vuelta atrás, deploy/vps/README.md §4): rm $MOVED"
+  else
+    start worker "[a]pps.worker" "$ROOT" "$ROOT/scripts/run-supervised" worker "$PY" -m apps.worker.scheduler
+  fi
+fi
 if want web; then
   if [[ -d "$WEB" ]]; then
     start web "[v]ite dev" "$WEB" bun run dev --host 127.0.0.1 --port "$WEB_PORT"

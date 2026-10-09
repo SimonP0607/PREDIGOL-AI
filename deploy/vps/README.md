@@ -85,6 +85,11 @@ cada secreto: `docs/owner/SECRETS_AND_ROTATION.md`.
    * `predigol.env`: dominio, `PREDIGOL_ACME_EMAIL`, R2 para el PITR (`PITR_S3_*`), copias (`BACKUP_RCLONE_REMOTE`,
      `BACKUP_AGE_RECIPIENT`, `RAW_RCLONE_REMOTE`, tras `rclone config`), Healthchecks (`HC_PING_*`).
    * `app.env`: la clave de API-Football y el bot de Telegram.
+   * Desde el portátil, sin teclear ni mostrar ningún valor: `deploy/cutover/push-app-env.sh predigol` copia al
+     `app.env` del servidor lo que ya existe en el `.env` del portátil: API-Football (clave, plan, presupuesto),
+     las ventanas de captura de cuotas, `FBI_AUTH_SECRET_KEY` (los autenticadores de las cuentas siguen valiendo
+     tras el corte) y la capa de IA (`FBI_AI_*`, `EXA_API_KEY`). Solo muestra los nombres.
+   * Sin dominio todavía: ver §3 bis.
 6. **Cloudflare.**
    * Registros `A`/`AAAA` del dominio con proxy (naranja). SSL/TLS en **Full (strict)**.
    * Certificado de origen de Cloudflare en `/etc/predigol/origin/` y `PREDIGOL_TLS_MODE=origin`. Sin él, Caddy usa
@@ -109,6 +114,19 @@ cada secreto: `docs/owner/SECRETS_AND_ROTATION.md`.
     busca `"ok"`. Telegram con `FBI_TELEGRAM_BOT_TOKEN` y `FBI_TELEGRAM_CHAT_ID`. Sentry (errores de la API y del
     worker, sin datos personales): el DSN de un proyecto en `FBI_SENTRY_DSN` de `app.env`.
 
+## 3 bis. Sin dominio todavía (solo la IP)
+
+Se puede montar, ensayar y hacer el corte antes de tener dominio:
+
+* `predigol.env`: `PREDIGOL_DOMAIN=<IPv4 del servidor>` y `PREDIGOL_TLS_MODE=internal`.
+* Caddy firma el certificado de esa IP con su propia autoridad (`caddy/tls-internal.caddy`). El monitor, el humo de
+  `release.sh` y la prueba de carga confían en esa raíz (`$PREDIGOL_DATA/caddy/data/caddy/pki/authorities/local/
+  root.crt`).
+* El navegador avisa ("no es privada") hasta que se confíe en esa raíz. La PWA y el acceso público necesitan el
+  dominio.
+* El día del dominio: `PREDIGOL_DOMAIN=dominio`, `PREDIGOL_TLS_MODE=acme` (o `origin` con Cloudflare) y
+  `predigolctl deploy`. La web se reconstruye con su nueva dirección y las sesiones abiertas por IP dejan de valer.
+
 ## 4. Corte desde el portátil, sin dos workers a la vez
 
 Fuera de partidos en juego y con el ensayo del servidor en verde (§11). Si el servidor tuvo un ensayo con datos, se
@@ -118,6 +136,8 @@ vacía antes: `predigolctl stop` y se borran `pgdata` y `raw` de ese ensayo. `im
    Nunca puede haber dos workers encendidos: cada uno tendría su base, gastarían cuota y divergirían.
 2. **Portátil: la copia final.** `deploy/cutover/export.sh` (en WSL, desde el backend).
    * Se niega si el worker sigue vivo o latió hace menos de 2 minutos.
+   * Deja la marca `~/.fbi/worker-moved-to-server`: desde ese momento `scripts/dev-up` no arranca un worker en el
+     portátil (ni tras un reinicio).
    * Cuenta cada tabla antes y después.
    * Hace `pg_dump` dentro del contenedor y empaqueta el RAW.
    * Escribe `~/cutover/<fecha>/` con `db.dump`, `raw.tar`, `manifest.json` y `SHA256SUMS`.
@@ -139,8 +159,9 @@ vacía antes: `predigolctl stop` y se borran `pgdata` y `raw` de ese ensayo. `im
      y configura su segundo factor.
 9. **Portátil.** Queda 7 días como respaldo frío, con el worker parado.
 
-Vuelta atrás: mientras no se borre nada en el portátil, basta con encender allí el worker (`scripts/dev-up worker`)
-y devolver el DNS. El servidor se vacía y se repite.
+Vuelta atrás: mientras no se borre nada en el portátil, con el worker del servidor parado (`predigolctl stop`),
+se borra la marca (`rm ~/.fbi/worker-moved-to-server`), se enciende allí el worker (`scripts/dev-up worker`) y se
+devuelve el DNS. El servidor se vacía y se repite.
 
 ## 5. Operación diaria
 

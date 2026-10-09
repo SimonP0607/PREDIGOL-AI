@@ -38,6 +38,12 @@ with psycopg.connect(settings.database.psycopg_url) as c:
 PY
 )"
 if (( beat < 120 )) && (( ! FORCE )); then log "REFUSED: a worker beat ${beat}s ago - stop it and wait two minutes"; exit 1; fi
+# From here the worker belongs to the server: scripts/dev-up will not start it on this machine again (one worker,
+# ever). Going back (README §4, vuelta atrás) is deleting this marker.
+RUN_DIR="${FBI_RUN_DIR:-$HOME/.fbi}"
+mkdir -p "$RUN_DIR"
+printf 'since %s (cut-over export)\n' "$(date -u +%FT%TZ)" > "$RUN_DIR/worker-moved-to-server"
+log "marker $RUN_DIR/worker-moved-to-server written: scripts/dev-up no longer starts a worker here"
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 DEST="$OUT/$STAMP"

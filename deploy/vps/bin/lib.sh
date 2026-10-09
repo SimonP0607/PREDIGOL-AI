@@ -19,6 +19,10 @@ set +a
 export PREDIGOL_ENV_FILE PREDIGOL_APP_ENV_FILE
 PREDIGOL_DATA="${PREDIGOL_DATA:-/srv/predigol}"
 STATE="$PREDIGOL_DATA/state"
+# Caddy's own authority signs the certificate in internal mode (no domain yet: the IP) and in a *.localhost
+# rehearsal; the checks below then trust that root instead of the public ones.
+LOCAL_CA="$PREDIGOL_DATA/caddy/data/caddy/pki/authorities/local/root.crt"
+uses_local_ca() { [[ "${PREDIGOL_TLS_MODE:-acme}" == internal || "${PREDIGOL_DOMAIN:-}" == *.localhost ]]; }
 DB_BACKUPS="$PREDIGOL_DATA/backups/db"
 mkdir -p "$STATE" "$DB_BACKUPS"
 # The image versions the last deploy started (bin/predigolctl deploy writes them): a reboot or a plain `up`

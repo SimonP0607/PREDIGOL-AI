@@ -92,11 +92,13 @@ remote "$CTL deploy" || die "predigolctl deploy failed on the server - the previ
 
 # 6. Smoke tests through the front door.
 domain="$(remote "grep -E '^PREDIGOL_DOMAIN=' \${PREDIGOL_ENV_FILE:-/etc/predigol/predigol.env} | cut -d= -f2 | tr -d '\"'")"
+tls_mode="$(remote "grep -E '^PREDIGOL_TLS_MODE=' \${PREDIGOL_ENV_FILE:-/etc/predigol/predigol.env} | cut -d= -f2 | tr -d '\"'" || true)"
 smoke() {
   remote "set -e
     C=\"curl -fsS -m 20 --resolve $domain:443:127.0.0.1\"
     CA=\${PREDIGOL_DATA:-/srv/predigol}/caddy/data/caddy/pki/authorities/local/root.crt
     case $domain in *.localhost) C=\"\$C --cacert \$CA\";; esac
+    case ${tls_mode:-acme} in internal) C=\"\$C --cacert \$CA\";; esac
     \$C https://$domain/health | jq -e '.status == \"ok\" or .status == \"degraded\"' > /dev/null
     \$C -o /dev/null https://$domain/login
     \$C -D - -o /dev/null https://$domain/login | grep -qi '^strict-transport-security'
