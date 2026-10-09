@@ -51,7 +51,7 @@ from fbi.ai.postmortem import analyse as fixture_analysis
 from fbi.ai.prompts import PICK_PM_SCHEMA, PICK_PM_SYSTEM, PICK_PM_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.review import side_of
-from fbi.ai.text import narrative_of
+from fbi.ai.text import DISAGREES, narrative_of
 from fbi.ai.usage import UsageLedger, call_json
 from fbi.picks.settlement import market_outcome
 
@@ -425,7 +425,7 @@ def run_pick_postmortems(conn: psycopg.Connection[Any], *, at: datetime, setting
                     read = narrative_of(call.result.data, max_lessons=2)
                     if read is not None:
                         summary, agrees, lessons = read
-                        narrative = summary + ("" if agrees else " (el revisor no comparte la clase del servidor)") + \
+                        narrative = summary + ("" if agrees else DISAGREES) + \
                             ("\n- " + "\n- ".join(lessons) if lessons else "")
                         report.narratives += 1
                         narratives_left -= 1

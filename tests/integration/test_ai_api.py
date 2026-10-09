@@ -94,7 +94,9 @@ def world(migrated_database: str, seed: Seed) -> Iterator[dict[str, Any]]:
                         "summary": "Local favorito; el mercado coincide.", "context": [], "injuries": [],
                         "changes": [], "cards": [{"market": "1X2", "selection": "Home", "line": "0",
                                                   "why": [{"text": "Modelo 52 % frente a 45 %.", "type": "DATA",
-                                                           "refs": ["P:models"]}],
+                                                           "refs": ["P:models"]},
+                                                          {"text": "P:market lo confirma (E:3).", "type": "DATA",
+                                                           "refs": ["P:market"]}],
                                                   "risks": [{"text": "Mercado delgado.", "type": "DATA",
                                                              "refs": ["P:market"]}]}]})))
     mp = pytest.MonkeyPatch()
@@ -150,6 +152,7 @@ def test_a_user_sees_only_qualified_cards_and_the_unpriced_view(world: dict[str,
     assert full["cards"][0]["ai"]["decision"] == "APPROVE", "the owner's preview shows the review"
     assert full["brief"]["summary"].startswith("Local favorito") and full["brief"]["escalate"] is True
     assert full["cards"][0]["notes"]["why"][0]["text"] == "Modelo 52 % frente a 45 %."
+    assert full["cards"][0]["notes"]["why"][1]["text"] == "El mercado lo confirma.", "a reference tag is never shown"
     assert full["cards"][0]["notes"]["risks"][0]["text"] == "Mercado delgado." and full["cards"][1]["notes"] is None
     assert full["updated_at"] is not None
 
@@ -194,6 +197,23 @@ def test_the_admin_views_are_the_owners_and_never_show_a_key(world: dict[str, An
     assert costs["budget"]["state"] == "NORMAL" and len(costs["worst_case"]) == len(costs["simulation"])
     assert owner.get("/api/v1/admin/ai/reviews/99999999").status_code == 404
     assert owner.get("/api/v1/admin/ai/reviews", params={"engine": "magic"}).status_code == 422
+
+
+def test_a_sources_utility_is_its_useful_evidence_over_what_it_brought(world: dict[str, Any],
+                                                                       migrated_database: str) -> None:
+    owner = client_for(world["user"], "SUPER_ADMIN")
+    day = NOW.date()
+    with psycopg.connect(migrated_database, autocommit=True) as conn:
+        conn.execute("INSERT INTO ai.source_stats (day, domain, tier, results, evidence, useful, discarded, cost_usd, "
+                     "computed_at) VALUES (%s, 'counted.test', 'media', 10, 4, 2, 2, 0.006, %s), "
+                     "(%s, 'older.test', 'media', 0, 4, 3, 1, 0, %s)", (day, NOW, day, NOW))
+    try:
+        rows = {r["domain"]: r for r in owner.get("/api/v1/admin/ai/sources").json()["data"]}
+        assert rows["counted.test"]["utility"] == 0.2, "useful over the times it came up in a search"
+        assert rows["older.test"]["utility"] == 0.75, "a search before results were counted: over its evidence"
+    finally:
+        with psycopg.connect(migrated_database, autocommit=True) as conn:
+            conn.execute("DELETE FROM ai.source_stats WHERE domain IN ('counted.test', 'older.test')")
 
 
 def test_the_owner_queues_a_run_and_at_most_five_wait(world: dict[str, Any]) -> None:

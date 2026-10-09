@@ -15,6 +15,7 @@ from fbi.ai import shadow as ai_shadow
 from fbi.ai.calendar import day_bounds, local_day
 from fbi.ai.config import TIERS, AiSettings
 from fbi.ai.day import STALE_ODDS, universe
+from fbi.ai.text import shown
 from fbi.api.contracts.ai_layer import (
     AiComparison,
     AiLearning,
@@ -189,7 +190,7 @@ def today_view(conn: Conn, *, day: date | None = None, at: datetime | None = Non
                 "id": b["id"], "created_at": b["created_at"].isoformat(), "pass": b["pass"], "engine": b["engine"],
                 "model": b["model"], "status": b["status"], "escalate": b["escalate"],
                 "reasons": list(b["reasons"] or []), "uncertainty": b["uncertainty"],
-                "data_quality": b["data_quality"], "summary": (b["content"] or {}).get("summary"),
+                "data_quality": b["data_quality"], "summary": shown((b["content"] or {}).get("summary")),
                 "injuries": (b["content"] or {}).get("injuries", []), "changes": (b["content"] or {}).get("changes", []),
                 "context": (b["content"] or {}).get("context", [])},
             selections=selections.get(f.fixture_id, []), cost_usd=round(costs.get(f.fixture_id, 0.0), 6)))
@@ -280,7 +281,8 @@ def postmortems(conn: Conn, *, day: date | None = None, verdict: str | None = No
     start, end = day_bounds(d)
     rows = fetch_all(conn, POSTMORTEMS_SQL, {"start": start, "end": end, "verdict": verdict, "cls": classification,
                                              "limit": limit})
-    return listing([PickPostmortemRow.model_validate(r | {"roles": list(r["roles"] or [])}) for r in rows],
+    return listing([PickPostmortemRow.model_validate(r | {"roles": list(r["roles"] or []),
+                                                          "narrative": shown(r["narrative"])}) for r in rows],
                    empty_reason="no_postmortems")
 
 
@@ -301,18 +303,22 @@ SELECT id, created_at, title, hypothesis, rationale, target, status, proposed_by
 def _proposal(r: dict[str, Any]) -> Proposal:
     ev = dict(r.get("evidence") or {})
     n = ev.get("n_matches", ev.get("n", ev.get("losses")))
-    return Proposal(id=r["id"], created_at=r["created_at"], title=r["title"], hypothesis=r["hypothesis"],
-                    rationale=r.get("rationale"), target=r.get("target") or "other", status=r["status"],
+    return Proposal(id=r["id"], created_at=r["created_at"], title=shown(r["title"]) or r["title"],
+                    hypothesis=shown(r["hypothesis"]) or r["hypothesis"], rationale=shown(r.get("rationale")),
+                    target=r.get("target") or "other", status=r["status"],
                     proposed_by=r["proposed_by"], n_matches=None if n is None else int(n),
                     impact=None if ev.get("impact") is None else str(ev["impact"]),
                     investigation_cost=None if ev.get("investigation_cost") is None else str(ev["investigation_cost"]),
                     evidence=ev)
 
 
+def _note(r: dict[str, Any]) -> LearningNote:
+    return LearningNote.model_validate(r | {"title": shown(r["title"]) or r["title"], "body": shown(r["body"]) or ""})
+
+
 def notes_learned_on(conn: Conn, created: date) -> list[LearningNote]:
     start, end = day_bounds(created)
-    return [LearningNote.model_validate(r) for r in
-            fetch_all(conn, NOTES_SQL, {"day": None, "created": created, "start": start, "end": end})]
+    return [_note(r) for r in fetch_all(conn, NOTES_SQL, {"day": None, "created": created, "start": start, "end": end})]
 
 
 def proposals(conn: Conn, *, limit: int = 20) -> list[Proposal]:
@@ -323,8 +329,7 @@ def learning(conn: Conn, *, day: date | None = None) -> Envelope[AiLearning]:
     """APRENDIZAJE: the notes and lessons of a day's results (default yesterday's, learned this morning) and the
     improvements proposed and awaiting the owner."""
     d = day or (local_day(now()) - timedelta(days=1))
-    notes = [LearningNote.model_validate(r) for r in
-             fetch_all(conn, NOTES_SQL, {"day": d, "created": None, "start": None, "end": None})]
+    notes = [_note(r) for r in fetch_all(conn, NOTES_SQL, {"day": d, "created": None, "start": None, "end": None})]
     return ok(AiLearning(day=d, notes=notes, proposals=proposals(conn)))
 
 
@@ -342,11 +347,12 @@ def sources(conn: Conn, *, days: int = 7, limit: int = 100) -> Envelope[list[Sou
     until = local_day(now())
     rows = []
     for r in fetch_all(conn, SOURCES_SQL, {"since": until - timedelta(days=days - 1), "until": until, "limit": limit}):
-        results, useful = int(r["results"] or 0), int(r["useful"] or 0)
-        rows.append(SourceRow(domain=r["domain"], tier=r["tier"], results=results, evidence=int(r["evidence"] or 0),
+        results, useful, evidence = int(r["results"] or 0), int(r["useful"] or 0), int(r["evidence"] or 0)
+        base = results or evidence  # searches before 0073 did not count results per domain: its evidence instead
+        rows.append(SourceRow(domain=r["domain"], tier=r["tier"], results=results, evidence=evidence,
                               useful=useful, discarded=int(r["discarded"] or 0),
                               cost_usd=round(float(r["cost_usd"] or 0), 6),
-                              utility=round(useful / results, 4) if results else None))
+                              utility=round(min(1.0, useful / base), 4) if base else None))
     return listing(rows, empty_reason="no_sources_yet")
 
 

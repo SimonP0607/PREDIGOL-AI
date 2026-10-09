@@ -18,6 +18,7 @@ from fbi.ai import costs as ai_costs
 from fbi.ai import shadow as ai_shadow
 from fbi.ai.config import AiSettings
 from fbi.ai.gating import enforcement
+from fbi.ai.text import shown as owner_text
 from fbi.ai.usage import budget
 from fbi.analyst.db import write_connection
 from fbi.api.contracts.ai_layer import (
@@ -63,14 +64,18 @@ SELECT EXISTS (SELECT 1 FROM ai.fixture_passes WHERE fixture_id = %(fixture)s AN
 """
 
 
+def _claim(c: dict[str, Any]) -> Claim:
+    """A brief's claim as the owner reads it (plain words, also for briefs stored before brief-v3)."""
+    return Claim.model_validate(c | {"text": owner_text(str(c.get("text") or ""))})
+
+
 def _notes_for(card: AnalysisCard, notes: list[dict[str, Any]]) -> CardNotes | None:
     from fbi.ai.brief import line_text
 
     key = (card.market, card.selection, line_text(card.line))
     for n in notes:
         if (n.get("market"), n.get("selection"), str(n.get("line"))) == key:
-            return CardNotes(why=[Claim.model_validate(c) for c in n.get("why", [])],
-                             risks=[Claim.model_validate(c) for c in n.get("risks", [])])
+            return CardNotes(why=[_claim(c) for c in n.get("why", [])], risks=[_claim(c) for c in n.get("risks", [])])
     return None
 
 
@@ -97,10 +102,10 @@ def match_analysis(conn: Conn, fixture_id: int, *, evaluation: bool) -> Envelope
                           engine=brief_row["engine"], model=brief_row["model"], status=brief_row["status"],
                           escalate=bool(brief_row["escalate"]), reasons=list(brief_row["reasons"] or []),
                           uncertainty=brief_row["uncertainty"], data_quality=brief_row["data_quality"],
-                          summary=content.get("summary"),
-                          context=[Claim.model_validate(c) for c in content.get("context", [])],
+                          summary=owner_text(content.get("summary")),
+                          context=[_claim(c) for c in content.get("context", [])],
                           injuries=list(content.get("injuries") or []),
-                          changes=[Claim.model_validate(c) for c in content.get("changes", [])])
+                          changes=[_claim(c) for c in content.get("changes", [])])
     updated = row["built_at"]
     if brief is not None and brief.created_at > updated:
         updated = brief.created_at

@@ -262,7 +262,9 @@ def test_a_block_with_a_digit_can_be_cited() -> None:
 def test_the_owner_reads_plain_prose_and_a_good_narrative_is_not_lost() -> None:
     from fbi.ai.text import narrative_of, plain
 
-    assert plain("P:market dio 33.0 % y P:models 40.8 % (E:12).") == "el mercado dio 33.0 % y los modelos 40.8 %."
+    assert plain("P:market dio 33.0 % y P:models 40.8 % (E:12).") == "El mercado dio 33.0 % y los modelos 40.8 %."
+    assert plain("El cierre de P:market subió; ir a P:model.") == "El cierre del mercado subió; ir al modelo."
+    assert plain("Viajó a El Salvador.") == "Viajó a El Salvador.", "only an inserted article is contracted"
     assert plain("Ganó en P:h2h.") == "Ganó en los cruces directos."
     assert plain("Sin etiquetas.") == "Sin etiquetas."
     read = narrative_of({"summary": "Perdió por P:market.", "class": "x", "lessons": ["a", "b", "c"]}, max_lessons=2)
@@ -270,3 +272,14 @@ def test_the_owner_reads_plain_prose_and_a_good_narrative_is_not_lost() -> None:
     assert narrative_of({"lessons": ["x"]}, max_lessons=2) is None, "no summary, nothing to read"
     assert narrative_of({"answer": {"summary": "Envuelto.", "agrees_with_class": False}}, max_lessons=2) == \
         ("Envuelto.", False, [])
+
+
+def test_a_stored_text_is_shown_in_plain_words_without_changing_the_row() -> None:
+    from fbi.ai.text import DISAGREES, shown
+
+    stored = ("Perdió. P:market dio 33 % (E:4) (el revisor no comparte la clase del servidor)\n"
+              "- P:market se movió.\n- Vigilar la tabla.")
+    assert shown(stored) == ("Perdió. El mercado dio 33 %" + DISAGREES + "\n"
+                             "- El mercado se movió.\n- Vigilar la tabla."), "line by line, the lessons stay a list"
+    assert shown(None) is None
+    assert shown("Sin cambios.") == "Sin cambios."

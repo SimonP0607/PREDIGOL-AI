@@ -14,6 +14,10 @@ WORDS = {"market": "el mercado", "models": "los modelos", "model": "el modelo", 
          "evidence": "la evidencia", "fixture": "el partido", "elo": "el Elo", "travel": "el viaje",
          "signals": "las señales", "previous": "la lectura anterior"}
 TAG = re.compile(r"\(?\b([PE]):([a-z_][a-z_0-9]*|\d+)(?:\.[a-z_0-9]+)*\)?")
+CONTRACTIONS = ((r"\bde el\b", "del"), (r"\bDe el\b", "Del"), (r"\ba el\b", "al"), (r"\bA el\b", "Al"))
+# phrases of older versions, in the owner's words when shown (the stored row keeps what was written)
+LEGACY = {" (el revisor no comparte la clase del servidor)": " (la IA no coincide con la clasificación automática)"}
+DISAGREES = LEGACY[" (el revisor no comparte la clase del servidor)"]
 
 
 def plain(text: str) -> str:
@@ -24,7 +28,21 @@ def plain(text: str) -> str:
         return WORDS.get(m.group(2), "")
     out = TAG.sub(word, text)
     out = re.sub(r"\s+([,.;:])", r"\1", out)
-    return re.sub(r"\s{2,}", " ", out).strip()
+    for a, b in CONTRACTIONS:  # "de el mercado" -> "del mercado" once a tag became words
+        out = re.sub(a, b, out)
+    out = re.sub(r"\s{2,}", " ", out).strip()
+    # a sentence that now starts with an inserted article starts with a capital
+    return re.sub(r"(^(?:-\s+)?|[.!?]\s+)(el|la|los|las|lo)\b", lambda m: m.group(1) + m.group(2).capitalize(), out)
+
+
+def shown(text: str | None) -> str | None:
+    """A stored text as the owner reads it: reference tags turned into words line by line (texts stored before the
+    tags were removed at the source too) and older internal phrases in plain words. Nothing stored is changed."""
+    if text is None:
+        return None
+    for old, new in LEGACY.items():
+        text = text.replace(old, new)
+    return "\n".join(plain(line) if line.strip() else line for line in text.split("\n"))
 
 
 def narrative_of(data: dict[str, Any], *, max_lessons: int, max_len: int = 900) -> tuple[str, bool, list[str]] | None:
