@@ -6,7 +6,8 @@
 # there is no domain yet (PREDIGOL_TLS_MODE=internal), or predigol.localhost in the rehearsal (Caddy then signs
 # with its own local authority).
 {
-	email {$PREDIGOL_ACME_EMAIL}
+	# No ACME contact e-mail: Let's Encrypt stopped sending expiry e-mails in 2025 and an account without one is
+	# valid; Caddy renews on its own and the monitor (bin/healthcheck.sh) watches the certificate's age.
 	# A client that sends no SNI (an IP address in the URL, a check through --resolve) gets the site's certificate.
 	default_sni {$PREDIGOL_DOMAIN}
 	servers {
@@ -75,4 +76,11 @@
 		}
 		format json
 	}
+}
+
+# www.<domain> (a CNAME to the domain at most registrars) gets its own certificate and a permanent redirect to the
+# one origin: the session cookie and the API's same-site check belong to the bare domain.
+www.{$PREDIGOL_DOMAIN} {
+	import /etc/caddy/snippets/tls-{$PREDIGOL_TLS_MODE}.caddy
+	redir https://{$PREDIGOL_DOMAIN}{uri} permanent
 }

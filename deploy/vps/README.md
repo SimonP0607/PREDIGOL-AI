@@ -82,7 +82,7 @@ cada secreto: `docs/owner/SECRETS_AND_ROTATION.md`.
    Copia de `/etc/predigol/*.env` a tu gestor de contraseñas: las de la base, `PITR_CIPHER_PASS` (sin ella no se
    puede leer el PITR) y `FBI_AUTH_SECRET_KEY`.
 5. **Ajustes.**
-   * `predigol.env`: dominio, `PREDIGOL_ACME_EMAIL`, R2 para el PITR (`PITR_S3_*`), copias (`BACKUP_RCLONE_REMOTE`,
+   * `predigol.env`: dominio, R2 para el PITR (`PITR_S3_*`), copias (`BACKUP_RCLONE_REMOTE`,
      `BACKUP_AGE_RECIPIENT`, `RAW_RCLONE_REMOTE`, tras `rclone config`), Healthchecks (`HC_PING_*`).
    * `app.env`: la clave de API-Football y el bot de Telegram.
    * Desde el portátil, sin teclear ni mostrar ningún valor: `deploy/cutover/push-app-env.sh predigol` copia al

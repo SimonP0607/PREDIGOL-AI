@@ -237,7 +237,8 @@ services:
     environment:
       PREDIGOL_DOMAIN: ${PREDIGOL_DOMAIN}
       PREDIGOL_SITE: ${PREDIGOL_SITE:-${PREDIGOL_DOMAIN}}
-      PREDIGOL_ACME_EMAIL: ${PREDIGOL_ACME_EMAIL:?set PREDIGOL_ACME_EMAIL in the env file}
+      # (optional, unused by the Caddyfile since Let's Encrypt stopped expiry e-mails; kept for older env files)
+      PREDIGOL_ACME_EMAIL: ${PREDIGOL_ACME_EMAIL:-}
       # acme: Let's Encrypt (default). origin: a Cloudflare Origin CA certificate in /etc/predigol/origin.
       PREDIGOL_TLS_MODE: ${PREDIGOL_TLS_MODE:-acme}
       # Who may say who the client is: Cloudflare's ranges when it proxies (bin/cloudflare-ips.sh writes them).
