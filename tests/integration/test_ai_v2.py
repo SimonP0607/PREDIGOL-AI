@@ -348,3 +348,26 @@ def test_no_tier_configured_means_rules_only(db: psycopg.Connection[Any], world:
     report = run(Savepoints(db), settings=settings)
     assert report.counts["briefs_rules"] == 6 and count(db, "SELECT count(*) FROM ai.usage") == 0, \
         "a tier without its key is not configured: the rules write the briefs"
+
+
+def test_an_incomplete_brief_is_asked_once_more_and_never_paid_twice_for_the_same_input(
+        db: psycopg.Connection[Any], world: World) -> None:
+    conn = Savepoints(db)
+    answers = iter([{"context": "no list"}, brief_reply(summary="Segunda respuesta, completa.")])
+
+    def script(r: Any) -> dict[str, Any]:
+        return next(answers) if r.schema_name == "submit_brief" else review_reply("APPROVE")
+    model = FakeProvider(script, name="anthropic")
+    run(conn, provider=model, only=[world.fixtures["F1"]])
+    assert asked(model, "submit_brief") == 2, "one more try, told what was wrong"
+    row = db.execute("SELECT engine, status, content->>'summary' FROM ai.match_briefs WHERE fixture_id = %s",
+                     (world.fixtures["F1"],)).fetchone()
+    assert row == ("llm", "ok", "Segunda respuesta, completa.")
+    broken = FakeProvider(lambda r: {"nothing": True} if r.schema_name == "submit_brief" else review_reply(),
+                          name="anthropic")
+    run(conn, provider=broken, only=[world.fixtures["F3"]])
+    assert asked(broken, "submit_brief") == 2
+    rows = db.execute("SELECT engine, status FROM ai.match_briefs WHERE fixture_id = %s ORDER BY id",
+                      (world.fixtures["F3"],)).fetchall()
+    assert rows == [("llm", "invalid_output"), ("rules", "invalid_output")], "the rules write it; the model's two " \
+        "invalid answers are recorded"

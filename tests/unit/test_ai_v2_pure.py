@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from fbi.ai.brief import BriefOut, escalation, line_text, rules_brief, validate
+from fbi.ai.brief import BriefOut, escalation, lenient, line_text, rules_brief, validate
 from fbi.ai.collectors import query_for
 from fbi.ai.cycle import needs_llm, watch_candidate
 from fbi.ai.learning import notes_for
@@ -236,3 +236,14 @@ def test_nothing_here_moves_a_probability() -> None:
         return set()
     assert not {k for k in keys(BRIEF_SCHEMA) if k.startswith("p_") or "probab" in k or "stake" in k}
     assert datetime.now(UTC) > AT - timedelta(days=36500)
+
+
+def test_an_incomplete_brief_is_repaired_only_where_nothing_is_invented() -> None:
+    wrapped = {"brief": {"summary": "Partido parejo.", "context": "[]", "cards": "no es json", "extra": 1}}
+    d = lenient(wrapped)
+    assert d["summary"] == "Partido parejo." and d["context"] == [] and d["cards"] == [] and "extra" not in d
+    assert (d["data_quality"], d["uncertainty"], d["contradiction"], d["escalate"]) == ("fair", "medium", False, False)
+    assert BriefOut.model_validate(d).summary == "Partido parejo."
+    assert "summary" not in lenient({"context": []}), "a missing summary stays missing: the answer is invalid"
+    as_text = lenient({"payload": '{"summary": "Texto.", "uncertainty": "low"}'})
+    assert as_text["summary"] == "Texto." and as_text["uncertainty"] == "low"
