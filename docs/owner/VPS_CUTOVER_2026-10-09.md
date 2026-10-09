@@ -130,6 +130,11 @@ tiene backtest, así que ningún pick estaba calificado antes ni después.
 
 **Otros arreglos del día:** `af4d36a` — al arrancar, el worker cierra como fallidos los ciclos de IA y los "ejecutar
 ahora" que un worker anterior dejó a medias (el ciclo 87 quedó "en curso" tras el reinicio de las 13:00).
+`d8089ac`, `6c1d615` — los textos del aprendizaje (post-mortems, notas, lecciones, hallazgos de Evolución) se leen en
+español llano: sin códigos (CONTEXT_ERROR, DOWNGRADE, OUTDATED, half_loss), sin "1X2 Home", sin etiquetas "DATO:",
+sin "según la nota 10" y sin cortes a media palabra. Lo ya guardado se muestra corregido; dos detalles de las notas
+del 9 oct ("1 pérdidas", el motivo en inglés del proveedor en "La información falló") no se repiten con el código
+nuevo.
 
 ## 5. Pendiente (decisiones del dueño)
 
