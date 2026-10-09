@@ -1,9 +1,12 @@
-"""Rows that every pass or payload names are not locked when nothing in them changes (9 Oct 2026, on the server).
+"""Teams that a payload names as they are are not written or locked (9 Oct 2026, on the server).
 
-The model registry's upsert locked its row for the whole pick pipeline - every other pass waited, twenty times,
-about four minutes each - and every /fixtures payload rewrote every team it named, so the in-play capture waited on
-the fixtures sync (three waits of seven minutes). A row merely read is locked by nobody: another transaction can
-take it at once (FOR UPDATE NOWAIT does not fail).
+Every /fixtures payload rewrote every team it named, so the in-play capture waited on the fixtures sync (three waits
+of seven minutes). A row merely read is locked by nobody: another transaction can take it at once (FOR UPDATE NOWAIT
+does not fail).
+
+(The model registry's upsert, which made two overlapping pick passes wait on each other, is left as it was: it lives
+in fbi.backtesting, part of the model-code fingerprint, and changing it made a new version of every model - 9 Oct
+2026, 13:19-13:4x UTC. One pass at a time (apps.worker.scheduler.OnePass) is what removes that wait.)
 """
 
 from __future__ import annotations
@@ -13,9 +16,7 @@ from datetime import UTC, datetime
 
 import psycopg
 import pytest
-from psycopg.rows import tuple_row
 
-from fbi.backtesting.persist import registry_id
 from fbi.ingestion.fixtures import FixtureRepository
 from fbi.providers.base import FixtureRef
 from tests.integration.conftest import Seed
@@ -39,30 +40,6 @@ def _free(conn: psycopg.Connection, sql: str, *args: object) -> bool:
     except psycopg.errors.LockNotAvailable:
         return False
     return True
-
-
-def test_the_registry_row_is_read_not_locked_when_it_already_says_this(
-        db: psycopg.Connection, other: psycopg.Connection, migrated_database: str) -> None:
-    with psycopg.connect(migrated_database, autocommit=True) as setup, setup.cursor(row_factory=tuple_row) as cur:
-        created = registry_id(cur, "lock_probe", "goals", "a model for this test")
-        assert registry_id(cur, "lock_probe", "goals", "a model for this test") == created, "created once"
-    try:
-        before = db.execute("SELECT xmin::text FROM models.model_registry WHERE id = %s", (created,)).fetchone()
-        with db.cursor(row_factory=tuple_row) as cur:
-            assert registry_id(cur, "lock_probe", "goals", "a model for this test") == created
-        assert _free(other, "SELECT id FROM models.model_registry WHERE id = %s", created), \
-            "a pass that only names its model must not hold the row until it commits"
-        after = db.execute("SELECT xmin::text FROM models.model_registry WHERE id = %s", (created,)).fetchone()
-        assert after == before, "no new row version for a description that did not change"
-        with db.cursor(row_factory=tuple_row) as cur:
-            assert registry_id(cur, "lock_probe", "goals", "a new description") == created
-        row = db.execute("SELECT description FROM models.model_registry WHERE id = %s", (created,)).fetchone()
-        assert row == ("a new description",), "a changed description is still written"
-    finally:
-        db.rollback()
-        with psycopg.connect(migrated_database, autocommit=True) as cleanup:
-            cleanup.execute("SET lock_timeout = '5s'")
-            cleanup.execute("DELETE FROM models.model_registry WHERE name = 'lock_probe'")
 
 
 @pytest.fixture
