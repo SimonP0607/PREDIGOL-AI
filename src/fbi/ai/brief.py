@@ -76,9 +76,47 @@ RETRY_NOTE = ("\n\nYOUR PREVIOUS ANSWER WAS NOT VALID ({errors}). Call the tool 
               "complete object: every required field at the top level, lists as JSON arrays.")
 
 
+def fit(text: str, limit: int) -> str:
+    """A text longer than its field, cut at the last sentence (or word) that fits: what is kept is the model's own,
+    nothing is added but an ellipsis."""
+    if len(text) <= limit:
+        return text
+    head = text[:limit]
+    end = max(head.rfind(". "), head.rfind("; "), head.rfind(".\n"))
+    if end >= limit // 2:
+        return head[:end + 1]
+    cut = head[:limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:")
+    return cut + "…"
+
+
+def _only(item: Any, model: type[BaseModel], texts: dict[str, int] | None = None) -> Any:
+    """An item of a list as its model wants it: keys the model does not know are dropped (a "selection_text" added
+    to a card, 9 Oct 2026), over-long texts cut to their field."""
+    if not isinstance(item, dict):
+        return item
+    out = {k: v for k, v in item.items() if k in model.model_fields}
+    for k, n in (texts or {}).items():
+        if isinstance(out.get(k), str):
+            out[k] = fit(out[k], n)
+    refs, most = out.get("refs"), _max_items(model, "refs")
+    if isinstance(refs, list) and most is not None:
+        out["refs"] = refs[:most]
+    return out
+
+
+def _max_items(model: type[BaseModel], name: str) -> int | None:
+    f = model.model_fields.get(name)
+    return next((int(m.max_length) for m in (f.metadata if f else []) if getattr(m, "max_length", None)), None)
+
+
+def _claims(v: Any, n: int) -> list[Any]:
+    return [_only(c, ClaimOut, {"text": 240}) for c in v[:n]] if isinstance(v, list) else []
+
+
 def lenient(data: dict[str, Any]) -> dict[str, Any]:
-    """The answer as the schema wants it when the model only wrapped it, or wrote a list as text, or left out an
-    optional field: never invents content - a missing summary stays missing (and the answer invalid)."""
+    """The answer as the schema wants it when the model only wrapped it, or wrote a list as text, left out an
+    optional field, added a key of its own (at any depth), wrote one item too many or a text too long: never
+    invents content - a missing summary stays missing (and the answer invalid)."""
     d: dict[str, Any] = dict(data)
     if "summary" not in d and len(d) == 1:
         only = next(iter(d.values()))
@@ -101,6 +139,18 @@ def lenient(data: dict[str, Any]) -> dict[str, Any]:
     d.setdefault("uncertainty", "medium")
     d.setdefault("contradiction", False)
     d.setdefault("escalate", False)
+    if isinstance(d.get("summary"), str):
+        d["summary"] = fit(d["summary"], 500)  # 9 Oct 2026: a good brief refused for 512 characters
+    d["context"] = _claims(d["context"], 5)
+    d["changes"] = _claims(d["changes"], 4)
+    d["injuries"] = [_only(i, Injury, {"player": 80}) for i in d["injuries"][:10]]
+    cards = []
+    for c in d["cards"][:3]:
+        c = _only(c, CardNote)
+        if isinstance(c, dict):
+            c["why"], c["risks"] = _claims(c.get("why"), 3), _claims(c.get("risks"), 3)
+        cards.append(c)
+    d["cards"] = cards
     return {k: v for k, v in d.items() if k in BriefOut.model_fields}
 
 

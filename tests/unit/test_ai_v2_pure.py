@@ -283,3 +283,24 @@ def test_a_stored_text_is_shown_in_plain_words_without_changing_the_row() -> Non
                              "- El mercado se movió.\n- Vigilar la tabla."), "line by line, the lessons stay a list"
     assert shown(None) is None
     assert shown("Sin cambios.") == "Sin cambios."
+
+
+def test_a_brief_with_a_key_of_its_own_deep_inside_or_a_long_summary_is_read_not_refused() -> None:
+    # 9 Oct 2026, the first real day: 2 of 79 briefs refused twice - a "selection_text" added to a card, and a
+    # summary of 512 characters. Both answers were good; both were paid twice and lost.
+    from fbi.ai.brief import BriefOut, fit, lenient
+
+    long = "Primera frase del resumen, con datos. " * 15
+    d = lenient({"summary": long, "summary_note": "x",
+                 "cards": [{"market": "1X2", "selection": "Home", "line": "0", "selection_text": "Gana el local",
+                            "why": [{"text": "Modelo 52 % frente a 45 %.", "type": "DATA", "refs": ["P:models"],
+                                     "note": 1}], "risks": []}] * 4,
+                 "injuries": [{"side": "home", "player": "X", "status": "out", "refs": ["E:1", "E:2", "E:3", "E:4", "E:5"],
+                               "source": "prensa"}],
+                 "context": [{"text": "Muy largo. " * 40, "type": "DATA", "refs": []}]})
+    b = BriefOut.model_validate(d)
+    assert len(b.summary) <= 500 and b.summary.endswith("datos.") and b.summary in long, "cut at a sentence, kept as written"
+    assert len(b.cards) == 3 and b.cards[0].why[0].text == "Modelo 52 % frente a 45 %.", "an extra key at any depth is dropped"
+    assert b.injuries[0].refs == ["E:1", "E:2", "E:3", "E:4"] and len(b.context[0].text) <= 240
+    assert fit("corto", 10) == "corto" and fit("una palabra " * 30, 40).endswith("palabra…")
+    assert "summary" not in lenient({"cards": []}), "a missing summary is never invented"
