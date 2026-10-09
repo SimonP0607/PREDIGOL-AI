@@ -41,7 +41,12 @@ from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.usage import UsageLedger, call_json
 from fbi.picks.settlement import Status, market_outcome
 
-VERSION = "pm-v1"
+VERSION = "pm-v1.1"
+"""v1.1 (9 Oct 2026): a regular starter is one who started at least two of the team's last three matches (the line-ups),
+no longer any player with many minutes this season - a player sold in August was "missing without a report"."""
+MEMORY_KEY = "pm-v1"
+"""The memory events keep the key of the first version: a match analysed again by a newer version is not remembered
+twice (patterns count events - a duplicate would inflate their samples)."""
 LOOKBACK = timedelta(days=7)
 SETTLE_DELAY = timedelta(hours=3)
 LARGE_LOGLOSS_DIFF = 0.25
@@ -118,10 +123,19 @@ SELECT p.selection, p.p_calibrated FROM models.predictions p JOIN newest n ON n.
 """
 
 REGULARS_SQL = """
-SELECT DISTINCT ON (s.provider_player_id) s.provider_player_id, s.minutes
-  FROM core.player_season_stats s
- WHERE s.provider_team_id = %(team)s AND s.season = %(season)s AND s.provider_league_id = %(league)s
- ORDER BY s.provider_player_id, s.observed_at DESC
+WITH prev AS (
+    SELECT f.id, CASE WHEN f.home_team_id = %(team)s THEN 'home' ELSE 'away' END AS side
+      FROM core.fixtures f
+     WHERE (f.home_team_id = %(team)s OR f.away_team_id = %(team)s) AND f.kickoff_at < %(kickoff)s
+       AND f.status_group = 'finished'
+       AND EXISTS (SELECT 1 FROM core.fixture_lineup_players x WHERE x.fixture_id = f.id)
+     ORDER BY f.kickoff_at DESC LIMIT 3
+)
+SELECT lp.provider_player_id, max(lp.player_name) AS name, count(DISTINCT lp.fixture_id) AS starts,
+       (SELECT count(*) FROM prev) AS n
+  FROM prev JOIN core.fixture_lineup_players lp ON lp.fixture_id = prev.id AND lp.team_side = prev.side
+ WHERE lp.is_starter AND lp.provider_player_id IS NOT NULL
+ GROUP BY lp.provider_player_id
 """
 
 
@@ -213,17 +227,14 @@ def analyse(conn: psycopg.Connection[Any], fixture_id: int) -> tuple[dict[str, A
     reported = {(side_of_team.get(e["team_id"]), e["provider_player_id"]) for e in
                 _rows(conn, EVIDENCE_SQL, {"fixture": fixture_id})}
     if lineup:
-        for side, provider_team in (("home", f["home_provider_id"]), ("away", f["away_provider_id"])):
-            regs = _rows(conn, REGULARS_SQL, {"team": provider_team, "season": f["season"],
-                                              "league": f["provider_league_id"]})
-            regs = sorted(regs, key=lambda r: -(r["minutes"] or 0))[:11]
-            top = max((r["minutes"] or 0) for r in regs) if regs else 0
-            for r in regs:
-                pid = int(r["provider_player_id"])
-                if top and (r["minutes"] or 0) >= 0.6 * top and (side, pid) not in starters \
-                        and (side, pid) not in reported and (side, pid) not in in_squad:
-                    findings["missing_information"].append({"side": side, "player_id": pid,
-                                                            "minutes": r["minutes"]})
+        for side, team in (("home", f["home_team_id"]), ("away", f["away_team_id"])):
+            for r in _rows(conn, REGULARS_SQL, {"team": team, "kickoff": f["kickoff_at"]}):
+                pid, n, starts = int(r["provider_player_id"]), int(r["n"]), int(r["starts"])
+                regular = n >= 2 and starts >= min(2, n)
+                if regular and (side, pid) not in starters and (side, pid) not in reported \
+                        and (side, pid) not in in_squad:
+                    findings["missing_information"].append({"side": side, "player_id": pid, "player": r["name"],
+                                                            "starts": starts, "of": n})
     market = {r["selection"]: float(r["p_fair"]) for r in _rows(conn, CLOSING_1X2_SQL, {"fixture": fixture_id})}
     model = {r["selection"]: float(r["p_calibrated"]) for r in
              _rows(conn, MODEL_1X2_SQL, {"fixture": fixture_id, "model": "dixon_coles"})}
@@ -239,7 +250,7 @@ def analyse(conn: psycopg.Connection[Any], fixture_id: int) -> tuple[dict[str, A
 def write_memory(conn: psycopg.Connection[Any], fixture_id: int, outcome: dict[str, Any], expected: dict[str, Any],
                  findings: dict[str, Any], *, at: datetime) -> tuple[int, int]:
     n = errors = 0
-    key = f"pm:{VERSION}:{fixture_id}"
+    key = f"pm:{MEMORY_KEY}:{fixture_id}"
     if remember(conn, at=at, kind="match_result", entity_type="fixture", entity_id=str(fixture_id), version=VERSION,
                 fixture_id=fixture_id, evidence=outcome, result=f"{outcome['score'][0]}-{outcome['score'][1]}",
                 dedup_key=f"{key}:result"):

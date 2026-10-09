@@ -19,10 +19,12 @@ The ten questions (``answers``):
     variance        ¿Fue simplemente varianza?       none of the above: a fair price that lost
 
 The class of a loss, the first that applies: DATA_ERROR (the data was not fit for models) - EXECUTION_ERROR (a stale
-price, a kick-off changed after the selection) - CONTEXT_ERROR (the information failed, or a known key absence was
-let through) - MARKET_ERROR (the market moved 3 % or more against the price taken: it knew something) - MODEL_ERROR
-(the model 8 points or more above the closing market) - NORMAL_VARIANCE (the model close to the closing market, or
-the price beat the close) - UNKNOWN (no closing price to judge by).
+price, a kick-off changed after the selection) - CONTEXT_ERROR (a known key absence on the chosen side let through) -
+MARKET_ERROR (the market moved 3 % or more against the price taken: it knew something) - CONTEXT_ERROR (the
+information failed: a report that proved wrong, or for a side pick a regular starter missing without any report) -
+MODEL_ERROR (the model 8 points or more above the closing market) - NORMAL_VARIANCE (the model close to the closing
+market, or the price beat the close) - UNKNOWN (no closing price to judge by). Measured on a copy (3-6 Oct 2026):
+with the information first, half the losses were "context" - mostly a price that had already moved.
 
 A post-mortem is written once (``ai.pick_postmortems``), never acted on: patterns over many become hypotheses
 (``fbi.ai.patterns``), never a change. A short narrative, when a model is configured and the budget allows, is
@@ -78,12 +80,12 @@ SELECT DISTINCT ON (r.fixture_id, r.market_key, r.selection, r.line)
 
 ITEMS_SQL = """
 SELECT 'daily_pick' AS role, i.fixture_id, i.market_key, i.selection, i.line, i.odds, i.bookmaker_id, i.p_model,
-       i.p_low, i.p_market, i.price_at
+       i.p_low, i.p_market, i.price_at, i.selected_at
   FROM picks.daily_set_items i JOIN core.fixtures f ON f.id = i.fixture_id
  WHERE f.kickoff_at >= %(since)s AND f.kickoff_at <= %(until)s AND f.status_group = 'finished'
 UNION ALL
 SELECT 'parlay_leg', l.fixture_id, l.market_key, l.selection, l.line, l.odds, l.bookmaker_id, l.p_model, l.p_low,
-       l.p_market, l.price_at
+       l.p_market, l.price_at, l.added_at
   FROM picks.parlay_legs l JOIN core.fixtures f ON f.id = l.fixture_id
  WHERE f.kickoff_at >= %(since)s AND f.kickoff_at <= %(until)s AND f.status_group = 'finished'
 """
@@ -190,13 +192,15 @@ def classify(f: Facts) -> str | None:
         return "DATA_ERROR"
     if f.stale_price or f.kickoff_changed:
         return "EXECUTION_ERROR"
-    if f.information_failed or (f.key_absence and f.decision == "APPROVE"):
-        return "CONTEXT_ERROR"
+    if f.key_absence and f.decision == "APPROVE":
+        return "CONTEXT_ERROR"  # a known key absence on the chosen side, let through
     clv = f.clv
     moved_against = (clv is not None and clv <= CLV_AGAINST) or (
         f.p_close is not None and f.p_market is not None and f.p_close <= f.p_market + CLV_AGAINST)
     if moved_against:
-        return "MARKET_ERROR"
+        return "MARKET_ERROR"  # the market knew something before the kick-off
+    if f.information_failed:
+        return "CONTEXT_ERROR"
     if f.p_close is not None and f.p_model is not None and f.p_model - f.p_close >= MODEL_GAP:
         return "MODEL_ERROR"
     if f.p_close is not None or (clv is not None and clv >= 0):
@@ -306,21 +310,19 @@ def _facts(conn: psycopg.Connection[Any], s: dict[str, Any], *, home: int, away:
     side = side_of(s["market_key"], s["selection"])
     opp = "away" if side == "home" else "home" if side == "away" else None
     content: dict[str, Any] = {}
-    sources: list[dict[str, Any]] = []
     review_at: datetime | None = s.get("reviewed_at")
     if s.get("packet_id"):
         rows = _rows(conn, PACKET_SQL, {"id": s["packet_id"]})
         if rows:
-            content, sources = dict(rows[0]["content"] or {}), list(rows[0]["sources"] or [])
+            content = dict(rows[0]["content"] or {})
     quality = ((content.get("quality") or {}).get("competition_score") or {}).get("class")
     validation = ((content.get("quality") or {}).get("fixture_validation") or {}).get("state")
     f.data_unfit = quality in NOT_FIT or validation == "QUARANTINED"
+    # a stale price is judged only where the price taken and the moment it was taken are recorded (a pick of the day,
+    # a parlay leg): a review reads the consensus of every market, which can lag the selection's own price
     price_at: datetime | None = s.get("price_at")
-    if price_at is None:
-        market_as_of = next((x.get("as_of") for x in sources if x.get("block") == "market"), None)
-        price_at = None if not market_as_of else datetime.fromisoformat(str(market_as_of))
-    moment = review_at or s.get("selected_at")
-    if price_at is not None and moment is not None and moment - price_at > STALE_PRICE:
+    taken_at: datetime | None = s.get("selected_at")
+    if price_at is not None and taken_at is not None and taken_at - price_at > STALE_PRICE:
         f.stale_price = True
     absences = content.get("absences") or {}
     sides = [side] if side in ("home", "away") else ["home", "away"]
@@ -333,9 +335,11 @@ def _facts(conn: psycopg.Connection[Any], s: dict[str, Any], *, home: int, away:
         if e.get("verdict") == "wrong" and (opp is None or e.get("side") in (opp, None)):
             f.information.append(f"reportado fuera y fue titular ({e.get('tier')}): {str(e.get('claim', ''))[:80]}")
     for m in (findings or {}).get("missing_information", []):
-        if side not in ("home", "away") or m.get("side") == side:
-            f.information.append(f"titular habitual ausente sin reporte ({'local' if m.get('side') == 'home' else 'visitante'}"
-                                 f", jugador {m.get('player_id')})")
+        # an absence nobody reported counts against a side pick; for a draw or a total its direction is unknown
+        if side in ("home", "away") and m.get("side") == side:
+            who = m.get("player") or f"jugador {m.get('player_id')}"
+            f.information.append(f"titular habitual ausente sin reporte: {who} "
+                                 f"({'local' if m.get('side') == 'home' else 'visitante'})")
     f.information_failed = bool(f.information)
     lineup_at = _rows(conn, LINEUP_AT_SQL, {"fixture": s["fixture_id"]})
     first_lineup = lineup_at[0]["min"] if lineup_at else None
@@ -370,7 +374,8 @@ def run_pick_postmortems(conn: psycopg.Connection[Any], *, at: datetime, setting
     wanted: dict[tuple[int, str, str, Decimal], dict[str, Any]] = {}
     for key, r in reviewed.items():
         if key in roles or key[0] in passed:
-            wanted[key] = dict(r)
+            item = items.get(key) or {}
+            wanted[key] = dict(r) | {"price_at": item.get("price_at"), "selected_at": item.get("selected_at")}
     for key, r in items.items():
         if key not in wanted:
             wanted[key] = dict(r) | {"decision": None, "review_id": None, "output": {}, "packet_id": None,
