@@ -22,6 +22,8 @@ from fbi.api.contracts.ai_layer import (
     AiLearning,
     AiOverview,
     AiToday,
+    DailyReview,
+    DailyReviewDay,
     EvidenceRow,
     MatchAnalysis,
     MemoryEvent,
@@ -38,7 +40,7 @@ from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.security import Admin, App
-from fbi.api.services import ai_layer, ai_v2
+from fbi.api.services import ai_layer, ai_v2, daily_review
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
 
@@ -162,6 +164,19 @@ def get_learning(conn: Db, day: Day = None) -> Envelope[AiLearning]:
     """APRENDIZAJE: what a day's results taught (default yesterday's, learned this morning) and the improvements
     proposed, awaiting the owner. Nothing here changes a model or a rule."""
     return ai_v2.learning(conn, day=day)
+
+
+@admin_router.get("/ai/daily-reviews", response_model=Envelope[list[DailyReviewDay]])
+def get_daily_reviews(conn: Db, days: Annotated[int, Query(ge=1, le=120)] = 30) -> Envelope[list[DailyReviewDay]]:
+    """CIERRE DEL DÍA, the history: every closed Bogotá day of the last ``days``, its newest revision's numbers."""
+    return daily_review.history(conn, days=days)
+
+
+@admin_router.get("/ai/daily-reviews/{day}", response_model=Envelope[DailyReview | None])
+def get_daily_review(conn: Db, day: Annotated[date, Path()]) -> Envelope[DailyReview | None]:
+    """CIERRE DEL DÍA of one Bogotá day: its newest revision (written at 23:59, revised while a late match settled or
+    its post-mortems arrived) and the revisions it went through."""
+    return daily_review.day_review(conn, day=day)
 
 
 @admin_router.get("/ai/sources", response_model=Envelope[list[SourceRow]])

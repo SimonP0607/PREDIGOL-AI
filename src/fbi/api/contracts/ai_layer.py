@@ -377,3 +377,42 @@ class EvolutionDashboard(Contract):
     cost_usd: Decimal
     learned: list[LearningNote] = Field(default_factory=list, description="QUÉ APRENDIÓ PREDIGOL HOY.")
     proposals: list[Proposal] = Field(default_factory=list, description="MEJORAS PROPUESTAS awaiting the owner.")
+
+
+class DailyReviewRevision(Contract):
+    """One revision of a day's CIERRE DEL DÍA (fbi.ai.daily_review)."""
+
+    revision: int
+    kind: Literal["close", "update"]
+    built_at: datetime
+    complete: bool
+    pending_fixtures: list[int]
+
+
+class DailyReviewDay(Contract):
+    """A day in the history: its newest revision's headline numbers."""
+
+    day: date
+    revisions: int
+    built_at: datetime
+    complete: bool
+    matches: int
+    played: int
+    daily_won: int
+    daily_lost: int
+    daily_pending: int
+    daily_pnl_units: float
+    shadow_roi: float | None
+    ai_usd: float
+
+
+class DailyReview(Contract):
+    """CIERRE DEL DÍA: everything the newest revision says, and the revisions it went through."""
+
+    day: date
+    revision: int
+    kind: Literal["close", "update"]
+    built_at: datetime
+    complete: bool
+    content: dict[str, Any]
+    revisions: list[DailyReviewRevision]

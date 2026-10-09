@@ -35,6 +35,18 @@ class ItemAi(Contract):
     risks: list[str] = Field(default_factory=list)
 
 
+class AiLatest(Contract):
+    """The AI's NEWEST combined review of a selection before its kick-off - which can differ from the one frozen
+    when the selection entered the set (``ai``): the review keeps working until the match starts. Unless the owner
+    previews (or the review was enforced) only that it was reviewed is said."""
+
+    reviewed_at: datetime
+    decision: Literal["APPROVE", "DOWNGRADE", "REJECT", "ABSTAIN"] | None = None
+    confidence: Decimal | None = None
+    reason: str | None = None
+    by_llm: bool = False
+
+
 class MatchRef(Contract):
     fixture_id: int
     kickoff_at: datetime
@@ -74,6 +86,7 @@ class DailyItem(Contract):
     profit_units: Decimal | None
     settled_at: datetime | None
     ai: ItemAi | None = None
+    ai_latest: AiLatest | None = None
 
 
 class DailySet(Contract):
@@ -101,6 +114,7 @@ class ParlayRecordLeg(Contract):
     ev: Decimal
     status: ResultStatus
     ai: ItemAi | None = None
+    ai_latest: AiLatest | None = None
 
 
 class ParlayRecord(Contract):

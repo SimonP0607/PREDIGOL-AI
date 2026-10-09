@@ -14,6 +14,7 @@ from typing import Any
 from fbi.api.cache import shared
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 from fbi.api.contracts.records import (
+    AiLatest,
     DailyBoard,
     DailyItem,
     DailySet,
@@ -100,6 +101,38 @@ SELECT l.*, b.name AS bookmaker, """ + MATCH_COLS + """
 
 
 CLAIMS_SQL = "SELECT id, output FROM ai.pick_reviews WHERE id = ANY(%(ids)s)"
+
+LATEST_SQL = """
+SELECT DISTINCT ON (r.fixture_id, r.market_key, r.selection, r.line)
+       r.fixture_id, r.market_key, r.selection, r.line, r.reviewed_at, r.decision, r.confidence, r.engine_version,
+       r.output->>'summary' AS reason
+  FROM ai.pick_reviews r JOIN core.fixtures f ON f.id = r.fixture_id
+ WHERE r.engine = 'combined' AND r.fixture_id = ANY(%(fixtures)s) AND r.reviewed_at < f.kickoff_at
+ ORDER BY r.fixture_id, r.market_key, r.selection, r.line, r.reviewed_at DESC, r.id DESC
+"""
+
+
+def ai_latest(conn: Conn, rows: list[Row], *, reveal: bool) -> dict[int, AiLatest]:
+    """Each row's newest pre-kick-off combined review (fbi.ai), in one query; the decision only when ``reveal``
+    (the owner's preview) - in shadow a user sees only that the selection was reviewed."""
+    fixtures = sorted({int(r["fixture_id"]) for r in rows})
+    if not fixtures:
+        return {}
+    found = {(int(x["fixture_id"]), x["market_key"], x["selection"], Decimal(x["line"])): x
+             for x in fetch_all(conn, LATEST_SQL, {"fixtures": fixtures})}
+    out: dict[int, AiLatest] = {}
+    for i, r in enumerate(rows):
+        x = found.get((int(r["fixture_id"]), r["market_key"], r["selection"], Decimal(r["line"])))
+        if x is None:
+            continue
+        version = str(x.get("engine_version") or "")
+        by_llm = bool(version) and not version.endswith("+none")
+        if not reveal:
+            out[i] = AiLatest(reviewed_at=x["reviewed_at"], by_llm=by_llm)
+            continue
+        out[i] = AiLatest(reviewed_at=x["reviewed_at"], decision=x["decision"], confidence=x["confidence"],
+                          reason=x.get("reason"), by_llm=by_llm)
+    return out
 CLAIM_GROUPS = {"positives": ("positive_evidence",), "risks": ("negative_evidence", "contradictions", "uncertainties")}
 
 
@@ -155,10 +188,12 @@ def _parlay(conn: Conn, kind: str, day: date, source: SetSource) -> ParlayRecord
         return None
     rows = fetch_all(conn, LEGS_SQL, {"parlay": p["id"]})
     ai = ai_items(conn, rows, reveal=source == "evaluation")
+    latest = ai_latest(conn, rows, reveal=source == "evaluation")
     legs = [ParlayRecordLeg(
         leg_no=r["leg_no"], pick_id=r["pick_id"], match=match_of(r), market_key=r["market_key"],
         selection=r["selection"], line=r["line"], odds=r["odds"], bookmaker=r["bookmaker"], p_model=r["p_model"],
-        p_low=r["p_low"], p_market=r["p_market"], ev=r["ev"], status=r["status"], ai=ai.get(i))
+        p_low=r["p_low"], p_market=r["p_market"], ev=r["ev"], status=r["status"], ai=ai.get(i),
+        ai_latest=latest.get(i))
         for i, r in enumerate(rows)]
     statuses = [str(r["status"]) for r in rows]
     return ParlayRecord(
@@ -181,12 +216,13 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
     if s is not None:
         rows = fetch_all(conn, ITEMS_SQL, {"set": s["id"]})
         ai = ai_items(conn, rows, reveal=include_shadow)
+        latest = ai_latest(conn, rows, reveal=include_shadow)
         items = [DailyItem(
             rank=r["rank"], pick_id=r["pick_id"], match=match_of(r, moment), market_key=r["market_key"],
             selection=r["selection"], line=r["line"], stage=r["stage"], selected_at=r["selected_at"], odds=r["odds"],
             bookmaker=r["bookmaker"], price_at=r["price_at"], p_model=r["p_model"], p_low=r["p_low"],
             p_market=r["p_market"], ev=r["ev"], model=r["model"], status=r["status"],
-            profit_units=r["profit_units"], settled_at=r["settled_at"], ai=ai.get(i))
+            profit_units=r["profit_units"], settled_at=r["settled_at"], ai=ai.get(i), ai_latest=latest.get(i))
             for i, r in enumerate(rows)]
         daily_set = DailySet(id=s["id"], day=s["day"], timezone=s["timezone"], source=s["source"],
                              rule_version=s["rule_version"], status=s["status"], items=items)

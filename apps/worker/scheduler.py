@@ -23,6 +23,8 @@ at worst, and a duplicated tick costs nothing at all.
   * ``ai_daily_report`` / ``ai_pick_review``  the AI layer (``fbi.analyst``): the research
     report from 06:00 Bogotá and the pick reviewer's flags every hour. Zero API-Football
     requests; the LLM and search APIs only when the owner configured them, inside a monthly cap.
+  * ``ai_day_close`` (23:59 Bogotá) / ``ai_day_follow`` (every 30 min)  CIERRE DEL DÍA (``fbi.ai.daily_review``):
+    the day written down when it ends, then revised while a late match settles or its post-mortems arrive.
   * ``ai_cycle`` (every 15 min) / ``ai_day_start`` (00:05 Bogotá) / ``ai_learn`` (07:35 Bogotá) /
     ``ai_requests`` (every 2 min)  the AI decision layer (``fbi.ai``): packets, evidence, reviews and analyses
     for free over four days; models and the web only for TODAY's matches with a market, at their three passes
@@ -155,6 +157,8 @@ FINAL_PREMATCH_MINUTES = int(os.environ.get("FBI_FINAL_PREMATCH_MINUTES", "60"))
 read once each (fbi.odds.final_prematch). It keeps them seven days, so the matches the capture
 missed while the worker was down are recovered as long as it comes back within the week."""
 LIVE_MATCH_SECONDS = int(os.environ.get("FBI_LIVE_MATCH_SECONDS", "60"))
+AI_DAY_FOLLOW_MINUTES = 30
+"""How often the closed days are re-read for a new revision of their CIERRE DEL DÍA (database only)."""
 LIVE_MATCH_MAX_REQUESTS = int(os.environ.get("FBI_LIVE_MATCH_MAX_REQUESTS", "10"))
 LIVE_MATCH_RESERVE = int(os.environ.get("FBI_LIVE_MATCH_RESERVE", "3000"))
 """Matches in play are followed through the fixture feed every minute: state, events,
@@ -815,6 +819,44 @@ async def _ai_day_start() -> None:
     await asyncio.to_thread(_ai_day_start_now)
 
 
+def _ai_day_close_now() -> None:
+    """23:59 Bogotá: CIERRE DEL DÍA (fbi.ai.daily_review). Never raises."""
+    from fbi.ai.daily_review import close_day
+
+    try:
+        with _connect() as conn:
+            review = close_day(conn, at=now())
+            conn.commit()
+        log.info("ai.day_close", review=review)
+    except Exception as exc:  # the AI layer must never stop the worker
+        log.error("ai.day_close.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_day_close() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_day_close_now)
+
+
+def _ai_day_follow_now() -> None:
+    """The closed days that changed since their last revision (a late match settled, a post-mortem, the morning's
+    learning), and yesterday's close if the worker missed 23:59. Never raises."""
+    from fbi.ai.daily_review import follow_days
+
+    try:
+        with _connect() as conn:
+            written = follow_days(conn, at=now())
+            conn.commit()
+        if written:
+            log.info("ai.day_follow", revisions=written)
+    except Exception as exc:  # the AI layer must never stop the worker
+        log.error("ai.day_follow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_day_follow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_day_follow_now)
+
+
 def _ai_learn_now() -> None:
     """Post-mortems, patterns, dependence, the AI's shadow report. Never raises."""
     from fbi.ai.cycle import run_learning_cycle
@@ -1147,6 +1189,12 @@ async def main() -> None:
     if learn_last is None or moment - learn_last > timedelta(hours=26):
         scheduler.add_job(_ai_learn, "date", run_date=moment + timedelta(minutes=16), id="ai_learn_catch_up",
                           misfire_grace_time=3600)
+    # CIERRE DEL DÍA: the day written down at 23:59 Bogotá, then revised while anything of it changes.
+    scheduler.add_job(_ai_day_close, "cron", hour=23, minute=59, timezone="America/Bogota", id="ai_day_close",
+                      max_instances=1, coalesce=True, misfire_grace_time=3 * 3600)
+    scheduler.add_job(_ai_day_follow, "interval", minutes=AI_DAY_FOLLOW_MINUTES, id="ai_day_follow",
+                      max_instances=1, coalesce=True, misfire_grace_time=AI_DAY_FOLLOW_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=7))
     scheduler.add_job(_ai_requests, "interval", minutes=AI_REQUESTS_MINUTES, id="ai_requests", max_instances=1,
                       coalesce=True, misfire_grace_time=AI_REQUESTS_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=1))
