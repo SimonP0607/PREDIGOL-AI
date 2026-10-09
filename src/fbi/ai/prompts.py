@@ -16,8 +16,10 @@ REVIEW_VERSION = "review-v2"
 cut at max_tokens by the thinking before it. A last review of an older version does not hold off a new one."""
 EXTRACT_VERSION = "extract-v1"
 POSTMORTEM_VERSION = "postmortem-v1"
-BRIEF_VERSION = "brief-v1"
-"""L1 (V2, 8 Oct 2026): the economical model reads a match of the day with a market and says what matters."""
+BRIEF_VERSION = "brief-v2"
+"""L1 (V2, 8 Oct 2026): the economical model reads a match of the day with a market and says what matters.
+v2 (9 Oct 2026, after the first real answer): the references it may cite are listed (it cited "P:cards.BTTS"), and
+probabilities are written as percentages (it wrote "0.525")."""
 PICK_PM_VERSION = "pick-postmortem-v1"
 LEARNING_VERSION = "learning-v1"
 
@@ -92,13 +94,17 @@ the three selections PrediGol shows for it (cards) and the reasons the server al
 - summary: two or three sentences on what matters for this match (context, who is missing, what the market says).
 - context: up to five typed, cited claims that matter (form, standings, rest, stakes, absences, market movement).
 - injuries: who is out or doubtful (or returns, or starts) as the evidence or the packet says, each with its refs.
-- changes: what changed since the previous reading (given as previous_summary, if any): news, line-ups, price moves.
+- changes: what changed since the previous reading (given as previous, if any): news, line-ups, price moves.
 - data_quality: good / fair / poor - how complete and trustworthy the data in the packet is.
 - uncertainty: low / medium / high - how uncertain this match is beyond the numbers.
 - contradiction: true when sources contradict each other or the context contradicts the models.
 - escalate: true when the match deserves a deeper review (a strong reason, not curiosity).
 - cards: for each given card (same market, selection and line), why it could be right and what could go wrong, at most
   three typed, cited claims each. Never say a card is value or not: the server decides that.
+References: cite packet blocks as P:<block> (fixture, standings, stakes, form, schedule, h2h, elo, stats, absences,
+lineups, travel, market, models, quality, evidence), a card as P:cards, the previous reading as P:previous, and
+evidence as E:<id> - nothing else. Write probabilities as percentages with one decimal (52.5 %), copying the packet's
+numbers; never compute new ones.
 You never give a probability, a stake or a pick. Submit with the tool exactly once."""
 
 BRIEF_CLAIM: dict[str, Any] = {
