@@ -1,6 +1,7 @@
 """What the AI layer would cost, measured on the platform's own matches before any provider is contracted.
 
-The analysis cycle (every 30 minutes) and the daily learning cycle are run over past days of a COPY of the
+The analysis cycle (every 15 minutes, V2: models and the web only at the passes of TODAY's matches with a market)
+and the daily learning cycle are run over past days of a COPY of the
 database with a stand-in model (``FakeProvider``: it answers instantly and counts the tokens it is sent) and,
 with ``--search``, a stand-in search engine returning five results per query. Every call the real layer would
 make is then in ``ai.usage``: how many reviews, deep reviews, extractions, searches and post-mortems a day,
@@ -38,9 +39,11 @@ from fbi.ai.providers.fake import FakeProvider
 from fbi.ai.usage import UsageLedger, shared
 from fbi.analyst.search import SearchResult
 
-OUTPUT_TOKENS = {"pick_review": 700, "evidence_extraction": 600, "postmortem": 450, "pattern_review": 900}
+OUTPUT_TOKENS = {"pick_review": 1700, "evidence_extraction": 600, "postmortem": 450, "pattern_review": 900,
+                 "match_brief": 1100, "learning": 900}
+"""Planning output per call, thinking included (Claude 5.5 measured 8 Oct 2026: a review ~1,700 tokens out)."""
 """Planning output per call: a real answer is longer than the stand-in's (claims with references)."""
-TIER_OF_PURPOSE = {"evidence_extraction": "bulk", "postmortem": "bulk", "pattern_review": "analysis"}
+STEP_MINUTES = 15
 
 
 def answer(req: JsonRequest) -> dict[str, Any]:
@@ -50,8 +53,13 @@ def answer(req: JsonRequest) -> dict[str, Any]:
                 "contradictions": [], "reason": "simulación", "minimum_playable_odds": None, "fair_odds": None}
     if req.schema_name == "submit_items":
         return {"items": []}
+    if req.schema_name == "submit_brief":
+        return {"summary": "simulación", "context": [], "injuries": [], "changes": [], "data_quality": "good",
+                "uncertainty": "medium", "contradiction": False, "escalate": False, "cards": []}
     if req.schema_name == "submit_postmortem":
-        return {"summary": "simulación", "lessons": []}
+        return {"summary": "simulación", "agrees_with_class": True, "lessons": []}
+    if req.schema_name == "submit_lessons":
+        return {"lessons": []}
     return {"hypotheses": []}
 
 
@@ -68,12 +76,14 @@ def as_of_queries() -> Iterator[None]:
     """Past days read as they were: the live queries look at today's statuses (a match since played is no longer
     'scheduled', a settled pick is no longer a candidate). For the simulation only - and only inside this block -
     a match counts as upcoming by its kick-off, and a pick by its creation time. Production code is untouched."""
-    from fbi.ai import cycle
+    from fbi.ai import cycle, day
     from fbi.api.repositories import product
 
-    saved = (cycle.FIXTURES_SQL, product.PICK_CANDIDATES)
+    saved = (cycle.FIXTURES_SQL, product.PICK_CANDIDATES, day.UNIVERSE_SQL)
     cycle.FIXTURES_SQL = cycle.FIXTURES_SQL.replace("f.status_group = 'scheduled'",
                                                     "f.status_group IN ('scheduled', 'finished', 'live')")
+    day.UNIVERSE_SQL = day.UNIVERSE_SQL.replace("f.status_group = 'scheduled'",
+                                                "f.status_group IN ('scheduled', 'finished', 'live')")
     product.PICK_CANDIDATES = product.PICK_CANDIDATES.replace(
         "AND NOT EXISTS (SELECT 1 FROM picks.pick_results pr WHERE pr.pick_id = p.id AND pr.result_status <> 'pending')",
         "AND p.created_at <= %(now)s").replace(
@@ -81,11 +91,12 @@ def as_of_queries() -> Iterator[None]:
         "f.status_group AS fixture_status",
         "CASE WHEN f.kickoff_at > %(now)s AND f.status_group IN ('finished', 'live') THEN 'scheduled' "
         "ELSE f.status_group END AS fixture_status")  # played since: scheduled then
-    assert saved[0] != cycle.FIXTURES_SQL and saved[1] != product.PICK_CANDIDATES, "the queries changed: update this"
+    assert saved[0] != cycle.FIXTURES_SQL and saved[1] != product.PICK_CANDIDATES and saved[2] != day.UNIVERSE_SQL, \
+        "the queries changed: update this"
     try:
         yield
     finally:
-        cycle.FIXTURES_SQL, product.PICK_CANDIDATES = saved
+        cycle.FIXTURES_SQL, product.PICK_CANDIDATES, day.UNIVERSE_SQL = saved
 
 
 def simulate_calls(dsn: str, *, start: datetime, days: int, search: bool,
@@ -95,9 +106,10 @@ def simulate_calls(dsn: str, *, start: datetime, days: int, search: bool,
 
 
 def sim_settings(max_reviews: int = 60, max_deep: int = 10) -> AiSettings:
-    """The layer's daily caps as configured; the money caps out of the way (the point is to count calls)."""
+    """The layer's daily caps as configured; the money caps out of the way (the point is to count calls). The free
+    part looks 30 h ahead instead of 96 (the paid part only ever concerns today)."""
     return AiSettings(mode="shadow", daily_budget=Decimal(10_000), monthly_budget=Decimal(1_000_000),
-                      max_llm_reviews_per_day=max_reviews, max_deep_per_day=max_deep)
+                      max_llm_reviews_per_day=max_reviews, max_deep_per_day=max_deep, horizon_hours=30)
 
 
 def _simulate_calls(dsn: str, *, start: datetime, days: int, search: bool, settings: AiSettings) -> dict[str, Any]:
@@ -117,7 +129,7 @@ def _simulate_calls(dsn: str, *, start: datetime, days: int, search: bool, setti
             if at.hour == 12 and at.minute == 30:  # the learning job runs at 07:35 Bogota
                 run_learning_cycle(conn, at=at + timedelta(minutes=5), settings=settings, ledger=ledger,
                                    provider=(model, "claude-haiku-5-5"))
-            at += timedelta(minutes=30)
+            at += timedelta(minutes=STEP_MINUTES)
         conn.commit()
         rows = conn.execute(
             "SELECT at::date, purpose, tier, count(*), sum(input_tokens), sum(searches) FROM ai.usage WHERE id > %s "
@@ -169,7 +181,8 @@ def report(sim: dict[str, Any], settings: AiSettings) -> dict[str, Any]:
     # WORST CASE: every capped call at its daily cap; every uncapped one at 1.5 x the busiest day measured;
     # every prompt 1.5 x longer than measured.
     caps = {"pick_review:analysis": settings.max_llm_reviews_per_day - settings.max_deep_per_day,
-            "pick_review:final": settings.max_deep_per_day, "postmortem:bulk": 10, "pattern_review:analysis": 1}
+            "pick_review:final": settings.max_deep_per_day, "postmortem:bulk": 12, "postmortem:analysis": 3,
+            "pattern_review:analysis": 1, "learning:analysis": 1}
     busiest = {k: max(int(d.get(k, {}).get("calls", 0)) for d in days.values()) for k in total}
     worst: dict[str, dict[str, Any]] = {}
     for k in set(total) | set(caps):

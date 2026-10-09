@@ -31,9 +31,12 @@ def cards() -> list[dict[str, Any]]:
 def test_a_quiet_match_does_not_escalate_and_each_reason_is_the_servers() -> None:
     assert escalation(packet().content, candidates=0) == []
     assert escalation(packet().content, candidates=2) == ["candidate"]
-    gap = packet(models__dixon_coles__selections=[{"market": "1X2", "selection": "Home", "line": "0", "p": 0.60,
-                                                   "edge_vs_market": 0.15}])
+    gap = packet(models__dixon_coles__selections=[{"market": "1X2", "selection": "Home", "line": "0", "p": 0.70,
+                                                   "edge_vs_market": 0.25}])
     assert "model_market_gap" in escalation(gap.content, candidates=0)
+    small = packet(models__dixon_coles__selections=[{"market": "OU", "selection": "Over", "line": "2.5", "p": 0.70,
+                                                     "edge_vs_market": 0.25}])
+    assert "model_market_gap" not in escalation(small.content, candidates=0), "the 1X2 gap only"
     p = packet()
     p.content["market"]["selections"][0]["movement"] = -0.05
     assert "market_move" in escalation(p.content, candidates=0)
@@ -45,7 +48,12 @@ def test_a_quiet_match_does_not_escalate_and_each_reason_is_the_servers() -> Non
                               "claim": "x"}]
     assert "contradiction" in escalation(p.content, candidates=0)
     p = packet(quality={"competition_score": None})
-    assert "high_uncertainty" in escalation(p.content, candidates=0), "unknown data quality is uncertainty"
+    assert escalation(p.content, candidates=0) == [], "an unknown quality is the same for every match: no reason"
+    p = packet(quality={"competition_score": {"class": "INSUFFICIENT"}})
+    assert "high_uncertainty" in escalation(p.content, candidates=0)
+    p = packet()
+    p.content["models"]["poisson"]["selections"][0]["p"] = 0.35
+    assert "high_uncertainty" in escalation(p.content, candidates=0), "the models disagree by 17 points"
 
 
 def test_a_brief_keeps_only_claims_it_can_back_and_only_the_given_cards() -> None:

@@ -39,11 +39,15 @@ from fbi.ai.prompts import BRIEF_SCHEMA, BRIEF_SYSTEM, BRIEF_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.usage import UsageLedger, call_json
 
-GAP = 0.08
-"""A model-market gap this large on a main selection is worth a closer look (8 percentage points)."""
+GAP = 0.20
+"""A model-market gap this large on a 1X2 selection is worth a closer look (20 points). Measured on a real Saturday
+(3 Oct 2026, 102 matches with a market): the median match already differs by 10 points on its 1X2 and by 13 on some
+main selection - the model is often far from the market; 20 points is about the top quarter."""
 MOVE = 0.04
 """A de-vigged price move this large since the opening is worth a closer look (4 points)."""
-MODEL_SPREAD = 0.10
+MODEL_SPREAD = 0.15
+"""The models disagreeing this much on the home win (about the top seventh of matches) is real uncertainty. An
+unknown data quality is not: it is the same for every match of a competition."""
 REASONS = ("candidate", "model_market_gap", "market_move", "important_news", "high_uncertainty", "contradiction",
            "brief_flag")
 NOT_FIT = frozenset({"PRODUCT_ONLY", "INSUFFICIENT"})
@@ -117,7 +121,7 @@ def escalation(content: dict[str, Any], *, candidates: int) -> list[str]:
     if candidates > 0:
         reasons.append("candidate")
     main = _main_model(content)
-    if any(s.get("edge_vs_market") is not None and abs(float(s["edge_vs_market"])) >= GAP
+    if any(s.get("market") == "1X2" and s.get("edge_vs_market") is not None and abs(float(s["edge_vs_market"])) >= GAP
            for s in main.get("selections", [])):
         reasons.append("model_market_gap")
     if any(s.get("movement") is not None and abs(float(s["movement"])) >= MOVE
@@ -137,7 +141,7 @@ def escalation(content: dict[str, Any], *, candidates: int) -> list[str]:
                  if s.get("market") == "1X2" and s.get("selection") == "Home" and s.get("p") is not None]
                 for m in (content.get("models") or {}).values()]
     homes = [x[0] for x in by_model if x]
-    if quality in NOT_FIT or quality is None or (len(homes) >= 2 and max(homes) - min(homes) >= MODEL_SPREAD):
+    if quality in NOT_FIT or (len(homes) >= 2 and max(homes) - min(homes) >= MODEL_SPREAD):
         reasons.append("high_uncertainty")
     if any(e.get("status") == "CONTRADICTORY" for e in content.get("evidence", [])):
         reasons.append("contradiction")
