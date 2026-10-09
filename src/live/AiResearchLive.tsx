@@ -85,9 +85,10 @@ import {
   verdictLabel,
   verdictTone,
 } from "./aiModel";
+import { DailyReviewPanel } from "./DailyReviewPanel";
 import { Fact } from "./shared";
 
-const TABS = ["today", "research", "postmortems", "learning", "sources", "costs"] as const;
+const TABS = ["today", "close", "research", "postmortems", "learning", "sources", "costs"] as const;
 type Tab = (typeof TABS)[number];
 const EVIDENCE_STATUSES: EvidenceStatus[] = [
   "CONFIRMED",
@@ -1123,6 +1124,51 @@ function CostsTab() {
 
 // ── the page ─────────────────────────────────────────────────────────────────
 
+/** CIERRE DIARIO: the closed days, newest first, and one day's close with its revisions. */
+function CloseTab({ day, onDay, max }: { day: string; onDay: (d: string) => void; max: string }) {
+  const q = useLiveQuery(live.aiDailyReviews(30));
+  const days = q.data?.data ?? [];
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)]">
+      <Panel title={t("ai.dailyReview.history")}>
+        {q.isError ? <ApiErrorNotice error={q.error} /> : null}
+        {q.isSuccess && days.length === 0 ? <Note>{t("ai.dailyReview.historyEmpty")}</Note> : null}
+        <ul className="space-y-1" data-testid="daily-review-history">
+          {days.map((d) => (
+            <li key={d.day}>
+              <button
+                type="button"
+                onClick={() => onDay(d.day)}
+                className={cn(
+                  "w-full rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-elevated",
+                  d.day === day ? "border-primary/50 bg-primary/5" : "border-border",
+                )}
+              >
+                <span className="numeric font-medium">{d.day}</span>{" "}
+                {d.complete ? null : (
+                  <span className="text-warning">· {t("ai.dailyReview.open", { count: 1 })}</span>
+                )}
+                <span className="block text-muted-foreground">
+                  {t("ai.dailyReview.historyRow", {
+                    played: d.played,
+                    matches: d.matches,
+                    won: d.daily_won,
+                    lost: d.daily_lost,
+                    pending: d.daily_pending,
+                    pnl: `${d.daily_pnl_units > 0 ? "+" : ""}${d.daily_pnl_units.toFixed(2)} u`,
+                    cost: usd(d.ai_usd),
+                  })}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+      <DailyReviewPanel day={day} onDay={onDay} max={max} />
+    </div>
+  );
+}
+
 export function AiResearchLive() {
   const [tab, setTab] = useState<Tab>("today");
   const today = todayKey(AI_TZ);
@@ -1143,6 +1189,7 @@ export function AiResearchLive() {
         format={(x) => t(`ai.research.tabs.${x}`)}
       />
       {tab === "today" ? <TodayTab day={liveDay} onDay={setLiveDay} max={today} /> : null}
+      {tab === "close" ? <CloseTab day={pastDay} onDay={setPastDay} max={today} /> : null}
       {tab === "research" ? <ResearchTab day={liveDay} onDay={setLiveDay} max={today} /> : null}
       {tab === "postmortems" ? (
         <PostmortemsTab day={pastDay} onDay={setPastDay} max={today} />

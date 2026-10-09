@@ -12,7 +12,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, translateOr } from "@/lib/i18n";
 import { localInt } from "@/lib/i18n/format";
 import { int } from "@/lib/format";
-import { todayKey } from "@/lib/time";
+import { shiftDay, todayKey } from "@/lib/time";
 import { dueReason } from "./evolutionDue";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel, WarningBanner } from "@/components/primitives/Panel";
@@ -30,6 +30,7 @@ import type {
 } from "@/lib/api/v1/types_ai";
 import type { EvolutionDashboard } from "@/lib/api/v1/types_ai_layer";
 import { DayInput, Note, NoteCard, ProposalCard, Stat, StatGrid } from "./AiBits";
+import { DailyReviewPanel } from "./DailyReviewPanel";
 import {
   AI_TZ,
   DECISION_TONE,
@@ -608,6 +609,8 @@ export function EvolutionLive() {
   // The AI's day is Bogotá's (the API's default "today" too), not the browser's UTC date.
   const today = todayKey(AI_TZ);
   const [day, setDay] = useState(today);
+  // AYER: yesterday's close by default - the day whose results are in (navigable to any closed day).
+  const [closeDay, setCloseDay] = useState(() => shiftDay(today, -1));
   return (
     <div className="space-y-4">
       <PageHeader
@@ -615,6 +618,12 @@ export function EvolutionLive() {
         description={t("admin.pages.evolution.description")}
       />
       <WarningBanner tone="info">{t("ai.evolution.noAuto")}</WarningBanner>
+      <DailyReviewPanel
+        day={closeDay}
+        onDay={setCloseDay}
+        max={today}
+        title={closeDay === shiftDay(today, -1) ? t("ai.dailyReview.yesterday") : undefined}
+      />
       <DayDashboard day={day} onDay={setDay} max={today} />
       <div className="grid gap-4 xl:grid-cols-2">
         <Learned day={day} />

@@ -12,6 +12,7 @@ import { CompetitionTag, TeamName } from "@/components/football/Logos";
 import { EvBadge, Kickoff, OddsPill, ProbCompare } from "@/product/shared/Bits";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { AiNote } from "./AiNote";
+import { DecisionChain } from "./DecisionChain";
 import { formatTime } from "@/lib/time";
 import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
 import { MatchStateBadge, OriginLabel, ResultBadge, Units } from "./Badges";
@@ -31,10 +32,13 @@ export function MatchScore({ home, away }: { home: number | null; away: number |
 export function DailyItemCard({
   item,
   compact = false,
+  evaluation = false,
   className,
 }: {
   item: DailyItem;
   compact?: boolean;
+  /** From the evaluation set: the chain says it is not a published recommendation. */
+  evaluation?: boolean;
   className?: string | undefined;
 }) {
   const m = item.match;
@@ -147,6 +151,14 @@ export function DailyItemCard({
               <AiNote ai={item.ai} compact={compact} />
             </div>
           ) : null}
+          <DecisionChain
+            model={item.model}
+            ai={item.ai}
+            aiLatest={item.ai_latest}
+            status={item.status}
+            evaluation={evaluation}
+            className="mt-3"
+          />
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <EvBadge ev={item.ev} />
             <span

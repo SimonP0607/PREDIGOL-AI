@@ -273,5 +273,16 @@
     "not_played": "Not played",
     "review": "Awaiting review"
   },
-  "selectedAt": "Chosen at {time}"
+  "selectedAt": "Chosen at {time}",
+  "chain": {
+    "model": "Chosen by the model ({model})",
+    "unknownModel": "model",
+    "ai": "AI:",
+    "aiReviewed": "Reviewed by the AI",
+    "aiNone": "No AI review",
+    "evaluation": "Not published · evaluation mode",
+    "notPublished": "Not published",
+    "open": "To settle",
+    "settled": "Settled: {status}"
+  }
 }

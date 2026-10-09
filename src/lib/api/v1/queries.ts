@@ -164,6 +164,16 @@ export const live = {
     queryKey: ["v1", "ai-layer", "learning", day ?? "yesterday"],
     queryFn: () => v1.aiLearning(day),
   }),
+  aiDailyReviews: (days = 30) => ({
+    queryKey: ["v1", "ai-layer", "daily-reviews", days],
+    queryFn: () => v1.aiDailyReviews(days),
+    refetchInterval: 10 * MINUTE,
+  }),
+  aiDailyReview: (day: string) => ({
+    queryKey: ["v1", "ai-layer", "daily-review", day],
+    queryFn: () => v1.aiDailyReview(day),
+    refetchInterval: 10 * MINUTE,
+  }),
   aiSources: (days = 7) => ({
     queryKey: ["v1", "ai-layer", "sources", days],
     queryFn: () => v1.aiSources(days),

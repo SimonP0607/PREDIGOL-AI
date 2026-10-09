@@ -14,6 +14,8 @@ import type {
   AiComparison,
   AiCosts,
   AiDecision,
+  DailyReview,
+  DailyReviewDay,
   AiEvidenceRow,
   AiLearning,
   AiMemoryEvent,
@@ -438,6 +440,10 @@ export const v1 = {
   ) => getJson<Envelope<PickPostmortem[]>>("/admin/ai/postmortems", q as Params),
   aiLearning: (day?: string) => getJson<Envelope<AiLearning>>("/admin/ai/learning", { day }),
   aiSources: (days = 7) => getJson<Envelope<AiSourceRow[]>>("/admin/ai/sources", { days }),
+  aiDailyReviews: (days = 30) =>
+    getJson<Envelope<DailyReviewDay[]>>("/admin/ai/daily-reviews", { days }),
+  aiDailyReview: (day: string) =>
+    getJson<Envelope<DailyReview | null>>(`/admin/ai/daily-reviews/${day}`),
   aiComparison: () => getJson<Envelope<AiComparison>>("/admin/ai/comparison"),
   requestAiRun: (body: { kind: "analysis" | "learning"; fixture_id?: number | null }) =>
     postJson<Envelope<AiRunQueued>>("/admin/ai/run-requests", body),

@@ -746,3 +746,131 @@ export interface AiComparison {
   sample: Record<string, unknown>;
   shadow: boolean;
 }
+
+// ── CIERRE DEL DÍA (fbi.ai.daily_review) ────────────────────────────────────
+
+export interface DailyReviewItem {
+  rank: number;
+  fixture_id: number;
+  match: string;
+  market: string;
+  selection: string;
+  line: number;
+  odds: number;
+  model: string | null;
+  status: string;
+  profit_units: number | null;
+  /** The AI's last pre-match decision on it. */
+  ai_last: AiDecision | null;
+  near_close_odds: number | null;
+  phase: string;
+}
+
+export interface DailyReviewPicks {
+  source: "evaluation" | "qualified";
+  set_status: string | null;
+  n: number;
+  won: number;
+  lost: number;
+  void: number;
+  pending: number;
+  pnl_units: number;
+  staked_units: number;
+  roi: number | null;
+  /** Mean odds taken / the same bookmaker's last pre-match price - 1. */
+  line_value: number | null;
+  items: DailyReviewItem[];
+}
+
+export interface DailyReviewMarket {
+  market: string;
+  n: number;
+  settled: number;
+  won: number;
+  roi: number | null;
+  line_value: number | null;
+  line_value_devigged: number | null;
+  ev_claimed: number | null;
+  p_model: number | null;
+  p_market: number | null;
+}
+
+export interface DailyReviewContent {
+  day: string;
+  timezone: string;
+  matches: {
+    tracked: number;
+    with_market: number;
+    analysed_by_ai: number;
+    played: number;
+    not_played: number;
+    still_to_finish: number;
+  };
+  daily_picks: DailyReviewPicks;
+  qualified_picks: DailyReviewPicks;
+  shadow: {
+    selections: number;
+    settled: number;
+    won: number;
+    pnl_units: number;
+    roi: number | null;
+    by_market: DailyReviewMarket[];
+  };
+  /** reviewed, approve, downgrade, reject, abstain and <decision>_won / <decision>_lost. */
+  ai: Record<string, number>;
+  postmortems: { n: number; by_class: Record<string, number>; by_verdict: Record<string, number> };
+  learning: { kind: string; title: string; n: number | null }[];
+  patterns: { kind: string; about: string; text: string | null }[];
+  hypotheses: {
+    new: number;
+    new_titles: string[];
+    rejected: number;
+    investigating: number;
+    validated: number;
+    promoted: number;
+    waiting_owner_at_end: number;
+  };
+  experiments: { started: number; finished: number; running_at_end: number };
+  costs: { ai_usd: number; by_purpose: Record<string, number>; api_football_requests: number };
+  settlement: {
+    matches: number;
+    median_seconds: number | null;
+    max_seconds: number | null;
+    by_path: Record<string, number>;
+  };
+  pending_fixtures: number[];
+  waiting_human: number[];
+}
+
+export interface DailyReviewRevision {
+  revision: number;
+  kind: "close" | "update";
+  built_at: Iso;
+  complete: boolean;
+  pending_fixtures: number[];
+}
+
+export interface DailyReview {
+  day: string;
+  revision: number;
+  kind: "close" | "update";
+  built_at: Iso;
+  complete: boolean;
+  content: DailyReviewContent;
+  revisions: DailyReviewRevision[];
+}
+
+export interface DailyReviewDay {
+  day: string;
+  revisions: number;
+  built_at: Iso;
+  complete: boolean;
+  matches: number;
+  played: number;
+  daily_won: number;
+  daily_lost: number;
+  daily_pending: number;
+  daily_pnl_units: number;
+  shadow_roi: number | null;
+  ai_usd: number;
+}

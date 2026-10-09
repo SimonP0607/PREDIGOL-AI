@@ -97,7 +97,7 @@ export function DailySetBlock({
             key={item.rank}
             className="w-[88%] max-w-[23rem] shrink-0 snap-start text-caption md:w-auto md:max-w-none"
           >
-            <DailyItemCard item={item} compact />
+            <DailyItemCard item={item} compact evaluation={evaluation} />
           </li>
         ))}
         <li className="w-40 shrink-0 snap-start md:w-auto">
@@ -121,7 +121,7 @@ export function DailySetBlock({
           data-testid="daily-list"
         >
           {items.map((item) => (
-            <DailyItemCard key={item.rank} item={item} />
+            <DailyItemCard key={item.rank} item={item} evaluation={evaluation} />
           ))}
         </div>
         {items.length < 5 ? (

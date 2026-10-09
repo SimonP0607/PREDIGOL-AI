@@ -29,6 +29,15 @@ export interface ItemAi {
   risks?: string[];
 }
 
+/** The AI's newest combined review before kick-off (the decision only in the owner's preview). */
+export interface AiLatest {
+  reviewed_at: Iso;
+  decision: "APPROVE" | "DOWNGRADE" | "REJECT" | "ABSTAIN" | null;
+  confidence?: Dec | null;
+  reason?: string | null;
+  by_llm?: boolean;
+}
+
 export interface MatchRef {
   fixture_id: number;
   kickoff_at: Iso;
@@ -73,6 +82,7 @@ export interface DailyItem {
   profit_units: Dec | null;
   settled_at: Iso | null;
   ai?: ItemAi | null;
+  ai_latest?: AiLatest | null;
 }
 
 export interface DailySet {
@@ -100,6 +110,7 @@ export interface ParlayRecordLeg {
   ev: Dec;
   status: ResultStatus;
   ai?: ItemAi | null;
+  ai_latest?: AiLatest | null;
 }
 
 export type RecordKind = "daily" | "multiday";

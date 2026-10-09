@@ -822,7 +822,8 @@
       "postmortems": "Post-mortems",
       "learning": "Learning",
       "sources": "Sources",
-      "costs": "Costs"
+      "costs": "Costs",
+      "close": "Day close"
     },
     "day": "Day",
     "today": {
@@ -947,5 +948,97 @@
       "budget": "Monthly budget",
       "spentMonth": "Spent this month"
     }
+  },
+  "dailyReview": {
+    "title": "Day close",
+    "subtitle": "What a Bogotá day was, written at 23:59 and revised while a late match settled or its post-mortems arrived. Read-only: it changes no pick, model or rule.",
+    "yesterday": "YESTERDAY · Day close",
+    "day": "Day",
+    "notClosed": "That day has not been closed yet (the close is at 23:59 Bogotá).",
+    "complete": "Complete",
+    "open_one": "{count} match open",
+    "open_other": "{count} matches open",
+    "revision": "Revision {n} · {when}",
+    "waitingHuman_one": "{count} match waits for a human decision (postponed, abandoned or awarded)",
+    "waitingHuman_other": "{count} matches wait for a human decision (postponed, abandoned or awarded)",
+    "matches": "Matches",
+    "tracked": "Followed",
+    "withMarket": "With a market",
+    "analysed": "Analysed by the AI",
+    "played": "Played",
+    "notPlayed": "Not played",
+    "stillToFinish": "To finish",
+    "dailyPicks": "Picks of the day (evaluation)",
+    "dailyPicksHelp": "Chosen by the quantitative rule in evaluation mode: not published recommendations. Beside them, the AI's last word before kick-off.",
+    "noPicks": "That day had no picks of the day.",
+    "picks": "Picks",
+    "won": "Won",
+    "lost": "Lost",
+    "pending": "Pending",
+    "pnl": "P&L",
+    "lineValue": "Line value",
+    "aiSaid": "AI: {decision}",
+    "shadow": "Shadow selections against the market",
+    "selections": "Selections",
+    "settled": "Settled",
+    "roi": "ROI",
+    "marketLine": "{n} settled · ROI {roi} · value vs. no-margin close {lv} · model {model} / market {market}",
+    "ai": "The AI before kick-off, and how it went",
+    "reviewed": "Reviewed",
+    "noReviews": "The AI reviewed no selection of that day.",
+    "wonLost": "{won} won · {lost} lost",
+    "decision": {
+      "approve": "Approved",
+      "downgrade": "Downgraded",
+      "reject": "Rejected",
+      "abstain": "Abstained"
+    },
+    "postmortems": "Post-mortems",
+    "postmortemsTotal": "{count} selections studied",
+    "noPostmortems": "No post-mortems of that day yet (written at 07:35 the next day).",
+    "class": {
+      "MODEL_ERROR": "Model error",
+      "CONTEXT_ERROR": "Context error",
+      "DATA_ERROR": "Data error",
+      "MARKET_ERROR": "Market error",
+      "EXECUTION_ERROR": "Execution error",
+      "NORMAL_VARIANCE": "Normal variance",
+      "UNKNOWN": "No judgement"
+    },
+    "learning": "What PrediGol learned",
+    "noLearning": "No learning notes yet.",
+    "patterns": "Patterns under observation",
+    "noPatterns": "No new pattern that day.",
+    "patternKind": {
+      "league_pattern": "League",
+      "team_pattern": "Team",
+      "player_pattern": "Player",
+      "market_signal": "Market",
+      "model_failure": "Model miss",
+      "model_success": "Model hit",
+      "context_error": "Context error"
+    },
+    "hypotheses": "Hypotheses",
+    "hyp": {
+      "new": "New",
+      "investigating": "Under investigation",
+      "rejected": "Rejected",
+      "validated": "Validated"
+    },
+    "experiments": "Experiments: {started} started, {finished} finished, {running} running at the close · {waiting} hypotheses waiting for the owner.",
+    "costsAndOps": "Costs and operations",
+    "aiCost": "AI (US$)",
+    "apiRequests": "API-Football requests",
+    "settlementMedian": "Settlement (median)",
+    "settlementMax": "max {max}",
+    "settledMatches": "Matches settled",
+    "revisions": "Revisions",
+    "kind": {
+      "close": "Close",
+      "update": "Revision"
+    },
+    "history": "Closed days",
+    "historyEmpty": "No day closed yet: the first is written at 23:59 Bogotá.",
+    "historyRow": "{played}/{matches} played · picks {won}-{lost} ({pending} pending) · {pnl} · AI {cost}"
   }
 }

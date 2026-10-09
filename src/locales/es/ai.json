@@ -822,7 +822,8 @@
       "postmortems": "Post-mortems",
       "learning": "Aprendizaje",
       "sources": "Fuentes",
-      "costs": "Costos"
+      "costs": "Costos",
+      "close": "Cierre diario"
     },
     "day": "Día",
     "today": {
@@ -947,5 +948,97 @@
       "budget": "Presupuesto mensual",
       "spentMonth": "Gastado este mes"
     }
+  },
+  "dailyReview": {
+    "title": "Cierre del día",
+    "subtitle": "Lo que fue un día de Bogotá, escrito a las 23:59 y revisado mientras un partido tardío se liquidaba o llegaban sus post-mortems. Solo lectura: no cambia picks, modelos ni reglas.",
+    "yesterday": "AYER · Cierre del día",
+    "day": "Día",
+    "notClosed": "Ese día todavía no se ha cerrado (el cierre es a las 23:59 Bogotá).",
+    "complete": "Completo",
+    "open_one": "{count} partido abierto",
+    "open_other": "{count} partidos abiertos",
+    "revision": "Revisión {n} · {when}",
+    "waitingHuman_one": "{count} partido espera una decisión humana (aplazado, abandonado o adjudicado)",
+    "waitingHuman_other": "{count} partidos esperan una decisión humana (aplazados, abandonados o adjudicados)",
+    "matches": "Partidos",
+    "tracked": "Seguidos",
+    "withMarket": "Con mercado",
+    "analysed": "Analizados por la IA",
+    "played": "Jugados",
+    "notPlayed": "No jugados",
+    "stillToFinish": "Por terminar",
+    "dailyPicks": "Picks del día (evaluación)",
+    "dailyPicksHelp": "Elegidos por la regla cuantitativa en modo evaluación: no son recomendaciones publicadas. Al lado, lo último que dijo la IA antes del saque.",
+    "noPicks": "Ese día no tuvo picks del día.",
+    "picks": "Picks",
+    "won": "Ganados",
+    "lost": "Perdidos",
+    "pending": "Pendientes",
+    "pnl": "P&L",
+    "lineValue": "Valor de línea",
+    "aiSaid": "IA: {decision}",
+    "shadow": "Selecciones en sombra frente al mercado",
+    "selections": "Selecciones",
+    "settled": "Liquidadas",
+    "roi": "ROI",
+    "marketLine": "{n} liquidadas · ROI {roi} · valor vs. cierre sin margen {lv} · modelo {model} / mercado {market}",
+    "ai": "La IA antes del saque y cómo salió",
+    "reviewed": "Revisadas",
+    "noReviews": "La IA no revisó selecciones de ese día.",
+    "wonLost": "{won} ganadas · {lost} perdidas",
+    "decision": {
+      "approve": "Aprobó",
+      "downgrade": "Rebajó",
+      "reject": "Rechazó",
+      "abstain": "Se abstuvo"
+    },
+    "postmortems": "Post-mortems",
+    "postmortemsTotal": "{count} selecciones estudiadas",
+    "noPostmortems": "Aún no hay post-mortems de ese día (se escriben a las 07:35 del día siguiente).",
+    "class": {
+      "MODEL_ERROR": "Error del modelo",
+      "CONTEXT_ERROR": "Error de contexto",
+      "DATA_ERROR": "Error de datos",
+      "MARKET_ERROR": "Error de mercado",
+      "EXECUTION_ERROR": "Error de ejecución",
+      "NORMAL_VARIANCE": "Variación normal",
+      "UNKNOWN": "Sin juicio"
+    },
+    "learning": "Qué aprendió PrediGol",
+    "noLearning": "Sin notas de aprendizaje todavía.",
+    "patterns": "Patrones en observación",
+    "noPatterns": "Ningún patrón nuevo ese día.",
+    "patternKind": {
+      "league_pattern": "Liga",
+      "team_pattern": "Equipo",
+      "player_pattern": "Jugador",
+      "market_signal": "Mercado",
+      "model_failure": "Fallo del modelo",
+      "model_success": "Acierto del modelo",
+      "context_error": "Error de contexto"
+    },
+    "hypotheses": "Hipótesis",
+    "hyp": {
+      "new": "Nuevas",
+      "investigating": "En investigación",
+      "rejected": "Rechazadas",
+      "validated": "Validadas"
+    },
+    "experiments": "Experimentos: {started} empezados, {finished} terminados, {running} en curso al cierre · {waiting} hipótesis esperando al dueño.",
+    "costsAndOps": "Costos y operación",
+    "aiCost": "IA (US$)",
+    "apiRequests": "Peticiones API-Football",
+    "settlementMedian": "Liquidación (mediana)",
+    "settlementMax": "máximo {max}",
+    "settledMatches": "Partidos liquidados",
+    "revisions": "Revisiones",
+    "kind": {
+      "close": "Cierre",
+      "update": "Revisión"
+    },
+    "history": "Historial de cierres",
+    "historyEmpty": "Todavía no hay días cerrados: el primero se escribe a las 23:59 Bogotá.",
+    "historyRow": "{played}/{matches} jugados · picks {won}-{lost} ({pending} pend.) · {pnl} · IA {cost}"
   }
 }

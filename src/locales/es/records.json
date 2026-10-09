@@ -273,5 +273,16 @@
     "not_played": "No jugado",
     "review": "Espera revisión"
   },
-  "selectedAt": "Elegido a las {time}"
+  "selectedAt": "Elegido a las {time}",
+  "chain": {
+    "model": "Elegido por el modelo ({model})",
+    "unknownModel": "modelo",
+    "ai": "IA:",
+    "aiReviewed": "Revisado por la IA",
+    "aiNone": "Sin revisión de la IA",
+    "evaluation": "No publicado · modo evaluación",
+    "notPublished": "No publicado",
+    "open": "Por liquidar",
+    "settled": "Liquidado: {status}"
+  }
 }
