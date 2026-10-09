@@ -247,3 +247,12 @@ def test_an_incomplete_brief_is_repaired_only_where_nothing_is_invented() -> Non
     assert "summary" not in lenient({"context": []}), "a missing summary stays missing: the answer is invalid"
     as_text = lenient({"payload": '{"summary": "Texto.", "uncertainty": "low"}'})
     assert as_text["summary"] == "Texto." and as_text["uncertainty"] == "low"
+
+
+def test_a_block_with_a_digit_can_be_cited() -> None:
+    from fbi.ai.claims import ClaimOut, refused
+
+    ok = ClaimOut(text="Ganó los dos últimos cruces.", type="DATA", refs=["P:h2h"])
+    assert refused(ok, stored=set(), evidence_status={}) is None
+    bad = ClaimOut(text="Otro dato.", type="DATA", refs=["P:2h"])
+    assert refused(bad, stored=set(), evidence_status={}) is not None

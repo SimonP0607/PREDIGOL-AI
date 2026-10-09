@@ -28,7 +28,8 @@ from fbi.analyst.agent import _numbers
 
 ClaimType = Literal["DATA", "INFERENCE", "NEWS", "OPINION", "UNKNOWN"]
 Decision = Literal["APPROVE", "DOWNGRADE", "REJECT", "ABSTAIN"]
-REF = re.compile(r"^(P:[a-z_]+(\.[a-z_0-9]+)*|E:\d+)$")
+REF = re.compile(r"^(P:[a-z_][a-z_0-9]*(\.[a-z_0-9]+)*|E:\d+)$")
+"""``P:h2h`` has a digit: a block name may (9 Oct 2026, the first real briefs cited it and were refused)."""
 BLOCKS = frozenset({"fixture", "standings", "stakes", "form", "schedule", "h2h", "elo", "stats", "absences",
                     "lineups", "travel", "market", "models", "quality", "evidence", "candidate", "signals", "cards",
                     "previous"})

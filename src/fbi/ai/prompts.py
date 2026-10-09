@@ -16,10 +16,13 @@ REVIEW_VERSION = "review-v2"
 cut at max_tokens by the thinking before it. A last review of an older version does not hold off a new one."""
 EXTRACT_VERSION = "extract-v1"
 POSTMORTEM_VERSION = "postmortem-v1"
-BRIEF_VERSION = "brief-v2"
+BRIEF_VERSION = "brief-v3"
 """L1 (V2, 8 Oct 2026): the economical model reads a match of the day with a market and says what matters.
 v2 (9 Oct 2026, after the first real answer): the references it may cite are listed (it cited "P:cards.BTTS"), and
-probabilities are written as percentages (it wrote "0.525")."""
+probabilities are written as percentages (it wrote "0.525").
+v3 (9 Oct 2026, six real briefs, all valid): a card is a «selección» in Spanish (it wrote «carta»); its own
+contradiction flag no longer escalates a match (it called every model-market disagreement a contradiction: the server
+escalates contradictory evidence itself, and the rules and the L2 review contradicting each other)."""
 PICK_PM_VERSION = "pick-postmortem-v1"
 LEARNING_VERSION = "learning-v1"
 
@@ -105,6 +108,7 @@ References: cite packet blocks as P:<block> (fixture, standings, stakes, form, s
 lineups, travel, market, models, quality, evidence), a card as P:cards, the previous reading as P:previous, and
 evidence as E:<id> - nothing else. Write probabilities as percentages with one decimal (52.5 %), copying the packet's
 numbers; never compute new ones.
+In Spanish a card is a «selección» (never «carta»).
 You never give a probability, a stake or a pick. Submit with the tool exactly once."""
 
 BRIEF_CLAIM: dict[str, Any] = {

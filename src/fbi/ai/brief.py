@@ -400,8 +400,6 @@ def make_brief(conn: psycopg.Connection[Any], settings: AiSettings, packet: Pack
             flags = list(reasons)
             if parsed.uncertainty == "high" and "high_uncertainty" not in flags:
                 flags.append("high_uncertainty")
-            if parsed.contradiction and "contradiction" not in flags:
-                flags.append("contradiction")
             if parsed.escalate and not flags:
                 flags.append("brief_flag")
             b = Brief(None, packet.fixture_id, "llm", "ok", bool(flags), flags, content, cost, usage,
