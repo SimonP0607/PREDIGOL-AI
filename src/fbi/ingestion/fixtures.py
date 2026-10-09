@@ -164,14 +164,25 @@ class FixtureRepository:
         ids = sorted({r.provider_home_team_id for r in refs} | {r.provider_away_team_id for r in refs})
         if not ids:
             return {}
+        # A team we hold is written only when the payload names it differently. Every payload used to rewrite
+        # every team in it - a new row version each time, locked until the payload's transaction ended - so the
+        # in-play capture waited on the fixtures sync: on the server, 9 Oct 2026, three waits of seven minutes.
+        # Nor is a known name replaced by the "team <id>" placeholder any more when a payload does not carry one.
         with self._conn.cursor(row_factory=tuple_row) as cur:
-            cur.executemany(
-                "INSERT INTO core.teams (provider_team_id, name) VALUES (%s, %s) "
-                "ON CONFLICT (provider_team_id) DO UPDATE SET name = EXCLUDED.name, updated_at = now()",
-                [(tid, names.get(tid, f"team {tid}")) for tid in ids],
-            )
-            cur.execute("SELECT provider_team_id, id FROM core.teams WHERE provider_team_id = ANY(%s)", (ids,))
-            return {int(a): int(b) for a, b in cur.fetchall()}
+            cur.execute("SELECT provider_team_id, id, name FROM core.teams WHERE provider_team_id = ANY(%s)", (ids,))
+            held = {int(p): (int(i), n) for p, i, n in cur.fetchall()}
+            renamed = [(names[t], t) for t in ids if t in held and t in names and names[t] != held[t][1]]
+            if renamed:
+                cur.executemany("UPDATE core.teams SET name = %s, updated_at = now() WHERE provider_team_id = %s",
+                                renamed)
+            new = [t for t in ids if t not in held]
+            if new:
+                cur.executemany("INSERT INTO core.teams (provider_team_id, name) VALUES (%s, %s) "
+                                "ON CONFLICT (provider_team_id) DO NOTHING",
+                                [(t, names.get(t, f"team {t}")) for t in new])
+                cur.execute("SELECT provider_team_id, id FROM core.teams WHERE provider_team_id = ANY(%s)", (new,))
+                held.update({int(p): (int(i), "") for p, i in cur.fetchall()})
+            return {t: held[t][0] for t in ids if t in held}
 
     def ensure_venues(self, refs: Sequence[FixtureRef]) -> dict[int, int]:
         """provider_venue_id -> core.venues.id, for the venues these refs name.

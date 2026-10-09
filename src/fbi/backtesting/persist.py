@@ -130,6 +130,29 @@ def version_string(model: str, spec: str, code_version: str) -> str:
     return f"{MODEL_SEMVER}/{spec}@{code_version[:12] if code_version.startswith('mc') else code_version[:7]}"
 
 
+def registry_id(cur: psycopg.Cursor[tuple[Any, ...]], name: str, family: str, description: str) -> int:
+    """The model's registry row, created on first use, and written only when its description changed.
+
+    It was an upsert, and an upsert's DO UPDATE locks the row until the transaction ends - for the pick pipeline,
+    the whole pass. Every other transaction that needed the same model then waited for it: on the server, 9 Oct
+    2026, twenty waits of about four minutes each. Reading the row takes no lock at all.
+    """
+    cur.execute("SELECT id, description FROM models.model_registry WHERE name = %s", (name,))
+    row = cur.fetchone()
+    if row is not None:
+        if row[1] != description:
+            cur.execute("UPDATE models.model_registry SET description = %s WHERE id = %s", (description, row[0]))
+        return int(row[0])
+    cur.execute("INSERT INTO models.model_registry (name, family, description) VALUES (%s, %s, %s) "
+                "ON CONFLICT (name) DO NOTHING RETURNING id", (name, family, description))
+    row = cur.fetchone()
+    if row is None:  # another transaction created it since the read above
+        cur.execute("SELECT id FROM models.model_registry WHERE name = %s", (name,))
+        row = cur.fetchone()
+    assert row is not None
+    return int(row[0])
+
+
 def ensure_version(conn: psycopg.Connection, *, model: str, spec: str, hyper: dict[str, Any], code_version: str,
                    feature_names: Sequence[str], train_from: date, train_to: date, n_train: int) -> int:
     """The id of (model, version), created on first use. A version is immutable:
@@ -144,14 +167,7 @@ def ensure_version(conn: psycopg.Connection, *, model: str, spec: str, hyper: di
     hyper = {**hyper, "code_version": model_code} if "code_version" in hyper else hyper
     version = version_string(model, spec, model_code)
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(
-            "INSERT INTO models.model_registry (name, family, description) VALUES (%s, %s, %s) "
-            "ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description RETURNING id",
-            (reg_name, family, description),
-        )
-        row = cur.fetchone()
-        assert row is not None
-        model_id = int(row[0])
+        model_id = registry_id(cur, reg_name, family, description)
         cur.execute("SELECT id, hyperparameters FROM models.model_versions WHERE model_id = %s AND version = %s",
                     (model_id, version))
         existing = cur.fetchone()

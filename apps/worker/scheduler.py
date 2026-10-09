@@ -16,7 +16,8 @@ at worst, and a duplicated tick costs nothing at all.
   * ``fixtures_sync``  every 12 h, horizon 1 day  -> 2 requests per run, 4/day
   * ``results_sync``   every 6 h, lookback 1 day  -> 2 requests per run, 8/day
   * ``pick_pipeline``  every 30 min and right after a capture: forecasts,
-    shadow picks, settlement. Database only, zero requests.
+    shadow picks, settlement. Database only, zero requests. One pass at a time
+    (``OnePass``), and the capture never waits for it.
   * ``notifier``       every 10 min: new events -> audit.notifications ->
     Telegram when a token is configured, 'skipped' otherwise.
   * ``ai_daily_report`` / ``ai_pick_review``  the AI layer (``fbi.analyst``): the research
@@ -51,7 +52,9 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -252,9 +255,10 @@ async def _tick() -> TickOutcome:
             await service.capture(fixtures)
         finally:
             await provider.aclose()
-    # A fresh price is evaluated at once, not up to half an hour later: the
-    # pipeline is database-only and idempotent, so running it here is free.
-    await asyncio.to_thread(_pipeline_now)
+    # A fresh price is evaluated at once, not up to half an hour later - but beside the tick, not inside it. On
+    # the server a pass takes minutes, and a tick that waited for it missed its next windows and its own heartbeat:
+    # on 9 Oct 2026 at 11:48 UTC the worker was restarted as stale while two passes waited on each other.
+    _request_pipeline()
     return "captured"
 
 
@@ -519,7 +523,50 @@ async def _historical_backfill() -> None:
              allowance=report.allowance, reserve=report.reserve, deferred=report.deferred_reason)
 
 
-def _pipeline_now() -> None:
+class OnePass:
+    """A job that runs one pass at a time, and never loses a request.
+
+    A request that arrives while a pass runs is not run beside it: two pick pipelines at once only wait on each
+    other's locks - on the server, 9 Oct 2026, twenty passes waited about four minutes each for another one's
+    transaction to end - and take the database's time from everything else. It is folded into exactly one more
+    pass, started as soon as the running one ends, so a price captured meanwhile is still evaluated.
+
+    Every request raises the flag BEFORE it tries the gate, and the pass holding the gate looks at the flag AFTER
+    it lets go: whichever way two threads interleave, a raised flag is always seen by someone who then runs.
+    """
+
+    def __init__(self, fn: Callable[[], None], name: str) -> None:
+        self._fn = fn
+        self._name = name
+        self._gate = threading.Lock()
+        self._again = threading.Event()
+
+    @property
+    def running(self) -> bool:
+        return self._gate.locked()
+
+    def __call__(self) -> bool:
+        """Run the pass now, or leave it to the pass already running. True when this call ran at least one."""
+        self._again.set()
+        ran = False
+        while self._again.is_set():
+            if not self._gate.acquire(blocking=False):
+                log.info("job.folded", job=self._name)  # the running pass will see the flag when it ends
+                return ran
+            try:
+                if self._again.is_set():
+                    self._again.clear()
+                    try:
+                        self._fn()
+                    except Exception as exc:  # the pass records its own failures; a waiting request still runs
+                        log.error("job.pass_failed", job=self._name, error=f"{type(exc).__name__}: {exc}"[:300])
+                    ran = True
+            finally:
+                self._gate.release()
+        return ran
+
+
+def _pipeline_once() -> None:
     """Forecasts, evaluation of captured prices, settlement. Never raises into
     the capture: a failure is logged and recorded in its own ledger run."""
     from fbi.picks.pipeline import run_pipeline
@@ -529,6 +576,20 @@ def _pipeline_now() -> None:
             run_pipeline(conn, at=now(), code_version=code_version())
     except Exception as exc:  # the capture has already been committed
         log.error("pipeline.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+_pipeline_now = OnePass(_pipeline_once, "pick_pipeline")
+"""The pick pipeline, one pass at a time: the 30-minute job and the request after every capture share it."""
+
+_background: set[asyncio.Task[Any]] = set()
+"""Passes started beside a job, kept here until they end (an unreferenced task can be collected mid-run)."""
+
+
+def _request_pipeline() -> None:
+    """A pipeline pass after a capture, without making the capture wait for it."""
+    task = asyncio.get_running_loop().create_task(asyncio.to_thread(_pipeline_now))
+    _background.add(task)
+    task.add_done_callback(_background.discard)
 
 
 def _quality_sweep_now() -> None:
