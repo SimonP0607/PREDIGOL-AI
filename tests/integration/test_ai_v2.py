@@ -237,7 +237,7 @@ def test_the_months_alerts_are_recorded_once_each(db: psycopg.Connection[Any], s
 
 def test_the_web_is_asked_once_while_fresh_and_its_evidence_keeps_its_source(db: psycopg.Connection[Any],
                                                                               world: World) -> None:
-    conn = Savepoints(db)
+    conn: Any = Savepoints(db)
     calls: list[str] = []
 
     def search(query: str, at: datetime) -> list[SearchResult]:
@@ -298,7 +298,7 @@ def test_a_second_cycle_while_one_runs_does_nothing(db: psycopg.Connection[Any],
 
 def test_every_studied_selection_gets_its_post_mortem_and_the_day_its_notes(db: psycopg.Connection[Any],
                                                                             world: World) -> None:
-    conn = Savepoints(db)
+    conn: Any = Savepoints(db)
     model = smart("APPROVE")
     run(conn, provider=model)
     world.result("F1", 0, 2)  # the approved home win lost

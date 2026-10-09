@@ -99,7 +99,8 @@ async def test_one_match_through_the_whole_cycle(db: psycopg.Connection[Any], se
     # 3-4. Kick-off: the live follow reads it in play.
     provider = Provider([_body(db, f1, short="1H", minute=12, home=1, away=0),
                          _body(db, f1, short="FT", minute=90, home=2, away=0)])
-    first = await capture_live_matches(db, provider, at=KO + timedelta(minutes=12))
+    conn: Any = Savepoints(db)  # the worker's commits, kept inside this test's transaction
+    first = await capture_live_matches(conn, provider, at=KO + timedelta(minutes=12))
     assert first.followed >= 1 and first.ended == []
     live_day = daily_board(db, day=None, include_shadow=False, at=KO + timedelta(minutes=13)).data
     assert live_day is not None and live_day.set is not None
@@ -114,7 +115,7 @@ async def test_one_match_through_the_whole_cycle(db: psycopg.Connection[Any], se
     assert (started.phase, str(started.odds_taken), started.live_home, started.live_away) == ("live", "2.300", 1, 0)
 
     # 6-7. Full time: the live follow hands the match over, and it is settled at once.
-    second = await capture_live_matches(db, provider, at=KO + timedelta(minutes=110))
+    second = await capture_live_matches(conn, provider, at=KO + timedelta(minutes=110))
     assert second.ended == [f1]
     settled = settle_fixtures(db, second.ended, path="live_follow", at=KO + timedelta(minutes=111))
     assert settled.fixtures == 1 and settled.picks >= 1 and settled.items >= 1
@@ -129,10 +130,9 @@ async def test_one_match_through_the_whole_cycle(db: psycopg.Connection[Any], se
     assert (done.status, done.match.phase, done.match.score_home, done.match.score_away) == ("WIN", "finished", 2, 0)
 
     # 9-10. The next morning: post-mortem and learning (rules only, no language model, nothing in production moved).
-    conn = Savepoints(db)
     next_morning = datetime.combine(product_day(AT) + timedelta(days=1), datetime.min.time(), tzinfo=UTC) \
         + timedelta(hours=12, minutes=35)  # 07:35 Bogotá
-    run_learning_cycle(conn, at=next_morning, settings=AiSettings(mode="shadow"))  # type: ignore[arg-type]
+    run_learning_cycle(conn, at=next_morning, settings=AiSettings(mode="shadow"))
     pm = db.execute("SELECT verdict, answers->'win_quality'->'data'->>'win_quality' FROM ai.pick_postmortems "
                     "WHERE fixture_id = %s", (f1,)).fetchone()
     assert pm is not None and pm[0].endswith("won")

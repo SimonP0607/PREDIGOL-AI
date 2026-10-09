@@ -289,7 +289,8 @@ def test_a_stored_text_is_shown_in_plain_words_without_changing_the_row() -> Non
 def test_a_brief_with_a_key_of_its_own_deep_inside_or_a_long_summary_is_read_not_refused() -> None:
     # 9 Oct 2026, the first real day: 2 of 79 briefs refused twice - a "selection_text" added to a card, and a
     # summary of 512 characters. Both answers were good; both were paid twice and lost.
-    from fbi.ai.brief import BriefOut, fit, lenient
+    from fbi.ai.brief import BriefOut, lenient
+    from fbi.ai.text import fit
 
     long = "Primera frase del resumen, con datos. " * 15
     d = lenient({"summary": long, "summary_note": "x",

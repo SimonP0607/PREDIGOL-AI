@@ -270,7 +270,8 @@ def test_an_exhausted_budget_calls_no_model_and_the_rules_carry_on(db: psycopg.C
 
 
 def test_mode_off_does_nothing(db: psycopg.Connection[Any], world: World) -> None:
-    report = run_analysis_cycle(Savepoints(db), at=AT, settings=AiSettings(mode="off"))
+    conn: Any = Savepoints(db)
+    report = run_analysis_cycle(conn, at=AT, settings=AiSettings(mode="off"))
     assert report.counts["skipped_mode_off"] == 1 and count(db, "SELECT count(*) FROM ai.cycles") == 0
 
 
@@ -321,7 +322,7 @@ def test_enforce_without_a_passed_gate_behaves_as_shadow_and_with_it_keeps_rejec
 
 def test_the_learning_cycle_writes_memory_and_reports_an_insufficient_gate(db: psycopg.Connection[Any],
                                                                             world: World) -> None:
-    conn = Savepoints(db)
+    conn: Any = Savepoints(db)
     cycle(conn)
     world.result("F1", 2, 0)
     world.result("F3", 0, 1)
