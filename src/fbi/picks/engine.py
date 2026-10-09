@@ -152,17 +152,55 @@ def _evidence(conn: psycopg.Connection, version_id: int, market_key: str) -> Ver
                            None if c is None else int(c["n_common"]), baseline)
 
 
-def _odds_payload(conn: psycopg.Connection, fixture_id: int, bookmaker_id: int, row: dict[str, Any],
-                  as_of: datetime) -> tuple[str, datetime] | None:
+PriceKey = tuple[int, str, str, Decimal]
+"""(bookmaker, market, selection, line): one price series of a fixture."""
+CandidateKey = tuple[int, str, str, Decimal, datetime]
+"""(prediction, market, selection, line, price captured at): what makes a candidate one (its unique index, with the
+decision rule's version)."""
+
+
+def _price_key(row: dict[str, Any]) -> PriceKey:
+    return int(row["best_bookmaker_id"]), str(row["market_key"]), str(row["selection"]), Decimal(row["line"])
+
+
+def _odds_payloads(conn: psycopg.Connection, fixture_id: int, rows: list[dict[str, Any]],
+                   as_of: datetime) -> dict[PriceKey, tuple[str, datetime]]:
+    """The newest snapshot at the instant of each consensus row's best price: payload and capture time.
+
+    One round trip for the whole instant: the same lookup per price as before, done inside the database. One query
+    per price made every pass about 300,000 round trips; on the server a round trip is about a millisecond (9 Oct
+    2026), and a pass took ten minutes.
+    """
+    wanted = sorted({_price_key(r) for r in rows})
+    if not wanted:
+        return {}
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT payload_hash, captured_at FROM market.odds_snapshots WHERE fixture_id = %s AND bookmaker_id = %s "
-            "AND market_key = %s AND selection = %s AND line = %s AND captured_at <= %s "
-            "ORDER BY captured_at DESC LIMIT 1",
-            (fixture_id, bookmaker_id, row["market_key"], row["selection"], row["line"], as_of),
+            """
+            SELECT w.bookmaker_id, w.market_key, w.selection, w.line, s.payload_hash, s.captured_at
+            FROM unnest(%s::int[], %s::text[], %s::text[], %s::numeric[]) AS w(bookmaker_id, market_key, selection, line)
+            CROSS JOIN LATERAL (
+                SELECT o.payload_hash, o.captured_at FROM market.odds_snapshots o
+                WHERE o.fixture_id = %s AND o.bookmaker_id = w.bookmaker_id AND o.market_key = w.market_key
+                  AND o.selection = w.selection AND o.line = w.line AND o.captured_at <= %s
+                ORDER BY o.captured_at DESC LIMIT 1
+            ) s
+            """,
+            ([w[0] for w in wanted], [w[1] for w in wanted], [w[2] for w in wanted], [w[3] for w in wanted],
+             fixture_id, as_of),
         )
-        r = cur.fetchone()
-        return (str(r[0]), r[1]) if r else None
+        return {(int(b), str(m), str(sel), Decimal(line)): (str(h), at) for b, m, sel, line, h, at in cur.fetchall()}
+
+
+def _evaluated(conn: psycopg.Connection, prediction_ids: list[int], rule_version: str) -> set[CandidateKey]:
+    """The candidates these forecasts already have under this rule: their insert would do nothing."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT prediction_id, market_key, selection, line, odds_captured_at FROM picks.pick_candidates "
+            "WHERE prediction_id = ANY(%s) AND decision_rule_version = %s",
+            (prediction_ids, rule_version),
+        )
+        return {(int(p), str(m), str(sel), Decimal(line), at) for p, m, sel, line, at in cur.fetchall()}
 
 
 def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: str,
@@ -172,14 +210,24 @@ def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: st
         fixture_id, as_of = int(inst["fixture_id"]), inst["as_of"]
         report.instants += 1
         consensus = {(r["market_key"], r["selection"], Decimal(r["line"])): r for r in _consensus(conn, fixture_id, as_of)}
-        for f in _forecasts(conn, fixture_id, as_of):
-            key = (f["market_key"], f["selection"], Decimal(f["line"]))
-            c = consensus.get(key)
-            if c is None:
-                continue  # no price for this selection in this capture
-            payload = _odds_payload(conn, fixture_id, int(c["best_bookmaker_id"]), c, as_of)
+        matched = [(f, c) for f in _forecasts(conn, fixture_id, as_of)
+                   if (c := consensus.get((f["market_key"], f["selection"], Decimal(f["line"])))) is not None]
+        if not matched:
+            continue  # no price for any forecast selection in this capture
+        payloads = _odds_payloads(conn, fixture_id, [c for _, c in matched], as_of)
+        done = _evaluated(conn, sorted({int(f["id"]) for f, _ in matched}), rule.version)
+        for f, c in matched:
+            payload = payloads.get(_price_key(c))
             if payload is None or payload[1] < f["data_cutoff_ts"]:
                 continue  # the forecast must precede the very price it is compared with
+            candidate: CandidateKey = (int(f["id"]), str(f["market_key"]), str(f["selection"]), Decimal(f["line"]),
+                                       payload[1])
+            if candidate in done:
+                # Evaluated by an earlier pass (or an earlier instant with the same price): the insert below would
+                # do nothing, so it is not sent. Every pass used to send it for every candidate ever made.
+                report.already_evaluated += 1
+                continue
+            done.add(candidate)
             odds = DecimalOdds(Decimal(c["best_odds"]))
             fair = FairProbability(Probability(float(c["p_fair"])), CONSENSUS_METHOD, float(c["overround"]))
 

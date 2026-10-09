@@ -9,6 +9,7 @@ import math
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 
 import numpy as np
 import psycopg
@@ -173,9 +174,22 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     db.commit()
     assert picks.instants == 1 and picks.candidates >= 3
     assert picks.selected >= 1 and picks.qualified == 0
+    statements: list[str] = []
+
+    class Recording(psycopg.Cursor[Any]):
+        def execute(self, query: Any, params: Any = None, **kw: Any) -> Any:
+            statements.append(str(query))
+            return super().execute(query, params, **kw)
+
+    db.cursor_factory = Recording
     rerun = evaluate_captures(db, run_id=run_id, code_version="pipetest")
+    db.cursor_factory = psycopg.Cursor
     db.commit()
     assert rerun.candidates == 0 and rerun.already_evaluated == picks.candidates, "evaluated once per price"
+    # 9 Oct 2026: a pass re-sent one price lookup and one insert for every candidate ever made - about 300,000 round
+    # trips, ten minutes on the server. A rerun now asks a fixed handful of questions per capture instant.
+    assert not any("INSERT INTO picks.pick_candidates" in q for q in statements), "an evaluated candidate is not re-sent"
+    assert len(statements) <= 1 + 4 * rerun.instants, statements
     with db.cursor() as cur:
         cur.execute(
             "SELECT p.id, p.status, p.selection, p.bookmaker_id, p.market_odds, p.data_cutoff_ts, p.odds_captured_at, "
