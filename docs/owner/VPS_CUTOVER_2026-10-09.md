@@ -121,9 +121,15 @@ en sombra de 19 partidos (18 revisiones de la IA, US$0,008). Se devolvió `persi
 los pronósticos vuelven a las versiones 252–254 (`mc1f28a88360`), que son las que acumulan el registro. Las filas de
 258–260 siguen ahí, separadas por versión; borrarlas es decisión del dueño (hay copia de las 13:22, anterior a ellas).
 
-**Nota sobre versiones de modelo.** Las del portátil (249–251, `mcec6b780838`) dejaron de usarse en el corte: el
-código del servidor tiene otra huella y abrió las 252–254 a las 04:02. Ninguna versión reciente tiene backtest, así
-que ningún pick estaba calificado antes ni después.
+**Nota sobre versiones de modelo.** Las del portátil (249–251, `mcec6b780838`) dejaron de usarse en el corte y el
+servidor abrió las 252–254 (`mc1f28a88360`) a las 04:02, **con el mismo código**: en el portátil un archivo
+(`models/lines.py`, guardado desde Windows el 30 sep) tenía finales de línea CRLF; git no lo ve como cambio, pero la
+huella leía los bytes tal cual. Desde `bb5dbda` la huella lee los finales de línea como los guarda git: el portátil
+calcula ya la misma huella que el servidor (`1f28a883601f`) y en el servidor no cambia nada. Ninguna versión reciente
+tiene backtest, así que ningún pick estaba calificado antes ni después.
+
+**Otros arreglos del día:** `af4d36a` — al arrancar, el worker cierra como fallidos los ciclos de IA y los "ejecutar
+ahora" que un worker anterior dejó a medias (el ciclo 87 quedó "en curso" tras el reinicio de las 13:00).
 
 ## 5. Pendiente (decisiones del dueño)
 
