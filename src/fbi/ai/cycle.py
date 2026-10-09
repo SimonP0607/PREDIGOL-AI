@@ -162,6 +162,25 @@ def close_cycle(conn: psycopg.Connection[Any], cycle_id: int, report: CycleRepor
     conn.commit()
 
 
+def recover_interrupted(conn: psycopg.Connection[Any], *, before: datetime, at: datetime) -> tuple[int, int]:
+    """Cycles and "run now" requests a stopped worker left running, closed as failed. Returns (cycles, requests).
+
+    Only the worker runs them, so at its start nothing opened before it can still be running. A restart part-way
+    left the row 'running' for ever - the dashboard showed a cycle in progress hours later (9 Oct 2026, cycle 87,
+    stopped by the 13:00 UTC restart). What the cycle paid for was committed step by step and stays.
+    """
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute("UPDATE ai.cycles SET status = 'failed', finished_at = %s, error = %s "
+                    "WHERE status = 'running' AND started_at < %s",
+                    (max(at, before), "interrupted: the worker stopped before the cycle finished", before))
+        cycles = cur.rowcount
+        cur.execute("UPDATE ai.run_requests SET status = 'failed' WHERE status = 'running' AND picked_at < %s",
+                    (before,))
+        requests = cur.rowcount
+    conn.commit()
+    return max(cycles, 0), max(requests, 0)
+
+
 def candidate_of(x: Ranked, packet_models: dict[str, Any]) -> Candidate:
     c, r = x.leg.candidate, x.row
     p_high: Decimal | None = None

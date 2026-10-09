@@ -981,6 +981,15 @@ async def main() -> None:
                                  worker_job_types=WORKER_JOB_TYPES, booted_at=boot_time())
     if recovered:
         log.warning("worker.recovered_runs", runs=[(r.run_id, r.job_type, r.status) for r in recovered])
+    try:  # the AI layer's own records of work in progress, same rule: nothing opened before this worker still runs
+        from fbi.ai.cycle import recover_interrupted
+
+        with _connect() as conn:
+            cycles, requests = recover_interrupted(conn, before=_worker_started_at or now(), at=now())
+        if cycles or requests:
+            log.warning("worker.recovered_ai", cycles=cycles, requests=requests)
+    except Exception as exc:  # never a reason not to start
+        log.error("worker.recover_ai_failed", error=f"{type(exc).__name__}: {exc}"[:300])
     scheduler = AsyncIOScheduler(timezone="UTC")
     _scheduler = scheduler
     moment = now()
