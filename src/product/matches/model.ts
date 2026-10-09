@@ -6,7 +6,7 @@
 import type { CompetitionRef, MatchSummary, StatusGroup } from "@/lib/api/v1/types";
 import type { LiveMatch } from "@/lib/api/v1/types_center";
 import { countryLabel } from "./country";
-import { isInPlay, shortStatus } from "./status";
+import { isInPlay, isOffPhase, matchPhaseOf, shortStatus } from "./status";
 
 /** A row's state for the reader: the stored group, unless the live follow knows better. */
 export type RowGroup = StatusGroup | "awaiting";
@@ -46,20 +46,25 @@ export function wantsLiveBoard(rows: readonly MatchSummary[], now: number): bool
  * minute. A row the board shows in play counts as live even if the row has not caught up;
  * a row already finished, postponed or cancelled keeps its own state.
  */
-export function toItems(rows: readonly MatchSummary[], board: readonly LiveMatch[]): MatchItem[] {
+export function toItems(
+  rows: readonly MatchSummary[],
+  board: readonly LiveMatch[],
+  now: number = Date.now(),
+): MatchItem[] {
   const byId = new Map(board.map((m) => [m.fixture_id, m]));
   return rows.map((match) => {
     const follow = byId.get(match.id) ?? null;
-    const settled =
-      match.status_group === "finished" ||
-      match.status_group === "postponed" ||
-      match.status_group === "cancelled";
+    // One rule for every screen (fbi.core.match_state): a suspended match is still in play,
+    // though it is stored with the postponed ones; nothing not played to the end is "live".
+    const phase = matchPhaseOf(match.status_short, match.kickoff_at, now, match.phase);
+    const settled = phase === "finished" || isOffPhase(phase);
     const inPlay = follow !== null && !settled && isInPlay(shortStatus(follow.status));
-    const group: RowGroup = inPlay
-      ? "live"
-      : match.awaiting_result && !settled
-        ? "awaiting"
-        : match.status_group;
+    const group: RowGroup =
+      inPlay || phase === "suspended"
+        ? "live"
+        : match.awaiting_result && !settled
+          ? "awaiting"
+          : match.status_group;
     return { match, group, live: inPlay ? follow : null };
   });
 }

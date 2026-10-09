@@ -199,6 +199,33 @@
       "oddsOutside": "odds outside [{a}, {b}]",
       "evBelow": "expected value below {a}",
       "edgeBelow": "probability edge below {a}"
+    },
+    "settlement": {
+      "title": "Settlement: how long each match waited",
+      "subtitle": "From the moment we saw it end until its picks were settled (first settlement per match, last 7 days). The provider publishes no exact end time: it lies between the last state seen in play and the first seen ended.",
+      "matches": "Matches settled",
+      "median": "Median wait",
+      "mean": "Mean wait",
+      "p90": "p90 wait",
+      "waiting": "Ended with bets open",
+      "match": "Match",
+      "status": "Status",
+      "ended": "Ended",
+      "open": "Open",
+      "reason": "Why it waits",
+      "noReason": "Should settle within the next minute",
+      "lastInPlay": "Last in play",
+      "observed": "Seen ended",
+      "settled": "Settled",
+      "delay": "Wait",
+      "path": "Who",
+      "records": "Picks / records",
+      "empty": "No settlement recorded yet.",
+      "paths": {
+        "live_follow": "Live follow",
+        "results_repair": "Results repair",
+        "pipeline": "Pipeline pass"
+      }
     }
   },
   "analyst": {

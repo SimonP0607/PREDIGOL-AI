@@ -70,3 +70,14 @@ export function shortHash(h: string | null | undefined, n = 12): string {
 export function isoDay(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
+
+/** A wait as a person reads it: 75 s -> "1 min 15 s"; 7,260 s -> "2 h 1 min". */
+export function waitText(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined) return "—";
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return s % 60 ? `${m} min ${s % 60} s` : `${m} min`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+}

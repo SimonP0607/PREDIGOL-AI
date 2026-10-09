@@ -224,7 +224,7 @@ export function boardSummary(matches: readonly LiveMatch[]): BoardSummary {
   for (const m of matches) {
     const phase = phaseOf(shortStatus(m.status));
     if (phase === "pre") starting += 1;
-    else if (phase !== "over") inPlay += 1;
+    else if (phase !== "over" && phase !== "off") inPlay += 1;
     if (!newest || Date.parse(m.state_at) > Date.parse(newest)) newest = m.state_at;
   }
   return { inPlay, starting, newest };

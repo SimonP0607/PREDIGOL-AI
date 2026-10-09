@@ -38,7 +38,15 @@
     "SUSP": "Susp.",
     "LIVE": "Live",
     "FT": "FT",
-    "TBD": "TBD"
+    "TBD": "TBD",
+    "NS": "Not st.",
+    "AET": "FT (a.e.t.)",
+    "PEN": "FT (pens)",
+    "PST": "Postponed",
+    "CANC": "Cancelled",
+    "ABD": "Abandoned",
+    "AWD": "Awarded",
+    "WO": "W/O"
   },
   "row": {
     "pens": "pens {home}-{away}",

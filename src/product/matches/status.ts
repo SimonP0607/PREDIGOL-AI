@@ -5,6 +5,7 @@
  * words ("First Half", "Halftime", "Not Started"). Both end up here as one short code
  * and a phase, so every screen shows the same thing for the same moment.
  */
+import type { MatchPhase } from "@/lib/api/v1/types";
 import { t, translateOr } from "@/lib/i18n";
 
 export type Phase =
@@ -18,8 +19,10 @@ export type Phase =
   | "pens"
   /** Interrupted or suspended by the referee. */
   | "stopped"
-  /** Over: full time, after extra time, after penalties, awarded. */
+  /** Played to the end: full time, after extra time, after penalties. */
   | "over"
+  /** Not played to the end: postponed, cancelled, abandoned, awarded, walkover. Never "Final". */
+  | "off"
   | "unknown";
 
 const SHORT_CODES = new Set([
@@ -94,10 +97,11 @@ const PHASE: Record<string, Phase> = {
   FT: "over",
   AET: "over",
   PEN: "over",
-  AWD: "over",
-  WO: "over",
-  CANC: "over",
-  ABD: "over",
+  PST: "off",
+  CANC: "off",
+  ABD: "off",
+  AWD: "off",
+  WO: "off",
 };
 
 /** "Halftime" -> "HT", "First Half" -> "1H", "2h" -> "2H"; unknown words come back upper-cased. */
@@ -139,4 +143,68 @@ export function liveLabel(
   const clock = translateOr(`matches.clock.${short}`, t("matches.clock.LIVE"));
   if (phase === "pause" || phase === "pens" || phase === "stopped") return clock;
   return minuteText(elapsed, extra) ?? clock;
+}
+
+// ── The phase every screen shows (fbi.core.match_state, mirrored) ─────────────
+
+const MATCH_PHASE: Record<string, MatchPhase> = {
+  TBD: "scheduled",
+  NS: "scheduled",
+  "1H": "live",
+  HT: "live",
+  "2H": "live",
+  ET: "live",
+  BT: "live",
+  P: "live",
+  LIVE: "live",
+  INT: "live",
+  SUSP: "suspended",
+  FT: "finished",
+  AET: "finished",
+  PEN: "finished",
+  PST: "postponed",
+  CANC: "cancelled",
+  ABD: "abandoned",
+  AWD: "not_played",
+  WO: "not_played",
+};
+
+/** Still scheduled this long after kick-off: the start is late or the copy is stale. */
+export const START_GRACE_MS = 15 * 60_000;
+/** Still in play this long after kick-off: longer than any match with extra time and penalties. */
+export const LIVE_STALE_MS = 210 * 60_000;
+
+/**
+ * The phase to show: the API's when it sent one, else the same rule the API applies -
+ * the provider's code, unless it is too old to believe (still scheduled 15 minutes after
+ * kick-off, or in play 3 h 30 after it, is "awaiting"; a suspension is never timed out).
+ */
+export function matchPhaseOf(
+  status: string | null | undefined,
+  kickoffAt: string | null | undefined,
+  now: number = Date.now(),
+  fromApi?: MatchPhase | null,
+): MatchPhase {
+  if (fromApi) return fromApi;
+  const phase = MATCH_PHASE[shortStatus(status)] ?? "unknown";
+  const ko = kickoffAt ? Date.parse(kickoffAt) : Number.NaN;
+  if (Number.isNaN(ko)) return phase;
+  if (phase === "scheduled" && now >= ko + START_GRACE_MS) return "awaiting";
+  if (phase === "live" && now >= ko + LIVE_STALE_MS) return "awaiting";
+  return phase;
+}
+
+/** Kicked off and not over: in play, a break or a suspension. */
+export function isLivePhase(phase: MatchPhase): boolean {
+  return phase === "live" || phase === "suspended";
+}
+
+/** Not played to the end: a bet on it is void or waits for a human, never "Final". */
+export function isOffPhase(phase: MatchPhase): boolean {
+  return (
+    phase === "postponed" ||
+    phase === "cancelled" ||
+    phase === "abandoned" ||
+    phase === "not_played"
+  );
 }

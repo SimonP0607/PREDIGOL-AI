@@ -202,6 +202,27 @@ describe("live follow on top of result rows", () => {
     expect(items[1] && rowScore(items[1])).toEqual({ home: 2, away: 1 });
   });
 
+  test("a suspended match is in play; an abandoned one is never live, whatever the board says", () => {
+    const suspended = match({
+      id: 105,
+      status_short: "SUSP",
+      status_group: "postponed",
+      phase: "suspended",
+    });
+    const abandoned = match({
+      id: 106,
+      status_short: "ABD",
+      status_group: "cancelled",
+      phase: "abandoned",
+    });
+    const items = toItems(
+      [suspended, abandoned],
+      [follow({ fixture_id: 106, status: "2H", elapsed: 70 })],
+    );
+    expect(items.map((i) => i.group)).toEqual(["live", "cancelled"]);
+    expect(items[1]?.live).toBeNull();
+  });
+
   test("past kick-off without a result is its own state, not upcoming", () => {
     const stuck = match({ id: 104, awaiting_result: true });
     const [item] = toItems([stuck], []);

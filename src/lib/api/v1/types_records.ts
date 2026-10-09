@@ -3,7 +3,7 @@
  * a user's own picks and parlays (/me/picks, /me/parlays) and their history (/me/history).
  * Mirrors fbi.api.contracts.records.
  */
-import type { Dec, Iso } from "./types";
+import type { Dec, Iso, MatchPhase } from "./types";
 import type { CompetitionBadge, TeamBadge } from "./types_product";
 
 export type ResultStatus = "PENDING" | "WIN" | "LOSS" | "PUSH" | "VOID" | "HALF_WIN" | "HALF_LOSS";
@@ -39,6 +39,16 @@ export interface MatchRef {
   /** Regulation score, once the match has one. */
   score_home: number | null;
   score_away: number | null;
+  /** The provider's code (NS, 1H, HT, FT, PST...). */
+  status_short?: string | null;
+  /** What the card shows (fbi.core.match_state). */
+  phase?: MatchPhase;
+  /** While in play: the minute and the score now (extra time included), and when that was seen. */
+  live_minute?: number | null;
+  live_extra?: number | null;
+  live_home?: number | null;
+  live_away?: number | null;
+  live_at?: Iso | null;
 }
 
 export interface DailyItem {

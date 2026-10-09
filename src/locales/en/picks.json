@@ -23,5 +23,9 @@
     "days_one": "{count} day",
     "days_other": "{count} days",
     "reset": "Clear filters"
+  },
+  "started": {
+    "title": "Already started today",
+    "subtitle": "Pre-match picks of today's matches that already kicked off: the odds and the time they were taken, the state of the match and its result. Not recalculated."
   }
 }

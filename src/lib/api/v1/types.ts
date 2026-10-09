@@ -35,6 +35,18 @@ export interface Section<T> {
 }
 
 export type StatusGroup = "scheduled" | "live" | "finished" | "cancelled" | "postponed";
+/** What every screen shows (fbi.core.match_state, mirrored in src/product/matches/status.ts). */
+export type MatchPhase =
+  | "scheduled"
+  | "live"
+  | "suspended"
+  | "finished"
+  | "postponed"
+  | "cancelled"
+  | "abandoned"
+  | "not_played"
+  | "awaiting"
+  | "unknown";
 
 export interface TeamRef {
   id: number;
@@ -148,6 +160,8 @@ export interface MatchSummary {
   odds: OddsSummary;
   predictions: number;
   awaiting_result: boolean;
+  /** The state to show: the provider's code with the time guard (absent from an older API). */
+  phase?: MatchPhase;
 }
 
 export interface MarketQuote {

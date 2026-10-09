@@ -22,6 +22,7 @@ import { dec, decPct, shortHash, utcDateTime } from "./format";
 import { localFixed } from "@/lib/i18n/format";
 import { marketShort, selectionLabel } from "@/product/shared/markets";
 import { rejectionReason } from "./labels";
+import { SettlementPanel } from "./SettlementPanel";
 
 const statusTone: Record<PickStatus, BadgeTone> = {
   shadow: "neutral",
@@ -102,6 +103,7 @@ export function PicksLive() {
       />
       <WarningBanner>{t("ops.picks.banner")}</WarningBanner>
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
+      <SettlementPanel />
       <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {stages.map(([stage, label, value, hint]) => (
           <MetricCard

@@ -14,6 +14,7 @@ import {
   ageLevel,
   capitalize,
   FINISHED_CODES,
+  notPlayed,
   roundLabel,
   scorerName,
   scorers,
@@ -91,7 +92,7 @@ function Center({ ctx }: { ctx: MatchCtx }) {
     );
   }
 
-  if (phase === "postponed" || phase === "cancelled") {
+  if (notPlayed(phase)) {
     return (
       <div className="flex flex-col items-center gap-2 pt-1 text-center">
         <ScoreLine score={null} {...names} />

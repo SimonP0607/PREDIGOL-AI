@@ -261,5 +261,17 @@
     "VOID": "Void",
     "pending_one": "{count} selection still to be played",
     "pending_other": "{count} selections still to be played"
-  }
+  },
+  "matchState": {
+    "live": "In play",
+    "suspended": "Suspended",
+    "awaiting": "Awaiting result",
+    "settling": "Finished · settling",
+    "postponed": "Postponed",
+    "cancelled": "Cancelled",
+    "abandoned": "Abandoned",
+    "not_played": "Not played",
+    "review": "Awaiting review"
+  },
+  "selectedAt": "Chosen at {time}"
 }

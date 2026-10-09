@@ -103,6 +103,20 @@ describe("phase and live state", () => {
     expect(matchPhase({ status_group: "scheduled", awaiting_result: true })).toBe("awaiting");
     expect(matchPhase({ status_group: "scheduled", awaiting_result: false })).toBe("scheduled");
     expect(matchPhase({ status_group: "postponed", awaiting_result: false })).toBe("postponed");
+    // The API's phase (fbi.core.match_state) wins: a suspension is in play, an abandoned or
+    // awarded match is neither cancelled nor finished.
+    expect(
+      matchPhase({ status_group: "postponed", awaiting_result: false, phase: "suspended" }),
+    ).toBe("live");
+    expect(
+      matchPhase({ status_group: "cancelled", awaiting_result: false, phase: "abandoned" }),
+    ).toBe("abandoned");
+    expect(
+      matchPhase({ status_group: "cancelled", awaiting_result: false, phase: "not_played" }),
+    ).toBe("not_played");
+    expect(matchPhase({ status_group: "live", awaiting_result: true, phase: "awaiting" })).toBe(
+      "awaiting",
+    );
   });
 
   test("the odds feed's spelled-out states map to the short codes", () => {

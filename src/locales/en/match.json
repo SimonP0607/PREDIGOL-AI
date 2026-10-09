@@ -61,7 +61,17 @@
     "none": "No qualified picks for this match.",
     "noneShadow": "No shadow picks for this match.",
     "showAll": "See all {count} picks",
-    "showLess": "See less"
+    "showLess": "See less",
+    "prematchTitle": "Pre-match picks",
+    "prematchBadge": "PRE-MATCH PICK",
+    "takenAt": "Taken at {time}",
+    "oddsTaken": "Odds {odds}",
+    "stateNow": "Current state",
+    "evaluations": "Last of {count} evaluations before kick-off",
+    "closeOdds": "Last pre-match price {odds}",
+    "clv": "Line value {value}",
+    "noneStarted": "This match had no picks before kick-off.",
+    "prematchHelp": "What PrediGol decided before kick-off, with the odds and the time they were taken. Not recalculated during the match."
   },
   "prices": {
     "title": "Best odds",
@@ -336,7 +346,11 @@
     "postponed": "Match postponed",
     "cancelled": "Match cancelled",
     "postponedBody": "The new date will show here once it is confirmed.",
-    "cancelledBody": "This match will not be played."
+    "cancelledBody": "This match will not be played.",
+    "abandoned": "Match abandoned",
+    "abandonedBody": "The referee did not finish it. Bets on it wait for a decision: some markets may already be decided.",
+    "not_played": "Match not played",
+    "not_playedBody": "The result was awarded (technical loss or walkover), not played. Bets on it wait for a decision."
   },
   "advanced": {
     "note": "Admins only: models and predictions, captures, lineage and the audit trail for this match."

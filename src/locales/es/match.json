@@ -61,7 +61,17 @@
     "none": "No hay picks calificados para este partido.",
     "noneShadow": "No hay picks shadow para este partido.",
     "showAll": "Ver los {count} picks",
-    "showLess": "Ver menos"
+    "showLess": "Ver menos",
+    "prematchTitle": "Picks prepartido",
+    "prematchBadge": "PICK PREPARTIDO",
+    "takenAt": "Tomado a las {time}",
+    "oddsTaken": "Cuota {odds}",
+    "stateNow": "Estado actual",
+    "evaluations": "Última de {count} evaluaciones antes del inicio",
+    "closeOdds": "Último precio prepartido {odds}",
+    "clv": "Valor de línea {value}",
+    "noneStarted": "Este partido no tuvo picks antes del inicio.",
+    "prematchHelp": "Lo que PrediGol decidió antes del inicio, con la cuota y la hora en que se tomó. No se recalcula durante el partido."
   },
   "prices": {
     "title": "Mejores cuotas",
@@ -336,7 +346,11 @@
     "postponed": "Partido aplazado",
     "cancelled": "Partido cancelado",
     "postponedBody": "La nueva fecha aparecerá aquí cuando se confirme.",
-    "cancelledBody": "Este partido no se jugará."
+    "cancelledBody": "Este partido no se jugará.",
+    "abandoned": "Partido abandonado",
+    "abandonedBody": "El árbitro no lo terminó. Las apuestas sobre él esperan una decisión: algunos mercados pueden estar ya decididos.",
+    "not_played": "Partido no disputado",
+    "not_playedBody": "El resultado fue adjudicado (pérdida técnica o W.O.), no jugado. Las apuestas sobre él esperan una decisión."
   },
   "advanced": {
     "note": "Solo administradores: modelos y predicciones, capturas, linaje y auditoría de este partido."

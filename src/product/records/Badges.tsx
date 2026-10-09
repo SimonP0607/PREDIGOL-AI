@@ -1,9 +1,11 @@
 /** Small labels of the records: a result, a parlay's state, who chose it, evaluation mode. */
 import { BadgeCheck, Bookmark, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { t } from "@/lib/i18n";
+import { t, translateOr } from "@/lib/i18n";
 import { toNumber } from "@/lib/i18n/format";
+import type { MatchPhase } from "@/lib/api/v1/types";
 import type { ParlayStatus, ResultStatus } from "@/lib/api/v1/types_records";
+import { matchPhaseOf, minuteText, shortStatus } from "@/product/matches/status";
 import { parlayTone, resultTone, type Tone } from "./model";
 import { fmtUnits } from "./units";
 
@@ -52,6 +54,94 @@ export function ParlayStatusBadge({
       {t(`records.parlayStatus.${status}`)}
     </span>
   );
+}
+
+/**
+ * What a record's match is doing while its result is still pending: "En juego · 63' · 1-0",
+ * "Suspendido", "Terminado · liquidando", "Aplazado"... (fbi.core.match_state). Nothing before
+ * kick-off, and nothing once the record is settled - the result badge says it then.
+ */
+export function MatchStateBadge({
+  match,
+  className,
+}: {
+  match: {
+    kickoff_at: string;
+    status_short?: string | null | undefined;
+    phase?: MatchPhase | undefined;
+    live_minute?: number | null | undefined;
+    live_extra?: number | null | undefined;
+    live_home?: number | null | undefined;
+    live_away?: number | null | undefined;
+  };
+  className?: string | undefined;
+}) {
+  const phase = matchPhaseOf(match.status_short, match.kickoff_at, Date.now(), match.phase);
+  if (phase === "scheduled" || phase === "unknown") return null;
+  if (phase === "live") {
+    const minute = minuteText(match.live_minute, match.live_extra);
+    const clock =
+      minute ??
+      translateOr(`matches.clock.${shortStatus(match.status_short)}`, t("common.status.live"));
+    const score =
+      match.live_home !== null &&
+      match.live_home !== undefined &&
+      match.live_away !== null &&
+      match.live_away !== undefined
+        ? `${match.live_home}–${match.live_away}`
+        : null;
+    return (
+      <span
+        data-testid="match-state"
+        data-phase={phase}
+        className={cn(BADGE, TONE.live, "numeric gap-1", className)}
+      >
+        <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+        {t("records.matchState.live")} · {clock}
+        {score ? ` · ${score}` : ""}
+      </span>
+    );
+  }
+  const key = phase === "finished" ? "settling" : phase;
+  return (
+    <span
+      data-testid="match-state"
+      data-phase={phase}
+      className={cn(
+        BADGE,
+        phase === "finished" ? TONE.pending : "border-warning/40 bg-warning/10 text-warning",
+        className,
+      )}
+    >
+      {t(`records.matchState.${key}`)}
+    </span>
+  );
+}
+
+/**
+ * A record's result, or - while it is pending and its match has started - what the match is
+ * doing (MatchStateBadge). ``hidePending``: nothing at all for a pending record of a match not
+ * yet started (the compact rows).
+ */
+export function RecordState({
+  status,
+  match,
+  hidePending = false,
+  className,
+}: {
+  status: ResultStatus;
+  match: Parameters<typeof MatchStateBadge>[0]["match"];
+  hidePending?: boolean;
+  className?: string | undefined;
+}) {
+  if (status === "PENDING") {
+    const phase = matchPhaseOf(match.status_short, match.kickoff_at, Date.now(), match.phase);
+    if (phase !== "scheduled" && phase !== "unknown") {
+      return <MatchStateBadge match={match} className={className} />;
+    }
+    if (hidePending) return null;
+  }
+  return <ResultBadge status={status} className={className} />;
 }
 
 /** "PrediGol Pick" or "Guardado por mí": whose choice a record is. */

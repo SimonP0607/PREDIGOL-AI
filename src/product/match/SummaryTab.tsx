@@ -1,18 +1,22 @@
 /**
  * Resumen, by the match's state:
- * before kick-off - picks, best prices, form, table, head to head, absences, line-ups;
- * in play        - events, key figures, in-play prices, then the context folded away;
- * after          - result, events, key figures, then the context folded away.
+ * before kick-off - PrediGol Intelligence, picks, best prices, form, table, head to head, absences, line-ups;
+ * in play        - the pre-match picks as taken (with the minute and score), events, the pre-match
+ *                  analysis, key figures, in-play prices, then the context folded away;
+ * after          - result, the pre-match picks with their results, events, the pre-match analysis,
+ *                  key figures, then the context folded away;
+ * not played     - what happened (postponed, cancelled, abandoned, awarded) and the pre-match picks.
  */
 import { useId, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, CalendarX2, ChevronDown, Flag, Target } from "lucide-react";
+import { BarChart3, CalendarX2, ChevronDown, Flag, History, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
 import type { PickCard as PickCardData } from "@/lib/api/v1/types_product";
 import { PickCard } from "@/product/shared/PickCard";
+import { StartedPickCard } from "@/product/shared/StartedPickCard";
 import { ShadowBadge } from "@/product/shared/Bits";
 import { Card, EmptyState, ErrorState, SkeletonBlock } from "@/product/shared/States";
 import { AnalysisBlock } from "./AnalysisBlock";
@@ -30,7 +34,7 @@ const PICKS_SHOWN = 2;
 /** Qualified picks for this match (the admin's labelled shadow preview when it is on). */
 function PicksBlock({ ctx }: { ctx: MatchCtx }) {
   const preview = usePreviewParam();
-  const q = useQuery(live.productPicks({ hours: 168 }, preview));
+  const q = useQuery(live.productPicks({ hours: 168, fixture_id: Number(ctx.fixtureId) }, preview));
   const [all, setAll] = useState(false);
   const board = q.data?.data;
   const id = Number(ctx.fixtureId);
@@ -74,6 +78,43 @@ function PicksBlock({ ctx }: { ctx: MatchCtx }) {
               {all ? t("match.picks.showLess") : t("match.picks.showAll", { count: picks.length })}
             </MoreButton>
           ) : null}
+        </div>
+      )}
+    </Block>
+  );
+}
+
+/**
+ * Once the match has kicked off: the picks PrediGol made BEFORE it, as they were taken (time,
+ * price, bookmaker), each with what the match is doing now and, at the end, its result. Never
+ * re-priced, never turned into an in-play pick.
+ */
+function PrematchPicksBlock({ ctx }: { ctx: MatchCtx }) {
+  const preview = usePreviewParam();
+  const q = useQuery(live.productPicks({ hours: 168, fixture_id: Number(ctx.fixtureId) }, preview));
+  const board = q.data?.data;
+  const shadow = board?.source === "shadow_preview";
+  const picks = (board?.started ?? []).filter((p) => p.fixture_id === Number(ctx.fixtureId));
+  if (q.isSuccess && picks.length === 0) return null;
+  return (
+    <Block
+      title={t("match.picks.prematchTitle")}
+      icon={<History />}
+      right={shadow ? <ShadowBadge /> : null}
+      className={cn(shadow && "border-info/40")}
+    >
+      {q.isPending ? (
+        <SkeletonBlock className="h-32" />
+      ) : q.isError ? (
+        <ErrorState error={q.error} onRetry={() => void q.refetch()} className="py-5" />
+      ) : (
+        <div className="space-y-2" data-testid="prematch-picks">
+          <p className="text-caption text-muted-foreground">{t("match.picks.prematchHelp")}</p>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
+            {picks.map((p) => (
+              <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} />
+            ))}
+          </div>
         </div>
       )}
     </Block>
@@ -238,7 +279,9 @@ function InPlay({ ctx }: { ctx: MatchCtx }) {
     <div className="space-y-4">
       <div className={TWO_COLUMNS}>
         <div className="min-w-0 space-y-4">
+          <PrematchPicksBlock ctx={ctx} />
           <EventsBlock ctx={ctx} />
+          <AnalysisBlock ctx={ctx} />
         </div>
         <div className="min-w-0 space-y-4">
           <KeyStatsBlock ctx={ctx} />
@@ -256,7 +299,9 @@ function AfterMatch({ ctx }: { ctx: MatchCtx }) {
       <div className={TWO_COLUMNS}>
         <div className="min-w-0 space-y-4">
           <ResultBlock ctx={ctx} />
+          <PrematchPicksBlock ctx={ctx} />
           <EventsBlock ctx={ctx} />
+          <AnalysisBlock ctx={ctx} />
         </div>
         <div className="min-w-0 space-y-4">
           <KeyStatsBlock ctx={ctx} />
@@ -268,16 +313,20 @@ function AfterMatch({ ctx }: { ctx: MatchCtx }) {
 }
 
 function NotPlayed({ ctx }: { ctx: MatchCtx }) {
-  const postponed = ctx.phase === "postponed";
+  const key =
+    ctx.phase === "postponed" || ctx.phase === "abandoned" || ctx.phase === "not_played"
+      ? ctx.phase
+      : "cancelled";
   return (
     <div className="space-y-4">
       <Card>
         <EmptyState
           icon={<CalendarX2 aria-hidden className="h-6 w-6" />}
-          title={postponed ? t("match.notPlayed.postponed") : t("match.notPlayed.cancelled")}
-          body={postponed ? t("match.notPlayed.postponedBody") : t("match.notPlayed.cancelledBody")}
+          title={t(`match.notPlayed.${key}`)}
+          body={t(`match.notPlayed.${key}Body`)}
         />
       </Card>
+      <PrematchPicksBlock ctx={ctx} />
       <ContextSection ctx={ctx} open />
     </div>
   );
@@ -291,6 +340,8 @@ export function SummaryTab({ ctx }: { ctx: MatchCtx }) {
       return <InPlay ctx={ctx} />;
     case "postponed":
     case "cancelled":
+    case "abandoned":
+    case "not_played":
       return <NotPlayed ctx={ctx} />;
     default:
       return <AfterMatch ctx={ctx} />;

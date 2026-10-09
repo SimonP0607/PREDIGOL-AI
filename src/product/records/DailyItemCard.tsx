@@ -12,7 +12,9 @@ import { CompetitionTag, TeamName } from "@/components/football/Logos";
 import { EvBadge, Kickoff, OddsPill, ProbCompare } from "@/product/shared/Bits";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { AiNote } from "./AiNote";
-import { OriginLabel, ResultBadge, Units } from "./Badges";
+import { formatTime } from "@/lib/time";
+import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
+import { MatchStateBadge, OriginLabel, ResultBadge, Units } from "./Badges";
 import { hasStarted } from "./model";
 import { pickableOfItem } from "./pickable";
 import { SelectionActions } from "./SelectionActions";
@@ -45,6 +47,11 @@ export function DailyItemCard({
   });
   const started = hasStarted(m);
   const settled = item.status !== "PENDING";
+  const phase = matchPhaseOf(m.status_short, m.kickoff_at, Date.now(), m.phase);
+  const liveScore =
+    isLivePhase(phase) && m.live_home != null && m.live_away != null
+      ? { home: m.live_home, away: m.live_away }
+      : null;
   return (
     <article
       data-testid="daily-item"
@@ -93,6 +100,8 @@ export function DailyItemCard({
             />
             {m.score_home !== null && m.score_away !== null ? (
               <MatchScore home={m.score_home} away={m.score_away} />
+            ) : liveScore ? (
+              <MatchScore home={liveScore.home} away={liveScore.away} />
             ) : (
               <span className="text-caption text-subtle-foreground">{t("common.vs")}</span>
             )}
@@ -148,6 +157,12 @@ export function DailyItemCard({
               <Snowflake aria-hidden className="h-3 w-3" />
               {t(`records.stage.${item.stage}`)}
             </span>
+            <span
+              className="text-caption text-muted-foreground"
+              data-testid="daily-item-selected-at"
+            >
+              {t("records.selectedAt", { time: formatTime(item.selected_at) })}
+            </span>
           </div>
         </div>
       </Link>
@@ -155,7 +170,11 @@ export function DailyItemCard({
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-caption text-subtle-foreground">{t("records.labels.result")}</span>
-          <ResultBadge status={item.status} />
+          {!settled && started && phase !== "scheduled" && phase !== "unknown" ? (
+            <MatchStateBadge match={m} />
+          ) : (
+            <ResultBadge status={item.status} />
+          )}
           {settled ? <Units value={item.profit_units} className="text-xs" /> : null}
         </div>
         {!started ? <SelectionActions sel={pickableOfItem(item)} /> : null}

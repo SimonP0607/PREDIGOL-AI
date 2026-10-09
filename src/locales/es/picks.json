@@ -23,5 +23,9 @@
     "days_one": "{count} día",
     "days_other": "{count} días",
     "reset": "Quitar filtros"
+  },
+  "started": {
+    "title": "Ya empezaron hoy",
+    "subtitle": "Los picks prepartido de los partidos de hoy que ya comenzaron: la cuota y la hora en que se tomaron, el estado del partido y su resultado. No se recalculan."
   }
 }

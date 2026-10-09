@@ -57,7 +57,11 @@
     "postponed": "Postponed",
     "cancelled": "Cancelled",
     "halftime": "Half-time",
-    "awaiting": "Awaiting result"
+    "awaiting": "Awaiting result",
+    "suspended": "Suspended",
+    "abandoned": "Abandoned",
+    "not_played": "Not played",
+    "unknown": "No status"
   },
   "freshnessLevel": {
     "fresh": "Recent price",

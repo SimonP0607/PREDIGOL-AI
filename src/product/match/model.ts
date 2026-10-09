@@ -24,14 +24,53 @@ import { MARKETS, selectionLabel } from "@/product/shared/markets";
 
 // ── Phase ───────────────────────────────────────────────────────────────────
 
-export type Phase = "scheduled" | "live" | "finished" | "awaiting" | "postponed" | "cancelled";
+export type Phase =
+  | "scheduled"
+  | "live"
+  | "finished"
+  | "awaiting"
+  | "postponed"
+  | "cancelled"
+  | "abandoned"
+  | "not_played";
 
-export function matchPhase(m: Pick<MatchSummary, "status_group" | "awaiting_result">): Phase {
+/**
+ * The Match Center's phase: the API's (fbi.core.match_state) when it sent one. A suspension is
+ * shown in play (the header says "Susp."); an older API's answer falls back to the stored group.
+ */
+export function matchPhase(
+  m: Pick<MatchSummary, "status_group" | "awaiting_result"> & Partial<Pick<MatchSummary, "phase">>,
+): Phase {
+  switch (m.phase) {
+    case "scheduled":
+    case "finished":
+    case "awaiting":
+    case "postponed":
+    case "cancelled":
+    case "abandoned":
+    case "not_played":
+      return m.phase;
+    case "live":
+    case "suspended":
+      return "live";
+    default:
+      break;
+  }
   if (m.status_group === "live") return "live";
   if (m.status_group === "finished") return "finished";
   if (m.status_group === "postponed") return "postponed";
   if (m.status_group === "cancelled") return "cancelled";
   return m.awaiting_result ? "awaiting" : "scheduled";
+}
+
+/** Not played to the end: nothing to show as a result, the bets void or wait for a human. */
+export function notPlayed(phase: Phase): boolean {
+  return (
+    phase === "postponed" ||
+    phase === "cancelled" ||
+    phase === "abandoned" ||
+    phase === "not_played"
+  );
 }
 
 /** The second feed spells states out ("First Half"); the first uses short codes ("1H"). */

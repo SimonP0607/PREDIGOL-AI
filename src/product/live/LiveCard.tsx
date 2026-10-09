@@ -33,16 +33,22 @@ import {
 function MatchClock({ m, className }: { m: LiveMatch; className?: string | undefined }) {
   const short = shortStatus(m.status);
   const phase = phaseOf(short);
-  if (phase === "pre" || phase === "over") {
+  if (phase === "pre" || phase === "over" || phase === "off") {
+    // A match not played to the end says what happened to it (Aplazado, Cancelado...), never "Final".
+    const label =
+      phase === "pre"
+        ? t("live.aboutToStart")
+        : translateOr(`matches.clock.${short}`, t("matches.clock.FT"));
     return (
       <span
         className={cn(
           "inline-flex items-center gap-1 rounded-md border border-border-strong bg-elevated px-1.5 py-0.5 text-xs font-medium text-muted-foreground",
+          phase === "off" && "border-warning/40 text-warning",
           className,
         )}
       >
         <Clock aria-hidden className="h-3 w-3" />
-        {phase === "pre" ? t("live.aboutToStart") : t("matches.clock.FT")}
+        {label}
       </span>
     );
   }

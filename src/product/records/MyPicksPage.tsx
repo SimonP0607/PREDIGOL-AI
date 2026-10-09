@@ -29,7 +29,7 @@ import {
 } from "@/product/shared/States";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { ChipGroup } from "@/product/picks/Controls";
-import { EvaluationBadge, OriginLabel, ParlayStatusBadge, ResultBadge, Units } from "./Badges";
+import { EvaluationBadge, OriginLabel, ParlayStatusBadge, RecordState, Units } from "./Badges";
 import { MatchScore } from "./DailyItemCard";
 import { useRefreshMine } from "./hooks";
 import { HISTORY_GROUPS, hasStarted } from "./model";
@@ -319,7 +319,7 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
       <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-caption text-subtle-foreground">{t("records.labels.result")}</span>
-          <ResultBadge status={pick.status} />
+          <RecordState status={pick.status} match={m} />
           {pick.status !== "PENDING" ? (
             <Units value={pick.profit_units} className="text-xs" />
           ) : null}
@@ -446,7 +446,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
                 </div>
               </div>
               <OddsPill odds={leg.odds} size="sm" />
-              {leg.status !== "PENDING" ? <ResultBadge status={leg.status} /> : null}
+              <RecordState status={leg.status} match={leg.match} hidePending />
             </li>
           ))}
         </ol>

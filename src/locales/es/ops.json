@@ -199,6 +199,33 @@
       "oddsOutside": "cuota fuera de [{a}, {b}]",
       "evBelow": "valor esperado por debajo de {a}",
       "edgeBelow": "ventaja de probabilidad por debajo de {a}"
+    },
+    "settlement": {
+      "title": "Liquidación: cuánto esperó cada partido",
+      "subtitle": "Desde que vimos el final hasta que sus picks quedaron liquidados (primera liquidación de cada partido, últimos 7 días). El proveedor no publica la hora exacta del final: está entre el último estado en juego y el primero terminado.",
+      "matches": "Partidos liquidados",
+      "median": "Espera mediana",
+      "mean": "Espera media",
+      "p90": "Espera p90",
+      "waiting": "Terminados con apuestas abiertas",
+      "match": "Partido",
+      "status": "Estado",
+      "ended": "Terminó",
+      "open": "Abiertas",
+      "reason": "Por qué espera",
+      "noReason": "Debería liquidarse en el próximo minuto",
+      "lastInPlay": "Último en juego",
+      "observed": "Visto terminado",
+      "settled": "Liquidado",
+      "delay": "Espera",
+      "path": "Quién",
+      "records": "Picks / registros",
+      "empty": "Todavía no hay liquidaciones registradas.",
+      "paths": {
+        "live_follow": "Seguimiento en vivo",
+        "results_repair": "Reparación de resultados",
+        "pipeline": "Pasada del pipeline"
+      }
     }
   },
   "analyst": {

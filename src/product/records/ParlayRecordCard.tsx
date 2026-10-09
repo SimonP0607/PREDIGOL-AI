@@ -19,7 +19,7 @@ import { EvBadge, Kickoff, OddsPill } from "@/product/shared/Bits";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { PARLAY_ICON, parlayTitle } from "@/product/parlays/parlayText";
 import { AiNote, ProgressBadge } from "./AiNote";
-import { EvaluationBadge, ParlayStatusBadge, ResultBadge, Units } from "./Badges";
+import { EvaluationBadge, ParlayStatusBadge, RecordState, Units } from "./Badges";
 import { MatchScore } from "./DailyItemCard";
 
 type Variant = "compact" | "full";
@@ -80,7 +80,7 @@ function CompactLeg({ leg }: { leg: ParlayRecordLeg }) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <OddsPill odds={leg.odds} size="sm" />
-          {leg.status !== "PENDING" ? <ResultBadge status={leg.status} /> : null}
+          <RecordState status={leg.status} match={m} hidePending />
         </div>
       </Link>
     </li>
@@ -133,7 +133,7 @@ function FullLeg({ leg }: { leg: ParlayRecordLeg }) {
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               <EvBadge ev={leg.ev} />
-              <ResultBadge status={leg.status} />
+              <RecordState status={leg.status} match={leg.match} />
             </div>
             {leg.ai ? (
               <div className="mt-1.5">

@@ -7,7 +7,7 @@
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { ChevronDown, Clock, ListFilter, RotateCcw, Trophy } from "lucide-react";
+import { ChevronDown, Clock, History, ListFilter, RotateCcw, Trophy } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { CompetitionBadge, PicksBoard } from "@/lib/api/v1/types_product";
@@ -18,6 +18,7 @@ import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ShadowBadge } from "@/product/shared/Bits";
 import { PickCard } from "@/product/shared/PickCard";
+import { StartedPickCard } from "@/product/shared/StartedPickCard";
 import {
   Card,
   EmptyState,
@@ -64,7 +65,34 @@ export function PicksPage() {
       />
       <DailySetBlock query={daily} />
       <AllPicks query={list} filters={filters} onChange={setFilters} />
+      <StartedPicks query={list} />
     </div>
+  );
+}
+
+/**
+ * Today's pre-match picks whose match already kicked off: they do not disappear at kick-off.
+ * Each stays as it was taken, with what the match is doing now and, at the end, its result.
+ */
+function StartedPicks({ query }: { query: BoardQuery }) {
+  const board = query.data?.data;
+  const started = board?.started ?? [];
+  if (started.length === 0) return null;
+  const shadow = board?.source === "shadow_preview";
+  return (
+    <section className="space-y-3" data-testid="picks-started">
+      <BlockHeader
+        title={t("picks.started.title")}
+        subtitle={t("picks.started.subtitle")}
+        icon={<History aria-hidden className="h-4 w-4 text-gold" />}
+        shadow={shadow}
+      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {started.map((p) => (
+          <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} />
+        ))}
+      </div>
+    </section>
   );
 }
 

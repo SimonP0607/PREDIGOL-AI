@@ -261,5 +261,17 @@
     "VOID": "Anulado",
     "pending_one": "Falta {count} selección por jugarse",
     "pending_other": "Faltan {count} selecciones por jugarse"
-  }
+  },
+  "matchState": {
+    "live": "En juego",
+    "suspended": "Suspendido",
+    "awaiting": "Esperando resultado",
+    "settling": "Terminado · liquidando",
+    "postponed": "Aplazado",
+    "cancelled": "Cancelado",
+    "abandoned": "Abandonado",
+    "not_played": "No jugado",
+    "review": "Espera revisión"
+  },
+  "selectedAt": "Elegido a las {time}"
 }

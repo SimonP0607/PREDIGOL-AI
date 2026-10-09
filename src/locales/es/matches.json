@@ -38,7 +38,15 @@
     "SUSP": "Susp.",
     "LIVE": "Vivo",
     "FT": "Final",
-    "TBD": "Por def."
+    "TBD": "Por def.",
+    "NS": "Por emp.",
+    "AET": "Final (prór.)",
+    "PEN": "Final (pen.)",
+    "PST": "Aplazado",
+    "CANC": "Cancelado",
+    "ABD": "Abandonado",
+    "AWD": "Adjudicado",
+    "WO": "W.O."
   },
   "row": {
     "pens": "pen. {home}-{away}",

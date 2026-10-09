@@ -6,7 +6,7 @@ import { toNumber } from "@/lib/i18n/format";
 import type { PlayerLine } from "@/lib/api/v1/types_center";
 import { PlayerPhoto, TeamLogo } from "@/components/football/Logos";
 import type { MatchCtx } from "./context";
-import { ageLevel, ratedPlayers, recentRows, seasonRows, statRows } from "./model";
+import { ageLevel, notPlayed, ratedPlayers, recentRows, seasonRows, statRows } from "./model";
 import {
   Block,
   CenterSection,
@@ -148,7 +148,7 @@ function PreMatchStats({ ctx }: { ctx: MatchCtx }) {
 }
 
 export function StatsTab({ ctx }: { ctx: MatchCtx }) {
-  if (ctx.phase === "scheduled" || ctx.phase === "postponed" || ctx.phase === "cancelled") {
+  if (ctx.phase === "scheduled" || notPlayed(ctx.phase)) {
     return <PreMatchStats ctx={ctx} />;
   }
   const { home, away } = ctx.match;
