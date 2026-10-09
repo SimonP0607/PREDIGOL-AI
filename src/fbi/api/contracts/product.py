@@ -15,7 +15,7 @@ from typing import Literal
 from pydantic import Field
 
 from fbi.api.contracts.center import LiveMatch
-from fbi.api.contracts.common import Contract
+from fbi.api.contracts.common import Contract, MatchPhase
 from fbi.api.envelope import Section
 
 Source = Literal["qualified", "shadow_preview"]
@@ -63,6 +63,52 @@ class PickCard(Contract):
     value_reason: str | None = Field(description="The gate it fails, as a code, when value_now is false.")
 
 
+class StartedPick(Contract):
+    """A pre-match pick whose match has kicked off: the record as it was taken before kick-off, never re-priced.
+
+    One per selection: the last pick made before kick-off (``evaluations`` says how many there were). What
+    happened since - the state, the minute, the score, the result, the line value - is shown beside it, never
+    mixed into it."""
+
+    pick_id: int
+    fixture_id: int
+    kickoff_at: datetime
+    competition: CompetitionBadge
+    home: TeamBadge
+    away: TeamBadge
+    market_key: str
+    selection: str
+    line: Decimal
+    status: Literal["shadow", "qualified", "published"] = Field(description="What it was before kick-off.")
+    model: str
+    created_at: datetime = Field(description="When the pick was made.")
+    taken_at: datetime = Field(description="When the price was captured.")
+    odds_taken: Decimal
+    bookmaker: str | None
+    p_model: Decimal
+    p_market: Decimal = Field(description="De-vigged market probability when it was taken.")
+    fair_odds: Decimal
+    edge: Decimal
+    ev: Decimal = Field(description="Expected value per unit at the price taken.")
+    evaluations: int = Field(description="Picks made on this selection before kick-off; this is the last.")
+    phase: MatchPhase
+    status_short: str | None
+    live_minute: int | None = None
+    live_extra: int | None = None
+    live_home: int | None = None
+    live_away: int | None = None
+    score_home: int | None = Field(default=None, description="The 90-minute score, once the match has one.")
+    score_away: int | None = None
+    result_status: str | None = Field(default=None, description="win, loss, push, void, half_win, half_loss, "
+                                                                "pending, or None before the match ends.")
+    profit_units: Decimal | None = None
+    settled_at: datetime | None = None
+    review_reason: str | None = Field(default=None, description="Why it waits for a human, if it does.")
+    near_close_odds: Decimal | None = Field(default=None, description="The same bookmaker's last pre-match price.")
+    line_value: Decimal | None = Field(default=None, description="odds_taken / near_close_odds - 1: value against "
+                                                                 "a near-close price, not validated as the close.")
+
+
 class PicksBoard(Contract):
     source: Source
     top: list[PickCard] = Field(description="Up to five picks with value now, kicking off in the next 24 hours.")
@@ -71,6 +117,10 @@ class PicksBoard(Contract):
     markets: list[str]
     window_hours: int
     reason: str | None = Field(description="Why there is nothing to show, as a code.")
+    started: list[StartedPick] = Field(
+        default_factory=list,
+        description="Pre-match picks whose match has kicked off (today's, or every one of ``fixture_id``): they "
+                    "stay, with the price taken, the state of the match and the result.")
 
 
 class ParlayLeg(Contract):

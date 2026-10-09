@@ -6,6 +6,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 StatusGroup = Literal["scheduled", "live", "finished", "cancelled", "postponed"]
+MatchPhase = Literal["scheduled", "live", "suspended", "finished", "postponed", "cancelled", "abandoned",
+                   "not_played", "awaiting", "unknown"]
+"""What a reader sees: the provider's code with the time guard of fbi.core.match_state."""
 Outcome1x2 = Literal["Home", "Draw", "Away"]
 
 

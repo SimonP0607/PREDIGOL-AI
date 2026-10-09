@@ -10,6 +10,7 @@ from fbi.api.contracts.common import (
     CompetitionRef,
     Contract,
     Lineage,
+    MatchPhase,
     Score,
     StatusGroup,
     TeamRef,
@@ -44,6 +45,12 @@ class MatchSummary(Contract):
         description="Kicked off and the row has not moved on: still scheduled 15 minutes after kick-off, "
                     "or still live 3.5 hours after it. A match being played is live, not awaiting."
     )
+    phase: MatchPhase = Field(
+        default="unknown",
+        description="The state every screen shows (fbi.core.match_state): the provider's code, unless it is too old "
+                    "to believe - still scheduled 15 minutes after kick-off or in play 3.5 hours after it is "
+                    "'awaiting'. A suspended, postponed, cancelled, abandoned or awarded match says so; none is "
+                    "'finished'.")
 
 
 class MarketQuote(Contract):

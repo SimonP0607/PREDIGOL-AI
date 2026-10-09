@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from fbi.api.contracts.common import Contract
+from fbi.api.contracts.common import Contract, MatchPhase
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 
 ResultStatus = Literal["PENDING", "WIN", "LOSS", "PUSH", "VOID", "HALF_WIN", "HALF_LOSS"]
@@ -44,6 +44,13 @@ class MatchRef(Contract):
     away: TeamBadge
     score_home: int | None = Field(default=None, description="Regulation score, once the match has one.")
     score_away: int | None = None
+    status_short: str | None = Field(default=None, description="The provider's code (NS, 1H, HT, FT, PST...).")
+    phase: MatchPhase = Field(default="unknown", description="What the card shows (fbi.core.match_state).")
+    live_minute: int | None = Field(default=None, description="The minute, while in play.")
+    live_extra: int | None = None
+    live_home: int | None = Field(default=None, description="The score now, while in play (extra time included).")
+    live_away: int | None = None
+    live_at: datetime | None = Field(default=None, description="When that state was observed.")
 
 
 class DailyItem(Contract):

@@ -31,6 +31,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import tuple_row
 
+from fbi.core import match_state
 from fbi.core.clock import now
 from fbi.core.errors import ProviderError
 from fbi.core.logging import get_logger
@@ -48,6 +49,10 @@ FOLLOW_AFTER_KICKOFF = timedelta(hours=3)
 FOLLOW_BEFORE_KICKOFF = timedelta(minutes=2)
 ODDS_FEED_RECENT = timedelta(minutes=5)
 
+NOT_OVER = "(f.status_group IN ('scheduled', 'live') OR f.status_short = 'SUSP')"
+"""Not known to be over. A suspended match is stored in the 'postponed' group (fbi.core.match_state) but has
+kicked off and may resume within minutes, so it is followed like one in play."""
+
 FOLLOW_SQL = """
 SELECT f.id, f.provider_fixture_id
   FROM core.fixtures f
@@ -55,15 +60,19 @@ SELECT f.id, f.provider_fixture_id
   JOIN core.competitions c ON c.id = cs.competition_id
  WHERE c.is_tracked
    AND f.kickoff_at BETWEEN %(at)s - %(after)s AND %(at)s + %(before)s
-   AND f.status_group IN ('scheduled', 'live')
+   AND """ + NOT_OVER + """
 UNION
 SELECT f.id, f.provider_fixture_id
   FROM market.live_fixture_current s
   JOIN core.fixtures f ON f.id = s.fixture_id
  WHERE s.captured_at > %(at)s - %(recent)s
    AND NOT COALESCE(s.is_finished, false)
-   AND f.status_group IN ('scheduled', 'live')
+   AND """ + NOT_OVER + """
 ORDER BY 2
+"""
+
+ENDED_SQL = """
+SELECT id FROM core.fixtures WHERE provider_fixture_id = ANY(%(ids)s) AND upper(status_short) = ANY(%(ended)s)
 """
 
 
@@ -157,6 +166,9 @@ class LiveMatchReport:
     detail_fixtures: int = 0
     errors: list[str] = field(default_factory=list)
     run_id: int | None = None
+    ended: list[int] = field(default_factory=list)
+    """Fixtures (our ids) that this pass found ended - finished, cancelled, postponed, suspended, abandoned or
+    awarded: what the fast settlement settles at once (fbi.picks.fast_settlement)."""
 
 
 STALE_SQL = """
@@ -165,7 +177,7 @@ SELECT f.id, f.provider_fixture_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
  WHERE c.is_tracked
-   AND f.status_group IN ('scheduled', 'live')
+   AND """ + NOT_OVER + """
    AND f.kickoff_at BETWEEN %(at)s - %(oldest)s AND %(at)s - %(after)s
  ORDER BY f.kickoff_at DESC
 """
@@ -323,6 +335,10 @@ async def _follow(conn: psycopg.Connection, provider: Any, follow: list[tuple[in
                                                   observed_at=observed_at, payload_hash=raw.payload_hash)
             if on_batch is not None:
                 on_batch(batch, raw, run_id)
+            conn.commit()
+            with conn.cursor(row_factory=tuple_row) as cur:
+                cur.execute(ENDED_SQL, {"ids": batch, "ended": sorted(match_state.ENDED)})
+                report.ended.extend(int(r[0]) for r in cur.fetchall())
             conn.commit()
         counters.rows_normalized = report.detail_fixtures
         counters.rows_inserted = report.states_written

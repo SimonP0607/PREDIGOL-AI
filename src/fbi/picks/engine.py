@@ -347,33 +347,46 @@ class SettlementReport:
     settled: int = 0
     still_pending: int = 0
     needs_review: int = 0
+    already_settled: int = 0
+    """Settled by another pass between this pass's read and its write (the fast path and the pipeline race)."""
     by_status: dict[str, int] = field(default_factory=dict)
+    by_fixture: dict[int, int] = field(default_factory=dict)
+    """Picks settled by this pass, per fixture: what the settlement-latency record counts."""
 
 
-def settle_open_picks(conn: psycopg.Connection, *, run_id: int) -> SettlementReport:
+OPEN_PICKS_SQL = """
+SELECT p.id, p.fixture_id, p.market_key, p.selection, p.line, p.market_odds, p.stake_units, p.status,
+       f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away,
+       r.ft_goals_home, r.ft_goals_away, r.source_payload_hash,
+       COALESCE(pr.review_reason, '') AS previous_review
+  FROM picks.picks p
+  JOIN core.fixtures f ON f.id = p.fixture_id
+  LEFT JOIN core.fixture_results r ON r.fixture_id = p.fixture_id
+  LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
+ WHERE p.status <> 'settled' AND (%(fixtures)s::bigint[] IS NULL OR p.fixture_id = ANY(%(fixtures)s))
+ ORDER BY p.id
+"""
+
+
+def settle_open_picks(conn: psycopg.Connection, *, run_id: int | None,
+                      fixture_ids: list[int] | None = None) -> SettlementReport:
+    """Settle every open pick whose match allows it - or only those of ``fixture_ids``.
+
+    Safe to run beside another pass: the pick's own row is claimed first (``status <> 'settled'``
+    in the UPDATE), so a pick two passes both read is settled once, by the first to write.
+    ``settled_at`` is the wall clock of the write, not the start of the pass.
+    """
     report = SettlementReport()
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(
-            """
-            SELECT p.id, p.market_key, p.selection, p.line, p.market_odds, p.stake_units, p.status,
-                   f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away,
-                   r.source_payload_hash,
-                   COALESCE(pr.review_reason, '') AS previous_review
-            FROM picks.picks p
-            JOIN core.fixtures f ON f.id = p.fixture_id
-            LEFT JOIN core.fixture_results r ON r.fixture_id = p.fixture_id
-            LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
-            WHERE p.status <> 'settled'
-            ORDER BY p.id
-            """
-        )
+        cur.execute(OPEN_PICKS_SQL, {"fixtures": fixture_ids})
         rows = list(cur.fetchall())
     for p in rows:
         report.open_picks += 1
         result = settlement.settle(
             p["market_key"], p["selection"], Decimal(p["line"]), Decimal(p["market_odds"]), Decimal(p["stake_units"]),
             settlement.MatchState(p["status_short"], p["reg_goals_home"], p["reg_goals_away"],
-                                  p.get("et_goals_home"), p.get("et_goals_away")))
+                                  p.get("et_goals_home"), p.get("et_goals_away"),
+                                  p.get("ft_goals_home"), p.get("ft_goals_away")))
         with conn.cursor() as cur:
             if not result.is_final:
                 report.still_pending += 1
@@ -383,11 +396,16 @@ def settle_open_picks(conn: psycopg.Connection, *, run_id: int) -> SettlementRep
                     cur.execute("UPDATE picks.pick_results SET review_reason = %s WHERE pick_id = %s",
                                 (result.review_reason, p["id"]))
                 continue
+            cur.execute("UPDATE picks.picks SET status = 'settled', status_changed_at = clock_timestamp() "
+                        "WHERE id = %s AND status <> 'settled'", (p["id"],))
+            if cur.rowcount == 0:
+                report.already_settled += 1
+                continue
             cur.execute(
                 """
                 INSERT INTO picks.pick_results (pick_id, result_status, profit_units, settled_at, settled_by,
                     settlement_basis, rule_version, result_payload_hash, review_reason)
-                VALUES (%s, %s, %s, now(), %s, %s, %s, %s, NULL)
+                VALUES (%s, %s, %s, clock_timestamp(), %s, %s, %s, %s, NULL)
                 ON CONFLICT (pick_id) DO UPDATE SET result_status = EXCLUDED.result_status,
                     profit_units = EXCLUDED.profit_units, settled_at = EXCLUDED.settled_at,
                     settled_by = EXCLUDED.settled_by, settlement_basis = EXCLUDED.settlement_basis,
@@ -398,11 +416,11 @@ def settle_open_picks(conn: psycopg.Connection, *, run_id: int) -> SettlementRep
                  settlement.BASIS if result.status is not settlement.Status.VOID else "not_played",
                  settlement.RULE_VERSION, p["source_payload_hash"]),
             )
-            cur.execute("UPDATE picks.picks SET status = 'settled', status_changed_at = now() WHERE id = %s",
-                        (p["id"],))
             cur.execute("INSERT INTO picks.pick_events (pick_id, from_status, to_status, reason, run_id) "
                         "VALUES (%s, %s, 'settled', %s, %s)",
                         (p["id"], p["status"], f"{result.status.value} on {settlement.BASIS}", run_id))
         report.settled += 1
         report.by_status[result.status.value] = report.by_status.get(result.status.value, 0) + 1
+        fid = int(p["fixture_id"])
+        report.by_fixture[fid] = report.by_fixture.get(fid, 0) + 1
     return report

@@ -165,8 +165,20 @@ def test_a_match_past_90_minutes_without_an_extra_time_score_is_not_settled() ->
         assert result.status is Status.PENDING
         assert result.profit_units is None
         assert result.review_reason is not None
-        assert "extra-time score is not recorded" in result.review_reason
+        assert "neither the 90-minute score nor the extra-time score is recorded" in result.review_reason
         assert status in result.review_reason
+
+
+def test_a_match_past_90_minutes_settles_on_the_stated_ninety_minute_score() -> None:
+    """settle-v2: the provider STATES the 90-minute score (score.fulltime) on most extra-time matches without
+    breaking extra time down; reg_goals_* is that score (COALESCE(ft_goals, ...)), so it settles - 1-1 after 90,
+    2-1 after extra time, a Draw wins. v1 left these pending for nothing."""
+    for status in ("AET", "PEN"):
+        result = settle("1X2", "Draw", D("0"), D("3.40"), D(1), MatchState(status, 1, 1, None, None, 1, 1))
+        assert result.status is Status.WIN, status
+        assert result.profit_units == D("2.4000")
+    under = settle("OU", "Under", D("2.5"), D("1.90"), D(1), MatchState("PEN", 1, 1, None, None, 1, 1))
+    assert under.status is Status.WIN
 
 
 def test_a_full_time_match_needs_no_extra_time_score() -> None:

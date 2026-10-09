@@ -19,6 +19,7 @@ from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.parlays.persist import ParlayReport, build_parlays
 from fbi.picks.daily import DailyReport, build_daily_sets
 from fbi.picks.engine import PickReport, SettlementReport, evaluate_captures, settle_open_picks
+from fbi.picks.fast_settlement import fill_line_value, record_latency
 from fbi.picks.product_settlement import ProductSettlementReport, settle_products
 from fbi.predictions.forecast import ForecastReport, forecast_upcoming
 
@@ -34,6 +35,22 @@ class PipelineReport:
     daily: DailyReport | None = None
     parlays: ParlayReport | None = None
     product: ProductSettlementReport | None = None
+    line_values: int = 0
+
+
+def _after_commit(conn: psycopg.Connection, report: PipelineReport, *, at: datetime) -> None:
+    """What this pass settled, stamped once it is visible (after the commit), and the line value of the picks
+    whose matches have started. Never a reason for the pass to fail: logged and left to the next pass."""
+    settled = report.settlement.by_fixture if report.settlement else {}
+    items = report.product.by_fixture if report.product else {}
+    try:
+        for fid in sorted(set(settled) | set(items)):
+            record_latency(conn, fid, path="pipeline", picks=settled.get(fid, 0), items=items.get(fid, 0))
+        report.line_values = fill_line_value(conn, at=at)
+        conn.commit()
+    except psycopg.Error as exc:
+        conn.rollback()
+        log.error("pipeline.after_commit_failed", error=type(exc).__name__, detail=str(exc)[:300])
 
 
 def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, apply: bool = True) -> PipelineReport:
@@ -69,6 +86,7 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
             report.daily, report.parlays, report.product = DailyReport(), ParlayReport(), ProductSettlementReport()
         if apply:
             conn.commit()
+            _after_commit(conn, report, at=at)
         else:
             conn.rollback()
         counters.rows_inserted = report.forecast.written + report.picks.candidates
@@ -90,7 +108,7 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
             f"settled {s.settled}, pending {s.still_pending} ({s.needs_review} need review); "
             f"daily items +{d.items_added} {d.by_source}; parlays built {pl.built}; product settled "
             f"items {ps.items}, parlays {ps.parlays}, user picks {ps.user_picks}, user parlays {ps.user_parlays}; "
-            "0 requests"))
+            f"line values {report.line_values}; 0 requests"))
     log.info("pipeline.done", run_id=run_id, forecasts=report.forecast.written, candidates=report.picks.candidates,
              selected=report.picks.selected, settled=report.settlement.settled, apply=apply)
     return report

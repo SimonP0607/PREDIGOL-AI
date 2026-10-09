@@ -36,6 +36,7 @@ import psycopg
 import structlog
 from psycopg.rows import tuple_row
 
+from fbi.core import match_state
 from fbi.core.clock import now
 from fbi.core.errors import ProviderError
 from fbi.ingestion.ledger import RunCounters, RunLedger
@@ -56,18 +57,13 @@ class SyncStrategy(StrEnum):
     LEAGUE = "league"
     DATE = "date"
 
-STATUS_GROUP: dict[str, str] = {
-    "TBD": "scheduled", "NS": "scheduled",
-    "1H": "live", "HT": "live", "2H": "live", "ET": "live", "BT": "live", "P": "live", "LIVE": "live", "INT": "live",
-    "FT": "finished", "AET": "finished", "PEN": "finished",
-    "SUSP": "postponed", "PST": "postponed",
-    "CANC": "cancelled", "ABD": "cancelled", "AWD": "cancelled", "WO": "cancelled",
-}
+STATUS_GROUP: dict[str, str] = match_state.STORED_GROUP
+"""The stored group of each short status: one table, in fbi.core.match_state, with the phase every layer reads."""
 
 
 def status_group(status_short: str, default: str = "scheduled") -> str:
     """The group of a short status, whatever its spelling (see ``canonical_status``)."""
-    return STATUS_GROUP.get(status_short.strip().upper(), default)
+    return match_state.stored_group(status_short, default)
 
 
 @dataclass(frozen=True)

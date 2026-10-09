@@ -31,6 +31,7 @@ from fbi.api.contracts.records import (
 )
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, unavailable
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
+from fbi.core import match_state
 from fbi.core.clock import now as clock_now
 from fbi.picks.daily import DAY_TZ, product_day
 from fbi.userdata import records as userdata
@@ -41,7 +42,9 @@ MATCH_COLS = """
        c.logo_url AS m_competition_logo, c.flag_url AS m_competition_flag,
        th.id AS m_home_id, th.name AS m_home_name, th.logo_url AS m_home_logo,
        ta.id AS m_away_id, ta.name AS m_away_name, ta.logo_url AS m_away_logo,
-       r.reg_goals_home AS m_score_home, r.reg_goals_away AS m_score_away
+       r.reg_goals_home AS m_score_home, r.reg_goals_away AS m_score_away, f.status_short AS m_status_short,
+       ls.elapsed AS m_live_minute, ls.extra AS m_live_extra, ls.goals_home AS m_live_home,
+       ls.goals_away AS m_live_away, ls.observed_at AS m_live_at
 """
 
 MATCH_JOINS = """
@@ -51,10 +54,18 @@ MATCH_JOINS = """
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
   LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
+  LEFT JOIN LATERAL (
+      SELECT s.elapsed, s.extra, s.goals_home, s.goals_away, s.observed_at FROM core.fixture_live_states s
+       WHERE s.fixture_id = f.id ORDER BY s.observed_at DESC LIMIT 1) ls ON true
 """
 
 
-def match_of(r: Row) -> MatchRef:
+def match_of(r: Row, at: datetime | None = None) -> MatchRef:
+    """A record's match: its state as every screen shows it (fbi.core.match_state) and, while it is played, the
+    minute and the score of the newest live observation."""
+    moment = at or clock_now()
+    phase = match_state.phase(r.get("m_status_short"), r["m_kickoff_at"], moment)
+    playing = phase is match_state.Phase.LIVE or phase is match_state.Phase.SUSPENDED
     return MatchRef(
         fixture_id=int(r["m_fixture_id"]), kickoff_at=r["m_kickoff_at"], status_group=r["m_status_group"],
         competition=CompetitionBadge(id=int(r["m_competition_id"]), name=r["m_competition_name"],
@@ -62,7 +73,11 @@ def match_of(r: Row) -> MatchRef:
                                      flag_url=r["m_competition_flag"]),
         home=TeamBadge(id=int(r["m_home_id"]), name=r["m_home_name"], logo_url=r["m_home_logo"]),
         away=TeamBadge(id=int(r["m_away_id"]), name=r["m_away_name"], logo_url=r["m_away_logo"]),
-        score_home=r["m_score_home"], score_away=r["m_score_away"])
+        score_home=r["m_score_home"], score_away=r["m_score_away"],
+        status_short=r.get("m_status_short"), phase=phase.value,
+        live_minute=r.get("m_live_minute") if playing else None, live_extra=r.get("m_live_extra") if playing else None,
+        live_home=r.get("m_live_home") if playing else None, live_away=r.get("m_live_away") if playing else None,
+        live_at=r.get("m_live_at") if playing else None)
 
 
 SET_SQL = "SELECT * FROM picks.daily_sets WHERE day = %(day)s AND source = %(source)s"
@@ -167,7 +182,7 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
         rows = fetch_all(conn, ITEMS_SQL, {"set": s["id"]})
         ai = ai_items(conn, rows, reveal=include_shadow)
         items = [DailyItem(
-            rank=r["rank"], pick_id=r["pick_id"], match=match_of(r), market_key=r["market_key"],
+            rank=r["rank"], pick_id=r["pick_id"], match=match_of(r, moment), market_key=r["market_key"],
             selection=r["selection"], line=r["line"], stage=r["stage"], selected_at=r["selected_at"], odds=r["odds"],
             bookmaker=r["bookmaker"], price_at=r["price_at"], p_model=r["p_model"], p_low=r["p_low"],
             p_market=r["p_market"], ev=r["ev"], model=r["model"], status=r["status"],

@@ -48,6 +48,7 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "results_repair": timedelta(minutes=45),
     "post_match_detail": timedelta(minutes=45),
     "pick_pipeline": timedelta(minutes=45),
+    "pick_settlement": timedelta(minutes=15),
     "catalogue_refresh": timedelta(minutes=45),
     "reference_refresh": timedelta(hours=1),
     "results_sync": timedelta(hours=1),

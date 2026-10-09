@@ -328,9 +328,11 @@ async def _live_match_tick() -> None:
         new_run_id()
         provider = ApiFootballProvider(_client())
         try:
-            await capture_live_matches(conn, provider, max_requests=LIVE_MATCH_MAX_REQUESTS)
+            report = await capture_live_matches(conn, provider, max_requests=LIVE_MATCH_MAX_REQUESTS)
         finally:
             await provider.aclose()
+    if report.ended:
+        _request_settlement(report.ended, "live_follow")
 
 
 async def _context_refresh() -> None:
@@ -377,10 +379,13 @@ async def _results_repair() -> None:
     with _connect() as conn:
         provider = ApiFootballProvider(_client())
         try:
-            await repair_stale_results(conn, provider)
+            repaired = await repair_stale_results(conn, provider)
             await refresh_post_match(conn, provider)
         finally:
             await provider.aclose()
+    if repaired.ended:
+        _queue_settlement(repaired.ended, "results_repair")
+        _settle_now()
 
 
 async def _final_prematch() -> None:
@@ -580,6 +585,65 @@ def _pipeline_once() -> None:
 
 _pipeline_now = OnePass(_pipeline_once, "pick_pipeline")
 """The pick pipeline, one pass at a time: the 30-minute job and the request after every capture share it."""
+
+_ended_lock = threading.Lock()
+_ended: dict[int, str] = {}
+"""Matches that just ended, waiting for the fast settlement, with who found them (the settlement-latency path)."""
+
+
+def _queue_settlement(fixture_ids: list[int], path: str) -> None:
+    with _ended_lock:
+        for fid in fixture_ids:
+            _ended.setdefault(fid, path)
+
+
+def _settle_once() -> None:
+    """Settle the bets on the matches that just ended (fbi.picks.fast_settlement): one match per transaction,
+    its own ledger run. A match another pass is settling is put back for the next request; anything else that
+    fails is logged and left to the pipeline's pass, which settles whatever is still open."""
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+    from fbi.picks.fast_settlement import settle_fixtures
+
+    with _ended_lock:
+        todo = dict(_ended)
+        _ended.clear()
+    if not todo:
+        return
+    deferred: list[int] = []
+    try:
+        with _connect() as conn:
+            ledger = RunLedger(conn)
+            run_id = ledger.open("pick_settlement", params={"fixtures": len(todo)})
+            counters = RunCounters()
+            notes: list[str] = []
+            try:
+                for path in sorted(set(todo.values())):
+                    ids = [f for f, p in todo.items() if p == path]
+                    rep = settle_fixtures(conn, ids, path=path, run_id=run_id)  # type: ignore[arg-type]
+                    deferred.extend(rep.deferred)
+                    counters.rows_updated += rep.picks + rep.items
+                    counters.errors.extend(rep.errors)
+                    notes.append(f"{path}: {len(ids)} ended, {rep.fixtures} settled ({rep.picks} picks, "
+                                 f"{rep.items} records), {len(rep.deferred)} deferred")
+            finally:
+                ledger.close(run_id, counters, notes="; ".join(notes) or "nothing to settle")
+                conn.commit()
+    except Exception as exc:  # the pipeline's pass is the safety net
+        log.error("settlement.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+    if deferred:
+        _queue_settlement(deferred, "live_follow")
+
+
+_settle_now = OnePass(_settle_once, "pick_settlement")
+"""The fast settlement, one pass at a time; a request while one runs is folded into one more pass."""
+
+
+def _request_settlement(fixture_ids: list[int], path: str) -> None:
+    """Settle these matches beside the live follow, without making it wait."""
+    _queue_settlement(fixture_ids, path)
+    task = asyncio.get_running_loop().create_task(asyncio.to_thread(_settle_now))
+    _background.add(task)
+    task.add_done_callback(_background.discard)
 
 _background: set[asyncio.Task[Any]] = set()
 """Passes started beside a job, kept here until they end (an unreferenced task can be collected mid-run)."""
@@ -855,7 +919,7 @@ WORKER_JOB_TYPES = frozenset({
     "odds_capture", "live_odds_capture", "live_match_capture", "fixtures_sync", "results_sync", "historical_backfill",
     "pick_pipeline", "quality_sweep", "context_refresh", "context_due", "results_repair", "final_prematch",
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
-    "research_monitor", "research_v2", "feature_build",
+    "research_monitor", "research_v2", "feature_build", "pick_settlement",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""

@@ -124,8 +124,9 @@ async def test_a_match_in_play_is_followed_and_its_state_recorded_once_per_chang
             _body(pid, meta["league"], meta["season"], 77001, 77002, short="1H", elapsed=30, gh=1, ga=0, kickoff=ko),
             _body(pid, meta["league"], meta["season"], 77001, 77002, short="FT", elapsed=90, gh=2, ga=0, kickoff=ko),
         ])
-        await capture_live_matches(conn, provider)
-        await capture_live_matches(conn, provider)  # unchanged: no new state row
+        first = await capture_live_matches(conn, provider)
+        second = await capture_live_matches(conn, provider)  # unchanged: no new state row
+        assert first.ended == [] and second.ended == [], "in play: nothing to settle yet"
         with conn.cursor() as cur:
             cur.execute("SELECT count(*) FROM core.fixture_live_states WHERE fixture_id = %s", (fid,))
             assert cur.fetchone()[0] == 1  # type: ignore[index]
@@ -133,7 +134,8 @@ async def test_a_match_in_play_is_followed_and_its_state_recorded_once_per_chang
             assert cur.fetchone()[0] == "live"  # type: ignore[index]
             cur.execute("SELECT count(*) FROM core.fixture_events WHERE fixture_id = %s", (fid,))
             assert cur.fetchone()[0] == 1  # type: ignore[index]
-        await capture_live_matches(conn, provider)
+        third = await capture_live_matches(conn, provider)
+        assert third.ended == [fid], "the pass that sees the final whistle hands the match to the fast settlement"
         with conn.cursor() as cur:
             cur.execute("SELECT status_short, goals_home FROM core.fixture_live_states WHERE fixture_id = %s "
                         "ORDER BY observed_at DESC LIMIT 1", (fid,))
@@ -182,6 +184,7 @@ async def test_a_match_the_date_sweep_missed_is_repaired_by_id(
         ])
         report = await repair_stale_results(conn, provider)
         assert report.requests == 1 and report.results_written == 1
+        assert report.ended == [fid]
         with conn.cursor() as cur:
             cur.execute("SELECT status_group FROM core.fixtures WHERE id = %s", (fid,))
             assert cur.fetchone()[0] == "finished"  # type: ignore[index]
@@ -207,3 +210,21 @@ async def test_a_late_read_is_asked_once_even_when_the_answer_did_not_change(
         assert (fid, pid) not in post_match_to_refresh(conn, at=datetime.now(UTC)), "the late stage is done"
         again = await refresh_post_match(conn, provider)
         assert again.requests == 0 and len(provider.calls) == 1
+
+
+def test_a_suspended_match_is_still_followed(
+        migrated_database: str, fixture_in_play: tuple[int, int, dict[str, int]]) -> None:
+    """SUSP is stored in the 'postponed' group, but the match has kicked off and may resume within minutes: the
+    live follow keeps asking for it (fbi.core.match_state), and past three hours the results repair does."""
+    fid, pid, _ = fixture_in_play
+    with psycopg.connect(migrated_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE core.fixtures SET status_short = 'SUSP', status_group = 'postponed' WHERE id = %s",
+                        (fid,))
+        conn.commit()
+        assert (fid, pid) in fixtures_to_follow(conn, at=datetime.now(UTC))
+        assert (fid, pid) in stale_to_repair(conn, at=datetime.now(UTC) + timedelta(hours=4))
+        with conn.cursor() as cur:
+            cur.execute("UPDATE core.fixtures SET status_short = 'PST' WHERE id = %s", (fid,))
+        conn.commit()
+        assert (fid, pid) not in fixtures_to_follow(conn, at=datetime.now(UTC)), "postponed: not being played"

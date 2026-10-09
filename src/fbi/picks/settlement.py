@@ -28,7 +28,11 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 
-RULE_VERSION = "settle-v1"
+RULE_VERSION = "settle-v2"
+"""v2 (9 Oct 2026): a match decided after 90 minutes settles when the provider STATES the 90-minute score
+(``score.fulltime``, core.fixture_results.ft_goals_*), not only when it breaks down extra time - reg_goals_* is
+COALESCE(ft_goals, goals - et_goals) since revision 0031, so v1 left such picks pending for nothing. Everything
+else is v1's rule."""
 BASIS = "regulation_90"
 
 FINISHED = frozenset({"FT", "AET", "PEN"})
@@ -63,12 +67,15 @@ class MatchState:
     reg_away: int | None
     et_home: int | None = None
     et_away: int | None = None
-    """The extra-time goals the provider reported, if any.
+    """The extra-time goals the provider reported, if any."""
+    ft_home: int | None = None
+    ft_away: int | None = None
+    """The 90-minute score the provider STATED (``score.fulltime``), if any.
 
-    Needed because ``reg_goals_*`` is a generated column - goals minus extra-time
-    goals - so when the extra-time score is NOT recorded it silently equals the
-    full-time score. For a match decided after extra time that is a claim we
-    cannot make: see the check in ``settle``.
+    ``reg_goals_*`` is COALESCE(ft_goals, goals - COALESCE(et_goals, 0)): with neither the
+    stated 90-minute score nor the extra-time breakdown it silently equals the score after
+    extra time. For a match decided after extra time that is a claim we cannot make: see
+    the check in ``settle``.
     """
 
 
@@ -172,15 +179,15 @@ def settle(market_key: str, selection: str, line: Decimal, odds: Decimal, stake:
         return Settlement(Status.PENDING, None, None)  # not played yet, or in play
     if state.reg_home is None or state.reg_away is None:
         return Settlement(Status.PENDING, None, "finished, but no regulation score is recorded")
-    if status in DECIDED_AFTER_NINETY and state.et_home is None:
-        # reg_goals_* = goals - COALESCE(et_goals, 0), so with no extra-time score
-        # it equals the after-extra-time score. Settling 1X2, Over/Under or BTTS on
-        # that would quietly treat extra-time goals as regulation goals. The match
-        # is left unsettled and recorded as RESULT_UNRESOLVED instead.
+    if status in DECIDED_AFTER_NINETY and state.et_home is None and state.ft_home is None:
+        # reg_goals_* = COALESCE(ft_goals, goals - COALESCE(et_goals, 0)), so with neither
+        # it equals the after-extra-time score. Settling 1X2, Over/Under or BTTS on that
+        # would quietly treat extra-time goals as regulation goals. The match is left
+        # unsettled and recorded as RESULT_UNRESOLVED instead.
         return Settlement(
             Status.PENDING, None,
-            f"{status}: the match went past 90 minutes and the extra-time score is not "
-            "recorded, so the regulation result cannot be derived",
+            f"{status}: the match went past 90 minutes and neither the 90-minute score nor the "
+            "extra-time score is recorded, so the regulation result cannot be derived",
         )
     try:
         outcome = market_outcome(market_key, selection, line, state.reg_home, state.reg_away)

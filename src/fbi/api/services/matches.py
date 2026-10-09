@@ -24,6 +24,7 @@ from fbi.api.contracts.matches import (
 from fbi.api.envelope import DataStatus, Envelope, listing, section
 from fbi.api.repositories import Conn, Row
 from fbi.api.repositories import fixtures as repo
+from fbi.core import match_state
 from fbi.core.clock import now
 from fbi.core.config import settings
 from fbi.market.price_status import market_prices
@@ -36,8 +37,8 @@ FREE_PLAN_HORIZON_MIN = 1440
 further out than this cannot be captured - it is not missed, it is unreachable."""
 
 
-STILL_SCHEDULED_AFTER = timedelta(minutes=15)
-STILL_LIVE_AFTER = timedelta(hours=3, minutes=30)
+STILL_SCHEDULED_AFTER = match_state.START_GRACE
+STILL_LIVE_AFTER = match_state.LIVE_STALE_AFTER
 
 
 def awaiting_result(kickoff_at: datetime, status_group: str, moment: datetime) -> bool:
@@ -89,6 +90,7 @@ def summary(row: Row, at: datetime | None = None) -> MatchSummary:
         ),
         predictions=row["predictions"],
         awaiting_result=awaiting_result(row["kickoff_at"], row["status_group"], moment),
+        phase=match_state.phase(row["status_short"], row["kickoff_at"], moment).value,
     )
 
 

@@ -1,4 +1,5 @@
-"""SQL for the product's own endpoints: picks re-priced now, best prices, upcoming."""
+"""SQL for the product's own endpoints: picks re-priced now, picks as taken once their match started, best
+prices, upcoming."""
 
 from __future__ import annotations
 
@@ -41,6 +42,7 @@ lc AS (
 PICK_CANDIDATES = """
 WITH fx AS (
     SELECT f.id FROM core.fixtures f WHERE f.kickoff_at >= %(now)s AND f.kickoff_at < %(until)s
+       AND (%(fixture)s::bigint IS NULL OR f.id = %(fixture)s)
 ), """ + _LATEST_CONSENSUS + """
 SELECT p.id AS pick_id, p.fixture_id, """ + _BADGES + """,
        p.market_key, p.selection, p.line, p.status AS pick_status, p.created_at AS pick_created_at,
@@ -60,6 +62,48 @@ SELECT p.id AS pick_id, p.fixture_id, """ + _BADGES + """,
  WHERE (p.status IN ('qualified', 'published') OR (%(include_shadow)s AND p.status = 'shadow'))
    AND NOT EXISTS (SELECT 1 FROM picks.pick_results pr WHERE pr.pick_id = p.id AND pr.result_status <> 'pending')
  ORDER BY f.kickoff_at, p.id
+"""
+
+STARTED_PICKS = """
+WITH fx AS (
+    SELECT f.id, f.kickoff_at FROM core.fixtures f
+     WHERE f.kickoff_at <= %(now)s
+       AND (%(fixture)s::bigint IS NOT NULL OR f.kickoff_at >= %(since)s)
+       AND (%(fixture)s::bigint IS NULL OR f.id = %(fixture)s)
+), made AS (
+    SELECT p.*, COALESCE(NULLIF(p.status, 'settled'),
+                         (SELECT e.from_status FROM picks.pick_events e
+                           WHERE e.pick_id = p.id AND e.to_status = 'settled' ORDER BY e.at LIMIT 1)) AS was
+      FROM picks.picks p JOIN fx ON fx.id = p.fixture_id
+     WHERE p.created_at < fx.kickoff_at AND p.odds_captured_at < fx.kickoff_at
+), last_pick AS (
+    SELECT DISTINCT ON (made.fixture_id, made.market_key, made.selection, made.line) made.*,
+           count(*) OVER (PARTITION BY made.fixture_id, made.market_key, made.selection, made.line) AS evaluations
+      FROM made
+     WHERE made.was IN ('qualified', 'published') OR (%(include_shadow)s AND made.was = 'shadow')
+     ORDER BY made.fixture_id, made.market_key, made.selection, made.line, made.created_at DESC, made.id DESC
+)
+SELECT p.id AS pick_id, p.fixture_id, """ + _BADGES + """,
+       f.status_short, p.market_key, p.selection, p.line, p.was AS pick_status, m.name AS model,
+       p.created_at, p.odds_captured_at AS taken_at, p.market_odds AS odds_taken, b.name AS bookmaker,
+       p.p_calibrated AS p_model, p.p_market_fair AS p_market, p.fair_odds, p.edge, p.ev, p.evaluations,
+       ls.elapsed AS live_minute, ls.extra AS live_extra, ls.goals_home AS live_home, ls.goals_away AS live_away,
+       r.reg_goals_home AS score_home, r.reg_goals_away AS score_away,
+       pr.result_status, pr.profit_units, pr.settled_at, pr.review_reason,
+       lv.near_close_odds, lv.lv_raw AS line_value
+  FROM last_pick p
+  JOIN core.fixtures f ON f.id = p.fixture_id
+""" + _BADGE_JOINS + """
+  JOIN models.model_versions v ON v.id = p.model_version_id
+  JOIN models.model_registry m ON m.id = v.model_id
+  LEFT JOIN market.bookmakers b ON b.id = p.bookmaker_id
+  LEFT JOIN core.fixture_results r ON r.fixture_id = p.fixture_id
+  LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
+  LEFT JOIN picks.pick_line_value lv ON lv.pick_id = p.id
+  LEFT JOIN LATERAL (
+      SELECT s.elapsed, s.extra, s.goals_home, s.goals_away FROM core.fixture_live_states s
+       WHERE s.fixture_id = p.fixture_id ORDER BY s.observed_at DESC LIMIT 1) ls ON true
+ ORDER BY f.kickoff_at DESC, f.id, p.ev DESC, p.id
 """
 
 BEST_PRICES = """
@@ -103,9 +147,18 @@ SELECT (SELECT max(observed_at) FROM core.fixture_live_states
 
 
 def pick_candidates(conn: Conn, *, now: datetime, until: datetime, since: datetime,
-                    include_shadow: bool) -> list[Row]:
+                    include_shadow: bool, fixture_id: int | None = None) -> list[Row]:
     return fetch_all(conn, PICK_CANDIDATES, {"now": now, "until": until, "since": since,
-                                             "include_shadow": include_shadow, "method": CONSENSUS_METHOD})
+                                             "include_shadow": include_shadow, "method": CONSENSUS_METHOD,
+                                             "fixture": fixture_id})
+
+
+def started_picks(conn: Conn, *, now: datetime, since: datetime, include_shadow: bool,
+                  fixture_id: int | None = None) -> list[Row]:
+    """The last pre-match pick per selection of the matches that kicked off since ``since`` (or of one match,
+    whenever it kicked off), as it was taken - with the match's state and the result."""
+    return fetch_all(conn, STARTED_PICKS, {"now": now, "since": since, "include_shadow": include_shadow,
+                                           "fixture": fixture_id})
 
 
 def best_prices(conn: Conn, *, now: datetime, until: datetime, since: datetime,

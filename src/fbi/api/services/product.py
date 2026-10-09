@@ -1,7 +1,9 @@
 """Home, picks, parlays and best prices - what a signed-in user sees.
 
-Every pick here is re-priced at the best price available now and put through the same
-value gate the parlay engine uses (``fbi.parlays.engine``). A user sees qualified picks
+Every pick of a match not yet started is re-priced at the best price available now and put
+through the same value gate the parlay engine uses (``fbi.parlays.engine``). Once its match
+kicks off a pick is never re-priced again: it stays on the board as it was taken (``started``),
+beside the match's state and its result. A user sees qualified picks
 only; ``include_shadow`` is the Admin Console's preview and is refused to anyone else
 by the router.
 """
@@ -10,7 +12,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from fbi.api.cache import shared
@@ -29,6 +31,7 @@ from fbi.api.contracts.product import (
     PickCard,
     PicksBoard,
     Source,
+    StartedPick,
     TeamBadge,
     UpcomingMatch,
 )
@@ -36,14 +39,17 @@ from fbi.api.envelope import DataStatus, Envelope, ok, section
 from fbi.api.repositories import Conn, Row
 from fbi.api.repositories import product as repo
 from fbi.api.services import center
+from fbi.core import match_state
 from fbi.core.clock import now as clock_now
 from fbi.parlays import engine
 from fbi.parlays.engine import Candidate, GateConfig, Leg, Reject
+from fbi.picks.daily import DAY_TZ, product_day
 
 Q2 = Decimal("0.01")
 Q3 = Decimal("0.001")
 Q4 = Decimal("0.0001")
 Q6 = Decimal("0.000001")
+STARTED_AT_LEAST = timedelta(hours=6)
 CONSENSUS_LOOKBACK = timedelta(hours=36)
 """A consensus older than this is not a current price at all; the gate's own limit is tighter."""
 PRICE_FRESH = timedelta(hours=1)
@@ -143,14 +149,45 @@ def _top(all_cards: list[PickCard], moment: datetime) -> list[PickCard]:
     return [p for p in all_cards if p.value_now and p.kickoff_at < moment + TOP_WINDOW][:TOP_SIZE]
 
 
+def started_since(moment: datetime) -> datetime:
+    """How far back the board keeps the picks of matches that already kicked off: the whole product day
+    (America/Bogota), and never less than the last six hours - a match still being played at midnight stays."""
+    day_start = datetime.combine(product_day(moment), time.min, tzinfo=DAY_TZ)
+    return min(day_start, moment - STARTED_AT_LEAST)
+
+
+def started_pick(r: Row, moment: datetime) -> StartedPick:
+    phase = match_state.phase(r["status_short"], r["kickoff_at"], moment)
+    playing = phase in (match_state.Phase.LIVE, match_state.Phase.SUSPENDED)
+    return StartedPick(
+        pick_id=int(r["pick_id"]), fixture_id=int(r["fixture_id"]), kickoff_at=r["kickoff_at"],
+        competition=_competition(r), home=_home(r), away=_away(r), market_key=r["market_key"],
+        selection=r["selection"], line=Decimal(r["line"]), status=r["pick_status"], model=r["model"],
+        created_at=r["created_at"], taken_at=r["taken_at"], odds_taken=Decimal(r["odds_taken"]),
+        bookmaker=r.get("bookmaker"), p_model=Decimal(r["p_model"]), p_market=Decimal(r["p_market"]),
+        fair_odds=Decimal(r["fair_odds"]), edge=Decimal(r["edge"]), ev=Decimal(r["ev"]),
+        evaluations=int(r["evaluations"]), phase=phase.value, status_short=r["status_short"],
+        live_minute=r["live_minute"] if playing else None, live_extra=r["live_extra"] if playing else None,
+        live_home=r["live_home"] if playing else None, live_away=r["live_away"] if playing else None,
+        score_home=r["score_home"], score_away=r["score_away"], result_status=r["result_status"],
+        profit_units=r["profit_units"], settled_at=r["settled_at"], review_reason=r["review_reason"],
+        near_close_odds=r["near_close_odds"], line_value=r["line_value"],
+    )
+
+
 @shared(30)
 def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None, market: str | None,
                 min_odds: Decimal | None, max_odds: Decimal | None, hours: int,
-                at: datetime | None = None) -> Envelope[PicksBoard]:
+                at: datetime | None = None, fixture_id: int | None = None) -> Envelope[PicksBoard]:
     moment = at or clock_now()
     cfg = GateConfig(allow_unqualified=include_shadow)
     rows = repo.pick_candidates(conn, now=moment, until=moment + timedelta(hours=hours),
-                                since=moment - CONSENSUS_LOOKBACK, include_shadow=include_shadow)
+                                since=moment - CONSENSUS_LOOKBACK, include_shadow=include_shadow,
+                                fixture_id=fixture_id)
+    started = [started_pick(r, moment) for r in repo.started_picks(
+        conn, now=moment, since=started_since(moment), include_shadow=include_shadow, fixture_id=fixture_id)
+        if (competition_id is None or int(r["competition_id"]) == competition_id)
+        and (market is None or r["market_key"] == market)]
     competitions = {int(r["competition_id"]): _competition(r) for r in rows}
     markets = sorted({r["market_key"] for r in rows})
     kept = [r for r in rows
@@ -169,7 +206,7 @@ def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None,
         reason = "no_value_now"
     board = PicksBoard(source=_source(include_shadow), top=top, picks=all_cards,
                        competitions=sorted(competitions.values(), key=lambda c: c.name), markets=markets,
-                       window_hours=hours, reason=reason)
+                       window_hours=hours, reason=reason, started=started)
     newest = max((p.price_at for p in all_cards if p.price_at), default=None)
     return ok(board, count=len(all_cards), data_as_of=newest)
 

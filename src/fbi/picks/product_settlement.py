@@ -36,7 +36,8 @@ ONE = Decimal(1)
 
 def settle_single(r: dict[str, Any], odds: Decimal | None) -> settlement.Settlement:
     state = settlement.MatchState(r["status_short"], r["reg_goals_home"], r["reg_goals_away"],
-                                  r.get("et_goals_home"), r.get("et_goals_away"))
+                                  r.get("et_goals_home"), r.get("et_goals_away"),
+                                  r.get("ft_goals_home"), r.get("ft_goals_away"))
     return settlement.settle(r["market_key"], r["selection"], Decimal(r["line"]), odds or Decimal("2"), ONE, state)
 
 
@@ -69,40 +70,49 @@ class ProductSettlementReport:
     activated: int = 0
     sets_settled: int = 0
     pending_review: dict[str, int] = field(default_factory=dict)
+    by_fixture: dict[int, int] = field(default_factory=dict)
+    """Singles settled (items, legs, user picks, user legs) per fixture: what the latency record counts."""
 
+
+_ONLY = " AND (%(fixtures)s::bigint[] IS NULL OR {a}.fixture_id = ANY(%(fixtures)s))"
+"""Optionally only some fixtures: the fast path settles the matches that just ended."""
 
 SINGLES: dict[str, tuple[str, str, str]] = {
     # name: (select, key columns for the update, odds expression)
     "items": ("""
-        SELECT i.set_id AS k1, i.rank AS k2, i.market_key, i.selection, i.line, i.odds AS price, f.status_short,
-               r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away
+        SELECT i.set_id AS k1, i.rank AS k2, i.fixture_id, i.market_key, i.selection, i.line, i.odds AS price,
+               f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away,
+               r.ft_goals_home, r.ft_goals_away
           FROM picks.daily_set_items i JOIN core.fixtures f ON f.id = i.fixture_id
           LEFT JOIN core.fixture_results r ON r.fixture_id = i.fixture_id
-         WHERE i.status = 'PENDING' AND f.kickoff_at <= %(at)s""",
+         WHERE i.status = 'PENDING' AND f.kickoff_at <= %(at)s""" + _ONLY.format(a="i"),
               "UPDATE picks.daily_set_items SET status = %s, profit_units = %s, settled_at = %s "
               "WHERE set_id = %s AND rank = %s AND status = 'PENDING'", "price"),
     "parlay_legs": ("""
-        SELECT l.parlay_id AS k1, l.leg_no AS k2, l.market_key, l.selection, l.line, l.odds AS price, f.status_short,
-               r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away
+        SELECT l.parlay_id AS k1, l.leg_no AS k2, l.fixture_id, l.market_key, l.selection, l.line, l.odds AS price,
+               f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away,
+               r.ft_goals_home, r.ft_goals_away
           FROM picks.parlay_legs l JOIN core.fixtures f ON f.id = l.fixture_id
           LEFT JOIN core.fixture_results r ON r.fixture_id = l.fixture_id
-         WHERE l.status = 'PENDING' AND f.kickoff_at <= %(at)s""",
+         WHERE l.status = 'PENDING' AND f.kickoff_at <= %(at)s""" + _ONLY.format(a="l"),
                     "UPDATE picks.parlay_legs SET status = %s, settled_at = %s WHERE parlay_id = %s AND leg_no = %s "
                     "AND status = 'PENDING'", "price"),
     "user_picks": ("""
-        SELECT u.id AS k1, NULL::int AS k2, u.market_key, u.selection, u.line, COALESCE(u.user_odds, u.odds) AS price,
-               f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away
+        SELECT u.id AS k1, NULL::int AS k2, u.fixture_id, u.market_key, u.selection, u.line,
+               COALESCE(u.user_odds, u.odds) AS price, f.status_short, r.reg_goals_home, r.reg_goals_away,
+               r.et_goals_home, r.et_goals_away, r.ft_goals_home, r.ft_goals_away
           FROM picks.user_picks u JOIN core.fixtures f ON f.id = u.fixture_id
           LEFT JOIN core.fixture_results r ON r.fixture_id = u.fixture_id
-         WHERE u.status = 'PENDING' AND f.kickoff_at <= %(at)s""",
+         WHERE u.status = 'PENDING' AND f.kickoff_at <= %(at)s""" + _ONLY.format(a="u"),
                    "UPDATE picks.user_picks SET status = %s, profit_units = %s, settled_at = %s "
                    "WHERE id = %s AND status = 'PENDING'", "price"),
     "user_parlay_legs": ("""
-        SELECT l.user_parlay_id AS k1, l.leg_no AS k2, l.market_key, l.selection, l.line, l.odds AS price,
-               f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away
+        SELECT l.user_parlay_id AS k1, l.leg_no AS k2, l.fixture_id, l.market_key, l.selection, l.line,
+               l.odds AS price, f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home,
+               r.et_goals_away, r.ft_goals_home, r.ft_goals_away
           FROM picks.user_parlay_legs l JOIN core.fixtures f ON f.id = l.fixture_id
           LEFT JOIN core.fixture_results r ON r.fixture_id = l.fixture_id
-         WHERE l.status = 'PENDING' AND f.kickoff_at <= %(at)s""",
+         WHERE l.status = 'PENDING' AND f.kickoff_at <= %(at)s""" + _ONLY.format(a="l"),
                          "UPDATE picks.user_parlay_legs SET status = %s, settled_at = %s WHERE user_parlay_id = %s "
                          "AND leg_no = %s AND status = 'PENDING'", "price"),
 }
@@ -113,7 +123,8 @@ PARLAYS: dict[str, tuple[str, str, str]] = {
                array_agg(l.status ORDER BY l.leg_no) AS statuses, array_agg(l.odds ORDER BY l.leg_no) AS odds
           FROM picks.parlays p JOIN picks.parlay_legs l ON l.parlay_id = p.id JOIN core.fixtures f ON f.id = l.fixture_id
          WHERE p.status IN ('READY', 'ACTIVE') GROUP BY p.id, p.status""",
-                "UPDATE picks.parlays SET status = %s, profit_units = %s, settled_at = %s WHERE id = %s",
+                "UPDATE picks.parlays SET status = %s, profit_units = %s, settled_at = %s WHERE id = %s "
+                "AND status IN ('READY', 'ACTIVE')",
                 "UPDATE picks.parlays SET status = 'ACTIVE' WHERE id = %s AND status = 'READY'"),
     "user_parlays": ("""
         SELECT p.id, p.status, min(f.kickoff_at) AS first_kickoff,
@@ -121,16 +132,21 @@ PARLAYS: dict[str, tuple[str, str, str]] = {
           FROM picks.user_parlays p JOIN picks.user_parlay_legs l ON l.user_parlay_id = p.id
           JOIN core.fixtures f ON f.id = l.fixture_id
          WHERE p.status IN ('READY', 'ACTIVE') GROUP BY p.id, p.status""",
-                     "UPDATE picks.user_parlays SET status = %s, profit_units = %s, settled_at = %s WHERE id = %s",
+                     "UPDATE picks.user_parlays SET status = %s, profit_units = %s, settled_at = %s WHERE id = %s "
+                     "AND status IN ('READY', 'ACTIVE')",
                      "UPDATE picks.user_parlays SET status = 'ACTIVE' WHERE id = %s AND status = 'READY'"),
 }
 
 
-def settle_products(conn: psycopg.Connection[Any], *, at: datetime) -> ProductSettlementReport:
+def settle_products(conn: psycopg.Connection[Any], *, at: datetime,
+                    fixture_ids: list[int] | None = None) -> ProductSettlementReport:
+    """Settle what the product shows. ``fixture_ids``: only the singles on those matches (the fast path);
+    parlays and day sets are always looked at, since a leg settled on any pass may decide them.
+    Every write is guarded by the record's own status, so two passes never settle one thing twice."""
     report = ProductSettlementReport()
     for name, (select, update, _) in SINGLES.items():
         with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(select, {"at": at})
+            cur.execute(select, {"at": at, "fixtures": fixture_ids})
             rows = list(cur.fetchall())
         settled = 0
         with conn.cursor() as cur:
@@ -149,7 +165,11 @@ def settle_products(conn: psycopg.Connection[Any], *, at: datetime) -> ProductSe
                     cur.execute(update, (status, profit, at, r["k1"], r["k2"]))
                 else:
                     cur.execute(update, (status, at, r["k1"], r["k2"]))
-                settled += max(cur.rowcount, 0)
+                done = max(cur.rowcount, 0)
+                settled += done
+                if done:
+                    fid = int(r["fixture_id"])
+                    report.by_fixture[fid] = report.by_fixture.get(fid, 0) + done
         setattr(report, name, settled)
     for name, (select, final, activate) in PARLAYS.items():
         with conn.cursor(row_factory=dict_row) as cur:

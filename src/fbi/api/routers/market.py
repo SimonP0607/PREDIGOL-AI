@@ -9,9 +9,10 @@ from fbi.api.contracts.analytics import ModelsOverview, PerformanceSummary, Pick
 from fbi.api.contracts.matches import MatchSummary
 from fbi.api.contracts.odds import FixtureOdds, OddsIntelligence
 from fbi.api.contracts.research import ResearchOverview
+from fbi.api.contracts.settlement import SettlementLatency
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
-from fbi.api.services import analytics, odds, research
+from fbi.api.services import analytics, odds, research, settlement
 
 router = APIRouter(tags=["market"])
 admin_router = APIRouter(tags=["admin: market & research"])
@@ -64,6 +65,13 @@ def get_picks(
 ) -> Envelope[PicksOverview]:
     """Every pick the research pipeline made - candidates, rejections, shadow and qualified."""
     return analytics.picks(conn, limit=limit, offset=offset, public=False)
+
+
+@admin_router.get("/picks/settlement", response_model=Envelope[SettlementLatency])
+def get_settlement_latency(conn: Db, days: Annotated[int, Query(ge=1, le=60)] = 7) -> Envelope[SettlementLatency]:
+    """How long each match's bets waited after it ended (first settlement per match), and the matches that ended
+    and still have bets open - none for long, unless a human must decide (postponed, abandoned, awarded)."""
+    return settlement.latency(conn, days=days)
 
 
 @admin_router.get("/performance", response_model=Envelope[PerformanceSummary])

@@ -55,10 +55,14 @@ def get_picks(
     min_odds: Annotated[Decimal | None, Query(ge=1, le=1000)] = None,
     max_odds: Annotated[Decimal | None, Query(ge=1, le=1000)] = None,
     hours: Annotated[int, Query(ge=1, le=168)] = 72,
+    fixture_id: Annotated[int | None, Query(ge=1)] = None,
 ) -> Envelope[PicksBoard]:
-    """Qualified picks kicking off in the next ``hours``, re-priced at the best price available now."""
+    """Qualified picks kicking off in the next ``hours``, re-priced at the best price available now; and, in
+    ``started``, the pre-match picks of today's matches that already kicked off, as they were taken, with the
+    match's state and the result. ``fixture_id``: one match only, whenever it kicks off or kicked off."""
     return product.picks_board(conn, include_shadow=_shadow(preview, principal), competition_id=competition_id,
-                               market=market, min_odds=min_odds, max_odds=max_odds, hours=hours)
+                               market=market, min_odds=min_odds, max_odds=max_odds, hours=hours,
+                               fixture_id=fixture_id)
 
 
 @router.get("/parlays/{kind}", response_model=Envelope[Parlay])

@@ -44,7 +44,7 @@ def _outputs(db: psycopg.Connection, target: int) -> dict[str, list[tuple[Any, .
                       "FROM picks.pick_candidates WHERE fixture_id = %s ORDER BY 1, 2, 3, 4, 5",
         "picks": "SELECT market_key, selection, line, status, mode, market_odds, bookmaker_id, p_calibrated, "
                  "p_market_fair, edge, ev, odds_captured_at, odds_payload_hash "
-                 "FROM picks.picks WHERE fixture_id = %s ORDER BY 1, 2, 3",
+                 "FROM picks.picks WHERE fixture_id = %s ORDER BY 1, 2, 3, 6, 7, 8, 12",  # total: two models, one selection
     }
     out: dict[str, list[tuple[Any, ...]]] = {}
     with db.cursor() as cur:
