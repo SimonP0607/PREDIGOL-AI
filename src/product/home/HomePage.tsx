@@ -7,6 +7,7 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
+import { shiftDay, todayKey } from "@/lib/time";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { Home } from "@/lib/api/v1/types_product";
@@ -52,9 +53,24 @@ function ParlayBlock({ kind, board }: { kind: RecordKind; board: BoardQuery }) {
   );
 }
 
-function HomeContent({ home, board }: { home: Home; board: BoardQuery }) {
+function HomeContent({
+  home,
+  board,
+  yesterday,
+}: {
+  home: Home;
+  board: BoardQuery;
+  yesterday: BoardQuery;
+}) {
+  // Yesterday's picks do not vanish at midnight while one of them is still to finish or settle.
+  const openYesterday = (yesterday.data?.data?.set?.items ?? []).some(
+    (i) => i.status === "PENDING",
+  );
   return (
     <>
+      {openYesterday ? (
+        <DailySetBlock query={yesterday} variant="home" title={t("records.daily.yesterdayOpen")} />
+      ) : null}
       <DailySetBlock query={board} variant="home" />
       <div className="grid grid-cols-1 items-start gap-9 sm:gap-10 lg:grid-cols-2 lg:gap-6">
         <ParlayBlock kind="daily" board={board} />
@@ -102,12 +118,13 @@ export function HomePage() {
   const preview = usePreviewParam();
   const query = useQuery(live.home(preview));
   const board = useQuery(live.daily(preview));
+  const yesterday = useQuery(live.daily(preview, shiftDay(todayKey("America/Bogota"), -1)));
   const home = query.data?.data;
   return (
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
       <HomeHeader freshness={home?.data_freshness ?? null} loading={query.isPending} />
       {home ? (
-        <HomeContent home={home} board={board} />
+        <HomeContent home={home} board={board} yesterday={yesterday} />
       ) : query.isError ? (
         <Card>
           <ErrorState error={query.error} onRetry={() => void query.refetch()} />

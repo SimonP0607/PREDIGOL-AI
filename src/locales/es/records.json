@@ -48,7 +48,11 @@
     "reason": {
       "no_qualified_picks": "Hoy no hay picks de PrediGol",
       "no_shadow_picks": "No hay registros de evaluación para este día"
-    }
+    },
+    "previous": "Día anterior",
+    "next": "Siguiente",
+    "today": "Hoy",
+    "yesterdayOpen": "Ayer · aún por terminar"
   },
   "parlay": {
     "pAllLow": "Prob. prudente de acertar todas",

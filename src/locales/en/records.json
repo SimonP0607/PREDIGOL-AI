@@ -48,7 +48,11 @@
     "reason": {
       "no_qualified_picks": "No PrediGol picks today",
       "no_shadow_picks": "No evaluation records for this day"
-    }
+    },
+    "previous": "Previous day",
+    "next": "Next",
+    "today": "Today",
+    "yesterdayOpen": "Yesterday · still to finish"
   },
   "parlay": {
     "pAllLow": "Cautious chance all win",

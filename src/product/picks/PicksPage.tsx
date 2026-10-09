@@ -9,6 +9,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { ChevronDown, Clock, History, ListFilter, RotateCcw, Trophy } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
+import { todayKey } from "@/lib/time";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { CompetitionBadge, PicksBoard } from "@/lib/api/v1/types_product";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
@@ -43,6 +44,8 @@ import {
   type PickFilters,
 } from "./filters";
 
+const DAY_ZONE = "America/Bogota";
+
 /** Cards shown at first, and added by each "show more". */
 const PAGE = 24;
 
@@ -53,7 +56,10 @@ export function PicksPage() {
   const preview = usePreviewParam();
   const [filters, setFilters] = useState<PickFilters>(DEFAULT_FILTERS);
   const q = useMemo(() => toQuery(filters), [filters]);
-  const daily = useQuery(live.daily(preview));
+  // The product day is Bogotá's; the previous days' sets stay one click away.
+  const today = todayKey(DAY_ZONE);
+  const [day, setDay] = useState(today);
+  const daily = useQuery(live.daily(preview, day === today ? undefined : day));
   const list = useQuery({ ...live.productPicks(q, preview), placeholderData: keepPreviousData });
 
   return (
@@ -63,7 +69,7 @@ export function PicksPage() {
         subtitle={t("picks.subtitle")}
         right={auth.showAdmin ? <ShadowToggle /> : undefined}
       />
-      <DailySetBlock query={daily} />
+      <DailySetBlock query={daily} nav={{ day, today, onDay: setDay }} />
       <AllPicks query={list} filters={filters} onChange={setFilters} />
       <StartedPicks query={list} />
     </div>

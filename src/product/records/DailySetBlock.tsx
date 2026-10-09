@@ -8,7 +8,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowRight, Target, Trophy } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@/lib/i18n";
-import { formatDateLong } from "@/lib/time";
+import { formatDateLong, shiftDay } from "@/lib/time";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { DailyBoard } from "@/lib/api/v1/types_records";
 import {
@@ -57,9 +57,15 @@ function Skeleton({ count }: { count: number }) {
 export function DailySetBlock({
   query,
   variant = "page",
+  title,
+  nav,
 }: {
   query: BoardQuery;
   variant?: "page" | "home";
+  /** A title of its own (Home's "Ayer · aún por terminar"). */
+  title?: string | undefined;
+  /** The page's day navigation: the previous days' sets stay readable, never gone. */
+  nav?: { day: string; today: string; onDay: (day: string) => void } | undefined;
 }) {
   const board = query.data?.data;
   const items = board?.set?.items ?? [];
@@ -142,7 +148,7 @@ export function DailySetBlock({
       <div className="flex flex-wrap items-end justify-between gap-2">
         <SectionHeader
           className="min-w-0"
-          title={t("records.daily.title")}
+          title={title ?? t("records.daily.title")}
           subtitle={
             board
               ? t("records.daily.subtitle", { date: dayLabel(board.day, board.timezone) })
@@ -157,14 +163,45 @@ export function DailySetBlock({
           }
           action={variant === "home" ? { label: t("home.picks.seeAll"), to: "/picks" } : undefined}
         />
-        {items.length > 0 ? (
-          <span
-            className="numeric mb-0.5 text-caption text-muted-foreground"
-            data-testid="daily-count"
-          >
-            {t("records.daily.count", { count: items.length })}
-          </span>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {items.length > 0 ? (
+            <span
+              className="numeric mb-0.5 text-caption text-muted-foreground"
+              data-testid="daily-count"
+            >
+              {t("records.daily.count", { count: items.length })}
+            </span>
+          ) : null}
+          {nav ? (
+            <span className="inline-flex items-center gap-1" data-testid="daily-nav">
+              <button
+                type="button"
+                onClick={() => nav.onDay(shiftDay(nav.day, -1))}
+                className="rounded-md border border-border px-2 py-1 text-caption hover:bg-elevated"
+              >
+                ← {t("records.daily.previous")}
+              </button>
+              {nav.day !== nav.today ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => nav.onDay(shiftDay(nav.day, 1))}
+                    className="rounded-md border border-border px-2 py-1 text-caption hover:bg-elevated"
+                  >
+                    {t("records.daily.next")} →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => nav.onDay(nav.today)}
+                    className="rounded-md border border-primary/40 px-2 py-1 text-caption text-primary hover:bg-primary/10"
+                  >
+                    {t("records.daily.today")}
+                  </button>
+                </>
+              ) : null}
+            </span>
+          ) : null}
+        </div>
       </div>
       {evaluation ? <EvaluationNote /> : null}
       {body}
