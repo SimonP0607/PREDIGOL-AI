@@ -22,8 +22,12 @@ REPO="${FBI_REPO:-$(cd "$(dirname "$0")/../.." && pwd)}"
 PY="${FBI_PYTHON:-$REPO/.venv/bin/python}"
 CONTAINER="${FBI_PG_CONTAINER:-fbi-postgres}"
 DB_USER="${FBI_PG_USER:-fbi}"
-D="$(command -v docker || command -v docker.exe)"
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
+# Docker in WSL: Docker Desktop's docker.exe works without the WSL integration; a `docker` that is only the
+# "could not be found in this WSL 2 distro" stub does not (the laptop's first real cut-over, 9 Oct 2026).
+if command -v docker > /dev/null && docker version > /dev/null 2>&1; then D="$(command -v docker)"
+else D="$(command -v docker.exe || true)"; fi
+[[ -n "$D" ]] || { log "REFUSED: neither a working docker nor docker.exe"; exit 1; }
 dexec() { "$D" exec "$CONTAINER" sh -c "$1" < /dev/null; }
 
 cd "$REPO"
