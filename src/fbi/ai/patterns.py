@@ -35,6 +35,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from fbi.ai.config import AiSettings
 from fbi.ai.providers.base import JsonRequest, LlmProvider
+from fbi.ai.text import TIER_ES
 from fbi.ai.usage import UsageLedger, call_json
 from fbi.research.evolution import TARGETS, propose
 
@@ -117,9 +118,9 @@ def source_reliability(events: list[dict[str, Any]]) -> list[Found]:
         if z >= MIN_Z:
             out.append(Found(
                 key=f"pattern:source:{tier}", target="data",
-                title=f"Las bajas reportadas por fuentes '{tier}' fallan demasiado ({100 * rate:.0f} %)",
-                hypothesis=f"Los reportes de bajas de nivel '{tier}' deberían pesar menos en la revisión hasta "
-                           "confirmarse con la alineación.",
+                title=f"Las bajas reportadas por {TIER_ES.get(tier, tier)} fallan demasiado ({100 * rate:.0f} %)",
+                hypothesis=f"Los reportes de bajas de {TIER_ES.get(tier, tier)} deberían pesar menos en la revisión "
+                           "hasta confirmarse con la alineación.",
                 rationale=f"{wrong[tier]} de {n} reportes de bajas de este nivel resultaron falsos (el jugador fue "
                           f"titular); z {z:.1f} frente a un 10 % de referencia.",
                 evidence={"tier": tier, "wrong": wrong[tier], "right": right[tier], "z": round(z, 2), "n_matches": n,

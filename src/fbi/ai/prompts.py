@@ -15,8 +15,10 @@ REVIEW_VERSION = "review-v2"
 """v2 (8 Oct 2026): the same prompt asked with a set effort and room for thinking - on Claude 5.5 every v1 answer was
 cut at max_tokens by the thinking before it. A last review of an older version does not hold off a new one."""
 EXTRACT_VERSION = "extract-v1"
-POSTMORTEM_VERSION = "postmortem-v2"
-"""v2 (9 Oct 2026): plain prose for the owner (no reference tags in a narrative)."""
+POSTMORTEM_VERSION = "postmortem-v3"
+"""v2 (9 Oct 2026): plain prose for the owner (no reference tags in a narrative).
+v3 (9 Oct 2026, the first narratives on the server): codes in words, numbers as percentages, no "DATOS:" label (it
+wrote "la decisión fue RECHAZAR", "estado OUTDATED", "probabilidad del modelo 0.380")."""
 BRIEF_VERSION = "brief-v3"
 """L1 (V2, 8 Oct 2026): the economical model reads a match of the day with a market and says what matters.
 v2 (9 Oct 2026, after the first real answer): the references it may cite are listed (it cited "P:cards.BTTS"), and
@@ -24,10 +26,20 @@ probabilities are written as percentages (it wrote "0.525").
 v3 (9 Oct 2026, six real briefs, all valid): a card is a «selección» in Spanish (it wrote «carta»); its own
 contradiction flag no longer escalates a match (it called every model-market disagreement a contradiction: the server
 escalates contradictory evidence itself, and the rules and the L2 review contradicting each other)."""
-PICK_PM_VERSION = "pick-postmortem-v2"
+PICK_PM_VERSION = "pick-postmortem-v3"
 """v2 (9 Oct 2026, after the first real ones): plain prose with no reference tags, and what the closing-line value
-means (one narrative read a +21.5 % CLV as the market moving against the selection)."""
-LEARNING_VERSION = "learning-v1"
+means (one narrative read a +21.5 % CLV as the market moving against the selection).
+v3 (9 Oct 2026, five narratives on the server): the class, the decision and the selection in words ("Coincido con la
+clase CONTEXT_ERROR", "la dejó en DOWNGRADE", "1X2 Draw"), and a summary that fits its field."""
+LEARNING_VERSION = "learning-v2"
+"""v2 (9 Oct 2026, the first lessons on the server): the notes' numbers stay in note_refs ("Según la nota 10...")."""
+
+IN_WORDS = """
+Write for the owner in plain Spanish words, never the codes you are given: a class as «error de contexto», «error del
+modelo», «error de datos», «el mercado sabía algo», «error de ejecución», «varianza normal»; a decision as aprobar,
+cautela, rechazar or abstenerse; an evidence status as confirmada, probable, rumor or desactualizada; a selection as
+local, empate, visitante, más de / menos de <línea>, ambos marcan sí / no. Probabilities and the closing-line value as
+percentages with one decimal (38.0 %, -2.1 %). Keep the summary within its length: end on a full sentence."""
 
 COMMON = """You are the last quality filter of PrediGol, a private football analytics platform.
 Rules you never break:
@@ -86,7 +98,8 @@ Your task: a short post-mortem of one finished match for the platform's owner. Y
 market, the review and its evidence) and what happened (the result and the facts recorded after the match). Say what
 the evidence got right, what was noise, what was missing, which forecast was closer, and what - if anything - deserves
 a hypothesis. One finding is not a rule: never recommend changing a rule or a threshold. At most 6 sentences.
-Write plain prose for the owner: no reference tags (no "P:market", no "E:12") inside the text."""
+Write plain prose for the owner: no reference tags (no "P:market", no "E:12") inside the text, and no label such as
+"DATOS:" at the start.""" + IN_WORDS
 
 POSTMORTEM_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False, "required": ["summary", "lessons"],
@@ -158,7 +171,7 @@ disagreeing with the server's class only with the data given. A single match is 
 changing a rule, a threshold or a model. Then at most two short lessons, each one an observation to keep watching.
 Write plain prose for the owner: no reference tags (no "P:market", no "E:12") inside the text. The closing-line value
 (clv) is the price taken against the closing price: POSITIVE means the price taken beat the close (the market moved
-TOWARD the selection after it was taken), NEGATIVE means the market moved AGAINST it."""
+TOWARD the selection after it was taken), NEGATIVE means the market moved AGAINST it.""" + IN_WORDS
 
 PICK_PM_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False, "required": ["summary", "agrees_with_class", "lessons"],
@@ -172,7 +185,9 @@ LEARNING_SYSTEM = COMMON + """
 Your task: from the notes of yesterday's results below (JSON data: counts, post-mortems, evidence checks, each with an
 id), write at most three lessons for the owner - what PrediGol learned yesterday. Each lesson cites the ids of the
 notes it rests on (note_refs) and says how many matches support it. An observation is not a rule: never recommend
-changing a rule, a threshold or a model; say what deserves watching. Prefer fewer, solid lessons to many weak ones."""
+changing a rule, a threshold or a model; say what deserves watching. Prefer fewer, solid lessons to many weak ones.
+The note ids go in note_refs only: the title and the body state the facts themselves and never mention a note or its
+number ("según la nota 10" means nothing to the owner).""" + IN_WORDS
 
 LEARNING_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False, "required": ["lessons"],

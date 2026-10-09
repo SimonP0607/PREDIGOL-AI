@@ -51,7 +51,7 @@ from fbi.ai.postmortem import analyse as fixture_analysis
 from fbi.ai.prompts import PICK_PM_SCHEMA, PICK_PM_SYSTEM, PICK_PM_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.review import side_of
-from fbi.ai.text import DISAGREES, narrative_of
+from fbi.ai.text import DISAGREES, TIER_ES, fit, narrative_of
 from fbi.ai.usage import UsageLedger, call_json
 from fbi.picks.settlement import market_outcome
 
@@ -145,6 +145,15 @@ def _f(x: Any) -> float | None:
 def logloss(p: float, won: bool) -> float:
     q = min(max(p if won else 1 - p, 1e-6), 1.0)
     return -math.log(q)
+
+
+def _who(e: dict[str, Any]) -> str:
+    """Who a report was about, as the owner reads it: the provider writes "Guga (Fluminense): Missing Fixture -
+    Inactive" - the player and the team are kept, the provider's English reason is not."""
+    claim = str(e.get("claim", "")).strip()
+    if e.get("tier") == "provider" and ": " in claim:
+        claim = claim.split(": ", 1)[0]
+    return fit(claim, 80)
 
 
 @dataclass
@@ -326,7 +335,8 @@ def _facts(conn: psycopg.Connection[Any], s: dict[str, Any], *, home: int, away:
     for e in (findings or {}).get("evidence", []):
         # a report that proved wrong hurts the pick when it made the opponent look weaker (or any, for a total/draw)
         if e.get("verdict") == "wrong" and (opp is None or e.get("side") in (opp, None)):
-            f.information.append(f"reportado fuera y fue titular ({e.get('tier')}): {str(e.get('claim', ''))[:80]}")
+            f.information.append(f"reportado fuera y fue titular, según {TIER_ES.get(str(e.get('tier')), 'una fuente')}: "
+                                 f"{_who(e)}")
     for m in (findings or {}).get("missing_information", []):
         # an absence nobody reported counts against a side pick; for a draw or a total its direction is unknown
         if side in ("home", "away") and m.get("side") == side:

@@ -37,7 +37,7 @@ from fbi.ai.config import AiSettings
 from fbi.ai.packet import Packet, canonical
 from fbi.ai.prompts import BRIEF_SCHEMA, BRIEF_SYSTEM, BRIEF_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
-from fbi.ai.text import plain
+from fbi.ai.text import fit, plain
 from fbi.ai.usage import UsageLedger, call_json
 
 GAP = 0.20
@@ -74,19 +74,6 @@ class CardNote(BaseModel):
 
 RETRY_NOTE = ("\n\nYOUR PREVIOUS ANSWER WAS NOT VALID ({errors}). Call the tool submit_brief once more with the "
               "complete object: every required field at the top level, lists as JSON arrays.")
-
-
-def fit(text: str, limit: int) -> str:
-    """A text longer than its field, cut at the last sentence (or word) that fits: what is kept is the model's own,
-    nothing is added but an ellipsis."""
-    if len(text) <= limit:
-        return text
-    head = text[:limit]
-    end = max(head.rfind(". "), head.rfind("; "), head.rfind(".\n"))
-    if end >= limit // 2:
-        return head[:end + 1]
-    cut = head[:limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:")
-    return cut + "…"
 
 
 def _only(item: Any, model: type[BaseModel], texts: dict[str, int] | None = None) -> Any:

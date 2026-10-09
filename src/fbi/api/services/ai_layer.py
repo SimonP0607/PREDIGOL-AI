@@ -366,6 +366,26 @@ SELECT (SELECT count(DISTINCT fixture_id) FROM ai.match_packets WHERE built_at >
        (SELECT COALESCE(sum(cost_usd), 0) FROM ai.usage WHERE at >= %(since)s AND at < %(until)s) AS cost_usd
 """
 
+UNREPORTED = "a regular starter was missing without any report"
+"""What the match post-mortem (fbi.ai.postmortem) wrote, in English, for an absence nobody reported."""
+
+
+def finding_text(r: dict[str, Any]) -> str | None:
+    """A memory event's text as the owner reads it: the post-mortem's English for an unreported absence and the
+    provider's English reason for a report that proved wrong (9 Oct 2026, "Guga (Fluminense): Missing Fixture -
+    Inactive") said in Spanish; any other text through the same plain-words pass as the narratives."""
+    text, ev = r.get("hypothesis"), r.get("evidence") or {}
+    side = {"home": "local", "away": "visitante"}.get(str(ev.get("side")), "")
+    if r.get("kind") == "news_signal" and text == UNREPORTED:
+        who = ev.get("player") or (f"jugador {ev['player_id']}" if ev.get("player_id") else "")
+        return "Un titular habitual faltó sin que nadie lo reportara" + (f": {who}" if who else "") + \
+            (f" ({side})" if side and who else "") + "."
+    if r.get("kind") == "context_error" and text:
+        who = text.split(": ", 1)[0] if ev.get("tier") == "provider" and ": " in text else text
+        return f"Reportado fuera y fue titular: {who}."
+    return owner_text(text)
+
+
 FINDINGS_SQL = """
 SELECT id, created_at, kind, entity_type, entity_id, fixture_id, hypothesis, evidence, result, confidence, version
   FROM ai.memory_events
@@ -402,9 +422,10 @@ def dashboard(conn: Conn, *, day: date | None = None) -> Envelope[EvolutionDashb
                        "score": (r["outcome"] or {}).get("score"), "market": s.get("market"),
                        "selection": s.get("selection"), "line": s.get("line"), "decision": s.get("decision"),
                        "settled": s.get("settled"), "p_model": s.get("p_model"), "p_market": s.get("p_market"),
-                       "signals": s.get("signals") or [], "narrative": r["narrative"]})
+                       "signals": s.get("signals") or [], "narrative": owner_text(r["narrative"])})
     return ok(EvolutionDashboard(
         day=d, counts={k: int(v or 0) for k, v in counts.items()} | v2,
-        findings=[MemoryEvent.model_validate(r) for r in fetch_all(conn, FINDINGS_SQL, {"since": since, "until": until})],
+        findings=[MemoryEvent.model_validate(r | {"hypothesis": finding_text(r)})
+                  for r in fetch_all(conn, FINDINGS_SQL, {"since": since, "until": until})],
         errors=errors, shadow=[_shadow_row(r) for r in ai_shadow.latest(conn)], cost_usd=cost,
         learned=ai_v2.notes_learned_on(conn, d), proposals=ai_v2.proposals(conn)))

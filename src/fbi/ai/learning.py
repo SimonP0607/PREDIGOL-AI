@@ -39,13 +39,10 @@ from fbi.ai.calendar import day_bounds
 from fbi.ai.config import AiSettings
 from fbi.ai.prompts import LEARNING_SCHEMA, LEARNING_SYSTEM, LEARNING_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
-from fbi.ai.text import plain
+from fbi.ai.text import CLASS_ES, TIER_ES, fit, plain, selection_es, words
 from fbi.ai.usage import UsageLedger, call_json
 
 VERSION = "learning-v1"
-CLASS_ES = {"MODEL_ERROR": "error del modelo", "CONTEXT_ERROR": "error de contexto", "DATA_ERROR": "error de datos",
-            "MARKET_ERROR": "el mercado sabía algo", "EXECUTION_ERROR": "error de ejecución",
-            "NORMAL_VARIANCE": "varianza normal", "UNKNOWN": "sin datos para juzgar"}
 
 PM_SQL = """
 SELECT pm.id, pm.fixture_id, pm.market_key, pm.selection, pm.line, pm.roles, pm.decision, pm.settled, pm.verdict,
@@ -103,6 +100,15 @@ def _pct(x: float) -> str:
     return f"{100 * x:.0f} %"
 
 
+def _num(x: float) -> str:
+    """A signed number with one decimal, written the Spanish way: +4,4."""
+    return f"{x:+.1f}".replace(".", ",")
+
+
+def _cap(text: str) -> str:
+    return text[:1].upper() + text[1:]
+
+
 def notes_for(pms: list[dict[str, Any]], checks: list[dict[str, Any]], sources: list[dict[str, Any]]) -> list[Note]:
     """The day's deterministic notes (pure: rows in, notes out)."""
     out: list[Note] = []
@@ -130,7 +136,8 @@ def notes_for(pms: list[dict[str, Any]], checks: list[dict[str, Any]], sources: 
     would = [p for p in pms if p["verdict"] == "rejected_would_have_won"]
     right = [p for p in pms if p["verdict"] == "rejected_correctly"]
     if would or right:
-        examples = ", ".join(f"{p['match']} ({p['market_key']} {p['selection']})" for p in would[:3])
+        examples = ", ".join(f"{p['match']} ({selection_es(p['market_key'], p['selection'], p['line'])})"
+                             for p in would[:3])
         out.append(Note("rejected", f"Rechazos: {len(right)} acertados, {len(would)} habrían ganado",
                         ("Habrían ganado: " + examples + ". " if would else "") +
                         "La calidad de los rechazos se juzga sobre muchos partidos en el shadow, no en un día.",
@@ -140,16 +147,16 @@ def notes_for(pms: list[dict[str, Any]], checks: list[dict[str, Any]], sources: 
     info = [p for p in pms if ((p["answers"] or {}).get("information") or {}).get("answer") == "sí"]
     if info:
         out.append(Note("context", f"La información falló en {len(info)} selecciones",
-                        "Reportes que resultaron falsos o titulares ausentes sin reporte: " +
-                        "; ".join(str(((p["answers"] or {}).get("information") or {}).get("detail", ""))[:120]
-                                  for p in info[:3]) + ".", len(info),
+                        fit("Reportes que resultaron falsos o titulares ausentes sin reporte: " +
+                            "; ".join(fit(str(((p["answers"] or {}).get("information") or {}).get("detail", "")), 160)
+                                      for p in info[:3]), 1100).rstrip(".…") + ".", len(info),
                         {"postmortems": [int(p["id"]) for p in info]}))
     if checks:
         by: dict[str, Counter[str]] = {}
         for c in checks:
             by.setdefault(str(c["tier"]), Counter())[str(c["verdict"])] += 1
-        parts = [f"{tier}: {v['right']} confirmadas y {v['wrong']} desmentidas por la alineación"
-                 for tier, v in sorted(by.items()) if v["right"] or v["wrong"]]
+        parts = [f"{_cap(TIER_ES.get(tier, tier))}: {v['right']} confirmadas y {v['wrong']} desmentidas por la "
+                 "alineación" for tier, v in sorted(by.items()) if v["right"] or v["wrong"]]
         if parts:
             n = sum(v["right"] + v["wrong"] for v in by.values())
             out.append(Note("news", "Qué noticias confirmó la alineación", "; ".join(parts) + ".", n,
@@ -158,7 +165,8 @@ def notes_for(pms: list[dict[str, Any]], checks: list[dict[str, Any]], sources: 
     injured = [p for p in pms if p["verdict"] in ("approved_lost", "caution_lost", "unreviewed_lost")
                and ((p["answers"] or {}).get("key_absence") or {}).get("answer") == "sí"]
     if injured:
-        out.append(Note("injuries", f"{len(injured)} pérdidas con una baja clave en el lado elegido",
+        out.append(Note("injuries", f"{len(injured)} {'pérdida' if len(injured) == 1 else 'pérdidas'} con una baja "
+                        "clave en el lado elegido",
                         "; ".join(f"{p['match']}: {((p['answers'] or {}).get('key_absence') or {}).get('detail')}"
                                   for p in injured[:3]) + ".", len(injured),
                         {"postmortems": [int(p["id"]) for p in injured]}))
@@ -167,7 +175,7 @@ def notes_for(pms: list[dict[str, Any]], checks: list[dict[str, Any]], sources: 
     if clv or against:
         mean = sum(clv) / len(clv) if clv else None
         out.append(Note("market", "El mercado frente a las cuotas tomadas",
-                        (f"CLV medio de las aprobadas {100 * mean:+.1f} % ({len(clv)}). " if mean is not None else "") +
+                        (f"CLV medio de las aprobadas {_num(100 * mean)} % ({len(clv)}). " if mean is not None else "") +
                         f"El cierre se movió 3 % o más en contra en {len(against)} selecciones.",
                         len(clv) + len(against),
                         {"postmortems": [int(p["id"]) for p in against], "mean_clv_approved": mean}))
@@ -177,7 +185,7 @@ def notes_for(pms: list[dict[str, Any]], checks: list[dict[str, Any]], sources: 
     model_errors = [p for p in pms if p["classification"] == "MODEL_ERROR"]
     if gaps:
         out.append(Note("model", "El modelo frente al cierre del mercado",
-                        f"Diferencia media modelo - cierre {100 * sum(gaps) / len(gaps):+.1f} puntos en {len(gaps)} "
+                        f"Diferencia media modelo - cierre {_num(100 * sum(gaps) / len(gaps))} puntos en {len(gaps)} "
                         f"selecciones; errores del modelo: {len(model_errors)}.", len(gaps),
                         {"postmortems": [int(p["id"]) for p in model_errors], "mean_gap": sum(gaps) / len(gaps)}))
     if sources:
@@ -265,7 +273,8 @@ def learn_day(conn: psycopg.Connection[Any], *, day: date, at: datetime, setting
         if not refs:
             report.rejected.append(lesson.title)
             continue
-        if _store(conn, Note("lesson", plain(lesson.title), plain(lesson.body), lesson.n, {"note_refs": refs}), day=day,
+        if _store(conn, Note("lesson", words(plain(lesson.title)), words(plain(lesson.body)), lesson.n,
+                             {"note_refs": refs}), day=day,
                   at=at,
                   engine="llm", key=f"ln:{day}:lesson:{i}",
                   usage_ids=[call.usage_id] if call.usage_id else []) is not None:
