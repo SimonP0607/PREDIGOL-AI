@@ -86,9 +86,19 @@ import {
   verdictTone,
 } from "./aiModel";
 import { DailyReviewPanel } from "./DailyReviewPanel";
+import { MatchMemoryPanel } from "./MatchMemoryPanel";
 import { Fact } from "./shared";
 
-const TABS = ["today", "close", "research", "postmortems", "learning", "sources", "costs"] as const;
+const TABS = [
+  "today",
+  "close",
+  "memory",
+  "research",
+  "postmortems",
+  "learning",
+  "sources",
+  "costs",
+] as const;
 type Tab = (typeof TABS)[number];
 const EVIDENCE_STATUSES: EvidenceStatus[] = [
   "CONFIRMED",
@@ -1190,6 +1200,7 @@ export function AiResearchLive() {
       />
       {tab === "today" ? <TodayTab day={liveDay} onDay={setLiveDay} max={today} /> : null}
       {tab === "close" ? <CloseTab day={pastDay} onDay={setPastDay} max={today} /> : null}
+      {tab === "memory" ? <MatchMemoryPanel /> : null}
       {tab === "research" ? <ResearchTab day={liveDay} onDay={setLiveDay} max={today} /> : null}
       {tab === "postmortems" ? (
         <PostmortemsTab day={pastDay} onDay={setPastDay} max={today} />

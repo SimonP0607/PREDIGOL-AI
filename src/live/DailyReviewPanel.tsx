@@ -208,6 +208,12 @@ function Body({ r }: { r: DailyReview }) {
                   <span className="numeric">{n}</span>
                 </li>
               ))}
+              {Object.entries(c.postmortems.wins_by_quality ?? {}).map(([k, n]) => (
+                <li key={k} className="flex justify-between gap-2">
+                  <span>{translateOr(`ai.dailyReview.winQuality.${k}`, k)}</span>
+                  <span className="numeric">{n}</span>
+                </li>
+              ))}
               <li className="text-caption text-subtle-foreground">
                 {t("ai.dailyReview.postmortemsTotal", { count: c.postmortems.n })}
               </li>

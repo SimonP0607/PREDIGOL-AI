@@ -823,7 +823,8 @@
       "learning": "Learning",
       "sources": "Sources",
       "costs": "Costs",
-      "close": "Day close"
+      "close": "Day close",
+      "memory": "Memory"
     },
     "day": "Day",
     "today": {
@@ -989,9 +990,9 @@
     "wonLost": "{won} won · {lost} lost",
     "decision": {
       "approve": "Approved",
-      "downgrade": "Downgraded",
+      "downgrade": "Caution",
       "reject": "Rejected",
-      "abstain": "Abstained"
+      "abstain": "No judgement"
     },
     "postmortems": "Post-mortems",
     "postmortemsTotal": "{count} selections studied",
@@ -1039,6 +1040,35 @@
     },
     "history": "Closed days",
     "historyEmpty": "No day closed yet: the first is written at 23:59 Bogotá.",
-    "historyRow": "{played}/{matches} played · picks {won}-{lost} ({pending} pending) · {pnl} · AI {cost}"
+    "historyRow": "{played}/{matches} played · picks {won}-{lost} ({pending} pending) · {pnl} · AI {cost}",
+    "winQuality": {
+      "EARNED": "Wins earned (the close agreed)",
+      "LUCKY": "Lucky wins (market against)",
+      "UNKNOWN": "Wins without a close to judge"
+    }
+  },
+  "memory": {
+    "title": "Memory by match",
+    "subtitle": "Every match PrediGol looked at: what was known BEFORE (the AI brief, its decisions, the shadow picks) and what came AFTER (score, settlement, post-mortems, how the wins were judged). Facts only: patterns and hypotheses are in Evolución.",
+    "filters": {
+      "team": "Team",
+      "competition": "League",
+      "coach": "Coach",
+      "player": "Player",
+      "market": "Market",
+      "odds_band": "Odds band",
+      "model": "Model"
+    },
+    "any": "Any",
+    "search": "Search",
+    "empty": "No match in the memory matches those filters.",
+    "coaches": "Coaches: {home} · {away}",
+    "before": "Before",
+    "after": "After",
+    "noBrief": "No AI brief before kick-off.",
+    "selections": "{n} selections · {markets} · {models}",
+    "settled": "{won} won · {lost} lost · {pnl}",
+    "events_one": "{count} memory event",
+    "events_other": "{count} memory events"
   }
 }

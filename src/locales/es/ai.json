@@ -823,7 +823,8 @@
       "learning": "Aprendizaje",
       "sources": "Fuentes",
       "costs": "Costos",
-      "close": "Cierre diario"
+      "close": "Cierre diario",
+      "memory": "Memoria"
     },
     "day": "Día",
     "today": {
@@ -988,10 +989,10 @@
     "noReviews": "La IA no revisó selecciones de ese día.",
     "wonLost": "{won} ganadas · {lost} perdidas",
     "decision": {
-      "approve": "Aprobó",
-      "downgrade": "Rebajó",
-      "reject": "Rechazó",
-      "abstain": "Se abstuvo"
+      "approve": "Aprobado",
+      "downgrade": "Cautela",
+      "reject": "Rechazado",
+      "abstain": "Sin juicio"
     },
     "postmortems": "Post-mortems",
     "postmortemsTotal": "{count} selecciones estudiadas",
@@ -1039,6 +1040,35 @@
     },
     "history": "Historial de cierres",
     "historyEmpty": "Todavía no hay días cerrados: el primero se escribe a las 23:59 Bogotá.",
-    "historyRow": "{played}/{matches} jugados · picks {won}-{lost} ({pending} pend.) · {pnl} · IA {cost}"
+    "historyRow": "{played}/{matches} jugados · picks {won}-{lost} ({pending} pend.) · {pnl} · IA {cost}",
+    "winQuality": {
+      "EARNED": "Ganadas merecidas (el cierre les dio la razón)",
+      "LUCKY": "Ganadas con suerte (mercado en contra)",
+      "UNKNOWN": "Ganadas sin cierre para juzgar"
+    }
+  },
+  "memory": {
+    "title": "Memoria por partido",
+    "subtitle": "Cada partido que PrediGol miró: lo que se sabía ANTES (resumen de la IA, sus decisiones, los picks en sombra) y lo que pasó DESPUÉS (marcador, liquidación, post-mortems, calidad de los aciertos). Solo hechos: los patrones y las hipótesis están en Evolución.",
+    "filters": {
+      "team": "Equipo",
+      "competition": "Liga",
+      "coach": "Entrenador",
+      "player": "Jugador",
+      "market": "Mercado",
+      "odds_band": "Rango de cuota",
+      "model": "Modelo"
+    },
+    "any": "Cualquiera",
+    "search": "Buscar",
+    "empty": "Ningún partido de la memoria cumple esos filtros.",
+    "coaches": "Entrenadores: {home} · {away}",
+    "before": "Antes",
+    "after": "Después",
+    "noBrief": "Sin resumen de la IA antes del saque.",
+    "selections": "{n} selecciones · {markets} · {models}",
+    "settled": "{won} ganadas · {lost} perdidas · {pnl}",
+    "events_one": "{count} evento de memoria",
+    "events_other": "{count} eventos de memoria"
   }
 }

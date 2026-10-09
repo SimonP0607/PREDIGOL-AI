@@ -4,6 +4,7 @@ import type { ParlayKind, PicksQuery } from "./types_product";
 import type { HistoryPeriod } from "./types_records";
 import type { RatingPool } from "./types";
 import type { FindingsQuery, ScoresQuery } from "./types_truth";
+import type { MemoryFilters } from "./types_ai_layer";
 
 const MINUTE = 60_000;
 type Preview = "shadow" | undefined;
@@ -168,6 +169,10 @@ export const live = {
     queryKey: ["v1", "ai-layer", "daily-reviews", days],
     queryFn: () => v1.aiDailyReviews(days),
     refetchInterval: 10 * MINUTE,
+  }),
+  aiMatchMemory: (f: MemoryFilters) => ({
+    queryKey: ["v1", "ai-layer", "match-memory", f],
+    queryFn: () => v1.aiMatchMemory(f),
   }),
   aiDailyReview: (day: string) => ({
     queryKey: ["v1", "ai-layer", "daily-review", day],

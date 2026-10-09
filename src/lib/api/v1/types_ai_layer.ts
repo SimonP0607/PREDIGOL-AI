@@ -818,7 +818,13 @@ export interface DailyReviewContent {
   };
   /** reviewed, approve, downgrade, reject, abstain and <decision>_won / <decision>_lost. */
   ai: Record<string, number>;
-  postmortems: { n: number; by_class: Record<string, number>; by_verdict: Record<string, number> };
+  postmortems: {
+    n: number;
+    by_class: Record<string, number>;
+    by_verdict: Record<string, number>;
+    /** Wins judged against the close: EARNED, LUCKY, UNKNOWN. */
+    wins_by_quality?: Record<string, number>;
+  };
   learning: { kind: string; title: string; n: number | null }[];
   patterns: { kind: string; about: string; text: string | null }[];
   hypotheses: {
@@ -873,4 +879,44 @@ export interface DailyReviewDay {
   daily_pnl_units: number;
   shadow_roi: number | null;
   ai_usd: number;
+}
+
+// ── MATCH INTELLIGENCE MEMORY ───────────────────────────────────────────────
+
+export interface MemoryFilters {
+  team?: string | undefined;
+  competition?: string | undefined;
+  coach?: string | undefined;
+  player?: string | undefined;
+  market?: string | undefined;
+  odds_band?: string | undefined;
+  model?: string | undefined;
+}
+
+export interface MatchMemory {
+  fixture_id: number;
+  kickoff_at: Iso;
+  status_short: string;
+  competition: string;
+  home: string;
+  away: string;
+  home_coach: string | null;
+  away_coach: string | null;
+  score_home: number | null;
+  score_away: number | null;
+  /** BEFORE: the AI's newest brief before kick-off. */
+  brief_summary: string | null;
+  brief_quality: string | null;
+  brief_uncertainty: string | null;
+  ai_decisions: Record<string, number>;
+  selections: number;
+  markets: string[];
+  models: string[];
+  /** AFTER. */
+  won: number;
+  lost: number;
+  pnl_units: number | null;
+  postmortem_classes: Record<string, number>;
+  win_quality: Record<string, number>;
+  memory_events: number;
 }

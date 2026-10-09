@@ -16,6 +16,8 @@ import type {
   AiDecision,
   DailyReview,
   DailyReviewDay,
+  MatchMemory,
+  MemoryFilters,
   AiEvidenceRow,
   AiLearning,
   AiMemoryEvent,
@@ -442,6 +444,8 @@ export const v1 = {
   aiSources: (days = 7) => getJson<Envelope<AiSourceRow[]>>("/admin/ai/sources", { days }),
   aiDailyReviews: (days = 30) =>
     getJson<Envelope<DailyReviewDay[]>>("/admin/ai/daily-reviews", { days }),
+  aiMatchMemory: (f: MemoryFilters, limit = 50) =>
+    getJson<Envelope<MatchMemory[]>>("/admin/ai/match-memory", { ...f, limit } as Params),
   aiDailyReview: (day: string) =>
     getJson<Envelope<DailyReview | null>>(`/admin/ai/daily-reviews/${day}`),
   aiComparison: () => getJson<Envelope<AiComparison>>("/admin/ai/comparison"),
