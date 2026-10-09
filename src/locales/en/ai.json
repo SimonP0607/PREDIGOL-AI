@@ -193,7 +193,7 @@
     "noAuto": "Nothing changes a model or a rule automatically: every proposal needs an experiment, backtesting, shadow and your approval.",
     "dashboard": {
       "title": "The day in PrediGol AI",
-      "subtitle": "What the decision layer did on this day (Bogota time).",
+      "subtitle": "What the decision layer did on this day (Bogota time), also on the following days' matches. \"With a market\" counts the day's matches with prices when the day opened.",
       "day": "Day",
       "counts": {
         "matches_analyzed": "Matches analysed",
@@ -600,7 +600,7 @@
       "withMarket": "Matches with a market today",
       "withMarketHint": "of {total} matches today",
       "analyzed": "Analysed",
-      "analyzedHint": "LLM {llm} · rules {rules}",
+      "analyzedHint": "Briefs: AI {llm} · rules {rules}",
       "escalated": "Escalated",
       "intermediate": "L2 reviews",
       "deep": "Deep analyses (L3)",
@@ -833,7 +833,7 @@
       "passes": "Passes done",
       "escalated": "Escalated",
       "staleOdds": "Stale prices (over 12 h)",
-      "cost": "Cost of the day",
+      "cost": "Cost on these matches",
       "planOpened": "Plan opened",
       "planNotOpened": "Not opened",
       "empty": "No matches with a market that day: without a market the AI does not work.",

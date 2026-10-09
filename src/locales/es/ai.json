@@ -193,7 +193,7 @@
     "noAuto": "Nada cambia un modelo ni una regla automáticamente: cada propuesta necesita un experimento, backtesting, shadow y tu aprobación.",
     "dashboard": {
       "title": "El día en PrediGol AI",
-      "subtitle": "Lo que la capa de decisión hizo este día (hora de Bogotá).",
+      "subtitle": "Lo que la capa de decisión hizo este día (hora de Bogotá), también sobre partidos de los días siguientes. «Con mercado» son los partidos del día con cuotas cuando se abrió el día.",
       "day": "Día",
       "counts": {
         "matches_analyzed": "Partidos analizados",
@@ -600,7 +600,7 @@
       "withMarket": "Partidos con mercado hoy",
       "withMarketHint": "de {total} partidos hoy",
       "analyzed": "Analizados",
-      "analyzedHint": "LLM {llm} · reglas {rules}",
+      "analyzedHint": "Resúmenes: IA {llm} · reglas {rules}",
       "escalated": "Escalados",
       "intermediate": "Revisiones L2",
       "deep": "Análisis profundos (L3)",
@@ -833,7 +833,7 @@
       "passes": "Pasadas hechas",
       "escalated": "Escalados",
       "staleOdds": "Cuotas viejas (más de 12 h)",
-      "cost": "Costo del día",
+      "cost": "Costo en estos partidos",
       "planOpened": "Plan abierto",
       "planNotOpened": "Sin abrir",
       "empty": "Ese día no hay partidos con mercado: sin mercado, la IA no trabaja.",
