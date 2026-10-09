@@ -382,7 +382,9 @@ export function ProposalCard({ p, children }: { p: Proposal; children?: ReactNod
         <StatusBadge tone="neutral">
           {translateOr(`ai.evolution.target.${p.target}`, p.target)}
         </StatusBadge>
-        <span className="text-caption text-subtle-foreground">{bogotaDateTime(p.created_at)}</span>
+        <span className="text-caption text-subtle-foreground">
+          {bogotaDateTime(p.created_at)} · Bogotá
+        </span>
       </div>
       <p className="text-sm font-medium wrap-anywhere">{p.title}</p>
       <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">

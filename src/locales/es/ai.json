@@ -841,6 +841,7 @@
       "escalate": "Escalado",
       "staleChip": "Cuota de hace {age}",
       "noPasses": "Aún sin pasadas",
+      "noPassesPast": "Sin pasadas",
       "passesTitle": "Pasadas",
       "brief": "Resumen L1",
       "noBrief": "Aún no hay resumen L1 de este partido.",

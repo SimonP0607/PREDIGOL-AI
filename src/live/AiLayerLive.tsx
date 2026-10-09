@@ -761,7 +761,7 @@ function ReviewsTab() {
                       {t(`ai.layer.decision.${r.decision}`)}
                     </StatusBadge>
                   </TD>
-                  <TD className="max-w-[22rem] truncate text-xs text-muted-foreground">
+                  <TD className="min-w-[16rem] max-w-[28rem] whitespace-normal break-words text-xs leading-snug text-muted-foreground">
                     {r.reason ?? "—"}
                   </TD>
                 </TRow>

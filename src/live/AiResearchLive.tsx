@@ -442,7 +442,13 @@ function FixtureCard({ f }: { f: AiDayFixture }) {
             {passes.length ? (
               passes.map((p) => <PassChip key={`${p.pass}-${p.at}`} p={p} />)
             ) : (
-              <StatusBadge dot={false}>{t("ai.research.today.noPasses")}</StatusBadge>
+              <StatusBadge dot={false}>
+                {t(
+                  Date.parse(f.kickoff_at) <= Date.now()
+                    ? "ai.research.today.noPassesPast"
+                    : "ai.research.today.noPasses",
+                )}
+              </StatusBadge>
             )}
             {[...tally].map(([d, n]) => (
               <StatusBadge key={d} tone={decisionTone(d)}>

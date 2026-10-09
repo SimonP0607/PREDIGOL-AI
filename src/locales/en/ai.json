@@ -841,6 +841,7 @@
       "escalate": "Escalated",
       "staleChip": "Price {age} old",
       "noPasses": "No pass yet",
+      "noPassesPast": "No passes",
       "passesTitle": "Passes",
       "brief": "L1 brief",
       "noBrief": "No L1 brief for this match yet.",
