@@ -129,3 +129,14 @@ def test_what_evolucion_lists_as_findings_is_said_in_spanish() -> None:
                          "pesar menos.", "evidence": {}}) == \
         "Los reportes de bajas de nivel «el proveedor de datos» deberían pesar menos."
     assert finding_text({"kind": "model_failure", "hypothesis": None, "evidence": {}}) is None
+
+
+def test_the_older_narratives_labels_and_codes_are_not_shown_either() -> None:
+    # 8 Oct 2026, the first post-mortems (pick-postmortem-v1)
+    assert words("DATO (answers.expected): PrediGol daba 35.1 % al visitante. DATO (answers.happened): ganó 1-0.") == \
+        "PrediGol daba 35.1 % al visitante. Ganó 1-0."
+    assert words("el partido terminó 0-0 y la selección perdió (DATA: el mercado, resultado). El mercado cerró") == \
+        "el partido terminó 0-0 y la selección perdió. El mercado cerró"
+    assert words("así que la selección fue half_loss.") == "así que la selección fue «media pérdida»."
+    assert words("La selección Over 4.50 de Aston Villa W perdió.") == "La selección más de 4.50 de Aston Villa W perdió."
+    assert words("Los datos (DATOS del proveedor) son buenos.") == "Los datos (DATOS del proveedor) son buenos."

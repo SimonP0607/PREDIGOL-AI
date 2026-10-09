@@ -33,7 +33,16 @@ PAREN_CODE = re.compile(rf"\s*\((?:{_ALT})\)")
 SELECTION_WORDS = {"Home": "local", "Draw": "empate", "Away": "visitante", "Over": "más de", "Under": "menos de",
                    "Yes": "sí", "No": "no"}
 SELECTION = re.compile(r"\b(1X2|DC|AH|OU|BTTS)\s+(Home|Draw|Away|Over|Under|Yes|No)\b")
-CLAIM_LABEL = re.compile(r"^(?:-\s+)?(?:DATOS|DATA|NOTICIA|NEWS|INFERENCIA|INFERENCE|OPINIÓN|OPINION):\s*")
+_KIND = r"(?:DATOS?|DATA|NOTICIAS?|NEWS|INFERENCIAS?|INFERENCE|OPINIÓN|OPINION)"
+CLAIM_LABEL = re.compile(rf"(?:(?<=^)|(?<=^- )|(?<=[.!?] )){_KIND}\s*(?:\([^)]*\))?:\s*")
+"""A claim-type label opening a sentence: "DATOS: ...", "DATO (answers.expected): ..." (8-9 Oct 2026)."""
+CLAIM_PAREN = re.compile(rf"\s*\({_KIND}:[^)]*\)")
+"""The same label in brackets inside a sentence: "(DATA: el mercado, resultado)"."""
+ANSWER_REF = re.compile(r"\s*\(answers\.[a-z_]+\)")
+SETTLED_WORDS = {"half_loss": "media pérdida", "half_win": "media ganancia", "half_won": "media ganancia",
+                 "half_lost": "media pérdida"}
+SETTLED = re.compile(r"\b(half_loss|half_win|half_won|half_lost)\b")
+BARE_TOTAL = re.compile(r"\b(Over|Under) (\d+(?:\.\d+)?)\b")
 NOTE_REFS = (  # a lesson citing the notes it rests on by number - the numbers belong in note_refs, not in the text
     re.compile(r"\b[Ss]egún (?:la|las) notas? \d+(?:(?:, | y )\d+)*,\s*"),
     re.compile(r"\b(?:[Ll]a|[Ll]as) notas? \d+(?:(?:, | y )\d+)* (?:indica|indican|muestra|muestran|señala|señalan|"
@@ -86,7 +95,14 @@ def words(text: str) -> str:
     out = SELECTION.sub(lambda m: f"{m.group(1)} {SELECTION_WORDS[m.group(2)]}", text)
     out = PAREN_CODE.sub("", out)
     out = CODE.sub(lambda m: f"«{CODES[m.group(1)]}»", out)
-    out = CLAIM_LABEL.sub("", out)
+    out = CLAIM_PAREN.sub("", out)
+    out = ANSWER_REF.sub("", out)
+    labelled = CLAIM_LABEL.sub("", out)
+    if labelled != out:  # the sentence a label opened starts with a capital
+        labelled = re.sub(r"(^(?:-\s+)?|[.!?]\s+)([a-záéíóúñ])", lambda m: m.group(1) + m.group(2).upper(), labelled)
+    out = labelled
+    out = SETTLED.sub(lambda m: f"«{SETTLED_WORDS[m.group(1)]}»", out)
+    out = BARE_TOTAL.sub(lambda m: f"{'más de' if m.group(1) == 'Over' else 'menos de'} {m.group(2)}", out)
     for rx, label in SOURCE_LABEL:
         out = rx.sub(label, out)
     out = QUOTED_TIER.sub(lambda m: f"«{TIER_ES[m.group(1)]}»", out)
