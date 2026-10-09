@@ -107,7 +107,7 @@ SELECT l.*, f.status_short, res.reg_goals_home, res.reg_goals_away, res.et_goals
 """
 
 POSTMORTEMS_SQL = """
-SELECT pm.verdict, pm.classification, pm.settled
+SELECT pm.verdict, pm.classification, pm.settled, pm.answers->'win_quality'->'data'->>'win_quality' AS win_quality
   FROM ai.pick_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
  WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND pm.version = 'pm-v2'
 """
@@ -315,6 +315,7 @@ def content(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> dict[s
             "n": len(pms),
             "by_class": dict(Counter(str(r["classification"]) for r in pms if r["classification"])),
             "by_verdict": dict(Counter(str(r["verdict"]) for r in pms if r["verdict"])),
+            "wins_by_quality": dict(Counter(str(r["win_quality"]) for r in pms if r["win_quality"])),
         },
         "learning": [{"kind": r["kind"], "title": r["title"], "n": r["n"]} for r in _rows(conn, NOTES_SQL, p)],
         "patterns": [{"kind": r["kind"], "about": r["entity_type"], "text": r["hypothesis"]}

@@ -40,7 +40,8 @@ from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.security import Admin, App
-from fbi.api.services import ai_layer, ai_v2, daily_review
+from fbi.api.services import ai_layer, ai_v2, daily_review, match_memory
+from fbi.api.services.match_memory import MatchMemory, MemoryFilters
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
 
@@ -177,6 +178,25 @@ def get_daily_review(conn: Db, day: Annotated[date, Path()]) -> Envelope[DailyRe
     """CIERRE DEL DÍA of one Bogotá day: its newest revision (written at 23:59, revised while a late match settled or
     its post-mortems arrived) and the revisions it went through."""
     return daily_review.day_review(conn, day=day)
+
+
+@admin_router.get("/ai/match-memory", response_model=Envelope[list[MatchMemory]])
+def get_match_memory(
+    conn: Db,
+    team: Annotated[str | None, Query(max_length=80)] = None,
+    competition: Annotated[str | None, Query(max_length=80)] = None,
+    coach: Annotated[str | None, Query(max_length=80)] = None,
+    player: Annotated[str | None, Query(max_length=80)] = None,
+    market: Annotated[Literal["1X2", "OU", "BTTS", "AH", "DC"] | None, Query()] = None,
+    odds_band: Annotated[Literal["1.20-1.49", "1.50-1.79", "1.80-2.19", "2.20-2.99", "3.00-4.99", "5.00+"] | None,
+                         Query()] = None,
+    model: Annotated[Literal["dixon_coles", "poisson", "elo_ologit"] | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> Envelope[list[MatchMemory]]:
+    """MATCH INTELLIGENCE MEMORY: the matches PrediGol looked at - what the AI and the models said before, what
+    happened and what the post-mortems concluded after - by team, league, coach, player, market, odds band, model."""
+    return match_memory.search(conn, MemoryFilters(team=team, competition=competition, coach=coach, player=player,
+                                                   market=market, odds_band=odds_band, model=model), limit=limit)
 
 
 @admin_router.get("/ai/sources", response_model=Envelope[list[SourceRow]])

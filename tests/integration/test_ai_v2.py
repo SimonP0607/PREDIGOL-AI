@@ -314,7 +314,7 @@ def test_every_studied_selection_gets_its_post_mortem_and_the_day_its_notes(db: 
     assert by[f1][1] in ("approved_lost", "caution_lost") and by[f1][2] is not None, "a loss has a class"
     assert by[f3][1] in ("approved_won", "caution_won") and by[f3][2] is None, "a win has no class"
     questions = {"expected", "happened", "model", "information", "ignored_signal", "odds_moved", "key_absence",
-                 "lineup_changed", "uncertainty", "variance"}
+                 "lineup_changed", "uncertainty", "variance", "win_quality"}
     assert set(by[f1][3]) == questions
     notes = {r[0] for r in db.execute("SELECT kind FROM ai.learning_notes WHERE day = %s", (DAY,))}
     assert {"summary", "approved"} <= notes

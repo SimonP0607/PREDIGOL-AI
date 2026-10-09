@@ -217,6 +217,30 @@ def classify(f: Facts) -> str | None:
     return "UNKNOWN"
 
 
+def win_quality(f: Facts) -> str | None:
+    """Whether a WIN was earned or lucky, judged like a loss is - against the close, never by the result alone:
+
+        EARNED   the market moved toward the selection before kick-off (the price beat the close, or the closing
+                 probability rose), or the model stood close to the closing market;
+        LUCKY    the market moved against it and the model was far above the close: it won despite a weak case;
+        UNKNOWN  no closing price to judge by.
+
+    A lucky win teaches nothing about the model and must not be learned from as if it were a good decision."""
+    if not f.won:
+        return None
+    clv = f.clv
+    moved_against = (clv is not None and clv <= CLV_AGAINST) or (
+        f.p_close is not None and f.p_market is not None and f.p_close <= f.p_market + CLV_AGAINST)
+    far_above = f.p_close is not None and f.p_model is not None and f.p_model - f.p_close >= MODEL_GAP
+    if moved_against and far_above:
+        return "LUCKY"
+    if f.p_close is None and clv is None:
+        return "UNKNOWN"
+    if moved_against:
+        return "LUCKY"
+    return "EARNED"
+
+
 def verdict_of(f: Facts) -> str:
     if not (f.won or f.lost):
         return "push"
@@ -272,6 +296,13 @@ def answers(f: Facts, cls: str | None, *, score: tuple[int, int], label: str) ->
         "variance": {"answer": _yes(cls == "NORMAL_VARIANCE") if f.lost else "no aplica",
                      "detail": (f"con el cierre en {_pct(f.p_close)}, perder tenía {_pct(1 - f.p_close)} de "
                                 "probabilidad") if f.p_close is not None and f.lost else "—", "data": {}},
+        "win_quality": {"answer": {"EARNED": "merecido", "LUCKY": "con suerte", "UNKNOWN": "sin datos"}.get(
+                            str(win_quality(f)), "no aplica"),
+                        "detail": ("el mercado se movió hacia la selección o el modelo estaba cerca del cierre"
+                                   if win_quality(f) == "EARNED" else
+                                   "ganó con el mercado en contra: no enseña nada sobre el modelo"
+                                   if win_quality(f) == "LUCKY" else "—"),
+                        "data": {"win_quality": win_quality(f)}},
     }
 
 

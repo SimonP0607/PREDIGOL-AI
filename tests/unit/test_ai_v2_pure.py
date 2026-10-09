@@ -13,7 +13,7 @@ from fbi.ai.collectors import query_for
 from fbi.ai.cycle import needs_llm, watch_candidate
 from fbi.ai.learning import notes_for
 from fbi.ai.patterns import loss_classes
-from fbi.ai.pick_postmortem import Facts, answers, classify, verdict_of
+from fbi.ai.pick_postmortem import Facts, answers, classify, verdict_of, win_quality
 from fbi.ai.prompts import REVIEW_VERSION
 from fbi.ai.review import Candidate
 from fbi.ai.usage import Budget, state_of
@@ -185,7 +185,8 @@ def test_the_verdicts_and_the_ten_answers() -> None:
     assert verdict_of(facts(decision=None)) == "unreviewed_lost" and verdict_of(facts(settled="push")) == "push"
     a = answers(facts(ignored=["market_against"]), "NORMAL_VARIANCE", score=(0, 1), label="A - B · 1X2 Home")
     assert set(a) == {"expected", "happened", "model", "information", "ignored_signal", "odds_moved", "key_absence",
-                      "lineup_changed", "uncertainty", "variance"}
+                      "lineup_changed", "uncertainty", "variance", "win_quality"}
+    assert a["win_quality"]["answer"] == "no aplica", "a loss has no win quality"
     assert a["ignored_signal"]["answer"] == "sí" and a["variance"]["answer"] == "sí"
     assert a["odds_moved"]["answer"] == "a favor" and a["model"]["answer"] == "no", "2.40 taken, 2.30 at the close"
 
@@ -304,3 +305,14 @@ def test_a_brief_with_a_key_of_its_own_deep_inside_or_a_long_summary_is_read_not
     assert b.injuries[0].refs == ["E:1", "E:2", "E:3", "E:4"] and len(b.context[0].text) <= 240
     assert fit("corto", 10) == "corto" and fit("una palabra " * 30, 40).endswith("palabra…")
     assert "summary" not in lenient({"cards": []}), "a missing summary is never invented"
+
+
+def test_a_win_is_judged_against_the_close_not_by_its_result() -> None:
+    """A lucky win must not be learned from as a good decision: the same yardstick as a loss."""
+    assert win_quality(facts()) is None, "a loss"
+    assert win_quality(facts(settled="win")) == "EARNED", "2.40 taken, 2.30 at the close"
+    assert win_quality(facts(settled="win", close_odds=2.60, p_model=0.60, p_close=0.40)) == "LUCKY"
+    assert win_quality(facts(settled="win", close_odds=2.60)) == "LUCKY", "the market moved against it"
+    assert win_quality(facts(settled="win", p_close=None, close_odds=None)) == "UNKNOWN"
+    a = answers(facts(settled="win"), None, score=(1, 0), label="A - B · 1X2 Home")
+    assert a["win_quality"]["answer"] == "merecido" and a["win_quality"]["data"] == {"win_quality": "EARNED"}

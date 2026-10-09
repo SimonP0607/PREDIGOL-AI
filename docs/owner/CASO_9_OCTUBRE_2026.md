@@ -45,7 +45,7 @@ Ese «último precio prepartido» no se ha validado como el precio de cierre; po
 ## 3. Lo que dijo la IA antes del saque
 
 Cuando se eligieron (el 8 de octubre) todavía no había revisión. La última revisión antes de cada saque, del 9 de
-octubre, fue **REBAJAR en los cinco casos**:
+octubre, fue **CAUTELA (rebajar) en los cinco casos**:
 
 | # | Motor | Confianza | Motivo (resumen) |
 |---|---|---:|---|
