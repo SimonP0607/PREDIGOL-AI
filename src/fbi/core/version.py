@@ -51,14 +51,20 @@ elsewhere (a page, an audit, a doc) is not."""
 
 
 def model_code_fingerprint(root: Path | None = None) -> str:
-    """sha256 of the model packages' Python sources, path and bytes, in path order: 12 hex characters."""
+    """sha256 of the model packages' Python sources, path and bytes, in path order: 12 hex characters.
+
+    Line endings are read as git stores them (LF): the same commit must have the same fingerprint on every machine.
+    It did not - the laptop's checkout had one file with CRLF endings (models/lines.py, written from Windows on 30 Sep
+    2026; git, which normalises them, saw no change), so the laptop fingerprinted mcec6b780838 and the server, from
+    the same commit, mc1f28a88360: the cut-over (9 Oct 2026, 04:02 UTC) opened new versions of every model. A file
+    that is all LF hashes exactly as before, so no version kept on a clean checkout changes."""
     base = root or Path(__file__).resolve().parents[1]
     digest = hashlib.sha256()
     for package in MODEL_PACKAGES:
         for path in sorted((base / package).rglob("*.py")):
             digest.update(str(path.relative_to(base)).replace(os.sep, "/").encode())
             digest.update(b"\0")
-            digest.update(path.read_bytes())
+            digest.update(path.read_bytes().replace(b"\r\n", b"\n"))
             digest.update(b"\0")
     return digest.hexdigest()[:12]
 

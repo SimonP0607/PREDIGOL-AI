@@ -29,3 +29,9 @@ def test_a_change_outside_the_model_code_keeps_the_version(tmp_path: Path) -> No
 def test_the_running_code_has_a_fingerprint() -> None:
     fp = model_code_fingerprint()
     assert len(fp) == 12 and all(c in "0123456789abcdef" for c in fp)
+
+
+def test_the_same_code_has_the_same_fingerprint_whatever_its_line_endings(tmp_path: Path) -> None:
+    lf = tree(tmp_path / "lf", "x = 1\ny = 2\n")
+    crlf = tree(tmp_path / "crlf", "x = 1\r\ny = 2\r\n")  # a file saved from Windows; git sees no change
+    assert model_code_fingerprint(crlf) == model_code_fingerprint(lf)
