@@ -32,7 +32,9 @@ MIN_FSYNC="${BENCH_MIN_FSYNC:-400}"        # fdatasync ops/s (2.5 ms each)
 MIN_RAM_GB="${BENCH_MIN_RAM_GB:-7.5}"
 MIN_DISK_GB="${BENCH_MIN_DISK_GB:-90}"
 MIN_DOWN_MBIT="${BENCH_MIN_DOWN_MBIT:-100}"
-DOWN_URL="${BENCH_DOWN_URL:-https://speed.cloudflare.com/__down?bytes=200000000}"
+# Tried in order, 200 MB each (a byte range), the best one counts. Cloudflare's speed test answers 403 to some
+# datacenter addresses (Contabo US-east, 9 Oct 2026): Ubuntu's release server and a university mirror follow.
+DOWN_URLS="${BENCH_DOWN_URL:-https://speed.cloudflare.com/__down?bytes=200000000 https://releases.ubuntu.com/24.04/ubuntu-24.04.3-live-server-amd64.iso https://mirror.math.princeton.edu/pub/ubuntu-iso/24.04/ubuntu-24.04.3-live-server-amd64.iso}"
 
 if ! command -v fio > /dev/null || ! command -v sysbench > /dev/null; then
   log "installing fio and sysbench"
@@ -93,13 +95,18 @@ rm -f "$DIR/fsync.test" "$DIR/fsync.dat"
 check "fsync (commit)" "${fsync:-0}" ">=" "$MIN_FSYNC" "ops/s"
 
 log "network"
-if speed="$(curl -fsS -m 60 -o /dev/null -w '%{speed_download}' "$DOWN_URL")"; then
-  down="$(awk -v b="$speed" 'BEGIN { printf "%.0f", b * 8 / 1000000 }')"
-else
-  # Unreachable is a failure too: re-run, or point BENCH_DOWN_URL at another large file (e.g. a mirror's ISO).
-  log "the download test could not reach $DOWN_URL"
-  down=0
-fi
+down=0
+for url in $DOWN_URLS; do
+  if speed="$(curl -fsS -m 60 -r 0-199999999 -o /dev/null -w '%{speed_download}' "$url" 2> /dev/null)"; then
+    d="$(awk -v b="$speed" 'BEGIN { printf "%.0f", b * 8 / 1000000 }')"
+    log "download from ${url%%\?*}: $d Mbit/s"
+    (( d > down )) && down=$d
+    (( down >= MIN_DOWN_MBIT )) && break
+  else
+    # Unreachable is not yet a failure: the next source is tried; none answering is (BENCH_DOWN_URL to point elsewhere).
+    log "the download test could not reach ${url%%\?*}"
+  fi
+done
 check "download" "$down" ">=" "$MIN_DOWN_MBIT" "Mbit/s"
 apif="$(curl -sS -m 20 -o /dev/null -w '%{time_connect}' https://v3.football.api-sports.io/status 2> /dev/null || echo 9)"
 results+=("$(jq -nc --arg v "$apif" '{name: "connect to API-Football", value: ($v | tonumber), unit: "s"}')")

@@ -19,7 +19,8 @@
 #   predigolctl cloudflare trust|firewall|open    Cloudflare in front (bin/cloudflare-ips.sh)
 set -Eeuo pipefail
 # shellcheck source=bin/lib.sh
-. "$(dirname "$0")/lib.sh"
+# install.sh links this file into /usr/local/bin: lib.sh is found beside the REAL file, not beside the link.
+. "$(dirname "$(readlink -f "$0")")/lib.sh"
 BIN="$KIT/bin"
 BACKEND_DIR="$(cd "$KIT/../.." && pwd)"
 WEB_DIR="${PREDIGOL_WEB_SRC:-/opt/predigol/web}"
