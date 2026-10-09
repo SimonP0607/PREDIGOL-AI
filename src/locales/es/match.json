@@ -371,22 +371,59 @@
     }
   },
   "analysis": {
-    "title": "Análisis PrediGol",
+    "title": "PrediGol Intelligence",
+    "subtitle": "Los mercados que PrediGol analizó para este partido",
     "verdict": {
       "recommended": "Recomendado",
       "caution": "Con cautela",
       "not_recommended": "No recomendado",
       "no_market": "Sin mercado"
     },
-    "noMarketBanner": "Mercado no observado · No es posible confirmar value todavía",
-    "noMarketHelp": "Sin un precio observado no hay ventaja que medir: la cuota mínima es la que haría falta para que valga la pena según la probabilidad prudente del modelo.",
-    "odds": "Cuota",
-    "oddsAt": "Cuota · {bookmaker}",
-    "model": "Prob. modelo",
-    "market": "Prob. mercado",
-    "fair": "Cuota justa",
-    "minimum": "Cuota mínima",
-    "edge": "Ventaja",
+    "noMarketBanner": "Mercado no observado · no es posible confirmar valor",
+    "cardTitle": "{market} — {selection}",
+    "marketTitle": {
+      "1X2": "Resultado final (1X2)",
+      "OU": "Goles: más/menos de {line}",
+      "BTTS": "Ambos marcan",
+      "DC": "Doble oportunidad",
+      "AH": "Hándicap asiático"
+    },
+    "selectionPhrase": {
+      "OU": {
+        "Over": "Más de {line}",
+        "Under": "Menos de {line}"
+      },
+      "BTTS": {
+        "Yes": "Sí",
+        "No": "No"
+      }
+    },
+    "figure": {
+      "bestOdds": "Mejor cuota",
+      "model": "Prob. PrediGol",
+      "market": "Prob. mercado",
+      "fair": "Cuota justa",
+      "edge": "Ventaja",
+      "minimum": "Cuota mínima aceptable",
+      "edgeHelp": "Probabilidad de PrediGol menos la del mercado, en puntos porcentuales (pp)",
+      "minimumHelp": "La cuota más baja que vale la pena tomar con la probabilidad prudente de PrediGol"
+    },
+    "ppUnit": "pp",
+    "area": "Análisis PrediGol",
+    "why": {
+      "title": "¿Por qué?",
+      "estimate": "PrediGol estima {model} frente a {market} del mercado",
+      "estimateOnly": "PrediGol estima una probabilidad de {model} para esta selección",
+      "edge": "Ventaja de {edge} pp sobre el precio justo del mercado",
+      "minimum": "Solo tendría valor con una cuota de {min} o más",
+      "none": "Todavía no hay cifras suficientes para explicarlo."
+    },
+    "risk": {
+      "title": "¿Qué puede salir mal?",
+      "variance": "Aun así, esta selección falla aproximadamente {n} de cada 10 veces",
+      "noPrice": "Sin un precio observado no se puede confirmar que tenga valor.",
+      "none": "Ninguna selección es segura: también puede fallar."
+    },
     "decision": {
       "APPROVE": "La revisión de contexto lo confirma",
       "DOWNGRADE": "La revisión pide cautela",
@@ -394,7 +431,6 @@
       "ABSTAIN": "La revisión no pudo juzgarlo"
     },
     "confidence": "confianza {value}",
-    "risks": "Riesgos",
     "reason": {
       "value": "Pasa el filtro de valor al precio actual.",
       "edge_insufficient": "La ventaja del modelo no alcanza para recomendarlo.",
@@ -423,6 +459,50 @@
       "models": "modelos",
       "standings": "tabla",
       "stats": "estadísticas"
+    },
+    "parlay": {
+      "add": "Agregar a mi parlay",
+      "added": "En mi parlay",
+      "remove": "Quitar de mi parlay",
+      "replaces": "Reemplaza la otra selección de este partido en tu parlay: una por partido"
+    },
+    "brief": {
+      "title": "Lectura del día",
+      "uncertainty": {
+        "low": "Incertidumbre: baja",
+        "medium": "Incertidumbre: media",
+        "high": "Incertidumbre: alta"
+      },
+      "quality": {
+        "good": "Calidad de datos: buena",
+        "fair": "Calidad de datos: regular",
+        "poor": "Calidad de datos: pobre"
+      },
+      "signals": "Señales",
+      "reason": {
+        "candidate": "Candidato a pick",
+        "model_market_gap": "Brecha entre modelo y mercado",
+        "market_move": "Movimiento del mercado",
+        "important_news": "Noticia importante",
+        "high_uncertainty": "Incertidumbre alta",
+        "contradiction": "Datos contradictorios",
+        "brief_flag": "Señalado por la lectura"
+      },
+      "injuries": "Bajas y dudas",
+      "injury": "{team} · {player} · {status}",
+      "injuryNoStatus": "{team} · {player}",
+      "status": {
+        "out": "baja",
+        "missing": "baja",
+        "doubtful": "duda",
+        "questionable": "duda",
+        "suspended": "sancionado",
+        "injured": "lesionado"
+      },
+      "changes": "Cambios recientes",
+      "byModel": "Escrito por {model} (L1)",
+      "byRules": "Escrito por las reglas",
+      "aiModel": "PrediGol AI"
     }
   }
 }

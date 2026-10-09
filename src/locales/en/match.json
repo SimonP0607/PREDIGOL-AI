@@ -371,22 +371,59 @@
     }
   },
   "analysis": {
-    "title": "PrediGol analysis",
+    "title": "PrediGol Intelligence",
+    "subtitle": "The markets PrediGol analysed for this match",
     "verdict": {
       "recommended": "Recommended",
       "caution": "With caution",
       "not_recommended": "Not recommended",
       "no_market": "No market"
     },
-    "noMarketBanner": "Market not observed · Value cannot be confirmed yet",
-    "noMarketHelp": "Without an observed price there is no edge to measure: the minimum odds are what it would take to be worth it at the model's prudent probability.",
-    "odds": "Odds",
-    "oddsAt": "Odds · {bookmaker}",
-    "model": "Model prob.",
-    "market": "Market prob.",
-    "fair": "Fair odds",
-    "minimum": "Minimum odds",
-    "edge": "Edge",
+    "noMarketBanner": "Market not observed · value cannot be confirmed",
+    "cardTitle": "{market} — {selection}",
+    "marketTitle": {
+      "1X2": "Full-time result (1X2)",
+      "OU": "Goals: over/under {line}",
+      "BTTS": "Both teams to score",
+      "DC": "Double chance",
+      "AH": "Asian handicap"
+    },
+    "selectionPhrase": {
+      "OU": {
+        "Over": "Over {line}",
+        "Under": "Under {line}"
+      },
+      "BTTS": {
+        "Yes": "Yes",
+        "No": "No"
+      }
+    },
+    "figure": {
+      "bestOdds": "Best odds",
+      "model": "PrediGol prob.",
+      "market": "Market prob.",
+      "fair": "Fair odds",
+      "edge": "Edge",
+      "minimum": "Minimum acceptable odds",
+      "edgeHelp": "PrediGol's probability minus the market's, in percentage points (pp)",
+      "minimumHelp": "The lowest odds worth taking at PrediGol's prudent probability"
+    },
+    "ppUnit": "pp",
+    "area": "PrediGol analysis",
+    "why": {
+      "title": "Why?",
+      "estimate": "PrediGol estimates {model} against the market's {market}",
+      "estimateOnly": "PrediGol puts this selection's chance at {model}",
+      "edge": "An edge of {edge} pp over the market's fair price",
+      "minimum": "It would only be worth it at odds of {min} or more",
+      "none": "Not enough figures to explain it yet."
+    },
+    "risk": {
+      "title": "What could go wrong?",
+      "variance": "Even so, this selection loses about {n} times in 10",
+      "noPrice": "Without an observed price there is no way to confirm it has value.",
+      "none": "No selection is a sure thing: this one can lose too."
+    },
     "decision": {
       "APPROVE": "The context review confirms it",
       "DOWNGRADE": "The review advises caution",
@@ -394,7 +431,6 @@
       "ABSTAIN": "The review could not judge it"
     },
     "confidence": "confidence {value}",
-    "risks": "Risks",
     "reason": {
       "value": "Passes the value filter at the current price.",
       "edge_insufficient": "The model's edge is not enough to recommend it.",
@@ -423,6 +459,50 @@
       "models": "models",
       "standings": "table",
       "stats": "statistics"
+    },
+    "parlay": {
+      "add": "Add to my parlay",
+      "added": "In my parlay",
+      "remove": "Remove from my parlay",
+      "replaces": "Replaces the other selection of this match in your parlay: one per match"
+    },
+    "brief": {
+      "title": "Today's reading",
+      "uncertainty": {
+        "low": "Uncertainty: low",
+        "medium": "Uncertainty: medium",
+        "high": "Uncertainty: high"
+      },
+      "quality": {
+        "good": "Data quality: good",
+        "fair": "Data quality: fair",
+        "poor": "Data quality: poor"
+      },
+      "signals": "Signals",
+      "reason": {
+        "candidate": "Pick candidate",
+        "model_market_gap": "Model–market gap",
+        "market_move": "Market move",
+        "important_news": "Important news",
+        "high_uncertainty": "High uncertainty",
+        "contradiction": "Contradictory data",
+        "brief_flag": "Flagged by the reading"
+      },
+      "injuries": "Absences and doubts",
+      "injury": "{team} · {player} · {status}",
+      "injuryNoStatus": "{team} · {player}",
+      "status": {
+        "out": "out",
+        "missing": "out",
+        "doubtful": "doubtful",
+        "questionable": "doubtful",
+        "suspended": "suspended",
+        "injured": "injured"
+      },
+      "changes": "Recent changes",
+      "byModel": "Written by {model} (L1)",
+      "byRules": "Written by the rules",
+      "aiModel": "PrediGol AI"
     }
   }
 }

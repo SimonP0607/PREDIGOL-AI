@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { DATA_MODE } from "@/lib/api/mode";
 import { DemoRegion } from "@/components/system/DataSources";
-import { AnalystLive } from "@/live/AnalystLive";
+import { AiResearchLive } from "@/live/AiResearchLive";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Sparkles } from "lucide-react";
@@ -34,7 +34,7 @@ export const Route = createFileRoute("/admin/ai-analyst")({
 });
 
 function RouteComponent() {
-  if (DATA_MODE !== "mock") return <AnalystLive />;
+  if (DATA_MODE !== "mock") return <AiResearchLive />;
   return (
     <DemoRegion>
       <AnalystPage />

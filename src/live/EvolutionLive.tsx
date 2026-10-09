@@ -1,14 +1,18 @@
 /**
- * Evolución - the owner's decision center. What the AI layer did today (matches analysed, news, injuries,
- * line-ups, market moves, reviews and their decisions, cost), what results taught (findings, errors), and
- * the hypotheses waiting for the owner: RECHAZAR, INVESTIGAR or APROBAR EXPERIMENTO. An approved experiment
- * goes through backtest and shadow; only a DONE experiment whose gate passed can be PROMOTED, by the owner,
- * typing the word. There is no "activate automatically": nothing here changes a rule, a model or a pick.
+ * Evolución - the owner's decision center. EL DÍA EN PREDIGOL AI (what the AI did on a Bogotá day: matches,
+ * searches, news, injuries, line-ups, candidates and decisions, post-mortems, findings, hypotheses, cost), QUÉ
+ * APRENDIÓ PREDIGOL HOY (the notes written that day, with their evidence) and MEJORAS PROPUESTAS (the hypotheses
+ * waiting for the owner: RECHAZAR, INVESTIGAR or APROBAR EXPERIMENTO). Below: findings, errors and every
+ * hypothesis by stage. An approved experiment goes through backtest and shadow; only a DONE experiment whose
+ * gate passed can be PROMOTED, by the owner, typing the word. There is no "activate automatically": nothing
+ * here changes a rule, a model or a pick.
  */
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { t } from "@/lib/i18n";
+import { t, translateOr } from "@/lib/i18n";
 import { localInt } from "@/lib/i18n/format";
+import { int } from "@/lib/format";
+import { todayKey } from "@/lib/time";
 import { dueReason } from "./evolutionDue";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel, WarningBanner } from "@/components/primitives/Panel";
@@ -25,17 +29,21 @@ import type {
   MemoryEntry,
 } from "@/lib/api/v1/types_ai";
 import type { EvolutionDashboard } from "@/lib/api/v1/types_ai_layer";
+import { DayInput, Note, NoteCard, ProposalCard, Stat, StatGrid } from "./AiBits";
 import {
+  AI_TZ,
   DECISION_TONE,
   HYPOTHESIS_TONE,
   PROMOTE_WORD,
   canPromote,
   decisionsFor,
+  gateTone,
   groupOf,
   promoteUnlocked,
+  usd,
   type HypothesisGroup,
 } from "./aiModel";
-import { isoDay, utcDateTime } from "./format";
+import { utcDateTime } from "./format";
 
 const STEPS = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"] as const;
 const TARGETS: HypothesisTarget[] = [
@@ -51,20 +59,30 @@ const TARGETS: HypothesisTarget[] = [
   "other",
 ];
 const GROUPS: HypothesisGroup[] = ["pending", "promotable", "experiment", "closed"];
+/** EL DÍA EN PREDIGOL AI, in the owner's order. */
 const COUNT_KEYS = [
   "matches_analyzed",
+  "with_market",
+  "searches",
   "news",
   "injuries",
   "lineups",
-  "market_moves",
-  "picks_evaluated",
+  "candidates",
   "approved",
   "downgraded",
   "rejected",
+  "postmortems",
+  "losses_investigated",
+  "findings",
+  "hypotheses",
+] as const;
+/** Also reported, shown smaller when the API sends them. */
+const MORE_KEYS = [
+  "market_moves",
+  "picks_evaluated",
   "abstained",
   "llm_reviews",
-  "postmortems",
-  "hypotheses",
+  "deep_reviews",
 ] as const;
 const INPUT =
   "w-full rounded-md border border-border bg-card px-2 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
@@ -76,71 +94,116 @@ const DECISION_STYLE: Record<HypothesisDecision, string> = {
 
 function invalidate(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ["v1", "evolution"] });
+  // the same proposals are read-only in IA e investigación > APRENDIZAJE
+  void qc.invalidateQueries({ queryKey: ["v1", "ai-layer", "learning"] });
 }
 
 // ── the day ──────────────────────────────────────────────────────────────────
 
-function DayDashboard({ day, onDay }: { day: string; onDay: (d: string) => void }) {
+/** EL DÍA EN PREDIGOL AI: what the AI did on a Bogotá day, tile by tile, and its shadow gate. */
+function DayDashboard({
+  day,
+  onDay,
+  max,
+}: {
+  day: string;
+  onDay: (d: string) => void;
+  max: string;
+}) {
   const q = useLiveQuery(live.evolutionDashboard(day));
   const d: EvolutionDashboard | null = q.data?.data ?? null;
   const combined = d?.shadow.find((s) => s.engine === "combined") ?? null;
+  const more = d ? MORE_KEYS.filter((k) => d.counts[k] !== undefined) : [];
   return (
     <Panel
       title={t("ai.evolution.dashboard.title")}
       subtitle={t("ai.evolution.dashboard.subtitle")}
       actions={
-        <input
-          type="date"
-          value={day}
-          max={isoDay(new Date())}
-          onChange={(e) => e.target.value && onDay(e.target.value)}
-          aria-label={t("ai.evolution.dashboard.day")}
-          className="h-8 rounded-md border border-border bg-card px-2 text-xs"
-        />
+        <DayInput value={day} onChange={onDay} max={max} label={t("ai.evolution.dashboard.day")} />
       }
     >
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       {q.isLoading ? <TableSkeleton rows={2} cols={6} /> : null}
       {d ? (
         <div className="space-y-3">
-          <dl
-            className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7"
-            data-testid="evolution-counts"
-          >
+          <StatGrid className="lg:grid-cols-5" testId="evolution-counts">
             {COUNT_KEYS.map((k) => (
-              <div key={k} className="rounded-md border border-border bg-card px-2.5 py-2">
-                <dt className="text-caption uppercase tracking-wider text-subtle-foreground">
-                  {t(`ai.evolution.dashboard.counts.${k}`)}
-                </dt>
-                <dd className="numeric text-base font-semibold">{localInt(d.counts[k] ?? 0)}</dd>
-              </div>
+              <Stat
+                key={k}
+                label={t(`ai.evolution.dashboard.counts.${k}`)}
+                value={int(d.counts[k])}
+              />
             ))}
-            <div className="rounded-md border border-border bg-card px-2.5 py-2">
-              <dt className="text-caption uppercase tracking-wider text-subtle-foreground">
-                {t("ai.evolution.dashboard.cost")}
-              </dt>
-              <dd className="numeric text-base font-semibold">
-                US$ {Number(d.cost_usd).toFixed(4)}
-              </dd>
-            </div>
-          </dl>
+            <Stat label={t("ai.evolution.dashboard.cost")} value={usd(d.cost_usd)} />
+          </StatGrid>
+          {more.length ? (
+            <ul className="flex flex-wrap items-center gap-1.5 text-caption text-subtle-foreground">
+              <li className="uppercase tracking-wider">{t("ai.evolution.dashboard.more")}</li>
+              {more.map((k) => (
+                <li key={k} className="rounded border border-border bg-elevated/50 px-1.5 py-0.5">
+                  {t(`ai.evolution.dashboard.counts.${k}`)}{" "}
+                  <span className="numeric text-foreground">{int(d.counts[k])}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2 text-caption text-subtle-foreground">
             <span>{t("ai.evolution.dashboard.gate")}</span>
-            <StatusBadge
-              tone={
-                combined?.verdict === "pass"
-                  ? "positive"
-                  : combined?.verdict === "fail"
-                    ? "negative"
-                    : "neutral"
-              }
-            >
-              {t(`ai.layer.gate.${combined?.verdict ?? "none"}`)}
+            <StatusBadge tone={gateTone(combined?.verdict)}>
+              {translateOr(
+                `ai.layer.gate.${combined?.verdict ?? "none"}`,
+                combined?.verdict ?? "—",
+              )}
             </StatusBadge>
             <span>{t("ai.evolution.dashboard.gateHelp")}</span>
           </div>
         </div>
       ) : null}
+    </Panel>
+  );
+}
+
+/** QUÉ APRENDIÓ PREDIGOL HOY: the notes written that day, each with its evidence. */
+function Learned({ day }: { day: string }) {
+  const q = useLiveQuery(live.evolutionDashboard(day));
+  if (!q.isSuccess) return null;
+  const notes = q.data.data?.learned ?? [];
+  return (
+    <Panel title={t("ai.evolution.learned.title")} subtitle={t("ai.evolution.learned.subtitle")}>
+      {notes.length === 0 ? (
+        <Note>{t("ai.evolution.learned.empty")}</Note>
+      ) : (
+        <ul className="space-y-2" data-testid="evolution-learned">
+          {notes.map((n) => (
+            <NoteCard key={n.id} note={n} />
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+/** MEJORAS PROPUESTAS: what each would rest on and cost, and the owner's three answers. */
+function Proposals({ day }: { day: string }) {
+  const q = useLiveQuery(live.evolutionDashboard(day));
+  if (!q.isSuccess) return null;
+  const proposals = q.data.data?.proposals ?? [];
+  return (
+    <Panel
+      title={t("ai.evolution.proposals.title")}
+      subtitle={t("ai.evolution.proposals.subtitle")}
+    >
+      {proposals.length === 0 ? (
+        <Note>{t("ai.evolution.proposals.empty")}</Note>
+      ) : (
+        <ul className="space-y-2" data-testid="evolution-proposals">
+          {proposals.map((p) => (
+            <ProposalCard key={p.id} p={p}>
+              <Decide id={p.id} status={p.status} />
+            </ProposalCard>
+          ))}
+        </ul>
+      )}
     </Panel>
   );
 }
@@ -162,7 +225,7 @@ function Findings({ day }: { day: string }) {
                     f.kind.endsWith("failure") || f.kind === "context_error" ? "negative" : "info"
                   }
                 >
-                  {t(`ai.layer.memoryKind.${f.kind}`)}
+                  {translateOr(`ai.layer.memoryKind.${f.kind}`, f.kind)}
                 </StatusBadge>
                 <span>
                   {f.entity_type}:{f.entity_id}
@@ -222,14 +285,15 @@ function Errors({ day }: { day: string }) {
 
 // ── hypotheses ──────────────────────────────────────────────────────────────
 
-function Decide({ h }: { h: Hypothesis }) {
+/** RECHAZAR, INVESTIGAR or APROBAR EXPERIMENTO for a hypothesis or a proposal - none changes a rule or a model. */
+function Decide({ id, status }: { id: number; status: string }) {
   const [note, setNote] = useState("");
   const qc = useQueryClient();
   const decide = useMutation({
-    mutationFn: (decision: HypothesisDecision) => v1.decideHypothesis(h.id, decision, note),
+    mutationFn: (decision: HypothesisDecision) => v1.decideHypothesis(id, decision, note),
     onSuccess: () => invalidate(qc),
   });
-  const options = decisionsFor(h.status);
+  const options = decisionsFor(status);
   if (!options.length) return null;
   return (
     <div className="space-y-2">
@@ -351,7 +415,7 @@ function HypothesisCard({ h }: { h: Hypothesis }) {
           })}
         </p>
       ) : null}
-      <Decide h={h} />
+      <Decide id={h.id} status={h.status} />
       <Promote h={h} />
       {h.decided_at && !decisionsFor(h.status).length ? (
         <p className="text-caption text-subtle-foreground">
@@ -541,7 +605,9 @@ function Honesty() {
 export function EvolutionLive() {
   const q = useLiveQuery(live.evolution);
   const d = q.data?.data ?? null;
-  const [day, setDay] = useState(() => isoDay(new Date()));
+  // The AI's day is Bogotá's (the API's default "today" too), not the browser's UTC date.
+  const today = todayKey(AI_TZ);
+  const [day, setDay] = useState(today);
   return (
     <div className="space-y-4">
       <PageHeader
@@ -549,7 +615,11 @@ export function EvolutionLive() {
         description={t("admin.pages.evolution.description")}
       />
       <WarningBanner tone="info">{t("ai.evolution.noAuto")}</WarningBanner>
-      <DayDashboard day={day} onDay={setDay} />
+      <DayDashboard day={day} onDay={setDay} max={today} />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Learned day={day} />
+        <Proposals day={day} />
+      </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <Findings day={day} />
         <Errors day={day} />

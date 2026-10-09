@@ -493,7 +493,7 @@ function MyParlays() {
     </button>
   );
   return (
-    <section className="space-y-3" data-testid="my-parlays">
+    <section id="my-parlays" className="scroll-mt-24 space-y-3" data-testid="my-parlays">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <SectionHeader
           title={t("records.mine.parlays.title")}

@@ -190,7 +190,7 @@
       "model_code_changed": "the model code changed ({before} → {after})",
       "four_weeks": "the last run is four weeks old"
     },
-    "noAuto": "There is no \"activate automatically\" here. The AI and the system only propose; you decide: REJECT, INVESTIGATE or APPROVE EXPERIMENT. An approved experiment goes through backtest and shadow, and only with its gate passed can you PROMOTE it yourself.",
+    "noAuto": "Nothing changes a model or a rule automatically: every proposal needs an experiment, backtesting, shadow and your approval.",
     "dashboard": {
       "title": "The day in PrediGol AI",
       "subtitle": "What the decision layer did on this day (Bogota time).",
@@ -209,11 +209,18 @@
         "abstained": "No judgement",
         "llm_reviews": "Model reviews",
         "postmortems": "Post-mortems",
-        "hypotheses": "New hypotheses"
+        "hypotheses": "New hypotheses",
+        "with_market": "With a market",
+        "searches": "Searches",
+        "candidates": "Candidates",
+        "losses_investigated": "Losses investigated",
+        "findings": "Findings",
+        "deep_reviews": "Deep reviews"
       },
       "cost": "AI cost of the day",
       "gate": "The AI's shadow gate:",
-      "gateHelp": "until it passes, reviews are recorded but filter nothing users see."
+      "gateHelp": "until it passes, reviews are recorded but filter nothing users see.",
+      "more": "Also"
     },
     "findings": {
       "title": "Findings",
@@ -269,6 +276,22 @@
       "s6": "SHADOW and MARKET: what passes its backtest is followed in shadow against the market before anyone sees it.",
       "s7": "EVALUATION: the result is judged against its gate and kept with the hypothesis.",
       "s8": "PROMOTION: nothing reaches users without a passed gate AND your explicit promotion. The AI never promotes."
+    },
+    "learned": {
+      "title": "What PrediGol learned today",
+      "subtitle": "Notes written that day from the results, with their evidence. An observation is not a rule.",
+      "empty": "Nothing learned recorded that day yet."
+    },
+    "proposals": {
+      "title": "Proposed improvements",
+      "subtitle": "Hypotheses awaiting your decision. None changes anything by itself.",
+      "empty": "No proposed improvement awaits a decision.",
+      "hypothesis": "Hypothesis",
+      "rationale": "Rationale",
+      "evidence": "Evidence",
+      "nMatches": "Number of matches",
+      "impact": "Potential impact",
+      "cost": "Cost of investigating it"
     }
   },
   "layer": {
@@ -470,14 +493,23 @@
       "profile": "Profile",
       "day": "Per day",
       "month": "Per month",
-      "worstMonth": "Worst case / month"
+      "worstMonth": "Worst case / month",
+      "units": "Unit costs",
+      "unitsHelp": "What each piece of the AI's work costs in each period.",
+      "byLevel": "Spend by level",
+      "byLevelHelp": "L1 economical brief · L2 intermediate review · L3 strong review · web searches.",
+      "searches": "Searches",
+      "failed": "Failed"
     },
     "profile": {
       "economico": "Economy (Anthropic)",
       "economico_openai": "Economy (OpenAI)",
       "equilibrado": "Balanced (Anthropic)",
       "equilibrado_gemini": "Balanced (Gemini)",
-      "maxima_calidad": "Maximum quality"
+      "maxima_calidad": "Maximum quality",
+      "equilibrado_openai": "Balanced (OpenAI)",
+      "equilibrado_deepseek": "Balanced (DeepSeek)",
+      "alta_calidad": "High quality (Anthropic)"
     },
     "shadow": {
       "empty": "No shadow evaluation yet: it is computed every day from finished matches.",
@@ -525,7 +557,394 @@
       "league_pattern": "League pattern",
       "team_pattern": "Team pattern",
       "player_pattern": "Player pattern",
-      "review_quality": "Review quality"
+      "review_quality": "Review quality",
+      "pick_postmortem": "Selection post-mortem"
+    },
+    "budgetCard": {
+      "title": "AI budget",
+      "subtitle": "Current month (Bogotá time) · {days} days left",
+      "subtitleShort": "Current month (Bogotá time)",
+      "monthly": "Monthly budget",
+      "spentToday": "Spent today",
+      "spentMonth": "Spent this month",
+      "remaining": "Remaining",
+      "today": "Today's budget",
+      "todayHint": "Target {target} · ceiling {cap}",
+      "projection": "Monthly projection",
+      "projectionHint": "{share} of the budget, at the pace of the last 7 days",
+      "projectionNone": "At the pace of the last 7 days",
+      "adaptive": "Today's budget adapts: the month's pace {pace}/day × today's load ×{load}.",
+      "bar": "Month's spend",
+      "barValue": "{share} of the monthly budget",
+      "stateHelp": {
+        "NORMAL": "Below today's budget: every level is available.",
+        "REDUCED": "Past 100% of today's budget: no L3 (strong) level and no images.",
+        "CHEAP_ONLY": "Past 125% of today's budget: only the economical model (L1), no web search.",
+        "EXHAUSTED": "Today's ceiling reached or the month spent: no model calls, only the rules work."
+      }
+    },
+    "stack": {
+      "title": "Models by level",
+      "subtitle": "Read from the server's configuration; a key is never shown.",
+      "configured": "Configured",
+      "notConfigured": "Not configured",
+      "empty": "The server did not report the levels.",
+      "caps": "Daily caps",
+      "capReviews": "{n} L2 reviews",
+      "capDeep": "{n} deep L3",
+      "capWeb": "web {first} (first) / {pre} (pre-match)"
+    },
+    "efficiency": {
+      "title": "Today's efficiency",
+      "subtitle": "Today's matches with a market (Bogotá): what the AI did and what each thing cost.",
+      "withMarket": "Matches with a market today",
+      "withMarketHint": "of {total} matches today",
+      "analyzed": "Analysed",
+      "analyzedHint": "LLM {llm} · rules {rules}",
+      "escalated": "Escalated",
+      "intermediate": "L2 reviews",
+      "deep": "Deep analyses (L3)",
+      "candidates": "Candidates",
+      "approved": "Approved picks",
+      "approvedHint": "caution {caution} · rejected {rejected} · abstained {abstained}",
+      "searches": "Web searches",
+      "searchesHint": "{news} news items",
+      "cost": "Total cost",
+      "costPerMatch": "Cost / match",
+      "costPerCandidate": "Cost / candidate",
+      "costPerApproved": "Cost / approved pick",
+      "empty": "The server does not report the day's efficiency yet."
+    },
+    "compare": {
+      "title": "Experimental comparison",
+      "subtitle": "The same settled selections, four ways of deciding.",
+      "arm": {
+        "model": "Model alone",
+        "model_rules": "Model + rules",
+        "model_ai": "Model + AI",
+        "market": "Market"
+      },
+      "cols": {
+        "n": "n",
+        "logloss": "Log loss",
+        "brier": "Brier",
+        "ece": "Calibration (ECE)",
+        "roi": "ROI",
+        "clv": "CLV",
+        "ev": "Observed EV"
+      },
+      "units": "{n} u",
+      "gate": "Gate",
+      "sample": "Sample: {selections} selections · {days} days · {rejected} rejected",
+      "marketNote": "The market does not bet: it has no ROI, CLV or EV; it is the reference for log loss, Brier and calibration.",
+      "evNote": "Observed EV: the expected value of the prices taken at the market's probability.",
+      "empty": "No shadow evaluation to compare yet."
+    }
+  },
+  "v2": {
+    "shadowBadge": "Shadow",
+    "shadowLine": "Everything is in SHADOW (evaluation): nothing the AI decides reaches users yet.",
+    "enforcedLine": "Enforcement is on: the AI's reviews already filter what users see.",
+    "bogota": "Bogotá time",
+    "engine": {
+      "llm": "LLM",
+      "rules": "Rules"
+    },
+    "sample": "n = {n}",
+    "class": {
+      "MODEL_ERROR": "Model error",
+      "CONTEXT_ERROR": "Context error",
+      "DATA_ERROR": "Data error",
+      "MARKET_ERROR": "The market knew something",
+      "EXECUTION_ERROR": "Execution error",
+      "NORMAL_VARIANCE": "Normal variance",
+      "UNKNOWN": "No data to judge"
+    },
+    "verdict": {
+      "approved_won": "Approved, won",
+      "approved_lost": "Approved, lost",
+      "caution_won": "Caution, won",
+      "caution_lost": "Caution, lost",
+      "rejected_would_have_won": "Rejected, would have won",
+      "rejected_correctly": "Rejected correctly",
+      "unreviewed_won": "Not reviewed, won",
+      "unreviewed_lost": "Not reviewed, lost",
+      "push": "Push (stake returned)"
+    },
+    "reason": {
+      "candidate": "Candidate",
+      "model_market_gap": "Model-market gap",
+      "market_move": "Price move",
+      "important_news": "Important news",
+      "high_uncertainty": "High uncertainty",
+      "contradiction": "Contradictory sources",
+      "brief_flag": "Flagged by the L1 brief"
+    },
+    "pass": {
+      "first": "First (00:05)",
+      "pre": "Pre-match",
+      "final": "Final",
+      "request": "On request"
+    },
+    "question": {
+      "expected": "What did PrediGol expect?",
+      "happened": "What happened?",
+      "model": "Did the model fail?",
+      "information": "Did the information fail?",
+      "ignored_signal": "Was a signal ignored?",
+      "odds_moved": "Did the price move?",
+      "key_absence": "Was a key player missing?",
+      "lineup_changed": "Did the line-up change?",
+      "uncertainty": "Was the uncertainty underestimated?",
+      "variance": "Was it just variance?"
+    },
+    "answer": {
+      "yes": "Yes",
+      "no": "No",
+      "unknown": "No data",
+      "against": "Against",
+      "favour": "In favour",
+      "stable": "Stable",
+      "na": "Not applicable"
+    },
+    "settled": {
+      "win": "Won",
+      "loss": "Lost",
+      "half_win": "Half won",
+      "half_loss": "Half lost",
+      "push": "Push",
+      "void": "Void",
+      "pending": "Pending",
+      "unknown": "Not settled"
+    },
+    "uncertainty": {
+      "low": "Low uncertainty",
+      "medium": "Medium uncertainty",
+      "high": "High uncertainty"
+    },
+    "quality": {
+      "good": "Good data",
+      "fair": "Fair data",
+      "poor": "Poor data"
+    },
+    "injury": {
+      "out": "Out",
+      "doubtful": "Doubtful",
+      "returns": "Returns",
+      "starts": "Starts"
+    },
+    "role": {
+      "daily_pick": "Pick of the day",
+      "parlay_leg": "Parlay leg",
+      "llm": "Reviewed by an LLM",
+      "reviewed": "Reviewed",
+      "rejected": "Rejected"
+    },
+    "noteKind": {
+      "summary": "Summary",
+      "approved": "Approved",
+      "rejected": "Rejections",
+      "context": "Context",
+      "news": "News",
+      "injuries": "Absences",
+      "market": "Market",
+      "model": "Model",
+      "sources": "Sources",
+      "lesson": "Lesson"
+    },
+    "level": {
+      "L1": "L1 · economical",
+      "L2": "L2 · intermediate",
+      "L3": "L3 · strong",
+      "web": "Web"
+    },
+    "evidence": {
+      "items_one": "{n} item",
+      "items_other": "{n} items"
+    },
+    "evidenceKey": {
+      "n_matches": "Matches",
+      "n": "Sample",
+      "z": "z",
+      "losses": "Losses",
+      "count": "Cases",
+      "share": "Share",
+      "tier": "Source level",
+      "wrong": "Proved wrong",
+      "right": "Confirmed",
+      "signal": "Signal",
+      "roi_with": "ROI with the signal",
+      "roi_without": "ROI without the signal",
+      "n_with": "With the signal",
+      "n_without": "Without the signal",
+      "competition_id": "Competition",
+      "mean_logloss_diff": "Log loss against the close",
+      "class": "Class",
+      "memory_ids": "Memory",
+      "memory_refs": "Memory cited",
+      "postmortems": "Post-mortems",
+      "verdicts": "Verdicts",
+      "classes": "Classes",
+      "would_have_won": "Would have won",
+      "rejected_correctly": "Rejected correctly",
+      "mean_clv_approved": "Mean CLV of the approved",
+      "mean_gap": "Mean gap to the close",
+      "domains": "Domains",
+      "note_refs": "Notes cited",
+      "by_tier": "By source level",
+      "postmortem_findings": "Checks",
+      "impact": "Impact",
+      "investigation_cost": "Cost of investigating it"
+    },
+    "costs": {
+      "requests_one": "{n} call",
+      "requests_other": "{n} calls",
+      "noLevel": "No spend in this period.",
+      "perMatch": "Per match",
+      "perAnalysis": "Per analysis (L1)",
+      "perSearch": "Per search",
+      "perReviewedPick": "Per reviewed pick",
+      "perApproved": "Per approved pick",
+      "perSelected": "Per selected pick"
+    },
+    "alerts": {
+      "title": "Alerts this month",
+      "none": "No alerts this month.",
+      "reached": "{threshold} threshold reached on {when}: {spent} spent of {budget}.",
+      "pending": "{threshold} threshold: not reached yet."
+    }
+  },
+  "research": {
+    "tabs": {
+      "label": "AI research sections",
+      "today": "Today",
+      "research": "Research",
+      "postmortems": "Post-mortems",
+      "learning": "Learning",
+      "sources": "Sources",
+      "costs": "Costs"
+    },
+    "day": "Day",
+    "today": {
+      "title": "Matches with a market",
+      "subtitle": "{day} · Bogotá time",
+      "withMarket": "With a market",
+      "withoutMarket": "Without a market (no AI)",
+      "passes": "Passes done",
+      "escalated": "Escalated",
+      "staleOdds": "Stale prices (over 12 h)",
+      "cost": "Cost of the day",
+      "planOpened": "Plan opened",
+      "planNotOpened": "Not opened",
+      "empty": "No matches with a market that day: without a market the AI does not work.",
+      "important": "Important",
+      "escalate": "Escalated",
+      "staleChip": "Price {age} old",
+      "noPasses": "No pass yet",
+      "passesTitle": "Passes",
+      "brief": "L1 brief",
+      "noBrief": "No L1 brief for this match yet.",
+      "reasons": "Why it escalated",
+      "injuries": "Absences and doubts",
+      "changes": "Changes",
+      "context": "Context",
+      "selections": "Reviewed selections",
+      "noSelections": "No selection went to review.",
+      "odds": "Odds",
+      "model": "PrediGol",
+      "market": "Market",
+      "edge": "Edge",
+      "openMatch": "Open match",
+      "selectionCount_one": "{n} selection",
+      "selectionCount_other": "{n} selections",
+      "matchCost": "Cost {cost}"
+    },
+    "investigations": {
+      "empty": "The AI researched no match that day.",
+      "searchCount_one": "{n} search",
+      "searchCount_other": "{n} searches",
+      "evidenceCount_one": "{n} piece of evidence",
+      "evidenceCount_other": "{n} pieces of evidence",
+      "searches": "Searches",
+      "noSearches": "No web search for this match: provider data only.",
+      "evidence": "Evidence",
+      "noEvidence": "No evidence recorded.",
+      "searchStatus": {
+        "ok": "Done",
+        "failed": "Failed"
+      },
+      "published": "Published",
+      "retrieved": "Retrieved",
+      "lastSeen": "Last seen",
+      "seen_one": "seen {n} time",
+      "seen_other": "seen {n} times",
+      "origin": {
+        "provider": "Provider",
+        "web": "Web",
+        "owner": "Owner"
+      },
+      "newTab": "(opens in a new tab)"
+    },
+    "postmortems": {
+      "verdict": "Verdict",
+      "class": "Class",
+      "all": "All",
+      "empty": "No post-mortems for that day yet.",
+      "emptyFiltered": "No post-mortem that day with these filters.",
+      "odds": "Odds",
+      "close": "Close",
+      "clv": "CLV",
+      "model": "PrediGol",
+      "market": "Market",
+      "questions": "The ten questions",
+      "narrative": "Narrative",
+      "decision": "AI decision",
+      "noDecision": "Not reviewed"
+    },
+    "learning": {
+      "notes": "What PrediGol learned",
+      "notesSubtitle": "Notes from that day's results, with their evidence. An observation is not a rule.",
+      "empty": "No learning notes for that day yet.",
+      "proposals": "Proposed improvements",
+      "proposalsSubtitle": "They await your decision in Evolution; read-only here.",
+      "noProposals": "No proposal awaits a decision.",
+      "decide": "Decide in Evolution"
+    },
+    "sources": {
+      "title": "Sources",
+      "subtitle": "Which domains brought useful evidence and what consulting them cost.",
+      "period": "Period",
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "cols": {
+        "domain": "Source",
+        "tier": "Level",
+        "results": "Queries",
+        "useful": "Useful evidence",
+        "discarded": "Discarded evidence",
+        "cost": "Cost",
+        "utility": "Utility rate"
+      },
+      "empty": "No source statistics in that period yet."
+    },
+    "costs": {
+      "today": "Today",
+      "month": "This month",
+      "requests": "Calls",
+      "searches": "Searches",
+      "total": "Cost",
+      "failed": "Failed",
+      "byLevel": "By level",
+      "byModel": "By model",
+      "units": "Unit costs",
+      "noModel": "No model calls in this period.",
+      "projection": "Month's projection",
+      "projectionValue": "{value} · {share} of the budget",
+      "runRate": "Pace of the last 7 days",
+      "perDay": "{value}/day",
+      "lastDays": "Last days",
+      "budget": "Monthly budget",
+      "spentMonth": "Spent this month"
     }
   }
 }

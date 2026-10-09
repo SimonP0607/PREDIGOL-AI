@@ -59,6 +59,7 @@ export function SelectionActions({
       kickoff_at: sel.kickoff_at,
       odds: sel.odds,
       bookmaker: sel.bookmaker,
+      p_model: sel.p_model ?? null,
     });
 
   return (

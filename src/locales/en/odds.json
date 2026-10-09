@@ -52,5 +52,11 @@
     "time": "Time"
   },
   "openMatch": "Open match",
-  "openMatchLabel": "Open match: {match}"
+  "openMatchLabel": "Open match: {match}",
+  "parlay": {
+    "help": "Tap a price to add it to your parlay, or to remove it.",
+    "add": "Add to my parlay",
+    "remove": "Remove from my parlay",
+    "replaces": "Replaces the other selection of this match in your parlay: one per match"
+  }
 }

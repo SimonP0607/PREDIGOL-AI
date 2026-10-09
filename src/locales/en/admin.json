@@ -61,7 +61,7 @@
     },
     "aiAnalyst": {
       "title": "AI research",
-      "description": "Daily research report with sources, flags on the picks, questions and cost. The AI only informs and flags: it changes no probability, price or pick."
+      "description": "What the AI did with each match of the day, its research with sources, the post-mortems, what it learned, the sources and the cost."
     },
     "competitions": {
       "title": "Competitions",

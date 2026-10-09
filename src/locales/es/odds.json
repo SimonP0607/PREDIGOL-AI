@@ -52,5 +52,11 @@
     "time": "Hora"
   },
   "openMatch": "Abrir partido",
-  "openMatchLabel": "Abrir partido: {match}"
+  "openMatchLabel": "Abrir partido: {match}",
+  "parlay": {
+    "help": "Toca una cuota para agregarla a tu parlay o quitarla.",
+    "add": "Agregar a mi parlay",
+    "remove": "Quitar de mi parlay",
+    "replaces": "Reemplaza la otra selección de este partido en tu parlay: una por partido"
+  }
 }

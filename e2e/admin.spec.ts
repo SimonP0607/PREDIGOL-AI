@@ -196,32 +196,32 @@ test("the Match Center has the Advanced / Audit tab for the owner", async ({ pag
   await assertClean(page, w);
 });
 
-test("AI research: what is configured and spent, the daily report, flags only, every run; the evolution loop", async ({
+test("AI research: today's matches with a market, research, post-mortems, learning, sources and costs; the evolution loop", async ({
   page,
 }, info) => {
-  test.setTimeout(120_000);
+  test.setTimeout(150_000);
   const w = watch(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await go(page, w, "/admin/ai-analyst");
-  await expect(page.getByTestId("ai-status")).toBeVisible();
-  await expect(page.getByText(t.ai.report.title, { exact: true })).toBeVisible();
-  const status = await getJson<{ data: { llm_configured: boolean; missing: string[] } }>(
-    page.request,
-    "/api/v1/admin/ai/status",
-  );
-  expect(status.status).toBe(200);
-  const ai = status.body.data;
-  note(info, `AI: llm ${ai.llm_configured}, missing ${ai.missing.join(", ") || "none"}`);
-  if (ai.missing.length) {
-    await expect(page.getByText(ai.missing[0]!, { exact: false }).first()).toBeVisible();
+  await expect(page.getByTestId("ai-shadow-line").first()).toBeVisible();
+  for (const path of ["today", "research", "postmortems", "learning", "sources", "comparison"]) {
+    const res = await getJson<{ data: unknown }>(page.request, `/api/v1/admin/ai/${path}`);
+    expect(res.status, path).toBe(200);
+    expect(JSON.stringify(res.body)).not.toMatch(/sk-[A-Za-z0-9]/);
   }
-  for (const tab of ["flags", "ask", "usage", "report"] as const) {
-    await page.getByRole("tab", { name: t.ai.tabs[tab], exact: true }).click();
+  const today = await getJson<{ data: { fixtures: unknown[]; without_market: number } }>(
+    page.request,
+    "/api/v1/admin/ai/today",
+  );
+  note(
+    info,
+    `AI today: ${today.body.data.fixtures.length} with a market, ${today.body.data.without_market} without`,
+  );
+  for (const tab of ["research", "postmortems", "learning", "sources", "costs", "today"] as const) {
+    await page.getByRole("tab", { name: t.ai.research.tabs[tab], exact: true }).click();
     await settle(page);
     await assertClean(page, w);
   }
-  await page.getByRole("tab", { name: t.ai.tabs.usage, exact: true }).click();
-  await expect(page.getByText(t.ai.schedule.daily_report)).toBeVisible();
 
   await go(page, w, "/admin/evolution");
   await expect(page.getByText(t.ai.evolution.loop.s5)).toBeVisible();

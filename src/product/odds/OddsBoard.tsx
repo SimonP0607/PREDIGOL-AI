@@ -1,21 +1,25 @@
 /**
  * The board: one row per upcoming fixture with the best price of every selection of the
  * chosen market, next to its fair price. A table on desktop, stacked cards on a phone.
+ * A price is a toggle: a tap adds its selection to "Mi parlay", another takes it out.
  */
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChartLine, ChevronDown, ChevronRight, TrendingUp } from "lucide-react";
-import type { BestMarket, BestOddsFixture, TeamBadge } from "@/lib/api/v1/types_product";
+import type { BestMarket, BestOddsFixture } from "@/lib/api/v1/types_product";
 import { t } from "@/lib/i18n";
 import { fmtLine, fmtOdds, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatDate, formatTime, relativeDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { CompetitionTag, TeamName } from "@/components/football/Logos";
-import { Freshness, OddsPill } from "@/product/shared/Bits";
+import { Freshness } from "@/product/shared/Bits";
 import { Card, EmptyState, SectionHeader } from "@/product/shared/States";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { groupByDay, priceFreshness, priceSlots, type PriceSlot } from "./board";
 import { MovementPanel } from "./MovementPanel";
+import { slotLeg } from "./parlay";
+import { ParlayToggle, PricePill } from "./ParlayPrice";
+import { blockedText, isToggleable, useParlayLeg } from "./useParlayLeg";
 
 export function OddsBoard({
   fixtures,
@@ -35,7 +39,11 @@ export function OddsBoard({
     <section className="space-y-4" data-testid="odds-board">
       <SectionHeader
         title={marketName(market)}
-        subtitle={rows.length ? t("odds.board.summary", { count: rows.length, hours }) : undefined}
+        subtitle={
+          rows.length
+            ? `${t("odds.board.summary", { count: rows.length, hours })} · ${t("odds.parlay.help")}`
+            : undefined
+        }
         icon={<TrendingUp aria-hidden className="h-4 w-4 text-primary" />}
       />
       {rows.length === 0 ? (
@@ -148,7 +156,7 @@ function FixtureRow({ fixture, market }: { fixture: BestOddsFixture; market: str
           </div>
         </div>
 
-        <MarketPrices market={priced} home={fixture.home} away={fixture.away} />
+        <MarketPrices market={priced} fixture={fixture} />
 
         <div className="flex items-center justify-between gap-2 lg:w-36 lg:shrink-0 lg:flex-col lg:items-stretch">
           <button
@@ -203,15 +211,7 @@ function lineText(market: BestMarket): string | null {
   return null;
 }
 
-function MarketPrices({
-  market,
-  home,
-  away,
-}: {
-  market: BestMarket;
-  home: TeamBadge;
-  away: TeamBadge;
-}) {
+function MarketPrices({ market, fixture }: { market: BestMarket; fixture: BestOddsFixture }) {
   const slots = priceSlots(market);
   const line = lineText(market);
   return (
@@ -233,7 +233,7 @@ function MarketPrices({
         )}
       >
         {slots.map((slot) => (
-          <PriceCell key={slot.selection} slot={slot} market={market} home={home} away={away} />
+          <PriceCell key={slot.selection} slot={slot} market={market} fixture={fixture} />
         ))}
       </div>
     </div>
@@ -243,24 +243,24 @@ function MarketPrices({
 function PriceCell({
   slot,
   market,
-  home,
-  away,
+  fixture,
 }: {
   slot: PriceSlot;
   market: BestMarket;
-  home: TeamBadge;
-  away: TeamBadge;
+  fixture: BestOddsFixture;
 }) {
   const q = {
     market_key: market.market_key,
     selection: slot.selection,
     line: market.line,
-    home: home.name,
-    away: away.name,
+    home: fixture.home.name,
+    away: fixture.away.name,
   };
   const short = selectionLabel(q, true);
   const full = selectionLabel(q);
   const p = slot.price;
+  // Null without a price, or outside the slip (nothing to add then).
+  const parlay = useParlayLeg(slotLeg(fixture, market, slot));
 
   if (!p) {
     return (
@@ -278,65 +278,89 @@ function PriceCell({
 
   const edge = toNumber(p.price_edge);
   const bookmaker = p.bookmaker ?? "—";
+  const description = `${t("odds.board.cell", {
+    selection: full,
+    odds: fmtOdds(p.best_odds),
+    bookmaker,
+    fair: fmtOdds(p.fair_odds),
+    edge: fmtSignedPct(p.price_edge),
+  })}${slot.best ? ` ${t("odds.board.bestSr")}` : ""}`;
+  // A quarter line never goes in a parlay; nothing is added once the match has kicked off.
+  const blocked = blockedText(parlay);
+  const inSlip = !!parlay?.inSlip;
+  const cell = cn(
+    "relative flex w-full min-w-0 flex-col gap-1 rounded-lg border px-2 py-2 text-left",
+    inSlip
+      ? "border-gold/70 bg-gold-soft/60 ring-1 ring-gold/40"
+      : slot.best
+        ? "border-gold/40 bg-gold-soft/40"
+        : "border-border bg-background/40",
+  );
+  const body = (
+    <span aria-hidden className="flex min-w-0 flex-col gap-1">
+      <span className="flex items-center justify-between gap-1">
+        <span className="truncate text-xs font-semibold text-foreground">{short}</span>
+        <span
+          title={t("odds.board.edgeHelp")}
+          className={cn(
+            "numeric shrink-0 text-[0.68rem] font-semibold",
+            p.outlier
+              ? "text-warning"
+              : edge !== null && edge > 0
+                ? "text-positive"
+                : "text-subtle-foreground",
+          )}
+        >
+          {fmtSignedPct(p.price_edge)}
+        </span>
+      </span>
+      <PricePill
+        odds={p.best_odds}
+        best={slot.best}
+        dim={!!p.outlier}
+        state={parlay}
+        className="w-full"
+      />
+      {p.outlier ? (
+        <span
+          title={t("odds.board.outlierHelp")}
+          className="truncate text-caption font-medium text-warning"
+        >
+          {t("odds.board.outlier")}
+        </span>
+      ) : null}
+      <span
+        title={t("odds.board.bookmakers", { count: p.n_bookmakers })}
+        className="truncate text-caption text-muted-foreground"
+      >
+        {bookmaker}
+      </span>
+      <span className="numeric truncate text-caption text-subtle-foreground">
+        {t("odds.board.fair", { odds: fmtOdds(p.fair_odds) })}
+      </span>
+    </span>
+  );
   return (
     <div
       data-best={slot.best || undefined}
+      data-in-slip={inSlip || undefined}
       data-testid="odds-cell"
-      className={cn(
-        "relative flex min-w-0 flex-col gap-1 rounded-lg border px-2 py-2",
-        slot.best ? "border-gold/40 bg-gold-soft/40" : "border-border bg-background/40",
-      )}
+      className="min-w-0"
     >
-      <span className="sr-only">
-        {t("odds.board.cell", {
-          selection: full,
-          odds: fmtOdds(p.best_odds),
-          bookmaker,
-          fair: fmtOdds(p.fair_odds),
-          edge: fmtSignedPct(p.price_edge),
-        })}
-        {slot.best ? ` ${t("odds.board.bestSr")}` : ""}
-      </span>
-      <div aria-hidden className="flex min-w-0 flex-col gap-1">
-        <div className="flex items-center justify-between gap-1">
-          <span className="truncate text-xs font-semibold text-foreground">{short}</span>
-          <span
-            title={t("odds.board.edgeHelp")}
-            className={cn(
-              "numeric shrink-0 text-[0.68rem] font-semibold",
-              p.outlier
-                ? "text-warning"
-                : edge !== null && edge > 0
-                  ? "text-positive"
-                  : "text-subtle-foreground",
-            )}
-          >
-            {fmtSignedPct(p.price_edge)}
-          </span>
-        </div>
-        <OddsPill
-          odds={p.best_odds}
-          best={slot.best}
-          className={cn("w-full", p.outlier && "opacity-60")}
-        />
-        {p.outlier ? (
-          <span
-            title={t("odds.board.outlierHelp")}
-            className="truncate text-caption font-medium text-warning"
-          >
-            {t("odds.board.outlier")}
-          </span>
-        ) : null}
-        <span
-          title={t("odds.board.bookmakers", { count: p.n_bookmakers })}
-          className="truncate text-caption text-muted-foreground"
+      {parlay && isToggleable(parlay) ? (
+        <ParlayToggle
+          state={parlay}
+          srLabel={description}
+          className={cn(cell, "transition-colors hover:brightness-110")}
         >
-          {bookmaker}
-        </span>
-        <span className="numeric truncate text-caption text-subtle-foreground">
-          {t("odds.board.fair", { odds: fmtOdds(p.fair_odds) })}
-        </span>
-      </div>
+          {body}
+        </ParlayToggle>
+      ) : (
+        <div className={cell} title={blocked ?? undefined}>
+          <span className="sr-only">{blocked ? `${description} ${blocked}` : description}</span>
+          {body}
+        </div>
+      )}
     </div>
   );
 }

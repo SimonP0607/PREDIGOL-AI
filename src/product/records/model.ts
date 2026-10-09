@@ -1,11 +1,13 @@
 /**
  * The pure rules behind the product's records on screen: which selection is which, what a
- * result means, and the parlay slip a user is assembling (one leg per match, at most ten).
+ * result means, and the parlay slip a user is assembling (one leg per match, at most ten) and
+ * what it adds up to - arithmetic only: the user's own parlay is never sent to an AI.
  */
 import type {
   HistoryGroupKey,
   MarketKey,
   ParlayStatus,
+  ParlayValidation,
   ResultStatus,
 } from "@/lib/api/v1/types_records";
 
@@ -181,4 +183,139 @@ export function slipOdds(legs: readonly SlipLeg[]): number | null {
     product *= o;
   }
   return Math.round(product * 1000) / 1000;
+}
+
+// ── what the slip adds up to: arithmetic on numbers already known, never a model call ──
+
+export type DependencyLevel = "low" | "medium" | "high";
+export type DependencyReason = "shared_team" | "measured_dependence" | "same_competition_day";
+export const DEPENDENCY_LEVELS: readonly DependencyLevel[] = ["low", "medium", "high"] as const;
+export const DEPENDENCY_REASONS: readonly DependencyReason[] = [
+  "shared_team",
+  "measured_dependence",
+  "same_competition_day",
+] as const;
+
+/** A probability as the API sends it ("0.5432"): a number in (0, 1], otherwise null. */
+export function toProbability(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 && n <= 1 ? n : null;
+}
+
+/**
+ * Every leg wins, were the legs independent: the product of their PrediGol probabilities.
+ * Null when there is no leg or any leg's probability is missing or invalid.
+ */
+export function slipProbability(
+  legs: readonly { p_model?: string | number | null | undefined }[],
+): number | null {
+  if (legs.length === 0) return null;
+  let product = 1;
+  for (const l of legs) {
+    const p = toProbability(l.p_model);
+    if (p === null) return null;
+    product *= p;
+  }
+  return product;
+}
+
+function teamKey(name: string): string {
+  return name.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/** Two legs share a team (by name, ignoring case and spacing): their results are linked. */
+export function sharedTeamHint(legs: readonly { home: string; away: string }[]): boolean {
+  const seen = new Set<string>();
+  for (const l of legs) {
+    const teams = new Set([teamKey(l.home), teamKey(l.away)].filter((k) => k !== ""));
+    for (const team of teams) if (seen.has(team)) return true;
+    for (const team of teams) seen.add(team);
+  }
+  return false;
+}
+
+export function isDependencyLevel(value: unknown): value is DependencyLevel {
+  return (DEPENDENCY_LEVELS as readonly unknown[]).includes(value);
+}
+
+export function isDependencyReason(value: unknown): value is DependencyReason {
+  return (DEPENDENCY_REASONS as readonly unknown[]).includes(value);
+}
+
+export interface DependencyView {
+  level: DependencyLevel;
+  /** Known reasons only, each once, in the server's order. */
+  reasons: DependencyReason[];
+}
+
+/** What the server checked (POST /me/parlays/validate: rules and arithmetic, no AI). */
+export type ServerCheck = Pick<
+  ParlayValidation,
+  "estimated_probability" | "dependency" | "correlation"
+>;
+
+/** The server's word on dependence; an answer without a level only said whether legs are independent. */
+export function dependencyOf(server: ServerCheck): DependencyView | null {
+  const level = server.dependency?.level;
+  if (isDependencyLevel(level)) {
+    const reasons = [...new Set(server.dependency?.reasons ?? [])].filter(isDependencyReason);
+    return { level, reasons };
+  }
+  const independent = server.correlation?.independent;
+  if (independent === false) return { level: "medium", reasons: [] };
+  if (independent === true) return { level: "low", reasons: [] };
+  return null;
+}
+
+/** The reasons worth saying: a measured dependence already says the legs share a competition and day. */
+export function explainedReasons(reasons: readonly DependencyReason[]): DependencyReason[] {
+  return reasons.includes("measured_dependence")
+    ? reasons.filter((r) => r !== "same_competition_day")
+    : [...reasons];
+}
+
+export interface SlipEstimate {
+  /** Null: not known yet. "hint": the client saw two legs share a team; the server's answer replaces it. */
+  dependency: (DependencyView & { source: "server" | "hint" }) | null;
+  /**
+   * Every leg wins. "server": PrediGol's estimate adjusted for the measured dependence; "product": the
+   * plain product of the legs' probabilities, given only while nothing says the legs depend on each other.
+   * Null: not known, or only a blind product of dependent legs was available.
+   */
+  probability: { value: number; source: "server" | "product" } | null;
+}
+
+/**
+ * What the slip's summary may honestly say. The server's answer wins once it has one. Before it,
+ * the client says what it can at once: a shared team means high dependence (and no product), and
+ * otherwise the product of the legs' probabilities stands as a provisional figure. Never a blind
+ * product when the dependence is medium or high, or could not be checked.
+ */
+export function slipEstimate(
+  legs: readonly { home: string; away: string; p_model?: string | number | null | undefined }[],
+  server: ServerCheck | null,
+  failed = false,
+): SlipEstimate {
+  const hint: SlipEstimate["dependency"] = sharedTeamHint(legs)
+    ? { level: "high", reasons: ["shared_team"], source: "hint" }
+    : null;
+  const product = slipProbability(legs);
+  if (server) {
+    const told = dependencyOf(server);
+    const dependency: SlipEstimate["dependency"] = told ? { ...told, source: "server" } : hint;
+    const estimated = toProbability(server.estimated_probability);
+    if (estimated !== null)
+      return { dependency, probability: { value: estimated, source: "server" } };
+    const independent = dependency?.level === "low";
+    return {
+      dependency,
+      probability: independent && product !== null ? { value: product, source: "product" } : null,
+    };
+  }
+  return {
+    dependency: hint,
+    probability:
+      !failed && hint === null && product !== null ? { value: product, source: "product" } : null,
+  };
 }

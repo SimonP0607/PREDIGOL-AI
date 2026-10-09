@@ -73,7 +73,7 @@
     "save": "Save",
     "saved": "Saved",
     "unsave": "Remove from my picks",
-    "addToParlay": "Add to parlay",
+    "addToParlay": "Add to my parlay",
     "inParlay": "In your parlay",
     "removeFromParlay": "Remove from parlay",
     "started": "The match has started",
@@ -96,16 +96,24 @@
   "slip": {
     "title": "My parlay",
     "subtitle": "One selection per match, {min} to {max}.",
+    "count": "{count} of {max} selections",
     "open_one": "My parlay · {count}",
     "open_other": "My parlay · {count}",
     "empty": "Your parlay is empty",
-    "emptyBody": "Tap a price on a match, or “Add to parlay” on a pick.",
     "name": "Name (optional)",
     "namePlaceholder": "My parlay",
     "save": "Save parlay",
     "saving": "Saving…",
     "clear": "Clear",
+    "history": "View history",
     "remove": "Remove",
+    "removeLeg": "Remove from parlay: {selection} · {match}",
+    "openMatch": "Open match",
+    "openMatchLabel": "Open the match {match}",
+    "viewAnalysis": "View analysis",
+    "viewAnalysisLabel": "View the analysis of {match}",
+    "legProbability": "PrediGol",
+    "legProbabilityHelp": "PrediGol's probability for this selection",
     "combined": "Combined odds",
     "noCombined": "No combined odds: a selection has no price",
     "checking": "Checking…",
@@ -114,6 +122,50 @@
     "priceNow": "Current price",
     "noPrice": "No price",
     "note": "Each selection's price is the best current price we know; it is saved with the parlay.",
+    "noAi": "Instant calculation · no AI",
+    "summary": {
+      "title": "Your parlay in numbers",
+      "estimated": "Estimated probability",
+      "estimatedServer": "PrediGol's estimate, adjusted for dependence between selections.",
+      "estimatedProvisional": "Provisional: product of PrediGol's probabilities, not yet adjusted.",
+      "estimatedIndependent": "Product of PrediGol's probabilities: the selections are independent.",
+      "estimatedWaiting": "Waiting for the dependence adjustment.",
+      "estimatedNone": "No estimate: a selection has no probability.",
+      "fair": "Fair probability",
+      "fairHelp": "The market's, without the bookmakers' margin.",
+      "dependency": "Dependence level",
+      "calculating": "calculating…"
+    },
+    "dependency": {
+      "level": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "reason": {
+        "shared_team": "Two selections share a team: their results are linked.",
+        "measured_dependence": "Correlated results: dependence measured within the same competition and day.",
+        "same_competition_day": "Some selections are from the same competition and day."
+      },
+      "pending": "Checking whether the selections depend on each other…"
+    },
+    "risk": {
+      "moderate": "Moderate",
+      "high": "High",
+      "very_high": "Very high"
+    },
+    "guide": {
+      "how": "Tap “Add to my parlay +” on a selection in:",
+      "picks": "PrediGol's picks",
+      "odds": "The best odds for each market",
+      "match": "A match's analysis",
+      "parlays": "PrediGol's parlays",
+      "rules": "Rules",
+      "ruleCount": "{min} to {max} selections, one per match.",
+      "ruleReplace": "Adding another selection from the same match replaces the previous one.",
+      "ruleKickoff": "Nothing after kick-off.",
+      "noAi": "The combined odds, the probability and the dependence are calculated instantly from data we already have. No AI analyses your parlay."
+    },
     "error": {
       "leg_count": "A parlay needs between {min} and {max} selections.",
       "invalid_selection": "Selection {leg}: not a selection we settle.",
@@ -130,15 +182,10 @@
       "very_unlikely": "All of them winning is very unlikely ({probability})."
     },
     "measures": {
-      "fair": "Probability (market)",
-      "model": "Probability (model)",
-      "modelHelp": "PrediGol's model estimate, in evaluation: not a recommendation.",
       "ev": "Expected value",
       "risk": "Risk",
-      "independent": "No selections depend on each other",
-      "dependent": "Some selections may depend on each other",
-      "legs_one": "{count} selection",
-      "legs_other": "{count} selections"
+      "independent": "No selections depend on each other.",
+      "dependent": "Some selections may depend on each other."
     }
   },
   "mine": {

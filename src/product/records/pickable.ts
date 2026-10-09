@@ -16,6 +16,8 @@ export interface Pickable {
   bookmaker: string | null;
   /** Set when it is one of PrediGol's picks. */
   pick_id?: number | null | undefined;
+  /** PrediGol's probability for it, when the source has one: shown in "Mi parlay", never sent to a model. */
+  p_model?: string | null | undefined;
 }
 
 export function pickableOfItem(item: DailyItem): Pickable {
@@ -31,6 +33,7 @@ export function pickableOfItem(item: DailyItem): Pickable {
     odds: item.odds,
     bookmaker: item.bookmaker,
     pick_id: item.pick_id,
+    p_model: item.p_model,
   };
 }
 
@@ -46,5 +49,6 @@ export function pickableOfCard(pick: PickCard): Pickable {
     odds: pick.best_odds,
     bookmaker: pick.bookmaker,
     pick_id: pick.pick_id,
+    p_model: pick.p_model,
   };
 }

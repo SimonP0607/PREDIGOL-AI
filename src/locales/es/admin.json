@@ -61,7 +61,7 @@
     },
     "aiAnalyst": {
       "title": "IA e investigación",
-      "description": "Informe diario con fuentes, avisos sobre los picks, preguntas y costo. La IA solo informa y avisa: no cambia probabilidades, precios ni picks."
+      "description": "Lo que la IA hizo con cada partido del día, sus investigaciones con fuentes, los post-mortems, lo aprendido, las fuentes y el costo."
     },
     "competitions": {
       "title": "Competiciones",

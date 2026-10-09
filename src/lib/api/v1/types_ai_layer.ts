@@ -614,7 +614,13 @@ export interface AiToday {
   plan: AiDayPlan | null;
   fixtures: AiDayFixture[];
   without_market: number;
-  totals: { with_market: number; passes: number; escalated: number; stale_odds: number; cost_usd: number };
+  totals: {
+    with_market: number;
+    passes: number;
+    escalated: number;
+    stale_odds: number;
+    cost_usd: number;
+  };
 }
 
 export interface AiResearchEvidence {

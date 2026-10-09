@@ -73,7 +73,7 @@
     "save": "Guardar",
     "saved": "Guardado",
     "unsave": "Quitar de mis picks",
-    "addToParlay": "Agregar a parlay",
+    "addToParlay": "Agregar a mi parlay",
     "inParlay": "En tu parlay",
     "removeFromParlay": "Quitar del parlay",
     "started": "El partido ya empezó",
@@ -96,16 +96,24 @@
   "slip": {
     "title": "Mi parlay",
     "subtitle": "Una selección por partido, de {min} a {max}.",
+    "count": "{count} de {max} selecciones",
     "open_one": "Mi parlay · {count}",
     "open_other": "Mi parlay · {count}",
     "empty": "Tu parlay está vacío",
-    "emptyBody": "Toca una cuota en un partido, o «Agregar a parlay» en un pick.",
     "name": "Nombre (opcional)",
     "namePlaceholder": "Mi combinada",
     "save": "Guardar parlay",
     "saving": "Guardando…",
     "clear": "Vaciar",
+    "history": "Ver historial",
     "remove": "Quitar",
+    "removeLeg": "Quitar del parlay: {selection} · {match}",
+    "openMatch": "Abrir partido",
+    "openMatchLabel": "Abrir el partido {match}",
+    "viewAnalysis": "Ver análisis",
+    "viewAnalysisLabel": "Ver el análisis de {match}",
+    "legProbability": "PrediGol",
+    "legProbabilityHelp": "Probabilidad de PrediGol para esta selección",
     "combined": "Cuota combinada",
     "noCombined": "Sin cuota combinada: falta el precio de alguna selección",
     "checking": "Comprobando…",
@@ -114,6 +122,50 @@
     "priceNow": "Precio actual",
     "noPrice": "Sin precio",
     "note": "La cuota de cada selección es el mejor precio actual que conocemos; la guardamos con el parlay.",
+    "noAi": "Cálculo instantáneo · sin IA",
+    "summary": {
+      "title": "Resumen de tu parlay",
+      "estimated": "Probabilidad estimada",
+      "estimatedServer": "Estimación de PrediGol, ajustada por la dependencia entre selecciones.",
+      "estimatedProvisional": "Provisional: producto de las probabilidades de PrediGol, aún sin ajustar.",
+      "estimatedIndependent": "Producto de las probabilidades de PrediGol: las selecciones son independientes.",
+      "estimatedWaiting": "Esperando el ajuste por dependencia.",
+      "estimatedNone": "Sin estimación: falta la probabilidad de alguna selección.",
+      "fair": "Probabilidad justa",
+      "fairHelp": "La del mercado, sin el margen de las casas.",
+      "dependency": "Nivel de dependencia",
+      "calculating": "calculando…"
+    },
+    "dependency": {
+      "level": {
+        "low": "Bajo",
+        "medium": "Medio",
+        "high": "Alto"
+      },
+      "reason": {
+        "shared_team": "Dos selecciones comparten equipo: sus resultados están ligados.",
+        "measured_dependence": "Resultados correlacionados: dependencia medida en la misma competición y día.",
+        "same_competition_day": "Hay selecciones de la misma competición y día."
+      },
+      "pending": "Comprobando si las selecciones dependen entre sí…"
+    },
+    "risk": {
+      "moderate": "Moderado",
+      "high": "Alto",
+      "very_high": "Muy alto"
+    },
+    "guide": {
+      "how": "Toca «Agregar a mi parlay +» en una selección de:",
+      "picks": "Los picks de PrediGol",
+      "odds": "Las mejores cuotas de cada mercado",
+      "match": "El análisis de un partido",
+      "parlays": "Los parlays de PrediGol",
+      "rules": "Reglas",
+      "ruleCount": "De {min} a {max} selecciones, una por partido.",
+      "ruleReplace": "Si agregas otra selección de un mismo partido, reemplaza a la anterior.",
+      "ruleKickoff": "Nada después del inicio del partido.",
+      "noAi": "La cuota combinada, la probabilidad y la dependencia se calculan al instante con datos que ya tenemos. Ninguna IA analiza tu parlay."
+    },
     "error": {
       "leg_count": "Un parlay necesita entre {min} y {max} selecciones.",
       "invalid_selection": "Selección {leg}: no es una selección que liquidemos.",
@@ -130,15 +182,10 @@
       "very_unlikely": "Que todas acierten es muy poco probable ({probability})."
     },
     "measures": {
-      "fair": "Probabilidad (mercado)",
-      "model": "Probabilidad (modelo)",
-      "modelHelp": "Estimación del modelo de PrediGol, en evaluación: no es una recomendación.",
       "ev": "Valor esperado",
       "risk": "Riesgo",
-      "independent": "Sin selecciones dependientes entre sí",
-      "dependent": "Hay selecciones que pueden depender entre sí",
-      "legs_one": "{count} selección",
-      "legs_other": "{count} selecciones"
+      "independent": "Sin selecciones dependientes entre sí.",
+      "dependent": "Hay selecciones que pueden depender entre sí."
     }
   },
   "mine": {

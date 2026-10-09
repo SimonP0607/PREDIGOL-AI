@@ -429,7 +429,11 @@ export const v1 = {
   aiToday: (day?: string) => getJson<Envelope<AiToday>>("/admin/ai/today", { day }),
   aiResearch: (day?: string) => getJson<Envelope<AiResearchRow[]>>("/admin/ai/research", { day }),
   aiPostmortems: (
-    q: { day?: string | undefined; verdict?: string | undefined; classification?: string | undefined } = {},
+    q: {
+      day?: string | undefined;
+      verdict?: string | undefined;
+      classification?: string | undefined;
+    } = {},
   ) => getJson<Envelope<PickPostmortem[]>>("/admin/ai/postmortems", q as Params),
   aiLearning: (day?: string) => getJson<Envelope<AiLearning>>("/admin/ai/learning", { day }),
   aiSources: (days = 7) => getJson<Envelope<AiSourceRow[]>>("/admin/ai/sources", { days }),
