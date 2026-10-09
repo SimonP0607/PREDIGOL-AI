@@ -9,7 +9,7 @@ está parado y marcado para no volver a arrancar.
 |---|---|
 | Proveedor y plan | Contabo **Cloud VPS 6 (2026)**, pago mensual, sin cargo de alta |
 | Ubicación | Carlstadt, Nueva Jersey (US-east) |
-| Dirección | **https://86.48.25.4**. Sin dominio todavía: el certificado lo firma el propio servidor y el navegador avisa |
+| Dirección | **https://predigolai.com** desde las 12:35 UTC del 9 oct (DNS en Hostinger, registro A → 86.48.25.4). Certificado de Let's Encrypt, renovación automática; `www.predigolai.com` redirige al dominio y `http://` a `https://`. Hasta entonces se entraba por la IP con un certificado propio del servidor |
 | Sistema | Ubuntu 24.04.5 LTS, Docker 29.9, Compose 5.6 |
 | Acceso | SSH **solo con llave**: la llave dedicada `predigol_vps_ed25519` del portátil, alias `predigol`. La contraseña de root está desactivada para SSH; la consola VNC de Contabo sigue funcionando |
 | Protección | ufw (22, 80, 443), fail2ban, actualizaciones de seguridad automáticas sin reinicio, 4 GB de swap |
@@ -80,12 +80,58 @@ predigolctl restore-test          # prueba de restauración (también los lunes)
 
 Copias en el servidor: `/srv/predigol/backups/db`, las 3 diarias más recientes y 2 semanales.
 
+## 4 bis. Rendimiento del primer día: qué falló y cómo se arregló
+
+**Síntoma.** A las 11:48 y a las 13:00 UTC el monitor reinició el worker porque su latido se había detenido. Cada
+reinicio tiró a la basura la pasada de picks que estaba corriendo y dejó la captura en vivo parada alrededor de un
+minuto.
+
+**Causa, medida en el servidor** (registro de sentencias lentas, muestreo de PostgreSQL y `py-spy` sobre el worker):
+
+| Hallazgo | Medida |
+|---|---|
+| Una pasada del pipeline de picks tardaba ~10 min (97 s en el portátil) | 88 % del tiempo esperando a la base, 99 % dentro de `evaluate_captures` |
+| Cada pasada repetía ~300.000 consultas: precio y alta de **cada** candidato ya evaluado | 2.227 instantes, ~159.000 candidatos existentes |
+| Un viaje de ida y vuelta a la base cuesta más en el servidor | `SELECT 1`: mediana 0,16 ms, media 0,41 ms, p90 1,0 ms; la consulta de precio 2,1 ms de media |
+| La captura de cuotas esperaba a "su" pasada antes de latir | latido viejo → reinicio |
+| Dos pasadas a la vez se bloqueaban entre sí | 20 esperas de ~4 min en `models.model_registry` |
+| Cada carga de `/fixtures` reescribía todos sus equipos | 3 esperas de ~7 min de la captura en vivo detrás del sync |
+
+No es la máquina: *steal* 0 %, CPU 75 % libre, sin estrangulamiento de contenedores, caché de la base al 99 %.
+
+**Arreglos (desplegados el 9 oct):**
+
+1. `2674974` — la captura pide la pasada y sigue (ya no la espera), una sola pasada a la vez (`OnePass`: lo que
+   llega mientras corre se convierte en exactamente una pasada más) y los equipos solo se escriben si cambian. De
+   paso, un nombre de equipo conocido ya no se reemplaza por "team <id>". (El registro de modelos quedó como estaba:
+   ver el tropiezo, abajo; con una sola pasada a la vez ya no hay con quién bloquearse.)
+2. `5a7f8d4` — el motor de picks pregunta una vez por instante (todos sus precios en una consulta y los candidatos
+   ya evaluados en otra) y solo inserta los nuevos. En la copia de datos reales: **mismos** candidatos (76.129),
+   picks (12.050) e informe que antes, con la regla actual y con una regla nunca corrida; la pasada en régimen
+   bajó de 55,5 s a 6,3 s allí.
+
+**Resultado en el servidor** (desde las 13:47 UTC): una pasada tarda **126–148 s** (antes 570 s de media y hasta
+1.069 s); la captura de cuotas termina en 1–2 s y pide su pasada sin esperarla, así que su latido ya no depende de
+cuánto tarde el pipeline.
+
+**Un tropiezo en el camino, ya corregido (`c552cc4`).** El registro de modelos sin bloqueo vivía en
+`fbi.backtesting`, que forma parte de la huella del código de los modelos: cambiarlo creó, a las 13:31 UTC, una
+versión nueva de cada modelo (258–260, huella `mc118f6f26d7`) con 89.585 pronósticos, 3.275 candidatos y 493 picks
+en sombra de 19 partidos (18 revisiones de la IA, US$0,008). Se devolvió `persist.py` byte a byte: desde las 13:47
+los pronósticos vuelven a las versiones 252–254 (`mc1f28a88360`), que son las que acumulan el registro. Las filas de
+258–260 siguen ahí, separadas por versión; borrarlas es decisión del dueño (hay copia de las 13:22, anterior a ellas).
+
+**Nota sobre versiones de modelo.** Las del portátil (249–251, `mcec6b780838`) dejaron de usarse en el corte: el
+código del servidor tiene otra huella y abrió las 252–254 a las 04:02. Ninguna versión reciente tiene backtest, así
+que ningún pick estaba calificado antes ni después.
+
 ## 5. Pendiente (decisiones del dueño)
 
 1. **Copias fuera del servidor (R2): lo más urgente.** Hoy las copias solo existen en el servidor y en el portátil
    (este, hasta las 03:48 UTC del 9 oct). Si se pierde el servidor, se pierde lo posterior. Mientras tanto se
    puede bajar al portátil, de vez en cuando, el volcado más reciente.
-2. **Dominio y Cloudflare:** acceso público, certificado sin avisos y PWA instalable (`deploy/vps/README.md` §3 bis).
+2. **Cloudflare (opcional):** el dominio ya está (predigolai.com, certificado válido, PWA instalable). Cloudflare
+   delante añadiría protección y caché; no es necesario para operar.
 3. **Avisos:** bot de Telegram, Healthchecks.io y UptimeRobot (gratis).
 4. **Portátil:** 7 días como respaldo frío (hasta el 16 oct). Su API y su web siguen encendidas, pero muestran los
    datos congelados a las 03:48 UTC. Vuelta atrás: README §4.
