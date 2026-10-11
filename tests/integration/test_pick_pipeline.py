@@ -219,10 +219,12 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
         cur.execute("SELECT result_status FROM picks.pick_results WHERE pick_id = %s", (pick_id,))
         assert scalar(cur) == "pending"
 
-    # 4. postponed first: stays pending with the reason
+    # 4. postponed first: within 72 h of kick-off it stays pending with the reason (settle-v3 voids it after)
     with db.cursor() as cur:
-        cur.execute("UPDATE core.fixtures SET status_short = 'PST', status_group = 'postponed' WHERE id = %s", (target,))
-    first = settle_open_picks(db, run_id=run_id)
+        cur.execute("UPDATE core.fixtures SET status_short = 'PST', status_group = 'postponed' WHERE id = %s "
+                    "RETURNING kickoff_at", (target,))
+        kickoff = cur.fetchone()[0]  # type: ignore[index]
+    first = settle_open_picks(db, run_id=run_id, at=kickoff + timedelta(hours=1))
     db.commit()
     assert first.settled == 0 and first.needs_review >= 1
     with db.cursor() as cur:
@@ -241,7 +243,7 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     with db.cursor() as cur:
         cur.execute("SELECT r.result_status, r.profit_units, r.settlement_basis, r.rule_version, p.status "
                     "FROM picks.pick_results r JOIN picks.picks p ON p.id = r.pick_id WHERE r.pick_id = %s", (pick_id,))
-        assert cur.fetchone() == ("loss", Decimal("-1.0000"), "regulation_90", "settle-v2", "settled")
+        assert cur.fetchone() == ("loss", Decimal("-1.0000"), "regulation_90", "settle-v3", "settled")
         cur.execute("SELECT to_status FROM picks.pick_events WHERE pick_id = %s ORDER BY at, id", (pick_id,))
         assert [r[0] for r in cur.fetchall()] == ["shadow", "settled"]
     assert settle_open_picks(db, run_id=run_id).open_picks == 0, "settled picks are not settled again"

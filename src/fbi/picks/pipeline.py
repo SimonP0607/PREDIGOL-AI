@@ -71,7 +71,7 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
         else:
             temp_run = run_id
         report.picks = evaluate_captures(conn, run_id=temp_run, code_version=code_version)
-        report.settlement = settle_open_picks(conn, run_id=temp_run)
+        report.settlement = settle_open_picks(conn, run_id=temp_run, at=at)
         # What the product shows, as records: the day's picks and parlays, frozen when chosen,
         # and everything already shown (PrediGol's and the users' own) settled. In a savepoint:
         # a defect here is recorded and must not cost the forecasts, candidates and settlement.

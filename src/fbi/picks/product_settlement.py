@@ -1,8 +1,8 @@
 """Settling what the product shows: daily-set items, PrediGol's parlays, a user's picks and parlays.
 
 Every single settles exactly as a pick does (``fbi.picks.settlement``: the regulation score,
-quarter lines as two halves, a cancelled match void, postponed/abandoned/awarded left PENDING
-for a human), at the price FROZEN on the record - the price at selection for PrediGol's
+quarter lines as two halves, a cancelled match void, a match with no official result 72 h after
+the kick-off it was taken for void), at the price FROZEN on the record - the price at selection for PrediGol's
 items, and for a user's pick the price they say they got, or else the price we showed when
 they saved it. Profit is per unit staked.
 
@@ -30,15 +30,17 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.picks import settlement
+from fbi.picks.engine import TAKEN_KICKOFF
 
 ONE = Decimal(1)
 
 
-def settle_single(r: dict[str, Any], odds: Decimal | None) -> settlement.Settlement:
+def settle_single(r: dict[str, Any], odds: Decimal | None, *, at: datetime | None = None) -> settlement.Settlement:
     state = settlement.MatchState(r["status_short"], r["reg_goals_home"], r["reg_goals_away"],
                                   r.get("et_goals_home"), r.get("et_goals_away"),
-                                  r.get("ft_goals_home"), r.get("ft_goals_away"))
-    return settlement.settle(r["market_key"], r["selection"], Decimal(r["line"]), odds or Decimal("2"), ONE, state)
+                                  r.get("ft_goals_home"), r.get("ft_goals_away"), r.get("taken_kickoff"))
+    return settlement.settle(r["market_key"], r["selection"], Decimal(r["line"]), odds or Decimal("2"), ONE, state,
+                             at=at)
 
 
 def parlay_outcome(legs: list[tuple[str, Decimal | None]]) -> tuple[str, Decimal | None] | None:
@@ -82,37 +84,45 @@ SINGLES: dict[str, tuple[str, str, str]] = {
     "items": ("""
         SELECT i.set_id AS k1, i.rank AS k2, i.fixture_id, i.market_key, i.selection, i.line, i.odds AS price,
                f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away,
-               r.ft_goals_home, r.ft_goals_away
+               r.ft_goals_home, r.ft_goals_away, """ + TAKEN_KICKOFF.format(since="i.selected_at") + """ AS taken_kickoff
           FROM picks.daily_set_items i JOIN core.fixtures f ON f.id = i.fixture_id
           LEFT JOIN core.fixture_results r ON r.fixture_id = i.fixture_id
-         WHERE i.status = 'PENDING' AND f.kickoff_at <= %(at)s""" + _ONLY.format(a="i"),
+         WHERE i.status = 'PENDING' AND """ + TAKEN_KICKOFF.format(since="i.selected_at") + """ <= %(at)s"""
+              + _ONLY.format(a="i"),
               "UPDATE picks.daily_set_items SET status = %s, profit_units = %s, settled_at = %s "
               "WHERE set_id = %s AND rank = %s AND status = 'PENDING'", "price"),
     "parlay_legs": ("""
         SELECT l.parlay_id AS k1, l.leg_no AS k2, l.fixture_id, l.market_key, l.selection, l.line, l.odds AS price,
                f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away,
-               r.ft_goals_home, r.ft_goals_away
-          FROM picks.parlay_legs l JOIN core.fixtures f ON f.id = l.fixture_id
+               r.ft_goals_home, r.ft_goals_away, """ + TAKEN_KICKOFF.format(since="pp.created_at") + """ AS taken_kickoff
+          FROM picks.parlay_legs l JOIN picks.parlays pp ON pp.id = l.parlay_id
+          JOIN core.fixtures f ON f.id = l.fixture_id
           LEFT JOIN core.fixture_results r ON r.fixture_id = l.fixture_id
-         WHERE l.status = 'PENDING' AND f.kickoff_at <= %(at)s""" + _ONLY.format(a="l"),
+         WHERE l.status = 'PENDING' AND """ + TAKEN_KICKOFF.format(since="pp.created_at") + """ <= %(at)s"""
+                    + _ONLY.format(a="l"),
                     "UPDATE picks.parlay_legs SET status = %s, settled_at = %s WHERE parlay_id = %s AND leg_no = %s "
                     "AND status = 'PENDING'", "price"),
     "user_picks": ("""
         SELECT u.id AS k1, NULL::int AS k2, u.fixture_id, u.market_key, u.selection, u.line,
                COALESCE(u.user_odds, u.odds) AS price, f.status_short, r.reg_goals_home, r.reg_goals_away,
-               r.et_goals_home, r.et_goals_away, r.ft_goals_home, r.ft_goals_away
+               r.et_goals_home, r.et_goals_away, r.ft_goals_home, r.ft_goals_away,
+               """ + TAKEN_KICKOFF.format(since="u.saved_at") + """ AS taken_kickoff
           FROM picks.user_picks u JOIN core.fixtures f ON f.id = u.fixture_id
           LEFT JOIN core.fixture_results r ON r.fixture_id = u.fixture_id
-         WHERE u.status = 'PENDING' AND f.kickoff_at <= %(at)s""" + _ONLY.format(a="u"),
+         WHERE u.status = 'PENDING' AND """ + TAKEN_KICKOFF.format(since="u.saved_at") + """ <= %(at)s"""
+                   + _ONLY.format(a="u"),
                    "UPDATE picks.user_picks SET status = %s, profit_units = %s, settled_at = %s "
                    "WHERE id = %s AND status = 'PENDING'", "price"),
     "user_parlay_legs": ("""
         SELECT l.user_parlay_id AS k1, l.leg_no AS k2, l.fixture_id, l.market_key, l.selection, l.line,
                l.odds AS price, f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home,
-               r.et_goals_away, r.ft_goals_home, r.ft_goals_away
-          FROM picks.user_parlay_legs l JOIN core.fixtures f ON f.id = l.fixture_id
+               r.et_goals_away, r.ft_goals_home, r.ft_goals_away,
+               """ + TAKEN_KICKOFF.format(since="up.created_at") + """ AS taken_kickoff
+          FROM picks.user_parlay_legs l JOIN picks.user_parlays up ON up.id = l.user_parlay_id
+          JOIN core.fixtures f ON f.id = l.fixture_id
           LEFT JOIN core.fixture_results r ON r.fixture_id = l.fixture_id
-         WHERE l.status = 'PENDING' AND f.kickoff_at <= %(at)s""" + _ONLY.format(a="l"),
+         WHERE l.status = 'PENDING' AND """ + TAKEN_KICKOFF.format(since="up.created_at") + """ <= %(at)s"""
+                         + _ONLY.format(a="l"),
                          "UPDATE picks.user_parlay_legs SET status = %s, settled_at = %s WHERE user_parlay_id = %s "
                          "AND leg_no = %s AND status = 'PENDING'", "price"),
 }
@@ -152,7 +162,7 @@ def settle_products(conn: psycopg.Connection[Any], *, at: datetime,
         with conn.cursor() as cur:
             for r in rows:
                 price = Decimal(r["price"]) if r["price"] is not None else None
-                result = settle_single(r, price)
+                result = settle_single(r, price, at=at)
                 if not result.is_final:
                     if result.review_reason:
                         report.pending_review[name] = report.pending_review.get(name, 0) + 1

@@ -96,7 +96,7 @@ def settle_fixtures(conn: psycopg.Connection[Any], fixture_ids: Iterable[int], *
             with conn.transaction():
                 with conn.cursor() as cur:
                     cur.execute(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'")
-                picks = settle_open_picks(conn, run_id=run_id, fixture_ids=[fid])
+                picks = settle_open_picks(conn, run_id=run_id, fixture_ids=[fid], at=at)
                 products = settle_products(conn, at=at or clock_now(), fixture_ids=[fid])
                 items = products.by_fixture.get(fid, 0)
                 record_latency(conn, fid, path=path, picks=picks.settled, items=items)

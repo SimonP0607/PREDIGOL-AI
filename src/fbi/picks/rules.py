@@ -109,7 +109,7 @@ def qualify(evidence: VersionEvidence) -> Qualification:
     if evidence.backtest_run_id is None:
         reasons.append("this model version has no stored walk-forward backtest")
     elif evidence.verdict is None:
-        reasons.append(f"its backtest has no comparison with the market for {evidence.market_key}")
+        reasons.append(f"its backtest has no comparison with the market for {evidence.market_key} at this line")
     else:
         if evidence.verdict != "better":
             reasons.append(f"its backtest is '{evidence.verdict}' against {evidence.baseline_key}, not better")

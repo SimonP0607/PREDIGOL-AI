@@ -31,6 +31,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.core.clock import now as clock_now
 from fbi.domain.market_probability import DevigMethod, FairProbability
 from fbi.domain.odds import DecimalOdds
 from fbi.domain.probability import Probability
@@ -127,7 +128,11 @@ def _forecasts(conn: psycopg.Connection, fixture_id: int, as_of: datetime) -> li
         return list(cur.fetchall())
 
 
-def _evidence(conn: psycopg.Connection, version_id: int, market_key: str) -> VersionEvidence:
+def _evidence(conn: psycopg.Connection, version_id: int, market_key: str, line: Decimal) -> VersionEvidence:
+    """What the newest completed backtest of this model version says about THIS market at THIS line.
+
+    The backtest compares 1X2 (line 0) and Over/Under at 2.5 only. Until 11 Oct 2026 (REVIEW P0) the line was not
+    matched, so an Over/Under 3.5 pick was qualified on the 2.5 evidence: a claim the backtest never tested."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             """
@@ -144,8 +149,8 @@ def _evidence(conn: psycopg.Connection, version_id: int, market_key: str) -> Ver
         baseline = run["primary_baseline"] if market_key == "1X2" else OU_BASELINE
         cur.execute(
             "SELECT verdict, n_common FROM analytics.backtest_comparisons WHERE backtest_run_id = %s "
-            "AND market_key = %s AND baseline_key = %s",
-            (run["run_id"], market_key, baseline),
+            "AND market_key = %s AND baseline_key = %s AND line = %s",
+            (run["run_id"], market_key, baseline, line),
         )
         c = cur.fetchone()
     return VersionEvidence(int(run["run_id"]), market_key, None if c is None else str(c["verdict"]),
@@ -296,7 +301,7 @@ def evaluate_captures(conn: psycopg.Connection, *, run_id: int, code_version: st
                 report.reasons[bucket] = report.reasons.get(bucket, 0) + 1
                 continue
             report.selected += 1
-            evidence = _evidence(conn, int(f["model_version_id"]), f["market_key"])
+            evidence = _evidence(conn, int(f["model_version_id"]), f["market_key"], Decimal(f["line"]))
             q = qualify(evidence)
             status = "qualified" if q.qualified else "shadow"
             report.qualified += int(q.qualified)
@@ -354,10 +359,18 @@ class SettlementReport:
     """Picks settled by this pass, per fixture: what the settlement-latency record counts."""
 
 
+TAKEN_KICKOFF = """LEAST(f.kickoff_at, COALESCE((
+    SELECT k.before_kickoff FROM core.fixture_kickoff_changes k
+     WHERE k.fixture_id = f.id AND k.observed_at > {since} ORDER BY k.observed_at LIMIT 1), f.kickoff_at))"""
+"""The kick-off a record was taken for: the fixture's kick-off then (the first change seen after the record, if the
+provider has moved it since), or now if earlier. A postponed match is void 72 h after THIS kick-off (settle-v3),
+however far the provider has pushed the new date."""
+
 OPEN_PICKS_SQL = """
 SELECT p.id, p.fixture_id, p.market_key, p.selection, p.line, p.market_odds, p.stake_units, p.status,
        f.status_short, r.reg_goals_home, r.reg_goals_away, r.et_goals_home, r.et_goals_away,
        r.ft_goals_home, r.ft_goals_away, r.source_payload_hash,
+       """ + TAKEN_KICKOFF.format(since="p.created_at") + """ AS taken_kickoff,
        COALESCE(pr.review_reason, '') AS previous_review
   FROM picks.picks p
   JOIN core.fixtures f ON f.id = p.fixture_id
@@ -369,7 +382,7 @@ SELECT p.id, p.fixture_id, p.market_key, p.selection, p.line, p.market_odds, p.s
 
 
 def settle_open_picks(conn: psycopg.Connection, *, run_id: int | None,
-                      fixture_ids: list[int] | None = None) -> SettlementReport:
+                      fixture_ids: list[int] | None = None, at: datetime | None = None) -> SettlementReport:
     """Settle every open pick whose match allows it - or only those of ``fixture_ids``.
 
     Safe to run beside another pass: the pick's own row is claimed first (``status <> 'settled'``
@@ -386,7 +399,8 @@ def settle_open_picks(conn: psycopg.Connection, *, run_id: int | None,
             p["market_key"], p["selection"], Decimal(p["line"]), Decimal(p["market_odds"]), Decimal(p["stake_units"]),
             settlement.MatchState(p["status_short"], p["reg_goals_home"], p["reg_goals_away"],
                                   p.get("et_goals_home"), p.get("et_goals_away"),
-                                  p.get("ft_goals_home"), p.get("ft_goals_away")))
+                                  p.get("ft_goals_home"), p.get("ft_goals_away"), p.get("taken_kickoff")),
+            at=at or clock_now())
         with conn.cursor() as cur:
             if not result.is_final:
                 report.still_pending += 1
@@ -413,7 +427,7 @@ def settle_open_picks(conn: psycopg.Connection, *, run_id: int | None,
                     review_reason = NULL
                 """,
                 (p["id"], result.status.value, result.profit_units, f"worker:{settlement.RULE_VERSION}",
-                 settlement.BASIS if result.status is not settlement.Status.VOID else "not_played",
+                 result.basis or (settlement.BASIS if result.status is not settlement.Status.VOID else "not_played"),
                  settlement.RULE_VERSION, p["source_payload_hash"]),
             )
             cur.execute("INSERT INTO picks.pick_events (pick_id, from_status, to_status, reason, run_id) "

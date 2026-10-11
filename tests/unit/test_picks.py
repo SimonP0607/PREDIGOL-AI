@@ -190,9 +190,9 @@ def test_a_full_time_match_needs_no_extra_time_score() -> None:
 def test_cancelled_is_void_and_the_ambiguous_stay_pending_with_a_reason() -> None:
     void = s("1X2", "Home", "0", 0, 0, status="CANC")
     assert void.status is Status.VOID and void.profit_units == 0 and void.is_final
-    for status in ("PST", "SUSP", "ABD", "AWD", "WO"):
+    for status in ("PST", "SUSP", "INT", "ABD", "AWD", "WO"):
         r = settle("1X2", "Home", D(0), D(2), D(1), MatchState(status, 3, 0))
-        assert r.status is Status.PENDING and r.review_reason and "not inferred" in r.review_reason, status
+        assert r.status is Status.PENDING and r.review_reason and "72 h" in r.review_reason, status
         assert r.profit_units is None
     live = settle("1X2", "Home", D(0), D(2), D(1), MatchState("2H", 1, 0))
     assert live.status is Status.PENDING and live.review_reason is None, "in play is simply not over"
@@ -207,3 +207,26 @@ def test_an_unknown_market_or_line_is_refused_not_approximated() -> None:
     assert settle("CS", "1-0", D(0), D(8), D(1), MatchState(FT, 1, 0)).status is Status.PENDING
     with pytest.raises(ValueError):
         market_outcome("OU", "Over", D("2.1"), 2, 1)
+
+
+def test_no_official_result_72_hours_after_kickoff_is_void() -> None:
+    """settle-v3 (REVIEW 11 Oct 2026, "partidos que siguen esperando resultado"): a match with no official result
+    72 h after the kick-off the record was taken for is void - nothing waits forever. Before that it waits."""
+    from datetime import UTC, datetime, timedelta
+
+    from fbi.picks.settlement import NO_RESULT_BASIS, RULE_VERSION, VOID_AFTER
+    assert RULE_VERSION == "settle-v3" and timedelta(hours=72) == VOID_AFTER
+    ko = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
+    for status in ("PST", "SUSP", "INT", "ABD", "AWD", "WO", "NS", "2H"):
+        state = MatchState(status, None, None, kickoff_at=ko)
+        early = settle("1X2", "Home", D(0), D(2), D(1), state, at=ko + VOID_AFTER - timedelta(minutes=1))
+        assert early.status is Status.PENDING, status
+        late = settle("1X2", "Home", D(0), D(2), D(1), state, at=ko + VOID_AFTER)
+        assert late.status is Status.VOID and late.profit_units == 0 and late.basis == NO_RESULT_BASIS, status
+    # without the clock or the kick-off: v2's rule, it waits
+    assert settle("1X2", "Home", D(0), D(2), D(1), MatchState("PST", None, None)).status is Status.PENDING
+    # a match completed within the 72 h settles on its result
+    done = settle("1X2", "Home", D(0), D(2), D(1), MatchState("FT", 2, 1, kickoff_at=ko), at=ko + timedelta(days=5))
+    assert done.status is Status.WIN and done.basis == "regulation_90"
+    # cancelled stays void at once, with its own basis
+    assert settle("1X2", "Home", D(0), D(2), D(1), MatchState("CANC", None, None)).basis == "not_played"

@@ -8,14 +8,15 @@ WHAT IS SETTLED AUTOMATICALLY
   * a finished match (FT, AET, PEN) with a regulation score;
   * a cancelled match (CANC): never played, so every market is void.
 
-WHAT IS NOT - it stays pending, with the reason, for a human:
-  * postponed or suspended (PST, SUSP): bookmakers void after a delay that
-    differs from book to book, so no delay is invented here;
-  * abandoned (ABD): some markets may already be decided (an over 0.5 that
-    has happened) and the rest void, depending on the book;
-  * awarded or walkover (AWD, WO): the official result is not the played one,
-    and books treat it differently;
-  * anything still to be played or in play.
+WHAT WAITS - pending, with the reason - and for how long:
+  * postponed or suspended (PST, SUSP), interrupted (INT), abandoned (ABD),
+    awarded or walkover (AWD, WO), or still "not started"/"in play" for a
+    provider that never closed the match;
+  * until VOID_AFTER (72 h) after the kick-off the record was taken for. Then,
+    with still no official result, the record is VOID (settle-v3): nothing
+    waits for a result forever. A match completed within the 72 h - resumed,
+    or rescheduled and played - settles on its result like any other.
+  * anything still to be played or in play before that.
 
 QUARTER LINES. A line ending in .25 or .75 is two half-stakes on the two
 neighbouring lines (2.75 = half on 2.5, half on 3.0); each half wins, loses
@@ -25,15 +26,23 @@ or pushes, and the pair gives win, half-win, push, half-loss or loss.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import StrEnum
 
-RULE_VERSION = "settle-v2"
-"""v2 (9 Oct 2026): a match decided after 90 minutes settles when the provider STATES the 90-minute score
+RULE_VERSION = "settle-v3"
+"""v3 (11 Oct 2026, REVIEW "partidos que siguen esperando resultado"): a match with no official result 72 h
+(VOID_AFTER) after the kick-off the record was taken for is VOID - postponed, suspended, interrupted, abandoned,
+awarded, walkover, or a provider that never closed it. Before that it stays pending with its reason, as in v2.
+v2 (9 Oct 2026): a match decided after 90 minutes settles when the provider STATES the 90-minute score
 (``score.fulltime``, core.fixture_results.ft_goals_*), not only when it breaks down extra time - reg_goals_* is
-COALESCE(ft_goals, goals - et_goals) since revision 0031, so v1 left such picks pending for nothing. Everything
-else is v1's rule."""
+COALESCE(ft_goals, goals - et_goals) since revision 0031, so v1 left such picks pending for nothing."""
 BASIS = "regulation_90"
+NO_RESULT_BASIS = "no_result_72h"
+"""The basis recorded for a v3 void: there was no official result 72 h after kick-off."""
+VOID_AFTER = timedelta(hours=72)
+"""Kick-off to the void of a match that has no official result. Books void a postponed or abandoned match after a
+delay of their own (24-72 h); the longest is used, so a match resumed or replayed within it still settles."""
 
 FINISHED = frozenset({"FT", "AET", "PEN"})
 DECIDED_AFTER_NINETY = frozenset({"AET", "PEN"})
@@ -42,11 +51,12 @@ trusted for these when the extra-time score is recorded, because it is derived b
 subtracting it."""
 VOID_STATUSES = frozenset({"CANC"})
 REVIEW: dict[str, str] = {
-    "PST": "postponed: bookmakers void after a delay that varies by book; not inferred",
-    "SUSP": "suspended: it may resume or be voided depending on the book; not inferred",
-    "ABD": "abandoned: some markets may already be decided and void rules vary by book; not inferred",
-    "AWD": "awarded: the official result is not the played one and books treat it differently; not inferred",
-    "WO": "walkover: no match was played but a result was awarded; books treat it differently; not inferred",
+    "PST": "postponed: void 72 h after kick-off unless it is played by then",
+    "SUSP": "suspended: void 72 h after kick-off unless it is completed by then",
+    "INT": "interrupted: void 72 h after kick-off unless it is completed by then",
+    "ABD": "abandoned: void 72 h after kick-off unless it is completed by then",
+    "AWD": "awarded: void 72 h after kick-off unless the provider states a played result",
+    "WO": "walkover: void 72 h after kick-off unless the provider states a played result",
 }
 
 
@@ -77,6 +87,9 @@ class MatchState:
     extra time. For a match decided after extra time that is a claim we cannot make: see
     the check in ``settle``.
     """
+    kickoff_at: datetime | None = None
+    """The kick-off the record was taken for (the earlier one, if the provider has since moved it): the start of
+    the 72 h after which a match without an official result is void."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +97,8 @@ class Settlement:
     status: Status
     profit_units: Decimal | None
     review_reason: str | None = None
+    basis: str | None = None
+    """How a final result was reached: BASIS, "not_played" (cancelled) or NO_RESULT_BASIS (v3's void)."""
 
     @property
     def is_final(self) -> bool:
@@ -169,13 +184,17 @@ def market_outcome(market_key: str, selection: str, line: Decimal, home: int, aw
 
 
 def settle(market_key: str, selection: str, line: Decimal, odds: Decimal, stake: Decimal,
-           state: MatchState) -> Settlement:
+           state: MatchState, *, at: datetime | None = None) -> Settlement:
+    """``at``: when the settlement is made. With the record's kick-off (``state.kickoff_at``) it decides v3's void
+    of a match that has no official result 72 h after kick-off; without either, v2's rule (it waits)."""
     status = state.status_short.strip().upper()  # the provider spells "CANC" and "Canc"
     if status in VOID_STATUSES:
-        return Settlement(Status.VOID, Decimal(0))
-    if status in REVIEW:
-        return Settlement(Status.PENDING, None, REVIEW[status])
+        return Settlement(Status.VOID, Decimal(0), basis="not_played")
     if status not in FINISHED:
+        if at is not None and state.kickoff_at is not None and at >= state.kickoff_at + VOID_AFTER:
+            return Settlement(Status.VOID, Decimal(0), basis=NO_RESULT_BASIS)
+        if status in REVIEW:
+            return Settlement(Status.PENDING, None, REVIEW[status])
         return Settlement(Status.PENDING, None, None)  # not played yet, or in play
     if state.reg_home is None or state.reg_away is None:
         return Settlement(Status.PENDING, None, "finished, but no regulation score is recorded")
@@ -193,4 +212,4 @@ def settle(market_key: str, selection: str, line: Decimal, odds: Decimal, stake:
         outcome = market_outcome(market_key, selection, line, state.reg_home, state.reg_away)
     except ValueError as exc:
         return Settlement(Status.PENDING, None, str(exc))
-    return Settlement(outcome, profit(outcome, odds, stake))
+    return Settlement(outcome, profit(outcome, odds, stake), basis=BASIS)
