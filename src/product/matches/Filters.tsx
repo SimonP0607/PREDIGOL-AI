@@ -94,7 +94,8 @@ function DatePicker({
           </span>
         </>
       ) : (
-        <span aria-hidden className="truncate">
+        // On a phone the calendar alone (the picker keeps its label): Hoy, Mañana and the date after fit beside it.
+        <span aria-hidden className="hidden truncate sm:inline">
           {t("matches.day.other")}
         </span>
       )}
@@ -144,32 +145,35 @@ export function DayNav({
         label={t("matches.day.prev")}
         onClick={() => onChange(shiftDay(day, -1))}
       />
-      <button
-        type="button"
-        aria-pressed={day === today}
-        onClick={() => onChange(today)}
-        className={chipClass(day === today)}
-      >
-        {t("common.day.today")}
-      </button>
-      <button
-        type="button"
-        aria-pressed={day === tomorrow}
-        onClick={() => onChange(tomorrow)}
-        className={chipClass(day === tomorrow)}
-      >
-        {t("common.day.tomorrow")}
-      </button>
-      <button
-        type="button"
-        aria-pressed={day === after}
-        onClick={() => onChange(after)}
-        className={cn(chipClass(day === after), "first-letter:uppercase")}
-        data-testid="day-after-tomorrow"
-      >
-        {formatDate(zonedInstant(after, 12))}
-      </button>
-      <DatePicker day={day} active={!quick} onChange={onChange} />
+      {/* The chips scroll inside the row on a narrow phone, between the two arrows; the page never does. */}
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] sm:flex-none [&::-webkit-scrollbar]:hidden">
+        <button
+          type="button"
+          aria-pressed={day === today}
+          onClick={() => onChange(today)}
+          className={chipClass(day === today)}
+        >
+          {t("common.day.today")}
+        </button>
+        <button
+          type="button"
+          aria-pressed={day === tomorrow}
+          onClick={() => onChange(tomorrow)}
+          className={chipClass(day === tomorrow)}
+        >
+          {t("common.day.tomorrow")}
+        </button>
+        <button
+          type="button"
+          aria-pressed={day === after}
+          onClick={() => onChange(after)}
+          className={cn(chipClass(day === after), "first-letter:uppercase")}
+          data-testid="day-after-tomorrow"
+        >
+          {formatDate(zonedInstant(after, 12))}
+        </button>
+        <DatePicker day={day} active={!quick} onChange={onChange} />
+      </div>
       <ArrowButton
         direction="next"
         label={t("matches.day.next")}
