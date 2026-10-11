@@ -284,7 +284,8 @@
         "RUMOR": "rumour",
         "CONTRADICTORY": "contradictory",
         "OUTDATED": "outdated"
-      }
+      },
+      "probs": "Model {model} (prudent {low}) · market {market}"
     }
   },
   "analyst": {

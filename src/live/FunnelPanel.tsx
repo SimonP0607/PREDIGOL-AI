@@ -56,7 +56,13 @@ function StageRow({ s, top }: { s: FunnelStage; top: number }) {
         </div>
         {stopped.length ? (
           <p className="text-caption text-muted-foreground">
-            {stopped.map(([code, n]) => `${reasonText(code)} ${n}`).join(" · ")}
+            {stopped.map(([code, n], i) => (
+              <span key={code}>
+                {i ? " · " : null}
+                <span className="numeric font-semibold text-foreground">{n}</span>{" "}
+                {reasonText(code)}
+              </span>
+            ))}
           </p>
         ) : null}
       </div>
@@ -90,7 +96,7 @@ function ItemRow({ x }: { x: FunnelItem }) {
     away: x.away.name,
   });
   return (
-    <li className="grid gap-1 py-2.5 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] sm:items-center sm:gap-4">
+    <li className="grid gap-1 py-2.5 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.3fr)] sm:items-center sm:gap-4">
       <div className="min-w-0">
         <Link
           to="/matches/$fixtureId"
@@ -109,8 +115,11 @@ function ItemRow({ x }: { x: FunnelItem }) {
           <span className="numeric font-semibold">@{fmtOdds(x.odds)}</span>
         </div>
         <div className="truncate text-caption text-muted-foreground">
-          {fmtPct(x.p_model)} / {fmtPct(x.p_low)} · {t("common.marketProbability")}{" "}
-          {fmtPct(x.p_market)}
+          {t("ops.picks.funnel.probs", {
+            model: fmtPct(x.p_model),
+            low: fmtPct(x.p_low),
+            market: fmtPct(x.p_market),
+          })}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -122,7 +131,7 @@ function ItemRow({ x }: { x: FunnelItem }) {
             {t("ops.picks.funnel.ai")}{" "}
             {translateOr(`records.ai.decision.${x.ai_decision}`, x.ai_decision)}
           </StatusBadge>
-        ) : (
+        ) : x.reason === "not_reviewed" ? null : (
           <StatusBadge tone="neutral">{t("ops.picks.funnel.notReviewed")}</StatusBadge>
         )}
         <Evidence e={x.evidence} />
@@ -131,7 +140,7 @@ function ItemRow({ x }: { x: FunnelItem }) {
   );
 }
 
-function Body({ d }: { d: SelectionFunnel }) {
+export function FunnelBody({ d }: { d: SelectionFunnel }) {
   const top = d.stages[0]?.entered ?? 0;
   return (
     <div className="space-y-4">
@@ -196,23 +205,26 @@ export function FunnelPanel() {
   const [source, setSource] = useState<Source>("evaluation");
   const q = useLiveQuery(live.selectionFunnel(source));
   const d = q.data?.data;
+  // In the header from sm up; above the body on a phone, where the header has no room beside the title.
+  const tabs = (className: string) => (
+    <SegmentedTabs
+      tabs={SOURCES}
+      value={source}
+      onChange={setSource}
+      label={t("ops.picks.funnel.source")}
+      format={(s) => t(`ops.picks.funnel.${s}`)}
+      className={className}
+    />
+  );
   return (
     <Panel
       title={t("ops.picks.funnel.title")}
       subtitle={t("ops.picks.funnel.subtitle")}
-      actions={
-        <SegmentedTabs
-          tabs={SOURCES}
-          value={source}
-          onChange={setSource}
-          label={t("ops.picks.funnel.source")}
-          format={(s) => t(`ops.picks.funnel.${s}`)}
-          className="w-auto"
-        />
-      }
+      actions={<div className="hidden sm:block">{tabs("w-auto")}</div>}
     >
+      <div className="mb-3 sm:hidden">{tabs("w-full")}</div>
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
-      {d ? <Body d={d} /> : q.isPending ? <TableSkeleton rows={6} cols={3} /> : null}
+      {d ? <FunnelBody d={d} /> : q.isPending ? <TableSkeleton rows={6} cols={3} /> : null}
     </Panel>
   );
 }
