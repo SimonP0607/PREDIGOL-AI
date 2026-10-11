@@ -57,5 +57,24 @@
     "players": "Players",
     "live_odds": "Live odds",
     "markets": "Markets"
+  },
+  "picksBadge_one": "PrediGol · {count} pick",
+  "picksBadge_other": "PrediGol · {count} picks",
+  "filters": {
+    "country": "Country",
+    "allCountries": "All countries",
+    "world": "International",
+    "league": "League",
+    "allLeagues": "All leagues",
+    "gender": "Gender",
+    "allGenders": "All",
+    "men": "Men",
+    "women": "Women",
+    "picksOnly_one": "With PrediGol picks ({count})",
+    "picksOnly_other": "With PrediGol picks ({count})",
+    "clear": "Clear filters",
+    "showing": "{shown} of {total} matches",
+    "emptyTitle": "No live match matches these filters",
+    "emptyBody": "Remove a filter to see the other matches being played."
   }
 }

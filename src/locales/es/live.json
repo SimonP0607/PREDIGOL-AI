@@ -57,5 +57,24 @@
     "players": "Jugadores",
     "live_odds": "Cuotas en vivo",
     "markets": "Mercados"
+  },
+  "picksBadge_one": "PrediGol · {count} pick",
+  "picksBadge_other": "PrediGol · {count} picks",
+  "filters": {
+    "country": "País",
+    "allCountries": "Todos los países",
+    "world": "Internacional",
+    "league": "Liga",
+    "allLeagues": "Todas las ligas",
+    "gender": "Género",
+    "allGenders": "Todos",
+    "men": "Masculino",
+    "women": "Femenino",
+    "picksOnly_one": "Con picks de PrediGol ({count})",
+    "picksOnly_other": "Con picks de PrediGol ({count})",
+    "clear": "Quitar filtros",
+    "showing": "{shown} de {total} partidos",
+    "emptyTitle": "Ningún partido en vivo coincide con estos filtros",
+    "emptyBody": "Quita algún filtro para ver el resto de partidos que se están jugando."
   }
 }
