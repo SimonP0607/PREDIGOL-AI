@@ -120,5 +120,12 @@
     "no_live_states": "No in-play state was recorded for this match.",
     "live_odds_not_kept": "In-play prices are shown only while the match is played and are not kept afterwards.",
     "no_market_data": "No prices captured for this match yet."
+  },
+  "pager": {
+    "label": "Pages",
+    "prev": "Previous",
+    "next": "Next",
+    "range": "{from}–{to} of {total}",
+    "page": "Page {page} of {pages}"
   }
 }

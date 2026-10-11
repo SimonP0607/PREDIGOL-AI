@@ -291,7 +291,9 @@
     },
     "absences": {
       "title": "Absences",
-      "subtitle": "Injuries and suspensions the provider reported for this match."
+      "subtitle": "Injuries and suspensions the provider reported for this match.",
+      "kind": "Status",
+      "photo": "Photo"
     }
   },
   "live": {

@@ -10,7 +10,7 @@ import { formatDate } from "@/lib/time";
 import type { PriceFreshness } from "@/lib/api/v1/types_product";
 import { TeamName } from "@/components/football/Logos";
 import { Freshness } from "@/product/shared/Bits";
-import { sectionCodeText } from "@/components/system/LiveState";
+import { sectionCodeText } from "@/components/system/sectionCode";
 import { Card, ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { CenterState } from "./context";
 import { fmtDecimal, fmtStat, type FormChip, type ResultLetter, type StatRow } from "./model";
@@ -273,12 +273,14 @@ export function StatBars({
   return (
     <ul className={cn("space-y-3.5", className)}>
       {rows.map((r) => {
+        // A side without the figure is "—" with a dashed track: never a zero bar, never a "win" for the other.
+        const missing = r.home === null || r.away === null;
         const h = r.home ?? 0;
         const a = r.away ?? 0;
         const max = Math.max(h, a);
         const hPct = max > 0 ? (h / max) * 100 : 0;
         const aPct = max > 0 ? (a / max) * 100 : 0;
-        const lead = h === a ? null : h > a ? "home" : "away";
+        const lead = missing || h === a ? null : h > a ? "home" : "away";
         const label = t(`match.stats.label.${r.key}`);
         return (
           <li key={r.key} data-stat={r.key}>
@@ -304,20 +306,37 @@ export function StatBars({
               </span>
             </div>
             <div aria-hidden className="mt-1.5 flex gap-1">
-              <div className="flex h-1.5 flex-1 justify-end overflow-hidden rounded-full bg-muted">
-                <div
-                  className={cn(
-                    "h-full rounded-full",
-                    lead === "away" ? "bg-primary/45" : "bg-primary",
-                  )}
-                  style={{ width: `${hPct}%` }}
-                />
+              <div
+                className={cn(
+                  "flex h-1.5 flex-1 justify-end overflow-hidden rounded-full",
+                  r.home === null ? "border border-dashed border-border-strong" : "bg-muted",
+                )}
+              >
+                {r.home === null ? null : (
+                  <div
+                    className={cn(
+                      "h-full rounded-full",
+                      lead === "away" ? "bg-primary/45" : "bg-primary",
+                    )}
+                    style={{ width: `${hPct}%` }}
+                  />
+                )}
               </div>
-              <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                <div
-                  className={cn("h-full rounded-full", lead === "home" ? "bg-info/45" : "bg-info")}
-                  style={{ width: `${aPct}%` }}
-                />
+              <div
+                className={cn(
+                  "flex h-1.5 flex-1 overflow-hidden rounded-full",
+                  r.away === null ? "border border-dashed border-border-strong" : "bg-muted",
+                )}
+              >
+                {r.away === null ? null : (
+                  <div
+                    className={cn(
+                      "h-full rounded-full",
+                      lead === "home" ? "bg-info/45" : "bg-info",
+                    )}
+                    style={{ width: `${aPct}%` }}
+                  />
+                )}
               </div>
             </div>
           </li>

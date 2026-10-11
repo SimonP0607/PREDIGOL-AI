@@ -5,7 +5,7 @@
  */
 import { afterAll, describe, expect, test } from "bun:test";
 import { setLocale } from "@/lib/i18n";
-import { sectionCodeText } from "@/components/system/LiveState";
+import { sectionCodeText } from "@/components/system/sectionCode";
 import {
   resultWaitText,
   resultWaitTone,

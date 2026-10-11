@@ -78,6 +78,16 @@ export const live = {
     queryFn: () => v1.center(id),
     refetchInterval: 30_000,
   }),
+  matchProfile: (id: string) => ({
+    queryKey: ["v1", "match-profile", id],
+    queryFn: () => v1.matchProfile(id),
+    staleTime: 5 * MINUTE,
+  }),
+  matchMarkets: (id: string) => ({
+    queryKey: ["v1", "match-markets", id],
+    queryFn: () => v1.matchMarkets(id),
+    refetchInterval: 2 * MINUTE,
+  }),
   matchAnalysis: (id: string, preview: Preview) => ({
     queryKey: ["v1", "match-analysis", id, preview ?? "qualified"],
     queryFn: () => v1.matchAnalysis(id, { preview }),

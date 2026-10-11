@@ -42,6 +42,21 @@ export interface MatchEvent {
   comments: string | null;
 }
 
+/** The provider's season aggregate of a player for this match's team, in this competition. */
+export interface MatchPlayerSeason {
+  appearances: number | null;
+  /** Matches started. */
+  lineups: number | null;
+  minutes: number | null;
+  goals: number | null;
+  assists: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
+  /** The team's finished matches in this competition before kick-off: "started 7 of 8". */
+  team_matches?: number | null;
+  observed_at: Iso;
+}
+
 export interface LineupPlayer {
   provider_player_id: number;
   player_id: number | null;
@@ -52,6 +67,8 @@ export interface LineupPlayer {
   starter: boolean;
   /** The provider's photo URL as stored; null: initials, never a guessed URL. */
   photo_url?: string | null;
+  /** His season in this competition (provider aggregate); null when not stored. */
+  season?: MatchPlayerSeason | null;
 }
 
 export interface TeamLineup {
@@ -117,6 +134,8 @@ export interface Absence {
   position?: string | null;
   /** When the provider reported this absence. */
   fetched_at?: Iso | null;
+  /** How much he plays: his season in this competition (provider aggregate). */
+  season?: MatchPlayerSeason | null;
 }
 
 export interface StandingLine {

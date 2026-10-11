@@ -12,7 +12,8 @@
     "stats": "Estadísticas",
     "markets": "Mercados",
     "lineups": "Alineaciones",
-    "advanced": "Avanzado / Auditoría"
+    "advanced": "Avanzado / Auditoría",
+    "picks": "Picks"
   },
   "round": {
     "matchday": "Jornada {n}",
@@ -107,7 +108,7 @@
     "bestHelp": "El mejor precio de cada opción entre todas las casas que la ofrecen.",
     "none": "Todavía no hay cuotas para este partido.",
     "movement": "Ver movimiento en Cuotas",
-    "chooseHelp": "Toca una cuota para guardarla o agregarla a tu parlay."
+    "chooseHelp": "Toca una cuota para agregarla a tu parlay o quitarla; el marcador la guarda en Mis picks."
   },
   "liveOdds": {
     "title": "Cuotas en vivo",
@@ -204,7 +205,10 @@
       "suspension": "Sanción",
       "illness": "Enfermedad",
       "other": "Otro motivo"
-    }
+    },
+    "seasonLine": "{apps} PJ · {starts} de titular · {goals} goles",
+    "seasonShare": "Titular en {starts} de {team} partidos",
+    "noSeason": "Sin estadísticas de temporada"
   },
   "lineups": {
     "title": "Alineaciones",
@@ -285,7 +289,6 @@
     "all": "Ver todas",
     "notStarted": "Las estadísticas del partido aparecerán cuando empiece. Mientras tanto, así llegan los dos equipos.",
     "season": "Temporada",
-    "recent": "Últimos 5 partidos",
     "position": "{rank}.º en la tabla",
     "label": {
       "possession": "Posesión",
@@ -310,10 +313,7 @@
       "goalsAgainstPerGame": "Goles en contra por partido",
       "wins": "Victorias",
       "draws": "Empates",
-      "losses": "Derrotas",
-      "recentGoalsFor": "Goles a favor",
-      "recentGoalsAgainst": "Goles en contra",
-      "recentWins": "Victorias"
+      "losses": "Derrotas"
     }
   },
   "players": {
@@ -526,5 +526,99 @@
       "byRules": "Escrito por las reglas",
       "aiModel": "PrediGol AI"
     }
+  },
+  "picksTab": {
+    "title": "Picks para este partido",
+    "intro": "Las selecciones de este partido que pasaron los filtros de PrediGol, las de más valor primero.",
+    "takenTitle": "Picks prepartido",
+    "outcome": "Cómo van: {won} ganados · {lost} perdidos · {open} en juego · {void} nulos",
+    "postmortems": "Post-mortem de la IA",
+    "postmortemsAdmin": "Solo administradores",
+    "postmortemsNone": "Todavía no hay post-mortem de este partido: se escriben después del cierre del día.",
+    "teaser_one": "{count} pick para este partido",
+    "teaser_other": "{count} picks para este partido",
+    "teaserStarted_one": "{count} pick prepartido",
+    "teaserStarted_other": "{count} picks prepartido",
+    "teaserAction": "Ver picks"
+  },
+  "reading": {
+    "title": "Lectura del día · antes del partido",
+    "subtitle": "Escrita antes del saque: no se actualiza durante el partido.",
+    "showCards_one": "Ver el mercado analizado ({count})",
+    "showCards_other": "Ver los mercados analizados ({count})",
+    "hideCards": "Ocultar los mercados"
+  },
+  "profile": {
+    "title": "Cómo llegan los equipos",
+    "scopeAll": "Todas las competiciones",
+    "scopeCompetition": "Esta competición",
+    "results": "Resultados",
+    "averages": "Estadísticas promedio",
+    "lastN_one": "Último partido",
+    "lastN_other": "Últimos {count} partidos",
+    "coverage": "{n} de {total} con dato",
+    "noData": "Sin dato",
+    "none": "Ninguno de los dos equipos tiene partidos terminados antes de este.",
+    "note": "Cada cifra cuenta solo los partidos que traen ese dato: no todas las ligas ni temporadas tienen tiros de esquina, tarjetas o xG.",
+    "metric": {
+      "wins": "Partidos ganados",
+      "draws": "Empates",
+      "losses": "Derrotas",
+      "win_or_draw": "Empató o ganó",
+      "btts": "Ambos equipos marcaron",
+      "over_2_5": "Más de 2,5 goles",
+      "clean_sheets": "Valla invicta",
+      "failed_to_score": "No marcó",
+      "ht_lead": "Ganaba al descanso",
+      "scored_first": "Marcó primero",
+      "conceded_first": "Recibió gol primero",
+      "goals_for": "Goles marcados",
+      "goals_against": "Goles recibidos",
+      "xg_for": "Goles esperados (xG)",
+      "xg_against": "xG recibido",
+      "shots": "Remates",
+      "shots_on_target": "Remates al arco",
+      "shots_against": "Remates recibidos",
+      "corners": "Tiros de esquina",
+      "corners_against": "Tiros de esquina en contra",
+      "cards": "Tarjetas",
+      "fouls": "Faltas",
+      "possession": "Posesión",
+      "penalties": "Penales convertidos / ejecutados"
+    }
+  },
+  "captures": {
+    "title": "Capturas de cuotas",
+    "summary": "{captures} capturas · {quotes} cotizaciones de {books} casas",
+    "help": "Cada captura guarda el precio de cada casa, opción y línea. Son las mismas cifras de la Cronología, y aquí se muestran todas, pasen o no los filtros de los picks.",
+    "chip": "{when} · {quotes}",
+    "none": "Todavía no se ha capturado ninguna cuota de este partido."
+  },
+  "books": {
+    "show_one": "Ver la casa ({count})",
+    "show_other": "Ver todas las casas ({count})",
+    "hide": "Ocultar las casas",
+    "lineLabel": "Línea",
+    "bookmaker": "Casa",
+    "opened": "abrió {odds}",
+    "movedUp": "Subió desde {odds}",
+    "movedDown": "Bajó desde {odds}",
+    "loading": "Cargando las casas…"
+  },
+  "playerCard": {
+    "title": "Temporada en {competition}",
+    "titleGeneric": "Temporada en esta competición",
+    "apps": "Partidos",
+    "starts": "Titular",
+    "minutes": "Minutos",
+    "goals": "Goles",
+    "assists": "Asistencias",
+    "cards": "Tarjetas",
+    "source": "Datos del proveedor, actualizados {when}",
+    "none": "El proveedor no tiene estadísticas de temporada de este jugador en esta competición.",
+    "thisMatch": "En este partido",
+    "open": "Ver resumen de {name}",
+    "rating": "Valoración del proveedor: {value}",
+    "fullPage": "Ver ficha completa"
   }
 }

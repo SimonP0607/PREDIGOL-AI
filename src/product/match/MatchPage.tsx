@@ -1,7 +1,8 @@
 /**
- * The Match Center as the product shows it: the match at a glance, then Resumen,
+ * The Match Center as the product shows it: the match at a glance, then Resumen, Picks,
  * Estadísticas, Mercados and Alineaciones - each adapted to before, during and after
- * the match. SUPER_ADMIN also gets "Avanzado / Auditoría", the research view.
+ * the match (REVIEW PREDIGOL, point 4: the picks are a module of their own). SUPER_ADMIN
+ * also gets "Avanzado / Auditoría", the research view.
  */
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -18,12 +19,13 @@ import type { MatchCtx, TabKey } from "./context";
 import { LineupsTab } from "./LineupsTab";
 import { MarketsTab } from "./MarketsTab";
 import { MatchHeader } from "./MatchHeader";
+import { PicksTab } from "./PicksTab";
 import { liveSnapshot, matchPhase, shownScore } from "./model";
 import { StatsTab } from "./StatsTab";
 import { SummaryTab } from "./SummaryTab";
 import { useMatchTab } from "./useMatchTab";
 
-const USER_TABS: readonly TabKey[] = ["summary", "stats", "markets", "lineups"];
+const USER_TABS: readonly TabKey[] = ["summary", "picks", "stats", "markets", "lineups"];
 const ADMIN_TABS: readonly TabKey[] = [...USER_TABS, "advanced"];
 
 function BackLink() {
@@ -190,7 +192,11 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     enabled: valid,
     refetchInterval: (q) => {
       const group = q.state.data?.data?.status_group;
-      return group === "live" ? 30_000 : group === "finished" ? false : 120_000;
+      if (group === "live") return 30_000;
+      if (group === "finished") return false;
+      // The last 75 minutes before kick-off: line-ups and absences land then (REVIEW point 7).
+      const kickoff = view.data ? Date.parse(view.data.data.match.kickoff_at) : NaN;
+      return kickoff - Date.now() < 75 * 60_000 ? 60_000 : 120_000;
     },
   });
   const tabs = auth.showAdmin ? ADMIN_TABS : USER_TABS;
@@ -240,6 +246,9 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
 
   let panel: ReactNode;
   switch (tab) {
+    case "picks":
+      panel = <PicksTab ctx={ctx} />;
+      break;
     case "stats":
       panel = <StatsTab ctx={ctx} />;
       break;

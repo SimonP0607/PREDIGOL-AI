@@ -291,7 +291,9 @@
     },
     "absences": {
       "title": "Bajas",
-      "subtitle": "Lesiones y sanciones que el proveedor reportó para este partido."
+      "subtitle": "Lesiones y sanciones que el proveedor reportó para este partido.",
+      "kind": "Situación",
+      "photo": "Foto"
     }
   },
   "live": {

@@ -12,7 +12,7 @@ import type {
 } from "@/lib/api/v1/types_center";
 import type { TeamRef } from "@/lib/api/v1/types";
 import { PlayerPhoto, TeamName } from "@/components/football/Logos";
-import { sectionCodeText } from "@/components/system/LiveState";
+import { sectionCodeText } from "@/components/system/sectionCode";
 import { Card, EmptyState } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import { AbsencesBlock } from "./ContextBlocks";
@@ -27,7 +27,8 @@ import {
   subDirection,
   type PitchSpot,
 } from "./model";
-import { BallIcon, Block, CardIcon, CenterSection, PlayerName, RatingBadge } from "./ui";
+import { PlayerSummary } from "./PlayerSummary";
+import { BallIcon, Block, CardIcon, CenterSection, RatingBadge } from "./ui";
 
 function position(code: string | null): string {
   return code ? translateOr(`match.lineups.position.${code}`, code) : "—";
@@ -239,11 +240,15 @@ function PlayerRows({
   players,
   marks,
   ratings,
+  lines,
+  competition,
   admin,
 }: {
   players: LineupPlayer[];
   marks: Map<number, PlayerMarks>;
   ratings: Map<number, number>;
+  lines: Map<number, PlayerLine>;
+  competition: string;
   admin: boolean;
 }) {
   return (
@@ -259,12 +264,19 @@ function PlayerRows({
               {p.number ?? "—"}
             </span>
             <PlayerPhoto src={p.photo_url} name={p.name ?? "?"} size={22} />
-            <PlayerName
+            <PlayerSummary
               name={p.name}
-              id={p.player_id}
+              photo={p.photo_url}
+              position={p.position}
+              season={p.season}
+              competition={competition}
+              line={lines.get(p.provider_player_id)}
+              playerId={p.player_id}
               admin={admin}
               className="min-w-0 flex-1 truncate"
-            />
+            >
+              {p.name ?? t("match.events.unknownPlayer")}
+            </PlayerSummary>
             <Marks m={p.player_id !== null ? marks.get(p.player_id) : undefined} />
             {rating !== null ? (
               <RatingBadge value={rating} className="min-w-[2.2rem] text-[0.7rem]" />
@@ -285,6 +297,8 @@ function TeamSheet({
   side,
   marks,
   ratings,
+  lines,
+  competition,
   admin,
 }: {
   lineup: TeamLineup | undefined;
@@ -292,6 +306,8 @@ function TeamSheet({
   side: Side;
   marks: Map<number, PlayerMarks>;
   ratings: Map<number, number>;
+  lines: Map<number, PlayerLine>;
+  competition: string;
   admin: boolean;
 }) {
   const xi = lineup ? starters(lineup) : [];
@@ -331,14 +347,28 @@ function TeamSheet({
             <h3 className="mb-0.5 text-label text-subtle-foreground">
               {t("match.lineups.starters", { count: xi.length })}
             </h3>
-            <PlayerRows players={xi} marks={marks} ratings={ratings} admin={admin} />
+            <PlayerRows
+              players={xi}
+              marks={marks}
+              ratings={ratings}
+              lines={lines}
+              competition={competition}
+              admin={admin}
+            />
           </div>
           <div>
             <h3 className="mb-0.5 text-label text-subtle-foreground">
               {t("match.lineups.bench", { count: subs.length })}
             </h3>
             {subs.length ? (
-              <PlayerRows players={subs} marks={marks} ratings={ratings} admin={admin} />
+              <PlayerRows
+                players={subs}
+                marks={marks}
+                ratings={ratings}
+                lines={lines}
+                competition={competition}
+                admin={admin}
+              />
             ) : (
               <p className="py-1.5 text-xs text-muted-foreground">{t("match.lineups.noBench")}</p>
             )}
@@ -387,6 +417,7 @@ export function LineupsTab({ ctx }: { ctx: MatchCtx }) {
           const away = lineups.find((l) => l.side === "away");
           const marks = marksByPlayer(events, lineups);
           const ratings = ratingMap(players);
+          const lines = new Map(players.map((pl) => [pl.provider_player_id, pl]));
           const sheet = (side: Side) => (
             <TeamSheet
               lineup={side === "home" ? home : away}
@@ -394,6 +425,8 @@ export function LineupsTab({ ctx }: { ctx: MatchCtx }) {
               side={side}
               marks={marks}
               ratings={ratings}
+              lines={lines}
+              competition={m.competition.name}
               admin={ctx.showAdmin}
             />
           );

@@ -12,7 +12,8 @@
     "stats": "Stats",
     "markets": "Markets",
     "lineups": "Line-ups",
-    "advanced": "Advanced / Audit"
+    "advanced": "Advanced / Audit",
+    "picks": "Picks"
   },
   "round": {
     "matchday": "Matchday {n}",
@@ -107,7 +108,7 @@
     "bestHelp": "The best price for each option among every bookmaker offering it.",
     "none": "No odds for this match yet.",
     "movement": "See price movement in Odds",
-    "chooseHelp": "Tap a price to save it or add it to your parlay."
+    "chooseHelp": "Tap a price to add it to your parlay or take it out; the bookmark saves it to My picks."
   },
   "liveOdds": {
     "title": "Live odds",
@@ -204,7 +205,10 @@
       "suspension": "Suspension",
       "illness": "Illness",
       "other": "Other reason"
-    }
+    },
+    "seasonLine": "{apps} apps · {starts} starts · {goals} goals",
+    "seasonShare": "Started {starts} of {team} matches",
+    "noSeason": "No season statistics"
   },
   "lineups": {
     "title": "Line-ups",
@@ -285,7 +289,6 @@
     "all": "See all",
     "notStarted": "Match stats will appear once it kicks off. Meanwhile, here is how both teams arrive.",
     "season": "Season",
-    "recent": "Last 5 matches",
     "position": "#{rank} in the table",
     "label": {
       "possession": "Possession",
@@ -310,10 +313,7 @@
       "goalsAgainstPerGame": "Goals conceded per match",
       "wins": "Wins",
       "draws": "Draws",
-      "losses": "Losses",
-      "recentGoalsFor": "Goals scored",
-      "recentGoalsAgainst": "Goals conceded",
-      "recentWins": "Wins"
+      "losses": "Losses"
     }
   },
   "players": {
@@ -526,5 +526,99 @@
       "byRules": "Written by the rules",
       "aiModel": "PrediGol AI"
     }
+  },
+  "picksTab": {
+    "title": "Picks for this match",
+    "intro": "This match's selections that passed PrediGol's filters, the best value first.",
+    "takenTitle": "Pre-match picks",
+    "outcome": "So far: {won} won · {lost} lost · {open} in play · {void} void",
+    "postmortems": "AI post-mortem",
+    "postmortemsAdmin": "Admins only",
+    "postmortemsNone": "No post-mortem for this match yet: they are written after the day's close.",
+    "teaser_one": "{count} pick for this match",
+    "teaser_other": "{count} picks for this match",
+    "teaserStarted_one": "{count} pre-match pick",
+    "teaserStarted_other": "{count} pre-match picks",
+    "teaserAction": "See picks"
+  },
+  "reading": {
+    "title": "The day's reading · before the match",
+    "subtitle": "Written before kick-off: it is not updated during the match.",
+    "showCards_one": "See the market analysed ({count})",
+    "showCards_other": "See the markets analysed ({count})",
+    "hideCards": "Hide the markets"
+  },
+  "profile": {
+    "title": "How the teams come in",
+    "scopeAll": "All competitions",
+    "scopeCompetition": "This competition",
+    "results": "Results",
+    "averages": "Average statistics",
+    "lastN_one": "Last match",
+    "lastN_other": "Last {count} matches",
+    "coverage": "{n} of {total} with data",
+    "noData": "No data",
+    "none": "Neither team has a finished match before this one.",
+    "note": "Each figure counts only the matches that carry that data: not every league or season has corners, cards or xG.",
+    "metric": {
+      "wins": "Matches won",
+      "draws": "Draws",
+      "losses": "Defeats",
+      "win_or_draw": "Drew or won",
+      "btts": "Both teams scored",
+      "over_2_5": "Over 2.5 goals",
+      "clean_sheets": "Clean sheet",
+      "failed_to_score": "Failed to score",
+      "ht_lead": "Leading at half-time",
+      "scored_first": "Scored first",
+      "conceded_first": "Conceded first",
+      "goals_for": "Goals scored",
+      "goals_against": "Goals conceded",
+      "xg_for": "Expected goals (xG)",
+      "xg_against": "xG conceded",
+      "shots": "Shots",
+      "shots_on_target": "Shots on target",
+      "shots_against": "Shots conceded",
+      "corners": "Corners",
+      "corners_against": "Corners against",
+      "cards": "Cards",
+      "fouls": "Fouls",
+      "possession": "Possession",
+      "penalties": "Penalties scored / taken"
+    }
+  },
+  "captures": {
+    "title": "Price captures",
+    "summary": "{captures} captures · {quotes} quotes from {books} bookmakers",
+    "help": "Each capture stores every bookmaker's price for every selection and line. These are the Cronología's numbers, and all of them are shown here, whether or not they pass the pick filters.",
+    "chip": "{when} · {quotes}",
+    "none": "No price has been captured for this match yet."
+  },
+  "books": {
+    "show_one": "See the bookmaker ({count})",
+    "show_other": "See every bookmaker ({count})",
+    "hide": "Hide the bookmakers",
+    "lineLabel": "Line",
+    "bookmaker": "Bookmaker",
+    "opened": "opened {odds}",
+    "movedUp": "Up from {odds}",
+    "movedDown": "Down from {odds}",
+    "loading": "Loading the bookmakers…"
+  },
+  "playerCard": {
+    "title": "Season in {competition}",
+    "titleGeneric": "Season in this competition",
+    "apps": "Apps",
+    "starts": "Starts",
+    "minutes": "Minutes",
+    "goals": "Goals",
+    "assists": "Assists",
+    "cards": "Cards",
+    "source": "Provider data, updated {when}",
+    "none": "The provider has no season statistics for this player in this competition.",
+    "thisMatch": "In this match",
+    "open": "See {name}'s summary",
+    "rating": "Provider's rating: {value}",
+    "fullPage": "See the full page"
   }
 }

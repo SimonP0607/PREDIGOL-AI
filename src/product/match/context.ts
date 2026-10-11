@@ -10,7 +10,7 @@ import type {
 import type { MatchCenter } from "@/lib/api/v1/types_center";
 import type { Goals, LiveSnapshot, Phase } from "./model";
 
-export const TAB_KEYS = ["summary", "stats", "markets", "lineups", "advanced"] as const;
+export const TAB_KEYS = ["summary", "picks", "stats", "markets", "lineups", "advanced"] as const;
 export type TabKey = (typeof TAB_KEYS)[number];
 
 /** GET /matches/{id}/center, as loaded: each block renders its own state from it. */

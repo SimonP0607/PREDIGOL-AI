@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/lib/api/mode";
+import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type {
   AiFlags,
   AiReport,
@@ -342,6 +343,12 @@ export const v1 = {
     getJson<Envelope<FixtureOdds>>(`/odds/fixtures/${id}`, { market }),
   search: (q: string) => getJson<Envelope<SearchHit[]>>("/search", { q, limit: 8 }),
   center: (id: number | string) => getJson<Envelope<MatchCenter | null>>(`/matches/${id}/center`),
+  /** The two teams before the match, each figure with how many matches carry its data (REVIEW pt 5). */
+  matchProfile: (id: number | string) =>
+    getJson<Envelope<MatchProfile | null>>(`/matches/${id}/profile`),
+  /** Every price captured for the match, with the Cronología's numbers (REVIEW pt 10). */
+  matchMarkets: (id: number | string) =>
+    getJson<Envelope<MatchMarkets | null>>(`/matches/${id}/markets`),
   /** ANÁLISIS PREDIGOL: up to three cards, computed once per match by the worker and read by everyone. */
   matchAnalysis: (id: number | string, q: Preview = {}) =>
     getJson<Envelope<MatchAnalysis | null>>(`/matches/${id}/analysis`, q),
@@ -438,6 +445,7 @@ export const v1 = {
       day?: string | undefined;
       verdict?: string | undefined;
       classification?: string | undefined;
+      fixture_id?: number | undefined;
     } = {},
   ) => getJson<Envelope<PickPostmortem[]>>("/admin/ai/postmortems", q as Params),
   aiLearning: (day?: string) => getJson<Envelope<AiLearning>>("/admin/ai/learning", { day }),

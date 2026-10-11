@@ -713,7 +713,7 @@ function ResearchTab({
 
 // ── POST-MORTEMS ─────────────────────────────────────────────────────────────
 
-function PostmortemCard({ pm }: { pm: PickPostmortem }) {
+export function PostmortemCard({ pm }: { pm: PickPostmortem }) {
   const answers = orderedAnswers(pm.answers);
   const clv = toNum(pm.clv);
   return (

@@ -10,7 +10,7 @@
  * day's reading (the L1 brief) are the owner's preview, or what an enforced review shows everyone; without them
  * every card still reads complete, from its numbers alone.
  */
-import { useId, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BrainCircuit,
@@ -532,9 +532,22 @@ function Footer({ a, updatedAt }: { a: MatchAnalysis; updatedAt: string | null }
   );
 }
 
-export function AnalysisBlock({ ctx }: { ctx: MatchCtx }) {
+/**
+ * `variant="reference"` once the match is under way or over (REVIEW PREDIGOL, point 4): PrediGol Intelligence
+ * no longer heads the page - the events do - and below them it reads as what it is, the day's reading written
+ * before kick-off, with the analysed markets folded away.
+ */
+export function AnalysisBlock({
+  ctx,
+  variant = "full",
+}: {
+  ctx: MatchCtx;
+  variant?: "full" | "reference";
+}) {
   const preview = usePreviewParam();
   const q = useQuery(live.matchAnalysis(ctx.fixtureId, preview));
+  const [showCards, setShowCards] = useState(false);
+  const reference = variant === "reference";
   const a = q.data?.data ?? null;
   const evaluation = a?.audience === "evaluation";
   const home = ctx.match.home.name;
@@ -548,11 +561,15 @@ export function AnalysisBlock({ ctx }: { ctx: MatchCtx }) {
   // Line-ups come about an hour before kick-off and an unpriced market has its own cards: neither is a gap.
   const gaps = (a?.missing ?? []).filter((m) => m !== "lineups" && m !== "market");
   const titleId = `${INTELLIGENCE_ID}-title`;
+  // Under the events, nothing to read is no block at all: an empty card there is only noise.
+  if (reference && q.isSuccess && (!a || (!a.brief && a.cards.length === 0))) return null;
+  const cardsShown = !reference || showCards;
   return (
     <section
       id={INTELLIGENCE_ID}
       aria-labelledby={titleId}
       data-testid="analysis-block"
+      data-variant={variant}
       className={cn(
         "min-w-0 scroll-mt-20 rounded-xl border border-border bg-card",
         evaluation && "border-info/40",
@@ -560,14 +577,26 @@ export function AnalysisBlock({ ctx }: { ctx: MatchCtx }) {
     >
       <header className="flex items-start justify-between gap-3 px-4 pt-3.5">
         <div className="min-w-0">
-          <h2
-            id={titleId}
-            className="flex items-center gap-2 font-display text-[0.95rem] font-bold uppercase tracking-[0.08em]"
-          >
-            <BrainCircuit aria-hidden className="h-4 w-4 shrink-0 text-primary" />
-            <span className="min-w-0 break-words">{t("match.analysis.title")}</span>
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t("match.analysis.subtitle")}</p>
+          {reference ? (
+            <h2
+              id={titleId}
+              className="flex items-center gap-2 font-display text-[0.95rem] font-semibold tracking-tight"
+            >
+              <Newspaper aria-hidden className="h-4 w-4 shrink-0 text-info" />
+              <span className="min-w-0 break-words">{t("match.reading.title")}</span>
+            </h2>
+          ) : (
+            <h2
+              id={titleId}
+              className="flex items-center gap-2 font-display text-[0.95rem] font-bold uppercase tracking-[0.08em]"
+            >
+              <BrainCircuit aria-hidden className="h-4 w-4 shrink-0 text-primary" />
+              <span className="min-w-0 break-words">{t("match.analysis.title")}</span>
+            </h2>
+          )}
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {reference ? t("match.reading.subtitle") : t("match.analysis.subtitle")}
+          </p>
         </div>
         {evaluation ? <ShadowBadge compact /> : null}
       </header>
@@ -583,19 +612,34 @@ export function AnalysisBlock({ ctx }: { ctx: MatchCtx }) {
         ) : (
           <div className="space-y-3">
             {a.brief ? <BriefPanel brief={a.brief} sides={{ home, away }} /> : null}
+            {reference && a.cards.length ? (
+              <button
+                type="button"
+                aria-expanded={showCards}
+                onClick={() => setShowCards((v) => !v)}
+                data-testid="reading-cards-toggle"
+                className="inline-flex min-h-9 items-center gap-1 rounded-md px-1 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {showCards
+                  ? t("match.reading.hideCards")
+                  : t("match.reading.showCards", { count: a.cards.length })}
+              </button>
+            ) : null}
             {a.cards.length ? (
-              <div className="space-y-3">
-                {a.cards.map((c) => (
-                  <AnalysisCardView
-                    key={`${c.market}-${c.selection}-${c.line}`}
-                    card={c}
-                    home={home}
-                    away={away}
-                    match={match}
-                    updatedAt={updatedAt}
-                  />
-                ))}
-              </div>
+              cardsShown ? (
+                <div className="space-y-3">
+                  {a.cards.map((c) => (
+                    <AnalysisCardView
+                      key={`${c.market}-${c.selection}-${c.line}`}
+                      card={c}
+                      home={home}
+                      away={away}
+                      match={match}
+                      updatedAt={updatedAt}
+                    />
+                  ))}
+                </div>
+              ) : null
             ) : (
               <p className="text-sm text-muted-foreground" data-empty-state>
                 {a.withheld > 0

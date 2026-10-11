@@ -1,125 +1,26 @@
 /**
- * Resumen, by the match's state:
- * before kick-off - PrediGol Intelligence, picks, best prices, form, table, head to head, absences, line-ups;
- * in play        - the pre-match picks as taken (with the minute and score), events, the pre-match
- *                  analysis, key figures, in-play prices, then the context folded away;
- * after          - result, the pre-match picks with their results, events, the pre-match analysis,
- *                  key figures, then the context folded away;
- * not played     - what happened (postponed, cancelled, abandoned, awarded) and the pre-match picks.
+ * Resumen, by the match's state (REVIEW PREDIGOL, point 4 - the picks have their own tab now):
+ * before kick-off - PrediGol Intelligence first, the way to the match's picks, the best prices, form,
+ *                   table, absences, line-ups and head to head;
+ * in play        - the match events first, then the day's reading as it was written before kick-off,
+ *                  key figures and in-play prices; the context folded away;
+ * after          - result, the way to the picks and how they ended, events, the pre-match reading and
+ *                  key figures; the context folded away;
+ * not played     - what happened (postponed, cancelled, abandoned, awarded) and the way to the picks.
  */
 import { useId, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { BarChart3, CalendarX2, ChevronDown, Flag, History, Target } from "lucide-react";
+import { BarChart3, CalendarX2, ChevronDown, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { live } from "@/lib/api/v1/queries";
-import { usePreviewParam } from "@/lib/auth/AuthProvider";
-import type { PickCard as PickCardData } from "@/lib/api/v1/types_product";
-import { PickCard } from "@/product/shared/PickCard";
-import { StartedPickCard } from "@/product/shared/StartedPickCard";
-import { ShadowBadge } from "@/product/shared/Bits";
-import { Card, EmptyState, ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { Card, EmptyState } from "@/product/shared/States";
 import { AnalysisBlock } from "./AnalysisBlock";
 import type { MatchCtx } from "./context";
 import { AbsencesBlock, FormBlock, H2HBlock, LineupsTeaser, StandingsBlock } from "./ContextBlocks";
 import { EventsBlock } from "./EventsTimeline";
 import { KEY_STATS, statRows } from "./model";
+import { PicksTeaser } from "./PicksTab";
 import { LiveOddsBlock, QuickPricesBlock } from "./prices";
 import { Block, CenterSection, MoreButton, StatBars, TeamsLegend } from "./ui";
-
-// ── Picks ───────────────────────────────────────────────────────────────────
-
-const PICKS_SHOWN = 2;
-
-/** Qualified picks for this match (the admin's labelled shadow preview when it is on). */
-function PicksBlock({ ctx }: { ctx: MatchCtx }) {
-  const preview = usePreviewParam();
-  const q = useQuery(live.productPicks({ hours: 168, fixture_id: Number(ctx.fixtureId) }, preview));
-  const [all, setAll] = useState(false);
-  const board = q.data?.data;
-  const id = Number(ctx.fixtureId);
-  const seen = new Set<number>();
-  const picks: PickCardData[] = [...(board?.top ?? []), ...(board?.picks ?? [])].filter((p) => {
-    if (p.fixture_id !== id || seen.has(p.pick_id)) return false;
-    seen.add(p.pick_id);
-    return true;
-  });
-  // Keep the board's own order (value now first, then expected value).
-  const order = new Map((board?.picks ?? []).map((p, i) => [p.pick_id, i]));
-  picks.sort((a, b) => (order.get(a.pick_id) ?? -1) - (order.get(b.pick_id) ?? -1));
-  const rankOf = new Map((board?.top ?? []).map((p, i) => [p.pick_id, i + 1]));
-  const shadow = board?.source === "shadow_preview";
-  const shown = all ? picks : picks.slice(0, PICKS_SHOWN);
-
-  return (
-    <Block
-      title={t("match.picks.title")}
-      icon={<Target />}
-      right={shadow ? <ShadowBadge /> : null}
-      className={cn(shadow && "border-info/40")}
-    >
-      {q.isPending ? (
-        <SkeletonBlock className="h-32" />
-      ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} className="py-5" />
-      ) : picks.length === 0 ? (
-        <p className="text-sm text-muted-foreground" data-empty-state>
-          {shadow ? t("match.picks.noneShadow") : t("match.picks.none")}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
-            {shown.map((p) => (
-              <PickCard key={p.pick_id} pick={p} rank={rankOf.get(p.pick_id)} shadow={shadow} />
-            ))}
-          </div>
-          {picks.length > PICKS_SHOWN ? (
-            <MoreButton expanded={all} onClick={() => setAll((v) => !v)}>
-              {all ? t("match.picks.showLess") : t("match.picks.showAll", { count: picks.length })}
-            </MoreButton>
-          ) : null}
-        </div>
-      )}
-    </Block>
-  );
-}
-
-/**
- * Once the match has kicked off: the picks PrediGol made BEFORE it, as they were taken (time,
- * price, bookmaker), each with what the match is doing now and, at the end, its result. Never
- * re-priced, never turned into an in-play pick.
- */
-function PrematchPicksBlock({ ctx }: { ctx: MatchCtx }) {
-  const preview = usePreviewParam();
-  const q = useQuery(live.productPicks({ hours: 168, fixture_id: Number(ctx.fixtureId) }, preview));
-  const board = q.data?.data;
-  const shadow = board?.source === "shadow_preview";
-  const picks = (board?.started ?? []).filter((p) => p.fixture_id === Number(ctx.fixtureId));
-  if (q.isSuccess && picks.length === 0) return null;
-  return (
-    <Block
-      title={t("match.picks.prematchTitle")}
-      icon={<History />}
-      right={shadow ? <ShadowBadge /> : null}
-      className={cn(shadow && "border-info/40")}
-    >
-      {q.isPending ? (
-        <SkeletonBlock className="h-32" />
-      ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} className="py-5" />
-      ) : (
-        <div className="space-y-2" data-testid="prematch-picks">
-          <p className="text-caption text-muted-foreground">{t("match.picks.prematchHelp")}</p>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
-            {picks.map((p) => (
-              <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} />
-            ))}
-          </div>
-        </div>
-      )}
-    </Block>
-  );
-}
 
 // ── Result and key figures ──────────────────────────────────────────────────
 
@@ -250,7 +151,7 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
     <div className={TWO_COLUMNS}>
       <div className="min-w-0 space-y-4">
         <AnalysisBlock ctx={ctx} />
-        <PicksBlock ctx={ctx} />
+        <PicksTeaser ctx={ctx} />
         <QuickPricesBlock ctx={ctx} />
         <div className="space-y-4 lg:hidden">
           <div className="grid items-start gap-4 md:grid-cols-2">
@@ -279,11 +180,11 @@ function InPlay({ ctx }: { ctx: MatchCtx }) {
     <div className="space-y-4">
       <div className={TWO_COLUMNS}>
         <div className="min-w-0 space-y-4">
-          <PrematchPicksBlock ctx={ctx} />
           <EventsBlock ctx={ctx} />
-          <AnalysisBlock ctx={ctx} />
+          <AnalysisBlock ctx={ctx} variant="reference" />
         </div>
         <div className="min-w-0 space-y-4">
+          <PicksTeaser ctx={ctx} />
           <KeyStatsBlock ctx={ctx} />
           <LiveOddsBlock ctx={ctx} />
         </div>
@@ -299,9 +200,9 @@ function AfterMatch({ ctx }: { ctx: MatchCtx }) {
       <div className={TWO_COLUMNS}>
         <div className="min-w-0 space-y-4">
           <ResultBlock ctx={ctx} />
-          <PrematchPicksBlock ctx={ctx} />
+          <PicksTeaser ctx={ctx} />
           <EventsBlock ctx={ctx} />
-          <AnalysisBlock ctx={ctx} />
+          <AnalysisBlock ctx={ctx} variant="reference" />
         </div>
         <div className="min-w-0 space-y-4">
           <KeyStatsBlock ctx={ctx} />
@@ -326,7 +227,7 @@ function NotPlayed({ ctx }: { ctx: MatchCtx }) {
           body={t(`match.notPlayed.${key}Body`)}
         />
       </Card>
-      <PrematchPicksBlock ctx={ctx} />
+      <PicksTeaser ctx={ctx} />
       <ContextSection ctx={ctx} open />
     </div>
   );

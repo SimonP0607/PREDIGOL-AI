@@ -120,5 +120,12 @@
     "no_live_states": "No se registró ningún estado en vivo de este partido.",
     "live_odds_not_kept": "Las cuotas en vivo solo se muestran mientras se juega y no se guardan después.",
     "no_market_data": "Todavía no hay cuotas capturadas para este partido."
+  },
+  "pager": {
+    "label": "Páginas",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "range": "{from}–{to} de {total}",
+    "page": "Página {page} de {pages}"
   }
 }

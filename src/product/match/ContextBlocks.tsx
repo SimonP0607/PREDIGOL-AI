@@ -8,10 +8,11 @@ import { fmtLine } from "@/lib/i18n/format";
 import { formatDateYear, formatRelative } from "@/lib/time";
 import type { TeamRef } from "@/lib/api/v1/types";
 import type { Absence, H2HMatch, Side, StandingLine } from "@/lib/api/v1/types_center";
-import { TeamName } from "@/components/football/Logos";
-import { sectionCodeText } from "@/components/system/LiveState";
+import { PlayerPhoto, TeamName } from "@/components/football/Logos";
+import { sectionCodeText } from "@/components/system/sectionCode";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
+import { PlayerSummary, SeasonLine } from "./PlayerSummary";
 import { absenceKind, absenceReason, h2hSummary, lastFive } from "./model";
 import { matchTables, rankedRows } from "@/product/shared/standings";
 import { Block, CenterSection, FormChips, MoreButton, PlayerName, SectionNote } from "./ui";
@@ -416,13 +417,26 @@ function AbsenceList({ ctx, rows }: { ctx: MatchCtx; rows: Absence[] }) {
                   <li
                     key={`${a.player_id ?? a.player ?? "p"}-${i}`}
                     className="flex items-center justify-between gap-2 py-1.5 text-sm"
+                    data-testid="absence"
                   >
-                    <PlayerName
-                      name={a.player}
-                      id={a.player_id}
-                      admin={ctx.showAdmin}
-                      className="min-w-0 truncate"
-                    />
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <PlayerPhoto src={a.photo_url ?? null} name={a.player ?? "?"} size={32} />
+                      <span className="min-w-0">
+                        <PlayerSummary
+                          name={a.player}
+                          photo={a.photo_url}
+                          position={a.position}
+                          season={a.season}
+                          competition={ctx.match.competition.name}
+                          playerId={a.player_id}
+                          admin={ctx.showAdmin}
+                          className="block max-w-full truncate font-medium"
+                        >
+                          {a.player ?? t("match.events.unknownPlayer")}
+                        </PlayerSummary>
+                        <SeasonLine season={a.season} />
+                      </span>
+                    </span>
                     <span className="flex shrink-0 items-center gap-1.5">
                       <span
                         className="text-caption text-muted-foreground"
