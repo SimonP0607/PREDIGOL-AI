@@ -100,7 +100,7 @@ const STATES: readonly StartedState[] = ["all", "live", "won", "lost", "other"];
 function StartedPicks() {
   const preview = usePreviewParam();
   const q = useQuery(live.startedPicks(preview));
-  const all = q.data?.data ?? [];
+  const all = useMemo(() => q.data?.data ?? [], [q.data]);
   const shadow = preview === "shadow";
   const [competition, setCompetition] = useState<number | null>(null);
   const [market, setMarket] = useState<string | null>(null);

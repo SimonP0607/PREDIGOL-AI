@@ -1,17 +1,19 @@
 /**
- * Where a recorded pick stands, step by step - so an evaluation pick is never read as a recommendation:
+ * Where a recorded pick stands, step by step - so an evaluation pick is never read as a recommendation.
  *
- *   Elegido por el modelo (elo_ologit) -> Revisado por la IA: Rebajado -> No publicado (evaluación) -> Liquidado: Perdido
+ *   admin:  Elegido por el modelo (elo_ologit) -> IA: confirmado -> No publicado (evaluación)
+ *   user:   IA: confirmado
  *
- * The AI step is its NEWEST review before kick-off (``ai_latest``), else the one frozen when the pick entered the
- * set; in shadow a user sees only that the AI reviewed it. "Publicado" is never true while publishing is disabled.
+ * REVIEW PREDIGOL, point 1: a user does not know the models and what he sees is published, so he gets only what
+ * helps him - that the AI looked at it and what it said. Nobody gets "Liquidado: Perdido": the card's result says
+ * it at its foot. The AI step is the NEWEST review before kick-off (``ai_latest``), else the one frozen when the
+ * pick entered the set. "Publicado" is never true while publishing is disabled.
  */
-import { BrainCircuit, Calculator, CheckCheck, Megaphone } from "lucide-react";
+import { BrainCircuit, Calculator, Megaphone } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import type { AiLatest, ItemAi, ResultStatus } from "@/lib/api/v1/types_records";
-import { resultTone } from "./model";
+import type { AiLatest, ItemAi } from "@/lib/api/v1/types_records";
 
 type Decision = NonNullable<ItemAi["decision"]>;
 
@@ -50,31 +52,36 @@ export function DecisionChain({
   model,
   ai,
   aiLatest,
-  status,
   evaluation,
+  admin,
   className,
 }: {
   model: string | null | undefined;
   ai: ItemAi | null | undefined;
   aiLatest: AiLatest | null | undefined;
-  status: ResultStatus;
   /** From the evaluation set (shadow picks): never a recommendation. */
   evaluation: boolean;
+  /** SUPER_ADMIN, not previewing as a USER: the model and the publication steps too. */
+  admin: boolean;
   className?: string | undefined;
 }) {
   const decision: Decision | null = aiLatest?.decision ?? ai?.decision ?? null;
   const reviewed = Boolean(aiLatest ?? ai);
-  const tone = resultTone(status);
+  // A user sees the AI step only when the AI looked at the pick; nothing to say otherwise.
+  if (!admin && !reviewed) return null;
   return (
     <ol
       data-testid="decision-chain"
       data-ai={decision ?? (reviewed ? "reviewed" : "none")}
+      data-audience={admin ? "admin" : "user"}
       className={cn("flex flex-wrap items-center gap-x-1 gap-y-0.5 text-caption", className)}
     >
-      <Step icon={<Calculator />}>
-        {t("records.chain.model", { model: model ?? t("records.chain.unknownModel") })}
-      </Step>
-      <Step icon={<BrainCircuit />}>
+      {admin ? (
+        <Step icon={<Calculator />}>
+          {t("records.chain.model", { model: model ?? t("records.chain.unknownModel") })}
+        </Step>
+      ) : null}
+      <Step icon={<BrainCircuit />} last={!admin}>
         {decision ? (
           <>
             {t("records.chain.ai")}{" "}
@@ -88,25 +95,13 @@ export function DecisionChain({
           <span className="text-subtle-foreground">{t("records.chain.aiNone")}</span>
         )}
       </Step>
-      <Step icon={<Megaphone />}>
-        <span className={evaluation ? "text-warning" : undefined}>
-          {evaluation ? t("records.chain.evaluation") : t("records.chain.notPublished")}
-        </span>
-      </Step>
-      <Step icon={<CheckCheck />} last>
-        {status === "PENDING" ? (
-          t("records.chain.open")
-        ) : (
-          <span
-            className={cn(
-              "font-medium",
-              tone === "win" ? "text-positive" : tone === "loss" ? "text-negative" : undefined,
-            )}
-          >
-            {t("records.chain.settled", { status: t(`records.status.${status}`) })}
+      {admin ? (
+        <Step icon={<Megaphone />} last>
+          <span className={evaluation ? "text-warning" : undefined}>
+            {evaluation ? t("records.chain.evaluation") : t("records.chain.notPublished")}
           </span>
-        )}
-      </Step>
+        </Step>
+      ) : null}
     </ol>
   );
 }

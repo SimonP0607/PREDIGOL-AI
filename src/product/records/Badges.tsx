@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 import { t, translateOr } from "@/lib/i18n";
 import { toNumber } from "@/lib/i18n/format";
 import type { MatchPhase } from "@/lib/api/v1/types";
-import type { ParlayStatus, ResultStatus } from "@/lib/api/v1/types_records";
+import type { ParlayProgress, ParlayStatus, ResultStatus } from "@/lib/api/v1/types_records";
 import { matchPhaseOf, minuteText, shortStatus } from "@/product/matches/status";
-import { parlayTone, resultTone, type Tone } from "./model";
+import { parlayOutcome, parlayTone, resultTone, type ParlayOutcome, type Tone } from "./model";
 import { fmtUnits } from "./units";
 
 const TONE: Record<Tone, string> = {
@@ -52,6 +52,40 @@ export function ParlayStatusBadge({
       className={cn(BADGE, TONE[parlayTone(status)], className)}
     >
       {t(`records.parlayStatus.${status}`)}
+    </span>
+  );
+}
+
+const OUTCOME_TONE: Record<ParlayOutcome, Tone> = {
+  playing: "live",
+  won: "win",
+  lost: "loss",
+  void: "neutral",
+  building: "pending",
+};
+
+/** A parlay's result in one word (REVIEW point 2): En juego, Ganado, Perdido - or Anulado. */
+export function ParlayOutcomeBadge({
+  status,
+  progress,
+  className,
+}: {
+  status: ParlayStatus;
+  progress?: ParlayProgress | null | undefined;
+  className?: string | undefined;
+}) {
+  const outcome = parlayOutcome(status, progress);
+  return (
+    <span
+      data-testid="parlay-status"
+      data-status={status}
+      data-outcome={outcome}
+      className={cn(BADGE, TONE[OUTCOME_TONE[outcome]], className)}
+    >
+      {outcome === "playing" ? (
+        <span aria-hidden className="mr-1 h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+      ) : null}
+      {t(`records.outcome.${outcome}`)}
     </span>
   );
 }

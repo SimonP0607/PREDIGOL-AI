@@ -18,8 +18,8 @@ import { CompetitionTag, TeamLogo, TeamName } from "@/components/football/Logos"
 import { EvBadge, Kickoff, OddsPill } from "@/product/shared/Bits";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { PARLAY_ICON, parlayTitle } from "@/product/parlays/parlayText";
-import { AiNote, ProgressBadge } from "./AiNote";
-import { EvaluationBadge, ParlayStatusBadge, RecordState, Units } from "./Badges";
+import { AiNote } from "./AiNote";
+import { EvaluationBadge, ParlayOutcomeBadge, RecordState, Units } from "./Badges";
 import { MatchScore } from "./DailyItemCard";
 
 type Variant = "compact" | "full";
@@ -187,11 +187,7 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
         <div className="mt-3 sm:mt-0">
           <dt className={STAT_LABEL}>{t("records.labels.result")}</dt>
           <dd className="mt-1.5 flex flex-wrap items-center gap-2">
-            {parlay.progress ? (
-              <ProgressBadge progress={parlay.progress} pending={parlay.legs_pending} />
-            ) : (
-              <ParlayStatusBadge status={parlay.status} />
-            )}
+            <ParlayOutcomeBadge status={parlay.status} progress={parlay.progress} />
             {settled ? <Units value={parlay.profit_units} className="text-sm" /> : null}
           </dd>
           {parlay.legs.some((l) => l.status !== "PENDING") ? (
@@ -299,7 +295,6 @@ export function ParlayRecordCard({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {evaluation ? <EvaluationBadge /> : null}
-          {parlay ? <ParlayStatusBadge status={parlay.status} /> : null}
         </div>
       </header>
       {built ? (

@@ -6,6 +6,7 @@
 import type {
   HistoryGroupKey,
   MarketKey,
+  ParlayProgress,
   ParlayStatus,
   ParlayValidation,
   ResultStatus,
@@ -50,6 +51,25 @@ export function resultTone(status: ResultStatus): Tone {
   if (status === "LOSS" || status === "HALF_LOSS") return "loss";
   if (status === "PUSH" || status === "VOID") return "neutral";
   return "pending";
+}
+
+export type ParlayOutcome = "playing" | "won" | "lost" | "void" | "building";
+
+/**
+ * One state for a parlay's result (REVIEW PREDIGOL, point 2): En juego, Ganado or Perdido - plus Anulado
+ * when it happens. A lost leg decides it at once, even with legs still to play.
+ */
+export function parlayOutcome(
+  status: ParlayStatus,
+  progress?: ParlayProgress | null,
+): ParlayOutcome {
+  if (status === "WON" || status === "PARTIAL_VOID") return "won";
+  if (status === "LOST") return "lost";
+  if (status === "VOID") return "void";
+  if (status === "BUILDING") return "building";
+  if (progress === "LOST" || progress === "PARTIAL_LOST") return "lost";
+  if (progress === "WON") return "won";
+  return "playing";
 }
 
 export function parlayTone(status: ParlayStatus): Tone {

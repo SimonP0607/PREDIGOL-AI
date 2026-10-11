@@ -18,7 +18,8 @@ import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
 import { MatchStateBadge, OriginLabel, ResultBadge, Units } from "./Badges";
 import { hasStarted } from "./model";
 import { pickableOfItem } from "./pickable";
-import { SelectionActions } from "./SelectionActions";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { SelectablePrice } from "@/product/odds/SelectablePrice";
 
 export function MatchScore({ home, away }: { home: number | null; away: number | null }) {
   if (home === null || away === null) return null;
@@ -41,6 +42,7 @@ export function DailyItemCard({
   evaluation?: boolean;
   className?: string | undefined;
 }) {
+  const admin = useAuth().showAdmin;
   const m = item.match;
   const label = selectionLabel({
     market_key: item.market_key,
@@ -155,8 +157,8 @@ export function DailyItemCard({
             model={item.model}
             ai={item.ai}
             aiLatest={item.ai_latest}
-            status={item.status}
             evaluation={evaluation}
+            admin={admin}
             className="mt-3"
           />
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -189,7 +191,7 @@ export function DailyItemCard({
           )}
           {settled ? <Units value={item.profit_units} className="text-xs" /> : null}
         </div>
-        {!started ? <SelectionActions sel={pickableOfItem(item)} /> : null}
+        {!started ? <SelectablePrice sel={pickableOfItem(item)} save size="sm" /> : null}
       </div>
     </article>
   );
