@@ -7,7 +7,13 @@ import type { CompetitionBadge, ParlayRisk, ProductSource, TeamBadge } from "./t
 import type { ItemAi, MarketKey } from "./types_records";
 
 export type BuildReason =
-  "no_candidates" | "no_match" | "too_few_legs" | "total_odds_cap" | "no_growth";
+  | "no_candidates"
+  | "risk_cap"
+  | "not_reviewed"
+  | "no_match"
+  | "too_few_legs"
+  | "total_odds_cap"
+  | "no_growth";
 
 export interface BuilderQuery {
   hours: number;
@@ -53,11 +59,16 @@ export interface BuilderLeg {
 }
 
 export interface BuilderFunnel {
+  /** Through the value gate at the current price. */
   passing: number;
+  /** Of those, through the risk stage (no price above max_odds). */
+  risk: number;
+  /** Of those, through PrediGol Intelligence. */
   reviewed: number;
   matching: number;
   combinable: number;
   matches: number;
+  max_odds?: Dec | null;
 }
 
 export interface BuilderOption {

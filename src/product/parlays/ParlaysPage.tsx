@@ -70,6 +70,7 @@ function HowWeBuild() {
             t("parlays.how.value.consensus"),
             t("parlays.how.value.books"),
             t("parlays.how.value.interval"),
+            t("parlays.how.value.risk"),
             t("parlays.how.value.ai"),
           ]}
         />

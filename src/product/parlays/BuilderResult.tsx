@@ -28,6 +28,20 @@ function Stat({ label, title, children }: { label: string; title?: string; child
   );
 }
 
+/** "De 739 selecciones con valor en tu ventana, 412 no pasan de 3,00..." - each stage the parlay went through. */
+function funnelText(body: BuiltParlay): string {
+  const f = body.funnel;
+  return t("parlays.builder.result.funnel", {
+    passing: f.passing,
+    risk: f.risk,
+    max: fmtOdds(f.max_odds ?? null),
+    reviewed: f.reviewed,
+    matching: f.matching,
+    combinable: f.combinable,
+    matches: f.matches,
+  });
+}
+
 export function Result({ body }: { body: BuiltParlay }) {
   const slip = useSlip();
   const navigate = useNavigate();
@@ -120,6 +134,8 @@ export function Result({ body }: { body: BuiltParlay }) {
           <ul className="space-y-1 text-caption text-muted-foreground">
             {[
               t("parlays.builder.result.why.gate"),
+              t("parlays.builder.result.why.risk", { max: fmtOdds(body.funnel.max_odds ?? null) }),
+              t("parlays.builder.result.why.context"),
               t("parlays.builder.result.why.independent"),
               t("parlays.builder.result.why.growth"),
               ...(body.correlated_pairs > 0
@@ -133,7 +149,7 @@ export function Result({ body }: { body: BuiltParlay }) {
             ))}
           </ul>
           <p className="pt-1 text-caption text-subtle-foreground" data-testid="builder-funnel">
-            {t("parlays.builder.result.funnel", { ...body.funnel })}
+            {funnelText(body)}
             {body.prices_as_of
               ? ` · ${t("parlays.builder.result.pricesAt", { when: formatRelative(body.prices_as_of) })}`
               : ""}
@@ -177,6 +193,7 @@ export function NoParlay({ body }: { body: BuiltParlay }) {
       : t(`parlays.builder.none.${reason}`, {
           min: f.min_legs,
           cap: f.max_total_odds ? localDecimalText(String(Number(f.max_total_odds))) : "",
+          max: fmtOdds(body.funnel.max_odds ?? null),
         });
   return (
     <div
@@ -201,7 +218,7 @@ export function NoParlay({ body }: { body: BuiltParlay }) {
         </p>
         {body.funnel.passing > 0 ? (
           <p className="text-caption text-subtle-foreground" data-testid="builder-funnel">
-            {t("parlays.builder.result.funnel", { ...body.funnel })}
+            {funnelText(body)}
           </p>
         ) : null}
         <p className="text-caption text-subtle-foreground">{t("parlays.empty.never")}</p>

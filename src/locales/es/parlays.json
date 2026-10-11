@@ -22,7 +22,8 @@
       "consensus": "Consenso de mercado con ≥ 2 casas",
       "interval": "Una probabilidad sin intervalo medido no entra, ni una con incertidumbre de más de 40 puntos",
       "books": "Cada selección cotizada por 3 casas o más",
-      "ai": "En modo de aplicación, PrediGol Intelligence deja fuera lo que rechaza o rebaja"
+      "ai": "Toda selección pasó por PrediGol Intelligence; en modo de aplicación deja fuera lo que rechaza o rebaja",
+      "risk": "Ninguna selección por encima de 3,00: en nuestro histórico las cuotas altas pierden dinero"
     },
     "independence": {
       "title": "Sin selecciones relacionadas",
@@ -103,14 +104,16 @@
       "risk": "Riesgo",
       "pricesAt": "Precios de {when}",
       "shadow": "Vista previa con picks en sombra (solo administración): no es una recomendación.",
-      "funnel": "De {passing} selecciones con valor en tu ventana, {matching} cumplen tus filtros y {combinable} se pueden combinar ({matches} partidos).",
+      "funnel": "De {passing} selecciones con valor en tu ventana, {risk} no pasan de {max} de cuota, {reviewed} pasaron por PrediGol Intelligence, {matching} cumplen tus filtros y {combinable} se pueden combinar ({matches} partidos).",
       "why": {
         "title": "Por qué este parlay",
         "gate": "Cada selección pasa el filtro de valor al precio de ahora: cotizada por 3 casas o más, sin cuotas atípicas y con valor esperado positivo.",
         "independent": "Partidos y equipos distintos, y como mucho dos selecciones de la misma competición.",
         "growth": "Se eligen por crecimiento esperado con la probabilidad prudente de cada una, no por la cuota más alta: solo se arma si ese crecimiento es positivo.",
         "correlated_one": "La dependencia medida entre selecciones de la misma competición y día baja la probabilidad conjunta en {count} par.",
-        "correlated_other": "La dependencia medida entre selecciones de la misma competición y día baja la probabilidad conjunta en {count} pares."
+        "correlated_other": "La dependencia medida entre selecciones de la misma competición y día baja la probabilidad conjunta en {count} pares.",
+        "risk": "Ninguna selección por encima de {max} de cuota: en nuestro histórico, las cuotas altas pierden dinero.",
+        "context": "Cada selección pasó por PrediGol Intelligence, que revisó su contexto y las noticias del partido."
       }
     },
     "save": "Guardar en Mis picks",
@@ -129,7 +132,9 @@
       "too_few_legs_one": "Con tus filtros solo hay selecciones combinables en {count} partido: no alcanza el mínimo de {min}.",
       "too_few_legs_other": "Con tus filtros solo hay selecciones combinables en {count} partidos: no alcanza el mínimo de {min}.",
       "total_odds_cap": "Con una cuota total máxima de {cap} no se llega a {min} selecciones que valga la pena combinar.",
-      "no_growth": "Hay selecciones suficientes, pero ninguna combinación de {min} o más crece en conjunto respetando las reglas de independencia."
+      "no_growth": "Hay selecciones suficientes, pero ninguna combinación de {min} o más crece en conjunto respetando las reglas de independencia.",
+      "risk_cap": "Todas las selecciones con valor de tu ventana pagan más de {max}: la regla de riesgo de PrediGol las deja fuera, porque en nuestro histórico las cuotas altas pierden dinero.",
+      "not_reviewed": "Las selecciones con valor de tu ventana aún no han pasado por PrediGol Intelligence: la revisión corre durante el día."
     },
     "advice": {
       "widen": "Prueba con una ventana más amplia o con menos selecciones mínimas.",

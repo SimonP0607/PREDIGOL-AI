@@ -92,5 +92,7 @@ describe("the automatic parlay builder's form (REVIEW point 15)", () => {
     expect(adviceFor("total_odds_cap")).toBe("cap");
     expect(adviceFor("no_growth")).toBe("widen");
     expect(adviceFor("no_candidates")).toBe("wait");
+    expect(adviceFor("risk_cap")).toBe("widen");
+    expect(adviceFor("not_reviewed")).toBe("wait");
   });
 });

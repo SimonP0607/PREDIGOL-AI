@@ -22,7 +22,8 @@
       "consensus": "Market consensus from ≥ 2 bookmakers",
       "interval": "A probability without a measured interval is left out, and so is one more than 40 points uncertain",
       "books": "Every selection quoted by 3 bookmakers or more",
-      "ai": "In enforce mode, PrediGol Intelligence leaves out what it rejects or downgrades"
+      "ai": "Every selection went through PrediGol Intelligence; in enforce mode it leaves out what it rejects or downgrades",
+      "risk": "No selection above 3.00: in our history, long odds lose money"
     },
     "independence": {
       "title": "No related selections",
@@ -103,14 +104,16 @@
       "risk": "Risk",
       "pricesAt": "Prices from {when}",
       "shadow": "Preview with shadow picks (admin only): not a recommendation.",
-      "funnel": "Of {passing} selections with value in your window, {matching} match your filters and {combinable} can be combined ({matches} matches).",
+      "funnel": "Of {passing} selections with value in your window, {risk} are priced {max} or less, {reviewed} went through PrediGol Intelligence, {matching} match your filters and {combinable} can be combined ({matches} matches).",
       "why": {
         "title": "Why this parlay",
         "gate": "Every selection passes the value filter at today's price: quoted by 3 bookmakers or more, no outlier prices, positive expected value.",
         "independent": "Different matches and teams, and at most two selections from the same competition.",
         "growth": "Chosen by expected growth at each selection's prudent probability, not by the highest odds: it is built only if that growth is positive.",
         "correlated_one": "The measured dependence between selections of the same competition and day lowers the joint probability in {count} pair.",
-        "correlated_other": "The measured dependence between selections of the same competition and day lowers the joint probability in {count} pairs."
+        "correlated_other": "The measured dependence between selections of the same competition and day lowers the joint probability in {count} pairs.",
+        "risk": "No selection above odds of {max}: in our history, long odds lose money.",
+        "context": "Every selection went through PrediGol Intelligence, which reviewed its context and the match's news."
       }
     },
     "save": "Save to My picks",
@@ -129,7 +132,9 @@
       "too_few_legs_one": "With your filters there are combinable selections in only {count} match: short of the minimum of {min}.",
       "too_few_legs_other": "With your filters there are combinable selections in only {count} matches: short of the minimum of {min}.",
       "total_odds_cap": "With maximum total odds of {cap} there are not {min} selections worth combining.",
-      "no_growth": "There are enough selections, but no combination of {min} or more grows together within the independence rules."
+      "no_growth": "There are enough selections, but no combination of {min} or more grows together within the independence rules.",
+      "risk_cap": "Every selection with value in your window pays more than {max}: PrediGol's risk rule leaves them out, because in our history long odds lose money.",
+      "not_reviewed": "The selections with value in your window have not been through PrediGol Intelligence yet: the review runs during the day."
     },
     "advice": {
       "widen": "Try a wider window or fewer minimum selections.",

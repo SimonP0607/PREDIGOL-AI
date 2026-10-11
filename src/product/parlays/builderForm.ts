@@ -127,6 +127,7 @@ export function adviceFor(reason: BuildReason | null): "widen" | "filters" | "ca
       return "cap";
     case "too_few_legs":
     case "no_growth":
+    case "risk_cap":
       return "widen";
     default:
       return "wait";

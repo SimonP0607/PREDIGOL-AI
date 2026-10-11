@@ -106,7 +106,7 @@ function empty(reason: BuiltParlay["reason"], extra: Partial<BuiltParlay> = {}):
     expected_log_growth: null,
     risk: null,
     correlated_pairs: 0,
-    funnel: { passing: 14, reviewed: 14, matching: 14, combinable: 14, matches: 2 },
+    funnel: { passing: 14, risk: 14, reviewed: 14, matching: 14, combinable: 14, matches: 2 },
     competitions: [],
     markets: [],
     prices_as_of: null,
@@ -134,7 +134,7 @@ describe("no parlay: why, and what to change (REVIEW point 15)", () => {
       renderToStaticMarkup(
         <NoParlay
           body={empty("no_candidates", {
-            funnel: { passing: 0, reviewed: 0, matching: 0, combinable: 0, matches: 0 },
+            funnel: { passing: 0, risk: 0, reviewed: 0, matching: 0, combinable: 0, matches: 0 },
           })}
         />,
       ),
@@ -142,5 +142,35 @@ describe("no parlay: why, and what to change (REVIEW point 15)", () => {
     expect(html).toContain("no hay selecciones que pasen las reglas");
     expect(html).toContain("Vuelve más tarde");
     expect(html).not.toContain("De 0 selecciones");
+  });
+});
+
+describe("the risk and context stages, said (REVIEW B1)", () => {
+  test("everything above the cap", () => {
+    const html = text(
+      renderToStaticMarkup(
+        <NoParlay
+          body={empty("risk_cap", {
+            funnel: {
+              passing: 9,
+              risk: 0,
+              reviewed: 0,
+              matching: 0,
+              combinable: 0,
+              matches: 0,
+              max_odds: "3.00",
+            },
+          })}
+        />,
+      ),
+    );
+    expect(html).toContain("pagan más de 3,00");
+    expect(html).toContain("las cuotas altas pierden dinero");
+  });
+
+  test("not reviewed by PrediGol Intelligence yet", () => {
+    const html = text(renderToStaticMarkup(<NoParlay body={empty("not_reviewed")} />));
+    expect(html).toContain("aún no han pasado por PrediGol Intelligence");
+    expect(html).toContain("Vuelve más tarde");
   });
 });
