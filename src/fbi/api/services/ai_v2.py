@@ -265,7 +265,8 @@ SELECT pm.id, pm.fixture_id, th.name || ' - ' || ta.name AS match, c.name AS com
   FROM ai.pick_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
   JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
- WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s
+ WHERE ((%(fixture)s::bigint IS NULL AND f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s)
+        OR pm.fixture_id = %(fixture)s)
    AND (%(verdict)s::text IS NULL OR pm.verdict = %(verdict)s)
    AND (%(cls)s::text IS NULL OR pm.classification = %(cls)s)
  ORDER BY (pm.verdict IN ('approved_lost', 'caution_lost', 'rejected_would_have_won')) DESC, f.kickoff_at DESC, pm.id
@@ -274,13 +275,13 @@ SELECT pm.id, pm.fixture_id, th.name || ' - ' || ta.name AS match, c.name AS com
 
 
 def postmortems(conn: Conn, *, day: date | None = None, verdict: str | None = None, classification: str | None = None,
-                limit: int = 200) -> Envelope[list[PickPostmortemRow]]:
+                limit: int = 200, fixture_id: int | None = None) -> Envelope[list[PickPostmortemRow]]:
     """POST-MORTEMS of the selections of a Bogotá day's matches (default yesterday): the ten questions, the class of
-    a loss, the narrative."""
+    a loss, the narrative. With ``fixture_id``: that match's, whatever its day (the Match Center's Picks tab)."""
     d = day or (local_day(now()) - timedelta(days=1))
     start, end = day_bounds(d)
     rows = fetch_all(conn, POSTMORTEMS_SQL, {"start": start, "end": end, "verdict": verdict, "cls": classification,
-                                             "limit": limit})
+                                             "limit": limit, "fixture": fixture_id})
     return listing([PickPostmortemRow.model_validate(r | {"roles": list(r["roles"] or []),
                                                           "narrative": shown(r["narrative"])}) for r in rows],
                    empty_reason="no_postmortems")

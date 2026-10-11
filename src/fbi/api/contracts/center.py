@@ -56,6 +56,21 @@ class MatchEvent(Contract):
     comments: str | None
 
 
+class MatchPlayerSeason(Contract):
+    """The provider's season aggregate of a player for this match's team in this competition (labelled as the
+    provider's). ``team_matches``: the team's finished matches in it before kick-off, to read the share."""
+
+    appearances: int | None
+    lineups: int | None = Field(description="Matches started.")
+    minutes: int | None
+    goals: int | None
+    assists: int | None
+    yellow_cards: int | None
+    red_cards: int | None
+    team_matches: int | None = None
+    observed_at: datetime
+
+
 class LineupPlayer(Contract):
     provider_player_id: int
     player_id: int | None
@@ -66,6 +81,8 @@ class LineupPlayer(Contract):
     starter: bool
     photo_url: str | None = Field(default=None, description="The provider's photo URL as stored (profiles); "
                                   "null when none is stored - pages show initials, never a guessed URL.")
+    season: MatchPlayerSeason | None = Field(default=None, description="His season in this competition, as the provider "
+                                                                  "aggregates it; null when not stored.")
 
 
 class TeamLineup(Contract):
@@ -130,6 +147,8 @@ class Absence(Contract):
     photo_url: str | None = None
     position: str | None = Field(default=None, description="The player's position as the provider files it.")
     fetched_at: datetime | None = Field(default=None, description="When the provider reported this absence.")
+    season: MatchPlayerSeason | None = Field(default=None, description="How much he plays: his season in this "
+                                                                  "competition, as the provider aggregates it.")
 
 
 class StandingLine(Contract):

@@ -4,11 +4,32 @@ from __future__ import annotations
 
 FIXTURE = """
 SELECT f.id, f.kickoff_at, f.status_group, f.round, f.competition_season_id, f.home_team_id, f.away_team_id,
-       th.name AS home, ta.name AS away, th.provider_team_id AS home_pid, ta.provider_team_id AS away_pid
+       th.name AS home, ta.name AS away, th.provider_team_id AS home_pid, ta.provider_team_id AS away_pid,
+       cs.season, c.provider_league_id
   FROM core.fixtures f
   JOIN core.teams th ON th.id = f.home_team_id
   JOIN core.teams ta ON ta.id = f.away_team_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
  WHERE f.id = %(f)s
+"""
+
+MATCH_PLAYER_SEASONS = """
+SELECT s.provider_player_id, s.provider_team_id, s.appearances, s.lineups, s.minutes, s.goals, s.assists,
+       s.yellow_cards, s.red_cards, s.observed_at
+  FROM core.player_season_stats_latest s
+ WHERE s.provider_league_id = %(league)s AND s.season = %(season)s
+   AND s.provider_team_id IN (%(home_pid)s, %(away_pid)s) AND s.provider_player_id = ANY(%(players)s)
+"""
+"""The provider's season aggregate of each player of the match, for the team he plays for here, in this competition
+(REVIEW point 7: who is missing, and how much he plays)."""
+
+TEAM_PLAYED = """
+SELECT count(*) FILTER (WHERE f.home_team_id = %(home)s OR f.away_team_id = %(home)s) AS home,
+       count(*) FILTER (WHERE f.home_team_id = %(away)s OR f.away_team_id = %(away)s) AS away
+  FROM core.fixtures f
+ WHERE f.competition_season_id = %(cs)s AND f.status_group = 'finished' AND f.kickoff_at < %(ko)s
+   AND (f.home_team_id IN (%(home)s, %(away)s) OR f.away_team_id IN (%(home)s, %(away)s))
 """
 
 TEAM_STATS = """
@@ -80,7 +101,7 @@ WITH latest AS (
 )
 SELECT CASE a.provider_team_id WHEN %(home_pid)s THEN 'home' WHEN %(away_pid)s THEN 'away' END AS side,
        a.player_name AS player, p.id AS player_id, a.absence_type AS type, a.reason, p.photo_url,
-       p.position, a.fetched_at
+       p.position, a.fetched_at, a.provider_player_id
   FROM core.player_absences a
   LEFT JOIN core.players p ON p.provider_player_id = a.provider_player_id
  WHERE a.fixture_id = %(f)s

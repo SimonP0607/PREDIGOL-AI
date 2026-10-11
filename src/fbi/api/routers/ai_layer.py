@@ -154,10 +154,12 @@ def get_research(conn: Db, day: Day = None) -> Envelope[list[ResearchRow]]:
 @admin_router.get("/ai/postmortems", response_model=Envelope[list[PickPostmortemRow]])
 def get_postmortems(conn: Db, day: Day = None, verdict: Verdict | None = None,
                     classification: LossClass | None = None,
-                    limit: Annotated[int, Query(ge=1, le=500)] = 200) -> Envelope[list[PickPostmortemRow]]:
+                    limit: Annotated[int, Query(ge=1, le=500)] = 200,
+                    fixture_id: Annotated[int | None, Query(ge=1)] = None) -> Envelope[list[PickPostmortemRow]]:
     """POST-MORTEMS of a day's selections (default yesterday): the ten questions, the class of a loss, the
-    narrative."""
-    return ai_v2.postmortems(conn, day=day, verdict=verdict, classification=classification, limit=limit)
+    narrative. ``fixture_id``: one match's, whatever its day."""
+    return ai_v2.postmortems(conn, day=day, verdict=verdict, classification=classification, limit=limit,
+                             fixture_id=fixture_id)
 
 
 @admin_router.get("/ai/learning", response_model=Envelope[AiLearning])

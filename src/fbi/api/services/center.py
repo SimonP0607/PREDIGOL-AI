@@ -32,6 +32,7 @@ from fbi.api.contracts.center import (
     MatchCenter,
     MatchEvent,
     MatchFacts,
+    MatchPlayerSeason,
     PlayerAbsence,
     PlayerCareerTeam,
     PlayerDetail,
@@ -109,14 +110,21 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
     stats = [TeamStatLine(**_clean(r, ("goals_prevented",))) for r in fetch_all(conn, repo.TEAM_STATS, f)]
     events = [MatchEvent(**r) for r in fetch_all(conn, repo.EVENTS, f)]
     lineup_rows = fetch_all(conn, repo.LINEUPS, f)
+    lineup_players = fetch_all(conn, repo.LINEUP_PLAYERS, f)
+    absence_rows = fetch_all(conn, repo.ABSENCES, {
+        "f": fixture_id, "home_pid": fx["home_pid"], "away_pid": fx["away_pid"],
+        "current_only": fx["status_group"] in ("scheduled", "live")})
+    seasons = _player_seasons(conn, fx, [r["provider_player_id"] for r in (*lineup_players, *absence_rows)])
+    team_of = {"home": fx["home_pid"], "away": fx["away_pid"]}
     players_by_side: dict[str, list[LineupPlayer]] = {}
-    for r in fetch_all(conn, repo.LINEUP_PLAYERS, f):
-        players_by_side.setdefault(r.pop("side"), []).append(LineupPlayer(**r))
+    for r in lineup_players:
+        side = r.pop("side")
+        players_by_side.setdefault(side, []).append(
+            LineupPlayer(**r, season=seasons.get((r["provider_player_id"], team_of.get(side)))))
     lineups = [TeamLineup(**r, players=players_by_side.get(r["side"], [])) for r in lineup_rows]
     player_lines = [PlayerLine(**r) for r in fetch_all(conn, repo.PLAYER_STATS, f)]
-    absences = [Absence(**r) for r in fetch_all(conn, repo.ABSENCES, {
-        "f": fixture_id, "home_pid": fx["home_pid"], "away_pid": fx["away_pid"],
-        "current_only": fx["status_group"] in ("scheduled", "live")})]
+    absences = [Absence(**r, season=seasons.get((r["provider_player_id"], team_of.get(r["side"] or ""))))
+                for r in absence_rows]
     ctx = {"cs": fx["competition_season_id"], "home": fx["home_team_id"], "away": fx["away_team_id"],
            "ko": fx["kickoff_at"]}
     standings, no_table, standing_tables = _match_standings(conn, fx)
@@ -164,6 +172,25 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
                            code="live_odds_not_kept" if played else pre),
     )
     return ok(body)
+
+
+def _player_seasons(conn: Conn, fx: Row, players: list[Any]) -> dict[tuple[int, int | None], MatchPlayerSeason]:
+    """Each player's season in this competition for the team he plays for here (provider aggregate), with the
+    team's finished matches in it so a page can say "started 7 of 8"."""
+    ids = sorted({int(p) for p in players if p is not None})
+    if not ids or fx.get("provider_league_id") is None or fx.get("season") is None:
+        return {}
+    played = fetch_one(conn, repo.TEAM_PLAYED, {"cs": fx["competition_season_id"], "home": fx["home_team_id"],
+                                                "away": fx["away_team_id"], "ko": fx["kickoff_at"]}) or {}
+    team_matches = {fx["home_pid"]: played.get("home"), fx["away_pid"]: played.get("away")}
+    out: dict[tuple[int, int | None], MatchPlayerSeason] = {}
+    for r in fetch_all(conn, repo.MATCH_PLAYER_SEASONS, {"league": fx["provider_league_id"], "season": fx["season"],
+                                                   "home_pid": fx["home_pid"], "away_pid": fx["away_pid"],
+                                                   "players": ids}):
+        team = r.pop("provider_team_id")
+        pid = int(r.pop("provider_player_id"))
+        out[(pid, team)] = MatchPlayerSeason(**r, team_matches=team_matches.get(team))
+    return out
 
 
 def _match_standings(conn: Conn, fx: Row) -> tuple[list[StandingLine], str, list[StandingsTable]]:
