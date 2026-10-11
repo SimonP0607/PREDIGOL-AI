@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/time";
 import type { PriceFreshness } from "@/lib/api/v1/types_product";
 import { TeamName } from "@/components/football/Logos";
 import { Freshness } from "@/product/shared/Bits";
+import { sectionCodeText } from "@/components/system/LiveState";
 import { Card, ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { CenterState } from "./context";
 import { fmtDecimal, fmtStat, type FormChip, type ResultLetter, type StatRow } from "./model";
@@ -83,7 +84,8 @@ export function SectionNote({
 
 /**
  * One section of the match detail: loading, error, nothing yet, or the data. The API's
- * own reason is never shown here (it is English and technical); the admin tab has it.
+ * own reason is never shown here (it is English and technical); its code is, in the
+ * reader's language (common.sectionCode), and the admin tab has the reason itself.
  */
 export function CenterSection<T>({
   center,
@@ -95,19 +97,25 @@ export function CenterSection<T>({
   center: CenterState;
   pick: (c: MatchCenter) => Section<T>;
   children: (data: T) => ReactNode;
-  empty?: ((status: DataStatus) => ReactNode) | undefined;
+  empty?: ((status: DataStatus, code: string | null) => ReactNode) | undefined;
   skeleton?: ReactNode;
 }) {
   if (center.loading) return <>{skeleton ?? <SkeletonBlock className="h-24" />}</>;
   if (center.error) {
     return <ErrorState error={center.error} onRetry={center.retry} className="py-5" />;
   }
-  const none = (status: DataStatus) =>
-    empty ? <>{empty(status)}</> : <SectionNote status={status} />;
+  const none = (status: DataStatus, code: string | null = null) =>
+    empty ? (
+      <>{empty(status, code)}</>
+    ) : (
+      <SectionNote status={status}>{sectionCodeText(code) ?? undefined}</SectionNote>
+    );
   if (!center.data) return none(center.status ?? "not_available");
   const section = pick(center.data);
-  if (section.status !== "ok") return none(section.status);
-  if (Array.isArray(section.data) && section.data.length === 0) return none("empty");
+  if (section.status !== "ok") return none(section.status, section.code ?? null);
+  if (Array.isArray(section.data) && section.data.length === 0) {
+    return none("empty", section.code ?? null);
+  }
   return <>{children(section.data)}</>;
 }
 

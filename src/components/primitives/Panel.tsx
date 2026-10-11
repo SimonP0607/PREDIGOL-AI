@@ -94,20 +94,27 @@ export function EmptyState({
   );
 }
 
+const BANNER_TONE = {
+  warning: "border-warning/30 bg-warning-soft text-warning",
+  info: "border-info/30 bg-info-soft text-info",
+  negative: "border-negative/30 bg-negative-soft text-negative",
+} as const;
+
 export function WarningBanner({
   children,
   tone = "warning",
 }: {
   children: React.ReactNode;
-  tone?: "warning" | "info";
+  /** negative: the fault is ours or the data contradicts itself - never shown as a mere delay. */
+  tone?: keyof typeof BANNER_TONE;
 }) {
   return (
     <div
+      role={tone === "negative" ? "alert" : undefined}
+      data-tone={tone}
       className={cn(
         "flex items-start gap-2 rounded-md border px-3 py-2 text-xs",
-        tone === "warning"
-          ? "border-warning/30 bg-warning-soft text-warning"
-          : "border-info/30 bg-info-soft text-info",
+        BANNER_TONE[tone],
       )}
     >
       <span aria-hidden className="mt-px">

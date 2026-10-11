@@ -10,7 +10,17 @@ import { cn } from "@/lib/utils";
 import { EMPTY } from "@/lib/format";
 import { LiveApiError } from "@/lib/api/v1/client";
 import type { DataStatus, Section } from "@/lib/api/v1/types";
-import { t } from "@/lib/i18n";
+import { hasKey, t } from "@/lib/i18n";
+
+/**
+ * The reader's-language text for a section's code (REVIEW 11 Oct 2026, point 8: the API's reasons are
+ * English and technical). Null when the code is unknown here - the caller falls back to the API's reason.
+ */
+export function sectionCodeText(code: string | null | undefined): string | null {
+  if (!code) return null;
+  const key = `common.sectionCode.${code}`;
+  return hasKey(key) || hasKey(key, "en") ? t(key) : null;
+}
 
 const STATUS: Record<Exclude<DataStatus, "ok">, { title: () => string; Icon: typeof Inbox }> = {
   empty: { title: () => t("admin.state.empty"), Icon: Inbox },
@@ -21,17 +31,21 @@ const STATUS: Record<Exclude<DataStatus, "ok">, { title: () => string; Icon: typ
 export function StatusNotice({
   status,
   reason,
+  code,
   compact = false,
   className,
 }: {
   status: DataStatus;
   reason: string | null;
+  /** The section's code: said in the reader's language when known, else the reason as the API gave it. */
+  code?: string | null | undefined;
   compact?: boolean | undefined;
   className?: string | undefined;
 }) {
   if (status === "ok") return null;
   const { title: titleOf, Icon } = STATUS[status];
   const title = titleOf();
+  const text = sectionCodeText(code) ?? reason ?? title;
   return (
     <div
       data-status={status}
@@ -50,7 +64,9 @@ export function StatusNotice({
       />
       <div>
         {!compact ? <div className="text-title text-foreground">{title}</div> : null}
-        <p className={cn(compact ? "" : "mt-1 max-w-md")}>{reason ?? title}</p>
+        <p className={cn(compact ? "" : "mt-1 max-w-md")} data-code={code ?? undefined}>
+          {text}
+        </p>
       </div>
     </div>
   );
@@ -67,7 +83,14 @@ export function SectionView<T>({
   compact?: boolean | undefined;
 }) {
   if (section.status !== "ok") {
-    return <StatusNotice status={section.status} reason={section.reason} compact={compact} />;
+    return (
+      <StatusNotice
+        status={section.status}
+        reason={section.reason}
+        code={section.code}
+        compact={compact}
+      />
+    );
   }
   return <>{children(section.data)}</>;
 }

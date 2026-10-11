@@ -89,5 +89,36 @@
   "photoAlt": "Foto de {name}",
   "updateReady": "Hay una versión nueva de PrediGol.",
   "updateNow": "Actualizar",
-  "updateLater": "Luego"
+  "updateLater": "Luego",
+  "resultWait": {
+    "short": {
+      "provider_pending": "Pendiente del proveedor",
+      "provider_silent": "Sin noticias del proveedor",
+      "jobs_stalled": "Tarea de resultados detenida",
+      "provider_conflict": "Datos contradictorios del proveedor",
+      "result_missing": "Finalizado sin marcador guardado"
+    },
+    "long": {
+      "provider_pending": "El proveedor sigue informando «{status}» (última lectura {when}). No es un fallo nuestro: volvemos a preguntar hasta que lo cierre.",
+      "provider_silent": "El proveedor no ha dicho nada de este partido desde antes de que debiera terminar. Volvemos a preguntar, primero por los más atrasados.",
+      "jobs_stalled": "Nuestras tareas de resultados no están corriendo: el fallo es nuestro. Revisar Sistema.",
+      "provider_conflict": "El proveedor lo da por terminado pero con el saque todavía por delante. No se toma como resultado hasta que lo aclare.",
+      "result_missing": "El proveedor lo da por terminado y no tenemos el marcador guardado: revisión interna."
+    }
+  },
+  "sectionCode": {
+    "not_started": "El partido aún no ha empezado: este dato no existe antes del saque.",
+    "no_detail_yet": "El proveedor todavía no ha enviado el detalle de este partido.",
+    "no_events": "No hay eventos registrados.",
+    "lineups_usually_60m": "Las alineaciones suelen publicarse alrededor de una hora antes del inicio.",
+    "lineups_not_published": "El proveedor todavía no ha publicado las alineaciones.",
+    "lineups_none": "El proveedor no publicó alineaciones para este partido.",
+    "no_absences_report": "No hay reporte de bajas para este partido (no significa que no falte nadie).",
+    "no_table": "No hay tabla de posiciones para esta competición.",
+    "no_form": "Ningún equipo tiene partidos terminados antes de este.",
+    "no_h2h": "No hay enfrentamientos previos con resultado.",
+    "no_live_states": "No se registró ningún estado en vivo de este partido.",
+    "live_odds_not_kept": "Las cuotas en vivo solo se muestran mientras se juega y no se guardan después.",
+    "no_market_data": "Todavía no hay cuotas capturadas para este partido."
+  }
 }

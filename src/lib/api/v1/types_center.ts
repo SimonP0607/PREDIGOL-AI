@@ -25,6 +25,8 @@ export interface TeamStatLine {
   passes_accurate: number | null;
   expected_goals: Dec | null;
   fetched_at: Iso;
+  /** api-football, or football-data.co.uk when it is the only source. */
+  source?: string | null;
 }
 
 export interface MatchEvent {
@@ -109,6 +111,12 @@ export interface Absence {
   player_id: number | null;
   type: string | null;
   reason: string | null;
+  /** The player's photo, when the provider has one. */
+  photo_url?: string | null;
+  /** The player's position as the provider files it. */
+  position?: string | null;
+  /** When the provider reported this absence. */
+  fetched_at?: Iso | null;
 }
 
 export interface StandingLine {

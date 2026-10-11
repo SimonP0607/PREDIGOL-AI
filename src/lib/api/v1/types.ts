@@ -32,7 +32,13 @@ export interface Section<T> {
   status: DataStatus;
   data: T;
   reason: string | null;
+  /** A stable name for the reason (not_started, lineups_not_published…): the page translates it (absent before 11 Oct 2026). */
+  code?: string | null;
 }
+
+/** Why a match that should be over has no result, by owner (fbi.core.match_state.ResultWait). */
+export type ResultWait =
+  "provider_pending" | "provider_silent" | "jobs_stalled" | "provider_conflict" | "result_missing";
 
 export type StatusGroup = "scheduled" | "live" | "finished" | "cancelled" | "postponed";
 /** What every screen shows (fbi.core.match_state, mirrored in src/product/matches/status.ts). */
@@ -162,6 +168,10 @@ export interface MatchSummary {
   awaiting_result: boolean;
   /** The state to show: the provider's code with the time guard (absent from an older API). */
   phase?: MatchPhase;
+  /** Why a match that should be over has no result; null when nothing is wrong. */
+  result_wait?: ResultWait | null;
+  /** When the provider last told us about this match. */
+  provider_read_at?: Iso | null;
 }
 
 export interface MarketQuote {
@@ -206,6 +216,9 @@ export interface TimelineEvent {
   detail: string;
   at: Iso | null;
   state: TimelineState;
+  /** What happened, by name (window_done, window_provider_empty…), with its values in `vars`. */
+  code?: string | null;
+  vars?: Record<string, string>;
 }
 
 export interface MatchDetail {

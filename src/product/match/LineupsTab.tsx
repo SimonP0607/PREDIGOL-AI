@@ -12,6 +12,7 @@ import type {
 } from "@/lib/api/v1/types_center";
 import type { TeamRef } from "@/lib/api/v1/types";
 import { PlayerPhoto, TeamName } from "@/components/football/Logos";
+import { sectionCodeText } from "@/components/system/LiveState";
 import { Card, EmptyState } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import { AbsencesBlock } from "./ContextBlocks";
@@ -370,12 +371,13 @@ export function LineupsTab({ ctx }: { ctx: MatchCtx }) {
         center={center}
         pick={(x) => x.lineups}
         skeleton={<div className="h-96 animate-pulse rounded-xl bg-muted/70" aria-hidden />}
-        empty={() => (
+        empty={(_, code) => (
           <Card>
             <EmptyState
               icon={<Shirt aria-hidden className="h-6 w-6" />}
               title={t("match.lineups.unavailable")}
-              body={ctx.phase === "scheduled" ? t("match.lineups.hint") : undefined}
+              // The API says why for this moment: "about an hour before" is wrong 13 minutes before (REVIEW pt 7).
+              body={sectionCodeText(code) ?? undefined}
             />
           </Card>
         )}

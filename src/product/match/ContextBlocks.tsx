@@ -9,6 +9,7 @@ import { formatDateYear, formatRelative } from "@/lib/time";
 import type { TeamRef } from "@/lib/api/v1/types";
 import type { Absence, H2HMatch, Side, StandingLine } from "@/lib/api/v1/types_center";
 import { TeamName } from "@/components/football/Logos";
+import { sectionCodeText } from "@/components/system/LiveState";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import { absenceKind, absenceReason, h2hSummary, lastFive } from "./model";
@@ -478,14 +479,15 @@ export function LineupsTeaser({ ctx }: { ctx: MatchCtx }) {
       <CenterSection
         center={ctx.center}
         pick={(c) => c.lineups}
-        empty={() => (
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{t("match.lineups.unavailable")}</p>
-            {ctx.phase === "scheduled" ? (
-              <p className="text-caption text-subtle-foreground">{t("match.lineups.hint")}</p>
-            ) : null}
-          </div>
-        )}
+        empty={(_, code) => {
+          const why = sectionCodeText(code);
+          return (
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">{t("match.lineups.unavailable")}</p>
+              {why ? <p className="text-caption text-subtle-foreground">{why}</p> : null}
+            </div>
+          );
+        }}
       >
         {(lineups) => (
           <div className="space-y-2.5">
