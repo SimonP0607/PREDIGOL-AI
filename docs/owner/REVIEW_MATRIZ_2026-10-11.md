@@ -28,7 +28,7 @@ Backup `review-p0-baseline` + restore test lanzados antes de tocar nada.
 |---|---|---|---|---|---|---|
 | 1 | Inicio: ruido en Picks del día | `DailyItemCard`, `DecisionChain` | Modelo, «No publicado», «Liquidado» duplicado | Usuario: liga, hora, partido, marcador, estado y lo que dijo la IA; admin: además el modelo y la publicación; nadie ve «Liquidado» (el resultado va al pie). La cuota se elige como en Cuotas | `DecisionChain.test.tsx` (renderizado por audiencia) | HECHO (web `6571aee`) |
 | 2 | Parlay del día / multi-día | `ParlayRecordCard` | «ABIERTO» y «En juego» a la vez | Un solo resultado: En juego / Ganado / Perdido (Anulado si ocurre); una pierna perdida lo decide | `outcome.test.ts` | HECHO (web `6571aee`) |
-| 3 | Partidos: fechas y filtros | `DayNav`, filtros | El tercer chip repite hoy; faltan país/categoría | Hoy · Mañana · «lun, 13 oct» · Otra fecha; país, categoría (liga, copa, continental, selecciones, femenino, juvenil) y equipo | `facets.test.ts`, `model.test.ts` | HECHO (web `39f7623`) |
+| 3 | Partidos: fechas y filtros | `DayNav`, filtros | El tercer chip repite hoy; faltan país/categoría | Hoy · Mañana · «lun, 13 oct» · Otra fecha; país, categoría (liga, copa, continental, selecciones, femenino, juvenil) y equipo | `facets.test.ts`, `model.test.ts`, e2e `responsive.spec.ts` (390 px) | HECHO (web `39f7623` + corrección `d98a106`) |
 | 4 | **Match Center (crítico)** | `MatchPage`, `SummaryTab`, `PicksTab` | Picks mezclados en Resumen; en vivo la lectura parece nueva | Pestaña Picks propia; Resumen prepartido: Intelligence → Mejores cuotas → H2H → resto; en vivo: Eventos primero, luego la lectura del día | e2e `user.spec.ts`, QA visual | HECHO (web `4f24dea`) |
 | 5 | Estadísticas | `StatsTab`, `/matches/{id}/profile` | Solo puntos y goles; filas de dos fuentes mezcladas | Una fuente por partido (P0) y, prepartido, todo lo que la API da de los dos equipos según cobertura (n por métrica, sin inventar ceros); en vivo, todas las líneas | `test_review_p1_profile.py`, `profile.test.ts` | HECHO (`e8a124c`, web `fca216e`) |
 | 6 | Cuota seleccionable en todas partes | `SelectablePrice` | Solo Mercados permitía Guardar/Agregar | Un componente: Resumen, Mercados, Picks, pestaña Picks del partido, Inicio (picks del día y mejores cuotas), parlays | e2e `user.spec.ts` (`selectable-price`), `parlay.test.ts` | HECHO (web `fca216e`, `6571aee`, `cac2345`) |
@@ -45,10 +45,10 @@ Backup `review-p0-baseline` + restore test lanzados antes de tocar nada.
 | 17 | Cuotas ≠ Picks | `OddsPage`, `/odds/best?picks=false` | Casi igual a Picks; 48 h | Solo el mejor precio frente al justo (sin tarjetas de picks); 24 h; búsqueda, país, competición, solo sobre el justo, orden, páginas de 15 | `odds/filters.test.ts`, `test_product_endpoints.py` | HECHO (`fc14241`, web `a6fccca`) |
 | 18 | Selección de cuota animada | odds UI | Solo en Cuotas | Mismo patrón (oro + ✓, animación) en todas las vistas con cuotas | ver punto 6 | HECHO |
 | 19 | Mis picks: gráficas | `Recap` | Solo totales | «Tu recapitulación»: ganancia acumulada y por día, cuota media, rangos de cuota, rachas, mercados; animadas | `recapData.test.ts` | HECHO (web `b675a59`) |
-| B1 | Picks de cuotas altas | selección diaria | Valor sin filtros extra | Embudo trazable y regla de riesgo validada fuera de muestra (P5) | P5 | EN CURSO |
-| B2 | Partidos «esperando resultado» | worker, API, liquidación | Proveedor que no actualiza; sin clasificar; picks abiertos sin fin | Clasificación por responsable (`ResultWait`), reintento por antigüedad de lectura con espera 25 min/2 h/6 h, `settle-v3`: nulo a las 72 h del saque tomado | `test_the_repair_asks_the_match_read_longest_ago_first_and_a_fresh_read_waits`, `test_picks.py` (settle-v3), `test_pick_pipeline.py` | HECHO |
-| B3 | Más mercados | odds, modelos | Solo 1X2/OU/BTTS/AH/DC | Auditoría de cobertura y liquidez (P5); nada se activa sin backtest | datos | EN CURSO |
-| B4 | IA objetiva con contexto | IA | Picks sin pasar por Intelligence | Evidencia clasificada por el servidor (confirmado / probable / rumor / contradictorio / desactualizado) en el embudo (P5) | P5 | EN CURSO |
+| B1 | Picks de cuotas altas | selección diaria, parlays, armador | Valor sin filtros extra; cuotas medias 2,85–4,43; ningún pick revisado por la IA al elegirse | `risk-v1` (cuota ≤ 3,00, walk-forward) y `context-v2`: el pick del día solo tras la pasada del día de PrediGol Intelligence, con el día leído entero; embudo trazable `/admin/picks/funnel` | `test_review_p5_selection.py`, `test_selection_funnel.py`, `test_parlay_builder.py`, `FunnelPanel.test.tsx`, `FunnelLine.test.tsx` | HECHO (`20c5f4b`, `fea8369`, `450dc00`; web `76c567a`, `fad763f`, `30cabcc`) |
+| B2 | Partidos «esperando resultado» | worker, API, liquidación | Proveedor que no actualiza; sin clasificar; picks abiertos sin fin | Clasificación por responsable (`ResultWait`), reintento por antigüedad de lectura con espera 25 min/2 h/6 h, `settle-v3`: nulo a las 72 h del saque tomado; regresión de todos los estados de extremo a extremo | `test_the_repair_asks_the_match_read_longest_ago_first_and_a_fresh_read_waits`, `test_picks.py` (settle-v3), `test_pick_pipeline.py`, `test_review_p5_states.py` (FT, AET, PEN, CANC, PST, ABD, AWD, WO, SUSP, INT, 72 h) | HECHO (P0 + `5e00839`) |
+| B3 | Más mercados | odds, modelos | Solo 1X2/OU/BTTS/AH/DC | Auditoría de cobertura, liquidez y datos para liquidar (goles por equipo y córners primero; remates y paradas no viables: una casa); backtest de goles por equipo (`research_team_totals`); nada se activa sin backtest | `test_research_team_totals.py`; datos | PARCIAL (falta lo que no se puede hacer hoy: 30 días en sombra y la decisión del dueño) |
+| B4 | IA objetiva con contexto | IA | Picks sin pasar por Intelligence ni noticias | Evidencia clasificada por el servidor (confirmada / probable / rumor / contradictoria / desactualizada) congelada con cada pick; pasada del día obligatoria; la búsqueda de noticias va primero a los candidatos del set | `test_review_p5_selection.py`, `test_ai_v2.py` (orden de la web) | HECHO (`450dc00`, `15f2ec8`) |
 
 ## P0 — cerrado el 11 oct 2026 (07:15 UTC)
 
@@ -102,3 +102,19 @@ QA visual local (390 y 1440 px) con datos de prueba en una base local. Verificad
   18–19 puntos más que el mercado. Es la misma regla de los parlays de PrediGol: el gusto por cuotas altas viene de
   la sobreconfianza del modelo (auditoría del 9 oct). Se trata en P5 con evidencia, no a ojo.
 
+
+## P5 — Backend, modelos e IA (B1–B4)
+
+Detalle y evidencia: `docs/owner/P5_SELECCION_RIESGO_CONTEXTO.md`. Desplegado: backend `5e00839`, web `fc879ff`
+(16:50 UTC; respaldo previo `predigol-20261011T164349Z-pre-deploy-5e00839b6c83`, restore test OK). Sin migraciones.
+
+* **B1, riesgo (`risk-v1`):** cuotas 3,00–5,00 = −13,1 % (IC 95 % −22,4 % a −2,8 %; valor de línea −8,9 %) sobre
+  16.114 selecciones; el walk-forward eligió un tope de 2,20–3,00 todos los días. Se adopta 3,00 sin afirmar beneficio.
+* **B1/B4, contexto:** desde el 9 oct ningún pick del día tuvo la pasada del día de la IA antes de elegirse; el set se
+  llenaba con los primeros partidos del día a T−24h. `daily-set-v5` (`context-v2`): pasada del día obligatoria y set
+  elegido con el día leído entero (06:00 Bogotá como muy tarde); la búsqueda de noticias va primero a los candidatos.
+* **Embudo trazable** con datos reales (v4): 921 selecciones → valor 85 → **riesgo 40 (45 por encima de 3,00)** → IA
+  40. Armador: piernas a 2,10–2,55 (antes 4,01–4,84).
+* **B2:** regresión de estados de extremo a extremo (`test_review_p5_states.py`).
+* **B3:** auditoría (goles por equipo 100 % de partidos con 6,7 casas; córners 95 %; remates y paradas, una casa) y
+  backtest de goles por equipo en curso; nada se activa.
