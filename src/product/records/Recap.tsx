@@ -19,7 +19,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3, Flame, Snowflake } from "lucide-react";
+import { BarChart3, Flame, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { intlTag, t } from "@/lib/i18n";
 import { DASH, fmtInt, fmtOdds, fmtPct, localFixed } from "@/lib/i18n/format";
@@ -423,7 +423,7 @@ function Streak({ r, animate }: { r: RecapData; animate: boolean }) {
                 {current.kind === "win" ? (
                   <Flame aria-hidden className="h-4 w-4" />
                 ) : (
-                  <Snowflake aria-hidden className="h-4 w-4" />
+                  <TrendingDown aria-hidden className="h-4 w-4" />
                 )}
                 {current.length}
               </>
