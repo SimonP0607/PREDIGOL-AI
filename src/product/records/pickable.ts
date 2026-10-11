@@ -1,5 +1,5 @@
 /** What a selection needs to be saved or added to a parlay, from wherever it is shown. */
-import type { PickCard } from "@/lib/api/v1/types_product";
+import type { BestHighlight, PickCard } from "@/lib/api/v1/types_product";
 import type { DailyItem, MarketKey } from "@/lib/api/v1/types_records";
 
 export interface Pickable {
@@ -50,5 +50,20 @@ export function pickableOfCard(pick: PickCard): Pickable {
     bookmaker: pick.bookmaker,
     pick_id: pick.pick_id,
     p_model: pick.p_model,
+  };
+}
+
+/** A "best price against the market" row (Inicio): the best price now, its bookmaker. */
+export function pickableOfHighlight(h: BestHighlight): Pickable {
+  return {
+    fixture_id: h.fixture_id,
+    market_key: h.market_key as MarketKey,
+    selection: h.price.selection,
+    line: h.line,
+    kickoff_at: h.kickoff_at,
+    home: h.home.name,
+    away: h.away.name,
+    odds: h.price.best_odds,
+    bookmaker: h.price.bookmaker,
   };
 }

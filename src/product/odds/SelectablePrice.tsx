@@ -79,6 +79,16 @@ export function SelectablePrice({
   );
 }
 
+/** A card's price row (Picks, the match's Picks tab): a word of help, and the price chosen the Cuotas way. */
+export function SelectablePriceRow({ sel }: { sel: Pickable }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="min-w-0 text-caption text-muted-foreground">{t("picks.priceHelp")}</span>
+      <SelectablePrice sel={sel} save className="shrink-0" />
+    </div>
+  );
+}
+
 /** "Guardar" as an icon beside a price: in "Mis picks" (filled) or not; nothing to save once it kicked off. */
 function SaveToggle({ sel, label }: { sel: Pickable; label: string }) {
   const { saved, save, remove } = useSavedPicks();

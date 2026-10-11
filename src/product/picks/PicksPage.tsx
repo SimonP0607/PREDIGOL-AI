@@ -35,7 +35,7 @@ import {
 import { MARKETS, emptyReason, marketShort } from "@/product/shared/markets";
 import { DailySetBlock } from "@/product/records/DailySetBlock";
 import { pickableOfCard, type Pickable } from "@/product/records/pickable";
-import { SelectablePrice } from "@/product/odds/SelectablePrice";
+import { SelectablePriceRow } from "@/product/odds/SelectablePrice";
 import { Pager } from "@/product/shared/Pager";
 import { usePaged } from "@/product/shared/paging";
 import { startedState, type StartedState } from "./started";
@@ -76,16 +76,6 @@ export function PicksPage() {
       <DailySetBlock query={daily} nav={{ day, today, onDay: setDay }} />
       <AllPicks query={list} filters={filters} onChange={setFilters} />
       <StartedPicks />
-    </div>
-  );
-}
-
-/** The price of a card, chosen the Cuotas way: a tap toggles it in "Mi parlay", the bookmark saves it. */
-function PriceRow({ sel }: { sel: Pickable }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="min-w-0 text-caption text-muted-foreground">{t("picks.priceHelp")}</span>
-      <SelectablePrice sel={sel} save className="shrink-0" />
     </div>
   );
 }
@@ -331,7 +321,7 @@ function AllPicks({
               pick={pick}
               compact
               shadow={shadow}
-              actions={<PriceRow sel={pickableOfCard(pick)} />}
+              actions={<SelectablePriceRow sel={pickableOfCard(pick)} />}
             />
           ))}
         </div>

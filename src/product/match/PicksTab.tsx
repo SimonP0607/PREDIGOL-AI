@@ -17,6 +17,8 @@ import { ShadowBadge } from "@/product/shared/Bits";
 import { Pager } from "@/product/shared/Pager";
 import { usePaged } from "@/product/shared/paging";
 import { PickCard } from "@/product/shared/PickCard";
+import { SelectablePriceRow } from "@/product/odds/SelectablePrice";
+import { pickableOfCard } from "@/product/records/pickable";
 import { StartedPickCard } from "@/product/shared/StartedPickCard";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
@@ -48,7 +50,13 @@ function Upcoming({ ctx }: { ctx: MatchCtx }) {
           <p className="text-caption text-muted-foreground">{t("match.picksTab.intro")}</p>
           <div className="grid gap-3 md:grid-cols-2">
             {paged.items.map((p) => (
-              <PickCard key={p.pick_id} pick={p} rank={rankOf.get(p.pick_id)} shadow={shadow} />
+              <PickCard
+                key={p.pick_id}
+                pick={p}
+                rank={rankOf.get(p.pick_id)}
+                shadow={shadow}
+                actions={<SelectablePriceRow sel={pickableOfCard(p)} />}
+              />
             ))}
           </div>
           <Pager paged={paged} />

@@ -1,6 +1,7 @@
 /**
  * The prices furthest above the market's fair price right now: one row per match, the
- * best price in gold with its bookmaker, and by how much it beats the fair price.
+ * best price in gold with its bookmaker - chosen the Cuotas way - and by how much it beats
+ * the fair price.
  */
 import { Link } from "@tanstack/react-router";
 import { TrendingUp } from "lucide-react";
@@ -11,7 +12,8 @@ import { formatKickoff } from "@/lib/time";
 import type { Section } from "@/lib/api/v1/types";
 import type { BestHighlight } from "@/lib/api/v1/types_product";
 import { CompetitionTag, TeamName } from "@/components/football/Logos";
-import { OddsPill } from "@/product/shared/Bits";
+import { SelectablePrice } from "@/product/odds/SelectablePrice";
+import { pickableOfHighlight } from "@/product/records/pickable";
 import { Card, SectionHeader } from "@/product/shared/States";
 import { emptyReason, marketName, selectionLabel } from "@/product/shared/markets";
 
@@ -25,72 +27,78 @@ function BestRow({ h }: { h: BestHighlight }) {
     away: h.away.name,
   });
   return (
-    // Phones: teams | kickoff, selection | price, fair price and margin across.
-    // Desktop: one line - match, selection, fair price and margin, price.
-    <Link
-      to="/matches/$fixtureId"
-      params={{ fixtureId: String(h.fixture_id) }}
+    // The match and the selection open the match; the price beside them is chosen the Cuotas way (REVIEW
+    // points 6 and 18) - a button never sits inside a link.
+    <div
       data-testid="best-price-row"
-      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3.5 transition-colors hover:bg-elevated/50 focus-visible:bg-elevated/60 focus-visible:outline-none sm:px-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto_auto] lg:gap-x-6 lg:gap-y-1"
+      className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-elevated/50 sm:px-5 lg:gap-6"
     >
-      <div className="flex min-w-0 items-center gap-1.5 text-sm font-medium lg:col-start-1 lg:row-start-1">
-        <TeamName name={h.home.name} logo={h.home.logo_url} size={18} className="min-w-0" />
-        <span aria-hidden className="shrink-0 text-subtle-foreground">
-          –
-        </span>
-        <TeamName name={h.away.name} logo={h.away.logo_url} size={18} className="min-w-0" />
-      </div>
-
-      <div className="flex min-w-0 items-center justify-end gap-1.5 text-caption text-muted-foreground lg:col-start-1 lg:row-start-2 lg:justify-start">
-        <span className="numeric shrink-0">{formatKickoff(h.kickoff_at)}</span>
-        <span className="hidden min-w-0 items-center gap-1.5 lg:flex">
-          <span aria-hidden className="text-subtle-foreground">
-            ·
+      <Link
+        to="/matches/$fixtureId"
+        params={{ fixtureId: String(h.fixture_id) }}
+        className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] lg:gap-x-6 lg:gap-y-1"
+      >
+        <div className="col-span-2 flex min-w-0 items-center gap-1.5 text-sm font-medium lg:col-span-1 lg:col-start-1 lg:row-start-1">
+          <TeamName name={h.home.name} logo={h.home.logo_url} size={18} className="min-w-0" />
+          <span aria-hidden className="shrink-0 text-subtle-foreground">
+            –
           </span>
-          <CompetitionTag
-            name={h.competition.name}
-            logo={h.competition.logo_url}
-            flag={h.competition.flag_url}
-            country={h.competition.country}
-            size={12}
-            className="min-w-0"
-          />
-        </span>
-      </div>
-
-      <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-        <div className="truncate text-caption uppercase tracking-wider text-subtle-foreground">
-          {marketName(h.market_key)}
+          <TeamName name={h.away.name} logo={h.away.logo_url} size={18} className="min-w-0" />
         </div>
-        <div className="truncate text-sm font-semibold" data-testid="best-price-selection">
-          {label}
-        </div>
-      </div>
 
-      <div className="flex flex-col items-end gap-0.5 lg:col-start-4 lg:row-span-2 lg:row-start-1">
-        <OddsPill odds={h.price.best_odds} best />
+        <div className="flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground lg:col-start-1 lg:row-start-2">
+          <span className="numeric shrink-0">{formatKickoff(h.kickoff_at)}</span>
+          <span className="hidden min-w-0 items-center gap-1.5 lg:flex">
+            <span aria-hidden className="text-subtle-foreground">
+              ·
+            </span>
+            <CompetitionTag
+              name={h.competition.name}
+              logo={h.competition.logo_url}
+              flag={h.competition.flag_url}
+              country={h.competition.country}
+              size={12}
+              className="min-w-0"
+            />
+          </span>
+        </div>
+
+        <div className="col-span-2 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <div className="truncate text-caption uppercase tracking-wider text-subtle-foreground">
+            {marketName(h.market_key)}
+          </div>
+          <div className="truncate text-sm font-semibold" data-testid="best-price-selection">
+            {label}
+          </div>
+        </div>
+
+        <div className="col-span-2 flex items-center justify-between gap-x-3 text-caption lg:col-span-1 lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:flex-col lg:items-end lg:justify-center lg:gap-0.5">
+          <span className="text-muted-foreground">
+            {t("common.fairOdds")}{" "}
+            <span className="numeric font-medium text-foreground">
+              {fmtOdds(h.price.fair_odds)}
+            </span>
+          </span>
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              edge !== null && edge > 0 ? "text-positive" : "text-muted-foreground",
+            )}
+          >
+            {t("home.best.overFair", { pct: fmtSignedPct(edge) })}
+          </span>
+        </div>
+      </Link>
+
+      <div className="flex shrink-0 flex-col items-end gap-0.5">
+        <SelectablePrice sel={pickableOfHighlight(h)} best />
         {h.price.bookmaker ? (
           <span className="max-w-[7rem] truncate text-caption text-muted-foreground">
             {h.price.bookmaker}
           </span>
         ) : null}
       </div>
-
-      <div className="col-span-2 flex items-center justify-between gap-x-3 text-caption lg:col-span-1 lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:flex-col lg:items-end lg:justify-center lg:gap-0.5">
-        <span className="text-muted-foreground">
-          {t("common.fairOdds")}{" "}
-          <span className="numeric font-medium text-foreground">{fmtOdds(h.price.fair_odds)}</span>
-        </span>
-        <span
-          className={cn(
-            "font-semibold tabular-nums",
-            edge !== null && edge > 0 ? "text-positive" : "text-muted-foreground",
-          )}
-        >
-          {t("home.best.overFair", { pct: fmtSignedPct(edge) })}
-        </span>
-      </div>
-    </Link>
+    </div>
   );
 }
 
