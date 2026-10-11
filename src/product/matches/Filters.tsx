@@ -292,7 +292,20 @@ export function CompetitionPicker({
   );
 }
 
-export function SearchBox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function SearchBox({
+  value,
+  onChange,
+  placeholder,
+  label,
+  testId = "match-search",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  /** Another page's words (Cuotas: a team or a competition). */
+  placeholder?: string | undefined;
+  label?: string | undefined;
+  testId?: string | undefined;
+}) {
   return (
     <div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none">
       <Search
@@ -307,9 +320,9 @@ export function SearchBox({ value, onChange }: { value: string; onChange: (v: st
         autoComplete="off"
         spellCheck={false}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={t("matches.filters.searchPlaceholder")}
-        aria-label={t("matches.filters.search")}
-        data-testid="match-search"
+        placeholder={placeholder ?? t("matches.filters.searchPlaceholder")}
+        aria-label={label ?? t("matches.filters.search")}
+        data-testid={testId}
         className={cn(
           fieldClass,
           "pl-8 [&::-webkit-search-cancel-button]:appearance-none",

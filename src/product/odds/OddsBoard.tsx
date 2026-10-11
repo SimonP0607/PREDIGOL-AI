@@ -3,13 +3,13 @@
  * chosen market, next to its fair price. A table on desktop, stacked cards on a phone.
  * A price is a toggle: a tap adds its selection to "Mi parlay", another takes it out.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChartLine, ChevronDown, ChevronRight, TrendingUp } from "lucide-react";
 import type { BestMarket, BestOddsFixture } from "@/lib/api/v1/types_product";
 import { t } from "@/lib/i18n";
 import { fmtLine, fmtOdds, fmtSignedPct, toNumber } from "@/lib/i18n/format";
-import { formatDate, formatTime, relativeDay } from "@/lib/time";
+import { formatDate, formatKickoff, formatTime, relativeDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { CompetitionTag, TeamName } from "@/components/football/Logos";
 import { Freshness } from "@/product/shared/Bits";
@@ -26,22 +26,35 @@ export function OddsBoard({
   market,
   hours,
   onWiden,
+  total,
+  grouped = true,
+  footer,
 }: {
   fixtures: BestOddsFixture[];
   market: string;
   hours: number;
   /** Offered when nothing is priced in the window: look further ahead. */
   onWiden?: (() => void) | undefined;
+  /** Every match the filters keep, when `fixtures` is one page of them. */
+  total?: number | undefined;
+  /** By day (kick-off order); false: one list in the order given (the widest margin over fair first). */
+  grouped?: boolean;
+  footer?: ReactNode;
 }) {
   const rows = fixtures.filter((f) => f.markets.some((m) => m.market_key === market));
-  const groups = groupByDay(rows);
+  const groups = grouped
+    ? groupByDay(rows)
+    : rows.length
+      ? [{ key: "all", first: rows[0]!.kickoff_at, items: rows }]
+      : [];
+  const count = total ?? rows.length;
   return (
     <section className="space-y-4" data-testid="odds-board">
       <SectionHeader
         title={marketName(market)}
         subtitle={
           rows.length
-            ? `${t("odds.board.summary", { count: rows.length, hours })} · ${t("odds.parlay.help")}`
+            ? `${t("odds.board.summary", { count, hours })} · ${t("odds.parlay.help")}`
             : undefined
         }
         icon={<TrendingUp aria-hidden className="h-4 w-4 text-primary" />}
@@ -68,17 +81,18 @@ export function OddsBoard({
       ) : (
         groups.map((g) => (
           <div key={g.key} className="space-y-2">
-            <DayHeading at={g.first} />
+            {grouped ? <DayHeading at={g.first} /> : null}
             <Card as="div" className="overflow-hidden">
               <ul className="divide-y divide-border/70">
                 {g.items.map((f) => (
-                  <FixtureRow key={f.fixture_id} fixture={f} market={market} />
+                  <FixtureRow key={f.fixture_id} fixture={f} market={market} withDay={!grouped} />
                 ))}
               </ul>
             </Card>
           </div>
         ))
       )}
+      {footer}
     </section>
   );
 }
@@ -108,7 +122,16 @@ function DayHeading({ at }: { at: string }) {
   );
 }
 
-function FixtureRow({ fixture, market }: { fixture: BestOddsFixture; market: string }) {
+function FixtureRow({
+  fixture,
+  market,
+  withDay = false,
+}: {
+  fixture: BestOddsFixture;
+  market: string;
+  /** Out of the day groups: the day goes with the time. */
+  withDay?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const priced = fixture.markets.find((m) => m.market_key === market);
   if (!priced) return null;
@@ -122,7 +145,7 @@ function FixtureRow({ fixture, market }: { fixture: BestOddsFixture; market: str
           <div className="flex items-center justify-between gap-2 text-caption">
             <div className="flex min-w-0 items-center gap-2">
               <span className="numeric shrink-0 text-sm font-semibold">
-                {formatTime(fixture.kickoff_at)}
+                {withDay ? formatKickoff(fixture.kickoff_at) : formatTime(fixture.kickoff_at)}
               </span>
               <CompetitionTag
                 name={fixture.competition.name}

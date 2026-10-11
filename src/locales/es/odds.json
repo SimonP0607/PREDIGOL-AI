@@ -58,5 +58,22 @@
     "add": "Agregar a mi parlay",
     "remove": "Quitar de mi parlay",
     "replaces": "Reemplaza la otra selección de este partido en tu parlay: una por partido"
+  },
+  "fairExplainer": "Precio justo: la cuota que pagaría cada selección si las casas no cobraran margen (la probabilidad de consenso del mercado, sin su margen). En verde, cuánto paga la mejor cuota por encima de ese precio; «atípico», un precio de una sola casa probablemente desactualizado o erróneo.",
+  "filters": {
+    "search": "Buscar equipo o competición",
+    "searchPlaceholder": "Equipo o competición",
+    "country": "País",
+    "allCountries": "Todos los países",
+    "international": "Internacional",
+    "competition": "Competición",
+    "allCompetitions": "Todas las competiciones",
+    "aboveFair": "Solo por encima del justo",
+    "sort": "Orden",
+    "sortTime": "Por hora",
+    "sortEdge": "Mayor margen sobre el justo",
+    "clear": "Quitar filtros",
+    "emptyTitle": "Ningún partido coincide con tus filtros",
+    "emptyBody": "Prueba con otro nombre, otro país o quitando «Solo por encima del justo»."
   }
 }

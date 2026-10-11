@@ -1,29 +1,39 @@
 /**
- * Odds: the best price of every selection for the upcoming fixtures, next to the market's
- * fair (de-vigged) price. The market tabs and the time window scope everything below them.
+ * Cuotas: the best price of every selection for the upcoming fixtures, next to its fair (de-vigged) price - and
+ * nothing else (REVIEW PREDIGOL, point 17: the module exists for that comparison, whatever the picks; the picks
+ * have their own page). It opens on the next 24 hours; the reader narrows it by a team or a competition's name, a
+ * country, a competition, only the prices above fair, and orders it by kick-off or by the widest margin over fair.
  */
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { BadgePercent, Clock, Info } from "lucide-react";
+import { Clock, Globe2, Scale, SearchX, Trophy } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
-import type { PickCard as PickCardData } from "@/lib/api/v1/types_product";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
-import { t } from "@/lib/i18n";
+import { t, useI18n } from "@/lib/i18n";
 import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { ShadowBadge } from "@/product/shared/Bits";
-import { PickCard } from "@/product/shared/PickCard";
-import { Card, ErrorState, PageTitle, SectionHeader, SkeletonBlock } from "@/product/shared/States";
+import { Card, EmptyState, ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
 import { MARKETS, marketShort, type MarketKey } from "@/product/shared/markets";
+import { Pager } from "@/product/shared/Pager";
+import { usePaged } from "@/product/shared/paging";
 import { ChipGroup, ShadowToggle, type ChipOption } from "@/product/picks/Controls";
+import { FacetPicker, SearchBox } from "@/product/matches/Filters";
 import { Highlights } from "./Highlights";
 import { OddsBoard } from "./OddsBoard";
+import {
+  NO_ODDS_FILTERS,
+  competitionOptions,
+  countryOptions,
+  inOddsFilters,
+  sortFixtures,
+  type OddsFilters,
+  type OddsSort,
+} from "./filters";
 
-/** The API's own default window is 48 h. */
-const DEFAULT_HOURS = 48;
+/** REVIEW point 17: the board opens on the next 24 h. */
+const DEFAULT_HOURS = 24;
 const WIDEST = 72;
 const WINDOWS: readonly number[] = [24, 48, WIDEST];
-const VALUE_MAX = 6;
 
 function tabLabel(market: MarketKey): string {
   switch (market) {
@@ -40,13 +50,27 @@ function tabLabel(market: MarketKey): string {
   }
 }
 
+function FairExplainer() {
+  return (
+    <p
+      className="flex items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground"
+      data-testid="odds-fair-explainer"
+    >
+      <Scale aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+      <span>{t("odds.fairExplainer")}</span>
+    </p>
+  );
+}
+
 export function OddsPage() {
   const auth = useAuth();
   const preview = usePreviewParam();
+  const { locale } = useI18n();
   const [market, setMarket] = useState<MarketKey>("1X2");
   const [hours, setHours] = useState<number>(DEFAULT_HOURS);
+  const [filters, setFilters] = useState<OddsFilters>(NO_ODDS_FILTERS);
   const query = useQuery({
-    ...live.bestOdds({ market, hours }, preview),
+    ...live.bestOdds({ market, hours, picks: false }, preview),
     placeholderData: keepPreviousData,
   });
   const board = query.data?.data;
@@ -55,10 +79,55 @@ export function OddsPage() {
   const shownMarket = board?.markets.length === 1 && board.markets[0] ? board.markets[0] : market;
   const refreshing = query.isPlaceholderData;
   const asOf = query.data?.meta.data_as_of ?? null;
+  const update = (patch: Partial<OddsFilters>) => setFilters((f) => ({ ...f, ...patch }));
+
+  const fixtures = useMemo(() => board?.fixtures ?? [], [board]);
+  const countries = useMemo(
+    () => countryOptions(fixtures, shownMarket, locale, t("odds.filters.international")),
+    [fixtures, shownMarket, locale],
+  );
+  // A country or competition picked in another window or market may not be on this board: then all of them.
+  const country =
+    filters.country !== null && countries.some((c) => c.key === filters.country)
+      ? filters.country
+      : null;
+  const competitions = useMemo(
+    () => competitionOptions(fixtures, shownMarket, country, locale),
+    [fixtures, shownMarket, country, locale],
+  );
+  const competition =
+    filters.competition !== null && competitions.some((c) => c.key === filters.competition)
+      ? filters.competition
+      : null;
+  const effective = useMemo<OddsFilters>(
+    () => ({ ...filters, country, competition }),
+    [filters, country, competition],
+  );
+  const kept = useMemo(
+    () =>
+      sortFixtures(
+        fixtures.filter((f) => inOddsFilters(f, shownMarket, effective)),
+        shownMarket,
+        effective.sort,
+      ),
+    [fixtures, shownMarket, effective],
+  );
+  const keptIds = useMemo(() => new Set(kept.map((f) => f.fixture_id)), [kept]);
+  const paged = usePaged(kept, `${shownMarket}|${hours}|${JSON.stringify(effective)}`);
+  const filtered =
+    effective.query.trim() !== "" ||
+    country !== null ||
+    competition !== null ||
+    effective.aboveFair;
+
   const windows: ChipOption<number>[] = WINDOWS.map((h) => ({
     value: h,
     label: t("odds.window.hours", { count: h }),
   }));
+  const sorts: ChipOption<OddsSort>[] = [
+    { value: "time", label: t("odds.filters.sortTime") },
+    { value: "edge", label: t("odds.filters.sortEdge") },
+  ];
 
   let content;
   if (query.isPending) {
@@ -70,20 +139,50 @@ export function OddsPage() {
       </Card>
     );
   } else if (board) {
-    // No fixture priced at all: the board's own empty state says it once, not three times.
     const nothing = board.fixtures.length === 0 && board.highlights.length === 0;
+    const highlights = filtered
+      ? board.highlights.filter((h) => keptIds.has(h.fixture_id))
+      : board.highlights;
     content = (
       <>
-        {nothing ? null : <Highlights items={board.highlights} />}
-        {nothing && board.value.length === 0 ? null : (
-          <ValueBlock picks={board.value} shadow={board.source === "shadow_preview"} />
+        {nothing ? null : <Highlights items={highlights} />}
+        {filtered && kept.length === 0 && !nothing ? (
+          <Card>
+            <EmptyState
+              icon={<SearchX aria-hidden className="h-6 w-6" />}
+              title={t("odds.filters.emptyTitle")}
+              body={t("odds.filters.emptyBody")}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setFilters({ ...NO_ODDS_FILTERS, sort: filters.sort })}
+                  className="rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
+                >
+                  {t("odds.filters.clear")}
+                </button>
+              }
+            />
+          </Card>
+        ) : (
+          <OddsBoard
+            fixtures={paged.items}
+            total={kept.length}
+            market={shownMarket}
+            hours={board.window_hours}
+            grouped={effective.sort === "time"}
+            onWiden={board.window_hours < WIDEST ? () => setHours(WIDEST) : undefined}
+            footer={
+              <Pager
+                paged={paged}
+                onChange={() =>
+                  document
+                    .getElementById("odds-panel")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              />
+            }
+          />
         )}
-        <OddsBoard
-          fixtures={board.fixtures}
-          market={shownMarket}
-          hours={board.window_hours}
-          onWiden={board.window_hours < WIDEST ? () => setHours(WIDEST) : undefined}
-        />
       </>
     );
   }
@@ -95,6 +194,7 @@ export function OddsPage() {
         subtitle={t("odds.subtitle")}
         right={auth.showAdmin ? <ShadowToggle /> : undefined}
       />
+      <FairExplainer />
 
       <div className="space-y-3">
         <MarketTabs value={market} onChange={setMarket} />
@@ -118,6 +218,72 @@ export function OddsPage() {
             </span>
           ) : null}
         </div>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <div className="col-span-2 sm:col-span-1">
+            <SearchBox
+              value={filters.query}
+              onChange={(q) => update({ query: q })}
+              placeholder={t("odds.filters.searchPlaceholder")}
+              label={t("odds.filters.search")}
+              testId="odds-search"
+            />
+          </div>
+          <FacetPicker<string>
+            label={t("odds.filters.country")}
+            anyLabel={t("odds.filters.allCountries")}
+            value={country}
+            options={countries}
+            onChange={(c) => update({ country: c, competition: null })}
+            icon={<Globe2 />}
+            testId="odds-country"
+          />
+          <FacetPicker<string>
+            label={t("odds.filters.competition")}
+            anyLabel={t("odds.filters.allCompetitions")}
+            value={competition === null ? null : String(competition)}
+            options={competitions.map((c) => ({ ...c, key: String(c.key) }))}
+            onChange={(c) => update({ competition: c === null ? null : Number(c) })}
+            icon={<Trophy />}
+            testId="odds-competition"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <button
+            type="button"
+            aria-pressed={filters.aboveFair}
+            onClick={() => update({ aboveFair: !filters.aboveFair })}
+            data-testid="odds-above-fair"
+            className={cn(
+              "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              filters.aboveFair
+                ? "border-positive/50 bg-positive-soft text-positive"
+                : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
+            )}
+          >
+            {t("odds.filters.aboveFair")}
+          </button>
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <span aria-hidden className="text-label text-subtle-foreground">
+              {t("odds.filters.sort")}
+            </span>
+            <ChipGroup
+              label={t("odds.filters.sort")}
+              value={filters.sort}
+              options={sorts}
+              onChange={(sort) => update({ sort })}
+              testId="odds-sort"
+            />
+          </div>
+          {filtered ? (
+            <button
+              type="button"
+              onClick={() => setFilters({ ...NO_ODDS_FILTERS, sort: filters.sort })}
+              className="ml-auto text-xs font-medium text-primary hover:underline"
+            >
+              {t("odds.filters.clear")}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div
@@ -125,7 +291,7 @@ export function OddsPage() {
         role="tabpanel"
         aria-labelledby={`odds-tab-${market}`}
         aria-busy={refreshing}
-        className={cn("space-y-8 transition-opacity", refreshing && "opacity-60")}
+        className={cn("scroll-mt-20 space-y-8 transition-opacity", refreshing && "opacity-60")}
       >
         {content}
       </div>
@@ -231,39 +397,6 @@ function MarketTabs({
         );
       })}
     </div>
-  );
-}
-
-/** Qualified selections with value at today's best price; only drawn when there are some. */
-function ValueBlock({ picks, shadow }: { picks: PickCardData[]; shadow: boolean }) {
-  if (picks.length === 0) {
-    return (
-      <p
-        className="flex items-center gap-1.5 text-xs text-muted-foreground"
-        data-testid="odds-value-none"
-      >
-        <Info aria-hidden className="h-3.5 w-3.5 shrink-0" />
-        {t("odds.value.none")}
-      </p>
-    );
-  }
-  return (
-    <section className="space-y-3" data-testid="odds-value">
-      <div className="space-y-2">
-        <SectionHeader
-          title={t("odds.value.title")}
-          subtitle={t("odds.value.subtitle")}
-          icon={<BadgePercent aria-hidden className="h-4 w-4 text-primary" />}
-          action={{ label: t("odds.value.seeAll"), to: "/picks" }}
-        />
-        {shadow ? <ShadowBadge /> : null}
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {picks.slice(0, VALUE_MAX).map((pick) => (
-          <PickCard key={pick.pick_id} pick={pick} compact shadow={shadow} />
-        ))}
-      </div>
-    </section>
   );
 }
 

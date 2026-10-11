@@ -58,5 +58,22 @@
     "add": "Add to my parlay",
     "remove": "Remove from my parlay",
     "replaces": "Replaces the other selection of this match in your parlay: one per match"
+  },
+  "fairExplainer": "Fair price: the odds each selection would pay if bookmakers took no margin (the market's consensus probability, without its margin). In green, how much the best price pays above that fair price; “outlier”, one bookmaker's price that is probably stale or wrong.",
+  "filters": {
+    "search": "Search team or competition",
+    "searchPlaceholder": "Team or competition",
+    "country": "Country",
+    "allCountries": "All countries",
+    "international": "International",
+    "competition": "Competition",
+    "allCompetitions": "All competitions",
+    "aboveFair": "Only above fair",
+    "sort": "Order",
+    "sortTime": "By time",
+    "sortEdge": "Widest margin over fair",
+    "clear": "Clear filters",
+    "emptyTitle": "No match fits your filters",
+    "emptyBody": "Try another name, another country, or turn off “Only above fair”."
   }
 }
