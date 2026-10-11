@@ -16,6 +16,13 @@ from datetime import datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from fbi.api.cache import shared
+from fbi.api.contracts.builder import (
+    BuilderFilters,
+    BuilderFunnel,
+    BuilderLeg,
+    BuilderOption,
+    BuiltParlay,
+)
 from fbi.api.contracts.product import (
     BestHighlight,
     BestMarket,
@@ -35,15 +42,19 @@ from fbi.api.contracts.product import (
     TeamBadge,
     UpcomingMatch,
 )
+from fbi.api.contracts.records import ItemAi
 from fbi.api.envelope import DataStatus, Envelope, listing, ok, section
 from fbi.api.repositories import Conn, Row
 from fbi.api.repositories import product as repo
 from fbi.api.services import center
+from fbi.api.services.records import ai_items
 from fbi.core import match_state
 from fbi.core.clock import now as clock_now
-from fbi.parlays import engine
+from fbi.parlays import builder, engine
+from fbi.parlays import correlation as corr
 from fbi.parlays.engine import Candidate, GateConfig, Leg, Reject
-from fbi.picks.daily import DAY_TZ, product_day
+from fbi.parlays.persist import RULE_VERSION as PARLAY_RULE
+from fbi.picks.daily import DAY_TZ, Ranked, ai_view, load_candidates, passing, product_day
 
 Q2 = Decimal("0.01")
 Q3 = Decimal("0.001")
@@ -254,6 +265,80 @@ def parlay_board(conn: Conn, kind: engine.ParlayKind, *, include_shadow: bool,
     rows = repo.pick_candidates(conn, now=moment, until=moment + spec.window, since=moment - CONSENSUS_LOOKBACK,
                                 include_shadow=include_shadow)
     return ok(parlay(rows, spec, include_shadow=include_shadow, moment=moment))
+
+
+# ── the automatic parlay builder (REVIEW 11 Oct 2026, point 15) ─────────────────────
+
+def _builder_leg(x: Ranked, ai: dict[int, ItemAi], i: int) -> BuilderLeg:
+    c, r = x.leg.candidate, x.row
+    assert c.price is not None and c.price_at is not None and c.p_market_fair is not None
+    p_market = c.p_market_fair
+    return BuilderLeg(
+        pick_id=c.pick_id, fixture_id=c.fixture_id, kickoff_at=c.kickoff_at, competition=_competition(r),
+        home=_home(r), away=_away(r), market_key=c.market_key, selection=c.selection, line=c.line, odds=c.price,
+        bookmaker=r.get("bookmaker"), price_at=c.price_at, n_bookmakers=int(c.n_bookmakers or 0), p_model=c.p_model,
+        p_low=x.p_low, p_high=Decimal(r["p_high"]) if r.get("p_high") is not None else None, p_market=p_market,
+        fair_odds=(Decimal(1) / p_market).quantize(Q3, ROUND_HALF_UP), edge=x.leg.probability_edge,
+        price_edge=(c.price * p_market - Decimal(1)).quantize(Q4, ROUND_HALF_UP), ev=x.leg.ev,
+        growth=Decimal(str(round(x.elg, 8))), ai=ai.get(i))
+
+
+def _options(reviewed: list[Ranked]) -> tuple[list[BuilderOption], list[str]]:
+    """What the filters can offer: the competitions and markets with selections a parlay could hold, whatever the
+    filters chosen so far (picking one competition does not hide the others)."""
+    usable = [x for x in reviewed if builder.combinable(x)]
+    counts: dict[int, int] = defaultdict(int)
+    badges: dict[int, CompetitionBadge] = {}
+    for x in usable:
+        comp = int(x.row["competition_id"])
+        counts[comp] += 1
+        badges.setdefault(comp, _competition(x.row))
+    options = [BuilderOption(competition=badges[c], selections=n) for c, n in counts.items()]
+    options.sort(key=lambda o: (-o.selections, o.competition.name))
+    return options, sorted({x.leg.candidate.market_key for x in usable})
+
+
+@shared(30)
+def built_parlay(conn: Conn, filters: builder.Filters, *, include_shadow: bool,
+                 at: datetime | None = None) -> Envelope[BuiltParlay]:
+    """The parlay PrediGol builds for the user's filters with the rule of its own parlays (``fbi.parlays.builder``):
+    from qualified picks only - the owner's preview alone builds from shadow picks, labelled. Nothing is stored."""
+    moment = at or clock_now()
+    rows = load_candidates(conn, at=moment, until=moment + timedelta(hours=filters.hours),
+                           include_shadow=include_shadow)
+    ranked = passing(rows, at=moment, source="evaluation" if include_shadow else "qualified")
+    view = ai_view(conn, ranked, at=moment)
+    reviewed = view.apply(ranked, drop_downgraded=True)
+    built = builder.build(ranked, reviewed, filters, at=moment, correlations=corr.latest(conn))
+    reviews = ai_items(conn, [{"inputs": {"ai": view.record(x)}} for x in built.legs], reveal=include_shadow)
+    legs = [_builder_leg(x, reviews, i) for i, x in enumerate(built.legs)]
+    competitions, markets = _options(reviewed)
+    p_all = Decimal(str(round(built.p_all_low, 8))) if built.p_all_low is not None else None
+    p_market = None
+    if legs:
+        p_market = Decimal(1)
+        for leg in legs:
+            p_market *= leg.p_market
+        p_market = p_market.quantize(Q6, ROUND_HALF_UP)
+    body = BuiltParlay(
+        status="ok" if legs else "no_valid_parlay", reason=built.reason, source=_source(include_shadow),
+        rule_version=builder.RULE_VERSION, parlay_rule=PARLAY_RULE,
+        filters=BuilderFilters(hours=filters.hours, min_legs=filters.min_legs, max_legs=filters.max_legs,
+                               markets=list(filters.markets), competition_ids=list(filters.competitions),
+                               min_odds=filters.min_odds, max_odds=filters.max_odds,
+                               max_total_odds=filters.max_total_odds),
+        legs=legs,
+        combined_odds=built.combined_odds.quantize(Q2, ROUND_HALF_UP) if built.combined_odds is not None else None,
+        p_all_low=p_all, p_all_market=p_market,
+        expected_log_growth=(Decimal(str(round(built.expected_log_growth, 8)))
+                             if built.expected_log_growth is not None else None),
+        risk=engine.risk_of(p_all) if p_all is not None else None, correlated_pairs=built.correlated_pairs,
+        funnel=BuilderFunnel(passing=built.funnel.passing, reviewed=built.funnel.reviewed,
+                             matching=built.funnel.matching, combinable=built.funnel.combinable,
+                             matches=built.funnel.matches),
+        competitions=competitions, markets=markets,
+        prices_as_of=min((leg.price_at for leg in legs), default=None), generated_at=moment)
+    return ok(body, count=len(legs), data_as_of=body.prices_as_of)
 
 
 # ── best prices ──────────────────────────────────────────────────────────────────

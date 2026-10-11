@@ -34,6 +34,7 @@ legs: there was no parlay that day, and the record says so.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -62,7 +63,8 @@ RULE_VERSION = "parlay-v4"
 MAX_PER_COMPETITION = 2
 MIN_LEG_BOOKMAKERS = 3
 MAX_INTERVAL_WIDTH = Decimal("0.40")
-Kind = Literal["daily", "multiday"]
+Kind = Literal["daily", "multiday", "custom"]
+"""``custom``: a parlay the user asked the builder for (``fbi.parlays.builder``) - never a record of PrediGol's."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,13 +143,17 @@ def quarter_line(line: Decimal) -> bool:
     return abs(line * 4) % 2 == 1
 
 
-def choose(pool: list[Ranked], spec: Spec, correlations: Correlations | None = None) -> list[Ranked] | None:
+def choose(pool: list[Ranked], spec: Spec, correlations: Correlations | None = None,
+           allow: Callable[[list[Ranked], Ranked], bool] | None = None) -> list[Ranked] | None:
     """The legs, or None when no parlay of at least ``min_legs`` grows.
 
     The day rule is honoured while choosing, not checked afterwards: once the slots left before
     ``min_legs`` are only enough to reach ``min_days``, the next leg must come from a day the
     parlay does not have yet (a multi-day parlay of three legs takes its third from another day
-    when its first two share one)."""
+    when its first two share one).
+
+    ``allow`` (the user's builder only): one more condition a leg must meet to join the legs chosen so far - it
+    can only leave legs out, never let in one the rules above refuse. PrediGol's own parlays never pass it."""
     legs: list[Ranked] = []
     fixtures: set[int] = set()
     teams: set[int] = set()
@@ -158,7 +164,8 @@ def choose(pool: list[Ranked], spec: Spec, correlations: Correlations | None = N
         comp = x.row.get("competition_id")
         return (c.fixture_id not in fixtures and c.home_team_id not in teams and c.away_team_id not in teams
                 and not quarter_line(c.line) and eligible_leg(x)
-                and (comp is None or per_competition.get(comp, 0) < MAX_PER_COMPETITION))
+                and (comp is None or per_competition.get(comp, 0) < MAX_PER_COMPETITION)
+                and (allow is None or allow(legs, x)))
 
     while len(legs) < spec.max_legs:
         options = [x for x in pool if allowed(x)]
@@ -276,4 +283,5 @@ def build_parlays(conn: psycopg.Connection[Any], *, at: datetime) -> ParlayRepor
     return report
 
 
-__all__ = ["DAY_TZ", "RULE_VERSION", "SPECS", "build_parlays", "choose", "joint_low", "parlay_elg"]
+__all__ = ["DAY_TZ", "RULE_VERSION", "SPECS", "build_parlays", "choose", "correlated_pairs", "eligible_leg", "joint_low",
+           "parlay_elg", "quarter_line"]

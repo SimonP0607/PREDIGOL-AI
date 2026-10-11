@@ -14,6 +14,7 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Query
 
+from fbi.api.contracts.builder import BuiltParlay
 from fbi.api.contracts.product import BestOddsBoard, Home, Parlay, PicksBoard, StartedPick
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
@@ -22,12 +23,15 @@ from fbi.api.security import App
 from fbi.api.services import product
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
+from fbi.parlays import builder
 
 router = APIRouter(tags=["product"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 Preview = Annotated[Literal["shadow"] | None, Query(
     description="SUPER_ADMIN only: show unqualified shadow picks laid out as the product would. Never a user's view.")]
 Market = Annotated[str | None, Query(max_length=10, pattern=r"^(1X2|OU|BTTS|AH|DC)$")]
+MarketKey = Literal["1X2", "OU", "BTTS", "AH", "DC"]
+MAX_COMPETITIONS = 40
 
 
 def _shadow(preview: str | None, principal: Principal) -> bool:
@@ -70,6 +74,37 @@ def get_started_picks(conn: Db, principal: App, preview: Preview = None) -> Enve
     """Today's pre-match picks whose match already kicked off (Bogotá day, at least the last six hours), as they
     were taken, with the match's state and the result - unfiltered: the page filters and pages them."""
     return product.started_board(conn, include_shadow=_shadow(preview, principal))
+
+
+@router.get("/parlays/build", response_model=Envelope[BuiltParlay])
+def build_parlay(
+    conn: Db,
+    principal: App,
+    preview: Preview = None,
+    hours: Annotated[int, Query(ge=builder.MIN_HOURS, le=builder.MAX_HOURS)] = 24,
+    min_legs: Annotated[int, Query(ge=builder.MIN_LEGS, le=builder.MAX_LEGS)] = 2,
+    max_legs: Annotated[int, Query(ge=builder.MIN_LEGS, le=builder.MAX_LEGS)] = 4,
+    market: Annotated[list[MarketKey] | None, Query(description="Repeat for several; none: every market.")] = None,
+    competition_id: Annotated[list[int] | None, Query(description="Repeat for several; none: every competition.")]
+    = None,
+    min_odds: Annotated[Decimal | None, Query(ge=1, le=1000, description="Each leg's price at least this.")] = None,
+    max_odds: Annotated[Decimal | None, Query(ge=1, le=1000, description="Each leg's price at most this.")] = None,
+    max_total_odds: Annotated[Decimal | None, Query(gt=1, le=100000, description="The parlay's odds at most this.")]
+    = None,
+) -> Envelope[BuiltParlay]:
+    """The automatic parlay builder: the parlay PrediGol builds for these filters with the rule of its own parlays
+    (value gate at the current price, AI review, liquidity, independence, chosen by growth at the pessimistic
+    probabilities), each leg with the numbers behind it - or ``no_valid_parlay`` and why. The filters only narrow
+    what the rule chooses from. Nothing is stored: saving it is ``POST /me/parlays``."""
+    if competition_id is not None and len(competition_id) > MAX_COMPETITIONS:
+        raise ApiError(422, "invalid_filters", f"at most {MAX_COMPETITIONS} competitions")
+    try:
+        filters = builder.Filters.of(hours=hours, min_legs=min_legs, max_legs=max_legs, markets=market or (),
+                                     competitions=competition_id or (), min_odds=min_odds, max_odds=max_odds,
+                                     max_total_odds=max_total_odds)
+    except builder.FilterError as exc:
+        raise ApiError(422, "invalid_filters", str(exc)) from exc
+    return product.built_parlay(conn, filters, include_shadow=_shadow(preview, principal))
 
 
 @router.get("/parlays/{kind}", response_model=Envelope[Parlay])
