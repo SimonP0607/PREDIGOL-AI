@@ -43,8 +43,16 @@ def _f(x: Any) -> float | None:
     return v if math.isfinite(v) else None
 
 
-@shared(300)
+def _slow(conn: Conn) -> None:
+    """This page reads nine data flags for every stored fixture (246k on 11 Oct 2026): about 4 s warm and over the
+    API's ten-second default cold - Admin > Analytics > Competitions answered 500 twice on 9-10 Oct (QueryCanceled).
+    Only this request may take longer, and its answer is kept 15 minutes: it changes once a day at most."""
+    conn.execute("SET LOCAL statement_timeout = '60s'")
+
+
+@shared(900)
 def competitions(conn: Conn) -> Envelope[list[CompetitionProfile]]:
+    _slow(conn)
     rows = repo.competition_profiles(conn, FEATURE_VERSION)
     items = []
     for r in rows:
@@ -61,8 +69,9 @@ def competitions(conn: Conn) -> Envelope[list[CompetitionProfile]]:
     return listing(items, empty_reason="No fixtures have been ingested yet.")
 
 
-@shared(300)
+@shared(900)
 def coverage(conn: Conn) -> Envelope[list[CoverageCell]]:
+    _slow(conn)
     items = [CoverageCell(**r) for r in repo.coverage(conn, FEATURE_VERSION)]
     return listing(items, empty_reason="No fixtures have been ingested yet.")
 
