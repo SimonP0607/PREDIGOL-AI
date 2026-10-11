@@ -305,5 +305,78 @@
     "lost": "Perdido",
     "void": "Anulado",
     "building": "En construcción"
+  },
+  "recap": {
+    "title": "Tu recapitulación",
+    "subtitle": "Lo que llevan tus picks liquidados: ganancia, cuotas, rachas y mercados.",
+    "scope": "Qué ver",
+    "scopePicks": "Mis picks",
+    "scopeParlays": "Mis parlays",
+    "period": "Periodo",
+    "days_one": "{count} día",
+    "days_other": "{count} días",
+    "all": "Todo",
+    "emptyPicks": "Cuando tus picks guardados se liquiden, aquí verás su evolución en gráficas.",
+    "emptyParlays": "Cuando tus parlays se liquiden, aquí verás su evolución en gráficas.",
+    "note": "Una unidad por pick o parlay, con la ganancia con que se liquidó cada uno. PrediGol no maneja dinero.",
+    "kpi": {
+      "settled": "Liquidados",
+      "record": "{won} G · {lost} P · {void} nulos",
+      "hitRate": "Acierto",
+      "profit": "Ganancia",
+      "roi": "Rentabilidad",
+      "avgOdds": "Cuota media",
+      "avgOddsWon": "En aciertos: {odds}",
+      "bestStreak": "Mejor racha",
+      "current": {
+        "win_one": "Racha actual: {count} acierto",
+        "win_other": "Racha actual: {count} aciertos",
+        "loss_one": "Racha actual: {count} fallo",
+        "loss_other": "Racha actual: {count} fallos"
+      }
+    },
+    "cumulative": {
+      "title": "Ganancia acumulada",
+      "subtitle": "Cómo crece (o baja) tu saldo en unidades, día a día.",
+      "total": "Acumulado"
+    },
+    "daily": {
+      "title": "Ganancia por día",
+      "subtitle": "Mejor día: {best} ({bestProfit}) · peor: {worst} ({worstProfit})",
+      "profit": "Ganancia",
+      "count_one": "{count} pick",
+      "count_other": "{count} picks"
+    },
+    "odds": {
+      "title": "Por rango de cuota",
+      "subtitle": "Cuota media: {odds}. Cuántos tomaste en cada rango y cómo fueron.",
+      "count": "Liquidados",
+      "tooltip": "{count} · acierto {hit} · {profit}",
+      "bucket": {
+        "lt1.5": "< 1,50",
+        "1.5-2": "1,50–2",
+        "2-3": "2–3",
+        "3-5": "3–5",
+        "5+": "5 o más"
+      }
+    },
+    "markets": {
+      "title": "Acierto por mercado",
+      "subtitle": "En qué mercados aciertas más.",
+      "hitRate": "Acierto",
+      "tooltip": "{pct} % · {count} picks · {profit}"
+    },
+    "streak": {
+      "title": "Rachas",
+      "subtitle_one": "Tu último resultado, del más antiguo al más reciente.",
+      "subtitle_other": "Tus últimos {count} resultados, del más antiguo al más reciente.",
+      "win": "Acierto",
+      "loss": "Fallo",
+      "w": "G",
+      "l": "P",
+      "current": "Actual",
+      "bestWin": "Mejor",
+      "worstLoss": "Peor"
+    }
   }
 }

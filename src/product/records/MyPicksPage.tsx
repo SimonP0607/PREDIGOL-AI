@@ -1,7 +1,8 @@
 /**
  * Mis picks: how it went (today, 7 days, 30 days, everything - PrediGol's picks and parlays
- * next to the user's own), the picks the user saved, and the parlays they built. Profit is
- * in units of one stake: PrediGol handles no money.
+ * next to the user's own), the user's recap in animated charts (REVIEW point 19), the picks the
+ * user saved, and the parlays they built. Profit is in units of one stake: PrediGol handles no
+ * money.
  */
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -34,6 +35,7 @@ import { MatchScore } from "./DailyItemCard";
 import { useRefreshMine } from "./hooks";
 import { HISTORY_GROUPS, hasStarted } from "./model";
 import { useSlip } from "./slipContext";
+import { Recap } from "./Recap";
 
 const PERIODS: readonly HistoryPeriod[] = ["today", "7d", "30d", "all"];
 
@@ -532,6 +534,7 @@ export function MyPicksPage() {
     <div className="space-y-9" data-testid="my-picks-page">
       <PageTitle title={t("records.mine.title")} subtitle={t("records.mine.subtitle")} />
       <Results />
+      <Recap />
       <SavedPicks />
       <MyParlays />
       <p className="text-center text-caption text-subtle-foreground lg:hidden">

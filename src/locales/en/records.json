@@ -305,5 +305,78 @@
     "lost": "Lost",
     "void": "Void",
     "building": "Being built"
+  },
+  "recap": {
+    "title": "Your recap",
+    "subtitle": "What your settled picks add up to: profit, odds, streaks and markets.",
+    "scope": "What to see",
+    "scopePicks": "My picks",
+    "scopeParlays": "My parlays",
+    "period": "Period",
+    "days_one": "{count} day",
+    "days_other": "{count} days",
+    "all": "All",
+    "emptyPicks": "Once your saved picks are settled, their progress shows here in charts.",
+    "emptyParlays": "Once your parlays are settled, their progress shows here in charts.",
+    "note": "One unit per pick or parlay, at the profit each was settled at. PrediGol handles no money.",
+    "kpi": {
+      "settled": "Settled",
+      "record": "{won} W · {lost} L · {void} void",
+      "hitRate": "Hit rate",
+      "profit": "Profit",
+      "roi": "Return",
+      "avgOdds": "Average odds",
+      "avgOddsWon": "When won: {odds}",
+      "bestStreak": "Best streak",
+      "current": {
+        "win_one": "Current streak: {count} win",
+        "win_other": "Current streak: {count} wins",
+        "loss_one": "Current streak: {count} loss",
+        "loss_other": "Current streak: {count} losses"
+      }
+    },
+    "cumulative": {
+      "title": "Cumulative profit",
+      "subtitle": "How your balance in units grows (or falls), day by day.",
+      "total": "Cumulative"
+    },
+    "daily": {
+      "title": "Profit per day",
+      "subtitle": "Best day: {best} ({bestProfit}) · worst: {worst} ({worstProfit})",
+      "profit": "Profit",
+      "count_one": "{count} pick",
+      "count_other": "{count} picks"
+    },
+    "odds": {
+      "title": "By odds range",
+      "subtitle": "Average odds: {odds}. How many you took in each range and how they went.",
+      "count": "Settled",
+      "tooltip": "{count} · hit rate {hit} · {profit}",
+      "bucket": {
+        "lt1.5": "< 1.50",
+        "1.5-2": "1.50–2",
+        "2-3": "2–3",
+        "3-5": "3–5",
+        "5+": "5 or more"
+      }
+    },
+    "markets": {
+      "title": "Hit rate by market",
+      "subtitle": "The markets you get right most.",
+      "hitRate": "Hit rate",
+      "tooltip": "{pct}% · {count} picks · {profit}"
+    },
+    "streak": {
+      "title": "Streaks",
+      "subtitle_one": "Your last result, oldest to newest.",
+      "subtitle_other": "Your last {count} results, oldest to newest.",
+      "win": "Win",
+      "loss": "Loss",
+      "w": "W",
+      "l": "L",
+      "current": "Current",
+      "bestWin": "Best",
+      "worstLoss": "Worst"
+    }
   }
 }
