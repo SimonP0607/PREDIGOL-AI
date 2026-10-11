@@ -14,7 +14,7 @@ from typing import Annotated, Any, Literal
 import psycopg
 from fastapi import APIRouter, Depends, Query
 
-from fbi.api.contracts.product import BestOddsBoard, Home, Parlay, PicksBoard
+from fbi.api.contracts.product import BestOddsBoard, Home, Parlay, PicksBoard, StartedPick
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.errors import ApiError
@@ -63,6 +63,13 @@ def get_picks(
     return product.picks_board(conn, include_shadow=_shadow(preview, principal), competition_id=competition_id,
                                market=market, min_odds=min_odds, max_odds=max_odds, hours=hours,
                                fixture_id=fixture_id)
+
+
+@router.get("/picks/started", response_model=Envelope[list[StartedPick]])
+def get_started_picks(conn: Db, principal: App, preview: Preview = None) -> Envelope[list[StartedPick]]:
+    """Today's pre-match picks whose match already kicked off (Bogotá day, at least the last six hours), as they
+    were taken, with the match's state and the result - unfiltered: the page filters and pages them."""
+    return product.started_board(conn, include_shadow=_shadow(preview, principal))
 
 
 @router.get("/parlays/{kind}", response_model=Envelope[Parlay])

@@ -35,7 +35,7 @@ from fbi.api.contracts.product import (
     TeamBadge,
     UpcomingMatch,
 )
-from fbi.api.envelope import DataStatus, Envelope, ok, section
+from fbi.api.envelope import DataStatus, Envelope, listing, ok, section
 from fbi.api.repositories import Conn, Row
 from fbi.api.repositories import product as repo
 from fbi.api.services import center
@@ -209,6 +209,15 @@ def picks_board(conn: Conn, *, include_shadow: bool, competition_id: int | None,
                        window_hours=hours, reason=reason, started=started)
     newest = max((p.price_at for p in all_cards if p.price_at), default=None)
     return ok(board, count=len(all_cards), data_as_of=newest)
+
+
+def started_board(conn: Conn, *, include_shadow: bool, at: datetime | None = None) -> Envelope[list[StartedPick]]:
+    """Today's pre-match picks whose match already kicked off, unfiltered: the Picks page filters and pages them
+    itself, apart from the list of the matches still to come (REVIEW 11 Oct 2026, point 14)."""
+    moment = at or clock_now()
+    rows = repo.started_picks(conn, now=moment, since=started_since(moment), include_shadow=include_shadow)
+    return listing([started_pick(r, moment) for r in rows],
+                   empty_reason="no_shadow_picks" if include_shadow else "no_started_picks")
 
 
 def parlay(rows: list[Row], spec: engine.ParlaySpec, *, include_shadow: bool, moment: datetime) -> Parlay:
