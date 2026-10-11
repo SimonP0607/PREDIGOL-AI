@@ -388,9 +388,9 @@
       "calibration": "Calibración",
       "value": "Valor",
       "risk": "Riesgo (cuota ≤ {max})",
-      "context": "PrediGol Intelligence",
+      "context": "PrediGol Intelligence (pasada del día y noticias)",
       "selection": "Selección (máx. 5)"
     },
-    "help": "Cada paso es un filtro: si no hay picks que los pasen todos, el día se queda con menos o sin ninguno."
+    "help": "Cada paso es un filtro: si no hay picks que los pasen todos, el día se queda con menos o sin ninguno. Los picks del día se eligen cuando PrediGol Intelligence ya leyó el día: su pasada de cada partido, con búsqueda de noticias."
   }
 }

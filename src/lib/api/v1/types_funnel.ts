@@ -36,6 +36,10 @@ export interface FunnelItem {
   ai_decision: string | null;
   /** Outside evidence about the match, by status (CONFIRMED, PROBABLE, RUMOR, CONTRADICTORY, OUTDATED). */
   evidence: Record<string, number>;
+  /** The match had PrediGol Intelligence's first pass of its day. */
+  day_pass: boolean;
+  /** PrediGol Intelligence searched the web (news) for the match. */
+  web_searched: boolean;
 }
 
 export interface SelectionFunnel {
@@ -53,4 +57,6 @@ export interface SelectionFunnel {
   chosen: FunnelItem[];
   near: FunnelItem[];
   in_set: Record<string, number>;
+  /** Product days PrediGol Intelligence has read whole: only their sets are chosen (daily-set-v5). */
+  days_ready: string[];
 }

@@ -1,8 +1,10 @@
 /**
  * The day's selection funnel for the owner (REVIEW PREDIGOL, B1): the next 24 hours' candidates through every step of
  * the daily set's rule - data, market, model, calibration, value, risk, PrediGol Intelligence, selection - how many
- * pass each, why the others stop, what the next build would add and what nearly made it. Read from the same functions
- * the daily set uses (GET /admin/picks/funnel): the panel cannot describe a rule the set does not apply.
+ * pass each, why the others stop, what the next build would add and what nearly made it; whether PrediGol
+ * Intelligence has read the day (daily-set-v5 waits for it) and, per candidate, its pass of the day and its news
+ * search. Read from the same functions the daily set uses (GET /admin/picks/funnel): the panel cannot describe a rule
+ * the set does not apply.
  */
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -134,6 +136,12 @@ function ItemRow({ x }: { x: FunnelItem }) {
         ) : x.reason === "not_reviewed" ? null : (
           <StatusBadge tone="neutral">{t("ops.picks.funnel.notReviewed")}</StatusBadge>
         )}
+        {x.day_pass && x.reason !== "no_day_pass" ? (
+          <StatusBadge tone="neutral">{t("ops.picks.funnel.dayPass")}</StatusBadge>
+        ) : null}
+        <span className="text-caption text-muted-foreground">
+          {x.web_searched ? t("ops.picks.funnel.web") : t("ops.picks.funnel.noWeb")}
+        </span>
         <Evidence e={x.evidence} />
       </div>
     </li>
@@ -154,6 +162,13 @@ export function FunnelBody({ d }: { d: SelectionFunnel }) {
             mode: d.ai_mode,
             enforced: d.ai_enforced ? t("ops.picks.funnel.enforced") : "",
           })}
+        </p>
+        <p data-testid="funnel-day">
+          {d.ai_mode === "off"
+            ? null
+            : d.days_ready.length
+              ? t("ops.picks.funnel.dayReady", { days: d.days_ready.join(", ") })
+              : t("ops.picks.funnel.dayNotReady")}
         </p>
         <p>
           {t("ops.picks.funnel.counts", { candidates: d.candidates, selections: d.selections })}

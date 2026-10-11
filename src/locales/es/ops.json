@@ -276,7 +276,9 @@
         "not_reviewed": "PrediGol Intelligence no la ha revisado",
         "ai_rejected": "rechazada por la IA (aplicada)",
         "match_taken": "el partido ya tiene su pick",
-        "day_full": "el día ya tiene 5"
+        "day_full": "el día ya tiene 5",
+        "day_not_ready": "PrediGol Intelligence aún no lee el día completo",
+        "no_day_pass": "sin la pasada del día de PrediGol Intelligence"
       },
       "status": {
         "CONFIRMED": "confirmada",
@@ -285,7 +287,12 @@
         "CONTRADICTORY": "contradictoria",
         "OUTDATED": "desactualizada"
       },
-      "probs": "Modelo {model} (prudente {low}) · mercado {market}"
+      "probs": "Modelo {model} (prudente {low}) · mercado {market}",
+      "dayPass": "pasada del día",
+      "web": "noticias buscadas",
+      "noWeb": "sin búsqueda de noticias",
+      "dayReady": "Día leído por PrediGol Intelligence: {days}",
+      "dayNotReady": "PrediGol Intelligence aún no termina la primera pasada del día (desde las 00:05 de Bogotá, a más tardar a las 06:00): el set de hoy espera."
     }
   },
   "analyst": {

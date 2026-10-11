@@ -52,6 +52,8 @@ function item(over: Partial<FunnelItem>): FunnelItem {
     growth: "0.001",
     ai_decision: null,
     evidence: {},
+    day_pass: true,
+    web_searched: false,
     ...over,
   };
 }
@@ -59,10 +61,10 @@ function item(over: Partial<FunnelItem>): FunnelItem {
 const funnel: SelectionFunnel = {
   at: "2026-10-11T16:00:00Z",
   source: "evaluation",
-  rule_version: "daily-set-v4",
+  rule_version: "daily-set-v5",
   risk_version: "risk-v1",
   max_odds: "3.00",
-  context_version: "context-v1",
+  context_version: "context-v2",
   ai_mode: "shadow",
   ai_enforced: false,
   candidates: 14,
@@ -91,11 +93,13 @@ const funnel: SelectionFunnel = {
       reason: "day_full",
       ai_decision: "APPROVE",
       evidence: { PROBABLE: 1, RUMOR: 2 },
+      web_searched: true,
       home: { id: 5, name: "Arsenal", logo_url: null },
       away: { id: 6, name: "Chelsea", logo_url: null },
     }),
   ],
   in_set: { "2026-10-11": 5 },
+  days_ready: ["2026-10-11"],
 };
 
 describe("the owner's selection funnel (REVIEW B1)", () => {
@@ -122,5 +126,26 @@ describe("the owner's selection funnel (REVIEW B1)", () => {
     expect(html).toContain("1 probable");
     expect(html).toContain("2 rumor");
     expect(html).toContain("IA");
+  });
+
+  test("daily-set-v5: whether PrediGol Intelligence has read the day, and each candidate's pass and news search", async () => {
+    const read = await render(<FunnelBody d={funnel} />);
+    expect(read).toContain("Día leído por PrediGol Intelligence: 2026-10-11");
+    expect(read).toContain("pasada del día");
+    expect(read).toContain("noticias buscadas");
+    expect(read).toContain("sin búsqueda de noticias");
+    const waiting = await render(
+      <FunnelBody
+        d={{
+          ...funnel,
+          days_ready: [],
+          stages: [{ key: "context", entered: 9, passed: 0, reasons: { day_not_ready: 9 } }],
+          near: [item({ stage: "context", reason: "day_not_ready", day_pass: false })],
+        }}
+      />,
+    );
+    expect(waiting).toContain("aún no termina la primera pasada del día");
+    expect(waiting).toContain("9 PrediGol Intelligence aún no lee el día completo");
+    expect(waiting.match(/pasada del día/g)).toHaveLength(1); // the day's note only: no "pasada del día" badge
   });
 });

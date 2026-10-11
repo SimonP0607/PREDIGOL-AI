@@ -18,7 +18,7 @@ const STEPS = [
   "context",
   "selection",
 ] as const;
-/** daily-set-v4's risk stage (fbi.picks.daily.RISK). */
+/** The daily set's risk stage (fbi.picks.daily.RISK, risk-v1). */
 const MAX_ODDS = "3.00";
 
 export function FunnelLine() {
