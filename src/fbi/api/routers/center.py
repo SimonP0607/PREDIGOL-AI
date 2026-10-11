@@ -17,9 +17,10 @@ from fbi.api.contracts.center import (
     PlayerSummary,
     ProviderPredictionView,
 )
+from fbi.api.contracts.profile import MatchMarkets, MatchProfile
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
-from fbi.api.services import center
+from fbi.api.services import center, profile
 
 router = APIRouter(tags=["match center, live, players"])
 admin_router = APIRouter(tags=["admin: system"])
@@ -30,6 +31,20 @@ Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 def get_match_center(conn: Db, fixture_id: Annotated[int, Path(ge=1)]) -> Envelope[MatchCenter | None]:
     """Statistics, events, line-ups, player ratings, absences, table, form, head-to-head and in-play data."""
     return center.match_center(conn, fixture_id)
+
+
+@router.get("/matches/{fixture_id}/profile", response_model=Envelope[MatchProfile | None])
+def get_match_profile(conn: Db, fixture_id: Annotated[int, Path(ge=1)]) -> Envelope[MatchProfile | None]:
+    """The two teams before the match: results, goals, xG, shots, corners, cards and penalties over their newest
+    finished matches, in every competition and in this one - each figure with how many matches carry its data."""
+    return profile.match_profile(conn, fixture_id)
+
+
+@router.get("/matches/{fixture_id}/markets", response_model=Envelope[MatchMarkets | None])
+def get_match_markets(conn: Db, fixture_id: Annotated[int, Path(ge=1)]) -> Envelope[MatchMarkets | None]:
+    """Every price captured for the match: the captures (the numbers the Cronología shows) and each pre-match
+    selection with every bookmaker's newest and first price, whether or not it passed a pick rule."""
+    return profile.match_markets(conn, fixture_id)
 
 
 @router.get("/live", response_model=Envelope[LiveBoard])
