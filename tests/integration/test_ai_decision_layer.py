@@ -289,6 +289,7 @@ def test_in_shadow_the_review_is_recorded_with_the_pick_and_changes_nothing(db: 
                                                                             world: World,
                                                                             monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FBI_AI_MODE", "shadow")
+    world.review_all(at=AT - timedelta(minutes=20))
     _reject(db, world.fixtures["F1"])
     build_daily_sets(db, at=AT)
     rows = db.execute("SELECT i.fixture_id, i.inputs->'ai' FROM picks.daily_set_items i JOIN picks.daily_sets s "
@@ -301,6 +302,7 @@ def test_in_shadow_the_review_is_recorded_with_the_pick_and_changes_nothing(db: 
 def test_enforce_without_a_passed_gate_behaves_as_shadow_and_with_it_keeps_rejections_out(
         db: psycopg.Connection[Any], world: World, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FBI_AI_MODE", "enforce")
+    world.review_all(at=AT - timedelta(minutes=20))
     _reject(db, world.fixtures["F1"])
     savepoint = db.execute("SAVEPOINT before_sets")
     assert savepoint is not None
@@ -397,9 +399,10 @@ def test_the_correlation_estimate_and_the_parlay_rule_version(db: psycopg.Connec
     est = correlation.estimate(db, since=AT - timedelta(days=30), until=AT)
     assert {e.market for e in est} == set(correlation.MARKETS)
     assert all(e.n_groups < correlation.MIN_GROUPS for e in est) and not any(e.significant_negative for e in est)
+    world.review_all()
     build_parlays(db, at=AT)
     versions = {r[0] for r in db.execute("SELECT rule_version FROM picks.parlays")}
-    assert versions <= {RULE_VERSION} and RULE_VERSION == "parlay-v4"
+    assert versions <= {RULE_VERSION} and RULE_VERSION == "parlay-v5"
     legs = db.execute("SELECT l.parlay_id, count(*) FROM picks.parlay_legs l JOIN core.fixtures f ON f.id = l.fixture_id "
                       "GROUP BY l.parlay_id, f.competition_season_id HAVING count(*) > 2").fetchall()
     assert legs == [], "never more than two legs of one competition"

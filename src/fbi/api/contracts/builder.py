@@ -16,7 +16,8 @@ from fbi.api.contracts.common import Contract
 from fbi.api.contracts.product import CompetitionBadge, Source, TeamBadge
 from fbi.api.contracts.records import ItemAi
 
-BuildReason = Literal["no_candidates", "no_match", "too_few_legs", "total_odds_cap", "no_growth"]
+BuildReason = Literal["no_candidates", "risk_cap", "not_reviewed", "no_match", "too_few_legs", "total_odds_cap",
+                      "no_growth"]
 
 
 class BuilderLeg(Contract):
@@ -48,11 +49,14 @@ class BuilderLeg(Contract):
 
 class BuilderFunnel(Contract):
     passing: int = Field(description="Selections of the window through the value gate at the current price.")
-    reviewed: int = Field(description="Still in after the AI review (it only removes in enforce mode).")
+    risk: int = Field(description="Of those, through the risk stage (no price above max_odds).")
+    reviewed: int = Field(description="Of those, through PrediGol Intelligence (reviewed; its vetoes only when "
+                                      "enforced).")
     matching: int = Field(description="Matching the filters.")
     combinable: int = Field(description="Also three books or more, an interval no wider than 40 points, no quarter "
                                         "line.")
     matches: int = Field(description="Distinct matches among the combinable ones.")
+    max_odds: Decimal | None = Field(default=None, description="The risk stage's cap on a selection's price.")
 
 
 class BuilderFilters(Contract):

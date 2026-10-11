@@ -34,6 +34,7 @@ def _state(db: psycopg.Connection[Any], fixture: int, at: Any, code: str, minute
 
 def test_a_match_that_ends_is_settled_at_once_and_its_wait_recorded(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    w.review_all()
     build_daily_sets(db, at=AT)
     f1 = w.fixtures["F1"]
     _state(db, f1, KO + timedelta(minutes=100), "2H", 90, 1, 0)
@@ -72,6 +73,7 @@ def test_a_match_not_over_settles_nothing_and_records_nothing(db: psycopg.Connec
 
 def test_a_prematch_record_cannot_be_rewritten(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    w.review_all()
     build_daily_sets(db, at=AT)
     attempts = [
         ("UPDATE picks.picks SET market_odds = 9.99 WHERE id = %s", w.picks["F1"]),
@@ -93,6 +95,7 @@ def test_a_prematch_record_cannot_be_rewritten(db: psycopg.Connection[Any], seed
 
 def test_a_started_match_keeps_its_prematch_pick_as_taken(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    w.review_all()
     build_daily_sets(db, at=AT)
     f1 = w.fixtures["F1"]
     moment = KO + timedelta(minutes=60)

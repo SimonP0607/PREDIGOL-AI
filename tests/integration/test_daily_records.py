@@ -20,6 +20,7 @@ from typing import Any
 
 import psycopg
 import pytest
+from psycopg.types.json import Jsonb
 
 from fbi.parlays.persist import build_parlays
 from fbi.picks.daily import build_daily_sets, product_day
@@ -99,6 +100,19 @@ class World:
             cur.execute("UPDATE picks.picks SET status = %s WHERE id = %s", (status, self.picks[name]))
             self.price(name, price, AT - timedelta(minutes=30))
 
+    def review(self, name: str, decision: str = "APPROVE", at: datetime | None = None) -> None:
+        """PrediGol Intelligence looked at the match's pick (a combined review, rules only): daily-set-v4 and
+        parlay-v5 take only selections it reviewed in the 12 hours before (the CONTEXT stage)."""
+        self.cur.execute(
+            "INSERT INTO ai.pick_reviews (reviewed_at, fixture_id, market_key, selection, line, engine, engine_version, "
+            "input_hash, decision, confidence, output, mode, status) VALUES (%s, %s, '1X2', 'Home', 0, 'combined', "
+            "'rules-review-v1+none', 'h', %s, 0.6, %s, 'shadow', 'ok')",
+            (at or AT - timedelta(minutes=10), self.fixtures[name], decision, Jsonb({"reason": "revisión de prueba"})))
+
+    def review_all(self, at: datetime | None = None) -> None:
+        for name in self.fixtures:
+            self.review(name, at=at)
+
     def price(self, name: str, home: str, as_of: datetime) -> None:
         for sel, p_fair, odds in (("Home", "0.43", home), ("Draw", "0.28", "3.40"), ("Away", "0.29", "3.30")):
             self.cur.execute("INSERT INTO market.market_consensus (fixture_id,market_key,selection,line,as_of,"
@@ -121,6 +135,9 @@ class World:
 
 def test_the_day_is_chosen_frozen_and_settled(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    assert build_daily_sets(db, at=AT).items_added == 0, \
+        "daily-set-v4: no pick of the day that PrediGol Intelligence has not looked at"
+    w.review_all()
     first = build_daily_sets(db, at=AT)
     f = w.fixtures
     qualified = w.items("qualified")
@@ -150,6 +167,7 @@ def test_the_day_is_chosen_frozen_and_settled(db: psycopg.Connection[Any], seed:
 def test_the_daily_parlay_grows_or_is_not_built_and_follows_its_legs(db: psycopg.Connection[Any],
                                                                       seed: Seed) -> None:
     w = World(db, seed)
+    w.review_all()
     report = build_parlays(db, at=AT)
     assert report.built >= 1
     parlay = db.execute("SELECT id, status, combined_odds, expected_log_growth FROM picks.parlays WHERE kind = 'daily' "
@@ -224,6 +242,7 @@ def test_a_user_saves_picks_builds_a_parlay_and_reads_the_history(db: psycopg.Co
 
 def test_a_parlay_never_built_is_void_once_its_day_is_over(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    w.review_all()
     build_parlays(db, at=AT)
     multiday = "SELECT id, status, window_from, window_to FROM picks.parlays WHERE kind = 'multiday' AND source = %s " \
                "AND day = %s"
@@ -246,7 +265,7 @@ def test_a_parlay_never_built_is_void_once_its_day_is_over(db: psycopg.Connectio
 
 
 def test_the_preview_history_reads_the_evaluation_records_alone(db: psycopg.Connection[Any], seed: Seed) -> None:
-    World(db, seed)
+    World(db, seed).review_all()
     build_daily_sets(db, at=AT)
     user = db.execute("INSERT INTO auth.users (email, display_name, password_hash) VALUES "
                       "('preview-history@test.local', 'Preview', '$argon2id$x') RETURNING id").fetchone()

@@ -33,6 +33,22 @@ review of its selection (decision, confidence, reason, mode). The review changes
 is ENFORCED - the owner's ``FBI_AI_MODE=enforce`` and the AI's own shadow gate passed
 (``fbi.ai.gating``): then a REJECTED selection is left out and a DOWNGRADED one ranks after the rest.
 Until then the set is exactly what the quantitative rule chooses and the review is a record beside it.
+
+``daily-set-v4`` (11 Oct 2026, REVIEW PREDIGOL B1) adds two stages before the choice, so a pick of the day passes
+data -> market -> model -> calibration -> value -> RISK -> CONTEXT -> selection (``fbi.picks.funnel`` reports it):
+
+* RISK (``risk-v1``): no price above 3.00. Evidence, out of sample (``docs/owner/P5_SELECCION_RIESGO_CONTEXTO.md``,
+  ``scripts/audit_odds_risk.py``): over 16,114 settled selections the prices from 3.00 to 5.00 lost 13.1 % (95 %
+  interval -22.4 % to -2.8 %, closing-line value -8.9 %) and those above 5.00 lost 23.8 %, where the model was
+  12 points too confident; a rolling walk-forward (each day's cap chosen on the days before only) picked a cap
+  between 2.20 and 3.00 every day and moved the return from -5.7 % to +3.0 % and the closing-line value from -5.3 %
+  to -1.7 %. The set as v3 chose it averaged odds of 3.7 with no AI review at all. It avoids a measured loss; it
+  does not claim a measured profit.
+* CONTEXT (``context-v1``): the selection must have passed through PrediGol Intelligence - a combined review of it
+  in the 12 hours before - so every pick of the day carries what the AI read (its decision, reason, risks and the
+  outside evidence by status, confirmed / probable / rumour / contradictory / outdated, frozen with the item). The
+  review still CHANGES the choice only when it is enforced (above). With the AI switched off (``FBI_AI_MODE=off``)
+  there is nothing to require and the item says so (``context: ai_off``).
 """
 
 from __future__ import annotations
@@ -50,7 +66,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.parlays.engine import Candidate, GateConfig, Leg, assess
 
-RULE_VERSION = "daily-set-v3"
+RULE_VERSION = "daily-set-v4"
 DAY_TZ = ZoneInfo("America/Bogota")
 MAX_ITEMS = 5
 HORIZON = timedelta(hours=24)
@@ -141,6 +157,40 @@ def passing(rows: list[dict[str, Any]], *, at: datetime, source: Source) -> list
                                                  x.leg.candidate.pick_id))
 
 
+@dataclass(frozen=True, slots=True)
+class RiskRule:
+    """The risk stage (REVIEW B1): what a selection worth taking must also respect before it can be a pick."""
+
+    version: str
+    max_odds: Decimal | None = None
+
+    def stop(self, x: Ranked) -> str | None:
+        price = x.leg.candidate.price
+        if self.max_odds is not None and price is not None and price > self.max_odds:
+            return "odds_above_cap"
+        return None
+
+
+RISK = RiskRule("risk-v1", max_odds=Decimal("3.00"))
+"""See the module's note on daily-set-v4 for the evidence; the parlays use the same rule (``fbi.parlays.persist``)."""
+
+
+@dataclass(frozen=True, slots=True)
+class ContextRule:
+    """The context stage (REVIEW B1/B4): PrediGol Intelligence must have looked at the selection."""
+
+    version: str
+    require_review: bool = True
+
+    def stop(self, x: Ranked, ai: AiView) -> str | None:
+        if not self.require_review or ai.mode == "off":
+            return None
+        return None if ai.reviewed(x) else "not_reviewed"
+
+
+CONTEXT = ContextRule("context-v1")
+
+
 @dataclass(frozen=True)
 class AiView:
     """The newest combined AI review of each candidate, and whether reviews may change the choice."""
@@ -149,14 +199,20 @@ class AiView:
     enforced: bool = False
     mode: str = "off"
     reason: str = "ai_unavailable"
+    evidence: dict[int, dict[str, int]] = field(default_factory=dict)
+    """Per match: the outside evidence gathered before now, counted by the status the server gave it."""
 
     def decision(self, x: Ranked) -> str | None:
         r = self.reviews.get(x.leg.candidate.selection_key)
         return None if r is None else str(r["decision"])
 
+    def reviewed(self, x: Ranked) -> bool:
+        return x.leg.candidate.selection_key in self.reviews
+
     def record(self, x: Ranked) -> dict[str, Any]:
         r = self.reviews.get(x.leg.candidate.selection_key)
-        base: dict[str, Any] = {"mode": self.mode, "enforced": self.enforced, "why": self.reason}
+        base: dict[str, Any] = {"mode": self.mode, "enforced": self.enforced, "why": self.reason,
+                                "evidence": dict(self.evidence.get(x.leg.candidate.fixture_id, {}))}
         if r is None:
             return base | {"decision": None}
         out = dict(r.get("output") or {})
@@ -186,9 +242,37 @@ def ai_view(conn: psycopg.Connection[Any], ranked: list[Ranked], *, at: datetime
         with conn.transaction():
             reviews = latest_reviews(conn, fixtures, at=at)
             enf = enforcement(conn, settings)
+            evidence = evidence_counts(conn, fixtures, at=at)
     except psycopg.errors.UndefinedTable:
         return AiView(mode=settings.mode)
-    return AiView(reviews, enf.enforced, settings.mode, enf.reason)
+    return AiView(reviews, enf.enforced, settings.mode, enf.reason, evidence)
+
+
+EVIDENCE_SQL = """
+SELECT e.fixture_id, e.status, count(*) AS n FROM ai.evidence e
+ WHERE e.fixture_id = ANY(%(fixtures)s) AND e.retrieved_at <= %(at)s GROUP BY 1, 2
+"""
+
+
+def evidence_counts(conn: psycopg.Connection[Any], fixtures: list[int], *, at: datetime) -> dict[int, dict[str, int]]:
+    """The outside evidence about each match known at ``at``, by status (CONFIRMED, PROBABLE, RUMOR, CONTRADICTORY,
+    OUTDATED - the server decides it, never a model: ``fbi.ai.evidence``). No row: no evidence at all."""
+    if not fixtures:
+        return {}
+    out: dict[int, dict[str, int]] = {}
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(EVIDENCE_SQL, {"fixtures": fixtures, "at": at})
+        for r in cur.fetchall():
+            out.setdefault(int(r["fixture_id"]), {})[str(r["status"])] = int(r["n"])
+    return out
+
+
+def staged(rows: list[dict[str, Any]], *, at: datetime, source: Source) -> list[Ranked]:
+    """The day's candidates through every stage up to value (``passing``), in the 24-hour window, with positive
+    pessimistic growth, and through the RISK stage. The CONTEXT stage needs the AI's view (``ai_view``)."""
+    return [x for x in passing(rows, at=at, source=source)
+            if x.elg > 0 and stage_of((x.leg.candidate.kickoff_at - at).total_seconds() / 60) is not None
+            and RISK.stop(x) is None]
 
 
 def frozen_inputs(x: Ranked, *, at: datetime, source: Source, rule: str, ai: AiView | None = None) -> dict[str, Any]:
@@ -204,6 +288,8 @@ def frozen_inputs(x: Ranked, *, at: datetime, source: Source, rule: str, ai: AiV
         "gate": {"max_price_age_h": GATE.max_price_age.total_seconds() / 3600, "min_bookmakers": GATE.min_bookmakers,
                  "max_price_edge": str(GATE.max_price_edge), "min_minutes_to_kickoff": GATE.min_minutes_to_kickoff,
                  "min_ev": str(GATE.min_ev)},
+        "risk": {"version": RISK.version, "max_odds": None if RISK.max_odds is None else str(RISK.max_odds)},
+        "context": ("ai_off" if ai is not None and ai.mode == "off" else CONTEXT.version),
     } | ({} if ai is None else {"ai": ai.record(x)})
 
 
@@ -241,10 +327,9 @@ def build_daily_sets(conn: psycopg.Connection[Any], *, at: datetime) -> DailyRep
     report = DailyReport()
     for source in SOURCES:
         rows = load_candidates(conn, at=at, until=at + HORIZON, include_shadow=source == "evaluation")
-        ranked = [x for x in passing(rows, at=at, source=source)
-                  if x.elg > 0 and stage_of((x.leg.candidate.kickoff_at - at).total_seconds() / 60) is not None]
+        ranked = staged(rows, at=at, source=source)
         ai = ai_view(conn, ranked, at=at)
-        ranked = ai.apply(ranked)
+        ranked = ai.apply([x for x in ranked if CONTEXT.stop(x, ai) is None])
         by_day: dict[date, list[Ranked]] = {}
         for x in ranked:
             by_day.setdefault(product_day(x.leg.candidate.kickoff_at), []).append(x)

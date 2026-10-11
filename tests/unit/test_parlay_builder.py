@@ -141,4 +141,13 @@ def test_choose_without_a_condition_is_unchanged() -> None:
     hooked = choose(pool, Spec("custom", 2, 5, 1), allow=lambda chosen, x: True)
     assert plain is not None and hooked is not None
     assert [x.leg.candidate.pick_id for x in plain] == [x.leg.candidate.pick_id for x in hooked]
-    assert builder.RULE_VERSION == "builder-v1"
+    assert builder.RULE_VERSION == "builder-v2"
+
+
+def test_no_parlay_names_the_stage_that_stopped_it() -> None:
+    pool = _pool()
+    assert build([], [], Filters(), at=AT, gated=5).reason == "risk_cap", "all five above the risk cap"
+    assert build(pool, [], Filters(), at=AT).reason == "not_reviewed", "nothing through PrediGol Intelligence yet"
+    funnel = build(pool, pool[:3], Filters(hours=72), at=AT, gated=9).funnel
+    assert (funnel.gated, funnel.passing, funnel.reviewed) == (9, 5, 3)
+

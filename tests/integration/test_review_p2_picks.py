@@ -19,6 +19,7 @@ KO = AT + timedelta(hours=2)
 
 def test_the_started_picks_come_unfiltered_and_apart(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    w.review_all()
     build_daily_sets(db, at=AT)
     f1 = w.fixtures["F1"]
     moment = KO + timedelta(minutes=60)

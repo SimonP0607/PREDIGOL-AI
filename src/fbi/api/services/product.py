@@ -54,7 +54,9 @@ from fbi.parlays import builder, engine
 from fbi.parlays import correlation as corr
 from fbi.parlays.engine import Candidate, GateConfig, Leg, Reject
 from fbi.parlays.persist import RULE_VERSION as PARLAY_RULE
-from fbi.picks.daily import DAY_TZ, Ranked, ai_view, load_candidates, passing, product_day
+from fbi.parlays.persist import leg_pool
+from fbi.picks.daily import DAY_TZ, RISK, Ranked, load_candidates, passing, product_day
+from fbi.picks.daily import Source as DailySource
 
 Q2 = Decimal("0.01")
 Q3 = Decimal("0.001")
@@ -306,10 +308,10 @@ def built_parlay(conn: Conn, filters: builder.Filters, *, include_shadow: bool,
     moment = at or clock_now()
     rows = load_candidates(conn, at=moment, until=moment + timedelta(hours=filters.hours),
                            include_shadow=include_shadow)
-    ranked = passing(rows, at=moment, source="evaluation" if include_shadow else "qualified")
-    view = ai_view(conn, ranked, at=moment)
-    reviewed = view.apply(ranked, drop_downgraded=True)
-    built = builder.build(ranked, reviewed, filters, at=moment, correlations=corr.latest(conn))
+    source: DailySource = "evaluation" if include_shadow else "qualified"
+    gated = passing(rows, at=moment, source=source)
+    ranked, reviewed, view = leg_pool(conn, gated, at=moment)
+    built = builder.build(ranked, reviewed, filters, at=moment, correlations=corr.latest(conn), gated=len(gated))
     reviews = ai_items(conn, [{"inputs": {"ai": view.record(x)}} for x in built.legs], reveal=include_shadow)
     legs = [_builder_leg(x, reviews, i) for i, x in enumerate(built.legs)]
     competitions, markets = _options(reviewed)
@@ -333,9 +335,9 @@ def built_parlay(conn: Conn, filters: builder.Filters, *, include_shadow: bool,
         expected_log_growth=(Decimal(str(round(built.expected_log_growth, 8)))
                              if built.expected_log_growth is not None else None),
         risk=engine.risk_of(p_all) if p_all is not None else None, correlated_pairs=built.correlated_pairs,
-        funnel=BuilderFunnel(passing=built.funnel.passing, reviewed=built.funnel.reviewed,
+        funnel=BuilderFunnel(passing=built.funnel.gated, risk=built.funnel.passing, reviewed=built.funnel.reviewed,
                              matching=built.funnel.matching, combinable=built.funnel.combinable,
-                             matches=built.funnel.matches),
+                             matches=built.funnel.matches, max_odds=RISK.max_odds),
         competitions=competitions, markets=markets,
         prices_as_of=min((leg.price_at for leg in legs), default=None), generated_at=moment)
     return ok(body, count=len(legs), data_as_of=body.prices_as_of)

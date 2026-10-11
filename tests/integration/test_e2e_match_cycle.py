@@ -91,6 +91,7 @@ async def test_one_match_through_the_whole_cycle(db: psycopg.Connection[Any], se
     board = picks_board(db, include_shadow=False, competition_id=None, market=None, min_odds=None, max_odds=None,
                         hours=72, at=AT).data
     assert board is not None and pick in [p.pick_id for p in board.picks]
+    w.review_all()  # PrediGol Intelligence looked at it: daily-set-v4's context stage
     build_daily_sets(db, at=AT)
     day = daily_board(db, day=None, include_shadow=False, at=AT).data
     assert day is not None and day.set is not None

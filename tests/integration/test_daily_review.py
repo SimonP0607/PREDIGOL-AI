@@ -36,6 +36,7 @@ def _review(db: psycopg.Connection[Any], fixture: int, decision: str, at: Any) -
 
 def test_the_day_is_closed_then_revised_only_when_it_changes(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    w.review_all()
     build_daily_sets(db, at=AT)
     for name in ("F1", "F2", "F3"):
         _review(db, w.fixtures[name], "DOWNGRADE", AT + timedelta(minutes=5))
@@ -54,7 +55,8 @@ def test_the_day_is_closed_then_revised_only_when_it_changes(db: psycopg.Connect
     daily = body["daily_picks"]
     assert daily["n"] == 5 and daily["won"] + daily["lost"] >= 1
     assert body["matches"]["tracked"] >= 6
-    assert body["ai"]["reviewed"] == 3 and body["ai"]["downgrade"] == 3
+    assert body["ai"]["reviewed"] == 6, "daily-set-v4: every match of the day went through PrediGol Intelligence"
+    assert body["ai"]["downgrade"] == 3
     assert body["ai"]["downgrade_won"] == 1, "F1 won at home 2-0; F3 drew"
     assert "pnl_units" in daily and "line_value" in daily
 
@@ -90,6 +92,7 @@ def test_an_update_never_writes_a_day_that_was_not_closed(db: psycopg.Connection
 
 def test_the_days_records_carry_the_ais_newest_pre_match_review(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    w.review_all()
     build_daily_sets(db, at=AT)
     f1 = w.fixtures["F1"]
     _review(db, f1, "APPROVE", AT + timedelta(minutes=10))

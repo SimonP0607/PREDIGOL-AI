@@ -1,5 +1,10 @@
 """DAILY_PARLAY and MULTIDAY_PARLAY as records: built once, frozen, then followed to the end.
 
+Rule ``parlay-v5`` (11 Oct 2026, REVIEW PREDIGOL B1; v4's records are kept as built): a leg must also pass the RISK
+stage (``risk-v1``: no price above 3.00) and the CONTEXT stage (``context-v1``: PrediGol Intelligence reviewed it in
+the 12 hours before) of the daily set (``fbi.picks.daily``, where the evidence for both is noted). Everything else
+is v4 below.
+
 Rule ``parlay-v4`` (8 Oct 2026; v3's records are kept as built). On top of v3 below: at most two legs from
 one competition (exposure), every leg priced by at least three bookmakers (liquidity), no leg whose model
 interval is wider than 40 points (uncertainty), the joint probability corrected for MEASURED dependence
@@ -45,9 +50,12 @@ from psycopg.types.json import Jsonb
 
 from fbi.parlays import correlation as corr
 from fbi.picks.daily import (
+    CONTEXT,
     DAY_TZ,
+    RISK,
     SOURCES,
     STAKE_FRACTION,
+    AiView,
     Ranked,
     Source,
     ai_view,
@@ -59,7 +67,7 @@ from fbi.picks.daily import (
     win_probability,
 )
 
-RULE_VERSION = "parlay-v4"
+RULE_VERSION = "parlay-v5"
 MAX_PER_COMPETITION = 2
 MIN_LEG_BOOKMAKERS = 3
 MAX_INTERVAL_WIDTH = Decimal("0.40")
@@ -214,6 +222,16 @@ def _row(conn: psycopg.Connection[Any], spec: Spec, day: date, source: Source) -
     return (int(r[0]), str(r[1])) if r else None
 
 
+def leg_pool(conn: psycopg.Connection[Any], gated: list[Ranked], *,
+             at: datetime) -> tuple[list[Ranked], list[Ranked], AiView]:
+    """The selections a parlay may hold, through the same stages as the daily set: from those through the value gate
+    (``passing``), the RISK stage, then PrediGol Intelligence - the CONTEXT stage, and in enforce mode its vetoes
+    (rejected and downgraded selections out). Returns (through risk, through context too, the AI's view)."""
+    ranked = [x for x in gated if RISK.stop(x) is None]
+    ai = ai_view(conn, ranked, at=at)
+    return ranked, ai.apply([x for x in ranked if CONTEXT.stop(x, ai) is None], drop_downgraded=True), ai
+
+
 def build_parlays(conn: psycopg.Connection[Any], *, at: datetime) -> ParlayReport:
     """Build today's daily and multi-day parlays if they can be built now. Idempotent: a parlay
     that exists past BUILDING is never touched again here."""
@@ -222,9 +240,7 @@ def build_parlays(conn: psycopg.Connection[Any], *, at: datetime) -> ParlayRepor
     correlations = corr.latest(conn)
     for source in SOURCES:
         rows = load_candidates(conn, at=at, until=at + MULTIDAY_WINDOW, include_shadow=source == "evaluation")
-        ranked = passing(rows, at=at, source=source)
-        ai = ai_view(conn, ranked, at=at)
-        ranked = ai.apply(ranked, drop_downgraded=True)
+        _, ranked, ai = leg_pool(conn, passing(rows, at=at, source=source), at=at)
         for spec in SPECS.values():
             existing = _row(conn, spec, today, source)
             if existing is not None and existing[1] != "BUILDING":
@@ -284,4 +300,4 @@ def build_parlays(conn: psycopg.Connection[Any], *, at: datetime) -> ParlayRepor
 
 
 __all__ = ["DAY_TZ", "RULE_VERSION", "SPECS", "build_parlays", "choose", "correlated_pairs", "eligible_leg", "joint_low",
-           "parlay_elg", "quarter_line"]
+           "leg_pool", "parlay_elg", "quarter_line"]

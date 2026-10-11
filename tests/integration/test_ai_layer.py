@@ -45,6 +45,7 @@ def tool_use(name: str, args: dict[str, Any], uid: str = "tu") -> dict[str, Any]
 @pytest.fixture()
 def day(db: psycopg.Connection[Any], seed: Seed) -> World:
     w = World(db, seed)
+    w.review_all()
     build_daily_sets(db, at=AT)
     return w
 

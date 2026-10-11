@@ -33,6 +33,7 @@ def _legs(db: psycopg.Connection[Any], source: str) -> list[int]:
 
 def test_without_filters_it_is_predigols_own_daily_parlay(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    w.review_all()
     build_parlays(db, at=AT)
     wide = Filters(hours=17, min_legs=2, max_legs=5)  # the product day's matches: F1-F6, not F7 (+30 h)
     for include_shadow, source in ((False, "qualified"), (True, "evaluation")):
@@ -41,7 +42,7 @@ def test_without_filters_it_is_predigols_own_daily_parlay(db: psycopg.Connection
         assert body is not None and body.status == "ok", body
         assert [leg.pick_id for leg in body.legs] == _legs(db, source), f"{source}: the builder is the same rule"
         assert body.source == ("shadow_preview" if include_shadow else "qualified")
-        assert body.parlay_rule == "parlay-v4" and body.rule_version == "builder-v1"
+        assert body.parlay_rule == "parlay-v5" and body.rule_version == "builder-v2"
         assert body.combined_odds is not None and body.p_all_low is not None and body.expected_log_growth > 0
     user = built_parlay(db, wide, include_shadow=False, at=AT).data
     assert user is not None
@@ -57,6 +58,7 @@ def test_without_filters_it_is_predigols_own_daily_parlay(db: psycopg.Connection
 
 def test_the_filters_narrow_and_an_empty_answer_says_why(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    w.review_all()
     owner = built_parlay(db, Filters(hours=24, min_legs=2, max_legs=5), include_shadow=True, at=AT).data
     assert owner is not None and len(owner.competitions) == 2
     league_b = next(o.competition.id for o in owner.competitions if o.competition.name == "Daily League B")

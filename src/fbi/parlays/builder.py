@@ -11,12 +11,14 @@ The user's filters only NARROW the pool that rule chooses from; none of them loo
   leg odds      each leg's current best price between ``min_odds`` and ``max_odds``;
   total odds    the combined odds at most ``max_total_odds``: a leg that would take the parlay past it is not added.
 
-Everything else is parlay-v4, unchanged and shared with PrediGol's own parlays: the value gate at the price available
-now and a measured interval (``fbi.picks.daily.passing``), the AI review in enforce mode, at least three books per
-leg, no interval wider than 40 points, no quarter lines, one leg per match, no team twice, at most two legs of one
-competition, the joint probability at the pessimistic end corrected for significant negative dependence, the legs
-chosen greedily by expected log growth of a 1% stake - and a parlay only when it grows. Too few legs worth combining
-means no parlay: never a padded one, and never one built from selections that do not pass these rules.
+Everything else is PrediGol's own parlay rule (``parlay-v5``), unchanged and shared: the value gate at the price
+available now and a measured interval (``fbi.picks.daily.passing``), the RISK stage (no price above 3.00) and the
+CONTEXT stage (PrediGol Intelligence reviewed it; its vetoes in enforce mode) - ``fbi.parlays.persist.leg_pool`` -,
+at least three books per leg, no interval wider than 40 points, no quarter lines, one leg per match, no team twice,
+at most two legs of one competition, the joint probability at the pessimistic end corrected for significant negative
+dependence, the legs chosen greedily by expected log growth of a 1% stake - and a parlay only when it grows. Too few
+legs worth combining means no parlay: never a padded one, and never one built from selections that do not pass these
+rules.
 
 Nothing here touches the database: the API service loads the pool (``fbi.api.services.product.built_parlay``).
 """
@@ -42,16 +44,18 @@ from fbi.parlays.persist import (
 )
 from fbi.picks.daily import Ranked
 
-RULE_VERSION = "builder-v1"
+RULE_VERSION = "builder-v2"
 """On top of ``fbi.parlays.persist.RULE_VERSION``: what the user's filters add (they only narrow)."""
 MARKETS: tuple[str, ...] = ("1X2", "OU", "BTTS", "AH", "DC")
 MIN_HOURS, MAX_HOURS = 3, 72
 MIN_LEGS, MAX_LEGS = 2, 7
 
-Reason = Literal["no_candidates", "no_match", "too_few_legs", "total_odds_cap", "no_growth"]
-"""Why there is no parlay: nothing passed the rules in the window; nothing passed them AND the filters; fewer
-combinable matches than the minimum; the total-odds cap is what stops it; or no combination of at least the minimum
-grows (the independence rules leave too few, or the legs together are not worth it)."""
+Reason = Literal["no_candidates", "risk_cap", "not_reviewed", "no_match", "too_few_legs", "total_odds_cap",
+                 "no_growth"]
+"""Why there is no parlay: nothing passed the value gate in the window; everything that did is priced above the risk
+cap; nothing has passed through PrediGol Intelligence yet; nothing passed them AND the filters; fewer combinable
+matches than the minimum; the total-odds cap is what stops it; or no combination of at least the minimum grows (the
+independence rules leave too few, or the legs together are not worth it)."""
 
 
 class FilterError(ValueError):
@@ -128,10 +132,12 @@ def total_odds(legs: Iterable[Ranked]) -> Decimal:
 class Funnel:
     """How many selections reached each step - the parlay's "why not more" in numbers."""
 
-    passing: int
+    gated: int
     """Picks of the window through the value gate at the current price, with a measured interval (one per selection)."""
+    passing: int
+    """Of those, through the RISK stage."""
     reviewed: int
-    """Of those, still in after the AI review (it only removes in enforce mode)."""
+    """Of those, through PrediGol Intelligence (reviewed; its vetoes only in enforce mode)."""
     matching: int
     """Of those, the ones that match the user's filters."""
     combinable: int
@@ -155,19 +161,21 @@ class Built:
 
 
 def build(passing: list[Ranked], reviewed: list[Ranked], f: Filters, *, at: datetime,
-          correlations: Correlations | None = None) -> Built:
-    """``passing``: the window's selections through the value gate; ``reviewed``: the same after the AI review."""
+          correlations: Correlations | None = None, gated: int | None = None) -> Built:
+    """``passing``: the window's selections through the value gate and the risk stage; ``reviewed``: the same through
+    PrediGol Intelligence too; ``gated``: how many passed the value gate alone (``passing`` when not given)."""
     matching = [x for x in reviewed if in_filters(x, f, at=at)]
     usable = [x for x in matching if combinable(x)]
-    funnel = Funnel(passing=len(passing), reviewed=len(reviewed), matching=len(matching), combinable=len(usable),
+    funnel = Funnel(gated=len(passing) if gated is None else gated, passing=len(passing), reviewed=len(reviewed),
+                    matching=len(matching), combinable=len(usable),
                     matches=len({x.leg.candidate.fixture_id for x in usable}))
     spec = Spec("custom", f.min_legs, f.max_legs, 1)
     cap = f.max_total_odds
     legs = choose(matching, spec, correlations,
                   allow=None if cap is None else (lambda chosen, x: total_odds([*chosen, x]) <= cap))
     if legs is None:
-        return Built(legs=(), reason=_why_not(passing, matching, funnel, f, spec, correlations), funnel=funnel,
-                     combined_odds=None, p_all_low=None, expected_log_growth=None, correlated_pairs=0)
+        return Built(legs=(), reason=_why_not(passing, reviewed, matching, funnel, f, spec, correlations),
+                     funnel=funnel, combined_odds=None, p_all_low=None, expected_log_growth=None, correlated_pairs=0)
     ordered = tuple(sorted(legs, key=lambda x: (x.leg.candidate.kickoff_at, x.leg.candidate.fixture_id)))
     chosen = list(ordered)
     return Built(legs=ordered, reason=None, funnel=funnel, combined_odds=total_odds(chosen),
@@ -176,10 +184,14 @@ def build(passing: list[Ranked], reviewed: list[Ranked], f: Filters, *, at: date
                  correlated_pairs=len(correlated_pairs(chosen, correlations)))
 
 
-def _why_not(passing: list[Ranked], matching: list[Ranked], funnel: Funnel, f: Filters, spec: Spec,
-             correlations: Correlations | None) -> Reason:
-    if not passing:
+def _why_not(passing: list[Ranked], reviewed: list[Ranked], matching: list[Ranked], funnel: Funnel, f: Filters,
+             spec: Spec, correlations: Correlations | None) -> Reason:
+    if funnel.gated == 0:
         return "no_candidates"
+    if not passing:
+        return "risk_cap"
+    if not reviewed:
+        return "not_reviewed"
     if not matching:
         return "no_match"
     if funnel.matches < f.min_legs:
