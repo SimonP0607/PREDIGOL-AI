@@ -219,3 +219,6 @@ def test_the_best_odds_board_sets_each_price_against_the_fair_one(as_role: Any, 
     assert Decimal(home["best_odds"]) == Decimal("2.30") and Decimal(home["fair_odds"]) == Decimal("2.326")
     assert Decimal(home["price_edge"]) == Decimal("2.30") * Decimal("0.43") - 1
     assert board["value"] and all(p["value_now"] for p in board["value"])
+    prices = data(as_role("USER"), "/api/v1/odds/best?market=1X2&picks=false")
+    assert prices["value"] == [], "the Cuotas page: prices only, whatever the picks (REVIEW point 17)"
+    assert [f["fixture_id"] for f in prices["fixtures"]] == [f["fixture_id"] for f in board["fixtures"]]

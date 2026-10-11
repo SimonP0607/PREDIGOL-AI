@@ -407,17 +407,20 @@ def best_odds(rows: list[Row], *, moment: datetime) -> tuple[list[BestOddsFixtur
 
 @shared(30)
 def best_odds_board(conn: Conn, *, hours: int, market: str | None, include_shadow: bool,
-                    at: datetime | None = None) -> Envelope[BestOddsBoard]:
+                    at: datetime | None = None, with_picks: bool = True) -> Envelope[BestOddsBoard]:
+    """``with_picks=False``: the prices alone - no picks are read (the Cuotas page, REVIEW point 17)."""
     moment = at or clock_now()
     markets = (market,) if market else repo.POPULAR_MARKETS
     rows = repo.best_prices(conn, now=moment, until=moment + timedelta(hours=hours),
                             since=moment - CONSENSUS_LOOKBACK, markets=markets)
     fixtures, highlights = best_odds(rows, moment=moment)
-    pick_rows = repo.pick_candidates(conn, now=moment, until=moment + timedelta(hours=hours),
-                                     since=moment - CONSENSUS_LOOKBACK, include_shadow=include_shadow)
-    value = [p for p in cards(pick_rows, moment, GateConfig(allow_unqualified=include_shadow)) if p.value_now]
-    if market:
-        value = [p for p in value if p.market_key == market]
+    value: list[PickCard] = []
+    if with_picks:
+        pick_rows = repo.pick_candidates(conn, now=moment, until=moment + timedelta(hours=hours),
+                                         since=moment - CONSENSUS_LOOKBACK, include_shadow=include_shadow)
+        value = [p for p in cards(pick_rows, moment, GateConfig(allow_unqualified=include_shadow)) if p.value_now]
+        if market:
+            value = [p for p in value if p.market_key == market]
     board = BestOddsBoard(window_hours=hours, markets=list(markets), fixtures=fixtures, highlights=highlights[:12],
                           value=value, source=_source(include_shadow))
     newest = max((f.as_of for f in fixtures), default=None)

@@ -121,6 +121,10 @@ def get_best_odds(
     preview: Preview = None,
     market: Market = None,
     hours: Annotated[int, Query(ge=1, le=168)] = 48,
+    picks: Annotated[bool, Query(description="False: prices only, no picks in ``value`` - the Cuotas page compares "
+                                             "every selection's best price with its fair price, whatever the picks "
+                                             "(REVIEW 11 Oct 2026, point 17).")] = True,
 ) -> Envelope[BestOddsBoard]:
     """The best price per selection for upcoming fixtures, next to the market's fair (de-vigged) price."""
-    return product.best_odds_board(conn, hours=hours, market=market, include_shadow=_shadow(preview, principal))
+    return product.best_odds_board(conn, hours=hours, market=market, include_shadow=_shadow(preview, principal),
+                                   with_picks=picks)
