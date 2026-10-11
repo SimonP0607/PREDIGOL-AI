@@ -148,3 +148,47 @@ def phase(status_short: str | None, kickoff_at: datetime | None, at: datetime) -
 
 def stored_group(status_short: str | None, default: str = "scheduled") -> str:
     return STORED_GROUP.get(code(status_short), default)
+
+
+class ResultWait(StrEnum):
+    """Why a match that should be over still has no result (REVIEW, 11 Oct 2026: "partidos empezados que siguen
+    esperando resultado"). Each case has a different owner, so a screen names it instead of one vague "awaiting":
+
+    * PROVIDER_PENDING - we read the provider after the match should have ended and it still says the match is not
+      over (Rayo Vallecano - Athletic, 10 Oct: "INT" 17 h after kick-off). Nothing for us to fix; we keep asking.
+    * PROVIDER_SILENT - the provider has not told us anything about the match since before it should have ended.
+      The repair job asks again, oldest read first.
+    * JOBS_STALLED - as SILENT, but our own result jobs have not run lately: the fault is ours.
+    * PROVIDER_CONFLICT - the provider contradicts itself: a finished match with a kick-off still ahead
+      (Sporting JAX - Birmingham Legion, 10 Oct: FT, then moved to 14 Oct).
+    * RESULT_MISSING - the provider says the match finished and we have no score stored: an internal check.
+    """
+
+    PROVIDER_PENDING = "provider_pending"
+    PROVIDER_SILENT = "provider_silent"
+    JOBS_STALLED = "jobs_stalled"
+    PROVIDER_CONFLICT = "provider_conflict"
+    RESULT_MISSING = "result_missing"
+
+
+EXPECTED_END = timedelta(hours=2, minutes=15)
+"""Kick-off to the end of a match with stoppage time and the break: a provider read after this saw a match that
+should already be over."""
+
+
+def result_wait(status_short: str | None, kickoff_at: datetime | None, *, provider_read_at: datetime | None,
+                has_result: bool, at: datetime, jobs_healthy: bool = True) -> ResultWait | None:
+    """None when nothing is wrong (not started, being played, over with its result, or over in a way that has no
+    result - postponed, cancelled, abandoned, awarded, suspended: the provider said so and the screen says so)."""
+    if kickoff_at is None:
+        return None
+    c = code(status_short)
+    if c in FINISHED:
+        if kickoff_at > at:
+            return ResultWait.PROVIDER_CONFLICT
+        return None if has_result else ResultWait.RESULT_MISSING
+    if phase(status_short, kickoff_at, at) is not Phase.AWAITING:
+        return None
+    if provider_read_at is not None and provider_read_at >= kickoff_at + EXPECTED_END:
+        return ResultWait.PROVIDER_PENDING
+    return ResultWait.PROVIDER_SILENT if jobs_healthy else ResultWait.JOBS_STALLED

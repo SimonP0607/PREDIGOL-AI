@@ -69,3 +69,50 @@ def test_the_stored_group_has_not_changed() -> None:
 def test_what_triggers_settlement() -> None:
     assert {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST", "SUSP"} == ms.ENDED
     assert set(EXPECTED) == ms.KNOWN
+
+
+# ── why a match that should be over has no result (REVIEW 11 Oct 2026) ─────────────────────────────────────────
+
+KO_R = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
+
+
+def _wait(status: str, at: datetime, *, read: datetime | None = None, result: bool = False,
+          healthy: bool = True) -> ms.ResultWait | None:
+    return ms.result_wait(status, KO_R, provider_read_at=read, has_result=result, at=at, jobs_healthy=healthy)
+
+
+def test_nothing_is_wrong_before_kickoff_while_playing_and_after_a_result() -> None:
+    assert _wait("NS", KO_R - timedelta(hours=1)) is None
+    assert _wait("2H", KO_R + timedelta(minutes=80)) is None
+    assert _wait("INT", KO_R + timedelta(hours=2)) is None, "interrupted, but still within any match's length"
+    for status in ("FT", "AET", "PEN"):
+        assert _wait(status, KO_R + timedelta(hours=3), result=True) is None
+
+
+def test_a_match_the_provider_has_not_closed_is_the_providers_to_close() -> None:
+    """Rayo Vallecano - Athletic, 10 Oct 2026: still "INT" when read 17 h after kick-off."""
+    at = KO_R + timedelta(hours=18)
+    assert _wait("INT", at, read=KO_R + timedelta(hours=17)) is ms.ResultWait.PROVIDER_PENDING
+    assert _wait("NS", at, read=KO_R + timedelta(hours=17)) is ms.ResultWait.PROVIDER_PENDING
+
+
+def test_no_read_since_the_match_should_have_ended_is_silence_or_our_stalled_jobs() -> None:
+    at = KO_R + timedelta(hours=5)
+    assert _wait("NS", at, read=KO_R - timedelta(hours=2)) is ms.ResultWait.PROVIDER_SILENT
+    assert _wait("1H", at, read=None) is ms.ResultWait.PROVIDER_SILENT
+    assert _wait("1H", at, read=None, healthy=False) is ms.ResultWait.JOBS_STALLED
+
+
+def test_a_finished_match_with_a_kickoff_ahead_is_a_provider_conflict() -> None:
+    """Sporting JAX - Birmingham Legion, 10 Oct 2026: FT, then its kick-off moved to 14 Oct."""
+    assert _wait("FT", KO_R - timedelta(days=4), result=True) is ms.ResultWait.PROVIDER_CONFLICT
+
+
+def test_a_finished_match_without_its_score_is_flagged_for_us() -> None:
+    assert _wait("FT", KO_R + timedelta(hours=3)) is ms.ResultWait.RESULT_MISSING
+
+
+def test_a_match_the_provider_says_will_have_no_normal_result_is_not_waiting() -> None:
+    at = KO_R + timedelta(days=2)
+    for status in ("PST", "CANC", "ABD", "AWD", "WO", "SUSP"):
+        assert _wait(status, at, read=KO_R + timedelta(days=1)) is None, status

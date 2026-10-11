@@ -182,6 +182,32 @@ def capture_instants(conn: Conn, fixture_id: int) -> list[Row]:
     )
 
 
+def odds_asks(conn: Conn, provider_fixture_id: int) -> list[Row]:
+    """Every pre-match /odds request for this match, answered or empty (market.odds_asks)."""
+    return fetch_all(
+        conn,
+        "SELECT asked_at, minutes_to_ko, window_minutes, results, quotes FROM market.odds_asks "
+        "WHERE provider_fixture_id = %s ORDER BY asked_at",
+        (provider_fixture_id,),
+    )
+
+
+def final_prematch_check(conn: Conn, fixture_id: int) -> Row | None:
+    """The newest read of the provider's last pre-match prices after the match (market.final_prematch_checks)."""
+    return fetch_one(
+        conn,
+        "SELECT checked_at, outcome, provider_update_at, bookmakers, quotes FROM market.final_prematch_checks "
+        "WHERE fixture_id = %s ORDER BY checked_at DESC LIMIT 1",
+        (fixture_id,),
+    )
+
+
+def first_live_state(conn: Conn, fixture_id: int) -> Any:
+    """When the match was first seen in play (core.fixture_live_states), if ever."""
+    return fetch_value(conn, "SELECT min(observed_at) FROM core.fixture_live_states WHERE fixture_id = %s",
+                       (fixture_id,))
+
+
 def predictions_for(conn: Conn, fixture_id: int) -> list[Row]:
     return fetch_all(
         conn,

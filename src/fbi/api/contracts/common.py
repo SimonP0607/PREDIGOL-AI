@@ -9,6 +9,8 @@ StatusGroup = Literal["scheduled", "live", "finished", "cancelled", "postponed"]
 MatchPhase = Literal["scheduled", "live", "suspended", "finished", "postponed", "cancelled", "abandoned",
                    "not_played", "awaiting", "unknown"]
 """What a reader sees: the provider's code with the time guard of fbi.core.match_state."""
+ResultWaitCode = Literal["provider_pending", "provider_silent", "jobs_stalled", "provider_conflict", "result_missing"]
+"""Why a match that should be over has no result (fbi.core.match_state.ResultWait)."""
 Outcome1x2 = Literal["Home", "Draw", "Away"]
 
 

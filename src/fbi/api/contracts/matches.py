@@ -11,6 +11,7 @@ from fbi.api.contracts.common import (
     Contract,
     Lineage,
     MatchPhase,
+    ResultWaitCode,
     Score,
     StatusGroup,
     TeamRef,
@@ -51,6 +52,14 @@ class MatchSummary(Contract):
                     "to believe - still scheduled 15 minutes after kick-off or in play 3.5 hours after it is "
                     "'awaiting'. A suspended, postponed, cancelled, abandoned or awarded match says so; none is "
                     "'finished'.")
+    result_wait: ResultWaitCode | None = Field(
+        default=None,
+        description="Why a match that should be over has no result, by owner: provider_pending (the provider, read "
+                    "after the match should have ended, still says it is not over), provider_silent (no read since), "
+                    "jobs_stalled (our result jobs are not running), provider_conflict (finished with a kick-off "
+                    "ahead), result_missing (finished with no stored score). None when nothing is wrong.")
+    provider_read_at: datetime | None = Field(
+        default=None, description="When the provider last told us about this match (the fixture's source fetch).")
 
 
 class MarketQuote(Contract):
@@ -94,6 +103,12 @@ class TimelineEvent(Contract):
     detail: str
     at: datetime | None
     state: Literal["done", "pending", "skipped", "failed"]
+    code: str | None = Field(default=None, description="A stable name for what happened (window_done, "
+                                                        "window_provider_empty, window_missed, extra_capture, "
+                                                        "final_prematch, near_close_off, kickoff_seen, "
+                                                        "result_provider_pending...): the page says it in its "
+                                                        "reader's language with ``vars``.")
+    vars: dict[str, str] = Field(default_factory=dict)
 
 
 class MatchDetail(Contract):

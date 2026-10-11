@@ -255,7 +255,7 @@ def test_a_row_without_lineage_says_it_was_not_recorded(client: TestClient, data
 
 def test_markets_say_there_is_no_data_instead_of_showing_zero(client: TestClient, dataset: dict[str, int]) -> None:
     d = get(client, f"/api/v1/admin/matches/{dataset['f2']}")["data"]
-    assert d["markets"] == {"status": "empty", "data": [], "reason": "No captured market data yet."}
+    assert d["markets"] == {"status": "empty", "data": [], "reason": "No captured market data yet.", "code": "no_market_data"}
     assert d["predictions"]["status"] == "not_available" and d["predictions"]["reason"]
 
 

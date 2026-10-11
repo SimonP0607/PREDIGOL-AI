@@ -65,6 +65,9 @@ class Section[T](BaseModel):
     status: DataStatus
     data: T
     reason: str | None = None
+    code: str | None = None
+    """A stable name for the reason (e.g. ``not_started``, ``lineups_not_published``), so a page can say it in its
+    reader's language and with the right weight - an expected absence is not an error (REVIEW, 11 Oct 2026)."""
 
     @model_validator(mode="after")
     def _reason_when_not_ok(self) -> Section[T]:
@@ -108,5 +111,6 @@ def unavailable[T](
     return Envelope[T](status=status, data=data, reason=reason, meta=Meta(**meta))  # type: ignore[arg-type]
 
 
-def section[T](data: T, *, status: DataStatus = DataStatus.OK, reason: str | None = None) -> Section[T]:
-    return Section[T](status=status, data=data, reason=reason)
+def section[T](data: T, *, status: DataStatus = DataStatus.OK, reason: str | None = None,
+               code: str | None = None) -> Section[T]:
+    return Section[T](status=status, data=data, reason=reason, code=code)
