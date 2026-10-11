@@ -11,6 +11,7 @@ import {
   Trophy,
   X,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { intlTag, t } from "@/lib/i18n";
 import { formatDate, getTimeZone, shiftDay, zonedInstant } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -79,16 +80,24 @@ function DatePicker({
     <label
       className={cn(
         chipClass(active),
-        "relative min-w-0 flex-1 cursor-pointer focus-within:ring-1 focus-within:ring-ring sm:flex-none",
+        "relative min-w-0 cursor-pointer focus-within:ring-1 focus-within:ring-ring sm:flex-none",
       )}
     >
       <CalendarDays aria-hidden className="h-3.5 w-3.5 shrink-0" />
-      <span aria-hidden className="truncate sm:hidden">
-        {shortDate(day)}
-      </span>
-      <span aria-hidden className="hidden truncate first-letter:uppercase sm:block">
-        {formatDate(zonedInstant(day, 12))}
-      </span>
+      {active ? (
+        <>
+          <span aria-hidden className="truncate sm:hidden">
+            {shortDate(day)}
+          </span>
+          <span aria-hidden className="hidden truncate first-letter:uppercase sm:block">
+            {formatDate(zonedInstant(day, 12))}
+          </span>
+        </>
+      ) : (
+        <span aria-hidden className="truncate">
+          {t("matches.day.other")}
+        </span>
+      )}
       <input
         type="date"
         required
@@ -120,6 +129,9 @@ export function DayNav({
   onChange: (day: string) => void;
 }) {
   const tomorrow = shiftDay(today, 1);
+  // REVIEW point 3: Hoy, Mañana, then the day after as its date ("lun, 12 oct") - never today's date again.
+  const after = shiftDay(today, 2);
+  const quick = day === today || day === tomorrow || day === after;
   return (
     <div
       role="group"
@@ -148,7 +160,16 @@ export function DayNav({
       >
         {t("common.day.tomorrow")}
       </button>
-      <DatePicker day={day} active={day !== today && day !== tomorrow} onChange={onChange} />
+      <button
+        type="button"
+        aria-pressed={day === after}
+        onClick={() => onChange(after)}
+        className={cn(chipClass(day === after), "first-letter:uppercase")}
+        data-testid="day-after-tomorrow"
+      >
+        {formatDate(zonedInstant(after, 12))}
+      </button>
+      <DatePicker day={day} active={!quick} onChange={onChange} />
       <ArrowButton
         direction="next"
         label={t("matches.day.next")}
@@ -305,6 +326,60 @@ export function SearchBox({ value, onChange }: { value: string; onChange: (v: st
           <X aria-hidden className="h-3.5 w-3.5" />
         </button>
       ) : null}
+    </div>
+  );
+}
+
+/** A native list under a short label: the reader's country, or a category of competition (REVIEW point 3). */
+export function FacetPicker<T extends string>({
+  label,
+  anyLabel,
+  value,
+  options,
+  onChange,
+  icon,
+  testId,
+}: {
+  label: string;
+  anyLabel: string;
+  value: T | null;
+  options: ReadonlyArray<{ key: T; label: string; count?: number }>;
+  onChange: (value: T | null) => void;
+  icon: ReactNode;
+  testId: string;
+}) {
+  const selected = options.find((o) => o.key === value) ?? null;
+  return (
+    <div
+      className={cn(
+        "relative flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border bg-card pl-3 pr-8 text-sm transition-colors focus-within:ring-1 focus-within:ring-ring hover:border-border-strong sm:h-9 sm:w-48 sm:flex-none sm:text-[0.8125rem]",
+        selected ? "border-primary/45 text-foreground" : "border-border text-muted-foreground",
+      )}
+    >
+      <span aria-hidden className="shrink-0 text-subtle-foreground [&>svg]:h-3.5 [&>svg]:w-3.5">
+        {icon}
+      </span>
+      <span aria-hidden className="truncate">
+        {selected ? selected.label : label}
+      </span>
+      <ChevronDown
+        aria-hidden
+        className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle-foreground"
+      />
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value ? (e.target.value as T) : null)}
+        aria-label={label}
+        data-testid={testId}
+        className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-card text-base text-foreground opacity-0"
+      >
+        <option value="">{anyLabel}</option>
+        {options.map((o) => (
+          <option key={o.key} value={o.key}>
+            {o.count !== undefined ? `${o.label} (${o.count})` : o.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

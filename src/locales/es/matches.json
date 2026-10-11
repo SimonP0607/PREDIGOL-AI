@@ -3,7 +3,8 @@
     "label": "Día",
     "prev": "Día anterior",
     "next": "Día siguiente",
-    "pick": "Elegir fecha"
+    "pick": "Elegir fecha",
+    "other": "Otra fecha"
   },
   "status": {
     "label": "Estado del partido",
@@ -16,10 +17,15 @@
     "competition": "Competición",
     "competitionAny": "Competición",
     "allCompetitions": "Todas las competiciones",
-    "search": "Buscar por equipo o competición",
-    "searchPlaceholder": "Buscar equipo",
+    "search": "Buscar por nombre del equipo",
+    "searchPlaceholder": "Nombre del equipo",
     "clearSearch": "Borrar búsqueda",
-    "clear": "Quitar filtros"
+    "clear": "Quitar filtros",
+    "country": "País",
+    "allCountries": "Todos los países",
+    "international": "Internacional",
+    "category": "Categoría",
+    "allCategories": "Todas las categorías"
   },
   "group": {
     "live_one": "{count} en vivo",
@@ -68,5 +74,13 @@
     "GB-SCT": "Escocia",
     "GB-WLS": "Gales",
     "GB-NIR": "Irlanda del Norte"
+  },
+  "category": {
+    "league": "Ligas",
+    "cup": "Copas",
+    "continental": "Torneos continentales",
+    "international": "Selecciones",
+    "women": "Femenino",
+    "youth": "Juveniles"
   }
 }

@@ -4,20 +4,31 @@
  * "today" has moved on.
  */
 import { todayKey } from "@/lib/time";
+import { CATEGORIES, type Category } from "./facets";
 import { STATUS_FILTERS, type StatusFilter } from "./model";
 
 export interface MatchesView {
   day: string;
   status: StatusFilter;
   competition: number | null;
+  /** A team's name (REVIEW point 3: not "competition or team"). */
   query: string;
+  country: string | null;
+  category: Category | null;
 }
 
 const KEY = "predigol.matches.view";
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export function defaultView(): MatchesView {
-  return { day: todayKey(), status: "all", competition: null, query: "" };
+  return {
+    day: todayKey(),
+    status: "all",
+    competition: null,
+    query: "",
+    country: null,
+    category: null,
+  };
 }
 
 export function readView(): MatchesView {
@@ -37,6 +48,10 @@ export function readView(): MatchesView {
           ? saved.competition
           : null,
       query: typeof saved.query === "string" ? saved.query.slice(0, 80) : "",
+      country: typeof saved.country === "string" ? saved.country.slice(0, 40) : null,
+      category: CATEGORIES.includes(saved.category as Category)
+        ? (saved.category as Category)
+        : null,
     };
   } catch {
     return fallback;

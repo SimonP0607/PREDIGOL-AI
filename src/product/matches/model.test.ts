@@ -382,12 +382,21 @@ describe("the view kept for the tab", () => {
       },
     };
     try {
-      writeView({ day: "2026-01-02", status: "live", competition: 7, query: "Emmen" });
+      writeView({
+        day: "2026-01-02",
+        status: "live",
+        competition: 7,
+        query: "Emmen",
+        country: "NL",
+        category: "league",
+      });
       expect(readView()).toEqual({
         day: "2026-01-02",
         status: "live",
         competition: 7,
         query: "Emmen",
+        country: "NL",
+        category: "league",
       });
       const saved = JSON.parse(store.get("predigol.matches.view") ?? "{}") as object;
       store.set("predigol.matches.view", JSON.stringify({ ...saved, savedOn: "1999-01-01" }));

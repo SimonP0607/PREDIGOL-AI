@@ -3,7 +3,8 @@
     "label": "Day",
     "prev": "Previous day",
     "next": "Next day",
-    "pick": "Pick a date"
+    "pick": "Pick a date",
+    "other": "Other date"
   },
   "status": {
     "label": "Match status",
@@ -16,10 +17,15 @@
     "competition": "Competition",
     "competitionAny": "Competition",
     "allCompetitions": "All competitions",
-    "search": "Search by team or competition",
-    "searchPlaceholder": "Search team",
+    "search": "Search by team name",
+    "searchPlaceholder": "Team name",
     "clearSearch": "Clear search",
-    "clear": "Clear filters"
+    "clear": "Clear filters",
+    "country": "Country",
+    "allCountries": "All countries",
+    "international": "International",
+    "category": "Category",
+    "allCategories": "All categories"
   },
   "group": {
     "live_one": "{count} live",
@@ -68,5 +74,13 @@
     "GB-SCT": "Scotland",
     "GB-WLS": "Wales",
     "GB-NIR": "Northern Ireland"
+  },
+  "category": {
+    "league": "Leagues",
+    "cup": "Cups",
+    "continental": "Continental",
+    "international": "National teams",
+    "women": "Women",
+    "youth": "Youth"
   }
 }

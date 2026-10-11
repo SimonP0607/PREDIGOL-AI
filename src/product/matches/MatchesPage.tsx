@@ -1,10 +1,13 @@
 /**
  * Matches: every match of the reader's local day, by competition. Live rows take their
  * score and minute from the live follow; the rest comes from the stored fixtures.
+ *
+ * REVIEW PREDIGOL, point 3: the day chips read Hoy, Mañana and the date after; the list
+ * narrows by country, category and a team's name (and still by competition).
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarX2, SearchX } from "lucide-react";
+import { CalendarX2, Globe2, Layers, SearchX } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import type { MatchSummary } from "@/lib/api/v1/types";
 import type { LiveMatch } from "@/lib/api/v1/types_center";
@@ -12,12 +15,19 @@ import { t, useI18n } from "@/lib/i18n";
 import { formatDateLong, shiftDay, todayKey, zonedInstant } from "@/lib/time";
 import { Card, EmptyState, ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
 import { CompetitionSection } from "./CompetitionSection";
-import { CompetitionPicker, DayNav, SearchBox, StatusChips } from "./Filters";
+import {
+  CATEGORIES,
+  categoriesOf,
+  countryKey,
+  countryOptions,
+  inFacets,
+  type Category,
+} from "./facets";
+import { CompetitionPicker, DayNav, FacetPicker, SearchBox, StatusChips } from "./Filters";
 import {
   competitionOptions,
   groupByCompetition,
   inStatus,
-  matchesText,
   statusCounts,
   toItems,
   wantsLiveBoard,
@@ -90,8 +100,41 @@ export function MatchesPage() {
 
   const items = useMemo(() => toItems(rows, followed), [rows, followed]);
   const counts = useMemo(() => statusCounts(items), [items]);
-  const options = useMemo(() => competitionOptions(items, locale), [items, locale]);
-  // A competition picked on another day may not play today: the list then shows them all.
+  const countries = useMemo(
+    () =>
+      countryOptions(
+        items.map((i) => i.match),
+        locale,
+        t("matches.filters.international"),
+      ),
+    [items, locale],
+  );
+  // A country or category picked on another day may not play today: the list then shows them all.
+  const country =
+    view.country !== null && countries.some((c) => c.key === view.country) ? view.country : null;
+  const inScope = useMemo(
+    () =>
+      items.filter(
+        (it) =>
+          (country === null || countryKey(it.match.competition) === country) &&
+          (view.category === null || categoriesOf(it.match.competition).includes(view.category)),
+      ),
+    [items, country, view.category],
+  );
+  const categories = useMemo(
+    () =>
+      CATEGORIES.map((key) => ({
+        key,
+        label: t(`matches.category.${key}`),
+        count: items.filter(
+          (it) =>
+            (country === null || countryKey(it.match.competition) === country) &&
+            categoriesOf(it.match.competition).includes(key),
+        ).length,
+      })).filter((c) => c.count > 0),
+    [items, country],
+  );
+  const options = useMemo(() => competitionOptions(inScope, locale), [inScope, locale]);
   const competition =
     view.competition !== null && options.some((o) => o.id === view.competition)
       ? view.competition
@@ -108,13 +151,19 @@ export function MatchesPage() {
       (it) =>
         inStatus(it.group, view.status) &&
         (competition === null || it.match.competition.id === competition) &&
-        matchesText(it, view.query),
+        inFacets(it.match, { country, category: view.category, team: view.query }),
     );
     return groupByCompetition(visible, locale);
-  }, [items, view.status, view.query, competition, locale]);
+  }, [items, view.status, view.query, view.category, country, competition, locale]);
 
-  const filtered = view.status !== "all" || competition !== null || searching;
-  const clearFilters = () => update({ status: "all", competition: null, query: "" });
+  const filtered =
+    view.status !== "all" ||
+    competition !== null ||
+    searching ||
+    country !== null ||
+    view.category !== null;
+  const clearFilters = () =>
+    update({ status: "all", competition: null, query: "", country: null, category: null });
   const toggle = (id: number) =>
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -194,7 +243,25 @@ export function MatchesPage() {
       <div className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <DayNav day={view.day} today={today} onChange={(day) => update({ day })} />
-          <div className="grid grid-cols-2 gap-2 sm:flex">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+            <FacetPicker<string>
+              label={t("matches.filters.country")}
+              anyLabel={t("matches.filters.allCountries")}
+              value={country}
+              options={countries}
+              onChange={(c) => update({ country: c, competition: null })}
+              icon={<Globe2 />}
+              testId="country-select"
+            />
+            <FacetPicker<Category>
+              label={t("matches.filters.category")}
+              anyLabel={t("matches.filters.allCategories")}
+              value={view.category}
+              options={categories}
+              onChange={(c) => update({ category: c, competition: null })}
+              icon={<Layers />}
+              testId="category-select"
+            />
             <CompetitionPicker
               value={competition}
               options={options}
