@@ -24,7 +24,7 @@
     "ownGoalLong": "Autogol",
     "penalty": "pen.",
     "redCard": "Tarjeta roja",
-    "unknownPlayer": "Jugador desconocido",
+    "unknownPlayer": "Jugador no informado por el proveedor",
     "more_one": "+{count} evento anterior",
     "more_other": "+{count} eventos anteriores"
   },

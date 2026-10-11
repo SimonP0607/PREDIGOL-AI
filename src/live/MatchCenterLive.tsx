@@ -16,6 +16,7 @@ import { int } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { dec, decPct, relative, shortHash, utcDateTime } from "./format";
 import { AuditTrail } from "./AuditTrail";
+import { resultWaitText, resultWaitTone, timelineDetail, timelineLabel } from "./timelineText";
 import { HistoricalMarketTables } from "./HistoricalMarket";
 import { venueFacts, venuePlace } from "@/product/shared/venue";
 import { ScoreText, StatusGroupBadge } from "./shared";
@@ -143,7 +144,20 @@ export function MatchCenterLive({
         />
       )}
 
-      {m.awaiting_result ? (
+      {m.result_wait ? (
+        <WarningBanner tone={resultWaitTone(m.result_wait) ?? "warning"}>
+          <span data-testid="result-wait" data-code={m.result_wait}>
+            <strong className="font-semibold">
+              {t(`common.resultWait.short.${m.result_wait}`)}
+            </strong>
+            {" · "}
+            {resultWaitText(
+              m,
+              m.provider_read_at ? relative(m.provider_read_at) : t("center.timeline.neverRead"),
+            )}
+          </span>
+        </WarningBanner>
+      ) : m.awaiting_result ? (
         <WarningBanner>
           {t("center.awaitingResult", { when: relative(m.kickoff_at), status: m.status_short })}
         </WarningBanner>
@@ -192,8 +206,8 @@ export function MatchCenterLive({
           <EventTimeline
             events={d.timeline.map((e) => ({
               id: e.key,
-              label: e.label,
-              detail: e.detail,
+              label: timelineLabel(e),
+              detail: timelineDetail(e),
               at: e.at,
               state: e.state,
             }))}
@@ -436,6 +450,12 @@ function ModelsTab({ d }: { d: MatchDetail }) {
           const backtest = rows.some((r) => r.kind === "backtest");
           return (
             <div>
+              {odds.isError ? (
+                // Without the market row the table still stands, but the reader must know it is missing.
+                <div className="border-b border-border p-3">
+                  <ApiErrorNotice error={odds.error} />
+                </div>
+              ) : null}
               {backtest ? (
                 <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5 text-caption text-muted-foreground">
                   <StatusBadge tone="warning">{t("center.models.backtest")}</StatusBadge>

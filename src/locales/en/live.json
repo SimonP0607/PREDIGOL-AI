@@ -24,7 +24,7 @@
     "ownGoalLong": "Own goal",
     "penalty": "pen",
     "redCard": "Red card",
-    "unknownPlayer": "Unknown player",
+    "unknownPlayer": "Player not given by the provider",
     "more_one": "+{count} earlier event",
     "more_other": "+{count} earlier events"
   },

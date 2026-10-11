@@ -50,7 +50,14 @@
     "penalties": "Penales {score}",
     "halfTime": "Descanso {score}",
     "scorers": "Goles de {team}",
-    "referee": "Árbitro: {name}"
+    "referee": "Árbitro: {name}",
+    "wait": {
+      "provider_pending": "El proveedor aún no ha confirmado el resultado final.",
+      "provider_silent": "Sin noticias del proveedor; seguimos consultando.",
+      "jobs_stalled": "Estamos verificando el resultado.",
+      "provider_conflict": "Datos del proveedor en revisión.",
+      "result_missing": "Estamos verificando el resultado."
+    }
   },
   "note": {
     "noData": "Sin datos todavía",
@@ -202,7 +209,6 @@
   "lineups": {
     "title": "Alineaciones",
     "unavailable": "Alineaciones aún no disponibles",
-    "hint": "Suelen publicarse una hora antes del inicio.",
     "confirmed": "Alineaciones confirmadas",
     "view": "Ver alineaciones",
     "coach": "DT: {name}",
@@ -234,7 +240,7 @@
     "subWith": "Cambio con {name}",
     "subIn": "Entra",
     "subOut": "Sale",
-    "unknownPlayer": "Jugador sin identificar",
+    "unknownPlayer": "Jugador no informado por el proveedor",
     "penaltyShort": "(pen.)",
     "ownGoalShort": "(autogol)",
     "divider": {
@@ -367,14 +373,16 @@
   "providerPrediction": {
     "title": "Predicción del proveedor (API-Football)",
     "label": "Pronóstico propio de API-Football (Poisson, forma, comparación; sin cuotas). Auxiliar: no es el modelo de PrediGol ni el mercado, y nunca alimenta un modelo ni un pick.",
-    "none": "La predicción del proveedor aún no se ha leído para este partido.",
+    "none": "La predicción del proveedor aún no se ha leído para este partido (se pide 48 h, 24 h y 3 h antes del inicio).",
     "home": "Local",
     "draw": "Empate",
     "away": "Visitante",
     "advice": "Consejo del proveedor: {advice}",
     "winner": "Ganador según el proveedor: {team} ({comment})",
     "underOver": "Goles según el proveedor: {line}",
-    "versions": "{count} versiones guardadas desde {first}"
+    "versions": "{count} versiones guardadas desde {first}",
+    "askedNothing_one": "Se pidió al proveedor 1 vez y no devolvió predicción para este partido.",
+    "askedNothing_other": "Se pidió al proveedor {count} veces y no devolvió predicción para este partido."
   },
   "venue": {
     "capacity": "{n} espectadores",

@@ -50,7 +50,14 @@
     "penalties": "Penalties {score}",
     "halfTime": "Half-time {score}",
     "scorers": "{team} goals",
-    "referee": "Referee: {name}"
+    "referee": "Referee: {name}",
+    "wait": {
+      "provider_pending": "The provider has not confirmed the final result yet.",
+      "provider_silent": "No word from the provider; we keep asking.",
+      "jobs_stalled": "We are checking the result.",
+      "provider_conflict": "Provider data under review.",
+      "result_missing": "We are checking the result."
+    }
   },
   "note": {
     "noData": "No data yet",
@@ -202,7 +209,6 @@
   "lineups": {
     "title": "Line-ups",
     "unavailable": "Line-ups not available yet",
-    "hint": "They are usually published about an hour before kick-off.",
     "confirmed": "Line-ups confirmed",
     "view": "See line-ups",
     "coach": "Coach: {name}",
@@ -234,7 +240,7 @@
     "subWith": "Substitution with {name}",
     "subIn": "On",
     "subOut": "Off",
-    "unknownPlayer": "Unnamed player",
+    "unknownPlayer": "Player not given by the provider",
     "penaltyShort": "(pen.)",
     "ownGoalShort": "(o.g.)",
     "divider": {
@@ -367,14 +373,16 @@
   "providerPrediction": {
     "title": "Provider's prediction (API-Football)",
     "label": "API-Football's own forecast (Poisson, form, comparison; no odds). Auxiliary: not PrediGol's model, not the market, never a model input or a pick.",
-    "none": "The provider's prediction has not been read for this match yet.",
+    "none": "The provider's prediction has not been read for this match yet (it is asked 48 h, 24 h and 3 h before kick-off).",
     "home": "Home",
     "draw": "Draw",
     "away": "Away",
     "advice": "Provider's advice: {advice}",
     "winner": "Provider's winner: {team} ({comment})",
     "underOver": "Provider's goals line: {line}",
-    "versions": "{count} versions kept since {first}"
+    "versions": "{count} versions kept since {first}",
+    "askedNothing_one": "The provider was asked once and returned no prediction for this match.",
+    "askedNothing_other": "The provider was asked {count} times and returned no prediction for this match."
   },
   "venue": {
     "capacity": "{n} seats",

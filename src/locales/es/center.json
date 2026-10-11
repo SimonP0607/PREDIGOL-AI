@@ -148,7 +148,54 @@
   },
   "timeline": {
     "title": "Cronología",
-    "subtitle": "Lo que el sistema observó de este partido, en orden. Las ventanas que el plan no cubre se marcan; no cuentan como perdidas."
+    "subtitle": "Lo que el sistema observó de este partido, en orden. Las ventanas que el plan no cubre se marcan; no cuentan como perdidas.",
+    "code": {
+      "discovered": "Partido descubierto (fixture {provider_fixture_id} del proveedor)",
+      "window_done": "{quotes} cotizaciones capturadas a T-{minutes} min",
+      "window_free_plan": "Fuera del alcance del plan gratuito",
+      "window_scheduled": "Programada",
+      "window_provider_empty": "Consultado a T-{minutes} min: el proveedor no tenía cuotas para este partido",
+      "window_missed": "La ventana pasó sin captura",
+      "extra_capture": "{quotes} cotizaciones capturadas a T-{minutes} min (fuera de las ventanas)",
+      "extra_more": "{count} capturas más fuera de las ventanas",
+      "near_close_done": "Capturada a T-{minutes} min (no es una línea de cierre validada)",
+      "near_close_off": "Desactivada por diseño: la referencia de cierre es la última cuota prepartido, leída después del partido",
+      "near_close_scheduled": "Programada",
+      "near_close_missed": "No se hizo la captura cercana al cierre",
+      "kickoff_not_played": "No se jugó ({status})",
+      "kickoff_seen": "Visto en juego",
+      "kickoff_by_result": "Jugado: el proveedor registró el resultado",
+      "kickoff_unconfirmed": "Pasó la hora; el proveedor no ha confirmado el inicio",
+      "kickoff_scheduled": "Programado",
+      "final_prematch": "{quotes} últimas cuotas prepartido de {bookmakers} casas (la referencia de cierre)",
+      "final_prematch_empty": "Leídas después del partido: {outcome}",
+      "result_recorded": "{score} ({status})",
+      "result_not_played": "Sin resultado: el partido no se jugó",
+      "result_abandoned": "Sin resultado: el partido se abandonó",
+      "result_suspended": "Suspendido: esperando a que el proveedor lo reanude o lo cierre",
+      "result_provider_pending": "El proveedor sigue informando «{status}»: lo esperamos y volvemos a preguntar",
+      "result_provider_silent": "Sin noticias del proveedor desde que debía terminar",
+      "result_jobs_stalled": "Nuestras tareas de resultados no están corriendo",
+      "result_result_missing": "Terminado, pero sin marcador guardado",
+      "result_provider_conflict": "El proveedor se contradice (terminado, con el saque por delante)",
+      "result_after_full_time": "Después del final",
+      "result_scheduled": "Después del final"
+    },
+    "label": {
+      "discovered": "Partido descubierto",
+      "window": "Cuotas T-{window}",
+      "extra": "Captura de cuotas",
+      "near_close": "Captura cercana al cierre",
+      "kickoff": "Inicio",
+      "final_prematch": "Cuotas finales prepartido",
+      "result": "Resultado registrado"
+    },
+    "outcome": {
+      "priced": "con precios",
+      "empty": "el proveedor no tenía cuotas",
+      "after_kickoff": "el proveedor solo tenía precios actualizados después del saque (no sirven como cierre)"
+    },
+    "neverRead": "sin lectura registrada"
   },
   "lineage": {
     "title": "Linaje",

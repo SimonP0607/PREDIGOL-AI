@@ -123,10 +123,21 @@ function Center({ ctx }: { ctx: MatchCtx }) {
   }
 
   if (phase === "awaiting") {
+    // Who we are waiting for, in words a user can act on; the admin tab names the owner (REVIEW pt 1/8).
+    const wait = m.result_wait ?? null;
     return (
       <div className="flex flex-col items-center gap-2 pt-1 text-center">
         <ScoreLine score={score} {...names} />
         <StatePill tone="warning">{t("common.status.awaiting")}</StatePill>
+        {wait ? (
+          <span
+            className="max-w-[12rem] text-caption leading-snug text-muted-foreground"
+            data-testid="result-wait"
+            data-code={wait}
+          >
+            {t(`match.header.wait.${wait}`)}
+          </span>
+        ) : null}
       </div>
     );
   }

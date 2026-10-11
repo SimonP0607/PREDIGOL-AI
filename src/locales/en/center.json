@@ -148,7 +148,54 @@
   },
   "timeline": {
     "title": "Timeline",
-    "subtitle": "What the system observed for this fixture, in order. Windows the plan cannot reach are marked, not counted as missed."
+    "subtitle": "What the system observed for this fixture, in order. Windows the plan cannot reach are marked, not counted as missed.",
+    "code": {
+      "discovered": "Fixture discovered (provider fixture {provider_fixture_id})",
+      "window_done": "{quotes} quotes captured at T-{minutes} min",
+      "window_free_plan": "Out of reach on the free plan",
+      "window_scheduled": "Scheduled",
+      "window_provider_empty": "Asked at T-{minutes} min: the provider had no prices for this match",
+      "window_missed": "The window passed without a capture",
+      "extra_capture": "{quotes} quotes captured at T-{minutes} min (outside the windows)",
+      "extra_more": "{count} more captures outside the windows",
+      "near_close_done": "Captured at T-{minutes} min (not a validated closing line)",
+      "near_close_off": "Off by design: the closing reference is the last pre-match price, read after the match",
+      "near_close_scheduled": "Scheduled",
+      "near_close_missed": "No near-close capture was made",
+      "kickoff_not_played": "Not played ({status})",
+      "kickoff_seen": "Seen in play",
+      "kickoff_by_result": "Played: the provider recorded the result",
+      "kickoff_unconfirmed": "Kick-off time passed; the provider has not confirmed the start",
+      "kickoff_scheduled": "Scheduled",
+      "final_prematch": "{quotes} last pre-match quotes from {bookmakers} bookmakers (the closing reference)",
+      "final_prematch_empty": "Read after the match: {outcome}",
+      "result_recorded": "{score} ({status})",
+      "result_not_played": "No result: the match was not played",
+      "result_abandoned": "No result: the match was abandoned",
+      "result_suspended": "Suspended: waiting for the provider to resume or close it",
+      "result_provider_pending": "The provider still reports \"{status}\": we wait and keep asking",
+      "result_provider_silent": "No word from the provider since it should have ended",
+      "result_jobs_stalled": "Our result jobs are not running",
+      "result_result_missing": "Finished, but no score is stored",
+      "result_provider_conflict": "The provider contradicts itself (finished, with its kick-off ahead)",
+      "result_after_full_time": "After full time",
+      "result_scheduled": "After full time"
+    },
+    "label": {
+      "discovered": "Fixture discovered",
+      "window": "Odds T-{window}",
+      "extra": "Odds capture",
+      "near_close": "Near-close capture",
+      "kickoff": "Kick-off",
+      "final_prematch": "Final pre-match prices",
+      "result": "Result recorded"
+    },
+    "outcome": {
+      "priced": "priced",
+      "empty": "the provider had no prices",
+      "after_kickoff": "the provider only had prices updated after kick-off (not usable as a close)"
+    },
+    "neverRead": "no read recorded"
   },
   "lineage": {
     "title": "Lineage",

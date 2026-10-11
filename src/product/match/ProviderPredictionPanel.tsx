@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Info } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
+import { ApiErrorNotice } from "@/components/system/LiveState";
 import { Card } from "@/product/shared/States";
 import { ProvenanceNote } from "@/live/ReferenceData";
 import { dec, utcDateTime } from "@/live/format";
@@ -26,9 +27,14 @@ export function ProviderPredictionPanel({ fixtureId }: { fixtureId: string }) {
       </div>
       {q.isLoading ? (
         <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
+      ) : q.isError && !env ? (
+        // A failed request is an error, not "no prediction" (REVIEW 11 Oct 2026, point 8).
+        <ApiErrorNotice error={q.error} />
       ) : !latest ? (
-        <p className="text-xs text-muted-foreground">
-          {env?.reason ?? t("match.providerPrediction.none")}
+        <p className="text-xs text-muted-foreground" data-testid="provider-prediction-empty">
+          {view && view.checks > 0
+            ? t("match.providerPrediction.askedNothing", { count: view.checks })
+            : t("match.providerPrediction.none")}
         </p>
       ) : (
         <>
