@@ -296,6 +296,51 @@ async def refresh_post_match(conn: psycopg.Connection, provider: Any, *, at: dat
                          moment=moment, max_requests=max_requests, on_batch=asked)
 
 
+PREMATCH_LINEUPS_SQL = """
+SELECT f.id, f.provider_fixture_id
+  FROM core.fixtures f
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE c.is_tracked AND f.status_group = 'scheduled'
+   AND f.kickoff_at > %(at)s + %(follow)s AND f.kickoff_at <= %(at)s + %(window)s
+   AND (SELECT count(DISTINCT l.team_side) FROM core.fixture_lineups l WHERE l.fixture_id = f.id) < 2
+ ORDER BY f.kickoff_at, f.id
+"""
+LINEUPS_WINDOW = timedelta(minutes=75)
+"""Line-ups come out 20 to 60 minutes before kick-off; the follow itself starts only 2 minutes before it
+(REVIEW 11 Oct 2026, point 7: 13 minutes before Barcelona - Getafe the page still had none)."""
+LINEUPS_EVERY = timedelta(minutes=10)
+_lineups_asked: dict[int, datetime] = {}
+"""When each upcoming match was last asked for its line-ups, in this worker (a restart asks once more: harmless)."""
+
+
+def prematch_lineups_due(conn: psycopg.Connection, *, at: datetime) -> list[tuple[int, int]]:
+    """Tracked matches starting in the next 75 minutes (before the follow takes them) without both line-ups,
+    not asked in the last 10 minutes."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(PREMATCH_LINEUPS_SQL, {"at": at, "follow": FOLLOW_BEFORE_KICKOFF, "window": LINEUPS_WINDOW})
+        rows = [(int(a), int(b)) for a, b in cur.fetchall()]
+    return [(fid, pid) for fid, pid in rows
+            if (last := _lineups_asked.get(fid)) is None or last <= at - LINEUPS_EVERY]
+
+
+async def refresh_prematch_lineups(conn: psycopg.Connection, provider: Any, *, at: datetime | None = None,
+                                   max_requests: int = 3) -> LiveMatchReport:
+    """Ask the upcoming matches for their line-ups every 10 minutes in the last 75 before kick-off. One
+    /fixtures?ids= request covers 20 matches and the writers are the follow's own (monotonic)."""
+    moment = at or now()
+    due = prematch_lineups_due(conn, at=moment)
+    by_provider = {pid: fid for fid, pid in due}
+
+    def asked(provider_ids: Sequence[int], raw: RawResponse, run_id: int | None) -> None:
+        for pid in provider_ids:
+            if pid in by_provider:
+                _lineups_asked[by_provider[pid]] = moment
+
+    return await _follow(conn, provider, due, job_type="prematch_lineups", moment=moment,
+                         max_requests=max_requests, on_batch=asked)
+
+
 async def capture_live_matches(conn: psycopg.Connection, provider: Any, *, at: datetime | None = None,
                                max_requests: int = 10) -> LiveMatchReport:
     """One pass over every match that may be in play. Opens its own ledger run

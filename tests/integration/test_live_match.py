@@ -11,12 +11,15 @@ from typing import Any
 import psycopg
 import pytest
 
+from fbi.ingestion import live_match
 from fbi.ingestion.live_match import (
     capture_live_matches,
     fixtures_to_follow,
     iter_live_states,
     post_match_to_refresh,
+    prematch_lineups_due,
     refresh_post_match,
+    refresh_prematch_lineups,
     repair_stale_results,
     stale_to_repair,
     write_states,
@@ -91,7 +94,7 @@ def fixture_in_play(migrated_database: str, seed: Seed) -> Iterator[tuple[int, i
     # Leave the shared test database as it was: other suites count runs, quota and live states.
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("SELECT id FROM raw.ingestion_runs WHERE job_type IN ('live_match_capture', 'results_repair', "
-                    "'post_match_detail') OR job_name = 't'")
+                    "'post_match_detail', 'prematch_lineups') OR job_name = 't'")
         runs = [r[0] for r in cur.fetchall()]
         cur.execute("DELETE FROM core.fixtures WHERE id = %s", (fid,))
         if runs:
@@ -264,3 +267,50 @@ def test_the_repair_asks_the_match_read_longest_ago_first_and_a_fresh_read_waits
         finally:
             conn.execute("DELETE FROM core.fixtures WHERE id = %s", (other,))
             conn.commit()
+
+
+def _lineups(home: int, away: int) -> list[dict[str, Any]]:
+    def side(team: int, base: int) -> dict[str, Any]:
+        xi = [{"player": {"id": base + k, "name": f"P{base + k}", "number": k + 1, "pos": "G" if k == 0 else "D",
+                          "grid": f"{1 + (k > 0)}:{1 + k % 4}"}} for k in range(11)]
+        return {"team": {"id": team, "name": "T"}, "formation": "4-4-2", "coach": {"id": None, "name": None},
+                "startXI": xi, "substitutes": []}
+    return [side(home, 600), side(away, 700)]
+
+
+async def test_the_lineups_of_the_next_75_minutes_are_asked_every_10_minutes_until_they_are_in(
+        migrated_database: str, fixture_in_play: tuple[int, int, dict[str, int]]) -> None:
+    """REVIEW 11 Oct 2026, point 7: 13 minutes before Barcelona - Getafe the line-ups were not on the page - the
+    follow starts only 2 minutes before kick-off. Upcoming matches are now asked from 75 minutes before."""
+    fid, pid, meta = fixture_in_play
+    live_match._lineups_asked.clear()
+    t0 = datetime.now(UTC)
+    kickoff = t0 + timedelta(minutes=30)
+    without = _body(pid, meta["league"], meta["season"], 77001, 77002, short="NS", elapsed=None, gh=None, ga=None,
+                    kickoff=kickoff)
+    without["response"][0]["events"] = []
+    with_lineups = {"response": [dict(without["response"][0], lineups=_lineups(77001, 77002))]}
+    with psycopg.connect(migrated_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE core.fixtures SET kickoff_at = %s WHERE id = %s", (kickoff, fid))
+        conn.commit()
+        assert (fid, pid) in prematch_lineups_due(conn, at=t0)
+        assert (fid, pid) not in fixtures_to_follow(conn, at=t0), "30 minutes before: not the follow's yet"
+        provider = FakeProvider(conn, [without, with_lineups])
+        first = await refresh_prematch_lineups(conn, provider, at=t0)
+        assert first.requests == 1 and provider.calls == [[pid]]
+        assert (fid, pid) not in prematch_lineups_due(conn, at=t0 + timedelta(minutes=9)), "asked: wait 10 minutes"
+        assert (fid, pid) in prematch_lineups_due(conn, at=t0 + timedelta(minutes=10))
+        second = await refresh_prematch_lineups(conn, provider, at=t0 + timedelta(minutes=10))
+        assert second.requests == 1
+        sides = conn.execute("SELECT count(*) FROM core.fixture_lineups WHERE fixture_id = %s", (fid,)).fetchone()
+        assert sides == (2,)
+        assert (fid, pid) not in prematch_lineups_due(conn, at=t0 + timedelta(minutes=25)), "both in: done"
+        assert (fid, pid) not in prematch_lineups_due(conn, at=kickoff - timedelta(minutes=1)), (
+            "inside 2 minutes the follow asks every minute anyway")
+        assert prematch_lineups_due(conn, at=kickoff - timedelta(hours=2)) == [], "too early: not yet"
+        # the line-up players the answer introduced reference its payload: gone before the fixture's teardown
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM core.fixture_lineups WHERE fixture_id = %s", (fid,))
+            cur.execute("DELETE FROM core.players WHERE provider_player_id BETWEEN 600 AND 720")
+        conn.commit()

@@ -317,13 +317,21 @@ async def _live_match_tick() -> None:
     """Follow tracked matches in play. Spends nothing when none is."""
     from scripts.capture_odds import _client
 
-    from fbi.ingestion.live_match import capture_live_matches, fixtures_to_follow
+    from fbi.ingestion.live_match import (
+        capture_live_matches,
+        fixtures_to_follow,
+        prematch_lineups_due,
+        refresh_prematch_lineups,
+    )
     from fbi.providers.api_football import ApiFootballProvider
     from fbi.providers.quota import read_usage
 
     cfg = settings.api_football
     with _connect() as conn:
-        if not fixtures_to_follow(conn, at=now()):
+        moment = now()
+        follow = bool(fixtures_to_follow(conn, at=moment))
+        lineups = bool(prematch_lineups_due(conn, at=moment))
+        if not follow and not lineups:
             return
         remaining = read_usage(conn, budget=min(cfg.daily_budget, cfg.per_day_limit)).remaining
         if remaining < LIVE_MATCH_RESERVE:
@@ -331,11 +339,16 @@ async def _live_match_tick() -> None:
             return
         new_run_id()
         provider = ApiFootballProvider(_client())
+        report = None
         try:
-            report = await capture_live_matches(conn, provider, max_requests=LIVE_MATCH_MAX_REQUESTS)
+            if follow:
+                report = await capture_live_matches(conn, provider, max_requests=LIVE_MATCH_MAX_REQUESTS)
+            if lineups:
+                # the line-ups of the next 75 minutes, before the follow takes those matches (REVIEW point 7)
+                await refresh_prematch_lineups(conn, provider)
         finally:
             await provider.aclose()
-    if report.ended:
+    if report is not None and report.ended:
         _request_settlement(report.ended, "live_follow")
 
 
