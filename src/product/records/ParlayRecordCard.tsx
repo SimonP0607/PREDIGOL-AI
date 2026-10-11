@@ -14,55 +14,32 @@ import { t } from "@/lib/i18n";
 import { fmtInt, fmtOdds, fmtPct, toNumber } from "@/lib/i18n/format";
 import { formatKickoff, formatRelative } from "@/lib/time";
 import type { ParlayRecord, ParlayRecordLeg, RecordKind } from "@/lib/api/v1/types_records";
-import { CompetitionTag, TeamLogo, TeamName } from "@/components/football/Logos";
-import { EvBadge, Kickoff, OddsPill } from "@/product/shared/Bits";
-import { marketName, selectionLabel } from "@/product/shared/markets";
+import { TeamLogo } from "@/components/football/Logos";
 import { PARLAY_ICON, parlayTitle } from "@/product/parlays/parlayText";
-import { AiNote } from "./AiNote";
+import { LegNumber, LegPrice, LegRow } from "@/product/parlays/LegRow";
+import { legLabel, viewOfRecord } from "@/product/parlays/legs";
 import { EvaluationBadge, ParlayOutcomeBadge, RecordState, Units } from "./Badges";
-import { MatchScore } from "./DailyItemCard";
 
 type Variant = "compact" | "full";
 
-function legLabel(leg: ParlayRecordLeg): string {
-  return selectionLabel({
-    market_key: leg.market_key,
-    selection: leg.selection,
-    line: leg.line,
-    home: leg.match.home.name,
-    away: leg.match.away.name,
-  });
-}
-
-const LEG_LINK =
-  "block transition-colors hover:bg-elevated/50 focus-visible:bg-elevated/60 focus-visible:outline-none";
-
-function LegNumber({ n }: { n: number }) {
-  return (
-    <span
-      aria-hidden
-      className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-[0.65rem] font-semibold text-gold-strong"
-    >
-      {n}
-    </span>
-  );
-}
-
 function CompactLeg({ leg }: { leg: ParlayRecordLeg }) {
   const m = leg.match;
+  const view = viewOfRecord(leg);
   return (
-    <li>
+    <li
+      data-testid="parlay-leg"
+      data-status={leg.status}
+      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-elevated/40 sm:px-5"
+    >
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(m.fixture_id) }}
-        data-testid="parlay-leg"
-        data-status={leg.status}
-        className={cn(LEG_LINK, "flex items-center gap-3 px-4 py-2.5 sm:px-5")}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         <LegNumber n={leg.leg_no} />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold" data-testid="parlay-leg-selection">
-            {legLabel(leg)}
+            {legLabel(view)}
           </div>
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground">
             <span className="numeric shrink-0">{formatKickoff(m.kickoff_at)}</span>
@@ -78,79 +55,11 @@ function CompactLeg({ leg }: { leg: ParlayRecordLeg }) {
             </span>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <OddsPill odds={leg.odds} size="sm" />
-          <RecordState status={leg.status} match={m} hidePending />
-        </div>
       </Link>
-    </li>
-  );
-}
-
-function FullLeg({ leg }: { leg: ParlayRecordLeg }) {
-  const m = leg.match;
-  return (
-    <li>
-      <Link
-        to="/matches/$fixtureId"
-        params={{ fixtureId: String(m.fixture_id) }}
-        data-testid="parlay-leg"
-        data-status={leg.status}
-        className={cn(LEG_LINK, "px-4 py-4 sm:px-5")}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2 text-caption">
-            <LegNumber n={leg.leg_no} />
-            <CompetitionTag
-              name={m.competition.name}
-              logo={m.competition.logo_url}
-              flag={m.competition.flag_url}
-              country={m.competition.country}
-              className="min-w-0"
-            />
-          </div>
-          <Kickoff at={m.kickoff_at} className="shrink-0" />
-        </div>
-        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2">
-          <div className="col-span-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-sm">
-            <TeamName name={m.home.name} logo={m.home.logo_url} size={22} strong />
-            {m.score_home !== null && m.score_away !== null ? (
-              <MatchScore home={m.score_home} away={m.score_away} />
-            ) : (
-              <span className="text-caption text-subtle-foreground">{t("common.vs")}</span>
-            )}
-            <TeamName name={m.away.name} logo={m.away.logo_url} size={22} strong reverse />
-          </div>
-          <div className="min-w-0">
-            <div className="text-caption uppercase tracking-wider text-subtle-foreground">
-              {marketName(leg.market_key)}
-            </div>
-            <div
-              className="mt-0.5 font-display text-[0.95rem] font-semibold leading-snug"
-              data-testid="parlay-leg-selection"
-            >
-              {legLabel(leg)}
-            </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <EvBadge ev={leg.ev} />
-              <RecordState status={leg.status} match={leg.match} />
-            </div>
-            {leg.ai ? (
-              <div className="mt-1.5">
-                <AiNote ai={leg.ai} compact />
-              </div>
-            ) : null}
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <OddsPill odds={leg.odds} />
-            {leg.bookmaker ? (
-              <span className="max-w-[7rem] truncate text-caption text-muted-foreground">
-                {leg.bookmaker}
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </Link>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <LegPrice leg={view} size="sm" />
+        <RecordState status={leg.status} match={m} hidePending />
+      </div>
     </li>
   );
 }
@@ -307,7 +216,12 @@ export function ParlayRecordCard({
               variant === "compact" ? (
                 <CompactLeg key={leg.leg_no} leg={leg} />
               ) : (
-                <FullLeg key={leg.leg_no} leg={leg} />
+                <LegRow
+                  key={leg.leg_no}
+                  leg={viewOfRecord(leg)}
+                  status={leg.status}
+                  state={<RecordState status={leg.status} match={leg.match} />}
+                />
               ),
             )}
           </ol>

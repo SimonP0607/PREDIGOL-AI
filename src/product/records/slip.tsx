@@ -53,6 +53,7 @@ export function SlipProvider({ children }: { children: ReactNode }) {
       toggle: (leg) => apply({ type: "toggle", leg }),
       remove: (key) => apply({ type: "remove", key }),
       clear: (quiet = false) => apply({ type: "clear" }, quiet),
+      load: (next) => apply({ type: "load", legs: next }, true),
       open,
       setOpen,
     }),

@@ -8,6 +8,8 @@ export interface SlipValue {
   toggle: (leg: Omit<SlipLeg, "key">) => void;
   remove: (key: string) => void;
   clear: (quiet?: boolean) => void;
+  /** Replace the legs with these (the automatic builder's parlay, to change before saving). */
+  load: (legs: SlipLeg[]) => void;
   open: boolean;
   setOpen: (open: boolean) => void;
 }

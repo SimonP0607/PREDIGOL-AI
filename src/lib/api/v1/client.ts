@@ -1,5 +1,12 @@
 import { API_BASE_URL } from "@/lib/api/mode";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
+import type { BuilderQuery, BuiltParlay } from "./types_builder";
+
+export interface BestOddsQuery {
+  market?: string | undefined;
+  hours?: number | undefined;
+  picks?: boolean | undefined;
+}
 import type {
   AiFlags,
   AiReport,
@@ -172,7 +179,11 @@ const STAGE_CODES = new Set([
   "password_change_required",
 ]);
 
-type Params = Record<string, string | number | boolean | undefined | null>;
+/** A repeated parameter (`?market=1X2&market=OU`) is an array; an empty one is left out. */
+type Params = Record<
+  string,
+  string | number | boolean | undefined | null | ReadonlyArray<string | number>
+>;
 
 /**
  * Every request: same origin, the session cookie (HttpOnly - never readable here), and
@@ -188,7 +199,12 @@ async function request<T>(
   const base = typeof window !== "undefined" ? window.location.origin : API_BASE_URL;
   const url = new URL(`${base}/api/v1${path}`);
   for (const [k, v] of Object.entries(params ?? {})) {
-    if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
+    if (Array.isArray(v)) {
+      for (const item of v as ReadonlyArray<string | number>)
+        url.searchParams.append(k, String(item));
+    } else if (v !== undefined && v !== null && v !== "") {
+      url.searchParams.set(k, String(v));
+    }
   }
   const headers: Record<string, string> = {
     accept: "application/json",
@@ -306,7 +322,11 @@ export const v1 = {
   /** Today's pre-match picks that already kicked off, unfiltered: the page filters them (REVIEW pt 14). */
   startedPicks: (q: Preview = {}) => getJson<Envelope<StartedPick[]>>("/picks/started", q),
   parlay: (kind: ParlayKind, q: Preview = {}) => getJson<Envelope<Parlay>>(`/parlays/${kind}`, q),
-  bestOdds: (q: { market?: string | undefined; hours?: number | undefined } & Preview = {}) =>
+  /** The automatic parlay builder (REVIEW pt 15): nothing is stored - saving it is createParlay. */
+  buildParlay: (q: BuilderQuery & Preview) =>
+    getJson<Envelope<BuiltParlay>>("/parlays/build", q as unknown as Params),
+  /** `picks: false` - prices only (the Cuotas page, REVIEW pt 17): no picks are read. */
+  bestOdds: (q: BestOddsQuery & Preview = {}) =>
     getJson<Envelope<BestOddsBoard>>("/odds/best", q as Params),
 
   // ── records: the day as persisted, and the user's own ──────────────────────

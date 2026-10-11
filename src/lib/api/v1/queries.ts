@@ -1,6 +1,7 @@
 /** TanStack Query option factories for the live API. */
-import { v1, type MatchQuery } from "./client";
+import { v1, type BestOddsQuery, type MatchQuery } from "./client";
 import type { ParlayKind, PicksQuery } from "./types_product";
+import type { BuilderQuery } from "./types_builder";
 import type { HistoryPeriod } from "./types_records";
 import type { RatingPool } from "./types";
 import type { FindingsQuery, ScoresQuery } from "./types_truth";
@@ -34,7 +35,13 @@ export const live = {
     queryFn: () => v1.parlay(kind, { preview }),
     refetchInterval: 2 * MINUTE,
   }),
-  bestOdds: (q: { market?: string | undefined; hours?: number | undefined }, preview: Preview) => ({
+  /** Asked for by the user (the page sets `enabled`); the server keeps an answer 30 s. */
+  builtParlay: (q: BuilderQuery, preview: Preview) => ({
+    queryKey: ["v1", "built-parlay", q, preview ?? "qualified"],
+    queryFn: () => v1.buildParlay({ ...q, preview }),
+    staleTime: 30_000,
+  }),
+  bestOdds: (q: BestOddsQuery, preview: Preview) => ({
     queryKey: ["v1", "best-odds", q, preview ?? "qualified"],
     queryFn: () => v1.bestOdds({ ...q, preview }),
     refetchInterval: 2 * MINUTE,

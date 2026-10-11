@@ -1,7 +1,9 @@
 /**
  * Parlays: the day's parlay and the multi-day parlay as PrediGol recorded them - built once,
- * frozen, followed to their result - how they are chosen, and the way to build one's own.
- * With too few selections worth combining there is no parlay: never a padded one.
+ * frozen, followed to their result, each selection with why it is there - the automatic builder
+ * (REVIEW point 15: the user's filters, PrediGol's rule), the way to build one's own (point 16)
+ * and how they are chosen. With too few selections worth combining there is no parlay: never a
+ * padded one.
  */
 import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, Check, ChevronDown, Info, Layers, ListX, Sigma, Unlink } from "lucide-react";
@@ -15,6 +17,7 @@ import { ShadowToggle } from "@/product/shared/ShadowToggle";
 import { EvaluationNote } from "@/product/records/DailySetBlock";
 import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
 import { useSlip } from "@/product/records/slipContext";
+import { ParlayBuilder } from "./Builder";
 
 function RuleGroup({
   icon: Icon,
@@ -65,7 +68,9 @@ function HowWeBuild() {
             t("parlays.how.value.fresh"),
             t("parlays.how.value.ev"),
             t("parlays.how.value.consensus"),
+            t("parlays.how.value.books"),
             t("parlays.how.value.interval"),
+            t("parlays.how.value.ai"),
           ]}
         />
         <RuleGroup
@@ -74,8 +79,9 @@ function HowWeBuild() {
           lines={[
             t("parlays.how.independence.oneMatch"),
             t("parlays.how.independence.noTeam"),
+            t("parlays.how.independence.perCompetition"),
             t("parlays.how.independence.noQuarter"),
-            t("parlays.how.independence.independent"),
+            t("parlays.how.independence.measured"),
           ]}
         />
         <RuleGroup
@@ -150,6 +156,7 @@ export function ParlaysPage() {
           <SkeletonBlock key={kind} className="h-80 rounded-xl" />
         ),
       )}
+      <ParlayBuilder />
       <BuildYourOwn />
       <HowWeBuild />
       {/* Wide screens already carry it in the page footer. */}
