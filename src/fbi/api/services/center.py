@@ -73,8 +73,23 @@ ACTIVE_WINDOW = timedelta(days=30)
 LIVE_ODDS_WINDOW = timedelta(hours=4)
 
 
-def _sec[T](items: list[T], empty: str, *, status: DataStatus = DataStatus.EMPTY) -> Section[list[T]]:
-    return section(items) if items else section(items, status=status, reason=empty)
+def _sec[T](items: list[T], empty: str, *, status: DataStatus = DataStatus.EMPTY,
+            code: str | None = None) -> Section[list[T]]:
+    return section(items) if items else section(items, status=status, reason=empty, code=code)
+
+
+LINEUPS_EARLY = timedelta(minutes=60)
+"""Line-ups are usually published about an hour before kick-off; closer than that, saying "an hour before" is
+wrong - the provider simply has not published them yet (REVIEW 11 Oct 2026, point 7)."""
+
+
+def lineups_reason(kickoff_at: datetime, status_group: str, at: datetime) -> tuple[str, str]:
+    """(reason, code) for a match with no line-up stored, by how close the kick-off is."""
+    if status_group in ("live", "finished"):
+        return ("No line-up was published by the provider for this match.", "lineups_none")
+    if kickoff_at - at > LINEUPS_EARLY:
+        return ("Line-ups are usually published about an hour before kick-off.", "lineups_usually_60m")
+    return ("The provider has not published the line-ups yet.", "lineups_not_published")
 
 
 def _clean(row: Row, drop: tuple[str, ...] = ()) -> Row:
@@ -100,7 +115,8 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
     lineups = [TeamLineup(**r, players=players_by_side.get(r["side"], [])) for r in lineup_rows]
     player_lines = [PlayerLine(**r) for r in fetch_all(conn, repo.PLAYER_STATS, f)]
     absences = [Absence(**r) for r in fetch_all(conn, repo.ABSENCES, {
-        "f": fixture_id, "home_pid": fx["home_pid"], "away_pid": fx["away_pid"]})]
+        "f": fixture_id, "home_pid": fx["home_pid"], "away_pid": fx["away_pid"],
+        "current_only": fx["status_group"] in ("scheduled", "live")})]
     ctx = {"cs": fx["competition_season_id"], "home": fx["home_team_id"], "away": fx["away_team_id"],
            "ko": fx["kickoff_at"]}
     standings, no_table, standing_tables = _match_standings(conn, fx)
@@ -120,27 +136,32 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
 
     no_detail = ("No detail payload for this match yet: it arrives while the match is played "
                  "(live follow) or with the post-match detail backfill.")
+    lineups_why, lineups_code = lineups_reason(fx["kickoff_at"], fx["status_group"], now())
+    pre = None if played else "not_started"
     body = MatchCenter(
         fixture_id=fixture_id,
         status_group=fx["status_group"],
-        statistics=_sec(stats, no_detail if played else not_yet),
-        events=_sec(events, ("No event recorded." if played else not_yet)),
-        lineups=_sec(lineups, "Line-ups are published about an hour before kick-off; none is stored for this match."),
-        players=_sec(player_lines, no_detail if played else not_yet),
+        statistics=_sec(stats, no_detail if played else not_yet, code="no_detail_yet" if played else pre),
+        events=_sec(events, ("No event recorded." if played else not_yet), code="no_events" if played else pre),
+        lineups=_sec(lineups, lineups_why, code=lineups_code),
+        players=_sec(player_lines, no_detail if played else not_yet, code="no_detail_yet" if played else pre),
         absences=_sec(absences, "No injury or suspension report is stored for this match. That is not "
-                                "the same as nobody being absent."),
-        standings=_sec(standings, no_table),
+                                "the same as nobody being absent.", code="no_absences_report"),
+        standings=_sec(standings, no_table, code="no_table"),
         standings_tables=standing_tables,
         facts=MatchFacts(**facts_row) if facts_row else None,
         form=section(forms) if any(t.matches for t in forms) else section(
-            forms, status=DataStatus.EMPTY, reason="Neither team has a finished match with a result before this one."),
-        h2h=_sec(h2h, "No previous meeting with a result is stored."),
-        live_states=_sec(states, "No in-play state was captured for this match." if played else not_yet),
+            forms, status=DataStatus.EMPTY, reason="Neither team has a finished match with a result before this one.",
+            code="no_form"),
+        h2h=_sec(h2h, "No previous meeting with a result is stored.", code="no_h2h"),
+        live_states=_sec(states, "No in-play state was captured for this match." if played else not_yet,
+                         code="no_live_states" if played else pre),
         live_odds=_sec(quotes, "In-play prices are shown only while the match is being played, and the provider "
                                "prices only some matches in play. They are not kept after the match."
-                       if played else not_yet),
+                       if played else not_yet, code="live_odds_not_kept" if played else pre),
         live_movement=_sec(moves, "No in-play price has moved in this match's current book. Movement is shown "
-                                  "while the match is played and not kept afterwards." if played else not_yet),
+                                  "while the match is played and not kept afterwards." if played else not_yet,
+                           code="live_odds_not_kept" if played else pre),
     )
     return ok(body)
 

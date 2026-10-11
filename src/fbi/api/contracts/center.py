@@ -39,6 +39,8 @@ class TeamStatLine(Contract):
     passes_accurate: int | None
     expected_goals: Decimal | None
     fetched_at: datetime
+    source: str | None = Field(default=None, description="Where these numbers come from: api-football, or "
+                                                         "football-data.co.uk when it is the only source.")
 
 
 class MatchEvent(Contract):
@@ -125,6 +127,9 @@ class Absence(Contract):
     player_id: int | None
     type: str | None
     reason: str | None
+    photo_url: str | None = None
+    position: str | None = Field(default=None, description="The player's position as the provider files it.")
+    fetched_at: datetime | None = Field(default=None, description="When the provider reported this absence.")
 
 
 class StandingLine(Contract):

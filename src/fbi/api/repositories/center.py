@@ -12,12 +12,20 @@ SELECT f.id, f.kickoff_at, f.status_group, f.round, f.competition_season_id, f.h
 """
 
 TEAM_STATS = """
+WITH src AS (
+    SELECT source FROM core.fixture_team_stats WHERE fixture_id = %(f)s AND team_side IN ('home', 'away')
+     GROUP BY source ORDER BY (source = 'api-football') DESC, count(*) DESC, max(fetched_at) DESC LIMIT 1
+)
 SELECT team_side AS side, shots, shots_on_target, shots_off_target, shots_blocked, shots_inside_box,
        shots_outside_box, corners, fouls, offsides, yellow_cards, red_cards, saves, possession_pct, passes,
-       passes_accurate, expected_goals, goals_prevented, fetched_at
-  FROM core.fixture_team_stats WHERE fixture_id = %(f)s AND team_side IN ('home', 'away')
+       passes_accurate, expected_goals, goals_prevented, fetched_at, s.source
+  FROM core.fixture_team_stats s JOIN src USING (source)
+ WHERE s.fixture_id = %(f)s AND s.team_side IN ('home', 'away')
  ORDER BY team_side DESC
 """
+"""One source per match: API-Football first (it has possession, xG and passes), football-data.co.uk only when it is
+all there is. Both are stored for 5.329 matches (11 Oct 2026); before this the page got four rows for two teams and
+could show the second source's empty possession and xG."""
 
 EVENTS = """
 SELECT e.seq, e.minute, e.extra_minute, e.team_side AS side, e.player_name AS player, p.id AS player_id,
@@ -66,13 +74,26 @@ SELECT ps.provider_player_id, p.id AS player_id, ps.team_side AS side, ps.player
 """
 
 ABSENCES = """
+WITH latest AS (
+    SELECT k.payload_hash FROM core.context_checks k JOIN core.fixtures f ON f.competition_season_id = k.competition_season_id
+     WHERE f.id = %(f)s AND k.dataset = 'injuries'
+)
 SELECT CASE a.provider_team_id WHEN %(home_pid)s THEN 'home' WHEN %(away_pid)s THEN 'away' END AS side,
-       a.player_name AS player, p.id AS player_id, a.absence_type AS type, a.reason
+       a.player_name AS player, p.id AS player_id, a.absence_type AS type, a.reason, p.photo_url,
+       p.position, a.fetched_at
   FROM core.player_absences a
   LEFT JOIN core.players p ON p.provider_player_id = a.provider_player_id
  WHERE a.fixture_id = %(f)s
+   AND (NOT %(current_only)s
+        OR (EXISTS (SELECT 1 FROM latest) AND a.payload_hash = (SELECT payload_hash FROM latest))
+        OR (NOT EXISTS (SELECT 1 FROM latest)
+            AND a.fetched_at = (SELECT max(b.fetched_at) FROM core.player_absences b WHERE b.fixture_id = %(f)s)))
  ORDER BY 1 DESC NULLS LAST, a.player_name
 """
+"""The absences of a match. Before it is over, only the provider's CURRENT list: a season's injuries come in one
+/injuries answer (fbi.ingestion.context_refresh) and a player the newest answer no longer names has recovered or
+was never out - 44 such rows were shown on upcoming matches on 11 Oct 2026. After the match, every row reported
+for it, as the record of who was missing."""
 
 FIXTURE_FACTS = """
 SELECT referee, referee_country, home_winner, away_winner, first_half_at, second_half_at, observed_at, payload_hash,
@@ -212,11 +233,12 @@ SELECT e.fixture_id, e.seq, e.minute, e.extra_minute, e.team_side AS side, e.pla
 """
 
 LIVE_BOARD_STATS = """
-SELECT fixture_id, team_side AS side, shots, shots_on_target, shots_off_target, shots_blocked, shots_inside_box,
+SELECT DISTINCT ON (fixture_id, team_side)
+       fixture_id, team_side AS side, shots, shots_on_target, shots_off_target, shots_blocked, shots_inside_box,
        shots_outside_box, corners, fouls, offsides, yellow_cards, red_cards, saves, possession_pct, passes,
-       passes_accurate, expected_goals, goals_prevented, fetched_at
+       passes_accurate, expected_goals, goals_prevented, fetched_at, source
   FROM core.fixture_team_stats WHERE fixture_id = ANY(%(ids)s) AND team_side IN ('home', 'away')
- ORDER BY fixture_id, team_side DESC
+ ORDER BY fixture_id, team_side DESC, (source = 'api-football') DESC, fetched_at DESC
 """
 
 LIVE_BOARD_ODDS = """
