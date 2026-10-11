@@ -63,7 +63,7 @@ Se adopta el tope **menos estricto** que la evidencia respalda: por encima de 3,
 los días. **Lo que no se afirma:** que con el tope haya beneficio. La rentabilidad con tope no es significativamente
 positiva; la regla evita una pérdida medida, nada más. Se revisará con más días liquidados (`audit_odds_risk`).
 
-### Contexto `context-v1` — todo pick del día pasa por PrediGol Intelligence
+### Contexto `context-v1` — todo pick del día pasa por PrediGol Intelligence (desplegado 16:50 UTC)
 
 Un pick del día debe tener una revisión combinada de PrediGol Intelligence de las 12 h anteriores. Se congela con él
 lo que la IA leyó: su decisión, su motivo y la evidencia externa del partido por estado. La decisión de la IA solo
@@ -71,20 +71,63 @@ cambia la elección cuando está **aplicada** (su propia compuerta en sombra sup
 «no recomendado» queda registrado y a la vista del dueño, sin vetar. Con la IA apagada no hay nada que exigir y el
 registro lo dice (`ai_off`).
 
-Efecto esperado: un pick entra cuando PrediGol Intelligence ya lo revisó (primera pasada desde las 00:05 de Bogotá),
-no a T-24h; más cerca del partido y con precios más maduros.
+### Hallazgo tras desplegar v4: el set elegía los primeros partidos del día, antes de la IA
+
+Medido en los sets reales del 4 al 12 oct (`picks.daily_set_items` frente a `ai.fixture_passes`):
+
+* 40 de 45 picks se eligieron entre 12 y 24 h antes del partido: en cuanto se abría la ventana de 24 h de los
+  primeros partidos del día, la regla llenaba los cinco cupos con ellos.
+* 7 de los 20 picks desde el 9 oct eran partidos de las 00:00 de Bogotá, que la pasada del día de la IA (desde las
+  00:05) nunca alcanza.
+* Desde el 9 oct (cuando empezó la pasada del día de la IA), **ninguno** de los 20 picks tuvo la pasada del día de
+  PrediGol Intelligence (paquete, búsqueda de noticias, revisión del modelo) antes de ser elegido: 8 la tuvieron
+  después, 7 nunca (los partidos de las 00:00) y los 5 del 12 oct la tendrán después de elegidos; 4 se buscaron en
+  la web, todos después. En los 45 desde el 4 oct: 37 sin ninguna pasada y 41 sin búsqueda de noticias.
+* La revisión que exigía `context-v1` la cumplía la revisión de reglas gratuita que la IA hace cada 15 minutos; no la
+  lectura con noticias que pide el REVIEW. Sus revisiones se renuevan: en 4 días, de 31.970 sondeos cada 30 min
+  dentro de las 24 h previas, 205 (0,6 %) encontraron la revisión más nueva con más de 12 h (la revisión solo se
+  guarda cuando cambian sus datos): una limitación medida, que solo puede dejar fuera un candidato, nunca meterlo.
+
+### Decisión: `daily-set-v5` con `context-v2` — el pick del día, después de la pasada del día de la IA
+
+* El partido debe tener **su primera pasada del día** terminada (`no_day_pass`): paquete, noticias si le toca,
+  resumen y revisión del modelo de los candidatos.
+* El set del día se elige **cuando PrediGol Intelligence leyó el día entero**: ninguna primera pasada pendiente, o las
+  06:00 de Bogotá como muy tarde (`day_not_ready`). Así los cinco son los mejores del día, no los cinco primeros que
+  se leyeron; un partido que empieza antes no puede ser pick del día. Datos reales: la primera pasada cubrió 170
+  partidos entre las 00:05 y las 00:46 el 11 oct, y 257 entre las 00:05 y las 04:09 el 10 oct.
+* Y, como antes, una revisión combinada de la selección en las 12 h previas (`not_reviewed`).
+* Cada pick congela si tuvo la pasada del día (`day_pass`) y si se buscaron sus noticias (`web_searched`).
+* **Búsqueda de noticias**: el presupuesto de la web no cambia (20 partidos en la primera pasada, 12 en la previa),
+  pero ahora va primero a los candidatos del set en su propio orden (los que pasan el riesgo, por crecimiento
+  prudente): los picks del día son los partidos con noticias buscadas.
+* **Lo que no se afirma:** que esto mejore el acierto. Es una regla de proceso: todo pick del día lo leyó PrediGol
+  Intelligence en su día, con las noticias que encontró.
+* Los parlays (`parlay-v5`) y el armador del usuario (`builder-v2`) mantienen `context-v1` (una revisión reciente):
+  abarcan días que la IA todavía no abrió.
 
 ### Versiones
 
-`daily-set-v4` (picks del día), `parlay-v5` (parlays de PrediGol: las mismas dos etapas en cada pierna) y
-`builder-v2` (el armador del usuario hereda parlay-v5). Los registros anteriores conservan su versión.
+`daily-set-v5` (picks del día; `daily-set-v4` rigió desde las 16:50 UTC del 11 oct sin llegar a elegir ningún pick:
+los sets del 11 y del 12 ya estaban completos con v3), `parlay-v5` (parlays de PrediGol: riesgo y `context-v1` en
+cada pierna) y `builder-v2` (el armador del usuario hereda parlay-v5). Los registros anteriores conservan su versión.
+
+### Verificación con datos reales (v4 desplegado, 11 oct, 16:51 UTC)
+
+* Embudo (vista previa, 2,85 s): 921 selecciones de las próximas 24 h → datos 828 (93 a menos de 10 min) → mercado
+  667 (157 precio viejo, 4 pocas casas) → modelo y calibración 667 → valor 85 (559 sin crecimiento prudente, 23 sin
+  VE) → **riesgo 40 (45 por encima de 3,00)** → IA 40 → selección 0 (sets llenos). Calificados: 0 (ningún modelo).
+* Armador (dueño, 24 h, 2–4): 654 con valor → **424 bajo el tope** → 52 revisados → 36 combinables en 21 partidos;
+  piernas a 2,10 / 2,55 / 2,47 / 2,55 (antes 4,01 / 4,84 / 4,00). Usuario: sin candidatos (sin modelo calificado).
+* La web desplegada contiene el embudo (`/admin/picks/funnel` responde 401 sin sesión, como debe).
 
 ### Embudo trazable
 
 `GET /api/v1/admin/picks/funnel` (Admin → Picks → «Embudo de selección»): datos → mercado → modelo → calibración →
 valor → riesgo → PrediGol Intelligence → selección, con cuántos entran y pasan en cada paso, por qué se queda cada
-uno, qué entraría ahora y qué casi entra. Se calcula con las mismas funciones que el set del día (un test lo
-comprueba). El usuario ve la misma cadena en «Cómo llega un pick del día», sin nombres de modelos.
+uno, qué entraría ahora y qué casi entra; si la IA ya leyó el día y, por candidato, su pasada del día y su búsqueda
+de noticias. Se calcula con las mismas funciones que el set del día (un test lo comprueba). El usuario ve la misma
+cadena en «Cómo llega un pick del día», sin nombres de modelos.
 
 ## B4 — IA objetiva con contexto: clases de evidencia
 
