@@ -9,6 +9,7 @@
 import type { BestHighlight, BestMarket, BestOddsFixture } from "@/lib/api/v1/types_product";
 import { toNumber } from "@/lib/i18n/format";
 import { hasStarted, isQuarterLine, normLine, type SlipLeg } from "@/product/records/model";
+import type { Pickable } from "@/product/records/pickable";
 import { MARKETS, type MarketKey } from "@/product/shared/markets";
 import type { PriceSlot } from "./board";
 
@@ -77,5 +78,22 @@ export function highlightLeg(h: BestHighlight): NewLeg | null {
     odds: h.price.best_odds,
     bookmaker: h.price.bookmaker,
     p_model: null,
+  };
+}
+
+/** The leg a shown price adds to the slip; null without a price. */
+export function pickableLeg(sel: Pickable): NewLeg | null {
+  if (!sel.odds) return null;
+  return {
+    fixture_id: sel.fixture_id,
+    market_key: sel.market_key,
+    selection: sel.selection,
+    line: normLine(sel.line),
+    home: sel.home,
+    away: sel.away,
+    kickoff_at: sel.kickoff_at,
+    odds: sel.odds,
+    bookmaker: sel.bookmaker,
+    p_model: sel.p_model ?? null,
   };
 }

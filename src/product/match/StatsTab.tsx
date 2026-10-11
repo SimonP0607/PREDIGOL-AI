@@ -1,12 +1,13 @@
 /** Every team figure we have for the match side by side, and the best-rated players. */
 import { useState } from "react";
-import { BarChart3, History, Star, Trophy } from "lucide-react";
+import { BarChart3, Star, Trophy } from "lucide-react";
 import { t, translateOr } from "@/lib/i18n";
 import { toNumber } from "@/lib/i18n/format";
 import type { PlayerLine } from "@/lib/api/v1/types_center";
 import { PlayerPhoto, TeamLogo } from "@/components/football/Logos";
 import type { MatchCtx } from "./context";
-import { ageLevel, notPlayed, ratedPlayers, recentRows, seasonRows, statRows } from "./model";
+import { ageLevel, notPlayed, ratedPlayers, seasonRows, statRows } from "./model";
+import { ProfileBlock } from "./ProfileBlock";
 import {
   Block,
   CenterSection,
@@ -94,55 +95,43 @@ function TopPlayersBlock({ ctx }: { ctx: MatchCtx }) {
   );
 }
 
-/** Before kick-off: the season (from the table) and the last five matches, compared. */
+/**
+ * Before kick-off (REVIEW PREDIGOL, point 5): how the two teams come in - every result and average we hold, by
+ * coverage - then the season from the league table.
+ */
 function PreMatchStats({ ctx }: { ctx: MatchCtx }) {
   const { home, away } = ctx.match;
   return (
     <div className="space-y-4">
       <SectionNote>{t("match.stats.notStarted")}</SectionNote>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Block title={t("match.stats.season")} icon={<Trophy />}>
-          <CenterSection center={ctx.center} pick={(c) => c.standings}>
-            {(rows) => {
-              const h = rows.find((r) => r.side === "home");
-              const a = rows.find((r) => r.side === "away");
-              const bars = seasonRows(h, a);
-              if (bars.length === 0) return <SectionNote />;
-              return (
-                <div className="space-y-4">
-                  <TeamsLegend home={home} away={away} />
-                  {h?.table || a?.table ? (
-                    <p className="-mt-2 text-caption text-subtle-foreground">
-                      {t("match.standings.tableOf", {
-                        table: [...new Set([h?.table, a?.table].filter(Boolean))].join(" · "),
-                      })}
-                    </p>
-                  ) : null}
-                  <p className="numeric -mt-2 flex justify-between text-caption text-muted-foreground">
-                    <span>{h ? t("match.stats.position", { rank: h.rank }) : ""}</span>
-                    <span>{a ? t("match.stats.position", { rank: a.rank }) : ""}</span>
+      <ProfileBlock ctx={ctx} />
+      <Block title={t("match.stats.season")} icon={<Trophy />}>
+        <CenterSection center={ctx.center} pick={(c) => c.standings}>
+          {(rows) => {
+            const h = rows.find((r) => r.side === "home");
+            const a = rows.find((r) => r.side === "away");
+            const bars = seasonRows(h, a);
+            if (bars.length === 0) return <SectionNote />;
+            return (
+              <div className="space-y-4">
+                <TeamsLegend home={home} away={away} />
+                {h?.table || a?.table ? (
+                  <p className="-mt-2 text-caption text-subtle-foreground">
+                    {t("match.standings.tableOf", {
+                      table: [...new Set([h?.table, a?.table].filter(Boolean))].join(" · "),
+                    })}
                   </p>
-                  <StatBars rows={bars} />
-                </div>
-              );
-            }}
-          </CenterSection>
-        </Block>
-        <Block title={t("match.stats.recent")} icon={<History />}>
-          <CenterSection center={ctx.center} pick={(c) => c.form}>
-            {(forms) => {
-              const bars = recentRows(forms);
-              if (bars.length === 0) return <SectionNote />;
-              return (
-                <div className="space-y-4">
-                  <TeamsLegend home={home} away={away} />
-                  <StatBars rows={bars} />
-                </div>
-              );
-            }}
-          </CenterSection>
-        </Block>
-      </div>
+                ) : null}
+                <p className="numeric -mt-2 flex justify-between text-caption text-muted-foreground">
+                  <span>{h ? t("match.stats.position", { rank: h.rank }) : ""}</span>
+                  <span>{a ? t("match.stats.position", { rank: a.rank }) : ""}</span>
+                </p>
+                <StatBars rows={bars} />
+              </div>
+            );
+          }}
+        </CenterSection>
+      </Block>
     </div>
   );
 }

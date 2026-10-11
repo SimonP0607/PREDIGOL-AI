@@ -668,40 +668,6 @@ export function seasonRows(
   ].filter((r) => r.home !== null || r.away !== null);
 }
 
-/** Goals and wins over the last five matches of each side. */
-export function recentRows(forms: readonly TeamForm[]): StatRow[] {
-  const pick = (side: Side) =>
-    latestMatches(
-      forms.find((f) => f.side === side),
-      5,
-    );
-  const h = pick("home");
-  const a = pick("away");
-  if (h.length === 0 || a.length === 0) return [];
-  const sum = (ms: typeof h, f: (m: (typeof h)[number]) => number) =>
-    ms.reduce((n, m) => n + f(m), 0);
-  return [
-    {
-      key: "recentGoalsFor",
-      format: "int",
-      home: sum(h, (m) => m.goals_for),
-      away: sum(a, (m) => m.goals_for),
-    },
-    {
-      key: "recentGoalsAgainst",
-      format: "int",
-      home: sum(h, (m) => m.goals_against),
-      away: sum(a, (m) => m.goals_against),
-    },
-    {
-      key: "recentWins",
-      format: "int",
-      home: h.filter((m) => m.result === "W").length,
-      away: a.filter((m) => m.result === "W").length,
-    },
-  ];
-}
-
 // ── Form ────────────────────────────────────────────────────────────────────
 
 export type ResultLetter = "W" | "D" | "L";

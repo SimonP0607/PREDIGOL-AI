@@ -8,8 +8,10 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { fmtLine, fmtOdds, fmtPct } from "@/lib/i18n/format";
 import type { MarketPriceStatus } from "@/lib/api/v1/types";
+import { SelectablePrice } from "@/product/odds/SelectablePrice";
 import { OddsPill } from "@/product/shared/Bits";
 import { marketName } from "@/product/shared/markets";
+import { priceChooser, type Choose } from "./choose";
 import type { MatchCtx } from "./context";
 import {
   ageLevel,
@@ -22,20 +24,20 @@ import {
 } from "./model";
 import { Block, CenterSection, FreshnessLabel, MoreButton, SectionNote } from "./ui";
 
-/** Wraps a price so it can be chosen (save it, add it to a parlay); absent once played. */
-export type PriceWrap = (pill: ReactNode, price: BestPrice) => ReactNode;
-
 /** One selection, stacked: label, best price, who offers it (and how many quote it). */
 export function PriceTile({
   label,
   price,
   showBooks = false,
-  wrap,
+  choose,
+  note,
 }: {
   label: string;
   price: BestPrice | null;
   showBooks?: boolean;
-  wrap?: PriceWrap | undefined;
+  choose?: Choose | undefined;
+  /** A line under the bookmaker: where the price opened. */
+  note?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg border border-border bg-elevated/40 px-1.5 py-2.5 text-center">
@@ -43,8 +45,8 @@ export function PriceTile({
         {label}
       </span>
       {price ? (
-        wrap ? (
-          wrap(<OddsPill odds={price.odds} />, price)
+        choose ? (
+          <SelectablePrice sel={choose(price)} save />
         ) : (
           <OddsPill odds={price.odds} />
         )
@@ -59,6 +61,7 @@ export function PriceTile({
           {t("match.markets.books", { count: price.books })}
         </span>
       ) : null}
+      {note ? <span className="-mt-1 text-[0.65rem] text-subtle-foreground">{note}</span> : null}
     </div>
   );
 }
@@ -67,19 +70,22 @@ export function PriceTile({
 export function PriceInline({
   price,
   prefix,
-  wrap,
+  choose,
 }: {
   price: BestPrice | null;
   prefix?: ReactNode;
-  wrap?: PriceWrap | undefined;
+  choose?: Choose | undefined;
 }) {
   if (!price) return <span className="numeric text-sm text-subtle-foreground">—</span>;
-  const pill = <OddsPill odds={price.odds} size="sm" />;
   return (
     <div className="flex min-w-0 flex-col items-start gap-0.5">
       <span className="flex items-center gap-1.5">
         {prefix}
-        {wrap ? wrap(pill, price) : pill}
+        {choose ? (
+          <SelectablePrice sel={choose(price)} size="sm" />
+        ) : (
+          <OddsPill odds={price.odds} size="sm" />
+        )}
       </span>
       <span className="max-w-full truncate text-[0.65rem] text-subtle-foreground">
         {price.bookmaker} · {t("match.markets.books", { count: price.books })}
@@ -160,6 +166,7 @@ function TileRow({ title, children, cols }: { title: string; children: ReactNode
 /** Before kick-off on the summary: 1X2, over/under 2.5 and both-teams-score at their best price. */
 export function QuickPricesBlock({ ctx }: { ctx: MatchCtx }) {
   const { markets, match: m } = ctx;
+  const choose = priceChooser(ctx);
   const sides = { home: m.home.name, away: m.away.name };
   const quotes = markets.status === "ok" ? markets.data : [];
   const boards = marketBoards(quotes, "prematch");
@@ -194,6 +201,7 @@ export function QuickPricesBlock({ ctx }: { ctx: MatchCtx }) {
                   key={i}
                   label={tileLabel("1X2", ["Home", "Draw", "Away"][i] ?? "", null, sides)}
                   price={c}
+                  choose={choose}
                 />
               ))}
             </TileRow>
@@ -205,6 +213,7 @@ export function QuickPricesBlock({ ctx }: { ctx: MatchCtx }) {
                   key={i}
                   label={tileLabel("OU", i === 0 ? "Over" : "Under", 2.5, sides)}
                   price={c}
+                  choose={choose}
                 />
               ))}
             </TileRow>
@@ -216,6 +225,7 @@ export function QuickPricesBlock({ ctx }: { ctx: MatchCtx }) {
                   key={i}
                   label={tileLabel("BTTS", i === 0 ? "Yes" : "No", null, sides)}
                   price={c}
+                  choose={choose}
                 />
               ))}
             </TileRow>
@@ -224,6 +234,7 @@ export function QuickPricesBlock({ ctx }: { ctx: MatchCtx }) {
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border/70 pt-2">
             <span className="text-caption text-subtle-foreground">
               {t("match.prices.bestOf", { count: books })}
+              {choose ? ` · ${t("odds.parlay.help")}` : ""}
             </span>
             <MoreButton onClick={() => ctx.goTo("markets")}>
               {t("match.prices.allMarkets")}

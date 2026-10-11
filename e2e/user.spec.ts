@@ -172,14 +172,18 @@ async function clearMine(page: Page, fixtureIds: number[]): Promise<void> {
   }
 }
 
-/** Open a match's markets and choose its first price (the home win). */
-async function chooseFirstPrice(page: Page, w: Watch, fixtureId: number): Promise<void> {
+/**
+ * Open a match's markets and return its first price (the home win). Every price is chosen the Cuotas way
+ * (REVIEW points 6 and 18): a tap toggles it in "Mi parlay", the bookmark beside it saves it.
+ */
+async function firstPrice(page: Page, w: Watch, fixtureId: number) {
   const t = L[lang()];
   await open(page, w, `/matches/${fixtureId}`);
   await page.getByRole("tab", { name: t.match.tabs.markets }).click();
   await settle(page);
-  await page.getByTestId("price-menu").first().click();
-  await expect(page.getByTestId("price-menu-content")).toBeVisible();
+  const price = page.getByTestId("selectable-price").first();
+  await expect(price).toBeVisible();
+  return price;
 }
 
 // One account's own records: these three run one after another, so a parlay saved by one is
@@ -196,11 +200,9 @@ test.describe.serial("a user's own records", () => {
       return;
     }
     await clearMine(page, [fixture.fixture_id]);
-    await chooseFirstPrice(page, w, fixture.fixture_id);
-    const menu = page.getByTestId("price-menu-content");
-    await menu.getByTestId("save-pick").click();
-    await expect(menu.getByTestId("save-pick")).toHaveAttribute("aria-pressed", "true");
-    await page.keyboard.press("Escape");
+    const price = await firstPrice(page, w, fixture.fixture_id);
+    await price.getByTestId("save-pick").click();
+    await expect(price.getByTestId("save-pick")).toHaveAttribute("aria-pressed", "true");
 
     await open(page, w, "/my-picks");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(t.records.mine.title);
@@ -234,11 +236,9 @@ test.describe.serial("a user's own records", () => {
       return;
     }
     for (const f of fixtures) {
-      await chooseFirstPrice(page, w, f.fixture_id);
-      const menu = page.getByTestId("price-menu-content");
-      await menu.getByTestId("add-to-parlay").click();
-      await expect(menu.getByTestId("add-to-parlay")).toHaveAttribute("aria-pressed", "true");
-      await page.keyboard.press("Escape");
+      const price = await firstPrice(page, w, f.fixture_id);
+      await price.getByTestId("odds-add-to-parlay").click();
+      await expect(price.getByTestId("odds-add-to-parlay")).toHaveAttribute("aria-pressed", "true");
     }
     await page.getByTestId("slip-open").click();
     const sheet = page.getByTestId("slip-sheet");

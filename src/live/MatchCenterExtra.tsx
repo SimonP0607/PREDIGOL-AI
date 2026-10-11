@@ -27,6 +27,8 @@ import { cn } from "@/lib/utils";
 import { dec, relative, utcDate, utcDateTime } from "./format";
 import { minuteText, quoteLabel } from "./liveText";
 import { localFixed } from "@/lib/i18n/format";
+import { PlayerPhoto } from "@/components/football/Logos";
+import { absenceKind, absenceReason } from "@/product/match/model";
 
 export interface Sides {
   home: string;
@@ -528,35 +530,27 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
       >
         <SectionView section={c.h2h}>
           {(rows) => (
-            <TableShell>
-              <THead>
-                <TH>{t("center.columns.date")}</TH>
-                <TH>{t("center.columns.match")}</TH>
-                <TH align="right">{t("center.columns.score")}</TH>
-              </THead>
-              <tbody>
-                {rows.map((m) => (
-                  <TRow key={m.fixture_id}>
-                    <TD className="text-xs text-muted-foreground">{utcDate(m.kickoff_at)}</TD>
-                    <TD className="text-sm">
-                      <Link
-                        to="/matches/$fixtureId"
-                        params={{ fixtureId: String(m.fixture_id) }}
-                        className="hover:text-primary"
-                      >
-                        {t("center.versus", { home: m.home, away: m.away })}
-                      </Link>
-                      <div className="text-caption text-subtle-foreground">{m.competition}</div>
-                    </TD>
-                    <TD align="right">
-                      <Numeric>
-                        {m.goals_home}–{m.goals_away}
-                      </Numeric>
-                    </TD>
-                  </TRow>
-                ))}
-              </tbody>
-            </TableShell>
+            // REVIEW PREDIGOL, point 9: the score sits between the two teams - no wide gap, no horizontal scroll.
+            <ul className="divide-y divide-border/60" data-testid="admin-h2h">
+              {rows.map((m) => (
+                <li key={m.fixture_id}>
+                  <Link
+                    to="/matches/$fixtureId"
+                    params={{ fixtureId: String(m.fixture_id) }}
+                    className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-4 py-2 text-sm transition-colors hover:bg-elevated/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+                  >
+                    <span className="min-w-0 truncate text-right">{m.home}</span>
+                    <Numeric className="rounded border border-border-strong bg-elevated px-1.5 py-0.5 text-xs">
+                      {m.goals_home}–{m.goals_away}
+                    </Numeric>
+                    <span className="min-w-0 truncate">{m.away}</span>
+                    <span className="col-span-3 truncate text-center text-caption text-subtle-foreground">
+                      {utcDate(m.kickoff_at)} · {m.competition}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
         </SectionView>
       </Panel>
@@ -568,24 +562,36 @@ export function ContextTab({ c, sides }: { c: MatchCenter; sides: Sides }) {
       >
         <SectionView section={c.absences}>
           {(rows) => (
-            <TableShell>
+            <TableShell compact>
               <THead>
-                <TH>{t("center.columns.team")}</TH>
                 <TH>{t("center.columns.player")}</TH>
-                <TH>{t("center.columns.type")}</TH>
+                <TH>{t("center.context.absences.kind")}</TH>
                 <TH>{t("center.columns.reason")}</TH>
               </THead>
               <tbody>
                 {rows.map((a, i) => (
                   <TRow key={`${a.player}-${i}`}>
-                    <TD className="text-xs text-muted-foreground">
-                      {a.side === "home" ? sides.home : a.side === "away" ? sides.away : "—"}
-                    </TD>
                     <TD className="text-sm">
-                      <PlayerName name={a.player} id={a.player_id} />
+                      <span className="flex min-w-0 items-center gap-2">
+                        <PlayerPhoto src={a.photo_url ?? null} name={a.player ?? "?"} size={24} />
+                        <span className="min-w-0">
+                          <PlayerName name={a.player} id={a.player_id} />
+                          <span className="block truncate text-caption text-subtle-foreground">
+                            {a.side === "home" ? sides.home : a.side === "away" ? sides.away : "—"}
+                          </span>
+                        </span>
+                      </span>
                     </TD>
-                    <TD className="text-xs">{a.type ?? "—"}</TD>
-                    <TD className="text-xs text-muted-foreground">{a.reason ?? "—"}</TD>
+                    <TD className="text-xs">
+                      <span title={a.type ?? undefined}>
+                        {t(`match.absences.kind.${absenceKind(a)}`)}
+                      </span>
+                    </TD>
+                    <TD className="text-xs text-muted-foreground">
+                      <span title={a.reason ?? undefined}>
+                        {t(`match.absences.reason.${absenceReason(a.reason)}`)}
+                      </span>
+                    </TD>
                   </TRow>
                 ))}
               </tbody>
