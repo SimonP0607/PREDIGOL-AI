@@ -10,4 +10,10 @@ describe("the state filter of 'Ya empezaron hoy' (REVIEW point 14)", () => {
     expect(startedState({ result_status: "void", phase: "postponed" })).toBe("other");
     expect(startedState({ result_status: null, phase: "awaiting" })).toBe("other");
   });
+
+  test("a pick in play whose result row is already there (pending) is in play", () => {
+    expect(startedState({ result_status: "pending", phase: "live" })).toBe("live");
+    expect(startedState({ result_status: "pending", phase: "suspended" })).toBe("live");
+    expect(startedState({ result_status: "pending", phase: "postponed" })).toBe("other");
+  });
 });
