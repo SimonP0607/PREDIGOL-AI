@@ -1,13 +1,24 @@
-"""The selection funnel and daily-set-v4's two new stages (REVIEW PREDIGOL B1): the funnel mirrors the daily set's own
-rule check by check, a price above 3.00 is a risk stop, an unreviewed selection a context stop (unless the AI is off)."""
+"""The selection funnel and the daily set's two new stages (REVIEW PREDIGOL B1): the funnel mirrors the daily set's
+own rule check by check, a price above 3.00 is a risk stop, and the context stage (context-v2) wants the AI's day read,
+the match's first pass of the day and a review of the selection (unless the AI is off); a parlay's legs, the review
+only (context-v1)."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 
-from fbi.picks.daily import CONTEXT, RISK, AiView, passing, stage_of
+from fbi.picks.daily import (
+    CONTEXT,
+    LEG_CONTEXT,
+    RISK,
+    AiView,
+    passing,
+    product_day,
+    ready,
+    stage_of,
+)
 from fbi.picks.funnel import STAGES, first_stop, report
 
 D = Decimal
@@ -70,13 +81,29 @@ def test_the_risk_stage_caps_the_price_at_three() -> None:
     assert RISK.stop(at_cap) is None and RISK.stop(above) == "odds_above_cap"
 
 
-def test_the_context_stage_wants_a_review_unless_the_ai_is_off() -> None:
+def test_the_context_stage_wants_the_ais_day_its_pass_and_a_review_unless_the_ai_is_off() -> None:
     (x,) = passing([row(1)], at=AT, source="qualified")
     key = x.leg.candidate.selection_key
-    assert CONTEXT.stop(x, AiView(mode="shadow")) == "not_reviewed"
-    assert CONTEXT.stop(x, AiView(reviews={key: {"decision": "REJECT", "id": 1}}, mode="shadow")) is None, \
-        "reviewed: in shadow even a rejection only goes on the record"
+    day = frozenset({product_day(AT)})
+    reviewed = {key: {"decision": "REJECT", "id": 1}}
+    assert CONTEXT.version == "context-v2"
+    assert CONTEXT.stop(x, AiView(reviews=reviewed, mode="shadow", day_passed=frozenset({1}))) == "day_not_ready", \
+        "the AI has not read the whole day yet"
+    assert CONTEXT.stop(x, AiView(reviews=reviewed, mode="shadow", days_ready=day)) == "no_day_pass"
+    assert CONTEXT.stop(x, AiView(mode="shadow", days_ready=day, day_passed=frozenset({1}))) == "not_reviewed"
+    assert CONTEXT.stop(x, AiView(reviews=reviewed, mode="shadow", days_ready=day, day_passed=frozenset({1}))) is None, \
+        "read on its day and reviewed: in shadow even a rejection only goes on the record"
     assert CONTEXT.stop(x, AiView(mode="off")) is None, "the AI switched off: nothing to require (ai_off)"
+    assert LEG_CONTEXT.version == "context-v1" and LEG_CONTEXT.stop(x, AiView(reviews=reviewed, mode="shadow")) is None, \
+        "a parlay's leg needs the review only"
+    assert LEG_CONTEXT.stop(x, AiView(mode="shadow")) == "not_reviewed"
+
+
+def test_the_days_set_waits_for_the_ais_first_pass_or_six_in_the_morning() -> None:
+    assert not ready(time(0, 3), opened=False, first_due=0), "before 00:05 Bogotá the AI's day is not open"
+    assert not ready(time(2, 0), opened=True, first_due=12), "first passes still due: the day is not read yet"
+    assert ready(time(2, 0), opened=True, first_due=0)
+    assert ready(time(6, 0), opened=True, first_due=12), "from 06:00 with what has been read"
 
 
 def test_the_report_counts_every_stage_and_chooses_like_the_set() -> None:
@@ -84,7 +111,8 @@ def test_the_report_counts_every_stage_and_chooses_like_the_set() -> None:
     rows += [row(8, best_odds=D("3.40"), p_model=D("0.40"), p_fair=D("0.31"), p_low=D("0.38"))]  # above the cap
     rows += [row(9, pick_status="shadow")]  # not qualified
     reviewed = {(n, "1X2", "Home", D(0)): {"decision": "APPROVE", "id": n} for n in range(1, 7)}
-    ai = AiView(reviews=reviewed, mode="shadow")
+    ai = AiView(reviews=reviewed, mode="shadow", days_ready=frozenset({product_day(AT)}),
+                day_passed=frozenset(range(1, 10)))
     rep = report(rows, at=AT, source="qualified", ai=ai, taken={})
     stages = {s.key: s for s in rep.stages}
     assert [s.key for s in rep.stages] == list(STAGES)

@@ -55,7 +55,7 @@ def test_the_day_is_closed_then_revised_only_when_it_changes(db: psycopg.Connect
     daily = body["daily_picks"]
     assert daily["n"] == 5 and daily["won"] + daily["lost"] >= 1
     assert body["matches"]["tracked"] >= 6
-    assert body["ai"]["reviewed"] == 6, "daily-set-v4: every match of the day went through PrediGol Intelligence"
+    assert body["ai"]["reviewed"] == 6, "daily-set-v4/v5: every match of the day went through PrediGol Intelligence"
     assert body["ai"]["downgrade"] == 3
     assert body["ai"]["downgrade_won"] == 1, "F1 won at home 2-0; F3 drew"
     assert "pnl_units" in daily and "line_value" in daily

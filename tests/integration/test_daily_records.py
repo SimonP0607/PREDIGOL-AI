@@ -100,14 +100,28 @@ class World:
             cur.execute("UPDATE picks.picks SET status = %s WHERE id = %s", (status, self.picks[name]))
             self.price(name, price, AT - timedelta(minutes=30))
 
-    def review(self, name: str, decision: str = "APPROVE", at: datetime | None = None) -> None:
-        """PrediGol Intelligence looked at the match's pick (a combined review, rules only): daily-set-v4 and
-        parlay-v5 take only selections it reviewed in the 12 hours before (the CONTEXT stage)."""
+    def review(self, name: str, decision: str = "APPROVE", at: datetime | None = None, *,
+               day_pass: bool = True) -> None:
+        """PrediGol Intelligence looked at the match's pick (a combined review, rules only) - in the first pass of the
+        match's day (``day_pass``): daily-set-v5 takes only selections reviewed in the 12 hours before whose match had
+        its pass of the day (context-v2); parlay-v5 needs the review only (context-v1)."""
+        when = at or AT - timedelta(minutes=10)
         self.cur.execute(
             "INSERT INTO ai.pick_reviews (reviewed_at, fixture_id, market_key, selection, line, engine, engine_version, "
             "input_hash, decision, confidence, output, mode, status) VALUES (%s, %s, '1X2', 'Home', 0, 'combined', "
             "'rules-review-v1+none', 'h', %s, 0.6, %s, 'shadow', 'ok')",
-            (at or AT - timedelta(minutes=10), self.fixtures[name], decision, Jsonb({"reason": "revisión de prueba"})))
+            (when, self.fixtures[name], decision, Jsonb({"reason": "revisión de prueba"})))
+        if day_pass:
+            self.day_pass(name, at=when)
+
+    def day_pass(self, name: str, *, at: datetime | None = None, web: bool = False) -> None:
+        """The first pass of the match's day (``ai.fixture_passes``), over at ``at``; ``web``: it searched the web."""
+        when = at or AT - timedelta(minutes=10)
+        self.cur.execute(
+            "INSERT INTO ai.fixture_passes (fixture_id, day, pass, started_at, finished_at, kickoff_at, status, counts) "
+            "SELECT id, (kickoff_at AT TIME ZONE 'America/Bogota')::date, 'first', %s, %s, kickoff_at, 'ok', %s "
+            "FROM core.fixtures WHERE id = %s ON CONFLICT (fixture_id, day, pass) DO NOTHING",
+            (when - timedelta(minutes=1), when, Jsonb({"web_searches": 2 if web else 0}), self.fixtures[name]))
 
     def review_all(self, at: datetime | None = None) -> None:
         for name in self.fixtures:
@@ -136,7 +150,7 @@ class World:
 def test_the_day_is_chosen_frozen_and_settled(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
     assert build_daily_sets(db, at=AT).items_added == 0, \
-        "daily-set-v4: no pick of the day that PrediGol Intelligence has not looked at"
+        "daily-set-v4/v5: no pick of the day that PrediGol Intelligence has not looked at"
     w.review_all()
     first = build_daily_sets(db, at=AT)
     f = w.fixtures

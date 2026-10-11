@@ -7,7 +7,8 @@ it stopped - so "why is this a pick of the day" and "why is that one not" have a
     calibration  no_interval
     value        non_positive_ev, no_pessimistic_growth
     risk         odds_above_cap                              (risk-v1)
-    context      not_reviewed, ai_rejected                   (context-v1; a rejection only when enforced)
+    context      day_not_ready, no_day_pass, not_reviewed,   (context-v2; a rejection only when enforced)
+                 ai_rejected
     selection    match_taken (a better selection of the match, or the match already in the day's set), day_full
 
 Counted per SELECTION (match, market, selection, line): a selection several model versions priced reaches the stage

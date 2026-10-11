@@ -42,6 +42,8 @@ class FunnelItem(Contract):
     growth: Decimal = Field(description="Expected log growth of a 1% stake at p_low: what the set ranks by.")
     ai_decision: str | None = Field(default=None, description="The newest review's decision (null: not reviewed).")
     evidence: dict[str, int] = Field(default_factory=dict, description="Outside evidence about the match by status.")
+    day_pass: bool = Field(default=False, description="The match had PrediGol Intelligence's first pass of its day.")
+    web_searched: bool = Field(default=False, description="PrediGol Intelligence searched the web for the match.")
 
 
 class SelectionFunnel(Contract):
@@ -59,3 +61,5 @@ class SelectionFunnel(Contract):
     chosen: list[FunnelItem]
     near: list[FunnelItem] = Field(description="The best selections that passed value and stopped later, and why.")
     in_set: dict[str, int] = Field(description="Items already in each day's set (product day -> count).")
+    days_ready: list[date] = Field(default_factory=list, description="Product days PrediGol Intelligence has read "
+                                   "whole (its first pass of the day over, or 06:00 Bogotá): only their sets are chosen.")

@@ -2,8 +2,9 @@
 
 Rule ``parlay-v5`` (11 Oct 2026, REVIEW PREDIGOL B1; v4's records are kept as built): a leg must also pass the RISK
 stage (``risk-v1``: no price above 3.00) and the CONTEXT stage (``context-v1``: PrediGol Intelligence reviewed it in
-the 12 hours before) of the daily set (``fbi.picks.daily``, where the evidence for both is noted). Everything else
-is v4 below.
+the 12 hours before; ``LEG_CONTEXT`` - the daily set's own ``context-v2`` asks for the AI's pass of the match's day,
+which a parlay spanning days, or a user's builder, cannot wait for) of the daily set (``fbi.picks.daily``, where
+the evidence for both is noted). Everything else is v4 below.
 
 Rule ``parlay-v4`` (8 Oct 2026; v3's records are kept as built). On top of v3 below: at most two legs from
 one competition (exposure), every leg priced by at least three bookmakers (liquidity), no leg whose model
@@ -50,8 +51,8 @@ from psycopg.types.json import Jsonb
 
 from fbi.parlays import correlation as corr
 from fbi.picks.daily import (
-    CONTEXT,
     DAY_TZ,
+    LEG_CONTEXT,
     RISK,
     SOURCES,
     STAKE_FRACTION,
@@ -228,8 +229,8 @@ def leg_pool(conn: psycopg.Connection[Any], gated: list[Ranked], *,
     (``passing``), the RISK stage, then PrediGol Intelligence - the CONTEXT stage, and in enforce mode its vetoes
     (rejected and downgraded selections out). Returns (through risk, through context too, the AI's view)."""
     ranked = [x for x in gated if RISK.stop(x) is None]
-    ai = ai_view(conn, ranked, at=at)
-    return ranked, ai.apply([x for x in ranked if CONTEXT.stop(x, ai) is None], drop_downgraded=True), ai
+    ai = ai_view(conn, ranked, at=at, day=False)  # LEG_CONTEXT does not ask for the AI's day
+    return ranked, ai.apply([x for x in ranked if LEG_CONTEXT.stop(x, ai) is None], drop_downgraded=True), ai
 
 
 def build_parlays(conn: psycopg.Connection[Any], *, at: datetime) -> ParlayReport:
@@ -276,7 +277,8 @@ def build_parlays(conn: psycopg.Connection[Any], *, at: datetime) -> ParlayRepor
                         "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                         (parlay_id, n, c.pick_id, c.fixture_id, c.market_key, c.selection, c.line, at, c.price,
                          r.get("bookmaker_id"), c.price_at, c.p_model, x.p_low, c.p_push or 0, c.p_market_fair,
-                         x.leg.ev, Jsonb(frozen_inputs(x, at=at, source=source, rule=RULE_VERSION, ai=ai))))
+                         x.leg.ev, Jsonb(frozen_inputs(x, at=at, source=source, rule=RULE_VERSION, ai=ai,
+                                                        context=LEG_CONTEXT))))
                 # The window recorded is the one the legs were actually chosen from (a multi-day
                 # parlay looks 72 hours ahead of the moment it is built, not of the moment it was
                 # first looked for).

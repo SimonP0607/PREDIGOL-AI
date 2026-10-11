@@ -49,6 +49,24 @@ data -> market -> model -> calibration -> value -> RISK -> CONTEXT -> selection 
   outside evidence by status, confirmed / probable / rumour / contradictory / outdated, frozen with the item). The
   review still CHANGES the choice only when it is enforced (above). With the AI switched off (``FBI_AI_MODE=off``)
   there is nothing to require and the item says so (``context: ai_off``).
+
+``daily-set-v5`` (11 Oct 2026, REVIEW PREDIGOL B1/B4) makes the CONTEXT stage the AI's DAY (``context-v2``). Measured
+on the real sets of 4-12 Oct: the rule took each day's first matches the moment their 24-hour window opened (40 of
+45 items chosen 12-24 h ahead; 7 of the 20 since 9 Oct kicked off at 00:00 Bogotá, which PrediGol Intelligence's
+day never reaches) - 37 of 45 matches never had the AI's pass of the day and 41 were never searched for news. A
+review by the rules alone satisfied v4. Now:
+
+* the match's FIRST PASS of its day (``fbi.ai.day``, from 00:05 Bogotá: its packet, the web search for the matches
+  most likely to be picks - ``fbi.ai.cycle`` searches the daily set's own order first -, the brief, the
+  candidates' model review) must be done (``no_day_pass``), and
+* the day's set is chosen once PrediGol Intelligence has read the whole day: no first pass still due, or 06:00
+  Bogotá at the latest (``day_not_ready``) - so the five are the best of the day, not the first five read; a match
+  that kicks off before then cannot be a pick of the day;
+* and, as before, a combined review of the selection in the 12 hours before (``not_reviewed``).
+
+The item freezes whether its match had the day's pass and a web search. No claim about returns is made: it is a
+process rule - every pick of the day was read by PrediGol Intelligence on its day, with the news it found.
+The parlays keep ``context-v1`` (a recent review) - a parlay or a user's builder spans days the AI has not opened.
 """
 
 from __future__ import annotations
@@ -66,7 +84,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.parlays.engine import Candidate, GateConfig, Leg, assess
 
-RULE_VERSION = "daily-set-v4"
+RULE_VERSION = "daily-set-v5"
 DAY_TZ = ZoneInfo("America/Bogota")
 MAX_ITEMS = 5
 HORIZON = timedelta(hours=24)
@@ -177,18 +195,33 @@ RISK = RiskRule("risk-v1", max_odds=Decimal("3.00"))
 
 @dataclass(frozen=True, slots=True)
 class ContextRule:
-    """The context stage (REVIEW B1/B4): PrediGol Intelligence must have looked at the selection."""
+    """The context stage (REVIEW B1/B4): PrediGol Intelligence must have looked at the selection - and, for the picks
+    of the day, on the match's day: its first pass done, the whole day read (``AiView.days_ready``)."""
 
     version: str
     require_review: bool = True
+    require_day_pass: bool = False
 
     def stop(self, x: Ranked, ai: AiView) -> str | None:
-        if not self.require_review or ai.mode == "off":
+        if ai.mode == "off":
             return None
-        return None if ai.reviewed(x) else "not_reviewed"
+        c = x.leg.candidate
+        if self.require_day_pass:
+            if product_day(c.kickoff_at) not in ai.days_ready:
+                return "day_not_ready"
+            if c.fixture_id not in ai.day_passed:
+                return "no_day_pass"
+        if self.require_review and not ai.reviewed(x):
+            return "not_reviewed"
+        return None
 
 
-CONTEXT = ContextRule("context-v1")
+CONTEXT = ContextRule("context-v2", require_day_pass=True)
+"""The picks of the day (daily-set-v5)."""
+LEG_CONTEXT = ContextRule("context-v1")
+"""A parlay's legs (parlay-v5, builder-v2): a review in the 12 hours before - they span days the AI has not opened."""
+READY_BY = time(6, 0)
+"""The day's set is chosen once the AI's first pass of the day is over, or from this time (Bogotá) at the latest."""
 
 
 @dataclass(frozen=True)
@@ -201,6 +234,12 @@ class AiView:
     reason: str = "ai_unavailable"
     evidence: dict[int, dict[str, int]] = field(default_factory=dict)
     """Per match: the outside evidence gathered before now, counted by the status the server gave it."""
+    day_passed: frozenset[int] = frozenset()
+    """Matches whose first pass of their day (``ai.fixture_passes``) was over before now."""
+    searched: frozenset[int] = frozenset()
+    """Matches PrediGol Intelligence searched on the web in one of their day's passes before now."""
+    days_ready: frozenset[date] = frozenset()
+    """Bogotá days the AI has read whole: opened, no first pass still due (or ``READY_BY`` passed)."""
 
     def decision(self, x: Ranked) -> str | None:
         r = self.reviews.get(x.leg.candidate.selection_key)
@@ -211,8 +250,10 @@ class AiView:
 
     def record(self, x: Ranked) -> dict[str, Any]:
         r = self.reviews.get(x.leg.candidate.selection_key)
+        fid = x.leg.candidate.fixture_id
         base: dict[str, Any] = {"mode": self.mode, "enforced": self.enforced, "why": self.reason,
-                                "evidence": dict(self.evidence.get(x.leg.candidate.fixture_id, {}))}
+                                "evidence": dict(self.evidence.get(fid, {})), "day_pass": fid in self.day_passed,
+                                "web_searched": fid in self.searched}
         if r is None:
             return base | {"decision": None}
         out = dict(r.get("output") or {})
@@ -230,8 +271,9 @@ class AiView:
         return sorted(kept, key=lambda x: self.decision(x) == "DOWNGRADE")  # stable: rank order otherwise
 
 
-def ai_view(conn: psycopg.Connection[Any], ranked: list[Ranked], *, at: datetime) -> AiView:
-    """Read in a savepoint: without the AI tables (an older database) the set is built as before."""
+def ai_view(conn: psycopg.Connection[Any], ranked: list[Ranked], *, at: datetime, day: bool = True) -> AiView:
+    """Read in a savepoint: without the AI tables (an older database) the set is built as before. ``day``: whether to
+    ask if today has been read whole (``day_ready``) - only the daily set's context stage needs it."""
     from fbi.ai.config import AiSettings
     from fbi.ai.gating import enforcement
     from fbi.ai.review import latest_reviews
@@ -243,9 +285,46 @@ def ai_view(conn: psycopg.Connection[Any], ranked: list[Ranked], *, at: datetime
             reviews = latest_reviews(conn, fixtures, at=at)
             enf = enforcement(conn, settings)
             evidence = evidence_counts(conn, fixtures, at=at)
+            passed, searched = day_passes(conn, fixtures, at=at)
+            ready = frozenset({product_day(at)}) if day and day_ready(conn, at=at) else frozenset()
     except psycopg.errors.UndefinedTable:
         return AiView(mode=settings.mode)
-    return AiView(reviews, enf.enforced, settings.mode, enf.reason, evidence)
+    return AiView(reviews, enf.enforced, settings.mode, enf.reason, evidence, passed, searched, ready)
+
+
+PASSES_SQL = """
+SELECT p.fixture_id, bool_or(p.pass = 'first') AS first_done,
+       bool_or(COALESCE((p.counts->>'web_searches')::int, 0) > 0) AS searched
+  FROM ai.fixture_passes p
+ WHERE p.fixture_id = ANY(%(fixtures)s) AND p.finished_at <= %(at)s AND p.status IN ('ok', 'partial')
+ GROUP BY 1
+"""
+
+
+def day_passes(conn: psycopg.Connection[Any], fixtures: list[int], *, at: datetime
+               ) -> tuple[frozenset[int], frozenset[int]]:
+    """(matches whose first pass of the day is over, matches searched on the web in a pass), as of ``at``."""
+    if not fixtures:
+        return frozenset(), frozenset()
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(PASSES_SQL, {"fixtures": fixtures, "at": at})
+        rows = cur.fetchall()
+    return (frozenset(int(r["fixture_id"]) for r in rows if r["first_done"]),
+            frozenset(int(r["fixture_id"]) for r in rows if r["searched"]))
+
+
+def ready(local: time, *, opened: bool, first_due: int) -> bool:
+    """Whether the day's set may be chosen (pure): the AI's day is open and its first pass over, or READY_BY."""
+    return opened and (first_due == 0 or local >= READY_BY)
+
+
+def day_ready(conn: psycopg.Connection[Any], *, at: datetime) -> bool:
+    from fbi.ai.day import due_passes, opened
+
+    local = at.astimezone(DAY_TZ).time()
+    if not opened(at) or local >= READY_BY:
+        return ready(local, opened=opened(at), first_due=0)
+    return ready(local, opened=True, first_due=sum(1 for d in due_passes(conn, at=at) if d.pass_kind == "first"))
 
 
 EVIDENCE_SQL = """
@@ -275,7 +354,8 @@ def staged(rows: list[dict[str, Any]], *, at: datetime, source: Source) -> list[
             and RISK.stop(x) is None]
 
 
-def frozen_inputs(x: Ranked, *, at: datetime, source: Source, rule: str, ai: AiView | None = None) -> dict[str, Any]:
+def frozen_inputs(x: Ranked, *, at: datetime, source: Source, rule: str, ai: AiView | None = None,
+                  context: ContextRule = CONTEXT) -> dict[str, Any]:
     c, r = x.leg.candidate, x.row
     return {
         "rule_version": rule, "source": source, "selected_at": at.isoformat(), "model": r.get("model"),
@@ -289,7 +369,7 @@ def frozen_inputs(x: Ranked, *, at: datetime, source: Source, rule: str, ai: AiV
                  "max_price_edge": str(GATE.max_price_edge), "min_minutes_to_kickoff": GATE.min_minutes_to_kickoff,
                  "min_ev": str(GATE.min_ev)},
         "risk": {"version": RISK.version, "max_odds": None if RISK.max_odds is None else str(RISK.max_odds)},
-        "context": ("ai_off" if ai is not None and ai.mode == "off" else CONTEXT.version),
+        "context": ("ai_off" if ai is not None and ai.mode == "off" else context.version),
     } | ({} if ai is None else {"ai": ai.record(x)})
 
 

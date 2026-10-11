@@ -41,7 +41,8 @@ def _item(x: Ranked, ai: Any, *, day: date | None = None, stage: str | None = No
         competition=_competition(r), home=_home(r), away=_away(r), market_key=c.market_key, selection=c.selection,
         line=c.line, odds=c.price, bookmaker=r.get("bookmaker"), p_model=c.p_model, p_low=x.p_low,
         p_market=c.p_market_fair, ev=x.leg.ev, growth=Decimal(str(round(x.elg, 8))), ai_decision=ai.decision(x),
-        evidence=dict(ai.evidence.get(c.fixture_id, {})))
+        evidence=dict(ai.evidence.get(c.fixture_id, {})), day_pass=c.fixture_id in ai.day_passed,
+        web_searched=c.fixture_id in ai.searched)
 
 
 def selection_funnel(conn: Conn, *, source: Source, at: datetime | None = None) -> Envelope[SelectionFunnel]:
@@ -59,5 +60,5 @@ def selection_funnel(conn: Conn, *, source: Source, at: datetime | None = None) 
                             reasons=dict(s.reasons.most_common())) for s in rep.stages],
         chosen=[_item(x, ai, day=day) for day, x in rep.chosen],
         near=[_item(x, ai, stage=stage, reason=why) for stage, why, x in rep.near],
-        in_set={str(day): len(fx) for day, fx in sorted(taken.items())})
+        in_set={str(day): len(fx) for day, fx in sorted(taken.items())}, days_ready=sorted(ai.days_ready))
     return ok(body, data_as_of=moment)
