@@ -259,12 +259,43 @@ def test_the_web_is_asked_once_while_fresh_and_its_evidence_keeps_its_source(db:
     stats = db.execute("SELECT domain, results FROM ai.source_stats ORDER BY domain").fetchall()
     assert ("marca.com", 2) in stats and ("foro.example", 2) in stats
     # half an hour later the same match: the cached answer is fresh, nothing is asked again
-    again = collect_web(conn, settings, world.fixtures["F1"], at=AT + timedelta(minutes=30),
+    searched = [int(r[0]) for r in db.execute(
+        "SELECT fixture_id FROM ai.fixture_passes WHERE pass = 'first' AND (counts->>'web_searches')::int > 0 "
+        "ORDER BY fixture_id").fetchall()]
+    assert len(searched) == 2
+    again = collect_web(conn, settings, searched[0], at=AT + timedelta(minutes=30),
                         ledger=UsageLedger(shared(db)), search=search, provider=(model, "claude-haiku-5-5"))
     assert again.skipped == "cached" and again.searches == 0 and len(calls) == 2
     assert count(db, "SELECT count(*) FROM ai.usage WHERE purpose = 'web_search' AND status = 'ok'") == 2
     assert db.execute("SELECT max(hits), max(last_hit_at) IS NOT NULL FROM ai.research_cache WHERE scope = 'search'"
                       ).fetchone() == (1, True)
+
+
+def test_the_first_pass_searches_the_likeliest_picks_of_the_day_first(db: psycopg.Connection[Any],
+                                                                     world: World) -> None:
+    """REVIEW B4: the web budget of the first pass goes to the daily set's own order - the matches whose best selection
+    passes the risk stage, by pessimistic growth - so the picks of the day are the ones searched for news."""
+    from fbi.picks.daily import RISK, load_candidates, passing
+
+    conn: Any = Savepoints(db)
+    searched_queries: list[str] = []
+
+    def search(query: str, at: datetime) -> list[SearchResult]:
+        searched_queries.append(query)
+        return []
+    run(conn, provider=smart(), settings=AiSettings(mode="shadow", max_web_first=2), search=search)
+    searched = {int(r[0]) for r in db.execute(
+        "SELECT fixture_id FROM ai.fixture_passes WHERE pass = 'first' AND (counts->>'web_searches')::int > 0"
+    ).fetchall()}
+    rows = load_candidates(db, at=AT, until=AT + timedelta(hours=96), include_shadow=True)
+    best: dict[int, float] = {}
+    for x in passing(rows, at=AT, source="evaluation"):
+        fid = x.leg.candidate.fixture_id
+        if x.elg > 0 and RISK.stop(x) is None and fid in set(world.fixtures.values()) and x.leg.candidate.kickoff_at \
+                < AT + timedelta(hours=17):
+            best[fid] = max(best.get(fid, x.elg), x.elg)
+    expected = {fid for fid, _ in sorted(best.items(), key=lambda kv: -kv[1])[:2]}
+    assert len(expected) == 2 and searched == expected, (searched, best)
 
 
 def test_a_search_outage_costs_nothing_and_stops_nothing(db: psycopg.Connection[Any], world: World) -> None:

@@ -14,8 +14,9 @@ PAID, only for TODAY's matches (Bogotá) that HAVE A MARKET, at their passes (``
     L1  brief    every match of the day at each of its passes, when its input changed - the economical model, or
                  the rules when no model may answer (``fbi.ai.brief``); the brief comes first and says whether the
                  match escalates
-    web          first pass: the candidates' matches and the most important ones (FBI_AI_MAX_WEB_FIRST); pre pass:
-                 the escalated ones (FBI_AI_MAX_WEB_PRE) - only when the cached answer is stale
+    web          first pass: the candidates' matches - the daily set's own order first (``web_rank``) - and the most
+                 important ones (FBI_AI_MAX_WEB_FIRST); pre pass: the escalated ones (FBI_AI_MAX_WEB_PRE) - only when
+                 the cached answer is stale
     L2  review   the candidates of the day (intermediate model), again only after a material change (the price
                  moved more than 3 %, new evidence, the line-ups); an escalated match without a candidate gets at
                  most one review of its nearest-to-value selection (a watch, FBI_AI_MAX_WATCH_PER_DAY)
@@ -59,7 +60,7 @@ from fbi.ai.review import Candidate, Reviewed, carried_review, latest_reviews, r
 from fbi.ai.usage import UsageLedger, check_alerts
 from fbi.ai.usage import budget as budget_of
 from fbi.core.clock import now
-from fbi.picks.daily import Ranked, load_candidates, passing
+from fbi.picks.daily import RISK, Ranked, load_candidates, passing
 
 log = structlog.get_logger(__name__)
 
@@ -386,8 +387,8 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
             tcur.execute(ESCALATED_SQL, {"fixtures": list(dues)})
             escalated = {int(r[0]) for r in tcur.fetchall() if r[1]}
 
-        def rank(d: Due) -> tuple[int, float, datetime]:
-            return (-int(d.fixture.fixture_id in by_fixture), -d.fixture.priority, d.fixture.kickoff_at)
+        def rank(d: Due) -> tuple[int, int, float, float, datetime]:
+            return web_rank(d, by_fixture)
         firsts = sorted((d for d in dues.values() if d.pass_kind in ("first", "request")), key=rank)
         pres = sorted((d for d in dues.values() if d.pass_kind == "pre"
                        and (d.fixture.fixture_id in by_fixture or d.fixture.fixture_id in escalated)), key=rank)
@@ -417,6 +418,16 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
             report.status = "partial"
             report.errors.append(f"fixture {fid}: {type(exc).__name__}: {exc}"[:200])
             log.warning("ai.cycle.fixture_failed", fixture=fid, error=f"{type(exc).__name__}: {exc}"[:200])
+
+
+def web_rank(d: Due, by_fixture: dict[int, list[Ranked]]) -> tuple[int, int, float, float, datetime]:
+    """Which matches of a pass are searched on the web first (REVIEW B4): the daily set's own order - the matches whose
+    best selection passes the risk stage (``fbi.picks.daily.RISK``), by its pessimistic growth, the likeliest picks of
+    the day -, then the other shortlisted matches, then the rest; within each, the match's priority."""
+    options = by_fixture.get(d.fixture.fixture_id, [])
+    eligible = [x.elg for x in options if RISK.stop(x) is None]
+    return (-int(bool(eligible)), -int(bool(options)), -(max(eligible) if eligible else 0.0), -d.fixture.priority,
+            d.fixture.kickoff_at)
 
 
 def _last_llm(conn: psycopg.Connection[Any], fixture_id: int) -> dict[tuple[str, str, Decimal], dict[str, Any]]:
