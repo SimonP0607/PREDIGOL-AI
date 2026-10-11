@@ -261,6 +261,11 @@ export const live = {
     queryFn: () => v1.rankings(competitionId, pool),
   }),
   picks: { queryKey: ["v1", "picks"], queryFn: v1.picks },
+  selectionFunnel: (source: "evaluation" | "qualified") => ({
+    queryKey: ["v1", "admin", "selection-funnel", source],
+    queryFn: () => v1.selectionFunnel(source),
+    refetchInterval: 2 * MINUTE,
+  }),
   settlementLatency: {
     queryKey: ["v1", "admin", "settlement-latency"],
     queryFn: () => v1.settlementLatency(7),

@@ -378,5 +378,19 @@
       "bestWin": "Mejor",
       "worstLoss": "Peor"
     }
+  },
+  "funnel": {
+    "label": "Cómo llega un pick del día",
+    "steps": {
+      "data": "Datos válidos",
+      "market": "Mercado",
+      "model": "Modelo",
+      "calibration": "Calibración",
+      "value": "Valor",
+      "risk": "Riesgo (cuota ≤ {max})",
+      "context": "PrediGol Intelligence",
+      "selection": "Selección (máx. 5)"
+    },
+    "help": "Cada paso es un filtro: si no hay picks que los pasen todos, el día se queda con menos o sin ninguno."
   }
 }

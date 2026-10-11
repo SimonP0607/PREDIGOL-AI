@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "@/lib/api/mode";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
+import type { SelectionFunnel } from "./types_funnel";
 
 export interface BestOddsQuery {
   market?: string | undefined;
@@ -492,6 +493,9 @@ export const v1 = {
   models: () => getJson<Envelope<ModelsOverview>>("/admin/models"),
   researchV2: () => getJson<Envelope<ResearchOverview>>("/admin/research/v2"),
   picks: () => getJson<Envelope<PicksOverview>>("/admin/picks"),
+  /** The day's selection funnel (REVIEW B1): every stage of the daily set's rule, what stopped where. */
+  selectionFunnel: (source: "evaluation" | "qualified") =>
+    getJson<Envelope<SelectionFunnel>>("/admin/picks/funnel", { source }),
   settlementLatency: (days = 7) =>
     getJson<Envelope<SettlementLatency>>("/admin/picks/settlement", { days }),
   performance: () => getJson<Envelope<PerformanceSummary>>("/admin/performance"),

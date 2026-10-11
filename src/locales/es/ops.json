@@ -226,6 +226,65 @@
         "results_repair": "Reparación de resultados",
         "pipeline": "Pasada del pipeline"
       }
+    },
+    "funnel": {
+      "title": "Embudo de selección (próximas 24 h)",
+      "subtitle": "La regla de los picks del día paso a paso: dónde se queda cada candidato y por qué. Nunca se rellena.",
+      "source": "Origen",
+      "evaluation": "Evaluación (sombra)",
+      "qualified": "Calificados",
+      "rule": "Regla {rule} · riesgo {risk} (cuota ≤ {max}) · contexto {context} · IA {mode}{enforced}",
+      "enforced": ", aplicada",
+      "counts": "{candidates} picks leídos · {selections} selecciones distintas",
+      "inSet": "Ya en el set del día",
+      "entered": "Entran",
+      "passed": "Pasan",
+      "stopped": "Se quedan",
+      "chosen": "Entraría ahora",
+      "chosenNone": "Nada nuevo entraría ahora: o el set del día está completo o nada más pasa todos los pasos.",
+      "near": "Lo que casi entra, y por qué no",
+      "nearNone": "Ninguna selección con valor se quedó en los últimos pasos.",
+      "evidence": "Evidencia",
+      "noEvidence": "sin evidencia",
+      "ai": "IA",
+      "notReviewed": "sin revisar",
+      "stage": {
+        "data": "Datos válidos",
+        "market": "Mercado",
+        "model": "Modelo",
+        "calibration": "Calibración",
+        "value": "Valor",
+        "risk": "Riesgo",
+        "context": "PrediGol Intelligence",
+        "selection": "Selección"
+      },
+      "reason": {
+        "not_scheduled": "partido no programado",
+        "too_close_to_kickoff": "a menos de 10 min del inicio",
+        "outside_window": "fuera de las 24 h",
+        "no_price": "sin precio",
+        "stale_price": "precio de hace más de 3 h",
+        "no_consensus": "sin consenso de mercado",
+        "few_bookmakers": "menos de 2 casas",
+        "price_outlier": "precio atípico",
+        "not_qualified": "modelo no calificado",
+        "model_retired": "modelo retirado",
+        "no_interval": "sin intervalo medido",
+        "non_positive_ev": "sin valor esperado",
+        "no_pessimistic_growth": "no crece en el escenario prudente",
+        "odds_above_cap": "cuota por encima del tope",
+        "not_reviewed": "PrediGol Intelligence no la ha revisado",
+        "ai_rejected": "rechazada por la IA (aplicada)",
+        "match_taken": "el partido ya tiene su pick",
+        "day_full": "el día ya tiene 5"
+      },
+      "status": {
+        "CONFIRMED": "confirmada",
+        "PROBABLE": "probable",
+        "RUMOR": "rumor",
+        "CONTRADICTORY": "contradictoria",
+        "OUTDATED": "desactualizada"
+      }
     }
   },
   "analyst": {

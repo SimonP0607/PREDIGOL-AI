@@ -21,6 +21,7 @@ import {
 import { EvaluationBadge } from "./Badges";
 import { DailyItemCard } from "./DailyItemCard";
 import { DayNav } from "./DayNav";
+import { FunnelLine } from "./FunnelLine";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
 
@@ -176,6 +177,7 @@ export function DailySetBlock({
         </div>
       </div>
       {nav ? <DayNav day={nav.day} today={nav.today} onDay={nav.onDay} items={items} /> : null}
+      {variant === "page" ? <FunnelLine /> : null}
       {evaluation ? <EvaluationNote /> : null}
       {body}
     </section>

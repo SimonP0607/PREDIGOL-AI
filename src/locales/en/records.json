@@ -378,5 +378,19 @@
       "bestWin": "Best",
       "worstLoss": "Worst"
     }
+  },
+  "funnel": {
+    "label": "How a pick of the day gets here",
+    "steps": {
+      "data": "Valid data",
+      "market": "Market",
+      "model": "Model",
+      "calibration": "Calibration",
+      "value": "Value",
+      "risk": "Risk (odds ≤ {max})",
+      "context": "PrediGol Intelligence",
+      "selection": "Selection (max 5)"
+    },
+    "help": "Each step is a filter: if no pick passes them all, the day has fewer or none."
   }
 }

@@ -226,6 +226,65 @@
         "results_repair": "Results repair",
         "pipeline": "Pipeline pass"
       }
+    },
+    "funnel": {
+      "title": "Selection funnel (next 24 h)",
+      "subtitle": "The rule of the day's picks step by step: where each candidate stops and why. Never padded.",
+      "source": "Source",
+      "evaluation": "Evaluation (shadow)",
+      "qualified": "Qualified",
+      "rule": "Rule {rule} · risk {risk} (odds ≤ {max}) · context {context} · AI {mode}{enforced}",
+      "enforced": ", enforced",
+      "counts": "{candidates} picks read · {selections} distinct selections",
+      "inSet": "Already in the day's set",
+      "entered": "In",
+      "passed": "Pass",
+      "stopped": "Stop",
+      "chosen": "Would enter now",
+      "chosenNone": "Nothing new would enter now: either the day's set is full or nothing else passes every step.",
+      "near": "What nearly made it, and why not",
+      "nearNone": "No selection with value stopped at the last steps.",
+      "evidence": "Evidence",
+      "noEvidence": "no evidence",
+      "ai": "AI",
+      "notReviewed": "not reviewed",
+      "stage": {
+        "data": "Valid data",
+        "market": "Market",
+        "model": "Model",
+        "calibration": "Calibration",
+        "value": "Value",
+        "risk": "Risk",
+        "context": "PrediGol Intelligence",
+        "selection": "Selection"
+      },
+      "reason": {
+        "not_scheduled": "match not scheduled",
+        "too_close_to_kickoff": "under 10 min to kick-off",
+        "outside_window": "beyond 24 h",
+        "no_price": "no price",
+        "stale_price": "price older than 3 h",
+        "no_consensus": "no market consensus",
+        "few_bookmakers": "fewer than 2 books",
+        "price_outlier": "outlier price",
+        "not_qualified": "model not qualified",
+        "model_retired": "model retired",
+        "no_interval": "no measured interval",
+        "non_positive_ev": "no expected value",
+        "no_pessimistic_growth": "no growth in the prudent case",
+        "odds_above_cap": "odds above the cap",
+        "not_reviewed": "PrediGol Intelligence has not reviewed it",
+        "ai_rejected": "rejected by the AI (enforced)",
+        "match_taken": "the match already has its pick",
+        "day_full": "the day already has 5"
+      },
+      "status": {
+        "CONFIRMED": "confirmed",
+        "PROBABLE": "probable",
+        "RUMOR": "rumour",
+        "CONTRADICTORY": "contradictory",
+        "OUTDATED": "outdated"
+      }
     }
   },
   "analyst": {
