@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.analytics import ModelsOverview, PerformanceSummary, PicksOverview
+from fbi.api.contracts.funnel import SelectionFunnel
 from fbi.api.contracts.matches import MatchSummary
 from fbi.api.contracts.odds import FixtureOdds, OddsIntelligence
 from fbi.api.contracts.research import ResearchOverview
 from fbi.api.contracts.settlement import SettlementLatency
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
-from fbi.api.services import analytics, odds, research, settlement
+from fbi.api.services import analytics, odds, research, selection, settlement
 
 router = APIRouter(tags=["market"])
 admin_router = APIRouter(tags=["admin: market & research"])
@@ -72,6 +73,16 @@ def get_settlement_latency(conn: Db, days: Annotated[int, Query(ge=1, le=60)] = 
     """How long each match's bets waited after it ended (first settlement per match), and the matches that ended
     and still have bets open - none for long, unless a human must decide (postponed, abandoned, awarded)."""
     return settlement.latency(conn, days=days)
+
+
+@admin_router.get("/picks/funnel", response_model=Envelope[SelectionFunnel])
+def get_selection_funnel(
+    conn: Db, source: Annotated[Literal["evaluation", "qualified"], Query()] = "evaluation",
+) -> Envelope[SelectionFunnel]:
+    """The day's selection funnel (REVIEW B1): the next 24 hours' candidates stage by stage - data, market, model,
+    calibration, value, risk, PrediGol Intelligence, selection - why the others stopped, what the next build of the
+    day's set would choose and what nearly made it. ``evaluation``: with shadow picks (the owner's preview)."""
+    return selection.selection_funnel(conn, source=source)
 
 
 @admin_router.get("/performance", response_model=Envelope[PerformanceSummary])
