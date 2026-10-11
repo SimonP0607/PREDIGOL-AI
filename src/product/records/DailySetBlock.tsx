@@ -8,7 +8,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowRight, Target, Trophy } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@/lib/i18n";
-import { formatDateLong, shiftDay } from "@/lib/time";
+import { formatDateLong } from "@/lib/time";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { DailyBoard } from "@/lib/api/v1/types_records";
 import {
@@ -20,6 +20,7 @@ import {
 } from "@/product/shared/States";
 import { EvaluationBadge } from "./Badges";
 import { DailyItemCard } from "./DailyItemCard";
+import { DayNav } from "./DayNav";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
 
@@ -172,37 +173,9 @@ export function DailySetBlock({
               {t("records.daily.count", { count: items.length })}
             </span>
           ) : null}
-          {nav ? (
-            <span className="inline-flex items-center gap-1" data-testid="daily-nav">
-              <button
-                type="button"
-                onClick={() => nav.onDay(shiftDay(nav.day, -1))}
-                className="rounded-md border border-border px-2 py-1 text-caption hover:bg-elevated"
-              >
-                ← {t("records.daily.previous")}
-              </button>
-              {nav.day !== nav.today ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => nav.onDay(shiftDay(nav.day, 1))}
-                    className="rounded-md border border-border px-2 py-1 text-caption hover:bg-elevated"
-                  >
-                    {t("records.daily.next")} →
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => nav.onDay(nav.today)}
-                    className="rounded-md border border-primary/40 px-2 py-1 text-caption text-primary hover:bg-primary/10"
-                  >
-                    {t("records.daily.today")}
-                  </button>
-                </>
-              ) : null}
-            </span>
-          ) : null}
         </div>
       </div>
+      {nav ? <DayNav day={nav.day} today={nav.today} onDay={nav.onDay} items={items} /> : null}
       {evaluation ? <EvaluationNote /> : null}
       {body}
     </section>

@@ -4,14 +4,18 @@
  * re-priced at the best price available now - each one can be saved or added to a parlay.
  * A USER only ever sees qualified picks; when none qualifies the page says so plainly - it
  * never fills the list.
+ *
+ * REVIEW PREDIGOL: the day reads clearly, with its navigation (point 12); the list opens on
+ * the next 24 hours and comes in pages of 15 (point 13); "Ya empezaron hoy" has its own
+ * filters and pages (point 14); a price is chosen the Cuotas way (point 18).
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { ChevronDown, Clock, History, ListFilter, RotateCcw, Trophy } from "lucide-react";
+import { ChevronDown, Clock, History, ListFilter, RotateCcw } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import { todayKey } from "@/lib/time";
 import type { Envelope } from "@/lib/api/v1/types";
-import type { CompetitionBadge, PicksBoard } from "@/lib/api/v1/types_product";
+import type { CompetitionBadge, PicksBoard, StartedPick } from "@/lib/api/v1/types_product";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
 import { fmtOdds } from "@/lib/i18n/format";
@@ -30,8 +34,11 @@ import {
 } from "@/product/shared/States";
 import { MARKETS, emptyReason, marketShort } from "@/product/shared/markets";
 import { DailySetBlock } from "@/product/records/DailySetBlock";
-import { pickableOfCard } from "@/product/records/pickable";
-import { SelectionActions } from "@/product/records/SelectionActions";
+import { pickableOfCard, type Pickable } from "@/product/records/pickable";
+import { SelectablePrice } from "@/product/odds/SelectablePrice";
+import { Pager } from "@/product/shared/Pager";
+import { usePaged } from "@/product/shared/paging";
+import { startedState, type StartedState } from "./started";
 import { ChipGroup, ShadowToggle, type ChipOption } from "./Controls";
 import {
   DEFAULT_FILTERS,
@@ -45,9 +52,6 @@ import {
 } from "./filters";
 
 const DAY_ZONE = "America/Bogota";
-
-/** Cards shown at first, and added by each "show more". */
-const PAGE = 24;
 
 type BoardQuery = UseQueryResult<Envelope<PicksBoard>>;
 
@@ -71,20 +75,51 @@ export function PicksPage() {
       />
       <DailySetBlock query={daily} nav={{ day, today, onDay: setDay }} />
       <AllPicks query={list} filters={filters} onChange={setFilters} />
-      <StartedPicks query={list} />
+      <StartedPicks />
     </div>
   );
 }
 
+/** The price of a card, chosen the Cuotas way: a tap toggles it in "Mi parlay", the bookmark saves it. */
+function PriceRow({ sel }: { sel: Pickable }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="min-w-0 text-caption text-muted-foreground">{t("picks.priceHelp")}</span>
+      <SelectablePrice sel={sel} save className="shrink-0" />
+    </div>
+  );
+}
+
+const STATES: readonly StartedState[] = ["all", "live", "won", "lost", "other"];
+
 /**
  * Today's pre-match picks whose match already kicked off: they do not disappear at kick-off.
  * Each stays as it was taken, with what the match is doing now and, at the end, its result.
+ * Its own list, filters and pages (REVIEW point 14) - apart from the matches still to come.
  */
-function StartedPicks({ query }: { query: BoardQuery }) {
-  const board = query.data?.data;
-  const started = board?.started ?? [];
-  if (started.length === 0) return null;
-  const shadow = board?.source === "shadow_preview";
+function StartedPicks() {
+  const preview = usePreviewParam();
+  const q = useQuery(live.startedPicks(preview));
+  const all = q.data?.data ?? [];
+  const shadow = preview === "shadow";
+  const [competition, setCompetition] = useState<number | null>(null);
+  const [market, setMarket] = useState<string | null>(null);
+  const [state, setState] = useState<StartedState>("all");
+  const competitions = useMemo(() => {
+    const seen = new Map<number, CompetitionBadge>();
+    for (const p of all) seen.set(p.competition.id, p.competition);
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [all]);
+  const markets = [...new Set(all.map((p) => p.market_key))];
+  const shown = all.filter(
+    (p: StartedPick) =>
+      (competition === null || p.competition.id === competition) &&
+      (market === null || p.market_key === market) &&
+      (state === "all" || startedState(p) === state),
+  );
+  const paged = usePaged(shown, `${competition}|${market}|${state}|${all.length}`);
+  if (q.isSuccess && all.length === 0) return null;
+  const filtered = competition !== null || market !== null || state !== "all";
   return (
     <section className="space-y-3" data-testid="picks-started">
       <BlockHeader
@@ -93,11 +128,88 @@ function StartedPicks({ query }: { query: BoardQuery }) {
         icon={<History aria-hidden className="h-4 w-4 text-gold" />}
         shadow={shadow}
       />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {started.map((p) => (
-          <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} />
-        ))}
-      </div>
+      {q.isPending ? (
+        <CardsSkeleton count={3} tall />
+      ) : q.isError ? (
+        <Card>
+          <ErrorState error={q.error} onRetry={() => void q.refetch()} />
+        </Card>
+      ) : (
+        <>
+          <div
+            className="grid gap-x-6 gap-y-4 rounded-xl border border-border bg-card p-3 sm:p-4 md:grid-cols-3"
+            data-testid="started-filters"
+          >
+            <div className="flex min-w-0 flex-col gap-2">
+              <label htmlFor="started-competition" className="text-label text-subtle-foreground">
+                {t("picks.filters.competition")}
+              </label>
+              <div className="relative">
+                <select
+                  id="started-competition"
+                  value={competition === null ? "" : String(competition)}
+                  onChange={(e) => setCompetition(e.target.value ? Number(e.target.value) : null)}
+                  className="h-10 w-full appearance-none truncate rounded-lg border border-border bg-background pl-3 pr-9 text-sm text-foreground transition-colors hover:border-border-strong focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">{t("picks.filters.allCompetitions")}</option>
+                  {competitions.map((c) => (
+                    <option key={c.id} value={String(c.id)}>
+                      {competitionLabel(c)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  aria-hidden
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                />
+              </div>
+            </div>
+            <Field label={t("picks.filters.market")}>
+              <ChipGroup
+                label={t("picks.filters.market")}
+                value={market ?? "all"}
+                options={[
+                  { value: "all", label: t("common.all") },
+                  ...MARKETS.filter((m) => markets.includes(m)).map((m) => ({
+                    value: m,
+                    label: marketShort(m),
+                  })),
+                ]}
+                onChange={(m) => setMarket(m === "all" ? null : m)}
+                testId="started-market"
+              />
+            </Field>
+            <Field label={t("picks.started.state")}>
+              <ChipGroup
+                label={t("picks.started.state")}
+                value={state}
+                options={STATES.map((s) => ({ value: s, label: t(`picks.started.states.${s}`) }))}
+                onChange={setState}
+                testId="started-state"
+              />
+            </Field>
+          </div>
+          <p className="text-sm font-semibold" data-testid="started-count" aria-live="polite">
+            {t("picks.started.count", { count: shown.length })}
+          </p>
+          {shown.length === 0 ? (
+            <Card>
+              <EmptyState
+                compact
+                icon={<History aria-hidden className="h-5 w-5" />}
+                title={filtered ? t("picks.started.emptyFiltered") : t("picks.started.empty")}
+              />
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {paged.items.map((p) => (
+                <StartedPickCard key={p.pick_id} pick={p} shadow={shadow} />
+              ))}
+            </div>
+          )}
+          <Pager paged={paged} />
+        </>
+      )}
     </section>
   );
 }
@@ -147,12 +259,8 @@ function AllPicks({
   const board = query.data?.data;
   const shadow = board?.source === "shadow_preview";
   const picks = board?.picks ?? [];
-  // "Show more" starts again whenever the filters change.
-  const signature = JSON.stringify(toQuery(filters));
-  const [shown, setShown] = useState({ signature, count: PAGE });
-  const limit = shown.signature === signature ? shown.count : PAGE;
-  const visible = picks.slice(0, limit);
-  const remaining = picks.length - visible.length;
+  // Pages of 15 (REVIEW point 13); back to the first whenever the filters change.
+  const paged = usePaged(picks, JSON.stringify(toQuery(filters)));
   const refreshing = query.isPlaceholderData;
   const asOf = query.data?.meta.data_as_of ?? null;
   const filtered = !isDefault(filters);
@@ -217,35 +325,29 @@ function AllPicks({
             refreshing && "opacity-60",
           )}
         >
-          {visible.map((pick) => (
+          {paged.items.map((pick) => (
             <PickCard
               key={pick.pick_id}
               pick={pick}
               compact
               shadow={shadow}
-              actions={<SelectionActions sel={pickableOfCard(pick)} />}
+              actions={<PriceRow sel={pickableOfCard(pick)} />}
             />
           ))}
         </div>
-        {remaining > 0 ? (
-          <div className="flex justify-center pt-1">
-            <button
-              type="button"
-              onClick={() => setShown({ signature, count: limit + PAGE })}
-              data-testid="picks-more"
-              className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border-strong bg-card px-5 text-sm font-medium transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {t("picks.showMore", { count: Math.min(PAGE, remaining) })}
-              <ChevronDown aria-hidden className="h-4 w-4" />
-            </button>
-          </div>
-        ) : null}
+        <Pager
+          paged={paged}
+          className="pt-1"
+          onChange={() =>
+            document.getElementById("picks-all")?.scrollIntoView({ behavior: "smooth" })
+          }
+        />
       </>
     );
   }
 
   return (
-    <section className="space-y-3" data-testid="picks-all">
+    <section className="scroll-mt-20 space-y-3" id="picks-all" data-testid="picks-all">
       <BlockHeader
         title={t("picks.all.title")}
         subtitle={bare ? undefined : t("picks.all.subtitle")}

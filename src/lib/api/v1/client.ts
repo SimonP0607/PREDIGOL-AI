@@ -120,6 +120,7 @@ import type {
   ParlayKind,
   PicksBoard,
   PicksQuery,
+  StartedPick,
   SettlementLatency,
 } from "./types_product";
 import type {
@@ -302,6 +303,8 @@ export const v1 = {
   home: (q: Preview = {}) => getJson<Envelope<Home>>("/home", q),
   productPicks: (q: PicksQuery & Preview = {}) =>
     getJson<Envelope<PicksBoard>>("/picks", q as Params),
+  /** Today's pre-match picks that already kicked off, unfiltered: the page filters them (REVIEW pt 14). */
+  startedPicks: (q: Preview = {}) => getJson<Envelope<StartedPick[]>>("/picks/started", q),
   parlay: (kind: ParlayKind, q: Preview = {}) => getJson<Envelope<Parlay>>(`/parlays/${kind}`, q),
   bestOdds: (q: { market?: string | undefined; hours?: number | undefined } & Preview = {}) =>
     getJson<Envelope<BestOddsBoard>>("/odds/best", q as Params),

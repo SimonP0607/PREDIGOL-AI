@@ -288,5 +288,22 @@
     "notPublished": "No publicado",
     "open": "Por liquidar",
     "settled": "Liquidado: {status}"
+  },
+  "dayNav": {
+    "label": "Día de los picks",
+    "previous": "Día anterior",
+    "next": "Día siguiente",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "jump": "Ir a",
+    "summary": "{count} picks · {won} ganados · {lost} perdidos · {open} por jugar o en juego",
+    "units": "{units} u"
+  },
+  "outcome": {
+    "playing": "En juego",
+    "won": "Ganado",
+    "lost": "Perdido",
+    "void": "Anulado",
+    "building": "En construcción"
   }
 }

@@ -26,6 +26,19 @@
   },
   "started": {
     "title": "Ya empezaron hoy",
-    "subtitle": "Los picks prepartido de los partidos de hoy que ya comenzaron: la cuota y la hora en que se tomaron, el estado del partido y su resultado. No se recalculan."
-  }
+    "subtitle": "Los picks prepartido de los partidos de hoy que ya comenzaron: la cuota y la hora en que se tomaron, el estado del partido y su resultado. No se recalculan.",
+    "count_one": "{count} pick ya empezó",
+    "count_other": "{count} picks ya empezaron",
+    "empty": "Ningún pick de hoy ha empezado todavía.",
+    "emptyFiltered": "Ningún pick que ya empezó coincide con estos filtros.",
+    "state": "Estado",
+    "states": {
+      "all": "Todos",
+      "live": "En juego",
+      "won": "Ganados",
+      "lost": "Perdidos",
+      "other": "Nulos y pendientes"
+    }
+  },
+  "priceHelp": "Toca la cuota para agregarla a tu parlay; el marcador la guarda."
 }

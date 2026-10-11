@@ -24,6 +24,11 @@ export const live = {
     queryFn: () => v1.productPicks({ ...q, preview }),
     refetchInterval: 2 * MINUTE,
   }),
+  startedPicks: (preview: Preview) => ({
+    queryKey: ["v1", "started-picks", preview ?? "qualified"],
+    queryFn: () => v1.startedPicks({ preview }),
+    refetchInterval: MINUTE,
+  }),
   parlay: (kind: ParlayKind, preview: Preview) => ({
     queryKey: ["v1", "parlay", kind, preview ?? "qualified"],
     queryFn: () => v1.parlay(kind, { preview }),

@@ -288,5 +288,22 @@
     "notPublished": "Not published",
     "open": "To settle",
     "settled": "Settled: {status}"
+  },
+  "dayNav": {
+    "label": "Picks' day",
+    "previous": "Previous day",
+    "next": "Next day",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "jump": "Go to",
+    "summary": "{count} picks · {won} won · {lost} lost · {open} to play or in play",
+    "units": "{units} u"
+  },
+  "outcome": {
+    "playing": "In play",
+    "won": "Won",
+    "lost": "Lost",
+    "void": "Void",
+    "building": "Being built"
   }
 }

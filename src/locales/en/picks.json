@@ -26,6 +26,19 @@
   },
   "started": {
     "title": "Already started today",
-    "subtitle": "Pre-match picks of today's matches that already kicked off: the odds and the time they were taken, the state of the match and its result. Not recalculated."
-  }
+    "subtitle": "Pre-match picks of today's matches that already kicked off: the odds and the time they were taken, the state of the match and its result. Not recalculated.",
+    "count_one": "{count} pick has started",
+    "count_other": "{count} picks have started",
+    "empty": "No pick of today has started yet.",
+    "emptyFiltered": "No started pick matches these filters.",
+    "state": "Status",
+    "states": {
+      "all": "All",
+      "live": "In play",
+      "won": "Won",
+      "lost": "Lost",
+      "other": "Void and pending"
+    }
+  },
+  "priceHelp": "Tap the price to add it to your parlay; the bookmark saves it."
 }
