@@ -26,29 +26,29 @@ Backup `review-p0-baseline` + restore test lanzados antes de tocar nada.
 
 | # | Punto | Componente | Problema | Solución | Test | Estado |
 |---|---|---|---|---|---|---|
-| 1 | Inicio: ruido en Picks del día | `DailyItemCard`, `DecisionChain` | Modelo, «No publicado», «Liquidado» duplicado | Usuario: liga, hora, partido, marcador, estado, IA; admin: además el modelo; nadie ve «Liquidado» repetido | unit + e2e | PENDIENTE |
-| 2 | Parlay del día / multi-día | `ParlayRecordCard` | «ABIERTO» y «En juego» a la vez | Un solo estado: En juego / Ganado / Perdido | unit | PENDIENTE |
-| 3 | Partidos: fechas y filtros | `DayNav`, filtros | El tercer chip repite hoy; faltan país/categoría | Hoy · Mañana · fecha absoluta; país, categoría, equipo | unit | PENDIENTE |
-| 4 | **Match Center (crítico)** | `MatchPage`, `SummaryTab` | Picks mezclados en Resumen; en vivo la lectura parece nueva | Pestaña Picks; Resumen por estado | unit + e2e | PENDIENTE |
-| 5 | Estadísticas | `StatsTab`, API | Solo puntos y goles; filas de dos fuentes mezcladas | P0: una fuente por partido (API-Football primero). Falta: estadísticas prepartido completas según cobertura | `test_one_statistics_source_per_match_api_football_first` | PARCIAL |
-| 6 | Mercados: cuota seleccionable | odds UI | Solo Mercados permite Guardar/Agregar | Un componente para todas las cuotas | unit | PENDIENTE |
-| 7 | Alineaciones y bajas | `LineupsTab`, API | «una hora antes» fijo; bajas sin foto ni detalle | P0: texto según el reloj (`lineups_usually_60m` / `lineups_not_published` / `lineups_none`); bajas actuales con foto y posición en la API. Falta: fotos y resumen de jugador en pantalla | `test_the_lineups_reason_depends_on_the_kickoff`, `test_only_the_current_absences_before_the_match_every_one_after` | PARCIAL |
-| 8 | Avanzado/Auditoría | admin match | Bloques de error; stats completas solo admin | P0: el aviso naranja nombra al responsable (proveedor / nosotros), secciones vacías en español, error real vs «sin predicción», 500 de Analítica corregido. Falta: stats completas para usuarios | `test_match_state.py` (result_wait), `timelineText.test.ts` | PARCIAL |
-| 9 | Enfrentamientos directos | admin Contexto | Columnas separadas, scroll horizontal | Tabla compacta | unit | PENDIENTE |
-| 10 | Cronología vs Mercados | timeline, Mercados | Cuotas capturadas que no se ven | P0: Cronología veraz (capturas fuera de ventana listadas, near-close «por diseño», consultas sin cuotas). Falta: correspondencia visible en Mercados | `tests/unit/test_timeline.py` | PARCIAL |
-| 11 | En vivo | `LivePage` | Sin buscador ni filtros | Buscador, país/liga/género, primero los de PrediGol | unit | PENDIENTE |
-| 12 | Picks: día e historial | `PicksPage` | Encabezado y días pasados básicos | Encabezado con fecha y navegación clara | e2e | PENDIENTE |
-| 13 | Picks: 24 h y bloques de 15 | `PicksPage` | 72 h por defecto, miles de tarjetas | 24 h; páginas de 15 | unit | PENDIENTE |
-| 14 | Ya empezaron hoy | `PicksPage` | Sin filtros ni paginación | Filtros + páginas de 15 | unit | PENDIENTE |
-| 15 | Parlays: motivo y armador | Parlays | Sin motivo por pierna ni armador | Motivo por pierna; armador automático con correlación | unit + api | PENDIENTE |
-| 16 | Armar el tuyo | Parlays | — | Se mantiene | e2e | PENDIENTE |
-| 17 | Cuotas ≠ Picks | `OddsPage` | Casi igual a Picks; 48 h | Mejor precio vs justo; 24 h; filtros | unit | PENDIENTE |
-| 18 | Selección de cuota animada | odds UI | Solo en Cuotas | Mismo patrón en todas las vistas | unit | PENDIENTE |
-| 19 | Mis picks: gráficas | `MyPicksPage`, API | Solo totales | Métricas y gráficas | unit + api | PENDIENTE |
-| B1 | Picks de cuotas altas | selección diaria | Valor sin filtros extra | Embudo trazable con contexto de la IA | unit + datos | PENDIENTE |
+| 1 | Inicio: ruido en Picks del día | `DailyItemCard`, `DecisionChain` | Modelo, «No publicado», «Liquidado» duplicado | Usuario: liga, hora, partido, marcador, estado y lo que dijo la IA; admin: además el modelo y la publicación; nadie ve «Liquidado» (el resultado va al pie). La cuota se elige como en Cuotas | `DecisionChain.test.tsx` (renderizado por audiencia) | HECHO (web `6571aee`) |
+| 2 | Parlay del día / multi-día | `ParlayRecordCard` | «ABIERTO» y «En juego» a la vez | Un solo resultado: En juego / Ganado / Perdido (Anulado si ocurre); una pierna perdida lo decide | `outcome.test.ts` | HECHO (web `6571aee`) |
+| 3 | Partidos: fechas y filtros | `DayNav`, filtros | El tercer chip repite hoy; faltan país/categoría | Hoy · Mañana · «lun, 13 oct» · Otra fecha; país, categoría (liga, copa, continental, selecciones, femenino, juvenil) y equipo | `facets.test.ts`, `model.test.ts` | HECHO (web `39f7623`) |
+| 4 | **Match Center (crítico)** | `MatchPage`, `SummaryTab`, `PicksTab` | Picks mezclados en Resumen; en vivo la lectura parece nueva | Pestaña Picks propia; Resumen prepartido: Intelligence → Mejores cuotas → H2H → resto; en vivo: Eventos primero, luego la lectura del día | e2e `user.spec.ts`, QA visual | HECHO (web `4f24dea`) |
+| 5 | Estadísticas | `StatsTab`, `/matches/{id}/profile` | Solo puntos y goles; filas de dos fuentes mezcladas | Una fuente por partido (P0) y, prepartido, todo lo que la API da de los dos equipos según cobertura (n por métrica, sin inventar ceros); en vivo, todas las líneas | `test_review_p1_profile.py`, `profile.test.ts` | HECHO (`e8a124c`, web `fca216e`) |
+| 6 | Cuota seleccionable en todas partes | `SelectablePrice` | Solo Mercados permitía Guardar/Agregar | Un componente: Resumen, Mercados, Picks, pestaña Picks del partido, Inicio (picks del día y mejores cuotas), parlays | e2e `user.spec.ts` (`selectable-price`), `parlay.test.ts` | HECHO (web `fca216e`, `6571aee`, `cac2345`) |
+| 7 | Alineaciones y bajas | `LineupsTab`, API | «una hora antes» fijo; bajas sin foto ni detalle | Texto según el reloj; resumen de temporada de convocados y bajas con foto; alineaciones pedidas cada 10 min desde 75 min antes | `test_review_p1_center.py`, `test_live_match.py` | HECHO (`5944868`, `666e497`) |
+| 8 | Avanzado/Auditoría | admin match, `StatsTab` | Bloques de error; stats completas solo admin | Avisos con responsable y código; las estadísticas completas también para usuarios | `test_match_state.py`, `timelineText.test.ts` | HECHO (P0 + web `fca216e`) |
+| 9 | Enfrentamientos directos | admin Contexto | Columnas separadas, scroll horizontal | Lista compacta | QA visual | HECHO (web `fca216e`) |
+| 10 | Cronología vs Mercados | Mercados | Cuotas capturadas que no se ven | Cada captura en Mercados con sus cotizaciones y casas, las mismas cifras que la Cronología | `test_review_p1_profile.py` (markets), `books.test.ts` | HECHO (`e8a124c`, web `fca216e`) |
+| 11 | En vivo | `LivePage` | Sin buscador ni filtros | Buscador, país, liga, género; primero los partidos con picks de PrediGol | `live/filters.test.ts` | HECHO (web `35f8d65`) |
+| 12 | Picks: día e historial | `PicksPage`, `DayNav` | Encabezado y días pasados básicos | El día como en Inicio y navegación de días con resumen | `days.test.ts` | HECHO (web `3190d99`) |
+| 13 | Picks: 24 h y bloques de 15 | `PicksPage` | 72 h por defecto, miles de tarjetas | 24 h al llegar; páginas de 15 | `filters.test.ts`, `pager.test.ts` | HECHO (web `3190d99`) |
+| 14 | Ya empezaron hoy | `PicksPage`, `/picks/started` | Sin filtros ni paginación | Lista propia con filtros (competición, mercado, estado) y páginas de 15 | `test_review_p2_picks.py`, `started.test.ts` | HECHO (`fd4f2b0`, web `3190d99` + corrección `e3c20f6`) |
+| 15 | Parlays: motivo y armador | Parlays, `/parlays/build` | Sin motivo por pierna ni armador | Cada selección dice por qué está; armador automático con filtros del usuario y la regla de los parlays de PrediGol; guardar o editar | `test_parlay_builder.py`, `test_review_p4_builder.py`, `builderForm.test.ts`, `render.test.tsx` | HECHO (`1bd0ed2`, web `5045fff`) |
+| 16 | Armar el tuyo | Parlays | — | Se mantiene; el armador automático puede cargar su parlay en «Mi parlay» para cambiarlo | QA visual (local, 1440 px) | HECHO |
+| 17 | Cuotas ≠ Picks | `OddsPage`, `/odds/best?picks=false` | Casi igual a Picks; 48 h | Solo el mejor precio frente al justo (sin tarjetas de picks); 24 h; búsqueda, país, competición, solo sobre el justo, orden, páginas de 15 | `odds/filters.test.ts`, `test_product_endpoints.py` | HECHO (`fc14241`, web `a6fccca`) |
+| 18 | Selección de cuota animada | odds UI | Solo en Cuotas | Mismo patrón (oro + ✓, animación) en todas las vistas con cuotas | ver punto 6 | HECHO |
+| 19 | Mis picks: gráficas | `Recap` | Solo totales | «Tu recapitulación»: ganancia acumulada y por día, cuota media, rangos de cuota, rachas, mercados; animadas | `recapData.test.ts` | HECHO (web `b675a59`) |
+| B1 | Picks de cuotas altas | selección diaria | Valor sin filtros extra | Embudo trazable y regla de riesgo validada fuera de muestra (P5) | P5 | EN CURSO |
 | B2 | Partidos «esperando resultado» | worker, API, liquidación | Proveedor que no actualiza; sin clasificar; picks abiertos sin fin | Clasificación por responsable (`ResultWait`), reintento por antigüedad de lectura con espera 25 min/2 h/6 h, `settle-v3`: nulo a las 72 h del saque tomado | `test_the_repair_asks_the_match_read_longest_ago_first_and_a_fresh_read_waits`, `test_picks.py` (settle-v3), `test_pick_pipeline.py` | HECHO |
-| B3 | Más mercados | odds, modelos | Solo 1X2/OU/BTTS/AH/DC | Auditoría de cobertura; nada se activa sin backtest | datos | PENDIENTE |
-| B4 | IA objetiva con contexto | IA | Picks sin pasar por Intelligence | Evidencia estructurada obligatoria para el pick principal | unit | PENDIENTE |
+| B3 | Más mercados | odds, modelos | Solo 1X2/OU/BTTS/AH/DC | Auditoría de cobertura y liquidez (P5); nada se activa sin backtest | datos | EN CURSO |
+| B4 | IA objetiva con contexto | IA | Picks sin pasar por Intelligence | Evidencia clasificada por el servidor (confirmado / probable / rumor / contradictorio / desactualizado) en el embudo (P5) | P5 | EN CURSO |
 
 ## P0 — cerrado el 11 oct 2026 (07:15 UTC)
 
@@ -64,3 +64,41 @@ Verificado con datos reales tras el despliegue:
 * Barcelona – Getafe (9168) y 9166: estadísticas de una sola fuente (api-football), bajas con foto (10/10 y 5/5).
 * `settle-v3`: 0 registros afectados hoy (ningún pick abierto supera las 72 h sin resultado); la regla rige desde ya.
 * Analítica → Competiciones 9,0 s y Cobertura 19,2 s (antes: 500 a los 10–15 s).
+
+## P1 — Match Center (cerrado el 11 oct, 14:59 UTC)
+
+Desplegado: backend `e8a124c`, `5944868`, `666e497`; web `4f24dea`, `fca216e`. Verificado con datos reales:
+
+* Perfil prepartido calculado en 0,08–0,15 s, cada métrica con su n (cobertura); sin datos no hay cero inventado.
+* Mercados: las capturas coinciden con la Cronología — 9168: [414, 441, 451, 454, 454, 430] cotizaciones;
+  9166: [387, 401, 403, 403, 405, 405].
+* Alineaciones con resumen de temporada: 43/43 y 42/45 jugadores; tarea `prematch_lineups` con 118 ejecuciones a las 14:59.
+
+## P2 + P3 — Picks, Inicio, Partidos, En vivo (cerrado el 11 oct, 15:35 UTC)
+
+Desplegado: backend `fd4f2b0`, web `35f8d65` (veredicto del despliegue: ok). Verificado con datos reales:
+
+* `/picks/started`: usuario vacío y honesto (`no_started_picks`: no hay modelo calificado); vista previa del dueño
+  1.398 picks que ya empezaron hoy (94 páginas de 15) en 42 competiciones, en 1,0 s.
+* Picks: 24 h = 1.139 selecciones (76 páginas) frente a 1.646 con 72 h; 1,7–1,9 s.
+* Partidos de hoy: 179 en 63 competiciones de 48 países; categorías liga 176, copa 2, continental 1.
+* En vivo: 31 partidos, 28 con picks de la vista previa (van primero), 23 países.
+* **Bug encontrado con datos reales:** los 389 picks en juego tenían `result_status = 'pending'` (no `null`), así que
+  el filtro «En juego» no mostraba ninguno. Corregido en `e3c20f6` con test de regresión (`started.test.ts`).
+
+## P4 — Parlays, Cuotas, selección de cuota, Mis picks (desplegado el 11 oct, 16:02 UTC)
+
+Desplegado: backend `fc14241` (respaldo previo `predigol-20261011T155746Z-pre-deploy-fc142416399a`), web `6967916`.
+QA visual local (390 y 1440 px) con datos de prueba en una base local. Verificado con datos reales a las 16:05 UTC:
+
+* Armador, vista previa del dueño (24 h, 2–4): 4 selecciones, cuota 163,03, acertar todas (prudente) 4,2 %, mercado
+  0,6 %; embudo 739 con valor → 337 combinables → 62 partidos; 2,4 s la primera vez, 0,6–0,8 s después. Todas las
+  reglas comprobadas en cada respuesta (partidos y equipos distintos, ≤ 2 por competición, ≥ 3 casas, intervalo
+  ≤ 40 puntos, VE > 0, ventana, mercados, rango de cuota y tope total).
+* Usuario: `no_valid_parlay` / `no_candidates` en 0,03 s — sin modelo calificado no hay parlay que armar.
+* Filtros: solo Goles 72 h 3–5 → 3 selecciones a 8,98; cuota 1,5–2,5 con tope 10 → 3 selecciones a 8,68.
+* `/odds/best` 24 h 1X2: 0,04 s sin picks frente a 0,62 s con picks (78 partidos, 12 destacados).
+* **Hallazgo para B1:** el armador, con la regla actual, elige piernas a 4,01 / 4,84 / 4,00 donde el modelo da
+  18–19 puntos más que el mercado. Es la misma regla de los parlays de PrediGol: el gusto por cuotas altas viene de
+  la sobreconfianza del modelo (auditoría del 9 oct). Se trata en P5 con evidencia, no a ojo.
+
