@@ -228,3 +228,39 @@ def test_a_suspended_match_is_still_followed(
             cur.execute("UPDATE core.fixtures SET status_short = 'PST' WHERE id = %s", (fid,))
         conn.commit()
         assert (fid, pid) not in fixtures_to_follow(conn, at=datetime.now(UTC)), "postponed: not being played"
+
+
+def test_the_repair_asks_the_match_read_longest_ago_first_and_a_fresh_read_waits(
+        migrated_database: str, fixture_in_play: tuple[int, int, dict[str, int]]) -> None:
+    """REVIEW 11 Oct 2026 (Rayo Vallecano - Athletic, "INT" for a day): a match the provider has not closed is asked
+    again, but a match read recently waits its turn (REPAIR_BACKOFF) and the one read longest ago goes first, so a
+    request cap cannot starve an old match behind the newest ones."""
+    fid, pid, _ = fixture_in_play
+    at = datetime.now(UTC)
+    with psycopg.connect(migrated_database) as conn:
+        run = conn.execute("INSERT INTO raw.ingestion_runs (job_name, job_type) VALUES ('t','t') RETURNING id").fetchone()[0]  # type: ignore[index]
+        conn.execute("INSERT INTO raw.ingestion_payloads (hash, run_id, provider, endpoint, params, fetched_at, http_status, "
+                     "results_count, file_path, bytes) VALUES ('rp-1', %s, 'api_football', '/fixtures', '{}'::jsonb, now(), "
+                     "200, 1, 'x', 1) ON CONFLICT DO NOTHING", (run,))
+        conn.execute("UPDATE core.fixtures SET kickoff_at = %s, status_short = 'INT', status_group = 'live', "
+                     "source_payload_hash = 'rp-1', source_fetched_at = %s WHERE id = %s",
+                     (at - timedelta(days=2), at - timedelta(minutes=30), fid))
+        other_pid = pid + 500_000
+        other = conn.execute(
+            "INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, away_team_id, "
+            "kickoff_at, status_short, status_group, source_payload_hash, source_fetched_at) "
+            "SELECT %s, competition_season_id, home_team_id, away_team_id, %s, 'NS', 'scheduled', 'rp-1', %s "
+            "FROM core.fixtures WHERE id = %s RETURNING id",
+            (other_pid, at - timedelta(days=4), at - timedelta(days=3), fid)).fetchone()[0]  # type: ignore[index]
+        conn.commit()
+        try:
+            due = stale_to_repair(conn, at=at)
+            assert (fid, pid) not in due, "read 30 minutes ago: at two days old it waits two hours"
+            assert (other, other_pid) in due, "read three days ago: due"
+            conn.execute("UPDATE core.fixtures SET source_fetched_at = %s WHERE id = %s", (at - timedelta(hours=3), fid))
+            conn.commit()
+            due = stale_to_repair(conn, at=at)
+            assert due.index((other, other_pid)) < due.index((fid, pid)), "the one read longest ago first"
+        finally:
+            conn.execute("DELETE FROM core.fixtures WHERE id = %s", (other,))
+            conn.commit()

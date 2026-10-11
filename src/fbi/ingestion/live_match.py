@@ -179,18 +179,33 @@ SELECT f.id, f.provider_fixture_id
  WHERE c.is_tracked
    AND """ + NOT_OVER + """
    AND f.kickoff_at BETWEEN %(at)s - %(oldest)s AND %(at)s - %(after)s
- ORDER BY f.kickoff_at DESC
+   AND (f.source_fetched_at IS NULL OR f.source_fetched_at <= %(at)s - CASE
+          WHEN f.kickoff_at > %(at)s - %(fresh)s THEN %(every_fresh)s
+          WHEN f.kickoff_at > %(at)s - %(recent)s THEN %(every_recent)s
+          ELSE %(every_old)s END)
+ ORDER BY f.source_fetched_at ASC NULLS FIRST, f.kickoff_at DESC
 """
 STALE_AFTER = timedelta(hours=3)
 STALE_OLDEST = timedelta(days=30)
+REPAIR_BACKOFF = (
+    (timedelta(hours=12), timedelta(minutes=25)),
+    (timedelta(days=3), timedelta(hours=2)),
+)
+"""How often a match that should be over is asked about again, by age: every run (30 min) in its first 12 hours,
+every 2 hours until it is 3 days old, then every 6 hours (REPAIR_BACKOFF_OLD) until it leaves the 30-day window."""
+REPAIR_BACKOFF_OLD = timedelta(hours=6)
 
 
 def stale_to_repair(conn: psycopg.Connection, *, at: datetime) -> list[tuple[int, int]]:
-    """Tracked fixtures that kicked off over three hours ago and still say they have
-    not finished: what the date sweep missed (a day the worker was down, a date the
-    provider filed differently). Newest first, so a cap spends on the freshest."""
+    """Tracked fixtures that kicked off over three hours ago and still say they have not finished: what the date
+    sweep missed, or what the provider has not closed yet (Rayo Vallecano - Athletic, 10 Oct 2026: "INT" for a
+    day). The one read longest ago first, so a request cap cannot starve an old match behind the newest ones; a
+    match read recently waits its turn (REPAIR_BACKOFF)."""
+    (fresh, every_fresh), (recent, every_recent) = REPAIR_BACKOFF
     with conn.cursor(row_factory=tuple_row) as cur:
-        cur.execute(STALE_SQL, {"at": at, "after": STALE_AFTER, "oldest": STALE_OLDEST})
+        cur.execute(STALE_SQL, {"at": at, "after": STALE_AFTER, "oldest": STALE_OLDEST, "fresh": fresh,
+                                "every_fresh": every_fresh, "recent": recent, "every_recent": every_recent,
+                                "every_old": REPAIR_BACKOFF_OLD})
         return [(int(a), int(b)) for a, b in cur.fetchall()]
 
 
