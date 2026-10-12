@@ -62,12 +62,13 @@ export function AuditPage() {
         title={t("admin.pages.audit.title")}
         description={t("admin.pages.audit.description")}
         actions={
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          // Wraps on a phone: the longest action's name made the select push the page 21 px sideways at 320 px.
+          <label className="flex min-w-0 max-w-full flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {t("admin.audit.filter")}
             <select
               value={action}
               onChange={(e) => setAction(e.target.value)}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+              className="h-8 min-w-0 max-w-full rounded-md border border-input bg-background px-2 text-xs"
             >
               <option value="">{t("admin.audit.allActions")}</option>
               {ACTIONS.map((a) => (
