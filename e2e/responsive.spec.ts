@@ -294,6 +294,54 @@ test("the parlay slip under a thumb: a 44 px close, nothing on its title, its fi
   await assertClean(page, w);
 });
 
+/** Every module of the Admin Console (src/routes/admin.*). */
+const ADMIN_PAGES = [
+  "/admin/overview",
+  "/admin/picks",
+  "/admin/users",
+  "/admin/ai-layer",
+  "/admin/ai-analyst",
+  "/admin/evolution",
+  "/admin/performance",
+  "/admin/odds",
+  "/admin/models",
+  "/admin/backtesting",
+  "/admin/analytics",
+  "/admin/competitions",
+  "/admin/teams",
+  "/admin/players",
+  "/admin/rankings",
+  "/admin/data-quality",
+  "/admin/data-truth",
+  "/admin/migration",
+  "/admin/system",
+  "/admin/audit",
+  "/admin/settings",
+];
+
+test.describe("the Admin Console on a phone", () => {
+  test.use({ storageState: statePath("admin"), locale: "en-GB" });
+
+  // The Audit page's action filter (a label and a select that would not wrap) pushed the page 21 px sideways at
+  // 320 px: a module that works at a desk must at least not scroll sideways in an operator's hand.
+  test("no module scrolls sideways at 320 or 390 px", async ({ context }) => {
+    test.setTimeout(360_000);
+    for (const width of [320, 390]) {
+      for (const path of ADMIN_PAGES) {
+        // A page of its own for each module: forty-two loads of the dev server's unbundled modules in one page run
+        // Chromium out of resources (ERR_INSUFFICIENT_RESOURCES) - a test artefact, not the app's.
+        const page = await context.newPage();
+        const w = watch(page);
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto(path);
+        await settle(page);
+        await assertClean(page, w);
+        await page.close();
+      }
+    }
+  });
+});
+
 test.describe("the Admin Console on a touch tablet", () => {
   test.use({ storageState: statePath("admin"), locale: "en-GB" });
 

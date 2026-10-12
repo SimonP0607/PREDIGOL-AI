@@ -23,6 +23,9 @@ export default defineConfig({
   },
   vite: {
     server: {
+      // Playwright writes its traces (HTML snapshots among them) into e2e-results while a test runs: watched, each
+      // new file made the dev server reload the page under test.
+      watch: { ignored: ["**/e2e-results/**", "**/e2e-report/**"] },
       proxy: {
         "/api/v1": { target: API_TARGET, changeOrigin: true },
         "/health": { target: API_TARGET, changeOrigin: true },
