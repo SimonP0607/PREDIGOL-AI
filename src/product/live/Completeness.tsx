@@ -64,7 +64,7 @@ export function Completeness({
           title={list ? `${t("live.completeness.title")}: ${list}` : summary}
           data-testid="completeness"
           className={cn(
-            "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            "tap relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             className,
           )}
         >
@@ -101,7 +101,7 @@ export function Completeness({
                 ) : (
                   <Minus aria-hidden className="h-3 w-3 shrink-0" />
                 )}
-                <span className="truncate">{signalLabel(s)}</span>
+                <span className="min-w-0 break-words leading-tight">{signalLabel(s)}</span>
                 <span className="sr-only">
                   {on ? t("live.completeness.available") : t("live.completeness.missing")}
                 </span>

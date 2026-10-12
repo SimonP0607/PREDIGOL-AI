@@ -10,7 +10,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Clock, Globe2, RadioTower, RefreshCw, Target, Trophy, Users } from "lucide-react";
+import { Globe2, RadioTower, RefreshCw, Target, Trophy, Users } from "lucide-react";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
 import { FacetPicker, SearchBox } from "@/product/matches/Filters";
 import {
@@ -24,7 +24,7 @@ import {
 import { live } from "@/lib/api/v1/queries";
 import type { LiveMatch } from "@/lib/api/v1/types_center";
 import { t } from "@/lib/i18n";
-import { formatRelative, formatTime } from "@/lib/time";
+import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { emptyReason } from "@/product/shared/markets";
 import {
@@ -35,54 +35,12 @@ import {
   SectionHeader,
   SkeletonBlock,
 } from "@/product/shared/States";
-import { FixtureLine } from "@/product/matches/FixtureLine";
-import { RowClock } from "@/product/matches/MatchRow";
-import { liveLabel, phaseOf, shortStatus } from "@/product/matches/status";
 import { LiveCard } from "./LiveCard";
+import { LiveRow } from "./LiveRow";
 import { boardSummary, levelOf } from "./model";
 import { useNow } from "./useNow";
 
 const NO_MATCHES: LiveMatch[] = [];
-
-function BasicRow({ m }: { m: LiveMatch }) {
-  const pre = phaseOf(shortStatus(m.status)) === "pre";
-  const score =
-    !pre && m.goals_home !== null && m.goals_away !== null
-      ? { home: m.goals_home, away: m.goals_away }
-      : null;
-  return (
-    <Link
-      to="/matches/$fixtureId"
-      params={{ fixtureId: String(m.fixture_id) }}
-      data-testid="live-row"
-      className="flex min-h-[3.25rem] items-center gap-2 px-3 py-2.5 transition-colors hover:bg-elevated/60 focus-visible:bg-elevated focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-11 sm:gap-3 sm:py-2"
-    >
-      <span className="w-[3.25rem] shrink-0 sm:w-14">
-        {pre ? (
-          <span className="numeric text-xs font-medium text-muted-foreground">
-            {formatTime(m.kickoff_at)}
-          </span>
-        ) : (
-          <RowClock label={liveLabel(m.status, m.elapsed, m.extra)} />
-        )}
-      </span>
-      <FixtureLine
-        home={{ name: m.home.name, logo: m.home.logo_url }}
-        away={{ name: m.away.name, logo: m.away.logo_url }}
-        score={score}
-        live={!pre}
-      />
-      <span className="flex w-4 shrink-0 justify-end">
-        {m.data_status === "stale" ? (
-          <span title={t("live.stale")} className="text-subtle-foreground">
-            <Clock aria-hidden className="h-3.5 w-3.5" />
-            <span className="sr-only">{t("live.stale")}</span>
-          </span>
-        ) : null}
-      </span>
-    </Link>
-  );
-}
 
 function BoardSkeleton() {
   return (
@@ -110,7 +68,7 @@ function BoardSkeleton() {
 function PicksBadge({ count }: { count: number }) {
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-gold/50 bg-gold-soft px-2 py-0.5 text-[0.65rem] font-semibold text-gold-strong"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-gold/50 bg-gold-soft px-2 py-0.5 text-[0.6875rem] font-semibold text-gold-strong"
       data-testid="live-picks-badge"
     >
       <Target aria-hidden className="h-3 w-3" />
@@ -240,7 +198,7 @@ export function LivePage() {
             <button
               type="button"
               onClick={() => void q.refetch()}
-              className="font-medium text-primary hover:underline"
+              className="tap relative font-medium text-primary hover:underline"
             >
               {t("common.retry")}
             </button>
@@ -268,13 +226,8 @@ export function LivePage() {
             <Card as="div" className="overflow-hidden">
               <ul className="divide-y divide-border/60" data-testid="live-rows">
                 {rows.map((m) => (
-                  <li key={m.fixture_id} className="relative">
-                    <BasicRow m={m} />
-                    {picks.get(m.fixture_id) ? (
-                      <div className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2">
-                        <PicksBadge count={picks.get(m.fixture_id) ?? 0} />
-                      </div>
-                    ) : null}
+                  <li key={m.fixture_id}>
+                    <LiveRow m={m} picks={picks.get(m.fixture_id) ?? 0} />
                   </li>
                 ))}
               </ul>
@@ -343,7 +296,7 @@ export function LivePage() {
                 onClick={() => setFilters((f) => ({ ...f, picksOnly: !f.picksOnly }))}
                 data-testid="live-picks-only"
                 className={cn(
-                  "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "tap-y relative inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   filters.picksOnly
                     ? "border-gold/60 bg-gold-soft text-gold-strong"
                     : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground",
@@ -357,7 +310,7 @@ export function LivePage() {
               <button
                 type="button"
                 onClick={() => setFilters(NO_FILTERS)}
-                className="text-xs font-medium text-primary hover:underline"
+                className="tap relative text-xs font-medium text-primary hover:underline"
               >
                 {t("live.filters.clear")}
               </button>

@@ -7,12 +7,11 @@ import { formatRelative, formatTime } from "@/lib/time";
 import type { Section } from "@/lib/api/v1/types";
 import type { LiveMatch } from "@/lib/api/v1/types_center";
 import { CompetitionTag, TeamLogo } from "@/components/football/Logos";
-import { LiveMinute } from "@/product/shared/Bits";
+import { MatchClock } from "@/product/live/LiveCard";
 import { SectionHeader } from "@/product/shared/States";
 import { emptyReason } from "@/product/shared/markets";
 
-/** The two feeds name the same states differently ("HT" / "Halftime"). */
-const HALF_TIME = new Set(["HT", "Halftime"]);
+/** The two feeds name the same states differently ("NS" / "Not Started", "FT" / "Match Finished"). */
 const NOT_STARTED = new Set(["NS", "TBD", "Not Started"]);
 const FINISHED = new Set(["FT", "AET", "PEN", "Match Finished", "Finished", "Ended"]);
 
@@ -34,14 +33,9 @@ function MatchState({ m }: { m: LiveMatch }) {
       </span>
     );
   }
-  return (
-    <LiveMinute
-      status={HALF_TIME.has(m.status) ? "HT" : m.status}
-      elapsed={m.elapsed}
-      extra={m.extra}
-      className="shrink-0"
-    />
-  );
+  // In play, the pill /live shows (Descanso, Penales, Pausa, Suspendido...): the minute alone read "120'" in a
+  // shoot-out and "61'" for a suspended match.
+  return <MatchClock m={m} className="shrink-0" />;
 }
 
 function TeamLine({
@@ -59,9 +53,11 @@ function TeamLine({
   return (
     <div className="flex items-center gap-2">
       <TeamLogo src={logo} name={name} size={20} />
+      {/* The whole name, wrapping: two tiles side by side on a phone left "New E…" and "Americ…" (audit, live). */}
       <span
+        data-testid="team-name"
         className={cn(
-          "min-w-0 flex-1 truncate text-sm",
+          "min-w-0 flex-1 break-words text-sm leading-snug [overflow-wrap:anywhere]",
           lead > 0 ? "font-semibold text-foreground" : lead < 0 ? "text-muted-foreground" : "",
         )}
       >
@@ -138,7 +134,9 @@ export function LiveTiles({
           {emptyReason(section.reason) || t("home.live.empty")}
         </p>
       ) : (
-        <ul className="mt-3 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
+        // One tile a row on a phone: two side by side squeezed the competition into a column of single letters
+        // ("M / a / j / o / r…") at 320 px and cut every team name up to 430 px.
+        <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
           {matches.map((m) => (
             <li key={m.fixture_id}>
               <LiveTile m={m} />

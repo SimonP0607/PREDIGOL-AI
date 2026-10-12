@@ -6,6 +6,7 @@
  */
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { live } from "@/lib/api/v1/queries";
 import { shiftDay, todayKey } from "@/lib/time";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
@@ -104,9 +105,13 @@ function HomeSkeleton() {
       </div>
       <div>
         <SkeletonBlock className="h-5 w-36" />
-        <div className="mt-3 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
+        {/* As the live tiles lay out: one a row on a phone (three of them stand for the list there). */}
+        <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((i) => (
-            <SkeletonBlock key={i} className="h-[5.5rem] rounded-xl" />
+            <SkeletonBlock
+              key={i}
+              className={cn("h-[5.5rem] rounded-xl", i >= 3 && "hidden sm:block")}
+            />
           ))}
         </div>
       </div>

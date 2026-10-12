@@ -30,7 +30,7 @@ import {
 } from "./model";
 
 /** The shared live pill (67', Descanso, Penales...) and a quiet "Por empezar" before kick-off. */
-function MatchClock({ m, className }: { m: LiveMatch; className?: string | undefined }) {
+export function MatchClock({ m, className }: { m: LiveMatch; className?: string | undefined }) {
   const short = shortStatus(m.status);
   const phase = phaseOf(short);
   if (phase === "pre" || phase === "over" || phase === "off") {
