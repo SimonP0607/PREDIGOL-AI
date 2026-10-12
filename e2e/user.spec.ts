@@ -206,7 +206,12 @@ test.describe.serial("a user's own records", () => {
 
     await open(page, w, "/my-picks");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(t.records.mine.title);
-    const row = page.getByTestId("saved-pick").filter({ hasText: fixture.home.name }).first();
+    // By the match, not by a team's name: the account's settled history can hold the same team (Brighton in
+    // "Junior – Brighton"), which a removal never clears.
+    const mine = page.locator(
+      `[data-testid="saved-pick"][data-fixture-id="${fixture.fixture_id}"]`,
+    );
+    const row = mine.first();
     await expect(row).toBeVisible();
     await expect(row.getByTestId("origin-mine")).toHaveText(t.records.labels.savedByMe);
     await expect(row.getByTestId("result-badge")).toHaveAttribute("data-status", "PENDING");
@@ -219,9 +224,7 @@ test.describe.serial("a user's own records", () => {
     );
 
     await row.getByTestId("saved-pick-remove").click();
-    await expect(page.getByTestId("saved-pick").filter({ hasText: fixture.home.name })).toHaveCount(
-      0,
-    );
+    await expect(mine).toHaveCount(0);
     await assertClean(page, w);
   });
 
