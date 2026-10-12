@@ -371,6 +371,7 @@ export function FacetPicker<T extends string>({
   onChange,
   icon,
   testId,
+  className,
 }: {
   label: string;
   anyLabel: string;
@@ -379,11 +380,13 @@ export function FacetPicker<T extends string>({
   onChange: (value: T | null) => void;
   icon: ReactNode;
   testId: string;
+  className?: string | undefined;
 }) {
   const selected = options.find((o) => o.key === value) ?? null;
   return (
     <div
       className={cn(
+        className,
         "relative flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border bg-card pl-3 pr-8 text-sm transition-colors focus-within:ring-1 focus-within:ring-ring hover:border-border-strong sm:h-9 lg:w-48 lg:flex-none sm:text-[0.8125rem] pointer-coarse:h-11",
         selected ? "border-primary/45 text-foreground" : "border-border text-muted-foreground",
       )}

@@ -255,6 +255,7 @@ export function OddsPage() {
             testId="odds-country"
           />
           <FacetPicker<string>
+            className="max-[359px]:col-span-2"
             label={t("odds.filters.competition")}
             anyLabel={t("odds.filters.allCompetitions")}
             value={competition === null ? null : String(competition)}

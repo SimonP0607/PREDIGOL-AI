@@ -341,7 +341,7 @@ function H2HBody({ ctx, rows }: { ctx: MatchCtx; rows: H2HMatch[] }) {
                   {r.away}
                 </span>
               </div>
-              <div className="mt-0.5 truncate text-center text-caption text-subtle-foreground">
+              <div className="mt-0.5 break-words text-center text-caption text-subtle-foreground">
                 {formatDateYear(r.kickoff_at)} · {r.competition}
               </div>
             </Link>
@@ -432,7 +432,7 @@ function AbsenceList({ ctx, rows }: { ctx: MatchCtx; rows: Absence[] }) {
                           competition={ctx.match.competition.name}
                           playerId={a.player_id}
                           admin={ctx.showAdmin}
-                          className="block max-w-full break-words font-medium leading-snug"
+                          className="tap-y relative block max-w-full break-words font-medium leading-snug"
                         >
                           {a.player ?? t("match.events.unknownPlayer")}
                         </PlayerSummary>

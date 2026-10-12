@@ -41,7 +41,7 @@ export function PriceTile({
 }) {
   return (
     <div className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg border border-border bg-elevated/40 px-1.5 py-2.5 text-center">
-      <span className="line-clamp-3 min-h-8 w-full break-words text-xs leading-4 text-muted-foreground">
+      <span className="min-h-8 w-full break-words text-xs leading-4 text-muted-foreground">
         {label}
       </span>
       {price ? (
@@ -139,7 +139,7 @@ export function LiveTile({ label, price }: { label: string; price: LivePrice | n
   const state = liveState(price);
   return (
     <div className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg border border-border bg-elevated/40 px-1.5 py-2.5 text-center">
-      <span className="line-clamp-3 min-h-8 w-full break-words text-xs leading-4 text-muted-foreground">
+      <span className="min-h-8 w-full break-words text-xs leading-4 text-muted-foreground">
         {label}
       </span>
       <LiveOdds price={price} />

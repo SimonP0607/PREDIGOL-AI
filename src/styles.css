@@ -413,11 +413,11 @@
 }
 
 /*
- * The Admin Console on a touch tablet: its compact 28-32 px buttons, fields and selects (h-7 / h-8, across twenty
+ * The Admin Console on a touch tablet: its compact 28-36 px buttons, fields and selects (h-7 / h-8 / h-9, across twenty
  * modules) get 44 px of height under a finger. Unlayered and touch-only: a desk keeps the compact console.
  */
 @media (pointer: coarse) {
-  [data-shell="admin"] :is(button, select, input, a, [role="tab"]):is(.h-7, .h-8) {
+  [data-shell="admin"] :is(button, select, input, a, [role="tab"]):is(.h-7, .h-8, .h-9) {
     min-height: 2.75rem;
   }
 }

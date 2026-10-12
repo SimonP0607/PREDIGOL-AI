@@ -114,7 +114,10 @@ export function OverviewLive() {
           className="xl:col-span-2"
           bodyClassName=""
           actions={
-            <Link to="/matches" className="text-caption text-primary hover:underline">
+            <Link
+              to="/matches"
+              className="tap-y relative text-caption text-primary hover:underline"
+            >
               {t("ops.overview.upcoming.all")}
             </Link>
           }
@@ -419,7 +422,7 @@ function LiveStrip() {
       }
       subtitle={t("ops.overview.live.subtitle")}
       actions={
-        <Link to="/live" className="text-caption text-primary hover:underline">
+        <Link to="/live" className="tap-y relative text-caption text-primary hover:underline">
           {t("ops.overview.live.link")}
         </Link>
       }

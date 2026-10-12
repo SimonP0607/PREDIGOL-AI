@@ -118,7 +118,10 @@ export function FixtureLink({
     <Link
       to="/matches/$fixtureId"
       params={{ fixtureId: String(match.id) }}
-      className={cn("flex min-w-0 items-center gap-1.5 hover:text-primary", className)}
+      className={cn(
+        "tap-y relative flex min-w-0 items-center gap-1.5 hover:text-primary",
+        className,
+      )}
     >
       <span className="truncate">{match.home.name}</span>
       <span className="shrink-0 text-subtle-foreground">{t("common.vs")}</span>

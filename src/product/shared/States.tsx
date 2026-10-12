@@ -134,7 +134,7 @@ export function ErrorState({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-1 rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
+          className="tap-y relative mt-1 rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated pointer-coarse:px-4"
         >
           {t("common.retry")}
         </button>

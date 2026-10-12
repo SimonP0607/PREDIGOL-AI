@@ -361,7 +361,7 @@ function PriceCell({
       >
         {bookmaker}
       </span>
-      <span className="numeric max-w-full truncate text-[0.6875rem] leading-4 text-subtle-foreground">
+      <span className="numeric max-w-full break-words text-[0.6875rem] leading-4 text-subtle-foreground">
         {t("odds.board.fair", { odds: fmtOdds(p.fair_odds) })}
       </span>
     </span>

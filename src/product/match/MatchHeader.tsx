@@ -255,7 +255,7 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
             <span aria-hidden className="text-subtle-foreground">
               ·
             </span>
-            <span className="min-w-0 truncate">{round}</span>
+            <span className="min-w-0 break-words">{round}</span>
           </>
         ) : null}
       </div>

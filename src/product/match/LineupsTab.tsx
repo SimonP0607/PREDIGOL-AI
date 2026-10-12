@@ -273,10 +273,10 @@ function PlayerRows({
               line={lines.get(p.provider_player_id)}
               playerId={p.player_id}
               admin={admin}
-              // Touch: the whole row's height answers (44 px); the name truncates inside, never the button.
+              // Touch: the whole row's height answers (44 px); the name wraps inside, never cut.
               className="flex min-w-0 flex-1 items-center self-stretch"
             >
-              <span className="block min-w-0 truncate">
+              <span className="block min-w-0 break-words leading-snug">
                 {p.name ?? t("match.events.unknownPlayer")}
               </span>
             </PlayerSummary>
@@ -317,7 +317,7 @@ function TeamSheet({
   const subs = lineup ? bench(lineup) : [];
   return (
     <Block
-      title={<TeamName name={team.name} logo={team.logo_url} size={22} strong />}
+      title={<TeamName name={team.name} logo={team.logo_url} size={22} strong wrap />}
       right={
         lineup?.formation ? (
           <span

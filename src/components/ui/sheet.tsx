@@ -67,7 +67,7 @@ const SheetContent = React.forwardRef<
       {/* 36 px to the eye, 44 to the finger (tap); below the status bar of the installed iPhone app. */}
       <SheetPrimitive.Close
         className={cn(
-          "tap absolute right-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-md opacity-70 ring-offset-background transition-opacity hover:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary",
+          "tap absolute right-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-md opacity-70 ring-offset-background transition-opacity hover:bg-secondary hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary",
           side === "bottom" ? "top-3" : "top-[calc(0.75rem+env(safe-area-inset-top))]",
         )}
       >
