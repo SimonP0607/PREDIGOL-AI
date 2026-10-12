@@ -59,6 +59,7 @@ function FormBody({ ctx }: { ctx: MatchCtx }) {
                   logo={team.logo_url}
                   size={22}
                   strong
+                  wrap
                   className="text-sm"
                 />
                 {withGoals.length > 0 ? (
@@ -155,7 +156,7 @@ function FullTables({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) {
                     >
                       <td className="numeric w-7 py-1 text-muted-foreground">{rank}</td>
                       <td className="py-1 pr-2">
-                        <TeamName name={row.team} logo={row.team_logo} size={16} />
+                        <TeamName name={row.team} logo={row.team_logo} size={16} wrap />
                       </td>
                       <td className="numeric w-8 py-1 text-right text-muted-foreground">
                         {f.played}
@@ -214,7 +215,14 @@ function StandingsTable({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) 
               <tr key={s.side}>
                 <td className="numeric py-2 text-muted-foreground">{s.rank}</td>
                 <td className="py-2 pr-2">
-                  <TeamName name={team.name} logo={team.logo_url} size={20} className="min-w-0" />
+                  {/* Whole, wrapping: beside the form chips or in a fixed table, "Zorya Luh…" at 320 px. */}
+                  <TeamName
+                    name={team.name}
+                    logo={team.logo_url}
+                    size={20}
+                    wrap
+                    className="min-w-0"
+                  />
                 </td>
                 <td className="numeric py-2 text-right text-muted-foreground">{s.played}</td>
                 <td className="numeric py-2 text-right">

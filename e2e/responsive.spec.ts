@@ -144,6 +144,17 @@ test("team names are whole in the cards of a 320 px phone", async ({ page }) => 
     expect(await cutNames(page), `team names cut on ${path}`).toEqual([]);
     await assertClean(page, w);
   }
+  // The Match Center's summary: the form beside its chips and the standings table cut "Zorya Luh…" at 320 px.
+  const { body } = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    "/api/v1/matches?limit=3&order=desc",
+  );
+  for (const { id } of body.data ?? []) {
+    await page.goto(`/matches/${id}`);
+    await settle(page);
+    expect(await cutNames(page), `team names cut on /matches/${id}`).toEqual([]);
+    await assertClean(page, w);
+  }
 });
 
 test("tablets in both orientations and a phone held sideways", async ({ page }) => {
