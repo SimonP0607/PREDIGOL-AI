@@ -143,6 +143,46 @@ describe("phase and live state", () => {
     expect(liveSnapshot([])).toBeNull();
   });
 
+  test("a state observed before kick-off carries no score (the odds feed's 'Not Started' 0-0)", () => {
+    // 12 Oct, Livyi Bereh - Zorya Luhansk: past kick-off, the provider silent ("TBD"), the odds feed "Not Started".
+    const snap = liveSnapshot([
+      state({
+        observed_at: "2026-10-12T08:45:36Z",
+        status: "NS",
+        goals_home: null,
+        goals_away: null,
+      }),
+      state({
+        observed_at: "2026-10-12T10:13:36Z",
+        status: "TBD",
+        goals_home: null,
+        goals_away: null,
+      }),
+      state({
+        observed_at: "2026-10-12T10:37:31Z",
+        source: "odds_feed",
+        status: "Not Started",
+        elapsed: 0,
+        goals_home: 0,
+        goals_away: 0,
+      }),
+    ]);
+    expect(snap?.status).toBe("NS");
+    expect(snap?.goals).toBeNull();
+    // Once the ball is kicked, the same feed's goals count.
+    const played = liveSnapshot([
+      state({
+        observed_at: "2026-10-12T10:40:00Z",
+        source: "odds_feed",
+        status: "First Half",
+        elapsed: 3,
+        goals_home: 0,
+        goals_away: 0,
+      }),
+    ]);
+    expect(played?.goals).toEqual({ home: 0, away: 0 });
+  });
+
   test("live shows the in-play score, else the recorded one; nothing before kick-off", () => {
     const score = {
       home: 2,

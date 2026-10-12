@@ -80,6 +80,12 @@ describe("Home's live tiles", () => {
     }
   });
 
+  test("before kick-off a tile shows no score (the feed's 0-0) and the kick-off time", async () => {
+    const out = (await tiles([m(1, "Not Started", 0)])).replace(/<[^>]+>/g, " ");
+    expect(out).not.toMatch(/\b0\b/);
+    expect(out).toContain("–");
+  });
+
   test("the state pill says what is happening, as on /live", async () => {
     const label = async (status: string, elapsed: number | null) =>
       (await tiles([m(1, status, elapsed)])).replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'");

@@ -76,6 +76,7 @@ export function notPlayed(phase: Phase): boolean {
 /** The second feed spells states out ("First Half"); the first uses short codes ("1H"). */
 const FEED_STATUS: Record<string, string> = {
   "not started": "NS",
+  "time to be defined": "TBD",
   "first half": "1H",
   halftime: "HT",
   "half time": "HT",
@@ -118,13 +119,25 @@ function byNewest(a: LiveState, b: LiveState): number {
   return Date.parse(b.observed_at) - Date.parse(a.observed_at);
 }
 
-/** Minute and status from the newest observation; the score from the newest one that has it. */
+/** States observed before the ball is kicked: their "0-0" is no score. */
+const BEFORE_KICKOFF: ReadonlySet<string> = new Set(["NS", "TBD"]);
+
+/**
+ * Minute and status from the newest observation; the score from the newest one that has it - never from a state
+ * observed before kick-off (12 Oct: the odds feed said "Not Started", 0-0, for a match past its kick-off the
+ * provider had not started, and the Match Center read "0 – 0 · Pendiente de resultado").
+ */
 export function liveSnapshot(states: readonly LiveState[]): LiveSnapshot | null {
   if (states.length === 0) return null;
   const sorted = [...states].sort(byNewest);
   const newest = sorted[0];
   if (!newest) return null;
-  const scored = sorted.find((s) => s.goals_home !== null && s.goals_away !== null);
+  const scored = sorted.find(
+    (s) =>
+      s.goals_home !== null &&
+      s.goals_away !== null &&
+      !BEFORE_KICKOFF.has(normalizeStatus(s.status)),
+  );
   return {
     status: normalizeStatus(newest.status),
     elapsed: newest.elapsed,

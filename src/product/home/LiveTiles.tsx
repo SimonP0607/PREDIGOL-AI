@@ -76,8 +76,10 @@ function TeamLine({
 }
 
 function LiveTile({ m }: { m: LiveMatch }) {
-  const gh = m.goals_home;
-  const ga = m.goals_away;
+  // Before kick-off the feeds' "0-0" is no score: "–" beside each team, the kick-off time in the corner.
+  const pre = NOT_STARTED.has(m.status);
+  const gh = pre ? null : m.goals_home;
+  const ga = pre ? null : m.goals_away;
   const lead = gh !== null && ga !== null ? Math.sign(gh - ga) : 0;
   return (
     <Link
