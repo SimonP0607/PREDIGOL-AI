@@ -178,3 +178,38 @@ puede reconstruir el histórico de precios para un backtest. Plan, en orden y si
 4. Goles por equipo: 30 días en sombra.
 5. Goles por equipo: decisión del dueño.
 6. Córners: el mismo camino, más un modelo nuevo (Poisson / binomial negativa con córners a favor y en contra).
+
+### Backtest de goles por equipo (pasos 1–3 del plan; 12 oct, `scripts/research_team_totals.py`, solo lectura)
+
+Criterio fijado antes de mirar el resultado: se pasa a sombra solo si el modelo es **al menos tan preciso como el
+mercado** (log loss frente al consenso de cierre) **y** sus selecciones con valor tienen **valor de línea positivo**.
+
+* Datos: 30 días, 7.797 selecciones (líneas de 0,5 a 10,5, Over/Under, local y visitante) en 870 partidos con
+  marcador a los 90'; precio temprano ≥ 3 h antes del saque y precio de cierre, de los RAW de cada partido
+  (1.431 respuestas leídas). Ejecución completa en 145 s (12 oct, 01:2x UTC).
+* Modelos: Dixon–Coles y Poisson con los hiperparámetros de producción (`current_spec`: ξ = 0,002, penalización
+  1,0), reajustados cada semana por competición con 730 días; 732 y 753 partidos predichos; 114 fuera por tener más de
+  250 equipos (amistosos: producción tampoco los pronostica).
+
+| | Dixon–Coles | Poisson |
+|---|---|---|
+| Log loss, modelo − cierre (lado Over) | **+0,0186** (+0,0096 a +0,0276) | **+0,0195** (+0,0108 a +0,0293) |
+| Brier, modelo − cierre | +0,0061 (+0,0035 a +0,0085) | +0,0065 (+0,0039 a +0,0092) |
+| Regla de valor + `risk-v1` (precio temprano): n, cuota media, acierto | 123 en 46 partidos, 1,54, 70,7 % | 120 en 43 partidos, 1,51, 75,0 % |
+| Rentabilidad (IC 95 %) | −1,9 % (−19,3 % a +14,7 %) | +3,7 % (−14,6 % a +17,3 %) |
+| **Valor de línea** (IC 95 %) | **−2,9 % (−3,2 % a −2,5 %)** | **−2,6 % (−2,9 % a −2,1 %)** |
+| Placebo (mejor casa con la probabilidad del mercado): valor de línea | +2,8 % (+1,8 % a +3,9 %) | +2,8 % (+1,8 % a +3,8 %) |
+
+Calibración propia de los modelos: razonable (p. ej. D–C 0,5–0,6: 54,9 % previsto, 57,9 % real), pero menos
+precisa que el mercado. La rentabilidad positiva de Poisson es ruido: su intervalo incluye el cero y su valor de
+línea es negativo; no se presenta como mejora.
+
+**Decisión: no se activa.** Ninguno de los dos criterios se cumple con ninguno de los dos modelos: pierden contra el
+mercado y su «valor» pierde valor de línea (el intervalo excluye el cero), peor que elegir la mejor casa sin modelo. Los goles por equipo
+quedan evaluados y descartados con este modelo. Córners: necesitan un modelo propio (no existe) antes de cualquier
+backtest; tarjetas, con la mitad de los partidos cotizados; remates y paradas, no viables (una casa).
+
+Dos correcciones del propio script, encontradas al correrlo en el servidor: la primera ejecución fue terminada por
+memoria (ajustaba amistosos de miles de equipos que producción no pronostica: ahora usa `MAX_GOAL_TEAMS` y los
+hiperparámetros de `current_spec`), y la segunda perdió la conexión por `idle_in_transaction_session_timeout` (ahora
+lee todo y cierra la conexión antes de ajustar).

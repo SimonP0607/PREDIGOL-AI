@@ -47,7 +47,7 @@ Backup `review-p0-baseline` + restore test lanzados antes de tocar nada.
 | 19 | Mis picks: gráficas | `Recap` | Solo totales | «Tu recapitulación»: ganancia acumulada y por día, cuota media, rangos de cuota, rachas, mercados; animadas | `recapData.test.ts` | HECHO (web `b675a59`) |
 | B1 | Picks de cuotas altas | selección diaria, parlays, armador | Valor sin filtros extra; cuotas medias 2,85–4,43; ningún pick revisado por la IA al elegirse | `risk-v1` (cuota ≤ 3,00, walk-forward) y `context-v2`: el pick del día solo tras la pasada del día de PrediGol Intelligence, con el día leído entero; embudo trazable `/admin/picks/funnel` | `test_review_p5_selection.py`, `test_selection_funnel.py`, `test_parlay_builder.py`, `FunnelPanel.test.tsx`, `FunnelLine.test.tsx` | HECHO (`20c5f4b`, `fea8369`, `450dc00`; web `76c567a`, `fad763f`, `30cabcc`) |
 | B2 | Partidos «esperando resultado» | worker, API, liquidación | Proveedor que no actualiza; sin clasificar; picks abiertos sin fin | Clasificación por responsable (`ResultWait`), reintento por antigüedad de lectura con espera 25 min/2 h/6 h, `settle-v3`: nulo a las 72 h del saque tomado; regresión de todos los estados de extremo a extremo | `test_the_repair_asks_the_match_read_longest_ago_first_and_a_fresh_read_waits`, `test_picks.py` (settle-v3), `test_pick_pipeline.py`, `test_review_p5_states.py` (FT, AET, PEN, CANC, PST, ABD, AWD, WO, SUSP, INT, 72 h) | HECHO (P0 + `5e00839`) |
-| B3 | Más mercados | odds, modelos | Solo 1X2/OU/BTTS/AH/DC | Auditoría de cobertura, liquidez y datos para liquidar (goles por equipo y córners primero; remates y paradas no viables: una casa); backtest de goles por equipo (`research_team_totals`); nada se activa sin backtest | `test_research_team_totals.py`; datos | PARCIAL (falta lo que no se puede hacer hoy: 30 días en sombra y la decisión del dueño) |
+| B3 | Más mercados | odds, modelos | Solo 1X2/OU/BTTS/AH/DC | Auditoría de cobertura, liquidez y datos para liquidar de goles por equipo, córners, tarjetas, remates y paradas; backtest de goles por equipo (D–C y Poisson) con criterio fijado antes: **no se activa** (log loss +0,019 frente al mercado, valor de línea −2,6 % a −2,9 %); córners necesitan un modelo propio; remates y paradas no viables (una casa) | `test_research_team_totals.py`; backtest en el servidor (12 oct) | PARCIAL (evaluado y descartado con evidencia; córners sin modelo) |
 | B4 | IA objetiva con contexto | IA | Picks sin pasar por Intelligence ni noticias | Evidencia clasificada por el servidor (confirmada / probable / rumor / contradictoria / desactualizada) congelada con cada pick; pasada del día obligatoria; la búsqueda de noticias va primero a los candidatos del set | `test_review_p5_selection.py`, `test_ai_v2.py` (orden de la web) | HECHO (`450dc00`, `15f2ec8`) |
 
 ## P0 — cerrado el 11 oct 2026 (07:15 UTC)
@@ -117,4 +117,27 @@ Detalle y evidencia: `docs/owner/P5_SELECCION_RIESGO_CONTEXTO.md`. Desplegado: b
   40. Armador: piernas a 2,10–2,55 (antes 4,01–4,84).
 * **B2:** regresión de estados de extremo a extremo (`test_review_p5_states.py`).
 * **B3:** auditoría (goles por equipo 100 % de partidos con 6,7 casas; córners 95 %; remates y paradas, una casa) y
-  backtest de goles por equipo en curso; nada se activa.
+  backtest de goles por equipo (870 partidos, 30 días): Dixon–Coles y Poisson pierden contra el mercado (log loss
+  +0,0186 y +0,0195, intervalos sobre cero) y su valor tiene valor de línea −2,9 % y −2,6 %: **no se activa**.
+
+## P6 — Despliegue final, datos reales e integridad (12 oct 2026, 00:47–01:30 UTC)
+
+Desplegado: backend `d3d4ce6` (después `0e65747`, solo el script de investigación), web `d98a106`; `deploy: done`
+a las 00:54:36 UTC, veredicto ok, respaldo previo y restore test superado; sin migraciones. Durante el cambio de
+contenedores Caddy devolvió 9 × 502 en 8 s (00:53:37–45, `/api/v1/home` y `/daily`): la ventana del reinicio; la API
+nueva lleva 0 errores no controlados y el worker 0 errores.
+
+* **Regla del día en producción (`daily-set-v5`, `context-v2`):** el embudo de las 00:58 UTC: 565 selecciones de las
+  próximas 24 h → mercado 131 → valor 21 → **riesgo 10 (11 por encima de 3,00)** → contexto 1 (**9
+  `day_not_ready`**: partidos del 12 oct, día que la IA aún no ha leído) → selección 0 (el set del 11 está
+  completo). El set del 13 oct será el primero elegido por v5, después de la primera pasada del día de la IA.
+* **Armador (dueño):** 100 con valor → 60 bajo el tope → 5 revisados → 4 combinables → 2 piernas a 1,80 y 1,95;
+  usuario: sin candidatos (ningún modelo calificado).
+* **Integridad:** antes y después del despliegue, los mismos sets (7–12 oct, 5 picks cada uno con su versión v2/v3 y
+  su resultado) y parlays (v3/v4); picks y liquidaciones sin huecos por hora durante las horas sin enlace; 47 ciclos
+  de la IA en 12 h, todos ok; la primera pasada del 11 oct cubrió 170 partidos.
+* **Partidos en móvil:** el bloque desplegado de la página contiene la corrección; la batería E2E en 390 px pasa
+  sobre el mismo commit.
+* **B3:** backtest de goles por equipo completo; no se activa (ver P5).
+* **Tests sobre lo desplegado:** backend 2.114 + 4 omitidos; frontend 274, tipos, lint 0 errores, build; E2E 61 + 4
+  omitidos (PWA).
