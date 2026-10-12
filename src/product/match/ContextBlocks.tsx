@@ -134,7 +134,7 @@ function FullTables({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) {
     <div className="mt-2">
       <button
         type="button"
-        className="text-caption text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="tap relative inline-flex min-h-8 items-center text-caption text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
@@ -296,7 +296,9 @@ function H2HBody({ ctx, rows }: { ctx: MatchCtx; rows: H2HMatch[] }) {
             ].map((x) => (
               <div key={x.label} className="min-w-0">
                 <div className={cn("numeric text-xl font-semibold", x.tone)}>{x.n}</div>
-                <div className="truncate text-caption text-muted-foreground">{x.label}</div>
+                <div className="break-words text-caption leading-tight text-muted-foreground">
+                  {x.label}
+                </div>
               </div>
             ))}
           </div>
@@ -321,7 +323,7 @@ function H2HBody({ ctx, rows }: { ctx: MatchCtx; rows: H2HMatch[] }) {
               <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-sm">
                 <span
                   className={cn(
-                    "truncate text-right",
+                    "break-words text-right leading-snug",
                     r.goals_home > r.goals_away ? "font-semibold" : "text-muted-foreground",
                   )}
                 >
@@ -332,7 +334,7 @@ function H2HBody({ ctx, rows }: { ctx: MatchCtx; rows: H2HMatch[] }) {
                 </span>
                 <span
                   className={cn(
-                    "truncate",
+                    "break-words leading-snug",
                     r.goals_away > r.goals_home ? "font-semibold" : "text-muted-foreground",
                   )}
                 >
@@ -430,7 +432,7 @@ function AbsenceList({ ctx, rows }: { ctx: MatchCtx; rows: Absence[] }) {
                           competition={ctx.match.competition.name}
                           playerId={a.player_id}
                           admin={ctx.showAdmin}
-                          className="block max-w-full truncate font-medium"
+                          className="block max-w-full break-words font-medium leading-snug"
                         >
                           {a.player ?? t("match.events.unknownPlayer")}
                         </PlayerSummary>

@@ -29,28 +29,32 @@ function CompactLeg({ leg }: { leg: ParlayRecordLeg }) {
     <li
       data-testid="parlay-leg"
       data-status={leg.status}
-      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-elevated/40 sm:px-5"
+      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-elevated/40 sm:px-5 pointer-coarse:py-1.5"
     >
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(m.fixture_id) }}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:min-h-11"
       >
         <LegNumber n={leg.leg_no} />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold" data-testid="parlay-leg-selection">
+          {/* The selection and the match whole, on two lines if need be (mobile UX audit). */}
+          <div
+            className="break-words text-sm font-semibold leading-snug"
+            data-testid="parlay-leg-selection"
+          >
             {legLabel(view)}
           </div>
-          <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground">
+          <div className="mt-0.5 flex min-w-0 items-start gap-1.5 text-caption text-muted-foreground">
             <span className="numeric shrink-0">{formatKickoff(m.kickoff_at)}</span>
             <span aria-hidden className="text-subtle-foreground">
               ·
             </span>
-            <span className="flex shrink-0 items-center gap-0.5">
+            <span className="mt-px flex shrink-0 items-center gap-0.5">
               <TeamLogo src={m.home.logo_url} name={m.home.name} size={14} />
               <TeamLogo src={m.away.logo_url} name={m.away.name} size={14} />
             </span>
-            <span className="truncate">
+            <span className="min-w-0 break-words">
               {m.home.name} – {m.away.name}
             </span>
           </div>

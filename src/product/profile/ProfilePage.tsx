@@ -87,7 +87,7 @@ function TimeZonePicker() {
         placeholder={t("profile.searchZone")}
         aria-label={t("profile.searchZone")}
         data-testid="timezone-search"
-        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
+        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none pointer-coarse:h-11"
       />
       <ul
         className="max-h-64 overflow-y-auto rounded-md border border-border"
@@ -104,7 +104,7 @@ function TimeZonePicker() {
               onClick={() => void choose(z)}
               disabled={busy !== null}
               className={cn(
-                "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-elevated",
+                "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-elevated pointer-coarse:min-h-11",
                 z === current && "bg-elevated",
               )}
             >
@@ -165,7 +165,7 @@ function PasswordForm() {
           autoComplete="current-password"
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
-          className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
+          className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none pointer-coarse:h-11"
         />
       </label>
       <label className="block">
@@ -175,7 +175,7 @@ function PasswordForm() {
           autoComplete="new-password"
           value={next}
           onChange={(e) => setNext(e.target.value)}
-          className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
+          className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none pointer-coarse:h-11"
         />
       </label>
       <p className="text-caption text-subtle-foreground sm:col-span-2">
@@ -200,7 +200,7 @@ function PasswordForm() {
         <button
           type="submit"
           disabled={busy || !current || !next}
-          className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+          className="tap-y relative inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
           {t("profile.changePassword")}
@@ -250,7 +250,7 @@ export function ProfilePage() {
               data-testid={`profile-lang-${l}`}
               onClick={() => void auth.setLocale(l)}
               className={cn(
-                "rounded-md border px-4 py-2 text-sm font-semibold",
+                "rounded-md border px-4 py-2 text-sm font-semibold pointer-coarse:min-h-11",
                 locale === l
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border-strong hover:bg-elevated",
@@ -306,7 +306,7 @@ export function ProfilePage() {
       <button
         type="button"
         onClick={() => void auth.signOut().then(() => navigate({ to: "/login" }))}
-        className="inline-flex items-center gap-2 rounded-md border border-negative/40 px-4 py-2 text-sm font-medium text-negative hover:bg-negative-soft"
+        className="inline-flex items-center gap-2 rounded-md border border-negative/40 px-4 py-2 text-sm font-medium text-negative hover:bg-negative-soft pointer-coarse:min-h-11"
       >
         <LogOut aria-hidden className="h-4 w-4" />
         {t("profile.signOut")}

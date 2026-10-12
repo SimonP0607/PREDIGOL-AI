@@ -105,10 +105,14 @@ function LinesTable<T>({
               </th>
             ) : null}
             <th scope="col" className="pb-1.5 pr-2 text-left font-medium">
-              <span className="block truncate">{isOU ? t("match.markets.over") : sides.home}</span>
+              <span className="block break-words leading-tight">
+                {isOU ? t("match.markets.over") : sides.home}
+              </span>
             </th>
             <th scope="col" className="pb-1.5 text-left font-medium">
-              <span className="block truncate">{isOU ? t("match.markets.under") : sides.away}</span>
+              <span className="block break-words leading-tight">
+                {isOU ? t("match.markets.under") : sides.away}
+              </span>
             </th>
           </tr>
         </thead>
@@ -285,7 +289,8 @@ function BooksPanel({
               </th>
               {sels.map((sel) => (
                 <th key={sel} scope="col" className="pb-1 pl-2 text-right font-medium">
-                  <span className="block truncate">{header(sel)}</span>
+                  {/* The whole selection ("New England Revolution o empate"), on two lines if need be. */}
+                  <span className="block break-words leading-tight">{header(sel)}</span>
                 </th>
               ))}
             </tr>
@@ -293,7 +298,10 @@ function BooksPanel({
           <tbody className="divide-y divide-border/50">
             {table.map((r) => (
               <tr key={r.bookmaker}>
-                <th scope="row" className="max-w-[9rem] truncate py-1.5 pr-2 text-left font-normal">
+                <th
+                  scope="row"
+                  className="max-w-[9rem] break-words py-1.5 pr-2 text-left font-normal"
+                >
                   {r.bookmaker}
                 </th>
                 {r.cells.map((c, i) => (
@@ -538,7 +546,7 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
       <div className="flex justify-center">
         <Link
           to="/odds"
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-border-strong px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+          className="tap-y relative inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-border-strong px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
         >
           <LineChart aria-hidden className="h-4 w-4" />
           {t("match.markets.movement")}

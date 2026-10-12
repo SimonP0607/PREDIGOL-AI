@@ -188,17 +188,21 @@ function TeamSide({
 }) {
   return (
     <div className="flex min-w-0 flex-col items-center gap-2 text-center">
-      <span className="flex sm:hidden">
-        <TeamLogo src={team.logo_url} name={team.name} size={52} />
+      {/* A phone - and any phone held sideways - gets the smaller crest: the header must leave room for the
+          tabs and the first lines of the match on the first screen. */}
+      <span className="flex sm:hidden short:flex">
+        <TeamLogo src={team.logo_url} name={team.name} size={44} />
       </span>
-      <span className="hidden sm:flex">
+      <span className="hidden sm:flex short:hidden">
         <TeamLogo src={team.logo_url} name={team.name} size={64} />
       </span>
+      {/* Three lines at most, never "New England…": a 320 px phone gives a side about 95 px. */}
       <span
         className={cn(
-          "line-clamp-2 break-words font-display text-sm font-semibold leading-tight sm:text-lg",
+          "line-clamp-3 break-words font-display text-sm font-semibold leading-tight sm:text-lg short:text-base",
           dim && "text-muted-foreground",
         )}
+        data-testid="team-name"
       >
         {team.name}
       </span>
@@ -256,7 +260,7 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
         ) : null}
       </div>
 
-      <div className="mx-auto grid max-w-3xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 px-3 pb-5 pt-4 sm:gap-6 sm:px-6 sm:pb-6">
+      <div className="mx-auto grid max-w-3xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 px-3 pb-4 pt-3 sm:gap-6 sm:px-6 sm:pb-6 sm:pt-4 short:pb-3 short:pt-2">
         <TeamSide team={m.home} goals={goals.home} dim={winner === "away"} />
         <div className="min-w-[6.25rem] sm:min-w-[9rem]">
           <Center ctx={ctx} />
@@ -264,7 +268,7 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
         <TeamSide team={m.away} goals={goals.away} dim={winner === "home"} />
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-border/70 px-4 py-2.5 text-caption text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-border/70 px-4 py-2 text-caption text-muted-foreground sm:py-2.5">
         <span className="inline-flex items-center gap-1.5">
           <CalendarDays aria-hidden className="h-3.5 w-3.5 text-subtle-foreground" />
           {capitalize(formatDateLong(m.kickoff_at))}
@@ -279,7 +283,7 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
             title={[venuePlace(venue), ...venueFacts(venue)].join(" · ")}
           >
             <MapPin aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtle-foreground" />
-            <span className="truncate">
+            <span className="min-w-0 break-words">
               {venuePlace(venue)}
               {venue.capacity ? ` · ${venueFacts(venue)[0]}` : ""}
             </span>
@@ -288,7 +292,7 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
         {center?.facts?.referee ? (
           <span className="inline-flex min-w-0 items-center gap-1.5" data-testid="match-referee">
             <UserRound aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtle-foreground" />
-            <span className="truncate">
+            <span className="min-w-0 break-words">
               {t("match.header.referee", { name: center.facts.referee })}
               {center.facts.referee_country ? ` (${center.facts.referee_country})` : ""}
             </span>

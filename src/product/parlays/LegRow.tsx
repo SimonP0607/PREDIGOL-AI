@@ -6,12 +6,10 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { t } from "@/lib/i18n";
-import { CompetitionTag, TeamName } from "@/components/football/Logos";
+import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { EvBadge, Kickoff, OddsPill } from "@/product/shared/Bits";
 import { marketName } from "@/product/shared/markets";
 import { SelectablePrice } from "@/product/odds/SelectablePrice";
-import { MatchScore } from "@/product/records/DailyItemCard";
 import { hasStarted } from "@/product/records/model";
 import { LegWhy } from "./LegWhy";
 import { legLabel, pickableOfView, type LegView } from "./legs";
@@ -68,15 +66,13 @@ export function LegRow({
           </div>
           <Kickoff at={leg.kickoff_at} className="shrink-0" />
         </div>
-        <div className="mt-2.5 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-sm">
-          <TeamName name={leg.home.name} logo={leg.home.logo_url} size={22} strong />
-          {leg.score ? (
-            <MatchScore home={leg.score.home} away={leg.score.away} />
-          ) : (
-            <span className="text-caption text-subtle-foreground">{t("common.vs")}</span>
-          )}
-          <TeamName name={leg.away.name} logo={leg.away.logo_url} size={22} strong reverse />
-        </div>
+        {/* Home above away, every name whole (mobile UX audit: "Kocaelis…" on a phone). */}
+        <Matchup
+          home={{ name: leg.home.name, logo: leg.home.logo_url }}
+          away={{ name: leg.away.name, logo: leg.away.logo_url }}
+          score={leg.score}
+          className="mt-2.5"
+        />
       </Link>
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2">
         <div className="min-w-0">

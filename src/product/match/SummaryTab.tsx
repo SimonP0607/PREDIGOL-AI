@@ -27,7 +27,7 @@ import { Block, CenterSection, MoreButton, StatBars, TeamsLegend } from "./ui";
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0 rounded-lg border border-border bg-elevated/40 px-3 py-2">
-      <dt className="truncate text-caption text-muted-foreground">{label}</dt>
+      <dt className="break-words text-caption leading-tight text-muted-foreground">{label}</dt>
       <dd className="numeric mt-0.5 text-base font-semibold">{value}</dd>
     </div>
   );

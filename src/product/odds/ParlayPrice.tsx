@@ -79,7 +79,8 @@ export function ParlayToggle({
       }
       onClick={state.toggle}
       className={cn(
-        "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        // tap: a price pill is 30 px tall; on a touch screen it answers 44 px around it.
+        "tap relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
     >

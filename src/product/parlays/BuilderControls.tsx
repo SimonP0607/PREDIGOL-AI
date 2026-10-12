@@ -14,7 +14,7 @@ const LEG_COUNTS = Array.from(
   (_, i) => BUILDER_MIN_LEGS + i,
 );
 const FIELD =
-  "h-10 rounded-lg border border-border bg-card px-3 text-base text-foreground transition-colors placeholder:text-subtle-foreground hover:border-border-strong focus:border-border-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:h-9 sm:text-[0.8125rem]";
+  "h-10 rounded-lg border border-border bg-card px-3 text-base text-foreground transition-colors placeholder:text-subtle-foreground hover:border-border-strong focus:border-border-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:h-9 sm:text-[0.8125rem] pointer-coarse:h-11";
 const LABEL = "text-label text-subtle-foreground";
 
 export function Field({ label, children }: { label: ReactNode; children: ReactNode }) {
@@ -36,7 +36,7 @@ export function MarketChips({
 }) {
   const chip = (on: boolean) =>
     cn(
-      "inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "tap-y relative inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       on
         ? "border-primary/50 bg-primary/12 text-primary"
         : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
@@ -45,7 +45,7 @@ export function MarketChips({
     <div
       role="group"
       aria-label={t("parlays.builder.markets")}
-      className="flex flex-wrap gap-1.5"
+      className="flex flex-wrap gap-1.5 pointer-coarse:gap-y-2"
       data-testid="builder-markets"
     >
       <button

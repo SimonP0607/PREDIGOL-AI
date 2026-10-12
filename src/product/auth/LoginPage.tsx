@@ -88,7 +88,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:h-11"
               />
             </label>
             <label className="block">
@@ -103,13 +103,13 @@ export function LoginPage({ expired }: { expired: boolean }) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 pr-10 text-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 pr-10 text-sm focus:border-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShow((v) => !v)}
                   aria-label={show ? t("auth.hidePassword") : t("auth.showPassword")}
-                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground pointer-coarse:w-11"
                 >
                   {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -120,7 +120,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
               disabled={busy || !email || !password}
               data-testid="login-submit"
               className={cn(
-                "flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90",
+                "flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 pointer-coarse:h-11",
                 (busy || !email || !password) && "cursor-not-allowed opacity-60",
               )}
             >

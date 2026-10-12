@@ -116,7 +116,7 @@ function BuildYourOwn() {
         type="button"
         onClick={() => slip.setOpen(true)}
         data-testid="parlays-build-own"
-        className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-gold/50 bg-gold-soft px-4 text-sm font-semibold text-gold-strong transition-colors hover:bg-gold-soft/70"
+        className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-gold/50 bg-gold-soft px-4 text-sm font-semibold text-gold-strong transition-colors hover:bg-gold-soft/70 pointer-coarse:min-h-11"
       >
         <Layers aria-hidden className="h-4 w-4" />
         {t("records.mine.parlays.build")}

@@ -243,7 +243,9 @@ export function MatchesPage() {
       <div className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <DayNav day={view.day} today={today} onChange={(day) => update({ day })} />
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+          {/* Two columns on a phone, four on a tablet (the search no longer sits alone, right-aligned, on a row
+              of its own at 768 px), one row on a desk. */}
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:flex lg:flex-wrap lg:justify-end">
             <FacetPicker<string>
               label={t("matches.filters.country")}
               anyLabel={t("matches.filters.allCountries")}
@@ -262,12 +264,14 @@ export function MatchesPage() {
               icon={<Layers />}
               testId="category-select"
             />
+            {/* Under 360 px these two take a row each: half a row cut "Competición" and the search hint. */}
             <CompetitionPicker
               value={competition}
               options={options}
               onChange={(c) => update({ competition: c })}
+              className="max-[359px]:col-span-2"
             />
-            <SearchBox value={view.query} onChange={search} />
+            <SearchBox value={view.query} onChange={search} className="max-[359px]:col-span-2" />
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -282,7 +286,7 @@ export function MatchesPage() {
             <button
               type="button"
               onClick={clearFilters}
-              className="ml-auto hidden shrink-0 text-xs font-medium text-primary hover:underline sm:inline"
+              className="tap-y relative ml-auto hidden min-h-9 shrink-0 items-center text-xs font-medium text-primary hover:underline sm:inline-flex"
             >
               {t("matches.filters.clear")}
             </button>

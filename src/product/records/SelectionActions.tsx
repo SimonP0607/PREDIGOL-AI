@@ -15,7 +15,8 @@ import type { Pickable } from "./pickable";
 import { useSlip } from "./slipContext";
 
 const BUTTON =
-  "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
+  // "Guardar" and "Agregar a mi parlay": a full 44 px under a thumb (touch), 36 px with a mouse.
+  "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors pointer-coarse:min-h-11 pointer-coarse:px-4 pointer-coarse:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
 export function SelectionActions({
   sel,

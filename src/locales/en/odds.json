@@ -60,6 +60,7 @@
     "replaces": "Replaces the other selection of this match in your parlay: one per match"
   },
   "fairExplainer": "Fair price: the odds each selection would pay if bookmakers took no margin (the market's consensus probability, without its margin). In green, how much the best price pays above that fair price; “outlier”, one bookmaker's price that is probably stale or wrong.",
+  "fairExplainerToggle": "What is the fair price?",
   "filters": {
     "search": "Search team or competition",
     "searchPlaceholder": "Team or competition",

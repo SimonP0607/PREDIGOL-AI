@@ -208,7 +208,7 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
           onClick={() => {
             void navigator.clipboard?.writeText(codes.join("\n")).then(() => setCopied(true));
           }}
-          className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-border-strong text-xs font-medium hover:bg-elevated"
+          className="tap-y relative flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-border-strong text-xs font-medium hover:bg-elevated"
         >
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           {copied ? t("auth.steps.copied") : t("auth.steps.copy")}
@@ -216,7 +216,7 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
         <button
           type="button"
           onClick={download}
-          className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-border-strong text-xs font-medium hover:bg-elevated"
+          className="tap-y relative flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-border-strong text-xs font-medium hover:bg-elevated"
         >
           <Download className="h-3.5 w-3.5" />
           {t("auth.steps.download")}

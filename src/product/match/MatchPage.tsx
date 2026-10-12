@@ -13,6 +13,7 @@ import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useScrollCue } from "@/lib/scrollCue";
 import { Card, EmptyState, ErrorState, SkeletonBlock } from "@/product/shared/States";
 import { AdvancedTab } from "./AdvancedTab";
 import type { MatchCtx, TabKey } from "./context";
@@ -32,7 +33,7 @@ function BackLink() {
   return (
     <Link
       to="/matches"
-      className="inline-flex min-h-9 items-center gap-1 rounded-md pr-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="tap-y relative inline-flex min-h-9 items-center gap-1 rounded-md pr-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <ChevronLeft aria-hidden className="h-4 w-4" />
       {t("match.back")}
@@ -77,7 +78,7 @@ function NotFound() {
           action={
             <Link
               to="/matches"
-              className="inline-flex min-h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="tap-y relative inline-flex min-h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
               {t("match.notFound.action")}
             </Link>
@@ -100,6 +101,7 @@ function TabBar({
   live: boolean;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
+  useScrollCue(listRef);
 
   // On a phone the strip scrolls: keep the open tab in sight (the page itself does not move).
   useEffect(() => {
@@ -132,13 +134,14 @@ function TabBar({
   }
 
   return (
-    <div className="sticky top-14 z-20 -mx-4 bg-background/90 px-4 backdrop-blur">
+    <div className="top-sticky sticky z-20 -mx-4 bg-background/90 px-4 backdrop-blur">
       <div
         ref={listRef}
         role="tablist"
         aria-label={t("match.tabs.label")}
         onKeyDown={onKeyDown}
-        className="flex overflow-x-auto border-b border-border [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden"
+        // scroll-strip + useScrollCue: on a phone the edge fades where more tabs wait ("Alineaciones" at 390 px).
+        className="scroll-strip flex border-b border-border sm:gap-1"
       >
         {tabs.map((key) => {
           const selected = key === active;

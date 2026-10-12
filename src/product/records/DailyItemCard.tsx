@@ -8,7 +8,7 @@ import { Snowflake } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import type { DailyItem } from "@/lib/api/v1/types_records";
-import { CompetitionTag, TeamName } from "@/components/football/Logos";
+import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { EvBadge, Kickoff, OddsPill, ProbCompare } from "@/product/shared/Bits";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { AiNote } from "./AiNote";
@@ -84,11 +84,13 @@ export function DailyItemCard({
           />
           <Kickoff at={m.kickoff_at} className="shrink-0" />
         </div>
-        <div className="flex items-center gap-2 px-4 pt-2.5">
+        {/* Home above away, every name whole, the goals on the right (mobile UX audit: one line cut
+            "Gainare Tot…" even at desktop widths). */}
+        <div className="flex items-start gap-2.5 px-4 pt-2.5">
           <span
             aria-label={`#${item.rank}`}
             className={cn(
-              "numeric flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+              "numeric mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
               item.rank === 1
                 ? "bg-gold text-gold-foreground"
                 : "bg-elevated text-muted-foreground",
@@ -96,30 +98,17 @@ export function DailyItemCard({
           >
             {item.rank}
           </span>
-          <div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm">
-            <TeamName
-              name={m.home.name}
-              logo={m.home.logo_url}
-              size={22}
-              strong
-              className="min-w-0"
-            />
-            {m.score_home !== null && m.score_away !== null ? (
-              <MatchScore home={m.score_home} away={m.score_away} />
-            ) : liveScore ? (
-              <MatchScore home={liveScore.home} away={liveScore.away} />
-            ) : (
-              <span className="text-caption text-subtle-foreground">{t("common.vs")}</span>
-            )}
-            <TeamName
-              name={m.away.name}
-              logo={m.away.logo_url}
-              size={22}
-              strong
-              reverse
-              className="min-w-0"
-            />
-          </div>
+          <Matchup
+            home={{ name: m.home.name, logo: m.home.logo_url }}
+            away={{ name: m.away.name, logo: m.away.logo_url }}
+            score={
+              m.score_home !== null && m.score_away !== null
+                ? { home: m.score_home, away: m.score_away }
+                : liveScore
+            }
+            live={!!liveScore && !(m.score_home !== null && m.score_away !== null)}
+            className="flex-1"
+          />
         </div>
 
         <div className="mt-3 border-t border-border/70 px-4 py-3">
@@ -130,7 +119,7 @@ export function DailyItemCard({
                 {marketName(item.market_key)}
               </div>
               <div
-                className="mt-0.5 truncate font-display text-[0.95rem] font-semibold"
+                className="mt-0.5 break-words font-display text-[0.95rem] font-semibold leading-snug"
                 data-testid="pick-selection"
               >
                 {label}

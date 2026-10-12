@@ -36,14 +36,15 @@ function BestRow({ h }: { h: BestHighlight }) {
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(h.fixture_id) }}
-        className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] lg:gap-x-6 lg:gap-y-1"
+        className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] lg:gap-x-6 lg:gap-y-1 pointer-coarse:min-h-11"
       >
-        <div className="col-span-2 flex min-w-0 items-center gap-1.5 text-sm font-medium lg:col-span-1 lg:col-start-1 lg:row-start-1">
-          <TeamName name={h.home.name} logo={h.home.logo_url} size={18} className="min-w-0" />
+        {/* Whole names: the away side drops to a second line when both do not fit (mobile UX audit). */}
+        <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-medium lg:col-span-1 lg:col-start-1 lg:row-start-1">
+          <TeamName name={h.home.name} logo={h.home.logo_url} size={18} wrap className="min-w-0" />
           <span aria-hidden className="shrink-0 text-subtle-foreground">
             –
           </span>
-          <TeamName name={h.away.name} logo={h.away.logo_url} size={18} className="min-w-0" />
+          <TeamName name={h.away.name} logo={h.away.logo_url} size={18} wrap className="min-w-0" />
         </div>
 
         <div className="flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground lg:col-start-1 lg:row-start-2">
@@ -64,10 +65,13 @@ function BestRow({ h }: { h: BestHighlight }) {
         </div>
 
         <div className="col-span-2 min-w-0 lg:col-span-1 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <div className="truncate text-caption uppercase tracking-wider text-subtle-foreground">
+          <div className="break-words text-caption uppercase tracking-wider text-subtle-foreground">
             {marketName(h.market_key)}
           </div>
-          <div className="truncate text-sm font-semibold" data-testid="best-price-selection">
+          <div
+            className="break-words text-sm font-semibold leading-snug"
+            data-testid="best-price-selection"
+          >
             {label}
           </div>
         </div>

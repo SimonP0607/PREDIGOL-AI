@@ -17,7 +17,7 @@ import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { HistoryGroup, HistoryPeriod, UserParlay, UserPick } from "@/lib/api/v1/types_records";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
-import { CompetitionTag, TeamName } from "@/components/football/Logos";
+import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { OddsPill } from "@/product/shared/Bits";
 import {
   Card,
@@ -31,7 +31,6 @@ import {
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { ChipGroup } from "@/product/picks/Controls";
 import { EvaluationBadge, OriginLabel, ParlayStatusBadge, RecordState, Units } from "./Badges";
-import { MatchScore } from "./DailyItemCard";
 import { useRefreshMine } from "./hooks";
 import { HISTORY_GROUPS, hasStarted } from "./model";
 import { useSlip } from "./slipContext";
@@ -195,7 +194,7 @@ function UserOddsForm({ pick, onDone }: { pick: UserPick; onDone: () => void }) 
         type="submit"
         disabled={save.isPending}
         data-testid="user-odds-save"
-        className="h-9 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+        className="tap-y relative h-9 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:opacity-50"
       >
         {t("records.mine.picks.saveOdds")}
       </button>
@@ -204,7 +203,7 @@ function UserOddsForm({ pick, onDone }: { pick: UserPick; onDone: () => void }) 
           type="button"
           disabled={save.isPending}
           onClick={() => save.mutate(null)}
-          className="h-9 rounded-full border border-border-strong px-3 text-xs font-medium text-muted-foreground hover:bg-elevated"
+          className="tap-y relative h-9 rounded-full border border-border-strong px-3 text-xs font-medium text-muted-foreground hover:bg-elevated"
         >
           {t("records.mine.picks.clearOdds")}
         </button>
@@ -212,7 +211,7 @@ function UserOddsForm({ pick, onDone }: { pick: UserPick; onDone: () => void }) 
       <button
         type="button"
         onClick={onDone}
-        className="h-9 rounded-full px-3 text-xs font-medium text-muted-foreground hover:bg-elevated"
+        className="tap-y relative h-9 rounded-full px-3 text-xs font-medium text-muted-foreground hover:bg-elevated"
       >
         {t("records.mine.picks.cancel")}
       </button>
@@ -245,7 +244,12 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
     away: m.away.name,
   });
   return (
-    <li className="px-4 py-3.5 sm:px-5" data-testid="saved-pick" data-status={pick.status}>
+    <li
+      className="px-4 py-3.5 sm:px-5"
+      data-testid="saved-pick"
+      data-status={pick.status}
+      data-fixture-id={m.fixture_id}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <OriginLabel origin="mine" />
@@ -268,27 +272,18 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
             country={m.competition.country}
             className="min-w-0"
           />
-          <div className="mt-1.5 flex min-w-0 items-center gap-2 text-sm">
-            <TeamName
-              name={m.home.name}
-              logo={m.home.logo_url}
-              size={18}
-              strong
-              className="min-w-0"
-            />
-            {m.score_home !== null && m.score_away !== null ? (
-              <MatchScore home={m.score_home} away={m.score_away} />
-            ) : (
-              <span className="text-caption text-subtle-foreground">{t("common.vs")}</span>
-            )}
-            <TeamName
-              name={m.away.name}
-              logo={m.away.logo_url}
-              size={18}
-              strong
-              className="min-w-0"
-            />
-          </div>
+          {/* Home above away, every name whole (mobile UX audit: "Atlético Nac…"). */}
+          <Matchup
+            home={{ name: m.home.name, logo: m.home.logo_url }}
+            away={{ name: m.away.name, logo: m.away.logo_url }}
+            score={
+              m.score_home !== null && m.score_away !== null
+                ? { home: m.score_home, away: m.score_away }
+                : null
+            }
+            size={18}
+            className="mt-1.5"
+          />
           <div className="mt-1 text-caption text-muted-foreground">
             <span className="numeric">{formatKickoff(m.kickoff_at)}</span> ·{" "}
             {marketName(pick.market_key)}
@@ -414,7 +409,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
           <div className="min-w-0">
             <OriginLabel origin="mine" />
             <h3
-              className="mt-1 truncate font-display text-base font-semibold"
+              className="mt-1 break-words font-display text-base font-semibold leading-snug"
               data-testid="my-parlay-name"
             >
               {parlay.name ?? t("records.mine.parlays.unnamed")}
@@ -433,7 +428,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
                 {leg.leg_no}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">
+                <div className="break-words text-sm font-semibold leading-snug">
                   {selectionLabel({
                     market_key: leg.market_key,
                     selection: leg.selection,
@@ -442,7 +437,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
                     away: leg.match.away.name,
                   })}
                 </div>
-                <div className="truncate text-caption text-muted-foreground">
+                <div className="break-words text-caption text-muted-foreground">
                   <span className="numeric">{formatKickoff(leg.match.kickoff_at)}</span> ·{" "}
                   {leg.match.home.name} – {leg.match.away.name}
                 </div>
@@ -487,7 +482,7 @@ function MyParlays() {
       type="button"
       onClick={() => slip.setOpen(true)}
       data-testid="build-parlay"
-      className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-gold/50 bg-gold-soft px-3.5 text-xs font-semibold text-gold-strong transition-colors hover:bg-gold-soft/70"
+      className="tap-y relative inline-flex min-h-9 items-center gap-1.5 rounded-full border border-gold/50 bg-gold-soft px-3.5 text-xs font-semibold text-gold-strong transition-colors hover:bg-gold-soft/70"
     >
       <Layers aria-hidden className="h-3.5 w-3.5" />
       {t("records.mine.parlays.build")}

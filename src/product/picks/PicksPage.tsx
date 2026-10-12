@@ -139,7 +139,7 @@ function StartedPicks() {
                   id="started-competition"
                   value={competition === null ? "" : String(competition)}
                   onChange={(e) => setCompetition(e.target.value ? Number(e.target.value) : null)}
-                  className="h-10 w-full appearance-none truncate rounded-lg border border-border bg-background pl-3 pr-9 text-sm text-foreground transition-colors hover:border-border-strong focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="h-10 w-full appearance-none truncate rounded-lg border border-border bg-background pl-3 pr-9 text-sm text-foreground transition-colors hover:border-border-strong focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:h-11"
                 >
                   <option value="">{t("picks.filters.allCompetitions")}</option>
                   {competitions.map((c) => (
@@ -265,7 +265,7 @@ function AllPicks({
       type="button"
       onClick={() => onChange(DEFAULT_FILTERS)}
       data-testid="filters-reset"
-      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-strong px-3 text-xs font-medium text-foreground transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="tap-y relative inline-flex h-9 items-center gap-1.5 rounded-full border border-border-strong px-3 text-xs font-medium text-foreground transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <RotateCcw aria-hidden className="h-3.5 w-3.5" />
       {t("picks.filters.reset")}
@@ -288,7 +288,7 @@ function AllPicks({
           type="button"
           onClick={() => onChange({ ...filters, hours: widest })}
           data-testid="picks-widen"
-          className="inline-flex h-9 items-center rounded-full border border-border-strong px-4 text-xs font-semibold transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="tap-y relative inline-flex h-9 items-center rounded-full border border-border-strong px-4 text-xs font-semibold transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {t("picks.all.widen", { days: Math.round(widest / 24) })}
         </button>
@@ -493,7 +493,7 @@ function CompetitionSelect({
             onChange(options.find((c) => c.id === id) ?? null);
           }}
           data-testid="filter-competition"
-          className="h-10 w-full appearance-none truncate rounded-lg border border-border bg-background pl-3 pr-9 text-sm text-foreground transition-colors hover:border-border-strong focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-10 w-full appearance-none truncate rounded-lg border border-border bg-background pl-3 pr-9 text-sm text-foreground transition-colors hover:border-border-strong focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:h-11"
         >
           <option value="">{t("picks.filters.allCompetitions")}</option>
           {options.map((c) => (

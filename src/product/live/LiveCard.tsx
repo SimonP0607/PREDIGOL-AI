@@ -72,7 +72,12 @@ function TeamBlock({ team }: { team: LiveTeam }) {
   return (
     <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
       <TeamLogo src={team.logo_url} name={team.name} size={36} />
-      <span className="line-clamp-2 text-sm font-semibold leading-tight">{team.name}</span>
+      <span
+        className="line-clamp-3 break-words text-sm font-semibold leading-tight"
+        data-testid="team-name"
+      >
+        {team.name}
+      </span>
     </div>
   );
 }
@@ -120,7 +125,7 @@ function EventItem({ e, end }: { e: KeyEvent; end: boolean }) {
       <span className="numeric shrink-0 text-muted-foreground">
         {minuteText(e.minute, e.extra) ?? `${e.minute}'`}
       </span>
-      <span className="truncate text-foreground/90">
+      <span className="min-w-0 break-words text-foreground/90">
         {e.player ?? t("live.events.unknownPlayer")}
         {suffix}
       </span>
@@ -184,7 +189,9 @@ function StatBar({ row }: { row: StatRow }) {
         >
           {fmt(row.home)}
         </span>
-        <span className="truncate text-muted-foreground">{statLabel(row.key)}</span>
+        <span className="min-w-0 text-center leading-tight text-muted-foreground">
+          {statLabel(row.key)}
+        </span>
         <span
           className={cn(
             "numeric w-12 shrink-0 text-right tabular-nums",
@@ -247,7 +254,9 @@ function QuoteCell({ label, quote }: { label: string; quote: LiveQuote | null })
         (suspended || missing) && "opacity-60",
       )}
     >
-      <span className="truncate text-caption text-muted-foreground">{label}</span>
+      <span className="min-w-0 break-words text-caption leading-tight text-muted-foreground">
+        {label}
+      </span>
       {suspended ? (
         <Lock aria-hidden className="h-3 w-3 shrink-0 text-muted-foreground" />
       ) : (

@@ -30,7 +30,8 @@ export function ChipGroup<T extends string | number>({
       role="group"
       aria-label={label}
       data-testid={testId}
-      className={cn("flex flex-wrap gap-1.5", className)}
+      // Touch: 8 px between rows, so each chip's 44 px reach (tap-y) never covers the next row's.
+      className={cn("flex flex-wrap gap-1.5 pointer-coarse:gap-y-2", className)}
     >
       {options.map((o) => {
         const on = o.value === value;
@@ -42,7 +43,7 @@ export function ChipGroup<T extends string | number>({
             title={o.title}
             onClick={() => onChange(o.value)}
             className={cn(
-              "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "tap-y relative inline-flex h-9 items-center whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               on
                 ? "border-primary/50 bg-primary/12 text-primary"
                 : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",

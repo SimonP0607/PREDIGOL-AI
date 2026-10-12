@@ -202,7 +202,7 @@ export function LivePage() {
             <button
               type="button"
               onClick={() => setFilters(NO_FILTERS)}
-              className="inline-flex rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
+              className="tap-y relative inline-flex rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
             >
               {t("live.filters.clear")}
             </button>
@@ -220,7 +220,7 @@ export function LivePage() {
           action={
             <Link
               to="/matches"
-              className="inline-flex rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
+              className="tap-y relative inline-flex rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
             >
               {t("live.seeMatches")}
             </Link>

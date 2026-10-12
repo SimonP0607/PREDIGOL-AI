@@ -618,7 +618,7 @@ export function AnalysisBlock({
                 aria-expanded={showCards}
                 onClick={() => setShowCards((v) => !v)}
                 data-testid="reading-cards-toggle"
-                className="inline-flex min-h-9 items-center gap-1 rounded-md px-1 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="tap-y relative inline-flex min-h-9 items-center gap-1 rounded-md px-1 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {showCards
                   ? t("match.reading.hideCards")

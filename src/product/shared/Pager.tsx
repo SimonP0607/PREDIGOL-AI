@@ -20,7 +20,7 @@ export function Pager<T>({
     onChange?.();
   };
   const button =
-    "inline-flex min-h-9 items-center gap-1 rounded-lg border border-border-strong px-3 text-xs font-semibold transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
+    "tap-y relative inline-flex min-h-9 items-center gap-1 rounded-lg border border-border-strong px-3 text-xs font-semibold transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
   return (
     <nav
       aria-label={t("common.pager.label")}

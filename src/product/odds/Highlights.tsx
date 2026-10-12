@@ -8,7 +8,7 @@ import type { BestHighlight } from "@/lib/api/v1/types_product";
 import { t } from "@/lib/i18n";
 import { fmtOdds, fmtSignedPct } from "@/lib/i18n/format";
 import { formatKickoff } from "@/lib/time";
-import { CompetitionTag, TeamName } from "@/components/football/Logos";
+import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { SectionHeader } from "@/product/shared/States";
 import { emptyReason, marketShort, selectionLabel } from "@/product/shared/markets";
 import { highlightLeg } from "./parlay";
@@ -82,11 +82,14 @@ function HighlightCard({ h }: { h: BestHighlight }) {
         to="/matches/$fixtureId"
         params={{ fixtureId: String(h.fixture_id) }}
         aria-label={t("odds.openMatchLabel", { match })}
-        className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 text-sm after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
+        className="block min-w-0 after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
       >
-        <TeamName name={h.home.name} logo={h.home.logo_url} size={18} strong />
-        <span className="text-caption text-subtle-foreground">{t("common.vs")}</span>
-        <TeamName name={h.away.name} logo={h.away.logo_url} size={18} strong reverse />
+        {/* Home above away, every name whole (mobile UX audit: "Radomiak Ra… – Motor Lu…"). */}
+        <Matchup
+          home={{ name: h.home.name, logo: h.home.logo_url }}
+          away={{ name: h.away.name, logo: h.away.logo_url }}
+          size={18}
+        />
       </Link>
       <div className="mt-auto flex items-end justify-between gap-3 border-t border-border/70 pt-2.5">
         <div className="min-w-0">

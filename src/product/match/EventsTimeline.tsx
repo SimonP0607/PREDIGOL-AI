@@ -85,7 +85,7 @@ function Line({
       )}
     >
       {icon}
-      <span className="line-clamp-2 min-w-0 break-words leading-tight">
+      <span className="line-clamp-3 min-w-0 break-words leading-tight">
         <span className="sr-only">{label}: </span>
         {children}
       </span>
@@ -177,7 +177,7 @@ function EventContent({
             align === "right" && "flex-row-reverse",
           )}
         >
-          <span className="line-clamp-2 min-w-0 break-words text-[0.8125rem] font-medium leading-tight sm:text-sm">
+          <span className="line-clamp-3 min-w-0 break-words text-[0.8125rem] font-medium leading-tight sm:text-sm">
             {main}
           </span>
           {running ? (
@@ -187,7 +187,7 @@ function EventContent({
           ) : null}
         </div>
         {sub ? (
-          <div className="mt-0.5 line-clamp-2 break-words text-caption text-muted-foreground">
+          <div className="mt-0.5 line-clamp-3 break-words text-caption text-muted-foreground">
             {sub}
           </div>
         ) : null}

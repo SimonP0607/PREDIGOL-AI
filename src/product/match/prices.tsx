@@ -41,7 +41,7 @@ export function PriceTile({
 }) {
   return (
     <div className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg border border-border bg-elevated/40 px-1.5 py-2.5 text-center">
-      <span className="line-clamp-2 min-h-8 w-full break-words text-xs leading-4 text-muted-foreground">
+      <span className="line-clamp-3 min-h-8 w-full break-words text-xs leading-4 text-muted-foreground">
         {label}
       </span>
       {price ? (
@@ -53,15 +53,15 @@ export function PriceTile({
       ) : (
         <span className="numeric py-1 text-sm text-subtle-foreground">—</span>
       )}
-      <span className="w-full truncate text-caption text-subtle-foreground">
+      <span className="w-full truncate text-[0.6875rem] leading-4 text-subtle-foreground">
         {price ? price.bookmaker : t("match.prices.noPrice")}
       </span>
       {showBooks && price ? (
-        <span className="-mt-1 text-[0.65rem] text-subtle-foreground">
+        <span className="-mt-1 text-[0.6875rem] text-subtle-foreground">
           {t("match.markets.books", { count: price.books })}
         </span>
       ) : null}
-      {note ? <span className="-mt-1 text-[0.65rem] text-subtle-foreground">{note}</span> : null}
+      {note ? <span className="-mt-1 text-[0.6875rem] text-subtle-foreground">{note}</span> : null}
     </div>
   );
 }
@@ -87,7 +87,7 @@ export function PriceInline({
           <OddsPill odds={price.odds} size="sm" />
         )}
       </span>
-      <span className="max-w-full truncate text-[0.65rem] text-subtle-foreground">
+      <span className="max-w-full truncate text-[0.6875rem] text-subtle-foreground">
         {price.bookmaker} · {t("match.markets.books", { count: price.books })}
       </span>
     </div>
@@ -139,11 +139,11 @@ export function LiveTile({ label, price }: { label: string; price: LivePrice | n
   const state = liveState(price);
   return (
     <div className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg border border-border bg-elevated/40 px-1.5 py-2.5 text-center">
-      <span className="line-clamp-2 min-h-8 w-full break-words text-xs leading-4 text-muted-foreground">
+      <span className="line-clamp-3 min-h-8 w-full break-words text-xs leading-4 text-muted-foreground">
         {label}
       </span>
       <LiveOdds price={price} />
-      <span className="w-full truncate text-caption text-subtle-foreground">
+      <span className="w-full truncate text-[0.6875rem] leading-4 text-subtle-foreground">
         {state === "suspended"
           ? t("match.liveOdds.suspended")
           : state === "open" && price?.minute !== null && price?.minute !== undefined

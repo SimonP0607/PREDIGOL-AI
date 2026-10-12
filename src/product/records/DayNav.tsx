@@ -3,8 +3,10 @@
  * date - with the arrows to the day before and after, the last seven days one tap away, and what the day's
  * set came to once its matches are played.
  */
+import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useScrollCue } from "@/lib/scrollCue";
 import { t } from "@/lib/i18n";
 import { fmtSignedPct, localFixed } from "@/lib/i18n/format";
 import { formatDate, formatDateLong, shiftDay } from "@/lib/time";
@@ -36,8 +38,10 @@ export function DayNav({
 }) {
   const relative = word(day, today);
   const sum = daySummary(items);
+  const strip = useRef<HTMLUListElement>(null);
+  useScrollCue(strip);
   const arrow =
-    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border-strong transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30";
+    "tap relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border-strong transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30";
   return (
     <nav
       aria-label={t("records.dayNav.label")}
@@ -56,7 +60,8 @@ export function DayNav({
         </button>
         <div className="min-w-0 flex-1 text-center" aria-live="polite">
           <p className="text-label text-primary">{relative ?? formatDate(at(day), ZONE)}</p>
-          <p className="truncate font-display text-lg font-semibold first-letter:uppercase sm:text-xl">
+          {/* The whole date, on two lines on a narrow phone - never "Domingo, 11 de o…". */}
+          <p className="break-words font-display text-lg font-semibold leading-tight first-letter:uppercase sm:text-xl">
             {formatDateLong(at(day), ZONE)}
           </p>
         </div>
@@ -72,8 +77,9 @@ export function DayNav({
         </button>
       </div>
       <ul
+        ref={strip}
         aria-label={t("records.dayNav.jump")}
-        className="-mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="scroll-strip -mx-1 mt-2 flex gap-1.5 px-1 py-1"
       >
         {recentDays(today).map((d) => {
           const selected = d === day;
@@ -84,7 +90,7 @@ export function DayNav({
                 aria-pressed={selected}
                 onClick={() => onDay(d)}
                 className={cn(
-                  "min-h-9 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "tap-y relative min-h-9 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   selected
                     ? "border-primary/60 bg-primary/12 text-primary"
                     : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground",
@@ -98,7 +104,7 @@ export function DayNav({
       </ul>
       {sum.count > 0 ? (
         <p
-          className="numeric mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-muted-foreground"
+          className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs tabular-nums text-muted-foreground"
           data-testid="daily-summary"
         >
           <span>

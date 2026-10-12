@@ -21,9 +21,9 @@ import { deviceLabel } from "./device";
 import { cn } from "@/lib/utils";
 
 const field =
-  "mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none";
+  "mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none pointer-coarse:h-11";
 const button =
-  "inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium disabled:opacity-50";
+  "tap-y relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium disabled:opacity-50";
 
 function GuardedForm({
   label,
@@ -306,7 +306,7 @@ export function SessionsPanel() {
                   type="button"
                   onClick={() => revoke.mutate(s.id)}
                   disabled={revoke.isPending}
-                  className="shrink-0 rounded-md border border-border-strong px-2 py-1 text-xs hover:bg-elevated"
+                  className="tap-y relative shrink-0 rounded-md border border-border-strong px-2 py-1 text-xs hover:bg-elevated pointer-coarse:px-3 pointer-coarse:py-2"
                 >
                   {t("profile.securityPanel.end")}
                 </button>

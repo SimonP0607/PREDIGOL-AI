@@ -55,7 +55,7 @@ export function SectionHeader({
       {action ? (
         <Link
           to={action.to}
-          className="-my-2 flex min-h-9 shrink-0 items-center gap-0.5 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10"
+          className="tap-y relative -my-2 flex min-h-9 shrink-0 items-center gap-0.5 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10"
         >
           {action.label}
           <ChevronRight aria-hidden className="h-3.5 w-3.5" />

@@ -20,7 +20,7 @@ export function ShadowToggle({ className }: { className?: string | undefined }) 
       data-testid="shadow-toggle"
       onClick={() => auth.setShadowPreview(!on)}
       className={cn(
-        "inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        "tap-y relative inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         on
           ? "border-info/50 bg-info-soft text-info"
           : "border-border-strong bg-card text-muted-foreground hover:text-foreground",

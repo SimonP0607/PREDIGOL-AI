@@ -46,7 +46,7 @@ export function Block({
               {icon}
             </span>
           ) : null}
-          <span className="min-w-0 truncate">{title}</span>
+          <span className="min-w-0 break-words leading-tight">{title}</span>
         </Heading>
         {right ? <div className="flex shrink-0 items-center gap-2">{right}</div> : null}
       </div>
@@ -166,7 +166,7 @@ export function MoreButton({
       onClick={onClick}
       aria-expanded={expanded}
       className={cn(
-        "inline-flex min-h-9 items-center gap-0.5 rounded-md px-1 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        "tap-y relative inline-flex min-h-9 items-center gap-0.5 rounded-md px-1 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         className,
       )}
     >
@@ -242,18 +242,20 @@ export function TeamsLegend({
   className?: string | undefined;
 }) {
   return (
+    // Half the width each and the whole name, on two lines if need be (mobile UX audit: "New England Revoluti…").
     <div className={cn("flex items-center justify-between gap-3 text-xs", className)}>
-      <span className="flex min-w-0 items-center gap-2">
+      <span className="flex min-w-0 flex-1 basis-0 items-center gap-2">
         <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-primary" />
-        <TeamName name={home.name} logo={home.logo_url} size={18} strong className="min-w-0" />
+        <TeamName name={home.name} logo={home.logo_url} size={18} strong wrap className="min-w-0" />
       </span>
-      <span className="flex min-w-0 items-center gap-2">
+      <span className="flex min-w-0 flex-1 basis-0 items-center justify-end gap-2">
         <TeamName
           name={away.name}
           logo={away.logo_url}
           size={18}
           strong
           reverse
+          wrap
           className="min-w-0"
         />
         <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-info" />
@@ -293,7 +295,7 @@ export function StatBars({
               >
                 {fmtStat(r.home, r.format)}
               </span>
-              <span className="min-w-0 truncate text-center text-xs text-muted-foreground">
+              <span className="min-w-0 text-center text-xs leading-tight text-muted-foreground">
                 {label}
               </span>
               <span

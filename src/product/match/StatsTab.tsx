@@ -64,9 +64,9 @@ function TopPlayers({ ctx, players }: { ctx: MatchCtx; players: PlayerLine[] }) 
                   name={p.name}
                   id={p.player_id}
                   admin={ctx.showAdmin}
-                  className="block truncate text-sm font-medium"
+                  className="block break-words text-sm font-medium leading-snug"
                 />
-                <div className="truncate text-caption text-muted-foreground">
+                <div className="text-caption leading-snug text-muted-foreground">
                   <PlayerFacts p={p} />
                 </div>
               </div>

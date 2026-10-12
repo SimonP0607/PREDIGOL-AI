@@ -53,11 +53,11 @@ function TimeCell({ item }: { item: MatchItem }) {
       <span className="flex flex-col leading-tight">
         <span className="text-xs font-medium text-muted-foreground">{t("matches.clock.FT")}</span>
         {pens ? (
-          <span className="numeric text-[0.625rem] text-subtle-foreground">
+          <span className="numeric text-[0.6875rem] text-subtle-foreground">
             {t("matches.row.pens", pens)}
           </span>
         ) : match.status_short === "AET" ? (
-          <span className="text-[0.625rem] text-subtle-foreground">{t("matches.row.aet")}</span>
+          <span className="text-[0.6875rem] text-subtle-foreground">{t("matches.row.aet")}</span>
         ) : null}
       </span>
     );
@@ -89,7 +89,7 @@ function StatusTag({ group }: { group: MatchItem["group"] }) {
   return (
     <span
       className={cn(
-        "max-w-full rounded-md border px-1.5 py-0.5 text-right text-[0.625rem] font-medium leading-tight",
+        "max-w-full rounded-md border px-1.5 py-0.5 text-right text-[0.6875rem] font-medium leading-tight",
         group === "awaiting"
           ? "border-border-strong bg-elevated text-muted-foreground"
           : "border-warning/30 bg-warning-soft text-warning",
@@ -104,7 +104,7 @@ function OddsChip({ count }: { count: number }) {
   return (
     <span
       title={t("matches.row.oddsHelp", { count })}
-      className="whitespace-nowrap rounded-md border border-border px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums text-muted-foreground"
+      className="whitespace-nowrap rounded-md border border-border px-1.5 py-0.5 text-[0.6875rem] font-medium tabular-nums text-muted-foreground"
     >
       {t("matches.row.bookmakers", { count })}
     </span>
@@ -135,7 +135,7 @@ export function MatchRow({ item }: { item: MatchItem }) {
         live={group === "live"}
         className={cn(off && "opacity-70")}
       />
-      <span className="flex w-[4.5rem] shrink-0 flex-col items-end gap-1 sm:w-28">
+      <span className="flex max-w-[4.5rem] shrink-0 flex-col items-end gap-1 sm:w-28 sm:max-w-none">
         <StatusTag group={group} />
         {match.odds.bookmakers > 0 ? <OddsChip count={match.odds.bookmakers} /> : null}
       </span>

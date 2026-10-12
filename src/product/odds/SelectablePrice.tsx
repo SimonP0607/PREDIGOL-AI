@@ -56,7 +56,7 @@ export function SelectablePrice({
   );
   return (
     <span
-      className={cn("inline-flex items-center gap-1", className)}
+      className={cn("inline-flex items-center gap-1 pointer-coarse:gap-2", className)}
       data-testid="selectable-price"
       data-in-slip={parlay?.inSlip || undefined}
     >
@@ -120,7 +120,8 @@ function SaveToggle({ sel, label }: { sel: Pickable; label: string }) {
       disabled={busy || locked}
       onClick={onClick}
       className={cn(
-        "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        // Touch: 36 px drawn, 44 touched; the 8 px gap beside the price keeps the reach off the price.
+        "tap relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:h-9 pointer-coarse:w-9",
         mine
           ? "border-primary/50 bg-primary/12 text-primary"
           : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground",

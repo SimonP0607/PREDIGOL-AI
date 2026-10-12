@@ -70,7 +70,7 @@ export function OddsBoard({
                 <button
                   type="button"
                   onClick={onWiden}
-                  className="inline-flex h-9 items-center rounded-full border border-border-strong px-4 text-xs font-semibold hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="tap-y relative inline-flex h-9 items-center rounded-full border border-border-strong px-4 text-xs font-semibold hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {t("odds.board.widen", { hours: 72 })}
                 </button>
@@ -167,6 +167,7 @@ function FixtureRow({
               logo={fixture.home.logo_url}
               size={20}
               strong
+              wrap
               className="min-w-0"
             />
             <TeamName
@@ -174,6 +175,7 @@ function FixtureRow({
               logo={fixture.away.logo_url}
               size={20}
               strong
+              wrap
               className="min-w-0"
             />
           </div>
@@ -190,7 +192,7 @@ function FixtureRow({
             onClick={() => setOpen((v) => !v)}
             data-testid="odds-movement-toggle"
             className={cn(
-              "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "tap-y relative inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               open
                 ? "border-border-strong bg-elevated text-foreground"
                 : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground",
@@ -207,7 +209,7 @@ function FixtureRow({
             to="/matches/$fixtureId"
             params={{ fixtureId: String(fixture.fixture_id) }}
             aria-label={t("odds.openMatchLabel", { match })}
-            className="inline-flex h-9 items-center justify-center gap-1 rounded-lg px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="tap-y relative inline-flex h-9 items-center justify-center gap-1 rounded-lg px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {t("odds.openMatch")}
             <ChevronRight aria-hidden className="h-3.5 w-3.5" />
@@ -352,13 +354,14 @@ function PriceCell({
           {t("odds.board.outlier")}
         </span>
       ) : null}
+      {/* 11 px in these narrow cells: three to a row on a 320 px phone leave 67 px for "Marathonbet". */}
       <span
         title={t("odds.board.bookmakers", { count: p.n_bookmakers })}
-        className="truncate text-caption text-muted-foreground"
+        className="max-w-full truncate text-[0.6875rem] leading-4 text-muted-foreground"
       >
         {bookmaker}
       </span>
-      <span className="numeric truncate text-caption text-subtle-foreground">
+      <span className="numeric max-w-full truncate text-[0.6875rem] leading-4 text-subtle-foreground">
         {t("odds.board.fair", { odds: fmtOdds(p.fair_odds) })}
       </span>
     </span>

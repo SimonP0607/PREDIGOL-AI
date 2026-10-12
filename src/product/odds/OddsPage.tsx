@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Clock, Globe2, Scale, SearchX, Trophy } from "lucide-react";
+import { ChevronDown, Clock, Globe2, Scale, SearchX, Trophy } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { t, useI18n } from "@/lib/i18n";
@@ -52,13 +52,30 @@ function tabLabel(market: MarketKey): string {
 
 function FairExplainer() {
   return (
-    <p
-      className="flex items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground"
-      data-testid="odds-fair-explainer"
-    >
-      <Scale aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-      <span>{t("odds.fairExplainer")}</span>
-    </p>
+    <>
+      {/* A phone: one line that opens the explanation - seven lines of it pushed the prices off the first screen. */}
+      <details
+        className="group rounded-xl border border-border bg-card text-xs text-muted-foreground md:hidden"
+        data-testid="odds-fair-explainer-toggle"
+      >
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-2 font-medium text-foreground [&::-webkit-details-marker]:hidden">
+          <Scale aria-hidden className="h-4 w-4 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1">{t("odds.fairExplainerToggle")}</span>
+          <ChevronDown
+            aria-hidden
+            className="h-4 w-4 shrink-0 text-subtle-foreground transition-transform group-open:rotate-180"
+          />
+        </summary>
+        <p className="px-4 pb-3 pl-10">{t("odds.fairExplainer")}</p>
+      </details>
+      <p
+        className="hidden items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground md:flex"
+        data-testid="odds-fair-explainer"
+      >
+        <Scale aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <span>{t("odds.fairExplainer")}</span>
+      </p>
+    </>
   );
 }
 
@@ -254,7 +271,7 @@ export function OddsPage() {
             onClick={() => update({ aboveFair: !filters.aboveFair })}
             data-testid="odds-above-fair"
             className={cn(
-              "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "tap-y relative inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               filters.aboveFair
                 ? "border-positive/50 bg-positive-soft text-positive"
                 : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
@@ -278,7 +295,7 @@ export function OddsPage() {
             <button
               type="button"
               onClick={() => setFilters({ ...NO_ODDS_FILTERS, sort: filters.sort })}
-              className="ml-auto text-xs font-medium text-primary hover:underline"
+              className="tap relative ml-auto inline-flex min-h-9 items-center text-xs font-medium text-primary hover:underline"
             >
               {t("odds.filters.clear")}
             </button>
@@ -385,7 +402,7 @@ function MarketTabs({
             tabIndex={on ? 0 : -1}
             onClick={() => choose(i, false)}
             className={cn(
-              "h-9 shrink-0 whitespace-nowrap rounded-lg px-3 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:flex-1 md:text-sm",
+              "tap-y relative h-9 shrink-0 whitespace-nowrap rounded-lg px-3 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:flex-1 md:text-sm",
               on
                 ? "bg-elevated text-foreground shadow-sm ring-1 ring-border-strong"
                 : "text-muted-foreground hover:bg-elevated/50 hover:text-foreground",

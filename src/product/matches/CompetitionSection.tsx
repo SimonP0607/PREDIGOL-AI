@@ -32,7 +32,7 @@ export function CompetitionSection({
       <h2
         id={headingId}
         className={cn(
-          "sticky top-14 z-10 rounded-t-xl bg-card font-sans",
+          "top-sticky sticky z-10 rounded-t-xl bg-card font-sans",
           collapsed ? "rounded-b-xl" : "border-b border-border/70",
         )}
       >
@@ -48,7 +48,7 @@ export function CompetitionSection({
           )}
         >
           <CompetitionLogo src={c.logo_url} name={c.name} size={18} />
-          <span className="min-w-0 truncate text-sm font-semibold">{c.name}</span>
+          <span className="min-w-0 break-words text-sm font-semibold leading-tight">{c.name}</span>
           {country ? (
             <span className="flex min-w-0 shrink-[4] items-center gap-1.5 text-caption text-muted-foreground">
               <CountryFlag src={c.flag_url} name={country} height={11} />

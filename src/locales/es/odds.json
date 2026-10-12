@@ -60,6 +60,7 @@
     "replaces": "Reemplaza la otra selección de este partido en tu parlay: una por partido"
   },
   "fairExplainer": "Precio justo: la cuota que pagaría cada selección si las casas no cobraran margen (la probabilidad de consenso del mercado, sin su margen). En verde, cuánto paga la mejor cuota por encima de ese precio; «atípico», un precio de una sola casa probablemente desactualizado o erróneo.",
+  "fairExplainerToggle": "¿Qué es el precio justo?",
   "filters": {
     "search": "Buscar equipo o competición",
     "searchPlaceholder": "Equipo o competición",

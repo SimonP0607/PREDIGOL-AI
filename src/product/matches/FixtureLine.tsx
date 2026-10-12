@@ -1,7 +1,7 @@
 /**
  * Two teams and the score, sized for a list row.
  *
- * Phone: one team per line with its goals on the right (full names fit at 390 px).
+ * Phone: one team per line with its goals on the right; a long name wraps rather than being cut.
  * From `sm`: one line, "Home [crest] 1 – 0 [crest] Away", the score in a fixed centre
  * column so crests and scores line up from row to row.
  */
@@ -33,12 +33,14 @@ function Team({
   return (
     <span className={cn("flex min-w-0 items-center gap-2", className)}>
       <TeamLogo src={side.logo} name={side.name} size={20} />
+      {/* A phone: one team per line and the whole name, on two lines if need be (mobile UX audit: "Omonia …"). */}
       <span
         className={cn(
-          "truncate",
+          "min-w-0 break-words leading-snug [overflow-wrap:anywhere] sm:truncate",
           outcome === "win" && "font-semibold text-foreground",
           outcome === "lose" && "text-muted-foreground",
         )}
+        data-testid="team-name"
       >
         {side.name}
       </span>

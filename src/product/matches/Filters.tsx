@@ -11,8 +11,9 @@ import {
   Trophy,
   X,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { intlTag, t } from "@/lib/i18n";
+import { useScrollCue } from "@/lib/scrollCue";
 import { formatDate, getTimeZone, shiftDay, zonedInstant } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import type { CompetitionOption, StatusFilter } from "./model";
@@ -36,7 +37,7 @@ function shortDate(day: string): string {
 
 function chipClass(active: boolean): string {
   return cn(
-    "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+    "tap-y relative inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
     active
       ? "border-primary/45 bg-primary/12 text-primary"
       : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
@@ -59,7 +60,7 @@ function ArrowButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="tap relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <Icon aria-hidden className="h-4 w-4" />
     </button>
@@ -80,7 +81,7 @@ function DatePicker({
     <label
       className={cn(
         chipClass(active),
-        "relative min-w-0 cursor-pointer focus-within:ring-1 focus-within:ring-ring sm:flex-none",
+        "min-w-0 cursor-pointer focus-within:ring-1 focus-within:ring-ring sm:flex-none pointer-coarse:min-w-11",
       )}
     >
       <CalendarDays aria-hidden className="h-3.5 w-3.5 shrink-0" />
@@ -133,6 +134,8 @@ export function DayNav({
   // REVIEW point 3: Hoy, Mañana, then the day after as its date ("lun, 12 oct") - never today's date again.
   const after = shiftDay(today, 2);
   const quick = day === today || day === tomorrow || day === after;
+  const strip = useRef<HTMLDivElement>(null);
+  useScrollCue(strip);
   return (
     <div
       role="group"
@@ -145,8 +148,12 @@ export function DayNav({
         label={t("matches.day.prev")}
         onClick={() => onChange(shiftDay(day, -1))}
       />
-      {/* The chips scroll inside the row on a narrow phone, between the two arrows; the page never does. */}
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] sm:flex-none [&::-webkit-scrollbar]:hidden">
+      {/* The chips scroll inside the row on a narrow phone, between the two arrows; the page never does. Its
+          edge fades where a chip waits beyond it; py-1 leaves room for the chips' 44 px reach on a touch screen. */}
+      <div
+        ref={strip}
+        className="scroll-strip -my-1 flex min-w-0 flex-1 items-center gap-1.5 py-1 sm:flex-none"
+      >
         <button
           type="button"
           aria-pressed={day === today}
@@ -207,11 +214,14 @@ export function StatusChips({
   onChange: (value: StatusFilter) => void;
 }) {
   const filters: StatusFilter[] = ["all", "live", "upcoming", "finished"];
+  const strip = useRef<HTMLDivElement>(null);
+  useScrollCue(strip);
   return (
     <div
+      ref={strip}
       role="group"
       aria-label={t("matches.status.label")}
-      className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+      className="scroll-strip -mx-4 -my-1 flex gap-2 px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
       data-testid="status-chips"
     >
       {filters.map((f) => (
@@ -247,7 +257,7 @@ export function StatusChips({
 
 /* 16 px text on phones: iOS zooms into any smaller form field it focuses. */
 const fieldClass =
-  "h-10 w-full rounded-lg border border-border bg-card text-base text-foreground transition-colors placeholder:text-subtle-foreground hover:border-border-strong focus:border-border-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:h-9 sm:text-[0.8125rem]";
+  "h-10 w-full rounded-lg border border-border bg-card text-base text-foreground transition-colors placeholder:text-subtle-foreground hover:border-border-strong focus:border-border-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:h-9 sm:text-[0.8125rem] pointer-coarse:h-11";
 
 /**
  * The native list (a wheel on phones) to pick from, under a label that stays readable
@@ -257,16 +267,19 @@ export function CompetitionPicker({
   value,
   options,
   onChange,
+  className,
 }: {
   value: number | null;
   options: readonly CompetitionOption[];
   onChange: (value: number | null) => void;
+  className?: string | undefined;
 }) {
   const selected = options.find((o) => o.id === value) ?? null;
   return (
     <div
       className={cn(
-        "relative flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border bg-card pl-3 pr-8 text-sm transition-colors focus-within:ring-1 focus-within:ring-ring hover:border-border-strong sm:h-9 sm:w-64 sm:flex-none sm:text-[0.8125rem]",
+        className,
+        "relative flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border bg-card pl-3 pr-8 text-sm transition-colors focus-within:ring-1 focus-within:ring-ring hover:border-border-strong sm:h-9 lg:w-64 lg:flex-none sm:text-[0.8125rem] pointer-coarse:h-11",
         selected ? "border-primary/45 text-foreground" : "border-border text-muted-foreground",
       )}
     >
@@ -302,6 +315,7 @@ export function SearchBox({
   placeholder,
   label,
   testId = "match-search",
+  className,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -309,9 +323,10 @@ export function SearchBox({
   placeholder?: string | undefined;
   label?: string | undefined;
   testId?: string | undefined;
+  className?: string | undefined;
 }) {
   return (
-    <div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none">
+    <div className={cn("relative min-w-0 flex-1 lg:w-72 lg:flex-none", className)}>
       <Search
         aria-hidden
         className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle-foreground"
@@ -338,7 +353,7 @@ export function SearchBox({
           type="button"
           onClick={() => onChange("")}
           aria-label={t("matches.filters.clearSearch")}
-          className="absolute right-1 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-subtle-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="tap absolute right-1 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-subtle-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <X aria-hidden className="h-3.5 w-3.5" />
         </button>
@@ -369,7 +384,7 @@ export function FacetPicker<T extends string>({
   return (
     <div
       className={cn(
-        "relative flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border bg-card pl-3 pr-8 text-sm transition-colors focus-within:ring-1 focus-within:ring-ring hover:border-border-strong sm:h-9 sm:w-48 sm:flex-none sm:text-[0.8125rem]",
+        "relative flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border bg-card pl-3 pr-8 text-sm transition-colors focus-within:ring-1 focus-within:ring-ring hover:border-border-strong sm:h-9 lg:w-48 lg:flex-none sm:text-[0.8125rem] pointer-coarse:h-11",
         selected ? "border-primary/45 text-foreground" : "border-border text-muted-foreground",
       )}
     >

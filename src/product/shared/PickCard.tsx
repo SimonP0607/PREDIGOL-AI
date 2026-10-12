@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { fmtSignedPct } from "@/lib/i18n/format";
 import type { PickCard as PickCardData } from "@/lib/api/v1/types_product";
-import { CompetitionTag, TeamName } from "@/components/football/Logos";
+import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { EvBadge, Freshness, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
 import { gateReason, marketName, selectionLabel } from "./markets";
 
@@ -72,36 +72,24 @@ export function PickCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 px-4 pt-2.5">
+        <div className="flex items-start gap-2.5 px-4 pt-2.5">
           {rank ? (
             <span
               aria-label={`#${rank}`}
               className={cn(
-                "numeric flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                "numeric mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
                 rank === 1 ? "bg-gold text-gold-foreground" : "bg-elevated text-muted-foreground",
               )}
             >
               {rank}
             </span>
           ) : null}
-          <div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm">
-            <TeamName
-              name={pick.home.name}
-              logo={pick.home.logo_url}
-              size={22}
-              strong
-              className="min-w-0"
-            />
-            <span className="text-caption text-subtle-foreground">{t("common.vs")}</span>
-            <TeamName
-              name={pick.away.name}
-              logo={pick.away.logo_url}
-              size={22}
-              strong
-              reverse
-              className="min-w-0"
-            />
-          </div>
+          {/* Home above away, every name whole (mobile UX audit). */}
+          <Matchup
+            home={{ name: pick.home.name, logo: pick.home.logo_url }}
+            away={{ name: pick.away.name, logo: pick.away.logo_url }}
+            className="flex-1"
+          />
         </div>
 
         <div className={cn("mt-3 border-t border-border/70 px-4", compact ? "py-3" : "py-3.5")}>
@@ -111,7 +99,7 @@ export function PickCard({
                 {marketName(pick.market_key)}
               </div>
               <div
-                className="mt-0.5 truncate font-display text-[0.95rem] font-semibold"
+                className="mt-0.5 break-words font-display text-[0.95rem] font-semibold leading-snug"
                 data-testid="pick-selection"
               >
                 {label}

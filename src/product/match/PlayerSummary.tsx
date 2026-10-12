@@ -17,7 +17,7 @@ import { fmtDecimal } from "./model";
 function Stat({ label, value }: { label: string; value: number | null | undefined }) {
   return (
     <div className="min-w-0 rounded-md border border-border/70 bg-elevated/40 px-2 py-1.5 text-center">
-      <dt className="truncate text-[0.65rem] text-subtle-foreground">{label}</dt>
+      <dt className="break-words text-[0.6875rem] leading-tight text-subtle-foreground">{label}</dt>
       <dd className="numeric text-sm font-semibold">{value ?? "—"}</dd>
     </div>
   );
@@ -27,7 +27,7 @@ function Stat({ label, value }: { label: string; value: number | null | undefine
 export function SeasonLine({ season }: { season: MatchPlayerSeason | null | undefined }) {
   if (!season) return null;
   return (
-    <span className="numeric block truncate text-caption text-muted-foreground">
+    <span className="block text-caption leading-snug tabular-nums text-muted-foreground">
       {t("match.absences.seasonLine", {
         apps: season.appearances ?? 0,
         starts: season.lineups ?? 0,

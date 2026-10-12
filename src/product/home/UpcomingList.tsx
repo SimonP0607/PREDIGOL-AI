@@ -5,7 +5,7 @@ import { t } from "@/lib/i18n";
 import { formatDate, formatTime, relativeDay } from "@/lib/time";
 import type { Section } from "@/lib/api/v1/types";
 import type { UpcomingMatch } from "@/lib/api/v1/types_product";
-import { CompetitionTag, TeamName } from "@/components/football/Logos";
+import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { Card, SectionHeader } from "@/product/shared/States";
 import { emptyReason } from "@/product/shared/markets";
 
@@ -25,22 +25,23 @@ function UpcomingRow({ m }: { m: UpcomingMatch }) {
       data-testid="upcoming-row"
       className="flex h-full items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated/50 focus-visible:bg-elevated/60 focus-visible:outline-none sm:px-5"
     >
-      <div className="w-12 shrink-0 text-center">
+      {/* The day whole ("mar, 13 oct" on two lines rather than "mar, 13…"), teams one per line (mobile UX audit). */}
+      <div className="w-14 shrink-0 text-center">
         <div className="numeric text-sm font-semibold leading-tight">
           {formatTime(m.kickoff_at)}
         </div>
-        <div className="mt-0.5 truncate text-caption text-muted-foreground">
+        <div className="mt-0.5 text-caption leading-tight text-muted-foreground">
           {dayLabel(m.kickoff_at)}
         </div>
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
-          <TeamName name={m.home.name} logo={m.home.logo_url} size={18} className="min-w-0" />
-          <span aria-hidden className="shrink-0 text-subtle-foreground">
-            –
-          </span>
-          <TeamName name={m.away.name} logo={m.away.logo_url} size={18} className="min-w-0" />
-        </div>
+        <Matchup
+          home={{ name: m.home.name, logo: m.home.logo_url }}
+          away={{ name: m.away.name, logo: m.away.logo_url }}
+          size={18}
+          strong={false}
+          className="font-medium"
+        />
         <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2 text-caption">
           <CompetitionTag
             name={m.competition.name}

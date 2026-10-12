@@ -165,7 +165,7 @@ export function ParlayBuilder() {
             type="submit"
             disabled={issues.length > 0 || result.isFetching}
             data-testid="builder-build"
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-gold px-5 text-sm font-semibold text-gold-foreground transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-gold px-5 text-sm font-semibold text-gold-foreground transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 pointer-coarse:min-h-11"
           >
             <Wand2 aria-hidden className="h-4 w-4" />
             {result.isFetching ? t("parlays.builder.building") : t("parlays.builder.build")}
@@ -176,7 +176,7 @@ export function ParlayBuilder() {
               setForm(DEFAULT_BUILDER);
               setAsked(null);
             }}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted-foreground hover:text-foreground"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted-foreground hover:text-foreground pointer-coarse:min-h-11"
           >
             <RotateCcw aria-hidden className="h-3.5 w-3.5" />
             {t("parlays.builder.reset")}

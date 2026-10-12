@@ -187,7 +187,7 @@ export function CountryFlag({
   );
 }
 
-/** Crest + name, truncating cleanly. */
+/** Crest + name: truncating cleanly, or - `wrap` - whole, on as many lines as it needs. */
 export function TeamName({
   name,
   logo,
@@ -195,6 +195,7 @@ export function TeamName({
   className,
   reverse = false,
   strong = false,
+  wrap = false,
 }: {
   name: string;
   logo: string | null | undefined;
@@ -202,6 +203,8 @@ export function TeamName({
   className?: string | undefined;
   reverse?: boolean;
   strong?: boolean;
+  /** The whole name, wrapping (a card on a phone): never "Gainare Tot…". */
+  wrap?: boolean;
 }) {
   return (
     <span
@@ -212,8 +215,70 @@ export function TeamName({
       )}
     >
       <TeamLogo src={logo} name={name} size={size} />
-      <span className={cn("truncate", strong && "font-semibold")}>{name}</span>
+      <span
+        className={cn(
+          wrap ? "min-w-0 break-words leading-snug [overflow-wrap:anywhere]" : "truncate",
+          strong && "font-semibold",
+        )}
+        data-testid="team-name"
+      >
+        {name}
+      </span>
     </span>
+  );
+}
+
+export interface MatchupSide {
+  name: string;
+  logo: string | null | undefined;
+}
+
+/**
+ * Two teams the way football apps list them on a phone (FotMob, SofaScore): home above away, each name whole
+ * (it wraps rather than "Gainare Tot…"), and - once there is one - each side's goals on the right. Cards that
+ * set a match on one line (home · score · away) cut names even at desktop widths; this never does.
+ */
+export function Matchup({
+  home,
+  away,
+  score = null,
+  size = 22,
+  strong = true,
+  live = false,
+  className,
+}: {
+  home: MatchupSide;
+  away: MatchupSide;
+  score?: { home: number; away: number } | null;
+  size?: number;
+  strong?: boolean;
+  /** In play: the goals in the live colour. */
+  live?: boolean;
+  className?: string | undefined;
+}) {
+  const goals = (n: number, other: number) => (
+    <span
+      className={cn(
+        "numeric min-w-[1.25rem] text-right text-sm font-semibold tabular-nums",
+        live ? "text-primary" : n < other ? "text-muted-foreground" : "text-foreground",
+      )}
+    >
+      {n}
+    </span>
+  );
+  return (
+    <div
+      data-testid="matchup"
+      className={cn(
+        "grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 text-sm",
+        className,
+      )}
+    >
+      <TeamName name={home.name} logo={home.logo} size={size} strong={strong} wrap />
+      {score ? goals(score.home, score.away) : <span aria-hidden />}
+      <TeamName name={away.name} logo={away.logo} size={size} strong={strong} wrap />
+      {score ? goals(score.away, score.home) : <span aria-hidden />}
+    </div>
   );
 }
 
@@ -241,7 +306,8 @@ export function CompetitionTag({
       )}
     >
       <CompetitionLogo src={logo} name={name} size={size} />
-      <span className="truncate">{name}</span>
+      {/* The whole name, wrapping (mobile UX audit: "UEFA Champions Le…" in a card at 320 px). */}
+      <span className="min-w-0 break-words leading-tight">{name}</span>
       {flag ? <CountryFlag src={flag} name={country} height={Math.max(9, size - 6)} /> : null}
     </span>
   );

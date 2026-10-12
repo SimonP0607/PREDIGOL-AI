@@ -258,7 +258,7 @@ function PlayerRows({
         return (
           <li
             key={p.provider_player_id}
-            className="flex min-h-9 items-center gap-2.5 py-1.5 text-sm"
+            className="flex min-h-9 items-center gap-2.5 py-1.5 text-sm pointer-coarse:min-h-[2.8125rem] pointer-coarse:py-0"
           >
             <span className="numeric w-6 shrink-0 text-right text-xs text-subtle-foreground">
               {p.number ?? "—"}
@@ -273,9 +273,12 @@ function PlayerRows({
               line={lines.get(p.provider_player_id)}
               playerId={p.player_id}
               admin={admin}
-              className="min-w-0 flex-1 truncate"
+              // Touch: the whole row's height answers (44 px); the name truncates inside, never the button.
+              className="flex min-w-0 flex-1 items-center self-stretch"
             >
-              {p.name ?? t("match.events.unknownPlayer")}
+              <span className="block min-w-0 truncate">
+                {p.name ?? t("match.events.unknownPlayer")}
+              </span>
             </PlayerSummary>
             <Marks m={p.player_id !== null ? marks.get(p.player_id) : undefined} />
             {rating !== null ? (

@@ -13,9 +13,8 @@ import { fmtOdds, fmtSignedPct } from "@/lib/i18n/format";
 import { formatTime } from "@/lib/time";
 import type { StartedPick } from "@/lib/api/v1/types_product";
 import type { ResultStatus } from "@/lib/api/v1/types_records";
-import { CompetitionTag, TeamName } from "@/components/football/Logos";
+import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { MatchStateBadge, ResultBadge, Units } from "@/product/records/Badges";
-import { MatchScore } from "@/product/records/DailyItemCard";
 import { isLivePhase } from "@/product/matches/status";
 import { EvBadge, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
 import { marketName, selectionLabel } from "./markets";
@@ -79,28 +78,14 @@ export function StartedPickCard({
             <Kickoff at={pick.kickoff_at} />
           </div>
         </div>
-        <div className="grid min-w-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pt-2.5 text-sm">
-          <TeamName
-            name={pick.home.name}
-            logo={pick.home.logo_url}
-            size={22}
-            strong
-            className="min-w-0"
-          />
-          {score ? (
-            <MatchScore home={score.home} away={score.away} />
-          ) : (
-            <span className="text-caption text-subtle-foreground">{t("common.vs")}</span>
-          )}
-          <TeamName
-            name={pick.away.name}
-            logo={pick.away.logo_url}
-            size={22}
-            strong
-            reverse
-            className="min-w-0"
-          />
-        </div>
+        {/* Home above away, every name whole, the goals on the right (mobile UX audit). */}
+        <Matchup
+          home={{ name: pick.home.name, logo: pick.home.logo_url }}
+          away={{ name: pick.away.name, logo: pick.away.logo_url }}
+          score={score}
+          live={live}
+          className="px-4 pt-2.5"
+        />
 
         <div className="mt-3 border-t border-border/70 px-4 py-3">
           <div
@@ -119,7 +104,7 @@ export function StartedPickCard({
                 {marketName(pick.market_key)}
               </div>
               <div
-                className="mt-0.5 truncate font-display text-[0.95rem] font-semibold"
+                className="mt-0.5 break-words font-display text-[0.95rem] font-semibold leading-snug"
                 data-testid="pick-selection"
               >
                 {label}
