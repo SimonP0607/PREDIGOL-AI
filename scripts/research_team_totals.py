@@ -461,17 +461,21 @@ def main() -> int:
         settled = [q for q in quotes if q.fixture_id in goals]
         print(f"selections with a 90-minute score: {len(settled)} in {len({q.fixture_id for q in settled})} matches; "
               f"lines {sorted({q.line for q in settled})}", flush=True)
-        for family in [f.strip() for f in args.families.split(",") if f.strip()]:
-            hyper = production_hyper(conn, family)
-            if hyper is None:
-                print(f"\n== {family}: no stored version with hyper-parameters; skipped")
-                continue
-            t1 = time.monotonic()
-            preds, note = walk_forward(matches, {q.fixture_id for q in settled}, family=family, hyper=hyper,
-                                       refit_days=args.refit_days, lines=lines)
-            print(f"\n{family}: xi={hyper['xi']} penalty={hyper['penalty']} ({hyper.get('source')}) {dict(note)} "
-                  f"({time.monotonic() - t1:.0f}s)", flush=True)
-            report(f"{family} - team totals, last {args.days} days", settled, preds, goals, rng)
+        families = [f.strip() for f in args.families.split(",") if f.strip()]
+        hypers = {family: production_hyper(conn, family) for family in families}
+    # Everything is read: the connection is closed before the fits, which take minutes - an open transaction that
+    # long is ended by the server (idle_in_transaction_session_timeout; the second family's read failed so, 12 Oct).
+    for family in families:
+        hyper = hypers[family]
+        if hyper is None:
+            print(f"\n== {family}: no stored version with hyper-parameters; skipped")
+            continue
+        t1 = time.monotonic()
+        preds, note = walk_forward(matches, {q.fixture_id for q in settled}, family=family, hyper=hyper,
+                                   refit_days=args.refit_days, lines=lines)
+        print(f"\n{family}: xi={hyper['xi']} penalty={hyper['penalty']} ({hyper.get('source')}) {dict(note)} "
+              f"({time.monotonic() - t1:.0f}s)", flush=True)
+        report(f"{family} - team totals, last {args.days} days", settled, preds, goals, rng)
     print(f"\ndone in {time.monotonic() - t0:.0f}s")
     return 0
 
