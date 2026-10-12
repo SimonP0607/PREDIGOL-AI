@@ -10,9 +10,10 @@ PRICES. The RAW /odds payloads behind each match's stored pre-match prices (``ma
 the same /odds answer carries every bet type): EARLY, the last one at least ``--early-hours`` before kick-off (when a
 pick is chosen), and CLOSE, the last one before kick-off. Half lines only (no push). Each book's Over/Under pair is de-vigged with Shin (production's method,
 ``fbi.domain.market_probability.devig``) and the consensus is the mean over the books - production's consensus.
-MODEL. Each family with the hyper-parameters of its newest stored version, refitted walk-forward per competition
-every ``--refit-days`` on the 730 days before the cut-off (an hour before the block's first kick-off), exactly as
-``fbi.backtesting.walkforward.run_goal_model``. P(team goals > line) is read off the fitted score matrix; the
+MODEL. Each family with production's hyper-parameters (``fbi.predictions.forecast.current_spec``), refitted
+walk-forward per competition every ``--refit-days`` on the 730 days before the cut-off (an hour before the block's
+first kick-off), as ``fbi.backtesting.walkforward.run_goal_model``; a competition with more teams than production
+forecasts (``MAX_GOAL_TEAMS``, club friendlies) is left out, as production leaves it out. P(team goals > line) is read off the fitted score matrix; the
 prudent end is the 5 % quantile over the Laplace parameter draws (the 90 % interval production uses).
 OUTCOME. The 90-minute score.
 REPORT. (1) Accuracy on every priced selection, Over side: log loss and Brier of the model against the close
@@ -26,6 +27,7 @@ choice made with the market's own early probability, as the placebo the model ha
 from __future__ import annotations
 
 import argparse
+import gc
 import gzip
 import json
 import math
@@ -235,12 +237,20 @@ def load_quotes(conn: Any, root: Path, *, since: datetime, early: timedelta) -> 
     return list(out.values()), stats
 
 
-def newest_hyper(conn: Any, family: str) -> dict[str, Any] | None:
+def production_hyper(conn: Any, family: str) -> dict[str, Any] | None:
+    """The hyper-parameters production forecasts with (``fbi.predictions.forecast.current_spec``: the latest completed
+    backtest session's choice on its validation season), else the newest stored version's."""
+    from fbi.predictions.forecast import current_spec
+
+    spec = current_spec(conn)
+    if spec is not None and family in spec.goal:
+        g = spec.goal[family]
+        return {"xi": g.xi, "penalty": g.penalty, "history_days": spec.cfg.history_days, "source": "current_spec"}
     row = conn.execute(
         "SELECT v.hyperparameters FROM models.model_versions v JOIN models.model_registry r ON r.id = v.model_id "
         "WHERE r.name = %s AND v.hyperparameters ? 'xi' ORDER BY v.created_at DESC, v.id DESC LIMIT 1",
         (family,)).fetchone()
-    return None if row is None else dict(row[0])
+    return None if row is None else dict(row[0]) | {"source": "newest_version"}
 
 
 # ── the walk-forward ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -259,6 +269,7 @@ def walk_forward(matches: Sequence[Any], targets: Iterable[int], *, family: str,
     from fbi.backtesting.walkforward import MIN_GOAL_TRAIN, blocks, known_before
     from fbi.models.goals import GoalObs, InvalidCorrectionError, fit_goal_model
     from fbi.models.scoring import matrices_batch
+    from fbi.predictions.forecast import MAX_GOAL_TEAMS
 
     xi, penalty, history = float(hyper["xi"]), float(hyper["penalty"]), int(hyper.get("history_days", 730))
     by_comp: dict[int, list[Any]] = defaultdict(list)
@@ -278,6 +289,12 @@ def walk_forward(matches: Sequence[Any], targets: Iterable[int], *, family: str,
             train = [m for m in by_comp[comp] if known_before(m, cutoff) and m.kickoff_at >= horizon]
             if len(train) < MIN_GOAL_TRAIN:
                 note["few_training_matches"] += len(group)
+                continue
+            n_teams = len({m.home_team_id for m in train} | {m.away_team_id for m in train})
+            if n_teams > MAX_GOAL_TEAMS:
+                # Production does not forecast these either (club friendlies: thousands of sides, a few matches
+                # each), and the fit's covariance alone is gigabytes: the first run was killed for memory (11 Oct).
+                note["too_many_teams"] += len(group)
                 continue
             obs = [GoalObs(m.home_team_id, m.away_team_id, m.settle_home or 0, m.settle_away or 0,
                            weight=math.exp(-xi * (cutoff - m.kickoff_at).total_seconds() / 86400),
@@ -310,6 +327,8 @@ def walk_forward(matches: Sequence[Any], targets: Iterable[int], *, family: str,
                         lo_over, lo_under = float(np.quantile(d, QUANTILE)), float(np.quantile(1 - d, QUANTILE))
                     out[(m.fixture_id, side, line)] = Pred(p, lo_over, lo_under)
                 note["predicted_matches"] += 1
+            del model, obs
+            gc.collect()
     return out, note
 
 
@@ -429,7 +448,11 @@ def main() -> int:
         quotes, stats = load_quotes(conn, Path(settings.runtime.raw_store_dir), since=since,
                                     early=timedelta(hours=args.early_hours))
         print(f"RAW: {dict(stats)} ({time.monotonic() - t0:.0f}s)", flush=True)
-        matches = load_matches(conn)
+        comps = [int(r[0]) for r in conn.execute(
+            "SELECT DISTINCT cs.competition_id FROM core.fixtures f JOIN core.competition_seasons cs "
+            "ON cs.id = f.competition_season_id WHERE f.id = ANY(%s)", ([q.fixture_id for q in quotes],)).fetchall()]
+        matches = load_matches(conn, competition_ids=comps)  # their whole history, not every stored fixture
+        print(f"competitions: {len(comps)}; their matches loaded: {len(matches)}", flush=True)
         goals = {m.fixture_id: (m.settle_home, m.settle_away) for m in matches
                  if m.status_group == "finished" and m.settle_home is not None and m.settle_away is not None}
         lines: dict[int, set[tuple[str, float]]] = defaultdict(set)
@@ -439,14 +462,14 @@ def main() -> int:
         print(f"selections with a 90-minute score: {len(settled)} in {len({q.fixture_id for q in settled})} matches; "
               f"lines {sorted({q.line for q in settled})}", flush=True)
         for family in [f.strip() for f in args.families.split(",") if f.strip()]:
-            hyper = newest_hyper(conn, family)
+            hyper = production_hyper(conn, family)
             if hyper is None:
                 print(f"\n== {family}: no stored version with hyper-parameters; skipped")
                 continue
             t1 = time.monotonic()
             preds, note = walk_forward(matches, {q.fixture_id for q in settled}, family=family, hyper=hyper,
                                        refit_days=args.refit_days, lines=lines)
-            print(f"\n{family}: xi={hyper['xi']} penalty={hyper['penalty']} {dict(note)} "
+            print(f"\n{family}: xi={hyper['xi']} penalty={hyper['penalty']} ({hyper.get('source')}) {dict(note)} "
                   f"({time.monotonic() - t1:.0f}s)", flush=True)
             report(f"{family} - team totals, last {args.days} days", settled, preds, goals, rng)
     print(f"\ndone in {time.monotonic() - t0:.0f}s")

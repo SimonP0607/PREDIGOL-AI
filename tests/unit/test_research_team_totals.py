@@ -76,3 +76,23 @@ def test_one_fixtures_team_totals_out_of_an_odds_answer() -> None:
                                                  {"value": "Under 0.5", "odd": "2.95"}]}]}]}
     assert team_totals(item) == {("home", 1.5, 8): (2.10, 1.70), ("away", 0.5, 3): (1.36, 2.95)}, \
         "half lines with both sides only; other bet types ignored"
+
+
+def test_a_competition_production_does_not_forecast_is_left_out_not_fitted() -> None:
+    """The first run on the server was killed for memory (11 Oct): it fitted club friendlies, thousands of sides,
+    which production never forecasts (MAX_GOAL_TEAMS). The backtest leaves them out the same way."""
+    from datetime import UTC, datetime, timedelta
+
+    from scripts.research_team_totals import walk_forward
+
+    from fbi.features.data import MatchRecord
+    from fbi.predictions.forecast import MAX_GOAL_TEAMS
+
+    start = datetime(2026, 1, 1, tzinfo=UTC)
+    teams = MAX_GOAL_TEAMS + 10
+    matches = [MatchRecord(n + 1, start + timedelta(hours=n), 99, "friendly", 2026, 2 * n % teams + 1,
+                           (2 * n + 1) % teams + 1, 1, 0, False, "finished", 1, 0) for n in range(400)]
+    target = matches[-1].fixture_id
+    preds, note = walk_forward(matches, [target], family="poisson", hyper={"xi": 0.0, "penalty": 3.0},
+                               refit_days=7, lines={target: {("home", 0.5)}})
+    assert preds == {} and note["too_many_teams"] == 1 and note.get("fits", 0) == 0
