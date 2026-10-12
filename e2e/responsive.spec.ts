@@ -366,6 +366,25 @@ test.describe("the Admin Console on a touch tablet", () => {
     }
   });
 
+  // The overview's panel links ("Live" was 21 px wide), the explained "—" (cut to 7 x 16 px by a truncating value
+  // cell) and the definitions in table headers (38 px under the table's scroll box) were out of a finger's reach.
+  test("the modules' own controls answer a finger, not only the header's", async ({ page }) => {
+    test.setTimeout(240_000);
+    const w = watch(page);
+    for (const [width, height] of [
+      [768, 1024],
+      [1024, 768],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      for (const path of ["/admin/overview", "/admin/picks", "/admin/models", "/admin/system"]) {
+        await page.goto(path);
+        await settle(page);
+        expect(await smallTargets(page, "main"), `controls at ${width} px on ${path}`).toEqual([]);
+        await assertClean(page, w);
+      }
+    }
+  });
+
   test("Users: a card per account with its actions in reach below 1280 px, the table from there", async ({
     page,
   }) => {

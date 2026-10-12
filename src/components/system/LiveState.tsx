@@ -147,7 +147,7 @@ function NoValue({ reason, className }: { reason: string; className?: string | u
             {...tap.trigger}
             aria-label={t("admin.state.noValue", { reason })}
             className={cn(
-              "tap relative cursor-help text-subtle-foreground underline decoration-dotted underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              "tap relative cursor-help text-subtle-foreground underline decoration-dotted underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:px-2",
               className,
             )}
           >

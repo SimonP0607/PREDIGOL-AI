@@ -480,7 +480,7 @@ function FixtureCard({ f }: { f: AiDayFixture }) {
       <Link
         to="/matches/$fixtureId"
         params={{ fixtureId: String(f.fixture_id) }}
-        className="inline-flex text-xs font-medium text-primary hover:underline"
+        className="tap-y relative inline-flex text-xs font-medium text-primary hover:underline"
       >
         {t("ai.research.today.openMatch")} →
       </Link>
@@ -924,7 +924,7 @@ function LearningTab({
               )}
               <Link
                 to="/admin/evolution"
-                className="inline-flex text-xs font-medium text-primary hover:underline"
+                className="tap-y relative inline-flex text-xs font-medium text-primary hover:underline"
               >
                 {t("ai.research.learning.decide")} →
               </Link>

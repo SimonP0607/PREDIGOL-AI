@@ -116,7 +116,7 @@ export function OverviewLive() {
           actions={
             <Link
               to="/matches"
-              className="tap-y relative text-caption text-primary hover:underline"
+              className="tap relative text-caption text-primary hover:underline pointer-coarse:py-1"
             >
               {t("ops.overview.upcoming.all")}
             </Link>
@@ -422,7 +422,10 @@ function LiveStrip() {
       }
       subtitle={t("ops.overview.live.subtitle")}
       actions={
-        <Link to="/live" className="tap-y relative text-caption text-primary hover:underline">
+        <Link
+          to="/live"
+          className="tap relative text-caption text-primary hover:underline pointer-coarse:py-1"
+        >
           {t("ops.overview.live.link")}
         </Link>
       }

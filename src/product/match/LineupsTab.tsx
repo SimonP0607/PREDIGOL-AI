@@ -274,7 +274,7 @@ function PlayerRows({
               playerId={p.player_id}
               admin={admin}
               // Touch: the whole row's height answers (44 px); the name wraps inside, never cut.
-              className="flex min-w-0 flex-1 items-center self-stretch"
+              className="flex min-w-0 flex-1 items-center self-stretch pointer-coarse:min-w-11"
             >
               <span className="block min-w-0 break-words leading-snug">
                 {p.name ?? t("match.events.unknownPlayer")}

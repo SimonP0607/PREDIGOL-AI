@@ -289,9 +289,9 @@ export function SessionsPanel() {
                     aria-hidden
                     className="h-4 w-4 shrink-0 text-muted-foreground"
                   />
-                  <span className="truncate">{deviceLabel(s.user_agent)}</span>
+                  <span className="min-w-0 break-words">{deviceLabel(s.user_agent)}</span>
                   {s.current ? (
-                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.65rem] font-bold text-primary">
+                    <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.6875rem] font-bold text-primary">
                       {t("profile.securityPanel.thisDevice")}
                     </span>
                   ) : null}

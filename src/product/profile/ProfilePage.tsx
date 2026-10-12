@@ -108,7 +108,7 @@ function TimeZonePicker() {
                 z === current && "bg-elevated",
               )}
             >
-              <span className="truncate">{z.replace(/_/g, " ")}</span>
+              <span className="min-w-0 break-words">{z.replace(/_/g, " ")}</span>
               <span className="flex shrink-0 items-center gap-2 text-caption text-muted-foreground">
                 {zoneAbbrev(Date.now(), z)}
                 {busy === z ? (

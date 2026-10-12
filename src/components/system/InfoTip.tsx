@@ -37,7 +37,7 @@ export function InfoTip({
                 : t("admin.ui.infoTip", { term: name, text })
             }
             className={cn(
-              "tap-y relative inline-flex items-center gap-1 rounded text-inherit focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              "tap relative inline-flex items-center gap-1 rounded text-inherit focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               className,
             )}
           >

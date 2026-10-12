@@ -398,7 +398,7 @@ export function TrackedCompetitions({ rows }: { rows: CompetitionSummary[] }) {
           <li key={c.id} className="flex items-center justify-between gap-3">
             <span className="flex min-w-0 items-center gap-2">
               <CompetitionLogo src={c.logo_url} name={c.name} size={16} />
-              <span className="truncate">{c.name}</span>
+              <span className="min-w-0 break-words">{c.name}</span>
               <span className="flex shrink-0 items-center gap-1 text-caption text-subtle-foreground">
                 <CountryFlag src={c.flag_url} name={c.country} height={10} />
                 {countryLabel(c.country, c.country_code) ?? t("catalog.competitions.international")}

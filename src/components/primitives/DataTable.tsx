@@ -52,7 +52,9 @@ export function TH({
       scope="col"
       title={title}
       className={cn(
-        "px-3 py-2 text-label font-semibold text-subtle-foreground whitespace-nowrap",
+        // A header with a control in it (a definition, a sort) is a 44 px row on a touch screen: shorter, the
+        // table's scroll box clipped the control's reach to 38 px (mobile UX audit, Admin on a tablet).
+        "px-3 py-2 text-label font-semibold text-subtle-foreground whitespace-nowrap pointer-coarse:has-[button]:h-11",
         align === "right" && "text-right",
         align === "center" && "text-center",
         align === "left" && "text-left",
@@ -167,7 +169,9 @@ export function SortableTH({
       title={title}
       aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
       className={cn(
-        "px-3 py-2 text-label font-semibold text-subtle-foreground whitespace-nowrap",
+        // A header with a control in it (a definition, a sort) is a 44 px row on a touch screen: shorter, the
+        // table's scroll box clipped the control's reach to 38 px (mobile UX audit, Admin on a tablet).
+        "px-3 py-2 text-label font-semibold text-subtle-foreground whitespace-nowrap pointer-coarse:has-[button]:h-11",
         align === "right" && "text-right",
         align === "center" && "text-center",
         className,

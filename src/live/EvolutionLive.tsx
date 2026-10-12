@@ -85,8 +85,9 @@ const MORE_KEYS = [
   "llm_reviews",
   "deep_reviews",
 ] as const;
+// pointer-coarse:min-h-11: on a touch tablet the hypothesis form's fields measured 35 px (mobile UX audit).
 const INPUT =
-  "w-full rounded-md border border-border bg-card px-2 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "w-full rounded-md border border-border bg-card px-2 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:min-h-11";
 const DECISION_STYLE: Record<HypothesisDecision, string> = {
   reject: "border-border hover:bg-elevated",
   investigate: "border-warning/40 bg-warning-soft text-warning",

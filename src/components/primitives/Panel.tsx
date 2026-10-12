@@ -68,7 +68,11 @@ export function KeyValue({ label, value }: { label: string; value: React.ReactNo
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border/60 py-1.5 last:border-0">
       <span className="text-caption uppercase tracking-wider text-subtle-foreground">{label}</span>
-      <span className="numeric truncate text-xs text-foreground">{value}</span>
+      {/* The whole value, wrapping: cut, "0 · 16 hr ago" read "0· 16…" on a tablet, and the cut also clipped the
+          finger-sized reach of a "—" that explains itself (mobile UX audit). */}
+      <span className="numeric min-w-0 break-words text-right text-xs text-foreground">
+        {value}
+      </span>
     </div>
   );
 }
