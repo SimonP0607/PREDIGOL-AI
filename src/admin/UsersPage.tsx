@@ -257,10 +257,12 @@ function RowActions({ user, self }: { user: AdminUser; self: boolean }) {
   });
   const nextStatus = user.status === "active" ? "disabled" : "active";
   const nextRole = user.role === "SUPER_ADMIN" ? "USER" : "SUPER_ADMIN";
-  const btn = "rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50";
+  // Touch: taller, with a 44 px reach (tap-y) and a 10 px gap between wrapped rows so reaches never overlap.
+  const btn =
+    "tap-y relative rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50 pointer-coarse:px-2.5 pointer-coarse:py-2";
   return (
     <div className="flex flex-col items-start gap-1">
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5 pointer-coarse:gap-2.5">
         {confirm === "status" ? (
           <button
             type="button"
@@ -398,7 +400,9 @@ function SecurityActions({ user, self }: { user: AdminUser; self: boolean }) {
     },
     onError: (err) => setError(errorMessage(err)),
   });
-  const btn = "rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50";
+  // Touch: taller, with a 44 px reach (tap-y) and a 10 px gap between wrapped rows so reaches never overlap.
+  const btn =
+    "tap-y relative rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50 pointer-coarse:px-2.5 pointer-coarse:py-2";
   const labels: Record<SecurityAction, string> = {
     password: t("admin.users.resetPassword"),
     mfa: t("admin.users.resetMfa"),
@@ -417,7 +421,7 @@ function SecurityActions({ user, self }: { user: AdminUser; self: boolean }) {
   ];
   return (
     <div className="flex flex-col items-start gap-1">
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5 pointer-coarse:gap-2.5">
         {available.map((a) =>
           confirm === a ? (
             <button
@@ -507,7 +511,7 @@ export function UsersPage() {
               type="button"
               onClick={() => void q.refetch()}
               aria-label={t("common.retry")}
-              className="rounded-md border border-border-strong p-2 hover:bg-elevated"
+              className="tap relative rounded-md border border-border-strong p-2 hover:bg-elevated"
             >
               <RefreshCw aria-hidden className={cn("h-4 w-4", q.isFetching && "animate-spin")} />
             </button>
@@ -515,7 +519,7 @@ export function UsersPage() {
               type="button"
               data-testid="new-user"
               onClick={() => setCreating((v) => !v)}
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground"
+              className="tap-y relative inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground"
             >
               <Plus aria-hidden className="h-4 w-4" />
               {t("admin.users.newUser")}
@@ -538,7 +542,9 @@ export function UsersPage() {
             <div className="border-b border-border px-4 py-2 text-caption text-muted-foreground">
               {t("admin.users.count", { count: users.length })}
             </div>
-            <div className="hidden overflow-x-auto md:block">
+            {/* The table from xl only: on a tablet (768-1279 px) its actions column sat off-screen and every row
+                was a tower of buttons; there each account is a card with its actions in reach. */}
+            <div className="hidden overflow-x-auto xl:block">
               <table className="w-full text-sm" data-testid="users-table">
                 <thead className="text-left text-caption uppercase tracking-wider text-subtle-foreground">
                   <tr className="border-b border-border">
@@ -597,13 +603,27 @@ export function UsersPage() {
                 </tbody>
               </table>
             </div>
-            <ul className="divide-y divide-border md:hidden">
+            <ul
+              className="divide-y divide-border md:grid md:grid-cols-2 md:gap-px md:divide-y-0 md:bg-border xl:hidden"
+              data-testid="users-cards"
+            >
               {users.map((u) => (
-                <li key={u.id} className="space-y-2 p-4">
+                <li
+                  key={u.id}
+                  className="space-y-2.5 bg-card p-4"
+                  data-testid={`user-card-${u.id}`}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate font-medium">{u.display_name}</div>
-                      <div className="truncate text-caption text-muted-foreground">{u.email}</div>
+                      <div className="break-words font-medium">
+                        {u.display_name}
+                        {u.id === auth.user?.id ? (
+                          <span className="ml-1.5 text-caption text-gold">
+                            ({t("admin.users.you")})
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="break-all text-caption text-muted-foreground">{u.email}</div>
                     </div>
                     <RoleBadge role={u.role} />
                   </div>

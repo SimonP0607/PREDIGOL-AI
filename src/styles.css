@@ -3,6 +3,8 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+/* A phone held sideways: so little height that fixed chrome must give way to the content. */
+@custom-variant short (@media (orientation: landscape) and (max-height: 32rem));
 
 /*
  * PrediGol — Design System
@@ -99,7 +101,9 @@
 
   --muted: oklch(0.245 0.012 168);
   --muted-foreground: oklch(0.702 0.012 172);
-  --subtle-foreground: oklch(0.55 0.011 172);
+  /* 0.63, not 0.55: the quietest text still reads at 4.5:1 on the background, a card and an elevated surface
+     (0.55 measured 3.97 / 3.72 / 3.35:1 - under WCAG AA for the small captions that use it). */
+  --subtle-foreground: oklch(0.63 0.011 172);
 
   --accent: oklch(0.275 0.016 168);
   --accent-foreground: oklch(0.96 0.005 160);
@@ -142,6 +146,21 @@
   --sidebar-accent-foreground: oklch(0.968 0.004 160);
   --sidebar-border: oklch(0.268 0.012 168);
   --sidebar-ring: oklch(0.62 0.13 154);
+}
+
+/*
+ * The product's top bar: 56 px, plus the status bar of the installed iPhone app (black-translucent status bar and
+ * viewport-fit=cover put the page under it). Bars that stick below it (the Match Center's tabs, a competition's
+ * header) stick at --app-sticky-top; a phone held sideways lets the top bar scroll away, so they stick at the top.
+ */
+:root {
+  --app-header-h: calc(3.5rem + env(safe-area-inset-top));
+  --app-sticky-top: var(--app-header-h);
+}
+@media (orientation: landscape) and (max-height: 32rem) {
+  :root {
+    --app-sticky-top: env(safe-area-inset-top);
+  }
 }
 
 @layer base {
@@ -219,6 +238,11 @@
   font-size: 0.6875rem;
   line-height: 0.95rem;
   font-weight: 400;
+  /* Phones and tablets: 12 px, the smallest size that stays legible at arm's length (11 px on a desk). */
+  @media (max-width: 63.98rem), (pointer: coarse) {
+    font-size: 0.75rem;
+    line-height: 1.05rem;
+  }
 }
 
 @utility numeric {
@@ -258,10 +282,154 @@
 
 @utility pitch-glow {
   background-image:
-    radial-gradient(120% 80% at 0% 0%, color-mix(in oklch, var(--color-primary) 12%, transparent), transparent 55%),
-    radial-gradient(90% 70% at 100% 0%, color-mix(in oklch, var(--color-gold) 9%, transparent), transparent 60%);
+    radial-gradient(
+      120% 80% at 0% 0%,
+      color-mix(in oklch, var(--color-primary) 12%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      90% 70% at 100% 0%,
+      color-mix(in oklch, var(--color-gold) 9%, transparent),
+      transparent 60%
+    );
 }
 
 @utility safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* The status bar of the installed iPhone app (see --app-header-h). */
+@utility safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* The page's side margin, wider where a phone held sideways has its notch or rounded corners. */
+@utility px-safe {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+@utility top-sticky {
+  top: var(--app-sticky-top);
+}
+
+/*
+ * Touch targets: on a touch screen a control answers in at least 44 x 44 px, whatever it looks like - an
+ * invisible ::after centred on it reaches out to 44 px where the control is smaller (Material's chips work the
+ * same way: 32 dp drawn, 48 dp touched). Nothing moves; a mouse keeps the drawn size. The control needs a
+ * position (relative or absolute), must not clip itself (no overflow-hidden/truncate on the control: truncate an
+ * inner span), and a scrolling parent must leave room for the reach (py-1 on a chip row). `tap-y` reaches out
+ * vertically only - for controls that sit side by side with no gap to spare.
+ */
+@utility tap {
+  @media (pointer: coarse) {
+    &::after {
+      content: "";
+      position: absolute;
+      top: min(0px, calc(50% - 22px));
+      bottom: min(0px, calc(50% - 22px));
+      left: min(0px, calc(50% - 22px));
+      right: min(0px, calc(50% - 22px));
+    }
+  }
+}
+
+@utility tap-y {
+  @media (pointer: coarse) {
+    &::after {
+      content: "";
+      position: absolute;
+      top: min(0px, calc(50% - 22px));
+      bottom: min(0px, calc(50% - 22px));
+      left: 0;
+      right: 0;
+    }
+  }
+}
+
+/*
+ * A horizontal strip that scrolls (tabs, chips, day pickers): no scrollbar, and its edges fade out where more
+ * content waits beyond them (data-fade-start / data-fade-end, set by useScrollCue), so a phone shows there is more.
+ */
+@utility scroll-strip {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  &[data-fade-end] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+  &[data-fade-start] {
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent);
+  }
+  &[data-fade-start][data-fade-end] {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 2.5rem,
+      #000 calc(100% - 2.5rem),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 2.5rem,
+      #000 calc(100% - 2.5rem),
+      transparent
+    );
+  }
+}
+
+/* The same fading edges for a wide table that scrolls inside its card (TableShell): its scrollbar stays. */
+@utility scroll-fade {
+  &[data-fade-end] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+  }
+  &[data-fade-start] {
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to left, #000 calc(100% - 2rem), transparent);
+  }
+  &[data-fade-start][data-fade-end] {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 2rem,
+      #000 calc(100% - 2rem),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 2rem,
+      #000 calc(100% - 2rem),
+      transparent
+    );
+  }
+}
+
+/*
+ * The Admin Console on a touch tablet: its compact 28-32 px buttons, fields and selects (h-7 / h-8, across twenty
+ * modules) get 44 px of height under a finger. Unlayered and touch-only: a desk keeps the compact console.
+ */
+@media (pointer: coarse) {
+  [data-shell="admin"] :is(button, select, input, a, [role="tab"]):is(.h-7, .h-8) {
+    min-height: 2.75rem;
+  }
+}
+
+/*
+ * Form fields on a touch screen: 16 px at least, or iOS Safari zooms the whole page in on focus (and leaves it
+ * zoomed). Unlayered on purpose: it outranks the size utilities, on touch screens only.
+ */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]),
+  select,
+  textarea {
+    font-size: 1rem;
+  }
 }

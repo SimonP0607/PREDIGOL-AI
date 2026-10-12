@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { int } from "@/lib/format";
+import { useScrollCue } from "@/lib/scrollCue";
 
 export function TableShell({
   children,
@@ -13,8 +14,11 @@ export function TableShell({
   /** Drop the 36rem minimum width: for narrow tables that fit a side column. */
   compact?: boolean;
 }) {
+  // A table wider than a phone or a tablet scrolls inside its card; its edge fades where columns wait beyond it.
+  const shell = useRef<HTMLDivElement>(null);
+  useScrollCue(shell);
   return (
-    <div className={cn("w-full overflow-x-auto", className)}>
+    <div ref={shell} className={cn("scroll-fade w-full overflow-x-auto", className)}>
       <table
         className={cn("w-full border-collapse text-sm", compact ? "min-w-0" : "min-w-[36rem]")}
       >

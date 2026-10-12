@@ -7,6 +7,7 @@
 import { AlertTriangle, CircleSlash, Hourglass, Inbox, WifiOff } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useTapTooltip } from "./tapTooltip";
 import { EMPTY } from "@/lib/format";
 import { LiveApiError } from "@/lib/api/v1/client";
 import type { DataStatus, Section } from "@/lib/api/v1/types";
@@ -131,15 +132,22 @@ export function Nullable({
     return <span className={className}>{value}</span>;
   }
   if (!reason) return <span className={cn("text-subtle-foreground", className)}>{EMPTY}</span>;
+  return <NoValue reason={reason} className={className} />;
+}
+
+/** "—" whose reason a tap shows on a touch screen as a hover does with a mouse. */
+function NoValue({ reason, className }: { reason: string; className?: string | undefined }) {
+  const tap = useTapTooltip();
   return (
     <TooltipProvider delayDuration={120}>
-      <Tooltip>
+      <Tooltip {...tap.root}>
         <TooltipTrigger asChild>
           <button
             type="button"
+            {...tap.trigger}
             aria-label={t("admin.state.noValue", { reason })}
             className={cn(
-              "cursor-help text-subtle-foreground underline decoration-dotted underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              "tap relative cursor-help text-subtle-foreground underline decoration-dotted underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               className,
             )}
           >

@@ -109,7 +109,7 @@ function fmtProbability(p: number | null): string {
 }
 
 const LEG_LINK =
-  "inline-flex min-h-8 items-center gap-0.5 rounded-md text-xs font-medium text-primary transition-colors hover:text-primary/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "tap-y relative inline-flex min-h-8 items-center gap-0.5 rounded-md text-xs font-medium text-primary transition-colors hover:text-primary/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function LegRow({
   leg,
@@ -167,7 +167,7 @@ function LegRow({
           title={t("records.slip.remove")}
           aria-label={t("records.slip.removeLeg", { selection, match })}
           data-testid="slip-remove"
-          className="-mr-1.5 -mt-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="tap relative -mr-1.5 -mt-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:h-10 pointer-coarse:w-10"
         >
           <X aria-hidden className="h-4 w-4" />
         </button>
@@ -196,7 +196,7 @@ function LegRow({
           </span>
         </div>
       </div>
-      <div className="mt-0.5 flex flex-wrap gap-x-4 pl-8">
+      <div className="mt-0.5 flex flex-wrap gap-x-5 pl-8">
         <Link
           to="/matches/$fixtureId"
           params={params}
@@ -567,7 +567,7 @@ function EmptySlip({ onLeave }: { onLeave: () => void }) {
 }
 
 const SECONDARY =
-  "inline-flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-full border border-border-strong px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "inline-flex h-10 min-w-0 items-center pointer-coarse:h-11 justify-center gap-1.5 rounded-full border border-border-strong px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function SlipSheet() {
   const slip = useSlip();
@@ -650,7 +650,7 @@ export function SlipSheet() {
         className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
         data-testid="slip-sheet"
       >
-        <SheetHeader className="border-b border-border px-5 pb-4 pt-5 text-left">
+        <SheetHeader className="border-b border-border px-5 pb-4 pt-[calc(1.25rem+env(safe-area-inset-top))] text-left">
           <SheetTitle className="flex flex-wrap items-center gap-2 pr-8 font-display">
             <Layers aria-hidden className="h-5 w-5 text-gold" />
             {t("records.slip.title")}
@@ -737,13 +737,13 @@ export function SlipSheet() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t("records.slip.namePlaceholder")}
                   data-testid="slip-name"
-                  className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:h-11"
                 />
                 <button
                   type="submit"
                   disabled={!canSave}
                   data-testid="slip-save"
-                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:h-11"
                 >
                   {create.isPending
                     ? t("records.slip.saving")
@@ -793,7 +793,9 @@ export function SlipButton() {
       type="button"
       onClick={() => slip.setOpen(true)}
       data-testid="slip-open"
-      className="fixed bottom-20 right-4 z-40 inline-flex h-11 items-center gap-2 rounded-full border border-gold/50 bg-card px-4 text-sm font-semibold text-gold-strong shadow-lg transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:bottom-6"
+      // Above the tab bar, whose height grows with the iPhone's home indicator (safe area); lower when the
+      // tab bar is the short one of a phone held sideways.
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 inline-flex h-11 items-center gap-2 rounded-full border border-gold/50 bg-card px-4 text-sm font-semibold text-gold-strong shadow-lg transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring short:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] lg:bottom-6"
     >
       <Layers aria-hidden className="h-4 w-4" />
       {t("records.slip.open", { count: n })}

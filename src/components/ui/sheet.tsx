@@ -64,8 +64,14 @@ const SheetContent = React.forwardRef<
   <SheetPortal>
     <SheetOverlay />
     <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
+      {/* 36 px to the eye, 44 to the finger (tap); below the status bar of the installed iPhone app. */}
+      <SheetPrimitive.Close
+        className={cn(
+          "tap absolute right-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-md opacity-70 ring-offset-background transition-opacity hover:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary",
+          side === "bottom" ? "top-3" : "top-[calc(0.75rem+env(safe-area-inset-top))]",
+        )}
+      >
+        <X className="h-5 w-5" />
         <span className="sr-only">{closeLabel}</span>
       </SheetPrimitive.Close>
       {children}

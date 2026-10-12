@@ -30,7 +30,8 @@ export function Wordmark({
         <span className="text-gold">Gol</span>
       </span>
       {tagline ? (
-        <span className="mt-1 truncate text-[0.625rem] font-medium uppercase tracking-[0.14em] text-subtle-foreground">
+        // Under 375 px the tagline gives its room to the header's controls (touch-sized on a phone).
+        <span className="mt-1 truncate text-[0.625rem] font-medium uppercase tracking-[0.14em] text-subtle-foreground max-[374px]:hidden">
           {tagline}
         </span>
       ) : null}

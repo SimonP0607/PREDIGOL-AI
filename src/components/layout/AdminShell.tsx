@@ -53,7 +53,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                       onClick={onNavigate}
                       data-testid={`admin-nav-${item.to.split("/").pop() ?? ""}`}
                       className={cn(
-                        "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                        "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors pointer-coarse:min-h-11",
                         active
                           ? "bg-sidebar-accent text-sidebar-accent-foreground"
                           : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
@@ -80,7 +80,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           to="/home"
           onClick={onNavigate}
-          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground pointer-coarse:min-h-11"
         >
           <ArrowLeft aria-hidden className="h-3.5 w-3.5" />
           {t("nav.backToApp")}
@@ -139,13 +139,13 @@ function GlobalSearch({ onOpenPalette }: { onOpenPalette: () => void }) {
             }
           }}
           placeholder={t("common.searchPlaceholder")}
-          className="h-8 w-full rounded-md border border-border bg-card pl-8 pr-16 text-sm placeholder:text-subtle-foreground focus:border-border-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="h-8 w-full rounded-md border border-border bg-card pl-8 pr-16 text-sm placeholder:text-subtle-foreground focus:border-border-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:h-11"
         />
         <button
           type="button"
           onClick={onOpenPalette}
           aria-label={t("admin.shell.openPalette")}
-          className="numeric absolute right-1.5 rounded border border-border px-1 py-0.5 text-caption text-subtle-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="numeric tap absolute right-1.5 rounded border border-border px-1 py-0.5 text-caption text-subtle-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           ⌘K
         </button>
@@ -234,12 +234,13 @@ function Topbar({
   onOpenPalette: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur">
+    // box-content: 56 px of bar below the status bar of an installed tablet app (safe-top).
+    <header className="safe-top sticky top-0 z-30 box-content flex h-14 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur">
       <button
         type="button"
         onClick={onOpenMenu}
         aria-label={t("common.openMenu")}
-        className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring lg:hidden"
+        className="tap relative rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:p-2.5 lg:hidden"
       >
         <Menu className="h-4 w-4" />
       </button>
@@ -247,7 +248,10 @@ function Topbar({
       <GlobalSearch onOpenPalette={onOpenPalette} />
 
       <div className="ml-auto flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
-        <PageDataModeBadge />
+        {/* From sm: on a 320 px phone it pushed the header's controls 37 px off the screen. */}
+        <span className="hidden sm:inline-flex">
+          <PageDataModeBadge />
+        </span>
         <span className="hidden xl:inline-flex">
           <StatusBadge tone="warning">{t("admin.shell.researchMode")}</StatusBadge>
         </span>
@@ -256,7 +260,7 @@ function Topbar({
           type="button"
           onClick={onOpenPalette}
           aria-label={t("common.search")}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:hidden"
+          className="tap relative rounded-md p-1.5 text-muted-foreground hover:bg-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:p-2.5 md:hidden"
         >
           <Search className="h-4 w-4" />
         </button>
@@ -280,7 +284,7 @@ function PreviewButton() {
         auth.setPreviewAsUser(true);
         void navigate({ to: "/home" });
       }}
-      className="hidden items-center gap-1.5 rounded-md border border-gold/45 px-2 py-1 text-xs font-semibold text-gold hover:bg-gold-soft sm:flex"
+      className="tap-y relative hidden items-center gap-1.5 rounded-md border border-gold/45 px-2 py-1 text-xs font-semibold text-gold hover:bg-gold-soft pointer-coarse:py-2 sm:flex"
     >
       <Eye aria-hidden className="h-3.5 w-3.5" />
       {t("nav.previewAsUser")}
@@ -293,10 +297,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   return (
     <DataSourcesProvider>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background" data-shell="admin">
         <PreviewBanner />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-        <aside className="fixed inset-y-0 left-0 hidden w-60 border-r border-sidebar-border bg-sidebar lg:block">
+        <aside className="safe-top fixed inset-y-0 left-0 hidden w-60 border-r border-sidebar-border bg-sidebar lg:block">
           <SidebarContent />
         </aside>
 
@@ -307,12 +311,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               onClick={() => setOpen(false)}
               aria-hidden
             />
-            <div className="absolute inset-y-0 left-0 w-64 border-r border-sidebar-border bg-sidebar">
+            <div className="safe-top absolute inset-y-0 left-0 w-64 border-r border-sidebar-border bg-sidebar">
               <button
                 type="button"
                 aria-label={t("common.closeMenu")}
                 onClick={() => setOpen(false)}
-                className="absolute right-2 top-3 rounded-md p-1.5 text-muted-foreground"
+                className="tap absolute right-2 top-[calc(0.75rem+env(safe-area-inset-top))] rounded-md p-1.5 text-muted-foreground pointer-coarse:p-2.5"
               >
                 <X className="h-4 w-4" />
               </button>

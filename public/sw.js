@@ -13,9 +13,10 @@
  * "a new version is ready" and only when the reader accepts does it send SKIP_WAITING; the page reloads once the new
  * worker takes over. An open tab never has its scripts swapped under it in the middle of a match.
  *
- * Bump VERSION to retire every cache at the next visit.
+ * Bump VERSION to retire every cache at the next visit (v3: the offline page clears the iPhone notch and its
+ * retry button is 44 px tall - mobile UX audit, Oct 2026).
  */
-const VERSION = "predigol-v2";
+const VERSION = "predigol-v3";
 const STATIC_CACHE = `${VERSION}-static`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/brand/predigol-mark-128.png", "/manifest.webmanifest"];

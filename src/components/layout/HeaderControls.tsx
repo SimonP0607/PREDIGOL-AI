@@ -30,7 +30,8 @@ export function LanguageSwitch({ className }: { className?: string | undefined }
           data-testid={`lang-${l}`}
           onClick={() => void auth.setLocale(l)}
           className={cn(
-            "rounded px-1.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider transition-colors",
+            // Touch: wider and taller to the eye, and 44 px tall to the finger (tap-y: the two sit side by side).
+            "tap-y relative rounded px-1.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider transition-colors pointer-coarse:min-w-11 pointer-coarse:px-2 pointer-coarse:py-1.5",
             locale === l
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground",
@@ -64,7 +65,7 @@ export function AccountMenu() {
       <DropdownMenuTrigger
         aria-label={t("common.account")}
         data-testid="account-menu"
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-border-strong bg-elevated text-xs font-bold text-foreground hover:border-gold/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="tap relative flex h-8 w-8 items-center justify-center rounded-full border border-border-strong bg-elevated text-xs font-bold text-foreground hover:border-gold/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:h-10 pointer-coarse:w-10"
       >
         {initialsOf(user.display_name)}
       </DropdownMenuTrigger>
@@ -147,7 +148,7 @@ export function PreviewBanner() {
           auth.setPreviewAsUser(false);
           void navigate({ to: "/admin/overview" });
         }}
-        className="rounded-md border border-gold/50 px-2 py-0.5 font-semibold hover:bg-gold/15"
+        className="tap relative rounded-md border border-gold/50 px-2 py-0.5 font-semibold hover:bg-gold/15"
       >
         {t("nav.exitPreview")}
       </button>

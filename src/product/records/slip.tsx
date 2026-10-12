@@ -30,8 +30,16 @@ function write(legs: SlipLeg[]): void {
 
 export function SlipProvider({ children }: { children: ReactNode }) {
   const [legs, setLegs] = useState<SlipLeg[]>(read);
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
   const current = useRef(legs);
+  const shown = useRef(false);
+  // Opening the slip clears the notices: on a phone it fills the screen and a notice would sit on its title and
+  // its close button. While it is open, the slip itself shows every change, so no notice is raised.
+  const setOpen = useCallback((next: boolean) => {
+    shown.current = next;
+    setOpenState(next);
+    if (next) toast.dismiss();
+  }, []);
 
   useEffect(() => write(legs), [legs]);
 
@@ -39,7 +47,7 @@ export function SlipProvider({ children }: { children: ReactNode }) {
     const change = slipReduce(current.current, action);
     current.current = change.legs;
     setLegs(change.legs);
-    if (quiet) return;
+    if (quiet || shown.current) return;
     if (change.effect === "added") toast.success(t("records.toast.added"));
     else if (change.effect === "replaced") toast(t("records.toast.replaced"));
     else if (change.effect === "removed") toast(t("records.toast.removedLeg"));
@@ -57,7 +65,7 @@ export function SlipProvider({ children }: { children: ReactNode }) {
       open,
       setOpen,
     }),
-    [legs, open, apply],
+    [legs, open, apply, setOpen],
   );
   return <SlipContext.Provider value={value}>{children}</SlipContext.Provider>;
 }

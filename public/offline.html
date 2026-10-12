@@ -10,7 +10,9 @@
   :root { color-scheme: dark; }
   html, body { margin: 0; height: 100%; }
   body {
-    display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+    padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+      max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
     background: #0d1512; color: #e8efe9;
     font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center;
   }
@@ -21,6 +23,7 @@
   p.en { font-size: 13px; color: #7f8f84; }
   a.button {
     display: inline-block; margin-top: 16px; padding: 10px 20px; border-radius: 8px; text-decoration: none;
+    min-height: 44px; box-sizing: border-box;
     background: #22c55e; color: #06200f; font: inherit; font-weight: 600;
   }
 </style>

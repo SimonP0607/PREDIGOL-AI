@@ -1,5 +1,7 @@
+import { useRef } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { t } from "@/lib/i18n";
+import { useScrollCue } from "@/lib/scrollCue";
 import { cn } from "@/lib/utils";
 
 export interface Option {
@@ -172,12 +174,15 @@ export function SegmentedTabs<T extends string>({
   /** Display text for a tab value; the value itself when omitted. */
   format?: (value: T) => string;
 }) {
+  const strip = useRef<HTMLDivElement>(null);
+  useScrollCue(strip);
   return (
     <div
+      ref={strip}
       role="tablist"
       aria-label={label}
       className={cn(
-        "flex w-full gap-1 overflow-x-auto rounded-md border border-border bg-card p-1",
+        "scroll-strip flex w-full gap-1 rounded-md border border-border bg-card p-1",
         className,
       )}
     >
@@ -191,7 +196,8 @@ export function SegmentedTabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(t)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              // Touch: 36 px drawn, 44 touched (tap-y reaches the strip's 4 px padding on each side).
+              "tap-y relative flex shrink-0 items-center gap-1.5 rounded px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:min-h-9",
               active
                 ? "bg-primary/12 text-primary"
                 : "text-muted-foreground hover:bg-elevated hover:text-foreground",
