@@ -170,7 +170,7 @@ export function EngineBadge({ engine }: { engine: string }) {
 }
 
 /**
- * The month's spend against its budget: the bar, its markers at 70 / 85 / 95 / 100 % and, under it, each
+ * The month's spend against its budget: the bar, its markers at 50 / 70 / 85 / 95 / 100 % and, under it, each
  * threshold - with the date of the alert recorded this month when it was crossed.
  */
 export function MonthBar({

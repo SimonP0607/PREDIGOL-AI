@@ -31,6 +31,7 @@ import type {
 import type { EvolutionDashboard } from "@/lib/api/v1/types_ai_layer";
 import { DayInput, Note, NoteCard, ProposalCard, Stat, StatGrid } from "./AiBits";
 import { DailyReviewPanel } from "./DailyReviewPanel";
+import { IntelLearningCenter } from "./IntelLearningCenter";
 import {
   AI_TZ,
   DECISION_TONE,
@@ -625,6 +626,7 @@ export function EvolutionLive() {
         max={today}
         title={closeDay === shiftDay(today, -1) ? t("ai.dailyReview.yesterday") : undefined}
       />
+      <IntelLearningCenter />
       <DayDashboard day={day} onDay={setDay} max={today} />
       <div className="grid gap-4 xl:grid-cols-2">
         <Learned day={day} />

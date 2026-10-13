@@ -28,7 +28,8 @@
     "audit": "Audit",
     "settings": "Settings",
     "evolution": "Evolution",
-    "aiLayer": "AI decision layer"
+    "aiLayer": "AI decision layer",
+    "intelligence": "PrediGol Intelligence"
   },
   "pages": {
     "overview": {
@@ -110,6 +111,10 @@
     "aiLayer": {
       "title": "AI decision layer",
       "description": "What the AI analyses, from which sources, what each review decides, what it costs and whether its filter beats the model alone and the market. It never changes a pick by itself."
+    },
+    "intelligence": {
+      "title": "PrediGol Intelligence",
+      "description": "The decision layer: every candidate through ten filters with a calibrated probability, its score, its stake and its context; what each day taught. All in shadow: nothing is published or staked."
     }
   },
   "users": {

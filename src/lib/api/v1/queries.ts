@@ -251,6 +251,50 @@ export const live = {
     queryFn: v1.aiRunRequests,
     refetchInterval: 30_000,
   },
+  intelDay: (day?: string) => ({
+    queryKey: ["v1", "intel", "day", day ?? "today"],
+    queryFn: () => v1.intelDay(day),
+    refetchInterval: 2 * MINUTE,
+  }),
+  intelDecisions: (q: Parameters<typeof v1.intelDecisions>[0]) => ({
+    queryKey: ["v1", "intel", "decisions", q],
+    queryFn: () => v1.intelDecisions(q),
+    refetchInterval: 2 * MINUTE,
+  }),
+  intelDecision: (id: number) => ({
+    queryKey: ["v1", "intel", "decision", id],
+    queryFn: () => v1.intelDecision(id),
+    enabled: id > 0,
+  }),
+  intelDossier: (fixtureId: string) => ({
+    queryKey: ["v1", "intel", "dossier", fixtureId],
+    queryFn: () => v1.intelDossier(fixtureId),
+    enabled: fixtureId !== "",
+  }),
+  intelCalibration: {
+    queryKey: ["v1", "intel", "calibration"],
+    queryFn: v1.intelCalibration,
+    refetchInterval: 10 * MINUTE,
+  },
+  intelMemory: (q: Parameters<typeof v1.intelMemory>[0]) => ({
+    queryKey: ["v1", "intel", "memory", q],
+    queryFn: () => v1.intelMemory(q),
+  }),
+  intelReports: (day?: string) => ({
+    queryKey: ["v1", "intel", "reports", day ?? "latest"],
+    queryFn: () => v1.intelReports(day),
+  }),
+  intelMarkets: {
+    queryKey: ["v1", "intel", "markets"],
+    queryFn: v1.intelMarkets,
+    staleTime: 10 * MINUTE,
+  },
+  intelRuns: { queryKey: ["v1", "intel", "runs"], queryFn: v1.intelRuns, refetchInterval: MINUTE },
+  intelCosts: {
+    queryKey: ["v1", "intel", "costs"],
+    queryFn: v1.intelCosts,
+    refetchInterval: 5 * MINUTE,
+  },
   notifications: {
     queryKey: ["v1", "notifications"],
     queryFn: v1.notifications,

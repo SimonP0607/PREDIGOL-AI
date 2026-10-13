@@ -26,6 +26,7 @@ import esCenter from "@/locales/es/center.json";
 import esTruth from "@/locales/es/truth.json";
 import esRecords from "@/locales/es/records.json";
 import esAi from "@/locales/es/ai.json";
+import esIntel from "@/locales/es/intel.json";
 import enAdmin from "@/locales/en/admin.json";
 import enAuth from "@/locales/en/auth.json";
 import enCommon from "@/locales/en/common.json";
@@ -49,6 +50,7 @@ import enCenter from "@/locales/en/center.json";
 import enTruth from "@/locales/en/truth.json";
 import enRecords from "@/locales/en/records.json";
 import enAi from "@/locales/en/ai.json";
+import enIntel from "@/locales/en/intel.json";
 
 export type Locale = "es" | "en";
 export type Catalog = { [key: string]: string | Catalog };
@@ -78,6 +80,7 @@ export const CATALOGS: Record<Locale, Catalog> = {
     truth: esTruth,
     records: esRecords,
     ai: esAi,
+    intel: esIntel,
   },
   en: {
     admin: enAdmin,
@@ -103,5 +106,6 @@ export const CATALOGS: Record<Locale, Catalog> = {
     truth: enTruth,
     records: enRecords,
     ai: enAi,
+    intel: enIntel,
   },
 };

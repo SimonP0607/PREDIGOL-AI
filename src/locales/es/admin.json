@@ -28,7 +28,8 @@
     "audit": "Auditoría",
     "settings": "Ajustes",
     "evolution": "Evolución",
-    "aiLayer": "Capa de decisión IA"
+    "aiLayer": "Capa de decisión IA",
+    "intelligence": "PrediGol Intelligence"
   },
   "pages": {
     "overview": {
@@ -110,6 +111,10 @@
     "aiLayer": {
       "title": "Capa de decisión IA",
       "description": "Qué analiza la IA, con qué fuentes, qué decide cada revisión, cuánto cuesta y si su filtro mejora frente al modelo solo y al mercado. Nunca cambia un pick por sí misma."
+    },
+    "intelligence": {
+      "title": "PrediGol Intelligence",
+      "description": "La capa de decisión: cada candidato por diez filtros con probabilidad calibrada, su score, su stake y su contexto; lo que aprendió cada día. Todo en shadow: nada se publica ni se apuesta."
     }
   },
   "users": {

@@ -2,6 +2,18 @@ import { API_BASE_URL } from "@/lib/api/mode";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
+import type {
+  IntelCalibration,
+  IntelCosts,
+  IntelDay,
+  IntelDecisionDetail,
+  IntelDecisionRow,
+  IntelDossier,
+  IntelMarketRow,
+  IntelMemoryRow,
+  IntelRun,
+  IntelState,
+} from "./types_intel";
 
 export interface BestOddsQuery {
   market?: string | undefined;
@@ -483,6 +495,64 @@ export const v1 = {
   aiComparison: () => getJson<Envelope<AiComparison>>("/admin/ai/comparison"),
   requestAiRun: (body: { kind: "analysis" | "learning"; fixture_id?: number | null }) =>
     postJson<Envelope<AiRunQueued>>("/admin/ai/run-requests", body),
+  // ── PrediGol Intelligence (Admin Console) ────────────────────────────────
+  intelDay: (day?: string) => getJson<Envelope<IntelDay>>("/admin/intelligence/day", { day }),
+  intelDecisions: (
+    q: {
+      day?: string | undefined;
+      state?: IntelState | undefined;
+      market?: string | undefined;
+    } = {},
+  ) =>
+    getJson<Envelope<{ day: string; items: IntelDecisionRow[] }>>(
+      "/admin/intelligence/decisions",
+      q as Params,
+    ),
+  intelDecision: (id: number) =>
+    getJson<Envelope<IntelDecisionDetail>>(`/admin/intelligence/decisions/${id}`),
+  intelDossier: (fixtureId: number | string) =>
+    getJson<Envelope<IntelDossier>>(`/admin/intelligence/matches/${fixtureId}/dossier`),
+  intelCalibration: () => getJson<Envelope<IntelCalibration>>("/admin/intelligence/calibration"),
+  intelMemory: (q: { entity_type?: string | undefined; q?: string | undefined } = {}) =>
+    getJson<Envelope<{ items: IntelMemoryRow[]; total: number }>>(
+      "/admin/intelligence/memory",
+      q as Params,
+    ),
+  intelReports: (day?: string) =>
+    getJson<
+      Envelope<{
+        days: Array<{ day: string; revisions: number; built_at: string }>;
+        report: {
+          day: string;
+          revision: number;
+          built_at: string;
+          text: string;
+          content: Record<string, unknown>;
+        } | null;
+      }>
+    >("/admin/intelligence/reports", { day }),
+  intelMarkets: () =>
+    getJson<
+      Envelope<{
+        run: { id: number; started_at: string; status: string } | null;
+        by_status: Record<string, number>;
+        items: IntelMarketRow[];
+      }>
+    >("/admin/intelligence/markets"),
+  intelRuns: () =>
+    getJson<
+      Envelope<{
+        items: IntelRun[];
+        leakage_audit: Array<{
+          day: string;
+          rule: string;
+          n_checked: number;
+          n_violations: number;
+          checked_at: string;
+        }>;
+      }>
+    >("/admin/intelligence/runs"),
+  intelCosts: () => getJson<Envelope<IntelCosts>>("/admin/intelligence/costs"),
   notifications: () => getJson<Envelope<NotificationsOverview>>("/admin/notifications"),
   rankings: (competitionId?: number, pool: RatingPool = "men") =>
     getJson<Envelope<Rankings | null>>("/admin/rankings", {

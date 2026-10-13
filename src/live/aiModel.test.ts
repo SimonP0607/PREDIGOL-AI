@@ -140,21 +140,21 @@ describe("V2: the month bar and its alerts", () => {
     budget_usd: 150,
   });
 
-  test("the markers are 70 / 85 / 95 / 100 %, and those the spend reached are crossed", () => {
-    expect([...BUDGET_THRESHOLDS]).toEqual([70, 85, 95, 100]);
+  test("the markers are 50 / 70 / 85 / 95 / 100 %, and those the spend reached are crossed", () => {
+    expect([...BUDGET_THRESHOLDS]).toEqual([50, 70, 85, 95, 100]);
     const m = budgetMarkers(0.86, []);
-    expect(m.map((x) => x.threshold)).toEqual([70, 85, 95, 100]);
-    expect(m.map((x) => x.crossed)).toEqual([true, true, false, false]);
-    expect(budgetMarkers(0.7, []).map((x) => x.crossed)).toEqual([true, false, false, false]);
+    expect(m.map((x) => x.threshold)).toEqual([50, 70, 85, 95, 100]);
+    expect(m.map((x) => x.crossed)).toEqual([true, true, true, false, false]);
+    expect(budgetMarkers(0.7, []).map((x) => x.crossed)).toEqual([true, true, false, false, false]);
     expect(budgetMarkers(1.2, []).every((x) => x.crossed)).toBe(true);
     expect(budgetMarkers(null, []).some((x) => x.crossed)).toBe(false);
   });
 
   test("an alert recorded this month is attached to its marker (and marks it even without a ratio)", () => {
     const m = budgetMarkers(null, [alert(70), alert(85)]);
-    expect(m.map((x) => x.crossed)).toEqual([true, true, false, false]);
-    expect(m[0]?.alert?.spent_usd).toBe(105);
-    expect(m[2]?.alert).toBeNull();
+    expect(m.map((x) => x.crossed)).toEqual([false, true, true, false, false]);
+    expect(m[1]?.alert?.spent_usd).toBe(105);
+    expect(m[3]?.alert).toBeNull();
   });
 
   test("thresholds are de-duplicated and sorted", () => {

@@ -1,6 +1,6 @@
 /**
  * La capa de decisión IA (Admin Console). On top: the month's budget (adaptive daily budget, projection,
- * the 70/85/95/100 % alerts), the models of each level as configured (never a key), today's efficiency and
+ * the 50/70/85/95/100 % alerts), the models of each level as configured (never a key), today's efficiency and
  * the experimental comparison (model alone, model + rules, model + AI, market) - everything in shadow until
  * the owner's switch AND a passed gate. Then the mode, the last cycles and the owner's "run now", and the
  * views: the reviews with their whole audit trail, the evidence with its sources, what it costs (measured,

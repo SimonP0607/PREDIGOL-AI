@@ -121,7 +121,7 @@ const DASH = "—";
 export const AI_TZ = "America/Bogota";
 
 /** The month's spend is recorded once past each of these shares of the budget (ai.budget_alerts). */
-export const BUDGET_THRESHOLDS: readonly number[] = [70, 85, 95, 100];
+export const BUDGET_THRESHOLDS: readonly number[] = [50, 70, 85, 95, 100];
 
 /** A price older than this is stale for the AI (fbi.ai.day.STALE_ODDS). */
 export const STALE_ODDS_MINUTES = 12 * 60;
@@ -177,7 +177,7 @@ export interface BudgetMarker {
   alert: AiBudgetAlert | null;
 }
 
-/** The month bar's markers (70 / 85 / 95 / 100 %), in order, each with the alert recorded for it this month. */
+/** The month bar's markers (50 / 70 / 85 / 95 / 100 %), in order, each with the alert recorded for it this month. */
 export function budgetMarkers(
   spentRatio: number | null,
   alerts: readonly AiBudgetAlert[] = [],
