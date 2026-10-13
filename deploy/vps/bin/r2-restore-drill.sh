@@ -14,7 +14,8 @@ KEY="${2:?usage: $0 r2.env age.key [DUMP_NAME]}"
 # shellcheck disable=SC1090
 . "$ENV_FILE"
 work="$(mktemp -d)"; box="predigol-r2-drill"
-trap 'docker rm -f "$box" > /dev/null 2>&1 || true; rm -rf "$work"' EXIT
+# -v: the postgres image's data folder is an anonymous volume; without it every drill left its restored copy behind.
+trap 'docker rm -f -v "$box" > /dev/null 2>&1 || true; rm -rf "$work"' EXIT
 export RCLONE_CONFIG_DRILL_TYPE=s3 RCLONE_CONFIG_DRILL_PROVIDER=Cloudflare \
   RCLONE_CONFIG_DRILL_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" RCLONE_CONFIG_DRILL_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
   RCLONE_CONFIG_DRILL_ENDPOINT="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"

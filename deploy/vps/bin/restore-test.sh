@@ -21,7 +21,9 @@ BOX="predigol-restore-test"
 RESULT="$STATE/restore-test.json"
 failures=()
 fail() { failures+=("$1"); log "  FAIL $1"; }
-cleanup() { docker rm -f "$BOX" > /dev/null 2>&1 || true; }
+# -v: the postgres image declares its data folder a VOLUME, so `docker rm -f` alone left every restored copy behind as
+# an anonymous volume - seven of them, 78 GB, 40 % of the server's disk between 9 and 13 Oct 2026.
+cleanup() { docker rm -f -v "$BOX" > /dev/null 2>&1 || true; }
 trap cleanup EXIT
 
 ping_hc "${HC_PING_RESTORE_TEST:-}" start

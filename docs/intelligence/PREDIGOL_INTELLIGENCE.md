@@ -275,3 +275,10 @@ saque): normal en T−24/T−12. La narrativa LLM (brief-v4) usó bien el dossie
 «están en zona de descenso»: stakes-v2 (presión solo a ≤ 2 victorias, con los huecos y el nombre de cada zona) y
 brief-v5 lo corrigen. El criterio «historial» de discovery leía la fecha de carga del catálogo (29 sep) para los 338
 mercados: ahora cuenta el historial con precio de los mercados activos (desde 2022).
+
+**Disco: la prueba de restauración dejaba cada copia restaurada (corregido).** `restore-test.sh` (y el simulacro de
+R2) borraban el contenedor desechable con `docker rm -f`, que conserva el volumen anónimo de datos de la imagen de
+PostgreSQL: 7 volúmenes huérfanos, 78 GB, el 40 % del disco del servidor entre el 9 y el 13 de octubre, camino de
+llenar el disco bajo la base viva. Ahora `docker rm -f -v` (test de regresión). Se borraron solo los dos volúmenes de
+las pruebas de hoy (copias de dos copias que siguen en `backups/db`); los cinco anteriores (9–12 oct, ≈ 54 GB) quedan
+para que el dueño confirme que no los necesita antes de borrarlos.
