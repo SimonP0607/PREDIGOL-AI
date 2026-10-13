@@ -280,5 +280,12 @@ mercados: ahora cuenta el historial con precio de los mercados activos (desde 20
 R2) borraban el contenedor desechable con `docker rm -f`, que conserva el volumen anónimo de datos de la imagen de
 PostgreSQL: 7 volúmenes huérfanos, 78 GB, el 40 % del disco del servidor entre el 9 y el 13 de octubre, camino de
 llenar el disco bajo la base viva. Ahora `docker rm -f -v` (test de regresión). Se borraron solo los dos volúmenes de
-las pruebas de hoy (copias de dos copias que siguen en `backups/db`); los cinco anteriores (9–12 oct, ≈ 54 GB) quedan
-para que el dueño confirme que no los necesita antes de borrarlos.
+las pruebas de hoy (copias restauradas de los volcados de las 06:37 y las 07:17 UTC; el de las 07:17, el estado exacto
+anterior a la migración, sigue en `backups/db`); los cinco anteriores (9–12 oct, ≈ 54 GB) quedan para que el dueño
+confirme que no los necesita antes de borrarlos.
+
+**Rotación de copias (corregido).** Se conservaban los 3 volcados más nuevos fueran del día que fueran: los tres
+despliegues de esta mañana dejaron fuera los volcados del 12 oct y el diario del 13 (quedaron el del 11 oct y los tres
+de hoy). `bin/rotate-dumps.sh` conserva además el más nuevo de cada uno de los últimos 3 días (test de regresión que
+reproduce exactamente lo ocurrido). Las copias siguen sin salir del servidor (`BACKUP_RCLONE_REMOTE` +
+`BACKUP_AGE_RECIPIENT` sin configurar).

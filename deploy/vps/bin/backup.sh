@@ -82,26 +82,11 @@ else
   log "NOTE: no off-server copy configured (BACKUP_RCLONE_REMOTE + BACKUP_AGE_RECIPIENT): this dump exists only here"
 fi
 
-# Rotation on this server: the newest BACKUP_KEEP_DAILY dumps, plus the newest dump of each of the last
-# BACKUP_KEEP_WEEKLY ISO weeks. With an off-server copy configured, a dump whose copy was never checked is KEPT.
-keep_daily="${BACKUP_KEEP_DAILY:-3}"
-keep_weekly="${BACKUP_KEEP_WEEKLY:-2}"
-mapfile -t dumps < <(find "$DB_BACKUPS" -maxdepth 1 -name 'predigol-*.dump' -printf '%f\n' | sort -r)
-declare -A keep=() weeks=()
-for i in "${!dumps[@]}"; do
-  d="${dumps[$i]}"
-  (( i < keep_daily )) && keep["$d"]=1
-  stamp="${d#predigol-}"; stamp="${stamp:0:8}"
-  week="$(date -u -d "$stamp" +%G-W%V)"
-  if [[ -z "${weeks[$week]:-}" && ${#weeks[@]} -lt $keep_weekly ]]; then weeks["$week"]=1; keep["$d"]=1; fi
-done
-for d in "${dumps[@]}"; do
-  [[ -n "${keep[$d]:-}" ]] && continue
-  if (( offsite )) && ! jq -e '.offsite.verified_at' "$DB_BACKUPS/${d%.dump}.json" > /dev/null 2>&1; then
-    log "kept $d: its off-server copy was never checked"; continue
-  fi
-  rm -f "$DB_BACKUPS/$d" "$DB_BACKUPS/${d%.dump}.json"; log "rotated out $d"
-done
+# Rotation on this server (bin/rotate-dumps.sh): the newest BACKUP_KEEP_DAILY dumps, the newest of each of the last
+# BACKUP_KEEP_DAILY days and of each of the last BACKUP_KEEP_WEEKLY ISO weeks. With an off-server copy configured, a
+# dump whose copy was never checked is KEPT.
+rotated="$("$KIT/bin/rotate-dumps.sh" "$DB_BACKUPS" "${BACKUP_KEEP_DAILY:-3}" "${BACKUP_KEEP_WEEKLY:-2}" "$offsite")"
+while IFS= read -r line; do [[ -n "$line" ]] && log "$line"; done <<< "$rotated"
 
 # Retention off the server: daily copies for BACKUP_REMOTE_DAYS days, the Sunday ones for BACKUP_REMOTE_WEEKS
 # weeks, the first of each month for BACKUP_REMOTE_MONTHS months. Nothing else is ever deleted there.
