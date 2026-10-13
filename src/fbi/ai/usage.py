@@ -3,7 +3,7 @@
 The ledger (``ai.usage``) is written through its own connection, committed at once: a review that
 fails later, or a transaction that rolls back, cannot hide what a call cost. Spend counts the whole AI
 layer - these rows and the earlier ``analytics.ai_runs`` (the admin questions and the daily report) -
-against ONE monthly budget, its hard cap (the owner's machine: US$150).
+against ONE monthly budget, its hard cap (``FBI_AI_MONTHLY_BUDGET_USD``: US$180 on the server since 13 Oct 2026).
 
 The day and the month are Bogotá's (``fbi.ai.calendar``). The day's budget ADAPTS (V2, 8 Oct 2026):
 
@@ -22,8 +22,14 @@ Degradation, never breakage (by today's spend against today's budget; the month'
                 month's budget spent            model review ABSTAINs
 
 Inside the day the passes share it (``PASS_SHARE``): the first pass may take 55 %, the second up to 75 %, the
-last one the rest - the line-ups are never left without money. The month's spend crossing 70, 85, 95 and 100 %
+last one the rest - the line-ups are never left without money. The month's spend crossing 50, 70, 85, 95 and 100 %
 is recorded once each (``ai.budget_alerts``) and sent through the notifier.
+
+PRIORITY (PrediGol Intelligence, 13 Oct 2026): depth on MARGINAL matches - a match of the day without any candidate -
+stops first: no model brief and no web for them once today's spend reaches 80 % of today's budget, the day is no longer
+NORMAL, or the month has spent 85 % (``Budget.marginal_allowed``). The candidates' analysis keeps every tier the state
+allows, up to the day's ceiling: near the budget the layer reads fewer marginal matches, never less of the critical
+ones.
 
 The quantitative pipeline does not depend on any of this.
 """
@@ -90,7 +96,9 @@ HARD_FACTOR = Decimal("1.5")
 LOAD_MIN = 0.5
 TYPICAL_DAYS = 14
 MIN_TYPICAL = 3
-ALERT_THRESHOLDS = (70, 85, 95, 100)
+ALERT_THRESHOLDS = (50, 70, 85, 95, 100)
+MARGINAL_SHARE = Decimal("0.80")
+MARGINAL_MONTH = 0.85
 PASS_SHARE: dict[str, Decimal] = {"first": Decimal("0.55"), "pre": Decimal("0.75"), "final": Decimal("1.00"),
                                   "request": Decimal("1.00")}
 """How much of the day's budget may be spent by the end of each pass on the intermediate and strong models and the
@@ -135,6 +143,12 @@ class Budget:
 
     def allows(self, tier: str) -> bool:
         return tier in ALLOWED[self.state]
+
+    def marginal_allowed(self) -> bool:
+        """Whether a match WITHOUT a candidate may still get the paid depth (model brief, web): only while the day is
+        NORMAL, below 80 % of its budget, and the month below 85 % of its own."""
+        return (self.state == "NORMAL" and self.spent_today < self.daily * MARGINAL_SHARE
+                and self.month_ratio < MARGINAL_MONTH)
 
     def pass_allows(self, pass_kind: str) -> bool:
         """Whether a paid step beyond the L1 brief (intermediate or strong model, web search) still fits the share
@@ -215,7 +229,7 @@ def budget(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings)
 
 
 def check_alerts(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings) -> list[int]:
-    """Record the month's thresholds crossed (70 / 85 / 95 / 100 %), each once a month. Returns the new ones."""
+    """Record the month's thresholds crossed (50 / 70 / 85 / 95 / 100 %), each once a month. Returns the new ones."""
     b = budget(conn, at=at, settings=settings)
     if b.monthly <= 0:
         return []
@@ -313,10 +327,16 @@ def call_json(conn: psycopg.Connection[Any], settings: AiSettings, *, tier: Tier
     except ProviderError as exc:
         status = "timeout" if exc.code == "timeout" else "invalid_output" if exc.code == "invalid_output" \
             else "refused" if exc.code == "refused" else "failed"
-        uid = ledger.record(at=at, purpose=purpose, tier=used or tier, provider=impl.name, model=model, usage=None,
-                            cost=Decimal(0), status=status, prompt_version=prompt_version, fixture_id=fixture_id,
+        # An answer that came back but did not validate was billed: its tokens are counted (13 Oct 2026; before, an
+        # invalid output was recorded at US$0).
+        billed = exc.usage
+        lost = Decimal(0) if billed is None else token_cost(
+            impl.name, model, input_tokens=billed.input_tokens, output_tokens=billed.output_tokens,
+            cached_tokens=billed.cached_tokens, at=at)
+        uid = ledger.record(at=at, purpose=purpose, tier=used or tier, provider=impl.name, model=model, usage=billed,
+                            cost=lost, status=status, prompt_version=prompt_version, fixture_id=fixture_id,
                             error=f"{exc.code}: {exc}", input_hash=input_hash)
-        return CallOutcome(None, uid, used, impl.name, model, Decimal(0), exc.code)
+        return CallOutcome(None, uid, used, impl.name, model, lost, exc.code)
     cost = token_cost(result.provider, model, input_tokens=result.usage.input_tokens,
                       output_tokens=result.usage.output_tokens, cached_tokens=result.usage.cached_tokens, at=at)
     uid = ledger.record(at=at, purpose=purpose, tier=used or tier, provider=result.provider, model=model,

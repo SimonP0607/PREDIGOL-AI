@@ -47,7 +47,11 @@ def cost(model: str | None, input_tokens: int, output_tokens: int) -> Decimal:
 
 
 def monthly_budget() -> Decimal:
-    raw = environment().get("FBI_ANALYST_MONTHLY_BUDGET_USD")
+    """The month's cap. It is ONE cap for the whole AI layer (``spent_this_month`` counts both): without an explicit
+    ``FBI_ANALYST_MONTHLY_BUDGET_USD`` it is the decision layer's ``FBI_AI_MONTHLY_BUDGET_USD`` (13 Oct 2026 - before,
+    the analyst fell back to US$20 against the whole layer's spend and stopped as soon as the layer passed it)."""
+    env = environment()
+    raw = env.get("FBI_ANALYST_MONTHLY_BUDGET_USD") or env.get("FBI_AI_MONTHLY_BUDGET_USD")
     try:
         return Decimal(raw) if raw else DEFAULT_BUDGET
     except ArithmeticError:

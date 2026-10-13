@@ -423,4 +423,4 @@ def test_cost_per_purpose_is_measured(db: psycopg.Connection[Any], world: World)
     assert today["cost_per_match"] == pytest.approx(today["cost_usd"], rel=1e-6), "one match analysed"
     assert {x["key"] for x in today["by_level"]} <= {"L1", "L2", "L3", "web"}
     assert Decimal(s["budget"]["spent_today_usd"]) > 0 and s["budget"]["state"] == "NORMAL"
-    assert s["projection"]["monthly_budget_usd"] == 20.0 and s["thresholds"] == [70, 85, 95, 100]
+    assert s["projection"]["monthly_budget_usd"] == 20.0 and s["thresholds"] == [50, 70, 85, 95, 100]

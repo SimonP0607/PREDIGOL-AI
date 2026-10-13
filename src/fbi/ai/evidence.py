@@ -78,6 +78,55 @@ MEDIA = frozenset({
 })
 JOURNALISTS = frozenset({"fabrizioromano.com"})
 
+SOURCES_V2: dict[str, str] = {
+    # PrediGol Intelligence, sources-v2 (13 Oct 2026): what the web search actually returned in its first week, and
+    # the press the owner named, classified. Official first; media by country; betting-tips, streaming and
+    # fan sites as aggregators (an item from one of them alone stays a RUMOR).
+    # competitions and federations
+    "allsvenskan.se": "competition", "eliteserien.no": "competition", "superliga.dk": "competition",
+    "proleague.be": "competition", "sfl.ch": "competition", "bundesliga.at": "competition",
+    "ekstraklasa.org": "competition", "chanceliga.cz": "competition", "slgr.gr": "competition",
+    "premierliga.ru": "competition", "upl.ua": "competition", "hnl.hr": "competition", "superliga.rs": "competition",
+    "leagueofireland.ie": "competition", "jleague.jp": "competition", "kleague.com": "competition",
+    "aleagues.com.au": "competition", "spl.com.sa": "competition", "uslchampionship.com": "competition",
+    "ligapro.ec": "competition", "liga1.pe": "competition", "campeonatochileno.cl": "competition",
+    "ligafutve.org": "competition", "unafut.com": "competition", "csl-china.com": "competition",
+    "tff.org": "official", "auf.org.uy": "official", "apf.org.py": "official", "fbf.com.bo": "official",
+    "anfp.cl": "official", "fef.ec": "official", "fpf.org.pe": "official",
+    # clubs that came up
+    "eintracht.com": "club",
+    # media named by the owner and the national press of the covered leagues
+    "directvsports.com": "media", "noticiasrcn.com": "media", "canalrcn.com": "media", "espndeportes.com": "media",
+    "eltiempo.com.co": "media", "elcolombiano.com": "media", "eluniversal.com.mx": "media",
+    "abc.com.py": "media", "ultimahora.com": "media", "opinion.com.bo": "media", "meridiano.net": "media",
+    "nacion.com": "media", "lagaceta.com.ar": "media", "elcomercio.es": "media", "lavanguardia.com": "media",
+    "elperiodico.com": "media", "eurosport.com": "media", "eurosport.es": "media", "fourfourtwo.com": "media",
+    "football365.com": "media", "sportsmole.co.uk": "media", "dailyrecord.co.uk": "media", "sport.fr": "media",
+    "ouest-france.fr": "media", "lemonde.fr": "media", "sportbild.de": "media", "welt.de": "media",
+    "faz.net": "media", "spiegel.de": "media", "tag24.de": "media", "laola1.at": "media", "blick.ch": "media",
+    "ad.nl": "media", "telegraaf.nl": "media", "vi.nl": "media", "hln.be": "media", "nieuwsblad.be": "media",
+    "sporza.be": "media", "bold.dk": "media", "tipsbladet.dk": "media", "bt.dk": "media", "ekstrabladet.dk": "media",
+    "expressen.se": "media", "aftonbladet.se": "media", "fotbollskanalen.se": "media", "vg.no": "media",
+    "dagbladet.no": "media", "nettavisen.no": "media", "sport.pl": "media", "przegladsportowy.onet.pl": "media",
+    "isport.blesk.cz": "media", "sport24.gr": "media", "gazzetta.gr": "media", "sporx.com": "media",
+    "sport-express.ru": "media", "championat.com": "media", "sportnet.hr": "media", "sapo.pt": "media",
+    "diadejogo.pt": "media", "interfootball.co.kr": "media", "nikkansports.com": "media", "sponichi.co.jp": "media",
+    "arriyadiyah.com": "media", "filgoal.com": "media", "supersport.com": "media", "foxsports.com.au": "media",
+    # aggregators: statistics sites, betting tips, streaming and fan pages
+    "squawka.com": "aggregator", "365scores.com": "aggregator", "kooora.com": "aggregator",
+    "dongqiudi.com": "aggregator", "zhibo8.cc": "aggregator", "news.zhibo8.com": "aggregator",
+    "163.com": "aggregator", "tuttomercatoweb.com": "aggregator", "calciomercato.com": "aggregator",
+    "foot01.com": "aggregator", "meczyki.pl": "aggregator", "mozzartsport.com": "aggregator",
+    "mediapronos.com": "aggregator", "90fut.com": "aggregator", "thefalse9.com": "aggregator",
+    "injuriesandsuspensions.com": "aggregator", "lineupstoday.com": "aggregator", "5maseldescuento.es": "aggregator",
+    "betsgo-global.com": "aggregator", "jarayid.com": "aggregator", "oddspedia.com": "aggregator",
+    "forebet.com": "aggregator", "predictz.com": "aggregator", "windrawwin.com": "aggregator",
+    "soccerpunter.com": "aggregator", "africasoccer.com": "aggregator", "tuttoatalanta.com": "aggregator",
+    "leccezionale.it": "aggregator", "bollsvenskan.se": "aggregator", "campo.dk": "aggregator",
+    "zhongchao.yoozhibo.tv": "aggregator", "925zhibo-xueqiu.com": "aggregator", "nbazhibo-ifeng.com": "aggregator",
+    "baoyuncnc.com": "aggregator", "ahradio.com.cn": "aggregator",
+}
+
 
 def seed_rows() -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = [("api-football.com", "provider")]
@@ -88,6 +137,8 @@ def seed_rows() -> list[tuple[str, str]]:
     rows += [(d, "media") for d in sorted((REPUTABLE_DOMAINS | MEDIA) - LEAGUES - FEDERATIONS - OFFICIAL_DOMAINS)]
     rows += [(d, "aggregator") for d in sorted(AGGREGATORS)]
     rows += [(d, "social") for d in sorted(SOCIAL)]
+    seeded = {d for d, _ in rows}
+    rows += [(d, t) for d, t in sorted(SOURCES_V2.items()) if d not in seeded]
     return rows
 
 

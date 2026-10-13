@@ -488,11 +488,19 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
     report.counts[f"pass_{kind}"] += 1
     llm_ready = llm_ready and not health["llm_down"]
     transient = False
+    # Near the budget a match without any candidate loses its paid depth first (``Budget.marginal_allowed``): no
+    # model brief, no web. The candidates keep theirs up to the day's ceiling.
+    deep = bool(options) or kind == "request" or budget_of(conn, at=at, settings=settings).marginal_allowed()
+    if not deep:
+        counts["marginal_saved"] += 1
+        report.counts["marginal_saved"] += 1
 
     # the web (first and pre passes; the most important matches; only a stale cached answer is asked again)
-    if web and kind in ("first", "pre", "request") and budget_of(conn, at=at, settings=settings).pass_allows(kind):
+    if web and deep and kind in ("first", "pre", "request") \
+            and budget_of(conn, at=at, settings=settings).pass_allows(kind):
+        # the tiered search (sources-v2): up to three levels for a match with candidates, one for the others
         got = collect_web(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider,
-                          transport=transport)
+                          transport=transport, levels=3 if options else 1)
         counts["web_searches"] += got.searches
         counts["web_items"] += got.extracted
         counts["web_new"] += got.created
@@ -515,7 +523,7 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
     preview = build_cards(packet, [value_option(x) for x in options],
                           {(k[1], k[2], k[3]): v for k, v in known.items()})
     brief: Brief = make_brief(conn, settings, packet, packet_id, cards=preview, candidates=len(options),
-                              pass_kind=kind, at=at, use_llm=llm_ready, ledger=ledger, transport=transport,
+                              pass_kind=kind, at=at, use_llm=llm_ready and deep, ledger=ledger, transport=transport,
                               provider=provider)
     if brief.engine == "rules" and brief.error in TRANSIENT:
         health["llm_down"], transient, llm_ready = True, True, False

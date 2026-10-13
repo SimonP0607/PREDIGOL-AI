@@ -32,7 +32,7 @@ from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from fbi.ai.claims import ClaimOut, corpus_numbers, refused
+from fbi.ai.claims import ClaimOut, _unverified, corpus_numbers, refused
 from fbi.ai.config import AiSettings
 from fbi.ai.packet import Packet, canonical
 from fbi.ai.prompts import BRIEF_SCHEMA, BRIEF_SYSTEM, BRIEF_VERSION
@@ -138,6 +138,13 @@ def lenient(data: dict[str, Any]) -> dict[str, Any]:
             c["why"], c["risks"] = _claims(c.get("why"), 3), _claims(c.get("risks"), 3)
         cards.append(c)
     d["cards"] = cards
+    nar = d.get("narrative")
+    if isinstance(nar, dict):
+        from fbi.intel.narrative import SECTIONS
+
+        d["narrative"] = {k: fit(str(nar[k]), 480) for k in SECTIONS if isinstance(nar.get(k), str) and nar[k].strip()}
+    else:
+        d.pop("narrative", None)
     return {k: v for k, v in d.items() if k in BriefOut.model_fields}
 
 
@@ -152,6 +159,7 @@ class BriefOut(BaseModel):
     contradiction: bool
     escalate: bool
     cards: list[CardNote] = Field(default_factory=list, max_length=3)
+    narrative: dict[str, str] | None = None
 
 
 @dataclass
@@ -270,10 +278,13 @@ def rules_brief(packet: Packet, cards: list[dict[str, Any]], reasons: list[str])
         notes.append({"market": card["market"], "selection": card["selection"], "line": str(card["line"]),
                       "why": why, "risks": risks})
     quality = ((c.get("quality") or {}).get("competition_score") or {}).get("class")
+    from fbi.intel.narrative import rules_narrative
+
     return {"summary": " ".join(parts)[:500], "context": context[:5], "injuries": injuries[:10], "changes": [],
             "data_quality": "poor" if quality in NOT_FIT else "fair" if quality is None or packet.missing else "good",
             "uncertainty": "high" if "high_uncertainty" in reasons else "medium" if reasons else "low",
-            "contradiction": "contradiction" in reasons, "escalate": bool(reasons), "cards": notes}
+            "contradiction": "contradiction" in reasons, "escalate": bool(reasons), "cards": notes,
+            "narrative": rules_narrative(c, cards), "narrative_engine": "rules"}
 
 
 def validate(out: BriefOut, packet: Packet, cards: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, str]]]:
@@ -313,10 +324,27 @@ def validate(out: BriefOut, packet: Packet, cards: list[dict[str, Any]]) -> tupl
             continue
         notes.append({"market": key[0], "selection": key[1], "line": key[2],
                       "why": keep("cards.why", n.why), "risks": keep("cards.risks", n.risks)})
+    from fbi.intel.narrative import SECTIONS, rules_narrative
+
+    fallback = rules_narrative(packet.content, cards)
+    narrative: dict[str, str] = {}
+    for k in SECTIONS:
+        text = (out.narrative or {}).get(k)
+        if not text:
+            narrative[k] = fallback[k]
+            continue
+        bad = _unverified(text, stored)
+        if bad:
+            rejected.append({"group": f"narrative.{k}", "text": text[:240], "why": f"numbers not in the packet: "
+                                                                                    f"{', '.join(bad)}"})
+            narrative[k] = fallback[k]
+        else:
+            narrative[k] = plain(" ".join(text.split()))
     content = {"summary": plain(" ".join(out.summary.split())), "context": keep("context", out.context),
                "injuries": injuries, "changes": keep("changes", out.changes), "data_quality": out.data_quality,
                "uncertainty": out.uncertainty, "contradiction": out.contradiction, "escalate": out.escalate,
-               "cards": notes}
+               "cards": notes, "narrative": narrative,
+               "narrative_engine": "llm" if out.narrative else "rules"}
     return content, rejected
 
 

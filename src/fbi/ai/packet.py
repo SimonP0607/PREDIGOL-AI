@@ -30,7 +30,9 @@ from psycopg.types.json import Jsonb
 from fbi.ai import context as ctx
 from fbi.ai.pricing import approx_tokens
 
-PACKET_VERSION = "packet-v1"
+PACKET_VERSION = "packet-v2"
+"""v2 (13 Oct 2026): the ``dossier`` block (``fbi.intel.dossier``): teams in depth, coaches, key players, the
+referee, the competitive context, how much the head-to-head is worth."""
 CORE_KEYS: tuple[tuple[str, str, Decimal], ...] = (
     ("1X2", "Home", Decimal(0)), ("1X2", "Draw", Decimal(0)), ("1X2", "Away", Decimal(0)),
     ("OU", "Over", Decimal("2.5")), ("OU", "Under", Decimal("2.5")),
@@ -406,6 +408,15 @@ class PacketBuilder:
             missing.append("h2h")
 
         content["elo"] = self._elo(f, at, sources, missing)
+        from fbi.intel.dossier import build_dossier, finite
+
+        content["dossier"] = finite(build_dossier(conn, f, at=at, elo=self._elo_version(at),
+                                                  referee=facts["referee"] if facts else None, h2h_n=len(h2h),
+                                                  h2h_last=h2h[0]["kickoff_at"] if h2h else None))
+        sources.append({"block": "dossier", "tables": ["core.fixture_team_stats", "core.fixture_events",
+                                                       "core.fixture_lineups", "core.fixture_player_stats",
+                                                       "core.fixture_facts", "features.elo_ratings"],
+                        "as_of": _ts(at), "version": content["dossier"]["version"]})
         content["stats"] = {}
         for side, team in (("home", home), ("away", away)):
             s = _row(conn, TEAM_STATS_SQL, {"team": team, "kickoff": kickoff, "at": at, "limit": STATS_N}) or {}

@@ -222,7 +222,7 @@ def test_an_important_day_may_spend_more_and_a_light_one_less(db: psycopg.Connec
 
 def test_the_months_alerts_are_recorded_once_each(db: psycopg.Connection[Any], seed: Seed) -> None:
     _spend(db, datetime(2032, 8, 10, 17, tzinfo=UTC), "106")
-    assert check_alerts(db, at=MID, settings=OWNER) == [70]
+    assert check_alerts(db, at=MID, settings=OWNER) == [50, 70], "50 % alerts too (US$180 budget, 13 Oct 2026)"
     assert check_alerts(db, at=MID, settings=OWNER) == [], "once"
     _spend(db, datetime(2032, 8, 11, 17, tzinfo=UTC), "44")
     assert check_alerts(db, at=MID, settings=OWNER) == [85, 95, 100]
@@ -230,7 +230,7 @@ def test_the_months_alerts_are_recorded_once_each(db: psycopg.Connection[Any], s
     from fbi.notify.service import collect
 
     drafts = [d for d in collect(db, at=MID) if d.kind == "ai_budget"]
-    assert {d.payload["threshold"] for d in drafts} == {70, 85, 95, 100}
+    assert {d.payload["threshold"] for d in drafts} == {50, 70, 85, 95, 100}
 
 
 # ── the web ─────────────────────────────────────────────────────────────────

@@ -24,7 +24,7 @@ from psycopg.rows import dict_row
 from fbi.ai.calendar import day_start, days_in_month, days_left_in_month, local_day, month_start
 from fbi.ai.config import AiSettings
 from fbi.ai.pricing import search_cost, token_cost
-from fbi.ai.usage import budget
+from fbi.ai.usage import ALERT_THRESHOLDS, budget
 
 PERIODS = (("today", 0), ("7d", 7), ("30d", 30))
 LEVELS = {"bulk": "L1", "analysis": "L2", "final": "L3", "search": "web"}
@@ -119,7 +119,7 @@ def summary(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings
     settings = settings or AiSettings.from_env()
     out: dict[str, Any] = {"periods": {}, "budget": budget(conn, at=at, settings=settings).as_json(),
                            "projection": projection(conn, at=at, settings=settings), "alerts": alerts(conn, at=at),
-                           "thresholds": [70, 85, 95, 100]}
+                           "thresholds": list(ALERT_THRESHOLDS)}
     month = day_start(month_start(local_day(at)))
     for name, since, until in [(n, *_period(at, d)) for n, d in PERIODS] + [("month", month,
                                                                              at + timedelta(seconds=1))]:

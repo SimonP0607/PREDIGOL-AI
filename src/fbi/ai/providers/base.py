@@ -21,10 +21,13 @@ ErrorCode = Literal["timeout", "unavailable", "rate_limited", "refused", "invali
 
 
 class ProviderError(RuntimeError):
-    def __init__(self, code: ErrorCode, message: str, *, status: int | None = None) -> None:
+    def __init__(self, code: ErrorCode, message: str, *, status: int | None = None,
+                 usage: LlmUsage | None = None) -> None:
         super().__init__(message)
         self.code: ErrorCode = code
         self.status = status
+        self.usage = usage
+        """What the provider billed for an answer that came back but could not be used (``invalid_output``)."""
 
 
 @dataclass(frozen=True, slots=True)

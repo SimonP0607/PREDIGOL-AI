@@ -138,15 +138,15 @@ class AnthropicProvider:
                 raise _UnsupportedError(what)
             raise status_error(r.status_code)
         out = r.json()
-        uses = [c for c in out.get("content") or [] if c.get("type") == "tool_use"
-                and c.get("name") == request.schema_name]
-        if not uses or not isinstance(uses[0].get("input"), dict):
-            raise ProviderError("invalid_output", "the model did not submit the answer")
         u = out.get("usage") or {}
         cached = int(u.get("cache_read_input_tokens") or 0)
         written = int(u.get("cache_creation_input_tokens") or 0)
         usage = LlmUsage(input_tokens=int(u.get("input_tokens") or 0) + cached + written,
                          output_tokens=int(u.get("output_tokens") or 0), cached_tokens=cached)
+        uses = [c for c in out.get("content") or [] if c.get("type") == "tool_use"
+                and c.get("name") == request.schema_name]
+        if not uses or not isinstance(uses[0].get("input"), dict):
+            raise ProviderError("invalid_output", "the model did not submit the answer", usage=usage)
         thinking = int(((u.get("output_tokens_details") or {}).get("thinking_tokens")) or 0)
         return LlmResult(dict(uses[0]["input"]), usage, self.name, str(out.get("model") or model), latency,
                          request_id=r.headers.get("request-id"),

@@ -19,13 +19,16 @@ POSTMORTEM_VERSION = "postmortem-v3"
 """v2 (9 Oct 2026): plain prose for the owner (no reference tags in a narrative).
 v3 (9 Oct 2026, the first narratives on the server): codes in words, numbers as percentages, no "DATOS:" label (it
 wrote "la decisión fue RECHAZAR", "estado OUTDATED", "probabilidad del modelo 0.380")."""
-BRIEF_VERSION = "brief-v3"
+BRIEF_VERSION = "brief-v4"
 """L1 (V2, 8 Oct 2026): the economical model reads a match of the day with a market and says what matters.
 v2 (9 Oct 2026, after the first real answer): the references it may cite are listed (it cited "P:cards.BTTS"), and
 probabilities are written as percentages (it wrote "0.525").
 v3 (9 Oct 2026, six real briefs, all valid): a card is a «selección» in Spanish (it wrote «carta»); its own
 contradiction flag no longer escalates a match (it called every model-market disagreement a contradiction: the server
-escalates contradictory evidence itself, and the rules and the L2 review contradicting each other)."""
+escalates contradictory evidence itself, and the rules and the L2 review contradicting each other).
+v4 (13 Oct 2026, PrediGol Intelligence): the match narrative in eight sections (how each team arrives, what is at
+stake, tactical keys, important players, risks, interesting markets, the conclusion), from the packet's new dossier
+block; every number in it must be in the packet (a paragraph with one that is not is replaced by the rules' one)."""
 PICK_PM_VERSION = "pick-postmortem-v3"
 """v2 (9 Oct 2026, after the first real ones): plain prose with no reference tags, and what the closing-line value
 means (one narrative read a +21.5 % CLV as the market moving against the selection).
@@ -121,9 +124,18 @@ the three selections PrediGol shows for it (cards) and the reasons the server al
 - escalate: true when the match deserves a deeper review (a strong reason, not curiosity).
 - cards: for each given card (same market, selection and line), why it could be right and what could go wrong, at most
   three typed, cited claims each. Never say a card is value or not: the server decides that.
+- narrative: the match told for a football reader, in eight short Spanish paragraphs (two or three sentences each):
+  como_llega_local, como_llega_visitante (form, home/away record, goals and expected goals, streaks, the quality of
+  the opponents), que_esta_en_juego (table, title, places, relegation, a knockout, a second leg, a derby - never turn
+  an emotional story into a certainty), claves_tacticas (formations, the coach's habits, rotation, possession, shots,
+  corners - from P:dossier), jugadores_importantes (who matters, who is out or doubtful, who carries minutes),
+  riesgos (referee, rest, rumours, contradictions, little external context), mercados_interesantes (the cards: model
+  against market, nothing more) and conclusion (what PrediGol Intelligence takes from it, without recommending a bet).
+  Only facts from the packet and the evidence; every number must be one that appears in the packet; when a section has
+  no data write «Sin datos suficientes.».
 References: cite packet blocks as P:<block> (fixture, standings, stakes, form, schedule, h2h, elo, stats, absences,
-lineups, travel, market, models, quality, evidence), a card as P:cards, the previous reading as P:previous, and
-evidence as E:<id> - nothing else. Write probabilities as percentages with one decimal (52.5 %), copying the packet's
+lineups, travel, market, models, quality, evidence, dossier), a card as P:cards, the previous reading as P:previous,
+and evidence as E:<id> - nothing else. Write probabilities as percentages with one decimal (52.5 %), copying the packet's
 numbers; never compute new ones.
 In Spanish a card is a «selección» (never «carta»).
 You never give a probability, a stake or a pick. Submit with the tool exactly once."""
@@ -138,7 +150,7 @@ BRIEF_CLAIM: dict[str, Any] = {
 BRIEF_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
     "required": ["summary", "context", "injuries", "changes", "data_quality", "uncertainty", "contradiction",
-                 "escalate", "cards"],
+                 "escalate", "cards", "narrative"],
     "properties": {
         "summary": {"type": "string", "maxLength": 500},
         "context": {"type": "array", "maxItems": 5, "items": BRIEF_CLAIM},
@@ -158,6 +170,12 @@ BRIEF_SCHEMA: dict[str, Any] = {
             "properties": {"market": {"type": "string"}, "selection": {"type": "string"}, "line": {"type": "string"},
                            "why": {"type": "array", "maxItems": 3, "items": BRIEF_CLAIM},
                            "risks": {"type": "array", "maxItems": 3, "items": BRIEF_CLAIM}}}},
+        "narrative": {"type": "object", "additionalProperties": False,
+                      "required": ["como_llega_local", "como_llega_visitante", "que_esta_en_juego", "claves_tacticas",
+                                   "jugadores_importantes", "riesgos", "mercados_interesantes", "conclusion"],
+                      "properties": {k: {"type": "string", "maxLength": 480} for k in (
+                          "como_llega_local", "como_llega_visitante", "que_esta_en_juego", "claves_tacticas",
+                          "jugadores_importantes", "riesgos", "mercados_interesantes", "conclusion")}},
     },
 }
 

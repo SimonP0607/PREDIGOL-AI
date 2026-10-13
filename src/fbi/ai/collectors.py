@@ -94,6 +94,7 @@ class Collected:
     extracted: int = 0
     cost_usd: float = 0.0
     skipped: str | None = None
+    levels_tried: int = 0
 
 
 def collect_provider(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime) -> Collected:
@@ -187,15 +188,69 @@ SPANISH = frozenset({"colombia", "argentina", "spain", "mexico", "chile", "peru"
 PORTUGUESE = frozenset({"brazil", "portugal"})
 
 
+ITALIAN = frozenset({"italy", "san-marino", "san marino"})
+FRENCH = frozenset({"france", "belgium", "switzerland", "monaco", "luxembourg", "ivory-coast", "senegal", "morocco",
+                    "algeria", "tunisia", "cameroon"})
+GERMAN = frozenset({"germany", "austria"})
+DUTCH = frozenset({"netherlands"})
+TURKISH = frozenset({"turkey", "türkiye"})
+
+
+def language_of(country: str | None) -> str:
+    c = (country or "").strip().lower()
+    for lang, names in (("es", SPANISH), ("pt", PORTUGUESE), ("it", ITALIAN), ("fr", FRENCH), ("de", GERMAN),
+                        ("nl", DUTCH), ("tr", TURKISH)):
+        if c in names:
+            return lang
+    return "en"
+
+
+TEAM_NEWS = {
+    "es": "{home} vs {away} noticias lesionados convocados alineación {when}",
+    "pt": "{home} x {away} notícias lesionados desfalques escalação {when}",
+    "it": "{home} {away} probabili formazioni infortunati squalificati {when}",
+    "fr": "{home} {away} composition probable blessés suspendus {when}",
+    "de": "{home} {away} voraussichtliche Aufstellung Verletzte Sperren {when}",
+    "nl": "{home} {away} opstelling blessures schorsingen {when}",
+    "tr": "{home} {away} muhtemel 11 sakat cezali {when}",
+    "en": "{home} vs {away} team news injuries lineup {when}",
+}
+OFFICIAL = {
+    "es": "{home} {away} {competition} comunicado oficial parte médico convocatoria {when}",
+    "pt": "{home} {away} {competition} nota oficial departamento médico relacionados {when}",
+    "it": "{home} {away} {competition} comunicato ufficiale convocati {when}",
+    "fr": "{home} {away} {competition} communiqué officiel groupe convoqué {when}",
+    "de": "{home} {away} {competition} offiziell Kader Pressekonferenz {when}",
+    "nl": "{home} {away} {competition} officieel selectie persconferentie {when}",
+    "tr": "{home} {away} {competition} resmi aciklama kadro {when}",
+    "en": "{home} {away} {competition} official squad press conference {when}",
+}
+PREVIEW = "{home} vs {away} {competition} preview predicted lineups {when}"
+
+
 def query_for(home: str, away: str, kickoff: datetime, country: str | None) -> str:
     """The search in the competition's language: the local press reports team news first."""
-    c = (country or "").strip().lower()
-    when = f"{kickoff:%Y-%m-%d}"
-    if c in SPANISH:
-        return f"{home} vs {away} noticias lesionados convocados alineación {when}"
-    if c in PORTUGUESE:
-        return f"{home} x {away} notícias lesionados desfalques escalação {when}"
-    return f"{home} vs {away} team news injuries lineup {when}"
+    return TEAM_NEWS[language_of(country)].format(home=home, away=away, when=f"{kickoff:%Y-%m-%d}")
+
+
+def queries_for(home: str, away: str, kickoff: datetime, country: str | None, competition: str | None, *,
+                levels: int) -> list[str]:
+    """The tiered search (PrediGol Intelligence, sources-v2) for a match, best first, at most ``levels`` of them:
+
+        1  team news in the competition's language (where the local press reports it)
+        2  the clubs' and the competition's own words: official statements, squads, the medical report
+        3  an English-language preview (international outlets cover the leagues the local press web misses)
+
+    Levels 4-6 of the source order - journalists, aggregators, verified social accounts - are not separate searches:
+    the results of these queries are read most authoritative first (``TIER_RANK``) and an aggregator or a social post
+    alone stays a RUMOR (``fbi.ai.evidence``). A level is only asked when the ones before found no source of a known
+    standing. When nothing is found, the match's context is "CONTEXTO EXTERNO LIMITADO" (``fbi.intel.decision``):
+    nothing is invented and nothing is rejected for it."""
+    lang, when, comp = language_of(country), f"{kickoff:%Y-%m-%d}", competition or ""
+    out = [TEAM_NEWS[lang].format(home=home, away=away, when=when),
+           OFFICIAL[lang].format(home=home, away=away, competition=comp, when=when).replace("  ", " "),
+           PREVIEW.format(home=home, away=away, competition=comp, when=when).replace("  ", " ")]
+    return out[:max(1, levels)]
 
 
 def record_source_results(conn: psycopg.Connection[Any], results: list[SearchResult], *, at: datetime,
@@ -233,10 +288,14 @@ def _parse_ts(s: str | None) -> datetime | None:
     return d if d.tzinfo is not None else None
 
 
+KNOWN_STANDING = TIER_RANK["media"]
+"""A result from an official, competition, club, journalist or media source: the search found what it was for."""
+
+
 def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id: int, *, at: datetime,
                 ledger: UsageLedger | None = None, search: SearchFn | None = None,
                 provider: tuple[LlmProvider, str] | None = None,
-                transport: httpx.BaseTransport | None = None) -> Collected:
+                transport: httpx.BaseTransport | None = None, levels: int = 1) -> Collected:
     """Team news for one match from the web, when a search API and a model are configured and the budget
     allows - otherwise nothing is fetched and the reason is returned. A search whose cached answer is fresh is not
     asked again; a page already read for this match is not read again; a search that fails costs nothing and is
@@ -260,32 +319,55 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
         out.skipped = "no such fixture"
         return out
     ledger = ledger or UsageLedger()
-    query = query_for(f["home_name"], f["away_name"], f["kickoff_at"], f.get("country"))
     late = f["kickoff_at"] - at <= LATE_WINDOW
     bucket = "late" if late else "early"
-    key = hashlib.sha256(f"{query}|{bucket}".lower().encode()).hexdigest()[:40]
-    cached = cache.get(conn, "search", key, at=at)
-    if cached is None:
-        engine = settings.search or "exa"
-        try:
-            results = search(query, at)
-        except Exception as exc:  # an outage of the search API: recorded, free, the day goes on
+    queries = queries_for(f["home_name"], f["away_name"], f["kickoff_at"], f.get("country"), f.get("competition"),
+                          levels=levels)
+    gathered: list[dict[str, Any]] = []
+    for level, query in enumerate(queries, start=1):
+        out.levels_tried = level
+        # level 1 keeps the key it always had (its cached answers stay valid)
+        key = hashlib.sha256((f"{query}|{bucket}" if level == 1 else f"{query}|{bucket}|L{level}").lower()
+                             .encode()).hexdigest()[:40]
+        cached = cache.get(conn, "search", key, at=at)
+        if cached is None:
+            engine = settings.search or "exa"
+            try:
+                found = search(query, at)
+            except Exception as exc:  # an outage of the search API: recorded, free, the day goes on
+                ledger.record(at=at, purpose="web_search", tier="search", provider=engine, model=engine, usage=None,
+                              cost=Decimal(0), status="failed", fixture_id=fixture_id, input_hash=key,
+                              error=f"search failed: {type(exc).__name__}")
+                out.skipped = "search_failed"
+                if level == 1:
+                    return out
+                break
+            out.searches += 1
+            cost = search_cost(engine, 1)
+            out.cost_usd += float(cost)
             ledger.record(at=at, purpose="web_search", tier="search", provider=engine, model=engine, usage=None,
-                          cost=Decimal(0), status="failed", fixture_id=fixture_id, input_hash=key,
-                          error=f"search failed: {type(exc).__name__}")
-            out.skipped = "search_failed"
-            return out
-        out.searches += 1
-        cost = search_cost(engine, 1)
-        out.cost_usd += float(cost)
-        ledger.record(at=at, purpose="web_search", tier="search", provider=engine, model=engine, usage=None,
-                      cost=cost, status="ok", fixture_id=fixture_id, input_hash=key)
-        record_source_results(conn, results, at=at, cost=cost)
-        payload = {"query": query, "results": [r.as_json() for r in results]}
-        cache.put(conn, "search", key, payload, at=at, ttl=LATE_TTL if late else EARLY_TTL)
-    else:
-        payload = cached
-        out.skipped = "cached"
+                          cost=cost, status="ok", fixture_id=fixture_id, input_hash=key)
+            record_source_results(conn, found, at=at, cost=cost)
+            level_payload: dict[str, Any] = {"query": query, "level": level,
+                                             "results": [r.as_json() for r in found]}
+            cache.put(conn, "search", key, level_payload, at=at, ttl=LATE_TTL if late else EARLY_TTL)
+        else:
+            level_payload = cached
+            out.skipped = "cached"
+        level_results: list[dict[str, Any]] = [hit for hit in (level_payload.get("results") or [])
+                                               if isinstance(hit, dict)]
+        gathered.extend(level_results)
+        if any(TIER_RANK.get(tier_of(conn, domain_of(str(hit.get("url") or ""))), 8) <= KNOWN_STANDING
+               for hit in level_results):
+            break
+    seen_urls: set[str] = set()
+    unique: list[dict[str, Any]] = []
+    for hit in gathered:
+        u = str(hit.get("url") or "")
+        if u and u not in seen_urls:
+            seen_urls.add(u)
+            unique.append(hit)
+    payload = {"results": unique}
     results = [SearchResult(**dict(r)) for r in payload.get("results", []) if isinstance(r, dict)]
     if not results:
         return out

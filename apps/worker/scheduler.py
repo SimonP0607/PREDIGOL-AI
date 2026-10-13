@@ -31,6 +31,10 @@ at worst, and a duplicated tick costs nothing at all.
     (from 00:05, 6-4 h before, after the line-ups); post-mortems, yesterday's notes, patterns as hypotheses, the
     parlays' measured dependence, the AI's own shadow report and tomorrow prepared; the owner's "run now".
     Zero API-Football requests; a language model and a search API only when configured, inside the budget.
+  * ``intel_decide`` (every 15 min) / ``intel_nightly`` (07:50 Bogotá) / ``intel_weekly`` (Monday 04:40 Bogotá)
+    PrediGol Intelligence (``fbi.intel``): the decision layer (ten filters, states, score, stake) on the next 36
+    hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v3, memory, calibration, the leakage
+    audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -210,6 +214,14 @@ RESEARCH_V2_WEEKDAY = os.environ.get("FBI_RESEARCH_V2_WEEKDAY", "mon")
 RESEARCH_V2_HOUR = int(os.environ.get("FBI_RESEARCH_V2_HOUR", "4"))
 """The weekly research-V2 run (Bogotá), in its own process so its memory is returned; it runs
 only when the code changed or the last run is four weeks old (``fbi.research.loop.v2_due``)."""
+INTEL_DECIDE_MINUTES = int(os.environ.get("FBI_INTEL_DECIDE_MINUTES", "15"))
+"""PrediGol Intelligence's decision layer (``fbi.intel.cycle.run_decide``): the next 36 hours' candidates through the
+ten filters, written at their checkpoints; the picks of the day of daily-set-v6 once the AI has read the day. Shadow,
+database only, zero requests and zero model calls."""
+INTEL_NIGHTLY_HOUR, INTEL_NIGHTLY_MINUTE = 7, 50
+"""After the AI's learning (07:35): outcomes, post-mortems pm-v3, memory, calibration, leakage audit, the report."""
+INTEL_WEEKLY_WEEKDAY, INTEL_WEEKLY_HOUR, INTEL_WEEKLY_MINUTE = "mon", 4, 40
+"""The market discovery engine, weekly (Bogotá)."""
 REPO_ROOT = Path(__file__).resolve().parents[2]
 """The pick reviewer over today's and tomorrow's sets: rules every run (stored only when the
 flags change), the model only when the picks or the day's claims changed."""
@@ -962,6 +974,71 @@ async def _research_weekly() -> None:
     await asyncio.to_thread(_research_weekly_now)
 
 
+def _intel_decide_now() -> None:
+    """PrediGol Intelligence's decision layer. Never raises: it must never stop the worker."""
+    from fbi.intel.cycle import run_decide
+
+    try:
+        with _connect() as conn:
+            r = run_decide(conn, at=now())
+        if r.status != "skipped":
+            d = r.counts.get("decide") or {}
+            log.info("intel.decide", status=r.status, candidates=d.get("candidates"), written=d.get("written"),
+                     by_state=d.get("by_state"), select=r.counts.get("select"), errors=r.errors[:2])
+    except Exception as exc:
+        log.error("intel.decide.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _intel_decide() -> None:
+    new_run_id()
+    await asyncio.to_thread(_intel_decide_now)
+
+
+def _intel_nightly_now() -> None:
+    """Outcomes, post-mortems, memory, calibration, leakage audit, the daily learning report. Never raises."""
+    from fbi.intel.cycle import run_nightly
+
+    try:
+        with _connect() as conn:
+            r = run_nightly(conn, at=now())
+        log.info("intel.nightly", status=r.status, counts={k: v for k, v in r.counts.items() if not k.endswith("_ms")},
+                 errors=r.errors[:3])
+    except Exception as exc:
+        log.error("intel.nightly.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _intel_nightly() -> None:
+    new_run_id()
+    await asyncio.to_thread(_intel_nightly_now)
+
+
+def _intel_weekly_now() -> None:
+    """The market discovery engine. Never raises."""
+    from fbi.intel.cycle import run_weekly
+
+    try:
+        with _connect() as conn:
+            r = run_weekly(conn, at=now())
+        log.info("intel.weekly", status=r.status, counts=r.counts, errors=r.errors[:2])
+    except Exception as exc:
+        log.error("intel.weekly.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _intel_weekly() -> None:
+    new_run_id()
+    await asyncio.to_thread(_intel_weekly_now)
+
+
+def _last_intel_run(conn: psycopg.Connection[Any], job: str) -> datetime | None:
+    try:
+        with conn.transaction(), conn.cursor() as cur:
+            cur.execute("SELECT max(finished_at) FROM intel.runs WHERE job = %s AND status IN ('ok', 'partial')", (job,))
+            row = cur.fetchone()
+    except psycopg.errors.UndefinedTable:
+        return None
+    return None if row is None else row[0]
+
+
 _scheduler: AsyncIOScheduler | None = None
 _lock: WorkerLock | None = None
 _stop: asyncio.Event | None = None
@@ -1109,6 +1186,15 @@ async def main() -> None:
             log.warning("worker.recovered_ai", cycles=cycles, requests=requests)
     except Exception as exc:  # never a reason not to start
         log.error("worker.recover_ai_failed", error=f"{type(exc).__name__}: {exc}"[:300])
+    try:  # PrediGol Intelligence's runs left open by a previous worker
+        from fbi.intel.cycle import recover_interrupted as recover_intel
+
+        with _connect() as conn:
+            closed = recover_intel(conn, before=_worker_started_at or now())
+        if closed:
+            log.warning("worker.recovered_intel", runs=closed)
+    except Exception as exc:  # never a reason not to start
+        log.error("worker.recover_intel_failed", error=f"{type(exc).__name__}: {exc}"[:300])
     scheduler = AsyncIOScheduler(timezone="UTC")
     _scheduler = scheduler
     moment = now()
@@ -1128,6 +1214,8 @@ async def main() -> None:
         elo_next = next_run_after(last_success(conn, "elo_refresh"), timedelta(hours=ELO_REFRESH_HOURS), moment)
         monitor_last = last_success(conn, "research_monitor")
         learn_last = _last_ai_cycle(conn, "learning")
+        intel_nightly_last = _last_intel_run(conn, "nightly")
+        intel_weekly_last = _last_intel_run(conn, "weekly")
 
     # A tick that could not start on time is still worth running late, and how late is
     # set by the capture tolerance - NOT by the interval. Tying it to the interval made
@@ -1220,6 +1308,23 @@ async def main() -> None:
     scheduler.add_job(_research_weekly, "cron", day_of_week=RESEARCH_V2_WEEKDAY, hour=RESEARCH_V2_HOUR, minute=20,
                       timezone="America/Bogota", id="research_v2_weekly", max_instances=1, coalesce=True,
                       misfire_grace_time=12 * 3600)
+    # PrediGol Intelligence (fbi.intel): the decision layer every 15 minutes, the nightly learning after the AI's,
+    # the market discovery weekly - each caught up once when the worker was down at its time.
+    scheduler.add_job(_intel_decide, "interval", minutes=INTEL_DECIDE_MINUTES, id="intel_decide", max_instances=1,
+                      coalesce=True, misfire_grace_time=INTEL_DECIDE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=10))
+    scheduler.add_job(_intel_nightly, "cron", hour=INTEL_NIGHTLY_HOUR, minute=INTEL_NIGHTLY_MINUTE,
+                      timezone="America/Bogota", id="intel_nightly", max_instances=1, coalesce=True,
+                      misfire_grace_time=6 * 3600)
+    if intel_nightly_last is None or moment - intel_nightly_last > timedelta(hours=26):
+        scheduler.add_job(_intel_nightly, "date", run_date=moment + timedelta(minutes=25), id="intel_nightly_catch_up",
+                          misfire_grace_time=3600)
+    scheduler.add_job(_intel_weekly, "cron", day_of_week=INTEL_WEEKLY_WEEKDAY, hour=INTEL_WEEKLY_HOUR,
+                      minute=INTEL_WEEKLY_MINUTE, timezone="America/Bogota", id="intel_weekly", max_instances=1,
+                      coalesce=True, misfire_grace_time=12 * 3600)
+    if intel_weekly_last is None or moment - intel_weekly_last > timedelta(days=8):
+        scheduler.add_job(_intel_weekly, "date", run_date=moment + timedelta(minutes=40), id="intel_weekly_catch_up",
+                          misfire_grace_time=3600)
     scheduler.add_job(_run_watchdog, "interval", minutes=WATCHDOG_MINUTES, id="run_watchdog", max_instances=1,
                       coalesce=True, misfire_grace_time=WATCHDOG_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=WATCHDOG_MINUTES))
