@@ -76,6 +76,18 @@ def test_the_dossier_reads_only_what_was_known(db: psycopg.Connection[Any], seed
                     "player_name, minutes, is_substitute, goals, assists, shots_total, payload_hash, fetched_at) "
                     "VALUES (%s,'api-football',500,'home','Star Nine',90,false,%s,0,4,%s,%s)",
                     (fid, gh, h, ko + timedelta(hours=3)))
+    # the opponents' Elo before each match (1500, 1600, 1700) and the side's own (1900, never an opponent's)
+    cur.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, started_at, finished_at) "
+                "VALUES ('t', 'elo_refresh', 'completed', %s, %s) RETURNING id",
+                (AT - timedelta(days=1, minutes=5), AT - timedelta(days=1)))
+    elo_run = scalar(cur)
+    for n, fid in enumerate(past):
+        for team, rating in ((teams[1 + n % 3], 1500 + 100 * n), (teams[0], 1900)):
+            cur.execute("INSERT INTO features.elo_ratings (elo_version, run_id, team_id, fixture_id, kickoff_at, "
+                        "rating_before, rating_after, expected_score, actual_score, k_factor, margin_multiplier, "
+                        "computed_at) VALUES ('zzz-dossier-test', %s, %s, %s, %s, %s, %s, 0.5, 1, 20, 1, %s)",
+                        (elo_run, team, fid, AT - timedelta(days=21 - 7 * n), rating, rating,
+                         AT - timedelta(days=1)))
     # a fourth match whose statistics arrived only after AT: invisible to a packet built at AT
     late = _fixture(cur, season, teams[0], teams[3], AT - timedelta(days=1), 9)
     cur.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away, settled_at) "
@@ -97,6 +109,7 @@ def test_the_dossier_reads_only_what_was_known(db: psycopg.Connection[Any], seed
     assert home["coach"]["rotation_avg_changes"] == 2.0, "two starters change between consecutive matches"
     assert home["coach"]["first_sub_minute"] == 60
     assert home["scoreline"]["scored_first"] == 2 and home["scoreline"]["leads_lost"] == 0
+    assert home["opponents"] == {"n": 3, "mean_elo": 1600}, "the opponents' Elo, read by team on the primary key"
     ref = d["referee"]
     assert ref["name"] == "R. Tester" and ref["matches"] == 3 and ref["cards_per_match"] == 5.0
     assert ref["fouls_per_match"] == 25.0 and ref["penalties_per_match"] == round(2 / 3, 3)
@@ -115,3 +128,13 @@ def test_scoreline_behaviour() -> None:
     b = scoreline_behaviour(evs, "home", 2, 1)
     assert b == {"scored_first": False, "conceded_first": True, "led": True, "trailed": True, "won": True,
                  "drew": False, "lost": False}
+
+
+def test_the_opponents_elo_is_read_by_team_on_the_primary_key(db: psycopg.Connection[Any]) -> None:
+    """Regression (13 Oct 2026): by fixture alone the query read the whole run (0.24-0.75 s per team on production)."""
+    from fbi.intel.dossier import ELO_SQL
+
+    db.execute("SET LOCAL enable_seqscan = off")  # a test table is tiny: ask for the path production's size forces
+    plan = "\n".join(str(r[0]) for r in db.execute(
+        "EXPLAIN " + ELO_SQL, {"version": "elo-v1", "run": 1, "teams": [1, 2], "fixtures": [10, 11]}).fetchall())
+    assert "team_id = ANY" in plan and "Index Cond" in plan, plan

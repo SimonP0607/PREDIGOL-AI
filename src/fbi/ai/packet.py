@@ -408,15 +408,21 @@ class PacketBuilder:
             missing.append("h2h")
 
         content["elo"] = self._elo(f, at, sources, missing)
+        from fbi.intel.dossier import VERSION as DOSSIER_VERSION
         from fbi.intel.dossier import build_dossier, finite
 
-        content["dossier"] = finite(build_dossier(conn, f, at=at, elo=self._elo_version(at),
-                                                  referee=facts["referee"] if facts else None, h2h_n=len(h2h),
-                                                  h2h_last=h2h[0]["kickoff_at"] if h2h else None))
-        sources.append({"block": "dossier", "tables": ["core.fixture_team_stats", "core.fixture_events",
-                                                       "core.fixture_lineups", "core.fixture_player_stats",
-                                                       "core.fixture_facts", "features.elo_ratings"],
-                        "as_of": _ts(at), "version": content["dossier"]["version"]})
+        try:  # in a savepoint: a dossier that cannot be read never costs the rest of the packet
+            with conn.transaction():
+                content["dossier"] = finite(build_dossier(
+                    conn, f, at=at, elo=self._elo_version(at), referee=facts["referee"] if facts else None,
+                    h2h_n=len(h2h), h2h_last=h2h[0]["kickoff_at"] if h2h else None))
+            sources.append({"block": "dossier", "tables": ["core.fixture_team_stats", "core.fixture_events",
+                                                           "core.fixture_lineups", "core.fixture_player_stats",
+                                                           "core.fixture_facts", "features.elo_ratings"],
+                            "as_of": _ts(at), "version": DOSSIER_VERSION})
+        except psycopg.Error as exc:
+            content["dossier"] = {"version": DOSSIER_VERSION, "error": type(exc).__name__}
+            missing.append("dossier")
         content["stats"] = {}
         for side, team in (("home", home), ("away", away)):
             s = _row(conn, TEAM_STATS_SQL, {"team": team, "kickoff": kickoff, "at": at, "limit": STATS_N}) or {}

@@ -87,8 +87,11 @@ SELECT p.fixture_id, p.team_side, p.provider_player_id, max(p.player_name) AS na
 
 ELO_SQL = """
 SELECT fixture_id, team_id, rating_before::float8 AS rating FROM features.elo_ratings
- WHERE elo_version = %(version)s AND run_id = %(run)s AND fixture_id = ANY(%(fixtures)s)
+ WHERE elo_version = %(version)s AND run_id = %(run)s AND team_id = ANY(%(teams)s) AND fixture_id = ANY(%(fixtures)s)
 """
+"""The opponents' Elo before each match. ``team_id`` is in the filter so the primary key (version, run, team, fixture)
+serves it: by fixture alone the run's half a million rows were read (0.24-0.75 s per team on production, 13 Oct 2026),
+by team 3 ms."""
 
 ABSENT_SQL = """
 SELECT provider_player_id, absence_type FROM core.player_absences
@@ -185,7 +188,8 @@ def team_profile(conn: psycopg.Connection[Any], team: int, *, kickoff: datetime,
                                                       for r in _rows(conn, LINEUPS_SQL, {"fixtures": fids, "at": at})}
     ratings: dict[tuple[int, int], float] = {}
     if elo is not None:
-        for r in _rows(conn, ELO_SQL, {"version": elo[0], "run": elo[1], "fixtures": fids}):
+        opponents = sorted({int(m["opponent"]) for m in matches})
+        for r in _rows(conn, ELO_SQL, {"version": elo[0], "run": elo[1], "teams": opponents, "fixtures": fids}):
             ratings[(int(r["fixture_id"]), int(r["team_id"]))] = float(r["rating"])
     per: list[dict[str, Any]] = []
     for m in matches:
