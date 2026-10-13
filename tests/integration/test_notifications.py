@@ -17,6 +17,8 @@ from fbi.notify import service
 from fbi.notify.service import KINDS, Draft, run_notifier
 from fbi.ops.run_watchdog import recover_runs
 
+from .conftest import Seed
+
 
 @pytest.fixture()
 def conn(migrated_database: str) -> Iterator[psycopg.Connection]:
@@ -69,3 +71,42 @@ def test_a_message_the_database_refuses_does_not_take_the_others_with_it(conn: p
     assert (report.drafted, report.refused, report.new) == (2, 1, 1)
     rows = conn.execute("SELECT dedup_key FROM audit.notifications WHERE dedup_key LIKE 'nt:%'").fetchall()
     assert rows == [("nt:kept",)]
+
+
+def test_only_the_picks_not_announced_yet_are_drafted(db: psycopg.Connection, seed: Seed) -> None:
+    """Regression (13 Oct 2026): every run re-drafted every shadow pick of the week - 137,974 drafts every ten
+    minutes, one savepoint each - which held the notifier's transaction open 7-9 minutes of every 10."""
+    from tests.integration.test_intel import IntelWorld
+
+    w = IntelWorld(db, seed)  # type: ignore[arg-type]
+    at = datetime.now(UTC)
+    fid = w.fixture(at + timedelta(hours=5))
+    told = w.pick(fid, "OU", "Over", "2.5", p_model=0.6, p_market=0.55, odds=1.9, created=at - timedelta(hours=1))
+    new = w.pick(fid, "BTTS", "Yes", "0", p_model=0.6, p_market=0.55, odds=1.9, created=at - timedelta(minutes=30))
+    db.execute("INSERT INTO audit.notifications (kind, dedup_key, title, body, payload) "
+               "VALUES ('shadow_pick', %s, 't', 'b', '{}')", (f"pick:{told}:created",))
+    keys = {d.dedup_key for d in service.collect(db, at=at)}
+    assert f"pick:{new}:created" in keys and f"pick:{told}:created" not in keys
+    # once it settles, the announced pick comes back for its result - and only until that is recorded too
+    w.settle(told, True, at)
+    db.execute("UPDATE picks.picks SET status = 'settled', status_changed_at = clock_timestamp() WHERE id = %s",
+               (told,))
+    keys = {d.dedup_key for d in service.collect(db, at=at)}
+    assert f"pick:{told}:settled" in keys
+    db.execute("INSERT INTO audit.notifications (kind, dedup_key, title, body, payload) "
+               "VALUES ('pick_settled', %s, 't', 'b', '{}')", (f"pick:{told}:settled",))
+    keys = {d.dedup_key for d in service.collect(db, at=at)}
+    assert not {f"pick:{told}:created", f"pick:{told}:settled"} & keys
+
+
+def test_the_operational_messages_go_out_before_the_shadow_picks(db: psycopg.Connection) -> None:
+    """Regression (13 Oct 2026): 132,082 shadow-pick messages were queued; a budget alert behind them would have
+    waited weeks for its turn (20 a run, every 10 minutes)."""
+    picks = [int(db.execute("INSERT INTO audit.notifications (kind, dedup_key, title, body, payload) "
+                            "VALUES ('shadow_pick', %s, 't', 'b', '{}') RETURNING id", (f"nt:queue:{i}",)).fetchone()[0])
+             for i in range(25)]
+    budget = int(db.execute("INSERT INTO audit.notifications (kind, dedup_key, title, body, payload) VALUES "
+                            "('ai_budget', 'nt:queue:budget', 'Presupuesto de IA: 50 % del mes', 'b', '{}') "
+                            "RETURNING id").fetchone()[0])
+    order = [int(r[0]) for r in db.execute(service.QUEUE_SQL, (1_000_000,)).fetchall()]
+    assert order.index(budget) < min(order.index(p) for p in picks), "the alert first, though it was queued last"

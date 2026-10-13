@@ -37,6 +37,28 @@ STATES = ("'RECHAZADO', 'INVESTIGACION', 'CAUTELA', 'APROBADO', 'PICK_DEL_DIA', 
 
 
 def upgrade() -> None:
+    # On a live database (the worker keeps capturing): never wait for a lock while holding others. The first attempt
+    # in production (13 Oct 2026) waited minutes for ai.budget_alerts behind the worker's notifier while it already
+    # held the foreign-key locks on core.fixtures and picks.picks - and the worker's writes queued behind it. Now the
+    # one ACCESS EXCLUSIVE lock is taken first and any wait longer than 10 s fails the migration whole (transactional
+    # DDL), so the deploy retries or stops with nothing changed.
+    op.execute("SET LOCAL lock_timeout = '10s'")
+    # the month's budget also alerts at 50 %
+    op.execute("""
+        DO $do$
+        DECLARE c text;
+        BEGIN
+            FOR c IN SELECT conname FROM pg_constraint
+                      WHERE conrelid = 'ai.budget_alerts'::regclass AND contype = 'c'
+                        AND pg_get_constraintdef(oid) LIKE '%threshold%'
+            LOOP
+                EXECUTE format('ALTER TABLE ai.budget_alerts DROP CONSTRAINT %I', c);
+            END LOOP;
+        END
+        $do$;
+        ALTER TABLE ai.budget_alerts ADD CONSTRAINT budget_alerts_threshold_check
+            CHECK (threshold IN (50, 70, 85, 95, 100));
+    """)
     op.execute(f"""
         CREATE SCHEMA IF NOT EXISTS intel;
         COMMENT ON SCHEMA intel IS
@@ -327,20 +349,6 @@ def upgrade() -> None:
           'Data-leakage audit (leak-audit-v1): for each rule, how many decisions of a day were checked and how many '
           'used something not known at their known_at.';
 
-        -- the month's budget also alerts at 50 %
-        DO $do$
-        DECLARE c text;
-        BEGIN
-            FOR c IN SELECT conname FROM pg_constraint
-                      WHERE conrelid = 'ai.budget_alerts'::regclass AND contype = 'c'
-                        AND pg_get_constraintdef(oid) LIKE '%threshold%'
-            LOOP
-                EXECUTE format('ALTER TABLE ai.budget_alerts DROP CONSTRAINT %I', c);
-            END LOOP;
-        END
-        $do$;
-        ALTER TABLE ai.budget_alerts ADD CONSTRAINT budget_alerts_threshold_check
-            CHECK (threshold IN (50, 70, 85, 95, 100));
     """)
     for table in APPEND_ONLY:
         op.execute(f"CREATE TRIGGER {table}_append_only BEFORE UPDATE OR DELETE ON intel.{table} "

@@ -95,6 +95,14 @@ def _fmt_pct(x: Any) -> str:
     return f"{float(x) * 100:.1f}%" if x is not None else "—"
 
 
+QUEUE_SQL = """
+SELECT id, title, body FROM audit.notifications WHERE status = 'queued'
+ ORDER BY (kind IN ('shadow_pick', 'pick_settled')), id LIMIT %s
+"""
+"""What goes out next: the operational messages (budget, worker, failures) before the shadow picks' news. With ten
+thousand shadow picks a day the queue held 132,082 of them on 13 Oct 2026, and a budget alert queued behind them would
+have waited weeks for its turn."""
+
 REPEATED_FAILURES_SQL = """
 SELECT job_type, max(started_at) AS last_at, (array_agg(last_error ORDER BY started_at DESC))[1] AS last_error
   FROM (SELECT job_type, status, started_at, last_error,
@@ -109,6 +117,9 @@ SELECT job_type, max(started_at) AS last_at, (array_agg(last_error ORDER BY star
 def collect(conn: psycopg.Connection, *, at: datetime) -> list[Draft]:
     drafts: list[Draft] = []
     with conn.cursor(row_factory=dict_row) as cur:
+        # Only the picks whose message is not recorded yet: re-drafting every shadow pick of the week on every run
+        # (137,974 drafts every ten minutes on 13 Oct 2026, one savepoint each) kept this transaction open 7-9 minutes
+        # of every 10, and a migration's lock waited behind it.
         cur.execute(
             """
             SELECT p.id, th.name || ' v ' || ta.name AS fixture, f.kickoff_at, p.market_key, p.selection, p.line,
@@ -121,6 +132,9 @@ def collect(conn: psycopg.Connection, *, at: datetime) -> list[Draft]:
             JOIN models.model_versions v ON v.id = p.model_version_id JOIN models.model_registry m ON m.id = v.model_id
             LEFT JOIN picks.pick_results pr ON pr.pick_id = p.id
             WHERE p.created_at > %s - interval '7 days'
+              AND (NOT EXISTS (SELECT 1 FROM audit.notifications n WHERE n.dedup_key = 'pick:' || p.id || ':created')
+                   OR (p.status = 'settled' AND NOT EXISTS (
+                       SELECT 1 FROM audit.notifications n WHERE n.dedup_key = 'pick:' || p.id || ':settled')))
             """,
             (at,),
         )
@@ -216,8 +230,7 @@ def run_notifier(conn: psycopg.Connection, channel: Channel | None, *, at: datet
                           detail=str(exc).splitlines()[0][:200])
                 continue
             report.new += max(cur.rowcount, 0)
-        cur.execute("SELECT id, title, body FROM audit.notifications WHERE status = 'queued' ORDER BY id LIMIT %s",
-                    (SEND_BATCH,))
+        cur.execute(QUEUE_SQL, (SEND_BATCH,))
         queued = cur.fetchall()
         for nid, title, body in queued:
             if channel is None:
