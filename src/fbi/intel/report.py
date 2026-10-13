@@ -181,11 +181,16 @@ def _pct(x: float | None) -> str:
 
 def render(c: dict[str, Any]) -> str:
     d = c["decisions"]
-    lines = [f"# DAILY LEARNING REPORT · {c['day']}", "",
-             f"**Decisiones:** {d['total']} selecciones evaluadas — " + ", ".join(f"{k} {v}" for k, v in
-                                                                                d["by_state"].items()) + ".",
-             "**Contexto:** " + ", ".join(f"{k} {v}" for k, v in d["by_context"].items())
-             + f"; CONTEXTO EXTERNO LIMITADO en {d['contexto_externo_limitado']}.", ""]
+    if d["total"]:
+        lines = [f"# DAILY LEARNING REPORT · {c['day']}", "",
+                 f"**Decisiones:** {d['total']} selecciones evaluadas — " + ", ".join(f"{k} {v}" for k, v in
+                                                                                    d["by_state"].items()) + ".",
+                 "**Contexto:** " + ", ".join(f"{k} {v}" for k, v in d["by_context"].items())
+                 + f"; CONTEXTO EXTERNO LIMITADO en {d['contexto_externo_limitado']}.", ""]
+    else:
+        lines = [f"# DAILY LEARNING REPORT · {c['day']}", "",
+                 "**Decisiones:** ninguna registrada para los partidos de este día (la capa de decisión no había "
+                 "evaluado ninguno). Lo demás de este informe - calibración, memoria, coste - sí es del día.", ""]
     picks = [s for s in c["selections_v6"] if s["kind"] == "pick"]
     parlays = [s for s in c["selections_v6"] if s["kind"] == "parlay"]
     lines.append(f"**Picks del día (v6, shadow):** {len(picks)}; parlays {len(parlays)}. "

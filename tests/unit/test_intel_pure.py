@@ -186,3 +186,32 @@ def test_discovery_classifies_and_never_activates() -> None:
                                         catalogue=None, active={5: "OU"}, n_fixtures=1, coverage={}, at=at)
     assert active == "ACTIVE"
     assert not math.isnan(metrics["share"])
+    # regression (13 Oct 2026): the catalogue was loaded on one day for every bet - an active market priced for years
+    # read as 14 days old and failed "history"
+    loaded = {"first_seen_at": at - timedelta(days=14)}
+    _, young, *_ = discovery.criteria_for(5, discovery.BetStats(name="Goals Over/Under", fixtures={1}),
+                                          catalogue=loaded, active={5: "OU"}, n_fixtures=1, coverage={}, at=at)
+    _, priced, *_ = discovery.criteria_for(5, discovery.BetStats(name="Goals Over/Under", fixtures={1}),
+                                           catalogue=loaded, active={5: "OU"}, n_fixtures=1, coverage={}, at=at,
+                                           priced_since=at - timedelta(days=1500))
+    assert young["history"] == {"ok": False, "value": 14} and priced["history"] == {"ok": True, "value": 1500}
+
+
+def test_the_rules_narrative_states_rank_and_gaps_before_the_inference() -> None:
+    """What is at stake says where each team is (stakes-v2: the zone it is in, the gaps to the zones above and below)
+    and only then the inference - never that a team outside a zone is in it."""
+    from fbi.ai.context import TableRow
+    from fbi.ai.context import stakes as stakes_of
+    from fbi.intel import narrative
+
+    table = [TableRow(1, 7, 15, 9, "Promotion - Play-offs"), TableRow(2, 8, 15, 9, None), TableRow(3, 15, 8, 9, None),
+             TableRow(4, 17, 7, 9, "Relegation")]
+    home, away = stakes_of(table, 2, remaining=29), stakes_of(table, 3, remaining=29)
+    assert home is not None and away is not None
+    content = {"fixture": {"home": {"name": "Sariyer"}, "away": {"name": "Bodrum"}},
+               "stakes": {"home": home.as_json(), "away": away.as_json()}}
+    text = narrative.stakes(content)
+    assert "Sariyer (8.º) a 0 puntos de la zona de ascenso, 8 por encima de la zona de descenso." in text
+    assert "Bodrum (15.º) a 7 puntos de la zona de ascenso, 1 por encima de la zona de descenso." in text
+    assert "Bodrum pelea por no descender." in text and "Sariyer pelea el ascenso." in text
+    assert "está en zona" not in text

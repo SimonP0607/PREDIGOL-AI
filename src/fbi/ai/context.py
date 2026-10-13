@@ -72,12 +72,25 @@ class Stakes:
     settled: bool | None
     """No zone boundary reachable either way any more; None when the remaining games are unknown."""
     pressure: str
-    """title | europe | relegation | promotion | mid_table | settled | unknown - an inference."""
+    """title | europe | relegation | promotion | mid_table | settled | unknown - an inference: the zone the team is in,
+    or the nearest zone boundary within ``NEAR_POINTS`` that it can still reach."""
+    zone_above: str | None = None
+    """The kind of the nearest better zone (the one ``gap_up`` measures to)."""
+    zone_below: str | None = None
+    """The kind of the nearest worse zone (the one ``gap_down`` measures to)."""
 
     def as_json(self) -> dict[str, Any]:
         return {"rank": self.rank, "zone": self.zone, "gap_up": self.gap_up, "gap_down": self.gap_down,
-                "remaining": self.remaining, "max_gain": self.max_gain, "settled": self.settled,
-                "pressure": self.pressure}
+                "zone_above": self.zone_above, "zone_below": self.zone_below, "remaining": self.remaining,
+                "max_gain": self.max_gain, "settled": self.settled, "pressure": self.pressure, "rule": STAKES_RULE}
+
+
+STAKES_RULE = "stakes-v2"
+NEAR_POINTS = 6
+"""stakes-v2 (13 Oct 2026): a zone boundary presses a team outside the zones when it is within two wins and still
+reachable. stakes-v1 pressed on any reachable boundary: at round 10 of 38 every team of a 20-team table read as
+fighting relegation - the 8th, level on points with the play-off places, too - and a narrative wrote that both
+teams "were in the relegation zone"."""
 
 
 def _zone_kind(description: str | None) -> str | None:
@@ -120,18 +133,24 @@ def stakes(table: Sequence[TableRow], team_id: int, remaining: int | None) -> St
         up_closed = gap_up is None or gap_up > max_gain
         down_closed = gap_down is None or gap_down > max_gain
         settled = up_closed and down_closed
+    zone_above = _zone_kind(above[-1].description) if above else None
+    zone_below = _zone_kind(below[0].description) if below else None
     if settled:
         pressure = "settled"
     elif zone in ("title", "europe", "relegation", "promotion"):
         pressure = zone
-    elif gap_down is not None and below and _zone_kind(below[0].description) == "relegation" \
-            and max_gain is not None and gap_down <= max_gain:
-        pressure = "relegation"
-    elif gap_up is not None and above and max_gain is not None and gap_up <= max_gain:
-        pressure = _zone_kind(above[-1].description) or "mid_table"
+    elif max_gain is None:
+        pressure = "unknown"
     else:
-        pressure = "unknown" if max_gain is None else "mid_table"
-    return Stakes(team_id, me.rank, zone, gap_up, gap_down, remaining, max_gain, settled, pressure)
+        near = min(max_gain, NEAR_POINTS)
+        options = []  # (gap, the worse zone first on a tie, kind)
+        if gap_down is not None and zone_below == "relegation" and gap_down <= near:
+            options.append((gap_down, 0, "relegation"))
+        if gap_up is not None and above and gap_up <= near:
+            options.append((gap_up, 1, zone_above or "mid_table"))
+        pressure = min(options)[2] if options else "mid_table"
+    return Stakes(team_id, me.rank, zone, gap_up, gap_down, remaining, max_gain, settled, pressure, zone_above,
+                  zone_below)
 
 
 def round_stage(round_name: str | None) -> str:

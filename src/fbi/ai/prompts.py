@@ -19,7 +19,7 @@ POSTMORTEM_VERSION = "postmortem-v3"
 """v2 (9 Oct 2026): plain prose for the owner (no reference tags in a narrative).
 v3 (9 Oct 2026, the first narratives on the server): codes in words, numbers as percentages, no "DATOS:" label (it
 wrote "la decisión fue RECHAZAR", "estado OUTDATED", "probabilidad del modelo 0.380")."""
-BRIEF_VERSION = "brief-v4"
+BRIEF_VERSION = "brief-v5"
 """L1 (V2, 8 Oct 2026): the economical model reads a match of the day with a market and says what matters.
 v2 (9 Oct 2026, after the first real answer): the references it may cite are listed (it cited "P:cards.BTTS"), and
 probabilities are written as percentages (it wrote "0.525").
@@ -28,7 +28,10 @@ contradiction flag no longer escalates a match (it called every model-market dis
 escalates contradictory evidence itself, and the rules and the L2 review contradicting each other).
 v4 (13 Oct 2026, PrediGol Intelligence): the match narrative in eight sections (how each team arrives, what is at
 stake, tactical keys, important players, risks, interesting markets, the conclusion), from the packet's new dossier
-block; every number in it must be in the packet (a paragraph with one that is not is replaced by the rules' one)."""
+block; every number in it must be in the packet (a paragraph with one that is not is replaced by the rules' one).
+v5 (13 Oct 2026, the first three real narratives): what is at stake reads P:stakes right - «zone» is the zone a team
+is in, «pressure» only the nearest boundary within two wins (one wrote that the 8th and the 15th of a 20-team table
+"were both in the relegation zone", from the stakes-v1 inference that pressed on any reachable boundary)."""
 PICK_PM_VERSION = "pick-postmortem-v3"
 """v2 (9 Oct 2026, after the first real ones): plain prose with no reference tags, and what the closing-line value
 means (one narrative read a +21.5 % CLV as the market moving against the selection).
@@ -127,7 +130,9 @@ the three selections PrediGol shows for it (cards) and the reasons the server al
 - narrative: the match told for a football reader, in eight short Spanish paragraphs (two or three sentences each):
   como_llega_local, como_llega_visitante (form, home/away record, goals and expected goals, streaks, the quality of
   the opponents), que_esta_en_juego (table, title, places, relegation, a knockout, a second leg, a derby - never turn
-  an emotional story into a certainty), claves_tacticas (formations, the coach's habits, rotation, possession, shots,
+  an emotional story into a certainty; in P:stakes «zone» is the zone a team is IN now (null: none) and «pressure»
+  is only the nearest boundary within two wins: say a team is in a zone only when its «zone» says so, and give the
+  gaps as points to the zone above / below), claves_tacticas (formations, the coach's habits, rotation, possession, shots,
   corners - from P:dossier), jugadores_importantes (who matters, who is out or doubtful, who carries minutes),
   riesgos (referee, rest, rumours, contradictions, little external context), mercados_interesantes (the cards: model
   against market, nothing more) and conclusion (what PrediGol Intelligence takes from it, without recommending a bet).

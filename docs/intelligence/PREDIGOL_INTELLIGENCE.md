@@ -222,3 +222,56 @@ calibración).
 
 No se afirma rentabilidad. La calibración corrige la sobreconfianza; no crea edge. Con la evidencia de hoy el
 número esperado de picks APROBADOS es bajo o cero y así se mostrará.
+
+## 13. Primer día en producción (13 oct 2026, datos reales del servidor)
+
+**Despliegue.** Backend `cc4eff3`, web `de5d976`, migración 0076. Copia `pre-pi-0076` (787 MB, sha256 `a9261997…`)
+con prueba de restauración aprobada (401 s, contenedor desechable) antes de migrar, y la copia `pre-deploy` del propio
+despliegue (`1be22877…`) también restaurada con éxito (406 s). Presupuesto en el servidor: US$180/mes, objetivo diario
+US$6,00 (copia fechada de `app.env`; solo cambiaron esas tres líneas).
+
+**Incidente del primer intento (06:59 UTC), corregido.** La migración esperó el bloqueo de `ai.budget_alerts` detrás
+de la transacción del notificador mientras ya tenía los de las claves foráneas sobre `core.fixtures` y `picks.picks`;
+una escritura del worker quedó en cola. Se detuvo el despliegue antes de tocar los servicios y la migración se deshizo
+entera (revisión 0075, sin esquema `intel`, 0 bloqueos en espera). Causa raíz: el notificador re-redactaba cada pick
+shadow de la semana en cada pasada (137.974 borradores cada 10 min, 7–9 min de cada 10 dentro de una transacción) y
+dejaba 132.082 mensajes en cola por delante de cualquier alerta. Arreglos con test de regresión: 0076 toma primero el
+único bloqueo exclusivo y falla entera si espera más de 10 s; el notificador redacta solo lo no registrado (149
+borradores en 5 s tras el despliegue) y envía primero lo operativo (presupuesto, worker, fallos). En el segundo
+intento el primer `alembic upgrade` falló por el tope de 10 s, el despliegue reintentó y aplicó 0076 completa.
+
+**Primeras ejecuciones.** `decide` cada 15 min (0,7–3,4 s): 611–635 selecciones en las próximas 36 h; con los
+calibradores CHALLENGER del primer `nightly`, 562 RECHAZADO / 49 INVESTIGACIÓN / 0 aprobadas → 0 picks del día v6 y 0
+parlays. La calibración encoge el EV crudo del modelo: AH +20 % → −14 %, OU +30 % → −6,5 %, BTTS +22 % → −9,5 %, 1X2
++24 % → −6,5 % (medias de las rechazadas). `nightly` (5,9 s): 24 ajustes, 0 campeones, 8 mercados×modelo con edge
+NOT_VALIDATED, memoria 965 filas, informes de 11 y 12 oct, 8 hipótesis enlazadas. `weekly` (36,8 s): 338 mercados,
+5 ACTIVE, 28 RESEARCH, 199 CANDIDATE, 106 NOT_MODELABLE.
+
+| Calibrador (logit2) | n fuera de muestra | días | ECE | vs crudo | vs mercado | CLV regla EV≥2 % (n) | Falla |
+|---|---|---|---|---|---|---|---|
+| AH / Poisson | 2.695 | 6 | 0,017 | −0,032 | +0,005 | −0,8 % (462) | vs_market, edge |
+| AH / Dixon-Coles | 2.688 | 6 | 0,029 | −0,032 | +0,006 | −1,0 % (440) | vs_market, edge |
+| OU / Dixon-Coles | 2.805 | 6 | 0,034 | −0,048 | +0,002 | −2,9 % (1.125) | ECE, edge |
+| OU / Poisson | 2.847 | 6 | 0,043 | −0,047 | +0,0025 | −2,9 % (1.548) | ECE, vs_market, edge |
+| 1X2 / Elo | 205 | 2 | 0,061 | −0,011 | −0,004 | −1,0 % (100) | n, días, ECE, edge |
+| 1X2 / Dixon-Coles · Poisson | 222 · 47 | 2 · 1 | 0,057 · 0,146 | | | | n, días, ECE, edge |
+| BTTS / Poisson | 0 (505 para ajustar, ningún día con 500 previos) | 0 | | | | | n, días |
+| DC | <500 | | | | | | sin ajuste |
+
+Sin calibrar (identidad), el modelo tiene ECE 0,11–0,13 en AH y OU y la regla «EV ≥ 2 %» pierde 4,6–6,5 % de CLV;
+calibrada pierde 0,8–2,9 %: la calibración corrige la sobreconfianza, no crea edge.
+
+**Stakes (`scripts/intel_stake_sim.py`, 60 días, apuestas fuera de muestra con EV calibrado ≥ 2 %).** En el mundo
+«calibración correcta» el cuarto de Kelly con tope 1 u tiene las menores caídas (mediana 8–19 %, P(caída ≥ 30 %) ≤ 7 %);
+medio Kelly 63–100 % y Kelly completo ≈ 100 %. En el mundo real (los resultados que ocurrieron) todas las políticas
+pierden en AH y OU — no hay edge — y el cuarto de Kelly pierde menos que la apuesta plana en los cuatro grupos (93,7
+frente a 92,6; 83,6 / 79,4; 80,3 / 75,8; 94,8 / 90,8 sobre 100) con menor caída máxima; medio Kelly termina en 5–25 y
+Kelly completo en ruina. stake-v1 se mantiene; con edge NOT_VALIDATED el stake de todo es 0.
+
+**Observaciones para decision-v2 (no se cambian sin evidencia).** El filtro de riesgo marca el 97 % de las
+selecciones, casi siempre por la anchura del intervalo del modelo (> 25 puntos en 525 de 611; mediana 0,37): hay que
+medir en shadow si la anchura predice CLV antes de mover el umbral. El 41 % tiene precio de más de 3 h (lejos del
+saque): normal en T−24/T−12. La narrativa LLM (brief-v4) usó bien el dossier pero leyó «presión de descenso» como
+«están en zona de descenso»: stakes-v2 (presión solo a ≤ 2 victorias, con los huecos y el nombre de cada zona) y
+brief-v5 lo corrigen. El criterio «historial» de discovery leía la fecha de carga del catálogo (29 sep) para los 338
+mercados: ahora cuenta el historial con precio de los mercados activos (desde 2022).

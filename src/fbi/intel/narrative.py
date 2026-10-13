@@ -21,6 +21,9 @@ TITLES = {"como_llega_local": "Cómo llega el local", "como_llega_visitante": "C
 NO_DATA = "Sin datos suficientes."
 PRESSURE = {"title": "pelea el título", "europe": "pelea plazas internacionales", "relegation": "pelea por no descender",
             "promotion": "pelea el ascenso", "settled": "ya no se juega nada en la tabla", "playoff": "pelea el playoff"}
+ZONE = {"title": "título", "europe": "plazas internacionales", "relegation": "descenso", "promotion": "ascenso"}
+"""The zones by name (stakes-v2 gives the kind of the zone above and below): the facts - rank and gaps - before the
+inference ("pressure", only the nearest boundary within two wins)."""
 
 
 def _pct(x: Any) -> str:
@@ -81,9 +84,20 @@ def stakes(content: dict[str, Any]) -> str:
     ctx = (content.get("dossier") or {}).get("context") or {}
     parts = []
     for side in ("home", "away"):
-        p = (st.get(side) or {}).get("pressure")
-        if p:
-            parts.append(f"{_team(content, side)} {PRESSURE.get(str(p), str(p))}.")
+        s = st.get(side) or {}
+        p = s.get("pressure")
+        where = []
+        if s.get("zone") in ZONE:
+            where.append(f"está en zona de {ZONE[s['zone']]}")
+        if s.get("gap_up") is not None and s.get("zone_above") in ZONE:
+            where.append(f"a {s['gap_up']} puntos de la zona de {ZONE[s['zone_above']]}")
+        if s.get("gap_down") is not None and s.get("zone_below") in ZONE:
+            where.append(f"{s['gap_down']} por encima de la zona de {ZONE[s['zone_below']]}")
+        rank = f" ({s['rank']}.º)" if s.get("rank") else ""
+        if where:
+            parts.append(f"{_team(content, side)}{rank} " + ", ".join(where) + ".")
+        if p and p in PRESSURE:
+            parts.append(f"{_team(content, side)} {PRESSURE[str(p)]}.")
     if ctx.get("final"):
         parts.append("Es una final.")
     elif ctx.get("knockout"):

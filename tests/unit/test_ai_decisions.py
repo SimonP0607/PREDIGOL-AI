@@ -298,6 +298,30 @@ def test_rest_flags_and_stakes() -> None:
     assert no_zones is not None and no_zones.pressure == "unknown" and no_zones.settled is None
 
 
+def test_stakes_press_only_within_two_wins() -> None:
+    """Regression (13 Oct 2026, TFF 1. Lig, round 10 of 38): stakes-v1 pressed on any reachable boundary, so the 8th -
+    level on points with the play-off places, 8 above relegation - read as fighting relegation like the 15th, and the
+    narrative wrote that both teams "were in the relegation zone"."""
+    table = [ctx.TableRow(1, 1, 22, 9, "Promotion - Super Lig"), ctx.TableRow(2, 7, 15, 9, "Promotion - Play-offs"),
+             ctx.TableRow(3, 8, 15, 9, None), ctx.TableRow(4, 12, 11, 9, None), ctx.TableRow(5, 15, 8, 9, None),
+             ctx.TableRow(6, 17, 7, 9, "Relegation"), ctx.TableRow(7, 20, 2, 9, "Relegation")]
+    eighth = ctx.stakes(table, 3, remaining=29)
+    assert eighth is not None and eighth.pressure == "promotion" and eighth.zone is None
+    assert (eighth.gap_up, eighth.zone_above, eighth.gap_down, eighth.zone_below) == (0, "promotion", 8, "relegation")
+    fifteenth = ctx.stakes(table, 5, remaining=29)
+    assert fifteenth is not None and fifteenth.pressure == "relegation" and fifteenth.zone is None
+    near_bottom = ctx.stakes(table, 4, remaining=29)
+    assert near_bottom is not None and near_bottom.pressure == "relegation", "4 points above it: within two wins"
+    spread = [ctx.TableRow(1, 7, 22, 9, "Promotion - Play-offs"), ctx.TableRow(2, 12, 14, 9, None),
+              ctx.TableRow(3, 17, 6, 9, "Relegation")]
+    middle = ctx.stakes(spread, 2, remaining=29)
+    assert middle is not None and middle.pressure == "mid_table", "8 from both boundaries"
+    late = ctx.stakes(table, 3, remaining=2)
+    assert late is not None and late.pressure == "promotion"
+    assert ctx.stakes(table, 6, remaining=29).pressure == "relegation"  # in the zone  # type: ignore[union-attr]
+    assert eighth.as_json()["rule"] == "stakes-v2"
+
+
 def test_importance_and_absence_weight() -> None:
     players = [ctx.PlayerSeason(i, f"p{i}", "Goalkeeper" if i == 1 else "Attacker", 900 - i * 10, 10, 6 if i == 2 else 0,
                                 0, None) for i in range(1, 16)]

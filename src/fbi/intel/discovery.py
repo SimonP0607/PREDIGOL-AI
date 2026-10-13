@@ -37,6 +37,13 @@ VERSION = "discovery-v1"
 DAYS = 7
 MAX_PAYLOADS = 3000
 
+PRICED_SINCE_SQL = """
+SELECT h.market_key, min(f.kickoff_at) AS since
+  FROM market.historical_odds h JOIN core.fixtures f ON f.id = h.fixture_id
+ WHERE f.kickoff_at <= %(at)s
+ GROUP BY 1
+"""
+
 PAYLOADS_SQL = """
 SELECT DISTINCT ON (s.fixture_id) s.fixture_id, f.provider_fixture_id, s.payload_hash, p.file_path,
        cs.competition_id
@@ -154,11 +161,15 @@ def scan_payloads(rows: list[dict[str, Any]], root: Path) -> tuple[dict[int, Bet
 
 def criteria_for(bid: int, b: BetStats, *, catalogue: dict[str, Any] | None, active: dict[int, str],
                  n_fixtures: int, coverage: dict[str, float], at: datetime,
-                 fixtures_by_competition: dict[int, int] | None = None) -> tuple[str, dict[str, Any],
-                                                                                 dict[str, Any], str]:
+                 fixtures_by_competition: dict[int, int] | None = None,
+                 priced_since: datetime | None = None) -> tuple[str, dict[str, Any], dict[str, Any], str]:
+    """``priced_since``: the oldest kick-off with stored prices of this market (``market.historical_odds``), known only
+    for the markets the platform normalises. The catalogue's own date is when the catalogue was loaded (29 Sep 2026
+    for all 338 bets), which alone read every market - the five active ones too, priced since 2022 - as 14 days old."""
     data, how = classify(b.name)
     share = len(b.fixtures) / n_fixtures if n_fixtures else 0.0
-    first_seen = None if catalogue is None else catalogue.get("first_seen_at")
+    seen = [d for d in (None if catalogue is None else catalogue.get("first_seen_at"), priced_since) if d is not None]
+    first_seen = min(seen) if seen else None
     history_days = None if first_seen is None else (at - first_seen).days
     median_books = statistics.median(b.books_per_fixture) if b.books_per_fixture else 0
     data_cov = None if data is None else coverage.get(data)
@@ -216,6 +227,8 @@ def run_discovery(conn: psycopg.Connection[Any], *, at: datetime, run_id: int, r
         catalogue = {int(r["provider_bet_id"]): dict(r) for r in cur.fetchall()}
         cur.execute("SELECT key, provider_bet_id FROM market.markets WHERE is_model_enabled AND provider_bet_id IS NOT NULL")
         active = {int(r["provider_bet_id"]): str(r["key"]) for r in cur.fetchall()}
+        cur.execute(PRICED_SINCE_SQL, {"at": at})
+        priced = {str(r["market_key"]): r["since"] for r in cur.fetchall()}
         cur.execute(DATA_COVERAGE_SQL, {"since": at - timedelta(days=90), "at": at})
         cov = dict(cur.fetchone() or {})
         cur.execute(PLAYER_COVERAGE_SQL, {"since": at - timedelta(days=30), "at": at})
@@ -235,7 +248,8 @@ def run_discovery(conn: psycopg.Connection[Any], *, at: datetime, run_id: int, r
         for bid, b in sorted(bets.items()):
             status, crit, metrics, proposal = criteria_for(bid, b, catalogue=catalogue.get(bid), active=active,
                                                            n_fixtures=n_fix, coverage=coverage, at=at,
-                                                           fixtures_by_competition=by_comp)
+                                                           fixtures_by_competition=by_comp,
+                                                           priced_since=priced.get(active.get(bid, "")))
             counts[status] += 1
             cur.execute("INSERT INTO intel.market_registry (run_id, provider_bet_id, name, market_key, status, criteria, "
                         "metrics, proposal, version, built_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "

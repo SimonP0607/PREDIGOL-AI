@@ -16,7 +16,7 @@ The transaction is rolled back afterwards."""
 from __future__ import annotations
 
 import random
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -297,3 +297,34 @@ def test_runs_are_recorded_and_recovered(migrated_database: str, seed: Seed) -> 
             conn.rollback()
             conn.execute("DELETE FROM intel.runs")
             conn.commit()
+
+
+def test_a_day_without_decisions_says_so(db: psycopg.Connection[Any]) -> None:
+    """The first production report (13 Oct 2026, for 11 and 12 Oct, before the decision layer existed) read
+    "0 selecciones evaluadas — ." and "Contexto: ; ...": the empty day now says what it is."""
+    content = report.build_report(db, day=date(2031, 1, 1), at=datetime(2031, 1, 3, tzinfo=UTC))
+    text = report.render(content)
+    assert "ninguna registrada" in text and "— ." not in text and "**Contexto:** ;" not in text
+
+
+def test_discovery_reads_an_active_markets_priced_history(db: psycopg.Connection[Any], seed: Seed,
+                                                          tmp_path: Any) -> None:
+    """discovery-v1 on the database. Regression (13 Oct 2026): the catalogue was loaded on one day for all 338 bets,
+    so every market - the five active ones too, priced since 2022 - failed "history" (>= 28 days)."""
+    from fbi.intel import discovery
+
+    at = datetime.now(UTC) + timedelta(days=1)
+    db.execute("UPDATE market.provider_markets SET first_seen_at = %s, last_seen_at = %s",
+               (at - timedelta(days=2), at - timedelta(days=1)))
+    db.execute("INSERT INTO market.historical_odds (fixture_id, source, bookmaker_code, market_key, selection, line, "
+               "price_kind, odds_decimal, source_payload_hash) VALUES (%s, 'test', 'PS', 'OU', 'Over', 2.5, "
+               "'closing', 1.9, %s)", (seed.fixture_id, seed.payload_hash))
+    kickoff = db.execute("SELECT kickoff_at FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone()
+    assert kickoff is not None
+    run = db.execute("INSERT INTO intel.runs (job, started_at, status) VALUES ('weekly', %s, 'running') RETURNING id",
+                     (at,)).fetchone()[0]  # not cycle.open_run: it commits, and this test must leave nothing behind
+    discovery.run_discovery(db, at=at, run_id=run, root=tmp_path)
+    crit = {int(r[0]): r[1] for r in db.execute("SELECT provider_bet_id, criteria FROM intel.market_registry "
+                                                 "WHERE run_id = %s", (run,)).fetchall()}
+    assert crit[5]["history"] == {"ok": (at - kickoff[0]).days >= 28, "value": (at - kickoff[0]).days}
+    assert crit[8]["history"] == {"ok": False, "value": 2}, "no stored prices: the catalogue's date only"
