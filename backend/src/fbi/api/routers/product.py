@@ -1,0 +1,130 @@
+"""The product's screens in one request each: home, picks, parlays, best prices.
+
+``preview=shadow`` lays unqualified shadow picks out exactly as a user would see
+qualified ones, so the owner can review the design while no model has qualified. It
+is refused (403) to every account without the shadow-preview permission, and every
+answer says which source it was built from.
+"""
+
+from __future__ import annotations
+
+from decimal import Decimal
+from typing import Annotated, Any, Literal
+
+import psycopg
+from fastapi import APIRouter, Depends, Query
+
+from fbi.api.contracts.builder import BuiltParlay
+from fbi.api.contracts.product import BestOddsBoard, Home, Parlay, PicksBoard, StartedPick
+from fbi.api.deps import get_db
+from fbi.api.envelope import Envelope
+from fbi.api.errors import ApiError
+from fbi.api.security import App
+from fbi.api.services import product
+from fbi.auth.roles import Permission
+from fbi.auth.service import Principal
+from fbi.parlays import builder
+
+router = APIRouter(tags=["product"])
+Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
+Preview = Annotated[Literal["shadow"] | None, Query(
+    description="SUPER_ADMIN only: show unqualified shadow picks laid out as the product would. Never a user's view.")]
+Market = Annotated[str | None, Query(max_length=10, pattern=r"^(1X2|OU|BTTS|AH|DC)$")]
+MarketKey = Literal["1X2", "OU", "BTTS", "AH", "DC"]
+MAX_COMPETITIONS = 40
+
+
+def _shadow(preview: str | None, principal: Principal) -> bool:
+    if preview is None:
+        return False
+    if not principal.can(Permission.SHADOW_PREVIEW):
+        raise ApiError(403, "forbidden", "the shadow preview is for the Admin Console only")
+    return True
+
+
+@router.get("/home", response_model=Envelope[Home])
+def get_home(conn: Db, principal: App, preview: Preview = None) -> Envelope[Home]:
+    """Top picks with value now, the parlay of the day and the multi-day parlay, live matches with the most
+    data, best prices against the market, and the next relevant fixtures."""
+    return product.home(conn, include_shadow=_shadow(preview, principal))
+
+
+@router.get("/picks", response_model=Envelope[PicksBoard])
+def get_picks(
+    conn: Db,
+    principal: App,
+    preview: Preview = None,
+    competition_id: Annotated[int | None, Query(ge=1)] = None,
+    market: Market = None,
+    min_odds: Annotated[Decimal | None, Query(ge=1, le=1000)] = None,
+    max_odds: Annotated[Decimal | None, Query(ge=1, le=1000)] = None,
+    hours: Annotated[int, Query(ge=1, le=168)] = 72,
+    fixture_id: Annotated[int | None, Query(ge=1)] = None,
+) -> Envelope[PicksBoard]:
+    """Qualified picks kicking off in the next ``hours``, re-priced at the best price available now; and, in
+    ``started``, the pre-match picks of today's matches that already kicked off, as they were taken, with the
+    match's state and the result. ``fixture_id``: one match only, whenever it kicks off or kicked off."""
+    return product.picks_board(conn, include_shadow=_shadow(preview, principal), competition_id=competition_id,
+                               market=market, min_odds=min_odds, max_odds=max_odds, hours=hours,
+                               fixture_id=fixture_id)
+
+
+@router.get("/picks/started", response_model=Envelope[list[StartedPick]])
+def get_started_picks(conn: Db, principal: App, preview: Preview = None) -> Envelope[list[StartedPick]]:
+    """Today's pre-match picks whose match already kicked off (Bogotá day, at least the last six hours), as they
+    were taken, with the match's state and the result - unfiltered: the page filters and pages them."""
+    return product.started_board(conn, include_shadow=_shadow(preview, principal))
+
+
+@router.get("/parlays/build", response_model=Envelope[BuiltParlay])
+def build_parlay(
+    conn: Db,
+    principal: App,
+    preview: Preview = None,
+    hours: Annotated[int, Query(ge=builder.MIN_HOURS, le=builder.MAX_HOURS)] = 24,
+    min_legs: Annotated[int, Query(ge=builder.MIN_LEGS, le=builder.MAX_LEGS)] = 2,
+    max_legs: Annotated[int, Query(ge=builder.MIN_LEGS, le=builder.MAX_LEGS)] = 4,
+    market: Annotated[list[MarketKey] | None, Query(description="Repeat for several; none: every market.")] = None,
+    competition_id: Annotated[list[int] | None, Query(description="Repeat for several; none: every competition.")]
+    = None,
+    min_odds: Annotated[Decimal | None, Query(ge=1, le=1000, description="Each leg's price at least this.")] = None,
+    max_odds: Annotated[Decimal | None, Query(ge=1, le=1000, description="Each leg's price at most this.")] = None,
+    max_total_odds: Annotated[Decimal | None, Query(gt=1, le=100000, description="The parlay's odds at most this.")]
+    = None,
+) -> Envelope[BuiltParlay]:
+    """The automatic parlay builder: the parlay PrediGol builds for these filters with the rule of its own parlays
+    (value gate at the current price, AI review, liquidity, independence, chosen by growth at the pessimistic
+    probabilities), each leg with the numbers behind it - or ``no_valid_parlay`` and why. The filters only narrow
+    what the rule chooses from. Nothing is stored: saving it is ``POST /me/parlays``."""
+    if competition_id is not None and len(competition_id) > MAX_COMPETITIONS:
+        raise ApiError(422, "invalid_filters", f"at most {MAX_COMPETITIONS} competitions")
+    try:
+        filters = builder.Filters.of(hours=hours, min_legs=min_legs, max_legs=max_legs, markets=market or (),
+                                     competitions=competition_id or (), min_odds=min_odds, max_odds=max_odds,
+                                     max_total_odds=max_total_odds)
+    except builder.FilterError as exc:
+        raise ApiError(422, "invalid_filters", str(exc)) from exc
+    return product.built_parlay(conn, filters, include_shadow=_shadow(preview, principal))
+
+
+@router.get("/parlays/{kind}", response_model=Envelope[Parlay])
+def get_parlay(conn: Db, principal: App, kind: Literal["daily", "multiday"], preview: Preview = None) -> Envelope[Parlay]:
+    """Daily: five legs in the next 24 hours. Multi-day: six or seven legs in the next 48 hours. Every leg must
+    pass the value gate; when not enough do, the answer is ``no_valid_parlay`` - never a padded parlay."""
+    return product.parlay_board(conn, kind, include_shadow=_shadow(preview, principal))
+
+
+@router.get("/odds/best", response_model=Envelope[BestOddsBoard])
+def get_best_odds(
+    conn: Db,
+    principal: App,
+    preview: Preview = None,
+    market: Market = None,
+    hours: Annotated[int, Query(ge=1, le=168)] = 48,
+    picks: Annotated[bool, Query(description="False: prices only, no picks in ``value`` - the Cuotas page compares "
+                                             "every selection's best price with its fair price, whatever the picks "
+                                             "(REVIEW 11 Oct 2026, point 17).")] = True,
+) -> Envelope[BestOddsBoard]:
+    """The best price per selection for upcoming fixtures, next to the market's fair (de-vigged) price."""
+    return product.best_odds_board(conn, hours=hours, market=market, include_shadow=_shadow(preview, principal),
+                                   with_picks=picks)

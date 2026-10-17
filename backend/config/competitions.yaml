@@ -1,0 +1,96 @@
+# Which competitions the platform ingests. THE single source of truth for
+# activation. Nothing in the domain, the scheduler or the provider package
+# hard-codes a league id; they all read core.competitions.is_tracked, and
+# this file is what sets it:
+#
+#   python -m scripts.manage_competitions apply
+#
+#   known   = a row exists in core.competitions (77 rescued from Supabase)
+#   enabled = is_tracked = true -> fixtures synced, odds captured, quota spent
+#
+# After enabling a league, run `refresh-seasons` for it: the catalogue's
+# is_current came from a backup and is a season behind.
+
+provider: api_football
+
+# ── The cost of enabling one league, measured ──────────────────────────────
+# Account plan (verified via /status on 2026-09-12): FREE — 10 req/min,
+# 100 req/day. Our own cap: FBI_APIFOOTBALL_DAILY_BUDGET=60.
+#
+#   fixtures sync      1 request per league per run
+#   prematch odds      1 request per fixture per window x 6 windows
+#   near-close odds    1 request per fixture
+#
+# A Premier League matchday is ~10 fixtures, so ~60-70 requests to cover it
+# fully. That is the whole daily budget for ONE league. Two leagues would not
+# fit in the plan, which is why the pilot is one.
+#
+# ── The free plan's HARD horizon, measured 2026-09-12 ──────────────────────
+# /fixtures?date= is answered only for a three-day window around today. The
+# provider states the bounds in its own refusal:
+#
+#   date=2026-09-14 -> {"plan": "Free plans do not have access to this date,
+#                                try from 2026-09-11 to 2026-09-13."}
+#
+# So on this plan the system can see fixtures at most ~24h ahead, and
+# `--horizon-days` above 1 just buys refusals. Consequences to design around,
+# not to paper over:
+#
+#   * reachable   T-720, T-360, T-180 and the T-12 near-close window
+#   * unreachable T-4320 (72h) and T-2880 (48h) - the fixture is not even
+#                 visible that far out, so those windows can never be captured
+#                 while the account is free
+#   * a line-movement study needs the full T-72h..close arc, so it stays
+#     blocked on a paid plan. Recorded in docs/research/HISTORICAL_ODDS_OPTIONS.md.
+#
+# Nothing is pruned from FBI_ODDS_PREMATCH_WINDOWS because of this: the windows
+# describe the cadence we want, and the planner already skips one whose instant
+# has passed. Deleting them would hide the limitation instead of stating it.
+
+competitions:
+  # ── PILOT ────────────────────────────────────────────────────────────────
+  - league_id: 39      # Premier League
+    enabled: true
+    note: >-
+      Pilot. Probed 2026-09-12: current season 2026 (2026-08-21 .. 2027-05-30),
+      odds coverage yes. Chosen over La Liga and the Champions League because it
+      is the deepest bookmaker market of the three and the league the legacy
+      tracked most closely, so a coverage gap here is a real signal rather than
+      a thin-market artefact.
+
+  # ── LIVE-CYCLE TEST, temporary ─────────────────────────────────────────
+  # The Premier League stops for its first three-week international break
+  # (late September to early October 2026): the free plan, which sees one day
+  # ahead, has no Premier League fixture to capture until it resumes. The
+  # live cycle (sync -> odds windows -> near-close -> result -> features ->
+  # forecast -> market consensus -> shadow decision -> settlement) is shown on
+  # a league that keeps playing: 11 fixtures a round, Friday to Monday.
+  # Its history comes from the free plan's seasons 2022-2024 (3 requests), so
+  # its forecasts are made on results that end in June 2025 - the lineage says
+  # so, and nothing about model quality is concluded from them.
+  # Turn OFF when the Premier League resumes (two leagues do not fit 60/day).
+  - league_id: 141     # Segunda Division (Spain)
+    enabled: true
+    note: "live-cycle test during the Premier League's international break (from 2026-09-25)"
+
+  # ── Probed and viable, deliberately OFF: no room in the free plan ───────
+  - league_id: 140     # La Liga
+    enabled: false
+    note: "viable (season 2026, odds yes) - enable when the plan allows a second league"
+  - league_id: 2       # UEFA Champions League
+    enabled: false
+    note: "viable (season 2026 runs 2026-07-07 .. 2027-01-27, odds yes)"
+
+  # ── The rest of the nine the legacy tracked. Not probed yet. ────────────
+  - league_id: 135     # Serie A
+    enabled: false
+  - league_id: 78      # Bundesliga
+    enabled: false
+  - league_id: 61      # Ligue 1
+    enabled: false
+  - league_id: 88      # Eredivisie
+    enabled: false
+  - league_id: 94      # Primeira Liga
+    enabled: false
+  - league_id: 144     # Jupiler Pro League
+    enabled: false

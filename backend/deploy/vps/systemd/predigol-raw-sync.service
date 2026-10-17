@@ -1,0 +1,11 @@
+[Unit]
+Description=PrediGol: hourly copy of the RAW store off the server
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/raw-sync.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

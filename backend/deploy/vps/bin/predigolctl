@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# PrediGol on the server, one command. Run as root (sudo). The procedure, in Spanish, is ../README.md.
+#
+#   predigolctl up                 start the stack at the versions of the last deploy (systemd runs this at boot)
+#   predigolctl stop               stop it; nothing is lost
+#   predigolctl status             containers, versions, last health verdict
+#   predigolctl logs [service]     follow the logs (postgres, api, worker, web, caddy)
+#   predigolctl deploy             build the checked-out code, back up, migrate, restart, verify
+#   predigolctl rollback           start the previous versions again (the database is NOT downgraded)
+#   predigolctl backup | restore-test | health | raw-sync
+#   predigolctl pitr init|backup|verify|test|status|restore ...   point-in-time recovery (bin/pitr.sh)
+#   predigolctl maint              the owner's daily maintenance: partitions ahead, retention (scripts/db_maintenance)
+#   predigolctl import FOLDER      ONCE, on a fresh server: the old machine's export (deploy/cutover/export.sh)
+#   predigolctl psql               a read-only psql session
+#   predigolctl create-user --email E [--role USER|SUPER_ADMIN] ...   an account; its password goes to a 0600 file
+#   predigolctl accounts ...       scripts/accounts.py: list, disable --domain, revoke-sessions --all, unlock, ...
+#   predigolctl bench              measure THIS machine (CPU, steal, disk, fsync, network) against the minimums
+#   predigolctl loadtest [--users 100,200] [--minutes 5]   the rehearsal's load test (bin/loadtest.sh); BEFORE the cut-over
+#   predigolctl cloudflare trust|firewall|open    Cloudflare in front (bin/cloudflare-ips.sh)
+set -Eeuo pipefail
+# shellcheck source=bin/lib.sh
+# install.sh links this file into /usr/local/bin: lib.sh is found beside the REAL file, not beside the link.
+. "$(dirname "$(readlink -f "$0")")/lib.sh"
+BIN="$KIT/bin"
+BACKEND_DIR="$(cd "$KIT/../.." && pwd)"
+WEB_DIR="${PREDIGOL_WEB_SRC:-/opt/predigol/web}"
+
+wait_healthy() {
+  local deadline=$(( $(date +%s) + ${2:-300} )) svc st
+  for svc in $1; do
+    while :; do
+      st="$(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "predigol-$svc" 2> /dev/null || echo missing)"
+      [[ "$st" == "running healthy" || "$st" == "running " ]] && break
+      (( $(date +%s) > deadline )) && { log "$svc did not become healthy ($st)"; return 1; }
+      sleep 5
+    done
+  done
+}
+
+record_versions() {  # backend web [postgres image]
+  printf 'PREDIGOL_VERSION=%s\nPREDIGOL_WEB_VERSION=%s\nPREDIGOL_PG_VERSION=%s\n' "$1" "$2" "${3:-$PREDIGOL_PG_VERSION}" \
+    > "$STATE/versions.env.new"
+  mv "$STATE/versions.env.new" "$STATE/versions.env"
+}
+
+cmd_deploy() {
+  local new_be new_web old_be="${PREDIGOL_VERSION:-none}" old_web="${PREDIGOL_WEB_VERSION:-none}"
+  new_be="$(git -C "$BACKEND_DIR" rev-parse --short=12 HEAD)"
+  new_web="$(git -C "$WEB_DIR" rev-parse --short=12 HEAD)"
+  [[ -z "$(git -C "$BACKEND_DIR" status --porcelain --untracked-files=no)" ]] || { log "backend checkout has local changes: refusing"; exit 1; }
+  [[ -z "$(git -C "$WEB_DIR" status --porcelain --untracked-files=no)" ]] || { log "web checkout has local changes: refusing"; exit 1; }
+  PREDIGOL_PG_VERSION="$(pg_version)"
+  export PREDIGOL_VERSION="$new_be" PREDIGOL_WEB_VERSION="$new_web" PREDIGOL_PG_VERSION
+  log "deploy: backend $old_be -> $new_be, web $old_web -> $new_web, database image $PREDIGOL_PG_VERSION"
+  # The database image only when its definition changed (a new tag): otherwise the database keeps running.
+  if docker image inspect "predigol-postgres:$PREDIGOL_PG_VERSION" > /dev/null 2>&1; then
+    compose build api web
+  else
+    compose build postgres api web
+  fi
+  if [[ "$(docker inspect -f '{{.State.Status}}' predigol-postgres 2> /dev/null || true)" == running ]]; then
+    "$BIN/backup.sh" --label "pre-deploy-$new_be"
+  fi
+  compose up -d postgres
+  wait_healthy postgres 300
+  local tries
+  for tries in 1 2 3 4 5; do
+    # As the database owner (ops): the API's and the worker's roles may not change the schema.
+    if ops alembic upgrade head; then break; fi
+    (( tries == 5 )) && { log "MIGRATION FAILED - the running services were not touched"; notify "despliegue $new_be: la migración FALLÓ; nada cambió"; exit 1; }
+    sleep 10
+  done
+  apply_grants || { log "GRANTS FAILED - the running services were not touched"; notify "despliegue $new_be: los permisos de la base FALLARON"; exit 1; }
+  ops python -m scripts.db_maintenance partitions > /dev/null
+  compose up -d --remove-orphans
+  if ! wait_healthy "api web caddy" 300; then
+    log "deploy: not healthy - roll back with: predigolctl rollback"
+    notify "despliegue $new_be: no quedó sano; vuelta atrás: predigolctl rollback"
+    exit 1
+  fi
+  record_versions "$new_be" "$new_web"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$(date -u +%FT%TZ)" "$new_be" "$new_web" "$old_be" "$old_web" >> "$STATE/deploys.log"
+  "$BIN/healthcheck.sh" || true
+  log "deploy: done ($new_be / $new_web)"
+}
+
+cmd_rollback() {
+  local line be web
+  line="$(tail -n 1 "$STATE/deploys.log" 2> /dev/null || true)"
+  be="$(cut -f4 <<< "$line")"
+  web="$(cut -f5 <<< "$line")"
+  [[ -n "$be" && "$be" != none ]] || { log "no previous version recorded"; exit 1; }
+  docker image inspect "predigol-backend:$be" "predigol-web:$web" > /dev/null || { log "the previous images are gone"; exit 1; }
+  export PREDIGOL_VERSION="$be" PREDIGOL_WEB_VERSION="$web"
+  log "rollback to backend $be, web $web (the database schema stays where it is: see README before downgrading)"
+  compose up -d --no-build --remove-orphans
+  record_versions "$be" "$web"
+  printf '%s\t%s\t%s\t%s\t%s\trollback\n' "$(date -u +%FT%TZ)" "$be" "$web" "-" "-" >> "$STATE/deploys.log"
+}
+
+# An account with a generated password, written to a 0600 file on this server and nowhere else (not the
+# terminal, not the shell history, not a log). Hand it over by a safe channel, then delete the file.
+cmd_create_user() {
+  local out="${PREDIGOL_CREDENTIALS:-/root/predigol-credentials}" email="" args=("$@") i
+  for (( i = 0; i < ${#args[@]}; i++ )); do [[ "${args[i]}" == --email ]] && email="${args[i+1]:-}"; done
+  [[ "$email" =~ ^[^/[:space:]]+@[^/[:space:]]+$ ]] || { echo "usage: predigolctl create-user --email E [--role USER|SUPER_ADMIN] [--name N] [--language es|en] [--timezone TZ]" >&2; exit 2; }
+  install -d -m 0700 -o 1000 -g 1000 "$out"
+  compose --profile ops run --rm --no-deps -T -v "$out:/out" ops python -m scripts.create_user "$@" --generate --out "/out/$email.txt"
+  chown -R root:root "$out"
+  chmod 600 "$out/$email.txt"
+  log "credentials in $out/$email.txt (0600): hand them over by a safe channel, then delete the file"
+}
+
+case "${1:-}" in
+  up) compose up -d --no-build --remove-orphans ;;
+  stop) compose stop ;;
+  status)
+    compose ps
+    echo "versions: backend ${PREDIGOL_VERSION:-?}, web ${PREDIGOL_WEB_VERSION:-?}"
+    jq -c . "$STATE/health.json" 2> /dev/null || echo "no health verdict yet"
+    ;;
+  logs) shift; compose logs -f --tail 200 "$@" ;;
+  deploy) exclusive deploy; cmd_deploy ;;
+  rollback) exclusive deploy; cmd_rollback ;;
+  backup) shift; exec "$BIN/backup.sh" "$@" ;;
+  restore-test) shift; exec "$BIN/restore-test.sh" "$@" ;;
+  health) shift; exec "$BIN/healthcheck.sh" "$@" ;;
+  raw-sync) exec "$BIN/raw-sync.sh" ;;
+  import) shift; exec "$BIN/import.sh" "$@" ;;
+  pitr) shift; exec "$BIN/pitr.sh" "$@" ;;
+  maint) shift; exec "$BIN/maint.sh" "$@" ;;
+  bench) shift; exec "$BIN/bench.sh" "$@" ;;
+  loadtest) shift; exec "$BIN/loadtest.sh" "$@" ;;
+  cloudflare) shift; exec "$BIN/cloudflare-ips.sh" "$@" ;;
+  accounts) shift; ops python -m scripts.accounts "$@" ;;
+  grants) apply_grants && log "grants applied" ;;
+  psql) compose exec -e PGOPTIONS="-c default_transaction_read_only=on" postgres psql -U fbi -d fbi ;;
+  create-user) shift; cmd_create_user "$@" ;;
+  *) sed -n '2,22p' "$0"; exit 2 ;;
+esac

@@ -1,0 +1,132 @@
+{
+ "about": "Golden expectations for scripts.audit_competition_phases: the stage and kind of each named table of the season's newest snapshot, and the table each side of a named match is shown with (home, away). Structures read from the provider's /standings and /fixtures round labels and checked against the competitions' formats; the Colombia case is the owner's report of 4 Oct 2026 (Match Center Llaneros v America de Cali showing a Clausura row and an Apertura row; the provider's widget shows the Apertura and Clausura tables apart).",
+ "seasons": [
+  {
+   "league": 239, "season": 2026, "name": "Colombia Primera A",
+   "format": "Apertura and Clausura, each a 19-round league then knock-out rounds (quarter-finals, semi-finals, final)",
+   "tables": {
+    "Apertura": {"stage": "Apertura", "kind": "full"},
+    "Clausura": {"stage": "Clausura", "kind": "full"}
+   },
+   "fixtures": [
+    {"fixture": 1549811, "note": "Llaneros v America de Cali, Clausura - 13 (the P0 report)", "tables": ["Clausura", "Clausura"]},
+    {"fixture": 1506056, "note": "America de Cali v Llaneros, Apertura - 13", "tables": ["Apertura", "Apertura"]}
+   ]
+  },
+  {
+   "league": 128, "season": 2026, "name": "Argentina Liga Profesional",
+   "format": "Apertura and Clausura, each played in two zones of 15 (Group A, Group B) with interzonal matches, then knock-out rounds",
+   "tables": {
+    "Apertura - Group A": {"stage": "Apertura", "kind": "group"},
+    "Apertura - Group B": {"stage": "Apertura", "kind": "group"},
+    "Clausura - Group A": {"stage": "Clausura", "kind": "group"},
+    "Clausura - Group B": {"stage": "Clausura", "kind": "group"}
+   },
+   "fixtures": [
+    {"fixture": 1493173, "note": "Lanus v Velez Sarsfield, Clausura - 12: one zone", "tables": ["Clausura - Group A", "Clausura - Group A"]},
+    {"fixture": 1544177, "note": "Boca Juniors v Huracan, Apertura - Round of 16: each team's Apertura zone", "tables": ["Apertura - Group A", "Apertura - Group B"]}
+   ]
+  },
+  {
+   "league": 281, "season": 2026, "name": "Peru Liga 1",
+   "format": "Apertura and Clausura leagues; the annual table adds both",
+   "tables": {
+    "Primera Division: Apertura": {"stage": "Apertura", "kind": "full"},
+    "Primera Division: Clausura": {"stage": "Clausura", "kind": "full"},
+    "Primera Division: Tabla Anual": {"stage": null, "kind": "aggregate"}
+   },
+   "fixtures": [
+    {"fixture": 1549517, "note": "Sporting Cristal v Comerciantes Unidos, Clausura - 12", "tables": ["Primera Division: Clausura", "Primera Division: Clausura"]}
+   ]
+  },
+  {
+   "league": 242, "season": 2026, "name": "Ecuador Liga Pro",
+   "format": "a 30-round regular season, then championship, placement and relegation groups whose tables carry the regular season's games",
+   "tables": {
+    "Liga Pro: Regular season": {"stage": "Regular Season", "kind": "full"},
+    "Liga Pro: Championship Group": {"stage": "Championship Group", "kind": "full"},
+    "Liga Pro: Placement Group": {"stage": "Placement Group", "kind": "full"},
+    "Liga Pro: Relegation Group": {"stage": "Relegation Group", "kind": "full"}
+   },
+   "fixtures": [
+    {"fixture": 1639789, "note": "Barcelona SC v Independiente del Valle, Championship Group - 1", "tables": ["Liga Pro: Championship Group", "Liga Pro: Championship Group"]}
+   ]
+  },
+  {
+   "league": 253, "season": 2026, "name": "MLS",
+   "format": "one regular season ranked in two conferences, then the MLS Cup play-offs",
+   "tables": {
+    "Eastern Conference": {"stage": "Regular Season", "kind": "group"},
+    "Western Conference": {"stage": "Regular Season", "kind": "group"}
+   },
+   "fixtures": [
+    {"fixture": 1490544, "note": "New York City FC v Los Angeles FC: each team's conference", "tables": ["Eastern Conference", "Western Conference"]}
+   ]
+  },
+  {
+   "league": 262, "season": 2026, "name": "Liga MX",
+   "tables": {"Liga MX: Apertura": {"stage": "Apertura", "kind": "full"}}
+  },
+  {
+   "league": 1, "season": 2026, "name": "FIFA World Cup",
+   "format": "12 groups of 4 and the ranking of the third-placed teams, then knock-out rounds from the round of 32",
+   "tables": {
+    "Group A": {"stage": "Group Stage", "kind": "group"},
+    "Group L": {"stage": "Group Stage", "kind": "group"},
+    "Group Stage": {"stage": "Group Stage", "kind": "ranking"}
+   },
+   "fixtures": [
+    {"fixture": 1561329, "note": "South Africa v Canada, Round of 32: each team's group", "tables": ["Group A", "Group B"]}
+   ]
+  },
+  {
+   "league": 4, "season": 2024, "name": "UEFA Euro 2024",
+   "format": "six groups, each a stage of its own in the round labels (\"Group A - 1\"), and the ranking of third-placed teams",
+   "tables": {
+    "Group A": {"stage": "Group A", "kind": "full"},
+    "Group F": {"stage": "Group F", "kind": "full"},
+    "Ranking of third-placed teams": {"stage": null, "kind": "ranking"}
+   },
+   "fixtures": [
+    {"fixture": 1215075, "note": "Spain v Georgia, Round of 16: each team's group", "tables": ["Group B", "Group F"]}
+   ]
+  },
+  {
+   "league": 5, "season": 2026, "name": "UEFA Nations League",
+   "tables": {
+    "League A - Group D": {"stage": "League A", "kind": "group"},
+    "League D - Group B": {"stage": "League D", "kind": "group"}
+   },
+   "fixtures": [
+    {"fixture": 1528919, "note": "Denmark v Portugal, League A - 3", "tables": ["League A - Group D", "League A - Group D"]}
+   ]
+  },
+  {
+   "league": 2, "season": 2026, "name": "UEFA Champions League",
+   "format": "knock-out qualifying rounds, then one 36-team league phase",
+   "tables": {"UEFA Champions League": {"stage": "League Stage", "kind": "full"}},
+   "fixtures": [
+    {"fixture": 1635612, "note": "Arsenal v Lille, League Stage - 2", "tables": ["UEFA Champions League", "UEFA Champions League"]}
+   ]
+  },
+  {
+   "league": 89, "season": 2026, "name": "Eerste Divisie",
+   "format": "one regular season and four period tables (period titles)",
+   "tables": {
+    "Eerste Divisie: Regular season": {"stage": "Regular Season", "kind": "full"},
+    "Eerste Divisie: Period 2": {"kind": "other"}
+   },
+   "fixtures": [
+    {"fixture": 1551853, "note": "NAC Breda v Heracles, Regular Season - 12: the season's table, never a period's", "tables": ["Eerste Divisie: Regular season", "Eerste Divisie: Regular season"]}
+   ]
+  },
+  {
+   "league": 13, "season": 2026, "name": "CONMEBOL Libertadores",
+   "format": "knock-out qualifying rounds, eight groups of four, then knock-out rounds; Medellin v Flamengo awarded (AWD)",
+   "tables": {"Group A": {"stage": "Group Stage", "kind": "group"}},
+   "fixtures": [
+    {"fixture": 1535287, "note": "Independiente Medellin v Flamengo (AWD), Group Stage - 4", "tables": ["Group A", "Group A"]}
+   ]
+  }
+ ]
+}

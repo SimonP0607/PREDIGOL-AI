@@ -1,0 +1,1365 @@
+"""The worker: an APScheduler loop around the odds capturer.
+
+Two jobs, both deliberately boring:
+
+  * ``odds_capture``  runs every ``FBI_ODDS_TICK_MINUTES`` (default 15) and
+    captures whatever windows are due. The planner - not the cron expression -
+    decides what that means, so changing the cadence never requires touching
+    the schedule.
+  * ``ensure_partitions`` creates next month's partition of
+    market.odds_snapshots before it is needed. Without it every row would land
+    in the DEFAULT partition and the range pruning would be worthless.
+
+The tick is short and the planner is idempotent: a missed tick costs one window
+at worst, and a duplicated tick costs nothing at all.
+
+  * ``fixtures_sync``  every 12 h, horizon 1 day  -> 2 requests per run, 4/day
+  * ``results_sync``   every 6 h, lookback 1 day  -> 2 requests per run, 8/day
+  * ``pick_pipeline``  every 30 min and right after a capture: forecasts,
+    shadow picks, settlement. Database only, zero requests. One pass at a time
+    (``OnePass``), and the capture never waits for it.
+  * ``notifier``       every 10 min: new events -> audit.notifications ->
+    Telegram when a token is configured, 'skipped' otherwise.
+  * ``ai_daily_report`` / ``ai_pick_review``  the AI layer (``fbi.analyst``): the research
+    report from 06:00 Bogotá and the pick reviewer's flags every hour. Zero API-Football
+    requests; the LLM and search APIs only when the owner configured them, inside a monthly cap.
+  * ``ai_day_close`` (23:59 Bogotá) / ``ai_day_follow`` (every 30 min)  CIERRE DEL DÍA (``fbi.ai.daily_review``):
+    the day written down when it ends, then revised while a late match settles or its post-mortems arrive.
+  * ``ai_cycle`` (every 15 min) / ``ai_day_start`` (00:05 Bogotá) / ``ai_learn`` (07:35 Bogotá) /
+    ``ai_requests`` (every 2 min)  the AI decision layer (``fbi.ai``): packets, evidence, reviews and analyses
+    for free over four days; models and the web only for TODAY's matches with a market, at their three passes
+    (from 00:05, 6-4 h before, after the line-ups); post-mortems, yesterday's notes, patterns as hypotheses, the
+    parlays' measured dependence, the AI's own shadow report and tomorrow prepared; the owner's "run now".
+    Zero API-Football requests; a language model and a search API only when configured, inside the budget.
+  * ``intel_decide`` (every 15 min) / ``intel_nightly`` (07:50 Bogotá) / ``intel_weekly`` (Monday 04:40 Bogotá)
+    PrediGol Intelligence (``fbi.intel``): the decision layer (ten filters, states, score, stake) on the next 36
+    hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v3, memory, calibration, the leakage
+    audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only.
+  * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
+    the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
+    trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
+    ``FBI_REFERENCE_MAX_PER_RUN`` requests a run and never into the live reserve.
+  * ``research_monitor`` (07:05 Bogotá) / ``research_v2_weekly`` (Monday 04:20 Bogotá)  the
+    evolution loop (``fbi.research.loop``): results into memory and proposals for the owner.
+    Database only; the weekly run only when the code changed or four weeks passed.
+
+Standing cost is therefore about 12 requests/day, leaving roughly 48 of the
+60-request budget for odds capture - enough for a Premier League matchday at
+four reachable windows per fixture. The numbers are environment variables
+rather than constants because the right cadence changes the moment the plan
+does.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import functools
+import os
+import signal
+import subprocess
+import sys
+import threading
+import time
+from collections.abc import Callable
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+import psycopg
+import structlog
+from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED, JobEvent
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from fbi.core.clock import now
+from fbi.core.config import settings
+from fbi.core.deadline import run_in_own_loop, run_with_deadline
+from fbi.core.logging import configure as configure_logging
+from fbi.core.logging import new_run_id
+from fbi.core.version import code_version
+from fbi.odds.horizons import DEFAULT_HORIZON_DAYS
+from fbi.odds.live_cadence import (
+    DEFAULT_LIVE_DAILY_BUDGET,
+    POLL_FLOOR_SECONDS,
+    wake_interval,
+)
+from fbi.odds.partitions import ensure_partitions
+from fbi.odds.schedule import NEAR_CLOSE_TOLERANCE_MINUTES
+from fbi.ops.heartbeat import (
+    HeartbeatWriter,
+    TickOutcome,
+    default_worker_id,
+    last_success,
+    next_run_after,
+)
+from fbi.ops.reaper import boot_time
+from fbi.ops.run_watchdog import recover_runs, timeout_for
+from fbi.ops.worker_lock import WorkerLock, holder
+
+log = structlog.get_logger("worker")
+
+# Defaults follow the plan. On the free plan the provider shows fixtures about a
+# day ahead and history is a few requests a day; on a paid plan the worker looks
+# four days ahead (so T-72h and T-48h become reachable) and the historical
+# migration runs every hour, always behind the live reserve it computes itself.
+PAID_PLAN = settings.provider_plan.plan != "free"
+NEAR_CLOSE_SPAN_MINUTES = 2 * NEAR_CLOSE_TOLERANCE_MINUTES
+"""Width of the near-close opportunity: the planner accepts a fixture within that many
+minutes either side of the configured window."""
+
+TICK_MINUTES = int(os.environ.get(
+    "FBI_ODDS_TICK_MINUTES", str(max(1, NEAR_CLOSE_SPAN_MINUTES - 1))))
+"""How often the capture tick runs, and it cannot be coarser than the near-close window.
+
+It was 15 minutes against a 6-minute window, so the closing price was captured on about
+40% of fixtures - and /odds/live keeps no history, so the other 60% are unrecoverable. The
+closing line is the most informative price there is: it is the market's final word and the
+benchmark any edge is measured against.
+
+Ticking more often is nearly free. The planner computes what is due from the database and
+a tick with nothing due issues no provider request at all, while the 45-minute prematch
+tolerance and the covered-key de-duplication keep the extra ticks from re-requesting a
+window already captured. The cost is a few database queries, not quota."""
+FIXTURES_SYNC_HOURS = int(os.environ.get("FBI_FIXTURES_SYNC_HOURS", "6" if PAID_PLAN else "12"))
+"""Every current season's whole fixture list, one request each (~124 a run). Six hours, not
+twelve: a cup draw published in the morning reached the database at the next run, and a
+match announced 3 days out had already missed its T-72h price window."""
+FIXTURES_HORIZON_DAYS = int(os.environ.get(
+    "FBI_FIXTURES_HORIZON_DAYS", str(DEFAULT_HORIZON_DAYS) if PAID_PLAN else "1"))
+"""Four days was the Free-plan figure, kept after the upgrade by oversight.
+
+Prices were measured at T-18.2 days, so a four-day horizon meant a fixture ten days
+out was not in the database at all, the capture planner could not see it, and the
+earliest and least efficient part of its price series - the part no later request can
+recover - was never captured. Under the LEAGUE strategy the wider horizon costs the
+same one request per competition-season."""
+RESULTS_SYNC_HOURS = int(os.environ.get("FBI_RESULTS_SYNC_HOURS", "6"))
+RESULTS_LOOKBACK_DAYS = int(os.environ.get("FBI_RESULTS_LOOKBACK_DAYS", "1"))
+QUALITY_SWEEP_HOURS = int(os.environ.get("FBI_QUALITY_SWEEP_HOURS", "6"))
+CONTEXT_REFRESH_HOURS = int(os.environ.get("FBI_CONTEXT_REFRESH_HOURS", "12"))
+"""League tables and injury reports for the active seasons (fbi.ingestion.context_refresh)."""
+CONTEXT_DUE_MINUTES = int(os.environ.get("FBI_CONTEXT_DUE_MINUTES", "30"))
+"""Tables a finished match changed, injury lists of the next 48 hours (``refresh_due_context``).
+
+The provider updates a table every hour and injuries every four hours; the twelve-hour
+cycle above left a table up to half a day behind the match that changed it."""
+ELO_REFRESH_HOURS = int(os.environ.get("FBI_ELO_REFRESH_HOURS", "6"))
+"""Elo recomputed from every stored result (fbi.features.elo_refresh). The ratings were
+computed once and never extended; six hours keeps them within a matchday."""
+CATALOGUE_REFRESH_HOURS = int(os.environ.get("FBI_CATALOGUE_REFRESH_HOURS", "24"))
+"""Seasons and coverage flags from one /leagues request (fbi.ingestion.catalogue_refresh)."""
+RESULTS_REPAIR_MINUTES = int(os.environ.get("FBI_RESULTS_REPAIR_MINUTES", "30"))
+"""Tracked fixtures over three hours past kick-off that still do not say they finished,
+re-read by id (20 per request). It rode along with the six-hourly results sync, so a
+match the live follower missed could stay "awaiting a result" for six hours."""
+REFERENCE_MINUTES = int(os.environ.get("FBI_REFERENCE_MINUTES", "30"))
+REFERENCE_MAX_PER_RUN = int(os.environ.get("FBI_REFERENCE_MAX_PER_RUN", "300"))
+"""Reference feeds (fbi.ingestion.reference). 300 a run caps the first fill - ~80,000 players' sidelined
+and trophies, ~2,600 teams' coaches and transfers - at 14,400 requests a day; afterwards a day needs about
+3,000 (predictions three times a match, rounds and top lists daily, people weekly)."""
+FINAL_PREMATCH_MINUTES = int(os.environ.get("FBI_FINAL_PREMATCH_MINUTES", "60"))
+"""The provider's last pre-match prices for every tracked match played in the last six days,
+read once each (fbi.odds.final_prematch). It keeps them seven days, so the matches the capture
+missed while the worker was down are recovered as long as it comes back within the week."""
+LIVE_MATCH_SECONDS = int(os.environ.get("FBI_LIVE_MATCH_SECONDS", "60"))
+AI_DAY_FOLLOW_MINUTES = 30
+"""How often the closed days are re-read for a new revision of their CIERRE DEL DÍA (database only)."""
+LIVE_MATCH_MAX_REQUESTS = int(os.environ.get("FBI_LIVE_MATCH_MAX_REQUESTS", "10"))
+LIVE_MATCH_RESERVE = int(os.environ.get("FBI_LIVE_MATCH_RESERVE", "3000"))
+"""Matches in play are followed through the fixture feed every minute: state, events,
+statistics and line-ups for 20 fixtures per request (fbi.ingestion.live_match). It stops
+when fewer than LIVE_MATCH_RESERVE requests are left today, so the odds capture - which
+comes first - always keeps its share."""
+"""The sweep reads the database only (about 10 s). It used to be run by hand, so the
+Data Quality page showed whatever the last manual run found - two days old after
+the machine was off."""
+BACKFILL_HOURS = int(os.environ.get("FBI_BACKFILL_HOURS", "1" if PAID_PLAN else "6"))
+BACKFILL_MAX_PER_RUN = int(os.environ.get("FBI_BACKFILL_MAX_PER_RUN", "1500" if PAID_PLAN else "6"))
+LIVE_TICK_SECONDS = int(os.environ.get(
+    "FBI_LIVE_TICK_SECONDS", str(wake_interval(POLL_FLOOR_SECONDS))))
+"""How often the live job WAKES. How often it CALLS is the cadence's decision.
+
+HALF the 30 s capture interval, and the halving is the point. The provider's
+measured refresh period is ~31 s - 12 calls 10.4 s apart returned 5 distinct
+payloads, every fixture's ``update`` stamp moving together once every three
+ticks - so 30 s is the interval worth capturing at. Waking at 30 s to capture
+every 30 s produced 60 s: the wake-up arrives a fraction before its own
+deadline, the cadence correctly declines, and the next one is a full interval
+late. The first night of live capture ran at exactly half the intended rate for
+this reason, and a missed in-play refresh cannot be re-fetched.
+
+A wake-up is not a request. The job asks the database whether anything could be
+on the pitch and returns without calling the provider when nothing is - so a
+night with no football costs a handful of queries and no quota at all."""
+LIVE_DAILY_BUDGET = int(os.environ.get(
+    "FBI_LIVE_DAILY_BUDGET", str(DEFAULT_LIVE_DAILY_BUDGET)))
+PIPELINE_MINUTES = int(os.environ.get("FBI_PIPELINE_MINUTES", "30"))
+NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
+AI_REPORT_HOUR = int(os.environ.get("FBI_AI_REPORT_HOUR", "6"))
+"""The daily research report is written from this hour (Bogotá), once a day: a check every
+AI_CHECK_MINUTES writes it when the hour has passed and the day has none - so a worker that was
+down at six writes it when it comes back. Database, plus the LLM and search APIs when the owner
+configured them; zero API-Football requests."""
+AI_CHECK_MINUTES = int(os.environ.get("FBI_AI_CHECK_MINUTES", "15"))
+AI_REVIEW_MINUTES = int(os.environ.get("FBI_AI_REVIEW_MINUTES", "60"))
+AI_CYCLE_MINUTES = int(os.environ.get("FBI_AI_CYCLE_MINUTES", "15"))
+"""The AI decision layer's analysis cycle (``fbi.ai.cycle``): packets, evidence, reviews and the per-match
+analyses of the next days. Database only unless a model or a search API is configured."""
+AI_LEARN_HOUR = int(os.environ.get("FBI_AI_LEARN_HOUR", "7"))
+"""Post-mortems, memory, patterns and the AI's shadow report, daily at HH:35 Bogotá (after the monitor)."""
+AI_REQUESTS_MINUTES = 2
+RESEARCH_MONITOR_HOUR = int(os.environ.get("FBI_RESEARCH_MONITOR_HOUR", "7"))
+"""The evolution loop's daily monitor (Bogotá): the shadow-pick audit and the prospective
+evaluation, turned into memory and proposals. Seconds of database reads, zero requests."""
+RESEARCH_V2_WEEKDAY = os.environ.get("FBI_RESEARCH_V2_WEEKDAY", "mon")
+RESEARCH_V2_HOUR = int(os.environ.get("FBI_RESEARCH_V2_HOUR", "4"))
+"""The weekly research-V2 run (Bogotá), in its own process so its memory is returned; it runs
+only when the code changed or the last run is four weeks old (``fbi.research.loop.v2_due``)."""
+INTEL_DECIDE_MINUTES = int(os.environ.get("FBI_INTEL_DECIDE_MINUTES", "15"))
+"""PrediGol Intelligence's decision layer (``fbi.intel.cycle.run_decide``): the next 36 hours' candidates through the
+ten filters, written at their checkpoints; the picks of the day of daily-set-v6 once the AI has read the day. Shadow,
+database only, zero requests and zero model calls."""
+INTEL_NIGHTLY_HOUR, INTEL_NIGHTLY_MINUTE = 7, 50
+"""After the AI's learning (07:35): outcomes, post-mortems pm-v3, memory, calibration, leakage audit, the report."""
+INTEL_WEEKLY_WEEKDAY, INTEL_WEEKLY_HOUR, INTEL_WEEKLY_MINUTE = "mon", 4, 40
+"""The market discovery engine, weekly (Bogotá)."""
+REPO_ROOT = Path(__file__).resolve().parents[2]
+"""The pick reviewer over today's and tomorrow's sets: rules every run (stored only when the
+flags change), the model only when the picks or the day's claims changed."""
+
+
+async def _tick() -> TickOutcome:
+    """One scheduler tick: partitions, then the windows that are due.
+
+    The planner decides what "due" means; a tick that finds nothing due costs
+    zero provider calls. The ledger records every tick that did something.
+    """
+    from scripts.capture_odds import _build_planner, _client, _upcoming
+
+    from fbi.core.clock import today
+    from fbi.odds.capture import OddsCaptureService
+    from fbi.odds.repository import OddsRepository
+    from fbi.odds.schedule import validate_plan
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        ensure_partitions(conn, today=today())
+        fixtures = _upcoming(conn, 96)
+        if not fixtures:
+            log.info("tick.nothing_scheduled")
+            return "nothing_scheduled"
+        planner = _build_planner()
+        repo = OddsRepository(conn)
+        ids = [f.provider_fixture_id for f in fixtures]
+        covered = planner.covered_keys(repo.window_observations_since(since=now() - timedelta(hours=24),
+                                                                      provider_fixture_ids=ids))
+        asked = repo.last_asked(provider_fixture_ids=ids, since=now() - timedelta(days=4))
+        tasks = planner.plan(fixtures, at=now(), already_done=covered, last_asked=asked)
+        if not tasks:
+            log.info("tick.nothing_due", fixtures=len(fixtures), next_window=planner.next_run_at(fixtures, at=now()))
+            return "nothing_due"
+        check = validate_plan(
+            tasks, at=now(), budget_remaining=settings.api_football.daily_budget,
+            known_fixture_ids={f.provider_fixture_id for f in fixtures},
+        )
+        if not check.ok:
+            log.error("tick.plan_rejected", issues=check.issues)
+            return "plan_rejected"
+        provider = ApiFootballProvider(_client(), market_filter=settings.odds.market_filter)
+        try:
+            service = OddsCaptureService(conn, provider, planner, raw_root=settings.runtime.raw_store_dir)
+            await service.capture(fixtures)
+        finally:
+            await provider.aclose()
+    # A fresh price is evaluated at once, not up to half an hour later - but beside the tick, not inside it. On
+    # the server a pass takes minutes, and a tick that waited for it missed its next windows and its own heartbeat:
+    # on 9 Oct 2026 at 11:48 UTC the worker was restarted as stale while two passes waited on each other.
+    _request_pipeline()
+    return "captured"
+
+
+async def _live_tick() -> None:
+    """In-play capture: the book as it stands NOW. Its own pipeline, sharing only client and quota.
+
+    This job can reach market.live_fixture_current and market.live_odds_current and nothing else -
+    LiveCaptureService holds no pre-match repository - so an in-play price cannot land in the pre-match series,
+    a model or the backtest from here. Both tables are ephemeral (revision 0068): a wake-up with nothing in play
+    still purges what left the live book, at the cost of one DELETE and no request.
+    """
+    from scripts.capture_odds import _client
+
+    from fbi.core.clock import today
+    from fbi.odds.live_capture import LiveCaptureService
+    from fbi.odds.partitions import ensure_partitions
+    from fbi.providers.api_football import ApiFootballProvider
+    from fbi.providers.quota import read_usage
+
+    new_run_id()
+    cfg = settings.api_football
+    with _connect() as conn:
+        remaining = read_usage(
+            conn, budget=min(cfg.daily_budget, cfg.per_day_limit)
+        ).remaining
+        service = LiveCaptureService(
+            conn, provider=None, live_daily_budget=LIVE_DAILY_BUDGET  # type: ignore[arg-type]
+        )
+        decision = service.plan(remaining_quota=remaining)
+        if not decision.should_capture:
+            purged = service.purge_stale()
+            log.debug("live_tick.skipped", reason=decision.reason,
+                      next_in_seconds=decision.next_in_seconds, purged_fixtures=purged.fixtures)
+            return
+        ensure_partitions(conn, today=today())
+        provider = ApiFootballProvider(_client())
+        try:
+            report = await LiveCaptureService(
+                conn, provider, live_daily_budget=LIVE_DAILY_BUDGET
+            ).capture(remaining_quota=remaining)
+        finally:
+            await provider.aclose()
+    if report.captured:
+        log.info("live_tick.captured", fixtures=report.fixtures_priced,
+                 written=report.quotes_written, duplicate=report.quotes_duplicate,
+                 untracked=report.quotes_untracked, suspended=report.values_suspended,
+                 book_fixtures=report.book_fixtures, book_quotes=report.book_quotes,
+                 raw_kept=report.raw_kept, accounting_holds=report.accounting_holds)
+
+
+async def _live_match_tick() -> None:
+    """Follow tracked matches in play. Spends nothing when none is."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.live_match import (
+        capture_live_matches,
+        fixtures_to_follow,
+        prematch_lineups_due,
+        refresh_prematch_lineups,
+    )
+    from fbi.providers.api_football import ApiFootballProvider
+    from fbi.providers.quota import read_usage
+
+    cfg = settings.api_football
+    with _connect() as conn:
+        moment = now()
+        follow = bool(fixtures_to_follow(conn, at=moment))
+        lineups = bool(prematch_lineups_due(conn, at=moment))
+        if not follow and not lineups:
+            return
+        remaining = read_usage(conn, budget=min(cfg.daily_budget, cfg.per_day_limit)).remaining
+        if remaining < LIVE_MATCH_RESERVE:
+            log.warning("live_match.skipped", reason="quota reserve", remaining=remaining)
+            return
+        new_run_id()
+        provider = ApiFootballProvider(_client())
+        report = None
+        try:
+            if follow:
+                report = await capture_live_matches(conn, provider, max_requests=LIVE_MATCH_MAX_REQUESTS)
+            if lineups:
+                # the line-ups of the next 75 minutes, before the follow takes those matches (REVIEW point 7)
+                await refresh_prematch_lineups(conn, provider)
+        finally:
+            await provider.aclose()
+    if report is not None and report.ended:
+        _request_settlement(report.ended, "live_follow")
+
+
+async def _context_refresh() -> None:
+    """Tables and injuries for the current seasons: what the Match Center shows as context."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.context_refresh import refresh_context
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await refresh_context(conn, provider)
+        finally:
+            await provider.aclose()
+
+
+async def _context_due() -> None:
+    """Only what a match made due: a changed table, the injury lists of the next two days."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.context_refresh import refresh_due_context
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await refresh_due_context(conn, provider)
+        finally:
+            await provider.aclose()
+
+
+async def _results_repair() -> None:
+    """Fixtures past kick-off that still do not say they finished, by id; and one more read
+    of each finished match once it has settled (final statistics, corrected events)."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.live_match import refresh_post_match, repair_stale_results
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            repaired = await repair_stale_results(conn, provider)
+            await refresh_post_match(conn, provider)
+        finally:
+            await provider.aclose()
+    if repaired.ended:
+        _queue_settlement(repaired.ended, "results_repair")
+        _settle_now()
+
+
+async def _final_prematch() -> None:
+    """Each played match's last pre-match prices, once, for the closing-line benchmark."""
+    from scripts.capture_odds import _client
+
+    from fbi.odds.final_prematch import recover_final_prematch
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client(), market_filter=settings.odds.market_filter)
+        try:
+            await recover_final_prematch(conn, provider)
+        finally:
+            await provider.aclose()
+
+
+async def _reference_refresh() -> None:
+    """What the reference feeds have due: the provider's predictions (auxiliary, never a model input), rounds,
+    top lists, coaches, transfers, sidelined, trophies, the odds catalogues and mapping."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.reference import refresh_reference
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await refresh_reference(conn, provider, daily_budget=settings.provider_plan.effective_budget,
+                                    max_requests=REFERENCE_MAX_PER_RUN,
+                                    prematch_windows=settings.odds.prematch_windows)
+        finally:
+            await provider.aclose()
+
+
+async def _catalogue_refresh() -> None:
+    """Which season is current, and the coverage flags: one /leagues request a day."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.catalogue_refresh import refresh_catalogue
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await refresh_catalogue(conn, provider)
+        finally:
+            await provider.aclose()
+
+
+async def _daily_fixtures_sync() -> None:
+    """Refresh the fixture list for active competitions.
+
+    The horizon is deliberately short. On the free plan ``/fixtures?date=`` is
+    served only for about a day either side of today, so a longer horizon does
+    not see further - it just spends requests on refusals. Running often is
+    what buys reach here, not asking for more at once.
+    """
+    from scripts.capture_odds import _client, _connect
+
+    from fbi.ingestion.fixtures import SyncStrategy, sync_fixtures
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    # On the free plan the league query is always refused; asking anyway spent
+    # one request of our budget per run just to be told so again.
+    strategy = SyncStrategy.DATE if settings.provider_plan.plan == "free" else SyncStrategy.AUTO
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await sync_fixtures(conn, provider, horizon_days=FIXTURES_HORIZON_DAYS, strategy=strategy)
+        finally:
+            await provider.aclose()
+
+
+async def _results_sync() -> None:
+    """Close the loop on fixtures that have been played.
+
+    Without this a fixture whose kick-off passed keeps saying 'NS' for ever,
+    because the fixture sync only looks forward. And the window to fix it is
+    narrow: the free plan stops serving a date about a day after it passes, so
+    a result missed today is missed permanently. That is why this runs on its
+    own short cycle instead of riding along with a daily job.
+    """
+    from scripts.capture_odds import _client, _connect
+
+    from fbi.ingestion.results import sync_results
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        provider = ApiFootballProvider(_client())
+        try:
+            await sync_results(conn, provider, lookback_days=RESULTS_LOOKBACK_DAYS)
+            # What the date sweep left behind (a day the worker was off): by id.
+            from fbi.ingestion.live_match import repair_stale_results
+            await repair_stale_results(conn, provider)
+        finally:
+            await provider.aclose()
+
+
+async def _historical_backfill() -> None:
+    """Carry on with pending history - only what live capture can spare.
+
+    The backfill computes its own reserve for the next 24 h of odds windows
+    and standing syncs, and defers entirely when the day's remaining budget is
+    inside it. History is seeded deliberately with ``scripts.backfill seed``; the
+    worker never widens the scope on its own. What it does seed is the refresh of
+    the scope it already has: a monthly player-profile sweep and a weekly round of
+    current squads (fbi.ingestion.people).
+    """
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion.backfill import run_backfill, seed_current_details
+    from fbi.ingestion.people import seed_people_refresh, seed_player_seasons
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    with _connect() as conn:
+        # Player profiles monthly, current squads weekly: a refresh of the tracked scope,
+        # queued behind everything else in the same budget-guarded backfill.
+        seed_people_refresh(conn, at=now())
+        # The provider's season player statistics of current seasons, weekly (core.player_season_stats).
+        seed_player_seasons(conn, at=now())
+        # Played matches of the current seasons whose detail nobody fetched (the live follower missed them).
+        seed_current_details(conn)
+        provider = ApiFootballProvider(_client())
+        try:
+            report = await run_backfill(
+                conn, provider, max_requests=BACKFILL_MAX_PER_RUN,
+                daily_budget=settings.provider_plan.effective_budget,
+                prematch_windows=settings.odds.prematch_windows,
+            )
+        finally:
+            await provider.aclose()
+    log.info("backfill.tick", done=report.done, refused=report.refused, failed=report.failed,
+             allowance=report.allowance, reserve=report.reserve, deferred=report.deferred_reason)
+
+
+class OnePass:
+    """A job that runs one pass at a time, and never loses a request.
+
+    A request that arrives while a pass runs is not run beside it: two pick pipelines at once only wait on each
+    other's locks - on the server, 9 Oct 2026, twenty passes waited about four minutes each for another one's
+    transaction to end - and take the database's time from everything else. It is folded into exactly one more
+    pass, started as soon as the running one ends, so a price captured meanwhile is still evaluated.
+
+    Every request raises the flag BEFORE it tries the gate, and the pass holding the gate looks at the flag AFTER
+    it lets go: whichever way two threads interleave, a raised flag is always seen by someone who then runs.
+    """
+
+    def __init__(self, fn: Callable[[], None], name: str) -> None:
+        self._fn = fn
+        self._name = name
+        self._gate = threading.Lock()
+        self._again = threading.Event()
+
+    @property
+    def running(self) -> bool:
+        return self._gate.locked()
+
+    def __call__(self) -> bool:
+        """Run the pass now, or leave it to the pass already running. True when this call ran at least one."""
+        self._again.set()
+        ran = False
+        while self._again.is_set():
+            if not self._gate.acquire(blocking=False):
+                log.info("job.folded", job=self._name)  # the running pass will see the flag when it ends
+                return ran
+            try:
+                if self._again.is_set():
+                    self._again.clear()
+                    try:
+                        self._fn()
+                    except Exception as exc:  # the pass records its own failures; a waiting request still runs
+                        log.error("job.pass_failed", job=self._name, error=f"{type(exc).__name__}: {exc}"[:300])
+                    ran = True
+            finally:
+                self._gate.release()
+        return ran
+
+
+def _pipeline_once() -> None:
+    """Forecasts, evaluation of captured prices, settlement. Never raises into
+    the capture: a failure is logged and recorded in its own ledger run."""
+    from fbi.picks.pipeline import run_pipeline
+
+    try:
+        with _connect() as conn:
+            run_pipeline(conn, at=now(), code_version=code_version())
+    except Exception as exc:  # the capture has already been committed
+        log.error("pipeline.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+_pipeline_now = OnePass(_pipeline_once, "pick_pipeline")
+"""The pick pipeline, one pass at a time: the 30-minute job and the request after every capture share it."""
+
+_ended_lock = threading.Lock()
+_ended: dict[int, str] = {}
+"""Matches that just ended, waiting for the fast settlement, with who found them (the settlement-latency path)."""
+
+
+def _queue_settlement(fixture_ids: list[int], path: str) -> None:
+    with _ended_lock:
+        for fid in fixture_ids:
+            _ended.setdefault(fid, path)
+
+
+def _settle_once() -> None:
+    """Settle the bets on the matches that just ended (fbi.picks.fast_settlement): one match per transaction,
+    its own ledger run. A match another pass is settling is put back for the next request; anything else that
+    fails is logged and left to the pipeline's pass, which settles whatever is still open."""
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+    from fbi.picks.fast_settlement import settle_fixtures
+
+    with _ended_lock:
+        todo = dict(_ended)
+        _ended.clear()
+    if not todo:
+        return
+    deferred: list[int] = []
+    try:
+        with _connect() as conn:
+            ledger = RunLedger(conn)
+            run_id = ledger.open("pick_settlement", params={"fixtures": len(todo)})
+            counters = RunCounters()
+            notes: list[str] = []
+            try:
+                for path in sorted(set(todo.values())):
+                    ids = [f for f, p in todo.items() if p == path]
+                    rep = settle_fixtures(conn, ids, path=path, run_id=run_id)  # type: ignore[arg-type]
+                    deferred.extend(rep.deferred)
+                    counters.rows_updated += rep.picks + rep.items
+                    counters.errors.extend(rep.errors)
+                    notes.append(f"{path}: {len(ids)} ended, {rep.fixtures} settled ({rep.picks} picks, "
+                                 f"{rep.items} records), {len(rep.deferred)} deferred")
+            finally:
+                ledger.close(run_id, counters, notes="; ".join(notes) or "nothing to settle")
+                conn.commit()
+    except Exception as exc:  # the pipeline's pass is the safety net
+        log.error("settlement.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+    if deferred:
+        _queue_settlement(deferred, "live_follow")
+
+
+_settle_now = OnePass(_settle_once, "pick_settlement")
+"""The fast settlement, one pass at a time; a request while one runs is folded into one more pass."""
+
+
+def _request_settlement(fixture_ids: list[int], path: str) -> None:
+    """Settle these matches beside the live follow, without making it wait."""
+    _queue_settlement(fixture_ids, path)
+    task = asyncio.get_running_loop().create_task(asyncio.to_thread(_settle_now))
+    _background.add(task)
+    task.add_done_callback(_background.discard)
+
+_background: set[asyncio.Task[Any]] = set()
+"""Passes started beside a job, kept here until they end (an unreferenced task can be collected mid-run)."""
+
+
+def _request_pipeline() -> None:
+    """A pipeline pass after a capture, without making the capture wait for it."""
+    task = asyncio.get_running_loop().create_task(asyncio.to_thread(_pipeline_now))
+    _background.add(task)
+    task.add_done_callback(_background.discard)
+
+
+def _quality_sweep_now() -> None:
+    """Record what is wrong, never repair it. Failures are logged and in the ledger."""
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+    from fbi.quality.detect import sweep, sweep_connection
+
+    try:
+        with sweep_connection(settings.database.psycopg_url) as conn:  # serial plans: see detect.SERIAL_PLANS
+            ledger = RunLedger(conn)
+            run_id = ledger.open("quality_sweep", params={"apply": True, "source": "worker"})
+            counters = RunCounters()
+            report = None
+            try:
+                report = sweep(conn, run_id=run_id, apply=True)
+                counters.rows_inserted = report.issues_opened
+                counters.rows_updated = report.issues_seen_again
+            finally:
+                ledger.close(run_id, counters,
+                             notes=f"{len(report.checks)} checks" if report else "the sweep did not finish")
+                conn.commit()
+    except Exception as exc:  # a sweep problem must never stop the capture
+        log.error("quality_sweep.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _quality_sweep() -> None:
+    new_run_id()
+    await asyncio.to_thread(_quality_sweep_now)
+
+
+async def _pipeline() -> None:
+    new_run_id()
+    await asyncio.to_thread(_pipeline_now)
+
+
+def _elo_refresh_now() -> None:
+    from fbi.catalog.team_kind import refresh_team_kind
+    from fbi.features.elo_refresh import refresh_elo
+    from fbi.validation.historical import run_validation
+
+    with _connect() as conn:
+        # National or club, from the competitions each side plays (core.team_kind; read by the product's player
+        # pages, not by the models).
+        refresh_team_kind(conn, at=now())
+        conn.commit()
+        refresh_elo(conn)
+        # Approval needs the new ratings: validate the history right after them.
+        run_validation(conn, at=now())
+
+
+async def _elo_refresh() -> None:
+    """The whole Elo history from every stored result (seconds of arithmetic, zero requests),
+    in a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_elo_refresh_now)
+
+
+def _notify_now() -> None:
+    """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
+    from fbi.notify.service import channel_from_env, run_notifier
+
+    channel = channel_from_env()
+    try:
+        with _connect() as conn:
+            run_notifier(conn, channel)
+    except Exception as exc:  # a notification problem must never stop the worker
+        log.error("notify.failed", error=type(exc).__name__)
+    finally:
+        if channel is not None:
+            channel.close()
+
+
+async def _notify() -> None:
+    await asyncio.to_thread(_notify_now)
+
+
+def _ai_report_now() -> None:
+    """Today's research report, once, after AI_REPORT_HOUR in Bogotá. Never raises."""
+    from fbi.analyst.research import due, run_daily_report
+
+    try:
+        with _connect() as conn:
+            if not due(conn, at=now(), hour=AI_REPORT_HOUR):
+                return
+            r = run_daily_report(conn, at=now())
+        log.info("ai.daily_report", status=r.status, day=r.day.isoformat(), source=r.source, claims=len(r.claims))
+    except Exception as exc:  # the AI layer must never stop the worker
+        log.error("ai.daily_report.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_report() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_report_now)
+
+
+def _ai_review_now() -> None:
+    """Flags on today's and tomorrow's pick sets. Never raises."""
+    from fbi.analyst.reviewer import review_days, run_pick_review
+
+    try:
+        moment = now()
+        with _connect() as conn:
+            for day in review_days(moment):
+                for source in ("evaluation", "qualified"):
+                    r = run_pick_review(conn, at=moment, day=day, source=source)
+                    if r.rules_run or r.model_run:
+                        log.info("ai.pick_review", day=day.isoformat(), source=source, flags=len(r.flags),
+                                 status=r.status)
+    except Exception as exc:  # the AI layer must never stop the worker
+        log.error("ai.pick_review.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_review() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_review_now)
+
+
+def _ai_cycle_now() -> None:
+    """Packets, evidence, reviews, analyses. Never raises: the AI layer must never stop the worker."""
+    from fbi.ai.cycle import run_analysis_cycle
+
+    try:
+        with _connect() as conn:
+            r = run_analysis_cycle(conn, at=now())
+        log.info("ai.cycle", status=r.status, cost_usd=str(r.cost_usd), **{k: v for k, v in dict(r.counts).items()
+                                                                           if k in ("fixtures", "shortlist", "reviews",
+                                                                                    "llm_reviews", "packets", "universe",
+                                                                                    "passes_due", "briefs_llm",
+                                                                                    "web_searches")})
+    except Exception as exc:
+        log.error("ai.cycle.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_cycle() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_cycle_now)
+
+
+def _ai_day_start_now() -> None:
+    """00:05 Bogotá: the day opened and its first passes. Never raises."""
+    from fbi.ai.cycle import run_day_start
+
+    try:
+        for _ in range(10):  # a cycle already running holds the lock: wait for it, then open the day
+            with _connect() as conn:
+                r = run_day_start(conn, at=now())
+            if not r.counts.get("skipped_busy"):
+                break
+            time.sleep(30)
+        log.info("ai.day_start", status=r.status, **{k: v for k, v in dict(r.counts).items()
+                                                      if k in ("universe", "passes_due", "pass_first", "briefs_llm",
+                                                               "llm_reviews", "web_searches")})
+    except Exception as exc:
+        log.error("ai.day_start.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_day_start() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_day_start_now)
+
+
+def _ai_day_close_now() -> None:
+    """23:59 Bogotá: CIERRE DEL DÍA (fbi.ai.daily_review). Never raises."""
+    from fbi.ai.daily_review import close_day
+
+    try:
+        with _connect() as conn:
+            review = close_day(conn, at=now())
+            conn.commit()
+        log.info("ai.day_close", review=review)
+    except Exception as exc:  # the AI layer must never stop the worker
+        log.error("ai.day_close.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_day_close() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_day_close_now)
+
+
+def _ai_day_follow_now() -> None:
+    """The closed days that changed since their last revision (a late match settled, a post-mortem, the morning's
+    learning), and yesterday's close if the worker missed 23:59. Never raises."""
+    from fbi.ai.daily_review import follow_days
+
+    try:
+        with _connect() as conn:
+            written = follow_days(conn, at=now())
+            conn.commit()
+        if written:
+            log.info("ai.day_follow", revisions=written)
+    except Exception as exc:  # the AI layer must never stop the worker
+        log.error("ai.day_follow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_day_follow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_day_follow_now)
+
+
+def _ai_learn_now() -> None:
+    """Post-mortems, patterns, dependence, the AI's shadow report. Never raises."""
+    from fbi.ai.cycle import run_learning_cycle
+
+    try:
+        with _connect() as conn:
+            r = run_learning_cycle(conn, at=now())
+        log.info("ai.learning", status=r.status, **{k: v for k, v in dict(r.counts).items()
+                                                     if k in ("postmortems", "memory_events", "hypotheses_proposed")})
+    except Exception as exc:
+        log.error("ai.learning.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+def _last_ai_cycle(conn: psycopg.Connection[Any], kind: str) -> datetime | None:
+    """When the AI layer last finished a cycle of this kind (``ai.cycles``); None on an older database."""
+    try:
+        with conn.transaction(), conn.cursor() as cur:
+            cur.execute("SELECT max(finished_at) FROM ai.cycles WHERE kind = %s AND status IN ('ok', 'partial')",
+                        (kind,))
+            row = cur.fetchone()
+    except psycopg.errors.UndefinedTable:
+        return None
+    return None if row is None else row[0]
+
+
+async def _ai_learn() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_learn_now)
+
+
+def _ai_requests_now() -> None:
+    """The owner's "run now" from the Admin Console. Never raises."""
+    from fbi.ai.cycle import process_requests
+
+    try:
+        with _connect() as conn:
+            n = process_requests(conn, at=now())
+        if n:
+            log.info("ai.requests", processed=n)
+    except Exception as exc:
+        log.error("ai.requests.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_requests() -> None:
+    await asyncio.to_thread(_ai_requests_now)
+
+
+def _research_monitor_now() -> None:
+    """Audit + prospective -> memory and proposals. Never raises."""
+    from fbi.research.loop import run_monitor
+
+    try:
+        with _connect() as conn:
+            r = run_monitor(conn, at=now())
+        log.info("research.monitor", picks=r.settled_picks, played=r.prospective_played, memory=len(r.memory),
+                 proposals=len(r.proposals))
+    except Exception as exc:  # research must never stop the worker
+        log.error("research.monitor.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _research_monitor() -> None:
+    new_run_id()
+    await asyncio.to_thread(_research_monitor_now)
+
+
+def _research_weekly_now() -> None:
+    """The full research-V2 run when it is due, in a child process. Never raises."""
+    from fbi.research.loop import frozen, v2_due
+
+    try:
+        why = frozen()
+        if why:
+            log.info("research.weekly.frozen", reason=why)
+            return
+        with _connect() as conn:
+            reason = v2_due(conn, at=now())
+        if reason is None:
+            log.info("research.weekly.skipped", reason="same code, last run under four weeks old")
+            return
+        proc = subprocess.run([sys.executable, "-m", "scripts.research_v2", "--apply"], cwd=REPO_ROOT,
+                              capture_output=True, text=True, timeout=3600, check=False)
+        log.info("research.weekly", reason=reason, exit=proc.returncode,
+                 tail=(proc.stdout or "")[-300:] if proc.returncode == 0 else (proc.stderr or "")[-300:])
+    except Exception as exc:  # research must never stop the worker
+        log.error("research.weekly.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _research_weekly() -> None:
+    new_run_id()
+    await asyncio.to_thread(_research_weekly_now)
+
+
+def _intel_decide_now() -> None:
+    """PrediGol Intelligence's decision layer. Never raises: it must never stop the worker."""
+    from fbi.intel.cycle import run_decide
+
+    try:
+        with _connect() as conn:
+            r = run_decide(conn, at=now())
+        if r.status != "skipped":
+            d = r.counts.get("decide") or {}
+            log.info("intel.decide", status=r.status, candidates=d.get("candidates"), written=d.get("written"),
+                     by_state=d.get("by_state"), select=r.counts.get("select"), errors=r.errors[:2])
+    except Exception as exc:
+        log.error("intel.decide.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _intel_decide() -> None:
+    new_run_id()
+    await asyncio.to_thread(_intel_decide_now)
+
+
+def _intel_nightly_now() -> None:
+    """Outcomes, post-mortems, memory, calibration, leakage audit, the daily learning report. Never raises."""
+    from fbi.intel.cycle import run_nightly
+
+    try:
+        with _connect() as conn:
+            r = run_nightly(conn, at=now())
+        log.info("intel.nightly", status=r.status, counts={k: v for k, v in r.counts.items() if not k.endswith("_ms")},
+                 errors=r.errors[:3])
+    except Exception as exc:
+        log.error("intel.nightly.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _intel_nightly() -> None:
+    new_run_id()
+    await asyncio.to_thread(_intel_nightly_now)
+
+
+def _intel_weekly_now() -> None:
+    """The market discovery engine. Never raises."""
+    from fbi.intel.cycle import run_weekly
+
+    try:
+        with _connect() as conn:
+            r = run_weekly(conn, at=now())
+        log.info("intel.weekly", status=r.status, counts=r.counts, errors=r.errors[:2])
+    except Exception as exc:
+        log.error("intel.weekly.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _intel_weekly() -> None:
+    new_run_id()
+    await asyncio.to_thread(_intel_weekly_now)
+
+
+def _last_intel_run(conn: psycopg.Connection[Any], job: str) -> datetime | None:
+    try:
+        with conn.transaction(), conn.cursor() as cur:
+            cur.execute("SELECT max(finished_at) FROM intel.runs WHERE job = %s AND status IN ('ok', 'partial')", (job,))
+            row = cur.fetchone()
+    except psycopg.errors.UndefinedTable:
+        return None
+    return None if row is None else row[0]
+
+
+_scheduler: AsyncIOScheduler | None = None
+_lock: WorkerLock | None = None
+_stop: asyncio.Event | None = None
+
+EXIT_ANOTHER_WORKER = 75
+"""EX_TEMPFAIL: not an error in this worker, and worth trying again later."""
+
+
+WORKER_JOB_TYPES = frozenset({
+    "odds_capture", "live_odds_capture", "live_match_capture", "fixtures_sync", "results_sync", "historical_backfill",
+    "pick_pipeline", "quality_sweep", "context_refresh", "context_due", "results_repair", "final_prematch",
+    "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
+    "research_monitor", "research_v2", "feature_build", "pick_settlement",
+})
+"""The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
+worker process and recorded without an owner, belonged to a previous worker)."""
+WATCHDOG_MINUTES = 5
+_worker_started_at: datetime | None = None
+
+
+def _run_watchdog_now() -> None:
+    with _connect() as conn:
+        recover_runs(conn, at=now(), worker_started_at=_worker_started_at, worker_job_types=WORKER_JOB_TYPES,
+                     booted_at=boot_time())
+
+
+async def _run_watchdog() -> None:
+    """Close every run whose process is gone or whose deadline passed (fbi.ops.run_watchdog)."""
+    await asyncio.to_thread(_run_watchdog_now)
+
+
+OWN_LOOP_JOBS = frozenset({"fixtures_sync", "results_sync", "historical_backfill", "reference_refresh",
+                           "catalogue_refresh", "final_prematch", "context_refresh", "context_due", "results_repair"})
+"""Jobs run on an event loop of their own, in a thread (fbi.core.deadline.run_in_own_loop): their blocking database
+work - a season of 8,327 club friendlies, a page of 40,000 transfers - must not hold the loop the in-play capture
+runs on. The live jobs and the pre-match tick stay on the scheduler's loop."""
+
+
+def _deadline(job_id: str, job_type: str, fn: Any) -> Any:
+    """The job wrapped with its deadline (fbi.core.deadline): it can never block its own next run for ever."""
+    job = functools.partial(run_in_own_loop, fn) if job_type in OWN_LOOP_JOBS else fn
+    return functools.partial(run_with_deadline, job_id, job, timeout_for(job_type).total_seconds())
+
+
+def _connect() -> psycopg.Connection:
+    return psycopg.connect(settings.database.psycopg_url, connect_timeout=5)
+
+
+def _writer(conn: psycopg.Connection) -> HeartbeatWriter:
+    return HeartbeatWriter(
+        conn, worker_id=default_worker_id(), tick_interval_s=TICK_MINUTES * 60, code_version=code_version()
+    )
+
+
+def _jobs() -> dict[str, Any]:
+    if _scheduler is None:
+        return {}
+    return {
+        j.id: (j.next_run_time.isoformat() if j.next_run_time else None) for j in _scheduler.get_jobs()
+    }
+
+
+def _lag_ms() -> int | None:
+    """How late this tick started relative to its scheduled instant.
+
+    For an interval trigger the current run was scheduled exactly one interval
+    before the job's (already advanced) next run time.
+    """
+    if _scheduler is None:
+        return None
+    job = _scheduler.get_job("odds_capture")
+    if job is None or job.next_run_time is None:
+        return None
+    scheduled = job.next_run_time - timedelta(minutes=TICK_MINUTES)
+    return max(int((now() - scheduled).total_seconds() * 1000), 0)
+
+
+async def _tick_with_heartbeat() -> None:
+    """Run the tick and record that the worker is alive - whatever happened.
+
+    A failed tick still beats: the process is alive, and "alive but failing"
+    is a different diagnosis from "dead". The failure is re-raised so the
+    scheduler logs it as well.
+    """
+    if _lock is not None:
+        held = _lock.still_held()
+        if held is False:
+            # The database restarted and another worker took the lock first.
+            log.error("worker.lock_lost", action="stopping; the other worker carries on")
+            if _stop is not None:
+                _stop.set()
+            return
+    lag = _lag_ms()
+    started = time.monotonic()
+    outcome: TickOutcome = "failed"
+    try:
+        outcome = await _tick()
+    finally:
+        duration = int((time.monotonic() - started) * 1000)
+        try:
+            with _connect() as conn:
+                _writer(conn).beat(outcome=outcome, duration_ms=duration, lag_ms=lag, jobs=_jobs())
+        except psycopg.Error as exc:
+            log.error("heartbeat.write_failed", error=exc.__class__.__name__)
+
+
+def _on_missed(event: JobEvent) -> None:
+    """A run skipped because the process could not start it in time - most
+    often a suspended laptop. Each one is a window that may be gone."""
+    log.warning("job.missed", job=event.job_id)
+
+
+def _on_error(event: JobEvent) -> None:
+    log.error("job.failed", job=event.job_id)
+
+
+async def main() -> None:
+    global _scheduler, _lock, _stop
+    configure_logging(settings.runtime.log_level)
+    # One worker per database, host or container: the second one leaves at once.
+    _lock = WorkerLock.acquire(settings.database.psycopg_url)
+    if _lock is None:
+        with _connect() as conn:
+            other = holder(conn)
+        log.error("worker.already_running", held_by=other.application_name if other else None,
+                  since=other.backend_start.isoformat() if other and other.backend_start else None,
+                  action="not starting: stop the other worker first (scripts/dev-down worker, "
+                         "or docker compose stop worker)")
+        raise SystemExit(EXIT_ANOTHER_WORKER)
+    # Holding the lock means no other worker is alive: runs a previous worker or a dead process left open are
+    # closed now, and every five minutes after (fbi.ops.run_watchdog).
+    global _worker_started_at
+    _worker_started_at = now()
+    with _connect() as conn:
+        recovered = recover_runs(conn, at=now(), worker_started_at=_worker_started_at,
+                                 worker_job_types=WORKER_JOB_TYPES, booted_at=boot_time())
+    if recovered:
+        log.warning("worker.recovered_runs", runs=[(r.run_id, r.job_type, r.status) for r in recovered])
+    try:  # the AI layer's own records of work in progress, same rule: nothing opened before this worker still runs
+        from fbi.ai.cycle import recover_interrupted
+
+        with _connect() as conn:
+            cycles, requests = recover_interrupted(conn, before=_worker_started_at or now(), at=now())
+        if cycles or requests:
+            log.warning("worker.recovered_ai", cycles=cycles, requests=requests)
+    except Exception as exc:  # never a reason not to start
+        log.error("worker.recover_ai_failed", error=f"{type(exc).__name__}: {exc}"[:300])
+    try:  # PrediGol Intelligence's runs left open by a previous worker
+        from fbi.intel.cycle import recover_interrupted as recover_intel
+
+        with _connect() as conn:
+            closed = recover_intel(conn, before=_worker_started_at or now())
+        if closed:
+            log.warning("worker.recovered_intel", runs=closed)
+    except Exception as exc:  # never a reason not to start
+        log.error("worker.recover_intel_failed", error=f"{type(exc).__name__}: {exc}"[:300])
+    scheduler = AsyncIOScheduler(timezone="UTC")
+    _scheduler = scheduler
+    moment = now()
+
+    # Periodic syncs are anchored on the ledger, not on process start: a worker
+    # that was down for twelve hours catches up at once, and one restarted five
+    # times in an hour does not spend five times the requests.
+    with _connect() as conn:
+        fixtures_next = next_run_after(last_success(conn, "fixtures_sync"), timedelta(hours=FIXTURES_SYNC_HOURS), moment)
+        results_next = next_run_after(last_success(conn, "results_sync"), timedelta(hours=RESULTS_SYNC_HOURS), moment)
+        backfill_next = next_run_after(last_success(conn, "historical_backfill"), timedelta(hours=BACKFILL_HOURS), moment)
+        sweep_next = next_run_after(last_success(conn, "quality_sweep"), timedelta(hours=QUALITY_SWEEP_HOURS), moment)
+        context_next = next_run_after(last_success(conn, "context_refresh"),
+                                      timedelta(hours=CONTEXT_REFRESH_HOURS), moment)
+        catalogue_next = next_run_after(last_success(conn, "catalogue_refresh"),
+                                        timedelta(hours=CATALOGUE_REFRESH_HOURS), moment)
+        elo_next = next_run_after(last_success(conn, "elo_refresh"), timedelta(hours=ELO_REFRESH_HOURS), moment)
+        monitor_last = last_success(conn, "research_monitor")
+        learn_last = _last_ai_cycle(conn, "learning")
+        intel_nightly_last = _last_intel_run(conn, "nightly")
+        intel_weekly_last = _last_intel_run(conn, "weekly")
+
+    # A tick that could not start on time is still worth running late, and how late is
+    # set by the capture tolerance - NOT by the interval. Tying it to the interval made
+    # the grace shrink from 900s to 300s the moment the tick was tightened to 5 minutes
+    # for the near-close window, so a database busy for longer than that dropped every
+    # tick instead of running them late. A restore test on the live machine did exactly
+    # that for five hours and twenty minutes, and the capture simply stopped.
+    tick_grace = settings.odds.odds_window_tolerance * 60
+    scheduler.add_job(_deadline("odds_capture", "odds_capture", _tick_with_heartbeat), "interval", minutes=TICK_MINUTES, id="odds_capture",
+                      max_instances=1, coalesce=True, misfire_grace_time=tick_grace, next_run_time=moment)
+    # Live capture comes before everything else in priority, so it gets its own
+    # job rather than a slice of the odds tick: a long pre-match capture must
+    # never be the reason an in-play price was missed, and an in-play price
+    # missed is gone - /odds/live has no history to come back for.
+    scheduler.add_job(_deadline("live_odds", "live_odds_capture", _live_tick), "interval", seconds=LIVE_TICK_SECONDS, id="live_odds",
+                      max_instances=1, coalesce=True,
+                      misfire_grace_time=LIVE_TICK_SECONDS, next_run_time=moment)
+    scheduler.add_job(_deadline("live_match", "live_match_capture", _live_match_tick), "interval", seconds=LIVE_MATCH_SECONDS, id="live_match",
+                      max_instances=1, coalesce=True, misfire_grace_time=LIVE_MATCH_SECONDS,
+                      next_run_time=moment + timedelta(seconds=20))
+    scheduler.add_job(_deadline("fixtures_sync", "fixtures_sync", _daily_fixtures_sync), "interval", hours=FIXTURES_SYNC_HOURS, id="fixtures_sync",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600, next_run_time=fixtures_next)
+    scheduler.add_job(_deadline("results_sync", "results_sync", _results_sync), "interval", hours=RESULTS_SYNC_HOURS, id="results_sync",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600, next_run_time=results_next)
+    # History waits a few minutes after start so the catch-up syncs go first.
+    scheduler.add_job(_deadline("historical_backfill", "historical_backfill", _historical_backfill), "interval", hours=BACKFILL_HOURS, id="historical_backfill",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600,
+                      next_run_time=max(backfill_next, moment + timedelta(minutes=5)))
+    # Database only: forecasts for new fixtures or new results, shadow picks for
+    # new prices, settlement for new results. First run shortly after start.
+    scheduler.add_job(_pipeline, "interval", minutes=PIPELINE_MINUTES, id="pick_pipeline", max_instances=1,
+                      coalesce=True, misfire_grace_time=PIPELINE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=2))
+    scheduler.add_job(_notify, "interval", minutes=NOTIFY_MINUTES, id="notifier", max_instances=1, coalesce=True,
+                      misfire_grace_time=NOTIFY_MINUTES * 60, next_run_time=moment + timedelta(minutes=3))
+    scheduler.add_job(_quality_sweep, "interval", hours=QUALITY_SWEEP_HOURS, id="quality_sweep",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600,
+                      next_run_time=max(sweep_next, moment + timedelta(minutes=10)))
+    scheduler.add_job(_deadline("context_refresh", "context_refresh", _context_refresh), "interval", hours=CONTEXT_REFRESH_HOURS, id="context_refresh",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600,
+                      next_run_time=max(context_next, moment + timedelta(minutes=15)))
+    scheduler.add_job(_deadline("context_due", "context_due", _context_due), "interval", minutes=CONTEXT_DUE_MINUTES, id="context_due",
+                      max_instances=1, coalesce=True, misfire_grace_time=CONTEXT_DUE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=6))
+    scheduler.add_job(_deadline("results_repair", "results_repair", _results_repair), "interval", minutes=RESULTS_REPAIR_MINUTES, id="results_repair",
+                      max_instances=1, coalesce=True, misfire_grace_time=RESULTS_REPAIR_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=4))
+    scheduler.add_job(_deadline("final_prematch", "final_prematch", _final_prematch), "interval", minutes=FINAL_PREMATCH_MINUTES, id="final_prematch",
+                      max_instances=1, coalesce=True, misfire_grace_time=FINAL_PREMATCH_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=7))
+    scheduler.add_job(_deadline("reference_refresh", "reference_refresh", _reference_refresh), "interval", minutes=REFERENCE_MINUTES, id="reference_refresh",
+                      max_instances=1, coalesce=True, misfire_grace_time=REFERENCE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=14))
+    scheduler.add_job(_deadline("catalogue_refresh", "catalogue_refresh", _catalogue_refresh), "interval", hours=CATALOGUE_REFRESH_HOURS, id="catalogue_refresh",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600,
+                      next_run_time=max(catalogue_next, moment + timedelta(minutes=8)))
+    scheduler.add_job(_elo_refresh, "interval", hours=ELO_REFRESH_HOURS, id="elo_refresh",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600,
+                      next_run_time=max(elo_next, moment + timedelta(minutes=12)))
+    scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
+                      max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=9))
+    scheduler.add_job(_ai_review, "interval", minutes=AI_REVIEW_MINUTES, id="ai_pick_review",
+                      max_instances=1, coalesce=True, misfire_grace_time=AI_REVIEW_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=11))
+    scheduler.add_job(_ai_cycle, "interval", minutes=AI_CYCLE_MINUTES, id="ai_cycle", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_CYCLE_MINUTES * 60, next_run_time=moment + timedelta(minutes=8))
+    scheduler.add_job(_ai_day_start, "cron", hour=0, minute=5, timezone="America/Bogota", id="ai_day_start",
+                      max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    scheduler.add_job(_ai_learn, "cron", hour=AI_LEARN_HOUR, minute=35, timezone="America/Bogota", id="ai_learn",
+                      max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    if learn_last is None or moment - learn_last > timedelta(hours=26):
+        scheduler.add_job(_ai_learn, "date", run_date=moment + timedelta(minutes=16), id="ai_learn_catch_up",
+                          misfire_grace_time=3600)
+    # CIERRE DEL DÍA: the day written down at 23:59 Bogotá, then revised while anything of it changes.
+    scheduler.add_job(_ai_day_close, "cron", hour=23, minute=59, timezone="America/Bogota", id="ai_day_close",
+                      max_instances=1, coalesce=True, misfire_grace_time=3 * 3600)
+    scheduler.add_job(_ai_day_follow, "interval", minutes=AI_DAY_FOLLOW_MINUTES, id="ai_day_follow",
+                      max_instances=1, coalesce=True, misfire_grace_time=AI_DAY_FOLLOW_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=7))
+    scheduler.add_job(_ai_requests, "interval", minutes=AI_REQUESTS_MINUTES, id="ai_requests", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_REQUESTS_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=1))
+    scheduler.add_job(_research_monitor, "cron", hour=RESEARCH_MONITOR_HOUR, minute=5, timezone="America/Bogota",
+                      id="research_monitor", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    if monitor_last is None or moment - monitor_last > timedelta(hours=26):
+        # missed while the worker was down: once now, then on the clock
+        scheduler.add_job(_research_monitor, "date", run_date=moment + timedelta(minutes=13),
+                          id="research_monitor_catch_up", misfire_grace_time=3600)
+    scheduler.add_job(_research_weekly, "cron", day_of_week=RESEARCH_V2_WEEKDAY, hour=RESEARCH_V2_HOUR, minute=20,
+                      timezone="America/Bogota", id="research_v2_weekly", max_instances=1, coalesce=True,
+                      misfire_grace_time=12 * 3600)
+    # PrediGol Intelligence (fbi.intel): the decision layer every 15 minutes, the nightly learning after the AI's,
+    # the market discovery weekly - each caught up once when the worker was down at its time.
+    scheduler.add_job(_intel_decide, "interval", minutes=INTEL_DECIDE_MINUTES, id="intel_decide", max_instances=1,
+                      coalesce=True, misfire_grace_time=INTEL_DECIDE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=10))
+    scheduler.add_job(_intel_nightly, "cron", hour=INTEL_NIGHTLY_HOUR, minute=INTEL_NIGHTLY_MINUTE,
+                      timezone="America/Bogota", id="intel_nightly", max_instances=1, coalesce=True,
+                      misfire_grace_time=6 * 3600)
+    if intel_nightly_last is None or moment - intel_nightly_last > timedelta(hours=26):
+        scheduler.add_job(_intel_nightly, "date", run_date=moment + timedelta(minutes=25), id="intel_nightly_catch_up",
+                          misfire_grace_time=3600)
+    scheduler.add_job(_intel_weekly, "cron", day_of_week=INTEL_WEEKLY_WEEKDAY, hour=INTEL_WEEKLY_HOUR,
+                      minute=INTEL_WEEKLY_MINUTE, timezone="America/Bogota", id="intel_weekly", max_instances=1,
+                      coalesce=True, misfire_grace_time=12 * 3600)
+    if intel_weekly_last is None or moment - intel_weekly_last > timedelta(days=8):
+        scheduler.add_job(_intel_weekly, "date", run_date=moment + timedelta(minutes=40), id="intel_weekly_catch_up",
+                          misfire_grace_time=3600)
+    scheduler.add_job(_run_watchdog, "interval", minutes=WATCHDOG_MINUTES, id="run_watchdog", max_instances=1,
+                      coalesce=True, misfire_grace_time=WATCHDOG_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=WATCHDOG_MINUTES))
+    scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
+    scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
+    scheduler.start()
+
+    with _connect() as conn:
+        _writer(conn).started(jobs=_jobs())
+    log.info(
+        "worker.started",
+        tick_minutes=TICK_MINUTES,
+        fixtures_sync_hours=FIXTURES_SYNC_HOURS,
+        results_sync_hours=RESULTS_SYNC_HOURS,
+        daily_budget=settings.api_football.daily_budget,
+        code_version=code_version(),
+        fixtures_sync_next=fixtures_next.isoformat(),
+        results_sync_next=results_next.isoformat(),
+    )
+
+    stop = asyncio.Event()
+    _stop = stop
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, stop.set)
+    await stop.wait()
+    scheduler.shutdown(wait=True)
+    try:
+        with _connect() as conn:
+            _writer(conn).stopped()
+    except psycopg.Error:
+        pass
+    _lock.release()
+    log.info("worker.stopped")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

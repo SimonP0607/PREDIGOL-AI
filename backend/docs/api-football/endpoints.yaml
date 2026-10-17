@@ -1,0 +1,526 @@
+# Inventario legible por máquina de API-Football v3.9.3.
+# Extraído de la documentación oficial el 29 sep 2026. Solo campos observados: nada inventado.
+#
+# classification: CORE | MODEL_REQUIRED | PRODUCT_REQUIRED | LIVE_REQUIRED | OPTIONAL |
+#                 RESEARCH_ONLY | NOT_NEEDED
+# data_tier:      0 reference | 1 match metadata | 2 match events | 3 player | 4 market | 5 live
+# cost:           CHEAP | MODERATE | EXPENSIVE | VERY_EXPENSIVE
+# ingestion.required: si entra en el backfill por defecto
+# implemented_v2: none | raw_only | full
+
+version: "3.9.3"
+base_url: https://v3.football.api-sports.io
+auth: { header: x-apisports-key, note: "solo GET; otras cabeceras son rechazadas" }
+extracted_at: 2026-09-29
+account_plan: ultra
+
+endpoints:
+
+  status:
+    path: /status
+    method: GET
+    parameters: { required: [], optional: [] }
+    pagination: false
+    classification: [CORE]
+    data_tier: 0
+    cost: CHEAP
+    history: false
+    quota_free: true
+    update_frequency: n/a
+    ingestion: { required: false }
+    implemented_v2: full
+    notes: "no consume cuota; devuelve plan, consumo y suscripción"
+
+  timezone:
+    path: /timezone
+    method: GET
+    parameters: { required: [], optional: [] }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 0
+    cost: CHEAP
+    history: false
+    update_frequency: never
+    ingestion: { required: false }
+    implemented_v2: none
+
+  countries:
+    path: /countries
+    method: GET
+    parameters: { required: [], optional: [name, code, search] }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 0
+    cost: CHEAP
+    history: false
+    update_frequency: "al añadir un país nuevo"
+    ingestion: { required: false }
+    implemented_v2: none
+
+  leagues:
+    path: /leagues
+    method: GET
+    parameters:
+      required: []
+      optional: [id, name, country, code, season, team, type, current, search, last]
+    pagination: false
+    classification: [CORE, MODEL_REQUIRED]
+    data_tier: 0
+    cost: CHEAP
+    history: true
+    update_frequency: "varias veces al día"
+    recommended_calls: "1 por hora"
+    ingestion: { required: true, unit: league_coverage, requests: 1 }
+    implemented_v2: full
+    returns_coverage: true
+    notes: "una llamada sin filtros devuelve todas las ligas x temporadas con 12 flags de cobertura"
+
+  leagues_seasons:
+    path: /leagues/seasons
+    method: GET
+    parameters: { required: [], optional: [] }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 0
+    cost: CHEAP
+    history: false
+    ingestion: { required: false }
+    implemented_v2: none
+
+  teams:
+    path: /teams
+    method: GET
+    parameters:
+      required: []
+      optional: [id, name, league, season, country, code, venue, search]
+      at_least_one: true
+    pagination: false
+    classification: [PRODUCT_REQUIRED]
+    data_tier: 1
+    cost: MODERATE
+    history: true
+    update_frequency: "varias veces por semana"
+    ingestion: { required: false, unit: teams_season, requests: 1, blocked_by: "no hay normalizador" }
+    implemented_v2: raw_only
+    notes: "hoy gasta 1 peticion por liga-temporada y escribe 0 filas"
+
+  teams_statistics:
+    path: /teams/statistics
+    method: GET
+    parameters: { required: [league, season, team], optional: [date] }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 1
+    cost: EXPENSIVE
+    history: true
+    update_frequency: "2 veces al día"
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "100% derivable de nuestros propios partidos"
+
+  teams_seasons:
+    path: /teams/seasons
+    method: GET
+    parameters: { required: [team], optional: [] }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 1
+    cost: CHEAP
+    history: true
+    ingestion: { required: false }
+    implemented_v2: none
+
+  teams_countries:
+    path: /teams/countries
+    method: GET
+    parameters: { required: [], optional: [] }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 0
+    cost: CHEAP
+    history: false
+    ingestion: { required: false }
+    implemented_v2: none
+
+  venues:
+    path: /venues
+    method: GET
+    parameters: { required: [], optional: [id, name, city, country, search], at_least_one: true }
+    pagination: false
+    classification: [OPTIONAL]
+    data_tier: 1
+    cost: MODERATE
+    history: false
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "los datos basicos del estadio ya llegan dentro del fixture"
+
+  standings:
+    path: /standings
+    method: GET
+    parameters: { required: [season], optional: [league, team] }
+    pagination: false
+    classification: [PRODUCT_REQUIRED]
+    data_tier: 1
+    cost: MODERATE
+    history: true
+    update_frequency: "cada hora"
+    ingestion: { required: true, unit: standings_season, requests: 1 }
+    implemented_v2: full
+    notes: "array de arrays: un sub-array por grupo. Solo leemos el bloque all"
+
+  fixtures_rounds:
+    path: /fixtures/rounds
+    method: GET
+    parameters: { required: [league, season], optional: [current, dates, timezone] }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 1
+    cost: MODERATE
+    history: true
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "league.round ya viene en cada fixture"
+
+  fixtures:
+    path: /fixtures
+    method: GET
+    parameters:
+      required: []
+      optional: [id, ids, live, date, league, season, team, last, next, from, to, round, status, venue, timezone]
+      limits: { ids: 20, last: 99, next: 99 }
+    pagination: false
+    classification: [CORE, MODEL_REQUIRED, PRODUCT_REQUIRED, LIVE_REQUIRED]
+    data_tier: 1
+    cost: MODERATE
+    history: true
+    update_frequency: "cada 15 segundos"
+    recommended_calls: "1 por minuto con partido en juego, si no 1 por día"
+    ingestion:
+      required: true
+      units: [fixtures_season, fixture_details]
+      requests_per_league_season: 1
+      requests_per_20_fixtures_with_ids: 1
+    implemented_v2: full
+    returns_inline_with_ids: [events, lineups, statistics, players]
+    notes: "verificado en esta cuenta: ids= devuelve los 4 bloques, 3.8 KB/partido gzip"
+
+  fixtures_headtohead:
+    path: /fixtures/headtohead
+    method: GET
+    parameters:
+      required: [h2h]
+      optional: [date, league, season, last, next, from, to, status, venue, timezone]
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 1
+    cost: EXPENSIVE
+    history: true
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "derivable de core.fixtures"
+
+  fixtures_statistics:
+    path: /fixtures/statistics
+    method: GET
+    parameters: { required: [fixture], optional: [team, type, half] }
+    pagination: false
+    classification: [MODEL_REQUIRED, LIVE_REQUIRED]
+    data_tier: 2
+    cost: EXPENSIVE
+    history: true
+    history_from: { half_parameter: 2024 }
+    update_frequency: "cada minuto"
+    ingestion: { required: false, obtained_via: "fixtures?ids=" }
+    implemented_v2: full
+    notes: "16 tipos; Passes % se descarta por derivable"
+
+  fixtures_events:
+    path: /fixtures/events
+    method: GET
+    parameters: { required: [fixture], optional: [team, player, type] }
+    pagination: false
+    classification: [MODEL_REQUIRED, LIVE_REQUIRED]
+    data_tier: 2
+    cost: EXPENSIVE
+    history: true
+    history_from: { var_events: 2020 }
+    update_frequency: "cada 15 segundos"
+    ingestion: { required: false, obtained_via: "fixtures?ids=" }
+    implemented_v2: full
+
+  fixtures_lineups:
+    path: /fixtures/lineups
+    method: GET
+    parameters: { required: [fixture], optional: [team, player, type] }
+    pagination: false
+    classification: [MODEL_REQUIRED, LIVE_REQUIRED]
+    data_tier: 2
+    cost: EXPENSIVE
+    history: true
+    update_frequency: "cada 15 minutos"
+    availability: "entre 20 y 40 minutos antes del partido si la liga lo cubre"
+    ingestion: { required: false, obtained_via: "fixtures?ids=" }
+    implemented_v2: full
+
+  fixtures_players:
+    path: /fixtures/players
+    method: GET
+    parameters: { required: [fixture], optional: [team] }
+    pagination: false
+    classification: [MODEL_REQUIRED]
+    data_tier: 2
+    cost: EXPENSIVE
+    history: true
+    update_frequency: "cada minuto"
+    ingestion: { required: false, obtained_via: "fixtures?ids=" }
+    implemented_v2: full
+    notes: "26 metricas por jugador; rating del proveedor es caja negra"
+
+  injuries:
+    path: /injuries
+    method: GET
+    parameters:
+      required: []
+      optional: [league, season, fixture, team, player, date, ids, timezone]
+      at_least_one: true
+      limits: { ids: 20 }
+      conditional: { season: "obligatorio con league, team o player" }
+    pagination: false
+    classification: [MODEL_REQUIRED]
+    data_tier: 3
+    cost: MODERATE
+    history: true
+    history_from: { all: 2021-04 }
+    update_frequency: "cada 4 horas"
+    ingestion: { required: true, unit: injuries_season, requests: 1, since_season: 2021 }
+    implemented_v2: full
+
+  predictions:
+    path: /predictions
+    method: GET
+    parameters: { required: [fixture], optional: [] }
+    pagination: false
+    classification: [RESEARCH_ONLY]
+    data_tier: 1
+    cost: EXPENSIVE
+    history: false
+    update_frequency: "cada hora"
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "el proveedor declara que NO usa cuotas de casas; util solo como benchmark externo"
+
+  coachs:
+    path: /coachs
+    method: GET
+    parameters: { required: [], optional: [id, team, search] }
+    pagination: false
+    classification: [OPTIONAL]
+    data_tier: 3
+    cost: VERY_EXPENSIVE
+    history: true
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "el entrenador del partido ya llega dentro de la alineacion"
+
+  players:
+    path: /players
+    method: GET
+    parameters:
+      required: []
+      optional: [id, team, league, season, search, page]
+      conditional: { season: "requiere id, league o team", search: "requiere league o team" }
+    pagination: { enabled: true, per_page: 20 }
+    classification: [OPTIONAL]
+    data_tier: 3
+    cost: VERY_EXPENSIVE
+    history: true
+    ingestion: { required: false, unit: players_season, blocked_by: "no hay normalizador; derivable" }
+    implemented_v2: raw_only
+
+  players_profiles:
+    path: /players/profiles
+    method: GET
+    parameters: { required: [], optional: [player, search, page] }
+    pagination: { enabled: true, per_page: 250 }
+    classification: [OPTIONAL]
+    data_tier: 3
+    cost: VERY_EXPENSIVE
+    history: false
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "nuevo en 3.9.3; unica via para poner nombre a los provider_player_id que ya tenemos"
+
+  players_seasons:
+    path: /players/seasons
+    method: GET
+    parameters: { required: [], optional: [player] }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 3
+    cost: CHEAP
+    history: true
+    ingestion: { required: false }
+    implemented_v2: none
+
+  players_squads:
+    path: /players/squads
+    method: GET
+    parameters: { required: [], optional: [team, player], at_least_one: true }
+    pagination: false
+    classification: [OPTIONAL]
+    data_tier: 3
+    cost: EXPENSIVE
+    history: false
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "solo plantilla ACTUAL: no sirve para reconstruir plantillas historicas"
+
+  players_teams:
+    path: /players/teams
+    method: GET
+    parameters: { required: [player], optional: [] }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 3
+    cost: VERY_EXPENSIVE
+    history: true
+    ingestion: { required: false }
+    implemented_v2: none
+
+  players_topscorers:
+    path: /players/topscorers
+    method: GET
+    parameters: { required: [league, season], optional: [] }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 3
+    cost: MODERATE
+    history: true
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "derivable de fixture_player_stats; lo mismo para topassists, topyellowcards, topredcards"
+
+  transfers:
+    path: /transfers
+    method: GET
+    parameters: { required: [], optional: [player, team] }
+    pagination: false
+    classification: [OPTIONAL]
+    data_tier: 3
+    cost: VERY_EXPENSIVE
+    history: true
+    ingestion: { required: false }
+    implemented_v2: none
+
+  trophies:
+    path: /trophies
+    method: GET
+    parameters: { required: [], optional: [player, players, coach, coachs], limits: { players: 20, coachs: 20 } }
+    pagination: false
+    classification: [NOT_NEEDED]
+    data_tier: 3
+    cost: VERY_EXPENSIVE
+    history: true
+    ingestion: { required: false }
+    implemented_v2: none
+
+  sidelined:
+    path: /sidelined
+    method: GET
+    parameters: { required: [], optional: [player, players, coach, coachs], limits: { players: 20, coachs: 20 } }
+    pagination: false
+    classification: [OPTIONAL]
+    data_tier: 3
+    cost: VERY_EXPENSIVE
+    history: true
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "historial de bajas por jugador; complementa /injuries que es por partido"
+
+  odds:
+    path: /odds
+    method: GET
+    parameters: { required: [], optional: [fixture, league, season, date, timezone, page, bookmaker, bet] }
+    pagination: { enabled: true, per_page: 10 }
+    classification: [CORE, LIVE_REQUIRED]
+    data_tier: 4
+    cost: EXPENSIVE
+    history: false
+    history_window: { available_from: "T-14 dias", retention: "7 dias" }
+    update_frequency: "cada 3 horas"
+    ingestion: { required: false, reason: "no existe historico: se captura en vivo" }
+    implemented_v2: full
+
+  odds_mapping:
+    path: /odds/mapping
+    method: GET
+    parameters: { required: [], optional: [page] }
+    pagination: { enabled: true, per_page: 100 }
+    classification: [OPTIONAL]
+    data_tier: 4
+    cost: CHEAP
+    history: false
+    ingestion: { required: false }
+    implemented_v2: none
+    notes: "evitaria pedir cuotas de partidos que no tienen"
+
+  odds_bookmakers:
+    path: /odds/bookmakers
+    method: GET
+    parameters: { required: [], optional: [id, search] }
+    pagination: false
+    classification: [CORE]
+    data_tier: 4
+    cost: CHEAP
+    history: false
+    ingestion: { required: true, requests: 1, frequency: "1 vez al mes" }
+    implemented_v2: none
+    catalogue_file: catalogues/bookmakers.json
+    observed_count: 33
+
+  odds_bets:
+    path: /odds/bets
+    method: GET
+    parameters: { required: [], optional: [id, search] }
+    pagination: false
+    classification: [CORE]
+    data_tier: 4
+    cost: CHEAP
+    history: false
+    ingestion: { required: true, requests: 1, frequency: "1 vez al mes" }
+    implemented_v2: none
+    catalogue_file: catalogues/bets_prematch.json
+    observed_count: 338
+    notes: "ids NO compatibles con odds/live"
+
+  odds_live:
+    path: /odds/live
+    method: GET
+    parameters: { required: [], optional: [fixture, league, bet] }
+    pagination: false
+    classification: [LIVE_REQUIRED]
+    data_tier: 5
+    cost: EXPENSIVE
+    history: false
+    update_frequency: "cada 5 segundos (rango 5-60)"
+    availability: "desde T-15/T-5 min hasta 5-20 min despues del final"
+    ingestion: { required: false }
+    implemented_v2: full
+    notes: "sin historia; agregado sin casa; trae handicap, main y suspended por valor"
+
+  odds_live_bets:
+    path: /odds/live/bets
+    method: GET
+    parameters: { required: [], optional: [id, search] }
+    pagination: false
+    classification: [CORE]
+    data_tier: 5
+    cost: CHEAP
+    history: false
+    update_frequency: "cada 60 segundos"
+    ingestion: { required: true, requests: 1, frequency: "1 vez al mes" }
+    implemented_v2: none
+    catalogue_file: catalogues/bets_inplay.json
+    observed_count: 266
+    notes: "ids NO compatibles con odds pre-match"

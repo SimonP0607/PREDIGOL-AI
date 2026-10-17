@@ -1,0 +1,2 @@
+# PREDIGOL_TLS_MODE=acme (default): Caddy obtains and renews a Let's Encrypt certificate itself (ports 80/443 open,
+# the DNS pointing here). Nothing to add.

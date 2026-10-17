@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# Start the local stack in HOST mode (WSL): API, worker and web on this machine,
+# PostgreSQL in Docker Desktop. Idempotent: whatever already runs is left alone.
+#
+#   scripts/dev-up              # start what is not running
+#   scripts/dev-up api web      # just these (api, worker, web)
+#   scripts/dev-up --migrate    # back up (pg_dump to ~/backups), then apply pending migrations
+#
+# Environment (all optional):
+#   FBI_WEB_DIR   frontend repo           (default ~/projects/football-intelligence-hub)
+#   FBI_RUN_DIR   pid files and logs      (default ~/.fbi)
+#   FBI_API_PORT  API port                (default 8010)
+#   FBI_WEB_PORT  web port                (default 5173)
+#
+# Never starts a second worker: two workers would both capture and double the
+# provider requests. Compose mode (make up) is the alternative to this, not an
+# addition to it: a service already running in a container is left to it, and
+# the worker itself refuses to start while another one holds its database lock.
+set -euo pipefail
+# bun lives in ~/.bun/bin, which only interactive shells (.bashrc) put on PATH.
+export PATH="$HOME/.bun/bin:$PATH"
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+WEB="${FBI_WEB_DIR:-$HOME/projects/football-intelligence-hub}"
+RUN="${FBI_RUN_DIR:-$HOME/.fbi}"
+API_PORT="${FBI_API_PORT:-8010}"
+WEB_PORT="${FBI_WEB_PORT:-5173}"
+PY="$ROOT/.venv/bin/python"
+say() { printf '%s\n' "$*"; }
+
+MIGRATE=0; targets=()
+for arg in "$@"; do
+  case "$arg" in
+    --migrate) MIGRATE=1 ;;
+    api|worker|web) targets+=("$arg") ;;
+    *) say "unknown argument: $arg (--migrate, api, worker, web)"; exit 2 ;;
+  esac
+done
+[[ ${#targets[@]} -eq 0 ]] && targets=(api worker web)
+want() { [[ " ${targets[*]} " == *" $1 "* ]]; }
+mkdir -p "$RUN"
+
+# pgrep patterns use a bracket so they never match the shell running them.
+running() { pgrep -f "$1" >/dev/null 2>&1; }
+
+# A service already running in compose mode (container fbi-<name>).
+in_compose() {
+  command -v docker >/dev/null 2>&1 || return 1
+  # Exit status AND a container id: Docker Desktop's WSL shim prints a help
+  # text to stdout when integration is off, which is not a running container.
+  local ids
+  ids="$(docker ps -q --filter "name=^fbi-$1\$" --filter status=running 2>/dev/null)" || return 1
+  [[ "$ids" =~ ^[0-9a-f]{12} ]]
+}
+
+backup() {
+  local dir="$HOME/backups" file
+  file="$dir/fbi-$(date -u +%Y%m%dT%H%M%SZ)-pre-migrate.dump"
+  mkdir -p "$dir"
+  local ok=0
+  if command -v docker >/dev/null 2>&1 && docker ps -q --filter "name=^fbi-postgres\$" | grep -q .; then
+    # Dump inside the container and copy the file out: streaming docker.exe stdout
+    # through WSL interop stalls on a multi-GB database and leaves an empty file.
+    local tmp="/tmp/$(basename "$file")"
+    docker exec fbi-postgres pg_dump -U fbi -Fc -f "$tmp" fbi </dev/null \
+      && docker cp "fbi-postgres:$tmp" "$file" </dev/null && ok=1
+    docker exec fbi-postgres rm -f "$tmp" </dev/null || true
+  else
+    pg_dump -Fc -f "$file" "$(cd "$ROOT" && "$PY" -c 'from fbi.core.config import settings; print(settings.database.psycopg_url)')" && ok=1
+  fi
+  if [[ $ok -eq 0 || ! -s "$file" ]]; then say "backup: failed ($file) - not migrating"; exit 1; fi
+  say "backup: $file ($(du -h "$file" | cut -f1))"
+}
+
+db_ok() {
+  (cd "$ROOT" && "$PY" - <<'PY' >/dev/null 2>&1
+import psycopg
+from fbi.core.config import settings
+psycopg.connect(settings.database.psycopg_url, connect_timeout=3).close()
+PY
+  )
+}
+
+# 1. PostgreSQL ---------------------------------------------------------------
+if ! db_ok; then
+  say "database: not reachable - starting Docker Desktop and waiting (up to 3 min)"
+  DD="/mnt/c/Program Files/Docker/Docker/Docker Desktop.exe"
+  for candidate in "$DD" /mnt/c/Users/*/AppData/Local/Programs/DockerDesktop/"Docker Desktop.exe"; do
+    if [[ -f "$candidate" ]]; then "$candidate" >/dev/null 2>&1 & break; fi
+  done
+  for _ in $(seq 1 36); do sleep 5; db_ok && break; done
+  db_ok || { say "database: still not reachable. Start Docker Desktop and the fbi-postgres container, then re-run."; exit 1; }
+fi
+say "database: reachable"
+
+# 2. Schema -------------------------------------------------------------------
+if ! (cd "$ROOT" && "$PY" -m scripts.schema_status); then
+  [[ $MIGRATE -eq 1 ]] || { say "re-run with --migrate to back up and upgrade"; exit 1; }
+  backup
+  (cd "$ROOT" && "$ROOT/.venv/bin/alembic" upgrade head)
+  (cd "$ROOT" && "$PY" -m scripts.schema_status) || exit 1
+fi
+
+# 3. Processes ----------------------------------------------------------------
+start() {  # name, pattern, dir, command...
+  local name="$1" pattern="$2" dir="$3"; shift 3
+  if running "$pattern"; then say "$name: already running"; return; fi
+  if in_compose "$name"; then say "$name: runs in compose (container fbi-$name) - not starting a second one"; return; fi
+  # The subshell becomes the service (exec): no shell is left holding this
+  # script's stdout, so a caller reading it is not kept waiting, and setsid
+  # takes the service out of the caller's session, so it outlives the caller.
+  (cd "$dir" && exec setsid nohup "$@" >>"$RUN/$name.log" 2>&1 </dev/null) &
+  echo $! >"$RUN/$name.pid"
+  say "$name: started (pid $(cat "$RUN/$name.pid"), log $RUN/$name.log)"
+}
+
+# Every browser request reaches the API through the web server's proxy, so all of
+# them come from 127.0.0.1 and share ONE rate-limit bucket: the API's default of
+# 240 a minute is a single busy tab. 3,000 still stops a runaway polling loop.
+export FBI_API_RATE_LIMIT="${FBI_API_RATE_LIMIT:-3000}"
+want api && start api "[u]vicorn apps.api.main" "$ROOT" "$ROOT/scripts/run-supervised" api "$ROOT/.venv/bin/uvicorn" apps.api.main:app --host 127.0.0.1 --port "$API_PORT" --log-level warning
+# After the cut-over the worker runs on the server (deploy/cutover/export.sh leaves this marker): it never starts
+# here as well - two workers would be two databases capturing, the provider's quota spent twice, data diverging.
+MOVED="$RUN/worker-moved-to-server"
+if want worker; then
+  if [[ -e "$MOVED" ]]; then
+    say "worker: NOT started - it runs on the server ($(head -c 200 "$MOVED")). Only to bring it back here (vuelta atrás, deploy/vps/README.md §4): rm $MOVED"
+  else
+    start worker "[a]pps.worker" "$ROOT" "$ROOT/scripts/run-supervised" worker "$PY" -m apps.worker.scheduler
+  fi
+fi
+if want web; then
+  if [[ -d "$WEB" ]]; then
+    start web "[v]ite dev" "$WEB" bun run dev --host 127.0.0.1 --port "$WEB_PORT"
+  else
+    say "web: $WEB not found - skipped"
+  fi
+fi
+
+# 4. Health -------------------------------------------------------------------
+# Any HTTP answer will do: /health says 503 while something is down, which is
+# for dev-status to report, not a reason to keep waiting.
+for _ in $(seq 1 20); do curl -sS --max-time 3 -o /dev/null "http://127.0.0.1:$API_PORT/health" 2>/dev/null && break; sleep 1; done
+"$ROOT/scripts/dev-status"

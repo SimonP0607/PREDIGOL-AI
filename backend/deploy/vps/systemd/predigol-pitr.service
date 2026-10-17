@@ -1,0 +1,13 @@
+[Unit]
+Description=PrediGol: PITR base backup (full on Sundays, differential otherwise)
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/pitr.sh backup
+# exit 3 = PITR not configured: not a failure
+SuccessExitStatus=3
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

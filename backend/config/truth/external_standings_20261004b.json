@@ -1,0 +1,385 @@
+[
+ {
+  "league": 239,
+  "season": 2026,
+  "table": "Clausura",
+  "source": "DIMAYOR (Liga BetPlay DIMAYOR II-2026, Fase I - todos contra todos)",
+  "url": "https://dimayor.com.co/liga-betplay-dimayor/",
+  "accessed_at": "2026-10-04T17:33:00Z",
+  "kind": "official",
+  "rows": [
+   {
+    "team": 1138,
+    "name": "America de Cali",
+    "played": 11,
+    "points": 24,
+    "gd": 16
+   },
+   {
+    "team": 1127,
+    "name": "Deportivo Cali",
+    "played": 12,
+    "points": 24,
+    "gd": 11
+   },
+   {
+    "team": 1137,
+    "name": "Atletico Nacional",
+    "played": 10,
+    "points": 22,
+    "gd": 11
+   },
+   {
+    "team": 1125,
+    "name": "Millonarios",
+    "played": 13,
+    "points": 21,
+    "gd": 7
+   },
+   {
+    "team": 1131,
+    "name": "Bucaramanga",
+    "played": 10,
+    "points": 20,
+    "gd": 8
+   },
+   {
+    "team": 1128,
+    "name": "Independiente Medellin",
+    "played": 11,
+    "points": 20,
+    "gd": 4
+   },
+   {
+    "team": 1139,
+    "name": "Santa Fe",
+    "played": 11,
+    "points": 19,
+    "gd": 6
+   },
+   {
+    "team": 1142,
+    "name": "Deportes Tolima",
+    "played": 12,
+    "points": 19,
+    "gd": 2
+   },
+   {
+    "team": 1464,
+    "name": "Llaneros",
+    "played": 11,
+    "points": 14,
+    "gd": 0
+   },
+   {
+    "team": 1144,
+    "name": "Aguilas Doradas",
+    "played": 11,
+    "points": 14,
+    "gd": -1
+   },
+   {
+    "team": 1136,
+    "name": "Once Caldas",
+    "played": 11,
+    "points": 12,
+    "gd": -1
+   },
+   {
+    "team": 1134,
+    "name": "Internacional de Bogota",
+    "played": 12,
+    "points": 12,
+    "gd": -4
+   },
+   {
+    "team": 1470,
+    "name": "Cucuta",
+    "played": 11,
+    "points": 12,
+    "gd": -8
+   },
+   {
+    "team": 1132,
+    "name": "Chico",
+    "played": 11,
+    "points": 12,
+    "gd": -8
+   },
+   {
+    "team": 1141,
+    "name": "Alianza Valledupar",
+    "played": 12,
+    "points": 11,
+    "gd": -12
+   },
+   {
+    "team": 1135,
+    "name": "Junior",
+    "played": 10,
+    "points": 9,
+    "gd": -2
+   },
+   {
+    "team": 1147,
+    "name": "Fortaleza",
+    "played": 11,
+    "points": 9,
+    "gd": -5
+   },
+   {
+    "team": 1462,
+    "name": "Deportivo Pereira",
+    "played": 10,
+    "points": 8,
+    "gd": -6
+   },
+   {
+    "team": 1126,
+    "name": "Deportivo Pasto",
+    "played": 11,
+    "points": 8,
+    "gd": -9
+   },
+   {
+    "team": 1133,
+    "name": "Jaguares",
+    "played": 11,
+    "points": 7,
+    "gd": -9
+   }
+  ]
+ },
+ {
+  "league": 128,
+  "season": 2026,
+  "table": "Clausura - Group A",
+  "source": "futbolargentino.com (Torneo Clausura 2026, Zona A); the LPF site's tables (Opta widgets) did not load",
+  "url": "https://www.futbolargentino.com/primera-division/tabla-de-posiciones",
+  "accessed_at": "2026-10-04T17:35:00Z",
+  "kind": "secondary",
+  "rows": [
+   {
+    "team": 478,
+    "name": "Instituto",
+    "played": 11,
+    "points": 25,
+    "gd": 9
+   },
+   {
+    "team": 442,
+    "name": "Defensa y Justicia",
+    "played": 11,
+    "points": 21,
+    "gd": 5
+   },
+   {
+    "team": 451,
+    "name": "Boca Juniors",
+    "played": 11,
+    "points": 20,
+    "gd": 6
+   },
+   {
+    "team": 438,
+    "name": "Velez Sarsfield",
+    "played": 10,
+    "points": 20,
+    "gd": 6
+   },
+   {
+    "team": 1066,
+    "name": "Gimnasia Mendoza",
+    "played": 10,
+    "points": 17,
+    "gd": 5
+   },
+   {
+    "team": 446,
+    "name": "Lanus",
+    "played": 11,
+    "points": 17,
+    "gd": 4
+   },
+   {
+    "team": 457,
+    "name": "Newells Old Boys",
+    "played": 11,
+    "points": 17,
+    "gd": 3
+   },
+   {
+    "team": 453,
+    "name": "Independiente",
+    "played": 11,
+    "points": 17,
+    "gd": -1
+   },
+   {
+    "team": 441,
+    "name": "Union de Santa Fe",
+    "played": 11,
+    "points": 13,
+    "gd": -2
+   },
+   {
+    "team": 460,
+    "name": "San Lorenzo",
+    "played": 11,
+    "points": 11,
+    "gd": -7
+   },
+   {
+    "team": 450,
+    "name": "Estudiantes de La Plata",
+    "played": 10,
+    "points": 10,
+    "gd": -1
+   },
+   {
+    "team": 476,
+    "name": "Deportivo Riestra",
+    "played": 10,
+    "points": 10,
+    "gd": -2
+   },
+   {
+    "team": 1064,
+    "name": "Platense",
+    "played": 10,
+    "points": 9,
+    "gd": -6
+   },
+   {
+    "team": 456,
+    "name": "Talleres de Cordoba",
+    "played": 10,
+    "points": 8,
+    "gd": -6
+   },
+   {
+    "team": 1065,
+    "name": "Central Cordoba SE",
+    "played": 10,
+    "points": 8,
+    "gd": -6
+   }
+  ]
+ },
+ {
+  "league": 128,
+  "season": 2026,
+  "table": "Clausura - Group B",
+  "source": "futbolargentino.com (Torneo Clausura 2026, Zona B); the LPF site's tables (Opta widgets) did not load",
+  "url": "https://www.futbolargentino.com/primera-division/tabla-de-posiciones",
+  "accessed_at": "2026-10-04T17:35:00Z",
+  "kind": "secondary",
+  "rows": [
+   {
+    "team": 458,
+    "name": "Argentinos Juniors",
+    "played": 10,
+    "points": 18,
+    "gd": 4
+   },
+   {
+    "team": 437,
+    "name": "Rosario Central",
+    "played": 10,
+    "points": 18,
+    "gd": 3
+   },
+   {
+    "team": 473,
+    "name": "Independiente Rivadavia",
+    "played": 11,
+    "points": 18,
+    "gd": 1
+   },
+   {
+    "team": 434,
+    "name": "Gimnasia La Plata",
+    "played": 11,
+    "points": 18,
+    "gd": 0
+   },
+   {
+    "team": 440,
+    "name": "Belgrano",
+    "played": 10,
+    "points": 16,
+    "gd": 4
+   },
+   {
+    "team": 445,
+    "name": "Huracan",
+    "played": 10,
+    "points": 16,
+    "gd": 2
+   },
+   {
+    "team": 474,
+    "name": "Sarmiento",
+    "played": 10,
+    "points": 16,
+    "gd": 1
+   },
+   {
+    "team": 2432,
+    "name": "Barracas Central",
+    "played": 11,
+    "points": 15,
+    "gd": -1
+   },
+   {
+    "team": 435,
+    "name": "River Plate",
+    "played": 10,
+    "points": 13,
+    "gd": 1
+   },
+   {
+    "team": 455,
+    "name": "Atletico Tucuman",
+    "played": 11,
+    "points": 13,
+    "gd": 0
+   },
+   {
+    "team": 452,
+    "name": "Tigre",
+    "played": 10,
+    "points": 12,
+    "gd": 0
+   },
+   {
+    "team": 449,
+    "name": "Banfield",
+    "played": 10,
+    "points": 9,
+    "gd": -5
+   },
+   {
+    "team": 463,
+    "name": "Aldosivi",
+    "played": 10,
+    "points": 8,
+    "gd": -4
+   },
+   {
+    "team": 436,
+    "name": "Racing Club",
+    "played": 10,
+    "points": 8,
+    "gd": -5
+   },
+   {
+    "team": 2424,
+    "name": "Estudiantes Rio Cuarto",
+    "played": 10,
+    "points": 6,
+    "gd": -8
+   }
+  ]
+ }
+]

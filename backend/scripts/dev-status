@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# What is running, and is it healthy: processes, API health, web, containers.
+set -uo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+API_PORT="${FBI_API_PORT:-8010}"
+WEB_PORT="${FBI_WEB_PORT:-5173}"
+for pair in "api:[u]vicorn apps.api.main" "worker:[a]pps.worker" "web:[v]ite dev"; do
+  name="${pair%%:*}"; pattern="${pair#*:}"
+  pid="$(pgrep -f "$pattern" | head -1)"
+  if [[ -n "$pid" ]]; then state="running (pid $pid)"; else state="not running"; fi
+  printf '%-8s %s\n' "$name" "$state"
+done
+# /health answers 503 when something is down: the body is still the report.
+health="$(curl -sS --max-time 10 "http://127.0.0.1:$API_PORT/health" 2>/dev/null || true)"
+if [[ "$health" == "{"* ]]; then
+  echo "$health" | "$ROOT/.venv/bin/python" -c 'import json,sys; h=json.load(sys.stdin); print("health  ", h["status"], "|", " ".join(f"{k}={v["status"]}" for k,v in h.items() if isinstance(v, dict) and "status" in v))'
+else
+  echo "health   API not answering on :$API_PORT"
+fi
+if curl -sS --max-time 5 -o /dev/null "http://127.0.0.1:$WEB_PORT/" 2>/dev/null; then
+  echo "web      http://127.0.0.1:$WEB_PORT"
+else
+  echo "web      not answering on :$WEB_PORT"
+fi
+if command -v docker >/dev/null 2>&1; then
+  containers="$(docker ps --filter "name=^fbi-" --format '{{.Names}} ({{.Status}})' 2>/dev/null | paste -sd ' ' -)"
+  echo "docker   ${containers:-no fbi containers running}"
+fi

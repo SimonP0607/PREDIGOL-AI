@@ -1,0 +1,1781 @@
+{
+  "dry_run": false,
+  "source_rows": {
+    "competition_context": 81,
+    "tracked_competitions": 77,
+    "ref_bookmakers": 32
+  },
+  "accepted": {
+    "competition_context": 25,
+    "tracked_competitions": 77,
+    "ref_bookmakers": 32
+  },
+  "transformed": {
+    "competition_context": 52
+  },
+  "rejected": {
+    "competition_context": 4
+  },
+  "warnings": [
+    "league:90 (KNVB Beker): classified domestic_league in legacy context but Cup at the provider; imported as domestic_cup with elo_weight 0.4 (legacy's own rule). Review.",
+    "league:105 (NM Cupen): classified domestic_league in legacy context but Cup at the provider; imported as domestic_cup with elo_weight 0.4 (legacy's own rule). Review.",
+    "league:108 (Cup): classified domestic_league in legacy context but Cup at the provider; imported as domestic_cup with elo_weight 0.4 (legacy's own rule). Review.",
+    "league:115 (Svenska Cupen): classified domestic_league in legacy context but Cup at the provider; imported as domestic_cup with elo_weight 0.4 (legacy's own rule). Review.",
+    "league:121 (DBU Pokalen): classified domestic_league in legacy context but Cup at the provider; imported as domestic_cup with elo_weight 0.4 (legacy's own rule). Review.",
+    "league:130 (Copa Argentina): classified domestic_league in legacy context but Cup at the provider; imported as domestic_cup with elo_weight 0.4 (legacy's own rule). Review.",
+    "league:241 (Copa Colombia): classified domestic_league in legacy context but Cup at the provider; imported as domestic_cup with elo_weight 0.4 (legacy's own rule). Review.",
+    "league:257 (US Open Cup): classified domestic_league in legacy context but Cup at the provider; imported as domestic_cup with elo_weight 0.4 (legacy's own rule). Review.",
+    "league:294 (FA Cup): classified domestic_league in legacy context but Cup at the provider; imported as domestic_cup with elo_weight 0.4 (legacy's own rule). Review.",
+    "league:298 (FA Cup): classified domestic_league in legacy context but Cup at the provider; imported as domestic_cup with elo_weight 0.4 (legacy's own rule). Review."
+  ],
+  "rows": [
+    {
+      "source": "competition_context",
+      "key": "league:39",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:39",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:135",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:135",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:140",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:140",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:78",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:78",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:40",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:40",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:71",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "Serie A Brazil",
+          "to": "Serie A",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:71",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:1",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "FIFA World Cup",
+          "to": "World Cup",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:1",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:22",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:22",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:2",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:2",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:3",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:3",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:11",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:11",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:13",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:13",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:61",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:61",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:62",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:62",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:63",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 63",
+          "to": "National 1",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:63",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:66",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:66",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:72",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "Serie B Brazil",
+          "to": "Serie B",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:72",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:73",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:73",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:79",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:79",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:80",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 80",
+          "to": "3. Liga",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:80",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:81",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:81",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:88",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:88",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:89",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:89",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:90",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 90",
+          "to": "KNVB Beker",
+          "why": "provider catalogue is authoritative"
+        },
+        "competition_type": {
+          "from": "domestic_league",
+          "to": "domestic_cup",
+          "why": "provider type is Cup"
+        },
+        "elo_weight": {
+          "from": 1.0,
+          "to": 0.4,
+          "why": "legacy rule: cups weigh 0.4"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:90",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:94",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:94",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:95",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 95",
+          "to": "Segunda Liga",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:95",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:103",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 103",
+          "to": "Eliteserien",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:103",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:104",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 104",
+          "to": "1. Division",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:104",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:105",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 105",
+          "to": "NM Cupen",
+          "why": "provider catalogue is authoritative"
+        },
+        "competition_type": {
+          "from": "domestic_league",
+          "to": "domestic_cup",
+          "why": "provider type is Cup"
+        },
+        "elo_weight": {
+          "from": 1.0,
+          "to": 0.4,
+          "why": "legacy rule: cups weigh 0.4"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:105",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:106",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 106",
+          "to": "Ekstraklasa",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:106",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:107",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 107",
+          "to": "I Liga",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:107",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:108",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 108",
+          "to": "Cup",
+          "why": "provider catalogue is authoritative"
+        },
+        "competition_type": {
+          "from": "domestic_league",
+          "to": "domestic_cup",
+          "why": "provider type is Cup"
+        },
+        "elo_weight": {
+          "from": 1.0,
+          "to": 0.4,
+          "why": "legacy rule: cups weigh 0.4"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:108",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:113",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 113",
+          "to": "Allsvenskan",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:113",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:114",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 114",
+          "to": "Superettan",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:114",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:115",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 115",
+          "to": "Svenska Cupen",
+          "why": "provider catalogue is authoritative"
+        },
+        "competition_type": {
+          "from": "domestic_league",
+          "to": "domestic_cup",
+          "why": "provider type is Cup"
+        },
+        "elo_weight": {
+          "from": 1.0,
+          "to": 0.4,
+          "why": "legacy rule: cups weigh 0.4"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:115",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:119",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 119",
+          "to": "Superliga",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:119",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:120",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 120",
+          "to": "1. Division",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:120",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:121",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 121",
+          "to": "DBU Pokalen",
+          "why": "provider catalogue is authoritative"
+        },
+        "competition_type": {
+          "from": "domestic_league",
+          "to": "domestic_cup",
+          "why": "provider type is Cup"
+        },
+        "elo_weight": {
+          "from": 1.0,
+          "to": 0.4,
+          "why": "legacy rule: cups weigh 0.4"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:121",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:122",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 122",
+          "to": "2. Division",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:122",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:128",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:128",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:129",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 129",
+          "to": "Primera Nacional",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:129",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:130",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 130",
+          "to": "Copa Argentina",
+          "why": "provider catalogue is authoritative"
+        },
+        "competition_type": {
+          "from": "domestic_league",
+          "to": "domestic_cup",
+          "why": "provider type is Cup"
+        },
+        "elo_weight": {
+          "from": 1.0,
+          "to": 0.4,
+          "why": "legacy rule: cups weigh 0.4"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:130",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:136",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:136",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:137",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:137",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:141",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "La Liga 2",
+          "to": "Segunda División",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:141",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:143",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:143",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:144",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 144",
+          "to": "Jupiler Pro League",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:144",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:145",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 145",
+          "to": "Challenger Pro League",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:145",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:239",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 239",
+          "to": "Primera A",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:239",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:240",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 240",
+          "to": "Primera B",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:240",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:241",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 241",
+          "to": "Copa Colombia",
+          "why": "provider catalogue is authoritative"
+        },
+        "competition_type": {
+          "from": "domestic_league",
+          "to": "domestic_cup",
+          "why": "provider type is Cup"
+        },
+        "elo_weight": {
+          "from": 1.0,
+          "to": 0.4,
+          "why": "legacy rule: cups weigh 0.4"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:241",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:251",
+      "outcome": "rejected",
+      "reason": "not in the provider catalogue and the legacy name is a placeholder ('League 251'); re-create from /leagues when needed",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:252",
+      "outcome": "rejected",
+      "reason": "not in the provider catalogue and the legacy name is a placeholder ('League 252'); re-create from /leagues when needed",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:253",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:253",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:255",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 255",
+          "to": "USL Championship",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:255",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:257",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 257",
+          "to": "US Open Cup",
+          "why": "provider catalogue is authoritative"
+        },
+        "competition_type": {
+          "from": "domestic_league",
+          "to": "domestic_cup",
+          "why": "provider type is Cup"
+        },
+        "elo_weight": {
+          "from": 1.0,
+          "to": 0.4,
+          "why": "legacy rule: cups weigh 0.4"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:257",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:258",
+      "outcome": "rejected",
+      "reason": "not in the provider catalogue and the legacy name is a placeholder ('League 258'); re-create from /leagues when needed",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:259",
+      "outcome": "rejected",
+      "reason": "not in the provider catalogue and the legacy name is a placeholder ('League 259'); re-create from /leagues when needed",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:262",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:262",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:263",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 263",
+          "to": "Liga de Expansión MX",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:263",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:265",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 265",
+          "to": "Primera División",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:265",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:266",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 266",
+          "to": "Primera B",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:266",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:268",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 268",
+          "to": "Primera División - Apertura",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:268",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:269",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 269",
+          "to": "Segunda División",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:269",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:281",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 281",
+          "to": "Primera División",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:281",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:282",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 282",
+          "to": "Segunda División",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:282",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:283",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 283",
+          "to": "Liga I",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:283",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:284",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 284",
+          "to": "Liga II",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:284",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:286",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 286",
+          "to": "Super Liga",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:286",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:287",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 287",
+          "to": "Prva Liga",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:287",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:288",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 288",
+          "to": "Premier Soccer League",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:288",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:289",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 289",
+          "to": "1st Division",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:289",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:292",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 292",
+          "to": "K League 1",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:292",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:293",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 293",
+          "to": "K League 2",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:293",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:294",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 294",
+          "to": "FA Cup",
+          "why": "provider catalogue is authoritative"
+        },
+        "competition_type": {
+          "from": "domestic_league",
+          "to": "domestic_cup",
+          "why": "provider type is Cup"
+        },
+        "elo_weight": {
+          "from": 1.0,
+          "to": 0.4,
+          "why": "legacy rule: cups weigh 0.4"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:294",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:295",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 295",
+          "to": "K3 League",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:295",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:296",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 296",
+          "to": "Thai League 1",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:296",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:297",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 297",
+          "to": "Thai League 2",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:297",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:298",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 298",
+          "to": "FA Cup",
+          "why": "provider catalogue is authoritative"
+        },
+        "competition_type": {
+          "from": "domestic_league",
+          "to": "domestic_cup",
+          "why": "provider type is Cup"
+        },
+        "elo_weight": {
+          "from": 1.0,
+          "to": 0.4,
+          "why": "legacy rule: cups weigh 0.4"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:298",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:299",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 299",
+          "to": "Primera División",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:299",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "competition_context",
+      "key": "league:300",
+      "outcome": "transformed",
+      "reason": "",
+      "changes": {
+        "name": {
+          "from": "League 300",
+          "to": "Segunda División",
+          "why": "provider catalogue is authoritative"
+        }
+      }
+    },
+    {
+      "source": "tracked_competitions",
+      "key": "league:300",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:1",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:2",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:3",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:4",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:5",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:6",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:7",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:8",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:9",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:10",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:11",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:12",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:13",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:15",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:16",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:17",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:18",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:19",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:20",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:21",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:22",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:23",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:24",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:25",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:26",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:27",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:28",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:30",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:32",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:33",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:34",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    },
+    {
+      "source": "ref_bookmakers",
+      "key": "book:36",
+      "outcome": "accepted",
+      "reason": "",
+      "changes": {}
+    }
+  ],
+  "written": {
+    "core.competitions": 77,
+    "core.competition_seasons": 77,
+    "market.bookmakers": 32,
+    "market.markets": 4
+  }
+}

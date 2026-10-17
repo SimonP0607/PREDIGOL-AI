@@ -1,0 +1,9 @@
+[Unit]
+Description=PrediGol: PITR repository verification, weekly
+
+[Timer]
+OnCalendar=Wed *-*-* 05:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

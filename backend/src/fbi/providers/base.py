@@ -1,0 +1,209 @@
+"""The provider abstraction.
+
+Everything above this line is provider agnostic. API-Football is ONE
+implementation, and the rest of the platform must never import it directly, so
+swapping or adding a data source is a matter of writing another class here -
+not of touching the pick engine.
+
+The DTOs are intentionally poor in behaviour and rich in provenance: every one
+carries the payload hash it came from, so any row in the database can be traced
+back to the exact bytes the provider returned.
+"""
+
+from __future__ import annotations
+
+from collections import Counter
+from dataclasses import dataclass, field
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Literal, Protocol, runtime_checkable
+
+OddsSource = Literal["prematch", "live"]
+
+
+@dataclass(frozen=True, slots=True)
+class RawResponse:
+    """One provider response, persisted to the raw store - unless ``persisted`` says otherwise."""
+
+    endpoint: str
+    params: dict[str, str]
+    fetched_at: datetime
+    http_status: int
+    results_count: int
+    payload_hash: str
+    file_path: str
+    bytes_written: int
+    body: dict[str, object]
+    persisted: bool = True
+    """False for an ephemeral in-play response: hashed, not written (``PayloadStore.describe``). Such a response
+    cannot be indexed in raw.ingestion_payloads - there is no file - and ``RunLedger.record_payloads`` refuses it."""
+
+
+@dataclass(frozen=True, slots=True)
+class SeasonRef:
+    """One season of one competition, as the provider currently sees it.
+
+    ``is_current`` is the provider's answer, not ours. Our catalogue came from a
+    backup and drifts by a whole season every August; this is how it gets
+    corrected instead of silently querying a season that ended months ago.
+
+    ``has_odds`` comes from the provider's own coverage flags: a season the
+    provider does not cover for odds cannot be a capture pilot, however many
+    fixtures it has.
+    """
+
+    provider_league_id: int
+    season: int
+    is_current: bool
+    start_date: str | None
+    end_date: str | None
+    has_odds: bool
+    has_fixtures: bool
+
+
+@dataclass(frozen=True, slots=True)
+class FixtureRef:
+    """A fixture as the provider describes it at one instant.
+
+    ``round`` and the venue fields are optional because the provider omits
+    them for some competitions; an absent value is stored as NULL, never
+    guessed.
+    """
+
+    provider_fixture_id: int
+    provider_league_id: int
+    season: int
+    kickoff_at: datetime
+    provider_home_team_id: int
+    provider_away_team_id: int
+    status_short: str
+    round: str | None = None
+    provider_venue_id: int | None = None
+    venue_name: str | None = None
+    venue_city: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class FixtureResultRef:
+    """The score of a fixture that has actually been played.
+
+    Separate from ``FixtureRef`` on purpose: a fixture exists from the moment
+    it is scheduled, a result exists only once it has been played, and
+    conflating the two is how a cancelled match ends up with a 0-0 "result".
+    Only fixtures the provider reports as finished produce one of these.
+
+    ``goals_home``/``goals_away`` are the FINAL score with extra time included and
+    penalties excluded. ``ft_goals_*`` is the score at ninety minutes, which is what
+    1X2, Over/Under and BTTS settle on, and penalties decide only a cup winner;
+    merging them silently would mis-settle every knockout tie.
+
+    ``ft_goals_*`` is read from the provider's ``score.fulltime`` rather than derived
+    as ``goals - extratime``. Measured on 1,645 extra-time fixtures: ``extratime`` is
+    the increment on 1,557 of them and the RUNNING TOTAL on 82, and the subtraction
+    turns the second group into a 0-0 draw. A stated value cannot be wrong about the
+    semantics of a different field.
+    """
+
+    provider_fixture_id: int
+    status_short: str
+    goals_home: int
+    goals_away: int
+    ht_goals_home: int | None = None
+    ht_goals_away: int | None = None
+    ft_goals_home: int | None = None
+    ft_goals_away: int | None = None
+    et_goals_home: int | None = None
+    et_goals_away: int | None = None
+    pen_home: int | None = None
+    pen_away: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class OddsQuote:
+    """A single price, at a single instant, from a single bookmaker.
+
+    ``captured_at`` is part of the identity of this record, not metadata about
+    it. The legacy schema treated it as metadata and therefore overwrote every
+    price with the next one.
+    """
+
+    provider_fixture_id: int
+    provider_bookmaker_id: int
+    bookmaker_name: str
+    market_key: str
+    selection: str
+    line: Decimal
+    odds_decimal: Decimal
+    captured_at: datetime
+    minutes_to_ko: int
+    source: OddsSource
+    payload_hash: str
+
+
+MAX_REJECTIONS_KEPT = 200
+
+
+@dataclass
+class OddsParseLog:
+    """What a provider boundary refused, so the caller can record it.
+
+    A price we cannot read is dropped - never guessed - but dropping it silently
+    is how the legacy system lost Asian Handicap for months. Everything refused
+    lands here with its reason and the provider's own words, ready to become a
+    quality issue.
+    """
+
+    unmapped_bets: Counter[tuple[int, str]] = field(default_factory=Counter)
+    renamed_bets: list[tuple[int, str, str]] = field(default_factory=list)
+    """(bet_id, the name we expect, the name the provider sent). A populated
+    list means the provider's catalogue moved under us: PROVIDER_INCONSISTENCY,
+    not a parsing bug."""
+    rejected: list[tuple[str, str, str]] = field(default_factory=list)
+    rejected_total: int = 0
+
+    def refuse(self, market_key: str, raw_value: str, reason: str) -> None:
+        self.rejected_total += 1
+        if len(self.rejected) < MAX_REJECTIONS_KEPT:
+            self.rejected.append((market_key, raw_value, reason))
+
+
+@runtime_checkable
+class FootballDataProvider(Protocol):
+    """What the platform needs from any football data source."""
+
+    name: str
+
+    def parse_fixtures(self, body: dict[str, object]) -> list[FixtureRef]: ...
+
+    def parse_results(self, body: dict[str, object]) -> list[FixtureResultRef]: ...
+
+    async def fetch_league_seasons(
+        self, *, league_id: int
+    ) -> tuple[list[SeasonRef], RawResponse]: ...
+
+    async def fetch_fixtures(
+        self, *, league_id: int, season: int, date_from: str | None = None, date_to: str | None = None
+    ) -> tuple[list[FixtureRef], RawResponse]: ...
+
+    async def fetch_fixtures_by_date(
+        self, *, on: date
+    ) -> tuple[list[FixtureRef], RawResponse]: ...
+
+    async def fetch_results_by_date(
+        self, *, on: date
+    ) -> tuple[list[FixtureResultRef], RawResponse]: ...
+
+    async def fetch_prematch_odds(
+        self, *, provider_fixture_id: int, kickoff_at: datetime,
+        parse_log: OddsParseLog | None = None,
+    ) -> tuple[list[OddsQuote], list[RawResponse]]: ...
+
+    # There is deliberately NO in-play method here. /odds/live is a different
+    # observation with its own DTOs, its own table and its own service, and
+    # odds.live_capture.LiveOddsSource is the protocol that describes it. Any
+    # consumer of FootballDataProvider - the backfill, the pre-match capture,
+    # the migration - therefore has no way to reach an in-play price at all,
+    # which is the separation the platform depends on rather than a convention
+    # somebody has to remember.
+
+    async def aclose(self) -> None: ...

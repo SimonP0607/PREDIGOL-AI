@@ -1,0 +1,64 @@
+name: fbi-api
+
+# BOX B (Hetzner CX23): physical read replica + API + Caddy. Clients can never
+# touch the primary: the API connects only to the local replica, which is
+# read-only at the server, and the replica holds no provider key.
+#
+#   ./init-replica.sh     # once: pg_basebackup from the primary
+#   docker compose up -d --build
+
+services:
+  replica:
+    image: postgres:16-alpine
+    container_name: fbi-replica
+    restart: unless-stopped
+    shm_size: 256mb
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    command: ["postgres", "-c", "hot_standby=on", "-c", "max_connections=60", "-c", "shared_buffers=768MB"]
+    volumes:
+      - replica_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fbi -d fbi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      args:
+        FBI_CODE_VERSION: ${FBI_CODE_VERSION:-unknown}
+        FBI_UID: "1000"
+    image: fbi-backend:${FBI_CODE_VERSION:-local}
+    container_name: fbi-api
+    restart: unless-stopped
+    depends_on:
+      replica: { condition: service_healthy }
+    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers", "--forwarded-allow-ips", "*", "--log-level", "warning"]
+    environment:
+      FBI_DATABASE_URL: postgresql+psycopg://fbi_ro:${FBI_RO_PASSWORD:?set FBI_RO_PASSWORD}@replica:5432/fbi
+      FBI_API_PUBLIC: "1"
+      FBI_API_CORS_ORIGINS: ${FBI_API_CORS_ORIGINS:?set FBI_API_CORS_ORIGINS}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: fbi-caddy
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["80:80", "443:443"]
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+
+volumes:
+  replica_data:
+  caddy_data:

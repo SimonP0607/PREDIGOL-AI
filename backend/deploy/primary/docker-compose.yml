@@ -1,0 +1,73 @@
+name: fbi-primary
+
+# BOX A (Hetzner CX33): worker + primary Postgres. Never scaled to zero: a
+# missed live tick is unrecoverable. Reached only over the private network
+# (10.0.0.0/24) by the API box's replica and by nothing else.
+#
+#   cp .env.example .env   # fill in, chmod 600
+#   docker compose up -d --build
+
+x-backend: &backend
+  build:
+    context: ../..
+    args:
+      FBI_CODE_VERSION: ${FBI_CODE_VERSION:-unknown}
+      FBI_UID: "1000"
+  image: fbi-backend:${FBI_CODE_VERSION:-local}
+  env_file: .env
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fbi-postgres
+    restart: unless-stopped
+    shm_size: 512mb
+    environment:
+      POSTGRES_USER: fbi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: fbi
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=5
+      - -c
+      - wal_keep_size=2GB
+      - -c
+      - shared_buffers=2GB
+      - -c
+      - effective_cache_size=5GB
+      - -c
+      - max_connections=60
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
+    # Private network address only. Never 0.0.0.0 on the public interface.
+    ports: ["${PRIVATE_IP:?set PRIVATE_IP}:5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fbi -d fbi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  worker:
+    <<: *backend
+    container_name: fbi-worker
+    hostname: fbi-worker
+    command: ["python", "-m", "apps.worker.main"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      FBI_DATABASE_URL: postgresql+psycopg://fbi:${POSTGRES_PASSWORD}@postgres:5432/fbi
+    volumes:
+      - ./data/raw:/app/data/raw
+      - ./data/archive:/app/data/archive
+      - ./data/backups:/app/data/backups
+    stop_grace_period: 30s
+
+volumes:
+  pgdata:

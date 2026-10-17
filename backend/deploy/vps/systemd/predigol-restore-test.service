@@ -1,0 +1,11 @@
+[Unit]
+Description=PrediGol: weekly restore test of the newest backup
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/restore-test.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

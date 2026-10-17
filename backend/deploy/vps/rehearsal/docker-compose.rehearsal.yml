@@ -1,0 +1,58 @@
+# REHEARSAL ONLY - never on the server. Layered over ../docker-compose.yml to run the whole production stack on a
+# test machine: the domain is predigol.localhost (Caddy signs it with its own local authority), the worker talks to
+# a stub that answers like API-Football with nothing in it - no key, no request to the provider - and the PITR
+# repository is a local S3 server (SeaweedFS, over TLS with its own certificate) standing in for Cloudflare R2.
+#
+#   PREDIGOL_ENV_FILE=<rehearsal env> PREDIGOL_APP_ENV_FILE=<rehearsal app env> \
+#   PREDIGOL_COMPOSE_EXTRA=$PWD/docker-compose.rehearsal.yml ../bin/predigolctl ...
+services:
+  # The sandbox that runs the rehearsal inspects TLS: the image builds trust its CA (a build secret, not in the
+  # images). Point PREDIGOL_BUILD_CA at that CA bundle.
+  postgres:
+    build:
+      secrets: [ca]
+    volumes:
+      - ${PREDIGOL_REHEARSAL_DIR:?}/s3/ca.crt:/etc/predigol-s3-ca.crt:ro
+    depends_on:
+      s3: { condition: service_started }
+  api:
+    build:
+      secrets: [ca]
+  ops:
+    build:
+      secrets: [ca]
+  web:
+    build:
+      secrets: [ca]
+
+  s3:
+    image: chrislusf/seaweedfs:latest
+    container_name: predigol-s3
+    restart: unless-stopped
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/s3/s3.json",
+              "-s3.cert.file=/etc/s3/cert.pem", "-s3.key.file=/etc/s3/key.pem", "-master.volumeSizeLimitMB=1024",
+              "-volume.max=50"]
+    volumes:
+      - ${PREDIGOL_REHEARSAL_DIR:?}/s3:/etc/s3:ro
+      - ${PREDIGOL_DATA:-/srv/predigol}/../rehearsal-s3:/data
+
+  provider-stub:
+    image: caddy:2-alpine
+    container_name: predigol-provider-stub
+    restart: unless-stopped
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    volumes:
+      # Relative to the project directory (deploy/vps), like every path in ../docker-compose.yml.
+      - ./rehearsal/provider-stub.Caddyfile:/etc/caddy/Caddyfile:ro
+
+  worker:
+    environment:
+      FBI_APIFOOTBALL_BASE_URL: http://provider-stub:8080
+      FBI_APIFOOTBALL_KEY: rehearsal-not-a-key
+    depends_on:
+      postgres: { condition: service_healthy }
+      provider-stub: { condition: service_started }
+
+secrets:
+  ca:
+    file: ${PREDIGOL_BUILD_CA:-/dev/null}

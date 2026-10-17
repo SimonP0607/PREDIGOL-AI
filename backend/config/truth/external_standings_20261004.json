@@ -1,0 +1,1244 @@
+[
+ {
+  "league": 39,
+  "season": 2026,
+  "source": "premierleague.com (official)",
+  "url": "https://www.premierleague.com/en/tables/premier-league/2026-27",
+  "accessed_at": "2026-10-04T14:50:00Z",
+  "rows": [
+   {
+    "team": 50,
+    "name": "Manchester City",
+    "provider_name": "Manchester City",
+    "played": 5,
+    "points": 15,
+    "gd": 8,
+    "match": 2.0
+   },
+   {
+    "team": 42,
+    "name": "Arsenal",
+    "provider_name": "Arsenal",
+    "played": 5,
+    "points": 12,
+    "gd": 4,
+    "match": 2.0
+   },
+   {
+    "team": 51,
+    "name": "Brighton and Hove Albion",
+    "provider_name": "Brighton",
+    "played": 5,
+    "points": 10,
+    "gd": 11,
+    "match": 2.0
+   },
+   {
+    "team": 55,
+    "name": "Brentford",
+    "provider_name": "Brentford",
+    "played": 5,
+    "points": 9,
+    "gd": 6,
+    "match": 2.0
+   },
+   {
+    "team": 63,
+    "name": "Leeds United",
+    "provider_name": "Leeds",
+    "played": 5,
+    "points": 9,
+    "gd": 4,
+    "match": 1.0
+   },
+   {
+    "team": 40,
+    "name": "Liverpool",
+    "provider_name": "Liverpool",
+    "played": 5,
+    "points": 9,
+    "gd": 3,
+    "match": 2.0
+   },
+   {
+    "team": 45,
+    "name": "Everton",
+    "provider_name": "Everton",
+    "played": 5,
+    "points": 9,
+    "gd": 3,
+    "match": 2.0
+   },
+   {
+    "team": 64,
+    "name": "Hull City",
+    "provider_name": "Hull City",
+    "played": 5,
+    "points": 8,
+    "gd": 2,
+    "match": 2.0
+   },
+   {
+    "team": 34,
+    "name": "Newcastle United",
+    "provider_name": "Newcastle",
+    "played": 5,
+    "points": 8,
+    "gd": 0,
+    "match": 1.0
+   },
+   {
+    "team": 49,
+    "name": "Chelsea",
+    "provider_name": "Chelsea",
+    "played": 5,
+    "points": 7,
+    "gd": -2,
+    "match": 2.0
+   },
+   {
+    "team": 57,
+    "name": "Ipswich Town",
+    "provider_name": "Ipswich",
+    "played": 5,
+    "points": 6,
+    "gd": -4,
+    "match": 1.0
+   },
+   {
+    "team": 33,
+    "name": "Manchester United",
+    "provider_name": "Manchester United",
+    "played": 5,
+    "points": 5,
+    "gd": 0,
+    "match": 2.0
+   },
+   {
+    "team": 65,
+    "name": "Nottingham Forest",
+    "provider_name": "Nottingham Forest",
+    "played": 5,
+    "points": 5,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 746,
+    "name": "Sunderland",
+    "provider_name": "Sunderland",
+    "played": 5,
+    "points": 4,
+    "gd": -4,
+    "match": 2.0
+   },
+   {
+    "team": 52,
+    "name": "Crystal Palace",
+    "provider_name": "Crystal Palace",
+    "played": 5,
+    "points": 4,
+    "gd": -5,
+    "match": 2.0
+   },
+   {
+    "team": 66,
+    "name": "Aston Villa",
+    "provider_name": "Aston Villa",
+    "played": 5,
+    "points": 4,
+    "gd": -5,
+    "match": 2.0
+   },
+   {
+    "team": 35,
+    "name": "Bournemouth",
+    "provider_name": "Bournemouth",
+    "played": 5,
+    "points": 3,
+    "gd": -2,
+    "match": 2.0
+   },
+   {
+    "team": 1346,
+    "name": "Coventry City",
+    "provider_name": "Coventry",
+    "played": 5,
+    "points": 3,
+    "gd": -9,
+    "match": 1.0
+   },
+   {
+    "team": 36,
+    "name": "Fulham",
+    "provider_name": "Fulham",
+    "played": 5,
+    "points": 2,
+    "gd": -3,
+    "match": 2.0
+   },
+   {
+    "team": 47,
+    "name": "Tottenham Hotspur",
+    "provider_name": "Tottenham",
+    "played": 5,
+    "points": 2,
+    "gd": -6,
+    "match": 2.0
+   }
+  ]
+ },
+ {
+  "league": 140,
+  "season": 2026,
+  "source": "laliga.com (official)",
+  "url": "https://www.laliga.com/en-GB/laliga-easports/standing",
+  "accessed_at": "2026-10-04T14:52:00Z",
+  "rows": [
+   {
+    "team": 529,
+    "name": "FC Barcelona",
+    "provider_name": "Barcelona",
+    "played": 7,
+    "points": 21,
+    "gd": 24,
+    "match": 1.0
+   },
+   {
+    "team": 530,
+    "name": "Atletico de Madrid",
+    "provider_name": "Atletico Madrid",
+    "played": 7,
+    "points": 16,
+    "gd": 9,
+    "match": 2.0
+   },
+   {
+    "team": 543,
+    "name": "Real Betis",
+    "provider_name": "Real Betis",
+    "played": 7,
+    "points": 16,
+    "gd": 2,
+    "match": 2.0
+   },
+   {
+    "team": 541,
+    "name": "Real Madrid",
+    "provider_name": "Real Madrid",
+    "played": 7,
+    "points": 15,
+    "gd": 10,
+    "match": 2.0
+   },
+   {
+    "team": 536,
+    "name": "Sevilla FC",
+    "provider_name": "Sevilla",
+    "played": 7,
+    "points": 13,
+    "gd": 1,
+    "match": 1.0
+   },
+   {
+    "team": 542,
+    "name": "Deportivo Alaves",
+    "provider_name": "Alaves",
+    "played": 7,
+    "points": 11,
+    "gd": 5,
+    "match": 2.0
+   },
+   {
+    "team": 544,
+    "name": "RC Deportivo",
+    "provider_name": "Deportivo La Coruna",
+    "played": 7,
+    "points": 10,
+    "gd": 2,
+    "match": 2.0
+   },
+   {
+    "team": 548,
+    "name": "Real Sociedad",
+    "provider_name": "Real Sociedad",
+    "played": 7,
+    "points": 10,
+    "gd": -4,
+    "match": 2.0
+   },
+   {
+    "team": 533,
+    "name": "Villarreal CF",
+    "provider_name": "Villarreal",
+    "played": 7,
+    "points": 8,
+    "gd": 1,
+    "match": 1.0
+   },
+   {
+    "team": 531,
+    "name": "Athletic Club",
+    "provider_name": "Athletic Club",
+    "played": 6,
+    "points": 8,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 546,
+    "name": "Getafe CF",
+    "provider_name": "Getafe",
+    "played": 7,
+    "points": 8,
+    "gd": -3,
+    "match": 1.0
+   },
+   {
+    "team": 728,
+    "name": "Rayo Vallecano",
+    "provider_name": "Rayo Vallecano",
+    "played": 7,
+    "points": 8,
+    "gd": -5,
+    "match": 2.0
+   },
+   {
+    "team": 727,
+    "name": "CA Osasuna",
+    "provider_name": "Osasuna",
+    "played": 7,
+    "points": 8,
+    "gd": -7,
+    "match": 1.0
+   },
+   {
+    "team": 538,
+    "name": "Celta",
+    "provider_name": "Celta Vigo",
+    "played": 7,
+    "points": 7,
+    "gd": 2,
+    "match": 2.0
+   },
+   {
+    "team": 540,
+    "name": "RCD Espanyol de Barcelona",
+    "provider_name": "Espanyol",
+    "played": 7,
+    "points": 7,
+    "gd": 0,
+    "match": 2.0
+   },
+   {
+    "team": 4665,
+    "name": "R. Racing Club",
+    "provider_name": "Racing Santander",
+    "played": 7,
+    "points": 7,
+    "gd": -10,
+    "match": 2.0
+   },
+   {
+    "team": 539,
+    "name": "Levante UD",
+    "provider_name": "Levante",
+    "played": 6,
+    "points": 5,
+    "gd": -4,
+    "match": 1.0
+   },
+   {
+    "team": 797,
+    "name": "Elche CF",
+    "provider_name": "Elche",
+    "played": 7,
+    "points": 5,
+    "gd": -6,
+    "match": 1.0
+   },
+   {
+    "team": 532,
+    "name": "Valencia CF",
+    "provider_name": "Valencia",
+    "played": 7,
+    "points": 4,
+    "gd": -9,
+    "match": 1.0
+   },
+   {
+    "team": 535,
+    "name": "Malaga CF",
+    "provider_name": "Malaga",
+    "played": 7,
+    "points": 3,
+    "gd": -9,
+    "match": 1.0
+   }
+  ]
+ },
+ {
+  "league": 135,
+  "season": 2026,
+  "source": "legaseriea.it (official)",
+  "url": "https://en.legaseriea.it/serie-a/standings",
+  "accessed_at": "2026-10-04T14:54:00Z",
+  "rows": [
+   {
+    "team": 497,
+    "name": "Roma",
+    "provider_name": "AS Roma",
+    "played": 5,
+    "points": 13,
+    "gd": 11,
+    "match": 1.0
+   },
+   {
+    "team": 505,
+    "name": "Inter",
+    "provider_name": "Inter",
+    "played": 5,
+    "points": 13,
+    "gd": 7,
+    "match": 2.0
+   },
+   {
+    "team": 487,
+    "name": "Lazio",
+    "provider_name": "Lazio",
+    "played": 5,
+    "points": 13,
+    "gd": 5,
+    "match": 2.0
+   },
+   {
+    "team": 490,
+    "name": "Cagliari",
+    "provider_name": "Cagliari",
+    "played": 5,
+    "points": 12,
+    "gd": 3,
+    "match": 2.0
+   },
+   {
+    "team": 489,
+    "name": "Milan",
+    "provider_name": "AC Milan",
+    "played": 5,
+    "points": 11,
+    "gd": 6,
+    "match": 1.0
+   },
+   {
+    "team": 512,
+    "name": "Frosinone",
+    "provider_name": "Frosinone",
+    "played": 5,
+    "points": 10,
+    "gd": 5,
+    "match": 2.0
+   },
+   {
+    "team": 496,
+    "name": "Juventus",
+    "provider_name": "Juventus",
+    "played": 5,
+    "points": 10,
+    "gd": 4,
+    "match": 2.0
+   },
+   {
+    "team": 895,
+    "name": "Como",
+    "provider_name": "Como",
+    "played": 5,
+    "points": 10,
+    "gd": 3,
+    "match": 2.0
+   },
+   {
+    "team": 492,
+    "name": "Napoli",
+    "provider_name": "Napoli",
+    "played": 5,
+    "points": 7,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 488,
+    "name": "Sassuolo",
+    "provider_name": "Sassuolo",
+    "played": 5,
+    "points": 7,
+    "gd": 0,
+    "match": 2.0
+   },
+   {
+    "team": 499,
+    "name": "Atalanta",
+    "provider_name": "Atalanta",
+    "played": 5,
+    "points": 6,
+    "gd": -2,
+    "match": 2.0
+   },
+   {
+    "team": 867,
+    "name": "Lecce",
+    "provider_name": "Lecce",
+    "played": 5,
+    "points": 6,
+    "gd": -5,
+    "match": 2.0
+   },
+   {
+    "team": 494,
+    "name": "Udinese",
+    "provider_name": "Udinese",
+    "played": 5,
+    "points": 4,
+    "gd": -3,
+    "match": 2.0
+   },
+   {
+    "team": 503,
+    "name": "Torino",
+    "provider_name": "Torino",
+    "played": 5,
+    "points": 4,
+    "gd": -3,
+    "match": 2.0
+   },
+   {
+    "team": 523,
+    "name": "Parma",
+    "provider_name": "Parma",
+    "played": 5,
+    "points": 4,
+    "gd": -3,
+    "match": 2.0
+   },
+   {
+    "team": 1579,
+    "name": "Monza",
+    "provider_name": "Monza",
+    "played": 5,
+    "points": 4,
+    "gd": -4,
+    "match": 2.0
+   },
+   {
+    "team": 502,
+    "name": "Fiorentina",
+    "provider_name": "Fiorentina",
+    "played": 5,
+    "points": 4,
+    "gd": -6,
+    "match": 2.0
+   },
+   {
+    "team": 500,
+    "name": "Bologna",
+    "provider_name": "Bologna",
+    "played": 5,
+    "points": 2,
+    "gd": -3,
+    "match": 2.0
+   },
+   {
+    "team": 495,
+    "name": "Genoa",
+    "provider_name": "Genoa",
+    "played": 5,
+    "points": 1,
+    "gd": -7,
+    "match": 2.0
+   },
+   {
+    "team": 517,
+    "name": "Venezia",
+    "provider_name": "Venezia",
+    "played": 5,
+    "points": 0,
+    "gd": -9,
+    "match": 2.0
+   }
+  ]
+ },
+ {
+  "league": 78,
+  "season": 2026,
+  "source": "bundesliga.com (official)",
+  "url": "https://www.bundesliga.com/en/bundesliga/table",
+  "accessed_at": "2026-10-04T14:53:00Z",
+  "rows": [
+   {
+    "team": 165,
+    "name": "Borussia Dortmund",
+    "provider_name": "Borussia Dortmund",
+    "played": 4,
+    "points": 12,
+    "gd": 7,
+    "match": 2.0
+   },
+   {
+    "team": 157,
+    "name": "Bayern Munich",
+    "provider_name": "Bayern M\u00fcnchen",
+    "played": 4,
+    "points": 10,
+    "gd": 12,
+    "match": 2.0
+   },
+   {
+    "team": 160,
+    "name": "Freiburg",
+    "provider_name": "SC Freiburg",
+    "played": 4,
+    "points": 10,
+    "gd": 9,
+    "match": 1.0
+   },
+   {
+    "team": 170,
+    "name": "Augsburg",
+    "provider_name": "FC Augsburg",
+    "played": 4,
+    "points": 7,
+    "gd": 5,
+    "match": 1.0
+   },
+   {
+    "team": 168,
+    "name": "Bayer Leverkusen",
+    "provider_name": "Bayer Leverkusen",
+    "played": 4,
+    "points": 7,
+    "gd": 5,
+    "match": 2.0
+   },
+   {
+    "team": 164,
+    "name": "Mainz",
+    "provider_name": "FSV Mainz 05",
+    "played": 4,
+    "points": 7,
+    "gd": 4,
+    "match": 1.0
+   },
+   {
+    "team": 1660,
+    "name": "Elversberg",
+    "provider_name": "SV Elversberg",
+    "played": 4,
+    "points": 7,
+    "gd": 1,
+    "match": 1.0
+   },
+   {
+    "team": 162,
+    "name": "Werder Bremen",
+    "provider_name": "Werder Bremen",
+    "played": 4,
+    "points": 7,
+    "gd": 0,
+    "match": 2.0
+   },
+   {
+    "team": 173,
+    "name": "RB Leipzig",
+    "provider_name": "RB Leipzig",
+    "played": 4,
+    "points": 6,
+    "gd": 4,
+    "match": 2.0
+   },
+   {
+    "team": 169,
+    "name": "Eintracht Frankfurt",
+    "provider_name": "Eintracht Frankfurt",
+    "played": 4,
+    "points": 5,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 174,
+    "name": "Schalke",
+    "provider_name": "FC Schalke 04",
+    "played": 4,
+    "points": 5,
+    "gd": -1,
+    "match": 0.5
+   },
+   {
+    "team": 185,
+    "name": "Paderborn",
+    "provider_name": "SC Paderborn 07",
+    "played": 4,
+    "points": 4,
+    "gd": -2,
+    "match": 0.5
+   },
+   {
+    "team": 192,
+    "name": "Cologne",
+    "provider_name": "1. FC K\u00f6ln",
+    "played": 4,
+    "points": 4,
+    "gd": -3,
+    "match": 1.0
+   },
+   {
+    "team": 167,
+    "name": "Hoffenheim",
+    "provider_name": "1899 Hoffenheim",
+    "played": 4,
+    "points": 3,
+    "gd": -3,
+    "match": 0.5
+   },
+   {
+    "team": 172,
+    "name": "VfB Stuttgart",
+    "provider_name": "VfB Stuttgart",
+    "played": 4,
+    "points": 3,
+    "gd": -3,
+    "match": 2.0
+   },
+   {
+    "team": 175,
+    "name": "Hamburg",
+    "provider_name": "Hamburger SV",
+    "played": 4,
+    "points": 3,
+    "gd": -11,
+    "match": 2.0
+   },
+   {
+    "team": 182,
+    "name": "Union Berlin",
+    "provider_name": "Union Berlin",
+    "played": 4,
+    "points": 1,
+    "gd": -13,
+    "match": 2.0
+   },
+   {
+    "team": 163,
+    "name": "Borussia Monchengladbach",
+    "provider_name": "Borussia M\u00f6nchengladbach",
+    "played": 4,
+    "points": 0,
+    "gd": -10,
+    "match": 2.0
+   }
+  ]
+ },
+ {
+  "league": 61,
+  "season": 2026,
+  "source": "ligue1.com (official)",
+  "url": "https://ligue1.com/en/competitions/ligue1mcdonalds/standings",
+  "accessed_at": "2026-10-04T14:56:00Z",
+  "rows": [
+   {
+    "team": 91,
+    "name": "AS Monaco",
+    "provider_name": "Monaco",
+    "played": 5,
+    "points": 13,
+    "gd": 5,
+    "match": 2.0
+   },
+   {
+    "team": 80,
+    "name": "OL",
+    "provider_name": "Lyon",
+    "played": 5,
+    "points": 11,
+    "gd": 8,
+    "match": 2.0
+   },
+   {
+    "team": 114,
+    "name": "Paris FC",
+    "provider_name": "Paris FC",
+    "played": 5,
+    "points": 11,
+    "gd": 5,
+    "match": 2.0
+   },
+   {
+    "team": 79,
+    "name": "LOSC",
+    "provider_name": "Lille",
+    "played": 5,
+    "points": 10,
+    "gd": 4,
+    "match": 2.0
+   },
+   {
+    "team": 94,
+    "name": "Rennes",
+    "provider_name": "Rennes",
+    "played": 5,
+    "points": 10,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 85,
+    "name": "PSG",
+    "provider_name": "Paris Saint Germain",
+    "played": 5,
+    "points": 8,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 77,
+    "name": "Angers SCO",
+    "provider_name": "Angers",
+    "played": 5,
+    "points": 7,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 95,
+    "name": "Strasbourg",
+    "provider_name": "Strasbourg",
+    "played": 5,
+    "points": 7,
+    "gd": 0,
+    "match": 2.0
+   },
+   {
+    "team": 1298,
+    "name": "Le Mans FC",
+    "provider_name": "Le Mans",
+    "played": 5,
+    "points": 6,
+    "gd": 0,
+    "match": 2.0
+   },
+   {
+    "team": 108,
+    "name": "AJ Auxerre",
+    "provider_name": "Auxerre",
+    "played": 5,
+    "points": 6,
+    "gd": -5,
+    "match": 2.0
+   },
+   {
+    "team": 106,
+    "name": "Brest",
+    "provider_name": "Stade Brestois 29",
+    "played": 5,
+    "points": 5,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 97,
+    "name": "FC Lorient",
+    "provider_name": "Lorient",
+    "played": 5,
+    "points": 5,
+    "gd": -1,
+    "match": 1.0
+   },
+   {
+    "team": 96,
+    "name": "Toulouse FC",
+    "provider_name": "Toulouse",
+    "played": 5,
+    "points": 5,
+    "gd": -2,
+    "match": 1.0
+   },
+   {
+    "team": 84,
+    "name": "OGC Nice",
+    "provider_name": "Nice",
+    "played": 5,
+    "points": 5,
+    "gd": -3,
+    "match": 2.0
+   },
+   {
+    "team": 116,
+    "name": "RC Lens",
+    "provider_name": "Lens",
+    "played": 5,
+    "points": 4,
+    "gd": 0,
+    "match": 2.0
+   },
+   {
+    "team": 110,
+    "name": "Troyes",
+    "provider_name": "Estac Troyes",
+    "played": 5,
+    "points": 4,
+    "gd": -7,
+    "match": 2.0
+   },
+   {
+    "team": 81,
+    "name": "OM",
+    "provider_name": "Marseille",
+    "played": 5,
+    "points": 3,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 111,
+    "name": "Havre AC",
+    "provider_name": "Le Havre",
+    "played": 5,
+    "points": 2,
+    "gd": -3,
+    "match": 2.0
+   }
+  ]
+ },
+ {
+  "league": 2,
+  "season": 2026,
+  "source": "uefa.com (official)",
+  "url": "https://www.uefa.com/uefachampionsleague/standings/",
+  "accessed_at": "2026-10-04T14:58:00Z",
+  "rows": [
+   {
+    "team": 85,
+    "name": "Paris",
+    "provider_name": "Paris Saint Germain",
+    "played": 1,
+    "points": 3,
+    "gd": 5,
+    "match": 2.0
+   },
+   {
+    "team": 157,
+    "name": "Bayern Munchen",
+    "provider_name": "Bayern M\u00fcnchen",
+    "played": 1,
+    "points": 3,
+    "gd": 5,
+    "match": 2.0
+   },
+   {
+    "team": 529,
+    "name": "Barcelona",
+    "provider_name": "Barcelona",
+    "played": 1,
+    "points": 3,
+    "gd": 4,
+    "match": 2.0
+   },
+   {
+    "team": 33,
+    "name": "Man Utd",
+    "provider_name": "Manchester United",
+    "played": 1,
+    "points": 3,
+    "gd": 4,
+    "match": 2.0
+   },
+   {
+    "team": 895,
+    "name": "Como",
+    "provider_name": "Como",
+    "played": 1,
+    "points": 3,
+    "gd": 3,
+    "match": 2.0
+   },
+   {
+    "team": 228,
+    "name": "Sporting CP",
+    "provider_name": "Sporting CP",
+    "played": 1,
+    "points": 3,
+    "gd": 2,
+    "match": 2.0
+   },
+   {
+    "team": 172,
+    "name": "Stuttgart",
+    "provider_name": "VfB Stuttgart",
+    "played": 1,
+    "points": 3,
+    "gd": 2,
+    "match": 1.0
+   },
+   {
+    "team": 50,
+    "name": "Man City",
+    "provider_name": "Manchester City",
+    "played": 1,
+    "points": 3,
+    "gd": 2,
+    "match": 2.0
+   },
+   {
+    "team": 66,
+    "name": "Aston Villa",
+    "provider_name": "Aston Villa",
+    "played": 1,
+    "points": 3,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 116,
+    "name": "Lens",
+    "provider_name": "Lens",
+    "played": 1,
+    "points": 3,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 543,
+    "name": "Real Betis",
+    "provider_name": "Real Betis",
+    "played": 1,
+    "points": 3,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 165,
+    "name": "B. Dortmund",
+    "provider_name": "Borussia Dortmund",
+    "played": 1,
+    "points": 3,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 40,
+    "name": "Liverpool",
+    "provider_name": "Liverpool",
+    "played": 1,
+    "points": 3,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 541,
+    "name": "Real Madrid",
+    "provider_name": "Real Madrid",
+    "played": 1,
+    "points": 3,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 42,
+    "name": "Arsenal",
+    "provider_name": "Arsenal",
+    "played": 1,
+    "points": 3,
+    "gd": 1,
+    "match": 2.0
+   },
+   {
+    "team": 575,
+    "name": "AEK Athens",
+    "provider_name": "AEK Athens FC",
+    "played": 1,
+    "points": 3,
+    "gd": 1,
+    "match": 1.0
+   },
+   {
+    "team": 497,
+    "name": "Roma",
+    "provider_name": "AS Roma",
+    "played": 1,
+    "points": 1,
+    "gd": 0,
+    "match": 1.0
+   },
+   {
+    "team": 550,
+    "name": "Shakhtar",
+    "provider_name": "Shakhtar Donetsk",
+    "played": 1,
+    "points": 1,
+    "gd": 0,
+    "match": 0.5
+   },
+   {
+    "team": 611,
+    "name": "Fenerbahce",
+    "provider_name": "Fenerbah\u00e7e",
+    "played": 1,
+    "points": 1,
+    "gd": 0,
+    "match": 2.0
+   },
+   {
+    "team": 197,
+    "name": "PSV",
+    "provider_name": "PSV Eindhoven",
+    "played": 1,
+    "points": 1,
+    "gd": 0,
+    "match": 0.5
+   },
+   {
+    "team": 533,
+    "name": "Villarreal",
+    "provider_name": "Villarreal",
+    "played": 1,
+    "points": 0,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 569,
+    "name": "Club Brugge",
+    "provider_name": "Club Brugge KV",
+    "played": 1,
+    "points": 0,
+    "gd": -1,
+    "match": 0.5
+   },
+   {
+    "team": 79,
+    "name": "Lille",
+    "provider_name": "Lille",
+    "played": 1,
+    "points": 0,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 560,
+    "name": "Slavia Praha",
+    "provider_name": "Slavia Praha",
+    "played": 1,
+    "points": 0,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 530,
+    "name": "Atleti",
+    "provider_name": "Atletico Madrid",
+    "played": 1,
+    "points": 0,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 505,
+    "name": "Inter",
+    "provider_name": "Inter",
+    "played": 1,
+    "points": 0,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 1026,
+    "name": "LASK",
+    "provider_name": "Lask Linz",
+    "played": 1,
+    "points": 0,
+    "gd": -1,
+    "match": 0.5
+   },
+   {
+    "team": 492,
+    "name": "Napoli",
+    "provider_name": "Napoli",
+    "played": 1,
+    "points": 0,
+    "gd": -1,
+    "match": 2.0
+   },
+   {
+    "team": 645,
+    "name": "Galatasaray",
+    "provider_name": "Galatasaray",
+    "played": 1,
+    "points": 0,
+    "gd": -2,
+    "match": 2.0
+   },
+   {
+    "team": 759,
+    "name": "Viking",
+    "provider_name": "Viking",
+    "played": 1,
+    "points": 0,
+    "gd": -2,
+    "match": 2.0
+   },
+   {
+    "team": 212,
+    "name": "Porto",
+    "provider_name": "FC Porto",
+    "played": 1,
+    "points": 0,
+    "gd": -2,
+    "match": 1.0
+   },
+   {
+    "team": 173,
+    "name": "Leipzig",
+    "provider_name": "RB Leipzig",
+    "played": 1,
+    "points": 0,
+    "gd": -3,
+    "match": 2.0
+   },
+   {
+    "team": 209,
+    "name": "Feyenoord",
+    "provider_name": "Feyenoord",
+    "played": 1,
+    "points": 0,
+    "gd": -4,
+    "match": 2.0
+   },
+   {
+    "team": 13976,
+    "name": "Sabah",
+    "provider_name": "Sabah FA",
+    "played": 1,
+    "points": 0,
+    "gd": -4,
+    "match": 0.5
+   },
+   {
+    "team": 656,
+    "name": "S. Bratislava",
+    "provider_name": "Slovan Bratislava",
+    "played": 1,
+    "points": 0,
+    "gd": -5,
+    "match": 2.0
+   },
+   {
+    "team": 327,
+    "name": "Bodo/Glimt",
+    "provider_name": "Bodo/Glimt",
+    "played": 1,
+    "points": 0,
+    "gd": -5,
+    "match": 2.0
+   }
+  ]
+ }
+]

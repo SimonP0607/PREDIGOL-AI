@@ -1,0 +1,86 @@
+# PrediGol's front door. HTTPS certificates are obtained and renewed by Caddy itself (Let's Encrypt) as soon as
+# the domain's DNS points at this server and ports 80 and 443 are open. One origin: the API under /api/v1, the
+# web app everywhere else - the session cookie and the API's same-site check depend on it.
+#
+# PREDIGOL_SITE is the address served: the domain in production (predigol.example.com), the server's IP while
+# there is no domain yet (PREDIGOL_TLS_MODE=internal), or predigol.localhost in the rehearsal (Caddy then signs
+# with its own local authority).
+{
+	# No ACME contact e-mail: Let's Encrypt stopped sending expiry e-mails in 2025 and an account without one is
+	# valid; Caddy renews on its own and the monitor (bin/healthcheck.sh) watches the certificate's age.
+	# A client that sends no SNI (an IP address in the URL, a check through --resolve) gets the site's certificate.
+	default_sni {$PREDIGOL_DOMAIN}
+	servers {
+		# Slow-client limits: a request has 10 s to send its headers and 30 s its body.
+		timeouts {
+			read_header 10s
+			read_body 30s
+			idle 2m
+		}
+		# Who may tell Caddy the client's real address: nobody by default; Cloudflare's ranges when it proxies
+		# (PREDIGOL_TRUSTED_PROXIES, written by bin/cloudflare-ips.sh). From them, CF-Connecting-IP is believed.
+		trusted_proxies static {$PREDIGOL_TRUSTED_PROXIES}
+		client_ip_headers CF-Connecting-IP X-Forwarded-For
+	}
+}
+
+{$PREDIGOL_SITE} {
+	import /etc/caddy/snippets/tls-{$PREDIGOL_TLS_MODE}.caddy
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		# 'unsafe-inline' for scripts: the server-rendered page carries the framework's inline hydration script.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://media.api-sports.io; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		-Server
+	}
+
+	# The API's interactive docs and schema list every route, the admin ones included: never public.
+	@closed path /docs /docs/* /openapi.json /redoc /redoc/*
+	respond @closed 404
+
+	# The API sees exactly one client address: the one Caddy determined (never a header the client made up).
+	handle /api/* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy api:8000 {
+			header_up X-Forwarded-For {client_ip}
+		}
+	}
+	handle /health {
+		reverse_proxy api:8000 {
+			header_up X-Forwarded-For {client_ip}
+		}
+	}
+
+	# The service worker must be re-read on every visit, or an update would wait up to a day. (The web server
+	# itself marks the hashed /assets/ files immutable and serves the manifest with its own type.)
+	handle /sw.js {
+		header Cache-Control "no-cache"
+		reverse_proxy web:3000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 20MiB
+			roll_keep 5
+		}
+		format json
+	}
+}
+
+# www.<domain> (a CNAME to the domain at most registrars) gets its own certificate and a permanent redirect to the
+# one origin: the session cookie and the API's same-site check belong to the bare domain.
+www.{$PREDIGOL_DOMAIN} {
+	import /etc/caddy/snippets/tls-{$PREDIGOL_TLS_MODE}.caddy
+	redir https://{$PREDIGOL_DOMAIN}{uri} permanent
+}

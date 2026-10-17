@@ -1,0 +1,36 @@
+# API-Football plans as the provider publishes them. NOT a price list to trust
+# at purchase time: check the dashboard the day you buy (prices, limits and the
+# Free plan's season window are the provider's to change).
+#
+# Sources, read 2026-09-25 (docs/research/notes/A5_api_football_inventory.md):
+#   https://www.api-football.com/pricing
+#   https://api-sports.io/sports/football
+#   https://www.api-football.com/news/post/how-ratelimit-works (2026-06-12)
+#   https://www.api-football.com/terms ("Mai 21, 2025")
+# The same four prices appear on archived copies of the pricing page from
+# 2020-03-12 to 2026-03-14; no official page with different list prices was
+# found. The quota resets at 00:00 UTC, unused requests are lost, and a
+# dashboard account that reaches its quota is suspended for the rest of the day.
+checked_on: 2026-09-25
+currency: USD
+plans:
+  - name: Free
+    requests_per_day: 100
+    requests_per_minute: 10
+    price_month: 0
+    history: "recent seasons only (observed: 2022-2024 served, 2025+ refused; not published)"
+  - name: Pro
+    requests_per_day: 7500
+    requests_per_minute: 300
+    price_month: 19
+    history: "deeper historical archives (paid plans: all competitions and endpoints)"
+  - name: Ultra
+    requests_per_day: 75000
+    requests_per_minute: 450
+    price_month: 29
+    history: "as Pro"
+  - name: Mega
+    requests_per_day: 150000
+    requests_per_minute: 900
+    price_month: 39
+    history: "as Pro"

@@ -1,0 +1,155 @@
+{
+  "about": "Results decided off the pitch, read on the competition's, the sports court's or (level 2) the press's site. The audits count them at their official score in table and Football-Data checks; our fixtures keep the score the provider gives (the played or the stopped score: bookmakers settle on it). Keyed by the provider's fixture id. 'official' for the Colombian cases is the 0-3 the provider's own table counts; the incidents are confirmed by the sources, the Dimayor resolutions themselves were not read.",
+  "accessed_at": "2026-10-04T15:20:00Z",
+  "decisions": [
+    {
+      "fixture": 1224099,
+      "league": 78,
+      "season": 2024,
+      "match": "1. FC Union Berlin v VfL Bochum, Bundesliga 2024/25 match day 14, 14 Dec 2024",
+      "played": [
+        1,
+        1
+      ],
+      "official": [
+        0,
+        2
+      ],
+      "basis": "DFB Sports Court, 9 Jan 2025: awarded 0-2 to Bochum (lighter thrown at Bochum's goalkeeper); appeal rejected by the DFB Federal Court, 28 Feb 2025",
+      "sources": [
+        "https://www.dfb.de/news/dfb-sportgericht-wertet-bundesligaspiel-in-berlin-fuer-bochum",
+        "https://www.dfb.de/news/dfb-bundesgericht-weist-berufung-von-union-berlin-zurueck",
+        "https://www.bundesliga.com/de/bundesliga/tabelle/2024-2025"
+      ]
+    },
+    {
+      "fixture": 1388000,
+      "league": 61,
+      "season": 2025,
+      "match": "FC Nantes v Toulouse FC, Ligue 1 2025/26 match day 34, 17 May 2026",
+      "played": null,
+      "official": [
+        0,
+        0
+      ],
+      "basis": "abandoned after a pitch invasion; the LFP disciplinary commission (28 May 2026) homologated the 0-0 at the interruption (the provider: AWD 0-0)",
+      "sources": [
+        "https://ligue1.com/fr/articles/l1_article_5189-"
+      ]
+    },
+    {
+      "fixture": 989408,
+      "league": 239,
+      "season": 2023,
+      "match": "Once Caldas v Alianza Petrolera, Primera A Apertura 2023 round 14, 18 Apr 2023",
+      "played": [
+        1,
+        2
+      ],
+      "official": [
+        0,
+        3
+      ],
+      "basis": "pitch invasion at Palogrande, match not completed; Dimayor sanctions; the table counts 0-3 to Alianza",
+      "sources": [
+        "https://www.bluradio.com/deportes/futbol-colombiano/once-caldas-dimayor-da-a-conocer-sanciones-por-invasion-en-el-estadio-palogrande-rs15",
+        "https://www.noticiasrcn.com/deportes/hinchas-once-caldas-ingreso-palogrando-vs-alianza-444282"
+      ]
+    },
+    {
+      "fixture": 1153168,
+      "league": 239,
+      "season": 2024,
+      "match": "Patriotas v Deportivo Pereira, Primera A Apertura 2024 round 11, 10 Mar 2024",
+      "played": [
+        0,
+        2
+      ],
+      "official": [
+        0,
+        3
+      ],
+      "basis": "stopped in the 63rd minute at 0-2 (pitch invasion); Dimayor ended it for lack of security and awarded 0-3 to Pereira",
+      "sources": [
+        "https://www.clarosports.com/colombia/liga-bet-play/hinchas-de-patriotas-intentan-invadir-la-cancha-de-la-independencia-en-medio-del-partido-ante-pereira/"
+      ]
+    },
+    {
+      "fixture": 1234215,
+      "league": 239,
+      "season": 2024,
+      "match": "Deportivo Cali v Deportivo Pasto, Primera A Clausura 2024 round 8, 2 Sep 2024",
+      "played": [
+        0,
+        2
+      ],
+      "official": [
+        0,
+        3
+      ],
+      "basis": "pitch invasion at Palmaseca; Dimayor sanction; the table counts 0-3 to Pasto",
+      "sources": [
+        "https://www.elpais.com.co/deportes/esta-es-la-sancion-a-la-que-se-expondria-el-deportivo-cali-tras-la-invasion-de-la-cancha-en-palmaseca-0355.html",
+        "https://www.elpais.com.co/deportes/la-terminante-medida-que-tomo-el-deportivo-cali-contra-hincha-que-se-metio-a-la-cancha-contra-pasto-0913.html"
+      ]
+    },
+    {
+      "fixture": 1234236,
+      "league": 239,
+      "season": 2024,
+      "match": "Atletico Nacional v Junior, Primera A Clausura 2024 round 10, 26 Sep 2024",
+      "played": [
+        2,
+        0
+      ],
+      "official": [
+        0,
+        3
+      ],
+      "basis": "stopped at 2-0 after violence in the stands; Dimayor Resolution 080 of 2024 (2 Oct 2024) awarded the match to Junior (the table counts 0-3)",
+      "sources": [
+        "https://www.clarosports.com/colombia/liga-bet-play/dimayor-publica-fallo-por-los-hechos-de-violencia-en-atletico-nacional-vs-junior-perdida-de-puntos-y-sanciones/",
+        "https://www.elheraldo.co/deportes/rincon-juniorista/2024/10/21/junior-escala-a-la-septima-posicion-con-los-tres-puntos-en-el-escritorio/"
+      ]
+    },
+    {
+      "fixture": 1505349,
+      "league": 265,
+      "season": 2026,
+      "match": "Everton de Vina del Mar v Union La Calera, Liga de Primera 2026 round 1, 2 Feb 2026",
+      "played": [
+        0,
+        1
+      ],
+      "official": [
+        3,
+        0
+      ],
+      "basis": "ANFP Tribunal de Disciplina: La Calera fielded more foreigners than allowed; the match awarded 3-0 to Everton (6 points taken from La Calera in two matches; ratified 8 Apr 2026; La Calera appealed to CAS, pending on 30 Sep 2026)",
+      "sources": [
+        "https://www.theclinic.cl/2026/04/08/tribunal-de-disciplina-de-la-anfp-ratifica-sancion-contra-union-la-calera-perderan-seis-puntos-por-exceder-el-numero-de-extranjeros-en-cancha/",
+        "https://www.encancha.cl/futbol-chileno/primera/2026/04/08/anfp-hace-oficial-la-resta-de-puntos-a-union-la-calera-asi-quedo-la-tabla-la-liga-de-primera/",
+        "https://www.emol.com/noticias/Deportes/2026/09/30/1212857/lacalera-tas-resta-puntos-anfp.html"
+      ]
+    },
+    {
+      "fixture": 1505362,
+      "league": 265,
+      "season": 2026,
+      "match": "Union La Calera v Cobresal, Liga de Primera 2026 round 2, 9 Feb 2026",
+      "played": [
+        3,
+        1
+      ],
+      "official": [
+        0,
+        3
+      ],
+      "basis": "ANFP Tribunal de Disciplina: La Calera fielded more foreigners than allowed; the match awarded 0-3 to Cobresal (ratified 8 Apr 2026; CAS appeal pending on 30 Sep 2026)",
+      "sources": [
+        "https://www.theclinic.cl/2026/04/08/tribunal-de-disciplina-de-la-anfp-ratifica-sancion-contra-union-la-calera-perderan-seis-puntos-por-exceder-el-numero-de-extranjeros-en-cancha/",
+        "https://www.encancha.cl/futbol-chileno/primera/2026/04/08/anfp-hace-oficial-la-resta-de-puntos-a-union-la-calera-asi-quedo-la-tabla-la-liga-de-primera/"
+      ]
+    }
+  ]
+}

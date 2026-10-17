@@ -1,0 +1,166 @@
+{
+ "_source": {
+  "endpoint": "/fixtures",
+  "payload_sha256": "81fa07cc919659945d14aa182010b32305bb333cefc4d5c2b1bc315518aacf53",
+  "fetched_at": "2026-09-25T03:06:51.340284+00:00",
+  "http_status": 200,
+  "results_in_full_payload": 468,
+  "note": "Trimmed and sanitised from our own raw store. Params are NOT kept."
+ },
+ "body": {
+  "get": "fixtures",
+  "parameters": {
+   "league": "141",
+   "season": "2022"
+  },
+  "errors": [],
+  "results": 2,
+  "paging": {
+   "current": 1,
+   "total": 1
+  },
+  "response": [
+   {
+    "fixture": {
+     "id": 878331,
+     "referee": "Jon González",
+     "timezone": "UTC",
+     "date": "2022-08-12T19:00:00+00:00",
+     "timestamp": 1660330800,
+     "periods": {
+      "first": 1660330800,
+      "second": 1660334400
+     },
+     "venue": {
+      "id": 1482,
+      "name": "Estadio Ciudad de Valencia",
+      "city": "Valencia"
+     },
+     "status": {
+      "long": "Match Finished",
+      "short": "FT",
+      "elapsed": 90,
+      "extra": null
+     }
+    },
+    "league": {
+     "id": 141,
+     "name": "Segunda División",
+     "country": "Spain",
+     "logo": "https://example.invalid/logo.png",
+     "flag": "https://example.invalid/flag.png",
+     "season": 2022,
+     "round": "Regular Season - 1",
+     "standings": true
+    },
+    "teams": {
+     "home": {
+      "id": 539,
+      "name": "Levante",
+      "logo": "https://example.invalid/logo.png",
+      "winner": null
+     },
+     "away": {
+      "id": 726,
+      "name": "Huesca",
+      "logo": "https://example.invalid/logo.png",
+      "winner": null
+     }
+    },
+    "goals": {
+     "home": 0,
+     "away": 0
+    },
+    "score": {
+     "halftime": {
+      "home": 0,
+      "away": 0
+     },
+     "fulltime": {
+      "home": 0,
+      "away": 0
+     },
+     "extratime": {
+      "home": null,
+      "away": null
+     },
+     "penalty": {
+      "home": null,
+      "away": null
+     }
+    }
+   },
+   {
+    "fixture": {
+     "id": 878324,
+     "referee": "Adrián Cordero",
+     "timezone": "UTC",
+     "date": "2022-08-13T15:00:00+00:00",
+     "timestamp": 1660402800,
+     "periods": {
+      "first": 1660402800,
+      "second": 1660406400
+     },
+     "venue": {
+      "id": 1472,
+      "name": "Estadio Municipal de Ipurúa",
+      "city": "Eibar"
+     },
+     "status": {
+      "long": "Match Finished",
+      "short": "FT",
+      "elapsed": 90,
+      "extra": null
+     }
+    },
+    "league": {
+     "id": 141,
+     "name": "Segunda División",
+     "country": "Spain",
+     "logo": "https://example.invalid/logo.png",
+     "flag": "https://example.invalid/flag.png",
+     "season": 2022,
+     "round": "Regular Season - 1",
+     "standings": true
+    },
+    "teams": {
+     "home": {
+      "id": 545,
+      "name": "Eibar",
+      "logo": "https://example.invalid/logo.png",
+      "winner": true
+     },
+     "away": {
+      "id": 719,
+      "name": "Tenerife",
+      "logo": "https://example.invalid/logo.png",
+      "winner": false
+     }
+    },
+    "goals": {
+     "home": 2,
+     "away": 1
+    },
+    "score": {
+     "halftime": {
+      "home": 0,
+      "away": 0
+     },
+     "fulltime": {
+      "home": 2,
+      "away": 1
+     },
+     "extratime": {
+      "home": null,
+      "away": null
+     },
+     "penalty": {
+      "home": null,
+      "away": null
+     }
+    }
+   }
+  ],
+  "_trimmed_from": 468
+ }
+}

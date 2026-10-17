@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Stop the host-mode API, worker and web. PostgreSQL (Docker Desktop) keeps
+# running: stopping it is not needed to stop the stack, and a database is not
+# something to stop by accident.
+#
+#   scripts/dev-down            # api, worker, web
+#   scripts/dev-down worker     # just one
+set -euo pipefail
+RUN="${FBI_RUN_DIR:-$HOME/.fbi}"
+declare -A PATTERN=( [api]="[u]vicorn apps.api.main" [worker]="[a]pps.worker" [web]="[v]ite dev" )
+targets=("$@"); [[ ${#targets[@]} -eq 0 ]] && targets=(web api worker)
+
+for name in "${targets[@]}"; do
+  pattern="${PATTERN[$name]:-}"
+  [[ -z "$pattern" ]] && { echo "unknown: $name (api, worker, web)"; continue; }
+  pids="$(pgrep -f "$pattern" || true)"
+  if [[ -z "$pids" ]]; then echo "$name: not running"; rm -f "$RUN/$name.pid"; continue; fi
+  # The supervisor (scripts/run-supervised) must not restart what we are stopping.
+  mkdir -p "$RUN"; touch "$RUN/$name.stop"
+  kill -TERM $pids 2>/dev/null || true
+  for _ in $(seq 1 20); do pgrep -f "$pattern" >/dev/null || break; sleep 0.5; done
+  if pgrep -f "$pattern" >/dev/null; then kill -KILL $(pgrep -f "$pattern") 2>/dev/null || true; fi
+  rm -f "$RUN/$name.pid"
+  echo "$name: stopped"
+done

@@ -1,0 +1,9 @@
+[Unit]
+Description=PrediGol: daily database maintenance (partitions, grants, retention of operational leftovers)
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/maint.sh
+Nice=10

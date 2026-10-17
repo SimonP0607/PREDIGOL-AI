@@ -1,0 +1,109 @@
+[project]
+name = "football-intelligence"
+version = "0.1.0"
+description = "Football Betting Intelligence Platform — private, local-first"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "sqlalchemy>=2.0.36",
+  "alembic>=1.14",
+  "psycopg[binary]>=3.2",
+  # The API's bounded pool of read connections (fbi.api.deps): no connection set-up per request, and never more
+  # concurrent queries than the database can serve.
+  "psycopg-pool>=3.2",
+  # Errors of the API and the worker to Sentry, only when FBI_SENTRY_DSN is set (fbi.core.sentry).
+  "sentry-sdk>=2.0",
+  "httpx>=0.28",
+  "structlog>=24.4",
+  "apscheduler>=3.10",
+  "tenacity>=9.0",
+  "python-dotenv>=1.0",
+  "pyyaml>=6.0",
+  "polars>=1.17",
+  "argon2-cffi>=23.1",
+  # Second factor: AES-GCM for the TOTP secrets at rest, and the enrolment QR drawn on the server.
+  "cryptography>=43",
+  "segno>=1.6",
+  "tzdata>=2024.1",
+]
+
+[project.optional-dependencies]
+analytics = ["numpy>=2.1", "scipy>=1.14", "statsmodels>=0.14", "duckdb>=1.1", "pyarrow>=18"]
+ml        = ["scikit-learn>=1.5", "lightgbm>=4.5"]
+dev       = ["pytest>=8.3", "pytest-asyncio>=0.24", "pytest-cov>=6.0", "ruff>=0.8", "mypy>=1.13", "pip-audit>=2.7",
+             # Type stubs for the runtime deps that do not ship their own.
+             # Without these a clean `pip install -e ".[dev]"` fails `mypy`.
+             "types-PyYAML>=6.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fbi"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+asyncio_mode = "auto"
+addopts = "-ra --strict-markers"
+markers = ["integration: requires a live PostgreSQL"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E","F","W","I","N","UP","B","C4","DTZ","SIM","RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/fbi/core/clock.py" = ["DTZ005"]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+# 3.12 everywhere: the Dockerfile is python:3.12-slim and the dev venv is 3.12.
+# It also has to be >= 3.12 for mypy to be able to PARSE the stubs of what we
+# install - numpy 2.x ships PEP 695 `type` statements in its .pyi files, which
+# are a syntax error to mypy when it is told to assume an older version.
+python_version = "3.12"
+strict = true
+# `mypy` with no argument checks exactly these packages, in strict mode. That is
+# the gate: the code that computes probabilities, prices and decisions.
+files = ["src/fbi/domain", "src/fbi/odds", "src/fbi/core", "src/fbi/catalog", "src/fbi/ingestion", "src/fbi/providers", "src/fbi/quality", "src/fbi/ops", "src/fbi/api", "src/fbi/features", "src/fbi/models", "src/fbi/market", "src/fbi/backtesting", "src/fbi/picks", "src/fbi/predictions", "src/fbi/analyst", "src/fbi/ai", "src/fbi/notify", "src/fbi/migration", "src/fbi/storage", "src/fbi/research", "src/fbi/auth", "src/fbi/parlays", "src/fbi/truth", "src/fbi/intel"]
+
+# `mypy .` additionally walks tests, scripts, apps and migrations. Those are
+# still type-checked - a genuine type error there is still reported - but they
+# are not held to `strict`. Demanding full annotations from a pytest fixture or
+# a psycopg row unpack buys nothing and would push people to annotate tests
+# instead of writing them. The strictness that matters stays above.
+[[tool.mypy.overrides]]
+module = ["tests.*", "scripts.*", "apps.*", "migrations.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+warn_return_any = false
+check_untyped_defs = true
+
+# APScheduler 3.x ships no py.typed marker. Nothing else in the tree is exempt.
+[[tool.mypy.overrides]]
+module = ["apscheduler.*"]
+ignore_missing_imports = true
+
+# scipy ships no type information. Its call sites are few, numeric, and
+# covered by tests that check the numbers; typing them as Any is the honest
+# statement of what mypy can know about them.
+[[tool.mypy.overrides]]
+module = ["scipy", "scipy.*"]
+ignore_missing_imports = true
+
+# scikit-learn (the optional `ml` extra) ships no type information either; it is used
+# only by the research-V2 challengers, whose numbers the tests check.
+[[tool.mypy.overrides]]
+module = ["sklearn", "sklearn.*"]
+ignore_missing_imports = true

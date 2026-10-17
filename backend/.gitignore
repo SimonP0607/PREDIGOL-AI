@@ -1,0 +1,25 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.data/
+data/raw/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+.next/
+*.duckdb
+data/reports/
+data/experiments/
+data/backups/
+
+# The worker appends to this while it runs, so a tracked copy makes the
+# working tree dirty for as long as capture is alive - and "working tree
+# clean" is a condition worth being able to check.
+logs/
+
+# Cloud-only dev shim (DB on 5433 natively, not in Docker)
+devenv.sh
+data/baselines/
+data/truth/

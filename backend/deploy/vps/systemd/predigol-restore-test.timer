@@ -1,0 +1,9 @@
+[Unit]
+Description=PrediGol: weekly restore test of the newest backup
+
+[Timer]
+OnCalendar=Mon *-*-* 06:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

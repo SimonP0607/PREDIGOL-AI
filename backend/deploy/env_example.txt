@@ -1,0 +1,14 @@
+# BOX A (.env, chmod 600). Never commit the filled-in file.
+POSTGRES_PASSWORD=
+PRIVATE_IP=10.0.0.2
+FBI_CODE_VERSION=
+# Provider credentials: names as in the repo's .env.example (API_FOOTBALL key etc.)
+
+# BOX B (.env, chmod 600)
+# POSTGRES_PASSWORD=          # replica bootstrap superuser only
+# FBI_RO_PASSWORD=
+# REPLICATION_PASSWORD=
+# PRIMARY_PRIVATE_IP=10.0.0.2
+# API_DOMAIN=api.example.com
+# FBI_API_CORS_ORIGINS=https://app.example.com
+# FBI_CODE_VERSION=

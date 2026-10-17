@@ -1,0 +1,956 @@
+## GET /timezone [Timezone] get-timezone :: Timezone
+P x-apisports-key|header|req|string||||||||Your Api-Key
+D Get the list of available timezone to be used in the fixtures endpoint.
+D > This endpoint does not require any parameters.
+D **Update Frequency** : This endpoint contains all the existing timezone, it is not updated.
+D **Recommended Calls** : 1 call when you need.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:s}
+E get:s parameters[]:a errors[]:a results:n paging.current:n paging.total:n
+## GET /countries [Countries] get-countries :: Countries
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P name|query||string||||||||The name of the country
+P code|query||string|||FR, GB-ENG, IT… |||2|6|The Alpha code of the country
+P search|query||string||||||3|3|The name of the country
+D Get the list of available countries for the `leagues` endpoint.
+D The `name` and `code` fields can be used in other endpoints as filters.
+D To get the flag of a country you have to call the following url: `https://media.api-sports.io/flags/{country_code}.svg`
+D > Examples available in Request samples "Use Cases".
+D All the parameters of this endpoint can be used together.
+D **Update Frequency** : This endpoint is updated each time a new league from a country not covered by the API is added.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{name:s,code:s,flag:s}}
+E get:s parameters.name:s errors[]:a results:n paging.current:n paging.total:n
+U countries  // Get all available countries across all {seasons} and competitions
+U countries?name=england  // Get all available countries from one country {name}
+U countries?code=fr  // Get all available countries from one country {code}
+U countries?search=engl  // Allows you to search for a countries in relation to a country {name}
+## GET /leagues [Leagues] get-leagues :: Leagues
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P id|query||integer||||||||The id of the league
+P name|query||string||||||||The name of the league
+P country|query||string||||||||The country name of the league
+P code|query||string|||FR, GB-ENG, IT… |||2|6|The Alpha code of the country
+P season|query||integer|||YYYY|||4|4|The season of the league
+P team|query||integer||||||||The id of the team
+P type|query||string||league/cup||||||The type of the league 
+P current|query||string||true/false| Return the list of active seasons or the last one of each competition|||||The state of the league
+P search|query||string||||||3||The name or the country of the league
+P last|query||integer|||||||2|The X last leagues/cups added in the API
+D Get the list of available leagues and cups.
+D The league `id` are **unique** in the API and leagues keep it across all `seasons`
+D To get the logo of a competition you have to call the following url: `https://media.api-sports.io/football/leagues/{league_id}.png`
+D This endpoint also returns the `coverage` of each competition, which makes it possible to know what is available for that league or cup.
+D The values returned by the coverage indicate the **data available at the moment** you call the API, so for a competition that has not yet started, it is normal to have all the features set to `False`. This will be updated once the competition has started.
+D > You can find all the leagues ids on our [Dashboard](https://dashboard.api-football.com/soccer/ids).
+D **Example :**
+D ```
+D "coverage": {
+D "fixtures": {
+D "events": true,
+D "lineups": true,
+D "statistics_fixtures": false,
+D "statistics_players": false
+D },
+D "standings": true,
+D "players": true,
+D "top_scorers": true,
+D "top_assists": true,
+D "top_cards": true,
+D "injuries": true,
+D "predictions": true,
+D "odds": false
+D }
+D ```
+D In this example we can deduce that the competition does not have the following features: `statistics_fixtures`, `statistics_players`, `odds` because it is set to `False`.
+D The coverage of a competition can vary from season to season and values set to `True` do not guarantee 100% data availability.
+D Some competitions, such as the `friendlies`, are exceptions to the coverage indicated in the `leagues` endpoint, and the data available may differ depending on the match, including livescore, events, lineups, statistics and players.
+D Competitions are automatically renewed by the API when a new season is available. There may be a delay between the announcement of the official calendar and the availability of data in the API.
+D For `Cup` competitions, fixtures are automatically added when the two participating teams are known. For example if the current phase is the 8th final, the quarter final will be added once the teams playing this phase are known.
+D > Examples available in Request samples "Use Cases".
+D > Most of the parameters of this endpoint can be used together.
+D **Update Frequency** : This endpoint is updated several times a day.
+D **Recommended Calls** : 1 call per hour.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{league:{id:n,name:s,type:s,logo:s},country:{name:s,code:s,flag:s},seasons[]:{year:n,start:s,end:s,current:b,coverage:{fixtures:{events:b,lineups:b,statistics_fixtures:b,statistics_players:b},standings:b,players:b,top_scorers:b,top_assists:b,top_cards:b,injuries:b,predictions:b,odds:b}}}}
+E get:s parameters.id:s errors[]:a results:n paging.current:n paging.total:n
+U leagues?id=39  // Allows to retrieve all the seasons available for a league/cup
+U leagues?name=premier league  // Get all leagues from one league {name}
+U leagues?country=england  // You can find the available {country} by using the endpoint country
+U leagues?code=gb  // You can find the available country {code} by using the endpoint country
+U leagues?season=2019  // You can find the available {season} by using the endpoint seasons
+U leagues?season=2019&id=39  // Get one league from one league {id} & {season}
+U leagues?team=33  // Get all leagues in which the {team} has played at least one match
+U leagues?search=premier league  // Allows you to search for a league in relation to a league {name} or {country}
+U leagues?search=England
+U leagues?type=league  // Get all leagues from one {type}
+U leagues?current=true  // Get all leagues where the season is in progress or not
+U leagues?last=99  // Get the last 99 leagues or cups added to the API
+U leagues?season=2019&country=england&type=league  // It’s possible to make requests by mixing the available parameters
+U leagues?team=85&season=2019
+U leagues?id=61¤t=true&type=league
+## GET /leagues/seasons [Leagues] get-seasons :: Seasons
+P x-apisports-key|header|req|string||||||||Your Api-Key
+D Get the list of available seasons.
+D All seasons are only **4-digit keys**, so for a league whose season is `2018-2019` like the English Premier League (EPL), the `2018-2019` season in the API will be `2018`.
+D All `seasons` can be used in other endpoints as filters.
+D > This endpoint does not require any parameters.
+D **Update Frequency** : This endpoint is updated each time a new league is added.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:n}
+E get:s parameters[]:a errors[]:a results:n paging.current:n paging.total:n
+## GET /teams [Teams] get-teams :: Teams information
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P id|query||integer||||||||The id of the team
+P name|query||string||||||||The name of the team
+P league|query||integer||||||||The id of the league
+P season|query||integer|||YYYY|||4|4|The season of the league
+P country|query||string||||||||The country name of the team
+P code|query||string||||||3|3|The code of the team
+P venue|query||integer||||||||The id of the venue
+P search|query||string||||||3||The name or the country name of the team
+D Get the list of available teams.
+D The team `id` are **unique** in the API and teams keep it among all the leagues/cups in which they participate.
+D To get the logo of a team you have to call the following url: `https://media.api-sports.io/football/teams/{team_id}.png`
+D > You can find all the teams ids on our [Dashboard](https://dashboard.api-football.com/soccer/ids/teams).
+D > Examples available in Request samples "Use Cases".
+D > All the parameters of this endpoint can be used together.
+D **This endpoint requires at least one parameter.**
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+D **Tutorials** :
+D - [HOW TO GET ALL TEAMS AND PLAYERS FROM A LEAGUE ID](https://www.api-football.com/tutorials/4/how-to-get-all-teams-and-players-from-a-league-id)
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{team:{id:n,name:s,code:s,country:s,founded:n,national:b,logo:s},venue:{id:n,name:s,address:s,city:s,capacity:n,surface:s,image:s}}}
+E get:s parameters.id:s errors[]:a results:n paging.current:n paging.total:n
+U teams?id=33  // Get one team from one team {id}
+U teams?name=manchester united  // Get one team from one team {name}
+U teams?league=39&season=2019  // Get all teams from one {league} & {season}
+U teams?country=england  // Get teams from one team {country}
+U teams?code=FRA  // Get teams from one team {code}
+U teams?venue=789  // Get teams from one venue {id}
+U teams?search=manches  // Allows you to search for a team in relation to a team {name} or {country}
+U teams?search=England
+## GET /teams/statistics [Teams] get-teams-statistics :: Teams statistics
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P league|query|req|integer||||||||The id of the league
+P season|query|req|integer|||YYYY|||4|4|The season of the league
+P team|query|req|integer||||||||The id of the team
+P date|query||string|||YYYY-MM-DD|||||The limit date
+D Returns the statistics of a team in relation to a given competition and season.
+D It is possible to add the `date` parameter to calculate statistics from the beginning of the season to the given date. By default the API returns the statistics of all games played by the team for the competition and the season.
+D **Update Frequency** : This endpoint is updated twice a day.
+D **Recommended Calls** : 1 call per day for the teams who have at least one fixture during the day otherwise 1 call per week.
+D > Here is an example of what can be achieved
+D ![demo-teams-statistics](https://www.api-football.com/public/img/demo/demo-teams-statistics.png)
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R:{league:{id:n,name:s,country:s,logo:s,flag:s,season:n},team:{id:n,name:s,logo:s},form:s,fixtures:{played:{home:n,away:n,total:n},wins:{home:n,away:n,total:n},draws:{home:n,away:n,total:n},loses:{home:n,away:n,total:n}},goals:{for:{total:{home:n,away:n,total:n},average:{home:s,away:s,total:s},minute:{0-15:{total:n,percentage:s},16-30:{total:n,percentage:s},31-45:{total:n,percentage:s},46-60:{total:n,percentage:s},61-75:{total:n,percentage:s},76-90:{total:n,percentage:s},91-105:{total:n,percentage:s},106-120:{total:z,percentage:z}},under_over:{0:{5:{over:n,under:n}},1:{5:{over:n,under:n}},2:{5:{over:n,under:n}},3:{5:{over:n,under:n}},4:{5:{over:n,under:n}}}},against:{total:{home:n,away:n,total:n},average:{home:s,away:s,total:s},minute:{0-15:{total:n,percentage:s},16-30:{total:n,percentage:s},31-45:{total:n,percentage:s},46-60:{total:n,percentage:s},61-75:{total:n,percentage:s},76-90:{total:n,percentage:s},91-105:{total:n,percentage:s},106-120:{total:z,percentage:z}},under_over:{0:{5:{over:n,under:n}},1:{5:{over:n,under:n}},2:{5:{over:n,under:n}},3:{5:{over:n,under:n}},4:{5:{over:n,under:n}}}}},biggest:{streak:{wins:n,draws:n,loses:n},wins:{home:s,away:s},loses:{home:s,away:s},goals:{for:{home:n,away:n},against:{home:n,away:n}}},clean_sheet:{home:n,away:n,total:n},failed_to_score:{home:n,away:n,total:n},penalty:{scored:{total:n,percentage:s},missed:{total:n,percentage:s},total:n},lineups[]:{formation:s,played:n},cards:{yellow:{0-15:{total:n,percentage:s},16-30:{total:n,percentage:s},31-45:{total:n,percentage:s},46-60:{total:n,percentage:s},61-75:{total:n,percentage:s},76-90:{total:n,percentage:s},91-105:{total:z,percentage:z},106-120:{total:z,percentage:z}},red:{0-15:{total:z,percentage:z},16-30:{total:z,percentage:z},31-45:{total:z,percentage:z},46-60:{total:z,percentage:z},61-75:{total:z,percentage:z},76-90:{total:z,percentage:z},91-105:{total:z,percentage:z},106-120:{total:z,percentage:z}}}}}
+E get:s parameters.league:s parameters.season:s parameters.team:s errors[]:a results:n paging.current:n paging.total:n
+U teams/statistics?league=39&team=33&season=2019  // Get all statistics for a {team} in a {league} & {season}
+U teams/statistics?league=39&team=33&season=2019&date=2019-10-08  // Get all statistics for a {team} in a {league} & {season} with a end {date}
+## GET /teams/seasons [Teams] get-teams-seasons :: Teams seasons
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P team|query|req|integer||||||||The id of the team
+D Get the list of seasons available for a team.
+D > Examples available in Request samples "Use Cases".
+D **This endpoint requires at least one parameter.**
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:n}
+E get:s parameters.team:s errors[]:a results:n paging.current:n paging.total:n
+U teams/seasons?team=33  // Get all seasons available for a team from one team {id}
+## GET /teams/countries [Teams] get-teams-countries :: Teams countries
+P x-apisports-key|header|req|string||||||||Your Api-Key
+D Get the list of countries available for the `teams` endpoint.
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{name:s,code:s,flag:s}}
+E get:s parameters[]:a errors[]:a results:n paging.current:n paging.total:n
+U teams/countries  // Get all countries available for the teams endpoints
+## GET /venues [Venues] get-venues :: Venues
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P id|query||integer||||||||The id of the venue
+P name|query||string||||||||The name of the venue
+P city|query||string||||||||The city of the venue
+P country|query||string||||||||The country name of the venue
+P search|query||string||||||3||The name, city or the country of the venue
+D Get the list of available venues.
+D The venue `id` are **unique** in the API.
+D To get the image of a venue you have to call the following url: `https://media.api-sports.io/football/venues/{venue_id}.png`
+D > Examples available in Request samples "Use Cases".
+D > All the parameters of this endpoint can be used together.
+D **This endpoint requires at least one parameter.**
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{id:n,name:s,address:s,city:s,country:s,capacity:n,surface:s,image:s}}
+E get:s parameters.id:s errors[]:a results:n paging.current:n paging.total:n
+U venues?id=556  // Get one venue from venue {id}
+U venues?name=Old Trafford  // Get one venue from venue {name}
+U venues?city=manchester  // Get all venues from {city}
+U venues?country=england  // Get venues from {country}
+U venues?search=trafford  // Allows you to search for a venues in relation to a venue {name}, {city} or {country}
+U venues?search=manches
+U venues?search=England
+## GET /standings [Standings] get-standings :: Standings
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P league|query||integer||||||||The id of the league
+P season|query|req|integer|||YYYY|||4|4|The season of the league
+P team|query||integer||||||||The id of the team
+D Get the standings for a league or a team.
+D Return a table of one or more rankings according to the league / cup.
+D Some competitions have several rankings in a year, group phase, opening ranking, closing ranking etc…
+D > Examples available in Request samples "Use Cases".
+D > Most of the parameters of this endpoint can be used together.
+D **Update Frequency** : This endpoint is updated every hour.
+D **Recommended Calls** : 1 call per hour for the leagues or teams who have at least one fixture in progress otherwise 1 call per day.
+D **Tutorials** :
+D - [HOW TO GET STANDINGS FOR ALL CURRENT SEASONS](https://www.api-football.com/tutorials/6/how-to-get-standings-for-all-current-seasons)
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{league:{id:n,name:s,country:s,logo:s,flag:s,season:n,standings[][]:{rank:n,team:{id:n,name:s,logo:s},points:n,goalsDiff:n,group:s,form:s,status:s,description:s,all:{played:n,win:n,draw:n,lose:n,goals:{for:n,against:n}},home:{played:n,win:n,draw:n,lose:n,goals:{for:n,against:n}},away:{played:n,win:n,draw:n,lose:n,goals:{for:n,against:n}},update:s}}}}
+E get:s parameters.league:s parameters.season:s errors[]:a results:n paging.current:n paging.total:n
+U standings?league=39&season=2019  // Get all Standings from one {league} & {season}
+U standings?league=39&team=33&season=2019  // Get all Standings from one {league} & {season} & {team}
+U standings?team=33&season=2019  // Get all Standings from one {team} & {season}
+## GET /fixtures/rounds [Fixtures] get-fixtures-rounds :: Rounds
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P league|query|req|integer||||||||The id of the league
+P season|query|req|integer|||YYYY|||4|4|The season of the league
+P current|query||boolean||true/false||||||The current round only
+P dates|query||boolean||true/false||||||Add the dates of each round in the response
+P timezone|query||string||||||||A valid timezone from the endpoint `Timezone`
+D Get the rounds for a league or a cup.
+D The `round` can be used in endpoint fixtures as filters
+D > Examples available in Request samples "Use Cases".
+D **Update Frequency** : This endpoint is updated every day.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:s}
+E get:s parameters.league:s parameters.season:s errors[]:a results:n paging.current:n paging.total:n
+U fixtures/rounds?league=39&season=2019  // Get all available rounds from one {league} & {season}
+U fixtures/rounds?league=39&season=2019&dates=true  // Get all available rounds from one {league} & {season} With the dates of each round
+U fixtures/rounds?league=39&season=2019&current=true  // Get current round from one {league} & {season}
+## GET /fixtures [Fixtures] get-fixtures :: Fixtures
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P id|query||integer||id||||||The id of the fixture
+P ids|query||string||id-id-id|Maximum of 20 fixtures ids|||||One or more fixture ids
+P live|query||string||all/id-id||||||All or several leagues ids
+P date|query||string|||YYYY-MM-DD|||||A valid date
+P league|query||integer||||||||The id of the league
+P season|query||integer|||YYYY|||4|4|The season of the league
+P team|query||integer||||||||The id of the team
+P last|query||integer|||||||2|For the X last fixtures
+P next|query||integer|||||||2|For the X next fixtures
+P from|query||string|||YYYY-MM-DD|||||A valid date
+P to|query||string|||YYYY-MM-DD|||||A valid date
+P round|query||string||||||||The round of the fixture
+P status|query||string||NS/NS-PST-FT||||||One or more fixture status short
+P venue|query||integer||||||||The venue id of the fixture
+P timezone|query||string||||||||A valid timezone from the endpoint `Timezone`
+D For all requests to fixtures you can add the query parameter `timezone` to your request in order to retrieve the list of matches in the time zone of your choice like *“Europe/London“*
+D To know the list of available time zones you have to use the endpoint timezone.
+D **Available fixtures status**
+D |SHORT|LONG|TYPE|DESCRIPTION|
+D |TBD|Time To Be Defined|Scheduled|Scheduled but date and time are not known|
+D |NS|Not Started|Scheduled||
+D |1H|First Half, Kick Off|In Play|First half in play|
+D |HT|Halftime|In Play|Finished in the regular time|
+D |2H|Second Half, 2nd Half Started|In Play|Second half in play|
+D |ET|Extra Time|In Play|Extra time in play|
+D |BT|Break Time|In Play|Break during extra time|
+D |P|Penalty In Progress|In Play|Penaly played after extra time|
+D |SUSP|Match Suspended|In Play|Suspended by referee's decision, may be rescheduled another day|
+D |INT|Match Interrupted|In Play|Interrupted by referee's decision, should resume in a few minutes|
+D |FT|Match Finished|Finished|Finished in the regular time|
+D |AET|Match Finished|Finished|Finished after extra time without going to the penalty shootout|
+D |PEN|Match Finished|Finished|Finished after the penalty shootout|
+D |PST|Match Postponed|Postponed|Postponed to another day, once the new date and time is known the status will change to Not Started|
+D |CANC|Match Cancelled|Cancelled|Cancelled, match will not be played|
+D |ABD|Match Abandoned|Abandoned|Abandoned for various reasons (Bad Weather, Safety, Floodlights, Playing Staff Or Referees), Can be rescheduled or not, it depends on the competition|
+D |AWD|Technical Loss|Not Played||
+D |WO|WalkOver|Not Played|Victory by forfeit or absence of competitor|
+D |LIVE|In Progress|In Play|Used in very rare cases. It indicates a fixture in progress but the data indicating the half-time or elapsed time are not available|
+D Fixtures with the status `TBD` may indicate an incorrect fixture date or time because the fixture date or time is not yet known or final. Fixtures with this status are checked and updated daily. The same applies to fixtures with the status `PST`, `CANC`.
+D The fixtures ids are unique and specific to each fixture. In no case an `ID` will change.
+D Not all competitions have livescore available and only have `final result`. In this case, the status remains in `NS` and will be updated in the minutes/hours following the match (this can take up to 48 hours, depending on the competition).
+D > Although the data is updated every 15 seconds, depending on the competition there may be a delay between reality and the availability of data in the API.
+D **Update Frequency** : This endpoint is updated every 15 seconds.
+D **Recommended Calls** : 1 call per minute for the leagues, teams, fixtures who have at least one fixture in progress otherwise 1 call per day.
+D > Here are several examples of what can be achieved
+D ![demo-fixtures](https://www.api-football.com/public/img/demo/demo-fixtures.jpg)
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{fixture:{id:n,referee:z,timezone:s,date:s,timestamp:n,periods:{first:n,second:z},venue:{id:n,name:s,city:s},status:{long:s,short:s,elapsed:n,extra:z}},league:{id:n,name:s,country:s,logo:s,flag:s,season:n,round:s},teams:{home:{id:n,name:s,logo:s,winner:b},away:{id:n,name:s,logo:s,winner:b}},goals:{home:n,away:n},score:{halftime:{home:n,away:n},fulltime:{home:z,away:z},extratime:{home:z,away:z},penalty:{home:z,away:z}}}}
+E get:s parameters.live:s errors[]:a results:n paging.current:n paging.total:n
+U fixtures?id=215662  // In this request events, lineups, statistics fixture and players fixture are returned in the response
+U fixtures?ids=215662-215663-215664-215665-215666-215667  // In this request events, lineups, statistics fixture and players fixture are returned in the response
+U fixtures?live=all  // In this request events are returned in the response
+U fixtures?live=39-61-48  // In this request events are returned in the response
+U fixtures?league=39&season=2019  // Get all available fixtures from one {league} & {season}
+U fixtures?date=2019-10-22  // Get all available fixtures from one {date}
+U fixtures?next=15  // Get next X available fixtures
+U fixtures?last=15  // Get last X available fixtures
+U fixtures?date=2020-01-30&league=61&season=2019  // It’s possible to make requests by mixing the available parameters
+U fixtures?league=61&next=10
+U fixtures?venue=358&next=10
+U fixtures?league=61&last=10&status=ft
+U fixtures?team=85&last=10&timezone=Europe/london
+U fixtures?team=85&season=2019&from=2019-07-01&to=2020-10-31
+U fixtures?league=61&season=2019&from=2019-07-01&to=2020-10-31&timezone=Europe/london
+U fixtures?league=61&season=2019&round=Regular Season - 1
+## GET /fixtures/headtohead [Fixtures] get-fixtures-headtohead :: Head To Head
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P h2h|query|req|string|||ID-ID|||||The ids of the teams
+P date|query||string|||YYYY-MM-DD|||||
+P league|query||integer||||||||The id of the league
+P season|query||integer|||YYYY|||4|4|The season of the league
+P last|query||integer||||||||For the X last fixtures
+P next|query||integer||||||||For the X next fixtures
+P from|query||string|||YYYY-MM-DD|||||
+P to|query||string|||YYYY-MM-DD|||||
+P status|query||string||NS/NS-PST-FT||||||One or more fixture status short
+P venue|query||integer||||||||The venue id of the fixture
+P timezone|query||string||||||||A valid timezone from the endpoint `Timezone`
+D Get heads to heads between two teams.
+D **Update Frequency** : This endpoint is updated every 15 seconds.
+D **Recommended Calls** : 1 call per minute for the leagues, teams, fixtures who have at least one fixture in progress otherwise 1 call per day.
+D > Here is an example of what can be achieved
+D ![demo-h2h](https://www.api-football.com/public/img/demo/demo-h2h.png)
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{fixture:{id:n,referee:s,timezone:s,date:s,timestamp:n,periods:{first:n,second:n},venue:{id:n,name:s,city:s},status:{long:s,short:s,elapsed:n,extra:z}},league:{id:n,name:s,country:s,logo:s,flag:s,season:n,round:s},teams:{home:{id:n,name:s,logo:s,winner:b},away:{id:n,name:s,logo:s,winner:b}},goals:{home:n,away:n},score:{halftime:{home:n,away:n},fulltime:{home:n,away:n},extratime:{home:z,away:z},penalty:{home:z,away:z}}}}
+E get:s parameters.h2h:s parameters.last:s errors[]:a results:n paging.current:n paging.total:n
+U fixtures/headtohead?h2h=33-34  // Get all head to head between two {team}
+U fixtures/headtohead?h2h=33-34  // It’s possible to make requests by mixing the available parameters
+U fixtures/headtohead?h2h=33-34&status=ns
+U fixtures/headtohead?h2h=33-34&from=2019-10-01&to=2019-10-31
+U fixtures/headtohead?date=2019-10-22&h2h=33-34
+U fixtures/headtohead?league=39&season=2019&h2h=33-34&last=5
+U fixtures/headtohead?league=39&season=2019&h2h=33-34&next=10&from=2019-10-01&to=2019-10-31
+U fixtures/headtohead?league=39&season=2019&h2h=33-34&last=5&timezone=Europe/London
+## GET /fixtures/statistics [Fixtures] get-fixtures-statistics :: Statistics
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P fixture|query|req|integer||||||||The id of the fixture
+P team|query||integer||||||||The id of the team
+P type|query||string||||||||The type of statistics
+P half|query||boolean||true/false||||||Add the halftime statistics in the response `Data start from 2024 season for half parameter`
+D Get the statistics for one fixture.
+D **Available statistics**
+D * Shots on Goal
+D * Shots off Goal
+D * Shots insidebox
+D * Shots outsidebox
+D * Total Shots
+D * Blocked Shots
+D * Fouls
+D * Corner Kicks
+D * Offsides
+D * Ball Possession
+D * Yellow Cards
+D * Red Cards
+D * Goalkeeper Saves
+D * Total passes
+D * Passes accurate
+D * Passes %
+D **Update Frequency** : This endpoint is updated every minute.
+D **Recommended Calls** : 1 call every minute for the teams or fixtures who have at least one fixture in progress otherwise 1 call per day.
+D > Here is an example of what can be achieved
+D ![demo-statistics](https://www.api-football.com/public/img/demo/demo-statistics.png)
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{team:{id:n,name:s,logo:s},statistics[]:{type:s,value:n}}}
+E get:s parameters.team:s parameters.fixture:s errors[]:a results:n paging.current:n paging.total:n
+U fixtures/statistics?fixture=215662  // Get all available statistics from one {fixture}
+U fixtures/statistics?fixture=215662&half=true  // Get all available statistics from one {fixture} with Fulltime, First & Second Half data
+U fixtures/statistics?fixture=215662&type=Total Shots  // Get all available statistics from one {fixture} & {type}
+U fixtures/statistics?fixture=215662&team=463  // Get all available statistics from one {fixture} & {team}
+## GET /fixtures/events [Fixtures] get-fixtures-events :: Events
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P fixture|query|req|integer||||||||The id of the fixture
+P team|query||integer||||||||The id of the team
+P player|query||integer||||||||The id of the player
+P type|query||string||||||||The type
+D Get the events from a fixture.
+D **Available events**
+D |TYPE|||||
+D |Goal|Normal Goal|Own Goal|Penalty|Missed Penalty|
+D |Card|Yellow Card|Red card|||
+D |Subst|Substitution [1, 2, 3...]||||
+D |Var|Goal cancelled|Penalty confirmed|||
+D * *VAR events are available from the 2020-2021 season.*
+D **Update Frequency** : This endpoint is updated every 15 seconds.
+D **Recommended Calls** : 1 call per minute for the fixtures in progress otherwise 1 call per day.
+D You can also retrieve all the events of the fixtures in progress with to the endpoint `fixtures?live=all`
+D > Here is an example of what can be achieved
+D ![demo-events](https://www.api-football.com/public/img/demo/demo-events.png)
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{time:{elapsed:n,extra:z},team:{id:n,name:s,logo:s},player:{id:n,name:s},assist:{id:z,name:z},type:s,detail:s,comments:z}}
+E get:s parameters.fixture:s errors[]:a results:n paging.current:n paging.total:n
+U fixtures/events?fixture=215662  // Get all available events from one {fixture}
+U fixtures/events?fixture=215662&team=463  // Get all available events from one {fixture} & {team}
+U fixtures/events?fixture=215662&player=35845  // Get all available events from one {fixture} & {player}
+U fixtures/events?fixture=215662&type=card  // Get all available events from one {fixture} & {type}
+U fixtures/events?fixture=215662&player=35845&type=card  // It’s possible to make requests by mixing the available parameters
+U fixtures/events?fixture=215662&team=463&type=goal&player=35845
+## GET /fixtures/lineups [Fixtures] get-fixtures-lineups :: Lineups
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P fixture|query|req|integer||||||||The id of the fixture
+P team|query||integer||||||||The id of the team
+P player|query||integer||||||||The id of the player
+P type|query||string||||||||The type
+D Get the lineups for a fixture.
+D Lineups are available between 20 and 40 minutes before the fixture when the competition covers this feature. You can check this with the endpoint `leagues` and the `coverage` field.
+D > It's possible that for some competitions the lineups are not available before the fixture, in this case, they are updated and available after the match with a variable delay depending on the competition.
+D **Available datas**
+D * Formation
+D * Coach
+D * Start XI
+D * Substitutes
+D **Players' positions on the grid `*`**
+D **X** = row and **Y** = column (X:Y)
+D Line 1 **X** being the one of the goal and then for each line this number is incremented. The column **Y** will go from left to right, and incremented for each player of the line.
+D `* As a new feature, some irregularities may occur, do not hesitate to report them on our public Roadmap`
+D **Update Frequency** : This endpoint is updated every 15 minutes.
+D **Recommended Calls** : 1 call every 15 minutes for the fixtures in progress otherwise 1 call per day.
+D > Here are several examples of what can be done
+D ![demo-lineups](https://www.api-football.com/public/img/demo/demo-lineups-1.jpg)
+D ![demo-lineups](https://www.api-football.com/public/img/demo/demo-lineups.png)
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{team:{id:n,name:s,logo:s,colors:{player:{primary:s,number:s,border:s},goalkeeper:{primary:s,number:s,border:s}}},formation:s,startXI[]:{player:{id:n,name:s,number:n,pos:s,grid:s}},substitutes[]:{player:{id:n,name:s,number:n,pos:s,grid:z}},coach:{id:n,name:s,photo:s}}}
+E get:s parameters.fixture:s errors[]:a results:n paging.current:n paging.total:n
+U fixtures/lineups?fixture=592872  // Get all available lineups from one {fixture}
+U fixtures/lineups?fixture=592872&team=50  // Get all available lineups from one {fixture} & {team}
+U fixtures/lineups?fixture=215662&player=35845  // Get all available lineups from one {fixture} & {player}
+U fixtures/lineups?fixture=215662&type=startXI  // Get all available lineups from one {fixture} & {type}
+U fixtures/lineups?fixture=215662&player=35845&type=startXI  // It’s possible to make requests by mixing the available parameters
+U fixtures/lineups?fixture=215662&team=463&type=startXI&player=35845
+## GET /fixtures/players [Fixtures] get-fixtures-players :: Players statistics
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P fixture|query|req|integer||||||||The id of the fixture
+P team|query||integer||||||||The id of the team
+D Get the players statistics from one fixture.
+D **Update Frequency** : This endpoint is updated every minute.
+D **Recommended Calls** : 1 call every minute for the fixtures in progress otherwise 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{team:{id:n,name:s,logo:s,update:s},players[]:{player:{id:n,name:s,photo:s},statistics[]:{games:{minutes:n,number:n,position:s,rating:s,captain:b,substitute:b},offsides:z,shots:{total:n,on:n},goals:{total:z,conceded:n,assists:z,saves:n},passes:{total:n,key:n,accuracy:s},tackles:{total:z,blocks:n,interceptions:n},duels:{total:z,won:z},dribbles:{attempts:n,success:n,past:z},fouls:{drawn:n,committed:n},cards:{yellow:n,red:n},penalty:{won:z,commited:z,scored:n,missed:n,saved:n}}}}}
+E get:s parameters.fixture:s errors[]:a results:n paging.current:n paging.total:n
+U fixtures/players?fixture=169080  // Get all available players statistics from one {fixture}
+U fixtures/players?fixture=169080&team=2284  // Get all available players statistics from one {fixture} & {team}
+## GET /injuries [Injuries] get-injuries :: Injuries
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P league|query||integer||||||||The id of the league
+P season|query||integer|||YYYY|||4|4|The season of the league, **required** with `league`, `team` and `player` parameters
+P fixture|query||integer||||||||The id of the fixture
+P team|query||integer||||||||The id of the team
+P player|query||integer||||||||The id of the player
+P date|query||string|||YYYY-MM-DD|||||A valid date
+P ids|query||string||id-id-id|Maximum of 20 fixtures ids|||||One or more fixture ids
+P timezone|query||string||||||||A valid timezone from the endpoint `Timezone`
+D Get the list of players not participating in the fixtures for various reasons such as `suspended`, `injured` for example.
+D Being a new endpoint, the data is only available from April 2021.
+D **There are two types:**
+D * `Missing Fixture` : The player will not play the fixture.
+D * `Questionable` : The information is not yet 100% sure, the player may eventually play the fixture.
+D > Examples available in Request samples "Use Cases".
+D > All the parameters of this endpoint can be used together.
+D **This endpoint requires at least one parameter.**
+D **Update Frequency** : This endpoint is updated every 4 hours.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{player:{id:n,name:s,photo:s,type:s,reason:s},team:{id:n,name:s,logo:s},fixture:{id:n,timezone:s,date:s,timestamp:n},league:{id:n,season:n,name:s,country:s,logo:s,flag:z}}}
+E get:s parameters.fixture:s errors[]:a results:n paging.current:n paging.total:n
+U injuries?league=2&season=2020  // Get all available injuries from one {league} & {season}
+U injuries?fixture=686314  // Get all available injuries from one {fixture}
+U injuries?ids=686314-686315-686316-686317-686318-686319-686320  // Get all available injuries from severals fixtures {ids} 
+U injuries?team=85&season=2020  // Get all available injuries from one {team} & {season}
+U injuries?player=865&season=2020  // Get all available injuries from one {player} & {season}
+U injuries?date=2021-04-07  // Get all available injuries from one {date}
+U injuries?league=2&season=2020&team=85  // It’s possible to make requests by mixing the available parameters
+U injuries?league=2&season=2020&player=865
+U injuries?date=2021-04-07&timezone=Europe/London&team=85
+U injuries?date=2021-04-07&league=61
+## GET /predictions [Predictions] get-predictions :: Predictions
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P fixture|query|req|integer||||||||The id of the fixture
+D Get predictions about a fixture.
+D The predictions are made using several algorithms including the poisson distribution, comparison of team statistics, last matches, players etc…
+D Bookmakers odds are not used to make these predictions
+D Also provides some comparative statistics between teams
+D **Available Predictions**
+D * Match winner : Id of the team that can potentially win the fixture
+D * Win or Draw : If `True` indicates that the designated team can win or draw
+D * Under / Over : -1.5 / -2.5 / -3.5 / -4.5 / +1.5 / +2.5 / +3.5 / +4.5 `*`
+D * Goals Home : -1.5 / -2.5 / -3.5 / -4.5 `*`
+D * Goals Away -1.5 / -2.5 / -3.5 / -4.5 `*`
+D * Advice *(Ex : Deportivo Santani or draws and -3.5 goals)*
+D `*` **-1.5** means that there will be a maximum of **1.5** goals in the fixture, i.e : **1** goal
+D **Update Frequency** : This endpoint is updated every hour.
+D **Recommended Calls** : 1 call per hour for the fixtures in progress otherwise 1 call per day.
+D >Here is an example of what can be achieved
+D ![demo-prediction](https://www.api-football.com/public/img/demo/demo-prediction.png)
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{predictions:{winner:{id:n,name:s,comment:s},win_or_draw:b,under_over:s,goals:{home:s,away:s},advice:s,percent:{home:s,draw:s,away:s}},league:{id:n,name:s,country:s,logo:s,flag:s,season:n},teams:{home:{id:n,name:s,logo:s,last_5:{form:s,att:s,def:s,goals:{for:{total:n,average:n},against:{total:n,average:n}}},league:{form:s,fixtures:{played:{home:n,away:n,total:n},wins:{home:n,away:n,total:n},draws:{home:n,away:n,total:n},loses:{home:n,away:n,total:n}},goals:{for:{total:{home:n,away:n,total:n},average:{home:s,away:s,total:s}},against:{total:{home:n,away:n,total:n},average:{home:s,away:s,total:s}}},biggest:{streak:{wins:n,draws:n,loses:n},wins:{home:s,away:s},loses:{home:s,away:s},goals:{for:{home:n,away:n},against:{home:n,away:n}}},clean_sheet:{home:n,away:n,total:n},failed_to_score:{home:n,away:n,total:n}}},away:{id:n,name:s,logo:s,last_5:{form:s,att:s,def:s,goals:{for:{total:n,average:n},against:{total:n,average:n}}},league:{form:s,fixtures:{played:{home:n,away:n,total:n},wins:{home:n,away:n,total:n},draws:{home:n,away:n,total:n},loses:{home:n,away:n,total:n}},goals:{for:{total:{home:n,away:n,total:n},average:{home:s,away:s,total:s}},against:{total:{home:n,away:n,total:n},average:{home:s,away:s,total:s}}},biggest:{streak:{wins:n,draws:n,loses:n},wins:{home:s,away:s},loses:{home:s,away:s},goals:{for:{home:n,away:n},against:{home:n,away:n}}},clean_sheet:{home:n,away:n,total:n},failed_to_score:{home:n,away:n,total:n}}}},comparison:{form:{home:s,away:s},att:{home:s,away:s},def:{home:s,away:s},poisson_distribution:{home:s,away:s},h2h:{home:s,away:s},goals:{home:s,away:s},total:{home:s,away:s}},h2h[]:{fixture:{id:n,referee:s,timezone:s,date:s,timestamp:n,periods:{first:n,second:n},venue:{id:z,name:s,city:z},status:{long:s,short:s,elapsed:n,extra:z}},league:{id:n,name:s,country:s,logo:s,flag:s,season:n,round:s},teams:{home:{id:n,name:s,logo:s,winner:b},away:{id:n,name:s,logo:s,winner:b}},goals:{home:n,away:n},score:{halftime:{home:n,away:n},fulltime:{home:n,away:n},extratime:{home:z,away:z},penalty:{home:z,away:z}}}}}
+E get:s parameters.fixture:s errors[]:a results:n paging.current:n paging.total:n
+U predictions?fixture=198772  // Get all available predictions from one {fixture}
+## GET /coachs [Coachs] get-coachs :: Coachs
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P id|query||integer||||||||The id of the coach
+P team|query||integer||||||||The id of the team
+P search|query||string||||||3||The name of the coach
+D Get all the information about the coachs and their careers.
+D To get the photo of a coach you have to call the following url: `https://media.api-sports.io/football/coachs/{coach_id}.png`
+D **Update Frequency** : This endpoint is updated every day.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{id:n,name:s,firstname:s,lastname:s,age:n,birth:{date:s,place:s,country:s},nationality:s,height:s,weight:s,photo:s,team:{id:n,name:s,logo:s},career[]:{team:{id:n,name:s,logo:s},start:s,end:z}}}
+E get:s parameters.team:s errors[]:a results:n paging.current:n paging.total:n
+U coachs?id=1  // Get coachs from one coach {id}
+U coachs?team=33  // Get coachs from one {team}
+U coachs?search=Klopp  // Allows you to search for a coach in relation to a coach {name}
+## GET /players/seasons [Players] get-players-seasons :: Seasons
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P player|query||integer||||||||The id of the player
+D Get all available seasons for players statistics.
+D **Update Frequency** : This endpoint is updated every day.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:n}
+E get:s parameters[]:a errors[]:a results:n paging.current:n paging.total:n
+U players/seasons  // Get all seasons available for players endpoint
+U players/seasons?player=276  // Get all seasons available for a player {id}
+## GET /players/profiles [Players] get-players-profiles :: Profiles
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P player|query||integer||||||||The id of the player
+P search|query||string||||||4||The lastname of the player
+P page|query||integer||||||||Use for the pagination
+D Returns the list of all available players.
+D It is possible to call this endpoint without parameters, but you will need to use the **pagination** to get all available players.
+D To get the photo of a player you have to call the following url: `https://media.api-sports.io/football/players/{player_id}.png`
+D This endpoint uses a **pagination system**, you can navigate between the different pages with to the `page` parameter.
+D > **Pagination** : 250 results per page.
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per week.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{player:{id:n,name:s,firstname:s,lastname:s,age:n,birth:{date:s,place:s,country:s},nationality:s,height:s,weight:s,number:n,position:s,photo:s}}}
+E get:s parameters.player:s errors[]:a results:n paging.current:n paging.total:n
+U players/profiles?player=276  // Get data from one {player}
+U players/profiles?search=ney  // Allows you to search for a player in relation to a player {lastname}
+U players/profiles  // Get all available Players (limited to 250 results, use the pagination for next ones)
+U players/profiles?page=2
+U players/profiles?page=3
+## GET /players [Players] get-players :: Statistics
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P id|query||integer||||||||The id of the player
+P team|query||integer||||||||The id of the team
+P league|query||integer||||||||The id of the league
+P season|query||integer|||YYYY | Requires the fields Id, League or Team|||4|4|The season of the league
+P search|query||string|||Requires the fields League or Team|||4||The name of the player
+P page|query||integer||||||||Use for the pagination
+D Get players statistics.
+D This endpoint returns the players for whom the `profile` and `statistics` data are available. Note that it is possible that a player has statistics for 2 teams in the same season in case of transfers.
+D The statistics are calculated according to the team `id`, league `id` and `season`.
+D You can find the available `seasons` by using the endpoint `players/seasons`.
+D > To get the squads of the teams it is better to use the endpoint `players/squads`.
+D The players `id` are unique in the API and players keep it among all the teams they have been in.
+D In this endpoint you have the `rating` field, which is the rating of the player according to a match or a season. This data is calculated according to the performance of the player in relation to the other players of the game or the season who occupy the same position *(Attacker, defender, goal...)*. There are different algorithms that take into account the position of the player and assign points according to his performance.
+D To get the photo of a player you have to call the following url: `https://media.api-sports.io/football/players/{player_id}.png`
+D This endpoint uses a **pagination system**, you can navigate between the different pages with to the `page` parameter.
+D > **Pagination** : 20 results per page.
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+D **Tutorials** :
+D - [HOW TO GET ALL TEAMS AND PLAYERS FROM A LEAGUE ID](https://www.api-football.com/tutorials/4/how-to-get-all-teams-and-players-from-a-league-id)
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{player:{id:n,name:s,firstname:s,lastname:s,age:n,birth:{date:s,place:s,country:s},nationality:s,height:s,weight:s,injured:b,photo:s},statistics[]:{team:{id:n,name:s,logo:s},league:{id:n,name:s,country:s,logo:s,flag:s,season:n},games:{appearences:n,lineups:n,minutes:n,number:z,position:s,rating:s,captain:b},substitutes:{in:n,out:n,bench:n},shots:{total:n,on:n},goals:{total:n,conceded:z,assists:n,saves:n},passes:{total:n,key:n,accuracy:n},tackles:{total:n,blocks:n,interceptions:n},duels:{total:z,won:z},dribbles:{attempts:n,success:n,past:z},fouls:{drawn:n,committed:n},cards:{yellow:n,yellowred:n,red:n},penalty:{won:n,commited:z,scored:n,missed:n,saved:z}}}}
+E get:s parameters.id:s parameters.season:s errors[]:a results:n paging.current:n paging.total:n
+U players?id=19088&season=2018  // Get all players statistics from one player {id} & {season}
+U players?season=2018&team=33  // Get all players statistics from one {team} & {season}
+U players?season=2018&team=33&page=2
+U players?season=2018&league=61  // Get all players statistics from one {league} & {season}
+U players?season=2018&league=61&page=4
+U players?season=2018&league=61&team=33  // Get all players statistics from one {league}, {team} & {season}
+U players?season=2018&league=61&team=33&page=5
+U players?team=85&search=cavani  // Allows you to search for a player in relation to a player {name}
+U players?league=61&search=cavani
+U players?team=85&search=cavani&season=2018
+## GET /players/squads [Players] get-players-squads :: Squads
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P team|query||integer||||||||The id of the team
+P player|query||integer||||||||The id of the player
+D Return the current squad of a team when the `team` parameter is used. When the `player` parameter is used the endpoint returns the set of teams associated with the player.
+D > The response format is the same regardless of the parameter sent.
+D **This endpoint requires at least one parameter.**
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per week.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{team:{id:n,name:s,logo:s},players[]:{id:n,name:s,age:n,number:n,position:s,photo:s}}}
+E get:s parameters.team:s errors[]:a results:n paging.current:n paging.total:n
+U players/squads?team=33  // Get all players from one {team}
+U players/squads?player=276  // Get all teams from one {player}
+## GET /players/teams [Players] get-players-teams :: Teams
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P player|query|req|integer||||||||The id of the player
+D Returns the list of teams and seasons in which the player played during his career.
+D **This endpoint requires at least one parameter.**
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per week.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{team:{id:n,name:s,logo:s},seasons[]:n}}
+E get:s parameters.player:s errors[]:a results:n paging.current:n paging.total:n
+U players/teams?player=276  // Get all teams from one {player}
+## GET /players/topscorers [Players] get-players-topscorers :: Top Scorers
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P league|query|req|integer||||||||The id of the league
+P season|query|req|integer|||YYYY|||4|4|The season of the league
+D Get the 20 best players for a league or cup.
+D **How it is calculated:**
+D * 1 : The player that has scored the higher number of goals
+D * 2 : The player that has scored the fewer number of penalties
+D * 3 : The player that has delivered the higher number of goal assists
+D * 4 : The player that scored their goals in the higher number of matches
+D * 5 : The player that played the fewer minutes
+D * 6 : The player that plays for the team placed higher on the table
+D * 7 : The player that received the fewer number of red cards
+D * 8 : The player that received the fewer number of yellow cards
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{player:{id:n,name:s,firstname:s,lastname:s,age:n,birth:{date:s,place:s,country:s},nationality:s,height:s,weight:s,injured:b,photo:s},statistics[]:{team:{id:n,name:s,logo:s},league:{id:n,name:s,country:s,logo:s,flag:s,season:n},games:{appearences:n,lineups:n,minutes:n,number:z,position:s,rating:s,captain:b},substitutes:{in:n,out:n,bench:n},shots:{total:n,on:n},goals:{total:n,conceded:z,assists:n,saves:n},passes:{total:n,key:n,accuracy:n},tackles:{total:n,blocks:n,interceptions:n},duels:{total:n,won:n},dribbles:{attempts:n,success:n,past:z},fouls:{drawn:n,committed:n},cards:{yellow:n,yellowred:n,red:n},penalty:{won:n,commited:z,scored:n,missed:n,saved:z}}}}
+E get:s parameters.league:s parameters.season:s errors[]:a results:n paging.current:n paging.total:n
+## GET /players/topassists [Players] get-players-topassists :: Top Assists
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P league|query|req|integer||||||||The id of the league
+P season|query|req|integer|||YYYY|||4|4|The season of the league
+D Get the 20 best players assists for a league or cup.
+D **How it is calculated:**
+D * 1 : The player that has delivered the higher number of goal assists
+D * 2 : The player that has scored the higher number of goals
+D * 3 : The player that has scored the fewer number of penalties
+D * 4 : The player that assists in the higher number of matches
+D * 5 : The player that played the fewer minutes
+D * 6 : The player that received the fewer number of red cards
+D * 7 : The player that received the fewer number of yellow cards
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{player:{id:n,name:s,firstname:s,lastname:s,age:n,birth:{date:s,place:s,country:s},nationality:s,height:s,weight:s,injured:b,photo:s},statistics[]:{team:{id:n,name:s,logo:s},league:{id:n,name:s,country:s,logo:s,flag:s,season:n},games:{appearences:n,lineups:n,minutes:n,number:z,position:s,rating:s,captain:b},substitutes:{in:n,out:n,bench:n},shots:{total:n,on:n},goals:{total:n,conceded:n,assists:n,saves:z},passes:{total:n,key:n,accuracy:n},tackles:{total:n,blocks:n,interceptions:n},duels:{total:n,won:n},dribbles:{attempts:n,success:n,past:z},fouls:{drawn:n,committed:n},cards:{yellow:n,yellowred:n,red:n},penalty:{won:z,commited:z,scored:n,missed:n,saved:z}}}}
+E get:s parameters.season:s parameters.league:s errors[]:a results:n paging.current:n paging.total:n
+## GET /players/topyellowcards [Players] get-players-topyellowcards :: Top Yellow Cards
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P league|query|req|integer||||||||The id of the league
+P season|query|req|integer|||YYYY|||4|4|The season of the league
+D Get the 20 players with the most yellow cards for a league or cup.
+D **How it is calculated:**
+D * 1 : The player that received the higher number of yellow cards
+D * 2 : The player that received the higher number of red cards
+D * 3 : The player that assists in the higher number of matches
+D * 4 : The player that played the fewer minutes
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{player:{id:n,name:s,firstname:s,lastname:s,age:n,birth:{date:s,place:z,country:s},nationality:s,height:s,weight:s,injured:b,photo:s},statistics[]:{team:{id:n,name:s,logo:s},league:{id:n,name:s,country:s,logo:s,flag:s,season:n},games:{appearences:n,lineups:n,minutes:n,number:z,position:s,rating:s,captain:b},substitutes:{in:n,out:n,bench:n},shots:{total:n,on:n},goals:{total:n,conceded:n,assists:z,saves:z},passes:{total:n,key:n,accuracy:n},tackles:{total:n,blocks:n,interceptions:n},duels:{total:n,won:n},dribbles:{attempts:n,success:n,past:z},fouls:{drawn:n,committed:n},cards:{yellow:n,yellowred:n,red:n},penalty:{won:z,commited:z,scored:n,missed:n,saved:z}}}}
+E get:s parameters.season:s parameters.league:s errors[]:a results:n paging.current:n paging.total:n
+## GET /players/topredcards [Players] get-players-topredcards :: Top Red Cards
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P league|query|req|integer||||||||The id of the league
+P season|query|req|integer|||YYYY|||4|4|The season of the league
+D Get the 20 players with the most red cards for a league or cup.
+D **How it is calculated:**
+D * 1 : The player that received the higher number of red cards
+D * 2 : The player that received the higher number of yellow cards
+D * 3 : The player that assists in the higher number of matches
+D * 4 : The player that played the fewer minutes
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{player:{id:n,name:s,firstname:s,lastname:s,age:n,birth:{date:s,place:s,country:s},nationality:s,height:s,weight:s,injured:b,photo:s},statistics[]:{team:{id:n,name:s,logo:s},league:{id:n,name:s,country:s,logo:s,flag:s,season:n},games:{appearences:n,lineups:n,minutes:n,number:z,position:s,rating:s,captain:b},substitutes:{in:n,out:n,bench:n},shots:{total:n,on:n},goals:{total:n,conceded:n,assists:z,saves:z},passes:{total:n,key:n,accuracy:n},tackles:{total:n,blocks:n,interceptions:n},duels:{total:n,won:n},dribbles:{attempts:n,success:n,past:z},fouls:{drawn:n,committed:n},cards:{yellow:n,yellowred:n,red:n},penalty:{won:z,commited:z,scored:n,missed:n,saved:z}}}}
+E get:s parameters.season:s parameters.league:s errors[]:a results:n paging.current:n paging.total:n
+## GET /transfers [Transfers] get-transfers :: Transfers
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P player|query||integer||||||||The id of the player
+P team|query||integer||||||||The id of the team
+D Get all available transfers for players and teams
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{player:{id:n,name:s},update:s,transfers[]:{date:s,type:s,teams:{in:{id:n,name:s,logo:s},out:{id:n,name:s,logo:s}}}}}
+E get:s parameters.player:s errors[]:a results:n paging.current:n paging.total:n
+U transfers?player=35845  // Get all transfers from one {player}
+U transfers?team=463  // Get all transfers from one {team}
+## GET /trophies [Trophies] get-trophies :: Trophies
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P player|query||integer||||||||The id of the player
+P players|query||string||id-id-id|Maximum of 20 players ids|||||One or more players ids
+P coach|query||integer||||||||The id of the coach
+P coachs|query||string||id-id-id|Maximum of 20 coachs ids|||||One or more coachs ids
+D Get all available trophies for a player or a coach.
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{league:s,country:s,season:s,place:s}}
+E get:s parameters.player:s errors[]:a results:n paging.current:n paging.total:n
+U trophies?player=276  // Get all trophies from one {player}
+U trophies?players=276-278  // Get all trophies from several {player} ids
+U trophies?coach=2  // Get all trophies from one {coach}
+U trophies?coachs=2-6  // Get all trophies from several {coach} ids
+## GET /sidelined [Sidelined] get-sidelined :: Sidelined
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P player|query||integer||||||||The id of the player
+P players|query||string||id-id-id|Maximum of 20 players ids|||||One or more players ids
+P coach|query||integer||||||||The id of the coach
+P coachs|query||string||id-id-id|Maximum of 20 coachs ids|||||One or more coachs ids
+D Get all available sidelined for a player or a coach.
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{type:s,start:s,end:s}}
+E get:s parameters.player:s errors[]:a results:n paging.current:n paging.total:n
+U sidelined?player=276  // Get all from one {player}
+U sidelined?players=276-278-279-280-281-282  // Get all from several {player} ids
+U sidelined?coach=2  // Get all from one {coach}
+U sidelined?coachs=2-6-44-77-54-52  // Get all from several {coach} ids
+## GET /odds/live [Odds (In-Play)] get-odds-live :: odds/live
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P fixture|query||integer||||||||The id of the fixture
+P league|query||integer||| (In this endpoint the "season" parameter is not needed)|||||The id of the league
+P bet|query||integer||||||||The id of the bet
+D This endpoint returns in-play odds for fixtures in progress.
+D Fixtures are added between 15 and 5 minutes before the start of the fixture. Once the fixture is over they are removed from the endpoint between 5 and 20 minutes. **No history is stored**. So fixtures that are about to start, fixtures in progress and fixtures that have just ended are available in this endpoint.
+D **Update Frequency** : This endpoint is updated every 5 seconds.`*`
+D `* This value can change in the range of 5 to 60 seconds`
+D **INFORMATIONS ABOUT STATUS**
+D ```
+D "status": {
+D "stopped": false, // True if the fixture is stopped by the referee for X reason
+D "blocked": false, // True if bets on this fixture are temporarily blocked
+D "finished": false // True if the fixture has not started or if it is finished
+D },
+D ```
+D **INFORMATIONS ABOUT VALUES**
+D When several identical values exist for the same bet the `main` field is set to `True` for the bet being considered, the others will have the value `False`.
+D The `main` field will be set to `True` only if several identical values exist for the same bet.
+D When a value is unique for a bet the `main` value will always be `False` or `null`.
+D **Example below** :
+D ```
+D "id": 36,
+D "name": "Over/Under Line",
+D "values": [
+D {
+D "value": "Over",
+D "odd": "1.975",
+D "handicap": "2",
+D "main": true, // Bet to consider
+D "suspended": false // True if this bet is temporarily suspended
+D },
+D {
+D "value": "Over",
+D "odd": "3.45",
+D "handicap": "2",
+D "main": false, // Bet to no consider
+D "suspended": false
+D },
+D ]
+D ```
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{fixture:{id:n,status:{long:s,elapsed:n,seconds:s}},league:{id:n,season:n},teams:{home:{id:n,goals:n},away:{id:n,goals:n}},status:{stopped:b,blocked:b,finished:b},update:s,odds[]:{id:n,name:s,values[]:{value:s,odd:s,handicap:s,main:z,suspended:b}}}}
+E get:s parameters.fixture:s errors[]:a results:n paging.current:n paging.total:n
+U odds/live  // Get all available odds
+U odds/live?fixture=164327  // Get all available odds from one {fixture}
+U odds/live?league=39  // Get all available odds from one {league}
+U odds/live?bet=4&league=39  // It’s possible to make requests by mixing the available parameters
+U odds/live?bet=4&fixture=164327
+## GET /odds/live/bets [Odds (In-Play)] get-bets :: odds/live/bets
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P id|query||string||||||||The id of the bet name
+P search|query||string||||||3|3|The name of the bet
+D Get all available bets for in-play odds.
+D All bets `id` can be used in endpoint `odds/live` as filters, **but are not compatible with endpoint `odds` for pre-match odds**.
+D **Update Frequency** : This endpoint is updated every 60 seconds.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{id:n,name:s}}
+E get:s parameters[]:a errors[]:a results:n paging.current:n paging.total:n
+U odds/live/bets  // Get all available bets
+U odds/live/bets?id=1  // Get bet from one {id}
+U odds/live/bets?search=winner  // Allows you to search for a bet in relation to a bets {name}
+## GET /odds [Odds (Pre-Match)] get-odds :: Odds
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P fixture|query||integer||||||||The id of the fixture
+P league|query||integer||||||||The id of the league
+P season|query||integer|||YYYY|||4|4|The season of the league
+P date|query||string|||YYYY-MM-DD|||||A valid date
+P timezone|query||string||||||||A valid timezone from the endpoint `Timezone`
+P page|query||integer||||||||Use for the pagination
+P bookmaker|query||integer||||||||The id of the bookmaker
+P bet|query||integer||||||||The id of the bet
+D Get odds from fixtures, leagues or date.
+D This endpoint uses a **pagination system**, you can navigate between the different pages with to the `page` parameter.
+D > **Pagination** : 10 results per page.
+D We provide pre-match odds between 1 and 14 days before the fixture.
+D We keep a 7-days history *(The availability of odds may vary according to the leagues, seasons, fixtures and bookmakers)*
+D **Update Frequency** : This endpoint is updated every 3 hours.
+D **Recommended Calls** : 1 call every 3 hours.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{league:{id:n,name:s,country:s,logo:s,flag:s,season:n},fixture:{id:n,timezone:s,date:s,timestamp:n},update:s,bookmakers[]:{id:n,name:s,bets[]:{id:n,name:s,values[]:{value:n,odd:s}}}}}
+E get:s parameters.fixture:s parameters.bookmaker:s errors[]:a results:n paging.current:n paging.total:n
+U odds?fixture=164327  // Get all available odds from one {fixture}
+U odds?league=39&season=2019  // Get all available odds from one {league} & {season}
+U odds?date=2020-05-15  // Get all available odds from one {date}
+U odds?bookmaker=1&bet=4&league=39&season=2019  // It’s possible to make requests by mixing the available parameters
+U odds?bet=4&fixture=164327
+U odds?bookmaker=1&league=39&season=2019
+U odds?date=2020-05-15&page=2&bet=4
+## GET /odds/mapping [Odds (Pre-Match)] get-odds-mapping :: Mapping
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P page|query||integer||||||||Use for the pagination
+D Get the list of available fixtures `id` for the endpoint odds.
+D All fixtures, leagues `id` and `date` can be used in endpoint odds as filters.
+D This endpoint uses a **pagination system**, you can navigate between the different pages with to the `page` parameter.
+D > **Pagination** : 100 results per page.
+D **Update Frequency** : This endpoint is updated every day.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{league:{id:n,season:n},fixture:{id:n,date:s,timestamp:n},update:s}}
+E get:s parameters[]:a errors[]:a results:n paging.current:n paging.total:n
+## GET /odds/bookmakers [Odds (Pre-Match)] get-bookmakers :: Bookmakers
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P id|query||integer||||||||The id of the bookmaker
+P search|query||string||||||3|3|The name of the bookmaker
+D Get all available bookmakers.
+D All bookmakers `id` can be used in endpoint odds as filters.
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{id:n,name:s}}
+E get:s parameters[]:a errors[]:a results:n paging.current:n paging.total:n
+U odds/bookmakers  // Get all available bookmakers
+U odds/bookmakers?id=1  // Get bookmaker from one {id}
+U odds/bookmakers?search=Betfair  // Allows you to search for a bookmaker in relation to a bookmakers {name}
+## GET /odds/bets [Odds (Pre-Match)] get-bets :: Bets
+P x-apisports-key|header|req|string||||||||Your Api-Key
+P id|query||string||||||||The id of the bet name
+P search|query||string||||||3|3|The name of the bet
+D Get all available bets for pre-match odds.
+D All bets `id` can be used in endpoint odds as filters, **but are not compatible with endpoint `odds/live` for in-play odds**.
+D **Update Frequency** : This endpoint is updated several times a week.
+D **Recommended Calls** : 1 call per day.
+R 200 OK
+R 204 No Content
+R 499 Time Out
+R 500 Internal Server Error
+F {R[]:{id:n,name:s}}
+E get:s parameters.search:s errors[]:a results:n paging.current:n paging.total:n
+U odds/bets  // Get all available bets
+U odds/bets?id=1  // Get bet from one {id}
+U odds/bets?search=winner  // Allows you to search for a bet in relation to a bets {name}

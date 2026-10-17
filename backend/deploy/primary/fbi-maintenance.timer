@@ -1,0 +1,18 @@
+[Unit]
+Description=FBI daily maintenance (archive, backup, offsite copy)
+
+[Timer]
+OnCalendar=*-*-* 04:10:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+
+# --- fbi-maintenance.service (install beside this file) ---
+# [Unit]
+# Description=FBI maintenance
+# After=docker.service
+# [Service]
+# Type=oneshot
+# WorkingDirectory=/opt/fbi/deploy/primary
+# ExecStart=/opt/fbi/deploy/primary/maintenance.sh
