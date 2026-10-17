@@ -1,0 +1,829 @@
+import { useEffect, useState } from "react";
+import { countryLabel } from "@/product/matches/country";
+import { t, translateOr } from "@/lib/i18n";
+import { Link } from "@tanstack/react-router";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { KeyValue, Panel } from "@/components/primitives/Panel";
+import { TableShell, THead, TH, TRow, TD, TableSkeleton } from "@/components/primitives/DataTable";
+import { StatusBadge } from "@/components/primitives/StatusBadge";
+import { Numeric } from "@/components/primitives/Indicators";
+import { FilterBar, SearchFilter, SegmentedTabs } from "@/components/system/Filters";
+import { useLiveQuery } from "@/components/system/dataSourcesContext";
+import { ApiErrorNotice, Nullable, SectionView, StatusNotice } from "@/components/system/LiveState";
+import { live } from "@/lib/api/v1/queries";
+import { int } from "@/lib/format";
+import { utcDate, utcDateTime } from "./format";
+import { FixtureLink, ScoreText, StatusGroupBadge } from "./shared";
+import { TeamName } from "@/components/football/Logos";
+import type { StandingsTable } from "@/lib/api/v1/types_center";
+import {
+  defaultSection,
+  hasSplits,
+  kindKey,
+  rankedRows,
+  tableSections,
+  type Split,
+  type TableSection,
+} from "@/product/shared/standings";
+import { venueFacts, venuePlace } from "@/product/shared/venue";
+import { LeadersPanel, RoundsPanel } from "./ReferenceData";
+
+const scopes = ["Tracked", "With fixtures", "All known"] as const;
+type Scope = (typeof scopes)[number];
+
+/** Tab text for a scope, in the reader's language (the scope values stay as they are). */
+function scopeLabel(scope: Scope): string {
+  switch (scope) {
+    case "Tracked":
+      return t("catalog.competitions.scope.tracked");
+    case "With fixtures":
+      return t("catalog.competitions.scope.withFixtures");
+    case "All known":
+      return t("catalog.competitions.scope.allKnown");
+  }
+}
+
+export function CompetitionsLive() {
+  const [scope, setScope] = useState<Scope>("With fixtures");
+  const [term, setTerm] = useState("");
+  const [selected, setSelected] = useState<number | null>(null);
+  const list = useLiveQuery(live.competitions);
+
+  const all = list.data?.data ?? [];
+  const q = term.trim().toLowerCase();
+  const rows = all.filter((c) => {
+    if (scope === "Tracked" && !c.is_tracked) return false;
+    if (scope === "With fixtures" && c.fixtures === 0) return false;
+    return !q || `${c.name} ${c.country ?? ""}`.toLowerCase().includes(q);
+  });
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title={t("admin.pages.competitions.title")}
+        description={t("admin.pages.competitions.description")}
+      />
+      <FilterBar>
+        <SegmentedTabs
+          label={t("catalog.competitions.scope.label")}
+          tabs={scopes}
+          value={scope}
+          onChange={setScope}
+          format={scopeLabel}
+          className="w-auto"
+        />
+        <SearchFilter
+          value={term}
+          onChange={setTerm}
+          placeholder={t("catalog.competitions.searchPlaceholder")}
+          label={t("catalog.filter")}
+        />
+      </FilterBar>
+      <div className="grid gap-4 xl:grid-cols-5">
+        <Panel
+          title={t("catalog.competitions.list.title")}
+          subtitle={
+            list.data
+              ? `${t("catalog.competitions.list.shown", { count: rows.length })} · ${t(
+                  "catalog.competitions.list.known",
+                  { count: list.data.meta.total ?? 0, n: int(list.data.meta.total) },
+                )}`
+              : t("catalog.loading")
+          }
+          className="xl:col-span-3"
+          bodyClassName=""
+        >
+          {list.isLoading ? (
+            <TableSkeleton rows={6} cols={5} />
+          ) : list.isError ? (
+            <div className="p-4">
+              <ApiErrorNotice error={list.error} />
+            </div>
+          ) : rows.length === 0 ? (
+            <StatusNotice status="empty" reason={t("catalog.competitions.list.empty")} />
+          ) : (
+            <TableShell>
+              <THead>
+                <TH>{t("catalog.competitions.list.headers.competition")}</TH>
+                <TH>{t("catalog.competitions.list.headers.type")}</TH>
+                <TH align="right">{t("catalog.competitions.list.headers.seasons")}</TH>
+                <TH align="right">{t("catalog.competitions.list.headers.fixtures")}</TH>
+                <TH align="right">{t("catalog.competitions.list.headers.teams")}</TH>
+                <TH>{t("catalog.competitions.list.headers.tracking")}</TH>
+              </THead>
+              <tbody>
+                {rows.map((c) => (
+                  <TRow key={c.id} onClick={() => setSelected(c.id)} selected={selected === c.id}>
+                    <TD>
+                      <div className="text-sm">{c.name}</div>
+                      <div className="text-caption text-subtle-foreground">
+                        {countryLabel(c.country, c.country_code) ??
+                          t("catalog.competitions.international")}
+                      </div>
+                    </TD>
+                    <TD className="text-xs text-muted-foreground">
+                      {translateOr(
+                        `catalog.types.${c.competition_type}`,
+                        c.competition_type.replaceAll("_", " "),
+                      )}
+                    </TD>
+                    <TD align="right">
+                      <Numeric>{int(c.seasons)}</Numeric>
+                    </TD>
+                    <TD align="right">
+                      <Numeric muted={c.fixtures === 0}>{int(c.fixtures)}</Numeric>
+                    </TD>
+                    <TD align="right">
+                      <Numeric muted={c.teams === 0}>{int(c.teams)}</Numeric>
+                    </TD>
+                    <TD>
+                      {c.is_tracked ? (
+                        <StatusBadge tone="positive">
+                          {t("catalog.competitions.list.tracked")}
+                        </StatusBadge>
+                      ) : (
+                        <StatusBadge tone="neutral">
+                          {t("catalog.competitions.list.catalogue")}
+                        </StatusBadge>
+                      )}
+                    </TD>
+                  </TRow>
+                ))}
+              </tbody>
+            </TableShell>
+          )}
+        </Panel>
+        <div className="xl:col-span-2">
+          {selected === null ? (
+            <Panel title={t("catalog.competitions.detail.title")}>
+              <StatusNotice status="empty" reason={t("catalog.competitions.detail.select")} />
+            </Panel>
+          ) : (
+            <CompetitionDetailPanel id={selected} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompetitionDetailPanel({ id }: { id: number }) {
+  const q = useLiveQuery(live.competition(String(id)));
+  if (q.isLoading)
+    return (
+      <Panel title={t("catalog.competitions.detail.title")}>
+        <TableSkeleton rows={4} cols={3} />
+      </Panel>
+    );
+  if (q.isError || !q.data)
+    return (
+      <Panel title={t("catalog.competitions.detail.title")}>
+        <ApiErrorNotice error={q.error} />
+      </Panel>
+    );
+  const { competition: c, seasons, teams } = q.data.data;
+  return (
+    <div className="space-y-4">
+      <Panel
+        title={c.name}
+        subtitle={`${countryLabel(c.country, c.country_code) ?? t("catalog.competitions.international")} · ${t(
+          "catalog.competitions.detail.providerLeague",
+          { id: c.provider_league_id },
+        )}`}
+      >
+        <KeyValue
+          label={t("catalog.competitions.detail.tracked")}
+          value={c.is_tracked ? t("catalog.yes") : t("catalog.no")}
+        />
+        <KeyValue
+          label={t("catalog.competitions.detail.currentSeason")}
+          value={
+            <Nullable
+              value={c.current_season === null ? null : String(c.current_season)}
+              reason={t("catalog.competitions.detail.noCurrentSeason")}
+            />
+          }
+        />
+        <KeyValue
+          label={t("catalog.competitions.detail.tier")}
+          value={
+            <Nullable
+              value={c.tier === null ? null : String(c.tier)}
+              reason={t("catalog.competitions.detail.noTier")}
+            />
+          }
+        />
+      </Panel>
+      <Panel
+        title={t("catalog.competitions.seasons.title")}
+        subtitle={t("catalog.competitions.seasons.subtitle")}
+        bodyClassName=""
+      >
+        {seasons.length === 0 ? (
+          <StatusNotice
+            status="empty"
+            reason={t("catalog.competitions.seasons.empty")}
+            compact
+            className="p-4"
+          />
+        ) : (
+          <TableShell className="min-w-0">
+            <THead>
+              <TH>{t("catalog.competitions.seasons.headers.season")}</TH>
+              <TH align="right">{t("catalog.competitions.seasons.headers.fixtures")}</TH>
+              <TH align="right">{t("catalog.competitions.seasons.headers.finished")}</TH>
+              <TH align="right">{t("catalog.competitions.seasons.headers.withResult")}</TH>
+              <TH>{t("catalog.competitions.seasons.headers.odds")}</TH>
+            </THead>
+            <tbody>
+              {seasons.map((s) => (
+                <TRow key={s.id}>
+                  <TD>
+                    <Numeric>{s.season}</Numeric>
+                    {s.is_current ? (
+                      <span className="ml-1.5 text-caption text-primary">
+                        {t("catalog.competitions.seasons.current")}
+                      </span>
+                    ) : null}
+                  </TD>
+                  <TD align="right">
+                    <Numeric>{int(s.fixtures)}</Numeric>
+                  </TD>
+                  <TD align="right">
+                    <Numeric>{int(s.finished)}</Numeric>
+                  </TD>
+                  <TD align="right">
+                    <Numeric className={s.with_results < s.finished ? "text-warning" : ""}>
+                      {int(s.with_results)}
+                    </Numeric>
+                  </TD>
+                  <TD>
+                    {s.has_odds ? (
+                      <StatusBadge tone="info">
+                        {t("catalog.competitions.seasons.covered")}
+                      </StatusBadge>
+                    ) : (
+                      <span className="text-caption text-subtle-foreground">{t("catalog.no")}</span>
+                    )}
+                  </TD>
+                </TRow>
+              ))}
+            </tbody>
+          </TableShell>
+        )}
+      </Panel>
+      <Panel
+        title={t("catalog.competitions.teams.title")}
+        subtitle={t("catalog.competitions.teams.subtitle")}
+      >
+        {teams.length === 0 ? (
+          <StatusNotice status="empty" reason={t("catalog.competitions.teams.empty")} compact />
+        ) : (
+          <ul className="flex flex-wrap gap-1.5">
+            {teams.map((t) => (
+              <li key={t.id} className="rounded border border-border px-2 py-0.5 text-xs">
+                {t.name}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+      <StandingsPanel competitionId={id} />
+      <ReferencePanels competitionId={id} />
+    </div>
+  );
+}
+
+/** The provider's top lists and round calendar of the competition's newest season that has them - stacked: the
+ * detail column is two fifths of the page, too narrow for the top list's figure and rating side by side. */
+function ReferencePanels({ competitionId }: { competitionId: number }) {
+  const q = useLiveQuery(live.competitionReference(String(competitionId)));
+  const data = q.data?.data;
+  if (!data) return null;
+  return (
+    <div className="grid gap-4">
+      <LeadersPanel data={data} />
+      <RoundsPanel data={data} />
+    </div>
+  );
+}
+
+export function TeamsLive() {
+  const [term, setTerm] = useState("");
+  const [selected, setSelected] = useState<number | null>(null);
+  // Searched on the server: 8,000+ teams, and only the first 200 are listed without a search.
+  const q = useDebounced(term.trim(), 250);
+  const list = useLiveQuery(q.length >= 2 ? live.teamSearch(q) : live.teams);
+  const rows = list.data?.data ?? [];
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title={t("admin.pages.teams.title")}
+        description={t("admin.pages.teams.description")}
+      />
+      <FilterBar>
+        <SearchFilter
+          value={term}
+          onChange={setTerm}
+          placeholder={t("catalog.teams.searchPlaceholder")}
+          label={t("catalog.filter")}
+        />
+      </FilterBar>
+      <div className="grid gap-4 xl:grid-cols-5">
+        <Panel
+          title={t("catalog.teams.list.title")}
+          subtitle={
+            list.data
+              ? q.length >= 2
+                ? t("catalog.teams.list.shownFor", { count: rows.length, q })
+                : t("catalog.teams.list.shownHint", { count: rows.length })
+              : t("catalog.loading")
+          }
+          className="xl:col-span-2"
+          bodyClassName=""
+        >
+          {list.isLoading ? (
+            <TableSkeleton rows={8} cols={3} />
+          ) : list.isError ? (
+            <div className="p-4">
+              <ApiErrorNotice error={list.error} />
+            </div>
+          ) : list.data && list.data.status !== "ok" ? (
+            <StatusNotice status={list.data.status} reason={list.data.reason} />
+          ) : (
+            <TableShell className="min-w-0" compact>
+              <THead>
+                <TH>{t("catalog.teams.list.headers.team")}</TH>
+                <TH align="right">{t("catalog.teams.list.headers.fixtures")}</TH>
+                <TH align="right">{t("catalog.teams.list.headers.results")}</TH>
+              </THead>
+              <tbody>
+                {rows.map((t) => (
+                  <TRow key={t.id} onClick={() => setSelected(t.id)} selected={selected === t.id}>
+                    <TD className="text-sm">{t.name}</TD>
+                    <TD align="right">
+                      <Numeric>{int(t.fixtures)}</Numeric>
+                    </TD>
+                    <TD align="right">
+                      <Numeric muted={t.results === 0}>{int(t.results)}</Numeric>
+                    </TD>
+                  </TRow>
+                ))}
+              </tbody>
+            </TableShell>
+          )}
+        </Panel>
+        <div className="xl:col-span-3">
+          {selected === null ? (
+            <Panel title={t("catalog.teams.detail.title")}>
+              <StatusNotice status="empty" reason={t("catalog.teams.detail.select")} />
+            </Panel>
+          ) : (
+            <TeamDetailPanel id={selected} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamDetailPanel({ id }: { id: number }) {
+  const q = useLiveQuery(live.team(String(id)));
+  if (q.isLoading)
+    return (
+      <Panel title={t("catalog.teams.detail.title")}>
+        <TableSkeleton rows={4} cols={3} />
+      </Panel>
+    );
+  if (q.isError || !q.data)
+    return (
+      <Panel title={t("catalog.teams.detail.title")}>
+        <ApiErrorNotice error={q.error} />
+      </Panel>
+    );
+  const d = q.data.data;
+  return (
+    <div className="space-y-4">
+      <Panel
+        title={d.team.name}
+        subtitle={[
+          t("catalog.teams.detail.providerTeam", { id: d.team.provider_team_id }),
+          ...(d.venue ? [venuePlace(d.venue), ...venueFacts(d.venue)] : []),
+        ].join(" · ")}
+      >
+        <SectionView section={d.record}>
+          {(r) =>
+            r ? (
+              <div className="space-y-2">
+                <div
+                  className="text-caption text-subtle-foreground"
+                  data-testid="team-record-scope"
+                >
+                  {r.competition
+                    ? t("catalog.teams.detail.record.scopeSeason", {
+                        competition: r.competition,
+                        season: r.season ?? "",
+                      })
+                    : t("catalog.teams.detail.record.scopeAll")}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
+                  {(
+                    [
+                      [t("catalog.teams.detail.record.played"), r.played],
+                      [t("catalog.teams.detail.record.won"), r.won],
+                      [t("catalog.teams.detail.record.drawn"), r.drawn],
+                      [t("catalog.teams.detail.record.lost"), r.lost],
+                      [t("catalog.teams.detail.record.for"), r.goals_for],
+                      [t("catalog.teams.detail.record.against"), r.goals_against],
+                    ] as const
+                  ).map(([k, v]) => (
+                    <div key={k} className="rounded border border-border px-2 py-1.5">
+                      <div className="text-caption text-subtle-foreground">{k}</div>
+                      <div className="numeric text-base">{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null
+          }
+        </SectionView>
+        {d.records?.data && d.records.data.length > 0 ? (
+          <div className="mt-3">
+            <div className="mb-1 text-caption text-subtle-foreground">
+              {t("catalog.teams.detail.record.campaign")}
+            </div>
+            <TableShell>
+              <THead>
+                <TH>{t("catalog.teams.detail.record.competition")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.season")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.played")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.won")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.drawn")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.lost")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.for")}</TH>
+                <TH align="right">{t("catalog.teams.detail.record.against")}</TH>
+              </THead>
+              <tbody>
+                {d.records.data.map((r) => (
+                  <TRow key={`${r.competition}-${r.season}`}>
+                    <TD className="text-sm">{r.competition}</TD>
+                    {[r.season, r.played, r.won, r.drawn, r.lost, r.goals_for, r.goals_against].map(
+                      (v, i) => (
+                        <TD key={i} align="right">
+                          <Numeric className="text-xs">{v ?? "—"}</Numeric>
+                        </TD>
+                      ),
+                    )}
+                  </TRow>
+                ))}
+              </tbody>
+            </TableShell>
+          </div>
+        ) : null}
+        {d.lifetime?.data ? (
+          <div
+            className="mt-3 text-caption text-subtle-foreground"
+            data-testid="team-record-lifetime"
+          >
+            {t("catalog.teams.detail.record.lifetime", {
+              played: d.lifetime.data.played,
+              won: d.lifetime.data.won,
+              drawn: d.lifetime.data.drawn,
+              lost: d.lifetime.data.lost,
+              competitions: d.lifetime.data.competitions ?? 0,
+              since: d.lifetime.data.since ? utcDate(d.lifetime.data.since) : "—",
+            })}
+          </div>
+        ) : null}
+      </Panel>
+      <SquadPanel teamId={id} />
+      {(["recent", "upcoming"] as const).map((k) => (
+        <Panel
+          key={k}
+          title={
+            k === "recent"
+              ? t("catalog.teams.fixtures.recent")
+              : t("catalog.teams.fixtures.upcoming")
+          }
+          bodyClassName=""
+        >
+          {d[k].length === 0 ? (
+            <StatusNotice
+              status="empty"
+              reason={
+                k === "recent"
+                  ? t("catalog.teams.fixtures.noRecent")
+                  : t("catalog.teams.fixtures.noUpcoming")
+              }
+              compact
+              className="p-4"
+            />
+          ) : (
+            <TableShell className="min-w-0">
+              <THead>
+                <TH>{t("catalog.teams.fixtures.headers.date")}</TH>
+                <TH>{t("catalog.teams.fixtures.headers.fixture")}</TH>
+                <TH align="center">{t("catalog.teams.fixtures.headers.score")}</TH>
+                <TH>{t("catalog.teams.fixtures.headers.status")}</TH>
+              </THead>
+              <tbody>
+                {d[k].map((m) => (
+                  <TRow key={m.id}>
+                    <TD>
+                      <Numeric>
+                        {k === "recent" ? utcDate(m.kickoff_at) : utcDateTime(m.kickoff_at)}
+                      </Numeric>
+                    </TD>
+                    <TD>
+                      <FixtureLink match={m} />
+                    </TD>
+                    <TD align="center">
+                      <ScoreText score={m.score} />
+                    </TD>
+                    <TD>
+                      <StatusGroupBadge match={m} />
+                    </TD>
+                  </TRow>
+                ))}
+              </tbody>
+            </TableShell>
+          )}
+        </Panel>
+      ))}
+    </div>
+  );
+}
+
+function useDebounced<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
+/** Players with a stored appearance for this team in the last 400 days, by minutes. */
+function SquadPanel({ teamId }: { teamId: number }) {
+  const q = useLiveQuery(live.players({ team_id: teamId }));
+  const rows = (q.data?.data ?? []).slice(0, 30);
+  return (
+    <Panel
+      title={t("catalog.teams.squad.title")}
+      subtitle={t("catalog.teams.squad.subtitle")}
+      bodyClassName=""
+    >
+      {q.isLoading ? (
+        <TableSkeleton rows={4} cols={5} />
+      ) : q.isError ? (
+        <div className="p-4">
+          <ApiErrorNotice error={q.error} />
+        </div>
+      ) : q.data && q.data.status !== "ok" ? (
+        <StatusNotice status={q.data.status} reason={q.data.reason} compact className="p-4" />
+      ) : (
+        <TableShell className="min-w-0" compact>
+          <THead>
+            <TH>{t("catalog.columns.player")}</TH>
+            <TH>{t("catalog.columns.position")}</TH>
+            <TH align="right">{t("catalog.columns.apps")}</TH>
+            <TH align="right">{t("catalog.columns.minutes")}</TH>
+            <TH align="right">{t("catalog.columns.goals")}</TH>
+            <TH align="right">{t("catalog.columns.assists")}</TH>
+          </THead>
+          <tbody>
+            {rows.map((p) => (
+              <TRow key={p.id}>
+                <TD className="text-sm">
+                  <Link
+                    to="/admin/players/$playerId"
+                    params={{ playerId: String(p.id) }}
+                    className="hover:text-primary"
+                  >
+                    {p.name}
+                  </Link>
+                </TD>
+                <TD className="text-xs text-muted-foreground">{p.position ?? "—"}</TD>
+                <TD align="right">
+                  <Numeric className="text-xs">{p.apps}</Numeric>
+                </TD>
+                <TD align="right">
+                  <Numeric muted className="text-xs">
+                    {p.minutes ?? "—"}
+                  </Numeric>
+                </TD>
+                <TD align="right">
+                  <Numeric className="text-xs">{p.goals ?? "—"}</Numeric>
+                </TD>
+                <TD align="right">
+                  <Numeric className="text-xs">{p.assists ?? "—"}</Numeric>
+                </TD>
+              </TRow>
+            ))}
+          </tbody>
+        </TableShell>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * A competition season's tables, each kept apart (refreshed by the worker): a split season's
+ * Apertura and Clausura, a phase's groups, conferences, a ranking across groups, an annual
+ * aggregate. Tabs by stage, all / home / away games, the season picker, and a note when the
+ * snapshot predates the stage's last finished match.
+ */
+function StandingsPanel({ competitionId }: { competitionId: number }) {
+  const [season, setSeason] = useState<number | undefined>(undefined);
+  const q = useLiveQuery(live.standings(String(competitionId), season));
+  const table = q.data?.data ?? null;
+  const sections = table ? tableSections(table) : [];
+  const [sectionId, setSectionId] = useState<string | null>(null);
+  const [split, setSplit] = useState<Split>("all");
+  const active =
+    sections.find((x) => x.id === sectionId) ??
+    sections.find((x) => x.id === defaultSection(sections)) ??
+    null;
+  const stage = table?.stages?.find((x) => active?.stage !== null && x.name === active?.stage);
+  const stale =
+    !!table &&
+    !!stage?.last_finished &&
+    Date.parse(table.snapshot_at) < Date.parse(stage.last_finished) + 2 * 3600 * 1000;
+  const splits = active ? hasSplits(active.tables.flatMap((x) => x.rows)) : false;
+  const seasons = table?.seasons ?? [];
+  return (
+    <Panel
+      title={t("catalog.competitions.standings.title")}
+      subtitle={
+        table
+          ? t("catalog.competitions.standings.subtitle", {
+              season: table.season,
+              when: utcDateTime(table.snapshot_at),
+            })
+          : t("catalog.competitions.standings.latest")
+      }
+      actions={
+        seasons.length > 1 ? (
+          <label className="flex items-center gap-1.5 text-caption text-muted-foreground">
+            {t("catalog.competitions.standings.season")}
+            <select
+              className="rounded border border-border bg-card px-1.5 py-0.5 text-xs text-foreground"
+              value={season ?? table?.season ?? ""}
+              onChange={(e) => {
+                setSeason(Number(e.target.value));
+                setSectionId(null);
+              }}
+            >
+              {seasons.map((x) => (
+                <option key={x} value={x}>
+                  {x}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null
+      }
+      bodyClassName=""
+    >
+      {q.isLoading ? (
+        <TableSkeleton rows={6} cols={6} />
+      ) : q.isError ? (
+        <div className="p-4">
+          <ApiErrorNotice error={q.error} />
+        </div>
+      ) : !table || !active ? (
+        <StatusNotice
+          status={q.data?.status ?? "empty"}
+          reason={q.data?.reason ?? null}
+          compact
+          className="p-4"
+        />
+      ) : (
+        <div className="space-y-3 py-3">
+          <div className="space-y-2 px-3">
+            {sections.length > 1 ? (
+              <SegmentedTabs
+                tabs={sections.map((x) => x.id)}
+                value={active.id}
+                onChange={setSectionId}
+                label={t("catalog.competitions.standings.phases")}
+                format={(id) => sectionTitle(sections.find((x) => x.id === id))}
+              />
+            ) : null}
+            {splits ? (
+              <SegmentedTabs
+                tabs={SPLITS}
+                value={split}
+                onChange={setSplit}
+                label={t("match.standings.splitLabel")}
+                format={(x) => t(`match.standings.split.${x}`)}
+              />
+            ) : null}
+            {stale ? (
+              <p className="text-caption text-warning">
+                {t("catalog.competitions.standings.stale")}
+              </p>
+            ) : null}
+          </div>
+          {active.tables.map((tb) => (
+            <StandingsGrid key={tb.key} table={tb} split={splits ? split : "all"} />
+          ))}
+          {table.stages && table.stages.length > 0 ? (
+            <p className="px-3 text-caption text-subtle-foreground">
+              {t("catalog.competitions.standings.stages")}:{" "}
+              {table.stages
+                .map(
+                  (x) =>
+                    `${x.name} (${t(`catalog.competitions.standings.stageKind.${x.kind}`)}, ${x.finished}/${x.fixtures}${
+                      x.kind === "league" && x.tables === 0
+                        ? `, ${t("catalog.competitions.standings.noTable")}`
+                        : ""
+                    })`,
+                )
+                .join(" · ")}
+            </p>
+          ) : null}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+const SPLITS = ["all", "home", "away"] as const satisfies readonly Split[];
+
+function sectionTitle(section: TableSection | undefined): string {
+  if (!section) return "";
+  const base =
+    section.kind === "stage"
+      ? (section.stage ?? "")
+      : section.kind === "aggregate"
+        ? (section.tables[0]?.label ?? t("catalog.competitions.standings.aggregate"))
+        : t("catalog.competitions.standings.other");
+  return section.current ? `${base} · ${t("catalog.competitions.standings.current")}` : base;
+}
+
+function StandingsGrid({ table, split }: { table: StandingsTable; split: Split }) {
+  const rows = rankedRows(table.rows, split);
+  return (
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-baseline gap-x-2 px-3 text-xs">
+        <span className="font-semibold">{table.label || table.stage || "—"}</span>
+        <span className="text-caption text-muted-foreground">
+          {t(kindKey(table.kind))} ·{" "}
+          {t("catalog.competitions.standings.teams", { n: table.rows.length })} ·{" "}
+          {t(`catalog.competitions.standings.method.${table.method}`)} ·{" "}
+          {t("catalog.competitions.standings.agreement", { agreement: table.agreement })}
+        </span>
+        {table.note ? (
+          <span className="text-caption text-subtle-foreground">{table.note}</span>
+        ) : null}
+      </div>
+      <TableShell className="min-w-0" compact>
+        <THead>
+          <TH align="right">#</TH>
+          <TH>{t("catalog.competitions.standings.headers.team")}</TH>
+          <TH align="right">{t("catalog.competitions.standings.headers.played")}</TH>
+          <TH align="right">{t("catalog.competitions.standings.headers.record")}</TH>
+          <TH align="right">{t("catalog.competitions.standings.headers.goalDiff")}</TH>
+          <TH align="right">{t("catalog.competitions.standings.headers.points")}</TH>
+          <TH>{t("catalog.competitions.standings.headers.form")}</TH>
+          <TH>{t("catalog.competitions.standings.zone")}</TH>
+        </THead>
+        <tbody>
+          {rows.map(({ rank, row: r, figures: f }) => (
+            <TRow key={`${table.key}-${r.team_id}`}>
+              <TD align="right">
+                <Numeric className="text-xs">{rank}</Numeric>
+              </TD>
+              <TD className="text-sm">
+                <TeamName name={r.team} logo={r.team_logo} size={18} />
+              </TD>
+              <TD align="right">
+                <Numeric muted className="text-xs">
+                  {f.played}
+                </Numeric>
+              </TD>
+              <TD align="right">
+                <Numeric className="text-xs">
+                  {f.wins}-{f.draws}-{f.losses}
+                </Numeric>
+              </TD>
+              <TD align="right">
+                <Numeric className="text-xs">{f.goalDiff}</Numeric>
+              </TD>
+              <TD align="right">
+                <Numeric>{f.points}</Numeric>
+              </TD>
+              <TD className="numeric text-caption text-muted-foreground">
+                {split === "all" ? (r.form ?? "—") : "—"}
+              </TD>
+              <TD className="max-w-48 truncate text-caption text-muted-foreground">
+                {split === "all" ? (r.description ?? "") : ""}
+              </TD>
+            </TRow>
+          ))}
+        </tbody>
+      </TableShell>
+    </div>
+  );
+}

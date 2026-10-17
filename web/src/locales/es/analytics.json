@@ -1,0 +1,288 @@
+{
+  "common": {
+    "competition": "Competición",
+    "season": "Temporada",
+    "fixtures": "Partidos",
+    "status": "Estado",
+    "market": "Mercado",
+    "selection": "Selección",
+    "bookmaker": "Casa",
+    "book": "Casa",
+    "kind": "Tipo",
+    "home": "Local",
+    "draw": "Empate",
+    "away": "Visitante",
+    "features": "Variables",
+    "snapshots": "Capturas",
+    "ou25": "Más/Menos 2,5",
+    "noValue": "Sin valor registrado.",
+    "preClosing": "pre-cierre",
+    "closing": "cierre"
+  },
+  "tabs": {
+    "label": "Secciones de analítica",
+    "competitions": "Competiciones",
+    "teams": "Equipos",
+    "models": "Modelos",
+    "market": "Mercado",
+    "coverage": "Cobertura",
+    "migration": "Migración"
+  },
+  "competitions": {
+    "title": "Perfiles de competición",
+    "subtitle": "Desenlaces en tiempo reglamentario de los resultados registrados, por competición y temporada, y cuántos partidos tienen cada tipo de dato. Menos de 30 resultados: se muestra con su n y se marca.",
+    "smallSample": "muestra pequeña",
+    "international": "Internacional",
+    "ofFixtures": "de {n}",
+    "results": "Resultados",
+    "goals": "Goles",
+    "homeEdge": "Ventaja local",
+    "over25": "Más de 2,5",
+    "stats": "Estadísticas",
+    "odds": "Cuotas"
+  },
+  "teams": {
+    "team": "Equipo",
+    "noTeam": "Todavía no se ha importado ningún equipo.",
+    "record": {
+      "title": "{team}: balance",
+      "subtitle": "Tiempo reglamentario, solo con resultados registrados",
+      "split": "Desglose",
+      "played": "PJ",
+      "won": "G",
+      "drawn": "E",
+      "lost": "P",
+      "goalsFor": "GF",
+      "goalsAgainst": "GC",
+      "ppm": "PPP",
+      "ppmTitle": "Puntos por partido",
+      "all": "Total",
+      "noMatch": "Sin partidos en este desglose."
+    },
+    "elo": {
+      "title": "Elo tras cada partido computado",
+      "subtitle_one": "{count} partido computado, del {from} al {to}",
+      "subtitle_other": "{count} partidos computados, del {from} al {to}",
+      "rating": "puntuación",
+      "none": "Todavía no hay partidos computados para este equipo."
+    },
+    "features": {
+      "title": "Como lo ven los modelos",
+      "subtitle": "Feature set {version} del partido {fixture}, con datos hasta {cutoff} (como {side})",
+      "home": "local",
+      "away": "visitante",
+      "newest": "Feature set más reciente",
+      "notEnough": "No hay historial suficiente para esta variable.",
+      "none": "Todavía ningún feature set incluye a este equipo.",
+      "labels": {
+        "elo": "Elo",
+        "pi": "pi-rating (según localía)",
+        "shotShare10": "Proporción de tiros, últimos 10",
+        "sotShare10": "Proporción de tiros al arco, últimos 10",
+        "eloResid10": "Forma no explicada por el Elo, últimos 10",
+        "ppg5": "Puntos por partido, últimos 5",
+        "restDays": "Días de descanso",
+        "historyN": "Partidos en el historial"
+      }
+    },
+    "shots": {
+      "title": "Tiros, últimos 10 partidos con estadísticas",
+      "subtitle": "Estadísticas de equipo tal como se registraron; si existen ambas, se prefiere API-Football a Football-Data",
+      "match": "Partido",
+      "shots": "Tiros",
+      "onTarget": "Al arco",
+      "source": "Fuente",
+      "none": "Ningún partido de este equipo tiene todavía estadísticas de equipo."
+    }
+  },
+  "models": {
+    "title": "Registro de investigación",
+    "subtitle": "Todos los experimentos almacenados y el filtro de su modelo. Un modelo solo sale de RESEARCH si supera los seis controles: fuera de muestra, validación temporal, calibración, reproducción, estabilidad y batir al mercado.",
+    "experiment": "Experimento",
+    "vsMarket": "vs mercado (Δ, 95%)",
+    "verdict": "Veredicto",
+    "gate": "Filtro",
+    "session": "sesión {id}",
+    "reproduces": "reproduce #{id}",
+    "reproducedBy": "reproducido por #{id}",
+    "evidence": "evidencia {value}",
+    "reruns_one": "{count} ejecución de reproducción no se muestra: está enlazada desde el experimento que repitió.",
+    "reruns_other": "{count} ejecuciones de reproducción no se muestran: cada una está enlazada desde el experimento que repitió."
+  },
+  "market": {
+    "calibration": {
+      "title": "¿Está calibrada la línea de cierre?",
+      "subtitle": "{baseline}, uno contra el resto sobre local, empate y visitante en {n} partidos. Sobre la diagonal: las probabilidades indicadas se cumplen con esa misma frecuencia."
+    },
+    "buckets": {
+      "title": "Tramos de calibración",
+      "bucket": "Tramo",
+      "meanStated": "Media indicada",
+      "observed": "Observada",
+      "empty": "Ninguna selección en este tramo."
+    },
+    "closing": {
+      "title": "Lo que aportan las últimas horas de mercado",
+      "subtitle": "Log loss de los precios de pre-cierre y de cierre de Pinnacle sin margen, en los mismos partidos; la diferencia es lo que el mercado aprendió antes del inicio.",
+      "preClosing": "Pre-cierre",
+      "closing": "Cierre",
+      "improvement": "Mejora",
+      "margin": "Margen",
+      "noPrices": "No hay precios de cierre para esta temporada."
+    }
+  },
+  "coverage": {
+    "title": "Cobertura de datos",
+    "subtitle": "Por competición y temporada, cuántos partidos tienen cada tipo de dato. Los eventos, las alineaciones y las estadísticas de jugadores llegan con la migración histórica de pago.",
+    "results": "Resultados",
+    "teamStats": "Estad. de equipo",
+    "events": "Eventos",
+    "lineups": "Alineaciones",
+    "players": "Jugadores",
+    "histOdds": "Cuotas hist.",
+    "predictions": "Predicciones"
+  },
+  "migration": {
+    "plan": {
+      "title": "Plan",
+      "subtitle": "El plan de migración almacenado más reciente (python -m scripts.migration seed)",
+      "name": "Plan",
+      "none": "Aún no hay plan almacenado: unidades creadas directamente",
+      "created": "Creado",
+      "plannedRequests": "Peticiones previstas",
+      "requestsSpent": "Peticiones consumidas",
+      "rowsWritten": "Filas escritas",
+      "lastActivity": "Última actividad"
+    },
+    "units": {
+      "title": "Unidades",
+      "subtitle": "Unidades reanudables por tipo y estado"
+    }
+  },
+  "odds": {
+    "source": {
+      "label": "Fuente de cuotas",
+      "captured": "Capturadas por nosotros",
+      "historical": "Mercado histórico"
+    },
+    "captured": {
+      "title": "Partidos con precios capturados",
+      "subtitle": "Las probabilidades implícitas son brutas (1/cuota); las probabilidades sin margen solo aparecen en el consenso.",
+      "kickoff": "Inicio",
+      "fixture": "Partido",
+      "bookmakers": "Casas",
+      "markets": "Mercados",
+      "lastCapture": "Última captura"
+    },
+    "fixture": {
+      "title": "Cuotas del partido",
+      "sections": "Secciones de cuotas",
+      "board": "Tablero",
+      "movement": "Movimiento",
+      "nearClose": "Cerca del cierre",
+      "consensus": "Consenso"
+    },
+    "board": {
+      "title": "{home} vs {away}",
+      "subtitle": "Último precio por casa y el mejor disponible por selección",
+      "bestOdds": "Mejor cuota",
+      "at": "Casa",
+      "implied": "Implícita (bruta)",
+      "summary_one": "{count} última cotización de {books}.",
+      "summary_other": "{count} últimas cotizaciones de {books}.",
+      "books_one": "{count} casa",
+      "books_other": "{count} casas"
+    },
+    "movement": {
+      "title": "Movimiento de cuotas",
+      "subtitle": "Primer y último precio capturado por casa y selección",
+      "first": "Primera",
+      "last": "Última",
+      "change": "Cambio",
+      "captures": "Capturas"
+    },
+    "nearClose": {
+      "title": "Cerca del cierre",
+      "subtitle": "La captura más cercana al inicio que permitió nuestra cadencia. No es una línea de cierre hasta que se valide.",
+      "odds": "Cuota",
+      "captured": "Capturada",
+      "validatedClose": "Cierre validado",
+      "yes": "sí",
+      "no": "no"
+    },
+    "consensus": {
+      "title": "Consenso del mercado",
+      "subtitle": "Probabilidad sin margen entre casas",
+      "method": "Método",
+      "fairProbability": "Probabilidad justa",
+      "books": "Casas"
+    },
+    "historical": {
+      "withPrices": "Partidos con precios históricos",
+      "seasons": "Temporadas {seasons} · {source}",
+      "snapshots": "capturas",
+      "liveConsensus": "Consenso en vivo",
+      "liveConsensusHint": "partidos con consenso sin margen a partir de nuestras capturas",
+      "margins": {
+        "title": "Márgenes de las casas",
+        "subtitle": "Overround por casa y tipo de precio: la suma de 1/cuota en un mercado. La proporción de mejor precio cuenta cuántas veces una casa concreta tuvo el mejor precio 1X2 (los empates cuentan para cada una).",
+        "meanOverround": "Overround medio",
+        "median": "Mediana",
+        "best1x2": "Mejor precio 1X2",
+        "averageNotOffered": "Un promedio no es un precio que alguien haya ofrecido.",
+        "only1x2": "Solo se calcula para 1X2."
+      },
+      "movement": {
+        "title": "Pre-cierre → cierre",
+        "subtitle": "Pinnacle, sin margen con Shin. Cuánto se movió el precio entre las dos tomas de la fuente y cuál de las dos predijo mejor el resultado.",
+        "meanShift": "Media |Δ p(local)|",
+        "favouriteShortened": "Cuota del favorito bajó",
+        "preClosingLogLoss": "Log loss (pre-cierre)",
+        "closingLogLoss": "Log loss (cierre)",
+        "note": "La fuente toma los precios de pre-cierre los viernes o martes por la tarde; ninguno de los dos tipos tiene una hora exacta, así que esto es el movimiento entre dos tomas etiquetadas, no un historial de la línea."
+      }
+    }
+  },
+  "performance": {
+    "pnlUnits": "Ganancia/pérdida (unidades)",
+    "hitRate": "Tasa de acierto",
+    "stakedUnits": "Apostado (unidades)",
+    "notComputable": "Aún no se puede calcular.",
+    "sample": "Muestra",
+    "settledPicks": "Picks liquidados",
+    "pendingPicks": "Picks pendientes",
+    "slices": {
+      "intro": "± es un intervalo del 95 % sobre el ROI agrupado por partido: varios picks de un mismo partido (líneas de un mismo total, varios modelos) ganan o pierden juntos, así que cuenta cada partido como una sola observación (se muestra desde 20 partidos). Un intervalo que contiene el 0 —o el −5 % del margen típico— significa que el resultado no se distingue de la suerte. «Esperado (modelo)» es lo que prometía el VE del propio modelo para esas apuestas.",
+      "byMarket": "Por mercado",
+      "byModel": "Por modelo",
+      "byRule": "Por regla de decisión",
+      "byMonth": "Por mes del partido",
+      "byOddsBand": "Por franja de precio",
+      "model": "Modelo",
+      "market": "Mercado",
+      "rule": "Regla",
+      "month": "Mes",
+      "oddsBand": "Cuota",
+      "bets": "Apuestas",
+      "hit": "Acierto",
+      "pnl": "G/P",
+      "modelExpected": "Esperado (modelo)",
+      "matches": "Partidos"
+    },
+    "fixtures": "Partidos distintos (muestra independiente)",
+    "roiInterval": "ROI con intervalo del 95 % (por partido)",
+    "note": "Picks en sombra liquidados al precio capturado: no es un historial de apuestas reales y no se ha apostado dinero."
+  },
+  "historicalTables": {
+    "secondSource": "Segunda fuente",
+    "composite": "compuesto",
+    "fair": "Prob. justa L / E / V (Shin)",
+    "noPrice": "La fuente no tiene precio para esta selección.",
+    "compositeNotBook": "Un compuesto de mejores precios no es una casa: sus precios nunca se ofrecieron juntos.",
+    "compositeNotBookShort": "Un compuesto de mejores precios no es una casa.",
+    "notDevigged": "No se le quitó el margen: un compuesto de mejores precios no tiene margen que eliminar.",
+    "noBaseline": "No se calculó ninguna referencia sin margen para esta casa.",
+    "over": "Más",
+    "under": "Menos"
+  }
+}

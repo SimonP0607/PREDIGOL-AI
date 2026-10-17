@@ -1,0 +1,44 @@
+{
+  "subtitle": "Selections with value against the market, at the best price available now.",
+  "all": {
+    "title": "All qualified selections",
+    "subtitle": "Filter by competition, market, odds and kick-off time.",
+    "emptyBody": "Qualified selections in this time window will show up here.",
+    "widen": "Show the next {days} days"
+  },
+  "count_one": "{count} selection",
+  "count_other": "{count} selections",
+  "pricesUpdated": "Prices updated {when}",
+  "showMore": "Show {count} more",
+  "filters": {
+    "competition": "Competition",
+    "allCompetitions": "All competitions",
+    "market": "Market",
+    "odds": "Odds",
+    "oddsAll": "All",
+    "oddsRange": "{min}–{max}",
+    "oddsFrom": "{min}+",
+    "window": "Kick-off within",
+    "hours": "{count} h",
+    "days_one": "{count} day",
+    "days_other": "{count} days",
+    "reset": "Clear filters"
+  },
+  "started": {
+    "title": "Already started today",
+    "subtitle": "Pre-match picks of today's matches that already kicked off: the odds and the time they were taken, the state of the match and its result. Not recalculated.",
+    "count_one": "{count} pick has started",
+    "count_other": "{count} picks have started",
+    "empty": "No pick of today has started yet.",
+    "emptyFiltered": "No started pick matches these filters.",
+    "state": "Status",
+    "states": {
+      "all": "All",
+      "live": "In play",
+      "won": "Won",
+      "lost": "Lost",
+      "other": "Void and pending"
+    }
+  },
+  "priceHelp": "Tap the price to add it to your parlay; the bookmark saves it."
+}

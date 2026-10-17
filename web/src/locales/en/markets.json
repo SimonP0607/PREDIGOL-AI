@@ -1,0 +1,94 @@
+{
+  "name": {
+    "1X2": "Full-time result (1X2)",
+    "OU": "Over/Under goals",
+    "BTTS": "Both teams to score",
+    "AH": "Asian handicap",
+    "DC": "Double chance"
+  },
+  "short": {
+    "1X2": "1X2",
+    "OU": "Goals",
+    "BTTS": "BTTS",
+    "AH": "Handicap",
+    "DC": "Double ch."
+  },
+  "selection": {
+    "1X2": {
+      "Home": "{home} to win",
+      "Draw": "Draw",
+      "Away": "{away} to win"
+    },
+    "OU": {
+      "Over": "Over {line} goals",
+      "Under": "Under {line} goals"
+    },
+    "BTTS": {
+      "Yes": "Both teams score: Yes",
+      "No": "Both teams score: No"
+    },
+    "AH": {
+      "Home": "{home} {line}",
+      "Away": "{away} {line}"
+    },
+    "DC": {
+      "1X": "{home} or draw",
+      "12": "{home} or {away}",
+      "X2": "Draw or {away}"
+    }
+  },
+  "selectionShort": {
+    "1X2": {
+      "Home": "1",
+      "Draw": "X",
+      "Away": "2"
+    },
+    "OU": {
+      "Over": "Over {line}",
+      "Under": "Under {line}"
+    },
+    "BTTS": {
+      "Yes": "Yes",
+      "No": "No"
+    },
+    "AH": {
+      "Home": "1 {line}",
+      "Away": "2 {line}"
+    },
+    "DC": {
+      "1X": "1X",
+      "12": "12",
+      "X2": "X2"
+    }
+  },
+  "gate": {
+    "not_qualified": "The model has not beaten the market in its backtest",
+    "model_retired": "Model retired",
+    "not_scheduled": "The match is no longer scheduled",
+    "outside_window": "Outside the time window",
+    "too_close_to_kickoff": "Too close to kick-off",
+    "no_price": "No current price",
+    "stale_price": "Price too old",
+    "no_consensus": "No market consensus",
+    "few_bookmakers": "Too few bookmakers quote this market",
+    "non_positive_ev": "No value at the current price",
+    "same_fixture": "Another selection from the same match",
+    "shared_team": "Team already in another selection",
+    "duplicate_selection": "Duplicate selection",
+    "price_outlier": "Price far above the market consensus"
+  },
+  "reason": {
+    "no_qualified_picks": "There are not enough qualified selections today.",
+    "no_shadow_picks": "There are no shadow picks in this window.",
+    "no_value_now": "No qualified selection has value at the current price.",
+    "no_picks_match_filters": "No selection matches these filters.",
+    "no_live_matches": "No match is being played right now.",
+    "no_best_prices": "No price above the market yet.",
+    "no_upcoming_matches": "No upcoming matches from the followed competitions."
+  },
+  "risk": {
+    "moderate": "Moderate risk",
+    "high": "High risk",
+    "very_high": "Very high risk"
+  }
+}

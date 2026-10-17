@@ -1,0 +1,19 @@
+{
+  "home": "Home",
+  "matches": "Matches",
+  "live": "Live",
+  "picks": "Picks",
+  "parlays": "Parlays",
+  "odds": "Odds",
+  "myPicks": "My picks",
+  "profile": "Profile",
+  "adminConsole": "Admin Console",
+  "backToApp": "Back to the app",
+  "previewAsUser": "Preview as USER",
+  "previewing": "Previewing the USER experience",
+  "exitPreview": "Exit preview",
+  "previewNote": "Only the presentation changes; your real permissions do not.",
+  "signOut": "Sign out",
+  "mainNavigation": "Main navigation",
+  "adminNavigation": "Admin Console navigation"
+}

@@ -1,0 +1,461 @@
+{
+  "consoleTitle": "Admin Console",
+  "consoleSubtitle": "Research, models and system",
+  "groups": {
+    "operations": "Operations",
+    "intelligence": "Intelligence",
+    "football": "Football",
+    "system": "System"
+  },
+  "nav": {
+    "overview": "Overview",
+    "picks": "Picks (research)",
+    "performance": "Performance",
+    "odds": "Odds explorer",
+    "models": "Models",
+    "backtesting": "Backtesting",
+    "analytics": "Analytics",
+    "aiAnalyst": "AI research",
+    "competitions": "Competitions",
+    "teams": "Teams",
+    "players": "Players",
+    "rankings": "Rankings",
+    "dataTruth": "Data truth",
+    "dataQuality": "Data quality",
+    "system": "System",
+    "migration": "Migration",
+    "users": "Users",
+    "audit": "Audit",
+    "settings": "Settings",
+    "evolution": "Evolution",
+    "aiLayer": "AI decision layer",
+    "intelligence": "PrediGol Intelligence"
+  },
+  "pages": {
+    "overview": {
+      "title": "Overview",
+      "description": "Operations: captures, matches in play, system health."
+    },
+    "picks": {
+      "title": "Picks (research)",
+      "description": "Candidates, rejections, shadow and qualified picks, with the rule that decided each."
+    },
+    "performance": {
+      "title": "Performance",
+      "description": "Shadow picks settled at the captured price. No real money: it measures whether the edge was real."
+    },
+    "odds": {
+      "title": "Odds explorer",
+      "description": "Captured price series and the historical market, each source apart."
+    },
+    "models": {
+      "title": "Models",
+      "description": "Versions, calibration, backtests and their comparison with the market."
+    },
+    "backtesting": {
+      "title": "Backtesting",
+      "description": "Walk-forward sessions and their results by market."
+    },
+    "analytics": {
+      "title": "Analytics",
+      "description": "Competitions, teams, market and data coverage."
+    },
+    "aiAnalyst": {
+      "title": "AI research",
+      "description": "What the AI did with each match of the day, its research with sources, the post-mortems, what it learned, the sources and the cost."
+    },
+    "competitions": {
+      "title": "Competitions",
+      "description": "Competition catalogue, seasons and tables."
+    },
+    "teams": {
+      "title": "Teams",
+      "description": "Teams, squads and their record."
+    },
+    "players": {
+      "title": "Players",
+      "description": "Players with stored statistics."
+    },
+    "rankings": {
+      "title": "Rankings",
+      "description": "Current Elo per team from the rating history."
+    },
+    "dataQuality": {
+      "title": "Data quality",
+      "description": "Coverage, registered issues and checks."
+    },
+    "system": {
+      "title": "System",
+      "description": "Worker, provider quota, captures, errors, backups and versions."
+    },
+    "migration": {
+      "title": "Migration",
+      "description": "Historical backfill progress by task kind."
+    },
+    "users": {
+      "title": "Users",
+      "description": "Accounts, roles and status. SUPER_ADMIN only."
+    },
+    "audit": {
+      "title": "Audit",
+      "description": "Sign-ins, role and status changes. Never contains a password."
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Platform configuration."
+    },
+    "evolution": {
+      "title": "Evolution loop",
+      "description": "Results become memory and proposals; only the owner decides. No result changes a rule on its own."
+    },
+    "aiLayer": {
+      "title": "AI decision layer",
+      "description": "What the AI analyses, from which sources, what each review decides, what it costs and whether its filter beats the model alone and the market. It never changes a pick by itself."
+    },
+    "intelligence": {
+      "title": "PrediGol Intelligence",
+      "description": "The decision layer: every candidate through ten filters with a calibrated probability, its score, its stake and its context; what each day taught. All in shadow: nothing is published or staked."
+    }
+  },
+  "users": {
+    "user": "User",
+    "email": "Email",
+    "role": "Role",
+    "status": "Status",
+    "language": "Language",
+    "timezone": "Time zone",
+    "created": "Created",
+    "lastLogin": "Last login",
+    "sessions": "Sessions",
+    "actions": "Actions",
+    "never": "Never",
+    "active": "Active",
+    "disabled": "Disabled",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "makeAdmin": "Make SUPER_ADMIN",
+    "makeUser": "Make USER",
+    "you": "you",
+    "newUser": "New account",
+    "create": "Create account",
+    "creating": "Creating…",
+    "createdOk": "Account created.",
+    "updated": "Account updated.",
+    "confirmDeactivate": "Deactivate {email}? Their sessions end at once.",
+    "confirmRole": "Change {email}'s role to {role}?",
+    "initialPassword": "Initial password",
+    "passwordHint": "Share it by a safe channel; at sign-in the person must choose their own.",
+    "count_one": "{count} account",
+    "count_other": "{count} accounts",
+    "security": "Security",
+    "mfaPending": "2FA pending",
+    "mfaOff": "no 2FA",
+    "locked": "Locked",
+    "mustChange": "Must change password",
+    "mustChangeOnCreate": "Must choose their own password at first sign-in",
+    "requireMfa": "Require 2FA",
+    "mfaByRole": "required for SUPER_ADMIN",
+    "dropMfaRequirement": "Stop requiring 2FA",
+    "resetPassword": "Reset password",
+    "resetMfa": "Reset 2FA",
+    "endSessions": "End sessions",
+    "unlock": "Unlock",
+    "temporaryPassword": "Temporary password (shown once):",
+    "temporaryHint": "Hand it over by a safe channel. At sign-in the person must choose their own.",
+    "mfaResetDone": "2FA reset: they will set it up again at sign-in.",
+    "sessionsEnded_one": "{count} session ended.",
+    "sessionsEnded_other": "{count} sessions ended.",
+    "unlocked": "Account unlocked."
+  },
+  "audit": {
+    "when": "When",
+    "action": "Action",
+    "actor": "Who",
+    "target": "On",
+    "detail": "Detail",
+    "ip": "IP",
+    "filter": "Filter by action",
+    "allActions": "All actions",
+    "actions": {
+      "login_succeeded": "Signed in",
+      "login_failed": "Failed sign-in",
+      "login_refused": "Sign-in refused (disabled account)",
+      "logout": "Signed out",
+      "user_created": "Account created",
+      "user_role_changed": "Role changed",
+      "user_status_changed": "Status changed",
+      "password_changed": "Password changed",
+      "password_change_refused": "Password change refused",
+      "password_reset": "Password reset",
+      "preferences_updated": "Preferences updated",
+      "login_password_ok": "Password correct (a step left)",
+      "login_locked": "Account locked for a while",
+      "mfa_verified": "2FA code verified",
+      "mfa_failed": "Wrong 2FA code",
+      "mfa_enrolled": "2FA turned on",
+      "mfa_recovery_code_used": "Recovery code used",
+      "mfa_reset": "2FA reset",
+      "mfa_disabled": "2FA turned off",
+      "mfa_enroll_started": "2FA set-up started",
+      "mfa_recovery_codes_renewed": "Recovery codes renewed",
+      "user_unlocked": "Account unlocked",
+      "user_mfa_requirement_changed": "2FA requirement changed",
+      "user_password_change_required": "Password change required",
+      "session_revoked": "Sessions ended",
+      "admin_write": "Admin console action"
+    },
+    "keys": {
+      "fields": "fields",
+      "reason": "reason",
+      "from": "from",
+      "to": "to",
+      "role": "role",
+      "by": "by",
+      "other_sessions_revoked": "other sessions signed out",
+      "streak": "failures in a row",
+      "until": "until",
+      "kind": "kind",
+      "attempts": "attempts",
+      "next": "next step",
+      "method": "method",
+      "path": "path",
+      "status": "status",
+      "left": "left",
+      "count": "count",
+      "sessions_revoked": "sessions ended",
+      "generated": "generated",
+      "required": "required",
+      "must_change_password": "must change password",
+      "second_factor": "2FA"
+    },
+    "values": {
+      "language": "language",
+      "timezone": "time zone",
+      "display_name": "display name",
+      "unknown_email": "unknown email",
+      "wrong_password": "wrong password",
+      "disabled": "disabled",
+      "active": "active",
+      "command_line": "command line",
+      "locked": "locked",
+      "totp": "app",
+      "recovery_code": "recovery code",
+      "mfa": "2FA",
+      "enroll": "turn on 2FA",
+      "password": "new password",
+      "admin": "administrator"
+    }
+  },
+  "shadowToggle": "Evaluation mode (admin only)",
+  "shadowToggleHelp": "Shows the evaluation records, built from picks of models that have not beaten the market. Never what a USER sees.",
+  "jobs": {
+    "odds_capture": "Odds capture",
+    "fixtures_sync": "Fixtures sync",
+    "results_sync": "Results sync",
+    "raw_replay": "Raw replay",
+    "seasons_refresh": "Seasons refresh",
+    "historical_backfill": "Historical backfill",
+    "feature_build": "Feature build",
+    "historical_odds_import": "Historical odds import",
+    "backtest": "Backtest",
+    "pick_pipeline": "Decision pipeline",
+    "odds_import": "Odds import",
+    "live_odds": "In-play odds (job)",
+    "live_odds_capture": "In-play odds capture",
+    "live_match": "Live match follow (job)",
+    "live_match_capture": "Live match follow",
+    "notifier": "Notifier",
+    "quality_sweep": "Quality sweep",
+    "team_identity_resolve": "Team identity resolve",
+    "teams_sync": "Teams sync",
+    "window_probe": "Window probe",
+    "plan_probe": "Plan probe",
+    "raw_transfer": "Raw transfer",
+    "context_refresh": "Context refresh",
+    "results_repair": "Results repair",
+    "ai_daily_report": "AI daily report",
+    "ai_pick_review": "AI pick review",
+    "catalogue_refresh": "Catalogue refresh",
+    "context_due": "Context (due matches)",
+    "context_refresh_manual": "Context refresh (manual)",
+    "elo_refresh": "Elo ratings refresh",
+    "final_prematch": "Final pre-match prices",
+    "reference_refresh": "Reference feeds",
+    "research_monitor": "Research monitor",
+    "research_monitor_catch_up": "Research monitor (catch-up)",
+    "research_v2_weekly": "Research V2 (weekly)",
+    "research_v2": "Research V2",
+    "run_watchdog": "Run watchdog",
+    "post_match_detail": "Post-match detail",
+    "historical_validation": "Historical validation",
+    "truth_audit": "Data truth audit",
+    "capacity_probe": "Capacity probe",
+    "raw_backfill_season_stats": "Season stats from RAW"
+  },
+  "labels": {
+    "marketAverage": "Market average",
+    "bestPrice": "Best price",
+    "preClosing": "pre-closing",
+    "closing": "closing"
+  },
+  "shell": {
+    "liveData": "Live data",
+    "demoData": "Demo data",
+    "hybrid": "Hybrid",
+    "liveTitle": "Every figure on this page comes from the API at {url}.",
+    "demoTitle": "Demo data. Every figure on this page is synthetic and produced by the mock adapter.",
+    "hybridTitle": "This page mixes live API data with demo data. Panels marked Demo are synthetic; everything else comes from the API.",
+    "notConfigured": "(not configured)",
+    "dataSource": "Data source: {text}",
+    "researchMode": "Research mode",
+    "lastPayload": "Last payload {time}",
+    "checking": "Checking…",
+    "noPayload": "No payload yet",
+    "apiUnreachable": "API unreachable",
+    "workerDown": "worker down",
+    "workerDownHelp": "The worker is not running: no capture will happen.",
+    "searchLabel": "Search fixtures, teams and models",
+    "openPalette": "Open command palette",
+    "palettePlaceholder": "Search fixtures, teams, models or jump to a module…",
+    "searchEmptyDemo": "No match in the indexed demo dataset.",
+    "searchEmptyLive": "No stored fixture, team or competition matches.",
+    "groups": {
+      "fixture": "Fixtures",
+      "team": "Teams",
+      "competition": "Competitions",
+      "model": "Models"
+    },
+    "shadow": "Shadow"
+  },
+  "state": {
+    "empty": "Nothing here yet",
+    "insufficient": "Insufficient data",
+    "notAvailable": "Not available yet",
+    "apiUnreachable": "API not reachable",
+    "apiError": "The API returned an error",
+    "unexpected": "Unexpected error.",
+    "request": "request {id}",
+    "downNote": "Nothing on this page is shown from memory or demo data while the API is down.",
+    "noValue": "No value: {reason}"
+  },
+  "status": {
+    "awaitingResult": "Awaiting result",
+    "awaitingResultHelp": "Kicked off, but the row still says it has not: the result has not been synced.",
+    "aet": "(aet)",
+    "component": {
+      "ok": "ok",
+      "degraded": "degraded",
+      "down": "down",
+      "unknown": "unknown"
+    },
+    "run": {
+      "running": "running",
+      "completed": "completed",
+      "partial": "partial",
+      "failed": "failed",
+      "aborted": "stopped at cap",
+      "interrupted": "interrupted (recovered)",
+      "stale": "stale"
+    },
+    "data": {
+      "healthy": "Healthy",
+      "warning": "Warning",
+      "stale": "Stale",
+      "failed": "Failed",
+      "unknown": "Unknown"
+    },
+    "model": {
+      "market_baseline": "Market baseline",
+      "validated": "Validated",
+      "shadow": "Shadow",
+      "research": "Research",
+      "insufficient_data": "Insufficient data",
+      "not_trained": "Not trained"
+    },
+    "pick": {
+      "candidate": "candidate",
+      "shadow": "shadow",
+      "qualified": "qualified",
+      "published": "published",
+      "settled": "settled",
+      "rejected": "rejected"
+    },
+    "severity": {
+      "critical": "critical",
+      "high": "high",
+      "medium": "medium",
+      "low": "low"
+    },
+    "freshness": {
+      "live": "Live",
+      "fresh": "Fresh",
+      "aging": "Aging",
+      "stale": "Stale",
+      "unknown": "Unknown"
+    },
+    "freshnessHelp": {
+      "live": "Streaming updates in progress",
+      "fresh": "Captured within the freshness threshold",
+      "aging": "Approaching the freshness threshold",
+      "stale": "Older than the freshness threshold",
+      "unknown": "No capture recorded"
+    },
+    "timeline": {
+      "done": "Recorded",
+      "pending": "Pending",
+      "skipped": "Skipped",
+      "failed": "Failed"
+    },
+    "result": {
+      "win": "win",
+      "half_win": "half win",
+      "loss": "loss",
+      "half_loss": "half loss",
+      "push": "push",
+      "void": "void",
+      "pending": "pending"
+    }
+  },
+  "ui": {
+    "breadcrumb": "Breadcrumb",
+    "pendingValidation": "Pending validation",
+    "modelProbability": "Model probability",
+    "model": "Model",
+    "market": "Market",
+    "form": "Form: {form}",
+    "search": "Search",
+    "openRecord": "Open record",
+    "predicted": "Predicted",
+    "observed": "Observed",
+    "infoTip": "What is {term}: {text}",
+    "infoTipNoTerm": "Definition: {text}",
+    "showingRows": "Showing {shown} of {total}",
+    "showMore": "Show {n} more",
+    "showAll": "Show all"
+  },
+  "glossary": {
+    "modelProbability": "Probability produced by a statistical model from its feature snapshot. It is not a confidence level and it is not derived from prices.",
+    "marketProbability": "Consensus probability across tracked bookmakers after removing the overround. It is not the raw implied probability of a single price.",
+    "impliedProbability": "Raw 1 / odds of a single bookmaker price. It still contains the bookmaker margin, so it always sums above 100% across a market.",
+    "fairOdds": "Price that would make a selection break even at the model probability: 1 / model probability. It is not an available price.",
+    "bestOdds": "Highest price currently captured for the selection across tracked bookmakers.",
+    "edge": "Model probability minus market probability, in percentage points. Requires both a model probability and an available price to exist.",
+    "ev": "Expected value: model probability multiplied by the available price, minus one. It is an arithmetic property of the inputs, not a profitability claim.",
+    "brier": "Multi-class Brier score: squared error between the predicted probabilities and the outcome, summed over the outcomes and averaged over matches. Lower is better; 1/3 on each of home, draw and away scores 0.667.",
+    "logLoss": "Negative log likelihood of the observed outcomes under the predicted distribution. Punishes confident mistakes harshly. Lower is better.",
+    "calibration": "Agreement between predicted probability and observed frequency. A perfectly calibrated model lies on the diagonal of the reliability curve.",
+    "calibrationError": "Expected calibration error (ECE): the gap between predicted probability and observed frequency in ten equal-width probability bins, weighted by how many predictions fall in each bin (every outcome of every match counts).",
+    "vsMarket": "Model log loss minus the de-vigged market's log loss on the fixtures both priced, with a 95% paired-bootstrap interval. Negative means the model scored better. 'Better' is claimed only when the whole interval is below zero.",
+    "hypotheticalBetting": "A backtest simulation: flat one-unit stakes at the historical source's closing price, by a rule fixed before the test season. It is not a record of bets and not a forecast of returns.",
+    "historicalClosing": "Closing and pre-closing prices as published by Football-Data.co.uk. They are the source's labels, not prices this platform captured, and they carry no exact timestamp.",
+    "nearClose": "Price captured close to kickoff (T-12m). It is not validated as an official closing price and must not be reported as closing line value.",
+    "pickLineValue": "Difference between the price recorded on a pick and a later reference price. Requires validated near-close capture before it can be reported.",
+    "overround": "Sum of raw implied probabilities across a market. Values above 1 represent the bookmaker margin.",
+    "reliability": "Qualitative assessment of how much weight the sample, coverage and model status justify. It is not a probability.",
+    "freshness": "Age of the most recent successful capture relative to the freshness thresholds.",
+    "sampleSize": "Number of scored observations behind a metric. Small samples cannot separate skill from noise.",
+    "drawdown": "Largest peak-to-trough decline of a cumulative series.",
+    "yieldMetric": "Profit divided by total amount staked. Requires settled, published picks.",
+    "roi": "Return on investment across settled picks. Not computable without validated results."
+  }
+}

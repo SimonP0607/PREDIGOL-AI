@@ -1,0 +1,321 @@
+{
+  "metrics": {
+    "worker": "Worker",
+    "apiFootball": "API-Football today",
+    "quotaHint": "{left} left under our guard · plan {plan}/day",
+    "provider": "Provider",
+    "database": "Database",
+    "schemaHint": "schema {rev}"
+  },
+  "workerJobs": {
+    "title": "Worker jobs",
+    "subtitle": "Next scheduled run of each job.",
+    "job": "Job",
+    "nextRun": "Next run",
+    "ledgerLink": "Job ledger and run history →"
+  },
+  "captures": {
+    "title": "Captures",
+    "subtitle": "What the pipelines wrote recently.",
+    "labels": {
+      "prematch_1h": "Pre-match prices, last hour",
+      "prematch_24h": "Pre-match prices, last 24 h",
+      "live_priced_now": "Matches priced in play now",
+      "live_quotes_now": "In-play prices held now (current book, not kept)",
+      "match_states_24h": "Match states (fixture feed), last 24 h",
+      "upcoming_7d": "Fixtures in the next 7 days",
+      "finished_total": "Finished fixtures stored",
+      "awaiting_result": "Kicked off > 3 h ago, still scheduled",
+      "predictions_24h": "Predictions written, last 24 h",
+      "candidates_24h": "Pick candidates evaluated, last 24 h"
+    },
+    "notes": {
+      "awaiting_result": "should fall to 0 after the next results sync",
+      "live_quotes_now": "In-play odds are ephemeral: the book holds the current price only and is emptied when the match ends."
+    }
+  },
+  "errors": {
+    "title": "Errors, last 72 h",
+    "subtitle": "Runs that failed, half-succeeded, hit a cap or were cut off.",
+    "headers": {
+      "when": "When",
+      "job": "Job",
+      "status": "Status",
+      "error": "Error"
+    }
+  },
+  "quality": {
+    "title": "Data quality",
+    "subtitle": "Open issues by severity.",
+    "empty": "No open issue.",
+    "link": "Open Data Quality →",
+    "labels": {
+      "open_critical": "Open critical issues",
+      "open_error": "Open error issues",
+      "open_warning": "Open warning issues",
+      "open_info": "Open info issues"
+    }
+  },
+  "backups": {
+    "title": "Backups",
+    "subtitle": "Database dumps found on this machine, newest first.",
+    "headers": {
+      "file": "File",
+      "size": "Size",
+      "written": "Written"
+    }
+  },
+  "versions": {
+    "title": "Versions",
+    "backend": "Backend",
+    "backendCode": "Backend code",
+    "schema": "Schema",
+    "frontend": "Frontend",
+    "worker": "Worker",
+    "workerBuild": "Worker build"
+  },
+  "backfill": {
+    "title": "History migration",
+    "subtitle": "Seeded backfill tasks by kind. Each task is one provider request; nothing is re-requested that the raw store already holds.",
+    "progress": "{done} of {total} tasks done",
+    "complete": "complete",
+    "running": "running",
+    "headers": {
+      "kind": "Kind",
+      "done": "Done",
+      "pending": "Pending",
+      "running": "Running",
+      "failed": "Failed",
+      "lastCompleted": "Last completed"
+    }
+  },
+  "runs": {
+    "title": "Recent ingestion runs",
+    "subtitle": "The job ledger: what the system did, and what it cost",
+    "empty": "No ingestion run has been recorded yet.",
+    "runId": "run {id}",
+    "headers": {
+      "job": "Job",
+      "status": "Status",
+      "started": "Started",
+      "duration": "Duration",
+      "requests": "Requests",
+      "rows": "Rows written / updated",
+      "errors": "Errors"
+    }
+  },
+  "jobs": {
+    "title": "Jobs",
+    "subtitle": "Per job type: the last 24 hours from the ledger, and the next run from the worker's heartbeat",
+    "empty": "No job has run yet.",
+    "lastError": "Last error: {error}",
+    "manual": "manual",
+    "headers": {
+      "job": "Job",
+      "last": "Last",
+      "runs24h": "Runs 24 h",
+      "failedPartial": "Failed / partial",
+      "requests24h": "Requests 24 h",
+      "lastSuccess": "Last success",
+      "nextRun": "Next run"
+    }
+  },
+  "dataQuality": {
+    "notComputable": "Not computable.",
+    "loading": "Loading",
+    "highIssues_one": "{count} high-severity issue detected in the data right now: {titles}.",
+    "highIssues_other": "{count} high-severity issues detected in the data right now: {titles}.",
+    "sections": "Data quality sections",
+    "tabs": {
+      "issues": "Issues",
+      "coverage": "Coverage",
+      "jobs": "Jobs",
+      "runs": "Ingestion runs",
+      "notes": "Notes",
+      "states": "State by dataset"
+    },
+    "cards": {
+      "fixturesExpected": {
+        "label": "Fixtures expected",
+        "hint": "Scheduled, tracked competitions, next {hours} h"
+      },
+      "fixturesWithOdds": {
+        "label": "Fixtures with odds",
+        "hint": "{priced} priced by the provider · {unpriced} without a provider price"
+      },
+      "oddsCoverage": {
+        "label": "Odds coverage",
+        "hint": "Of the ones the provider prices · {all} over every expected fixture"
+      },
+      "captureWindows": {
+        "label": "Capture windows (24 h)",
+        "hint": "{captured} of {expected} windows for fixtures that kicked off"
+      },
+      "bookmakersSeen": {
+        "label": "Bookmakers seen (24 h)",
+        "hint": "Coverage {ratio} of active bookmakers"
+      },
+      "marketsSeen": {
+        "label": "Markets seen (24 h)",
+        "hint": "Coverage {ratio} of tracked markets"
+      },
+      "snapshots": {
+        "label": "Snapshots (24 h)",
+        "hint": "Last capture {when}"
+      },
+      "staleFixtures": {
+        "label": "Prices behind schedule",
+        "hint": "A capture window closed after the newest price and /odds was not asked again · {missed} priced fixtures with no price at all"
+      },
+      "awaitingResult": {
+        "label": "Awaiting a result",
+        "hint": "{provider} not finalised by the provider yet (its lag) · {n} past fixtures have a score"
+      },
+      "partialJobs": {
+        "label": "Partial jobs (24 h)",
+        "hint": "Wrote something and hit errors"
+      },
+      "failedJobs": {
+        "label": "Failed jobs (24 h)",
+        "hint": "Errors and nothing durable. Runs stopped at their cap are not counted here"
+      },
+      "providerErrors": {
+        "label": "Provider errors (24 h)",
+        "hint": "Refusals and failures of runs that called the provider"
+      },
+      "requestsToday": {
+        "label": "Requests today",
+        "hint": "{remaining} remaining · {unclaimed} not claimed by a closed run"
+      },
+      "runsStuck": {
+        "label": "Runs stuck",
+        "hint": "Open past their deadline: the run watchdog closes them within 5 min"
+      },
+      "cappedJobs": {
+        "label": "Stopped at their cap (24 h)",
+        "hint": "By design: the rest is due next run · {interrupted} interrupted (restart or deadline) and recovered"
+      },
+      "finalPrematch": {
+        "label": "Last pre-match price (7 d)",
+        "hint": "{priced} of {finished} finished · {empty} with no provider price · {refused} refused (stamped after kick-off) · median {minutes} min before kick-off"
+      }
+    },
+    "issues": {
+      "title": "Issues",
+      "subtitle": "Derived from the data on every request - there is no list to go stale",
+      "headers": {
+        "severity": "Severity",
+        "issue": "Issue",
+        "count": "Count",
+        "detected": "Detected"
+      }
+    },
+    "coverage": {
+      "title": "Coverage by competition",
+      "subtitle": "Tracked competitions, current season",
+      "season": "season {season}",
+      "noFixture": "No scheduled fixture of this competition in the evaluation horizon: nothing to cover.",
+      "noSnapshot": "No snapshot has ever been captured for this competition.",
+      "headers": {
+        "competition": "Competition",
+        "inHorizon": "In horizon",
+        "withOdds": "With odds",
+        "coverage": "Coverage",
+        "bookmakers24h": "Bookmakers 24 h",
+        "markets24h": "Markets 24 h",
+        "lastCapture": "Last capture",
+        "awaitingResult": "Awaiting result"
+      }
+    },
+    "notes": {
+      "title": "Notes",
+      "subtitle": "What the snapshot itself flags",
+      "empty": "The snapshot raises no note."
+    },
+    "states": {
+      "title": "Data state by dataset",
+      "subtitle": "Six answers per dataset: what is valid, what is behind, what we did not ask for, what the provider does not have, what we asked for and failed, and what we hold but could not normalise.",
+      "dataset": "Dataset",
+      "empty": "No dataset register yet.",
+      "headers": {
+        "VALID": "Valid",
+        "STALE": "Behind",
+        "NOT_REQUESTED": "Not requested",
+        "PROVIDER_HAS_NO_DATA": "Provider does not have it",
+        "REQUEST_FAILED": "Request failed (24 h)",
+        "NORMALIZATION_FAILED": "Normalisation failed"
+      },
+      "legend": "Valid, behind, not requested and provider-without-data count entities (fixtures, teams, players...). Request failed counts failed or partial runs in the last 24 h. Normalisation failed counts open issues: rejected rows, unknown provider entities and unresolved results. The provider's lag or absence is not our failure."
+    },
+    "issueText": {
+      "awaiting_result": {
+        "title": "Fixtures past kick-off without a result, not asked again",
+        "detail": "Recorded as scheduled or live after kick-off and not re-asked since the match should have ended: results_repair is behind."
+      },
+      "awaiting_result_provider": {
+        "title": "Fixtures the provider has not finalised yet",
+        "detail": "Asked again after the match should have ended; the provider still says not played. A result can take up to 48 h for some competitions; nothing for us to fix."
+      },
+      "stale_running_jobs": {
+        "title": "Runs stuck in 'running'",
+        "detail": "Open past their deadline: the process that owned them most likely died. The run watchdog closes them within five minutes; one that stays here means the watchdog itself is not running."
+      },
+      "failed_jobs_24h": {
+        "title": "Failed runs (24 h)",
+        "detail": "Runs that finished with errors and nothing durable. Runs stopped at their planned cap are not failures and are counted apart."
+      },
+      "stale_jobs_24h": {
+        "title": "Runs closed as stale (24 h)",
+        "detail": "Open past their deadline and closed by the run watchdog: a job that hangs."
+      },
+      "partial_jobs_24h": {
+        "title": "Partially successful runs (24 h)",
+        "detail": "Runs that wrote something AND hit errors."
+      },
+      "stale_fixtures": {
+        "title": "Upcoming fixtures with a price older than their last capture window",
+        "detail": "A capture window has closed since the newest price and /odds was not asked again: the capture is behind."
+      },
+      "missed_fixtures": {
+        "title": "Priced fixtures that passed a capture window without a price",
+        "detail": "The provider lists them as priced, a window has closed and /odds was not asked: the next capture run catches them up while they are still to be played."
+      },
+      "fixtures_without_lineage": {
+        "title": "Fixtures without payload lineage",
+        "detail": "Last written before revision 0015; the payload that wrote them is not linked. The next sync or a raw replay records it."
+      },
+      "results_without_lineage": {
+        "title": "Results without payload lineage",
+        "detail": "Written before revision 0015."
+      },
+      "budget_exhausted": {
+        "title": "Daily request budget exhausted",
+        "detail": "No provider request will be issued until the UTC day rolls over."
+      }
+    }
+  },
+  "health": {
+    "app_running": "running (version {version})",
+    "database_ok": "reachable, schema {revision}",
+    "database_error": "database error ({error})",
+    "database_unreachable": "no database connection",
+    "needs_database": "cannot be checked without the database",
+    "ledger_unreadable": "run ledger unreadable ({error})",
+    "worker_alive": "alive, last beat {minutes} min ago",
+    "worker_stopped": "worker stopped {minutes} min ago",
+    "worker_silent": "no heartbeat for {minutes} min: the worker is not running",
+    "worker_overdue_runs": "{n} run(s) open past their deadline (the watchdog closes them)",
+    "worker_last_tick": "last tick: {outcome}",
+    "worker_last_failed": "last “{job}” failed",
+    "worker_last_partial": "last “{job}” only partly succeeded",
+    "worker_never_seen": "no heartbeat and no run recorded yet",
+    "ledger_overdue_runs": "no heartbeat (older worker?); from the ledger: {n} run(s) past their deadline",
+    "ledger_quiet": "no heartbeat (older worker?); from the ledger: last run {minutes} min ago",
+    "ledger_last_failed": "no heartbeat (older worker?); from the ledger: last “{job}” failed",
+    "ledger_last_partial": "no heartbeat (older worker?); from the ledger: last “{job}” only partly succeeded",
+    "ledger_ok": "no heartbeat (older worker?); from the ledger: last run {minutes} min ago",
+    "provider_ok": "{spent} of {budget} requests today (our limit)",
+    "provider_budget_exhausted": "daily budget exhausted ({spent} of {budget})",
+    "provider_recent_error": "provider error in the last hour"
+  }
+}

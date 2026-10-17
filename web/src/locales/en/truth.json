@@ -1,0 +1,602 @@
+{
+  "title": "Data truth",
+  "description": "What the provider says today against what we hold: every difference with both values, how current each dataset is, and whether a model may use it.",
+  "breadcrumb": "Data truth",
+  "tabs": {
+    "matrix": "Matrix",
+    "freshness": "Freshness",
+    "standings": "Tables",
+    "gate": "Model gate",
+    "findings": "Findings",
+    "repairs": "Repairs",
+    "runs": "Audits",
+    "odds": "Odds coverage",
+    "validation": "Validation",
+    "audit_v2": "Audit V2",
+    "datasets": "Datasets"
+  },
+  "cards": {
+    "lastAudit": "Last audit",
+    "lastAuditHint": "#{id} · {requests} provider requests",
+    "serious": "Critical and high findings",
+    "seriousHint": "open in the evidence ledger · the last sample audit found {sample}",
+    "fresh": "Datasets up to date",
+    "freshHint": "measurable now, against their service level · {unknown} with nothing to measure",
+    "gate": "Matches the market baseline can price",
+    "gateHint": "{pass} of {total} in the next {hours} h"
+  },
+  "noAudit": "No truth audit has been run yet (python -m scripts.truth_audit).",
+  "matrix": {
+    "title": "API vs DB matrix",
+    "subtitle": "Audit #{id}, {date}. API: what the provider showed; DB: what we held for the same scope.",
+    "dataset": "Dataset",
+    "api": "API",
+    "db": "DB",
+    "difference": "Difference",
+    "freshness": "Freshness",
+    "safe": "Model safe?",
+    "agree": "{matched} of {checked} agree",
+    "noDifference": "no differences",
+    "notCompared": "not compared"
+  },
+  "role": {
+    "REQUIRED": "Required",
+    "OPTIONAL": "Optional",
+    "NOT_USED": "Not used",
+    "UNAVAILABLE_BY_PROVIDER": "Unavailable at the provider"
+  },
+  "safe": {
+    "yes": "YES",
+    "yes_optional": "YES (optional input)",
+    "partial": "PARTIAL",
+    "no": "NO",
+    "na": "n/a — no model reads it"
+  },
+  "safeReason": {
+    "critical": "critical findings",
+    "high": "high findings",
+    "stale": "stale"
+  },
+  "datasets": {
+    "competitions": "Competitions & coverage",
+    "fixtures": "Fixtures (schedule)",
+    "results": "Results",
+    "events": "Events",
+    "lineups": "Line-ups",
+    "team_stats": "Team statistics",
+    "player_stats": "Player statistics",
+    "standings": "League tables",
+    "teams": "Teams",
+    "players": "Players (profiles)",
+    "coaches": "Coaches",
+    "squads": "Squads",
+    "injuries": "Injuries & absences",
+    "odds": "Pre-match odds",
+    "bookmakers": "Bookmakers",
+    "elo": "Elo",
+    "live": "Live",
+    "match_detail": "Match detail",
+    "odds_prematch": "Pre-match odds",
+    "coverage": "Provider coverage"
+  },
+  "kinds": {
+    "mismatch": "mismatch",
+    "missing_in_db": "missing in DB",
+    "missing_in_api": "missing in API",
+    "not_stored": "not stored",
+    "stale": "stale",
+    "provider_lag": "provider lag",
+    "inconsistent": "inconsistent",
+    "provider_contradiction": "provider contradicts itself"
+  },
+  "state": {
+    "FRESH": "Fresh",
+    "STALE": "Stale",
+    "UNKNOWN": "Unknown",
+    "UNAVAILABLE": "Unavailable"
+  },
+  "sides": {
+    "leagues_listed": "{listed} competitions listed; {ours} of ours",
+    "tracked": "{tracked} tracked",
+    "fixture_lists": "{n} fixtures in {seasons} seasons ({current} current)",
+    "stored_for_them": "{stored} stored for them",
+    "finished_scores": "scores of the finished fixtures in those lists",
+    "result_rows": "core.fixture_results",
+    "sampled_fixtures": "{n} sampled fixtures (/fixtures?ids=)",
+    "rows_for_them": "the rows stored for them",
+    "table_rows": "{n} table rows in {seasons} league seasons",
+    "newest_snapshot_rows": "{stored} rows in our newest tables",
+    "sampled_teams": "{n} sampled teams",
+    "teams_table": "core.teams + core.venues",
+    "sampled_players": "{n} sampled players",
+    "players_table": "core.players",
+    "sampled_coaches": "{n} sampled coaches",
+    "coaches_table": "core.coaches",
+    "sampled_squads": "{n} sampled squads",
+    "not_stored": "not stored",
+    "sampled_upcoming": "{n} sampled upcoming fixtures",
+    "absences_table": "core.player_absences",
+    "priced_upcoming": "{priced} of {n} upcoming fixtures priced; {books} bookmakers",
+    "newest_prices": "our newest price per bookmaker, market, selection and line",
+    "bookmakers_offered": "{n} bookmakers offered (/odds/bookmakers)",
+    "bookmakers_priced": "{priced} with at least one stored price",
+    "finished_fixtures": "finished fixtures",
+    "elo_rows": "features.elo_ratings"
+  },
+  "freshness": {
+    "title": "Freshness by dataset",
+    "subtitle": "Measured now, against each dataset's service level (derived from API-Football's real update cadence).",
+    "measured": "Measured {ago}",
+    "dataset": "Dataset",
+    "status": "Status",
+    "share": "Share",
+    "rule": "Rule",
+    "entities": "{n} {entity}",
+    "worst": "Competitions with most outstanding",
+    "examples": "Examples",
+    "entity": {
+      "competition-season": "seasons",
+      "fixture": "fixtures",
+      "team": "teams",
+      "person": "people"
+    },
+    "sla": {
+      "fixtures": "Every current season's fixture list read in the last 14 h (sync every 6 h; the provider updates every 15 s).",
+      "results": "A match 3 h past kick-off carries a final status; if we re-read it and the provider still says NS, that is its lag.",
+      "live": "A match in play was read in the last 3 minutes (follower every 60 s).",
+      "standings": "The table was read after the season's last match ended (the provider updates hourly); asked after and unchanged = its lag.",
+      "injuries": "A season playing in the next 48 h had its list read in the last 6 h (the provider updates every 4 h).",
+      "lineups": "A match played in the last 7 days has its line-ups.",
+      "match_detail": "A match played in the last 7 days had its events and statistics read after it ended.",
+      "odds_prematch": "A match in the next 72 h was priced at the most recent capture window it reached (T-72/48/24/12/6/3 h, aligned on the provider's 3-hourly update).",
+      "elo": "Every match finished in the last 30 days carries a rating once the next 6-hourly recompute has run; a match without a stored score cannot be rated.",
+      "teams": "Identity (country, venue, crest) read in the last 120 days.",
+      "players": "The profile of everyone in a line-up in the last 365 days was read in the last 45 days (monthly sweep of /players/profiles).",
+      "coaches": "A profile has been read for every coach in a line-up in the last 365 days.",
+      "coverage": "The provider's coverage flags for each current season read in the last 8 days.",
+      "squads": "Every team of a current season had its squad read in the last 8 days (weekly round of /players/squads)."
+    }
+  },
+  "standings": {
+    "title": "League table audit",
+    "subtitle": "Every current league table: when it was read, when it changed, and whether it reflects the last match played.",
+    "competition": "Competition",
+    "status": "Status",
+    "reason": "Reason",
+    "snapshot": "Content since",
+    "checked": "Last asked",
+    "lastMatch": "Last match",
+    "rows": "Rows",
+    "groups": "Groups",
+    "extended": "Home/away",
+    "yes": "yes",
+    "no": "no",
+    "skipped": "{n} skipped (unknown team)",
+    "reasons": {
+      "not_covered": "The provider publishes no table for this season.",
+      "no_table": "No table stored.",
+      "no_match_yet": "No match has been played yet.",
+      "reflects_last_match": "The table reflects the last match played.",
+      "provider_not_updated": "Asked after the last match; the provider had not updated it yet.",
+      "not_asked_since": "Not asked again since the last match ended."
+    }
+  },
+  "gate": {
+    "title": "MODEL_DATA_GATE",
+    "subtitle": "What each model needs before it may price a match. Next {hours} h, {n} matches.",
+    "model": "Model",
+    "pass": "Pass",
+    "blocked": "Blocked",
+    "blockedBy": "Blocked by",
+    "needs": "Needs",
+    "fixtures": "Matches",
+    "kickoff": "Kick-off",
+    "competition": "Competition",
+    "why": "Why",
+    "models": {
+      "market_baseline": "Market baseline",
+      "goals_poisson_dc": "Poisson / Dixon-Coles",
+      "elo_ordered_logit": "Elo + ordered logit",
+      "logit_features_v2": "Logit (features v2)"
+    },
+    "states": {
+      "ok": "ok",
+      "missing": "missing",
+      "UNAVAILABLE_BY_PROVIDER": "unavailable at the provider"
+    }
+  },
+  "findings": {
+    "title": "Findings of audit #{id}",
+    "dataset": "Dataset",
+    "severity": "Severity",
+    "kind": "Kind",
+    "entity": "Entity",
+    "field": "Field",
+    "api": "API",
+    "db": "DB",
+    "note": "Technical detail",
+    "all": "All",
+    "total": "{n} findings",
+    "prev": "Previous",
+    "next": "Next",
+    "page": "{from}–{to} of {total}"
+  },
+  "repairs": {
+    "title": "Data repairs",
+    "subtitle": "Every correction applied to stored data outside normal ingestion: what, before, after and why.",
+    "when": "When",
+    "rule": "Rule",
+    "entity": "Entity",
+    "before": "Before",
+    "after": "After",
+    "reason": "Reason",
+    "rules": {
+      "status_spelling": "Status spelling",
+      "fixture_sides": "Sides corrected by the provider"
+    }
+  },
+  "runs": {
+    "title": "Audits",
+    "id": "#",
+    "started": "Started",
+    "status": "Status",
+    "requests": "Requests",
+    "findings": "Findings",
+    "open": "Open"
+  },
+  "coverage": {
+    "title": "Odds coverage",
+    "subtitle": "Played matches of the last {days} days ({since} - {until}): who priced them, what our capture got before kick-off, and why it missed the rest.",
+    "cards": {
+      "provider": "Priced by the provider",
+      "providerHint": "{priced} of the {asked} matches asked for; {recovered} only after the match",
+      "capture": "Captured before kick-off",
+      "captureHint": "{captured} of {fixtures} played matches - the only prices a pick can use",
+      "misses": "Not asked in time",
+      "missesHint": "worker down {down} · known too late {late} · kick-off moved {moved} · missed while running {up}",
+      "downtime": "Worker down",
+      "downtimeHint": "of the window, with no job started (the machine was off)"
+    },
+    "critical": "Our gaps",
+    "noCritical": "No gap of ours: every miss is explained by the machine being off, a match announced after its last window or a kick-off the provider moved.",
+    "bookmakers": "Bookmakers",
+    "bookmakersSubtitle": "Every bookmaker API-Football lists, and how many of our played matches it priced.",
+    "competitions": "Competitions",
+    "competitionsSubtitle": "Provider coverage judged on the matches asked for; capture judged on every played match.",
+    "markets": "Markets",
+    "countries": "Countries",
+    "local": "Colombian licensed operators",
+    "localSubtitle": "The {n} brands authorised by Coljuegos (list of {asOf}) against the bookmakers API-Football prices. The same brand is not confirmed to be the Colombian book.",
+    "sources": "Price sources evaluated",
+    "sourcesSubtitle": "Research of 3-4 Oct 2026 (docs/research/ODDS_PROVIDER_GAP_ANALYSIS_2026.md). Nothing is contracted without the owner.",
+    "col": {
+      "bookmaker": "Bookmaker",
+      "state": "State",
+      "matches": "Matches",
+      "share": "Share",
+      "competitions": "Competitions",
+      "countries": "Countries",
+      "markets": "Markets",
+      "competition": "Competition",
+      "played": "Played",
+      "asked": "Asked",
+      "priced": "Priced",
+      "captured": "Captured",
+      "recovered": "Read after",
+      "books": "Books (median)",
+      "misses": "Not asked in time",
+      "upcoming": "Next 72 h",
+      "why": "Why",
+      "market": "Market",
+      "country": "Country",
+      "brand": "Brand",
+      "providerBook": "Provider bookmaker",
+      "note": "Note",
+      "source": "Source",
+      "access": "Access",
+      "colombian": "Colombian books",
+      "closing": "Closing line",
+      "cost": "Cost",
+      "decision": "Decision"
+    },
+    "states": {
+      "NOT_ASKED": "Not asked",
+      "NOT_COVERED": "Not covered",
+      "UNPRICED_BY_PROVIDER": "No prices",
+      "THIN": "Thin",
+      "PARTIAL": "Partial",
+      "COVERED": "Covered"
+    },
+    "reasons": {
+      "NOT_ASKED": "{fixtures} played matches, none asked for before or after kick-off.",
+      "NOT_COVERED": "The provider's coverage flag says no odds, and it had none.",
+      "UNPRICED_BY_PROVIDER": "Asked for {asked} of {fixtures}; no price came back.",
+      "THIN": "The typical match had {books} bookmaker(s).",
+      "PARTIAL": "The provider priced {priced} of the {asked} matches asked for.",
+      "COVERED": "The provider priced {priced} of {asked} asked, typically by {books} books."
+    },
+    "bookStates": {
+      "ACTIVE": "Active",
+      "DORMANT": "Dormant",
+      "CATALOGUE_ONLY": "Listed only"
+    },
+    "noName": "no name in the provider's catalogue",
+    "localStates": {
+      "PRICED_BY_PROVIDER_BRAND": "Brand priced by the provider",
+      "CATALOGUE_ONLY": "Listed, never priced",
+      "NOT_IN_PROVIDER": "Not in API-Football"
+    },
+    "localNotes": {
+      "PRICED_BY_PROVIDER_BRAND": "The provider's feed of this brand prices our matches; that it is the Colombian book (same prices, same markets) is not confirmed.",
+      "CATALOGUE_ONLY": "Listed by the provider, never priced a match for us.",
+      "NOT_IN_PROVIDER": "Not offered by API-Football."
+    },
+    "misses": {
+      "worker_down": "worker down",
+      "known_too_late": "known too late",
+      "missed_while_up": "missed while running",
+      "kickoff_moved": "kick-off moved"
+    },
+    "access": {
+      "ACTIVE": "In use",
+      "FREE_NEEDS_OWNER": "Free - needs the owner's account",
+      "PAYMENT_REQUIRED": "Payment required - not contracted",
+      "CLOSED": "Closed",
+      "REJECTED": "Excluded"
+    },
+    "kinds": {
+      "LIVE_API": "Live API",
+      "HISTORICAL_FILES": "Historical files"
+    },
+    "sourceText": {
+      "api_football": {
+        "cost": "Contracted plan, 75,000 requests/day, until 29 Oct 2026",
+        "decision": "Primary source; final pre-match prices recovered for every played match"
+      },
+      "football_data_co_uk": {
+        "cost": "Free for private individuals; no automated bots, scrapers or AI for commercial or data-training products",
+        "decision": "Historical backtests only (already imported); no Colombian league; ask the owner before automating downloads"
+      },
+      "the_odds_api": {
+        "cost": "Free tier 500 credits/month with an account in the owner's name; paid from USD 30/month",
+        "decision": "Possible free second opinion on European prices; no Colombian league or book - not pursued without the owner"
+      },
+      "odds_api_io": {
+        "cost": "From GBP 49/month for 2 books; new free keys paused",
+        "decision": "The only researched route to Colombian operator prices; requires payment - not contracted"
+      },
+      "opticodds": {
+        "cost": "Custom quote (third-party estimate ~USD 5,000/month per sport, unverified)",
+        "decision": "Requires payment - not contracted"
+      },
+      "sportmonks": {
+        "cost": "EUR 29-249/month plus an odds add-on from EUR 24/month",
+        "decision": "Requires payment - not contracted"
+      },
+      "betsapi": {
+        "cost": "USD 100-300/month",
+        "decision": "Requires payment - not contracted (the only researched paid route to bwin prices)"
+      },
+      "betfair_exchange": {
+        "cost": "Delayed key free for development; live key GBP 499 one-off; needs a Betfair account, possibly not allowed from Colombia (unverified)",
+        "decision": "Not pursued: account and jurisdiction are the owner's question"
+      },
+      "pinnacle_api": {
+        "cost": "Closed to the public since 23 Jul 2025",
+        "decision": "Unavailable"
+      },
+      "operator_websites": {
+        "cost": "-",
+        "decision": "Never scraped: operator terms forbid bots and Ley 1273 de 2009 art. 269A penalises unauthorised access"
+      }
+    }
+  },
+  "validation": {
+    "title": "Historical validation",
+    "subtitle": "Rule {version}, run {ago}: every finished match has one state, every competition-season a data score and a class. Recomputed after each Elo refresh.",
+    "never": "Historical validation has not run yet.",
+    "cards": {
+      "approved": "Approved for modelling",
+      "approvedHint": "{share} of {total} finished matches",
+      "validated": "Validated, not approved",
+      "validatedHint": "their competition-season is not fit for modelling",
+      "quarantined": "Quarantined",
+      "quarantinedHint": "excluded from every model and backtest",
+      "ingested": "Awaiting a result",
+      "ingestedHint": "stored, no usable result yet"
+    },
+    "classes": "Competition-seasons by class",
+    "classHints": {
+      "MODEL_READY": "train on it and judge against the market",
+      "PARTIAL": "train on it; too few prices to judge against the market",
+      "PRODUCT_ONLY": "show it, do not learn from it",
+      "INSUFFICIENT": "too few matches or results"
+    },
+    "classNames": {
+      "MODEL_READY": "Model ready",
+      "PARTIAL": "Partial",
+      "PRODUCT_ONLY": "Product only",
+      "INSUFFICIENT": "Insufficient"
+    },
+    "rules": "Rules failed",
+    "ruleNames": {
+      "provider_duplicate": "Provider duplicate (same pairing within 36 h)",
+      "halftime_exceeds_score": "More goals at half-time than at 90 minutes",
+      "no_regulation_score": "Extra-time result without its 90-minute score",
+      "finished_in_future": "Finished, kick-off still to come",
+      "no_result": "No result yet",
+      "not_rated": "No Elo rating",
+      "competition_not_fit": "Competition-season not fit for modelling"
+    },
+    "segments": "Approved matches by segment",
+    "segmentNames": {
+      "top_league": "Top leagues",
+      "other_league": "Other leagues",
+      "domestic_cup": "Domestic cups",
+      "continental_club": "Continental club",
+      "club_friendly": "Club friendlies",
+      "national_team": "National teams",
+      "women": "Women",
+      "youth": "Youth"
+    },
+    "competitions": "Competition data score",
+    "competitionsSubtitle": "Shares of finished matches with a result, passing integrity, with team statistics, line-ups, a market price and an Elo rating.",
+    "filters": {
+      "class": "Class",
+      "all": "All",
+      "search": "Competition",
+      "current": "Current seasons only",
+      "tracked": "Tracked competitions only"
+    },
+    "col": {
+      "competition": "Competition",
+      "class": "Class",
+      "score": "Score",
+      "finished": "Finished",
+      "approved": "Approved",
+      "quarantined": "Quarantined",
+      "results": "Results",
+      "stats": "Stats",
+      "odds": "Prices",
+      "elo": "Elo",
+      "why": "Thresholds missed",
+      "kickoff": "Kick-off",
+      "match": "Match",
+      "rules": "Rules"
+    },
+    "none": "—",
+    "quarantine": "Quarantined matches",
+    "quarantineSubtitle": "Newest first. Nothing is deleted: the rows stay, excluded from training and backtests.",
+    "why": {
+      "fewMatches": "{n} finished (needs {need})",
+      "results": "results {v} (needs {need})",
+      "integrity": "integrity {v} (needs {need})",
+      "prices": "prices {v} (needs {need} to judge against the market)",
+      "elo": "Elo {v} (needs {need})"
+    }
+  },
+  "v2": {
+    "none": "No V2 audit has run yet (python -m scripts.audit_standings ...).",
+    "open": {
+      "critical": "Open critical",
+      "high": "Open high",
+      "medium": "Open medium",
+      "low": "Open low"
+    },
+    "runs": {
+      "title": "Latest run of each audit",
+      "subtitle": "Every provider answer is kept as a NEW raw payload; nothing in core changes.",
+      "kind": "Audit",
+      "when": "When",
+      "status": "Status",
+      "requests": "Requests",
+      "verdicts": "Verdicts"
+    },
+    "kinds": {
+      "standings": "Tables",
+      "team_stats": "Team statistics",
+      "player_stats": "Player statistics",
+      "leagues": "Leagues and seasons",
+      "fixtures": "Fixtures and results",
+      "identity": "Identity",
+      "fields": "Dropped fields",
+      "team_history": "Team histories",
+      "golden": "Golden dataset",
+      "baseline": "Baseline",
+      "external": "External sources"
+    },
+    "ledger": {
+      "title": "Evidence ledger (E-XXX)",
+      "subtitle": "Every established discrepancy: who is wrong, why, how it is fixed. An entry is never deleted: it is marked.",
+      "area": "Area",
+      "status": "Status",
+      "empty": "No entry with these filters.",
+      "code": "Code",
+      "severity": "Severity",
+      "issue": "Type",
+      "fault": "At fault",
+      "claim": "Claim",
+      "decide": "Verdict",
+      "cause": "Cause",
+      "fix": "Fix",
+      "seen": "seen {n} times, last {when}"
+    },
+    "status": {
+      "OPEN": "Open",
+      "MONITOR": "Monitoring",
+      "ACCEPTED": "Accepted",
+      "FIXED": "Fixed",
+      "CLEARED": "No longer reproduced"
+    },
+    "fault": {
+      "predigol": "PrediGol",
+      "provider": "Provider",
+      "none": "Nobody",
+      "undetermined": "Undetermined"
+    },
+    "decide": {
+      "ACCEPTED": "Accept",
+      "MONITOR": "Monitor",
+      "FIXED": "Fixed",
+      "OPEN": "Reopen"
+    },
+    "areas": {
+      "standings": "Tables",
+      "team_stats": "Team statistics",
+      "team_history": "Team histories",
+      "player_stats": "Player statistics",
+      "leagues": "Leagues",
+      "fixtures": "Fixtures",
+      "identity": "Identity",
+      "normalization": "Normalization",
+      "coaches": "Coaches"
+    }
+  },
+  "register": {
+    "title": "The 14 datasets",
+    "subtitle": "Class, whether a model may use it, and the evidence. Dataset version for models: {version} ({status}). Measured {when}.",
+    "empty": "No dataset to measure.",
+    "dataset": "Dataset",
+    "class": "Class",
+    "model": "Models",
+    "endpoint": "Endpoint",
+    "capture": "Capture / write",
+    "rows": "Rows",
+    "coverage": "Coverage",
+    "errors": "Errors 24 h",
+    "blockers": "Blockers",
+    "captured": "captured",
+    "written": "written",
+    "gap": "the provider lacks {share}",
+    "badRuns": "{n} failed or partial runs",
+    "legend": "FRESH: current. STALE: the provider has newer data and asking was our job. INCOMPLETE: 5% or more never read. INVALID: an open critical or high finding at PrediGol's fault. UNKNOWN: nothing to measure now. What the provider does not have never counts against us. A model may only use a FRESH dataset inside a MODEL_READY data version.",
+    "classes": {
+      "FRESH": "fresh",
+      "STALE": "stale",
+      "INCOMPLETE": "incomplete",
+      "INVALID": "invalid",
+      "UNKNOWN": "not measured"
+    },
+    "models": {
+      "MODEL_READY": "model-ready",
+      "NOT_MODEL_READY": "not model-ready yet",
+      "NOT_USED": "no model uses it"
+    }
+  },
+  "sla": {
+    "fixtures": "Every current season's fixture list read in the last 14 h (sync every 6 h; the provider updates every 15 s).",
+    "results": "A match 3 h past kick-off carries a final status (finished, cancelled, postponed); if we re-read it and the provider still says NS, that is its lag.",
+    "live": "A match in play was read in the last 3 minutes (follower every 60 s).",
+    "standings": "The table was read after the season's last match ended (the provider updates hourly); asked after and unchanged = its lag.",
+    "injuries": "A season playing in the next 48 h had its list read in the last 6 h (the provider updates every 4 h).",
+    "lineups": "A match played in the last 7 days has its line-ups.",
+    "match_detail": "A match played in the last 7 days had its events and statistics read after it ended.",
+    "odds_prematch": "A match in the next 72 h was priced at the most recent capture window it reached (T-72/48/24/12/6/3 h, aligned on the provider's 3-hourly update).",
+    "elo": "Every match finished in the last 30 days carries a rating once the next 6-hourly recompute has run; a match without a stored score cannot be rated.",
+    "teams": "Identity (country, venue, logo) read in the last 120 days.",
+    "players": "The profile of everyone in a line-up in the last 365 days was read in the last 45 days (monthly sweep of /players/profiles).",
+    "squads": "Every team of a current season had its squad read in the last 8 days (weekly round of /players/squads).",
+    "coaches": "A profile (birth date or nationality; /coachs weekly per tracked team) exists for every coach in a line-up in the last 365 days.",
+    "coverage": "The provider's coverage flags for each current season read in the last 8 days."
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "subtitle": "The best price for each selection, next to its fair price.",
+  "marketsLabel": "Market",
+  "tabs": {
+    "1X2": "1X2",
+    "OU": "Goals (Over/Under)",
+    "BTTS": "Both teams to score",
+    "AH": "Asian handicap",
+    "DC": "Double chance"
+  },
+  "window": {
+    "label": "Kick-off within",
+    "hours": "{count} h"
+  },
+  "pricesUpdated": "Prices updated {when}",
+  "highlights": {
+    "title": "Best prices against the market",
+    "subtitle": "Odds that pay more than the fair price right now.",
+    "vsFair": "{edge} vs fair"
+  },
+  "value": {
+    "title": "Value opportunities",
+    "subtitle": "Qualified selections with value at today's best price.",
+    "seeAll": "See picks",
+    "none": "No qualified value opportunity in this market right now."
+  },
+  "board": {
+    "summary_one": "{count} match in the next {hours} h",
+    "summary_other": "{count} matches in the next {hours} h",
+    "line": "Line",
+    "fair": "fair {odds}",
+    "noPrice": "No price",
+    "bookmakers_one": "Best price among {count} bookmaker",
+    "bookmakers_other": "Best price among {count} bookmakers",
+    "edgeHelp": "How much the best price pays above (or below) the fair price",
+    "cell": "{selection}: {odds} at {bookmaker}. Fair odds {fair}; {edge} against the fair price.",
+    "cellNoPrice": "{selection}: no price.",
+    "bestSr": "Best value in this match.",
+    "emptyTitle": "No matches with odds in this window",
+    "emptyBody": "Once bookmakers publish prices for the upcoming matches, they will show up here.",
+    "widen": "Show the next {hours} h",
+    "outlier": "Unusual price",
+    "outlierHelp": "Far above the fair price: most likely one bookmaker's stale or mistaken quote."
+  },
+  "movement": {
+    "toggle": "Movement",
+    "toggleLabel": "Movement: {match}",
+    "title": "Best price movement",
+    "help": "The best price available at each update, before kick-off.",
+    "empty": "Not enough updates yet to show any movement.",
+    "from": "from {odds}",
+    "time": "Time"
+  },
+  "openMatch": "Open match",
+  "openMatchLabel": "Open match: {match}",
+  "parlay": {
+    "help": "Tap a price to add it to your parlay, or to remove it.",
+    "add": "Add to my parlay",
+    "remove": "Remove from my parlay",
+    "replaces": "Replaces the other selection of this match in your parlay: one per match"
+  },
+  "fairExplainer": "Fair price: the odds each selection would pay if bookmakers took no margin (the market's consensus probability, without its margin). In green, how much the best price pays above that fair price; “outlier”, one bookmaker's price that is probably stale or wrong.",
+  "fairExplainerToggle": "What is the fair price?",
+  "filters": {
+    "search": "Search team or competition",
+    "searchPlaceholder": "Team or competition",
+    "country": "Country",
+    "allCountries": "All countries",
+    "international": "International",
+    "competition": "Competition",
+    "allCompetitions": "All competitions",
+    "aboveFair": "Only above fair",
+    "sort": "Order",
+    "sortTime": "By time",
+    "sortEdge": "Widest margin over fair",
+    "clear": "Clear filters",
+    "emptyTitle": "No match fits your filters",
+    "emptyBody": "Try another name, another country, or turn off “Only above fair”."
+  }
+}

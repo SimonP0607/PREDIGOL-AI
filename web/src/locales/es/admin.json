@@ -1,0 +1,461 @@
+{
+  "consoleTitle": "Admin Console",
+  "consoleSubtitle": "Investigación, modelos y sistema",
+  "groups": {
+    "operations": "Operaciones",
+    "intelligence": "Inteligencia",
+    "football": "Fútbol",
+    "system": "Sistema"
+  },
+  "nav": {
+    "overview": "Resumen",
+    "picks": "Picks (investigación)",
+    "performance": "Rendimiento",
+    "odds": "Explorador de cuotas",
+    "models": "Modelos",
+    "backtesting": "Backtesting",
+    "analytics": "Analítica",
+    "aiAnalyst": "IA e investigación",
+    "competitions": "Competiciones",
+    "teams": "Equipos",
+    "players": "Jugadores",
+    "rankings": "Rankings",
+    "dataTruth": "Verdad de datos",
+    "dataQuality": "Calidad de datos",
+    "system": "Sistema",
+    "migration": "Migración",
+    "users": "Usuarios",
+    "audit": "Auditoría",
+    "settings": "Ajustes",
+    "evolution": "Evolución",
+    "aiLayer": "Capa de decisión IA",
+    "intelligence": "PrediGol Intelligence"
+  },
+  "pages": {
+    "overview": {
+      "title": "Resumen",
+      "description": "Estado operativo: capturas, partidos en juego, salud del sistema."
+    },
+    "picks": {
+      "title": "Picks (investigación)",
+      "description": "Candidatos, rechazos, shadow y calificados, con la regla que decidió cada uno."
+    },
+    "performance": {
+      "title": "Rendimiento",
+      "description": "Picks shadow liquidados al precio capturado. Sin dinero real: mide si la ventaja era real."
+    },
+    "odds": {
+      "title": "Explorador de cuotas",
+      "description": "Series de precios capturados y el mercado histórico, cada fuente por separado."
+    },
+    "models": {
+      "title": "Modelos",
+      "description": "Versiones, calibración, backtests y su comparación con el mercado."
+    },
+    "backtesting": {
+      "title": "Backtesting",
+      "description": "Sesiones walk-forward y sus resultados por mercado."
+    },
+    "analytics": {
+      "title": "Analítica",
+      "description": "Competiciones, equipos, mercado y cobertura de datos."
+    },
+    "aiAnalyst": {
+      "title": "IA e investigación",
+      "description": "Lo que la IA hizo con cada partido del día, sus investigaciones con fuentes, los post-mortems, lo aprendido, las fuentes y el costo."
+    },
+    "competitions": {
+      "title": "Competiciones",
+      "description": "Catálogo de competiciones, temporadas y tablas."
+    },
+    "teams": {
+      "title": "Equipos",
+      "description": "Equipos, plantillas y su historial."
+    },
+    "players": {
+      "title": "Jugadores",
+      "description": "Jugadores con estadísticas almacenadas."
+    },
+    "rankings": {
+      "title": "Rankings",
+      "description": "Elo actual por equipo a partir del historial de ratings."
+    },
+    "dataQuality": {
+      "title": "Calidad de datos",
+      "description": "Cobertura, incidencias registradas y comprobaciones."
+    },
+    "system": {
+      "title": "Sistema",
+      "description": "Worker, cuota del proveedor, capturas, errores, copias y versiones."
+    },
+    "migration": {
+      "title": "Migración",
+      "description": "Progreso del backfill histórico por tipo de tarea."
+    },
+    "users": {
+      "title": "Usuarios",
+      "description": "Cuentas, roles y estado. Solo SUPER_ADMIN."
+    },
+    "audit": {
+      "title": "Auditoría",
+      "description": "Inicios de sesión, cambios de rol y de estado. Nunca contiene contraseñas."
+    },
+    "settings": {
+      "title": "Ajustes",
+      "description": "Configuración de la plataforma."
+    },
+    "evolution": {
+      "title": "Evolución",
+      "description": "Los resultados se vuelven memoria y propuestas; solo el dueño decide. Ningún resultado cambia una regla por sí solo."
+    },
+    "aiLayer": {
+      "title": "Capa de decisión IA",
+      "description": "Qué analiza la IA, con qué fuentes, qué decide cada revisión, cuánto cuesta y si su filtro mejora frente al modelo solo y al mercado. Nunca cambia un pick por sí misma."
+    },
+    "intelligence": {
+      "title": "PrediGol Intelligence",
+      "description": "La capa de decisión: cada candidato por diez filtros con probabilidad calibrada, su score, su stake y su contexto; lo que aprendió cada día. Todo en shadow: nada se publica ni se apuesta."
+    }
+  },
+  "users": {
+    "user": "Usuario",
+    "email": "Correo",
+    "role": "Rol",
+    "status": "Estado",
+    "language": "Idioma",
+    "timezone": "Zona horaria",
+    "created": "Creado",
+    "lastLogin": "Último acceso",
+    "sessions": "Sesiones",
+    "actions": "Acciones",
+    "never": "Nunca",
+    "active": "Activo",
+    "disabled": "Desactivado",
+    "activate": "Activar",
+    "deactivate": "Desactivar",
+    "makeAdmin": "Hacer SUPER_ADMIN",
+    "makeUser": "Hacer USER",
+    "you": "tú",
+    "newUser": "Nueva cuenta",
+    "create": "Crear cuenta",
+    "creating": "Creando…",
+    "createdOk": "Cuenta creada.",
+    "updated": "Cuenta actualizada.",
+    "confirmDeactivate": "¿Desactivar {email}? Sus sesiones se cerrarán al momento.",
+    "confirmRole": "¿Cambiar el rol de {email} a {role}?",
+    "initialPassword": "Contraseña inicial",
+    "passwordHint": "Compártela por un canal seguro; al entrar, la persona deberá elegir una propia.",
+    "count_one": "{count} cuenta",
+    "count_other": "{count} cuentas",
+    "security": "Seguridad",
+    "mfaPending": "2FA pendiente",
+    "mfaOff": "sin 2FA",
+    "locked": "Bloqueada",
+    "mustChange": "Cambiar contraseña",
+    "mustChangeOnCreate": "Debe elegir su propia contraseña al entrar",
+    "requireMfa": "Exigir 2FA",
+    "mfaByRole": "obligatoria para SUPER_ADMIN",
+    "dropMfaRequirement": "No exigir 2FA",
+    "resetPassword": "Restablecer contraseña",
+    "resetMfa": "Reiniciar 2FA",
+    "endSessions": "Cerrar sesiones",
+    "unlock": "Desbloquear",
+    "temporaryPassword": "Contraseña temporal (se muestra una sola vez):",
+    "temporaryHint": "Entrégala por un canal seguro. Al entrar, la persona deberá elegir una propia.",
+    "mfaResetDone": "2FA reiniciada: la configurará de nuevo al entrar.",
+    "sessionsEnded_one": "{count} sesión cerrada.",
+    "sessionsEnded_other": "{count} sesiones cerradas.",
+    "unlocked": "Cuenta desbloqueada."
+  },
+  "audit": {
+    "when": "Cuándo",
+    "action": "Acción",
+    "actor": "Quién",
+    "target": "Sobre",
+    "detail": "Detalle",
+    "ip": "IP",
+    "filter": "Filtrar por acción",
+    "allActions": "Todas las acciones",
+    "actions": {
+      "login_succeeded": "Inicio de sesión",
+      "login_failed": "Inicio de sesión fallido",
+      "login_refused": "Inicio rechazado (cuenta desactivada)",
+      "logout": "Cierre de sesión",
+      "user_created": "Cuenta creada",
+      "user_role_changed": "Cambio de rol",
+      "user_status_changed": "Cambio de estado",
+      "password_changed": "Contraseña cambiada",
+      "password_change_refused": "Cambio de contraseña rechazado",
+      "password_reset": "Contraseña restablecida",
+      "preferences_updated": "Preferencias actualizadas",
+      "login_password_ok": "Contraseña correcta (falta un paso)",
+      "login_locked": "Cuenta bloqueada temporalmente",
+      "mfa_verified": "Código 2FA verificado",
+      "mfa_failed": "Código 2FA incorrecto",
+      "mfa_enrolled": "2FA activada",
+      "mfa_recovery_code_used": "Código de recuperación usado",
+      "mfa_reset": "2FA reiniciada",
+      "mfa_disabled": "2FA desactivada",
+      "mfa_enroll_started": "Configuración de 2FA iniciada",
+      "mfa_recovery_codes_renewed": "Códigos de recuperación renovados",
+      "user_unlocked": "Cuenta desbloqueada",
+      "user_mfa_requirement_changed": "Exigencia de 2FA cambiada",
+      "user_password_change_required": "Cambio de contraseña exigido",
+      "session_revoked": "Sesiones cerradas",
+      "admin_write": "Acción en la consola de administración"
+    },
+    "keys": {
+      "fields": "campos",
+      "reason": "motivo",
+      "from": "antes",
+      "to": "ahora",
+      "role": "rol",
+      "by": "por",
+      "other_sessions_revoked": "otras sesiones cerradas",
+      "streak": "fallos seguidos",
+      "until": "hasta",
+      "kind": "tipo",
+      "attempts": "intentos",
+      "next": "siguiente paso",
+      "method": "método",
+      "path": "ruta",
+      "status": "resultado",
+      "left": "quedan",
+      "count": "cantidad",
+      "sessions_revoked": "sesiones cerradas",
+      "generated": "generada",
+      "required": "exigida",
+      "must_change_password": "debe cambiar la contraseña",
+      "second_factor": "2FA"
+    },
+    "values": {
+      "language": "idioma",
+      "timezone": "zona horaria",
+      "display_name": "nombre visible",
+      "unknown_email": "email desconocido",
+      "wrong_password": "contraseña incorrecta",
+      "disabled": "desactivada",
+      "active": "activa",
+      "command_line": "línea de comandos",
+      "locked": "bloqueada",
+      "totp": "app",
+      "recovery_code": "código de recuperación",
+      "mfa": "2FA",
+      "enroll": "activar 2FA",
+      "password": "nueva contraseña",
+      "admin": "administrador"
+    }
+  },
+  "shadowToggle": "Modo de evaluación (solo admin)",
+  "shadowToggleHelp": "Muestra los registros de evaluación, armados con picks de modelos que no han superado al mercado. Nunca es lo que ve un USER.",
+  "jobs": {
+    "odds_capture": "Captura de cuotas",
+    "fixtures_sync": "Sincronización de partidos",
+    "results_sync": "Sincronización de resultados",
+    "raw_replay": "Reproceso de datos crudos",
+    "seasons_refresh": "Actualización de temporadas",
+    "historical_backfill": "Backfill histórico",
+    "feature_build": "Cálculo de variables",
+    "historical_odds_import": "Importación de cuotas históricas",
+    "backtest": "Backtest",
+    "pick_pipeline": "Pipeline de decisión",
+    "odds_import": "Importación de cuotas",
+    "live_odds": "Cuotas en vivo (tarea)",
+    "live_odds_capture": "Captura de cuotas en vivo",
+    "live_match": "Seguimiento en vivo (tarea)",
+    "live_match_capture": "Seguimiento en vivo",
+    "notifier": "Notificador",
+    "quality_sweep": "Revisión de calidad",
+    "team_identity_resolve": "Resolución de identidad de equipos",
+    "teams_sync": "Sincronización de equipos",
+    "window_probe": "Sondeo de ventana",
+    "plan_probe": "Sondeo del plan",
+    "raw_transfer": "Transferencia de datos crudos",
+    "context_refresh": "Actualización de contexto",
+    "results_repair": "Reparación de resultados",
+    "ai_daily_report": "Informe diario de IA",
+    "ai_pick_review": "Revisión de picks por IA",
+    "catalogue_refresh": "Actualización del catálogo",
+    "context_due": "Contexto (partidos próximos)",
+    "context_refresh_manual": "Actualización de contexto (manual)",
+    "elo_refresh": "Actualización de ratings Elo",
+    "final_prematch": "Precios finales pre-partido",
+    "reference_refresh": "Datos de referencia",
+    "research_monitor": "Monitor de investigación",
+    "research_monitor_catch_up": "Monitor de investigación (recuperación)",
+    "research_v2_weekly": "Investigación V2 (semanal)",
+    "research_v2": "Investigación V2",
+    "run_watchdog": "Vigilante de ejecuciones",
+    "post_match_detail": "Detalle post-partido",
+    "historical_validation": "Validación histórica",
+    "truth_audit": "Auditoría de verdad de datos",
+    "capacity_probe": "Sondeo de capacidad",
+    "raw_backfill_season_stats": "Estadísticas de temporada desde RAW"
+  },
+  "labels": {
+    "marketAverage": "Promedio del mercado",
+    "bestPrice": "Mejor precio",
+    "preClosing": "pre-cierre",
+    "closing": "cierre"
+  },
+  "shell": {
+    "liveData": "Datos reales",
+    "demoData": "Datos demo",
+    "hybrid": "Mixto",
+    "liveTitle": "Todas las cifras de esta página vienen de la API ({url}).",
+    "demoTitle": "Datos de demostración: todas las cifras de esta página son sintéticas y las produce el adaptador de prueba.",
+    "hybridTitle": "Esta página mezcla datos reales de la API con datos de demostración. Los paneles marcados como Demo son sintéticos; todo lo demás viene de la API.",
+    "notConfigured": "(sin configurar)",
+    "dataSource": "Origen de los datos: {text}",
+    "researchMode": "Modo investigación",
+    "lastPayload": "Último dato {time}",
+    "checking": "Comprobando…",
+    "noPayload": "Aún no hay datos",
+    "apiUnreachable": "API no disponible",
+    "workerDown": "worker detenido",
+    "workerDownHelp": "El worker no está en marcha: no se capturará nada.",
+    "searchLabel": "Buscar partidos, equipos y modelos",
+    "openPalette": "Abrir la paleta de comandos",
+    "palettePlaceholder": "Busca partidos, equipos, modelos o ve a un módulo…",
+    "searchEmptyDemo": "Nada coincide en el conjunto de datos demo.",
+    "searchEmptyLive": "Ningún partido, equipo o competición guardado coincide.",
+    "groups": {
+      "fixture": "Partidos",
+      "team": "Equipos",
+      "competition": "Competiciones",
+      "model": "Modelos"
+    },
+    "shadow": "Shadow"
+  },
+  "state": {
+    "empty": "Todavía no hay nada",
+    "insufficient": "Datos insuficientes",
+    "notAvailable": "Aún no disponible",
+    "apiUnreachable": "La API no responde",
+    "apiError": "La API devolvió un error",
+    "unexpected": "Error inesperado.",
+    "request": "petición {id}",
+    "downNote": "Mientras la API no responda, nada de esta página se muestra desde memoria ni con datos demo.",
+    "noValue": "Sin valor: {reason}"
+  },
+  "status": {
+    "awaitingResult": "Sin resultado",
+    "awaitingResultHelp": "Ya empezó, pero el registro todavía dice que no: el resultado aún no se ha sincronizado.",
+    "aet": "(prór.)",
+    "component": {
+      "ok": "ok",
+      "degraded": "degradado",
+      "down": "caído",
+      "unknown": "desconocido"
+    },
+    "run": {
+      "running": "en curso",
+      "completed": "completada",
+      "partial": "parcial",
+      "failed": "fallida",
+      "aborted": "detenida por tope",
+      "interrupted": "interrumpida (recuperada)",
+      "stale": "vencida"
+    },
+    "data": {
+      "healthy": "Correcto",
+      "warning": "Aviso",
+      "stale": "Desactualizado",
+      "failed": "Fallido",
+      "unknown": "Desconocido"
+    },
+    "model": {
+      "market_baseline": "Referencia de mercado",
+      "validated": "Validado",
+      "shadow": "Shadow",
+      "research": "Investigación",
+      "insufficient_data": "Datos insuficientes",
+      "not_trained": "Sin entrenar"
+    },
+    "pick": {
+      "candidate": "candidato",
+      "shadow": "shadow",
+      "qualified": "calificado",
+      "published": "publicado",
+      "settled": "liquidado",
+      "rejected": "rechazado"
+    },
+    "severity": {
+      "critical": "crítica",
+      "high": "alta",
+      "medium": "media",
+      "low": "baja"
+    },
+    "freshness": {
+      "live": "En vivo",
+      "fresh": "Reciente",
+      "aging": "Envejeciendo",
+      "stale": "Desactualizado",
+      "unknown": "Desconocido"
+    },
+    "freshnessHelp": {
+      "live": "Actualizaciones en curso",
+      "fresh": "Capturado dentro del umbral de frescura",
+      "aging": "Cerca del umbral de frescura",
+      "stale": "Más antiguo que el umbral de frescura",
+      "unknown": "No hay captura registrada"
+    },
+    "timeline": {
+      "done": "Registrado",
+      "pending": "Pendiente",
+      "skipped": "Omitido",
+      "failed": "Fallido"
+    },
+    "result": {
+      "win": "ganado",
+      "half_win": "medio ganado",
+      "loss": "perdido",
+      "half_loss": "medio perdido",
+      "push": "devuelto",
+      "void": "anulado",
+      "pending": "pendiente"
+    }
+  },
+  "ui": {
+    "breadcrumb": "Ruta de navegación",
+    "pendingValidation": "Pendiente de validación",
+    "modelProbability": "Probabilidad del modelo",
+    "model": "Modelo",
+    "market": "Mercado",
+    "form": "Forma: {form}",
+    "search": "Buscar",
+    "openRecord": "Abrir registro",
+    "predicted": "Predicha",
+    "observed": "Observada",
+    "infoTip": "Qué es {term}: {text}",
+    "infoTipNoTerm": "Definición: {text}",
+    "showingRows": "Mostrando {shown} de {total}",
+    "showMore": "Mostrar {n} más",
+    "showAll": "Mostrar todo"
+  },
+  "glossary": {
+    "modelProbability": "Probabilidad que produce un modelo estadístico a partir de sus variables. No es un nivel de confianza y no se deriva de los precios.",
+    "marketProbability": "Probabilidad de consenso entre las casas seguidas, después de quitar el margen (overround). No es la probabilidad implícita bruta de un solo precio.",
+    "impliedProbability": "1 / cuota de un solo precio de una casa. Aún incluye el margen de la casa, así que en un mercado siempre suma más del 100 %.",
+    "fairOdds": "Precio con el que una selección quedaría en equilibrio a la probabilidad del modelo: 1 / probabilidad del modelo. No es un precio disponible.",
+    "bestOdds": "El precio más alto capturado ahora para la selección entre las casas seguidas.",
+    "edge": "Probabilidad del modelo menos probabilidad del mercado, en puntos porcentuales. Requiere una probabilidad del modelo y un precio disponible.",
+    "ev": "Valor esperado: probabilidad del modelo multiplicada por el precio disponible, menos uno. Es una propiedad aritmética de los datos, no una promesa de rentabilidad.",
+    "brier": "Brier multiclase: error cuadrático entre las probabilidades predichas y el resultado, sumado sobre los resultados y promediado sobre los partidos. Cuanto menor, mejor; 1/3 para local, empate y visitante da 0,667.",
+    "logLoss": "Log-verosimilitud negativa de los resultados observados bajo la distribución predicha. Castiga mucho los errores con exceso de confianza. Cuanto menor, mejor.",
+    "calibration": "Concordancia entre la probabilidad predicha y la frecuencia observada. Un modelo perfectamente calibrado queda sobre la diagonal de la curva de fiabilidad.",
+    "calibrationError": "Error de calibración esperado (ECE): la diferencia entre probabilidad predicha y frecuencia observada en diez tramos de probabilidad de igual ancho, ponderada por cuántas predicciones caen en cada tramo (cuenta cada resultado de cada partido).",
+    "vsMarket": "Log loss del modelo menos el log loss del mercado sin margen en los partidos que ambos cotizaron, con un intervalo bootstrap pareado del 95 %. Negativo significa que el modelo puntuó mejor. Solo se dice «mejor» cuando todo el intervalo está por debajo de cero.",
+    "hypotheticalBetting": "Una simulación de backtest: stakes planos de una unidad al precio de cierre de la fuente histórica, con una regla fijada antes de la temporada de prueba. No es un registro de apuestas ni una previsión de rentabilidad.",
+    "historicalClosing": "Precios de cierre y pre-cierre tal como los publica Football-Data.co.uk. Son las etiquetas de la fuente, no precios capturados por esta plataforma, y no tienen hora exacta.",
+    "nearClose": "Precio capturado cerca del inicio (T-12m). No está validado como precio de cierre oficial y no debe presentarse como valor frente a la línea de cierre (CLV).",
+    "pickLineValue": "Diferencia entre el precio registrado en un pick y un precio de referencia posterior. Requiere una captura cercana al cierre validada antes de poder reportarse.",
+    "overround": "Suma de las probabilidades implícitas brutas de un mercado. Los valores por encima de 1 representan el margen de la casa.",
+    "reliability": "Valoración cualitativa de cuánto peso justifican la muestra, la cobertura y el estado del modelo. No es una probabilidad.",
+    "freshness": "Antigüedad de la última captura correcta respecto a los umbrales de frescura.",
+    "sampleSize": "Número de observaciones puntuadas detrás de una métrica. Con muestras pequeñas no se puede separar la habilidad del ruido.",
+    "drawdown": "La mayor caída de pico a valle de una serie acumulada.",
+    "yieldMetric": "Beneficio dividido entre el total apostado. Requiere picks publicados y liquidados.",
+    "roi": "Retorno de la inversión sobre los picks liquidados. No se puede calcular sin resultados validados."
+  }
+}

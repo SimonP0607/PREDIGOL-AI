@@ -1,0 +1,146 @@
+{
+  "subtitle": "Combinations built only from selections that have value.",
+  "kind": {
+    "daily": "Parlay of the day",
+    "multiday": "Multi-day parlay"
+  },
+  "legs_one": "{count} selection",
+  "legs_other": "{count} selections",
+  "legsRange": "{min}–{max} selections",
+  "legsList": "Parlay selections",
+  "combinedOdds": "Combined odds",
+  "empty": {
+    "never": "We never pad a parlay with selections that have no value."
+  },
+  "how": {
+    "title": "How we build the parlays",
+    "value": {
+      "title": "Value filter on every selection",
+      "qualified": "Qualified selection: its model has beaten the market",
+      "fresh": "Current price ≤ 3 h old",
+      "ev": "Positive expected value at the current price",
+      "consensus": "Market consensus from ≥ 2 bookmakers",
+      "interval": "A probability without a measured interval is left out, and so is one more than 40 points uncertain",
+      "books": "Every selection quoted by 3 bookmakers or more",
+      "ai": "Every selection went through PrediGol Intelligence; in enforce mode it leaves out what it rejects or downgrades",
+      "risk": "No selection above 3.00: in our history, long odds lose money"
+    },
+    "independence": {
+      "title": "No related selections",
+      "oneMatch": "At most 1 selection per match",
+      "noTeam": "No team appears twice",
+      "independent": "That is why they are treated as independent",
+      "noQuarter": "No quarter lines (.25 / .75)",
+      "perCompetition": "At most 2 selections from the same competition",
+      "measured": "The measured dependence between matches of the same competition and day can only lower the joint probability, never raise it"
+    },
+    "noPadding": {
+      "title": "No padding",
+      "body": "If there are not enough selections with value, we show no parlay: we never pad."
+    },
+    "choice": {
+      "title": "How they are chosen",
+      "growth": "By expected growth at each selection's cautious probability (the low end of the model's interval)",
+      "positive": "Built only if that growth is positive, and each added selection has to raise it",
+      "frozen": "Frozen once built: prices and probabilities do not change afterwards, and it is followed to its result"
+    }
+  },
+  "own": {
+    "title": "Rather build your own?",
+    "body": "Add selections from matches or picks: we check the rules and keep it in My picks."
+  },
+  "why": {
+    "title": "Why it's here",
+    "model": "PrediGol gives it {model} (at least {low} in the prudent case); the market, {market}.",
+    "modelNoLow": "PrediGol gives it {model}; the market, {market}.",
+    "price": "Odds {odds} against a fair price of {fair} ({edge} against fair).",
+    "evFrozen": "Expected value {ev} per unit, at the odds it was taken at.",
+    "evNow": "Expected value {ev} per unit, at today's odds.",
+    "books_one": "Quoted now by {count} bookmaker, no outlier prices.",
+    "books_other": "Quoted now by {count} bookmakers, no outlier prices.",
+    "noReview": "No PrediGol Intelligence review recorded for this selection."
+  },
+  "builder": {
+    "title": "Automatic builder",
+    "subtitle": "Tell us what you are after and PrediGol builds the parlay with the same rules as its own. If there is none worth it, it says so.",
+    "window": "Starting within",
+    "hours": "{count} h",
+    "legs": "Selections",
+    "legsMin": "Minimum selections",
+    "legsMax": "Maximum selections",
+    "legsFrom": "from",
+    "legsTo": "to",
+    "markets": "Markets",
+    "allMarkets": "All",
+    "competitions": "Competitions",
+    "allCompetitions": "All competitions",
+    "someCompetitions_one": "{count} competition",
+    "someCompetitions_other": "{count} competitions",
+    "searchCompetition": "Search competition",
+    "noCompetitions": "No competitions with selections in this window yet.",
+    "clearCompetitions": "All",
+    "legOdds": "Odds per selection",
+    "oddsFrom": "from",
+    "oddsTo": "to",
+    "maxTotal": "Maximum total odds",
+    "optional": "optional",
+    "build": "Build parlay",
+    "building": "Building…",
+    "reset": "Reset",
+    "hint": "Choose what you are after and press “Build parlay”: PrediGol builds it with its rules and explains every selection.",
+    "issue": {
+      "minOdds": "The minimum odds must be a number between 1.01 and 1000.",
+      "maxOdds": "The maximum odds must be a number between 1.01 and 1000.",
+      "oddsOrder": "The minimum odds cannot be above the maximum.",
+      "maxTotal": "The maximum total odds must be a number above 1.",
+      "legs": "The minimum of selections cannot be above the maximum."
+    },
+    "result": {
+      "title": "Your parlay",
+      "combined": "Combined odds",
+      "pAll": "All win (prudent)",
+      "pAllHelp": "With each selection's prudent probability, corrected for the measured dependence between selections of the same competition and day.",
+      "pMarket": "By the market",
+      "risk": "Risk",
+      "pricesAt": "Prices from {when}",
+      "shadow": "Preview with shadow picks (admin only): not a recommendation.",
+      "funnel": "Of {passing} selections with value in your window, {risk} are priced {max} or less, {reviewed} went through PrediGol Intelligence, {matching} match your filters and {combinable} can be combined ({matches} matches).",
+      "why": {
+        "title": "Why this parlay",
+        "gate": "Every selection passes the value filter at today's price: quoted by 3 bookmakers or more, no outlier prices, positive expected value.",
+        "independent": "Different matches and teams, and at most two selections from the same competition.",
+        "growth": "Chosen by expected growth at each selection's prudent probability, not by the highest odds: it is built only if that growth is positive.",
+        "correlated_one": "The measured dependence between selections of the same competition and day lowers the joint probability in {count} pair.",
+        "correlated_other": "The measured dependence between selections of the same competition and day lowers the joint probability in {count} pairs.",
+        "risk": "No selection above odds of {max}: in our history, long odds lose money.",
+        "context": "Every selection went through PrediGol Intelligence, which reviewed its context and the match's news."
+      }
+    },
+    "save": "Save to My picks",
+    "saving": "Saving…",
+    "saved": "Saved to My picks",
+    "savedName": "Automatic parlay · {date}",
+    "savedToast": "Parlay saved to My picks",
+    "seeMine": "View",
+    "openSlip": "Edit in My parlay",
+    "loadedToast": "Loaded into My parlay: change it if you like and save it from there.",
+    "replacedSlip": "It replaced the selections you had in My parlay.",
+    "none": {
+      "title": "No parlay for these filters",
+      "no_candidates": "Right now no selection passes PrediGol's rules in this window. We do not build parlays from selections that do not pass them.",
+      "no_match": "Some selections pass the rules, but none matches your filters.",
+      "too_few_legs_one": "With your filters there are combinable selections in only {count} match: short of the minimum of {min}.",
+      "too_few_legs_other": "With your filters there are combinable selections in only {count} matches: short of the minimum of {min}.",
+      "total_odds_cap": "With maximum total odds of {cap} there are not {min} selections worth combining.",
+      "no_growth": "There are enough selections, but no combination of {min} or more grows together within the independence rules.",
+      "risk_cap": "Every selection with value in your window pays more than {max}: PrediGol's risk rule leaves them out, because in our history long odds lose money.",
+      "not_reviewed": "The selections with value in your window have not been through PrediGol Intelligence yet: the review runs during the day."
+    },
+    "advice": {
+      "widen": "Try a wider window or fewer minimum selections.",
+      "filters": "Try removing a market, competition or odds filter.",
+      "cap": "Try raising the maximum total odds or lowering the minimum of selections.",
+      "wait": "Come back later: prices and selections update during the day."
+    }
+  }
+}

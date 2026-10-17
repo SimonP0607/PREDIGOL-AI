@@ -1,0 +1,624 @@
+{
+  "back": "Partidos",
+  "title": "{home} vs {away}",
+  "notFound": {
+    "title": "Partido no encontrado",
+    "body": "Puede que el enlace no sea correcto o que el partido ya no esté disponible.",
+    "action": "Ver partidos"
+  },
+  "tabs": {
+    "label": "Secciones del partido",
+    "summary": "Resumen",
+    "stats": "Estadísticas",
+    "markets": "Mercados",
+    "lineups": "Alineaciones",
+    "advanced": "Avanzado / Auditoría",
+    "picks": "Picks"
+  },
+  "round": {
+    "matchday": "Jornada {n}",
+    "group": "Grupo {name}",
+    "league": "Liga {name}",
+    "qualifying": "Ronda previa {n}",
+    "preliminary": "Ronda preliminar {n}",
+    "round": "Ronda {n}",
+    "fraction": "1/{n} de final",
+    "stage": {
+      "regular_season": "Fase regular",
+      "group_stage": "Fase de grupos",
+      "club_friendlies": "Amistosos de clubes",
+      "friendly_international": "Amistoso internacional",
+      "final": "Final",
+      "semi_finals": "Semifinales",
+      "quarter_finals": "Cuartos de final",
+      "round_of_16": "Octavos de final",
+      "round_of_32": "Dieciseisavos de final",
+      "play_offs": "Play-offs",
+      "relegation_round": "Ronda por la permanencia",
+      "championship_round": "Ronda por el título",
+      "qualifying_round": "Ronda previa",
+      "preliminary_round": "Ronda preliminar",
+      "3rd_place_final": "Tercer puesto"
+    }
+  },
+  "header": {
+    "noScore": "Sin marcador",
+    "scoreAria": "Marcador: {home} {homeGoals}, {away} {awayGoals}",
+    "timeTbd": "Hora por confirmar",
+    "startsIn": "Empieza {when}",
+    "afterPenalties": "Final · penales",
+    "afterExtraTime": "Final · tiempo extra",
+    "penalties": "Penales {score}",
+    "halfTime": "Descanso {score}",
+    "scorers": "Goles de {team}",
+    "referee": "Árbitro: {name}",
+    "wait": {
+      "provider_pending": "El proveedor aún no ha confirmado el resultado final.",
+      "provider_silent": "Sin noticias del proveedor; seguimos consultando.",
+      "jobs_stalled": "Estamos verificando el resultado.",
+      "provider_conflict": "Datos del proveedor en revisión.",
+      "result_missing": "Estamos verificando el resultado."
+    }
+  },
+  "note": {
+    "noData": "Sin datos todavía",
+    "notAvailable": "No disponible para este partido"
+  },
+  "picks": {
+    "title": "Picks para este partido",
+    "none": "No hay picks calificados para este partido.",
+    "noneShadow": "No hay picks shadow para este partido.",
+    "showAll": "Ver los {count} picks",
+    "showLess": "Ver menos",
+    "prematchTitle": "Picks prepartido",
+    "prematchBadge": "PICK PREPARTIDO",
+    "takenAt": "Tomado a las {time}",
+    "oddsTaken": "Cuota {odds}",
+    "stateNow": "Estado actual",
+    "evaluations": "Última de {count} evaluaciones antes del inicio",
+    "closeOdds": "Último precio prepartido {odds}",
+    "clv": "Valor de línea {value}",
+    "noneStarted": "Este partido no tuvo picks antes del inicio.",
+    "prematchHelp": "Lo que PrediGol decidió antes del inicio, con la cuota y la hora en que se tomó. No se recalcula durante el partido."
+  },
+  "prices": {
+    "title": "Mejores cuotas",
+    "none": "Todavía no hay cuotas para este partido.",
+    "noPrice": "Sin precio",
+    "ou25": "Más/Menos {line} goles",
+    "bestOf_one": "Mejor precio entre {count} casa",
+    "bestOf_other": "Mejor precio entre {count} casas",
+    "allMarkets": "Todos los mercados"
+  },
+  "markets": {
+    "books_one": "{count} casa",
+    "books_other": "{count} casas",
+    "line": "Línea",
+    "over": "Más de",
+    "under": "Menos de",
+    "mainLine": "línea principal",
+    "mainLineHelp": "Línea principal: la más equilibrada entre las dos opciones",
+    "mainLines": "Ver solo las principales",
+    "allLines": "Ver todas las líneas ({count})",
+    "live": "Cuotas en vivo",
+    "liveNote": "Precio en vivo de referencia. «Retirada»: sin precio en este momento. Candado: bloqueada por un momento.",
+    "prematch": "Antes del partido",
+    "prematchPlayed": "Cuotas antes del inicio",
+    "lastCapture": "Última actualización: {when}",
+    "bestHelp": "El mejor precio de cada opción entre todas las casas que la ofrecen.",
+    "none": "Todavía no hay cuotas para este partido.",
+    "movement": "Ver movimiento en Cuotas",
+    "chooseHelp": "Toca una cuota para agregarla a tu parlay o quitarla; el marcador la guarda en Mis picks."
+  },
+  "liveOdds": {
+    "title": "Cuotas en vivo",
+    "suspended": "Suspendida",
+    "suspendedHelp": "Bloqueada por un momento, normalmente tras una jugada de peligro.",
+    "withdrawn": "Retirada",
+    "withdrawnHelp": "La casa ha retirado esta cuota por ahora.",
+    "atMinute": "Min. {minute}'",
+    "none": "No hay cuotas en vivo para este partido ahora mismo.",
+    "ouMain": "Más/Menos {line} goles",
+    "note": "Se actualizan durante el partido.",
+    "more": "Más cuotas en vivo"
+  },
+  "form": {
+    "title": "Forma reciente",
+    "lastFive": "Últimos 5",
+    "newestRight": "El más reciente, a la derecha",
+    "goals": "Goles: {scored} a favor · {conceded} en contra",
+    "aria": "Últimos resultados: {results}",
+    "chipTitle": "{result} · {date} · {opponent} ({venue}) {score}",
+    "long": {
+      "W": "Victoria",
+      "D": "Empate",
+      "L": "Derrota"
+    },
+    "short": {
+      "W": "G",
+      "D": "E",
+      "L": "P"
+    },
+    "venue": {
+      "H": "local",
+      "A": "visitante"
+    }
+  },
+  "standings": {
+    "title": "Tabla de posiciones",
+    "rank": "#",
+    "rankLong": "Posición",
+    "team": "Equipo",
+    "played": "PJ",
+    "playedLong": "Partidos jugados",
+    "goalDiff": "DG",
+    "goalDiffLong": "Diferencia de gol",
+    "points": "Pts",
+    "pointsLong": "Puntos",
+    "includesMatch": "La tabla ya incluye este partido.",
+    "updated": "Tabla actualizada {ago}.",
+    "stale": "Aún no incluye el último partido jugado; se pedirá de nuevo.",
+    "providerLag": "El proveedor todavía no la ha actualizado tras el último partido.",
+    "kind": {
+      "full": "Tabla",
+      "group": "Grupo",
+      "ranking": "Ranking entre grupos",
+      "aggregate": "Tabla acumulada",
+      "other": "Otra tabla"
+    },
+    "tableOf": "Tabla: {table}",
+    "eachGroup": "Cada equipo en su grupo.",
+    "selection": {
+      "phase_league_stage": "Partido de {stage}: se muestra la tabla de la fase de liga ({table}).",
+      "previous_stage": "Partido de {stage}: se muestra {table}, la última fase de liga antes de esta ronda."
+    },
+    "showFull": "Ver tabla completa",
+    "hideFull": "Ocultar tabla completa",
+    "split": {
+      "all": "Total",
+      "home": "Local",
+      "away": "Visitante"
+    },
+    "splitLabel": "Partidos",
+    "noSplit": "El proveedor no da partidos de local y visitante para esta tabla.",
+    "phaseNever": "Nunca se mezcla con la tabla de otra fase."
+  },
+  "h2h": {
+    "title": "Enfrentamientos directos",
+    "wins": "Victorias {team}",
+    "draws": "Empates",
+    "meetings_one": "{count} partido",
+    "meetings_other": "{count} partidos"
+  },
+  "absences": {
+    "title": "Bajas",
+    "count_one": "{count} baja",
+    "count_other": "{count} bajas",
+    "unknownTeam": "Equipo sin identificar",
+    "kind": {
+      "missing": "Baja",
+      "questionable": "Duda",
+      "other": "Ausente"
+    },
+    "reason": {
+      "injury": "Lesión",
+      "suspension": "Sanción",
+      "illness": "Enfermedad",
+      "other": "Otro motivo"
+    },
+    "seasonLine": "{apps} PJ · {starts} de titular · {goals} goles",
+    "seasonShare": "Titular en {starts} de {team} partidos",
+    "noSeason": "Sin estadísticas de temporada"
+  },
+  "lineups": {
+    "title": "Alineaciones",
+    "unavailable": "Alineaciones aún no disponibles",
+    "confirmed": "Alineaciones confirmadas",
+    "view": "Ver alineaciones",
+    "coach": "DT: {name}",
+    "starters": "Titulares ({count})",
+    "bench": "Suplentes ({count})",
+    "noBench": "Sin suplentes registrados.",
+    "pitchLabel": "Formaciones: {home} {homeFormation}, {away} {awayFormation}",
+    "position": {
+      "G": "ARQ",
+      "D": "DEF",
+      "M": "MED",
+      "F": "DEL"
+    }
+  },
+  "events": {
+    "title": "Eventos del partido",
+    "newestFirst": "Lo más reciente arriba",
+    "goal": "Gol",
+    "assist": "Asistencia: {name}",
+    "penalty": "Gol de penal",
+    "ownGoal": "Autogol",
+    "missedPenalty": "Penal fallado",
+    "yellow": "Tarjeta amarilla",
+    "red": "Tarjeta roja",
+    "secondYellow": "Doble amarilla",
+    "var": "VAR",
+    "varReview": "Revisión del VAR",
+    "sub": "Cambio",
+    "subWith": "Cambio con {name}",
+    "subIn": "Entra",
+    "subOut": "Sale",
+    "unknownPlayer": "Jugador no informado por el proveedor",
+    "penaltyShort": "(pen.)",
+    "ownGoalShort": "(autogol)",
+    "divider": {
+      "ht": "Descanso",
+      "et": "Tiempo extra",
+      "ft": "Final"
+    },
+    "comment": {
+      "foul": "Falta",
+      "argument": "Reclamos",
+      "time_wasting": "Pérdida de tiempo",
+      "handball": "Mano",
+      "unsportsmanlike_conduct": "Conducta antideportiva",
+      "simulation": "Simulación",
+      "roughing": "Juego brusco",
+      "violent_conduct": "Conducta violenta",
+      "serious_foul_play": "Juego brusco grave",
+      "professional_foul_last_man": "Último hombre",
+      "off_the_ball_foul": "Falta sin balón",
+      "holding": "Agarrón",
+      "tripping": "Zancadilla",
+      "pushing": "Empujón",
+      "elbowing": "Codazo",
+      "persistent_fouling": "Faltas reiteradas",
+      "delay_of_game": "Retrasar el juego"
+    },
+    "varDetail": {
+      "goal_cancelled": "Gol anulado",
+      "goal_disallowed_offside": "Gol anulado por fuera de lugar",
+      "goal_disallowed_handball": "Gol anulado por mano",
+      "goal_disallowed_foul": "Gol anulado por falta",
+      "goal_confirmed": "Gol confirmado",
+      "penalty_confirmed": "Penal confirmado",
+      "penalty_cancelled": "Penal anulado",
+      "card_upgrade": "Tarjeta cambiada",
+      "red_card_cancelled": "Roja anulada"
+    }
+  },
+  "stats": {
+    "title": "Estadísticas del partido",
+    "key": "Estadísticas clave",
+    "all": "Ver todas",
+    "notStarted": "Las estadísticas del partido aparecerán cuando empiece. Mientras tanto, así llegan los dos equipos.",
+    "season": "Temporada",
+    "position": "{rank}.º en la tabla",
+    "label": {
+      "possession": "Posesión",
+      "xg": "Goles esperados (xG)",
+      "shots": "Remates totales",
+      "shotsOnTarget": "Remates al arco",
+      "shotsOffTarget": "Remates desviados",
+      "shotsBlocked": "Remates bloqueados",
+      "shotsInsideBox": "Remates dentro del área",
+      "shotsOutsideBox": "Remates fuera del área",
+      "corners": "Tiros de esquina",
+      "fouls": "Faltas",
+      "offsides": "Fueras de lugar",
+      "yellowCards": "Tarjetas amarillas",
+      "redCards": "Tarjetas rojas",
+      "saves": "Atajadas",
+      "passes": "Pases",
+      "passesAccurate": "Pases acertados",
+      "passAccuracy": "Precisión de pase",
+      "pointsPerGame": "Puntos por partido",
+      "goalsForPerGame": "Goles a favor por partido",
+      "goalsAgainstPerGame": "Goles en contra por partido",
+      "wins": "Victorias",
+      "draws": "Empates",
+      "losses": "Derrotas"
+    }
+  },
+  "players": {
+    "title": "Mejores valorados",
+    "rating": "Valoración del partido (0–10)",
+    "minutes_one": "{count} min",
+    "minutes_other": "{count} min",
+    "goals_one": "{count} gol",
+    "goals_other": "{count} goles",
+    "assists_one": "{count} asistencia",
+    "assists_other": "{count} asistencias",
+    "saves_one": "{count} atajada",
+    "saves_other": "{count} atajadas",
+    "keyPasses_one": "{count} pase clave",
+    "keyPasses_other": "{count} pases clave",
+    "none": "Todavía no hay valoraciones de jugadores.",
+    "best": "Mejor valorado",
+    "showAll": "Ver todos ({count})",
+    "showLess": "Ver menos"
+  },
+  "result": {
+    "title": "Resultado",
+    "pending": "El resultado aún no está confirmado.",
+    "fullTime": "Final",
+    "halfTime": "Descanso",
+    "extraTime": "Tiempo extra",
+    "penalties": "Penales",
+    "totalGoals": "Goles totales",
+    "btts": "Ambos marcaron"
+  },
+  "context": {
+    "title": "Antes del partido",
+    "subtitle": "Forma, tabla y enfrentamientos directos"
+  },
+  "notPlayed": {
+    "postponed": "Partido aplazado",
+    "cancelled": "Partido cancelado",
+    "postponedBody": "La nueva fecha aparecerá aquí cuando se confirme.",
+    "cancelledBody": "Este partido no se jugará.",
+    "abandoned": "Partido abandonado",
+    "abandonedBody": "El árbitro no lo terminó. Las apuestas sobre él esperan una decisión: algunos mercados pueden estar ya decididos.",
+    "not_played": "Partido no disputado",
+    "not_playedBody": "El resultado fue adjudicado (pérdida técnica o W.O.), no jugado. Las apuestas sobre él esperan una decisión."
+  },
+  "advanced": {
+    "note": "Solo administradores: modelos y predicciones, capturas, linaje y auditoría de este partido."
+  },
+  "priceStatus": {
+    "title": "Sin cuota de casas",
+    "PRICE_PENDING": "Aún no hay cuotas: se piden desde 3 días antes del partido.",
+    "PRICE_UNAVAILABLE": "Ninguna casa que recibimos cotiza este mercado.",
+    "NOT_COVERED": "Nuestro proveedor de cuotas no cubre esta competición.",
+    "model": "Modelo (modo evaluación): {selection} {probability} · cuota justa {fair}.",
+    "minOdds": "Con {min} o más en tu casa, la apuesta tendría el margen que pide nuestra regla.",
+    "notAPick": "No es un pick ni una cuota de casa: ningún modelo ha superado al mercado todavía."
+  },
+  "providerPrediction": {
+    "title": "Predicción del proveedor (API-Football)",
+    "label": "Pronóstico propio de API-Football (Poisson, forma, comparación; sin cuotas). Auxiliar: no es el modelo de PrediGol ni el mercado, y nunca alimenta un modelo ni un pick.",
+    "none": "La predicción del proveedor aún no se ha leído para este partido (se pide 48 h, 24 h y 3 h antes del inicio).",
+    "home": "Local",
+    "draw": "Empate",
+    "away": "Visitante",
+    "advice": "Consejo del proveedor: {advice}",
+    "winner": "Ganador según el proveedor: {team} ({comment})",
+    "underOver": "Goles según el proveedor: {line}",
+    "versions": "{count} versiones guardadas desde {first}",
+    "askedNothing_one": "Se pidió al proveedor 1 vez y no devolvió predicción para este partido.",
+    "askedNothing_other": "Se pidió al proveedor {count} veces y no devolvió predicción para este partido."
+  },
+  "venue": {
+    "capacity": "{n} espectadores",
+    "surface": {
+      "grass": "césped",
+      "artificial_turf": "césped artificial",
+      "artificial": "césped artificial"
+    }
+  },
+  "analysis": {
+    "title": "PrediGol Intelligence",
+    "subtitle": "Los mercados que PrediGol analizó para este partido",
+    "verdict": {
+      "recommended": "Recomendado",
+      "caution": "Con cautela",
+      "not_recommended": "No recomendado",
+      "no_market": "Sin mercado"
+    },
+    "noMarketBanner": "Mercado no observado · no es posible confirmar valor",
+    "cardTitle": "{market} — {selection}",
+    "marketTitle": {
+      "1X2": "Resultado final (1X2)",
+      "OU": "Goles: más/menos de {line}",
+      "BTTS": "Ambos marcan",
+      "DC": "Doble oportunidad",
+      "AH": "Hándicap asiático"
+    },
+    "selectionPhrase": {
+      "OU": {
+        "Over": "Más de {line}",
+        "Under": "Menos de {line}"
+      },
+      "BTTS": {
+        "Yes": "Sí",
+        "No": "No"
+      }
+    },
+    "figure": {
+      "bestOdds": "Mejor cuota",
+      "model": "Prob. PrediGol",
+      "market": "Prob. mercado",
+      "fair": "Cuota justa",
+      "edge": "Ventaja",
+      "minimum": "Cuota mínima aceptable",
+      "edgeHelp": "Probabilidad de PrediGol menos la del mercado, en puntos porcentuales (pp)",
+      "minimumHelp": "La cuota más baja que vale la pena tomar con la probabilidad prudente de PrediGol"
+    },
+    "ppUnit": "pp",
+    "area": "Análisis PrediGol",
+    "why": {
+      "title": "¿Por qué?",
+      "estimate": "PrediGol estima {model} frente a {market} del mercado",
+      "estimateOnly": "PrediGol estima una probabilidad de {model} para esta selección",
+      "edge": "Ventaja de {edge} pp sobre el precio justo del mercado",
+      "minimum": "Solo tendría valor con una cuota de {min} o más",
+      "none": "Todavía no hay cifras suficientes para explicarlo."
+    },
+    "risk": {
+      "title": "¿Qué puede salir mal?",
+      "variance": "Aun así, esta selección falla aproximadamente {n} de cada 10 veces",
+      "noPrice": "Sin un precio observado no se puede confirmar que tenga valor.",
+      "none": "Ninguna selección es segura: también puede fallar."
+    },
+    "decision": {
+      "APPROVE": "La revisión de contexto lo confirma",
+      "DOWNGRADE": "La revisión pide cautela",
+      "REJECT": "La revisión no lo recomienda",
+      "ABSTAIN": "La revisión no pudo juzgarlo"
+    },
+    "confidence": "confianza {value}",
+    "reason": {
+      "value": "Pasa el filtro de valor al precio actual.",
+      "edge_insufficient": "La ventaja del modelo no alcanza para recomendarlo.",
+      "context_negative": "El contexto del partido va en contra.",
+      "context_caution": "El contexto del partido pide cautela.",
+      "market_unobserved": "No hay un precio observado para este mercado."
+    },
+    "byAi": "Analizado por PrediGol AI",
+    "byRules": "Revisado por las reglas de PrediGol",
+    "updated": "actualizado {when}",
+    "shadowNote": "las revisiones aún no filtran picks (modo evaluación)",
+    "notYet": "PrediGol aún no ha analizado este partido.",
+    "none": "Hoy PrediGol no tiene un análisis que mostrar para este partido.",
+    "inEvaluation_one": "{count} selección de este partido está en evaluación: se publicará cuando un modelo supere al mercado.",
+    "inEvaluation_other": "{count} selecciones de este partido están en evaluación: se publicarán cuando un modelo supere al mercado.",
+    "withheld_one": "{count} selección más está en evaluación y no se muestra.",
+    "withheld_other": "{count} selecciones más están en evaluación y no se muestran.",
+    "missing": "Datos que aún no tenemos: {blocks}.",
+    "block": {
+      "absences": "bajas",
+      "elo": "Elo",
+      "form": "forma",
+      "h2h": "historial directo",
+      "lineups": "alineaciones",
+      "market": "mercado",
+      "models": "modelos",
+      "standings": "tabla",
+      "stats": "estadísticas"
+    },
+    "parlay": {
+      "add": "Agregar a mi parlay",
+      "added": "En mi parlay",
+      "remove": "Quitar de mi parlay",
+      "replaces": "Reemplaza la otra selección de este partido en tu parlay: una por partido"
+    },
+    "brief": {
+      "title": "Lectura del día",
+      "uncertainty": {
+        "low": "Incertidumbre: baja",
+        "medium": "Incertidumbre: media",
+        "high": "Incertidumbre: alta"
+      },
+      "quality": {
+        "good": "Calidad de datos: buena",
+        "fair": "Calidad de datos: regular",
+        "poor": "Calidad de datos: pobre"
+      },
+      "signals": "Señales",
+      "reason": {
+        "candidate": "Candidato a pick",
+        "model_market_gap": "Brecha entre modelo y mercado",
+        "market_move": "Movimiento del mercado",
+        "important_news": "Noticia importante",
+        "high_uncertainty": "Incertidumbre alta",
+        "contradiction": "Datos contradictorios",
+        "brief_flag": "Señalado por la lectura"
+      },
+      "injuries": "Bajas y dudas",
+      "injury": "{team} · {player} · {status}",
+      "injuryNoStatus": "{team} · {player}",
+      "status": {
+        "out": "baja",
+        "missing": "baja",
+        "doubtful": "duda",
+        "questionable": "duda",
+        "suspended": "sancionado",
+        "injured": "lesionado"
+      },
+      "changes": "Cambios recientes",
+      "byModel": "Escrito por {model} (L1)",
+      "byRules": "Escrito por las reglas",
+      "aiModel": "PrediGol AI"
+    }
+  },
+  "picksTab": {
+    "title": "Picks para este partido",
+    "intro": "Las selecciones de este partido que pasaron los filtros de PrediGol, las de más valor primero.",
+    "takenTitle": "Picks prepartido",
+    "outcome": "Cómo van: {won} ganados · {lost} perdidos · {open} en juego · {void} nulos",
+    "postmortems": "Post-mortem de la IA",
+    "postmortemsAdmin": "Solo administradores",
+    "postmortemsNone": "Todavía no hay post-mortem de este partido: se escriben después del cierre del día.",
+    "teaser_one": "{count} pick para este partido",
+    "teaser_other": "{count} picks para este partido",
+    "teaserStarted_one": "{count} pick prepartido",
+    "teaserStarted_other": "{count} picks prepartido",
+    "teaserAction": "Ver picks"
+  },
+  "reading": {
+    "title": "Lectura del día · antes del partido",
+    "subtitle": "Escrita antes del saque: no se actualiza durante el partido.",
+    "showCards_one": "Ver el mercado analizado ({count})",
+    "showCards_other": "Ver los mercados analizados ({count})",
+    "hideCards": "Ocultar los mercados"
+  },
+  "profile": {
+    "title": "Cómo llegan los equipos",
+    "scopeAll": "Todas las competiciones",
+    "scopeCompetition": "Esta competición",
+    "results": "Resultados",
+    "averages": "Estadísticas promedio",
+    "lastN_one": "Último partido",
+    "lastN_other": "Últimos {count} partidos",
+    "coverage": "{n} de {total} con dato",
+    "noData": "Sin dato",
+    "none": "Ninguno de los dos equipos tiene partidos terminados antes de este.",
+    "note": "Cada cifra cuenta solo los partidos que traen ese dato: no todas las ligas ni temporadas tienen tiros de esquina, tarjetas o xG.",
+    "metric": {
+      "wins": "Partidos ganados",
+      "draws": "Empates",
+      "losses": "Derrotas",
+      "win_or_draw": "Empató o ganó",
+      "btts": "Ambos equipos marcaron",
+      "over_2_5": "Más de 2,5 goles",
+      "clean_sheets": "Valla invicta",
+      "failed_to_score": "No marcó",
+      "ht_lead": "Ganaba al descanso",
+      "scored_first": "Marcó primero",
+      "conceded_first": "Recibió gol primero",
+      "goals_for": "Goles marcados",
+      "goals_against": "Goles recibidos",
+      "xg_for": "Goles esperados (xG)",
+      "xg_against": "xG recibido",
+      "shots": "Remates",
+      "shots_on_target": "Remates al arco",
+      "shots_against": "Remates recibidos",
+      "corners": "Tiros de esquina",
+      "corners_against": "Tiros de esquina en contra",
+      "cards": "Tarjetas",
+      "fouls": "Faltas",
+      "possession": "Posesión",
+      "penalties": "Penales convertidos / ejecutados"
+    }
+  },
+  "captures": {
+    "title": "Capturas de cuotas",
+    "summary": "{captures} capturas · {quotes} cotizaciones de {books} casas",
+    "help": "Cada captura guarda el precio de cada casa, opción y línea. Son las mismas cifras de la Cronología, y aquí se muestran todas, pasen o no los filtros de los picks.",
+    "chip": "{when} · {quotes}",
+    "none": "Todavía no se ha capturado ninguna cuota de este partido."
+  },
+  "books": {
+    "show_one": "Ver la casa ({count})",
+    "show_other": "Ver todas las casas ({count})",
+    "hide": "Ocultar las casas",
+    "lineLabel": "Línea",
+    "bookmaker": "Casa",
+    "opened": "abrió {odds}",
+    "movedUp": "Subió desde {odds}",
+    "movedDown": "Bajó desde {odds}",
+    "loading": "Cargando las casas…"
+  },
+  "playerCard": {
+    "title": "Temporada en {competition}",
+    "titleGeneric": "Temporada en esta competición",
+    "apps": "Partidos",
+    "starts": "Titular",
+    "minutes": "Minutos",
+    "goals": "Goles",
+    "assists": "Asistencias",
+    "cards": "Tarjetas",
+    "source": "Datos del proveedor, actualizados {when}",
+    "none": "El proveedor no tiene estadísticas de temporada de este jugador en esta competición.",
+    "thisMatch": "En este partido",
+    "open": "Ver resumen de {name}",
+    "rating": "Valoración del proveedor: {value}",
+    "fullPage": "Ver ficha completa"
+  }
+}

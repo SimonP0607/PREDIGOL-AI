@@ -1,0 +1,300 @@
+{
+  "loading": "Loading…",
+  "filter": "Filter",
+  "yes": "yes",
+  "no": "no",
+  "columns": {
+    "player": "Player",
+    "position": "Pos",
+    "apps": "Apps",
+    "starts": "Starts",
+    "minutes": "Min",
+    "goals": "G",
+    "assists": "A",
+    "yellowCards": "Y",
+    "redCards": "R",
+    "rating": "Rating",
+    "ratingShort": "Rtg."
+  },
+  "competitions": {
+    "scope": {
+      "label": "Scope",
+      "tracked": "Tracked",
+      "withFixtures": "With fixtures",
+      "allKnown": "All known"
+    },
+    "searchPlaceholder": "Name or country",
+    "international": "International",
+    "list": {
+      "title": "Catalogue",
+      "shown_one": "{count} shown",
+      "shown_other": "{count} shown",
+      "known_one": "{n} known",
+      "known_other": "{n} known",
+      "empty": "No competition in this scope.",
+      "tracked": "tracked",
+      "catalogue": "catalogue",
+      "headers": {
+        "competition": "Competition",
+        "type": "Type",
+        "seasons": "Seasons",
+        "fixtures": "Fixtures",
+        "teams": "Teams",
+        "tracking": "Tracking"
+      }
+    },
+    "detail": {
+      "title": "Details",
+      "select": "Select a competition to see its seasons and teams.",
+      "providerLeague": "provider league {id}",
+      "tracked": "Tracked",
+      "currentSeason": "Current season",
+      "noCurrentSeason": "No season is marked current.",
+      "tier": "Tier",
+      "noTier": "Tier not set in the catalogue."
+    },
+    "seasons": {
+      "title": "Seasons",
+      "subtitle": "Stored fixtures and how many have a recorded result",
+      "empty": "No season of this competition is stored.",
+      "current": "current",
+      "covered": "covered",
+      "headers": {
+        "season": "Season",
+        "fixtures": "Fixtures",
+        "finished": "Finished",
+        "withResult": "With result",
+        "odds": "Odds"
+      }
+    },
+    "teams": {
+      "title": "Teams",
+      "subtitle": "Teams appearing in stored fixtures",
+      "empty": "No fixture of this competition is stored, so no team is known."
+    },
+    "standings": {
+      "title": "League table",
+      "subtitle": "{season} · snapshot {when}",
+      "latest": "Latest stored table",
+      "headers": {
+        "team": "Team",
+        "played": "P",
+        "record": "W-D-L",
+        "goalDiff": "GD",
+        "points": "Pts",
+        "form": "Form"
+      },
+      "season": "Season",
+      "phases": "Phases and groups",
+      "aggregate": "Aggregate",
+      "other": "Other tables",
+      "teams": "{n} teams",
+      "method": {
+        "label": "phase by its name",
+        "games": "phase by games played",
+        "single": "only league stage",
+        "unmapped": "no phase identified"
+      },
+      "agreement": "{agreement} rows agree with the matches",
+      "current": "being played",
+      "stale": "The snapshot predates this phase's last finished match: it does not include it yet.",
+      "stages": "Season rounds",
+      "stageKind": {
+        "league": "league",
+        "knockout": "knock-out",
+        "qualifying": "qualifying",
+        "friendly": "friendly"
+      },
+      "noTable": "no table",
+      "zone": "Zone"
+    }
+  },
+  "teams": {
+    "searchPlaceholder": "Team name",
+    "list": {
+      "title": "Teams",
+      "shownFor_one": "{count} shown for “{q}”",
+      "shownFor_other": "{count} shown for “{q}”",
+      "shownHint_one": "{count} shown · type 2+ letters to search all teams",
+      "shownHint_other": "{count} shown · type 2+ letters to search all teams",
+      "headers": {
+        "team": "Team",
+        "fixtures": "Fixtures",
+        "results": "Results"
+      }
+    },
+    "detail": {
+      "title": "Team",
+      "select": "Select a team to see its record and fixtures.",
+      "providerTeam": "provider team {id}",
+      "record": {
+        "played": "Played",
+        "won": "Won",
+        "drawn": "Drawn",
+        "lost": "Lost",
+        "for": "For",
+        "against": "Against",
+        "scopeSeason": "{competition} · season {season}",
+        "scopeAll": "All competitions",
+        "campaign": "This campaign, by competition",
+        "competition": "Competition",
+        "season": "Season",
+        "lifetime": "Everything stored: {played} played ({won}-{drawn}-{lost}) in {competitions} competitions since {since} - not a season table"
+      }
+    },
+    "fixtures": {
+      "recent": "Recent fixtures",
+      "upcoming": "Upcoming fixtures",
+      "noRecent": "No past fixture stored.",
+      "noUpcoming": "No upcoming fixture stored.",
+      "headers": {
+        "date": "Date",
+        "fixture": "Fixture",
+        "score": "Score",
+        "status": "Status"
+      }
+    },
+    "squad": {
+      "title": "Squad",
+      "subtitle": "Players with a stored appearance in the last 400 days, by minutes"
+    }
+  },
+  "players": {
+    "search": {
+      "label": "Player search",
+      "placeholder": "Search a player (3+ letters)…"
+    },
+    "list": {
+      "matching": "Players matching “{term}”",
+      "top": "Most productive, last 30 days",
+      "byAppearances": "Ordered by appearances in the last 400 days.",
+      "byGoals": "Ordered by goals, then rating.",
+      "appsTitle": "Matches played (minutes > 0) in the window; an unused substitute is not an appearance",
+      "noNationality": "nationality not reported",
+      "noTeam": "No appearance with statistics in the window.",
+      "noBirthDate": "Birth date not reported.",
+      "noRating": "No rated appearance.",
+      "headers": {
+        "team": "Team (latest)",
+        "age": "Age",
+        "lastPlayed": "Last played"
+      }
+    },
+    "detail": {
+      "notFound": "Player not found",
+      "profile": {
+        "title": "Profile",
+        "fullName": "Full name",
+        "born": "Born",
+        "bornValue": "{date} (age {age})",
+        "nationality": "Nationality",
+        "position": "Position",
+        "height": "Height",
+        "weight": "Weight",
+        "providerId": "Provider id",
+        "club": "Club",
+        "clubFromSquad": "{team} (squad)",
+        "clubFromApps": "{team} (last club match)",
+        "nationalTeam": "National team",
+        "lastAppearance": "Last appearance"
+      },
+      "totals": {
+        "title": "Last 400 days",
+        "appearances": "Appearances",
+        "minutes": "Minutes",
+        "goals": "Goals",
+        "assists": "Assists",
+        "avgRating": "Avg rating",
+        "lastPlayed": "Last played"
+      },
+      "seasons": {
+        "title": "By competition and season",
+        "headers": {
+          "season": "Season",
+          "competition": "Competition",
+          "team": "Team"
+        }
+      },
+      "matches": {
+        "title": "Recent matches",
+        "versus": "{team} v {opponent}",
+        "cameOn": "came on",
+        "headers": {
+          "date": "Date",
+          "match": "Match"
+        }
+      },
+      "absences": {
+        "title": "Injuries and suspensions",
+        "absence": "Absence",
+        "noReason": "no reason given"
+      }
+    }
+  },
+  "types": {
+    "domestic_league": "domestic league",
+    "domestic_cup": "domestic cup",
+    "continental": "continental",
+    "international": "international"
+  },
+  "reference": {
+    "payload": "payload {hash}",
+    "fetched": "fetched {at}",
+    "asked": "asked {at}",
+    "open": "no end date",
+    "transfers": {
+      "title": "Transfers (provider)"
+    },
+    "sidelined": {
+      "title": "Periods out (provider)",
+      "out": "Out"
+    },
+    "trophies": {
+      "title": "Trophies (provider)"
+    },
+    "leaders": {
+      "title": "Season leaders (provider)",
+      "description": "API-Football's lists with its own tie-breaks; the rating is the provider's.",
+      "topscorers": "Scorers",
+      "topassists": "Assists",
+      "topyellowcards": "Yellow cards",
+      "topredcards": "Red cards",
+      "ratingTitle": "The provider's rating (its own metric)",
+      "unrated_one": "The provider played him in {count} match of this season without rating him (rating 0) and averages it as 0",
+      "unrated_other": "The provider played him in {count} matches of this season without rating him (rating 0) and averages them as 0",
+      "unratedNote": "* The provider's season rating counts the matches it did not rate as 0; on PrediGol's pages a 0 is not a rating.",
+      "figure": {
+        "topscorers": "Goals",
+        "topassists": "Ast.",
+        "topyellowcards": "YC",
+        "topredcards": "RC"
+      }
+    },
+    "rounds": {
+      "title": "Round calendar",
+      "description": "Every round of the season with its dates (provider).",
+      "current": "Current round per the provider: {rounds}"
+    },
+    "providerSeasons": {
+      "title": "Season statistics (provider)",
+      "description": "API-Football's aggregate per team and competition, as sent; its rating is the provider's own metric. The table above is PrediGol's, computed match by match: they can differ.",
+      "headers": {
+        "lineups": "Starts"
+      }
+    },
+    "career": {
+      "title": "Career (provider)",
+      "national": "national team",
+      "club": "club",
+      "seasons_one": "{count} season",
+      "seasons_other": "{count} seasons",
+      "noSeasons": "seasons not given by the provider"
+    }
+  },
+  "positions": {
+    "goalkeeper": "Goalkeeper",
+    "defender": "Defender",
+    "midfielder": "Midfielder",
+    "attacker": "Attacker"
+  }
+}

@@ -1,0 +1,321 @@
+{
+  "metrics": {
+    "worker": "Worker",
+    "apiFootball": "API-Football hoy",
+    "quotaHint": "{left} restantes bajo nuestro límite · plan {plan}/día",
+    "provider": "Proveedor",
+    "database": "Base de datos",
+    "schemaHint": "esquema {rev}"
+  },
+  "workerJobs": {
+    "title": "Tareas del worker",
+    "subtitle": "Próxima ejecución programada de cada tarea.",
+    "job": "Tarea",
+    "nextRun": "Próxima ejecución",
+    "ledgerLink": "Registro de tareas e historial de ejecuciones →"
+  },
+  "captures": {
+    "title": "Capturas",
+    "subtitle": "Lo que los pipelines escribieron recientemente.",
+    "labels": {
+      "prematch_1h": "Precios prepartido, última hora",
+      "prematch_24h": "Precios prepartido, últimas 24 h",
+      "live_priced_now": "Partidos con precio en vivo ahora",
+      "live_quotes_now": "Precios en vivo en el libro actual (no se guardan)",
+      "match_states_24h": "Estados de partido (feed de partidos), últimas 24 h",
+      "upcoming_7d": "Partidos en los próximos 7 días",
+      "finished_total": "Partidos finalizados almacenados",
+      "awaiting_result": "Empezaron hace > 3 h, aún programados",
+      "predictions_24h": "Predicciones escritas, últimas 24 h",
+      "candidates_24h": "Candidatos a pick evaluados, últimas 24 h"
+    },
+    "notes": {
+      "awaiting_result": "debería bajar a 0 tras la próxima sincronización de resultados",
+      "live_quotes_now": "Las cuotas en vivo son efímeras: el libro guarda solo el precio actual y se vacía al terminar el partido."
+    }
+  },
+  "errors": {
+    "title": "Errores, últimas 72 h",
+    "subtitle": "Ejecuciones que fallaron, quedaron a medias, alcanzaron un tope o se interrumpieron.",
+    "headers": {
+      "when": "Cuándo",
+      "job": "Tarea",
+      "status": "Estado",
+      "error": "Error"
+    }
+  },
+  "quality": {
+    "title": "Calidad de datos",
+    "subtitle": "Incidencias abiertas por gravedad.",
+    "empty": "Ninguna incidencia abierta.",
+    "link": "Abrir Calidad de datos →",
+    "labels": {
+      "open_critical": "Incidencias críticas abiertas",
+      "open_error": "Incidencias de error abiertas",
+      "open_warning": "Avisos abiertos",
+      "open_info": "Incidencias informativas abiertas"
+    }
+  },
+  "backups": {
+    "title": "Copias de seguridad",
+    "subtitle": "Volcados de la base de datos en esta máquina, los más recientes primero.",
+    "headers": {
+      "file": "Archivo",
+      "size": "Tamaño",
+      "written": "Guardado"
+    }
+  },
+  "versions": {
+    "title": "Versiones",
+    "backend": "Backend",
+    "backendCode": "Código del backend",
+    "schema": "Esquema",
+    "frontend": "Frontend",
+    "worker": "Worker",
+    "workerBuild": "Compilación del worker"
+  },
+  "backfill": {
+    "title": "Migración del histórico",
+    "subtitle": "Tareas de backfill precargadas, por tipo. Cada tarea es una petición al proveedor; nunca se vuelve a pedir lo que ya está en el almacén de datos crudos.",
+    "progress": "{done} de {total} tareas completadas",
+    "complete": "completado",
+    "running": "en curso",
+    "headers": {
+      "kind": "Tipo",
+      "done": "Hechas",
+      "pending": "Pendientes",
+      "running": "En curso",
+      "failed": "Fallidas",
+      "lastCompleted": "Última completada"
+    }
+  },
+  "runs": {
+    "title": "Ejecuciones de ingesta recientes",
+    "subtitle": "El registro de tareas: qué hizo el sistema y cuánto costó",
+    "empty": "Todavía no se ha registrado ninguna ejecución de ingesta.",
+    "runId": "ejecución {id}",
+    "headers": {
+      "job": "Tarea",
+      "status": "Estado",
+      "started": "Inicio",
+      "duration": "Duración",
+      "requests": "Peticiones",
+      "rows": "Filas escritas / actualizadas",
+      "errors": "Errores"
+    }
+  },
+  "jobs": {
+    "title": "Tareas",
+    "subtitle": "Por tipo de tarea: las últimas 24 horas según el registro y la próxima ejecución según el heartbeat del worker",
+    "empty": "Todavía no se ha ejecutado ninguna tarea.",
+    "lastError": "Último error: {error}",
+    "manual": "manual",
+    "headers": {
+      "job": "Tarea",
+      "last": "Última",
+      "runs24h": "Ejecuciones 24 h",
+      "failedPartial": "Fallidas / parciales",
+      "requests24h": "Peticiones 24 h",
+      "lastSuccess": "Último éxito",
+      "nextRun": "Próxima ejecución"
+    }
+  },
+  "dataQuality": {
+    "notComputable": "No se puede calcular.",
+    "loading": "Cargando",
+    "highIssues_one": "{count} incidencia de gravedad alta detectada ahora mismo en los datos: {titles}.",
+    "highIssues_other": "{count} incidencias de gravedad alta detectadas ahora mismo en los datos: {titles}.",
+    "sections": "Secciones de calidad de datos",
+    "tabs": {
+      "issues": "Incidencias",
+      "coverage": "Cobertura",
+      "jobs": "Tareas",
+      "runs": "Ejecuciones de ingesta",
+      "notes": "Notas",
+      "states": "Estado por dataset"
+    },
+    "cards": {
+      "fixturesExpected": {
+        "label": "Partidos previstos",
+        "hint": "Programados, de competiciones seguidas, próximas {hours} h"
+      },
+      "fixturesWithOdds": {
+        "label": "Partidos con cuotas",
+        "hint": "{priced} el proveedor los cotiza · {unpriced} sin precio del proveedor"
+      },
+      "oddsCoverage": {
+        "label": "Cobertura de cuotas",
+        "hint": "De los que el proveedor cotiza · {all} sobre todos los previstos"
+      },
+      "captureWindows": {
+        "label": "Ventanas de captura (24 h)",
+        "hint": "{captured} de {expected} ventanas de partidos que ya empezaron"
+      },
+      "bookmakersSeen": {
+        "label": "Casas vistas (24 h)",
+        "hint": "Cobertura: {ratio} de las casas activas"
+      },
+      "marketsSeen": {
+        "label": "Mercados vistos (24 h)",
+        "hint": "Cobertura: {ratio} de los mercados seguidos"
+      },
+      "snapshots": {
+        "label": "Capturas (24 h)",
+        "hint": "Última captura {when}"
+      },
+      "staleFixtures": {
+        "label": "Precios atrasados",
+        "hint": "Una ventana de captura cerró después del último precio y no se volvió a pedir · {missed} cotizados sin ningún precio"
+      },
+      "awaitingResult": {
+        "label": "Pendientes de resultado",
+        "hint": "{provider} los tiene el proveedor sin cerrar (su retraso) · {n} pasados con marcador"
+      },
+      "partialJobs": {
+        "label": "Tareas parciales (24 h)",
+        "hint": "Escribieron algo y tuvieron errores"
+      },
+      "failedJobs": {
+        "label": "Tareas fallidas (24 h)",
+        "hint": "Errores y nada guardado. Las detenidas por su tope no cuentan aquí"
+      },
+      "providerErrors": {
+        "label": "Errores del proveedor (24 h)",
+        "hint": "Rechazos y fallos de las ejecuciones que llamaron al proveedor"
+      },
+      "requestsToday": {
+        "label": "Peticiones hoy",
+        "hint": "{remaining} restantes · {unclaimed} sin asignar a una ejecución cerrada"
+      },
+      "runsStuck": {
+        "label": "Ejecuciones atascadas",
+        "hint": "Abiertas pasado su plazo: el vigilante las cierra en 5 min"
+      },
+      "cappedJobs": {
+        "label": "Detenidas por tope (24 h)",
+        "hint": "Por diseño: lo pendiente va en la siguiente · {interrupted} interrumpidas (reinicio o plazo) y recuperadas"
+      },
+      "finalPrematch": {
+        "label": "Último precio pre-partido (7 d)",
+        "hint": "{priced} de {finished} terminados · {empty} sin precio del proveedor · {refused} rechazados (sello tras el inicio) · mediana {minutes} min antes del inicio"
+      }
+    },
+    "issues": {
+      "title": "Incidencias",
+      "subtitle": "Se calculan a partir de los datos en cada petición - no hay ninguna lista que se desactualice",
+      "headers": {
+        "severity": "Gravedad",
+        "issue": "Incidencia",
+        "count": "Cantidad",
+        "detected": "Detectada"
+      }
+    },
+    "coverage": {
+      "title": "Cobertura por competición",
+      "subtitle": "Competiciones seguidas, temporada actual",
+      "season": "temporada {season}",
+      "noFixture": "Ningún partido programado de esta competición en el horizonte de evaluación: no hay nada que cubrir.",
+      "noSnapshot": "Nunca se ha registrado una captura de esta competición.",
+      "headers": {
+        "competition": "Competición",
+        "inHorizon": "En el horizonte",
+        "withOdds": "Con cuotas",
+        "coverage": "Cobertura",
+        "bookmakers24h": "Casas 24 h",
+        "markets24h": "Mercados 24 h",
+        "lastCapture": "Última captura",
+        "awaitingResult": "Pendientes de resultado"
+      }
+    },
+    "notes": {
+      "title": "Notas",
+      "subtitle": "Lo que señala la propia captura",
+      "empty": "La captura no incluye ninguna nota."
+    },
+    "states": {
+      "title": "Estado de los datos por dataset",
+      "subtitle": "Seis respuestas por dataset: qué es válido, qué está atrasado, qué no pedimos, qué no tiene el proveedor, qué pedimos y falló y qué tenemos pero no se pudo normalizar.",
+      "dataset": "Dataset",
+      "empty": "No hay registro de datasets todavía.",
+      "headers": {
+        "VALID": "Válido",
+        "STALE": "Atrasado",
+        "NOT_REQUESTED": "No solicitado",
+        "PROVIDER_HAS_NO_DATA": "El proveedor no lo tiene",
+        "REQUEST_FAILED": "Petición fallida (24 h)",
+        "NORMALIZATION_FAILED": "Normalización fallida"
+      },
+      "legend": "Válido, atrasado, no solicitado y sin datos del proveedor cuentan entidades (partidos, equipos, jugadores...). Petición fallida cuenta ejecuciones fallidas o parciales de las últimas 24 h. Normalización fallida cuenta incidencias abiertas: filas rechazadas, entidades del proveedor desconocidas y resultados sin resolver. El retraso o la ausencia del proveedor no es un fallo nuestro."
+    },
+    "issueText": {
+      "awaiting_result": {
+        "title": "Partidos pasada la hora de inicio sin resultado y sin volver a preguntar",
+        "detail": "Siguen como programados o en juego después del inicio y no se han vuelto a pedir desde que el partido debió terminar: results_repair va atrasado."
+      },
+      "awaiting_result_provider": {
+        "title": "Partidos que el proveedor aún no ha cerrado",
+        "detail": "Se volvieron a pedir después de la hora de fin; el proveedor sigue sin darlos por jugados. En algunas competiciones un resultado tarda hasta 48 h; no hay nada que arreglar de nuestro lado."
+      },
+      "stale_running_jobs": {
+        "title": "Ejecuciones atascadas en «running»",
+        "detail": "Abiertas más allá de su plazo: el proceso que las llevaba probablemente murió. El vigilante de ejecuciones las cierra en menos de cinco minutos; si una sigue aquí, el vigilante no está corriendo."
+      },
+      "failed_jobs_24h": {
+        "title": "Ejecuciones fallidas (24 h)",
+        "detail": "Terminaron con errores y sin nada duradero. Las detenidas en su tope planificado no son fallos y se cuentan aparte."
+      },
+      "stale_jobs_24h": {
+        "title": "Ejecuciones cerradas como colgadas (24 h)",
+        "detail": "Abiertas más allá de su plazo y cerradas por el vigilante: una tarea que se cuelga."
+      },
+      "partial_jobs_24h": {
+        "title": "Ejecuciones con éxito parcial (24 h)",
+        "detail": "Ejecuciones que escribieron algo Y tuvieron errores."
+      },
+      "stale_fixtures": {
+        "title": "Próximos partidos con un precio anterior a su última ventana de captura",
+        "detail": "Se cerró una ventana desde el precio más reciente y no se volvió a pedir /odds: la captura va atrasada."
+      },
+      "missed_fixtures": {
+        "title": "Partidos con precio que pasaron una ventana de captura sin precio",
+        "detail": "El proveedor los marca con cuotas, se cerró una ventana y no se pidió /odds: la próxima captura los recupera mientras sigan por jugarse."
+      },
+      "fixtures_without_lineage": {
+        "title": "Partidos sin trazabilidad de payload",
+        "detail": "Escritos por última vez antes de la revisión 0015; el payload que los escribió no está enlazado. La próxima sincronización o una reproducción desde RAW lo registra."
+      },
+      "results_without_lineage": {
+        "title": "Resultados sin trazabilidad de payload",
+        "detail": "Escritos antes de la revisión 0015."
+      },
+      "budget_exhausted": {
+        "title": "Presupuesto diario de peticiones agotado",
+        "detail": "No se hará ninguna petición al proveedor hasta que cambie el día UTC."
+      }
+    }
+  },
+  "health": {
+    "app_running": "en marcha (versión {version})",
+    "database_ok": "accesible, esquema {revision}",
+    "database_error": "error de base de datos ({error})",
+    "database_unreachable": "sin conexión a la base de datos",
+    "needs_database": "sin base de datos no se puede comprobar",
+    "ledger_unreadable": "no se pudo leer el registro de ejecuciones ({error})",
+    "worker_alive": "vivo, último latido hace {minutes} min",
+    "worker_stopped": "worker detenido hace {minutes} min",
+    "worker_silent": "sin latido desde hace {minutes} min: el worker no está corriendo",
+    "worker_overdue_runs": "{n} ejecución(es) abiertas más allá de su plazo (el vigilante las cierra)",
+    "worker_last_tick": "último ciclo: {outcome}",
+    "worker_last_failed": "la última «{job}» falló",
+    "worker_last_partial": "la última «{job}» salió solo en parte",
+    "worker_never_seen": "sin latido y sin ninguna ejecución registrada todavía",
+    "ledger_overdue_runs": "sin latido (¿worker antiguo?); según el registro: {n} ejecución(es) fuera de plazo",
+    "ledger_quiet": "sin latido (¿worker antiguo?); según el registro: última ejecución hace {minutes} min",
+    "ledger_last_failed": "sin latido (¿worker antiguo?); según el registro: la última «{job}» falló",
+    "ledger_last_partial": "sin latido (¿worker antiguo?); según el registro: la última «{job}» salió solo en parte",
+    "ledger_ok": "sin latido (¿worker antiguo?); según el registro: última ejecución hace {minutes} min",
+    "provider_ok": "{spent} de {budget} peticiones hoy (nuestro límite)",
+    "provider_budget_exhausted": "presupuesto diario agotado ({spent} de {budget})",
+    "provider_recent_error": "error del proveedor en la última hora"
+  }
+}

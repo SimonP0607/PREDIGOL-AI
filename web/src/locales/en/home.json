@@ -1,0 +1,33 @@
+{
+  "oddsUpdated": "Odds updated {when}",
+  "oddsNone": "No odds captured yet",
+  "picks": {
+    "seeAll": "See all",
+    "allTile": "See all picks"
+  },
+  "parlays": {
+    "seeDetail": "See details"
+  },
+  "live": {
+    "title": "Live now",
+    "updated": "Updated {when}",
+    "empty": "No match is being played right now.",
+    "notStarted": "Starting soon",
+    "finished": "Full time"
+  },
+  "best": {
+    "title": "Best odds",
+    "subtitle": "Prices above the market's fair price",
+    "seeAll": "See all",
+    "overFair": "{pct} over the fair price",
+    "empty": "No price above the market yet."
+  },
+  "upcoming": {
+    "title": "Upcoming matches",
+    "seeAll": "See all",
+    "bookmakers_one": "{count} bookmaker",
+    "bookmakers_other": "{count} bookmakers",
+    "bookmakersHelp": "Bookmakers quoting this match",
+    "empty": "No upcoming matches."
+  }
+}

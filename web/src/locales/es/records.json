@@ -1,0 +1,396 @@
+{
+  "labels": {
+    "predigolPick": "PrediGol Pick",
+    "savedByMe": "Guardado por mí",
+    "result": "Resultado"
+  },
+  "status": {
+    "PENDING": "Pendiente",
+    "WIN": "Ganado",
+    "LOSS": "Perdido",
+    "PUSH": "Devuelto",
+    "VOID": "Anulado",
+    "HALF_WIN": "Medio ganado",
+    "HALF_LOSS": "Medio perdido"
+  },
+  "parlayStatus": {
+    "BUILDING": "En construcción",
+    "READY": "Lista",
+    "ACTIVE": "En juego",
+    "WON": "Ganada",
+    "LOST": "Perdida",
+    "VOID": "Anulada",
+    "PARTIAL_VOID": "Ganada con anuladas"
+  },
+  "stage": {
+    "T-24h": "Elegido ≈24 h antes",
+    "T-12h": "Elegido ≈12 h antes",
+    "T-6h": "Elegido ≈6 h antes",
+    "T-3h": "Elegido ≈3 h antes"
+  },
+  "units": "{value} u",
+  "profit": "Beneficio",
+  "frozenHelp": "Cuota y probabilidades congeladas al elegirlo: no cambian después.",
+  "score": "Final {home}–{away}",
+  "evaluation": {
+    "badge": "Modo de evaluación",
+    "title": "Modo de evaluación",
+    "body": "Registros de evaluación, armados con picks de modelos que todavía no han superado al mercado. Solo los ve el administrador; no son una recomendación."
+  },
+  "daily": {
+    "title": "Picks del día",
+    "subtitle": "Elegidos por PrediGol para {date}: se quedan después del inicio y se liquidan al terminar.",
+    "count": "{count} de 5",
+    "partial_one": "Hoy solo {count} selección ha cumplido el criterio. Nunca rellenamos.",
+    "partial_other": "Hoy solo {count} selecciones han cumplido el criterio. Nunca rellenamos.",
+    "emptyBody": "Solo elegimos selecciones de modelos que han superado al mercado, sin el margen de las casas, en su propio backtest. Un día sin ninguna se queda vacío.",
+    "list": "Picks del día",
+    "reason": {
+      "no_qualified_picks": "Hoy no hay picks de PrediGol",
+      "no_shadow_picks": "No hay registros de evaluación para este día"
+    },
+    "previous": "Día anterior",
+    "next": "Siguiente",
+    "today": "Hoy",
+    "yesterdayOpen": "Ayer · aún por terminar"
+  },
+  "parlay": {
+    "pAllLow": "Prob. prudente de acertar todas",
+    "pAllLowHelp": "Producto de la probabilidad prudente de cada selección: el extremo bajo del intervalo del modelo.",
+    "builtAt": "Armado {when}",
+    "settledAt": "Liquidado {when}",
+    "legsResult": "{won} de {total} acertadas",
+    "building": {
+      "title": "Buscando el parlay",
+      "body": "Hay selecciones con valor, pero ninguna combinación crece con su probabilidad prudente. Nunca rellenamos un parlay."
+    },
+    "none": {
+      "title": "Aún no hay parlay",
+      "body": "Se arma cuando hay selecciones con valor en su ventana."
+    },
+    "void": {
+      "title": "No hubo parlay este día",
+      "body": "Ninguna combinación cumplió el criterio antes de que terminara el día."
+    }
+  },
+  "actions": {
+    "save": "Guardar",
+    "saved": "Guardado",
+    "unsave": "Quitar de mis picks",
+    "addToParlay": "Agregar a mi parlay",
+    "inParlay": "En tu parlay",
+    "removeFromParlay": "Quitar del parlay",
+    "started": "El partido ya empezó",
+    "choose": "¿Qué quieres hacer con esta cuota?",
+    "priceAt": "{odds} en {bookmaker}",
+    "quarterLine": "Las líneas de cuarto (.25 / .75) no van en un parlay"
+  },
+  "toast": {
+    "saved": "Guardado en Mis picks",
+    "unsaved": "Quitado de Mis picks",
+    "added": "Agregado a tu parlay",
+    "replaced": "Cambiamos la selección de ese partido: una por partido",
+    "removedLeg": "Quitado de tu parlay",
+    "full": "Un parlay admite como máximo {max} selecciones",
+    "parlaySaved": "Parlay guardado",
+    "parlayRemoved": "Parlay eliminado",
+    "oddsSaved": "Cuota guardada",
+    "oddsCleared": "Cuota quitada"
+  },
+  "slip": {
+    "title": "Mi parlay",
+    "subtitle": "Una selección por partido, de {min} a {max}.",
+    "count": "{count} de {max} selecciones",
+    "open_one": "Mi parlay · {count}",
+    "open_other": "Mi parlay · {count}",
+    "empty": "Tu parlay está vacío",
+    "name": "Nombre (opcional)",
+    "namePlaceholder": "Mi combinada",
+    "save": "Guardar parlay",
+    "saving": "Guardando…",
+    "clear": "Vaciar",
+    "history": "Ver historial",
+    "remove": "Quitar",
+    "removeLeg": "Quitar del parlay: {selection} · {match}",
+    "openMatch": "Abrir partido",
+    "openMatchLabel": "Abrir el partido {match}",
+    "viewAnalysis": "Ver análisis",
+    "viewAnalysisLabel": "Ver el análisis de {match}",
+    "legProbability": "PrediGol",
+    "legProbabilityHelp": "Probabilidad de PrediGol para esta selección",
+    "combined": "Cuota combinada",
+    "noCombined": "Sin cuota combinada: falta el precio de alguna selección",
+    "checking": "Comprobando…",
+    "needMore_one": "Agrega al menos {count} selección más",
+    "needMore_other": "Agrega al menos {count} selecciones más",
+    "priceNow": "Precio actual",
+    "noPrice": "Sin precio",
+    "note": "La cuota de cada selección es el mejor precio actual que conocemos; la guardamos con el parlay.",
+    "noAi": "Cálculo instantáneo · sin IA",
+    "summary": {
+      "title": "Resumen de tu parlay",
+      "estimated": "Probabilidad estimada",
+      "estimatedServer": "Estimación de PrediGol, ajustada por la dependencia entre selecciones.",
+      "estimatedProvisional": "Provisional: producto de las probabilidades de PrediGol, aún sin ajustar.",
+      "estimatedIndependent": "Producto de las probabilidades de PrediGol: las selecciones son independientes.",
+      "estimatedWaiting": "Esperando el ajuste por dependencia.",
+      "estimatedNone": "Sin estimación: falta la probabilidad de alguna selección.",
+      "fair": "Probabilidad justa",
+      "fairHelp": "La del mercado, sin el margen de las casas.",
+      "dependency": "Nivel de dependencia",
+      "calculating": "calculando…"
+    },
+    "dependency": {
+      "level": {
+        "low": "Bajo",
+        "medium": "Medio",
+        "high": "Alto"
+      },
+      "reason": {
+        "shared_team": "Dos selecciones comparten equipo: sus resultados están ligados.",
+        "measured_dependence": "Resultados correlacionados: dependencia medida en la misma competición y día.",
+        "same_competition_day": "Hay selecciones de la misma competición y día."
+      },
+      "pending": "Comprobando si las selecciones dependen entre sí…"
+    },
+    "risk": {
+      "moderate": "Moderado",
+      "high": "Alto",
+      "very_high": "Muy alto"
+    },
+    "guide": {
+      "how": "Toca «Agregar a mi parlay +» en una selección de:",
+      "picks": "Los picks de PrediGol",
+      "odds": "Las mejores cuotas de cada mercado",
+      "match": "El análisis de un partido",
+      "parlays": "Los parlays de PrediGol",
+      "rules": "Reglas",
+      "ruleCount": "De {min} a {max} selecciones, una por partido.",
+      "ruleReplace": "Si agregas otra selección de un mismo partido, reemplaza a la anterior.",
+      "ruleKickoff": "Nada después del inicio del partido.",
+      "noAi": "La cuota combinada, la probabilidad y la dependencia se calculan al instante con datos que ya tenemos. Ninguna IA analiza tu parlay."
+    },
+    "error": {
+      "leg_count": "Un parlay necesita entre {min} y {max} selecciones.",
+      "invalid_selection": "Selección {leg}: no es una selección que liquidemos.",
+      "quarter_line": "Selección {leg}: las líneas de cuarto (.25 / .75) no se admiten en un parlay.",
+      "unknown_fixture": "Selección {leg}: ese partido no existe.",
+      "started": "Selección {leg}: el partido ya empezó.",
+      "same_fixture": "Selecciones {with} y {leg}: son del mismo partido."
+    },
+    "warning": {
+      "shared_team": "Selecciones {with} y {leg} comparten un equipo: sus resultados están relacionados.",
+      "no_price": "Selección {leg}: no tenemos un precio actual.",
+      "same_competition_day": "Selecciones {legs}: misma competición y mismo día; la dependencia medida no es significativa.",
+      "same_competition_day_measured": "Selecciones {legs}: misma competición y mismo día; sus resultados están correlacionados (ρ {rho}).",
+      "very_unlikely": "Que todas acierten es muy poco probable ({probability})."
+    },
+    "measures": {
+      "ev": "Valor esperado",
+      "risk": "Riesgo",
+      "independent": "Sin selecciones dependientes entre sí.",
+      "dependent": "Hay selecciones que pueden depender entre sí."
+    }
+  },
+  "mine": {
+    "title": "Mis picks",
+    "subtitle": "Lo que guardaste y cómo te fue, junto a lo que eligió PrediGol.",
+    "results": {
+      "title": "Mis resultados",
+      "periods": "Periodo",
+      "period": {
+        "today": "Hoy",
+        "7d": "7 días",
+        "30d": "30 días",
+        "all": "Todo"
+      },
+      "group": {
+        "predigol_picks": "Picks de PrediGol",
+        "my_picks": "Mis picks",
+        "predigol_parlays": "Parlays de PrediGol",
+        "my_parlays": "Mis parlays"
+      },
+      "total": "Total",
+      "pending": "Pendientes",
+      "record": "{won} G · {lost} P",
+      "hitRate": "Acierto",
+      "roi": "ROI",
+      "empty": "Nada en este periodo.",
+      "note": "Por el día de inicio del partido en tu zona horaria ({zone}). Beneficio en unidades de una apuesta, a la cuota registrada. PrediGol no maneja dinero ni acepta apuestas."
+    },
+    "picks": {
+      "title": "Picks guardados",
+      "empty": "Aún no has guardado ningún pick",
+      "emptyBody": "Toca una cuota en un partido, o «Guardar» en un pick de PrediGol.",
+      "shown": "Cuota mostrada",
+      "yours": "Tu cuota",
+      "addYours": "Añadir tu cuota",
+      "editYours": "Cambiar",
+      "oddsLabel": "Cuota que conseguiste en tu casa",
+      "oddsPlaceholder": "p. ej. 2,10",
+      "oddsInvalid": "Escribe una cuota decimal mayor que 1.",
+      "saveOdds": "Guardar",
+      "clearOdds": "Quitar",
+      "cancel": "Cancelar",
+      "savedAt": "Guardado {when}",
+      "remove": "Quitar",
+      "settlesAt": "Se liquida a tu cuota si la indicas; si no, a la mostrada."
+    },
+    "parlays": {
+      "title": "Mis parlays",
+      "empty": "Aún no has armado ningún parlay",
+      "emptyBody": "Agrega selecciones a tu parlay desde los partidos o los picks.",
+      "build": "Armar un parlay",
+      "remove": "Eliminar",
+      "createdAt": "Creado {when}",
+      "unnamed": "Parlay sin nombre"
+    }
+  },
+  "ai": {
+    "byAi": "Analizado por PrediGol AI",
+    "byRules": "Revisado por reglas",
+    "decision": {
+      "APPROVE": "confirmado",
+      "DOWNGRADE": "con cautela",
+      "REJECT": "no recomendado",
+      "ABSTAIN": "sin juicio"
+    }
+  },
+  "progress": {
+    "OPEN": "Abierto",
+    "PARTIAL_WON": "Va ganando",
+    "PARTIAL_LOST": "Perdido (faltan partidos)",
+    "WON": "Ganado",
+    "LOST": "Perdido",
+    "VOID": "Anulado",
+    "pending_one": "Falta {count} selección por jugarse",
+    "pending_other": "Faltan {count} selecciones por jugarse"
+  },
+  "matchState": {
+    "live": "En juego",
+    "suspended": "Suspendido",
+    "awaiting": "Esperando resultado",
+    "settling": "Terminado · liquidando",
+    "postponed": "Aplazado",
+    "cancelled": "Cancelado",
+    "abandoned": "Abandonado",
+    "not_played": "No jugado",
+    "review": "Espera revisión"
+  },
+  "selectedAt": "Elegido a las {time}",
+  "chain": {
+    "model": "Elegido por el modelo ({model})",
+    "unknownModel": "modelo",
+    "ai": "IA:",
+    "aiReviewed": "Revisado por la IA",
+    "aiNone": "Sin revisión de la IA",
+    "evaluation": "No publicado · modo evaluación",
+    "notPublished": "No publicado",
+    "open": "Por liquidar",
+    "settled": "Liquidado: {status}"
+  },
+  "dayNav": {
+    "label": "Día de los picks",
+    "previous": "Día anterior",
+    "next": "Día siguiente",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "jump": "Ir a",
+    "summary": "{count} picks · {won} ganados · {lost} perdidos · {open} por jugar o en juego",
+    "units": "{units} u"
+  },
+  "outcome": {
+    "playing": "En juego",
+    "won": "Ganado",
+    "lost": "Perdido",
+    "void": "Anulado",
+    "building": "En construcción"
+  },
+  "recap": {
+    "title": "Tu recapitulación",
+    "subtitle": "Lo que llevan tus picks liquidados: ganancia, cuotas, rachas y mercados.",
+    "scope": "Qué ver",
+    "scopePicks": "Mis picks",
+    "scopeParlays": "Mis parlays",
+    "period": "Periodo",
+    "days_one": "{count} día",
+    "days_other": "{count} días",
+    "all": "Todo",
+    "emptyPicks": "Cuando tus picks guardados se liquiden, aquí verás su evolución en gráficas.",
+    "emptyParlays": "Cuando tus parlays se liquiden, aquí verás su evolución en gráficas.",
+    "note": "Una unidad por pick o parlay, con la ganancia con que se liquidó cada uno. PrediGol no maneja dinero.",
+    "kpi": {
+      "settled": "Liquidados",
+      "record": "{won} G · {lost} P · {void} nulos",
+      "hitRate": "Acierto",
+      "profit": "Ganancia",
+      "roi": "Rentabilidad",
+      "avgOdds": "Cuota media",
+      "avgOddsWon": "En aciertos: {odds}",
+      "bestStreak": "Mejor racha",
+      "current": {
+        "win_one": "Racha actual: {count} acierto",
+        "win_other": "Racha actual: {count} aciertos",
+        "loss_one": "Racha actual: {count} fallo",
+        "loss_other": "Racha actual: {count} fallos"
+      }
+    },
+    "cumulative": {
+      "title": "Ganancia acumulada",
+      "subtitle": "Cómo crece (o baja) tu saldo en unidades, día a día.",
+      "total": "Acumulado"
+    },
+    "daily": {
+      "title": "Ganancia por día",
+      "subtitle": "Mejor día: {best} ({bestProfit}) · peor: {worst} ({worstProfit})",
+      "profit": "Ganancia",
+      "count_one": "{count} pick",
+      "count_other": "{count} picks"
+    },
+    "odds": {
+      "title": "Por rango de cuota",
+      "subtitle": "Cuota media: {odds}. Cuántos tomaste en cada rango y cómo fueron.",
+      "count": "Liquidados",
+      "tooltip": "{count} · acierto {hit} · {profit}",
+      "bucket": {
+        "lt1.5": "< 1,50",
+        "1.5-2": "1,50–2",
+        "2-3": "2–3",
+        "3-5": "3–5",
+        "5+": "5 o más"
+      }
+    },
+    "markets": {
+      "title": "Acierto por mercado",
+      "subtitle": "En qué mercados aciertas más.",
+      "hitRate": "Acierto",
+      "tooltip": "{pct} % · {count} picks · {profit}"
+    },
+    "streak": {
+      "title": "Rachas",
+      "subtitle_one": "Tu último resultado, del más antiguo al más reciente.",
+      "subtitle_other": "Tus últimos {count} resultados, del más antiguo al más reciente.",
+      "win": "Acierto",
+      "loss": "Fallo",
+      "w": "G",
+      "l": "P",
+      "current": "Actual",
+      "bestWin": "Mejor",
+      "worstLoss": "Peor"
+    }
+  },
+  "funnel": {
+    "label": "Cómo llega un pick del día",
+    "steps": {
+      "data": "Datos válidos",
+      "market": "Mercado",
+      "model": "Modelo",
+      "calibration": "Calibración",
+      "value": "Valor",
+      "risk": "Riesgo (cuota ≤ {max})",
+      "context": "PrediGol Intelligence (pasada del día y noticias)",
+      "selection": "Selección (máx. 5)"
+    },
+    "help": "Cada paso es un filtro: si no hay picks que los pasen todos, el día se queda con menos o sin ninguno. Los picks del día se eligen cuando PrediGol Intelligence ya leyó el día: su pasada de cada partido, con búsqueda de noticias."
+  }
+}

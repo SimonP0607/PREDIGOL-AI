@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1512">
+<meta name="robots" content="noindex, nofollow">
+<title>PrediGol — Sin conexión</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+    padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+      max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+    background: #0d1512; color: #e8efe9;
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center;
+  }
+  main { max-width: 360px; }
+  img { width: 72px; height: 72px; }
+  h1 { font-size: 20px; margin: 16px 0 8px; }
+  p { margin: 0 0 8px; color: #a9b8ad; }
+  p.en { font-size: 13px; color: #7f8f84; }
+  a.button {
+    display: inline-block; margin-top: 16px; padding: 10px 20px; border-radius: 8px; text-decoration: none;
+    min-height: 44px; box-sizing: border-box;
+    background: #22c55e; color: #06200f; font: inherit; font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<main data-testid="offline-page">
+  <img src="/brand/predigol-mark-128.png" alt="PrediGol">
+  <h1>Sin conexión</h1>
+  <p>PrediGol necesita internet para mostrar partidos, cuotas y picks al día. No se muestra nada guardado de antes, para
+    que nunca leas un dato viejo como si fuera actual.</p>
+  <p class="en">You are offline. PrediGol needs a connection to show up-to-date matches, odds and picks.</p>
+  <a class="button" href="">Reintentar · Retry</a>
+</main>
+</body>
+</html>

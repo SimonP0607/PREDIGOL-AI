@@ -1,0 +1,86 @@
+{
+  "day": {
+    "label": "Day",
+    "prev": "Previous day",
+    "next": "Next day",
+    "pick": "Pick a date",
+    "other": "Other date"
+  },
+  "status": {
+    "label": "Match status",
+    "all": "All",
+    "live": "Live",
+    "upcoming": "Upcoming",
+    "finished": "Finished"
+  },
+  "filters": {
+    "competition": "Competition",
+    "competitionAny": "Competition",
+    "allCompetitions": "All competitions",
+    "search": "Search by team name",
+    "searchPlaceholder": "Team name",
+    "clearSearch": "Clear search",
+    "clear": "Clear filters",
+    "country": "Country",
+    "allCountries": "All countries",
+    "international": "International",
+    "category": "Category",
+    "allCategories": "All categories"
+  },
+  "group": {
+    "live_one": "{count} live",
+    "live_other": "{count} live",
+    "count_one": "{count} match",
+    "count_other": "{count} matches"
+  },
+  "clock": {
+    "1H": "1H",
+    "2H": "2H",
+    "HT": "HT",
+    "ET": "ET",
+    "BT": "Break",
+    "P": "Pens",
+    "INT": "Int.",
+    "SUSP": "Susp.",
+    "LIVE": "Live",
+    "FT": "FT",
+    "TBD": "TBD",
+    "NS": "Not st.",
+    "AET": "FT (a.e.t.)",
+    "PEN": "FT (pens)",
+    "PST": "Postponed",
+    "CANC": "Cancelled",
+    "ABD": "Abandoned",
+    "AWD": "Awarded",
+    "WO": "W/O"
+  },
+  "row": {
+    "pens": "pens {home}-{away}",
+    "aet": "After ET",
+    "bookmakers_one": "{count} book",
+    "bookmakers_other": "{count} books",
+    "oddsHelp_one": "Odds from {count} bookmaker",
+    "oddsHelp_other": "Odds from {count} bookmakers"
+  },
+  "empty": {
+    "dayTitle": "No matches on this day",
+    "dayBody": "Try another date.",
+    "goToday": "See today's matches",
+    "filtersTitle": "No match fits these filters",
+    "filtersBody": "Change the status, the competition or the search."
+  },
+  "country": {
+    "GB-ENG": "England",
+    "GB-SCT": "Scotland",
+    "GB-WLS": "Wales",
+    "GB-NIR": "Northern Ireland"
+  },
+  "category": {
+    "league": "Leagues",
+    "cup": "Cups",
+    "continental": "Continental",
+    "international": "National teams",
+    "women": "Women",
+    "youth": "Youth"
+  }
+}

@@ -1,0 +1,435 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+/* A phone held sideways: so little height that fixed chrome must give way to the content. */
+@custom-variant short (@media (orientation: landscape) and (max-height: 32rem));
+
+/*
+ * PrediGol — Design System
+ * Dark, green and black football intelligence, with PrediGol gold used sparingly:
+ * premium highlights, parlays and the selected value. Never a casino.
+ * All colors are oklch semantic tokens. Never hardcode colors in components.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 3px);
+  --radius-md: calc(var(--radius) - 1px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-elevated: var(--elevated);
+  --color-elevated-foreground: var(--foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-dim: var(--primary-dim);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-negative: var(--negative);
+  --color-negative-soft: var(--negative-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-neutral-state: var(--neutral-state);
+  --color-gold: var(--gold);
+  --color-gold-strong: var(--gold-strong);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-foreground: var(--gold-foreground);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.168 0.012 168);
+  --foreground: oklch(0.968 0.004 160);
+
+  --card: oklch(0.203 0.013 168);
+  --card-foreground: oklch(0.968 0.004 160);
+  --elevated: oklch(0.245 0.013 168);
+
+  --popover: oklch(0.218 0.013 168);
+  --popover-foreground: oklch(0.968 0.004 160);
+
+  --primary: oklch(0.812 0.187 152);
+  --primary-foreground: oklch(0.185 0.03 165);
+  --primary-dim: oklch(0.62 0.13 154);
+
+  --secondary: oklch(0.262 0.013 168);
+  --secondary-foreground: oklch(0.93 0.005 160);
+
+  --muted: oklch(0.245 0.012 168);
+  --muted-foreground: oklch(0.702 0.012 172);
+  /* 0.63, not 0.55: the quietest text still reads at 4.5:1 on the background, a card and an elevated surface
+     (0.55 measured 3.97 / 3.72 / 3.35:1 - under WCAG AA for the small captions that use it). */
+  --subtle-foreground: oklch(0.63 0.011 172);
+
+  --accent: oklch(0.275 0.016 168);
+  --accent-foreground: oklch(0.96 0.005 160);
+
+  --destructive: oklch(0.62 0.2 22);
+  --destructive-foreground: oklch(0.98 0.004 160);
+
+  --border: oklch(0.288 0.012 168);
+  --border-strong: oklch(0.365 0.014 168);
+  --input: oklch(0.288 0.012 168);
+  --ring: oklch(0.62 0.13 154);
+
+  --positive: oklch(0.76 0.15 155);
+  --positive-soft: oklch(0.76 0.15 155 / 14%);
+  --negative: oklch(0.66 0.19 22);
+  --negative-soft: oklch(0.66 0.19 22 / 14%);
+  /* Amber-orange, kept apart from the brand gold so a warning never reads as "premium". */
+  --warning: oklch(0.78 0.16 62);
+  --warning-soft: oklch(0.78 0.16 62 / 14%);
+  /* PrediGol gold, sampled from the crest (#ECB73D). */
+  --gold: oklch(0.81 0.14 82);
+  --gold-strong: oklch(0.87 0.13 88);
+  --gold-soft: oklch(0.81 0.14 82 / 13%);
+  --gold-foreground: oklch(0.2 0.03 80);
+  --info: oklch(0.72 0.12 232);
+  --info-soft: oklch(0.72 0.12 232 / 14%);
+  --neutral-state: oklch(0.62 0.01 172);
+
+  --chart-1: oklch(0.812 0.187 152);
+  --chart-2: oklch(0.72 0.12 232);
+  --chart-3: oklch(0.81 0.14 82);
+  --chart-4: oklch(0.66 0.19 22);
+  --chart-5: oklch(0.62 0.011 172);
+
+  --sidebar: oklch(0.186 0.013 168);
+  --sidebar-foreground: oklch(0.86 0.006 165);
+  --sidebar-primary: oklch(0.812 0.187 152);
+  --sidebar-primary-foreground: oklch(0.185 0.03 165);
+  --sidebar-accent: oklch(0.245 0.013 168);
+  --sidebar-accent-foreground: oklch(0.968 0.004 160);
+  --sidebar-border: oklch(0.268 0.012 168);
+  --sidebar-ring: oklch(0.62 0.13 154);
+}
+
+/*
+ * The product's top bar: 56 px, plus the status bar of the installed iPhone app (black-translucent status bar and
+ * viewport-fit=cover put the page under it). Bars that stick below it (the Match Center's tabs, a competition's
+ * header) stick at --app-sticky-top; a phone held sideways lets the top bar scroll away, so they stick at the top.
+ */
+:root {
+  --app-header-h: calc(3.5rem + env(safe-area-inset-top));
+  --app-sticky-top: var(--app-header-h);
+}
+@media (orientation: landscape) and (max-height: 32rem) {
+  :root {
+    --app-sticky-top: env(safe-area-inset-top);
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv05", "ss01";
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+}
+
+/* Typography scale utilities */
+@utility text-display {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 2.1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+@utility text-heading {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+@utility text-title {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+
+@utility text-label {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@utility text-caption {
+  font-size: 0.6875rem;
+  line-height: 0.95rem;
+  font-weight: 400;
+  /* Phones and tablets: 12 px, the smallest size that stays legible at arm's length (11 px on a desk). */
+  @media (max-width: 63.98rem), (pointer: coarse) {
+    font-size: 0.75rem;
+    line-height: 1.05rem;
+  }
+}
+
+@utility numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
+}
+
+@utility numeric-lg {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.5rem;
+  line-height: 1.8rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+@utility surface-panel {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+@utility grid-hairline {
+  background-image: linear-gradient(var(--color-border) 1px, transparent 1px);
+  background-size: 100% 2.25rem;
+}
+
+/* PrediGol: the gold edge of premium blocks (parlays, the selected value). */
+@utility gold-ring {
+  border-color: color-mix(in oklch, var(--color-gold) 45%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--color-gold) 18%, transparent),
+    0 10px 30px -18px color-mix(in oklch, var(--color-gold) 55%, transparent);
+}
+
+@utility pitch-glow {
+  background-image:
+    radial-gradient(
+      120% 80% at 0% 0%,
+      color-mix(in oklch, var(--color-primary) 12%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      90% 70% at 100% 0%,
+      color-mix(in oklch, var(--color-gold) 9%, transparent),
+      transparent 60%
+    );
+}
+
+@utility safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* The status bar of the installed iPhone app (see --app-header-h). */
+@utility safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* The page's side margin, wider where a phone held sideways has its notch or rounded corners. */
+@utility px-safe {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+@utility top-sticky {
+  top: var(--app-sticky-top);
+}
+
+/*
+ * Touch targets: on a touch screen a control answers in at least 44 x 44 px, whatever it looks like - an
+ * invisible ::after centred on it reaches out to 44 px where the control is smaller (Material's chips work the
+ * same way: 32 dp drawn, 48 dp touched). Nothing moves; a mouse keeps the drawn size. The control needs a
+ * position (relative or absolute), must not clip itself (no overflow-hidden/truncate on the control: truncate an
+ * inner span), and a scrolling parent must leave room for the reach (py-1 on a chip row). `tap-y` reaches out
+ * vertically only - for controls that sit side by side with no gap to spare.
+ */
+@utility tap {
+  @media (pointer: coarse) {
+    &::after {
+      content: "";
+      position: absolute;
+      top: min(0px, calc(50% - 22px));
+      bottom: min(0px, calc(50% - 22px));
+      left: min(0px, calc(50% - 22px));
+      right: min(0px, calc(50% - 22px));
+    }
+  }
+}
+
+@utility tap-y {
+  @media (pointer: coarse) {
+    &::after {
+      content: "";
+      position: absolute;
+      top: min(0px, calc(50% - 22px));
+      bottom: min(0px, calc(50% - 22px));
+      left: 0;
+      right: 0;
+    }
+  }
+}
+
+/*
+ * A horizontal strip that scrolls (tabs, chips, day pickers): no scrollbar, and its edges fade out where more
+ * content waits beyond them (data-fade-start / data-fade-end, set by useScrollCue), so a phone shows there is more.
+ */
+@utility scroll-strip {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  &[data-fade-end] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+  &[data-fade-start] {
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent);
+  }
+  &[data-fade-start][data-fade-end] {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 2.5rem,
+      #000 calc(100% - 2.5rem),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 2.5rem,
+      #000 calc(100% - 2.5rem),
+      transparent
+    );
+  }
+}
+
+/* The same fading edges for a wide table that scrolls inside its card (TableShell): its scrollbar stays. */
+@utility scroll-fade {
+  &[data-fade-end] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+  }
+  &[data-fade-start] {
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to left, #000 calc(100% - 2rem), transparent);
+  }
+  &[data-fade-start][data-fade-end] {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 2rem,
+      #000 calc(100% - 2rem),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 2rem,
+      #000 calc(100% - 2rem),
+      transparent
+    );
+  }
+}
+
+/*
+ * The Admin Console on a touch tablet: its compact 28-36 px buttons, fields and selects (h-7 / h-8 / h-9, across twenty
+ * modules) get 44 px of height under a finger. Unlayered and touch-only: a desk keeps the compact console.
+ */
+@media (pointer: coarse) {
+  [data-shell="admin"] :is(button, select, input, a, [role="tab"]):is(.h-7, .h-8, .h-9) {
+    min-height: 2.75rem;
+  }
+}
+
+/*
+ * Form fields on a touch screen: 16 px at least, or iOS Safari zooms the whole page in on focus (and leaves it
+ * zoomed). Unlayered on purpose: it outranks the size utilities, on touch screens only.
+ */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]),
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+}

@@ -1,0 +1,396 @@
+{
+  "labels": {
+    "predigolPick": "PrediGol Pick",
+    "savedByMe": "Saved by me",
+    "result": "Result"
+  },
+  "status": {
+    "PENDING": "Pending",
+    "WIN": "Won",
+    "LOSS": "Lost",
+    "PUSH": "Refunded",
+    "VOID": "Void",
+    "HALF_WIN": "Half won",
+    "HALF_LOSS": "Half lost"
+  },
+  "parlayStatus": {
+    "BUILDING": "Being built",
+    "READY": "Ready",
+    "ACTIVE": "In play",
+    "WON": "Won",
+    "LOST": "Lost",
+    "VOID": "Void",
+    "PARTIAL_VOID": "Won with voids"
+  },
+  "stage": {
+    "T-24h": "Chosen ≈24 h before",
+    "T-12h": "Chosen ≈12 h before",
+    "T-6h": "Chosen ≈6 h before",
+    "T-3h": "Chosen ≈3 h before"
+  },
+  "units": "{value} u",
+  "profit": "Profit",
+  "frozenHelp": "Price and probabilities frozen when chosen: they do not change afterwards.",
+  "score": "Full time {home}–{away}",
+  "evaluation": {
+    "badge": "Evaluation mode",
+    "title": "Evaluation mode",
+    "body": "Evaluation records, built from picks of models that have not yet beaten the market. Only the administrator sees them; they are not a recommendation."
+  },
+  "daily": {
+    "title": "Picks of the day",
+    "subtitle": "Chosen by PrediGol for {date}: they stay after kick-off and are settled when the match ends.",
+    "count": "{count} of 5",
+    "partial_one": "Only {count} selection met the criteria today. We never pad the list.",
+    "partial_other": "Only {count} selections met the criteria today. We never pad the list.",
+    "emptyBody": "We only choose selections from models that have beaten the market, without the bookmakers' margin, in their own backtest. A day without any stays empty.",
+    "list": "Picks of the day",
+    "reason": {
+      "no_qualified_picks": "No PrediGol picks today",
+      "no_shadow_picks": "No evaluation records for this day"
+    },
+    "previous": "Previous day",
+    "next": "Next",
+    "today": "Today",
+    "yesterdayOpen": "Yesterday · still to finish"
+  },
+  "parlay": {
+    "pAllLow": "Cautious chance all win",
+    "pAllLowHelp": "Product of each selection's cautious probability: the low end of the model's interval.",
+    "builtAt": "Built {when}",
+    "settledAt": "Settled {when}",
+    "legsResult": "{won} of {total} won",
+    "building": {
+      "title": "Looking for the parlay",
+      "body": "There are selections with value, but no combination grows at their cautious probability. We never pad a parlay."
+    },
+    "none": {
+      "title": "No parlay yet",
+      "body": "It is built when there are selections with value in its window."
+    },
+    "void": {
+      "title": "There was no parlay this day",
+      "body": "No combination met the criteria before the day ended."
+    }
+  },
+  "actions": {
+    "save": "Save",
+    "saved": "Saved",
+    "unsave": "Remove from my picks",
+    "addToParlay": "Add to my parlay",
+    "inParlay": "In your parlay",
+    "removeFromParlay": "Remove from parlay",
+    "started": "The match has started",
+    "choose": "What would you like to do with this price?",
+    "priceAt": "{odds} at {bookmaker}",
+    "quarterLine": "Quarter lines (.25 / .75) cannot go in a parlay"
+  },
+  "toast": {
+    "saved": "Saved to My picks",
+    "unsaved": "Removed from My picks",
+    "added": "Added to your parlay",
+    "replaced": "We changed that match's selection: one per match",
+    "removedLeg": "Removed from your parlay",
+    "full": "A parlay takes at most {max} selections",
+    "parlaySaved": "Parlay saved",
+    "parlayRemoved": "Parlay deleted",
+    "oddsSaved": "Price saved",
+    "oddsCleared": "Price removed"
+  },
+  "slip": {
+    "title": "My parlay",
+    "subtitle": "One selection per match, {min} to {max}.",
+    "count": "{count} of {max} selections",
+    "open_one": "My parlay · {count}",
+    "open_other": "My parlay · {count}",
+    "empty": "Your parlay is empty",
+    "name": "Name (optional)",
+    "namePlaceholder": "My parlay",
+    "save": "Save parlay",
+    "saving": "Saving…",
+    "clear": "Clear",
+    "history": "View history",
+    "remove": "Remove",
+    "removeLeg": "Remove from parlay: {selection} · {match}",
+    "openMatch": "Open match",
+    "openMatchLabel": "Open the match {match}",
+    "viewAnalysis": "View analysis",
+    "viewAnalysisLabel": "View the analysis of {match}",
+    "legProbability": "PrediGol",
+    "legProbabilityHelp": "PrediGol's probability for this selection",
+    "combined": "Combined odds",
+    "noCombined": "No combined odds: a selection has no price",
+    "checking": "Checking…",
+    "needMore_one": "Add at least {count} more selection",
+    "needMore_other": "Add at least {count} more selections",
+    "priceNow": "Current price",
+    "noPrice": "No price",
+    "note": "Each selection's price is the best current price we know; it is saved with the parlay.",
+    "noAi": "Instant calculation · no AI",
+    "summary": {
+      "title": "Your parlay in numbers",
+      "estimated": "Estimated probability",
+      "estimatedServer": "PrediGol's estimate, adjusted for dependence between selections.",
+      "estimatedProvisional": "Provisional: product of PrediGol's probabilities, not yet adjusted.",
+      "estimatedIndependent": "Product of PrediGol's probabilities: the selections are independent.",
+      "estimatedWaiting": "Waiting for the dependence adjustment.",
+      "estimatedNone": "No estimate: a selection has no probability.",
+      "fair": "Fair probability",
+      "fairHelp": "The market's, without the bookmakers' margin.",
+      "dependency": "Dependence level",
+      "calculating": "calculating…"
+    },
+    "dependency": {
+      "level": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "reason": {
+        "shared_team": "Two selections share a team: their results are linked.",
+        "measured_dependence": "Correlated results: dependence measured within the same competition and day.",
+        "same_competition_day": "Some selections are from the same competition and day."
+      },
+      "pending": "Checking whether the selections depend on each other…"
+    },
+    "risk": {
+      "moderate": "Moderate",
+      "high": "High",
+      "very_high": "Very high"
+    },
+    "guide": {
+      "how": "Tap “Add to my parlay +” on a selection in:",
+      "picks": "PrediGol's picks",
+      "odds": "The best odds for each market",
+      "match": "A match's analysis",
+      "parlays": "PrediGol's parlays",
+      "rules": "Rules",
+      "ruleCount": "{min} to {max} selections, one per match.",
+      "ruleReplace": "Adding another selection from the same match replaces the previous one.",
+      "ruleKickoff": "Nothing after kick-off.",
+      "noAi": "The combined odds, the probability and the dependence are calculated instantly from data we already have. No AI analyses your parlay."
+    },
+    "error": {
+      "leg_count": "A parlay needs between {min} and {max} selections.",
+      "invalid_selection": "Selection {leg}: not a selection we settle.",
+      "quarter_line": "Selection {leg}: quarter lines (.25 / .75) are not allowed in a parlay.",
+      "unknown_fixture": "Selection {leg}: that match does not exist.",
+      "started": "Selection {leg}: the match has started.",
+      "same_fixture": "Selections {with} and {leg}: they are the same match."
+    },
+    "warning": {
+      "shared_team": "Selections {with} and {leg} share a team: their results are related.",
+      "no_price": "Selection {leg}: we have no current price.",
+      "same_competition_day": "Selections {legs}: same competition and day; the measured dependence is not significant.",
+      "same_competition_day_measured": "Selections {legs}: same competition and day; their results are correlated (ρ {rho}).",
+      "very_unlikely": "All of them winning is very unlikely ({probability})."
+    },
+    "measures": {
+      "ev": "Expected value",
+      "risk": "Risk",
+      "independent": "No selections depend on each other.",
+      "dependent": "Some selections may depend on each other."
+    }
+  },
+  "mine": {
+    "title": "My picks",
+    "subtitle": "What you saved and how it went, next to what PrediGol chose.",
+    "results": {
+      "title": "My results",
+      "periods": "Period",
+      "period": {
+        "today": "Today",
+        "7d": "7 days",
+        "30d": "30 days",
+        "all": "All"
+      },
+      "group": {
+        "predigol_picks": "PrediGol picks",
+        "my_picks": "My picks",
+        "predigol_parlays": "PrediGol parlays",
+        "my_parlays": "My parlays"
+      },
+      "total": "Total",
+      "pending": "Pending",
+      "record": "{won} W · {lost} L",
+      "hitRate": "Hit rate",
+      "roi": "ROI",
+      "empty": "Nothing in this period.",
+      "note": "By the day the match kicks off in your time zone ({zone}). Profit in units of one stake, at the recorded price. PrediGol handles no money and takes no bets."
+    },
+    "picks": {
+      "title": "Saved picks",
+      "empty": "You have not saved a pick yet",
+      "emptyBody": "Tap a price on a match, or “Save” on a PrediGol pick.",
+      "shown": "Price shown",
+      "yours": "Your price",
+      "addYours": "Add your price",
+      "editYours": "Change",
+      "oddsLabel": "Price you got at your bookmaker",
+      "oddsPlaceholder": "e.g. 2.10",
+      "oddsInvalid": "Enter decimal odds greater than 1.",
+      "saveOdds": "Save",
+      "clearOdds": "Remove",
+      "cancel": "Cancel",
+      "savedAt": "Saved {when}",
+      "remove": "Remove",
+      "settlesAt": "Settled at your price if you give one; otherwise at the price shown."
+    },
+    "parlays": {
+      "title": "My parlays",
+      "empty": "You have not built a parlay yet",
+      "emptyBody": "Add selections to your parlay from matches or picks.",
+      "build": "Build a parlay",
+      "remove": "Delete",
+      "createdAt": "Created {when}",
+      "unnamed": "Unnamed parlay"
+    }
+  },
+  "ai": {
+    "byAi": "Analysed by PrediGol AI",
+    "byRules": "Reviewed by rules",
+    "decision": {
+      "APPROVE": "confirmed",
+      "DOWNGRADE": "with caution",
+      "REJECT": "not recommended",
+      "ABSTAIN": "no judgement"
+    }
+  },
+  "progress": {
+    "OPEN": "Open",
+    "PARTIAL_WON": "Winning so far",
+    "PARTIAL_LOST": "Lost (matches to play)",
+    "WON": "Won",
+    "LOST": "Lost",
+    "VOID": "Void",
+    "pending_one": "{count} selection still to be played",
+    "pending_other": "{count} selections still to be played"
+  },
+  "matchState": {
+    "live": "In play",
+    "suspended": "Suspended",
+    "awaiting": "Awaiting result",
+    "settling": "Finished · settling",
+    "postponed": "Postponed",
+    "cancelled": "Cancelled",
+    "abandoned": "Abandoned",
+    "not_played": "Not played",
+    "review": "Awaiting review"
+  },
+  "selectedAt": "Chosen at {time}",
+  "chain": {
+    "model": "Chosen by the model ({model})",
+    "unknownModel": "model",
+    "ai": "AI:",
+    "aiReviewed": "Reviewed by the AI",
+    "aiNone": "No AI review",
+    "evaluation": "Not published · evaluation mode",
+    "notPublished": "Not published",
+    "open": "To settle",
+    "settled": "Settled: {status}"
+  },
+  "dayNav": {
+    "label": "Picks' day",
+    "previous": "Previous day",
+    "next": "Next day",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "jump": "Go to",
+    "summary": "{count} picks · {won} won · {lost} lost · {open} to play or in play",
+    "units": "{units} u"
+  },
+  "outcome": {
+    "playing": "In play",
+    "won": "Won",
+    "lost": "Lost",
+    "void": "Void",
+    "building": "Being built"
+  },
+  "recap": {
+    "title": "Your recap",
+    "subtitle": "What your settled picks add up to: profit, odds, streaks and markets.",
+    "scope": "What to see",
+    "scopePicks": "My picks",
+    "scopeParlays": "My parlays",
+    "period": "Period",
+    "days_one": "{count} day",
+    "days_other": "{count} days",
+    "all": "All",
+    "emptyPicks": "Once your saved picks are settled, their progress shows here in charts.",
+    "emptyParlays": "Once your parlays are settled, their progress shows here in charts.",
+    "note": "One unit per pick or parlay, at the profit each was settled at. PrediGol handles no money.",
+    "kpi": {
+      "settled": "Settled",
+      "record": "{won} W · {lost} L · {void} void",
+      "hitRate": "Hit rate",
+      "profit": "Profit",
+      "roi": "Return",
+      "avgOdds": "Average odds",
+      "avgOddsWon": "When won: {odds}",
+      "bestStreak": "Best streak",
+      "current": {
+        "win_one": "Current streak: {count} win",
+        "win_other": "Current streak: {count} wins",
+        "loss_one": "Current streak: {count} loss",
+        "loss_other": "Current streak: {count} losses"
+      }
+    },
+    "cumulative": {
+      "title": "Cumulative profit",
+      "subtitle": "How your balance in units grows (or falls), day by day.",
+      "total": "Cumulative"
+    },
+    "daily": {
+      "title": "Profit per day",
+      "subtitle": "Best day: {best} ({bestProfit}) · worst: {worst} ({worstProfit})",
+      "profit": "Profit",
+      "count_one": "{count} pick",
+      "count_other": "{count} picks"
+    },
+    "odds": {
+      "title": "By odds range",
+      "subtitle": "Average odds: {odds}. How many you took in each range and how they went.",
+      "count": "Settled",
+      "tooltip": "{count} · hit rate {hit} · {profit}",
+      "bucket": {
+        "lt1.5": "< 1.50",
+        "1.5-2": "1.50–2",
+        "2-3": "2–3",
+        "3-5": "3–5",
+        "5+": "5 or more"
+      }
+    },
+    "markets": {
+      "title": "Hit rate by market",
+      "subtitle": "The markets you get right most.",
+      "hitRate": "Hit rate",
+      "tooltip": "{pct}% · {count} picks · {profit}"
+    },
+    "streak": {
+      "title": "Streaks",
+      "subtitle_one": "Your last result, oldest to newest.",
+      "subtitle_other": "Your last {count} results, oldest to newest.",
+      "win": "Win",
+      "loss": "Loss",
+      "w": "W",
+      "l": "L",
+      "current": "Current",
+      "bestWin": "Best",
+      "worstLoss": "Worst"
+    }
+  },
+  "funnel": {
+    "label": "How a pick of the day gets here",
+    "steps": {
+      "data": "Valid data",
+      "market": "Market",
+      "model": "Model",
+      "calibration": "Calibration",
+      "value": "Value",
+      "risk": "Risk (odds ≤ {max})",
+      "context": "PrediGol Intelligence (day's pass and news)",
+      "selection": "Selection (max 5)"
+    },
+    "help": "Each step is a filter: if no pick passes them all, the day has fewer or none. The picks of the day are chosen once PrediGol Intelligence has read the day: its pass of each match, with a news search."
+  }
+}

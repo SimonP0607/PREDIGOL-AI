@@ -1,0 +1,15 @@
+# The build context is what the image is built from: no dependencies, outputs, reports or secrets.
+node_modules
+.output
+.nitro
+.tanstack
+.vinxi
+dist
+dist-ssr
+e2e-report
+e2e-results
+.git
+.env
+.env.*
+*.local
+*.log

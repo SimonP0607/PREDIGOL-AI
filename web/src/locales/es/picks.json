@@ -1,0 +1,44 @@
+{
+  "subtitle": "Selecciones con valor frente al mercado, al mejor precio disponible ahora.",
+  "all": {
+    "title": "Todas las selecciones calificadas",
+    "subtitle": "Filtra por competición, mercado, cuota y hora de inicio.",
+    "emptyBody": "Cuando haya selecciones calificadas en esta ventana de tiempo, aparecerán aquí.",
+    "widen": "Ver los próximos {days} días"
+  },
+  "count_one": "{count} selección",
+  "count_other": "{count} selecciones",
+  "pricesUpdated": "Precios actualizados {when}",
+  "showMore": "Ver {count} más",
+  "filters": {
+    "competition": "Competición",
+    "allCompetitions": "Todas las competiciones",
+    "market": "Mercado",
+    "odds": "Cuota",
+    "oddsAll": "Todas",
+    "oddsRange": "{min}–{max}",
+    "oddsFrom": "{min}+",
+    "window": "Empiezan en",
+    "hours": "{count} h",
+    "days_one": "{count} día",
+    "days_other": "{count} días",
+    "reset": "Quitar filtros"
+  },
+  "started": {
+    "title": "Ya empezaron hoy",
+    "subtitle": "Los picks prepartido de los partidos de hoy que ya comenzaron: la cuota y la hora en que se tomaron, el estado del partido y su resultado. No se recalculan.",
+    "count_one": "{count} pick ya empezó",
+    "count_other": "{count} picks ya empezaron",
+    "empty": "Ningún pick de hoy ha empezado todavía.",
+    "emptyFiltered": "Ningún pick que ya empezó coincide con estos filtros.",
+    "state": "Estado",
+    "states": {
+      "all": "Todos",
+      "live": "En juego",
+      "won": "Ganados",
+      "lost": "Perdidos",
+      "other": "Nulos y pendientes"
+    }
+  },
+  "priceHelp": "Toca la cuota para agregarla a tu parlay; el marcador la guarda."
+}

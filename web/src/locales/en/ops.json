@@ -1,0 +1,323 @@
+{
+  "common": {
+    "yes": "yes",
+    "no": "no"
+  },
+  "overview": {
+    "shadowMode": "Shadow mode",
+    "banner": "Research / shadow mode. Picks are recorded in shadow only: nothing is published and nothing is bet. What they would have done is measured in Performance.",
+    "cells": {
+      "today": "Today",
+      "fixtures": "Fixtures stored",
+      "fixturesHint_one": "{upcoming} upcoming in 7 days · {count} tracked competition(s)",
+      "fixturesHint_other": "{upcoming} upcoming in 7 days · {count} tracked competition(s)",
+      "lastPayload": "Last payload",
+      "never": "never",
+      "syncs": "Fixtures sync {fixtures} · results {results}",
+      "systemState": "System state",
+      "allOk": "All components report ok"
+    },
+    "live": {
+      "title": "In play now",
+      "titleCount": "In play now · {n}",
+      "subtitle": "Tracked matches being played: score and minute from the live follow, refreshed every 15 seconds",
+      "link": "Live",
+      "versus": "v",
+      "empty": "No tracked match is in play."
+    },
+    "upcoming": {
+      "title": "Upcoming matches",
+      "subtitle": "Scheduled fixtures of the competitions the capturer tracks",
+      "all": "All matches",
+      "empty": "No scheduled fixture is stored for today or later. The worker syncs the tracked competitions' fixtures every 12 hours.",
+      "headers": {
+        "kickoff": "Kick-off",
+        "competition": "Competition",
+        "fixture": "Fixture",
+        "prices": "Prices",
+        "pricesHelp": "Pre-match price snapshots captured so far",
+        "status": "Status"
+      }
+    },
+    "health": {
+      "title": "System health",
+      "subtitle": "From /health: never spends provider quota",
+      "provider": "Football provider"
+    },
+    "worker": {
+      "subtitle": "Liveness from its heartbeat, written on every tick",
+      "alive": "Alive",
+      "neverBeat": "No heartbeat has ever been written: the worker has not run with this version.",
+      "lastBeat": "Last beat",
+      "noBeat": "No heartbeat yet.",
+      "runningSince": "Running since",
+      "ticks": "Ticks",
+      "lastTick": "Last tick",
+      "noTick": "No tick has run since the worker started.",
+      "lag": "Scheduler lag",
+      "lagPending": "Measured on the first tick.",
+      "next": "Next {job}",
+      "code": "Code",
+      "outcomes": {
+        "nothing_scheduled": "nothing scheduled",
+        "nothing_due": "nothing due",
+        "captured": "captured prices",
+        "plan_rejected": "plan rejected",
+        "failed": "failed"
+      }
+    },
+    "provider": {
+      "title": "Provider & quota",
+      "subtitle": "Our budget, counted in the database before each request",
+      "requestsToday": "Requests today",
+      "requestsHint": "{remaining} remaining · plan {plan} allows {limit}/day",
+      "lastError": "Last provider error",
+      "noError": "No run has recorded a provider error."
+    },
+    "database": {
+      "title": "Database",
+      "subtitle": "Schema revision {revision}",
+      "competitions": "Competitions",
+      "competitionsValue": "{tracked} tracked / {known} known",
+      "teams": "Teams",
+      "fixtures": "Fixtures",
+      "withResult": "With result",
+      "awaitingResult": "Awaiting result",
+      "oddsSnapshots": "Odds snapshots",
+      "nearClose": "Near-close snapshots",
+      "rawPayloads": "Raw payloads",
+      "predictions": "Predictions"
+    },
+    "picks": {
+      "subtitle": "Shadow picks only; publishing is disabled"
+    },
+    "performance": {
+      "title": "Performance",
+      "subtitle": "Reported only from settled picks with recorded prices",
+      "pnl": "P&L",
+      "pnlHint": "No settled pick with a recorded price",
+      "roiHint": "Not computable without a settled sample"
+    }
+  },
+  "picks": {
+    "banner": "Publishing is disabled by a database constraint. Every pick here is shadow research output, not advice, and no model has yet qualified: qualification needs the exact model version to have beaten the de-vigged market in its own backtest.",
+    "lifecycle": {
+      "candidates": {
+        "label": "Candidates",
+        "hint": "every captured price evaluated"
+      },
+      "rejected": {
+        "label": "Rejected",
+        "hint": "failed the rule, with the reason"
+      },
+      "shadow": {
+        "label": "Shadow",
+        "hint": "selected, not qualified"
+      },
+      "qualified": {
+        "label": "Qualified",
+        "hint": "model beat the market in its backtest"
+      },
+      "published": {
+        "label": "Published",
+        "hint": "disabled in the schema"
+      },
+      "settled": {
+        "label": "Settled",
+        "hint": "on the 90-minute score"
+      }
+    },
+    "rule": {
+      "title": "Decision rule",
+      "subtitle": "Fixed and versioned before it sees a result",
+      "version": "Version",
+      "markets": "Markets",
+      "oddsRange": "Odds range",
+      "minEv": "Minimum EV",
+      "minEdge": "Minimum probability edge",
+      "stakeValue": "flat, 1 unit (Kelly reported only)",
+      "rejections": "Why prices were rejected"
+    },
+    "tabs": {
+      "label": "Picks view",
+      "picks": "Picks",
+      "candidates": "Candidates"
+    },
+    "headers": {
+      "fixture": "Fixture",
+      "selection": "Selection",
+      "model": "Model",
+      "odds": "Odds",
+      "modelP": "Model p",
+      "marketP": "Market p",
+      "edge": "Edge",
+      "ev": "EV",
+      "status": "Status",
+      "result": "Result",
+      "evaluated": "Evaluated",
+      "decision": "Decision"
+    },
+    "shadow": {
+      "title": "Shadow picks",
+      "subtitle": "Click a pick for its lineage"
+    },
+    "candidates": {
+      "title": "Recent candidates",
+      "subtitle": "The last 50 prices evaluated, selected or not",
+      "noPrice": "No price.",
+      "notComputed": "Not computed."
+    },
+    "lineage": {
+      "forecast": "Forecast",
+      "modelVersion": "Model version",
+      "prediction": "Prediction",
+      "dataCutoff": "Data cut-off",
+      "inputHash": "Input hash",
+      "calibrated": "Calibrated",
+      "uncalibrated": "no (model's own probability)",
+      "interval": "Interval (90%)",
+      "noInterval": "No interval was computed for this forecast.",
+      "price": "Price",
+      "bookmaker": "Bookmaker",
+      "odds": "Odds",
+      "captured": "Captured",
+      "consensus": "Consensus",
+      "fairOdds": "Model fair odds",
+      "priceEdge": "Price edge",
+      "evLowerBound": "EV at lower bound",
+      "decision": "Decision & settlement",
+      "rule": "Rule",
+      "code": "Code",
+      "kelly": "Kelly (reported only)",
+      "qualified": "Qualified",
+      "result": "Result",
+      "basis": "Basis",
+      "needsReview": "Needs review: {reason}",
+      "history": "History"
+    },
+    "rejection": {
+      "oddsOutside": "odds outside [{a}, {b}]",
+      "evBelow": "expected value below {a}",
+      "edgeBelow": "probability edge below {a}"
+    },
+    "settlement": {
+      "title": "Settlement: how long each match waited",
+      "subtitle": "From the moment we saw it end until its picks were settled (first settlement per match, last 7 days). The provider publishes no exact end time: it lies between the last state seen in play and the first seen ended.",
+      "matches": "Matches settled",
+      "median": "Median wait",
+      "mean": "Mean wait",
+      "p90": "p90 wait",
+      "waiting": "Ended with bets open",
+      "match": "Match",
+      "status": "Status",
+      "ended": "Ended",
+      "open": "Open",
+      "reason": "Why it waits",
+      "noReason": "Should settle within the next minute",
+      "lastInPlay": "Last in play",
+      "observed": "Seen ended",
+      "settled": "Settled",
+      "delay": "Wait",
+      "path": "Who",
+      "records": "Picks / records",
+      "empty": "No settlement recorded yet.",
+      "paths": {
+        "live_follow": "Live follow",
+        "results_repair": "Results repair",
+        "pipeline": "Pipeline pass"
+      }
+    },
+    "funnel": {
+      "title": "Selection funnel (next 24 h)",
+      "subtitle": "The rule of the day's picks step by step: where each candidate stops and why. Never padded.",
+      "source": "Source",
+      "evaluation": "Evaluation (shadow)",
+      "qualified": "Qualified",
+      "rule": "Rule {rule} · risk {risk} (odds ≤ {max}) · context {context} · AI {mode}{enforced}",
+      "enforced": ", enforced",
+      "counts": "{candidates} picks read · {selections} distinct selections",
+      "inSet": "Already in the day's set",
+      "entered": "In",
+      "passed": "Pass",
+      "stopped": "Stop",
+      "chosen": "Would enter now",
+      "chosenNone": "Nothing new would enter now: either the day's set is full or nothing else passes every step.",
+      "near": "What nearly made it, and why not",
+      "nearNone": "No selection with value stopped at the last steps.",
+      "evidence": "Evidence",
+      "noEvidence": "no evidence",
+      "ai": "AI",
+      "notReviewed": "not reviewed",
+      "stage": {
+        "data": "Valid data",
+        "market": "Market",
+        "model": "Model",
+        "calibration": "Calibration",
+        "value": "Value",
+        "risk": "Risk",
+        "context": "PrediGol Intelligence",
+        "selection": "Selection"
+      },
+      "reason": {
+        "not_scheduled": "match not scheduled",
+        "too_close_to_kickoff": "under 10 min to kick-off",
+        "outside_window": "beyond 24 h",
+        "no_price": "no price",
+        "stale_price": "price older than 3 h",
+        "no_consensus": "no market consensus",
+        "few_bookmakers": "fewer than 2 books",
+        "price_outlier": "outlier price",
+        "not_qualified": "model not qualified",
+        "model_retired": "model retired",
+        "no_interval": "no measured interval",
+        "non_positive_ev": "no expected value",
+        "no_pessimistic_growth": "no growth in the prudent case",
+        "odds_above_cap": "odds above the cap",
+        "not_reviewed": "PrediGol Intelligence has not reviewed it",
+        "ai_rejected": "rejected by the AI (enforced)",
+        "match_taken": "the match already has its pick",
+        "day_full": "the day already has 5",
+        "day_not_ready": "PrediGol Intelligence has not read the whole day yet",
+        "no_day_pass": "without PrediGol Intelligence's pass of the day"
+      },
+      "status": {
+        "CONFIRMED": "confirmed",
+        "PROBABLE": "probable",
+        "RUMOR": "rumour",
+        "CONTRADICTORY": "contradictory",
+        "OUTDATED": "outdated"
+      },
+      "probs": "Model {model} (prudent {low}) · market {market}",
+      "dayPass": "day's pass",
+      "web": "news searched",
+      "noWeb": "no news search",
+      "dayReady": "Day read by PrediGol Intelligence: {days}",
+      "dayNotReady": "PrediGol Intelligence has not finished the day's first pass (from 00:05 Bogotá, 06:00 at the latest): today's set waits."
+    }
+  },
+  "analyst": {
+    "notConfigured": "No language model is configured on the API host ({missing} unset), so the analyst cannot answer. Nothing is sent anywhere. The tools below are exactly what it would read, and they work now.",
+    "ask": {
+      "title": "Ask",
+      "subtitle": "Questions go to the API host, which calls the model and the tools. The browser never sees a key.",
+      "placeholder": "e.g. How did Dixon-Coles do against the market?",
+      "placeholderOff": "Not configured on the API host",
+      "label": "Question for the analyst",
+      "submit": "Ask",
+      "pending": "Asking…",
+      "unverified": "Unverified figures (not found in any tool result): {figures}"
+    },
+    "rules": "Rules the analyst works under",
+    "console": {
+      "title": "Tool console",
+      "subtitle": "Run any analyst tool by hand and see exactly what it would read",
+      "tool": "Tool",
+      "run": "Run"
+    },
+    "output": {
+      "status": "Status",
+      "generated": "Generated",
+      "dataAsOf": "Data as of"
+    }
+  }
+}

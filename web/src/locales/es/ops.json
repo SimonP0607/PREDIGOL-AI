@@ -1,0 +1,323 @@
+{
+  "common": {
+    "yes": "sí",
+    "no": "no"
+  },
+  "overview": {
+    "shadowMode": "Modo shadow",
+    "banner": "Modo investigación / shadow. Los picks solo se registran en shadow: no se publica nada y no se apuesta nada. Lo que habrían hecho se mide en Rendimiento.",
+    "cells": {
+      "today": "Hoy",
+      "fixtures": "Partidos almacenados",
+      "fixturesHint_one": "{upcoming} en los próximos 7 días · {count} competición seguida",
+      "fixturesHint_other": "{upcoming} en los próximos 7 días · {count} competiciones seguidas",
+      "lastPayload": "Último payload",
+      "never": "nunca",
+      "syncs": "Sincronización de partidos {fixtures} · resultados {results}",
+      "systemState": "Estado del sistema",
+      "allOk": "Todos los componentes reportan ok"
+    },
+    "live": {
+      "title": "En juego ahora",
+      "titleCount": "En juego ahora · {n}",
+      "subtitle": "Partidos seguidos que se están jugando: marcador y minuto del seguimiento en vivo, actualizados cada 15 segundos",
+      "link": "En vivo",
+      "versus": "vs",
+      "empty": "Ningún partido seguido está en juego."
+    },
+    "upcoming": {
+      "title": "Próximos partidos",
+      "subtitle": "Partidos programados de las competiciones que sigue el sistema de captura",
+      "all": "Todos los partidos",
+      "empty": "No hay ningún partido programado almacenado para hoy o más adelante. El worker sincroniza los partidos de las competiciones seguidas cada 12 horas.",
+      "headers": {
+        "kickoff": "Inicio",
+        "competition": "Competición",
+        "fixture": "Partido",
+        "prices": "Precios",
+        "pricesHelp": "Capturas de precios previas al partido registradas hasta ahora",
+        "status": "Estado"
+      }
+    },
+    "health": {
+      "title": "Salud del sistema",
+      "subtitle": "Desde /health: nunca consume cuota del proveedor",
+      "provider": "Proveedor de datos de fútbol"
+    },
+    "worker": {
+      "subtitle": "Actividad según su latido, que se escribe en cada ciclo",
+      "alive": "Activo",
+      "neverBeat": "Nunca se ha escrito un latido: el worker no se ha ejecutado con esta versión.",
+      "lastBeat": "Último latido",
+      "noBeat": "Aún no hay latido.",
+      "runningSince": "En marcha desde",
+      "ticks": "Ciclos",
+      "lastTick": "Último ciclo",
+      "noTick": "No se ha ejecutado ningún ciclo desde que arrancó el worker.",
+      "lag": "Retraso del planificador",
+      "lagPending": "Se mide en el primer ciclo.",
+      "next": "Siguiente {job}",
+      "code": "Código",
+      "outcomes": {
+        "nothing_scheduled": "nada programado",
+        "nothing_due": "nada pendiente",
+        "captured": "capturó precios",
+        "plan_rejected": "plan rechazado",
+        "failed": "falló"
+      }
+    },
+    "provider": {
+      "title": "Proveedor y cuota",
+      "subtitle": "Nuestro presupuesto, contado en la base de datos antes de cada petición",
+      "requestsToday": "Peticiones hoy",
+      "requestsHint": "{remaining} restantes · el plan {plan} permite {limit}/día",
+      "lastError": "Último error del proveedor",
+      "noError": "Ninguna ejecución ha registrado un error del proveedor."
+    },
+    "database": {
+      "title": "Base de datos",
+      "subtitle": "Revisión del esquema {revision}",
+      "competitions": "Competiciones",
+      "competitionsValue": "{tracked} seguidas / {known} conocidas",
+      "teams": "Equipos",
+      "fixtures": "Partidos",
+      "withResult": "Con resultado",
+      "awaitingResult": "Pendientes de resultado",
+      "oddsSnapshots": "Capturas de cuotas",
+      "nearClose": "Capturas cerca del cierre",
+      "rawPayloads": "Payloads crudos",
+      "predictions": "Predicciones"
+    },
+    "picks": {
+      "subtitle": "Solo picks shadow; la publicación está desactivada"
+    },
+    "performance": {
+      "title": "Rendimiento",
+      "subtitle": "Solo con picks liquidados que tengan precio registrado",
+      "pnl": "Ganancia/pérdida",
+      "pnlHint": "Ningún pick liquidado con precio registrado",
+      "roiHint": "No se puede calcular sin una muestra liquidada"
+    }
+  },
+  "picks": {
+    "banner": "La publicación está desactivada mediante una restricción de la base de datos. Todo pick de esta página es un resultado de investigación en shadow, no un consejo, y ningún modelo ha calificado todavía: para calificar, la versión exacta del modelo debe haber batido al mercado sin el margen de las casas en su propio backtest.",
+    "lifecycle": {
+      "candidates": {
+        "label": "Candidatos",
+        "hint": "cada precio capturado y evaluado"
+      },
+      "rejected": {
+        "label": "Rechazados",
+        "hint": "no cumplieron la regla, con el motivo"
+      },
+      "shadow": {
+        "label": "Shadow",
+        "hint": "seleccionados, no calificados"
+      },
+      "qualified": {
+        "label": "Calificados",
+        "hint": "el modelo batió al mercado en su backtest"
+      },
+      "published": {
+        "label": "Publicados",
+        "hint": "desactivado en el esquema"
+      },
+      "settled": {
+        "label": "Liquidados",
+        "hint": "según el marcador a los 90 minutos"
+      }
+    },
+    "rule": {
+      "title": "Regla de decisión",
+      "subtitle": "Fijada y versionada antes de ver ningún resultado",
+      "version": "Versión",
+      "markets": "Mercados",
+      "oddsRange": "Rango de cuotas",
+      "minEv": "VE mínimo",
+      "minEdge": "Ventaja mínima de probabilidad",
+      "stakeValue": "fijo, 1 unidad (Kelly solo informativo)",
+      "rejections": "Por qué se rechazaron los precios"
+    },
+    "tabs": {
+      "label": "Vista de picks",
+      "picks": "Picks",
+      "candidates": "Candidatos"
+    },
+    "headers": {
+      "fixture": "Partido",
+      "selection": "Selección",
+      "model": "Modelo",
+      "odds": "Cuota",
+      "modelP": "p modelo",
+      "marketP": "p mercado",
+      "edge": "Ventaja",
+      "ev": "VE",
+      "status": "Estado",
+      "result": "Resultado",
+      "evaluated": "Evaluado",
+      "decision": "Decisión"
+    },
+    "shadow": {
+      "title": "Picks shadow",
+      "subtitle": "Un clic en un pick muestra su linaje"
+    },
+    "candidates": {
+      "title": "Candidatos recientes",
+      "subtitle": "Los últimos 50 precios evaluados, seleccionados o no",
+      "noPrice": "Sin precio.",
+      "notComputed": "No calculado."
+    },
+    "lineage": {
+      "forecast": "Pronóstico",
+      "modelVersion": "Versión del modelo",
+      "prediction": "Predicción",
+      "dataCutoff": "Corte de datos",
+      "inputHash": "Hash de entrada",
+      "calibrated": "Calibrado",
+      "uncalibrated": "no (probabilidad propia del modelo)",
+      "interval": "Intervalo (90%)",
+      "noInterval": "No se calculó ningún intervalo para este pronóstico.",
+      "price": "Precio",
+      "bookmaker": "Casa",
+      "odds": "Cuota",
+      "captured": "Capturado",
+      "consensus": "Consenso",
+      "fairOdds": "Cuota justa del modelo",
+      "priceEdge": "Ventaja de precio",
+      "evLowerBound": "VE en el límite inferior",
+      "decision": "Decisión y liquidación",
+      "rule": "Regla",
+      "code": "Código",
+      "kelly": "Kelly (solo informativo)",
+      "qualified": "Calificado",
+      "result": "Resultado",
+      "basis": "Base de liquidación",
+      "needsReview": "Requiere revisión: {reason}",
+      "history": "Historial"
+    },
+    "rejection": {
+      "oddsOutside": "cuota fuera de [{a}, {b}]",
+      "evBelow": "valor esperado por debajo de {a}",
+      "edgeBelow": "ventaja de probabilidad por debajo de {a}"
+    },
+    "settlement": {
+      "title": "Liquidación: cuánto esperó cada partido",
+      "subtitle": "Desde que vimos el final hasta que sus picks quedaron liquidados (primera liquidación de cada partido, últimos 7 días). El proveedor no publica la hora exacta del final: está entre el último estado en juego y el primero terminado.",
+      "matches": "Partidos liquidados",
+      "median": "Espera mediana",
+      "mean": "Espera media",
+      "p90": "Espera p90",
+      "waiting": "Terminados con apuestas abiertas",
+      "match": "Partido",
+      "status": "Estado",
+      "ended": "Terminó",
+      "open": "Abiertas",
+      "reason": "Por qué espera",
+      "noReason": "Debería liquidarse en el próximo minuto",
+      "lastInPlay": "Último en juego",
+      "observed": "Visto terminado",
+      "settled": "Liquidado",
+      "delay": "Espera",
+      "path": "Quién",
+      "records": "Picks / registros",
+      "empty": "Todavía no hay liquidaciones registradas.",
+      "paths": {
+        "live_follow": "Seguimiento en vivo",
+        "results_repair": "Reparación de resultados",
+        "pipeline": "Pasada del pipeline"
+      }
+    },
+    "funnel": {
+      "title": "Embudo de selección (próximas 24 h)",
+      "subtitle": "La regla de los picks del día paso a paso: dónde se queda cada candidato y por qué. Nunca se rellena.",
+      "source": "Origen",
+      "evaluation": "Evaluación (sombra)",
+      "qualified": "Calificados",
+      "rule": "Regla {rule} · riesgo {risk} (cuota ≤ {max}) · contexto {context} · IA {mode}{enforced}",
+      "enforced": ", aplicada",
+      "counts": "{candidates} picks leídos · {selections} selecciones distintas",
+      "inSet": "Ya en el set del día",
+      "entered": "Entran",
+      "passed": "Pasan",
+      "stopped": "Se quedan",
+      "chosen": "Entraría ahora",
+      "chosenNone": "Nada nuevo entraría ahora: o el set del día está completo o nada más pasa todos los pasos.",
+      "near": "Lo que casi entra, y por qué no",
+      "nearNone": "Ninguna selección con valor se quedó en los últimos pasos.",
+      "evidence": "Evidencia",
+      "noEvidence": "sin evidencia",
+      "ai": "IA",
+      "notReviewed": "sin revisar",
+      "stage": {
+        "data": "Datos válidos",
+        "market": "Mercado",
+        "model": "Modelo",
+        "calibration": "Calibración",
+        "value": "Valor",
+        "risk": "Riesgo",
+        "context": "PrediGol Intelligence",
+        "selection": "Selección"
+      },
+      "reason": {
+        "not_scheduled": "partido no programado",
+        "too_close_to_kickoff": "a menos de 10 min del inicio",
+        "outside_window": "fuera de las 24 h",
+        "no_price": "sin precio",
+        "stale_price": "precio de hace más de 3 h",
+        "no_consensus": "sin consenso de mercado",
+        "few_bookmakers": "menos de 2 casas",
+        "price_outlier": "precio atípico",
+        "not_qualified": "modelo no calificado",
+        "model_retired": "modelo retirado",
+        "no_interval": "sin intervalo medido",
+        "non_positive_ev": "sin valor esperado",
+        "no_pessimistic_growth": "no crece en el escenario prudente",
+        "odds_above_cap": "cuota por encima del tope",
+        "not_reviewed": "PrediGol Intelligence no la ha revisado",
+        "ai_rejected": "rechazada por la IA (aplicada)",
+        "match_taken": "el partido ya tiene su pick",
+        "day_full": "el día ya tiene 5",
+        "day_not_ready": "PrediGol Intelligence aún no lee el día completo",
+        "no_day_pass": "sin la pasada del día de PrediGol Intelligence"
+      },
+      "status": {
+        "CONFIRMED": "confirmada",
+        "PROBABLE": "probable",
+        "RUMOR": "rumor",
+        "CONTRADICTORY": "contradictoria",
+        "OUTDATED": "desactualizada"
+      },
+      "probs": "Modelo {model} (prudente {low}) · mercado {market}",
+      "dayPass": "pasada del día",
+      "web": "noticias buscadas",
+      "noWeb": "sin búsqueda de noticias",
+      "dayReady": "Día leído por PrediGol Intelligence: {days}",
+      "dayNotReady": "PrediGol Intelligence aún no termina la primera pasada del día (desde las 00:05 de Bogotá, a más tardar a las 06:00): el set de hoy espera."
+    }
+  },
+  "analyst": {
+    "notConfigured": "No hay ningún modelo de lenguaje configurado en el host de la API ({missing} sin definir), así que el analista no puede responder. No se envía nada a ningún lado. Las herramientas de abajo son exactamente lo que leería, y ya funcionan.",
+    "ask": {
+      "title": "Preguntar",
+      "subtitle": "Las preguntas van al host de la API, que llama al modelo y a las herramientas. El navegador nunca ve ninguna clave.",
+      "placeholder": "p. ej. ¿Cómo le fue a Dixon-Coles frente al mercado?",
+      "placeholderOff": "Sin configurar en el host de la API",
+      "label": "Pregunta para el analista",
+      "submit": "Preguntar",
+      "pending": "Preguntando…",
+      "unverified": "Cifras sin verificar (no aparecen en ningún resultado de las herramientas): {figures}"
+    },
+    "rules": "Reglas con las que trabaja el analista",
+    "console": {
+      "title": "Consola de herramientas",
+      "subtitle": "Permite ejecutar a mano cualquier herramienta del analista y ver exactamente lo que leería",
+      "tool": "Herramienta",
+      "run": "Ejecutar"
+    },
+    "output": {
+      "status": "Estado",
+      "generated": "Generado",
+      "dataAsOf": "Datos a fecha de"
+    }
+  }
+}

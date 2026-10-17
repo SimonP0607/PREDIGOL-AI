@@ -1,0 +1,80 @@
+{
+  "subtitle": "El mejor precio de cada selección, comparado con su precio justo.",
+  "marketsLabel": "Mercado",
+  "tabs": {
+    "1X2": "1X2",
+    "OU": "Goles (Más/Menos)",
+    "BTTS": "Ambos marcan",
+    "AH": "Hándicap asiático",
+    "DC": "Doble oportunidad"
+  },
+  "window": {
+    "label": "Empiezan en",
+    "hours": "{count} h"
+  },
+  "pricesUpdated": "Precios actualizados {when}",
+  "highlights": {
+    "title": "Mejores precios frente al mercado",
+    "subtitle": "Cuotas que ahora mismo pagan más que el precio justo.",
+    "vsFair": "{edge} vs justo"
+  },
+  "value": {
+    "title": "Oportunidades de valor",
+    "subtitle": "Selecciones calificadas con valor al mejor precio de ahora.",
+    "seeAll": "Ver picks",
+    "none": "Ahora mismo no hay oportunidades de valor calificadas en este mercado."
+  },
+  "board": {
+    "summary_one": "{count} partido en las próximas {hours} h",
+    "summary_other": "{count} partidos en las próximas {hours} h",
+    "line": "Línea",
+    "fair": "justa {odds}",
+    "noPrice": "Sin precio",
+    "bookmakers_one": "Mejor precio entre {count} casa",
+    "bookmakers_other": "Mejor precio entre {count} casas",
+    "edgeHelp": "Cuánto paga la mejor cuota por encima (o por debajo) del precio justo",
+    "cell": "{selection}: {odds} en {bookmaker}. Cuota justa {fair}; {edge} frente al precio justo.",
+    "cellNoPrice": "{selection}: sin precio.",
+    "bestSr": "Mejor valor del partido.",
+    "emptyTitle": "No hay partidos con cuotas en esta ventana",
+    "emptyBody": "Cuando las casas publiquen precios para los próximos partidos, aparecerán aquí.",
+    "widen": "Ver las próximas {hours} h",
+    "outlier": "Precio atípico",
+    "outlierHelp": "Muy por encima del precio justo: probablemente una cuota desactualizada o errónea de una sola casa."
+  },
+  "movement": {
+    "toggle": "Movimiento",
+    "toggleLabel": "Movimiento: {match}",
+    "title": "Movimiento del mejor precio",
+    "help": "La mejor cuota disponible en cada actualización, antes del partido.",
+    "empty": "Todavía no hay suficientes actualizaciones para ver el movimiento.",
+    "from": "desde {odds}",
+    "time": "Hora"
+  },
+  "openMatch": "Abrir partido",
+  "openMatchLabel": "Abrir partido: {match}",
+  "parlay": {
+    "help": "Toca una cuota para agregarla a tu parlay o quitarla.",
+    "add": "Agregar a mi parlay",
+    "remove": "Quitar de mi parlay",
+    "replaces": "Reemplaza la otra selección de este partido en tu parlay: una por partido"
+  },
+  "fairExplainer": "Precio justo: la cuota que pagaría cada selección si las casas no cobraran margen (la probabilidad de consenso del mercado, sin su margen). En verde, cuánto paga la mejor cuota por encima de ese precio; «atípico», un precio de una sola casa probablemente desactualizado o erróneo.",
+  "fairExplainerToggle": "¿Qué es el precio justo?",
+  "filters": {
+    "search": "Buscar equipo o competición",
+    "searchPlaceholder": "Equipo o competición",
+    "country": "País",
+    "allCountries": "Todos los países",
+    "international": "Internacional",
+    "competition": "Competición",
+    "allCompetitions": "Todas las competiciones",
+    "aboveFair": "Solo por encima del justo",
+    "sort": "Orden",
+    "sortTime": "Por hora",
+    "sortEdge": "Mayor margen sobre el justo",
+    "clear": "Quitar filtros",
+    "emptyTitle": "Ningún partido coincide con tus filtros",
+    "emptyBody": "Prueba con otro nombre, otro país o quitando «Solo por encima del justo»."
+  }
+}
