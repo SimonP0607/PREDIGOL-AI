@@ -20,7 +20,7 @@
     "WON": "Won",
     "LOST": "Lost",
     "VOID": "Void",
-    "PARTIAL_VOID": "Won with voids"
+    "PARTIAL_VOID": "Won with partial or void legs"
   },
   "stage": {
     "T-24h": "Chosen ≈24 h before",

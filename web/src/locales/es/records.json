@@ -20,7 +20,7 @@
     "WON": "Ganada",
     "LOST": "Perdida",
     "VOID": "Anulada",
-    "PARTIAL_VOID": "Ganada con anuladas"
+    "PARTIAL_VOID": "Ganada con parciales o anuladas"
   },
   "stage": {
     "T-24h": "Elegido ≈24 h antes",
