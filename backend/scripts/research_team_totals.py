@@ -238,9 +238,9 @@ def load_quotes(conn: Any, root: Path, *, since: datetime, early: timedelta) -> 
 
 
 def production_hyper(conn: Any, family: str) -> dict[str, Any] | None:
-    """The hyper-parameters production forecasts with (``fbi.predictions.forecast.current_spec``: the latest completed
-    backtest session's choice on its validation season), else the newest stored version's."""
-    from fbi.predictions.forecast import current_spec
+    """The hyper-parameters production forecasts with (``fbi.predictions.spec.current_spec``: the promoted forecast spec,
+    which a backtest chose on its validation season), else the newest stored version's."""
+    from fbi.predictions.spec import current_spec
 
     spec = current_spec(conn)
     if spec is not None and family in spec.goal:

@@ -20,6 +20,7 @@ from fbi.market.consensus import recompute_from_snapshots
 from fbi.picks.engine import evaluate_captures, settle_open_picks
 from fbi.picks.rules import CURRENT_RULE
 from fbi.predictions.forecast import forecast_upcoming
+from fbi.predictions.spec import promote as promote_spec
 from tests.integration.helpers import scalar
 from tests.integration.signed_in import SAME_SITE, signed_in
 
@@ -91,6 +92,9 @@ def league(db: psycopg.Connection, seed: object, migrated_database: str) -> Iter
             ([comp], json.dumps({"history_days": 730}),
              json.dumps({k: {"chosen": {"xi": 0.002, "penalty": 1.0}} for k in ("poisson", "dixon_coles")})))
         ids["session"] = scalar(cur)
+        # A completed session is research until somebody promotes it (plan F0, defect 2): the forecast reads the
+        # promoted spec, so the fixture promotes the one it made.
+        promote_spec(db, int(ids["session"]), by="owner", reason="the pipeline test's own backtest session")  # type: ignore[call-overload]
         cur.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, finished_at) "
                     "VALUES ('odds_capture','odds_capture','completed',now()) RETURNING id")
         run = scalar(cur)
@@ -113,6 +117,8 @@ def league(db: psycopg.Connection, seed: object, migrated_database: str) -> Iter
         cur.execute("DELETE FROM core.teams WHERE provider_team_id BETWEEN 88101 AND 88199")
         cur.execute("DELETE FROM core.competition_seasons WHERE id = %s", (ids["season"],))
         cur.execute("DELETE FROM core.competitions WHERE id = %s", (ids["comp"],))
+        cur.execute("SELECT set_config('fbi.analytics_maintenance', 'on', true)")  # the promotion history is append-only
+        cur.execute("DELETE FROM analytics.promoted_forecast_spec")
         cur.execute("DELETE FROM analytics.backtest_sessions WHERE id = %s", (ids["session"],))
         cur.execute("DELETE FROM models.model_versions WHERE version LIKE '%%@pipetes' OR version LIKE '%%@pipenew'")
         cur.execute("DELETE FROM models.model_registry r WHERE NOT EXISTS "

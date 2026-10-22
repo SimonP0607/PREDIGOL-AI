@@ -34,6 +34,38 @@ probability changed by the LLM, a losing model hidden, negative research deleted
 
 All jobs catch their own errors: research never stops the worker or the odds capture.
 
+## The forecast spec in force (plan F0, defect 2 - 22 October 2026)
+
+The real-time forecast refits each goal model with the time decay `xi` and the shrinkage `penalty` a backtest chose on its
+validation season, over a training window, and trains the feature models on that backtest's competitions. Until 22 October
+2026 it read all of it from "the latest completed backtest session", so every `research_v2_weekly` run (and every
+`run_backtest --apply`) was, without anyone saying so, a release: production's parameters could change in any week with no
+decision, no record and no way back.
+
+Now the forecast reads only `analytics.promoted_forecast_spec` (migration 0079, code `fbi/predictions/spec.py`): an
+append-only history of promotions whose newest row is the spec in force. A row keeps the session it came from, a COPY of the
+spec (editing a session afterwards cannot move production), who promoted it (`owner`, or `system` for the row the migration
+seeded from the session production was already using), the reason, the row it replaced and the evidence read at the time.
+
+```
+python -m scripts.promote_forecast_spec show                                   # in force, history, newest sessions
+python -m scripts.promote_forecast_spec promote --session ID --reason "why"   # dry run: what would change
+python -m scripts.promote_forecast_spec promote --session ID --reason "why" --by NAME --confirm
+```
+
+* A research-V2 run, a `v2:challenger:…` proposal or a newer backtest changes nothing in production: it stores a session, a
+  person reads it and decides. The owner's decision is recorded (who, when, why, what changed).
+* Rolling back is promoting an earlier session again. Nothing is ever updated or deleted.
+* Only a completed walk-forward session that chose a goal model can be promoted. Promoting what is already in force writes
+  nothing.
+* The next forecast run (every 30 minutes) uses the new spec; the forecasts already stored keep the model version that made
+  them (a version is keyed by its hyper-parameters).
+* With no promoted spec the forecast writes nothing and says why in its report; it never falls back to "the newest session".
+* After a deploy: `show` must name the session production was already using (the migration seeds it), promoted by `system`.
+* Not covered by this change: the API pages that display "the latest backtest" (Analytics, a fixture's prediction list) still
+  show the newest completed session, and `picks.engine._evidence` still qualifies a pick by the newest completed backtest RUN
+  of the model version in use. Neither changes what is forecast.
+
 ## Memory
 
 One current finding per topic (`superseded_by IS NULL`); a new finding on the same topic
