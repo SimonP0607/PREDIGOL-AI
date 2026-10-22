@@ -121,7 +121,7 @@ def picks(conn: Conn, *, limit: int, offset: int, qualified_only: bool = False) 
 def pick_events(conn: Conn, pick_ids: list[int]) -> list[Row]:
     if not pick_ids:
         return []
-    return fetch_all(conn, "SELECT pick_id, from_status, to_status, at, reason FROM picks.pick_events "
+    return fetch_all(conn, "SELECT pick_id, from_status, to_status, at, reason, event_kind FROM picks.pick_events "
                            "WHERE pick_id = ANY(%s) ORDER BY pick_id, at, id", (pick_ids,))
 
 

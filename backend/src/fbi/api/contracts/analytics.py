@@ -187,6 +187,10 @@ class PickEvent(Contract):
     to_status: str
     at: datetime
     reason: str
+    event_kind: Literal["status", "resettlement"] = Field(
+        default="status",
+        description="status: a change of the pick's status. resettlement: the pick stayed settled but its result changed "
+                    "because the provider corrected the match (plan F0, defect 5); the reason says from what to what.")
 
 
 class PickRow(Contract):

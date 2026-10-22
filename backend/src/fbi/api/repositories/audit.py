@@ -20,6 +20,10 @@ WITH refs(hash, role) AS (
         WHERE fixture_id = %(f)s AND odds_payload_hash IS NOT NULL
     UNION ALL SELECT r.result_payload_hash, 'settlement' FROM picks.pick_results r JOIN picks.picks p ON p.id = r.pick_id
         WHERE p.fixture_id = %(f)s AND r.result_payload_hash IS NOT NULL
+    UNION ALL SELECT before_payload_hash, 'result (replaced by a correction)' FROM core.fixture_result_revisions
+        WHERE fixture_id = %(f)s AND before_payload_hash IS NOT NULL
+    UNION ALL SELECT after_payload_hash, 'result (a correction)' FROM core.fixture_result_revisions
+        WHERE fixture_id = %(f)s AND after_payload_hash IS NOT NULL
     UNION ALL SELECT payload_hash, 'facts' FROM core.fixture_facts WHERE fixture_id = %(f)s
     UNION ALL SELECT DISTINCT payload_hash, 'player_extras' FROM core.fixture_player_extras WHERE fixture_id = %(f)s
     UNION ALL SELECT payload_hash, 'provider_prediction (auxiliary)' FROM core.provider_predictions
@@ -58,6 +62,21 @@ def result(conn: Conn, fixture_id: int) -> Row | None:
     return fetch_one(conn, "SELECT goals_home, goals_away, reg_goals_home, reg_goals_away, outcome_1x2, "
                            "source_payload_hash, source_fetched_at, settled_at FROM core.fixture_results "
                            "WHERE fixture_id = %s", (fixture_id,))
+
+
+def result_revisions(conn: Conn, fixture_id: int) -> list[Row]:
+    """The corrections of this match after it had a result (core.fixture_result_revisions), oldest first."""
+    return fetch_all(conn, "SELECT id, kind, observed_at, changed, old_state, new_state, before_payload_hash, "
+                           "after_payload_hash, after_fetched_at FROM core.fixture_result_revisions "
+                           "WHERE fixture_id = %s ORDER BY observed_at, id", (fixture_id,))
+
+
+def resettlements(conn: Conn, fixture_id: int) -> list[Row]:
+    """Every record settled again because of this match (picks.resettlements), oldest first - a user's own
+    included: the service counts those and lists none."""
+    return fetch_all(conn, "SELECT id, at, record_kind, record_key, revision_id, from_status, from_profit, "
+                           "to_status, to_profit, rule_version, reason FROM picks.resettlements "
+                           "WHERE fixture_id = %s ORDER BY at, id", (fixture_id,))
 
 
 def detail_counts(conn: Conn, fixture_id: int) -> list[Row]:

@@ -7,6 +7,7 @@ parlay) go through ``fbi.userdata`` with the signed-in user's id and nothing els
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Hashable, Mapping, Sequence
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -25,6 +26,7 @@ from fbi.api.contracts.records import (
     ParlayProgress,
     ParlayRecord,
     ParlayRecordLeg,
+    ResultCorrection,
     SetSource,
     UserParlay,
     UserParlayLeg,
@@ -164,6 +166,46 @@ def ai_items(conn: Conn, rows: list[Row], *, reveal: bool) -> dict[int, ItemAi]:
     return out
 
 
+CORRECTIONS_SQL = """
+SELECT r.id, r.record_kind, r.record_key, r.at, r.from_status, r.to_status, r.from_profit, r.to_profit,
+       CASE WHEN v.id IS NULL THEN 'audit' WHEN v.kind = 'status' THEN 'status_changed'
+            ELSE 'result_corrected' END AS cause
+  FROM unnest(%(kinds)s::text[], %(keys)s::text[]) AS w(kind, key)
+  JOIN picks.resettlements r ON r.record_kind = w.kind AND r.record_key = w.key
+  LEFT JOIN core.fixture_result_revisions v ON v.id = r.revision_id
+"""
+LEG_KINDS = frozenset({"parlay_leg", "user_parlay_leg"})
+
+
+def corrections(conn: Conn, shown: Mapping[Hashable, Sequence[tuple[str, str]]]
+                ) -> dict[Hashable, list[ResultCorrection]]:
+    """What each record being shown had been before its match was corrected (fbi.picks.resettlement), oldest first,
+    in one query. ``shown`` maps whatever the caller shows (any key) to the (record kind, record key) of the trail
+    rows that belong to it - a parlay's own and its legs'. Only records the caller is already showing are asked for,
+    so a person's own corrections are never looked up by anything but their own records. Records never corrected
+    have no entry."""
+    wanted = sorted({pair for pairs in shown.values() for pair in pairs})
+    if not wanted:
+        return {}
+    by_record: dict[tuple[str, str], list[Row]] = defaultdict(list)
+    for r in fetch_all(conn, CORRECTIONS_SQL, {"kinds": [k for k, _ in wanted], "keys": [key for _, key in wanted]}):
+        by_record[(r["record_kind"], r["record_key"])].append(r)
+    out: dict[Hashable, list[ResultCorrection]] = {}
+    for ident, pairs in shown.items():
+        rows = sorted((r for pair in pairs for r in by_record.get(pair, ())), key=lambda r: (r["at"], r["id"]))
+        if rows:
+            out[ident] = [ResultCorrection(
+                at=r["at"], leg_no=int(r["record_key"].rsplit("/", 1)[1]) if r["record_kind"] in LEG_KINDS else None,
+                from_status=r["from_status"], to_status=r["to_status"], from_profit=r["from_profit"],
+                to_profit=r["to_profit"], cause=r["cause"]) for r in rows]
+    return out
+
+
+def parlay_trail(kind: str, parlay_id: int, leg_nos: Sequence[int]) -> list[tuple[str, str]]:
+    """The trail rows of a parlay and of its legs: ``kind`` is 'parlay' or 'user_parlay'."""
+    return [(kind, str(parlay_id)), *((f"{kind}_leg", f"{parlay_id}/{n}") for n in leg_nos)]
+
+
 WON, LOST, VOIDED = frozenset({"WIN", "HALF_WIN"}), frozenset({"LOSS", "HALF_LOSS"}), frozenset({"VOID", "PUSH"})
 
 
@@ -189,6 +231,7 @@ def _parlay(conn: Conn, kind: str, day: date, source: SetSource) -> ParlayRecord
     rows = fetch_all(conn, LEGS_SQL, {"parlay": p["id"]})
     ai = ai_items(conn, rows, reveal=source == "evaluation")
     latest = ai_latest(conn, rows, reveal=source == "evaluation")
+    trail = corrections(conn, {0: parlay_trail("parlay", int(p["id"]), [int(r["leg_no"]) for r in rows])})
     legs = [ParlayRecordLeg(
         leg_no=r["leg_no"], pick_id=r["pick_id"], match=match_of(r), market_key=r["market_key"],
         selection=r["selection"], line=r["line"], odds=r["odds"], bookmaker=r["bookmaker"], p_model=r["p_model"],
@@ -202,7 +245,7 @@ def _parlay(conn: Conn, kind: str, day: date, source: SetSource) -> ParlayRecord
         window_to=p["window_to"], combined_odds=p["combined_odds"], p_all_low=p["p_all_low"],
         expected_log_growth=p["expected_log_growth"], ready_at=p["ready_at"], settled_at=p["settled_at"],
         profit_units=p["profit_units"], legs=legs, progress=progress_of(str(p["status"]), statuses),
-        legs_pending=sum(1 for x in statuses if x == "PENDING"))
+        legs_pending=sum(1 for x in statuses if x == "PENDING"), corrections=trail.get(0, []))
 
 
 @shared(30)
@@ -217,12 +260,14 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
         rows = fetch_all(conn, ITEMS_SQL, {"set": s["id"]})
         ai = ai_items(conn, rows, reveal=include_shadow)
         latest = ai_latest(conn, rows, reveal=include_shadow)
+        trail = corrections(conn, {r["rank"]: [("daily_item", f"{s['id']}/{r['rank']}")] for r in rows})
         items = [DailyItem(
             rank=r["rank"], pick_id=r["pick_id"], match=match_of(r, moment), market_key=r["market_key"],
             selection=r["selection"], line=r["line"], stage=r["stage"], selected_at=r["selected_at"], odds=r["odds"],
             bookmaker=r["bookmaker"], price_at=r["price_at"], p_model=r["p_model"], p_low=r["p_low"],
             p_market=r["p_market"], ev=r["ev"], model=r["model"], status=r["status"],
-            profit_units=r["profit_units"], settled_at=r["settled_at"], ai=ai.get(i), ai_latest=latest.get(i))
+            profit_units=r["profit_units"], settled_at=r["settled_at"], ai=ai.get(i), ai_latest=latest.get(i),
+            corrections=trail.get(r["rank"], []))
             for i, r in enumerate(rows)]
         daily_set = DailySet(id=s["id"], day=s["day"], timezone=s["timezone"], source=s["source"],
                              rule_version=s["rule_version"], status=s["status"], items=items)
@@ -247,11 +292,12 @@ SELECT u.*, """ + MATCH_COLS + """
 
 def user_picks(conn: Conn, *, user_id: int, status: str | None, limit: int) -> Envelope[list[UserPick]]:
     rows = fetch_all(conn, USER_PICKS_SQL, {"user": user_id, "status": status, "limit": limit})
+    trail = corrections(conn, {r["id"]: [("user_pick", str(r["id"]))] for r in rows})
     out = [UserPick(
         id=r["id"], match=match_of(r), market_key=r["market_key"], selection=r["selection"], line=r["line"],
         origin=r["origin"], pick_id=r["pick_id"], odds=r["odds"], bookmaker=r["bookmaker"], price_at=r["price_at"],
         user_odds=r["user_odds"], saved_at=r["saved_at"], status=r["status"], profit_units=r["profit_units"],
-        settled_at=r["settled_at"], snapshot=r["snapshot"]) for r in rows]
+        settled_at=r["settled_at"], snapshot=r["snapshot"], corrections=trail.get(r["id"], [])) for r in rows]
     return listing(out, empty_reason="You have not saved a pick yet.", total=len(out), limit=limit, offset=0)
 
 
@@ -275,10 +321,13 @@ def user_parlays(conn: Conn, *, user_id: int, limit: int) -> Envelope[list[UserP
             legs[int(r["user_parlay_id"])].append(UserParlayLeg(
                 leg_no=r["leg_no"], match=match_of(r), market_key=r["market_key"], selection=r["selection"],
                 line=r["line"], odds=r["odds"], status=r["status"]))
+    trail = corrections(conn, {p["id"]: parlay_trail("user_parlay", int(p["id"]), [x.leg_no for x in legs[int(p["id"])]])
+                               for p in parlays})
     out = [UserParlay(
         id=p["id"], name=p["name"], created_at=p["created_at"], combined_odds=p["combined_odds"], status=p["status"],
         profit_units=p["profit_units"], settled_at=p["settled_at"],
-        warnings=list((p["validation"] or {}).get("warnings", [])), legs=legs[int(p["id"])]) for p in parlays]
+        warnings=list((p["validation"] or {}).get("warnings", [])), legs=legs[int(p["id"])],
+        corrections=trail.get(p["id"], [])) for p in parlays]
     return listing(out, empty_reason="You have not built a parlay yet.", total=len(out), limit=limit, offset=0)
 
 

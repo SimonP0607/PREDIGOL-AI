@@ -8,6 +8,7 @@ settlement). Whether a payload file is still on disk is checked, not assumed.
 
 from __future__ import annotations
 
+from collections import Counter
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,49 @@ def _on_disk(file_path: str | None) -> bool | None:
 
 def _step(key: Any, label: str, state: StepState, detail: str, items: list[AuditItem]) -> AuditStep:
     return AuditStep(key=key, label=label, state=state, detail=detail, items=items)
+
+
+def _regulation(state: dict[str, Any]) -> str | None:
+    home, away = state.get("reg_goals_home"), state.get("reg_goals_away")
+    return None if home is None or away is None else f"{home}-{away}"
+
+
+def _revision_item(rv: Row) -> AuditItem:
+    """A correction of the match after it had a result: what changed, from what to what, and the payloads either side."""
+    old, new = rv["old_state"] or {}, rv["new_state"] or {}
+    facts: dict[str, Scalar] = {"revision": rv["kind"], "changed": ", ".join(rv["changed"])}
+    if rv["kind"] == "status":
+        facts |= {"status_before": _v(old.get("status_short")), "status_after": _v(new.get("status_short"))}
+    else:
+        facts |= {"regulation_before": _regulation(old), "regulation_after": _regulation(new)}
+    links = [f"payload:{h}" for h in (rv["before_payload_hash"], rv["after_payload_hash"]) if h]
+    return AuditItem(kind="result_revision", ref=str(rv["id"]), at=rv["observed_at"], source="api-football",
+                     facts=facts, links=links)
+
+
+USER_RECORDS = frozenset({"user_pick", "user_parlay_leg", "user_parlay"})
+"""A person's own records: the audit says how many were settled again, never whose."""
+
+
+def _resettlement_items(fixture_id: int, rows: list[Row]) -> list[AuditItem]:
+    """Each record of the product settled again because of this match - and, for a user's own, the count only."""
+    items = [AuditItem(
+        kind="resettlement", ref=str(r["id"]), at=r["at"], source=r["rule_version"],
+        facts={"record": r["record_kind"], "key": r["record_key"], "status_before": r["from_status"],
+               "status_after": r["to_status"], "profit_before": _v(r["from_profit"]), "profit_after": _v(r["to_profit"]),
+               "reason": r["reason"]},
+        links=[f"result_revision:{r['revision_id']}"] if r["revision_id"] else [])
+        for r in rows if r["record_kind"] not in USER_RECORDS]
+    own = Counter(r["record_kind"] for r in rows if r["record_kind"] in USER_RECORDS)
+    for kind in sorted(own):
+        mine = [r for r in rows if r["record_kind"] == kind]
+        items.append(AuditItem(
+            kind="resettlement", ref=f"{fixture_id}/{kind}", at=max(r["at"] for r in mine),
+            source=mine[-1]["rule_version"],
+            facts={"record": kind, "records": len({r["record_key"] for r in mine}), "times": len(mine),
+                   "listed": False},
+            links=[]))
+    return items
 
 
 def match_audit(conn: Conn, fixture_id: int) -> Envelope[MatchAudit]:
@@ -104,16 +148,20 @@ def match_audit(conn: Conn, fixture_id: int) -> Envelope[MatchAudit]:
             kind="result", ref=str(fixture_id), at=res["source_fetched_at"], source="api-football",
             facts=_facts(res, "goals_home", "goals_away", "reg_goals_home", "reg_goals_away", "outcome_1x2"),
             links=[f"payload:{res['source_payload_hash']}"] if res["source_payload_hash"] else []))
+    blocks = 0
     for d in repo.detail_counts(conn, fixture_id):
+        blocks += 1
         norm_items.append(AuditItem(kind=d["kind"], ref=f"{fixture_id}/{d['source']}", at=d["at"], source=d["source"],
                                     facts={"rows": d["n"]}, links=[f"payload:{d['payload_hash']}"]))
+    revisions = repo.result_revisions(conn, fixture_id)
+    norm_items += [_revision_item(rv) for rv in revisions]
     if finished and res is None:
         norm_state: StepState = "missing"
         norm_detail = "the match is finished but no result row exists"
     else:
-        blocks = len(norm_items) - 1 - (1 if res else 0)
         norm_state = "recorded"
-        norm_detail = "fixture row" + (", result" if res else "") + (f", {blocks} detail block(s)" if blocks else "")
+        norm_detail = ("fixture row" + (", result" if res else "") + (f", {blocks} detail block(s)" if blocks else "")
+                       + (f", {len(revisions)} correction(s) of the result" if revisions else ""))
     steps.append(_step("normalized", "Normalised rows", norm_state, norm_detail, norm_items))
 
     # 4. features --------------------------------------------------------------------
@@ -264,6 +312,11 @@ def match_audit(conn: Conn, fixture_id: int) -> Envelope[MatchAudit]:
         s_state, s_detail = "not_applicable", f"{len(unsettled)} pick(s) wait for full time"
     else:
         s_state, s_detail = "recorded", f"{len(settle_items)} pick(s) settled from the recorded result"
+    again = repo.resettlements(conn, fixture_id)
+    if again:
+        settle_items += _resettlement_items(fixture_id, again)
+        s_detail += (f"; {len(again)} record(s) settled again after the match was corrected "
+                     "(a user's own are counted, not listed)")
     steps.append(_step("settlement", "Settlement", s_state, s_detail, settle_items))
 
     audit = MatchAudit(fixture_id=fx["id"], provider_fixture_id=fx["provider_fixture_id"], kickoff_at=fx["kickoff_at"],
