@@ -24,8 +24,9 @@ registered as ``unclassified`` with ``extract = false``: visible in the coverage
 
 Handicap-shaped bets (Asian handicap and its relatives) repeat the HOME handicap on both rows of a pair, so the away row
 is negated before it is stored (``away_line_negated``). That convention was MEASURED for bet 4 (a pair devigs to 1.090 under
-it and to an impossible 0.47 under the other). A relative of bet 4 is only extracted once the same measurement has been made
-on its own prices, so today only bet 4 is extracted with that convention and its relatives are parked.
+it and to an impossible 0.47 under the other) and, on 22 Oct 2026, on the prices of its two relatives, the first-half (19) and
+second-half (104) handicaps (see the bets below): both are extracted with it (``tax-v2``). A relative of bet 4 is only
+extracted once the same measurement has been made on its own prices, so any other one stays parked.
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ from psycopg.rows import tuple_row
 
 log = structlog.get_logger(__name__)
 
-TAXONOMY_VERSION = "tax-v1"
+TAXONOMY_VERSION = "tax-v2"
 SCOPE = "prematch"
 PROVIDER = "api-football"
 
@@ -118,6 +119,14 @@ _GOALS_HALF: tuple[BetSpec, ...] = (
     _s(11, "Highest Scoring Half", "goals_half", "FT", "match", "highest_scoring_half", "text"),
     _s(192, "Home Highest Scoring Half", "goals_half", "FT", "home", "highest_scoring_half", "text"),
     _s(193, "Away Highest Scoring Half", "goals_half", "FT", "away", "highest_scoring_half", "text"),
+    # Asian handicap by half. MEASURED on the server on 22 Oct 2026 (400 newest /odds bodies: 2,126 first-half and 779 second-half
+    # bookmaker groups): like bet 4, both rows of a pair repeat the HOME handicap - the pair adds up to 1.085 / 1.094 (median)
+    # that way and to anything between 0.28 and 1.9 the other way, and the away price RISES with the printed number in 1,833 of
+    # 2,126 and 770 of 779 groups (never falls) - so the away row is negated.
+    _s(19, "Asian Handicap First Half", "goals_half", "1H", "match", "asian_handicap", "ah", line=True, signed=True,
+       away_negated=True, status="CANDIDATE"),
+    _s(104, "Asian Handicap (2nd Half)", "goals_half", "2H", "match", "asian_handicap", "ah", line=True, signed=True,
+       away_negated=True, status="CANDIDATE"),
     _s(22, "Odd/Even - First Half", "goals_half", "1H", "match", "odd_even", "oe", status="CANDIDATE"),
     _s(63, "Odd/Even - Second Half", "goals_half", "2H", "match", "odd_even", "oe", status="CANDIDATE"),
 )
@@ -177,7 +186,7 @@ _PARKED: tuple[tuple[str, str, tuple[int, ...]], ...] = (
         10, 21, 23, 24, 25, 27, 28, 29, 30, 36, 38, 40, 41, 43, 44, 47, 49, 50, 60, 91, 110, 118, 119, 120, 121,
         183, 186, 188, 195, 196, 223, 282, 330, 331, 332, 333, 336, 349)),
     ("goals_half", "CANDIDATE", (
-        18, 19, 31, 32, 37, 39, 42, 46, 48, 51, 52, 53, 62, 72, 73, 104, 111, 112, 113, 114, 115, 116, 117, 122, 123,
+        18, 31, 32, 37, 39, 42, 46, 48, 51, 52, 53, 62, 72, 73, 111, 112, 113, 114, 115, 116, 117, 122, 123,
         181, 184, 187, 190, 191, 194, 199, 200, 201, 202, 283, 284)),
     ("corners", "NOT_MODELABLE", (
         56, 77, 84, 85, 125, 126, 127, 128, 130, 131, 132, 133, 134, 135, 239, 295, 338)),

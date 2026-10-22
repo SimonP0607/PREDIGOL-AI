@@ -106,6 +106,17 @@ def test_a_total_that_cannot_be_read_is_refused(value: object) -> None:
     assert parse_selection(spec(45), value) is None
 
 
+def test_the_handicaps_by_half_read_their_rows_like_the_full_time_one() -> None:
+    """Bets 19 (first half) and 104 (second half): 'Away -0.5' is the away team at +0.5, a negative home line is a line."""
+    for bet_id in (19, 104):
+        assert parse_selection(spec(bet_id), "Home -0.5") == ("Home", D("-0.5")), bet_id
+        assert parse_selection(spec(bet_id), "Away -0.5") == ("Away", D("0.5")), bet_id
+        assert parse_selection(spec(bet_id), "Away +0.75") == ("Away", D("-0.75")), bet_id
+        assert parse_selection(spec(bet_id), "Home +0") == ("Home", D(0)), bet_id
+        assert parse_selection(spec(bet_id), "Home -0.3") is None, bet_id
+        assert parse_selection(spec(bet_id), "Draw -0.5") is None, bet_id
+
+
 def test_the_team_and_half_totals_use_the_same_reader() -> None:
     for bet_id in (6, 26, 16, 17, 105, 106, 107, 108, 57, 58, 80, 82, 87, 211):
         assert parse_selection(spec(bet_id), "Under 1.5") == ("Under", D("1.5")), bet_id

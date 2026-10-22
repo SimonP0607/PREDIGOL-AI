@@ -37,6 +37,10 @@ KICKOFF = datetime(2026, 10, 12, 19, 0, tzinfo=UTC)
 FETCHED = KICKOFF - timedelta(hours=5)
 WINDOW: dict[str, Any] = {"since": datetime(2026, 10, 10, tzinfo=UTC), "until": datetime(2026, 10, 14, tzinfo=UTC)}
 """The shared test database keeps whatever other tests committed: these tests look only at their own days."""
+REAL_QUOTES = 683
+REAL_REFUSED = 12
+"""What the real payload of the contract fixture gives with the current taxonomy: 683 prices, 12 values at '1.00' that are not
+prices (bet 5: 6, bet 16: 1, bet 17: 1, bet 19: 2, bet 104: 2). tax-v2 added the two handicaps by half (82 prices, 4 refusals)."""
 
 
 def real_body(provider_fixture_id: int, kickoff: datetime = KICKOFF, *, update: datetime | None = None) -> dict[str, Any]:
@@ -195,17 +199,17 @@ def test_a_payload_is_structured_once_and_a_second_run_does_nothing(db: psycopg.
 
     first = run(db, tmp_path)
     assert first.payloads_seen == 1 and first.payloads_ok == 1 and first.payloads_failed == 0
-    assert first.quotes_written == 601 and first.quotes_refused == 8, "601 prices; 8 values at '1.00' are not prices"
+    assert first.quotes_written == REAL_QUOTES and first.quotes_refused == REAL_REFUSED, "values at '1.00' are not prices"
     row = ledger(db, digest)
     assert row["status"] == "ok" and row["stamped_by"] == "fetch" and row["extractor_version"] == EXTRACTOR_VERSION
     assert row["fixture_id"] == fixture_id and row["captured_at"] == FETCHED and row["kickoff_at"] == KICKOFF
-    assert row["quotes_written"] == 601 and row["quotes_refused"] == 8 and row["bookmakers"] == 5
+    assert row["quotes_written"] == REAL_QUOTES and row["quotes_refused"] == REAL_REFUSED and row["bookmakers"] == 5
     assert row["page"] == 1 and row["provider_fixture_id"] == 810010
-    assert count(db, "SELECT count(*) FROM market.odds_quotes WHERE extraction_id = %s", row["id"]) == 601
+    assert count(db, "SELECT count(*) FROM market.odds_quotes WHERE extraction_id = %s", row["id"]) == REAL_QUOTES
 
     second = run(db, tmp_path)
     assert second.payloads_seen == 0 and second.quotes_written == 0
-    assert count(db, "SELECT count(*) FROM market.odds_quotes WHERE extraction_id = %s", row["id"]) == 601
+    assert count(db, "SELECT count(*) FROM market.odds_quotes WHERE extraction_id = %s", row["id"]) == REAL_QUOTES
     assert count(db, "SELECT count(*) FROM market.odds_extractions WHERE payload_hash = %s", digest) == 1
 
 
@@ -284,7 +288,7 @@ def test_a_payload_for_a_fixture_not_known_yet_is_retried_on_the_ledgers_cadence
     assert run(db, tmp_path, now=now + timedelta(minutes=5)).payloads_seen == 0, "too soon to ask again"
     add_fixture(db, seed, 810030)
     later = run(db, tmp_path, now=now + RETRY_AFTER + timedelta(minutes=1))
-    assert later.payloads_ok == 1 and later.quotes_written == 601
+    assert later.payloads_ok == 1 and later.quotes_written == REAL_QUOTES
     assert ledger(db, digest)["status"] == "ok"
     assert count(db, "SELECT count(*) FROM market.odds_extractions WHERE payload_hash = %s", digest) == 1, "the row is updated"
 
@@ -333,8 +337,8 @@ def test_a_newer_extractor_version_replaces_what_the_older_one_wrote(db: psycopg
     assert report.payloads_ok == 1 and report.quotes_replaced > 0
     assert after["id"] == before["id"] and after["extractor_version"] == EXTRACTOR_VERSION
     assert count(db, "SELECT count(*) FROM market.odds_quotes WHERE selection = 'Wrong'") == 0, "the wrong reading is gone"
-    assert count(db, "SELECT count(*) FROM market.odds_quotes WHERE extraction_id = %s", before["id"]) == 601
-    assert after["quotes_written"] == 601
+    assert count(db, "SELECT count(*) FROM market.odds_quotes WHERE extraction_id = %s", before["id"]) == REAL_QUOTES
+    assert after["quotes_written"] == REAL_QUOTES
 
 
 def test_a_payload_is_replaced_only_by_its_own_extraction(db: psycopg.Connection, seed: Seed, tmp_path: Path) -> None:
@@ -526,8 +530,8 @@ def test_a_dry_run_reads_real_payloads_and_writes_nothing(db: psycopg.Connection
     add_fixture(db, seed, 810140)
     add_payload(db, seed, PayloadStore(tmp_path), real_body(810140), fixture=810140)
     report = sample_extraction(db, tmp_path, sample=10, **WINDOW)
-    assert report.dry_run and report.payloads_seen == 1 and report.payloads_ok == 1 and report.quotes_written == 601
-    assert report.refused_by_bet == {5: 6, 16: 1, 17: 1}
+    assert report.dry_run and report.payloads_seen == 1 and report.payloads_ok == 1 and report.quotes_written == REAL_QUOTES
+    assert report.refused_by_bet == {5: 6, 16: 1, 17: 1, 19: 2, 104: 2}
     assert count(db, "SELECT count(*) FROM market.odds_extractions") == 0
     assert count(db, "SELECT count(*) FROM market.odds_quotes") == 0
     assert count(db, "SELECT count(*) FROM market.market_definitions") == 0, "not even the registry"
@@ -577,7 +581,7 @@ def test_the_admin_view_reports_what_is_structured_and_what_waits(db: psycopg.Co
     assert view is not None
     assert view["extractor"] == EXTRACTOR_VERSION and view["backlog"] >= 1
     statuses = {(row["status"], row["version"]): row for row in view["ledger"]}
-    assert statuses[("ok", EXTRACTOR_VERSION)]["quotes"] >= 601
+    assert statuses[("ok", EXTRACTOR_VERSION)]["quotes"] >= REAL_QUOTES
     assert view["quotes"]["fixtures"] >= 1 and view["quotes"]["gigabytes"] >= 0
     families = {f["key"]: f for f in view["families"]}
     assert families["goals_half"]["extracted"] > 0 and families["goals_half"]["quotes"] > 0

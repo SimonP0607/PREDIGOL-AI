@@ -79,7 +79,7 @@ def test_a_real_payload_yields_the_structured_families() -> None:
     assert entry.bookmakers == 5
     assert entry.bets_extracted > 10 and entry.bets_seen > entry.bets_extracted
     bets = {q.provider_bet_id for q in entry.quotes}
-    assert {1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 16, 17, 20, 26, 33, 34, 35, 105, 106, 107, 108} <= bets
+    assert {1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 16, 17, 19, 20, 26, 33, 34, 35, 104, 105, 106, 107, 108} <= bets
     assert all(q.odds > 1 for q in entry.quotes)
     assert not entry.renamed, "the catalogue names are the payload's names"
     assert not entry.unknown_bets, "every bet of a real payload is classified"
@@ -90,8 +90,24 @@ def test_a_real_payload_refuses_only_prices_that_are_not_prices() -> None:
     the 1.00 'prices' of an extreme line (nobody can bet at 1.00: the live pipeline refuses them too)."""
     reg = registry()
     (entry,) = parse_body(real_body(), reg.specs, reg.known)
-    assert entry.refused == 8 and entry.refused_by_bet == {5: 6, 16: 1, 17: 1}
+    assert entry.refused == 12 and entry.refused_by_bet == {5: 6, 16: 1, 17: 1, 19: 2, 104: 2}
     assert all(sample.endswith("'1.00')") for samples in entry.refused_samples.values() for sample in samples)
+
+
+def test_the_two_rows_of_every_handicap_pair_of_a_real_payload_are_complementary() -> None:
+    """The measurement behind the negation of the away row, on real prices (bets 4, 19 and 104): with the away line negated,
+    'home at L' and 'away at -L' are the two sides of one bet, so their inverse prices add up to the bookmaker's margin. Stored
+    as printed they would pair a home line with an away line that is not its complement."""
+    reg = registry()
+    (entry,) = parse_body(real_body(), reg.specs, reg.known)
+    prices = {(q.provider_bookmaker_id, q.provider_bet_id, q.selection, q.line): q.odds for q in entry.quotes}
+    totals = [1 / odds + 1 / prices[(book, bet, "Away", -line)]
+              for (book, bet, side, line), odds in prices.items()
+              if bet in (4, 19, 104) and side == "Home" and (book, bet, "Away", -line) in prices]
+    assert len(totals) > 60 and {b for (_, b, _, _) in prices if b in (4, 19, 104)} == {4, 19, 104}
+    ordered = sorted(totals)
+    assert Decimal("1.0") < ordered[0] and ordered[-1] < Decimal("1.25"), (ordered[0], ordered[-1])
+    assert Decimal("1.03") < ordered[len(ordered) // 2] < Decimal("1.12"), ordered[len(ordered) // 2]
 
 
 def test_the_selection_words_of_the_halves_are_those_of_the_full_time_markets() -> None:
@@ -251,4 +267,4 @@ def test_judging_a_payload_fetched_after_kickoff() -> None:
 def test_the_extraction_taxonomy_registry_is_consistent() -> None:
     reg = registry()
     assert set(reg.extract) <= reg.known
-    assert len(reg.extract) == 53 and len(reg.known) == 338
+    assert len(reg.extract) == 55 and len(reg.known) == 338

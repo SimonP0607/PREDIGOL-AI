@@ -89,7 +89,7 @@ def test_a_bet_nobody_classified_is_unclassified_and_not_extracted() -> None:
 
 
 def test_a_parked_bet_takes_its_period_and_subject_from_its_name() -> None:
-    spec = spec_for(104, "Asian Handicap (2nd Half)")
+    spec = spec_for(73, "Goal Line (2nd Half)")
     assert spec.period == "2H" and not spec.extract
     assert spec_for(72, "Goal Line (1st Half)").period == "1H"
     assert spec_for(264, "Player Shots").subject == "player"
@@ -98,3 +98,15 @@ def test_a_parked_bet_takes_its_period_and_subject_from_its_name() -> None:
 def test_the_names_compare_without_caring_for_case_or_spacing() -> None:
     assert same_name("Goals  Over/Under", "goals over/under")
     assert not same_name("Goals Over/Under", "Goals Over/Under First Half")
+
+
+def test_the_handicaps_by_half_are_extracted_with_the_convention_measured_on_their_own_prices() -> None:
+    """Bets 19 and 104 repeat the HOME handicap on both rows exactly like bet 4 (measured on the server on 22 Oct 2026), so they
+    are extracted with the away row negated; the other relatives of bet 4 stay parked until someone measures them."""
+    for bet_id, name, period in ((4, "Asian Handicap", "FT"), (19, "Asian Handicap First Half", "1H"),
+                                 (104, "Asian Handicap (2nd Half)", "2H")):
+        spec = spec_for(bet_id, name)
+        assert spec.extract and spec.name == name and spec.period == period, bet_id
+        assert (spec.schema == "ah" or bet_id == 4) and spec.line_is_signed and spec.away_line_negated, bet_id
+    assert spec_for(19).family == spec_for(104).family == "goals_half"
+    assert not spec_for(56).extract and not spec_for(81).extract, "corner and card handicaps wait for their own measurement"
