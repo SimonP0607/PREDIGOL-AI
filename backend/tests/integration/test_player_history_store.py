@@ -527,15 +527,16 @@ def test_the_day_of_a_match_or_a_sighting_is_its_utc_day(world: World) -> None:
     assert [(row[3], row[7]) for row in world.spells(sighted)] == [(d(5), d(5))], "first and last sighting, as UTC days"
 
 
-def test_when_the_squad_sheet_and_the_statistics_disagree_about_the_side_the_sheet_wins(world: World) -> None:
+def test_when_the_squad_sheet_and_the_statistics_disagree_about_the_side_the_statistics_win(world: World) -> None:
     a, b = world.team("Alpha FC", False), world.team("Beta FC", False)
     p = world.player()
     fid = world.fixture(a, b, 2)
     world.lineup(fid, "home", [(p, True)])
     world.stats(fid, "away", [(p, 90, False)])
     report = ph.build(world.db, apply=True, players=[p, p])
-    assert [(row[1], row[6]) for row in world.spells(p)] == [(world.provider(a), 1)]
+    assert [(row[1], row[6]) for row in world.spells(p)] == [(world.provider(b), 1)], "(measured: they are right in 97.7 % of the disagreements)"
     assert report.players == 1, "a player asked for twice is looked at once"
+    assert (report.sheets_crossed, report.sheets_doubtful) == (0, 1), "one man apart in a sheet of one man: in doubt, not crossed"
 
 
 def test_two_moves_to_different_clubs_on_one_day_leave_a_streak_of_no_days_that_is_counted_and_not_written(world: World) -> None:
@@ -629,3 +630,236 @@ def test_a_person_at_the_console_waits_for_the_lock_and_gives_up_after_a_while(
         other.rollback()
     # (the lock of a pass is held to the end of the transaction, so this one comes after: the other connection would wait for it)
     assert not ph.build(world.db, apply=True, wait=True, players=[1]).skipped_locked, "nobody holds it any more"
+
+
+# ── which side a man was on: the statistics win, and a pair of squad sheets the provider crossed is turned round ───────────
+
+
+def crossed_match(world: World, home: int, away: int, day: int, *, home_men: list[int], away_men: list[int], home_bench: int | None = None,
+                  away_bench: int | None = None, national: bool = False) -> int:
+    """A match whose squad sheets the provider gave to the wrong team: the sheet of ``home`` lists the men of ``away`` and the other way
+    round, while the statistics are right. The benches (never on the pitch) are in the sheets only."""
+    fid = world.fixture(home, away, day, national=national)
+    world.lineup(fid, "home", [(p, True) for p in away_men] + ([(away_bench, False)] if away_bench else []))
+    world.lineup(fid, "away", [(p, True) for p in home_men] + ([(home_bench, False)] if home_bench else []))
+    world.stats(fid, "home", [(p, 90, False) for p in home_men])
+    world.stats(fid, "away", [(p, 90, False) for p in away_men])
+    return fid
+
+
+def test_a_match_whose_squad_sheets_the_provider_crossed_is_read_the_right_way_round(world: World) -> None:
+    a, b = world.team("Alpha FC", False), world.team("Beta FC", False)
+    ours, theirs = [world.player() for _ in range(6)], [world.player() for _ in range(6)]
+    our_bench, their_bench = world.player(), world.player()
+    for day in (1, 30):   # ordinary matches around it, sheets and statistics agree: a mistake would show as a stint at the other club
+        fid = world.fixture(a, b, day)
+        world.lineup(fid, "home", [(p, True) for p in ours] + [(our_bench, False)])
+        world.lineup(fid, "away", [(p, True) for p in theirs] + [(their_bench, False)])
+        world.stats(fid, "home", [(p, 90, False) for p in ours])
+        world.stats(fid, "away", [(p, 90, False) for p in theirs])
+    crossed_match(world, a, b, 15, home_men=ours, away_men=theirs, home_bench=our_bench, away_bench=their_bench)
+    everyone = [*ours, *theirs, our_bench, their_bench]
+
+    dry = ph.build(world.db, players=everyone)
+    assert (dry.sheets_crossed, dry.sheets_doubtful, dry.men_nowhere) == (2, 0, 0), "both sheets of the match, and only those"
+    report = ph.build(world.db, apply=True, players=everyone)
+    assert report.sheets_crossed == 2 and report.spells_written == len(everyone)
+    for p in ours:
+        assert [(row[1], row[3], row[4], row[6]) for row in world.spells(p)] == [(world.provider(a), d(1), None, 3)]
+    for p in theirs:
+        assert [(row[1], row[3], row[4], row[6]) for row in world.spells(p)] == [(world.provider(b), d(1), None, 3)]
+    assert [(row[1], row[6]) for row in world.spells(our_bench)] == [(world.provider(a), 3)], "a bench the statistics never name follows its sheet"
+    assert [(row[1], row[6]) for row in world.spells(their_bench)] == [(world.provider(b), 3)]
+    quiet = ph.build(world.db, apply=True, players=everyone)
+    assert not quiet.changed and quiet.sheets_crossed == 2, "a second pass writes nothing"
+    assert ph.build(world.db, apply=True, players=[ours[0]]).sheets_crossed == 2, "the matches of the players asked for are looked at whole"
+
+
+def test_a_sheet_with_too_few_men_in_the_statistics_is_not_turned_round_on_so_little(world: World) -> None:
+    a, b = world.team("Alpha FC", False), world.team("Beta FC", False)
+    ours, theirs = [world.player() for _ in range(4)], [world.player() for _ in range(4)]
+    our_bench, their_bench = world.player(), world.player()
+    crossed_match(world, a, b, 5, home_men=ours, away_men=theirs, home_bench=our_bench, away_bench=their_bench)
+    report = ph.build(world.db, apply=True, players=[*ours, *theirs, our_bench, their_bench])
+    assert (report.sheets_crossed, report.sheets_doubtful) == (0, 2), "four men are too few: both sheets are in doubt"
+    # the men the statistics name are where the statistics say; the benches, of whom nothing else is known, follow their sheets
+    assert all([(row[1], row[6]) for row in world.spells(p)] == [(world.provider(a), 1)] for p in ours)
+    assert all([(row[1], row[6]) for row in world.spells(p)] == [(world.provider(b), 1)] for p in theirs)
+    assert [(row[1], row[6]) for row in world.spells(our_bench)] == [(world.provider(b), 1)], "(the residue the rule cannot reach)"
+    assert [(row[1], row[6]) for row in world.spells(their_bench)] == [(world.provider(a), 1)]
+
+
+def test_a_sheet_that_half_agrees_with_the_statistics_is_not_turned_round(world: World) -> None:
+    a, b = world.team("Alpha FC", False), world.team("Beta FC", False)
+    men = [world.player() for _ in range(10)]
+    fid = world.fixture(a, b, 5)
+    world.lineup(fid, "home", [(p, True) for p in men])
+    world.stats(fid, "home", [(p, 90, False) for p in men[:5]])
+    world.stats(fid, "away", [(p, 90, False) for p in men[5:]])   # half of the sheet is apart: no rule says which half is wrong
+    bench = world.player()
+    world.lineup(fid, "home", [(bench, False)])
+    report = ph.build(world.db, apply=True, players=[*men, bench])
+    assert (report.sheets_crossed, report.sheets_doubtful) == (0, 1)
+    assert [(row[1]) for row in world.spells(men[0])] == [world.provider(a)] and [(row[1]) for row in world.spells(men[9])] == [world.provider(b)]
+    assert [(row[1]) for row in world.spells(bench)] == [world.provider(a)], "a sheet in doubt is left as the provider gave it"
+
+
+def test_a_match_with_no_statistics_keeps_its_squad_sheets_as_they_are(world: World) -> None:
+    a, b = world.team("Alpha FC", False), world.team("Beta FC", False)
+    ours, theirs = [world.player() for _ in range(7)], [world.player() for _ in range(7)]
+    fid = world.fixture(a, b, 3)
+    world.lineup(fid, "home", [(p, True) for p in ours])
+    world.lineup(fid, "away", [(p, True) for p in theirs])
+    report = ph.build(world.db, apply=True, players=[*ours, *theirs])
+    assert (report.sheets_crossed, report.sheets_doubtful) == (0, 0)
+    assert all(world.spells(p)[0][1] == world.provider(a) for p in ours) and all(world.spells(p)[0][1] == world.provider(b) for p in theirs)
+
+
+def test_a_man_in_both_squad_sheets_is_where_the_statistics_say_and_nowhere_if_they_do_not(world: World) -> None:
+    a, b = world.team("Alpha FC", False), world.team("Beta FC", False)
+    named, unnamed, plain = world.player(), world.player(), world.player()
+    fid = world.fixture(a, b, 3)
+    world.lineup(fid, "home", [(named, True), (unnamed, True), (plain, True)])
+    world.lineup(fid, "away", [(named, True), (unnamed, True)])
+    world.stats(fid, "away", [(named, 90, False)])
+    report = ph.build(world.db, apply=True, players=[named, unnamed, plain])
+    assert [(row[1], row[6]) for row in world.spells(named)] == [(world.provider(b), 1)]
+    assert world.spells(unnamed) == [], "nothing says which club he was playing for"
+    assert [(row[1], row[6]) for row in world.spells(plain)] == [(world.provider(a), 1)]
+    assert report.men_nowhere == 1
+    assert (report.sheets_crossed, report.sheets_doubtful) == (0, 1), "the sheet that carries the man on the wrong side is in doubt, not turned"
+
+
+def test_the_sheets_the_statistics_cross_are_read_for_a_scope_and_a_scope_is_one_thing(world: World) -> None:
+    a, b = world.team("Alpha FC", False), world.team("Beta FC", False)
+    ours, theirs, bystander = [world.player() for _ in range(6)], [world.player() for _ in range(6)], world.player()
+    fid = crossed_match(world, a, b, 4, home_men=ours, away_men=theirs)
+    fine = world.fixture(a, b, 9)
+    world.lineup(fine, "home", [(bystander, True)])
+    world.stats(fine, "home", [(bystander, 90, False)])
+    want = {(fid, "home"), (fid, "away")}
+    everywhere = ph.read_sheets(world.db)
+    assert want <= everywhere.crossed and (fine, "home") not in everywhere.crossed
+    assert ph.read_sheets(world.db, players=[ours[0]]).crossed == want, "the matches of the players asked for"
+    assert ph.read_sheets(world.db, players=[bystander]).crossed == set()
+    assert ph.read_sheets(world.db, fixtures=[fid, fine]).crossed == want
+    assert ph.read_sheets(world.db, fixtures=[fine]).crossed == set()
+    assert ph.read_sheets(world.db, players=[]).crossed == set() and ph.read_sheets(world.db, fixtures=[]).crossed == set()
+    with pytest.raises(ValueError, match="not both"):
+        ph.read_sheets(world.db, players=[1], fixtures=[2])
+
+
+def test_the_pass_of_everyone_and_the_pass_of_a_few_read_the_crossed_matches_alike(world: World) -> None:
+    a, b = world.team("Alpha FC", False), world.team("Beta FC", False)
+    ours, theirs = [world.player() for _ in range(6)], [world.player() for _ in range(6)]
+    crossed_match(world, a, b, 4, home_men=ours, away_men=theirs)
+    ph.build(world.db, apply=True, sweep=True, now=T0 + timedelta(days=10))
+    swept = {p: world.spells(p) for p in (*ours, *theirs)}
+    world.db.execute("DELETE FROM core.player_spells WHERE provider_player_id = ANY(%s)", ([*ours, *theirs],))
+    ph.build(world.db, apply=True, players=[*ours, *theirs])
+    assert {p: world.spells(p) for p in (*ours, *theirs)} == swept
+
+
+# ── the same for a national team: the cap goes to the nation he plays for ──────────────────────────────────────────────────
+
+
+def test_the_caps_of_a_match_whose_squad_sheets_were_crossed_go_to_the_right_nation(world: World) -> None:
+    spain, italy = world.team("Spain", True), world.team("Italy", True)
+    spaniards, italians = [world.player() for _ in range(6)], [world.player() for _ in range(6)]
+    spanish_bench, italian_bench = world.player(), world.player()
+    fid = crossed_match(world, spain, italy, 3, home_men=spaniards, away_men=italians, home_bench=spanish_bench, away_bench=italian_bench,
+                        national=True)
+    report = ph.build(world.db, apply=True, sweep=True, now=T0 + timedelta(days=10))
+    assert report.sheets_crossed >= 2
+    expected: dict[int, tuple[int, bool, bool | None, int | None]] = {
+        **dict.fromkeys(spaniards, (spain, True, True, 90)), **dict.fromkeys(italians, (italy, True, True, 90)),
+        spanish_bench: (spain, False, False, None), italian_bench: (italy, False, False, None)}
+    assert world.caps(fid) == expected
+    quiet = ph.build(world.db, apply=True, sweep=True, now=T0 + timedelta(days=10))
+    assert quiet.caps_written == 0 and quiet.caps_deleted == 0
+    assert [c.team_id for c in ph.caps_of(world.db, [italians[0]])[italians[0]]] == [italy]
+
+
+def test_a_cap_goes_to_the_side_the_statistics_say_even_when_a_sheet_disagrees_about_one_man(world: World) -> None:
+    spain, italy = world.team("Spain", True), world.team("Italy", True)
+    p, q = world.player(), world.player()
+    fid = world.fixture(spain, italy, 3, national=True)
+    world.lineup(fid, "home", [(p, True), (q, True)])
+    world.stats(fid, "home", [(q, 90, False)])
+    world.stats(fid, "away", [(p, 80, False)])     # a lone disagreement: the sheet is not crossed, the man is where the statistics say
+    ph.build(world.db, apply=True, sweep=True, now=T0 + timedelta(days=10))
+    assert world.caps(fid) == {p: (italy, True, True, 80), q: (spain, True, True, 90)}
+
+
+def test_a_man_in_both_squad_sheets_of_a_national_match_has_a_cap_only_if_the_statistics_place_him(world: World) -> None:
+    spain, italy = world.team("Spain", True), world.team("Italy", True)
+    named, unnamed = world.player(), world.player()
+    fid = world.fixture(spain, italy, 3, national=True)
+    for side in ("home", "away"):
+        world.lineup(fid, side, [(named, False), (unnamed, True)])
+    world.stats(fid, "away", [(named, 25, True)])
+    ph.build(world.db, apply=True, sweep=True, now=T0 + timedelta(days=10))
+    assert world.caps(fid) == {named: (italy, False, True, 25)}
+
+
+def test_a_direct_call_for_caps_reads_the_crossed_sheets_of_its_own_matches_unless_it_is_given_them(world: World) -> None:
+    spain, italy = world.team("Spain", True), world.team("Italy", True)
+    spaniards, italians = [world.player() for _ in range(5)], [world.player() for _ in range(5)]
+    spanish_bench = world.player()
+    fid = crossed_match(world, spain, italy, 3, home_men=spaniards, away_men=italians, home_bench=spanish_bench, national=True)
+    senior = {spain, italy}
+    reads_its_own = {r[0]: r[2] for r in ph.wanted_caps(world.db, [fid], senior)}
+    assert reads_its_own == {**dict.fromkeys(spaniards, spain), **dict.fromkeys(italians, italy), spanish_bench: spain}
+    told_none = {r[0]: r[2] for r in ph.wanted_caps(world.db, [fid], senior, frozenset())}
+    assert told_none == {**dict.fromkeys(spaniards, spain), **dict.fromkeys(italians, italy), spanish_bench: italy}, \
+        "told that no sheet is crossed, the statistics still place the men they name, and only the bench follows its sheet"
+    assert ph.wanted_caps(world.db, [], senior) == []
+
+
+# ── the figures of the audit about the sides ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_the_audit_counts_the_crossed_sheets_the_matches_with_no_statistics_and_the_lone_stints(world: World) -> None:
+    a, b, c = world.team("Alpha FC", False), world.team("Beta FC", False), world.team("Gamma FC", False)
+    before = ph.audit(world.db)
+    ours, theirs = [world.player() for _ in range(6)], [world.player() for _ in range(6)]
+    crossed_match(world, a, b, 4, home_men=ours, away_men=theirs)
+    lone = world.player()
+    # A, B for a single match, A again: three squad sheets (no statistics), nothing else known of him
+    world.lineup(world.fixture(a, c, 20), "home", [(lone, True)])
+    world.lineup(world.fixture(b, c, 25), "home", [(lone, True)])
+    world.lineup(world.fixture(a, c, 30), "home", [(lone, True)])
+    ph.build(world.db, apply=True, sweep=True, now=T0 + timedelta(days=40))
+    after = ph.audit(world.db)
+    assert after["sheets_crossed"] - before["sheets_crossed"] == 2
+    assert after["fixtures_with_sheets_only"] - before["fixtures_with_sheets_only"] == 3
+    assert after["lone_stints"] - before["lone_stints"] == 1
+    assert after["men_nowhere"] == before["men_nowhere"] and ph.broken_invariants(after) == []
+    assert not any(after["pass_would_write"].values())
+
+
+# ── what the provider writes where a man has no identity ─────────────────────────────────────────────────────────────────
+
+
+def test_the_providers_player_zero_makes_no_streak_and_no_cap_and_does_not_stop_the_pass(world: World) -> None:
+    """Regression (22 Oct 2026, the first scheduled pass in production): the statistics of 4,820 matches carry one line of a "player 0"
+    (the provider's placeholder for a man it cannot name). The pass folded him like anybody else and the table refused the row
+    (``player_spells_player_check``: an identifier above zero), so the whole transaction failed - and would fail at every pass."""
+    a, rival, spain, italy = world.team("Alpha FC", False), world.team("Rival FC", False), world.team("Spain", True), world.team("Italy", True)
+    p = world.player()
+    club_match = world.fixture(a, rival, 2)
+    world.lineup(club_match, "home", [(p, True), (0, False)])
+    world.stats(club_match, "home", [(p, 90, False), (0, 0, True)])
+    national_match = world.fixture(spain, italy, 3, national=True)
+    world.lineup(national_match, "home", [(p, True), (0, False)])
+    world.stats(national_match, "home", [(p, 90, False), (0, None, True)])
+    world.transfer(0, 1, world.provider(a), None)   # (a squad list cannot carry him: its table refuses an identifier of zero)
+    now = T0 + timedelta(days=4)
+    assert 0 not in ph.all_players(world.db) and 0 not in ph.recent_players(world.db, now=now)
+    report = ph.build(world.db, apply=True, sweep=True, now=now)
+    assert report.applied and world.spells(0) == []
+    assert world.caps(national_match) == {p: (spain, True, True, 90)}
+    assert [(row[1], row[6]) for row in world.spells(p)] == [(world.provider(a), 1)]
+    asked = ph.build(world.db, apply=True, players=[0, p, -3])
+    assert asked.players == 1, "a man without an identity is not asked for either"
+    assert ph.audit(world.db)["pass_would_write"] == {"spells": 0, "spells_deleted": 0, "caps": 0, "caps_deleted": 0}

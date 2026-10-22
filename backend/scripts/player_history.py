@@ -5,7 +5,7 @@
     python -m scripts.player_history build --apply                  # a pass over everyone (the first one builds the whole history)
     python -m scripts.player_history build --recent --apply         # what the worker's pass does: the players of the last days
     python -m scripts.player_history build --player 123 --apply     # only these players' streaks (repeatable; no caps, no coaches)
-    python -m scripts.player_history audit                          # the invariants and a simulated pass over everything
+    python -m scripts.player_history audit                          # the invariants, the crossed sheets and a simulated pass over all
     python -m scripts.player_history show 123                       # one player: his streaks, his caps
     python -m scripts.player_history show 123 --at 2026-03-20       # ... and where he was that day, his record before it
     python -m scripts.player_history coach 456                      # one coach: the person, his career with the links
@@ -14,7 +14,10 @@
 matches, the squad lists - and folds it (``fbi.people.spells`` / ``fbi.people.caps``) into ``core.player_spells`` (one row per streak at a
 club) and ``core.player_national_caps`` (one row per match of a senior national side whose squad sheet carries him), then ties the
 careers of the coaches to the person and the club (``fbi.people.coach_links``). A pass is idempotent; a second one writes nothing. The
-worker runs it every few hours (``FBI_PLAYER_HISTORY``) and sweeps once a day; this is the same pass by hand.
+worker runs it every few hours (``FBI_PLAYER_HISTORY``) and sweeps once a day; this is the same pass by hand. Which side of a match a
+man was on is read with ``fbi.people.sides``: the statistics win over the squad sheet, and a sheet the provider crossed (each team given
+the other's) is read the other way round; ``build`` reports the sheets it turned and ``audit`` counts them, and the matches whose sheet
+has no statistics to check it.
 
 Everything that changes something is a DRY RUN unless ``--apply`` is given. ``status`` only counts; ``audit`` also simulates a pass over
 everyone (it reads all the facts: minutes on the production database) and exits 1 when an invariant fails: streaks out of order, a cap of
@@ -76,6 +79,8 @@ def print_history(report: player_history.BuildReport) -> None:
     _line(f"players whose streaks change ({verb})", _n(report.players_changed))
     _line(f"streak rows {verb} / removed", f"{_n(report.spells_written)} / {_n(report.spells_deleted)}")
     _line("streaks of no days (left out)", _n(report.phantoms))
+    _line("squad sheets turned round (crossed)", f"{_n(report.sheets_crossed)}   (doubtful, left as they are: {_n(report.sheets_doubtful)}; "
+          f"men put nowhere: {_n(report.men_nowhere)})")
     _line("matches looked at for caps", _n(report.fixtures))
     _line("caps the facts give", f"{_n(report.caps)}   (waiting for the statistics: {_n(report.caps_open)})")
     _line(f"caps {verb} / removed", f"{_n(report.caps_written)} / {_n(report.caps_deleted)}")
@@ -127,6 +132,7 @@ def status_command(conn: psycopg.Connection[Any], args: argparse.Namespace) -> i
           f"({_pct(figures['recent_club_known_share'])})")
     for key in (*player_history.INVARIANTS, "spells_of_another_version", "caps_of_another_version"):
         _line(key + ("  (must be 0)" if key in player_history.INVARIANTS else ""), _n(figures[key]))
+    _line("lone stints (A, B for one match, A)", _n(figures["lone_stints"]))
     print(f"coaches ({coach_links.JOB})")
     _line("persons / careers (rows)", f"{_n(coaches['coaches'])} / {_n(coaches['careers'])}")
     _line("careers without a person", _n(coaches["careers_without_coach"]))
@@ -159,6 +165,11 @@ def audit_command(conn: psycopg.Connection[Any], args: argparse.Namespace) -> in
     _line("recent_club_known_share", _pct(history["recent_club_known_share"]))
     _line("a pass would write  (must be 0)", history["pass_would_write"])
     _line("streaks of no days the facts leave out", _n(history["phantoms"]))
+    _line("squad sheets turned round (crossed)", _n(history["sheets_crossed"]))
+    _line("squad sheets in doubt, left as they are", _n(history["sheets_doubtful"]))
+    _line("men put nowhere (in both sheets)", _n(history["men_nowhere"]))
+    _line("finished matches with sheets and no statistics", _n(history["fixtures_with_sheets_only"]))
+    _line("lone stints (A, B for one match, A)", _n(history["lone_stints"]))
     for key in ("coaches", "careers", "careers_without_coach", "careers_of_clubs_not_held", "profiles_without_person"):
         _line("coaches: " + key, _n(coaches[key]))
     for key in coach_links.INVARIANTS:
