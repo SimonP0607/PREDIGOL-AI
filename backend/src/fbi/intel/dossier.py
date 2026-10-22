@@ -1,4 +1,4 @@
-"""MATCH INTELLIGENCE PACKAGE - ``dossier-v1``: the part of a match's packet (``fbi.ai.packet``, block ``dossier``) that
+"""MATCH INTELLIGENCE PACKAGE - ``dossier-v2``: the part of a match's packet (``fbi.ai.packet``, block ``dossier``) that
 describes the people and the situation, beyond the score-based form the packet already carries:
 
     teams        the last ten matches each (and split home / away): goals, expected goals, shots, on target, corners,
@@ -12,7 +12,9 @@ describes the people and the situation, beyond the score-based form the packet a
     referee      matches refereed in the 400 days before, cards (yellow + red) and fouls per match, penalties per match,
                  how the cards split between home and away sides
     context      a derby (same city), a cup or knockout round, a final, a friendly, the second leg of a tie and its first
-                 result - and, from the packet's own stakes block, what each side plays for
+                 result - and, from the packet's own stakes block, what each side plays for. The round is read by the one
+                 classifier of round labels (``fbi.competitions.stages``) and the second leg from the legs of its tie
+                 already recorded at the packet's moment (``fbi.competitions.context``)
     h2h          how much the head-to-head is worth: its age and size
 
 Everything is read AS OF the packet's moment: matches settled by then, statistics, events and line-ups fetched by
@@ -33,8 +35,13 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.ai.absences import absences_as_of
+from fbi.competitions import context as phase_context
 
-VERSION = "dossier-v1"
+VERSION = "dossier-v2"
+"""v2 (plan F2): ``context.knockout`` / ``context.final`` come from the one classifier of round labels (a qualifying round is
+a knockout round here too, as it already was in the packet's ``fixture.stage``) and ``context.second_leg`` from the tie the match
+belongs to, not from a search for the last meeting of the two sides in the 60 days before (which read any earlier match of
+the pair in the season - a group-stage meeting, a first leg played earlier than that - as a first leg)."""
 N = 10
 LOAD_WINDOW = timedelta(days=14)
 REFEREE_WINDOW = timedelta(days=400)
@@ -125,17 +132,6 @@ SELECT (SELECT count(*) FROM m) AS matches,
        (SELECT COALESCE(sum(penalties), 0) FROM p) AS penalties
   FROM s
 """
-
-TIE_SQL = """
-SELECT f.id, f.kickoff_at, f.home_team_id, COALESCE(r.reg_goals_home, r.goals_home) AS gh,
-       COALESCE(r.reg_goals_away, r.goals_away) AS ga, f.round
-  FROM core.fixtures f JOIN core.fixture_results r ON r.fixture_id = f.id
- WHERE f.competition_season_id = %(season)s AND f.kickoff_at < %(kickoff)s
-   AND f.kickoff_at >= %(kickoff)s - interval '60 days' AND r.settled_at <= %(at)s
-   AND ((f.home_team_id = %(home)s AND f.away_team_id = %(away)s) OR (f.home_team_id = %(away)s AND f.away_team_id = %(home)s))
- ORDER BY f.kickoff_at DESC LIMIT 1
-"""
-
 
 def _avg(xs: Sequence[float | int | None], places: int = 2) -> float | None:
     v = [float(x) for x in xs if x is not None]
@@ -336,31 +332,27 @@ def referee_profile(conn: psycopg.Connection[Any], referee: str | None, *, kicko
 
 
 def context_profile(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: datetime) -> dict[str, Any]:
-    """Derby, cup, knockout, final, friendly, second leg - from the fixture's own attributes and the stored results."""
+    """Derby, cup, knockout, final, friendly, second leg. The round by the one classifier of round labels, the second leg by the
+    legs of its tie already recorded at ``at`` - never by anything that came out of the tie."""
     name = str(fx.get("competition") or "")
     kind = str(fx.get("competition_kind") or fx.get("competition_type") or "")
     rnd = str(fx.get("round") or "")
-    low = rnd.lower()
+    reading = phase_context.reading_of(rnd)
     friendly = "friendl" in name.lower() or "friendl" in kind.lower()
     cup = "cup" in kind.lower() or "copa" in name.lower() or "cup" in name.lower() or "pokal" in name.lower()
-    knockout = any(w in low for w in ("final", "semi", "quarter", "round of", "1/8", "1/16", "8th", "16th", "play-off",
-                                      "playoff", "knockout", "eliminat"))
-    final = "final" in low and not any(w in low for w in ("semi", "quarter", "1/"))
+    knockout = reading is not None and reading.kind in ("knockout", "qualifying")
+    final = reading is not None and reading.role == "final"
     derby = bool(fx.get("home_base_city")) and fx.get("home_base_city") == fx.get("away_base_city")
     out: dict[str, Any] = {"derby": derby, "friendly": friendly, "cup": cup, "knockout": knockout, "final": final,
                            "round": rnd or None}
-    if knockout and fx.get("season_id"):
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(TIE_SQL, {"season": fx["season_id"], "kickoff": fx["kickoff_at"], "at": at,
-                                  "home": fx["home_team_id"], "away": fx["away_team_id"]})
-            first = cur.fetchone()
-        if first is not None:
-            home_first = int(first["home_team_id"]) == int(fx["home_team_id"])
-            # the aggregate from this match's home side's point of view
-            h, a = (int(first["gh"]), int(first["ga"])) if home_first else (int(first["ga"]), int(first["gh"]))
-            out["second_leg"] = {"first_leg_at": first["kickoff_at"].isoformat(), "first_leg_score_home_side": h,
-                                 "first_leg_score_away_side": a, "aggregate_need": (
-                                     "el local remonta" if h < a else "el visitante remonta" if a < h else "empate global")}
+    phase = phase_context.phase_as_of(conn, int(fx["id"]), at=at) if fx.get("id") is not None else None
+    tie = None if phase is None else phase.tie
+    if tie is not None and tie.format == "two_legged" and tie.leg >= 2 and tie.aggregate is not None and tie.previous:
+        first = tie.previous[0]
+        h, a = first.goals_home_side, first.goals_away_side  # the first leg from this match's home side's point of view
+        out["second_leg"] = {"first_leg_at": first.kickoff_at.isoformat(), "first_leg_score_home_side": h,
+                             "first_leg_score_away_side": a, "aggregate_need": (
+                                 "el local remonta" if h < a else "el visitante remonta" if a < h else "empate global")}
     return out
 
 

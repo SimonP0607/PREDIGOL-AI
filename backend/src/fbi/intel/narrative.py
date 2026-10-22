@@ -1,4 +1,4 @@
-"""The match narrative of PrediGol Intelligence - ``narrative-v1``: how each team arrives, what is at stake, the
+"""The match narrative of PrediGol Intelligence - ``narrative-v2``: how each team arrives, what is at stake, the
 tactical keys, the important players, the risks, the interesting markets and the conclusion, in Spanish.
 
 Written by the economical model in the brief (``fbi.ai.brief``, brief-v4: every number in it must be in the packet,
@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
-VERSION = "narrative-v1"
+VERSION = "narrative-v2"
+"""v2 (plan F2): a second leg says what the first 90 minutes do to the aggregate (``tie_scenarios``)."""
 SECTIONS = ("como_llega_local", "como_llega_visitante", "que_esta_en_juego", "claves_tacticas",
             "jugadores_importantes", "riesgos", "mercados_interesantes", "conclusion")
 TITLES = {"como_llega_local": "Cómo llega el local", "como_llega_visitante": "Cómo llega el visitante",
@@ -79,6 +80,33 @@ def arrives(content: dict[str, Any], side: str) -> str:
     return " ".join(parts)
 
 
+def _goals(n: int) -> str:
+    return "1 gol" if n == 1 else f"{n} goles"
+
+
+def tie_scenarios(content: dict[str, Any]) -> str | None:
+    """What the first 90 minutes of a second leg do to the aggregate, in words, from the packet's ``phase.tie.outlook`` (plain
+    arithmetic on the legs already played). What a level aggregate leads to is the competition's own rule: it is said, not
+    assumed. None when the packet has no such outlook (a packet before packet-v4, a first leg, an aggregate not known)."""
+    outlook = (((content.get("phase") or {}).get("tie")) or {}).get("outlook") or {}
+    if outlook.get("kind") != "second_leg" or "level_if_home_margin_is" not in outlook:
+        return None
+    ahead = int(outlook["home_side_ahead_if_home_margin_at_least"])
+    level = int(outlook["level_if_home_margin_is"])
+    if ahead >= 2:
+        ahead_text = f"gana por {ahead} goles o más"
+    elif ahead == 1:
+        ahead_text = "gana"
+    elif ahead == 0:
+        ahead_text = "empata o gana"
+    else:
+        ahead_text = f"no pierde por más de {_goals(-ahead)}"
+    level_text = f"gana por {_goals(level)}" if level > 0 else "empata" if level == 0 else f"pierde por {_goals(-level)}"
+    return (f"En el global, tras los 90 minutos {_team(content, 'home')} va por delante si {ahead_text}; queda igualado si "
+            f"{level_text}; en otro caso va por delante {_team(content, 'away')}. Si queda igualado, deciden las reglas de "
+            f"la competición.")
+
+
 def stakes(content: dict[str, Any]) -> str:
     st = content.get("stakes") or {}
     ctx = (content.get("dossier") or {}).get("context") or {}
@@ -106,6 +134,9 @@ def stakes(content: dict[str, Any]) -> str:
         sl = ctx["second_leg"]
         parts.append(f"Partido de vuelta: la ida terminó {sl.get('first_leg_score_home_side')}-"
                      f"{sl.get('first_leg_score_away_side')} ({sl.get('aggregate_need')}).")
+    scenario = tie_scenarios(content)
+    if scenario:
+        parts.append(scenario)
     if ctx.get("derby"):
         parts.append("Es un derbi (misma ciudad): la historia emocional no cambia las probabilidades.")
     if ctx.get("friendly"):

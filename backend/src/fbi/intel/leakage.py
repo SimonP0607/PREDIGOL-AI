@@ -1,4 +1,4 @@
-"""Data-leakage audit - ``leak-audit-v1``: did any decision use something that was not known at its ``known_at``?
+"""Data-leakage audit - ``leak-audit-v2``: did any decision use something that was not known at its ``known_at``?
 
 Run every night over the decisions taken on a Bogotá day, and in the tests. One row per rule
 (``intel.audit_checks``): how many decisions were checked and how many violate it, with examples. The rules:
@@ -10,6 +10,11 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
     review_known             the AI review the decision read was made by known_at
     evidence_known           every evidence item it cites was retrieved (and, when dated, published) by known_at
     consensus_known          the de-vigged consensus at the price's timestamp exists and was captured by known_at
+    tie_legs_known           (v2, plan F2) the AI packets built on the day: every earlier leg of its tie that the packet
+                             cites kicked off before the match (so it is not the match itself, nor a later leg) and had
+                             its result recorded by the packet's moment. Counted per cited leg; the examples are packet
+                             ids, not decision ids. The one rule that reads packets: what a tie went on to decide is never
+                             a pre-match input (``fbi.competitions.context`` is the one door; this is the nightly proof).
 """
 
 from __future__ import annotations
@@ -23,9 +28,12 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
 
-VERSION = "leak-audit-v1"
+VERSION = "leak-audit-v2"
 
 BASE = "SELECT d.* FROM intel.decisions d WHERE d.known_at >= %(start)s AND d.known_at < %(end)s"
+
+PACKETS = ("SELECT m.id, m.fixture_id, m.as_of, m.content FROM ai.match_packets m "
+           "WHERE m.built_at >= %(start)s AND m.built_at < %(end)s")
 
 RULES: dict[str, str] = {
     "known_before_kickoff": f"""
@@ -71,6 +79,21 @@ RULES: dict[str, str] = {
                       AND m.market_key = d.market_key AND m.selection = d.selection AND m.line = d.line
                       AND m.as_of = d.price_at AND m.devig_method = 'shin' AND m.as_of <= d.known_at)))[1:5]
                  AS examples FROM d""",
+    "tie_legs_known": f"""
+        WITH p AS ({PACKETS}), l AS (
+            SELECT p.id AS packet_id, p.as_of, p.fixture_id, (x ->> 'fixture_id')::bigint AS leg_id
+              FROM p CROSS JOIN LATERAL jsonb_array_elements(
+                     CASE WHEN jsonb_typeof(p.content #> '{{phase,tie,previous}}') = 'array'
+                          THEN p.content #> '{{phase,tie,previous}}' ELSE '[]'::jsonb END) AS x),
+        c AS (
+            SELECT l.packet_id,
+                   (r.settled_at IS NULL OR r.settled_at > l.as_of OR g.id IS NULL
+                    OR g.kickoff_at >= f.kickoff_at) AS bad
+              FROM l JOIN core.fixtures f ON f.id = l.fixture_id
+                     LEFT JOIN core.fixtures g ON g.id = l.leg_id
+                     LEFT JOIN core.fixture_results r ON r.fixture_id = l.leg_id)
+        SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
+               (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
 }
 
 

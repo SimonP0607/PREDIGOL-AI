@@ -19,16 +19,10 @@ Everything here is DATA or a deterministic INFERENCE from data, labelled as such
 from __future__ import annotations
 
 import math
-import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
-
-KNOCKOUT = re.compile(r"\b(final|semi|quarter|round of|1/8|1/16|play-?off|knockout|elimination|preliminary"
-                      r"|qualifying)\b", re.IGNORECASE)
-FINAL = re.compile(r"^\s*final\s*$", re.IGNORECASE)
-
 
 # ── rest and congestion ──────────────────────────────────────────────────────
 
@@ -181,18 +175,6 @@ def stakes(table: Sequence[TableRow], team_id: int, remaining: int | None) -> St
         pressure = min(options)[2] if options else "mid_table"
     return Stakes(team_id, me.rank, zone, gap_up, gap_down, remaining, max_gain, settled, pressure, zone_above,
                   zone_below)
-
-
-def round_stage(round_name: str | None) -> str:
-    if not round_name:
-        return "unknown"
-    if FINAL.match(round_name.split(" - ")[-1]):
-        return "final"
-    if KNOCKOUT.search(round_name):
-        return "knockout"
-    if "group" in round_name.lower():
-        return "group"
-    return "league"
 
 
 # ── form ─────────────────────────────────────────────────────────────────────

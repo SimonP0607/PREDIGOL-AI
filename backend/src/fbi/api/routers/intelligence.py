@@ -47,7 +47,7 @@ def get_decision(conn: Db, decision_id: Annotated[int, Path(ge=1, le=2**62)]) ->
 
 @router.get("/intelligence/matches/{fixture_id}/dossier", response_model=Envelope[dict[str, Any]])
 def get_dossier(conn: Db, fixture_id: Annotated[int, Path(ge=1, le=2**62)]) -> Envelope[dict[str, Any]]:
-    """The match's MATCH INTELLIGENCE PACKAGE (dossier-v1), its narrative and its decisions."""
+    """The match's MATCH INTELLIGENCE PACKAGE (dossier-v2), its narrative and its decisions."""
     return svc.dossier(conn, fixture_id)
 
 

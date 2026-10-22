@@ -31,9 +31,15 @@ from fbi.ai import context as ctx
 from fbi.ai.absences import absences_as_of, checked_at_as_of
 from fbi.ai.pricing import approx_tokens
 from fbi.catalog.neutral_store import rule_in_force
+from fbi.competitions import context as phase_context
 
-PACKET_VERSION = "packet-v3"
-"""v2 (13 Oct 2026): the ``dossier`` block (``fbi.intel.dossier``): teams in depth, coaches, key players, the
+PACKET_VERSION = "packet-v4"
+"""v4 (plan F2): the ``phase`` block (``fbi.competitions.context``): the stage of the round and, for a leg of a tie, the tie
+as it could be seen BEFORE the match - the earlier legs that had a result at the packet's moment, the aggregate of those and what
+the first 90 minutes of this match do to it (never the winner, the aggregate or the way a tie was decided: those include this
+very match). ``fixture.stage`` is read by the one classifier of round labels, not a regular expression of its own, and the
+dossier is ``dossier-v2``.
+v2 (13 Oct 2026): the ``dossier`` block (``fbi.intel.dossier``): teams in depth, coaches, key players, the
 referee, the competitive context, how much the head-to-head is worth.
 v3 (plan F0): the ``schedule`` block says what its numbers are (``schedule.calendar``): rest and congestion are read from
 the competitions we follow, so the rest is an upper bound and the matches in 14 days a lower bound; the rest-difference
@@ -360,7 +366,7 @@ class PacketBuilder:
             "id": fixture_id, "provider_fixture_id": f["provider_fixture_id"], "kickoff_at": _ts(kickoff),
             "competition": f["competition"], "competition_country": f["competition_country"],
             "competition_type": f["competition_type"], "competition_tier": f["competition_tier"],
-            "season": f["season"], "round": f["round"], "stage": ctx.round_stage(f["round"]),
+            "season": f["season"], "round": f["round"], "stage": phase_context.coarse_stage(f["round"]),
             "venue": f["venue_name"], "venue_city": f["venue_city"], "venue_country": f["venue_country"],
             "neutral": bool(f["is_neutral"]), "status": f["status_short"],
             "referee": facts["referee"] if facts else None,
@@ -373,6 +379,7 @@ class PacketBuilder:
             sources.append({"block": "fixture.kickoff_changes", "table": "core.fixture_kickoff_changes",
                             "as_of": _ts(changes[-1]["observed_at"])})
 
+        content["phase"] = self._phase(fixture_id, at, sources, missing)
         content["standings"], content["stakes"] = self._standings(f, at, sources, missing)
         content["form"] = {}
         content["schedule"] = {}
@@ -442,6 +449,24 @@ class PacketBuilder:
         content["quality"] = quality
         content["evidence"] = self._evidence(fixture_id, home, away, at, sources)
         return Packet(fixture_id, at, content, sources, sorted(set(missing)), quality)
+
+    def _phase(self, fixture_id: int, at: datetime, sources: list[dict[str, Any]], missing: list[str]
+               ) -> dict[str, Any] | None:
+        """The stage of the round and, for a leg of a tie, the tie as seen before the match (``fbi.competitions.context``:
+        the legs that had a result at ``at``, nothing that came out of the tie). In a savepoint: a phase that cannot be read
+        never costs the rest of the packet."""
+        try:
+            with self.conn.transaction():
+                phase = phase_context.phase_as_of(self.conn, fixture_id, at=at)
+        except psycopg.Error:
+            missing.append("phase")
+            return None
+        if phase is None:  # the competition season was never built: said, not guessed
+            missing.append("phase")
+            return None
+        sources.append({"block": "phase", "tables": list(phase_context.TABLES), "as_of": _ts(at),
+                        "version": phase_context.VERSION})
+        return phase.as_json()
 
     def _standings(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]
                    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
