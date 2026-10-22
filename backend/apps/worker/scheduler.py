@@ -222,6 +222,15 @@ derived from the facts already stored (``fbi.people``). Database only - no reque
 places the spellings nobody has placed (most hours there are none: no ledger row); a sweep at REFEREE_SWEEP_HOUR:REFEREE_SWEEP_MINUTE
 UTC audits the result and logs what is off. FBI_REFEREE_IDENTITY=0 switches both off without a deploy: the matches then simply
 stop getting a referee id and the readers keep the text they read before."""
+PLAYER_HISTORY_MINUTES = int(os.environ.get("FBI_PLAYER_HISTORY_MINUTES", "240"))
+PLAYER_HISTORY_SWEEP_HOUR, PLAYER_HISTORY_SWEEP_MINUTE = 10, 0
+PLAYER_HISTORY_ENABLED = os.environ.get("FBI_PLAYER_HISTORY", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""The clubs and national-team caps of the players, and the careers of the coaches tied to the person and the club (plan F3),
+derived from the facts already stored (``fbi.people``). Database only - no request to the provider. A pass every
+PLAYER_HISTORY_MINUTES reads the players of the matches, transfers and squad lists of the last days and writes the difference (most
+passes write nothing: no ledger row); a sweep at PLAYER_HISTORY_SWEEP_HOUR:PLAYER_HISTORY_SWEEP_MINUTE UTC (after the referees')
+reads everyone, which catches what arrived late, and audits the tables. FBI_PLAYER_HISTORY=0 switches both off without a deploy:
+the tables then simply stop being refreshed and the readers keep what they read before."""
 NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
 AI_REPORT_HOUR = int(os.environ.get("FBI_AI_REPORT_HOUR", "6"))
 """The daily research report is written from this hour (Bogotá), once a day: a check every
@@ -829,6 +838,27 @@ async def _referee_identity_sweep() -> None:
     await asyncio.to_thread(functools.partial(_referee_identity_now, sweep=True))
 
 
+def _player_history_now(*, sweep: bool = False) -> None:
+    from fbi.ingestion.player_history import run_job
+
+    with _connect() as conn:
+        run_job(conn, sweep=sweep)
+
+
+async def _player_history() -> None:
+    """The clubs and caps of the players of the last days and the careers of the coaches (plan F3): reads the facts already
+    stored and writes ``core.player_spells``, ``core.player_national_caps`` and the links of ``core.coach_careers``. A quiet pass
+    leaves no row in the ledger. In a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_player_history_now)
+
+
+async def _player_history_sweep() -> None:
+    """The same over everyone (once a day), and then an audit of the result that logs what is off."""
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_player_history_now, sweep=True))
+
+
 def _notify_now() -> None:
     """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
     from fbi.notify.service import channel_from_env, run_notifier
@@ -1141,7 +1171,7 @@ WORKER_JOB_TYPES = frozenset({
     "pick_pipeline", "quality_sweep", "context_refresh", "context_due", "results_repair", "final_prematch",
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
-    "competition_structure", "referee_identity",
+    "competition_structure", "referee_identity", "player_history",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1393,6 +1423,16 @@ async def main() -> None:
     else:
         log.warning("worker.referee_identity_off",
                     hint="FBI_REFEREE_IDENTITY=0: the referees of the matches are not being identified")
+    if PLAYER_HISTORY_ENABLED:
+        scheduler.add_job(_deadline("player_history", "player_history", _player_history), "interval",
+                          minutes=PLAYER_HISTORY_MINUTES, id="player_history", max_instances=1, coalesce=True,
+                          misfire_grace_time=PLAYER_HISTORY_MINUTES * 60, next_run_time=moment + timedelta(minutes=23))
+        scheduler.add_job(_deadline("player_history_sweep", "player_history", _player_history_sweep),
+                          "cron", hour=PLAYER_HISTORY_SWEEP_HOUR, minute=PLAYER_HISTORY_SWEEP_MINUTE, timezone="UTC",
+                          id="player_history_sweep", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    else:
+        log.warning("worker.player_history_off",
+                    hint="FBI_PLAYER_HISTORY=0: the clubs and caps of the players are not being rebuilt")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))

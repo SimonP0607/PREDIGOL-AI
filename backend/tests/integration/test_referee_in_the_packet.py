@@ -296,7 +296,10 @@ def test_the_id_reading_goes_through_the_aliases_of_the_referee_and_not_the_whol
     plan = "\n".join(str(r[0]) for r in db.execute(
         "EXPLAIN " + dossier.REFEREE_BY_ID_SQL,
         {"referee_id": first[0], "at": AT, "kickoff": AT, "since": AT - timedelta(days=400)}).fetchall())
-    assert "on referee_aliases a" in plan and "fixture_officials_alias on fixture_officials o" in plan, plan
+    assert "on referee_aliases a" in plan, plan
+    # (by a plain index scan or by a bitmap one over the same index: which of the two the planner prefers depends on how much dead space
+    # the tests that ran before left in the table, and both follow the alias index of the officials)
+    assert "fixture_officials_alias on fixture_officials o" in plan or "Bitmap Index Scan on fixture_officials_alias" in plan, plan
     assert "Seq Scan on fixture_officials" not in plan and "Seq Scan on fixture_results" not in plan, plan
     assert "Seq Scan on fixtures" not in plan, plan
 

@@ -60,6 +60,7 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "odds_quotes_extract": timedelta(minutes=20),
     "competition_structure": timedelta(minutes=20),
     "referee_identity": timedelta(minutes=30),
+    "player_history": timedelta(hours=3),
     "historical_validation": timedelta(hours=2),
     "historical_backfill": timedelta(hours=3),
     "research_monitor": timedelta(hours=3),
