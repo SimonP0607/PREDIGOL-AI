@@ -2,6 +2,8 @@
 /**
  * Mobile UX audit (October 2026), the Match Center's summary at 320 px: a team's name beside its five form chips
  * and in the two-row standings table was cut ("Zorya Luh…"). Both now wrap.
+ *
+ * Plan F2: the full table that opens under the two rows names its columns, as the two-row table does.
  */
 import { describe, expect, test } from "bun:test";
 import type { ReactNode } from "react";
@@ -13,9 +15,9 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { setLocale } from "@/lib/i18n";
-import type { StandingLine } from "@/lib/api/v1/types_center";
+import type { StandingLine, TableRow } from "@/lib/api/v1/types_center";
 import type { MatchCtx } from "./context";
-import { FormBlock, StandingsBlock } from "./ContextBlocks";
+import { FormBlock, FullTable, StandingsBlock } from "./ContextBlocks";
 
 setLocale("es");
 
@@ -94,5 +96,61 @@ describe("the Match Center's context blocks keep team names whole", () => {
     const tags = nameTags(out);
     expect(tags.length).toBe(2);
     for (const tag of tags) expect(tag).not.toContain("truncate");
+  });
+});
+
+function tableRow(rank: number, teamId: number, team: string): TableRow {
+  return {
+    rank,
+    team_id: teamId,
+    team,
+    played: 9,
+    wins: 5,
+    draws: 2,
+    losses: 2,
+    goals_for: 14,
+    goals_against: 9,
+    points: 20 - rank,
+    form: null,
+    group: "Clausura",
+  };
+}
+
+describe("the full table names its columns", () => {
+  const rows = [
+    tableRow(1, 10, "Atlas"),
+    tableRow(2, 1, "Livyi Bereh"),
+    tableRow(3, 11, "Boca"),
+    tableRow(4, 2, "Zorya Luhansk"),
+  ];
+
+  test("one header row, a column header for each figure, and the table named", async () => {
+    const out = await html(<FullTable rows={rows} mine={new Set([1, 2])} label="Clausura" />);
+
+    expect(out).toContain("<thead>");
+    expect(out.match(/<th scope="col"/g)?.length).toBe(5);
+    for (const name of ["#", "Equipo", "PJ", "DG", "Pts"]) expect(out).toContain(`>${name}<`);
+    expect(out).toContain('title="Partidos jugados"');
+    expect(out).toContain('<caption class="sr-only">Clausura</caption>');
+  });
+
+  test("the header comes before the teams, and the two teams of the match are highlighted", async () => {
+    const out = await html(<FullTable rows={rows} mine={new Set([1, 2])} label="Clausura" />);
+
+    const head = out.indexOf("<thead>");
+    expect(head).toBeGreaterThanOrEqual(0);
+    expect(head).toBeLessThan(out.indexOf("Atlas"));
+    expect(out.match(/bg-primary\/8/g)?.length).toBe(2);
+  });
+
+  test("in English the same columns", async () => {
+    setLocale("en");
+    try {
+      const out = await html(<FullTable rows={rows} mine={new Set()} label="Clausura" />);
+
+      for (const name of ["#", "Team", "P", "GD", "Pts"]) expect(out).toContain(`>${name}<`);
+    } finally {
+      setLocale("es");
+    }
   });
 });

@@ -60,6 +60,24 @@
       "result_missing": "Estamos verificando el resultado."
     }
   },
+  "tie": {
+    "firstLeg": "Ida",
+    "secondLeg": "Vuelta",
+    "replay": "Repetición",
+    "series": "Partido {n} de la serie",
+    "first": "Ida {score}",
+    "global": "Global {score}",
+    "advances": "Pasa {team}",
+    "by": {
+      "extraTime": "tras tiempo extra",
+      "penalties": "en penales",
+      "aggregate": "por el global",
+      "awayGoals": "por gol de visitante",
+      "tiebreak": "por desempate",
+      "walkover": "por decisión administrativa",
+      "series": "por la serie"
+    }
+  },
   "note": {
     "noData": "Sin datos todavía",
     "notAvailable": "No disponible para este partido"

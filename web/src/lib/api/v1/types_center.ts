@@ -241,6 +241,92 @@ export interface LiveMove {
   kind: "moved" | "withdrawn" | "offered" | "suspended" | "available" | "other";
 }
 
+/** The stage of the competition a match belongs to: the words of its round label, read by one classifier. */
+export interface MatchStage {
+  /** The round without its match day: "Round of 16", "Regular Season", "Group Stage". */
+  name: string;
+  kind: "league" | "knockout" | "qualifying" | "friendly" | "unresolved";
+  role:
+    | "league"
+    | "group"
+    | "knockout"
+    | "playoff"
+    | "final"
+    | "third_place"
+    | "placement"
+    | "qualifying"
+    | "friendly"
+    | "unresolved";
+  /** "round_of_16", "quarter_final", "final"...; null when the round has no standard name. */
+  round_key: string | null;
+  is_replay: boolean;
+  /** Its place among the competition season's stages, in order of play. */
+  ordinal: number;
+}
+
+/** A score from THIS match's home and away: the left side of the header is the left side of the score. */
+export interface TieScore {
+  home: number;
+  away: number;
+}
+
+/** One match of the tie, as it was played (home and away of THAT match). */
+export interface TieLeg {
+  fixture_id: number;
+  leg: number | null;
+  kickoff_at: Iso;
+  home: string;
+  away: string;
+  status: string;
+  status_group: string;
+  /** Final goals, extra time included; null when no result is stored. */
+  goals_home: number | null;
+  goals_away: number | null;
+  extra_time: boolean;
+  shootout_home: number | null;
+  shootout_away: number | null;
+  /** This is the match the page is about. */
+  is_this: boolean;
+}
+
+export type TieDecidedBy =
+  | "normal_time"
+  | "extra_time"
+  | "penalties"
+  | "aggregate"
+  | "away_goals"
+  | "tiebreak"
+  | "walkover"
+  | "series";
+
+/** Who went through: said only once THIS match is over and the tie is decided. */
+export interface TieOutcome {
+  /** "home" or "away" of THIS match. */
+  winner: Side;
+  decided_by: TieDecidedBy;
+  shootout: TieScore | null;
+  /** The provider's winner flag disagrees with the goals (an administrative decision). */
+  contradicted: boolean;
+}
+
+/** The tie this match is a leg of, told as of now. Scores are from THIS match's home and away. */
+export interface MatchTie {
+  format: "single" | "two_legged" | "replay" | "series";
+  state: "scheduled" | "in_progress" | "decided" | "unresolved";
+  /** This match's place in the tie (1 = first), when known. */
+  leg: number | null;
+  /** Matches the format plans (2 for a two-legged tie). */
+  legs: number;
+  /** Matches of the tie with a final result. */
+  played: number;
+  /** The legs played before this one, summed; null when there are none or no aggregate applies. */
+  aggregate_before: TieScore | null;
+  /** Every leg with a final result, this one included once it is over; null when none applies. */
+  aggregate: TieScore | null;
+  outcome: TieOutcome | null;
+  legs_list: TieLeg[];
+}
+
 export interface MatchCenter {
   fixture_id: number;
   status_group: string;
@@ -258,6 +344,10 @@ export interface MatchCenter {
   live_odds: Section<LiveQuote[]>;
   live_movement: Section<LiveMove[]>;
   facts?: MatchFacts | null;
+  /** The stage of the competition; absent when the competition season has not been built. */
+  stage?: MatchStage | null;
+  /** The tie this match is a leg of; absent for a league match. */
+  tie?: MatchTie | null;
 }
 
 export interface LiveTeam {

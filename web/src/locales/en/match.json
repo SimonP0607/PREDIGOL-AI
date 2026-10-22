@@ -60,6 +60,24 @@
       "result_missing": "We are checking the result."
     }
   },
+  "tie": {
+    "firstLeg": "First leg",
+    "secondLeg": "Second leg",
+    "replay": "Replay",
+    "series": "Game {n} of the series",
+    "first": "First leg {score}",
+    "global": "Aggregate {score}",
+    "advances": "{team} go through",
+    "by": {
+      "extraTime": "after extra time",
+      "penalties": "on penalties",
+      "aggregate": "on aggregate",
+      "awayGoals": "on away goals",
+      "tiebreak": "on a tiebreak",
+      "walkover": "by administrative decision",
+      "series": "in the series"
+    }
+  },
   "note": {
     "noData": "No data yet",
     "notAvailable": "Not available for this match"
