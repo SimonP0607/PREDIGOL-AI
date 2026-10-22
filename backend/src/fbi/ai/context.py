@@ -3,7 +3,9 @@
 Everything here is DATA or a deterministic INFERENCE from data, labelled as such where it is shown:
 
 * rest and congestion: days since each side's previous match, matches in the last 14 days, the
-  next match within 7 days (rotation risk is an inference, said as one);
+  next match within 7 days (rotation risk is an inference, said as one). They are read from the competitions
+  we FOLLOW, so they are bounds, not facts: the real rest is at most the recorded one, the real number of
+  matches at least the recorded one (plan F0, defect 10);
 * what the match is worth: the zones of the table (from the provider's own row descriptions -
   champions, continental places, relegation), the points to the nearest zone boundary above and
   below and the most the team can still gain; "settled" when no boundary is reachable any more;
@@ -36,15 +38,43 @@ def rest_days(kickoff: datetime, previous: datetime | None) -> float | None:
     return round((kickoff - previous).total_seconds() / 86400, 1)
 
 
+SHORT_REST_DAYS = 3.0
+REST_GAP_DAYS = 3.0
+
+
 def rest_flags(home_rest: float | None, away_rest: float | None) -> list[str]:
-    """Inferences about rest, never facts about fitness."""
+    """Inferences about rest, never facts about fitness - ASSUMING the calendar the rests were read from is complete."""
     flags: list[str] = []
     for side, rest, other in (("home", home_rest, away_rest), ("away", away_rest, home_rest)):
-        if rest is not None and rest < 3.0:
+        if rest is not None and rest < SHORT_REST_DAYS:
             flags.append(f"{side}_short_rest")
-        if rest is not None and other is not None and other - rest >= 3.0:
+        if rest is not None and other is not None and other - rest >= REST_GAP_DAYS:
             flags.append(f"{side}_rest_disadvantage")
     return flags
+
+
+def rest_flags_recorded(home_rest: float | None, away_rest: float | None) -> list[str]:
+    """The inferences about rest that stay true when the calendar is INCOMPLETE (plan F0, defect 10).
+
+    The matches we know are those of the competitions we follow; a cup or a continental tie we do not follow is not
+    there. The real rest is therefore at most the recorded one. "Short rest" holds (the real rest is shorter still);
+    "X has three days less rest than Y" does not (Y's real rest may be as short as X's), so it is not claimed."""
+    return [f"{side}_short_rest" for side, rest in (("home", home_rest), ("away", away_rest))
+            if rest is not None and rest < SHORT_REST_DAYS]
+
+
+CALENDAR_SCOPE: dict[str, Any] = {
+    "scope": "tracked_competitions",
+    "complete": None,
+    "rest_days": "at_most",
+    "matches_last_14d": "at_least",
+    "next_match": "known_only",
+    "note": ("Only the competitions this platform follows are in the calendar; a match in any other competition is not "
+             "recorded. So the real rest is at most rest_days, the real number of matches in 14 days is at least "
+             "matches_last_14d, and a missing next_match does not mean there is none. Do not read a long rest as a "
+             "fact, nor compare the two sides' rest."),
+}
+"""How to read the schedule block of a packet: ``complete`` is null because nothing says the calendar is whole."""
 
 
 # ── what the match is worth ──────────────────────────────────────────────────

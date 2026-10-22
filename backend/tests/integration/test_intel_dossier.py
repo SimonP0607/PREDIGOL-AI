@@ -1,4 +1,4 @@
-"""The match dossier (``fbi.intel.dossier``, packet-v2) on a built world, and its no-leakage rule: three past matches of
+"""The match dossier (``fbi.intel.dossier``, packet-v2 and later) on a built world, and its no-leakage rule: three past matches of
 the home side with statistics, events, line-ups, players and a referee - and a fourth whose statistics were fetched
 AFTER the packet's moment, which the dossier must not see."""
 
@@ -98,7 +98,7 @@ def test_the_dossier_reads_only_what_was_known(db: psycopg.Connection[Any], seed
                 "VALUES (%s, %s, 'R. Tester', %s, 'v1')", (upcoming, AT - timedelta(hours=2), h))
 
     packet = PacketBuilder(db).build(upcoming, at=AT)
-    assert packet is not None and packet.version == "packet-v2"
+    assert packet is not None and packet.version == "packet-v3"
     d = packet.content["dossier"]
     home = d["teams"]["home"]
     assert home["n"] == 3, "the 5-0 settled after AT is not known at AT"

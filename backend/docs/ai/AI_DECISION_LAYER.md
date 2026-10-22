@@ -1,6 +1,6 @@
 # Capa de decisión IA de PrediGol (`fbi.ai`)
 
-*Versión de la capa: packet-v1 · rules-review-v1 · review-v2 · brief-v1 · day-v1 · match-analysis-v1 · pm-v1 ·
+*Versión de la capa: packet-v3 · rules-review-v1 · review-v2 · brief-v1 · day-v1 · match-analysis-v1 · pm-v1 ·
 pm-v2 · learning-v1 · patterns-v1 · ai-gate-v1 · icc-v1 · daily-set-v3 · parlay-v4. Migraciones 0072-0073.
 Escrito el 8 oct 2026; **V2** (el día de Bogotá, los tres pasos, L1/L2/L3, presupuesto adaptable de US$150,
 post-mortems por selección y aprendizaje diario) el mismo día.*
@@ -57,7 +57,9 @@ Sin modelo disponible, el brief lo escriben las reglas (`engine=rules`). Un paso
 timeout) no se registra y se reintenta en el ciclo siguiente; el resto del ciclo no vuelve a llamarlo.
 
 Paquete (`fbi.ai.packet`): partido (estado, cambios de hora), tabla y lo que está en juego, forma, calendario
-(descanso, rotación), H2H, Elo, estadísticas, bajas ponderadas por importancia del jugador, alineaciones,
+(descanso, rotación — leído solo de las competiciones que seguimos, así que el descanso es un **máximo** y los partidos
+en 14 días un **mínimo**: el bloque lo declara en `schedule.calendar` y solo emite la bandera «poco descanso», nunca
+«desventaja de descanso» entre los dos lados; packet-v3, plan F0 defecto 10), H2H, Elo, estadísticas, bajas ponderadas por importancia del jugador, alineaciones,
 viaje, mercado (Shin, apertura fija = primer consenso de la semana previa, movimiento, dispersión, nº de casas),
 modelos (Dixon-Coles, Poisson, Elo-ologit con intervalos), calidad de datos y evidencias. Todo **as-of**: nada
 registrado después del momento del paquete. Un paquete nuevo solo se guarda si el contexto cambió.

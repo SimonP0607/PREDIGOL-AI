@@ -34,7 +34,7 @@ CAPA 1 · DATOS           API-Football (fixtures, odds de todas las casas, stats
 CAPA 2 · MODELOS         Por mercado: Poisson, Dixon-Coles (goles), Elo ordered-logit (1X2) -> P_modelo con intervalo
                          (existente: fbi.models, picks shadow-rule-v2). NUEVO: calibración por (mercado, modelo)
                          fbi.intel.calibration -> P_calibrada, versionada, champion/challenger con criterios fijos.
-CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v2 = packet-v1 + dossier-v1), evidencia con fuente,
+CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v3 = packet-v1 + dossier-v1 + calendario con su alcance declarado), evidencia con fuente,
 INTELLIGENCE             nivel y estado, brief L1 / revisión L2 / revisión L3 (existente: fbi.ai). NUEVO: dossier
                          (equipo, árbitro, entrenador, contexto competitivo, jugadores clave), fuentes clasificadas
                          (sources-v2), estado de contexto FULL / PARTIAL / LIMITED (CONTEXTO EXTERNO LIMITADO) /
@@ -148,7 +148,7 @@ probabilidad estimada, EV, riesgo, correlación y stake (¼ Kelly, tope 0,25 u).
 
 ## 6. Capa 3 — dossier, investigación y narrativa
 
-* **dossier-v1** (en `packet-v2`, todo a la fecha de corte): por equipo, últimos 10 partidos en casa/fuera con goles,
+* **dossier-v1** (desde `packet-v2`, todo a la fecha de corte): por equipo, últimos 10 partidos en casa/fuera con goles,
   xG, tiros, a puerta, córners, faltas, tarjetas, fueras de juego, posesión, penaltis (eventos), rachas, calidad del
   rival (Elo), comportamiento según marcador (goles a favor/en contra yendo por delante/detrás); árbitro (partidos,
   amarillas, rojas, faltas, penaltis por partido, reparto local/visitante); entrenadores (formaciones, alternativas,

@@ -30,9 +30,13 @@ from psycopg.types.json import Jsonb
 from fbi.ai import context as ctx
 from fbi.ai.pricing import approx_tokens
 
-PACKET_VERSION = "packet-v2"
+PACKET_VERSION = "packet-v3"
 """v2 (13 Oct 2026): the ``dossier`` block (``fbi.intel.dossier``): teams in depth, coaches, key players, the
-referee, the competitive context, how much the head-to-head is worth."""
+referee, the competitive context, how much the head-to-head is worth.
+v3 (plan F0): the ``schedule`` block says what its numbers are (``schedule.calendar``): rest and congestion are read from
+the competitions we follow, so the rest is an upper bound and the matches in 14 days a lower bound; the rest-difference
+flags (``*_rest_disadvantage``), which are false whenever a side played a competition we do not follow, are no longer
+emitted, only ``*_short_rest`` (defect 10)."""
 CORE_KEYS: tuple[tuple[str, str, Decimal], ...] = (
     ("1X2", "Home", Decimal(0)), ("1X2", "Draw", Decimal(0)), ("1X2", "Away", Decimal(0)),
     ("OU", "Over", Decimal("2.5")), ("OU", "Under", Decimal("2.5")),
@@ -397,8 +401,9 @@ class PacketBuilder:
             missing.append("form")
         else:
             sources.append({"block": "form", "table": "core.fixture_results", "as_of": _ts(at)})
-        content["schedule"]["flags"] = ctx.rest_flags(content["schedule"]["home"]["rest_days"],
-                                                      content["schedule"]["away"]["rest_days"])
+        content["schedule"]["calendar"] = dict(ctx.CALENDAR_SCOPE)
+        content["schedule"]["flags"] = ctx.rest_flags_recorded(content["schedule"]["home"]["rest_days"],
+                                                               content["schedule"]["away"]["rest_days"])
 
         h2h = _rows(conn, H2H_SQL, {"a": home, "b": away, "kickoff": kickoff, "at": at, "limit": H2H_N})
         content["h2h"] = {"n": len(h2h), "home_view": ctx.form(home, [
