@@ -1,0 +1,215 @@
+{
+  "bases": {
+    "decider_ground": {
+      "blocks": 110,
+      "brier_a": 0.631715,
+      "brier_b": 0.621993,
+      "diff": -0.015988,
+      "ece_a": 0.067083,
+      "ece_b": 0.060807,
+      "hi": 0.016633,
+      "home_bias_a": 0.104933,
+      "home_bias_b": 0.030653,
+      "home_rate": 0.362903,
+      "lo": -0.048654,
+      "loss_a": 1.046409,
+      "loss_b": 1.030421,
+      "n": 124,
+      "rps_a": 0.208009,
+      "rps_b": 0.20398
+    },
+    "semi_pair_ground": {
+      "blocks": 30,
+      "brier_a": 0.496265,
+      "brier_b": 0.530712,
+      "diff": 0.051656,
+      "ece_a": 0.046421,
+      "ece_b": 0.046326,
+      "hi": 0.112187,
+      "home_bias_a": -0.112434,
+      "home_bias_b": -0.182168,
+      "home_rate": 0.633333,
+      "lo": -0.010236,
+      "loss_a": 0.847355,
+      "loss_b": 0.899011,
+      "n": 30,
+      "rps_a": 0.173921,
+      "rps_b": 0.191406
+    },
+    "shared_ground": {
+      "blocks": 37,
+      "brier_a": 0.548005,
+      "brier_b": 0.540579,
+      "diff": -0.004504,
+      "ece_a": 0.044911,
+      "ece_b": 0.050086,
+      "hi": 0.035071,
+      "home_bias_a": 0.083478,
+      "home_bias_b": 0.01089,
+      "home_rate": 0.409091,
+      "lo": -0.044294,
+      "loss_a": 0.920824,
+      "loss_b": 0.91632,
+      "n": 44,
+      "rps_a": 0.163144,
+      "rps_b": 0.161231
+    },
+    "third_country": {
+      "blocks": 666,
+      "brier_a": 0.608611,
+      "brier_b": 0.603004,
+      "diff": -0.008918,
+      "ece_a": 0.013057,
+      "ece_b": 0.021618,
+      "hi": 0.002281,
+      "home_bias_a": 0.050698,
+      "home_bias_b": -0.025623,
+      "home_rate": 0.392661,
+      "lo": -0.020733,
+      "loss_a": 1.017154,
+      "loss_b": 1.008236,
+      "n": 1090,
+      "rps_a": 0.213147,
+      "rps_b": 0.210276
+    }
+  },
+  "control": {
+    "blocks": 2965,
+    "brier_a": 0.607684,
+    "brier_b": 0.607683,
+    "diff": -1e-06,
+    "ece_a": 0.008344,
+    "ece_b": 0.008367,
+    "hi": 1.1e-05,
+    "home_bias_a": 0.003421,
+    "home_bias_b": 0.003417,
+    "home_rate": 0.439611,
+    "lo": -1.3e-05,
+    "loss_a": 1.01479,
+    "loss_b": 1.014789,
+    "n": 193826,
+    "rps_a": 0.209618,
+    "rps_b": 0.209617
+  },
+  "counts": {
+    "control_priced": 193826,
+    "declined": {
+      "a team has too few rated matches": 29615
+    },
+    "failed_fits": 0,
+    "fits": 214,
+    "goal_models": {
+      "dixon_coles": {
+        "covered_by_both": 769,
+        "uncovered_after": {
+          "Dixon-Coles correction invalid at these expected goals": 11,
+          "a team has no match in this competition's training window": 186,
+          "fewer than 100 training matches before the cut-off": 670,
+          "more than 250 teams": 123
+        },
+        "uncovered_before": {
+          "Dixon-Coles correction invalid at these expected goals": 13,
+          "a team has no match in this competition's training window": 186,
+          "fewer than 100 training matches before the cut-off": 670,
+          "more than 250 teams": 123
+        }
+      },
+      "poisson": {
+        "covered_by_both": 783,
+        "uncovered_after": {
+          "a team has no match in this competition's training window": 186,
+          "fewer than 100 training matches before the cut-off": 670,
+          "more than 250 teams": 123
+        },
+        "uncovered_before": {
+          "a team has no match in this competition's training window": 186,
+          "fewer than 100 training matches before the cut-off": 670,
+          "more than 250 teams": 123
+        }
+      }
+    },
+    "labelled_in_window": 1762,
+    "labelled_priced_by_both": 1288,
+    "matches": 245844,
+    "played": 228881
+  },
+  "guards": {
+    "dixon_coles": {
+      "blocks": 499,
+      "brier_a": 0.618893,
+      "brier_b": 0.612086,
+      "diff": -0.008748,
+      "ece_a": 0.024258,
+      "ece_b": 0.012256,
+      "hi": 0.007695,
+      "home_bias_a": 0.063178,
+      "home_bias_b": -0.031401,
+      "home_rate": 0.392718,
+      "lo": -0.024968,
+      "loss_a": 1.029468,
+      "loss_b": 1.02072,
+      "n": 769,
+      "rps_a": 0.217736,
+      "rps_b": 0.214176
+    },
+    "poisson": {
+      "blocks": 505,
+      "brier_a": 0.615143,
+      "brier_b": 0.609164,
+      "diff": -0.008128,
+      "ece_a": 0.02207,
+      "ece_b": 0.015801,
+      "hi": 0.007404,
+      "home_bias_a": 0.06059,
+      "home_bias_b": -0.032505,
+      "home_rate": 0.390805,
+      "lo": -0.025059,
+      "loss_a": 1.024686,
+      "loss_b": 1.016559,
+      "n": 783,
+      "rps_a": 0.216533,
+      "rps_b": 0.213198
+    }
+  },
+  "headline": "justified: neutral matches -0.0080 log loss per match (-0.0180..+0.0028, n=1288); the neutral matches are not worse with the rule: -0.0080 (-0.0180..+0.0028) on 1288 matches",
+  "labels": {
+    "digest": "2fdbb59806ff3b17d5efdb73eea2e671",
+    "neutral": 1881,
+    "rule_version": "neutral-v1",
+    "through": "2026-10-09T01:10:00+00:00"
+  },
+  "notes": [
+    "'semi_pair_ground': 30 labelled matches (fewer than 100) - not judged on its own",
+    "'shared_ground': 44 labelled matches (fewer than 100) - not judged on its own"
+  ],
+  "primary": {
+    "blocks": 791,
+    "brier_a": 0.606148,
+    "brier_b": 0.601016,
+    "diff": -0.008037,
+    "ece_a": 0.010581,
+    "ece_b": 0.017053,
+    "hi": 0.002812,
+    "home_bias_a": 0.05324,
+    "home_bias_b": -0.022604,
+    "home_rate": 0.395963,
+    "lo": -0.017972,
+    "loss_a": 1.012725,
+    "loss_b": 1.004688,
+    "n": 1288,
+    "rps_a": 0.210031,
+    "rps_b": 0.207555
+  },
+  "protocol": "neutral-ab-v1",
+  "reasons": [
+    "the neutral matches are not worse with the rule: -0.0080 (-0.0180..+0.0028) on 1288 matches",
+    "the matches the rule does not touch: -0.0000 (-0.0000..+0.0000) on 193826 matches"
+  ],
+  "rule_version": "neutral-v1",
+  "seconds": 280.2,
+  "verdict": "justified",
+  "window": {
+    "from": "2018-07-01T00:00:00+00:00",
+    "through": "2026-10-09T01:10:00+00:00"
+  }
+}
