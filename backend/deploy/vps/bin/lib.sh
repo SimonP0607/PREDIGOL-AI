@@ -55,8 +55,12 @@ psql_q() {
 }
 
 # What the worker and the API may do in the database (db/grants.sql), applied as the owner. Idempotent.
+# The file travels through stdin, from the checkout: the container's copy is a bind mount of ONE file, which keeps pointing at the
+# inode it was started with, and `git checkout` replaces the file (a new inode) - so after a deploy the container still showed the
+# grants of the release before and the new ones were not applied (found by the F3 deploy: the referee tables had no grants for the
+# API until the file was piped by hand).
 apply_grants() {
-  compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qX -f /predigol/grants.sql < /dev/null > /dev/null
+  compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qX -f - < "$KIT/db/grants.sql" > /dev/null
 }
 
 # A one-off command in the backend image, as the database owner (the `ops` service). Never reads stdin.
