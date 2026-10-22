@@ -309,7 +309,7 @@ def test_a_day_without_decisions_says_so(db: psycopg.Connection[Any]) -> None:
 
 def test_discovery_reads_an_active_markets_priced_history(db: psycopg.Connection[Any], seed: Seed,
                                                           tmp_path: Any) -> None:
-    """discovery-v1 on the database. Regression (13 Oct 2026): the catalogue was loaded on one day for all 338 bets,
+    """discovery on the database. Regression (13 Oct 2026): the catalogue was loaded on one day for all 338 bets,
     so every market - the five active ones too, priced since 2022 - failed "history" (>= 28 days)."""
     from fbi.intel import discovery
 

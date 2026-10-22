@@ -193,7 +193,7 @@ probabilidad estimada, EV, riesgo, correlación y stake (¼ Kelly, tope 0,25 u).
 * **Champion/challenger** (sección 4) y **hipótesis**: las hipótesis de sobreconfianza (#14, #21, #26, #32, #39)
   quedan enlazadas al experimento de calibración con su resultado (`stage_history`, `outcome`).
 
-## 8. Mercados — `discovery-v1` y los 10 criterios
+## 8. Mercados — `discovery-v2` y los 10 criterios
 
 Semanal: lee el catálogo del proveedor (`market.provider_markets`), lo visto en las cuotas reales
 (`market.odds_mapping_seen`, `raw.ingestion_payloads`) y los datos de resultado disponibles (`core.fixture_team_stats`,
@@ -202,6 +202,17 @@ calibración, (6) backtest, (7) contra el mercado, (8) Shadow, (9) volumen míni
 ACTIVE (los 5 modelados), RESEARCH (datos y precio suficientes, falta modelo/backtest), CANDIDATE (precio sin datos de
 resultado o al revés), NOT_MODELABLE. **Nunca activa un mercado**: la activación sigue Mercado → Datos → Features →
 Modelo → Calibración → Backtest → Shadow → Producción con aprobación explícita.
+
+**Qué cuenta como «liquidable»** (plan F0, defecto 11; `discovery-v2`). El motor clasifica por el nombre de la apuesta y
+mide la cobertura del dato que la liquidaría. Una apuesta sobre **una mitad** de una estadística (córners 1.ª parte, tiros
+2.ª parte…) necesita esa estadística **por mitad** (`corners_by_half`…), no el total del partido: la plataforma guarda
+córners, tiros, paradas, faltas y fueras de juego solo como totales del partido (`core.fixture_team_stats`), así que esas
+apuestas son **NOT_MODELABLE** («sin datos por mitad: no se puede liquidar»), por muy bien cubierto que esté el total.
+Las tarjetas por mitad podrían contarse desde los eventos (minuto), pero esa cobertura aún no se mide aquí: quedan
+**CANDIDATE** (`cards_by_half`) hasta medirla (F9). Los goles por mitad sí se liquidan (marcador al descanso, 97,9 %).
+«Yellow Over/Under (1st Half)» no lleva «card» en el nombre y caía en la regla de goles al descanso: «yellow» se lee ahora
+como tarjetas. Un registro (`intel.market_registry`) ya escrito no se reescribe: la corrección aparece en la siguiente
+corrida semanal, con su `version`.
 
 ## 9. Presupuesto IA (US$180/mes)
 

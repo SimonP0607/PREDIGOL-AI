@@ -1,4 +1,4 @@
-"""MARKET DISCOVERY ENGINE - ``discovery-v1`` (weekly): every pre-match market API-Football offers, what it would take
+"""MARKET DISCOVERY ENGINE - ``discovery-v2`` (weekly): every pre-match market API-Football offers, what it would take
 to model it, and the ten incorporation criteria - written down (``intel.market_registry``), never activated.
 
 What it reads: the provider's catalogue (``market.provider_markets``) and, for the last ``DAYS`` days, the last
@@ -15,6 +15,15 @@ score matrix), calibration (a calibrator exists - only the active five), backtes
 Status: ACTIVE (modelled today), RESEARCH (price, volume and settle-able data: worth a model and a backtest),
 CANDIDATE (one of the two is missing), NOT_MODELABLE (specials, exotic or unsettleable). The activation path stays
 Mercado -> Datos -> Features -> Modelo -> Calibración -> Backtest -> Shadow -> Producción, with the owner's approval.
+
+discovery-v2 (plan F0, defect 11). A bet on ONE HALF of a statistic (corners 1st half, shots 2nd half...) was read as the
+statistic and so judged settle-able with the coverage of the MATCH total. The platform stores corners, shots, saves, fouls
+and offsides only as totals of the match (``core.fixture_team_stats``): nothing in the database can settle them by half, so
+such a bet needs ``<stat>_by_half`` data, which has no coverage, and is NOT_MODELABLE (``corners``, ``shots``...). Cards by
+half could be counted from the events (minute), but that coverage is not measured here: they need ``cards_by_half`` and
+stay CANDIDATE until it is (plan F9). Goals by half do settle (the half-time score is stored for 97.9 % of matches).
+"Yellow Over/Under (1st Half)" has no "card" in its name: it fell through to the half-time-GOALS rule and was judged by the
+goals' coverage; "yellow" now reads as cards, so it is a cards-by-half bet like the others.
 """
 
 from __future__ import annotations
@@ -33,7 +42,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-VERSION = "discovery-v1"
+VERSION = "discovery-v2"
 DAYS = 7
 MAX_PAYLOADS = 3000
 
@@ -81,7 +90,7 @@ SELECT avg((EXISTS (SELECT 1 FROM core.fixture_player_stats p WHERE p.fixture_id
 RULES: tuple[tuple[re.Pattern[str], str, str], ...] = (
     (re.compile(r"player|scorer|goalscorer|assist|anytime|first goal|last goal", re.I), "players", "new_model"),
     (re.compile(r"corner", re.I), "corners", "new_model"),
-    (re.compile(r"card|booking", re.I), "cards", "new_model"),
+    (re.compile(r"card|booking|yellow", re.I), "cards", "new_model"),
     (re.compile(r"shots? on target", re.I), "shots", "new_model"),
     (re.compile(r"shot", re.I), "shots", "new_model"),
     (re.compile(r"save", re.I), "saves", "new_model"),
@@ -94,6 +103,11 @@ RULES: tuple[tuple[re.Pattern[str], str, str], ...] = (
                 r"match winner|home/away|winning margin|to score in both|win both|win either|"
                 r"to win to nil|team to score", re.I), "goals", "goal_matrix"),
 )
+HALF = re.compile(r"first half|second half|1st half|2nd half|\(1st|\(2nd|half[- ]?time|\b[12]h\b", re.I)
+NO_HALF_DATA = frozenset({"corners", "shots", "saves", "fouls", "offsides"})
+"""Statistics stored only as totals of the match: a bet on one half of them cannot be settled with anything we keep."""
+EVENT_HALF_DATA = frozenset({"cards"})
+"""Statistics a half of which could be counted from the events (cards, by minute); that coverage is not measured here."""
 SPECIALS = re.compile(r"own goal|penalty|var|red card in|substitut|injury|method|minute|time of|first to|race to|"
                       r"specials|scorecast|wincast|chance mix|multi", re.I)
 PRIOR_RESEARCH: dict[int, str] = {
@@ -113,11 +127,17 @@ class BetStats:
 
 
 def classify(name: str) -> tuple[str | None, str]:
-    """(data the bet needs to settle, how it could be modelled) from its name."""
+    """(data the bet needs to settle, how it could be modelled) from its name. A bet on one half of a statistic needs that
+    statistic BY HALF (``corners_by_half``): the match total does not settle it, and when nothing we keep splits the
+    statistic by half the bet cannot be modelled at all."""
     if SPECIALS.search(name) and not re.search(r"handicap|double chance", name, re.I):
         return None, "not_modelable"
     for pattern, data, how in RULES:
         if pattern.search(name):
+            if data in NO_HALF_DATA and HALF.search(name):
+                return f"{data}_by_half", "not_modelable"
+            if data in EVENT_HALF_DATA and HALF.search(name):
+                return f"{data}_by_half", how
             return data, how
     return None, "not_modelable"
 
@@ -199,7 +219,10 @@ def criteria_for(bid: int, b: BetStats, *, catalogue: dict[str, Any] | None, act
     if is_active:
         status, proposal = "ACTIVE", f"activo como {active[bid]}; sin edge validado: se mide en investigación"
     elif how == "not_modelable":
-        status, proposal = "NOT_MODELABLE", "especial o exótico: sin modelo ni datos de liquidación fiables"
+        status = "NOT_MODELABLE"
+        proposal = ("sin datos por mitad: solo se guarda el total del partido, no se puede liquidar"
+                    if data is not None and data.endswith("_by_half") else
+                    "especial o exótico: sin modelo ni datos de liquidación fiables")
     elif crit["real_price"]["ok"] and crit["coverage"]["ok"] and crit["volume"]["ok"] and crit["settle_data"]["ok"]:
         status = "RESEARCH"
         proposal = (PRIOR_RESEARCH.get(bid) or
