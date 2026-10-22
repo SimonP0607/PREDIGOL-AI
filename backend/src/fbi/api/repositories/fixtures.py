@@ -7,6 +7,7 @@ from datetime import date, datetime
 from typing import Any, Literal
 
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one, fetch_value
+from fbi.core.places import place_words, same_place
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,31 +117,10 @@ def get_venue(conn: Conn, venue_id: int) -> Row | None:
                            "WHERE id = %s", (venue_id,))
 
 
-GENERIC_PLACE_WORDS = frozenset({
-    "estadio", "estadi", "estadium", "stadium", "stadio", "stade", "stadion", "stadionul", "stadyumu", "stadyum",
-    "arena", "park", "campo", "field", "ground", "municipal", "sports", "sport", "complex", "centre", "center",
-    "de", "del", "la", "el", "los", "las", "do", "da", "dos", "das", "di", "the", "of", "y", "e", "and",
-})
-"""Words that name the kind of place, not which one: 'Estadio Diego Armando Maradona' and 'Diego Armando Maradona'
-are one ground, 'Estadio Banorte' and 'Estadio Azteca' are not said to be (a rename is not guessed)."""
-
-
-def _place_words(x: object) -> frozenset[str]:
-    import re
-    import unicodedata
-
-    text = unicodedata.normalize("NFKD", str(x or "")).encode("ascii", "ignore").decode().lower()
-    return frozenset(w for w in re.split(r"[^a-z0-9]+", text) if w and w not in GENERIC_PLACE_WORDS)
-
-
-def _same_place(a: object, b: object) -> bool:
-    """Two spellings of one ground: case, accents, punctuation and the generic words aside, the distinctive words of
-    the shorter name all appear in the longer ('Estadio Marcelo Bielsa' / 'Estadio Marcelo Alberto Bielsa')."""
-    wa, wb = _place_words(a), _place_words(b)
-    if not wa or not wb:
-        return False
-    short, long_ = (wa, wb) if len(wa) <= len(wb) else (wb, wa)
-    return short <= long_
+# The place comparison lives in fbi.core.places (the neutral-venue rule reads places the same way); the names
+# this module and its test have always used stay.
+_place_words = place_words
+_same_place = same_place
 
 
 def fixture_venue(conn: Conn, row: Row) -> Row | None:
