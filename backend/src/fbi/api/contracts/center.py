@@ -251,6 +251,80 @@ class LiveMove(Contract):
     kind: Literal["moved", "withdrawn", "offered", "suspended", "available", "other"]
 
 
+StageKind = Literal["league", "knockout", "qualifying", "friendly", "unresolved"]
+StageRole = Literal["league", "group", "knockout", "playoff", "final", "third_place", "placement", "qualifying",
+                    "friendly", "unresolved"]
+TieFormat = Literal["single", "two_legged", "replay", "series"]
+TieState = Literal["scheduled", "in_progress", "decided", "unresolved"]
+TieDecidedBy = Literal["normal_time", "extra_time", "penalties", "aggregate", "away_goals", "tiebreak", "walkover",
+                       "series"]
+
+
+class MatchStage(Contract):
+    """The stage of the competition this match belongs to: what the words of its round label say, read by the one
+    classifier of round labels (``fbi.competitions.stages``) and stored in ``core.competition_stages``."""
+
+    name: str = Field(description="The round without its match day: 'Round of 16', 'Regular Season', 'Group Stage'.")
+    kind: StageKind
+    role: StageRole
+    round_key: str | None = Field(default=None, description="'round_of_16', 'quarter_final', 'final'...: null when the "
+                                                           "round has no standard name.")
+    is_replay: bool = Field(default=False, description="The stage is the replay of a round whose first match was level.")
+    ordinal: int = Field(description="Its place among the competition season's stages, in order of play.")
+
+
+class TieScore(Contract):
+    home: int = Field(description="Goals of the side that hosts THIS match.")
+    away: int = Field(description="Goals of the side that visits in THIS match.")
+
+
+class TieLeg(Contract):
+    """One match of the tie, as it was played (home and away of THAT match)."""
+
+    fixture_id: int
+    leg: int | None
+    kickoff_at: datetime
+    home: str
+    away: str
+    status: str
+    status_group: str
+    goals_home: int | None = Field(description="Final goals, extra time included; null when no result is stored.")
+    goals_away: int | None
+    extra_time: bool = False
+    shootout_home: int | None = None
+    shootout_away: int | None = None
+    is_this: bool = Field(description="This is the match the page is about.")
+
+
+class TieOutcome(Contract):
+    """Who went through, said only once THIS match is over and the tie is decided."""
+
+    winner: Side = Field(description="'home' or 'away' of THIS match.")
+    decided_by: TieDecidedBy
+    shootout: TieScore | None = Field(default=None, description="The shoot-out, when the tie was decided by it.")
+    contradicted: bool = Field(default=False, description="The provider's winner flag disagrees with the goals "
+                                                         "(an administrative decision): the sporting winner is shown.")
+
+
+class MatchTie(Contract):
+    """The tie this match belongs to (``core.ties``), told as of now: the legs that have a final result, and who went
+    through only when the tie is decided and this match is over. Scores are from THIS match's home and away."""
+
+    format: TieFormat
+    state: TieState
+    leg: int | None = Field(description="This match's place in the tie (1 = first), when known.")
+    legs: int = Field(description="Matches the format plans (2 for a two-legged tie).")
+    played: int = Field(description="Matches of the tie with a final result.")
+    aggregate_before: TieScore | None = Field(
+        description="The legs played before this one, summed (extra time in, shoot-out out); null when there are none "
+                    "or no aggregate applies (a single match, a replay, a series).")
+    aggregate: TieScore | None = Field(
+        description="Every leg with a final result, this one included once it is over; null when none applies or the "
+                    "sum would mislead (a leg decided at the table, a shoot-out that contradicts the goals).")
+    outcome: TieOutcome | None = None
+    legs_list: list[TieLeg] = Field(default_factory=list)
+
+
 class MatchCenter(Contract):
     fixture_id: int
     status_group: str
@@ -263,6 +337,9 @@ class MatchCenter(Contract):
     standings_tables: list[StandingsTable] = Field(
         default_factory=list, description="The whole table(s) the two rows come from (one, or each team's group).")
     facts: MatchFacts | None = None
+    stage: MatchStage | None = Field(default=None, description="The stage of the competition; null when the "
+                                                               "competition season has not been built (F2).")
+    tie: MatchTie | None = Field(default=None, description="The tie this match is a leg of; null for a league match.")
     form: Section[list[TeamForm]]
     h2h: Section[list[H2HMatch]]
     live_states: Section[list[LiveState]]

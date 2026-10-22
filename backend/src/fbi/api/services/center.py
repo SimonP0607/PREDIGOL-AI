@@ -61,6 +61,7 @@ from fbi.api.contracts.center import (
 from fbi.api.envelope import DataStatus, Envelope, Section, listing, ok, section, unavailable
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one, fetch_value
 from fbi.api.repositories import center as repo
+from fbi.api.services import center_tie
 from fbi.api.services.live_quality import completeness
 from fbi.competitions.phases import VERSION as PHASES_VERSION
 from fbi.competitions.phases import TableMap, current_stage
@@ -130,6 +131,7 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
            "ko": fx["kickoff_at"]}
     standings, no_table, standing_tables = _match_standings(conn, fx)
     facts_row = fetch_one(conn, repo.FIXTURE_FACTS, f)
+    stage, tie = center_tie.stage_and_tie(conn, fx)
     forms: list[TeamForm] = []
     for side, team_id, name in (("home", fx["home_team_id"], fx["home"]), ("away", fx["away_team_id"], fx["away"])):
         rows = fetch_all(conn, repo.FORM, {"team": team_id, "ko": fx["kickoff_at"]})
@@ -159,6 +161,8 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
         standings=_sec(standings, no_table, code="no_table"),
         standings_tables=standing_tables,
         facts=MatchFacts(**facts_row) if facts_row else None,
+        stage=stage,
+        tie=tie,
         form=section(forms) if any(t.matches for t in forms) else section(
             forms, status=DataStatus.EMPTY, reason="Neither team has a finished match with a result before this one.",
             code="no_form"),

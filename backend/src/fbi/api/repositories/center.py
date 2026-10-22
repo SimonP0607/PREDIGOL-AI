@@ -14,6 +14,32 @@ SELECT f.id, f.kickoff_at, f.status_group, f.round, f.competition_season_id, f.h
  WHERE f.id = %(f)s
 """
 
+STAGE_AND_TIE = """
+SELECT s.stage, s.kind, s.role, s.round_key, s.is_replay, s.ordinal,
+       t.id AS tie_id, t.format, t.status, t.legs, t.team_a_id, t.team_b_id, t.aggregate_a, t.aggregate_b,
+       t.winner_team_id, t.decided_by, t.shootout_a, t.shootout_b, t.winner_check
+  FROM core.fixtures f
+  JOIN core.competition_stages s ON s.id = f.stage_id
+  LEFT JOIN core.ties t ON t.id = f.tie_id
+ WHERE f.id = %(f)s
+"""
+"""The stage of the match and the tie it is a leg of, as the worker stored them (``fbi.competitions.builder``). The page may
+show a finished tie's outcome: it is a reader of what happened. A pre-match reader never comes through here - it goes through
+``fbi.competitions.context``."""
+
+TIE_LEGS = """
+SELECT g.id AS fixture_id, g.leg, g.kickoff_at, g.home_team_id, g.away_team_id, th.name AS home, ta.name AS away,
+       g.status_short AS status, g.status_group, r.goals_home, r.goals_away,
+       (r.et_goals_home IS NOT NULL OR r.et_goals_away IS NOT NULL) AS extra_time,
+       r.pen_home AS shootout_home, r.pen_away AS shootout_away
+  FROM core.fixtures g
+  JOIN core.teams th ON th.id = g.home_team_id
+  JOIN core.teams ta ON ta.id = g.away_team_id
+  LEFT JOIN core.fixture_results r ON r.fixture_id = g.id
+ WHERE g.tie_id = %(tie)s
+ ORDER BY g.kickoff_at, g.id
+"""
+
 MATCH_PLAYER_SEASONS = """
 SELECT s.provider_player_id, s.provider_team_id, s.appearances, s.lineups, s.minutes, s.goals, s.assists,
        s.yellow_cards, s.red_cards, s.observed_at
