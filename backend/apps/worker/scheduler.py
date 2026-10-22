@@ -193,6 +193,15 @@ night with no football costs a handful of queries and no quota at all."""
 LIVE_DAILY_BUDGET = int(os.environ.get(
     "FBI_LIVE_DAILY_BUDGET", str(DEFAULT_LIVE_DAILY_BUDGET)))
 PIPELINE_MINUTES = int(os.environ.get("FBI_PIPELINE_MINUTES", "30"))
+QUOTES_MINUTES = int(os.environ.get("FBI_QUOTES_EXTRACT_MINUTES", "10"))
+QUOTES_PER_RUN = int(os.environ.get("FBI_QUOTES_PER_RUN", "300"))
+QUOTES_RUN_SECONDS = float(os.environ.get("FBI_QUOTES_RUN_SECONDS", "240"))
+QUOTES_ENABLED = os.environ.get("FBI_QUOTES_EXTRACT", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""The price clock (plan F1): the structured markets of every RAW /odds payload, a bounded pass every QUOTES_MINUTES.
+Database and the RAW files only - no request to the provider. FBI_QUOTES_EXTRACT=0 switches it off without a deploy;
+FBI_QUOTES_MIN_FREE_GB / FBI_QUOTES_MAX_TABLE_GB are its disk and size brakes."""
+QUOTES_MIN_FREE_GB = float(os.environ.get("FBI_QUOTES_MIN_FREE_GB", "8"))
+QUOTES_MAX_TABLE_GB = float(os.environ.get("FBI_QUOTES_MAX_TABLE_GB", "25"))
 NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
 AI_REPORT_HOUR = int(os.environ.get("FBI_AI_REPORT_HOUR", "6"))
 """The daily research report is written from this hour (Bogotá), once a day: a check every
@@ -740,6 +749,21 @@ async def _elo_refresh() -> None:
     await asyncio.to_thread(_elo_refresh_now)
 
 
+def _quotes_extract_now() -> None:
+    from fbi.odds.quote_extract import run_extraction_job
+
+    with _connect() as conn:
+        run_extraction_job(conn, settings.runtime.raw_store_dir, limit=QUOTES_PER_RUN, max_seconds=QUOTES_RUN_SECONDS,
+                           min_free_gb=QUOTES_MIN_FREE_GB, max_table_gb=QUOTES_MAX_TABLE_GB)
+
+
+async def _quotes_extract() -> None:
+    """The price clock: every structured market of the RAW /odds payloads nobody has read yet (plan F1). Reads local files and
+    the database, writes only market.odds_quotes and its ledger; in a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_quotes_extract_now)
+
+
 def _notify_now() -> None:
     """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
     from fbi.notify.service import channel_from_env, run_notifier
@@ -1051,7 +1075,7 @@ WORKER_JOB_TYPES = frozenset({
     "odds_capture", "live_odds_capture", "live_match_capture", "fixtures_sync", "results_sync", "historical_backfill",
     "pick_pipeline", "quality_sweep", "context_refresh", "context_due", "results_repair", "final_prematch",
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
-    "research_monitor", "research_v2", "feature_build", "pick_settlement",
+    "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1275,6 +1299,12 @@ async def main() -> None:
     scheduler.add_job(_elo_refresh, "interval", hours=ELO_REFRESH_HOURS, id="elo_refresh",
                       max_instances=1, coalesce=True, misfire_grace_time=3600,
                       next_run_time=max(elo_next, moment + timedelta(minutes=12)))
+    if QUOTES_ENABLED:
+        scheduler.add_job(_deadline("odds_quotes_extract", "odds_quotes_extract", _quotes_extract), "interval",
+                          minutes=QUOTES_MINUTES, id="odds_quotes_extract", max_instances=1, coalesce=True,
+                          misfire_grace_time=QUOTES_MINUTES * 60, next_run_time=moment + timedelta(minutes=13))
+    else:
+        log.warning("worker.quotes_extract_off", hint="FBI_QUOTES_EXTRACT=0: the price clock is not structuring RAW /odds")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))
