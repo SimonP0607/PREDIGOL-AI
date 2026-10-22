@@ -116,3 +116,64 @@ def test_a_match_the_provider_says_will_have_no_normal_result_is_not_waiting() -
     at = KO_R + timedelta(days=2)
     for status in ("PST", "CANC", "ABD", "AWD", "WO", "SUSP"):
         assert _wait(status, at, read=KO_R + timedelta(days=1)) is None, status
+
+
+# --------------------------------------------------------------------------------- a final whistle needs a match first
+
+GWANGJU_ULSAN_KO = datetime(2026, 10, 11, 5, 0, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    ("code", "minutes_after_kickoff", "plausible"),
+    [
+        ("FT", 4, False),  # 11 Oct 2026, Gwangju - Ulsan: "FT, 90 minutes, 1-1" four minutes after kick-off (it ended 4-3)
+        ("FT", 59, False),
+        ("FT", 60, True),
+        ("FT", 112, True),
+        ("ft", 4, False),  # the provider spells codes both ways
+        ("AET", 99, False),
+        ("AET", 100, True),
+        ("PEN", 60, False),
+        ("PEN", 130, True),
+        ("1H", 3, True),  # only a FINISHED code can be too early
+        ("HT", 5, True),
+        ("NS", 0, True),
+        ("PST", 0, True),
+        ("CANC", 1, True),  # a cancellation can come at any time
+        ("AWD", 0, True),
+        ("WO", 0, True),
+        ("ABD", 20, True),
+        ("SUSP", 30, True),
+    ],
+)
+def test_a_final_whistle_cannot_come_before_a_match_could_end(code: str, minutes_after_kickoff: int,
+                                                              plausible: bool) -> None:
+    seen = GWANGJU_ULSAN_KO + timedelta(minutes=minutes_after_kickoff)
+    assert ms.final_is_plausible(code, GWANGJU_ULSAN_KO, seen) is plausible
+
+
+def test_a_reading_before_kickoff_is_not_a_final_either() -> None:
+    """Sporting JAX - Birmingham Legion, 10 Oct 2026: FT, then moved to 14 Oct - the reading came before the match."""
+    assert not ms.final_is_plausible("FT", GWANGJU_ULSAN_KO, GWANGJU_ULSAN_KO - timedelta(days=4))
+
+
+def test_without_a_kickoff_date_there_is_nothing_to_refuse_it_by() -> None:
+    assert ms.final_is_plausible("FT", None, GWANGJU_ULSAN_KO)
+    assert ms.final_is_plausible(None, GWANGJU_ULSAN_KO, GWANGJU_ULSAN_KO)
+
+
+def test_every_floor_is_for_a_finished_code_and_below_what_a_real_match_lasts() -> None:
+    assert set(ms.FINAL_NOT_BEFORE) == ms.FINISHED
+    assert ms.FINAL_NOT_BEFORE["FT"] <= timedelta(minutes=70), "a true 90-minute result must never be held back"
+    assert ms.FINAL_NOT_BEFORE["AET"] <= timedelta(minutes=110) and ms.FINAL_NOT_BEFORE["PEN"] <= timedelta(minutes=110)
+    assert ms.FINAL_NOT_BEFORE["AET"] > ms.FINAL_NOT_BEFORE["FT"], "extra time takes longer than ninety minutes"
+
+
+def test_a_kickoff_without_a_zone_is_read_as_utc_and_never_breaks_the_comparison() -> None:
+    """The guard runs on every payload: a date that came without an offset must not be what fails the payload."""
+    naive = GWANGJU_ULSAN_KO.replace(tzinfo=None)  # as `datetime.fromisoformat` reads a date with no offset
+    four_minutes_in = GWANGJU_ULSAN_KO + timedelta(minutes=4)
+    assert not ms.final_is_plausible("FT", naive, four_minutes_in)
+    assert ms.final_is_plausible("FT", naive, GWANGJU_ULSAN_KO + timedelta(minutes=112))
+    assert ms.minutes_after_kickoff(naive, four_minutes_in) == 4.0
+    assert ms.minutes_after_kickoff(GWANGJU_ULSAN_KO, naive) == 0.0

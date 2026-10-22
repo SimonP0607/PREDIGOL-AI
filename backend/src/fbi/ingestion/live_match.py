@@ -19,6 +19,11 @@ live tick can therefore never overwrite a later full-time payload, and the
 full-time payload replaces the last live one. What the existing tables could
 not hold - the score and minute DURING play - goes to core.fixture_live_states,
 one row per change.
+
+A reading of a match as finished that cannot be true - sooner after kick-off than a match lasts
+(``fbi.core.match_state.final_is_plausible``) - is declined by the sink and by this follow alike: no result, no
+state row, no detail. The match stays what it was, the next pass asks again, and the run's notes count the
+declined readings.
 """
 
 from __future__ import annotations
@@ -169,6 +174,9 @@ class LiveMatchReport:
     ended: list[int] = field(default_factory=list)
     """Fixtures (our ids) that this pass found ended - finished, cancelled, postponed, suspended, abandoned or
     awarded: what the fast settlement settles at once (fbi.picks.fast_settlement)."""
+    premature_finals: int = 0
+    """Readings of a match as finished, made sooner after kick-off than a match can last: declined, so nothing of them
+    is stored (``fbi.core.match_state.final_is_plausible``). The follow keeps asking for the match."""
 
 
 STALE_SQL = """
@@ -388,11 +396,16 @@ async def _follow(conn: psycopg.Connection, provider: Any, follow: list[tuple[in
                                              fetched_at=observed_at, season_ids=season_ids)
             report.fixtures_updated += outcome.fixtures_updated
             report.results_written += outcome.results_written
-            rep = apply_fixture_details(conn, details, payload_hash=raw.payload_hash,
-                                        fetched_at=observed_at, run_id=run_id)
+            # A reading the sink declined (a final whistle that cannot be true) is declined everywhere: no live state
+            # saying "FT 90'" on the board, no detail of a snapshot the provider has just contradicted.
+            declined = outcome.premature_ids
+            report.premature_finals += len(declined)
+            rep = apply_fixture_details(conn, [d for d in details if d.provider_fixture_id not in declined],
+                                        payload_hash=raw.payload_hash, fetched_at=observed_at, run_id=run_id)
             report.detail_fixtures += rep.fixtures
-            report.states_written += write_states(conn, list(iter_live_states(raw.body)),
-                                                  observed_at=observed_at, payload_hash=raw.payload_hash)
+            report.states_written += write_states(
+                conn, [s for s in iter_live_states(raw.body) if s.provider_fixture_id not in declined],
+                observed_at=observed_at, payload_hash=raw.payload_hash)
             if on_batch is not None:
                 on_batch(batch, raw, run_id)
             conn.commit()
@@ -404,9 +417,10 @@ async def _follow(conn: psycopg.Connection, provider: Any, follow: list[tuple[in
         counters.rows_inserted = report.states_written
         counters.rows_updated = report.fixtures_updated + report.results_written
     finally:
-        ledger.close(run_id, counters, notes=f"{report.followed} followed, {report.requests} requests")
+        declined_note = f", {report.premature_finals} premature final(s) declined" if report.premature_finals else ""
+        ledger.close(run_id, counters, notes=f"{report.followed} followed, {report.requests} requests{declined_note}")
         conn.commit()
     log.info(f"{job_type}.done", followed=report.followed, requests=report.requests,
              states=report.states_written, fixtures_updated=report.fixtures_updated,
-             results=report.results_written)
+             results=report.results_written, premature_finals=report.premature_finals)
     return report

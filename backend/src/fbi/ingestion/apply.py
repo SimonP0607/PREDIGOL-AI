@@ -29,6 +29,7 @@ import psycopg
 import structlog
 
 from fbi.catalog.neutral_store import classify_provider_fixtures
+from fbi.core import match_state
 from fbi.ingestion.fixture_facts import apply_fixture_facts
 from fbi.ingestion.fixtures import FixtureRepository, PayloadLineage, team_names
 from fbi.ingestion.results import ResultRepository
@@ -56,6 +57,14 @@ class PayloadOutcome:
     """Fixtures we hold that the payload lists under a competition we do not track (flagged, not moved)."""
     venue_verdicts_written: int = 0
     """Neutral-venue verdicts written or changed for the fixtures of the payload (``fbi.catalog.neutral``)."""
+    premature_ids: frozenset[int] = frozenset()
+    """Provider ids of the fixtures the payload called finished sooner after kick-off than a match can last: nothing of
+    them was stored from this payload, and a caller that writes more from the same payload (the live follow's states and
+    details) leaves them out too (``fbi.core.match_state.final_is_plausible``)."""
+
+    @property
+    def premature_finals(self) -> int:
+        return len(self.premature_ids)
 
 
 def apply_fixtures_payload(
@@ -70,7 +79,16 @@ def apply_fixtures_payload(
     """Apply one /fixtures response. The caller owns the transaction."""
     lineage = PayloadLineage(payload_hash=payload_hash, fetched_at=fetched_at)
     refs = provider.parse_fixtures(body)
-    ours = [r for r in refs if (r.provider_league_id, r.season) in season_ids]
+    premature = {r.provider_fixture_id for r in refs
+                 if not match_state.final_is_plausible(r.status_short, r.kickoff_at, fetched_at)}
+    if premature:
+        # Declined, loudly: the stored state stays what it was and the next read of the match says what is true.
+        log.warning("fixture.premature_final", payload_hash=payload_hash, fetched_at=fetched_at.isoformat(),
+                    fixtures=[{"provider_fixture_id": r.provider_fixture_id, "status": r.status_short,
+                               "minutes_after_kickoff": round(match_state.minutes_after_kickoff(r.kickoff_at, fetched_at), 1)}
+                              for r in refs if r.provider_fixture_id in premature])
+    ours = [r for r in refs if (r.provider_league_id, r.season) in season_ids
+            and r.provider_fixture_id not in premature]
     inserted = updated = 0
     repo = FixtureRepository(conn)
     if ours:
@@ -81,8 +99,10 @@ def apply_fixtures_payload(
         )
     left = repo.note_left_tracked(refs, season_ids, payload_hash=payload_hash) if len(ours) < len(refs) else 0
     results = provider.parse_results(body)
-    _, written = ResultRepository(conn).apply(results, lineage=lineage)
-    facts = apply_fixture_facts(conn, iter_fixture_facts(body), payload_hash=payload_hash, observed_at=fetched_at)
+    _, written = ResultRepository(conn).apply(
+        [x for x in results if x.provider_fixture_id not in premature], lineage=lineage)
+    facts = apply_fixture_facts(conn, (f for f in iter_fixture_facts(body) if f.provider_fixture_id not in premature),
+                                payload_hash=payload_hash, observed_at=fetched_at)
     verdicts = _classify_venues(conn, [r.provider_fixture_id for r in ours], payload_hash=payload_hash)
     return PayloadOutcome(
         seen=len(refs),
@@ -94,6 +114,7 @@ def apply_fixtures_payload(
         facts_written=facts,
         left_tracked=left,
         venue_verdicts_written=verdicts,
+        premature_ids=frozenset(premature),
     )
 
 

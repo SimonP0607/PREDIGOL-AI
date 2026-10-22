@@ -19,14 +19,13 @@ import pytest
 
 from fbi.api.services.product import started_board
 from fbi.api.services.records import daily_board
-from fbi.ingestion.live_match import capture_live_matches
 from fbi.picks.daily import build_daily_sets
 from fbi.picks.fast_settlement import settle_fixtures
 
 from .conftest import Seed
 from .test_ai_decision_layer import Savepoints
 from .test_daily_records import AT, World
-from .test_e2e_match_cycle import KO, Provider, _body
+from .test_e2e_match_cycle import KO, Provider, _body, follow
 
 Pair = tuple[int | None, int | None]
 
@@ -127,7 +126,7 @@ async def test_every_way_a_match_ends(db: psycopg.Connection[Any], seed: Seed, n
     conn: Any = Savepoints(db)
     ended: list[int] = []
     for n, _say in enumerate(case.says):
-        report = await capture_live_matches(conn, provider, at=KO + timedelta(minutes=12 + 100 * n))
+        report = await follow(conn, provider, at=KO + timedelta(minutes=12 + 100 * n))
         ended = report.ended
     assert ended == [f1], "the live follow hands every ending over to settlement at once"
     at = KO + timedelta(minutes=12 + 100 * len(case.says))
@@ -150,8 +149,8 @@ async def test_an_interrupted_match_is_still_in_play_and_waits(db: psycopg.Conne
     _, f1, pick = _world(db, seed)
     provider = Provider([_answer(db, f1, Say("1H", 30, (0, 0))), _answer(db, f1, Say("INT", 40, (0, 0)))])
     conn: Any = Savepoints(db)
-    await capture_live_matches(conn, provider, at=KO + timedelta(minutes=30))
-    report = await capture_live_matches(conn, provider, at=KO + timedelta(minutes=45))
+    await follow(conn, provider, at=KO + timedelta(minutes=30))
+    report = await follow(conn, provider, at=KO + timedelta(minutes=45))
     assert report.ended == []
     assert _shown(db, f1, pick, KO + timedelta(minutes=46)) == ("live", "live", "PENDING")
 
@@ -162,7 +161,7 @@ async def test_a_match_with_no_official_result_72_hours_on_is_void(db: psycopg.C
     _, f1, pick = _world(db, seed)
     provider = Provider([_answer(db, f1, Say("PST", None, (None, None)))])
     conn: Any = Savepoints(db)
-    report = await capture_live_matches(conn, provider, at=KO + timedelta(minutes=12))
+    report = await follow(conn, provider, at=KO + timedelta(minutes=12))
     settle_fixtures(db, report.ended, path="live_follow", at=KO + timedelta(minutes=13))
     assert db.execute("SELECT result_status FROM picks.pick_results WHERE pick_id = %s", (pick,)).fetchone() == (
         "pending",)

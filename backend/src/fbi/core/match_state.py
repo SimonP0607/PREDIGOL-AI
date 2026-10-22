@@ -38,6 +38,14 @@ kick-off, and lower leagues have no live coverage at all. Two cases are not beli
 SUSP is not timed out: a suspended match stays suspended until the provider says
 otherwise.
 
+A third case is not believed when a reading is STORED (``final_is_plausible``): a
+FINISHED code made sooner after kick-off than a match of that kind can last. On 11 Oct
+2026 the provider answered "FT, 90 minutes, 1-1" for Gwangju - Ulsan four minutes after
+its kick-off (one minute earlier it said "1H, minute 3, 0-0"; the match ended 4-3), and
+the sink settled 132 picks on it. A reading like that is not applied: the stored state
+stays what it was, the follower keeps asking, and the next read of the match says what
+is true.
+
 The STORED group (``core.fixtures.status_group``) keeps its historical mapping
 (``STORED_GROUP``) on purpose: features, backtests and audits read it, and changing what
 it means would change what the models were trained on. The phase refines it; it does not
@@ -46,7 +54,7 @@ rewrite it. The web mirrors this table in src/product/matches/state.ts.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 
@@ -84,6 +92,15 @@ START_GRACE = timedelta(minutes=15)
 """Still scheduled this long after kick-off: the start is late or our copy is stale."""
 LIVE_STALE_AFTER = timedelta(hours=3, minutes=30)
 """Still in play this long after kick-off: longer than any match with extra time and penalties."""
+FINAL_NOT_BEFORE: dict[str, timedelta] = {
+    "FT": timedelta(minutes=60),
+    "AET": timedelta(minutes=100),
+    "PEN": timedelta(minutes=100),
+}
+"""Kick-off to the earliest final whistle that can be believed. Far below what a full match takes (about 95 minutes
+with the break and stoppage time; about 125 with extra time): a stored kick-off can be a little late, and a floor that
+is too high would hold back a true result, while a floor too low would let the glitch through. Nothing real ends
+sooner than these."""
 
 STORED_GROUP: dict[str, str] = {
     "TBD": "scheduled", "NS": "scheduled",
@@ -148,6 +165,29 @@ def phase(status_short: str | None, kickoff_at: datetime | None, at: datetime) -
 
 def stored_group(status_short: str | None, default: str = "scheduled") -> str:
     return STORED_GROUP.get(code(status_short), default)
+
+
+def _aware(moment: datetime) -> datetime:
+    """A moment without a zone is read as UTC, the zone this system keeps time in: a guard must never be the thing
+    that fails a payload because two datetimes cannot be compared."""
+    return moment if moment.tzinfo is not None else moment.replace(tzinfo=UTC)
+
+
+def minutes_after_kickoff(kickoff_at: datetime, observed_at: datetime) -> float:
+    """Minutes from kick-off to a reading (negative before it)."""
+    return (_aware(observed_at) - _aware(kickoff_at)).total_seconds() / 60
+
+
+def final_is_plausible(status_short: str | None, kickoff_at: datetime | None, observed_at: datetime) -> bool:
+    """False for a FINISHED reading made sooner after kick-off than a match of that kind can last
+    (``FINAL_NOT_BEFORE``): something the provider got wrong for a moment, to be ignored, not stored and not settled.
+
+    Every other code, and a reading of a match with no kick-off date, is plausible: this guard refuses only what
+    cannot be true. It does not decide a result; it declines to store an impossible one."""
+    floor = FINAL_NOT_BEFORE.get(code(status_short))
+    if floor is None or kickoff_at is None:
+        return True
+    return _aware(observed_at) >= _aware(kickoff_at) + floor
 
 
 class ResultWait(StrEnum):
