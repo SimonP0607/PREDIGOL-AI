@@ -10,8 +10,9 @@ what runs it over the database:
   advisory lock, and writes NOTHING when the digest of what it built is the one already stored (a rebuild that changes
   nothing costs one read; ``core.fixtures.updated_at`` is never touched, because other jobs read it as "this fixture changed");
 * ``pending`` says which seasons are worth building now and ``refresh_pending`` builds them, a failure in one season never
-  holding back the others. The worker runs it as the ``competition_structure`` job; ``python -m scripts.competition_stages``
-  runs the same functions by hand (dry run by default).
+  holding back the others. The worker runs it as the ``competition_structure`` job (``fbi.ingestion.competition_structure``:
+  the pass as a ledger run - the ledger is the ingestion layer's, and this package stays below it);
+  ``python -m scripts.competition_stages`` runs the same functions by hand (dry run by default).
 
 The outcome columns of a tie (winner, aggregate) are post-match data. Nothing that decides or judges a pick before a match
 reads them: the pre-match readers use ``fbi.competitions.context``, which answers "as of" a moment.
@@ -429,35 +430,6 @@ def refresh_pending(conn: psycopg.Connection[Any], *, now: datetime, max_seconds
     if limit is not None:
         queue = queue[:limit]
     return build_many(conn, queue, now=now, apply=True, max_seconds=max_seconds, commit=commit)
-
-
-def run_job(conn: psycopg.Connection[Any], *, now: datetime, max_seconds: float = 120.0, limit: int | None = 400,
-            commit: bool = True, everything: bool = False) -> BuildReport:
-    """The scheduled job: a pass of ``refresh_pending`` as a ledger run - but only when it changed or broke something, so a
-    quiet hour leaves no row in the ledger. The worker runs it every few minutes with a budget, and once a day with
-    ``everything`` (no limit, a longer budget): the sweep that reads every season, whatever its age."""
-    from fbi.ingestion.ledger import RunCounters, RunLedger
-
-    report = refresh_pending(conn, now=now, max_seconds=max_seconds, limit=limit, commit=commit, everything=everything)
-    if commit:
-        conn.commit()
-    if everything:
-        log.info("competition_structure.sweep", seasons=report.seasons, changed=report.changed, failed=report.failed,
-                 left=report.seasons_left)
-    if not (report.changed or report.failed):
-        return report
-    ledger = RunLedger(conn)
-    run_id = ledger.open(JOB, params={"limit": limit, "max_seconds": max_seconds, "stages": stg.VERSION, "ties": tl.VERSION,
-                                      "sweep": everything})
-    counters = RunCounters()
-    counters.rows_inserted = report.rows_written
-    counters.rows_updated = report.fixtures_updated
-    counters.rows_normalized = report.seasons
-    counters.errors.extend(report.errors[:5])
-    if report.stopped_for_time:
-        counters.stopped_early = f"time budget of {max_seconds:g} s reached: {report.seasons_left} seasons left for the next pass"
-    ledger.close(run_id, counters, notes=str(report.as_dict())[:2000])
-    return report
 
 
 # ── what is stored, checked from the outside ────────────────────────────────

@@ -26,6 +26,7 @@ from psycopg.rows import dict_row
 from fbi.competitions import builder, seasons
 from fbi.competitions import stages as stg
 from fbi.competitions import ties as tl
+from fbi.ingestion import competition_structure
 from tests.integration.conftest import ADMIN_URL, REPO_ROOT, Seed, _dsn
 from tests.integration.helpers import scalar
 
@@ -800,7 +801,7 @@ def ledger_runs(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
         def close(self, run_id: int, counters: Any, *, notes: str | None = None) -> None:
             runs[run_id - 1].update(counters=counters, notes=notes)
 
-    monkeypatch.setattr("fbi.ingestion.ledger.RunLedger", FakeLedger)
+    monkeypatch.setattr("fbi.ingestion.competition_structure.RunLedger", FakeLedger)
     return runs
 
 
@@ -810,10 +811,10 @@ def test_the_job_leaves_a_ledger_run_only_when_it_changed_something(db: psycopg.
     w = make_world(db, seed, 99841)
     champions_league(w)
 
-    report = builder.run_job(db, now=NOW, commit=False)
+    report = competition_structure.run_job(db, now=NOW, commit=False)
 
     assert report.failed == 0 and report.changed >= 1
-    assert len(runs) == 1 and runs[0]["job"] == builder.JOB == "competition_structure"
+    assert len(runs) == 1 and runs[0]["job"] == competition_structure.JOB == builder.JOB == "competition_structure"
     assert runs[0]["params"] == {"limit": 400, "max_seconds": 120.0, "stages": stg.VERSION, "ties": tl.VERSION,
                                  "sweep": False}
     counters = runs[0]["counters"]
@@ -822,7 +823,7 @@ def test_the_job_leaves_a_ledger_run_only_when_it_changed_something(db: psycopg.
     assert counters.errors == [] and report.rows_written >= 9
     assert w.one("SELECT count(*) FROM core.fixtures WHERE competition_season_id = %s AND stage_id IS NOT NULL", w.season) == 9
 
-    quiet = builder.run_job(db, now=NOW, commit=False)
+    quiet = competition_structure.run_job(db, now=NOW, commit=False)
 
     assert (quiet.changed, quiet.failed) == (0, 0)
     assert len(runs) == 1, "a pass that changed nothing leaves no row in the ledger"
@@ -833,7 +834,7 @@ def test_the_daily_sweep_finds_a_result_corrected_long_after_its_season_left_the
         db: psycopg.Connection[Any], seed: Seed, ledger_runs: list[dict[str, Any]]) -> None:
     w = make_world(db, seed, 99843)
     f = champions_league(w)  # played between August and February: months before NOW
-    builder.run_job(db, now=NOW, commit=False)
+    competition_structure.run_job(db, now=NOW, commit=False)
     assert_stored_is_the_build(w)
     runs_so_far = len(ledger_runs)
     winner = "SELECT winner_team_id, winner_check FROM core.ties t JOIN core.competition_stages s ON s.id = t.stage_id " \
@@ -842,11 +843,11 @@ def test_the_daily_sweep_finds_a_result_corrected_long_after_its_season_left_the
 
     w.set_goals(f["r2"], 2, 0)  # the provider corrects the second leg: team 4 went through on the pitch
 
-    ordinary = builder.run_job(db, now=NOW, commit=False)
+    ordinary = competition_structure.run_job(db, now=NOW, commit=False)
     assert (ordinary.changed, ordinary.failed) == (0, 0) and len(ledger_runs) == runs_so_far, "a season this old is not read"
     assert w.rows(winner, w.season) == [(w.team[1], "confirmed")], "so the tie still says what it said"
 
-    sweep = builder.run_job(db, now=NOW, commit=False, everything=True, limit=None)
+    sweep = competition_structure.run_job(db, now=NOW, commit=False, everything=True, limit=None)
 
     assert (sweep.changed, sweep.failed) == (1, 0) and sweep.seasons > 1, "every season was read, one needed writing"
     assert len(ledger_runs) == runs_so_far + 1
@@ -855,7 +856,7 @@ def test_the_daily_sweep_finds_a_result_corrected_long_after_its_season_left_the
     assert w.rows(winner, w.season) == [(w.team[4], "contradicted")], "the sporting winner, with the next round as witness"
     assert_stored_is_the_build(w)
 
-    quiet = builder.run_job(db, now=NOW, commit=False, everything=True, limit=None)
+    quiet = competition_structure.run_job(db, now=NOW, commit=False, everything=True, limit=None)
     assert (quiet.changed, quiet.failed) == (0, 0) and len(ledger_runs) == runs_so_far + 1, "a sweep that finds nothing is silent"
 
 

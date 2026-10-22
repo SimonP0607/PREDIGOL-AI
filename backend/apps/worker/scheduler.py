@@ -777,7 +777,7 @@ async def _quotes_extract() -> None:
 
 
 def _competition_structure_now(*, everything: bool = False) -> None:
-    from fbi.competitions.builder import run_job
+    from fbi.ingestion.competition_structure import run_job
 
     with _connect() as conn:
         if everything:

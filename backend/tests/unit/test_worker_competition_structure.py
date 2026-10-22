@@ -112,7 +112,7 @@ def calls(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
         seen.append({"conn": conn, **kwargs})
 
     monkeypatch.setattr(scheduler, "_connect", _fake_connect)
-    monkeypatch.setattr("fbi.competitions.builder.run_job", run_job)
+    monkeypatch.setattr("fbi.ingestion.competition_structure.run_job", run_job)
     return seen
 
 
