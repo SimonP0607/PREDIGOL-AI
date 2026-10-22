@@ -1,6 +1,6 @@
 # Capa de decisión IA de PrediGol (`fbi.ai`)
 
-*Versión de la capa: packet-v3 · rules-review-v1 · review-v2 · brief-v1 · day-v1 · match-analysis-v1 · pm-v1 ·
+*Versión de la capa: packet-v4 · rules-review-v1 · review-v2 · brief-v1 · day-v1 · match-analysis-v1 · pm-v1 ·
 pm-v2 · learning-v1 · patterns-v1 · ai-gate-v1 · icc-v1 · daily-set-v3 · parlay-v4. Migraciones 0072-0073.
 Escrito el 8 oct 2026; **V2** (el día de Bogotá, los tres pasos, L1/L2/L3, presupuesto adaptable de US$150,
 post-mortems por selección y aprendizaje diario) el mismo día.*
@@ -56,7 +56,12 @@ contradicción o noticia importante, y una revisión L2 que las reglas contradic
 Sin modelo disponible, el brief lo escriben las reglas (`engine=rules`). Un paso que el proveedor falló (caído,
 timeout) no se registra y se reintenta en el ciclo siguiente; el resto del ciclo no vuelve a llamarlo.
 
-Paquete (`fbi.ai.packet`): partido (estado, cambios de hora), tabla y lo que está en juego, forma, calendario
+Paquete (`fbi.ai.packet`): partido (estado, cambios de hora), la fase de la ronda y, en una vuelta, solo lo que se sabía del cruce antes
+del partido (bloque `phase`: las patas anteriores con resultado registrado a la hora del paquete, el global de esas patas y qué
+hacen al global los primeros 90 minutos; nunca el ganador ni el global final; packet-v4, plan F2), tabla y lo que está en juego
+(**la tabla de la etapa propia del partido** según la misma asignación que la página, de la captura más reciente a la hora del
+paquete; lo que está en juego se calcula solo con esa etapa y los partidos que le quedan al equipo en ella, y una ronda eliminatoria
+muestra la tabla de la etapa anterior como contexto y sin «en juego»; una etapa sin tabla se declara en `missing`; packet-v4), forma, calendario
 (descanso, rotación — leído solo de las competiciones que seguimos, así que el descanso es un **máximo** y los partidos
 en 14 días un **mínimo**: el bloque lo declara en `schedule.calendar` y solo emite la bandera «poco descanso», nunca
 «desventaja de descanso» entre los dos lados; packet-v3, plan F0 defecto 10), H2H, Elo, estadísticas, bajas ponderadas por importancia del jugador (**solo la última respuesta de `/injuries` a la fecha de corte**: un jugador que la respuesta más reciente ya no nombra se recuperó y no cuenta, y un refresco posterior no borra lo que se sabía en ese momento; se lee del historial `core.player_availability_obs`, no de `core.player_absences`, que solo guarda la última respuesta; packet-v3, plan F0 defecto 8), alineaciones,

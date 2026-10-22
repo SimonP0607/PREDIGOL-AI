@@ -1,6 +1,6 @@
 # PrediGol Intelligence — arquitectura, contratos y ciclo diario
 
-Versión del documento: **pi-arch-v1.1** (22 oct 2026; la v1 es del 13 oct). Estado: **SHADOW** (nada de esto publica picks ni mueve dinero).
+Versión del documento: **pi-arch-v1.2** (22 oct 2026, plan F2: etapas y cruces; la v1.1 es de la misma fecha y la v1 del 13 oct). Estado: **SHADOW** (nada de esto publica picks ni mueve dinero).
 
 > Documentación = código (plan F0, defecto 12): las cifras de los 10 filtros, del PICK PREMIUM, del parlay, del score, del stake, de la calibración y del presupuesto de este documento las compara con las constantes del código `tests/unit/test_docs_match_code.py`; si una cambia, el test falla hasta que el documento la diga. La sección 0 es la auditoría inicial (datos de entonces) y no se compara.
 
@@ -36,7 +36,8 @@ CAPA 1 · DATOS           API-Football (fixtures, odds de todas las casas, stats
 CAPA 2 · MODELOS         Por mercado: Poisson, Dixon-Coles (goles), Elo ordered-logit (1X2) -> P_modelo con intervalo
                          (existente: fbi.models, picks shadow-rule-v2). NUEVO: calibración por (mercado, modelo)
                          fbi.intel.calibration -> P_calibrada, versionada, champion/challenger con criterios fijos.
-CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v3 = packet-v1 + dossier-v1 + calendario con su alcance declarado + bajas de la última respuesta a la fecha), evidencia con fuente,
+CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v4 = packet-v1 + dossier-v2 + calendario con su alcance declarado + bajas de la última respuesta a la fecha +
+                         fase y cruce de la ronda, solo lo sabido antes del partido + la tabla de la etapa propia a la hora del paquete), evidencia con fuente,
 INTELLIGENCE             nivel y estado, brief L1 / revisión L2 / revisión L3 (existente: fbi.ai). NUEVO: dossier
                          (equipo, árbitro, entrenador, contexto competitivo, jugadores clave), fuentes clasificadas
                          (sources-v2), estado de contexto FULL / PARTIAL / LIMITED (CONTEXTO EXTERNO LIMITADO) /
@@ -154,7 +155,7 @@ una pata por competición y sin equipo compartido no hay jornada común cuya dep
 
 ## 6. Capa 3 — dossier, investigación y narrativa
 
-* **dossier-v1** (desde `packet-v2`, todo a la fecha de corte): por equipo, últimos 10 partidos en casa/fuera con goles,
+* **dossier-v2** (v1 desde `packet-v2`; la v2, de `packet-v4`, saca «es la vuelta» de la estructura del cruce y no de «el último partido entre el par en 60 días»; todo a la fecha de corte): por equipo, últimos 10 partidos en casa/fuera con goles,
   xG, tiros, a puerta, córners, faltas, tarjetas, fueras de juego, posesión, penaltis (eventos), rachas, calidad del
   rival (Elo), comportamiento según marcador (goles a favor/en contra yendo por delante/detrás); árbitro (partidos,
   amarillas, rojas, faltas, penaltis por partido, reparto local/visitante); entrenadores (formaciones, alternativas,
@@ -247,11 +248,12 @@ corrida semanal, con su `version`.
 * Los tokens de respuestas inválidas se cuentan. Métricas: coste por partido, candidato, pick, investigación,
   post-mortem, día y proyección mensual. Los análisis son compartidos: ningún token por usuario.
 
-## 10. Fugas de datos (`leak-audit-v1`, diario y en tests)
+## 10. Fugas de datos (`leak-audit-v2`, diario y en tests)
 
 Para cada decisión: `known_at` < saque; `price_at` ≤ `known_at`; pick `data_cutoff_ts` y `created_at` ≤ `known_at`;
 calibrador `fitted_at` ≤ `known_at` y sus datos liquidados antes de `fitted_at`; revisión y paquete ≤ `known_at`;
-evidencias `retrieved_at` (y `published_at` si existe) ≤ `known_at`. Toda violación queda en `intel.audit_checks`.
+evidencias `retrieved_at` (y `published_at` si existe) ≤ `known_at`; y (v2, plan F2, regla `tie_legs_known`) toda pata de un cruce que cite un paquete guardado
+empezó antes del partido y tenía su resultado registrado a la hora del paquete. Toda violación queda en `intel.audit_checks`.
 
 ## 11. Autonomía controlada
 
