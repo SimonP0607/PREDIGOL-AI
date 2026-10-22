@@ -814,6 +814,11 @@ export interface PickEvent {
   to_status: string;
   at: Iso;
   reason: string;
+  /**
+   * `status`: a change of the pick's status. `resettlement`: the pick stayed settled but its result
+   * changed because the provider corrected the match (plan F0, defect 5); `reason` says from what to what.
+   */
+  event_kind: "status" | "resettlement";
 }
 
 export type PickStatus = "shadow" | "qualified" | "published" | "settled";

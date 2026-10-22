@@ -22,6 +22,18 @@
     "VOID": "Void",
     "PARTIAL_VOID": "Won with partial or void legs"
   },
+  "correction": {
+    "title": "Result corrected",
+    "help": "This record changed result after it was settled: it was settled again and what it said before is kept here.",
+    "step": "{when} · {from} → {to}",
+    "cause": {
+      "result_corrected": "The data provider corrected the match score and this record was settled again.",
+      "status_changed": "The match status changed and this record was settled again.",
+      "audit": "A review found that the stored result did not match the match score, and it was settled again."
+    },
+    "leg": "Leg {n}",
+    "more": "and {n} more"
+  },
   "stage": {
     "T-24h": "Chosen ≈24 h before",
     "T-12h": "Chosen ≈12 h before",

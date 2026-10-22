@@ -419,9 +419,15 @@ function PickLineage({ p }: { p: PickRow }) {
         </div>
         <ul className="mt-1 space-y-0.5 text-caption text-muted-foreground">
           {p.events.map((e) => (
-            <li key={`${e.at}-${e.to_status}`}>
-              <span className="numeric">{utcDateTime(e.at)}</span> · {e.from_status ?? "∅"} →{" "}
-              {e.to_status} · {e.reason}
+            <li key={`${e.at}-${e.event_kind}-${e.to_status}`} data-kind={e.event_kind}>
+              <span className="numeric">{utcDateTime(e.at)}</span> ·{" "}
+              {e.event_kind === "resettlement" ? (
+                t("ops.picks.lineage.resettled", { reason: e.reason })
+              ) : (
+                <>
+                  {e.from_status ?? "∅"} → {e.to_status} · {e.reason}
+                </>
+              )}
             </li>
           ))}
         </ul>

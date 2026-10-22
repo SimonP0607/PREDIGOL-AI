@@ -193,7 +193,8 @@
       "result": "Resultado",
       "basis": "Base de liquidación",
       "needsReview": "Requiere revisión: {reason}",
-      "history": "Historial"
+      "history": "Historial",
+      "resettled": "Liquidado de nuevo ({reason})"
     },
     "rejection": {
       "oddsOutside": "cuota fuera de [{a}, {b}]",

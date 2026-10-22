@@ -31,6 +31,7 @@ import {
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { ChipGroup } from "@/product/picks/Controls";
 import { EvaluationBadge, OriginLabel, ParlayStatusBadge, RecordState, Units } from "./Badges";
+import { CorrectionNote } from "./CorrectionNote";
 import { useRefreshMine } from "./hooks";
 import { HISTORY_GROUPS, hasStarted } from "./model";
 import { useSlip } from "./slipContext";
@@ -347,6 +348,7 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
           </div>
         ) : null}
       </div>
+      <CorrectionNote corrections={pick.corrections} record="result" className="mt-2" />
       {open && editing ? <UserOddsForm pick={pick} onDone={() => setEditing(false)} /> : null}
     </li>
   );
@@ -447,6 +449,11 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
             </li>
           ))}
         </ol>
+        <CorrectionNote
+          corrections={parlay.corrections}
+          record="parlay"
+          className="border-t border-border/60 px-4 py-2.5 sm:px-5"
+        />
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-elevated/30 px-4 py-3 sm:px-5">
           <div className="flex items-center gap-3">
             <span className="text-label text-subtle-foreground">{t("parlays.combinedOdds")}</span>

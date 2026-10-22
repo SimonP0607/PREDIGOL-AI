@@ -22,6 +22,18 @@
     "VOID": "Anulada",
     "PARTIAL_VOID": "Ganada con parciales o anuladas"
   },
+  "correction": {
+    "title": "Resultado corregido",
+    "help": "Este registro cambió de resultado después de liquidarse: se liquidó de nuevo y aquí queda lo que decía antes.",
+    "step": "{when} · {from} → {to}",
+    "cause": {
+      "result_corrected": "El proveedor de datos corrigió el marcador del partido y este registro se liquidó de nuevo.",
+      "status_changed": "Cambió el estado del partido y este registro se liquidó de nuevo.",
+      "audit": "Una revisión comprobó que el resultado guardado no correspondía al marcador del partido y se liquidó de nuevo."
+    },
+    "leg": "Selección {n}",
+    "more": "y {n} más"
+  },
   "stage": {
     "T-24h": "Elegido ≈24 h antes",
     "T-12h": "Elegido ≈12 h antes",

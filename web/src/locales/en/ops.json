@@ -193,7 +193,8 @@
       "result": "Result",
       "basis": "Basis",
       "needsReview": "Needs review: {reason}",
-      "history": "History"
+      "history": "History",
+      "resettled": "Settled again ({reason})"
     },
     "rejection": {
       "oddsOutside": "odds outside [{a}, {b}]",

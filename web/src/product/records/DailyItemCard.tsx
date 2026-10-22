@@ -12,6 +12,7 @@ import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { EvBadge, Kickoff, OddsPill, ProbCompare } from "@/product/shared/Bits";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { AiNote } from "./AiNote";
+import { CorrectionNote } from "./CorrectionNote";
 import { DecisionChain } from "./DecisionChain";
 import { formatTime } from "@/lib/time";
 import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
@@ -182,6 +183,11 @@ export function DailyItemCard({
         </div>
         {!started ? <SelectablePrice sel={pickableOfItem(item)} save size="sm" /> : null}
       </div>
+      <CorrectionNote
+        corrections={item.corrections}
+        record="result"
+        className="border-t border-border/70 px-4 py-2.5"
+      />
     </article>
   );
 }

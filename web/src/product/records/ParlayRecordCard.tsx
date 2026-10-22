@@ -19,6 +19,7 @@ import { PARLAY_ICON, parlayTitle } from "@/product/parlays/parlayText";
 import { LegNumber, LegPrice, LegRow } from "@/product/parlays/LegRow";
 import { legLabel, viewOfRecord } from "@/product/parlays/legs";
 import { EvaluationBadge, ParlayOutcomeBadge, RecordState, Units } from "./Badges";
+import { CorrectionNote } from "./CorrectionNote";
 
 type Variant = "compact" | "full";
 
@@ -121,6 +122,7 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
             : t("records.parlay.builtAt", { when: formatRelative(parlay.ready_at) })}
         </p>
       ) : null}
+      <CorrectionNote corrections={parlay.corrections} record="parlay" className="mt-3" />
     </div>
   );
 }
