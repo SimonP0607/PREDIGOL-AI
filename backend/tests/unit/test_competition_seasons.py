@@ -10,7 +10,12 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
-from fbi.competitions.seasons import SeasonFixture, build_season
+import pytest
+
+from fbi.competitions import seasons
+from fbi.competitions import stages as stg
+from fbi.competitions import ties as tl
+from fbi.competitions.seasons import SeasonFixture, build_season, fingerprint
 
 D0 = datetime(2025, 8, 1, 19, tzinfo=UTC)
 NOW = datetime(2026, 10, 22, 12, tzinfo=UTC)
@@ -157,3 +162,62 @@ def test_a_stage_that_is_not_a_bracket_keeps_its_matches_out_of_ties() -> None:
 def test_an_empty_season_is_empty() -> None:
     build = build_season([], now=NOW)
     assert build.stages == {} and build.ties == () and build.slots == {} and build.dropped == {}
+
+
+def test_a_stage_of_replays_whose_round_is_not_in_the_season_stands_alone() -> None:
+    # the provider lists the replays of a round and not the round itself: their ties are built in the stage that holds them
+    rows = [fx(1, "1st Round Replays", 2, 1, 4, 0, 1), fx(2, "1st Round Replays", 4, 3, 4, 2, 2),
+            fx(5, "2nd Round", 1, 3, 20, 1, 0)]
+    build = build_season(rows, now=NOW)
+    replays = build.stages["1st Round Replays"]
+    assert replays.reading.replay and replays.ties == 2 and replays.tie_format == "single"
+    tie = build.tie_of(1)
+    assert tie is not None and tie.stage == "1st Round Replays" and (tie.winner, tie.check) == (1, "confirmed")
+    assert build.slots[1].tie == ("1st Round Replays", 1, 2)
+    assert seasons.tie_base("1st Round Replays", replays.reading, {"1st Round Replays": []}) == "1st Round Replays"
+    assert seasons.tie_base("1st Round Replays", replays.reading, {"1st Round Replays": [], "1st Round": []}) == "1st Round"
+
+
+def _quarter_finals(second_leg: tuple[int, int] = (1, 1)) -> list[SeasonFixture]:
+    return [fx(1, "Quarter-finals", 1, 2, 0, 1, 0), fx(2, "Quarter-finals", 2, 1, 7, *second_leg),
+            fx(3, "Semi-finals", 1, 3, 30)]
+
+
+def test_the_fingerprint_of_a_build_is_the_same_for_the_same_season_in_any_order() -> None:
+    rows = _quarter_finals()
+    a = fingerprint(build_season(rows, now=NOW))
+    assert a == fingerprint(build_season(list(reversed(rows)), now=NOW))
+    assert len(a) == 32 and a == fingerprint(build_season(rows, now=NOW + timedelta(minutes=5)))
+
+
+def test_the_fingerprint_changes_when_anything_a_build_says_changes() -> None:
+    base = fingerprint(build_season(_quarter_finals(), now=NOW))
+    assert fingerprint(build_season(_quarter_finals((2, 1)), now=NOW)) != base  # a result corrected: another winner
+    assert fingerprint(build_season(_quarter_finals()[:2], now=NOW)) != base  # a fixture the provider removed
+    renamed = [replace(r, round="Round of 16") if r.fixture_id == 3 else r for r in _quarter_finals()]
+    assert fingerprint(build_season(renamed, now=NOW)) != base  # a round renamed
+    # a fixture's own id is part of the answer: the slot of each fixture is what the builder writes
+    assert fingerprint(build_season([replace(r, fixture_id=r.fixture_id + 10) for r in _quarter_finals()], now=NOW)) != base
+
+
+def test_the_fingerprint_notices_that_time_alone_turned_a_tie_unresolved() -> None:
+    # a second leg that was scheduled and never played: waiting for it is right for a few days and wrong after that
+    rows = [fx(1, "Quarter-finals", 1, 2, 0, 1, 0), fx(2, "Quarter-finals", 2, 1, 7, status="NS"),
+            fx(3, "Quarter-finals", 3, 4, 0, 2, 0), fx(4, "Quarter-finals", 4, 3, 7, 0, 0)]
+    soon = build_season(rows, now=D0 + timedelta(days=8))
+    late = build_season(rows, now=D0 + timedelta(days=30))
+    waiting, given_up = soon.tie_of(1), late.tie_of(1)
+    assert waiting is not None and given_up is not None
+    assert (waiting.status, given_up.status) == ("in_progress", "unresolved")
+    assert fingerprint(soon) != fingerprint(late)
+
+
+def test_the_fingerprint_follows_the_versions_of_the_rules(monkeypatch: pytest.MonkeyPatch) -> None:
+    build = build_season(_quarter_finals(), now=NOW)
+    before = fingerprint(build)
+    monkeypatch.setattr(tl, "VERSION", "ties-99")
+    assert fingerprint(build) != before
+    monkeypatch.undo()
+    assert fingerprint(build) == before
+    monkeypatch.setattr(stg, "VERSION", "stages-99")
+    assert fingerprint(build) != before

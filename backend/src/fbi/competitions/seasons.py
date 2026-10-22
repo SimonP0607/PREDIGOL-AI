@@ -20,10 +20,13 @@ that played an earlier round under the same label has not "gone through" anythin
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from fbi.competitions import stages as stg
 from fbi.competitions import ties as tl
@@ -105,15 +108,21 @@ def _match(f: SeasonFixture, *, in_replay_stage: bool) -> tl.Match:
                    in_replay_stage=in_replay_stage)
 
 
-def witnesses(base: str, by_stage: dict[str, list[SeasonFixture]],
-              readings: dict[str, stg.Reading]) -> dict[int, datetime] | None:
+def tie_base(stage: str, reading: stg.Reading, by_stage: dict[str, list[SeasonFixture]]) -> str:
+    """The stage whose ties the matches of ``stage`` belong to: itself, or - for a stage of replays - the stage it replays.
+    A stage of replays whose round is not in the season (the provider lists only the replays) stands alone."""
+    return reading.base if reading.replay and reading.base in by_stage else stage
+
+
+def witnesses(base: str, by_stage: dict[str, list[SeasonFixture]], readings: dict[str, stg.Reading],
+              bases: dict[str, str] | None = None) -> dict[int, datetime] | None:
     """For each team, the last time it played in a round that can say whether it went through ``base`` (see the module
     docstring), or ``None`` when no such match exists."""
     bracket = stg.bracket_key(base)
     last: dict[int, datetime] = {}
     for stage, fixtures in by_stage.items():
         reading = readings[stage]
-        if reading.base == base:
+        if (bases[stage] if bases is not None else reading.base) == base:
             continue
         same_bracket = (reading.is_knockout_like and reading.role not in ("third_place", "placement")
                         and stg.bracket_key(stage) == bracket)
@@ -138,16 +147,17 @@ def build_season(fixtures: Sequence[SeasonFixture], *, now: datetime) -> SeasonB
         numbered[stage] = numbered[stage] or stg.match_day_of(f.round) is not None
     readings = {stage: stg.classify(stage, numbered=numbered[stage]) for stage in by_stage}
 
+    bases = {stage: tie_base(stage, reading, by_stage) for stage, reading in readings.items()}
     knockout: dict[str, list[tl.Match]] = defaultdict(list)
     for stage, members in by_stage.items():
         reading = readings[stage]
         if reading.is_knockout_like:
-            knockout[reading.base].extend(_match(f, in_replay_stage=reading.replay) for f in members)
+            knockout[bases[stage]].extend(_match(f, in_replay_stage=reading.replay) for f in members)
 
     built: dict[str, tl.StageTies] = {}
     ties: list[tl.Tie] = []
     for base, matches in knockout.items():
-        result = tl.build_stage_ties(base, matches, now=now, advanced=witnesses(base, by_stage, readings))
+        result = tl.build_stage_ties(base, matches, now=now, advanced=witnesses(base, by_stage, readings, bases))
         built[base] = result
         ties.extend(result.ties)
 
@@ -169,11 +179,35 @@ def build_season(fixtures: Sequence[SeasonFixture], *, now: datetime) -> SeasonB
     records: dict[str, StageRecord] = {}
     for stage, members in by_stage.items():
         reading = readings[stage]
-        of_stage = built.get(reading.base) if reading.is_knockout_like else None
+        of_stage = built.get(bases[stage]) if reading.is_knockout_like else None
         kicks = [f.kickoff_at for f in members]
         records[stage] = StageRecord(
             reading=reading, fixtures=len(members), first_kickoff_at=min(kicks), last_kickoff_at=max(kicks),
             tie_format=of_stage.format if of_stage is not None else None,
             tie_reason=of_stage.reason if of_stage is not None else None,
-            ties=len(of_stage.ties) if of_stage is not None and not reading.replay else 0)
+            ties=len(of_stage.ties) if of_stage is not None and bases[stage] == stage else 0)
     return SeasonBuild(stages=records, ties=tuple(ties), slots=slots, dropped=dropped)
+
+
+def fingerprint(build: SeasonBuild) -> str:
+    """A digest of everything a build says (the versions of the rules, every stage, tie and slot). Two builds with the same
+    digest write the same rows, so the builder skips the writes when the stored digest is the one it just computed - and,
+    because the digest is of the OUTPUT, a tie that turns unresolved only because time passed changes it too."""
+
+    def when(t: datetime | None) -> str | None:
+        return None if t is None else t.isoformat()
+
+    stages: list[list[Any]] = []
+    for name in sorted(build.stages):
+        r = build.stages[name]
+        g = r.reading
+        stages.append([name, g.phase, g.kind, g.role, g.rule, g.numbered, g.round_key, g.teams, g.round_no, g.replay,
+                       g.base, r.fixtures, when(r.first_kickoff_at), when(r.last_kickoff_at), r.tie_format,
+                       r.tie_reason, r.ties])
+    ties = [[t.stage, t.team_a, t.team_b, t.format, t.status, list(t.legs), t.played, t.aggregate_a, t.aggregate_b,
+             t.winner, t.decided_by, t.reason, when(t.decided_at), list(t.shootout) if t.shootout else None, t.check,
+             sorted(t.flags)] for t in sorted(build.ties, key=lambda x: (x.stage, x.key))]
+    slots = [[fid, s.stage, list(s.tie) if s.tie else None, s.leg] for fid, s in sorted(build.slots.items())]
+    body = json.dumps({"stages": stg.VERSION, "ties": tl.VERSION, "s": stages, "t": ties, "x": slots},
+                      sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(body.encode()).hexdigest()[:32]
