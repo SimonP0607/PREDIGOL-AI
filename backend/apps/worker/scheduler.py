@@ -202,6 +202,18 @@ Database and the RAW files only - no request to the provider. FBI_QUOTES_EXTRACT
 FBI_QUOTES_MIN_FREE_GB / FBI_QUOTES_MAX_TABLE_GB are its disk and size brakes."""
 QUOTES_MIN_FREE_GB = float(os.environ.get("FBI_QUOTES_MIN_FREE_GB", "8"))
 QUOTES_MAX_TABLE_GB = float(os.environ.get("FBI_QUOTES_MAX_TABLE_GB", "25"))
+STRUCTURE_MINUTES = int(os.environ.get("FBI_COMPETITION_STRUCTURE_MINUTES", "15"))
+STRUCTURE_PER_RUN = int(os.environ.get("FBI_COMPETITION_STRUCTURE_PER_RUN", "400"))
+STRUCTURE_RUN_SECONDS = float(os.environ.get("FBI_COMPETITION_STRUCTURE_RUN_SECONDS", "240"))
+STRUCTURE_SWEEP_SECONDS = float(os.environ.get("FBI_COMPETITION_STRUCTURE_SWEEP_SECONDS", "900"))
+STRUCTURE_SWEEP_HOUR, STRUCTURE_SWEEP_MINUTE = 9, 40
+STRUCTURE_ENABLED = os.environ.get("FBI_COMPETITION_STRUCTURE", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""The stages and ties of the competitions (plan F2): which phase of a competition every match belongs to and which tie it is a
+leg of, derived from the fixtures already stored (``fbi.competitions``). Database only - no request to the provider. A pass
+every STRUCTURE_MINUTES builds the seasons never built, those built by older rules and those with a match near now (a bounded
+number, a bounded time); a sweep at STRUCTURE_SWEEP_HOUR:STRUCTURE_SWEEP_MINUTE UTC reads every season, so that a result the
+provider corrects long after its season ended still reaches its tie. FBI_COMPETITION_STRUCTURE=0 switches both off without a
+deploy: the columns it fills (``fixtures.stage_id`` / ``leg`` / ``tie_id``) then simply stop being refreshed."""
 NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
 AI_REPORT_HOUR = int(os.environ.get("FBI_AI_REPORT_HOUR", "6"))
 """The daily research report is written from this hour (Bogotá), once a day: a check every
@@ -764,6 +776,30 @@ async def _quotes_extract() -> None:
     await asyncio.to_thread(_quotes_extract_now)
 
 
+def _competition_structure_now(*, everything: bool = False) -> None:
+    from fbi.competitions.builder import run_job
+
+    with _connect() as conn:
+        if everything:
+            run_job(conn, now=now(), max_seconds=STRUCTURE_SWEEP_SECONDS, limit=None, everything=True)
+        else:
+            run_job(conn, now=now(), max_seconds=STRUCTURE_RUN_SECONDS, limit=STRUCTURE_PER_RUN)
+
+
+async def _competition_structure() -> None:
+    """The stages and ties of the seasons that need them (plan F2): reads the fixtures and results already stored and writes
+    ``core.competition_stages``, ``core.ties`` and the three columns of the fixtures. A quiet pass leaves no row in the ledger.
+    In a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_competition_structure_now)
+
+
+async def _competition_structure_sweep() -> None:
+    """The same, over every season whatever its age (daily): the pass above only looks at the seasons near today."""
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_competition_structure_now, everything=True))
+
+
 def _notify_now() -> None:
     """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
     from fbi.notify.service import channel_from_env, run_notifier
@@ -1076,6 +1112,7 @@ WORKER_JOB_TYPES = frozenset({
     "pick_pipeline", "quality_sweep", "context_refresh", "context_due", "results_repair", "final_prematch",
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
+    "competition_structure",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1305,6 +1342,18 @@ async def main() -> None:
                           misfire_grace_time=QUOTES_MINUTES * 60, next_run_time=moment + timedelta(minutes=13))
     else:
         log.warning("worker.quotes_extract_off", hint="FBI_QUOTES_EXTRACT=0: the price clock is not structuring RAW /odds")
+    if STRUCTURE_ENABLED:
+        # The first pass waits for the quotes clock's, and a person's historical build (python -m scripts.competition_stages)
+        # may have gone first: whatever it built is left as it is.
+        scheduler.add_job(_deadline("competition_structure", "competition_structure", _competition_structure), "interval",
+                          minutes=STRUCTURE_MINUTES, id="competition_structure", max_instances=1, coalesce=True,
+                          misfire_grace_time=STRUCTURE_MINUTES * 60, next_run_time=moment + timedelta(minutes=17))
+        scheduler.add_job(_deadline("competition_structure_sweep", "competition_structure", _competition_structure_sweep),
+                          "cron", hour=STRUCTURE_SWEEP_HOUR, minute=STRUCTURE_SWEEP_MINUTE, timezone="UTC",
+                          id="competition_structure_sweep", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    else:
+        log.warning("worker.competition_structure_off",
+                    hint="FBI_COMPETITION_STRUCTURE=0: stages and ties are not being refreshed")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))

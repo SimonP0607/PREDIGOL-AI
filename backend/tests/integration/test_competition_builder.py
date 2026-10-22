@@ -608,6 +608,33 @@ def test_pending_seasons_come_never_built_first_then_old_rules_then_those_near_n
     assert old_rules.versions() == {(stg.VERSION, tl.VERSION)}
 
 
+def test_the_seasons_nearest_to_now_come_first_and_the_sweep_adds_every_other_season_last(db: psycopg.Connection[Any],
+                                                                                         seed: Seed) -> None:
+    today = (NOW - D0).days
+    # created in the order the answer must NOT come in: 30 days ahead, two days back, one day ahead
+    built: dict[str, World] = {}
+    for name, league, day in (("far", 99850, today + 30), ("behind", 99851, today - 2), ("near", 99852, today + 1)):
+        built[name] = make_world(db, seed, league)
+        built[name].fixture("Group Stage - 1", 1, 2, day, None, "NS")
+        builder.build_one(db, built[name].season, now=NOW)
+    quiet = make_world(db, seed, 99853)
+    champions_league(quiet)  # a season that ended months ago
+    builder.build_one(db, quiet.season, now=NOW)
+    never = make_world(db, seed, 99854)
+    champions_league(never)
+    mine = {w.season for w in built.values()} | {quiet.season, never.season}
+    far, behind, near = (built[n].season for n in ("far", "behind", "near"))
+
+    def pending(**kwargs: bool) -> list[int]:
+        return [cs for cs in builder.pending(db, now=NOW, **kwargs) if cs in mine]
+
+    assert pending() == [never.season, near, behind, far], (
+        "never built first, then by how close the nearest match is to now (31 hours ahead, 41 back, 30 days ahead); "
+        "the season that ended months ago is not read")
+    assert pending(everything=True) == [never.season, near, behind, far, quiet.season], "the sweep adds the rest, last"
+    assert set(builder.pending(db, now=NOW, everything=True)) >= set(builder.pending(db, now=NOW))
+
+
 
 def test_a_time_budget_stops_the_pass_between_seasons(db: psycopg.Connection[Any], seed: Seed) -> None:
     a = make_world(db, seed, 99824)
@@ -756,13 +783,13 @@ def test_a_tie_that_cannot_have_an_aggregate_is_not_reported_as_wrong(db: psycop
 # ── the worker's job ────────────────────────────────────────────────────────
 
 
-def test_the_job_leaves_a_ledger_run_only_when_it_changed_something(db: psycopg.Connection[Any], seed: Seed,
-                                                                   monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.fixture
+def ledger_runs(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    """The runs the job writes in the ledger. The real ledger commits (it must, to be visible to the watchdog), which would
+    end the transaction a test runs in."""
     runs: list[dict[str, Any]] = []
 
     class FakeLedger:
-        """The real one commits (it must, to be visible to the watchdog), which would end this test's transaction."""
-
         def __init__(self, conn: Any) -> None:
             self.conn = conn
 
@@ -774,6 +801,12 @@ def test_the_job_leaves_a_ledger_run_only_when_it_changed_something(db: psycopg.
             runs[run_id - 1].update(counters=counters, notes=notes)
 
     monkeypatch.setattr("fbi.ingestion.ledger.RunLedger", FakeLedger)
+    return runs
+
+
+def test_the_job_leaves_a_ledger_run_only_when_it_changed_something(db: psycopg.Connection[Any], seed: Seed,
+                                                                   ledger_runs: list[dict[str, Any]]) -> None:
+    runs = ledger_runs
     w = make_world(db, seed, 99841)
     champions_league(w)
 
@@ -781,7 +814,8 @@ def test_the_job_leaves_a_ledger_run_only_when_it_changed_something(db: psycopg.
 
     assert report.failed == 0 and report.changed >= 1
     assert len(runs) == 1 and runs[0]["job"] == builder.JOB == "competition_structure"
-    assert runs[0]["params"] == {"limit": 400, "max_seconds": 120.0, "stages": stg.VERSION, "ties": tl.VERSION}
+    assert runs[0]["params"] == {"limit": 400, "max_seconds": 120.0, "stages": stg.VERSION, "ties": tl.VERSION,
+                                 "sweep": False}
     counters = runs[0]["counters"]
     assert (counters.rows_inserted, counters.rows_updated, counters.rows_normalized) == (
         report.rows_written, report.fixtures_updated, report.seasons)
@@ -793,6 +827,36 @@ def test_the_job_leaves_a_ledger_run_only_when_it_changed_something(db: psycopg.
     assert (quiet.changed, quiet.failed) == (0, 0)
     assert len(runs) == 1, "a pass that changed nothing leaves no row in the ledger"
     assert_stored_is_the_build(w)
+
+
+def test_the_daily_sweep_finds_a_result_corrected_long_after_its_season_left_the_window(
+        db: psycopg.Connection[Any], seed: Seed, ledger_runs: list[dict[str, Any]]) -> None:
+    w = make_world(db, seed, 99843)
+    f = champions_league(w)  # played between August and February: months before NOW
+    builder.run_job(db, now=NOW, commit=False)
+    assert_stored_is_the_build(w)
+    runs_so_far = len(ledger_runs)
+    winner = "SELECT winner_team_id, winner_check FROM core.ties t JOIN core.competition_stages s ON s.id = t.stage_id " \
+             "WHERE s.stage = 'Round of 16' AND s.competition_season_id = %s"
+    assert w.rows(winner, w.season) == [(w.team[1], "confirmed")]
+
+    w.set_goals(f["r2"], 2, 0)  # the provider corrects the second leg: team 4 went through on the pitch
+
+    ordinary = builder.run_job(db, now=NOW, commit=False)
+    assert (ordinary.changed, ordinary.failed) == (0, 0) and len(ledger_runs) == runs_so_far, "a season this old is not read"
+    assert w.rows(winner, w.season) == [(w.team[1], "confirmed")], "so the tie still says what it said"
+
+    sweep = builder.run_job(db, now=NOW, commit=False, everything=True, limit=None)
+
+    assert (sweep.changed, sweep.failed) == (1, 0) and sweep.seasons > 1, "every season was read, one needed writing"
+    assert len(ledger_runs) == runs_so_far + 1
+    assert ledger_runs[-1]["params"] == {"limit": None, "max_seconds": 120.0, "stages": stg.VERSION, "ties": tl.VERSION,
+                                         "sweep": True}
+    assert w.rows(winner, w.season) == [(w.team[4], "contradicted")], "the sporting winner, with the next round as witness"
+    assert_stored_is_the_build(w)
+
+    quiet = builder.run_job(db, now=NOW, commit=False, everything=True, limit=None)
+    assert (quiet.changed, quiet.failed) == (0, 0) and len(ledger_runs) == runs_so_far + 1, "a sweep that finds nothing is silent"
 
 
 # ── the path the worker takes: real commits ─────────────────────────────────

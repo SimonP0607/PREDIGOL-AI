@@ -325,8 +325,11 @@ def build_one(conn: psycopg.Connection[Any], competition_season_id: int, *, now:
 
 PENDING_SQL: Final = """
 WITH recent AS (
-    SELECT DISTINCT f.competition_season_id AS cs FROM core.fixtures f
+    SELECT f.competition_season_id AS cs,
+           min(abs(extract(epoch FROM f.kickoff_at - %(now)s::timestamptz)))::float8 AS distance
+      FROM core.fixtures f
      WHERE f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
+     GROUP BY f.competition_season_id
 ), never AS (
     SELECT s.id AS cs FROM core.competition_seasons s
      WHERE NOT EXISTS (SELECT 1 FROM core.competition_stages x WHERE x.competition_season_id = s.id)
@@ -334,22 +337,28 @@ WITH recent AS (
 ), old_rules AS (
     SELECT DISTINCT competition_season_id AS cs FROM core.competition_stages
      WHERE stages_version <> %(stages)s OR ties_version <> %(ties)s
+), everything AS (
+    SELECT s.id AS cs FROM core.competition_seasons s
+     WHERE %(everything)s AND EXISTS (SELECT 1 FROM core.fixtures f WHERE f.competition_season_id = s.id)
 )
-SELECT cs, 0 AS priority FROM never
-UNION SELECT cs, 1 FROM old_rules
-UNION SELECT cs, 2 FROM recent
-ORDER BY 2, 1
+SELECT cs, 0 AS priority, 0::float8 AS distance FROM never
+UNION SELECT cs, 1, 0 FROM old_rules
+UNION SELECT cs, 2, distance FROM recent
+UNION SELECT cs, 3, 0 FROM everything
+ORDER BY 2, 3, 1
 """
 
 
-def pending(conn: psycopg.Connection[Any], *, now: datetime) -> list[int]:
+def pending(conn: psycopg.Connection[Any], *, now: datetime, everything: bool = False) -> list[int]:
     """The seasons worth building now: those never built, those built by older rules, and those with a fixture near enough to
-    now to have changed (see ``WINDOW_BEFORE``); in that order, each once."""
+    now to have changed (see ``WINDOW_BEFORE``) - the closest to now first, so that a pass cut short by its time budget has read
+    the matches that are being played - each once. ``everything`` adds, last, every other season that has a fixture: the daily
+    sweep, which finds a result corrected long after its season left the window."""
     with conn.cursor() as cur:
-        cur.execute(PENDING_SQL, {"since": now - WINDOW_BEFORE, "until": now + WINDOW_AFTER, "stages": stg.VERSION,
-                                  "ties": tl.VERSION})
+        cur.execute(PENDING_SQL, {"now": now, "since": now - WINDOW_BEFORE, "until": now + WINDOW_AFTER,
+                                  "stages": stg.VERSION, "ties": tl.VERSION, "everything": everything})
         seen: dict[int, None] = {}
-        for cs, _priority in cur.fetchall():
+        for cs, _priority, _distance in cur.fetchall():
             seen.setdefault(int(cs), None)
     return list(seen)
 
@@ -411,9 +420,10 @@ def build_many(conn: psycopg.Connection[Any], seasons: Iterable[int], *, now: da
 
 
 def refresh_pending(conn: psycopg.Connection[Any], *, now: datetime, max_seconds: float | None = None,
-                   limit: int | None = None, commit: bool = True) -> BuildReport:
-    """One pass of the worker's job: the pending seasons, up to ``limit`` of them and ``max_seconds`` of work."""
-    queue = pending(conn, now=now)
+                   limit: int | None = None, commit: bool = True, everything: bool = False) -> BuildReport:
+    """One pass of the worker's job: the pending seasons, up to ``limit`` of them and ``max_seconds`` of work (``everything``:
+    and then all the others - see ``pending``)."""
+    queue = pending(conn, now=now, everything=everything)
     if commit:
         conn.commit()
     if limit is not None:
@@ -421,19 +431,24 @@ def refresh_pending(conn: psycopg.Connection[Any], *, now: datetime, max_seconds
     return build_many(conn, queue, now=now, apply=True, max_seconds=max_seconds, commit=commit)
 
 
-def run_job(conn: psycopg.Connection[Any], *, now: datetime, max_seconds: float = 120.0, limit: int = 400,
-            commit: bool = True) -> BuildReport:
+def run_job(conn: psycopg.Connection[Any], *, now: datetime, max_seconds: float = 120.0, limit: int | None = 400,
+            commit: bool = True, everything: bool = False) -> BuildReport:
     """The scheduled job: a pass of ``refresh_pending`` as a ledger run - but only when it changed or broke something, so a
-    quiet hour leaves no row in the ledger."""
+    quiet hour leaves no row in the ledger. The worker runs it every few minutes with a budget, and once a day with
+    ``everything`` (no limit, a longer budget): the sweep that reads every season, whatever its age."""
     from fbi.ingestion.ledger import RunCounters, RunLedger
 
-    report = refresh_pending(conn, now=now, max_seconds=max_seconds, limit=limit, commit=commit)
+    report = refresh_pending(conn, now=now, max_seconds=max_seconds, limit=limit, commit=commit, everything=everything)
     if commit:
         conn.commit()
+    if everything:
+        log.info("competition_structure.sweep", seasons=report.seasons, changed=report.changed, failed=report.failed,
+                 left=report.seasons_left)
     if not (report.changed or report.failed):
         return report
     ledger = RunLedger(conn)
-    run_id = ledger.open(JOB, params={"limit": limit, "max_seconds": max_seconds, "stages": stg.VERSION, "ties": tl.VERSION})
+    run_id = ledger.open(JOB, params={"limit": limit, "max_seconds": max_seconds, "stages": stg.VERSION, "ties": tl.VERSION,
+                                      "sweep": everything})
     counters = RunCounters()
     counters.rows_inserted = report.rows_written
     counters.rows_updated = report.fixtures_updated
