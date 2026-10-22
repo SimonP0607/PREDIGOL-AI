@@ -6,14 +6,19 @@ the kick-off it was taken for void), at the price FROZEN on the record - the pri
 items, and for a user's pick the price they say they got, or else the price we showed when
 they saved it. Profit is per unit staked.
 
-A parlay follows its legs:
+A parlay follows its legs. Each settled leg multiplies the stake: a win by its odds, a half win by
+(odds + 1) / 2 (half the stake wins at the odds, half comes back), a void or a push by 1, a half loss by 1/2
+(half the stake is lost, half comes back) and a loss by 0. The profit is the product minus the stake, so:
 
-  LOST          a leg lost (or half-lost), whatever the others are still doing
+  LOST          a leg lost outright (whatever the others are still doing) - or every leg is settled and the
+                product is below 1 (a half loss that the winners do not cover): the loss can be a fraction
   WON           every leg won
-  PARTIAL_VOID  the others won and at least one leg was void or pushed: it pays at the odds of
-                the winning legs only
-  VOID          every leg void or pushed: the stake comes back
+  PARTIAL_VOID  every leg is settled, the product is above 1 and at least one leg was void, pushed or half won
+                or lost: it pays by the factors above (the name is historical: it also covers half lines)
+  VOID          every leg void or pushed, or the factors cancel out exactly: the stake comes back
   ACTIVE        none of the above yet, and a leg has kicked off
+
+Until settle-v4 (parlay-settle-v2) a half win paid at the full odds and a half loss lost the whole parlay.
 
 No provider request; idempotent - a settled record is never settled again.
 """
@@ -43,22 +48,55 @@ def settle_single(r: dict[str, Any], odds: Decimal | None, *, at: datetime | Non
                              at=at)
 
 
+ZERO = Decimal(0)
+HALF = Decimal("0.5")
+FINAL_LEG = ("WIN", "HALF_WIN", "VOID", "PUSH", "HALF_LOSS", "LOSS")
+PARLAY_RULE_VERSION = "parlay-settle-v2"
+
+
+def leg_factor(status: str, odds: Decimal | None) -> Decimal | None:
+    """What one settled leg does to a parlay's stake; None when the leg pays but its price is not known."""
+    if status in ("VOID", "PUSH"):
+        return ONE
+    if status == "LOSS":
+        return ZERO
+    if status == "HALF_LOSS":
+        return HALF
+    if odds is None:
+        return None
+    if status == "WIN":
+        return odds
+    if status == "HALF_WIN":
+        return (odds + ONE) / 2
+    raise ValueError(f"not a settled leg status: {status!r}")
+
+
 def parlay_outcome(legs: list[tuple[str, Decimal | None]]) -> tuple[str, Decimal | None] | None:
-    """(status, profit per unit) once a parlay is decided, else None. ``legs``: (STATUS, odds)."""
+    """(status, profit per unit) once a parlay is decided, else None. ``legs``: (STATUS, odds).
+
+    A leg lost outright decides the parlay at once; otherwise it waits for every leg. A leg that pays but has no price
+    leaves the profit unknown (None) - it is never guessed - and the status then follows the legs alone."""
     statuses = [s for s, _ in legs]
-    if any(s in ("LOSS", "HALF_LOSS") for s in statuses):
+    if "LOSS" in statuses:
         return "LOST", Decimal(-1)
-    if any(s == "PENDING" for s in statuses):
+    if any(s not in FINAL_LEG for s in statuses):
         return None
     if all(s in ("VOID", "PUSH") for s in statuses):
         return "VOID", Decimal(0)
-    winning = [o for s, o in legs if s in ("WIN", "HALF_WIN")]
-    if any(o is None for o in winning):
-        payout = None
-    else:
-        payout = math.prod((o for o in winning if o is not None), start=ONE) - ONE
-    partial = any(s in ("VOID", "PUSH", "HALF_WIN") for s in statuses)
-    return ("PARTIAL_VOID" if partial else "WON"), (payout.quantize(Decimal("0.0001")) if payout is not None else None)
+    factors = [leg_factor(s, o) for s, o in legs]
+    plain = all(s == "WIN" for s in statuses)
+    if any(f is None for f in factors):
+        # The profit cannot be known. Without a half loss every leg returns at least its stake: it is a win of some kind.
+        if "HALF_LOSS" in statuses:
+            return None
+        return ("WON" if plain else "PARTIAL_VOID"), None
+    product = math.prod((f for f in factors if f is not None), start=ONE)
+    profit = (product - ONE).quantize(Decimal("0.0001"))
+    if plain:
+        return "WON", profit
+    if profit > 0:
+        return "PARTIAL_VOID", profit
+    return ("LOST", profit) if profit < 0 else ("VOID", Decimal(0))
 
 
 @dataclass
@@ -194,6 +232,10 @@ def settle_products(conn: psycopg.Connection[Any], *, at: datetime,
                 if outcome is not None:
                     cur.execute(final, (outcome[0], outcome[1], at, r["id"]))
                     done += max(cur.rowcount, 0)
+                elif all(s in FINAL_LEG for s, _ in legs):
+                    # Every leg is settled but the profit cannot be known (a half loss and a leg with no price):
+                    # it is counted, never guessed.
+                    report.pending_review[name] = report.pending_review.get(name, 0) + 1
                 elif r["status"] == "READY" and r["first_kickoff"] <= at:
                     cur.execute(activate, (r["id"],))
                     report.activated += max(cur.rowcount, 0)
