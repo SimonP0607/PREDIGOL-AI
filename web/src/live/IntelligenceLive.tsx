@@ -31,6 +31,7 @@ import type {
 import { Note, Stat, StatGrid, SubTitle } from "./AiBits";
 import { bogotaDateTime, dayLabel, selectionText, toNum, usd } from "./aiModel";
 import { Markdown } from "./Markdown";
+import { PriceClockPanel } from "./PriceClockPanel";
 import { durationMs } from "./format";
 
 const TABS = ["day", "decisions", "match", "calibration", "memory", "markets", "costs"] as const;
@@ -1177,11 +1178,21 @@ function MemoryView() {
 // ── markets ──────────────────────────────────────────────────────────────────
 
 function MarketsView() {
+  // The price clock reads its own endpoint: one view failing or loading never hides the other.
+  return (
+    <div className="space-y-4" data-testid="intel-markets">
+      <DiscoveryView />
+      <PriceClockPanel />
+    </div>
+  );
+}
+
+function DiscoveryView() {
   const q = useLiveQuery(live.intelMarkets);
   const d = q.data?.data;
   if (!d) return <Loading q={q} />;
   return (
-    <div className="space-y-3" data-testid="intel-markets">
+    <div className="space-y-3" data-testid="intel-markets-discovery">
       <Note>{t("intel.markets.never")}</Note>
       {!d.run ? <Note>{t("intel.markets.empty")}</Note> : null}
       <div className="flex flex-wrap gap-2">

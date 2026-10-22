@@ -289,6 +289,11 @@ export const live = {
     queryFn: v1.intelMarkets,
     staleTime: 10 * MINUTE,
   },
+  intelPriceClock: {
+    queryKey: ["v1", "intel", "price-clock"],
+    queryFn: v1.intelPriceClock,
+    refetchInterval: 5 * MINUTE,
+  },
   intelRuns: { queryKey: ["v1", "intel", "runs"], queryFn: v1.intelRuns, refetchInterval: MINUTE },
   intelCosts: {
     queryKey: ["v1", "intel", "costs"],

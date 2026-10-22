@@ -11,6 +11,7 @@ import type {
   IntelDossier,
   IntelMarketRow,
   IntelMemoryRow,
+  IntelPriceClock,
   IntelRun,
   IntelState,
 } from "./types_intel";
@@ -539,6 +540,7 @@ export const v1 = {
         items: IntelMarketRow[];
       }>
     >("/admin/intelligence/markets"),
+  intelPriceClock: () => getJson<Envelope<IntelPriceClock>>("/admin/intelligence/price-clock"),
   intelRuns: () =>
     getJson<
       Envelope<{

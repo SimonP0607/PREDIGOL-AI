@@ -308,6 +308,81 @@ export interface IntelMarketRow {
   proposal: string | null;
 }
 
+/**
+ * The price clock (plan F1): /api/v1/admin/intelligence/price-clock. The prices the provider returned before
+ * kick-off, structured from the RAW /odds bodies; this view only reports how far that structuring has got.
+ * Per-bet and per-family counts are null when the server could not count them in the time it allows itself.
+ */
+export type IntelClockStatus = "ok" | "empty" | "no_fixture" | "after_kickoff" | "error";
+
+export interface IntelClockLedgerRow {
+  status: IntelClockStatus | string;
+  version: string;
+  payloads: number;
+  quotes: number;
+  refused: number;
+  last: string | null;
+}
+
+export interface IntelClockFamily {
+  key: string;
+  label: string;
+  bets: number;
+  extracted: number;
+  quotes: Num;
+}
+
+export interface IntelClockBet {
+  bet_id: number;
+  name: string;
+  family: string;
+  period: string;
+  subject: string;
+  status: IntelMarketRow["status"];
+  schema: string;
+  quotes: Num;
+  last: string | null;
+}
+
+export interface IntelClockIssue {
+  payload: string;
+  provider_fixture_id: number | null;
+  status: IntelClockStatus | string;
+  detail: string | null;
+  quotes_refused: number;
+  extracted_at: string;
+}
+
+export interface IntelClockRun {
+  id: number;
+  started_at: string;
+  finished_at: string | null;
+  status: string;
+  rows_written: Num;
+  errors: Num;
+  last_error: string | null;
+  notes: string | null;
+}
+
+export interface IntelPriceClock {
+  extractor: string;
+  raw: { payloads: number; first: string | null; last: string | null };
+  backlog: number;
+  ledger: IntelClockLedgerRow[];
+  quotes: {
+    first?: string | null;
+    last?: string | null;
+    fixtures?: Num;
+    quotes?: Num;
+    gigabytes: number;
+  };
+  families: IntelClockFamily[];
+  bets: IntelClockBet[];
+  unclassified: Array<{ bet_id: number; name: string; classified_at: string }>;
+  issues: IntelClockIssue[];
+  runs: IntelClockRun[];
+}
+
 export interface IntelCosts {
   total_7d_usd: number;
   per_day_usd: number;
