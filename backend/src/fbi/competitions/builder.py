@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import time
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Final
@@ -361,10 +361,36 @@ def _recover(conn: psycopg.Connection[Any]) -> None:
         conn.rollback()
 
 
+def _guarded(conn: psycopg.Connection[Any], cs_id: int, report: BuildReport, *, now: datetime, apply: bool,
+             force: bool, commit: bool) -> SeasonReport | None:
+    """Build one season; a failure is rolled back, logged and recorded in ``report`` (and ``None`` is returned)."""
+    try:
+        one = build_one(conn, cs_id, now=now, apply=apply, force=force)
+        if commit and apply:
+            conn.commit()
+        return one
+    except psycopg.Error as exc:
+        if conn.closed:
+            raise
+        _recover(conn)
+        message = f"season {cs_id}: {type(exc).__name__}: {str(exc)[:300]}"
+        report.failed += 1
+        report.errors.append(message)
+        log.warning("competition_structure.season_failed", season=cs_id, error=message[:300])
+    except ValueError as exc:  # the build refused its own output: a defect, said loudly, never a half-written season
+        _recover(conn)
+        report.failed += 1
+        report.errors.append(f"season {cs_id}: {exc}")
+        log.error("competition_structure.refused", season=cs_id, error=str(exc)[:300])
+    return None
+
+
 def build_many(conn: psycopg.Connection[Any], seasons: Iterable[int], *, now: datetime, apply: bool = True,
-               force: bool = False, max_seconds: float | None = None, commit: bool = True) -> BuildReport:
+               force: bool = False, max_seconds: float | None = None, commit: bool = True,
+               progress: Callable[[int, int], None] | None = None) -> BuildReport:
     """Build the seasons one after the other, each in its own transaction. A season that fails is rolled back, logged and
-    reported; the others go on. ``max_seconds`` stops between seasons (``seasons_left`` says how many were not reached)."""
+    reported; the others go on. ``max_seconds`` stops between seasons (``seasons_left`` says how many were not reached);
+    ``progress(done, total)`` is called after each season."""
     report = BuildReport()
     started = time.monotonic()
     queue = list(seasons)
@@ -373,29 +399,14 @@ def build_many(conn: psycopg.Connection[Any], seasons: Iterable[int], *, now: da
             report.stopped_for_time = True
             report.seasons_left = len(queue) - index
             break
-        try:
-            one = build_one(conn, cs_id, now=now, apply=apply, force=force)
-            if commit and apply:
-                conn.commit()
-        except psycopg.Error as exc:
-            if conn.closed:
-                raise
-            _recover(conn)
-            report.failed += 1
-            message = f"season {cs_id}: {type(exc).__name__}: {str(exc)[:300]}"
-            report.errors.append(message)
-            log.warning("competition_structure.season_failed", season=cs_id, error=message[:300])
-            continue
-        except ValueError as exc:  # the build refused its own output: a defect, said loudly, never a half-written season
-            _recover(conn)
-            report.failed += 1
-            report.errors.append(f"season {cs_id}: {exc}")
-            log.error("competition_structure.refused", season=cs_id, error=str(exc)[:300])
-            continue
-        report.add(one)
-        if one.changed and apply:
-            log.info("competition_structure.built", season=cs_id, stages=one.stages, ties=one.ties,
-                     fixtures_updated=one.fixtures_updated, first=one.first_build, contradicted=one.contradicted)
+        one = _guarded(conn, cs_id, report, now=now, apply=apply, force=force, commit=commit)
+        if one is not None:
+            report.add(one)
+            if one.changed and apply:
+                log.info("competition_structure.built", season=cs_id, stages=one.stages, ties=one.ties,
+                         fixtures_updated=one.fixtures_updated, first=one.first_build, contradicted=one.contradicted)
+        if progress is not None:
+            progress(index + 1, len(queue))
     return report
 
 
@@ -449,23 +460,47 @@ SELECT count(*) AS fixtures, count(f.stage_id) AS with_stage,
    AND (%(seasons)s::bigint[] IS NULL OR f.competition_season_id = ANY(%(seasons)s::bigint[]))
 """
 
-AGGREGATE_SQL: Final = """
+AGGREGATE_SUMS_SQL: Final = """
 WITH legs AS (
-    SELECT t.id, t.aggregate_a, t.aggregate_b, t.flags,
-           sum(CASE WHEN f.home_team_id = t.team_a_id THEN r.goals_home ELSE r.goals_away END) AS a,
-           sum(CASE WHEN f.home_team_id = t.team_b_id THEN r.goals_home ELSE r.goals_away END) AS b
+    SELECT t.id AS tie_id, t.team_a_id, t.team_b_id, t.aggregate_a, t.aggregate_b, t.flags, f.home_team_id,
+           (f.status_short IN ('FT', 'AET', 'PEN', 'AWD', 'WO') AND r.goals_home IS NOT NULL
+              AND r.goals_away IS NOT NULL) AS scored,
+           r.goals_home, r.goals_away
       FROM core.ties t
       JOIN core.fixtures f ON f.tie_id = t.id
-      JOIN core.fixture_results r ON r.fixture_id = f.id
-     WHERE t.format IN ('single', 'two_legged') AND t.played >= 1 AND f.status_short IN ('FT', 'AET', 'PEN')
+      LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
+     WHERE t.format IN ('single', 'two_legged') AND t.played >= 1
        AND (%(seasons)s::bigint[] IS NULL OR f.competition_season_id = ANY(%(seasons)s::bigint[]))
-     GROUP BY t.id
+), sums AS (
+    SELECT tie_id, aggregate_a, aggregate_b, flags, count(*) AS legs, count(*) FILTER (WHERE scored) AS scored,
+           sum(CASE WHEN home_team_id = team_a_id THEN goals_home ELSE goals_away END) FILTER (WHERE scored) AS a,
+           sum(CASE WHEN home_team_id = team_b_id THEN goals_home ELSE goals_away END) FILTER (WHERE scored) AS b
+      FROM legs GROUP BY tie_id, aggregate_a, aggregate_b, flags
 )
+"""
+
+_NO_AGGREGATE_BY_DESIGN: Final = (
+    "(aggregate_a IS NULL AND (legs <> scored OR 'score_inconsistent_with_shootout' = ANY(flags)))")
+_AGGREGATE_MISSING: Final = (
+    "(aggregate_a IS NULL AND legs = scored AND NOT 'score_inconsistent_with_shootout' = ANY(flags))")
+_AGGREGATE_DIFFERENT: Final = (
+    "(aggregate_a IS NOT NULL AND NOT 'score_repaired' = ANY(flags) AND (a IS DISTINCT FROM aggregate_a "
+    "OR b IS DISTINCT FROM aggregate_b))")
+
+AGGREGATE_SQL: Final = AGGREGATE_SUMS_SQL + f"""
 SELECT count(*) AS checked,
        count(*) FILTER (WHERE 'score_repaired' = ANY(flags)) AS repaired,
-       count(*) FILTER (WHERE NOT 'score_repaired' = ANY(flags)
-                          AND (a IS DISTINCT FROM aggregate_a OR b IS DISTINCT FROM aggregate_b)) AS different
-  FROM legs
+       count(*) FILTER (WHERE {_NO_AGGREGATE_BY_DESIGN}) AS unknown,
+       count(*) FILTER (WHERE {_AGGREGATE_MISSING}) AS missing,
+       count(*) FILTER (WHERE {_AGGREGATE_DIFFERENT}) AS different
+  FROM sums
+"""
+
+AGGREGATE_DIFFERENCES_SQL: Final = AGGREGATE_SUMS_SQL + f"""
+SELECT tie_id, aggregate_a AS stored_a, aggregate_b AS stored_b, a AS summed_a, b AS summed_b,
+       CASE WHEN aggregate_a IS NULL THEN 'missing' ELSE 'different' END AS kind
+  FROM sums WHERE {_AGGREGATE_MISSING} OR {_AGGREGATE_DIFFERENT}
+ ORDER BY tie_id LIMIT %(limit)s
 """
 
 
@@ -479,10 +514,21 @@ def coverage(conn: psycopg.Connection[Any], *, tracked_only: bool = True,
 
 def aggregate_check(conn: psycopg.Connection[Any], *, seasons: Sequence[int] | None = None) -> dict[str, int]:
     """The stored aggregate of every single and two-legged tie against the sum of its legs' goals, recomputed in SQL from
-    ``core.fixture_results`` without the builder's code (a tie whose score the builder repaired is counted apart)."""
+    ``core.fixture_results`` without the builder's code. ``different``: a stored aggregate that is not that sum;
+    ``missing``: no aggregate although every leg has a score; ``unknown``: no aggregate by design (a leg awarded without a
+    score, or a shoot-out the goals contradict); ``repaired``: the builder repaired the provider's extra-time score, so the
+    sum of the stored goals is not what it stored."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(AGGREGATE_SQL, {"seasons": None if seasons is None else list(seasons)})
         return {k: int(v) for k, v in (cur.fetchone() or {}).items()}
+
+
+def aggregate_differences(conn: psycopg.Connection[Any], *, seasons: Sequence[int] | None = None,
+                          limit: int = 25) -> list[dict[str, Any]]:
+    """The ties ``aggregate_check`` counts as different or missing: the stored aggregate and the one summed from the legs."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(AGGREGATE_DIFFERENCES_SQL, {"seasons": None if seasons is None else list(seasons), "limit": limit})
+        return list(cur.fetchall())
 
 
 def drift(conn: psycopg.Connection[Any], seasons: Sequence[int], *, now: datetime) -> list[int]:

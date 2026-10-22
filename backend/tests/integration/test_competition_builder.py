@@ -36,7 +36,7 @@ NOW = datetime(2026, 10, 22, 12, tzinfo=UTC)
 TOUCHED = datetime(2026, 1, 1, 0, tzinfo=UTC)
 """The ``updated_at`` every fixture is created with: the builder must leave it exactly like this."""
 GROUP = {"FT": "finished", "AET": "finished", "PEN": "finished", "NS": "scheduled", "PST": "postponed",
-         "CANC": "cancelled"}
+         "CANC": "cancelled", "WO": "cancelled", "AWD": "cancelled"}
 SCRATCH = "fbi_test_builder"
 
 STAGE_COLUMNS = ("stage", "ordinal", "phase", "base_stage", "is_replay", "kind", "role", "rule", "numbered", "round_key",
@@ -719,11 +719,38 @@ def test_coverage_counts_what_has_a_stage_and_the_aggregate_check_recomputes_it_
     db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (w.competition,))
     assert builder.coverage(db, seasons=mine)["with_stage"] == 9
 
-    assert builder.aggregate_check(db, seasons=mine) == {"checked": 4, "repaired": 0, "different": 0}
+    clean = {"checked": 4, "repaired": 0, "unknown": 0, "missing": 0, "different": 0}
+    assert builder.aggregate_check(db, seasons=mine) == clean
+    assert builder.aggregate_differences(db, seasons=mine) == []
     tie = w.tie_ids()["Round of 16"]
     db.execute("UPDATE core.ties SET aggregate_a = aggregate_a + 5 WHERE id = %s", (tie,))
-    assert builder.aggregate_check(db, seasons=mine) == {"checked": 4, "repaired": 0, "different": 1}, (
+    assert builder.aggregate_check(db, seasons=mine) == {**clean, "different": 1}, (
         "the check sums the legs' goals itself: a stored aggregate the builder got wrong cannot hide")
+    assert builder.aggregate_differences(db, seasons=mine) == [
+        {"tie_id": tie, "stored_a": 6, "stored_b": 0, "summed_a": 1, "summed_b": 0, "kind": "different"}]
+    db.execute("UPDATE core.ties SET aggregate_a = NULL, aggregate_b = NULL WHERE id = %s", (tie,))
+    assert builder.aggregate_check(db, seasons=mine) == {**clean, "missing": 1}, "legs with scores but no aggregate"
+    assert [d["kind"] for d in builder.aggregate_differences(db, seasons=mine)] == ["missing"]
+
+
+def test_a_tie_that_cannot_have_an_aggregate_is_not_reported_as_wrong(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """The two ways the builder stores NO aggregate on purpose: a leg awarded without a score (a walkover), and a shoot-out
+    the goals contradict (the sides were not level, so the provider's score cannot be the score of the match)."""
+    w = make_world(db, seed, 99842)
+    w.fixture("Quarter-finals", 1, 2, 0, (1, 0))
+    w.fixture("Quarter-finals", 2, 1, 7, None, "WO")
+    w.fixture("Quarter-finals", 3, 4, 0, (1, 0))
+    w.fixture("Quarter-finals", 4, 3, 7, (1, 1), "PEN", ft=(1, 1), pens=(0, 1))
+    builder.build_one(db, w.season, now=NOW)
+
+    assert w.rows("SELECT team_a_id, status, reason, decided_by, aggregate_a, flags FROM core.ties "
+                  "ORDER BY team_a_id") == [
+        (w.team[1], "unresolved", "awarded_without_score", None, None, []),
+        (w.team[3], "decided", None, "penalties", None, ["score_inconsistent_with_shootout"])]
+    assert builder.aggregate_check(db, seasons=[w.season]) == {
+        "checked": 2, "repaired": 0, "unknown": 2, "missing": 0, "different": 0}
+    assert builder.aggregate_differences(db, seasons=[w.season]) == []
+    assert_stored_is_the_build(w)
 
 
 # ── the worker's job ────────────────────────────────────────────────────────
