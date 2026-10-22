@@ -71,10 +71,14 @@ def raw_root(tmp_path: Path) -> Path:
 
 
 @pytest.fixture(autouse=True)
-def clean_slate(db: psycopg.Connection) -> Iterator[None]:
+def clean_slate(db: psycopg.Connection, seed: Seed) -> Iterator[None]:
     yield
     db.rollback()
     with db.cursor() as cur:
+        # fixture_83000 renames the seed's teams to the provider ids of its payloads: give them back (committed state
+        # shared by the whole session - test_settled_details failed when it ran right after this module).
+        cur.execute("UPDATE core.teams SET provider_team_id = 33 WHERE id = %s", (seed.home_team_id,))
+        cur.execute("UPDATE core.teams SET provider_team_id = 40 WHERE id = %s", (seed.away_team_id,))
         cur.execute("DELETE FROM audit.data_quality_issues")
         cur.execute("DELETE FROM core.fixtures WHERE provider_fixture_id BETWEEN 83000 AND 83999")
         # Identity rows name the payload they came from, so they go before it.
