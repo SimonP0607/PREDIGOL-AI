@@ -48,7 +48,8 @@ SELECT l.id, l.fixture_id, l.market_key, l.selection, l.state, o.result_status, 
   JOIN core.teams ta ON ta.id = f.away_team_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
-  LEFT JOIN intel.postmortems pm ON pm.decision_id = l.id
+  LEFT JOIN LATERAL (SELECT x.verdict FROM intel.postmortems x WHERE x.decision_id = l.id
+                      ORDER BY x.id DESC LIMIT 1) pm ON true
  WHERE l.state <> 'RECHAZADO'
 """
 

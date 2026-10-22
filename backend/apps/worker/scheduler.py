@@ -33,7 +33,7 @@ at worst, and a duplicated tick costs nothing at all.
     Zero API-Football requests; a language model and a search API only when configured, inside the budget.
   * ``intel_decide`` (every 15 min) / ``intel_nightly`` (07:50 Bogotá) / ``intel_weekly`` (Monday 04:40 Bogotá)
     PrediGol Intelligence (``fbi.intel``): the decision layer (ten filters, states, score, stake) on the next 36
-    hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v3, memory, calibration, the leakage
+    hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v4, memory, calibration, the leakage
     audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
@@ -228,7 +228,7 @@ INTEL_DECIDE_MINUTES = int(os.environ.get("FBI_INTEL_DECIDE_MINUTES", "15"))
 ten filters, written at their checkpoints; the picks of the day of daily-set-v6 once the AI has read the day. Shadow,
 database only, zero requests and zero model calls."""
 INTEL_NIGHTLY_HOUR, INTEL_NIGHTLY_MINUTE = 7, 50
-"""After the AI's learning (07:35): outcomes, post-mortems pm-v3, memory, calibration, leakage audit, the report."""
+"""After the AI's learning (07:35): outcomes, post-mortems pm-v4, memory, calibration, leakage audit, the report."""
 INTEL_WEEKLY_WEEKDAY, INTEL_WEEKLY_HOUR, INTEL_WEEKLY_MINUTE = "mon", 4, 40
 """The market discovery engine, weekly (Bogotá)."""
 REPO_ROOT = Path(__file__).resolve().parents[2]

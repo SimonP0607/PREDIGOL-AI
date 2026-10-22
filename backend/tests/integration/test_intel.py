@@ -1,5 +1,5 @@
 """PrediGol Intelligence on a built world (``fbi.intel``): calibration from settled history, the decision layer at its
-checkpoints, outcomes and closing-line value, post-mortems pm-v3, memory, the daily learning report, the leakage audit,
+checkpoints, outcomes and closing-line value, post-mortems pm-v4, memory, the daily learning report, the leakage audit,
 the runs' record and the append-only guard.
 
 HISTORY: twelve Bogotá days of settled OU selections flagged by ``dixon_coles`` whose probability is 12 points too

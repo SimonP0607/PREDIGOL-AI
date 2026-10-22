@@ -1,4 +1,9 @@
-"""POST_MATCH_REVIEW of a decision - ``pm-v3``: whether the DECISION was good, apart from whether it WON.
+"""POST_MATCH_REVIEW of a decision - ``pm-v4``: whether the DECISION was good, apart from whether it WON.
+
+pm-v4 (plan F0, defect 6): the kicks of a penalty shoot-out are not part of the match. pm-v3 read a converted
+shoot-out kick as "a penalty converted" (and a missed one as a missed penalty), although the settlement, the dossier and the
+memory all stop at the regulation score. The v3 rows stay as they were written; a decision is judged again under v4 while
+it is inside the look-back window, and the readers take the newest post-mortem of a decision.
 
 For the last decision before kick-off of every selection that reached CAUTELA or better, and the twenty best-scored
 INVESTIGACION selections of each day (so the layer learns while it approves nothing), once its outcome is known:
@@ -27,7 +32,9 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-VERSION = "pm-v3"
+VERSION = "pm-v4"
+SHOOTOUT = "Penalty Shootout"
+"""``comments`` of the events that are kicks of a shoot-out (the provider gives them minute 120 and type Goal)."""
 GOOD_CLV = 0.01
 TOP_INVESTIGATION = 20
 LOOKBACK = timedelta(days=4)
@@ -119,6 +126,7 @@ OUTCOME = {"win": "won", "loss": "lost", "push": "push", "void": "void", "half_w
 def causes_of(d: dict[str, Any], events: list[dict[str, Any]], stats: dict[str, dict[str, Any]],
               result: dict[str, Any] | None, referee_avg: float | None) -> list[dict[str, Any]]:
     """What happened in the match that a pre-match model could not see. Pure."""
+    events = [e for e in events if str(e.get("comments") or "") != SHOOTOUT]
     side = side_of(str(d["market_key"]), str(d["selection"]))
     out: list[dict[str, Any]] = []
 

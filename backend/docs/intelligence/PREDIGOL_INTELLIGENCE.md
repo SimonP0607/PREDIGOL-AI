@@ -62,7 +62,7 @@ señales de contexto que la capa 4 usa como filtro de riesgo y como componente d
 | 06:00 | **PICKS DEL DÍA PI** (v6, shadow): hasta 5 APROBADOS por score, uno por partido, máx. 2 por competición; después se añaden los de partidos tardíos hasta completar 5 | `intel_decide` | 0 |
 | 100–10 min antes | pasada `final` tras alineaciones; L3 solo para los mejores | `ai_cycle` | Nivel C/D |
 | 07:35 | aprendizaje IA existente (post-mortems pm-v2, notas, patrones, sombra de la IA) | `ai_learn` | bajo |
-| 07:50 | **ciclo nocturno PI**: liquidación y CLV de decisiones, post-mortems pm-v3, memoria longitudinal, calibradores (challenger nuevo + evaluación prospectiva + promoción por criterios), auditoría de fugas, DAILY LEARNING REPORT, vínculo hipótesis↔experimentos | `intel_nightly` | 0 |
+| 07:50 | **ciclo nocturno PI**: liquidación y CLV de decisiones, post-mortems pm-v4, memoria longitudinal, calibradores (challenger nuevo + evaluación prospectiva + promoción por criterios), auditoría de fugas, DAILY LEARNING REPORT, vínculo hipótesis↔experimentos | `intel_nightly` | 0 |
 | lunes 04:40 | **MARKET DISCOVERY ENGINE** (propone, nunca activa) | `intel_weekly` | 0 |
 
 Nada se recalcula si sus entradas no cambiaron: el paquete y el brief se guardan por hash, las búsquedas web se
@@ -81,7 +81,7 @@ fila nueva. Nada se reescribe después del saque ni después del resultado.
 | `intel.decisions` | evaluación de una selección en un punto de control | `known_at`, pick y versión de modelo, precio, casa, `price_at`, p_modelo, p_calibrada, `calibrator_id`, p_mercado, EV/edge crudos y calibrados, 10 filtros, estado, score y componentes, stake y componentes, contexto (estado, revisión, evidencias), `input_hash`, `decision_version` |
 | `intel.day_selections` | pick del día / parlay elegido por la regla v6 | decisión(es) congeladas, rango, stake, correlación |
 | `intel.decision_outcomes` | resultado de una decisión | estado del pick, P&L a la cuota de la decisión (plano y con stake), CLV contra el cierre sin margen |
-| `intel.postmortems` | post-mortem pm-v3 de una decisión | calidad de la decisión separada del resultado, causas del partido, preguntas respondidas, evidencia |
+| `intel.postmortems` | post-mortem (pm-v4; las filas pm-v3 anteriores se conservan) de una decisión | calidad de la decisión separada del resultado, causas del partido, preguntas respondidas, evidencia |
 | `intel.entity_memory` | estado acumulado de una entidad × aspecto en un día | equipo, jugador, entrenador, árbitro, competición, mercado; decisiones, aciertos, CLV, errores, contexto recurrente |
 | `intel.daily_reports` | revisión del DAILY LEARNING REPORT de un día | contenido JSON + texto, hash |
 | `intel.market_registry` | estado de un mercado del proveedor en una corrida de discovery | 10 criterios, cobertura, casas, historial, estabilidad, modelabilidad, estado (ACTIVE / RESEARCH / CANDIDATE / NOT_MODELABLE) |
@@ -169,9 +169,9 @@ probabilidad estimada, EV, riesgo, correlación y stake (¼ Kelly, tope 0,25 u).
 
 ## 7. Aprender sin sobreajustar
 
-* **pm-v3** (cada decisión CAUTELA o superior y las 20 mejores INVESTIGACIONES del día): calidad de la decisión
+* **pm-v4** (cada decisión CAUTELA o superior y las 20 mejores INVESTIGACIONES del día): calidad de la decisión
   (CLV, EV al cierre, p_calibrada frente al cierre) separada del resultado — merecido / varianza / suerte / error —;
-  causas del partido (roja y minuto, penaltis, gol temprano, lesiones antes del 30', tarjetas frente a lo esperado del
+  causas del partido (roja y minuto, penaltis del partido —los de una tanda no cuentan—, gol temprano, lesiones antes del 30', tarjetas frente a lo esperado del
   árbitro, alineación distinta de la esperada); las preguntas del POST_MATCH_REVIEW respondidas con datos. Un pick
   perdido nunca ajusta un modelo.
 * **Memoria longitudinal** (`memory-v1`): instantánea diaria por entidad × aspecto (equipo×mercado,

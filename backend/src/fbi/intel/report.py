@@ -41,7 +41,8 @@ SELECT l.id, l.state, l.market_key, l.selection, l.context_status, l.score::floa
        o.clv::float8 AS clv, pm.verdict, pm.causes
   FROM last l
   LEFT JOIN intel.decision_outcomes o ON o.decision_id = l.id
-  LEFT JOIN intel.postmortems pm ON pm.decision_id = l.id
+  LEFT JOIN LATERAL (SELECT x.verdict, x.causes FROM intel.postmortems x WHERE x.decision_id = l.id
+                      ORDER BY x.id DESC LIMIT 1) pm ON true
 """
 
 
@@ -211,7 +212,7 @@ def render(c: dict[str, Any]) -> str:
         lines.append(f"- {cal.get('note')} (n={cal.get('n')})")
     pm = c["postmortems"]
     lines.append("")
-    lines.append("## Post-mortems (pm-v3)")
+    lines.append("## Post-mortems (pm-v4)")
     lines.append("- Veredictos: " + (", ".join(f"{k} {v}" for k, v in pm["verdicts"].items()) or "ninguno"))
     lines.append("- Causas: " + (", ".join(f"{k} {v}" for k, v in pm["causes"].items()) or "ninguna registrada"))
     ctx = c["context"]

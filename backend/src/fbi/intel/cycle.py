@@ -4,7 +4,7 @@
                    layer over the next 36 hours (``fbi.intel.decision.decide``); once the AI has read the day (its
                    first passes done, or 06:00 Bogotá), the PICKS DEL DÍA of daily-set-v6 and its parlays
     intel_nightly  07:50 Bogotá, after the AI's own learning (07:35): outcomes and closing-line value of the
-                   decisions, post-mortems pm-v3, the longitudinal memory of yesterday (and the day before, whose late
+                   decisions, post-mortems pm-v4, the longitudinal memory of yesterday (and the day before, whose late
                    matches may have settled), calibration (prospective evaluation, refits, promotions by the gates),
                    the leakage audit of yesterday's decisions, the DAILY LEARNING REPORT, and the hypotheses the
                    calibration experiment answers
