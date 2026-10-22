@@ -16,7 +16,7 @@ describes the people and the situation, beyond the score-based form the packet a
     h2h          how much the head-to-head is worth: its age and size
 
 Everything is read AS OF the packet's moment: matches settled by then, statistics, events and line-ups fetched by
-then, the absences reported by then. A block without data says so (``n = 0``); nothing is estimated to fill a gap.
+then, the absences the latest /injuries answer by then listed. A block without data says so (``n = 0``); nothing is estimated to fill a gap.
 "Nunca convertir una narrativa emocional en una certeza estadística": these are descriptions with their sample sizes.
 """
 
@@ -31,6 +31,8 @@ from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
+
+from fbi.ai.absences import absences_as_of
 
 VERSION = "dossier-v1"
 N = 10
@@ -92,11 +94,6 @@ SELECT fixture_id, team_id, rating_before::float8 AS rating FROM features.elo_ra
 """The opponents' Elo before each match. ``team_id`` is in the filter so the primary key (version, run, team, fixture)
 serves it: by fixture alone the run's half a million rows were read (0.24-0.75 s per team on production, 13 Oct 2026),
 by team 3 ms."""
-
-ABSENT_SQL = """
-SELECT provider_player_id, absence_type FROM core.player_absences
- WHERE fixture_id = %(fixture)s AND fetched_at <= %(at)s
-"""
 
 REFEREE_SQL = """
 WITH m AS (
@@ -382,7 +379,7 @@ def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: date
     kickoff: datetime = fx["kickoff_at"]
     home, away = int(fx["home_team_id"]), int(fx["away_team_id"])
     absent: dict[int, str] = {int(r["provider_player_id"]): str(r["absence_type"] or "")
-                              for r in _rows(conn, ABSENT_SQL, {"fixture": int(fx["id"]), "at": at})}
+                              for r in absences_as_of(conn, int(fx["id"]), at)}
     teams: dict[str, Any] = {}
     players: dict[str, Any] = {}
     for side, team in (("home", home), ("away", away)):

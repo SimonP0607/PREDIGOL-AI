@@ -34,7 +34,7 @@ CAPA 1 · DATOS           API-Football (fixtures, odds de todas las casas, stats
 CAPA 2 · MODELOS         Por mercado: Poisson, Dixon-Coles (goles), Elo ordered-logit (1X2) -> P_modelo con intervalo
                          (existente: fbi.models, picks shadow-rule-v2). NUEVO: calibración por (mercado, modelo)
                          fbi.intel.calibration -> P_calibrada, versionada, champion/challenger con criterios fijos.
-CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v3 = packet-v1 + dossier-v1 + calendario con su alcance declarado), evidencia con fuente,
+CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v3 = packet-v1 + dossier-v1 + calendario con su alcance declarado + bajas de la última respuesta a la fecha), evidencia con fuente,
 INTELLIGENCE             nivel y estado, brief L1 / revisión L2 / revisión L3 (existente: fbi.ai). NUEVO: dossier
                          (equipo, árbitro, entrenador, contexto competitivo, jugadores clave), fuentes clasificadas
                          (sources-v2), estado de contexto FULL / PARTIAL / LIMITED (CONTEXTO EXTERNO LIMITADO) /
@@ -154,7 +154,11 @@ probabilidad estimada, EV, riesgo, correlación y stake (¼ Kelly, tope 0,25 u).
   amarillas, rojas, faltas, penaltis por partido, reparto local/visitante); entrenadores (formaciones, alternativas,
   rotación entre partidos, minuto medio de cambios, rendimiento casa/fuera); contexto competitivo (posición, puntos a
   título / plazas / descenso, partidos restantes, ida/vuelta, copa, final, derbi, amistoso); jugadores clave (minutos,
-  goles, asistencias, rating, ausencias, carga de los últimos 14 días); H2H con peso por antigüedad.
+  goles, asistencias, rating, ausencias, carga de los últimos 14 días); H2H con peso por antigüedad. Las ausencias del
+  dossier, las del paquete y las que el recolector convierte en evidencia salen de la **misma lectura**
+  (`fbi.ai.absences.absences_as_of`): la última respuesta de `/injuries` a la fecha de corte, del historial
+  `core.player_availability_obs` (migración 0078, plan F0 defecto 8). `core.player_absences` conserva la última
+  respuesta por jugador y la leen el Centro de partido y las auditorías; nada que razone «a fecha» debe leerla.
 * **sources-v2**: oficiales (ligas, federaciones, clubes) > prensa reconocida (ESPN, TyC Sports, Win Sports, Gol
   Caracol, RCN, DirecTV Sports, BBC Sport, Sky Sports, The Athletic, Marca, AS, Mundo Deportivo, L'Équipe, Bild,
   Gazzetta y equivalentes por país) > medios locales > periodistas > secundarios/agregadores > redes solo verificadas.

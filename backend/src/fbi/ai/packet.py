@@ -28,6 +28,7 @@ from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai import context as ctx
+from fbi.ai.absences import absences_as_of, checked_at_as_of
 from fbi.ai.pricing import approx_tokens
 
 PACKET_VERSION = "packet-v3"
@@ -36,7 +37,9 @@ referee, the competitive context, how much the head-to-head is worth.
 v3 (plan F0): the ``schedule`` block says what its numbers are (``schedule.calendar``): rest and congestion are read from
 the competitions we follow, so the rest is an upper bound and the matches in 14 days a lower bound; the rest-difference
 flags (``*_rest_disadvantage``), which are false whenever a side played a competition we do not follow, are no longer
-emitted, only ``*_short_rest`` (defect 10)."""
+emitted, only ``*_short_rest`` (defect 10). The ``absences`` block is the latest /injuries answer AS OF the packet's
+moment (``fbi.ai.absences``): a player the newest answer no longer names has recovered and is not listed, and a row
+refreshed after the moment does not hide what was known at it (defect 8)."""
 CORE_KEYS: tuple[tuple[str, str, Decimal], ...] = (
     ("1X2", "Home", Decimal(0)), ("1X2", "Draw", Decimal(0)), ("1X2", "Away", Decimal(0)),
     ("OU", "Over", Decimal("2.5")), ("OU", "Under", Decimal("2.5")),
@@ -180,18 +183,6 @@ SELECT count(DISTINCT p.id) FILTER (WHERE own.fixture_id IS NOT NULL) AS n,
   FROM past p
   LEFT JOIN stats own ON own.fixture_id = p.id AND own.team_side = p.side
   LEFT JOIN stats opp ON opp.fixture_id = p.id AND opp.team_side <> p.side
-"""
-
-ABSENCES_SQL = """
-SELECT a.provider_team_id, a.provider_player_id, a.player_name, a.absence_type, a.reason, a.fetched_at, a.payload_hash
-  FROM core.player_absences a
- WHERE a.fixture_id = %(fixture)s AND a.fetched_at <= %(at)s
- ORDER BY a.provider_team_id, a.player_name
-"""
-
-ABSENCE_CHECK_SQL = """
-SELECT max(checked_at) AS checked_at FROM core.context_checks
- WHERE competition_season_id = %(season)s AND dataset = 'injuries' AND checked_at <= %(at)s
 """
 
 SQUAD_STATS_SQL = """
@@ -506,9 +497,8 @@ class PacketBuilder:
 
     def _absences(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]
                   ) -> dict[str, Any]:
-        rows = _rows(self.conn, ABSENCES_SQL, {"fixture": f["id"], "at": at})
-        check = _row(self.conn, ABSENCE_CHECK_SQL, {"season": f["season_id"], "at": at})
-        checked = None if check is None else check.get("checked_at")
+        rows = absences_as_of(self.conn, int(f["id"]), at)  # the latest answer as of `at`, not every row ever written
+        checked = checked_at_as_of(self.conn, int(f["season_id"]), at)
         out: dict[str, Any] = {"checked": checked is not None}
         for side, team, provider_team in (("home", f["home_team_id"], f["home_provider_id"]),
                                           ("away", f["away_team_id"], f["away_provider_id"])):
@@ -535,7 +525,7 @@ class PacketBuilder:
                          "key_out": sum(1 for x in listed if x["key"] and not str(x["type"] or "").startswith("Quest")),
                          "squad_known": len(players)}
         if rows or checked:
-            sources.append({"block": "absences", "table": "core.player_absences",
+            sources.append({"block": "absences", "table": "core.player_availability_obs",
                             "as_of": _ts(max(r["fetched_at"] for r in rows)) if rows else None,
                             "checked_at": _ts(checked),
                             "payload_hashes": sorted({r["payload_hash"] for r in rows})[:5]})

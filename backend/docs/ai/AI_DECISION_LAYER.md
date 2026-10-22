@@ -59,7 +59,7 @@ timeout) no se registra y se reintenta en el ciclo siguiente; el resto del ciclo
 Paquete (`fbi.ai.packet`): partido (estado, cambios de hora), tabla y lo que está en juego, forma, calendario
 (descanso, rotación — leído solo de las competiciones que seguimos, así que el descanso es un **máximo** y los partidos
 en 14 días un **mínimo**: el bloque lo declara en `schedule.calendar` y solo emite la bandera «poco descanso», nunca
-«desventaja de descanso» entre los dos lados; packet-v3, plan F0 defecto 10), H2H, Elo, estadísticas, bajas ponderadas por importancia del jugador, alineaciones,
+«desventaja de descanso» entre los dos lados; packet-v3, plan F0 defecto 10), H2H, Elo, estadísticas, bajas ponderadas por importancia del jugador (**solo la última respuesta de `/injuries` a la fecha de corte**: un jugador que la respuesta más reciente ya no nombra se recuperó y no cuenta, y un refresco posterior no borra lo que se sabía en ese momento; se lee del historial `core.player_availability_obs`, no de `core.player_absences`, que solo guarda la última respuesta; packet-v3, plan F0 defecto 8), alineaciones,
 viaje, mercado (Shin, apertura fija = primer consenso de la semana previa, movimiento, dispersión, nº de casas),
 modelos (Dixon-Coles, Poisson, Elo-ologit con intervalos), calidad de datos y evidencias. Todo **as-of**: nada
 registrado después del momento del paquete. Un paquete nuevo solo se guarda si el contexto cambió.

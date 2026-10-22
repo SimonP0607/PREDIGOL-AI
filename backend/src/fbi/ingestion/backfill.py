@@ -42,6 +42,7 @@ from psycopg.types.json import Json
 from fbi.core.clock import now
 from fbi.core.errors import ProviderError
 from fbi.ingestion.apply import apply_fixtures_payload
+from fbi.ingestion.availability import record_answer
 from fbi.ingestion.details import (
     apply_coverage,
     apply_fixture_details,
@@ -377,6 +378,10 @@ async def _execute(conn: psycopg.Connection, provider: Any, ledger: RunLedger, r
         absences, raw = await provider.fetch_injuries(league_id=task.league_id, season=task.season)
         stored(raw)
         n = apply_injuries(conn, absences, payload_hash=raw.payload_hash, fetched_at=raw.fetched_at)
+        season_id = _competition_season_id(conn, task.league_id, task.season)
+        if season_id is not None:  # the history of what was reported and when (plan F0, defect 8)
+            record_answer(conn, absences, payload_hash=raw.payload_hash, competition_season_id=season_id,
+                          requested_at=raw.fetched_at)
         counters.rows_inserted += n
         return _Outcome(raw.payload_hash, n, len(absences))
     if task.kind == "teams_season":

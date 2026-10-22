@@ -2,8 +2,9 @@
 configures a search API and a model to read it).
 
 * Provider (free, already collected by the worker): the injury and suspension report of each match
-  (``core.player_absences``, from /injuries) and, from about an hour before kick-off, the confirmed
-  line-ups (``core.fixture_lineups``). Each becomes an evidence item with the RAW payload it came from.
+  (the latest /injuries answer as of the moment, ``fbi.ai.absences``: a player the newest answer no longer names is
+  not reported) and, from about an hour before kick-off, the confirmed line-ups (``core.fixture_lineups``). Each
+  becomes an evidence item with the RAW payload it came from.
 * Web (optional): a few searches per shortlisted match through ``fbi.analyst.search`` (Exa) or another
   configured search API, each answered once and cached (``fbi.ai.cache``); the pages' text is read by
   the cheapest configured model, which may only EXTRACT dated items with the result they came from
@@ -27,6 +28,7 @@ from psycopg.rows import dict_row
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from fbi.ai import cache
+from fbi.ai.absences import absences_as_of, checked_at_as_of
 from fbi.ai.config import AiSettings
 from fbi.ai.evidence import (
     TIER_RANK,
@@ -55,11 +57,6 @@ SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, th.name AS home_name,
  WHERE f.id = %(fixture)s
 """
 
-ABSENCES_SQL = """
-SELECT provider_team_id, provider_player_id, player_name, absence_type, reason, payload_hash, fetched_at
-  FROM core.player_absences WHERE fixture_id = %(fixture)s AND fetched_at <= %(at)s
-"""
-
 LINEUPS_SQL = """
 SELECT l.team_side, l.formation, l.coach_name, l.payload_hash, l.fetched_at,
        array_agg(lp.provider_player_id) FILTER (WHERE lp.is_starter) AS starters
@@ -68,11 +65,6 @@ SELECT l.team_side, l.formation, l.coach_name, l.payload_hash, l.fetched_at,
        AND lp.source = l.source
  WHERE l.fixture_id = %(fixture)s AND l.fetched_at <= %(at)s
  GROUP BY l.team_side, l.formation, l.coach_name, l.payload_hash, l.fetched_at
-"""
-
-CHECK_SQL = """
-SELECT max(checked_at) FROM core.context_checks WHERE competition_season_id = %(season)s AND dataset = 'injuries'
-   AND checked_at <= %(at)s
 """
 
 
@@ -105,13 +97,10 @@ def collect_provider(conn: psycopg.Connection[Any], fixture_id: int, *, at: date
         f = cur.fetchone()
         if f is None:
             return Collected(skipped="no such fixture")
-        cur.execute(ABSENCES_SQL, {"fixture": fixture_id, "at": at})
-        absences = list(cur.fetchall())
         cur.execute(LINEUPS_SQL, {"fixture": fixture_id, "at": at})
         lineups = list(cur.fetchall())
-        cur.execute(CHECK_SQL, {"season": f["competition_season_id"], "at": at})
-        check_row = cur.fetchone()
-    checked_at = check_row["max"] if check_row else None
+    checked_at = checked_at_as_of(conn, int(f["competition_season_id"]), at)
+    absences = absences_as_of(conn, fixture_id, at)  # the latest answer as of `at` (plan F0, defect 8)
     team_of = {f["home_provider_id"]: (f["home_team_id"], f["home_name"]),
                f["away_provider_id"]: (f["away_team_id"], f["away_name"])}
     out = Collected()
