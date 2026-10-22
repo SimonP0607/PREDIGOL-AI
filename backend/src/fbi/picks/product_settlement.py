@@ -20,7 +20,8 @@ A parlay follows its legs. Each settled leg multiplies the stake: a win by its o
 
 Until settle-v4 (parlay-settle-v2) a half win paid at the full odds and a half loss lost the whole parlay.
 
-No provider request; idempotent - a settled record is never settled again.
+No provider request; idempotent - this pass never settles a settled record again. When the provider CORRECTS the
+result of a match, ``fbi.picks.resettlement`` revisits what was settled on it (with the same rules, and a trail).
 """
 
 from __future__ import annotations

@@ -73,7 +73,8 @@ WITH fx AS (
 ), made AS (
     SELECT p.*, COALESCE(NULLIF(p.status, 'settled'),
                          (SELECT e.from_status FROM picks.pick_events e
-                           WHERE e.pick_id = p.id AND e.to_status = 'settled' ORDER BY e.at LIMIT 1)) AS was
+                           WHERE e.pick_id = p.id AND e.to_status = 'settled' AND e.event_kind = 'status'
+                           ORDER BY e.at LIMIT 1)) AS was
       FROM picks.picks p JOIN fx ON fx.id = p.fixture_id
      WHERE p.created_at < fx.kickoff_at AND p.odds_captured_at < fx.kickoff_at
 ), last_pick AS (

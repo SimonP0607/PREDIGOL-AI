@@ -30,8 +30,12 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import StrEnum
 
-RULE_VERSION = "settle-v3"
-"""v3 (11 Oct 2026, REVIEW "partidos que siguen esperando resultado"): a match with no official result 72 h
+RULE_VERSION = "settle-v4"
+"""v4 (22 Oct 2026, plan F0 defects 4 and 5): the rules for a single bet are those of v3. What v4 changes is in the
+records. A parlay pays by the factor of each leg (``parlay-settle-v2``: a half win pays (odds + 1) / 2, a half loss
+loses half the stake), and a settled record is re-settled, with a trail, when the provider corrects the result
+(``fbi.picks.resettlement``, migration 0080) - before, the first result a record was settled on stood for ever.
+v3 (11 Oct 2026, REVIEW "partidos que siguen esperando resultado"): a match with no official result 72 h
 (VOID_AFTER) after the kick-off the record was taken for is VOID - postponed, suspended, interrupted, abandoned,
 awarded, walkover, or a provider that never closed it. Before that it stays pending with its reason, as in v2.
 v2 (9 Oct 2026): a match decided after 90 minutes settles when the provider STATES the 90-minute score

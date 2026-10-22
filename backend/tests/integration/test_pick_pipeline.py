@@ -249,7 +249,7 @@ def test_a_captured_price_becomes_a_traceable_shadow_pick_and_settles_on_90_minu
     with db.cursor() as cur:
         cur.execute("SELECT r.result_status, r.profit_units, r.settlement_basis, r.rule_version, p.status "
                     "FROM picks.pick_results r JOIN picks.picks p ON p.id = r.pick_id WHERE r.pick_id = %s", (pick_id,))
-        assert cur.fetchone() == ("loss", Decimal("-1.0000"), "regulation_90", "settle-v3", "settled")
+        assert cur.fetchone() == ("loss", Decimal("-1.0000"), "regulation_90", "settle-v4", "settled")
         cur.execute("SELECT to_status FROM picks.pick_events WHERE pick_id = %s ORDER BY at, id", (pick_id,))
         assert [r[0] for r in cur.fetchall()] == ["shadow", "settled"]
     assert settle_open_picks(db, run_id=run_id).open_picks == 0, "settled picks are not settled again"
