@@ -5,6 +5,7 @@ itself or of what came after it."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -13,6 +14,9 @@ from psycopg.rows import dict_row
 from fbi.ai.packet import PacketBuilder
 from fbi.intel import national
 from fbi.people import player_history as ph
+from fbi.providers.api_football.details import AbsenceRef
+from tests.integration.conftest import Seed
+from tests.integration.test_availability_history import DOUBT, KNEE, _answer
 from tests.integration.test_player_history_store import T0, World, d, world  # noqa: F401  (the fixture and the data)
 
 pytestmark = pytest.mark.integration
@@ -334,3 +338,30 @@ def test_the_day_is_the_day_of_the_moment_and_not_the_day_of_the_match(world: Wo
     assert (p1["club"]["last_seen"], p1["club"]["last_seen_days_ago"]) == (d(29).isoformat(), 1)
     assert (p1["form"]["last_match"], p1["form"]["last_days_ago"]) == (d(27).isoformat(), 3)
     assert p1["caps"]["last_cap_days_ago"] == 9
+
+
+def test_the_players_reported_out_are_the_latest_answer_as_of_the_moment(world: World, seed: Seed) -> None:  # noqa: F811
+    """Plan F3, no stale absence in the packet: the block marks whom the provider's newest answer by the packet's moment names - a man a
+    later answer cleared is back - and the packet of an earlier moment still says what was known then."""
+    s = Squad(world)
+    s.build()
+    row = world.db.execute("SELECT provider_fixture_id, competition_season_id FROM core.fixtures WHERE id = %s", (s.target,)).fetchone()
+    assert row is not None
+    provider_fixture, season = row
+    spain = world.provider(s.spain)
+    t1, t2 = KICKOFF - timedelta(hours=10), KICKOFF - timedelta(hours=5)
+
+    def ref(player: int, what: tuple[str, str]) -> AbsenceRef:
+        return AbsenceRef(provider_fixture, player, spain, f"Player {player}", what[0], what[1])
+
+    league: Any = SimpleNamespace(season=season)      # (all the answer helper of the availability tests needs of its world)
+    _answer(world.db, seed, league, t1, [ref(s.p1, KNEE), ref(s.p2, DOUBT)])
+    _answer(world.db, seed, league, t2, [ref(s.p2, DOUBT)])                       # p1 has recovered
+
+    def reported(at: datetime) -> dict[int, str | None]:
+        built = PacketBuilder(world.db).build(s.target, at=at)
+        assert built is not None
+        return {p["id"]: p["reported_out"] for p in built.content["dossier"]["national"]["home"]["players"]}
+
+    assert reported(AT) == {s.p1: None, s.p2: DOUBT[0], s.p3: None}, "p1 is not out any more; p3 was never named"
+    assert reported(t1 + timedelta(hours=1)) == {s.p1: KNEE[0], s.p2: DOUBT[0]}, "built for an hour after the first answer: what was known then"

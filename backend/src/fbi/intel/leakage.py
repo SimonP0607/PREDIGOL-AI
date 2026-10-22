@@ -30,6 +30,11 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              packet's moment; a block that says its squad is the match's own sheet had it fetched by then; and no
                              day it gives for a club (``since``, ``last_seen``) is later than the day of the packet. One check
                              per cited fact. Examples are packet ids.
+    absences_known           (v3, plan F3) the AI packets built on the day that list absent players (``absences``): every player
+                             listed was named by an answer of the provider recorded by the packet's moment
+                             (``core.player_availability_obs``), that answer is the newest one about him by then - a player a later
+                             answer cleared has recovered, and a packet that still lists him read a row that was no longer true - and
+                             the kind of absence is the one the answer gave. One check per listed player. Examples are packet ids.
 """
 
 from __future__ import annotations
@@ -159,6 +164,27 @@ RULES: dict[str, str] = {
             SELECT pl.packet_id, ((pl.x #>> '{{club,since}}')::date > (pl.as_of AT TIME ZONE 'UTC')::date
                                   OR (pl.x #>> '{{club,last_seen}}')::date > (pl.as_of AT TIME ZONE 'UTC')::date)
               FROM pl WHERE jsonb_typeof(pl.x -> 'club') = 'object')
+        SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
+               (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
+    "absences_known": f"""
+        WITH p AS ({PACKETS}), a AS (
+            SELECT p.id AS packet_id, p.fixture_id, p.as_of, (e.x ->> 'player_id')::bigint AS player_id, e.x ->> 'type' AS kind
+              FROM p CROSS JOIN (VALUES ('home'), ('away')) AS v(side)
+                   CROSS JOIN LATERAL jsonb_array_elements(
+                       CASE WHEN jsonb_typeof(p.content #> ARRAY['absences', v.side, 'players']) = 'array'
+                            THEN p.content #> ARRAY['absences', v.side, 'players'] ELSE '[]'::jsonb END) AS e(x)
+             WHERE jsonb_typeof(e.x) = 'object' AND (e.x ->> 'player_id') ~ '^[0-9]{{1,15}}$'),
+        c AS (
+            SELECT a.packet_id,
+                   NOT EXISTS (SELECT 1 FROM core.player_availability_obs o
+                                WHERE o.fixture_id = a.fixture_id AND o.source = 'api-football'
+                                  AND o.provider_player_id = a.player_id AND o.status = 'LISTED' AND o.observed_at <= a.as_of
+                                  AND o.absence_type IS NOT DISTINCT FROM a.kind
+                                  AND NOT EXISTS (SELECT 1 FROM core.player_availability_obs n
+                                                   WHERE n.fixture_id = o.fixture_id AND n.source = o.source
+                                                     AND n.provider_player_id = o.provider_player_id
+                                                     AND n.observed_at > o.observed_at AND n.observed_at <= a.as_of)) AS bad
+              FROM a)
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
 }
