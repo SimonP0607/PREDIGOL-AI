@@ -17,7 +17,7 @@ VIEWS = ("/api/v1/admin/intelligence/day", "/api/v1/admin/intelligence/decisions
          "/api/v1/admin/intelligence/calibration", "/api/v1/admin/intelligence/memory",
          "/api/v1/admin/intelligence/reports", "/api/v1/admin/intelligence/markets",
          "/api/v1/admin/intelligence/runs", "/api/v1/admin/intelligence/costs",
-         "/api/v1/admin/intelligence/memory/team/1")
+         "/api/v1/admin/intelligence/price-clock", "/api/v1/admin/intelligence/memory/team/1")
 
 
 @pytest.fixture()
@@ -54,5 +54,5 @@ def test_every_view_answers_for_the_owner_and_none_for_a_user(env: Seed) -> None
     assert dossier.status_code == 200
     assert admin.get("/api/v1/admin/intelligence/decisions/999999999").status_code == 404
     user = client_for("USER")
-    for path in VIEWS[:3]:
+    for path in VIEWS:
         assert user.get(path).status_code in (401, 403)

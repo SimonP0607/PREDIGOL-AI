@@ -8,6 +8,8 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
+import psycopg
+
 from fbi.ai.calendar import day_bounds, day_start, local_day, month_start
 from fbi.ai.config import AiSettings
 from fbi.api.envelope import Envelope, ok
@@ -300,6 +302,58 @@ def markets(conn: Conn) -> Envelope[dict[str, Any]]:
     for r in rows:
         by_status[r["status"]] = by_status.get(r["status"], 0) + 1
     return ok(j({"run": run, "by_status": by_status, "items": rows}))
+
+
+def price_clock(conn: Conn) -> Envelope[dict[str, Any]]:
+    """THE PRICE CLOCK (plan F1): how many of the provider's markets are structured from the RAW /odds payloads, how many
+    payloads are read and how many wait, what the table weighs, and what went wrong. Reading only. The per-bet counts are an
+    index-only scan of a table that grows, so they are bounded in time and absent (null) when the bound is hit."""
+    from fbi.odds.quote_extract import EXTRACTOR_VERSION, JOB, backlog, table_bytes
+
+    raw = fetch_one(conn, "SELECT count(*) AS payloads, min(fetched_at) AS first, max(fetched_at) AS last "
+                          "FROM raw.ingestion_payloads WHERE endpoint = '/odds' AND http_status = 200 AND results_count > 0")
+    ledger = fetch_all(conn, "SELECT status, extractor_version AS version, count(*) AS payloads, "
+                             "coalesce(sum(quotes_written), 0) AS quotes, coalesce(sum(quotes_refused), 0) AS refused, "
+                             "max(extracted_at) AS last FROM market.odds_extractions GROUP BY 1, 2 ORDER BY 1, 2")
+    span = fetch_one(conn, "SELECT min(captured_at) AS first, max(captured_at) AS last, count(DISTINCT fixture_id) AS fixtures, "
+                           "coalesce(sum(quotes_written), 0) AS quotes FROM market.odds_extractions WHERE status = 'ok'") or {}
+    families = fetch_all(conn, "SELECT f.key, f.label, count(d.id) AS bets, count(d.id) FILTER (WHERE d.extract) AS extracted "
+                               "FROM market.market_families f LEFT JOIN market.market_definitions d ON d.family = f.key "
+                               "GROUP BY f.key, f.label, f.sort_order ORDER BY f.sort_order")
+    bets = fetch_all(conn, "SELECT id, provider_bet_id AS bet_id, name, family, period, subject, status, schema "
+                           "FROM market.market_definitions WHERE extract ORDER BY family, provider_bet_id")
+    counts: dict[int, dict[str, Any]] | None = None
+    try:
+        with conn.transaction():
+            conn.execute("SET LOCAL statement_timeout = '4s'")
+            per_bet = fetch_all(conn, "SELECT definition_id, count(*) AS quotes, max(captured_at) AS last "
+                                      "FROM market.odds_quotes GROUP BY definition_id")
+            conn.execute("SET LOCAL statement_timeout = DEFAULT")
+        counts = {int(r["definition_id"]): r for r in per_bet}
+    except psycopg.errors.QueryCanceled:
+        counts = None
+    for b in bets:
+        found = None if counts is None else counts.get(int(b.pop("id")))
+        b["quotes"] = None if counts is None else int(found["quotes"]) if found else 0
+        b["last"] = found["last"] if found else None
+    by_family: dict[str, int] = {}
+    for b in bets:
+        if b["quotes"] is not None:
+            by_family[b["family"]] = by_family.get(b["family"], 0) + b["quotes"]
+    for fam in families:
+        fam["quotes"] = None if counts is None else by_family.get(fam["key"], 0)
+    unclassified = fetch_all(conn, "SELECT provider_bet_id AS bet_id, name, classified_at FROM market.market_definitions "
+                                   "WHERE family = 'unclassified' ORDER BY provider_bet_id")
+    issues = fetch_all(conn, "SELECT left(payload_hash, 12) AS payload, provider_fixture_id, status, detail, quotes_refused, "
+                             "extracted_at FROM market.odds_extractions WHERE status IN ('error', 'no_fixture') "
+                             "OR (status = 'ok' AND detail IS NOT NULL) ORDER BY extracted_at DESC LIMIT 20")
+    runs_ = fetch_all(conn, "SELECT id, started_at, finished_at, status, rows_written, errors, last_error, notes "
+                            "FROM raw.ingestion_runs WHERE job_type = %(j)s ORDER BY started_at DESC LIMIT 8", {"j": JOB})
+    return ok(j({
+        "extractor": EXTRACTOR_VERSION, "raw": raw, "backlog": backlog(conn), "ledger": ledger,
+        "quotes": {**span, "gigabytes": round(table_bytes(conn) / 1e9, 3)},
+        "families": families, "bets": bets, "unclassified": unclassified, "issues": issues, "runs": runs_,
+    }))
 
 
 def runs(conn: Conn, *, limit: int) -> Envelope[dict[str, Any]]:

@@ -83,6 +83,13 @@ def get_markets(conn: Db) -> Envelope[dict[str, Any]]:
     return svc.markets(conn)
 
 
+@router.get("/intelligence/price-clock", response_model=Envelope[dict[str, Any]])
+def get_price_clock(conn: Db) -> Envelope[dict[str, Any]]:
+    """THE PRICE CLOCK: the provider's markets structured from the RAW /odds payloads (plan F1) - what is read, what waits,
+    what it weighs and what went wrong."""
+    return svc.price_clock(conn)
+
+
 @router.get("/intelligence/runs", response_model=Envelope[dict[str, Any]])
 def get_runs(conn: Db, limit: Annotated[int, Query(ge=1, le=500)] = 60) -> Envelope[dict[str, Any]]:
     """The jobs' record (duration, status, counts, errors, version) and the latest data-leakage audit."""

@@ -553,3 +553,32 @@ def test_a_failure_in_the_database_is_recorded_and_the_run_goes_on(db: psycopg.C
     assert ledger(db, b)["status"] == "ok"
     assert count(db, "SELECT count(*) FROM market.odds_quotes q JOIN market.odds_extractions x ON x.id = q.extraction_id "
                      "WHERE x.payload_hash = %s", a) == 0, "nothing of the failed payload is left half written"
+
+
+def test_the_admin_view_reports_what_is_structured_and_what_waits(db: psycopg.Connection, seed: Seed, tmp_path: Path) -> None:
+    from fbi.api.services.intelligence import price_clock
+
+    store = PayloadStore(tmp_path)
+    add_fixture(db, seed, 810160)
+    add_payload(db, seed, store, real_body(810160), fixture=810160, fetched_at=FETCHED)
+    run(db, tmp_path)
+    waiting = add_payload(db, seed, store, real_body(810160, update=KICKOFF - timedelta(days=2)), fixture=810160,
+                          fetched_at=FETCHED + timedelta(hours=1))
+    add_payload(db, seed, store, {"get": "odds", "response": [{"fixture": {"id": 424242}, "bookmakers": []}]}, fixture=424242,
+                fetched_at=FETCHED + timedelta(hours=2))
+    run(db, tmp_path, limit=1)
+
+    view = price_clock(db).data
+    assert view is not None
+    assert view["extractor"] == EXTRACTOR_VERSION and view["backlog"] >= 1
+    statuses = {(row["status"], row["version"]): row for row in view["ledger"]}
+    assert statuses[("ok", EXTRACTOR_VERSION)]["quotes"] >= 601
+    assert view["quotes"]["fixtures"] >= 1 and view["quotes"]["gigabytes"] >= 0
+    families = {f["key"]: f for f in view["families"]}
+    assert families["goals_half"]["extracted"] > 0 and families["goals_half"]["quotes"] > 0
+    assert families["players"]["extracted"] == 0 and families["players"]["bets"] > 0
+    bets = {b["bet_id"]: b for b in view["bets"]}
+    assert bets[5]["quotes"] > 0 and bets[5]["family"] == "goals" and bets[7]["quotes"] > 0
+    assert bets[45]["quotes"] == 0, "extracted but not in this payload: shown, with no prices"
+    assert any(issue["status"] == "ok" and "values refused by bet" in issue["detail"] for issue in view["issues"])
+    assert waiting  # still unread: the backlog counts it
