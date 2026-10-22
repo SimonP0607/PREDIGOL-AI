@@ -81,7 +81,7 @@ def print_report(report: referees.BuildReport) -> None:
     _line("matches that name a referee", _n(report.fixtures))
     _line("observations read", _n(report.observations))
     _line("spellings (name + scope)", _n(report.forms))
-    _line("people (groups)", f"{_n(report.groups)}   settled: {_pct(report.settled_share)} of their matches")
+    _line("people (groups)", f"{_n(report.groups)}   {_pct(report.settled_share)} of the matches belong to a person with no doubt on either side")
     _line("vetoes (same-time collisions)", _n(report.vetoes))
     _line("basis of the spellings", ", ".join(f"{k} {_n(v)}" for k, v in sorted(report.basis.items())) or "-")
     verb = "written" if report.applied else "to write"

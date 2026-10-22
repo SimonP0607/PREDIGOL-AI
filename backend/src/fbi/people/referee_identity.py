@@ -2,8 +2,9 @@
 
 The provider gives no referee id. What it gives is a string per match, and the same person comes in many: ``M. Oliver``,
 ``Michael Oliver``, ``Michael Oliver, England``, sometimes in another competition's country. On 22 Oct 2026 the 199,890 matches
-with a referee carried 9,632 spellings (a spelling = a normalised name in a SCOPE: the country the string names, or else the
-country of the domestic competition it was written in, or ``?`` for a continental one). This module groups them.
+with a referee carried 9,510 spellings that are the last word on some match (9,694 with the ones the provider wrote once and
+corrected later); a spelling = a normalised name in a SCOPE: the country the string names, or else the country of the domestic
+competition it was written in, or ``?`` for a continental one. This module groups them.
 
 THE RULES, from the safest to the least safe, and what each one is allowed to do
 -------------------------------------------------------------------------------
