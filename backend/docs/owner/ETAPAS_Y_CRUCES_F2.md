@@ -149,12 +149,48 @@ ganó no aparece en la ronda siguiente. La lista completa sale con `audit`.
   antes (la API devuelve `stage` y `tie` nulos y la web no pinta nada).
 * Quitar todo: `alembic downgrade 0081` borra las dos tablas y las tres columnas (son solo filas derivadas;
   `scripts.competition_stages build --all --apply` las reconstruye). Hacer antes el respaldo habitual de despliegue.
-* `packet-v4` aún no está en producción (corre `packet-v3`): al desplegarlo, los paquetes de partidos de temporadas con varias
-  tablas serán distintos de los de v3 (la corrección de la tabla), es decir, filas nuevas en `ai.match_packets`, que solo se añade.
+* `packet-v4` corre en producción desde el despliegue de F2 (antes corría `packet-v3`): los paquetes de partidos de temporadas con
+  varias tablas son distintos de los de v3 (la corrección de la tabla), es decir, filas nuevas en `ai.match_packets`, que solo se
+  añade. Las revisiones de IA que esa novedad provoque quedan dentro de los topes de presupuesto de siempre.
 
-## Pendiente de F2
+## Resultado en producción (22 oct 2026)
 
-Despliegue a producción (con tu aviso): respaldo verificado + prueba de restauración, `predigolctl deploy` (migración 0082 y el
-código), construcción de toda la historia (`build --all`, primero en seco), `audit` sobre producción (cobertura ≥ 98 %, globales,
-muestra) y comprobación de la API y de la web en vivo. Los 22 cruces contradichos y el defecto del marcador de prórroga del
-proveedor se te reportan con las cifras de producción.
+Desplegado a las 16:41 UTC (backend `cc4efa9aba71`, web `0852a8d09069`) con respaldo verificado (1,07 GB), prueba de restauración
+superada (604 s, las 12 cuentas de filas coinciden), respaldo propio del despliegue y migración 0082. Todo sigue en SHADOW: nada
+de F2 cambia un pick, una probabilidad ni una liquidación.
+
+La construcción de toda la historia (`build --all --apply`) tardó 319 s: 1.077 temporadas, 0 fallos, 25.209 filas escritas y los
+246.017 partidos con su etapa, cruce y pata. El ensayo en seco previo había dado exactamente las mismas cifras. La auditoría
+(`audit --drift --sample 40 --seed 2026`) pasó todos sus criterios:
+
+| Medida | Producción |
+|---|---|
+| Partidos con etapa | **246.017 de 246.017 (100 %)** — criterio del plan: ≥ 98 % |
+| Etapas | 3.856 (eliminatorias 2.169, liga 1.394, clasificación 286, amistosas 3, sin lectura 4) |
+| Partidos de eliminatoria o clasificación que son pata de un cruce | 27.119 de 27.881 (97,3 %); 27 partidos con una ronda que ninguna regla lee (`R60310`, `R66244`, `R73389`, `R79396`) |
+| Formato de las rondas | una sola pata 1.586 · ida y vuelta 825 · serie 3 · mezclado 5 · vacías 6 · sin cuadro 30 |
+| Cruces | 21.353: 21.063 decididos, 215 programados, 30 en curso, 45 sin resolver (con motivo: 14 empatados sin evidencia de tanda, 7 empatados en el global sin evidencia, 7 aplazados para siempre, 5 nunca jugados, 4 sin la vuelta…) |
+| Cómo se decidieron | tiempo normal 13.379 · global 3.846 · penales 2.370 · prórroga 1.169 · gol de visitante 201 · desempate 61 · serie 24 · decisión administrativa 13 |
+| La ronda siguiente | confirma 19.945 · contradice **22** · no puede decirlo 1.096 (finales y última ronda cargada) |
+| Globales recalculados en SQL (sin el código del constructor) | **20.166 revisados, 0 distintos, 0 faltantes** (19 sin global a propósito, 17 con el marcador reparado aparte) |
+| Muestra de 40 cruces de ida y vuelta (semilla 2026) | **las patas de los 40 suman su global** |
+| Deriva (repetir la construcción en seco) | **0 de 1.077 temporadas cambiarían** (238 s) |
+| Avisos que quedan en los cruces | decidido por la ronda siguiente 757 · tanda sin marcador guardado por el proveedor 511 · vuelta que el proveedor no lista 22 · una sola pata en ronda de ida y vuelta 21 · marcador de prórroga reparado 17 · marcador incoherente con la tanda 3 · patas sin invertir 1 |
+
+**Los 22 cruces contradichos** (la cancha decide y quedan marcados): CAF Champions League 2024 (SC Villa – Ethiopia Nigd Bank),
+Libertadores 2019 (Defensor Sporting – Barcelona SC), CAF Confederation Cup 2021 y 2022 (Mangasport – Orapa United; Fasil Ketema –
+Bumamuru), Championship 2025 (Middlesbrough – Southampton, el caso comprobado del espionaje), FA Cup (Bottesford – Eastwood,
+Bugbrooke – March Town, Barking – Ilford, Haverhill – Mulbarton, Tadley – Portchester, **Barnsley – Horsham**, Cobham – Margate),
+EFL Trophy 2025 (Luton – Swindon), Coupe de France 2024 (Étoile Maritime – Vertou; Aigles d'Or – Matoury), DFB Pokal 2021
+(Preußen Münster – Wolfsburg), Taça de Portugal (Eirense – Gouveia, Vale Formoso – União de Leiria, Lourinhanense – União
+Santarém), Copa del Rey 2023 (Arosa – Granada) y Leagues Cup 2023 (Dallas – Mazatlán; Houston – Pachuca). La lista completa y
+actual sale siempre con `audit`.
+
+**Comprobación en vivo.** El servicio que sirve `/matches/{id}/center`, ejecutado dentro del contenedor de la API con su rol de solo
+lectura sobre datos reales, devuelve etapa y cruce: la vuelta de la semifinal de Libertadores del 22 oct (global 2-2, pasa el local
+en penales 5-3), la de la Sudamericana del 21 oct (global 2-3), las vueltas de mañana con el global de la ida, y un partido de liga
+con etapa y sin cruce. Salud del sistema `ok`, `/login` 200, `/auth/me` 401, `/docs` cerrado.
+
+**Lo que queda vigilado.** (1) El barrido diario de las 09:40 UTC (`competition_structure.sweep` en el registro del worker) y la
+auditoría de fuga nocturna con la regla nueva `tie_legs_known`. (2) El gasto de IA de los primeros días con `packet-v4`. (3) Los
+511 cruces cuya tanda el proveedor no guardó con marcador: se muestran como «en penales» sin cifra, sin inventarla.
