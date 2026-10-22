@@ -529,6 +529,34 @@ SELECT x.provider_team_id, t.id AS team_id, COALESCE(x.team_name, t.name) AS tea
  ORDER BY x.ordinal
 """
 
+PLAYER_SPELLS = """
+SELECT s.provider_team_id, t.id AS team_id, COALESCE(t.name, s.team_name) AS team, s.valid_from, s.valid_to, s.source,
+       s.matches, s.last_evidence, s.via
+  FROM core.player_spells s
+  LEFT JOIN core.teams t ON t.provider_team_id = s.provider_team_id
+ WHERE s.provider_player_id = %(pid)s
+ ORDER BY s.ordinal DESC
+"""
+"""The player's streaks at clubs (``fbi.people.spells``), newest first."""
+
+PLAYER_NATIONAL_CAPS = """
+SELECT c.fixture_id, f.kickoff_at, c.team_id, t.name AS team, o.id AS opponent_id, o.name AS opponent, comp.name AS competition,
+       c.is_starter, c.appeared, c.minutes,
+       CASE WHEN r.fixture_id IS NULL THEN NULL WHEN f.home_team_id = c.team_id THEN r.goals_home ELSE r.goals_away END AS goals_for,
+       CASE WHEN r.fixture_id IS NULL THEN NULL WHEN f.home_team_id = c.team_id THEN r.goals_away ELSE r.goals_home END AS goals_against
+  FROM core.player_national_caps c
+  JOIN core.fixtures f ON f.id = c.fixture_id
+  JOIN core.teams t ON t.id = c.team_id
+  LEFT JOIN core.teams o ON o.id = CASE WHEN f.home_team_id = c.team_id THEN f.away_team_id ELSE f.home_team_id END
+  LEFT JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  LEFT JOIN core.competitions comp ON comp.id = cs.competition_id
+  LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
+ WHERE c.provider_player_id = %(pid)s
+ ORDER BY f.kickoff_at DESC, c.fixture_id DESC
+ LIMIT 200
+"""
+"""The player's matches with a senior national team (``fbi.people.caps``), newest first."""
+
 REFERENCE_SEASONS = """
 SELECT cs.id, cs.season, cs.is_current FROM core.competition_seasons cs WHERE cs.competition_id = %(c)s
  ORDER BY (EXISTS (SELECT 1 FROM core.season_leaders l WHERE l.competition_season_id = cs.id)

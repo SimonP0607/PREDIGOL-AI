@@ -543,6 +543,43 @@ class PlayerCareerTeam(Contract):
     seasons: list[int] = Field(default_factory=list)
 
 
+class PlayerClubSpell(Contract):
+    """A streak at a club (plan F3, ``core.player_spells``), built from squad sheets, statistics and transfers: when he arrived,
+    when he left, how it is known, and the last day anything placed him there. Newest first."""
+
+    provider_team_id: int
+    team_id: int | None = Field(default=None, description="PrediGol's team when the club is held.")
+    team: str | None = None
+    valid_from: date | None = Field(default=None, description="First day of the streak; null: he was already there when the "
+                                    "facts begin (the start is not known).")
+    valid_to: date | None = Field(default=None, description="The day he left (exclusive); null: he is still there as far as "
+                                  "the facts say.")
+    source: Literal["transfer", "lineup", "squad"] = Field(description="What gives the streak its start: a transfer, a line-up "
+                                                          "or a squad list.")
+    matches: int = Field(description="Matches (line-ups and statistics) that place him at the club in the streak.")
+    last_evidence: date = Field(description="The last day anything placed him there.")
+    via: str | None = Field(default=None, description="The provider's text of the transfer that gives the start ('Free', 'Loan'...).")
+
+
+class PlayerNationalCap(Contract):
+    """A finished match of a SENIOR national team whose squad sheet carries the player (plan F3, ``core.player_national_caps``):
+    youth and Olympic sides are not caps. Newest first, the last 200."""
+
+    fixture_id: int
+    kickoff_at: datetime
+    team_id: int
+    team: str
+    opponent_id: int | None = None
+    opponent: str | None = None
+    competition: str | None = None
+    is_starter: bool
+    appeared: bool | None = Field(description="true: he played; false: he stayed on the bench; null: the statistics of the match "
+                                  "have not arrived yet, so it cannot be said.")
+    minutes: int | None = Field(default=None, description="Only when he played.")
+    goals_for: int | None = Field(default=None, description="From the point of view of his team; null while the result is not stored.")
+    goals_against: int | None = None
+
+
 class PlayerDetail(Contract):
     player: PlayerSummary
     firstname: str | None
@@ -557,6 +594,8 @@ class PlayerDetail(Contract):
     trophies: Section[list[PlayerTrophy]] | None = None
     provider_seasons: Section[list[PlayerProviderSeason]] | None = None
     career: Section[list[PlayerCareerTeam]] | None = None
+    club_history: Section[list[PlayerClubSpell]] | None = None
+    national_caps: Section[list[PlayerNationalCap]] | None = None
     provenance: dict[str, Provenance] = Field(default_factory=dict, description="Per list (transfers, sidelined, "
                                               "trophies, provider_seasons, career): the payload and time it comes "
                                               "from.")

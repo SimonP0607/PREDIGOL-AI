@@ -35,9 +35,11 @@ from fbi.api.contracts.center import (
     MatchPlayerSeason,
     PlayerAbsence,
     PlayerCareerTeam,
+    PlayerClubSpell,
     PlayerDetail,
     PlayerLine,
     PlayerMatch,
+    PlayerNationalCap,
     PlayerProviderSeason,
     PlayerSeason,
     PlayerSidelined,
@@ -391,6 +393,8 @@ def player(conn: Conn, player_id: int, *, at: datetime | None = None) -> Envelop
                                           normalizer_version=first.get("normalizer_version"),
                                           checked_at=checks.get("players_teams"))
     career = [PlayerCareerTeam(**_clean(x, drop)) for x in career_rows]
+    spells = [PlayerClubSpell(**x) for x in fetch_all(conn, repo.PLAYER_SPELLS, pid)]
+    caps = [PlayerNationalCap(**x) for x in fetch_all(conn, repo.PLAYER_NATIONAL_CAPS, pid)]
     return ok(PlayerDetail(
         player=PlayerSummary(**r), **extra,
         seasons=_sec(seasons, "No match statistics are stored for this player."),
@@ -407,6 +411,9 @@ def player(conn: Conn, player_id: int, *, at: datetime | None = None) -> Envelop
                                                 "competitions)."),
         career=_sec(career, "The provider lists no team for this player." if "career" in provenance
                     else "The provider's list of this player's teams has not been read yet."),
+        club_history=_sec(spells, "No club streak is built for this player yet (the history is rebuilt every few hours from squad "
+                                  "sheets, statistics and transfers)."),
+        national_caps=_sec(caps, "No match of a senior national team carries this player in its squad sheet."),
         provenance=provenance,
     ))
 
