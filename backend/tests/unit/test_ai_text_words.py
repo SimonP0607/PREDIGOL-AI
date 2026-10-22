@@ -82,7 +82,7 @@ def test_selections_and_the_days_notes_are_in_spanish() -> None:
         base = {"id": i, "fixture_id": i, "market_key": "1X2", "selection": "Home", "line": Decimal(0), "roles": [],
                 "decision": {"caution": "DOWNGRADE", "rejected": "REJECT"}.get(verdict.split("_")[0]),
                 "settled": "loss" if verdict.endswith(("lost", "correctly")) else "win", "verdict": verdict,
-                "classification": None, "odds": Decimal("2.0"), "close_odds": None, "clv": None, "p_model": 0.5,
+                "classification": None, "odds": Decimal("2.0"), "close_odds": None, "price_move": None, "p_model": 0.5,
                 "p_market": 0.45, "answers": {"model": {"data": {"p_close": 0.456}}}, "evidence": {},
                 "match": f"M{i}"}
         return base | over

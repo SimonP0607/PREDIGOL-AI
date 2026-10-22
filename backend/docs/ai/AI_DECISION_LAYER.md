@@ -120,22 +120,45 @@ MERCADO → APROBACIÓN DEL DUEÑO. Nada aquí ejecuta `adjust_weights` ni cambi
   partido y el resultado (¿qué esperaba PrediGol?, ¿qué ocurrió?, ¿falló el modelo?, ¿falló la información?,
   ¿había una señal ignorada?, ¿se movió la cuota?, ¿existía una baja importante?, ¿cambió la alineación?, ¿la
   incertidumbre estaba subestimada?, ¿fue varianza?) y la clase de una pérdida, la primera que aplica:
-  DATA_ERROR → EXECUTION_ERROR → CONTEXT_ERROR → MARKET_ERROR (CLV ≤ −3 %) → MODEL_ERROR (modelo ≥ 8 pts sobre el
-  cierre) → NORMAL_VARIANCE → UNKNOWN. Narrativa con Haiku (máx. 12) y Sonnet para pérdidas de picks del día (3).
-* **Notas del día (`ai.learning_notes`, QUÉ APRENDIÓ PREDIGOL HOY):** resumen, aprobadas perdidas por clase,
-  rechazos (acertados / habrían ganado), contexto que falló, noticias confirmadas o desmentidas por la alineación,
-  bajas, mercado (CLV), modelo frente al cierre, fuentes; y hasta 3 lecciones de Sonnet que citan las notas.
+  DATA_ERROR → EXECUTION_ERROR → CONTEXT_ERROR → MARKET_ERROR (la cuota de la misma casa se movió 3 % o más en
+  contra, o la probabilidad de cierre bajó 3 pts: es un **movimiento de precio**, no un CLV) → MODEL_ERROR (modelo
+  ≥ 8 pts sobre el cierre) → NORMAL_VARIANCE → UNKNOWN. Narrativa con Haiku (máx. 12) y Sonnet para pérdidas de
+  picks del día (3).
+* **Una sola definición de CLV (`clv-v1`, `fbi.market.closing_value`; plan F0, defecto 7).** Dos números se llamaban
+  «CLV» y no son lo mismo:
+
+  | Medida | Fórmula | Qué dice |
+  |---|---|---|
+  | **CLV** | `cuota × p_cierre − 1`; `p_cierre` = probabilidad sin margen (Shin) de la última instantánea de consenso antes del inicio | cuánto valía el precio tomado frente al cierre justo; con un margen del 5 % y nada movido, vale ≈ −5 % |
+  | **movimiento de precio** | `cuota / cuota_cierre − 1`; `cuota_cierre` = último precio de la MISMA casa | si el precio de esa casa se movió después de tomarlo; el margen está en ambos precios y se cancela |
+
+  Se relacionan por el margen de cierre (CLV ≈ movimiento − margen: −3 % de movimiento son ≈ −7 % de CLV), así que
+  no comparten umbral ni se promedian juntas. Solo `closing_value.py` escribe las fórmulas; el SQL gemelo
+  (`picks.pick_line_value`: `lv_devigged` = CLV, `lv_raw` = movimiento), las decisiones PI, la auditoría de picks,
+  la puerta shadow y el post-mortem dan los mismos números (`test_clv_single_definition`). **Filas anteriores:** la
+  columna `ai.pick_postmortems.clv` y las claves `clv` del JSON de `pm-v1`/`pm-v2` y de los informes `ai-gate-v1`
+  guardan un movimiento de precio (la historia no se reescribe); los lectores nunca las toman por CLV y lo derivan de la
+  cuota y la `p_close` guardadas junto a ellas. Las claves nuevas son `price_move` y `clv_v1`. Umbrales: calidad de
+  un precio ±1 % de **CLV**; MARKET_ERROR −3 % de **movimiento**.
+* **Notas del día (`ai.learning_notes`, QUÉ APRENDIÓ PREDIGOL HOY, `learning-v1.1`):** resumen, aprobadas perdidas por
+  clase, rechazos (acertados / habrían ganado), contexto que falló, noticias confirmadas o desmentidas por la
+  alineación, bajas, mercado (CLV medio de las aprobadas, y aparte cuántas selecciones vieron su cuota moverse en
+  contra), modelo frente al cierre, fuentes; y hasta 3 lecciones de Sonnet que citan las notas. Hasta `learning-v1`
+  la nota de mercado promediaba el movimiento de precio y lo llamaba «CLV medio» (unos 4 pts más favorable que el real).
 * **Patrones → hipótesis:** fiabilidad por nivel de fuente, señales de revisión, ligas (z ≥ 3) y, en V2, clases
   de pérdida (≥ 20 pérdidas, z ≥ 2 frente a un reparto parejo); cada propuesta lleva nº de partidos, impacto
   potencial y costo de investigarla. Una hipótesis de la IA sin referencias a la memoria se rechaza. Promover
   exige `DONE` con `gate_passed=true` y la palabra escrita por el dueño.
 
-## 6. Evaluación shadow de la IA (`ai-gate-v1`)
+## 6. Evaluación shadow de la IA (`ai-gate-v2`)
 
 Ventana 60 días; grupos: modelo solo, modelo + IA (sin rechazados), aprobados, con cautela, rechazados,
-abstenciones; métricas: n, acierto, ROI, EV declarado y de mercado, CLV, log loss y Brier (modelo y mercado),
-ECE, drawdown. La puerta pide ≥ 300 selecciones, ≥ 30 días, ≥ 50 rechazos, calidad de rechazo z ≥ 2 (bootstrap
-por partido), CLV de lo conservado ≥ CLV de lo rechazado y calibración no peor (+0,002).
+abstenciones; métricas: n, acierto, ROI, EV declarado y de mercado, CLV (`clv-v1`, con su `n_clv`) y movimiento de
+precio (`price_move`, con su `n_price_move`; solo informativo), log loss y Brier (modelo y mercado), ECE, drawdown.
+La puerta pide ≥ 300 selecciones, ≥ 30 días, ≥ 50 rechazos, calidad de rechazo z ≥ 2 (bootstrap por partido),
+**CLV** de lo conservado ≥ CLV de lo rechazado y calibración no peor (+0,002). `ai-gate-v1` comparaba movimientos de
+precio bajo el nombre «clv»; sus informes guardados se conservan tal cual y la capa solo lee el veredicto
+(`gate.verdict == "pass"`; modo SHADOW).
 
 ## 7. Configuración (variables)
 

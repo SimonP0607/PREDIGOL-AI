@@ -178,6 +178,16 @@ probabilidad estimada, EV, riesgo, correlación y stake (¼ Kelly, tope 0,25 u).
   causas del partido (roja y minuto, penaltis del partido —los de una tanda no cuentan—, gol temprano, lesiones antes del 30', tarjetas frente a lo esperado del
   árbitro, alineación distinta de la esperada); las preguntas del POST_MATCH_REVIEW respondidas con datos. Un pick
   perdido nunca ajusta un modelo.
+* **Una sola definición de CLV** (`clv-v1`, `fbi.market.closing_value`; plan F0, defecto 7): CLV es siempre
+  `cuota × p_cierre − 1`, con `p_cierre` la probabilidad sin margen (Shin) de la última instantánea de consenso antes
+  del inicio (`market.market_consensus.p_fair`, que es P(gana | se liquida)). Es la que escriben
+  `intel.decision_outcomes.clv`, `picks.pick_line_value.lv_devigged`, la auditoría de picks, la puerta walk-forward
+  y la evaluación shadow de la IA. El cociente frente al último precio de la MISMA casa
+  (`cuota / cuota_cierre − 1`, `lv_raw`) se llama **movimiento de precio**: tiene el margen en ambos precios, así que
+  no mide si el precio era bueno (con el margen de cierre, −3 % de movimiento son ≈ −7 % de CLV) y nunca se promedia ni
+  se compara con un CLV. La calidad de un precio (GOOD / NEUTRAL / BAD, ±1 %) se juzga sobre CLV; el «mercado se movió
+  en contra» del post-mortem por selección (−3 %), sobre el movimiento. El cierre es la última captura previa al inicio:
+  mientras `close_minutes_to_ko` no pruebe que es el cierre, es valor frente a un precio casi de cierre.
 * **Memoria longitudinal** (`memory-v2`): instantánea diaria por entidad × aspecto (equipo×mercado,
   competición×mercado, árbitro, entrenador, jugador-disponibilidad, mercado) con decisiones, aciertos, CLV, errores
   y contexto recurrente. Una racha es una señal a investigar, no una regla.

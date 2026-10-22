@@ -6,6 +6,8 @@
              value of the price taken at the closing fair probability (``picks.pick_line_value.lv_devigged`` is the
              same measure for the shadow picks). The reference is the last captured consensus before kick-off, which
              has not been shown to BE the closing line: ``close_minutes_to_ko`` says how close it was.
+             The one definition of CLV in the system (``fbi.market.closing_value``, ``clv-v1``): this module applies
+             it, it does not re-write it.
 
 Every decision gets an outcome, the rejected ones too: whether what was rejected would have won - and at what price
 against the close - is how the filters themselves are judged. Written once (``intel.decision_outcomes`` is
@@ -20,6 +22,8 @@ from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
+
+from fbi.market import closing_value
 
 VERSION = "outcome-v1"
 BATCH = 20000
@@ -69,7 +73,7 @@ def settle_decisions(conn: psycopg.Connection[Any], *, at: datetime, limit: int 
             odds = Decimal(r["odds"])
             unit = profit_per_unit(str(r["result_status"]), odds)
             close_p = r["close_p_fair"]
-            clv = None if close_p is None else (odds * Decimal(close_p) - 1).quantize(Decimal("0.000001"))
+            clv = None if close_p is None else closing_value.clv(odds, Decimal(close_p)).quantize(Decimal("0.000001"))
             minutes = None if r["close_as_of"] is None else int((r["kickoff_at"] - r["close_as_of"]).total_seconds() // 60)
             cur.execute(
                 "INSERT INTO intel.decision_outcomes (decision_id, settled_at, result_status, profit_flat, "

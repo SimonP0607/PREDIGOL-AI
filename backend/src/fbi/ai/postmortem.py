@@ -5,8 +5,9 @@ For every finished match the AI reviewed (rule ``pm-v1``):
 
 * the outcome: the regulation score, who started (when the line-ups are stored);
 * per reviewed selection: the model's and the market's probability, the review's decision, how it settled,
-  each forecast's log loss on it, and the closing-line value of the price taken (against the provider's
-  final pre-match price of the same bookmaker, when it was read);
+  each forecast's log loss on it, and the price move of the price taken (against the provider's final
+  pre-match price of the same bookmaker, when it was read: ``price_move``, margin in both prices - NOT the
+  closing-line value, which is the price at the closing fair probability: ``fbi.market.closing_value``);
 * the evidence checked against what happened: a player reported OUT who started (a context error, by the
   source's tier), reported out and absent (confirmed), and key regulars absent from the starting line-up
   without any report (missing information);
@@ -39,6 +40,7 @@ from fbi.ai.prompts import POSTMORTEM_SCHEMA, POSTMORTEM_SYSTEM, POSTMORTEM_VERS
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.text import narrative_of
 from fbi.ai.usage import UsageLedger, call_json
+from fbi.market import closing_value
 from fbi.picks.settlement import Status, market_outcome
 
 VERSION = "pm-v1.1"
@@ -194,7 +196,8 @@ def analyse(conn: psycopg.Connection[Any], fixture_id: int) -> tuple[dict[str, A
                  "decision": r["decision"], "confidence": float(r["confidence"]), "odds": odds,
                  "p_model": None if r["p_model"] is None else float(r["p_model"]),
                  "p_market": None if r["p_market"] is None else float(r["p_market"]), "settled": status,
-                 "close_odds": close, "clv": None if (odds is None or not close) else round(odds / close - 1, 4),
+                 "close_odds": close,
+                 "price_move": None if (odds is None or not close) else round(closing_value.price_move(odds, close), 4),
                  "signals": [c.get("code") for g in ("negative_evidence", "uncertainties", "contradictions")
                              for c in (r["output"] or {}).get(g, []) if c.get("code")]}
         if status in ("win", "loss") and entry["p_model"] is not None and entry["p_market"] is not None:

@@ -403,9 +403,11 @@ def test_the_joint_probability_moves_with_the_correlation_and_stays_a_probabilit
 # ── the AI's own shadow gate ─────────────────────────────────────────────────
 
 def settled(i: int, decision: str, won: bool, *, odds: float = 2.0, close: float | None = 1.9,
-            day: int = 0) -> Settled:
+            p_close: float | None = 0.52, day: int = 0) -> Settled:
+    """``close``: the same bookmaker's final price (for the price move); ``p_close``: the closing fair probability
+    (for the CLV)."""
     return Settled(i, AT + timedelta(days=day), decision, odds, 0.55, 0.5, "win" if won else "loss",
-                   odds - 1 if won else -1.0, close)
+                   odds - 1 if won else -1.0, close, p_close)
 
 
 def test_metrics_measure_hit_rate_roi_clv_and_drawdown() -> None:
@@ -413,16 +415,44 @@ def test_metrics_measure_hit_rate_roi_clv_and_drawdown() -> None:
     m = metrics(items)
     assert m["n"] == 3 and m["hit_rate"] == pytest.approx(1 / 3, abs=1e-3) and m["roi"] == pytest.approx(-1 / 3,
                                                                                                          abs=1e-3)
-    assert m["clv"] == pytest.approx(2.0 / 1.9 - 1, abs=1e-3)
+    assert m["clv"] == pytest.approx(2.0 * 0.52 - 1, abs=1e-3), "the price taken at the closing fair probability"
+    assert m["price_move"] == pytest.approx(2.0 / 1.9 - 1, abs=1e-3), "against the same bookmaker's close"
+    assert m["n_clv"] == m["n_price_move"] == 3
     assert max_drawdown(items) == 2.0, "from +1 after the first win down to -1"
+
+
+def test_each_number_counts_only_the_selections_that_have_its_own_reference() -> None:
+    """The CLV needs the closing fair probability, the price move needs the bookmaker's final price: a selection with
+    one and not the other counts for that one only - and the two are never one average."""
+    items = [settled(1, "APPROVE", True, close=None), settled(2, "APPROVE", False, p_close=None),
+             settled(3, "APPROVE", True, close=None, p_close=None)]
+    m = metrics(items)
+    assert (m["n_clv"], m["n_price_move"]) == (1, 1), "item 1 has only a closing probability, item 2 only a price"
+    assert m["clv"] == pytest.approx(2.0 * 0.52 - 1, abs=1e-3)
+    assert m["price_move"] == pytest.approx(2.0 / 1.9 - 1, abs=1e-3)
+    nothing = metrics([settled(1, "APPROVE", True, close=None, p_close=None)])
+    assert nothing["clv"] is None and nothing["price_move"] is None
+
+
+def test_the_gate_judges_by_the_clv_not_by_the_price_move() -> None:
+    """ai-gate-v1 called the price move CLV and judged by it (kept >= rejected). v2 judges by the CLV: a kept arm whose
+    bookmaker prices moved in its favour but whose prices were under the fair closing value does NOT pass."""
+    kept_moved_but_poor = [settled(i, "APPROVE", i % 2 == 0, close=1.80, p_close=0.45, day=i % 40) for i in range(400)]
+    rejected_still_valued = [settled(1000 + i, "REJECT", i % 5 == 0, close=2.20, p_close=0.55, day=i % 40)
+                             for i in range(80)]
+    arms, gate = evaluate(kept_moved_but_poor + rejected_still_valued)
+    assert arms["model_ai"]["price_move"] > arms["rejected"]["price_move"], "the old measure would say yes"
+    assert arms["model_ai"]["clv"] < arms["rejected"]["clv"]
+    assert gate["checks"]["clv"]["ok"] is False
+    assert gate["version"] == "ai-gate-v2"
 
 
 def test_the_gate_is_insufficient_on_a_small_sample_and_passes_only_with_real_rejection_quality() -> None:
     small = [settled(i, "APPROVE", i % 2 == 0) for i in range(40)]
     _, gate = evaluate(small)
     assert gate["verdict"] == "insufficient"
-    good = [settled(i, "APPROVE", i % 2 == 0, day=i % 40, close=1.95) for i in range(400)] + \
-           [settled(1000 + i, "REJECT", i % 5 == 0, day=i % 40, close=2.2) for i in range(80)]
+    good = [settled(i, "APPROVE", i % 2 == 0, day=i % 40, close=1.95, p_close=0.52) for i in range(400)] + \
+           [settled(1000 + i, "REJECT", i % 5 == 0, day=i % 40, close=2.2, p_close=0.45) for i in range(80)]
     _, gate = evaluate(good)
     assert gate["checks"]["rejection_quality"]["ok"] and gate["checks"]["clv"]["ok"]
     assert gate["verdict"] == "pass"

@@ -27,6 +27,7 @@ from fbi.ai.collectors import collect_web
 from fbi.ai.config import AiSettings, TierModel
 from fbi.ai.cycle import run_analysis_cycle, run_learning_cycle
 from fbi.ai.day import due_pass
+from fbi.ai.pick_postmortem import stored_clv
 from fbi.ai.providers.fake import FakeProvider
 from fbi.ai.usage import UsageLedger, budget, check_alerts, shared
 from fbi.analyst.search import SearchResult
@@ -347,8 +348,21 @@ def test_every_studied_selection_gets_its_post_mortem_and_the_day_its_notes(db: 
     questions = {"expected", "happened", "model", "information", "ignored_signal", "odds_moved", "key_absence",
                  "lineup_changed", "uncertainty", "variance", "win_quality"}
     assert set(by[f1][3]) == questions
+    # plan F0, defect 7: the stored ``clv`` column holds the PRICE MOVE (as it always did), the answer names it so and the
+    # CLV proper is derived from the odds and the closing probability the row stores
+    for fixture_id, odds, close_odds, price_move, row_answers in db.execute(
+            "SELECT fixture_id, odds, close_odds, clv, answers FROM ai.pick_postmortems").fetchall():
+        moved = row_answers["odds_moved"]["data"]
+        assert "clv" not in moved and moved["price_move"] == (None if price_move is None else float(price_move))
+        assert moved["clv_v1"] == stored_clv(odds, row_answers), fixture_id
+        if odds is not None and close_odds:
+            assert price_move is not None and float(price_move) == round(float(odds) / float(close_odds) - 1, 4)
     notes = {r[0] for r in db.execute("SELECT kind FROM ai.learning_notes WHERE day = %s", (DAY,))}
     assert {"summary", "approved"} <= notes
+    market = db.execute("SELECT version, evidence FROM ai.learning_notes WHERE day = %s AND kind = 'market'",
+                        (DAY,)).fetchone()
+    if market is not None:
+        assert market[0] == "learning-v1.1" and market[1]["clv_version"] == "clv-v1"
     assert "pick_postmortem" in {r[0] for r in db.execute("SELECT DISTINCT kind FROM ai.memory_events")}
     assert report.counts["tomorrow_prepared"] == 1
     # learning again the same morning writes nothing twice

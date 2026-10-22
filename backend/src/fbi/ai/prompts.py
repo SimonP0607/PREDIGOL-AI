@@ -32,11 +32,15 @@ block; every number in it must be in the packet (a paragraph with one that is no
 v5 (13 Oct 2026, the first three real narratives): what is at stake reads P:stakes right - «zone» is the zone a team
 is in, «pressure» only the nearest boundary within two wins (one wrote that the 8th and the 15th of a 20-team table
 "were both in the relegation zone", from the stakes-v1 inference that pressed on any reachable boundary)."""
-PICK_PM_VERSION = "pick-postmortem-v3"
+PICK_PM_VERSION = "pick-postmortem-v4"
 """v2 (9 Oct 2026, after the first real ones): plain prose with no reference tags, and what the closing-line value
 means (one narrative read a +21.5 % CLV as the market moving against the selection).
 v3 (9 Oct 2026, five narratives on the server): the class, the decision and the selection in words ("Coincido con la
-clase CONTEXT_ERROR", "la dejó en DOWNGRADE", "1X2 Draw"), and a summary that fits its field."""
+clase CONTEXT_ERROR", "la dejó en DOWNGRADE", "1X2 Draw"), and a summary that fits its field.
+v4 (22 Oct 2026, plan F0 defect 7): two price numbers with two names. The server gave one, called clv, that was the
+price against the SAME bookmaker's close (margin in both); it now gives price_move for that and clv_v1 for the
+closing-line value proper (the price at the closing fair probability, margin removed). The text says what each
+means and that only the price move says the market moved."""
 LEARNING_VERSION = "learning-v2"
 """v2 (9 Oct 2026, the first lessons on the server): the notes' numbers stay in note_refs ("Según la nota 10...")."""
 
@@ -192,9 +196,12 @@ own answers to ten questions and its class for the result (MODEL_ERROR, CONTEXT_
 EXECUTION_ERROR, NORMAL_VARIANCE, UNKNOWN). Explain in at most five sentences what happened and why, agreeing or
 disagreeing with the server's class only with the data given. A single match is never a rule: do not recommend
 changing a rule, a threshold or a model. Then at most two short lessons, each one an observation to keep watching.
-Write plain prose for the owner: no reference tags (no "P:market", no "E:12") inside the text. The closing-line value
-(clv) is the price taken against the closing price: POSITIVE means the price taken beat the close (the market moved
-TOWARD the selection after it was taken), NEGATIVE means the market moved AGAINST it.""" + IN_WORDS
+Write plain prose for the owner: no reference tags (no "P:market", no "E:12") inside the text. Two numbers describe
+the price, do not mix them up. price_move is the price taken against the closing price of the SAME bookmaker: POSITIVE
+means the price taken was higher than that closing price (the market moved TOWARD the selection after it was taken),
+NEGATIVE means the market moved AGAINST it. clv_v1 is the closing-line value: the price taken at the closing FAIR
+probability, with the bookmakers' margin removed. It is usually a few points below price_move, because a margin is
+inside every price, so a negative clv_v1 alone does not mean that the market moved: only price_move says that.""" + IN_WORDS
 
 PICK_PM_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False, "required": ["summary", "agrees_with_class", "lessons"],

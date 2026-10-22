@@ -292,7 +292,12 @@ class PickPostmortemRow(Contract):
     classification: str | None
     odds: Decimal | None
     close_odds: Decimal | None
-    clv: Decimal | None
+    clv: Decimal | None = Field(
+        description="Closing-line value (clv-v1): the price taken at the closing fair probability, margin removed. "
+        "Derived from the odds and the closing probability the post-mortem stores.")
+    price_move: Decimal | None = Field(
+        description="The price taken against the same bookmaker's closing price, margin in both. NOT the CLV: the "
+        "stored column that used to be called clv.")
     p_model: Decimal | None
     p_market: Decimal | None
     answers: dict[str, Any]

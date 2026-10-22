@@ -9,7 +9,8 @@ For the last decision before kick-off of every selection that reached CAUTELA or
 INVESTIGACION selections of each day (so the layer learns while it approves nothing), once its outcome is known:
 
 * DECISION QUALITY from the price, not the result: closing-line value above +1 % GOOD, below -1 % BAD, otherwise
-  NEUTRAL; no closing price: UNKNOWN.
+  NEUTRAL; no closing price: UNKNOWN. The CLV is the system's single one (``fbi.market.closing_value``: the price taken
+  at the closing fair probability), the same the daily learning now reads.
 * VERDICT, quality x outcome:  won & good/neutral MERECIDO · won & bad SUERTE · lost & good/neutral VARIANZA ·
   lost & bad ERROR · push / void NULO · no closing price SIN_DATOS.
 * CAUSES the model could not see, from the match itself (``core.fixture_events``, ``core.fixture_team_stats``): red
@@ -32,10 +33,12 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.market import closing_value
+
 VERSION = "pm-v4"
 SHOOTOUT = "Penalty Shootout"
 """``comments`` of the events that are kicks of a shoot-out (the provider gives them minute 120 and type Goal)."""
-GOOD_CLV = 0.01
+GOOD_CLV = closing_value.GOOD
 TOP_INVESTIGATION = 20
 LOOKBACK = timedelta(days=4)
 
@@ -103,9 +106,8 @@ def side_of(market: str, selection: str) -> str:
 
 
 def quality_of(clv: float | None) -> str:
-    if clv is None or (isinstance(clv, float) and math.isnan(clv)):
-        return "UNKNOWN"
-    return "GOOD" if clv > GOOD_CLV else "BAD" if clv < -GOOD_CLV else "NEUTRAL"
+    """GOOD / NEUTRAL / BAD from the CLV of the decision's price (``fbi.market.closing_value``), UNKNOWN without one."""
+    return closing_value.quality(clv)
 
 
 def verdict_of(result: str, quality: str) -> str:

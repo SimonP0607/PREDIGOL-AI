@@ -15,6 +15,7 @@ from fbi.ai import shadow as ai_shadow
 from fbi.ai.calendar import day_bounds, local_day
 from fbi.ai.config import TIERS, AiSettings
 from fbi.ai.day import STALE_ODDS, universe
+from fbi.ai.pick_postmortem import stored_clv
 from fbi.ai.text import shown
 from fbi.api.contracts.ai_layer import (
     AiComparison,
@@ -261,7 +262,7 @@ def research(conn: Conn, *, day: date | None = None) -> Envelope[list[ResearchRo
 POSTMORTEMS_SQL = """
 SELECT pm.id, pm.fixture_id, th.name || ' - ' || ta.name AS match, c.name AS competition, f.kickoff_at, pm.market_key,
        pm.selection, pm.line, pm.roles, pm.decision, pm.settled, pm.verdict, pm.classification, pm.odds, pm.close_odds,
-       pm.clv, pm.p_model, pm.p_market, pm.answers, pm.narrative, pm.created_at
+       pm.clv AS price_move, pm.p_model, pm.p_market, pm.answers, pm.narrative, pm.created_at
   FROM ai.pick_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
   JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
@@ -282,8 +283,10 @@ def postmortems(conn: Conn, *, day: date | None = None, verdict: str | None = No
     start, end = day_bounds(d)
     rows = fetch_all(conn, POSTMORTEMS_SQL, {"start": start, "end": end, "verdict": verdict, "cls": classification,
                                              "limit": limit, "fixture": fixture_id})
+    # ``clv`` is the system's single CLV, derived from what the row stores; the ``clv`` COLUMN is a price move
     return listing([PickPostmortemRow.model_validate(r | {"roles": list(r["roles"] or []),
-                                                          "narrative": shown(r["narrative"])}) for r in rows],
+                                                          "narrative": shown(r["narrative"]),
+                                                          "clv": stored_clv(r["odds"], r["answers"])}) for r in rows],
                    empty_reason="no_postmortems")
 
 

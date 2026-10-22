@@ -47,6 +47,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.catalog.segments import CompetitionFacts, segment_of
+from fbi.market import closing_value
 
 ODDS_BUCKETS: tuple[tuple[float, float], ...] = ((1.0, 1.6), (1.6, 2.2), (2.2, 3.0), (3.0, 5.0), (5.0, math.inf))
 
@@ -198,7 +199,7 @@ def audited(rows: list[dict[str, Any]]) -> list[AuditedPick]:
         ev_pick = None if p_pick is None else p_pick * (1 - u) * o + u - 1
         var_close = (None if p_close is None or ev_close is None else
                      p_close * (1 - u) * (o - 1) ** 2 + (1 - p_close) * (1 - u) - ev_close ** 2)
-        clv = None if p_close is None else o * p_close - 1
+        clv = None if p_close is None else closing_value.clv(o, p_close)
         minutes = None if r["close_at"] is None else (r["kickoff_at"] - r["close_at"]).total_seconds() / 60
         seg = segment_of(CompetitionFacts(str(r["competition"]), r["competition_type"], r["entity_scope"],
                                           None if r["tier"] is None else int(r["tier"]))).value

@@ -12,7 +12,8 @@ The ten questions (``answers``):
     model           ¿Falló el modelo?                the model far above the closing market, its log loss worse
     information     ¿Falló la información?           a report that proved wrong, an absence nobody reported
     ignored_signal  ¿Había una señal ignorada?       risks the review itself listed, and it approved anyway
-    odds_moved      ¿La cuota se movió?              closing-line value of the price taken
+    odds_moved      ¿La cuota se movió?              the price taken against the SAME bookmaker's closing price
+                                                     (``price_move``) and, beside it, the CLV (``clv_v1``)
     key_absence     ¿Existía una baja importante?    key players out on the chosen side, known before
     lineup_changed  ¿La alineación cambió?           confirmed after the last review, or a reported absentee started
     uncertainty     ¿La incertidumbre estaba subestimada?  an edge inside the model's own noise, approved
@@ -29,12 +30,21 @@ with the information first, half the losses were "context" - mostly a price that
 A post-mortem is written once (``ai.pick_postmortems``), never acted on: patterns over many become hypotheses
 (``fbi.ai.patterns``), never a change. A short narrative, when a model is configured and the budget allows, is
 written for the losses that matter most (the picks of the day first).
+
+TWO PRICE NUMBERS, TWO NAMES (plan F0, defect 7). "The market moved against the price" is judged by the PRICE MOVE: the
+price taken against the same bookmaker's closing price, margin in both (``fbi.market.closing_value.price_move``). That is
+what this module has always measured, and it kept calling it CLV; CLV is the price taken at the closing fair probability
+(``clv_v1``, one definition for the whole system), and is shown beside it, never instead of it. The class of a loss and the
+quality of a win are decided exactly as before, by the price move. The ``clv`` COLUMN of ``ai.pick_postmortems`` keeps
+holding the price move (the rows are history); nothing reads it as CLV - ``stored_clv`` derives the CLV from the odds and
+the closing probability the row stores beside it.
 """
 
 from __future__ import annotations
 
 import json
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -53,6 +63,7 @@ from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.review import side_of
 from fbi.ai.text import DISAGREES, TIER_ES, fit, narrative_of
 from fbi.ai.usage import UsageLedger, call_json
+from fbi.market import closing_value
 from fbi.picks.settlement import market_outcome
 
 VERSION = "pm-v2"
@@ -60,7 +71,8 @@ LOOKBACK = timedelta(days=7)
 SETTLE_DELAY = timedelta(hours=3)
 CLASSES = ("MODEL_ERROR", "CONTEXT_ERROR", "DATA_ERROR", "MARKET_ERROR", "EXECUTION_ERROR", "NORMAL_VARIANCE",
            "UNKNOWN")
-CLV_AGAINST = -0.03
+MOVED_AGAINST = closing_value.MOVED_AGAINST
+"""A price move of 3 % or more against the price taken: the class MARKET_ERROR. A threshold on the PRICE MOVE."""
 MODEL_GAP = 0.08
 STALE_PRICE = timedelta(hours=3)
 NOT_FIT = frozenset({"PRODUCT_ONLY", "INSUFFICIENT"})
@@ -142,6 +154,19 @@ def _f(x: Any) -> float | None:
     return None if x is None else float(x)
 
 
+def stored_clv(odds: Any, answers_: Mapping[str, Any] | None) -> float | None:
+    """The CLV (``clv-v1``) of a stored post-mortem, derived from what the row keeps in a traceable way: the odds taken
+    (``odds``) and the closing fair probability its model question recorded (``answers.model.data.p_close``).
+
+    The ``clv`` column of ``ai.pick_postmortems`` and the ``clv`` key of the JSON of rows written before ``clv-v1`` are
+    PRICE MOVES; they are never read as CLV. None when the row has no odds or no closing probability."""
+    model = (answers_ or {}).get("model") or {}
+    p_close = (model.get("data") or {}).get("p_close")
+    if odds is None or p_close is None:
+        return None
+    return round(closing_value.clv(float(odds), float(p_close)), 4)
+
+
 def logloss(p: float, won: bool) -> float:
     q = min(max(p if won else 1 - p, 1e-6), 1.0)
     return -math.log(q)
@@ -187,10 +212,19 @@ class Facts:
         return self.settled in ("loss", "half_loss")
 
     @property
-    def clv(self) -> float | None:
+    def price_move(self) -> float | None:
+        """The price taken against the SAME bookmaker's closing price, margin in both: whether that book's price moved
+        after the selection was taken. It is NOT the CLV (``clv``)."""
         if self.odds is None or not self.close_odds:
             return None
-        return round(self.odds / self.close_odds - 1, 4)
+        return round(closing_value.price_move(self.odds, self.close_odds), 4)
+
+    @property
+    def clv(self) -> float | None:
+        """``clv-v1``: the price taken at the closing fair probability (the Shin consensus before kick-off)."""
+        if self.odds is None or self.p_close is None:
+            return None
+        return round(closing_value.clv(self.odds, self.p_close), 4)
 
 
 def classify(f: Facts) -> str | None:
@@ -203,16 +237,16 @@ def classify(f: Facts) -> str | None:
         return "EXECUTION_ERROR"
     if f.key_absence and f.decision == "APPROVE":
         return "CONTEXT_ERROR"  # a known key absence on the chosen side, let through
-    clv = f.clv
-    moved_against = (clv is not None and clv <= CLV_AGAINST) or (
-        f.p_close is not None and f.p_market is not None and f.p_close <= f.p_market + CLV_AGAINST)
+    move = f.price_move
+    moved_against = (move is not None and move <= MOVED_AGAINST) or (
+        f.p_close is not None and f.p_market is not None and f.p_close <= f.p_market + MOVED_AGAINST)
     if moved_against:
         return "MARKET_ERROR"  # the market knew something before the kick-off
     if f.information_failed:
         return "CONTEXT_ERROR"
     if f.p_close is not None and f.p_model is not None and f.p_model - f.p_close >= MODEL_GAP:
         return "MODEL_ERROR"
-    if f.p_close is not None or (clv is not None and clv >= 0):
+    if f.p_close is not None or (move is not None and move >= 0):
         return "NORMAL_VARIANCE"
     return "UNKNOWN"
 
@@ -228,13 +262,13 @@ def win_quality(f: Facts) -> str | None:
     A lucky win teaches nothing about the model and must not be learned from as if it were a good decision."""
     if not f.won:
         return None
-    clv = f.clv
-    moved_against = (clv is not None and clv <= CLV_AGAINST) or (
-        f.p_close is not None and f.p_market is not None and f.p_close <= f.p_market + CLV_AGAINST)
+    move = f.price_move
+    moved_against = (move is not None and move <= MOVED_AGAINST) or (
+        f.p_close is not None and f.p_market is not None and f.p_close <= f.p_market + MOVED_AGAINST)
     far_above = f.p_close is not None and f.p_model is not None and f.p_model - f.p_close >= MODEL_GAP
     if moved_against and far_above:
         return "LUCKY"
-    if f.p_close is None and clv is None:
+    if f.p_close is None and move is None:
         return "UNKNOWN"
     if moved_against:
         return "LUCKY"
@@ -263,7 +297,7 @@ def _pct(x: float | None) -> str:
 
 
 def answers(f: Facts, cls: str | None, *, score: tuple[int, int], label: str) -> dict[str, Any]:
-    clv = f.clv
+    move, clv = f.price_move, f.clv
     ll_model = None if f.p_model is None or not (f.won or f.lost) else round(logloss(f.p_model, f.won), 4)
     ll_close = None if f.p_close is None or not (f.won or f.lost) else round(logloss(f.p_close, f.won), 4)
     model_failed = None if f.p_close is None or f.p_model is None else (
@@ -282,10 +316,12 @@ def answers(f: Facts, cls: str | None, *, score: tuple[int, int], label: str) ->
                         "data": {"items": f.information}},
         "ignored_signal": {"answer": _yes(bool(f.ignored) and f.decision == "APPROVE"),
                            "detail": ", ".join(f.ignored) or "ninguna", "data": {"signals": f.ignored}},
-        "odds_moved": {"answer": "sin datos" if clv is None else "en contra" if clv <= CLV_AGAINST
-                       else "a favor" if clv >= -CLV_AGAINST else "estable",
-                       "detail": f"CLV {'—' if clv is None else f'{100 * clv:+.1f} %'} (cuota tomada "
-                                 f"{f.odds} · cierre {f.close_odds})", "data": {"clv": clv, "close_odds": f.close_odds}},
+        "odds_moved": {"answer": "sin datos" if move is None else "en contra" if move <= MOVED_AGAINST
+                       else "a favor" if move >= -MOVED_AGAINST else "estable",
+                       "detail": f"Cuota frente al cierre de la misma casa {'—' if move is None else f'{100 * move:+.1f} %'} "
+                                 f"(tomada {f.odds} · cierre {f.close_odds}); CLV frente al cierre justo "
+                                 f"{'—' if clv is None else f'{100 * clv:+.1f} %'}",
+                       "data": {"price_move": move, "close_odds": f.close_odds, "clv_v1": clv}},
         "key_absence": {"answer": _yes(bool(f.key_absence)), "detail": ", ".join(f.key_absence) or "ninguna",
                         "data": {"players": f.key_absence}},
         "lineup_changed": {"answer": _yes(f.lineup_changed), "detail": f.lineup_detail or "sin cambios relevantes",
@@ -481,16 +517,18 @@ def run_pick_postmortems(conn: psycopg.Connection[Any], *, at: datetime, setting
                     "roles, decision, review_id, settled, verdict, classification, odds, close_odds, clv, p_model, "
                     "p_market, answers, evidence, narrative, usage_ids) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
                     "%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING RETURNING id",
+                    # the ``clv`` column has always held the PRICE MOVE; it keeps doing so (the rows are history)
                     (fid, key[1], key[2], key[3], at, VERSION, sel_roles, s.get("decision"), s.get("review_id"),
-                     facts.settled, verdict, cls, facts.odds, facts.close_odds, facts.clv, facts.p_model,
+                     facts.settled, verdict, cls, facts.odds, facts.close_odds, facts.price_move, facts.p_model,
                      facts.p_market, Jsonb(ans), Jsonb(evidence), narrative, usage_ids))
                 row = cur.fetchone()
             if row is not None and remember(
                     conn, at=at, kind="pick_postmortem", entity_type="market",
                     entity_id=f"{key[1]}:{key[2]}:{key[3]}", version=VERSION, fixture_id=fid,
                     hypothesis=f"{verdict} {label}", result=cls or verdict,
-                    evidence={"postmortem_id": int(row[0]), "verdict": verdict, "class": cls, "clv": facts.clv,
-                              "p_model": facts.p_model, "p_close": facts.p_close, "roles": sel_roles,
+                    evidence={"postmortem_id": int(row[0]), "verdict": verdict, "class": cls,
+                              "price_move": facts.price_move, "clv_v1": facts.clv, "p_model": facts.p_model,
+                              "p_close": facts.p_close, "roles": sel_roles,
                               "competition": fx["competition"], "signals": facts.ignored,
                               "odds": facts.odds, "result": facts.settled},
                     dedup_key=f"pm2:{fid}:{key[1]}:{key[2]}:{key[3]}"):
