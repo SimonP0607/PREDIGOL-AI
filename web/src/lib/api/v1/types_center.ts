@@ -111,8 +111,11 @@ export interface PlayerLine {
 
 /** What the fixture's payloads say beyond the score: referee, winner flags, half starts. */
 export interface MatchFacts {
+  /** The person's name when the identity is at the newest observation, otherwise the string the provider wrote. */
   referee: string | null;
   referee_country: string | null;
+  /** The referee's id (`core.referees`); null while the identity has not caught up, or when nobody is named. */
+  referee_id?: number | null;
   home_winner: boolean | null;
   away_winner: boolean | null;
   first_half_at: Iso | null;
