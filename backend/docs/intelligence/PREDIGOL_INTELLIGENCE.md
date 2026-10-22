@@ -1,6 +1,8 @@
 # PrediGol Intelligence — arquitectura, contratos y ciclo diario
 
-Versión del documento: **pi-arch-v1** (13 oct 2026). Estado: **SHADOW** (nada de esto publica picks ni mueve dinero).
+Versión del documento: **pi-arch-v1.1** (22 oct 2026; la v1 es del 13 oct). Estado: **SHADOW** (nada de esto publica picks ni mueve dinero).
+
+> Documentación = código (plan F0, defecto 12): las cifras de los 10 filtros, del PICK PREMIUM, del parlay, del score, del stake, de la calibración y del presupuesto de este documento las compara con las constantes del código `tests/unit/test_docs_match_code.py`; si una cambia, el test falla hasta que el documento la diga. La sección 0 es la auditoría inicial (datos de entonces) y no se compara.
 
 > Prioridad absoluta: una inteligencia cada día más informada y mejor calibrada, no una que produzca cada día más
 > picks. «Más información ≠ más certeza».
@@ -43,7 +45,7 @@ INTELLIGENCE             nivel y estado, brief L1 / revisión L2 / revisión L3 
 CAPA 4 · DECISIÓN        NUEVO fbi.intel.decision (decision-v1): 10 filtros -> estado (RECHAZADO, INVESTIGACIÓN,
                          CAUTELA, APROBADO, PICK DEL DÍA, CANDIDATO A PARLAY, PICK PREMIUM), PrediGol Pick Score
                          (pick-score-v1), stake (stake-v1), selección del día (0-5, nunca relleno), parlays solo de
-                         aprobados con correlación. Todo en intel.decisions, append-only.
+                         aprobados de competiciones distintas. Todo en intel.decisions, append-only.
 ```
 
 La capa 4 solo lee de las capas 1–3; nunca escribe en ellas. La capa 3 nunca modifica una probabilidad: produce
@@ -57,7 +59,7 @@ señales de contexto que la capa 4 usa como filtro de riesgo y como componente d
 | cada 30 min | pronósticos y picks shadow (escaneo cuantitativo de todas las selecciones) | `pick_pipeline` | 0 |
 | 23:59 | CIERRE DEL DÍA (revisiones hasta que el día queda completo) | `ai_day_close`, `ai_day_follow` | 0 |
 | 00:05 | apertura del día de la IA, primera pasada (paquete, brief L1, web, revisiones) | `ai_day_start` | Nivel A/B |
-| 00:10 y cada 15 min | **decisión**: candidatos de las próximas 36 h re-evaluados en sus puntos de control (T−24h, T−12h, T−6h, T−3h, T−90m, T−60m, alineaciones, T−15m para PICK DEL DÍA/PREMIUM); una fila nueva solo si cambia el punto de control, el estado o el precio > 3 % | `intel_decide` | 0 |
+| 00:10 y cada 15 min | **decisión**: candidatos de las próximas 36 h re-evaluados en sus puntos de control (T−36h al entrar en el horizonte, T−24h, T−12h, T−6h, T−3h, T−90m, T−60m, alineaciones, T−15m para los aprobados); una fila nueva si cambia el estado o —salvo en RECHAZADO, que no se repite— el punto de control, el calibrador, el estado de contexto o el precio más de un 3 % | `intel_decide` | 0 |
 | 6–4 h antes | pasada `pre` (noticias, lesiones, movimientos) | `ai_cycle` | Nivel B |
 | 06:00 | **PICKS DEL DÍA PI** (v6, shadow): hasta 5 APROBADOS por score, uno por partido, máx. 2 por competición; después se añaden los de partidos tardíos hasta completar 5 | `intel_decide` | 0 |
 | 100–10 min antes | pasada `final` tras alineaciones; L3 solo para los mejores | `ai_cycle` | Nivel C/D |
@@ -120,16 +122,16 @@ promoción y cada rollback es una fila en `intel.promotions`.
 
 | # | Filtro | Falla → |
 |---|---|---|
-| 1 | Calidad de datos: partido programado, ≥ 10 min al saque, pronóstico ≤ 48 h, sin bloqueo de calidad | RECHAZADO |
+| 1 | Calidad de datos: partido programado (ni PST, CANC, ABD, SUSP, AWD, WO ni INT), ≥ 10 min al saque, pronóstico de hace ≤ 72 h, competición con datos aptos (ni «solo producto» ni insuficientes) y partido fuera de cuarentena | RECHAZADO |
 | 2 | Modelo especializado del mercado disponible (p_modelo con intervalo) | RECHAZADO |
-| 3 | Mercado: precio actual de ≥ 3 casas, ≤ 3 h, no atípico (≤ 25 % sobre el consenso) | RECHAZADO (precio viejo → INVESTIGACIÓN) |
+| 3 | Mercado: precio actual de ≥ 3 casas, de ≤ 3 h, no atípico (≤ 25 % sobre el consenso) | RECHAZADO (sin precio, menos de 3 casas o atípico); precio de más de 3 h → INVESTIGACIÓN |
 | 4 | Calibración: calibrador CHAMPION del (mercado, modelo) | tope INVESTIGACIÓN |
 | 5 | EV: EV calibrado ≥ 2 % y edge calibrado ≥ 1 pto | RECHAZADO |
-| 6 | Contexto PI: revisión combinada y evidencias; REJECT/DOWNGRADE de la IA o evidencia en contra no confirmada → CAUTELA; ausencia clave CONFIRMADA en el lado elegido → RECHAZADO; sin contexto → «CONTEXTO EXTERNO LIMITADO» (no rechaza, penaliza) | CAUTELA / RECHAZADO |
+| 6 | Contexto PI: revisión combinada y evidencias. Un contexto que impide jugarlo (partido no jugable, en cuarentena o sin datos aptos) → RECHAZADO; baja clave en el lado elegido → CAUTELA si solo está reportada y RECHAZADO si las alineaciones la confirman; REJECT/DOWNGRADE de la revisión de la IA → CAUTELA; sin contexto → «CONTEXTO EXTERNO LIMITADO» (no rechaza, penaliza en el score) | CAUTELA / RECHAZADO |
 | 7 | Riesgo: cuota > 3,00 (risk-v1, evidencia P5), p_calibrada < 0,30, intervalo > 0,25 | CAUTELA |
-| 8 | Correlación: una selección por partido (la de mayor score); el resto | CAUTELA |
-| 9 | Precio actual: el EV se recalcula con el mejor precio vigente en cada punto de control | RECHAZADO |
-| 10 | Clasificación final: APROBADO solo con edge-gate del mercado cumplido; PICK DEL DÍA (top 5 por score, uno por partido, máx. 2 por competición); PICK PREMIUM (score ≥ 80 y CLV histórico del tipo > 0); CANDIDATO A PARLAY (aprobado, cuota 1,25–2,20, p ≥ 0,5) | — |
+| 8 | Correlación: una selección aprobable por partido (la de mayor score); las demás del mismo partido | CAUTELA |
+| 9 | Precio al final: el EV se recalcula con el mejor precio vigente en cada punto de control, y en los finales (T−90m, alineaciones, T−60m y T−15m) ese precio debe tener ≤ 30 min | CAUTELA |
+| 10 | Clasificación final: APROBADO solo con edge-gate del mercado cumplido; PICK DEL DÍA (hasta 5 por score, uno por partido, máx. 2 por competición); PICK PREMIUM (aprobado con score ≥ 80, CLV walk-forward de la regla del mercado > 0 y CLV del tipo de pick —mercado × selección × banda de cuota, últimos 30 días— > 0); CANDIDATO A PARLAY (aprobado, cuota 1,25–2,20, p ≥ 0,5) | — |
 
 **PrediGol Pick Score (`pick-score-v1`, 0–100, explicable):** suma ponderada de componentes en [0, 1]:
 EV calibrado (15), edge calibrado (10), calidad de calibración del mercado (10), historial del modelo/mercado —
@@ -142,9 +144,13 @@ redondeo hacia abajo a 0,25 u, topes por estado: CAUTELA 0,25 u, APROBADO 1,00 u
 1,50 u, parlay 0,25 u; INVESTIGACIÓN y RECHAZADO 0. Los topes se validan por simulación
 (`scripts/intel_stake_sim.py`) y nunca se usa Kelly completo.
 
-**Parlays:** solo de CANDIDATOS A PARLAY de partidos y competiciones distintos; probabilidad conjunta con la
-dependencia medida (`ai.correlation_estimates`, icc-v1), no el producto ingenuo; se muestran cuota combinada,
-probabilidad estimada, EV, riesgo, correlación y stake (¼ Kelly, tope 0,25 u).
+**Parlays:** hasta 2 al día, de 2 patas, de selecciones APROBADAS (con una decisión de ≤ 30 min) de partidos y
+competiciones distintos y sin ningún equipo en común; solo entran los de EV ≥ 2 %, los de mayor EV primero y cada
+decisión en un único parlay. La probabilidad conjunta es **el producto de las dos probabilidades calibradas**: con
+una pata por competición y sin equipo compartido no hay jornada común cuya dependencia medir (la dependencia medida,
+`ai.correlation_estimates` icc-v1, es por competición-día y la usa el parlay de producto `parlay-v4` —ver
+`docs/ai/AI_DECISION_LAYER.md`—, no este). Cada parlay guarda cuota combinada, probabilidad estimada, EV, el método
+(`correlation.method`: independiente entre competiciones), el riesgo y el stake (¼ Kelly, tope 0,25 u).
 
 ## 6. Capa 3 — dossier, investigación y narrativa
 
@@ -230,7 +236,9 @@ corrida semanal, con su `version`.
 
 ## 9. Presupuesto IA (US$180/mes)
 
-* Tope mensual único US$180 para toda la capa (decisión + analista); alertas 50/70/85/95/100 % (una vez por mes).
+* Tope mensual único para toda la capa (decisión + analista): **US$180 en el servidor** (`FBI_AI_MONTHLY_BUDGET_USD=180`
+  desde el 13 oct 2026). Sin esa variable el código usa **US$20** (o `FBI_ANALYST_MONTHLY_BUDGET_USD` si existe) y un
+  objetivo diario de mes/30. Alertas 50/70/85/95/100 % (una vez por mes).
 * Día adaptativo existente (ritmo × carga, techo 1,5×), más **reserva de prioridad**: el trabajo marginal (brief
   LLM y web de partidos sin candidatos) se detiene al 80 % del presupuesto del día o con el mes ≥ 85 %; el análisis
   de candidatos críticos (APROBADOS / mejores del día) sigue hasta el techo.

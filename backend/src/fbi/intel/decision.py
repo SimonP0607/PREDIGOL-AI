@@ -70,6 +70,8 @@ RISK_MAX_ODDS = 3.00
 RISK_MIN_P = 0.30
 RISK_MAX_WIDTH = 0.25
 FINAL_FRESH = timedelta(minutes=30)
+TYPE_CLV_WINDOW = timedelta(days=30)
+"""The closing-line value of a kind of pick (market x selection x odds band) is read over this window."""
 PREMIUM_SCORE = 80.0
 PARLAY_ODDS = (1.25, 2.20)
 PARLAY_MIN_P = 0.5
@@ -330,7 +332,7 @@ def read_world(conn: psycopg.Connection[Any], fixtures: list[int], *, at: dateti
         quality = {int(r["fixture_id"]): dict(r) for r in cur.fetchall()}
         cur.execute(LINEUPS_SQL, {"fixtures": fixtures, "at": at})
         lineups = {int(r["fixture_id"]): r["fetched_at"] for r in cur.fetchall()}
-        cur.execute(TYPE_CLV_SQL, {"since": at - timedelta(days=30), "at": at})
+        cur.execute(TYPE_CLV_SQL, {"since": at - TYPE_CLV_WINDOW, "at": at})
         type_clv = {(str(r["market_key"]), str(r["selection"]), str(r["band"])): (float(r["clv"]), int(r["n"]))
                     for r in cur.fetchall()}
         cur.execute(PREVIOUS_SQL, {"fixtures": fixtures, "at": at, "version": VERSION})
@@ -760,6 +762,8 @@ MAX_PICKS = 5
 MAX_PER_COMPETITION = 2
 MAX_PARLAYS = 2
 PARLAY_MIN_EV = 0.02
+DAY_FRESH = timedelta(minutes=30)
+"""A decision enters the day's picks and parlays only if it is at most this old."""
 
 LATEST_DAY_SQL = """
 SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*, c.id AS competition_id,
@@ -801,7 +805,7 @@ def select_day(conn: psycopg.Connection[Any], *, at: datetime, ready: bool) -> t
         comp_count[comp] += 1
     n_picks = sum(1 for x in existing if x["kind"] == "pick")
     fresh = [d for d in latest if d["state"] in ("APROBADO", "CANDIDATO_PARLAY", "PICK_PREMIUM")
-             and at - d["known_at"] <= timedelta(minutes=30)]
+             and at - d["known_at"] <= DAY_FRESH]
     fresh.sort(key=lambda d: -float(d["score"] or 0))
     added = 0
     for d in fresh:
@@ -863,7 +867,7 @@ def _select_parlays(conn: psycopg.Connection[Any], *, day: date, at: datetime, l
     used = {i for x in existing if x["kind"] == "parlay" for i in x["decision_ids"]}
     legs = [d for d in latest if (d["parlay_eligible"] or d["state"] == "CANDIDATO_PARLAY")
             and d["state"] in ("APROBADO", "CANDIDATO_PARLAY", "PICK_PREMIUM")
-            and at - d["known_at"] <= timedelta(minutes=30) and int(d["id"]) not in used]
+            and at - d["known_at"] <= DAY_FRESH and int(d["id"]) not in used]
     options: list[tuple[float, dict[str, Any], dict[str, Any], float, float]] = []
     for i, a in enumerate(legs):
         for b in legs[i + 1:]:
