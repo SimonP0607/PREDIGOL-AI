@@ -1,0 +1,1 @@
+A partir de hoy, estamos usando Obsidian para organizar las especificaciones de PREDIGOL-AI

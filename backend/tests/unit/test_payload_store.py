@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from fbi.ingestion.payload_store import PayloadStore, body_hash, sanitize
+from fbi.storage.payload_store import PayloadStore, body_hash, sanitize
 
 FETCHED = datetime(2026, 9, 15, 12, 30, tzinfo=UTC)
 SECRET = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"

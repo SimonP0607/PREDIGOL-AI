@@ -25,7 +25,7 @@ El estado real, con evidencia, está en `docs/rebuild/V2_IMPLEMENTATION_STATUS.m
 | Un modelo no "califica" sin batir al mercado | la regla exige que **esa versión exacta** tenga veredicto `better` frente al mercado sin margen en ≥ 1000 partidos de backtest |
 | Un solo worker por base de datos | advisory lock de PostgreSQL; un segundo worker sale con código 75 y dice quién tiene el lock |
 
-La suite (unos 490 tests, la mayoría contra un PostgreSQL real construido solo con las
+La suite (unos 1 640 tests, la mayoría contra un PostgreSQL real construido solo con las
 migraciones) lo demuestra. Si un test de invariante falla, el esquema ha regresado: no se
 arregla el test.
 
@@ -33,7 +33,7 @@ arregla el test.
 
 ```
 API-Football ─▶ ingesta (fixtures · resultados · cuotas) ─▶ raw store (.json.gz + hash)
-            ─▶ PostgreSQL (21 migraciones) ─▶ historial de cuotas + consenso de mercado sin margen
+            ─▶ PostgreSQL (76 migraciones) ─▶ historial de cuotas + consenso de mercado sin margen
             ─▶ features point-in-time ─▶ modelos (Poisson, Dixon-Coles, Elo + logit ordenado)
             ─▶ backtest walk-forward contra el mercado ─▶ value engine ─▶ shadow picks ─▶ liquidación
             ─▶ API de producto /api/v1 (solo lectura) ─▶ frontend (repo football-intelligence-hub)
@@ -122,8 +122,22 @@ src/fbi/
   notify/        eventos → audit.notifications → Telegram (si hay token)
   api/           API de producto /api/v1, solo lectura
   ops/ quality/  heartbeat, lock del worker, /health y calidad de datos
-apps/            api · worker
-migrations/      21 revisiones Alembic
+  ai/            capa de decisión de IA (docs/ai/AI_DECISION_LAYER.md)
+  auth/          personas, roles y sesiones
+  catalog/       catálogos de referencia: competiciones, temporadas, casas de apuestas, mercados
+  competitions/  estructura de competición: temporadas, fases, etapas y las tablas que las ordenan
+  datasets/      versiones de dataset: de qué pueden aprender los modelos
+  domain/        el dominio: números con significado
+  intel/         PrediGol Intelligence: calibración por mercado y capa de decisión
+  migration/     migración histórica: plan (precio antes de gastar), unidades semilla, ejecución reanudable
+  parlays/       combinadas construidas solo con selecciones que aportan valor por sí solas
+  research/      registro de investigación: experimentos, artefactos y la puerta de modelos
+  storage/       modelos y repositorios de almacenamiento
+  truth/         verdad de datos: el proveedor contra la base de datos, y la base contra sí misma
+  userdata/      registros del usuario: picks guardados, combinadas construidas e historial
+  validation/    si los datos guardados sirven para entrenar, juzgar un modelo o mostrarse
+apps/            api · worker · bot (paquete vacío: solo __init__.py, sin código ni referencias)
+migrations/      76 revisiones Alembic
 tests/           unitarios + integración contra PostgreSQL real
 ```
 

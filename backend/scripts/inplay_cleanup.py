@@ -50,7 +50,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.core.config import settings
 from fbi.core.version import code_version
-from fbi.ingestion.payload_store import body_hash
+from fbi.storage.payload_store import body_hash
 
 HISTORY_TABLES: dict[str, tuple[str, ...]] = {
     "market.live_odds_snapshots": ("fixture_id", "provider_bet_id", "selection", "line", "captured_at"),

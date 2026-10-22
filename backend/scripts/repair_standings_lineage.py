@@ -46,8 +46,8 @@ from psycopg.rows import dict_row
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
-from fbi.ingestion.payload_store import PayloadStore, body_hash
 from fbi.providers.api_football.details import iter_standings
+from fbi.storage.payload_store import PayloadStore, body_hash
 
 RULE = "standings_lineage"
 REPO = Path(__file__).resolve().parents[1]

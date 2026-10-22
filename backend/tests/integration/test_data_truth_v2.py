@@ -38,10 +38,10 @@ from datetime import timedelta  # noqa: E402
 
 import pytest  # noqa: E402
 
-from fbi.truth.v2 import players as pl  # noqa: E402
+from fbi.api.audits import players as pl  # noqa: E402
+from fbi.api.audits import team_stats as ts  # noqa: E402
 from fbi.truth.v2 import standings as st  # noqa: E402
 from fbi.truth.v2 import team_history as th  # noqa: E402
-from fbi.truth.v2 import team_stats as ts  # noqa: E402
 from fbi.truth.v2.ledger import Evidence, clear_unseen, mark, record  # noqa: E402
 from fbi.truth.v2.runner import V2Run  # noqa: E402
 
@@ -293,9 +293,9 @@ def test_a_snapshot_that_merged_two_tables_labelled_alike_is_rebuilt_beside_it(
     from psycopg.types.json import Json
 
     from fbi.ingestion.details import apply_standings_outcome
-    from fbi.ingestion.payload_store import PayloadStore
     from fbi.ingestion.standings_repair import RULE, find_collisions, rebuild
     from fbi.providers.api_football.details import iter_standings
+    from fbi.storage.payload_store import PayloadStore
 
     def line(team: int, group: str, played: int, rank: int) -> dict[str, Any]:
         return {"rank": rank, "team": {"id": team, "name": str(team)}, "points": played, "group": group,

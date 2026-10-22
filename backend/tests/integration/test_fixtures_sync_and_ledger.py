@@ -14,11 +14,11 @@ from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.core.config.providers import ApiFootballSettings
 from fbi.ingestion.fixtures import SyncStrategy, sync_fixtures, tracked_season_ids
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.providers.api_football.client import ApiFootballClient
 from fbi.providers.api_football.provider import ApiFootballProvider
 from fbi.providers.api_football.status import fetch_status
 from fbi.providers.ratelimit import DailyQuota, TokenBucket
+from fbi.storage.payload_store import PayloadStore
 from tests.integration.conftest import Seed
 from tests.integration.helpers import row, scalar
 

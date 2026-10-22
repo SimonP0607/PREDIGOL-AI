@@ -17,9 +17,9 @@ from pathlib import Path
 import psycopg
 import pytest
 
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.migration.completeness import fixtures_missing_detail
 from fbi.ops.reprocess import reprocess_fixture_details
+from fbi.storage.payload_store import PayloadStore
 from tests.integration.conftest import Seed
 
 FETCHED = datetime(2026, 9, 20, 18, 0, tzinfo=UTC)

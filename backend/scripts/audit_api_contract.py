@@ -212,7 +212,7 @@ def export(path: Path) -> None:
 
 
 def audit(conn: psycopg.Connection[Any], *, sample: int) -> dict[str, Any]:
-    from fbi.ingestion.payload_store import PayloadStore
+    from fbi.storage.payload_store import PayloadStore
 
     store = PayloadStore(settings.runtime.raw_store_dir)
     with conn.cursor(row_factory=dict_row) as cur:

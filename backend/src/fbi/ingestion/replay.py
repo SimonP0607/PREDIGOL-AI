@@ -32,8 +32,8 @@ from psycopg.rows import tuple_row
 from fbi.ingestion.apply import apply_fixtures_payload
 from fbi.ingestion.fixtures import tracked_season_ids
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.ingestion.payload_store import PayloadStore, body_hash
 from fbi.providers.base import FootballDataProvider
+from fbi.storage.payload_store import PayloadStore, body_hash
 
 log = structlog.get_logger(__name__)
 

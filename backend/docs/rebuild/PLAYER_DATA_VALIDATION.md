@@ -1,6 +1,6 @@
 # Player data validation — data truth audit V2 (4 October 2026)
 
-*Command: `python -m scripts.audit_player_stats [--external FILE]` (code `fbi/truth/v2/players.py`).
+*Command: `python -m scripts.audit_player_stats [--external FILE]` (code `fbi/api/audits/players.py`).
 Every provider answer is a new raw payload; nothing in `core` is written. Ledger area
 `player_stats`.*
 

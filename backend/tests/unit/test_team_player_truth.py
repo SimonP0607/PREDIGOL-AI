@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fbi.truth.v2 import players as pl
+from fbi.api.audits import players as pl
+from fbi.api.audits import team_stats as ts
 from fbi.truth.v2 import team_history as th
-from fbi.truth.v2 import team_stats as ts
 
 NOW = datetime(2026, 10, 4, 12, 0, tzinfo=UTC)
 

@@ -35,12 +35,12 @@ from fbi.ingestion.fixtures import (
     sync_fixtures,
     tracked_season_ids,
 )
-from fbi.ingestion.payload_store import PayloadStore, body_hash
 from fbi.ingestion.replay import replay_fixture_payloads
 from fbi.ingestion.results import sync_results
 from fbi.providers.api_football.client import ApiFootballClient
 from fbi.providers.api_football.provider import ApiFootballProvider
 from fbi.providers.ratelimit import DailyQuota, TokenBucket
+from fbi.storage.payload_store import PayloadStore, body_hash
 from tests.integration.conftest import Seed
 from tests.integration.helpers import must_be_rejected, row, scalar
 

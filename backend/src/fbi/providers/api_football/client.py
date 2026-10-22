@@ -25,7 +25,7 @@ import structlog
 from fbi.core.clock import now
 from fbi.core.config.providers import ApiFootballSettings
 from fbi.core.errors import ProviderError, ProviderPayloadError, RateLimitError
-from fbi.ingestion.payload_store import PayloadStore, StoredPayload, sanitize
+from fbi.storage.payload_store import PayloadStore, StoredPayload, sanitize
 
 log = structlog.get_logger(__name__)
 

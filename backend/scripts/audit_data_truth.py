@@ -181,7 +181,7 @@ async def _golden(run: V2Run, conn: psycopg.Connection[Any], decisions: str | No
                   ) -> tuple[dict[str, Any], list[Any], str]:
     import httpx
 
-    from fbi.ingestion.payload_store import PayloadStore
+    from fbi.storage.payload_store import PayloadStore
     from fbi.truth.v2 import golden as gd
     from fbi.truth.v2 import standings as st
 

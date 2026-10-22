@@ -18,13 +18,13 @@ import pytest
 
 from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.core.config.providers import ApiFootballSettings
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.ingestion.results import ResultRepository, stale_fixtures, sync_results
 from fbi.providers.api_football.client import ApiFootballClient
 from fbi.providers.api_football.normalize import iter_fixture_results
 from fbi.providers.api_football.provider import ApiFootballProvider
 from fbi.providers.base import FixtureResultRef
 from fbi.providers.ratelimit import DailyQuota, TokenBucket
+from fbi.storage.payload_store import PayloadStore
 from tests.integration.conftest import Seed
 from tests.integration.helpers import row, scalar
 

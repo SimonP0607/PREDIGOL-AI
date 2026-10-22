@@ -38,7 +38,7 @@ from psycopg.types.json import Json
 
 from fbi.core.errors import FbiError
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.ingestion.payload_store import PayloadStore, body_hash
+from fbi.storage.payload_store import PayloadStore, body_hash
 
 MANIFEST = "transfer_manifest.json"
 FORMAT = 1

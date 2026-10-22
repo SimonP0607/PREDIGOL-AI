@@ -10,7 +10,6 @@ from pathlib import Path
 
 import psycopg
 
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.ops.backup import (
     MANIFEST,
     RAW,
@@ -20,6 +19,7 @@ from fbi.ops.backup import (
     restore_test,
     verify_files,
 )
+from fbi.storage.payload_store import PayloadStore
 from tests.integration.conftest import ADMIN_URL, Seed
 
 

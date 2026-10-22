@@ -32,8 +32,8 @@ from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
 from fbi.ingestion.details import SIGNED_COLUMNS
-from fbi.ingestion.payload_store import PayloadStore, body_hash
 from fbi.providers.api_football.details import iter_fixture_details
+from fbi.storage.payload_store import PayloadStore, body_hash
 
 RULE = "team_stats_signed_metric"
 

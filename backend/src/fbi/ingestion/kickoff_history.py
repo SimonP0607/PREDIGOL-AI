@@ -17,9 +17,9 @@ from typing import Any
 import psycopg
 from psycopg.rows import tuple_row
 
-from fbi.ingestion.payload_store import PayloadStore, body_hash
 from fbi.ingestion.replay import FIXTURE_ENDPOINTS
 from fbi.providers.api_football.normalize import iter_fixtures
+from fbi.storage.payload_store import PayloadStore, body_hash
 
 
 @dataclass(frozen=True, slots=True)

@@ -28,9 +28,9 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.api.audits import players as pl
 from fbi.core.clock import now
 from fbi.core.config import settings
-from fbi.truth.v2 import players as pl
 from fbi.truth.v2.ledger import Evidence, clear_unseen, record_all
 from fbi.truth.v2.runner import V2Run, write_report
 

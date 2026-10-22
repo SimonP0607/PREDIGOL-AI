@@ -24,10 +24,10 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.api.audits import team_stats as ts
 from fbi.core.clock import now
 from fbi.core.config import settings
 from fbi.truth.v2 import team_history as th
-from fbi.truth.v2 import team_stats as ts
 from fbi.truth.v2.ledger import Evidence, clear_unseen, record_all
 from fbi.truth.v2.runner import V2Run, write_report
 

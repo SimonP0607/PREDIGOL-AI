@@ -38,12 +38,12 @@ from psycopg.rows import dict_row, tuple_row
 from fbi.core.errors import FbiError
 from fbi.ingestion.details import apply_fixture_details
 from fbi.ingestion.fixtures import PayloadLineage
-from fbi.ingestion.payload_store import PayloadStore, body_hash
 from fbi.ingestion.results import ResultRepository
 from fbi.providers.api_football.details import iter_fixture_details
 from fbi.providers.api_football.normalize import ScoreDisagreement, iter_fixture_results
 from fbi.quality.detect import payload_dated_relations
 from fbi.quality.issues import EntityType, IssueRegistry, inconsistency
+from fbi.storage.payload_store import PayloadStore, body_hash
 
 log = structlog.get_logger(__name__)
 

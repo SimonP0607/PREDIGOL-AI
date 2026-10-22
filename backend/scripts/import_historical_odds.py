@@ -33,9 +33,9 @@ from fbi.ingestion.historical_odds import (
     write_matched_stats,
 )
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.ingestion.payload_store import PayloadStore, StoredPayload
 from fbi.market.baseline import compute_from_historical, write_baseline
 from fbi.providers.football_data.parse import DIVISIONS, csv_url, decode, parse_csv, season_code
+from fbi.storage.payload_store import PayloadStore, StoredPayload
 
 USER_AGENT = "football-intelligence-v2 (private research; contact: repository owner)"
 POLITE_DELAY_S = 2.0

@@ -16,7 +16,7 @@ import psycopg
 
 from fbi.core.config import settings
 from fbi.ingestion.kickoff_history import backfill_kickoff_changes
-from fbi.ingestion.payload_store import PayloadStore
+from fbi.storage.payload_store import PayloadStore
 
 
 def main() -> int:

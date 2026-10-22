@@ -34,7 +34,7 @@ from psycopg.rows import dict_row
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
-from fbi.ingestion.payload_store import PayloadStore, body_hash
+from fbi.storage.payload_store import PayloadStore, body_hash
 
 RULE_ZERO = "venue_id_zero"
 RULE_NAME = "venue_name_from_source"

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -66,24 +66,6 @@ def table_counts(conn: psycopg.Connection[Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _admin_client() -> Any:
-    """The API in-process, as an operator. Only this offline process is signed in."""
-    from fastapi.testclient import TestClient
-
-    from fbi.api.app import create_app
-    from fbi.api.security import optional_principal
-    from fbi.auth.roles import permissions_for
-    from fbi.auth.service import Principal
-
-    app = create_app()
-    operator = Principal(user_id=0, email="operator@localhost", display_name="Baseline snapshot",
-                         role="SUPER_ADMIN", language="en", timezone="UTC", session_id="0" * 64,
-                         session_expires_at=datetime.now(UTC) + timedelta(hours=2),
-                         permissions=permissions_for("SUPER_ADMIN"))
-    app.dependency_overrides[optional_principal] = lambda: operator
-    return TestClient(app, headers={"x-requested-with": "predigol"})
-
-
 def readable_paths(spec: dict[str, Any]) -> list[str]:
     """Every GET path without a path parameter, admin and product, from the OpenAPI document."""
     paths: list[str] = []
@@ -101,12 +83,12 @@ def _slug(path: str, preview: bool) -> str:
     return f"{name}__shadow" if preview else name
 
 
-def snapshot(conn: psycopg.Connection[Any], out_root: Path, *, label: str) -> SnapshotReport:
+def snapshot(conn: psycopg.Connection[Any], out_root: Path, *, label: str, client: Any) -> SnapshotReport:
+    """``client`` is the API in-process, signed in as an operator: the caller builds it, so ops does not import api."""
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     folder = out_root / f"{stamp}-{label}"
     (folder / "api").mkdir(parents=True, exist_ok=False)
     report = SnapshotReport(folder)
-    client = _admin_client()
     spec = client.get("/openapi.json").json()
     targets = [(p, False) for p in readable_paths(spec)] + [(p, True) for p in PRODUCT_PREVIEW]
     for path, preview in targets:

@@ -284,7 +284,7 @@ def db_latest_odds(conn: psycopg.Connection, provider_fixture_id: int) -> list[d
 def payload_update_stamps(conn: psycopg.Connection, hashes: set[str]) -> dict[str, datetime | None]:
     """The provider's ``update`` stamp inside each stored /odds answer (None when the file cannot be read)."""
     from fbi.core.config import settings
-    from fbi.ingestion.payload_store import PayloadStore
+    from fbi.storage.payload_store import PayloadStore
 
     if not hashes:
         return {}

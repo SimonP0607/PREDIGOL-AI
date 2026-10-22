@@ -39,8 +39,8 @@ from fbi.ingestion.historical_odds import (
     load_our_fixtures,
     match_rows,
 )
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.providers.football_data.parse import DIVISIONS, csv_url, decode, parse_csv, season_code
+from fbi.storage.payload_store import PayloadStore
 from fbi.truth import compare
 from fbi.truth.audit import db_season_fixtures
 from fbi.truth.findings import Tally

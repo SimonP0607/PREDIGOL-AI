@@ -18,7 +18,7 @@ import psycopg
 from fbi.catalog.media import backfill_competition_media
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
-from fbi.ingestion.payload_store import PayloadStore
+from fbi.storage.payload_store import PayloadStore
 
 REPO = Path(__file__).resolve().parents[1]
 

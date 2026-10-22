@@ -22,9 +22,9 @@ from fbi.api.repositories.fixtures import fixture_venue, get_fixture
 from fbi.api.services import center
 from fbi.ingestion import reference as ref
 from fbi.ingestion.fixtures import FixtureRepository
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.ops.reprocess import reprocess_fixture_venues
 from fbi.providers.base import FixtureRef
+from fbi.storage.payload_store import PayloadStore
 from tests.integration.conftest import Seed
 
 T0 = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)

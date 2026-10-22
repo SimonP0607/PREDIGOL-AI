@@ -9,7 +9,7 @@ from pathlib import Path
 import psycopg
 from scripts.repair_signed_team_stats import repair
 
-from fbi.ingestion.payload_store import PayloadStore
+from fbi.storage.payload_store import PayloadStore
 from tests.integration.conftest import Seed
 
 FETCHED = datetime(2026, 9, 20, 18, 0, tzinfo=UTC)

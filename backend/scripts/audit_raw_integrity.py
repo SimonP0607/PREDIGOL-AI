@@ -29,7 +29,7 @@ from psycopg.rows import dict_row
 
 from fbi.core.clock import now
 from fbi.core.config import settings
-from fbi.ingestion.payload_store import body_hash
+from fbi.storage.payload_store import body_hash
 from fbi.truth.v2.ledger import Evidence, clear_unseen, record_all
 from fbi.truth.v2.runner import V2Run, write_report
 

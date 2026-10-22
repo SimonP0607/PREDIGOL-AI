@@ -33,7 +33,6 @@ from psycopg.rows import tuple_row
 from fbi.core.clock import now
 from fbi.core.errors import CircuitOpenError, ProviderError, QuotaExhaustedError
 from fbi.ingestion.ledger import RunCounters, RunLedger
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.odds.live_cadence import (
     DEFAULT_LIVE_DAILY_BUDGET,
     MAX_MATCH_MINUTES,
@@ -50,6 +49,7 @@ from fbi.providers.api_football.live import (
 from fbi.providers.base import OddsParseLog, RawResponse
 from fbi.quality.issues import IssueRegistry
 from fbi.quality.provider_signals import issues_from_parse_log
+from fbi.storage.payload_store import PayloadStore
 
 log = structlog.get_logger(__name__)
 

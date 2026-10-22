@@ -1,6 +1,6 @@
 # Team data validation — data truth audit V2 (4 October 2026)
 
-*Command: `python -m scripts.audit_team_stats [--history N]` (code `fbi/truth/v2/team_stats.py`,
+*Command: `python -m scripts.audit_team_stats [--history N]` (code `fbi/api/audits/team_stats.py`,
 `team_history.py`). Every provider answer is a new raw payload; nothing in `core` is written.
 Ledger entries: area `team_stats` and `team_history` (`python -m scripts.audit_data_truth ledger`,
 Admin → Data truth → Auditoría V2).*

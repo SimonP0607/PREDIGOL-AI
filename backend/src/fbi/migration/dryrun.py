@@ -37,7 +37,6 @@ from fbi.ingestion.details import (
     apply_injuries,
     apply_standings,
 )
-from fbi.ingestion.payload_store import PayloadStore, body_hash
 from fbi.migration.config import ROOT
 from fbi.migration.fake_api import LEAGUES, SEASONS, FakeApi, fixtures_of
 from fbi.providers.api_football.client import ApiFootballClient
@@ -50,6 +49,7 @@ from fbi.providers.api_football.details import (
 from fbi.providers.api_football.provider import ApiFootballProvider
 from fbi.providers.quota import PersistentDailyQuota
 from fbi.providers.ratelimit import TokenBucket
+from fbi.storage.payload_store import PayloadStore, body_hash
 
 SCRATCH_PREFIX = "fbi_dryrun_"
 COUNTED_TABLES = ("core.fixtures", "core.fixture_results", "core.fixture_team_stats", "core.fixture_events",

@@ -15,8 +15,8 @@ import psycopg
 import pytest
 from psycopg.types.json import Json
 
-from fbi.ingestion.payload_store import PayloadStore, body_hash
 from fbi.ops.raw_transfer import MANIFEST, TransferError, export_payloads, import_payloads
+from fbi.storage.payload_store import PayloadStore, body_hash
 from tests.integration.conftest import Seed
 
 FETCHED = [datetime(2026, 9, 24, 20, 1, tzinfo=UTC), datetime(2026, 9, 24, 20, 2, tzinfo=UTC)]

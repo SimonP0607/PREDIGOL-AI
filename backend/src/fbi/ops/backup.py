@@ -47,7 +47,7 @@ from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import tuple_row
 
-from fbi.ingestion.payload_store import PayloadStore, body_hash
+from fbi.storage.payload_store import PayloadStore, body_hash
 
 MANIFEST = "manifest.json"
 DUMP = "db.dump"

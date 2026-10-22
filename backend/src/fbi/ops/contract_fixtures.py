@@ -34,7 +34,7 @@ import psycopg
 import structlog
 from psycopg.rows import dict_row
 
-from fbi.ingestion.payload_store import PayloadStore
+from fbi.storage.payload_store import PayloadStore
 
 log = structlog.get_logger(__name__)
 

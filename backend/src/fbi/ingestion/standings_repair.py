@@ -27,8 +27,8 @@ import structlog
 from psycopg.rows import dict_row
 
 from fbi.ingestion.details import apply_standings_outcome
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.providers.api_football.details import iter_standings
+from fbi.storage.payload_store import PayloadStore
 from fbi.truth.v2.standings import repeated_labels
 
 RULE = "standings_group_label_collision"

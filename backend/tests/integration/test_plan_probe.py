@@ -10,13 +10,13 @@ import httpx
 import psycopg
 
 from fbi.core.config.providers import ApiFootballSettings
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.migration.fake_api import LEAGUES, FakeApi, fixtures_of
 from fbi.migration.probe import run_probe
 from fbi.providers.api_football.client import ApiFootballClient
 from fbi.providers.api_football.provider import ApiFootballProvider
 from fbi.providers.quota import PersistentDailyQuota
 from fbi.providers.ratelimit import TokenBucket
+from fbi.storage.payload_store import PayloadStore
 from tests.integration.conftest import Seed
 
 

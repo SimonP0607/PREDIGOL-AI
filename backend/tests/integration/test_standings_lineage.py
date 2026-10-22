@@ -12,8 +12,8 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from fbi.ingestion.details import apply_standings
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.providers.api_football.details import iter_standings
+from fbi.storage.payload_store import PayloadStore
 from tests.integration.conftest import Seed
 
 T0 = datetime(2026, 9, 29, 4, 40, tzinfo=UTC)

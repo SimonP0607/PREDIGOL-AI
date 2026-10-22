@@ -15,7 +15,6 @@ from __future__ import annotations
 import psycopg
 
 from fbi.core.config import settings
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.providers.api_football.client import ApiFootballClient
 from fbi.providers.quota import (
     MINUTE_SHARE,
@@ -23,6 +22,7 @@ from fbi.providers.quota import (
     PersistentMinuteLimiter,
     RunCappedQuota,
 )
+from fbi.storage.payload_store import PayloadStore
 
 
 def _connect() -> psycopg.Connection:

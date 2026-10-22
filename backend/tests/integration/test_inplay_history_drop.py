@@ -23,7 +23,7 @@ from alembic import command
 from alembic.config import Config
 from scripts import inplay_cleanup as ic
 
-from fbi.ingestion.payload_store import PayloadStore
+from fbi.storage.payload_store import PayloadStore
 from tests.integration.conftest import REPO_ROOT, Seed
 
 AT = datetime(2026, 10, 5, 20, 0, tzinfo=UTC)

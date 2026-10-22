@@ -20,10 +20,10 @@ import psycopg
 
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.ingestion.replay import replay_fixture_payloads
 from fbi.providers.api_football import ApiFootballProvider
 from fbi.providers.api_football.build import build_client
+from fbi.storage.payload_store import PayloadStore
 
 
 def main() -> int:

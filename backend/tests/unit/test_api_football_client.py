@@ -13,9 +13,9 @@ import pytest
 from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.core.config.providers import ApiFootballSettings
 from fbi.core.errors import CircuitOpenError, ProviderError, QuotaExhaustedError
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.providers.api_football.client import ApiFootballClient
 from fbi.providers.ratelimit import DailyQuota, TokenBucket
+from fbi.storage.payload_store import PayloadStore
 
 SECRET = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
 OK_BODY = {"response": [{"fixture": {"id": 1001}}], "errors": [], "paging": {"current": 1, "total": 1}}

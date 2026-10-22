@@ -17,7 +17,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.ingestion.payload_store import PayloadStore
+from fbi.storage.payload_store import PayloadStore
 
 CODE_RE = re.compile(r"^[A-Z]{2}(-[A-Z]{2,3})?$")
 

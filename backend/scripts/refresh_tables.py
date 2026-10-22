@@ -70,8 +70,8 @@ def snapshot_rows(conn: psycopg.Connection[Any], cs_id: int) -> tuple[Any, int]:
 
 
 def relabel(args: argparse.Namespace) -> int:
-    from fbi.ingestion.payload_store import PayloadStore
     from fbi.ingestion.standings_repair import find_collisions, rebuild
+    from fbi.storage.payload_store import PayloadStore
 
     store = PayloadStore(settings.runtime.raw_store_dir)
     with psycopg.connect(settings.database.psycopg_url) as conn:

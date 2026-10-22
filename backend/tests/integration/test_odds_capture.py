@@ -17,7 +17,6 @@ import pytest
 
 from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.core.config.providers import ApiFootballSettings
-from fbi.ingestion.payload_store import PayloadStore
 from fbi.odds.capture import CaptureReport, OddsCaptureService
 from fbi.odds.repository import OddsRepository
 from fbi.odds.schedule import CapturePlanner, CaptureTask, ScheduledFixture
@@ -26,6 +25,7 @@ from fbi.providers.api_football.normalize import INPLAY_BETS, PREMATCH_BETS
 from fbi.providers.api_football.provider import ApiFootballProvider
 from fbi.providers.base import OddsParseLog
 from fbi.providers.ratelimit import DailyQuota, TokenBucket
+from fbi.storage.payload_store import PayloadStore
 from tests.integration.conftest import Seed
 from tests.integration.helpers import scalar
 
