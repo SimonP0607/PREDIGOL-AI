@@ -43,6 +43,8 @@ PACKET_VERSION = "packet-v5"
 match. The dossier is ``dossier-v3``: his matches are counted under every spelling the provider used for him. A match the
 identity has not seen yet, or whose newest observation it has not caught up with (the pass runs hourly), keeps the string the
 provider wrote (``referee_id`` null, ``dossier.referee.identity == "text"``): never a person who is no longer the one named.
+The players are persons too: in a national-team match ``dossier.national`` says, for the eleven, the club he plays for on the day
+(``core.player_spells``), his form there and his record for the country (``core.player_national_caps``), all as of the moment.
 v4 (plan F2): the ``phase`` block (``fbi.competitions.context``): the stage of the round and, for a leg of a tie, the tie
 as it could be seen BEFORE the match - the earlier legs that had a result at the packet's moment, the aggregate of those and what
 the first 90 minutes of this match do to it (never the winner, the aggregate or the way a tie was decided: those include this
@@ -447,7 +449,8 @@ class PacketBuilder:
             sources.append({"block": "dossier", "tables": ["core.fixture_team_stats", "core.fixture_events",
                                                            "core.fixture_lineups", "core.fixture_player_stats",
                                                            "core.fixture_facts", "core.fixture_officials",
-                                                           "core.referee_aliases", "features.elo_ratings"],
+                                                           "core.referee_aliases", "core.player_spells",
+                                                           "core.player_national_caps", "features.elo_ratings"],
                             "as_of": _ts(at), "version": DOSSIER_VERSION})
         except psycopg.Error as exc:
             content["dossier"] = {"version": DOSSIER_VERSION, "error": type(exc).__name__}

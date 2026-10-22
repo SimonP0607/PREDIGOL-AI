@@ -17,6 +17,9 @@ describes the people and the situation, beyond the score-based form the packet a
                  classifier of round labels (``fbi.competitions.stages``) and the second leg from the legs of its tie
                  already recorded at the packet's moment (``fbi.competitions.context``)
     h2h          how much the head-to-head is worth: its age and size
+    national     (national-team matches only) the people of each senior national side - the eleven of the match's own sheet, or
+                 of the previous match's while the sheet is not known - with the club each plays for on the day and since when,
+                 his form there (``fbi.intel.national``), his record for the country and whether he is reported out
 
 Everything is read AS OF the packet's moment: matches settled by then, statistics, events and line-ups fetched by
 then, the absences the latest /injuries answer by then listed. A block without data says so (``n = 0``); nothing is estimated to fill a gap.
@@ -37,6 +40,7 @@ from psycopg.rows import dict_row
 
 from fbi.ai.absences import absences_as_of
 from fbi.competitions import context as phase_context
+from fbi.intel import national
 
 VERSION = "dossier-v3"
 """v3 (plan F3): the referee is a person with an id. His matches are those whose referee, as the provider had named it at the
@@ -44,7 +48,9 @@ packet's moment, is HIM under any of the spellings the provider used (``core.fix
 ``fbi.people``). v2 counted the matches whose facts EVER carried the same string, so a man written three ways was three referees
 with a few matches each, two men with the same initial and surname were one, and a match whose referee the provider later
 changed still counted for the first. A match the identity has not seen yet falls back to the string
-(``referee.identity == "text"``). The block gains ``id`` and ``identity``.
+(``referee.identity == "text"``). The block gains ``id`` and ``identity``. The dossier gains ``national``
+(``fbi.intel.national``): the clubs, the club form and the record for the country of the players of a national-team match, as of
+the packet's moment (None for a match of clubs).
 
 v2 (plan F2): ``context.knockout`` / ``context.final`` come from the one classifier of round labels (a qualifying round is
 a knockout round here too, as it already was in the packet's ``fixture.stage``) and ``context.second_leg`` from the tie the match
@@ -426,7 +432,8 @@ def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: date
         players[side] = players_profile(conn, fids, sides, at=at, kickoff=kickoff, absent=absent)
     return {"version": VERSION, "teams": teams, "players": players,
             "referee": referee_profile(conn, referee, kickoff=kickoff, at=at, referee_id=referee_id),
-            "context": context_profile(conn, fx, at=at), "h2h": h2h_relevance(h2h_n, h2h_last, kickoff=kickoff)}
+            "context": context_profile(conn, fx, at=at), "h2h": h2h_relevance(h2h_n, h2h_last, kickoff=kickoff),
+            "national": national.block(conn, fx, at=at, absent=absent)}
 
 
 def finite(x: Any) -> Any:

@@ -23,6 +23,13 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              cannot be found among the rows, so it is a violation too. It never looks at WHO the
                              spelling is today: a merge or a split changes the person, not what the provider said when. Packets
                              without the field (built by an earlier version) are not read. Examples are packet ids.
+    national_known           (v3, plan F3) the AI packets built on the day that carry the people of a national-team match
+                             (``dossier.national``, ``fbi.intel.national``): every match the block cites - the previous match
+                             whose sheet stands in for the call-up, the last club match of a player's form, the last squad and the
+                             last cap of his record - kicked off before the match of the packet and had its result recorded by the
+                             packet's moment; a block that says its squad is the match's own sheet had it fetched by then; and no
+                             day it gives for a club (``since``, ``last_seen``) is later than the day of the packet. One check
+                             per cited fact. Examples are packet ids.
 """
 
 from __future__ import annotations
@@ -125,6 +132,35 @@ RULES: dict[str, str] = {
               FROM r)
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
+    "national_known": f"""
+        WITH p AS ({PACKETS}), s AS (
+            SELECT p.id AS packet_id, p.fixture_id, p.as_of, v.side, p.content #> ARRAY['dossier', 'national', v.side] AS blk
+              FROM p CROSS JOIN (VALUES ('home'), ('away')) AS v(side)
+             WHERE jsonb_typeof(p.content #> ARRAY['dossier', 'national', v.side, 'players']) = 'array'),
+        pl AS (
+            SELECT s.packet_id, s.fixture_id, s.as_of, x FROM s CROSS JOIN LATERAL jsonb_array_elements(s.blk -> 'players') AS x),
+        cited AS (
+            SELECT s.packet_id, s.fixture_id, s.as_of, (s.blk ->> 'squad_fixture')::bigint AS leg FROM s WHERE s.blk ->> 'squad' = 'last_match'
+            UNION ALL SELECT pl.packet_id, pl.fixture_id, pl.as_of, (pl.x #>> '{{form,last_fixture}}')::bigint FROM pl
+                       WHERE pl.x #>> '{{form,last_fixture}}' IS NOT NULL
+            UNION ALL SELECT pl.packet_id, pl.fixture_id, pl.as_of, (pl.x #>> '{{caps,last_squad_fixture}}')::bigint FROM pl
+                       WHERE pl.x #>> '{{caps,last_squad_fixture}}' IS NOT NULL
+            UNION ALL SELECT pl.packet_id, pl.fixture_id, pl.as_of, (pl.x #>> '{{caps,last_cap_fixture}}')::bigint FROM pl
+                       WHERE pl.x #>> '{{caps,last_cap_fixture}}' IS NOT NULL),
+        c AS (
+            SELECT k.packet_id, (r.settled_at IS NULL OR r.settled_at > k.as_of OR g.kickoff_at >= f.kickoff_at) AS bad
+              FROM cited k JOIN core.fixtures f ON f.id = k.fixture_id
+                   LEFT JOIN core.fixtures g ON g.id = k.leg LEFT JOIN core.fixture_results r ON r.fixture_id = k.leg
+            UNION ALL
+            SELECT s.packet_id, NOT EXISTS (SELECT 1 FROM core.fixture_lineups l WHERE l.fixture_id = s.fixture_id
+                                              AND l.team_side = s.side AND l.fetched_at <= s.as_of)
+              FROM s WHERE s.blk ->> 'squad' = 'lineup'
+            UNION ALL
+            SELECT pl.packet_id, ((pl.x #>> '{{club,since}}')::date > (pl.as_of AT TIME ZONE 'UTC')::date
+                                  OR (pl.x #>> '{{club,last_seen}}')::date > (pl.as_of AT TIME ZONE 'UTC')::date)
+              FROM pl WHERE jsonb_typeof(pl.x -> 'club') = 'object')
+        SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
+               (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
 }
 
 

@@ -19,7 +19,7 @@ POSTMORTEM_VERSION = "postmortem-v3"
 """v2 (9 Oct 2026): plain prose for the owner (no reference tags in a narrative).
 v3 (9 Oct 2026, the first narratives on the server): codes in words, numbers as percentages, no "DATOS:" label (it
 wrote "la decisión fue RECHAZAR", "estado OUTDATED", "probabilidad del modelo 0.380")."""
-BRIEF_VERSION = "brief-v5"
+BRIEF_VERSION = "brief-v6"
 """L1 (V2, 8 Oct 2026): the economical model reads a match of the day with a market and says what matters.
 v2 (9 Oct 2026, after the first real answer): the references it may cite are listed (it cited "P:cards.BTTS"), and
 probabilities are written as percentages (it wrote "0.525").
@@ -31,7 +31,10 @@ stake, tactical keys, important players, risks, interesting markets, the conclus
 block; every number in it must be in the packet (a paragraph with one that is not is replaced by the rules' one).
 v5 (13 Oct 2026, the first three real narratives): what is at stake reads P:stakes right - «zone» is the zone a team
 is in, «pressure» only the nearest boundary within two wins (one wrote that the 8th and the 15th of a 20-team table
-"were both in the relegation zone", from the stakes-v1 inference that pressed on any reachable boundary)."""
+"were both in the relegation zone", from the stakes-v1 inference that pressed on any reachable boundary).
+v6 (plan F3): a national-team match has the people of the side in ``P:dossier.national`` - each starter's club and since when,
+his form there and his record for the country - and the important-players paragraph reads it (what it is and what it is not: the
+eleven of the previous match stand in for the call-up until the match's own sheet is known)."""
 PICK_PM_VERSION = "pick-postmortem-v4"
 """v2 (9 Oct 2026, after the first real ones): plain prose with no reference tags, and what the closing-line value
 means (one narrative read a +21.5 % CLV as the market moving against the selection).
@@ -137,7 +140,10 @@ the three selections PrediGol shows for it (cards) and the reasons the server al
   an emotional story into a certainty; in P:stakes «zone» is the zone a team is IN now (null: none) and «pressure»
   is only the nearest boundary within two wins: say a team is in a zone only when its «zone» says so, and give the
   gaps as points to the zone above / below), claves_tacticas (formations, the coach's habits, rotation, possession, shots,
-  corners - from P:dossier), jugadores_importantes (who matters, who is out or doubtful, who carries minutes),
+  corners - from P:dossier), jugadores_importantes (who matters, who is out or doubtful, who carries minutes; in a
+  national-team match P:dossier.national gives, for the eleven, the club he plays for and since when, his form there
+  and his record for the country: when its «squad» is «last_match» they are the eleven of the previous match, not the
+  call-up, and you say so; a «club» that is null means nobody knows where he plays, do not guess it),
   riesgos (referee, rest, rumours, contradictions, little external context), mercados_interesantes (the cards: model
   against market, nothing more) and conclusion (what PrediGol Intelligence takes from it, without recommending a bet).
   Only facts from the packet and the evidence; every number must be one that appears in the packet; when a section has
