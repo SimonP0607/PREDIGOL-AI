@@ -174,9 +174,19 @@ probabilidad estimada, EV, riesgo, correlación y stake (¼ Kelly, tope 0,25 u).
   causas del partido (roja y minuto, penaltis del partido —los de una tanda no cuentan—, gol temprano, lesiones antes del 30', tarjetas frente a lo esperado del
   árbitro, alineación distinta de la esperada); las preguntas del POST_MATCH_REVIEW respondidas con datos. Un pick
   perdido nunca ajusta un modelo.
-* **Memoria longitudinal** (`memory-v1`): instantánea diaria por entidad × aspecto (equipo×mercado,
+* **Memoria longitudinal** (`memory-v2`): instantánea diaria por entidad × aspecto (equipo×mercado,
   competición×mercado, árbitro, entrenador, jugador-disponibilidad, mercado) con decisiones, aciertos, CLV, errores
   y contexto recurrente. Una racha es una señal a investigar, no una regla.
+  **Novedades tardías** (plan F0, defecto 3): un partido que se liquida, una estadística o un post-mortem que llegan
+  *después* de escrita la fila del día. `memory-v1` los descartaba (`ON CONFLICT DO NOTHING`). Una fila nunca se
+  reescribe, así que `memory-v2` los **anota en la fila del día en que se supieron**, en `delta.late[<día>]`: lo que los
+  datos dicen hoy de ese día menos lo que ya está registrado (su fila y lo que otras filas anotaron). El estado
+  acumulado de cada fila coincide con recalcular desde cero (las rachas `last10` van en el orden en que se supo), el
+  estado «a fecha de» un día no incluye nada que se supo después (sin trampa de futuro) y reconciliar dos veces no
+  anota nada dos veces. El ciclo nocturno construye solo la fila de ayer y mira los 3 días anteriores (`LATE_DAYS`):
+  una noche perdida del worker se recupera así como novedad tardía. Para una reparación puntual de un periodo más
+  largo existe `build_memory(..., late_days=N)` (operación manual). `memory-v2` continúa el estado que dejó `memory-v1`;
+  las filas v1 no se tocan.
 * **DAILY LEARNING REPORT** (`learn-report-v1`): ganadas/perdidas/nulas, CLV, ROI, calibración, errores, contexto
   que funcionó y que falló, noticias, anomalías de modelo y mercado, equipos y jugadores, hipótesis nuevas,
   oportunidades (discovery). Revisiones append-only.

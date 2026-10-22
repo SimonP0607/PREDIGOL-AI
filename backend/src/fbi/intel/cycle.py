@@ -4,8 +4,8 @@
                    layer over the next 36 hours (``fbi.intel.decision.decide``); once the AI has read the day (its
                    first passes done, or 06:00 Bogotá), the PICKS DEL DÍA of daily-set-v6 and its parlays
     intel_nightly  07:50 Bogotá, after the AI's own learning (07:35): outcomes and closing-line value of the
-                   decisions, post-mortems pm-v4, the longitudinal memory of yesterday (and the day before, whose late
-                   matches may have settled), calibration (prospective evaluation, refits, promotions by the gates),
+                   decisions, post-mortems pm-v4, the longitudinal memory of yesterday (with what the days before it
+                   learned late booked inside), calibration (prospective evaluation, refits, promotions by the gates),
                    the leakage audit of yesterday's decisions, the DAILY LEARNING REPORT, and the hypotheses the
                    calibration experiment answers
     intel_weekly   Monday 04:40 Bogotá: the market discovery engine
@@ -176,10 +176,18 @@ def run_decide(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
     return _run(conn, "decide", at, [("decide", _decide), ("select", _select)])
 
 
+def memory_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str, int]:
+    """The nightly memory: yesterday's rows. What the days before it learned late (a match settled after its day was
+    written, a night the worker missed) is booked inside them - memory-v2 never writes to a day that has its row."""
+    from fbi.intel.memory import build_memory
+
+    day = local_day(at) - timedelta(days=1)
+    return {day.isoformat(): build_memory(conn, day=day, at=at)}
+
+
 def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
     from fbi.intel.calibration import run_calibration
     from fbi.intel.leakage import audit_day
-    from fbi.intel.memory import build_memory
     from fbi.intel.outcomes import settle_decisions
     from fbi.intel.postmortem import run_postmortems
     from fbi.intel.report import days_to_report, write_report
@@ -192,10 +200,6 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
         calib.update({"fitted": r.fitted, "promoted": r.promoted, "retired": r.retired,
                       "edge_changes": r.edge_changes, "evaluations": r.evaluations, "summary": r.summary})
         return {k: v for k, v in calib.items() if k != "summary"}
-
-    def _memory() -> dict[str, int]:
-        return {d.isoformat(): build_memory(conn, day=d, at=at) for d in (today - timedelta(days=2),
-                                                                          today - timedelta(days=1))}
 
     def _audit() -> dict[str, Any]:
         out = audit_day(conn, day=today - timedelta(days=1), at=at)
@@ -210,7 +214,7 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
     return _run(conn, "nightly", at, [
         ("outcomes", lambda: settle_decisions(conn, at=at)),
         ("postmortems", lambda: run_postmortems(conn, at=at)),
-        ("memory", _memory),
+        ("memory", lambda: memory_step(conn, at=at)),
         ("calibration", _calibration),
         ("leakage_audit", _audit),
         ("hypotheses", _hypotheses),
