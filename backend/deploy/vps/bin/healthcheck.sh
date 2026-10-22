@@ -65,8 +65,12 @@ else
   fi
 fi
 
-# 4. While matches are being played, the in-play capture must be ticking.
-playing="$(psql_q "SELECT count(*) FROM core.fixtures WHERE status_group = 'live'" 2> /dev/null || echo "?")"
+# 4. While matches are being played, the in-play capture must be ticking. "Being played" is what fbi.core.match_state
+#    believes: a stored in-play code counts for 3 h 30 min after kick-off (LIVE_STALE_AFTER) and no longer. The provider
+#    leaves some matches at INT (interrupted) for days (Rayo Vallecano - Athletic, 10 Oct 2026; two more on 22 Oct); counted
+#    as "in play" they kept this verdict at "problem" for days, with nothing to capture, and an alarm that is always on
+#    hides the day it is true.
+playing="$(psql_q "SELECT count(*) FROM core.fixtures WHERE status_group = 'live' AND kickoff_at > now() - interval '210 minutes'" 2> /dev/null || echo "?")"
 if [[ "$playing" =~ ^[0-9]+$ ]] && (( playing > 0 )); then
   age="$(psql_q "SELECT coalesce(extract(epoch FROM now() - max(started_at))::int, 999999) FROM raw.ingestion_runs WHERE job_type = 'live_odds_capture'")"
   if (( age > 600 )); then problem "$playing matches in play, last in-play capture ${age}s ago"; else say "ok   in-play capture ${age}s ago ($playing in play)"; fi
