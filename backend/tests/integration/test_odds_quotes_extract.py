@@ -35,7 +35,7 @@ from tests.integration.helpers import must_be_rejected, scalar
 CONTRACT = Path(__file__).parents[1] / "fixtures" / "contracts" / "odds_prematch.json"
 KICKOFF = datetime(2026, 10, 12, 19, 0, tzinfo=UTC)
 FETCHED = KICKOFF - timedelta(hours=5)
-WINDOW = {"since": datetime(2026, 10, 10, tzinfo=UTC), "until": datetime(2026, 10, 14, tzinfo=UTC)}
+WINDOW: dict[str, Any] = {"since": datetime(2026, 10, 10, tzinfo=UTC), "until": datetime(2026, 10, 14, tzinfo=UTC)}
 """The shared test database keeps whatever other tests committed: these tests look only at their own days."""
 
 
@@ -417,7 +417,12 @@ def test_a_corrupt_file_and_a_file_that_is_not_its_payload_are_failures_not_data
     store = PayloadStore(tmp_path)
     corrupt = add_payload(db, seed, store, real_body(810091), fixture=810091, fetched_at=FETCHED)
     swapped = add_payload(db, seed, store, real_body(810092), fixture=810092, fetched_at=FETCHED + timedelta(minutes=1))
-    path = lambda h: tmp_path / db.execute("SELECT file_path FROM raw.ingestion_payloads WHERE hash = %s", (h,)).fetchone()[0]  # noqa: E731
+
+    def path(h: str) -> Path:
+        stored = db.execute("SELECT file_path FROM raw.ingestion_payloads WHERE hash = %s", (h,)).fetchone()
+        assert stored is not None
+        return tmp_path / stored[0]
+
     path(corrupt).write_bytes(b"this is not gzip")
     impostor = {"body": real_body(810092, update=KICKOFF - timedelta(days=3))}
     with gzip.open(path(swapped), "wb") as fh:

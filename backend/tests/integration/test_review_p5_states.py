@@ -161,7 +161,8 @@ async def test_a_match_with_no_official_result_72_hours_on_is_void(db: psycopg.C
     longest delay books use), on the pipeline's own pass - never left "esperando resultado" for ever."""
     _, f1, pick = _world(db, seed)
     provider = Provider([_answer(db, f1, Say("PST", None, (None, None)))])
-    report = await capture_live_matches(Savepoints(db), provider, at=KO + timedelta(minutes=12))
+    conn: Any = Savepoints(db)
+    report = await capture_live_matches(conn, provider, at=KO + timedelta(minutes=12))
     settle_fixtures(db, report.ended, path="live_follow", at=KO + timedelta(minutes=13))
     assert db.execute("SELECT result_status FROM picks.pick_results WHERE pick_id = %s", (pick,)).fetchone() == (
         "pending",)

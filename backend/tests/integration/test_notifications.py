@@ -78,7 +78,7 @@ def test_only_the_picks_not_announced_yet_are_drafted(db: psycopg.Connection, se
     minutes, one savepoint each - which held the notifier's transaction open 7-9 minutes of every 10."""
     from tests.integration.test_intel import IntelWorld
 
-    w = IntelWorld(db, seed)  # type: ignore[arg-type]
+    w = IntelWorld(db, seed)
     at = datetime.now(UTC)
     fid = w.fixture(at + timedelta(hours=5))
     told = w.pick(fid, "OU", "Over", "2.5", p_model=0.6, p_market=0.55, odds=1.9, created=at - timedelta(hours=1))
@@ -99,14 +99,17 @@ def test_only_the_picks_not_announced_yet_are_drafted(db: psycopg.Connection, se
     assert not {f"pick:{told}:created", f"pick:{told}:settled"} & keys
 
 
+def _queued(db: psycopg.Connection, kind: str, key: str, title: str) -> int:
+    row = db.execute("INSERT INTO audit.notifications (kind, dedup_key, title, body, payload) "
+                     "VALUES (%s, %s, %s, 'b', '{}') RETURNING id", (kind, key, title)).fetchone()
+    assert row is not None
+    return int(row[0])
+
+
 def test_the_operational_messages_go_out_before_the_shadow_picks(db: psycopg.Connection) -> None:
     """Regression (13 Oct 2026): 132,082 shadow-pick messages were queued; a budget alert behind them would have
     waited weeks for its turn (20 a run, every 10 minutes)."""
-    picks = [int(db.execute("INSERT INTO audit.notifications (kind, dedup_key, title, body, payload) "
-                            "VALUES ('shadow_pick', %s, 't', 'b', '{}') RETURNING id", (f"nt:queue:{i}",)).fetchone()[0])
-             for i in range(25)]
-    budget = int(db.execute("INSERT INTO audit.notifications (kind, dedup_key, title, body, payload) VALUES "
-                            "('ai_budget', 'nt:queue:budget', 'Presupuesto de IA: 50 % del mes', 'b', '{}') "
-                            "RETURNING id").fetchone()[0])
+    picks = [_queued(db, "shadow_pick", f"nt:queue:{i}", "t") for i in range(25)]
+    budget = _queued(db, "ai_budget", "nt:queue:budget", "Presupuesto de IA: 50 % del mes")
     order = [int(r[0]) for r in db.execute(service.QUEUE_SQL, (1_000_000,)).fetchall()]
     assert order.index(budget) < min(order.index(p) for p in picks), "the alert first, though it was queued last"

@@ -120,8 +120,8 @@ def ctx(migrated_database: str, seed: Seed) -> Iterator[Ctx]:
         _clean(migrated_database)
 
 
-OLD = {"formation": "4-4-2", "squad": 8300, "coach": 7901}
-NEW = {"formation": "3-5-2", "squad": 8400, "coach": 7902}
+OLD: dict[str, Any] = {"formation": "4-4-2", "squad": 8300, "coach": 7901}
+NEW: dict[str, Any] = {"formation": "3-5-2", "squad": 8400, "coach": 7902}
 
 
 def test_an_older_payload_replayed_after_a_newer_one_leaves_the_lineup_alone(ctx: Ctx) -> None:
@@ -143,8 +143,8 @@ def test_a_slow_older_writer_cannot_overwrite_the_newer_lineup_the_other_one_com
     b = psycopg.connect(ctx.dsn)
     failures: list[BaseException] = []
     result: list[Any] = []
-    old_extra = {"events": (_goal(1, 30),)} if everything else {}
-    new_extra = {"events": (_goal(1, 61),), "shots": 14} if everything else {}
+    old_extra: dict[str, Any] = {"events": (_goal(1, 30),)} if everything else {}
+    new_extra: dict[str, Any] = {"events": (_goal(1, 61),), "shots": 14} if everything else {}
 
     def older() -> None:
         try:
@@ -203,7 +203,7 @@ class _Recorder(psycopg.Cursor[Any]):
 
     taken: ClassVar[list[str]] = []
 
-    def execute(self, query: Any, params: Any = None, **kwargs: Any) -> Any:    # type: ignore[override]
+    def execute(self, query: Any, params: Any = None, **kwargs: Any) -> Any:
         if "pg_advisory_xact_lock" in str(query):
             _Recorder.taken.append(params[0])
         return super().execute(query, params, **kwargs)

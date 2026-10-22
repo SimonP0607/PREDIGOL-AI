@@ -97,6 +97,11 @@ def picks_of_the_day(db: psycopg.Connection[Any]) -> list[tuple[int, int, Decima
                       "WHERE s.kind = 'pick' ORDER BY s.rank").fetchall()
 
 
+def _calibrated(p_cal: float | None, label: str) -> float:
+    assert p_cal is not None, f"{label} is approved, so it carries a calibrated probability"
+    return p_cal
+
+
 def test_the_states_of_the_world(db: psycopg.Connection[Any], seed: Seed) -> None:
     """The specification means what it says: F4 alone is PREMIUM, filter 8 demotes F1b (the same match as the better
     scored F1a), F6 is approved but not a parlay leg, and the scores rank the selections as the table says."""
@@ -230,7 +235,7 @@ def test_the_parlays_multiply_two_calibrated_probabilities_of_different_competit
     ids = {k: v[0] for k, v in made.items()}
     eligible = ["F1a", "F3", "F4", "F5"]
     competition = {"F1a": "A", "F3": "A", "F4": "B", "F5": "B"}
-    p = {k: made[k][1].p_cal for k in eligible}
+    p = {k: _calibrated(made[k][1].p_cal, k) for k in eligible}
     odds = {k: float(made[k][1].row["best_odds"]) for k in eligible}
     options = sorted(((p[a] * p[b] * odds[a] * odds[b] - 1, a, b) for a, b in product(eligible, eligible)
                       if competition[a] == "A" and competition[b] == "B"), reverse=True)

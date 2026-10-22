@@ -79,7 +79,8 @@ def test_a_match_that_now_settles_by_rule_is_not_a_correction_of_a_score() -> No
     for outcome in (VOID_CANCELLED, VOID_NO_RESULT):
         v = judge(stored_status="win", stored_profit=D("1.3"), score_based=True, outcome=outcome, priced=True,
                   upper=False, status_short="CANC")
-        assert (v.action, v.code) == ("held", "settles_by_rule_now") and outcome.basis in v.detail
+        assert (v.action, v.code) == ("held", "settles_by_rule_now")
+        assert outcome.basis is not None and outcome.basis in v.detail
 
 
 def test_a_void_by_rule_stands_when_a_result_appears() -> None:

@@ -321,8 +321,10 @@ def test_discovery_reads_an_active_markets_priced_history(db: psycopg.Connection
                "'closing', 1.9, %s)", (seed.fixture_id, seed.payload_hash))
     kickoff = db.execute("SELECT kickoff_at FROM core.fixtures WHERE id = %s", (seed.fixture_id,)).fetchone()
     assert kickoff is not None
-    run = db.execute("INSERT INTO intel.runs (job, started_at, status) VALUES ('weekly', %s, 'running') RETURNING id",
-                     (at,)).fetchone()[0]  # not cycle.open_run: it commits, and this test must leave nothing behind
+    opened = db.execute("INSERT INTO intel.runs (job, started_at, status) VALUES ('weekly', %s, 'running') RETURNING id",
+                        (at,)).fetchone()  # not cycle.open_run: it commits, and this test must leave nothing behind
+    assert opened is not None
+    run = opened[0]
     discovery.run_discovery(db, at=at, run_id=run, root=tmp_path)
     crit = {int(r[0]): r[1] for r in db.execute("SELECT provider_bet_id, criteria FROM intel.market_registry "
                                                  "WHERE run_id = %s", (run,)).fetchall()}

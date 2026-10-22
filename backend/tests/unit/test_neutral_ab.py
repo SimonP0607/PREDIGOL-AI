@@ -299,9 +299,9 @@ def test_the_mapping_is_fitted_on_results_known_by_the_cut_off_and_no_others(mon
     # a result is known three hours after kick-off. A match that kicked off 90 minutes before the cut-off of the first block
     # has no result yet and must not be in the fit; one that kicked off five hours before has, and must be.
     import fbi.backtesting.neutral_ab as module
+    from fbi.models.elo_ologit import fit_ologit as real_fit
 
     seen: list[int] = []
-    real_fit = module.fit_ologit
 
     def spy(obs: object) -> object:
         seen.append(len(obs))  # type: ignore[arg-type]

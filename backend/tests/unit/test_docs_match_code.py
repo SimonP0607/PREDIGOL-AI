@@ -255,7 +255,7 @@ def test_the_variables_of_the_ai_layers_document_have_the_codes_defaults(monkeyp
     monkeypatch.setattr("fbi.ai.config.environment", lambda: {})
     s = AiSettings.from_env()
     text = " ".join(section(LAYER, 7).split())
-    defaults = {"FBI_AI_MONTHLY_BUDGET_USD": s.monthly_budget, "FBI_AI_DAILY_MAX_FACTOR": s.daily_max_factor,
+    defaults: dict[str, Decimal | int] = {"FBI_AI_MONTHLY_BUDGET_USD": s.monthly_budget, "FBI_AI_DAILY_MAX_FACTOR": s.daily_max_factor,
                 "FBI_AI_MAX_LLM_REVIEWS_PER_DAY": s.max_llm_reviews_per_day, "FBI_AI_MAX_DEEP_PER_DAY": s.max_deep_per_day,
                 "FBI_AI_MAX_WEB_FIRST": s.max_web_first, "FBI_AI_MAX_WEB_PRE": s.max_web_pre,
                 "FBI_AI_MAX_WATCH_PER_DAY": s.max_watch_per_day, "FBI_AI_HORIZON_HOURS": s.horizon_hours}

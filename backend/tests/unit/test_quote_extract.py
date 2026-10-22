@@ -141,10 +141,12 @@ def test_values_nobody_can_read_are_counted_with_samples() -> None:
 
 def test_malformed_bodies_do_not_raise() -> None:
     reg = registry()
-    for body in ({}, {"response": None}, {"response": "x"}, {"response": [None, 3, "a", {}]},
-                 {"response": [{"fixture": {"id": "7"}, "bookmakers": "x"}]},
-                 {"response": [{"fixture": 5, "bookmakers": [{"id": "a", "name": 3, "bets": 4}, None]}]},
-                 {"response": [{"bookmakers": [{"id": 1, "name": "B", "bets": [None, {"id": "x"}, {"id": 1, "values": 3}]}]}]}):
+    bodies: list[Any] = [{}, {"response": None}, {"response": "x"}, {"response": [None, 3, "a", {}]},
+                         {"response": [{"fixture": {"id": "7"}, "bookmakers": "x"}]},
+                         {"response": [{"fixture": 5, "bookmakers": [{"id": "a", "name": 3, "bets": 4}, None]}]},
+                         {"response": [{"bookmakers": [{"id": 1, "name": "B",
+                                                        "bets": [None, {"id": "x"}, {"id": 1, "values": 3}]}]}]}]
+    for body in bodies:
         entries = parse_body(body, reg.specs, reg.known)
         assert all(not e.quotes for e in entries)
 

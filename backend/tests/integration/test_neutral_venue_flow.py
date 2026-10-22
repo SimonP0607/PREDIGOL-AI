@@ -20,8 +20,9 @@ import pytest
 from scripts import neutral_rule
 
 from fbi.ai.packet import PacketBuilder
-from fbi.backtesting.neutral_ab import evaluate, run_ab
+from fbi.backtesting.neutral_ab import PROTOCOL, evaluate, run_ab
 from fbi.catalog import neutral_store as ns
+from fbi.catalog.neutral import RULE_VERSION
 from fbi.features.data import MatchRecord
 from fbi.ingestion import apply as ingestion_apply
 from fbi.ingestion.apply import apply_fixtures_payload
@@ -256,7 +257,7 @@ def test_a_forecast_of_a_neutral_match_changes_only_while_the_rule_is_in_force(
 
     # The rule has decided that this match is at a neutral ground. Nobody has put the rule in force: no forecast moves.
     db.execute("INSERT INTO core.fixture_venue_class (fixture_id, rule_version, neutral, basis, evidence) "
-               "VALUES (%s, %s, true, 'decider_ground', '{}')", (target, ns.RULE_VERSION))
+               "VALUES (%s, %s, true, 'decider_ground', '{}')", (target, RULE_VERSION))
     quiet = forecast_upcoming(db, at=AT + timedelta(hours=1), code_version="pipetest")
     assert quiet.written == 0 and quiet.unchanged >= 2 and quiet.feature_sets_written == 0
     assert forecast_of(db, target) == base, "a stored verdict is not an input to any model until the switch is on"
@@ -403,7 +404,7 @@ def test_promoting_asks_before_it_writes_and_says_what_it_would_change(db: psyco
 
     code, lines = neutral_rule.promote_command(db, run_id=run.id, reason=REASON, by="simon", confirm=True)
     assert code == 0 and "Rule neutral-v1 is in force" in lines[0] and "by simon" in lines[0]
-    assert ns.rule_in_force(db) == ns.RULE_VERSION
+    assert ns.rule_in_force(db) == RULE_VERSION
 
     code, lines = neutral_rule.promote_command(db, run_id=run.id, reason=REASON, by="simon", confirm=True)
     assert code == 0 and "already in force: nothing written" in lines[0]
@@ -470,9 +471,9 @@ def test_retiring_asks_before_it_writes_and_leaves_the_verdicts(db: psycopg.Conn
     code, lines = neutral_rule.retire_command(db, reason="a model got worse in production", by=None, confirm=False)
     text = "\n".join(lines)
     assert code == 0 and text.startswith("DRY RUN - retiring neutral-v1") and "no match is neutral" in text
-    assert "The verdicts stay stored" in text and ns.rule_in_force(db) == ns.RULE_VERSION
+    assert "The verdicts stay stored" in text and ns.rule_in_force(db) == RULE_VERSION
     code, lines = neutral_rule.retire_command(db, reason="a model got worse in production", by=None, confirm=True)
-    assert code == 2 and ns.rule_in_force(db) == ns.RULE_VERSION
+    assert code == 2 and ns.rule_in_force(db) == RULE_VERSION
 
     code, lines = neutral_rule.retire_command(db, reason="a model got worse in production", by="simon", confirm=True)
     assert code == 0 and "The rule is retired" in lines[0] and ns.rule_in_force(db) is None
@@ -501,7 +502,7 @@ def test_show_tells_the_story_of_the_switch(db: psycopg.Connection[Any], world: 
 
 
 def run_main(session: Session, monkeypatch: pytest.MonkeyPatch, *argv: str) -> int:
-    monkeypatch.setattr(neutral_rule.psycopg, "connect", lambda *_a, **_k: session)
+    monkeypatch.setattr(psycopg, "connect", lambda *_a, **_k: session)
     return neutral_rule.main(list(argv))
 
 
@@ -534,7 +535,7 @@ def test_the_command_line_is_wired_to_those_commands(db: psycopg.Connection[Any]
     assert session.rollbacks == before + 1 and ns.promoted(db) is None
     assert run_main(session, monkeypatch, "promote", "--run", str(run.id), "--reason", REASON, "--by", "simon",
                     "--confirm") == 0
-    assert "is in force" in capsys.readouterr().out and ns.rule_in_force(db) == ns.RULE_VERSION
+    assert "is in force" in capsys.readouterr().out and ns.rule_in_force(db) == RULE_VERSION
 
     assert run_main(session, monkeypatch, "promote", "--reason", REASON) == 2
     assert "promote needs --run ID and --reason TEXT" in capsys.readouterr().err
@@ -573,7 +574,7 @@ def write_synthetic(db: psycopg.Connection[Any], before: list[MatchRecord], afte
                         [(ids[m.fixture_id], m.goals_home, m.goals_away) for m in before])
         cur.executemany("INSERT INTO core.fixture_venue_class (fixture_id, rule_version, neutral, basis, evidence) "
                         "VALUES (%s, %s, true, 'third_country', '{}')",
-                        [(ids[m.fixture_id], ns.RULE_VERSION) for m in after if m.is_neutral])
+                        [(ids[m.fixture_id], RULE_VERSION) for m in after if m.is_neutral])
 
 
 def add_match_still_to_play(db: psycopg.Connection[Any], before: list[MatchRecord]) -> int:
@@ -586,7 +587,7 @@ def add_match_still_to_play(db: psycopg.Connection[Any], before: list[MatchRecor
                   "kickoff_at, status_short, status_group) VALUES (9799999, %s, %s, %s, %s, 'NS', 'scheduled') "
                   "RETURNING id", (*last, max(m.kickoff_at for m in before) + timedelta(days=3)))
     db.execute("INSERT INTO core.fixture_venue_class (fixture_id, rule_version, neutral, basis, evidence) "
-               "VALUES (%s, %s, true, 'third_country', '{}')", (fid, ns.RULE_VERSION))
+               "VALUES (%s, %s, true, 'third_country', '{}')", (fid, RULE_VERSION))
     return int(fid)
 
 
@@ -594,7 +595,7 @@ def test_the_backtest_reads_the_database_the_way_the_comparison_reads_its_lists(
     before, after = synthetic_world(2, share=0.3, really_neutral=True)
     write_synthetic(db, before, after)
     add_match_still_to_play(db, before)
-    stored = run_ab(db, rule=ns.RULE_VERSION, protocol=SCALED)
+    stored = run_ab(db, rule=RULE_VERSION, protocol=SCALED)
     direct = evaluate(before, after, {m.fixture_id: "third_country" for m in after if m.is_neutral}, SCALED,
                       labels=stored.labels)
     assert stored.decision.verdict == direct.decision.verdict == "justified"
@@ -606,11 +607,11 @@ def test_the_backtest_reads_the_database_the_way_the_comparison_reads_its_lists(
             assert getattr(mine, field) == pytest.approx(getattr(theirs, field), abs=1e-9), field
     assert stored.counts["labelled_in_window"] == direct.counts["labelled_in_window"] > SCALED.min_primary
     assert stored.counts["played"] == direct.counts["played"] == len(before), "every match, once"
-    assert stored.labels == ns.label_state(db, ns.RULE_VERSION, through=ns.labels_through(stored.labels))
+    assert stored.labels == ns.label_state(db, RULE_VERSION, through=ns.labels_through(stored.labels))
     assert stored.labels["neutral"] == sum(m.is_neutral for m in after)
     assert stored.labels["through"] == stored.window["through"] == direct.window["through"], (
         "the labels are those of the matches the run could see: up to the last result it priced")
-    assert ns.label_state(db, ns.RULE_VERSION)["neutral"] == stored.labels["neutral"] + 1, (
+    assert ns.label_state(db, RULE_VERSION)["neutral"] == stored.labels["neutral"] + 1, (
         "a match still to play, decided since, is a label too - but not one this run measured")
     assert set(stored.as_dict()["bases"]) == {"third_country"}, "and each label is attributed to the evidence that made it"
 
@@ -638,9 +639,9 @@ def test_labels_that_are_right_go_from_the_backtest_to_the_models_and_back(db: p
     before, after = synthetic_world(2, share=0.3, really_neutral=True)
     write_synthetic(db, before, after)
     session, run = run_the_command(db, monkeypatch, tmp_path)
-    assert run.verdict == "justified" and run.protocol == neutral_rule.PROTOCOL
+    assert run.verdict == "justified" and run.protocol == PROTOCOL
     assert run.params["control_margin"] == SCALED.control_margin and run.result["verdict"] == "justified"
-    assert run.labels == ns.label_state(db, ns.RULE_VERSION, through=ns.labels_through(run.labels))
+    assert run.labels == ns.label_state(db, RULE_VERSION, through=ns.labels_through(run.labels))
     assert ns.promoted(db) is None and not any(read(db).values()), "a backtest changes no model"
 
     code, lines = neutral_rule.promote_command(session, run_id=run.id, reason=REASON, by="simon", confirm=True)  # type: ignore[arg-type]

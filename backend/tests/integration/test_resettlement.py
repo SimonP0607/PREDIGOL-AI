@@ -15,6 +15,7 @@ import pytest
 
 from fbi.parlays.persist import build_parlays
 from fbi.picks import resettlement as rs
+from fbi.picks import settlement
 from fbi.picks.daily import build_daily_sets, product_day
 from fbi.picks.engine import settle_open_picks
 from fbi.picks.product_settlement import PARLAY_RULE_VERSION, settle_products
@@ -393,7 +394,7 @@ def test_a_record_another_pass_changed_in_between_is_a_conflict_not_an_overwrite
     w.result("F1", 2, 0)
     settle_all(w)
     correct(w, "F1", 0, 1)
-    real = rs.settlement.settle
+    real = settlement.settle
     done: list[bool] = []
 
     def another_pass_writes_first(*args: Any, **kwargs: Any) -> Any:
@@ -404,7 +405,7 @@ def test_a_record_another_pass_changed_in_between_is_a_conflict_not_an_overwrite
                        (w.picks["F1"],))
         return outcome
 
-    monkeypatch.setattr(rs.settlement, "settle", another_pass_writes_first)
+    monkeypatch.setattr(settlement, "settle", another_pass_writes_first)
     spy = _Spy()
     monkeypatch.setattr(rs, "log", spy)
     report = rs.resettle(db, at=LATER, since=EPOCH)
@@ -832,7 +833,7 @@ def test_a_pick_another_pass_settled_differently_in_between_is_a_conflict_too(
     w.result("F1", 2, 0)
     settle_all(w)
     correct(w, "F1", 0, 1)
-    real = rs.settlement.settle
+    real = settlement.settle
     done: list[bool] = []
 
     def another_pass_settles_it_as_a_push(*args: Any, **kwargs: Any) -> Any:
@@ -842,7 +843,7 @@ def test_a_pick_another_pass_settled_differently_in_between_is_a_conflict_too(
             db.execute("UPDATE picks.pick_results SET result_status = 'push' WHERE pick_id = %s", (w.picks["F1"],))
         return outcome
 
-    monkeypatch.setattr(rs.settlement, "settle", another_pass_settles_it_as_a_push)
+    monkeypatch.setattr(settlement, "settle", another_pass_settles_it_as_a_push)
     report = rs.resettle(db, at=LATER, since=EPOCH)
     assert report.conflicts == 1 and report.changes == [] and trail(w) == []
     assert pick_result(w, "F1")[:2] == ("push", Decimal("1.3000")), "only its status moved, and the guard saw it"
@@ -967,8 +968,10 @@ def test_the_run_of_the_pipeline_says_what_it_settled_again(db: psycopg.Connecti
     conn: Any = _NoCommit(db)
     report = pipeline.run_pipeline(conn, at=now, code_version="test", apply=True)
     assert report.run_id is not None and report.settlement is not None and report.resettlement is not None
-    rows_updated, notes, errors = db.execute("SELECT rows_updated, notes, errors FROM raw.ingestion_runs WHERE id = %s",
-                                             (report.run_id,)).fetchone() or (None, None, None)
+    ran = db.execute("SELECT rows_updated, notes, errors FROM raw.ingestion_runs WHERE id = %s",
+                     (report.run_id,)).fetchone()
+    assert ran is not None
+    rows_updated, notes, errors = ran
     assert rows_updated == report.settlement.settled + 1, "the record settled again is a row updated by the run"
     assert "re-settled 1 record(s) on 1 match(es)" in notes and errors == 0
     assert pick_result(w, "F1")[:2] == ("loss", Decimal("-1.0000"))
@@ -985,8 +988,9 @@ def test_the_run_of_the_pipeline_says_what_it_settled_again(db: psycopg.Connecti
 
     monkeypatch.setattr(pipeline, "resettle", broken)
     failed = pipeline.run_pipeline(conn, at=now, code_version="test", apply=True)
-    errors, last_error = db.execute("SELECT errors, last_error FROM raw.ingestion_runs WHERE id = %s",
-                                    (failed.run_id,)).fetchone() or (None, None)
+    failure = db.execute("SELECT errors, last_error FROM raw.ingestion_runs WHERE id = %s", (failed.run_id,)).fetchone()
+    assert failure is not None
+    errors, last_error = failure
     assert errors == 1 and last_error.startswith("resettlement: RuntimeError"), "recorded on the run, not hidden"
 
 
@@ -1005,8 +1009,9 @@ def test_the_switch_stops_the_routine_pass_and_the_run_says_so(db: psycopg.Conne
     monkeypatch.setenv("FBI_RESETTLE", "0")
     off = pipeline.run_pipeline(conn, at=datetime.now(UTC), code_version="test", apply=True)
     assert off.resettlement is not None and off.resettlement.changes == []
-    notes, errors = db.execute("SELECT notes, errors FROM raw.ingestion_runs WHERE id = %s",
-                               (off.run_id,)).fetchone() or (None, None)
+    switched = db.execute("SELECT notes, errors FROM raw.ingestion_runs WHERE id = %s", (off.run_id,)).fetchone()
+    assert switched is not None
+    notes, errors = switched
     assert "re-settlement OFF (FBI_RESETTLE=0)" in notes and errors == 0, "switched off in the open, not silently"
     assert pick_result(w, "F1")[:2] == ("win", Decimal("1.3000")), "nothing was settled again"
     assert scalar(db.execute("SELECT count(*) FROM core.fixture_result_revisions WHERE fixture_id = %s",

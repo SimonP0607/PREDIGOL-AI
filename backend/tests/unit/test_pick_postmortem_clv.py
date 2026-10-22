@@ -51,7 +51,8 @@ def test_a_margin_is_not_a_market_move() -> None:
 
 def test_a_price_that_moved_against_is_a_market_error() -> None:
     f = facts(odds=2.10, close_odds=2.20, p_close=0.455, p_market=0.50)  # 2.10 / 2.20 - 1 = -4.5 %
-    assert f.price_move == pytest.approx(-0.0455, abs=1e-4) and f.price_move <= MOVED_AGAINST
+    assert f.price_move is not None and f.price_move == pytest.approx(-0.0455, abs=1e-4)
+    assert f.price_move <= MOVED_AGAINST
     assert classify(f) == "MARKET_ERROR"
 
 

@@ -318,7 +318,7 @@ def test_stakes_press_only_within_two_wins() -> None:
     assert middle is not None and middle.pressure == "mid_table", "8 from both boundaries"
     late = ctx.stakes(table, 3, remaining=2)
     assert late is not None and late.pressure == "promotion"
-    assert ctx.stakes(table, 6, remaining=29).pressure == "relegation"  # in the zone  # type: ignore[union-attr]
+    assert ctx.stakes(table, 6, remaining=29).pressure == "relegation"  # type: ignore[union-attr]  # in the zone
     assert eighth.as_json()["rule"] == "stakes-v2"
 
 

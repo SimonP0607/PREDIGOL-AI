@@ -156,13 +156,14 @@ def test_0080_adds_the_history_without_touching_what_exists_and_goes_back(migrat
             # the history of corrections refuses what is not a correction, an unknown kind, and a silent edit
             revision = ("INSERT INTO core.fixture_result_revisions (fixture_id, kind, old_state, new_state, changed) "
                         "VALUES (%s, %s, %s::jsonb, %s::jsonb, %s)")
-            for params in (
+            bad_revisions: list[tuple[Any, ...]] = [
                 (ids["finished"], "score", '{"goals_home": 1}', '{"goals_home": 1}', ["goals_home"]),  # the same state
                 (ids["finished"], "score", '{"goals_home": 1}', '{"goals_home": 2}', []),  # says nothing changed
                 (ids["finished"], "lineup", '{"goals_home": 1}', '{"goals_home": 2}', ["goals_home"]),  # unknown kind
-            ):
+            ]
+            for values in bad_revisions:
                 with pytest.raises(psycopg.errors.CheckViolation):
-                    c.execute(revision, params)
+                    c.execute(revision, values)
                 c.rollback()
             with pytest.raises(psycopg.errors.ForeignKeyViolation):  # a correction of a match that does not exist
                 c.execute(revision, (0, "score", '{"goals_home": 1}', '{"goals_home": 2}', ["goals_home"]))

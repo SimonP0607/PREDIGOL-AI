@@ -135,8 +135,9 @@ def test_a_calibrated_ev_below_the_minimum_is_rejected() -> None:
 
 
 def test_a_risky_selection_is_a_caution_not_a_rejection() -> None:
-    for kw in ({"odds": decision.RISK_MAX_ODDS + 0.4, "p_model": 0.55, "p_fair": 0.30},
-               {"width": decision.RISK_MAX_WIDTH + 0.05}):
+    cases: list[dict[str, Any]] = [{"odds": decision.RISK_MAX_ODDS + 0.4, "p_model": 0.55, "p_fair": 0.30},
+                                   {"width": decision.RISK_MAX_WIDTH + 0.05}]
+    for kw in cases:
         e = run(**kw)
         assert e.state == "CAUTELA" and "risk" in e.reasons and effect(e, 7) == "CAUTELA", (kw, e.reasons)
 
