@@ -81,7 +81,7 @@ Not zero: a postponed match can be rescheduled weeks later, and the point of
 refreshing is to see that. Not open-ended either - see below."""
 
 
-def active_seasons(conn: psycopg.Connection) -> list[ActiveSeason]:
+def active_seasons(conn: psycopg.Connection, *, at: datetime | None = None) -> list[ActiveSeason]:
     """The seasons the LEAGUE strategy will spend a request on, one each.
 
     ``is_current`` is the provider's answer and it is reliable - exactly one
@@ -94,7 +94,14 @@ def active_seasons(conn: psycopg.Connection) -> list[ActiveSeason]:
     So a season whose newest known fixture is more than FINISHED_GRACE_DAYS past
     is left alone. A season with no fixtures at all is kept, because "we have
     never fetched this one" is the opposite of "this one is over".
+
+    "Now" is the APPLICATION clock (``at`` or ``fbi.core.clock.now``), not SQL ``now()``. The window used to be
+    read from the database's own clock while every other date in the job came from the application's, so a test
+    that froze the application clock was still judged by the real day: on 2026-10-15 the seed fixture of the
+    integration suite (2026-09-15) crossed the 30-day mark and six tests failed with no code having changed.
+    In production the two clocks are the same instant.
     """
+    moment = at or now()
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(
             "SELECT cs.id, c.provider_league_id, cs.season, c.name "
@@ -106,9 +113,9 @@ def active_seasons(conn: psycopg.Connection) -> list[ActiveSeason]:
             ") k ON true "
             "WHERE c.is_tracked AND cs.is_current "
             "  AND (k.last_kickoff IS NULL "
-            "       OR k.last_kickoff > now() - make_interval(days => %s)) "
+            "       OR k.last_kickoff > %s::timestamptz - make_interval(days => %s)) "
             "ORDER BY c.provider_league_id",
-            (FINISHED_GRACE_DAYS,),
+            (moment, FINISHED_GRACE_DAYS),
         )
         return [ActiveSeason(int(a), int(b), int(c), str(d)) for a, b, c, d in cur.fetchall()]
 
@@ -417,7 +424,7 @@ async def _sync_by_league(
     """Returns True if the provider refused on PLAN grounds (so a fallback is
     warranted). A transport or parameter error is a real error and is recorded
     as one."""
-    seasons = active_seasons(conn)
+    seasons = active_seasons(conn, at=moment)
     season_ids = tracked_season_ids(conn)
     plan_refused = False
 

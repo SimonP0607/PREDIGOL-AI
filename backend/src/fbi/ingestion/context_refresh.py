@@ -148,7 +148,7 @@ async def _refresh_one(conn: psycopg.Connection, provider: Any, ledger: RunLedge
 async def refresh_context(conn: psycopg.Connection, provider: Any, *, at: datetime | None = None,
                           max_requests: int = 400) -> RunCounters:
     moment = at or now()
-    seasons = active_seasons(conn)
+    seasons = active_seasons(conn, at=moment)
     tables = table_seasons(conn)
     ledger = RunLedger(conn)
     run_id = ledger.open("context_refresh", params={"seasons": len(seasons)}, scheduled_for=moment)

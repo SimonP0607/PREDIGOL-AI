@@ -9,6 +9,7 @@ from typing import Any
 import psycopg
 import pytest
 
+from fbi.core.clock import FrozenClock, SystemClock, set_clock
 from fbi.core.errors import ProviderError
 from fbi.ingestion.context_refresh import refresh_context
 from fbi.providers.api_football.details import StandingRef
@@ -40,8 +41,15 @@ class FakeProvider:
         return [], self._raw("/injuries")
 
 
+SEED_TODAY = datetime(2026, 9, 20, 12, 0, tzinfo=UTC)
+"""The day these tests live on: five days after the seed fixture (2026-09-15). A season is refreshed while its newest
+fixture is less than 30 days old (``active_seasons``), so against the REAL day these tests stopped finding the season
+on 2026-10-15 and six of them failed with no code having changed. The application clock is frozen instead."""
+
+
 @pytest.fixture
 def current_league(migrated_database: str, seed: Seed) -> Iterator[dict[str, int]]:
+    set_clock(FrozenClock(SEED_TODAY))
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("SELECT is_tracked, type FROM core.competitions WHERE id = %s", (seed.competition_id,))
         tracked, kind = cur.fetchone()  # type: ignore[misc]
@@ -57,6 +65,7 @@ def current_league(migrated_database: str, seed: Seed) -> Iterator[dict[str, int
                     (seed.home_team_id, seed.away_team_id, seed.home_team_id))
         home, away = (r[0] for r in cur.fetchall())
     yield {"league": int(league), "season": int(season), "home": int(home), "away": int(away)}
+    set_clock(SystemClock())
     with psycopg.connect(migrated_database, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("DELETE FROM core.standings WHERE competition_season_id = %s", (seed.season_id,))
         cur.execute("DELETE FROM core.context_checks WHERE competition_season_id = %s", (seed.season_id,))
