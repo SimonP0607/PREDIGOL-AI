@@ -17,8 +17,8 @@ Migración **0077**, solo aditiva (cuatro tablas nuevas, nada existente se alter
 | `market.odds_extractions` | El libro de control: un registro por cuerpo RAW distinto, con su estado (`ok`, `empty`, `no_fixture`, `after_kickoff`, `error`), la versión del extractor y cuántas cuotas se escribieron o se rechazaron. |
 | `market.odds_quotes` | Las cuotas, particionadas por mes. Llave: partido, casa, mercado, selección, línea, `captured_at`. Una cuota nunca se sobrescribe: la sigue la siguiente. |
 
-Hoy se estructuran **53 mercados** de las familias resultado, goles, goles por mitad, córners, tarjetas y tiros de equipo
-(taxonomía `tax-v1`). Los demás (jugadores, tiempos, especiales, otros deportes…) **siguen intactos en RAW**: activarlos después es
+Hoy se estructuran **55 mercados** de las familias resultado, goles, goles por mitad, córners, tarjetas y tiros de equipo
+(taxonomía `tax-v2`; la `tax-v1` tenía 53 y `tax-v2` añade los dos hándicaps asiáticos por mitad, ver más abajo). Los demás (jugadores, tiempos, especiales, otros deportes…) **siguen intactos en RAW**: activarlos después es
 cambiar un registro de `market_definitions` y volver a leer; no se pierde nada por no extraerlos hoy.
 
 ## Reglas que se respetan
@@ -32,8 +32,10 @@ cambiar un registro de `market_definitions` y volver a leer; no se pierde nada p
   series no pueden discrepar sobre una selección (hay una prueba precio por precio contra `iter_odds`).
 * **Rechazar antes que adivinar.** Una selección fuera de su vocabulario, una línea imposible (p. ej. 2.3 goles) o una cuota que no
   es cuota (1.00, 0, ≥ 1000) se rechaza y se cuenta; nunca se corrige en silencio.
-* **Handicap asiático:** el proveedor repite el hándicap del local en las dos filas; la fila del visitante se niega (medido en el
-  mercado 4). Los parientes del 4 (19 y 104) **no se extraen aún**: su signo está sin confirmar con datos del servidor.
+* **Handicap asiático:** el proveedor repite el hándicap del local en las dos filas; la fila del visitante se niega. Está medido
+  con datos reales del servidor en tres mercados: el 4 (partido completo), el **19** (1.ª parte) y el **104** (2.ª parte). En los
+  tres el par suma 1,085–1,094 (mediana) leído así y entre 0,28 y 1,9 leído al revés, y el precio del visitante *sube* con el
+  número impreso (nunca baja). Un pariente solo se extrae cuando se ha medido lo mismo sobre sus propios precios.
 * **Reintentos sin esconder errores.** Los cuerpos ilegibles o sin partido se anotan en el libro y se reintentan cada 2 h durante
   14 días; lo que falla se ve en el panel (Admin → PrediGol Intelligence → Mercados → Reloj de precios).
 * **Una versión nueva del extractor reemplaza lo derivado de un cuerpo** (borra y reescribe sus cuotas); RAW no se toca nunca.
@@ -75,7 +77,25 @@ A y B; la vuelta a A se recupera con `market.odds_asks` (cada consulta apunta a 
 * Quitar todo: `alembic downgrade 0076` (borra las cuatro tablas nuevas; RAW y todo lo demás quedan intactos). Hacer antes el
   respaldo habitual de despliegue.
 
-## Pendiente de F1
+## Medición real en el servidor (22 oct 2026, solo lectura)
 
-Medición real en el servidor (solo lectura): nombres de apuesta, vocabularios de valores, signo de los hándicaps 19 y 104,
-filas por cuerpo y bytes por fila; después, plan de relleno desde 2026-09-25 con el almacenamiento medido.
+Estado del reloj a las 17:11 UTC; el trabajo empezó a leer a las 13:15 UTC y lleva 6.445 cuerpos en 4 h:
+
+| Dato | Valor |
+|---|---|
+| Cuerpos `/odds` en RAW desde el 25 sep | 12.249 (≈ 454 al día) |
+| Leídos con éxito | 6.222 → 6.053.873 cuotas en 1.437 partidos |
+| Filas por cuerpo | ≈ 973 (la estimación previa de 1.500 era alta) |
+| Peso de la tabla | 1,073 GB para 6,05 M filas → **≈ 177 B por fila** (con índices) |
+| Proyección mensual | ≈ 13.600 cuerpos × 973 × 177 B ≈ **2,35 GB al mes** (≈ 2,6 GB con `tax-v2`); el freno está en 25 GB, o sea ≈ 10 meses |
+| Pendientes | 5.916 (incluye 112 sin partido que se reintentan); el trabajo vacía entre 1.500 y 1.800 por hora (los 300 de cada vuelta), empezando por los cuerpos nunca leídos y los más antiguos; quedará en unas 3,5 h |
+| `after_kickoff` | 111 cuerpos, 0 cuotas (por diseño: se pidieron tras el inicio y su marca `update` no es anterior) |
+| Cuotas rechazadas | todas son precio `1.00` (líneas muertas del proveedor); ninguna otra causa |
+
+Conclusiones: el almacenamiento cabe con holgura y **no hace falta compactar todavía**; el relleno histórico es el propio trabajo
+de cada 10 minutos (no hay que lanzar `run` a mano); y `tax-v2` hace que el extractor relea (borrar y reescribir) los cuerpos
+leídos con `tax-v1` en segundo plano, a 300 cuerpos cada 10 minutos, cuando se despliegue.
+
+**Hándicaps pendientes.** Con el mismo método (400 cuerpos más nuevos, dos medidas independientes: patrón de las etiquetas y
+pendiente del precio del visitante) los mercados 56, 81, 125, 126 y 152 siguen la misma convención. Siguen aparcados a propósito:
+son córners y tarjetas, y su lectura y liquidación se decide por familia en la fase F9.
