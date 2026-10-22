@@ -108,11 +108,14 @@ def test_the_worker_may_not_create_a_partition_and_carries_on(granted: str) -> N
         # the connection is usable afterwards, and nothing was created
         row = conn.execute("SELECT to_regclass('market.odds_snapshots_2031_03')").fetchone()
         assert row == (None,)
+        row = conn.execute("SELECT to_regclass('market.odds_quotes_2031_03')").fetchone()
+        assert row == (None,)
         conn.execute("RESET ROLE")
     with psycopg.connect(granted) as owner:
         created = ensure_partitions(owner, today=far, months_ahead=0)
-        assert created == ["market.odds_snapshots_2031_03"]
+        assert created == ["market.odds_snapshots_2031_03", "market.odds_quotes_2031_03"]
         owner.execute("DROP TABLE market.odds_snapshots_2031_03")
+        owner.execute("DROP TABLE market.odds_quotes_2031_03")
         owner.commit()
 
 

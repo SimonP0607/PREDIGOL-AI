@@ -1,6 +1,7 @@
 """Monthly partition maintenance for the odds time series.
 
-``market.odds_snapshots`` is RANGE partitioned on ``captured_at``. Without a partition for the
+``market.odds_snapshots`` (the five markets the pipeline reads) and ``market.odds_quotes`` (every structured market,
+the price clock of revision 0077) are RANGE partitioned on ``captured_at``. Without a partition for the
 current month every row lands in the DEFAULT partition and the pruning that makes the table
 survivable does nothing.
 
@@ -22,7 +23,7 @@ log = structlog.get_logger(__name__)
 
 PARTITION_MONTHS_AHEAD = 3
 
-PARTITIONED_TABLES: tuple[str, ...] = ("odds_snapshots",)
+PARTITIONED_TABLES: tuple[str, ...] = ("odds_snapshots", "odds_quotes")
 """Every RANGE-partitioned odds table, so adding one here maintains it everywhere."""
 
 
