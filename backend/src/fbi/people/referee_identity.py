@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import bisect
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Final
 
@@ -174,10 +174,22 @@ def collisions(a: Sequence[Game], b: Sequence[Game], window: int) -> int:
     return found
 
 
+def canonical_rank(key: str, scope: str, games: int, seen: int = 0) -> tuple[bool, int, int, int, str, str]:
+    """What orders the spellings of one referee for the name he is called by: a full name before an initial, then the one with
+    most matches, then the one seen most, then the longest, then the first alphabetically. The smallest wins."""
+    return (rn.is_initial_form(key), -games, -seen, -len(key), key, scope)
+
+
 def pick_canonical(forms: Sequence[Form]) -> FormId:
-    """The spelling a group is called by: a full name before an initial, then the one with most matches, then the one seen
-    most, then the longest, then the first alphabetically."""
-    return min(forms, key=lambda f: (rn.is_initial_form(f.key), -len(f.games), -f.seen, -len(f.key), f.key, f.scope)).id
+    """The spelling a group is called by (see ``canonical_rank``)."""
+    return min(forms, key=lambda f: canonical_rank(f.key, f.scope, len(f.games), f.seen)).id
+
+
+def home_scope(games_by_scope: Mapping[str, int]) -> str | None:
+    """The country a referee referees from: the scope where most of his matches were, the first alphabetically on a tie;
+    None when none of his matches has a scope."""
+    real = {scope: n for scope, n in games_by_scope.items() if scope != UNKNOWN_SCOPE}
+    return min(real, key=lambda scope: (-real[scope], scope)) if real else None
 
 
 class _Clusters:

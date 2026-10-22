@@ -70,6 +70,21 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "ai.pick_reviews", "INSERT", False),
     ("predigol_api", "ai.usage", "INSERT", False),
     ("predigol_api", "ai.match_analyses", "UPDATE", False),
+    # the referee queue (plan F3): a person decides pairs and moves aliases; only the worker's pass makes aliases and officials
+    ("predigol_api", "core.referees", "UPDATE", True),
+    ("predigol_api", "core.referees", "INSERT", True),            # a split makes a referee
+    ("predigol_api", "core.referees", "DELETE", False),
+    ("predigol_api", "core.referee_aliases", "UPDATE", True),
+    ("predigol_api", "core.referee_aliases", "INSERT", False),
+    ("predigol_api", "core.referee_aliases", "DELETE", False),
+    ("predigol_api", "core.fixture_officials", "SELECT", True),
+    ("predigol_api", "core.fixture_officials", "INSERT", False),
+    ("predigol_api", "core.fixture_officials", "UPDATE", False),
+    ("predigol_api", "core.referee_candidates", "DELETE", True),
+    ("predigol_api", "core.referee_events", "INSERT", True),
+    ("predigol_api", "core.referee_events", "DELETE", False),
+    ("predigol_worker", "core.fixture_officials", "INSERT", True),
+    ("predigol_worker", "core.referee_aliases", "INSERT", True),
     ("predigol_worker", "ai.pick_reviews", "INSERT", True),
     ("predigol_worker", "ai.usage", "INSERT", True),
 ])

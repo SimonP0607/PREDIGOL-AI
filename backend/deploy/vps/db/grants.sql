@@ -63,7 +63,11 @@ BEGIN
     -- the owner's "run now" for the AI decision layer: a queued request the worker picks up (fbi.ai.cycle)
     'ai.run_requests:INSERT',
     -- the owner's verdict on an evidence-ledger entry (Admin Console, Data truth)
-    'audit.evidence_ledger:UPDATE'
+    'audit.evidence_ledger:UPDATE',
+    -- the owner's decisions in the referee queue: merge, undo, split, reject, reopen, rename (fbi.people.referees). A person
+    -- moves aliases between referees and decides pairs; the rules' own pass (the worker) is the only one that makes aliases.
+    'core.referees:INSERT, UPDATE', 'core.referee_aliases:UPDATE', 'core.referee_candidates:INSERT, UPDATE, DELETE',
+    'core.referee_events:INSERT, UPDATE'
   ]
   LOOP
     IF to_regclass(split_part(t, ':', 1)) IS NULL THEN

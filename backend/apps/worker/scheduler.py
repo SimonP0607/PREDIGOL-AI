@@ -214,6 +214,14 @@ every STRUCTURE_MINUTES builds the seasons never built, those built by older rul
 number, a bounded time); a sweep at STRUCTURE_SWEEP_HOUR:STRUCTURE_SWEEP_MINUTE UTC reads every season, so that a result the
 provider corrects long after its season ended still reaches its tie. FBI_COMPETITION_STRUCTURE=0 switches both off without a
 deploy: the columns it fills (``fixtures.stage_id`` / ``leg`` / ``tie_id``) then simply stop being refreshed."""
+REFEREE_MINUTES = int(os.environ.get("FBI_REFEREE_IDENTITY_MINUTES", "60"))
+REFEREE_SWEEP_HOUR, REFEREE_SWEEP_MINUTE = 9, 50
+REFEREE_ENABLED = os.environ.get("FBI_REFEREE_IDENTITY", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""The identity of the referees (plan F3): who is who among the spellings the provider wrote, and who officiated each match,
+derived from the facts already stored (``fbi.people``). Database only - no request to the provider. A pass every REFEREE_MINUTES
+places the spellings nobody has placed (most hours there are none: no ledger row); a sweep at REFEREE_SWEEP_HOUR:REFEREE_SWEEP_MINUTE
+UTC audits the result and logs what is off. FBI_REFEREE_IDENTITY=0 switches both off without a deploy: the matches then simply
+stop getting a referee id and the readers keep the text they read before."""
 NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
 AI_REPORT_HOUR = int(os.environ.get("FBI_AI_REPORT_HOUR", "6"))
 """The daily research report is written from this hour (Bogotá), once a day: a check every
@@ -800,6 +808,27 @@ async def _competition_structure_sweep() -> None:
     await asyncio.to_thread(functools.partial(_competition_structure_now, everything=True))
 
 
+def _referee_identity_now(*, sweep: bool = False) -> None:
+    from fbi.ingestion.referee_identity import run_job
+
+    with _connect() as conn:
+        run_job(conn, sweep=sweep)
+
+
+async def _referee_identity() -> None:
+    """Who officiated the matches whose referee nobody has placed yet (plan F3): reads the facts already stored and writes
+    ``core.referees``, ``core.referee_aliases``, ``core.fixture_officials`` and the merge queue. A quiet pass leaves no row in
+    the ledger. In a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_referee_identity_now)
+
+
+async def _referee_identity_sweep() -> None:
+    """The same, once a day, and then an audit of the result that logs what is off."""
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_referee_identity_now, sweep=True))
+
+
 def _notify_now() -> None:
     """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
     from fbi.notify.service import channel_from_env, run_notifier
@@ -1112,7 +1141,7 @@ WORKER_JOB_TYPES = frozenset({
     "pick_pipeline", "quality_sweep", "context_refresh", "context_due", "results_repair", "final_prematch",
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
-    "competition_structure",
+    "competition_structure", "referee_identity",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1354,6 +1383,16 @@ async def main() -> None:
     else:
         log.warning("worker.competition_structure_off",
                     hint="FBI_COMPETITION_STRUCTURE=0: stages and ties are not being refreshed")
+    if REFEREE_ENABLED:
+        scheduler.add_job(_deadline("referee_identity", "referee_identity", _referee_identity), "interval",
+                          minutes=REFEREE_MINUTES, id="referee_identity", max_instances=1, coalesce=True,
+                          misfire_grace_time=REFEREE_MINUTES * 60, next_run_time=moment + timedelta(minutes=19))
+        scheduler.add_job(_deadline("referee_identity_sweep", "referee_identity", _referee_identity_sweep),
+                          "cron", hour=REFEREE_SWEEP_HOUR, minute=REFEREE_SWEEP_MINUTE, timezone="UTC",
+                          id="referee_identity_sweep", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    else:
+        log.warning("worker.referee_identity_off",
+                    hint="FBI_REFEREE_IDENTITY=0: the referees of the matches are not being identified")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))
