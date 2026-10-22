@@ -15,10 +15,24 @@ from datetime import datetime
 import psycopg
 from psycopg.rows import tuple_row
 
+from fbi.catalog.neutral_store import rule_in_force
 from fbi.catalog.segments import CompetitionFacts, segment_of
 
 EXCLUDED_STATES = ("QUARANTINED", "INGESTED")
 """Validation states whose result no model, rating or backtest may read."""
+
+
+class _InForce:
+    """The neutral-venue switch as it stands: the rule the newest ``analytics.neutral_rule_promotion`` row names."""
+
+    def __repr__(self) -> str:
+        return "IN_FORCE"
+
+
+IN_FORCE = _InForce()
+NeutralRule = str | None | _InForce
+"""Which neutral-venue verdicts a read takes: ``IN_FORCE`` (the default: whatever a person promoted, nothing until one
+did), None (none - the models as they were before the rule), or the version of a rule (a backtest of that rule)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,28 +71,35 @@ class MatchRecord:
 
 
 def load_matches(conn: psycopg.Connection, *, competition_ids: list[int] | None = None,
-                 validated: bool = True) -> list[MatchRecord]:
+                 validated: bool = True, neutral_rule: NeutralRule = IN_FORCE) -> list[MatchRecord]:
     """Every stored fixture (optionally restricted), oldest first, with its score if any.
 
     ``validated`` (the default) leaves out the played matches the historical validation
     quarantined or could not settle (``EXCLUDED_STATES``); ``False`` reads them too, for the
-    audits that need to see them."""
+    audits that need to see them.
+
+    ``is_neutral`` is what the fixture and its competition say (nothing writes either: they are false everywhere) OR
+    the verdict of ``neutral_rule`` (``fbi.catalog.neutral``). By default that is the rule a person promoted after a
+    before/after backtest - none until then, so by default nothing changes; a backtest passes None for the models as
+    they were and the rule's version for the models with it."""
+    rule = rule_in_force(conn) if isinstance(neutral_rule, _InForce) else neutral_rule
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(
             """
             SELECT f.id, f.kickoff_at, c.id, c.competition_type, cs.season, f.home_team_id, f.away_team_id,
-                   r.goals_home, r.goals_away, (f.is_neutral OR c.neutral_venue), f.status_group,
-                   r.reg_goals_home, r.reg_goals_away, c.name, c.entity_scope, c.tier
+                   r.goals_home, r.goals_away, (f.is_neutral OR c.neutral_venue OR COALESCE(k.neutral, false)),
+                   f.status_group, r.reg_goals_home, r.reg_goals_away, c.name, c.entity_scope, c.tier
             FROM core.fixtures f
             JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
             JOIN core.competitions c ON c.id = cs.competition_id
             LEFT JOIN core.fixture_results r ON r.fixture_id = f.id
+            LEFT JOIN core.fixture_venue_class k ON k.fixture_id = f.id AND k.rule_version = %s
             WHERE (%s::bigint[] IS NULL OR c.id = ANY(%s::bigint[]))
               AND (NOT %s OR NOT EXISTS (SELECT 1 FROM analytics.fixture_validation v
                                           WHERE v.fixture_id = f.id AND v.state = ANY(%s)))
             ORDER BY f.kickoff_at, f.id
             """,
-            (competition_ids, competition_ids, validated, list(EXCLUDED_STATES)),
+            (rule, competition_ids, competition_ids, validated, list(EXCLUDED_STATES)),
         )
         segments: dict[int, str] = {}
         out: list[MatchRecord] = []

@@ -30,6 +30,7 @@ from psycopg.types.json import Jsonb
 from fbi.ai import context as ctx
 from fbi.ai.absences import absences_as_of, checked_at_as_of
 from fbi.ai.pricing import approx_tokens
+from fbi.catalog.neutral_store import rule_in_force
 
 PACKET_VERSION = "packet-v3"
 """v2 (13 Oct 2026): the ``dossier`` block (``fbi.intel.dossier``): teams in depth, coaches, key players, the
@@ -56,7 +57,8 @@ new packet (a new row) without a new context."""
 OPENING_LOOKBACK = timedelta(days=7)
 
 FIXTURE_SQL = """
-SELECT f.id, f.provider_fixture_id, f.kickoff_at, f.round, f.status_short, f.status_group, f.is_neutral,
+SELECT f.id, f.provider_fixture_id, f.kickoff_at, f.round, f.status_short, f.status_group,
+       (f.is_neutral OR c.neutral_venue OR COALESCE(k.neutral, false)) AS is_neutral,
        f.venue_name, COALESCE(v.city, f.venue_city) AS venue_city, v.country AS venue_country,
        f.home_team_id, f.away_team_id, th.name AS home_name, ta.name AS away_name,
        th.provider_team_id AS home_provider_id, ta.provider_team_id AS away_provider_id,
@@ -74,6 +76,7 @@ SELECT f.id, f.provider_fixture_id, f.kickoff_at, f.round, f.status_short, f.sta
   LEFT JOIN core.venues v ON v.id = f.venue_id
   LEFT JOIN core.venues vh ON vh.id = th.venue_id
   LEFT JOIN core.venues va ON va.id = ta.venue_id
+  LEFT JOIN core.fixture_venue_class k ON k.fixture_id = f.id AND k.rule_version = %(rule)s
  WHERE f.id = %(fixture)s
 """
 
@@ -342,7 +345,7 @@ class PacketBuilder:
     def build(self, fixture_id: int, *, at: datetime, extra_keys: list[tuple[str, str, Decimal]] | None = None
               ) -> Packet | None:
         conn = self.conn
-        f = _row(conn, FIXTURE_SQL, {"fixture": fixture_id})
+        f = _row(conn, FIXTURE_SQL, {"fixture": fixture_id, "rule": rule_in_force(conn)})
         if f is None:
             return None
         kickoff: datetime = f["kickoff_at"]

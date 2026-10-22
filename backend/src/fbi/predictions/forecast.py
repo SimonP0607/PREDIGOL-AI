@@ -39,6 +39,7 @@ from fbi.backtesting.walkforward import (
     elo_history_short,
     known_before,
     outcome_index,
+    prediction_hash,
     train_hash,
 )
 from fbi.features.data import MatchRecord, load_team_stats
@@ -192,7 +193,8 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
                     report.uncovered.append((t.fixture_id, kind, "a team has no result in this competition's "
                                              "training window (promoted, or a season the plan cannot read)"))
                     continue
-                if latest.get((t.fixture_id, version_id)) == th:
+                inputs = prediction_hash(th, t)
+                if latest.get((t.fixture_id, version_id)) == inputs:
                     report.unchanged += 1
                     continue
                 try:
@@ -205,7 +207,7 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
                 for k, (mk, sel, line) in enumerate(MARKET_ROWS):
                     rows.append((t.fixture_id, version_id, mk, sel, line, round(point[k], 6), round(point[k], 6),
                                  None if bounds is None else round(float(bounds[0][k]), 6),
-                                 None if bounds is None else round(float(bounds[1][k]), 6), th, at, 0))
+                                 None if bounds is None else round(float(bounds[1][k]), 6), inputs, at, 0))
 
                 # Every other line the market quoted for this fixture, off the
                 # same matrix. 8,841 Asian Handicap and 1,444 Double Chance
@@ -226,7 +228,7 @@ def forecast_upcoming(conn: psycopg.Connection, *, at: datetime, code_version: s
                                      lp.selection, lp.line, round(lp.p_win, 6),
                                      round(lp.p_win, 6),
                                      None if b is None else round(min(b[0], lp.p_win), 6),
-                                     None if b is None else round(max(b[1], lp.p_win), 6), th, at,
+                                     None if b is None else round(max(b[1], lp.p_win), 6), inputs, at,
                                      round(lp.p_push, 6)))
                         report.lines_priced += 1
                 report.predicted[kind] += 1
