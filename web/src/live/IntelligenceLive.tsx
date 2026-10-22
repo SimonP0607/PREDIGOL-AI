@@ -683,6 +683,7 @@ export function DecisionDetail({
           </Section>
           {pm ? (
             <Section title={t("intel.detail.postmortem")}>
+              <KeyValue label={t("intel.detail.pmVersion")} value={String(pm["version"] ?? DASH)} />
               <KeyValue label={t("intel.detail.verdict")} value={String(pm["verdict"])} />
               <KeyValue label={t("intel.detail.quality")} value={String(pm["decision_quality"])} />
               <ul className="list-disc space-y-1 pl-4 text-xs">
