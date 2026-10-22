@@ -46,7 +46,7 @@ def run_job(conn: psycopg.Connection[Any], *, sweep: bool = False, commit: bool 
 
 def problems_of(result: dict[str, Any]) -> list[str]:
     """What an audit result says is wrong (empty when all is well): the criteria of the plan and the invariants of the tables."""
-    found = [name for name in ("aliases_on_merged_referee", "active_without_alias", "candidates_on_merged_referee") if result[name]]
+    found = referees.broken_invariants(result)
     if result["placed_share"] < MIN_PLACED_SHARE:
         found.append("placed_share")
     if any(result["pass_would_write"].values()):

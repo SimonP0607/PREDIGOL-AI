@@ -539,8 +539,9 @@ def split(conn: psycopg.Connection[Any], referee_id: int, alias_ids: Sequence[in
     return new_id
 
 
-def reject(conn: psycopg.Connection[Any], referee_a: int, referee_b: int, *, actor: str, note: str | None = None) -> None:
-    """Say that two referees are different people: the pair is never suggested again (a pair never suggested is recorded)."""
+def reject(conn: psycopg.Connection[Any], referee_a: int, referee_b: int, *, actor: str, note: str | None = None) -> int:
+    """Say that two referees are different people: the pair is never suggested again (a pair never suggested is recorded).
+    Returns the id of the event."""
     if referee_a == referee_b:
         raise ActionError("invalid", "a referee is the same person as himself")
     with conn.transaction():
@@ -548,12 +549,13 @@ def reject(conn: psycopg.Connection[Any], referee_a: int, referee_b: int, *, act
         with conn.cursor() as cur:
             _active(cur, (referee_a, referee_b))
             _set_decision(cur, referee_a, referee_b, "rejected", actor)
-            _event(cur, actor=actor, action="reject", referee_id=min(referee_a, referee_b), other_id=max(referee_a, referee_b),
-                   detail={"note": note})
+            return _event(cur, actor=actor, action="reject", referee_id=min(referee_a, referee_b), other_id=max(referee_a, referee_b),
+                          detail={"note": note})
 
 
-def reopen(conn: psycopg.Connection[Any], referee_a: int, referee_b: int, *, actor: str) -> None:
-    """Take back a rejection: the pair is a question again (the next pass refreshes it, or removes it if nothing suggests it)."""
+def reopen(conn: psycopg.Connection[Any], referee_a: int, referee_b: int, *, actor: str) -> int:
+    """Take back a rejection: the pair is a question again (the next pass refreshes it, or removes it if nothing suggests it).
+    Returns the id of the event."""
     low, high = min(referee_a, referee_b), max(referee_a, referee_b)
     with conn.transaction():
         _lock(conn, wait=True)
@@ -562,11 +564,12 @@ def reopen(conn: psycopg.Connection[Any], referee_a: int, referee_b: int, *, act
                         "WHERE referee_a = %s AND referee_b = %s AND status = 'rejected'", (low, high))
             if not cur.rowcount:
                 raise ActionError("not_found", "that pair is not rejected")
-            _event(cur, actor=actor, action="reopen", referee_id=low, other_id=high)
+            return _event(cur, actor=actor, action="reopen", referee_id=low, other_id=high)
 
 
-def rename(conn: psycopg.Connection[Any], referee_id: int, name: str | None, *, actor: str) -> None:
-    """Set the name a referee is shown with (the pass keeps it from then on); ``None`` gives the naming back to the pass."""
+def rename(conn: psycopg.Connection[Any], referee_id: int, name: str | None, *, actor: str) -> int:
+    """Set the name a referee is shown with (the pass keeps it from then on); ``None`` gives the naming back to the pass.
+    Returns the id of the event."""
     shown = (name or "").strip()
     if name is not None and not plain(shown):
         raise ActionError("invalid", "a name is needed")
@@ -579,9 +582,10 @@ def rename(conn: psycopg.Connection[Any], referee_id: int, name: str | None, *, 
             else:
                 cur.execute("UPDATE core.referees SET name = %s, name_key = %s, name_locked = true, updated_at = now() WHERE id = %s",
                             (shown, plain(shown), referee_id))
-            _event(cur, actor=actor, action="rename", referee_id=referee_id, detail={"from": before[0], "to": shown or None})
+            event = _event(cur, actor=actor, action="rename", referee_id=referee_id, detail={"from": before[0], "to": shown or None})
         if name is None:
             refresh_identity(conn, referee_id)
+    return event
 
 
 # ── audit ────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -612,8 +616,13 @@ SELECT count(*) FROM core.fixture_referees fr JOIN core.referee_aliases a ON a.i
 """
 
 
-def audit(conn: psycopg.Connection[Any]) -> dict[str, Any]:
-    """The state of the referees, read from the database, and what a pass would still write (it must be nothing)."""
+INVARIANTS: Final = ("aliases_on_merged_referee", "active_without_alias", "candidates_on_merged_referee")
+"""Counts that must be zero: an alias on a merged referee, an active referee with no spelling, an open doubt about a merged one."""
+
+
+def counts(conn: psycopg.Connection[Any]) -> dict[str, Any]:
+    """The figures of the tables and the share of matches whose referee has no doubt waiting - cheap: no pass is simulated (the
+    console reads this; ``audit`` adds what a pass would write)."""
     out: dict[str, Any] = {}
     with conn.cursor() as cur:
         for name, sql in COUNTS:
@@ -623,13 +632,25 @@ def audit(conn: psycopg.Connection[Any]) -> dict[str, Any]:
         cur.execute(UNSETTLED_SQL)
         row = cur.fetchone()
         out["matches_with_a_doubt"] = int(row[0]) if row else 0
+    placed = out["fixtures_with_referee"]
+    out["settled_share"] = round(1 - out["matches_with_a_doubt"] / placed, 4) if placed else 1.0
+    return out
+
+
+def broken_invariants(figures: dict[str, Any]) -> list[str]:
+    """The invariants of the tables that do not hold in ``figures`` (an audit or ``counts``); empty when all is well."""
+    return [name for name in INVARIANTS if figures[name]]
+
+
+def audit(conn: psycopg.Connection[Any]) -> dict[str, Any]:
+    """The state of the referees, read from the database, and what a pass would still write (it must be nothing)."""
+    out = counts(conn)
     pending = build(conn, apply=False, wait=True)
     out["with_a_referee_in_the_facts"] = pending.fixtures
     out["pass_would_write"] = {"referees": pending.new_referees, "aliases": pending.new_aliases, "officials": pending.officials_to_write,
                                "renames": pending.renamed, "candidates": pending.candidates_added + pending.candidates_changed}
     placed = out["fixtures_with_referee"]
     out["placed_share"] = round(placed / pending.fixtures, 4) if pending.fixtures else 1.0
-    out["settled_share"] = round(1 - out["matches_with_a_doubt"] / placed, 4) if placed else 1.0
     return out
 
 
@@ -703,6 +724,26 @@ def referee_row(conn: psycopg.Connection[Any], referee_id: int) -> dict[str, Any
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(REFEREE_SQL + " WHERE r.id = %s", (referee_id,))
         return cur.fetchone()
+
+
+TOP_SQL: Final = """
+SELECT r.id, r.name, r.name_key, r.country_key, r.name_locked, r.status, r.merged_into, r.origin, r.version, r.created_at,
+       r.updated_at, COALESCE(s.matches, 0) AS matches, s.first_match, s.last_match
+  FROM core.referees r
+  LEFT JOIN (SELECT a.referee_id, count(*) AS matches, min(x.kickoff_at) AS first_match, max(x.kickoff_at) AS last_match
+               FROM core.fixture_referees fr JOIN core.referee_aliases a ON a.id = fr.alias_id
+               JOIN core.fixtures x ON x.id = fr.fixture_id GROUP BY a.referee_id) s ON s.referee_id = r.id
+ WHERE r.status = 'active'
+ ORDER BY matches DESC, r.id
+ LIMIT %(limit)s OFFSET %(offset)s
+"""
+
+
+def top(conn: psycopg.Connection[Any], *, limit: int = 50, offset: int = 0) -> list[dict[str, Any]]:
+    """The active referees with most matches first (one pass over the placed matches, whatever the page)."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(TOP_SQL, {"limit": limit, "offset": offset})
+        return list(cur.fetchall())
 
 
 def find(conn: psycopg.Connection[Any], text: str, *, limit: int = 20) -> list[dict[str, Any]]:
