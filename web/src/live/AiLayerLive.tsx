@@ -381,7 +381,8 @@ function ComparisonPanel() {
             </div>
           ) : null}
           <Note>
-            {t("ai.layer.compare.marketNote")} {t("ai.layer.compare.evNote")}
+            {t("ai.layer.compare.marketNote")} {t("ai.layer.compare.evNote")}{" "}
+            {t("ai.layer.compare.clvNote")}
           </Note>
         </div>
       ) : null}

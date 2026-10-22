@@ -638,6 +638,7 @@
       "sample": "Muestra: {selections} selecciones · {days} días · {rejected} rechazadas",
       "marketNote": "El mercado no apuesta: no tiene ROI, CLV ni VE; es la referencia de log loss, Brier y calibración.",
       "evNote": "VE observado: el valor esperado de las cuotas tomadas con la probabilidad del mercado.",
+      "clvNote": "CLV: la cuota tomada frente a la probabilidad justa del cierre, sin margen (la misma medida de Inteligencia).",
       "empty": "Aún no hay evaluación shadow con la que comparar."
     }
   },
@@ -895,8 +896,10 @@
       "empty": "Aún no hay post-mortems de ese día.",
       "emptyFiltered": "Ningún post-mortem de ese día con estos filtros.",
       "odds": "Cuota",
-      "close": "Cierre",
+      "close": "Cierre (casa)",
+      "priceMove": "Cuota vs cierre",
       "clv": "CLV",
+      "priceNote": "Cuota vs cierre: la cuota tomada frente al cierre de la misma casa, con su margen; dice si ese precio se movió. CLV: la cuota tomada frente a la probabilidad justa del cierre, sin margen; es la misma medida de Inteligencia y suele quedar unos puntos por debajo.",
       "model": "PrediGol",
       "market": "Mercado",
       "questions": "Las diez preguntas",

@@ -696,7 +696,10 @@ export interface PickPostmortem {
   classification: LossClass | null;
   odds: Dec | null;
   close_odds: Dec | null;
+  /** Closing-line value (clv-v1): the price taken at the closing fair probability, margin removed. */
   clv: Dec | null;
+  /** The price taken against the same bookmaker's closing price, margin in both. Not the CLV. */
+  price_move: Dec | null;
   p_model: Dec | null;
   p_market: Dec | null;
   /** The ten questions: expected, happened, model, information, ignored_signal, odds_moved, key_absence,

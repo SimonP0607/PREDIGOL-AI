@@ -638,6 +638,7 @@
       "sample": "Sample: {selections} selections · {days} days · {rejected} rejected",
       "marketNote": "The market does not bet: it has no ROI, CLV or EV; it is the reference for log loss, Brier and calibration.",
       "evNote": "Observed EV: the expected value of the prices taken at the market's probability.",
+      "clvNote": "CLV: the price taken against the fair closing probability, margin removed (the same measure as Intelligence).",
       "empty": "No shadow evaluation to compare yet."
     }
   },
@@ -895,8 +896,10 @@
       "empty": "No post-mortems for that day yet.",
       "emptyFiltered": "No post-mortem that day with these filters.",
       "odds": "Odds",
-      "close": "Close",
+      "close": "Close (book)",
+      "priceMove": "Price vs close",
       "clv": "CLV",
+      "priceNote": "Price vs close: the price taken against the same bookmaker's closing price, margin included; it says whether that price moved. CLV: the price taken against the fair closing probability, margin removed; the same measure as Intelligence, usually a few points lower.",
       "model": "PrediGol",
       "market": "Market",
       "questions": "The ten questions",

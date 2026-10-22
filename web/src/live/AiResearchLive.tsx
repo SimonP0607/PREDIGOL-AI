@@ -716,6 +716,7 @@ function ResearchTab({
 export function PostmortemCard({ pm }: { pm: PickPostmortem }) {
   const answers = orderedAnswers(pm.answers);
   const clv = toNum(pm.clv);
+  const move = toNum(pm.price_move);
   return (
     <li
       className="min-w-0 space-y-2.5 rounded-md border border-border bg-card p-3"
@@ -753,9 +754,22 @@ export function PostmortemCard({ pm }: { pm: PickPostmortem }) {
           </StatusBadge>
         ))}
       </div>
-      <dl className="grid max-w-2xl grid-cols-3 gap-x-3 sm:grid-cols-5">
+      <dl className="grid max-w-3xl grid-cols-3 gap-x-3 sm:grid-cols-6">
         <Fact label={t("ai.research.postmortems.odds")} value={fmtOdds(pm.odds)} />
         <Fact label={t("ai.research.postmortems.close")} value={fmtOdds(pm.close_odds)} />
+        <Fact
+          label={t("ai.research.postmortems.priceMove")}
+          value={
+            <span
+              className={cn(
+                move !== null && move > 0 && "text-positive",
+                move !== null && move < 0 && "text-negative",
+              )}
+            >
+              {signedText(pm.price_move)}
+            </span>
+          }
+        />
         <Fact
           label={t("ai.research.postmortems.clv")}
           value={
@@ -772,6 +786,9 @@ export function PostmortemCard({ pm }: { pm: PickPostmortem }) {
         <Fact label={t("ai.research.postmortems.model")} value={probText(pm.p_model)} />
         <Fact label={t("ai.research.postmortems.market")} value={probText(pm.p_market)} />
       </dl>
+      <p className="max-w-3xl text-caption text-subtle-foreground">
+        {t("ai.research.postmortems.priceNote")}
+      </p>
       {answers.length ? (
         <details className="group max-w-4xl rounded-md border border-border">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md px-3 py-2 text-xs font-medium hover:bg-elevated/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
