@@ -1,4 +1,4 @@
-"""Plan F0, defect 3, on a real database: memory-v2 books what a day learns after its row was written.
+"""Plan F0, defect 3, on a real database: memory (v2, and so v3) books what a day learns after its row was written.
 
 memory-v1 wrote with ``ON CONFLICT DO NOTHING``: a match that settled, a statistic that arrived, a post-mortem written after
 the entity's row for that day existed was thrown away. A row is never rewritten, so memory-v2 books the news in the row of
@@ -16,6 +16,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.intel import cycle, memory
+from fbi.people import referees
 
 from .conftest import Seed
 from .helpers import scalar
@@ -196,7 +197,7 @@ def test_a_night_the_worker_missed_is_caught_up_as_late_news(db: psycopg.Connect
     assert row["stats"]["decisions"] == _recomputed(db, MARKET, [DAY, skipped, last])["decisions"]
 
 
-def test_memory_v2_continues_the_state_memory_v1_left(db: psycopg.Connection[Any], seed: Seed) -> None:
+def test_the_current_memory_continues_the_state_an_older_version_left(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
     nxt = DAY + timedelta(days=1)
     first = w.decision(w.match(KICKOFF, result=(1, 0)), KICKOFF, "Home")
@@ -216,7 +217,7 @@ def test_memory_v2_continues_the_state_memory_v1_left(db: psycopg.Connection[Any
     w.outcome(second, "loss", _night(DAY) + timedelta(hours=1))
     assert memory.build_memory(db, day=nxt, at=_night(nxt)) >= 1
     row = _rows(db, nxt)[MARKET]
-    assert row["version"] == memory.VERSION == "memory-v2"
+    assert row["version"] == memory.VERSION == "memory-v3"
     assert row["stats"]["decisions"] == 2 and row["stats"]["wins"] == 1 and row["stats"]["losses"] == 1
     assert row["delta"]["late"][DAY.isoformat()]["decisions"] == 1, "what v1 never saw is booked on its row"
     stored = _rows(db, DAY)[MARKET]
@@ -255,7 +256,10 @@ def test_a_statistic_that_arrives_late_reaches_the_referee(db: psycopg.Connectio
     w = World(db, seed)
     nxt = DAY + timedelta(days=1)
     fid = w.match(KICKOFF, result=(2, 1), referee="A. Referee")
-    key: memory.EKey = ("referee", "A. Referee", "discipline")
+    referees.build(db, apply=True)  # the identity places the match: the entity is the person (memory-v3), not the string
+    person = db.execute("SELECT referee_id FROM core.fixture_referees WHERE fixture_id = %s", (fid,)).fetchone()
+    assert person is not None
+    key: memory.EKey = ("referee", str(person[0]), "discipline")
 
     memory.build_memory(db, day=DAY, at=_night(DAY))
     written = _rows(db, DAY)[key]["stats"]

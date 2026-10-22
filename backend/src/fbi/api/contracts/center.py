@@ -126,8 +126,12 @@ class PlayerLine(Contract):
 class MatchFacts(Contract):
     """What the fixture's payloads say beyond the score (core.fixture_facts, newest change)."""
 
-    referee: str | None
+    referee: str | None = Field(description="The referee's name: the person's (the same man under every spelling the provider "
+                                "used) when the identity is up to date with the newest observation, otherwise the string the "
+                                "provider wrote.")
     referee_country: str | None
+    referee_id: int | None = Field(default=None, description="The referee's id in `core.referees`; null when the identity has "
+                                   "not caught up with the newest observation (the string is shown as it came) or nobody is named.")
     home_winner: bool | None = Field(description="The provider's winner flag: the side that won, or went through "
                                      "on penalties; null for a draw or a match not over.")
     away_winner: bool | None

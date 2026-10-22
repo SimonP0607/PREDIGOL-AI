@@ -269,6 +269,7 @@ def memory(conn: Conn, *, entity_type: str | None, q: str | None, limit: int) ->
           FROM intel.entity_memory
          WHERE (%(t)s::text IS NULL OR entity_type = %(t)s)
            AND (%(q)s::text IS NULL OR entity_name ILIKE '%%' || %(q)s || '%%')
+           AND NOT (entity_type = 'referee' AND entity_id !~ '^[0-9]+$')
          ORDER BY entity_type, entity_id, aspect, as_of_day DESC""", {"t": entity_type, "q": q})
     rows.sort(key=lambda r: -int((r["stats"] or {}).get("decisions") or (r["stats"] or {}).get("matches") or 0))
     return ok(j({"items": rows[:limit], "total": len(rows)}))

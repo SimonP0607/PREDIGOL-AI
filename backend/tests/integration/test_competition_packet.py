@@ -1,5 +1,5 @@
-"""The AI packet and the dossier on a built competition season (plan F2): the ``phase`` block of ``packet-v4``, the second leg
-of ``dossier-v2``, and the rule they share - nothing that came out of the tie reaches a packet built before the match."""
+"""The AI packet and the dossier on a built competition season (plan F2): the ``phase`` block of ``packet-v4`` (and so v5), the second leg
+of ``dossier-v2`` (and so v3), and the rule they share - nothing that came out of the tie reaches a packet built before the match."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ def test_a_second_leg_packet_carries_the_first_leg_the_aggregate_and_what_the_ma
 
     packet = PacketBuilder(db).build(f["r2"], at=at)
 
-    assert packet is not None and packet.version == PACKET_VERSION == "packet-v4"
+    assert packet is not None and packet.version == PACKET_VERSION == "packet-v5"
     c = packet.content
     assert c["fixture"]["stage"] == "knockout", "the round, read by the one classifier of round labels"
     phase = c["phase"]
@@ -42,7 +42,7 @@ def test_a_second_leg_packet_carries_the_first_leg_the_aggregate_and_what_the_ma
     assert (context["knockout"], context["final"]) == (True, False)
     assert context["second_leg"] == {"first_leg_at": kickoff(100).isoformat(), "first_leg_score_home_side": 0,
                                      "first_leg_score_away_side": 1, "aggregate_need": "el local remonta"}
-    assert c["dossier"]["version"] == "dossier-v2"
+    assert c["dossier"]["version"] == "dossier-v3"
     story = rules_narrative(c, [])["que_esta_en_juego"]
     assert "Es una eliminatoria." in story and "Partido de vuelta: la ida terminó 0-1" in story
     assert "En el global, tras los 90 minutos Team 99920-4 va por delante si gana por 2 goles o más" in story
@@ -116,7 +116,7 @@ def test_nothing_that_came_out_of_the_tie_changes_a_packet_built_before_the_matc
     assert first_after.content == first_leg.content and first_after.hash == first_leg.hash
 
 
-# ── the nightly proof: leak-audit-v2 reads the packets of the day ───────────
+# ── the nightly proof: leak-audit-v3 reads the packets of the day ───────────
 
 
 def audited(db: psycopg.Connection[Any], at: Any) -> dict[str, Any]:
@@ -141,7 +141,7 @@ def test_the_audit_counts_each_leg_a_stored_packet_cites_and_finds_them_recorded
     assert packet is not None
     store_packet(db, packet, built_at=at)
 
-    assert "tie_legs_known" in leakage.RULES and leakage.VERSION == "leak-audit-v2"
+    assert "tie_legs_known" in leakage.RULES and leakage.VERSION == "leak-audit-v3"
     assert audited(db, at) == {"checked": 1, "violations": 0, "examples": []}
 
 

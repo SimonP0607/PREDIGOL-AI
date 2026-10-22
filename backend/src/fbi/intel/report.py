@@ -24,6 +24,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
+from fbi.intel import postmortem
 
 VERSION = "learn-report-v1"
 
@@ -212,7 +213,7 @@ def render(c: dict[str, Any]) -> str:
         lines.append(f"- {cal.get('note')} (n={cal.get('n')})")
     pm = c["postmortems"]
     lines.append("")
-    lines.append("## Post-mortems (pm-v4)")
+    lines.append(f"## Post-mortems ({postmortem.VERSION})")
     lines.append("- Veredictos: " + (", ".join(f"{k} {v}" for k, v in pm["verdicts"].items()) or "ninguno"))
     lines.append("- Causas: " + (", ".join(f"{k} {v}" for k, v in pm["causes"].items()) or "ninguna registrada"))
     ctx = c["context"]

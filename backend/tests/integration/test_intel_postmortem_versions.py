@@ -1,5 +1,5 @@
-"""Plan F0, defect 6, on a real database: pm-v4 does not read a penalty shoot-out as a penalty of the match, and the readers of
-the post-mortems count a decision once when it has been judged under two versions.
+"""Plan F0, defect 6, on a real database: pm-v4 (and so pm-v5) does not read a penalty shoot-out as a penalty of the match, and
+the readers of the post-mortems count a decision once when it has been judged under two versions.
 
 The transaction is rolled back afterwards."""
 
@@ -74,7 +74,7 @@ def test_a_shootout_kick_is_not_a_penalty_of_the_match() -> None:
     assert codes == ["penalty_scored"], "the penalty of the match is still a cause; the kicks of the shoot-out are not"
 
 
-def test_pm_v4_judges_a_shootout_match_without_its_kicks_and_the_readers_take_the_newest(
+def test_the_current_post_mortem_judges_a_shootout_match_without_its_kicks_and_the_readers_take_the_newest(
         db: psycopg.Connection[Any], seed: Seed) -> None:
     fid, decision = _world(db, seed)
     stale = Jsonb([{"code": "penalty_scored", "minute": 120, "side": "home", "effect": "neutral",
@@ -83,12 +83,12 @@ def test_pm_v4_judges_a_shootout_match_without_its_kicks_and_the_readers_take_th
                "verdict, causes, answers) VALUES (%s, %s, %s, 'pm-v3', 'won', 'GOOD', 'ERROR', %s, '{}')",
                (decision, fid, AFTER - timedelta(hours=2), stale))
 
-    assert postmortem.VERSION == "pm-v4"
-    assert postmortem.run_postmortems(db, at=AFTER) == 1, "v3 does not stop the decision being judged under v4"
+    assert postmortem.VERSION == "pm-v5"
+    assert postmortem.run_postmortems(db, at=AFTER) == 1, "v3 does not stop the decision being judged under v5"
 
-    v4 = _causes(db, decision, "pm-v4")
-    assert [(c["code"], c["minute"]) for c in v4 if c["code"].startswith("penalty")] == [("penalty_scored", 55)]
-    assert "penalty_missed" not in {c["code"] for c in v4}
+    current = _causes(db, decision, postmortem.VERSION)
+    assert [(c["code"], c["minute"]) for c in current if c["code"].startswith("penalty")] == [("penalty_scored", 55)]
+    assert "penalty_missed" not in {c["code"] for c in current}
     assert [c["minute"] for c in _causes(db, decision, "pm-v3")] == [120], "the v3 row is history: it stays as written"
     assert postmortem.run_postmortems(db, at=AFTER) == 0, "judged once per version"
 

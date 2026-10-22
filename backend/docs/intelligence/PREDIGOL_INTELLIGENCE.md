@@ -36,8 +36,8 @@ CAPA 1 · DATOS           API-Football (fixtures, odds de todas las casas, stats
 CAPA 2 · MODELOS         Por mercado: Poisson, Dixon-Coles (goles), Elo ordered-logit (1X2) -> P_modelo con intervalo
                          (existente: fbi.models, picks shadow-rule-v2). NUEVO: calibración por (mercado, modelo)
                          fbi.intel.calibration -> P_calibrada, versionada, champion/challenger con criterios fijos.
-CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v4 = packet-v1 + dossier-v2 + calendario con su alcance declarado + bajas de la última respuesta a la fecha +
-                         fase y cruce de la ronda, solo lo sabido antes del partido + la tabla de la etapa propia a la hora del paquete), evidencia con fuente,
+CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v5 = packet-v1 + dossier-v3 + calendario con su alcance declarado + bajas de la última respuesta a la fecha +
+                         fase y cruce de la ronda, solo lo sabido antes del partido + la tabla de la etapa propia a la hora del paquete + el árbitro como persona, el que el proveedor había dado a esa hora), evidencia con fuente,
 INTELLIGENCE             nivel y estado, brief L1 / revisión L2 / revisión L3 (existente: fbi.ai). NUEVO: dossier
                          (equipo, árbitro, entrenador, contexto competitivo, jugadores clave), fuentes clasificadas
                          (sources-v2), estado de contexto FULL / PARTIAL / LIMITED (CONTEXTO EXTERNO LIMITADO) /
@@ -65,7 +65,7 @@ señales de contexto que la capa 4 usa como filtro de riesgo y como componente d
 | 06:00 | **PICKS DEL DÍA PI** (v6, shadow): hasta 5 APROBADOS por score, uno por partido, máx. 2 por competición; después se añaden los de partidos tardíos hasta completar 5 | `intel_decide` | 0 |
 | 100–10 min antes | pasada `final` tras alineaciones; L3 solo para los mejores | `ai_cycle` | Nivel C/D |
 | 07:35 | aprendizaje IA existente (post-mortems pm-v2, notas, patrones, sombra de la IA) | `ai_learn` | bajo |
-| 07:50 | **ciclo nocturno PI**: liquidación y CLV de decisiones, post-mortems pm-v4, memoria longitudinal, calibradores (challenger nuevo + evaluación prospectiva + promoción por criterios), auditoría de fugas, DAILY LEARNING REPORT, vínculo hipótesis↔experimentos | `intel_nightly` | 0 |
+| 07:50 | **ciclo nocturno PI**: liquidación y CLV de decisiones, post-mortems pm-v5, memoria longitudinal, calibradores (challenger nuevo + evaluación prospectiva + promoción por criterios), auditoría de fugas, DAILY LEARNING REPORT, vínculo hipótesis↔experimentos | `intel_nightly` | 0 |
 | lunes 04:40 | **MARKET DISCOVERY ENGINE** (propone, nunca activa) | `intel_weekly` | 0 |
 
 Nada se recalcula si sus entradas no cambiaron: el paquete y el brief se guardan por hash, las búsquedas web se
@@ -84,7 +84,7 @@ fila nueva. Nada se reescribe después del saque ni después del resultado.
 | `intel.decisions` | evaluación de una selección en un punto de control | `known_at`, pick y versión de modelo, precio, casa, `price_at`, p_modelo, p_calibrada, `calibrator_id`, p_mercado, EV/edge crudos y calibrados, 10 filtros, estado, score y componentes, stake y componentes, contexto (estado, revisión, evidencias), `input_hash`, `decision_version` |
 | `intel.day_selections` | pick del día / parlay elegido por la regla v6 | decisión(es) congeladas, rango, stake, correlación |
 | `intel.decision_outcomes` | resultado de una decisión | estado del pick, P&L a la cuota de la decisión (plano y con stake), CLV contra el cierre sin margen |
-| `intel.postmortems` | post-mortem (pm-v4; las filas pm-v3 anteriores se conservan) de una decisión | calidad de la decisión separada del resultado, causas del partido, preguntas respondidas, evidencia |
+| `intel.postmortems` | post-mortem (pm-v5; las filas pm-v3 y pm-v4 anteriores se conservan) de una decisión | calidad de la decisión separada del resultado, causas del partido, preguntas respondidas, evidencia |
 | `intel.entity_memory` | estado acumulado de una entidad × aspecto en un día | equipo, jugador, entrenador, árbitro, competición, mercado; decisiones, aciertos, CLV, errores, contexto recurrente |
 | `intel.daily_reports` | revisión del DAILY LEARNING REPORT de un día | contenido JSON + texto, hash |
 | `intel.market_registry` | estado de un mercado del proveedor en una corrida de discovery | 10 criterios, cobertura, casas, historial, estabilidad, modelabilidad, estado (ACTIVE / RESEARCH / CANDIDATE / NOT_MODELABLE) |
@@ -155,7 +155,7 @@ una pata por competición y sin equipo compartido no hay jornada común cuya dep
 
 ## 6. Capa 3 — dossier, investigación y narrativa
 
-* **dossier-v2** (v1 desde `packet-v2`; la v2, de `packet-v4`, saca «es la vuelta» de la estructura del cruce y no de «el último partido entre el par en 60 días»; todo a la fecha de corte): por equipo, últimos 10 partidos en casa/fuera con goles,
+* **dossier-v3** (v1 desde `packet-v2`; la v2, de `packet-v4`, saca «es la vuelta» de la estructura del cruce y no de «el último partido entre el par en 60 días»; la v3, de `packet-v5` —plan F3—, cuenta los partidos del árbitro **por persona**: bajo cualquier grafía que el proveedor usó y sin mezclar homónimos; el bloque `referee` trae `id` e `identity` (`id`, o `text` si la identidad aún no vio el partido); todo a la fecha de corte): por equipo, últimos 10 partidos en casa/fuera con goles,
   xG, tiros, a puerta, córners, faltas, tarjetas, fueras de juego, posesión, penaltis (eventos), rachas, calidad del
   rival (Elo), comportamiento según marcador (goles a favor/en contra yendo por delante/detrás); árbitro (partidos,
   amarillas, rojas, faltas, penaltis por partido, reparto local/visitante); entrenadores (formaciones, alternativas,
@@ -180,7 +180,7 @@ una pata por competición y sin equipo compartido no hay jornada común cuya dep
 
 ## 7. Aprender sin sobreajustar
 
-* **pm-v4** (cada decisión CAUTELA o superior y las 20 mejores INVESTIGACIONES del día): calidad de la decisión
+* **pm-v5** (cada decisión CAUTELA o superior y las 20 mejores INVESTIGACIONES del día): calidad de la decisión
   (CLV, EV al cierre, p_calibrada frente al cierre) separada del resultado — merecido / varianza / suerte / error —;
   causas del partido (roja y minuto, penaltis del partido —los de una tanda no cuentan—, gol temprano, lesiones antes del 30', tarjetas frente a lo esperado del
   árbitro, alineación distinta de la esperada); las preguntas del POST_MATCH_REVIEW respondidas con datos. Un pick
@@ -195,7 +195,7 @@ una pata por competición y sin equipo compartido no hay jornada común cuya dep
   se compara con un CLV. La calidad de un precio (GOOD / NEUTRAL / BAD, ±1 %) se juzga sobre CLV; el «mercado se movió
   en contra» del post-mortem por selección (−3 %), sobre el movimiento. El cierre es la última captura previa al inicio:
   mientras `close_minutes_to_ko` no pruebe que es el cierre, es valor frente a un precio casi de cierre.
-* **Memoria longitudinal** (`memory-v2`): instantánea diaria por entidad × aspecto (equipo×mercado,
+* **Memoria longitudinal** (`memory-v3`): instantánea diaria por entidad × aspecto (equipo×mercado,
   competición×mercado, árbitro, entrenador, jugador-disponibilidad, mercado) con decisiones, aciertos, CLV, errores
   y contexto recurrente. Una racha es una señal a investigar, no una regla.
   **Novedades tardías** (plan F0, defecto 3): un partido que se liquida, una estadística o un post-mortem que llegan
@@ -208,6 +208,11 @@ una pata por competición y sin equipo compartido no hay jornada común cuya dep
   una noche perdida del worker se recupera así como novedad tardía. Para una reparación puntual de un periodo más
   largo existe `build_memory(..., late_days=N)` (operación manual). `memory-v2` continúa el estado que dejó `memory-v1`;
   las filas v1 no se tocan.
+  **Árbitros = personas** (`memory-v3`, plan F3): la entidad `referee` es la persona de `core.referees` (su `entity_id` es el id), no la
+  cadena que escribió el proveedor. Las filas que `memory-v2` escribió bajo una cadena quedan como historia (nada las continúa ni las
+  reconcilia, y la lista de la consola solo muestra personas); la historia de cada persona empieza el primer día que corre `memory-v3`.
+  Si dos árbitros se fusionan (o uno se separa) los días que aún caen en la ventana de novedades tardías se reasignan a la persona
+  correcta; el dossier, que se calcula desde los partidos, es exacto en cualquier caso.
 * **DAILY LEARNING REPORT** (`learn-report-v1`): ganadas/perdidas/nulas, CLV, ROI, calibración, errores, contexto
   que funcionó y que falló, noticias, anomalías de modelo y mercado, equipos y jugadores, hipótesis nuevas,
   oportunidades (discovery). Revisiones append-only.
@@ -248,12 +253,14 @@ corrida semanal, con su `version`.
 * Los tokens de respuestas inválidas se cuentan. Métricas: coste por partido, candidato, pick, investigación,
   post-mortem, día y proyección mensual. Los análisis son compartidos: ningún token por usuario.
 
-## 10. Fugas de datos (`leak-audit-v2`, diario y en tests)
+## 10. Fugas de datos (`leak-audit-v3`, diario y en tests)
 
 Para cada decisión: `known_at` < saque; `price_at` ≤ `known_at`; pick `data_cutoff_ts` y `created_at` ≤ `known_at`;
 calibrador `fitted_at` ≤ `known_at` y sus datos liquidados antes de `fitted_at`; revisión y paquete ≤ `known_at`;
 evidencias `retrieved_at` (y `published_at` si existe) ≤ `known_at`; y (v2, plan F2, regla `tie_legs_known`) toda pata de un cruce que cite un paquete guardado
-empezó antes del partido y tenía su resultado registrado a la hora del paquete. Toda violación queda en `intel.audit_checks`.
+empezó antes del partido y tenía su resultado registrado a la hora del paquete; y (v3, plan F3, regla `referee_known`) todo paquete que nombra a un árbitro cita una observación del
+proveedor que existe, que no es posterior a la hora del paquete y que era la más nueva a esa hora (no mira quién es hoy esa grafía: una fusión cambia a la persona,
+no lo que el proveedor dijo entonces). Toda violación queda en `intel.audit_checks`.
 
 ## 11. Autonomía controlada
 

@@ -1,4 +1,4 @@
-"""MATCH INTELLIGENCE PACKAGE - ``dossier-v2``: the part of a match's packet (``fbi.ai.packet``, block ``dossier``) that
+"""MATCH INTELLIGENCE PACKAGE - ``dossier-v3``: the part of a match's packet (``fbi.ai.packet``, block ``dossier``) that
 describes the people and the situation, beyond the score-based form the packet already carries:
 
     teams        the last ten matches each (and split home / away): goals, expected goals, shots, on target, corners,
@@ -9,8 +9,9 @@ describes the people and the situation, beyond the score-based form the packet a
     players      the ten matches' most important players: starts, minutes, goals, assists, shots, fouls, cards, rating,
                  saves for a goalkeeper, the minutes of the last fourteen days (load), and whether the provider reports
                  them out for this match
-    referee      matches refereed in the 400 days before, cards (yellow + red) and fouls per match, penalties per match,
-                 how the cards split between home and away sides
+    referee      the person (``fbi.people``) and his matches in the 400 days before - under any spelling the provider used
+                 for him: cards (yellow + red) and fouls per match, penalties per match, how the cards split between home
+                 and away sides
     context      a derby (same city), a cup or knockout round, a final, a friendly, the second leg of a tie and its first
                  result - and, from the packet's own stakes block, what each side plays for. The round is read by the one
                  classifier of round labels (``fbi.competitions.stages``) and the second leg from the legs of its tie
@@ -37,8 +38,15 @@ from psycopg.rows import dict_row
 from fbi.ai.absences import absences_as_of
 from fbi.competitions import context as phase_context
 
-VERSION = "dossier-v2"
-"""v2 (plan F2): ``context.knockout`` / ``context.final`` come from the one classifier of round labels (a qualifying round is
+VERSION = "dossier-v3"
+"""v3 (plan F3): the referee is a person with an id. His matches are those whose referee, as the provider had named it at the
+packet's moment, is HIM under any of the spellings the provider used (``core.fixture_officials`` through ``core.referee_aliases``,
+``fbi.people``). v2 counted the matches whose facts EVER carried the same string, so a man written three ways was three referees
+with a few matches each, two men with the same initial and surname were one, and a match whose referee the provider later
+changed still counted for the first. A match the identity has not seen yet falls back to the string
+(``referee.identity == "text"``). The block gains ``id`` and ``identity``.
+
+v2 (plan F2): ``context.knockout`` / ``context.final`` come from the one classifier of round labels (a qualifying round is
 a knockout round here too, as it already was in the packet's ``fixture.stage``) and ``context.second_leg`` from the tie the match
 belongs to, not from a search for the last meeting of the two sides in the 60 days before (which read any earlier match of
 the pair in the season - a group-stage meeting, a first leg played earlier than that - as a first leg)."""
@@ -102,7 +110,7 @@ SELECT fixture_id, team_id, rating_before::float8 AS rating FROM features.elo_ra
 serves it: by fixture alone the run's half a million rows were read (0.24-0.75 s per team on production, 13 Oct 2026),
 by team 3 ms."""
 
-REFEREE_SQL = """
+REFEREE_TEXT_HEAD = """
 WITH m AS (
     SELECT DISTINCT ON (ff.fixture_id) ff.fixture_id
       FROM core.fixture_facts ff
@@ -111,7 +119,28 @@ WITH m AS (
      WHERE ff.referee = %(referee)s AND ff.observed_at <= %(at)s AND f.kickoff_at < %(kickoff)s
        AND f.kickoff_at >= %(since)s AND r.settled_at <= %(at)s
      ORDER BY ff.fixture_id, ff.observed_at DESC
-), s AS (
+)"""
+"""The matches whose facts carried this string, until the identity had seen them. Known flaw, kept only for the fallback: the
+newest row is chosen among the rows with THIS string, so a match whose referee changed afterwards still counts."""
+
+REFEREE_ID_HEAD = """
+WITH m AS (
+    SELECT o.fixture_id
+      FROM core.referee_aliases a
+      JOIN core.fixture_officials o ON o.alias_id = a.id AND o.role = 'referee'
+      JOIN core.fixtures f ON f.id = o.fixture_id
+      JOIN core.fixture_results r ON r.fixture_id = f.id
+     WHERE a.referee_id = %(referee_id)s AND o.observed_at <= %(at)s AND f.kickoff_at < %(kickoff)s
+       AND f.kickoff_at >= %(since)s AND r.settled_at <= %(at)s
+       AND NOT EXISTS (SELECT 1 FROM core.fixture_officials n
+                        WHERE n.fixture_id = o.fixture_id AND n.role = o.role
+                          AND n.observed_at > o.observed_at AND n.observed_at <= %(at)s)
+)"""
+"""The matches whose referee, AS THE PROVIDER HAD NAMED IT at ``at`` (the newest officials row at or before it), is this person
+under any of his spellings."""
+
+REFEREE_TAIL = """
+, s AS (
     SELECT DISTINCT ON (t.fixture_id, t.team_side) t.fixture_id, t.team_side, t.yellow_cards, t.red_cards, t.fouls
       FROM core.fixture_team_stats t JOIN m ON m.fixture_id = t.fixture_id
      WHERE t.fetched_at <= %(at)s
@@ -132,6 +161,9 @@ SELECT (SELECT count(*) FROM m) AS matches,
        (SELECT COALESCE(sum(penalties), 0) FROM p) AS penalties
   FROM s
 """
+
+REFEREE_SQL = REFEREE_TEXT_HEAD + REFEREE_TAIL
+REFEREE_BY_ID_SQL = REFEREE_ID_HEAD + REFEREE_TAIL
 
 def _avg(xs: Sequence[float | int | None], places: int = 2) -> float | None:
     v = [float(x) for x in xs if x is not None]
@@ -310,15 +342,22 @@ def players_profile(conn: psycopg.Connection[Any], fids: list[int], side_of_fixt
     return out[:6]
 
 
-def referee_profile(conn: psycopg.Connection[Any], referee: str | None, *, kickoff: datetime,
-                    at: datetime) -> dict[str, Any]:
-    if not referee:
-        return {"name": None, "matches": 0}
+def referee_profile(conn: psycopg.Connection[Any], referee: str | None, *, kickoff: datetime, at: datetime,
+                    referee_id: int | None = None) -> dict[str, Any]:
+    """The referee of the match and what he does, as known at ``at``. With ``referee_id`` the matches are his under every
+    spelling; without it (the identity has not seen the match yet) they are the matches whose facts carried ``referee``."""
+    if referee_id is None and not referee:
+        return {"name": None, "matches": 0, "id": None, "identity": None}
+    params: dict[str, Any] = {"at": at, "kickoff": kickoff, "since": kickoff - REFEREE_WINDOW}
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(REFEREE_SQL, {"referee": referee, "at": at, "kickoff": kickoff, "since": kickoff - REFEREE_WINDOW})
+        if referee_id is not None:
+            cur.execute(REFEREE_BY_ID_SQL, params | {"referee_id": referee_id})
+        else:
+            cur.execute(REFEREE_SQL, params | {"referee": referee})
         r = dict(cur.fetchone() or {})
     n, ns = int(r.get("matches") or 0), int(r.get("with_stats") or 0)
-    out: dict[str, Any] = {"name": referee, "matches": n, "with_stats": ns}
+    out: dict[str, Any] = {"name": referee, "id": referee_id, "identity": "id" if referee_id is not None else "text",
+                           "matches": n, "with_stats": ns}
     if ns:
         out |= {"cards_per_match": round(float(r["cards"] or 0) / ns, 2),
                 "reds_per_match": round(float(r["reds"] or 0) / ns, 3),
@@ -366,8 +405,9 @@ def h2h_relevance(n: int, last_at: datetime | None, *, kickoff: datetime) -> dic
 
 
 def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: datetime, elo: tuple[str, int] | None,
-                  referee: str | None, h2h_n: int, h2h_last: datetime | None) -> dict[str, Any]:
-    """The dossier of one match as of ``at``. ``fx`` is the packet's FIXTURE_SQL row."""
+                  referee: str | None, h2h_n: int, h2h_last: datetime | None, referee_id: int | None = None) -> dict[str, Any]:
+    """The dossier of one match as of ``at``. ``fx`` is the packet's FIXTURE_SQL row; ``referee`` and ``referee_id`` are the
+    referee of the match as of ``at`` (``fbi.people.officials``), the id absent when the identity has not seen the match."""
     kickoff: datetime = fx["kickoff_at"]
     home, away = int(fx["home_team_id"]), int(fx["away_team_id"])
     absent: dict[int, str] = {int(r["provider_player_id"]): str(r["absence_type"] or "")
@@ -385,7 +425,7 @@ def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: date
                 sides[int(r["id"])] = "home" if r["h"] else "away"
         players[side] = players_profile(conn, fids, sides, at=at, kickoff=kickoff, absent=absent)
     return {"version": VERSION, "teams": teams, "players": players,
-            "referee": referee_profile(conn, referee, kickoff=kickoff, at=at),
+            "referee": referee_profile(conn, referee, kickoff=kickoff, at=at, referee_id=referee_id),
             "context": context_profile(conn, fx, at=at), "h2h": h2h_relevance(h2h_n, h2h_last, kickoff=kickoff)}
 
 

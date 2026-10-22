@@ -68,6 +68,8 @@ from fbi.competitions.phases import TableMap, current_stage
 from fbi.competitions.stages import phase_of, stage_of
 from fbi.competitions.tables import load_season, match_tables, newest_maps
 from fbi.core.clock import now
+from fbi.people.officials import ID as IDENTITY_ID
+from fbi.people.officials import referee_as_of
 from fbi.truth.freshness import table_reason
 
 STALE_AFTER = timedelta(minutes=3)
@@ -97,6 +99,18 @@ def lineups_reason(kickoff_at: datetime, status_group: str, at: datetime) -> tup
 
 def _clean(row: Row, drop: tuple[str, ...] = ()) -> Row:
     return {k: v for k, v in row.items() if k not in drop}
+
+
+def _with_referee_identity(conn: Conn, fixture_id: int, facts: Row | None) -> Row | None:
+    """The facts of the match with the referee as the person he is, when the identity is at the newest observation
+    (``fbi.people.officials``): the same man reads the same under every spelling the provider used, with his id. While the pass
+    that places the facts (hourly) has not caught up with a change of the provider, the string is shown as it came, no id."""
+    if facts is None:
+        return None
+    ref = referee_as_of(conn, fixture_id, facts["observed_at"])
+    if ref.identity != IDENTITY_ID:
+        return {**facts, "referee_id": None}
+    return {**facts, "referee": ref.name, "referee_country": ref.country, "referee_id": ref.referee_id}
 
 
 # ── Match Center ───────────────────────────────────────────────────────────
@@ -130,7 +144,7 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
     ctx = {"cs": fx["competition_season_id"], "home": fx["home_team_id"], "away": fx["away_team_id"],
            "ko": fx["kickoff_at"]}
     standings, no_table, standing_tables = _match_standings(conn, fx)
-    facts_row = fetch_one(conn, repo.FIXTURE_FACTS, f)
+    facts_row = _with_referee_identity(conn, fixture_id, fetch_one(conn, repo.FIXTURE_FACTS, f))
     stage, tie = center_tie.stage_and_tie(conn, fx)
     forms: list[TeamForm] = []
     for side, team_id, name in (("home", fx["home_team_id"], fx["home"]), ("away", fx["away_team_id"], fx["away"])):

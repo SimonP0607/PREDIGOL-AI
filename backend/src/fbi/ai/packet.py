@@ -34,9 +34,16 @@ from fbi.catalog.neutral_store import rule_in_force
 from fbi.competitions import context as phase_context
 from fbi.competitions.stages import stage_of
 from fbi.competitions.tables import match_tables
+from fbi.people.officials import referee_as_of
 
-PACKET_VERSION = "packet-v4"
-"""v4 (plan F2): the ``phase`` block (``fbi.competitions.context``): the stage of the round and, for a leg of a tie, the tie
+PACKET_VERSION = "packet-v5"
+"""v5 (plan F3): the referee is a person (``fbi.people``). ``fixture.referee`` is his name, ``fixture.referee_id`` his id and
+``fixture.referee_seen_at`` the moment of the provider's observation the answer comes from, all read AS OF the packet's moment
+(``fbi.people.officials``): the newest thing the provider had said by then, and nothing when it had taken the referee off the
+match. The dossier is ``dossier-v3``: his matches are counted under every spelling the provider used for him. A match the
+identity has not seen yet, or whose newest observation it has not caught up with (the pass runs hourly), keeps the string the
+provider wrote (``referee_id`` null, ``dossier.referee.identity == "text"``): never a person who is no longer the one named.
+v4 (plan F2): the ``phase`` block (``fbi.competitions.context``): the stage of the round and, for a leg of a tie, the tie
 as it could be seen BEFORE the match - the earlier legs that had a result at the packet's moment, the aggregate of those and what
 the first 90 minutes of this match do to it (never the winner, the aggregate or the way a tie was decided: those include this
 very match). ``fixture.stage`` is read by the one classifier of round labels, not a regular expression of its own, and the
@@ -93,10 +100,6 @@ SELECT f.id, f.provider_fixture_id, f.kickoff_at, f.round, f.status_short, f.sta
   LEFT JOIN core.venues va ON va.id = ta.venue_id
   LEFT JOIN core.fixture_venue_class k ON k.fixture_id = f.id AND k.rule_version = %(rule)s
  WHERE f.id = %(fixture)s
-"""
-
-FACTS_SQL = """
-SELECT referee, observed_at FROM core.fixture_facts_latest WHERE fixture_id = %(fixture)s AND observed_at <= %(at)s
 """
 
 KICKOFF_CHANGES_SQL = """
@@ -359,6 +362,13 @@ class PacketBuilder:
             self._elo_run[key] = None if row is None else (str(row["elo_version"]), int(row["run_id"]))
         return self._elo_run[key]
 
+    def _referee(self, fixture_id: int, at: datetime) -> tuple[str | None, int | None, datetime | None]:
+        """(name, id, the provider's observation it comes from) of the referee AS OF ``at`` (``fbi.people.officials``): the person
+        when the identity has the answer, the string the provider wrote when it has not caught up yet, nobody when the provider
+        had not said or had taken him off - never a guess."""
+        ref = referee_as_of(self.conn, fixture_id, at)
+        return ref.name, ref.referee_id, ref.seen_at
+
     # ── the blocks ──────────────────────────────────────────────────────────
     def build(self, fixture_id: int, *, at: datetime, extra_keys: list[tuple[str, str, Decimal]] | None = None
               ) -> Packet | None:
@@ -372,7 +382,7 @@ class PacketBuilder:
         missing: list[str] = []
         content: dict[str, Any] = {}
 
-        facts = _row(conn, FACTS_SQL, {"fixture": fixture_id, "at": at})
+        referee_name, referee_id, referee_seen = self._referee(fixture_id, at)
         changes = _rows(conn, KICKOFF_CHANGES_SQL, {"fixture": fixture_id, "at": at})
         content["fixture"] = {
             "id": fixture_id, "provider_fixture_id": f["provider_fixture_id"], "kickoff_at": _ts(kickoff),
@@ -381,7 +391,7 @@ class PacketBuilder:
             "season": f["season"], "round": f["round"], "stage": phase_context.coarse_stage(f["round"]),
             "venue": f["venue_name"], "venue_city": f["venue_city"], "venue_country": f["venue_country"],
             "neutral": bool(f["is_neutral"]), "status": f["status_short"],
-            "referee": facts["referee"] if facts else None,
+            "referee": referee_name, "referee_id": referee_id, "referee_seen_at": _ts(referee_seen),
             "home": {"id": home, "name": f["home_name"], "country": f["home_country"]},
             "away": {"id": away, "name": f["away_name"], "country": f["away_country"]},
             "kickoff_changes": [{"observed_at": _ts(c["observed_at"]), "before": _ts(c["before_kickoff"]),
@@ -432,11 +442,12 @@ class PacketBuilder:
         try:  # in a savepoint: a dossier that cannot be read never costs the rest of the packet
             with conn.transaction():
                 content["dossier"] = finite(build_dossier(
-                    conn, f, at=at, elo=self._elo_version(at), referee=facts["referee"] if facts else None,
+                    conn, f, at=at, elo=self._elo_version(at), referee=referee_name, referee_id=referee_id,
                     h2h_n=len(h2h), h2h_last=h2h[0]["kickoff_at"] if h2h else None))
             sources.append({"block": "dossier", "tables": ["core.fixture_team_stats", "core.fixture_events",
                                                            "core.fixture_lineups", "core.fixture_player_stats",
-                                                           "core.fixture_facts", "features.elo_ratings"],
+                                                           "core.fixture_facts", "core.fixture_officials",
+                                                           "core.referee_aliases", "features.elo_ratings"],
                             "as_of": _ts(at), "version": DOSSIER_VERSION})
         except psycopg.Error as exc:
             content["dossier"] = {"version": DOSSIER_VERSION, "error": type(exc).__name__}

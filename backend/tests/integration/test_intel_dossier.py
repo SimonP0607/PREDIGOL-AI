@@ -98,7 +98,7 @@ def test_the_dossier_reads_only_what_was_known(db: psycopg.Connection[Any], seed
                 "VALUES (%s, %s, 'R. Tester', %s, 'v1')", (upcoming, AT - timedelta(hours=2), h))
 
     packet = PacketBuilder(db).build(upcoming, at=AT)
-    assert packet is not None and packet.version == "packet-v4"
+    assert packet is not None and packet.version == "packet-v5"
     d = packet.content["dossier"]
     home = d["teams"]["home"]
     assert home["n"] == 3, "the 5-0 settled after AT is not known at AT"
@@ -112,6 +112,8 @@ def test_the_dossier_reads_only_what_was_known(db: psycopg.Connection[Any], seed
     assert home["opponents"] == {"n": 3, "mean_elo": 1600}, "the opponents' Elo, read by team on the primary key"
     ref = d["referee"]
     assert ref["name"] == "R. Tester" and ref["matches"] == 3 and ref["cards_per_match"] == 5.0
+    assert (ref["id"], ref["identity"]) == (None, "text"), "no match has been through the identity yet: the string is read"
+    assert packet.content["fixture"]["referee"] == "R. Tester" and packet.content["fixture"]["referee_id"] is None
     assert ref["fouls_per_match"] == 25.0 and ref["penalties_per_match"] == round(2 / 3, 3)
     star = d["players"]["home"][0]
     assert star["name"] == "Star Nine" and star["goals"] == 5 and star["starts"] == 3

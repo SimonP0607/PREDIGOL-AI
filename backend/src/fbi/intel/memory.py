@@ -1,4 +1,4 @@
-"""Longitudinal memory - ``memory-v2``: what PrediGol Intelligence has seen of each team, competition, referee, coach,
+"""Longitudinal memory - ``memory-v3``: what PrediGol Intelligence has seen of each team, competition, referee, coach,
 player and market, accumulated day by day (``intel.entity_memory``, append-only).
 
 One row per entity x aspect x Bogotá day, written only when something of it happened that day; each row carries the
@@ -10,6 +10,7 @@ matches it rests on. History is never rewritten: yesterday's row stays as it was
     competition x market:<key>    the same per competition
     market x decisions            the same per market, every competition
     referee x discipline          matches, cards (yellow + red), fouls, penalties, cards shown to home / away sides
+                                  (the entity is the person, ``entity_id`` his id in ``core.referees``)
     coach x profile               matches, formations used, wins / draws / losses, goals for / against
     player x availability         times reported out by the provider, and how often he started anyway
 
@@ -22,6 +23,16 @@ numbers and the counters of the cumulative state are therefore what a recomputat
 lists the results in the order they were learned), and the state "as of" a day still holds only what was known by that
 day (no hindsight leaks backwards). Reconciling twice books nothing twice. ``late_days`` reaches further back for a
 one-off repair (``build_memory(..., late_days=30)``); the nightly cycle uses ``LATE_DAYS``.
+
+REFEREES ARE PEOPLE (memory-v3, plan F3). memory-v2 keyed the referee by the string the provider wrote, so one man was several
+entities and two men with one initial and surname were one. Now the entity is the referee of ``fbi.people`` and its id the
+``entity_id``. The rows memory-v2 wrote under a string stay as they were (history is never rewritten) but nothing continues
+them: the new entities begin on the first day memory-v3 runs, and the console lists only the entities of ids. A string key is
+never reconciled either - the late-news pass would otherwise read "this version no longer produces it" as "the day's matches
+were taken back" and book the difference against the old rows. A match the identity has not placed yet is counted when it is,
+by the same late-news pass. When two referees are merged (or one is split) the days still inside the late window are
+re-booked to the right person; older days stay with the person they were recorded under, and the dossier, which is computed
+from the matches, is exact either way.
 
 A streak (``last10``) is a signal to investigate, never a rule: nothing here changes a model, a filter or a pick.
 """
@@ -38,7 +49,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
 
-VERSION = "memory-v2"
+VERSION = "memory-v3"
 MAX_SOURCES = 40
 LATE = "late"
 LATE_DAYS = 3
@@ -67,11 +78,12 @@ SELECT l.id, l.fixture_id, l.market_key, l.selection, l.state, o.result_status, 
 """
 
 MATCHES_SQL = """
-SELECT f.id AS fixture_id, f.home_team_id, f.away_team_id, ff.referee,
+SELECT f.id AS fixture_id, f.home_team_id, f.away_team_id, fr.referee_id, rf.name AS referee_name,
        COALESCE(r.reg_goals_home, r.goals_home) AS gh, COALESCE(r.reg_goals_away, r.goals_away) AS ga
   FROM core.fixtures f
   JOIN core.fixture_results r ON r.fixture_id = f.id
-  LEFT JOIN core.fixture_facts_latest ff ON ff.fixture_id = f.id
+  LEFT JOIN core.fixture_referees fr ON fr.fixture_id = f.id
+  LEFT JOIN core.referees rf ON rf.id = fr.referee_id
  WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND f.status_group = 'finished'
    AND (%(fixtures)s::bigint[] IS NULL OR f.id = ANY(%(fixtures)s))
 """
@@ -197,8 +209,8 @@ def day_deltas(conn: psycopg.Connection[Any], day: date) -> tuple[dict[EKey, Del
             absences = [dict(r) for r in cur.fetchall()]
 
     for fid, m in matches.items():
-        ref = m.get("referee")
-        if ref:
+        ref = m.get("referee_id")
+        if ref is not None:
             k = ("referee", str(ref), "discipline")
             h, a = stats.get(fid, {}).get("home") or {}, stats.get(fid, {}).get("away") or {}
             d = deltas.setdefault(k, {"matches": 0, "cards": 0, "cards_home": 0, "cards_away": 0, "reds": 0,
@@ -215,7 +227,7 @@ def day_deltas(conn: psycopg.Connection[Any], day: date) -> tuple[dict[EKey, Del
                     d["fouls"] += int(h["fouls"]) + int(a["fouls"])
                     d["fouls_matches"] += 1
             d["penalties"] += pens.get(fid, 0)
-            names[k] = str(ref)
+            names[k] = str(m.get("referee_name") or ref)
             sources[k].append(fid)
     for lu in lineups:
         fid = int(lu["fixture_id"])
@@ -315,6 +327,12 @@ def _clean(d: Delta) -> Delta:
     return out
 
 
+def is_legacy(key: EKey) -> bool:
+    """A key memory-v3 no longer produces: a referee under the string the provider wrote (memory-v2). Its rows are history and
+    nothing reconciles them - they are not "taken back", they were superseded by the referee's id."""
+    return key[0] == "referee" and not key[1].isdigit()
+
+
 def late_news(fresh: Delta | None, recorded: Delta | None) -> Delta:
     """What a day learned after its row was written: today's delta less what is already recorded for it."""
     return _clean(_minus(fresh or {}, recorded or {}))
@@ -397,6 +415,8 @@ def build_memory(conn: psycopg.Connection[Any], *, day: date, at: datetime, late
         fresh, fnames, fsources = day_deltas(conn, d0)
         have = recorded.get(d0, {})
         for key in sorted({*fresh, *have}):
+            if is_legacy(key):
+                continue
             news = late_news(fresh.get(key), have.get(key, ({}, set()))[0])
             if _empty(news):
                 continue

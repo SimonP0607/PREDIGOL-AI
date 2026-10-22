@@ -1,4 +1,10 @@
-"""POST_MATCH_REVIEW of a decision - ``pm-v4``: whether the DECISION was good, apart from whether it WON.
+"""POST_MATCH_REVIEW of a decision - ``pm-v5``: whether the DECISION was good, apart from whether it WON.
+
+pm-v5 (plan F3): the referee is a person (``fbi.people``). The average of cards he shows - the cause "cards above / below the
+referee's usual" - is the average of HIS matches under every spelling the provider used for him, not of the matches whose facts
+carried the same string; two men who write the same initial and surname are no longer one. A match the identity has not seen
+yet keeps the string (``evidence.referee_id`` null). The v4 rows stay as they were written; a decision is judged again under v5
+while it is inside the look-back window, and the readers take the newest post-mortem of a decision.
 
 pm-v4 (plan F0, defect 6): the kicks of a penalty shoot-out are not part of the match. pm-v3 read a converted
 shoot-out kick as "a penalty converted" (and a missed one as a missed penalty), although the settlement, the dossier and the
@@ -35,7 +41,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.market import closing_value
 
-VERSION = "pm-v4"
+VERSION = "pm-v5"
 SHOOTOUT = "Penalty Shootout"
 """``comments`` of the events that are kicks of a shoot-out (the provider gives them minute 120 and type Goal)."""
 GOOD_CLV = closing_value.GOOD
@@ -80,9 +86,24 @@ SELECT DISTINCT ON (fixture_id, team_side) fixture_id, team_side, yellow_cards, 
 
 RESULTS_SQL = """
 SELECT r.fixture_id, COALESCE(r.reg_goals_home, r.goals_home) AS gh, COALESCE(r.reg_goals_away, r.goals_away) AS ga,
-       r.ht_goals_home AS hth, r.ht_goals_away AS hta, ff.referee
-  FROM core.fixture_results r LEFT JOIN core.fixture_facts_latest ff ON ff.fixture_id = r.fixture_id
+       r.ht_goals_home AS hth, r.ht_goals_away AS hta, COALESCE(rf.name, ff.referee) AS referee, fr.referee_id
+  FROM core.fixture_results r
+  LEFT JOIN core.fixture_facts_latest ff ON ff.fixture_id = r.fixture_id
+  LEFT JOIN core.fixture_referees fr ON fr.fixture_id = r.fixture_id
+  LEFT JOIN core.referees rf ON rf.id = fr.referee_id
  WHERE r.fixture_id = ANY(%(fixtures)s)
+"""
+"""The result and the referee: his name and id when the identity has placed the match, else the string of the facts."""
+
+REFEREE_BY_ID_SQL = """
+SELECT fr.referee_id, count(*) AS n, avg(COALESCE(s.y, 0) + COALESCE(s.r, 0))::float8 AS cards
+  FROM core.fixture_referees fr
+  JOIN core.fixtures f ON f.id = fr.fixture_id
+  JOIN LATERAL (SELECT sum(yellow_cards) AS y, sum(red_cards) AS r FROM core.fixture_team_stats t
+                 WHERE t.fixture_id = f.id AND t.source = 'api-football') s ON true
+ WHERE fr.referee_id = ANY(%(ids)s) AND f.kickoff_at < %(before)s AND f.kickoff_at >= %(before)s - interval '400 days'
+   AND f.status_group = 'finished' AND s.y IS NOT NULL
+ GROUP BY 1
 """
 
 REFEREE_SQL = """
@@ -95,6 +116,7 @@ SELECT ff.referee, count(*) AS n, avg(COALESCE(s.y, 0) + COALESCE(s.r, 0))::floa
    AND f.status_group = 'finished' AND s.y IS NOT NULL
  GROUP BY 1
 """
+"""The same average by the string, only for the matches the identity has not placed yet."""
 
 
 def side_of(market: str, selection: str) -> str:
@@ -248,10 +270,16 @@ def run_postmortems(conn: psycopg.Connection[Any], *, at: datetime, lookback: ti
             stats[int(r["fixture_id"])][str(r["team_side"])] = dict(r)
         cur.execute(RESULTS_SQL, {"fixtures": fixtures})
         results = {int(r["fixture_id"]): dict(r) for r in cur.fetchall()}
-        refs = sorted({str(r["referee"]) for r in results.values() if r.get("referee")})
+        before = min(d["kickoff_at"] for d in todo)
+        ids = sorted({int(r["referee_id"]) for r in results.values() if r.get("referee_id") is not None})
+        refs = sorted({str(r["referee"]) for r in results.values() if r.get("referee") and r.get("referee_id") is None})
+        ref_avg_id: dict[int, float] = {}
         ref_avg: dict[str, float] = {}
+        if ids:
+            cur.execute(REFEREE_BY_ID_SQL, {"ids": ids, "before": before})
+            ref_avg_id = {int(r["referee_id"]): float(r["cards"]) for r in cur.fetchall() if int(r["n"]) >= 5}
         if refs:
-            cur.execute(REFEREE_SQL, {"refs": refs, "before": min(d["kickoff_at"] for d in todo)})
+            cur.execute(REFEREE_SQL, {"refs": refs, "before": before})
             ref_avg = {str(r["referee"]): float(r["cards"]) for r in cur.fetchall() if int(r["n"]) >= 5}
     n = 0
     with conn.cursor() as cur:
@@ -259,8 +287,10 @@ def run_postmortems(conn: psycopg.Connection[Any], *, at: datetime, lookback: ti
             fid = int(d["fixture_id"])
             res = results.get(fid)
             referee = None if res is None else res.get("referee")
-            causes = causes_of(d, events.get(fid, []), stats.get(fid, {}), res,
-                               None if referee is None else ref_avg.get(str(referee)))
+            referee_id = None if res is None else res.get("referee_id")
+            usual = (None if referee is None else
+                     ref_avg_id.get(int(referee_id)) if referee_id is not None else ref_avg.get(str(referee)))
+            causes = causes_of(d, events.get(fid, []), stats.get(fid, {}), res, usual)
             quality = quality_of(d.get("clv"))
             verdict = verdict_of(str(d["result_status"]), quality)
             answers = answers_for(d, quality, verdict, causes)
@@ -272,7 +302,7 @@ def run_postmortems(conn: psycopg.Connection[Any], *, at: datetime, lookback: ti
                  Jsonb(answers),
                  Jsonb({"decision": int(d["id"]), "state": d["state"], "checkpoint": d["checkpoint"],
                         "known_at": d["known_at"].isoformat(), "odds": d["odds"], "score": d["score"],
-                        "result": None if res is None else f"{res['gh']}-{res['ga']}", "referee": referee,
+                        "result": None if res is None else f"{res['gh']}-{res['ga']}", "referee": referee, "referee_id": referee_id,
                         "events": len(events.get(fid, [])), "stats": bool(stats.get(fid))})))
             n += max(cur.rowcount, 0)
     return n

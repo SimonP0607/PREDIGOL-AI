@@ -1,4 +1,4 @@
-"""Data-leakage audit - ``leak-audit-v2``: did any decision use something that was not known at its ``known_at``?
+"""Data-leakage audit - ``leak-audit-v3``: did any decision use something that was not known at its ``known_at``?
 
 Run every night over the decisions taken on a Bogotá day, and in the tests. One row per rule
 (``intel.audit_checks``): how many decisions were checked and how many violate it, with examples. The rules:
@@ -13,8 +13,16 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
     tie_legs_known           (v2, plan F2) the AI packets built on the day: every earlier leg of its tie that the packet
                              cites kicked off before the match (so it is not the match itself, nor a later leg) and had
                              its result recorded by the packet's moment. Counted per cited leg; the examples are packet
-                             ids, not decision ids. The one rule that reads packets: what a tie went on to decide is never
+                             ids, not decision ids. The first rule that reads packets: what a tie went on to decide is never
                              a pre-match input (``fbi.competitions.context`` is the one door; this is the nightly proof).
+    referee_known            (v3, plan F3) the AI packets built on the day that name a referee: the provider's observation the
+                             name comes from (``fixture.referee_seen_at``) is not later than the packet's moment, is a row that
+                             exists (in ``core.fixture_officials`` when the packet carries a referee id, in ``core.fixture_facts``
+                             when it kept the string), and no newer observation of the provider existed by the packet's moment
+                             (a packet that read an older answer than the one the provider had given). A name with no moment
+                             cannot be found among the rows, so it is a violation too. It never looks at WHO the
+                             spelling is today: a merge or a split changes the person, not what the provider said when. Packets
+                             without the field (built by an earlier version) are not read. Examples are packet ids.
 """
 
 from __future__ import annotations
@@ -28,7 +36,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
 
-VERSION = "leak-audit-v2"
+VERSION = "leak-audit-v3"
 
 BASE = "SELECT d.* FROM intel.decisions d WHERE d.known_at >= %(start)s AND d.known_at < %(end)s"
 
@@ -94,6 +102,29 @@ RULES: dict[str, str] = {
                      LEFT JOIN core.fixture_results r ON r.fixture_id = l.leg_id)
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
+    "referee_known": f"""
+        WITH p AS ({PACKETS}), r AS (
+            SELECT p.id AS packet_id, p.fixture_id, p.as_of,
+                   (p.content #>> '{{fixture,referee_id}}')::bigint AS referee_id,
+                   (p.content #>> '{{fixture,referee_seen_at}}')::timestamptz AS seen
+              FROM p WHERE jsonb_exists(p.content -> 'fixture', 'referee_seen_at')
+                       AND jsonb_typeof(p.content #> '{{fixture,referee}}') = 'string'),
+        c AS (
+            SELECT r.packet_id,
+                   (r.seen > r.as_of
+                    OR NOT CASE WHEN r.referee_id IS NOT NULL THEN
+                        EXISTS (SELECT 1 FROM core.fixture_officials o
+                                 WHERE o.fixture_id = r.fixture_id AND o.role = 'referee' AND o.observed_at = r.seen)
+                        AND NOT EXISTS (SELECT 1 FROM core.fixture_officials n
+                                         WHERE n.fixture_id = r.fixture_id AND n.role = 'referee'
+                                           AND n.observed_at > r.seen AND n.observed_at <= r.as_of)
+                    ELSE
+                        EXISTS (SELECT 1 FROM core.fixture_facts x
+                                 WHERE x.fixture_id = r.fixture_id AND x.observed_at = r.seen AND x.referee IS NOT NULL)
+                    END) AS bad
+              FROM r)
+        SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
+               (array_agg(c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
 }
 
 
