@@ -26,12 +26,16 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import psycopg
+import structlog
 
+from fbi.catalog.neutral_store import classify_provider_fixtures
 from fbi.ingestion.fixture_facts import apply_fixture_facts
 from fbi.ingestion.fixtures import FixtureRepository, PayloadLineage, team_names
 from fbi.ingestion.results import ResultRepository
 from fbi.providers.api_football.details import iter_fixture_facts
 from fbi.providers.base import FootballDataProvider
+
+log = structlog.get_logger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +54,8 @@ class PayloadOutcome:
     """Rows added to core.fixture_facts (referee, winner flags, half starts; change-only)."""
     left_tracked: int = 0
     """Fixtures we hold that the payload lists under a competition we do not track (flagged, not moved)."""
+    venue_verdicts_written: int = 0
+    """Neutral-venue verdicts written or changed for the fixtures of the payload (``fbi.catalog.neutral``)."""
 
 
 def apply_fixtures_payload(
@@ -77,6 +83,7 @@ def apply_fixtures_payload(
     results = provider.parse_results(body)
     _, written = ResultRepository(conn).apply(results, lineage=lineage)
     facts = apply_fixture_facts(conn, iter_fixture_facts(body), payload_hash=payload_hash, observed_at=fetched_at)
+    verdicts = _classify_venues(conn, [r.provider_fixture_id for r in ours], payload_hash=payload_hash)
     return PayloadOutcome(
         seen=len(refs),
         ours=len(ours),
@@ -86,4 +93,20 @@ def apply_fixtures_payload(
         results_written=written,
         facts_written=facts,
         left_tracked=left,
+        venue_verdicts_written=verdicts,
     )
+
+
+def _classify_venues(conn: psycopg.Connection, provider_fixture_ids: list[int], *, payload_hash: str) -> int:
+    """Decide whether the fixtures just written are at a neutral venue (``fbi.catalog.neutral``, rule neutral-v1) and
+    keep the verdict. It is derived data and must never cost a payload its fixtures, so it runs in a savepoint: if it
+    fails the failure is logged as an error - not swallowed, not turned into a number - and the payload's own writes
+    stand; ``python -m scripts.neutral_rule classify`` fills in what is missing."""
+    if not provider_fixture_ids:
+        return 0
+    try:
+        with conn.transaction():
+            return classify_provider_fixtures(conn, provider_fixture_ids).written
+    except Exception:
+        log.exception("neutral.classify_failed", fixtures=len(provider_fixture_ids), payload_hash=payload_hash)
+        return 0
