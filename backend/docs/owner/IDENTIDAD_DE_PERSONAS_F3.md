@@ -58,7 +58,7 @@ colocar deja a los lectores en el texto que leían antes.
     «jugó»**;
   * un jugador que el trabajo aún no ha visto contesta con una frase («Todavía no hay ninguna racha construida…»), no con una lista
     vacía que se leería como «nunca jugó en ningún sitio».
-* **Paquete de la IA y lo que lo rodea (versiones nuevas, aún no desplegadas):**
+* **Paquete de la IA y lo que lo rodea (versiones nuevas, en producción desde el 22 oct 2026):**
   * `packet-v5`: `fixture.referee`, `referee_id` y `referee_seen_at` se leen **a la hora del paquete** desde `core.fixture_officials`
     por una sola puerta (`fbi.people.officials.referee_as_of`): lo último que el proveedor había dicho para entonces; nada si lo había
     quitado; y la cadena que escribió mientras el pase horario no ha alcanzado un cambio (nunca una persona que ya no es la nombrada).
@@ -132,6 +132,33 @@ colocar deja a los lectores en el texto que leían antes.
   ellas y sin minutos, no jugó; sin ellas, «aún no se puede decir» y se revisa hasta que lleguen, que es horas después del pitido).
 * **«Baja» en el bloque nacional** es la última respuesta del proveedor a la hora del paquete; cualquier respuesta posterior que lo
   limpie (se recuperó) hace que ya no figure en el paquete de un momento posterior y que siga figurando en el de uno anterior.
+* **El «jugador 0» del proveedor no es una persona.** Cada partido trae en las estadísticas una fila de relleno con el identificador 0
+  (4.820 filas, una por partido). Ninguna lectura del historial la usa: sin esta guarda, una racha «del jugador 0» rompe la restricción
+  de la tabla y el pase completo se deshace (ocurrió en producción la primera noche; ver «Lo que se aprendió al desplegar»).
+
+**Qué lado fue cada hombre (`sides-v1`).** El proveedor dice quién jugó un partido **dos veces**: en la hoja de convocados (titulares y
+suplentes) y en las estadísticas del jugador, y las dos nombran un lado, local o visitante. Casi siempre coinciden. Pero en **202 de los
+137.400 partidos** que tienen las dos (casi todos de 2025, casi ninguno desde la primavera de 2026) el proveedor dio **a cada equipo la
+hoja del otro**: los once del Nashville bajo el Inter Miami y al revés, con el entrenador correcto al lado, mientras que las
+estadísticas del mismo partido tienen a cada hombre en su lado. Se equivoca por **hojas enteras**, nunca por hombres sueltos: de las
+274.813 hojas que comparten hombres con las estadísticas, 274.367 coinciden en todos, 404 (las dos de esos 202 partidos) discrepan en
+todos menos uno, **ninguna en un punto intermedio**, y otras 42 difieren en un solo hombre, listado en las dos hojas de su partido. Sin
+corregirlo, esos jugadores habrían quedado con una racha en el club contrario y con partidos de otra selección. La regla es la que
+aplicaría una persona:
+
+1. **Las estadísticas mandan.** Un hombre que las estadísticas colocan está del lado que ellas dicen, diga lo que diga su hoja.
+   (Contrastado con el club en que jugó en los partidos de alrededor, las estadísticas aciertan en el 97,7 % de las discrepancias.)
+2. **Una hoja que las estadísticas dan la vuelta es del otro lado.** Si al menos **5** de sus hombres están en las estadísticas y al
+   menos el **80 %** de ellos están colocados en el otro lado, la hoja está *cruzada*, y todo hombre suyo que **no** está en las
+   estadísticas (un suplente que no llegó a salir) se lee también en el otro lado. Una hoja con pocos hombres en las estadísticas no se
+   da la vuelta con tan poca prueba.
+3. **Un hombre que está en las dos hojas y no en las estadísticas no está en ninguna parte:** nada dice cuál es su lado y una
+   conjetura le pondría en un club en el que nunca jugó.
+4. **Un partido sin estadísticas conserva su hoja tal cual:** nada dice lo contrario. Es el residuo que esta regla **no puede alcanzar**
+   (alrededor de uno de cada cinco partidos recientes no tiene estadísticas); `audit` lo cuenta y la reparación de verdad está en la
+   entrada de datos (orientar las hojas con las estadísticas de la misma respuesta). Es una decisión tuya, abajo.
+
+La versión de las tres reglas (`sides-v1`) forma parte de la versión del constructor de historiales: cambiarla obliga a reconstruir.
 
 ## Cómo corre
 
@@ -166,7 +193,7 @@ python -m scripts.player_history build                          # ensayo en seco
 python -m scripts.player_history build --apply                  # un pase sobre todos (el primero construye toda la historia)
 python -m scripts.player_history build --recent --apply         # lo que hace el worker: los jugadores de los últimos días
 python -m scripts.player_history build --player 123 --apply     # solo las rachas de ese jugador (repetible)
-python -m scripts.player_history audit                          # invariantes y un pase simulado sobre todo (lento; sale con 1 si falla)
+python -m scripts.player_history audit                          # invariantes, hojas cruzadas y un pase simulado sobre todo (lento; sale con 1 si falla)
 python -m scripts.player_history show 123 --at 2026-03-20       # un jugador: rachas, caps, dónde estaba ese día
 python -m scripts.player_history coach 456                      # un entrenador: la persona y su carrera con los enlaces
 ```
@@ -227,8 +254,8 @@ solo lectura:
 | Un jugador traspasado conserva su historia | sí: una racha por club, con las fechas | `test_a_chain_of_transfers_dates_every_streak`, `test_the_streaks_come_from_transfers_matches_and_squad_lists_and_a_second_pass_writes_nothing` |
 | Una fusión de árbitros es reversible | sí: solo mueve grafías y guarda lo que movió | `test_a_merge_moves_aliases_and_nothing_else_and_an_undo_puts_them_back`, `test_a_merge_is_reversible_and_leaves_who_did_it`, `test_a_merge_and_its_undo_leave_the_aggregates_as_they_were` |
 
-La suite pasa de 3.094 a **3.427 pruebas** (4 omitidas, como antes) y la web de 339 a 355; `ruff`, `mypy` estricto (393 archivos) y
-`mypy .` (872) limpios; la construcción de producción de la web (`NITRO_PRESET=node-server VITE_DATA_MODE=live`) pasa.
+La suite pasa de 3.094 a **3.468 pruebas** (3.427 al desplegar F3 y 41 más con F3.1; 4 omitidas, como antes) y la web de 339 a 355;
+`ruff`, `mypy` estricto (394 archivos) y `mypy .` (875) limpios; la construcción de producción de la web (`NITRO_PRESET=node-server VITE_DATA_MODE=live`) pasa.
 
 ## Lo que se decidió distinto del plan (y los límites que conviene conocer)
 
@@ -248,6 +275,13 @@ La suite pasa de 3.094 a **3.427 pruebas** (4 omitidas, como antes) y la web de 
   lenta de F3 y no se puede acelerar sin equivocarse: el sistema prefiere dos personas a una mezcla.
 * **`memory-v2` no se reconcilia.** Lo que ese motor guardó bajo una cadena de texto queda como historia (y oculto en la lista); la
   memoria nueva usa la persona. Mezclar ambas habría inventado un pasado.
+* **Las hojas cruzadas se corrigen al leer, no en el dato guardado.** Las filas de `core.fixture_lineup_players` siguen siendo lo que
+  el proveedor dijo (la evidencia no se reescribe); el constructor de historiales las lee con la regla `sides-v1` y `audit` cuenta lo
+  que giró. Quien más abajo lea esa tabla directamente (la ficha del partido, los modelos de plantilla) debe saber que en 202 partidos
+  de 2025 los lados de la hoja están al revés; reparar la fuente es una decisión tuya (abajo).
+* **La regla no alcanza a los partidos sin estadísticas** (alrededor de uno de cada cinco recientes): ahí la hoja se toma como llega.
+  Es un límite medido, no un olvido; se vigila con `fixtures_with_sheets_only` y `lone_stints` (rachas de un solo partido, que es donde
+  un cruce no corregido se notaría).
 * **El barrido diario de jugadores es el punto más pesado de F3** (ver la tabla de arriba). Si al medirlo en producción pasa de 30
   minutos o molesta a otro trabajo, se puede espaciar (semanal, con la pasada de cada 4 horas cubriendo el día a día) sin tocar
   nada más.
@@ -265,6 +299,32 @@ La suite pasa de 3.094 a **3.427 pruebas** (4 omitidas, como antes) y la web de 
 
 F3 viaja en el mismo paquete que **F1.1** (`tax-v2`: el reloj de precios lee también el hándicap asiático por mitades, apuestas 19 y
 104; el extractor relee en segundo plano los cuerpos de la taxonomía anterior; RAW no se toca): ver `RELOJ_DE_PRECIOS_F1.md`.
+
+## Lo que se aprendió al desplegar (22 oct 2026)
+
+F3 + F1.1 entraron en producción el 22 oct 2026 a las 22:50 UTC (backend `be8050de78fd`, web `e8d37dda5eb8`, migraciones 0083–0085),
+con copia verificada y prueba de restauración antes. Cuatro cosas salieron al desplegar y están corregidas en el paquete **F3.1**
+(solo backend, sin migraciones), que es el que deja todo el sistema como lo describe esta guía:
+
+1. **El primer pase programado de jugadores (23:14 UTC) falló limpiamente y no escribió nada.** El proveedor mete en las estadísticas
+   de cada partido una fila de relleno con el jugador «0»; el constructor la tomó por una persona y la restricción de la tabla
+   (`player_spells_player_check`) tumbó la transacción entera, que se deshizo. Ahora todas las lecturas ignoran el identificador 0, con
+   una prueba de regresión que lo reproduce. Hasta el despliegue de F3.1 el trabajo falló cada 4 horas, sin daño: la tabla de
+   jugadores solo tenía 6 jugadores de prueba.
+2. **Las hojas de convocados cruzadas del proveedor** (la regla `sides-v1` de arriba) se vieron al contrastar, con datos reales de
+   producción en solo lectura, la hoja de un partido con las estadísticas del mismo partido (el ejemplo: Nashville – Inter Miami).
+   Son 202 partidos de 137.400; la corrección se hace al leer, sin tocar el dato guardado.
+3. **Los permisos de la base no se reaplicaban con el archivo nuevo.** `predigolctl deploy` aplica `grants.sql` dentro del contenedor de
+   la base, pero ese archivo estaba montado como archivo suelto, y `git checkout` lo reemplaza por otro (otro inodo) sin que el
+   contenedor lo note: se aplicaba la versión **anterior**. Ahora el despliegue lo lee de la copia de trabajo y se lo pasa por la
+   entrada estándar (`backend/deploy/vps/bin/lib.sh`); una prueba con un `docker` falso comprueba lo que recibe la base.
+4. **Dos reintentos de la migración 0085** (el índice se construye sin bloquear y espera a las transacciones abiertas del worker; su
+   límite de espera de bloqueo es de 10 s). El despliegue reintenta solo y a la tercera se aplicó; la migración borra el índice inválido
+   que deja un intento interrumpido.
+
+Una nota de higiene: la imagen de producción instala las **últimas versiones permitidas** de las librerías al construirse (en este
+despliegue entró FastAPI 0.161.1; la batería completa se repitió con esa versión y pasó: 3.427 pruebas). Fijarlas es un cambio pequeño
+para la puerta de calidad final (F14), no de F3.
 
 ## Cómo deshacerlo
 
@@ -284,6 +344,9 @@ F3 viaja en el mismo paquete que **F1.1** (`tax-v2`: el reloj de precios lee tam
 * **La cola de árbitros** (679 parejas): no hay prisa; las de mayor impacto están arriba. Si prefieres que las revise yo con
   evidencia (competiciones, fechas, país) y te traiga una propuesta, lo hago, pero la decisión de fusionar es tuya.
 * Si el barrido diario de jugadores debe seguir siendo diario (ver arriba).
+* **Si la entrada de datos debe orientar las hojas de convocados con las estadísticas de la misma respuesta**, de modo que un cruce
+  del proveedor no llegue nunca a la base (lo propondría para F8, junto con lo demás que se aprende de cada partido terminado). Hoy
+  se corrige al leer y los partidos sin estadísticas quedan tal cual.
 * Nada más de F3 pide una decisión tuya: lo demás son hechos guardados y lecturas a fecha.
 
 ## Lo que queda vigilado tras desplegar
@@ -293,3 +356,6 @@ F3 viaja en el mismo paquete que **F1.1** (`tax-v2`: el reloj de precios lee tam
 2. El tiempo real de la primera construcción y de los barridos diarios de jugadores.
 3. El gasto de IA de los primeros días con `packet-v5` / `brief-v6`.
 4. El drenaje del atraso de cuotas y la relectura de `tax-v2` (F1.1).
+5. Las cifras de `audit` de jugadores que delatan un cruce sin corregir: `lone_stints` (rachas de un solo partido) y
+   `fixtures_with_sheets_only` (partidos con hoja y sin estadísticas); y las que cuentan lo corregido (`sheets_crossed`,
+   `sheets_doubtful`, `men_nowhere`).
