@@ -32,13 +32,22 @@ from fbi.ai.absences import absences_as_of, checked_at_as_of
 from fbi.ai.pricing import approx_tokens
 from fbi.catalog.neutral_store import rule_in_force
 from fbi.competitions import context as phase_context
+from fbi.competitions.stages import stage_of
+from fbi.competitions.tables import match_tables
 
 PACKET_VERSION = "packet-v4"
 """v4 (plan F2): the ``phase`` block (``fbi.competitions.context``): the stage of the round and, for a leg of a tie, the tie
 as it could be seen BEFORE the match - the earlier legs that had a result at the packet's moment, the aggregate of those and what
 the first 90 minutes of this match do to it (never the winner, the aggregate or the way a tie was decided: those include this
 very match). ``fixture.stage`` is read by the one classifier of round labels, not a regular expression of its own, and the
-dossier is ``dossier-v2``.
+dossier is ``dossier-v2``. The ``standings`` block is the table of the MATCH'S OWN stage as it stood at the packet's moment
+(``fbi.competitions.tables.match_tables``, the mapping the match page uses, cut at that moment): each side says which
+``stage`` and ``group`` its row ranks and why that table was chosen (``selection``: ``fixture_stage``, ``phase_league_stage``
+or ``previous_stage``). Before v4 each team got the newest row of any table of the season and the table whose name sorted last
+won, so a championship-round match was described with the regular-season table; ``stakes`` are computed only from the match's own
+stage (``remaining`` counts the matches the team has left in THAT stage) and are ``None`` for a knock-out round, which shows the
+table of the stage before it as context only. A stage with no table of its own is ``missing: standings``, never another
+stage's table.
 v2 (13 Oct 2026): the ``dossier`` block (``fbi.intel.dossier``): teams in depth, coaches, key players, the
 referee, the competitive context, how much the head-to-head is worth.
 v3 (plan F0): the ``schedule`` block says what its numbers are (``schedule.calendar``): rest and congestion are read from
@@ -96,20 +105,23 @@ SELECT observed_at, before_kickoff, after_kickoff FROM core.fixture_kickoff_chan
 """
 
 STANDINGS_SQL = """
-SELECT DISTINCT ON (st.team_id, st.group_key)
-       st.team_id, st.group_key, st.rank, st.points, st.played, st.goals_diff, st.form, st.description,
+SELECT st.team_id, st.group_key, st.rank, st.points, st.played, st.goals_diff, st.form, st.description,
        st.snapshot_at, st.home_played, st.home_wins, st.home_draws, st.home_losses, st.away_played, st.away_wins,
        st.away_draws, st.away_losses
   FROM core.standings st
- WHERE st.competition_season_id = %(season)s AND st.snapshot_at <= %(at)s
- ORDER BY st.team_id, st.group_key, st.snapshot_at DESC
+ WHERE st.competition_season_id = %(season)s AND st.snapshot_at = %(snapshot)s AND st.group_key = ANY(%(keys)s)
 """
+"""The rows of the tables ``fbi.competitions.tables.match_tables`` chose for the match, in the one snapshot it chose (taken by the
+packet's moment). Never "each team's newest row": a season with a regular season and a championship round, or an Apertura and a
+Clausura, has several tables with the same teams."""
 
 REMAINING_SQL = """
-SELECT count(*) FROM core.fixtures f
+SELECT f.round FROM core.fixtures f
  WHERE f.competition_season_id = %(season)s AND (f.home_team_id = %(team)s OR f.away_team_id = %(team)s)
    AND f.kickoff_at >= %(kickoff)s AND f.status_group IN ('scheduled', 'live')
 """
+"""The rounds of the matches the team has left from this one on (this one included). What is still to play is what the TABLE's
+stage still has: the Clausura matches already scheduled are not points the Apertura table can still give."""
 
 PAST_SQL = """
 SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, r.reg_goals_home, r.reg_goals_away, c.name AS competition
@@ -470,32 +482,50 @@ class PacketBuilder:
 
     def _standings(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]
                    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-        rows = _rows(self.conn, STANDINGS_SQL, {"season": f["season_id"], "at": at})
+        """Each side's row in the table of the match's own stage, from the newest snapshot taken by ``at``
+        (``fbi.competitions.tables``: the mapping the match page uses, cut at this moment). A match whose stage has no table
+        says so: it is never described with another stage's table. What a position is worth (``stakes``) is computed only
+        from the match's own stage; a knock-out round shows the table of the stage before it as context and no stakes."""
         home, away = int(f["home_team_id"]), int(f["away_team_id"])
-        mine = {int(r["team_id"]): r for r in rows if int(r["team_id"]) in (home, away)}
-        if not mine:
+        try:
+            with self.conn.transaction():
+                found = match_tables(self.conn, int(f["season_id"]), f["round"], f["kickoff_at"], home, away,
+                                     not_after=at)
+        except psycopg.Error:
+            found = None
+        if found is None or not found.choice.keys:
             missing.append("standings")
             return None, None
+        keys = sorted(set(found.choice.keys.values()))
+        rows = _rows(self.conn, STANDINGS_SQL, {"season": f["season_id"], "snapshot": found.snapshot_at, "keys": keys})
+        mine = {(int(r["team_id"]), str(r["group_key"])): r for r in rows}
+        own = found.choice.reason == "fixture_stage"
         out: dict[str, Any] = {}
         stakes: dict[str, Any] = {}
-        snapshot = max(r["snapshot_at"] for r in mine.values())
         for side, team in (("home", home), ("away", away)):
-            r = mine.get(team)
-            if r is None:
+            group = found.choice.keys.get(team)
+            r = None if group is None else mine.get((team, group))
+            if group is None or r is None:
                 continue
-            group = r["group_key"]
             table = [ctx.TableRow(int(x["team_id"]), int(x["rank"]), int(x["points"] or 0), int(x["played"] or 0),
                                   x["description"]) for x in rows if x["group_key"] == group]
-            remaining_row = _row(self.conn, REMAINING_SQL, {"season": f["season_id"], "team": team,
-                                                            "kickoff": f["kickoff_at"]})
-            remaining = int(remaining_row["count"]) if remaining_row else None
-            st = ctx.stakes(table, team, remaining)
+            stage = found.maps[group].stage
+            st = None
+            if own:
+                left = [x["round"] for x in _rows(self.conn, REMAINING_SQL, {
+                    "season": f["season_id"], "team": team, "kickoff": f["kickoff_at"]})]
+                st = ctx.stakes(table, team, sum(1 for x in left if stage_of(x) == stage))
             out[side] = {"rank": r["rank"], "points": r["points"], "played": r["played"], "goals_diff": r["goals_diff"],
                          "form": r["form"], "description": r["description"], "group": group, "teams": len(table),
+                         "stage": stage, "selection": found.choice.reason,
                          "home_record": [r["home_wins"], r["home_draws"], r["home_losses"]],
                          "away_record": [r["away_wins"], r["away_draws"], r["away_losses"]]}
             stakes[side] = None if st is None else st.as_json()
-        sources.append({"block": "standings", "table": "core.standings", "as_of": _ts(snapshot)})
+        if not out:
+            missing.append("standings")
+            return None, None
+        sources.append({"block": "standings", "table": "core.standings", "as_of": _ts(found.snapshot_at),
+                        "tables": keys, "selection": found.choice.reason})
         return out, stakes
 
     def _elo(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]

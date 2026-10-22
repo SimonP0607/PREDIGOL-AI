@@ -142,12 +142,17 @@ def candidate_times(times: Sequence[datetime], kickoff: datetime) -> list[dateti
 
 
 def match_tables(conn: psycopg.Connection[Any], cs_id: int, fixture_round: str | None, kickoff: datetime,
-                 home: int, away: int, *, season: Season | None = None) -> MatchTables | None:
+                 home: int, away: int, *, season: Season | None = None,
+                 not_after: datetime | None = None) -> MatchTables | None:
     """The table(s) a match is shown with, from the newest snapshot taken before kick-off that has
-    one, else the first taken after it. None when no stored table ranks the match's stage."""
+    one, else the first taken after it. None when no stored table ranks the match's stage.
+
+    ``not_after`` is the reader's moment (the AI packet's ``at``): no snapshot taken after it is looked at, none
+    after kick-off either - a table that only exists after the match is not a table the match could be judged with."""
     season = season or load_season(conn, cs_id)
-    times = [r["snapshot_at"] for r in _rows(conn, SNAPSHOTS_SQL, {"cs": cs_id, "ko": kickoff, "before": BEFORE,
-                                                                  "after": AFTER})]
+    cut = kickoff if not_after is None else min(kickoff, not_after)
+    times = [r["snapshot_at"] for r in _rows(conn, SNAPSHOTS_SQL, {"cs": cs_id, "ko": cut, "before": BEFORE,
+                                                                  "after": AFTER if not_after is None else 0})]
     if not times:
         return None
     maps = snapshot_maps(conn, season, times)
