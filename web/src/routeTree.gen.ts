@@ -45,6 +45,8 @@ import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
 import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.index'
 import { Route as AdminPlayersPlayerIdRouteImport } from './routes/admin.players.$playerId'
+import { Route as AdminRefereesIndexRouteImport } from './routes/admin.referees.index'
+import { Route as AdminRefereesRefereeIdRouteImport } from './routes/admin.referees.$refereeId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -226,6 +228,16 @@ const AdminPlayersPlayerIdRoute = AdminPlayersPlayerIdRouteImport.update({
   path: '/players/$playerId',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRefereesIndexRoute = AdminRefereesIndexRouteImport.update({
+  id: '/referees/',
+  path: '/referees/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRefereesRefereeIdRoute = AdminRefereesRefereeIdRouteImport.update({
+  id: '/referees/$refereeId',
+  path: '/referees/$refereeId',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -263,7 +275,9 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
+  '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
+  '/admin/referees/': typeof AdminRefereesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -300,7 +314,9 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/matches': typeof MatchesIndexRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
+  '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
   '/admin/players': typeof AdminPlayersIndexRoute
+  '/admin/referees': typeof AdminRefereesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -339,7 +355,9 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
+  '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
+  '/admin/referees/': typeof AdminRefereesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -379,7 +397,9 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/matches/'
     | '/admin/players/$playerId'
+    | '/admin/referees/$refereeId'
     | '/admin/players/'
+    | '/admin/referees/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -416,7 +436,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/matches'
     | '/admin/players/$playerId'
+    | '/admin/referees/$refereeId'
     | '/admin/players'
+    | '/admin/referees'
   id:
     | '__root__'
     | '/'
@@ -454,7 +476,9 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/matches/'
     | '/admin/players/$playerId'
+    | '/admin/referees/$refereeId'
     | '/admin/players/'
+    | '/admin/referees/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -726,6 +750,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPlayersPlayerIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/referees/': {
+      id: '/admin/referees/'
+      path: '/referees'
+      fullPath: '/admin/referees/'
+      preLoaderRoute: typeof AdminRefereesIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/referees/$refereeId': {
+      id: '/admin/referees/$refereeId'
+      path: '/referees/$refereeId'
+      fullPath: '/admin/referees/$refereeId'
+      preLoaderRoute: typeof AdminRefereesRefereeIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
@@ -753,7 +791,9 @@ interface AdminRouteChildren {
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminPlayersPlayerIdRoute: typeof AdminPlayersPlayerIdRoute
+  AdminRefereesRefereeIdRoute: typeof AdminRefereesRefereeIdRoute
   AdminPlayersIndexRoute: typeof AdminPlayersIndexRoute
+  AdminRefereesIndexRoute: typeof AdminRefereesIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -780,7 +820,9 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminPlayersPlayerIdRoute: AdminPlayersPlayerIdRoute,
+  AdminRefereesRefereeIdRoute: AdminRefereesRefereeIdRoute,
   AdminPlayersIndexRoute: AdminPlayersIndexRoute,
+  AdminRefereesIndexRoute: AdminRefereesIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

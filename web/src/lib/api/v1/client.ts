@@ -15,6 +15,17 @@ import type {
   IntelRun,
   IntelState,
 } from "./types_intel";
+import type {
+  PairStatus,
+  RefereeActionResult,
+  RefereeDetail,
+  RefereeList,
+  RefereeMergeBody,
+  RefereePairBody,
+  RefereeQueue,
+  RefereeRenameBody,
+  RefereeSplitBody,
+} from "./types_referees";
 
 export interface BestOddsQuery {
   market?: string | undefined;
@@ -397,6 +408,35 @@ export const v1 = {
       limit: q.limit ?? 100,
     }),
   player: (id: number | string) => getJson<Envelope<PlayerDetail | null>>(`/players/${id}`),
+  /** Referees as people (plan F3): the list, the queue of doubts, one person and the decisions on them. */
+  referees: (q: { q?: string | undefined; limit?: number; offset?: number } = {}) =>
+    getJson<Envelope<RefereeList>>("/admin/referees", {
+      q: q.q,
+      limit: q.limit ?? 50,
+      offset: q.offset ?? 0,
+    }),
+  refereeQueue: (
+    q: { status?: PairStatus; reason?: string | undefined; limit?: number; offset?: number } = {},
+  ) =>
+    getJson<Envelope<RefereeQueue>>("/admin/referees/queue", {
+      status: q.status ?? "open",
+      reason: q.reason,
+      limit: q.limit ?? 50,
+      offset: q.offset ?? 0,
+    }),
+  referee: (id: number | string) => getJson<Envelope<RefereeDetail>>(`/admin/referees/${id}`),
+  refereeMerge: (id: number, body: RefereeMergeBody) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/${id}/merge`, body),
+  refereeUndo: (eventId: number) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/events/${eventId}/undo`, {}),
+  refereeSplit: (id: number, body: RefereeSplitBody) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/${id}/split`, body),
+  refereeReject: (id: number, body: RefereePairBody) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/${id}/reject`, body),
+  refereeReopen: (id: number, body: RefereePairBody) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/${id}/reopen`, body),
+  refereeRename: (id: number, body: RefereeRenameBody) =>
+    postJson<Envelope<RefereeActionResult>>(`/admin/referees/${id}/rename`, body),
   standings: (competitionId: number | string, season?: number) =>
     getJson<Envelope<CompetitionTable | null>>(`/competitions/${competitionId}/standings`, {
       season,

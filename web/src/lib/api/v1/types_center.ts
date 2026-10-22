@@ -537,6 +537,40 @@ export interface PlayerCareerTeam {
   seasons: number[];
 }
 
+/** A streak at a club (plan F3, `core.player_spells`): from squad sheets, statistics and transfers. */
+export interface PlayerClubSpell {
+  provider_team_id: number;
+  /** PrediGol's team when we hold the club. */
+  team_id: number | null;
+  team: string | null;
+  /** First day of the streak; null: he was already there when the facts begin. */
+  valid_from: string | null;
+  /** Day he left (exclusive); null: he is still there as far as the facts say. */
+  valid_to: string | null;
+  source: "transfer" | "lineup" | "squad";
+  matches: number;
+  last_evidence: string;
+  /** How the transfer is described by the provider ("Free", "Loan"...). */
+  via: string | null;
+}
+
+/** A match of a senior national team whose squad sheet carries the player (plan F3, `core.player_national_caps`). */
+export interface PlayerNationalCap {
+  fixture_id: number;
+  kickoff_at: string;
+  team_id: number;
+  team: string;
+  opponent_id: number | null;
+  opponent: string | null;
+  competition: string | null;
+  is_starter: boolean;
+  /** true: he played; false: he stayed on the bench; null: the statistics of the match have not arrived. */
+  appeared: boolean | null;
+  minutes: number | null;
+  goals_for: number | null;
+  goals_against: number | null;
+}
+
 export interface PlayerDetail {
   player: PlayerSummary;
   firstname: string | null;
@@ -551,6 +585,8 @@ export interface PlayerDetail {
   trophies?: Section<PlayerTrophy[]> | null;
   provider_seasons?: Section<PlayerProviderSeason[]> | null;
   career?: Section<PlayerCareerTeam[]> | null;
+  club_history?: Section<PlayerClubSpell[]> | null;
+  national_caps?: Section<PlayerNationalCap[]> | null;
   provenance?: Record<string, Provenance>;
 }
 

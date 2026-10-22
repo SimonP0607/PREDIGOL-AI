@@ -13,6 +13,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { PlayerSummary } from "@/lib/api/v1/types_center";
 import { PlayerPhoto, TeamName } from "@/components/football/Logos";
 import { dec, utcDate } from "./format";
+import { PlayerHistoryPanels } from "./PlayerHistoryPanels";
 import { PlayerProviderSeasonsPanel, PlayerReferencePanels } from "./ReferenceData";
 import { positionLabel } from "./labels";
 
@@ -407,6 +408,7 @@ export function PlayerLive({ playerId }: { playerId: string }) {
           </SectionView>
         </Panel>
       </div>
+      <PlayerHistoryPanels d={d} />
       <PlayerReferencePanels d={d} />
     </div>
   );

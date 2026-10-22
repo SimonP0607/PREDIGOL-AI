@@ -1,0 +1,142 @@
+{
+  "title": "Árbitros",
+  "description": "Los árbitros como personas: las reglas ubican cada escritura que usó el proveedor; lo que dudan espera aquí una decisión.",
+  "tabs": {
+    "people": "Personas",
+    "queue": "Dudas"
+  },
+  "counts": {
+    "people": "Personas",
+    "spellings": "Escrituras",
+    "matches": "Partidos con árbitro",
+    "settled": "Partidos sin duda",
+    "settledHint": "Parte de los partidos con árbitro cuyo árbitro no tiene ninguna duda pendiente.",
+    "queue": "Dudas pendientes",
+    "doubtMatches": "Partidos con duda",
+    "problems": "Problemas en las tablas",
+    "none": "Ninguno"
+  },
+  "list": {
+    "search": "Buscar por nombre (cualquier escritura)",
+    "headers": {
+      "name": "Árbitro",
+      "country": "País",
+      "matches": "Partidos",
+      "first": "Primer partido",
+      "last": "Último partido"
+    },
+    "empty": "Ningún árbitro coincide.",
+    "unknownCountry": "No se conoce",
+    "locked": "Nombre elegido por un dueño"
+  },
+  "queue": {
+    "filter": {
+      "status": "Estado",
+      "reason": "Motivo",
+      "all": "Todos"
+    },
+    "status": {
+      "open": "Pendiente",
+      "rejected": "Personas distintas",
+      "merged": "Unidos"
+    },
+    "headers": {
+      "pair": "Los dos",
+      "reason": "Motivo",
+      "score": "Puntaje",
+      "impact": "Partidos afectados",
+      "decision": "Decisión"
+    },
+    "empty": {
+      "open": "No hay ninguna duda pendiente.",
+      "other": "No hay nada aquí."
+    },
+    "matches": "{n} partidos",
+    "decidedBy": "por {who}"
+  },
+  "reasons": {
+    "same_name_other_scope": "El mismo nombre en otro país",
+    "longer_name": "Un nombre contiene al otro",
+    "initial_and_full": "Una inicial y un nombre completo que encajan",
+    "spelling_variant": "Se diferencian en una escritura"
+  },
+  "basis": {
+    "identity": "Ancla a la persona",
+    "extension": "Forma más larga del nombre",
+    "initial": "Inicial del nombre",
+    "foreign": "De otro país",
+    "unscoped": "Sin país",
+    "stored": "Conservada de antes",
+    "manual": "Ubicada por una persona"
+  },
+  "action": {
+    "keep": "Es la misma persona: conservar a {name}",
+    "different": "Son dos personas distintas",
+    "reopen": "Volver a la duda",
+    "force": "Unir de todos modos",
+    "undo": "Deshacer",
+    "pending": "Guardando…",
+    "conflict": "Tienen partidos al mismo tiempo, así que pueden ser dos personas. Une solo si los datos del proveedor están mal.",
+    "names": {
+      "merge": "Unión",
+      "undo": "Deshacer",
+      "split": "Separación",
+      "reject": "Personas distintas",
+      "reopen": "Vuelta a la duda",
+      "rename": "Cambio de nombre"
+    }
+  },
+  "detail": {
+    "notFound": "Este árbitro no existe.",
+    "mergedInto": "Unido a",
+    "subtitle": "{matches} partidos · {country}",
+    "rename": {
+      "title": "Nombre",
+      "placeholder": "El nombre que se muestra",
+      "save": "Guardar el nombre",
+      "rules": "Devolverlo a las reglas",
+      "locked": "Elegido por un dueño: las reglas lo respetan."
+    },
+    "aliases": {
+      "title": "Escrituras",
+      "subtitle": "Cada texto que el proveedor escribió para él. Marca los que son de otra persona para separarlos.",
+      "headers": {
+        "display": "Escritura",
+        "basis": "Por qué es suya",
+        "matches": "Partidos",
+        "last": "Última vez"
+      },
+      "select": "Marcar {name}"
+    },
+    "split": {
+      "name": "Nombre del árbitro nuevo (opcional)",
+      "button": "Separar las escrituras marcadas",
+      "hint": "Se tomó por uno a dos hombres: las escrituras marcadas pasan a un árbitro nuevo y el par no vuelve a sugerirse."
+    },
+    "candidates": {
+      "title": "Dudas sobre él",
+      "empty": "Ninguna duda sobre él."
+    },
+    "matches": {
+      "title": "Partidos recientes",
+      "headers": {
+        "date": "Fecha",
+        "match": "Partido",
+        "competition": "Competición",
+        "spelling": "Escrito como"
+      },
+      "empty": "Ningún partido todavía."
+    },
+    "events": {
+      "title": "Decisiones",
+      "subtitle": "Toda decisión es reversible y deja constancia.",
+      "headers": {
+        "when": "Cuándo",
+        "who": "Quién",
+        "action": "Acción"
+      },
+      "undone": "Deshecha",
+      "empty": "No se ha tomado ninguna decisión sobre él."
+    }
+  }
+}

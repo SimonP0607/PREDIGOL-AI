@@ -6,6 +6,7 @@ import type { HistoryPeriod } from "./types_records";
 import type { RatingPool } from "./types";
 import type { FindingsQuery, ScoresQuery } from "./types_truth";
 import type { MemoryFilters } from "./types_ai_layer";
+import type { PairStatus } from "./types_referees";
 
 const MINUTE = 60_000;
 type Preview = "shadow" | undefined;
@@ -111,6 +112,21 @@ export const live = {
     queryFn: () => v1.players(q),
   }),
   player: (id: string) => ({ queryKey: ["v1", "player", id], queryFn: () => v1.player(id) }),
+  /** Referees as people (plan F3). Every decision invalidates the `["v1", "referees"]` prefix. */
+  referees: (q: { q?: string | undefined; offset?: number } = {}) => ({
+    queryKey: ["v1", "referees", "list", q.q ?? "", q.offset ?? 0],
+    queryFn: () => v1.referees(q),
+  }),
+  refereeQueue: (
+    q: { status?: PairStatus; reason?: string | undefined; offset?: number } = {},
+  ) => ({
+    queryKey: ["v1", "referees", "queue", q.status ?? "open", q.reason ?? "", q.offset ?? 0],
+    queryFn: () => v1.refereeQueue(q),
+  }),
+  referee: (id: string) => ({
+    queryKey: ["v1", "referees", "one", id],
+    queryFn: () => v1.referee(id),
+  }),
   health: { queryKey: ["v1", "health"], queryFn: v1.health, refetchInterval: MINUTE },
   matches: (q: MatchQuery) => ({ queryKey: ["v1", "matches", q], queryFn: () => v1.matches(q) }),
   competitions: { queryKey: ["v1", "competitions"], queryFn: () => v1.competitions() },

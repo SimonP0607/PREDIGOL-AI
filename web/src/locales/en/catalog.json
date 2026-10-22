@@ -228,6 +228,46 @@
         "title": "Injuries and suspensions",
         "absence": "Absence",
         "noReason": "no reason given"
+      },
+      "history": {
+        "title": "Clubs over time",
+        "subtitle": "Streaks at clubs built from squad sheets, statistics and transfers. An unknown start means he was already there when we first saw him.",
+        "headers": {
+          "club": "Club",
+          "from": "From",
+          "to": "To",
+          "source": "From",
+          "matches": "Matches",
+          "lastEvidence": "Last seen"
+        },
+        "unknownStart": "Before we saw him",
+        "stillThere": "Still there",
+        "source": {
+          "transfer": "Transfer",
+          "lineup": "Line-ups",
+          "squad": "Squad lists"
+        },
+        "empty": "No club streak is built for this player yet.",
+        "caps": {
+          "title": "With the national team",
+          "subtitle": "Finished matches of a senior national side whose squad sheet carries him.",
+          "summary": "{caps} played ({starts} starts, {minutes} min) · {waiting} waiting for the statistics",
+          "headers": {
+            "date": "Date",
+            "team": "Team",
+            "opponent": "Against",
+            "competition": "Competition",
+            "role": "Role",
+            "minutes": "Minutes"
+          },
+          "role": {
+            "started": "Started",
+            "cameOn": "Came on",
+            "unused": "Stayed on the bench",
+            "waiting": "Waiting for the statistics"
+          },
+          "empty": "He has no match with a senior national team yet."
+        }
       }
     }
   },
