@@ -24,9 +24,9 @@ from fbi.competitions.phases import (
     TableMap,
     choose,
     map_tables,
-    stage_of,
     stages_from_rounds,
 )
+from fbi.competitions.stages import stage_of
 
 DECIDED = "(f.status_group = 'finished' OR f.status_short IN ('AWD', 'WO'))"
 """A match a table counts: played to the end, or decided off the pitch (a technical loss, a walkover:

@@ -40,7 +40,8 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.competitions.phases import VERSION, TableMap, is_split, stage_of
+from fbi.competitions.phases import VERSION, TableMap, is_split
+from fbi.competitions.stages import stage_of
 from fbi.competitions.tables import SeasonTables, load_season
 from fbi.core.clock import now
 from fbi.core.config import settings

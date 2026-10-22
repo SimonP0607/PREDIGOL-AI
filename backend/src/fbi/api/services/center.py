@@ -63,7 +63,8 @@ from fbi.api.repositories import Conn, Row, fetch_all, fetch_one, fetch_value
 from fbi.api.repositories import center as repo
 from fbi.api.services.live_quality import completeness
 from fbi.competitions.phases import VERSION as PHASES_VERSION
-from fbi.competitions.phases import TableMap, current_stage, phase_of, stage_of
+from fbi.competitions.phases import TableMap, current_stage
+from fbi.competitions.stages import phase_of, stage_of
 from fbi.competitions.tables import load_season, match_tables, newest_maps
 from fbi.core.clock import now
 from fbi.truth.freshness import table_reason

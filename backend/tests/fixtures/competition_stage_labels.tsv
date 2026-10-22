@@ -1,0 +1,279 @@
+# Every distinct (stage, has match days) pair of the 245,872 fixtures of the 162 tracked competitions on 22 Oct 2026.
+# fixtures\tnumbered\tstage (the round label without its match day). Used by test_competition_stages.py.
+170541	1	Regular Season
+6547	1	Group Stage
+6327	1	Clausura
+6314	1	Apertura
+4303	0	Club Friendlies
+4053	0	Club Friendly
+2878	0	1st Round
+2637	1	Relegation Round
+2481	1	Championship Round
+2063	1	1st Phase
+2043	0	2nd Round
+1421	0	Preliminary Round
+1401	0	Extra Preliminary Round
+1392	1	League Stage
+1381	1	2nd Phase
+1371	0	Round of 16
+1316	0	3rd Round
+1301	0	Quarter-finals
+1129	0	2nd Qualifying Round
+914	0	1st Round Qualifying
+877	0	3rd Qualifying Round
+874	0	1st Qualifying Round
+859	0	Friendly International
+835	0	Semi-finals
+833	0	1st Preliminary Round
+810	1	1st Round
+781	0	Group Stage
+737	0	Play-offs
+712	0	Round of 32
+692	1	2nd Round
+640	0	2nd Round Qualifying
+612	0	2nd Preliminary Round
+596	0	7th Round
+572	1	Qualifying Round
+518	0	8th Finals
+497	1	Relegation Group
+481	0	4th Round
+471	0	Final
+456	1	League B
+433	1	Championship Group
+420	0	Round of 64
+378	1	Round
+348	1	League C
+336	1	League A
+329	0	3rd Round Qualifying
+325	0	Round of 128
+311	0	8th Round
+302	0	1/128-finals
+272	0	16th Finals
+268	0	Relegation Round
+252	0	Extra Preliminary Round Replays
+230	0	4th Round Qualifying
+210	1	3rd Round
+203	0	5th Round
+180	1	Group B
+178	1	Group A
+171	1	Group D
+170	0	1st Round Qualifying Replays
+169	1	Group C
+169	0	Preliminary Round Replays
+168	1	Conference League Play-off Group
+160	0	Promotion Play-offs - Semi-finals
+160	0	Knockout Round Play-offs
+144	1	Clausura - Quadrangular
+128	0	32nd Finals
+128	1	League Phase
+122	1	Group E
+120	1	Group F
+120	1	1° Turno
+120	1	2° Girone
+120	1	Apertura - Quadrangular
+116	0	Apertura - Quarter-finals
+116	0	2nd Round Qualifying Replays
+113	0	1st Round - Semi-finals
+112	1	Opening
+112	1	Closing
+112	1	Torneo de Verano
+109	1	Group H
+109	1	Group G
+108	1	League D
+96	0	Playoff round
+92	1	Final Round
+68	0	Clausura - Quarter-finals
+60	0	1st Round - Finals
+60	0	MLS Cup - Round 1
+58	0	Apertura - Semi-finals
+57	0	Finals
+55	0	1st Round Replays
+54	1	Conference League Group
+54	0	Conference - Quarter-finals
+53	0	1st Round - 3rd Place Finals
+51	1	Promotion Round
+48	0	Championship - Semi-finals
+48	0	3rd Round Qualifying Replays
+48	1	Group South
+48	1	Group North
+48	1	League Phase West
+48	1	League Phase East
+48	1	Southern
+48	1	Northern
+48	1	Regular season
+48	1	Caf Confederation Cup
+43	0	2nd Qualifying Round - Semi-Finals
+43	0	Conference League Play-offs - Final
+43	0	4th Round Qualifying Replays
+42	1	Placement Group
+42	0	Promotion Play-offs - Final
+41	0	Championship - Final
+40	1	Ranking of second-placed teams
+36	1	4th Round
+34	0	Clausura - Semi-finals
+32	0	2nd Qualifying Round - Finals
+32	0	Play-off Round
+32	0	MLS Cup - Conference Semi-finals
+31	1	Group I
+31	1	Group J
+30	1	Playoffs
+30	1	5th Round
+30	1	Lower Table Round
+28	0	Conference - Semi-finals
+26	0	3rd Place Final
+26	0	Zonal Semi-Finals
+26	0	3rd Round Replays
+24	0	Play-In Round
+22	0	Qualification Round 1
+22	0	4th Round Replays
+20	0	R60310
+20	0	Apertura - Final
+19	0	Apertura - Finals
+18	0	Europa League Play-offs - 1st Round
+18	0	1st Qualifying Round - Semi-Finals
+18	0	Promotion Play-offs - Finals
+18	0	Europa League Play-offs - Semi-finals
+18	0	Clausura - Final
+18	0	2nd Round Replays
+17	0	Play-offs - 1st Round
+16	0	Conference League Play-offs - Semi-finals
+16	0	Qualification Round 2
+16	0	MLS Cup - Conference Finals
+16	0	Apertura - Reclasificación
+16	0	Clausura - Reclasificacion
+16	0	Middle Play-offs - Semi-finals
+15	0	Europa League Play-offs - Final
+15	0	1st Qualifying Round - Finals
+15	0	4th Preliminary Round
+15	0	Inter-zonal Semi-finals
+15	0	Zonal Finals
+15	0	Conference League Play-offs - 1st Round
+15	1	Liguilla
+14	0	Play-offs - Semi-finals
+14	0	Conference - Finals
+14	0	1/256-finals
+14	0	Elimination Finals
+12	1	2nd Round - Group I
+12	1	2nd Round - Group B
+12	1	2nd Round - Group C
+12	1	2nd Round - Group F
+12	1	2nd Round - Group G
+12	1	2nd Round - Group D
+12	1	2nd Round - Group E
+12	1	2nd Round - Group H
+12	1	2nd Round - Group A
+12	0	3rd Preliminary Round
+12	0	1st Phase - Quarter-finals
+12	0	Relegation Play-offs - Final
+12	0	Promotion Play-offs - Qualifying Round
+12	1	Group L
+12	1	Group K
+11	0	2nd Qualifying Round - 3rd Place Finals
+10	0	Championship - Finals
+10	0	Play-offs Round
+10	0	Promotion Play-offs - 1st Round
+10	0	Clausura - Finals
+9	0	Relegation - Final
+8	0	Europa League Play-offs - 2nd Round
+8	0	Inter-zonal Finals
+8	0	Qualification Round 3
+8	0	Apertura - Round of 16
+8	0	1st Phase - 8th Finals
+8	0	Grand Final
+8	0	Promotion Play-offs - 2nd Round
+8	0	9th-16th Place Play-offs
+8	0	Championship - Quarter-finals
+8	0	MLS Cup - Conference Quarter-finals
+8	0	Play-offs A/B
+8	0	Play-offs B/C
+8	0	Middle Play-offs - Final
+7	0	Troféu do Interior - Quarter-finals
+7	0	MLS Cup - Final
+6	0	Troféu do Interior - Semi-finals
+6	1	Final Four
+6	1	Round 4
+6	1	Finals
+6	0	Copa Sudamericana Play-offs - 1st Phase Finals
+6	0	Play-offs - 2nd Round
+6	0	1st Phase - Semi-finals
+6	0	Qualifying Finals
+6	0	Europa League Play-offs - Quarter-finals
+6	0	Relegation/Promotion
+6	0	Relegation Play-out
+5	0	5th Place Final
+5	0	R66244
+4	0	Play-offs - Quarter-finals
+4	0	Copa Sudamericana Play-offs - 2nd Phase Finals
+4	0	Europa League Play-offs - Finals
+4	0	Semi-Finals
+4	0	MLS Cup - Play-In Round
+4	0	9th-12th Place Play-offs
+4	0	5th-8th Place Play-offs
+4	0	13th-16th Place Play-offs
+4	0	Play-offs C/D
+3	0	3rd place
+3	0	1st Qualifying Round - 3rd Place Finals
+3	0	Play-off
+3	0	Play-offs - Finals
+3	1	Relegation Play-offs
+3	0	Copa Sudamericana Play-offs - Final
+3	0	Conference League Play-offs - 2nd Round
+3	0	1st Phase - Final
+2	0	Troféu do Interior - Finals
+2	0	Third place
+2	0	Additional Qualification
+2	0	Qualifying Play-offs Path D - Semi-Finals
+2	0	Qualifying Play-offs Path A - Semi-Finals
+2	0	Qualifying Play-offs Path B - Semi-Finals
+2	0	Qualifying Play-offs Path C - Semi-Finals
+2	0	Apertura - 3rd Place Finals
+2	0	Relegation
+2	0	Promotion Play-offs - final
+2	0	Preliminary round
+2	0	Preliminary round 1
+2	0	Preliminary Round - Semi-finals
+2	0	7th place
+2	0	5th place
+2	0	9th place
+2	0	19th place
+2	0	17th place
+2	0	15th place
+2	0	13th place
+2	0	11th place
+2	0	Promotion - Playoffs
+2	0	Apertura - Play Offs
+2	0	Apertura - Play-In Semi-finals
+2	0	Apertura - Play-offs
+2	0	Clausura - Play-offs
+2	0	7th Place Final
+2	0	11th Place Final
+2	0	9th Place Final
+2	0	13th Place Final
+2	0	15th Place Final
+2	0	Copa Sudamericana Liguilla - Semi-finals
+2	0	Relegation Play-off Decider
+2	0	Torneo de Verano - Finals
+2	0	Qualification Final
+2	0	Elimination Final
+2	0	Taça Independência - Quarter-finals
+2	0	Taça Independência - Semi-finals
+1	0	Final - Playoffs
+1	0	Play-offs - Final
+1	0	Championship - 3rd Place Final
+1	0	Qualifying Play-offs Path D - Final
+1	0	Qualifying Play-offs Path C - Final
+1	0	Qualifying Play-offs Path A - Final
+1	0	Qualifying Play-offs Path B - Final
+1	1	2. Liga
+1	0	Relegation Decider
+1	0	Preliminary round 2
+1	0	Preliminary Round - Final
+1	0	Clausura - Play Offs
+1	0	Apertura - Play-In Final
+1	0	Plate Final
+1	0	Copa Sudamericana Liguilla - Final
+1	0	Relegation Play-offs
+1	0	R79396
+1	0	Taça Independência - Final
+1	0	R73389
+1	0	Troféu do Interior - Final
