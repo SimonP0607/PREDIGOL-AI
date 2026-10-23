@@ -47,6 +47,7 @@ from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.research import MAX_ASKS
 from fbi.ai.text import fit, plain
 from fbi.ai.usage import UsageLedger, call_json
+from fbi.ai.views import validated_factors
 from fbi.intel import factors
 
 GAP = 0.20
@@ -329,15 +330,6 @@ def rules_brief(packet: Packet, cards: list[dict[str, Any]], reasons: list[str])
 
 FACTOR_OF_BLOCK: dict[str, str] = {f.where: f.key for f in factors.CATALOGUE}
 """The context factor each block of the packet carries, by the path a claim cites it with (``P:h2h``, ``P:dossier.tactics``)."""
-
-
-def validated_factors(content: dict[str, Any]) -> frozenset[str]:
-    """The factors the packet states as VALIDATED (``content["factors"]``, written by the server from the registry). Anything else -
-    no block, an entry that is not one, a status that is not that word - is DESCRIPTIVE, which is the safe side of every doubt."""
-    block = content.get("factors")
-    if not isinstance(block, dict):
-        return frozenset()
-    return frozenset(k for k, v in block.items() if k in factors.BY_KEY and isinstance(v, dict) and v.get("status") == factors.VALIDATED)
 
 
 def descriptive_factor(refs: list[str], validated: frozenset[str]) -> str | None:

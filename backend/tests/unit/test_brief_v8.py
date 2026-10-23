@@ -25,12 +25,12 @@ from fbi.ai.brief import (
     lenient,
     rules_brief,
     validate,
-    validated_factors,
 )
 from fbi.ai.collectors import levels_wanted, queries_for
 from fbi.ai.packet import Packet
 from fbi.ai.prompts import BRIEF_SCHEMA, BRIEF_SYSTEM, BRIEF_VERSION
 from fbi.ai.text import plain
+from fbi.ai.views import validated_factors
 from fbi.intel import factors, narrative
 
 from .test_ai_decisions import KO, packet
