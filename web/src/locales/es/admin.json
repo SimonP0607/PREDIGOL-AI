@@ -30,7 +30,8 @@
     "settings": "Ajustes",
     "evolution": "Evolución",
     "aiLayer": "Capa de decisión IA",
-    "intelligence": "PrediGol Intelligence"
+    "intelligence": "PrediGol Intelligence",
+    "memory": "Memoria"
   },
   "pages": {
     "overview": {
@@ -116,6 +117,10 @@
     "intelligence": {
       "title": "PrediGol Intelligence",
       "description": "La capa de decisión: cada candidato por diez filtros con probabilidad calibrada, su score, su stake y su contexto; lo que aprendió cada día. Todo en shadow: nada se publica ni se apuesta."
+    },
+    "memory": {
+      "title": "Memoria",
+      "description": "Lo que PrediGol ha aprendido, en un solo lugar: entidades a lo largo del tiempo con cuánto fiarse, los partidos que miró, el post-mortem de cada selección, las notas de aprendizaje de la IA y los hallazgos de la investigación. Solo lectura."
     }
   },
   "users": {

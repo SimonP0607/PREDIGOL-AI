@@ -300,8 +300,7 @@
       "reviews": "Reviews",
       "evidence": "Evidence",
       "costs": "Costs",
-      "shadow": "Shadow",
-      "memory": "Memory"
+      "shadow": "Shadow"
     },
     "mode": {
       "off": "off",
@@ -820,12 +819,10 @@
       "label": "AI research sections",
       "today": "Today",
       "research": "Research",
-      "postmortems": "Post-mortems",
       "learning": "Learning",
       "sources": "Sources",
       "costs": "Costs",
-      "close": "Day close",
-      "memory": "Memory"
+      "close": "Day close"
     },
     "day": "Day",
     "today": {

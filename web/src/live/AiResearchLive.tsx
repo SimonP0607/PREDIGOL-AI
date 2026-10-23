@@ -3,12 +3,12 @@
  *
  *   HOY              today's matches with a market (Bogotá): the passes done, the L1 brief, the reviewed selections
  *   INVESTIGACIONES  per match, the web searches and the evidence with its source, level, status and dates
- *   POST-MORTEMS     each selection of a day's matches: verdict, class of a loss, CLV and the ten questions
  *   APRENDIZAJE      what a day's results taught, and the improvements awaiting the owner (decided in Evolución)
  *   FUENTES          which domains brought useful evidence, over 7 or 30 days
  *   COSTOS           the day and the month by level, model and unit; the projection and the alerts
  *
- * Nothing here calls a model or changes anything: everything was stored by the worker.
+ * The post-mortems and the memory (of entities, of matches, the AI's notes) are in Memoria. Nothing here calls a model or changes
+ * anything: everything was stored by the worker.
  */
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -40,6 +40,7 @@ import type {
   PickPostmortem,
 } from "@/lib/api/v1/types_ai_layer";
 import {
+  Choice,
   DayInput,
   EngineBadge,
   LevelCosts,
@@ -51,6 +52,7 @@ import {
   Stat,
   StatGrid,
   SubTitle,
+  Toolbar,
   UnitCosts,
 } from "./AiBits";
 import {
@@ -67,6 +69,8 @@ import {
   classTone,
   dayLabel,
   dayShort,
+  decisionLabel,
+  decisionTone,
   edgePoints,
   lossClassLabel,
   minutesText,
@@ -86,19 +90,9 @@ import {
   verdictTone,
 } from "./aiModel";
 import { DailyReviewPanel } from "./DailyReviewPanel";
-import { MatchMemoryPanel } from "./MatchMemoryPanel";
 import { Fact } from "./shared";
 
-const TABS = [
-  "today",
-  "close",
-  "memory",
-  "research",
-  "postmortems",
-  "learning",
-  "sources",
-  "costs",
-] as const;
+const TABS = ["today", "close", "research", "learning", "sources", "costs"] as const;
 type Tab = (typeof TABS)[number];
 const EVIDENCE_STATUSES: EvidenceStatus[] = [
   "CONFIRMED",
@@ -124,43 +118,7 @@ const INJURY_TONE: Record<string, BadgeTone> = {
   returns: "positive",
   starts: "positive",
 };
-const SELECT =
-  "h-8 max-w-[15rem] rounded-md border border-border bg-card px-2 text-xs normal-case tracking-normal text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
-
-function decisionLabel(d: string): string {
-  return translateOr(`ai.layer.decision.${d}`, d);
-}
-
-function decisionTone(d: string | null | undefined): BadgeTone {
-  return d && d in DECISION_TONE ? DECISION_TONE[d as AiDecision] : "neutral";
-}
-
 // ── small pieces ─────────────────────────────────────────────────────────────
-
-function Toolbar({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-x-4 gap-y-2">{children}</div>;
-}
-
-function Choice({
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: ReactNode;
-}) {
-  return (
-    <label className="inline-flex items-center gap-2 text-caption uppercase tracking-wider text-subtle-foreground">
-      {label}
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={SELECT}>
-        {children}
-      </select>
-    </label>
-  );
-}
 
 /** A card that opens: the summary always visible, the detail on demand. */
 function Fold({
@@ -711,184 +669,6 @@ function ResearchTab({
   );
 }
 
-// ── POST-MORTEMS ─────────────────────────────────────────────────────────────
-
-export function PostmortemCard({ pm }: { pm: PickPostmortem }) {
-  const answers = orderedAnswers(pm.answers);
-  const clv = toNum(pm.clv);
-  const move = toNum(pm.price_move);
-  return (
-    <li
-      className="min-w-0 space-y-2.5 rounded-md border border-border bg-card p-3"
-      data-testid="ai-postmortem"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-medium wrap-anywhere">{pm.match}</p>
-          <p className="text-caption text-subtle-foreground wrap-anywhere">
-            {pm.competition ?? "—"} · {bogotaDateTime(pm.kickoff_at)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          <StatusBadge tone={verdictTone(pm.verdict)}>{verdictLabel(pm.verdict)}</StatusBadge>
-          {pm.classification ? (
-            <StatusBadge tone={classTone(pm.classification)}>
-              {lossClassLabel(pm.classification)}
-            </StatusBadge>
-          ) : null}
-        </div>
-      </div>
-      <p className="text-xs font-medium wrap-anywhere">
-        {selectionText(pm.market_key, pm.selection, pm.line, pm.match)}
-      </p>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-caption uppercase tracking-wider text-subtle-foreground">
-          {t("ai.research.postmortems.decision")}
-        </span>
-        <StatusBadge tone={decisionTone(pm.decision)}>
-          {pm.decision ? decisionLabel(pm.decision) : t("ai.research.postmortems.noDecision")}
-        </StatusBadge>
-        {pm.roles.map((r) => (
-          <StatusBadge key={r} dot={false}>
-            {translateOr(`ai.v2.role.${r}`, r)}
-          </StatusBadge>
-        ))}
-      </div>
-      <dl className="grid max-w-3xl grid-cols-3 gap-x-3 sm:grid-cols-6">
-        <Fact label={t("ai.research.postmortems.odds")} value={fmtOdds(pm.odds)} />
-        <Fact label={t("ai.research.postmortems.close")} value={fmtOdds(pm.close_odds)} />
-        <Fact
-          label={t("ai.research.postmortems.priceMove")}
-          value={
-            <span
-              className={cn(
-                move !== null && move > 0 && "text-positive",
-                move !== null && move < 0 && "text-negative",
-              )}
-            >
-              {signedText(pm.price_move)}
-            </span>
-          }
-        />
-        <Fact
-          label={t("ai.research.postmortems.clv")}
-          value={
-            <span
-              className={cn(
-                clv !== null && clv > 0 && "text-positive",
-                clv !== null && clv < 0 && "text-negative",
-              )}
-            >
-              {signedText(pm.clv)}
-            </span>
-          }
-        />
-        <Fact label={t("ai.research.postmortems.model")} value={probText(pm.p_model)} />
-        <Fact label={t("ai.research.postmortems.market")} value={probText(pm.p_market)} />
-      </dl>
-      <p className="max-w-3xl text-caption text-subtle-foreground">
-        {t("ai.research.postmortems.priceNote")}
-      </p>
-      {answers.length ? (
-        <details className="group max-w-4xl rounded-md border border-border">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md px-3 py-2 text-xs font-medium hover:bg-elevated/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-            {t("ai.research.postmortems.questions")}
-            <ChevronDown
-              aria-hidden
-              className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-            />
-          </summary>
-          <ol className="divide-y divide-border/60 border-t border-border">
-            {answers.map(([question, a]) => {
-              const v = answerView(question, String(a.answer ?? ""));
-              return (
-                <li key={question} className="space-y-1 px-3 py-2" data-question={question}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-medium">{questionLabel(question)}</span>
-                    {v.chip ? <StatusBadge tone={v.tone}>{v.label}</StatusBadge> : null}
-                  </div>
-                  {!v.chip && v.label ? <p className="text-xs wrap-anywhere">{v.label}</p> : null}
-                  {a.detail ? (
-                    <p className="text-caption text-muted-foreground wrap-anywhere">{a.detail}</p>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ol>
-        </details>
-      ) : null}
-      {pm.narrative ? (
-        <div className="max-w-4xl space-y-1 rounded-md border border-border bg-elevated/40 p-2.5">
-          <SubTitle>{t("ai.research.postmortems.narrative")}</SubTitle>
-          <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground wrap-anywhere">
-            {pm.narrative}
-          </p>
-        </div>
-      ) : null}
-    </li>
-  );
-}
-
-function PostmortemsTab({
-  day,
-  onDay,
-  max,
-}: {
-  day: string;
-  onDay: (d: string) => void;
-  max: string;
-}) {
-  const [verdict, setVerdict] = useState("");
-  const [cls, setCls] = useState("");
-  const q = useLiveQuery(
-    live.aiPostmortems({
-      day,
-      verdict: verdict || undefined,
-      classification: cls || undefined,
-    }),
-  );
-  const rows = q.data?.data ?? [];
-  return (
-    <div className="space-y-3">
-      <Toolbar>
-        <DayInput value={day} onChange={onDay} label={t("ai.research.day")} max={max} />
-        <Choice label={t("ai.research.postmortems.verdict")} value={verdict} onChange={setVerdict}>
-          <option value="">{t("ai.research.postmortems.all")}</option>
-          {POSTMORTEM_VERDICTS.map((v) => (
-            <option key={v} value={v}>
-              {verdictLabel(v)}
-            </option>
-          ))}
-        </Choice>
-        <Choice label={t("ai.research.postmortems.class")} value={cls} onChange={setCls}>
-          <option value="">{t("ai.research.postmortems.all")}</option>
-          {LOSS_CLASSES.map((c) => (
-            <option key={c} value={c}>
-              {lossClassLabel(c)}
-            </option>
-          ))}
-        </Choice>
-      </Toolbar>
-      {q.isError ? <ApiErrorNotice error={q.error} /> : null}
-      <Loading show={q.isLoading} />
-      {q.isSuccess && rows.length === 0 ? (
-        <Note>
-          {verdict || cls
-            ? t("ai.research.postmortems.emptyFiltered")
-            : t("ai.research.postmortems.empty")}
-        </Note>
-      ) : null}
-      {rows.length ? (
-        <ul className="space-y-2" data-testid="ai-postmortems">
-          {rows.map((pm) => (
-            <PostmortemCard key={pm.id} pm={pm} />
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
 // ── APRENDIZAJE ──────────────────────────────────────────────────────────────
 
 function LearningTab({
@@ -1217,11 +997,7 @@ export function AiResearchLive() {
       />
       {tab === "today" ? <TodayTab day={liveDay} onDay={setLiveDay} max={today} /> : null}
       {tab === "close" ? <CloseTab day={pastDay} onDay={setPastDay} max={today} /> : null}
-      {tab === "memory" ? <MatchMemoryPanel /> : null}
       {tab === "research" ? <ResearchTab day={liveDay} onDay={setLiveDay} max={today} /> : null}
-      {tab === "postmortems" ? (
-        <PostmortemsTab day={pastDay} onDay={setPastDay} max={today} />
-      ) : null}
       {tab === "learning" ? <LearningTab day={pastDay} onDay={setPastDay} max={today} /> : null}
       {tab === "sources" ? <SourcesTab /> : null}
       {tab === "costs" ? <CostsTab /> : null}

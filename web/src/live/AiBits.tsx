@@ -31,6 +31,36 @@ import {
   type EvidenceItem,
 } from "./aiModel";
 
+const SELECT =
+  "h-8 max-w-[15rem] rounded-md border border-border bg-card px-2 text-xs normal-case tracking-normal text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+/** A row of controls above a list: the day, a filter or two. */
+export function Toolbar({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-x-4 gap-y-2">{children}</div>;
+}
+
+/** A labelled drop-down whose options are the children. */
+export function Choice({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <label className="inline-flex items-center gap-2 text-caption uppercase tracking-wider text-subtle-foreground">
+      {label}
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={SELECT}>
+        {children}
+      </select>
+    </label>
+  );
+}
+
 const STAT_TONE = {
   default: "text-foreground",
   positive: "text-positive",

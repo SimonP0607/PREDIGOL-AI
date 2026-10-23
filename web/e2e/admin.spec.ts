@@ -19,6 +19,7 @@ const PAGES: Array<[string, keyof typeof t.admin.pages]> = [
   ["ai-layer", "aiLayer"],
   ["ai-analyst", "aiAnalyst"],
   ["evolution", "evolution"],
+  ["memory", "memory"],
   ["competitions", "competitions"],
   ["teams", "teams"],
   ["players", "players"],
@@ -217,7 +218,7 @@ test("AI research: today's matches with a market, research, post-mortems, learni
     info,
     `AI today: ${today.body.data.fixtures.length} with a market, ${today.body.data.without_market} without`,
   );
-  for (const tab of ["research", "postmortems", "learning", "sources", "costs", "today"] as const) {
+  for (const tab of ["research", "learning", "sources", "costs", "today"] as const) {
     await page.getByRole("tab", { name: t.ai.research.tabs[tab], exact: true }).click();
     await settle(page);
     await assertClean(page, w);
@@ -236,7 +237,57 @@ test("AI research: today's matches with a market, research, post-mortems, learni
   );
   if (evo.body.data.hypotheses.length)
     await expect(page.getByTestId("hypothesis").first()).toBeVisible();
-  if (evo.body.data.memory.length) await expect(page.getByTestId("memory")).toBeVisible();
+});
+
+test("Memory: the entities with their version, confidence and evidence, and every other kind of memory in one page", async ({
+  page,
+}, info) => {
+  test.setTimeout(150_000);
+  const w = watch(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await go(page, w, "/admin/memory");
+  await expect(page.getByTestId("memory-entities")).toBeVisible();
+  const memory = await getJson<{
+    data: {
+      items: Array<{ version: string; confidence: number | null; evidence_ref: unknown }>;
+      total: number;
+    };
+  }>(page.request, "/api/v1/admin/intelligence/memory?entity_type=team&limit=200");
+  expect(memory.status).toBe(200);
+  expect(JSON.stringify(memory.body)).not.toMatch(/sk-[A-Za-z0-9]/);
+  const items = memory.body.data.items;
+  const measured = items.filter((m) => m.confidence !== null);
+  note(
+    info,
+    `memory: ${items.length} of ${memory.body.data.total} team series, ${measured.length} with confidence`,
+  );
+  // every series names the version that wrote it; one written by memory-v4 says how far to trust it and what it rests on
+  for (const m of items) expect(m.version).toBeTruthy();
+  for (const m of measured) {
+    expect(m.confidence).toBeGreaterThanOrEqual(0);
+    expect(m.confidence).toBeLessThan(1);
+  }
+  if (items.some((m) => m.evidence_ref))
+    await expect(page.getByTestId("memory-evidence").first()).toBeVisible();
+  // an aspect narrows the list on the server, so a crowded aspect cannot hide the others
+  const corners = await getJson<{ data: { items: Array<{ aspect: string }> } }>(
+    page.request,
+    "/api/v1/admin/intelligence/memory?aspect=corners&limit=50",
+  );
+  expect(corners.status).toBe(200);
+  for (const m of corners.body.data.items) expect(m.aspect).toBe("corners");
+
+  for (const tab of ["matches", "postmortems", "events", "research", "entities"] as const) {
+    await page.getByRole("tab", { name: t.memory.tabs[tab], exact: true }).click();
+    await settle(page);
+    await assertClean(page, w);
+  }
+  await page.getByRole("tab", { name: t.memory.tabs.postmortems, exact: true }).click();
+  await expect(page.getByTestId("ai-postmortems")).toBeVisible();
+  await page.getByRole("tab", { name: t.memory.tabs.events, exact: true }).click();
+  await expect(page.getByTestId("memory-notes")).toBeVisible();
+  await page.getByRole("tab", { name: t.memory.tabs.research, exact: true }).click();
+  await expect(page.getByTestId("memory-research")).toBeVisible();
 });
 
 test("AI decision layer: mode, models and budget without a key, every view, the owner's run now; Evolución as the decision center", async ({
@@ -261,7 +312,7 @@ test("AI decision layer: mode, models and budget without a key, every view, the 
   );
   expect(JSON.stringify(overview.body)).not.toMatch(/sk-[A-Za-z0-9]/);
   await expect(page.getByText(t.ai.layer.mode[o.settings.mode as "shadow"]).first()).toBeVisible();
-  for (const tab of ["evidence", "costs", "shadow", "memory", "reviews"] as const) {
+  for (const tab of ["evidence", "costs", "shadow", "reviews"] as const) {
     await page.getByRole("tab", { name: t.ai.layer.tabs[tab], exact: true }).click();
     await settle(page);
     await assertClean(page, w);

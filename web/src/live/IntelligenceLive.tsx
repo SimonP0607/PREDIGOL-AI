@@ -4,7 +4,7 @@
  * where the news came from, the picks of the day of daily-set-v6 beside v5 and the day's learning report. Then each
  * decision whole (ten filters, the score and the stake with their components, the AI's context and evidence, the model
  * and the calibrator, the outcome and the post-mortem), the match dossier and its narrative, calibration with its
- * gates, the longitudinal memory, the market discovery engine, and the costs, runs and leakage audit.
+ * gates, the market discovery engine, and the costs, runs and leakage audit. The longitudinal memory is in Memoria.
  */
 import { useState, type ReactNode } from "react";
 import { t, translateOr } from "@/lib/i18n";
@@ -38,7 +38,7 @@ import { Markdown } from "./Markdown";
 import { PriceClockPanel } from "./PriceClockPanel";
 import { durationMs } from "./format";
 
-const TABS = ["day", "decisions", "match", "calibration", "memory", "markets", "costs"] as const;
+const TABS = ["day", "decisions", "match", "calibration", "markets", "costs"] as const;
 type Tab = (typeof TABS)[number];
 const STATES: IntelState[] = [
   "RECHAZADO",
@@ -50,7 +50,6 @@ const STATES: IntelState[] = [
   "PICK_DEL_DIA",
 ];
 const MARKETS = ["1X2", "OU", "BTTS", "DC", "AH"] as const;
-const ENTITY_TYPES = ["team", "competition", "market", "referee", "coach", "player"] as const;
 const CRITERIA = [
   "coverage",
   "history",
@@ -1116,96 +1115,6 @@ function CalibrationView() {
   );
 }
 
-// ── memory ───────────────────────────────────────────────────────────────────
-
-function MemoryView() {
-  const [type, setType] = useState<string>("team");
-  const [search, setSearch] = useState("");
-  const q = useLiveQuery(
-    live.intelMemory({ entity_type: type || undefined, q: search || undefined }),
-  );
-  const items = q.data?.data?.items ?? [];
-  return (
-    <div className="space-y-3" data-testid="intel-memory">
-      <div className="flex flex-wrap items-end gap-3">
-        <SelectFilter
-          label={t("intel.memory.type")}
-          value={type}
-          onChange={setType}
-          options={ENTITY_TYPES.map((x) => ({ value: x, label: t(`intel.memory.types.${x}`) }))}
-        />
-        <label className="flex flex-col gap-1 text-caption uppercase tracking-wider text-subtle-foreground">
-          {t("intel.memory.search")}
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-8 w-48 min-h-11 rounded-md border border-border bg-card px-2 text-xs sm:min-h-8"
-          />
-        </label>
-      </div>
-      <Note>{t("intel.memory.streakNote")}</Note>
-      <Loading q={q} />
-      {q.data && items.length === 0 ? <Note>{t("intel.memory.empty")}</Note> : null}
-      {items.length ? (
-        <Panel bodyClassName="p-0">
-          <TableShell>
-            <THead>
-              <TH>{t("intel.memory.type")}</TH>
-              <TH>{t("intel.memory.aspect")}</TH>
-              <TH>{t("intel.memory.asOf")}</TH>
-              <TH align="right">{t("intel.memory.decisions")}</TH>
-              <TH align="right">{t("intel.memory.record")}</TH>
-              <TH align="right">{t("intel.memory.clv")}</TH>
-              <TH>{t("intel.memory.last10")}</TH>
-              <TH>{t("intel.memory.detail")}</TH>
-            </THead>
-            <tbody>
-              {items.map((m) => {
-                const s = m.stats as Record<string, unknown>;
-                const detail =
-                  m.entity_type === "referee"
-                    ? t("intel.memory.refereeLine", {
-                        cards: fixed(s["cards_per_match"], 2),
-                        fouls: fixed(s["fouls_per_match"], 1),
-                      })
-                    : m.entity_type === "coach"
-                      ? `${String(s["wins"] ?? 0)}G ${String(s["draws"] ?? 0)}E ${String(s["losses"] ?? 0)}P · ${Object.keys(
-                          (s["formations"] ?? {}) as Record<string, number>,
-                        )
-                          .slice(0, 2)
-                          .join(", ")}`
-                      : m.entity_type === "player"
-                        ? `${String(s["started_anyway"] ?? 0)}/${String(s["reported_out"] ?? 0)}`
-                        : DASH;
-                return (
-                  <TRow key={`${m.entity_type}-${m.entity_id}-${m.aspect}`}>
-                    <TD className="max-w-[12rem] break-words">{m.entity_name ?? m.entity_id}</TD>
-                    <TD>{m.aspect}</TD>
-                    <TD>{m.as_of_day}</TD>
-                    <TD align="right">
-                      {String(s["decisions"] ?? s["matches"] ?? s["reported_out"] ?? DASH)}
-                    </TD>
-                    <TD align="right">
-                      {s["wins"] !== undefined
-                        ? `${String(s["wins"])} / ${String(s["losses"] ?? 0)} / ${String(s["voids"] ?? 0)}`
-                        : DASH}
-                    </TD>
-                    <TD align="right">{fmtSignedPct(num(s["clv_mean"]))}</TD>
-                    <TD className="font-mono text-caption">
-                      {Array.isArray(s["last10"]) ? (s["last10"] as string[]).join("") : DASH}
-                    </TD>
-                    <TD className="text-xs">{detail}</TD>
-                  </TRow>
-                );
-              })}
-            </tbody>
-          </TableShell>
-        </Panel>
-      ) : null}
-    </div>
-  );
-}
-
 // ── markets ──────────────────────────────────────────────────────────────────
 
 function MarketsView() {
@@ -1443,7 +1352,6 @@ export function IntelligenceLive() {
         <MatchView fixture={fixture} setFixture={setFixture} onOpen={openDecision} />
       ) : null}
       {tab === "calibration" ? <CalibrationView /> : null}
-      {tab === "memory" ? <MemoryView /> : null}
       {tab === "markets" ? <MarketsView /> : null}
       {tab === "costs" ? <CostsView /> : null}
     </div>

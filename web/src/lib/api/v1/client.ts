@@ -586,7 +586,14 @@ export const v1 = {
   /** The registry of context factors as it stands. */
   intelFactors: () => getJson<Envelope<IntelFactorsRegistry>>("/admin/intelligence/factors"),
   intelCalibration: () => getJson<Envelope<IntelCalibration>>("/admin/intelligence/calibration"),
-  intelMemory: (q: { entity_type?: string | undefined; q?: string | undefined } = {}) =>
+  intelMemory: (
+    q: {
+      entity_type?: string | undefined;
+      q?: string | undefined;
+      aspect?: string | undefined;
+      limit?: number | undefined;
+    } = {},
+  ) =>
     getJson<Envelope<{ items: IntelMemoryRow[]; total: number }>>(
       "/admin/intelligence/memory",
       q as Params,

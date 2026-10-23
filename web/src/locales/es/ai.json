@@ -300,8 +300,7 @@
       "reviews": "Revisiones",
       "evidence": "Evidencias",
       "costs": "Costos",
-      "shadow": "Shadow",
-      "memory": "Memoria"
+      "shadow": "Shadow"
     },
     "mode": {
       "off": "apagada",
@@ -820,12 +819,10 @@
       "label": "Secciones de IA e investigación",
       "today": "Hoy",
       "research": "Investigaciones",
-      "postmortems": "Post-mortems",
       "learning": "Aprendizaje",
       "sources": "Fuentes",
       "costs": "Costos",
-      "close": "Cierre diario",
-      "memory": "Memoria"
+      "close": "Cierre diario"
     },
     "day": "Día",
     "today": {

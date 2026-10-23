@@ -4,7 +4,7 @@
  * the experimental comparison (model alone, model + rules, model + AI, market) - everything in shadow until
  * the owner's switch AND a passed gate. Then the mode, the last cycles and the owner's "run now", and the
  * views: the reviews with their whole audit trail, the evidence with its sources, what it costs (measured,
- * per unit, per level, and simulated per provider), the AI's own shadow evaluation and its memory.
+ * per unit, per level, and simulated per provider), the AI's own shadow evaluation (its memory is in Memoria).
  */
 import { useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -61,7 +61,7 @@ import {
 } from "./aiModel";
 import { utcDateTime } from "./format";
 
-const TABS = ["reviews", "evidence", "costs", "shadow", "memory"] as const;
+const TABS = ["reviews", "evidence", "costs", "shadow"] as const;
 type Tab = (typeof TABS)[number];
 const DECISIONS: AiDecision[] = ["APPROVE", "DOWNGRADE", "REJECT", "ABSTAIN"];
 const STATUSES: EvidenceStatus[] = ["CONFIRMED", "PROBABLE", "RUMOR", "CONTRADICTORY", "OUTDATED"];
@@ -1140,38 +1140,6 @@ function ShadowTab() {
   );
 }
 
-// ── memory ───────────────────────────────────────────────────────────────────
-
-function MemoryTab() {
-  const q = useLiveQuery(live.aiMemory());
-  const rows = q.data?.data ?? [];
-  if (q.isError) return <ApiErrorNotice error={q.error} />;
-  if (!rows.length && !q.isLoading)
-    return <p className="text-xs text-subtle-foreground">{t("ai.layer.memory.empty")}</p>;
-  return (
-    <Panel bodyClassName="p-3">
-      <ul className="space-y-2">
-        {rows.map((m) => (
-          <li key={m.id} className="space-y-0.5 border-b border-border pb-2 text-xs last:border-0">
-            <div className="flex flex-wrap items-center gap-1.5 text-caption text-subtle-foreground">
-              <StatusBadge tone="neutral">
-                {translateOr(`ai.layer.memoryKind.${m.kind}`, m.kind)}
-              </StatusBadge>
-              <span>
-                {m.entity_type}:{m.entity_id}
-              </span>
-              <span>· {utcDateTime(m.created_at)}</span>
-              {m.result ? <span>· {m.result}</span> : null}
-              <span>· {m.version}</span>
-            </div>
-            {m.hypothesis ? <p className="text-muted-foreground">{m.hypothesis}</p> : null}
-          </li>
-        ))}
-      </ul>
-    </Panel>
-  );
-}
-
 export function AiLayerLive() {
   const q = useLiveQuery(live.aiOverview);
   const [tab, setTab] = useState<Tab>("reviews");
@@ -1213,7 +1181,6 @@ export function AiLayerLive() {
       {tab === "evidence" ? <EvidenceTab /> : null}
       {tab === "costs" ? <CostsTab /> : null}
       {tab === "shadow" ? <ShadowTab /> : null}
-      {tab === "memory" ? <MemoryTab /> : null}
     </div>
   );
 }

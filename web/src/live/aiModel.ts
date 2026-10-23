@@ -34,6 +34,14 @@ export const DECISION_TONE: Record<AiDecision, BadgeTone> = {
   ABSTAIN: "neutral",
 };
 
+export function decisionLabel(d: string): string {
+  return translateOr(`ai.layer.decision.${d}`, d);
+}
+
+export function decisionTone(d: string | null | undefined): BadgeTone {
+  return d && d in DECISION_TONE ? DECISION_TONE[d as AiDecision] : "neutral";
+}
+
 export const VERDICT_TONE: Record<CardVerdict, BadgeTone> = {
   recommended: "positive",
   caution: "warning",

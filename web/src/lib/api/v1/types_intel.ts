@@ -638,14 +638,26 @@ export interface IntelCalibration {
   gates: Record<string, unknown>;
 }
 
+/** What a row of the memory rests on, newest first, a sample of at most 40 ids per kind (memory-v4; null before it). */
+export interface IntelEvidenceRef {
+  decisions?: number[];
+  postmortems?: number[];
+  fixtures?: number[];
+}
+
 export interface IntelMemoryRow {
   entity_type: string;
   entity_id: string;
   entity_name: string | null;
   aspect: string;
   as_of_day: string;
+  /** The version of the memory that wrote the row (memory-v4 is the one with confidence and evidence). */
+  version: string;
   stats: Record<string, unknown>;
   delta: Record<string, unknown>;
+  /** The effective sample over itself plus a constant, 0 to 1; null for a row an older version wrote. */
+  confidence: number | null;
+  evidence_ref: IntelEvidenceRef | null;
 }
 
 export interface IntelMarketRow {

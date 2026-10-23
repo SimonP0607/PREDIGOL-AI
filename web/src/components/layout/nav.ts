@@ -17,6 +17,7 @@ import {
   FlaskConical,
   Gauge,
   GitBranch,
+  Library,
   House,
   Layers,
   LineChart,
@@ -76,6 +77,7 @@ export const adminNav: Array<{ label: string; items: NavItem[] }> = [
       { to: "/admin/ai-layer", label: "admin.nav.aiLayer", icon: BrainCircuit },
       { to: "/admin/ai-analyst", label: "admin.nav.aiAnalyst", icon: Bot },
       { to: "/admin/evolution", label: "admin.nav.evolution", icon: GitBranch },
+      { to: "/admin/memory", label: "admin.nav.memory", icon: Library },
     ],
   },
   {

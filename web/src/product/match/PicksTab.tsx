@@ -11,7 +11,7 @@ import { History, ShieldCheck, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
-import { PostmortemCard } from "@/live/AiResearchLive";
+import { PostmortemCard } from "@/live/PostmortemsPanel";
 import { ApiErrorNotice } from "@/components/system/LiveState";
 import { ShadowBadge } from "@/product/shared/Bits";
 import { Pager } from "@/product/shared/Pager";

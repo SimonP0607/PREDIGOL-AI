@@ -22,12 +22,7 @@ import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice } from "@/components/system/LiveState";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
-import type {
-  Hypothesis,
-  HypothesisDecision,
-  HypothesisTarget,
-  MemoryEntry,
-} from "@/lib/api/v1/types_ai";
+import type { Hypothesis, HypothesisDecision, HypothesisTarget } from "@/lib/api/v1/types_ai";
 import type { EvolutionDashboard } from "@/lib/api/v1/types_ai_layer";
 import { DayInput, Note, NoteCard, ProposalCard, Stat, StatGrid } from "./AiBits";
 import { DailyReviewPanel } from "./DailyReviewPanel";
@@ -557,28 +552,6 @@ function Propose() {
   );
 }
 
-function MemoryList({ memory }: { memory: MemoryEntry[] }) {
-  if (!memory.length)
-    return <p className="text-xs text-subtle-foreground">{t("ai.evolution.emptyMemory")}</p>;
-  return (
-    <ul className="space-y-2" data-testid="memory">
-      {memory.map((m) => (
-        <li key={m.id} className="space-y-1 border-b border-border pb-2 last:border-0">
-          <div className="flex flex-wrap items-center gap-1.5 text-caption text-subtle-foreground">
-            <StatusBadge tone="neutral">{t(`ai.evolution.source.${m.source}`)}</StatusBadge>
-            <span className="numeric">{m.topic}</span>
-            <span>· {utcDateTime(m.created_at)}</span>
-            {m.versions > 1 ? (
-              <span>· {t("ai.evolution.versions", { count: localInt(m.versions) })}</span>
-            ) : null}
-          </div>
-          <p className="text-xs text-muted-foreground">{m.finding}</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 /** What this page is today, in plain words: a shadow layer that proposes; the owner decides. */
 function Honesty() {
   const ai = useLiveQuery(live.aiOverview);
@@ -681,9 +654,6 @@ export function EvolutionLive() {
               </p>
             </Panel>
             <Propose />
-            <Panel title={t("ai.evolution.memory")} subtitle={t("ai.evolution.memoryHelp")}>
-              <MemoryList memory={d.memory} />
-            </Panel>
           </div>
         </div>
       ) : null}

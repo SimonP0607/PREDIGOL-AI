@@ -30,7 +30,8 @@
     "settings": "Settings",
     "evolution": "Evolution",
     "aiLayer": "AI decision layer",
-    "intelligence": "PrediGol Intelligence"
+    "intelligence": "PrediGol Intelligence",
+    "memory": "Memory"
   },
   "pages": {
     "overview": {
@@ -116,6 +117,10 @@
     "intelligence": {
       "title": "PrediGol Intelligence",
       "description": "The decision layer: every candidate through ten filters with a calibrated probability, its score, its stake and its context; what each day taught. All in shadow: nothing is published or staked."
+    },
+    "memory": {
+      "title": "Memory",
+      "description": "What PrediGol has learned, in one place: entities over time with how far to trust them, the matches it looked at, the post-mortem of each selection, the AI's learning notes and the research findings. Reading only."
     }
   },
   "users": {

@@ -1,0 +1,55 @@
+{
+  "intro": "Everything PrediGol has learned, in one place. Entities are the teams, leagues, referees, coaches, players and markets over time, each with how far to trust it and what it rests on; matches are the ones it looked at, before and after; post-mortems judge each selection once; learning notes are what the AI's daily cycle wrote down; research findings are what the model research concluded. Reading only: nothing here changes a pick, a probability or a model.",
+  "tabs": {
+    "label": "Memory sections",
+    "entities": "Entities",
+    "matches": "Matches",
+    "postmortems": "Post-mortems",
+    "events": "Learning notes",
+    "research": "Research findings"
+  },
+  "entities": {
+    "allTypes": "All",
+    "allAspects": "All aspects",
+    "version": "Version",
+    "confidence": "Confidence",
+    "evidence": "Evidence",
+    "sample": "Sample",
+    "legacy": "none",
+    "shown": "{shown} of {total} series",
+    "help": "Confidence is the effective sample over itself plus a constant: 0 with no evidence, one half at a sample that depends on the kind of memory (for example 30 decisions of a team or 20 matches of a referee), never 1. Each piece of evidence loses half its weight after a half-life (90 days for decisions, 180 for a team's figures, 365 for leagues and referees). A team's corners, cards and expected goals are pulled toward the mean of its league the fewer matches the team has. These are conventions of the memory, not model parameters, and changing one makes a new version.",
+    "legacyNote": "A series without confidence was written by an older version of the memory, which did not measure it; the new version starts on 13 Oct 2026 and continues none of them.",
+    "evidenceNewest": "the newest {count}",
+    "figureTeam": "own {own}, rivals {opp} per match",
+    "figurePrior": "league {prior}",
+    "figureRaw": "own {own}, rivals {opp} per match (no league figure yet)",
+    "figureLeague": "{rate} per team per match",
+    "aspects": {
+      "corners": "Corners",
+      "cards": "Cards",
+      "xg": "Expected goals",
+      "decisions": "Decisions",
+      "discipline": "Discipline",
+      "profile": "Profile",
+      "availability": "Availability"
+    },
+    "coachLine": "{wins}W {draws}D {losses}L · {formations}",
+    "playerLine": "{started} of {out} reported out played"
+  },
+  "evidenceKinds": {
+    "fixtures_one": "{count} match",
+    "fixtures_other": "{count} matches",
+    "decisions_one": "{count} decision",
+    "decisions_other": "{count} decisions",
+    "postmortems_one": "{count} post-mortem",
+    "postmortems_other": "{count} post-mortems"
+  },
+  "events": {
+    "kind": "Kind",
+    "allKinds": "All kinds",
+    "note": "What the AI's daily learning cycle wrote down about a match, a pick or an entity. Each note names the version of the rules that wrote it."
+  },
+  "research": {
+    "note": "What the model research concluded and when. A topic that is concluded again keeps its earlier findings: the count says how many there have been."
+  }
+}
