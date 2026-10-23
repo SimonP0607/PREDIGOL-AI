@@ -1,4 +1,4 @@
-"""Data-leakage audit - ``leak-audit-v3``: did any decision use something that was not known at its ``known_at``?
+"""Data-leakage audit - ``leak-audit-v4``: did any decision use something that was not known at its ``known_at``?
 
 Run every night over the decisions taken on a Bogotá day, and in the tests. One row per rule
 (``intel.audit_checks``): how many decisions were checked and how many violate it, with examples. The rules:
@@ -35,6 +35,11 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              (``core.player_availability_obs``), that answer is the newest one about him by then - a player a later
                              answer cleared has recovered, and a packet that still lists him read a row that was no longer true - and
                              the kind of absence is the one the answer gave. One check per listed player. Examples are packet ids.
+    forecast_known           (v4, plan F5) the AI packets built on the day that carry PrediGol's forecast (``forecast``,
+                             ``models.match_forecasts``): each market's set was written (``known_at``) by the packet's moment, is a
+                             row that exists for that fixture, market, line and model, and no newer set of that market existed
+                             by the packet's moment (a packet that read an older forecast than the one PrediGol had stated).
+                             One check per market cited. Examples are packet ids.
 """
 
 from __future__ import annotations
@@ -48,7 +53,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
 
-VERSION = "leak-audit-v3"
+VERSION = "leak-audit-v4"
 
 BASE = "SELECT d.* FROM intel.decisions d WHERE d.known_at >= %(start)s AND d.known_at < %(end)s"
 
@@ -185,6 +190,27 @@ RULES: dict[str, str] = {
                                                      AND n.provider_player_id = o.provider_player_id
                                                      AND n.observed_at > o.observed_at AND n.observed_at <= a.as_of)) AS bad
               FROM a)
+        SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
+               (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
+    "forecast_known": f"""
+        WITH p AS ({PACKETS}), m AS (
+            SELECT p.id AS packet_id, p.fixture_id, p.as_of, p.content #>> '{{forecast,version}}' AS version,
+                   x ->> 'market' AS market, (x ->> 'line')::numeric AS line, (x ->> 'known_at')::timestamptz AS known_at,
+                   x ->> 'model' AS model
+              FROM p CROSS JOIN LATERAL jsonb_array_elements(
+                     CASE WHEN jsonb_typeof(p.content #> '{{forecast,markets}}') = 'array'
+                          THEN p.content #> '{{forecast,markets}}' ELSE '[]'::jsonb END) AS x
+             WHERE jsonb_typeof(x) = 'object'),
+        c AS (
+            SELECT m.packet_id,
+                   (m.known_at IS NULL OR m.known_at > m.as_of
+                    OR NOT EXISTS (SELECT 1 FROM models.match_forecasts f
+                                    WHERE f.fixture_id = m.fixture_id AND f.version = m.version AND f.market_key = m.market
+                                      AND f.line = m.line AND f.known_at = m.known_at AND f.model_name = m.model)
+                    OR EXISTS (SELECT 1 FROM models.match_forecasts n
+                                WHERE n.fixture_id = m.fixture_id AND n.version = m.version AND n.market_key = m.market
+                                  AND n.line = m.line AND n.known_at > m.known_at AND n.known_at <= m.as_of)) AS bad
+              FROM m)
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
 }

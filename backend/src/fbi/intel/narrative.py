@@ -1,4 +1,4 @@
-"""The match narrative of PrediGol Intelligence - ``narrative-v2``: how each team arrives, what is at stake, the
+"""The match narrative of PrediGol Intelligence - ``narrative-v3``: how each team arrives, what is at stake, the
 tactical keys, the important players, the risks, the interesting markets and the conclusion, in Spanish.
 
 Written by the economical model in the brief (``fbi.ai.brief``, brief-v4: every number in it must be in the packet,
@@ -11,8 +11,11 @@ from __future__ import annotations
 
 from typing import Any
 
-VERSION = "narrative-v2"
-"""v2 (plan F2): a second leg says what the first 90 minutes do to the aggregate (``tie_scenarios``)."""
+VERSION = "narrative-v3"
+"""v2 (plan F2): a second leg says what the first 90 minutes do to the aggregate (``tie_scenarios``).
+v3 (plan F5): «mercados interesantes» starts with what PrediGol expects (the packet's ``forecast``: the likely outcome of each
+market with its probability, «sin calibrar» where no champion calibrator exists) and then the cards - a probability apart from a
+price: the likely outcome is not said to be well paid."""
 SECTIONS = ("como_llega_local", "como_llega_visitante", "que_esta_en_juego", "claves_tacticas",
             "jugadores_importantes", "riesgos", "mercados_interesantes", "conclusion")
 TITLES = {"como_llega_local": "Cómo llega el local", "como_llega_visitante": "Cómo llega el visitante",
@@ -207,6 +210,31 @@ def risks(content: dict[str, Any], cards: list[dict[str, Any]]) -> str:
     return " ".join(parts) or NO_DATA
 
 
+FORECAST_WORDS = {("1X2", "Home"): "gana {home}", ("1X2", "Draw"): "empate", ("1X2", "Away"): "gana {away}",
+                  ("OU", "Over"): "más de {line} goles", ("OU", "Under"): "menos de {line} goles",
+                  ("BTTS", "Yes"): "ambos marcan", ("BTTS", "No"): "no marcan los dos"}
+"""The likely outcome of a market in words: nothing else is said about a forecast here but its probability."""
+
+
+def expected(content: dict[str, Any]) -> str:
+    """What PrediGol expects of the match (the packet's ``forecast``): the likely outcome of each market with the probability
+    the packet states, and «sin calibrar» where it is the model's own number. A probability, not a price: it is never said to
+    be well paid. Empty when the packet has no forecast."""
+    parts: list[str] = []
+    for m in (content.get("forecast") or {}).get("markets") or []:
+        words = FORECAST_WORDS.get((m.get("market"), m.get("likely")))
+        likely = next((o for o in m.get("outcomes") or [] if o.get("selection") == m.get("likely")), None)
+        if words is None or likely is None or likely.get("p") is None:
+            continue
+        try:
+            line = f"{float(m.get('line')):g}"
+        except (TypeError, ValueError):
+            line = str(m.get("line"))
+        label = words.format(home=_team(content, "home"), away=_team(content, "away"), line=line)
+        parts.append(f"{label} ({_pct(likely['p'])}" + (", sin calibrar" if m.get("calibration") == "UNCALIBRATED" else "") + ")")
+    return ("PrediGol espera: " + "; ".join(parts) + ". Es una probabilidad, no un precio.") if parts else ""
+
+
 def markets(content: dict[str, Any], cards: list[dict[str, Any]]) -> str:
     parts = []
     for c in cards[:3]:
@@ -215,7 +243,8 @@ def markets(content: dict[str, Any], cards: list[dict[str, Any]]) -> str:
         parts.append(f"{c.get('market')} {c.get('selection')}" + (f" {c.get('line')}" if str(c.get('line')) not in
                                                                    ("0", "0.00", "None") else "")
                      + f": modelo {_pct(c['p_model'])} frente a mercado {_pct(c['p_market'])}.")
-    return " ".join(parts) or "Ningún mercado destaca frente al precio."
+    first = expected(content)
+    return " ".join([first, *parts] if first else parts) or "Ningún mercado destaca frente al precio."
 
 
 def conclusion(content: dict[str, Any], cards: list[dict[str, Any]]) -> str:

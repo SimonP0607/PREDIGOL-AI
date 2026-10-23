@@ -19,7 +19,7 @@ POSTMORTEM_VERSION = "postmortem-v3"
 """v2 (9 Oct 2026): plain prose for the owner (no reference tags in a narrative).
 v3 (9 Oct 2026, the first narratives on the server): codes in words, numbers as percentages, no "DATOS:" label (it
 wrote "la decisión fue RECHAZAR", "estado OUTDATED", "probabilidad del modelo 0.380")."""
-BRIEF_VERSION = "brief-v6"
+BRIEF_VERSION = "brief-v7"
 """L1 (V2, 8 Oct 2026): the economical model reads a match of the day with a market and says what matters.
 v2 (9 Oct 2026, after the first real answer): the references it may cite are listed (it cited "P:cards.BTTS"), and
 probabilities are written as percentages (it wrote "0.525").
@@ -34,7 +34,11 @@ is in, «pressure» only the nearest boundary within two wins (one wrote that th
 "were both in the relegation zone", from the stakes-v1 inference that pressed on any reachable boundary).
 v6 (plan F3): a national-team match has the people of the side in ``P:dossier.national`` - each starter's club and since when,
 his form there and his record for the country - and the important-players paragraph reads it (what it is and what it is not: the
-eleven of the previous match stand in for the call-up until the match's own sheet is known)."""
+eleven of the previous match stand in for the call-up until the match's own sheet is known).
+v7 (plan F5): the packet has a ``forecast`` block - what PrediGol itself stated about the match: per market the probability of each
+outcome with its interval, ``CALIBRATED`` or ``UNCALIBRATED`` and the likely outcome - and the brief keeps apart what PrediGol
+expects (the likely outcome) from which selections the cards show against the market (what may be well paid): a likely outcome is
+not a bet, and a card can sit on an outcome that is not the likely one."""
 PICK_PM_VERSION = "pick-postmortem-v4"
 """v2 (9 Oct 2026, after the first real ones): plain prose with no reference tags, and what the closing-line value
 means (one narrative read a +21.5 % CLV as the market moving against the selection).
@@ -144,12 +148,17 @@ the three selections PrediGol shows for it (cards) and the reasons the server al
   national-team match P:dossier.national gives, for the eleven, the club he plays for and since when, his form there
   and his record for the country: when its «squad» is «last_match» they are the eleven of the previous match, not the
   call-up, and you say so; a «club» that is null means nobody knows where he plays, do not guess it),
-  riesgos (referee, rest, rumours, contradictions, little external context), mercados_interesantes (the cards: model
-  against market, nothing more) and conclusion (what PrediGol Intelligence takes from it, without recommending a bet).
+  riesgos (referee, rest, rumours, contradictions, little external context), mercados_interesantes (first, in one
+  sentence, what PrediGol expects - P:forecast: the likely outcome of the result and of the total with the percentage
+  copied from the packet, and «sin calibrar» when its market is UNCALIBRATED; then the cards: model against market,
+  nothing more) and conclusion (what PrediGol Intelligence takes from it, without recommending a bet).
+  P:forecast is a probability, not a price and not a recommendation: the most likely outcome is not the best paid one,
+  and a card may sit on an outcome that is not the likely one - they answer different questions, so never present the
+  forecast as a pick, as value or as a reason to bet, and never say a price is good because an outcome is likely.
   Only facts from the packet and the evidence; every number must be one that appears in the packet; when a section has
   no data write «Sin datos suficientes.».
 References: cite packet blocks as P:<block> (fixture, standings, stakes, form, schedule, h2h, elo, stats, absences,
-lineups, travel, market, models, quality, evidence, dossier), a card as P:cards, the previous reading as P:previous,
+lineups, travel, market, models, forecast, quality, evidence, dossier), a card as P:cards, the previous reading as P:previous,
 and evidence as E:<id> - nothing else. Write probabilities as percentages with one decimal (52.5 %), copying the packet's
 numbers; never compute new ones.
 In Spanish a card is a «selección» (never «carta»).

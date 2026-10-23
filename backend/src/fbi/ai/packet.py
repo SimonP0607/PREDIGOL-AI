@@ -36,8 +36,16 @@ from fbi.competitions.stages import stage_of
 from fbi.competitions.tables import match_tables
 from fbi.people.officials import referee_as_of
 
-PACKET_VERSION = "packet-v5"
-"""v5 (plan F3): the referee is a person (``fbi.people``). ``fixture.referee`` is his name, ``fixture.referee_id`` his id and
+PACKET_VERSION = "packet-v6"
+"""v6 (plan F5): the ``forecast`` block - what PrediGol itself stated about the match by the packet's moment
+(``models.match_forecasts``): per core market the probability of each outcome with the interval the model measured, whether it
+was ``CALIBRATED`` (a champion calibrator exists) or ``UNCALIBRATED`` (the model's own number; ``basis`` says why) and which
+outcome is the likely one. It is a probability, not a price: it carries no odds and no edge, and the review and the brief are told
+that the likely outcome is not the best paid one. A match PrediGol made no forecast for (or had not yet by the moment) has no
+block and no ``missing`` entry - the forecast is derived from ``models``, which names itself when it is absent; a forecast that
+could not be read is ``{"error": ...}`` and named in ``missing``. Only sets with ``known_at`` at or before the moment are read, the
+newest of each market, so a packet built for a past moment is the forecast a reader could really have had.
+v5 (plan F3): the referee is a person (``fbi.people``). ``fixture.referee`` is his name, ``fixture.referee_id`` his id and
 ``fixture.referee_seen_at`` the moment of the provider's observation the answer comes from, all read AS OF the packet's moment
 (``fbi.people.officials``): the newest thing the provider had said by then, and nothing when it had taken the referee off the
 match. The dossier is ``dossier-v3``: his matches are counted under every spelling the provider used for him. A match the
@@ -276,6 +284,24 @@ SELECT n.model, p.model_version_id, p.data_cutoff_ts, p.market_key, p.selection,
  WHERE p.fixture_id = %(fixture)s AND p.backtest_session_id IS NULL
 """
 
+FORECAST_VERSION = "forecast-v1"
+"""``fbi.predictions.match_forecast.VERSION`` (a test holds the two equal: this module does not import the worker's)."""
+FORECAST_ORDER = {"1X2": 0, "OU": 1, "BTTS": 2}
+
+FORECAST_SQL = """
+WITH last AS (
+    SELECT market_key, line, max(known_at) AS k
+      FROM models.match_forecasts
+     WHERE fixture_id = %(fixture)s AND version = %(version)s AND known_at <= %(at)s
+     GROUP BY 1, 2
+)
+SELECT x.market_key, x.line, x.model_name, x.calibration, x.basis, x.known_at, x.data_cutoff_ts, x.selection,
+       x.p, x.p_lo, x.p_hi
+  FROM models.match_forecasts x JOIN last l ON l.market_key = x.market_key AND l.line = x.line AND l.k = x.known_at
+ WHERE x.fixture_id = %(fixture)s AND x.version = %(version)s
+ ORDER BY x.market_key, x.line, x.id
+"""
+
 QUALITY_SQL = """
 SELECT (SELECT jsonb_build_object('class', s.class, 'score', s.score, 'computed_at', s.computed_at)
           FROM analytics.competition_data_scores s
@@ -471,6 +497,9 @@ class PacketBuilder:
                                        f["away_base_country"], neutral=bool(f["is_neutral"]))
         content["market"] = self._market(fixture_id, at, extra_keys or [], sources, missing, kickoff=kickoff)
         content["models"] = self._models(fixture_id, at, content["market"], extra_keys or [], sources, missing)
+        forecast = self._forecast(fixture_id, at, sources, missing)
+        if forecast is not None:
+            content["forecast"] = forecast
         quality = self._quality(f, at, content, sources)
         content["quality"] = quality
         content["evidence"] = self._evidence(fixture_id, home, away, at, sources)
@@ -685,6 +714,38 @@ class PacketBuilder:
             sources.append({"block": "models", "table": "models.predictions", "versions": dict(sorted(versions.items())),
                             "data_cutoff_ts": dict(sorted(cutoffs.items()))})
         return out
+
+    def _forecast(self, fixture_id: int, at: datetime, sources: list[dict[str, Any]], missing: list[str]
+                  ) -> dict[str, Any] | None:
+        """What PrediGol stated about the match by ``at`` (plan F5): the newest set of each market written at or before it.
+
+        No odds and no edge: a forecast is a probability, and what is well paid is the ``market`` and ``models`` blocks' to say.
+        None when there is no forecast (nothing to name as missing: see the packet's docstring); an error is named, in a
+        savepoint, so that a forecast that cannot be read never costs the rest of the packet."""
+        try:
+            with self.conn.transaction():
+                rows = _rows(self.conn, FORECAST_SQL, {"fixture": fixture_id, "at": at, "version": FORECAST_VERSION})
+        except psycopg.Error as exc:
+            missing.append("forecast")
+            return {"version": FORECAST_VERSION, "error": type(exc).__name__}
+        if not rows:
+            return None
+        grouped: dict[tuple[str, Decimal], list[dict[str, Any]]] = {}
+        for r in rows:
+            grouped.setdefault((str(r["market_key"]), Decimal(r["line"])), []).append(r)
+        markets: list[dict[str, Any]] = []
+        for (market, line), rs in sorted(grouped.items(), key=lambda kv: (FORECAST_ORDER.get(kv[0][0], 99), kv[0][1])):
+            best = max(rs, key=lambda r: r["p"])  # the first of them if two tie
+            first = rs[0]
+            markets.append({
+                "market": market, "line": str(line), "model": first["model_name"], "calibration": first["calibration"],
+                "basis": first["basis"], "known_at": _ts(first["known_at"]), "data_cutoff_at": _ts(first["data_cutoff_ts"]),
+                "likely": best["selection"],
+                "outcomes": [{"selection": r["selection"], "p": _f(r["p"], P), "p_lo": _f(r["p_lo"], P),
+                              "p_hi": _f(r["p_hi"], P)} for r in rs]})
+        sources.append({"block": "forecast", "table": "models.match_forecasts", "version": FORECAST_VERSION,
+                        "known_at": {f"{m['market']}@{m['line']}": m["known_at"] for m in markets}})
+        return {"version": FORECAST_VERSION, "markets": markets}
 
     def _quality(self, f: dict[str, Any], at: datetime, content: dict[str, Any], sources: list[dict[str, Any]]
                  ) -> dict[str, Any]:
