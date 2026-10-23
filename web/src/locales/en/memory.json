@@ -17,7 +17,7 @@
     "sample": "Sample",
     "legacy": "none",
     "shown": "{shown} of {total} series",
-    "help": "Confidence is the effective sample over itself plus a constant: 0 with no evidence, one half at a sample that depends on the kind of memory (for example 30 decisions of a team or 20 matches of a referee), never 1. Each piece of evidence loses half its weight after a half-life (90 days for decisions, 180 for a team's figures, 365 for leagues and referees). A team's corners, cards and expected goals are pulled toward the mean of its league the fewer matches the team has. These are conventions of the memory, not model parameters, and changing one makes a new version.",
+    "help": "Confidence is the effective sample over itself plus a constant: 0 with no evidence, one half at a sample that depends on the kind of memory (for example 30 decisions of a team or 20 matches of a referee), never 1. Each piece of evidence loses half its weight after a half-life (90 days for decisions, 180 for a team's figures, 365 for leagues and referees). A team's corners, cards and expected goals are pulled toward the mean of its league the fewer matches the team has; for them the constant is the number of matches the league's mean is worth, measured on the stored matches, so the confidence is exactly the share of the figure that is the team's own and the rest is its league's. These are conventions of the memory, not model parameters, and changing one makes a new version.",
     "legacyNote": "A series without confidence was written by an older version of the memory, which did not measure it; the new version starts on 13 Oct 2026 and continues none of them.",
     "evidenceNewest": "the newest {count}",
     "figureTeam": "own {own}, rivals {opp} per match",
