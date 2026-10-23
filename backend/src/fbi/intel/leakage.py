@@ -57,6 +57,13 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              kick-off); a meeting for which the block claims to know whether a coach changed had a match sheet
                              fetched by then. And, one check per packet, no meeting that was known by the moment was left out in
                              favour of an older one (the last eight, or all when there are fewer). Examples are packet ids.
+    scenarios_known          (v6, plan F6) the AI packets built on the day that carry the scenarios of the match (``scenarios``,
+                             ``fbi.intel.scenarios``): the table the effect of the match is computed on is a snapshot that
+                             exists, was taken by the packet's moment and not after the kick-off, and holds each side with the
+                             rank, points and games played the block cites (one check for the snapshot and one per side); and
+                             the reading of a second leg uses the aggregate of the packet's own ``phase`` block - the earlier legs
+                             the packet knew - and its statements about the margins are the arithmetic of that aggregate (one check
+                             per packet). Examples are packet ids.
 """
 
 from __future__ import annotations
@@ -81,6 +88,16 @@ BASE = "SELECT d.* FROM intel.decisions d WHERE d.known_at >= %(start)s AND d.kn
 
 PACKETS = ("SELECT m.id, m.fixture_id, m.as_of, m.content FROM ai.match_packets m "
            "WHERE m.built_at >= %(start)s AND m.built_at < %(end)s")
+
+def _int(base: str, path: str, *, side: bool = False) -> str:
+    """The SQL for an integer at ``path`` of the JSON ``base`` (``{a,b}`` is a path; ``{side,x}`` takes the side from the
+    ``v.side`` of the query): NULL when it is absent or not a whole number, so a packet written by hand can fail a rule and never
+    stop the audit."""
+    keys = path.strip("{}").split(",")
+    arr = "ARRAY[" + ", ".join("v.side" if (side and k == "side") else f"'{k}'" for k in keys) + "]"
+    text = f"({base} #>> {arr})"
+    return f"CASE WHEN {text} ~ '^-?[0-9]{{1,9}}$' THEN {text}::bigint END"
+
 
 RULES: dict[str, str] = {
     "known_before_kickoff": f"""
@@ -325,6 +342,47 @@ RULES: dict[str, str] = {
               FROM b)
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
+    "scenarios_known": f"""
+        WITH p AS ({PACKETS}), b AS (
+            SELECT p.id AS packet_id, p.as_of, (p.content #>> '{{fixture,kickoff_at}}')::timestamptz AS kickoff,
+                   (p.content #>> '{{scenarios,table,snapshot_at}}')::timestamptz AS snap,
+                   p.content #>> '{{scenarios,table,group}}' AS grp, p.content #> '{{scenarios,table}}' AS tbl
+              FROM p WHERE jsonb_typeof(p.content #> '{{scenarios,table}}') = 'object'),
+        t AS (
+            SELECT b.packet_id, (b.snap IS NULL OR b.snap > b.as_of OR b.snap > b.kickoff) AS bad FROM b
+            UNION ALL
+            SELECT b.packet_id,
+                   NOT EXISTS (SELECT 1 FROM core.standings st
+                                WHERE st.snapshot_at = b.snap AND st.group_key = b.grp
+                                  AND st.team_id = {_int("b.tbl", "{side,team_id}", side=True)}
+                                  AND st.rank = {_int("b.tbl", "{side,rank_now}", side=True)}
+                                  AND st.points = {_int("b.tbl", "{side,points_now}", side=True)}
+                                  AND st.played = {_int("b.tbl", "{side,played}", side=True)}) AS bad
+              FROM b CROSS JOIN (VALUES ('home'), ('away')) AS v(side) WHERE jsonb_typeof(b.tbl -> v.side) = 'object'),
+        l AS (
+            SELECT p.id AS packet_id, {_int("p.content", "{scenarios,tie,lead_home_side}")} AS lead,
+                   {_int("p.content", "{scenarios,tie,aggregate_before,home_side}")} AS ah,
+                   {_int("p.content", "{scenarios,tie,aggregate_before,away_side}")} AS aa,
+                   {_int("p.content", "{phase,tie,aggregate_before,home_side}")} AS ph,
+                   {_int("p.content", "{phase,tie,aggregate_before,away_side}")} AS pa,
+                   {_int("p.content", "{scenarios,tie,home_side,ahead_if_margin_at_least}")} AS h_ahead,
+                   {_int("p.content", "{scenarios,tie,home_side,level_if_margin}")} AS h_level,
+                   {_int("p.content", "{scenarios,tie,home_side,behind_if_margin_at_most}")} AS h_behind,
+                   {_int("p.content", "{scenarios,tie,away_side,ahead_if_margin_at_least}")} AS a_ahead,
+                   {_int("p.content", "{scenarios,tie,away_side,level_if_margin}")} AS a_level,
+                   {_int("p.content", "{scenarios,tie,away_side,behind_if_margin_at_most}")} AS a_behind
+              FROM p WHERE p.content #>> '{{scenarios,tie,kind}}' = 'second_leg'
+                       AND jsonb_typeof(p.content #> '{{scenarios,tie,aggregate_before}}') = 'object'),
+        k AS (
+            SELECT l.packet_id,
+                   (l.ah IS DISTINCT FROM l.ph OR l.aa IS DISTINCT FROM l.pa OR l.lead IS DISTINCT FROM l.ah - l.aa
+                    OR l.h_ahead IS DISTINCT FROM 1 - l.lead OR l.h_level IS DISTINCT FROM -l.lead
+                    OR l.h_behind IS DISTINCT FROM -l.lead - 1 OR l.a_ahead IS DISTINCT FROM l.lead + 1
+                    OR l.a_level IS DISTINCT FROM l.lead OR l.a_behind IS DISTINCT FROM l.lead - 1) AS bad
+              FROM l)
+        SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
+               (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples
+          FROM (SELECT * FROM t UNION ALL SELECT * FROM k) c""",
 }
 
 

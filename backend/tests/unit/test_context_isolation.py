@@ -25,6 +25,9 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
         "intel/leakage.py": "the nightly proof: the rule h2h_known (it reads the constant N and nothing else)",
         "api/services/center.py": "the match page: the same head-to-head, asked for now",
     },
+    "fbi.intel.scenarios": {
+        "ai/packet.py": "the packet: what the match alone does to its table and to its tie, as of its moment",
+    },
 }
 """Module -> the files that may import it (a path under ``src/fbi``, or ``scripts/<name>``), each with its reason."""
 

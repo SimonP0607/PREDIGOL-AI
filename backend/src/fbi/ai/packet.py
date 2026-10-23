@@ -35,6 +35,7 @@ from fbi.competitions import context as phase_context
 from fbi.competitions import team_calendar as tc
 from fbi.competitions.stages import stage_of
 from fbi.competitions.tables import match_tables
+from fbi.intel import scenarios
 from fbi.intel.h2h import head_to_head
 from fbi.people.officials import referee_as_of
 
@@ -45,7 +46,10 @@ and had their result recorded by the packet's moment, each with the weight it ha
 or kind, the same ground, the same coaches on the benches) - fixed round numbers, not fitted, written in the block - the
 effective sample size, the record in regulation time and the same record weighted, and ``status`` (``DESCRIPTIVE`` until an
 experiment shows it adds anything: ``intel.context_factors``). ``n`` and ``home_view`` are what the block always carried. The
-dossier is ``dossier-v4``.
+dossier is ``dossier-v4``. The ``scenarios`` block (``fbi.intel.scenarios``, ``scenarios-v1``): what the match alone does to the table of
+its own stage (the points and the interval of places of both sides after each result, every other team keeping its points) and, for the
+second leg of a tie, the margin with which each side is ahead, level or behind on aggregate after 90 minutes - arithmetic, not
+probability; ``DESCRIPTIVE``. Absent when there is neither a table of the match's own stage nor a tie.
 v7 (plan F4): the ``schedule`` block is read from each team's calendar in EVERY competition (``fbi.competitions.team_calendar``),
 as it stood at the packet's moment, not only from the competitions PrediGol follows. Where a team's own list was read recently
 and has no doubt in it (``schedule.calendar.<side>.complete``) its ``rest_days``, ``matches_last_7d/14d/30d`` and ``next_match``
@@ -431,8 +435,13 @@ class PacketBuilder:
             sources.append({"block": "fixture.kickoff_changes", "table": "core.fixture_kickoff_changes",
                             "as_of": _ts(changes[-1]["observed_at"])})
 
-        content["phase"] = self._phase(fixture_id, at, sources, missing)
-        content["standings"], content["stakes"] = self._standings(f, at, sources, missing)
+        content["phase"], tie = self._phase(fixture_id, at, sources, missing)
+        content["standings"], content["stakes"], table_effect = self._standings(f, at, sources, missing)
+        block = scenarios.scenarios_block(table_effect, scenarios.tie_reading(tie))
+        if block is not None:
+            content["scenarios"] = block
+            sources.append({"block": "scenarios", "derived_from": ["standings", "phase"], "as_of": _ts(at),
+                            "version": scenarios.VERSION})
         content["form"] = {}
         for side, team in (("home", home), ("away", away)):
             past = _rows(conn, PAST_SQL, {"team": team, "kickoff": kickoff, "at": at, "limit": FORM_N})
@@ -537,29 +546,31 @@ class PacketBuilder:
         return out
 
     def _phase(self, fixture_id: int, at: datetime, sources: list[dict[str, Any]], missing: list[str]
-               ) -> dict[str, Any] | None:
+               ) -> tuple[dict[str, Any] | None, phase_context.TieAsOf | None]:
         """The stage of the round and, for a leg of a tie, the tie as seen before the match (``fbi.competitions.context``:
         the legs that had a result at ``at``, nothing that came out of the tie). In a savepoint: a phase that cannot be read
-        never costs the rest of the packet."""
+        never costs the rest of the packet. The tie comes back as well, for ``fbi.intel.scenarios``."""
         try:
             with self.conn.transaction():
                 phase = phase_context.phase_as_of(self.conn, fixture_id, at=at)
         except psycopg.Error:
             missing.append("phase")
-            return None
+            return None, None
         if phase is None:  # the competition season was never built: said, not guessed
             missing.append("phase")
-            return None
+            return None, None
         sources.append({"block": "phase", "tables": list(phase_context.TABLES), "as_of": _ts(at),
                         "version": phase_context.VERSION})
-        return phase.as_json()
+        return phase.as_json(), phase.tie
 
     def _standings(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]
-                   ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+                   ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
         """Each side's row in the table of the match's own stage, from the newest snapshot taken by ``at``
         (``fbi.competitions.tables``: the mapping the match page uses, cut at this moment). A match whose stage has no table
         says so: it is never described with another stage's table. What a position is worth (``stakes``) is computed only
-        from the match's own stage; a knock-out round shows the table of the stage before it as context and no stakes."""
+        from the match's own stage; a knock-out round shows the table of the stage before it as context and no stakes. The
+        third value is what the match alone does to that table (``fbi.intel.scenarios``): only for the match's own stage and
+        only when both sides are in the same group."""
         home, away = int(f["home_team_id"]), int(f["away_team_id"])
         try:
             with self.conn.transaction():
@@ -569,7 +580,7 @@ class PacketBuilder:
             found = None
         if found is None or not found.choice.keys:
             missing.append("standings")
-            return None, None
+            return None, None, None
         keys = sorted(set(found.choice.keys.values()))
         rows = _rows(self.conn, STANDINGS_SQL, {"season": f["season_id"], "snapshot": found.snapshot_at, "keys": keys})
         mine = {(int(r["team_id"]), str(r["group_key"])): r for r in rows}
@@ -597,10 +608,17 @@ class PacketBuilder:
             stakes[side] = None if st is None else st.as_json()
         if not out:
             missing.append("standings")
-            return None, None
+            return None, None, None
         sources.append({"block": "standings", "table": "core.standings", "as_of": _ts(found.snapshot_at),
                         "tables": keys, "selection": found.choice.reason})
-        return out, stakes
+        effect = None
+        shared = found.choice.keys.get(home)
+        if own and shared is not None and shared == found.choice.keys.get(away):
+            effect = scenarios.table_effect(
+                [ctx.TableRow(int(x["team_id"]), int(x["rank"]), int(x["points"] or 0), int(x["played"] or 0),
+                              x["description"]) for x in rows if x["group_key"] == shared],
+                home, away, snapshot_at=found.snapshot_at, group=shared)
+        return out, stakes, effect
 
     def _elo(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]
              ) -> dict[str, Any] | None:

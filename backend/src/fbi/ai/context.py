@@ -151,7 +151,7 @@ fighting relegation - the 8th, level on points with the play-off places, too - a
 teams "were in the relegation zone"."""
 
 
-def _zone_kind(description: str | None) -> str | None:
+def zone_kind(description: str | None) -> str | None:
     if not description:
         return None
     d = description.lower()
@@ -177,7 +177,7 @@ def stakes(table: Sequence[TableRow], team_id: int, remaining: int | None) -> St
     me = next((r for r in rows if r.team_id == team_id), None)
     if me is None:
         return None
-    zone = _zone_kind(me.description)
+    zone = zone_kind(me.description)
     above = [r for r in rows if r.rank < me.rank and r.description and r.description != me.description]
     below = [r for r in rows if r.rank > me.rank and r.description and r.description != me.description]
     gap_up = (above[-1].points - me.points) if above else None
@@ -191,8 +191,8 @@ def stakes(table: Sequence[TableRow], team_id: int, remaining: int | None) -> St
         up_closed = gap_up is None or gap_up > max_gain
         down_closed = gap_down is None or gap_down > max_gain
         settled = up_closed and down_closed
-    zone_above = _zone_kind(above[-1].description) if above else None
-    zone_below = _zone_kind(below[0].description) if below else None
+    zone_above = zone_kind(above[-1].description) if above else None
+    zone_below = zone_kind(below[0].description) if below else None
     if settled:
         pressure = "settled"
     elif zone in ("title", "europe", "relegation", "promotion"):
