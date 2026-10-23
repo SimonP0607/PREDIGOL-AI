@@ -27,8 +27,8 @@ HOW A MATCH IS READ. Every rule below is a way of leaving a match out, never of 
   score is not read (``data.events.inconsistent``). Own goals are filed under the team that gets the goal (measured on production, 22 Oct
   2026: all of the 1,154 matches whose only goal was an own goal); a missed penalty and the kicks of a shoot-out are not goals; what is
   scored after the 90th minute is extra time and is left out, because the score compared with is the 90-minute one (``reg_goals``). Of the
-  matches of the 400 days before that date, 93 % of the finished ones had a list that gave the score, 9 % had no list at all and 0.4 % had
-  one that did not.
+  38,198 finished matches of the 400 days before that date (read again on 23 Oct 2026), 90.7 % had a list that gave the score, 8.9 % had
+  no list at all and 0.4 % (158 matches) had one that did not.
 * A squad sheet that the statistics of the same match put on the other side (``fbi.people.sides``: in 202 matches the provider gave each
   team the other's eleven) is not used for the formation or the eleven. The coach written beside it is the right one (the provider
   crosses the players, not the coach) and is used. A sheet with no formation - a third of them - counts as a match with no formation,
