@@ -287,7 +287,19 @@
     },
     "h2h": {
       "title": "Head to head",
-      "subtitle": "Previous meetings with a stored result."
+      "subtitle": "Earlier meetings with a stored result. Each meeting's weight is a description (recent, same competition, same ground, same coaches), not a proven signal.",
+      "weight": "weight {weight} · {scope} · {ground}",
+      "scope": {
+        "same_competition": "same competition",
+        "same_kind": "same kind of competition",
+        "other_official": "another official competition",
+        "friendly": "friendly"
+      },
+      "ground": {
+        "home": "this home side was at home",
+        "away": "this home side was away",
+        "neutral": "neutral ground"
+      }
     },
     "absences": {
       "title": "Absences",

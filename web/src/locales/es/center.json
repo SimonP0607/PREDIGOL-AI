@@ -287,7 +287,19 @@
     },
     "h2h": {
       "title": "Enfrentamientos directos",
-      "subtitle": "Enfrentamientos anteriores con resultado guardado."
+      "subtitle": "Enfrentamientos anteriores con resultado guardado. El peso de cada cruce es una descripción (reciente, misma competición, mismo campo, mismos entrenadores), no una señal probada.",
+      "weight": "peso {weight} · {scope} · {ground}",
+      "scope": {
+        "same_competition": "misma competición",
+        "same_kind": "mismo tipo de competición",
+        "other_official": "otra competición oficial",
+        "friendly": "amistoso"
+      },
+      "ground": {
+        "home": "el local jugó en casa",
+        "away": "el local jugó fuera",
+        "neutral": "campo neutral"
+      }
     },
     "absences": {
       "title": "Bajas",

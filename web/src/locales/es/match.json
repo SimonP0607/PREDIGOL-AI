@@ -206,7 +206,9 @@
     "wins": "Victorias {team}",
     "draws": "Empates",
     "meetings_one": "{count} partido",
-    "meetings_other": "{count} partidos"
+    "meetings_other": "{count} partidos",
+    "aet": "(prórroga)",
+    "pens": "(pen. {home}–{away})"
   },
   "absences": {
     "title": "Bajas",

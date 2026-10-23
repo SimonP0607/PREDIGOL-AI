@@ -272,7 +272,14 @@ export interface IntelDossier {
     players: { home: IntelPlayer[]; away: IntelPlayer[] };
     referee: Record<string, unknown>;
     context: Record<string, unknown>;
-    h2h: { n: number; relevance: string; note: string; last_days_ago: Num };
+    h2h: {
+      n: number;
+      /** The size the meetings' weights leave (Kish); absent in a dossier built before dossier-v4. */
+      n_effective?: number;
+      relevance: string;
+      note: string;
+      last_days_ago: Num;
+    };
   } | null;
   narrative: Array<{ key: string; title: string; text: string | null }> | null;
   narrative_engine: "llm" | "rules" | null;

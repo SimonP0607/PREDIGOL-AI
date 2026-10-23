@@ -206,7 +206,9 @@
     "wins": "{team} wins",
     "draws": "Draws",
     "meetings_one": "{count} match",
-    "meetings_other": "{count} matches"
+    "meetings_other": "{count} matches",
+    "aet": "(a.e.t.)",
+    "pens": "(pens {home}–{away})"
   },
   "absences": {
     "title": "Absences",

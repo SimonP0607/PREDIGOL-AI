@@ -371,6 +371,13 @@ function H2HBody({ ctx, rows }: { ctx: MatchCtx; rows: H2HMatch[] }) {
                 </span>
                 <span className="numeric rounded-md bg-elevated px-2 py-0.5 text-xs font-semibold">
                   {r.goals_home}–{r.goals_away}
+                  {r.after_extra_time ? (
+                    <span className="ml-1 font-normal text-subtle-foreground">
+                      {r.penalties_home !== null && r.penalties_away !== null
+                        ? t("match.h2h.pens", { home: r.penalties_home, away: r.penalties_away })
+                        : t("match.h2h.aet")}
+                    </span>
+                  ) : null}
                 </span>
                 <span
                   className={cn(

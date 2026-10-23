@@ -959,6 +959,12 @@ function MatchView({
                 </Panel>
                 <Panel title={t("intel.match.h2h")}>
                   <KeyValue label="n" value={String(d.dossier.h2h.n)} />
+                  {d.dossier.h2h.n_effective !== undefined ? (
+                    <KeyValue
+                      label={t("intel.match.nEffective")}
+                      value={String(d.dossier.h2h.n_effective)}
+                    />
+                  ) : null}
                   <KeyValue label={t("intel.match.relevance")} value={d.dossier.h2h.relevance} />
                   <Note>{d.dossier.h2h.note}</Note>
                 </Panel>

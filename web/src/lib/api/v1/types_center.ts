@@ -205,8 +205,22 @@ export interface H2HMatch {
   competition: string;
   home: string;
   away: string;
+  /** The final score, extra time in, shoot-out out. */
   goals_home: number;
   goals_away: number;
+  /** The 90 minutes: what the head-to-head record counts and what every market settles on. */
+  regulation_goals_home: number;
+  regulation_goals_away: number;
+  after_extra_time: boolean;
+  /** The shoot-out, when there was one. */
+  penalties_home: number | null;
+  penalties_away: number | null;
+  /** What kind of meeting it was, against the match being described. */
+  scope: "same_competition" | "same_kind" | "other_official" | "friendly";
+  /** Where this match's HOME side played that day. */
+  home_side_was: "home" | "away" | "neutral";
+  /** What the meeting weighs for this match, 0 to 1 (a description, not a fitted signal). */
+  weight: number;
 }
 
 export interface LiveState {
