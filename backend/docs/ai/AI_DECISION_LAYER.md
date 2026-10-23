@@ -1,6 +1,6 @@
 # Capa de decisión IA de PrediGol (`fbi.ai`)
 
-*Versión de la capa: packet-v5 · rules-review-v1 · review-v2 · brief-v1 · day-v1 · match-analysis-v1 · pm-v1 ·
+*Versión de la capa: packet-v6 · rules-review-v1 · review-v2 · brief-v1 · day-v1 · match-analysis-v1 · pm-v1 ·
 pm-v2 · learning-v1 · patterns-v1 · ai-gate-v1 · icc-v1 · daily-set-v3 · parlay-v4. Migraciones 0072-0073.
 Escrito el 8 oct 2026; **V2** (el día de Bogotá, los tres pasos, L1/L2/L3, presupuesto adaptable de US$150,
 post-mortems por selección y aprendizaje diario) el mismo día.*
@@ -67,7 +67,9 @@ en 14 días un **mínimo**: el bloque lo declara en `schedule.calendar` y solo e
 «desventaja de descanso» entre los dos lados; packet-v3, plan F0 defecto 10), H2H, Elo, estadísticas, bajas ponderadas por importancia del jugador (**solo la última respuesta de `/injuries` a la fecha de corte**: un jugador que la respuesta más reciente ya no nombra se recuperó y no cuenta, y un refresco posterior no borra lo que se sabía en ese momento; se lee del historial `core.player_availability_obs`, no de `core.player_absences`, que solo guarda la última respuesta; packet-v3, plan F0 defecto 8), alineaciones,
 árbitro (**la persona**, no la cadena que escribió el proveedor: `fixture.referee`, `fixture.referee_id` y `fixture.referee_seen_at` son lo que el proveedor había dado a la hora del paquete —nada si ya lo había quitado del partido—, y el dossier cuenta sus partidos bajo cualquier grafía y sin mezclar homónimos; un partido que la identidad aún no vio conserva la cadena, con `referee_id` nulo; packet-v5, plan F3),
 viaje, mercado (Shin, apertura fija = primer consenso de la semana previa, movimiento, dispersión, nº de casas),
-modelos (Dixon-Coles, Poisson, Elo-ologit con intervalos), calidad de datos y evidencias. Todo **as-of**: nada
+modelos (Dixon-Coles, Poisson, Elo-ologit con intervalos), **pronóstico de PrediGol** (bloque `forecast`, packet-v6, plan F5: por mercado la probabilidad de cada resultado con su intervalo,
+`CALIBRATED` o `UNCALIBRATED` y cuál es el más probable; es una probabilidad, sin cuota ni ventaja: lo más probable no es lo mejor pagado, y el brief —brief-v7— lo escribe aparte
+de las selecciones que muestran las tarjetas; un partido sin pronóstico no tiene bloque y no se nombra en `missing`, un pronóstico que no se pudo leer sí), calidad de datos y evidencias. Todo **as-of**: nada
 registrado después del momento del paquete. Un paquete nuevo solo se guarda si el contexto cambió.
 
 **Web (Exa).** Consulta en el idioma de la competición (español, portugués, inglés); dos cubetas por partido:
