@@ -27,6 +27,7 @@ from fbi.picks.fast_settlement import fill_line_value, record_latency
 from fbi.picks.product_settlement import ProductSettlementReport, settle_products
 from fbi.picks.resettlement import ResettlementReport, resettle
 from fbi.predictions.forecast import ForecastReport, forecast_upcoming
+from fbi.predictions.match_forecast import MatchForecastReport, write_match_forecasts
 
 log = structlog.get_logger(__name__)
 
@@ -40,10 +41,21 @@ def resettle_enabled() -> bool:
     return environment().get(RESETTLE_SWITCH, "1").strip().lower() not in {"0", "off", "false", "no"}
 
 
+FORECAST_SWITCH = "FBI_MATCH_FORECAST"
+"""``FBI_MATCH_FORECAST=0`` stops the pass from writing PrediGol's forecast of each match (plan F5) without a deploy (the worker needs
+a restart to read it). What was written stays, and the page shows the newest set until it is hidden from users
+(``FBI_FORECAST_USERS=0``). Nothing else in the pass reads the forecast, so nothing else changes."""
+
+
+def match_forecast_enabled() -> bool:
+    return environment().get(FORECAST_SWITCH, "1").strip().lower() not in {"0", "off", "false", "no"}
+
+
 @dataclass
 class PipelineReport:
     run_id: int | None
     forecast: ForecastReport | None = None
+    match_forecasts: MatchForecastReport | None = None
     picks: PickReport | None = None
     settlement: SettlementReport | None = None
     resettlement: ResettlementReport | None = None
@@ -76,6 +88,21 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
     counters = RunCounters()
     try:
         report.forecast = forecast_upcoming(conn, at=at, code_version=code_version)
+        # What PrediGol thinks will happen, kept apart from what is worth betting (plan F5): read from the forecasts just
+        # made, written to a table nothing below reads. In its own savepoint: a defect here is recorded on the run and
+        # must not cost the candidates, the settlement or the product records.
+        report.match_forecasts = MatchForecastReport(at=at)
+        forecasting = match_forecast_enabled()
+        if forecasting:
+            try:
+                with conn.transaction():
+                    report.match_forecasts = write_match_forecasts(conn, at=at, code_version=code_version)
+            except Exception as exc:  # recorded on the run, and logged; the core pipeline still commits
+                counters.errors.append(f"match forecasts: {type(exc).__name__}: {exc}"[:500])
+                log.error("pipeline.match_forecasts_failed", error=type(exc).__name__, detail=str(exc)[:300])
+                report.match_forecasts = MatchForecastReport(at=at)
+        else:
+            log.warning("pipeline.match_forecasts_off", hint=f"{FORECAST_SWITCH}=0: PrediGol's forecast of the matches is not written")
         if run_id is None:
             with conn.cursor() as cur:  # a throwaway run row for the FK, rolled back below
                 cur.execute("INSERT INTO raw.ingestion_runs (job_name, job_type) VALUES ('pick_pipeline', "
@@ -137,13 +164,18 @@ def run_pipeline(conn: psycopg.Connection, *, at: datetime, code_version: str, a
         # (a refused pass has changes: the list that was not written, which is what the note must say)
         again = f"; {rr.summary()}" if rr is not None and (rr.changes or rr.held or rr.conflicts) else ""
         again += "" if resettling else f"; re-settlement OFF ({RESETTLE_SWITCH}=0)"
+        mfr = report.match_forecasts
+        assert mfr is not None
+        shown = mfr.summary() if forecasting else f"match forecasts OFF ({FORECAST_SWITCH}=0)"
         ledger.close(run_id, counters, notes=(
-            f"forecasts {f.written} written/{f.unchanged} unchanged for {f.targets} fixtures; "
+            f"forecasts {f.written} written/{f.unchanged} unchanged for {f.targets} fixtures; {shown}; "
             f"candidates {p.candidates} (selected {p.selected}, qualified {p.qualified}); "
             f"settled {s.settled}, pending {s.still_pending} ({s.needs_review} need review){again}; "
             f"daily items +{d.items_added} {d.by_source}; parlays built {pl.built}; product settled "
             f"items {ps.items}, parlays {ps.parlays}, user picks {ps.user_picks}, user parlays {ps.user_parlays}; "
             f"line values {report.line_values}; 0 requests"))
-    log.info("pipeline.done", run_id=run_id, forecasts=report.forecast.written, candidates=report.picks.candidates,
-             selected=report.picks.selected, settled=report.settlement.settled, apply=apply)
+    log.info("pipeline.done", run_id=run_id, forecasts=report.forecast.written,
+             match_forecasts=0 if report.match_forecasts is None else report.match_forecasts.markets_written,
+             candidates=report.picks.candidates, selected=report.picks.selected, settled=report.settlement.settled,
+             apply=apply)
     return report
