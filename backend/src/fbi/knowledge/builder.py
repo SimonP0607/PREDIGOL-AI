@@ -40,8 +40,8 @@ from fbi.knowledge import layers, reader
 log = structlog.get_logger(__name__)
 
 JOB: Final = "match_knowledge"
-SETTLE: Final = timedelta(hours=26)
-"""A match is built when it is over and settled: the provider re-reads a finished match for a day, and its last read is what is kept."""
+SETTLE: Final = layers.SETTLE
+"""A match is built when it is over and settled: 26 hours after kick-off (``layers.SETTLE``, which the page of a match shares)."""
 DEFAULT_DAYS: Final = 10
 """The window of the worker's pass: the matches that kicked off in the last ten days (a correction later than that is for the wide pass)."""
 MAX_FAILED_CHUNKS: Final = 3

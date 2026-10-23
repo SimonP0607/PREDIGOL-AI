@@ -34,7 +34,7 @@ import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final
 
@@ -44,6 +44,10 @@ from fbi.people import sides
 VERSION: Final = "mk-v1"
 RULES: Final[dict[str, str]] = {"layers": VERSION, "events": ev.VERSION, "sides": sides.VERSION}
 """The versions of the rules a build applied: part of what a build read (``inputs_hash``), so that changing a rule rebuilds what it touches."""
+SETTLE: Final = timedelta(hours=26)
+"""A match is put together when it is over and settled: the provider re-reads a finished match for a day, and its last read is what is kept.
+It is kept here, in the pure module, and not in the builder, so that the page of a match (``fbi.api.services.knowledge``) can say "not
+settled yet" without importing the module that writes (``tests/unit/test_knowledge_isolation.py`` holds that door)."""
 
 # ── statuses ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

@@ -54,13 +54,13 @@ from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.core.clock import now
 from fbi.core.env import environment
-from fbi.knowledge import builder, layers
+from fbi.knowledge import layers
 
 log = structlog.get_logger(__name__)
 
 VERSION: Final = layers.VERSION
 """The rules this reads rows of: ``mk-v1``. A new version of the rules adds rows beside the old ones; this keeps reading the one it knows."""
-SETTLE: Final = builder.SETTLE
+SETTLE: Final = layers.SETTLE
 """A match is put together 26 hours after kick-off: before that the answer says it is not settled yet."""
 USERS_SWITCH: Final = "FBI_KNOWLEDGE_USERS"
 """``FBI_KNOWLEDGE_USERS=1`` lets every signed-in account see the knowledge of a finished match. Off until the owner decides: the Admin
