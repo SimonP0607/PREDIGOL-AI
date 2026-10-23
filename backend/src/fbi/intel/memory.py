@@ -53,7 +53,10 @@ CORNERS, CARDS AND XG, SHRUNK. A team with two matches that took 14 corners does
 figures of the three new aspects are shrunk toward the mean of the league(s) the team played in (``own_shrunk`` =
 (weighted corners + m x league mean) / (weighted matches + m)), so a team with few matches is its league's mean and one with many
 is itself; the league's own row (``competition x corners``) is where that mean comes from. ``m`` is the number of matches the league's
-mean is worth (``METRICS``). A team that played in two competitions is shrunk to the mean of both weighted by its matches in each.
+mean is worth (``METRICS``): measured, not guessed (``python -m scripts.memory priors``, over the last 365 days of 23 October 2026: corners
+15, cards 38, xG 10), and it is also the ``k`` of the team's confidence, so the confidence of such a row is exactly the share of the figure
+that is the team's own, ``own_shrunk = confidence x own_rate + (1 - confidence) x prior``. A team that played in two competitions is shrunk
+to the mean of both weighted by its matches in each.
 
 ITS OWN LINEAGE. memory-v4 continues nothing: its rows are built from the first day of the lineage (``LINEAGE_START``, 13 October
 2026), day by day, from the data as they are (``rebuild``), and each row's "previous state" is the previous memory-v4 row.
@@ -239,11 +242,20 @@ def _xg(h: Row, a: Row) -> tuple[float, float] | None:
 
 METRICS: dict[str, Metric] = {
     # m = within-team variance over between-team variance of the figure (``variance_components``): how many matches a league's mean is
-    # worth. ``python -m scripts.memory priors`` measures it on the stored matches and the owner's guide (docs/owner/POSTMORTEM_MEMORIA_F8.md)
-    # says what it found; changing one is a new version of the memory.
-    "corners": Metric("corners", 6.0, _corners),
-    "cards": Metric("cards", 9.0, _cards),
-    "xg": Metric("xg", 7.0, _xg),
+    # worth. MEASURED, on 23 Oct 2026, by ``python -m scripts.memory priors`` over the 34,611 matches of the last 365 days (read only):
+    #
+    #               what a team produces / concedes     read as
+    #   corners     15.3 / 14.7                          15   (180 days 16.1 / 15.7, 730 days 15.7 / 15.7, stricter samples 15.5 / 15.3)
+    #   cards       37.0 / 38.5                          38   (730 days 34.2 / 31.5, stricter 38.5 / 41.4, looser 41.1 / 38.8; 180 days is noisy)
+    #   xg           7.9 / 11.4                          10   (what a team creates is worth 8 matches, what it allows 11 to 13: one weight for both;
+    #                                                         for a team 0.3 goals from its league the difference is under 0.02 goals at ten matches)
+    #
+    # The first draft of this memory guessed 6, 9 and 7 from how football behaves; the data say a league's mean is worth two and a half
+    # (corners) to four times (cards) as many matches. The weights are conventions of the memory, not parameters of a model: changing one
+    # is a new version of the memory and a rebuild (the owner's guide, docs/owner/POSTMORTEM_MEMORIA_F8.md, says how to measure them again).
+    "corners": Metric("corners", 15.0, _corners),
+    "cards": Metric("cards", 38.0, _cards),
+    "xg": Metric("xg", 10.0, _xg),
 }
 
 DECISIONS_TEAM = Spec(half_life=90, k=30, count="decisions")
@@ -252,7 +264,12 @@ DECISIONS_MARKET = Spec(half_life=180, k=100, count="decisions")
 REFEREE = Spec(half_life=365, k=20, count="matches")
 COACH = Spec(half_life=365, k=10, count="matches")
 PLAYER = Spec(half_life=120, k=5, count="reported_out")
-TEAM_FIGURES = Spec(half_life=180, k=10, count="matches", decayed=("own", "opp"))
+TEAM_FIGURES: dict[str, Spec] = {aspect: Spec(half_life=180, k=metric.prior_weight, count="matches", decayed=("own", "opp"))
+                                 for aspect, metric in METRICS.items()}
+"""A team's corners, cards and xG. Its ``k`` is the ``m`` of the figure (``METRICS``), not a constant of its own: the confidence of the
+row, ``n_eff / (n_eff + k)``, is then exactly the weight the team's own figure has in the shrunk one,
+``own_shrunk = confidence x own_rate + (1 - confidence) x prior``. Without it a team with ten matches of cards would read "50 % confidence"
+beside a figure that is four fifths its league's."""
 LEAGUE_FIGURES = Spec(half_life=365, k=60, count="matches", decayed=("total",))
 
 DERIVED = ("own_rate", "opp_rate", "own_shrunk", "opp_shrunk", "prior", "prior_matches", "rate")
@@ -310,7 +327,7 @@ def spec_for(key: EKey) -> Spec | None:
     """The convention of a kind of memory; None for a kind that has none (its row carries no confidence)."""
     kind, _, aspect = key
     if aspect in METRICS:
-        return TEAM_FIGURES if kind == "team" else LEAGUE_FIGURES if kind == "competition" else None
+        return TEAM_FIGURES[aspect] if kind == "team" else LEAGUE_FIGURES if kind == "competition" else None
     if aspect.startswith("market:"):
         return DECISIONS_TEAM if kind == "team" else DECISIONS_COMPETITION if kind == "competition" else None
     return {("market", "decisions"): DECISIONS_MARKET, ("referee", "discipline"): REFEREE, ("coach", "profile"): COACH,

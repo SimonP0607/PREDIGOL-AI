@@ -24,7 +24,7 @@ pytestmark = pytest.mark.integration
 
 NEXT = DAY + timedelta(days=1)
 AFTER = DAY + timedelta(days=2)
-LAMBDA_TEAM = memory.TEAM_FIGURES.half_life
+LAMBDA_TEAM = memory.TEAM_FIGURES["corners"].half_life
 LAMBDA_LEAGUE = memory.LEAGUE_FIGURES.half_life
 
 
@@ -118,7 +118,8 @@ def test_a_day_of_matches_writes_the_figures_of_its_teams_and_its_league_each_wi
     assert (s["n_eff"], s["own_rate"], s["opp_rate"], s["prior"], s["prior_matches"]) == (1.0, 8.0, 4.0, 7.0, 1)
     m = memory.METRICS["corners"].prior_weight
     assert s["own_shrunk"] == pytest.approx((8 + m * 7) / (1 + m), abs=1e-4) and s["opp_shrunk"] == pytest.approx((4 + m * 7) / (1 + m), abs=1e-4)
-    assert float(r["confidence"]) == pytest.approx(1 / (1 + memory.TEAM_FIGURES.k), abs=1e-4)
+    assert float(r["confidence"]) == pytest.approx(1 / (1 + m), abs=1e-4), "the confidence is the share of the team itself in the shrunk figure"
+    assert float(r["confidence"]) == pytest.approx((s["own_shrunk"] - s["prior"]) / (s["own_rate"] - s["prior"]), abs=2e-3)
     assert r["evidence_ref"] == {"fixtures": [m1]}
     cards = row(db, DAY, "team", world.team("Bravo"), "cards")["stats"]
     assert (cards["own"], cards["opp"]) == (4, 2), "3 yellow and a red; the other side's 2 yellow"
@@ -296,22 +297,22 @@ def test_the_console_reads_the_newest_version_with_its_confidence_and_what_it_re
                "VALUES ('team', %s, 'Alpha', 'corners', %s, %s, 'memory-v3', '{\"matches\": 99}', '{}', '[]')", (str(alpha), DAY, _night(DAY)))
     memory.build_memory(db, day=DAY, at=_night(DAY), late_days=0)
 
-    listed = {(i["entity_id"], i["aspect"]): i for i in intelligence.memory(db, entity_type="team", q="Alpha", limit=50).data["items"]}  # type: ignore[index]
+    listed = {(i["entity_id"], i["aspect"]): i for i in intelligence.memory(db, entity_type="team", q="Alpha", limit=50).data["items"]}
     item = listed[(str(alpha), "corners")]
     assert item["version"] == "memory-v4" and item["stats"]["matches"] == 1, "the older version's row of the same day does not show"
-    assert item["confidence"] == pytest.approx(1 / (1 + memory.TEAM_FIGURES.k), abs=1e-4) and item["evidence_ref"] == {"fixtures": [world.m1]}  # type: ignore[attr-defined]
-    history = intelligence.memory_history(db, "team", str(alpha)).data["history"]  # type: ignore[index]
+    assert item["confidence"] == pytest.approx(1 / (1 + memory.TEAM_FIGURES["corners"].k), abs=1e-4) and item["evidence_ref"] == {"fixtures": [world.m1]}  # type: ignore[attr-defined]
+    history = intelligence.memory_history(db, "team", str(alpha)).data["history"]
     mine = [h for h in history if h["aspect"] == "corners"]
     assert [(h["as_of_day"], h["version"]) for h in mine] == [(DAY.isoformat(), "memory-v4")], "one row per day: the newest version"
 
     # the list is cut after sorting by sample: one aspect at a time keeps the kinds with the most rows from crowding the others out
-    only = intelligence.memory(db, entity_type=None, q=None, limit=50, aspect="corners").data["items"]  # type: ignore[index]
+    only = intelligence.memory(db, entity_type=None, q=None, limit=50, aspect="corners").data["items"]
     assert only and {i["aspect"] for i in only} == {"corners"} and {i["entity_type"] for i in only} == {"team", "competition"}
-    assert intelligence.memory(db, entity_type="team", q=None, limit=50, aspect="no-such-aspect").data["items"] == []  # type: ignore[index]
+    assert intelligence.memory(db, entity_type="team", q=None, limit=50, aspect="no-such-aspect").data["items"] == []
 
 
 def test_the_row_of_a_version_before_memory_v4_has_no_confidence_and_is_still_read(db: psycopg.Connection[Any]) -> None:
     db.execute("INSERT INTO intel.entity_memory (entity_type, entity_id, entity_name, aspect, as_of_day, built_at, version, stats, delta, sources) "
                "VALUES ('market', 'OU', 'OU', 'decisions', %s, %s, 'memory-v1', '{\"decisions\": 3}', '{}', '[]')", (DAY, _night(DAY)))
-    item = next(i for i in intelligence.memory(db, entity_type="market", q=None, limit=10).data["items"] if i["entity_id"] == "OU")  # type: ignore[index]
+    item = next(i for i in intelligence.memory(db, entity_type="market", q=None, limit=10).data["items"] if i["entity_id"] == "OU")
     assert item["version"] == "memory-v1" and item["confidence"] is None and item["evidence_ref"] is None
