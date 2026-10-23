@@ -314,7 +314,7 @@ aplicadas a la primera. Backend `db476d5bd534`, web `b5136bc5f0c3`. Los usuarios
 | Copia verificada antes de migrar | `predigol-20261023T115938Z`: 1.160.610.202 bytes en 502 s (11:59–12:08 UTC). Sigue sin haber copia fuera del servidor (el aviso de siempre) |
 | Prueba de restauración | **superada en 804 s** (12:08–12:21 UTC), con las mismas cuentas de filas que producción (246.017 partidos, 3.218.478 eventos, 158.633 picks, 8 cuentas…) |
 | Comprobación de calma | ninguna transacción de escritura de más de 20 s sobre `core.fixtures` ni `raw.ingestion_payloads`; despliegue fuera de las horas de `fixtures_sync` |
-| Vigilancia de bloqueos (`lockwatch`) | desde las 14:00:23 UTC y hasta pasada la carga: **0 esperas registradas** |
+| Vigilancia de bloqueos (`lockwatch`) | de las 14:00 a las 14:50 UTC (50 minutos: el despliegue, la carga de 11 minutos y las comprobaciones): terminó y su registro quedó vacío, **0 esperas** |
 | Despliegue (`predigolctl deploy`) | copia propia del despliegue (1.172.092.404 bytes, 458 s), migración, permisos, reinicio y salud, sin incidencias; humo correcto |
 | Verificación de solo lectura | revisión 0090; los tres objetos existen; la API solo lee y el worker lee y escribe; el disparador solo-anexar está activo; las tablas nacían vacías; ninguna versión nueva de modelo escribió pronósticos (todas `@mc9a7bec97ca`); los paquetes de IA no cambian (`packet-v8`, ≈ 6.400 tokens de media) ni el gasto del día |
 | Una pasada de `pick_pipeline` | la que corría al reiniciar quedó «interrumpida» y la siguiente la rehízo (lo esperado en todo despliegue) |
