@@ -49,9 +49,30 @@ def catalogue(db: psycopg.Connection[Any], keys: tuple[tuple[str, int, bool], ..
                    "ON CONFLICT (key) DO NOTHING", (key, key, n, has_line))
 
 
-def played(w: World, n: int = 330, days: int = 330) -> None:
-    """``n`` finished matches of four teams, one every ``days / n`` days up to a day before ``AT``: goals by half, corners and cards."""
+def referees(db: psycopg.Connection[Any], *names: str) -> list[int]:
+    """The alias (a spelling that F3 settled on) of one new referee for each name: what a match is whistled by."""
+    out = []
+    for name in names:
+        referee_id = db.execute("INSERT INTO core.referees (name, name_key, origin, version) VALUES (%s, %s, 'rules', 'test') RETURNING id",
+                                (name, name.lower())).fetchall()[0][0]
+        out.append(int(db.execute("INSERT INTO core.referee_aliases (referee_id, name_key, scope, display, basis, placed_by, version) "
+                                  "VALUES (%s, %s, 'testland', %s, 'identity', 'rules', 'test') RETURNING id",
+                                  (referee_id, name.lower(), name)).fetchall()[0][0]))
+    return out
+
+
+def whistle(db: psycopg.Connection[Any], fixture_id: int, alias_id: int, observed: datetime) -> None:
+    db.execute("INSERT INTO core.fixture_officials (fixture_id, role, observed_at, alias_id) VALUES (%s, 'referee', %s, %s)",
+               (fixture_id, observed, alias_id))
+
+
+def played(w: World, n: int = 330, days: int = 330, refs: tuple[tuple[int, float], ...] = ()) -> None:
+    """``n`` finished matches of four teams, one every ``days / n`` days up to a day before ``AT``: goals by half, corners and cards.
+
+    With ``refs`` - (alias, how many times the usual yellow cards) - each match is whistled by one of them, picked at random, and has that many
+    times the cards."""
     rng = np.random.default_rng(11)
+    pick = np.random.default_rng(5)
     attack, defence = np.array([0.25, 0.05, -0.10, -0.20]), np.array([0.15, 0.0, -0.05, -0.10])
     pairs = [(h, a) for h in range(4) for a in range(4) if h != a]
     step = timedelta(days=days) / n
@@ -62,9 +83,13 @@ def played(w: World, n: int = 330, days: int = 330) -> None:
         first = [int(rng.poisson(0.65 * s)) for s in scale]
         second = [int(rng.poisson(0.85 * s)) for s in scale]
         fid = w.match(kickoff, home, away, goals=(first[0] + second[0], first[1] + second[1]), ht=(first[0], first[1]), settled=None)
+        strict = 1.0
+        if refs:
+            alias, strict = refs[int(pick.integers(len(refs)))]
+            whistle(w.db, fid, alias, kickoff + timedelta(hours=3))
         for side, s in (("home", scale[0]), ("away", scale[1])):
             w.team_stats(fid, side, corners=int(rng.poisson(5.0 * s * rng.gamma(10.0, 0.1))),
-                         yellow_cards=int(rng.poisson(2.0 * s * rng.gamma(10.0, 0.1))), red_cards=int(rng.random() < 0.04))
+                         yellow_cards=int(rng.poisson(2.0 * s * strict * rng.gamma(10.0, 0.1))), red_cards=int(rng.random() < 0.04))
 
 
 def upcoming(w: World, home: int = 0, away: int = 1, when: timedelta = timedelta(days=1)) -> int:
@@ -234,3 +259,58 @@ def test_the_dispersion_is_measured_once_a_day_when_the_process_keeps_it(db: psy
     assert len(calls) == 2 * over_dispersed and {k[1] for k in memory} == {(AT + timedelta(days=1)).date()}, "the next day measures them again and drops yesterday's"
     forecast.write_family_forecasts(db, at=AT + timedelta(days=1, hours=1), code_version="test", fixture_ids=[fid])
     assert len(calls) == 3 * over_dispersed, "with no memory every call measures"
+
+
+def over(db: psycopg.Connection[Any], fixture_id: int, key: str, line: float) -> float:
+    """The latest probability stated for the Over of a line (the rows of a market are ordered by the moment they were written)."""
+    return float([r for r in stored(db, fixture_id) if r[0] == key and float(r[1]) == line and r[2] == "Over"][-1][3])
+
+
+def digests(db: psycopg.Connection[Any], fixture_id: int, family: str) -> set[str]:
+    return {str(r[0]) for r in db.execute("SELECT input_hash FROM models.match_forecasts WHERE fixture_id = %s AND version = %s AND family = %s",
+                                         (fixture_id, forecast.VERSION, family)).fetchall()}
+
+
+def test_a_referee_who_gives_more_cards_moves_the_cards_and_only_the_cards(db: psycopg.Connection[Any], w: World) -> None:
+    catalogue(db)
+    strict, calm = referees(db, "Strict Referee", "Calm Referee")
+    played(w, refs=((strict, 2.0), (calm, 0.5)))
+    with_strict, with_calm, nobody, late = (upcoming(w, when=timedelta(days=1, hours=h)) for h in range(4))
+    whistle(db, with_strict, strict, AT - timedelta(hours=5))
+    whistle(db, with_calm, calm, AT - timedelta(hours=5))
+    whistle(db, late, strict, AT + timedelta(minutes=1))  # named after the pass: not known by then
+    report = run(db, [with_strict, with_calm, nobody, late])
+    cards = report.specs["cards_lines_ft"]
+    assert cards.uses_referee and cards.with_referee == 2 and "(2 with a referee)" in report.summary(), report.summary()
+    assert not any(report.specs[k].uses_referee for k in ("corners_ft", "yellow_ft", "goals_halves"))
+
+    strict_p, calm_p, nobody_p = (over(db, f, "CARDS_OU", 4.5) for f in (with_strict, with_calm, nobody))
+    assert calm_p + 0.2 < nobody_p < strict_p - 0.2, "the strict referee's match is expected to have more cards, the calm one's fewer"
+    assert over(db, late, "CARDS_OU", 4.5) == pytest.approx(nobody_p), "a referee seen after the moment of the numbers is not known"
+    for key, line in (("CORNERS_OU", 9.5), ("YELLOW_OU", 3.5), ("OU_1H", 0.5)):
+        assert over(db, with_strict, key, line) == pytest.approx(over(db, nobody, key, line)), "the other families do not look at the referee"
+    assert len(digests(db, with_strict, "CARDS")) == 1 and digests(db, with_strict, "CARDS") != digests(db, nobody, "CARDS")
+    assert digests(db, with_strict, "CARDS") != digests(db, with_calm, "CARDS"), "what the number was computed from holds the referee"
+
+    version = db.execute("SELECT v.version, v.feature_names, v.hyperparameters FROM models.model_versions v JOIN models.model_registry r "
+                         "ON r.id = v.model_id WHERE r.name = 'family-cards_lines_ft'").fetchall()
+    assert len(version) == 1 and ",referee=" in version[0][0] and "referee" in version[0][1]
+    assert version[0][2]["referee_kappa"] == next(s.referee_kappa for s in forecast.SPECS if s.key == "cards_lines_ft")
+
+
+def test_a_referee_named_later_changes_the_cards_and_writes_them_again(db: psycopg.Connection[Any], w: World) -> None:
+    catalogue(db)
+    strict, calm = referees(db, "Strict Referee", "Calm Referee")
+    played(w, refs=((strict, 2.0), (calm, 0.5)))
+    fid = upcoming(w)
+    first = run(db, [fid])
+    before = over(db, fid, "CARDS_OU", 4.5)
+    assert first.specs["cards_lines_ft"].with_referee == 0
+    whistle(db, fid, strict, AT + timedelta(minutes=30))
+    second = run(db, [fid], at=AT + timedelta(hours=1))
+    assert second.specs["cards_lines_ft"].with_referee == 1 and second.specs["cards_lines_ft"].rows_written > 0
+    assert all(second.specs[k].rows_written == 0 for k in ("corners_ft", "yellow_ft", "goals_halves")), "only the cards moved"
+    assert over(db, fid, "CARDS_OU", 4.5) > before + 0.2
+    third = run(db, [fid], at=AT + timedelta(hours=2))
+    assert all(r.rows_written == 0 for r in third.specs.values()), "and the same referee a pass later changes nothing"
+

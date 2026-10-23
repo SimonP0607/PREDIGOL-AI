@@ -3,6 +3,7 @@ number was computed from, the shape of what is stored, and the families as confi
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -29,9 +30,10 @@ KEYS = catalogue.key_defs(list(extracted_specs()))
 ALL_KEYS = frozenset(KEYS)
 
 
-def league(n: int, *, over: float = 0.0, seed: int = 7, teams: int = 10, days: int = 300, base: int = 0) -> list[Match]:
+def league(n: int, *, over: float = 0.0, seed: int = 7, teams: int = 10, days: int = 300, base: int = 0, refs: Sequence[float] = ()) -> list[Match]:
     """``n`` finished matches of one competition, evenly spaced over the ``days`` before ``AT`` (the last one a day before it). The count of a
-    side is Poisson around its mean, or negative binomial with variance mu + ``over`` mu^2."""
+    side is Poisson around its mean, or negative binomial with variance mu + ``over`` mu^2. With ``refs`` the matches are whistled by referees
+    100, 101, ... in turn and the means of the match are multiplied by the number of its referee."""
     rng = np.random.default_rng(seed)
     attack, defence = rng.normal(0.0, 0.2, teams), rng.normal(0.0, 0.2, teams)
     out: list[Match] = []
@@ -41,13 +43,14 @@ def league(n: int, *, over: float = 0.0, seed: int = 7, teams: int = 10, days: i
         if home == away:
             away = (away + 1) % teams
         counts = []
+        strict = refs[i % len(refs)] if refs else 1.0
         for scale in (np.exp(attack[home] - defence[away]), np.exp(attack[away] - defence[home])):
-            mean = 5.0 * scale
+            mean = 5.0 * scale * strict
             if over > 0.0:
                 mean *= rng.gamma(1.0 / over, over)
             counts.append(int(rng.poisson(mean)))
         out.append(Match(fixture_id=base + i, kickoff_at=AT - timedelta(days=days) + step * i, home_id=base + home, away_id=base + away,
-                         home=counts[0], away=counts[1]))
+                         home=counts[0], away=counts[1], referee_id=100 + i % len(refs) if refs else None))
     return out
 
 
@@ -97,6 +100,25 @@ def test_nothing_to_measure_is_no_dispersion() -> None:
     assert forecast.out_of_sample({}, measure="corners_ft", at=AT, xi=0.0019, penalty=2.0) == (NO_DISPERSION, 0)
 
 
+def test_what_a_referee_explains_is_not_left_in_the_dispersion() -> None:
+    matches = league(600, refs=(1.8, 0.55, 1.0))
+    plain, n_plain = forecast.out_of_sample({1: matches}, measure="cards_lines_ft", at=AT, xi=0.0019, penalty=2.0)
+    scaled, n_scaled = forecast.out_of_sample({1: matches}, measure="cards_lines_ft", at=AT, xi=0.0019, penalty=2.0, referee_kappa=150.0)
+    assert n_plain == n_scaled > 100, "the same matches are measured"
+    assert plain.total > 0.05, "a strict and a lenient referee look like extra variance to a model that does not know them"
+    assert scaled.home < plain.home / 2 and scaled.away < plain.away / 2 and scaled.total < plain.total / 2, "and with them they do not"
+
+
+def test_without_a_referee_who_is_known_the_dispersion_is_the_plain_one() -> None:
+    nobody = league(500, over=0.1)
+    assert all(m.referee_id is None for m in nobody)
+    plain = forecast.out_of_sample({1: nobody}, measure="cards_lines_ft", at=AT, xi=0.0019, penalty=2.0)
+    assert forecast.out_of_sample({1: nobody}, measure="cards_lines_ft", at=AT, xi=0.0019, penalty=2.0, referee_kappa=150.0) == plain
+    few = [Match(m.fixture_id, m.kickoff_at, m.home_id, m.away_id, m.home, m.away, referee_id=900 + i // 3) for i, m in enumerate(nobody)]
+    assert forecast.out_of_sample({1: few}, measure="cards_lines_ft", at=AT, xi=0.0019, penalty=2.0, referee_kappa=150.0) == plain, (
+        "a referee with fewer matches than the minimum has no multiplier")
+
+
 # ── what a number was computed from ─────────────────────────────────────────────────────────────────────────────────
 
 SPEC = next(s for s in forecast.SPECS if s.key == "corners_ft")
@@ -114,6 +136,16 @@ def test_the_digest_says_what_the_numbers_came_from() -> None:
     assert forecast.input_hash(SPEC, [later], DISP, 1, 2) != digest, "another training"
     other = next(s for s in forecast.SPECS if s.key == "yellow_ft")
     assert forecast.input_hash(other, [fit], DISP, 1, 2) != digest, "another family"
+
+
+def test_the_digest_holds_the_referee_and_his_multiplier_when_they_were_used() -> None:
+    fit = fit_family(league(300, over=0.1), measure="corners_ft", at=AT, xi=0.0019, penalty=2.0, dispersion=DISP)
+    plain = forecast.input_hash(SPEC, [fit], DISP, 1, 2)
+    assert forecast.input_hash(SPEC, [fit], DISP, 1, 2, referee_id=7, factor=None) == plain, "a referee whose multiplier was not used is not in it"
+    used = forecast.input_hash(SPEC, [fit], DISP, 1, 2, referee_id=7, factor=1.25)
+    assert used != plain and used == forecast.input_hash(SPEC, [fit], DISP, 1, 2, referee_id=7, factor=1.25)
+    assert forecast.input_hash(SPEC, [fit], DISP, 1, 2, referee_id=8, factor=1.25) != used, "another referee"
+    assert forecast.input_hash(SPEC, [fit], DISP, 1, 2, referee_id=7, factor=1.26) != used, "another multiplier"
 
 
 def test_a_market_is_stored_uncalibrated_with_no_interval_and_the_probabilities_it_was_given() -> None:
@@ -134,7 +166,8 @@ def test_the_families_are_distinct_and_read_measures_that_exist() -> None:
         assert s.model.startswith("family-") and s.model != forecast.VERSION
         for measure in s.measures:
             history.columns_of(measure)
-        assert s.spec == f"{s.key}:xi={s.xi},penalty={s.penalty}"
+        assert s.spec == f"{s.key}:xi={s.xi},penalty={s.penalty}" + (f",referee={s.referee_kappa}" if s.referee_kappa else "")
+        assert not s.referee_kappa or len(s.measures) == 1, "the multiplier of a referee is learned from one count"
     assert forecast.VERSION == "family-v1" and str(PAGE_VERSION) != forecast.VERSION, "the page of the forecast of a match reads another version"
 
 
@@ -168,5 +201,8 @@ def test_the_summary_tells_each_family_what_it_did() -> None:
     report = forecast.FamilyReport(at=AT, targets=10, not_fit=2)
     report.specs["corners_ft"] = forecast.SpecReport(competitions_fitted=3, fixtures=6, markets_written=40, rows_written=96, unchanged=2)
     report.specs["corners_ft"].competitions_skipped["short history"] = 4
+    report.specs["cards_lines_ft"] = forecast.SpecReport(competitions_fitted=2, fixtures=5, markets_written=15, rows_written=30,
+                                                        uses_referee=True, with_referee=3)
     text = report.summary()
     assert "10 targets, 2 not fit" in text and "corners_ft: 40 markets written (96 rows)" in text and "short history 4" in text
+    assert "for 5 fixtures (3 with a referee)" in text and "for 6 fixtures [" in text, "only a family that uses the referee says how many had one"
