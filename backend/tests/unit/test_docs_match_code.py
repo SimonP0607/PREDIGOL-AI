@@ -356,3 +356,29 @@ def test_the_catalogue_guide_says_what_the_code_does() -> None:
     migration = (DOCS.parent / "migrations" / "versions" / "0092_market_catalogue.py").read_text(encoding="utf-8")
     assert "10 * " in migration.replace("10*", "10 * ") and "25 * " in migration and "15 * " in migration
     assert "10 por amarilla, 25 por roja directa, 15 más" in doc
+
+
+def test_the_families_guide_says_what_the_code_does() -> None:
+    """Plan F10: the guide of the models by family - the version, the models and their families, the parameters, the thresholds and the switches."""
+    from fbi.families import fit, forecast, referee, versioning
+    from fbi.predictions.forecast import HORIZON, MIN_LEAD
+
+    doc = read_doc("owner", "FAMILIAS_F10.md")
+    assert f"**`{forecast.VERSION}`**" in doc and f"**`{versioning.REGISTRY_FAMILY}`**" in doc and "migración 0093" in doc
+    for spec in forecast.SPECS:
+        assert f"`{spec.model}`" in doc and f"`{spec.family}`" in doc, f"the guide leaves out {spec.key}"
+        xi, penalty = str(spec.xi).replace(".", ","), f"{spec.penalty:g}".replace(".", ",")
+        assert f"(`{spec.model}`; decaimiento {xi}, encogimiento {penalty})" in doc, f"the guide does not state the parameters of {spec.key}"
+    for spec in forecast.SPECS:
+        if spec.referee_kappa:
+            assert f"`{spec.model}`" in doc and f"un prior de {spec.referee_kappa:g} tarjetas" in doc, f"the guide does not state the referee prior of {spec.key}"
+    assert f"al menos {referee.MIN_MATCHES} partidos conocidos" in doc
+    assert f"**{fit.OUTCOME_KNOWN_AFTER.total_seconds() / 3600:g} horas después de su inicio**" in doc
+    assert f"al menos {fit.MIN_TRAIN} partidos, un equipo se pronostica con al menos {fit.MIN_TEAM_MATCHES}" in doc
+    assert f"más de {forecast.MAX_TEAMS} equipos" in doc
+    assert f"se ajusta {forecast.DISPERSION_DAYS} días atrás" in doc and f"al menos {forecast.MIN_DISPERSION_MATCHES} partidos así" in doc
+    assert f"dentro de los próximos {HORIZON.days} días (y no dentro de los próximos {int(MIN_LEAD.total_seconds() // 60)} minutos)" in doc
+    assert "`FBI_FAMILY_FORECASTS`" in doc and "`FBI_FAMILY_FORECAST_MINUTES`" in doc and "cada 3 horas" in doc
+    assert "| `FBI_FAMILY_FORECAST_MINUTES` | cada cuántos minutos corre | 180 |" in doc
+    assert "`1.0.0/<especificación>@fc<huella>`" in doc and versioning.FAMILY_SEMVER == "1.0.0"
+    assert "`mc9a7bec97ca`" in doc, "the fingerprint of the goal models, which F10 does not touch"

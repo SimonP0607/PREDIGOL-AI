@@ -15,8 +15,8 @@ The cards by period come, through the view, from the events of the match once F7
 here as numbers of a match that is over, never as a fact about a match that is not.
 
 A count of cards is read only when it is COMPLETE (23 Oct 2026, corrected twice the same day). Where a match has no team statistics and its cards
-come from the events alone, the count is incomplete (22,427 matches of the followed competitions: 3.7 cards a match against 5.1-5.9 where the
-statistics back them up) and for the clubs' friendlies the provider reports almost no card at all (83.5 % of 4,840 matches at zero). So the yellow
+come from the events alone, the count is incomplete (11,201 matches of the followed competitions between October 2022 and October 2026: 1.75 yellow cards a
+match and 54 % of them at zero, against 4.29 in the 81,758 matches that the team statistics cover). So the yellow
 cards, and the cards counted as lines, are read from the TEAM STATISTICS - the number the provider gives for the whole match - for every match
 that has them and was not decided in extra time (the provider does not say whether its total includes the extra half hour); the events only
 split a count by period and are not asked for a full-time total. Two filters that look safer were selections and were dropped: asking the
