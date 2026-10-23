@@ -103,13 +103,17 @@ def test_0089_and_0090_add_three_objects_and_nothing_else_and_come_back_out(migr
             assert _triggers(c, EVENTS) == events_triggers
             for name in (KNOWLEDGE, LATEST):
                 assert c.execute(f"SELECT count(*) FROM {name}").fetchone() == (0,), "the migration writes no row"
-            assert {"match_knowledge_pkey", "match_knowledge_fixture"} <= _indexes(c, "intel", "match_knowledge")
+            assert _indexes(c, "intel", "match_knowledge") == {"match_knowledge_pkey", "match_knowledge_chain_key", "match_knowledge_one_successor"}
             unique = c.execute("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = %s::regclass AND contype = 'u'",
                                (KNOWLEDGE,)).fetchall()
-            assert unique == [("UNIQUE (fixture_id, version, inputs_hash, content_hash)",)], "two builders cannot add the same row"
+            assert unique == [("UNIQUE (fixture_id, version, id)",)], "what a build can name as the one it replaced"
+            successor = c.execute("SELECT indexdef FROM pg_indexes WHERE schemaname = 'intel' AND indexname = 'match_knowledge_one_successor'").fetchone()
+            assert successor is not None and "UNIQUE" in successor[0] and "COALESCE(supersedes, (0)::bigint)" in successor[0], (
+                "a build is replaced once: two builders that read the same newest build cannot both add the next one")
             assert _triggers(c, KNOWLEDGE) == {"match_knowledge_append_only"}, "a build is never edited or deleted afterwards"
-            fks = c.execute("SELECT count(*) FROM pg_constraint WHERE conrelid = %s::regclass AND contype = 'f'", (KNOWLEDGE,)).fetchone()
-            assert fks == (0,)
+            fks = c.execute("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = %s::regclass AND contype = 'f'", (KNOWLEDGE,)).fetchall()
+            assert fks == [("FOREIGN KEY (fixture_id, version, supersedes) REFERENCES intel.match_knowledge(fixture_id, version, id)",)], (
+                "it refers to itself and to nothing else: a key to core.fixtures would wait on fixtures_sync's long transaction")
             for name in (KNOWLEDGE, LATEST):
                 assert _comment(c, name), f"{name} says what it is"
             assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0090",)

@@ -16,9 +16,11 @@ WHAT IS ADDED
     ``penalty_goal``, ``penalty_missed``, ``shootout_goal``, ``shootout_miss``, ``yellow``, ``second_yellow``, ``red``, ``sub``, ``var_*``...),
     its period (``1H``, ``2H``, ``ET``, ``PEN``), the side it counts for and the side of the man, the line it pairs with (a second yellow), the
     flags it earned, the version of the rules that read it and the ``fetched_at`` of the line it was read from. It is a DERIVED table, like
-    ``core.competition_stages``: ``fbi.knowledge.builder`` rewrites the rows of a match (all of them, in one transaction) whenever the match's
-    list or the rules change, so it is not append-only. A row whose ``event_fetched_at`` is not the one of the line it names is stale; the
-    builder finds those and rewrites them.
+    ``core.competition_stages``: ``fbi.knowledge.builder`` brings the rows of a match to what its list is (in one transaction, with the
+    row of Match Knowledge it belongs to: lines that are gone are deleted, lines that differ are written, the rest is left alone) whenever
+    the list or the rules change, so it is not append-only. A match's rows are stale when they are not as many as the lines of its list or
+    were read by older rules (``rules_version``): ``builder.coverage`` counts those, and the next build of the match repairs them.
+    ``event_fetched_at`` says from which fetch of the list a row was read; the provider fetching the same list again does not make a row stale.
 
 WHY NOT COLUMNS ON ``core.fixture_events`` (the plan's sketch)
 ---------------------------------------------------------------
