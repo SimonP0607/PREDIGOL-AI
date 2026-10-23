@@ -274,9 +274,42 @@ Pasada el 23 oct 2026 sobre la rama `plan/f6` (encima de F4), antes de preparar 
 Lo único que esta prueba no puede decir es cómo se comporta todo con los datos reales de un día entero (la lectura de solo lectura de arriba es una muestra de 200 partidos
 que aún no empiezan) ni cuánto gasta realmente la IA con los informes nuevos: eso se mide tras desplegar (punto 4 de «Cómo estrenarlo»).
 
-## Resultado en producción
+## Resultado en producción (23 oct 2026)
 
-*(Pendiente: se anota tras el despliegue.)*
+**El despliegue.** Backend `51430f6b326a`, web `29ba732b2358`, migración 0088. Copia verificada y prueba de restauración antes de tocar nada
+(`predigol-20261023T072807Z`: 1.151.252.363 bytes en 407 s, revisión 0087; restauración **superada en 653 s**, hasta las 07:46 UTC), vigilancia de
+bloqueos sobre `core.fixtures` y `raw.ingestion_payloads` (una muestra cada 3 segundos desde las 07:28 UTC), comprobación de calma justo antes de
+empezar (08:00 UTC: ninguna transacción de escritura de más de 20 s sobre esas dos tablas), la copia propia del despliegue
+(`predigol-20261023T080047Z-pre-deploy-51430f6b326a`: 1.152.240.254 bytes en 387 s) y `predigolctl deploy`. **La migración se aplicó a la primera** y el
+despliegue terminó a las 08:09:15 UTC (9 min 7 s desde el arranque a las 08:00:08, de los que 6,5 son la copia). La ventana quedó fuera de la de
+`fixtures_sync` (su pasada de las 07:03 UTC mantiene transacciones de escritura abiertas entre unos 24 y 51 minutos después, es decir, hasta las 07:54).
+La vigilancia de bloqueos no había registrado ninguno al escribir esto.
+
+**Lo que se comprobó al terminar (solo lectura, 08:09–08:10 UTC).**
+
+| Comprobación | Resultado |
+|---|---|
+| Revisión de la base | 0088 |
+| Objetos | la tabla `intel.context_factors` y la vista `intel.context_factors_latest` existen |
+| Permisos | la API solo lee (SELECT sí, INSERT no); el worker lee e inserta |
+| El registro | **0 filas** (todo factor nace DESCRIPTIVO), con el disparador de «solo se añade» (`context_factors_append_only`) puesto. `python -m scripts.context_factors list` corre en producción y lista los cuatro factores (`h2h_weighted`, `scenarios`, `tactics_profile`, `rest_congestion`), los cuatro DESCRIPTIVOS |
+| Servicios | API, web y worker en la versión nueva, los tres «healthy»; caddy y postgres sin reiniciar |
+| Prueba de humo | `/health` ok y `/login` 200 |
+| Salud del servidor | «warning» solo por el aviso de disco que ya existía (90 % en unos 21 días, +3.133 MB/día; disco al 56 %); ningún problema; copia de hace 0 h con la prueba de restauración superada; 0 errores del servidor en 5 minutos; certificado 76 días |
+| Registros del worker y de la API (3 horas) | 0 líneas con error en ambos |
+| Interruptores en los archivos de entorno | `FBI_FORECAST_USERS`, `FBI_CALENDAR_USERS` y `FBI_TEAM_CALENDAR` siguen sin definir (F6 no añade ninguno): los usuarios no ven pronóstico ni calendario y el feed del calendario sigue leyendo como desde F4 |
+| Gasto de IA | hasta las 08:09 UTC de hoy, 5,03 US$ (`pick_review` 4,05 · `web_search` 0,66 · `match_brief` 0,30 · `evidence_extraction` 0,02); el 22 oct fueron 5,23 US$ en el día entero. Sin cambio: aún no hay informes ni paquetes nuevos |
+| Peticiones a API-Football | 3.578 de 60.000 a las 08:09 UTC (el 21 y el 22 de octubre fueron 11.825 y 10.665) |
+
+**Una corrida interrumpida, como se esperaba.** La pasada de `pick_pipeline` 74330 (empezó a las 08:03:31) quedó marcada como interrumpida porque el propio
+despliegue reinició el worker: el vigilante de corridas cierra la que perdió su proceso y la pasada siguiente la rehace. Las dos anteriores (74323 y
+74326) terminaron bien y no encontraron nada que reescribir en los modelos (1.911 pronósticos sin cambios para 648 partidos).
+
+**Todavía sin medir** (se anota aquí en cuanto exista, porque el worker arma el paquete de cada partido cuando le toca): los paquetes `packet-v8` y los
+informes `brief-v8` (en las 6 horas anteriores había 1.230 paquetes `packet-v7` de 4.281 tokens aproximados de media —la muestra de 200 partidos de
+«Lo que se midió antes de estrenar» dio 4.184— y 97 informes `brief-v7`), el tamaño real de la vista del revisor, el gasto de IA con los informes nuevos
+y las versiones de modelo que se escriben tras el reinicio, que deben acabar solo en `@mc9a7bec97ca`. La auditoría nocturna se explica en «Lo que
+queda vigilado», punto 3.
 
 ## Verificación de los criterios del plan
 
@@ -357,8 +390,11 @@ que aún no empiezan) ni cuánto gasta realmente la IA con los informes nuevos: 
 1. El gasto de IA por día y por propósito (`ai.usage`: `pick_review` debe seguir en ≈ 4 US$/día y `match_brief` subir ≈ 0,16 US$/día, más el pico único de
    la relectura de los informes el primer día).
 2. El tamaño real de los paquetes (`packet-v8` ≈ 6.200 tokens aproximados; la vista del revisor ≈ 4.200) y el tiempo de armado.
-3. La primera auditoría nocturna con las cuatro reglas nuevas (≈ 12:50 UTC): `checked` sube con los paquetes que llevan los bloques y `violations`
-   queda en 0.
+3. Las auditorías nocturnas con el código nuevo. La de hoy (≈ 12:50 UTC, que audita el día 22) es **la primera que corre desde F2**: hasta ahora la
+   base solo tiene filas `leak-audit-v1` (siete reglas, 0 violaciones en las diez noches que hay), porque todo F2–F6 se desplegó después de la
+   auditoría de ayer. Estrena las reglas de F2 a F6, pero las cuatro de F6 aún no tendrán paquetes que revisar (`checked` = 0: el primer paquete con
+   sus bloques es de hoy a partir de las 08:10 UTC). **La que cuenta para F6 es la de mañana (24 oct, que audita el 23)**: ahí `checked` sube con los
+   paquetes que llevan los bloques y `violations` debe quedar en 0.
 4. Que el informe no rechace en masa por «factor descriptivo» (`refused` en el panel «Afirmaciones que el servidor rechazó» del dossier): unas pocas es
    lo esperado; muchas dirían que el prompt está empujando a la IA a usar lo descriptivo como razón.
 5. Las peticiones de investigación y qué se hizo con ellas (`research_asked`, `research_searched`, `research_unserved` por motivo) y que no
