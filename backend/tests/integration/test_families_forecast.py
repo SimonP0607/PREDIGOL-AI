@@ -210,3 +210,27 @@ def test_a_dispersion_measured_on_too_few_matches_states_nothing(db: psycopg.Con
     assert "nothing stated" in report.specs["corners_ft"].note and report.specs["corners_ft"].rows_written == 0
     assert report.specs["goals_halves"].rows_written > 0, "the goals of a half are Poisson: they have no dispersion to measure"
     assert {r[5] for r in stored(db, fid)} == {"GOALS_HALF"}
+
+
+def test_the_dispersion_is_measured_once_a_day_when_the_process_keeps_it(db: psycopg.Connection[Any], w: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    catalogue(db)
+    played(w)
+    fid = upcoming(w)
+    calls: list[str] = []
+    real = forecast.out_of_sample
+
+    def counting(*args: Any, **kwargs: Any) -> Any:
+        calls.append(str(kwargs["measure"]))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(forecast, "out_of_sample", counting)
+    over_dispersed = sum(1 for s in forecast.SPECS if s.over_dispersed)
+    memory: forecast.DispersionCache = {}
+    forecast.write_family_forecasts(db, at=AT, code_version="test", fixture_ids=[fid], dispersions=memory)
+    assert len(calls) == over_dispersed and len(memory) == over_dispersed, "the first pass of the day measures each one"
+    forecast.write_family_forecasts(db, at=AT + timedelta(hours=3), code_version="test", fixture_ids=[fid], dispersions=memory)
+    assert len(calls) == over_dispersed, "the passes that follow the same day reuse them"
+    forecast.write_family_forecasts(db, at=AT + timedelta(days=1), code_version="test", fixture_ids=[fid], dispersions=memory)
+    assert len(calls) == 2 * over_dispersed and {k[1] for k in memory} == {(AT + timedelta(days=1)).date()}, "the next day measures them again and drops yesterday's"
+    forecast.write_family_forecasts(db, at=AT + timedelta(days=1, hours=1), code_version="test", fixture_ids=[fid])
+    assert len(calls) == 3 * over_dispersed, "with no memory every call measures"

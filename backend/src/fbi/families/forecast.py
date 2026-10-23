@@ -12,9 +12,10 @@ number is always marked UNCALIBRATED (basis ``no_champion``): no family has a ca
 (>= 300 bets and a closing-line value >= 0, which needs the price history of F1) says so.
 
 How the dispersion is estimated. A count that is over-dispersed (corners, cards) needs the variance of the negative binomial, and the variance
-a model measures on the matches it was fitted on is a little too small. Each night the dispersion of a measure is measured OUT OF SAMPLE and
-pooled over the competitions: every competition is fitted ``DISPERSION_DAYS`` ago and predicts the matches played since; the pooled residuals
-give the variance of each side and of the total. The goals of a half are Poisson (the pooled dispersion is not used).
+a model measures on the matches it was fitted on is a little too small. Once a day (the first pass of the day; the passes that follow reuse it
+from memory, a result changes it by a hair and a fit of every competition costs minutes) the dispersion of a measure is measured OUT OF SAMPLE
+and pooled over the competitions: every competition is fitted ``DISPERSION_DAYS`` ago and predicts the matches played since; the pooled
+residuals give the variance of each side and of the total. The goals of a half are Poisson (the pooled dispersion is not used).
 
 When a row is written. As in F5: when the market is new, when its model or version changed, or when any outcome moved by half a point.
 """
@@ -26,7 +27,7 @@ import json
 from collections import defaultdict
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final
 
@@ -230,13 +231,31 @@ def _stored(conn: psycopg.Connection[Any], ids: list[int], at: datetime) -> dict
             for k, v in grouped.items()}
 
 
+DispersionCache = dict[tuple[str, date], tuple[Dispersion, int]]
+"""What a long-lived process keeps between passes: (the spec, the day) -> (the dispersion, the matches it was measured on)."""
+
+
+def _dispersion(spec: Spec, loaded: dict[str, dict[int, list[Match]]], at: datetime, cache: DispersionCache | None) -> tuple[Dispersion, int]:
+    """The out-of-sample dispersion of the family, measured once a day when a cache is given (the entries of other days are dropped)."""
+    key = (spec.spec, at.date())
+    if cache is not None and key in cache:
+        return cache[key]
+    got = out_of_sample(loaded[spec.measures[0]], measure=spec.measures[0], at=at, xi=spec.xi, penalty=spec.penalty)
+    if cache is not None:
+        for old in [k for k in cache if k[1] != at.date()]:
+            del cache[old]
+        cache[key] = got
+    return got
+
+
 def _run_spec(conn: psycopg.Connection[Any], spec: Spec, targets: dict[int, list[tuple[int, int, int]]], *, at: datetime,
-              code_version: str, available: frozenset[str], stored: dict[tuple[int, str, Decimal], Stored], report: SpecReport) -> None:
+              code_version: str, available: frozenset[str], stored: dict[tuple[int, str, Decimal], Stored], report: SpecReport,
+              cache: DispersionCache | None = None) -> None:
     since = at - timedelta(days=HISTORY_DAYS)
     loaded = {m: history.load(conn, m, since=since, cutoff=at) for m in spec.measures}
     dispersion = NO_DISPERSION
     if spec.over_dispersed:
-        dispersion, n = out_of_sample(loaded[spec.measures[0]], measure=spec.measures[0], at=at, xi=spec.xi, penalty=spec.penalty)
+        dispersion, n = _dispersion(spec, loaded, at, cache)
         report.dispersion, report.dispersion_matches = dispersion, n
         if n < MIN_DISPERSION_MATCHES:
             report.note = f"only {n} out-of-sample matches for the dispersion ({MIN_DISPERSION_MATCHES} needed): nothing stated"
@@ -287,8 +306,11 @@ def _run_spec(conn: psycopg.Connection[Any], spec: Spec, targets: dict[int, list
 
 
 def write_family_forecasts(conn: psycopg.Connection[Any], *, at: datetime, code_version: str, horizon: timedelta = HORIZON,
-                           fixture_ids: list[int] | None = None, specs: Sequence[Spec] = SPECS) -> FamilyReport:
-    """Forecast every upcoming match for each family and write what is new. Database only: no provider request, no AI."""
+                           fixture_ids: list[int] | None = None, specs: Sequence[Spec] = SPECS,
+                           dispersions: DispersionCache | None = None) -> FamilyReport:
+    """Forecast every upcoming match for each family and write what is new. Database only: no provider request, no AI.
+
+    ``dispersions`` is the memory of a long-lived process: with it the dispersion of a family is measured once a day, without it at every call."""
     report = FamilyReport(at=at)
     ids = fixture_ids if fixture_ids is not None else upcoming(conn, at, horizon)
     report.targets = len(ids)
@@ -311,7 +333,8 @@ def write_family_forecasts(conn: psycopg.Connection[Any], *, at: datetime, code_
         report.specs[spec.key] = sub
         try:
             with conn.transaction():  # a savepoint: a family is written whole or not at all
-                _run_spec(conn, spec, targets, at=at, code_version=code_version, available=available, stored=stored, report=sub)
+                _run_spec(conn, spec, targets, at=at, code_version=code_version, available=available, stored=stored, report=sub,
+                          cache=dispersions)
         except Exception as exc:  # recorded on the report and logged; the other families go on
             report.specs[spec.key] = SpecReport(error=f"{type(exc).__name__}: {exc}"[:300])
             log.error("family_forecasts.failed", family=spec.key, error=type(exc).__name__, detail=str(exc)[:300])

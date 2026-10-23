@@ -19,6 +19,12 @@ from .test_families_forecast import AT, catalogue, played, small_window, stored,
 pytestmark = pytest.mark.integration
 
 
+@pytest.fixture(autouse=True)
+def fresh_dispersions() -> None:
+    """The memory of the process is shared by the passes of a test run: every test starts without it."""
+    job.DISPERSIONS.clear()
+
+
 @pytest.fixture
 def ledger_runs(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     runs: list[dict[str, Any]] = []

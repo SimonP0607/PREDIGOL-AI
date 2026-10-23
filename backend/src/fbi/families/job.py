@@ -16,7 +16,13 @@ import psycopg
 import structlog
 
 from fbi.families import versioning
-from fbi.families.forecast import SPECS, VERSION, FamilyReport, write_family_forecasts
+from fbi.families.forecast import (
+    SPECS,
+    VERSION,
+    DispersionCache,
+    FamilyReport,
+    write_family_forecasts,
+)
 from fbi.ingestion.ledger import RunCounters, RunLedger
 
 log = structlog.get_logger(__name__)
@@ -24,12 +30,15 @@ log = structlog.get_logger(__name__)
 JOB = "family_forecasts"
 """The ledger job type (``raw.ingestion_runs``); the run watchdog and the worker list know it."""
 NOTES_LIMIT = 4000
+DISPERSIONS: DispersionCache = {}
+"""The dispersions this process measured today: the first pass of the day measures them, the rest reuse them (a restart measures them again)."""
 
 
-def run_job(conn: psycopg.Connection[Any], *, now: datetime, code_version: str, commit: bool = True) -> FamilyReport:
+def run_job(conn: psycopg.Connection[Any], *, now: datetime, code_version: str, commit: bool = True,
+            dispersions: DispersionCache | None = None) -> FamilyReport:
     """One pass: forecast the upcoming matches for every family and write what is new. Never raises for a family (the writer isolates it);
     what can raise is the database."""
-    report = write_family_forecasts(conn, at=now, code_version=code_version)
+    report = write_family_forecasts(conn, at=now, code_version=code_version, dispersions=DISPERSIONS if dispersions is None else dispersions)
     if commit:
         conn.commit()
     written = sum(r.rows_written for r in report.specs.values())
