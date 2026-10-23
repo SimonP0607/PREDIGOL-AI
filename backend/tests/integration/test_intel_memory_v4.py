@@ -287,6 +287,41 @@ def test_the_first_day_of_the_lineage_needs_no_rows_before_it(db: psycopg.Connec
     assert "waiting_for_rebuild" not in counts and counts[DAY.isoformat()] > 0
 
 
+def test_a_coach_is_one_entity_by_his_id_whatever_his_name_is_spelled_and_one_the_provider_names_without_a_person_keeps_the_providers_id(
+        db: psycopg.Connection[Any], world: League, seed: Seed) -> None:
+    """A coach is the person of ``core.coaches`` (the line-up's ``coach_id``): two spellings of one name are one coach; a man the provider
+    names without a person is kept under the provider's id (``p<id>``, so that it cannot be taken for a person's id); a line-up that names
+    nobody is no coach."""
+    m1, m2, m3 = world.m1, world.m2, world.m3                                          # type: ignore[attr-defined]
+    person = int(scalar(db.execute("INSERT INTO core.coaches (provider_coach_id, name) VALUES (5550001, 'Josep Guardiola') RETURNING id")))
+
+    def bench(fid: int, side: str, *, coach_id: int | None = None, provider_coach_id: int | None = None, name: str | None = None,
+              formation: str | None = None) -> None:
+        db.execute("INSERT INTO core.fixture_lineups (fixture_id, team_side, source, formation, coach_id, provider_coach_id, coach_name, "
+                   "payload_hash, fetched_at) VALUES (%s, %s, 'api-football', %s, %s, %s, %s, %s, %s)",
+                   (fid, side, formation, coach_id, provider_coach_id, name, seed.payload_hash, KICKOFF + timedelta(hours=3)))
+
+    bench(m1, "home", coach_id=person, provider_coach_id=5550001, name="P. Guardiola", formation="4-3-3")        # Alpha 2-1 Bravo
+    bench(m3, "home", coach_id=person, provider_coach_id=5550001, name="Josep Guardiola", formation="4-2-3-1")  # Echo 1-0 Foxtrot
+    bench(m2, "away", provider_coach_id=5550002, name="A Coach Without a Person")                               # Charlie 0-0 Delta
+    bench(m2, "home")                                                                                          # names nobody
+    memory.build_memory(db, day=DAY, at=_night(DAY), late_days=0)
+
+    mine = row(db, DAY, "coach", person, "profile")
+    s = mine["stats"]
+    assert (s["matches"], s["wins"], s["draws"], s["losses"], s["goals_for"], s["goals_against"], s["home"], s["away"]) == (2, 2, 0, 0, 3, 1, 2, 0), \
+        "two spellings, one coach"
+    assert s["formations"] == {"4-3-3": 1, "4-2-3-1": 1}
+    assert sorted(mine["sources"]) == sorted([m1, m3]) and mine["evidence_ref"] == {"fixtures": sorted([m1, m3], reverse=True)}
+    assert float(mine["confidence"]) == pytest.approx(2 / (2 + memory.COACH.k), abs=1e-4)
+
+    unnamed = row(db, DAY, "coach", "p5550002", "profile")
+    assert (unnamed["stats"]["matches"], unnamed["stats"]["draws"], unnamed["stats"]["away"]) == (1, 1, 1)
+    assert unnamed["entity_name"] == "A Coach Without a Person"
+    assert scalar(db.execute("SELECT count(*) FROM intel.entity_memory WHERE entity_type = 'coach' AND as_of_day = %s AND version = %s",
+                             (DAY, memory.VERSION))) == 2, "the line-up that names nobody is no coach"
+
+
 # ── the readers ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
