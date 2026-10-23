@@ -402,6 +402,14 @@ huérfanos** (ningún contenedor los usa) que solo tú puedes liberar con `docke
 
 1. La auditoría de fuga nocturna con las tres reglas nuevas (`referee_known`, `national_known`, `absences_known`), el barrido de
    las 09:50 UTC (`referee_identity.audit`) y el de las 10:00 UTC (`player_history.audit`) en el registro del worker.
+   *Primera lectura (23 oct, auditoría de las 12:50 UTC sobre el día 22, la primera con `leak-audit-v6`):* `referee_known` revisó 375 paquetes con
+   0 violaciones y `national_known` no tuvo paquetes que revisar; **`absences_known` marcó 1.164 de 6.878 bajas listadas, todas en paquetes
+   construidos el 22-oct entre las 05:05 y las 10:51 UTC (`packet-v2`), y 0 en las 4.808 bajas listadas en los posteriores** (`packet-v2` desde
+   las 10:51, `v3`, `v4` y los `v5` a `v7` de F3, F5 y F4). En el ejemplo revisado (paquete 39418, partido 22057) la primera observación de bajas guardada para ese
+   partido es de las 11:04 UTC, posterior al paquete (05:05): la regla exige una observación anterior al paquete y no pudo encontrarla. Es
+   historia de observaciones que empieza más tarde, no futuro leído por el paquete (de sus 15 bajas, 10 siguen en la lista de las 11:04 y 5
+   ya no, como corresponde a una lista que cambia). Los paquetes ya escritos no se reescriben; si la regla marca algo en paquetes construidos
+   después de las 11:04 UTC del 22-oct, es lo primero que se mira.
 2. El tiempo real de los pases programados (esperado: segundos con `F3.2`) y de los barridos diarios de jugadores (21 min medidos).
 3. El gasto de IA de los primeros días con `packet-v5` / `brief-v6`.
 4. El drenaje del atraso de cuotas y la relectura de `tax-v2` (F1.1).

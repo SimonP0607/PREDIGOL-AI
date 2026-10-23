@@ -304,5 +304,11 @@ migraciones aplicadas).
    Calibrada/Sin calibrar y por qué (un total de goles que casi nunca sale calibrado delataría que el consenso del mercado llega tarde).
 2. Que el paso no falle: las corridas del pase de picks no deben traer `match forecasts: …` en las notas.
 3. La auditoría nocturna de fuga con `forecast_known`: `checked` sube con los paquetes que citan el bloque y `violations` queda en 0.
+   *Primera lectura (23 oct, auditoría de las 12:50 UTC sobre el día 22):* revisó 1.281 conjuntos citados y marcó **4, todos O/U 2,5 `poisson`**.
+   No es futuro filtrado: la regla marca también el paquete que leyó un pronóstico **más antiguo** que otro que ya existía a su hora, y aquí
+   `pick_pipeline` sella el `known_at` del conjunto al empezar su pasada y lo confirma unos minutos después, justo cuando los paquetes se
+   construyen (a los :06 y :36 de cada hora): el paquete leyó el conjunto anterior, que era el confirmado, y la regla vio después el nuevo con
+   un sello anterior al momento del paquete. Dos arreglos posibles, sin urgencia: sellar `known_at` al confirmar la transacción, o que la
+   regla (y el paquete) cuenten solo lo confirmado. Hasta entonces, cuatro marcas de este tipo al día no son una violación real; otra causa sí.
 4. El gasto de IA de los primeros días con `packet-v6` y `brief-v7` frente al de antes (US$ 6 al día es el tope).
 5. El tamaño de `models.match_forecasts` la primera semana (la estimación de arriba se confirma o se corrige).

@@ -413,6 +413,9 @@ punto 3.
    auditoría de ayer. Estrena las reglas de F2 a F6, pero las cuatro de F6 aún no tendrán paquetes que revisar (`checked` = 0: el primer paquete con
    sus bloques es de hoy a partir de las 08:10 UTC). **La que cuenta para F6 es la de mañana (24 oct, que audita el 23)**: ahí `checked` sube con los
    paquetes que llevan los bloques y `violations` debe quedar en 0.
+   *Primera lectura (23 oct, 12:50 UTC):* la auditoría corrió con `leak-audit-v6` (17 reglas) y las cuatro de F6 (`h2h_known`, `scenarios_known`,
+   `tactics_known`, `factors_known`) dieron `checked` = 0, como se esperaba; las demás dejaron dos hallazgos que no son de F6 (`absences_known` en
+   paquetes anteriores a F3 y `forecast_known`, ver las guías de F3 y F5) y 0 violaciones en las otras 13 reglas.
 4. Que el informe no rechace en masa por «factor descriptivo» (`refused` en el panel «Afirmaciones que el servidor rechazó» del dossier): unas pocas es
    lo esperado; muchas dirían que el prompt está empujando a la IA a usar lo descriptivo como razón.
 5. Las peticiones de investigación y qué se hizo con ellas (`research_asked`, `research_searched`, `research_unserved` por motivo) y que no

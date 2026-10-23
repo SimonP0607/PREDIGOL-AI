@@ -315,5 +315,7 @@ cambiaron sus entradas desde el último de esa versión, así que **no se espera
    «parcial» (`never_fetched` debe bajar a casi cero en ~13 horas; `unconfirmed_match` indica partidos que la lista no confirmó).
 3. El tamaño de `core.calendar_matches` la primera semana y que el número de filas nuevas por lectura se estabiliza (solo cambios).
 4. La auditoría nocturna de fuga con `calendar_known`: `checked` sube con los paquetes que citan el calendario y `violations` queda en 0.
+   *Primera lectura (23 oct, auditoría de las 12:50 UTC sobre el día 22):* `calendar_known` revisó 2.638 comprobaciones (solo los paquetes de la
+   última hora y pico del día 22, porque F4 se desplegó el 23) con **0 violaciones**. La que cuenta de verdad es la de mañana (24 oct, sobre el 23).
 5. Que el job de referencia no registre errores del feed (`team_fixtures` en las notas de la corrida) y que el resto de feeds siga recibiendo su
    parte.
