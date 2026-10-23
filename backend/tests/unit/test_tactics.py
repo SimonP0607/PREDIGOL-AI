@@ -4,6 +4,7 @@ five hand-made matches whose every figure can be counted by eye."""
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -32,7 +33,8 @@ def test_a_minute_belongs_to_one_band_and_extra_time_to_none(minute: int, band: 
 
 
 def test_the_bands_cover_the_ninety_minutes_once() -> None:
-    assert [last for _, last in tc.BANDS] == [15, 30, 45, 60, 75, 90] and tc.BANDS[tc.LATE][0] == "76-90+"
+    bands: Sequence[tuple[str, int]] = tc.BANDS
+    assert [last for _, last in bands] == [15, 30, 45, 60, 75, 90] and bands[tc.LATE][0] == "76-90+"
     assert [tc.band_of(m) for m in range(1, 91)].count(None) == 0
 
 

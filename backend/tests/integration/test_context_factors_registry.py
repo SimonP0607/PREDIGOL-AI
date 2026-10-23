@@ -91,12 +91,13 @@ def test_the_same_experiment_validating_again_writes_nothing_and_another_one_is_
 
 def test_a_validation_is_about_one_version_of_the_code(db: psycopg.Connection[Any]) -> None:
     """The head-to-head was validated when it was ``h2h-v1``; the code in force is ``h2h-v2``: nothing carries over."""
-    db.execute(INSERT, (H2H, "h2h-v1", "VALIDATED", T0, "owner", "Simon", REASON, evidence(version="h2h-v1"), None))
+    old: str = "h2h-v1"
+    db.execute(INSERT, (H2H, old, "VALIDATED", T0, "owner", "Simon", REASON, evidence(version=old), None))
     assert factors.standings(db, at=T0 + DAY)[H2H].status == factors.DESCRIPTIVE
-    assert factors.BY_KEY[H2H].version == h2h.VERSION != "h2h-v1"
-    assert factors.newest(db, H2H, "h2h-v1") is not None and factors.newest(db, H2H, h2h.VERSION) is None
+    assert factors.BY_KEY[H2H].version == h2h.VERSION and old != h2h.VERSION
+    assert factors.newest(db, H2H, old) is not None and factors.newest(db, H2H, h2h.VERSION) is None
     assert validated(db, T0 + 2 * DAY).decision.previous_id is None, "the new version starts its own line"
-    assert [d.version for d in factors.history(db, H2H)] == ["h2h-v1", h2h.VERSION]
+    assert [d.version for d in factors.history(db, H2H)] == [old, h2h.VERSION]
 
 
 def test_taking_back_what_is_not_validated_is_refused(db: psycopg.Connection[Any]) -> None:
@@ -122,7 +123,8 @@ def test_only_a_factor_of_the_catalogue_can_be_decided_on(db: psycopg.Connection
 
 
 def test_a_refused_validation_leaves_no_row(db: psycopg.Connection[Any]) -> None:
-    for kwargs in ({"experiment": " "}, {"result": {}}, {"reason": "short"}, {"who": " "}):
+    refused: list[dict[str, Any]] = [{"experiment": " "}, {"result": {}}, {"reason": "short"}, {"who": " "}]
+    for kwargs in refused:
         args: dict[str, Any] = {"experiment": "F12-h2h-01", "result": RESULT, "reason": REASON, "who": "Simon"} | kwargs
         with pytest.raises(ValueError):
             factors.promote(db, H2H, at=T0, **args)

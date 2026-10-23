@@ -118,7 +118,7 @@ def test_the_coach_of_each_side_then_against_the_one_it_has_now() -> None:
     unknown = h2h_mod.weigh_one(meeting(100, coaches=(None, h2h_mod.Coach(2, "Dos"))), now)
     assert (unknown.coach_changed_home, unknown.coach_changed_away, unknown.w_coach) == (None, False, 0.9)
     nothing = h2h_mod.weigh_one(meeting(100), situation())
-    assert (nothing.coach_changed_home, nothing.w_coach) == (None, pytest.approx(0.81))
+    assert nothing.coach_changed_home is None and nothing.w_coach == pytest.approx(0.81)
 
 
 def test_the_coaches_are_followed_to_the_side_even_when_the_ground_was_reversed() -> None:

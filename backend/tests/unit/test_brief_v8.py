@@ -72,7 +72,8 @@ ON_FACTOR = {
     factors.TACTICS: claim("Usó la misma formación en 4 de sus últimos 5.", "P:dossier.tactics.home"),
     factors.CALENDAR: claim("El visitante descansó 3 días.", "P:schedule.away"),
 }
-ASK = {"topic": "availability", "side": "both", "why": claim("El paquete no trae bajas de ninguno de los dos.", "P:absences")}
+ASK: dict[str, Any] = {"topic": "availability", "side": "both",
+                       "why": claim("El paquete no trae bajas de ninguno de los dos.", "P:absences")}
 
 
 # ── a descriptive factor does not justify a selection ───────────────────────────────────────────────────────────────────
@@ -114,8 +115,9 @@ def test_a_packet_that_does_not_say_is_read_as_descriptive() -> None:
     assert "factors" not in old.content
     content, rejected = validate(brief(cards=[card([ON_FACTOR[factors.H2H]])]), old, cards())
     assert content["cards"][0]["why"] == [] and len(rejected) == 1
-    for odd in ("VALIDATED", ["VALIDATED"], None, {factors.H2H: "VALIDATED"}, {factors.H2H: {"status": "validated"}},
-                {factors.H2H: {"status": "PROMOTED"}}, {factors.H2H: {}}, {"made_up": {"status": "VALIDATED"}}):
+    odd_blocks: list[Any] = ["VALIDATED", ["VALIDATED"], None, {factors.H2H: "VALIDATED"}, {factors.H2H: {"status": "validated"}},
+                             {factors.H2H: {"status": "PROMOTED"}}, {factors.H2H: {}}, {"made_up": {"status": "VALIDATED"}}]
+    for odd in odd_blocks:
         assert validated_factors({"factors": odd}) == frozenset(), odd
     assert validated_factors({}) == frozenset()
     assert validated_factors({"factors": {factors.H2H: {"status": "VALIDATED"}, factors.TACTICS: {"status": "DESCRIPTIVE"}}}) \
