@@ -64,6 +64,15 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              the reading of a second leg uses the aggregate of the packet's own ``phase`` block - the earlier legs
                              the packet knew - and its statements about the margins are the arithmetic of that aggregate (one check
                              per packet). Examples are packet ids.
+    tactics_known            (v6, plan F6) the AI packets built on the day that carry the observable tactics of each side
+                             (``dossier.tactics``, ``fbi.intel.tactics``): every match the block cites as its sample is a row that
+                             exists, of the team, kicked off before the match and within the window, with its result recorded by
+                             the packet's moment; every match it says it read the events of has an event fetched by then, and every
+                             match it says it read the sheet of has a line-up of that team fetched by then. And, one check per side
+                             and packet, the sample is at most the last ``N`` matches and none known by the moment was left out in
+                             favour of an older one, what was read is inside the sample, the goals the block counts are the goals
+                             of the 90 minutes of the matches it read events of (from their results), and its half-time sample is the
+                             matches of the sample whose result has a half-time score. Examples are packet ids.
 """
 
 from __future__ import annotations
@@ -77,7 +86,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
 from fbi.core import match_state
-from fbi.intel import h2h
+from fbi.intel import h2h, tactics
 
 VERSION = "leak-audit-v6"
 
@@ -383,6 +392,69 @@ RULES: dict[str, str] = {
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples
           FROM (SELECT * FROM t UNION ALL SELECT * FROM k) c""",
+    "tactics_known": f"""
+        WITH p AS ({PACKETS}), b AS (
+            SELECT p.id AS packet_id, p.as_of, (p.content #>> '{{fixture,kickoff_at}}')::timestamptz AS kickoff, v.side,
+                   CASE WHEN (p.content #>> ARRAY['fixture', v.side, 'id']) ~ '^[0-9]{{1,15}}$'
+                        THEN (p.content #>> ARRAY['fixture', v.side, 'id'])::bigint END AS team,
+                   p.content #> ARRAY['dossier', 'tactics', v.side] AS blk
+              FROM p CROSS JOIN (VALUES ('home'), ('away')) AS v(side)
+             WHERE jsonb_typeof(p.content #> ARRAY['dossier', 'tactics', v.side, 'fixtures']) = 'array'),
+        f AS (
+            SELECT b.packet_id, b.side, b.team, b.kickoff, b.as_of, b.blk,
+                   CASE WHEN (x #>> '{{}}') ~ '^[0-9]{{1,15}}$' THEN (x #>> '{{}}')::bigint END AS fid
+              FROM b CROSS JOIN LATERAL jsonb_array_elements(b.blk -> 'fixtures') AS x),
+        e AS (
+            SELECT b.packet_id, b.side, b.team,
+                   CASE WHEN (x #>> '{{}}') ~ '^[0-9]{{1,15}}$' THEN (x #>> '{{}}')::bigint END AS fid
+              FROM b CROSS JOIN LATERAL jsonb_array_elements(
+                       CASE WHEN jsonb_typeof(b.blk #> '{{read,events}}') = 'array' THEN b.blk #> '{{read,events}}'
+                            ELSE '[]'::jsonb END) AS x),
+        s AS (
+            SELECT e.packet_id, e.side,
+                   sum(CASE WHEN g.home_team_id = e.team THEN r.reg_goals_home ELSE r.reg_goals_away END) AS gf,
+                   sum(CASE WHEN g.home_team_id = e.team THEN r.reg_goals_away ELSE r.reg_goals_home END) AS ga
+              FROM e JOIN core.fixtures g ON g.id = e.fid JOIN core.fixture_results r ON r.fixture_id = g.id GROUP BY 1, 2),
+        c AS (
+            SELECT f.packet_id,
+                   (g.id IS NULL OR f.team IS NULL OR NOT (g.home_team_id = f.team OR g.away_team_id = f.team)
+                    OR g.kickoff_at >= f.kickoff OR g.kickoff_at < f.kickoff - interval '{tactics.WINDOW.days} days'
+                    OR r.settled_at IS NULL OR r.settled_at > f.as_of
+                    OR (COALESCE((f.blk #> '{{read,events}}') @> to_jsonb(f.fid), false)
+                        AND NOT EXISTS (SELECT 1 FROM core.fixture_events ev
+                                         WHERE ev.fixture_id = f.fid AND ev.fetched_at <= f.as_of))
+                    OR (COALESCE((f.blk #> '{{read,sheets}}') @> to_jsonb(f.fid), false)
+                        AND NOT EXISTS (SELECT 1 FROM core.fixture_lineups l
+                                         WHERE l.fixture_id = f.fid AND l.fetched_at <= f.as_of
+                                           AND l.team_side = CASE WHEN g.home_team_id = f.team THEN 'home' ELSE 'away' END))) AS bad
+              FROM f LEFT JOIN core.fixtures g ON g.id = f.fid LEFT JOIN core.fixture_results r ON r.fixture_id = f.fid
+            UNION ALL
+            SELECT b.packet_id,
+                   (b.team IS NULL OR jsonb_array_length(b.blk -> 'fixtures') > {tactics.N}
+                    OR {_int("b.blk", "{n}")} IS DISTINCT FROM jsonb_array_length(b.blk -> 'fixtures')
+                    OR NOT COALESCE((b.blk -> 'fixtures') @> COALESCE(b.blk #> '{{read,events}}', '[]'::jsonb)
+                                    AND (b.blk -> 'fixtures') @> COALESCE(b.blk #> '{{read,sheets}}', '[]'::jsonb), false)
+                    OR COALESCE({_int("b.blk", "{goals,total_for}")}, 0)
+                         IS DISTINCT FROM COALESCE((SELECT s.gf FROM s WHERE s.packet_id = b.packet_id AND s.side = b.side), 0)
+                    OR COALESCE({_int("b.blk", "{goals,total_against}")}, 0)
+                         IS DISTINCT FROM COALESCE((SELECT s.ga FROM s WHERE s.packet_id = b.packet_id AND s.side = b.side), 0)
+                    OR COALESCE({_int("b.blk", "{with_the_score,half_time,n}")}, 0)
+                         IS DISTINCT FROM (SELECT count(*) FROM f JOIN core.fixture_results r ON r.fixture_id = f.fid
+                                            WHERE f.packet_id = b.packet_id AND f.side = b.side
+                                              AND r.ht_goals_home IS NOT NULL AND r.ht_goals_away IS NOT NULL)) AS bad
+              FROM b
+            UNION ALL
+            SELECT b.packet_id,
+                   EXISTS (SELECT 1 FROM core.fixtures g JOIN core.fixture_results r ON r.fixture_id = g.id
+                            WHERE (g.home_team_id = b.team OR g.away_team_id = b.team) AND g.kickoff_at < b.kickoff
+                              AND g.kickoff_at >= b.kickoff - interval '{tactics.WINDOW.days} days' AND r.settled_at <= b.as_of
+                              AND NOT EXISTS (SELECT 1 FROM f WHERE f.packet_id = b.packet_id AND f.side = b.side AND f.fid = g.id)
+                              AND (jsonb_array_length(b.blk -> 'fixtures') < {tactics.N}
+                                   OR g.kickoff_at > (SELECT min(g2.kickoff_at) FROM f JOIN core.fixtures g2 ON g2.id = f.fid
+                                                       WHERE f.packet_id = b.packet_id AND f.side = b.side))) AS bad
+              FROM b)
+        SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
+               (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
 }
 
 

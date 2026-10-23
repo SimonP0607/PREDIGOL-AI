@@ -49,7 +49,11 @@ experiment shows it adds anything: ``intel.context_factors``). ``n`` and ``home_
 dossier is ``dossier-v4``. The ``scenarios`` block (``fbi.intel.scenarios``, ``scenarios-v1``): what the match alone does to the table of
 its own stage (the points and the interval of places of both sides after each result, every other team keeping its points) and, for the
 second leg of a tie, the margin with which each side is ahead, level or behind on aggregate after 90 minutes - arithmetic, not
-probability; ``DESCRIPTIVE``. Absent when there is neither a table of the match's own stage nor a tie.
+probability; ``DESCRIPTIVE``. Absent when there is neither a table of the match's own stage nor a tie. And ``dossier.tactics``
+(``fbi.intel.tactics``, ``tactics-v1``): per side, from its last ten matches, the formations and changes of eleven, the goals by quarter of
+an hour with the late ones apart, the results by who scores first and by the half-time score, and the first substitution by the score -
+each with its sample size, and with the matches it could not read (events that do not give the score, squad sheets the provider crossed,
+no list at all) counted, not guessed; ``DESCRIPTIVE``. A squad sheet the provider crossed no longer gives the ``coach`` block a formation.
 v7 (plan F4): the ``schedule`` block is read from each team's calendar in EVERY competition (``fbi.competitions.team_calendar``),
 as it stood at the packet's moment, not only from the competitions PrediGol follows. Where a team's own list was read recently
 and has no doubt in it (``schedule.calendar.<side>.complete``) its ``rest_days``, ``matches_last_7d/14d/30d`` and ``next_match``
@@ -474,7 +478,8 @@ class PacketBuilder:
                     conn, f, at=at, elo=self._elo_version(at), referee=referee_name, referee_id=referee_id,
                     h2h=h2h))
             sources.append({"block": "dossier", "tables": ["core.fixture_team_stats", "core.fixture_events",
-                                                           "core.fixture_lineups", "core.fixture_player_stats",
+                                                           "core.fixture_lineups", "core.fixture_lineup_players",
+                                                           "core.fixture_results", "core.fixture_player_stats",
                                                            "core.fixture_facts", "core.fixture_officials",
                                                            "core.referee_aliases", "core.player_spells",
                                                            "core.player_national_caps", "features.elo_ratings"],

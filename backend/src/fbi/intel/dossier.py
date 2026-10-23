@@ -17,6 +17,9 @@ describes the people and the situation, beyond the score-based form the packet a
                  classifier of round labels (``fbi.competitions.stages``) and the second leg from the legs of its tie
                  already recorded at the packet's moment (``fbi.competitions.context``)
     h2h          how much the head-to-head is worth: its size (and its effective size, once the meetings are weighed), its age
+    tactics      what the last matches of each side show of how it lines up and how a match goes for it - formations and changes of
+                 eleven, goals by quarter of an hour and the late ones, results by who scores first and by the half-time score, the
+                 first substitution by the score - each with its sample (``fbi.intel.tactics``). Descriptions only
     national     (national-team matches only) the people of each senior national side - the eleven of the match's own sheet, or
                  of the previous match's while the sheet is not known - with the club each plays for on the day and since when,
                  his form there (``fbi.intel.national``), his record for the country and whether he is reported out
@@ -40,13 +43,16 @@ from psycopg.rows import dict_row
 
 from fbi.ai.absences import absences_as_of
 from fbi.competitions import context as phase_context
-from fbi.intel import national
+from fbi.intel import national, tactics
 from fbi.intel.h2h import NOTE_HIGH, NOTE_LOW, HeadToHead
 
 VERSION = "dossier-v4"
 """v4 (plan F6): ``h2h`` is read from the weighted head-to-head (``fbi.intel.h2h``) the packet carries: ``n`` is the number of
 meetings, ``n_effective`` the size that their weights leave (Kish), ``relevance`` follows the effective size and the age of the newest
-meeting. The words are the ones the narrative already read (``nula`` / ``baja`` / ``media`` / ``alta``).
+meeting. The words are the ones the narrative already read (``nula`` / ``baja`` / ``media`` / ``alta``). The dossier gains ``tactics``
+(``fbi.intel.tactics``, ``tactics-v1``). And a squad sheet that the statistics of its match put on the other side (the provider crossed
+both sheets in 202 matches, ``fbi.people.sides``) no longer gives the ``coach`` block a formation or an eleven - the coach written beside
+it is the right one and is still read.
 
 v3 (plan F3): the referee is a person with an id. His matches are those whose referee, as the provider had named it at the
 packet's moment, is HIM under any of the spellings the provider used (``core.fixture_officials`` through ``core.referee_aliases``,
@@ -222,6 +228,7 @@ def team_profile(conn: psycopg.Connection[Any], team: int, *, kickoff: datetime,
         events[int(r["fixture_id"])].append(r)
     lineups: dict[tuple[int, str], dict[str, Any]] = {(int(r["fixture_id"]), str(r["team_side"])): r
                                                       for r in _rows(conn, LINEUPS_SQL, {"fixtures": fids, "at": at})}
+    crossed = tactics.crossed_sheets(conn, fids, at=at)
     ratings: dict[tuple[int, int], float] = {}
     if elo is not None:
         opponents = sorted({int(m["opponent"]) for m in matches})
@@ -241,6 +248,8 @@ def team_profile(conn: psycopg.Connection[Any], team: int, *, kickoff: datetime,
                            and e.get("comments") != "Penalty Shootout" and e["team_side"] == opp)
         subs = [int(e["minute"] or 0) for e in evs if str(e["event_type"]).lower() == "subst" and e["team_side"] == side]
         lu = lineups.get((fid, side)) or {}
+        if fid in crossed:  # the provider gave each team the other's eleven: the coach beside it is right, the rest is not read
+            lu = {"coach_name": lu.get("coach_name")}
         per.append({"fid": fid, "kickoff": m["kickoff_at"], "side": side, "gf": gf, "ga": ga,
                     "own": own, "their": their, "pens_for": pens_for, "pens_against": pens_against,
                     "events": bool(evs), "behaviour": scoreline_behaviour(evs, side, gf, ga) if evs else None,
@@ -435,6 +444,7 @@ def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: date
     return {"version": VERSION, "teams": teams, "players": players,
             "referee": referee_profile(conn, referee, kickoff=kickoff, at=at, referee_id=referee_id),
             "context": context_profile(conn, fx, at=at), "h2h": h2h_relevance(h2h),
+            "tactics": tactics.block(conn, home=home, away=away, kickoff=kickoff, at=at),
             "national": national.block(conn, fx, at=at, absent=absent)}
 
 

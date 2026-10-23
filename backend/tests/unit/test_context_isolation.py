@@ -28,6 +28,10 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
     "fbi.intel.scenarios": {
         "ai/packet.py": "the packet: what the match alone does to its table and to its tie, as of its moment",
     },
+    "fbi.intel.tactics": {
+        "intel/dossier.py": "the dossier: the observable tactics of each side, as of the packet's moment (and which sheets are crossed)",
+        "intel/leakage.py": "the nightly proof: the rule tactics_known (it reads the constants N and WINDOW and nothing else)",
+    },
 }
 """Module -> the files that may import it (a path under ``src/fbi``, or ``scripts/<name>``), each with its reason."""
 
