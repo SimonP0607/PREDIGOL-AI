@@ -14,7 +14,7 @@ from psycopg.types.json import Jsonb
 from fbi.api.app import create_app
 from fbi.api.deps import get_db
 from fbi.api.services import forecast as service
-from fbi.predictions import match_forecast as mf
+from fbi.forecasting import match_forecast as mf
 from tests.integration.signed_in import SAME_SITE, signed_in
 from tests.integration.test_match_forecast import AT, CUT, KO, SHEET, World, world  # noqa: F401  (the fixture and the data)
 

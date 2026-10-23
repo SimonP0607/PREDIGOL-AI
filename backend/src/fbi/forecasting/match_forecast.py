@@ -33,6 +33,12 @@ of a market are written together, so the newest ``known_at`` of a market is alwa
 
 NOT FIT FOR A FORECAST. A match whose competition's data is not fit for models (``PRODUCT_ONLY``, ``INSUFFICIENT``) or that is
 quarantined gets none - the same gate the decision layer applies before it looks at a model.
+
+WHERE IT LIVES. In ``fbi.forecasting``, not in ``fbi.predictions``: the latter is one of the packages whose code IS the models' code
+(``fbi.core.version.MODEL_PACKAGES``), and a file added there renews the version of every model. At the first release of F5 (23 Oct
+2026, 02:45 UTC) this module sat in ``fbi.predictions``, the fingerprint went from mc9a7bec97ca to mce0abbbb30d and the first pass
+wrote 92,937 forecasts again under new versions. This module derives from what the models say and decides nothing about what any
+of them predicts. Do not move it back (``tests/unit/test_model_code_version.py`` pins the fingerprint).
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """PrediGol's forecast of a match, read for the product and for the Admin Console's preview (plan F5). Reading only.
 
-The forecast is what the worker wrote to ``models.match_forecasts`` (``fbi.predictions.match_forecast``): a probability, the
+The forecast is what the worker wrote to ``models.match_forecasts`` (``fbi.forecasting.match_forecast``): a probability, the
 interval the model measured around it and whether a champion calibrator was applied. This module only lays it out. It never
 computes a probability, never reads a price to make one, and never turns a forecast into a value or a pick.
 
@@ -30,7 +30,7 @@ from fbi.core.clock import now
 from fbi.core.env import environment
 
 VERSION: Final = "forecast-v1"
-"""The forecast the worker writes (``fbi.predictions.match_forecast.VERSION``; a test holds the two equal)."""
+"""The forecast the worker writes (``fbi.forecasting.match_forecast.VERSION``; a test holds the two equal)."""
 NOT_FIT: Final = frozenset({"PRODUCT_ONLY", "INSUFFICIENT"})
 """The competition data classes the worker does not forecast (``match_forecast.NOT_FIT``; a test holds them equal)."""
 USERS_SWITCH: Final = "FBI_FORECAST_USERS"

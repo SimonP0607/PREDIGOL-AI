@@ -34,7 +34,7 @@ midió), `calibration` (`CALIBRATED` o `UNCALIBRATED`) y `basis` (por qué: `cha
 precio, una ventaja, una apuesta ni un estado:** eso es de la capa de decisión. Es una tabla *derivada* (sale de
 `models.predictions` y de los calibradores): perderla pierde solo lo que se dijo y cuándo, no un dato del proveedor.
 
-Reglas de escritura (`forecast-v1`, `fbi.predictions.match_forecast`):
+Reglas de escritura (`forecast-v1`, `fbi.forecasting.match_forecast`):
 
 1. **Qué partidos:** los de los próximos 4 días con un modelo. Quedan fuera las competiciones cuyos datos no sirven para un modelo
    (`PRODUCT_ONLY`, `INSUFFICIENT`: la misma puerta que ya usa la capa de decisión) y los partidos en cuarentena; la API dice el motivo

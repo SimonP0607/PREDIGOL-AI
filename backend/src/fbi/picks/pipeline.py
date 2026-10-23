@@ -19,6 +19,7 @@ import psycopg
 import structlog
 
 from fbi.core.env import environment
+from fbi.forecasting.match_forecast import MatchForecastReport, write_match_forecasts
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.parlays.persist import ParlayReport, build_parlays
 from fbi.picks.daily import DailyReport, build_daily_sets
@@ -27,7 +28,6 @@ from fbi.picks.fast_settlement import fill_line_value, record_latency
 from fbi.picks.product_settlement import ProductSettlementReport, settle_products
 from fbi.picks.resettlement import ResettlementReport, resettle
 from fbi.predictions.forecast import ForecastReport, forecast_upcoming
-from fbi.predictions.match_forecast import MatchForecastReport, write_match_forecasts
 
 log = structlog.get_logger(__name__)
 

@@ -7,7 +7,7 @@
     python -m scripts.match_forecast write --apply             # the same pass as the pick pipeline's step, by hand
     python -m scripts.match_forecast write --fixture 45140 --apply     # only these matches (repeatable)
 
-The pick pipeline writes the forecasts itself (a step of its own, ``fbi.predictions.match_forecast``); this is the same step by hand and a
+The pick pipeline writes the forecasts itself (a step of its own, ``fbi.forecasting.match_forecast``); this is the same step by hand and a
 way to look at what it wrote. A forecast is a probability and the interval around it: ``CALIBRATED`` only where a champion calibrator
 exists, ``UNCALIBRATED`` (the model's own number, with the reason) everywhere else. It is not a value (that needs a price) and not a pick.
 Nothing here creates a decision, a candidate or a pick, and nothing here shows users anything: whether they see the forecast is the
@@ -30,7 +30,7 @@ from psycopg.rows import dict_row
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
-from fbi.predictions import match_forecast as mf
+from fbi.forecasting import match_forecast as mf
 from fbi.predictions.forecast import HORIZON
 
 TOTALS_SQL = """

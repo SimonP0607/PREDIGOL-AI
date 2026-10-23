@@ -23,10 +23,10 @@ from fbi.ai import claims, prompts
 from fbi.ai import packet as packet_module
 from fbi.ai.calendar import local_day
 from fbi.ai.packet import Packet, PacketBuilder, store_packet
+from fbi.forecasting import match_forecast as mf
 from fbi.intel import leakage
 from fbi.intel.narrative import expected
 from fbi.intel.narrative import markets as narrative_markets
-from fbi.predictions import match_forecast as mf
 from tests.integration.test_match_forecast import AT, CUT, SHEET, World, world  # noqa: F401  (the fixture and the data)
 
 pytestmark = pytest.mark.integration

@@ -277,7 +277,7 @@ SELECT n.model, p.model_version_id, p.data_cutoff_ts, p.market_key, p.selection,
 """
 
 FORECAST_VERSION = "forecast-v1"
-"""``fbi.predictions.match_forecast.VERSION`` (a test holds the two equal: this module does not import the worker's)."""
+"""``fbi.forecasting.match_forecast.VERSION`` (a test holds the two equal: this module does not import the worker's)."""
 FORECAST_ORDER = {"1X2": 0, "OU": 1, "BTTS": 2}
 
 FORECAST_SQL = """

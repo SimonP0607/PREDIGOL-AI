@@ -8,10 +8,10 @@ from decimal import Decimal
 
 import pytest
 
+from fbi.forecasting import match_forecast as mf
 from fbi.intel import decision
 from fbi.intel.calibration import CalibrationState, Calibrator
 from fbi.models.scoring import MARKET_ROWS
-from fbi.predictions import match_forecast as mf
 
 CUT = datetime(2026, 10, 22, 12, 0, tzinfo=UTC)
 LINE_1X2 = Decimal("0")

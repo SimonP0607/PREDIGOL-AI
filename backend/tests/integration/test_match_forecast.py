@@ -21,8 +21,8 @@ from alembic.config import Config
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.forecasting import match_forecast as mf
 from fbi.intel.calibration import apply_params
-from fbi.predictions import match_forecast as mf
 from fbi.predictions.forecast import ForecastReport
 from tests.integration.conftest import ADMIN_URL, REPO_ROOT, Seed, _dsn
 from tests.integration.helpers import must_be_accepted, must_be_rejected_saying, scalar

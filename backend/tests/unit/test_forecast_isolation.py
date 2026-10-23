@@ -23,7 +23,7 @@ SCRIPTS = ROOT / "scripts"
 TABLE = re.compile(r"\bmodels\.match_forecasts\b|\bFROM\s+match_forecasts\b|\bJOIN\s+match_forecasts\b")
 
 NAMES_THE_TABLE = {
-    "predictions/match_forecast.py": "the writer: the only module that inserts, and the one that reads back its own rows",
+    "forecasting/match_forecast.py": "the writer: the only module that inserts, and the one that reads back its own rows",
     "api/services/forecast.py": "the page of a match: the product's forecast and the Admin Console's preview",
     "ai/packet.py": "the packet's `forecast` block: context a review or a brief may cite, never an input of a computation",
     "intel/leakage.py": "the nightly proof (`forecast_known`) that no packet cited a forecast from after its moment",
@@ -66,10 +66,10 @@ def imports_of(path: Path) -> set[str]:
 
 
 def test_only_the_listed_files_import_the_module_that_writes_it() -> None:
-    importing = {rel(p) for p in python_files(SRC, SCRIPTS) if "fbi.predictions.match_forecast" in imports_of(p)}
+    importing = {rel(p) for p in python_files(SRC, SCRIPTS) if "fbi.forecasting.match_forecast" in imports_of(p)}
     allowed = set(IMPORTS_THE_WRITER) | {"scripts/match_forecast.py"}
     assert importing == allowed, (
-        f"files importing fbi.predictions.match_forecast that are not listed: {sorted(importing - allowed)}; "
+        f"files importing fbi.forecasting.match_forecast that are not listed: {sorted(importing - allowed)}; "
         f"listed files that no longer do: {sorted(allowed - importing)}")
 
 
