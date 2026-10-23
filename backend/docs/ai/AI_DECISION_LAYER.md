@@ -1,6 +1,6 @@
 # Capa de decisión IA de PrediGol (`fbi.ai`)
 
-*Versión de la capa: packet-v7 · rules-review-v1 · review-v2 · brief-v1 · day-v1 · match-analysis-v1 · pm-v1 ·
+*Versión de la capa: packet-v8 · rules-review-v1 · review-v2 · brief-v8 · day-v1 · match-analysis-v1 · pm-v1 ·
 pm-v2 · learning-v1 · patterns-v1 · ai-gate-v1 · icc-v1 · daily-set-v3 · parlay-v4. Migraciones 0072-0073.
 Escrito el 8 oct 2026; **V2** (el día de Bogotá, los tres pasos, L1/L2/L3, presupuesto adaptable de US$150,
 post-mortems por selección y aprendizaje diario) el mismo día.*
@@ -70,8 +70,12 @@ en 14 días un **mínimo**: el bloque lo declara en `schedule.calendar` y solo e
 árbitro (**la persona**, no la cadena que escribió el proveedor: `fixture.referee`, `fixture.referee_id` y `fixture.referee_seen_at` son lo que el proveedor había dado a la hora del paquete —nada si ya lo había quitado del partido—, y el dossier cuenta sus partidos bajo cualquier grafía y sin mezclar homónimos; un partido que la identidad aún no vio conserva la cadena, con `referee_id` nulo; packet-v5, plan F3),
 viaje, mercado (Shin, apertura fija = primer consenso de la semana previa, movimiento, dispersión, nº de casas),
 modelos (Dixon-Coles, Poisson, Elo-ologit con intervalos), **pronóstico de PrediGol** (bloque `forecast`, packet-v6, plan F5: por mercado la probabilidad de cada resultado con su intervalo,
-`CALIBRATED` o `UNCALIBRATED` y cuál es el más probable; es una probabilidad, sin cuota ni ventaja: lo más probable no es lo mejor pagado, y el brief —brief-v7— lo escribe aparte
-de las selecciones que muestran las tarjetas; un partido sin pronóstico no tiene bloque y no se nombra en `missing`, un pronóstico que no se pudo leer sí), calidad de datos y evidencias. Todo **as-of**: nada
+`CALIBRATED` o `UNCALIBRATED` y cuál es el más probable; es una probabilidad, sin cuota ni ventaja: lo más probable no es lo mejor pagado, y el brief —brief-v8— lo escribe aparte
+de las selecciones que muestran las tarjetas; un partido sin pronóstico no tiene bloque y no se nombra en `missing`, un pronóstico que no se pudo leer sí), calidad de datos y evidencias.
+Desde **packet-v8** (plan F6) el paquete trae además, como **descripciones** que ningún modelo lee: el cara a cara ponderado (`h2h`, `h2h-v2`: los ocho últimos cruces jugados hasta un resultado,
+cada uno con el peso que tiene para este partido —recencia, competición, campo, entrenadores—, el registro en 90 minutos y el tamaño efectivo), los escenarios (`scenarios`: qué le hace este partido
+solo a su tabla y a su eliminatoria, en aritmética), la táctica observable (`dossier.tactics`) y el estado de cada factor en el registro (`factors`, `intel.context_factors`: `DESCRIPTIVE` salvo que una
+persona lo haya validado con un experimento). Un registro que no se puede leer deja todos en `DESCRIPTIVE` y se anota en `missing`. Todo **as-of**: nada
 registrado después del momento del paquete. Un paquete nuevo solo se guarda si el contexto cambió.
 
 **Web (Exa).** Consulta en el idioma de la competición (español, portugués, inglés); dos cubetas por partido:
@@ -89,6 +93,12 @@ resuelve el servidor; cada evidencia guarda fuente, URL, dominio, nivel, fecha p
 * **Modelo de lenguaje (`review-v1`, opcional):** recibe el paquete, la candidata y las señales; responde JSON
   validado (`ReviewOut`) con afirmaciones tipadas (DATA/INFERENCE/NEWS/OPINION/UNKNOWN). El servidor
   recalcula la cuota justa y la mínima (no confía en las del modelo) y descarta afirmaciones sin base.
+  **Lee el paquete a través de `fbi.ai.views.review_view` (plan F6):** sin los bloques de `packet-v8` que siguen siendo
+  `DESCRIPTIVE` (el cara a cara ponderado salvo sus dos claves de siempre, `n` y `home_view`; `scenarios`; `dossier.tactics`; `factors`),
+  es decir, el paquete de antes del plan F6. Dos razones: lo que no se ha probado no debe pesar en que se muestre un pick, y esos
+  bloques son ≈ 49 % más de tokens (≈ +2.000 aproximados de 4.200) en las 90 revisiones diarias de Sonnet y Opus, unos US$1,0 al día. Sus afirmaciones se verifican contra esa vista (un
+  número que solo está en un bloque que no recibió no sostiene una afirmación) y su respuesta se reutiliza por el hash de esa vista (un cambio solo en lo que no recibe no compra una revisión
+  nueva). Un factor `VALIDATED` se le entrega entero, con su entrada del registro. El informe (`brief-v8`) sí lee todo.
 * **Combinada:** la más conservadora de las opiniones (ignorando abstenciones).
 
 **Presupuesto (V2, `fbi.ai.usage`).** Tope mensual duro (`FBI_AI_MONTHLY_BUDGET_USD`, en el portátil US$150) y

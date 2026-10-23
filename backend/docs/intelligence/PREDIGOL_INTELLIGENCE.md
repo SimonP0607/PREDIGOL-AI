@@ -90,9 +90,19 @@ fila nueva. Nada se reescribe después del saque ni después del resultado.
 | `intel.market_registry` | estado de un mercado del proveedor en una corrida de discovery | 10 criterios, cobertura, casas, historial, estabilidad, modelabilidad, estado (ACTIVE / RESEARCH / CANDIDATE / NOT_MODELABLE) |
 | `intel.runs` | ejecución de un trabajo PI | duración, estado, conteos, errores, coste, versión de código |
 | `intel.audit_checks` | comprobación de fugas de datos de un día | regla, n revisadas, violaciones, ejemplos |
+| `intel.context_factors` (migración 0088, plan F6) | decisión sobre un factor de contexto del paquete (cara a cara ponderado, escenarios, táctica observable, descanso y congestión) en una versión del código | factor, versión, estado (`DESCRIPTIVE` / `VALIDATED`), quién (una persona), el experimento y su resultado, cuándo, la decisión que sustituye; sin fila, el factor es `DESCRIPTIVE`. La vista `intel.context_factors_latest` da el estado vigente de cada factor y versión |
 
 Además: `ai.budget_alerts` acepta 50 %; `ai.sources` recibe la semilla `sources-v2` (medios reconocidos, oficiales,
 sitios de apuestas como agregadores).
+
+**El registro de factores de contexto (plan F6).** Un factor es algo que PrediGol dice de un partido sin que ningún experimento haya
+probado que predice algo que el modelo y el mercado no digan ya. Nace `DESCRIPTIVE`: se describe (con su tamaño de muestra), ningún
+modelo lo lee (`tests/unit/test_context_isolation.py`) y la IA no puede usarlo como razón de una selección ni de una probabilidad.
+Pasa a `VALIDATED` solo si una persona lo decide citando el experimento y su resultado (la base de datos rechaza una fila sin las tres
+cosas), y solo para **la versión del código** que el experimento midió: cambiar un peso o una regla (`h2h-v2`, `scenarios-v1`,
+`tactics-v1`) lo devuelve a `DESCRIPTIVE`. Quitar una validación es una fila nueva `DESCRIPTIVE`; nada se edita ni se borra. Se
+gestiona con `python -m scripts.context_factors list | history | promote | retire` (en seco hasta `--by NOMBRE --confirm`) y se ve en
+la consola del administrador. Ver `docs/owner/PREPARTIDO_V3_F6.md`.
 
 ## 4. Calibración (Capa 2) — `cal-logit2-v1`
 
@@ -155,17 +165,30 @@ una pata por competición y sin equipo compartido no hay jornada común cuya dep
 
 ## 6. Capa 3 — dossier, investigación y narrativa
 
-* **dossier-v3** (v1 desde `packet-v2`; la v2, de `packet-v4`, saca «es la vuelta» de la estructura del cruce y no de «el último partido entre el par en 60 días»; la v3, de `packet-v5` —plan F3—, cuenta los partidos del árbitro **por persona**: bajo cualquier grafía que el proveedor usó y sin mezclar homónimos; el bloque `referee` trae `id` e `identity` (`id`, o `text` si la identidad aún no vio el partido); todo a la fecha de corte): por equipo, últimos 10 partidos en casa/fuera con goles,
+* **dossier-v4** (plan F6: `h2h` sale del cara a cara ponderado de `fbi.intel.h2h` —su tamaño efectivo incluido— y el dossier gana `tactics`, la táctica observable de
+  `fbi.intel.tactics`: formaciones y cambios de once, goles por cuarto de hora y los tardíos, resultados según quién marca primero y el marcador al descanso, y el primer
+  cambio según el marcador, cada cosa con el tamaño de su muestra y contando —sin adivinar— los partidos que no pudo leer; un once que el proveedor cruzó entre los dos equipos
+  (202 partidos) ya no da formación al bloque `coach`. Antes, **dossier-v3** (v1 desde `packet-v2`; la v2, de `packet-v4`, saca «es la vuelta» de la estructura del cruce y no de «el último partido entre el par en 60 días»; la v3, de `packet-v5` —plan F3—, cuenta los partidos del árbitro **por persona**: bajo cualquier grafía que el proveedor usó y sin mezclar homónimos; el bloque `referee` trae `id` e `identity` (`id`, o `text` si la identidad aún no vio el partido); todo a la fecha de corte): por equipo, últimos 10 partidos en casa/fuera con goles,
   xG, tiros, a puerta, córners, faltas, tarjetas, fueras de juego, posesión, penaltis (eventos), rachas, calidad del
   rival (Elo), comportamiento según marcador (goles a favor/en contra yendo por delante/detrás); árbitro (partidos,
   amarillas, rojas, faltas, penaltis por partido, reparto local/visitante); entrenadores (formaciones, alternativas,
   rotación entre partidos, minuto medio de cambios, rendimiento casa/fuera); contexto competitivo (posición, puntos a
   título / plazas / descenso, partidos restantes, ida/vuelta, copa, final, derbi, amistoso); jugadores clave (minutos,
-  goles, asistencias, rating, ausencias, carga de los últimos 14 días); H2H con peso por antigüedad. Las ausencias del
+  goles, asistencias, rating, ausencias, carga de los últimos 14 días); H2H con peso por antigüedad (desde el plan F6, el de `fbi.intel.h2h`: recencia, competición,
+  campo y entrenadores, con pesos fijos y redondos sin ajustar, el registro en 90 minutos y el tamaño efectivo). Las ausencias del
   dossier, las del paquete y las que el recolector convierte en evidencia salen de la **misma lectura**
   (`fbi.ai.absences.absences_as_of`): la última respuesta de `/injuries` a la fecha de corte, del historial
   `core.player_availability_obs` (migración 0078, plan F0 defecto 8). `core.player_absences` conserva la última
   respuesta por jugador y la leen el Centro de partido y las auditorías; nada que razone «a fecha» debe leerla.
+* **Bloques descriptivos del plan F6** (`packet-v8`): `h2h` (cara a cara ponderado, `h2h-v2`), `scenarios` (qué le hace este partido solo a su tabla y a su
+  eliminatoria, `scenarios-v1`: aritmética, sin simular los demás partidos y sin probabilidades), `dossier.tactics` (`tactics-v1`) y `factors` (el estado de cada factor
+  en el registro, `factors-v1`). **El informe (`brief-v8`) los lee todos** y separa lo que describe de lo que una persona probó que es señal: un bloque `DESCRIPTIVE` se dice
+  como un hecho del pasado con su tamaño, nunca como razón de algo, y el servidor descarta una razón de una selección (`cards[*].why`) que cite uno. **La revisión de picks
+  (Sonnet / Opus) no los recibe** mientras sean descriptivos (`fbi.ai.views.review_view`): lee el paquete de antes del plan F6, con el mismo tamaño y el mismo coste, y sus afirmaciones
+  se verifican contra eso; un factor `VALIDATED` se le entrega entero, con su entrada del registro.
+* **Pedir investigación** (`research-v1`): el informe puede decir QUÉ falta (quién puede jugar, confirmar con fuentes oficiales, previa internacional; hasta tres
+  peticiones, cada una con su razón como afirmación tipada) y de qué lado; nunca escribe una consulta. El servidor decide si la atiende y cuándo, dentro de las búsquedas
+  del día y del presupuesto de siempre, y cuenta lo que hizo (`research_asked`, `research_searched`, `research_unserved`).
 * **sources-v2**: oficiales (ligas, federaciones, clubes) > prensa reconocida (ESPN, TyC Sports, Win Sports, Gol
   Caracol, RCN, DirecTV Sports, BBC Sport, Sky Sports, The Athletic, Marca, AS, Mundo Deportivo, L'Équipe, Bild,
   Gazzetta y equivalentes por país) > medios locales > periodistas > secundarios/agregadores > redes solo verificadas.
@@ -253,7 +276,7 @@ corrida semanal, con su `version`.
 * Los tokens de respuestas inválidas se cuentan. Métricas: coste por partido, candidato, pick, investigación,
   post-mortem, día y proyección mensual. Los análisis son compartidos: ningún token por usuario.
 
-## 10. Fugas de datos (`leak-audit-v5`, diario y en tests)
+## 10. Fugas de datos (`leak-audit-v6`, diario y en tests)
 
 Para cada decisión: `known_at` < saque; `price_at` ≤ `known_at`; pick `data_cutoff_ts` y `created_at` ≤ `known_at`;
 calibrador `fitted_at` ≤ `known_at` y sus datos liquidados antes de `fitted_at`; revisión y paquete ≤ `known_at`;
@@ -264,7 +287,11 @@ no lo que el proveedor dijo entonces); y (v4, plan F5, regla `forecast_known`) t
 (partido, mercado, línea y modelo), que se había escrito a la hora del paquete y que era el más nuevo de ese mercado a esa hora; y (v5, plan F4, regla `calendar_known`) todo
 paquete que cita el calendario de un equipo cita lecturas de la lista del proveedor que existían a la hora del paquete (sin una más nueva con más de un minuto de antelación),
 una lista dada por «completa» no tenía más de 96 horas, y cada partido citado existía a esa hora con el mismo inicio (un partido seguido grabado después, o un anuncio posterior, es una
-violación). Toda violación queda en `intel.audit_checks`.
+violación); y (v6, plan F6) cuatro reglas más sobre los bloques nuevos: `h2h_known` (cada cruce citado existe, es entre los dos equipos, se jugó hasta un resultado antes del partido, con su
+resultado registrado a la hora del paquete, y no se dejó fuera un cruce conocido por uno más antiguo), `scenarios_known` (la tabla sobre la que se calcula existe, se tomó a tiempo y trae las filas
+que el bloque cita, y el global de una vuelta es el del bloque `phase` del propio paquete), `tactics_known` (cada partido de la muestra existe, es del equipo, está dentro de la ventana y tenía su
+resultado, sus eventos y su hoja registrados a la hora del paquete; la muestra son los últimos `N` conocidos y los goles contados son los de los 90 minutos) y `factors_known` (el estado que
+dice el paquete de cada factor, la decisión que cita y el experimento son los de la última decisión de esa versión tomada a esa hora). Toda violación queda en `intel.audit_checks`.
 
 ## 11. Autonomía controlada
 
