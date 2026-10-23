@@ -112,6 +112,10 @@ class AiSettings:
     multimodal: bool = False
     horizon_hours: int = 96
     search: str | None = None
+    legacy_postmortems: bool = False
+    """The two first post-mortems (``fbi.ai.postmortem`` by match, ``fbi.ai.pick_postmortem`` by selection) write again, beside the
+    one post-mortem of ``fbi.intel.postmortem`` (plan F8). Off: they are frozen - their tables keep what they wrote, nothing reads them
+    for what is new. It exists to go back, not to be used (``FBI_AI_LEGACY_POSTMORTEMS=1``)."""
 
     @classmethod
     def from_env(cls) -> AiSettings:
@@ -147,6 +151,7 @@ class AiSettings:
             multimodal=(env.get("FBI_AI_MULTIMODAL") or "").strip().lower() in ("1", "on", "true", "yes"),
             horizon_hours=max(1, _int("FBI_AI_HORIZON_HOURS", 96, env)),
             search=None if search_raw in ("", "none", "off") else search_raw,
+            legacy_postmortems=(env.get("FBI_AI_LEGACY_POSTMORTEMS") or "").strip().lower() in ("1", "on", "true", "yes"),
         )
 
     def tier(self, tier: Tier) -> TierModel | None:
@@ -191,6 +196,7 @@ class AiSettings:
             "horizon_hours": self.horizon_hours,
             "search": self.search,
             "search_configured": self.search_configured,
+            "legacy_postmortems": self.legacy_postmortems,
         }
 
     @property

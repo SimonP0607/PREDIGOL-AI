@@ -487,7 +487,7 @@ def study(conn: psycopg.Connection[Any], *, at: datetime, lookback: timedelta = 
                 "known_at": None if c.known_at is None else c.known_at.isoformat(), "odds": facts.odds, "score": c.score,
                 "result": f"{gh}-{ga}", "referee": referee, "referee_id": referee_id, "events": len(events.get(fid, [])),
                 "stats": bool(stats.get(fid)), "review_id": c.review_id, "packet_id": c.packet_id,
-                "findings": (findings.get(fid) or {}).get("match_forecast"), "roles": sorted(c.roles),
+                "findings": (findings.get(fid) or {}).get("model_vs_market"), "roles": sorted(c.roles),
                 "competition": match["competition"], "kickoff_at": match["kickoff_at"].isoformat(),
                 "prices": c.prices, "price_from": c.price_from, "close": None if close is None else close.evidence(),
                 "same_book_close": None if book is None else {"odds": book.odds, "minutes_to_ko": book.minutes_to_ko},

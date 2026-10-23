@@ -35,7 +35,7 @@ here writes a pick, a probability, a parlay or a rule.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -688,19 +688,72 @@ def _paid_today(conn: psycopg.Connection[Any], purpose: str, *, at: datetime) ->
     return bool(row and row[0])
 
 
+def _isolated(conn: psycopg.Connection[Any], report: CycleReport, name: str, step: Callable[[], None]) -> int:
+    """A step whose failure must not stop what the rest of the cycle learns: its error is recorded, what it had not committed is rolled
+    back and the cycle ends ``partial``. Returns 1 when the step ran."""
+    try:
+        step()
+        return 1
+    except Exception as exc:
+        conn.rollback()
+        report.status = "partial"
+        report.errors.append(f"{name}: {type(exc).__name__}: {exc}"[:300])
+        log.error(f"ai.learning.{name}_failed", error=report.errors[-1])
+        return 0
+
+
+def _postmortems(conn: psycopg.Connection[Any], report: CycleReport, *, at: datetime, settings: AiSettings,
+                 ledger: UsageLedger, provider: tuple[LlmProvider, str] | None,
+                 transport: httpx.BaseTransport | None) -> None:
+    """The one post-mortem (plan F8): every selection that finished, once, whoever looked at it; the matches as a whole; and the narratives
+    of the ones that matter, which are optional, paid for and apart. Each part is committed before the next."""
+    from fbi.ai.pm_narratives import run_narratives
+    from fbi.intel.match_review import review_matches
+    from fbi.intel.postmortem import study
+
+    sel = study(conn, at=at)
+    conn.commit()
+    matches = review_matches(conn, at=at)
+    conn.commit()
+    narr = run_narratives(conn, at=at, settings=settings, ledger=ledger, provider=provider, transport=transport)
+    conn.commit()
+    report.counts.update({"postmortems": matches.matches, "memory_events": matches.memory_events,
+                          "context_errors": matches.context_errors, "narratives": narr.written,
+                          "pick_postmortems": sel.studied, "losses_studied": sel.losses, "wins_studied": sel.wins,
+                          "pick_memory_events": sel.memory_events, "postmortems_left": sel.left})
+    for cls, n in sel.by_class.items():
+        report.counts[f"class_{cls.lower()}"] = n
+    report.errors += (sel.errors[:3] + matches.errors[:3] + narr.errors[:3])
+
+
+def _legacy_postmortems(conn: psycopg.Connection[Any], report: CycleReport, *, at: datetime, settings: AiSettings,
+                        ledger: UsageLedger, provider: tuple[LlmProvider, str] | None,
+                        transport: httpx.BaseTransport | None) -> None:
+    """The two first post-mortems (pm-v1 by match, pm-v2 by selection), frozen since F8: they write only when
+    ``FBI_AI_LEGACY_POSTMORTEMS`` brings them back, after the one post-mortem. Their memory events keep the keys they always had, so
+    what the one post-mortem already remembered is not remembered twice."""
+    from fbi.ai.pick_postmortem import run_pick_postmortems
+    from fbi.ai.postmortem import run_postmortems
+
+    pm = run_postmortems(conn, at=at, settings=settings, ledger=ledger, provider=provider, transport=transport)
+    pp = run_pick_postmortems(conn, at=at, settings=settings, ledger=ledger, provider=provider, transport=transport)
+    report.counts.update({"legacy_postmortems": pm.fixtures, "legacy_pick_postmortems": pp.studied,
+                          "legacy_narratives": pm.narratives + pp.narratives})
+    report.errors += pm.errors[:3] + pp.errors[:3]
+
+
 def run_learning_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings | None = None,
                        ledger: UsageLedger | None = None, provider: tuple[LlmProvider, str] | None = None,
                        transport: httpx.BaseTransport | None = None) -> CycleReport:
-    """Daily (worker job ``ai_learn``, 07:35 Bogotá): what the finished matches taught, written down - the
-    post-mortems of every match (pm-v1) and of every studied selection (pm-v2), yesterday's notes and lessons
-    (QUÉ APRENDIÓ PREDIGOL HOY), the sources' day, patterns proposed as hypotheses (never applied), the parlays'
-    dependence re-measured weekly, the AI's own shadow report, the month's budget alerts - and tomorrow prepared
-    without any model or search."""
+    """Daily (worker job ``ai_learn``, 07:35 Bogotá): what the finished matches taught, written down - the ONE
+    post-mortem of every selection PrediGol looked at and of every match (plan F8, ``fbi.intel.postmortem``; the two
+    first ones, pm-v1 and pm-v2, run again only with ``FBI_AI_LEGACY_POSTMORTEMS``), the narratives a model writes
+    for the ones that matter, yesterday's notes and lessons (QUÉ APRENDIÓ PREDIGOL HOY), the sources' day, patterns
+    proposed as hypotheses (never applied), the parlays' dependence re-measured weekly, the AI's own shadow report,
+    the month's budget alerts - and tomorrow prepared without any model or search."""
     from fbi.ai.day import prepare_day
     from fbi.ai.learning import learn_day, refresh_source_stats
     from fbi.ai.patterns import run_patterns
-    from fbi.ai.pick_postmortem import run_pick_postmortems
-    from fbi.ai.postmortem import run_postmortems
     from fbi.ai.shadow import run_shadow
     from fbi.parlays import correlation
 
@@ -715,19 +768,12 @@ def run_learning_cycle(conn: psycopg.Connection[Any], *, at: datetime, settings:
     today = local_day(at)
     yesterday = today - timedelta(days=1)
     try:
-        pm = run_postmortems(conn, at=at, settings=settings, ledger=ledger, provider=provider, transport=transport)
-        report.counts.update({"postmortems": pm.fixtures, "memory_events": pm.memory_events,
-                              "context_errors": pm.context_errors, "narratives": pm.narratives})
-        report.errors += pm.errors[:5]
-        steps += 1
-        pp = run_pick_postmortems(conn, at=at, settings=settings, ledger=ledger, provider=provider,
-                                  transport=transport)
-        report.counts.update({"pick_postmortems": pp.studied, "losses_studied": pp.losses, "wins_studied": pp.wins,
-                              "pick_narratives": pp.narratives, "pick_memory_events": pp.memory_events})
-        for cls, n in pp.by_class.items():
-            report.counts[f"class_{cls.lower()}"] = n
-        report.errors += pp.errors[:5]
-        steps += 1
+        # a post-mortem that fails must not stop what the rest of the cycle learns
+        steps += _isolated(conn, report, "postmortems", lambda: _postmortems(
+            conn, report, at=at, settings=settings, ledger=ledger, provider=provider, transport=transport))
+        if settings.legacy_postmortems:
+            steps += _isolated(conn, report, "legacy_postmortems", lambda: _legacy_postmortems(
+                conn, report, at=at, settings=settings, ledger=ledger, provider=provider, transport=transport))
         for d in (yesterday, today):
             report.counts["source_domains"] = refresh_source_stats(conn, day=d, at=at)
         conn.commit()

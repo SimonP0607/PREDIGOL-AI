@@ -104,23 +104,21 @@ def test_the_same_price_and_close_give_the_same_clv_in_every_place(db: psycopg.C
 
 def test_a_post_mortem_row_reads_with_its_clv_and_its_price_move_apart(db: psycopg.Connection[Any],
                                                                       seed: Seed) -> None:
-    """The admin's list: ``clv`` is derived from the odds and the closing probability the row stores, ``price_move`` is the
-    stored column (which rows written before clv-v1 call ``clv``). A row from before holds a price move and is never taken
-    for a CLV."""
+    """The admin's list (the ONE post-mortem, plan F8): ``clv`` is derived from the odds and the closing probability the row stores,
+    ``price_move`` is the stored column. A ``clv`` key inside the answers that holds a price move (rows written before clv-v1) is never
+    taken for a CLV."""
     from fbi.api.services.ai_v2 import postmortems
 
-    db.execute("INSERT INTO ai.pick_postmortems (fixture_id, market_key, selection, line, created_at, version, roles, "
-               "settled, verdict, odds, close_odds, clv, answers) VALUES (%s, 'OU', 'Over', 2.5, now(), 'pm-test', "
-               "'{shadow}', 'win', 'approved_won', %s, %s, %s, %s)",
-               (seed.fixture_id, ODDS, CLOSE_ODDS, closing_value.price_move(ODDS, CLOSE_ODDS),
-                Jsonb({"model": {"data": {"p_close": float(P_CLOSE)}},
-                       "odds_moved": {"answer": "a favor", "data": {"clv": 0.05, "close_odds": 2.0}}})))
-    db.execute("INSERT INTO ai.pick_postmortems (fixture_id, market_key, selection, line, created_at, version, roles, "
-               "settled, verdict, odds, close_odds, clv, answers) VALUES (%s, 'OU', 'Under', 2.5, now(), 'pm-test', "
-               "'{shadow}', 'win', 'approved_won', %s, %s, %s, %s)",
-               (seed.fixture_id, ODDS, CLOSE_ODDS, closing_value.price_move(ODDS, CLOSE_ODDS), Jsonb({})))
+    insert = ("INSERT INTO intel.postmortems (fixture_id, created_at, version, outcome, decision_quality, verdict, answers, market_key, "
+              "selection, line, roles, review_verdict, odds, close_odds, price_move) VALUES (%s, now(), 'pm-test', 'won', 'GOOD', "
+              "'MERECIDO', %s, 'OU', %s, 2.5, '{shadow}', 'approved_won', %s, %s, %s)")
+    move = closing_value.price_move(ODDS, CLOSE_ODDS)
+    db.execute(insert, (seed.fixture_id, Jsonb({"model": {"data": {"p_close": float(P_CLOSE)}},
+                                                "odds_moved": {"answer": "a favor", "data": {"clv": 0.05, "close_odds": 2.0}}}),
+                        "Over", ODDS, CLOSE_ODDS, move))
+    db.execute(insert, (seed.fixture_id, Jsonb({}), "Under", ODDS, CLOSE_ODDS, move))
     rows = {r.selection: r for r in postmortems(db, fixture_id=seed.fixture_id).data}
     over, under = rows["Over"], rows["Under"]
     assert over.price_move == Decimal("0.0500") and over.clv == Decimal("-0.0130")
     assert under.price_move == Decimal("0.0500") and under.clv is None, "no closing probability stored: no CLV"
-    assert scalar(db.execute("SELECT count(*) FROM ai.pick_postmortems")) == 2
+    assert scalar(db.execute("SELECT count(*) FROM intel.selection_postmortems")) == 2

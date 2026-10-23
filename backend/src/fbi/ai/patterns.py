@@ -37,6 +37,7 @@ from fbi.ai.config import AiSettings
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.text import TIER_ES
 from fbi.ai.usage import UsageLedger, call_json
+from fbi.intel.match_review import VERSION as MATCH_REVIEW_VERSION
 from fbi.research.evolution import TARGETS, propose
 
 VERSION = "patterns-v1"
@@ -74,12 +75,14 @@ SELECT id, kind, entity_type, entity_id, fixture_id, evidence, result, created_a
 """
 
 LEAGUE_SQL = """
-SELECT c.id AS competition_id, c.name, (pm.findings->'match_forecast'->>'logloss_diff')::float AS diff
-  FROM ai.postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
+SELECT c.id AS competition_id, c.name, (pm.findings->'model_vs_market'->>'logloss_diff')::float AS diff
+  FROM intel.match_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
- WHERE pm.created_at >= %(since)s AND pm.findings->'match_forecast' IS NOT NULL
-   AND jsonb_typeof(pm.findings->'match_forecast') = 'object'
+ WHERE pm.created_at >= %(since)s AND pm.version = %(version)s AND pm.findings->'model_vs_market' IS NOT NULL
+   AND jsonb_typeof(pm.findings->'model_vs_market') = 'object'
 """
+"""The 1X2 forecast of each match against the market's close, from the match as a whole in the ONE post-mortem (plan F8; before, from
+``ai.postmortems``): one row per match and version."""
 
 
 @dataclass
@@ -262,7 +265,7 @@ def run_patterns(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSet
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(MEMORY_SQL, {"since": at - WINDOW, "until": at})
         events = [dict(r) for r in cur.fetchall()]
-        cur.execute(LEAGUE_SQL, {"since": at - WINDOW})
+        cur.execute(LEAGUE_SQL, {"since": at - WINDOW, "version": MATCH_REVIEW_VERSION})
         league_rows = [dict(r) for r in cur.fetchall()]
     report.found = (source_reliability(events) + review_signals(events) + league_patterns(league_rows)
                     + loss_classes(events))

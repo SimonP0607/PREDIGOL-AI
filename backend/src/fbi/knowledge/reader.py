@@ -230,7 +230,8 @@ SELECT d.fixture_id, d.id, d.checkpoint, d.market_key, d.selection, d.line, d.st
  WHERE d.fixture_id = ANY({_IDS}) ORDER BY d.fixture_id, d.id
 """
 POSTMORTEMS_SQL: Final = f"""
-SELECT pm.fixture_id, pm.id, pm.decision_id, pm.version, pm.outcome, pm.decision_quality, pm.verdict, pm.created_at, pm.causes
+SELECT pm.fixture_id, pm.id, pm.decision_id, pm.version, pm.outcome, pm.decision_quality, pm.verdict, pm.created_at, pm.causes,
+       pm.market_key, pm.selection, pm.line, pm.review_verdict, pm.loss_class
   FROM intel.postmortems pm WHERE pm.fixture_id = ANY({_IDS}) ORDER BY pm.fixture_id, pm.id
 """
 
@@ -342,9 +343,10 @@ def read(conn: psycopg.Connection[Any], fixture_ids: Sequence[int]) -> dict[int,
     postmortems: dict[int, list[layers.Postmortem]] = defaultdict(list)
     for r in _rows(conn, POSTMORTEMS_SQL, {"ids": ids}):
         postmortems[int(r["fixture_id"])].append(layers.Postmortem(
-            id=int(r["id"]), decision_id=int(r["decision_id"]), version=str(r["version"]), outcome=str(r["outcome"]),
+            id=int(r["id"]), decision_id=_int(r["decision_id"]), version=str(r["version"]), outcome=str(r["outcome"]),
             quality=str(r["decision_quality"]), verdict=str(r["verdict"]), created_at=r["created_at"],
-            causes=_cause_codes(r["causes"])))
+            causes=_cause_codes(r["causes"]), market=r["market_key"], selection=r["selection"], line=_float(r["line"]),
+            review_verdict=r["review_verdict"], loss_class=r["loss_class"]))
 
     out: dict[int, Read] = {}
     for fid in ids:

@@ -28,6 +28,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds, local_day
 from fbi.core import match_state
+from fbi.intel.pm_facts import AI_ROLES
 from fbi.picks import settlement
 
 VERSION = "daily-review-v1"
@@ -107,10 +108,12 @@ SELECT l.*, f.status_short, res.reg_goals_home, res.reg_goals_away, res.et_goals
 """
 
 POSTMORTEMS_SQL = """
-SELECT pm.verdict, pm.classification, pm.settled, pm.answers->'win_quality'->'data'->>'win_quality' AS win_quality
-  FROM ai.pick_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
- WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND pm.version = 'pm-v2'
+SELECT pm.review_verdict AS verdict, pm.loss_class AS classification, pm.settled,
+       pm.answers->'win_quality'->'data'->>'win_quality' AS win_quality
+  FROM intel.selection_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
+ WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND pm.roles && %(ai_roles)s
 """
+"""The post-mortems of the day, from the ONE post-mortem (plan F8) and only the selections the AI studied: the report of the AI's day."""
 
 NOTES_SQL = "SELECT kind, title, n FROM ai.learning_notes WHERE day = %(day)s ORDER BY id"
 
@@ -270,7 +273,7 @@ def content(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> dict[s
     shadow = _rows(conn, SHADOW_SQL, p)
     n_settled = sum(int(r["settled"]) for r in shadow)
     shadow_pnl = sum(float(r["pnl"]) for r in shadow)
-    pms = _rows(conn, POSTMORTEMS_SQL, p)
+    pms = _rows(conn, POSTMORTEMS_SQL, p | {"ai_roles": sorted(AI_ROLES)})
     hyps = _rows(conn, HYPOTHESES_SQL, p)
     experiments = _rows(conn, EXPERIMENTS_SQL, p)[0]
     costs = _rows(conn, COSTS_SQL, p)

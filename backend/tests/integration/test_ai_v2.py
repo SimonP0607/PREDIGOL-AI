@@ -340,18 +340,22 @@ def test_every_studied_selection_gets_its_post_mortem_and_the_day_its_notes(db: 
     report = run_learning_cycle(conn, at=next_morning, settings=SHADOW, provider=(model, "claude-haiku-5-5"),
                                 ledger=UsageLedger(shared(db)))
     assert report.status in ("ok", "partial"), report.errors
-    rows = db.execute("SELECT fixture_id, verdict, classification, answers FROM ai.pick_postmortems").fetchall()
+    assert not report.errors, report.errors
+    # the ONE post-mortem (plan F8): the AI's selections are studied in ``intel.postmortems`` whoever looked at them; the first
+    # post-mortem by selection stays frozen behind FBI_AI_LEGACY_POSTMORTEMS and wrote nothing
+    assert count(db, "SELECT count(*) FROM ai.pick_postmortems") == 0 and count(db, "SELECT count(*) FROM ai.postmortems") == 0
+    rows = db.execute("SELECT fixture_id, review_verdict, loss_class, answers FROM intel.selection_postmortems").fetchall()
     by = {r[0]: r for r in rows}
     f1, f3 = world.fixtures["F1"], world.fixtures["F3"]
     assert by[f1][1] in ("approved_lost", "caution_lost") and by[f1][2] is not None, "a loss has a class"
     assert by[f3][1] in ("approved_won", "caution_won") and by[f3][2] is None, "a win has no class"
     questions = {"expected", "happened", "model", "information", "ignored_signal", "odds_moved", "key_absence",
                  "lineup_changed", "uncertainty", "variance", "win_quality"}
-    assert set(by[f1][3]) == questions
-    # plan F0, defect 7: the stored ``clv`` column holds the PRICE MOVE (as it always did), the answer names it so and the
-    # CLV proper is derived from the odds and the closing probability the row stores
+    assert questions <= set(by[f1][3]), "the ten questions of the AI are in the row (the decision layer's answers are beside them)"
+    # plan F0, defect 7 and F8: the ``price_move`` column holds the PRICE MOVE (against the same bookmaker's close), the answer names it so
+    # and the CLV proper is derived from the odds and the closing probability the row stores (and is the ``clv`` column)
     for fixture_id, odds, close_odds, price_move, row_answers in db.execute(
-            "SELECT fixture_id, odds, close_odds, clv, answers FROM ai.pick_postmortems").fetchall():
+            "SELECT fixture_id, odds, close_odds, price_move, answers FROM intel.selection_postmortems").fetchall():
         moved = row_answers["odds_moved"]["data"]
         assert "clv" not in moved and moved["price_move"] == (None if price_move is None else float(price_move))
         assert moved["clv_v1"] == stored_clv(odds, row_answers), fixture_id
@@ -362,12 +366,12 @@ def test_every_studied_selection_gets_its_post_mortem_and_the_day_its_notes(db: 
     market = db.execute("SELECT version, evidence FROM ai.learning_notes WHERE day = %s AND kind = 'market'",
                         (DAY,)).fetchone()
     if market is not None:
-        assert market[0] == "learning-v1.1" and market[1]["clv_version"] == "clv-v1"
+        assert market[0] == "learning-v1.2" and market[1]["clv_version"] == "clv-v1"
     assert "pick_postmortem" in {r[0] for r in db.execute("SELECT DISTINCT kind FROM ai.memory_events")}
     assert report.counts["tomorrow_prepared"] == 1
     # learning again the same morning writes nothing twice
     run_learning_cycle(conn, at=next_morning + timedelta(minutes=5), settings=SHADOW)
-    assert count(db, "SELECT count(*) FROM ai.pick_postmortems") == len(rows)
+    assert count(db, "SELECT count(*) FROM intel.selection_postmortems") == len(rows)
     # and nothing in production moved
     assert count(db, "SELECT count(*) FROM analytics.research_hypotheses WHERE status NOT IN ('PROPOSED')") == 0
 

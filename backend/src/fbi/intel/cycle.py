@@ -185,11 +185,23 @@ def memory_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str, int
     return {day.isoformat(): build_memory(conn, day=day, at=at)}
 
 
+def postmortems_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str, int]:
+    """The nightly post-mortem (plan F8): every selection that finished is studied once, then the matches as a whole. The learning
+    cycle of the AI runs the same two functions earlier in the day; whichever runs first writes, the other finds it all written."""
+    from fbi.intel.match_review import review_matches
+    from fbi.intel.postmortem import study
+
+    selections = study(conn, at=at)
+    conn.commit()
+    matches = review_matches(conn, at=at)
+    return {"selections": selections.studied, "matches": matches.matches, "memory_events": selections.memory_events + matches.memory_events,
+            "left": selections.left, "errors": len(selections.errors) + len(matches.errors)}
+
+
 def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
     from fbi.intel.calibration import run_calibration
     from fbi.intel.leakage import audit_day
     from fbi.intel.outcomes import settle_decisions
-    from fbi.intel.postmortem import run_postmortems
     from fbi.intel.report import days_to_report, write_report
 
     today = local_day(at)
@@ -213,7 +225,7 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
 
     return _run(conn, "nightly", at, [
         ("outcomes", lambda: settle_decisions(conn, at=at)),
-        ("postmortems", lambda: run_postmortems(conn, at=at)),
+        ("postmortems", lambda: postmortems_step(conn, at=at)),
         ("memory", lambda: memory_step(conn, at=at)),
         ("calibration", _calibration),
         ("leakage_audit", _audit),

@@ -370,7 +370,9 @@ STALE_SQL = {
     "intel.decision_outcomes": "SELECT count(*) FROM intel.decision_outcomes o JOIN intel.decisions d "
                                "ON d.id = o.decision_id WHERE d.fixture_id = ANY(%s)",
     "intel.postmortems": "SELECT count(*) FROM intel.postmortems WHERE fixture_id = ANY(%s)",
+    "intel.match_postmortems": "SELECT count(*) FROM intel.match_postmortems WHERE fixture_id = ANY(%s)",
     "ai.pick_postmortems": "SELECT count(*) FROM ai.pick_postmortems WHERE fixture_id = ANY(%s)",
+    "ai.postmortems": "SELECT count(*) FROM ai.postmortems WHERE fixture_id = ANY(%s)",
 }
 """Derived, append-only records built on the result of a match: the ones plan phase F8 rebuilds."""
 

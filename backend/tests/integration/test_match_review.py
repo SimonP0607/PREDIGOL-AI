@@ -120,7 +120,7 @@ def test_the_forecast_of_the_model_is_judged_against_the_close_and_a_large_diffe
                                                                                                     seed: Seed) -> None:
     pm = Pm(db, seed)  # F3: a home win; the model said 0.55, the closing market 0.43
     match_review.review_matches(db, at=LATE)
-    forecast = db.execute("SELECT findings->'match_forecast' FROM intel.match_postmortems WHERE fixture_id = %s", (pm.f["F3"],)).fetchone()
+    forecast = db.execute("SELECT findings->'model_vs_market' FROM intel.match_postmortems WHERE fixture_id = %s", (pm.f["F3"],)).fetchone()
     assert forecast is not None and forecast[0]["closer"] == "model" and forecast[0]["logloss_diff"] == pytest.approx(-0.2459, abs=1e-3)
     assert not any(k.endswith(":mf") for k in keys(db)), "0.246 is not yet a large difference (0.25)"
     # a newer forecast of the model, far more sure of the home win: a model success worth remembering
@@ -129,7 +129,7 @@ def test_the_forecast_of_the_model_is_judged_against_the_close_and_a_large_diffe
                "feature_set_hash,data_cutoff_ts) VALUES (%s,%s,%s,'1X2','Home',0.9,0.9,0.8,0.95,'fh2',%s)",
                (pm.f["F3"], seed.model_version_id, cal, AT - timedelta(hours=12)))
     again = match_review.analyse(db, pm.f["F3"])
-    assert again is not None and again[2]["match_forecast"]["p_model_actual"] == 0.9
+    assert again is not None and again[2]["model_vs_market"]["p_model_actual"] == 0.9
     event_count = len(keys(db))
     n, errors = match_review.write_events(db, pm.f["F3"], again[0], again[1], again[2], at=LATE)
     assert errors == 0 and n >= 1 and len(keys(db)) > event_count

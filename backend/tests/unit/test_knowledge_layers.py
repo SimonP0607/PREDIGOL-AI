@@ -526,6 +526,32 @@ def test_the_postmortems_are_counted_by_verdict_and_the_decisions_that_matter_co
                                       "line": 0.0, "state": "APROBADO", "causes": ["price_beat_close"]}
 
 
+def test_a_postmortem_of_a_selection_counts_whether_or_not_a_decision_judged_it_and_an_old_row_and_a_new_one_are_one() -> None:
+    """Plan F8 (pm-v6): the post-mortem is about the SELECTION, whoever looked at it. A row of the AI's selection has no decision; a row of
+    pm-v6 about the selection an older row was about (through its decision) replaces it; the review's verdict and the class of a loss show."""
+    inp = the_match()
+    no_decision = mk.Postmortem(id=20, decision_id=None, version="pm-v6", outcome="lost", quality="UNKNOWN", verdict="SIN_DATOS",
+                                created_at=FETCHED + timedelta(hours=30), market="BTTS", selection="Yes", line=0.0,
+                                review_verdict="approved_lost", loss_class="MODEL_ERROR")
+    newer = mk.Postmortem(id=21, decision_id=1, version="pm-v6", outcome="won", quality="GOOD", verdict="MERECIDO",
+                          created_at=FETCHED + timedelta(hours=31), market="1X2", selection="Home", line=0.0, review_verdict="approved_won")
+    c9 = layer(mk.build(replace(inp, postmortems=[*inp.postmortems, no_decision, newer])), "c9_postmortem")
+    assert c9["status"] == "ok" and c9["data"]["n"] == 2, "decision 1's old row (pm-v3) and the pm-v6 row about the same selection are one"
+    assert c9["data"]["version"] == "pm-v6" and c9["data"]["verdicts"] == {"MERECIDO": 1, "SIN_DATOS": 1}
+    assert c9["data"]["review_verdicts"] == {"approved_won": 1, "approved_lost": 1}
+    first, second = c9["data"]["items"]
+    assert first["decision"] == 1 and first["review_verdict"] == "approved_won" and first["state"] == "APROBADO" and "class" not in first
+    assert second == {"decision": None, "outcome": "lost", "quality": "UNKNOWN", "verdict": "SIN_DATOS", "market": "BTTS", "sel": "Yes",
+                      "line": 0.0, "review_verdict": "approved_lost", "class": "MODEL_ERROR"}, "after the ones a decision judged"
+
+
+def test_a_match_with_only_the_old_rows_says_what_it_always_said() -> None:
+    """The content of a match whose post-mortems are all of the decision layer's own is the same as before F8: no new keys, the same hash."""
+    c9 = layer(mk.build(the_match()), "c9_postmortem")
+    assert "review_verdicts" not in c9["data"] and set(c9["data"]["items"][0]) == {"decision", "outcome", "quality", "verdict", "market", "sel",
+                                                                                   "line", "state", "causes"}
+
+
 # ── hashes, order and moments ────────────────────────────────────────────────────────────────────────────────────────────
 
 

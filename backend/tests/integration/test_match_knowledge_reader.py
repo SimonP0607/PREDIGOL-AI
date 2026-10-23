@@ -238,6 +238,26 @@ def test_every_source_is_read_into_its_place(db: psycopg.Connection[Any], seed: 
     assert [(p.version, p.verdict, p.quality, p.outcome, p.causes) for p in inp.postmortems] == [("pm-v5", "MERECIDO", "GOOD", "won", ("red_card",))]
 
 
+def test_a_post_mortem_of_a_selection_no_decision_judged_is_read_with_its_selection_and_moves_its_fingerprint(
+        db: psycopg.Connection[Any], seed: Seed) -> None:
+    """Plan F8 (pm-v6): the post-mortem is about the selection, whoever looked at it - the AI's review may be the only one."""
+    w = World(db, seed)
+    fid = w.golden()
+    before = fingerprint(db, fid)
+    db.execute("INSERT INTO intel.postmortems (fixture_id, created_at, version, outcome, decision_quality, verdict, answers, market_key, "
+               "selection, line, roles, review_verdict, loss_class) VALUES (%s, %s, 'pm-v6', 'lost', 'UNKNOWN', 'SIN_DATOS', '{}'::jsonb, "
+               "'BTTS', 'Yes', 0, '{llm}', 'approved_lost', 'MODEL_ERROR')", (fid, FETCHED + timedelta(hours=20)))
+    assert moved(before, fingerprint(db, fid)) == {"postmortems"}
+    inp = reader.read(db, [fid])[fid].inputs
+    new = next(p for p in inp.postmortems if p.version == "pm-v6")
+    assert (new.decision_id, new.market, new.selection, new.line, new.review_verdict, new.loss_class) == (
+        None, "BTTS", "Yes", 0.0, "approved_lost", "MODEL_ERROR")
+    old = next(p for p in inp.postmortems if p.version == "pm-v5")
+    assert (old.decision_id is not None, old.market, old.review_verdict) == (True, None, None), "an older row is about its decision"
+    c9 = layers.build(inp).layers["c9_postmortem"]
+    assert c9["status"] == "ok" and c9["data"]["n"] == 2 and c9["data"]["review_verdicts"] == {"approved_lost": 1}
+
+
 def test_the_opening_is_the_first_price_of_the_week_before_the_kick_off_and_the_close_the_last_before_it(db: psycopg.Connection[Any],
                                                                                                          seed: Seed) -> None:
     w = World(db, seed)

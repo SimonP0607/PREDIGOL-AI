@@ -19,7 +19,8 @@ than it needs says ``partial`` and why (``notes``), and the layer of the externa
                      kick-off than the snapshot is) - the only word on the market for a match the worker was down for
     c7_context       the external context of the match (the news, the AI's reading afterwards): OFF, decided by the owner
     c8_picks         what PrediGol's decision layer made of each line at its last checkpoint and how it ended, and its shadow picks by market
-    c9_postmortem    the post-mortems of those decisions: the result against the decision, the verdict and the causes
+    c9_postmortem    the post-mortems of the match's selections, whoever looked at them (the decision layer, the picks, the AI's reviews): the
+                     result against what was expected, the verdict, the class of a loss and the causes
 
 The object is for a match that is OVER. No reader of a pre-match moment may use it (``tests/unit/test_knowledge_isolation.py``).
 
@@ -263,16 +264,23 @@ class PickTally:
 
 @dataclass(frozen=True, slots=True)
 class Postmortem:
-    """A post-mortem of a decision (``intel.postmortems``)."""
+    """A post-mortem (``intel.postmortems``): of a decision until pm-v5, of a SELECTION from pm-v6 (plan F8) - whoever looked at it, so
+    that the decision may be absent. A row of pm-v6 says its selection (``market``, ``selection``, ``line``); an older one is about its
+    decision, and the layer finds the selection through it."""
 
     id: int
-    decision_id: int
+    decision_id: int | None
     version: str
     outcome: str
     quality: str
     verdict: str
     created_at: datetime
     causes: tuple[str, ...] = ()
+    market: str | None = None
+    selection: str | None = None
+    line: float | None = None
+    review_verdict: str | None = None
+    loss_class: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -863,33 +871,55 @@ def c9_postmortem(inp: Inputs) -> dict[str, Any]:
     sources = ["intel.postmortems"]
     if not inp.postmortems:
         return _layer(MISSING, sources=sources)
-    newest_of: dict[int, Postmortem] = {}
-    for p in inp.postmortems:
-        held = newest_of.get(p.decision_id)
-        if held is None or (p.created_at, p.id) > (held.created_at, held.id):
-            newest_of[p.decision_id] = p
     decisions = {d.id: d for d in inp.decisions}
+
+    def subject(p: Postmortem) -> tuple[Any, ...]:
+        """What a post-mortem is about: the selection. A row of pm-v6 says which; an older one is about a decision, and its selection is that
+        decision's (a row of an old version and one of pm-v6 about the same selection are about one thing: the newest counts)."""
+        if p.market is not None and p.selection is not None and p.line is not None:
+            return (p.market, p.selection, p.line)
+        d = decisions.get(p.decision_id) if p.decision_id is not None else None
+        return (d.market, d.selection, float(d.line)) if d is not None else ("decision", p.decision_id)
+
+    newest_of: dict[tuple[Any, ...], Postmortem] = {}
+    for p in inp.postmortems:
+        held = newest_of.get(subject(p))
+        if held is None or (p.created_at, p.id) > (held.created_at, held.id):
+            newest_of[subject(p)] = p
     verdicts: dict[str, int] = {}
     qualities: dict[str, int] = {}
+    reviews: dict[str, int] = {}
     for p in newest_of.values():
         verdicts[p.verdict] = verdicts.get(p.verdict, 0) + 1
         qualities[p.quality] = qualities.get(p.quality, 0) + 1
+        if p.review_verdict is not None:
+            reviews[p.review_verdict] = reviews.get(p.review_verdict, 0) + 1
 
-    def rank(p: Postmortem) -> tuple[int, float, int]:
-        d = decisions.get(p.decision_id)
-        return (STATE_RANK.get(d.state, len(STATE_RANK)) if d else len(STATE_RANK), -((d.score or 0.0) if d else 0.0), p.decision_id)
+    def rank(p: Postmortem) -> tuple[int, float, int, int]:
+        # the decisions that matter first (by state and score), then the selections no decision judged
+        d = decisions.get(p.decision_id) if p.decision_id is not None else None
+        return (STATE_RANK.get(d.state, len(STATE_RANK)) if d else len(STATE_RANK), -((d.score or 0.0) if d else 0.0),
+                p.decision_id if p.decision_id is not None else 0, p.id)
 
     items: list[dict[str, Any]] = []
     for p in sorted(newest_of.values(), key=rank)[:TOP_DECISIONS]:
-        d = decisions.get(p.decision_id)
+        d = decisions.get(p.decision_id) if p.decision_id is not None else None
         item: dict[str, Any] = {"decision": p.decision_id, "outcome": p.outcome, "quality": p.quality, "verdict": p.verdict}
         if d is not None:
             item |= {"market": d.market, "sel": d.selection, "line": float(d.line), "state": d.state}
+        elif p.market is not None:
+            item |= {"market": p.market, "sel": p.selection, "line": p.line}
+        if p.review_verdict is not None:
+            item["review_verdict"] = p.review_verdict
+        if p.loss_class is not None:
+            item["class"] = p.loss_class
         if p.causes:
             item["causes"] = list(p.causes)
         items.append(item)
     data = {"n": len(newest_of), "version": max(p.version for p in newest_of.values()), "verdicts": verdicts, "qualities": qualities,
             "items": items}
+    if reviews:  # what the AI's review made of them (pm-v6 on); absent for a match with older rows only, whose content stays as it was
+        data["review_verdicts"] = reviews
     return _layer(OK, known_at=newest(*(p.created_at for p in newest_of.values())), sources=sources, data=data)
 
 

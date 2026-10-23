@@ -15,7 +15,6 @@ from fbi.ai import shadow as ai_shadow
 from fbi.ai.calendar import day_bounds, local_day
 from fbi.ai.config import TIERS, AiSettings
 from fbi.ai.day import STALE_ODDS, universe
-from fbi.ai.pick_postmortem import stored_clv
 from fbi.ai.text import shown
 from fbi.api.contracts.ai_layer import (
     AiComparison,
@@ -32,6 +31,8 @@ from fbi.api.contracts.ai_layer import (
 from fbi.api.envelope import Envelope, listing, ok
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.core.clock import now
+from fbi.intel.pm_facts import AI_ROLES
+from fbi.intel.pm_questions import stored_clv
 
 LEVEL_ROLE = {"bulk": ("L1", "Resumen de cada partido del día con mercado; extracción de noticias"),
               "analysis": ("L2", "Revisión de candidatos y partidos escalados"),
@@ -259,20 +260,29 @@ def research(conn: Conn, *, day: date | None = None) -> Envelope[list[ResearchRo
     return listing(rows, empty_reason="no_research_today")
 
 
-POSTMORTEMS_SQL = """
+NARRATIVE_SQL = """COALESCE((SELECT n.narrative FROM ai.postmortem_narratives n WHERE n.postmortem_id = pm.id ORDER BY n.id DESC LIMIT 1),
+                (SELECT lp.narrative FROM ai.pick_postmortems lp
+                  WHERE lp.fixture_id = pm.fixture_id AND lp.market_key = pm.market_key AND lp.selection = pm.selection
+                    AND lp.line = pm.line AND lp.narrative IS NOT NULL ORDER BY lp.id DESC LIMIT 1))"""
+"""The narrative of a post-mortem ``pm`` of ``intel.selection_postmortems`` (plan F8): the one a language model wrote for it
+(``ai.postmortem_narratives``) or, for a selection studied before F8, the one the first post-mortem by selection wrote."""
+
+POSTMORTEMS_SQL = f"""
 SELECT pm.id, pm.fixture_id, th.name || ' - ' || ta.name AS match, c.name AS competition, f.kickoff_at, pm.market_key,
-       pm.selection, pm.line, pm.roles, pm.decision, pm.settled, pm.verdict, pm.classification, pm.odds, pm.close_odds,
-       pm.clv AS price_move, pm.p_model, pm.p_market, pm.answers, pm.narrative, pm.created_at
-  FROM ai.pick_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
+       pm.selection, pm.line, pm.roles, pm.review_decision AS decision, pm.settled, pm.review_verdict AS verdict,
+       pm.loss_class AS classification, pm.odds, pm.close_odds, pm.price_move, pm.p_model, pm.p_market, pm.answers,
+       {NARRATIVE_SQL} AS narrative, pm.created_at
+  FROM intel.selection_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
   JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
  WHERE ((%(fixture)s::bigint IS NULL AND f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s)
         OR pm.fixture_id = %(fixture)s)
-   AND (%(verdict)s::text IS NULL OR pm.verdict = %(verdict)s)
-   AND (%(cls)s::text IS NULL OR pm.classification = %(cls)s)
- ORDER BY (pm.verdict IN ('approved_lost', 'caution_lost', 'rejected_would_have_won')) DESC, f.kickoff_at DESC, pm.id
+   AND (%(verdict)s::text IS NULL OR pm.review_verdict = %(verdict)s)
+   AND (%(cls)s::text IS NULL OR pm.loss_class = %(cls)s)
+ ORDER BY (pm.review_verdict IN ('approved_lost', 'caution_lost', 'rejected_would_have_won')) DESC, f.kickoff_at DESC, pm.id
  LIMIT %(limit)s
 """
+"""The ONE post-mortem of each selection (plan F8; before, ``ai.pick_postmortems``), with its narrative."""
 
 
 def postmortems(conn: Conn, *, day: date | None = None, verdict: str | None = None, classification: str | None = None,
@@ -410,7 +420,7 @@ def overview_extra(conn: Conn, *, at: datetime, settings: AiSettings) -> dict[st
 def day_counts(conn: Conn, *, day: date) -> dict[str, Any]:
     """EL DÍA EN PREDIGOL AI."""
     start, end = day_bounds(day)
-    r = fetch_one(conn, DAY_SQL, {"start": start, "end": end, "day": day}) or {}
+    r = fetch_one(conn, DAY_SQL, {"start": start, "end": end, "day": day, "ai_roles": sorted(AI_ROLES)}) or {}
     return {k: (float(v) if isinstance(v, Decimal) else int(v or 0)) for k, v in r.items()}
 
 
@@ -432,9 +442,10 @@ SELECT (SELECT COALESCE(max(fixtures_with_market), 0) FROM ai.day_plans WHERE da
           AND reviewed_at >= %(start)s AND reviewed_at < %(end)s) AS llm_reviews,
        (SELECT count(*) FROM ai.pick_reviews WHERE engine = 'llm' AND status = 'ok' AND NOT output ? 'reused_from'
           AND output->>'tier' = 'final' AND reviewed_at >= %(start)s AND reviewed_at < %(end)s) AS deep_reviews,
-       (SELECT count(*) FROM ai.pick_postmortems WHERE created_at >= %(start)s AND created_at < %(end)s) AS postmortems,
-       (SELECT count(*) FROM ai.pick_postmortems WHERE created_at >= %(start)s AND created_at < %(end)s
-          AND settled IN ('loss', 'half_loss')) AS losses_investigated,
+       (SELECT count(*) FROM intel.selection_postmortems WHERE created_at >= %(start)s AND created_at < %(end)s
+          AND roles && %(ai_roles)s) AS postmortems,
+       (SELECT count(*) FROM intel.selection_postmortems WHERE created_at >= %(start)s AND created_at < %(end)s
+          AND roles && %(ai_roles)s AND settled IN ('loss', 'half_loss')) AS losses_investigated,
        (SELECT count(*) FROM ai.learning_notes WHERE created_at >= %(start)s AND created_at < %(end)s) AS findings,
        (SELECT count(*) FROM analytics.research_hypotheses WHERE created_at >= %(start)s AND created_at < %(end)s)
            AS hypotheses,
@@ -442,5 +453,5 @@ SELECT (SELECT COALESCE(max(fixtures_with_market), 0) FROM ai.day_plans WHERE da
 """
 
 
-__all__ = ["comparison", "day_counts", "day_plan", "efficiency", "learning", "notes_learned_on", "overview_extra",
+__all__ = ["NARRATIVE_SQL", "comparison", "day_counts", "day_plan", "efficiency", "learning", "notes_learned_on", "overview_extra",
            "postmortems", "proposals", "research", "sources", "stack", "today_view"]

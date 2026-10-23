@@ -360,7 +360,7 @@ SELECT (SELECT count(DISTINCT fixture_id) FROM ai.match_packets WHERE built_at >
           AND reviewed_at >= %(since)s AND reviewed_at < %(until)s) AS abstained,
        (SELECT count(*) FROM ai.pick_reviews WHERE engine = 'llm' AND reviewed_at >= %(since)s
           AND reviewed_at < %(until)s) AS llm_reviews,
-       (SELECT count(*) FROM ai.postmortems WHERE created_at >= %(since)s AND created_at < %(until)s) AS postmortems,
+       (SELECT count(*) FROM intel.match_postmortems WHERE created_at >= %(since)s AND created_at < %(until)s) AS postmortems,
        (SELECT count(*) FROM analytics.research_hypotheses WHERE created_at >= %(since)s AND created_at < %(until)s)
            AS hypotheses,
        (SELECT COALESCE(sum(cost_usd), 0) FROM ai.usage WHERE at >= %(since)s AND at < %(until)s) AS cost_usd
@@ -395,16 +395,22 @@ SELECT id, created_at, kind, entity_type, entity_id, fixture_id, hypothesis, evi
  ORDER BY created_at DESC, id DESC LIMIT 30
 """
 
-ERRORS_SQL = """
-SELECT pm.fixture_id, th.name || ' - ' || ta.name AS match, f.kickoff_at, pm.outcome, sel AS selection, pm.narrative
-  FROM ai.postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
-  JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id,
-       jsonb_array_elements(pm.expected->'selections') sel
+ERRORS_SQL = f"""
+SELECT pm.fixture_id, th.name || ' - ' || ta.name AS match, f.kickoff_at, pm.evidence->>'result' AS score, pm.market_key AS market,
+       pm.selection, pm.line, pm.review_decision AS decision, pm.settled, pm.p_model, pm.p_market,
+       COALESCE(pm.answers->'ignored_signal'->'data'->'signals', '[]'::jsonb) AS signals, {ai_v2.NARRATIVE_SQL} AS narrative
+  FROM intel.selection_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
+  JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
  WHERE pm.created_at >= %(since)s AND pm.created_at < %(until)s
-   AND ((sel->>'decision' = 'APPROVE' AND sel->>'settled' = 'loss') OR (sel->>'decision' = 'REJECT'
-        AND sel->>'settled' = 'win'))
+   AND pm.review_verdict IN ('approved_lost', 'rejected_would_have_won')
  ORDER BY f.kickoff_at DESC LIMIT 30
 """
+"""The AI's mistakes of the day: what it approved and lost, what it rejected and would have won - from the ONE post-mortem (plan F8; before,
+the selections inside the match post-mortem ``ai.postmortems``)."""
+
+
+def _number(x: Any) -> float | None:
+    return None if x is None else float(x)
 
 
 def dashboard(conn: Conn, *, day: date | None = None) -> Envelope[EvolutionDashboard]:
@@ -417,12 +423,11 @@ def dashboard(conn: Conn, *, day: date | None = None) -> Envelope[EvolutionDashb
     v2.pop("cost", None)
     errors = []
     for r in fetch_all(conn, ERRORS_SQL, {"since": since, "until": until}):
-        s = r["selection"] or {}
         errors.append({"fixture_id": r["fixture_id"], "match": r["match"], "kickoff_at": r["kickoff_at"].isoformat(),
-                       "score": (r["outcome"] or {}).get("score"), "market": s.get("market"),
-                       "selection": s.get("selection"), "line": s.get("line"), "decision": s.get("decision"),
-                       "settled": s.get("settled"), "p_model": s.get("p_model"), "p_market": s.get("p_market"),
-                       "signals": s.get("signals") or [], "narrative": owner_text(r["narrative"])})
+                       "score": r["score"], "market": r["market"], "selection": r["selection"],
+                       "line": _number(r["line"]), "decision": r["decision"], "settled": r["settled"],
+                       "p_model": _number(r["p_model"]), "p_market": _number(r["p_market"]),
+                       "signals": r["signals"] or [], "narrative": owner_text(r["narrative"])})
     return ok(EvolutionDashboard(
         day=d, counts={k: int(v or 0) for k, v in counts.items()} | v2,
         findings=[MemoryEvent.model_validate(r | {"hypothesis": finding_text(r)})

@@ -38,34 +38,40 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from fbi.ai.calendar import day_bounds
 from fbi.ai.config import AiSettings
-from fbi.ai.pick_postmortem import stored_clv
 from fbi.ai.prompts import LEARNING_SCHEMA, LEARNING_SYSTEM, LEARNING_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.text import CLASS_ES, TIER_ES, fit, plain, selection_es, words
 from fbi.ai.usage import UsageLedger, call_json
+from fbi.intel.match_review import VERSION as MATCH_REVIEW_VERSION
+from fbi.intel.pm_facts import AI_ROLES
+from fbi.intel.pm_questions import stored_clv
 from fbi.market import closing_value
 
-VERSION = "learning-v1.1"
+VERSION = "learning-v1.2"
 """v1.1 (plan F0, defect 7): the "market" note says CLV only for the CLV. Until v1 it averaged ``ai.pick_postmortems.clv`` -
 a price move against the same bookmaker's close, margin in both prices - as "CLV medio", about four points more
-favourable than the closing-line value, and counted moves against the price beside it as if both were one measure."""
+favourable than the closing-line value, and counted moves against the price beside it as if both were one measure.
+
+v1.2 (plan F8): the notes are read from the ONE post-mortem (``intel.selection_postmortems``, ``intel.match_postmortems``), no longer from
+the two first ones (``ai.pick_postmortems`` pm-v2, ``ai.postmortems`` pm-v1.1). Same notes, same words, same selections (the ones the
+AI studied: the roles of ``AI_ROLES``); the ids in the evidence of a note written from v1.2 are the ids of ``intel.postmortems``."""
 
 PM_SQL = """
-SELECT pm.id, pm.fixture_id, pm.market_key, pm.selection, pm.line, pm.roles, pm.decision, pm.settled, pm.verdict,
-       pm.classification, pm.odds, pm.close_odds, pm.clv AS price_move, pm.p_model, pm.p_market, pm.answers,
-       pm.evidence,
+SELECT pm.id, pm.fixture_id, pm.market_key, pm.selection, pm.line, pm.roles, pm.review_decision AS decision, pm.settled,
+       pm.review_verdict AS verdict, pm.loss_class AS classification, pm.odds, pm.close_odds, pm.price_move, pm.p_model,
+       pm.p_market, pm.answers, pm.evidence,
        th.name || ' - ' || ta.name AS match
-  FROM ai.pick_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
+  FROM intel.selection_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id
   JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
- WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND pm.version = 'pm-v2'
+ WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND pm.roles && %(ai_roles)s
  ORDER BY pm.id
 """
 
 EVIDENCE_CHECKS_SQL = """
 SELECT pm.id, ev->>'tier' AS tier, ev->>'origin' AS origin, ev->>'verdict' AS verdict
-  FROM ai.postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id,
+  FROM intel.match_postmortems pm JOIN core.fixtures f ON f.id = pm.fixture_id,
        jsonb_array_elements(pm.findings->'evidence') ev
- WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s
+ WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND pm.version = %(version)s
 """
 
 SOURCES_SQL = """
@@ -178,8 +184,8 @@ def notes_for(pms: list[dict[str, Any]], checks: list[dict[str, Any]], sources: 
                                   for p in injured[:3]) + ".", len(injured),
                         {"postmortems": [int(p["id"]) for p in injured]}))
     # Two measures, two names (``fbi.market.closing_value``). CLV: the price taken at the closing fair probability,
-    # derived from the odds and closing probability each row stores. Price move: what the ``clv`` column of
-    # ``ai.pick_postmortems`` holds (the same bookmaker's close, margin in both). They are counted apart.
+    # derived from the odds and closing probability each row stores. Price move: what
+    # the post-mortem's ``price_move`` holds (the same bookmaker's close, margin in both). They are counted apart.
     clv = [v for p in approved if (v := stored_clv(p["odds"], p["answers"])) is not None]
     moved = [p for p in pms if p["price_move"] is not None]
     against = [p for p in moved if float(p["price_move"]) <= closing_value.MOVED_AGAINST]
@@ -255,9 +261,9 @@ def learn_day(conn: psycopg.Connection[Any], *, day: date, at: datetime, setting
     report = LearningReport()
     start, end = day_bounds(day)
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(PM_SQL, {"start": start, "end": end})
+        cur.execute(PM_SQL, {"start": start, "end": end, "ai_roles": sorted(AI_ROLES)})
         pms = [dict(r) for r in cur.fetchall()]
-        cur.execute(EVIDENCE_CHECKS_SQL, {"start": start, "end": end})
+        cur.execute(EVIDENCE_CHECKS_SQL, {"start": start, "end": end, "version": MATCH_REVIEW_VERSION})
         checks = [dict(r) for r in cur.fetchall()]
         cur.execute("SELECT domain, tier, results, evidence, useful, discarded, cost_usd FROM ai.source_stats "
                     "WHERE day = %s", (day,))

@@ -146,7 +146,7 @@ async def test_one_match_through_the_whole_cycle(db: psycopg.Connection[Any], se
     next_morning = datetime.combine(product_day(AT) + timedelta(days=1), datetime.min.time(), tzinfo=UTC) \
         + timedelta(hours=12, minutes=35)  # 07:35 Bogotá
     run_learning_cycle(conn, at=next_morning, settings=AiSettings(mode="shadow"))
-    pm = db.execute("SELECT verdict, answers->'win_quality'->'data'->>'win_quality' FROM ai.pick_postmortems "
+    pm = db.execute("SELECT review_verdict, answers->'win_quality'->'data'->>'win_quality' FROM intel.selection_postmortems "
                     "WHERE fixture_id = %s", (f1,)).fetchone()
     assert pm is not None and pm[0].endswith("won")
     assert db.execute("SELECT count(*) FROM ai.learning_notes WHERE day = %s", (product_day(AT),)).fetchone()[0] >= 1  # type: ignore[index]

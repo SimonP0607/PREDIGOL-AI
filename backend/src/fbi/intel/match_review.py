@@ -185,7 +185,7 @@ def analyse(conn: psycopg.Connection[Any], fixture_id: int) -> tuple[dict[str, A
             entry["logloss_market"] = round(logloss(entry["p_market"], won), 4)
         expected["selections"].append(entry)
 
-    findings: dict[str, Any] = {"evidence": [], "missing_information": [], "match_forecast": None}
+    findings: dict[str, Any] = {"evidence": [], "missing_information": [], "model_vs_market": None}
     side_of_team = {f["home_team_id"]: "home", f["away_team_id"]: "away"}
     for e in _rows(conn, EVIDENCE_SQL, {"fixture": fixture_id}):
         side = side_of_team.get(e["team_id"])
@@ -218,9 +218,9 @@ def analyse(conn: psycopg.Connection[Any], fixture_id: int) -> tuple[dict[str, A
     actual = outcome["result"]
     if actual in market and actual in model:
         diff = logloss(model[actual], True) - logloss(market[actual], True)
-        findings["match_forecast"] = {"model": "dixon_coles", "p_model_actual": round(model[actual], 4),
-                                      "p_market_actual": round(market[actual], 4), "logloss_diff": round(diff, 4),
-                                      "closer": "model" if diff < 0 else "market"}
+        findings["model_vs_market"] = {"model": "dixon_coles", "p_model_actual": round(model[actual], 4),
+                                       "p_market_actual": round(market[actual], 4), "logloss_diff": round(diff, 4),
+                                       "closer": "model" if diff < 0 else "market"}
     return outcome, expected, findings
 
 
@@ -266,7 +266,7 @@ def write_events(conn: psycopg.Connection[Any], fixture_id: int, outcome: dict[s
                     version=version, fixture_id=fixture_id, hypothesis="a regular starter was missing without any "
                     "report", evidence=m, result="unreported absence", dedup_key=f"{key}:mi:{m['side']}:{m['player_id']}"):
             n += 1
-    mf = findings.get("match_forecast")
+    mf = findings.get("model_vs_market")
     if mf is not None and abs(mf["logloss_diff"]) >= LARGE_LOGLOSS_DIFF:
         kind = "model_failure" if mf["logloss_diff"] > 0 else "model_success"
         if remember(conn, at=at, kind=kind, entity_type="model", entity_id=mf["model"], version=version,  # type: ignore[arg-type]
