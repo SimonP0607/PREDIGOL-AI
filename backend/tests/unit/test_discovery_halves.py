@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from fbi.intel import discovery
+from fbi.odds.quote_taxonomy import extracted_specs
 
 AT = datetime(2032, 9, 20, tzinfo=UTC)
 # What a good week of data looks like: every statistic of the MATCH is covered, the half-time score too.
@@ -33,7 +34,13 @@ def _stats(name: str) -> discovery.BetStats:
                               competitions={1})
 
 
-def _judge(name: str, bid: int = 900) -> tuple[str, dict[str, dict[str, object]], dict[str, object], str]:
+# discovery-v3 reads a bet by the rule that would grade it, and a rule belongs to a bet the taxonomy knows: a bet is judged under its real id
+# when the taxonomy extracts it, and under an id the taxonomy has never seen (900) when it does not - which no rule can grade
+_IDS = {s.name.lower(): s.bet_id for s in extracted_specs()}
+
+
+def _judge(name: str, bid: int | None = None) -> tuple[str, dict[str, dict[str, object]], dict[str, object], str]:
+    bid = _IDS.get(name.lower(), 900) if bid is None else bid
     return discovery.criteria_for(bid, _stats(name), catalogue={"first_seen_at": AT - timedelta(days=40)}, active={},
                                   n_fixtures=200, coverage=COVERAGE, at=AT, fixtures_by_competition={1: 160})
 
@@ -111,4 +118,30 @@ def test_coverage_of_the_match_total_never_stands_in_for_the_half() -> None:
 
 
 def test_the_version_names_the_fix() -> None:
-    assert discovery.VERSION == "discovery-v2"
+    assert discovery.VERSION == "discovery-v3"
+
+
+def test_a_bet_the_taxonomy_has_never_seen_is_never_research() -> None:
+    """discovery-v3: a new bet of the provider is first classified (taxonomy), then measured: no rule grades it, so it waits."""
+    status, criteria, metrics, proposal = _judge("Corners Over Under", 900)
+    assert criteria["settle_rule"] == {"ok": False, "value": "out_of_scope"}
+    assert status == "CANDIDATE" and "settle_rule" in proposal and metrics["settle_rule"] is None
+
+
+def test_a_bet_is_read_by_the_rule_that_grades_it_and_its_coverage_is_the_one_measured() -> None:
+    covered = {"corners_ft": 0.93, "goals_1h": 0.98, "yellow_1h": 0.35}
+    status, criteria, metrics, _ = discovery.criteria_for(
+        45, _stats("Corners Over Under"), catalogue={"first_seen_at": AT - timedelta(days=40)}, active={}, n_fixtures=200,
+        coverage={**COVERAGE, "corners": 0.2}, at=AT, fixtures_by_competition={1: 160}, outcome_coverage=covered)
+    assert criteria["settle_rule"] == {"ok": True, "value": "corners_ft@v1"} and metrics["settle_rule"] == "corners_ft@v1"
+    assert criteria["settle_data"]["ok"] is True and status == "RESEARCH", "the measured 93 % stands in for the guessed 20 %"
+    # the cards of a half: measured now, and thin (35 %): a candidate until the events cover more matches
+    status, criteria, _, _ = discovery.criteria_for(
+        155, _stats("Yellow Over/Under (1st Half)"), catalogue={"first_seen_at": AT - timedelta(days=40)}, active={}, n_fixtures=200,
+        coverage=COVERAGE, at=AT, fixtures_by_competition={1: 160}, outcome_coverage=covered)
+    assert criteria["settle_rule"]["value"] == "yellow_1h@v1" and criteria["settle_data"]["ok"] is False and status == "CANDIDATE"
+    # the corners of a half: the rule exists and says it cannot grade
+    status, criteria, _, _ = discovery.criteria_for(
+        77, _stats("Total Corners (1st Half)"), catalogue={"first_seen_at": AT - timedelta(days=40)}, active={}, n_fixtures=200,
+        coverage={**COVERAGE, "corners": 1.0}, at=AT, fixtures_by_competition={1: 160}, outcome_coverage={**covered, "corners_ft": 1.0})
+    assert criteria["settle_rule"] == {"ok": False, "value": "no_period_data"} and status == "NOT_MODELABLE"

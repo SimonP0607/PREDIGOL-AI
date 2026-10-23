@@ -293,7 +293,7 @@ una pata por competición y sin equipo compartido no hay jornada común cuya dep
 * **Champion/challenger** (sección 4) y **hipótesis**: las hipótesis de sobreconfianza (#14, #21, #26, #32, #39)
   quedan enlazadas al experimento de calibración con su resultado (`stage_history`, `outcome`).
 
-## 8. Mercados — `discovery-v2` y los 10 criterios
+## 8. Mercados — `discovery-v3` y los 10 criterios
 
 Semanal: lee el catálogo del proveedor (`market.provider_markets`), lo visto en las cuotas reales
 (`market.odds_mapping_seen`, `raw.ingestion_payloads`) y los datos de resultado disponibles (`core.fixture_team_stats`,
@@ -313,6 +313,14 @@ Las tarjetas por mitad podrían contarse desde los eventos (minuto), pero esa co
 «Yellow Over/Under (1st Half)» no lleva «card» en el nombre y caía en la regla de goles al descanso: «yellow» se lee ahora
 como tarjetas. Un registro (`intel.market_registry`) ya escrito no se reescribe: la corrección aparece en la siguiente
 corrida semanal, con su `version`.
+
+**`discovery-v3` (plan F9).** La cobertura del dato que liquida una apuesta ya no se adivina: se mide sobre
+`market.fixture_outcomes` (los partidos terminados de los últimos 90 días), medida por medida (`corners_ft`, `goals_1h`,
+`yellow_1h`…). Las tarjetas por mitad, que v2 dejaba en CANDIDATE «hasta medirlas», se miden (se cuentan desde los eventos
+clasificados). Cada apuesta se lee además con la regla que la liquidaría (`fbi.market.rules`): el criterio `settle_rule`
+dice cuál es, o por qué ninguna puede (`no_period_data`, `not_understood`…), y una apuesta que ninguna regla puede
+liquidar nunca pasa a RESEARCH. La matriz del plan §9 (`market.catalogue_runs`, `python -m scripts.markets matrix`) es la
+vista por familia de lo mismo; ver `docs/owner/CATALOGO_MERCADOS_F9.md`.
 
 ## 9. Presupuesto IA (US$180/mes)
 
