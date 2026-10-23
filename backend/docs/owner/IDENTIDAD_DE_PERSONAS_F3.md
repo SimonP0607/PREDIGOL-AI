@@ -283,7 +283,10 @@ La suite pasa de 3.094 a **3.468 pruebas** (3.427 al desplegar F3 y 41 más con 
   de 2025 los lados de la hoja están al revés; reparar la fuente es una decisión tuya (abajo).
 * **La regla no alcanza a los partidos sin estadísticas** (alrededor de uno de cada cinco recientes): ahí la hoja se toma como llega.
   Es un límite medido, no un olvido; se vigila con `fixtures_with_sheets_only` y `lone_stints` (rachas de un solo partido, que es donde
-  un cruce no corregido se notaría).
+  un cruce no corregido se notaría). *Medido después (23 oct, F8.10):* de las 18.937 rachas, solo 5.053 tienen la firma de un cruce (el partido
+  fue contra el club al que el jugador vuelve), en 288 hojas «sospechosas» de 162 partidos, y el 6 de octubre apareció una variante en la que
+  la hoja y las estadísticas coinciden y las dos traen los jugadores del rival, que esta regla no puede ver. Está en
+  `PROPUESTAS_HOJAS_CRUZADAS_Y_SUBIDAS_POR_BLOQUES.md`.
 * **El barrido diario de jugadores es el punto más pesado de F3** (ver la tabla de arriba). Si al medirlo en producción pasa de 30
   minutos o molesta a otro trabajo, se puede espaciar (semanal, con la pasada de cada 4 horas cubriendo el día a día) sin tocar
   nada más.
@@ -342,13 +345,14 @@ el 23 oct entre las 00:12 y las 00:33 UTC, en segundo plano y sin parar nada: lo
 | Internacionalidades (*caps*) | **208.399** filas (20.202 jugadores, 4.575 partidos de selecciones absolutas) · 29.055 esperando las estadísticas · **91,01 %** de las del último año con club conocido (28.746 de 31.584) |
 | Entrenadores | 18.276 personas · 54.244 carreras, **0** sin persona · 43.791 carreras recientes (38.716 con persona y club) · 5.394 carreras de clubes que no tenemos |
 | Invariantes | todas a **0**: rachas desordenadas, *caps* de partidos sin terminar, de juveniles o de otro equipo, filas de otra versión, enlaces de entrenadores a otra persona o a otro club |
-| Rachas de un solo partido (A, B, A) | **18.937**; partidos terminados con hojas y sin estadísticas: **76.857** (ver «Lo que decides tú») |
+| Rachas de un solo partido (A, B, A) | **18.937** (5.053 de ellas jugadas contra el club al que el jugador vuelve, la firma de una hoja cruzada; las demás no la tienen); partidos terminados con hojas y sin estadísticas: **76.857** (ver «Lo que decides tú») |
 
 **Dos comprobaciones con casos que se conocen.** La ficha de Lionel Messi (`show 154`) sale en orden: Barcelona (2018–2021), París
 Saint-Germain (2021–2023) e Inter Miami desde julio de 2023, con 80 entradas de selección. Y el partido Nashville SC – Inter Miami del
 1 nov 2025, que tenía su hoja de convocados cruzada, lo pone en **Inter Miami** (su hoja lo daba de local y sus estadísticas, de
-visitante). Lo que sí se ve en la misma ficha son dos rachas de un solo partido (Cruz Azul en 2023, Orlando City en 2025): son las
-hojas cruzadas **sin estadísticas** que las prueben, que no se pueden corregir al leer (es lo que cuentan las 18.937 de arriba).
+visitante). Lo que sí se ve en la misma ficha son dos rachas de un solo partido (Cruz Azul en 2023, Orlando City en 2025): ambas son
+partidos de Inter Miami contra ese club, es decir, casi con seguridad hojas cruzadas **sin estadísticas** que las prueben, que no se
+pueden corregir al leer. Son de las 5.053 de las 18.937 de arriba que tienen esa firma, no todas ellas.
 
 **Lo demás que se midió.** Gasto de IA: ≈ 5 US$ al día antes y después de `packet-v5`/`brief-v6` (331 llamadas y 5,23 US$ el 22 oct;
 381 y 4,99 el 21; 400 y 5,12 el 20); los 291 paquetes `packet-v5` construidos hasta las 00:50 UTC se revisan dentro de los topes de
@@ -393,9 +397,10 @@ huérfanos** (ningún contenedor los usa) que solo tú puedes liberar con `docke
 * **La cola de árbitros** (679 parejas): no hay prisa; las de mayor impacto están arriba. Si prefieres que las revise yo con
   evidencia (competiciones, fechas, país) y te traiga una propuesta, lo hago, pero la decisión de fusionar es tuya.
 * Si el barrido diario de jugadores debe seguir siendo diario (ver arriba).
-* **Si la entrada de datos debe orientar las hojas de convocados con las estadísticas de la misma respuesta**, de modo que un cruce
-  del proveedor no llegue nunca a la base (lo propondría para F8, junto con lo demás que se aprende de cada partido terminado). Hoy
-  se corrige al leer y los partidos sin estadísticas quedan tal cual.
+* **Qué hacer con las hojas de convocados que el proveedor entrega cruzadas** (orientarlas en la entrada con las estadísticas de la misma
+  respuesta, vigilarlas con el historial, volver a pedirlas, leerlas dadas la vuelta). Hoy se corrige al leer lo que las estadísticas
+  permiten y el resto queda tal cual. La propuesta, con lo medido en producción el 23 de octubre, está en
+  `PROPUESTAS_HOJAS_CRUZADAS_Y_SUBIDAS_POR_BLOQUES.md` (decisión 9).
 * Nada más de F3 pide una decisión tuya: lo demás son hechos guardados y lecturas a fecha.
 
 ## Lo que queda vigilado tras desplegar
@@ -413,6 +418,7 @@ huérfanos** (ningún contenedor los usa) que solo tú puedes liberar con `docke
 2. El tiempo real de los pases programados (esperado: segundos con `F3.2`) y de los barridos diarios de jugadores (21 min medidos).
 3. El gasto de IA de los primeros días con `packet-v5` / `brief-v6`.
 4. El drenaje del atraso de cuotas y la relectura de `tax-v2` (F1.1).
-5. Las cifras de `audit` de jugadores que delatan un cruce sin corregir: `lone_stints` (rachas de un solo partido) y
+5. Las cifras de `audit` de jugadores que delatan un cruce sin corregir: `lone_stints` (rachas de un solo partido; mezcla cruces con cesiones
+   no anotadas: solo la parte jugada contra el club al que el jugador vuelve es un cruce) y
    `fixtures_with_sheets_only` (partidos con hoja y sin estadísticas); y las que cuentan lo corregido (`sheets_crossed`,
    `sheets_doubtful`, `men_nowhere`).

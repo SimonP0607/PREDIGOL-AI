@@ -282,7 +282,7 @@ precio (cuántas veces coinciden y, cuando no, cuál dice «peor»). `rebuild` e
 estadística que llegó más tarde de los 3 días que mira la noche): la memoria nunca reescribe una fila, así que la diferencia se queda y se
 muestra. `priors` imprime la tabla de los pesos medidos junto a los que usa la memoria.
 
-## Tamaño y coste (estimación; se mide al terminar la carga)
+## Tamaño y coste (estimación; lo medido tras la carga está en «Resultado en producción»)
 
 Filas actuales en producción (con índices): `ai.pick_postmortems` 2.004 bytes por fila, `ai.postmortems` 1.668, `intel.postmortems` 2.206
 (104 filas), `intel.entity_memory` 711 (5.624 filas), `ai.memory_events` 602 (13.197 filas).
@@ -296,8 +296,8 @@ Filas actuales en producción (con índices): `ai.pick_postmortems` 2.004 bytes 
 | **Total** | | | **≈ 1,3–1,9 MB al día (unos 550 MB al año)** |
 
 Es menos del 0,1 % del crecimiento diario actual del disco (+3.535 MB al día); el aviso de disco que ya existía no cambia. La carga inicial
-(15 días de post-mortems y la memoria del 13 de octubre a ayer) se estima en pocos minutos de cómputo y alrededor de 20–30 MB. Coste en
-proveedor: **0 peticiones**. Coste en IA: **ningún gasto nuevo** (las narrativas opcionales son las que `pm-v2` ya pedía: ≈ 0,4 US$ al
+(15 días de post-mortems y la memoria del 13 de octubre a ayer) se estimó en pocos minutos de cómputo y alrededor de 20–30 MB; **midió ≈ 3
+minutos y ≈ 18 MB** (producción, 23 oct). Coste en proveedor: **0 peticiones**. Coste en IA: **ningún gasto nuevo** (las narrativas opcionales son las que `pm-v2` ya pedía: ≈ 0,4 US$ al
 mes entre todas las de los post-mortems, y a la baja).
 
 
@@ -343,9 +343,108 @@ prueba que amarra los documentos al código, que suma 4): ver la primera fila de
 
 ## Resultado en producción
 
-**Pendiente: todavía no se ha desplegado.** Se anota aquí al terminar F8.10: la copia verificada y la prueba de restauración, el
-despliegue de la 0091, la carga de 15 días de post-mortems, la reconstrucción de la memoria desde el 13 de octubre, las auditorías, los
-tamaños reales y las comprobaciones de la API en producción.
+**Desplegado el 23 oct 2026, 16:41:56 UTC, en SHADOW: migración 0091, backend `b0ec26fd7386`, web `8b88f950a07e`** (sobre `plan/f7`, rama
+`plan/f8`). Todo lo de abajo salió de producción y de lo que dejaron las cargas; las horas son UTC.
+
+**Cómo fue**
+
+| Hora | Paso | Resultado |
+|---|---|---|
+| 16:08–16:10 | El paquete (228.156 bytes) al servidor | sha256 igual en los dos extremos; `SHA256SUMS` y `SCRIPTS.sha256` correctos; el servidor estaba en F7 (migración 0090, `db476d5bd534` / `b5136bc5f0c3`) |
+| 16:09 | Mediciones previas (solo lectura) | `intel.postmortems` 104 filas (`pm-v3` 78, `pm-v5` 26; 224 kB), `intel.entity_memory` 5.624 (3,9 MB), `ai.memory_events` 13.197; **ninguna** transacción abierta; la salud solo avisaba del disco (57 %, +3.544 MB al día) |
+| 16:10:28–16:18:45 | Copia verificada | 1.206.801.634 bytes en 468 s (sha256 `8eebbfd70194e6ab…`, revisión 0090) |
+| 16:18:45–16:31:02 | Prueba de restauración | **superada en 737 s** |
+| 16:32:13–16:41:56 | `predigolctl deploy` (**9 min 43 s**) | comprobaciones previas (hashes, árbol limpio, hora, calma), copia propia de 1.208.075.889 bytes en 452 s (sha256 `34888ce58991efbc…`), migración 0090 → 0091 **a la primera**, permisos, reinicio y salud en verde (solo el aviso de disco de siempre) |
+| 16:42 | Humo por la dirección pública | `/health` ok, `/login` 200, HSTS, `/auth/me` 401, `/docs` 404, `/matches/1/knowledge` 401, las dos rutas de memoria 401 sin sesión y **`/admin/memory` 200** (la página nueva sirve) |
+
+La vigilancia de bloqueos (`lockwatch`, una muestra cada 3 s sobre `core.fixtures`, `raw.ingestion_payloads`, `intel.postmortems` e
+`intel.entity_memory`) **no registró ninguna espera** en todo el despliegue y las cargas: las únicas retenciones que anotó fueron las de
+nuestros propios ensayos y cargas sobre las dos tablas nuevas.
+
+**Verificación de solo lectura justo después** (guion `step_verify.sh`): revisión `0091`; los seis objetos nuevos presentes (las tres tablas, las
+dos vistas y el índice único por selección y versión, más el índice por partido); las **15 columnas** nuevas de `intel.postmortems`;
+`decision_id` admite nulo; `confidence` y `evidence_ref` en `intel.entity_memory`; permisos como se esperaban (la API solo lee; el worker lee y
+escribe, y usa las secuencias); los **cuatro disparadores de solo-anexar** activos; las 104 filas de post-mortems y las 5.624 de memoria
+**intactas**; modelos solo `@mc9a7bec97ca` (F8 no toca el código de modelos); `packet-v8`: 3.353 paquetes en 6 horas, 6.393 tokens
+aproximados de media (sin cambio: F8 no toca ningún paquete); **0 líneas de error** en el worker y la API en las últimas 3 horas; ninguno de
+los interruptores de los archivos de entorno cambió (`FBI_AI_LEGACY_POSTMORTEMS` y los de los usuarios, sin definir); auditoría nocturna de fuga
+sin cambios; contador de peticiones al proveedor 9.959 de 60.000 a esa hora (F8 no pide nada); gasto de IA del 23 oct hasta las 16:43: 5,81
+US$, de ellos 0,014 US$ del propósito `postmortem` (22 llamadas, lo que `pm-v2` ya gastaba).
+
+**La carga de 15 días de post-mortems** (`python -m scripts.postmortems build --days 15`):
+
+* *Ensayo en seco* (16:43:37, 2 min 42 s; escribe en una transacción que se deshace al final): 2.628 selecciones en el universo, 2.604 que se
+  escribirían, 1.180 post-mortems de partido, 136 eventos de memoria.
+* *Carga real* (**16:48:53–16:51:49**, sin errores; 7 rondas de hasta 400 selecciones con un commit cada una, 99 s, y después los partidos):
+  **idéntica al ensayo**. **2.604 selecciones** (896 acertadas, 1.649 perdidas, 59 nulas) y **1.180 post-mortems de partido**, **0 diferencias**
+  entre el resultado que usa el post-mortem y el que liquidó la capa de decisión por su cuenta.
+* *Quién las miró:* solo la IA 2.514, las dos partes 19, solo la capa de decisión 71 (la capa de decisión juzga una fracción de lo que mira la IA).
+* *Veredicto de la revisión:* `caution_lost` 711, `approved_lost` 564, `approved_won` 347, `caution_won` 345, `rejected_correctly` 335,
+  `rejected_would_have_won` 171, `push` 59, `unreviewed_lost` 39, `unreviewed_won` 33.
+* *Clase de las 1.649 pérdidas:* varianza normal 420, error de modelo 389, de contexto 377, de ejecución 249, de mercado 162, de datos 52.
+* *Suerte frente a calidad del precio* (banda de ±1 % del CLV): `ERROR` 1.303 (perdió con un precio malo), `SUERTE` 729 (ganó con un precio
+  malo), `VARIANZA` 346 (perdió con un precio bueno o neutro), `MERECIDO` 167 (ganó con un precio bueno o neutro), `NULO` 59. **Ojo con cómo
+  leerlo:** el CLV se mide contra el consenso sin margen y un precio de una casa lleva su margen, así que ≈ 80 % de los precios (2.032 de las
+  2.545 selecciones con resultado) salen «malos» solo por eso (ver la decisión 16); `ERROR` no quiere decir que el modelo fallara.
+* *De dónde salió el precio de cada selección:* de la revisión 2.401, del ítem que vio una persona 117, de la decisión 86 (el orden fijado
+  en el diseño). Las mismas selecciones cotizadas por dos partes: ítem y revisión 113 pares, misma cuota en el 27,4 %, diferencia media del
+  2,7 %; decisión e ítem 4 pares (25 %, 6,1 %); decisión y revisión 19 pares (100 % iguales). (La medición de antes de F8 dio el 31 % entre
+  ítem y revisión y el 36 % entre decisión y revisión, con una diferencia media de 2,6–3,7 %: ahora ítem y revisión repiten la cifra (27 %,
+  2,7 %) y decisión y revisión salen iguales en las 19 parejas que hay, una muestra demasiado corta para concluir nada.)
+* *Cobertura:* **99,1 %** de las 2.628 (las 24 que esperan son partidos sin marcador reglamentario o mercados sin regla de liquidación: 7 el 10
+  oct, 9 el 14 y 8 el 18). Día a día, todos los demás al 100 %.
+* *Una segunda pasada sobre los últimos 7 días* (lo que hará cada noche) encuentra **1.273 de 1.281 ya escritas**, 0 por escribir y 0 diferencias
+  de liquidación: la carga es idempotente en producción.
+
+**La reconstrucción de la memoria** (`python -m scripts.memory rebuild`, del 13 al 22 de octubre):
+
+* *Ensayo en seco:* 10 días, 10.180 filas en 27 s; la tabla crecería 7,3 MB. *Real* (16:52:24, **24 s**): **10.180 filas en 7.095 series**, la
+  tabla creció 6,2 MB. Por día: 710, 871, 685, 792, 2.888, 2.006, 504, 605, 515 y 604 (los fines de semana con más partidos).
+* *Auditoría* (`audit --sample 100 --seed 1`): se recalcularon desde cero 100 de las 7.095 series, día por día: **100 coinciden, 0 distintas**.
+* *Estado:* «el paso nocturno está escribiendo: el linaje ha empezado»; la próxima noche (24 oct, 12:50 UTC) escribe la fila del 23. Confianza
+  media por clase, que es lo que enseñará la consola con solo diez días de historia: entrenador × perfil 0,113; jugador × disponibilidad 0,221;
+  competición × córners 0,146, × tarjetas 0,151, × xG 0,147; equipo × córners 0,085, × tarjetas 0,035, × xG 0,123; árbitro × disciplina 0,052.
+  Es lo esperado: **la confianza sube sola con los días**, no hay nada que arreglar (decisión 17).
+* La cobertura por día (`coverage --days 15`): cada partido que informa de córners, tarjetas o xG da una fila a cada uno de sus dos equipos
+  (p. ej. 22 oct: 42 partidos, 84 filas de córners, 84 de tarjetas y 84 de xG).
+
+**La página «Memoria» y su API** (la aplicación real dentro del contenedor de operaciones, con una cuenta de administrador inventada y la
+conexión a la base en solo lectura, como en F7; `api_http_check_f8.py`): **0 fallos de 39 comprobaciones**. Las 500 primeras entidades salen
+con confianza entre 0 y 1 y con la evidencia que las sostiene; las filas de versiones anteriores dicen que no tienen ninguna; para córners,
+tarjetas y xG la confianza es `n_eff / (n_eff + 15 / 38 / 10)` en todos los equipos y `own_shrunk = confianza × own_rate + (1 − confianza) × prior`;
+el historial de tres equipos distintos sale por días en orden; los post-mortems de los 8 últimos días (1.314) salen validados por el contrato
+(veredicto de la lista cerrada, clase de pérdida solo en una pérdida, CLV y movimiento de precio aparte); las otras tres rutas de la página
+responden; **las cinco rutas dan 403 a un usuario**. Media de 0,28 s por respuesta (máximo 2,0 s: la lista de 500 entidades pesa 1,3 MB, que
+es lo más grande que pide la consola).
+
+**Match Knowledge tras el cambio** (`scripts.match_knowledge audit --sample 200 --seed 1`; la regla de la capa 9 cambió en F8): 38.107 de
+38.110 partidos (99,99 %) con construcción, 0 con el hash de contenido mal, 7 de la muestra desactualizados porque sus entradas cambiaron
+(el trabajo del worker, cada 30 min, los rehace solo) y 0 que hoy dijeran otra cosa; resultado: `audit: ok`. La capa 9 (post-mortem) figura
+«ausente» en los 200 partidos de la muestra, que son los más recientes: un partido sin selecciones no tiene post-mortem y a los demás
+aún no les toca (tres horas después del inicio, en el ciclo de las 12:35); el trabajo del worker la rellena cuando aparece.
+
+**Tamaños reales** (con índices, justo tras la carga) frente a la estimación de arriba:
+
+| Tabla | Filas | Tamaño | Por fila | Estimado |
+|---|---|---|---|---|
+| `intel.postmortems` | 104 + 2.604 | 9,07 MB (antes 224 kB) | ≈ 3,5 KB (las nuevas) | 2,2 KB |
+| `intel.match_postmortems` | 1.180 | 1,19 MB | ≈ 1,0 KB | 1,7 KB |
+| `ai.postmortem_narratives` | 0 | 24 kB | — | ≈ 1 KB |
+| `intel.entity_memory` | 5.624 + 10.180 | 11 MB (antes 3,9 MB) | ≈ 780 B (las nuevas) | 0,6–0,9 KB |
+
+El crecimiento diario sale de **≈ 1,5 MB** (≈ 0,6 de selecciones, ≈ 0,08 de partidos y ≈ 0,8 de memoria, a ≈ 1.000 filas al día): dentro de lo
+estimado (1,3–1,9) pero con los post-mortems más pesados y la memoria más ligera de lo previsto. El disco no se movió (57 %, 84 GB libres; el aviso
+de «90 % en ≈ 18 días» es el de siempre). Peticiones al proveedor: **0**. IA: **ningún gasto nuevo**.
+
+**Cobertura del feed de calendarios de F4**, medida de paso con la misma sesión (vigilancia que F4 dejó abierta; solo lectura): de los **914
+partidos de los próximos 7 días, 908 (99,3 %) tienen el calendario completo de los dos equipos**, 6 el de un solo lado (`unconfirmed_match`) y
+ninguno sin calendario; en los 6.246 partidos jugados desde el 24 de agosto el calendario completo es del 74,5 % (lo demás es historia que el
+feed no había leído a tiempo: 2.349 lados «no leído después del partido» y 98 sin partido anterior). El 14,1 % de los lados jugó en los 14
+días previos un partido fuera de las competiciones que seguimos, y el descanso de producción estaba corto en 1 día o más en el 8,0 %.
+
+**Lo que no se puede ver todavía** (se anota aquí cuando llegue): el ciclo de aprendizaje de la IA de mañana (24 oct, 12:35 UTC) y el paso
+nocturno (12:50) serán los primeros en escribir `pm-v6` y `memory-v4` por su cuenta; la auditoría nocturna de fuga de las 12:50 será la
+segunda con `leak-audit-v6` y la primera con material de F4, F6 y F7; y el gasto de IA de un día completo con `packet-v8`.
 
 ## Verificación de los criterios del plan
 
@@ -358,7 +457,7 @@ tamaños reales y las comprobaciones de la API en producción.
 | Memoria con `confidence` (por muestra y recencia) y `evidence_ref` | sí; una fila de antes dice «ninguna» y se sigue leyendo | `test_the_confidence_is_nothing_without_evidence_one_half_at_k_and_never_certainty`, `test_a_piece_of_evidence_loses_half_its_weight_after_the_half_life`, `test_every_row_the_memory_writes_says_how_far_to_trust_it`, `test_the_decision_rows_name_their_decisions_and_the_post_mortem_that_judged_each`, `test_a_row_rests_on_decisions_or_on_matches_never_on_both`, `test_the_row_of_a_version_before_memory_v4_has_no_confidence_and_is_still_read` |
 | Aspectos nuevos: córners, tarjetas y goles esperados del equipo, con contracción a la media de la liga | sí, con los pesos **medidos** (15 / 38 / 10) y la confianza igual a la parte propia de la cifra | `test_a_team_with_two_matches_is_close_to_its_league_and_one_with_many_is_itself`, `test_a_team_that_played_in_two_leagues_is_shrunk_to_the_mean_of_both_weighted_by_its_matches`, `test_the_confidence_of_a_figure_is_the_share_of_it_that_is_the_team_itself_and_the_rest_is_its_league`, `test_the_weights_are_the_ones_measured_on_the_stored_matches_not_the_first_guess`, `test_a_day_of_matches_writes_the_figures_of_its_teams_and_its_league_each_with_its_confidence_and_its_matches` |
 | Árbitro por ID y entrenador por ID | sí: dos escrituras de un mismo nombre son una persona; quien el proveedor nombra sin persona se guarda como `p<id del proveedor>`; una alineación sin entrenador no es un entrenador | `test_one_person_is_one_entity_whatever_the_spellings`, `test_a_merge_rebooks_the_days_inside_the_late_window_to_the_right_person`, `test_a_coach_is_one_entity_by_his_id_whatever_his_name_is_spelled_and_one_the_provider_names_without_a_person_keeps_the_providers_id` |
-| La memoria nueva empieza el 13 de octubre | el constructor está probado (día a día, se puede cortar y repetir, idempotente, y el paso nocturno **espera** a que exista el linaje); **en producción: pendiente (F8.10)** | `test_the_lineage_is_built_day_by_day_from_its_first_day_and_a_second_run_finds_it_built`, `test_a_rebuild_with_a_budget_stops_between_days_and_the_next_run_goes_on`, `test_a_rebuild_commits_each_day_as_it_goes`, `test_the_nightly_step_waits_for_the_lineage_and_continues_it`, `test_the_first_day_of_the_lineage_needs_no_rows_before_it` |
+| La memoria nueva empieza el 13 de octubre | el constructor está probado (día a día, se puede cortar y repetir, idempotente, y el paso nocturno **espera** a que exista el linaje); **en producción: construida el 23 oct a las 16:52 UTC** (13→22 oct, 10.180 filas en 7.095 series, 24 s; auditoría de 100 series: 100 coinciden) | `test_the_lineage_is_built_day_by_day_from_its_first_day_and_a_second_run_finds_it_built`, `test_a_rebuild_with_a_budget_stops_between_days_and_the_next_run_goes_on`, `test_a_rebuild_commits_each_day_as_it_goes`, `test_the_nightly_step_waits_for_the_lineage_and_continues_it`, `test_the_first_day_of_the_lineage_needs_no_rows_before_it` |
 | `ai_learn` deja de producir `pm-v1` y `pm-v2`; `intel_nightly` ampliado | sí: ambos ciclos estudian lo mismo, el primero que corre escribe y el otro lo encuentra hecho; un fallo del post-mortem no frena el resto del aprendizaje | `test_the_learning_cycle_studies_each_selection_and_each_match_once_and_leaves_the_frozen_writers_alone`, `test_a_post_mortem_that_fails_does_not_stop_what_the_rest_of_the_cycle_learns`, `test_the_nightly_step_studies_what_the_cycle_left_and_finds_the_rest_done` |
 | Administrador: la memoria en un solo lugar (hoy está en 4) | sí: la página `/admin/memory`; las pestañas y paneles de los otros cuatro sitios desaparecieron | `MemoryEntities.test.tsx` (6), `memoryText.test.ts` (13) y la prueba de extremo a extremo «Memory: the entities with their version, confidence and evidence, and every other kind of memory in one page» |
 | Una migración, y se deshace | sí: la 0091 es aditiva, deja intactas las filas de antes y, al deshacerla, retira lo que escribió `pm-v6` y `memory-v4` | `test_0091_extends_the_postmortems_keeps_the_old_row_and_comes_back_out` |
@@ -431,12 +530,26 @@ tamaños reales y las comprobaciones de la API en producción.
 
 ## Lo que decides tú
 
-* **16. ¿Contra qué cierre se mide el valor de un precio (el CLV)?** Hoy: el último consenso del mercado sin margen antes del inicio
-  (mediana ≈ 175 minutos antes), que es el que ya usaba el resto del sistema. La alternativa es el último precio del propio proveedor en la
-  misma casa (mediana ≈ 85 minutos antes, en el 72 % de los partidos y con el margen de la casa dentro: sería un movimiento de precio, no un
-  CLV). `python -m scripts.postmortems closes --days 15` los mide sobre las mismas selecciones, y tras cargar los 15 días anoto aquí el
-  resultado. Mi sugerencia: **mantener el consenso** (cubre todo y es comparable con la historia) y mirar el movimiento aparte, que ya se
-  guarda. Si cambiara, sería una versión nueva del post-mortem (`pm-v7`), nunca un cambio silencioso.
+* **16. ¿Contra qué cierre se mide el valor de un precio (el CLV)?** Hoy: el último consenso del mercado sin margen antes del inicio, que es
+  el que ya usaba el resto del sistema. La alternativa es el último precio del propio proveedor en la misma casa (con el margen de la casa
+  dentro: sería un movimiento de precio, no un CLV). **Medido** con `python -m scripts.postmortems closes --days 15` sobre las 2.604
+  selecciones de `pm-v6` (23 oct):
+  1. *El consenso* existe para el 100 % y se captura a una mediana de **175 minutos** del inicio (p10 174, p90 179; el 99 % a más de dos horas):
+     es el precio de las tres horas antes, **no el cierre** (el código lo dice en `closing_reference.py` y cada post-mortem lo guarda).
+  2. *El último precio de la misma casa* existe para el **91,6 %** (2.384) y está a una mediana de **71 minutos** del inicio (p10 15, p90
+     208).
+  3. *En las 2.384 que tienen los dos:* CLV medio **−3,4 %**, movimiento de precio medio **+2,0 %**, correlación 0,30. La diferencia (5,4
+     puntos) es el margen de cierre de las casas: contra un consenso sin margen **cualquier** precio de una casa sale negativo (el
+     `p_cierre × cuota_cierre` mediano es 0,96, es decir, un margen de ≈ 4 %). Con la misma banda de ±1 % las dos etiquetas de calidad del
+     precio coinciden solo en el 26,9 %, y donde discrepan el CLV dice «peor» en el 93,6 % de los casos. **Consecuencia práctica:** con el
+     CLV tal cual, ≈ 80 % de los precios salen «malos», así que `ERROR` y `SUERTE` miden casi lo mismo que «el precio llevaba margen».
+  Opciones: (a) **mantener el consenso** y leer el veredicto de precio como relativo (comparar selecciones entre sí, no con el cero);
+  (b) **un cierre más cercano al inicio**: construir el consenso también con las capturas de la última hora (el 91,6 % tiene un precio del
+  proveedor a ≈ 71 minutos), sin peticiones nuevas pero cambiando la definición de todo lo que hoy usa el consenso (`decision_outcomes.clv`,
+  la ventaja de la línea, la puerta *walk-forward*, la puntuación y la memoria); (c) **seguir con el consenso pero centrar la banda en el
+  margen** (comparar justo con justo: quitar a la cuota tomada el margen de su casa), que cambia la banda y no el cierre. Cualquiera sería
+  una versión nueva del post-mortem (`pm-v7`), nunca un cambio silencioso, y el movimiento de precio ya se guarda aparte. Mi sugerencia:
+  **(a) ahora** y, cuando F12 (aprendizaje) empiece a usar `ERROR`/`SUERTE` para algo, **(c)** antes de usarlos.
 * **17. ¿Entra la memoria en el paquete de la IA, y hasta dónde llega su historia?** (a) **No, por ahora** (lo que queda al desplegar): se ve
   en la consola, la usan el informe diario, las notas y los patrones, y no cuesta nada más. (b) **Sí**: un resumen corto por equipo, árbitro
   y entrenador con su confianza; sube los tokens de cada paquete y exige antes la regla `memory_known` en la auditoría de fuga y unas
@@ -447,11 +560,15 @@ tamaños reales y las comprobaciones de la API en producción.
   cambiarlos sería una versión nueva de la memoria. Es informativo.
 * **¿Quieres de vuelta el texto en prosa por partido?** (≈ 10 llamadas al día, ≈ 0,006 US$ al día.) Hoy no se pide: el partido se revisa
   por reglas. Si lo echas en falta, es una narrativa más con el mismo tope.
-* Nada más de F8 pide una decisión tuya. (Las dos propuestas que F3 dejó prometidas para esta fase —reparar la entrada de las alineaciones
-  cruzadas por el proveedor y subir `fixtures_sync` por bloques— son las decisiones 9 y 11 del estado del plan; las escribo al terminar
-  F8.10.)
+* Nada más de F8 pide una decisión tuya. (Las dos propuestas que F3 y F4 dejaron prometidas para esta fase —reparar la entrada de las
+  alineaciones cruzadas por el proveedor y subir `fixtures_sync` por bloques— son las decisiones 9 y 11 del estado del plan y están
+  escritas, con lo que se sabe y lo que falta medir, en `PROPUESTAS_HOJAS_CRUZADAS_Y_SUBIDAS_POR_BLOQUES.md`.)
 
 ## Lo que queda vigilado tras desplegar
+
+*Primera lectura (23 oct, 16:42–16:57 UTC), en «Resultado en producción»: los puntos 1, 2 y 4 van bien (cobertura 99,1 %, memoria auditada
+100 de 100, tamaños medidos) y el 5 no cambió; el 3 y la parte nocturna del 2 esperan al ciclo de las 12:35 y al paso de las 12:50 UTC del 24
+de octubre.*
 
 1. `python -m scripts.postmortems coverage --days 15`: que cada día tenga estudiadas casi todas las selecciones de su universo (menos las
    de las últimas tres horas, que esperan), y `status`: las filas por versión, fuente y veredicto, y cuántas veces importa el orden de

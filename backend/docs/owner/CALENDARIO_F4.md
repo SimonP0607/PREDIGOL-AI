@@ -218,8 +218,16 @@ escribió antes: siguen siendo ciertos y no se tocan.
 **Paquetes de IA:** ya salen `packet-v7` (23 en las primeras horas). El calendario de **ambos** lados está completo solo en 1 de ellos, y es lo
 esperado: el feed lleva 63 equipos leídos; sube con cada pasada y se mira en el punto 2 de «Lo que queda vigilado».
 
-**Lo que sigue abierto** (no se puede saber todavía): la cobertura de calendarios completos de la semana (`coverage`), el reparto de motivos de
-«parcial» y la regla `calendar_known` de la auditoría nocturna de fuga, que corre por primera vez a las ≈ 12:50 UTC con paquetes `packet-v7`.
+**La cobertura, leída por primera vez** (23 oct, por la tarde, de paso durante el despliegue de F8; solo lectura): de los **914 partidos de los
+próximos 7 días, 908 (99,3 %) tienen el calendario completo de los dos equipos**, 6 el de un solo lado (`unconfirmed_match`: la lista del equipo no
+confirmó ese partido) y ninguno sin calendario. En los 6.246 partidos jugados desde el 24 de agosto el calendario completo es del 74,5 %: lo demás
+es historia que el feed no había leído a tiempo (2.349 lados «no leído después del partido» y 98 sin partido anterior), que no se recupera hacia
+atrás. El 14,1 % de los lados jugó en los 14 días previos un partido fuera de las competiciones que seguimos, y el descanso que usaba producción
+estaba corto en 1 día o más en el 8,0 %.
+
+**Lo que sigue abierto** (no se puede saber todavía): cómo se estabiliza esa cobertura durante la semana, el tamaño de `core.calendar_matches` y
+la regla `calendar_known` de la auditoría nocturna de fuga con el día 23 completo (la de mañana, 24 oct, ≈ 12:50 UTC): la del 23 solo vio la última
+hora y pico del día 22 con paquetes `packet-v7` (0 violaciones).
 
 ## Verificación de los criterios del plan
 
@@ -313,6 +321,8 @@ cambiaron sus entradas desde el último de esa versión, así que **no se espera
    pasada y la reserva del vivo se respetan.
 2. `scripts.calendar_features coverage`: la parte de partidos de la semana con calendario completo en los dos lados y el reparto de motivos de
    «parcial» (`never_fetched` debe bajar a casi cero en ~13 horas; `unconfirmed_match` indica partidos que la lista no confirmó).
+   *Primera lectura (23 oct, por la tarde, de paso durante el despliegue de F8):* **908 de 914 (99,3 %)** de los partidos de los próximos 7 días con
+   el calendario completo de los dos lados; los 6 restantes son `unconfirmed_match`; ninguno sin calendario. Se vuelve a mirar mañana y a los 7 días.
 3. El tamaño de `core.calendar_matches` la primera semana y que el número de filas nuevas por lectura se estabiliza (solo cambios).
 4. La auditoría nocturna de fuga con `calendar_known`: `checked` sube con los paquetes que citan el calendario y `violations` queda en 0.
    *Primera lectura (23 oct, auditoría de las 12:50 UTC sobre el día 22):* `calendar_known` revisó 2.638 comprobaciones (solo los paquetes de la
