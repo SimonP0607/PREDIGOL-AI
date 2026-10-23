@@ -14,14 +14,18 @@ carries its own lock:
 The cards by period come, through the view, from the events of the match once F7 has classified them: they are outcomes too, and they enter
 here as numbers of a match that is over, never as a fact about a match that is not.
 
-A count of cards is read only when it is COMPLETE (23 Oct 2026, corrected the same day). Where a match has no team statistics and its cards come
-from the events alone, the count is incomplete (22,427 matches of the followed competitions: 3.7 cards a match against 5.1-5.9 where the statistics
-back them up) and for the clubs' friendlies the provider reports almost no card at all (83.5 % of 4,840 matches at zero). So a card measure comes
-through only when the match has team statistics that give its yellow cards - read from them directly - or, when the events carry it, only where
-the yellow cards of the events and of the statistics agree team by team. The first version of this rule asked the red cards to agree as well, and
-that is a selection: the provider leaves a red card EMPTY when there was none (of 15,427 matches whose statistics left both reds empty, the events
-show a red in 0.0 %), so asking for a red to be reported kept the matches that had one (58 % of them) - a history of 5.5-6.3 cards a match until
-August 2026, 4.0-4.3 after the provider began to write the zeros. The cards counted as lines add the reds of the statistics, an empty one being none.
+A count of cards is read only when it is COMPLETE (23 Oct 2026, corrected twice the same day). Where a match has no team statistics and its cards
+come from the events alone, the count is incomplete (22,427 matches of the followed competitions: 3.7 cards a match against 5.1-5.9 where the
+statistics back them up) and for the clubs' friendlies the provider reports almost no card at all (83.5 % of 4,840 matches at zero). So the yellow
+cards, and the cards counted as lines, are read from the TEAM STATISTICS - the number the provider gives for the whole match - for every match
+that has them and was not decided in extra time (the provider does not say whether its total includes the extra half hour); the events only
+split a count by period and are not asked for a full-time total. Two filters that look safer were selections and were dropped: asking the
+red cards to be REPORTED (the provider leaves a red EMPTY when there was none - of 15,427 matches whose statistics left both reds empty the events
+show a red in 0.0 % - so only the matches that had one were kept: a history of 5.5-6.3 cards a match until August 2026 and 4.0-4.3 after the
+provider began to write the zeros, the population being 4.3-4.5) and asking the events to AGREE with the statistics (a match with more cards
+has more chances to disagree, so the agreeing ones are lighter than the rest: 4.0 a match against 4.3). The cards counted as lines add the reds of
+the statistics, an empty one being none. A measure the statistics cannot give (reds alone, a card measure by period) still needs events whose yellow
+cards agree with the statistics team by team.
 """
 
 from __future__ import annotations
@@ -41,8 +45,8 @@ _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 CARD_PREFIXES: Final = frozenset({"cards", "yellow", "red"})
 """The measures made of cards: their columns start with one of these words."""
 STATS_MEASURES: Final = frozenset({"yellow_ft", "cards_lines_ft"})
-"""The card measures that the team statistics can give by themselves: the yellow cards are the statistic, and the cards counted as lines add
-the reds, which the provider leaves empty when there was none."""
+"""The card measures that the team statistics give by themselves: the yellow cards are the statistic, and the cards counted as lines add the
+reds, which the provider leaves empty when there was none."""
 STATS_JOIN: Final = (
     "LEFT JOIN LATERAL (SELECT t.yellow_cards, t.red_cards FROM core.fixture_team_stats t WHERE t.fixture_id = o.fixture_id "
     "AND t.team_side = 'home' ORDER BY (t.source = 'api-football') DESC LIMIT 1) sh ON true "
@@ -77,12 +81,13 @@ def needs_corroboration(measure: str) -> bool:
 
 
 def count_expressions(measure: str) -> tuple[str, str]:
-    """The SQL of the (home, away) count of ``measure``: the column of the view, except for the cards counted as lines of a match with no
-    events, which are the yellow cards of the statistics plus the reds (an empty red being none)."""
+    """The SQL of the (home, away) count of ``measure``: the column of the view, except the yellow cards and the cards counted as lines, which are
+    the team statistics' (the cards as lines add the reds, an empty red being none)."""
     home_col, away_col = columns_of(measure)
+    if measure == "yellow_ft":
+        return "sh.yellow_cards", "sa.yellow_cards"
     if measure == "cards_lines_ft":
-        return (f"CASE WHEN o.cards_source = 'events' THEN o.{home_col} ELSE sh.yellow_cards + COALESCE(sh.red_cards, 0) END",
-                f"CASE WHEN o.cards_source = 'events' THEN o.{away_col} ELSE sa.yellow_cards + COALESCE(sa.red_cards, 0) END")
+        return "sh.yellow_cards + COALESCE(sh.red_cards, 0)", "sa.yellow_cards + COALESCE(sa.red_cards, 0)"
     return f"o.{home_col}", f"o.{away_col}"
 
 
@@ -92,11 +97,10 @@ def complete_condition(measure: str) -> str:
     known = f"o.{home_col} IS NOT NULL AND o.{away_col} IS NOT NULL"
     if not needs_corroboration(measure):
         return known
-    events = (f"(o.cards_source = 'events' AND {known} AND sh.yellow_cards IS NOT NULL AND sa.yellow_cards IS NOT NULL "
-              "AND o.yellow_ft_home = sh.yellow_cards AND o.yellow_ft_away = sa.yellow_cards)")
-    if measure not in STATS_MEASURES:
-        return events
-    return f"((o.cards_source = 'stats' AND sh.yellow_cards IS NOT NULL AND sa.yellow_cards IS NOT NULL) OR {events})"
+    if measure in STATS_MEASURES:
+        return "(NOT o.extra_time AND sh.yellow_cards IS NOT NULL AND sa.yellow_cards IS NOT NULL)"
+    return (f"(o.cards_source = 'events' AND {known} AND sh.yellow_cards IS NOT NULL AND sa.yellow_cards IS NOT NULL "
+            "AND o.yellow_ft_home = sh.yellow_cards AND o.yellow_ft_away = sa.yellow_cards)")
 
 
 def latest_kickoff(cutoff: datetime) -> datetime:
