@@ -49,7 +49,7 @@ def upcoming(w: World, referee: str | None, referee_country: str | None = None, 
 
 def packet(w: World, fixture_id: int, at: datetime = AT) -> dict[str, Any]:
     built = PacketBuilder(w.db).build(fixture_id, at=at)
-    assert built is not None and built.version == "packet-v7"
+    assert built is not None and built.version == "packet-v8"
     return built.content
 
 

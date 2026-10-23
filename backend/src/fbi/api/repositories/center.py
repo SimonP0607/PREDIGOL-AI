@@ -180,21 +180,20 @@ SELECT f.id AS fixture_id, f.kickoff_at,
  ORDER BY f.kickoff_at DESC LIMIT 6
 """
 
-H2H = """
-SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition, th.name AS home, ta.name AS away,
-       r.goals_home, r.goals_away
+H2H_SITUATION = """
+SELECT c.id AS competition_id, c.competition_type AS competition_kind, c.provider_league_id,
+       (f.is_neutral OR c.neutral_venue OR COALESCE(k.neutral, false)) AS is_neutral
   FROM core.fixtures f
-  JOIN core.fixture_results r ON r.fixture_id = f.id
-  JOIN core.teams th ON th.id = f.home_team_id
-  JOIN core.teams ta ON ta.id = f.away_team_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
- WHERE ((f.home_team_id = %(home)s AND f.away_team_id = %(away)s)
-     OR (f.home_team_id = %(away)s AND f.away_team_id = %(home)s))
-   AND f.status_group = 'finished' AND f.kickoff_at < %(ko)s
-   AND r.goals_home IS NOT NULL AND r.goals_away IS NOT NULL
- ORDER BY f.kickoff_at DESC LIMIT 8
+  LEFT JOIN core.fixture_venue_class k ON k.fixture_id = f.id AND k.rule_version = %(rule)s
+ WHERE f.id = %(f)s
 """
+"""What the head-to-head weighs a meeting against (``fbi.intel.h2h``): the competition of the match, its kind, and whether it is
+played on neutral ground by the rule in force. The meetings themselves are read by ``fbi.intel.h2h`` - the same function the AI
+packet reads - not by a query of the page's own: until plan F6 the page counted the final score (extra time in) of the last eight
+matches stored as finished, and the packet the 90-minute score of the last eight with a result, so a 2-2 that went to penalties was
+a draw in one and a win in the other."""
 
 LIVE_STATES = """
 SELECT observed_at, 'fixture_feed' AS source, status_short AS status, elapsed, extra, goals_home, goals_away

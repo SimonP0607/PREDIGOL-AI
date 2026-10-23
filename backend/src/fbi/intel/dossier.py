@@ -1,4 +1,4 @@
-"""MATCH INTELLIGENCE PACKAGE - ``dossier-v3``: the part of a match's packet (``fbi.ai.packet``, block ``dossier``) that
+"""MATCH INTELLIGENCE PACKAGE - ``dossier-v4``: the part of a match's packet (``fbi.ai.packet``, block ``dossier``) that
 describes the people and the situation, beyond the score-based form the packet already carries:
 
     teams        the last ten matches each (and split home / away): goals, expected goals, shots, on target, corners,
@@ -16,7 +16,7 @@ describes the people and the situation, beyond the score-based form the packet a
                  result - and, from the packet's own stakes block, what each side plays for. The round is read by the one
                  classifier of round labels (``fbi.competitions.stages``) and the second leg from the legs of its tie
                  already recorded at the packet's moment (``fbi.competitions.context``)
-    h2h          how much the head-to-head is worth: its age and size
+    h2h          how much the head-to-head is worth: its size (and its effective size, once the meetings are weighed), its age
     national     (national-team matches only) the people of each senior national side - the eleven of the match's own sheet, or
                  of the previous match's while the sheet is not known - with the club each plays for on the day and since when,
                  his form there (``fbi.intel.national``), his record for the country and whether he is reported out
@@ -41,9 +41,14 @@ from psycopg.rows import dict_row
 from fbi.ai.absences import absences_as_of
 from fbi.competitions import context as phase_context
 from fbi.intel import national
+from fbi.intel.h2h import NOTE_HIGH, NOTE_LOW, HeadToHead
 
-VERSION = "dossier-v3"
-"""v3 (plan F3): the referee is a person with an id. His matches are those whose referee, as the provider had named it at the
+VERSION = "dossier-v4"
+"""v4 (plan F6): ``h2h`` is read from the weighted head-to-head (``fbi.intel.h2h``) the packet carries: ``n`` is the number of
+meetings, ``n_effective`` the size that their weights leave (Kish), ``relevance`` follows the effective size and the age of the newest
+meeting. The words are the ones the narrative already read (``nula`` / ``baja`` / ``media`` / ``alta``).
+
+v3 (plan F3): the referee is a person with an id. His matches are those whose referee, as the provider had named it at the
 packet's moment, is HIM under any of the spellings the provider used (``core.fixture_officials`` through ``core.referee_aliases``,
 ``fbi.people``). v2 counted the matches whose facts EVER carried the same string, so a man written three ways was three referees
 with a few matches each, two men with the same initial and surname were one, and a match whose referee the provider later
@@ -401,17 +406,14 @@ def context_profile(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: da
     return out
 
 
-def h2h_relevance(n: int, last_at: datetime | None, *, kickoff: datetime) -> dict[str, Any]:
-    """How much the head-to-head is worth: few and old meetings weigh little."""
-    age = None if last_at is None else round((kickoff - last_at).total_seconds() / 86400)
-    level = "nula" if n == 0 else "baja" if n < 3 or (age is not None and age > 730) else "media" if n < 6 else "alta"
-    return {"n": n, "last_days_ago": age, "relevance": level,
-            "note": "el historial directo pesa poco frente a la forma y el mercado" if level in ("nula", "baja", "media")
-            else "historial amplio; aun así, plantillas y entrenadores cambian"}
+def h2h_relevance(h2h: HeadToHead) -> dict[str, Any]:
+    """How much the head-to-head is worth: few, old or minor meetings weigh little (the words of ``fbi.intel.h2h``)."""
+    return {"n": h2h.n, "n_effective": round(h2h.n_effective, 1), "last_days_ago": h2h.last_age_days,
+            "relevance": h2h.relevance, "note": NOTE_HIGH if h2h.relevance == "alta" else NOTE_LOW}
 
 
 def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: datetime, elo: tuple[str, int] | None,
-                  referee: str | None, h2h_n: int, h2h_last: datetime | None, referee_id: int | None = None) -> dict[str, Any]:
+                  referee: str | None, h2h: HeadToHead, referee_id: int | None = None) -> dict[str, Any]:
     """The dossier of one match as of ``at``. ``fx`` is the packet's FIXTURE_SQL row; ``referee`` and ``referee_id`` are the
     referee of the match as of ``at`` (``fbi.people.officials``), the id absent when the identity has not seen the match."""
     kickoff: datetime = fx["kickoff_at"]
@@ -432,7 +434,7 @@ def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: date
         players[side] = players_profile(conn, fids, sides, at=at, kickoff=kickoff, absent=absent)
     return {"version": VERSION, "teams": teams, "players": players,
             "referee": referee_profile(conn, referee, kickoff=kickoff, at=at, referee_id=referee_id),
-            "context": context_profile(conn, fx, at=at), "h2h": h2h_relevance(h2h_n, h2h_last, kickoff=kickoff),
+            "context": context_profile(conn, fx, at=at), "h2h": h2h_relevance(h2h),
             "national": national.block(conn, fx, at=at, absent=absent)}
 
 

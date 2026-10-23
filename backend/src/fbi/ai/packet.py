@@ -35,10 +35,18 @@ from fbi.competitions import context as phase_context
 from fbi.competitions import team_calendar as tc
 from fbi.competitions.stages import stage_of
 from fbi.competitions.tables import match_tables
+from fbi.intel.h2h import head_to_head
 from fbi.people.officials import referee_as_of
 
-PACKET_VERSION = "packet-v7"
-"""v7 (plan F4): the ``schedule`` block is read from each team's calendar in EVERY competition (``fbi.competitions.team_calendar``),
+PACKET_VERSION = "packet-v8"
+"""v8 (plan F6, pre-match v3): the ``h2h`` block is the weighted head-to-head of ``fbi.intel.h2h`` (``h2h-v2``), the one the
+match page reads too. The last eight meetings that were played to a result (``FT`` / ``AET`` / ``PEN``), kicked off before the match
+and had their result recorded by the packet's moment, each with the weight it has for THIS match (how recent, the same competition
+or kind, the same ground, the same coaches on the benches) - fixed round numbers, not fitted, written in the block - the
+effective sample size, the record in regulation time and the same record weighted, and ``status`` (``DESCRIPTIVE`` until an
+experiment shows it adds anything: ``intel.context_factors``). ``n`` and ``home_view`` are what the block always carried. The
+dossier is ``dossier-v4``.
+v7 (plan F4): the ``schedule`` block is read from each team's calendar in EVERY competition (``fbi.competitions.team_calendar``),
 as it stood at the packet's moment, not only from the competitions PrediGol follows. Where a team's own list was read recently
 and has no doubt in it (``schedule.calendar.<side>.complete``) its ``rest_days``, ``matches_last_7d/14d/30d`` and ``next_match``
 are the team's real figures (``outside_last_14d`` says how many of the fortnight's matches were in a competition PrediGol does
@@ -91,7 +99,6 @@ CORE_KEYS: tuple[tuple[str, str, Decimal], ...] = (
 MODELS = ("dixon_coles", "poisson", "elo_ologit")
 FORM_N = 6
 STATS_N = 10
-H2H_N = 8
 PRICE_LOOKBACK = timedelta(hours=36)
 P = 3
 """Decimals kept for a probability in a packet: finer changes are noise to a review and would only make a
@@ -157,14 +164,6 @@ SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, r.reg_goals_home, r.r
    AND r.settled_at <= %(at)s AND r.reg_goals_home IS NOT NULL AND r.reg_goals_away IS NOT NULL
  ORDER BY f.kickoff_at DESC
  LIMIT %(limit)s
-"""
-
-H2H_SQL = """
-SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, r.reg_goals_home, r.reg_goals_away
-  FROM core.fixtures f JOIN core.fixture_results r ON r.fixture_id = f.id
- WHERE ((f.home_team_id = %(a)s AND f.away_team_id = %(b)s) OR (f.home_team_id = %(b)s AND f.away_team_id = %(a)s))
-   AND f.kickoff_at < %(kickoff)s AND r.settled_at <= %(at)s AND r.reg_goals_home IS NOT NULL
- ORDER BY f.kickoff_at DESC LIMIT %(limit)s
 """
 
 ELO_RUN_SQL = """
@@ -403,7 +402,8 @@ class PacketBuilder:
     def build(self, fixture_id: int, *, at: datetime, extra_keys: list[tuple[str, str, Decimal]] | None = None
               ) -> Packet | None:
         conn = self.conn
-        f = _row(conn, FIXTURE_SQL, {"fixture": fixture_id, "rule": rule_in_force(conn)})
+        rule = rule_in_force(conn)
+        f = _row(conn, FIXTURE_SQL, {"fixture": fixture_id, "rule": rule})
         if f is None:
             return None
         kickoff: datetime = f["kickoff_at"]
@@ -445,12 +445,15 @@ class PacketBuilder:
             sources.append({"block": "form", "table": "core.fixture_results", "as_of": _ts(at)})
         content["schedule"] = self._schedule(f, at, sources, missing)
 
-        h2h = _rows(conn, H2H_SQL, {"a": home, "b": away, "kickoff": kickoff, "at": at, "limit": H2H_N})
-        content["h2h"] = {"n": len(h2h), "home_view": ctx.form(home, [
-            ctx.PastMatch(r["kickoff_at"], r["home_team_id"], r["away_team_id"], int(r["reg_goals_home"]),
-                          int(r["reg_goals_away"])) for r in h2h])}
-        if not h2h:
+        h2h = head_to_head(conn, home_team_id=home, away_team_id=away, kickoff=kickoff, at=at,
+                           competition_id=int(f["competition_id"]), competition_kind=f["competition_kind"],
+                           provider_league_id=f["provider_league_id"], neutral=bool(f["is_neutral"]), rule=rule)
+        content["h2h"] = h2h.as_packet()
+        if not h2h.n:
             missing.append("h2h")
+        else:
+            sources.append({"block": "h2h", "tables": ["core.fixtures", "core.fixture_results", "core.fixture_lineups"],
+                            "as_of": _ts(at), "version": h2h.version})
 
         content["elo"] = self._elo(f, at, sources, missing)
         from fbi.intel.dossier import VERSION as DOSSIER_VERSION
@@ -460,7 +463,7 @@ class PacketBuilder:
             with conn.transaction():
                 content["dossier"] = finite(build_dossier(
                     conn, f, at=at, elo=self._elo_version(at), referee=referee_name, referee_id=referee_id,
-                    h2h_n=len(h2h), h2h_last=h2h[0]["kickoff_at"] if h2h else None))
+                    h2h=h2h))
             sources.append({"block": "dossier", "tables": ["core.fixture_team_stats", "core.fixture_events",
                                                            "core.fixture_lineups", "core.fixture_player_stats",
                                                            "core.fixture_facts", "core.fixture_officials",

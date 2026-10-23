@@ -265,7 +265,7 @@ def test_the_packet_carries_the_block_and_a_club_match_carries_none(world: World
     packet = PacketBuilder(world.db).build(s.target, at=AT)
     assert packet is not None
     block = packet.content["dossier"]["national"]
-    assert packet.content["dossier"]["version"] == "dossier-v3" and block["version"] == "national-v1"
+    assert packet.content["dossier"]["version"] == "dossier-v4" and block["version"] == "national-v1"
     assert block["home"]["n"] == 3 and [p["id"] for p in block["home"]["players"]] == [s.p1, s.p2, s.p3]
     club_match = PacketBuilder(world.db).build(world.fixture(s.alpha, s.rival, 44, status="scheduled"), at=AT)
     assert club_match is not None and club_match.content["dossier"]["national"] is None

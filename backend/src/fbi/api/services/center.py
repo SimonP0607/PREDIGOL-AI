@@ -65,11 +65,13 @@ from fbi.api.repositories import Conn, Row, fetch_all, fetch_one, fetch_value
 from fbi.api.repositories import center as repo
 from fbi.api.services import center_tie
 from fbi.api.services.live_quality import completeness
+from fbi.catalog.neutral_store import rule_in_force
 from fbi.competitions.phases import VERSION as PHASES_VERSION
 from fbi.competitions.phases import TableMap, current_stage
 from fbi.competitions.stages import phase_of, stage_of
 from fbi.competitions.tables import load_season, match_tables, newest_maps
 from fbi.core.clock import now
+from fbi.intel.h2h import head_to_head
 from fbi.people.officials import ID as IDENTITY_ID
 from fbi.people.officials import referee_as_of
 from fbi.truth.freshness import table_reason
@@ -143,8 +145,6 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
     player_lines = [PlayerLine(**r) for r in fetch_all(conn, repo.PLAYER_STATS, f)]
     absences = [Absence(**r, season=seasons.get((r["provider_player_id"], team_of.get(r["side"] or ""))))
                 for r in absence_rows]
-    ctx = {"cs": fx["competition_season_id"], "home": fx["home_team_id"], "away": fx["away_team_id"],
-           "ko": fx["kickoff_at"]}
     standings, no_table, standing_tables = _match_standings(conn, fx)
     facts_row = _with_referee_identity(conn, fixture_id, fetch_one(conn, repo.FIXTURE_FACTS, f))
     stage, tie = center_tie.stage_and_tie(conn, fx)
@@ -154,7 +154,13 @@ def match_center(conn: Conn, fixture_id: int) -> Envelope[MatchCenter | None]:
         matches = [FormMatch(**r, result="W" if r["goals_for"] > r["goals_against"]
                              else "D" if r["goals_for"] == r["goals_against"] else "L") for r in rows]
         forms.append(TeamForm(side=side, team=name, matches=matches))  # type: ignore[arg-type]
-    h2h = [H2HMatch(**r) for r in fetch_all(conn, repo.H2H, ctx)]
+    rule = rule_in_force(conn)
+    sit = fetch_one(conn, repo.H2H_SITUATION, {"f": fixture_id, "rule": rule}) or {}
+    head = head_to_head(
+        conn, home_team_id=fx["home_team_id"], away_team_id=fx["away_team_id"], kickoff=fx["kickoff_at"], at=now(),
+        competition_id=sit.get("competition_id"), competition_kind=sit.get("competition_kind"),
+        provider_league_id=sit.get("provider_league_id"), neutral=bool(sit.get("is_neutral")), rule=rule)
+    h2h = [H2HMatch(**r) for r in head.as_api()]
     states = [LiveState(**r) for r in fetch_all(conn, repo.LIVE_STATES, f)]
     since = fx["kickoff_at"] - timedelta(minutes=30)
     quotes = [LiveQuote(**r) for r in fetch_all(conn, repo.LIVE_LATEST_QUOTES, {"f": fixture_id, "since": since})]

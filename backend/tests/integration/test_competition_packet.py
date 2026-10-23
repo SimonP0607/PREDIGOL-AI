@@ -27,7 +27,7 @@ def test_a_second_leg_packet_carries_the_first_leg_the_aggregate_and_what_the_ma
 
     packet = PacketBuilder(db).build(f["r2"], at=at)
 
-    assert packet is not None and packet.version == PACKET_VERSION == "packet-v7"
+    assert packet is not None and packet.version == PACKET_VERSION == "packet-v8"
     c = packet.content
     assert c["fixture"]["stage"] == "knockout", "the round, read by the one classifier of round labels"
     phase = c["phase"]
@@ -42,7 +42,7 @@ def test_a_second_leg_packet_carries_the_first_leg_the_aggregate_and_what_the_ma
     assert (context["knockout"], context["final"]) == (True, False)
     assert context["second_leg"] == {"first_leg_at": kickoff(100).isoformat(), "first_leg_score_home_side": 0,
                                      "first_leg_score_away_side": 1, "aggregate_need": "el local remonta"}
-    assert c["dossier"]["version"] == "dossier-v3"
+    assert c["dossier"]["version"] == "dossier-v4"
     story = rules_narrative(c, [])["que_esta_en_juego"]
     assert "Es una eliminatoria." in story and "Partido de vuelta: la ida terminó 0-1" in story
     assert "En el global, tras los 90 minutos Team 99920-4 va por delante si gana por 2 goles o más" in story
@@ -141,7 +141,7 @@ def test_the_audit_counts_each_leg_a_stored_packet_cites_and_finds_them_recorded
     assert packet is not None
     store_packet(db, packet, built_at=at)
 
-    assert "tie_legs_known" in leakage.RULES and leakage.VERSION == "leak-audit-v5"
+    assert "tie_legs_known" in leakage.RULES and leakage.VERSION == "leak-audit-v6"
     assert audited(db, at) == {"checked": 1, "violations": 0, "examples": []}
 
 

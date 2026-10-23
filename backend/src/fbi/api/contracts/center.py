@@ -211,13 +211,29 @@ class TeamForm(Contract):
 
 
 class H2HMatch(Contract):
+    """One earlier meeting of the two sides, as it was played and as it weighs for this match (``fbi.intel.h2h``, plan F6)."""
+
     fixture_id: int
     kickoff_at: datetime
     competition: str
     home: str
     away: str
-    goals_home: int
+    goals_home: int = Field(description="The final score, extra time in, shoot-out out.")
     goals_away: int
+    regulation_goals_home: int = Field(
+        description="The 90 minutes: what the head-to-head record counts and what every market settles on.")
+    regulation_goals_away: int
+    after_extra_time: bool = Field(description="True when it went to extra time (and, maybe, penalties).")
+    penalties_home: int | None = Field(default=None, description="The shoot-out, when there was one.")
+    penalties_away: int | None = None
+    scope: Literal["same_competition", "same_kind", "other_official", "friendly"] = Field(
+        description="What kind of meeting it was, against the match: the same competition, the same kind of competition "
+                    "(league, cup, continental, international), another official one, or a friendly.")
+    home_side_was: Literal["home", "away", "neutral"] = Field(
+        description="Where this match's HOME side played that day: at home, away or on neutral ground.")
+    weight: float = Field(
+        description="What the meeting weighs for this match, 0 to 1: fixed round numbers for how recent it is, the competition, "
+                    "the ground and the coaches. A description, not a fitted signal.")
 
 
 class LiveState(Contract):

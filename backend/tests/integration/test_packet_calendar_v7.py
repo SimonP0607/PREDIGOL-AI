@@ -33,7 +33,7 @@ from tests.integration.conftest import Seed
 def schedule(db: psycopg.Connection[Any], w: World, at: datetime = AT) -> dict[str, Any]:
     built = PacketBuilder(db).build(w.fixture_id, at=at)
     assert built is not None
-    assert built.version == packet_module.PACKET_VERSION == "packet-v7"
+    assert built.version == packet_module.PACKET_VERSION == "packet-v8"
     block = built.content["schedule"]
     assert isinstance(block, dict)
     return block

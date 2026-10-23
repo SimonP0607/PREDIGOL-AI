@@ -59,7 +59,7 @@ def handmade(w: World, fixture_id: int, content: dict[str, Any], at: datetime = 
 
 
 def test_the_rule_is_in_the_audit_and_the_version_says_so() -> None:
-    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v5"
+    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v6"
 
 
 def test_a_packet_built_by_the_builder_names_a_referee_the_provider_had_given(world: World) -> None:  # noqa: F811
@@ -70,7 +70,7 @@ def test_a_packet_built_by_the_builder_names_a_referee_the_provider_had_given(wo
 
     assert audited(world, AT) == {"checked": 1, "violations": 0, "examples": []}
     rows = world.db.execute("SELECT version, n_checked, n_violations FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert rows == [("leak-audit-v5", 1, 0)], "the run is kept in the ledger of the audit with its version"
+    assert rows == [("leak-audit-v6", 1, 0)], "the run is kept in the ledger of the audit with its version"
 
 
 def test_a_packet_that_kept_the_string_cites_the_observation_of_the_facts(world: World) -> None:  # noqa: F811

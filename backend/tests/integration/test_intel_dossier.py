@@ -98,7 +98,7 @@ def test_the_dossier_reads_only_what_was_known(db: psycopg.Connection[Any], seed
                 "VALUES (%s, %s, 'R. Tester', %s, 'v1')", (upcoming, AT - timedelta(hours=2), h))
 
     packet = PacketBuilder(db).build(upcoming, at=AT)
-    assert packet is not None and packet.version == "packet-v7"
+    assert packet is not None and packet.version == "packet-v8"
     d = packet.content["dossier"]
     home = d["teams"]["home"]
     assert home["n"] == 3, "the 5-0 settled after AT is not known at AT"

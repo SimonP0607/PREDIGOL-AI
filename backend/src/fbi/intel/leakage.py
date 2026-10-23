@@ -1,4 +1,4 @@
-"""Data-leakage audit - ``leak-audit-v5``: did any decision use something that was not known at its ``known_at``?
+"""Data-leakage audit - ``leak-audit-v6``: did any decision use something that was not known at its ``known_at``?
 
 Run every night over the decisions taken on a Bogotá day, and in the tests. One row per rule
 (``intel.audit_checks``): how many decisions were checked and how many violate it, with examples. The rules:
@@ -50,6 +50,13 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              moment or was recorded by it, one it does not (``core.calendar_matches``) that kicked off before the
                              moment or was observed by it - so a cup tie announced after the packet was built was never in it. One
                              check per side and per match cited. Examples are packet ids.
+    h2h_known                (v6, plan F6) the AI packets built on the day that carry the weighted head-to-head (``h2h.meetings``,
+                             ``fbi.intel.h2h``): every meeting the block cites is a row that exists, between the two sides of the
+                             packet's match, played to a result (``FT`` / ``AET`` / ``PEN``), kicked off before the match, had its result
+                             recorded by the packet's moment, and is as old as the block says (``days_ago``, counted from the match's
+                             kick-off); a meeting for which the block claims to know whether a coach changed had a match sheet
+                             fetched by then. And, one check per packet, no meeting that was known by the moment was left out in
+                             favour of an older one (the last eight, or all when there are fewer). Examples are packet ids.
 """
 
 from __future__ import annotations
@@ -62,8 +69,13 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
+from fbi.core import match_state
+from fbi.intel import h2h
 
-VERSION = "leak-audit-v5"
+VERSION = "leak-audit-v6"
+
+FINISHED = "ARRAY[" + ", ".join(f"'{code}'" for code in sorted(match_state.FINISHED)) + "]"
+"""The stored states of a match played to a result, as a SQL array (constants of ``fbi.core.match_state``, not user input)."""
 
 BASE = "SELECT d.* FROM intel.decisions d WHERE d.known_at >= %(start)s AND d.known_at < %(end)s"
 
@@ -273,6 +285,44 @@ RULES: dict[str, str] = {
                                            OR (m.kind = 'upcoming' AND (x.observed_at <= m.as_of OR x.kickoff_at <= m.as_of))))
                    END
               FROM m)
+        SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
+               (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
+    "h2h_known": f"""
+        WITH p AS ({PACKETS}), b AS (
+            SELECT p.id AS packet_id, p.as_of, p.content -> 'h2h' AS blk,
+                   (p.content #>> '{{fixture,kickoff_at}}')::timestamptz AS kickoff,
+                   CASE WHEN (p.content #>> '{{fixture,home,id}}') ~ '^[0-9]{{1,15}}$' THEN (p.content #>> '{{fixture,home,id}}')::bigint END AS home_id,
+                   CASE WHEN (p.content #>> '{{fixture,away,id}}') ~ '^[0-9]{{1,15}}$' THEN (p.content #>> '{{fixture,away,id}}')::bigint END AS away_id
+              FROM p WHERE jsonb_typeof(p.content #> '{{h2h,meetings}}') = 'array'),
+        m AS (
+            SELECT b.packet_id, b.as_of, b.kickoff, b.home_id, b.away_id,
+                   CASE WHEN (x ->> 'fixture_id') ~ '^[0-9]{{1,15}}$' THEN (x ->> 'fixture_id')::bigint END AS leg,
+                   CASE WHEN (x ->> 'days_ago') ~ '^[0-9]{{1,6}}$' THEN (x ->> 'days_ago')::int END AS days_ago,
+                   (jsonb_typeof(x #> '{{coach_changed,home}}') = 'boolean'
+                    OR jsonb_typeof(x #> '{{coach_changed,away}}') = 'boolean') AS coach_claim
+              FROM b CROSS JOIN LATERAL jsonb_array_elements(b.blk -> 'meetings') AS x WHERE jsonb_typeof(x) = 'object'),
+        c AS (
+            SELECT m.packet_id,
+                   (g.id IS NULL OR g.kickoff_at >= m.kickoff OR r.settled_at IS NULL OR r.settled_at > m.as_of
+                    OR NOT (g.status_short = ANY({FINISHED}))
+                    OR NOT ((g.home_team_id = m.home_id AND g.away_team_id = m.away_id)
+                            OR (g.home_team_id = m.away_id AND g.away_team_id = m.home_id))
+                    OR m.days_ago IS DISTINCT FROM floor(extract(epoch FROM (m.kickoff - g.kickoff_at)) / 86400)::int
+                    OR (m.coach_claim AND NOT EXISTS (SELECT 1 FROM core.fixture_lineups l
+                                                       WHERE l.fixture_id = m.leg AND l.fetched_at <= m.as_of))) AS bad
+              FROM m LEFT JOIN core.fixtures g ON g.id = m.leg LEFT JOIN core.fixture_results r ON r.fixture_id = m.leg
+            UNION ALL
+            SELECT b.packet_id,
+                   EXISTS (SELECT 1 FROM core.fixtures g JOIN core.fixture_results r ON r.fixture_id = g.id
+                            WHERE ((g.home_team_id = b.home_id AND g.away_team_id = b.away_id)
+                                   OR (g.home_team_id = b.away_id AND g.away_team_id = b.home_id))
+                              AND g.kickoff_at < b.kickoff AND r.settled_at <= b.as_of AND g.status_short = ANY({FINISHED})
+                              AND r.reg_goals_home IS NOT NULL AND r.reg_goals_away IS NOT NULL
+                              AND NOT EXISTS (SELECT 1 FROM m WHERE m.packet_id = b.packet_id AND m.leg = g.id)
+                              AND (jsonb_array_length(b.blk -> 'meetings') < {h2h.N}
+                                   OR g.kickoff_at > (SELECT min(g2.kickoff_at) FROM m JOIN core.fixtures g2 ON g2.id = m.leg
+                                                       WHERE m.packet_id = b.packet_id))) AS bad
+              FROM b)
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
 }
