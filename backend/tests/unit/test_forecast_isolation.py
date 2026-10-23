@@ -31,6 +31,7 @@ NAMES_THE_TABLE = {
 
 IMPORTS_THE_WRITER = {
     "picks/pipeline.py": "runs the writer as a step of its own, in a savepoint, after the forecasts of the models",
+    "families/forecast.py": "the counts of F10 (halves, corners, cards): same table, version `family-v1` that the page of the match never reads",
 }
 """(``api/services/forecast.py`` and ``ai/packet.py`` do not import it: they duplicate its constants and a test holds them equal, so
 that neither the API nor the AI layer depends on the worker's package.)"""

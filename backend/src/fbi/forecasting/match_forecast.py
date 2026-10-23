@@ -405,17 +405,26 @@ def _fit_fixtures(conn: psycopg.Connection[Any], ids: list[int], at: datetime) -
                 if r["data_class"] not in NOT_FIT and not r["quarantined"]}
 
 
+def fit_fixtures(conn: psycopg.Connection[Any], ids: list[int], at: datetime) -> set[int]:
+    """The matches among ``ids`` whose competition's data is fit for a model and that are not quarantined (the gate every forecast passes)."""
+    return _fit_fixtures(conn, ids, at)
+
+
 def _q(x: float | None, places: int = 6) -> Decimal | None:
     return None if x is None else Decimal(str(round(x, places)))
 
 
-def store(conn: psycopg.Connection[Any], f: MarketForecast, *, at: datetime, code_version: str) -> int:
-    """The rows of one market forecast (all its outcomes). Returns how many were written."""
+def store(conn: psycopg.Connection[Any], f: MarketForecast, *, at: datetime, code_version: str, version: str = VERSION,
+          family: str | None = None) -> int:
+    """The rows of one market forecast (all its outcomes). Returns how many were written.
+
+    ``version`` and ``family`` are those of the core markets unless the caller is another writer of the same table (``fbi.families``, F10):
+    it writes under a version of its own, which the page of the forecast of a match does not read, and names the family of its keys."""
     written = 0
     with conn.cursor() as cur:
         for o in f.outcomes:
             cur.execute(INSERT_SQL, {
-                "version": VERSION, "known_at": at, "fixture_id": f.fixture_id, "family": f.family,
+                "version": version, "known_at": at, "fixture_id": f.fixture_id, "family": family or f.family,
                 "market_key": f.market_key, "selection": o.selection, "line": f.line, "model_name": f.model,
                 "model_version_id": f.model_version_id, "data_cutoff_ts": f.data_cutoff_ts, "p_model": _q(o.p_model),
                 "p": _q(o.p), "p_lo": _q(o.lo), "p_hi": _q(o.hi), "p_push": _q(o.push) or Decimal("0"),
