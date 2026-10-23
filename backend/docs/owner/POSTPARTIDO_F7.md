@@ -276,8 +276,33 @@ escribió nada):
 
 ## Resultado de la prueba general
 
-**Pendiente: se completa al cerrar la puerta de calidad completa de F7** (ruff, mypy, la batería completa del backend, la web y la
-construcción de producción). El punto de partida, tras F6, es: backend 3.974 pruebas (4 omitidas) y web 465.
+Puerta de calidad completa sobre el árbol final de F7 (23 oct 2026, 11:47–11:57 UTC; el backend corre contra un PostgreSQL 16 real):
+
+| Puerta | Resultado | Tras F6 |
+|---|---|---|
+| `ruff check .` | sin hallazgos | sin hallazgos |
+| `mypy` (estricto; ahora incluye `src/fbi/knowledge`) | **421 archivos, sin errores** | 412 |
+| `mypy .` (todo: también pruebas, scripts y migraciones) | **961 archivos, sin errores** | 937 |
+| Batería del backend (`pytest`) | **4.277 pasan, 4 omitidas, 0 fallan** (8 min 48 s) | 3.974 pasan, 4 omitidas |
+| Web: `bun run lint` | 0 errores (26 avisos que ya estaban; ninguno en un archivo de F7) | 0 errores |
+| Web: `bun run typecheck` | sin errores | sin errores |
+| Web: `bun test src` | **537 pasan, 0 fallan** (56 archivos) | 465 |
+| Web: construcción de producción (`NITRO_PRESET=node-server VITE_DATA_MODE=live`) | correcta | correcta |
+
+Son **303 pruebas más** en el backend y **72 más** en la web que tras F6. Las 4 omitidas son las mismas de entonces (pruebas de independencia
+previa al partido que se omiten en los módulos sin código fuente que analizar).
+
+**Lo que encontró la puerta.** La primera pasada completa halló **un fallo** que las pruebas dirigidas de cada parte no habían visto: una
+guardia de arquitectura (`test_only_the_listed_modules_name_the_tables_that_hold_the_outcome_of_a_tie`) exige que todo módulo que nombre las
+tablas del desenlace de una eliminatoria (`core.ties`, `core.competition_stages`) esté en una lista con su razón, para que ningún lector previo
+al partido las lea por su cuenta. Dos módulos de Match Knowledge lo hacen (`fbi.knowledge.reader` lee la eliminatoria de un partido terminado
+y cómo se decidió; `fbi.knowledge.layers` la nombra como fuente de la capa 1). Son de postpartido por naturaleza y la puerta de aislamiento
+les impide llegar a cualquier lector previo, así que se añadieron a la lista con su razón (commit propio) y la batería se repitió entera
+sobre el árbol final: verde. Ninguna otra prueba falló.
+
+**Que las puertas de aislamiento muerden.** Se comprobaron con mutaciones (se rompe a propósito la regla y la prueba debe fallar): 12 de 12
+detectadas en `test_knowledge_isolation.py`, y la regla de precios (un usuario no recibe nunca los precios del proveedor) también, porque
+con la mutación (devolverlos) falla la prueba de la API.
 
 ## Resultado en producción
 
