@@ -132,7 +132,9 @@ def test_the_last_prices_arriving_after_a_build_add_a_row_that_has_them_and_keep
     fid = w.golden()
     db.execute("DELETE FROM market.final_prematch_odds WHERE fixture_id = %s", (fid,))
     build(db, fid)
-    w.final(fid, "1X2", "Home", 0, [1.8, 1.9]), w.final(fid, "1X2", "Draw", 0, [3.5, 3.6]), w.final(fid, "1X2", "Away", 0, [4.2, 4.4])
+    w.final(fid, "1X2", "Home", 0, [1.8, 1.9])
+    w.final(fid, "1X2", "Draw", 0, [3.5, 3.6])
+    w.final(fid, "1X2", "Away", 0, [4.2, 4.4])
     report = build(db, fid)
     assert (report.due, report.built, report.same_content) == (1, 1, 0)
     first, second = rows(db, fid)
@@ -437,6 +439,22 @@ def test_the_candidates_are_the_finished_matches_settled_in_the_window_newest_fi
     assert builder.candidates(db, now=now) == [just, settled, inside]
     assert builder.candidates(db, now=now, days=13) == [just, settled, inside, old]
     assert builder.candidates(db, now=now, days=13, until=now - timedelta(days=10)) == [old]
+
+
+def test_only_the_competitions_that_are_followed_are_candidates_unless_all_are_asked_for(db: psycopg.Connection[Any], seed: Seed) -> None:
+    w = World(db, seed)
+    followed = w.golden()
+    other = w.golden(KICKOFF + timedelta(hours=1))
+    db.execute("UPDATE core.competitions SET is_tracked = false WHERE provider_league_id = 98971")
+    assert builder.candidates(db, now=NOW) == [] and builder.candidates(db, now=NOW, tracked=False) == [other, followed]
+    assert builder.refresh_pending(db, now=NOW, commit=False).seen == 0 and rows(db, followed) == []
+    assert builder.refresh_pending(db, now=NOW, commit=False, tracked=False).built == 2
+    assert builder.coverage(db, now=LATER, days=30)["finished"] == 0
+    everything = builder.coverage(db, now=LATER, days=30, tracked=False)
+    assert (everything["finished"], everything["built"], everything["tracked"]) == (2, 2, False)
+    db.execute("UPDATE core.competitions SET is_tracked = true WHERE provider_league_id = 98971")
+    back = builder.coverage(db, now=LATER, days=30)
+    assert (back["finished"], back["built"], back["tracked"], back["events"]["read"]) == (2, 2, True, 2)
 
 
 def test_the_workers_pass_builds_the_candidates_and_a_dry_pass_builds_none(db: psycopg.Connection[Any], seed: Seed) -> None:

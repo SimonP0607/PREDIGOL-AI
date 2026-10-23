@@ -231,6 +231,21 @@ PLAYER_HISTORY_MINUTES reads the players of the matches, transfers and squad lis
 passes write nothing: no ledger row); a sweep at PLAYER_HISTORY_SWEEP_HOUR:PLAYER_HISTORY_SWEEP_MINUTE UTC (after the referees')
 reads everyone, which catches what arrived late, and audits the tables. FBI_PLAYER_HISTORY=0 switches both off without a deploy:
 the tables then simply stop being refreshed and the readers keep what they read before."""
+KNOWLEDGE_MINUTES = int(os.environ.get("FBI_MATCH_KNOWLEDGE_MINUTES", "30"))
+KNOWLEDGE_DAYS = int(os.environ.get("FBI_MATCH_KNOWLEDGE_DAYS", "10"))
+KNOWLEDGE_SWEEP_DAYS = int(os.environ.get("FBI_MATCH_KNOWLEDGE_SWEEP_DAYS", "400"))
+KNOWLEDGE_PER_RUN = int(os.environ.get("FBI_MATCH_KNOWLEDGE_PER_RUN", "300"))
+KNOWLEDGE_RUN_SECONDS = float(os.environ.get("FBI_MATCH_KNOWLEDGE_RUN_SECONDS", "240"))
+KNOWLEDGE_SWEEP_SECONDS = float(os.environ.get("FBI_MATCH_KNOWLEDGE_SWEEP_SECONDS", "900"))
+KNOWLEDGE_SWEEP_HOUR, KNOWLEDGE_SWEEP_MINUTE = 10, 30
+KNOWLEDGE_ENABLED = os.environ.get("FBI_MATCH_KNOWLEDGE", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""Match Knowledge (plan F7): a finished match as one object in layers (``fbi.knowledge``), built from the facts already stored once the
+match has been settled (26 hours after kick-off), and built again, as a new row that names the one it replaced, only when what it was built
+from has changed. Database only - no request to the provider, and nothing a user sees until FBI_KNOWLEDGE_USERS says so. A pass every
+KNOWLEDGE_MINUTES looks at the matches of the last KNOWLEDGE_DAYS days (a bounded number of rows, a bounded time; most passes write nothing:
+no ledger row); a sweep at KNOWLEDGE_SWEEP_HOUR:KNOWLEDGE_SWEEP_MINUTE UTC looks at the last KNOWLEDGE_SWEEP_DAYS days, which catches a
+result the provider corrects weeks later and a rule that changed. FBI_MATCH_KNOWLEDGE=0 switches both off without a deploy: the rows
+stop being refreshed and the readers keep what they read before."""
 NOTIFY_MINUTES = int(os.environ.get("FBI_NOTIFY_MINUTES", "10"))
 AI_REPORT_HOUR = int(os.environ.get("FBI_AI_REPORT_HOUR", "6"))
 """The daily research report is written from this hour (Bogotá), once a day: a check every
@@ -859,6 +874,29 @@ async def _player_history_sweep() -> None:
     await asyncio.to_thread(functools.partial(_player_history_now, sweep=True))
 
 
+def _match_knowledge_now(*, sweep: bool = False) -> None:
+    from fbi.ingestion.match_knowledge import run_job
+
+    with _connect() as conn:
+        if sweep:
+            run_job(conn, now=now(), days=KNOWLEDGE_SWEEP_DAYS, max_seconds=KNOWLEDGE_SWEEP_SECONDS, limit=None)
+        else:
+            run_job(conn, now=now(), days=KNOWLEDGE_DAYS, max_seconds=KNOWLEDGE_RUN_SECONDS, limit=KNOWLEDGE_PER_RUN)
+
+
+async def _match_knowledge() -> None:
+    """Match Knowledge of the finished matches of the last days (plan F7): reads what is stored and writes ``intel.match_knowledge`` and
+    ``core.fixture_event_kinds``. A quiet pass leaves no row in the ledger. In a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_match_knowledge_now)
+
+
+async def _match_knowledge_sweep() -> None:
+    """The same over the last year and a bit (daily): the pass above only looks at the matches of the last days."""
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_match_knowledge_now, sweep=True))
+
+
 def _notify_now() -> None:
     """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
     from fbi.notify.service import channel_from_env, run_notifier
@@ -1171,7 +1209,7 @@ WORKER_JOB_TYPES = frozenset({
     "pick_pipeline", "quality_sweep", "context_refresh", "context_due", "results_repair", "final_prematch",
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
-    "competition_structure", "referee_identity", "player_history",
+    "competition_structure", "referee_identity", "player_history", "match_knowledge",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1433,6 +1471,16 @@ async def main() -> None:
     else:
         log.warning("worker.player_history_off",
                     hint="FBI_PLAYER_HISTORY=0: the clubs and caps of the players are not being rebuilt")
+    if KNOWLEDGE_ENABLED:
+        scheduler.add_job(_deadline("match_knowledge", "match_knowledge", _match_knowledge), "interval",
+                          minutes=KNOWLEDGE_MINUTES, id="match_knowledge", max_instances=1, coalesce=True,
+                          misfire_grace_time=KNOWLEDGE_MINUTES * 60, next_run_time=moment + timedelta(minutes=29))
+        scheduler.add_job(_deadline("match_knowledge_sweep", "match_knowledge", _match_knowledge_sweep),
+                          "cron", hour=KNOWLEDGE_SWEEP_HOUR, minute=KNOWLEDGE_SWEEP_MINUTE, timezone="UTC",
+                          id="match_knowledge_sweep", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
+    else:
+        log.warning("worker.match_knowledge_off",
+                    hint="FBI_MATCH_KNOWLEDGE=0: the finished matches are not being put together (Match Knowledge)")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))

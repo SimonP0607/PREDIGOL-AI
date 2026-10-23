@@ -44,8 +44,8 @@ def the_events() -> list[RawEvent]:
 
 
 def stats(side: str, **values: Any) -> mk.TeamStats:
-    base: dict[str, float | int | None] = {"shots": 12, "shots_on_target": 5, "corners": 6, "fouls": 11, "yellow_cards": 0, "red_cards": 0,
-                                           "possession_pct": Decimal("55.0"), "expected_goals": Decimal("1.834")}
+    base: dict[str, Any] = {"shots": 12, "shots_on_target": 5, "corners": 6, "fouls": 11, "yellow_cards": 0, "red_cards": 0,
+                            "possession_pct": Decimal("55.0"), "expected_goals": Decimal("1.834")}
     return mk.TeamStats(side=side, values={**base, **values}, fetched_at=FETCHED)
 
 
@@ -107,6 +107,12 @@ def the_match() -> mk.Inputs:
         postmortems=[mk.Postmortem(id=9, decision_id=1, version="pm-v3", outcome="won", quality="GOOD", verdict="MERECIDO", created_at=FETCHED + timedelta(hours=20),
                                   causes=("price_beat_close",))],
     )
+
+
+def result_of(inp: mk.Inputs) -> mk.Result:
+    """The result of a match built by ``the_match`` (which always has one), for the tests that change a figure of it."""
+    assert inp.result is not None
+    return inp.result
 
 
 def layer(k: mk.Knowledge, name: str) -> dict[str, Any]:
@@ -212,7 +218,7 @@ def test_events_that_do_not_give_the_score_are_kept_but_not_trusted() -> None:
 
 def test_the_break_the_extra_time_and_the_cards_are_checked_against_what_the_provider_said_of_them() -> None:
     inp = the_match()
-    k = mk.build(replace(inp, result=replace(inp.result, ht_home=0, ht_away=0)))             # the break score the lists do not give
+    k = mk.build(replace(inp, result=replace(result_of(inp), ht_home=0, ht_away=0)))             # the break score the lists do not give
     c3 = layer(k, "c3_events")
     assert c3["data"]["check"]["ht"] is False and "ht_differs" in c3["notes"] and c3["status"] == "partial"
     k = mk.build(replace(inp, team_stats=[stats("home"), stats("away", yellow_cards=1, red_cards=1)]))
@@ -296,7 +302,7 @@ def test_a_substitution_is_made_with_the_lead_seen_from_the_side_that_makes_it()
     events = [raw(0, 10, "away", "Goal", "Normal Goal", player=202), raw(1, 20, "home", "subst", "Substitution 1", player=103, assist=104),
               raw(2, 30, "away", "subst", "Substitution 1", player=203, assist=204)]
     inp = the_match()
-    k = mk.build(replace(inp, events=events, result=replace(inp.result, goals_home=0, goals_away=1, reg_home=0, reg_away=1, ht_home=0, ht_away=1)))
+    k = mk.build(replace(inp, events=events, result=replace(result_of(inp), goals_home=0, goals_away=1, reg_home=0, reg_away=1, ht_home=0, ht_away=1)))
     data = layer(k, "c5_tactics")["data"]
     assert data["home"]["subs"] == [[20, -1]] and data["away"]["subs"] == [[30, 1]]
 
@@ -305,7 +311,7 @@ def test_a_comeback_switches_the_side_that_is_ahead() -> None:
     events = [raw(0, 10, "away", "Goal", "Normal Goal", player=202), raw(1, 30, "home", "Goal", "Normal Goal", player=101),
               raw(2, 50, "home", "Goal", "Normal Goal", player=101), raw(3, 80, "away", "Goal", "Normal Goal", player=202)]
     inp = the_match()
-    k = mk.build(replace(inp, events=events, result=replace(inp.result, goals_home=2, goals_away=2, reg_home=2, reg_away=2, ht_home=1, ht_away=1)))
+    k = mk.build(replace(inp, events=events, result=replace(result_of(inp), goals_home=2, goals_away=2, reg_home=2, reg_away=2, ht_home=1, ht_away=1)))
     story = layer(k, "c5_tactics")["data"]["story"]
     assert story["ahead"] == {"home": True, "away": True} and story["lead_changes"] == 1
     assert story["minutes"] == {"home_ahead": 30, "level": 40, "away_ahead": 20}
@@ -315,7 +321,7 @@ def test_a_comeback_switches_the_side_that_is_ahead() -> None:
 def test_stoppage_time_counts_as_the_last_minute_of_the_ninety() -> None:
     events = [raw(0, 90, "home", "Goal", "Normal Goal", player=101, extra=4), raw(1, 94, "home", "Goal", "Normal Goal", player=101)]
     inp = the_match()
-    k = mk.build(replace(inp, events=events, result=replace(inp.result, goals_home=2, goals_away=0, reg_home=2, reg_away=0, ht_home=0, ht_away=0)))
+    k = mk.build(replace(inp, events=events, result=replace(result_of(inp), goals_home=2, goals_away=0, reg_home=2, reg_away=0, ht_home=0, ht_away=0)))
     story = layer(k, "c5_tactics")["data"]["story"]
     assert story["minutes"] == {"home_ahead": 0, "level": 90, "away_ahead": 0}, "a goal at 90+4 changes the score for no minute of the 90"
     assert "late_minute" in json.dumps(layer(k, "c3_events")) and "odd_minutes" in k.quality["doubts"]
@@ -387,7 +393,7 @@ def test_a_match_with_a_result_and_nothing_else_is_minimal() -> None:
     k = mk.build(mk.Inputs(fixture=inp.fixture, result=inp.result))
     assert k.completeness == "minimal" and all(layer(k, n)["status"] == "missing" for n in ("c2_team_stats", "c3_events", "c4_players", "c5_tactics", "c6_market", "c8_picks", "c9_postmortem"))
     assert layer(k, "c7_context") == {"status": "off", "notes": ["decided_by_the_owner"]}
-    assert k.known_at == inp.result.settled_at, "known at the newest moment any layer was known"
+    assert k.known_at == result_of(inp).settled_at, "known at the newest moment any layer was known"
 
 
 # ── the market ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -543,7 +549,7 @@ def test_what_the_match_says_changing_changes_the_hash() -> None:
     moved = the_events()
     moved[2] = raw(2, 56, "away", "Goal", "Normal Goal", player=202)
     assert mk.build(replace(inp, events=moved)).content_hash != base
-    assert mk.build(replace(inp, result=replace(inp.result, ht_home=0, ht_away=0))).content_hash != base
+    assert mk.build(replace(inp, result=replace(result_of(inp), ht_home=0, ht_away=0))).content_hash != base
     assert mk.build(replace(inp, sheets_crossed=True)).content_hash != base
     assert mk.build(replace(inp, postmortems=())).content_hash != base
     assert mk.build(replace(inp, final_quotes=[replace(q, odds=q.odds + 0.05) for q in inp.final_quotes])).content_hash != base

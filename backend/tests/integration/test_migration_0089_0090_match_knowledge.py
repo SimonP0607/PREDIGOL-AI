@@ -90,8 +90,8 @@ def test_0089_and_0090_add_three_objects_and_nothing_else_and_come_back_out(migr
             assert c.execute(f"SELECT count(*) FROM {KINDS}").fetchone() == (0,), "the migration writes no row: it is rebuilt by the builder"
             assert _indexes(c, "core", "fixture_event_kinds") == {"fixture_event_kinds_pkey"}
             assert _triggers(c, KINDS) == set(), "a derived table: the builder rewrites the rows of a match, it is not append-only"
-            fks = c.execute("SELECT count(*) FROM pg_constraint WHERE conrelid = %s::regclass AND contype = 'f'", (KINDS,)).fetchone()
-            assert fks == (0,), "no foreign key: it would need a lock on tables that fixtures_sync keeps in a write transaction (revisions 0085, 0086)"
+            kinds_fks = c.execute("SELECT count(*) FROM pg_constraint WHERE conrelid = %s::regclass AND contype = 'f'", (KINDS,)).fetchone()
+            assert kinds_fks == (0,), "no foreign key: it would need a lock on tables that fixtures_sync keeps in a write transaction (revisions 0085, 0086)"
             assert _comment(c, KINDS)
             assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0089",)
 

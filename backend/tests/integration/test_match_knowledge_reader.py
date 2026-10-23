@@ -226,10 +226,10 @@ def test_every_source_is_read_into_its_place(db: psycopg.Connection[Any], seed: 
     captain = next(p for p in inp.players if p.player_id == 501)
     assert (captain.captain, captain.substitute, captain.minutes, captain.rating, captain.goals) == (True, False, 90, 8.1, 1)
     assert {(s.side, s.formation, s.coach_name) for s in inp.lineups} == {("home", "4-3-3", "Coach Home"), ("away", "4-4-2", "Coach Away")}
-    close = {(q.market, q.selection, q.line): q for q in inp.close_quotes}
+    close = {(q.market, q.selection, float(q.line)): q for q in inp.close_quotes}
     assert len(close) == 7 and close[("1X2", "Home", 0)].p_fair == 0.5 and close[("1X2", "Home", 0)].books == 10
     assert close[("1X2", "Home", 0)].as_of == KICKOFF - timedelta(minutes=20)
-    opened = {(q.market, q.selection, q.line): q for q in inp.open_quotes}
+    opened = {(q.market, q.selection, float(q.line)): q for q in inp.open_quotes}
     assert opened[("1X2", "Home", 0)].p_fair == 0.45 and opened[("1X2", "Home", 0)].as_of == KICKOFF - timedelta(days=6)
     assert {(d.market, d.selection, d.state, d.result, d.profit) for d in inp.decisions} == {
         ("1X2", "Home", "PICK_PREMIUM", "win", 1.1), ("OU", "Over", "RECHAZADO", "win", 0.9)}
@@ -258,7 +258,7 @@ def test_the_last_prices_are_the_middle_of_the_bookmakers_prices_for_the_markets
     w.final(fid, "AH", "Home", -1.5, [2.1, 2.2, 2.3, 2.4, 2.5])                      # an odd number of bookmakers: the one in the middle
     w.final(fid, "AH", "Away", -1.5, [1.7])                                          # one bookmaker
     inp = reader.read(db, [fid])[fid].inputs
-    last = {(q.market, q.selection, q.line): q for q in inp.final_quotes}
+    last = {(q.market, q.selection, float(q.line)): q for q in inp.final_quotes}
     assert len(last) == 7 + 2, "the seven of the golden match and the two of the handicap; not the double chance"
     home = last[("1X2", "Home", 0)]
     assert (home.odds, home.books, home.as_of, home.fetched_at) == (1.85, 4, KICKOFF - timedelta(minutes=85), FETCHED), (
@@ -301,10 +301,13 @@ def test_a_match_the_worker_never_saw_is_told_by_the_last_prices(db: psycopg.Con
 def test_the_statistics_of_the_teams_come_from_the_provider_that_has_both_sides(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
     both, mixed, only_old = w.match(), w.match(KICKOFF + timedelta(days=1)), w.match(KICKOFF + timedelta(days=2))
-    w.team_stats(both, "home", shots=10), w.team_stats(both, "away", shots=8)
-    w.team_stats(both, "home", source="football-data.co.uk", shots=99), w.team_stats(both, "away", source="football-data.co.uk", shots=98)
+    w.team_stats(both, "home", shots=10)
+    w.team_stats(both, "away", shots=8)
+    w.team_stats(both, "home", source="football-data.co.uk", shots=99)
+    w.team_stats(both, "away", source="football-data.co.uk", shots=98)
     w.team_stats(mixed, "home", shots=10)                                                         # api-football has only one side...
-    w.team_stats(mixed, "home", source="football-data.co.uk", shots=77), w.team_stats(mixed, "away", source="football-data.co.uk", shots=66)
+    w.team_stats(mixed, "home", source="football-data.co.uk", shots=77)
+    w.team_stats(mixed, "away", source="football-data.co.uk", shots=66)
     w.team_stats(only_old, "away", source="football-data.co.uk", shots=5)
     got = reader.read(db, [both, mixed, only_old])
     shots = {fid: {t.side: t.values["shots"] for t in got[fid].inputs.team_stats} for fid in (both, mixed, only_old)}

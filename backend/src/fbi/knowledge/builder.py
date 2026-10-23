@@ -49,7 +49,8 @@ MAX_FAILED_CHUNKS: Final = 3
 
 CANDIDATES_SQL: Final = """
 SELECT f.id FROM core.fixtures f
- WHERE f.status_group = 'finished' AND f.kickoff_at >= %(since)s AND f.kickoff_at <= %(until)s
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE f.status_group = 'finished' AND f.kickoff_at >= %(since)s AND f.kickoff_at <= %(until)s AND (NOT %(tracked)s OR c.is_tracked)
  ORDER BY f.kickoff_at DESC, f.id DESC
 """
 
@@ -138,10 +139,13 @@ class BuildReport:
 # ── which matches ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-def candidates(conn: psycopg.Connection[Any], *, now: datetime, days: int = DEFAULT_DAYS, until: datetime | None = None) -> list[int]:
-    """The finished matches that kicked off in the last ``days`` days and have been settled (``SETTLE``), newest first."""
+def candidates(conn: psycopg.Connection[Any], *, now: datetime, days: int = DEFAULT_DAYS, until: datetime | None = None,
+               tracked: bool = True) -> list[int]:
+    """The finished matches that kicked off in the last ``days`` days and have been settled (``SETTLE``), newest first. Of the competitions
+    PrediGol follows (``is_tracked``: the ones whose matches are followed, priced and judged) unless ``tracked`` is off."""
     with conn.cursor() as cur:
-        cur.execute(CANDIDATES_SQL, {"since": now - timedelta(days=days), "until": until if until is not None else now - SETTLE})
+        cur.execute(CANDIDATES_SQL, {"since": now - timedelta(days=days), "until": until if until is not None else now - SETTLE,
+                                     "tracked": tracked})
         return [int(r[0]) for r in cur.fetchall()]
 
 
@@ -325,10 +329,10 @@ def build_many(conn: psycopg.Connection[Any], fixture_ids: Sequence[int], *, app
 
 
 def refresh_pending(conn: psycopg.Connection[Any], *, now: datetime, days: int = DEFAULT_DAYS, max_seconds: float | None = None,
-                    limit: int | None = None, apply: bool = True, commit: bool = True,
+                    limit: int | None = None, apply: bool = True, commit: bool = True, tracked: bool = True,
                     progress: Callable[[BuildReport], None] | None = None) -> BuildReport:
     """One pass of the worker's job: the finished matches settled in the last ``days`` days, newest first, those that are due built."""
-    queue = candidates(conn, now=now, days=days)
+    queue = candidates(conn, now=now, days=days, tracked=tracked)
     if commit:
         conn.commit()
     return build_many(conn, queue, apply=apply, max_seconds=max_seconds, limit=limit, commit=commit, progress=progress)
@@ -342,14 +346,17 @@ SELECT count(*) AS finished, count(m.id) AS built,
        count(*) FILTER (WHERE m.completeness = 'partial') AS partial,
        count(*) FILTER (WHERE m.completeness = 'minimal') AS minimal
   FROM core.fixtures f
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
   LEFT JOIN LATERAL (SELECT x.id, x.completeness FROM intel.match_knowledge x
                       WHERE x.fixture_id = f.id AND x.version = %(version)s ORDER BY x.id DESC LIMIT 1) m ON true
- WHERE f.status_group = 'finished' AND f.kickoff_at >= %(since)s AND f.kickoff_at <= %(until)s
+ WHERE f.status_group = 'finished' AND f.kickoff_at >= %(since)s AND f.kickoff_at <= %(until)s AND (NOT %(tracked)s OR c.is_tracked)
 """
 KINDS_COVERAGE_SQL: Final = """
 WITH lines AS (
     SELECT e.fixture_id, count(*) AS n FROM core.fixture_events e JOIN core.fixtures f ON f.id = e.fixture_id
-     WHERE f.status_group = 'finished' AND f.kickoff_at >= %(since)s AND f.kickoff_at <= %(until)s GROUP BY e.fixture_id
+      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id JOIN core.competitions c ON c.id = cs.competition_id
+     WHERE f.status_group = 'finished' AND f.kickoff_at >= %(since)s AND f.kickoff_at <= %(until)s AND (NOT %(tracked)s OR c.is_tracked)
+     GROUP BY e.fixture_id
 ), kinds AS (
     SELECT k.fixture_id, count(*) AS n, count(*) FILTER (WHERE k.rules_version <> %(rules)s) AS old_rules
       FROM core.fixture_event_kinds k WHERE k.fixture_id IN (SELECT fixture_id FROM lines) GROUP BY k.fixture_id
@@ -361,15 +368,16 @@ SELECT count(*) AS with_events, count(*) FILTER (WHERE k.fixture_id IS NOT NULL 
 """
 
 
-def coverage(conn: psycopg.Connection[Any], *, now: datetime, days: int = 400, version: str = layers.VERSION) -> dict[str, Any]:
+def coverage(conn: psycopg.Connection[Any], *, now: datetime, days: int = 400, version: str = layers.VERSION,
+             tracked: bool = True) -> dict[str, Any]:
     """How many of the finished matches that kicked off in the last ``days`` days (and are settled) have a build, how complete the builds
     are, and how many matches with events have the lines of those events read (``stale``: the number of lines is not the match's, or
-    they were read by older rules)."""
-    window = {"since": now - timedelta(days=days), "until": now - SETTLE}
+    they were read by older rules). Of the competitions PrediGol follows unless ``tracked`` is off."""
+    window = {"since": now - timedelta(days=days), "until": now - SETTLE, "tracked": tracked}
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(COVERAGE_SQL, {**window, "version": version})
         got = {k: int(v) for k, v in (cur.fetchone() or {}).items()}
         cur.execute(KINDS_COVERAGE_SQL, {**window, "rules": ev.VERSION})
         kinds = {k: int(v) for k, v in (cur.fetchone() or {}).items()}
     share = round(100 * got["built"] / got["finished"], 2) if got["finished"] else 0.0
-    return {"days": days, "version": version, **got, "share": share, "events": kinds}
+    return {"days": days, "version": version, "tracked": tracked, **got, "share": share, "events": kinds}
