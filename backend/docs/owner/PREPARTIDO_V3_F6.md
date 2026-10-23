@@ -283,7 +283,7 @@ empezar (08:00 UTC: ninguna transacción de escritura de más de 20 s sobre esas
 (`predigol-20261023T080047Z-pre-deploy-51430f6b326a`: 1.152.240.254 bytes en 387 s) y `predigolctl deploy`. **La migración se aplicó a la primera** y el
 despliegue terminó a las 08:09:15 UTC (9 min 7 s desde el arranque a las 08:00:08, de los que 6,5 son la copia). La ventana quedó fuera de la de
 `fixtures_sync` (su pasada de las 07:03 UTC mantiene transacciones de escritura abiertas entre unos 24 y 51 minutos después, es decir, hasta las 07:54).
-La vigilancia de bloqueos no había registrado ninguno al escribir esto.
+La vigilancia de bloqueos (de las 07:28 a las 08:38 UTC) terminó sin registrar ninguna espera.
 
 **Lo que se comprobó al terminar (solo lectura, 08:09–08:10 UTC).**
 
@@ -305,11 +305,29 @@ La vigilancia de bloqueos no había registrado ninguno al escribir esto.
 despliegue reinició el worker: el vigilante de corridas cierra la que perdió su proceso y la pasada siguiente la rehace. Las dos anteriores (74323 y
 74326) terminaron bien y no encontraron nada que reescribir en los modelos (1.911 pronósticos sin cambios para 648 partidos).
 
-**Todavía sin medir** (se anota aquí en cuanto exista, porque el worker arma el paquete de cada partido cuando le toca): los paquetes `packet-v8` y los
-informes `brief-v8` (en las 6 horas anteriores había 1.230 paquetes `packet-v7` de 4.281 tokens aproximados de media —la muestra de 200 partidos de
-«Lo que se midió antes de estrenar» dio 4.184— y 97 informes `brief-v7`), el tamaño real de la vista del revisor, el gasto de IA con los informes nuevos
-y las versiones de modelo que se escriben tras el reinicio, que deben acabar solo en `@mc9a7bec97ca`. La auditoría nocturna se explica en «Lo que
-queda vigilado», punto 3.
+**Lo que se midió a las 08:49 UTC, 40 minutos después (solo lectura).** El worker ya había armado paquetes nuevos de la versión `packet-v8`.
+
+| Medición | Resultado |
+|---|---|
+| Servicios y registros | API, web y worker «healthy» desde hace 40 minutos; 0 líneas con error en el worker y en la API (3 horas); las pasadas de `pick_pipeline` 74345 y 74346 terminaron bien (la 74350 seguía en marcha) |
+| Paquetes de las últimas 6 horas | `packet-v8`: 283 (6.312 tokens aproximados de media, 27.982 caracteres) · `packet-v7`: 1.230 (4.281) · `packet-v6`: 217 (3.686) |
+| Tamaño del paquete nuevo frente al viejo, sobre los 194 partidos que tienen los dos | `packet-v8` 6.223 tokens de media (mediana 6.363, p95 7.124, máximo 7.982) contra 4.174 del `packet-v7` del mismo partido: **×1,49**, como se había calculado antes de estrenar |
+| **Lo que lee el revisor de picks (la vista)** | **4.183 tokens de media** (p95 4.952, máximo 6.228; ×0,672 del paquete guardado): **+0,2 % frente al `packet-v7`**, es decir, el revisor de picks cuesta lo mismo que antes de F6 |
+| Cuánto pesa cada bloque nuevo (bytes de media) | cara a cara 2.440 (en 194 de 194) · escenarios 1.385 (193 de 194) · factores 815 (194 de 194) · agenda de partidos 2.613 · dossier completo 9.506 |
+| Estado de los cuatro factores en los 283 paquetes | `h2h_weighted`, `scenarios`, `tactics_profile` y `rest_congestion`: **DESCRIPTIVO en los 283**; ningún paquete trae `factors` entre lo que falta |
+| Lo que más falta en los paquetes (de 194) | alineaciones 193 (aún no salen a esa hora), mercado 18, clasificación 13, cara a cara 11 |
+| Informes | `brief-v8`: 2 (0,0075 US$ en total; uno pidió investigación) · `brief-v7`: 97 (0,2991 US$). Ninguna afirmación fue rechazada por apoyarse en un factor descriptivo. Con 2 informes no se puede extrapolar el coste por informe |
+| Versiones de modelo | ningún pronóstico de modelo nuevo se escribió en las 3 horas (1.911 sin cambios para 648 partidos): no apareció ninguna versión nueva; la huella del código sigue siendo `9a7bec97caec` |
+| Gasto de IA de hoy hasta las 08:49 UTC | 5,03 US$ (`pick_review` 4,05 en 85 llamadas · `web_search` 0,66 · `match_brief` 0,31 · `evidence_extraction` 0,02): igual que a las 08:09 UTC, porque la revisión de picks no volvió a correr en esos 40 minutos. El efecto en el gasto se verá en el primer día completo (24 oct) |
+| Peticiones a API-Football | 3.749 de 60.000 (el 22 oct fueron 10.665) |
+| Disco | 56 %; el mismo aviso de antes (90 % en unos 21 días) |
+
+Lo que esto dice del coste: el revisor de picks, que es lo que más gasta (≈ 4 US$ de los ≈ 5 diarios), no cambia, y por eso el gasto de F6 se queda en los
+informes (`match_brief`, ≈ 0,3–0,5 US$ al día), que sí leen el paquete entero: si su coste subiera en la proporción del paquete serían ≈ 0,15 US$ más al día
+(≈ 4,5 US$ al mes), dentro del margen que deja el tope de 180 US$. Es una cota, no una medición: se confirma con el primer día completo.
+
+**Todavía por medir.** El gasto de IA de un día completo con la versión nueva (24 oct), y la auditoría nocturna, que se explica en «Lo que queda vigilado»,
+punto 3.
 
 ## Verificación de los criterios del plan
 
@@ -324,7 +342,7 @@ queda vigilado», punto 3.
 | Una validación vale solo para la versión del código que se midió | sí | `test_a_validation_is_about_one_version_of_the_code`, `test_a_validation_of_another_version_of_the_code_is_not_in_the_packet`, `test_a_validation_of_another_version_used_for_this_one_is_caught` |
 | La IA no justifica una selección con un factor descriptivo | sí, lo impone el servidor | `test_a_reason_for_a_selection_cannot_rest_on_a_descriptive_factor`, `test_a_validated_factor_may_be_cited_and_only_that_one` |
 | La IA no escribe consultas y el servidor decide dentro de lo permitido | sí | `test_the_ai_never_writes_a_query`, `test_with_one_search_left_the_match_with_a_candidate_gets_it_and_the_request_is_counted_as_unserved`, `test_near_the_days_budget_a_match_without_a_candidate_loses_its_research_with_the_rest_of_its_paid_depth`, `test_a_final_pass_does_not_read_the_web_and_the_owners_run_now_serves_what_was_asked` |
-| El coste de la IA es «similar al actual» | sí, **gracias a la vista** (sin ella, +35 US$/mes) | `test_while_every_factor_is_descriptive_the_reviewer_reads_the_packet_of_before_plan_f6`, `test_the_view_is_about_the_size_the_packet_had_before_plan_f6_and_far_below_the_packet_of_v8`, `test_a_change_only_in_what_the_reviewer_is_not_given_buys_no_second_review` |
+| El coste de la IA es «similar al actual» | sí, **gracias a la vista** (sin ella, +35 US$/mes); medido en producción: el revisor lee 4.183 tokens contra 4.174 del paquete anterior (+0,2 %) | `test_while_every_factor_is_descriptive_the_reviewer_reads_the_packet_of_before_plan_f6`, `test_the_view_is_about_the_size_the_packet_had_before_plan_f6_and_far_below_the_packet_of_v8`, `test_a_change_only_in_what_the_reviewer_is_not_given_buys_no_second_review` |
 | El selector de partido del dossier | sí | `test_the_day_lists_the_matches_of_the_bogota_day_and_the_ones_the_ai_studied_first`, `test_a_text_finds_the_matches_of_a_team_within_45_days_nearest_first_and_ignores_case`, `test_a_number_is_also_a_match_id_and_that_match_comes_first_wherever_it_is` |
 | La migración se deshace sola y no toca nada más | sí | `test_0088_adds_one_table_and_one_view_and_nothing_else_and_comes_back_out` |
 | «Terminado cuando»: el paquete en *shadow* dos semanas sin errores de fuga y con el coste por partido dentro del presupuesto | **en curso** desde el despliegue: la auditoría nocturna con las cuatro reglas y el gasto de IA se miran cada día (abajo); F6 no cambia ninguna decisión, así que no frena a la fase siguiente | `leak-audit-v6`, `ai.usage` |
