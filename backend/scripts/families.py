@@ -52,7 +52,7 @@ DEFAULT_SIDE_LINES: dict[str, tuple[float, ...]] = {
     "shots_on_target_ft": (3.5, 4.5, 5.5),
 }
 HISTORY_DAYS = 3 * 365
-FIELDS = ("competition_id", "fixture_id", "kickoff_at", "home_id", "away_id", "home", "away", "neutral")
+FIELDS = ("competition_id", "fixture_id", "kickoff_at", "home_id", "away_id", "home", "away", "neutral", "referee_id")
 
 
 def _write_rows(fh: TextIO, by_competition: dict[int, list[Match]]) -> int:
@@ -61,7 +61,8 @@ def _write_rows(fh: TextIO, by_competition: dict[int, list[Match]]) -> int:
     w.writerow(FIELDS)
     for competition, matches in sorted(by_competition.items()):
         for m in matches:
-            w.writerow([competition, m.fixture_id, m.kickoff_at.isoformat(), m.home_id, m.away_id, m.home, m.away, int(m.neutral)])
+            w.writerow([competition, m.fixture_id, m.kickoff_at.isoformat(), m.home_id, m.away_id, m.home, m.away, int(m.neutral),
+                        "" if m.referee_id is None else m.referee_id])
             n += 1
     return n
 
@@ -82,22 +83,23 @@ def read_csv(path: Path) -> dict[int, list[Match]]:
         for r in csv.DictReader(fh):
             out.setdefault(int(r["competition_id"]), []).append(
                 Match(int(r["fixture_id"]), datetime.fromisoformat(r["kickoff_at"]), int(r["home_id"]), int(r["away_id"]), int(r["home"]),
-                      int(r["away"]), bool(int(r["neutral"]))))
+                      int(r["away"]), bool(int(r["neutral"])), int(r["referee_id"]) if r.get("referee_id") else None))
     return out
 
 
-def load_measure(measure: str, csv_path: str | None, months: int, now: datetime) -> dict[int, list[Match]]:
+def load_measure(measure: str, csv_path: str | None, months: int, now: datetime, *, with_referee: bool = False) -> dict[int, list[Match]]:
     """The finished matches of a measure, from a CSV written by ``export`` or, read-only, from the database."""
     if csv_path:
         return read_csv(Path(csv_path))
     with psycopg.connect(settings.database.psycopg_url, options="-c default_transaction_read_only=on") as conn:
-        data = history.load(conn, measure, since=now - timedelta(days=HISTORY_DAYS + months * 31), cutoff=now)
+        data = history.load(conn, measure, since=now - timedelta(days=HISTORY_DAYS + months * 31), cutoff=now, with_referee=with_referee)
         conn.rollback()
     return data
 
 
 def load(args: argparse.Namespace, now: datetime) -> dict[int, list[Match]]:
-    return load_measure(args.measure, getattr(args, "csv", None), args.months, now)
+    wanted = bool(getattr(args, "referee", False) or getattr(args, "referee_kappa", None))
+    return load_measure(args.measure, getattr(args, "csv", None), args.months, now, with_referee=wanted)
 
 
 def grid_of(args: argparse.Namespace) -> tuple[tuple[float, ...], tuple[float, ...]]:
@@ -128,10 +130,16 @@ def evaluate_command(args: argparse.Namespace) -> int:
     if args.tune:
         xi, penalty, grid = evaluate.tune(usable, measure=args.measure, start=start, step_days=args.step_days, xis=grid_of(args)[0], penalties=grid_of(args)[1])
     ev = evaluate.walk_forward(usable, measure=args.measure, start=start, end=end, step_days=args.step_days, xi=xi, penalty=penalty)
+    with_referee = None
+    if args.referee_kappa:
+        with_referee = evaluate.walk_forward(usable, measure=args.measure, start=start, end=end, step_days=args.step_days, xi=xi, penalty=penalty,
+                                             referee_kappa=args.referee_kappa)
     lines = tuple(float(x) for x in args.lines.split(",")) if args.lines else DEFAULT_LINES.get(args.measure, ())
     side_lines = tuple(float(x) for x in args.side_lines.split(",")) if args.side_lines else DEFAULT_SIDE_LINES.get(args.measure, ())
     summary = evaluate.summarise(ev, lines, side_lines)
     summary["tuning_grid"] = grid
+    if with_referee is not None:
+        summary["referee"] = {"kappa": args.referee_kappa, **evaluate.compare_referee(ev, with_referee)}
     summary["window"] = {"start": start.isoformat(), "end": end.isoformat()}
     comps = evaluate.by_competition(ev)
     summary["by_competition"] = comps[:40]
@@ -167,6 +175,10 @@ def print_summary(s: dict[str, Any]) -> None:
             f"{b['mean_p']:.2f}->{b['observed']:.2f}({b['n']})" for b in s["lines"][first]["reliability"]))
     print("  by competition (most predictions first): " + "; ".join(
         f"{c['competition_id']}: {c['gain']:+.3f} ({c['n']})" for c in s["by_competition"][:12]))
+    ref = s.get("referee")
+    if ref and ref["n"]:
+        print(f"  the referee (prior {ref['kappa']:g} cards; {ref['coverage']:.0%} of the matches had a multiplier), log score added per match: " + ", ".join(
+            f"{side} {ref[side]['mean']:+.4f} (se {ref[side]['se']:.4f})" for side in ("home", "away", "total")))
 
 
 def usable_competitions(data: dict[int, list[Match]], start: datetime) -> dict[int, list[Match]]:
@@ -215,7 +227,8 @@ def print_halves(r: dict[str, Any]) -> None:
 def sql_command(args: argparse.Namespace) -> int:
     """Print the statement that reads the history of ``--measure`` (no database is touched)."""
     now = clock_now()
-    print(history.export_statement(args.measure, since=now - timedelta(days=HISTORY_DAYS + args.months * 31), cutoff=now))
+    print(history.export_statement(args.measure, since=now - timedelta(days=HISTORY_DAYS + args.months * 31), cutoff=now,
+                                   with_referee=bool(getattr(args, "referee", False))))
     return 0
 
 
@@ -248,7 +261,11 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--measure", required=True, help="a measure of the settlement rules (see 'measures')")
         p.add_argument("--months", type=int, default=12, help="months of test window (default %(default)s)")
         p.add_argument("--csv", help="read the matches from this CSV instead of the database")
+        if name in {"export", "sql"}:
+            p.add_argument("--referee", action="store_true", help="also read the referee of each match (the identity F3 settled on)")
         if name == "evaluate":
+            p.add_argument("--referee-kappa", type=float, help="also evaluate with the referee's multiplier on the means, shrunk with this prior "
+                                                               "strength in cards (the history needs the referees: export --referee)")
             p.add_argument("--step-days", type=int, default=28, help="days per block (default %(default)s)")
             p.add_argument("--xi", type=float, default=evaluate.DEFAULT_XI, help="time decay per day (default %(default)s)")
             p.add_argument("--penalty", type=float, default=evaluate.DEFAULT_PENALTY, help="shrinkage of the strengths (default %(default)s)")

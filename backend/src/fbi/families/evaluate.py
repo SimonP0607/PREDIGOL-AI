@@ -15,12 +15,13 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Final
 
 import numpy as np
 
+from fbi.families import referee
 from fbi.families.counts import MAX_COUNT, difference_probs, nb_pmf, normalised, over_under
 from fbi.families.fit import (
     DAY,
@@ -51,6 +52,7 @@ class Row:
     mu_away: float
     base_home: float
     base_away: float
+    with_referee: bool = False
 
 
 @dataclass
@@ -72,8 +74,11 @@ def _baseline(train: Sequence[Match], at: datetime, xi: float) -> tuple[float, f
 
 
 def walk_forward(by_competition: Mapping[int, Sequence[Match]], *, measure: str, start: datetime, end: datetime, step_days: int = 28,
-                 xi: float = DEFAULT_XI, penalty: float = DEFAULT_PENALTY) -> Evaluation:
-    """Predict every match with a kick-off in ``[start, end)`` from the matches known at the start of its block."""
+                 xi: float = DEFAULT_XI, penalty: float = DEFAULT_PENALTY, referee_kappa: float | None = None) -> Evaluation:
+    """Predict every match with a kick-off in ``[start, end)`` from the matches known at the start of its block.
+
+    With ``referee_kappa`` the means of a match whose referee is known (and has enough known matches) are scaled by his multiplier
+    (``fbi.families.referee``), learned from the matches known at the start of the block."""
     rows: list[Row] = []
     skipped = 0
     for competition, matches in by_competition.items():
@@ -90,19 +95,23 @@ def walk_forward(by_competition: Mapping[int, Sequence[Match]], *, measure: str,
                     skipped += 1
                 else:
                     base_h, base_a = _baseline(train, t, xi)
+                    multipliers = referee.factors(train, fitted, kappa=referee_kappa) if referee_kappa else {}
                     for m in block:
                         if not fitted.knows(m.home_id, m.away_id):
                             continue
                         mu_h, mu_a = fitted.means(m.home_id, m.away_id)
-                        rows.append(Row(m.fixture_id, competition, m.kickoff_at, m.home, m.away, mu_h, mu_a, base_h, base_a))
+                        factor = multipliers.get(m.referee_id) if m.referee_id is not None else None
+                        if factor is not None:
+                            mu_h, mu_a = mu_h * factor, mu_a * factor
+                        rows.append(Row(m.fixture_id, competition, m.kickoff_at, m.home, m.away, mu_h, mu_a, base_h, base_a, factor is not None))
             t = block_end
     if not rows:
         return Evaluation(measure, [], skipped, Dispersion(0.0, 0.0, 0.0), Dispersion(0.0, 0.0, 0.0),
-                          {"xi": xi, "penalty": penalty, "step_days": float(step_days)})
+                          {"xi": xi, "penalty": penalty, "step_days": float(step_days), "referee_kappa": referee_kappa or 0.0})
     yh, ya = [r.y_home for r in rows], [r.y_away for r in rows]
     model = estimate_dispersion(yh, [r.mu_home for r in rows], ya, [r.mu_away for r in rows])
     baseline = estimate_dispersion(yh, [r.base_home for r in rows], ya, [r.base_away for r in rows])
-    return Evaluation(measure, rows, skipped, model, baseline, {"xi": xi, "penalty": penalty, "step_days": float(step_days)})
+    return Evaluation(measure, rows, skipped, model, baseline, {"xi": xi, "penalty": penalty, "step_days": float(step_days), "referee_kappa": referee_kappa or 0.0})
 
 
 def _log(p: float) -> float:
@@ -202,6 +211,39 @@ def by_competition(ev: Evaluation) -> list[dict[str, Any]]:
         out.append({"competition_id": competition, "n": len(rows), "gain": float(arr.mean()),
                     "se": float(arr.std(ddof=1) / math.sqrt(len(rows))) if len(rows) > 1 else None})
     return sorted(out, key=lambda d: -int(d["n"]))
+
+
+def compare_referee(plain: Evaluation, with_referee: Evaluation) -> dict[str, Any]:
+    """The log score the referee adds, per match, to each count (home side, away side, total): the paired difference of two evaluations of the
+    same matches, one without and one with the multiplier of the referee, each with the dispersion it measured. Also the share of the matches
+    that had a multiplier and the gain over those alone."""
+    if [r.fixture_id for r in plain.rows] != [r.fixture_id for r in with_referee.rows]:
+        raise ValueError("the two evaluations are not of the same matches")
+    out: dict[str, Any] = {"n": len(plain.rows)}
+    if not plain.rows:
+        return out
+    scores = {"plain": _log_scores(plain), "referee": _log_scores(with_referee)}
+    diff = scores["referee"] - scores["plain"]
+    covered = np.array([r.with_referee for r in with_referee.rows])
+    out["coverage"] = float(covered.mean())
+    for i, name in enumerate(("home", "away", "total")):
+        d = diff[:, i]
+        out[name] = {"mean": float(d.mean()), "se": float(d.std(ddof=1) / math.sqrt(len(d))) if len(d) > 1 else None,
+                     "mean_with_referee_only": float(d[covered].mean()) if covered.any() else None}
+    out["dispersion_plain"] = asdict(plain.model)
+    out["dispersion_referee"] = asdict(with_referee.model)
+    return out
+
+
+def _log_scores(ev: Evaluation) -> Any:
+    """The log score of the model on (home, away, total) for every row: an array of shape (n, 3)."""
+    out = np.zeros((len(ev.rows), 3))
+    for i, r in enumerate(ev.rows):
+        ph, pa, pt = _pmfs(r.mu_home, r.mu_away, ev.model)
+        k = r.y_home + r.y_away
+        out[i] = (_log(float(ph[r.y_home]) if r.y_home < ph.size else 0.0), _log(float(pa[r.y_away]) if r.y_away < pa.size else 0.0),
+                  _log(float(pt[k]) if k < pt.size else 0.0))
+    return out
 
 
 DEFAULT_XIS: Final = (0.0, 0.0019, 0.004)

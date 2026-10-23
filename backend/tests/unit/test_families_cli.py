@@ -167,3 +167,24 @@ def test_the_grid_of_the_command_line_replaces_the_default_one() -> None:
     assert cli.grid_of(named) == ((0.0, 0.002), (4.0, 16.0, 64.0))
     assert cli.grid_of(argparse.Namespace(xis=None, penalties=None)) == (tuple(evaluate.DEFAULT_XIS), tuple(evaluate.DEFAULT_PENALTIES))
     assert 32.0 in evaluate.DEFAULT_PENALTIES, "the best of the first grid was its largest penalty: the grid goes beyond it"
+
+
+def test_the_csv_carries_the_referee_when_there_is_one_and_old_files_still_read(tmp_path: Path) -> None:
+    ko = clock_now() - timedelta(days=3)
+    data = {7: [Match(1, ko, 10, 11, 3, 2, False, 55), Match(2, ko + timedelta(hours=3), 12, 13, 1, 1)]}
+    path = tmp_path / "with.csv.gz"
+    cli.write_csv(path, data)
+    assert cli.read_csv(path) == data, "a referee comes back as the referee, no referee as none"
+    old = tmp_path / "old.csv"
+    old.write_text("competition_id,fixture_id,kickoff_at,home_id,away_id,home,away,neutral\n"
+                   f"7,1,{ko.isoformat()},10,11,3,2,0\n", encoding="utf-8")
+    assert cli.read_csv(old)[7][0].referee_id is None, "an export made before the referee was read"
+
+
+def test_the_sql_command_reads_the_referee_only_when_asked(capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["sql", "--measure", "cards_lines_ft", "--referee"]) == 0
+    with_referee = capsys.readouterr().out
+    assert cli.main(["sql", "--measure", "cards_lines_ft"]) == 0
+    without = capsys.readouterr().out
+    assert "fr.referee_id AS referee_id" in with_referee and "referee" not in without
+    assert "o.cards_source = 'stats' OR o.cards_consistent IS TRUE" in with_referee and "cards_consistent IS TRUE" in without, "cards are corroborated"

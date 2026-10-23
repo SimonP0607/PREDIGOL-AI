@@ -85,3 +85,42 @@ def test_the_copy_statement_reads_exactly_what_the_door_reads(db: psycopg.Connec
     assert history.load(db, "goals_1h", since=EARLIER, cutoff=LATER), "and the comparison is not between two empty histories"
     with pytest.raises(history.UnknownMeasureError):
         history.export_statement("corners_1h", since=EARLIER, cutoff=LATER)
+
+
+def test_a_count_of_cards_comes_through_only_when_it_is_corroborated(db: psycopg.Connection[Any], w: Any, world: dict[str, int]) -> None:  # noqa: F811
+    """Cards from events alone are incomplete where no statistics back them (23 Oct 2026): 3.7 a match against 5.1-5.9, and 83 % of the
+    clubs' friendlies at zero. A family reads cards only from the statistics alone, or from events that agree with the statistics."""
+    from .test_market_catalogue import _kind, _stats
+
+    kick = KICKOFF + timedelta(days=2)
+    events_only = w.match(kick, 0, 1, (1, 0), ht=(0, 0))  # events say one yellow; no team statistics at all
+    _kind(w, events_only, 1, "yellow", "1H", "home")
+    disagree = w.match(kick + timedelta(hours=1), 1, 2, (1, 0), ht=(0, 0))  # events say one yellow, the statistics say three
+    _stats(w, disagree, {"yellow_cards": 2, "red_cards": 0}, {"yellow_cards": 1, "red_cards": 0})
+    _kind(w, disagree, 1, "yellow", "1H", "home")
+    got = {m.fixture_id for m in flat(history.load(db, "cards_lines_ft", since=EARLIER, cutoff=LATER))}
+    assert got == {world["plain"], world["dismissals"], world["stats_only"]}, (
+        "the events that agree with the statistics, and the statistics alone; not the events alone, not the events that disagree")
+    assert {m.fixture_id for m in flat(history.load(db, "yellow_ft", since=EARLIER, cutoff=LATER))} == got
+    goals = {m.fixture_id for m in flat(history.load(db, "goals_ft", since=EARLIER, cutoff=LATER))}
+    assert {events_only, disagree} <= goals, "the goals of those matches are fine: the rule is about cards"
+    assert history.needs_corroboration("cards_lines_ft") and history.needs_corroboration("red_ft") and not history.needs_corroboration("corners_ft")
+    assert "cards_consistent" in history.export_statement("cards_lines_ft", since=EARLIER, cutoff=LATER)
+    assert "cards_consistent" not in history.export_statement("corners_ft", since=EARLIER, cutoff=LATER)
+
+
+def test_the_referee_of_a_match_comes_through_when_asked_and_not_otherwise(db: psycopg.Connection[Any], w: Any, world: dict[str, int]) -> None:  # noqa: F811
+    referee_id = db.execute("INSERT INTO core.referees (name, name_key, origin, version) VALUES ('A. Referee', 'a referee', 'rules', 'test') "
+                            "RETURNING id").fetchall()[0][0]
+    alias = db.execute("INSERT INTO core.referee_aliases (referee_id, name_key, scope, display, basis, placed_by, version) "
+                       "VALUES (%s, 'a referee', 'germany', 'A. Referee', 'identity', 'rules', 'test') RETURNING id", (referee_id,)).fetchall()[0][0]
+    for observed in (KICKOFF - timedelta(days=1), KICKOFF + timedelta(days=1)):  # seen before the match and again after it: one referee
+        db.execute("INSERT INTO core.fixture_officials (fixture_id, role, observed_at, alias_id) VALUES (%s, 'referee', %s, %s)",
+                   (world["plain"], observed, alias))
+    plain = {m.fixture_id: m.referee_id for m in flat(history.load(db, "corners_ft", since=EARLIER, cutoff=LATER))}
+    assert set(plain.values()) == {None}, "without asking, no referee is read"
+    asked = {m.fixture_id: m.referee_id for m in flat(history.load(db, "corners_ft", since=EARLIER, cutoff=LATER, with_referee=True))}
+    assert set(asked) == set(plain), "asking for the referee does not change which matches come through"
+    assert asked[world["plain"]] == referee_id and asked[world["dismissals"]] is None, "the match he whistled, and one nobody recorded"
+    assert "fr.referee_id AS referee_id" in history.export_statement("corners_ft", since=EARLIER, cutoff=LATER, with_referee=True)
+    assert "referee_id" not in history.export_statement("corners_ft", since=EARLIER, cutoff=LATER)

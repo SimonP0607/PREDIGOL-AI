@@ -46,6 +46,7 @@ class Match:
     home: int
     away: int
     neutral: bool = False
+    referee_id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,12 +87,12 @@ class Fitted:
     def means(self, home_id: int, away_id: int, *, neutral: bool = False) -> tuple[float, float]:
         return self.model.lambdas(home_id, away_id, neutral=neutral)
 
-    def predict(self, home_id: int, away_id: int, *, neutral: bool = False) -> Prediction | None:
-        """``None`` when either team is not known well enough."""
+    def predict(self, home_id: int, away_id: int, *, neutral: bool = False, factor: float = 1.0) -> Prediction | None:
+        """``None`` when either team is not known well enough. ``factor`` scales both means (the effect of the referee on cards)."""
         if not self.knows(home_id, away_id):
             return None
         mh, ma = self.means(home_id, away_id, neutral=neutral)
-        return prediction(mh, ma, self.dispersion)
+        return prediction(mh * factor, ma * factor, self.dispersion)
 
 
 def prediction(mean_home: float, mean_away: float, dispersion: Dispersion) -> Prediction:

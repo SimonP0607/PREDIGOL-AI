@@ -12,6 +12,7 @@ import psycopg
 import pytest
 
 from fbi.families import forecast, job
+from fbi.forecasting import match_forecast
 
 from .test_families_forecast import AT, catalogue, played, small_window, stored, upcoming, w  # noqa: F401  (the world and its fixtures)
 
@@ -77,7 +78,7 @@ def test_a_family_that_fails_after_writing_leaves_nothing_of_itself(db: psycopg.
     catalogue(db)
     played(w)
     fid = upcoming(w)
-    real_store = forecast.store
+    real_store = match_forecast.store
     calls = {"n": 0}
 
     def store_then_fail(*args: Any, **kwargs: Any) -> int:
@@ -87,7 +88,7 @@ def test_a_family_that_fails_after_writing_leaves_nothing_of_itself(db: psycopg.
             raise RuntimeError("after the first rows")
         return written
 
-    monkeypatch.setattr(forecast, "store", store_then_fail)
+    monkeypatch.setattr("fbi.families.forecast.store", store_then_fail)
     report = forecast.write_family_forecasts(db, at=AT, code_version="test", fixture_ids=[fid])
     assert report.specs["yellow_ft"].error and report.specs["yellow_ft"].rows_written == 0, "the report does not claim what was rolled back"
     assert "YELLOW" not in {r[5] for r in stored(db, fid)}, "a family is written whole or not at all"
