@@ -91,6 +91,7 @@ fila nueva. Nada se reescribe después del saque ni después del resultado.
 | `intel.runs` | ejecución de un trabajo PI | duración, estado, conteos, errores, coste, versión de código |
 | `intel.audit_checks` | comprobación de fugas de datos de un día | regla, n revisadas, violaciones, ejemplos |
 | `intel.context_factors` (migración 0088, plan F6) | decisión sobre un factor de contexto del paquete (cara a cara ponderado, escenarios, táctica observable, descanso y congestión) en una versión del código | factor, versión, estado (`DESCRIPTIVE` / `VALIDATED`), quién (una persona), el experimento y su resultado, cuándo, la decisión que sustituye; sin fila, el factor es `DESCRIPTIVE`. La vista `intel.context_factors_latest` da el estado vigente de cada factor y versión |
+| `intel.match_knowledge` (migración 0090, plan F7) | construcción de un partido **terminado y asentado** (26 horas después del inicio): las nueve capas de lo que el partido resultó ser | `layers` (JSON: por capa, estado, `known_at`, fuentes, datos y notas), `quality`, `completeness` (`complete` / `partial` / `minimal`), `known_at`, `inputs_hash` (huella de lo que se leyó) y `content_hash` (de lo que dice), `version` (`mk-v1`) y `supersedes` (la fila que reemplaza). La vista `intel.match_knowledge_latest` da la más reciente de cada partido y versión |
 
 Además: `ai.budget_alerts` acepta 50 %; `ai.sources` recibe la semilla `sources-v2` (medios reconocidos, oficiales,
 sitios de apuestas como agregadores).
@@ -103,6 +104,16 @@ cosas), y solo para **la versión del código** que el experimento midió: cambi
 `tactics-v1`) lo devuelve a `DESCRIPTIVE`. Quitar una validación es una fila nueva `DESCRIPTIVE`; nada se edita ni se borra. Se
 gestiona con `python -m scripts.context_factors list | history | promote | retire` (en seco hasta `--by NOMBRE --confirm`) y se ve en
 la consola del administrador. Ver `docs/owner/PREPARTIDO_V3_F6.md`.
+
+**Match Knowledge (plan F7).** Un partido terminado queda como un solo objeto, armado por reglas (sin IA ni llamadas al proveedor), en nueve
+capas: resultado, estadísticas de los equipos, eventos por periodo, jugadores, táctica e historia del marcador, mercado (de la apertura al
+cierre), contexto externo (apagada), picks y decisiones, y post-mortem. Es lo que el partido **resultó ser**, no algo que PrediGol dijo
+antes: **ningún lector de antes del partido (modelos, pronóstico, capa de decisión, dossier, paquete de la IA) puede leerlo ni nombrar sus
+tablas** (`tests/unit/test_knowledge_isolation.py`), de modo que conocer cómo terminó un partido no puede colarse en lo que se dice antes
+de otro; la memoria de F8 lo leerá con su propia regla «a fecha». Lo acompaña `core.fixture_event_kinds` (migración 0089, derivada): qué es
+cada línea de la lista de eventos del proveedor (gol, autogol, penal, lanzamiento de la tanda, segunda amarilla, decisión del VAR…) y en qué
+periodo cae. Un usuario no ve nada hasta que el dueño enciende `FBI_KNOWLEDGE_USERS` y, aun entonces, solo los hechos y las probabilidades
+del mercado, nunca un precio, un pick ni un post-mortem. Ver `docs/intelligence/MATCH_KNOWLEDGE.md` y `docs/owner/POSTPARTIDO_F7.md`.
 
 ## 4. Calibración (Capa 2) — `cal-logit2-v1`
 
