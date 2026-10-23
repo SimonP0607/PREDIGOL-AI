@@ -22,6 +22,8 @@ odds_mapping           daily (100 a page); 1 call/day      daily, every page (up
                                                            planner and the price status (see scripts.capture_odds)
 team_statistics        twice a day; 1/day if playing, else  daily for teams playing within 24 h, else weekly
                        1/week
+team_fixtures          (a team's matches in ALL competitions: daily for teams playing within 2 days, every other
+                       day within 4, weekly within 7; teams with no match in 7 days are not asked - plan F4)
 coachs                 daily; 1 call/day                   weekly per tracked team (line-ups name the coach
                                                            of every match)
 transfers              several times a week; 1 call/day    weekly per tracked club (national sides have none)
@@ -585,6 +587,21 @@ def apply_team_statistics(conn: psycopg.Connection, t: Target, body: dict[str, A
                  observed_at=observed_at)
 
 
+def apply_team_fixtures(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
+                        observed_at: datetime) -> int:
+    """/fixtures?team=&season= into the tables of the team calendar (fbi.ingestion.team_calendar names them)."""
+    from fbi.ingestion.team_calendar import apply
+
+    return apply(conn, t, body, payload_hash, observed_at)
+
+
+def team_fixture_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
+    """Each (team, season) with a followed match within seven days, the soonest to play first (fbi.ingestion.team_calendar)."""
+    from fbi.ingestion.team_calendar import targets
+
+    return targets(conn, at)
+
+
 def apply_nothing(conn: psycopg.Connection, t: Target, body: dict[str, Any], payload_hash: str,
                   observed_at: datetime) -> int:
     """Kept as RAW only (a list the provider documents and PrediGol has no table for: timezones, the seasons
@@ -896,6 +913,7 @@ def merge(group: Sequence[Target], param: str) -> Target:
 
 FEEDS: tuple[Feed, ...] = (
     Feed("predictions", "/predictions", prediction_targets, apply_predictions, max_per_run=400),
+    Feed("team_fixtures", "/fixtures", team_fixture_targets, apply_team_fixtures, max_per_run=60),
     Feed("odds_bets", "/odds/bets", single_target(DAY, catalogue="prematch"), apply_catalogue, max_per_run=1),
     Feed("odds_live_bets", "/odds/live/bets", single_target(DAY, catalogue="inplay"), apply_catalogue, max_per_run=1),
     Feed("odds_bookmakers", "/odds/bookmakers", single_target(DAY, catalogue="bookmakers"), apply_catalogue,
