@@ -91,6 +91,12 @@ def _recomputed(db: psycopg.Connection[Any], key: memory.EKey, days: list[date])
     return state
 
 
+def _counters(state: dict[str, Any]) -> dict[str, Any]:
+    """A state without the weight of age and the figures computed from it (memory-v4: those depend on the day a row is read at, the
+    counters do not - and the counters are what a recomputation from scratch must agree on)."""
+    return {k: v for k, v in state.items() if k != "n_eff" and not k.startswith("w_") and k not in memory.DERIVED}
+
+
 MARKET: memory.EKey = ("market", "1X2", "decisions")
 
 
@@ -117,7 +123,7 @@ def test_a_decision_settled_after_its_day_was_written_is_booked_the_next_day(db:
     assert booked["results"] == ["L"] and booked["by_selection"] == {"Away": 1} and "wins" not in booked
     assert row["stats"]["decisions"] == 2 and row["stats"]["wins"] == 1 and row["stats"]["losses"] == 1
     assert row["stats"]["last10"] == ["W", "L"] and row["stats"]["hit_rate"] == 0.5
-    assert row["stats"] == _recomputed(db, MARKET, [DAY]), "the cumulative state is what a recomputation gives"
+    assert _counters(row["stats"]) == _recomputed(db, MARKET, [DAY]), "the cumulative state is what a recomputation gives"
     assert late in row["sources"] and early not in row["sources"], "the row names the decision it learned"
 
     # No hindsight: the row of the day stays as it was written, and so does its state "as of" that day.
@@ -197,31 +203,38 @@ def test_a_night_the_worker_missed_is_caught_up_as_late_news(db: psycopg.Connect
     assert row["stats"]["decisions"] == _recomputed(db, MARKET, [DAY, skipped, last])["decisions"]
 
 
-def test_the_current_memory_continues_the_state_an_older_version_left(db: psycopg.Connection[Any], seed: Seed) -> None:
+def test_the_current_memory_begins_its_own_lineage_and_an_older_versions_row_is_history(db: psycopg.Connection[Any],
+                                                                                         seed: Seed) -> None:
+    """memory-v2 continued the state memory-v1 left; memory-v4 continues nothing: it is built from a day that is stated, on its own
+    rows, and a row of another version for the same entity and day neither blocks it nor feeds it."""
     w = World(db, seed)
     nxt = DAY + timedelta(days=1)
     first = w.decision(w.match(KICKOFF, result=(1, 0)), KICKOFF, "Home")
     second = w.decision(w.match(KICKOFF, result=(0, 3)), KICKOFF, "Away")
     w.outcome(first, "win", KICKOFF + timedelta(hours=3))
 
-    # What memory-v1 wrote for the day: the same rows, by its version, with the state it had then.
+    # What memory-v1 wrote for the day: the same rows, by its version, with the state it had then - and a counter the data do not have.
     deltas, names, sources = memory.day_deltas(db, DAY)
     for key, delta in deltas.items():
         db.execute("INSERT INTO intel.entity_memory (entity_type, entity_id, entity_name, aspect, as_of_day, built_at, "
                    "version, stats, delta, sources) VALUES (%s,%s,%s,%s,%s,%s,'memory-v1',%s,%s,%s)",
-                   (*key[:2], names.get(key), key[2], DAY, _night(DAY), Jsonb(memory.merge(None, delta)), Jsonb(delta),
-                    Jsonb(sources.get(key, []))))
+                   (*key[:2], names.get(key), key[2], DAY, _night(DAY), Jsonb(memory.merge(None, delta) | {"decisions": 40}),
+                    Jsonb(delta), Jsonb(sources.get(key, []))))
     v1 = _rows(db, DAY)[MARKET]
     assert v1["version"] == "memory-v1"
 
     w.outcome(second, "loss", _night(DAY) + timedelta(hours=1))
-    assert memory.build_memory(db, day=nxt, at=_night(nxt)) >= 1
-    row = _rows(db, nxt)[MARKET]
-    assert row["version"] == memory.VERSION == "memory-v3"
-    assert row["stats"]["decisions"] == 2 and row["stats"]["wins"] == 1 and row["stats"]["losses"] == 1
-    assert row["delta"]["late"][DAY.isoformat()]["decisions"] == 1, "what v1 never saw is booked on its row"
-    stored = _rows(db, DAY)[MARKET]
-    assert stored["version"] == "memory-v1" and stored["stats"] == v1["stats"], "the v1 row is history: untouched"
+    assert memory.build_memory(db, day=nxt, at=_night(nxt)) >= 1, "the v1 rows of the day before do not block v4"
+    mine = db.execute("SELECT version, as_of_day, stats->>'decisions', confidence FROM intel.entity_memory WHERE entity_type = 'market' "
+                      "AND entity_id = '1X2' AND version = %s ORDER BY as_of_day", (memory.VERSION,)).fetchall()
+    assert [(r[0], r[1]) for r in mine] == [("memory-v4", nxt)]
+    assert [r[2] for r in mine] == ["2"], "the 40 that v1 claimed are not counted: it begins from the data (booked as late news)"
+    assert all(r[3] is not None for r in mine), "and every row says how far it can be trusted"
+    stored = db.execute("SELECT stats FROM intel.entity_memory WHERE version = 'memory-v1' AND entity_type = 'market'").fetchone()
+    assert stored is not None and stored[0] == v1["stats"], "the v1 row is history: untouched"
+    latest = db.execute("SELECT version, as_of_day FROM intel.entity_memory_latest WHERE entity_type = 'market' AND entity_id = '1X2' "
+                        "ORDER BY as_of_day").fetchall()
+    assert latest == [("memory-v1", DAY), ("memory-v4", nxt)], "the view: the newest version of each day (and a day only v1 wrote stays)"
 
 
 def test_an_entity_that_already_has_a_row_for_the_day_is_not_written_twice(db: psycopg.Connection[Any],
@@ -234,15 +247,15 @@ def test_an_entity_that_already_has_a_row_for_the_day_is_not_written_twice(db: p
     second = w.decision(w.match(KICKOFF, result=(0, 3)), KICKOFF, "Away")
     w.outcome(second, "loss", _night(DAY) + timedelta(hours=1))
 
-    # a row of the next day exists already (written by the previous version of the code) for this one entity
+    # a row of the next day exists already for this one entity (the same version, written by a run that did not see the news)
     existing = _rows(db, DAY)[MARKET]
     db.execute("INSERT INTO intel.entity_memory (entity_type, entity_id, entity_name, aspect, as_of_day, built_at, "
-               "version, stats, delta, sources) VALUES ('market', '1X2', '1X2', 'decisions', %s, %s, 'memory-v1', %s, "
-               "'{}', '[]')", (nxt, _night(DAY), Jsonb(existing["stats"])))
+               "version, stats, delta, sources) VALUES ('market', '1X2', '1X2', 'decisions', %s, %s, %s, %s, "
+               "'{}', '[]')", (nxt, _night(DAY), memory.VERSION, Jsonb(existing["stats"])))
     memory.build_memory(db, day=nxt, at=_night(nxt))
     rows = db.execute("SELECT version FROM intel.entity_memory WHERE entity_type = 'market' AND entity_id = '1X2' "
                       "AND as_of_day = %s", (nxt,)).fetchall()
-    assert rows == [("memory-v1",)], "one row per entity, aspect and day, whatever the version"
+    assert rows == [(memory.VERSION,)], "one row per entity, aspect, day and version"
 
     # ... and the news it could not book that night is booked the following one, while it is still inside the window
     after = DAY + timedelta(days=2)
@@ -275,19 +288,29 @@ def test_a_statistic_that_arrives_late_reaches_the_referee(db: psycopg.Connectio
     assert row["stats"]["matches"] == 1, "the match is not counted again"
     assert row["stats"]["cards"] == 6 and row["stats"]["cards_per_match"] == 6.0
     assert row["stats"]["fouls_per_match"] == 22.0
-    assert row["stats"] == _recomputed(db, key, [DAY])
+    assert _counters(row["stats"]) == _recomputed(db, key, [DAY])
     assert fid in row["sources"]
 
 
-def test_the_nightly_step_builds_yesterday_only(db: psycopg.Connection[Any], seed: Seed) -> None:
+def test_the_nightly_step_builds_yesterday_only_once_the_lineage_has_begun(db: psycopg.Connection[Any], seed: Seed) -> None:
     w = World(db, seed)
+    before = DAY - timedelta(days=1)
     d = w.decision(w.match(KICKOFF, result=(1, 0)), KICKOFF, "Home")
     w.outcome(d, "win", KICKOFF + timedelta(hours=3))
+    earlier = w.decision(w.match(KICKOFF - timedelta(days=1), result=(0, 0)), KICKOFF - timedelta(days=1), "Draw")
+    w.outcome(earlier, "loss", KICKOFF - timedelta(hours=21))
+
+    # memory-v4 continues its own rows: a night that found none would begin a lineage that forgets the days before it
+    assert cycle.memory_step(db, at=_night(DAY)) == {DAY.isoformat(): 0, "waiting_for_rebuild": 1}
+    assert scalar(db.execute("SELECT count(*) FROM intel.entity_memory")) == 0
+
+    report = memory.rebuild(db, start=before, end=before, at=_night(before))  # what `scripts.memory rebuild` does, day by day
+    assert report.rows >= 4 and report.stopped is None
     counts = cycle.memory_step(db, at=_night(DAY))
     assert list(counts) == [DAY.isoformat()] and counts[DAY.isoformat()] >= 4
     assert cycle.memory_step(db, at=_night(DAY)) == {DAY.isoformat(): 0}
     assert {r["as_of_day"] for r in db.cursor(row_factory=dict_row).execute(
-        "SELECT as_of_day FROM intel.entity_memory").fetchall()} == {DAY}
+        "SELECT as_of_day FROM intel.entity_memory").fetchall()} == {before, DAY}
 
 
 def test_the_cumulative_state_equals_a_recomputation_whenever_the_news_arrives(db: psycopg.Connection[Any],

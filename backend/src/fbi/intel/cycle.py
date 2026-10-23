@@ -178,10 +178,16 @@ def run_decide(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
 
 def memory_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str, int]:
     """The nightly memory: yesterday's rows. What the days before it learned late (a match settled after its day was
-    written, a night the worker missed) is booked inside them - memory-v2 never writes to a day that has its row."""
-    from fbi.intel.memory import build_memory
+    written, a night the worker missed) is booked inside them - the memory never writes to a day that has its row.
+
+    memory-v4 continues its own rows and nothing else, and its first day is ``LINEAGE_START``: until ``python -m scripts.memory rebuild``
+    has built the days up to yesterday, a night writes nothing (and says so), because a row written alone would give its entity a state
+    that forgets every day before it - and a rebuild afterwards could not put them back (rows are never rewritten)."""
+    from fbi.intel.memory import LINEAGE_START, build_memory, lineage_started
 
     day = local_day(at) - timedelta(days=1)
+    if day > LINEAGE_START and not lineage_started(conn, day):
+        return {day.isoformat(): 0, "waiting_for_rebuild": 1}
     return {day.isoformat(): build_memory(conn, day=day, at=at)}
 
 

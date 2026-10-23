@@ -105,11 +105,11 @@ def build_report(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> d
         cur.execute("SELECT entity, market_key, model_name, to_role, reason, at FROM intel.promotions "
                     "WHERE at >= %s AND at < %s + interval '1 day' ORDER BY at", (start, end))
         promotions = [dict(r) | {"at": r["at"].isoformat()} for r in cur.fetchall()]
-        cur.execute("SELECT entity_type, entity_name, aspect, stats FROM intel.entity_memory WHERE as_of_day = %s "
+        cur.execute("SELECT entity_type, entity_name, aspect, stats FROM intel.entity_memory_latest WHERE as_of_day = %s "
                     "AND entity_type IN ('team', 'competition') AND (stats->>'decisions')::int >= 5 "
                     "ORDER BY (stats->>'clv_mean')::float8 NULLS LAST LIMIT 12", (day,))
         memory = [dict(r) for r in cur.fetchall()]
-        cur.execute("SELECT entity_name, stats FROM intel.entity_memory WHERE as_of_day = %s AND entity_type = 'player' "
+        cur.execute("SELECT entity_name, stats FROM intel.entity_memory_latest WHERE as_of_day = %s AND entity_type = 'player' "
                     "AND (delta->>'started_anyway')::int > 0 LIMIT 15", (day,))
         players = [dict(r) for r in cur.fetchall()]
         cur.execute("SELECT r.id FROM intel.runs r WHERE r.job = 'weekly' AND r.status IN ('ok', 'partial') "

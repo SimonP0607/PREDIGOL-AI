@@ -18,7 +18,7 @@ from tests.integration.conftest import ADMIN_URL, REPO_ROOT, _dsn
 pytestmark = pytest.mark.integration
 SCRATCH = "fbi_test_m0091"
 OWN = {("intel", "postmortems"), ("intel", "entity_memory"), ("intel", "selection_postmortems"), ("intel", "match_postmortems"),
-       ("ai", "postmortem_narratives")}
+       ("intel", "entity_memory_latest"), ("ai", "postmortem_narratives")}
 LEGACY = "INSERT INTO intel.postmortems (decision_id, fixture_id, created_at, version, outcome, decision_quality, verdict, answers) " \
          "VALUES (7, 11, '2026-10-14T12:00:00Z', 'pm-v3', 'won', 'GOOD', 'MERECIDO', '{\"k\": 1}') RETURNING id"
 NEW = ("INSERT INTO intel.postmortems (decision_id, fixture_id, created_at, version, outcome, decision_quality, verdict, answers, "
@@ -90,7 +90,7 @@ def test_0091_extends_the_postmortems_keeps_the_old_row_and_comes_back_out(migra
             old_row = c.execute("SELECT * FROM intel.postmortems").fetchall()
             old_memory = c.execute("SELECT * FROM intel.entity_memory").fetchall()
             assert not _exists(c, "intel.selection_postmortems") and not _exists(c, "intel.match_postmortems")
-            assert not _exists(c, "ai.postmortem_narratives")
+            assert not _exists(c, "ai.postmortem_narratives") and not _exists(c, "intel.entity_memory_latest")
 
         command.upgrade(_cfg(), "0091")
         with psycopg.connect(dsn, autocommit=True) as c:
@@ -102,7 +102,10 @@ def test_0091_extends_the_postmortems_keeps_the_old_row_and_comes_back_out(migra
             assert c.execute("SELECT count(*) FROM intel.selection_postmortems").fetchone() == (0,), "the old way has no selection key"
             assert c.execute("SELECT count(*) FROM intel.match_postmortems").fetchone() == (0,)
             assert c.execute("SELECT count(*) FROM ai.postmortem_narratives").fetchone() == (0,)
-            for name in ("intel.postmortems", "intel.selection_postmortems", "intel.match_postmortems", "ai.postmortem_narratives"):
+            assert c.execute("SELECT version, confidence FROM intel.entity_memory_latest").fetchall() == [("memory-v1", None)], \
+                "a memory with one version is as it was"
+            for name in ("intel.postmortems", "intel.selection_postmortems", "intel.match_postmortems", "ai.postmortem_narratives",
+                         "intel.entity_memory_latest"):
                 comment = c.execute("SELECT obj_description(%s::regclass)", (name,)).fetchone()
                 assert comment is not None and comment[0], f"{name} says what it is"
             triggers = {r[0] for r in c.execute("SELECT tgname FROM pg_trigger WHERE tgrelid IN ('intel.postmortems'::regclass, "
@@ -147,6 +150,16 @@ def test_0091_extends_the_postmortems_keeps_the_old_row_and_comes_back_out(migra
                       (first[0],))
             c.execute("INSERT INTO intel.entity_memory (entity_type, entity_id, aspect, as_of_day, built_at, version, stats, confidence, "
                       "evidence_ref) VALUES ('team', '9', 'x', '2026-10-13', now(), 'memory-v4', '{}', 0.6, '{\"fixtures\": [11]}')")
+        with psycopg.connect(dsn, autocommit=True) as c:
+            c.execute("SET session_replication_role = replica")
+            for v in ("memory-v3", "memory-v10"):  # the number decides, not the text: v10 is newer than v4
+                c.execute("INSERT INTO intel.entity_memory (entity_type, entity_id, aspect, as_of_day, built_at, version, stats) "
+                          "VALUES ('team', '9', 'x', '2026-10-13', now(), %s, '{}')", (v,))
+            c.execute("INSERT INTO intel.entity_memory (entity_type, entity_id, aspect, as_of_day, built_at, version, stats) "
+                      "VALUES ('team', '9', 'x', '2026-10-14', now(), 'memory-v3', '{}')")
+            latest = c.execute("SELECT as_of_day::text, version FROM intel.entity_memory_latest WHERE aspect = 'x' ORDER BY 1").fetchall()
+            assert latest == [("2026-10-13", "memory-v10"), ("2026-10-14", "memory-v3")], \
+                "the newest version of each day, and a day only an older version wrote is not lost"
         assert _refuses(dsn, "INSERT INTO intel.match_postmortems (fixture_id, created_at, version, outcome, findings) "
                              "VALUES (11, now(), 'pm-v6', '{}', '{}')"), "a match is judged once per version"
         assert _refuses(dsn, "UPDATE intel.match_postmortems SET outcome = '{\"a\": 1}'", replica=False), "append-only"
@@ -161,7 +174,7 @@ def test_0091_extends_the_postmortems_keeps_the_old_row_and_comes_back_out(migra
             assert c.execute("SELECT * FROM intel.postmortems").fetchall() == old_row, "only what pm-v6 wrote went out; the old row stayed"
             assert c.execute("SELECT * FROM intel.entity_memory WHERE version = 'memory-v1'").fetchall() == old_memory
             assert not _exists(c, "intel.selection_postmortems") and not _exists(c, "intel.match_postmortems")
-            assert not _exists(c, "ai.postmortem_narratives")
+            assert not _exists(c, "ai.postmortem_narratives") and not _exists(c, "intel.entity_memory_latest")
             assert _refuses_in(c, "UPDATE intel.postmortems SET verdict = 'ERROR'"), "the table is append-only again after the downgrade"
 
         command.upgrade(_cfg(), "0091")  # and applies again

@@ -402,10 +402,12 @@ def calibration(conn: Conn) -> Envelope[dict[str, Any]]:
 
 
 def memory(conn: Conn, *, entity_type: str | None, q: str | None, limit: int) -> Envelope[dict[str, Any]]:
+    """The newest state of every entity and aspect, from the newest version that wrote it (``intel.entity_memory_latest``), with the
+    confidence it rests on and what it rests on (memory-v4; both null for a state an older version wrote)."""
     rows = fetch_all(conn, """
         SELECT DISTINCT ON (entity_type, entity_id, aspect) entity_type, entity_id, entity_name, aspect, as_of_day,
-               stats, delta
-          FROM intel.entity_memory
+               version, stats, delta, confidence::float8 AS confidence, evidence_ref
+          FROM intel.entity_memory_latest
          WHERE (%(t)s::text IS NULL OR entity_type = %(t)s)
            AND (%(q)s::text IS NULL OR entity_name ILIKE '%%' || %(q)s || '%%')
            AND NOT (entity_type = 'referee' AND entity_id !~ '^[0-9]+$')
@@ -415,7 +417,8 @@ def memory(conn: Conn, *, entity_type: str | None, q: str | None, limit: int) ->
 
 
 def memory_history(conn: Conn, entity_type: str, entity_id: str) -> Envelope[dict[str, Any]]:
-    rows = fetch_all(conn, "SELECT aspect, as_of_day, entity_name, stats, delta, sources, built_at FROM intel.entity_memory "
+    rows = fetch_all(conn, "SELECT aspect, as_of_day, entity_name, version, stats, delta, sources, built_at, "
+                           "confidence::float8 AS confidence, evidence_ref FROM intel.entity_memory_latest "
                            "WHERE entity_type = %(t)s AND entity_id = %(i)s ORDER BY aspect, as_of_day",
                      {"t": entity_type, "i": entity_id})
     return ok(j({"entity_type": entity_type, "entity_id": entity_id, "history": rows}))

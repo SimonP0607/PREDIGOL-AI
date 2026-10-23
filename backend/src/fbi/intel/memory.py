@@ -1,4 +1,4 @@
-"""Longitudinal memory - ``memory-v3``: what PrediGol Intelligence has seen of each team, competition, referee, coach,
+"""Longitudinal memory - ``memory-v4``: what PrediGol Intelligence has seen of each team, competition, referee, coach,
 player and market, accumulated day by day (``intel.entity_memory``, append-only).
 
 One row per entity x aspect x Bogotá day, written only when something of it happened that day; each row carries the
@@ -13,6 +13,10 @@ matches it rests on. History is never rewritten: yesterday's row stays as it was
                                   (the entity is the person, ``entity_id`` his id in ``core.referees``)
     coach x profile               matches, formations used, wins / draws / losses, goals for / against
     player x availability         times reported out by the provider, and how often he started anyway
+    team x corners | cards | xg   what the team produced and what its opponents produced against it, match by match, with the
+                                  league's mean behind it (memory-v4)
+    competition x corners | cards | xg
+                                  the league's own mean per team in a match: the ground the teams' figures are shrunk to (memory-v4)
 
 LATE NEWS (memory-v2, plan F0 defect 3). A match settles, a statistic arrives, a post-mortem is written after the day's row
 was already written. memory-v1 looked at the day before yesterday again for exactly that, but wrote with ``ON CONFLICT DO
@@ -35,11 +39,35 @@ re-booked to the right person; older days stay with the person they were recorde
 from the matches, is exact either way.
 
 A streak (``last10``) is a signal to investigate, never a rule: nothing here changes a model, a filter or a pick.
+
+MEMORY WITH A CONFIDENCE (memory-v4, plan F8). A number from three matches and a number from three hundred looked the same in
+memory-v3. Now every row carries ``confidence`` (0 to 1) and ``evidence_ref`` (what it rests on, by kind: fixtures, decisions,
+post-mortems). The confidence is the EFFECTIVE sample over itself plus a constant, ``n_eff / (n_eff + k)``, where ``n_eff`` counts
+each piece of evidence once and then discounts it by its age: it loses half its weight after ``half_life`` days (``SPECS``: a
+referee's style lasts a year, a player's availability pattern a few months). ``n_eff`` is kept in the state - carried to the next
+row with the gap between the two days applied - so the row of a day says how much of the memory is recent. The late news is
+weighted by the day it belongs to, not by the day it was learned. The half-lives and the ``k`` are conventions of the memory, not
+parameters of any model: changing one is a new version of the memory.
+
+CORNERS, CARDS AND XG, SHRUNK. A team with two matches that took 14 corners does not "average seven": two matches say little. The
+figures of the three new aspects are shrunk toward the mean of the league(s) the team played in (``own_shrunk`` =
+(weighted corners + m x league mean) / (weighted matches + m)), so a team with few matches is its league's mean and one with many
+is itself; the league's own row (``competition x corners``) is where that mean comes from. ``m`` is the number of matches the league's
+mean is worth (``METRICS``). A team that played in two competitions is shrunk to the mean of both weighted by its matches in each.
+
+ITS OWN LINEAGE. memory-v4 continues nothing: its rows are built from the first day of the lineage (``LINEAGE_START``, 13 October
+2026), day by day, from the data as they are (``rebuild``), and each row's "previous state" is the previous memory-v4 row.
+Rows of older versions stay as history and are never read to build a new one. ``intel.entity_memory_latest`` is the view that says,
+for each entity, aspect and day, which row wins (the newest version). The nightly step writes nothing until the lineage has begun
+(``lineage_started``): a night that began the lineage by itself would give every entity a state that forgets the days before.
 """
 
 from __future__ import annotations
 
+import time
 from collections import Counter, defaultdict
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -49,7 +77,9 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
 
-VERSION = "memory-v3"
+VERSION = "memory-v4"
+LINEAGE_START = date(2026, 10, 13)
+"""The first Bogotá day of memory-v4 (plan F8: "memory rebuilt from 13 October"). Nothing earlier is built, so nothing earlier is claimed."""
 MAX_SOURCES = 40
 LATE = "late"
 LATE_DAYS = 3
@@ -78,10 +108,15 @@ SELECT l.id, l.fixture_id, l.market_key, l.selection, l.state, o.result_status, 
 """
 
 MATCHES_SQL = """
-SELECT f.id AS fixture_id, f.home_team_id, f.away_team_id, fr.referee_id, rf.name AS referee_name,
+SELECT f.id AS fixture_id, f.home_team_id, f.away_team_id, th.name AS home_name, ta.name AS away_name,
+       cs.competition_id, c.name AS competition_name, fr.referee_id, rf.name AS referee_name,
        COALESCE(r.reg_goals_home, r.goals_home) AS gh, COALESCE(r.reg_goals_away, r.goals_away) AS ga
   FROM core.fixtures f
   JOIN core.fixture_results r ON r.fixture_id = f.id
+  JOIN core.teams th ON th.id = f.home_team_id
+  JOIN core.teams ta ON ta.id = f.away_team_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
   LEFT JOIN core.fixture_referees fr ON fr.fixture_id = f.id
   LEFT JOIN core.referees rf ON rf.id = fr.referee_id
  WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND f.status_group = 'finished'
@@ -89,7 +124,8 @@ SELECT f.id AS fixture_id, f.home_team_id, f.away_team_id, fr.referee_id, rf.nam
 """
 
 STATS_SQL = """
-SELECT DISTINCT ON (fixture_id, team_side) fixture_id, team_side, yellow_cards, red_cards, fouls
+SELECT DISTINCT ON (fixture_id, team_side) fixture_id, team_side, yellow_cards, red_cards, fouls, corners,
+       expected_goals::float8 AS expected_goals
   FROM core.fixture_team_stats WHERE fixture_id = ANY(%(fixtures)s)
  ORDER BY fixture_id, team_side, (source = 'api-football') DESC, fetched_at DESC
 """
@@ -118,27 +154,120 @@ SELECT a.fixture_id, a.provider_player_id, max(a.player_name) AS name, bool_or(l
  GROUP BY 1, 2
 """
 
-PREVIOUS_SQL = """
-SELECT DISTINCT ON (entity_type, entity_id, aspect) entity_type, entity_id, aspect, stats
+STATE_SQL = """
+SELECT DISTINCT ON (entity_type, entity_id, aspect) entity_type, entity_id, aspect, as_of_day, stats
   FROM intel.entity_memory
- WHERE (entity_type, entity_id, aspect) IN (SELECT * FROM unnest(%(types)s::text[], %(ids)s::text[], %(aspects)s::text[]))
-   AND as_of_day < %(day)s
+ WHERE version = %(version)s
+   AND (entity_type, entity_id, aspect) IN (SELECT * FROM unnest(%(types)s::text[], %(ids)s::text[], %(aspects)s::text[]))
+   AND as_of_day {cmp} %(day)s
  ORDER BY entity_type, entity_id, aspect, as_of_day DESC, id DESC
 """
-"""The latest row of any version: memory-v2 continues the cumulative state memory-v1 left, it does not start again."""
+PREVIOUS_SQL = STATE_SQL.format(cmp="<")
+"""The latest row of THIS version before the day: memory-v4 continues its own rows and no other (a memory begun by a new version
+begins again, from a day that is stated; see ``LINEAGE_START``)."""
+CURRENT_SQL = STATE_SQL.format(cmp="<=")
+"""The same, the day itself included: the league rows a team's figures are shrunk to."""
 
 RECORDED_SQL = """
 SELECT entity_type, entity_id, aspect, as_of_day, delta, sources
   FROM intel.entity_memory
- WHERE as_of_day >= %(from)s AND as_of_day < %(before)s
+ WHERE version = %(version)s AND as_of_day >= %(from)s AND as_of_day < %(before)s
 """
 """What is already recorded for the days being looked at again: their own rows, and the late news that the rows between
-them and ``before`` booked for them."""
+them and ``before`` booked for them (of this version: a row of another version is history, not a record to reconcile)."""
 
-WRITTEN_SQL = "SELECT entity_type, entity_id, aspect FROM intel.entity_memory WHERE as_of_day = %(day)s"
+WRITTEN_SQL = "SELECT entity_type, entity_id, aspect FROM intel.entity_memory WHERE as_of_day = %(day)s AND version = %(version)s"
+
+POSTMORTEMS_SQL = """
+SELECT DISTINCT ON (decision_id) decision_id, id FROM intel.postmortems
+ WHERE decision_id = ANY(%(decisions)s) ORDER BY decision_id, id DESC
+"""
+"""The post-mortem each decision rests on, the newest: part of what a row of decisions names as its evidence."""
+
+STARTED_SQL = "SELECT EXISTS (SELECT 1 FROM intel.entity_memory WHERE version = %(version)s AND as_of_day < %(day)s)"
 
 Delta = dict[str, Any]
 EKey = tuple[str, str, str]
+Row = dict[str, Any]
+
+
+@dataclass(frozen=True)
+class Spec:
+    """How a kind of memory ages and how much evidence it takes to trust it (conventions of the memory, not model parameters)."""
+
+    half_life: float
+    """Days after which a piece of evidence has lost half its weight."""
+    k: float
+    """The effective sample at which the confidence is one half."""
+    count: str
+    """The field of the delta that counts the pieces of evidence."""
+    decayed: tuple[str, ...] = ()
+    """Further fields of the delta that are also kept with the weight of age (``w_<field>`` in the state)."""
+
+
+@dataclass(frozen=True)
+class Metric:
+    """A figure of a match that both sides report, taken to a team's memory and to its league's."""
+
+    aspect: str
+    prior_weight: float
+    """How many matches the league's mean is worth when a team's figure is shrunk to it."""
+    pair: Callable[[Row, Row], tuple[float, float] | None]
+    """(home, away) from the two sides' statistics, or None when the match does not say it."""
+
+
+def _corners(h: Row, a: Row) -> tuple[float, float] | None:
+    if h.get("corners") is None or a.get("corners") is None:
+        return None
+    return int(h["corners"]), int(a["corners"])
+
+
+def _cards(h: Row, a: Row) -> tuple[float, float] | None:
+    """Yellow + red, a side the source did not report taken as none (the way the referee's row counts them) - but only when both
+    sides have a line of statistics: a match with no statistics says nothing about cards."""
+    if not h or not a:
+        return None
+    return (int(h.get("yellow_cards") or 0) + int(h.get("red_cards") or 0),
+            int(a.get("yellow_cards") or 0) + int(a.get("red_cards") or 0))
+
+
+def _xg(h: Row, a: Row) -> tuple[float, float] | None:
+    if h.get("expected_goals") is None or a.get("expected_goals") is None:
+        return None
+    return float(h["expected_goals"]), float(a["expected_goals"])
+
+
+METRICS: dict[str, Metric] = {
+    # m = within-team variance over between-team variance of the figure, read from football in general (a match of corners varies by
+    # about 3 around a team's mean, the teams' means by about 1; cards 1.2 and 0.4; xG 0.65 and 0.25). Measured on the stored matches
+    # in the owner's guide; changing one is a new version of the memory.
+    "corners": Metric("corners", 6.0, _corners),
+    "cards": Metric("cards", 9.0, _cards),
+    "xg": Metric("xg", 7.0, _xg),
+}
+
+DECISIONS_TEAM = Spec(half_life=90, k=30, count="decisions")
+DECISIONS_COMPETITION = Spec(half_life=90, k=60, count="decisions")
+DECISIONS_MARKET = Spec(half_life=180, k=100, count="decisions")
+REFEREE = Spec(half_life=365, k=20, count="matches")
+COACH = Spec(half_life=365, k=10, count="matches")
+PLAYER = Spec(half_life=120, k=5, count="reported_out")
+TEAM_FIGURES = Spec(half_life=180, k=10, count="matches", decayed=("own", "opp"))
+LEAGUE_FIGURES = Spec(half_life=365, k=60, count="matches", decayed=("total",))
+
+DERIVED = ("own_rate", "opp_rate", "own_shrunk", "opp_shrunk", "prior", "prior_matches", "rate")
+"""The fields of a state that are computed from the others each time: never carried over from the previous row."""
+
+
+def spec_for(key: EKey) -> Spec | None:
+    """The convention of a kind of memory; None for a kind that has none (its row carries no confidence)."""
+    kind, _, aspect = key
+    if aspect in METRICS:
+        return TEAM_FIGURES if kind == "team" else LEAGUE_FIGURES if kind == "competition" else None
+    if aspect.startswith("market:"):
+        return DECISIONS_TEAM if kind == "team" else DECISIONS_COMPETITION if kind == "competition" else None
+    return {("market", "decisions"): DECISIONS_MARKET, ("referee", "discipline"): REFEREE, ("coach", "profile"): COACH,
+            ("player", "availability"): PLAYER}.get((kind, aspect))
 
 
 def _decision_delta(rows: list[dict[str, Any]]) -> Delta:
@@ -260,6 +389,31 @@ def day_deltas(conn: psycopg.Connection[Any], day: date) -> tuple[dict[EKey, Del
         names[k] = str(ab.get("name") or ab["provider_player_id"])
         sources[k].append(int(ab["fixture_id"]))
 
+    for fid, m in matches.items():
+        sides = stats.get(fid, {})
+        h, a = sides.get("home") or {}, sides.get("away") or {}
+        comp = str(m["competition_id"])
+        for metric in METRICS.values():
+            pair = metric.pair(h, a)
+            if pair is None:
+                continue
+            for team, name, own, opp in ((m["home_team_id"], m["home_name"], pair[0], pair[1]),
+                                         (m["away_team_id"], m["away_name"], pair[1], pair[0])):
+                k = ("team", str(team), metric.aspect)
+                d = deltas.setdefault(k, {"matches": 0, "own": 0, "opp": 0, "by_competition": {}})
+                d["matches"] += 1
+                d["own"] = round(d["own"] + own, 6)
+                d["opp"] = round(d["opp"] + opp, 6)
+                d["by_competition"][comp] = d["by_competition"].get(comp, 0) + 1
+                names[k] = str(name)
+                sources[k].append(fid)
+            k = ("competition", comp, metric.aspect)
+            d = deltas.setdefault(k, {"matches": 0, "total": 0})
+            d["matches"] += 1
+            d["total"] = round(d["total"] + pair[0] + pair[1], 6)
+            names[k] = str(m["competition_name"])
+            sources[k].append(fid)
+
     return deltas, names, sources
 
 
@@ -377,6 +531,106 @@ def merge(prev: dict[str, Any] | None, delta: Delta) -> dict[str, Any]:
     return state
 
 
+# ── age and confidence (memory-v4) ──────────────────────────────────────────────────────────────────────────────────────
+
+
+def _w(field_name: str, spec: Spec) -> str:
+    """Where the weighted copy of a field lives in the state: the count of evidence is ``n_eff``, the others ``w_<field>``."""
+    return "n_eff" if field_name == spec.count else f"w_{field_name}"
+
+
+def decay(days: float, half_life: float) -> float:
+    """The weight left to a piece of evidence ``days`` old: one half after ``half_life`` days (evidence from the future counts in full)."""
+    return float(0.5 ** (max(days, 0.0) / half_life))
+
+
+def weights(prev: dict[str, Any] | None, prev_day: date | None, delta: Delta, day: date, spec: Spec) -> dict[str, float]:
+    """The weighted evidence of a row: what the previous row had, aged by the days between the two, plus the day's own evidence at
+    full weight, plus the news learned late at the weight of the day it belongs to (not of the day it was learned)."""
+    fields = (spec.count, *spec.decayed)
+    carried = 1.0 if prev_day is None else decay((day - prev_day).days, spec.half_life)
+    out = {f: float((prev or {}).get(_w(f, spec)) or 0.0) * carried for f in fields}
+    for f in fields:
+        out[f] += float(delta.get(f) or 0)
+    for iso, booked in (delta.get(LATE) or {}).items():
+        weight = decay((day - date.fromisoformat(iso)).days, spec.half_life)
+        for f in fields:
+            out[f] += float(booked.get(f) or 0) * weight
+    return {f: max(round(v, 6), 0.0) for f, v in out.items()}
+
+
+def confidence_of(n_eff: float, k: float) -> float:
+    """The effective sample over itself plus a constant: 0 with no evidence, one half at ``k``, never 1."""
+    return round(n_eff / (n_eff + k), 4) if n_eff > 0 else 0.0
+
+
+def settle(prev: dict[str, Any] | None, prev_day: date | None, delta: Delta, day: date,
+           spec: Spec | None) -> tuple[dict[str, Any], float | None]:
+    """The cumulative state of a row and its confidence: ``merge`` (the numbers add up) plus the weight of age. A kind of memory with no
+    convention (``spec`` None) has a state and no confidence."""
+    carried = {k: v for k, v in (prev or {}).items() if k not in DERIVED}
+    state = merge(carried, delta)
+    if spec is None:
+        return state, None
+    for f, v in weights(prev, prev_day, delta, day, spec).items():
+        state[_w(f, spec)] = v
+    return state, confidence_of(float(state["n_eff"]), spec.k)
+
+
+def league_rate(state: dict[str, Any] | None) -> float | None:
+    """A league's mean per team in a match, from its weighted evidence; None while it has none."""
+    n = float((state or {}).get("n_eff") or 0)
+    return None if n <= 0 else float((state or {}).get("w_total") or 0) / (2 * n)
+
+
+def prior_of(by_competition: dict[str, int], leagues: dict[str, dict[str, Any]]) -> tuple[float | None, int]:
+    """The mean a team is shrunk to: the means of the leagues it played in, each weighted by its matches there, and how many of its
+    matches have a mean to be shrunk to (a league with no evidence yet counts for nothing)."""
+    total = weight = 0.0
+    for competition, n in by_competition.items():
+        rate = league_rate(leagues.get(competition))
+        if rate is None or n <= 0:
+            continue
+        total += n * rate
+        weight += n
+    return (total / weight, int(weight)) if weight else (None, 0)
+
+
+def figures(state: dict[str, Any], aspect: str, leagues: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """What a row of corners, cards or xG says once its state is known, computed again each time: a team's figure per match as it is
+    (weighted by age) and shrunk toward its league's; a league's mean per team in a match."""
+    n = float(state.get("n_eff") or 0)
+    if n <= 0:
+        return {}
+    if "w_total" in state:
+        return {"rate": round(float(state["w_total"]) / (2 * n), 4)}
+    own, opp = float(state.get("w_own") or 0), float(state.get("w_opp") or 0)
+    out: dict[str, Any] = {"own_rate": round(own / n, 4), "opp_rate": round(opp / n, 4)}
+    prior, covered = prior_of(state.get("by_competition") or {}, leagues)
+    if prior is not None:
+        m = METRICS[aspect].prior_weight
+        out |= {"prior": round(prior, 4), "prior_matches": covered, "own_shrunk": round((own + m * prior) / (n + m), 4),
+                "opp_shrunk": round((opp + m * prior) / (n + m), 4)}
+    return out
+
+
+def rests_on_decisions(key: EKey) -> bool:
+    """Do the ``sources`` of this kind of row name decisions (the team's, the league's and the market's rows of the decision layer) or
+    matches (everything else)?"""
+    return key[2].startswith("market:") or key[0] == "market"
+
+
+def evidence_ref(key: EKey, sources: list[int], postmortems: list[int]) -> dict[str, list[int]]:
+    """What a row rests on, by kind, newest first (a sample: the first ``MAX_SOURCES``): the decisions and the post-mortems that judged
+    them, or the matches. The ids are the ones the day's rows name as ``sources``."""
+    if rests_on_decisions(key):
+        out: dict[str, list[int]] = {"decisions": sorted(set(sources), reverse=True)[:MAX_SOURCES]}
+        if postmortems:
+            out["postmortems"] = sorted(set(postmortems), reverse=True)[:MAX_SOURCES]
+        return out
+    return {"fixtures": sorted(set(sources), reverse=True)[:MAX_SOURCES]}
+
+
 def _without_late(delta: Delta) -> Delta:
     return {k: v for k, v in delta.items() if k != LATE}
 
@@ -386,7 +640,7 @@ def _late_for(conn: psycopg.Connection[Any], start: date, before: date, days: li
     booked for it in later rows, all before ``before``) and the sources already named."""
     out: dict[date, dict[EKey, tuple[Delta, set[int]]]] = {d: {} for d in days}
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(RECORDED_SQL, {"from": start, "before": before})
+        cur.execute(RECORDED_SQL, {"from": start, "before": before, "version": VERSION})
         rows = [dict(r) for r in cur.fetchall()]
     for r in rows:
         key = (str(r["entity_type"]), str(r["entity_id"]), str(r["aspect"]))
@@ -401,6 +655,26 @@ def _late_for(conn: psycopg.Connection[Any], start: date, before: date, days: li
                 have, seen = out[d].get(key, ({}, set()))
                 out[d][key] = (_plus(have, booked), seen | srcs)
     return out
+
+
+def _states(conn: psycopg.Connection[Any], sql: str, keys: list[EKey], day: date) -> dict[EKey, tuple[date, dict[str, Any]]]:
+    """The latest state of each key of this version (before the day, or up to it), with the day of the row that holds it."""
+    if not keys:
+        return {}
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(sql, {"version": VERSION, "types": [k[0] for k in keys], "ids": [k[1] for k in keys],
+                          "aspects": [k[2] for k in keys], "day": day})
+        return {(str(r["entity_type"]), str(r["entity_id"]), str(r["aspect"])): (r["as_of_day"], dict(r["stats"] or {}))
+                for r in cur.fetchall()}
+
+
+def lineage_started(conn: psycopg.Connection[Any], day: date) -> bool:
+    """Is there a row of this version before ``day``? The nightly step builds on one: a night that began the lineage by itself would
+    give every entity a state that forgets the days between ``LINEAGE_START`` and itself."""
+    with conn.cursor() as cur:
+        cur.execute(STARTED_SQL, {"version": VERSION, "day": day})
+        row = cur.fetchone()
+    return bool(row and row[0])
 
 
 def build_memory(conn: psycopg.Connection[Any], *, day: date, at: datetime, late_days: int = LATE_DAYS) -> int:
@@ -436,25 +710,92 @@ def build_memory(conn: psycopg.Connection[Any], *, day: date, at: datetime, late
     if not deltas:
         return 0
     with conn.cursor() as cur:
-        cur.execute(WRITTEN_SQL, {"day": day})
+        cur.execute(WRITTEN_SQL, {"day": day, "version": VERSION})
         written = {(str(a), str(b), str(c)) for a, b, c in cur.fetchall()}
     keys = [k for k in deltas if k not in written]
     if not keys:
         return 0
-    with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(PREVIOUS_SQL, {"types": [k[0] for k in keys], "ids": [k[1] for k in keys],
-                                   "aspects": [k[2] for k in keys], "day": day})
-        previous = {(str(r["entity_type"]), str(r["entity_id"]), str(r["aspect"])): dict(r["stats"] or {})
-                    for r in cur.fetchall()}
+
+    previous = _states(conn, PREVIOUS_SQL, keys, day)
+    states: dict[EKey, dict[str, Any]] = {}
+    confidence: dict[EKey, float | None] = {}
+    for k in keys:
+        before = previous.get(k)
+        states[k], confidence[k] = settle(None if before is None else before[1], None if before is None else before[0],
+                                          deltas[k], day, spec_for(k))
+    # The teams' figures are shrunk to their leagues': the leagues written today are in ``states``, the ones that did not play today
+    # (or already have their row) are the latest row of the lineage, today's included.
+    leagues: dict[str, dict[str, dict[str, Any]]] = {a: {} for a in METRICS}
+    wanted: dict[EKey, None] = {}
+    for k, state in states.items():
+        if k[0] == "team" and k[2] in METRICS:
+            for competition in state.get("by_competition") or {}:
+                league = ("competition", str(competition), k[2])
+                if league in states:
+                    leagues[k[2]][str(competition)] = states[league]
+                else:
+                    wanted[league] = None
+    for k, (_, state) in _states(conn, CURRENT_SQL, list(wanted), day).items():
+        leagues[k[2]][k[1]] = state
+    for k, state in states.items():
+        if k[2] in METRICS and k[0] in ("team", "competition"):
+            state |= figures(state, k[2], leagues[k[2]])
+
+    decisions = [i for k in keys if rests_on_decisions(k) for i in sources.get(k, [])]
+    judged: dict[int, int] = {}
+    if decisions:
+        with conn.cursor() as cur:
+            cur.execute(POSTMORTEMS_SQL, {"decisions": sorted(set(decisions))})
+            judged = {int(a): int(b) for a, b in cur.fetchall()}
     n = 0
     with conn.cursor() as cur:
         for k in keys:
-            delta = deltas[k]
-            state = merge(previous.get(k), delta)
+            ids = sources.get(k, [])[:MAX_SOURCES]
+            evidence = evidence_ref(k, ids, [judged[i] for i in ids if i in judged])
             cur.execute("INSERT INTO intel.entity_memory (entity_type, entity_id, entity_name, aspect, as_of_day, "
-                        "built_at, version, stats, delta, sources) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+                        "built_at, version, stats, delta, sources, confidence, evidence_ref) "
+                        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                         "ON CONFLICT (entity_type, entity_id, aspect, as_of_day, version) DO NOTHING",
-                        (k[0], k[1], names.get(k), k[2], day, at, VERSION, Jsonb(state), Jsonb(delta),
-                         Jsonb(sources.get(k, [])[:MAX_SOURCES])))
+                        (k[0], k[1], names.get(k), k[2], day, at, VERSION, Jsonb(states[k]), Jsonb(deltas[k]), Jsonb(ids),
+                         confidence[k], Jsonb(evidence)))
             n += max(cur.rowcount, 0)
     return n
+
+
+# ── the lineage: built from its first day, day by day ───────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class RebuildReport:
+    days: int = 0
+    rows: int = 0
+    first: date | None = None
+    last: date | None = None
+    by_day: dict[date, int] = field(default_factory=dict)
+    stopped: str | None = None
+    """Why it stopped before ``end``: ``time`` (the budget given ran out); None when it reached ``end``."""
+
+
+def rebuild(conn: psycopg.Connection[Any], *, start: date, end: date, at: datetime, commit: Callable[[], None] | None = None,
+            max_seconds: float | None = None, clock: Callable[[], float] = time.monotonic) -> RebuildReport:
+    """Build the memory of every day from ``start`` to ``end`` (both included), oldest first, each day on the rows of the days before
+    it. Idempotent and resumable: a day that is written is skipped, so a run that stopped (``max_seconds``) is continued by running it
+    again. There is no late news to book - every day is built from the data as they are now - so ``late_days`` is 0, and ``commit``
+    (the CLI's ``conn.commit``) makes each day durable before the next begins."""
+    report = RebuildReport()
+    began = clock()
+    day = start
+    while day <= end:
+        if max_seconds is not None and report.days and clock() - began > max_seconds:
+            report.stopped = "time"
+            break
+        rows = build_memory(conn, day=day, at=at, late_days=0)
+        if commit is not None:
+            commit()
+        report.days += 1
+        report.rows += rows
+        report.by_day[day] = rows
+        report.first = report.first or day
+        report.last = day
+        day += timedelta(days=1)
+    return report

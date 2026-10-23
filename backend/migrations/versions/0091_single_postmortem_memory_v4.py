@@ -36,6 +36,10 @@ WHAT IS ADDED
 ``intel.entity_memory``  gains ``confidence`` (0 to 1: how much of this memory rests on enough recent evidence) and ``evidence_ref`` (what
     it rests on, by kind: fixtures, decisions, post-mortems). Both NULL in every row written before memory-v4.
 
+``intel.entity_memory_latest``  the row of the newest memory version for each entity, aspect and day: a memory is rebuilt under a new version
+    (memory-v4 from 13 October) and the old rows stay as history, so every reader asks the view and the rule "the newest version wins" lives in
+    one place.
+
 Nothing existing is altered in what it says: ``ai.postmortems``, ``ai.pick_postmortems`` and ``ai.memory_events`` stay, readable and
 frozen in the sense that PrediGol stops adding to the first two (a switch brings them back); no model, Elo, calibrator, forecast, price,
 pick, settlement or filter reads any of it.
@@ -169,9 +173,21 @@ def upgrade() -> None:
                "'What the row rests on, by kind: {fixtures: [...], decisions: [...], postmortems: [...]} (a sample, newest first). NULL "
                "before memory-v4.'")
 
+    op.execute("""
+        CREATE VIEW intel.entity_memory_latest AS
+        SELECT DISTINCT ON (entity_type, entity_id, aspect, as_of_day)
+               id, entity_type, entity_id, entity_name, aspect, as_of_day, built_at, version, stats, delta, sources, confidence, evidence_ref
+          FROM intel.entity_memory
+         ORDER BY entity_type, entity_id, aspect, as_of_day,
+                  NULLIF(regexp_replace(version, '[^0-9]', '', 'g'), '')::int DESC NULLS LAST, id DESC""")
+    op.execute("COMMENT ON VIEW intel.entity_memory_latest IS "
+               "'One row per entity, aspect and day: the one of the newest memory version (memory-v4 over memory-v3 over memory-v1). "
+               "The older rows stay in intel.entity_memory as history.'")
+
 
 def downgrade() -> None:
     op.execute("SET LOCAL lock_timeout = '10s'")
+    op.execute("DROP VIEW IF EXISTS intel.entity_memory_latest")
     op.execute("ALTER TABLE intel.entity_memory DROP COLUMN IF EXISTS evidence_ref, DROP COLUMN IF EXISTS confidence")
     op.execute("DROP TABLE IF EXISTS ai.postmortem_narratives")
     op.execute("DROP TABLE IF EXISTS intel.match_postmortems")

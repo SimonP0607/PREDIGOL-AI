@@ -40,7 +40,7 @@ def test_one_person_is_one_entity_whatever_the_spellings(db: psycopg.Connection[
     assert list(referees) == [key]
     assert referees[key]["stats"]["matches"] == 2 and referees[key]["entity_name"] == "Michael Oliver"
     assert sorted(referees[key]["sources"]) == sorted([full, initial])
-    assert referees[key]["version"] == "memory-v3"
+    assert referees[key]["version"] == memory.VERSION
 
 
 def test_the_rows_written_under_a_string_are_history_nothing_continues_or_reconciles(db: psycopg.Connection[Any], seed: Seed) -> None:
