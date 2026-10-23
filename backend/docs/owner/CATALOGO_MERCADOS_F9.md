@@ -122,3 +122,29 @@ tanto la base no pierde nada de lo que tenía.
   hasta que lo decidas ningún pick de tarjetas se liquida.
 * Si quieres **tarjetas por parte con más historial** (hoy unos 400 días): reconstruir `core.fixture_event_kinds` más atrás
   es una lectura de eventos ya guardados, sin pedir nada al proveedor.
+
+## 9. Resultado en producción (23-oct-2026)
+
+Desplegado el 23-oct-2026 entre las 20:23 y las 20:34 UTC, con la sincronización de partidos de las 19:03 ya terminada (duró 56 min 45 s;
+el despliegue esperó a que cerrara su transacción larga). Versiones: backend `5a7722b560c8`, web `b2dfcf13ab74`, migración **0092**.
+
+| Paso | Resultado |
+|---|---|
+| Copia previa | 1,23 GB en 481 s (sha256 `e1e61443477d0ba3`), revisión 0091 |
+| Prueba de restauración | **PASSED** en 751 s |
+| Copia propia del despliegue | 1,23 GB en 456 s (sha256 `a98ca6fa95ed6aee`) |
+| Migración 0092 | Aplicada; **no escribió ninguna fila** (0 reglas, 0 matrices, los 5 mercados de antes) |
+| Pruebas de humo | OK; la ruta nueva de la matriz responde 401 sin sesión |
+| Verificación | Objetos y permisos como se esperaba; los 5 mercados siguen seguidos y modelados; el modelo de goles no cambió de versión (`mc9a7bec97ca`) |
+| Catálogo (`sync --apply`) | 20 reglas, 49 claves nuevas (54 en total: 5 seguidas, 5 modeladas); 55 de los 338 mercados del proveedor con clave y con regla; 18 de las 20 reglas pueden liquidar |
+| Matriz (`matrix --store`, corrida 1) | 5 PARCIAL · 19 POR INVESTIGAR · 18 NO VIABLE; 11 prioridades altas, 1 media, 7 bajas; calculada en 33 s |
+| Auditoría manual | **0 diferencias** en 9.909 comparaciones (8.800 valores de 400 partidos muestreados) |
+
+Lo que la matriz dice hoy de las familias del plan: los goles por mitad (resultado, total, ambos marcan, descanso/final, hándicap) y los
+córners del partido y por equipo salen **POR INVESTIGAR con prioridad alta** (tienen resultado y precio); los córners por mitad, **NO
+VIABLES** (el proveedor no da córners por tiempo); las tarjetas, POR INVESTIGAR (prioridad media el total, baja el resto, por poco precio).
+Tarjetas: de 31.233 partidos del último año contados desde eventos, 4.801 tienen una expulsión (15,4 %): ahí las convenciones darían una
+cifra distinta; los eventos coinciden con las estadísticas en el 86,7 % de 6.928 comparados. Sigue pendiente tu decisión sobre la
+convención (sección 8).
+
+El disco: el chequeo de salud del despliegue marcó una advertencia que ya conocías: llegaría al 90 % en unos 17 días (crece ~3,6 GB/día).
