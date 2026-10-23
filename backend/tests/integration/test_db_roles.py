@@ -87,6 +87,15 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_worker", "core.referee_aliases", "INSERT", True),
     ("predigol_worker", "ai.pick_reviews", "INSERT", True),
     ("predigol_worker", "ai.usage", "INSERT", True),
+    # Match Knowledge (plan F7): the worker builds it and rewrites what each line of the events is; the API only reads
+    ("predigol_api", "intel.match_knowledge", "SELECT", True),
+    ("predigol_api", "intel.match_knowledge", "INSERT", False),
+    ("predigol_api", "intel.match_knowledge_latest", "SELECT", True),
+    ("predigol_api", "core.fixture_event_kinds", "SELECT", True),
+    ("predigol_api", "core.fixture_event_kinds", "INSERT", False),
+    ("predigol_worker", "intel.match_knowledge", "INSERT", True),
+    ("predigol_worker", "core.fixture_event_kinds", "INSERT", True),
+    ("predigol_worker", "core.fixture_event_kinds", "DELETE", True),
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,
                                             expected: bool) -> None:
