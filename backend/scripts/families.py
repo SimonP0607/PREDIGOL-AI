@@ -202,15 +202,18 @@ def halves_command(args: argparse.Namespace) -> int:
     end = now - OUTCOME_KNOWN_AFTER
     start = end - timedelta(days=31 * args.months)
     evaluations = {}
+    params: dict[str, dict[str, float]] = {}
     for measure, csv_path in (("goals_1h", args.csv_1h), ("goals_2h", args.csv_2h)):
         usable = usable_competitions(load_measure(measure, csv_path, args.months, now), start)
         xi, penalty = float(args.xi), float(args.penalty)
         if args.tune:
             xi, penalty, _ = evaluate.tune(usable, measure=measure, start=start, step_days=args.step_days, xis=grid_of(args)[0], penalties=grid_of(args)[1])
+        params[measure] = {"xi": xi, "penalty": penalty}
         evaluations[measure] = evaluate.walk_forward(usable, measure=measure, start=start, end=end, step_days=args.step_days, xi=xi, penalty=penalty)
         print(f"{measure}: {len(evaluations[measure].rows)} predictions in {len(usable)} competitions (xi {xi}, penalty {penalty})", file=sys.stderr)
     report = evaluate_halves.evaluate(evaluations["goals_1h"], evaluations["goals_2h"])
     report["window"] = {"start": start.isoformat(), "end": end.isoformat()}
+    report["params"] = params  # what each half was fitted with (the chosen ones when tuned): a guide can then check them against the code
     if args.json:
         print(json.dumps(report, indent=1, default=str))
         return 0

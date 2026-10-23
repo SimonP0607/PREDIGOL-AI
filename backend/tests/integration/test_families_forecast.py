@@ -271,7 +271,7 @@ def digests(db: psycopg.Connection[Any], fixture_id: int, family: str) -> set[st
                                          (fixture_id, forecast.VERSION, family)).fetchall()}
 
 
-def test_a_referee_who_gives_more_cards_moves_the_cards_and_only_the_cards(db: psycopg.Connection[Any], w: World) -> None:
+def test_a_referee_who_gives_more_cards_moves_the_two_card_families_and_nothing_else(db: psycopg.Connection[Any], w: World) -> None:
     catalogue(db)
     strict, calm = referees(db, "Strict Referee", "Calm Referee")
     played(w, refs=((strict, 2.0), (calm, 0.5)))
@@ -282,20 +282,27 @@ def test_a_referee_who_gives_more_cards_moves_the_cards_and_only_the_cards(db: p
     report = run(db, [with_strict, with_calm, nobody, late])
     cards = report.specs["cards_lines_ft"]
     assert cards.uses_referee and cards.with_referee == 2 and "(2 with a referee)" in report.summary(), report.summary()
-    assert not any(report.specs[k].uses_referee for k in ("corners_ft", "yellow_ft", "goals_halves"))
+    assert report.specs["yellow_ft"].uses_referee and report.specs["yellow_ft"].with_referee == 2
+    assert not any(report.specs[k].uses_referee for k in ("corners_ft", "goals_halves"))
 
-    strict_p, calm_p, nobody_p = (over(db, f, "CARDS_OU", 4.5) for f in (with_strict, with_calm, nobody))
-    assert calm_p + 0.2 < nobody_p < strict_p - 0.2, "the strict referee's match is expected to have more cards, the calm one's fewer"
-    assert over(db, late, "CARDS_OU", 4.5) == pytest.approx(nobody_p), "a referee seen after the moment of the numbers is not known"
-    for key, line in (("CORNERS_OU", 9.5), ("YELLOW_OU", 3.5), ("OU_1H", 0.5)):
+    for key, line in (("CARDS_OU", 4.5), ("YELLOW_OU", 3.5)):
+        strict_p, calm_p, nobody_p = (over(db, f, key, line) for f in (with_strict, with_calm, nobody))
+        assert calm_p + 0.1 < nobody_p < strict_p - 0.1, f"{key}: the strict referee's match is expected to have more cards, the calm one's fewer"
+        assert over(db, late, key, line) == pytest.approx(nobody_p), "a referee seen after the moment of the numbers is not known"
+    nobody_p = over(db, nobody, "CARDS_OU", 4.5)
+    for key, line in (("CORNERS_OU", 9.5), ("OU_1H", 0.5)):
         assert over(db, with_strict, key, line) == pytest.approx(over(db, nobody, key, line)), "the other families do not look at the referee"
     assert len(digests(db, with_strict, "CARDS")) == 1 and digests(db, with_strict, "CARDS") != digests(db, nobody, "CARDS")
     assert digests(db, with_strict, "CARDS") != digests(db, with_calm, "CARDS"), "what the number was computed from holds the referee"
 
-    version = db.execute("SELECT v.version, v.feature_names, v.hyperparameters FROM models.model_versions v JOIN models.model_registry r "
-                         "ON r.id = v.model_id WHERE r.name = 'family-cards_lines_ft'").fetchall()
-    assert len(version) == 1 and ",referee=" in version[0][0] and "referee" in version[0][1]
-    assert version[0][2]["referee_kappa"] == next(s.referee_kappa for s in forecast.SPECS if s.key == "cards_lines_ft")
+    for model, key in (("family-cards_lines_ft", "cards_lines_ft"), ("family-yellow_ft", "yellow_ft")):
+        version = db.execute("SELECT v.version, v.feature_names, v.hyperparameters FROM models.model_versions v JOIN models.model_registry r "
+                             "ON r.id = v.model_id WHERE r.name = %s", (model,)).fetchall()
+        assert len(version) == 1 and ",referee=" in version[0][0] and "referee" in version[0][1]
+        assert version[0][2]["referee_kappa"] == next(s.referee_kappa for s in forecast.SPECS if s.key == key)
+    corners = db.execute("SELECT v.version, v.feature_names, v.hyperparameters FROM models.model_versions v JOIN models.model_registry r "
+                         "ON r.id = v.model_id WHERE r.name = 'family-corners_ft'").fetchall()
+    assert len(corners) == 1 and ",referee=" not in corners[0][0] and "referee" not in corners[0][1] and corners[0][2]["referee_kappa"] is None
 
 
 def test_a_referee_named_later_changes_the_cards_and_writes_them_again(db: psycopg.Connection[Any], w: World) -> None:
@@ -309,7 +316,8 @@ def test_a_referee_named_later_changes_the_cards_and_writes_them_again(db: psyco
     whistle(db, fid, strict, AT + timedelta(minutes=30))
     second = run(db, [fid], at=AT + timedelta(hours=1))
     assert second.specs["cards_lines_ft"].with_referee == 1 and second.specs["cards_lines_ft"].rows_written > 0
-    assert all(second.specs[k].rows_written == 0 for k in ("corners_ft", "yellow_ft", "goals_halves")), "only the cards moved"
+    assert second.specs["yellow_ft"].with_referee == 1 and second.specs["yellow_ft"].rows_written > 0
+    assert all(second.specs[k].rows_written == 0 for k in ("corners_ft", "goals_halves")), "only the families that look at the referee moved"
     assert over(db, fid, "CARDS_OU", 4.5) > before + 0.2
     third = run(db, [fid], at=AT + timedelta(hours=2))
     assert all(r.rows_written == 0 for r in third.specs.values()), "and the same referee a pass later changes nothing"

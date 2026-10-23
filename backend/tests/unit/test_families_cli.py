@@ -107,6 +107,7 @@ def test_the_halves_command_grades_the_bets_of_the_halves_from_two_files(tmp_pat
     assert r["n"] > 200 and r["window"]["start"] < r["window"]["end"]
     assert {"result_1h", "result_2h", "highest_half", "htft", "btts_1h", "btts_2h", "ou_1h_0.5", "odd_2h"} <= set(r["markets"])
     assert len(r["htft_calibration"]) == 9 and r["halves_residual_correlation"]["se"] > 0
+    assert r["params"] == {"goals_1h": {"xi": 0.0, "penalty": 1.0}, "goals_2h": {"xi": 0.0, "penalty": 1.0}}, "what each half was fitted with"
     assert cli.main(argv) == 0
     out = capsys.readouterr().out
     assert "log-loss gain over the competition's average" in out and "HT/FT cells" in out and "htft" in out

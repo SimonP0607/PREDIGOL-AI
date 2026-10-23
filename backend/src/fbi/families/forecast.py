@@ -124,8 +124,9 @@ SPECS: Final = (
     Spec("cards_lines_ft", "family-cards_lines_ft", "Cards of the match counted as lines (a yellow is one, a red is one more): a negative "
          "binomial per team, scaled by the referee when he is assigned (plan F10).", ("cards_lines_ft",), "CARDS", 0.0019, 32.0, True,
          _counts("CARDS", (3.5, 4.5, 5.5), (1.5, 2.5)), referee_kappa=150.0),
-    Spec("yellow_ft", "family-yellow_ft", "Yellow cards of the match: a negative binomial per team (plan F10).", ("yellow_ft",), "YELLOW",
-         0.0019, 32.0, True, _counts("YELLOW", (2.5, 3.5, 4.5), (1.5, 2.5))),
+    Spec("yellow_ft", "family-yellow_ft", "Yellow cards of the match: a negative binomial per team, scaled by the referee when he is "
+         "assigned (plan F10).", ("yellow_ft",), "YELLOW", 0.0019, 32.0, True, _counts("YELLOW", (2.5, 3.5, 4.5), (1.5, 2.5)),
+         referee_kappa=150.0),
 )
 
 
