@@ -169,6 +169,58 @@ Pasada el 23 oct 2026 sobre la rama `plan/f4` (encima de F5), antes de preparar 
 Lo único que esta prueba no puede decir es cómo se comporta el proveedor con `fixtures?team=&season=` en producción (forma exacta de la respuesta, tiempo
 por petición, partidos de competiciones raras): eso se valida con 1–3 peticiones reales antes de dejar correr el feed (paso 3 de «Cómo estrenarlo»).
 
+## Resultado en producción (23 oct 2026)
+
+**El despliegue.** Backend `2b6008641292`, web `9db9fd620008`, migración 0087. Copia verificada y prueba de restauración antes de tocar nada
+(`predigol-20261023T031738Z`: 1.140.691.588 bytes en 429 s; restauración **superada en 619 s**, hasta las 03:35 UTC), vigilancia de bloqueos sobre
+las tablas de partidos durante los 50 minutos siguientes (arrancó 03:37 UTC: **no registró ninguno**), la copia propia del despliegue y
+`predigolctl deploy`. **La migración se aplicó a la primera**, a las 03:47 UTC, y el despliegue terminó a las 03:48:45 UTC (11 min 45 s en total, de
+los que unos 7 son la copia). La lección del despliegue anterior funcionó: antes de empezar se comprobó que ninguna transacción de escritura de más
+de 20 s estuviera sobre `core.fixtures` o `raw.ingestion_payloads`, y la ventana se eligió fuera de las 06:50–07:55 UTC en que `fixtures_sync` las
+mantiene abiertas.
+
+**Lo que se comprobó al terminar (solo lectura).**
+
+| Comprobación | Resultado |
+|---|---|
+| Revisión de la base | 0087 |
+| Objetos | las dos tablas (`core.calendar_matches`, `core.calendar_fetches`) y las dos vistas (`core.calendar_matches_latest`, `core.team_calendar`) existen |
+| Permisos | la API solo lee; el worker lee e inserta (en las dos tablas) |
+| Servicios | API, web y worker en la versión nueva, los tres «healthy»; caddy y postgres sin reiniciar |
+| Prueba de humo | `/health` ok y `/login` 200 |
+| Salud del servidor | «warning» solo por el aviso de disco que ya existía (90 % en unos 22 días, +3.111 MB/día; disco al 56 %); ningún problema; presupuesto de API-Football 2 %; 0 errores del servidor en 5 minutos; certificado 76 días |
+| Registros del worker y de la API (desde el despliegue) | 0 errores |
+| Interruptores en los archivos de entorno | `FBI_TEAM_CALENDAR` y `FBI_CALENDAR_USERS` sin definir: el feed lee calendarios y **los usuarios no ven nada** |
+| Gasto de IA | 5,23 US$ el 22 oct; 0,003 US$ en lo que va del 23 (sin cambio) |
+
+**La validación con peticiones reales** (03:49 UTC, antes de dejar correr el feed): tres peticiones `fixtures?team=&season=` (equipos 947, 572 y
+una tercera) devolvieron **114 partidos**; 109 eran partidos que PrediGol ya sigue y 5 se guardaron aparte como «solo calendario»; la corrida
+quedó `completed`, sin errores. **El primer intento falló y no hizo daño:** lo lancé desde el contenedor de operaciones (`ops`), que monta el
+directorio de archivos RAW en solo lectura; el proveedor respondió pero la respuesta no se podía guardar y la corrida terminó con
+`OSError: Read-only file system` (la corrida 74243, 0 peticiones contadas, queda en el registro como fallida). La guía ya manda hacerlo desde
+el contenedor del worker, que es como corre la pasada programada.
+
+**La primera pasada programada** (corrida 74251, 04:02:55–04:03:57 UTC, 62 s) leyó **60 equipos** y trajo 199 partidos nuevos «solo calendario»;
+la pasada entera gastó 166 peticiones (60 del calendario y 106 del resto de feeds, que ya gastaban ≈ 100) frente a un permiso de 300. Con las
+63 lecturas hechas hasta ese momento: 2.495 partidos entregados por el proveedor, **2.284 (91,5 %) ya seguidos por PrediGol** y 204 filas nuevas en
+`core.calendar_matches` (128 kB). Mientras haya equipos pendientes (había 1.509 pares al arrancar, unas 25 pasadas ≈ 12,5 h) el feed gastará hasta
+60 peticiones por pasada, es decir, **hasta 2.880 al día** el primer día; después baja a lo medido (≈ 1.085 al día). Contador del día a las 04:07
+UTC: **1.840 de 60.000** (el 21 y el 22 de octubre fueron 11.825 y 10.665 sin el feed).
+
+**La primera pasada de pronósticos tras el cambio** (corrida 74245, 03:50–03:55 UTC, 5 min): `forecasts 3429 written / 1278 unchanged for 648
+fixtures`; pronóstico de PrediGol: 618 mercados escritos (1.836 filas) y 1.275 sin cambios para 631 de los 648 partidos (17 sin datos aptos);
+calibrados 9 de los escritos, sin calibrar 609 (`no_champion`, los mercados que ya no tenían campeón). **La corrección de la huella de modelos
+funcionó:** las versiones que escribieron desde el despliegue acaban todas en `@mc9a7bec97ca` (unas 5.000 filas de predicciones, las de los
+partidos cuyas entradas habían cambiado desde la última pasada de esa versión), **no la reescritura de 92.937** de la primera pasada de F5.
+Las filas `@mce0abbbb30d` que quedaron (98.211 en total entre las 03:13 y las 03:33 UTC) son registros solo-anexar de lo que el código de F5
+escribió antes: siguen siendo ciertos y no se tocan.
+
+**Paquetes de IA:** ya salen `packet-v7` (23 en las primeras horas). El calendario de **ambos** lados está completo solo en 1 de ellos, y es lo
+esperado: el feed lleva 63 equipos leídos; sube con cada pasada y se mira en el punto 2 de «Lo que queda vigilado».
+
+**Lo que sigue abierto** (no se puede saber todavía): la cobertura de calendarios completos de la semana (`coverage`), el reparto de motivos de
+«parcial» y la regla `calendar_known` de la auditoría nocturna de fuga, que corre por primera vez a las ≈ 12:50 UTC con paquetes `packet-v7`.
+
 ## Verificación de los criterios del plan
 
 | Criterio de «hecho» | Resultado | Prueba |
@@ -254,6 +306,8 @@ cambiaron sus entradas desde el último de esa versión, así que **no se espera
 * Nada más de F4 pide una decisión tuya.
 
 ## Lo que queda vigilado tras desplegar
+
+*Primera lectura (23 oct, 04:07 UTC), en «Resultado en producción»: los puntos 1 y 5 van bien (60 peticiones del feed por pasada, 166 en toda la pasada, 0 errores) y el 3 acaba de empezar (204 filas, 128 kB); quedan abiertos el 2 (cobertura, tras unas 13 horas de pasadas) y el 4 (primera auditoría nocturna con `calendar_known`, ≈ 12:50 UTC).*
 
 1. El gasto real del feed frente a la estimación (peticiones del job de referencia por día, en `raw.ingestion_runs` y `api_calls`); el tope por
    pasada y la reserva del vivo se respetan.
