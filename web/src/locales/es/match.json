@@ -491,12 +491,15 @@
     "missing": "Datos que aún no tenemos: {blocks}.",
     "block": {
       "absences": "bajas",
+      "dossier": "contexto del partido",
       "elo": "Elo",
+      "forecast": "pronóstico",
       "form": "forma",
       "h2h": "historial directo",
       "lineups": "alineaciones",
       "market": "mercado",
       "models": "modelos",
+      "phase": "fase",
       "standings": "tabla",
       "stats": "estadísticas"
     },
@@ -543,6 +546,48 @@
       "byModel": "Escrito por {model} (L1)",
       "byRules": "Escrito por las reglas",
       "aiModel": "PrediGol AI"
+    }
+  },
+  "forecast": {
+    "title": "Pronóstico PrediGol",
+    "subtitle": "Lo que PrediGol espera de este partido. Es una probabilidad, no una recomendación ni una cuota para apostar.",
+    "likely": "Lo más probable",
+    "range": "entre {low} y {high}",
+    "rangeNone": "sin rango medido",
+    "calibrated": "Calibrada",
+    "uncalibrated": "Sin calibrar",
+    "basis": {
+      "champion": "PrediGol corrigió la probabilidad del modelo con partidos ya jugados.",
+      "no_champion": "Es la probabilidad del modelo tal cual: en este mercado todavía no hay una corrección comprobada.",
+      "needs_price": "Por ahora es la probabilidad del modelo tal cual: la corrección de este mercado necesita un precio reciente y no lo hay.",
+      "not_applicable": "Es la probabilidad del modelo tal cual: la corrección no se pudo aplicar a este número."
+    },
+    "footnote": "Un pronóstico dice qué es probable, no si está bien pagado: eso lo dice el análisis de valor, y lo que PrediGol recomienda está en la pestaña Picks.",
+    "updated": "Actualizado {when}",
+    "model": "Modelo: {model}",
+    "models": {
+      "poisson": "Poisson (Maher)",
+      "dixon_coles": "Dixon-Coles",
+      "elo_ologit": "Elo (logit ordenado)"
+    },
+    "admin": {
+      "fairOdds": "cuota justa {odds}",
+      "modelNumber": "modelo {p}",
+      "detailsTitle": "Valor y picks de este partido (solo administrador)",
+      "valueTitle": "Valor: lo que dijo la capa de decisión (necesita precio)",
+      "picksTitle": "Picks congelados",
+      "odds": "cuota",
+      "edge": "ventaja",
+      "ev": "valor esperado",
+      "state": "estado",
+      "selection": "selección"
+    },
+    "reason": {
+      "data_not_fit": "PrediGol no pronostica esta competición: sus datos todavía no sirven para un modelo.",
+      "quarantined": "PrediGol no hizo pronóstico: los datos de este partido están en revisión.",
+      "no_forecast_yet": "PrediGol todavía no tiene pronóstico para este partido.",
+      "no_evaluation": "La capa de decisión no evaluó ningún precio de este partido: sin precio no hay valor.",
+      "no_pick": "No se congeló ningún pick para este partido: un pronóstico, por seguro que sea, no lo es."
     }
   },
   "picksTab": {

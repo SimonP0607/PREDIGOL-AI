@@ -69,6 +69,7 @@ import type {
   PickPostmortem,
   ShadowReportRow,
 } from "./types_ai_layer";
+import type { MatchForecast } from "./types_forecast";
 import type {
   AnalystReply,
   AnalystStatus,
@@ -400,6 +401,13 @@ export const v1 = {
   /** ANÁLISIS PREDIGOL: up to three cards, computed once per match by the worker and read by everyone. */
   matchAnalysis: (id: number | string, q: Preview = {}) =>
     getJson<Envelope<MatchAnalysis | null>>(`/matches/${id}/analysis`, q),
+  /**
+   * PRONÓSTICO PREDIGOL (plan F5): what PrediGol expects of the match, apart from its value and its picks. Null data
+   * with `not_available`: users do not see it yet. `preview: "shadow"` (the Admin Console) adds the fair odds and the
+   * decision layer's value and picks beside it.
+   */
+  matchForecast: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<MatchForecast | null>>(`/matches/${id}/forecast`, q),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {

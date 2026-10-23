@@ -491,12 +491,15 @@
     "missing": "Data we do not have yet: {blocks}.",
     "block": {
       "absences": "absences",
+      "dossier": "match context",
       "elo": "Elo",
+      "forecast": "forecast",
       "form": "form",
       "h2h": "head to head",
       "lineups": "line-ups",
       "market": "market",
       "models": "models",
+      "phase": "stage",
       "standings": "table",
       "stats": "statistics"
     },
@@ -543,6 +546,48 @@
       "byModel": "Written by {model} (L1)",
       "byRules": "Written by the rules",
       "aiModel": "PrediGol AI"
+    }
+  },
+  "forecast": {
+    "title": "PrediGol forecast",
+    "subtitle": "What PrediGol expects of this match. It is a probability, not a recommendation nor odds to bet on.",
+    "likely": "Most likely",
+    "range": "between {low} and {high}",
+    "rangeNone": "no range measured",
+    "calibrated": "Calibrated",
+    "uncalibrated": "Uncalibrated",
+    "basis": {
+      "champion": "PrediGol corrected the model's probability with matches already played.",
+      "no_champion": "This is the model's own probability: there is no proven correction for this market yet.",
+      "needs_price": "For now this is the model's own probability: this market's correction needs a recent price and there is none.",
+      "not_applicable": "This is the model's own probability: the correction could not be applied to this number."
+    },
+    "footnote": "A forecast says what is likely, not whether it is well paid: the value analysis says that, and what PrediGol recommends is in the Picks tab.",
+    "updated": "Updated {when}",
+    "model": "Model: {model}",
+    "models": {
+      "poisson": "Poisson (Maher)",
+      "dixon_coles": "Dixon-Coles",
+      "elo_ologit": "Elo (ordered logit)"
+    },
+    "admin": {
+      "fairOdds": "fair odds {odds}",
+      "modelNumber": "model {p}",
+      "detailsTitle": "Value and picks of this match (admin only)",
+      "valueTitle": "Value: what the decision layer said (needs a price)",
+      "picksTitle": "Frozen picks",
+      "odds": "odds",
+      "edge": "edge",
+      "ev": "expected value",
+      "state": "state",
+      "selection": "selection"
+    },
+    "reason": {
+      "data_not_fit": "PrediGol does not forecast this competition: its data is not fit for a model yet.",
+      "quarantined": "PrediGol made no forecast: the data of this match is under review.",
+      "no_forecast_yet": "PrediGol has no forecast for this match yet.",
+      "no_evaluation": "The decision layer has not evaluated any price of this match: without a price there is no value.",
+      "no_pick": "No pick was frozen for this match: a forecast, however sure, is not one."
     }
   },
   "picksTab": {

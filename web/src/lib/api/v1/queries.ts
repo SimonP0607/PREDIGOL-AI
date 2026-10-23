@@ -106,6 +106,11 @@ export const live = {
     queryFn: () => v1.matchAnalysis(id, { preview }),
     refetchInterval: 5 * MINUTE,
   }),
+  matchForecast: (id: string, preview: Preview) => ({
+    queryKey: ["v1", "match-forecast", id, preview ?? "user"],
+    queryFn: () => v1.matchForecast(id, { preview }),
+    refetchInterval: 5 * MINUTE,
+  }),
   liveBoard: { queryKey: ["v1", "live"], queryFn: v1.liveBoard, refetchInterval: 15_000 },
   players: (q: { q?: string | undefined; team_id?: number | undefined }) => ({
     queryKey: ["v1", "players", q.q ?? "", q.team_id ?? 0],

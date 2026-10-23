@@ -1,7 +1,8 @@
 /**
  * Resumen, by the match's state (REVIEW PREDIGOL, point 4 - the picks have their own tab now):
- * before kick-off - PrediGol Intelligence first, the way to the match's picks, the best prices, form,
- *                   table, absences, line-ups and head to head;
+ * before kick-off - PrediGol's forecast (what it expects; the owner decides when users see it), then PrediGol
+ *                   Intelligence, the way to the match's picks, the best prices, form, table, absences,
+ *                   line-ups and head to head;
  * in play        - the match events first, then the day's reading as it was written before kick-off,
  *                  key figures and in-play prices; the context folded away;
  * after          - result, the way to the picks and how they ended, events, the pre-match reading and
@@ -17,6 +18,7 @@ import { AnalysisBlock } from "./AnalysisBlock";
 import type { MatchCtx } from "./context";
 import { AbsencesBlock, FormBlock, H2HBlock, LineupsTeaser, StandingsBlock } from "./ContextBlocks";
 import { EventsBlock } from "./EventsTimeline";
+import { ForecastBlock } from "./ForecastBlock";
 import { KEY_STATS, statRows } from "./model";
 import { PicksTeaser } from "./PicksTab";
 import { LiveOddsBlock, QuickPricesBlock } from "./prices";
@@ -150,6 +152,8 @@ function BeforeKickoff({ ctx }: { ctx: MatchCtx }) {
   return (
     <div className={TWO_COLUMNS}>
       <div className="min-w-0 space-y-4">
+        {/* What PrediGol expects (plan F5), before whether it is well paid (the analysis) and what it recommends (the picks). */}
+        <ForecastBlock ctx={ctx} />
         <AnalysisBlock ctx={ctx} />
         <PicksTeaser ctx={ctx} />
         <QuickPricesBlock ctx={ctx} />
