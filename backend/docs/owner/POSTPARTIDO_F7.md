@@ -13,6 +13,14 @@ en ella.
 gasta IA (0 US$); y no muestra nada a ningún usuario hasta que tú lo decidas.** Conocer cómo terminó un partido tampoco puede colarse en
 lo que se dice antes de otro: ningún lector de antes del partido puede leerlo, y una prueba lo vigila.
 
+> **Después de F8 (23 oct 2026):** lo que este documento anuncia «para F8» quedó así. El post-mortem es **uno solo** (`pm-v6`) y la capa 9
+> de este objeto lee el más reciente de cada selección; el CLV tiene una sola definición y **un cierre de referencia con nombre** (el
+> último consenso sin margen antes del inicio, `fbi.market.closing_reference`), y los dos cierres se miden sobre las mismas selecciones con
+> `python -m scripts.postmortems closes` para que lo decidas con números. La memoria (`memory-v4`) y el post-mortem **no leen** este objeto:
+> se arman de los datos del partido con su propia regla «a fecha», y ninguno entra en un paquete de la IA (por eso tampoco hay una regla
+> nueva en la auditoría de fuga: una prueba de aislamiento, `tests/unit/test_postmortem_isolation.py`, es la extensión de la de aquí).
+> Ver `docs/owner/POSTMORTEM_MEMORIA_F8.md`.
+
 Lo que **no** es: no es una señal (no alimenta ningún modelo); no inventa (una capa que no se puede armar dice que falta, y por qué); no es
 un registro de lo que PrediGol dijo antes (eso son `models.match_forecasts`, `intel.decisions` y `picks.*`): es lo que el partido resultó
 ser.

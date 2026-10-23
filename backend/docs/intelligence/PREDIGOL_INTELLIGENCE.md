@@ -64,8 +64,8 @@ señales de contexto que la capa 4 usa como filtro de riesgo y como componente d
 | 6–4 h antes | pasada `pre` (noticias, lesiones, movimientos) | `ai_cycle` | Nivel B |
 | 06:00 | **PICKS DEL DÍA PI** (v6, shadow): hasta 5 APROBADOS por score, uno por partido, máx. 2 por competición; después se añaden los de partidos tardíos hasta completar 5 | `intel_decide` | 0 |
 | 100–10 min antes | pasada `final` tras alineaciones; L3 solo para los mejores | `ai_cycle` | Nivel C/D |
-| 07:35 | aprendizaje IA existente (post-mortems pm-v2, notas, patrones, sombra de la IA) | `ai_learn` | bajo |
-| 07:50 | **ciclo nocturno PI**: liquidación y CLV de decisiones, post-mortems pm-v5, memoria longitudinal, calibradores (challenger nuevo + evaluación prospectiva + promoción por criterios), auditoría de fugas, DAILY LEARNING REPORT, vínculo hipótesis↔experimentos | `intel_nightly` | 0 |
+| 07:35 | aprendizaje IA existente (el post-mortem único `pm-v6` de cada selección y de cada partido, las narrativas opcionales, notas, patrones, sombra de la IA) | `ai_learn` | bajo |
+| 07:50 | **ciclo nocturno PI**: liquidación y CLV de decisiones, el mismo post-mortem `pm-v6` si `ai_learn` no lo escribió ya, memoria longitudinal `memory-v4`, calibradores (challenger nuevo + evaluación prospectiva + promoción por criterios), auditoría de fugas, DAILY LEARNING REPORT, vínculo hipótesis↔experimentos | `intel_nightly` | 0 |
 | lunes 04:40 | **MARKET DISCOVERY ENGINE** (propone, nunca activa) | `intel_weekly` | 0 |
 
 Nada se recalcula si sus entradas no cambiaron: el paquete y el brief se guardan por hash, las búsquedas web se
@@ -84,8 +84,10 @@ fila nueva. Nada se reescribe después del saque ni después del resultado.
 | `intel.decisions` | evaluación de una selección en un punto de control | `known_at`, pick y versión de modelo, precio, casa, `price_at`, p_modelo, p_calibrada, `calibrator_id`, p_mercado, EV/edge crudos y calibrados, 10 filtros, estado, score y componentes, stake y componentes, contexto (estado, revisión, evidencias), `input_hash`, `decision_version` |
 | `intel.day_selections` | pick del día / parlay elegido por la regla v6 | decisión(es) congeladas, rango, stake, correlación |
 | `intel.decision_outcomes` | resultado de una decisión | estado del pick, P&L a la cuota de la decisión (plano y con stake), CLV contra el cierre sin margen |
-| `intel.postmortems` | post-mortem (pm-v5; las filas pm-v3 y pm-v4 anteriores se conservan) de una decisión | calidad de la decisión separada del resultado, causas del partido, preguntas respondidas, evidencia |
-| `intel.entity_memory` | estado acumulado de una entidad × aspecto en un día | equipo, jugador, entrenador, árbitro, competición, mercado; decisiones, aciertos, CLV, errores, contexto recurrente |
+| `intel.postmortems` | **el** post-mortem (`pm-v6`, plan F8) de una **selección**, con su decisión si la hubo; las filas por decisión `pm-v3` a `pm-v5` se conservan. La vista `intel.selection_postmortems` da la más reciente de cada selección | calidad del precio (CLV) separada del resultado, lo que decidió la revisión de la IA, clase de la pérdida, causas del partido, preguntas respondidas, el precio elegido y los otros dos, `clv` y `price_move` por separado, `roles` (por qué se estudió), evidencia |
+| `intel.match_postmortems` (migración 0091, plan F8) | el partido como un todo, una vez por versión | marcador, la evidencia de la IA frente a las alineaciones, el pronóstico 1X2 frente al cierre del mercado |
+| `ai.postmortem_narratives` (migración 0091, plan F8) | narrativa corta de un modelo de lenguaje sobre un post-mortem que importa (`pmn-v1`): aparte, opcional y de pago | texto, versión, `usage_ids` del libro de uso de la IA |
+| `intel.entity_memory` | estado acumulado de una entidad × aspecto en un día, por versión de la memoria (`memory-v4`, plan F8, con `confidence` y `evidence_ref`). La vista `intel.entity_memory_latest` da la fila de la versión más nueva de cada entidad, aspecto y día | equipo, jugador, entrenador, árbitro, competición, mercado; decisiones, aciertos, CLV, errores, contexto recurrente; córners, tarjetas y goles esperados de equipos y ligas |
 | `intel.daily_reports` | revisión del DAILY LEARNING REPORT de un día | contenido JSON + texto, hash |
 | `intel.market_registry` | estado de un mercado del proveedor en una corrida de discovery | 10 criterios, cobertura, casas, historial, estabilidad, modelabilidad, estado (ACTIVE / RESEARCH / CANDIDATE / NOT_MODELABLE) |
 | `intel.runs` | ejecución de un trabajo PI | duración, estado, conteos, errores, coste, versión de código |
@@ -110,7 +112,7 @@ capas: resultado, estadísticas de los equipos, eventos por periodo, jugadores, 
 cierre), contexto externo (apagada), picks y decisiones, y post-mortem. Es lo que el partido **resultó ser**, no algo que PrediGol dijo
 antes: **ningún lector de antes del partido (modelos, pronóstico, capa de decisión, dossier, paquete de la IA) puede leerlo ni nombrar sus
 tablas** (`tests/unit/test_knowledge_isolation.py`), de modo que conocer cómo terminó un partido no puede colarse en lo que se dice antes
-de otro; la memoria de F8 lo leerá con su propia regla «a fecha». Lo acompaña `core.fixture_event_kinds` (migración 0089, derivada): qué es
+de otro; la memoria de F8 tampoco lo lee: se arma de los datos del partido con su propia regla «a fecha». Lo acompaña `core.fixture_event_kinds` (migración 0089, derivada): qué es
 cada línea de la lista de eventos del proveedor (gol, autogol, penal, lanzamiento de la tanda, segunda amarilla, decisión del VAR…) y en qué
 periodo cae. Un usuario no ve nada hasta que el dueño enciende `FBI_KNOWLEDGE_USERS` y, aun entonces, solo los hechos y las probabilidades
 del mercado, nunca un precio, un pick ni un post-mortem. Ver `docs/intelligence/MATCH_KNOWLEDGE.md` y `docs/owner/POSTPARTIDO_F7.md`.
@@ -214,11 +216,21 @@ una pata por competición y sin equipo compartido no hay jornada común cuya dep
 
 ## 7. Aprender sin sobreajustar
 
-* **pm-v5** (cada decisión CAUTELA o superior y las 20 mejores INVESTIGACIONES del día): calidad de la decisión
-  (CLV, EV al cierre, p_calibrada frente al cierre) separada del resultado — merecido / varianza / suerte / error —;
-  causas del partido (roja y minuto, penaltis del partido —los de una tanda no cuentan—, gol temprano, lesiones antes del 30', tarjetas frente a lo esperado del
-  árbitro, alineación distinta de la esperada); las preguntas del POST_MATCH_REVIEW respondidas con datos. Un pick
-  perdido nunca ajusta un modelo.
+* **El post-mortem único** (`pm-v6`, plan F8): una fila por **selección** (partido, mercado, selección, línea), armada por reglas a coste cero y
+  una sola vez (un índice único), para todo lo que PrediGol miró, venga de donde venga: la última decisión de cada selección antes del inicio si
+  llegó a CAUTELA o más (o es una de las 20 mejores INVESTIGACIONES de un día de Bogotá ya terminado), los picks del día y las piernas de parlay
+  que vieron los usuarios, y toda selección que revisó un modelo de lenguaje o que es de un partido en que la IA trabajó ese día. Se estudia 3
+  horas después del inicio y mira los últimos 7 días. Responde: la calidad del precio por CLV (BUENO / NEUTRO / MALO, ±1 %) separada del
+  resultado —merecido / varianza / suerte / error / nulo / sin datos—, lo que decidió la revisión de la IA aparte (nueve valores) y nunca mezclado,
+  la clase de la pérdida (datos, ejecución, contexto, mercado, modelo, varianza normal, desconocida: la primera que aplica), las causas del
+  partido (roja y minuto, penaltis del partido —los de una tanda no cuentan—, gol temprano, cambios tempranos, tarjetas frente a lo esperado del
+  árbitro como persona, lo que los goles esperados dicen que merecía el partido), las diez preguntas de la IA y las ocho de la capa de decisión.
+  El precio es el que vio una persona, si lo hubo; si no, el que congeló la capa de decisión; si no, el que leyó el revisor (los tres se guardan en
+  `evidence.prices`). El partido como un todo va en `intel.match_postmortems`. Lo leen las pantallas, el aprendizaje y los patrones por
+  `intel.selection_postmortems`, y la capa 9 de Match Knowledge, que se queda con la fila más reciente de cada selección. Los dos post-mortems de la IA (`pm-v1.1` por partido y `pm-v2` por selección) están
+  congelados detrás de `FBI_AI_LEGACY_POSTMORTEMS` y sus filas siguen legibles. La **narrativa** de un modelo (`pmn-v1`) existe solo para las
+  pérdidas que alguien querría ver explicadas (hasta 12 por corrida, 3 con el modelo intermedio, nunca sin presupuesto ni sin modelo), es
+  opcional y de pago y nada depende de ella. Un pick perdido nunca ajusta un modelo. Ver `docs/owner/POSTMORTEM_MEMORIA_F8.md`.
 * **Una sola definición de CLV** (`clv-v1`, `fbi.market.closing_value`; plan F0, defecto 7): CLV es siempre
   `cuota × p_cierre − 1`, con `p_cierre` la probabilidad sin margen (Shin) de la última instantánea de consenso antes
   del inicio (`market.market_consensus.p_fair`, que es P(gana | se liquida)). Es la que escriben
@@ -228,10 +240,38 @@ una pata por competición y sin equipo compartido no hay jornada común cuya dep
   no mide si el precio era bueno (con el margen de cierre, −3 % de movimiento son ≈ −7 % de CLV) y nunca se promedia ni
   se compara con un CLV. La calidad de un precio (GOOD / NEUTRAL / BAD, ±1 %) se juzga sobre CLV; el «mercado se movió
   en contra» del post-mortem por selección (−3 %), sobre el movimiento. El cierre es la última captura previa al inicio:
-  mientras `close_minutes_to_ko` no pruebe que es el cierre, es valor frente a un precio casi de cierre.
-* **Memoria longitudinal** (`memory-v3`): instantánea diaria por entidad × aspecto (equipo×mercado,
-  competición×mercado, árbitro, entrenador, jugador-disponibilidad, mercado) con decisiones, aciertos, CLV, errores
-  y contexto recurrente. Una racha es una señal a investigar, no una regla.
+  mientras `close_minutes_to_ko` no pruebe que es el cierre, es valor frente a un precio casi de cierre. **El cierre de referencia es uno solo y
+  tiene nombre** (plan F8): el último consenso sin margen capturado antes del inicio (`last-shin-consensus-before-kickoff`,
+  `fbi.market.closing_reference`; mediana ≈ 175 minutos antes del inicio); cada post-mortem guarda a cuántos minutos del inicio se capturó
+  (`close_minutes_to_ko`) y marca `far` si fueron más de 120. El otro candidato (el último precio del proveedor en la misma casa) no se usa
+  para el CLV: `python -m scripts.postmortems closes` lo mide sobre las mismas selecciones. Cuál manda lo decide el dueño.
+* **Memoria longitudinal** (`memory-v4`, plan F8): instantánea diaria por entidad × aspecto (equipo×mercado, competición×mercado, árbitro,
+  entrenador, jugador-disponibilidad, mercado y, desde `memory-v4`, córners, tarjetas y goles esperados de cada equipo y de cada liga) con
+  decisiones, aciertos, CLV, errores y contexto recurrente. Una racha es una señal a investigar, no una regla.
+  **Confianza y evidencia** (`memory-v4`): cada fila dice cuánto fiarse (`confidence` = `n_eff / (n_eff + k)`, con `n_eff` la muestra efectiva en
+  la que cada pieza de evidencia pierde la mitad de su peso tras una vida media) y en qué se apoya (`evidence_ref`: los partidos, o las
+  decisiones y los post-mortems que las juzgaron; las 40 más recientes). Las vidas medias y las constantes son convenciones de la memoria y
+  cambiarlas es una versión nueva:
+
+  | Memoria | Vida media (días) | k |
+  |---|---|---|
+  | Decisiones de un equipo | 90 | 30 |
+  | Decisiones de una competición | 90 | 60 |
+  | Decisiones de un mercado | 180 | 100 |
+  | Árbitro (persona) | 365 | 20 |
+  | Entrenador (por id) | 365 | 10 |
+  | Jugador (disponibilidad) | 120 | 5 |
+  | Córners, tarjetas y goles esperados de un equipo | 180 | 15 / 38 / 10 |
+  | Córners, tarjetas y goles esperados de una liga | 365 | 60 |
+
+  Las cifras de un equipo se contraen hacia la media de su liga (`propio_contraído = confianza × propio + (1 − confianza) × liga`): la
+  confianza de la fila es exactamente la parte de la cifra que es del equipo. Los tres pesos son el número de partidos que vale la media de
+  la liga, **medidos** sobre los 34.611 partidos terminados de 365 días (`python -m scripts.memory priors`), no supuestos. **Su propio linaje:**
+  `memory-v4` no continúa ninguna versión anterior; empieza el 13 de octubre de 2026 y se reconstruye día a día (`python -m scripts.memory
+  rebuild`), y el paso nocturno no escribe nada hasta que existe. La vista `intel.entity_memory_latest` da la fila de la versión más nueva.
+  La memoria no entra en ningún paquete ni en nada de antes del partido (`tests/unit/test_postmortem_isolation.py`). Ver
+  `docs/owner/POSTMORTEM_MEMORIA_F8.md`.
+
   **Novedades tardías** (plan F0, defecto 3): un partido que se liquida, una estadística o un post-mortem que llegan
   *después* de escrita la fila del día. `memory-v1` los descartaba (`ON CONFLICT DO NOTHING`). Una fila nunca se
   reescribe, así que `memory-v2` los **anota en la fila del día en que se supieron**, en `delta.late[<día>]`: lo que los
@@ -240,8 +280,8 @@ una pata por competición y sin equipo compartido no hay jornada común cuya dep
   estado «a fecha de» un día no incluye nada que se supo después (sin trampa de futuro) y reconciliar dos veces no
   anota nada dos veces. El ciclo nocturno construye solo la fila de ayer y mira los 3 días anteriores (`LATE_DAYS`):
   una noche perdida del worker se recupera así como novedad tardía. Para una reparación puntual de un periodo más
-  largo existe `build_memory(..., late_days=N)` (operación manual). `memory-v2` continúa el estado que dejó `memory-v1`;
-  las filas v1 no se tocan.
+  largo existe `build_memory(..., late_days=N)` (operación manual). `memory-v2` continuó el estado que dejó `memory-v1` (sus filas no se
+  tocan); `memory-v4`, en cambio, empieza su propio linaje.
   **Árbitros = personas** (`memory-v3`, plan F3): la entidad `referee` es la persona de `core.referees` (su `entity_id` es el id), no la
   cadena que escribió el proveedor. Las filas que `memory-v2` escribió bajo una cadena quedan como historia (nada las continúa ni las
   reconcilia, y la lista de la consola solo muestra personas); la historia de cada persona empieza el primer día que corre `memory-v3`.

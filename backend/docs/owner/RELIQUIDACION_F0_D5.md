@@ -51,9 +51,12 @@ la decide ya, **vuelve a `ACTIVE`** (sin resultado, sin beneficio, sin fecha de 
 * **Freno de masa.** Más de **25 partidos** con registros cambiados en una pasada no es una corrección, es algo que va mal aguas
   arriba (un reproceso, un defecto): **no se escribe nada**, se informa la lista y una persona sube el límite cuando la ha mirado.
 * **Un solo pase a la vez** (candado de aplicación).
-* **Lo que se construyó sobre el resultado viejo no se reescribe aquí**: `intel.decision_outcomes`, `intel.postmortems` y
-  `ai.pick_postmortems` son de solo-añadir; se **cuentan** en el informe (`built on the old results`). Reconstruirlos es la fase
-  **F8** (hasta entonces conservan el resultado de entonces).
+* **Lo que se construyó sobre el resultado viejo no se reescribe aquí**: `intel.decision_outcomes`, `intel.postmortems`,
+  `intel.match_postmortems`, `ai.pick_postmortems` y `ai.postmortems` son de solo-añadir; se **cuentan** en el informe (`built on the
+  old results`). Reconstruirlos era la fase **F8** (hasta entonces conservan el resultado de entonces). *Lo que se decidió en F8
+  (23 oct 2026):* el post-mortem único (`pm-v6`) tampoco se reescribe, así que si un resultado se corrige, rehacerlo exige una versión
+  nueva del post-mortem; la tabla `core.fixture_result_revisions` no tiene hoy ninguna corrección registrada, así que no hay nada que
+  reconstruir. Ver `docs/owner/POSTMORTEM_MEMORIA_F8.md`.
 
 ## Cómo corre
 

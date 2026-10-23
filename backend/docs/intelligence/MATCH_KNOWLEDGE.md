@@ -92,7 +92,7 @@ estables, no frases.
 | `c6_market` | por mercado (`1X2`, `OU`, `BTTS`, `AH`; en `OU` y `AH` también la `line`): la probabilidad de consenso sin margen de cada desenlace **de la apertura al cierre** (`p: {desenlace: [apertura, cierre]}`), cuántas casas, cuándo y a cuántos minutos del inicio fue la última lectura; y, cuando el proveedor aún los tenía tras el partido, sus **últimos precios** (`final`: precio mediano de las casas, cuántas, y a cuántos minutos del inicio) | `market.market_consensus` (Shin), `market.final_prematch_odds` | están `1X2`, `OU` y `BTTS` | `no_1X2`, `no_OU`, `no_BTTS` |
 | `c7_context` | — | — | **`off` siempre** (la decide el dueño) | `decided_by_the_owner` |
 | `c8_picks` | `decisions`: cuántas, las líneas (mercado, desenlace, línea) con su último estado, el desenlace y las cinco mejores con su cuota, ventaja, apuesta, resultado, ganancia y CLV; `picks`: los picks en sombra por mercado y su ganancia | `intel.decisions`, `intel.decision_outcomes`, `picks.picks`, `picks.pick_results` | todo lo que podía liquidarse ya está liquidado (`partial` mientras no) | `not_settled_yet` |
-| `c9_postmortem` | los post-mortems de esas decisiones: cuántos, la versión, los veredictos, las calidades y los cinco primeros con sus causas | `intel.postmortems` | hay al menos uno | — |
+| `c9_postmortem` | los post-mortems de las selecciones del partido, **mirara quien las mirara** (la capa de decisión, los picks que vio un usuario, las revisiones de la IA; plan F8): de cada selección, solo el más reciente; cuántas, la versión más nueva, los veredictos, las calidades, lo que decidió la revisión de la IA y los cinco primeros con la clase de la pérdida y sus causas (una fila de `pm-v3` a `pm-v5` es de su decisión y se cuenta como esa selección) | `intel.postmortems` | hay al menos uno | — |
 
 La eliminatoria sigue una regla de honestidad: **un partido de ida dice que fue el primero de dos y nada de lo que pasó después**, así que
 el conocimiento de una ida no cambia cuando se juega la vuelta.
@@ -102,7 +102,7 @@ parejos (la regla del tablero de cuotas). La apertura es la primera lectura de c
 (`OPENING_LOOKBACK_DAYS = 7`, la del paquete de la IA). **El cierre es la última lectura de consenso guardada antes del inicio, y en
 producción queda a unos 175 minutos de él** (mediana, p10 175, p90 179, sobre 1.513 partidos de 14 días), porque eso es lo que el reloj de
 precios guarda; los últimos precios del proveedor (`final`) están mucho más cerca (mediana de 85 minutos antes del inicio, p90 de 218) pero
-solo existen para el 72 % de los partidos de 30 días. Mientras el CLV no use una sola fuente (F8), hay dos cierres y los dos se guardan.
+solo existen para el 72 % de los partidos de 30 días. Hay dos cierres y los dos se guardan, pero el CLV de F8 usa uno solo y con nombre (el consenso: `fbi.market.closing_reference`); el `final` del proveedor es lo que es, el último precio de la casa, y no se promedia con él.
 
 ## 5. Calidad, dudas y completitud
 
@@ -224,8 +224,10 @@ constructor desde la API, etc., rompen la prueba. Solo 0089 y 0090 pueden nombra
 o una clave sobre ellas sería otra puerta).
 
 **No hay una regla `knowledge_known` en la auditoría nocturna de fuga** (`leak-audit`) porque no hay ningún camino de Match Knowledge a un
-paquete de la IA. Se añadirá cuando F8 deje que un bloque de antes del partido lo cite: entonces la regla comprobará que lo citado existe
-en `intel.match_knowledge`, no es de después del momento del paquete y es de un partido que ya había terminado entonces.
+paquete de la IA, y F8 no lo cambió: ni el post-mortem único ni la memoria (`memory-v4`) leen Match Knowledge ni entran en un paquete. Se
+añadirá cuando algún día un bloque de antes del partido lo cite (por ejemplo, si el dueño decide que la memoria entre en el paquete): entonces la
+regla comprobará que lo citado existe en `intel.match_knowledge`, no es de después del momento del paquete y es de un partido que ya había
+terminado entonces.
 
 ## 9. Cómo cambiar una regla o añadir una capa
 
@@ -241,7 +243,8 @@ en `intel.match_knowledge`, no es de después del momento del paquete y es de un
   corresponda; así queda en la huella (o fuera de ella, si es un momento) sin que nadie pueda olvidarlo.
 * **Dejar que un lector nuevo lea Match Knowledge**: agregarlo a `NAMES_IT` o a `IMPORTS` en la prueba de aislamiento, con la razón. Si es
   un lector de antes del partido, **la respuesta es no** (puerta 2): lo que un partido terminado resultó ser no puede servir para decir
-  algo de otro antes de que se juegue, salvo por la memoria de F8, que tiene su propia regla de «a fecha».
+  algo de otro antes de que se juegue. La memoria de F8 tampoco lo lee: se arma de los datos del partido con su propia regla de «a fecha»
+  (`memory-v4`, `docs/owner/POSTMORTEM_MEMORIA_F8.md`).
 * **Código fuera de los paquetes de modelos.** El código de F7 vive fuera de `MODEL_PACKAGES = ("models", "features", "predictions",
   "backtesting", "domain")`: un cambio dentro de ellos es, por la regla del 5 de octubre, un modelo nuevo, y la huella del código de
   modelos (`mc9a7bec97ca`) cambiaría. Una prueba fija esa huella y una puerta de aislamiento comprueba que `fbi.knowledge` no esté en ese

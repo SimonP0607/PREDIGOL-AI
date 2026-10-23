@@ -144,7 +144,8 @@ Ya existían y las decide el servidor, nunca un modelo (`fbi.ai.evidence`):
 
 ## Post-mortems de aciertos y fallos
 
-Existían (`pm-v2`). Últimos 7 días:
+Existían (`pm-v2`; desde F8 hay un solo post-mortem, `pm-v6`, ver `docs/owner/POSTMORTEM_MEMORIA_F8.md`). Últimos 7 días, a la
+fecha de este documento:
 
 * Aprobados: 111 ganados y 155 perdidos.
 * Con cautela: 95 ganados y 146 perdidos.

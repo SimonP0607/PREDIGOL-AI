@@ -10,7 +10,12 @@ This file reads the documents and compares every figure of the ten filters, the 
 stake, the calibration gates and the budget with the constants of the code - and the "Falla ->" column with the state
 each filter really imposes (``test_decision_rules.effects_of_failing``). If a constant changes, the test fails until the
 document says the new value; if the document is edited to something else, it fails the same way. The audit of section 0
-is a dated snapshot of production data and is not compared."""
+is a dated snapshot of production data and is not compared.
+
+Plan F8 adds the one post-mortem and the memory: the conventions table of the longitudinal memory (the half-life and the ``k`` of each
+kind of memory), the figures of the post-mortem (when it is studied, how far back, how many investigations, the band of a price's
+quality, the named close) and the limits of the narratives, against ``fbi.intel.memory``, ``fbi.intel.postmortem``,
+``fbi.market`` and ``fbi.ai.pm_narratives``."""
 
 from __future__ import annotations
 
@@ -21,9 +26,10 @@ from pathlib import Path
 
 import pytest
 
-from fbi.ai import usage
+from fbi.ai import learning, pm_narratives, usage
 from fbi.ai.config import AiSettings
-from fbi.intel import calibration, decision, score, stake
+from fbi.intel import calibration, decision, memory, postmortem, score, stake
+from fbi.market import closing_reference, closing_value
 
 from .test_decision_rules import effects_of_failing
 
@@ -261,3 +267,68 @@ def test_the_variables_of_the_ai_layers_document_have_the_codes_defaults(monkeyp
                 "FBI_AI_MAX_WATCH_PER_DAY": s.max_watch_per_day, "FBI_AI_HORIZON_HOURS": s.horizon_hours}
     for name, value in defaults.items():
         said(rf"`{name}` \((\d+)", text, float(value))
+
+
+# ── the one post-mortem and the memory (plan F8) ─────────────────────────────
+
+def memory_table() -> dict[str, tuple[float, ...]]:
+    """The conventions table of the longitudinal memory (section 7): what it is the memory of -> (half-life in days, k...)."""
+    rows: dict[str, tuple[float, ...]] = {}
+    for m in re.finditer(r"^\s*\| ([^|]+) \| (\d+) \| ([\d /]+) \|$", section(PI, 7), flags=re.M):
+        rows[m[1].strip()] = (float(m[2]), *(float(k) for k in m[3].split("/")))
+    return rows
+
+
+def test_the_memory_conventions_table_is_the_codes() -> None:
+    """The half-lives and the ``k`` are conventions of the memory (changing one is a new version and a rebuild): the document lists
+    them, and a table that says something else than ``fbi.intel.memory`` fails here."""
+    table = memory_table()
+    one_each = {
+        "Decisiones de un equipo": memory.DECISIONS_TEAM,
+        "Decisiones de una competición": memory.DECISIONS_COMPETITION,
+        "Decisiones de un mercado": memory.DECISIONS_MARKET,
+        "Árbitro (persona)": memory.REFEREE,
+        "Entrenador (por id)": memory.COACH,
+        "Jugador (disponibilidad)": memory.PLAYER,
+        "Córners, tarjetas y goles esperados de una liga": memory.LEAGUE_FIGURES,
+    }
+    for label, spec in one_each.items():
+        assert table.get(label) == (spec.half_life, spec.k), label
+    teams = [memory.TEAM_FIGURES[aspect] for aspect in ("corners", "cards", "xg")]
+    assert table.get("Córners, tarjetas y goles esperados de un equipo") == (teams[0].half_life, *(s.k for s in teams))
+    assert {s.half_life for s in teams} == {teams[0].half_life}, "the three figures of a team share one half-life"
+    assert len(table) == len(one_each) + 1, f"a kind of memory the test does not know: {sorted(table)}"
+
+
+def test_the_memory_paragraph_says_what_the_code_does() -> None:
+    flat = " ".join(section(PI, 7).split())
+    said(r"las (\d+) más recientes\)", flat, memory.MAX_SOURCES)
+    said(r"`memory-v4` no continúa ninguna versión anterior; empieza el (\d+) de octubre de (\d+)", flat,
+         memory.LINEAGE_START.day, memory.LINEAGE_START.year)
+    assert memory.LINEAGE_START.month == 10
+    assert f"`{memory.VERSION}`" in flat
+    assert "`confidence` = `n_eff / (n_eff + k)`" in flat, "the confidence formula is no longer written"
+
+
+def test_the_post_mortem_paragraph_says_what_the_code_does() -> None:
+    flat = " ".join(section(PI, 7).split())
+    assert f"`{postmortem.VERSION}`" in flat
+    said(r"Se estudia (\d+) horas después del inicio y mira los últimos (\d+) días", flat,
+         hours(postmortem.SETTLE_DELAY), postmortem.LOOKBACK.days)
+    said(r"las (\d+) mejores INVESTIGACIONES", flat, postmortem.TOP_INVESTIGATION)
+    said(r"BUENO / NEUTRO / MALO, ±(\d+) %", flat, closing_value.GOOD * 100)
+    assert postmortem.GOOD_CLV == closing_value.GOOD
+    assert f"`{closing_reference.REFERENCE}`" in flat, "the named close is no longer written"
+    said(r"marca `far` si fueron más de (\d+)", flat, closing_reference.FAR_FROM_KICKOFF)
+
+
+def test_the_ai_layers_post_mortem_text_says_what_the_code_does() -> None:
+    """Section 5 of the AI layer's document (the rest of it is not compared; section 7 is, above)."""
+    flat = " ".join(section(LAYER, 5).split())
+    for version in (postmortem.VERSION, pm_narratives.VERSION, learning.VERSION):
+        assert f"`{version}`" in flat, version
+    said(r"Se estudia (\d+) horas después del inicio, mira los últimos (\d+) días", flat,
+         hours(postmortem.SETTLE_DELAY), postmortem.LOOKBACK.days)
+    said(r"Haiku, máx\. (\d+) por corrida, y Sonnet para las pérdidas de picks del día, (\d+); ventana de (\d+) días", flat,
+         pm_narratives.MAX_NARRATIVES, pm_narratives.MAX_STRONG_NARRATIVES, pm_narratives.LOOKBACK.days)
+    said(r"precio bueno / neutro / malo con banda ±(\d+) %", flat, closing_value.GOOD * 100)
