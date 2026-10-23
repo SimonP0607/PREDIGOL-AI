@@ -68,6 +68,7 @@ def test_the_fingerprint_is_of_the_content_and_not_of_when_it_was_fetched(db: ps
             "UPDATE core.fixture_team_stats SET fetched_at = %s WHERE fixture_id = %s",
             "UPDATE core.fixture_player_stats SET fetched_at = %s WHERE fixture_id = %s",
             "UPDATE core.fixture_lineups SET fetched_at = %s WHERE fixture_id = %s",
+            "UPDATE market.final_prematch_odds SET fetched_at = %s WHERE fixture_id = %s",
             "UPDATE core.fixture_results SET source_fetched_at = %s, settled_at = %s WHERE fixture_id = %s"):
         params = (later, later, fid) if "settled_at" in statement else (later, fid)
         db.execute(statement, params)
@@ -133,6 +134,18 @@ CHANGES: list[tuple[str, Change, set[str]]] = [
      lambda w, f: w.quote(f, "1X2", "Home", 0, 0.52, KICKOFF - timedelta(minutes=5)), {"market"}),
     ("the first price the market ever had",
      lambda w, f: w.quote(f, "1X2", "Home", 0, 0.40, KICKOFF - timedelta(days=6, hours=2)), set()),
+    ("a bookmaker's last price (the middle of them moves)",
+     lambda w, f: w.db.execute("UPDATE market.final_prematch_odds SET odds_decimal = 1.700 WHERE fixture_id = %s AND market_key = '1X2' "
+                               "AND selection = 'Home' AND odds_decimal = 1.850", (f,)), {"final"}),
+    ("a bookmaker's last price (the middle of them stays)",
+     lambda w, f: w.db.execute("UPDATE market.final_prematch_odds SET odds_decimal = 2.050 WHERE fixture_id = %s AND market_key = '1X2' "
+                               "AND selection = 'Home' AND odds_decimal = 1.900", (f,)), {"final"}),
+    ("a bookmaker whose last prices are gone",
+     lambda w, f: w.db.execute("DELETE FROM market.final_prematch_odds WHERE fixture_id = %s AND bookmaker_id = %s", (f, w.books(4)[3])), {"final"}),
+    ("the moment the provider last moved the prices",
+     lambda w, f: w.db.execute("UPDATE market.final_prematch_odds SET provider_update_at = provider_update_at - interval '5 minutes', "
+                               "minutes_to_ko = 90 WHERE fixture_id = %s", (f,)), {"final"}),
+    ("a line of a market that is new", lambda w, f: w.final(f, "OU", "Over", 3.5, [1.4]), {"final"}),
     ("a decision", lambda w, f: w.decision(f, "OU", "Under", 2.5, "APROBADO", checkpoint="T-1h"), {"decisions"}),
     ("how a decision ended", lambda w, f: w.outcome(w.decision(f, "BTTS", "Yes", 0, "CAUTELA", checkpoint="T-5h"), "loss", -1), {"decisions", "outcomes"}),
     ("how a pick ended",
@@ -160,6 +173,8 @@ def test_the_fingerprint_moves_in_its_source_when_a_fact_a_layer_reads_changes(d
         "seq": 0, "minute": 1, "extra_minute": None, "team_side": "home", "provider_player_id": None, "player_name": None,
         "provider_assist_id": None, "assist_name": None, "event_type": "Goal", "detail": "Normal Goal", "comments": None}])),
     ("the decisions of another match", lambda w, f: w.decision(w.match(KICKOFF + timedelta(days=1)), "1X2", "Home", 0, "APROBADO")),
+    ("a last price of a market the layers do not read", lambda w, f: w.final(f, "DC", "Home/Draw", 0, [1.3, 1.35])),
+    ("the last prices of another match", lambda w, f: w.final(w.match(KICKOFF + timedelta(days=1)), "1X2", "Home", 0, [1.9, 2.0])),
 ])
 def test_the_fingerprint_does_not_move_for_what_is_not_the_match_or_not_before_its_kick_off(db: psycopg.Connection[Any], seed: Seed, label: str,
                                                                                          change: Change) -> None:
@@ -234,6 +249,53 @@ def test_the_opening_is_the_first_price_of_the_week_before_the_kick_off_and_the_
     inp = reader.read(db, [fid])[fid].inputs
     assert [(q.p_fair, q.as_of) for q in inp.close_quotes] == [(0.52, KICKOFF - timedelta(minutes=10))]
     assert [(q.p_fair, q.as_of) for q in inp.open_quotes] == [(0.40, KICKOFF - timedelta(days=5))], "9 days before is outside the week"
+
+
+def test_the_last_prices_are_the_middle_of_the_bookmakers_prices_for_the_markets_the_layers_read(db: psycopg.Connection[Any], seed: Seed) -> None:
+    w = World(db, seed)
+    fid = w.golden()
+    w.final(fid, "DC", "Home/Draw", 0, [1.3, 1.35])                                  # a market the layers do not read
+    w.final(fid, "AH", "Home", -1.5, [2.1, 2.2, 2.3, 2.4, 2.5])                      # an odd number of bookmakers: the one in the middle
+    w.final(fid, "AH", "Away", -1.5, [1.7])                                          # one bookmaker
+    inp = reader.read(db, [fid])[fid].inputs
+    last = {(q.market, q.selection, q.line): q for q in inp.final_quotes}
+    assert len(last) == 7 + 2, "the seven of the golden match and the two of the handicap; not the double chance"
+    home = last[("1X2", "Home", 0)]
+    assert (home.odds, home.books, home.as_of, home.fetched_at) == (1.85, 4, KICKOFF - timedelta(minutes=85), FETCHED), (
+        "four bookmakers (1.80, 1.85, 1.90, 2.00): of the two in the middle the lower, a price somebody quoted")
+    assert (last[("1X2", "Draw", 0)].odds, last[("1X2", "Away", 0)].odds) == (3.5, 4.4)
+    assert (last[("OU", "Over", 2.5)].odds, last[("OU", "Over", 2.5)].books) == (1.95, 3)
+    assert (last[("BTTS", "Yes", 0)].odds, last[("BTTS", "Yes", 0)].books) == (1.8, 2)
+    assert (last[("AH", "Home", -1.5)].odds, last[("AH", "Home", -1.5)].books) == (2.3, 5)
+    assert (last[("AH", "Away", -1.5)].odds, last[("AH", "Away", -1.5)].books) == (1.7, 1)
+    assert all(isinstance(q.odds, float) for q in inp.final_quotes)
+
+
+def test_the_last_prices_reach_the_market_layer_with_the_moment_they_were_read(db: psycopg.Connection[Any], seed: Seed) -> None:
+    w = World(db, seed)
+    fid = w.golden()
+    w.final(fid, "OU", "Over", 3.5, [1.4])                                         # a line the consensus does not read: not the main line
+    c6 = layers.build(reader.read(db, [fid])[fid].inputs).layers[layers.C6_MARKET]
+    assert c6["status"] == "ok" and c6["known_at"] == layers.iso(FETCHED)
+    assert c6["data"]["1X2"]["final"] == {"odds": {"Away": 4.4, "Draw": 3.5, "Home": 1.85}, "books": 4, "at": "2034-05-02T17:35:00Z", "min_to_ko": 85}
+    assert c6["data"]["OU"]["final"]["odds"] == {"Over": 1.95, "Under": 1.85} and c6["data"]["OU"]["line"] == 2.5
+    assert c6["data"]["BTTS"]["final"]["books"] == 2
+    assert c6["data"]["1X2"]["close_at"] == "2034-05-02T18:40:00Z", "the consensus is still what it was: 20 minutes before kick-off"
+
+
+def test_a_match_the_worker_never_saw_is_told_by_the_last_prices(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """The reason the provider's last prices are read at all: the days the worker was down. No consensus, no opening: the prices alone."""
+    w = World(db, seed)
+    fid = w.match()
+    for market, selection, line, prices in (("1X2", "Home", 0, [1.8, 1.9]), ("1X2", "Draw", 0, [3.5, 3.6]), ("1X2", "Away", 0, [4.2, 4.4]),
+                                            ("OU", "Over", 2.5, [1.9, 2.0]), ("OU", "Under", 2.5, [1.9, 1.95]), ("BTTS", "Yes", 0, [1.8, 1.85]),
+                                            ("BTTS", "No", 0, [1.9, 1.95])):
+        w.final(fid, market, selection, line, prices)
+    inp = reader.read(db, [fid])[fid].inputs
+    assert not inp.close_quotes and not inp.open_quotes and len(inp.final_quotes) == 7
+    c6 = layers.build(inp).layers[layers.C6_MARKET]
+    assert c6["status"] == "ok" and set(c6["data"]) == {"1X2", "OU", "BTTS"}
+    assert set(c6["data"]["1X2"]) == {"final"} and c6["data"]["1X2"]["final"]["odds"]["Home"] == 1.8
 
 
 def test_the_statistics_of_the_teams_come_from_the_provider_that_has_both_sides(db: psycopg.Connection[Any], seed: Seed) -> None:

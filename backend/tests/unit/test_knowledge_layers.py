@@ -60,6 +60,12 @@ def quote(market: str, selection: str, p: float, hours_before: float, *, line: i
                    as_of=KICKOFF - timedelta(hours=hours_before))
 
 
+def last(market: str, selection: str, odds: float, *, line: int | float | str = 0, books: int = 8, minutes_before: int = 85) -> mk.FinalQuote:
+    """The provider's last pre-match price of a selection, read after the match."""
+    return mk.FinalQuote(market=market, selection=selection, line=Decimal(str(line)), odds=odds, books=books,
+                        as_of=KICKOFF - timedelta(minutes=minutes_before), fetched_at=FETCHED)
+
+
 def decision(did: int, market: str, selection: str, state: str, *, line: int | float | str = 0, checkpoint: str = "T-1h",
              hours_before: float = 1, score: float | None = None, odds: float | None = 2.0, result: str | None = None,
              profit: float | None = None, clv: float | None = None) -> mk.Decision:
@@ -88,8 +94,11 @@ def the_match() -> mk.Inputs:
         close_quotes=[quote("1X2", "Home", 0.55, 0.2), quote("1X2", "Draw", 0.26, 0.2), quote("1X2", "Away", 0.19, 0.2),
                       quote("OU", "Over", 0.50, 0.2, line="2.5"), quote("OU", "Under", 0.50, 0.2, line="2.5"),
                       quote("BTTS", "Yes", 0.53, 0.2), quote("BTTS", "No", 0.47, 0.2)],
+        final_quotes=[last("1X2", "Home", 1.8), last("1X2", "Draw", 3.6), last("1X2", "Away", 5.0),
+                      last("OU", "Over", 2.0, line="2.5"), last("OU", "Under", 1.85, line="2.5"),
+                      last("BTTS", "Yes", 1.8), last("BTTS", "No", 1.95)],
         decisions=[
-            decision(1, "1X2", "Home", "CAUTELA", score=61.2, checkpoint="T-3h", hours_before=3, result="win", profit=1.0, clv=0.03),
+            decision(4, "1X2", "Home", "CAUTELA", score=61.2, checkpoint="T-3h", hours_before=3, result="win", profit=1.0, clv=0.03),
             decision(1, "1X2", "Home", "APROBADO", score=70.1, result="win", profit=1.0, clv=0.03),
             decision(2, "OU", "Over", "RECHAZADO", line="2.5", result="win", profit=1.0),
             decision(3, "BTTS", "No", "INVESTIGACION", result="loss", profit=-1.0),
@@ -384,22 +393,78 @@ def test_a_match_with_a_result_and_nothing_else_is_minimal() -> None:
 # ── the market ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-def test_the_market_is_read_from_a_week_before_to_the_last_snapshot() -> None:
+def test_the_market_is_read_from_a_week_before_to_the_last_snapshot_and_then_to_the_last_prices() -> None:
     data = layer(mk.build(the_match()), "c6_market")["data"]
     assert data["1X2"] == {"p": {"Away": [0.23, 0.19], "Draw": [0.27, 0.26], "Home": [0.5, 0.55]}, "books": 20, "close_at": "2034-04-01T11:48:00Z",
-                           "min_to_ko": 12, "open_at": "2034-03-26T06:00:00Z"}
+                           "min_to_ko": 12, "open_at": "2034-03-26T06:00:00Z",
+                           "final": {"odds": {"Away": 5.0, "Draw": 3.6, "Home": 1.8}, "books": 8, "at": "2034-04-01T10:35:00Z", "min_to_ko": 85}}
     assert data["OU"]["line"] == 2.5 and data["OU"]["p"] == {"Over": [0.52, 0.5], "Under": [0.48, 0.5]}
+    assert data["OU"]["final"]["odds"] == {"Over": 2.0, "Under": 1.85}
     assert "AH" not in data and set(data) == {"1X2", "OU", "BTTS"}
 
 
 def test_a_selection_with_no_opening_has_none_and_a_market_missing_makes_the_layer_partial() -> None:
     inp = the_match()
     k = mk.build(replace(inp, open_quotes=[q for q in inp.open_quotes if q.selection != "Draw"],
-                        close_quotes=[q for q in inp.close_quotes if q.market != "BTTS"]))
+                        close_quotes=[q for q in inp.close_quotes if q.market != "BTTS"],
+                        final_quotes=[q for q in inp.final_quotes if q.market != "BTTS"]))
     c6 = layer(k, "c6_market")
     assert c6["data"]["1X2"]["p"]["Draw"] == [None, 0.26]
     assert c6["status"] == "partial" and c6["notes"] == ["no_BTTS"]
-    assert layer(mk.build(replace(inp, close_quotes=())), "c6_market") == {"status": "missing", "sources": ["market.market_consensus"]}
+    nothing = layer(mk.build(replace(inp, close_quotes=(), final_quotes=())), "c6_market")
+    assert nothing == {"status": "missing", "sources": ["market.market_consensus", "market.final_prematch_odds"]}
+
+
+def test_the_last_prices_are_what_the_consensus_lacks_when_it_has_nothing_and_add_to_it_when_it_has() -> None:
+    """The worker was down: no snapshot of the market exists, but the provider's last prices were read after the match. They say what the
+    market was, without a probability or an opening to go with them."""
+    inp = the_match()
+    alone = layer(mk.build(replace(inp, open_quotes=(), close_quotes=())), "c6_market")
+    assert alone["status"] == "ok" and "notes" not in alone
+    assert alone["data"]["1X2"] == {"final": {"odds": {"Away": 5.0, "Draw": 3.6, "Home": 1.8}, "books": 8, "at": "2034-04-01T10:35:00Z", "min_to_ko": 85}}
+    assert alone["data"]["OU"]["line"] == 2.5 and set(alone["data"]["OU"]) == {"final", "line"}
+    assert alone["known_at"] == "2034-04-01T15:00:00Z", "known when it was read, after the match: that is when we learned it"
+    # and the other way round: the consensus without the last prices is what it always was
+    without = layer(mk.build(replace(inp, final_quotes=())), "c6_market")
+    assert "final" not in without["data"]["1X2"] and without["known_at"] == "2034-04-01T11:48:00Z"
+    assert layer(mk.build(inp), "c6_market")["known_at"] == "2034-04-01T15:00:00Z"
+    # only some markets priced after the match: the layer is as complete as the markets it has, from either source
+    two = [q for q in inp.final_quotes if q.market != "BTTS"]
+    part = layer(mk.build(replace(inp, close_quotes=[q for q in inp.close_quotes if q.market != "BTTS"], final_quotes=two)), "c6_market")
+    assert part["status"] == "partial" and part["notes"] == ["no_BTTS"]
+    btts = layer(mk.build(replace(inp, close_quotes=[q for q in inp.close_quotes if q.market != "BTTS"])), "c6_market")
+    assert btts["status"] == "ok" and set(btts["data"]["BTTS"]) == {"final"}, "BTTS known by its last prices only is still BTTS known"
+
+
+def test_the_last_prices_are_read_at_the_line_the_consensus_reads_and_by_themselves_at_the_main_line_rule() -> None:
+    inp = the_match()
+    # a line with more books than the consensus's must not take its place: the two views describe the same bet
+    wide = [*inp.final_quotes, last("OU", "Over", 1.4, line="1.5", books=30), last("OU", "Under", 3.0, line="1.5", books=30)]
+    assert layer(mk.build(replace(inp, final_quotes=wide)), "c6_market")["data"]["OU"]["final"]["odds"] == {"Over": 2.0, "Under": 1.85}
+    # the consensus reads 2.5 and nobody priced 2.5 after the match: no last price for that line (the data says so by not having it)
+    other = [q for q in inp.final_quotes if q.market != "OU"] + [last("OU", "Over", 1.4, line="1.5"), last("OU", "Under", 3.0, line="1.5")]
+    ou = layer(mk.build(replace(inp, final_quotes=other)), "c6_market")["data"]["OU"]
+    assert "final" not in ou and ou["line"] == 2.5
+    # without a consensus the last prices choose: 2.5 whenever quoted, else the most quoted and the most even
+    alone = replace(inp, open_quotes=(), close_quotes=())
+    assert layer(mk.build(replace(alone, final_quotes=wide)), "c6_market")["data"]["OU"]["line"] == 2.5
+    thin = [last("OU", "Over", 1.4, line="1.5", books=5), last("OU", "Under", 3.0, line="1.5", books=5),
+            last("OU", "Over", 1.95, line="3.5", books=9), last("OU", "Under", 1.9, line="3.5", books=9),
+            last("OU", "Over", 2.8, line="4.5", books=9), last("OU", "Under", 1.45, line="4.5", books=9)]
+    chosen = layer(mk.build(replace(alone, final_quotes=thin)), "c6_market")["data"]["OU"]
+    assert chosen["line"] == 3.5 and chosen["final"]["odds"] == {"Over": 1.95, "Under": 1.9}, "as many books: the closest to even"
+    handicap = [last("AH", "Home", 1.95, line="-0.5", books=7), last("AH", "Away", 1.9, line="-0.5", books=7),
+                last("AH", "Home", 1.55, line="-1.5", books=7), last("AH", "Away", 2.45, line="-1.5", books=7)]
+    assert layer(mk.build(replace(alone, final_quotes=handicap)), "c6_market")["data"]["AH"]["line"] == -0.5
+
+
+def test_the_books_of_a_market_are_the_most_that_priced_any_of_its_selections() -> None:
+    inp = the_match()
+    uneven = [q if q.selection != "Draw" else replace(q, books=3) for q in inp.final_quotes]
+    assert layer(mk.build(replace(inp, final_quotes=uneven)), "c6_market")["data"]["1X2"]["final"]["books"] == 8
+    only_draw = [q for q in inp.final_quotes if q.market != "1X2" or q.selection == "Draw"]
+    thin = layer(mk.build(replace(inp, final_quotes=only_draw)), "c6_market")["data"]["1X2"]["final"]
+    assert thin["odds"] == {"Draw": 3.6}, "a selection nobody priced is not invented"
 
 
 def test_the_main_line_is_two_and_a_half_when_quoted_and_otherwise_the_most_quoted_and_most_even() -> None:
@@ -464,10 +529,12 @@ def test_reading_the_same_facts_later_says_the_same_thing() -> None:
     shifted = replace(
         inp, events_fetched_at=FETCHED + later, team_stats=[replace(t, fetched_at=t.fetched_at + later) for t in inp.team_stats],
         players=[replace(p, fetched_at=FETCHED + later) for p in inp.players], lineups=[replace(s, fetched_at=FETCHED + later) for s in inp.lineups],
+        final_quotes=[replace(q, fetched_at=q.fetched_at + later) for q in inp.final_quotes],
         result=replace(inp.result, settled_at=FETCHED + later, fetched_at=FETCHED + later) if inp.result else None)
     a, b = mk.build(inp), mk.build(shifted)
     assert a.content_hash == b.content_hash, "the moments are not part of what the match says"
     assert a.known_at < b.known_at and layer(a, "c3_events")["known_at"] != layer(b, "c3_events")["known_at"]
+    assert layer(a, "c6_market")["known_at"] != layer(b, "c6_market")["known_at"]
 
 
 def test_what_the_match_says_changing_changes_the_hash() -> None:
@@ -479,6 +546,8 @@ def test_what_the_match_says_changing_changes_the_hash() -> None:
     assert mk.build(replace(inp, result=replace(inp.result, ht_home=0, ht_away=0))).content_hash != base
     assert mk.build(replace(inp, sheets_crossed=True)).content_hash != base
     assert mk.build(replace(inp, postmortems=())).content_hash != base
+    assert mk.build(replace(inp, final_quotes=[replace(q, odds=q.odds + 0.05) for q in inp.final_quotes])).content_hash != base
+    assert mk.build(replace(inp, final_quotes=inp.final_quotes[1:])).content_hash != base
 
 
 def test_the_order_the_facts_arrive_in_changes_nothing() -> None:
@@ -492,7 +561,7 @@ def test_the_order_the_facts_arrive_in_changes_nothing() -> None:
 
     mixed = replace(inp, events=shuffled(inp.events), team_stats=shuffled(inp.team_stats), players=shuffled(inp.players),
                     lineups=shuffled(inp.lineups), open_quotes=shuffled(inp.open_quotes), close_quotes=shuffled(inp.close_quotes),
-                    decisions=shuffled(inp.decisions), picks=shuffled(inp.picks), postmortems=shuffled(inp.postmortems))
+                    final_quotes=shuffled(inp.final_quotes), decisions=shuffled(inp.decisions), picks=shuffled(inp.picks), postmortems=shuffled(inp.postmortems))
     assert mk.build(mixed).content_hash == mk.build(inp).content_hash
     assert mk.build(inp).content_hash == mk.build(inp).content_hash
 

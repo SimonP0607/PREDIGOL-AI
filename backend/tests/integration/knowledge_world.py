@@ -13,12 +13,14 @@ the close, the decisions, the picks and the post-mortems - and the ways those ca
      88'  away   VAR: goal disallowed
 
 with both sides' statistics (their cards agree with the list), six men a side, both squad sheets, the 1X2, Over/Under 2.5 and BTTS from a week
-before to twenty minutes before the kick-off, two decisions (one backed and won, one rejected) with their outcomes, a shadow pick that won and a
+before to twenty minutes before the kick-off (and the provider's last prices of them, read after the match, from two to four
+bookmakers), two decisions (one backed and won, one rejected) with their outcomes, a shadow pick that won and a
 post-mortem of the decision. The transaction of the test is rolled back afterwards.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -86,6 +88,7 @@ class World:
         self.cur = db.cursor()
         self.hash = seed.payload_hash
         self.n = 0
+        self.bookmakers: list[int] = [seed.bookmaker_id]
         self.cur.execute("INSERT INTO core.competitions (provider_league_id, name, country, type, entity_scope, competition_type, is_tracked) "
                          "VALUES (98971, 'Knowledge League', 'Colombia', 'league', 'club', 'domestic_league', true) RETURNING id")
         comp = scalar(self.cur)
@@ -167,6 +170,24 @@ class World:
         self.cur.execute("INSERT INTO market.market_consensus (fixture_id,market_key,selection,line,as_of,devig_method,p_fair,n_bookmakers,"
                          "overround,best_odds,best_bookmaker_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,0.05,%s,%s)",
                          (fid, market, selection, line, as_of, method, p, books, round(1 / p, 3), self.seed.bookmaker_id))
+
+    def books(self, n: int) -> list[int]:
+        """The ids of ``n`` bookmakers: the seed's and, for more, others made here."""
+        while len(self.bookmakers) < n:
+            self.cur.execute("INSERT INTO market.bookmakers (provider_bookmaker_id, name) VALUES (%s, %s) RETURNING id",
+                             (989800 + len(self.bookmakers), f"Knowledge book {len(self.bookmakers)}"))
+            self.bookmakers.append(int(scalar(self.cur)))
+        return self.bookmakers[:n]
+
+    def final(self, fid: int, market: str, selection: str, line: float, prices: Sequence[float], *, kickoff: datetime = KICKOFF,
+              minutes: int = 85, fetched: datetime | None = None) -> None:
+        """The provider's last pre-match prices of a selection, read after the match: one per bookmaker (``prices[i]`` is the ``i``-th one's),
+        stamped ``minutes`` before kick-off."""
+        for book, price in zip(self.books(len(prices)), prices, strict=True):
+            self.cur.execute("INSERT INTO market.final_prematch_odds (fixture_id, bookmaker_id, market_key, selection, line, odds_decimal, "
+                             "provider_update_at, minutes_to_ko, fetched_at, payload_hash) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                             (fid, book, market, selection, line, price, kickoff - timedelta(minutes=minutes), minutes,
+                              fetched or kickoff + timedelta(hours=3), self.hash))
 
     def revision(self, fid: int, observed: datetime, kind: str = "score") -> None:
         self.cur.execute("INSERT INTO core.fixture_result_revisions (fixture_id, kind, observed_at, old_state, new_state, changed) "
@@ -254,6 +275,10 @@ class World:
                                                          ("BTTS", "Yes", 0, 0.55, 0.58), ("BTTS", "No", 0, 0.45, 0.42)):
             self.quote(fid, market, selection, line, p_open, opening)
             self.quote(fid, market, selection, line, p_close, closing)
+        for market, selection, line, prices in (("1X2", "Home", 0, [1.80, 1.85, 1.90, 2.00]), ("1X2", "Draw", 0, [3.4, 3.5, 3.6, 3.8]),
+                                                ("1X2", "Away", 0, [4.2, 4.4, 4.5, 5.0]), ("OU", "Over", 2.5, [1.90, 1.95, 2.00]),
+                                                ("OU", "Under", 2.5, [1.80, 1.85, 1.90]), ("BTTS", "Yes", 0, [1.80, 1.85]), ("BTTS", "No", 0, [1.90, 1.95])):
+            self.final(fid, market, selection, line, prices, kickoff=kickoff)
         pick = self.pick(fid, "1X2", "Home", 0, kickoff=kickoff, settled=kickoff + timedelta(hours=2))
         backed = self.decision(fid, "1X2", "Home", 0, "PICK_PREMIUM", kickoff=kickoff, pick=pick)
         self.outcome(backed, "win", 1.1)

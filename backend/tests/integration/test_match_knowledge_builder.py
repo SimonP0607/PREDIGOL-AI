@@ -125,6 +125,25 @@ def test_a_change_that_no_layer_shows_adds_a_row_that_says_the_same(db: psycopg.
     assert second["supersedes"] == first["id"] and second["content_hash"] == first["content_hash"] and second["inputs_hash"] != first["inputs_hash"]
 
 
+def test_the_last_prices_arriving_after_a_build_add_a_row_that_has_them_and_keep_the_one_without(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """The provider's last pre-match prices are read once, after the match, by a job of their own: they can come after Match Knowledge was
+    built (or never). The match is then built again, as a new row; the one built without them stays what was known by then."""
+    w = World(db, seed)
+    fid = w.golden()
+    db.execute("DELETE FROM market.final_prematch_odds WHERE fixture_id = %s", (fid,))
+    build(db, fid)
+    w.final(fid, "1X2", "Home", 0, [1.8, 1.9]), w.final(fid, "1X2", "Draw", 0, [3.5, 3.6]), w.final(fid, "1X2", "Away", 0, [4.2, 4.4])
+    report = build(db, fid)
+    assert (report.due, report.built, report.same_content) == (1, 1, 0)
+    first, second = rows(db, fid)
+    assert second["supersedes"] == first["id"] and first["content_hash"] != second["content_hash"]
+    assert "final" not in first["layers"][layers.C6_MARKET]["data"]["1X2"]
+    assert second["layers"][layers.C6_MARKET]["data"]["1X2"]["final"] == {
+        "odds": {"Away": 4.2, "Draw": 3.5, "Home": 1.8}, "books": 2, "at": "2034-05-02T17:35:00Z", "min_to_ko": 85}
+    assert second["layers"][layers.C6_MARKET]["known_at"] == "2034-05-02T22:00:00Z", "known when they were read, after the match"
+    assert build(db, fid).due == 0, "and read again, the same prices change nothing"
+
+
 def test_a_match_that_goes_back_to_what_it_was_has_three_rows_and_the_newest_is_what_it_is(db: psycopg.Connection[Any], seed: Seed) -> None:
     fid = World(db, seed).golden()
     build(db, fid)

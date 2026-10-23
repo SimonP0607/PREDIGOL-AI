@@ -15,7 +15,8 @@ Both are made from the same lists of columns (``*_FACTS``: facts, in the fingerp
 layers' ``known_at``), so a column cannot be read without being fingerprinted; a test changes each one and sees the fingerprint move.
 Sources that are append-only by trigger (the decisions, their outcomes, the post-mortems, the corrections of a result) are fingerprinted
 by their count and newest id: that is exact for a table nobody edits. The market is fingerprinted by its newest consensus before kick-off:
-what the market came to expect is the last price before the ball rolls, and nothing writes before that moment once the match is over.
+what the market came to expect is the last price before the ball rolls, and nothing writes before that moment once the match is over. The
+provider's last pre-match prices (``market.final_prematch_odds``, written once, after the match) are fingerprinted by what was quoted.
 
 Nothing here writes, and nothing here reads the clock.
 """
@@ -55,6 +56,10 @@ EVENT_FACTS: Final = ("seq", "minute", "extra_minute", "team_side", "provider_pl
                       "event_type", "detail", "comments")
 PLAYER_FACTS: Final = ("provider_player_id", "team_side", "player_name", "minutes", "rating", "is_captain", "is_substitute", "goals", "assists")
 LINEUP_FACTS: Final = ("team_side", "formation", "coach_id", "coach_name")
+FINAL_FACTS: Final = ("market_key", "selection", "line", "odds_decimal")
+"""The provider's last pre-match prices as the layer reads them: the bookmaker does not matter, only what was quoted (and how many quoted it).
+``provider_update_at`` is a fact too (the layer says when), fingerprinted as seconds like ``kickoff_at``; ``fetched_at`` is a moment."""
+FINAL_MOMENTS: Final = ("fetched_at",)
 
 
 def _cols(alias: str, names: Iterable[str]) -> str:
@@ -64,6 +69,7 @@ def _cols(alias: str, names: Iterable[str]) -> str:
 # ── the fingerprint ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 _IDS = "%(ids)s::bigint[]"
+_MARKETS = "%(markets)s::text[]"
 
 CROSSED_SQL: Final = f"""
 SELECT l.fixture_id, l.team_side, count(*) AS men, count(*) FILTER (WHERE s.team_side <> l.team_side) AS apart
@@ -119,6 +125,11 @@ SELECT f.id, 'market', extract(epoch FROM max(m.as_of))::text
   JOIN market.market_consensus m ON m.fixture_id = f.id AND m.devig_method = 'shin' AND m.as_of < f.kickoff_at
  WHERE f.id = ANY({_IDS}) GROUP BY f.id
 UNION ALL
+SELECT o.fixture_id, 'final',
+       md5(string_agg(ROW({_cols('o', FINAL_FACTS)}, extract(epoch FROM o.provider_update_at))::text, E'\\n'
+                      ORDER BY {_cols('o', FINAL_FACTS)}, o.provider_update_at))
+  FROM market.final_prematch_odds o WHERE o.fixture_id = ANY({_IDS}) AND o.market_key = ANY({_MARKETS}) GROUP BY o.fixture_id
+UNION ALL
 SELECT d.fixture_id, 'decisions', count(*)::text || ':' || max(d.id)::text
   FROM intel.decisions d WHERE d.fixture_id = ANY({_IDS}) GROUP BY d.fixture_id
 UNION ALL
@@ -132,8 +143,8 @@ SELECT pm.fixture_id, 'postmortems', count(*)::text || ':' || max(pm.id)::text
   FROM intel.postmortems pm WHERE pm.fixture_id = ANY({_IDS}) GROUP BY pm.fixture_id
 """
 
-SOURCES: Final = ("fixture", "result", "revisions", "tie", "team_stats", "events", "players", "lineups", "crossed", "market", "decisions",
-                  "outcomes", "picks", "postmortems")
+SOURCES: Final = ("fixture", "result", "revisions", "tie", "team_stats", "events", "players", "lineups", "crossed", "market", "final",
+                  "decisions", "outcomes", "picks", "postmortems")
 """The sources of the fingerprint, in the order of ``FINGERPRINT_SQL``: a source that has no row for a match says ``None``, so that a row
 appearing or disappearing is a change."""
 
@@ -151,7 +162,7 @@ def fingerprints(conn: psycopg.Connection[Any], fixture_ids: Sequence[int]) -> d
     if not ids:
         return {}
     seen: dict[int, dict[str, Any]] = {i: {} for i in ids}
-    for row in _rows(conn, FINGERPRINT_SQL, {"ids": ids}):
+    for row in _rows(conn, FINGERPRINT_SQL, {"ids": ids, "markets": list(layers.MARKETS)}):
         seen[int(row["fixture_id"])][str(row["src"])] = row["h"]
     return {i: {"rules": dict(layers.RULES), **{src: found.get(src) for src in SOURCES}} for i, found in seen.items()}
 
@@ -204,6 +215,14 @@ SELECT DISTINCT ON (m.fixture_id, m.market_key, m.selection, m.line)
    AND m.as_of >= f.kickoff_at - make_interval(days => %(lookback)s)
  ORDER BY m.fixture_id, m.market_key, m.selection, m.line, m.as_of
 """
+FINAL_SQL: Final = f"""
+SELECT o.fixture_id, o.market_key, o.selection, o.line, percentile_disc(0.5) WITHIN GROUP (ORDER BY o.odds_decimal) AS odds,
+       count(*) AS books, max(o.provider_update_at) AS as_of, {", ".join(f"max(o.{c}) AS {c}" for c in FINAL_MOMENTS)}
+  FROM market.final_prematch_odds o WHERE o.fixture_id = ANY({_IDS}) AND o.market_key = ANY({_MARKETS})
+ GROUP BY o.fixture_id, o.market_key, o.selection, o.line
+"""
+"""One row per selection and line: the price in the middle of the bookmakers' (``percentile_disc`` takes one of the prices quoted, the lower
+one of the two in the middle when they are an even number) and how many quoted it - the primary key allows one price per bookmaker."""
 DECISIONS_SQL: Final = f"""
 SELECT d.fixture_id, d.id, d.checkpoint, d.market_key, d.selection, d.line, d.state, d.known_at, d.score, d.odds, d.p_cal, d.edge_cal,
        d.stake_units, o.result_status, o.profit_flat, o.clv, o.settled_at
@@ -304,6 +323,11 @@ def read(conn: psycopg.Connection[Any], fixture_ids: Sequence[int]) -> dict[int,
             into[int(r["fixture_id"])].append(layers.Quote(
                 market=str(r["market_key"]), selection=str(r["selection"]), line=Decimal(r["line"]), p_fair=float(r["p_fair"]),
                 books=int(r["n_bookmakers"]), as_of=r["as_of"]))
+    final: dict[int, list[layers.FinalQuote]] = defaultdict(list)
+    for r in _rows(conn, FINAL_SQL, market):
+        final[int(r["fixture_id"])].append(layers.FinalQuote(
+            market=str(r["market_key"]), selection=str(r["selection"]), line=Decimal(r["line"]), odds=float(r["odds"]), books=int(r["books"]),
+            as_of=r["as_of"], fetched_at=r["fetched_at"]))
     decisions: dict[int, list[layers.Decision]] = defaultdict(list)
     for r in _rows(conn, DECISIONS_SQL, {"ids": ids}):
         decisions[int(r["fixture_id"])].append(layers.Decision(
@@ -345,7 +369,7 @@ def read(conn: psycopg.Connection[Any], fixture_ids: Sequence[int]) -> dict[int,
             events=tuple(lines), events_fetched_at=max(stamps[fid].values()) if fid in stamps else None,
             players=tuple(players.get(fid, ())), lineups=tuple(lineups.get(fid, ())),
             sheets_crossed=any(sides.is_crossed(n, apart) for n, apart in men.get(fid, ())),
-            open_quotes=tuple(opening.get(fid, ())), close_quotes=tuple(closing.get(fid, ())),
+            open_quotes=tuple(opening.get(fid, ())), close_quotes=tuple(closing.get(fid, ())), final_quotes=tuple(final.get(fid, ())),
             decisions=tuple(decisions.get(fid, ())), picks=tuple(picks.get(fid, ())), postmortems=tuple(postmortems.get(fid, ())))
         out[fid] = Read(inputs, stamps.get(fid, {}))
     return out

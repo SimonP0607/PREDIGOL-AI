@@ -14,7 +14,9 @@ than it needs says ``partial`` and why (``notes``), and the layer of the externa
     c5_tactics       the formation and the coach of each side, the substitutions with the score at that moment, and the story of the score
                      (who scored first, who led, how many minutes each side was ahead, the first dismissal and the score then)
     c6_market        the consensus probability of each market a week before kick-off and at the last snapshot before it, with the books and the
-                     minutes to the kick-off of that snapshot: what the market expected and what it came to expect
+                     minutes to the kick-off of that snapshot: what the market expected and what it came to expect; and, when the provider
+                     still had them after the match, its last pre-match prices (``final``: the middle of the bookmakers', nearer to the
+                     kick-off than the snapshot is) - the only word on the market for a match the worker was down for
     c7_context       the external context of the match (the news, the AI's reading afterwards): OFF, decided by the owner
     c8_picks         what PrediGol's decision layer made of each line at its last checkpoint and how it ended, and its shadow picks by market
     c9_postmortem    the post-mortems of those decisions: the result against the decision, the verdict and the causes
@@ -207,6 +209,21 @@ class Quote:
 
 
 @dataclass(frozen=True, slots=True)
+class FinalQuote:
+    """The provider's last pre-match price of a selection (``market.final_prematch_odds``): the price in the middle of the bookmakers' - the
+    lower median, so a price somebody quoted - and how many of them quoted it. ``as_of`` is the provider's own stamp (before kick-off) and
+    ``fetched_at`` the moment it was read (after the match: that is when it became known)."""
+
+    market: str
+    selection: str
+    line: Decimal
+    odds: float
+    books: int
+    as_of: datetime
+    fetched_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class Decision:
     """A decision of the decision layer at a checkpoint (``intel.decisions``), and what became of it if it did."""
 
@@ -271,6 +288,7 @@ class Inputs:
     """The statistics put the squad sheets on the other side (``fbi.people.sides``): the formation of a crossed sheet is not used."""
     open_quotes: Sequence[Quote] = ()
     close_quotes: Sequence[Quote] = ()
+    final_quotes: Sequence[FinalQuote] = ()
     decisions: Sequence[Decision] = ()
     picks: Sequence[PickTally] = ()
     postmortems: Sequence[Postmortem] = ()
@@ -707,35 +725,65 @@ def main_line(market: str, quotes: Sequence[Quote]) -> Decimal | None:
     return min(by_line.items(), key=rank)[0]
 
 
-def _market_block(market: str, line: Decimal, opening: Sequence[Quote], closing: Sequence[Quote], kickoff: datetime) -> dict[str, Any]:
+def _minutes_before(kickoff: datetime, moment: datetime) -> int:
+    return int((kickoff - moment).total_seconds() // 60)
+
+
+def _close_block(market: str, line: Decimal, opening: Sequence[Quote], closing: Sequence[Quote], kickoff: datetime) -> dict[str, Any]:
+    """What the consensus said of the market at ``line``: from its first reading of the week to its last before kick-off."""
     close = {q.selection: q for q in closing if q.market == market and q.line == line}
     start = {q.selection: q for q in opening if q.market == market and q.line == line}
+    at = max(q.as_of for q in close.values())
     block: dict[str, Any] = {
         "p": {s: [_round(start[s].p_fair, 3) if s in start else None, _round(close[s].p_fair, 3)] for s in sorted(close)},
         "books": max(q.books for q in close.values()),
-        "close_at": iso(max(q.as_of for q in close.values())),
-        "min_to_ko": int((kickoff - max(q.as_of for q in close.values())).total_seconds() // 60),
+        "close_at": iso(at),
+        "min_to_ko": _minutes_before(kickoff, at),
     }
     if start:
         block["open_at"] = iso(min(q.as_of for q in start.values()))
-    if market in ("OU", "AH"):
-        block["line"] = float(line)
     return block
 
 
+def _final_block(market: str, line: Decimal, last: Sequence[FinalQuote], kickoff: datetime) -> dict[str, Any] | None:
+    """What the provider's last pre-match prices say of the market at ``line``: the price in the middle of the bookmakers' (not de-vigged: a
+    price is a price), how many quoted it and how long before kick-off the provider last moved them. ``None`` when nobody quoted that line."""
+    prices = {q.selection: q for q in last if q.market == market and q.line == line}
+    if not prices:
+        return None
+    at = max(q.as_of for q in prices.values())
+    return {"odds": {s: _round(prices[s].odds, 3) for s in sorted(prices)}, "books": max(q.books for q in prices.values()),
+            "at": iso(at), "min_to_ko": _minutes_before(kickoff, at)}
+
+
+def _final_line(market: str, last: Sequence[FinalQuote]) -> Decimal | None:
+    """The line to read the last prices at when the consensus has none to say which: ``main_line``'s rule with the price in the place of the
+    probability (how far from even a selection is, asked of 1 / price)."""
+    return main_line(market, [Quote(q.market, q.selection, q.line, 1.0 / q.odds, q.books, q.as_of) for q in last])
+
+
 def c6_market(inp: Inputs) -> dict[str, Any]:
-    sources = ["market.market_consensus"]
-    if not inp.close_quotes:
-        return _layer(MISSING, sources=sources)
+    """The market, from the consensus (opening to closing) and from the provider's last pre-match prices (``final``): the second is read after
+    the match, a median of the bookmakers' own prices, and the nearest to kick-off that is stored. A market has the line the consensus reads
+    it at; when the consensus has nothing on it (the worker was down) the last prices alone say it."""
+    sources = ["market.market_consensus", "market.final_prematch_odds"]
+    kickoff = inp.fixture.kickoff_at
     data: dict[str, Any] = {}
     for market in MARKETS:
-        rows = [q for q in inp.close_quotes if q.market == market]
-        line = main_line(market, rows)
-        if line is not None:
-            data[market] = _market_block(market, line, inp.open_quotes, inp.close_quotes, inp.fixture.kickoff_at)
+        closing = [q for q in inp.close_quotes if q.market == market]
+        last = [q for q in inp.final_quotes if q.market == market]
+        line = main_line(market, closing) if closing else _final_line(market, last)
+        if line is None:
+            continue
+        block = _close_block(market, line, inp.open_quotes, inp.close_quotes, kickoff) if closing else {}
+        if (final := _final_block(market, line, last, kickoff)) is not None:
+            block["final"] = final
+        if market in ("OU", "AH"):
+            block["line"] = float(line)
+        data[market] = block
     if not data:
         return _layer(MISSING, sources=sources)
-    known = newest(*(q.as_of for q in inp.close_quotes))
+    known = newest(*(q.as_of for q in inp.close_quotes), *(q.fetched_at for q in inp.final_quotes))
     wanted = ("1X2", "OU", "BTTS")
     absent = [m for m in wanted if m not in data]
     return _layer(OK if not absent else PARTIAL, known_at=known, sources=sources, data=data, notes=[f"no_{m}" for m in absent])
