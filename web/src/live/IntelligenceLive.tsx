@@ -35,6 +35,7 @@ import { MatchPicker } from "./IntelMatchPicker";
 import { FactorsPanel, H2hPanel, ScenariosPanel, TacticsPanel } from "./IntelMatchPanels";
 import { hasScenarios } from "./intelMatch";
 import { Markdown } from "./Markdown";
+import { MarketMatrixPanel } from "./MarketMatrixPanel";
 import { PriceClockPanel } from "./PriceClockPanel";
 import { durationMs } from "./format";
 
@@ -1118,11 +1119,12 @@ function CalibrationView() {
 // ── markets ──────────────────────────────────────────────────────────────────
 
 function MarketsView() {
-  // The price clock reads its own endpoint: one view failing or loading never hides the other.
+  // The price clock and the matrix read their own endpoints: one view failing or loading never hides the others.
   return (
     <div className="space-y-4" data-testid="intel-markets">
       <DiscoveryView />
       <PriceClockPanel />
+      <MarketMatrixPanel />
     </div>
   );
 }

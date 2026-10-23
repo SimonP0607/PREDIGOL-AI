@@ -10,6 +10,7 @@ import type {
   IntelDecisionRow,
   IntelDossier,
   IntelFactorsRegistry,
+  IntelMarketMatrix,
   IntelMarketRow,
   IntelMemoryRow,
   IntelPicker,
@@ -620,6 +621,8 @@ export const v1 = {
       }>
     >("/admin/intelligence/markets"),
   intelPriceClock: () => getJson<Envelope<IntelPriceClock>>("/admin/intelligence/price-clock"),
+  intelMarketMatrix: () =>
+    getJson<Envelope<IntelMarketMatrix>>("/admin/intelligence/market-matrix"),
   intelRuns: () =>
     getJson<
       Envelope<{

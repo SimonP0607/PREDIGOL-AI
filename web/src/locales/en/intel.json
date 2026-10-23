@@ -588,6 +588,105 @@
       "unclassifiedHelp": "The provider sent these bet types and the taxonomy does not know them yet. Nothing is lost: their prices are still in RAW.",
       "runs": "Latest job runs",
       "rows": "Prices written"
+    },
+    "matrix": {
+      "title": "Market matrix by family",
+      "subtitle": "What each kind of bet can become: its price, its results, its model and the verdict",
+      "explain": "For each kind of bet: whether the provider offers it, whether we store its price and the figure that would settle it, whether a model exists yet and the verdict that earns. It is read from the newest stored matrix, as it was measured at the time shown. Reading only: it changes no pick, no probability and not the SHADOW mode.",
+      "empty": "No matrix has been stored yet: one is built every week (or with python -m scripts.markets matrix --store).",
+      "stale": "Matrix from an earlier version ({version}; the current one is {current}): it is renewed by the weekly run.",
+      "generated": "Generated (Bogotá time)",
+      "generatedHint": "Version {version} · taxonomy {taxonomy}",
+      "keys": "Keys in the catalogue",
+      "keysHint": "{followed} followed, {modelled} modelled",
+      "rules": "Settlement rules",
+      "rulesHint": "{n} can grade",
+      "definitions": "Provider bets",
+      "definitionsHint": "{extracted} with a stored price, {withRule} with a settlement rule",
+      "verdict": {
+        "ready": "Ready",
+        "partial": "Partial",
+        "investigate": "To investigate",
+        "notViable": "Not viable"
+      },
+      "legend": "Ready: a model, a calibrator and an edge validated against the closing line. Partial: a model prices it and the pipeline runs it, but its edge is not validated. To investigate: it can be graded and there is a price to measure it against, but there is no model yet; the priority says where to start. Not viable: nothing to grade it on or no price to measure it against, or it was judged not worth it.",
+      "priority": {
+        "alta": "High priority",
+        "media": "Medium priority",
+        "baja": "Low priority"
+      },
+      "group": {
+        "A": "Result",
+        "B": "Goals",
+        "C": "Corners",
+        "D": "Cards",
+        "E": "Players",
+        "F": "Goalkeepers",
+        "G": "Shots, fouls and offsides",
+        "H": "Futures",
+        "Z": "Other"
+      },
+      "howToRead": "Bets: with a stored price / total the provider offers. Price: matches with a price in the last {price} days, median number of houses per match and coverage (the share of matches with any price that have this market's). Results: finished matches of the followed competitions in the last {results} days that carry the figure that would settle the market, and their share of the total.",
+      "cols": {
+        "market": "Market",
+        "verdict": "Verdict",
+        "reason": "Reason",
+        "bets": "Bets",
+        "price": "Price",
+        "results": "Results",
+        "model": "Model"
+      },
+      "price": {
+        "fixtures": "Matches",
+        "houses": "Houses",
+        "coverage": "Coverage"
+      },
+      "results": {
+        "matches": "Matches",
+        "share": "Of total"
+      },
+      "estimated": "estimated",
+      "estimatedHint": "Figure from the weekly discovery run: the platform does not store this market's prices yet.",
+      "curated": "set by hand",
+      "curatedHint": "Verdict from a documented judgement: the data alone does not give it.",
+      "model": {
+        "enabled": "Modelled",
+        "edge": {
+          "VALIDATED": "edge validated",
+          "NOT_VALIDATED": "edge not validated",
+          "unknown": "edge not assessed"
+        }
+      },
+      "reason": {
+        "priced": "priced and with results: it can be measured",
+        "edge_validated": "edge validated",
+        "edge_not_validated": "modelled, edge not validated",
+        "no_prices_in_window": "no prices this week",
+        "thin_price": "fewer than 2 houses: the price cannot be measured",
+        "after_parent": "measured after the total",
+        "not_extracted": "the platform does not store its prices yet",
+        "not_offered": "the provider does not offer it",
+        "no_period_data": "no per-half data: it cannot be settled",
+        "player_level": "settled on one player's figures",
+        "out_of_scope": "outside the plan (timing, specials, other sports)",
+        "no_data": "we do not store the figure that would settle it",
+        "rejected_backtest": "rejected by the backtest",
+        "low_information": "little information: not worth a model",
+        "kind_not_graded": "its kind of bet is not graded on this figure",
+        "not_understood": "its selections are not read yet"
+      },
+      "cards": {
+        "title": "Cards: how they are counted",
+        "convention": "Houses do not count cards the same way: under another convention, {pct} of the {matches} matches with card events would settle differently, the ones with a sending-off.",
+        "statistics": "Card events and card statistics agree in {pct} of the {compared} matches where they can be compared."
+      },
+      "competitions": {
+        "title": "Coverage by competition",
+        "help": "The {n} followed competitions with the most finished matches. All followed ones together: {finished} finished matches and {priced} matches with a price.",
+        "name": "Competition",
+        "finished": "Finished ({days} d)",
+        "priced": "With a price ({days} d)"
+      }
     }
   },
   "costs": {

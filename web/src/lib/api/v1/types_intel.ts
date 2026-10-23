@@ -745,6 +745,119 @@ export interface IntelPriceClock {
   runs: IntelClockRun[];
 }
 
+/**
+ * The matrix of markets by family (plan F9): /api/v1/admin/intelligence/market-matrix. For each kind of bet, what is
+ * priced, what can be graded and the verdict those facts earn - read from the newest matrix the weekly job stored, so
+ * `run` is null until there is one. Every share (`pct`, `coverage`, `*_pct`) is a fraction from 0 to 1; a figure the
+ * server could not make is null, never 0.
+ */
+export type IntelMatrixVerdict = "LISTO" | "PARCIAL" | "POR INVESTIGAR" | "NO VIABLE";
+export type IntelMatrixPriority = "" | "alta" | "media" | "baja";
+
+export interface IntelMatrixResults {
+  /** The measures that settle the row's bets (the least covered one sets `n_window`). */
+  measures: string[];
+  n_window: number;
+  pct: number | null;
+  pct_by_type: Record<string, number>;
+  n_total: number | null;
+  since: string | null;
+}
+
+export interface IntelMatrixPrice {
+  /** price_clock: measured on the prices the platform stores; discovery: an estimate from the weekly discovery run. */
+  source: "price_clock" | "discovery";
+  fixtures: number;
+  base_fixtures: number;
+  coverage: number | null;
+  houses_median: number | null;
+  since: string | null;
+  extracted: number;
+}
+
+export interface IntelMatrixModel {
+  keys: string[];
+  enabled: boolean;
+  calibrated: number;
+  decisions_14d: number;
+  edge: "VALIDATED" | "NOT_VALIDATED" | null;
+}
+
+export interface IntelMatrixRow {
+  key: string;
+  group: string;
+  label: string;
+  label_en: string;
+  parent: string | null;
+  bets: number[];
+  extracted_bets: number[];
+  api: boolean;
+  rules: string[];
+  reasons: Record<string, number>;
+  curated: boolean;
+  results: IntelMatrixResults | null;
+  price: IntelMatrixPrice;
+  model: IntelMatrixModel;
+  verdict: IntelMatrixVerdict;
+  priority: IntelMatrixPriority;
+  reason: string;
+}
+
+export interface IntelMatrixCompetition {
+  competition_id: number;
+  name: string | null;
+  country: string | null;
+  type: string | null;
+  finished: number;
+  priced: number;
+  results: Record<string, number>;
+  price: Record<string, number>;
+}
+
+export interface IntelMatrixCoverage {
+  results_days: number;
+  price_days: number;
+  totals: { finished: number; priced: number };
+  competitions: IntelMatrixCompetition[];
+}
+
+export interface IntelMatrixSummary {
+  by_verdict: Record<string, number>;
+  by_priority: Record<string, number>;
+  definitions: number;
+  extracted: number;
+  with_rule: number;
+  rules: number;
+  liquidable_rules: number;
+  cards: {
+    matches_with_events: number;
+    matches_with_a_dismissal: number;
+    convention_sensitive_pct: number | null;
+    events_vs_statistics_compared: number;
+    events_equal_statistics_pct: number | null;
+  };
+}
+
+export interface IntelMarketMatrix {
+  run: {
+    id: number;
+    generated_at: string;
+    matrix_version: string;
+    taxonomy_version: string;
+    window_days: number;
+    duration_ms: number;
+  } | null;
+  /** The version a matrix built today would carry: a stored one that differs is from an earlier version. */
+  current_version: string;
+  /** Group letter to its Spanish name. */
+  groups: Record<string, string>;
+  keys: { keys: Num; followed: Num; modelled: Num };
+  rules: { rules: Num; can_grade: Num };
+  rows: IntelMatrixRow[];
+  coverage: IntelMatrixCoverage | null;
+  summary: IntelMatrixSummary | null;
+}
+
 export interface IntelCosts {
   total_7d_usd: number;
   per_day_usd: number;

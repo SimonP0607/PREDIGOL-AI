@@ -588,6 +588,105 @@
       "unclassifiedHelp": "El proveedor envió estos tipos de apuesta y la taxonomía aún no los conoce. No se pierde nada: sus cuotas siguen en RAW.",
       "runs": "Últimas ejecuciones del trabajo",
       "rows": "Cuotas escritas"
+    },
+    "matrix": {
+      "title": "Matriz de mercados por familia",
+      "subtitle": "Qué puede llegar a ser cada tipo de apuesta: su precio, sus resultados, su modelo y el veredicto",
+      "explain": "Para cada tipo de apuesta: si el proveedor la ofrece, si guardamos su precio y el dato que la liquidaría, si ya hay un modelo y el veredicto que eso merece. Se lee de la última matriz guardada, tal como se midió en el momento que indica. Es solo lectura: no cambia ningún pick, ninguna probabilidad ni el modo SHADOW.",
+      "empty": "Aún no hay una matriz guardada: se genera cada semana (o con python -m scripts.markets matrix --store).",
+      "stale": "Matriz de una versión anterior ({version}; la vigente es {current}): se renueva con la corrida semanal.",
+      "generated": "Generada (hora de Bogotá)",
+      "generatedHint": "Versión {version} · taxonomía {taxonomy}",
+      "keys": "Claves en el catálogo",
+      "keysHint": "{followed} seguidas, {modelled} modeladas",
+      "rules": "Reglas de liquidación",
+      "rulesHint": "{n} pueden liquidar",
+      "definitions": "Apuestas del proveedor",
+      "definitionsHint": "{extracted} con precio guardado, {withRule} con regla de liquidación",
+      "verdict": {
+        "ready": "Listo",
+        "partial": "Parcial",
+        "investigate": "Por investigar",
+        "notViable": "No viable"
+      },
+      "legend": "Listo: modelo, calibrador y ventaja validada contra el cierre. Parcial: un modelo la calcula y el sistema la corre, pero su ventaja no está validada. Por investigar: se puede liquidar y hay un precio contra el que medirla, pero aún no hay modelo; la prioridad dice por dónde empezar. No viable: falta con qué liquidarla o con qué medirla, o se juzgó que no vale la pena.",
+      "priority": {
+        "alta": "Prioridad alta",
+        "media": "Prioridad media",
+        "baja": "Prioridad baja"
+      },
+      "group": {
+        "A": "Resultado",
+        "B": "Goles",
+        "C": "Córners",
+        "D": "Tarjetas",
+        "E": "Jugadores",
+        "F": "Porteros",
+        "G": "Tiros, faltas y fueras de juego",
+        "H": "Futuros",
+        "Z": "Otros"
+      },
+      "howToRead": "Apuestas: con precio guardado / total que ofrece el proveedor. Precio: partidos con precio en los últimos {price} días, mediana de casas por partido y cobertura (la parte de los partidos con algún precio que tienen el de este mercado). Resultados: partidos terminados de las competiciones seguidas, en los últimos {results} días, que traen el dato que liquidaría el mercado, y su parte del total.",
+      "cols": {
+        "market": "Mercado",
+        "verdict": "Veredicto",
+        "reason": "Motivo",
+        "bets": "Apuestas",
+        "price": "Precio",
+        "results": "Resultados",
+        "model": "Modelo"
+      },
+      "price": {
+        "fixtures": "Partidos",
+        "houses": "Casas",
+        "coverage": "Cobertura"
+      },
+      "results": {
+        "matches": "Partidos",
+        "share": "Del total"
+      },
+      "estimated": "estimado",
+      "estimatedHint": "Cifra del descubrimiento semanal: la plataforma aún no guarda los precios de este mercado.",
+      "curated": "fijado a mano",
+      "curatedHint": "Veredicto de un juicio documentado: los datos por sí solos no lo dan.",
+      "model": {
+        "enabled": "Modelado",
+        "edge": {
+          "VALIDATED": "ventaja validada",
+          "NOT_VALIDATED": "sin ventaja validada",
+          "unknown": "ventaja sin evaluar"
+        }
+      },
+      "reason": {
+        "priced": "con precio y resultados: se puede medir",
+        "edge_validated": "con ventaja validada",
+        "edge_not_validated": "modelada, sin ventaja validada",
+        "no_prices_in_window": "sin precios esta semana",
+        "thin_price": "menos de 2 casas: el precio no se puede medir",
+        "after_parent": "se mide después del total",
+        "not_extracted": "la plataforma aún no guarda sus precios",
+        "not_offered": "el proveedor no la ofrece",
+        "no_period_data": "no hay dato por mitad: no se puede liquidar",
+        "player_level": "se liquida con datos de un jugador",
+        "out_of_scope": "fuera del plan (tiempo, especiales, otros deportes)",
+        "no_data": "no guardamos el dato que la liquidaría",
+        "rejected_backtest": "rechazada por el backtest",
+        "low_information": "poca información: no vale un modelo",
+        "kind_not_graded": "su tipo de apuesta no se liquida con este dato",
+        "not_understood": "aún no se leen sus selecciones"
+      },
+      "cards": {
+        "title": "Tarjetas: cómo se cuentan",
+        "convention": "Las casas no cuentan las tarjetas igual: con otra convención, se liquidaría distinto el {pct} de los {matches} partidos con eventos de tarjeta, los que tuvieron una expulsión.",
+        "statistics": "Los eventos y las estadísticas de tarjetas coinciden en el {pct} de los {compared} partidos en que se pueden comparar."
+      },
+      "competitions": {
+        "title": "Cobertura por competición",
+        "help": "Las {n} competiciones seguidas con más partidos terminados. Todas las seguidas juntas: {finished} partidos terminados y {priced} con precio.",
+        "name": "Competición",
+        "finished": "Terminados ({days} d)",
+        "priced": "Con precio ({days} d)"
+      }
     }
   },
   "costs": {
