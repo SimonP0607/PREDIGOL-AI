@@ -91,3 +91,26 @@ def test_the_time_decay_and_the_penalty_are_chosen_before_the_test_window() -> N
     # nothing from the test window decides the choice: matches after `start` can be changed without changing it
     future = [Match(m.fixture_id, m.kickoff_at, m.home_id, m.away_id, 99, 0) if m.kickoff_at >= start else m for m in matches]
     assert evaluate.tune({7: future}, measure="corners_ft", start=start, days=200, xis=(0.0, 0.004), penalties=(1.0, 8.0))[:2] == (xi, penalty)
+
+
+def test_the_halves_command_grades_the_bets_of_the_halves_from_two_files(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Two exports (the first and the second half), the same matches: the command joins them, derives the bets of the halves and grades them."""
+    first, second = tmp_path / "goals_1h.csv.gz", tmp_path / "goals_2h.csv.gz"
+    cli.write_csv(first, simulated(800, seed=5))
+    cli.write_csv(second, simulated(800, seed=6))
+    argv = ["halves", "--csv-1h", str(first), "--csv-2h", str(second), "--months", "12", "--xi", "0", "--penalty", "1"]
+    assert cli.main([*argv, "--json"]) == 0
+    r = json.loads(capsys.readouterr().out)
+    assert r["n"] > 200 and r["window"]["start"] < r["window"]["end"]
+    assert {"result_1h", "result_2h", "highest_half", "htft", "btts_1h", "btts_2h", "ou_1h_0.5", "odd_2h"} <= set(r["markets"])
+    assert len(r["htft_calibration"]) == 9 and r["halves_residual_correlation"]["se"] > 0
+    assert cli.main(argv) == 0
+    out = capsys.readouterr().out
+    assert "log-loss gain over the competition's average" in out and "HT/FT cells" in out and "htft" in out
+
+
+def test_the_halves_command_says_so_when_no_match_could_be_predicted(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    path = tmp_path / "empty.csv"
+    cli.write_csv(path, {})
+    assert cli.main(["halves", "--csv-1h", str(path), "--csv-2h", str(path), "--months", "12"]) == 0
+    assert "no match was predicted in both halves" in capsys.readouterr().out

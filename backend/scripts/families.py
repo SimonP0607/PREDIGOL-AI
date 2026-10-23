@@ -4,6 +4,7 @@
     python -m scripts.families export --measure corners_ft --out corners.csv.gz     # the training history, read-only, to analyse elsewhere
     python -m scripts.families evaluate --measure corners_ft         # walk-forward against the baseline of "nothing known about the teams"
     python -m scripts.families evaluate --measure corners_ft --csv corners.csv.gz --tune --json
+    python -m scripts.families halves                                # the bets of the halves (HT/FT, highest half, BTTS by half...) derived from two fits
 
 ``evaluate`` fits each competition on the matches already known at the start of every block of ``--step-days`` and predicts the block; it reports
 whether that beats the competition's average, the calibration of the totals lines, and competition by competition where it does. It does not
@@ -28,7 +29,7 @@ import psycopg
 from fbi.core.clock import now as clock_now
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
-from fbi.families import evaluate, history
+from fbi.families import evaluate, evaluate_halves, history
 from fbi.families.fit import MIN_TRAIN, OUTCOME_KNOWN_AFTER, Match
 from fbi.market.rules import RULES
 
@@ -66,13 +67,18 @@ def read_csv(path: Path) -> dict[int, list[Match]]:
     return out
 
 
-def load(args: argparse.Namespace, now: datetime) -> dict[int, list[Match]]:
-    if getattr(args, "csv", None):
-        return read_csv(Path(args.csv))
+def load_measure(measure: str, csv_path: str | None, months: int, now: datetime) -> dict[int, list[Match]]:
+    """The finished matches of a measure, from a CSV written by ``export`` or, read-only, from the database."""
+    if csv_path:
+        return read_csv(Path(csv_path))
     with psycopg.connect(settings.database.psycopg_url, options="-c default_transaction_read_only=on") as conn:
-        data = history.load(conn, args.measure, since=now - timedelta(days=HISTORY_DAYS + args.months * 31), cutoff=now)
+        data = history.load(conn, measure, since=now - timedelta(days=HISTORY_DAYS + months * 31), cutoff=now)
         conn.rollback()
     return data
+
+
+def load(args: argparse.Namespace, now: datetime) -> dict[int, list[Match]]:
+    return load_measure(args.measure, getattr(args, "csv", None), args.months, now)
 
 
 def measures_command() -> int:
@@ -88,8 +94,7 @@ def evaluate_command(args: argparse.Namespace) -> int:
     end = now - OUTCOME_KNOWN_AFTER
     start = end - timedelta(days=31 * args.months)
     data = load(args, now)
-    # only the competitions that had enough history BEFORE the first block can be predicted
-    usable = {c: ms for c, ms in data.items() if sum(1 for m in ms if m.kickoff_at + OUTCOME_KNOWN_AFTER <= start) >= MIN_TRAIN}
+    usable = usable_competitions(data, start)
     print(f"{args.measure}: {sum(len(v) for v in data.values())} matches in {len(data)} competitions; {len(usable)} with enough history before "
           f"{start:%Y-%m-%d}", file=sys.stderr)
     xi, penalty = float(args.xi), float(args.penalty)
@@ -132,6 +137,49 @@ def print_summary(s: dict[str, Any]) -> None:
         f"{c['competition_id']}: {c['gain']:+.3f} ({c['n']})" for c in s["by_competition"][:12]))
 
 
+def usable_competitions(data: dict[int, list[Match]], start: datetime) -> dict[int, list[Match]]:
+    """Only the competitions that had enough history BEFORE the first block can be predicted."""
+    return {c: ms for c, ms in data.items() if sum(1 for m in ms if m.kickoff_at + OUTCOME_KNOWN_AFTER <= start) >= MIN_TRAIN}
+
+
+def halves_command(args: argparse.Namespace) -> int:
+    """Fit the first and the second half, derive the bets of the halves from the two, and grade them against the competition's average."""
+    now = clock_now()
+    end = now - OUTCOME_KNOWN_AFTER
+    start = end - timedelta(days=31 * args.months)
+    evaluations = {}
+    for measure, csv_path in (("goals_1h", args.csv_1h), ("goals_2h", args.csv_2h)):
+        usable = usable_competitions(load_measure(measure, csv_path, args.months, now), start)
+        xi, penalty = float(args.xi), float(args.penalty)
+        if args.tune:
+            xi, penalty, _ = evaluate.tune(usable, measure=measure, start=start, step_days=args.step_days)
+        evaluations[measure] = evaluate.walk_forward(usable, measure=measure, start=start, end=end, step_days=args.step_days, xi=xi, penalty=penalty)
+        print(f"{measure}: {len(evaluations[measure].rows)} predictions in {len(usable)} competitions (xi {xi}, penalty {penalty})", file=sys.stderr)
+    report = evaluate_halves.evaluate(evaluations["goals_1h"], evaluations["goals_2h"])
+    report["window"] = {"start": start.isoformat(), "end": end.isoformat()}
+    if args.json:
+        print(json.dumps(report, indent=1, default=str))
+        return 0
+    print_halves(report)
+    return 0
+
+
+def print_halves(r: dict[str, Any]) -> None:
+    if not r["n"]:
+        print("no match was predicted in both halves: no competition had enough history")
+        return
+    print(f"{r['n']} matches predicted in both halves · goals per match: first half {r['mean_goals']['first_half']:.2f}, "
+          f"second half {r['mean_goals']['second_half']:.2f}")
+    c = r["halves_residual_correlation"]
+    shown = "n/a" if c["r"] is None else f"{c['r']:+.3f}"
+    print(f"  the halves, beyond their predictions: correlation {shown} (se {c['se']:.3f}) - near 0 means the independence assumed holds")
+    print("  log-loss gain over the competition's average, nats/match (positive: the model knows something; > 2 se: it is not luck):")
+    for name, m in sorted(r["markets"].items()):
+        se = "n/a" if m["gain_se"] is None else f"{m['gain_se']:.4f}"
+        print(f"    {name:<14} {m['gain']:+.4f} (se {se})   model {m['log_loss_model']:.4f} vs {m['log_loss_baseline']:.4f}")
+    print("  HT/FT cells, predicted -> observed: " + " ".join(f"{x['cell']} {x['mean_predicted']:.3f}->{x['observed']:.3f}" for x in r["htft_calibration"]))
+
+
 def export_command(args: argparse.Namespace) -> int:
     now = clock_now()
     data = load(args, now)
@@ -144,6 +192,15 @@ def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="families", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="command", required=True)
     sub.add_parser("measures", help="what a family can be trained on")
+    ph = sub.add_parser("halves", help="the bets of the halves derived from the fits of the first and of the second half")
+    ph.add_argument("--months", type=int, default=12, help="months of test window (default %(default)s)")
+    ph.add_argument("--csv-1h", help="read the first-half goals from this CSV (an 'export' of goals_1h) instead of the database")
+    ph.add_argument("--csv-2h", help="read the second-half goals from this CSV (an 'export' of goals_2h) instead of the database")
+    ph.add_argument("--step-days", type=int, default=28, help="days per block (default %(default)s)")
+    ph.add_argument("--xi", type=float, default=evaluate.DEFAULT_XI, help="time decay per day (default %(default)s)")
+    ph.add_argument("--penalty", type=float, default=evaluate.DEFAULT_PENALTY, help="shrinkage of the strengths (default %(default)s)")
+    ph.add_argument("--tune", action="store_true", help="choose xi and penalty, per half, on the window before the test window")
+    ph.add_argument("--json", action="store_true")
     for name, helptext in (("evaluate", "walk-forward evaluation against the baseline"), ("export", "write the training history to a CSV")):
         p = sub.add_parser(name, help=helptext)
         p.add_argument("--measure", required=True, help="a measure of the settlement rules (see 'measures')")
@@ -166,6 +223,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "measures":
         return measures_command()
+    if args.command == "halves":
+        return halves_command(args)
     history.columns_of(args.measure)  # refuses a measure a family cannot be trained on, before anything is read
     return evaluate_command(args) if args.command == "evaluate" else export_command(args)
 

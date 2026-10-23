@@ -91,10 +91,15 @@ class Fitted:
         if not self.knows(home_id, away_id):
             return None
         mh, ma = self.means(home_id, away_id, neutral=neutral)
-        d = self.dispersion
-        ph, pa = nb_pmf(mh, d.home), nb_pmf(ma, d.away)
-        total = nb_pmf(mh + ma, d.total, 2 * MAX_COUNT) if d.total > 0.0 else convolve(ph, pa)
-        return Prediction(mh, ma, normalised(ph), normalised(pa), normalised(total))
+        return prediction(mh, ma, self.dispersion)
+
+
+def prediction(mean_home: float, mean_away: float, dispersion: Dispersion) -> Prediction:
+    """The distributions of a match whose means are known: each side's count, and the total of the two (NB2 on the total when it is
+    over-dispersed, the convolution of the sides when it is not)."""
+    ph, pa = nb_pmf(mean_home, dispersion.home), nb_pmf(mean_away, dispersion.away)
+    total = nb_pmf(mean_home + mean_away, dispersion.total, 2 * MAX_COUNT) if dispersion.total > 0.0 else convolve(ph, pa)
+    return Prediction(mean_home, mean_away, normalised(ph), normalised(pa), normalised(total))
 
 
 def known_at(m: Match) -> datetime:
