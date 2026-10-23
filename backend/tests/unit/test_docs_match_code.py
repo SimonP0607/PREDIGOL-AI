@@ -332,3 +332,27 @@ def test_the_ai_layers_post_mortem_text_says_what_the_code_does() -> None:
     said(r"Haiku, máx\. (\d+) por corrida, y Sonnet para las pérdidas de picks del día, (\d+); ventana de (\d+) días", flat,
          pm_narratives.MAX_NARRATIVES, pm_narratives.MAX_STRONG_NARRATIVES, pm_narratives.LOOKBACK.days)
     said(r"precio bueno / neutro / malo con banda ±(\d+) %", flat, closing_value.GOOD * 100)
+
+
+def test_the_catalogue_guide_says_what_the_code_does() -> None:
+    """Plan F9: the guide of the catalogue of markets - the rules, the windows, the minimum of houses and the thresholds of the matrix."""
+    from fbi.market import matrix as mx
+    from fbi.market import rules as mr
+
+    doc = read_doc("owner", "CATALOGO_MERCADOS_F9.md")
+    for rule in mr.RULES:
+        assert f"`{rule.key}`" in doc, f"the guide leaves out the rule {rule.key}"
+    liquidable = sum(1 for r in mr.RULES if r.liquidable)
+    assert f"{len(mr.RULES)} reglas, de las que {liquidable} pueden liquidar" in doc
+    assert f"`{mx.MATRIX_VERSION}`" in doc and f"{len(mx.ROWS)} filas por familia" in doc
+    assert f"Precios de los últimos {mx.PRICE_DAYS} días" in doc and f"resultados de los últimos {mx.OUTCOME_DAYS} días" in doc
+    assert f"al menos {mx.MIN_HOUSES} casas" in doc
+    assert f"cobertura de precio de {round(mx.HIGH_PRICE_COVERAGE * 100)} % o más" in doc
+    assert abs(mx.MEDIUM_PRICE_COVERAGE - 1 / 3) < 1e-9 and "Media**: un tercio o más" in doc
+    assert f"al menos {mx.HIGH_RESULTS:,}".replace(",", ".") + " partidos" in doc
+    assert f"al menos {mx.MEDIUM_RESULTS:,}".replace(",", ".") + " partidos" in doc
+    assert "los córners de una parte no se pueden\nliquidar" in doc and not mr.RULES_BY_KEY["corners_1h@v1"].liquidable
+    # the booking points of the guide are the view's: 10 a yellow, 25 a straight red, 15 more for the red after a second yellow
+    migration = (DOCS.parent / "migrations" / "versions" / "0092_market_catalogue.py").read_text(encoding="utf-8")
+    assert "10 * " in migration.replace("10*", "10 * ") and "25 * " in migration and "15 * " in migration
+    assert "10 por amarilla, 25 por roja directa, 15 más" in doc
