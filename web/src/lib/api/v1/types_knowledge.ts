@@ -190,7 +190,10 @@ export interface KnowledgeTactics {
 
 // ── the market ──────────────────────────────────────────────────────────────
 
-/** The provider's last pre-match prices: the middle of the bookmakers' (not de-vigged), read after the match. */
+/**
+ * The provider's last pre-match prices: the middle of the bookmakers' (not de-vigged), read after the match. A price, so the Admin
+ * Console's preview alone: a user is told what the market believed (`probabilities`), never what a bet would have paid.
+ */
 export interface KnowledgeMarketFinal {
   odds: Record<string, number>;
   books: number;
@@ -207,6 +210,7 @@ export interface KnowledgeMarketBlock {
   minutes_to_kickoff: number | null;
   /** Over/Under and handicap: the line the market is read at. */
   line: number | null;
+  /** Only in the Admin Console's preview: always null for a user. */
   final: KnowledgeMarketFinal | null;
 }
 
