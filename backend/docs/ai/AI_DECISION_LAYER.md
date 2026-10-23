@@ -1,6 +1,6 @@
 # Capa de decisión IA de PrediGol (`fbi.ai`)
 
-*Versión de la capa: packet-v6 · rules-review-v1 · review-v2 · brief-v1 · day-v1 · match-analysis-v1 · pm-v1 ·
+*Versión de la capa: packet-v7 · rules-review-v1 · review-v2 · brief-v1 · day-v1 · match-analysis-v1 · pm-v1 ·
 pm-v2 · learning-v1 · patterns-v1 · ai-gate-v1 · icc-v1 · daily-set-v3 · parlay-v4. Migraciones 0072-0073.
 Escrito el 8 oct 2026; **V2** (el día de Bogotá, los tres pasos, L1/L2/L3, presupuesto adaptable de US$150,
 post-mortems por selección y aprendizaje diario) el mismo día.*
@@ -62,9 +62,11 @@ hacen al global los primeros 90 minutos; nunca el ganador ni el global final; pa
 (**la tabla de la etapa propia del partido** según la misma asignación que la página, de la captura más reciente a la hora del
 paquete; lo que está en juego se calcula solo con esa etapa y los partidos que le quedan al equipo en ella, y una ronda eliminatoria
 muestra la tabla de la etapa anterior como contexto y sin «en juego»; una etapa sin tabla se declara en `missing`; packet-v4), forma, calendario
-(descanso, rotación — leído solo de las competiciones que seguimos, así que el descanso es un **máximo** y los partidos
+(descanso, rotación — desde packet-v7 (plan F4) con **todos los partidos del equipo que lista el proveedor** —copa, continental, amistosos—,
+sin resultados ni rivales, y solo si la lista del equipo es completa (leída como mucho 96 h antes y sin un partido de las dos últimas semanas
+por confirmar); si no lo es, sigue siendo lo de antes: leído solo de las competiciones que seguimos, así que el descanso es un **máximo** y los partidos
 en 14 días un **mínimo**: el bloque lo declara en `schedule.calendar` y solo emite la bandera «poco descanso», nunca
-«desventaja de descanso» entre los dos lados; packet-v3, plan F0 defecto 10), H2H, Elo, estadísticas, bajas ponderadas por importancia del jugador (**solo la última respuesta de `/injuries` a la fecha de corte**: un jugador que la respuesta más reciente ya no nombra se recuperó y no cuenta, y un refresco posterior no borra lo que se sabía en ese momento; se lee del historial `core.player_availability_obs`, no de `core.player_absences`, que solo guarda la última respuesta; packet-v3, plan F0 defecto 8), alineaciones,
+«desventaja de descanso» entre los dos lados, que solo se afirma cuando los dos calendarios son completos; packet-v3, plan F0 defecto 10), H2H, Elo, estadísticas, bajas ponderadas por importancia del jugador (**solo la última respuesta de `/injuries` a la fecha de corte**: un jugador que la respuesta más reciente ya no nombra se recuperó y no cuenta, y un refresco posterior no borra lo que se sabía en ese momento; se lee del historial `core.player_availability_obs`, no de `core.player_absences`, que solo guarda la última respuesta; packet-v3, plan F0 defecto 8), alineaciones,
 árbitro (**la persona**, no la cadena que escribió el proveedor: `fixture.referee`, `fixture.referee_id` y `fixture.referee_seen_at` son lo que el proveedor había dado a la hora del paquete —nada si ya lo había quitado del partido—, y el dossier cuenta sus partidos bajo cualquier grafía y sin mezclar homónimos; un partido que la identidad aún no vio conserva la cadena, con `referee_id` nulo; packet-v5, plan F3),
 viaje, mercado (Shin, apertura fija = primer consenso de la semana previa, movimiento, dispersión, nº de casas),
 modelos (Dixon-Coles, Poisson, Elo-ologit con intervalos), **pronóstico de PrediGol** (bloque `forecast`, packet-v6, plan F5: por mercado la probabilidad de cada resultado con su intervalo,

@@ -36,7 +36,7 @@ CAPA 1 · DATOS           API-Football (fixtures, odds de todas las casas, stats
 CAPA 2 · MODELOS         Por mercado: Poisson, Dixon-Coles (goles), Elo ordered-logit (1X2) -> P_modelo con intervalo
                          (existente: fbi.models, picks shadow-rule-v2). NUEVO: calibración por (mercado, modelo)
                          fbi.intel.calibration -> P_calibrada, versionada, champion/challenger con criterios fijos.
-CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v6 = packet-v1 + dossier-v3 + calendario con su alcance declarado + bajas de la última respuesta a la fecha +
+CAPA 3 · PREDIGOL        Contexto: paquete del partido (packet-v7 = packet-v1 + dossier-v3 + el calendario completo de cada equipo (todos los partidos que lista el proveedor, sin resultados ni rivales; con su alcance declarado y si la lista está completa) + bajas de la última respuesta a la fecha +
                          fase y cruce de la ronda, solo lo sabido antes del partido + la tabla de la etapa propia a la hora del paquete + el árbitro como persona, el que el proveedor había dado a esa hora + el pronóstico que PrediGol había dado a esa hora, solo como probabilidad: sin cuota ni ventaja), evidencia con fuente,
 INTELLIGENCE             nivel y estado, brief L1 / revisión L2 / revisión L3 (existente: fbi.ai). NUEVO: dossier
                          (equipo, árbitro, entrenador, contexto competitivo, jugadores clave), fuentes clasificadas
@@ -253,7 +253,7 @@ corrida semanal, con su `version`.
 * Los tokens de respuestas inválidas se cuentan. Métricas: coste por partido, candidato, pick, investigación,
   post-mortem, día y proyección mensual. Los análisis son compartidos: ningún token por usuario.
 
-## 10. Fugas de datos (`leak-audit-v4`, diario y en tests)
+## 10. Fugas de datos (`leak-audit-v5`, diario y en tests)
 
 Para cada decisión: `known_at` < saque; `price_at` ≤ `known_at`; pick `data_cutoff_ts` y `created_at` ≤ `known_at`;
 calibrador `fitted_at` ≤ `known_at` y sus datos liquidados antes de `fitted_at`; revisión y paquete ≤ `known_at`;
@@ -261,7 +261,10 @@ evidencias `retrieved_at` (y `published_at` si existe) ≤ `known_at`; y (v2, pl
 empezó antes del partido y tenía su resultado registrado a la hora del paquete; y (v3, plan F3, regla `referee_known`) todo paquete que nombra a un árbitro cita una observación del
 proveedor que existe, que no es posterior a la hora del paquete y que era la más nueva a esa hora (no mira quién es hoy esa grafía: una fusión cambia a la persona,
 no lo que el proveedor dijo entonces); y (v4, plan F5, regla `forecast_known`) todo paquete que cita un pronóstico de PrediGol cita un conjunto que existe
-(partido, mercado, línea y modelo), que se había escrito a la hora del paquete y que era el más nuevo de ese mercado a esa hora. Toda violación queda en `intel.audit_checks`.
+(partido, mercado, línea y modelo), que se había escrito a la hora del paquete y que era el más nuevo de ese mercado a esa hora; y (v5, plan F4, regla `calendar_known`) todo
+paquete que cita el calendario de un equipo cita lecturas de la lista del proveedor que existían a la hora del paquete (sin una más nueva con más de un minuto de antelación),
+una lista dada por «completa» no tenía más de 96 horas, y cada partido citado existía a esa hora con el mismo inicio (un partido seguido grabado después, o un anuncio posterior, es una
+violación). Toda violación queda en `intel.audit_checks`.
 
 ## 11. Autonomía controlada
 
