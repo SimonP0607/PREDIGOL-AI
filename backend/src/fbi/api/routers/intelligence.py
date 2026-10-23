@@ -45,10 +45,28 @@ def get_decision(conn: Db, decision_id: Annotated[int, Path(ge=1, le=2**62)]) ->
     return svc.decision_detail(conn, decision_id)
 
 
+@router.get("/intelligence/matches", response_model=Envelope[dict[str, Any]])
+def get_matches(conn: Db, day: Day = None, q: Annotated[str | None, Query(min_length=1, max_length=60)] = None,
+                limit: Annotated[int, Query(ge=1, le=100)] = 40) -> Envelope[dict[str, Any]]:
+    """THE PICKER OF THE DOSSIER: the matches of a Bogotá day (the ones the AI studied first), or, with a text, the matches of the
+    teams or competitions it names within 45 days of the day - a number is also looked up as a match id - each with whether the AI
+    has a packet for it and how much research its latest brief asked for."""
+    return svc.matches(conn, q=q, day=day, limit=limit)
+
+
 @router.get("/intelligence/matches/{fixture_id}/dossier", response_model=Envelope[dict[str, Any]])
 def get_dossier(conn: Db, fixture_id: Annotated[int, Path(ge=1, le=2**62)]) -> Envelope[dict[str, Any]]:
-    """The match's MATCH INTELLIGENCE PACKAGE (dossier-v3), its narrative and its decisions."""
+    """The match's MATCH INTELLIGENCE PACKAGE (dossier-v3), the weighted head-to-head, the scenarios, the status of the context
+    factors the AI saw, its narrative, its latest brief (what it asked the server to look into and every claim the server refused),
+    the passes that ran and its decisions."""
     return svc.dossier(conn, fixture_id)
+
+
+@router.get("/intelligence/factors", response_model=Envelope[dict[str, Any]])
+def get_factors(conn: Db) -> Envelope[dict[str, Any]]:
+    """The registry of context factors as it stands: each factor, what an experiment would have to show, its status
+    (DESCRIPTIVE until a person validates it with an experiment) and the decisions behind it."""
+    return svc.factors(conn)
 
 
 @router.get("/intelligence/calibration", response_model=Envelope[dict[str, Any]])

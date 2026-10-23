@@ -198,14 +198,108 @@ def decision_detail(conn: Conn, decision_id: int) -> Envelope[dict[str, Any]]:
                  "outcome": outcome, "postmortem": pm, "history": history, "cost": cost}))
 
 
+PICKER_COLUMNS = """
+       f.id AS fixture_id, f.kickoff_at, f.status_short, th.name AS home, ta.name AS away, c.name AS competition, c.country,
+       pk.as_of AS packet_as_of, bf.pass AS brief_pass, bf.escalate AS brief_escalate,
+       CASE WHEN jsonb_typeof(bf.research) = 'array' THEN jsonb_array_length(bf.research) ELSE 0 END AS research_asked"""
+PICKER_JOINS = """
+  JOIN core.teams th ON th.id = f.home_team_id
+  JOIN core.teams ta ON ta.id = f.away_team_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+  LEFT JOIN LATERAL (SELECT p.as_of FROM ai.match_packets p WHERE p.fixture_id = f.id
+                      ORDER BY p.as_of DESC, p.id DESC LIMIT 1) pk ON true
+  LEFT JOIN LATERAL (SELECT b.pass, b.escalate, b.content -> 'research' AS research FROM ai.match_briefs b
+                      WHERE b.fixture_id = f.id ORDER BY b.created_at DESC, b.id DESC LIMIT 1) bf ON true"""
+
+PICKER_DAY_SQL = f"""
+SELECT {PICKER_COLUMNS}
+  FROM core.fixtures f {PICKER_JOINS}
+ WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s
+ ORDER BY (pk.as_of IS NULL), f.kickoff_at, f.id LIMIT %(limit)s
+"""
+PICKER_DAY_COUNT_SQL = """
+SELECT count(*) AS total, count(*) FILTER (WHERE EXISTS (SELECT 1 FROM ai.match_packets p WHERE p.fixture_id = f.id)) AS with_packet
+  FROM core.fixtures f WHERE f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s
+"""
+PICKER_FIND_SQL = f"""
+WITH tm AS (SELECT t.id FROM core.teams t WHERE t.name ILIKE %(pattern)s),
+     cm AS (SELECT c.id FROM core.competitions c WHERE c.name ILIKE %(pattern)s),
+     fx AS (SELECT f.id FROM core.fixtures f WHERE f.home_team_id IN (SELECT id FROM tm)
+               AND f.kickoff_at >= %(from)s AND f.kickoff_at < %(until)s
+            UNION
+            SELECT f.id FROM core.fixtures f WHERE f.away_team_id IN (SELECT id FROM tm)
+               AND f.kickoff_at >= %(from)s AND f.kickoff_at < %(until)s
+            UNION
+            SELECT f.id FROM core.fixtures f JOIN core.competition_seasons s ON s.id = f.competition_season_id
+             WHERE s.competition_id IN (SELECT id FROM cm) AND f.kickoff_at >= %(from)s AND f.kickoff_at < %(until)s
+            UNION
+            SELECT f.id FROM core.fixtures f WHERE f.id = %(fixture)s::bigint)
+SELECT {PICKER_COLUMNS}
+  FROM fx JOIN core.fixtures f ON f.id = fx.id {PICKER_JOINS}
+ ORDER BY (f.id = %(fixture)s::bigint) DESC, abs(extract(epoch FROM f.kickoff_at - %(around)s)), f.id LIMIT %(limit)s
+"""
+SEARCH_DAYS = 45
+"""How far from the chosen day a text looks for a match: the matches a person looks for are the ones near it."""
+
+
+def _like(text: str) -> str:
+    """The text as a ``%...%`` pattern that matches itself: the wildcards of LIKE written by a person are letters."""
+    return "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
+def matches(conn: Conn, *, q: str | None = None, day: date | None = None, limit: int = 40) -> Envelope[dict[str, Any]]:
+    """THE PICKER OF THE DOSSIER: the matches of a Bogotá day - the ones the AI has a packet for first - or, with a text, the
+    matches of the teams or the competitions it names within 45 days of that day (nearest first); a number is also a match id.
+    Each says whether the AI studied it (its packet) and how many pieces of research its latest brief asked for."""
+    d = _day(day)
+    start, end = day_bounds(d)
+    text = " ".join((q or "").split())
+    if not text:
+        rows = fetch_all(conn, PICKER_DAY_SQL, {"start": start, "end": end, "limit": limit})
+        counted = fetch_one(conn, PICKER_DAY_COUNT_SQL, {"start": start, "end": end}) or {}
+        return ok(j({"mode": "day", "day": d, "q": None, "total": int(counted.get("total") or 0),
+                     "with_packet": int(counted.get("with_packet") or 0), "matches": rows}))
+    around = start + (end - start) / 2
+    fixture = int(text) if text.isdigit() and int(text) <= 2**62 else None
+    rows = fetch_all(conn, PICKER_FIND_SQL, {"pattern": _like(text), "from": around - timedelta(days=SEARCH_DAYS),
+                                             "until": around + timedelta(days=SEARCH_DAYS), "around": around,
+                                             "fixture": fixture, "limit": limit})
+    return ok(j({"mode": "search", "day": d, "q": text, "total": len(rows),
+                 "with_packet": sum(1 for r in rows if r["packet_as_of"] is not None), "matches": rows}))
+
+
+def research_counts(counts: dict[str, Any]) -> dict[str, Any]:
+    """What a pass did about the research its match's brief asked for (``fbi.ai.research``), from the pass's counts."""
+    def n(key: str) -> int:
+        try:
+            return int(counts.get(key) or 0)
+        except (TypeError, ValueError):
+            return 0
+    prefix = "research_unserved_"
+    return {"requested": n("research_requested"), "asked": n("research_asked"), "searched": n("research_searched"),
+            "unserved": {k.removeprefix(prefix): n(k) for k in sorted(counts) if k.startswith(prefix) and n(k)},
+            "web_searches": n("web_searches")}
+
+
+PASSES_SHOWN = 12
+"""The latest passes of a match the dossier lists (a match has three a day at most)."""
+REFUSED_SHOWN = 40
+"""The refused claims of the latest brief the dossier lists."""
+
+
 def dossier(conn: Conn, fixture_id: int) -> Envelope[dict[str, Any]]:
     from fbi.intel.narrative import SECTIONS, TITLES, rules_narrative
 
     packet = fetch_one(conn, "SELECT id, packet_version AS version, as_of, content, missing FROM ai.match_packets "
                              "WHERE fixture_id = %(f)s "
                              "ORDER BY as_of DESC, id DESC LIMIT 1", {"f": fixture_id})
-    brief = fetch_one(conn, "SELECT id, created_at, pass, version, engine, model, content, cost_usd FROM ai.match_briefs "
+    brief = fetch_one(conn, "SELECT id, created_at, pass, version, engine, model, status, escalate, reasons, uncertainty, "
+                            "data_quality, content, rejected, cost_usd FROM ai.match_briefs "
                             "WHERE fixture_id = %(f)s ORDER BY created_at DESC, id DESC LIMIT 1", {"f": fixture_id})
+    passes = fetch_all(conn, "SELECT pass, day, status, started_at, finished_at, escalated, reasons, counts, cost_usd, note "
+                             "FROM ai.fixture_passes WHERE fixture_id = %(f)s ORDER BY finished_at DESC, id DESC LIMIT %(n)s",
+                       {"f": fixture_id, "n": PASSES_SHOWN})
     fx = fetch_one(conn, """
         SELECT f.id, f.kickoff_at, f.status_short, th.name AS home, ta.name AS away, c.name AS competition,
                c.country FROM core.fixtures f JOIN core.teams th ON th.id = f.home_team_id
@@ -227,14 +321,59 @@ def dossier(conn: Conn, fixture_id: int) -> Envelope[dict[str, Any]]:
         "id": packet["id"], "version": packet["version"], "as_of": packet["as_of"], "missing": packet["missing"]},
                  "dossier": content.get("dossier"), "stakes": content.get("stakes"), "form": content.get("form"),
                  "absences": content.get("absences"), "lineups": content.get("lineups"),
+                 "h2h": content.get("h2h"), "scenarios": content.get("scenarios"), "factors": content.get("factors"),
                  "narrative": None if not narrative else [{"key": k, "title": TITLES[k], "text": narrative.get(k)}
                                                           for k in SECTIONS],
                  "narrative_engine": engine,
-                 "brief": None if brief is None else {"id": brief["id"], "created_at": brief["created_at"],
-                                                      "pass": brief["pass"], "engine": brief["engine"],
-                                                      "model": brief["model"], "summary": (brief["content"] or {}).get(
-                                                          "summary"), "cost_usd": brief["cost_usd"]},
+                 "brief": None if brief is None else _brief(brief),
+                 "passes": [_pass(p) for p in passes],
                  "decisions": decisions_}))
+
+
+def _brief(brief: dict[str, Any]) -> dict[str, Any]:
+    """The latest brief of a match as the admin reads it: what it said, what it asked the server to look into, and every claim the
+    server refused (with the reason) - the AI's side of the record, which the users never see."""
+    said = brief["content"] or {}
+    asks = said.get("research")
+    refused = brief["rejected"]
+    return {"id": brief["id"], "created_at": brief["created_at"], "pass": brief["pass"], "version": brief["version"],
+            "engine": brief["engine"], "model": brief["model"], "status": brief["status"], "summary": said.get("summary"),
+            "escalate": brief["escalate"], "reasons": list(brief["reasons"] or []), "uncertainty": brief["uncertainty"],
+            "data_quality": brief["data_quality"], "cost_usd": brief["cost_usd"],
+            "research": asks if isinstance(asks, list) else [],
+            "refused": refused[:REFUSED_SHOWN] if isinstance(refused, list) else [],
+            "refused_total": len(refused) if isinstance(refused, list) else 0}
+
+
+def _pass(row: dict[str, Any]) -> dict[str, Any]:
+    """A pass of a match: when it ran, what became of it and what it did about the research the match's brief asked for."""
+    counts = row["counts"] if isinstance(row["counts"], dict) else {}
+    return {"pass": row["pass"], "day": row["day"], "status": row["status"], "started_at": row["started_at"],
+            "finished_at": row["finished_at"], "escalated": row["escalated"], "reasons": list(row["reasons"] or []),
+            "cost_usd": row["cost_usd"], "note": row["note"], "research": research_counts(counts)}
+
+
+def factors(conn: Conn) -> Envelope[dict[str, Any]]:
+    """THE REGISTRY OF CONTEXT FACTORS as it stands now: each factor of the catalogue, what an experiment would have to show for it to be
+    validated, its status and the decisions behind it (newest first). Only a person with an experiment moves a factor off DESCRIPTIVE
+    (``python -m scripts.context_factors``); this page only reads."""
+    from fbi.intel import factors as registry
+
+    taken: dict[str, list[dict[str, Any]]] = {}
+    for d in reversed(registry.history(conn)):
+        taken.setdefault(d.factor, []).append({
+            "id": d.id, "version": d.version, "status": d.status, "decided_at": d.decided_at, "decided_by": d.decided_by,
+            "who": d.who, "reason": d.reason, "experiment": d.experiment, "previous_id": d.previous_id})
+    stands = registry.standings(conn, at=now())
+    out = []
+    for f in registry.CATALOGUE:
+        standing = stands[f.key].decision
+        out.append({"key": f.key, "label": f.label, "claim": f.claim, "version": f.version, "block": f.where,
+                    "status": stands[f.key].status,
+                    "decision": None if standing is None else {"id": standing.id, "decided_at": standing.decided_at,
+                                                               "experiment": standing.experiment},
+                    "decisions": taken.get(f.key, [])})
+    return ok(j({"version": registry.VERSION, "note": registry.NOTE, "factors": out}))
 
 
 def calibration(conn: Conn) -> Envelope[dict[str, Any]]:

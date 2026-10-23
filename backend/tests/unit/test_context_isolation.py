@@ -40,6 +40,8 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
                        "DESCRIPTIVE one is refused (it reads the catalogue and the words DESCRIPTIVE and VALIDATED)",
         "ai/packet.py": "the packet: the status of each context factor as of its moment, and the status each block says",
         "intel/leakage.py": "the nightly proof: the rule factors_known (it reads the catalogue's keys and blocks and nothing else)",
+        "api/services/intelligence.py": "the console's page of the registry: the catalogue, the standing of each factor and the decisions "
+                                        "behind it, read and shown to the owner (it writes nothing: only the person's door below does)",
         "scripts/context_factors.py": "the person's door: list, history, promote and retire a factor",
     },
 }
