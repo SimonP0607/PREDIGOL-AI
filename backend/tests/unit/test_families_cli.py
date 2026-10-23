@@ -187,4 +187,5 @@ def test_the_sql_command_reads_the_referee_only_when_asked(capsys: pytest.Captur
     assert cli.main(["sql", "--measure", "cards_lines_ft"]) == 0
     without = capsys.readouterr().out
     assert "fr.referee_id AS referee_id" in with_referee and "referee" not in without
-    assert "o.cards_source = 'stats' OR o.cards_consistent IS TRUE" in with_referee and "cards_consistent IS TRUE" in without, "cards are corroborated"
+    assert "fixture_team_stats" in with_referee and "fixture_team_stats" in without, "cards are read from the statistics, or from events that agree with them"
+    assert "cards_consistent" not in with_referee and "cards_consistent" not in without, "a red card is not asked to be reported (it is a selection)"

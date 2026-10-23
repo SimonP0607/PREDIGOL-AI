@@ -87,9 +87,11 @@ def test_the_copy_statement_reads_exactly_what_the_door_reads(db: psycopg.Connec
         history.export_statement("corners_1h", since=EARLIER, cutoff=LATER)
 
 
-def test_a_count_of_cards_comes_through_only_when_it_is_corroborated(db: psycopg.Connection[Any], w: Any, world: dict[str, int]) -> None:  # noqa: F811
-    """Cards from events alone are incomplete where no statistics back them (23 Oct 2026): 3.7 a match against 5.1-5.9, and 83 % of the
-    clubs' friendlies at zero. A family reads cards only from the statistics alone, or from events that agree with the statistics."""
+def test_a_count_of_cards_comes_through_only_when_it_is_complete(db: psycopg.Connection[Any], w: Any, world: dict[str, int]) -> None:  # noqa: F811
+    """Cards from events alone are incomplete where no statistics back them (23 Oct 2026: 3.7 a match against 5.1-5.9, and 83 % of the clubs'
+    friendlies at zero), and asking for a red card to be REPORTED is a selection: the provider leaves it empty when there was none (the events
+    show a red in 0.0 % of 15,427 matches whose statistics left both reds empty), so only the matches that had one would be kept. A family reads
+    cards from the statistics - an empty red being none - or from events whose yellow cards agree with the statistics, team by team."""
     from .test_market_catalogue import _kind, _stats
 
     kick = KICKOFF + timedelta(days=2)
@@ -98,15 +100,28 @@ def test_a_count_of_cards_comes_through_only_when_it_is_corroborated(db: psycopg
     disagree = w.match(kick + timedelta(hours=1), 1, 2, (1, 0), ht=(0, 0))  # events say one yellow, the statistics say three
     _stats(w, disagree, {"yellow_cards": 2, "red_cards": 0}, {"yellow_cards": 1, "red_cards": 0})
     _kind(w, disagree, 1, "yellow", "1H", "home")
-    got = {m.fixture_id for m in flat(history.load(db, "cards_lines_ft", since=EARLIER, cutoff=LATER))}
-    assert got == {world["plain"], world["dismissals"], world["stats_only"]}, (
+    swapped = w.match(kick + timedelta(hours=2), 2, 3, (1, 0), ht=(0, 0))  # the same total of yellows, but not team by team
+    _stats(w, swapped, {"yellow_cards": 0, "red_cards": None}, {"yellow_cards": 1, "red_cards": None})
+    _kind(w, swapped, 1, "yellow", "1H", "home")
+    quiet = w.match(kick + timedelta(hours=3), 3, 0, (0, 0), ht=(0, 0))  # statistics only, the reds left empty: none
+    _stats(w, quiet, {"yellow_cards": 2, "red_cards": None}, {"yellow_cards": 0, "red_cards": None})
+    agree = w.match(kick + timedelta(hours=4), 0, 2, (0, 0), ht=(0, 0))  # events and statistics agree on the yellows; the reds are empty
+    _stats(w, agree, {"yellow_cards": 1, "red_cards": None}, {"yellow_cards": 1, "red_cards": None})
+    _kind(w, agree, 1, "yellow", "1H", "home")
+    _kind(w, agree, 2, "yellow", "2H", "away")
+    lines = {m.fixture_id: (m.home, m.away) for m in flat(history.load(db, "cards_lines_ft", since=EARLIER, cutoff=LATER))}
+    assert set(lines) == {world["plain"], world["dismissals"], world["stats_only"], quiet, agree}, (
         "the events that agree with the statistics, and the statistics alone; not the events alone, not the events that disagree")
-    assert {m.fixture_id for m in flat(history.load(db, "yellow_ft", since=EARLIER, cutoff=LATER))} == got
+    assert lines[world["plain"]] == (2, 1) and lines[world["dismissals"]] == (2, 1), "from the events: yellows and reds are lines"
+    assert lines[world["stats_only"]] == (3, 3), "from the statistics: yellow cards plus red cards (0 + 3, 1 + 2)"
+    assert lines[quiet] == (2, 0) and lines[agree] == (1, 1), "a red left empty is none, not unknown"
+    yellow = {m.fixture_id: (m.home, m.away) for m in flat(history.load(db, "yellow_ft", since=EARLIER, cutoff=LATER))}
+    assert set(yellow) == set(lines) and yellow[world["stats_only"]] == (3, 2) and yellow[world["dismissals"]] == (1, 0)
     goals = {m.fixture_id for m in flat(history.load(db, "goals_ft", since=EARLIER, cutoff=LATER))}
-    assert {events_only, disagree} <= goals, "the goals of those matches are fine: the rule is about cards"
+    assert {events_only, disagree, swapped} <= goals, "the goals of those matches are fine: the rule is about cards"
     assert history.needs_corroboration("cards_lines_ft") and history.needs_corroboration("red_ft") and not history.needs_corroboration("corners_ft")
-    assert "cards_consistent" in history.export_statement("cards_lines_ft", since=EARLIER, cutoff=LATER)
-    assert "cards_consistent" not in history.export_statement("corners_ft", since=EARLIER, cutoff=LATER)
+    assert "fixture_team_stats" in history.export_statement("cards_lines_ft", since=EARLIER, cutoff=LATER)
+    assert "fixture_team_stats" not in history.export_statement("corners_ft", since=EARLIER, cutoff=LATER)
 
 
 def test_the_referee_of_a_match_comes_through_when_asked_and_not_otherwise(db: psycopg.Connection[Any], w: Any, world: dict[str, int]) -> None:  # noqa: F811

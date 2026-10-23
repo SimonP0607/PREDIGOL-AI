@@ -14,11 +14,14 @@ carries its own lock:
 The cards by period come, through the view, from the events of the match once F7 has classified them: they are outcomes too, and they enter
 here as numbers of a match that is over, never as a fact about a match that is not.
 
-A count of cards is read only when it is CORROBORATED (23 Oct 2026). Where a match has no team statistics and its cards come from the events
-alone, the count is incomplete (22,427 matches of the followed competitions: 3.7 cards a match against 5.1-5.9 where the statistics back them
-up) and for the clubs' friendlies the provider reports almost no card at all (83.5 % of 4,840 matches at zero). Trained on them, a family mixes two
-levels inside one competition and states "over 4.5" at 52 % when it happens 43 % of the time. So a card measure comes through only when the card
-total of the match comes from the statistics alone, or the events and the statistics agree (``cards_source``/``cards_consistent`` of the view).
+A count of cards is read only when it is COMPLETE (23 Oct 2026, corrected the same day). Where a match has no team statistics and its cards come
+from the events alone, the count is incomplete (22,427 matches of the followed competitions: 3.7 cards a match against 5.1-5.9 where the statistics
+back them up) and for the clubs' friendlies the provider reports almost no card at all (83.5 % of 4,840 matches at zero). So a card measure comes
+through only when the match has team statistics that give its yellow cards - read from them directly - or, when the events carry it, only where
+the yellow cards of the events and of the statistics agree team by team. The first version of this rule asked the red cards to agree as well, and
+that is a selection: the provider leaves a red card EMPTY when there was none (of 15,427 matches whose statistics left both reds empty, the events
+show a red in 0.0 %), so asking for a red to be reported kept the matches that had one (58 % of them) - a history of 5.5-6.3 cards a match until
+August 2026, 4.0-4.3 after the provider began to write the zeros. The cards counted as lines add the reds of the statistics, an empty one being none.
 """
 
 from __future__ import annotations
@@ -37,8 +40,15 @@ _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 
 CARD_PREFIXES: Final = frozenset({"cards", "yellow", "red"})
 """The measures made of cards: their columns start with one of these words."""
-CORROBORATED: Final = "(o.cards_source = 'stats' OR o.cards_consistent IS TRUE)"
-"""The condition on the view that makes a count of cards fit to train on (see the module docstring)."""
+STATS_MEASURES: Final = frozenset({"yellow_ft", "cards_lines_ft"})
+"""The card measures that the team statistics can give by themselves: the yellow cards are the statistic, and the cards counted as lines add
+the reds, which the provider leaves empty when there was none."""
+STATS_JOIN: Final = (
+    "LEFT JOIN LATERAL (SELECT t.yellow_cards, t.red_cards FROM core.fixture_team_stats t WHERE t.fixture_id = o.fixture_id "
+    "AND t.team_side = 'home' ORDER BY (t.source = 'api-football') DESC LIMIT 1) sh ON true "
+    "LEFT JOIN LATERAL (SELECT t.yellow_cards, t.red_cards FROM core.fixture_team_stats t WHERE t.fixture_id = o.fixture_id "
+    "AND t.team_side = 'away' ORDER BY (t.source = 'api-football') DESC LIMIT 1) sa ON true ")
+"""The team statistics of a finished match (``sh`` the home side, ``sa`` the away side), the provider's own first, as the view reads them."""
 REFEREE_JOIN: Final = ("LEFT JOIN LATERAL (SELECT r.referee_id FROM core.fixture_referees r WHERE r.fixture_id = o.fixture_id "
                        "ORDER BY r.observed_at DESC LIMIT 1) fr ON true")
 """The referee of a finished match: the identity the platform settled on (F3), whenever it was observed (the match is over)."""
@@ -62,8 +72,31 @@ def columns_of(measure: str) -> tuple[str, str]:
 
 
 def needs_corroboration(measure: str) -> bool:
-    """Whether the counts of ``measure`` are cards, which a family reads only when corroborated."""
+    """Whether the counts of ``measure`` are cards, which a family reads only when complete (see the module docstring)."""
     return columns_of(measure)[0].split("_")[0] in CARD_PREFIXES
+
+
+def count_expressions(measure: str) -> tuple[str, str]:
+    """The SQL of the (home, away) count of ``measure``: the column of the view, except for the cards counted as lines of a match with no
+    events, which are the yellow cards of the statistics plus the reds (an empty red being none)."""
+    home_col, away_col = columns_of(measure)
+    if measure == "cards_lines_ft":
+        return (f"CASE WHEN o.cards_source = 'events' THEN o.{home_col} ELSE sh.yellow_cards + COALESCE(sh.red_cards, 0) END",
+                f"CASE WHEN o.cards_source = 'events' THEN o.{away_col} ELSE sa.yellow_cards + COALESCE(sa.red_cards, 0) END")
+    return f"o.{home_col}", f"o.{away_col}"
+
+
+def complete_condition(measure: str) -> str:
+    """The SQL condition that makes a match's count of ``measure`` fit to train on: both counts known and, for a card measure, complete."""
+    home_col, away_col = columns_of(measure)
+    known = f"o.{home_col} IS NOT NULL AND o.{away_col} IS NOT NULL"
+    if not needs_corroboration(measure):
+        return known
+    events = (f"(o.cards_source = 'events' AND {known} AND sh.yellow_cards IS NOT NULL AND sa.yellow_cards IS NOT NULL "
+              "AND o.yellow_ft_home = sh.yellow_cards AND o.yellow_ft_away = sa.yellow_cards)")
+    if measure not in STATS_MEASURES:
+        return events
+    return f"((o.cards_source = 'stats' AND sh.yellow_cards IS NOT NULL AND sa.yellow_cards IS NOT NULL) OR {events})"
 
 
 def latest_kickoff(cutoff: datetime) -> datetime:
@@ -78,14 +111,14 @@ def load(conn: psycopg.Connection[Any], measure: str, *, since: datetime, cutoff
     ``use_neutral`` reads the neutral-venue flag (``core.fixtures.is_neutral``). It is off: the owner has not promoted the neutral-venue rule
     (plan F0, defect 1) and a family must not decide that for the goal models.
     """
-    home_col, away_col = columns_of(measure)
+    home_expr, away_expr = count_expressions(measure)
     referee = "fr.referee_id" if with_referee else "NULL::bigint"
     sql = (f"SELECT o.competition_id, o.fixture_id, o.kickoff_at, f.home_team_id, f.away_team_id, f.is_neutral, "
-           f"o.{home_col} AS home, o.{away_col} AS away, {referee} AS referee_id "
+           f"{home_expr} AS home, {away_expr} AS away, {referee} AS referee_id "
            "FROM market.fixture_outcomes o JOIN core.fixtures f ON f.id = o.fixture_id "
-           f"{REFEREE_JOIN if with_referee else ''} "
+           f"{STATS_JOIN if needs_corroboration(measure) else ''}{REFEREE_JOIN if with_referee else ''} "
            "WHERE o.is_tracked AND o.kickoff_at >= %(since)s AND o.kickoff_at <= %(latest)s "
-           f"AND o.{home_col} IS NOT NULL AND o.{away_col} IS NOT NULL{' AND ' + CORROBORATED if needs_corroboration(measure) else ''} "
+           f"AND {complete_condition(measure)} "
            "ORDER BY o.competition_id, o.kickoff_at, o.fixture_id")
     out: dict[int, list[Match]] = {}
     with conn.cursor(row_factory=dict_row) as cur:
@@ -102,16 +135,16 @@ def export_statement(measure: str, *, since: datetime, cutoff: datetime, use_neu
     ``scripts.families`` exports: to run it with ``psql`` where Python is not at hand, read-only, and bring the history out as a file. The
     window is written in as literals (they are instants made by the caller, not text from anywhere), so the statement is self-contained.
     """
-    home_col, away_col = columns_of(measure)
+    home_expr, away_expr = count_expressions(measure)
     start, latest = since.astimezone(UTC).isoformat(), latest_kickoff(cutoff).astimezone(UTC).isoformat()
     neutral = "CASE WHEN f.is_neutral THEN 1 ELSE 0 END" if use_neutral else "0"
     referee = ", fr.referee_id AS referee_id" if with_referee else ""
     return ("COPY (SELECT o.competition_id, o.fixture_id, "
             "to_char(o.kickoff_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS') || '+00:00' AS kickoff_at, "
-            f"f.home_team_id AS home_id, f.away_team_id AS away_id, o.{home_col} AS home, o.{away_col} AS away, {neutral} AS neutral{referee} "
+            f"f.home_team_id AS home_id, f.away_team_id AS away_id, {home_expr} AS home, {away_expr} AS away, {neutral} AS neutral{referee} "
             "FROM market.fixture_outcomes o JOIN core.fixtures f ON f.id = o.fixture_id "
-            f"{REFEREE_JOIN if with_referee else ''} "
+            f"{STATS_JOIN if needs_corroboration(measure) else ''}{REFEREE_JOIN if with_referee else ''} "
             f"WHERE o.is_tracked AND o.kickoff_at >= TIMESTAMPTZ '{start}' AND o.kickoff_at <= TIMESTAMPTZ '{latest}' "
-            f"AND o.{home_col} IS NOT NULL AND o.{away_col} IS NOT NULL{' AND ' + CORROBORATED if needs_corroboration(measure) else ''} "
+            f"AND {complete_condition(measure)} "
             "ORDER BY o.competition_id, o.kickoff_at, o.fixture_id) "
             "TO STDOUT WITH (FORMAT csv, HEADER true)")
