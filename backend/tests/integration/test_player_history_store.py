@@ -257,7 +257,7 @@ def test_the_scheduled_pass_looks_at_what_changed_lately_and_the_sweep_at_everyo
     forgotten = {"lineup": world.player(), "list": world.player(), "statistics": world.player(), "squad": world.player()}
     world.lineup(world.fixture(a, rival, -400), "home", [(old, True)])
     world.lineup(world.fixture(a, rival, 0), "home", [(recent, True)])
-    world.transfer(traded, -300, world.provider(a), None)             # read at T0 (observed_at), dated long ago
+    world.transfer(traded, -2, world.provider(a), None)               # read at T0 (observed_at), dated two days before
     world.squad(a, listed, 0, 0)
     # what only the sweep knows: each source of facts has a man whose facts are all old
     world.lineup(world.fixture(a, rival, -401), "home", [(forgotten["lineup"], True)])
@@ -547,6 +547,31 @@ def test_two_moves_to_different_clubs_on_one_day_leave_a_streak_of_no_days_that_
     report = ph.build(world.db, apply=True, players=[p])
     assert report.phantoms == 1 and report.spells == 2
     assert [(row[1], row[3], row[4]) for row in world.spells(p)] == [(world.provider(w), None, d(10)), (world.provider(y), d(10), None)]
+
+
+def test_a_transfer_list_read_again_is_news_only_when_it_lists_a_recent_transfer(world: World) -> None:
+    """Regression (23 Oct 2026, the first scheduled pass in production): the provider reads its transfer lists again about once a week,
+    a new snapshot for each of 130,000 men, and nearly all say what they said before. The pass took every man whose list had been read
+    in the window - 132,692 men and eleven minutes to write nothing. A list is news when it lists a transfer that has just happened;
+    an old one listed late is the daily sweep's."""
+    assert ph.WINDOW.days == 4 and ph.TRANSFER_LOOKBACK.days == 30, "(the dates below are written for these two)"
+    a, b = world.team("Alpha FC", False), world.team("Beta FC", False)
+    fresh, reread, at_the_edge, past_the_edge, late, read_before = (world.player() for _ in range(6))
+    now = T0 + timedelta(days=10)
+    # the window starts 4 days before now (day 6); a transfer counts if it is dated no earlier than 30 days before that (day -24)
+    for man, day in ((fresh, 8), (at_the_edge, -24), (past_the_edge, -25)):
+        world.transfer(man, day, world.provider(b), world.provider(a), listed=9)
+    world.transfer(reread, -300, world.provider(b), world.provider(a), listed=9)       # the whole list read again, nothing new in it
+    world.transfer(late, -120, world.provider(b), world.provider(a), listed=9)         # an old transfer that the provider lists late
+    world.transfer(read_before, 5, world.provider(b), world.provider(a), listed=2)     # recent, but the list was read before the window
+    got = set(ph.recent_players(world.db, now=now))
+    assert {fresh, at_the_edge} <= got and not ({reread, past_the_edge, late, read_before} & got)
+    assert not ({reread, late} & set(ph.recent_players(world.db, now=T0 + timedelta(days=11)))), "and the day after"
+    assert {reread, late} <= set(ph.all_players(world.db)), "but the sweep looks at them"
+    scheduled = ph.build(world.db, apply=True, now=now)
+    assert scheduled.mode == ph.SCHEDULED and world.spells(fresh) != [] and world.spells(reread) == [] == world.spells(late)
+    swept = ph.build(world.db, apply=True, sweep=True, now=now)
+    assert swept.mode == ph.SWEEP and world.spells(reread) != [] and world.spells(late) != []
 
 
 def test_the_scheduled_pass_reads_a_window_of_days_around_now_and_the_statistics_too(world: World) -> None:

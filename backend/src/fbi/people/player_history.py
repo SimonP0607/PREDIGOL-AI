@@ -51,6 +51,11 @@ CAP_BATCH: Final = 500
 """Matches per batch of caps."""
 WINDOW: Final = timedelta(days=4)
 """How far back the scheduled pass looks for the facts that changed (the daily sweep looks at everything)."""
+TRANSFER_LOOKBACK: Final = timedelta(days=30)
+"""A transfer list read inside the window sends its man to the scheduled pass only when it lists a transfer dated no earlier than this
+before the window. The provider's lists are read again about once a week, a new snapshot for each of 130,000 men at a time, and almost
+all of them say what they said before: the first scheduled pass in production would have rebuilt 132,692 men (11 minutes) to write
+nothing. What is news is a transfer that has just happened; an old one listed late is found by the daily sweep."""
 MANUAL_LOCK_WAIT: Final = "20s"
 
 SCHEDULED: Final = "scheduled"
@@ -453,18 +458,20 @@ def all_players(conn: psycopg.Connection[Any]) -> list[int]:
 
 
 def recent_players(conn: psycopg.Connection[Any], *, now: datetime, window: timedelta = WINDOW) -> list[int]:
-    """The players a fact about changed lately: in the squad sheet or the statistics of a recent match, in a transfer list read lately, or
-    newly in a squad list."""
+    """The players a fact about changed lately: in the squad sheet or the statistics of a recent match, in a transfer list read lately
+    that lists a recent transfer (``TRANSFER_LOOKBACK``), or newly in a squad list."""
     since = now - window
+    dated = (since - TRANSFER_LOOKBACK).astimezone(UTC).date()
     with conn.cursor() as cur:
         cur.execute("""
             SELECT p.provider_player_id FROM core.fixture_lineup_players p JOIN core.fixtures f ON f.id = p.fixture_id
              WHERE f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s AND p.provider_player_id > 0
             UNION SELECT s.provider_player_id FROM core.fixture_player_stats s JOIN core.fixtures f ON f.id = s.fixture_id
              WHERE f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s AND s.provider_player_id > 0
-            UNION SELECT provider_player_id FROM core.player_transfers WHERE observed_at >= %(since)s AND provider_player_id > 0
+            UNION SELECT provider_player_id FROM core.player_transfers
+             WHERE observed_at >= %(since)s AND transfer_date >= %(dated)s AND provider_player_id > 0
             UNION SELECT provider_player_id FROM core.squad_members WHERE first_seen_at >= %(since)s AND provider_player_id > 0
-            ORDER BY 1""", {"since": since, "until": now + timedelta(days=1)})
+            ORDER BY 1""", {"since": since, "until": now + timedelta(days=1), "dated": dated})
         return [int(r[0]) for r in cur.fetchall()]
 
 
