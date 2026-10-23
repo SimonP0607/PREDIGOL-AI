@@ -246,6 +246,10 @@ READERS_OF_STRUCTURE: dict[str, str] = {
     "fbi.competitions.context": "the one door for the pre-match readers: structure and the legs already recorded, nothing else",
     "fbi.api.repositories.center": "the match page: a finished tie is shown with its outcome, a match not yet played with "
                                    "the legs recorded so far",
+    "fbi.knowledge.reader": "Match Knowledge (plan F7) reads the tie a FINISHED match belongs to, with how it was decided, for its result "
+                            "layer: post-match by nature, and kept away from every pre-match reader by tests/unit/test_knowledge_isolation.py",
+    "fbi.knowledge.layers": "names core.ties as a source of the result layer (a label in the layer's list of sources, no SQL): the same "
+                            "post-match layer",
 }
 """The modules that name ``core.ties`` or ``core.competition_stages`` in SQL, and why each may. A new reader is added HERE, by a
 person, with the reason: a pre-match reader (a feature, a model, a pick, the AI packet, the dossier) belongs behind
