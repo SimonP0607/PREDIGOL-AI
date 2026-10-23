@@ -117,7 +117,7 @@ def _counts(prefix: str, total: Sequence[float], side: Sequence[float]) -> Calla
 
 SPECS: Final = (
     Spec("goals_halves", "family-goals_halves", "Goals of the first and of the second half: a Poisson per team and half, with HT/FT and the "
-         "highest scoring half derived from the two fits (plan F10).", ("goals_1h", "goals_2h"), "GOALS_HALF", 0.0019, 2.0, False, _halves),
+         "highest scoring half derived from the two fits (plan F10).", ("goals_1h", "goals_2h"), "GOALS_HALF", 0.0019, 8.0, False, _halves),
     Spec("corners_ft", "family-corners_ft", "Corners of the match: a negative binomial per team with an attack and a defence strength "
          "(plan F10).", ("corners_ft",), "CORNERS", 0.0019, 32.0, True,
          _counts("CORNERS", (8.5, 9.5, 10.5, 11.5, 12.5), (3.5, 4.5, 5.5, 6.5))),
