@@ -5,8 +5,9 @@
  *                   competition (also the owner's call), table, absences, line-ups and head to head;
  * in play        - the match events first, then the day's reading as it was written before kick-off,
  *                  key figures and in-play prices; the context folded away;
- * after          - result, the way to the picks and how they ended, events, the pre-match reading and
- *                  key figures; the context folded away;
+ * after          - result, the way to the picks and how they ended, events, what happened put together
+ *                  (the owner decides when users see it), the pre-match reading and key figures; the context
+ *                  folded away;
  * not played     - what happened (postponed, cancelled, abandoned, awarded) and the way to the picks.
  */
 import { useId, useState, type ReactNode } from "react";
@@ -20,6 +21,7 @@ import type { MatchCtx } from "./context";
 import { AbsencesBlock, FormBlock, H2HBlock, LineupsTeaser, StandingsBlock } from "./ContextBlocks";
 import { EventsBlock } from "./EventsTimeline";
 import { ForecastBlock } from "./ForecastBlock";
+import { KnowledgeBlock } from "./KnowledgeBlock";
 import { KEY_STATS, statRows } from "./model";
 import { PicksTeaser } from "./PicksTab";
 import { LiveOddsBlock, QuickPricesBlock } from "./prices";
@@ -211,6 +213,8 @@ function AfterMatch({ ctx }: { ctx: MatchCtx }) {
           <ResultBlock ctx={ctx} />
           <PicksTeaser ctx={ctx} />
           <EventsBlock ctx={ctx} />
+          {/* What happened, put together once the provider stopped changing it (plan F7); the owner decides when users see it. */}
+          <KnowledgeBlock ctx={ctx} />
           <AnalysisBlock ctx={ctx} variant="reference" />
         </div>
         <div className="min-w-0 space-y-4">

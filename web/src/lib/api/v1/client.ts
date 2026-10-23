@@ -73,6 +73,7 @@ import type {
 } from "./types_ai_layer";
 import type { MatchCalendar } from "./types_calendar";
 import type { MatchForecast } from "./types_forecast";
+import type { MatchKnowledge } from "./types_knowledge";
 import type {
   AnalystReply,
   AnalystStatus,
@@ -417,6 +418,14 @@ export const v1 = {
    */
   matchCalendar: (id: number | string, q: Preview = {}) =>
     getJson<Envelope<MatchCalendar | null>>(`/matches/${id}/calendar`, q),
+  /**
+   * POSTPARTIDO (plan F7): a finished match put together in layers - the result, the statistics of the teams, the events, the
+   * players, the tactics and the story of the score, the market from its opening to its close. Facts only. Null data with
+   * `not_available`: users do not see it yet (or the match has none, and the section says why). `preview: "shadow"` (the Admin
+   * Console) shows it either way, with the row as stored and the chain of rebuilds.
+   */
+  matchKnowledge: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<MatchKnowledge | null>>(`/matches/${id}/knowledge`, q),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {

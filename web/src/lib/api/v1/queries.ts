@@ -116,6 +116,12 @@ export const live = {
     queryFn: () => v1.matchCalendar(id, { preview }),
     refetchInterval: 15 * MINUTE,
   }),
+  /** A finished match does not change by the minute: the worker rebuilds it when its inputs change, a few times at most. */
+  matchKnowledge: (id: string, preview: Preview) => ({
+    queryKey: ["v1", "match-knowledge", id, preview ?? "user"],
+    queryFn: () => v1.matchKnowledge(id, { preview }),
+    refetchInterval: 10 * MINUTE,
+  }),
   liveBoard: { queryKey: ["v1", "live"], queryFn: v1.liveBoard, refetchInterval: 15_000 },
   players: (q: { q?: string | undefined; team_id?: number | undefined }) => ({
     queryKey: ["v1", "players", q.q ?? "", q.team_id ?? 0],

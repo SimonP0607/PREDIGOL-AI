@@ -640,6 +640,115 @@
     "footnotePartial": "Cuando el calendario de un equipo no está completo, su descanso es un máximo y sus partidos un mínimo. Es contexto, no una recomendación.",
     "read": "Calendario leído {when}"
   },
+  "knowledge": {
+    "title": "Postpartido",
+    "subtitle": "Lo que pasó en este partido, armado cuando el proveedor ya no lo cambia. Son hechos, no una recomendación.",
+    "updated": "Actualizado {when}",
+    "empty": "Este postpartido todavía no tiene nada que contar.",
+    "teamMinute": "{team}, {minute}",
+    "teamMinuteState": "{team}, {minute} ({state})",
+    "reason": {
+      "not_finished": "El partido todavía no terminó para el proveedor.",
+      "not_settled_yet": "El postpartido se arma unas horas después del final, cuando el proveedor ya no cambia sus datos.",
+      "not_followed": "PrediGol no sigue esta competición, así que no arma su postpartido.",
+      "no_build_yet": "PrediGol todavía no armó el postpartido de este partido."
+    },
+    "tag": {
+      "extraTime": "Se resolvió en tiempo extra",
+      "penalties": "Se resolvió en penales",
+      "comeback": "Remontada de {team}",
+      "levelled": "{team} rescató el empate",
+      "neutral": "Campo neutral",
+      "corrected": "Resultado corregido por el proveedor"
+    },
+    "lead": {
+      "ahead": "ganando por {n}",
+      "behind": "perdiendo por {n}",
+      "level": "empatando"
+    },
+    "minutes": {
+      "short": "{n} min",
+      "hours": "{h} h",
+      "hoursMinutes": "{h} h {m} min"
+    },
+    "story": {
+      "title": "Cómo fue el marcador",
+      "subtitle": "Quién iba por delante durante los 90 minutos.",
+      "aria": "Quién iba por delante durante los 90 minutos: {summary}.",
+      "ahead": "{team} por delante",
+      "level": "Empatados",
+      "firstGoal": "Primer gol",
+      "lastGoal": "Último gol",
+      "leadChanges": "Cambios de ventaja",
+      "firstDismissal": "Primera expulsión",
+      "goals": "Goles",
+      "noGoals": "Ninguno en los 90 minutos",
+      "notTold": "No se puede contar cómo fue el marcador: la lista de eventos del proveedor no coincide con el resultado."
+    },
+    "market": {
+      "title": "Lo que esperaba el mercado",
+      "subtitle": "La probabilidad que daban las casas de apuestas, sin su margen, desde la primera lectura de la semana hasta la última antes del inicio. Lo que ocurrió va marcado.",
+      "happened": "Ocurrió",
+      "opened": "abrió en {p}",
+      "openedNone": "sin lectura de apertura",
+      "happenedNow": "Al cierre, el mercado daba un {close} a lo que ocurrió.",
+      "happenedFrom": "Al cierre, el mercado daba un {close} a lo que ocurrió (había abierto en {open}).",
+      "pushed": "La línea quedó justa: ninguna opción ganó.",
+      "closing_one": "Lectura de cierre: {when} antes del inicio, de {count} casa.",
+      "closing_other": "Lectura de cierre: {when} antes del inicio, de {count} casas.",
+      "closingBare": "Lectura de cierre: {when} antes del inicio."
+    },
+    "players": {
+      "title": "Los mejores del partido",
+      "subtitle": "Los mejor valorados de cada equipo."
+    },
+    "tactics": {
+      "title": "Formaciones y cambios",
+      "formation": "Formación {formation}",
+      "noFormation": "Formación no informada",
+      "subs_one": "{count} cambio",
+      "subs_other": "{count} cambios",
+      "noSubs": "Sin cambios",
+      "subLead": "{minute} ({lead})"
+    },
+    "quality": {
+      "complete": "Completo",
+      "partial": "Parcial",
+      "minimal": "Mínimo",
+      "completeNote": "Resultado, estadísticas, eventos y jugadores, todos con datos fiables.",
+      "partialNote": "Algo falta o no cuadra: lo que se cuenta aquí se dice solo hasta donde se puede confirmar.",
+      "minimalNote": "Solo hay el resultado, o ni siquiera eso.",
+      "doubtsTitle": "Lo que no pudimos confirmar"
+    },
+    "doubt": {
+      "no_result": "No tenemos confirmado el resultado de este partido.",
+      "events_do_not_give_the_score": "Los goles de la lista de eventos del proveedor no suman el resultado.",
+      "events_ht_differ": "Los goles del primer tiempo según los eventos no coinciden con el marcador del descanso.",
+      "events_et_differ": "Los goles del tiempo extra según los eventos no coinciden con el resultado.",
+      "events_pen_differ": "Los penales de la tanda según los eventos no coinciden con el resultado.",
+      "cards_differ_from_the_statistics": "Las tarjetas de los eventos no coinciden con las de las estadísticas.",
+      "sheets_crossed": "El proveedor cruzó las alineaciones de los dos equipos, así que no mostramos las formaciones.",
+      "event_words_not_met": "Algún evento trae una descripción que no reconocemos y se cuenta sin interpretar.",
+      "lines_with_no_player": "A algún gol el proveedor no le puso jugador.",
+      "odd_minutes": "Algún evento trae un minuto fuera de lo normal.",
+      "other": "Hay un dato que no pudimos confirmar."
+    },
+    "admin": {
+      "detailsTitle": "Cómo está guardado (solo administrador)",
+      "build": "Versión guardada n.º {id}",
+      "replaces": "reemplaza a la n.º {id}",
+      "first": "primera versión",
+      "hashes": "entradas {inputs} · contenido {content}",
+      "layersTitle": "Las nueve capas tal como están guardadas",
+      "ownLayers": "Las capas 7 a 9 (contexto, picks y post-mortems) son del administrador: un usuario nunca las ve.",
+      "notes": "notas",
+      "showData": "Ver datos guardados",
+      "finalTitle": "Últimos precios del proveedor antes del inicio (no son probabilidades)",
+      "finalLine": "{odds} · {count} casas · {before} antes del inicio",
+      "chainTitle": "Versiones del partido (la más antigua primero)",
+      "chainLine": "n.º {id} · {built} · {completeness} · {hash}"
+    }
+  },
   "picksTab": {
     "title": "Picks para este partido",
     "intro": "Las selecciones de este partido que pasaron los filtros de PrediGol, las de más valor primero.",

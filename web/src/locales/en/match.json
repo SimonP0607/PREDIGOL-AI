@@ -640,6 +640,115 @@
     "footnotePartial": "When a team's calendar is not complete, its rest is a maximum and its matches a minimum. This is context, not a recommendation.",
     "read": "Calendar read {when}"
   },
+  "knowledge": {
+    "title": "After the match",
+    "subtitle": "What happened in this match, put together once the provider has stopped changing it. Facts, not a recommendation.",
+    "updated": "Updated {when}",
+    "empty": "There is nothing to tell about this match yet.",
+    "teamMinute": "{team}, {minute}",
+    "teamMinuteState": "{team}, {minute} ({state})",
+    "reason": {
+      "not_finished": "The provider has not finished the match yet.",
+      "not_settled_yet": "The after-match summary is put together a few hours after the final whistle, once the provider has stopped changing its data.",
+      "not_followed": "PrediGol does not follow this competition, so it does not put its after-match summary together.",
+      "no_build_yet": "PrediGol has not put this match's after-match summary together yet."
+    },
+    "tag": {
+      "extraTime": "Decided in extra time",
+      "penalties": "Decided on penalties",
+      "comeback": "{team} came from behind",
+      "levelled": "{team} came back to draw",
+      "neutral": "Neutral ground",
+      "corrected": "Result corrected by the provider"
+    },
+    "lead": {
+      "ahead": "leading by {n}",
+      "behind": "trailing by {n}",
+      "level": "level"
+    },
+    "minutes": {
+      "short": "{n} min",
+      "hours": "{h} h",
+      "hoursMinutes": "{h} h {m} min"
+    },
+    "story": {
+      "title": "How the score went",
+      "subtitle": "Who was ahead during the 90 minutes.",
+      "aria": "Who was ahead during the 90 minutes: {summary}.",
+      "ahead": "{team} ahead",
+      "level": "Level",
+      "firstGoal": "First goal",
+      "lastGoal": "Last goal",
+      "leadChanges": "Lead changes",
+      "firstDismissal": "First sending-off",
+      "goals": "Goals",
+      "noGoals": "None in the 90 minutes",
+      "notTold": "The way the score went cannot be told: the provider's list of events does not match the result."
+    },
+    "market": {
+      "title": "What the market expected",
+      "subtitle": "The probability the bookmakers gave, without their margin, from the first reading of the week to the last one before kick-off. What happened is marked.",
+      "happened": "Happened",
+      "opened": "opened at {p}",
+      "openedNone": "no opening reading",
+      "happenedNow": "At the close, the market gave {close} to what happened.",
+      "happenedFrom": "At the close, the market gave {close} to what happened (it had opened at {open}).",
+      "pushed": "The line landed exactly: no selection won.",
+      "closing_one": "Closing reading: {when} before kick-off, from {count} bookmaker.",
+      "closing_other": "Closing reading: {when} before kick-off, from {count} bookmakers.",
+      "closingBare": "Closing reading: {when} before kick-off."
+    },
+    "players": {
+      "title": "Best of the match",
+      "subtitle": "The top rated of each team."
+    },
+    "tactics": {
+      "title": "Formations and changes",
+      "formation": "Formation {formation}",
+      "noFormation": "Formation not given",
+      "subs_one": "{count} substitution",
+      "subs_other": "{count} substitutions",
+      "noSubs": "No substitutions",
+      "subLead": "{minute} ({lead})"
+    },
+    "quality": {
+      "complete": "Complete",
+      "partial": "Partial",
+      "minimal": "Minimal",
+      "completeNote": "Result, statistics, events and players, all with trustworthy data.",
+      "partialNote": "Something is missing or does not add up: what is told here is said only as far as it can be confirmed.",
+      "minimalNote": "Only the result, or not even that.",
+      "doubtsTitle": "What we could not confirm"
+    },
+    "doubt": {
+      "no_result": "We do not have this match's result confirmed.",
+      "events_do_not_give_the_score": "The goals in the provider's list of events do not add up to the result.",
+      "events_ht_differ": "The first-half goals in the events do not match the half-time score.",
+      "events_et_differ": "The extra-time goals in the events do not match the result.",
+      "events_pen_differ": "The shoot-out goals in the events do not match the result.",
+      "cards_differ_from_the_statistics": "The cards in the events do not match the statistics.",
+      "sheets_crossed": "The provider crossed the line-ups of the two teams, so we do not show the formations.",
+      "event_words_not_met": "An event carries a description we do not recognise and is counted without interpreting it.",
+      "lines_with_no_player": "The provider gave a goal no player.",
+      "odd_minutes": "An event carries a minute outside the normal range.",
+      "other": "There is a figure we could not confirm."
+    },
+    "admin": {
+      "detailsTitle": "How it is stored (admin only)",
+      "build": "Stored version no. {id}",
+      "replaces": "replaces no. {id}",
+      "first": "first version",
+      "hashes": "inputs {inputs} · content {content}",
+      "layersTitle": "The nine layers as stored",
+      "ownLayers": "Layers 7 to 9 (context, picks and post-mortems) are the admin's: a user never sees them.",
+      "notes": "notes",
+      "showData": "Show stored data",
+      "finalTitle": "The provider's last prices before kick-off (not probabilities)",
+      "finalLine": "{odds} · {count} bookmakers · {before} before kick-off",
+      "chainTitle": "Versions of the match (oldest first)",
+      "chainLine": "no. {id} · {built} · {completeness} · {hash}"
+    }
+  },
   "picksTab": {
     "title": "Picks for this match",
     "intro": "This match's selections that passed PrediGol's filters, the best value first.",
