@@ -35,6 +35,9 @@ from fbi.competitions.context import TieAsOf
 
 VERSION: Final = "scenarios-v1"
 
+FACTOR: Final = "scenarios"
+"""The name of this block (the table and the tie together) in the registry of context factors (``intel.context_factors``)."""
+
 NOTE: Final = (
     "Lecturas aritméticas de ESTE partido solo: los demás partidos no se simulan (cada equipo conserva sus puntos actuales, así que "
     "un puesto es un intervalo) y no son probabilidades. Si la eliminatoria queda igualada, decide el reglamento de la competición.")

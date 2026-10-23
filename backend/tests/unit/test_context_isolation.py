@@ -22,15 +22,23 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
     "fbi.intel.h2h": {
         "ai/packet.py": "the packet: the head-to-head of the match, weighed, as of its moment",
         "intel/dossier.py": "the dossier: how much the head-to-head is worth (its words, read by the narrative)",
+        "intel/factors.py": "the registry: the key and the version of the head-to-head, which a validation is about",
         "intel/leakage.py": "the nightly proof: the rule h2h_known (it reads the constant N and nothing else)",
         "api/services/center.py": "the match page: the same head-to-head, asked for now",
     },
     "fbi.intel.scenarios": {
         "ai/packet.py": "the packet: what the match alone does to its table and to its tie, as of its moment",
+        "intel/factors.py": "the registry: the key and the version of the scenarios, which a validation is about",
     },
     "fbi.intel.tactics": {
         "intel/dossier.py": "the dossier: the observable tactics of each side, as of the packet's moment (and which sheets are crossed)",
+        "intel/factors.py": "the registry: the key and the version of the tactics, which a validation is about",
         "intel/leakage.py": "the nightly proof: the rule tactics_known (it reads the constants N and WINDOW and nothing else)",
+    },
+    "fbi.intel.factors": {
+        "ai/packet.py": "the packet: the status of each context factor as of its moment, and the status each block says",
+        "intel/leakage.py": "the nightly proof: the rule factors_known (it reads the catalogue's keys and blocks and nothing else)",
+        "scripts/context_factors.py": "the person's door: list, history, promote and retire a factor",
     },
 }
 """Module -> the files that may import it (a path under ``src/fbi``, or ``scripts/<name>``), each with its reason."""

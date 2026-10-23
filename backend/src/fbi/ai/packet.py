@@ -35,7 +35,7 @@ from fbi.competitions import context as phase_context
 from fbi.competitions import team_calendar as tc
 from fbi.competitions.stages import stage_of
 from fbi.competitions.tables import match_tables
-from fbi.intel import scenarios
+from fbi.intel import factors, scenarios
 from fbi.intel.h2h import head_to_head
 from fbi.people.officials import referee_as_of
 
@@ -54,6 +54,10 @@ probability; ``DESCRIPTIVE``. Absent when there is neither a table of the match'
 an hour with the late ones apart, the results by who scores first and by the half-time score, and the first substitution by the score -
 each with its sample size, and with the matches it could not read (events that do not give the score, squad sheets the provider crossed,
 no list at all) counted, not guessed; ``DESCRIPTIVE``. A squad sheet the provider crossed no longer gives the ``coach`` block a formation.
+The ``status`` of those three blocks is read from the registry (``factors``, ``fbi.intel.factors``): for each context factor - the
+head-to-head, the scenarios, the tactics, rest and congestion - the version of the code that computes it, the block that carries it, its
+status as of the packet's moment (``DESCRIPTIVE`` unless a person validated THAT version citing an experiment) and the decision behind
+it. A registry that cannot be read leaves every factor ``DESCRIPTIVE`` and says so (``factors.error``, ``missing``).
 v7 (plan F4): the ``schedule`` block is read from each team's calendar in EVERY competition (``fbi.competitions.team_calendar``),
 as it stood at the packet's moment, not only from the competitions PrediGol follows. Where a team's own list was read recently
 and has no doubt in it (``schedule.calendar.<side>.complete``) its ``rest_days``, ``matches_last_7d/14d/30d`` and ``next_match``
@@ -419,6 +423,7 @@ class PacketBuilder:
         sources: list[dict[str, Any]] = [{"block": "fixture", "table": "core.fixtures", "note": "current values"}]
         missing: list[str] = []
         content: dict[str, Any] = {}
+        stands, factors_error = self._factors(at, missing)
 
         referee_name, referee_id, referee_seen = self._referee(fixture_id, at)
         changes = _rows(conn, KICKOFF_CHANGES_SQL, {"fixture": fixture_id, "at": at})
@@ -441,7 +446,7 @@ class PacketBuilder:
 
         content["phase"], tie = self._phase(fixture_id, at, sources, missing)
         content["standings"], content["stakes"], table_effect = self._standings(f, at, sources, missing)
-        block = scenarios.scenarios_block(table_effect, scenarios.tie_reading(tie))
+        block = scenarios.scenarios_block(table_effect, scenarios.tie_reading(tie), status=stands[factors.SCENARIOS].status)
         if block is not None:
             content["scenarios"] = block
             sources.append({"block": "scenarios", "derived_from": ["standings", "phase"], "as_of": _ts(at),
@@ -461,7 +466,7 @@ class PacketBuilder:
         h2h = head_to_head(conn, home_team_id=home, away_team_id=away, kickoff=kickoff, at=at,
                            competition_id=int(f["competition_id"]), competition_kind=f["competition_kind"],
                            provider_league_id=f["provider_league_id"], neutral=bool(f["is_neutral"]), rule=rule)
-        content["h2h"] = h2h.as_packet()
+        content["h2h"] = h2h.as_packet(status=stands[factors.H2H].status)
         if not h2h.n:
             missing.append("h2h")
         else:
@@ -476,7 +481,7 @@ class PacketBuilder:
             with conn.transaction():
                 content["dossier"] = finite(build_dossier(
                     conn, f, at=at, elo=self._elo_version(at), referee=referee_name, referee_id=referee_id,
-                    h2h=h2h))
+                    h2h=h2h, tactics_status=stands[factors.TACTICS].status))
             sources.append({"block": "dossier", "tables": ["core.fixture_team_stats", "core.fixture_events",
                                                            "core.fixture_lineups", "core.fixture_lineup_players",
                                                            "core.fixture_results", "core.fixture_player_stats",
@@ -509,7 +514,19 @@ class PacketBuilder:
         quality = self._quality(f, at, content, sources)
         content["quality"] = quality
         content["evidence"] = self._evidence(fixture_id, home, away, at, sources)
+        content["factors"] = factors.block(stands, error=factors_error)
+        sources.append({"block": "factors", "table": "intel.context_factors", "as_of": _ts(at), "version": factors.VERSION})
         return Packet(fixture_id, at, content, sources, sorted(set(missing)), quality)
+
+    def _factors(self, at: datetime, missing: list[str]) -> tuple[dict[str, factors.Standing], str | None]:
+        """The status of every context factor as of ``at`` (``fbi.intel.factors``). In a savepoint: a registry that cannot be read
+        never costs the rest of the packet - every factor is then DESCRIPTIVE, the status they are born with, and the block says why."""
+        try:
+            with self.conn.transaction():
+                return factors.standings(self.conn, at=at), None
+        except psycopg.Error as exc:
+            missing.append("factors")
+            return factors.unread(), type(exc).__name__
 
     def _schedule(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]) -> dict[str, Any]:
         """Each side's rest, congestion and next matches from its calendar in EVERY competition as it stood at ``at`` (plan F4,

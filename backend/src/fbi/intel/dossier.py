@@ -422,9 +422,11 @@ def h2h_relevance(h2h: HeadToHead) -> dict[str, Any]:
 
 
 def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: datetime, elo: tuple[str, int] | None,
-                  referee: str | None, h2h: HeadToHead, referee_id: int | None = None) -> dict[str, Any]:
+                  referee: str | None, h2h: HeadToHead, referee_id: int | None = None,
+                  tactics_status: str = "DESCRIPTIVE") -> dict[str, Any]:
     """The dossier of one match as of ``at``. ``fx`` is the packet's FIXTURE_SQL row; ``referee`` and ``referee_id`` are the
-    referee of the match as of ``at`` (``fbi.people.officials``), the id absent when the identity has not seen the match."""
+    referee of the match as of ``at`` (``fbi.people.officials``), the id absent when the identity has not seen the match;
+    ``tactics_status`` is the status of the tactics factor in the registry (``fbi.intel.factors``) as the packet read it."""
     kickoff: datetime = fx["kickoff_at"]
     home, away = int(fx["home_team_id"]), int(fx["away_team_id"])
     absent: dict[int, str] = {int(r["provider_player_id"]): str(r["absence_type"] or "")
@@ -444,7 +446,7 @@ def build_dossier(conn: psycopg.Connection[Any], fx: dict[str, Any], *, at: date
     return {"version": VERSION, "teams": teams, "players": players,
             "referee": referee_profile(conn, referee, kickoff=kickoff, at=at, referee_id=referee_id),
             "context": context_profile(conn, fx, at=at), "h2h": h2h_relevance(h2h),
-            "tactics": tactics.block(conn, home=home, away=away, kickoff=kickoff, at=at),
+            "tactics": tactics.block(conn, home=home, away=away, kickoff=kickoff, at=at, status=tactics_status),
             "national": national.block(conn, fx, at=at, absent=absent)}
 
 

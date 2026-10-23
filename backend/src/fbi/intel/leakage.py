@@ -73,6 +73,16 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              favour of an older one, what was read is inside the sample, the goals the block counts are the goals
                              of the 90 minutes of the matches it read events of (from their results), and its half-time sample is the
                              matches of the sample whose result has a half-time score. Examples are packet ids.
+    factors_known            (v6, plan F6) the AI packets built on the day that carry the status of each context factor (``factors``,
+                             ``fbi.intel.factors``): for every factor the packet lists, the status it states, the decision it cites
+                             and the experiment that decision names are exactly those of the newest decision about that factor at
+                             that version that had been taken by the packet's moment - so a validation decided after the moment is
+                             not in the packet, a retired one is not still there, a decision that exists is not left out, and a
+                             factor with no decision is DESCRIPTIVE (a packet that says it could not read the registry is not read
+                             here: it states DESCRIPTIVE for everything, the safe side). And, one check per block that says its own
+                             ``status`` (the head-to-head, the scenarios, the tactics), that status and the block's ``version`` are
+                             the ones the packet's factor entry states - so a validation of another version of the code is not used
+                             for this one. Examples are packet ids.
 """
 
 from __future__ import annotations
@@ -86,7 +96,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
 from fbi.core import match_state
-from fbi.intel import h2h, tactics
+from fbi.intel import factors, h2h, tactics
 
 VERSION = "leak-audit-v6"
 
@@ -97,6 +107,13 @@ BASE = "SELECT d.* FROM intel.decisions d WHERE d.known_at >= %(start)s AND d.kn
 
 PACKETS = ("SELECT m.id, m.fixture_id, m.as_of, m.content FROM ai.match_packets m "
            "WHERE m.built_at >= %(start)s AND m.built_at < %(end)s")
+
+STATED = ", ".join(
+    f"('{f.key}', ARRAY[{', '.join(repr(k) for k in (*f.block, 'status'))}], ARRAY[{', '.join(repr(k) for k in (*f.block, 'version'))}])"
+    for f in factors.CATALOGUE if f.states)
+"""The context factors whose block says its own ``status`` and ``version``, with the paths of both in the packet: (key, status path,
+version path) rows of a SQL VALUES list, from the catalogue's constants."""
+
 
 def _int(base: str, path: str, *, side: bool = False) -> str:
     """The SQL for an integer at ``path`` of the JSON ``base`` (``{a,b}`` is a path; ``{side,x}`` takes the side from the
@@ -453,6 +470,28 @@ RULES: dict[str, str] = {
                                    OR g.kickoff_at > (SELECT min(g2.kickoff_at) FROM f JOIN core.fixtures g2 ON g2.id = f.fid
                                                        WHERE f.packet_id = b.packet_id AND f.side = b.side))) AS bad
               FROM b)
+        SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
+               (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
+    "factors_known": f"""
+        WITH p AS ({PACKETS}), e AS (
+            SELECT p.id AS packet_id, p.as_of, x.key, x.val
+              FROM p CROSS JOIN LATERAL jsonb_each(p.content -> 'factors') AS x(key, val)
+             WHERE jsonb_typeof(p.content -> 'factors') = 'object' AND jsonb_typeof(x.val) = 'object'
+               AND (p.content #> '{{factors,error}}') IS NULL),
+        c AS (
+            SELECT e.packet_id,
+                   ((e.val ->> 'status') IS DISTINCT FROM COALESCE(r.status, 'DESCRIPTIVE')
+                    OR {_int("e.val", "{decision,id}")} IS DISTINCT FROM r.id
+                    OR (e.val #>> '{{decision,experiment}}') IS DISTINCT FROM (r.evidence ->> 'experiment')) AS bad
+              FROM e LEFT JOIN LATERAL (
+                       SELECT d.id, d.status, d.evidence FROM intel.context_factors d
+                        WHERE d.factor = e.key AND d.version = (e.val ->> 'version') AND d.decided_at <= e.as_of
+                        ORDER BY d.id DESC LIMIT 1) r ON true
+            UNION ALL
+            SELECT p.id, ((p.content #>> k.status_path) IS DISTINCT FROM (p.content #>> ARRAY['factors', k.key, 'status'])
+                          OR (p.content #>> k.version_path) IS DISTINCT FROM (p.content #>> ARRAY['factors', k.key, 'version'])) AS bad
+              FROM p CROSS JOIN (VALUES {STATED}) AS k(key, status_path, version_path)
+             WHERE (p.content #>> k.status_path) IS NOT NULL AND jsonb_typeof(p.content -> 'factors') = 'object')
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
 }
