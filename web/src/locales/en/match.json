@@ -500,6 +500,7 @@
       "market": "market",
       "models": "models",
       "phase": "stage",
+      "schedule": "schedule",
       "standings": "table",
       "stats": "statistics"
     },
@@ -589,6 +590,53 @@
       "no_evaluation": "The decision layer has not evaluated any price of this match: without a price there is no value.",
       "no_pick": "No pick was frozen for this match: a forecast, however sure, is not one."
     }
+  },
+  "calendar": {
+    "title": "Schedule and rest",
+    "subtitle": "How much each team rested and what it plays next, in every competition and not just this one.",
+    "complete": "Complete",
+    "partial": "Partial",
+    "rest": "Rest",
+    "restNone": "No earlier match known",
+    "restExact": "{days} since its last match",
+    "restAtMost": "at most {days} since its last match",
+    "last14": "Last 14 days",
+    "matches_one": "{count} match",
+    "matches_other": "{count} matches",
+    "matchesAtLeast_one": "at least {count} match",
+    "matchesAtLeast_other": "at least {count} matches",
+    "outside_one": "{count} in a competition PrediGol does not follow",
+    "outside_other": "{count} in competitions PrediGol does not follow",
+    "days_one": "{days} day",
+    "days_other": "{days} days",
+    "before_one": "{days} day before",
+    "before_other": "{days} days before",
+    "after_one": "{days} day after",
+    "after_other": "{days} days after",
+    "playedTitle": "Played before",
+    "nextTitle": "Plays after",
+    "playedNone": "No earlier match known.",
+    "nextNone": "Nothing in the next 7 days.",
+    "nextNoneUnknown": "Nothing known in the next 7 days.",
+    "venue": {
+      "home": "home",
+      "away": "away"
+    },
+    "versus": "vs {opponent}",
+    "kind": {
+      "domestic_league": "League",
+      "domestic_cup": "Cup",
+      "continental": "Continental",
+      "international": "National teams"
+    },
+    "note": {
+      "never_fetched": "PrediGol has not read the full calendar of {team} yet: its rest could be shorter and there could be more matches than shown.",
+      "stale": "The calendar of {team} was read {age} ago: a recent or announced match may be missing.",
+      "unconfirmed_match": "A recent match of {team} is not confirmed: we do not know whether it was played, so it does not count as rest."
+    },
+    "footnote": "This is context, not a recommendation: it counts days and matches, it does not say who will win.",
+    "footnotePartial": "When a team's calendar is not complete, its rest is a maximum and its matches a minimum. This is context, not a recommendation.",
+    "read": "Calendar read {when}"
   },
   "picksTab": {
     "title": "Picks for this match",

@@ -69,6 +69,7 @@ import type {
   PickPostmortem,
   ShadowReportRow,
 } from "./types_ai_layer";
+import type { MatchCalendar } from "./types_calendar";
 import type { MatchForecast } from "./types_forecast";
 import type {
   AnalystReply,
@@ -408,6 +409,12 @@ export const v1 = {
    */
   matchForecast: (id: number | string, q: Preview = {}) =>
     getJson<Envelope<MatchForecast | null>>(`/matches/${id}/forecast`, q),
+  /**
+   * CALENDARIO (plan F4): what each team has played and has coming in every competition, and whether the list behind it is
+   * whole. Null data with `not_available`: users do not see it yet. `preview: "shadow"` (the Admin Console) shows it either way.
+   */
+  matchCalendar: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<MatchCalendar | null>>(`/matches/${id}/calendar`, q),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {

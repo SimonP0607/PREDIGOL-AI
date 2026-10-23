@@ -440,7 +440,8 @@ describe("the data the Resumen says it does not have", () => {
   /**
    * Every name `fbi.ai.packet` can put in `missing` (each `missing.append(...)` of the PacketBuilder) is printed by the
    * Resumen in "Datos que aún no tenemos: …"; a name without a label would show its own translation key. `forecast` joined
-   * them with packet-v6: a forecast that could not be read says so there instead of passing for "nothing to show".
+   * them with packet-v6: a forecast that could not be read says so there instead of passing for "nothing to show";
+   * `schedule` with packet-v7 (plan F4): a team calendar that could not be read.
    */
   const PACKET_BLOCKS = [
     "absences",
@@ -453,6 +454,7 @@ describe("the data the Resumen says it does not have", () => {
     "market",
     "models",
     "phase",
+    "schedule",
     "standings",
     "stats",
   ];

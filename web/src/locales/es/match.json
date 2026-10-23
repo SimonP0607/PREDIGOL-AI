@@ -500,6 +500,7 @@
       "market": "mercado",
       "models": "modelos",
       "phase": "fase",
+      "schedule": "calendario",
       "standings": "tabla",
       "stats": "estadísticas"
     },
@@ -589,6 +590,53 @@
       "no_evaluation": "La capa de decisión no evaluó ningún precio de este partido: sin precio no hay valor.",
       "no_pick": "No se congeló ningún pick para este partido: un pronóstico, por seguro que sea, no lo es."
     }
+  },
+  "calendar": {
+    "title": "Calendario y descanso",
+    "subtitle": "Cuánto descansó cada equipo y qué juega después, en todas sus competiciones y no solo en la de este partido.",
+    "complete": "Completo",
+    "partial": "Parcial",
+    "rest": "Descanso",
+    "restNone": "Sin partido anterior conocido",
+    "restExact": "{days} desde su último partido",
+    "restAtMost": "como máximo {days} desde su último partido",
+    "last14": "Últimos 14 días",
+    "matches_one": "{count} partido",
+    "matches_other": "{count} partidos",
+    "matchesAtLeast_one": "al menos {count} partido",
+    "matchesAtLeast_other": "al menos {count} partidos",
+    "outside_one": "{count} en una competición que PrediGol no sigue",
+    "outside_other": "{count} en competiciones que PrediGol no sigue",
+    "days_one": "{days} día",
+    "days_other": "{days} días",
+    "before_one": "{days} día antes",
+    "before_other": "{days} días antes",
+    "after_one": "{days} día después",
+    "after_other": "{days} días después",
+    "playedTitle": "Jugó antes",
+    "nextTitle": "Juega después",
+    "playedNone": "Ningún partido anterior conocido.",
+    "nextNone": "Nada en los 7 días siguientes.",
+    "nextNoneUnknown": "Nada conocido en los 7 días siguientes.",
+    "venue": {
+      "home": "local",
+      "away": "visitante"
+    },
+    "versus": "vs {opponent}",
+    "kind": {
+      "domestic_league": "Liga",
+      "domestic_cup": "Copa",
+      "continental": "Continental",
+      "international": "Selecciones"
+    },
+    "note": {
+      "never_fetched": "PrediGol todavía no ha leído el calendario completo de {team}: su descanso podría ser menor y haber más partidos de los que se muestran.",
+      "stale": "El calendario de {team} se leyó hace {age}: puede faltar algún partido reciente o anunciado.",
+      "unconfirmed_match": "Falta confirmar un partido reciente de {team}: no sabemos si se jugó y por eso no cuenta como descanso."
+    },
+    "footnote": "Es contexto, no una recomendación: cuenta días y partidos, no dice quién va a ganar.",
+    "footnotePartial": "Cuando el calendario de un equipo no está completo, su descanso es un máximo y sus partidos un mínimo. Es contexto, no una recomendación.",
+    "read": "Calendario leído {when}"
   },
   "picksTab": {
     "title": "Picks para este partido",
