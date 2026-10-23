@@ -16,7 +16,8 @@ and would have won, ...) beside it and never mixed with it, the class of a loss,
 
 WHAT IS ADDED
 -------------
-``intel.postmortems``  keeps every column and every row it has (the 78 rows of pm-v3 stay as they were written: the table is append-only
+``intel.postmortems``  keeps every column and every row it has (the rows of pm-v3 to pm-v5 - 78 when this was measured, 104 by the night
+    of the 23rd - stay as they were written: the table is append-only
     and this revision rewrites none) and gains NULLABLE columns that pm-v6 fills: the key of the selection (``market_key``, ``selection``,
     ``line``), why it was studied (``roles``), the review it met (``review_id``, ``review_decision``, ``review_verdict``), the class of a
     loss (``loss_class``), the prices (``odds``, ``close_odds``, ``p_model``, ``p_market``, ``p_close``), the price move of the same book
@@ -45,12 +46,15 @@ frozen in the sense that PrediGol stops adding to the first two (a switch brings
 pick, settlement or filter reads any of it.
 
 Additive and non-blocking: new nullable columns and new tables are metadata-only changes; the only tables altered are ``intel.postmortems``
-(78 rows) and ``intel.entity_memory`` (a few thousand), neither read by anything that holds a lock on a big table; there is no foreign key to
+(about a hundred rows) and ``intel.entity_memory`` (a few thousand), neither read by anything that holds a lock on a big table; there is no foreign key to
 a big table, and a lock that cannot be had within 10 s fails the migration whole (transactional DDL).
 
 DOWNGRADE: drops the view, the narratives (paid text - export them first if a person has quoted them), the match table and the new
-columns, and removes the rows pm-v6 wrote (they are rebuilt by ``python -m scripts.postmortems build`` from facts that are kept) with the
-append-only trigger lifted for that one statement; the 78 rows of before are untouched and ``decision_id`` is required again.
+columns, and removes the rows pm-v6 wrote (they are rebuilt by ``python -m scripts.postmortems build`` from facts that are kept) and the
+rows memory-v4 wrote (rebuilt by ``python -m scripts.memory rebuild``), each with the append-only trigger lifted for that one statement;
+the rows of before are untouched and ``decision_id`` is required again. The memory rows go out because the code this returns to
+(memory-v3) continues "the latest row of ANY version": left behind, a memory-v4 row would be read as the state it continues, and it would
+write its own rows from a state it does not understand (figures that version does not produce, a weighted sample it never carried).
 
 Revision ID: 0091
 Revises: 0090
@@ -188,6 +192,11 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.execute("SET LOCAL lock_timeout = '10s'")
     op.execute("DROP VIEW IF EXISTS intel.entity_memory_latest")
+    # the rows memory-v4 wrote are rebuilt from the data (``python -m scripts.memory rebuild``); the code this returns to continues the
+    # latest row of ANY version, so none may be left for it to take as the state it continues
+    op.execute("ALTER TABLE intel.entity_memory DISABLE TRIGGER entity_memory_append_only")
+    op.execute("DELETE FROM intel.entity_memory WHERE version = 'memory-v4'")
+    op.execute("ALTER TABLE intel.entity_memory ENABLE TRIGGER entity_memory_append_only")
     op.execute("ALTER TABLE intel.entity_memory DROP COLUMN IF EXISTS evidence_ref, DROP COLUMN IF EXISTS confidence")
     op.execute("DROP TABLE IF EXISTS ai.postmortem_narratives")
     op.execute("DROP TABLE IF EXISTS intel.match_postmortems")

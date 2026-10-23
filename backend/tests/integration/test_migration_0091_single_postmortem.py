@@ -173,9 +173,15 @@ def test_0091_extends_the_postmortems_keeps_the_old_row_and_comes_back_out(migra
             assert _constraints(c) == before_constraints
             assert c.execute("SELECT * FROM intel.postmortems").fetchall() == old_row, "only what pm-v6 wrote went out; the old row stayed"
             assert c.execute("SELECT * FROM intel.entity_memory WHERE version = 'memory-v1'").fetchall() == old_memory
+            left = c.execute("SELECT version, aspect, as_of_day::text FROM intel.entity_memory ORDER BY version, as_of_day").fetchall()
+            assert left == [("memory-v1", "market:1X2", "2026-10-13"), ("memory-v10", "x", "2026-10-13"), ("memory-v3", "x", "2026-10-13"),
+                            ("memory-v3", "x", "2026-10-14")], \
+                "the rows memory-v4 wrote went out with it (the code this returns to continues the latest row of ANY version, so one left " \
+                "behind would be taken for the state it continues) and the rows of the other versions stayed"
             assert not _exists(c, "intel.selection_postmortems") and not _exists(c, "intel.match_postmortems")
             assert not _exists(c, "ai.postmortem_narratives") and not _exists(c, "intel.entity_memory_latest")
             assert _refuses_in(c, "UPDATE intel.postmortems SET verdict = 'ERROR'"), "the table is append-only again after the downgrade"
+            assert _refuses_in(c, "UPDATE intel.entity_memory SET stats = '{}'"), "and so is the memory"
 
         command.upgrade(_cfg(), "0091")  # and applies again
         with psycopg.connect(dsn) as c:
