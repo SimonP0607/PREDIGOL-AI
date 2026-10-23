@@ -3,9 +3,11 @@
 Everything here is DATA or a deterministic INFERENCE from data, labelled as such where it is shown:
 
 * rest and congestion: days since each side's previous match, matches in the last 14 days, the
-  next match within 7 days (rotation risk is an inference, said as one). They are read from the competitions
-  we FOLLOW, so they are bounds, not facts: the real rest is at most the recorded one, the real number of
-  matches at least the recorded one (plan F0, defect 10);
+  next match within 7 days (rotation risk is an inference, said as one). Read from the competitions
+  we FOLLOW they are bounds, not facts: the real rest is at most the recorded one, the real number of
+  matches at least the recorded one (plan F0, defect 10). Where a team's own list of matches in every
+  competition was read recently (plan F4, ``fbi.competitions.team_calendar``) they are the team's real
+  figures, and ``calendar_scope`` says which of the two readings a packet is;
 * what the match is worth: the zones of the table (from the provider's own row descriptions -
   champions, continental places, relegation), the points to the nearest zone boundary above and
   below and the most the team can still gain; "settled" when no boundary is reachable any more;
@@ -63,12 +65,44 @@ CALENDAR_SCOPE: dict[str, Any] = {
     "rest_days": "at_most",
     "matches_last_14d": "at_least",
     "next_match": "known_only",
-    "note": ("Only the competitions this platform follows are in the calendar; a match in any other competition is not "
-             "recorded. So the real rest is at most rest_days, the real number of matches in 14 days is at least "
-             "matches_last_14d, and a missing next_match does not mean there is none. Do not read a long rest as a "
-             "fact, nor compare the two sides' rest."),
+    "note": ("Only the competitions this platform follows are certain to be in the calendar (a team's other competitions are "
+             "in it only where its list was read, see home and away); a match in any other competition may be missing. So "
+             "the real rest is at most rest_days, the real number of matches in 14 days is at least matches_last_14d, and "
+             "a missing next_match does not mean there is none. Do not read a long rest as a fact, nor compare the two "
+             "sides' rest."),
 }
-"""How to read the schedule block of a packet: ``complete`` is null because nothing says the calendar is whole."""
+"""How to read the schedule block of a packet when nothing says the calendar is whole (``complete`` null in packet-v6, where
+that was always the case; packet-v7 states it per side, see ``calendar_scope``)."""
+
+CALENDAR_WHOLE_NOTE = (
+    "The calendar is every competition the data provider lists for each team, read recently (home.fetched_at, "
+    "away.fetched_at): rest_days, the matches in 7, 14 and 30 days and next_match count all of them, and outside_last_14d "
+    "says how many of the fortnight's matches were in a competition this platform does not follow. Rest is counted from the "
+    "kick-off of the previous match. A competition the provider does not list is still absent: present rest as what the "
+    "calendar shows, not as a certainty.")
+CALENDAR_MIXED_NOTE = (
+    "Only a side whose calendar says complete: true (see home and away) has it whole: for it rest_days is exact and the "
+    "matches in 14 days are all of them. For the other side the real rest is at most rest_days, the real number of matches "
+    "at least the count, and a missing next_match does not mean there is none. Do not compare the two sides' rest.")
+
+
+def calendar_scope(home: dict[str, Any], away: dict[str, Any]) -> dict[str, Any]:
+    """How to read the schedule block of a packet (packet-v7, plan F4), from what is known of each side's calendar.
+
+    ``home`` / ``away`` say whether the side's list was read recently and has no doubt in it (``complete``), why not
+    (``reason``), when it was read (``fetched_at``) and how long before the packet (``age_hours``). The top-level words are
+    the ones that hold for BOTH sides: "exact" only when both are whole; otherwise the bounds of ``CALENDAR_SCOPE``, which are
+    true of an exact figure too (an exact rest is also "at most" itself)."""
+    whole = bool(home.get("complete")) and bool(away.get("complete"))
+    block = dict(CALENDAR_SCOPE)
+    block["complete"] = whole
+    block["home"], block["away"] = dict(home), dict(away)
+    if whole:
+        block.update(scope="provider_calendar", rest_days="exact", matches_last_14d="exact", next_match="listed",
+                     note=CALENDAR_WHOLE_NOTE)
+    elif home.get("complete") or away.get("complete"):
+        block["note"] = CALENDAR_MIXED_NOTE
+    return block
 
 
 # ── what the match is worth ──────────────────────────────────────────────────

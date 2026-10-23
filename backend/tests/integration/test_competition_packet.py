@@ -27,7 +27,7 @@ def test_a_second_leg_packet_carries_the_first_leg_the_aggregate_and_what_the_ma
 
     packet = PacketBuilder(db).build(f["r2"], at=at)
 
-    assert packet is not None and packet.version == PACKET_VERSION == "packet-v6"
+    assert packet is not None and packet.version == PACKET_VERSION == "packet-v7"
     c = packet.content
     assert c["fixture"]["stage"] == "knockout", "the round, read by the one classifier of round labels"
     phase = c["phase"]
@@ -141,7 +141,7 @@ def test_the_audit_counts_each_leg_a_stored_packet_cites_and_finds_them_recorded
     assert packet is not None
     store_packet(db, packet, built_at=at)
 
-    assert "tie_legs_known" in leakage.RULES and leakage.VERSION == "leak-audit-v4"
+    assert "tie_legs_known" in leakage.RULES and leakage.VERSION == "leak-audit-v5"
     assert audited(db, at) == {"checked": 1, "violations": 0, "examples": []}
 
 

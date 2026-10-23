@@ -80,7 +80,7 @@ def listing(player: int, kind: str = "Missing Fixture") -> dict[str, Any]:
 
 
 def test_the_rule_is_in_the_audit_and_the_version_says_so() -> None:
-    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v4" and RULE in (leakage.__doc__ or "")
+    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v5" and RULE in (leakage.__doc__ or "")
 
 
 def test_a_packet_built_by_the_builder_lists_only_what_was_the_latest_word(db: psycopg.Connection[Any], seed: Seed) -> None:
@@ -90,7 +90,7 @@ def test_a_packet_built_by_the_builder_lists_only_what_was_the_latest_word(db: p
     honest(db, w, T2 + H)
     assert audited(db, T2 + H) == {"checked": 2, "violations": 0, "examples": []}, "9002 and 9003; the one who recovered is not listed"
     rows = db.execute("SELECT version, n_checked, n_violations FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert rows == [("leak-audit-v4", 2, 0)]
+    assert rows == [("leak-audit-v5", 2, 0)]
 
 
 def test_what_a_later_answer_says_does_not_make_an_honest_packet_a_violation(db: psycopg.Connection[Any], seed: Seed) -> None:

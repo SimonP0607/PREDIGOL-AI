@@ -3,8 +3,7 @@ know at a given moment, and who is asked about how often."""
 
 from __future__ import annotations
 
-import itertools
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import psycopg
@@ -14,70 +13,19 @@ from fbi.competitions import team_calendar as tc
 from fbi.ingestion import reference as ref
 from fbi.ingestion import team_calendar as ing
 from fbi.providers.base import RawResponse
+from tests.integration.calendar_helpers import (
+    T0,
+    fixture,
+    followed_season,
+    known_competition,
+    listed,
+    next_provider_fixture,
+    payload,
+    read,
+    team,
+)
 from tests.integration.conftest import Seed
 from tests.integration.helpers import scalar
-
-T0 = datetime(2026, 10, 23, 9, 0, tzinfo=UTC)
-_team = itertools.count(91_000)
-_fixture = itertools.count(9_100_000)
-_league = itertools.count(9_100)
-_hash = itertools.count(1)
-
-
-def payload(db: psycopg.Connection, seed: Seed, at: datetime = T0) -> str:
-    """A RAW payload row for a reading to name (every row of the calendar names the payload that said it)."""
-    h = f"tc{next(_hash)}"
-    db.execute("INSERT INTO raw.ingestion_payloads (hash, run_id, endpoint, params, fetched_at, http_status, file_path, bytes) "
-               "VALUES (%s, %s, '/fixtures', '{}', %s, 200, %s, 1)", (h, seed.run_id, at, h))
-    return h
-
-
-def team(db: psycopg.Connection, name: str) -> tuple[int, int]:
-    """A team of ours: (id, provider id)."""
-    provider = next(_team)
-    return int(scalar(db.execute("INSERT INTO core.teams (provider_team_id, name) VALUES (%s, %s) RETURNING id",
-                                 (provider, name)))), provider
-
-
-def followed_season(db: psycopg.Connection, *, tracked: bool = True, current: bool = True, name: str = "League") -> tuple[int, int]:
-    """A competition PrediGol follows and its season: (season id, provider league id)."""
-    league = next(_league)
-    comp = scalar(db.execute("INSERT INTO core.competitions (provider_league_id, name, type, entity_scope, competition_type, is_tracked) "
-                             "VALUES (%s, %s, 'league', 'club', 'domestic_league', %s) RETURNING id", (league, name, tracked)))
-    season = scalar(db.execute("INSERT INTO core.competition_seasons (competition_id, season, is_current) VALUES (%s, 2026, %s) RETURNING id",
-                               (comp, current)))
-    return int(season), league
-
-
-def fixture(db: psycopg.Connection, season_id: int, home: int, away: int, kickoff: datetime, *, status: str = "scheduled",
-            created: datetime | None = None, goals: tuple[int, int] | None = None) -> tuple[int, int]:
-    """A followed match: (id, provider fixture id)."""
-    provider = next(_fixture)
-    fid = int(scalar(db.execute(
-        "INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, away_team_id, kickoff_at, status_group, "
-        "created_at) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
-        (provider, season_id, home, away, kickoff, status, created or kickoff - timedelta(days=30)))))
-    if goals is not None:
-        db.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away) VALUES (%s, %s, %s)", (fid, *goals))
-    return fid, provider
-
-
-def listed(provider_fixture: int, *, home: int, away: int, kickoff: datetime, short: str = "NS", league: int = 9_999,
-           league_name: str = "Copa del Rey", goals: tuple[int | None, int | None] = (None, None),
-           home_name: str = "Home FC", away_name: str = "Away FC") -> dict[str, Any]:
-    """One element of the provider's list for a team."""
-    return {"fixture": {"id": provider_fixture, "date": kickoff.isoformat(), "status": {"short": short}},
-            "league": {"id": league, "name": league_name, "country": "Spain", "season": 2026, "round": "Round of 16"},
-            "teams": {"home": {"id": home, "name": home_name}, "away": {"id": away, "name": away_name}},
-            "goals": {"home": goals[0], "away": goals[1]}}
-
-
-def read(db: psycopg.Connection, seed: Seed, team_provider: int, entries: list[dict[str, Any]], at: datetime = T0,
-         season: int = 2026) -> int:
-    """The list of a team read at ``at``: what the feed's normalizer writes."""
-    target = ref.Target(f"team:{team_provider}:{season}", {"team": team_provider, "season": season}, timedelta(days=1), {})
-    return ing.apply(db, target, {"response": entries}, payload(db, seed, at), at)
-
 
 # ── what is written ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -111,7 +59,7 @@ def test_only_the_matches_of_competitions_not_followed_are_written_and_every_rea
     a, pa = team(db, "Alpha FC")
     b, pb = team(db, "Beta FC")
     _, league_match = fixture(db, season, a, b, T0 + timedelta(days=3))
-    cup, europe = next(_fixture), next(_fixture)
+    cup, europe = next_provider_fixture(), next_provider_fixture()
     added = read(db, seed, pa, [
         listed(league_match, home=pa, away=pb, kickoff=T0 + timedelta(days=3), league=1, league_name="League"),
         listed(cup, home=pa, away=555, kickoff=T0 - timedelta(days=3), short="FT", goals=(2, 1), home_name="Alpha FC", away_name="Minnow"),
@@ -133,7 +81,7 @@ def test_only_the_matches_of_competitions_not_followed_are_written_and_every_rea
 
 def test_a_reading_that_says_nothing_new_adds_no_match_row_but_is_logged(db: psycopg.Connection, seed: Seed) -> None:
     _, pa = team(db, "Alpha FC")
-    cup = next(_fixture)
+    cup = next_provider_fixture()
     entry = listed(cup, home=pa, away=555, kickoff=T0 + timedelta(days=3))
     assert read(db, seed, pa, [entry], T0) == 1
     assert read(db, seed, pa, [entry], T0 + timedelta(days=1)) == 0
@@ -147,7 +95,7 @@ def test_a_reading_that_says_nothing_new_adds_no_match_row_but_is_logged(db: psy
 
 def test_a_match_that_moves_or_is_played_is_a_new_row_and_the_first_sighting_is_kept(db: psycopg.Connection, seed: Seed) -> None:
     _, pa = team(db, "Alpha FC")
-    cup = next(_fixture)
+    cup = next_provider_fixture()
     first = T0 + timedelta(days=6)
     assert read(db, seed, pa, [listed(cup, home=pa, away=555, kickoff=first)], T0) == 1
     moved = first + timedelta(days=1)
@@ -166,14 +114,12 @@ def test_a_match_that_moves_or_is_played_is_a_new_row_and_the_first_sighting_is_
 
 def test_the_view_shows_each_match_once_from_the_teams_side(db: psycopg.Connection, seed: Seed) -> None:
     season, _ = followed_season(db)
-    cup_league = next(_league)
-    db.execute("INSERT INTO core.competitions (provider_league_id, name, type, entity_scope, competition_type, is_tracked) "
-               "VALUES (%s, 'Known Cup', 'cup', 'club', 'domestic_cup', false)", (cup_league,))
+    cup_league = known_competition(db, "Known Cup")
     a, pa = team(db, "Alpha FC")
     b, pb = team(db, "Beta FC")
     _, league_match = fixture(db, season, a, b, T0 - timedelta(days=7), status="finished", goals=(3, 1))
     away_match_id, away_match = fixture(db, season, b, a, T0 + timedelta(days=4))
-    cup, cup_unknown = next(_fixture), next(_fixture)
+    cup, cup_unknown = next_provider_fixture(), next_provider_fixture()
     read(db, seed, pa, [
         listed(league_match, home=pa, away=pb, kickoff=T0 - timedelta(days=7)),
         listed(cup, home=pa, away=555, kickoff=T0 - timedelta(days=3), short="FT", goals=(2, 0), league=cup_league, league_name="Known Cup",
@@ -198,7 +144,7 @@ def test_a_match_that_becomes_followed_later_is_not_shown_twice(db: psycopg.Conn
     season, _ = followed_season(db)
     a, pa = team(db, "Alpha FC")
     b, pb = team(db, "Beta FC")
-    provider_fixture = next(_fixture)
+    provider_fixture = next_provider_fixture()
     read(db, seed, pa, [listed(provider_fixture, home=pa, away=pb, kickoff=T0 + timedelta(days=2))])
     assert scalar(db.execute("SELECT count(*) FROM core.team_calendar WHERE team_id = %s", (a,))) == 1
     db.execute("INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, away_team_id, kickoff_at) "
@@ -220,7 +166,7 @@ def test_the_reader_knows_only_what_was_known_at_the_moment(db: psycopg.Connecti
     # a followed match to come, recorded before the moment / after it
     _, known_future = fixture(db, season, b, a, T0 + timedelta(days=5), created=T0 - timedelta(days=2))
     _, announced_later = fixture(db, season, b, a, T0 + timedelta(days=6), created=T0 + timedelta(hours=1))
-    cup, cup_late, cup_moved = next(_fixture), next(_fixture), next(_fixture)
+    cup, cup_late, cup_moved = next_provider_fixture(), next_provider_fixture(), next_provider_fixture()
     # a cup tie played three days ago, read by us only after the moment
     read(db, seed, pa, [listed(cup, home=pa, away=555, kickoff=T0 - timedelta(days=3), short="FT", goals=(2, 0))], T0 + timedelta(days=4))
     # a tie to come that the provider announced after the moment
@@ -250,7 +196,7 @@ def test_the_reader_tells_the_two_sources_apart_and_a_team_without_matches_is_em
     b, _pb = team(db, "Beta FC")
     c, _pc = team(db, "Gamma FC")
     fixture(db, season, a, b, T0 - timedelta(days=4), status="finished", goals=(0, 2))
-    read(db, seed, pa, [listed(next(_fixture), home=pa, away=555, kickoff=T0 - timedelta(days=2), short="FT", goals=(1, 0))])
+    read(db, seed, pa, [listed(next_provider_fixture(), home=pa, away=555, kickoff=T0 - timedelta(days=2), short="FT", goals=(1, 0))])
     cal = tc.load(db, team_id=a, at=T0, kickoff=T0 + timedelta(days=1))
     assert [(m.followed, m.competition, m.result()) for m in cal.matches] == [(True, "League", "0-2"), (False, "Copa del Rey", "1-0")]
     assert cal.state(T0 + timedelta(days=1)).complete

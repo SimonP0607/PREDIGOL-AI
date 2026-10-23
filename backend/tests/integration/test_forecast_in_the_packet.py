@@ -69,7 +69,7 @@ def test_the_packet_carries_what_predigol_stated_by_its_moment(world: World) -> 
     fid = forecast_world(world)
     packet = built(world, fid)
 
-    assert packet.version == packet_module.PACKET_VERSION == "packet-v6"
+    assert packet.version == packet_module.PACKET_VERSION == "packet-v7"
     block = forecast_of(packet)
     assert block["version"] == "forecast-v1"
     assert [m["market"] for m in block["markets"]] == ["1X2", "OU", "BTTS"], "the result, the total, both teams to score"
@@ -206,7 +206,7 @@ def tampered(packet: Packet, change: Any) -> dict[str, Any]:
 
 
 def test_the_rule_is_in_the_audit_and_the_version_says_so() -> None:
-    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v4" and RULE in (leakage.__doc__ or "")
+    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v5" and RULE in (leakage.__doc__ or "")
 
 
 def test_an_honest_packet_passes_one_check_per_market(world: World) -> None:  # noqa: F811
@@ -216,7 +216,7 @@ def test_an_honest_packet_passes_one_check_per_market(world: World) -> None:  # 
 
     assert audited(world) == {"checked": 3, "violations": 0, "examples": []}
     rows = world.db.execute("SELECT version, n_checked, n_violations FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert rows == [("leak-audit-v4", 3, 0)], "the run is kept in the ledger of the audit with its version"
+    assert rows == [("leak-audit-v5", 3, 0)], "the run is kept in the ledger of the audit with its version"
 
 
 def test_a_packet_without_a_forecast_is_not_counted(world: World) -> None:  # noqa: F811

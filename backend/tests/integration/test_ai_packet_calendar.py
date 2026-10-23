@@ -50,10 +50,12 @@ def test_the_packet_says_the_calendar_is_incomplete_and_claims_no_rest_gap(db: p
                                                                             seed: Seed) -> None:
     fixture = _world(db, seed, home_rest_days=8.0, away_rest_days=2.0)
     packet = PacketBuilder(db).build(fixture, at=AT)
-    assert packet is not None and packet.version == PACKET_VERSION == "packet-v6"
+    assert packet is not None and packet.version == PACKET_VERSION == "packet-v7"
     schedule = packet.content["schedule"]
     assert schedule["home"]["rest_days"] == 8.0 and schedule["away"]["rest_days"] == 2.0, "what is recorded stays"
-    assert schedule["calendar"]["scope"] == "tracked_competitions" and schedule["calendar"]["complete"] is None
+    assert schedule["calendar"]["scope"] == "tracked_competitions" and schedule["calendar"]["complete"] is False, \
+        "no list of either team was ever read: nothing says the calendar is whole"
+    assert schedule["calendar"]["home"]["reason"] == schedule["calendar"]["away"]["reason"] == "never_fetched"
     assert schedule["calendar"]["rest_days"] == "at_most" and schedule["calendar"]["matches_last_14d"] == "at_least"
     assert schedule["flags"] == ["away_short_rest"], "a short rest survives; 'home is better rested' does not"
     assert "home_rest_disadvantage" not in schedule["flags"] and "away_rest_disadvantage" not in schedule["flags"]

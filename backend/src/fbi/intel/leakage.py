@@ -1,4 +1,4 @@
-"""Data-leakage audit - ``leak-audit-v4``: did any decision use something that was not known at its ``known_at``?
+"""Data-leakage audit - ``leak-audit-v5``: did any decision use something that was not known at its ``known_at``?
 
 Run every night over the decisions taken on a Bogotá day, and in the tests. One row per rule
 (``intel.audit_checks``): how many decisions were checked and how many violate it, with examples. The rules:
@@ -40,6 +40,16 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              row that exists for that fixture, market, line and model, and no newer set of that market existed
                              by the packet's moment (a packet that read an older forecast than the one PrediGol had stated).
                              One check per market cited. Examples are packet ids.
+    calendar_known           (v5, plan F4) the AI packets built on the day that carry the calendar of a team in every competition
+                             (``schedule.calendar``, ``fbi.competitions.team_calendar``): the reading of a team's list the packet
+                             says it used (``fetched_at``) is a row that exists for that team, is not later than the packet's moment
+                             and is the newest one by then (a minute of leeway for a reading that was being committed); a side that
+                             says «never read» had no reading by then; a side that says it is whole (``complete``) was read at most
+                             96 hours before the moment. And every match the block cites (``recent``, ``upcoming``) is a row that
+                             exists with the kick-off cited: one PrediGol follows (``core.fixtures``) that kicked off before the
+                             moment or was recorded by it, one it does not (``core.calendar_matches``) that kicked off before the
+                             moment or was observed by it - so a cup tie announced after the packet was built was never in it. One
+                             check per side and per match cited. Examples are packet ids.
 """
 
 from __future__ import annotations
@@ -53,7 +63,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
 
-VERSION = "leak-audit-v4"
+VERSION = "leak-audit-v5"
 
 BASE = "SELECT d.* FROM intel.decisions d WHERE d.known_at >= %(start)s AND d.known_at < %(end)s"
 
@@ -210,6 +220,58 @@ RULES: dict[str, str] = {
                     OR EXISTS (SELECT 1 FROM models.match_forecasts n
                                 WHERE n.fixture_id = m.fixture_id AND n.version = m.version AND n.market_key = m.market
                                   AND n.line = m.line AND n.known_at > m.known_at AND n.known_at <= m.as_of)) AS bad
+              FROM m)
+        SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
+               (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
+    "calendar_known": f"""
+        WITH p AS ({PACKETS}), s AS (
+            SELECT p.id AS packet_id, p.as_of, v.side,
+                   (SELECT t.provider_team_id FROM core.teams t
+                     WHERE t.id = CASE WHEN (p.content #>> ARRAY['fixture', v.side, 'id']) ~ '^[0-9]{{1,15}}$'
+                                       THEN (p.content #>> ARRAY['fixture', v.side, 'id'])::bigint END) AS tp,
+                   (p.content #>> ARRAY['schedule', 'calendar', v.side, 'fetched_at'])::timestamptz AS fetched_at,
+                   COALESCE((p.content #>> ARRAY['schedule', 'calendar', v.side, 'complete'])::boolean, false) AS whole
+              FROM p CROSS JOIN (VALUES ('home'), ('away')) AS v(side)
+             WHERE jsonb_typeof(p.content #> ARRAY['schedule', 'calendar', v.side]) = 'object'),
+        m AS (
+            SELECT p.id AS packet_id, p.as_of, k.kind, e.x AS entry,
+                   CASE WHEN (e.x ->> 'provider_fixture_id') ~ '^[0-9]{{1,15}}$' THEN (e.x ->> 'provider_fixture_id')::bigint END AS fx,
+                   (e.x ->> 'kickoff_at')::timestamptz AS kickoff
+              FROM p CROSS JOIN (VALUES ('home'), ('away')) AS v(side) CROSS JOIN (VALUES ('recent'), ('upcoming')) AS k(kind)
+                   CROSS JOIN LATERAL jsonb_array_elements(
+                       CASE WHEN jsonb_typeof(p.content #> ARRAY['schedule', v.side, k.kind]) = 'array'
+                            THEN p.content #> ARRAY['schedule', v.side, k.kind] ELSE '[]'::jsonb END) AS e(x)
+             WHERE jsonb_typeof(e.x) = 'object'),
+        c AS (
+            SELECT s.packet_id,
+                   CASE WHEN s.tp IS NULL THEN true
+                        WHEN s.fetched_at IS NULL THEN
+                            s.whole OR EXISTS (SELECT 1 FROM core.calendar_fetches f
+                                                WHERE f.provider_team_id = s.tp AND f.fetched_at <= s.as_of - interval '1 minute')
+                        ELSE
+                            s.fetched_at > s.as_of
+                            OR NOT EXISTS (SELECT 1 FROM core.calendar_fetches f
+                                            WHERE f.provider_team_id = s.tp AND f.fetched_at = s.fetched_at)
+                            OR EXISTS (SELECT 1 FROM core.calendar_fetches n
+                                        WHERE n.provider_team_id = s.tp AND n.fetched_at > s.fetched_at
+                                          AND n.fetched_at <= s.as_of - interval '1 minute')
+                            OR (s.whole AND s.as_of - s.fetched_at > interval '96 hours')
+                   END AS bad
+              FROM s
+            UNION ALL
+            SELECT m.packet_id,
+                   m.fx IS NULL OR m.kickoff IS NULL OR NOT CASE
+                       WHEN (m.entry ->> 'followed') = 'true' THEN
+                           EXISTS (SELECT 1 FROM core.fixtures f
+                                    WHERE f.provider_fixture_id = m.fx
+                                      AND ((m.kind = 'recent' AND m.kickoff < m.as_of)
+                                           OR (m.kind = 'upcoming' AND (f.created_at <= m.as_of OR m.kickoff <= m.as_of))))
+                       ELSE
+                           EXISTS (SELECT 1 FROM core.calendar_matches x
+                                    WHERE x.provider_fixture_id = m.fx AND x.kickoff_at = m.kickoff
+                                      AND ((m.kind = 'recent' AND x.kickoff_at < m.as_of)
+                                           OR (m.kind = 'upcoming' AND (x.observed_at <= m.as_of OR x.kickoff_at <= m.as_of))))
+                   END
               FROM m)
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",

@@ -27,10 +27,15 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 import psycopg
 from psycopg.rows import dict_row
+
+VERSION: Final = "team-calendar-reader-1"
+"""What a packet cites as the version of the reading: the as-of rules and the meaning of «whole» below."""
+TABLES: Final = ("core.fixtures", "core.calendar_matches", "core.calendar_fetches")
+"""What the reader reads (a packet names them as the sources of its schedule)."""
 
 FRESH: Final = timedelta(hours=96)
 """A list read longer ago than this is not trusted to be whole: a team plays at most about every three days."""
@@ -40,6 +45,15 @@ AHEAD: Final = timedelta(days=7)
 """How far ahead of the match the next one is looked for."""
 FORTNIGHT: Final = timedelta(days=14)
 """The window of 'matches in the last fortnight' (congestion) and of the matches that must have been confirmed."""
+WEEK: Final = timedelta(days=7)
+MONTH: Final = timedelta(days=30)
+RECENT_N: Final = 3
+"""How many of the matches played last are listed beside the count (the packet and the page say them by competition)."""
+UPCOMING_N: Final = 2
+"""How many of the matches still to come within the week are listed."""
+
+Reason = Literal["never_fetched", "stale", "unconfirmed_match"]
+"""Why a calendar is not whole."""
 
 FOLLOWED: Final = "followed"
 CALENDAR: Final = "calendar"
@@ -125,8 +139,8 @@ class CalendarState:
     """Whether the calendar can be taken as the team's whole schedule for one match, and why not when it cannot."""
 
     complete: bool
-    reason: str | None
-    """never_fetched | stale | unconfirmed_match | None (complete)."""
+    reason: Reason | None
+    """Why not (None: complete)."""
     fetched_at: datetime | None
     age_hours: float | None
 
@@ -153,11 +167,26 @@ class TeamCalendar:
         """Matches played in the ``span`` before ``kickoff`` (and before the moment)."""
         return [m for m in self.played_before(kickoff) if m.kickoff_at >= kickoff - span]
 
-    def next_after(self, kickoff: datetime, within: timedelta = AHEAD) -> Match | None:
-        """The first match still to be played after ``kickoff`` within ``within`` (a cancelled or postponed one is not)."""
+    def outside_within(self, kickoff: datetime, span: timedelta) -> int:
+        """How many of the matches played in the ``span`` before ``kickoff`` are in a competition PrediGol does not follow:
+        what the packet, the page and the rest count would not have seen without this calendar."""
+        return sum(1 for m in self.played_within(kickoff, span) if not m.followed)
+
+    def recent(self, kickoff: datetime, n: int = RECENT_N) -> list[Match]:
+        """The ``n`` matches played last before ``kickoff`` (and the moment), newest first."""
+        return self.played_before(kickoff)[:n]
+
+    def upcoming(self, kickoff: datetime, n: int = UPCOMING_N, within: timedelta = AHEAD) -> list[Match]:
+        """The first ``n`` matches still to be played after ``kickoff`` within ``within`` (a cancelled or postponed one is
+        not), soonest first."""
         later = [m for m in self.matches if m.status_group not in NOT_PLAYED_STATES and not m.played
                  and kickoff < m.kickoff_at <= kickoff + within]
-        return min(later, key=lambda m: m.kickoff_at, default=None)
+        return sorted(later, key=lambda m: (m.kickoff_at, m.provider_fixture_id))[:n]
+
+    def next_after(self, kickoff: datetime, within: timedelta = AHEAD) -> Match | None:
+        """The first match still to be played after ``kickoff`` within ``within`` (a cancelled or postponed one is not)."""
+        coming = self.upcoming(kickoff, 1, within)
+        return coming[0] if coming else None
 
     def rest_days(self, kickoff: datetime) -> float | None:
         previous = self.previous(kickoff)

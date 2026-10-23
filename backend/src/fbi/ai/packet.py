@@ -32,12 +32,22 @@ from fbi.ai.absences import absences_as_of, checked_at_as_of
 from fbi.ai.pricing import approx_tokens
 from fbi.catalog.neutral_store import rule_in_force
 from fbi.competitions import context as phase_context
+from fbi.competitions import team_calendar as tc
 from fbi.competitions.stages import stage_of
 from fbi.competitions.tables import match_tables
 from fbi.people.officials import referee_as_of
 
-PACKET_VERSION = "packet-v6"
-"""v6 (plan F5): the ``forecast`` block - what PrediGol itself stated about the match by the packet's moment
+PACKET_VERSION = "packet-v7"
+"""v7 (plan F4): the ``schedule`` block is read from each team's calendar in EVERY competition (``fbi.competitions.team_calendar``),
+as it stood at the packet's moment, not only from the competitions PrediGol follows. Where a team's own list was read recently
+and has no doubt in it (``schedule.calendar.<side>.complete``) its ``rest_days``, ``matches_last_7d/14d/30d`` and ``next_match``
+are the team's real figures (``outside_last_14d`` says how many of the fortnight's matches were in a competition PrediGol does
+not follow); where it was not, they are the same bounds as in v6 (rest at most, matches at least) and the side says why
+(``never_fetched``, ``stale``, ``unconfirmed_match``). ``recent`` (the last three matches played) and ``upcoming`` (the next two
+within the week) name the competition of each, whether PrediGol follows it and whether the team was at home - and carry no
+score and no opponent. The flags say a side is at a disadvantage only when BOTH calendars are whole. A calendar that could not
+be read is ``schedule: {"error": ...}`` and named in ``missing``.
+v6 (plan F5): the ``forecast`` block - what PrediGol itself stated about the match by the packet's moment
 (``models.match_forecasts``): per core market the probability of each outcome with the interval the model measured, whether it
 was ``CALIBRATED`` (a champion calibrator exists) or ``UNCALIBRATED`` (the model's own number; ``basis`` says why) and which
 outcome is the likely one. It is a probability, not a price: it carries no odds and no edge, and the review and the brief are told
@@ -155,24 +165,6 @@ SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, r.reg_goals_home, r.r
  WHERE ((f.home_team_id = %(a)s AND f.away_team_id = %(b)s) OR (f.home_team_id = %(b)s AND f.away_team_id = %(a)s))
    AND f.kickoff_at < %(kickoff)s AND r.settled_at <= %(at)s AND r.reg_goals_home IS NOT NULL
  ORDER BY f.kickoff_at DESC LIMIT %(limit)s
-"""
-
-PREVIOUS_SQL = """
-SELECT max(f.kickoff_at) AS previous,
-       count(*) FILTER (WHERE f.kickoff_at >= %(kickoff)s - interval '14 days') AS last_14d
-  FROM core.fixtures f
- WHERE (f.home_team_id = %(team)s OR f.away_team_id = %(team)s) AND f.kickoff_at < %(kickoff)s
-   AND f.kickoff_at >= %(kickoff)s - interval '60 days' AND f.status_group = 'finished'
-"""
-
-NEXT_SQL = """
-SELECT f.kickoff_at, c.name AS competition, c.type AS competition_type
-  FROM core.fixtures f
-  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-  JOIN core.competitions c ON c.id = cs.competition_id
- WHERE (f.home_team_id = %(team)s OR f.away_team_id = %(team)s) AND f.kickoff_at > %(kickoff)s
-   AND f.kickoff_at <= %(kickoff)s + interval '7 days' AND f.created_at <= %(at)s
- ORDER BY f.kickoff_at LIMIT 1
 """
 
 ELO_RUN_SQL = """
@@ -365,6 +357,16 @@ def _ts(x: datetime | None) -> str | None:
     return None if x is None else x.isoformat()
 
 
+def _calendar_entry(m: tc.Match, kickoff: datetime, *, ahead: bool) -> dict[str, Any]:
+    """One match of a team's calendar as the packet says it: when, in which competition, whether PrediGol follows it and whether
+    the team was at home. No score and no opponent: the packet's ``form`` block has the results of the competitions it follows,
+    and what a calendar adds is how crowded the days around the match are."""
+    days = ((m.kickoff_at - kickoff) if ahead else (kickoff - m.kickoff_at)).total_seconds() / 86400
+    return {"provider_fixture_id": m.provider_fixture_id, "kickoff_at": _ts(m.kickoff_at),
+            "days_after" if ahead else "days_before": round(days, 1), "competition": m.competition,
+            "type": m.competition_type, "followed": m.followed, "home": m.home}
+
+
 def _rows(conn: psycopg.Connection[Any], sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(sql, params)
@@ -432,29 +434,16 @@ class PacketBuilder:
         content["phase"] = self._phase(fixture_id, at, sources, missing)
         content["standings"], content["stakes"] = self._standings(f, at, sources, missing)
         content["form"] = {}
-        content["schedule"] = {}
         for side, team in (("home", home), ("away", away)):
             past = _rows(conn, PAST_SQL, {"team": team, "kickoff": kickoff, "at": at, "limit": FORM_N})
             content["form"][side] = ctx.form(team, [ctx.PastMatch(r["kickoff_at"], r["home_team_id"], r["away_team_id"],
                                                                    int(r["reg_goals_home"]), int(r["reg_goals_away"]))
                                                      for r in past])
-            prev = _row(conn, PREVIOUS_SQL, {"team": team, "kickoff": kickoff})
-            nxt = _row(conn, NEXT_SQL, {"team": team, "kickoff": kickoff, "at": at})
-            content["schedule"][side] = {
-                "previous_kickoff": _ts(prev["previous"]) if prev else None,
-                "rest_days": ctx.rest_days(kickoff, prev["previous"]) if prev else None,
-                "matches_last_14d": int(prev["last_14d"]) if prev else 0,
-                "next_match": None if nxt is None else {
-                    "kickoff_at": _ts(nxt["kickoff_at"]), "competition": nxt["competition"],
-                    "days_after": round((nxt["kickoff_at"] - kickoff).total_seconds() / 86400, 1)},
-            }
         if not content["form"]["home"].get("n") and not content["form"]["away"].get("n"):
             missing.append("form")
         else:
             sources.append({"block": "form", "table": "core.fixture_results", "as_of": _ts(at)})
-        content["schedule"]["calendar"] = dict(ctx.CALENDAR_SCOPE)
-        content["schedule"]["flags"] = ctx.rest_flags_recorded(content["schedule"]["home"]["rest_days"],
-                                                               content["schedule"]["away"]["rest_days"])
+        content["schedule"] = self._schedule(f, at, sources, missing)
 
         h2h = _rows(conn, H2H_SQL, {"a": home, "b": away, "kickoff": kickoff, "at": at, "limit": H2H_N})
         content["h2h"] = {"n": len(h2h), "home_view": ctx.form(home, [
@@ -504,6 +493,45 @@ class PacketBuilder:
         content["quality"] = quality
         content["evidence"] = self._evidence(fixture_id, home, away, at, sources)
         return Packet(fixture_id, at, content, sources, sorted(set(missing)), quality)
+
+    def _schedule(self, f: dict[str, Any], at: datetime, sources: list[dict[str, Any]], missing: list[str]) -> dict[str, Any]:
+        """Each side's rest, congestion and next matches from its calendar in EVERY competition as it stood at ``at`` (plan F4,
+        ``fbi.competitions.team_calendar``): the matches of the competitions PrediGol follows and the rest of what the provider
+        lists for the team. ``calendar`` says, side by side, whether the list is whole (read recently, nothing unconfirmed) and
+        so whether the figures are the team's real ones or the bounds they were in packet-v6; the rest-gap flags are only claimed
+        when both calendars are whole. In a savepoint: a calendar that cannot be read never costs the rest of the packet."""
+        kickoff: datetime = f["kickoff_at"]
+        try:
+            with self.conn.transaction():
+                cals = {side: tc.load(self.conn, team_id=int(f[f"{side}_team_id"]), at=at, kickoff=kickoff)
+                        for side in ("home", "away")}
+        except psycopg.Error as exc:
+            missing.append("schedule")
+            return {"error": type(exc).__name__}
+        out: dict[str, Any] = {}
+        states: dict[str, dict[str, Any]] = {}
+        for side, cal in cals.items():
+            state = cal.state(kickoff)
+            states[side] = {"complete": state.complete, "reason": state.reason, "fetched_at": _ts(state.fetched_at),
+                            "age_hours": state.age_hours}
+            previous, nxt = cal.previous(kickoff), cal.next_after(kickoff)
+            out[side] = {
+                "previous_kickoff": None if previous is None else _ts(previous.kickoff_at),
+                "rest_days": cal.rest_days(kickoff),
+                "matches_last_7d": len(cal.played_within(kickoff, tc.WEEK)),
+                "matches_last_14d": len(cal.played_within(kickoff, tc.FORTNIGHT)),
+                "matches_last_30d": len(cal.played_within(kickoff, tc.MONTH)),
+                "outside_last_14d": cal.outside_within(kickoff, tc.FORTNIGHT),
+                "recent": [_calendar_entry(m, kickoff, ahead=False) for m in cal.recent(kickoff)],
+                "next_match": None if nxt is None else _calendar_entry(nxt, kickoff, ahead=True),
+                "upcoming": [_calendar_entry(m, kickoff, ahead=True) for m in cal.upcoming(kickoff)],
+            }
+        out["calendar"] = ctx.calendar_scope(states["home"], states["away"])
+        rests = (out["home"]["rest_days"], out["away"]["rest_days"])
+        out["flags"] = ctx.rest_flags(*rests) if out["calendar"]["complete"] else ctx.rest_flags_recorded(*rests)
+        sources.append({"block": "schedule", "tables": list(tc.TABLES), "as_of": _ts(at), "version": tc.VERSION,
+                        "fetched_at": {side: s["fetched_at"] for side, s in states.items()}})
+        return out
 
     def _phase(self, fixture_id: int, at: datetime, sources: list[dict[str, Any]], missing: list[str]
                ) -> dict[str, Any] | None:

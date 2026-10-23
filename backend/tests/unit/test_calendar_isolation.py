@@ -21,10 +21,12 @@ TABLES = re.compile(r"\bcore\.(?:calendar_matches|calendar_fetches|calendar_matc
 NAMES_THE_TABLES = {
     "ingestion/team_calendar.py": "the writer: the only module that inserts (the feed's normalizer)",
     "competitions/team_calendar.py": "the reader: the calendar of a team as of a moment, for whoever may know it",
+    "intel/leakage.py": "the nightly proof: the rule calendar_known holds a stored packet to these tables (it reads, it never writes)",
 }
 
 IMPORTS_THE_READER = {
     "competitions/team_calendar.py": "itself",
+    "ai/packet.py": "the packet: the schedule block of what the AI may know about a match (rest, congestion, next matches) as of its moment",
 }
 """The modules that import ``fbi.competitions.team_calendar``. They are added here as the packet, the page and the experiments take the
 calendar in (each with its reason); a file that decides - a model, a pick, a settlement - never is."""
