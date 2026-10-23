@@ -54,6 +54,7 @@ import {
   trackPercent,
   type KnowledgeLoad,
 } from "./knowledge";
+import { hasPlayerPage } from "./people";
 
 setLocale("es");
 afterEach(() => setLocale("es"));
@@ -930,6 +931,30 @@ describe("the best of the match and the formations", () => {
     const none: AfterMatch = { ...golden(), players: missing() };
     expect(bestPlayers(none)).toBeNull();
     expect(render(loaded(none), false)).not.toContain("knowledge-players");
+  });
+
+  test("a man the provider could not identify (id 0) is shown by name and has no page to link to", () => {
+    expect(hasPlayerPage(501, "Man 501")).toBe(true);
+    expect(hasPlayerPage(0, "Man 0")).toBe(false);
+    expect(hasPlayerPage(-3, "Man -3")).toBe(false);
+    expect(hasPlayerPage(null, "Man")).toBe(false);
+    expect(hasPlayerPage(501, null)).toBe(false);
+    expect(hasPlayerPage(501, "")).toBe(false);
+    const after: AfterMatch = {
+      ...golden(),
+      players: layer({
+        ...PLAYERS,
+        home: {
+          ...HOME_SIDE,
+          top: [{ player_id: 0, name: "Man 0", rating: 9.1, minutes: 90, goals: 0, assists: 0 }],
+        },
+        away: null,
+      }),
+    };
+    expect(bestPlayers(after)?.home.map((p) => [p.id, p.name, p.best])).toEqual([
+      [0, "Man 0", true],
+    ]);
+    expect(plain(render(loaded(after), false))).toContain("Man 0");
   });
 
   test("a rating the provider did not give is a dash, never a zero", () => {

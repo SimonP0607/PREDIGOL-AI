@@ -14,6 +14,7 @@ import { sectionCodeText } from "@/components/system/sectionCode";
 import { Card, ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { CenterState } from "./context";
 import { fmtDecimal, fmtStat, type FormChip, type ResultLetter, type StatRow } from "./model";
+import { hasPlayerPage } from "./people";
 
 /** A card with a small heading row. */
 export function Block({
@@ -132,7 +133,7 @@ export function PlayerName({
   className?: string | undefined;
 }) {
   const label = name ?? t("match.events.unknownPlayer");
-  if (admin && id !== null && name) {
+  if (admin && id !== null && hasPlayerPage(id, name)) {
     return (
       <Link
         to="/admin/players/$playerId"
