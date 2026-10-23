@@ -2,6 +2,7 @@
 
     python -m scripts.postmortems status                       # what is written, by version, source and verdict; the prices; the backlog
     python -m scripts.postmortems coverage --days 15           # selections in the universe and studied, day by day (Bogotá)
+    python -m scripts.postmortems closes --days 15             # the two closes a price is judged against, measured over the same selections
     python -m scripts.postmortems build                        # dry run: what a pass of the worker would write (the last 7 days)
     python -m scripts.postmortems build --apply                # write it
     python -m scripts.postmortems build --days 15 --apply      # the backfill: selections 400 at a time, one commit each; then the matches
@@ -24,6 +25,7 @@ import sys
 import time
 from collections import Counter
 from datetime import datetime, timedelta
+from statistics import StatisticsError, correlation, mean
 from typing import Any
 
 import psycopg
@@ -34,6 +36,7 @@ from fbi.core.clock import now as clock_now
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.intel import match_review, postmortem
+from fbi.market import closing_reference, closing_value
 
 MAX_ROUNDS = 400
 """Rounds of ``build`` at most (400 selections each): a safety stop, never reached by a real backfill."""
@@ -79,6 +82,16 @@ SELECT fixture_id, market_key, selection, line FROM intel.postmortems
  WHERE version = %(version)s AND market_key IS NOT NULL AND fixture_id = ANY(%(fixtures)s)
 """
 KICKOFFS_SQL = "SELECT id, kickoff_at FROM core.fixtures WHERE id = ANY(%(ids)s)"
+CLOSES_SQL = """
+SELECT p.clv::float8 AS clv, p.price_move::float8 AS price_move, p.p_close::float8 AS p_close, p.close_odds::float8 AS close_odds,
+       (p.evidence->'close'->>'minutes_to_ko')::int AS consensus_minutes, (p.evidence->'same_book_close'->>'minutes_to_ko')::int AS book_minutes
+  FROM intel.selection_postmortems p JOIN core.fixtures f ON f.id = p.fixture_id
+ WHERE f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
+"""
+"""The post-mortems of the matches of a window with the two closes each one stored: the last Shin consensus (``p_close``, ``clv``) and the
+provider's last price at the bookmaker the price was taken at (``close_odds``, ``price_move``), each with the minutes before kick-off."""
+LABELS = ("GOOD", "NEUTRAL", "BAD")
+"""The quality of a decision price, best first (``fbi.market.closing_value.quality``)."""
 
 
 def _n(value: int) -> str:
@@ -227,6 +240,94 @@ def coverage_command(conn: psycopg.Connection[Any], args: argparse.Namespace, *,
     return 0
 
 
+# ── closes ──────────────────────────────────────────────────────────────────
+
+
+def _quantile(values: list[float], q: float) -> float:
+    ordered = sorted(values)
+    position = q * (len(ordered) - 1)
+    low = int(position)
+    high = min(low + 1, len(ordered) - 1)
+    return ordered[low] + (ordered[high] - ordered[low]) * (position - low)
+
+
+def _spread(values: list[float], digits: int = 0) -> str:
+    if not values:
+        return "n/a"
+    return ", ".join(f"{name} {_quantile(values, q):.{digits}f}" for name, q in (("p10", 0.1), ("median", 0.5), ("p90", 0.9)))
+
+
+def _pct(value: float) -> str:
+    return f"{100 * value:+.1f} %"
+
+
+def closes_command(conn: psycopg.Connection[Any], args: argparse.Namespace, *, now: datetime) -> int:
+    """The two closes a price is judged against, over the SAME selections (plan F8.7): how many selections have each, how near kick-off each was
+    captured, and how much the label of a price (GOOD / NEUTRAL / BAD) depends on which of the two it is measured at. It measures; the choice of the
+    close CLV is measured at is the owner's (``fbi.market.closing_reference``)."""
+    far_after = closing_reference.FAR_FROM_KICKOFF
+    since = day_start(local_day(now - timedelta(days=args.days)))
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(CLOSES_SQL, {"since": since, "until": now})
+        rows = cur.fetchall()
+    total = len(rows)
+    print(f"the two closes a price is judged against, over the same selections: the matches of the last {args.days} days "
+          f"({_n(total)} post-mortems)")
+    if not rows:
+        print("nothing is written in that window: python -m scripts.postmortems build --apply")
+        return 0
+    consensus = [r for r in rows if r["p_close"] is not None]
+    book = [r for r in rows if r["close_odds"] is not None]
+    both = [r for r in consensus if r["close_odds"] is not None and r["clv"] is not None and r["price_move"] is not None]
+    far = [r for r in consensus if r["consensus_minutes"] is not None and r["consensus_minutes"] > far_after]
+    print(f"  1. the last Shin consensus before kick-off ({closing_reference.REFERENCE}; what CLV is measured at): {_n(len(consensus))} "
+          f"({_share(len(consensus), total)}); captured, in minutes before kick-off: "
+          f"{_spread([float(r['consensus_minutes']) for r in consensus if r['consensus_minutes'] is not None])}; "
+          f"more than {far_after} minutes before it: {_share(len(far), len(consensus))}")
+    print(f"  2. the provider's last price at the bookmaker the price was taken at (what the price move is measured at): {_n(len(book))} "
+          f"({_share(len(book), total)}); stamped, in minutes before kick-off: "
+          f"{_spread([float(r['book_minutes']) for r in book if r['book_minutes'] is not None])}")
+    both_n = sum(1 for r in consensus if r["close_odds"] is not None)
+    print(f"  both: {_n(both_n)} ({_share(both_n, total)}); only the first: {_n(len(consensus) - both_n)}; "
+          f"only the second: {_n(len(book) - both_n)}; neither: {_n(total - len(consensus) - len(book) + both_n)}")
+    if len(both) < 2:
+        print("  too few selections with both to compare them")
+        return 0
+    clvs = [float(r["clv"]) for r in both]
+    moves = [float(r["price_move"]) for r in both]
+    try:
+        corr = f"{correlation(clvs, moves):.2f}"
+    except StatisticsError:  # one of the two does not vary
+        corr = "n/a"
+    print(f"over the {_n(len(both))} that have both:")
+    print(f"  mean CLV {_pct(mean(clvs))}, mean price move {_pct(mean(moves))}: the gap, {100 * (mean(moves) - mean(clvs)):.1f} points, is about the "
+          f"closing margin of the books (clv = (1 + price move) x p_close x close_odds - 1); correlation {corr}")
+    ratios = [float(r["p_close"]) * float(r["close_odds"]) for r in both]
+    print(f"  p_close x close_odds, about 1 / (1 + margin) when both closes are the same moment: {_spread(ratios, 2)}; above 1.00 in "
+          f"{_share(sum(1 for x in ratios if x > 1), len(ratios))} (the book's own last price was above the fair price of the consensus)")
+    cells = Counter((closing_value.quality(c), closing_value.quality(m)) for c, m in zip(clvs, moves, strict=True))
+    print("  the quality of the price by CLV (rows) and by the price move with the same band of +-1 % (columns; to compare, not a rule):")
+    print(f"    {'':<8}" + "".join(f"{name:>9}" for name in LABELS))
+    for label in LABELS:
+        print(f"    {label:<8}" + "".join(f"{_n(cells[(label, other)]):>9}" for other in LABELS))
+    agree = sum(cells[(label, label)] for label in LABELS)
+    rank = {name: i for i, name in enumerate(LABELS)}  # GOOD 0, NEUTRAL 1, BAD 2
+    worse = sum(n for (by_clv, by_move), n in cells.items() if rank[by_clv] > rank[by_move])
+    print(f"  the two labels agree in {_share(agree, len(both))}; where they differ ({_n(len(both) - agree)}), CLV says worse than the price move "
+          f"in {_share(worse, len(both) - agree)} (the margin of the book is in the price move, not in CLV)")
+
+    def agreement(subset: list[dict[str, Any]]) -> str:
+        hits = sum(1 for r in subset if closing_value.quality(float(r["clv"])) == closing_value.quality(float(r["price_move"])))
+        return f"{_share(hits, len(subset))} of {_n(len(subset))}"
+
+    near = [r for r in both if r["consensus_minutes"] is not None and r["consensus_minutes"] <= far_after]
+    distant = [r for r in both if r["consensus_minutes"] is not None and r["consensus_minutes"] > far_after]
+    print(f"  they agree in {agreement(near)} when the consensus was captured at most {far_after} minutes before kick-off, "
+          f"in {agreement(distant)} when it was captured earlier")
+    print("nothing here changes the close CLV is measured at: that is the owner's decision (fbi.market.closing_reference)")
+    return 0
+
+
 # ── main ────────────────────────────────────────────────────────────────────
 
 
@@ -242,6 +343,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--days", type=int, default=7)
     c = sub.add_parser("coverage", help="selections in the universe and studied, day by day (read only)")
     c.add_argument("--days", type=int, default=15)
+    k = sub.add_parser("closes", help="the two closes a price is judged against, measured over the same selections (read only)")
+    k.add_argument("--days", type=int, default=15, help="matches that kicked off in the last N days (default %(default)s)")
     return ap
 
 
@@ -254,7 +357,8 @@ def main(argv: list[str] | None = None) -> int:
             if not args.apply:
                 conn.rollback()  # a dry run writes nothing: end its transaction without keeping anything
             return code
-        code = status_command(conn, args, now=clock_now()) if args.command == "status" else coverage_command(conn, args, now=clock_now())
+        reads = {"status": status_command, "coverage": coverage_command, "closes": closes_command}
+        code = reads[args.command](conn, args, now=clock_now())
         conn.rollback()  # read only
         return code
 
