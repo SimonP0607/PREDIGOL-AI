@@ -214,7 +214,11 @@ por petición, partidos de competiciones raras): eso se valida con 1–3 peticio
    de empezar.
 2. `predigolctl deploy`: respaldo propio del despliegue, migración, permisos, reinicio y salud. Con las tablas vacías todo se comporta como antes.
 3. La primera pasada del job de referencia empieza a leer calendarios (60 por pasada). Antes de dejarlo correr se **valida con 1–3 peticiones
-   reales** que la respuesta de `fixtures?team=&season=` es la esperada, y se mide el gasto real frente a la estimación.
+   reales** que la respuesta de `fixtures?team=&season=` es la esperada, y se mide el gasto real frente a la estimación. La validación se hace
+   **dentro del contenedor del worker** (`docker exec -w /app predigol-worker python -m scripts.reference_refresh --feed team_fixtures
+   --per-feed 3 --max-requests 3`): el contenedor de operaciones (`ops`) monta el directorio RAW en solo lectura, así que una consulta al proveedor
+   desde él recibe la respuesta pero no puede guardarla y termina con `OSError: Read-only file system` (una corrida fallida en el registro y,
+   como mucho, una petición gastada); desde el worker usa su rol de base de datos y su volumen, igual que la pasada programada.
 4. A las pocas horas se mira `coverage` (cuántos partidos de la semana tienen calendario completo) y en el Resumen de un partido con el «Modo
    de evaluación» encendido, el bloque «Calendario y descanso».
 5. Se vigila (abajo) y se anota aquí el «Resultado en producción».
