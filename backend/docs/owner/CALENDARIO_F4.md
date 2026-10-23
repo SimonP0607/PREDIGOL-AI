@@ -219,6 +219,13 @@ por petición, partidos de competiciones raras): eso se valida con 1–3 peticio
    de evaluación» encendido, el bloque «Calendario y descanso».
 5. Se vigila (abajo) y se anota aquí el «Resultado en producción».
 
+**Este lanzamiento arrastra también la corrección de F5.** El primer despliegue de F5 puso el escritor del pronóstico en un paquete cuyo código
+define «la versión del modelo» y renovó la versión de todos los modelos (ver «Lo que se aprendió» en `PRONOSTICO_F5.md`: 92.937 pronósticos
+escritos otra vez). F4 lleva ese archivo a su sitio (`fbi.forecasting`): al reiniciar, la huella del código de modelos vuelve a `mc9a7bec97ca` y
+los modelos escriben otra vez bajo las versiones de antes de F5. Una versión que ya existe no se crea de nuevo y un pronóstico solo se escribe si
+cambiaron sus entradas desde el último de esa versión, así que **no se espera una reescritura masiva**. La verificación posterior lo comprueba
+(las versiones que escriben en las primeras horas deben terminar solo en `@mc9a7bec97ca`) y el resultado se anota aquí.
+
 ## Cómo deshacerlo
 
 * **Dejar de leer calendarios:** `FBI_TEAM_CALENDAR=0` y reiniciar el worker. Lo leído se queda; el paquete y la página siguen diciendo lo que
@@ -226,7 +233,10 @@ por petición, partidos de competiciones raras): eso se valida con 1–3 peticio
 * **Ocultarlo a los usuarios:** `FBI_CALENDAR_USERS=0` (valor de fábrica) y reiniciar la API.
 * **Quitarlo todo:** `predigolctl rollback` a la versión anterior del código y `alembic downgrade 0086`, que borra las dos tablas y las dos
   vistas. Lo único que se pierde es lo leído del proveedor (se puede volver a leer), así que antes se hace la copia de despliegue habitual.
-  `packet-v6` y `leak-audit-v4` vuelven con el código; los paquetes ya escritos solo se añaden y no se tocan.
+  `packet-v6` y `leak-audit-v4` vuelven con el código; los paquetes ya escritos solo se añaden y no se tocan. **Ojo con el código de F5:** volver
+  a él devuelve la huella de modelos `mce0abbbb30d` (el escritor del pronóstico estaba en `predictions/`) y los modelos reescribirían sus
+  pronósticos bajo versiones nuevas una vez más; por eso, si solo hay que parar el calendario, se prefieren los dos interruptores de arriba y no el
+  `rollback` del código.
 
 ## Lo que decides tú
 
