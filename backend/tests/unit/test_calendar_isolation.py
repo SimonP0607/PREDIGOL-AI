@@ -32,12 +32,16 @@ IMPORTS_THE_READER = {
                                  "itself (research/rest_ab.py) takes the numbers and never sees the calendar",
     "scripts/calendar_features.py": "the experiments' command (F4.4): loads the calendars, reports how much of them there is, exports and "
                                     "runs the pre-registered test; it reads and trains nothing production reads",
+    "intel/factors.py": "the registry of context factors (F6): the VERSION of the reader, which a validation of rest and congestion is "
+                        "about, so that changing the reader sends the factor back to DESCRIPTIVE; it reads that constant and nothing else",
 }
 """The modules that import ``fbi.competitions.team_calendar``. They are added here as the packet, the page and the experiments take the
 calendar in (each with its reason); a file that decides - a model, a pick, a settlement - never is."""
 
 DECIDING = {"models", "predictions", "picks", "domain", "backtesting", "intel", "parlays", "market", "odds", "datasets"}
-"""The packages that train a model, predict, decide or settle. ``intel`` is allowed one file: the nightly proof that no packet read the future."""
+"""The packages that train a model, predict, decide or settle. ``intel`` is allowed two files: the nightly proof that no packet read the
+future, and the registry of context factors (it names the reader's version, to say which code a validation is about, and reads nothing)."""
+NOT_DECIDING = {"intel/leakage.py", "intel/factors.py"}
 
 
 def python_files(*roots: Path) -> list[Path]:
@@ -89,7 +93,7 @@ def test_only_the_feed_imports_the_writer() -> None:
 
 
 def test_nothing_that_trains_predicts_decides_or_settles_names_or_imports_the_calendar() -> None:
-    deciding = [p for p in python_files(SRC) if rel(p).split("/")[0] in DECIDING and rel(p) != "intel/leakage.py"]
+    deciding = [p for p in python_files(SRC) if rel(p).split("/")[0] in DECIDING and rel(p) not in NOT_DECIDING]
     assert deciding, "the packages that decide are where the test looks"
     for path in deciding:
         text = path.read_text(encoding="utf-8")
