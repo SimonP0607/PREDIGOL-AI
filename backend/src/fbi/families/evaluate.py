@@ -21,7 +21,7 @@ from typing import Any
 
 import numpy as np
 
-from fbi.families.counts import MAX_COUNT, nb_pmf, normalised, over_under
+from fbi.families.counts import MAX_COUNT, difference_probs, nb_pmf, normalised, over_under
 from fbi.families.fit import (
     DAY,
     Dispersion,
@@ -115,14 +115,37 @@ def _pmfs(mu_h: float, mu_a: float, d: Dispersion) -> tuple[Any, Any, Any]:
     return normalised(ph), normalised(pa), normalised(pt)
 
 
-def summarise(ev: Evaluation, lines: Sequence[float] = ()) -> dict[str, Any]:
-    """The numbers that say whether the family learnt something: the log score of what happened against the baseline's, and for each line the
-    log loss, the Brier score and the reliability of "over" on the total."""
+def _line_block(pm: Any, pb: Any, y: Any) -> dict[str, Any]:
+    """The scores of one yes/no bet (an over): the model's probabilities ``pm`` and the baseline's ``pb`` against what happened ``y``."""
+    n = len(y)
+    pm_c, pb_c = np.clip(pm, 1e-6, 1 - 1e-6), np.clip(pb, 1e-6, 1 - 1e-6)
+    ll_m = -(y * np.log(pm_c) + (1 - y) * np.log(1 - pm_c))
+    ll_b = -(y * np.log(pb_c) + (1 - y) * np.log(1 - pb_c))
+    edges = np.linspace(0.0, 1.0, BINS + 1)
+    which = np.clip(np.digitize(pm, edges) - 1, 0, BINS - 1)
+    reliability = [{"bin": b, "n": int((which == b).sum()), "mean_p": float(pm[which == b].mean()), "observed": float(y[which == b].mean())}
+                   for b in range(BINS) if (which == b).any()]
+    return {
+        "over_rate": float(y.mean()),
+        "log_loss_model": float(ll_m.mean()), "log_loss_baseline": float(ll_b.mean()),
+        "log_loss_gain": float((ll_b - ll_m).mean()), "log_loss_gain_se": float((ll_b - ll_m).std(ddof=1) / math.sqrt(n)) if n > 1 else None,
+        "brier_model": float(((pm - y) ** 2).mean()), "brier_baseline": float(((pb - y) ** 2).mean()),
+        "reliability": reliability,
+    }
+
+
+def summarise(ev: Evaluation, lines: Sequence[float] = (), side_lines: Sequence[float] = ()) -> dict[str, Any]:
+    """The numbers that say whether the family learnt something: the log score of what happened against the baseline's, and for each bet the
+    log loss, the Brier score and the reliability: ``lines`` are the lines of the TOTAL, ``side_lines`` those of ONE side (home and away
+    each), and ``result`` is who had more (the "1X2" of the count)."""
     n = len(ev.rows)
     if n == 0:
         return {"measure": ev.measure, "n": 0, "skipped_blocks": ev.skipped_blocks}
     diffs: dict[str, list[float]] = {"home": [], "away": [], "total": []}
     line_stats: dict[float, dict[str, list[float]]] = {ln: {"p_model": [], "p_base": [], "y": []} for ln in lines}
+    side_stats: dict[tuple[str, float], dict[str, list[float]]] = {(side, ln): {"p_model": [], "p_base": [], "y": []}
+                                                                   for side in ("home", "away") for ln in side_lines}
+    result_gain: list[float] = []
     for r in ev.rows:
         mh, mah, mth = _pmfs(r.mu_home, r.mu_away, ev.model)
         bh, bah, bth = _pmfs(r.base_home, r.base_away, ev.baseline)
@@ -134,6 +157,13 @@ def summarise(ev: Evaluation, lines: Sequence[float] = ()) -> dict[str, Any]:
             line_stats[ln]["p_model"].append(over_under(mth, ln).over)
             line_stats[ln]["p_base"].append(over_under(bth, ln).over)
             line_stats[ln]["y"].append(1.0 if total > ln else 0.0)
+        for (side, ln), st in side_stats.items():
+            pmf_m, pmf_b, y = (mh, bh, r.y_home) if side == "home" else (mah, bah, r.y_away)
+            st["p_model"].append(over_under(pmf_m, ln).over)
+            st["p_base"].append(over_under(pmf_b, ln).over)
+            st["y"].append(1.0 if y > ln else 0.0)
+        happened = 0 if r.y_home > r.y_away else (1 if r.y_home == r.y_away else 2)
+        result_gain.append(_log(difference_probs(mh, mah)[happened]) - _log(difference_probs(bh, bah)[happened]))
     out: dict[str, Any] = {
         "measure": ev.measure, "n": n, "skipped_blocks": ev.skipped_blocks, "params": ev.params,
         "dispersion_model": {"home": ev.model.home, "away": ev.model.away, "total": ev.model.total},
@@ -141,26 +171,17 @@ def summarise(ev: Evaluation, lines: Sequence[float] = ()) -> dict[str, Any]:
         "mean_observed": {"home": float(np.mean([r.y_home for r in ev.rows])), "away": float(np.mean([r.y_away for r in ev.rows]))},
         "log_score_gain_per_match": {},
         "lines": {},
+        "side_lines": {},
     }
     for side, d in diffs.items():
         arr = np.array(d)
         out["log_score_gain_per_match"][side] = {"mean": float(arr.mean()), "se": float(arr.std(ddof=1) / math.sqrt(n)) if n > 1 else None}
-    for ln, s in line_stats.items():
-        pm, pb, y = np.array(s["p_model"]), np.array(s["p_base"]), np.array(s["y"])
-        pm_c, pb_c = np.clip(pm, 1e-6, 1 - 1e-6), np.clip(pb, 1e-6, 1 - 1e-6)
-        ll_m = -(y * np.log(pm_c) + (1 - y) * np.log(1 - pm_c))
-        ll_b = -(y * np.log(pb_c) + (1 - y) * np.log(1 - pb_c))
-        edges = np.linspace(0.0, 1.0, BINS + 1)
-        which = np.clip(np.digitize(pm, edges) - 1, 0, BINS - 1)
-        reliability = [{"bin": b, "n": int((which == b).sum()), "mean_p": float(pm[which == b].mean()), "observed": float(y[which == b].mean())}
-                       for b in range(BINS) if (which == b).any()]
-        out["lines"][str(ln)] = {
-            "over_rate": float(y.mean()),
-            "log_loss_model": float(ll_m.mean()), "log_loss_baseline": float(ll_b.mean()),
-            "log_loss_gain": float((ll_b - ll_m).mean()), "log_loss_gain_se": float((ll_b - ll_m).std(ddof=1) / math.sqrt(n)) if n > 1 else None,
-            "brier_model": float(((pm - y) ** 2).mean()), "brier_baseline": float(((pb - y) ** 2).mean()),
-            "reliability": reliability,
-        }
+    for ln, st in line_stats.items():
+        out["lines"][str(ln)] = _line_block(np.array(st["p_model"]), np.array(st["p_base"]), np.array(st["y"]))
+    for (side, ln), st in side_stats.items():
+        out["side_lines"][f"{side} {ln}"] = _line_block(np.array(st["p_model"]), np.array(st["p_base"]), np.array(st["y"]))
+    arr = np.array(result_gain)
+    out["result"] = {"log_score_gain": float(arr.mean()), "se": float(arr.std(ddof=1) / math.sqrt(n)) if n > 1 else None}
     return out
 
 

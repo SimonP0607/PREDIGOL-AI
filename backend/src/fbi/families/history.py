@@ -18,7 +18,7 @@ here as numbers of a match that is over, never as a fact about a match that is n
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
@@ -72,3 +72,20 @@ def load(conn: psycopg.Connection[Any], measure: str, *, since: datetime, cutoff
                 Match(int(r["fixture_id"]), r["kickoff_at"], int(r["home_team_id"]), int(r["away_team_id"]), int(r["home"]), int(r["away"]),
                       bool(r["is_neutral"]) if use_neutral else False))
     return out
+
+
+def export_statement(measure: str, *, since: datetime, cutoff: datetime, use_neutral: bool = False) -> str:
+    """The same read as ``load``, written as one ``COPY ... TO STDOUT`` statement (CSV, with a header) whose columns are those of
+    ``scripts.families`` exports: to run it with ``psql`` where Python is not at hand, read-only, and bring the history out as a file. The
+    window is written in as literals (they are instants made by the caller, not text from anywhere), so the statement is self-contained.
+    """
+    home_col, away_col = columns_of(measure)
+    start, latest = since.astimezone(UTC).isoformat(), latest_kickoff(cutoff).astimezone(UTC).isoformat()
+    neutral = "CASE WHEN f.is_neutral THEN 1 ELSE 0 END" if use_neutral else "0"
+    return ("COPY (SELECT o.competition_id, o.fixture_id, "
+            "to_char(o.kickoff_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS') || '+00:00' AS kickoff_at, "
+            f"f.home_team_id AS home_id, f.away_team_id AS away_id, o.{home_col} AS home, o.{away_col} AS away, {neutral} AS neutral "
+            "FROM market.fixture_outcomes o JOIN core.fixtures f ON f.id = o.fixture_id "
+            f"WHERE o.is_tracked AND o.kickoff_at >= TIMESTAMPTZ '{start}' AND o.kickoff_at <= TIMESTAMPTZ '{latest}' "
+            f"AND o.{home_col} IS NOT NULL AND o.{away_col} IS NOT NULL ORDER BY o.competition_id, o.kickoff_at, o.fixture_id) "
+            "TO STDOUT WITH (FORMAT csv, HEADER true)")

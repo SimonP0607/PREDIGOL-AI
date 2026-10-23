@@ -4,6 +4,7 @@ result is not known yet."""
 from __future__ import annotations
 
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -66,3 +67,21 @@ def test_the_start_of_the_window_is_respected(db: psycopg.Connection[Any], world
     after_the_first_two = KICKOFF + timedelta(hours=1, minutes=30)
     got = {m.fixture_id for m in flat(history.load(db, "goals_ft", since=after_the_first_two, cutoff=LATER))}
     assert world["plain"] not in got and world["extra_time"] not in got and world["no_break"] in got
+
+
+def test_the_copy_statement_reads_exactly_what_the_door_reads(db: psycopg.Connection[Any], world: dict[str, int], tmp_path: Path) -> None:  # noqa: F811
+    """The statement that brings a history out with ``psql`` (where Python is not at hand) is the same read as ``load``: same matches, same
+    teams, same counts, same order, and the same wait for the result."""
+    from scripts import families as cli
+
+    for measure in ("goals_1h", "goals_2h", "goals_ft", "corners_ft", "cards_lines_ft"):
+        for cutoff in (LATER, KICKOFF + OUTCOME_KNOWN_AFTER + timedelta(hours=2, minutes=30)):
+            sql = history.export_statement(measure, since=EARLIER, cutoff=cutoff)
+            with db.cursor() as cur, cur.copy(sql) as copy:
+                data = b"".join(bytes(block) for block in copy)
+            path = tmp_path / f"{measure}.csv"
+            path.write_bytes(data)
+            assert cli.read_csv(path) == history.load(db, measure, since=EARLIER, cutoff=cutoff), (measure, cutoff)
+    assert history.load(db, "goals_1h", since=EARLIER, cutoff=LATER), "and the comparison is not between two empty histories"
+    with pytest.raises(history.UnknownMeasureError):
+        history.export_statement("corners_1h", since=EARLIER, cutoff=LATER)

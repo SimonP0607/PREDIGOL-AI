@@ -4,6 +4,7 @@
     python -m scripts.families export --measure corners_ft --out corners.csv.gz     # the training history, read-only, to analyse elsewhere
     python -m scripts.families evaluate --measure corners_ft         # walk-forward against the baseline of "nothing known about the teams"
     python -m scripts.families evaluate --measure corners_ft --csv corners.csv.gz --tune --json
+    python -m scripts.families sql --measure corners_ft              # the same history as one COPY statement, to run with psql where Python is not at hand
     python -m scripts.families halves                                # the bets of the halves (HT/FT, highest half, BTTS by half...) derived from two fits
 
 ``evaluate`` fits each competition on the matches already known at the start of every block of ``--step-days`` and predicts the block; it reports
@@ -17,12 +18,13 @@ from __future__ import annotations
 import argparse
 import csv
 import gzip
+import io
 import json
 import sys
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
 import psycopg
 
@@ -41,20 +43,37 @@ DEFAULT_LINES: dict[str, tuple[float, ...]] = {
     "goals_2h": (1.5, 2.5),
     "shots_on_target_ft": (7.5, 8.5, 9.5),
 }
+DEFAULT_SIDE_LINES: dict[str, tuple[float, ...]] = {
+    "corners_ft": (3.5, 4.5, 5.5, 6.5),
+    "cards_lines_ft": (1.5, 2.5),
+    "yellow_ft": (1.5, 2.5),
+    "goals_1h": (0.5,),
+    "goals_2h": (0.5, 1.5),
+    "shots_on_target_ft": (3.5, 4.5, 5.5),
+}
 HISTORY_DAYS = 3 * 365
 FIELDS = ("competition_id", "fixture_id", "kickoff_at", "home_id", "away_id", "home", "away", "neutral")
 
 
-def write_csv(path: Path, by_competition: dict[int, list[Match]]) -> int:
+def _write_rows(fh: TextIO, by_competition: dict[int, list[Match]]) -> int:
     n = 0
-    with gzip.open(path, "wt", newline="", encoding="utf-8") if path.suffix == ".gz" else path.open("w", newline="", encoding="utf-8") as fh:
-        w = csv.writer(fh)
-        w.writerow(FIELDS)
-        for competition, matches in sorted(by_competition.items()):
-            for m in matches:
-                w.writerow([competition, m.fixture_id, m.kickoff_at.isoformat(), m.home_id, m.away_id, m.home, m.away, int(m.neutral)])
-                n += 1
+    w = csv.writer(fh)
+    w.writerow(FIELDS)
+    for competition, matches in sorted(by_competition.items()):
+        for m in matches:
+            w.writerow([competition, m.fixture_id, m.kickoff_at.isoformat(), m.home_id, m.away_id, m.home, m.away, int(m.neutral)])
+            n += 1
     return n
+
+
+def write_csv(path: Path, by_competition: dict[int, list[Match]]) -> int:
+    """Write the history to ``path`` (gzip when it ends in .gz) or, for ``-``, to the standard output as gzip: the way to bring it out of a
+    one-off container without mounting a folder."""
+    if str(path) == "-":
+        with gzip.GzipFile(fileobj=sys.stdout.buffer, mode="wb") as raw, io.TextIOWrapper(raw, encoding="utf-8", newline="") as fh:
+            return _write_rows(fh, by_competition)
+    with gzip.open(path, "wt", newline="", encoding="utf-8") if path.suffix == ".gz" else path.open("w", newline="", encoding="utf-8") as fh:
+        return _write_rows(fh, by_competition)
 
 
 def read_csv(path: Path) -> dict[int, list[Match]]:
@@ -103,7 +122,8 @@ def evaluate_command(args: argparse.Namespace) -> int:
         xi, penalty, grid = evaluate.tune(usable, measure=args.measure, start=start, step_days=args.step_days)
     ev = evaluate.walk_forward(usable, measure=args.measure, start=start, end=end, step_days=args.step_days, xi=xi, penalty=penalty)
     lines = tuple(float(x) for x in args.lines.split(",")) if args.lines else DEFAULT_LINES.get(args.measure, ())
-    summary = evaluate.summarise(ev, lines)
+    side_lines = tuple(float(x) for x in args.side_lines.split(",")) if args.side_lines else DEFAULT_SIDE_LINES.get(args.measure, ())
+    summary = evaluate.summarise(ev, lines, side_lines)
     summary["tuning_grid"] = grid
     summary["window"] = {"start": start.isoformat(), "end": end.isoformat()}
     comps = evaluate.by_competition(ev)
@@ -129,6 +149,11 @@ def print_summary(s: dict[str, Any]) -> None:
     for line, d in s["lines"].items():
         print(f"  over {line}: rate {d['over_rate']:.3f} · log loss {d['log_loss_model']:.4f} vs {d['log_loss_baseline']:.4f} "
               f"(gain {d['log_loss_gain']:+.4f}, se {d['log_loss_gain_se']:.4f}) · brier {d['brier_model']:.4f} vs {d['brier_baseline']:.4f}")
+    for line, d in s["side_lines"].items():
+        print(f"  {line}: rate {d['over_rate']:.3f} · log loss {d['log_loss_model']:.4f} vs {d['log_loss_baseline']:.4f} "
+              f"(gain {d['log_loss_gain']:+.4f}, se {d['log_loss_gain_se']:.4f})")
+    r = s["result"]
+    print(f"  who has more (1X2 of the count): log-score gain over the baseline {r['log_score_gain']:+.4f} nats/match (se {r['se']:.4f})")
     if s["lines"]:
         first = next(iter(s["lines"]))
         print(f"  reliability of over {first} (predicted -> observed): " + " ".join(
@@ -180,11 +205,18 @@ def print_halves(r: dict[str, Any]) -> None:
     print("  HT/FT cells, predicted -> observed: " + " ".join(f"{x['cell']} {x['mean_predicted']:.3f}->{x['observed']:.3f}" for x in r["htft_calibration"]))
 
 
+def sql_command(args: argparse.Namespace) -> int:
+    """Print the statement that reads the history of ``--measure`` (no database is touched)."""
+    now = clock_now()
+    print(history.export_statement(args.measure, since=now - timedelta(days=HISTORY_DAYS + args.months * 31), cutoff=now))
+    return 0
+
+
 def export_command(args: argparse.Namespace) -> int:
     now = clock_now()
     data = load(args, now)
     n = write_csv(Path(args.out), data)
-    print(f"{n} matches of {len(data)} competitions written to {args.out}")
+    print(f"{n} matches of {len(data)} competitions written to {args.out}", file=sys.stderr if args.out == "-" else sys.stdout)
     return 0
 
 
@@ -201,7 +233,8 @@ def build_parser() -> argparse.ArgumentParser:
     ph.add_argument("--penalty", type=float, default=evaluate.DEFAULT_PENALTY, help="shrinkage of the strengths (default %(default)s)")
     ph.add_argument("--tune", action="store_true", help="choose xi and penalty, per half, on the window before the test window")
     ph.add_argument("--json", action="store_true")
-    for name, helptext in (("evaluate", "walk-forward evaluation against the baseline"), ("export", "write the training history to a CSV")):
+    for name, helptext in (("evaluate", "walk-forward evaluation against the baseline"), ("export", "write the training history to a CSV"),
+                           ("sql", "print the COPY statement that reads the training history (for psql)")):
         p = sub.add_parser(name, help=helptext)
         p.add_argument("--measure", required=True, help="a measure of the settlement rules (see 'measures')")
         p.add_argument("--months", type=int, default=12, help="months of test window (default %(default)s)")
@@ -212,9 +245,10 @@ def build_parser() -> argparse.ArgumentParser:
             p.add_argument("--penalty", type=float, default=evaluate.DEFAULT_PENALTY, help="shrinkage of the strengths (default %(default)s)")
             p.add_argument("--tune", action="store_true", help="choose xi and penalty on the window before the test window")
             p.add_argument("--lines", help="comma-separated lines of the total to calibrate (default: the usual ones of the measure)")
+            p.add_argument("--side-lines", help="comma-separated lines of ONE side (home and away each) to grade (default: the usual ones)")
             p.add_argument("--json", action="store_true")
-        else:
-            p.add_argument("--out", required=True)
+        elif name == "export":
+            p.add_argument("--out", required=True, help="a file (.csv or .csv.gz) or '-' for the standard output as gzip")
     return ap
 
 
@@ -226,6 +260,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "halves":
         return halves_command(args)
     history.columns_of(args.measure)  # refuses a measure a family cannot be trained on, before anything is read
+    if args.command == "sql":
+        return sql_command(args)
     return evaluate_command(args) if args.command == "evaluate" else export_command(args)
 
 

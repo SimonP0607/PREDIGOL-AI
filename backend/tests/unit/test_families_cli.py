@@ -65,9 +65,11 @@ def test_an_evaluation_from_a_file_reports_what_the_family_learnt(tmp_path: Path
     path = tmp_path / "corners.csv.gz"
     cli.write_csv(path, simulated(800))
     assert cli.main(["evaluate", "--measure", "corners_ft", "--csv", str(path), "--months", "12", "--json", "--xi", "0", "--penalty", "1",
-                     "--lines", "9.5"]) == 0
+                     "--lines", "9.5", "--side-lines", "4.5"]) == 0
     s = json.loads(capsys.readouterr().out)
     assert s["n"] > 200 and s["measure"] == "corners_ft"
+    assert set(s["side_lines"]) == {"home 4.5", "away 4.5"} and s["result"]["log_score_gain"] is not None
+    assert s["side_lines"]["home 4.5"]["log_loss_gain"] > 0.0, "teams that differ: the model knows more about one side than the average does"
     assert s["log_score_gain_per_match"]["total"]["mean"] > 0.0
     assert "9.5" in s["lines"] and s["by_competition"][0]["competition_id"] == 7
     assert s["window"]["start"] < s["window"]["end"]
@@ -79,6 +81,7 @@ def test_the_text_report_reads(tmp_path: Path, capsys: pytest.CaptureFixture[str
     assert cli.main(["evaluate", "--measure", "corners_ft", "--csv", str(path), "--months", "12", "--xi", "0", "--penalty", "1"]) == 0
     out = capsys.readouterr().out
     assert "log-score gain over the baseline" in out and "reliability of over" in out and "by competition" in out
+    assert "who has more" in out and "home 4.5" in out, "the usual lines of one side are graded by default"
 
 
 def test_the_time_decay_and_the_penalty_are_chosen_before_the_test_window() -> None:
@@ -114,3 +117,31 @@ def test_the_halves_command_says_so_when_no_match_could_be_predicted(tmp_path: P
     cli.write_csv(path, {})
     assert cli.main(["halves", "--csv-1h", str(path), "--csv-2h", str(path), "--months", "12"]) == 0
     assert "no match was predicted in both halves" in capsys.readouterr().out
+
+
+def test_the_history_can_leave_a_one_off_container_through_the_standard_output(tmp_path: Path, capsysbinary: pytest.CaptureFixture[bytes]) -> None:
+    """``export --out -`` writes gzip to the standard output (the message goes to the error output), so a ``docker run`` can be redirected."""
+    import gzip
+
+    source = tmp_path / "in.csv"
+    data = simulated(800)
+    cli.write_csv(source, data)
+    assert cli.main(["export", "--measure", "corners_ft", "--csv", str(source), "--out", "-"]) == 0
+    captured = capsysbinary.readouterr()
+    assert captured.out[:2] == b"\x1f\x8b", "gzip, and nothing else, on the standard output"
+    assert b"written to -" in captured.err
+    copy = tmp_path / "copy.csv"
+    copy.write_bytes(gzip.decompress(captured.out))
+    assert cli.read_csv(copy) == data
+
+
+def test_the_sql_command_prints_the_statement_that_reads_a_history_and_touches_nothing(capsys: pytest.CaptureFixture[str]) -> None:
+    from fbi.families.history import UnknownMeasureError
+
+    assert cli.main(["sql", "--measure", "corners_ft", "--months", "6"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("COPY (SELECT") and "o.corners_ft_home AS home" in out and "FROM market.fixture_outcomes" in out
+    assert "TO STDOUT WITH (FORMAT csv, HEADER true)" in out and "o.is_tracked" in out
+    assert "is_neutral" not in out and "0 AS neutral" in out, "the neutral-venue flag is not read: the owner has not promoted that rule"
+    with pytest.raises(UnknownMeasureError):
+        cli.main(["sql", "--measure", "corners_1h"])

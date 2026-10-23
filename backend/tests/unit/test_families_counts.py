@@ -261,3 +261,18 @@ def test_the_summary_adds_up() -> None:
         assert sum(b["n"] for b in s["lines"][line]["reliability"]) == s["n"]
         assert 0.0 < s["lines"][line]["over_rate"] < 1.0
     assert summarise(walk_forward({}, measure="corners_ft", start=T0, end=T0 + timedelta(days=30)))["n"] == 0
+
+
+def test_each_side_and_who_has_more_are_graded_too() -> None:
+    from fbi.families.evaluate import summarise, walk_forward
+
+    real, _ = league(seasons=6, seed=21)
+    ev = walk_forward({1: real}, measure="corners_ft", start=real[len(real) // 2].kickoff_at, end=real[-1].kickoff_at + timedelta(days=1),
+                      xi=0.0, penalty=1.0)
+    s = summarise(ev, lines=(9.5,), side_lines=(4.5, 5.5))
+    assert set(s["side_lines"]) == {"home 4.5", "home 5.5", "away 4.5", "away 5.5"}
+    for d in s["side_lines"].values():
+        assert sum(b["n"] for b in d["reliability"]) == s["n"] and 0.0 < d["over_rate"] < 1.0
+        assert d["log_loss_gain"] > 0.0, "teams that differ are found on each side too"
+    assert s["result"]["log_score_gain"] > 0.0 and s["result"]["se"] > 0.0
+    assert summarise(ev)["side_lines"] == {}, "no side lines asked, none graded"
