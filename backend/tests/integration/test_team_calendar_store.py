@@ -31,8 +31,9 @@ from tests.integration.helpers import scalar
 
 
 def test_the_calendar_has_its_tables_its_views_and_refuses_nonsense(db: psycopg.Connection, seed: Seed) -> None:
-    kinds = dict(db.execute("SELECT relname, relkind FROM pg_class WHERE relnamespace = 'core'::regnamespace AND relname IN "
-                            "('calendar_matches', 'calendar_fetches', 'calendar_matches_latest', 'team_calendar')").fetchall())
+    kinds: dict[str, str] = dict(db.execute(
+        "SELECT relname, relkind FROM pg_class WHERE relnamespace = 'core'::regnamespace AND relname IN "
+        "('calendar_matches', 'calendar_fetches', 'calendar_matches_latest', 'team_calendar')").fetchall())
     assert kinds == {"calendar_matches": "r", "calendar_fetches": "r", "calendar_matches_latest": "v", "team_calendar": "v"}
     h = payload(db, seed)
     columns = ("provider_fixture_id, observed_at, kickoff_at, status_short, status_group, provider_league_id, league_name, season, "

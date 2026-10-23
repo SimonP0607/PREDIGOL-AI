@@ -15,6 +15,7 @@ import pytest
 
 from fbi.ai import packet as packet_module
 from fbi.ai.packet import PacketBuilder
+from fbi.competitions import team_calendar as calendar_reader
 from tests.integration.calendar_helpers import (
     AT,
     FRESH,
@@ -175,7 +176,7 @@ def test_a_calendar_that_cannot_be_read_is_named_and_costs_the_packet_nothing_el
     def broken(*args: Any, **kwargs: Any) -> Any:
         raise psycopg.errors.UndefinedTable("the calendar is not there")
 
-    monkeypatch.setattr(packet_module.tc, "load", broken)
+    monkeypatch.setattr(calendar_reader, "load", broken)
     built = PacketBuilder(db).build(w.fixture_id, at=AT)
     assert built is not None
     assert built.content["schedule"] == {"error": "UndefinedTable"} and "schedule" in built.missing

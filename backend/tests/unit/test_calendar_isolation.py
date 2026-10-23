@@ -28,6 +28,10 @@ IMPORTS_THE_READER = {
     "competitions/team_calendar.py": "itself",
     "ai/packet.py": "the packet: the schedule block of what the AI may know about a match (rest, congestion, next matches) as of its moment",
     "api/services/match_calendar.py": "the page of a match: the calendar of each team, for users once the owner decides and for the preview",
+    "research/rest_features.py": "the experiments (F4.4): turns the calendar of a team into the numbers of rest and congestion; the experiment "
+                                 "itself (research/rest_ab.py) takes the numbers and never sees the calendar",
+    "scripts/calendar_features.py": "the experiments' command (F4.4): loads the calendars, reports how much of them there is, exports and "
+                                    "runs the pre-registered test; it reads and trains nothing production reads",
 }
 """The modules that import ``fbi.competitions.team_calendar``. They are added here as the packet, the page and the experiments take the
 calendar in (each with its reason); a file that decides - a model, a pick, a settlement - never is."""
@@ -70,6 +74,13 @@ def test_only_the_listed_files_import_the_reader() -> None:
     assert importing == allowed, (
         f"files importing fbi.competitions.team_calendar that are not listed: {sorted(importing - allowed)}; "
         f"listed files that no longer do: {sorted(allowed - importing)}")
+
+
+def test_only_the_experiments_command_imports_the_rest_features() -> None:
+    """The rest and congestion numbers are for experiments: no model, pick, page or packet takes them as an input (the packet and the page
+    read the calendar itself, as it was, to say it - not to compute with it)."""
+    importing = {rel(p) for p in python_files(SRC, SCRIPTS) if any(name.startswith("fbi.research.rest_features") for name in imports_of(p))}
+    assert importing == {"scripts/calendar_features.py"}, sorted(importing)
 
 
 def test_only_the_feed_imports_the_writer() -> None:
