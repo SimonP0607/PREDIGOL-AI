@@ -76,6 +76,17 @@ def test_the_fingerprint_is_of_the_content_and_not_of_when_it_was_fetched(db: ps
     assert fingerprint(db, fid) == before, "the provider read the match again and found what it had found: nothing to build"
 
 
+def test_the_fingerprint_does_not_depend_on_the_settings_of_the_session_that_takes_it(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """The worker, the console and a person with psql do not share a time zone, a date style or a float format: a fingerprint that read the text
+    of a timestamp would differ between them and add a row every time another one looked."""
+    fid = World(db, seed).golden()
+    before = fingerprint(db, fid)
+    for setting in ("TimeZone = 'Pacific/Auckland'", "DateStyle = 'German, DMY'", "extra_float_digits = -3", "IntervalStyle = 'iso_8601'",
+                    "bytea_output = 'escape'", "lc_numeric = 'C'", "lc_time = 'C'"):
+        db.execute(f"SET LOCAL {setting}")
+    assert fingerprint(db, fid) == before
+
+
 CHANGES: list[tuple[str, Change, set[str]]] = [
     ("the status of the match (and the correction it leaves behind)",
      lambda w, f: w.db.execute("UPDATE core.fixtures SET status_short = 'AET' WHERE id = %s", (f,)), {"fixture", "revisions"}),
