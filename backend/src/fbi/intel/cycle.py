@@ -252,7 +252,21 @@ def run_weekly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
         holder["run"] = int(row[0]) if row else 0
         return run_discovery(conn, at=at, run_id=holder["run"])
 
-    return _run(conn, "weekly", at, [("discovery", _discovery)])
+    def _catalogue() -> dict[str, Any]:
+        from fbi.market import catalogue
+
+        return catalogue.sync(conn).as_dict()
+
+    def _matrix() -> dict[str, Any]:
+        from fbi.market import matrix
+
+        generated = matrix.generate(conn, at=at)
+        run = matrix.store(conn, generated)
+        return {"run": run, "verdicts": generated["summary"]["by_verdict"], "duration_ms": generated["duration_ms"]}
+
+    # the catalogue first (the links of the definitions are what the discovery reads), the matrix last (it reads the registry the
+    # discovery has just written); a step that fails does not stop the others
+    return _run(conn, "weekly", at, [("catalogue", _catalogue), ("discovery", _discovery), ("matrix", _matrix)])
 
 
 # ── the hypotheses the calibration experiment answers ────────────────────────────────────────────────────────────
