@@ -66,7 +66,7 @@ from __future__ import annotations
 
 import time
 from collections import Counter, defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -238,9 +238,9 @@ def _xg(h: Row, a: Row) -> tuple[float, float] | None:
 
 
 METRICS: dict[str, Metric] = {
-    # m = within-team variance over between-team variance of the figure, read from football in general (a match of corners varies by
-    # about 3 around a team's mean, the teams' means by about 1; cards 1.2 and 0.4; xG 0.65 and 0.25). Measured on the stored matches
-    # in the owner's guide; changing one is a new version of the memory.
+    # m = within-team variance over between-team variance of the figure (``variance_components``): how many matches a league's mean is
+    # worth. ``python -m scripts.memory priors`` measures it on the stored matches and the owner's guide (docs/owner/POSTMORTEM_MEMORIA_F8.md)
+    # says what it found; changing one is a new version of the memory.
     "corners": Metric("corners", 6.0, _corners),
     "cards": Metric("cards", 9.0, _cards),
     "xg": Metric("xg", 7.0, _xg),
@@ -257,6 +257,53 @@ LEAGUE_FIGURES = Spec(half_life=365, k=60, count="matches", decayed=("total",))
 
 DERIVED = ("own_rate", "opp_rate", "own_shrunk", "opp_shrunk", "prior", "prior_matches", "rate")
 """The fields of a state that are computed from the others each time: never carried over from the previous row."""
+
+
+@dataclass(frozen=True)
+class Components:
+    """What a figure varies by from match to match inside one team (``within``) and from team to team inside one competition (``between``),
+    both as variances, and the sample they were read from."""
+
+    within: float
+    between: float
+    teams: int
+    matches: int
+    competitions: int
+
+    @property
+    def prior_weight(self) -> float | None:
+        """``within / between``: the number of matches a league's mean is worth when a team's figure is shrunk to it - a team with ``n``
+        matches is itself in the proportion ``n / (n + m)``. None when the teams of the sample do not differ from one another."""
+        return self.within / self.between if self.between > 0 else None
+
+
+def variance_components(competitions: Mapping[Any, Mapping[Any, Sequence[float]]], *, min_matches: int = 5, min_teams: int = 8) -> Components | None:
+    """The match-to-match and the team-to-team variance of a figure, pooled over competitions (one-way random effects, moment estimators for
+    groups of different sizes): ``competitions`` maps a competition to its teams and each team to the figure it had in each of its matches.
+
+    The within-team variance is the pooled variance of a team's own matches. The between-team variance is what is left of the spread of the
+    teams' means around their competition's mean once the part that the matches' own noise puts in it is taken away
+    (``E[SSB] = (T - 1) * within + between * (N - sum(n_t^2) / N)``). Only teams with ``min_matches`` matches count, and only competitions with
+    ``min_teams`` such teams: a league of three teams says nothing of how much teams differ. None when nothing qualifies."""
+    ssw, dfw, used, teams, matches = 0.0, 0, 0, 0, 0
+    spread: list[tuple[float, int, float]] = []
+    for series in competitions.values():
+        groups = [list(v) for v in series.values() if len(v) >= min_matches]
+        if len(groups) < min_teams:
+            continue
+        n = sum(len(g) for g in groups)
+        means = [sum(g) / len(g) for g in groups]
+        grand = sum(sum(g) for g in groups) / n
+        ssw += sum((x - m) ** 2 for g, m in zip(groups, means, strict=True) for x in g)
+        dfw += n - len(groups)
+        ssb = sum(len(g) * (m - grand) ** 2 for g, m in zip(groups, means, strict=True))
+        spread.append((ssb, len(groups) - 1, n - sum(len(g) ** 2 for g in groups) / n))
+        used, teams, matches = used + 1, teams + len(groups), matches + n
+    if not spread or dfw <= 0:
+        return None
+    within = ssw / dfw
+    between = sum(ssb - df * within for ssb, df, _ in spread) / sum(effective for _, _, effective in spread)
+    return Components(within=within, between=between, teams=teams, matches=matches, competitions=used)
 
 
 def spec_for(key: EKey) -> Spec | None:

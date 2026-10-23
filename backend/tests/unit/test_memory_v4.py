@@ -5,6 +5,7 @@ The queries and the lineage are tested on a real database in tests/integration/t
 
 from __future__ import annotations
 
+import random
 from datetime import date, timedelta
 
 import pytest
@@ -106,6 +107,52 @@ def test_the_conventions_are_sane() -> None:
         assert spec.half_life > 0 and spec.k > 0 and spec.count
     assert memory.LEAGUE_FIGURES.k > memory.TEAM_FIGURES.k, "a league's mean needs more matches than a team's before it is trusted"
     assert set(memory.METRICS) == {"corners", "cards", "xg"} and all(m.prior_weight > 0 for m in memory.METRICS.values())
+
+
+# ── how many matches a league's mean is worth ───────────────────────────────────────────────────────────────────────────
+
+
+def simulate(rng: random.Random, *, competitions: int, teams: int, matches: int, within: float, between: float) -> dict[int, dict[int, list[float]]]:
+    """Teams whose true mean differs from their competition's by ``between`` (standard deviation), each match off its team's mean by ``within``."""
+    return {c: {t: [mean + rng.gauss(0, within) for _ in range(matches)]
+                for t, mean in ((t, 5 + rng.gauss(0, between)) for t in range(teams))} for c in range(competitions)}
+
+
+def test_the_variances_of_a_known_world_are_recovered_and_their_ratio_is_the_weight_of_the_league() -> None:
+    world = simulate(random.Random(7), competitions=30, teams=18, matches=30, within=3.0, between=1.0)
+    got = memory.variance_components(world)
+    assert got is not None and (got.competitions, got.teams, got.matches) == (30, 30 * 18, 30 * 18 * 30)
+    assert got.within == pytest.approx(9.0, rel=0.03) and got.between == pytest.approx(1.0, rel=0.1)
+    assert got.prior_weight == pytest.approx(9.0, rel=0.1), "a match varies by 3 around its team, the teams by 1: the league's mean is worth about 9"
+
+
+def test_teams_that_play_a_different_number_of_matches_are_weighed_by_the_matches_they_have() -> None:
+    rng = random.Random(11)
+    world = {c: {t: [m + rng.gauss(0, 2.0) for _ in range(rng.choice([6, 12, 40]))] for t, m in ((t, 4 + rng.gauss(0, 1.5)) for t in range(16))}
+             for c in range(40)}
+    got = memory.variance_components(world)
+    assert got is not None
+    assert got.within == pytest.approx(4.0, rel=0.05) and got.between == pytest.approx(2.25, rel=0.1)
+
+
+def test_only_teams_and_competitions_with_enough_matches_count() -> None:
+    world = {1: {t: [float(t + i % 2) for i in range(6)] for t in range(10)},     # ten teams with six matches: counts
+             2: {t: [1.0, 2.0, 3.0] for t in range(30)},                             # thirty teams with three matches: none counts
+             3: {t: [float(t)] * 9 for t in range(4)}}                               # a league of four: too few teams
+    got = memory.variance_components(world)
+    assert got is not None and (got.competitions, got.teams, got.matches) == (1, 10, 60)
+    assert memory.variance_components(world, min_matches=7) is None, "nothing qualifies"
+    assert memory.variance_components({}) is None
+
+
+def test_teams_that_do_not_differ_have_no_weight_to_measure() -> None:
+    rng = random.Random(3)
+    world = {1: {t: [rng.gauss(5, 2) for _ in range(12)] for t in range(14)}}  # one population: whatever differs is chance
+    got = memory.variance_components(world, min_matches=5, min_teams=8)
+    assert got is not None and abs(got.between) < 0.1 * got.within, "whatever the teams differ by is chance: next to the noise of a match it is nothing"
+    flat = {1: {t: [4.0, 6.0] * 4 for t in range(10)}}  # every team has exactly the same matches: no difference between them at all
+    same = memory.variance_components(flat)
+    assert same is not None and same.between <= 0 and same.prior_weight is None, "never a division by zero, never a made-up weight"
 
 
 # ── what a match says ───────────────────────────────────────────────────────────────────────────────────────────────────

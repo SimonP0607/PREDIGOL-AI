@@ -6,6 +6,7 @@
     python -m scripts.memory rebuild --apply                 # write it, one commit per day
     python -m scripts.memory rebuild --from 2026-10-13 --to 2026-10-20 --apply --max-seconds 600
     python -m scripts.memory audit --sample 100 --seed 1     # recompute a sample of entities from scratch and compare with what is stored
+    python -m scripts.memory priors --days 365               # how many matches a league's mean is worth, measured on the stored matches
 
 ``rebuild`` is ``fbi.intel.memory.rebuild``: every day from the first of the lineage (``LINEAGE_START``) to yesterday, oldest first, each on the
 rows of the days before it, from the data as they are today. It is idempotent and resumable - a day that is written is skipped - so a run that
@@ -17,7 +18,12 @@ it, the nightly step continues it.
 the data say of each entity and compares the numbers with the stored state. A difference is a day whose data changed after the memory booked it
 (a statistic that arrived later than the three days the nightly step looks back); the memory never rewrites a row, so it stays and is shown.
 
-``status``, ``coverage`` and ``audit`` only read.
+``priors`` measures the weights ``m`` of the shrinkage of corners, cards and expected goals (``memory.METRICS``): for each figure, how much it
+varies from match to match inside a team and from team to team inside a competition (``memory.variance_components``) over the matches of the last
+``--days``; their ratio is the number of matches a league's mean is worth, and it is shown beside the weight the memory uses. It only measures:
+changing a weight is a new version of the memory.
+
+``status``, ``coverage``, ``audit`` and ``priors`` only read.
 """
 
 from __future__ import annotations
@@ -73,6 +79,13 @@ SELECT m.day, count(*) AS matches, count(*) FILTER (WHERE m.corners) AS corners,
        COALESCE(max(w.xg_rows), 0) AS xg_rows
   FROM m LEFT JOIN written w ON w.day = m.day GROUP BY m.day ORDER BY m.day
 """
+PRIORS_FIXTURES_SQL = """
+SELECT f.id AS fixture_id, cs.competition_id, f.home_team_id, f.away_team_id
+  FROM core.fixtures f
+  JOIN core.fixture_results r ON r.fixture_id = f.id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+ WHERE f.status_group = 'finished' AND f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
+"""
 LATEST_SQL = """
 SELECT DISTINCT ON (entity_type, entity_id, aspect) entity_type, entity_id, aspect, as_of_day, stats
   FROM intel.entity_memory WHERE version = %(version)s ORDER BY entity_type, entity_id, aspect, as_of_day DESC, id DESC
@@ -85,6 +98,10 @@ def _n(value: int | float) -> str:
 
 def _mb(size: int) -> str:
     return f"{size / 1024 / 1024:.1f} MB"
+
+
+def _m(weight: float | None) -> str:
+    return "-" if weight is None else f"{weight:.1f}"
 
 
 def _size(conn: psycopg.Connection[Any]) -> int:
@@ -160,6 +177,59 @@ def coverage_command(conn: psycopg.Connection[Any], args: argparse.Namespace, *,
     for r in rows:
         print(f"{r['day']!s:<12} {r['matches']:>8} | {r['corners']:>8} {r['cards']:>6} {r['xg']:>3}  | {'':>18} {r['corners_rows']:>8} {r['cards_rows']:>6} {r['xg_rows']:>3}")
     print("(each match that reports a figure gives a row to each of its two teams, or fewer when a team played twice that day)")
+    return 0
+
+
+# ── priors ──────────────────────────────────────────────────────────────────
+
+CHUNK = 2000
+"""Matches whose statistics are read in one query."""
+
+
+def priors_command(conn: psycopg.Connection[Any], args: argparse.Namespace, *, now: datetime) -> int:
+    until = datetime.combine(local_day(now) + timedelta(days=1), datetime.min.time(), tzinfo=now.tzinfo)
+    since = until - timedelta(days=args.days)
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(PRIORS_FIXTURES_SQL, {"since": since, "until": until})
+        fixtures = [dict(r) for r in cur.fetchall()]
+    # competition -> team -> the figure it produced (own) / conceded (opp) in each match, per figure
+    series: dict[str, dict[str, dict[Any, dict[Any, list[float]]]]] = {a: {"own": {}, "opp": {}} for a in memory.METRICS}
+    started = time.monotonic()
+    for first in range(0, len(fixtures), CHUNK):
+        chunk = fixtures[first:first + CHUNK]
+        stats: dict[int, dict[str, dict[str, Any]]] = {}
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(memory.STATS_SQL, {"fixtures": [int(f["fixture_id"]) for f in chunk]})
+            for r in cur.fetchall():
+                stats.setdefault(int(r["fixture_id"]), {})[str(r["team_side"])] = dict(r)
+        for f in chunk:
+            sides = stats.get(int(f["fixture_id"]), {})
+            home, away = sides.get("home") or {}, sides.get("away") or {}
+            for aspect, metric in memory.METRICS.items():
+                pair = metric.pair(home, away)
+                if pair is None:
+                    continue
+                for team, own, opp in ((f["home_team_id"], pair[0], pair[1]), (f["away_team_id"], pair[1], pair[0])):
+                    series[aspect]["own"].setdefault(f["competition_id"], {}).setdefault(team, []).append(own)
+                    series[aspect]["opp"].setdefault(f["competition_id"], {}).setdefault(team, []).append(opp)
+    print(f"priors: {_n(len(fixtures))} finished matches between {local_day(since)} and {local_day(until - timedelta(days=1))} (Bogotá), read in "
+          f"{time.monotonic() - started:.0f} s; teams with at least {args.min_matches} matches that report the figure, in competitions with at least "
+          f"{args.min_teams} such teams")
+    print(f"  {'figure':<8} {'competitions':>12} {'teams':>6} {'matches':>8} | {'SD match':>8} {'SD team':>8} | {'m own':>6} {'m opp':>6} | "
+          f"{'m in use':>8} | {'a team with 10 matches is itself':>32}")
+    for aspect, metric in memory.METRICS.items():
+        own = memory.variance_components(series[aspect]["own"], min_matches=args.min_matches, min_teams=args.min_teams)
+        opp = memory.variance_components(series[aspect]["opp"], min_matches=args.min_matches, min_teams=args.min_teams)
+        if own is None or opp is None:
+            print(f"  {aspect:<8} not enough matches that report it (need {args.min_teams} teams with {args.min_matches} matches in one competition)")
+            continue
+        m_own, m_opp = own.prior_weight, opp.prior_weight
+        print(f"  {aspect:<8} {_n(own.competitions):>12} {_n(own.teams):>6} {_n(own.matches):>8} | {own.within ** 0.5:>8.2f} "
+              f"{(own.between ** 0.5 if own.between > 0 else 0.0):>8.2f} | {_m(m_own):>6} {_m(m_opp):>6} | {metric.prior_weight:>8.1f} | "
+              f"{10 / (10 + metric.prior_weight):>31.0%}")
+    print("m = variance of a team from match to match / variance between the teams of a competition: how many matches a league's mean is worth "
+          "(a team with n matches is its own figure in the proportion n / (n + m)). SD = square root of each variance, in the unit of the figure "
+          "(the 'own' figure: what a team produces). This only measures: a weight changes with a new version of the memory.")
     return 0
 
 
@@ -240,6 +310,10 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("audit", help="recompute a sample of entities from scratch and compare (read only)")
     a.add_argument("--sample", type=int, default=100)
     a.add_argument("--seed", type=int, default=1)
+    q = sub.add_parser("priors", help="measure how many matches a league's mean is worth for corners, cards and xG (read only)")
+    q.add_argument("--days", type=int, default=365, help="how many days back (default 365)")
+    q.add_argument("--min-matches", type=int, default=5, help="a team counts with at least this many matches that report the figure")
+    q.add_argument("--min-teams", type=int, default=8, help="a competition counts with at least this many such teams")
     return ap
 
 
@@ -253,7 +327,8 @@ def main(argv: list[str] | None = None) -> int:
             if not args.apply:
                 conn.rollback()  # a dry run writes nothing: end its transaction without keeping anything
             return code
-        code = {"status": status_command, "coverage": coverage_command, "audit": audit_command}[args.command](conn, args, now=now)
+        code = {"status": status_command, "coverage": coverage_command, "audit": audit_command, "priors": priors_command}[args.command](
+            conn, args, now=now)
         conn.rollback()  # read only
         return code
 
