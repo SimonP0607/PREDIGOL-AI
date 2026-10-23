@@ -450,6 +450,24 @@ def markets(conn: Conn) -> Envelope[dict[str, Any]]:
     return ok(j({"run": run, "by_status": by_status, "items": rows}))
 
 
+def market_matrix(conn: Conn) -> Envelope[dict[str, Any]]:
+    """THE MATRIX OF MARKETS BY FAMILY (plan F9): the newest one stored by the weekly job or by ``python -m scripts.markets matrix
+    --store``. Reading only, and cheap: the work (the scans of prices and results) is done when the matrix is built, never here."""
+    from fbi.market.matrix import GROUPS, MATRIX_VERSION
+
+    row = fetch_one(conn, "SELECT id, generated_at, matrix_version, taxonomy_version, window_days, duration_ms, rows, coverage, summary "
+                          "FROM market.catalogue_runs ORDER BY generated_at DESC, id DESC LIMIT 1")
+    keys = fetch_one(conn, "SELECT count(*) AS keys, count(*) FILTER (WHERE is_tracked) AS followed, "
+                           "count(*) FILTER (WHERE is_model_enabled) AS modelled FROM market.markets") or {}
+    rules = fetch_one(conn, "SELECT count(*) AS rules, count(*) FILTER (WHERE liquidable) AS can_grade FROM market.settlement_rules") or {}
+    if row is None:
+        return ok(j({"run": None, "rows": [], "coverage": None, "summary": None, "groups": GROUPS, "keys": keys, "rules": rules,
+                     "current_version": MATRIX_VERSION}))
+    run = {k: row[k] for k in ("id", "generated_at", "matrix_version", "taxonomy_version", "window_days", "duration_ms")}
+    return ok(j({"run": run, "rows": row["rows"], "coverage": row["coverage"], "summary": row["summary"], "groups": GROUPS,
+                 "keys": keys, "rules": rules, "current_version": MATRIX_VERSION}))
+
+
 def price_clock(conn: Conn) -> Envelope[dict[str, Any]]:
     """THE PRICE CLOCK (plan F1): how many of the provider's markets are structured from the RAW /odds payloads, how many
     payloads are read and how many wait, what the table weighs, and what went wrong. Reading only. The per-bet counts are an

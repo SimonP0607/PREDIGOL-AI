@@ -707,6 +707,54 @@ def broken_invariants(figures: dict[str, Any]) -> list[str]:
     return [name for name in INVARIANTS if figures[name]]
 
 
+LOOK_CROSSED_MEN = 5
+"""A squad sheet 'looks crossed by the history' when at least this many of its men are lone stints against the club they come back to."""
+
+LOOK_CROSSED_SQL = """
+WITH lone AS (  -- a stint of ONE match, taken from a squad sheet, between two stints at the same other club
+  SELECT provider_player_id AS pid, provider_team_id AS b, valid_from AS day, club_before AS a
+    FROM (SELECT provider_player_id, source, matches, provider_team_id, valid_from,
+                 lag(provider_team_id) OVER w AS club_before, lead(provider_team_id) OVER w AS club_after
+            FROM core.player_spells WINDOW w AS (PARTITION BY provider_player_id ORDER BY ordinal)) x
+   WHERE source = 'lineup' AND matches = 1 AND club_before = club_after AND club_before <> provider_team_id
+         AND valid_from >= %(since)s::date
+),
+held AS (       -- the sheet that stint comes from, and whether that match was against the club he comes back to
+  SELECT DISTINCT ON (s.pid, s.day)
+         s.pid, s.day, l.fixture_id, l.team_side,
+         CASE WHEN l.team_side = 'home' THEN ta.provider_team_id ELSE th.provider_team_id END = s.a AS against_own_club
+    FROM lone s
+    JOIN core.fixture_lineup_players l ON l.provider_player_id = s.pid
+    JOIN core.fixtures f ON f.id = l.fixture_id AND f.status_group IN ('live', 'finished')
+                        AND (f.kickoff_at AT TIME ZONE 'UTC')::date = s.day
+    JOIN core.teams th ON th.id = f.home_team_id
+    JOIN core.teams ta ON ta.id = f.away_team_id
+   WHERE CASE WHEN l.team_side = 'home' THEN th.provider_team_id ELSE ta.provider_team_id END = s.b
+   ORDER BY s.pid, s.day, l.fixture_id
+),
+sheets AS (
+  SELECT fixture_id, team_side, min(day) AS day, count(*) FILTER (WHERE against_own_club) AS men
+    FROM held GROUP BY fixture_id, team_side
+)
+SELECT to_char(day, 'YYYY-MM') AS month, count(*) AS sheets, count(DISTINCT fixture_id) AS matches, sum(men)::int AS men
+  FROM sheets WHERE men >= %(men)s GROUP BY 1 ORDER BY 1
+"""
+
+
+def sheets_that_look_crossed(conn: psycopg.Connection[Any], *, now: datetime | None = None, days: int = 180) -> dict[str, Any]:
+    """The squad sheets that look crossed BY THE HISTORY (plan F8.11, decision 9): at least five men of one sheet whose only match with the
+    club they are listed at was this one, between two stints at the club the match was against - the signature of a sheet filed under the
+    wrong side. It is a figure, not a correction: the statistics of the match fix what they can (``fbi.people.sides``), and what they cannot
+    stays as the provider gave it until the owner decides (decision 9). Per month of the last ``days`` days, so a rise is seen when it starts."""
+    at = now or datetime.now(UTC)
+    with conn.cursor() as cur:
+        cur.execute(LOOK_CROSSED_SQL, {"since": (at - timedelta(days=days)).date(), "men": LOOK_CROSSED_MEN})
+        rows = cur.fetchall()
+    by_month = {str(m): {"sheets": int(sh), "matches": int(ma), "men": int(men)} for m, sh, ma, men in rows}
+    return {"since_days": days, "min_men": LOOK_CROSSED_MEN, "sheets": sum(v["sheets"] for v in by_month.values()),
+            "matches": sum(v["matches"] for v in by_month.values()), "by_month": by_month}
+
+
 def audit(conn: psycopg.Connection[Any], *, now: datetime | None = None) -> dict[str, Any]:
     """The state of the tables, read from the database, and what a pass over everything would still write (it must be nothing).
 
@@ -728,4 +776,5 @@ def audit(conn: psycopg.Connection[Any], *, now: datetime | None = None) -> dict
              WHERE f.status_group = 'finished' AND NOT EXISTS (SELECT 1 FROM core.fixture_player_stats s WHERE s.fixture_id = p.fixture_id)""")
         row = cur.fetchone()
     out["fixtures_with_sheets_only"] = int(row[0]) if row else 0
+    out["sheets_look_crossed"] = sheets_that_look_crossed(conn, now=now)
     return out

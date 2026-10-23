@@ -102,6 +102,13 @@ def get_markets(conn: Db) -> Envelope[dict[str, Any]]:
     return svc.markets(conn)
 
 
+@router.get("/intelligence/market-matrix", response_model=Envelope[dict[str, Any]])
+def get_market_matrix(conn: Db) -> Envelope[dict[str, Any]]:
+    """THE MATRIX OF MARKETS BY FAMILY (plan F9): for each kind of bet, what is priced, what can be graded and the verdict. Reads the
+    newest stored matrix; building one is the weekly job's work."""
+    return svc.market_matrix(conn)
+
+
 @router.get("/intelligence/price-clock", response_model=Envelope[dict[str, Any]])
 def get_price_clock(conn: Db) -> Envelope[dict[str, Any]]:
     """THE PRICE CLOCK: the provider's markets structured from the RAW /odds payloads (plan F1) - what is read, what waits,

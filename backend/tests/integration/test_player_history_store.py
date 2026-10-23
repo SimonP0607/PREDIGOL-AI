@@ -966,3 +966,26 @@ def test_a_squad_list_read_again_is_news_for_the_audit(world: World) -> None:
     stale = ph.audit(world.db, now=T0 + timedelta(days=38))
     assert stale["pass_would_write"] == {"spells": 1, "spells_deleted": 1, "caps": 0, "caps_deleted": 0}
     assert stale["pass_would_write_news"] == NO_NEWS
+
+
+def test_the_audit_counts_the_sheets_that_look_crossed_by_the_history_month_by_month(world: World) -> None:
+    """Plan F8.11 (decision 9): five men of one sheet whose only match for the club they are listed at was this one, against the club they
+    come back to, is the signature of a sheet filed under the wrong side - a figure, never a correction."""
+    a, b, c = world.team("Alpha FC", False), world.team("Beta FC", False), world.team("Gamma FC", False)
+    five, four = [world.player() for _ in range(5)], [world.player() for _ in range(4)]
+    for men in (five, four):
+        # A, then B for one match - against A - then A again: the lone stint of each man is in the middle sheet
+        world.lineup(world.fixture(a, c, 20), "home", [(m, True) for m in men])
+    world.lineup(world.fixture(b, a, 25), "home", [(m, True) for m in five])
+    world.lineup(world.fixture(b, a, 26), "home", [(m, True) for m in four])  # one man short: not enough to say anything
+    for men in (five, four):
+        world.lineup(world.fixture(a, c, 30), "home", [(m, True) for m in men])
+    now = T0 + timedelta(days=40)
+    ph.build(world.db, apply=True, sweep=True, now=now)
+    figure = ph.sheets_that_look_crossed(world.db, now=now)
+    month = (T0 + timedelta(days=25)).strftime("%Y-%m")
+    assert figure["min_men"] == 5 and figure["sheets"] == 1 and figure["matches"] == 1
+    assert figure["by_month"] == {month: {"sheets": 1, "matches": 1, "men": 5}}
+    assert ph.audit(world.db, now=now)["sheets_look_crossed"]["sheets"] == 1, "the audit carries the figure"
+    assert ph.broken_invariants(ph.audit(world.db, now=now)) == [], "and a figure is news, not a broken invariant"
+    assert ph.sheets_that_look_crossed(world.db, now=T0 + timedelta(days=300), days=30)["sheets"] == 0, "only the last days are looked at"

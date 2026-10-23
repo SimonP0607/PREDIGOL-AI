@@ -171,6 +171,11 @@ def audit_command(conn: psycopg.Connection[Any], args: argparse.Namespace) -> in
     _line("squad sheets in doubt, left as they are", _n(history["sheets_doubtful"]))
     _line("men put nowhere (in both sheets)", _n(history["men_nowhere"]))
     _line("finished matches with sheets and no statistics", _n(history["fixtures_with_sheets_only"]))
+    crossed = history["sheets_look_crossed"]
+    _line(f"squad sheets that look crossed by the history  (>= {crossed['min_men']} men, last {crossed['since_days']} days)",
+          f"{_n(crossed['sheets'])} in {_n(crossed['matches'])} matches  (a figure for decision 9, nothing is changed)")
+    for month, v in crossed["by_month"].items():
+        _line("  " + month, f"{_n(v['sheets'])} sheets, {_n(v['men'])} men")
     _line("lone stints (A, B for one match, A)", _n(history["lone_stints"]))
     for key in ("coaches", "careers", "careers_without_coach", "careers_of_clubs_not_held", "profiles_without_person"):
         _line("coaches: " + key, _n(coaches[key]))
