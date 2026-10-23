@@ -83,8 +83,8 @@ def test_the_current_post_mortem_judges_a_shootout_match_without_its_kicks_and_t
                "verdict, causes, answers) VALUES (%s, %s, %s, 'pm-v3', 'won', 'GOOD', 'ERROR', %s, '{}')",
                (decision, fid, AFTER - timedelta(hours=2), stale))
 
-    assert postmortem.VERSION == "pm-v5"
-    assert postmortem.run_postmortems(db, at=AFTER) == 1, "v3 does not stop the decision being judged under v5"
+    assert postmortem.VERSION == "pm-v6"
+    assert postmortem.run_postmortems(db, at=AFTER) == 1, "v3 does not stop the decision being judged under v6"
 
     current = _causes(db, decision, postmortem.VERSION)
     assert [(c["code"], c["minute"]) for c in current if c["code"].startswith("penalty")] == [("penalty_scored", 55)]

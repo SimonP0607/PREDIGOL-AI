@@ -23,7 +23,7 @@ from typing import Any
 import psycopg
 import pytest
 
-from fbi.ai.calendar import local_day
+from fbi.ai.calendar import day_bounds, local_day
 from fbi.intel import calibration, cycle, decision, leakage, memory, outcomes, postmortem, report
 
 from .conftest import Seed
@@ -254,7 +254,11 @@ def test_the_decision_layer_end_to_end(db: psycopg.Connection[Any], world: Intel
     assert row[2] == Decimal("0.092000"), "2.10 x the closing fair 0.52 - 1"
     assert outcomes.settle_decisions(db, at=after) == 0, "an outcome is written once"
 
-    pms = postmortem.run_postmortems(db, at=after)
+    # a post-mortem waits for the events and the line-ups (three hours), and the best INVESTIGACION selections are chosen once the
+    # Bogota day is over (a half day would rank differently every hour)
+    pm_at = day_bounds(local_day(ko))[1] + timedelta(hours=4)
+    assert postmortem.run_postmortems(db, at=after) == 0, "the day is not over and the match is not three hours old"
+    pms = postmortem.run_postmortems(db, at=pm_at)
     assert pms == 2, "the two INVESTIGACION selections (top of the day); the rejected one is not reviewed"
     pm = db.execute("SELECT verdict, decision_quality FROM intel.postmortems p JOIN intel.decisions d "
                     "ON d.id = p.decision_id WHERE d.market_key = 'OU'").fetchone()
