@@ -184,11 +184,14 @@ def _tactics(d: Mapping[str, Any]) -> TacticsData:
     return TacticsData(home=_tactics_side(d.get("home")), away=_tactics_side(d.get("away")), story=_story(d.get("story")))
 
 
-def _market(d: Mapping[str, Any]) -> MarketData:
+def _market(d: Mapping[str, Any], *, prices: bool) -> MarketData:
+    """The market of a match, from its opening to its closing. The provider's last pre-match PRICES (``final``) go out only with ``prices`` -
+    the Admin Console's preview. A user is told what the market believed (probabilities without the bookmakers' margin), never what a bet
+    would have paid: the same rule as the forecast, which gives a user no odds."""
     markets: dict[str, MarketBlock] = {}
     for key in sorted(d, key=lambda k: (MARKET_ORDER.get(k, len(MARKET_ORDER)), k)):
         block = d[key]
-        final = block.get("final")
+        final = block.get("final") if prices else None
         markets[str(key)] = MarketBlock(
             probabilities={str(sel): (None if pair[0] is None else float(pair[0]), float(pair[1])) for sel, pair in block.get("p", {}).items()},
             books=block.get("books"), opened_at=_moment(block.get("open_at")), closed_at=_moment(block.get("close_at")),
@@ -217,7 +220,8 @@ def _layer[D](stored: Mapping[str, Any] | None, read: Callable[[Mapping[str, Any
     return Layer[D](status=status, known_at=known, notes=notes, data=value)
 
 
-def _after_match(row: Mapping[str, Any]) -> AfterMatch:
+def _after_match(row: Mapping[str, Any], *, prices: bool) -> AfterMatch:
+    """The facts layers of a row as the contract says them; ``prices`` adds the provider's last pre-match prices (the preview's alone)."""
     stored: Mapping[str, Any] = row["layers"]
     quality: Mapping[str, Any] = row["quality"]
     return AfterMatch(
@@ -229,7 +233,7 @@ def _after_match(row: Mapping[str, Any]) -> AfterMatch:
         events=_layer(stored.get(layers.C3_EVENTS), _events, layers.C3_EVENTS),
         players=_layer(stored.get(layers.C4_PLAYERS), _players, layers.C4_PLAYERS),
         tactics=_layer(stored.get(layers.C5_TACTICS), _tactics, layers.C5_TACTICS),
-        market=_layer(stored.get(layers.C6_MARKET), _market, layers.C6_MARKET))
+        market=_layer(stored.get(layers.C6_MARKET), lambda d: _market(d, prices=prices), layers.C6_MARKET))
 
 
 def _stored(conn: Conn, row: Mapping[str, Any], fixture_id: int, at: datetime) -> StoredBuild:
@@ -267,5 +271,6 @@ def match_knowledge(conn: Conn, fixture_id: int, *, preview: bool, at: datetime 
     if row is None:
         code, reason = _why_none(fixture, moment)
         return ok(MatchKnowledge(**head, knowledge=section(None, status=DataStatus.NOT_AVAILABLE, reason=reason, code=code)))
-    data = MatchKnowledge(**head, knowledge=section(_after_match(row)), stored=_stored(conn, row, fixture_id, moment) if preview else None)
+    data = MatchKnowledge(**head, knowledge=section(_after_match(row, prices=preview)),
+                          stored=_stored(conn, row, fixture_id, moment) if preview else None)
     return ok(data, data_as_of=row["known_at"])

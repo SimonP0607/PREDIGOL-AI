@@ -121,8 +121,9 @@ def test_a_user_is_told_the_facts_layer_by_layer(db: psycopg.Connection[Any], se
     assert list(market) == ["1X2", "OU", "BTTS"], "the order of the board, not the database's"
     home = market["1X2"]
     assert home["probabilities"]["Home"] == [0.45, 0.5] and home["books"] == 10 and home["minutes_to_kickoff"] == 20 and home["line"] is None
-    assert home["final"] == {"odds": {"Away": 4.4, "Draw": 3.5, "Home": 1.85}, "books": 4, "at": "2034-05-02T17:35:00Z", "minutes_to_kickoff": 85}
-    assert market["OU"]["line"] == 2.5 and market["OU"]["final"]["odds"]["Over"] == 1.95
+    assert market["OU"]["line"] == 2.5 and market["OU"]["probabilities"]["Over"] == [0.52, 0.55]
+    assert all(block["final"] is None for block in market.values()), (
+        "what the market believed, never what a bet would have paid: the row has the provider's last prices, a user is not given them")
 
 
 def test_what_the_build_keeps_to_itself_never_reaches_a_user(db: psycopg.Connection[Any], seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -149,7 +150,8 @@ def test_what_the_build_keeps_to_itself_never_reaches_a_user(db: psycopg.Connect
 
     walk(json.loads(text))
     assert not keys & {"sources", "coach", "decisions", "picks", "postmortem", "verdict", "profit", "clv", "edge", "stake", "inputs_hash",
-                       "content_hash", "revisions", "supersedes", "layers", "chain", "c1_result", "c8_picks", "c9_postmortem", "c7_context"}, keys
+                       "content_hash", "revisions", "supersedes", "layers", "chain", "c1_result", "c8_picks", "c9_postmortem", "c7_context",
+                       "odds"}, keys  # "odds": the provider's last prices are the preview's alone
     for word in ("core.", "intel.", "market.", "c1_result", "c8_picks", "c9_postmortem", "c7_context", "Coach Home", "name:coach", "MERECIDO",
                  "PICK_PREMIUM", "RECHAZADO", "decided_by_the_owner"):
         assert word not in text, f"{word!r} reached a user"
@@ -170,8 +172,13 @@ def test_the_markets_keep_the_order_of_the_board_whatever_order_the_row_keeps(db
 
     markets = knowledge_of(client(db, "USER", monkeypatch).get(url(fid)).json())["market"]["data"]["markets"]
     assert list(markets) == ["1X2", "OU", "BTTS", "AH"]
-    assert markets["AH"]["line"] == -0.5 and markets["AH"]["final"] is None, "nobody quoted its last prices: said as nothing"
-    assert markets["AH"]["probabilities"] == {"Away": [0.5, 0.45], "Home": [0.5, 0.55]}
+    assert markets["AH"]["line"] == -0.5 and markets["AH"]["probabilities"] == {"Away": [0.5, 0.45], "Home": [0.5, 0.55]}
+
+    # the preview keeps the same order and adds the last prices of the markets that have them: nobody quoted the handicap's, said as nothing
+    preview = knowledge_of(client(db, "SUPER_ADMIN", monkeypatch).get(url(fid, preview=True)).json())["market"]["data"]["markets"]
+    assert list(preview) == ["1X2", "OU", "BTTS", "AH"]
+    assert [m for m, block in preview.items() if block["final"] is not None] == ["1X2", "OU", "BTTS"]
+    assert preview["AH"]["final"] is None
 
 
 # ── the Admin Console's preview ──────────────────────────────────────────────────────────────────────────────────────────
@@ -189,6 +196,10 @@ def test_the_admin_preview_adds_the_row_as_stored_and_the_chain_of_rebuilds(db: 
     k = knowledge_of(body)
     stored = body["data"]["stored"]
     assert k["completeness"] == "complete" and k["result"]["data"]["reg"] == [2, 1], "the same facts a user would be given"
+    prices = k["market"]["data"]["markets"]  # ... and the provider's last pre-match prices, which a user is not given
+    assert prices["1X2"]["final"] == {"odds": {"Away": 4.4, "Draw": 3.5, "Home": 1.85}, "books": 4, "at": "2034-05-02T17:35:00Z",
+                                      "minutes_to_kickoff": 85}
+    assert prices["OU"]["final"]["odds"]["Over"] == 1.95 and prices["BTTS"]["final"]["books"] == 2
     assert list(stored["layers"]) and set(stored["layers"]) == set(layers.LAYERS), "all nine layers, as stored"
     assert stored["layers"][layers.C7_CONTEXT] == {"status": "off", "notes": ["decided_by_the_owner"]}
     assert stored["layers"][layers.C8_PICKS]["data"]["decisions"]["top"][0]["state"] == "PICK_PREMIUM"

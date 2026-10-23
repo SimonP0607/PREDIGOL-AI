@@ -230,7 +230,8 @@ class TacticsData(Contract):
 
 
 class MarketFinal(Contract):
-    """The provider's last pre-match prices: the middle of the bookmakers' (not de-vigged), read after the match."""
+    """The provider's last pre-match prices: the middle of the bookmakers' (not de-vigged), read after the match. A price, so the Admin
+    Console's preview alone: a user is told what the market believed (``MarketBlock.probabilities``), never what a bet would have paid."""
 
     odds: dict[str, float]
     books: int
@@ -249,7 +250,8 @@ class MarketBlock(Contract):
     closed_at: datetime | None = None
     minutes_to_kickoff: int | None = Field(default=None, description="Of the closing reading.")
     line: float | None = Field(default=None, description="Over/Under and handicap: the line the market is read at.")
-    final: MarketFinal | None = None
+    final: MarketFinal | None = Field(
+        default=None, description="The provider's last pre-match prices. Only in the Admin Console's preview: always null for a user.")
 
 
 class MarketData(Contract):
