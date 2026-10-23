@@ -257,7 +257,22 @@ Producción, solo lectura, 23 oct 2026 (las cifras de paquete son las de la tabl
 
 ## Resultado de la prueba general
 
-*(Pendiente: se anota al cerrar la puerta completa sobre `plan/f6`, antes de preparar el paquete.)*
+Pasada el 23 oct 2026 sobre la rama `plan/f6` (encima de F4), antes de preparar el paquete. Nada de esto toca producción.
+
+| Comprobación | Resultado |
+|---|---|
+| `ruff check` | sin errores |
+| `mypy` estricto sobre `src/fbi` (412 archivos) y sobre todo el árbol, pruebas y scripts incluidos (937) | sin errores |
+| `pytest` del backend completo, con PostgreSQL | **3.974 pasan**, 4 se saltan (necesitan datos fuente que no existen en el entorno local y ya se saltaban antes), 0 fallan; 314 pruebas más que al cerrar F4 (3.660). Tarda 7 min 34 s |
+| Web: `lint`, `typecheck`, `bun test src` | 0 errores (26 avisos que ya existían), tipos sin errores, **465 pruebas pasan** (44 más que al cerrar F4: 421) |
+| Web: compilación de producción (`NITRO_PRESET=node-server VITE_DATA_MODE=live`) | correcta |
+| Migración 0088 | sube y baja sola dejando la base como estaba (`test_0088_adds_one_table_and_one_view_and_nothing_else_and_comes_back_out`, la prueba de que todas las migraciones son reversibles y el ensayo de cadena completa) |
+| Aislamiento de los bloques de contexto | las tres comprobaciones de `test_context_isolation.py` (y `test_calendar_isolation.py` sigue en pie): ningún modelo, Elo, calibrador, regla de valor, pick, liquidación ni backtest los lee |
+| Auditoría de fuga `leak-audit-v6` (reglas `h2h_known`, `scenarios_known`, `tactics_known`, `factors_known`) | todas las pruebas de las cuatro reglas, incluidas las que escriben a mano paquetes que leen el futuro y deben ser violaciones |
+| Vista del revisor de picks | las 24 pruebas de `test_review_view.py` y la prueba de extremo a extremo de `test_ai_decision_layer.py` (su prompt, sus afirmaciones comprobadas y su respuesta recordada son los de la vista) |
+
+Lo único que esta prueba no puede decir es cómo se comporta todo con los datos reales de un día entero (la lectura de solo lectura de arriba es una muestra de 200 partidos
+que aún no empiezan) ni cuánto gasta realmente la IA con los informes nuevos: eso se mide tras desplegar (punto 4 de «Cómo estrenarlo»).
 
 ## Resultado en producción
 
@@ -279,6 +294,7 @@ Producción, solo lectura, 23 oct 2026 (las cifras de paquete son las de la tabl
 | El coste de la IA es «similar al actual» | sí, **gracias a la vista** (sin ella, +35 US$/mes) | `test_while_every_factor_is_descriptive_the_reviewer_reads_the_packet_of_before_plan_f6`, `test_the_view_is_about_the_size_the_packet_had_before_plan_f6_and_far_below_the_packet_of_v8`, `test_a_change_only_in_what_the_reviewer_is_not_given_buys_no_second_review` |
 | El selector de partido del dossier | sí | `test_the_day_lists_the_matches_of_the_bogota_day_and_the_ones_the_ai_studied_first`, `test_a_text_finds_the_matches_of_a_team_within_45_days_nearest_first_and_ignores_case`, `test_a_number_is_also_a_match_id_and_that_match_comes_first_wherever_it_is` |
 | La migración se deshace sola y no toca nada más | sí | `test_0088_adds_one_table_and_one_view_and_nothing_else_and_comes_back_out` |
+| «Terminado cuando»: el paquete en *shadow* dos semanas sin errores de fuga y con el coste por partido dentro del presupuesto | **en curso** desde el despliegue: la auditoría nocturna con las cuatro reglas y el gasto de IA se miran cada día (abajo); F6 no cambia ninguna decisión, así que no frena a la fase siguiente | `leak-audit-v6`, `ai.usage` |
 | Los modelos no cambian de versión (la huella del código no se mueve) | sí | `tests/unit/test_model_code_version.py` (huella fija `9a7bec97caec`) |
 
 ## Lo que se decidió distinto del plan (y los límites que conviene conocer)
