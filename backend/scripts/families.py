@@ -140,6 +140,8 @@ def evaluate_command(args: argparse.Namespace) -> int:
     summary["tuning_grid"] = grid
     if with_referee is not None:
         summary["referee"] = {"kappa": args.referee_kappa, **evaluate.compare_referee(ev, with_referee)}
+    if getattr(args, "calibration", False):
+        summary["calibration"] = evaluate.calibration_check(ev, lines, side_lines)
     summary["window"] = {"start": start.isoformat(), "end": end.isoformat()}
     comps = evaluate.by_competition(ev)
     summary["by_competition"] = comps[:40]
@@ -175,6 +177,14 @@ def print_summary(s: dict[str, Any]) -> None:
             f"{b['mean_p']:.2f}->{b['observed']:.2f}({b['n']})" for b in s["lines"][first]["reliability"]))
     print("  by competition (most predictions first): " + "; ".join(
         f"{c['competition_id']}: {c['gain']:+.3f} ({c['n']})" for c in s["by_competition"][:12]))
+    cal = s.get("calibration")
+    if cal and cal["bets"]:
+        print(f"  recalibration fitted on the first half of the predictions (until {cal['fit_until'][:10]}) and graded on the second: "
+              "ECE as said -> shifted -> with slope · log loss saved per prediction (shift, slope)")
+        for name, b in cal["bets"].items():
+            print(f"    over {name:<11} p {b['mean_p']:.3f} observed {b['observed']:.3f} · ece {b['ece']['raw']:.3f} -> {b['ece']['shift']:.3f} -> "
+                  f"{b['ece']['slope']:.3f} · saved {b['gain']['shift']['mean']:+.4f}±{b['gain']['shift']['se']:.4f}, "
+                  f"{b['gain']['slope']['mean']:+.4f}±{b['gain']['slope']['se']:.4f} (slope {b['slope']:.2f})")
     ref = s.get("referee")
     if ref and ref["n"]:
         print(f"  the referee (prior {ref['kappa']:g} cards; {ref['coverage']:.0%} of the matches had a multiplier), log score added per match: " + ", ".join(
@@ -274,6 +284,8 @@ def build_parser() -> argparse.ArgumentParser:
             p.add_argument("--penalties", help="with --tune: comma-separated penalties of the grid (default: the grid of evaluate.tune)")
             p.add_argument("--lines", help="comma-separated lines of the total to calibrate (default: the usual ones of the measure)")
             p.add_argument("--side-lines", help="comma-separated lines of ONE side (home and away each) to grade (default: the usual ones)")
+            p.add_argument("--calibration", action="store_true", help="also grade a recalibration (a shift, and a shift with a slope) fitted on the "
+                                                                      "first half of the predictions on the second half")
             p.add_argument("--json", action="store_true")
         elif name == "export":
             p.add_argument("--out", required=True, help="a file (.csv or .csv.gz) or '-' for the standard output as gzip")

@@ -246,6 +246,103 @@ def _log_scores(ev: Evaluation) -> Any:
     return out
 
 
+MIN_CALIBRATION_TEST: Final = 200
+"""Fewer out-of-sample predictions than twice this are not split into a half that fits a recalibration and a half that grades it."""
+
+
+def _logit(p: Any) -> Any:
+    q = np.clip(p, 1e-6, 1 - 1e-6)
+    return np.log(q / (1 - q))
+
+
+def _sigmoid(z: Any) -> Any:
+    return 1.0 / (1.0 + np.exp(-z))
+
+
+def ece(p: Any, y: Any, bins: int = BINS) -> float:
+    """Expected calibration error: the gap between what was said and what happened, bin by bin of the predicted probability, weighted by the
+    share of the predictions in the bin."""
+    which = np.clip(np.digitize(p, np.linspace(0.0, 1.0, bins + 1)) - 1, 0, bins - 1)
+    total = 0.0
+    for b in range(bins):
+        mask = which == b
+        if mask.any():
+            total += float(mask.sum()) * abs(float(p[mask].mean()) - float(y[mask].mean()))
+    return total / len(p)
+
+
+def recalibrate(p: Any, y: Any, *, slope: bool = True) -> tuple[float, float]:
+    """The logistic recalibration ``q = sigmoid(a * logit(p) + b)`` that best fits what happened (``y``, 0 or 1), by Newton's method: ``(a, b)``.
+    With ``slope=False`` only the shift ``b`` is fitted and ``a`` stays 1. A bet that always or never happened is left as it is."""
+    if len(y) == 0 or float(y.min()) == float(y.max()):
+        return 1.0, 0.0
+    z = _logit(p)
+    a, b = 1.0, 0.0
+    for _ in range(60):
+        q = _sigmoid(a * z + b)
+        w = q * (1 - q) + 1e-12
+        g_b, g_a = float((q - y).sum()), float(((q - y) * z).sum())
+        if slope:
+            h = np.array([[float((w * z * z).sum()), float((w * z).sum())], [float((w * z).sum()), float(w.sum())]]) + 1e-9 * np.eye(2)
+            step = np.linalg.solve(h, np.array([g_a, g_b]))
+        else:
+            step = np.array([0.0, g_b / float(w.sum())])
+        a, b = a - float(step[0]), b - float(step[1])
+        if float(np.abs(step).max()) < 1e-9:
+            break
+    return a, b
+
+
+def _bet_loss(p: Any, y: Any) -> Any:
+    q = np.clip(p, 1e-6, 1 - 1e-6)
+    return -(y * np.log(q) + (1 - y) * np.log(1 - q))
+
+
+def calibration_check(ev: Evaluation, lines: Sequence[float] = (), side_lines: Sequence[float] = ()) -> dict[str, Any]:
+    """Would a recalibration repair the over/under probabilities, and by how much? The out-of-sample predictions are put in the order they were
+    played: the first half fits two recalibrations (a shift of the logit of the probability, and a shift with a slope) and the second half grades
+    them - the ECE and the log loss of the probabilities as the model said them, shifted and with a slope. A recalibration is never graded on
+    the matches that fitted it. ``gain`` is the log loss it saves per prediction (its standard error beside it)."""
+    rows = sorted(ev.rows, key=lambda r: (r.kickoff_at, r.fixture_id))
+    n = len(rows)
+    out: dict[str, Any] = {"n": n, "bets": {}}
+    if n < 2 * MIN_CALIBRATION_TEST:
+        return out
+    probs: dict[str, tuple[list[float], list[float]]] = {}
+    for r in rows:
+        pmf_home, pmf_away, pmf_total = _pmfs(r.mu_home, r.mu_away, ev.model)
+        total = r.y_home + r.y_away
+        for ln in lines:
+            p_list, y_list = probs.setdefault(f"total {ln}", ([], []))
+            p_list.append(over_under(pmf_total, ln).over)
+            y_list.append(1.0 if total > ln else 0.0)
+        for side, pmf, count in (("home", pmf_home, r.y_home), ("away", pmf_away, r.y_away)):
+            for ln in side_lines:
+                p_list, y_list = probs.setdefault(f"{side} {ln}", ([], []))
+                p_list.append(over_under(pmf, ln).over)
+                y_list.append(1.0 if count > ln else 0.0)
+    cut = n // 2
+    out["fit_until"] = rows[cut - 1].kickoff_at.isoformat()
+    for name, (p_all, y_all) in probs.items():
+        p, y = np.array(p_all), np.array(y_all)
+        p_test, y_test = p[cut:], y[cut:]
+        shift = recalibrate(p[:cut], y[:cut], slope=False)
+        sloped = recalibrate(p[:cut], y[:cut], slope=True)
+        z = _logit(p_test)
+        variants = {"raw": p_test, "shift": _sigmoid(z + shift[1]), "slope": _sigmoid(sloped[0] * z + sloped[1])}
+        losses = {k: _bet_loss(v, y_test) for k, v in variants.items()}
+        saved = {k: losses["raw"] - losses[k] for k in ("shift", "slope")}
+        out["bets"][name] = {
+            "n_fit": cut, "n_test": n - cut,
+            "shift": shift[1], "slope": sloped[0], "intercept": sloped[1],
+            "mean_p": float(p_test.mean()), "observed": float(y_test.mean()),
+            "ece": {k: ece(v, y_test) for k, v in variants.items()},
+            "log_loss": {k: float(v.mean()) for k, v in losses.items()},
+            "gain": {k: {"mean": float(v.mean()), "se": float(v.std(ddof=1) / math.sqrt(len(v))) if len(v) > 1 else None} for k, v in saved.items()},
+        }
+    return out
+
+
 DEFAULT_XIS: Final = (0.0, 0.0019, 0.004)
 DEFAULT_PENALTIES: Final = (0.5, 2.0, 8.0, 32.0)
 TUNED_ON: Final = ("home", "away", "total")
