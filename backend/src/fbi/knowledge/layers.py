@@ -224,6 +224,7 @@ class Decision:
     stake: float = 0.0
     result: str | None = None
     profit: float | None = None
+    """The profit of one flat unit on the decision (``intel.decision_outcomes.profit_flat``), whatever stake it carried."""
     clv: float | None = None
     outcome_at: datetime | None = None
 
