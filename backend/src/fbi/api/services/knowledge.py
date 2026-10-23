@@ -245,10 +245,11 @@ def _why_none(fixture: Mapping[str, Any], at: datetime) -> tuple[str, str]:
     """Why a match has no knowledge, as a stable code and a sentence: said, not left to look like a gap."""
     if fixture["status_group"] != "finished":
         return "not_finished", "The match is not over: PrediGol puts a match together once it has finished."
+    if not fixture["is_tracked"]:
+        # Before the wait: a match of a competition PrediGol does not follow is never put together, and "in a few hours" would be untrue.
+        return "not_followed", "PrediGol does not follow this competition."
     if fixture["kickoff_at"] + SETTLE > at:
         return "not_settled_yet", "The match is over, but PrediGol waits for the provider's last look at the result before putting it together."
-    if not fixture["is_tracked"]:
-        return "not_followed", "PrediGol does not follow this competition."
     return "no_build_yet", "PrediGol has not put this match together yet."
 
 

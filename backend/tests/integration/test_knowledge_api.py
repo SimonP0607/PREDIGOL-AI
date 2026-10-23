@@ -234,6 +234,7 @@ def test_a_match_with_no_knowledge_says_why(db: psycopg.Connection[Any], seed: S
     fresh = w.match(NOW - timedelta(hours=10), goals=(1, 0))
     unbuilt = w.golden()
     elsewhere = w.golden(KICKOFF + timedelta(hours=1))
+    just_over_elsewhere = w.match(NOW - timedelta(hours=10), goals=(2, 2))
     db.execute("UPDATE core.competition_seasons SET competition_id = (SELECT id FROM core.competitions WHERE provider_league_id = 98971) "
                "WHERE id = %s", (w.season,))
     other = db.execute("INSERT INTO core.competitions (provider_league_id, name, country, type, entity_scope, competition_type, is_tracked) "
@@ -242,18 +243,20 @@ def test_a_match_with_no_knowledge_says_why(db: psycopg.Connection[Any], seed: S
     season = db.execute("INSERT INTO core.competition_seasons (competition_id, season, is_current) VALUES (%s, 2034, true) RETURNING id",
                         (other[0],)).fetchone()
     assert season is not None
-    db.execute("UPDATE core.fixtures SET competition_season_id = %s WHERE id = %s", (season[0], elsewhere))
+    db.execute("UPDATE core.fixtures SET competition_season_id = %s WHERE id = ANY(%s)", (season[0], [elsewhere, just_over_elsewhere]))
 
     asked = client(db, "USER", monkeypatch)
     why = {}
-    for name, fid in (("live", live), ("fresh", fresh), ("unbuilt", unbuilt), ("elsewhere", elsewhere)):
+    for name, fid in (("live", live), ("fresh", fresh), ("unbuilt", unbuilt), ("elsewhere", elsewhere),
+                      ("just_over_elsewhere", just_over_elsewhere)):
         body = asked.get(url(fid)).json()
         assert body["status"] == "ok" and body["data"]["fixture_id"] == fid, "the match is there; what is missing is its knowledge"
         section = body["data"]["knowledge"]
         assert section["status"] == "not_available" and section["data"] is None and section["reason"], "a reason a person can read"
         assert body["data"]["stored"] is None
         why[name] = section["code"]
-    assert why == {"live": "not_finished", "fresh": "not_settled_yet", "unbuilt": "no_build_yet", "elsewhere": "not_followed"}
+    assert why == {"live": "not_finished", "fresh": "not_settled_yet", "unbuilt": "no_build_yet", "elsewhere": "not_followed",
+                   "just_over_elsewhere": "not_followed"}, "a competition that is not followed is never put together: no 'in a few hours'"
 
     missing = asked.get(url(999999999))
     assert missing.status_code == 404 and missing.json()["error"]["code"] == "not_found"
