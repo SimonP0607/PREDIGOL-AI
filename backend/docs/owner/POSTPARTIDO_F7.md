@@ -306,7 +306,66 @@ con la mutación (devolverlos) falla la prueba de la API.
 
 ## Resultado en producción
 
-**Pendiente: se completa tras el despliegue guardado de F7 (migraciones 0089 y 0090) y la carga de los últimos 400 días.**
+**Desplegado el 23 oct 2026 a las 14:13:15 UTC** (el despliegue empezó a las 14:00:25 y duró 12 min 50 s), con las migraciones 0089 y 0090
+aplicadas a la primera. Backend `db476d5bd534`, web `b5136bc5f0c3`. Los usuarios no ven nada (`FBI_KNOWLEDGE_USERS` sin definir).
+
+| Paso | Resultado |
+|---|---|
+| Copia verificada antes de migrar | `predigol-20261023T115938Z`: 1.160.610.202 bytes en 502 s (11:59–12:08 UTC). Sigue sin haber copia fuera del servidor (el aviso de siempre) |
+| Prueba de restauración | **superada en 804 s** (12:08–12:21 UTC), con las mismas cuentas de filas que producción (246.017 partidos, 3.218.478 eventos, 158.633 picks, 8 cuentas…) |
+| Comprobación de calma | ninguna transacción de escritura de más de 20 s sobre `core.fixtures` ni `raw.ingestion_payloads`; despliegue fuera de las horas de `fixtures_sync` |
+| Vigilancia de bloqueos (`lockwatch`) | desde las 14:00:23 UTC y hasta pasada la carga: **0 esperas registradas** |
+| Despliegue (`predigolctl deploy`) | copia propia del despliegue (1.172.092.404 bytes, 458 s), migración, permisos, reinicio y salud, sin incidencias; humo correcto |
+| Verificación de solo lectura | revisión 0090; los tres objetos existen; la API solo lee y el worker lee y escribe; el disparador solo-anexar está activo; las tablas nacían vacías; ninguna versión nueva de modelo escribió pronósticos (todas `@mc9a7bec97ca`); los paquetes de IA no cambian (`packet-v8`, ≈ 6.400 tokens de media) ni el gasto del día |
+| Una pasada de `pick_pipeline` | la que corría al reiniciar quedó «interrumpida» y la siguiente la rehízo (lo esperado en todo despliegue) |
+
+**La carga de los últimos 400 días** (14:16:35–14:27:53 UTC; el constructor tardó 674 s, 11 min 14 s, y la estimación era de 15 a 25 minutos):
+
+| Medida | Resultado |
+|---|---|
+| Partidos terminados y asentados en la ventana | **38.113** (ocho menos que en el ensayo en seco: la ventana de 400 días avanzó unas horas; hay 8 partidos en las tres horas que se salieron) |
+| Con su Match Knowledge | **38.113 (100,00 %)**: el criterio del plan era 95 % y **se cumple**; 0 fallos, 0 que otro constructor dejara a medias |
+| Completitud | completos **23.172 (60,8 %)**, parciales 11.553 (30,3 %), mínimos 3.388 (8,9 %): lo mismo que midió el ensayo en seco |
+| Capas (partidos que la tienen) | resultado 38.110 · estadísticas 24.170 · eventos 34.727 (34.551 completos y 176 parciales) · jugadores 23.324 · táctica 37.422 (13.728 parciales) · mercado 2.024 · picks 1.732 · post-mortem 37 · contexto externo 0 (apagada) |
+| Líneas de eventos clasificadas | **505.197** (el ensayo dijo 505.302: la diferencia, 105 líneas, son los ocho partidos que salieron de la ventana, a 13,3 líneas por partido) |
+| Peso de una fila | 2,91 KB de media y 6,89 KB el máximo; las 38.113 filas pesan **110,9 MB de JSON** |
+| Auditoría (`audit --sample 200 --seed 1`) | **ok**: 0 filas cuyo hash no es el de sus capas, 0 desactualizadas, 0 que reconstruidas hoy digan distinto, 0 líneas de eventos rancias, 0 partidos construidos más de una vez |
+| Tamaño en la base (con índices) | `intel.match_knowledge` **108 MB** · `core.fixture_event_kinds` **92 MB** (59 MB de tabla y 34 MB de clave): **≈ 200 MB en total**, y la base completa 18 GB |
+| Disco | 57 % (84 GB libres); el aviso del vigilante («90 % en ≈ 18 días, +3.535 MB/día») no se movió por F7 |
+
+La carga solo escribió en las dos tablas nuevas: 0 peticiones al proveedor, y ningún pick, modelo, liquidación ni paquete de IA cambió.
+
+**Lo que salió distinto de lo estimado.** (1) El tamaño de la carga: la estimación era «del orden de 150 MB» y son ≈ 200 MB. Las filas pesan lo
+previsto (110,9 MB de JSON frente a los 113,5 MB estimados; 108 MB en la base, ya comprimidas y con sus índices), pero las 505.197 líneas de
+eventos clasificadas cuestan 182 bytes cada una con su clave, más de lo que calculé. El crecimiento diario sí es el estimado: ≈ 91 partidos
+al día son ≈ 0,26 MB de filas más ≈ 0,22 MB de líneas de eventos, **≈ 0,5 MB al día**, frente a +3.535 MB/día de la base entera; no cambia
+nada de lo vigilado. (2) La carga fue **el doble de rápida** de lo previsto (11 min
+frente a 15–25).
+
+**Comprobaciones de la API en producción (solo lectura, 14:28–14:30 UTC).** Se montó la aplicación real en un contenedor de operaciones, con
+una cuenta inventada y la base en solo lectura (nada se guarda; ninguna contraseña; ninguna petición de red), y se pidió el bloque a 404
+partidos (400 elegidos por un hash fijo, más los cuatro de la guía; 403 con su Match Knowledge y uno sin construir todavía) y, por HTTP
+completo, a 9 partidos de cada tipo:
+
+| Qué se comprobó | Resultado |
+|---|---|
+| Con el interruptor apagado, un usuario no recibe nada del partido | sí: responde «no disponible» con la razón y 244 bytes |
+| Con el interruptor encendido, un usuario recibe solo las seis capas de hechos | sí en las 403 páginas con conocimiento: resultado, estadísticas, eventos, jugadores, táctica y mercado; sin `stored` |
+| Nada de lo que la construcción se guarda llega a un usuario (fuentes, entrenador, decisiones, picks, post-mortems, hashes, correcciones, cadena, precios del proveedor) | sí: ninguna clave ni palabra prohibida en las 403 páginas con conocimiento, y el `final` de cada bloque de mercado es nulo |
+| La vista previa es solo del administrador | sí: 403 a un usuario; al administrador le llegan las nueve capas, los dos hashes y la cadena (en 24 de las páginas con precios finales del proveedor) |
+| Un partido no terminado, sin asentar o inexistente lo dice | sí: «el partido no ha terminado», «espera la última lectura del proveedor» y 404 |
+| Tiempo y peso | mediana 45 ms y máximo 385 ms (la primera petición en frío); los usuarios reciben de 1,3 a 7,1 KB y el administrador de 9 a 15 KB |
+
+(Los dos scripts, `api_check.py` y `api_http_check.py`, y sus salidas se quedan en la carpeta de lanzamiento del servidor, `/root/releases/20261023T1200Z-f7/`.)
+
+*Un falso positivo de la propia comprobación, por si lo ves en `api_check.out`:* la primera pasada marcó 5 páginas porque buscaba un campo
+llamado `final` en cualquier sitio; el del resultado es el marcador tras la prórroga o los penales (un hecho del partido, presente en todo
+partido que se alargó), no un precio. Se corrigió la comprobación para mirar solo los bloques de mercado y la segunda pasada dio 0 problemas.
+
+**Para tus veinte partidos de prueba (si decides abrirlos con el «Modo de evaluación»):** 21369 y 32333 están completos y 603724 es mínimo.
+El 20288 se jugó hoy y **no tendrá su Match Knowledge hasta mañana** (se arma 26 horas después del pitido inicial); mientras tanto la
+pantalla dice que el partido espera la última lectura del proveedor. El trabajo del worker (`match_knowledge`, cada 30 minutos) aún no ha
+dejado ninguna corrida en el libro porque aún no hay un partido que se haya asentado desde la carga; dejará la primera esta noche.
 
 ## Verificación de los criterios del plan
 
@@ -316,7 +375,7 @@ con la mutación (devolverlos) falla la prueba de la API.
 | Reconstrucción idempotente | sí: mismo contenido, mismo hash (0 diferencias en 38.121); una relectura que encuentra lo mismo no añade fila; dos constructores a la vez no duplican | `test_the_provider_reading_the_match_again_and_finding_the_same_facts_adds_no_row`, `test_a_match_nobody_has_touched_costs_a_read_and_writes_nothing`, `test_two_builders_that_read_the_same_newest_build_cannot_both_add_the_next` |
 | Un partido que cambia deja historia | sí: una cadena de filas, la más reciente es lo que el partido es hoy | `test_a_correction_of_the_result_adds_a_row_that_names_the_one_it_replaced_and_says_it_was_corrected`, `test_a_match_that_goes_back_to_what_it_was_has_three_rows_and_the_newest_is_what_it_is` |
 | La tabla es solo de añadir | sí | `test_a_build_is_never_edited_or_deleted_afterwards`, `test_a_build_can_replace_only_a_build_of_the_same_match_and_version` |
-| Al menos el 95 % de los partidos terminados de las competiciones seguidas tienen su Match Knowledge | en seco, el constructor arma **38.121 de 38.121** (100 %, 0 fallos); **el valor real en producción se mide tras la carga** (`audit` termina con error bajo el 95 %) | `test_coverage_says_how_many_have_a_build_and_exits_1_under_the_criterion`, `test_audit_passes_on_what_the_builder_wrote_and_names_what_is_wrong_otherwise` |
+| Al menos el 95 % de los partidos terminados de las competiciones seguidas tienen su Match Knowledge | **en producción, 38.113 de 38.113 (100,00 %)**, 0 fallos; `audit` termina bien (23 oct 2026, 14:28 UTC) | `test_coverage_says_how_many_have_a_build_and_exits_1_under_the_criterion`, `test_audit_passes_on_what_the_builder_wrote_and_names_what_is_wrong_otherwise` |
 | Una fila es lo que dice ser, y una regla que cambia sin cambiar su versión se descubre | sí | `test_audit_fails_on_a_row_that_is_not_the_hash_of_its_layers_and_on_a_rule_that_changed_without_a_new_version` |
 | Objeto nuevo; nada depende de él hasta F8 | sí: cuatro puertas, 12 de 12 mutaciones detectadas | `tests/unit/test_knowledge_isolation.py` (12 pruebas) |
 | La migración se deshace sola y no toca nada más | sí | `test_0089_and_0090_add_three_objects_and_nothing_else_and_come_back_out` |
