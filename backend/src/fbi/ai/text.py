@@ -14,7 +14,8 @@ WORDS = {"market": "el mercado", "models": "los modelos", "model": "el modelo", 
          "h2h": "los cruces directos", "stats": "las estadísticas", "quality": "la calidad de los datos",
          "stakes": "lo que está en juego", "candidate": "la selección", "cards": "la selección",
          "evidence": "la evidencia", "fixture": "el partido", "elo": "el Elo", "travel": "el viaje",
-         "signals": "las señales", "previous": "la lectura anterior"}
+         "signals": "las señales", "previous": "la lectura anterior", "dossier": "el dossier", "forecast": "el pronóstico",
+         "scenarios": "los escenarios", "factors": "el estado de los factores"}
 TAG = re.compile(r"\(?\b([PE]):([a-z_][a-z_0-9]*|\d+)(?:\.[a-z_0-9]+)*\)?")
 CLASS_ES = {"MODEL_ERROR": "error del modelo", "CONTEXT_ERROR": "error de contexto", "DATA_ERROR": "error de datos",
             "MARKET_ERROR": "el mercado sabía algo", "EXECUTION_ERROR": "error de ejecución",

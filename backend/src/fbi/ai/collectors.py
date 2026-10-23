@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -222,9 +222,21 @@ def query_for(home: str, away: str, kickoff: datetime, country: str | None) -> s
     return TEAM_NEWS[language_of(country)].format(home=home, away=away, when=f"{kickoff:%Y-%m-%d}")
 
 
+LEVELS = (1, 2, 3)
+
+
+def levels_wanted(levels: int | Sequence[int]) -> tuple[int, ...]:
+    """The levels of the tiered search a pass asks for, in the order they are tried: a number is the first that many (``3`` is all
+    three, as ever); a list is those levels exactly (the topics the brief asked for, ``fbi.ai.research``). Never fewer than the first."""
+    if isinstance(levels, int):
+        return LEVELS[:max(1, levels)]
+    asked = set(levels)
+    return tuple(level for level in LEVELS if level in asked) or LEVELS[:1]
+
+
 def queries_for(home: str, away: str, kickoff: datetime, country: str | None, competition: str | None, *,
-                levels: int) -> list[str]:
-    """The tiered search (PrediGol Intelligence, sources-v2) for a match, best first, at most ``levels`` of them:
+                levels: int | Sequence[int]) -> list[str]:
+    """The tiered search (PrediGol Intelligence, sources-v2) for a match, best first, the levels asked for (``levels_wanted``):
 
         1  team news in the competition's language (where the local press reports it)
         2  the clubs' and the competition's own words: official statements, squads, the medical report
@@ -236,10 +248,10 @@ def queries_for(home: str, away: str, kickoff: datetime, country: str | None, co
     standing. When nothing is found, the match's context is "CONTEXTO EXTERNO LIMITADO" (``fbi.intel.decision``):
     nothing is invented and nothing is rejected for it."""
     lang, when, comp = language_of(country), f"{kickoff:%Y-%m-%d}", competition or ""
-    out = [TEAM_NEWS[lang].format(home=home, away=away, when=when),
-           OFFICIAL[lang].format(home=home, away=away, competition=comp, when=when).replace("  ", " "),
-           PREVIEW.format(home=home, away=away, competition=comp, when=when).replace("  ", " ")]
-    return out[:max(1, levels)]
+    every = {1: TEAM_NEWS[lang].format(home=home, away=away, when=when),
+             2: OFFICIAL[lang].format(home=home, away=away, competition=comp, when=when).replace("  ", " "),
+             3: PREVIEW.format(home=home, away=away, competition=comp, when=when).replace("  ", " ")}
+    return [every[level] for level in levels_wanted(levels)]
 
 
 def record_source_results(conn: psycopg.Connection[Any], results: list[SearchResult], *, at: datetime,
@@ -284,7 +296,7 @@ KNOWN_STANDING = TIER_RANK["media"]
 def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id: int, *, at: datetime,
                 ledger: UsageLedger | None = None, search: SearchFn | None = None,
                 provider: tuple[LlmProvider, str] | None = None,
-                transport: httpx.BaseTransport | None = None, levels: int = 1) -> Collected:
+                transport: httpx.BaseTransport | None = None, levels: int | Sequence[int] = 1) -> Collected:
     """Team news for one match from the web, when a search API and a model are configured and the budget
     allows - otherwise nothing is fetched and the reason is returned. A search whose cached answer is fresh is not
     asked again; a page already read for this match is not read again; a search that fails costs nothing and is
@@ -310,12 +322,13 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
     ledger = ledger or UsageLedger()
     late = f["kickoff_at"] - at <= LATE_WINDOW
     bucket = "late" if late else "early"
+    wanted = levels_wanted(levels)
     queries = queries_for(f["home_name"], f["away_name"], f["kickoff_at"], f.get("country"), f.get("competition"),
-                          levels=levels)
+                          levels=wanted)
     gathered: list[dict[str, Any]] = []
-    for level, query in enumerate(queries, start=1):
-        out.levels_tried = level
-        # level 1 keeps the key it always had (its cached answers stay valid)
+    for tried, (level, query) in enumerate(zip(wanted, queries, strict=True), start=1):
+        out.levels_tried = tried
+        # level 1 keeps the key it always had (its cached answers stay valid); a level keeps its own whatever it is asked with
         key = hashlib.sha256((f"{query}|{bucket}" if level == 1 else f"{query}|{bucket}|L{level}").lower()
                              .encode()).hexdigest()[:40]
         cached = cache.get(conn, "search", key, at=at)
@@ -328,7 +341,7 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
                               cost=Decimal(0), status="failed", fixture_id=fixture_id, input_hash=key,
                               error=f"search failed: {type(exc).__name__}")
                 out.skipped = "search_failed"
-                if level == 1:
+                if tried == 1:
                     return out
                 break
             out.searches += 1

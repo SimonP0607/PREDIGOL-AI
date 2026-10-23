@@ -35,6 +35,7 @@ here writes a pick, a probability, a parlay or a rule.
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -46,6 +47,7 @@ import structlog
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
+from fbi.ai import research
 from fbi.ai.analysis import ValueOption, build_cards, store_analysis
 from fbi.ai.brief import Brief, make_brief
 from fbi.ai.calendar import day_bounds, day_start, local_day
@@ -129,9 +131,10 @@ SELECT l.fixture_id, l.market_key, l.selection, l.line FROM picks.parlay_legs l
 """
 
 ESCALATED_SQL = """
-SELECT DISTINCT ON (fixture_id) fixture_id, escalate FROM ai.match_briefs
+SELECT DISTINCT ON (fixture_id) fixture_id, escalate, content -> 'research' AS research FROM ai.match_briefs
  WHERE fixture_id = ANY(%(fixtures)s) ORDER BY fixture_id, created_at DESC, id DESC
 """
+"""The latest brief of each match: whether it escalated and what it asked the server to look into (``fbi.ai.research``)."""
 
 
 @dataclass
@@ -382,16 +385,23 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
     l3 = _l3_keys(conn, by_fixture, universe_ids, at=at) if dues and llm_ready else set()
     web_ready = settings.search_configured or search is not None
     web: set[int] = set()
-    if dues and web_ready:
+    escalated: set[int] = set()
+    asked: dict[int, list[research.Ask]] = {}  # what the latest brief of each match asked the server to look into
+    if dues:
         with conn.cursor(row_factory=tuple_row) as tcur:
             tcur.execute(ESCALATED_SQL, {"fixtures": list(dues)})
-            escalated = {int(r[0]) for r in tcur.fetchall() if r[1]}
-
+            latest = tcur.fetchall()
+        escalated = {int(r[0]) for r in latest if r[1]}
+        asked = {int(r[0]): found for r in latest if (found := research.asks_in(r[2]))}
+    if dues and web_ready:
         def rank(d: Due) -> tuple[int, int, float, float, datetime]:
             return web_rank(d, by_fixture)
         firsts = sorted((d for d in dues.values() if d.pass_kind in ("first", "request")), key=rank)
+        # a match that asked for research is searched at its pre pass too, ranked like any other match without a candidate:
+        # after the ones with a candidate, inside the same allowance (``research`` explains why)
         pres = sorted((d for d in dues.values() if d.pass_kind == "pre"
-                       and (d.fixture.fixture_id in by_fixture or d.fixture.fixture_id in escalated)), key=rank)
+                       and (d.fixture.fixture_id in by_fixture or d.fixture.fixture_id in escalated
+                            or d.fixture.fixture_id in asked)), key=rank)
         web = {d.fixture.fixture_id for d in firsts[:allow.web_first]} | \
               {d.fixture.fixture_id for d in pres[:allow.web_pre]}
 
@@ -409,7 +419,7 @@ def _run(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepor
             if due is not None:
                 _pass(conn, settings, report, due, by_fixture.get(fid, []), builder, at=at, ledger=ledger,
                       search=search, provider=provider, transport=transport, allow=allow, l3=l3,
-                      web=fid in web, llm_ready=llm_ready, health=health)
+                      web=fid in web, llm_ready=llm_ready, health=health, asks=asked.get(fid, []))
             else:
                 _free(conn, settings, report, fid, kickoff, by_fixture.get(fid, []), builder, newest, at=at)
             conn.commit()
@@ -478,9 +488,14 @@ def _free(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
 def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleReport, due: Due, options: list[Ranked],
           builder: PacketBuilder, *, at: datetime, ledger: UsageLedger, search: SearchFn | None,
           provider: tuple[LlmProvider, str] | None, transport: httpx.BaseTransport | None, allow: Allowance,
-          l3: set[tuple[int, str, str, Decimal]], web: bool, llm_ready: bool, health: dict[str, bool]) -> None:
+          l3: set[tuple[int, str, str, Decimal]], web: bool, llm_ready: bool, health: dict[str, bool],
+          asks: Sequence[research.Ask] = ()) -> None:
     """One pass of one match of the day: web (when chosen), packet, L1 brief, L2/L3 reviews, cards, the pass row.
-    A pass the provider failed (down, timing out) is not recorded: the next cycle tries it again."""
+    A pass the provider failed (down, timing out) is not recorded: the next cycle tries it again.
+
+    ``asks`` is what the match's latest brief asked the server to look into (``fbi.ai.research``): a pass that reads the web reads it
+    with the levels of the topics asked, when the match has no candidate to read it deeper for; a pass that does not, or has no
+    allowance or budget for it, says so in its counts (``research_unserved_<reason>``)."""
     fid, kind = due.fixture.fixture_id, due.pass_kind
     started = now()
     counts: dict[str, int] = defaultdict(int)
@@ -496,11 +511,20 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
         report.counts["marginal_saved"] += 1
 
     # the web (first and pre passes; the most important matches; only a stale cached answer is asked again)
-    if web and deep and kind in ("first", "pre", "request") \
-            and budget_of(conn, at=at, settings=settings).pass_allows(kind):
-        # the tiered search (sources-v2): up to three levels for a match with candidates, one for the others
+    barrier: str | None = None  # why a match that asked for research was not read
+    if kind not in ("first", "pre", "request"):
+        barrier = "no_search_pass"
+    elif not web:
+        barrier = "no_allowance"
+    elif not deep:
+        barrier = "near_budget"
+    elif not budget_of(conn, at=at, settings=settings).pass_allows(kind):
+        barrier = "pass_budget"
+    else:
+        # the tiered search (sources-v2): up to three levels for a match with candidates, the levels of the topics asked for
+        # (``fbi.ai.research``) or the first level for the others
         got = collect_web(conn, settings, fid, at=at, ledger=ledger, search=search, provider=provider,
-                          transport=transport, levels=3 if options else 1)
+                          transport=transport, levels=research.levels_for(asks, candidates=bool(options)))
         counts["web_searches"] += got.searches
         counts["web_items"] += got.extracted
         counts["web_new"] += got.created
@@ -510,6 +534,15 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
         if got.skipped:
             report.counts[f"web_skipped_{got.skipped}"] += 1
         conn.commit()
+    if asks:
+        counts["research_asked"] = len(asks)
+        report.counts["research_asked"] += len(asks)
+        if barrier is None:
+            counts["research_searched"] = 1
+            report.counts["research_searched"] += 1
+        else:
+            counts[f"research_unserved_{barrier}"] = 1
+            report.counts[f"research_unserved_{barrier}"] += 1
 
     extra = [(x.leg.candidate.market_key, x.leg.candidate.selection, x.leg.candidate.line) for x in options]
     packet = builder.build(fid, at=at, extra_keys=extra)
@@ -532,6 +565,9 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
                   "briefs_reused" if brief.reused else "briefs_rules"] += 1
     if brief.escalate:
         report.counts["escalated"] += 1
+    if not brief.reused and brief.content.get("research"):  # what this reading asks the next pass that reads the web to look into
+        counts["research_requested"] = len(brief.content["research"])
+        report.counts["research_requested"] += len(brief.content["research"])
     cost += brief.cost
     conn.commit()
 

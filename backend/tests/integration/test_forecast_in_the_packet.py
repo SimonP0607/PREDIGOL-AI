@@ -154,7 +154,7 @@ def test_a_claim_may_cite_the_forecast_and_its_numbers_are_the_packets(world: Wo
 
 
 def test_the_brief_is_told_the_likely_outcome_is_not_the_best_paid_one() -> None:
-    assert prompts.BRIEF_VERSION == "brief-v7"
+    assert int(prompts.BRIEF_VERSION.rsplit("-v", 1)[1]) >= 7, "the forecast reached the brief's prompt in brief-v7"
     system = " ".join(prompts.BRIEF_SYSTEM.split())
     assert "P:forecast" in system and "sin calibrar" in system
     assert "not the best paid one" in system and "never present the forecast as a pick, as value or as a reason to bet" in system

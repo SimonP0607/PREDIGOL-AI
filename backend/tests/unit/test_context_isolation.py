@@ -36,6 +36,8 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
         "intel/leakage.py": "the nightly proof: the rule tactics_known (it reads the constants N and WINDOW and nothing else)",
     },
     "fbi.intel.factors": {
+        "ai/brief.py": "the brief: which block of the packet carries which factor, so that a reason for a selection that rests on a "
+                       "DESCRIPTIVE one is refused (it reads the catalogue and the words DESCRIPTIVE and VALIDATED)",
         "ai/packet.py": "the packet: the status of each context factor as of its moment, and the status each block says",
         "intel/leakage.py": "the nightly proof: the rule factors_known (it reads the catalogue's keys and blocks and nothing else)",
         "scripts/context_factors.py": "the person's door: list, history, promote and retire a factor",

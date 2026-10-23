@@ -1,4 +1,4 @@
-"""The match narrative of PrediGol Intelligence - ``narrative-v3``: how each team arrives, what is at stake, the
+"""The match narrative of PrediGol Intelligence - ``narrative-v4``: how each team arrives, what is at stake, the
 tactical keys, the important players, the risks, the interesting markets and the conclusion, in Spanish.
 
 Written by the economical model in the brief (``fbi.ai.brief``, brief-v4: every number in it must be in the packet,
@@ -11,11 +11,16 @@ from __future__ import annotations
 
 from typing import Any
 
-VERSION = "narrative-v3"
+VERSION = "narrative-v4"
 """v2 (plan F2): a second leg says what the first 90 minutes do to the aggregate (``tie_scenarios``).
 v3 (plan F5): «mercados interesantes» starts with what PrediGol expects (the packet's ``forecast``: the likely outcome of each
 market with its probability, «sin calibrar» where no champion calibrator exists) and then the cards - a probability apart from a
-price: the likely outcome is not said to be well paid."""
+price: the likely outcome is not said to be well paid.
+v4 (plan F6): «qué está en juego» says what the match alone does to the table (the packet's ``scenarios``: the points and the places
+each side can hold after each result, as an interval); «claves tácticas» adds what the last matches of each side show (the packet's
+``dossier.tactics``: late goals, the results when it scores or concedes first, the minute of its first substitution) with the size of
+every sample, as a count and not as a style; «riesgos» says how many meetings the head-to-head really has (``n_effective``) when it
+tells little. All of it is description: nothing here says what will happen."""
 SECTIONS = ("como_llega_local", "como_llega_visitante", "que_esta_en_juego", "claves_tacticas",
             "jugadores_importantes", "riesgos", "mercados_interesantes", "conclusion")
 TITLES = {"como_llega_local": "Cómo llega el local", "como_llega_visitante": "Cómo llega el visitante",
@@ -87,6 +92,11 @@ def _goals(n: int) -> str:
     return "1 gol" if n == 1 else f"{n} goles"
 
 
+def _count(n: int, one: str, many: str) -> str:
+    """«1 cruce», «2 cruces»: a count in words the owner reads."""
+    return f"{n} {one if n == 1 else many}"
+
+
 def tie_scenarios(content: dict[str, Any]) -> str | None:
     """What the first 90 minutes of a second leg do to the aggregate, in words, from the packet's ``phase.tie.outlook`` (plain
     arithmetic on the legs already played). What a level aggregate leads to is the competition's own rule: it is said, not
@@ -108,6 +118,39 @@ def tie_scenarios(content: dict[str, Any]) -> str | None:
     return (f"En el global, tras los 90 minutos {_team(content, 'home')} va por delante si {ahead_text}; queda igualado si "
             f"{level_text}; en otro caso va por delante {_team(content, 'away')}. Si queda igualado, deciden las reglas de "
             f"la competición.")
+
+
+def _places(side: dict[str, Any]) -> str:
+    """The places a side can hold (an interval) and, when every one of them is in the same zone, the zone."""
+    best, worst = side.get("rank_best"), side.get("rank_worst")
+    if not isinstance(best, int) or not isinstance(worst, int):
+        return ""
+    text = f"puesto {best}.º" if best == worst else f"puestos {best}.º a {worst}.º"
+    kinds = {z.get("kind") for z in side.get("zones") or []}
+    if len(kinds) == 1 and (kind := next(iter(kinds))) in ZONE:
+        text += f", zona de {ZONE[kind]}"
+    return text
+
+
+def table_scenarios(content: dict[str, Any]) -> str | None:
+    """What this match alone does to the table, from the packet's ``scenarios`` block (plain arithmetic: the points of each side
+    after each result and the places it can hold - the other teams keep their points, so a place is an interval). None when the
+    packet has no such table (no table of the match's own stage, or one the arithmetic cannot read)."""
+    table = (content.get("scenarios") or {}).get("table") or {}
+    after = table.get("after")
+    if not isinstance(after, dict) or table.get("unavailable"):
+        return None
+    home, away = _team(content, "home"), _team(content, "away")
+    parts = []
+    for key, label in (("home_win", f"si gana {home}"), ("draw", "si empatan"), ("away_win", f"si gana {away}")):
+        entry = after.get(key) or {}
+        h, a = entry.get("home") or {}, entry.get("away") or {}
+        if "points" in h and "points" in a:
+            parts.append(f"{label}, {home} sumaría {h['points']} puntos ({_places(h)}) y {away} {a['points']} ({_places(a)})")
+    if not parts:
+        return None
+    return ("Con los demás equipos en sus puntos actuales, tras este partido " + "; ".join(parts)
+            + ". Un puesto es un intervalo: los demás partidos no se simulan.")
 
 
 def stakes(content: dict[str, Any]) -> str:
@@ -140,11 +183,40 @@ def stakes(content: dict[str, Any]) -> str:
     scenario = tie_scenarios(content)
     if scenario:
         parts.append(scenario)
+    table = table_scenarios(content)
+    if table:
+        parts.append(table)
     if ctx.get("derby"):
         parts.append("Es un derbi (misma ciudad): la historia emocional no cambia las probabilidades.")
     if ctx.get("friendly"):
         parts.append("Es un amistoso: rotaciones probables y poco en juego.")
     return " ".join(parts) or NO_DATA
+
+
+def tactic_notes(content: dict[str, Any], side: str) -> str | None:
+    """What the last matches of a side show beyond its usual formation (the packet's ``dossier.tactics``), as counts with the size
+    of each sample: late goals, the results when it scored or conceded first, the minute of its first substitution. None when the
+    block has none of it (a packet before plan F6, or no match whose events give its score)."""
+    t = (((content.get("dossier") or {}).get("tactics")) or {}).get(side) or {}
+    parts = []
+    goals = t.get("goals") or {}
+    late = goals.get("late") or {}
+    if goals.get("n") and late:
+        parts.append(f"en {_count(int(goals['n']), 'partido', 'partidos')} con eventos marcó {_goals(int(late.get('for', 0)))} y "
+                     f"encajó {_goals(int(late.get('against', 0)))} después del minuto 75")
+    score = t.get("with_the_score") or {}
+    for key, label in (("scored_first", "cuando marcó primero"), ("conceded_first", "cuando recibió primero")):
+        r = score.get(key) or {}
+        if r.get("n"):
+            parts.append(f"{label} ({_count(int(r['n']), 'partido', 'partidos')}): "
+                         f"{_count(int(r.get('wins', 0)), 'victoria', 'victorias')}, "
+                         f"{_count(int(r.get('draws', 0)), 'empate', 'empates')} y "
+                         f"{_count(int(r.get('losses', 0)), 'derrota', 'derrotas')}")
+    subs = t.get("substitutions") or {}
+    median = (subs.get("first_minute") or {}).get("median")
+    if subs.get("with_substitutions") and median is not None:
+        parts.append(f"el primer cambio llega, en la mediana, en el minuto {float(median):g}")
+    return f"{_team(content, side)}: " + "; ".join(parts) + "." if parts else None
 
 
 def tactics(content: dict[str, Any]) -> str:
@@ -162,6 +234,9 @@ def tactics(content: dict[str, Any]) -> str:
         if a.get("possession") is not None:
             parts.append(f"Posesión media {a['possession']} %, {_num(a.get('shots'))} tiros y "
                          f"{_num(a.get('corners'))} córners por partido.")
+    notes = [n for n in (tactic_notes(content, side) for side in ("home", "away")) if n]
+    if notes:
+        parts += [*notes, "Son conteos de pocos partidos: describen lo ocurrido, no predicen."]
     lu = content.get("lineups") or {}
     if lu.get("confirmed"):
         parts.append("Alineaciones confirmadas.")
@@ -206,7 +281,9 @@ def risks(content: dict[str, Any], cards: list[dict[str, Any]]) -> str:
         parts.append("CONTEXTO EXTERNO LIMITADO: no hay información externa del partido.")
     h2h = (content.get("dossier") or {}).get("h2h") or {}
     if h2h.get("relevance") in ("nula", "baja"):
-        parts.append("El historial directo dice poco.")
+        size = f" ({_count(int(h2h['n']), 'cruce', 'cruces')}, {h2h['n_effective']} efectivos)" \
+            if h2h.get("n") and h2h.get("n_effective") is not None else ""
+        parts.append(f"El historial directo dice poco{size}.")
     return " ".join(parts) or NO_DATA
 
 

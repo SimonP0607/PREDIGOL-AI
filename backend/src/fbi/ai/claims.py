@@ -32,9 +32,9 @@ REF = re.compile(r"^(P:[a-z_][a-z_0-9]*(\.[a-z_0-9]+)*|E:\d+)$")
 """``P:h2h`` has a digit: a block name may (9 Oct 2026, the first real briefs cited it and were refused)."""
 BLOCKS = frozenset({"fixture", "standings", "stakes", "form", "schedule", "h2h", "elo", "stats", "absences",
                     "lineups", "travel", "market", "models", "quality", "evidence", "candidate", "signals", "cards",
-                    "previous", "dossier", "forecast"})
+                    "previous", "dossier", "forecast", "scenarios", "factors"})
 """The blocks a claim may cite (``P:<block>``): the packet's, the review's candidate and signals, and the brief's
-cards and previous reading (``fbi.ai.brief``)."""
+cards and previous reading (``fbi.ai.brief``). ``scenarios`` and ``factors`` came with the packet of plan F6."""
 
 
 class ClaimOut(BaseModel):
