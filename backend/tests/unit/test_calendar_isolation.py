@@ -27,6 +27,7 @@ NAMES_THE_TABLES = {
 IMPORTS_THE_READER = {
     "competitions/team_calendar.py": "itself",
     "ai/packet.py": "the packet: the schedule block of what the AI may know about a match (rest, congestion, next matches) as of its moment",
+    "api/services/match_calendar.py": "the page of a match: the calendar of each team, for users once the owner decides and for the preview",
 }
 """The modules that import ``fbi.competitions.team_calendar``. They are added here as the packet, the page and the experiments take the
 calendar in (each with its reason); a file that decides - a model, a pick, a settlement - never is."""
