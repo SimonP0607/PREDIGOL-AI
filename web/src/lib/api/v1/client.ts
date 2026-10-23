@@ -9,8 +9,10 @@ import type {
   IntelDecisionDetail,
   IntelDecisionRow,
   IntelDossier,
+  IntelFactorsRegistry,
   IntelMarketRow,
   IntelMemoryRow,
+  IntelPicker,
   IntelPriceClock,
   IntelRun,
   IntelState,
@@ -568,6 +570,12 @@ export const v1 = {
     getJson<Envelope<IntelDecisionDetail>>(`/admin/intelligence/decisions/${id}`),
   intelDossier: (fixtureId: number | string) =>
     getJson<Envelope<IntelDossier>>(`/admin/intelligence/matches/${fixtureId}/dossier`),
+  /** The dossier's picker: a Bogotá day, or a text (team, competition or match id) within 45 days of it. */
+  intelMatches: (
+    q: { day?: string | undefined; q?: string | undefined; limit?: number | undefined } = {},
+  ) => getJson<Envelope<IntelPicker>>("/admin/intelligence/matches", q as Params),
+  /** The registry of context factors as it stands. */
+  intelFactors: () => getJson<Envelope<IntelFactorsRegistry>>("/admin/intelligence/factors"),
   intelCalibration: () => getJson<Envelope<IntelCalibration>>("/admin/intelligence/calibration"),
   intelMemory: (q: { entity_type?: string | undefined; q?: string | undefined } = {}) =>
     getJson<Envelope<{ items: IntelMemoryRow[]; total: number }>>(

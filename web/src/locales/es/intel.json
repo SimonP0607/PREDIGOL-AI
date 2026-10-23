@@ -149,9 +149,7 @@
   },
   "match": {
     "title": "Dossier del partido",
-    "fixture": "Id del partido",
-    "load": "Ver",
-    "hint": "Elige una decisión o escribe el id de un partido.",
+    "hint": "Busca un partido por equipo, competición o número, o elige uno del día.",
     "narrative": "Narrativa",
     "engineLlm": "escrita por el modelo económico y verificada",
     "engineRules": "escrita por las reglas desde los datos",
@@ -213,6 +211,234 @@
       "rating": "Nota",
       "load": "Min 14 d",
       "out": "Baja reportada"
+    },
+    "picker": {
+      "title": "Elegir partido",
+      "close": "Cerrar",
+      "search": "Buscar",
+      "placeholder": "Equipo, competición o número de partido",
+      "tooShort": "Escribe al menos dos letras, o el número del partido.",
+      "dayCount_one": "{count} partido del día · {studied} con paquete de la IA.",
+      "dayCount_other": "{count} partidos del día · {studied} con paquete de la IA.",
+      "searchCount_one": "{count} partido para «{q}» a ±45 días del {day}.",
+      "searchCount_other": "{count} partidos para «{q}» a ±45 días del {day}.",
+      "cut": "Se muestran los primeros {shown} de {total}.",
+      "none": "Ningún partido.",
+      "change": "Elegir otro partido",
+      "studied": "con paquete",
+      "unstudied": "sin paquete",
+      "research_one": "{count} investigación pedida",
+      "research_other": "{count} investigaciones pedidas",
+      "escalated": "escalado"
+    },
+    "age": {
+      "days_one": "{count} día",
+      "days_other": "{count} días",
+      "months_one": "{count} mes",
+      "months_other": "{count} meses",
+      "years": "{years} años"
+    },
+    "h2hw": {
+      "title": "Cara a cara ponderado",
+      "subtitle": "Cuánto dice cada cruce entre {home} y {away} sobre este partido, según su antigüedad, la competición, el campo y los entrenadores. Es una descripción, no una señal validada.",
+      "n": "Cruces leídos",
+      "last": "Último cruce",
+      "oldest": "El más antiguo",
+      "record": "Registro a 90 min · {home}",
+      "recordText": "{w} G · {d} E · {l} P",
+      "sameVenue": "Con {home} de local, como ahora",
+      "weighted": "Ponderado por peso (G · E · P de {home})",
+      "goals": "Goles ponderados por cruce ({home} – rival)",
+      "coaches": "Banquillos",
+      "coachesText": "{same} iguales · {changed} con cambio · {unknown} sin dato",
+      "coach": {
+        "none": "los mismos",
+        "home": "cambió el local",
+        "away": "cambió el visitante",
+        "both": "cambiaron los dos",
+        "unknown": "sin dato"
+      },
+      "col": {
+        "when": "Hace",
+        "competition": "Competición",
+        "score": "90 min",
+        "ground": "Campo",
+        "scope": "Tipo",
+        "coaches": "Entrenadores",
+        "weight": "Peso",
+        "share": "Cuenta"
+      },
+      "aet": "prórroga",
+      "empty": "Sin cruces guardados."
+    },
+    "scen": {
+      "title": "Escenarios de este partido",
+      "subtitle": "Aritmética de ESTE partido solo: los demás no se simulan, así que un puesto es un intervalo. No son probabilidades.",
+      "tableTitle": "Tabla",
+      "unavailable": "Esta tabla no está ordenada por puntos: no se lee nada de ella.",
+      "today": "Hoy",
+      "now": "{rank}.º · {points} pts · {played} PJ",
+      "result": {
+        "home_win": "Si gana el local",
+        "draw": "Si empatan",
+        "away_win": "Si gana el visitante"
+      },
+      "points": "{points} pts",
+      "place": "puesto {n}",
+      "places": "puestos {best}–{worst}",
+      "snapshot": "Tabla del {when}.",
+      "tieTitle": "Eliminatoria",
+      "kind": {
+        "single_match": "partido único",
+        "first_leg": "ida",
+        "second_leg": "vuelta",
+        "replay": "desempate",
+        "series": "serie"
+      },
+      "before": "Global antes del partido (el local de este partido primero)",
+      "series": "Serie",
+      "seriesText": "juego {game} · {home}–{away} ({draws} empates)",
+      "tie": {
+        "ahead": "Delante si el margen es",
+        "level": "Igualada si es",
+        "behind": "Detrás si es",
+        "limit": "Límite"
+      },
+      "canLose": "puede perder por hasta {n}",
+      "needsWin": "necesita ganar por {n} o más",
+      "cannotLose": "no puede perder"
+    },
+    "tactics": {
+      "title": "Táctica observable",
+      "subtitle": "Lo observable en los últimos partidos de cada equipo, con el tamaño de cada muestra. Describe; no predice.",
+      "row": {
+        "read": "Partidos leídos (eventos que cuadran)",
+        "data": "Datos que faltan",
+        "formation": "Formación inicial",
+        "rotation": "Rotación del once",
+        "coach": "Con el entrenador actual",
+        "goals": "Goles a favor – en contra",
+        "late": "Goles tardíos (76–90') a favor – en contra",
+        "scoredFirst": "Si marca primero",
+        "concededFirst": "Si recibe primero",
+        "htLeading": "Ganando al descanso",
+        "htTrailing": "Perdiendo al descanso",
+        "firstSub": "Primer cambio (minuto medio)"
+      },
+      "tally": "{w} G {d} E {l} P",
+      "sample": "{n} de {of}",
+      "formationText": "{main} en {count} de {n} · última {last} · {changes} cambios",
+      "rotationText": "{avg} cambios por partido ({pairs} pares)",
+      "coachText": "{newest} de {n} ({distinct} distintos)",
+      "goalsText": "{for} – {against} ({n} partidos)",
+      "lateText": "{for} – {against} ({n} partidos)",
+      "firstSubText": "{mean} ({n} de {of} partidos)",
+      "noSheet_one": "{count} sin hoja",
+      "noSheet_other": "{count} sin hoja",
+      "crossed_one": "{count} hoja cruzada",
+      "crossed_other": "{count} hojas cruzadas",
+      "noEvents_one": "{count} sin eventos",
+      "noEvents_other": "{count} sin eventos",
+      "inconsistent_one": "{count} con eventos que no cuadran",
+      "inconsistent_other": "{count} con eventos que no cuadran",
+      "complete": "completos"
+    },
+    "factors": {
+      "title": "Factores de contexto",
+      "subtitle": "Qué estado tenía cada factor cuando la IA leyó el paquete y cuál tiene hoy en el registro. Descriptivo: describe el partido, no justifica una selección. Validado: una persona lo avaló con un experimento.",
+      "labels": {
+        "h2h_weighted": "Cara a cara ponderado",
+        "scenarios": "Escenarios de tabla y eliminatoria",
+        "tactics_profile": "Táctica observable",
+        "rest_congestion": "Descanso y congestión"
+      },
+      "status": {
+        "DESCRIPTIVE": "Descriptivo",
+        "VALIDATED": "Validado"
+      },
+      "error": "No se pudo leer el registro al armar el paquete: todos los factores cuentan como descriptivos.",
+      "col": {
+        "factor": "Factor",
+        "packet": "En el paquete",
+        "today": "Hoy en el registro"
+      },
+      "experiment": "experimento: {name}",
+      "changed": "cambió después del paquete",
+      "decisions": "Decisiones del registro",
+      "noDecisions": "El registro no tiene ninguna decisión: todos los factores siguen descriptivos."
+    },
+    "brief": {
+      "title": "Informe de la IA",
+      "engine": "Quién lo escribió",
+      "uncertainty": "Incertidumbre",
+      "quality": "Calidad de los datos",
+      "escalate": "Escalado a revisión mayor",
+      "level": {
+        "low": "baja",
+        "medium": "media",
+        "high": "alta"
+      },
+      "dataQuality": {
+        "good": "buena",
+        "fair": "regular",
+        "poor": "mala"
+      },
+      "reasons": "Motivos del escalado",
+      "refused": "Afirmaciones rechazadas",
+      "research": "Investigaciones pedidas",
+      "byLlm": "el modelo económico, verificado por el servidor",
+      "byRules": "las reglas, a partir de los datos"
+    },
+    "research": {
+      "title": "Investigación pedida por la IA",
+      "subtitle": "La IA dice QUÉ le falta y de qué lado, de una lista que escribió el servidor. El servidor decide si lo busca, dentro del cupo de búsquedas y del presupuesto del día.",
+      "asked": "Lo que pidió el último informe",
+      "none": "El último informe no pidió investigación.",
+      "topic": {
+        "availability": "Quién puede jugar (bajas, dudas, sanciones)",
+        "confirmation": "Confirmar con fuentes oficiales",
+        "preview": "Previa de medios internacionales"
+      },
+      "side": {
+        "home": "local",
+        "away": "visitante",
+        "both": "los dos"
+      },
+      "passes": "Pases del partido",
+      "noPasses": "Ningún pase registrado.",
+      "col": {
+        "pass": "Pase",
+        "when": "Terminó",
+        "requested": "Pidió",
+        "asked": "Recibió",
+        "searched": "Buscó",
+        "unserved": "Sin atender",
+        "searches": "Búsquedas",
+        "cost": "Costo"
+      },
+      "unserved": {
+        "no_allowance": "sin búsquedas disponibles",
+        "near_budget": "cerca del presupuesto",
+        "pass_budget": "sin presupuesto en este pase",
+        "no_search_pass": "este pase no lee la web"
+      },
+      "how": "Un pase pide al terminar su informe; el siguiente pase que lee la web lo atiende. El pase final no lee la web: lo que pidió el previo queda para «ejecutar ahora». Pedir no escala el partido ni cambia ninguna decisión."
+    },
+    "refused": {
+      "title": "Afirmaciones que el servidor rechazó",
+      "subtitle": "Cada afirmación de la IA se comprueba contra el paquete. Esto es lo que no pasó, y por qué.",
+      "shown": "{shown} de {total}",
+      "descriptive": "descansaba en {factor}, un factor descriptivo",
+      "group": {
+        "context": "Contexto",
+        "changes": "Cambios",
+        "injuries": "Bajas",
+        "cards": "Selecciones",
+        "cards_why": "Por qué de una selección",
+        "cards_risks": "Riesgos de una selección",
+        "research": "Investigación pedida",
+        "narrative": "Narrativa"
+      }
     }
   },
   "calibration": {

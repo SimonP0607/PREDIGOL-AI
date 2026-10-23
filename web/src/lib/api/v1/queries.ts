@@ -297,6 +297,16 @@ export const live = {
     queryFn: () => v1.intelDossier(fixtureId),
     enabled: fixtureId !== "",
   }),
+  intelMatches: (q: Parameters<typeof v1.intelMatches>[0]) => ({
+    queryKey: ["v1", "intel", "matches", q],
+    queryFn: () => v1.intelMatches(q),
+    refetchInterval: 5 * MINUTE,
+  }),
+  intelFactors: {
+    queryKey: ["v1", "intel", "factors"],
+    queryFn: v1.intelFactors,
+    refetchInterval: 10 * MINUTE,
+  },
   intelCalibration: {
     queryKey: ["v1", "intel", "calibration"],
     queryFn: v1.intelCalibration,

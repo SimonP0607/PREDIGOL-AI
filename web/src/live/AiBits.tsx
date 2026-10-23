@@ -113,6 +113,22 @@ export function Note({ children, className }: { children: ReactNode; className?:
   return <p className={cn("text-xs text-subtle-foreground", className)}>{children}</p>;
 }
 
+/**
+ * A label and its figure on one line - or, when the label is too long for both (a phone), the figure on the line below,
+ * right-aligned. The shared KeyValue squeezes the figure in beside the label instead, and "1–0" or "2 G · 0 E · 1 P" came
+ * out cut in the middle of a figure.
+ */
+export function Fact({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5 border-b border-border/60 py-1.5 last:border-0">
+      <span className="text-caption uppercase tracking-wider text-subtle-foreground">{label}</span>
+      <span className="numeric ml-auto min-w-0 break-words text-right text-xs text-foreground">
+        {value}
+      </span>
+    </div>
+  );
+}
+
 /** A small uppercase heading inside a card. */
 export function SubTitle({ children }: { children: ReactNode }) {
   return (

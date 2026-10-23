@@ -30,6 +30,10 @@ import type {
 } from "@/lib/api/v1/types_intel";
 import { Note, Stat, StatGrid, SubTitle } from "./AiBits";
 import { bogotaDateTime, dayLabel, selectionText, toNum, usd } from "./aiModel";
+import { BriefPanel, RefusedPanel, ResearchPanel } from "./IntelAiPanels";
+import { MatchPicker } from "./IntelMatchPicker";
+import { FactorsPanel, H2hPanel, ScenariosPanel, TacticsPanel } from "./IntelMatchPanels";
+import { hasScenarios } from "./intelMatch";
 import { Markdown } from "./Markdown";
 import { PriceClockPanel } from "./PriceClockPanel";
 import { durationMs } from "./format";
@@ -808,31 +812,32 @@ function MatchView({
   setFixture: (f: string) => void;
   onOpen: (id: number) => void;
 }) {
-  const [draft, setDraft] = useState(fixture);
+  const [picking, setPicking] = useState(!fixture);
   const q = useLiveQuery(live.intelDossier(fixture));
   const d = q.data?.data;
   return (
     <div className="space-y-4" data-testid="intel-match">
-      <form
-        className="flex flex-wrap items-end gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setFixture(draft.trim());
-        }}
-      >
-        <label className="flex flex-col gap-1 text-caption uppercase tracking-wider text-subtle-foreground">
-          {t("intel.match.fixture")}
-          <input
-            value={draft}
-            inputMode="numeric"
-            onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
-            className="h-8 w-40 min-h-11 rounded-md border border-border bg-card px-2 text-xs sm:min-h-8"
-          />
-        </label>
-        <button type="submit" className="tap-y h-8 rounded-md border border-border px-3 text-xs">
-          {t("intel.match.load")}
-        </button>
-      </form>
+      {picking ? (
+        <MatchPicker
+          fixture={fixture}
+          onPick={(id) => {
+            setFixture(id);
+            setPicking(false);
+          }}
+          onClose={fixture ? () => setPicking(false) : undefined}
+        />
+      ) : (
+        <div>
+          <button
+            type="button"
+            className="tap-y h-8 rounded-md border border-border px-3 text-xs"
+            onClick={() => setPicking(true)}
+            data-testid="intel-picker-open"
+          >
+            {t("intel.match.picker.change")}
+          </button>
+        </div>
+      )}
       {!fixture ? <Note>{t("intel.match.hint")}</Note> : null}
       {fixture ? <Loading q={q} /> : null}
       {d ? (
@@ -861,6 +866,9 @@ function MatchView({
               </div>
             </Panel>
           ) : null}
+          {d.brief ? <BriefPanel brief={d.brief} /> : null}
+          {d.brief || d.passes.length ? <ResearchPanel brief={d.brief} passes={d.passes} /> : null}
+          {d.brief && d.brief.refused_total > 0 ? <RefusedPanel brief={d.brief} /> : null}
           {d.dossier ? (
             <>
               <Panel title={t("intel.match.teams")}>
@@ -912,7 +920,7 @@ function MatchView({
                   </tbody>
                 </TableShell>
               </Panel>
-              <div className="grid gap-4 lg:grid-cols-3">
+              <div className={`grid gap-4 ${d.h2h ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
                 <Panel title={t("intel.match.referee")}>
                   <KeyValue
                     label={t("intel.match.referee")}
@@ -957,18 +965,34 @@ function MatchView({
                     />
                   ) : null}
                 </Panel>
-                <Panel title={t("intel.match.h2h")}>
-                  <KeyValue label="n" value={String(d.dossier.h2h.n)} />
-                  {d.dossier.h2h.n_effective !== undefined ? (
-                    <KeyValue
-                      label={t("intel.match.nEffective")}
-                      value={String(d.dossier.h2h.n_effective)}
-                    />
-                  ) : null}
-                  <KeyValue label={t("intel.match.relevance")} value={d.dossier.h2h.relevance} />
-                  <Note>{d.dossier.h2h.note}</Note>
-                </Panel>
+                {d.h2h ? null : (
+                  <Panel title={t("intel.match.h2h")}>
+                    <KeyValue label="n" value={String(d.dossier.h2h.n)} />
+                    {d.dossier.h2h.n_effective !== undefined ? (
+                      <KeyValue
+                        label={t("intel.match.nEffective")}
+                        value={String(d.dossier.h2h.n_effective)}
+                      />
+                    ) : null}
+                    <KeyValue label={t("intel.match.relevance")} value={d.dossier.h2h.relevance} />
+                    <Note>{d.dossier.h2h.note}</Note>
+                  </Panel>
+                )}
               </div>
+              {d.h2h ? (
+                <H2hPanel block={d.h2h} home={d.fixture.home} away={d.fixture.away} />
+              ) : null}
+              {d.scenarios && hasScenarios(d.scenarios) ? (
+                <ScenariosPanel block={d.scenarios} home={d.fixture.home} away={d.fixture.away} />
+              ) : null}
+              {d.dossier.tactics ? (
+                <TacticsPanel
+                  block={d.dossier.tactics}
+                  home={d.fixture.home}
+                  away={d.fixture.away}
+                />
+              ) : null}
+              {d.factors ? <FactorsPanel block={d.factors} /> : null}
               <div className="grid gap-4 lg:grid-cols-2">
                 <Panel title={`${t("intel.match.players")} · ${d.fixture.home}`}>
                   <PlayersTable players={d.dossier.players.home} />

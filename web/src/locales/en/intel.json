@@ -149,9 +149,7 @@
   },
   "match": {
     "title": "Match dossier",
-    "fixture": "Match id",
-    "load": "Show",
-    "hint": "Pick a decision or type a match id.",
+    "hint": "Find a match by team, competition or number, or pick one of the day.",
     "narrative": "Narrative",
     "engineLlm": "written by the economical model and verified",
     "engineRules": "written by the rules from the data",
@@ -213,6 +211,234 @@
       "rating": "Rating",
       "load": "Min 14 d",
       "out": "Reported out"
+    },
+    "picker": {
+      "title": "Pick a match",
+      "close": "Close",
+      "search": "Search",
+      "placeholder": "Team, competition or match number",
+      "tooShort": "Type at least two letters, or the match number.",
+      "dayCount_one": "{count} match of the day · {studied} with an AI packet.",
+      "dayCount_other": "{count} matches of the day · {studied} with an AI packet.",
+      "searchCount_one": "{count} match for “{q}” within ±45 days of {day}.",
+      "searchCount_other": "{count} matches for “{q}” within ±45 days of {day}.",
+      "cut": "Showing the first {shown} of {total}.",
+      "none": "No matches.",
+      "change": "Pick another match",
+      "studied": "has packet",
+      "unstudied": "no packet",
+      "research_one": "{count} research asked",
+      "research_other": "{count} researches asked",
+      "escalated": "escalated"
+    },
+    "age": {
+      "days_one": "{count} day",
+      "days_other": "{count} days",
+      "months_one": "{count} month",
+      "months_other": "{count} months",
+      "years": "{years} years"
+    },
+    "h2hw": {
+      "title": "Weighted head to head",
+      "subtitle": "How much each meeting between {home} and {away} says about this match, by age, competition, ground and coaches. A description, not a validated signal.",
+      "n": "Meetings read",
+      "last": "Latest meeting",
+      "oldest": "Oldest",
+      "record": "Record in 90 min · {home}",
+      "recordText": "{w} W · {d} D · {l} L",
+      "sameVenue": "With {home} at home, as now",
+      "weighted": "Weighted by weight (W · D · L of {home})",
+      "goals": "Weighted goals per meeting ({home} – rival)",
+      "coaches": "Benches",
+      "coachesText": "{same} same · {changed} changed · {unknown} unknown",
+      "coach": {
+        "none": "the same",
+        "home": "home coach changed",
+        "away": "away coach changed",
+        "both": "both changed",
+        "unknown": "unknown"
+      },
+      "col": {
+        "when": "Ago",
+        "competition": "Competition",
+        "score": "90 min",
+        "ground": "Ground",
+        "scope": "Kind",
+        "coaches": "Coaches",
+        "weight": "Weight",
+        "share": "Share"
+      },
+      "aet": "extra time",
+      "empty": "No meetings on record."
+    },
+    "scen": {
+      "title": "What this match does",
+      "subtitle": "Arithmetic of THIS match alone: the others are not simulated, so a place is an interval. These are not probabilities.",
+      "tableTitle": "Table",
+      "unavailable": "This table is not ordered by points: nothing is read from it.",
+      "today": "Today",
+      "now": "{rank}. · {points} pts · {played} P",
+      "result": {
+        "home_win": "If the home side wins",
+        "draw": "If they draw",
+        "away_win": "If the away side wins"
+      },
+      "points": "{points} pts",
+      "place": "place {n}",
+      "places": "places {best}–{worst}",
+      "snapshot": "Table of {when}.",
+      "tieTitle": "Tie",
+      "kind": {
+        "single_match": "single match",
+        "first_leg": "first leg",
+        "second_leg": "second leg",
+        "replay": "replay",
+        "series": "series"
+      },
+      "before": "Aggregate before the match (this match's home side first)",
+      "series": "Series",
+      "seriesText": "game {game} · {home}–{away} ({draws} draws)",
+      "tie": {
+        "ahead": "Ahead if the margin is",
+        "level": "Level if it is",
+        "behind": "Behind if it is",
+        "limit": "Limit"
+      },
+      "canLose": "can lose by up to {n}",
+      "needsWin": "needs to win by {n} or more",
+      "cannotLose": "cannot lose"
+    },
+    "tactics": {
+      "title": "Observable tactics",
+      "subtitle": "What can be observed in each team's last matches, with the size of each sample. It describes; it does not predict.",
+      "row": {
+        "read": "Matches read (events that add up)",
+        "data": "Missing data",
+        "formation": "Starting formation",
+        "rotation": "Rotation of the eleven",
+        "coach": "With the current coach",
+        "goals": "Goals for – against",
+        "late": "Late goals (76–90') for – against",
+        "scoredFirst": "When it scores first",
+        "concededFirst": "When it concedes first",
+        "htLeading": "Leading at the break",
+        "htTrailing": "Trailing at the break",
+        "firstSub": "First substitution (mean minute)"
+      },
+      "tally": "{w} W {d} D {l} L",
+      "sample": "{n} of {of}",
+      "formationText": "{main} in {count} of {n} · latest {last} · {changes} changes",
+      "rotationText": "{avg} changes per match ({pairs} pairs)",
+      "coachText": "{newest} of {n} ({distinct} distinct)",
+      "goalsText": "{for} – {against} ({n} matches)",
+      "lateText": "{for} – {against} ({n} matches)",
+      "firstSubText": "{mean} ({n} of {of} matches)",
+      "noSheet_one": "{count} without a sheet",
+      "noSheet_other": "{count} without a sheet",
+      "crossed_one": "{count} crossed sheet",
+      "crossed_other": "{count} crossed sheets",
+      "noEvents_one": "{count} without events",
+      "noEvents_other": "{count} without events",
+      "inconsistent_one": "{count} with events that do not add up",
+      "inconsistent_other": "{count} with events that do not add up",
+      "complete": "complete"
+    },
+    "factors": {
+      "title": "Context factors",
+      "subtitle": "The status each factor had when the AI read the packet and the one it has in the registry today. Descriptive: it describes the match, it does not justify a selection. Validated: a person vouched for it with an experiment.",
+      "labels": {
+        "h2h_weighted": "Weighted head to head",
+        "scenarios": "Table and tie scenarios",
+        "tactics_profile": "Observable tactics",
+        "rest_congestion": "Rest and congestion"
+      },
+      "status": {
+        "DESCRIPTIVE": "Descriptive",
+        "VALIDATED": "Validated"
+      },
+      "error": "The registry could not be read when the packet was built: every factor counts as descriptive.",
+      "col": {
+        "factor": "Factor",
+        "packet": "In the packet",
+        "today": "Registry today"
+      },
+      "experiment": "experiment: {name}",
+      "changed": "changed after the packet",
+      "decisions": "Registry decisions",
+      "noDecisions": "The registry holds no decision: every factor is still descriptive."
+    },
+    "brief": {
+      "title": "AI brief",
+      "engine": "Written by",
+      "uncertainty": "Uncertainty",
+      "quality": "Data quality",
+      "escalate": "Escalated for a closer review",
+      "level": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "dataQuality": {
+        "good": "good",
+        "fair": "fair",
+        "poor": "poor"
+      },
+      "reasons": "Reasons to escalate",
+      "refused": "Claims refused",
+      "research": "Research asked",
+      "byLlm": "the economical model, checked by the server",
+      "byRules": "the rules, from the data"
+    },
+    "research": {
+      "title": "Research the AI asked for",
+      "subtitle": "The AI says WHAT it is missing and for which side, from a list the server wrote. The server decides whether to look, inside the day's searches and budget.",
+      "asked": "What the latest brief asked for",
+      "none": "The latest brief asked for no research.",
+      "topic": {
+        "availability": "Who can play (injuries, doubts, suspensions)",
+        "confirmation": "Confirm with official sources",
+        "preview": "International media preview"
+      },
+      "side": {
+        "home": "home",
+        "away": "away",
+        "both": "both"
+      },
+      "passes": "Passes of the match",
+      "noPasses": "No pass on record.",
+      "col": {
+        "pass": "Pass",
+        "when": "Finished",
+        "requested": "Asked",
+        "asked": "Received",
+        "searched": "Searched",
+        "unserved": "Not served",
+        "searches": "Searches",
+        "cost": "Cost"
+      },
+      "unserved": {
+        "no_allowance": "no searches left",
+        "near_budget": "near the budget",
+        "pass_budget": "no budget left in this pass",
+        "no_search_pass": "this pass does not read the web"
+      },
+      "how": "A pass asks when it writes its brief; the next pass that reads the web serves it. The final pass does not read the web: what the pre pass asked waits for “run now”. Asking neither escalates the match nor changes any decision."
+    },
+    "refused": {
+      "title": "Claims the server refused",
+      "subtitle": "Every claim of the AI is checked against the packet. This is what did not pass, and why.",
+      "shown": "{shown} of {total}",
+      "descriptive": "rested on {factor}, a descriptive factor",
+      "group": {
+        "context": "Context",
+        "changes": "Changes",
+        "injuries": "Absences",
+        "cards": "Selections",
+        "cards_why": "Why of a selection",
+        "cards_risks": "Risks of a selection",
+        "research": "Research asked",
+        "narrative": "Narrative"
+      }
     }
   },
   "calibration": {
