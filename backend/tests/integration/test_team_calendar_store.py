@@ -251,6 +251,19 @@ def test_who_is_asked_about_and_how_often(db: psycopg.Connection) -> None:
     assert [t.key for t in ing.targets(db, T0 + timedelta(days=20))] == []
 
 
+def test_the_feed_can_be_paused_without_a_deploy(db: psycopg.Connection, monkeypatch: pytest.MonkeyPatch) -> None:
+    season, _ = followed_season(db)
+    (home, _), (away, _) = team(db, "pause home"), team(db, "pause away")
+    fixture(db, season, home, away, T0 + timedelta(days=1))
+    monkeypatch.delenv(ing.SWITCH, raising=False)
+    assert len(ing.targets(db, T0)) == 2 and ing.enabled()
+    for off in ("0", "off", "false", "No"):
+        monkeypatch.setenv(ing.SWITCH, off)
+        assert ing.targets(db, T0) == [] and not ing.enabled(), off
+    monkeypatch.setenv(ing.SWITCH, "1")
+    assert len(ing.targets(db, T0)) == 2, "switched back on, it asks again"
+
+
 def test_the_team_fixtures_feed_is_registered_with_its_limits() -> None:
     [feed] = [f for f in ref.FEEDS if f.name == "team_fixtures"]
     assert (feed.endpoint, feed.max_per_run, feed.batch, feed.paged) == ("/fixtures", 60, 1, False)

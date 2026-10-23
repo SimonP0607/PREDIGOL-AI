@@ -23,11 +23,12 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Final
 
 import psycopg
 from psycopg.rows import tuple_row
 
+from fbi.core.env import environment
 from fbi.ingestion.fixtures import status_group
 from fbi.ingestion.reference import (
     Target,
@@ -41,6 +42,10 @@ from fbi.ingestion.reference import (
 from fbi.providers.api_football.normalize import canonical_status
 
 NORMALIZER_VERSION = "team-calendar-1"
+
+SWITCH: Final = "FBI_TEAM_CALENDAR"
+"""``FBI_TEAM_CALENDAR=0`` stops the feed from asking the provider for any team's list (plan F4) without a deploy: the worker needs a restart to
+read it. What was read stays, the packet and the page keep saying what they know and how old it is, and nothing else changes."""
 
 HORIZON = timedelta(days=7)
 """A team is asked about when its next followed match is within this."""
@@ -79,8 +84,14 @@ def every_for(next_kickoff: datetime, at: datetime) -> timedelta:
     return EVERY_WEEK
 
 
+def enabled() -> bool:
+    return environment().get(SWITCH, "1").strip().lower() not in {"0", "off", "false", "no"}
+
+
 def targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
-    """Each (team, season) with a followed match within the horizon, the soonest to play first."""
+    """Each (team, season) with a followed match within the horizon, the soonest to play first (none while the feed is switched off)."""
+    if not enabled():
+        return []
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(TARGETS_SQL, {"at": at, "horizon": HORIZON})
         rows = cur.fetchall()
