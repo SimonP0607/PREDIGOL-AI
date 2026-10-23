@@ -26,7 +26,7 @@ INPLAY_MODULES = ("fbi.odds.live_capture", "fbi.odds.live_repository", "fbi.odds
                   "fbi.providers.api_football.live")
 
 PREMATCH_PACKAGES = (
-    "fbi.features", "fbi.models", "fbi.picks", "fbi.parlays", "fbi.backtesting", "fbi.predictions",
+    "fbi.features", "fbi.models", "fbi.picks", "fbi.parlays", "fbi.backtesting", "fbi.predictions", "fbi.forecasting",
     "fbi.research", "fbi.datasets", "fbi.market", "fbi.validation", "fbi.analyst", "fbi.notify",
 )
 PREMATCH_ODDS_MODULES = ("fbi.odds.capture", "fbi.odds.repository", "fbi.odds.schedule", "fbi.odds.final_prematch",

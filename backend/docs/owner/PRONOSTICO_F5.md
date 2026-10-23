@@ -185,6 +185,55 @@ restricciones y disparadores, y se midieron en producción, solo leyendo, las ci
 primera con datos reales:** por eso se mide enseguida con `scripts.match_forecast status` y `show`, no puede frenar el pase de picks y
 se puede apagar sin desplegar.
 
+## Resultado en producción (23 oct 2026)
+
+**El despliegue.** Backend `bbfec85e70d4`, web `2f134b12be2a`, migración 0086, junto con F3.2. Copia de seguridad verificada y prueba de
+restauración antes de tocar nada (01:23–01:42 UTC, pasó), más la copia propia del despliegue (`pre-deploy-bbfec85e70d4`, 02:35 UTC).
+**El primer intento (01:42 UTC) se detuvo solo, sin daño:** la migración necesita un bloqueo breve sobre `core.fixtures` y otras tablas para
+las claves foráneas de la tabla nueva, y el job de partidos (`fixtures_sync`, cada 6 h) mantenía abierta una transacción de unos 27 minutos
+sobre ellas (la temporada «Friendlies Clubs», 8.359 partidos). Tras cinco intentos de 10 s la migración se rindió, la base quedó en 0085 y los
+servicios en la imagen anterior. Se midió la causa (muestreo de bloqueos cada 3 s) y el segundo intento (02:35 UTC) comprobó antes de empezar
+que ninguna transacción de escritura de más de 20 s estuviera sobre esas tablas: la migración se aplicó a las 02:43 UTC a la primera.
+
+**Lo que se comprobó al terminar (solo lectura).**
+
+| Comprobación | Resultado |
+|---|---|
+| Revisión de la base | 0086 |
+| Tabla, función y disparador de solo-anexar | `t \| 1 \| t` (existen; un disparador) |
+| Permisos | la API solo lee; el worker lee e inserta |
+| Servicios | API, web y worker en la versión nueva, los tres «healthy»; caddy y postgres sin reiniciar |
+| Prueba de humo | `/health` ok, `/login` 200, HSTS presente, `/auth/me` 401, `/docs` 404 |
+| Salud del servidor | «warning» solo por el aviso de disco que ya existía (90 % en unos 25 días, +2.773 MB/día); ningún problema |
+| Registros del worker y de la API (3 h) | 0 errores |
+| Interruptores en los archivos de entorno | `FBI_FORECAST_USERS` y `FBI_MATCH_FORECAST` sin definir: el pronóstico se escribe y **los usuarios no lo ven** |
+| Gasto de IA | 5,23 US$ y 331 llamadas el 22 oct, sin subida |
+
+**La primera pasada con datos reales** (02:45–02:53 UTC, 8 min) escribió **4.417 filas en 1.893 conjuntos de mercado para 631 de los 648
+partidos de los próximos 4 días**; los otros 17 son de competiciones sin datos aptos para modelos (no se pronostican, y la página lo dice). Es
+lo que se midió antes de estrenar:
+
+| Mercado | Modelo | Estado | Conjuntos |
+|---|---|---|---|
+| 1X2 | Elo (`elo_ologit`) 600, Poisson 31 | sin calibrar (no hay campeón) | 631 |
+| Ambos marcan | Poisson | sin calibrar (no hay campeón) | 631 |
+| Total de goles, línea 2,5 | Poisson | **calibrado** (hay campeón y un precio fresco) | 76 |
+| Total de goles, línea 2,5 | Poisson | sin calibrar (falta un precio fresco del mercado) | 555 |
+
+Un partido real (173728) lo ilustra: 1X2 local 74,5 % / empate 16,1 % / visitante 9,4 %; ambos marcan sí 56,4 %; más de 2,5 goles 69,7 %
+calibrado (el modelo decía 72,6 %, el calibrador lo bajó); las probabilidades de cada mercado suman 100 %.
+
+**Lo que se aprendió: el archivo del pronóstico estaba en un paquete de modelos.** La regla del 5 de octubre dice que cualquier cambio en
+`models`, `features`, `predictions`, `backtesting` o `domain` es un modelo nuevo: se renueva la versión de todos. F5 había puesto su escritor
+en `predictions/`, así que la huella del código de modelos pasó de `mc9a7bec97ca` a `mce0abbbb30d` y **la primera pasada volvió a escribir
+una vez 92.937 pronósticos de los modelos bajo versiones nuevas** (8 min en vez de 6; ningún error, y el pronóstico de PrediGol salió como
+diseñado). No cambió ningún número que ve un usuario ni ningún pick, pero no era lo que F5 prometía («no cambia ningún modelo»). Corregido con
+la versión de F4: el escritor vive ahora en `fbi.forecasting`, fuera de los paquetes de modelos; la huella vuelve a `mc9a7bec97ca` (una
+prueba la fija: un cambio en el código de modelos exige actualizar la huella en el mismo commit) y vuelven las versiones de antes sin otra
+reescritura masiva. Lo escrito entre medias (92.937 pronósticos y las filas de `match_forecasts` de esas versiones) se queda: son registros
+solo-anexar y siguen siendo ciertos. La migración 0086, ya aplicada, sigue nombrando en un comentario la ruta antigua (no se editan las
+migraciones aplicadas).
+
 ## Verificación de los criterios del plan
 
 | Criterio de «hecho» | Resultado | Prueba |
