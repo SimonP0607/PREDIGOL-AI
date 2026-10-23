@@ -64,7 +64,7 @@ def _refuses(dsn: str, sql: str, *args: Any, replica: bool = True) -> bool:
         if replica:
             c.execute("SET session_replication_role = replica")
         try:
-            c.execute(sql, args)  # type: ignore[arg-type]
+            c.execute(sql, args)
         except psycopg.Error:
             return True
     return False

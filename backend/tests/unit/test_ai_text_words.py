@@ -11,8 +11,8 @@ from decimal import Decimal
 from typing import Any
 
 from fbi.ai.learning import notes_for
-from fbi.ai.pick_postmortem import _who
 from fbi.ai.text import CODE, fit, narrative_of, selection_es, shown, words
+from fbi.intel.pm_facts import who as _who
 
 
 def test_codes_a_model_copied_into_its_prose_become_words() -> None:

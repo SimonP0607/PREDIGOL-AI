@@ -30,7 +30,7 @@ MORNING = LATE + timedelta(minutes=35)
 
 
 def count(db: psycopg.Connection[Any], sql: str) -> int:
-    return int(scalar(db.execute(sql)))  # type: ignore[arg-type]
+    return int(scalar(db.execute(sql)))
 
 
 def learn(db: psycopg.Connection[Any], conn: Savepoints, *, at: Any = MORNING, **settings: Any) -> Any:

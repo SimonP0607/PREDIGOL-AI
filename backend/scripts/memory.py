@@ -218,15 +218,14 @@ def priors_command(conn: psycopg.Connection[Any], args: argparse.Namespace, *, n
     print(f"  {'figure':<8} {'competitions':>12} {'teams':>6} {'matches':>8} | {'SD match':>8} {'SD team':>8} | {'m own':>6} {'m opp':>6} | "
           f"{'m in use':>8} | {'a team with 10 matches is itself':>32}")
     for aspect, metric in memory.METRICS.items():
-        own = memory.variance_components(series[aspect]["own"], min_matches=args.min_matches, min_teams=args.min_teams)
-        opp = memory.variance_components(series[aspect]["opp"], min_matches=args.min_matches, min_teams=args.min_teams)
-        if own is None or opp is None:
+        produced = memory.variance_components(series[aspect]["own"], min_matches=args.min_matches, min_teams=args.min_teams)
+        conceded = memory.variance_components(series[aspect]["opp"], min_matches=args.min_matches, min_teams=args.min_teams)
+        if produced is None or conceded is None:
             print(f"  {aspect:<8} not enough matches that report it (need {args.min_teams} teams with {args.min_matches} matches in one competition)")
             continue
-        m_own, m_opp = own.prior_weight, opp.prior_weight
-        print(f"  {aspect:<8} {_n(own.competitions):>12} {_n(own.teams):>6} {_n(own.matches):>8} | {own.within ** 0.5:>8.2f} "
-              f"{(own.between ** 0.5 if own.between > 0 else 0.0):>8.2f} | {_m(m_own):>6} {_m(m_opp):>6} | {metric.prior_weight:>8.1f} | "
-              f"{10 / (10 + metric.prior_weight):>31.0%}")
+        print(f"  {aspect:<8} {_n(produced.competitions):>12} {_n(produced.teams):>6} {_n(produced.matches):>8} | {produced.within ** 0.5:>8.2f} "
+              f"{(produced.between ** 0.5 if produced.between > 0 else 0.0):>8.2f} | {_m(produced.prior_weight):>6} {_m(conceded.prior_weight):>6} | "
+              f"{metric.prior_weight:>8.1f} | {10 / (10 + metric.prior_weight):>31.0%}")
     print("m = variance of a team from match to match / variance between the teams of a competition: how many matches a league's mean is worth "
           "(a team with n matches is its own figure in the proportion n / (n + m)). SD = square root of each variance, in the unit of the figure "
           "(the 'own' figure: what a team produces). This only measures: a weight changes with a new version of the memory.")

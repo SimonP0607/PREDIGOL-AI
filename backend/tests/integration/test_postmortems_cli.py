@@ -27,7 +27,7 @@ def args(**kw: Any) -> argparse.Namespace:
 
 
 def count(db: psycopg.Connection[Any], sql: str) -> int:
-    return int(scalar(db.execute(sql)))  # type: ignore[arg-type]
+    return int(scalar(db.execute(sql)))
 
 
 def test_a_dry_run_writes_nothing_and_an_apply_writes_once(db: psycopg.Connection[Any], seed: Seed, capsys: pytest.CaptureFixture[str]) -> None:

@@ -28,7 +28,8 @@ from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from fbi.intel import postmortem
+from fbi.ai import memory as ai_memory
+from fbi.intel import pm_facts, postmortem
 from fbi.market import closing_reference
 
 from .conftest import Seed
@@ -293,7 +294,7 @@ def test_the_post_mortem_never_commits_the_callers_transaction(db: psycopg.Conne
 def test_a_selection_whose_facts_cannot_be_built_is_reported_and_the_others_are_written(db: psycopg.Connection[Any], seed: Seed,
                                                                                          monkeypatch: pytest.MonkeyPatch) -> None:
     pm = Pm(db, seed)
-    real = postmortem.build_facts
+    real = pm_facts.build_facts
     b = pm.key("F3")
 
     def broken(c: Any, **kw: Any) -> Any:
@@ -313,7 +314,7 @@ def test_a_selection_whose_facts_cannot_be_built_is_reported_and_the_others_are_
 def test_a_selection_is_written_with_its_memory_event_or_not_at_all(db: psycopg.Connection[Any], seed: Seed,
                                                                     monkeypatch: pytest.MonkeyPatch) -> None:
     pm = Pm(db, seed)
-    real = postmortem.remember
+    real = ai_memory.remember
     b = pm.f["F3"]
 
     def broken(conn: Any, **kw: Any) -> bool:

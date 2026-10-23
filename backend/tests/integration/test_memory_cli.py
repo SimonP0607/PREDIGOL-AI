@@ -36,7 +36,7 @@ def args(**kw: Any) -> argparse.Namespace:
 
 
 def rows(db: psycopg.Connection[Any]) -> int:
-    return int(scalar(db.execute("SELECT count(*) FROM intel.entity_memory WHERE version = %s", (memory.VERSION,))))  # type: ignore[arg-type]
+    return int(scalar(db.execute("SELECT count(*) FROM intel.entity_memory WHERE version = %s", (memory.VERSION,))))
 
 
 def test_a_dry_run_writes_nothing_and_an_apply_builds_the_lineage_once(db: psycopg.Connection[Any], world: League,  # noqa: F811
@@ -149,14 +149,15 @@ def test_the_priors_measure_what_a_figure_varies_by_inside_a_team_and_between_th
     said = capsys.readouterr().out
     assert "finished matches between" in said and "at least 5 matches that report the figure" in said and "at least 6 such teams" in said
     for figure in ("corners", "cards", "xg"):
-        mine = memory.variance_components({seed.competition_id: own[figure]}, min_matches=5, min_teams=6)
-        theirs = memory.variance_components({seed.competition_id: opp[figure]}, min_matches=5, min_teams=6)
-        assert mine is not None and theirs is not None
+        produced = memory.variance_components({seed.competition_id: own[figure]}, min_matches=5, min_teams=6)
+        conceded = memory.variance_components({seed.competition_id: opp[figure]}, min_matches=5, min_teams=6)
+        assert produced is not None and conceded is not None
         line = next(ln for ln in said.splitlines() if ln.strip().startswith(figure + " "))
         cells = line.replace("|", " ").split()
         assert cells[:4] == [figure, "1", "6", "120"], line
-        assert float(cells[4]) == pytest.approx(mine.within ** 0.5, abs=0.006) and float(cells[5]) == pytest.approx(max(mine.between, 0) ** 0.5, abs=0.006)
-        assert cells[6:9] == [cli._m(mine.prior_weight), cli._m(theirs.prior_weight), f"{memory.METRICS[figure].prior_weight:.1f}"], line
+        assert float(cells[4]) == pytest.approx(produced.within ** 0.5, abs=0.006)
+        assert float(cells[5]) == pytest.approx(max(produced.between, 0) ** 0.5, abs=0.006)
+        assert cells[6:9] == [cli._m(produced.prior_weight), cli._m(conceded.prior_weight), f"{memory.METRICS[figure].prior_weight:.1f}"], line
     assert "a weight changes with a new version of the memory" in said
 
 

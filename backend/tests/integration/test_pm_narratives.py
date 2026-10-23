@@ -46,7 +46,7 @@ def narrator(**kw: Any) -> FakeProvider:
 
 def write(db: psycopg.Connection[Any], provider: FakeProvider | None, **kw: Any) -> pm_narratives.NarrativeReport:
     return pm_narratives.run_narratives(db, at=LATE, settings=SETTINGS, ledger=UsageLedger(shared(db)),
-                                        provider=None if provider is None else (provider, MODEL), **kw)  # type: ignore[arg-type]
+                                        provider=None if provider is None else (provider, MODEL), **kw)
 
 
 @pytest.fixture()
@@ -129,7 +129,7 @@ def test_a_run_writes_at_most_what_its_limits_allow_and_the_picks_of_the_day_com
 
 def test_a_post_mortem_older_than_the_week_is_not_narrated(db: psycopg.Connection[Any], world: Pm) -> None:
     report = pm_narratives.run_narratives(db, at=LATE + timedelta(days=8), settings=SETTINGS, ledger=UsageLedger(shared(db)),
-                                          provider=(narrator(), MODEL))  # type: ignore[arg-type]
+                                          provider=(narrator(), MODEL))
     assert (report.due, report.written) == (0, 0)
 
 
