@@ -100,6 +100,13 @@ def load(args: argparse.Namespace, now: datetime) -> dict[int, list[Match]]:
     return load_measure(args.measure, getattr(args, "csv", None), args.months, now)
 
 
+def grid_of(args: argparse.Namespace) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """The (time decays, penalties) of ``--tune``: the ones the command line names, else the grid of ``evaluate.tune``."""
+    xis = tuple(float(x) for x in args.xis.split(",")) if getattr(args, "xis", None) else tuple(evaluate.DEFAULT_XIS)
+    penalties = tuple(float(x) for x in args.penalties.split(",")) if getattr(args, "penalties", None) else tuple(evaluate.DEFAULT_PENALTIES)
+    return xis, penalties
+
+
 def measures_command() -> int:
     print("measure                 columns                                       (rule)")
     for r in RULES:
@@ -119,7 +126,7 @@ def evaluate_command(args: argparse.Namespace) -> int:
     xi, penalty = float(args.xi), float(args.penalty)
     grid: dict[str, float] = {}
     if args.tune:
-        xi, penalty, grid = evaluate.tune(usable, measure=args.measure, start=start, step_days=args.step_days)
+        xi, penalty, grid = evaluate.tune(usable, measure=args.measure, start=start, step_days=args.step_days, xis=grid_of(args)[0], penalties=grid_of(args)[1])
     ev = evaluate.walk_forward(usable, measure=args.measure, start=start, end=end, step_days=args.step_days, xi=xi, penalty=penalty)
     lines = tuple(float(x) for x in args.lines.split(",")) if args.lines else DEFAULT_LINES.get(args.measure, ())
     side_lines = tuple(float(x) for x in args.side_lines.split(",")) if args.side_lines else DEFAULT_SIDE_LINES.get(args.measure, ())
@@ -177,7 +184,7 @@ def halves_command(args: argparse.Namespace) -> int:
         usable = usable_competitions(load_measure(measure, csv_path, args.months, now), start)
         xi, penalty = float(args.xi), float(args.penalty)
         if args.tune:
-            xi, penalty, _ = evaluate.tune(usable, measure=measure, start=start, step_days=args.step_days)
+            xi, penalty, _ = evaluate.tune(usable, measure=measure, start=start, step_days=args.step_days, xis=grid_of(args)[0], penalties=grid_of(args)[1])
         evaluations[measure] = evaluate.walk_forward(usable, measure=measure, start=start, end=end, step_days=args.step_days, xi=xi, penalty=penalty)
         print(f"{measure}: {len(evaluations[measure].rows)} predictions in {len(usable)} competitions (xi {xi}, penalty {penalty})", file=sys.stderr)
     report = evaluate_halves.evaluate(evaluations["goals_1h"], evaluations["goals_2h"])
@@ -232,6 +239,8 @@ def build_parser() -> argparse.ArgumentParser:
     ph.add_argument("--xi", type=float, default=evaluate.DEFAULT_XI, help="time decay per day (default %(default)s)")
     ph.add_argument("--penalty", type=float, default=evaluate.DEFAULT_PENALTY, help="shrinkage of the strengths (default %(default)s)")
     ph.add_argument("--tune", action="store_true", help="choose xi and penalty, per half, on the window before the test window")
+    ph.add_argument("--xis", help="with --tune: comma-separated time decays of the grid (default: the grid of evaluate.tune)")
+    ph.add_argument("--penalties", help="with --tune: comma-separated penalties of the grid (default: the grid of evaluate.tune)")
     ph.add_argument("--json", action="store_true")
     for name, helptext in (("evaluate", "walk-forward evaluation against the baseline"), ("export", "write the training history to a CSV"),
                            ("sql", "print the COPY statement that reads the training history (for psql)")):
@@ -244,6 +253,8 @@ def build_parser() -> argparse.ArgumentParser:
             p.add_argument("--xi", type=float, default=evaluate.DEFAULT_XI, help="time decay per day (default %(default)s)")
             p.add_argument("--penalty", type=float, default=evaluate.DEFAULT_PENALTY, help="shrinkage of the strengths (default %(default)s)")
             p.add_argument("--tune", action="store_true", help="choose xi and penalty on the window before the test window")
+            p.add_argument("--xis", help="with --tune: comma-separated time decays of the grid (default: the grid of evaluate.tune)")
+            p.add_argument("--penalties", help="with --tune: comma-separated penalties of the grid (default: the grid of evaluate.tune)")
             p.add_argument("--lines", help="comma-separated lines of the total to calibrate (default: the usual ones of the measure)")
             p.add_argument("--side-lines", help="comma-separated lines of ONE side (home and away each) to grade (default: the usual ones)")
             p.add_argument("--json", action="store_true")

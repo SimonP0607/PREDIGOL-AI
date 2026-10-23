@@ -17,7 +17,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Final
 
 import numpy as np
 
@@ -204,10 +204,17 @@ def by_competition(ev: Evaluation) -> list[dict[str, Any]]:
     return sorted(out, key=lambda d: -int(d["n"]))
 
 
+DEFAULT_XIS: Final = (0.0, 0.0019, 0.004)
+DEFAULT_PENALTIES: Final = (0.5, 2.0, 8.0, 32.0)
+TUNED_ON: Final = ("home", "away", "total")
+"""The counts whose log-score gains are averaged to choose the hyper-parameters: a family states markets on the count of each side and on the
+total, and (corners, 23 Oct 2026) the sides can have all the skill while the total has none - tuned on the total alone, the choice is noise."""
+
+
 def tune(by_competition_matches: Mapping[int, Sequence[Match]], *, measure: str, start: datetime, days: int = 180, step_days: int = 28,
-         xis: Sequence[float] = (0.0, 0.0019, 0.004), penalties: Sequence[float] = (0.5, 2.0, 8.0)) -> tuple[float, float, dict[str, float]]:
-    """Choose the time decay and the penalty on the ``days`` BEFORE ``start`` (never on the test window): the pair with the best mean log score
-    of the total. Returns (xi, penalty, the grid's scores)."""
+         xis: Sequence[float] = DEFAULT_XIS, penalties: Sequence[float] = DEFAULT_PENALTIES, counts: Sequence[str] = TUNED_ON) -> tuple[float, float, dict[str, float]]:
+    """Choose the time decay and the penalty on the ``days`` BEFORE ``start`` (never on the test window): the pair with the best mean log-score
+    gain over the baseline, averaged over ``counts`` (the home side, the away side and the total). Returns (xi, penalty, the grid's scores)."""
     grid: dict[str, float] = {}
     best: tuple[float, float, float] | None = None
     for xi in xis:
@@ -216,7 +223,8 @@ def tune(by_competition_matches: Mapping[int, Sequence[Match]], *, measure: str,
                               xi=xi, penalty=penalty)
             if not ev.rows:
                 continue
-            gain = float(summarise(ev)["log_score_gain_per_match"]["total"]["mean"])
+            gains = summarise(ev)["log_score_gain_per_match"]
+            gain = float(np.mean([gains[c]["mean"] for c in counts]))
             grid[f"xi={xi},penalty={penalty}"] = gain
             if best is None or gain > best[0]:
                 best = (gain, xi, penalty)

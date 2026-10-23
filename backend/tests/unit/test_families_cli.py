@@ -145,3 +145,25 @@ def test_the_sql_command_prints_the_statement_that_reads_a_history_and_touches_n
     assert "is_neutral" not in out and "0 AS neutral" in out, "the neutral-venue flag is not read: the owner has not promoted that rule"
     with pytest.raises(UnknownMeasureError):
         cli.main(["sql", "--measure", "corners_1h"])
+
+
+def test_the_choice_is_made_on_the_sides_and_the_total_not_on_the_total_alone() -> None:
+    """Corners (23 Oct 2026): the sides had the skill and the total none, so a choice made on the total alone was a choice made on noise."""
+    data = simulated(800)
+    matches = data[7]
+    start = matches[len(matches) // 2].kickoff_at
+    _, _, grid = evaluate.tune(data, measure="corners_ft", start=start, days=200, xis=(0.0,), penalties=(1.0,))
+    ev = evaluate.walk_forward(data, measure="corners_ft", start=start - timedelta(days=200), end=start, step_days=28, xi=0.0, penalty=1.0)
+    gains = evaluate.summarise(ev)["log_score_gain_per_match"]
+    assert grid["xi=0.0,penalty=1.0"] == pytest.approx((gains["home"]["mean"] + gains["away"]["mean"] + gains["total"]["mean"]) / 3)
+    _, _, only_total = evaluate.tune(data, measure="corners_ft", start=start, days=200, xis=(0.0,), penalties=(1.0,), counts=("total",))
+    assert only_total["xi=0.0,penalty=1.0"] == pytest.approx(gains["total"]["mean"])
+
+
+def test_the_grid_of_the_command_line_replaces_the_default_one() -> None:
+    import argparse
+
+    named = argparse.Namespace(xis="0,0.002", penalties="4,16,64")
+    assert cli.grid_of(named) == ((0.0, 0.002), (4.0, 16.0, 64.0))
+    assert cli.grid_of(argparse.Namespace(xis=None, penalties=None)) == (tuple(evaluate.DEFAULT_XIS), tuple(evaluate.DEFAULT_PENALTIES))
+    assert 32.0 in evaluate.DEFAULT_PENALTIES, "the best of the first grid was its largest penalty: the grid goes beyond it"
