@@ -8,14 +8,18 @@ things in that text are not what they look like, and every one was measured on p
   the kick, not a minute). An own goal is filed under the team that GETS the goal (the 1,154 matches whose only goal was an own goal),
   although the man who scored it is the other team's. A converted penalty of the match and one of a shoot-out are the same words.
 * **A second yellow is two lines.** The provider lists a dismissal for a second yellow card as a ``Yellow Card`` and a ``Red Card`` of the
-  same man at the same minute (18,676 reds out of 42,584); only 100 events say ``Second Yellow Card`` outright. Its own statistics agree:
-  the match's ``yellow_cards`` count includes the yellow of the pair and its ``red_cards`` the red (1,571 of 1,707 sides and 1,684 of 1,707).
-  So the red of a pair is classed ``second_yellow`` (a dismissal for two yellows) and keeps its place in the red count; a red of a man who
-  had a yellow at ANOTHER minute is a ``red`` flagged ``after_yellow`` (a straight red after a booking, or a second yellow the provider
-  listed with one line only: the list does not say, so it is not guessed).
+  same man at the same minute (18,676 reds out of 41,179 with a player; in 50 more the yellow comes AFTER the red in the list, and in 40 of
+  those the man had been booked before, so they are the same thing in the other order); only 100 events say ``Second Yellow Card``
+  outright. Its own statistics agree: the match's ``yellow_cards`` count includes the yellow of the pair and its ``red_cards`` the red
+  (1,571 of 1,707 sides and 1,684 of 1,707). So the red of a pair is classed ``second_yellow`` (a dismissal for two yellows) and keeps
+  its place in the red count; a red of a man who had a yellow at ANOTHER minute is a ``red`` flagged ``after_yellow`` (a straight red
+  after a booking, or a second yellow the provider listed with one line only: the list does not say, so it is not guessed).
 * **A VAR decision that takes a goal away leaves no goal to point at.** For 2,251 of the 2,253 sides with a ``Goal cancelled`` /
   ``Goal Disallowed`` decision the provider's goals ARE the score: it removes the goal and keeps the decision. The decision is a fact of
   the match on its own (a goal disallowed at minute m, for this side); there is no line to link it to.
+* **Some lines name nobody.** 3,303 ``Normal Goal`` (of 90,175 in the last 400 days), 63 own goals and 331 penalties, converted or missed
+  (the kicks of the recent shoot-outs among them), have neither a player id nor a name. They are goals all the same (they are in the
+  score), but they cannot be given to a man: the line says ``no_player`` and the layer of the players says how many it could not attribute.
 * **The period is not the minute.** ``minute`` is the minute of the clock: stoppage time is ``minute = 45`` (or 90, 105, 120) with an
   ``extra_minute``, and 73 matches that ended in regular time still carry minutes above 90 (164 events). A minute above 90 is extra time
   only in a match that WENT to extra time (the caller knows: ``AET``, ``PEN``); in any other it is the second half's stoppage time.
@@ -93,6 +97,11 @@ FLAG_MINUTE_OUT_OF_RANGE: Final = "minute_out_of_range"
 FLAG_UNKNOWN_DETAIL: Final = "unknown_detail"
 FLAG_NO_SIDE: Final = "no_side"
 """The provider's team is neither the home nor the away side of the match (0.07 % of the events)."""
+FLAG_NO_PLAYER: Final = "no_player"
+"""A goal, a missed penalty, a kick of a shoot-out or a card with neither a player id nor a name: it counts, but it is nobody's."""
+
+NAMES_A_MAN: Final = frozenset({GOAL, OWN_GOAL, PENALTY_GOAL, PENALTY_MISSED, SHOOTOUT_GOAL, SHOOTOUT_MISS, YELLOW, SECOND_YELLOW, RED})
+"""The kinds whose line is about one man, so that a line with no man is worth a flag."""
 
 _VAR_KINDS: Final[dict[str, str]] = {
     "goal cancelled": VAR_GOAL_CANCELLED,
@@ -240,24 +249,29 @@ def normalize(raws: Iterable[RawEvent], *, extra_time: bool) -> list[Event]:
         flags[raw.seq] = [] if known else [FLAG_UNKNOWN_DETAIL]
         if raw.side not in ("home", "away"):
             flags[raw.seq].append(FLAG_NO_SIDE)
-    # a dismissal for two yellows: a red and a yellow of the same man at the same minute, the yellow first in the list
+    # a dismissal for two yellows: a red and a yellow of the same man, side and minute, in the order the provider listed them (the yellow
+    # first: 18,676) or the other (50)
     yellows: dict[tuple[int, int], list[RawEvent]] = {}
     booked: dict[int, set[int]] = {}
     for raw in lines:
-        if raw.player_id is None:
-            continue
-        if kinds[raw.seq] == YELLOW:
+        if raw.player_id is not None and kinds[raw.seq] == YELLOW:
             yellows.setdefault((raw.player_id, raw.minute), []).append(raw)
             booked.setdefault(raw.player_id, set()).add(raw.minute)
-        elif kinds[raw.seq] == RED:
-            mates = [y for y in yellows.get((raw.player_id, raw.minute), []) if y.seq not in pair and y.side == raw.side]
-            if mates:
-                yellow = mates[-1]
-                kinds[raw.seq] = SECOND_YELLOW
-                pair[raw.seq], pair[yellow.seq] = yellow.seq, raw.seq
-                flags[yellow.seq].append(FLAG_SECOND_OF_PAIR)
-            elif any(m < raw.minute for m in booked.get(raw.player_id, ())):
-                flags[raw.seq].append(FLAG_AFTER_YELLOW)
+    for raw in lines:
+        if raw.player_id is None or kinds[raw.seq] != RED:
+            continue
+        mates = [y for y in yellows.get((raw.player_id, raw.minute), []) if y.seq not in pair and y.side == raw.side]
+        earlier = [y for y in mates if y.seq < raw.seq]
+        yellow = earlier[-1] if earlier else (mates[0] if mates else None)
+        if yellow is not None:
+            kinds[raw.seq] = SECOND_YELLOW
+            pair[raw.seq], pair[yellow.seq] = yellow.seq, raw.seq
+            flags[yellow.seq].append(FLAG_SECOND_OF_PAIR)
+        elif any(m < raw.minute for m in booked.get(raw.player_id, ())):
+            flags[raw.seq].append(FLAG_AFTER_YELLOW)
+    for raw in lines:
+        if kinds[raw.seq] in NAMES_A_MAN and raw.player_id is None and not (raw.player_name or "").strip():
+            flags[raw.seq].append(FLAG_NO_PLAYER)
     out: list[Event] = []
     for raw in lines:
         kind = kinds[raw.seq]

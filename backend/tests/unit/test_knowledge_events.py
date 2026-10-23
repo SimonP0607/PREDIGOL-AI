@@ -132,7 +132,8 @@ def test_a_red_of_a_man_booked_at_another_minute_is_a_red_and_says_so() -> None:
 def test_a_straight_red_and_a_red_with_no_man_are_just_reds() -> None:
     out = read(raw(0, 10, "Card", "Red Card", player=5), raw(1, 80, "Card", "Red Card", player=None), raw(2, 80, "Card", "Yellow Card"))
     assert [e.kind for e in out] == [ev.RED, ev.RED, ev.YELLOW]
-    assert all(e.pair_seq is None and not e.flags for e in out)
+    assert all(e.pair_seq is None for e in out)
+    assert [e.flags for e in out] == [(), (ev.FLAG_NO_PLAYER,), (ev.FLAG_NO_PLAYER,)], "and a card with nobody in it says so"
 
 
 def test_the_100_lines_that_say_second_yellow_stand_alone() -> None:
@@ -146,6 +147,33 @@ def test_a_yellow_pairs_with_one_red_only_and_a_pair_needs_the_same_side() -> No
                raw(3, 50, "Card", "Yellow Card", player=6, side="home"), raw(4, 50, "Card", "Red Card", player=6, side="away"))
     assert [e.kind for e in out] == [ev.YELLOW, ev.SECOND_YELLOW, ev.RED, ev.YELLOW, ev.RED]
     assert out[1].pair_seq == 0 and out[0].pair_seq == 1 and out[2].pair_seq is None
+
+
+def test_the_yellow_may_come_after_the_red_in_the_list_and_it_is_the_same_dismissal() -> None:
+    # Measured: 50 of the 41,179 reds with a player have the yellow of the same minute AFTER them in the list, and 40 of those men had been
+    # booked earlier: a second yellow listed the other way round (a real match: yellow 39', red 63', yellow 63').
+    out = read(raw(0, 39, "Card", "Yellow Card", player=5), raw(1, 63, "Card", "Red Card", player=5), raw(2, 63, "Card", "Yellow Card", player=5))
+    assert [e.kind for e in out] == [ev.YELLOW, ev.SECOND_YELLOW, ev.YELLOW]
+    assert out[1].pair_seq == 2 and out[2].pair_seq == 1 and out[0].pair_seq is None
+    assert ev.FLAG_SECOND_OF_PAIR in out[2].flags and not out[1].flags, "it is not 'a red after a booking': the booking is the one beside it"
+
+
+def test_a_red_pairs_with_the_nearest_yellow_before_it_and_only_then_with_one_after() -> None:
+    out = read(raw(0, 70, "Card", "Yellow Card", player=5), raw(1, 70, "Card", "Red Card", player=5), raw(2, 70, "Card", "Yellow Card", player=5))
+    assert [e.kind for e in out] == [ev.YELLOW, ev.SECOND_YELLOW, ev.YELLOW]
+    assert out[1].pair_seq == 0 and out[0].pair_seq == 1 and out[2].pair_seq is None
+
+
+def test_a_goal_or_a_card_with_nobody_in_it_says_so_and_still_counts() -> None:
+    # Measured (last 400 days): 3,303 normal goals, 63 own goals and 331 penalties with neither a player id nor a name.
+    out = read(raw(0, 10, "Goal", "Normal Goal"), raw(1, 20, "Goal", "Normal Goal", name="A. Player"), raw(2, 30, "Goal", "Normal Goal", player=7),
+               raw(3, 40, "Goal", "Own Goal", side="away"), raw(4, 50, "Card", "Yellow Card", side="away"),
+               raw(5, 60, "subst", "Substitution 1"), raw(6, 70, "Var", "Goal cancelled"),
+               raw(7, 120, "Goal", "Penalty", comments="Penalty Shootout"), raw(8, 120, "Goal", "Missed Penalty", comments="Penalty Shootout", player=9),
+               extra_time=True)
+    assert [ev.FLAG_NO_PLAYER in e.flags for e in out] == [True, False, False, True, True, False, False, True, False]
+    assert ev.regulation_goals(out) == (3, 1), "a goal nobody scored is still in the score"
+    assert out[0].as_dict()["flags"] == [ev.FLAG_NO_PLAYER]
 
 
 def test_the_second_yellows_do_not_change_what_the_cards_total() -> None:
