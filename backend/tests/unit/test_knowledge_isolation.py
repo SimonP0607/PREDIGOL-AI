@@ -83,7 +83,7 @@ module is free to import its neighbours."""
 
 PREMATCH_PACKAGES = set(MODEL_PACKAGES) | {
     "forecasting", "picks", "parlays", "market", "odds", "datasets", "validation", "research", "analyst", "notify",
-    "competitions", "people", "catalog",
+    "competitions", "people", "catalog", "families",
 }
 """The packages that train a model, predict, price, decide, pick or describe a match that has not been played. A package is here whole."""
 
@@ -213,6 +213,17 @@ def test_the_view_of_outcomes_is_not_named_by_the_models() -> None:
     forbidden = ("models", "features", "predictions", "backtesting", "domain")
     naming = sorted(rel(p) for p in python_files(SRC) if rel(p).split("/")[0] in forbidden and "fixture_outcomes" in p.read_text(encoding="utf-8"))
     assert naming == [], f"model code naming the view of outcomes: {naming}. Deciding that it may is F10's, with its leakage tests"
+
+
+def test_the_families_read_the_outcomes_through_one_door_that_waits_for_the_result() -> None:
+    """Plan F10 opens the door F9 kept shut, in ONE module: ``families/history.py``. It reads the view, it waits for the result to be known
+    (``OUTCOME_KNOWN_AFTER``) and the rest of the families get their matches from it."""
+    naming = sorted(rel(p) for p in python_files(SRC) if rel(p).split("/")[0] == "families" and "fixture_outcomes" in p.read_text(encoding="utf-8"))
+    assert naming == ["families/history.py"], f"modules of the families naming the view of outcomes: {naming}"
+    door = (SRC / "families" / "history.py").read_text(encoding="utf-8")
+    assert "OUTCOME_KNOWN_AFTER" in door and "latest_kickoff(cutoff)" in door
+    fit = (SRC / "families" / "fit.py").read_text(encoding="utf-8")
+    assert "known_at(m) <= at" in fit, "and the fit applies the rule again: two guards, because a future leaks here"
 
 
 # ── the pre-match side ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
