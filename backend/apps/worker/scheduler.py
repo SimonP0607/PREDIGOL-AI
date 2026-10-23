@@ -35,6 +35,9 @@ at worst, and a duplicated tick costs nothing at all.
     PrediGol Intelligence (``fbi.intel``): the decision layer (ten filters, states, score, stake) on the next 36
     hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v4, memory, calibration, the leakage
     audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only.
+  * ``family_forecasts``  every 3 hours (``FBI_FAMILY_FORECAST_MINUTES``): the goals of each half, the corners and the cards of the
+    upcoming matches (``fbi.families``, plan F10), a negative binomial per team, written to the forecast table under ``family-v1``.
+    Research: no page reads that version. Database only; ``FBI_FAMILY_FORECASTS=0`` switches it off.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most
@@ -239,6 +242,12 @@ KNOWLEDGE_RUN_SECONDS = float(os.environ.get("FBI_MATCH_KNOWLEDGE_RUN_SECONDS", 
 KNOWLEDGE_SWEEP_SECONDS = float(os.environ.get("FBI_MATCH_KNOWLEDGE_SWEEP_SECONDS", "900"))
 KNOWLEDGE_SWEEP_HOUR, KNOWLEDGE_SWEEP_MINUTE = 10, 30
 KNOWLEDGE_ENABLED = os.environ.get("FBI_MATCH_KNOWLEDGE", "1").strip().lower() not in {"0", "off", "false", "no"}
+FAMILY_MINUTES = int(os.environ.get("FBI_FAMILY_FORECAST_MINUTES", "180"))
+FAMILY_ENABLED = os.environ.get("FBI_FAMILY_FORECASTS", "1").strip().lower() not in {"0", "off", "false", "no"}
+"""The forecast of the counts (plan F10: the goals of each half, corners, cards): every FAMILY_MINUTES the upcoming matches are forecast by
+each family and what is new is written to the forecast table under ``family-v1`` (``fbi.families.job``). Database only - no request to the
+provider, no language model - and invisible to every user: the page of the forecast of a match reads another version. FBI_FAMILY_FORECASTS=0
+switches it off."""
 """Match Knowledge (plan F7): a finished match as one object in layers (``fbi.knowledge``), built from the facts already stored once the
 match has been settled (26 hours after kick-off), and built again, as a new row that names the one it replaced, only when what it was built
 from has changed. Database only - no request to the provider, and nothing a user sees until FBI_KNOWLEDGE_USERS says so. A pass every
@@ -891,6 +900,20 @@ async def _match_knowledge() -> None:
     await asyncio.to_thread(_match_knowledge_now)
 
 
+def _family_forecasts_now() -> None:
+    from fbi.families.job import run_job
+
+    with _connect() as conn:
+        run_job(conn, now=now(), code_version=code_version())
+
+
+async def _family_forecasts() -> None:
+    """The forecast of the counts (plan F10) of the upcoming matches. Reads what is stored and writes the forecast table under ``family-v1``;
+    a pass that writes nothing leaves no row in the ledger. In a thread so the live jobs keep their cadence."""
+    new_run_id()
+    await asyncio.to_thread(_family_forecasts_now)
+
+
 async def _match_knowledge_sweep() -> None:
     """The same over the last year and a bit (daily): the pass above only looks at the matches of the last days."""
     new_run_id()
@@ -1209,7 +1232,7 @@ WORKER_JOB_TYPES = frozenset({
     "pick_pipeline", "quality_sweep", "context_refresh", "context_due", "results_repair", "final_prematch",
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
-    "competition_structure", "referee_identity", "player_history", "match_knowledge",
+    "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1481,6 +1504,13 @@ async def main() -> None:
     else:
         log.warning("worker.match_knowledge_off",
                     hint="FBI_MATCH_KNOWLEDGE=0: the finished matches are not being put together (Match Knowledge)")
+    if FAMILY_ENABLED:
+        scheduler.add_job(_deadline("family_forecasts", "family_forecasts", _family_forecasts), "interval",
+                          minutes=FAMILY_MINUTES, id="family_forecasts", max_instances=1, coalesce=True,
+                          misfire_grace_time=FAMILY_MINUTES * 60, next_run_time=moment + timedelta(minutes=37))
+    else:
+        log.warning("worker.family_forecasts_off",
+                    hint="FBI_FAMILY_FORECASTS=0: the goals of each half, the corners and the cards are not being forecast")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))

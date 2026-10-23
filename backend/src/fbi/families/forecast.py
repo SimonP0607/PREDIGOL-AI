@@ -32,6 +32,7 @@ from typing import Any, Final
 
 import numpy as np
 import psycopg
+import structlog
 from psycopg.rows import dict_row
 
 from fbi.families import history, rows
@@ -59,6 +60,8 @@ from fbi.forecasting.match_forecast import (
     store,
 )
 from fbi.predictions.forecast import HORIZON, upcoming
+
+log = structlog.get_logger(__name__)
 
 VERSION: Final = "family-v1"
 """The ``version`` of the rows in the forecast table. The page of F5 reads ``forecast-v1``."""
@@ -128,6 +131,7 @@ class SpecReport:
     rows_written: int = 0
     unchanged: int = 0
     note: str = ""
+    error: str = ""
 
 
 @dataclass
@@ -143,7 +147,7 @@ class FamilyReport:
             skipped = ", ".join(f"{k} {v}" for k, v in sorted(r.competitions_skipped.items()))
             parts.append(f"{key}: {r.markets_written} markets written ({r.rows_written} rows)/{r.unchanged} unchanged for {r.fixtures} fixtures"
                          f" [{r.competitions_fitted} competitions fitted{', skipped: ' + skipped if skipped else ''}]"
-                         f"{' - ' + r.note if r.note else ''}")
+                         f"{' - ' + r.note if r.note else ''}{' - FAILED: ' + r.error if r.error else ''}")
         return f"family forecasts ({self.targets} targets, {self.not_fit} not fit): " + "; ".join(parts)
 
 
@@ -305,5 +309,10 @@ def write_family_forecasts(conn: psycopg.Connection[Any], *, at: datetime, code_
     for spec in specs:
         sub = SpecReport()
         report.specs[spec.key] = sub
-        _run_spec(conn, spec, targets, at=at, code_version=code_version, available=available, stored=stored, report=sub)
+        try:
+            with conn.transaction():  # a savepoint: a family is written whole or not at all
+                _run_spec(conn, spec, targets, at=at, code_version=code_version, available=available, stored=stored, report=sub)
+        except Exception as exc:  # recorded on the report and logged; the other families go on
+            report.specs[spec.key] = SpecReport(error=f"{type(exc).__name__}: {exc}"[:300])
+            log.error("family_forecasts.failed", family=spec.key, error=type(exc).__name__, detail=str(exc)[:300])
     return report
