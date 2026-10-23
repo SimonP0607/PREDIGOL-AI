@@ -31,7 +31,7 @@ AT = KICKOFF + timedelta(days=10)
 
 def one(db: psycopg.Connection[Any], sql: str, *args: object) -> Any:
     with db.cursor() as cur:
-        cur.execute(sql, args)  # type: ignore[arg-type]
+        cur.execute(sql, args)
         row = cur.fetchone()
     assert row is not None
     return row[0]

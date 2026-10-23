@@ -6,6 +6,7 @@ Nothing here touches the database: the rules, the keys and the verdicts are pure
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 
 import pytest
 
@@ -156,7 +157,7 @@ def test_a_price_is_not_measured_against_one_house() -> None:
 
 def _facts() -> matrix.Facts:
     defs = {s.bet_id: matrix.DefRow(s.bet_id, s, None) for s in ALL_SPECS}
-    return matrix.Facts(at=matrix.datetime(2026, 1, 1, tzinfo=matrix.UTC), price_days=8, outcome_days=365, defs=defs, prices={},
+    return matrix.Facts(at=datetime(2026, 1, 1, tzinfo=UTC), price_days=8, outcome_days=365, defs=defs, prices={},
                         first_seen={}, fixture_competition={}, finished_window=0, finished_by_type={}, finished_by_competition={},
                         measures={r.measure: matrix.MeasureStats() for r in RULES if r.liquidable}, competitions={}, keys_enabled={},
                         edge={}, calibrated={}, decisions={}, discovery={}, cards={})
