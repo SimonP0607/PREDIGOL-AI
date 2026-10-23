@@ -164,6 +164,8 @@ def audit_command(conn: psycopg.Connection[Any], args: argparse.Namespace) -> in
         _line(key + "  (must be 0)", _n(history[key]))
     _line("recent_club_known_share", _pct(history["recent_club_known_share"]))
     _line("a pass would write  (must be 0)", history["pass_would_write"])
+    news = history["pass_would_write_news"]
+    _line("  and only news of today or yesterday", f"{_n(news['players'])} players, {_n(news['spells'])} streaks  (a match played while it ran; the next pass folds it in)")
     _line("streaks of no days the facts leave out", _n(history["phantoms"]))
     _line("squad sheets turned round (crossed)", _n(history["sheets_crossed"]))
     _line("squad sheets in doubt, left as they are", _n(history["sheets_doubtful"]))

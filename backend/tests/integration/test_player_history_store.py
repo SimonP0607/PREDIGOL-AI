@@ -863,3 +863,81 @@ def test_the_providers_player_zero_makes_no_streak_and_no_cap_and_does_not_stop_
     asked = ph.build(world.db, apply=True, players=[0, p, -3])
     assert asked.players == 1, "a man without an identity is not asked for either"
     assert ph.audit(world.db)["pass_would_write"] == {"spells": 0, "spells_deleted": 0, "caps": 0, "caps_deleted": 0}
+
+
+# ── a database that is written to while the pass runs ────────────────────────────────────────────────────────────────────
+
+NOTHING = {"spells": 0, "spells_deleted": 0, "caps": 0, "caps_deleted": 0}
+NO_NEWS = {"players": 0, "spells": 0}
+
+
+def a_man_with_three_matches(world: World) -> tuple[int, int, int]:
+    """(club, rival, player): the man played for the club on days 1, 10 and 20, and a sweep has put that into the table."""
+    club, rival, man = world.team("Alpha FC", False), world.team("Rival FC", False), world.player()
+    for day in (1, 10, 20):
+        world.lineup(world.fixture(club, rival, day), "home", [(man, True)])
+    ph.build(world.db, apply=True, sweep=True, now=T0 + timedelta(days=21))
+    return club, rival, man
+
+
+def test_a_match_played_while_the_sweep_ran_is_news_for_the_audit_and_not_a_pass_that_still_writes(world: World) -> None:
+    """Regression (23 Oct 2026, the first full build in production): the audit that follows a sweep found 46 players for whom "a pass
+    would still write", and every one differed from the stored streak by one match more and a last day of evidence of that very night -
+    matches played while the sweep (and the audit's own simulation, nine minutes later) were running. That is the database being written
+    to, not a pass that is not idempotent: it is counted apart (``pass_would_write_news``), and the next pass folds it in."""
+    club, rival, man = a_man_with_three_matches(world)
+    quiet = ph.audit(world.db, now=T0 + timedelta(days=21))
+    assert quiet["pass_would_write"] == NOTHING and quiet["pass_would_write_news"] == NO_NEWS
+
+    world.lineup(world.fixture(club, rival, 21), "home", [(man, True)])    # played after the sweep had read him
+    evening = T0 + timedelta(days=21, hours=6)
+    found = ph.audit(world.db, now=evening)
+    assert found["pass_would_write"] == NOTHING, "not a defect"
+    assert found["pass_would_write_news"] == {"players": 1, "spells": 1}
+    assert ph.broken_invariants(found) == []
+    seen = ph.build(world.db, sweep=True, now=evening)
+    assert (seen.players_changed, seen.spells_written, seen.spells_deleted) == (1, 1, 1), "the pass itself still counts what it would write"
+    assert (seen.news_players, seen.news_spells_written, seen.news_spells_deleted) == (1, 1, 1)
+    assert world.spells(man) == [(0, world.provider(club), "Alpha FC", d(1), None, "lineup", 3, d(20), None)], "(and a dry run writes nothing)"
+
+    folded = ph.build(world.db, apply=True, sweep=True, now=evening)
+    assert folded.applied and folded.news_players == 1
+    assert world.spells(man) == [(0, world.provider(club), "Alpha FC", d(1), None, "lineup", 4, d(21), None)]
+    after = ph.audit(world.db, now=evening)
+    assert after["pass_would_write"] == NOTHING and after["pass_would_write_news"] == NO_NEWS
+
+
+def test_a_match_that_arrives_late_is_still_a_pass_that_would_write(world: World) -> None:
+    """The case the sweep is there for - the sheet of an old match downloaded now - is NOT news: the man's last day of evidence is old."""
+    club, rival, man = a_man_with_three_matches(world)
+    world.lineup(world.fixture(club, rival, 5), "home", [(man, True)])
+    found = ph.audit(world.db, now=T0 + timedelta(days=30))
+    assert found["pass_would_write"] == {"spells": 1, "spells_deleted": 1, "caps": 0, "caps_deleted": 0}
+    assert found["pass_would_write_news"] == NO_NEWS
+
+
+def test_a_move_to_another_club_is_not_news_even_when_it_happened_today(world: World) -> None:
+    club, rival, man = a_man_with_three_matches(world)
+    new_club = world.team("Beta FC", False)
+    world.transfer(man, 27, world.provider(new_club), world.provider(club), "€ 5M", names=("Beta FC", "Alpha FC"), listed=28)
+    world.lineup(world.fixture(rival, new_club, 28), "away", [(man, True)])
+    found = ph.audit(world.db, now=T0 + timedelta(days=28, hours=6))
+    assert found["pass_would_write"] == {"spells": 2, "spells_deleted": 1, "caps": 0, "caps_deleted": 0}
+    assert found["pass_would_write_news"] == NO_NEWS
+
+
+def test_a_squad_list_read_again_is_news_for_the_audit(world: World) -> None:
+    """Only the last day of evidence of a squad streak moves when the list that carried the man is read again."""
+    club, man = world.team("Gamma FC", False), world.player()
+    world.squad(club, man, 5, 30)
+    ph.build(world.db, apply=True, sweep=True, now=T0 + timedelta(days=31))
+    quiet = ph.audit(world.db, now=T0 + timedelta(days=31))
+    assert quiet["pass_would_write"] == NOTHING and quiet["pass_would_write_news"] == NO_NEWS
+
+    world.db.execute("UPDATE core.squad_members SET last_seen_at = %s WHERE provider_player_id = %s", (T0 + timedelta(days=31), man))
+    found = ph.audit(world.db, now=T0 + timedelta(days=31, hours=6))
+    assert found["pass_would_write"] == NOTHING and found["pass_would_write_news"] == {"players": 1, "spells": 1}
+    # ... and the same list read again a week earlier than the audit is no longer news of the day
+    stale = ph.audit(world.db, now=T0 + timedelta(days=38))
+    assert stale["pass_would_write"] == {"spells": 1, "spells_deleted": 1, "caps": 0, "caps_deleted": 0}
+    assert stale["pass_would_write_news"] == NO_NEWS

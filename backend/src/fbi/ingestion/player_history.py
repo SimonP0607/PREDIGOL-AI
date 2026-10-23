@@ -8,7 +8,8 @@ A pass reads the facts already stored and writes only the difference, so most pa
 scheduled one looks at the players of recent matches, transfers and squad lists; the daily sweep looks at everyone (which also catches
 what arrived late: the statistics of an old match, a backfill) and then audits the tables and says so in the log when something is off:
 streaks out of order, a cap of a match not played or of a team that is not a senior national side, a career tied to the wrong person
-or club, a pass that would still write."""
+or club, a pass that would still write. A pass that would write only the news of today or yesterday - one match more, played while the
+sweep was running - is not "still writing": the audit counts it apart (``history_pass_would_write_news``) and the next pass folds it in."""
 
 from __future__ import annotations
 
@@ -86,10 +87,12 @@ def _audit(conn: psycopg.Connection[Any], *, commit: bool = True) -> dict[str, A
     if commit:
         conn.commit()
     problems = problems_of(result)
+    apart = ("pass_would_write", "pass_would_write_news")
     (log.warning if problems else log.info)(
         "player_history.audit", problems=problems,
-        history={k: v for k, v in result["history"].items() if k != "pass_would_write"},
+        history={k: v for k, v in result["history"].items() if k not in apart},
         history_pass_would_write=result["history"]["pass_would_write"],
+        history_pass_would_write_news=result["history"]["pass_would_write_news"],
         coaches={k: v for k, v in result["coaches"].items() if k != "pass_would_write"},
         coaches_pass_would_write=result["coaches"]["pass_would_write"])
     return result

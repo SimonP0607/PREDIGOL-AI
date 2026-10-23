@@ -4,6 +4,7 @@ in the log what is off, and a pass that gives way to a person's build."""
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import psycopg
@@ -120,7 +121,9 @@ def test_the_sweep_audits_and_logs_what_is_off(world: World, ledger_runs: list[d
     fields = log.said[0][2]
     assert fields["problems"] == [] and fields["history_pass_would_write"] == {"spells": 0, "spells_deleted": 0, "caps": 0, "caps_deleted": 0}
     assert fields["coaches_pass_would_write"] == {"persons": 0, "coach_links": 0, "team_links": 0}
-    assert "pass_would_write" not in fields["history"] and fields["history"]["spells"] >= 1 and fields["coaches"]["careers"] >= 1
+    assert fields["history_pass_would_write_news"] == {"players": 0, "spells": 0}
+    assert "pass_would_write" not in fields["history"] and "pass_would_write_news" not in fields["history"]
+    assert fields["history"]["spells"] >= 1 and fields["coaches"]["careers"] >= 1
 
     # the sweep heals what it can: a cap of a match that is no longer played is deleted before the audit looks
     world.db.execute("UPDATE core.fixtures SET status_group = 'postponed' WHERE id = (SELECT min(fixture_id) FROM core.player_national_caps)")
@@ -138,10 +141,34 @@ def test_the_sweep_audits_and_logs_what_is_off(world: World, ledger_runs: list[d
     assert fields["problems"] == ["history.spells_out_of_order", "coaches.team_links_to_another_club"]
 
 
+def test_a_match_played_while_the_sweep_ran_is_logged_as_news_and_not_as_a_problem(world: World, ledger_runs: list[dict[str, Any]],  # noqa: F811
+                                                                                   log: LogSpy) -> None:
+    """Regression (23 Oct 2026): the audit after the first full build in production warned about 46 players for whom "a pass would
+    still write", all of them one match more played while the build ran. The log says it as information, with the news apart."""
+    ids = small_world(world)
+    job.run_job(world.db, sweep=True, commit=False)
+    log.said.clear()
+    just_now = datetime.now(UTC) - timedelta(hours=1)
+    world.lineup(world.fixture(ids["club"], world.team("Rival FC", False), 0, at=just_now), "home", [(ids["player"], True)])
+    result = job._audit(world.db, commit=False)
+    (level, event, fields), *rest = log.said
+    assert (level, event) == ("info", "player_history.audit") and not rest
+    assert fields["problems"] == [] and job.problems_of(result) == []
+    assert fields["history_pass_would_write"] == {"spells": 0, "spells_deleted": 0, "caps": 0, "caps_deleted": 0}
+    assert fields["history_pass_would_write_news"] == {"players": 1, "spells": 1}
+    assert result["history"]["pass_would_write_news"] == {"players": 1, "spells": 1}
+
+    # ... and the pass that follows folds it in
+    job.run_job(world.db, sweep=True, commit=False)
+    assert world.spells(ids["player"])[-1][6:8] == (3, just_now.date())
+
+
 def test_the_problems_of_an_audit() -> None:
     quiet_history = dict.fromkeys(player_history.INVARIANTS, 0) | {"pass_would_write": {"spells": 0, "caps": 0}}
     quiet_coaches = dict.fromkeys(coach_links.INVARIANTS, 0) | {"pass_would_write": {"persons": 0}}
     assert job.problems_of({"history": quiet_history, "coaches": quiet_coaches}) == []
+    news = {"history": {**quiet_history, "pass_would_write_news": {"players": 46, "spells": 46}}, "coaches": quiet_coaches}
+    assert job.problems_of(news) == [], "news of the day is not a problem"
     broken_history = {**quiet_history, "spells_out_of_order": 2, "pass_would_write": {"spells": 1, "caps": 0}}
     broken_coaches = {**quiet_coaches, "coach_links_to_another_person": 1, "pass_would_write": {"persons": 3}}
     assert job.problems_of({"history": broken_history, "coaches": broken_coaches}) == [

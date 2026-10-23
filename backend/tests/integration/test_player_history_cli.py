@@ -108,6 +108,7 @@ def test_status_and_audit_say_what_is_in_the_database(world: World, capsys: pyte
     assert run(world.db, "audit") == 0
     out = said(capsys)
     assert out.rstrip().endswith("OK") and "a pass would write  (must be 0)" in out and "coaches: a pass would write" in out
+    assert "and only news of today or yesterday" in out and "0 players, 0 streaks" in out
 
 
 def test_audit_fails_when_something_is_off_and_names_it(world: World, capsys: pytest.CaptureFixture[str]) -> None:  # noqa: F811

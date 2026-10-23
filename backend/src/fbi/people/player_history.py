@@ -254,6 +254,30 @@ def spell_rows(player: int, built: sp.Build, names: dict[int, str | None]) -> li
             for n, s in enumerate(built.spells)]
 
 
+NEWS_DAYS: Final = 1
+"""How far back a day of evidence can be and still be the news of a pass that has just run: today or yesterday (UTC)."""
+
+
+def is_news(current: Sequence[SpellRow], wanted: Sequence[SpellRow], *, today: date) -> bool:
+    """True when the streaks the facts give now differ from the stored ones only by what happened after the pass read the man: the same
+    streaks, the same everything, but ``matches`` and ``last_evidence`` - never fewer matches nor an earlier day - and the new day of
+    evidence being today or yesterday. A match played (or whose squad sheet was downloaded) while the pass was running, or a squad list
+    read again, is not a defect of the pass: the next pass folds it in. Anything else - another club, another start or end, a day of
+    evidence that is old - is not news."""
+    if len(current) != len(wanted):
+        return False
+    fresh = False
+    for a, b in zip(current, wanted, strict=True):
+        if a == b:
+            continue
+        if a[:7] != b[:7] or a[9:] != b[9:]:
+            return False
+        if b[7] < a[7] or b[8] < a[8] or b[8] < today - timedelta(days=NEWS_DAYS):
+            return False
+        fresh = True
+    return fresh
+
+
 def read_stored_spells(conn: psycopg.Connection[Any], players: Sequence[int]) -> dict[int, list[SpellRow]]:
     out: dict[int, list[SpellRow]] = defaultdict(list)
     with conn.cursor() as cur:
@@ -386,6 +410,12 @@ class BuildReport:
     """Sheets with a man the statistics put on the other side that were NOT turned round (one man in both sheets, too few in the statistics)."""
     men_nowhere: int = 0
     """Men put on both sides by the squad sheets of a match and not placed by its statistics: no side is his, so they are not counted."""
+    news_players: int = 0
+    """Players whose streaks differ from the stored ones only by news of today or yesterday (``is_news``): counted in ``players_changed``
+    and in the rows written, and apart here, because in a database that is being written to a pass that has just run would otherwise
+    "still write" whenever a match is on."""
+    news_spells_written: int = 0
+    news_spells_deleted: int = 0
 
     @property
     def changed(self) -> bool:
@@ -397,7 +427,8 @@ class BuildReport:
                 "spells": self.spells, "spells_written": self.spells_written, "spells_deleted": self.spells_deleted,
                 "phantoms": self.phantoms, "fixtures": self.fixtures, "caps": self.caps, "caps_written": self.caps_written,
                 "caps_deleted": self.caps_deleted, "caps_open": self.caps_open, "sheets_crossed": self.sheets_crossed,
-                "sheets_doubtful": self.sheets_doubtful, "men_nowhere": self.men_nowhere}
+                "sheets_doubtful": self.sheets_doubtful, "men_nowhere": self.men_nowhere, "news_players": self.news_players,
+                "news_spells_written": self.news_spells_written, "news_spells_deleted": self.news_spells_deleted}
 
 
 def _lock(conn: psycopg.Connection[Any], *, wait: bool) -> bool:
@@ -443,7 +474,7 @@ def _batches(items: Sequence[int], size: int) -> Iterator[Sequence[int]]:
 
 
 def _build_spells(conn: psycopg.Connection[Any], players: Sequence[int], teams: dict[int, Team], crossed: AbstractSet[tuple[int, str]],
-                  report: BuildReport, *, apply: bool) -> None:
+                  report: BuildReport, *, apply: bool, today: date) -> None:
     by_provider = {t.provider_id: t.name for t in teams.values()}
     for batch in _batches(players, BATCH):
         facts = read_facts(conn, batch, teams, crossed)
@@ -463,6 +494,10 @@ def _build_spells(conn: psycopg.Connection[Any], players: Sequence[int], teams: 
             report.players_changed += 1
             report.spells_deleted += len(current)
             report.spells_written += len(wanted)
+            if is_news(current, wanted, today=today):
+                report.news_players += 1
+                report.news_spells_deleted += len(current)
+                report.news_spells_written += len(wanted)
             delete.append(player)
             insert.extend(wanted)
         report.players += len(batch)
@@ -545,7 +580,7 @@ def build(conn: psycopg.Connection[Any], *, apply: bool = False, wait: bool = Fa
         # the players asked for, else for every match (the players of a pass have their whole careers folded, so they need them all)
         sheets = read_sheets(conn, players=who if players is not None else None)
         report.sheets_crossed, report.sheets_doubtful = len(sheets.crossed), sheets.doubtful
-        _build_spells(conn, who, teams, sheets.crossed, report, apply=apply)
+        _build_spells(conn, who, teams, sheets.crossed, report, apply=apply, today=moment.astimezone(UTC).date())
         if players is None:
             senior = senior_national_ids(teams)
             fixtures = all_cap_fixtures(conn, senior) if sweep else recent_cap_fixtures(conn, senior, now=moment)
@@ -665,12 +700,19 @@ def broken_invariants(figures: dict[str, Any]) -> list[str]:
     return [name for name in INVARIANTS if figures[name]]
 
 
-def audit(conn: psycopg.Connection[Any]) -> dict[str, Any]:
-    """The state of the tables, read from the database, and what a pass over everything would still write (it must be nothing)."""
+def audit(conn: psycopg.Connection[Any], *, now: datetime | None = None) -> dict[str, Any]:
+    """The state of the tables, read from the database, and what a pass over everything would still write (it must be nothing).
+
+    A database that is being written to changes under the pass: the first audit after the first full build in production found 46
+    players whose only difference was one match more, played that night while the build was running. That is news, not a defect, and
+    it is reported apart (``pass_would_write_news``): ``pass_would_write`` is what a pass would write that is NOT news of today or
+    yesterday (``is_news``), and that must be nothing."""
     out = counts(conn)
-    pending = build(conn, apply=False, sweep=True)
-    out["pass_would_write"] = {"spells": pending.spells_written, "spells_deleted": pending.spells_deleted,
+    pending = build(conn, apply=False, sweep=True, now=now)
+    out["pass_would_write"] = {"spells": pending.spells_written - pending.news_spells_written,
+                               "spells_deleted": pending.spells_deleted - pending.news_spells_deleted,
                                "caps": pending.caps_written, "caps_deleted": pending.caps_deleted}
+    out["pass_would_write_news"] = {"players": pending.news_players, "spells": pending.news_spells_written}
     out["phantoms"] = pending.phantoms
     out["sheets_crossed"], out["sheets_doubtful"], out["men_nowhere"] = pending.sheets_crossed, pending.sheets_doubtful, pending.men_nowhere
     with conn.cursor() as cur:
