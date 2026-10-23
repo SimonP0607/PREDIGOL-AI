@@ -167,9 +167,11 @@ La versión de las tres reglas (`sides-v1`) forma parte de la versión del const
     jamás toca una decisión de una persona; un pase sin cambios no deja fila en el registro de corridas. Un barrido con auditoría
     una vez al día a las **09:50 UTC**. Se apaga con `FBI_REFEREE_IDENTITY=0` sin desplegar. El perro guardián lo da por colgado a los
     30 minutos.
-  * `player_history` **cada 240 minutos** (`FBI_PLAYER_HISTORY_MINUTES`): rehace las rachas de los jugadores de los partidos, los
-    traspasos leídos y las plantillas nuevas de los últimos 4 días, y los *caps* de los partidos recientes o con estadísticas
-    pendientes; después enlaza las carreras de los entrenadores con su persona y su club. Un barrido diario a las **10:00 UTC** sobre
+  * `player_history` **cada 240 minutos** (`FBI_PLAYER_HISTORY_MINUTES`): rehace las rachas de los jugadores de los partidos de los
+    últimos 4 días, los de las listas de traspasos leídas en esos días **que traen un traspaso reciente** (fechado en los 30 días
+    anteriores a la ventana: el proveedor relee todas las listas cada semana y casi ninguna cambia) y los de las plantillas nuevas, y
+    los *caps* de los partidos recientes o con estadísticas pendientes; después enlaza las carreras de los entrenadores con su
+    persona y su club. Un barrido diario a las **10:00 UTC** sobre
     todos los jugadores (recoge lo que llegó tarde) y una auditoría que **registra** lo que esté mal (`player_history.audit`). Se
     apaga con `FBI_PLAYER_HISTORY=0`. El perro guardián lo da por colgado a las 3 horas. El primer pase ocurre 23 minutos después de
     arrancar el worker.
@@ -326,6 +328,53 @@ Una nota de higiene: la imagen de producción instala las **últimas versiones p
 despliegue entró FastAPI 0.161.1; la batería completa se repitió con esa versión y pasó: 3.427 pruebas). Fijarlas es un cambio pequeño
 para la puerta de calidad final (F14), no de F3.
 
+## Resultado en producción (23 oct 2026)
+
+Medido en solo lectura sobre el servidor, después de construir los dos historiales a mano (árbitros el 22 oct a las 22:54 UTC; jugadores
+el 23 oct entre las 00:12 y las 00:33 UTC, en segundo plano y sin parar nada: los pasos programados cedieron el candado).
+
+| Medida (producción) | Resultado |
+|---|---|
+| Árbitros | **6.006** personas · 9.694 grafías · 206.486 filas de historia · **199.891 de 199.891** partidos asignados (100 %; criterio ≥ 95 %) · 98,21 % sin duda pendiente · cola de **679** parejas (287 mismo nombre en otra zona · 325 inicial y nombre completo · 45 variante de escritura · 22 nombre más largo) · auditoría `OK` y «un pase escribiría» = 0 |
+| Jugadores: tiempo | barrido completo de 285.129 jugadores en **709,6 s** (11,8 min) y su auditoría, unos 9 min más: **21 min** de una conexión. (La estimación era de 15 a 30 min.) |
+| Rachas | **277.147** jugadores con rachas · **755.806** rachas (270.380 abiertas): 428.880 salen de un traspaso, 321.946 de una alineación y 4.980 de una plantilla · 1.180 rachas «de cero días» dejadas fuera a propósito |
+| Hojas cruzadas (`sides-v1`) | **404** hojas dadas la vuelta · 42 dudosas, dejadas como están · 29 jugadores sin lado en ninguna de las dos hojas |
+| Internacionalidades (*caps*) | **208.399** filas (20.202 jugadores, 4.575 partidos de selecciones absolutas) · 29.055 esperando las estadísticas · **91,01 %** de las del último año con club conocido (28.746 de 31.584) |
+| Entrenadores | 18.276 personas · 54.244 carreras, **0** sin persona · 43.791 carreras recientes (38.716 con persona y club) · 5.394 carreras de clubes que no tenemos |
+| Invariantes | todas a **0**: rachas desordenadas, *caps* de partidos sin terminar, de juveniles o de otro equipo, filas de otra versión, enlaces de entrenadores a otra persona o a otro club |
+| Rachas de un solo partido (A, B, A) | **18.937**; partidos terminados con hojas y sin estadísticas: **76.857** (ver «Lo que decides tú») |
+
+**Dos comprobaciones con casos que se conocen.** La ficha de Lionel Messi (`show 154`) sale en orden: Barcelona (2018–2021), París
+Saint-Germain (2021–2023) e Inter Miami desde julio de 2023, con 80 entradas de selección. Y el partido Nashville SC – Inter Miami del
+1 nov 2025, que tenía su hoja de convocados cruzada, lo pone en **Inter Miami** (su hoja lo daba de local y sus estadísticas, de
+visitante). Lo que sí se ve en la misma ficha son dos rachas de un solo partido (Cruz Azul en 2023, Orlando City en 2025): son las
+hojas cruzadas **sin estadísticas** que las prueben, que no se pueden corregir al leer (es lo que cuentan las 18.937 de arriba).
+
+**Lo demás que se midió.** Gasto de IA: ≈ 5 US$ al día antes y después de `packet-v5`/`brief-v6` (331 llamadas y 5,23 US$ el 22 oct;
+381 y 4,99 el 21; 400 y 5,12 el 20); los 291 paquetes `packet-v5` construidos hasta las 00:50 UTC se revisan dentro de los topes de
+siempre. Las cuatro carreras que figuran como interrumpidas en las últimas 24 horas terminan en el instante de un despliegue (13:03,
+14:17, 16:41 y 23:58 UTC) y ninguna es de F3. La relectura de `tax-v2` (F1.1) avanza en segundo plano: 3.300 de los 12.458 cuerpos de
+cuotas ya con la taxonomía nueva, 9.270 pendientes, a unos 1.500 por hora. Disco: 90 GB libres de 193 GB, y el vigilante de salud avisa
+de que, al ritmo de las últimas semanas (+2,7 GB al día), se llegaría al 90 % en unos 26 días; hay **54 GB de volúmenes de Docker
+huérfanos** (ningún contenedor los usa) que solo tú puedes liberar con `docker volume prune` (borrado: no lo hago yo).
+
+### Lo que se aprendió al medir (y qué se corrigió)
+
+1. **La auditoría diaria avisaba de «un pase escribiría» por partidos que se jugaban mientras corría.** Tras la primera construcción
+   completa, la auditoría que simula un pase sobre todo encontró **46 jugadores** con rachas distintas de las guardadas, y todos tenían
+   lo mismo: **un partido más** y como último día de evidencia la misma noche. No es un defecto del constructor (la base de datos
+   recibe partidos mientras el barrido lee), pero un aviso falso cada noche acaba ocultando uno verdadero. Ahora el informe separa lo
+   que sería **noticia del día** (mismas rachas, solo más partidos y un último día de hoy o de ayer) en `pass_would_write_news`, y
+   `pass_would_write` solo cuenta lo demás: un partido viejo que llega tarde, un club nuevo o una racha que cambia siguen dando aviso.
+   Prueba de regresión y verificación con mutaciones incluidas. El siguiente pase programado incorpora la noticia.
+2. **El pase programado de cada 4 horas habría releído a 130.000 jugadores para no escribir nada.** El proveedor vuelve a leer las
+   listas de traspasos de todos los jugadores una vez por semana (durante 4 o 5 días) y cada lectura deja una instantánea nueva;
+   «traspasos leídos en los últimos 4 días» significaba por tanto casi todos los jugadores, siempre: 132.692 jugadores y 11 minutos
+   por pase. Ahora una lista leída solo manda a su jugador al pase programado si trae un traspaso fechado en los 30 días anteriores a
+   la ventana (en producción hoy son **364 jugadores**, no 129.646); un traspaso viejo que el proveedor liste tarde lo recoge el
+   barrido diario de las 10:00 UTC, que mira a todos. Ambas correcciones (`F3.2`, solo backend, sin migraciones) viajan en el paquete
+   de F5.
+
 ## Cómo deshacerlo
 
 * Parar solo los trabajos: `FBI_REFEREE_IDENTITY=0` y/o `FBI_PLAYER_HISTORY=0` y reiniciar el worker. Con las tablas vacías o sin
@@ -353,7 +402,7 @@ para la puerta de calidad final (F14), no de F3.
 
 1. La auditoría de fuga nocturna con las tres reglas nuevas (`referee_known`, `national_known`, `absences_known`), el barrido de
    las 09:50 UTC (`referee_identity.audit`) y el de las 10:00 UTC (`player_history.audit`) en el registro del worker.
-2. El tiempo real de la primera construcción y de los barridos diarios de jugadores.
+2. El tiempo real de los pases programados (esperado: segundos con `F3.2`) y de los barridos diarios de jugadores (21 min medidos).
 3. El gasto de IA de los primeros días con `packet-v5` / `brief-v6`.
 4. El drenaje del atraso de cuotas y la relectura de `tax-v2` (F1.1).
 5. Las cifras de `audit` de jugadores que delatan un cruce sin corregir: `lone_stints` (rachas de un solo partido) y
