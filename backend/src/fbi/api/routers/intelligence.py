@@ -79,8 +79,9 @@ def get_calibration(conn: Db) -> Envelope[dict[str, Any]]:
 @router.get("/intelligence/memory", response_model=Envelope[dict[str, Any]])
 def get_memory(conn: Db, entity_type: EntityType | None = None,
                q: Annotated[str | None, Query(max_length=80)] = None,
+               aspect: Annotated[str | None, Query(max_length=60)] = None,
                limit: Annotated[int, Query(ge=1, le=500)] = 100) -> Envelope[dict[str, Any]]:
-    return svc.memory(conn, entity_type=entity_type, q=q, limit=limit)
+    return svc.memory(conn, entity_type=entity_type, q=q, limit=limit, aspect=aspect)
 
 
 @router.get("/intelligence/memory/{entity_type}/{entity_id}", response_model=Envelope[dict[str, Any]])

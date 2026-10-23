@@ -401,17 +401,20 @@ def calibration(conn: Conn) -> Envelope[dict[str, Any]]:
                  "evaluations": evaluations, "gates": gates}))
 
 
-def memory(conn: Conn, *, entity_type: str | None, q: str | None, limit: int) -> Envelope[dict[str, Any]]:
+def memory(conn: Conn, *, entity_type: str | None, q: str | None, limit: int, aspect: str | None = None) -> Envelope[dict[str, Any]]:
     """The newest state of every entity and aspect, from the newest version that wrote it (``intel.entity_memory_latest``), with the
-    confidence it rests on and what it rests on (memory-v4; both null for a state an older version wrote)."""
+    confidence it rests on and what it rests on (memory-v4; both null for a state an older version wrote). ``aspect`` keeps one kind
+    of memory (corners, cards, xg, discipline, market:1X2...): the list is cut at ``limit`` after sorting by sample, so without it the
+    kinds with the most rows crowd the others out."""
     rows = fetch_all(conn, """
         SELECT DISTINCT ON (entity_type, entity_id, aspect) entity_type, entity_id, entity_name, aspect, as_of_day,
                version, stats, delta, confidence::float8 AS confidence, evidence_ref
           FROM intel.entity_memory_latest
          WHERE (%(t)s::text IS NULL OR entity_type = %(t)s)
            AND (%(q)s::text IS NULL OR entity_name ILIKE '%%' || %(q)s || '%%')
+           AND (%(a)s::text IS NULL OR aspect = %(a)s)
            AND NOT (entity_type = 'referee' AND entity_id !~ '^[0-9]+$')
-         ORDER BY entity_type, entity_id, aspect, as_of_day DESC""", {"t": entity_type, "q": q})
+         ORDER BY entity_type, entity_id, aspect, as_of_day DESC""", {"t": entity_type, "q": q, "a": aspect})
     rows.sort(key=lambda r: -int((r["stats"] or {}).get("decisions") or (r["stats"] or {}).get("matches") or 0))
     return ok(j({"items": rows[:limit], "total": len(rows)}))
 

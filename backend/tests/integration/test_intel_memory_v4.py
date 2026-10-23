@@ -304,6 +304,11 @@ def test_the_console_reads_the_newest_version_with_its_confidence_and_what_it_re
     mine = [h for h in history if h["aspect"] == "corners"]
     assert [(h["as_of_day"], h["version"]) for h in mine] == [(DAY.isoformat(), "memory-v4")], "one row per day: the newest version"
 
+    # the list is cut after sorting by sample: one aspect at a time keeps the kinds with the most rows from crowding the others out
+    only = intelligence.memory(db, entity_type=None, q=None, limit=50, aspect="corners").data["items"]  # type: ignore[index]
+    assert only and {i["aspect"] for i in only} == {"corners"} and {i["entity_type"] for i in only} == {"team", "competition"}
+    assert intelligence.memory(db, entity_type="team", q=None, limit=50, aspect="no-such-aspect").data["items"] == []  # type: ignore[index]
+
 
 def test_the_row_of_a_version_before_memory_v4_has_no_confidence_and_is_still_read(db: psycopg.Connection[Any]) -> None:
     db.execute("INSERT INTO intel.entity_memory (entity_type, entity_id, entity_name, aspect, as_of_day, built_at, version, stats, delta, sources) "
