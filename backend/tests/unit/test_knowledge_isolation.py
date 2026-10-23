@@ -199,9 +199,20 @@ def test_only_its_own_migrations_name_the_tables() -> None:
     """A view, a function or a foreign key over the tables is made by a migration: the one that makes it is the one that must be listed here, so
     that no pre-match reader reaches Match Knowledge through an object that does not carry its name."""
     naming = {p.name for p in MIGRATIONS.glob("*.py") if WORDS.search(p.read_text(encoding="utf-8"))}
-    assert naming == {"0089_event_kinds.py", "0090_match_knowledge.py"}, (
+    # 0092 (plan F9) adds market.fixture_outcomes: a view of how FINISHED matches ended, whose cards by period are counted from the classified
+    # events. It is a dataset of OUTCOMES - the labels that grade a bet and, one day, train a model - not a pre-match input, and the next test
+    # holds the door: the model packages never name it (F10 opens that door by deciding it here, with its own leakage tests).
+    assert naming == {"0089_event_kinds.py", "0090_match_knowledge.py", "0092_market_catalogue.py"}, (
         f"migrations naming Match Knowledge's tables: {sorted(naming)}. A migration that adds an object over them (a view, a function, a key) opens "
         "a second way in: decide here, with the reason, whether the pre-match side may reach it")
+
+
+def test_the_view_of_outcomes_is_not_named_by_the_models() -> None:
+    """``market.fixture_outcomes`` holds what finished matches turned out to be (plan F9). It is read by the catalogue (the matrix and the
+    discovery: weekly, offline, to say what could be graded) and by nobody that makes a statement before a kick-off."""
+    forbidden = ("models", "features", "predictions", "backtesting", "domain")
+    naming = sorted(rel(p) for p in python_files(SRC) if rel(p).split("/")[0] in forbidden and "fixture_outcomes" in p.read_text(encoding="utf-8"))
+    assert naming == [], f"model code naming the view of outcomes: {naming}. Deciding that it may is F10's, with its leakage tests"
 
 
 # ── the pre-match side ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

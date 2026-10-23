@@ -181,7 +181,7 @@ def test_discovery_classifies_and_never_activates() -> None:
         coverage={"corners": 0.87}, at=at, fixtures_by_competition={1: 160})
     assert status == "RESEARCH" and "corners" in proposal
     assert crit["calibration"]["ok"] is False and crit["shadow"]["ok"] is False
-    assert len([k for k in crit if k != "settle_data"]) == 10
+    assert len([k for k in crit if k not in ("settle_data", "settle_rule")]) == 10, "the ten criteria of incorporation; settle_data and settle_rule say what settles it"
     active, *_ = discovery.criteria_for(5, discovery.BetStats(name="Goals Over/Under", fixtures={1}),
                                         catalogue=None, active={5: "OU"}, n_fixtures=1, coverage={}, at=at)
     assert active == "ACTIVE"
