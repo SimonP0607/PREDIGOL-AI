@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { int } from "@/lib/format";
 import { useScrollCue } from "@/lib/scrollCue";
+import { Hint } from "@/components/system/Hint";
 
 export function TableShell({
   children,
@@ -50,7 +51,6 @@ export function TH({
   return (
     <th
       scope="col"
-      title={title}
       className={cn(
         // A header with a control in it (a definition, a sort) is a 44 px row on a touch screen: shorter, the
         // table's scroll box clipped the control's reach to 38 px (mobile UX audit, Admin on a tablet).
@@ -61,7 +61,8 @@ export function TH({
         className,
       )}
     >
-      {children}
+      {/* A column's definition opens on a tap as well as on hover: the native title never shows on a phone. */}
+      <Hint text={title}>{children}</Hint>
     </th>
   );
 }

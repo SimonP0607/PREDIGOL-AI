@@ -16,6 +16,7 @@ import { PlayerSummary, SeasonLine } from "./PlayerSummary";
 import { absenceKind, absenceReason, h2hSummary, lastFive } from "./model";
 import { matchTables, rankedRows } from "@/product/shared/standings";
 import { Block, CenterSection, FormChips, MoreButton, PlayerName, SectionNote } from "./ui";
+import { Hint } from "@/components/system/Hint";
 
 const SIDES: readonly Side[] = ["home", "away"];
 
@@ -133,7 +134,7 @@ const COLUMN_WIDTHS = {
 
 /**
  * The header both tables of this block share (plan F2): a number in a table is never bare. Each column is named by its short
- * label, with the long one on hover and for assistive technology (`abbr title`).
+ * label, with the long one on a tap, on hover and for assistive technology (`Hint`).
  */
 function StandingsHead({ size }: { size: keyof typeof COLUMN_WIDTHS }) {
   const w = COLUMN_WIDTHS[size];
@@ -141,27 +142,19 @@ function StandingsHead({ size }: { size: keyof typeof COLUMN_WIDTHS }) {
     <thead>
       <tr className="text-caption text-subtle-foreground">
         <th scope="col" className={cn(w.rank, "pb-1.5 text-left font-medium")}>
-          <abbr title={t("match.standings.rankLong")} className="no-underline">
-            {t("match.standings.rank")}
-          </abbr>
+          <Hint text={t("match.standings.rankLong")}>{t("match.standings.rank")}</Hint>
         </th>
         <th scope="col" className="pb-1.5 text-left font-medium">
           {t("match.standings.team")}
         </th>
         <th scope="col" className={cn(w.played, "pb-1.5 text-right font-medium")}>
-          <abbr title={t("match.standings.playedLong")} className="no-underline">
-            {t("match.standings.played")}
-          </abbr>
+          <Hint text={t("match.standings.playedLong")}>{t("match.standings.played")}</Hint>
         </th>
         <th scope="col" className={cn(w.diff, "pb-1.5 text-right font-medium")}>
-          <abbr title={t("match.standings.goalDiffLong")} className="no-underline">
-            {t("match.standings.goalDiff")}
-          </abbr>
+          <Hint text={t("match.standings.goalDiffLong")}>{t("match.standings.goalDiff")}</Hint>
         </th>
         <th scope="col" className={cn(w.points, "pb-1.5 text-right font-medium")}>
-          <abbr title={t("match.standings.pointsLong")} className="no-underline">
-            {t("match.standings.points")}
-          </abbr>
+          <Hint text={t("match.standings.pointsLong")}>{t("match.standings.points")}</Hint>
         </th>
       </tr>
     </thead>

@@ -15,6 +15,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider, useAuth } from "@/lib/auth/AuthProvider";
 import { I18nProvider, t } from "@/lib/i18n";
+import { TitleTap } from "@/components/system/TitleTap";
 import { setTimeZone } from "@/lib/time";
 import { UserShell } from "@/components/layout/UserShell";
 import { AdminShell } from "@/components/layout/AdminShell";
@@ -154,6 +155,7 @@ function RootComponent() {
         <Localized>
           <Gate />
           <UpdateToast />
+          <TitleTap />
         </Localized>
       </AuthProvider>
     </QueryClientProvider>

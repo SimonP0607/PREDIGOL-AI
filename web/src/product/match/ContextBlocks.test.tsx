@@ -130,7 +130,9 @@ describe("the full table names its columns", () => {
     expect(out).toContain("<thead>");
     expect(out.match(/<th scope="col"/g)?.length).toBe(5);
     for (const name of ["#", "Equipo", "PJ", "DG", "Pts"]) expect(out).toContain(`>${name}<`);
-    expect(out).toContain('title="Partidos jugados"');
+    // the long name opens on a tap and is read after the short one: it is no native title, which a phone never shows
+    expect(out).toContain(": Partidos jugados</span>");
+    expect(out).not.toContain("title=");
     expect(out).toContain('<caption class="sr-only">Clausura</caption>');
   });
 
