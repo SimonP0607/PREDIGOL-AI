@@ -382,3 +382,24 @@ def test_the_families_guide_says_what_the_code_does() -> None:
     assert "| `FBI_FAMILY_FORECAST_MINUTES` | cada cuántos minutos corre | 180 |" in doc
     assert "`1.0.0/<especificación>@fc<huella>`" in doc and versioning.FAMILY_SEMVER == "1.0.0"
     assert "`mc9a7bec97ca`" in doc, "the fingerprint of the goal models, which F10 does not touch"
+
+
+def test_the_guide_of_the_families_against_the_market_says_what_the_code_does() -> None:
+    """Plan F11: the guide of the comparison with the books - the least number of books, the margin that is still a price, the moments the market is
+    read at, the kinds of bet it is built for and the options of the command that repeats it."""
+    from scripts import families as cli
+
+    from fbi.families import versus
+
+    doc = read_doc("owner", "FAMILIAS_VS_MERCADO_F11.md")
+    assert f"**Con menos de {versus.MIN_BOOKS} casas no hay consenso y no se compara.**" in doc
+    assert f"como mucho {str(versus.MAX_OVERROUND).replace('.', ',')}" in doc and "por encima de 1" in doc
+    assert [name for name, _ in versus.REFERENCES] == ["close", "h24"], "the guide speaks of the last price and of a day before"
+    assert "el **último precio** antes del inicio" in doc and f"**{int(versus.REFERENCES[1][1].total_seconds() // 3600)} horas antes**" in doc
+    assert set(versus.OUTCOMES) == {"over_under", "both_teams_score", "odd_even", "draw_no_bet", "one_x_two"}
+    assert "más/menos, ambos marcan, par/impar, empate no apuesta y 1X2" in doc
+    assert "(sin línea, o con «medio»" in doc and versus.comparable(Decimal("9.5")) and not versus.comparable(Decimal("10"))
+    args = cli.build_parser().parse_args(["score", "--days", "14", "--no-market", "--min-books", "4"])
+    assert args.no_market is True and args.min_books == 4 and cli.build_parser().parse_args(["score"]).min_books == versus.MIN_BOOKS
+    for option in ("--no-market", "--min-books", "python -m scripts.families score"):
+        assert option in doc, f"the guide leaves out {option}"
