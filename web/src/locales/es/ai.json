@@ -769,7 +769,16 @@
       "by_tier": "Por nivel de fuente",
       "postmortem_findings": "Comprobaciones",
       "impact": "Impacto",
-      "investigation_cost": "Costo de investigarlo"
+      "investigation_cost": "Costo de investigarlo",
+      "guide": "Guía",
+      "window": "Ventana de precios",
+      "ratio_obs_over_pred": "Observado entre pronosticado",
+      "gap_before": "Mercado − modelo, antes",
+      "gap_after": "Mercado − modelo, corregido",
+      "simulated_bets": "Apuestas simuladas",
+      "signal_close": "Señal extra al cierre",
+      "signal_24h": "Señal extra a 24 h",
+      "depends_on": "Depende de"
     },
     "costs": {
       "requests_one": "{n} llamada",

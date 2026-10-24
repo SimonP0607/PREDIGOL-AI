@@ -427,6 +427,69 @@ describe("V2: evidence, compact", () => {
     expect(evidenceSummary(null)).toEqual([]);
   });
 
+  test("the evidence of the hypotheses the repository proposes reads in the page's words, each figure as its guide writes it", () => {
+    // As `fbi.research.hypotheses` writes them (the decimals are text, so a ratio of 1,045 is not shown as 1,05).
+    const apart = ["n_matches", "impact", "investigation_cost"];
+    const shared = {
+      n_matches: 1268,
+      impact: "Totales de córners",
+      investigation_cost: "Ninguna petición al proveedor ni IA",
+      guide: "FAMILIAS_VS_MERCADO_F11.md §7",
+      window: "precios del 25 de septiembre al 24 de octubre de 2026",
+    };
+    const level = {
+      ...shared,
+      ratio_obs_over_pred: "1,045",
+      gap_before: "−0,0040 ± 0,0032",
+      gap_after: "−0,0006 ± 0,0030",
+      simulated_bets: 672,
+    };
+    const blend = {
+      ...shared,
+      signal_close: "+0,35 ± 0,27",
+      signal_24h: "+0,15 ± 0,34",
+      depends_on: "Córners: corregir el nivel con lo observado en las 4 semanas anteriores",
+    };
+    setLocale("es");
+    expect(evidenceSummary(level, { omit: apart, max: 6 })).toEqual([
+      { key: "guide", label: "Guía", value: "FAMILIAS_VS_MERCADO_F11.md §7" },
+      {
+        key: "window",
+        label: "Ventana de precios",
+        value: "precios del 25 de septiembre al 24 de octubre de 2026",
+      },
+      { key: "ratio_obs_over_pred", label: "Observado entre pronosticado", value: "1,045" },
+      { key: "gap_before", label: "Mercado − modelo, antes", value: "−0,0040 ± 0,0032" },
+      { key: "gap_after", label: "Mercado − modelo, corregido", value: "−0,0006 ± 0,0030" },
+      { key: "simulated_bets", label: "Apuestas simuladas", value: "672" },
+    ]);
+    expect(evidenceSummary(blend, { omit: apart, max: 6 }).map((i) => [i.label, i.value])).toEqual([
+      ["Guía", "FAMILIAS_VS_MERCADO_F11.md §7"],
+      ["Ventana de precios", "precios del 25 de septiembre al 24 de octubre de 2026"],
+      ["Señal extra al cierre", "+0,35 ± 0,27"],
+      ["Señal extra a 24 h", "+0,15 ± 0,34"],
+      ["Depende de", "Córners: corregir el nivel con lo observado en las 4 semanas anteriores"],
+    ]);
+    setLocale("en");
+    const english = evidenceSummary(level, { omit: apart, max: 6 }).map((i) => i.label);
+    expect(english).toEqual([
+      "Guide",
+      "Price window",
+      "Observed over predicted",
+      "Market − model, before",
+      "Market − model, corrected",
+      "Simulated bets",
+    ]);
+    // none falls back to its raw key
+    for (const item of [
+      ...evidenceSummary(level, { omit: apart }),
+      ...evidenceSummary(blend, { omit: apart }),
+    ]) {
+      expect(item.label).not.toBe(item.key.replace(/_/g, " "));
+    }
+    setLocale("es");
+  });
+
   test("the comparison's sample as counts", () => {
     expect(sampleCounts({ selections: 120, days: "14", rejected: null, other: 3 })).toEqual({
       selections: 120,
