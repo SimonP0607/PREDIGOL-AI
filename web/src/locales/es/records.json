@@ -89,11 +89,7 @@
     "save": "Guardar",
     "saved": "Guardado",
     "unsave": "Quitar de mis picks",
-    "addToParlay": "Agregar a mi parlay",
-    "inParlay": "En tu parlay",
-    "removeFromParlay": "Quitar del parlay",
     "started": "El partido ya empezó",
-    "choose": "¿Qué quieres hacer con esta cuota?",
     "priceAt": "{odds} en {bookmaker}",
     "quarterLine": "Las líneas de cuarto (.25 / .75) no van en un parlay"
   },
