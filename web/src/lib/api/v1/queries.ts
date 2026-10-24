@@ -201,6 +201,12 @@ export const live = {
     queryFn: () => v1.evolutionDashboard(day),
     refetchInterval: MINUTE,
   }),
+  /** Costs the server a month of predictions (about 4 s): never refreshed by itself, and outside the `evolution` key so a decision does not re-ask. */
+  codePromotions: (days?: number) => ({
+    queryKey: ["v1", "code-promotions", days ?? "default"],
+    queryFn: () => v1.codePromotions(days),
+    staleTime: 5 * MINUTE,
+  }),
   aiToday: (day?: string) => ({
     queryKey: ["v1", "ai-layer", "today", day ?? "today"],
     queryFn: () => v1.aiToday(day),

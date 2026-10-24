@@ -5,7 +5,7 @@
  * waiting for the owner: RECHAZAR, INVESTIGAR or APROBAR EXPERIMENTO). Below: findings, errors and every
  * hypothesis by stage. An approved experiment goes through backtest and shadow; only a DONE experiment whose
  * gate passed can be PROMOTED, by the owner, typing the word. There is no "activate automatically": nothing
- * here changes a rule, a model or a pick.
+ * here changes a rule, a model or a pick. The last panel is the model code against its promotions (plan F12).
  */
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { Hypothesis, HypothesisDecision, HypothesisTarget } from "@/lib/api/v1/types_ai";
 import type { EvolutionDashboard } from "@/lib/api/v1/types_ai_layer";
 import { DayInput, Note, NoteCard, ProposalCard, Stat, StatGrid } from "./AiBits";
+import { CodePromotionsPanel } from "./CodePromotionsPanel";
 import { DailyReviewPanel } from "./DailyReviewPanel";
 import { IntelLearningCenter } from "./IntelLearningCenter";
 import {
@@ -657,6 +658,7 @@ export function EvolutionLive() {
           </div>
         </div>
       ) : null}
+      <CodePromotionsPanel />
     </div>
   );
 }

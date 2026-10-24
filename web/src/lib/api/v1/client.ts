@@ -41,6 +41,7 @@ import type {
   AiRunKind,
   AiRunRow,
   AiStatus,
+  CodePromotions,
   EvolutionOverview,
   HypothesisDecision,
   HypothesisTarget,
@@ -503,6 +504,9 @@ export const v1 = {
   evolution: () => getJson<Envelope<EvolutionOverview>>("/admin/evolution"),
   evolutionDashboard: (day?: string) =>
     getJson<Envelope<EvolutionDashboard>>("/admin/evolution/dashboard", { day }),
+  /** The model code against its promotions (plan F12); the server keeps an answer five minutes. */
+  codePromotions: (days?: number) =>
+    getJson<Envelope<CodePromotions>>("/admin/evolution/code-promotions", { days }),
   proposeHypothesis: (body: {
     title: string;
     hypothesis: string;

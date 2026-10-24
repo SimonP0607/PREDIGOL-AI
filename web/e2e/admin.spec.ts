@@ -351,4 +351,23 @@ test("AI decision layer: mode, models and budget without a key, every view, the 
   } else {
     note(info, "no proposed hypothesis to show the owner's three answers on");
   }
+
+  // Plan F12: the model code against its promotions - reading only, and the code this server runs is the ledger's.
+  const code = await getJson<{
+    data: {
+      running_code: string;
+      in_force_matches_running: boolean;
+      counts: { counted: number; traced: number };
+    };
+  }>(page.request, "/api/v1/admin/evolution/code-promotions");
+  expect(code.status).toBe(200);
+  expect(code.body.data.in_force_matches_running).toBe(true);
+  await expect(page.getByTestId("code-promotions")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("code-tiles")).toContainText(code.body.data.running_code);
+  await settle(page);
+  await assertClean(page, w);
+  note(
+    info,
+    `model code: ${code.body.data.running_code} runs; ${code.body.data.counts.traced} of ${code.body.data.counts.counted} changes with a promotion`,
+  );
 });

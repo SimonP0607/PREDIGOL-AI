@@ -186,6 +186,87 @@
       "nMatches": "Number of matches",
       "impact": "Potential impact",
       "cost": "Cost of investigating it"
+    },
+    "code": {
+      "title": "Model code",
+      "subtitle": "Every version of a model carries the fingerprint of the code that produced it. This shows which fingerprints forecast in production, who decided to put them there and on what evidence. Read only: this panel changes nothing.",
+      "measured": "Measured {when}",
+      "refresh": "Refresh",
+      "tiles": {
+        "coverage": "Changes with a promotion",
+        "coverageValue": "{traced} of {counted}",
+        "coverageNone": "None",
+        "coverageHint": "{percent} of the code changes since the ledger began. The plan's target is 100 %.",
+        "coverageHintNone": "No code changed since the ledger began.",
+        "running": "Code running now",
+        "runningMatches": "It is the one the ledger has in force.",
+        "runningDiffers": "It is not the one the ledger has in force ({code}).",
+        "fingerprints": "Fingerprints in the window",
+        "fingerprintsHint_one": "{count} older than the ledger: listed, not counted.",
+        "fingerprintsHint_other": "{count} older than the ledger: listed, not counted.",
+        "fingerprintsHintNone": "All of them are from after the ledger began.",
+        "ledgerSince": "Ledger begun",
+        "ledgerSinceHint": "A window of {days} days back."
+      },
+      "counted": {
+        "title": "Since the ledger began",
+        "empty": "No code forecast in the window since the ledger began."
+      },
+      "before": {
+        "title": "Older than the ledger · {count}",
+        "help": "They existed before the ledger began: listed, not counted, because the past cannot be decided afterwards."
+      },
+      "legacy": "Commit-keyed versions (before 5 October 2026)",
+      "legacyHelp": "Until that date a version was identified by the repository commit, not by the code of the models.",
+      "running": "Running now",
+      "recent": "Used in the last 2 days",
+      "appeared": "Appeared {when}",
+      "lastUse": "last used {when}",
+      "versions_one": "{count} version of {models}",
+      "versions_other": "{count} versions of {models}",
+      "source": {
+        "predictions": "predictions",
+        "forecasts": "forecasts",
+        "decisions": "decisions"
+      },
+      "status": {
+        "BASELINE": "Ledger baseline",
+        "PROMOTED": "Promoted",
+        "AFTER_USE": "Decided after use",
+        "PENDING_SYNC": "Not copied yet",
+        "UNTRACED": "No promotion",
+        "PRE_LEDGER": "Older than the ledger"
+      },
+      "statusHelp": {
+        "BASELINE": "The code already in force when the ledger began; recorded after the fact, and said so.",
+        "PROMOTED": "A decision on record, dated before the code first ran, covers it.",
+        "AFTER_USE": "There is a decision on record, but dated after the code first ran.",
+        "PENDING_SYNC": "It is in the code's ledger, but not yet copied into the database.",
+        "UNTRACED": "No decision covers it: this is the change the plan says must not happen.",
+        "PRE_LEDGER": "It is older than the ledger: listed, not counted."
+      },
+      "promotion": "Promotion no. {id} · decided by {who} · {when}",
+      "noPromotion": "No decision on record covers this code.",
+      "ledger": {
+        "title": "Ledger decisions",
+        "subtitle": "The ledger carried by the code this server runs: one entry per change, written in the same change of code.",
+        "empty": "The ledger is empty.",
+        "baseline": "Ledger baseline",
+        "recorded": "Copied to the database",
+        "pending": "Not copied yet",
+        "used": "Used in the window",
+        "unused": "Not used yet",
+        "by": "Decided by {who} · phase {phase} · {when}"
+      },
+      "other": {
+        "title": "Other promotions in the window",
+        "help": "Changes of another kind, which already go through their own promotions table.",
+        "goal_spec": "Goal specification",
+        "calibrator": "Calibrators",
+        "market_edge": "Edge over the market",
+        "neutral_rule": "Neutral-venue rule"
+      },
+      "how": "To change a model's code: change it, add its entry to the ledger (who decided it, why and on what evidence) in the same change, and at release it is copied to the database. A test fails while the code and the ledger do not match. Looking at this screen changes nothing."
     }
   },
   "layer": {

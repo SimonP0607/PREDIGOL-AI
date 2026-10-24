@@ -186,6 +186,87 @@
       "nMatches": "Número de partidos",
       "impact": "Impacto potencial",
       "cost": "Costo de investigarlo"
+    },
+    "code": {
+      "title": "Código de los modelos",
+      "subtitle": "Cada versión de un modelo lleva la huella del código que la produjo. Aquí se ve qué huellas pronosticaron en producción, quién decidió ponerlas y con qué pruebas. Solo lectura: este panel no cambia nada.",
+      "measured": "Medido {when}",
+      "refresh": "Actualizar",
+      "tiles": {
+        "coverage": "Cambios con promoción",
+        "coverageValue": "{traced} de {counted}",
+        "coverageNone": "Ninguno",
+        "coverageHint": "{percent} de los cambios de código desde que empezó el registro. La meta del plan es el 100 %.",
+        "coverageHintNone": "No hubo cambios de código desde que empezó el registro.",
+        "running": "Código que corre ahora",
+        "runningMatches": "Es el que el registro tiene en vigor.",
+        "runningDiffers": "No es el que el registro tiene en vigor ({code}).",
+        "fingerprints": "Huellas en la ventana",
+        "fingerprintsHint_one": "{count} anterior al registro: se lista y no cuenta.",
+        "fingerprintsHint_other": "{count} anteriores al registro: se listan y no cuentan.",
+        "fingerprintsHintNone": "Todas son posteriores al inicio del registro.",
+        "ledgerSince": "Registro iniciado",
+        "ledgerSinceHint": "Ventana de {days} días hacia atrás."
+      },
+      "counted": {
+        "title": "Desde que empezó el registro",
+        "empty": "Ningún código pronosticó en la ventana desde que empezó el registro."
+      },
+      "before": {
+        "title": "Anteriores al registro · {count}",
+        "help": "Existían antes de que empezara el registro: se listan y no cuentan, porque el pasado no se puede decidir después."
+      },
+      "legacy": "Versiones por commit (antes del 5 de octubre de 2026)",
+      "legacyHelp": "Hasta esa fecha una versión se identificaba por el commit del repositorio y no por el código de los modelos.",
+      "running": "Corre ahora",
+      "recent": "Usado en los últimos 2 días",
+      "appeared": "Apareció {when}",
+      "lastUse": "último uso {when}",
+      "versions_one": "{count} versión de {models}",
+      "versions_other": "{count} versiones de {models}",
+      "source": {
+        "predictions": "predicciones",
+        "forecasts": "pronósticos",
+        "decisions": "decisiones"
+      },
+      "status": {
+        "BASELINE": "Base del registro",
+        "PROMOTED": "Promovido",
+        "AFTER_USE": "Decidido después",
+        "PENDING_SYNC": "Sin copiar a la base",
+        "UNTRACED": "Sin promoción",
+        "PRE_LEDGER": "Anterior al registro"
+      },
+      "statusHelp": {
+        "BASELINE": "El código que ya estaba en vigor cuando empezó el registro; se anotó después de los hechos y así se dice.",
+        "PROMOTED": "Una decisión registrada, anterior al primer uso del código, lo cubre.",
+        "AFTER_USE": "Hay una decisión registrada, pero con fecha posterior al primer uso del código.",
+        "PENDING_SYNC": "Está en el registro del código, pero todavía no se copió a la base de datos.",
+        "UNTRACED": "Ninguna decisión lo cubre: es el cambio que el plan dice que no debe ocurrir.",
+        "PRE_LEDGER": "Es anterior al registro: se lista y no cuenta."
+      },
+      "promotion": "Promoción n.º {id} · decidida por {who} · {when}",
+      "noPromotion": "Ninguna decisión registrada cubre este código.",
+      "ledger": {
+        "title": "Decisiones del registro",
+        "subtitle": "El registro que lleva el código de este servidor: una entrada por cambio, escrita en el mismo cambio de código.",
+        "empty": "El registro está vacío.",
+        "baseline": "Base del registro",
+        "recorded": "Copiada a la base",
+        "pending": "Sin copiar a la base",
+        "used": "Usada en la ventana",
+        "unused": "Aún sin usar",
+        "by": "Decidida por {who} · fase {phase} · {when}"
+      },
+      "other": {
+        "title": "Otras promociones en la ventana",
+        "help": "Cambios de otra clase, que ya pasan por su propia tabla de promociones.",
+        "goal_spec": "Especificación de goles",
+        "calibrator": "Calibradores",
+        "market_edge": "Ventaja sobre el mercado",
+        "neutral_rule": "Regla de sede neutral"
+      },
+      "how": "Para cambiar el código de un modelo: se cambia, se añade su entrada al registro (quién lo decidió, por qué y con qué pruebas) en el mismo cambio, y al lanzar se copia a la base. Una prueba falla mientras el código y el registro no coincidan. Mirar esta pantalla no cambia nada."
     }
   },
   "layer": {
