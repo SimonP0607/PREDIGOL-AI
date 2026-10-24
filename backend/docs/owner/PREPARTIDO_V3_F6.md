@@ -154,10 +154,26 @@ administradores, y son una descripción, no una predicción.)
 |---|---|
 | `h2h_known` | Cada cruce citado existe, es entre los dos equipos, terminó, fue antes del partido, tenía el resultado registrado a la hora del paquete y tiene la edad que dice; cuando el bloque dice si cambió el entrenador, había una hoja traída a esa hora; y no se dejó fuera un cruce ya conocido por uno más viejo |
 | `scenarios_known` | La tabla sobre la que se calcula existe como foto, se tomó antes del paquete y no después del inicio, y trae a cada equipo con los puntos y partidos que cita; la lectura de una vuelta usa el global del propio paquete y su aritmética es la de ese global |
-| `tactics_known` | Cada partido de la muestra existe, es del equipo, fue antes y dentro de la ventana, con resultado registrado a esa hora; los eventos y hojas que dice haber leído existían; la muestra son los últimos `N` sin dejar fuera uno conocido; y los goles que cuenta son los de 90 minutos de los partidos cuyos eventos leyó |
+| `tactics_known` | Cada partido de la muestra existe, es del equipo, fue antes y dentro de la ventana, con resultado registrado a esa hora; los eventos y hojas que dice haber leído existían a esa hora (una fila que el trabajo posterior al partido volvió a escribir después, en un partido ya liquidado a esa hora, es una relectura y cuenta como ya traída: ver abajo); la muestra son los últimos `N` sin dejar fuera uno conocido; y los goles que cuenta son los de 90 minutos de los partidos cuyos eventos leyó |
 | `factors_known` | Para cada factor del paquete, el estado, la decisión y el experimento que cita son exactamente los de la decisión más reciente tomada **hasta la hora del paquete** (una validación decidida después no está; una retirada no sigue ahí; una que existe no falta); y el estado de cada bloque que dice el suyo coincide con el del registro y con su versión |
 
 Las reglas que ya existían (`calendar_known` y las demás) siguen igual.
+
+**Dos lecciones de la primera auditoría completa con paquetes de F6 (la corrida nocturna del 24 oct, 12:50 UTC, que audita el 23).**
+
+1. *Cada regla es una sola consulta sobre todo el día y tiene que costar lo que cuesta recorrer los paquetes una vez.* Los primeros textos de `h2h_known` y
+   `tactics_known` preguntaban, para cada partido candidato, si la lista del paquete (una tabla temporal) lo contenía, y esa pregunta recorre la tabla entera cada vez:
+   con ≈ 11.000 paquetes en el día la consulta no terminaba en horas (la corrida nocturna 1081 del 24 oct llevaba más de dos horas dentro de ella). Ahora cada regla arma **una
+   lista por paquete** y la cruza una sola vez: un día entero tarda de 30 a 60 s en el servidor, con los mismos veredictos (los textos primeros quedan congelados en
+   `tests/integration/leakage_reference.py` y se comparan con los nuevos sobre mundos al azar; `test_leak_audit_scale.py` mide además el tiempo con miles de paquetes). La
+   norma para toda regla nueva: una lista por paquete, nunca una sub-consulta por fila.
+2. *Una relectura no es una lectura del futuro.* `tactics_known` comparaba la hora del paquete con `fetched_at` de las filas **tal como están hoy**; pero el trabajo posterior
+   al partido vuelve a leer cada partido terminado 26 horas después (`POST_MATCH_LATE`, `core.detail_asks`), y eso mueve `fetched_at` de las alineaciones y reescribe los eventos
+   si el proveedor los corrigió. Los paquetes del 23 oct que citaban partidos del 22 antes de esa segunda lectura salían como violación (23 de 242.424 comprobaciones), aunque lo que
+   leyeron ya estaba en la primera lectura. Ahora una fila escrita después de la hora del paquete cuenta como ya traída si el partido **ya tenía su resultado** a esa hora y el contenido
+   viene de una lectura que el trabajo posterior al partido pidió (`core.detail_asks`). Una fila escrita por cualquier otro trabajo, de una lectura que nadie pidió o de un partido sin
+   resultado todavía sigue siendo una lectura del futuro (tres pruebas en `test_tactics_in_the_packet.py`). Sobre los paquetes reales del 23 oct, la regla pasa de 23 violaciones a 0
+   con el mismo número de comprobaciones; el 24 oct da 0 con los dos textos.
 
 ## Lo que cuesta la IA (el hallazgo de esta fase)
 

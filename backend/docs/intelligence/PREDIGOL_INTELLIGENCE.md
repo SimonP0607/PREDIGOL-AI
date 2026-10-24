@@ -349,7 +349,7 @@ una lista dada por «completa» no tenía más de 96 horas, y cada partido citad
 violación); y (v6, plan F6) cuatro reglas más sobre los bloques nuevos: `h2h_known` (cada cruce citado existe, es entre los dos equipos, se jugó hasta un resultado antes del partido, con su
 resultado registrado a la hora del paquete, y no se dejó fuera un cruce conocido por uno más antiguo), `scenarios_known` (la tabla sobre la que se calcula existe, se tomó a tiempo y trae las filas
 que el bloque cita, y el global de una vuelta es el del bloque `phase` del propio paquete), `tactics_known` (cada partido de la muestra existe, es del equipo, está dentro de la ventana y tenía su
-resultado, sus eventos y su hoja registrados a la hora del paquete; la muestra son los últimos `N` conocidos y los goles contados son los de los 90 minutos) y `factors_known` (el estado que
+resultado, sus eventos y su hoja registrados a la hora del paquete -una fila que el trabajo posterior al partido volvió a escribir después, en un partido ya liquidado a esa hora y desde una lectura que ese trabajo pidió, es una relectura y cuenta como ya registrada-; la muestra son los últimos `N` conocidos y los goles contados son los de los 90 minutos) y `factors_known` (el estado que
 dice el paquete de cada factor, la decisión que cita y el experimento son los de la última decisión de esa versión tomada a esa hora). Toda violación queda en `intel.audit_checks`.
 
 ## 11. Autonomía controlada
