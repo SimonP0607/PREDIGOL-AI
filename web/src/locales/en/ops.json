@@ -295,30 +295,5 @@
       "dayReady": "Day read by PrediGol Intelligence: {days}",
       "dayNotReady": "PrediGol Intelligence has not finished the day's first pass (from 00:05 Bogotá, 06:00 at the latest): today's set waits."
     }
-  },
-  "analyst": {
-    "notConfigured": "No language model is configured on the API host ({missing} unset), so the analyst cannot answer. Nothing is sent anywhere. The tools below are exactly what it would read, and they work now.",
-    "ask": {
-      "title": "Ask",
-      "subtitle": "Questions go to the API host, which calls the model and the tools. The browser never sees a key.",
-      "placeholder": "e.g. How did Dixon-Coles do against the market?",
-      "placeholderOff": "Not configured on the API host",
-      "label": "Question for the analyst",
-      "submit": "Ask",
-      "pending": "Asking…",
-      "unverified": "Unverified figures (not found in any tool result): {figures}"
-    },
-    "rules": "Rules the analyst works under",
-    "console": {
-      "title": "Tool console",
-      "subtitle": "Run any analyst tool by hand and see exactly what it would read",
-      "tool": "Tool",
-      "run": "Run"
-    },
-    "output": {
-      "status": "Status",
-      "generated": "Generated",
-      "dataAsOf": "Data as of"
-    }
   }
 }
