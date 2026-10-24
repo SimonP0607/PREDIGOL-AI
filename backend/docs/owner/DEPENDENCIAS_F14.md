@@ -67,7 +67,8 @@ Lo que **no** se ha podido hacer es construir la imagen de verdad: eso ocurre en
 
 * **Las imágenes base** `python:3.12-slim` (backend), `oven/bun:1.3.13-alpine` y `node:22-alpine` (web): `bun` ya está en una versión exacta; las otras dos
   se refrescan dentro de su rama (Python 3.12.x sobre Debian; Node 22.x sobre Alpine) cada vez que Docker las vuelve a bajar. Traen los
-  parches de seguridad del sistema y cambian poco, pero no son reproducibles al byte. Es la decisión 24, más abajo.
+  parches de seguridad del sistema y cambian poco, pero no son reproducibles al byte, y ya ha pasado: la caché de construcción del servidor
+  guarda dos descargas de cada una, del 9 y del 22 de octubre, con huellas distintas. Es la decisión 24, más abajo.
 * **`hatchling`**, que empaqueta el proyecto durante la construcción: `pip` no le aplica el archivo de restricciones. No entra en la imagen
   que corre.
 * **Las herramientas de desarrollo** del entorno de pruebas (`pytest`, `ruff`, `mypy`, …) y los extras `ml` y `dev`: no están en la imagen y

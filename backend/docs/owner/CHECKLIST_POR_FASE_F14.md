@@ -102,7 +102,10 @@ Cada fila es un lanzamiento (varias fases salieron juntas). Fechas en UTC.
   propio servidor. El código para activarlas ya está en `deploy/vps/bin` (`r2-setup.sh`, `pitr.sh`); falta el cubo de Cloudflare R2 y sus
   llaves, que son tuyos.
 * **Que mis paquetes de lanzamiento se detengan** si la huella del código de los modelos cambia sin entrada en el registro (decisión 19).
-* **Disco del servidor:** el aviso de disco (90 % en ≈ 15 días, +3.960 MB al día) sigue abierto y es tuyo (volúmenes huérfanos, retención).
+* **Disco del servidor:** el aviso de disco (90 % en ≈ 15 días, +3.960 MB al día) es real pero pesimista: mide la semana de los 13 despliegues y
+  del relleno del reloj de precios, no el ritmo de régimen (≈ 0,5 GB al día entre el 14 y el 22-oct). Qué lo llena y qué se puede quitar está en
+  `DISCO_F14.md`: 54,2 GB son cinco volúmenes huérfanos que dejó un fallo ya corregido de la prueba de restauración. Quitarlos es tuyo (decisión 10);
+  no se ha borrado nada.
 
 ## 7. Plantilla para firmar una fase nueva
 
