@@ -327,10 +327,14 @@ export function PicksLive() {
                         </TD>
                         <TD>
                           {c.decision === "selected" ? (
-                            <StatusBadge tone="brand">selected</StatusBadge>
+                            <StatusBadge tone="brand">
+                              {t("ops.picks.decisionState.selected")}
+                            </StatusBadge>
                           ) : (
                             <div>
-                              <StatusBadge tone="neutral">rejected</StatusBadge>
+                              <StatusBadge tone="neutral">
+                                {t("ops.picks.decisionState.rejected")}
+                              </StatusBadge>
                               <div className="mt-0.5 text-caption text-subtle-foreground">
                                 {c.rejection_reason}
                               </div>

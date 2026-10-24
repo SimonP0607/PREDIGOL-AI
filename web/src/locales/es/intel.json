@@ -1,5 +1,6 @@
 {
   "shadowLine": "SHADOW: PrediGol Intelligence decide y mide cada candidato, pero no publica picks ni mueve dinero. Los usuarios siguen viendo daily-set-v5.",
+  "shadowTag": "SOMBRA",
   "tabs": {
     "day": "El día",
     "decisions": "Decisiones",
@@ -144,7 +145,9 @@
     "params": "Parámetros",
     "evRaw": "EV crudo {ev}",
     "source": "fuente",
-    "pnl": "P&G (1 u)"
+    "pnl": "P&G (1 u)",
+    "noParams": "Sin coeficientes (no corrige nada)",
+    "nValues": "{n} valores"
   },
   "match": {
     "title": "Dossier del partido",
@@ -438,6 +441,12 @@
         "research": "Investigación pedida",
         "narrative": "Narrativa"
       }
+    },
+    "firstLegScore": "Ida {home}–{away}",
+    "need": {
+      "home": "el local remonta",
+      "away": "el visitante remonta",
+      "level": "empate global"
     }
   },
   "calibration": {
@@ -461,7 +470,27 @@
     "reason": "Motivo",
     "empty": "Aún no hay calibradores: el ciclo nocturno los ajusta.",
     "day": "Día",
-    "n": "n"
+    "n": "n",
+    "gate": {
+      "groups": {
+        "calib_gate": "Para validar un calibrador",
+        "edge_gate": "Para validar una ventaja",
+        "general": "General"
+      },
+      "labels": {
+        "version": "Versión del criterio",
+        "min_oos_n": "Partidos mínimos fuera de muestra",
+        "min_oos_days": "Días mínimos fuera de muestra",
+        "min_gain_vs_raw": "Mejora mínima de log loss frente al modelo sin calibrar",
+        "max_ece": "ECE máximo",
+        "max_loss_vs_market": "Pérdida máxima de log loss frente al mercado",
+        "ev_rule": "Valor esperado mínimo de la regla",
+        "min_rule_n": "Apuestas mínimas de la regla",
+        "min_rule_clv": "CLV mínimo de la regla",
+        "replace_gain": "Mejora mínima para reemplazar al champion (log loss)",
+        "refit_every_days": "Reajuste cada (días)"
+      }
+    }
   },
   "memory": {
     "type": "Entidad",
@@ -722,5 +751,26 @@
     "promotions": "Promociones",
     "regressions": "Regresiones (retirados)",
     "noRegressions": "Ninguna regresión registrada."
+  },
+  "codes": {
+    "verdict": {
+      "MERECIDO": "Merecido",
+      "SUERTE": "Suerte",
+      "VARIANZA": "Varianza",
+      "ERROR": "Error",
+      "NULO": "Nulo",
+      "SIN_DATOS": "Sin datos"
+    },
+    "quality": {
+      "GOOD": "Buena",
+      "BAD": "Mala",
+      "NEUTRAL": "Neutra",
+      "UNKNOWN": "Desconocida"
+    },
+    "method": {
+      "logit2": "Logística con el precio del mercado",
+      "platt": "Platt",
+      "identity": "Sin corrección"
+    }
   }
 }

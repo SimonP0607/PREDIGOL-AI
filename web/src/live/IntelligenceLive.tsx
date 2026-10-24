@@ -34,6 +34,7 @@ import { BriefPanel, RefusedPanel, ResearchPanel } from "./IntelAiPanels";
 import { MatchPicker } from "./IntelMatchPicker";
 import { FactorsPanel, H2hPanel, ScenariosPanel, TacticsPanel } from "./IntelMatchPanels";
 import { hasScenarios } from "./intelMatch";
+import { calibratorParamsText, codeText, gateGroups, secondLegText } from "./intelText";
 import { Markdown } from "./Markdown";
 import { MarketMatrixPanel } from "./MarketMatrixPanel";
 import { PriceClockPanel } from "./PriceClockPanel";
@@ -594,7 +595,13 @@ export function DecisionDetail({
           <Section title={t("intel.detail.review")}>
             {review ? (
               <>
-                <KeyValue label={t("intel.detail.decision")} value={String(review["decision"])} />
+                <KeyValue
+                  label={t("intel.detail.decision")}
+                  value={translateOr(
+                    `ai.layer.decision.${String(review["decision"])}`,
+                    String(review["decision"]),
+                  )}
+                />
                 <KeyValue
                   label={t("intel.detail.engine")}
                   value={String(review["engine_version"] ?? "")}
@@ -663,12 +670,19 @@ export function DecisionDetail({
               <>
                 <KeyValue
                   label={t("intel.detail.method")}
-                  value={`${String(cal["method"])} #${String(cal["id"])} (${String(x["calibrator_role"] ?? "")})`}
+                  value={`${codeText("method", cal["method"])} #${String(cal["id"])} (${String(x["calibrator_role"] ?? "")})`}
                 />
-                <KeyValue label={t("intel.detail.params")} value={JSON.stringify(cal["params"])} />
+                <KeyValue
+                  label={t("intel.detail.params")}
+                  value={calibratorParamsText(cal["params"])}
+                />
                 <KeyValue
                   label={t("intel.detail.gate")}
-                  value={String(((cal["gate"] ?? {}) as Record<string, unknown>)["calibrated"])}
+                  value={
+                    ((cal["gate"] ?? {}) as Record<string, unknown>)["calibrated"] === true
+                      ? t("intel.match.yes")
+                      : t("intel.match.no")
+                  }
                 />
               </>
             ) : (
@@ -678,7 +692,10 @@ export function DecisionDetail({
           <Section title={t("intel.detail.outcome")}>
             {outcome ? (
               <>
-                <KeyValue label={t("intel.cols.result")} value={String(outcome["result_status"])} />
+                <KeyValue
+                  label={t("intel.cols.result")}
+                  value={codeText("result", outcome["result_status"])}
+                />
                 <KeyValue label={t("intel.detail.pnl")} value={fixed(outcome["profit_flat"], 2)} />
                 <KeyValue label={t("intel.cols.clv")} value={fmtSignedPct(num(outcome["clv"]))} />
               </>
@@ -689,8 +706,14 @@ export function DecisionDetail({
           {pm ? (
             <Section title={t("intel.detail.postmortem")}>
               <KeyValue label={t("intel.detail.pmVersion")} value={String(pm["version"] ?? DASH)} />
-              <KeyValue label={t("intel.detail.verdict")} value={String(pm["verdict"])} />
-              <KeyValue label={t("intel.detail.quality")} value={String(pm["decision_quality"])} />
+              <KeyValue
+                label={t("intel.detail.verdict")}
+                value={codeText("verdict", pm["verdict"])}
+              />
+              <KeyValue
+                label={t("intel.detail.quality")}
+                value={codeText("quality", pm["decision_quality"])}
+              />
               <ul className="list-disc space-y-1 pl-4 text-xs">
                 {((pm["causes"] ?? []) as Array<Record<string, unknown>>).map((c, i) => (
                   <li key={i}>{String(c["text"])}</li>
@@ -962,7 +985,7 @@ function MatchView({
                   {d.dossier.context["second_leg"] ? (
                     <KeyValue
                       label={t("intel.match.secondLeg")}
-                      value={JSON.stringify(d.dossier.context["second_leg"])}
+                      value={secondLegText(d.dossier.context["second_leg"])}
                     />
                   ) : null}
                 </Panel>
@@ -1057,9 +1080,16 @@ function CalibrationView() {
         <CalibrationTable rows={d.champions} />
       </Panel>
       <Panel title={t("intel.calibration.gates")}>
-        <pre className="overflow-x-auto whitespace-pre-wrap break-words text-caption">
-          {JSON.stringify(gates, null, 2)}
-        </pre>
+        <div className="space-y-3" data-testid="intel-gates">
+          {gateGroups(gates).map((g) => (
+            <div key={g.key}>
+              <SubTitle>{g.title}</SubTitle>
+              {g.lines.map((line) => (
+                <KeyValue key={line.key} label={line.label} value={line.value} />
+              ))}
+            </div>
+          ))}
+        </div>
       </Panel>
       <Panel title={t("intel.calibration.promotions")} bodyClassName="p-0">
         <TableShell>
@@ -1338,7 +1368,7 @@ export function IntelligenceLive() {
         className="flex flex-wrap items-center gap-2 rounded-md border border-primary/25 bg-primary/8 px-3 py-2 text-xs"
         data-testid="intel-shadow-line"
       >
-        <StatusBadge tone="brand">SHADOW</StatusBadge>
+        <StatusBadge tone="brand">{t("intel.shadowTag")}</StatusBadge>
         <span className="min-w-0 text-foreground/85">{t("intel.shadowLine")}</span>
       </div>
       <SegmentedTabs

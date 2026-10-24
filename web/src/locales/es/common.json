@@ -127,5 +127,6 @@
     "next": "Siguiente",
     "range": "{from}–{to} de {total}",
     "page": "Página {page} de {pages}"
-  }
+  },
+  "reset": "Restablecer"
 }

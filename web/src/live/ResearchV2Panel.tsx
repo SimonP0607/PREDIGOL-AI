@@ -377,7 +377,7 @@ export function ResearchV2Panel() {
                   className="flex flex-wrap items-center justify-between gap-2 text-xs"
                 >
                   <span className="text-muted-foreground">
-                    {r.name} · <StatusBadge tone="neutral">LEGACY_RESEARCH_RUN</StatusBadge>
+                    {r.name} · <StatusBadge tone="neutral">{t("research.legacyRun")}</StatusBadge>
                   </span>
                   <Numeric className="text-xs">{interval(r.vs_primary)}</Numeric>
                 </li>

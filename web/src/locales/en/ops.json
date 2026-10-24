@@ -294,6 +294,10 @@
       "noWeb": "no news search",
       "dayReady": "Day read by PrediGol Intelligence: {days}",
       "dayNotReady": "PrediGol Intelligence has not finished the day's first pass (from 00:05 Bogotá, 06:00 at the latest): today's set waits."
+    },
+    "decisionState": {
+      "selected": "selected",
+      "rejected": "rejected"
     }
   }
 }

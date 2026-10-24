@@ -135,7 +135,11 @@ export function LineageChain({ nodes }: { nodes: LineageNode[] }) {
   );
 }
 
-export function SeverityBadge({ severity }: { severity: "critical" | "high" | "medium" | "low" }) {
+export function SeverityBadge({
+  severity,
+}: {
+  severity: "critical" | "high" | "medium" | "low" | "info";
+}) {
   const tone =
     severity === "critical"
       ? "negative"

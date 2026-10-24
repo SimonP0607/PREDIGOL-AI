@@ -294,6 +294,10 @@
       "noWeb": "sin búsqueda de noticias",
       "dayReady": "Día leído por PrediGol Intelligence: {days}",
       "dayNotReady": "PrediGol Intelligence aún no termina la primera pasada del día (desde las 00:05 de Bogotá, a más tardar a las 06:00): el set de hoy espera."
+    },
+    "decisionState": {
+      "selected": "seleccionado",
+      "rejected": "rechazado"
     }
   }
 }

@@ -324,5 +324,6 @@
       "ensemble": "Ensemble (model pool)"
     },
     "notJudged": "not judged"
-  }
+  },
+  "legacyRun": "Legacy run"
 }

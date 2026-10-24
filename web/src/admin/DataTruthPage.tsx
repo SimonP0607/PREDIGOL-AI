@@ -85,7 +85,6 @@ function StateBadge({ state }: { state: FreshnessState | null | undefined }) {
 
 function Sev({ severity }: { severity: Severity | null | undefined }) {
   if (!severity) return <span className="text-xs text-subtle-foreground">—</span>;
-  if (severity === "info") return <StatusBadge tone="neutral">info</StatusBadge>;
   return <SeverityBadge severity={severity} />;
 }
 

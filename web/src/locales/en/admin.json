@@ -390,7 +390,8 @@
       "critical": "critical",
       "high": "high",
       "medium": "medium",
-      "low": "low"
+      "low": "low",
+      "info": "info"
     },
     "freshness": {
       "live": "Live",

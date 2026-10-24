@@ -390,7 +390,8 @@
       "critical": "crítica",
       "high": "alta",
       "medium": "media",
-      "low": "baja"
+      "low": "baja",
+      "info": "informativa"
     },
     "freshness": {
       "live": "En vivo",
