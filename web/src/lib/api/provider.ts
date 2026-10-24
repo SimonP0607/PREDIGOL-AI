@@ -5,7 +5,6 @@
  * not use it: they read the FastAPI contracts through src/lib/api/v1.
  */
 import type {
-  AnalystAnswer,
   BacktestConfig,
   BacktestResult,
   BookmakerPrice,
@@ -71,7 +70,6 @@ export interface DataProvider {
   getLineage(): Promise<LineageNode[]>;
 
   search(term: string): Promise<SearchHit[]>;
-  getAnalystAnswers(): Promise<AnalystAnswer[]>;
 }
 
 function matchesTerm(hit: SearchHit, term: string): boolean {
@@ -113,7 +111,6 @@ export const mockProvider: DataProvider = {
   getLineage: () => demo(ops.lineage),
 
   search: (term) => demo(research.searchIndex.filter((h) => matchesTerm(h, term)).slice(0, 12), 40),
-  getAnalystAnswers: () => demo(research.analystAnswers),
 };
 
 /**

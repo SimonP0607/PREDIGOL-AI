@@ -1,12 +1,7 @@
 {
-  "intro": "Todo lo que PrediGol ha aprendido, en un solo lugar. Las entidades son los equipos, ligas, árbitros, entrenadores, jugadores y mercados a lo largo del tiempo, cada una con cuánto fiarse y en qué se apoya; los partidos son los que miró, antes y después; los post-mortems juzgan una vez cada selección; las notas de aprendizaje son lo que apuntó el ciclo diario de la IA; los hallazgos de investigación son lo que concluyó la investigación de modelos. Solo lectura: nada de aquí cambia un pick, una probabilidad ni un modelo.",
+  "intro": "Todo lo que PrediGol ha aprendido, en un solo lugar. Las entidades son los equipos, ligas, árbitros, entrenadores, jugadores y mercados a lo largo del tiempo, cada una con cuánto fiarse y en qué se apoya; los partidos son los que miró, antes y después; las notas de aprendizaje son lo que apuntó el ciclo diario de la IA; los hallazgos de investigación son lo que concluyó la investigación de modelos. Los post-mortems de cada selección tienen su propia pestaña. Solo lectura: nada de aquí cambia un pick, una probabilidad ni un modelo.",
   "tabs": {
-    "label": "Secciones de memoria",
-    "entities": "Entidades",
-    "matches": "Partidos",
-    "postmortems": "Post-mortems",
-    "events": "Notas de aprendizaje",
-    "research": "Hallazgos de investigación"
+    "label": "Secciones de memoria"
   },
   "entities": {
     "allTypes": "Todas",

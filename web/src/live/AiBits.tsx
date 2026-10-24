@@ -1,28 +1,22 @@
 /**
- * Pieces shared by the AI V2 screens - Capa de decisión IA, IA e investigación and Evolución - so the shadow
- * line, the budget bar, the costs, the learning notes and the proposals read the same wherever they appear.
+ * Pieces shared by the AI screens - the tabs of Operación and Aprendizaje (plan F13) - so the shadow line, the budget bar,
+ * the costs, the learning notes and the proposals read the same wherever they appear.
  */
 import type { ReactNode } from "react";
 import { t, translateOr } from "@/lib/i18n";
 import { localInt } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
-import { KeyValue, WarningBanner } from "@/components/primitives/Panel";
+import { WarningBanner } from "@/components/primitives/Panel";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { live } from "@/lib/api/v1/queries";
-import type {
-  AiBudgetAlert,
-  AiCostPeriod,
-  LearningNote,
-  Proposal,
-} from "@/lib/api/v1/types_ai_layer";
+import type { AiBudgetAlert, LearningNote, Proposal } from "@/lib/api/v1/types_ai_layer";
 import {
   barPercent,
   bogotaDateTime,
   budgetMarkers,
   evidenceSummary,
   levelLabel,
-  levelRows,
   probText,
   ratioOf,
   thresholdText,
@@ -299,44 +293,6 @@ export function MonthBar({
         ))}
       </ul>
       {alerts.length === 0 ? <Note>{t("ai.v2.alerts.none")}</Note> : null}
-    </div>
-  );
-}
-
-/** A period's spend by level (L1 / L2 / L3 / web): what each cost and how many calls. */
-export function LevelCosts({ period }: { period: AiCostPeriod }) {
-  const rows = levelRows(period.by_level);
-  if (!rows.length) return <Note>{t("ai.v2.costs.noLevel")}</Note>;
-  return (
-    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {rows.map((r) => (
-        <li key={r.key} className="min-w-0 rounded-md border border-border px-2.5 py-2">
-          <LevelBadge level={r.key} />
-          <div className="numeric mt-1.5 text-sm font-semibold">{usd(r.cost_usd)}</div>
-          <div className="text-caption text-subtle-foreground">
-            {t("ai.v2.costs.requests", { count: r.requests, n: localInt(r.requests) })}
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** A period's unit costs: per match, analysis, search, reviewed pick, approved pick, selected pick. */
-export function UnitCosts({ period }: { period: AiCostPeriod }) {
-  const rows: Array<[string, number | null | undefined]> = [
-    [t("ai.v2.costs.perMatch"), period.cost_per_match],
-    [t("ai.v2.costs.perAnalysis"), period.cost_per_analysis],
-    [t("ai.v2.costs.perSearch"), period.cost_per_search],
-    [t("ai.v2.costs.perReviewedPick"), period.cost_per_review],
-    [t("ai.v2.costs.perApproved"), period.cost_per_approved],
-    [t("ai.v2.costs.perSelected"), period.cost_per_selected],
-  ];
-  return (
-    <div>
-      {rows.map(([label, value]) => (
-        <KeyValue key={label} label={label} value={usd(value)} />
-      ))}
     </div>
   );
 }

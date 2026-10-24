@@ -368,23 +368,3 @@ export interface SearchHit {
   sublabel: string;
   fixtureId: string | null;
 }
-
-export interface AnalystSource {
-  label: string;
-  kind: "fixture" | "model" | "odds" | "data-quality" | "pick";
-  reference: string;
-  capturedAt: string;
-  fixtureId: string | null;
-}
-
-export interface AnalystAnswer {
-  id: string;
-  question: string;
-  answer: string;
-  evidence: string[];
-  metrics: Array<{ label: string; value: string; source: string }>;
-  relatedFixtures: Array<{ id: string; label: string }>;
-  relatedModels: Array<{ id: string; label: string }>;
-  sources: AnalystSource[];
-  generatedAt: string;
-}

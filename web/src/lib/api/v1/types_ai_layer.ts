@@ -709,12 +709,6 @@ export interface PickPostmortem {
   created_at: Iso;
 }
 
-export interface AiLearning {
-  day: string;
-  notes: LearningNote[];
-  proposals: Proposal[];
-}
-
 export interface AiSourceRow {
   domain: string;
   tier: string;

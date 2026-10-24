@@ -53,8 +53,6 @@
     "today": {
       "title": "Qué es esto hoy",
       "deterministic": "Hoy: monitor determinista",
-      "aiOn": "IA configurada: solo propone",
-      "aiOff": "IA: sin configurar",
       "body": "Cada 30 minutos la capa de decisión arma el paquete de contexto de cada partido próximo (con la fuente de cada dato), revisa las selecciones que pasan el filtro de valor y guarda un análisis por partido. Cada día, tras los resultados, escribe post-mortems y memoria, y propone hipótesis solo con evidencia suficiente.",
       "never": "Ningún resultado cambia una regla, un umbral, un modelo o un pick por sí mismo. Mientras la puerta shadow de la IA no se supere (y tú no actives el modo enforce), sus revisiones no filtran nada de lo que ven los usuarios.",
       "futureTitle": "Arquitectura futura (no implementada: requiere tu aprobación y una cuenta de proveedor)",
@@ -71,8 +69,7 @@
         "f10": "APROBACIÓN HUMANA: el dueño decide.",
         "f11": "PROMOCIÓN: solo entonces cambia producción, versionado y reversible."
       },
-      "futureNote": "Nunca: «mal resultado → la IA cambia producción automáticamente». La IA no tendrá permisos de escritura en producción.",
-      "mode": "Modo: {mode}"
+      "futureNote": "Nunca: «mal resultado → la IA cambia producción automáticamente». La IA no tendrá permisos de escritura en producción."
     },
     "frozen": "Investigación congelada: {reason}. Ninguna ejecución guarda un modelo hasta que la descongeles tú.",
     "dueWhenUnfrozen": "Al descongelarla, la investigación semanal correría porque {reason}.",
@@ -270,13 +267,6 @@
     }
   },
   "layer": {
-    "tabs": {
-      "label": "Vistas de la capa IA",
-      "reviews": "Revisiones",
-      "evidence": "Evidencias",
-      "costs": "Costos",
-      "shadow": "Shadow"
-    },
     "mode": {
       "off": "apagada",
       "shadow": "evaluación (shadow)",
@@ -472,6 +462,7 @@
       "unitsHelp": "Cuánto cuesta cada pieza del trabajo de la IA en cada periodo.",
       "byLevel": "Gasto por nivel",
       "byLevelHelp": "L1 resumen económico · L2 revisión intermedia · L3 revisión fuerte · web búsquedas.",
+      "byModelHelp": "Cuánto costó cada modelo en cada periodo, con sus llamadas.",
       "searches": "Búsquedas",
       "failed": "Fallidas"
     },
@@ -804,15 +795,6 @@
     }
   },
   "research": {
-    "tabs": {
-      "label": "Secciones de IA e investigación",
-      "today": "Hoy",
-      "research": "Investigaciones",
-      "learning": "Aprendizaje",
-      "sources": "Fuentes",
-      "costs": "Costos",
-      "close": "Cierre diario"
-    },
     "day": "Día",
     "today": {
       "title": "Partidos con mercado",
@@ -893,15 +875,6 @@
       "decision": "Decisión de la IA",
       "noDecision": "Sin revisión"
     },
-    "learning": {
-      "notes": "Qué aprendió PrediGol",
-      "notesSubtitle": "Notas de los resultados de ese día, con su evidencia. Una observación no es una regla.",
-      "empty": "Aún no hay notas de aprendizaje de ese día.",
-      "proposals": "Mejoras propuestas",
-      "proposalsSubtitle": "Esperan tu decisión en Evolución; aquí solo se leen.",
-      "noProposals": "Ninguna propuesta espera decisión.",
-      "decide": "Decidir en Evolución"
-    },
     "sources": {
       "title": "Fuentes",
       "subtitle": "Qué dominios aportaron evidencia útil y cuánto costó consultarlos.",
@@ -920,23 +893,14 @@
       "empty": "Aún no hay estadísticas de fuentes en ese periodo."
     },
     "costs": {
-      "today": "Hoy",
-      "month": "Este mes",
-      "requests": "Llamadas",
-      "searches": "Búsquedas",
-      "total": "Costo",
-      "failed": "Fallidas",
-      "byLevel": "Por nivel",
       "byModel": "Por modelo",
-      "units": "Costos unitarios",
       "noModel": "Sin llamadas a modelos en este periodo.",
-      "projection": "Proyección del mes",
       "projectionValue": "{value} · {share} del presupuesto",
       "runRate": "Ritmo de los últimos 7 días",
+      "pace": "Ritmo de gasto",
       "perDay": "{value}/día",
       "lastDays": "Últimos días",
-      "budget": "Presupuesto mensual",
-      "spentMonth": "Gastado este mes"
+      "noDays": "Sin gasto registrado en los últimos días."
     }
   },
   "dailyReview": {

@@ -23,7 +23,6 @@ export const queries = {
   lineage: { queryKey: ["data-quality", "lineage"], queryFn: () => api.getLineage() },
   valueScanner: { queryKey: ["odds", "value-scanner"], queryFn: () => api.getValueScanner() },
   nearClose: { queryKey: ["odds", "near-close"], queryFn: () => api.getNearCloseSnapshots() },
-  analyst: { queryKey: ["analyst"], queryFn: () => api.getAnalystAnswers() },
 } as const;
 
 export const fixtureQueries = {

@@ -15,7 +15,8 @@
     "models": "Models",
     "backtesting": "Backtesting",
     "analytics": "Analytics",
-    "aiAnalyst": "AI research",
+    "operation": "Operation",
+    "learning": "Learning",
     "competitions": "Competitions",
     "teams": "Teams",
     "players": "Players",
@@ -27,11 +28,7 @@
     "migration": "Migration",
     "users": "Users",
     "audit": "Audit",
-    "settings": "Settings",
-    "evolution": "Evolution",
-    "aiLayer": "AI decision layer",
-    "intelligence": "PrediGol Intelligence",
-    "memory": "Memory"
+    "settings": "Settings"
   },
   "pages": {
     "overview": {
@@ -61,10 +58,6 @@
     "analytics": {
       "title": "Analytics",
       "description": "Competitions, teams, market and data coverage."
-    },
-    "aiAnalyst": {
-      "title": "AI research",
-      "description": "What the AI did with each match of the day, its research with sources, the post-mortems, what it learned, the sources and the cost."
     },
     "competitions": {
       "title": "Competitions",
@@ -106,21 +99,13 @@
       "title": "Settings",
       "description": "Platform configuration."
     },
-    "evolution": {
-      "title": "Evolution loop",
-      "description": "Results become memory and proposals; only the owner decides. No result changes a rule on its own."
+    "operation": {
+      "title": "Operation",
+      "description": "The day of PrediGol Intelligence and of the AI in one place: what was analysed and what was decided, the dossier of each match, what the AI did with each one, what it costs and what ran. All in shadow: nothing is published and nothing is staked."
     },
-    "aiLayer": {
-      "title": "AI decision layer",
-      "description": "What the AI analyses, from which sources, what each review decides, what it costs and whether its filter beats the model alone and the market. It never changes a pick by itself."
-    },
-    "intelligence": {
-      "title": "PrediGol Intelligence",
-      "description": "The decision layer: every candidate through ten filters with a calibrated probability, its score, its stake and its context; what each day taught. All in shadow: nothing is published or staked."
-    },
-    "memory": {
-      "title": "Memory",
-      "description": "What PrediGol has learned, in one place: entities over time with how far to trust them, the matches it looked at, the post-mortem of each selection, the AI's learning notes and the research findings. Reading only."
+    "learning": {
+      "title": "Learning",
+      "description": "What PrediGol learns from its results: the close of each day, what was learned and what is proposed, the post-mortems, the memory, the experiments and the code promotions, the calibration, the markets and the AI against the model. Nothing here changes a pick, a probability or a model by itself: the owner decides."
     }
   },
   "users": {
@@ -464,5 +449,43 @@
     "drawdown": "Largest peak-to-trough decline of a cumulative series.",
     "yieldMetric": "Profit divided by total amount staked. Requires settled, published picks.",
     "roi": "Return on investment across settled picks. Not computable without validated results."
+  },
+  "operation": {
+    "tabs": {
+      "label": "Operation sections",
+      "day": "The day",
+      "decisions": "Decisions",
+      "match": "Match",
+      "ai": "AI work",
+      "costs": "Costs",
+      "runs": "Runs"
+    },
+    "aiViews": {
+      "label": "Views of the AI's work",
+      "today": "Today",
+      "research": "Research",
+      "reviews": "Reviews",
+      "evidence": "Evidence",
+      "sources": "Sources"
+    }
+  },
+  "learning": {
+    "tabs": {
+      "label": "Learning sections",
+      "close": "Day close",
+      "learned": "What was learned",
+      "postmortems": "Post-mortems",
+      "memory": "Memory",
+      "experiments": "Experiments",
+      "calibration": "Calibration",
+      "markets": "Markets",
+      "shadow": "The AI against the model"
+    },
+    "memoryViews": {
+      "entities": "Entities",
+      "matches": "Matches",
+      "notes": "Learning notes",
+      "findings": "Research findings"
+    }
   }
 }

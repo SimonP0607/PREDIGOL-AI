@@ -30,10 +30,12 @@ import { Route as AdminDataQualityRouteImport } from './routes/admin.data-qualit
 import { Route as AdminDataTruthRouteImport } from './routes/admin.data-truth'
 import { Route as AdminEvolutionRouteImport } from './routes/admin.evolution'
 import { Route as AdminIntelligenceRouteImport } from './routes/admin.intelligence'
+import { Route as AdminLearningRouteImport } from './routes/admin.learning'
 import { Route as AdminMemoryRouteImport } from './routes/admin.memory'
 import { Route as AdminMigrationRouteImport } from './routes/admin.migration'
 import { Route as AdminModelsRouteImport } from './routes/admin.models'
 import { Route as AdminOddsRouteImport } from './routes/admin.odds'
+import { Route as AdminOperationRouteImport } from './routes/admin.operation'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
 import { Route as AdminPerformanceRouteImport } from './routes/admin.performance'
 import { Route as AdminPicksRouteImport } from './routes/admin.picks'
@@ -154,6 +156,11 @@ const AdminIntelligenceRoute = AdminIntelligenceRouteImport.update({
   path: '/intelligence',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminLearningRoute = AdminLearningRouteImport.update({
+  id: '/learning',
+  path: '/learning',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMemoryRoute = AdminMemoryRouteImport.update({
   id: '/memory',
   path: '/memory',
@@ -172,6 +179,11 @@ const AdminModelsRoute = AdminModelsRouteImport.update({
 const AdminOddsRoute = AdminOddsRouteImport.update({
   id: '/odds',
   path: '/odds',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOperationRoute = AdminOperationRouteImport.update({
+  id: '/operation',
+  path: '/operation',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminOverviewRoute = AdminOverviewRouteImport.update({
@@ -266,10 +278,12 @@ export interface FileRoutesByFullPath {
   '/admin/data-truth': typeof AdminDataTruthRoute
   '/admin/evolution': typeof AdminEvolutionRoute
   '/admin/intelligence': typeof AdminIntelligenceRoute
+  '/admin/learning': typeof AdminLearningRoute
   '/admin/memory': typeof AdminMemoryRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
+  '/admin/operation': typeof AdminOperationRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
@@ -306,10 +320,12 @@ export interface FileRoutesByTo {
   '/admin/data-truth': typeof AdminDataTruthRoute
   '/admin/evolution': typeof AdminEvolutionRoute
   '/admin/intelligence': typeof AdminIntelligenceRoute
+  '/admin/learning': typeof AdminLearningRoute
   '/admin/memory': typeof AdminMemoryRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
+  '/admin/operation': typeof AdminOperationRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
@@ -348,10 +364,12 @@ export interface FileRoutesById {
   '/admin/data-truth': typeof AdminDataTruthRoute
   '/admin/evolution': typeof AdminEvolutionRoute
   '/admin/intelligence': typeof AdminIntelligenceRoute
+  '/admin/learning': typeof AdminLearningRoute
   '/admin/memory': typeof AdminMemoryRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
+  '/admin/operation': typeof AdminOperationRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/picks': typeof AdminPicksRoute
@@ -391,10 +409,12 @@ export interface FileRouteTypes {
     | '/admin/data-truth'
     | '/admin/evolution'
     | '/admin/intelligence'
+    | '/admin/learning'
     | '/admin/memory'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
+    | '/admin/operation'
     | '/admin/overview'
     | '/admin/performance'
     | '/admin/picks'
@@ -431,10 +451,12 @@ export interface FileRouteTypes {
     | '/admin/data-truth'
     | '/admin/evolution'
     | '/admin/intelligence'
+    | '/admin/learning'
     | '/admin/memory'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
+    | '/admin/operation'
     | '/admin/overview'
     | '/admin/performance'
     | '/admin/picks'
@@ -472,10 +494,12 @@ export interface FileRouteTypes {
     | '/admin/data-truth'
     | '/admin/evolution'
     | '/admin/intelligence'
+    | '/admin/learning'
     | '/admin/memory'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
+    | '/admin/operation'
     | '/admin/overview'
     | '/admin/performance'
     | '/admin/picks'
@@ -657,6 +681,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIntelligenceRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/learning': {
+      id: '/admin/learning'
+      path: '/learning'
+      fullPath: '/admin/learning'
+      preLoaderRoute: typeof AdminLearningRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/memory': {
       id: '/admin/memory'
       path: '/memory'
@@ -683,6 +714,13 @@ declare module '@tanstack/react-router' {
       path: '/odds'
       fullPath: '/admin/odds'
       preLoaderRoute: typeof AdminOddsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/operation': {
+      id: '/admin/operation'
+      path: '/operation'
+      fullPath: '/admin/operation'
+      preLoaderRoute: typeof AdminOperationRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/overview': {
@@ -797,10 +835,12 @@ interface AdminRouteChildren {
   AdminDataTruthRoute: typeof AdminDataTruthRoute
   AdminEvolutionRoute: typeof AdminEvolutionRoute
   AdminIntelligenceRoute: typeof AdminIntelligenceRoute
+  AdminLearningRoute: typeof AdminLearningRoute
   AdminMemoryRoute: typeof AdminMemoryRoute
   AdminMigrationRoute: typeof AdminMigrationRoute
   AdminModelsRoute: typeof AdminModelsRoute
   AdminOddsRoute: typeof AdminOddsRoute
+  AdminOperationRoute: typeof AdminOperationRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminPerformanceRoute: typeof AdminPerformanceRoute
   AdminPicksRoute: typeof AdminPicksRoute
@@ -827,10 +867,12 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDataTruthRoute: AdminDataTruthRoute,
   AdminEvolutionRoute: AdminEvolutionRoute,
   AdminIntelligenceRoute: AdminIntelligenceRoute,
+  AdminLearningRoute: AdminLearningRoute,
   AdminMemoryRoute: AdminMemoryRoute,
   AdminMigrationRoute: AdminMigrationRoute,
   AdminModelsRoute: AdminModelsRoute,
   AdminOddsRoute: AdminOddsRoute,
+  AdminOperationRoute: AdminOperationRoute,
   AdminOverviewRoute: AdminOverviewRoute,
   AdminPerformanceRoute: AdminPerformanceRoute,
   AdminPicksRoute: AdminPicksRoute,

@@ -15,7 +15,8 @@
     "models": "Modelos",
     "backtesting": "Backtesting",
     "analytics": "Analítica",
-    "aiAnalyst": "IA e investigación",
+    "operation": "Operación",
+    "learning": "Aprendizaje",
     "competitions": "Competiciones",
     "teams": "Equipos",
     "players": "Jugadores",
@@ -27,11 +28,7 @@
     "migration": "Migración",
     "users": "Usuarios",
     "audit": "Auditoría",
-    "settings": "Ajustes",
-    "evolution": "Evolución",
-    "aiLayer": "Capa de decisión IA",
-    "intelligence": "PrediGol Intelligence",
-    "memory": "Memoria"
+    "settings": "Ajustes"
   },
   "pages": {
     "overview": {
@@ -61,10 +58,6 @@
     "analytics": {
       "title": "Analítica",
       "description": "Competiciones, equipos, mercado y cobertura de datos."
-    },
-    "aiAnalyst": {
-      "title": "IA e investigación",
-      "description": "Lo que la IA hizo con cada partido del día, sus investigaciones con fuentes, los post-mortems, lo aprendido, las fuentes y el costo."
     },
     "competitions": {
       "title": "Competiciones",
@@ -106,21 +99,13 @@
       "title": "Ajustes",
       "description": "Configuración de la plataforma."
     },
-    "evolution": {
-      "title": "Evolución",
-      "description": "Los resultados se vuelven memoria y propuestas; solo el dueño decide. Ningún resultado cambia una regla por sí solo."
+    "operation": {
+      "title": "Operación",
+      "description": "El día de PrediGol Intelligence y de la IA en un solo sitio: qué se analizó y qué se decidió, el dossier de cada partido, lo que hizo la IA con cada uno, cuánto cuesta y qué se ejecutó. Todo en shadow: nada se publica ni se apuesta."
     },
-    "aiLayer": {
-      "title": "Capa de decisión IA",
-      "description": "Qué analiza la IA, con qué fuentes, qué decide cada revisión, cuánto cuesta y si su filtro mejora frente al modelo solo y al mercado. Nunca cambia un pick por sí misma."
-    },
-    "intelligence": {
-      "title": "PrediGol Intelligence",
-      "description": "La capa de decisión: cada candidato por diez filtros con probabilidad calibrada, su score, su stake y su contexto; lo que aprendió cada día. Todo en shadow: nada se publica ni se apuesta."
-    },
-    "memory": {
-      "title": "Memoria",
-      "description": "Lo que PrediGol ha aprendido, en un solo lugar: entidades a lo largo del tiempo con cuánto fiarse, los partidos que miró, el post-mortem de cada selección, las notas de aprendizaje de la IA y los hallazgos de la investigación. Solo lectura."
+    "learning": {
+      "title": "Aprendizaje",
+      "description": "Lo que PrediGol aprende de sus resultados: el cierre de cada día, lo aprendido y lo que se propone, los post-mortems, la memoria, los experimentos y las promociones de código, la calibración, los mercados y la IA frente al modelo. Aquí nada cambia un pick, una probabilidad ni un modelo por sí solo: lo decide el dueño."
     }
   },
   "users": {
@@ -464,5 +449,43 @@
     "drawdown": "La mayor caída de pico a valle de una serie acumulada.",
     "yieldMetric": "Beneficio dividido entre el total apostado. Requiere picks publicados y liquidados.",
     "roi": "Retorno de la inversión sobre los picks liquidados. No se puede calcular sin resultados validados."
+  },
+  "operation": {
+    "tabs": {
+      "label": "Secciones de Operación",
+      "day": "El día",
+      "decisions": "Decisiones",
+      "match": "Partido",
+      "ai": "Trabajo de la IA",
+      "costs": "Costos",
+      "runs": "Ejecuciones"
+    },
+    "aiViews": {
+      "label": "Vistas del trabajo de la IA",
+      "today": "Hoy",
+      "research": "Investigaciones",
+      "reviews": "Revisiones",
+      "evidence": "Evidencias",
+      "sources": "Fuentes"
+    }
+  },
+  "learning": {
+    "tabs": {
+      "label": "Secciones de Aprendizaje",
+      "close": "Cierre del día",
+      "learned": "Lo aprendido",
+      "postmortems": "Post-mortems",
+      "memory": "Memoria",
+      "experiments": "Experimentos",
+      "calibration": "Calibración",
+      "markets": "Mercados",
+      "shadow": "La IA frente al modelo"
+    },
+    "memoryViews": {
+      "entities": "Entidades",
+      "matches": "Partidos",
+      "notes": "Notas de aprendizaje",
+      "findings": "Hallazgos de investigación"
+    }
   }
 }

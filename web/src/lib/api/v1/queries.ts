@@ -221,10 +221,6 @@ export const live = {
     queryKey: ["v1", "ai-layer", "postmortems", q],
     queryFn: () => v1.aiPostmortems(q),
   }),
-  aiLearning: (day?: string) => ({
-    queryKey: ["v1", "ai-layer", "learning", day ?? "yesterday"],
-    queryFn: () => v1.aiLearning(day),
-  }),
   aiDailyReviews: (days = 30) => ({
     queryKey: ["v1", "ai-layer", "daily-reviews", days],
     queryFn: () => v1.aiDailyReviews(days),

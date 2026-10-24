@@ -56,7 +56,6 @@ import type {
   MatchMemory,
   MemoryFilters,
   AiEvidenceRow,
-  AiLearning,
   AiMemoryEvent,
   AiOverview,
   AiPacketView,
@@ -556,7 +555,6 @@ export const v1 = {
       fixture_id?: number | undefined;
     } = {},
   ) => getJson<Envelope<PickPostmortem[]>>("/admin/ai/postmortems", q as Params),
-  aiLearning: (day?: string) => getJson<Envelope<AiLearning>>("/admin/ai/learning", { day }),
   aiSources: (days = 7) => getJson<Envelope<AiSourceRow[]>>("/admin/ai/sources", { days }),
   aiDailyReviews: (days = 30) =>
     getJson<Envelope<DailyReviewDay[]>>("/admin/ai/daily-reviews", { days }),

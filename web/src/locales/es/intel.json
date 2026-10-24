@@ -1,15 +1,7 @@
 {
-  "shadowLine": "SHADOW: PrediGol Intelligence decide y mide cada candidato, pero no publica picks ni mueve dinero. Los usuarios siguen viendo daily-set-v5.",
-  "shadowTag": "SOMBRA",
   "tabs": {
-    "day": "El día",
-    "decisions": "Decisiones",
-    "match": "Partido",
-    "calibration": "Calibración",
-    "markets": "Mercados",
-    "costs": "Costes y ejecuciones"
+    "match": "Partido"
   },
-  "tabsLabel": "Vistas de PrediGol Intelligence",
   "day": {
     "title": "El día de PrediGol Intelligence",
     "prev": "Día anterior",
@@ -39,7 +31,6 @@
     "v6Empty": "Ningún pick del día: ningún candidato llegó a APROBADO (ningún mercado tiene edge validado fuera de muestra). Cero es la respuesta honesta, nunca se rellena.",
     "v5Title": "daily-set-v5 (lo que ven los usuarios, evaluación)",
     "v5Empty": "daily-set-v5 no eligió picks este día.",
-    "calibrationTitle": "Calibración por mercado y modelo",
     "reportTitle": "DAILY LEARNING REPORT",
     "reportEmpty": "Aún no hay informe para este día (se escribe a las 07:50 del día siguiente).",
     "runsTitle": "Últimas ejecuciones",
@@ -719,17 +710,14 @@
     }
   },
   "costs": {
+    "title": "Coste por unidad de PrediGol Intelligence",
+    "subtitle": "Los últimos 7 días cerrados: lo que costó cada partido, candidato, pick, investigación y post-mortem.",
     "perMatch": "Por partido",
     "perCandidate": "Por candidato",
     "perPick": "Por pick",
     "perResearch": "Por investigación",
     "perPostmortem": "Por post-mortem",
     "perDay": "Por día (7 d)",
-    "projection": "Proyección del mes",
-    "budget": "Presupuesto mensual",
-    "spentMonth": "Gastado este mes",
-    "alerts": "Alertas del mes",
-    "noAlerts": "Ninguna alerta este mes.",
     "runs": "Ejecuciones de PrediGol Intelligence",
     "audit": "Auditoría de fugas de datos",
     "rule": "Regla",
@@ -742,15 +730,6 @@
     "errors": "Errores",
     "none": "—",
     "auditEmpty": "La auditoría corre cada mañana sobre las decisiones del día anterior."
-  },
-  "learning": {
-    "title": "Centro de aprendizaje de PrediGol Intelligence",
-    "subtitle": "Calibradores con criterios fijados de antemano, edge validado por mercado, promociones y regresiones, y el informe de aprendizaje del día.",
-    "open": "Abrir PrediGol Intelligence",
-    "champions": "Champion / challenger por mercado y modelo",
-    "promotions": "Promociones",
-    "regressions": "Regresiones (retirados)",
-    "noRegressions": "Ninguna regresión registrada."
   },
   "codes": {
     "verdict": {

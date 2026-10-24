@@ -1,12 +1,7 @@
 {
-  "intro": "Everything PrediGol has learned, in one place. Entities are the teams, leagues, referees, coaches, players and markets over time, each with how far to trust it and what it rests on; matches are the ones it looked at, before and after; post-mortems judge each selection once; learning notes are what the AI's daily cycle wrote down; research findings are what the model research concluded. Reading only: nothing here changes a pick, a probability or a model.",
+  "intro": "Everything PrediGol has learned, in one place. Entities are the teams, leagues, referees, coaches, players and markets over time, each with how far to trust it and what it rests on; matches are the ones it looked at, before and after; learning notes are what the AI's daily cycle wrote down; research findings are what the model research concluded. The post-mortem of each selection has a tab of its own. Reading only: nothing here changes a pick, a probability or a model.",
   "tabs": {
-    "label": "Memory sections",
-    "entities": "Entities",
-    "matches": "Matches",
-    "postmortems": "Post-mortems",
-    "events": "Learning notes",
-    "research": "Research findings"
+    "label": "Memory sections"
   },
   "entities": {
     "allTypes": "All",

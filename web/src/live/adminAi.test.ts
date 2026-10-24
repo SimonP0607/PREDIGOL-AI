@@ -64,9 +64,13 @@ describe("the old pages and their tabs", () => {
   });
 
   test("the five old pages are all in the table, and Evolución, which had no tabs, goes to what was learned", () => {
-    expect([...LEGACY_PAGES].sort()).toEqual(
-      ["ai-analyst", "ai-layer", "evolution", "intelligence", "memory"].sort(),
-    );
+    expect([...LEGACY_PAGES].sort() as string[]).toEqual([
+      "ai-analyst",
+      "ai-layer",
+      "evolution",
+      "intelligence",
+      "memory",
+    ]);
     expect(LEGACY_TABS.evolution).toEqual([]);
     expect(legacyPlace("evolution", "")).toEqual({ path: LEARNING_PATH, tab: "learned" });
     expect(legacyPlace("evolution", "#tab=costs")).toEqual({ path: LEARNING_PATH, tab: "learned" });

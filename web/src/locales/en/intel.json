@@ -1,15 +1,7 @@
 {
-  "shadowLine": "SHADOW: PrediGol Intelligence decides and measures every candidate, but publishes no pick and moves no money. Users still see daily-set-v5.",
-  "shadowTag": "SHADOW",
   "tabs": {
-    "day": "The day",
-    "decisions": "Decisions",
-    "match": "Match",
-    "calibration": "Calibration",
-    "markets": "Markets",
-    "costs": "Costs and runs"
+    "match": "Match"
   },
-  "tabsLabel": "PrediGol Intelligence views",
   "day": {
     "title": "PrediGol Intelligence's day",
     "prev": "Previous day",
@@ -39,7 +31,6 @@
     "v6Empty": "No pick of the day: no candidate reached APPROVED (no market has an edge validated out of sample). Zero is the honest answer; it is never padded.",
     "v5Title": "daily-set-v5 (what users see, evaluation)",
     "v5Empty": "daily-set-v5 chose no picks this day.",
-    "calibrationTitle": "Calibration per market and model",
     "reportTitle": "DAILY LEARNING REPORT",
     "reportEmpty": "No report for this day yet (written at 07:50 the next morning).",
     "runsTitle": "Latest runs",
@@ -719,17 +710,14 @@
     }
   },
   "costs": {
+    "title": "PrediGol Intelligence cost per unit",
+    "subtitle": "The last 7 closed days: what each match, candidate, pick, research and post-mortem cost.",
     "perMatch": "Per match",
     "perCandidate": "Per candidate",
     "perPick": "Per pick",
     "perResearch": "Per research",
     "perPostmortem": "Per post-mortem",
     "perDay": "Per day (7 d)",
-    "projection": "Month projection",
-    "budget": "Monthly budget",
-    "spentMonth": "Spent this month",
-    "alerts": "This month's alerts",
-    "noAlerts": "No alert this month.",
     "runs": "PrediGol Intelligence runs",
     "audit": "Data-leakage audit",
     "rule": "Rule",
@@ -742,15 +730,6 @@
     "errors": "Errors",
     "none": "—",
     "auditEmpty": "The audit runs every morning over the previous day's decisions."
-  },
-  "learning": {
-    "title": "PrediGol Intelligence learning center",
-    "subtitle": "Calibrators with criteria fixed in advance, edge validated per market, promotions and regressions, and the day's learning report.",
-    "open": "Open PrediGol Intelligence",
-    "champions": "Champion / challenger per market and model",
-    "promotions": "Promotions",
-    "regressions": "Regressions (retired)",
-    "noRegressions": "No regression recorded."
   },
   "codes": {
     "verdict": {

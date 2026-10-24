@@ -53,8 +53,6 @@
     "today": {
       "title": "What this is today",
       "deterministic": "Today: a deterministic monitor",
-      "aiOn": "AI configured: proposes only",
-      "aiOff": "AI: not configured",
       "body": "Every 30 minutes the decision layer builds the context packet of each upcoming match (with the source of every figure), reviews the selections that pass the value filter and stores one analysis per match. Every day, after the results, it writes post-mortems and memory, and proposes hypotheses only on sufficient evidence.",
       "never": "No result changes a rule, a threshold, a model or a pick by itself. Until the AI's shadow gate passes (and you switch enforce on), its reviews filter nothing users see.",
       "futureTitle": "Future architecture (not built: needs your approval and a provider account)",
@@ -71,8 +69,7 @@
         "f10": "HUMAN APPROVAL: the owner decides.",
         "f11": "PROMOTION: only then does production change, versioned and reversible."
       },
-      "futureNote": "Never: \"bad result → the AI changes production automatically\". The AI will have no write access to production.",
-      "mode": "Mode: {mode}"
+      "futureNote": "Never: \"bad result → the AI changes production automatically\". The AI will have no write access to production."
     },
     "frozen": "Research frozen: {reason}. No run stores a model until you unfreeze it.",
     "dueWhenUnfrozen": "Once unfrozen, the weekly research would run because {reason}.",
@@ -270,13 +267,6 @@
     }
   },
   "layer": {
-    "tabs": {
-      "label": "AI layer views",
-      "reviews": "Reviews",
-      "evidence": "Evidence",
-      "costs": "Costs",
-      "shadow": "Shadow"
-    },
     "mode": {
       "off": "off",
       "shadow": "evaluation (shadow)",
@@ -472,6 +462,7 @@
       "unitsHelp": "What each piece of the AI's work costs in each period.",
       "byLevel": "Spend by level",
       "byLevelHelp": "L1 economical brief · L2 intermediate review · L3 strong review · web searches.",
+      "byModelHelp": "What each model cost in each period, with its calls.",
       "searches": "Searches",
       "failed": "Failed"
     },
@@ -804,15 +795,6 @@
     }
   },
   "research": {
-    "tabs": {
-      "label": "AI research sections",
-      "today": "Today",
-      "research": "Research",
-      "learning": "Learning",
-      "sources": "Sources",
-      "costs": "Costs",
-      "close": "Day close"
-    },
     "day": "Day",
     "today": {
       "title": "Matches with a market",
@@ -893,15 +875,6 @@
       "decision": "AI decision",
       "noDecision": "Not reviewed"
     },
-    "learning": {
-      "notes": "What PrediGol learned",
-      "notesSubtitle": "Notes from that day's results, with their evidence. An observation is not a rule.",
-      "empty": "No learning notes for that day yet.",
-      "proposals": "Proposed improvements",
-      "proposalsSubtitle": "They await your decision in Evolution; read-only here.",
-      "noProposals": "No proposal awaits a decision.",
-      "decide": "Decide in Evolution"
-    },
     "sources": {
       "title": "Sources",
       "subtitle": "Which domains brought useful evidence and what consulting them cost.",
@@ -920,23 +893,14 @@
       "empty": "No source statistics in that period yet."
     },
     "costs": {
-      "today": "Today",
-      "month": "This month",
-      "requests": "Calls",
-      "searches": "Searches",
-      "total": "Cost",
-      "failed": "Failed",
-      "byLevel": "By level",
       "byModel": "By model",
-      "units": "Unit costs",
       "noModel": "No model calls in this period.",
-      "projection": "Month's projection",
       "projectionValue": "{value} · {share} of the budget",
       "runRate": "Pace of the last 7 days",
+      "pace": "Spending pace",
       "perDay": "{value}/day",
       "lastDays": "Last days",
-      "budget": "Monthly budget",
-      "spentMonth": "Spent this month"
+      "noDays": "No spend recorded in the last days."
     }
   },
   "dailyReview": {

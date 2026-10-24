@@ -1,10 +1,12 @@
 /**
- * PrediGol Intelligence (Admin Console): the decision layer in shadow. "El día" says what was analysed, what became of
- * every candidate (rejected, investigation, caution, approved, picks of the day), how deep the AI went, what it cost,
- * where the news came from, the picks of the day of daily-set-v6 beside v5 and the day's learning report. Then each
- * decision whole (ten filters, the score and the stake with their components, the AI's context and evidence, the model
- * and the calibrator, the outcome and the post-mortem), the match dossier and its narrative, calibration with its
- * gates, the market discovery engine, and the costs, runs and leakage audit. The longitudinal memory is in Memoria.
+ * PrediGol Intelligence (Admin Console): the decision layer in shadow, as the views of two pages (plan F13, see adminAi.ts).
+ * OPERACIÓN holds "El día" (what was analysed, what became of every candidate - rejected, investigation, caution,
+ * approved, picks of the day -, how deep the AI went, what it cost, where the news came from, the picks of the day of
+ * daily-set-v6 beside v5 and the day's learning report), each decision whole (ten filters, the score and the stake with
+ * their components, the AI's context and evidence, the model and the calibrator, the outcome and the post-mortem), the
+ * match dossier with its narrative, and the runs with the leakage audit. APRENDIZAJE holds the calibration with its gates
+ * and the market discovery engine. What it costs is one view with the rest of the AI's costs (AiCosts); the longitudinal
+ * memory is in Aprendizaje > Memoria.
  */
 import { useState, type ReactNode } from "react";
 import { t, translateOr } from "@/lib/i18n";
@@ -13,7 +15,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { KeyValue, Panel } from "@/components/primitives/Panel";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
 import { TD, TH, THead, TRow, TableShell, TableSkeleton } from "@/components/primitives/DataTable";
-import { SegmentedTabs, SelectFilter } from "@/components/system/Filters";
+import { SelectFilter } from "@/components/system/Filters";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
@@ -39,10 +41,7 @@ import { Markdown } from "./Markdown";
 import { MarketMatrixPanel } from "./MarketMatrixPanel";
 import { PriceClockPanel } from "./PriceClockPanel";
 import { durationMs } from "./format";
-import { useUrlTab } from "@/lib/useUrlTab";
 
-const TABS = ["day", "decisions", "match", "calibration", "markets", "costs"] as const;
-type Tab = (typeof TABS)[number];
 const STATES: IntelState[] = [
   "RECHAZADO",
   "INVESTIGACION",
@@ -127,7 +126,7 @@ function Section({ title, help, children }: { title: string; help?: string; chil
 
 // ── the day ──────────────────────────────────────────────────────────────────
 
-function DayView({ onOpen }: { onOpen: (id: number) => void }) {
+export function DayView({ onOpen }: { onOpen: (id: number) => void }) {
   const [day, setDay] = useState<string | undefined>(undefined);
   const q = useLiveQuery(live.intelDay(day));
   const d = q.data?.data;
@@ -282,35 +281,30 @@ function DayView({ onOpen }: { onOpen: (id: number) => void }) {
         </StatGrid>
       </Panel>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title={t("intel.day.sourcesTitle")} subtitle={t("intel.day.sourcesHelp")}>
-          {d.sources.length === 0 ? (
-            <Note>{t("intel.day.sourcesEmpty")}</Note>
-          ) : (
-            <TableShell compact>
-              <THead>
-                <TH>{t("intel.day.origin")}</TH>
-                <TH>{t("intel.day.status")}</TH>
-                <TH>{t("intel.day.tier")}</TH>
-                <TH align="right">n</TH>
-              </THead>
-              <tbody>
-                {d.sources.slice(0, 16).map((x) => (
-                  <TRow key={`${x.origin}-${x.status}-${x.source_tier}`}>
-                    <TD>{x.origin}</TD>
-                    <TD>{x.status}</TD>
-                    <TD>{x.source_tier}</TD>
-                    <TD align="right">{localInt(x.n)}</TD>
-                  </TRow>
-                ))}
-              </tbody>
-            </TableShell>
-          )}
-        </Panel>
-        <Panel title={t("intel.day.calibrationTitle")}>
-          <CalibrationTable rows={d.calibration} />
-        </Panel>
-      </div>
+      <Panel title={t("intel.day.sourcesTitle")} subtitle={t("intel.day.sourcesHelp")}>
+        {d.sources.length === 0 ? (
+          <Note>{t("intel.day.sourcesEmpty")}</Note>
+        ) : (
+          <TableShell compact>
+            <THead>
+              <TH>{t("intel.day.origin")}</TH>
+              <TH>{t("intel.day.status")}</TH>
+              <TH>{t("intel.day.tier")}</TH>
+              <TH align="right">n</TH>
+            </THead>
+            <tbody>
+              {d.sources.slice(0, 16).map((x) => (
+                <TRow key={`${x.origin}-${x.status}-${x.source_tier}`}>
+                  <TD>{x.origin}</TD>
+                  <TD>{x.status}</TD>
+                  <TD>{x.source_tier}</TD>
+                  <TD align="right">{localInt(x.n)}</TD>
+                </TRow>
+              ))}
+            </tbody>
+          </TableShell>
+        )}
+      </Panel>
 
       <Panel title={t("intel.day.reportTitle")}>
         {d.report ? <Markdown text={d.report.text} /> : <Note>{t("intel.day.reportEmpty")}</Note>}
@@ -369,7 +363,7 @@ function CalibrationTable({ rows }: { rows: IntelCalibrationRow[] }) {
 
 // ── decisions ────────────────────────────────────────────────────────────────
 
-function DecisionsView({ onOpen }: { onOpen: (id: number) => void }) {
+export function DecisionsView({ onOpen }: { onOpen: (id: number) => void }) {
   const [state, setState] = useState<string>("");
   const [market, setMarket] = useState<string>("");
   const q = useLiveQuery(
@@ -827,7 +821,7 @@ function PlayersTable({ players }: { players: IntelPlayer[] }) {
   );
 }
 
-function MatchView({
+export function MatchView({
   fixture,
   setFixture,
   onOpen,
@@ -1069,7 +1063,7 @@ function MatchView({
 
 // ── calibration ──────────────────────────────────────────────────────────────
 
-function CalibrationView() {
+export function CalibrationView() {
   const q = useLiveQuery(live.intelCalibration);
   const d = q.data?.data;
   if (!d) return <Loading q={q} />;
@@ -1149,7 +1143,7 @@ function CalibrationView() {
 
 // ── markets ──────────────────────────────────────────────────────────────────
 
-function MarketsView() {
+export function MarketsView() {
   // The price clock and the matrix read their own endpoints: one view failing or loading never hides the others.
   return (
     <div className="space-y-4" data-testid="intel-markets">
@@ -1231,43 +1225,14 @@ function DiscoveryView() {
   );
 }
 
-// ── costs, runs and the leakage audit ────────────────────────────────────────
+// ── runs and the leakage audit ───────────────────────────────────────────────
 
-function CostsView() {
-  const q = useLiveQuery(live.intelCosts);
+/** What ran (the jobs of PrediGol Intelligence, with their errors) and the leakage audit: one rule per row, checked and violated. */
+export function RunsView() {
   const r = useLiveQuery(live.intelRuns);
-  const c = q.data?.data;
   const runs = r.data?.data;
-  const projection = (c?.projection ?? {}) as Record<string, unknown>;
-  const budget = (c?.budget ?? {}) as Record<string, unknown>;
   return (
-    <div className="space-y-4" data-testid="intel-costs">
-      {c ? (
-        <Panel title={t("intel.tabs.costs")}>
-          <StatGrid className="lg:grid-cols-4">
-            <Stat label={t("intel.costs.perMatch")} value={usd(c.per_match_usd)} />
-            <Stat label={t("intel.costs.perCandidate")} value={usd(c.per_candidate_usd)} />
-            <Stat label={t("intel.costs.perPick")} value={usd(c.per_pick_usd)} />
-            <Stat label={t("intel.costs.perResearch")} value={usd(c.per_research_usd)} />
-            <Stat label={t("intel.costs.perPostmortem")} value={usd(c.per_postmortem_usd)} />
-            <Stat label={t("intel.costs.perDay")} value={usd(c.per_day_usd)} />
-            <Stat label={t("intel.costs.budget")} value={usd(c.monthly_budget_usd)} />
-            <Stat label={t("intel.costs.spentMonth")} value={usd(num(budget["spent_month_usd"]))} />
-            <Stat
-              label={t("intel.costs.projection")}
-              value={usd(num(projection["projected_month_usd"]))}
-            />
-          </StatGrid>
-          <div className="mt-3 text-xs">
-            {t("intel.costs.alerts")}:{" "}
-            {c.alerts && c.alerts.length
-              ? c.alerts.map((a) => `${a.threshold} %`).join(", ")
-              : t("intel.costs.noAlerts")}
-          </div>
-        </Panel>
-      ) : (
-        <Loading q={q} />
-      )}
+    <div className="space-y-4" data-testid="intel-runs">
       {runs ? (
         <>
           <Panel title={t("intel.costs.audit")} bodyClassName="p-0">
@@ -1341,52 +1306,6 @@ function CostsView() {
       ) : (
         <Loading q={r} />
       )}
-    </div>
-  );
-}
-
-// ── the page ─────────────────────────────────────────────────────────────────
-
-export function IntelligenceLive() {
-  const [tab, setTab] = useUrlTab(TABS, "day");
-  const [open, setOpen] = useState<number>(0);
-  const [fixture, setFixture] = useState<string>("");
-  const openDecision = (id: number) => {
-    if (id > 0) setOpen(id);
-  };
-  const toMatch = (f: number) => {
-    setFixture(String(f));
-    setTab("match");
-  };
-  return (
-    <div className="space-y-4" data-testid="intel-page">
-      <PageHeader
-        title={t("admin.pages.intelligence.title")}
-        description={t("admin.pages.intelligence.description")}
-      />
-      <div
-        className="flex flex-wrap items-center gap-2 rounded-md border border-primary/25 bg-primary/8 px-3 py-2 text-xs"
-        data-testid="intel-shadow-line"
-      >
-        <StatusBadge tone="brand">{t("intel.shadowTag")}</StatusBadge>
-        <span className="min-w-0 text-foreground/85">{t("intel.shadowLine")}</span>
-      </div>
-      <SegmentedTabs
-        tabs={TABS}
-        value={tab}
-        onChange={setTab}
-        label={t("intel.tabsLabel")}
-        format={(x) => t(`intel.tabs.${x}`)}
-      />
-      {open > 0 ? <DecisionDetail id={open} onClose={() => setOpen(0)} onMatch={toMatch} /> : null}
-      {tab === "day" ? <DayView onOpen={openDecision} /> : null}
-      {tab === "decisions" ? <DecisionsView onOpen={openDecision} /> : null}
-      {tab === "match" ? (
-        <MatchView fixture={fixture} setFixture={setFixture} onOpen={openDecision} />
-      ) : null}
-      {tab === "calibration" ? <CalibrationView /> : null}
-      {tab === "markets" ? <MarketsView /> : null}
-      {tab === "costs" ? <CostsView /> : null}
     </div>
   );
 }

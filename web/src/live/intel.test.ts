@@ -49,12 +49,12 @@ describe("PrediGol Intelligence words", () => {
       for (const f of FILTERS) expect(hasKey(`intel.filter.${f}`, locale)).toBe(true);
       for (const m of MARKET_STATUS) expect(hasKey(`intel.markets.status.${m}`, locale)).toBe(true);
       for (const c of CRITERIA) expect(hasKey(`intel.markets.criteria.${c}`, locale)).toBe(true);
-      expect(hasKey("admin.nav.intelligence", locale)).toBe(true);
+      expect(hasKey("admin.nav.operation", locale)).toBe(true);
     }
   });
 
-  test("the Admin Console links to PrediGol Intelligence, in the intelligence group", () => {
+  test("the Admin Console links to Operación, where its views are, in the intelligence group", () => {
     const group = adminNav.find((g) => g.label === "admin.groups.intelligence");
-    expect(group?.items.some((i) => i.to === "/admin/intelligence")).toBe(true);
+    expect(group?.items.some((i) => i.to === "/admin/operation")).toBe(true);
   });
 });

@@ -1,13 +1,15 @@
 /**
- * IA e investigación (Admin Console): the AI's own day, read-only, in cards and chips.
+ * IA e investigación (Admin Console): the AI's own day, read-only, in cards and chips - the views plan F13 gathered into two pages (see adminAi.ts).
  *
- *   HOY              today's matches with a market (Bogotá): the passes done, the L1 brief, the reviewed selections
- *   INVESTIGACIONES  per match, the web searches and the evidence with its source, level, status and dates
- *   APRENDIZAJE      what a day's results taught, and the improvements awaiting the owner (decided in Evolución)
- *   FUENTES          which domains brought useful evidence, over 7 or 30 days
- *   COSTOS           the day and the month by level, model and unit; the projection and the alerts
+ * OPERACIÓN holds
+ *   TodayTab     today's matches with a market (Bogotá): the passes done, the L1 brief, the reviewed selections
+ *   ResearchTab  per match, the web searches and the evidence with its source, level, status and dates
+ *   SourcesTab   which domains brought useful evidence, over 7 or 30 days
+ * APRENDIZAJE holds
+ *   CloseTab     the close of each day: the picks settled, the post-mortems and the revisions
  *
- * The post-mortems and the memory (of entities, of matches, the AI's notes) are in Memoria. Nothing here calls a model or changes
+ * What a day's results taught and the improvements awaiting the owner are in Aprendizaje > Lo aprendido (the owner decides there); the costs are
+ * one view with the rest of the AI's costs (AiCosts). The post-mortems and the memory are in Aprendizaje too. Nothing here calls a model or changes
  * anything: everything was stored by the worker.
  */
 import { useState, type ReactNode } from "react";
@@ -16,85 +18,47 @@ import { ChevronDown, ExternalLink } from "lucide-react";
 import { t, translateOr } from "@/lib/i18n";
 import { fmtOdds, localInt } from "@/lib/i18n/format";
 import { int } from "@/lib/format";
-import { shiftDay, todayKey } from "@/lib/time";
+import { shiftDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Panel } from "@/components/primitives/Panel";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
 import { TD, TH, THead, TRow, TableShell, TableSkeleton } from "@/components/primitives/DataTable";
-import { SegmentedTabs } from "@/components/system/Filters";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
 import type {
   AiClaim,
-  AiCostPeriod,
   AiDayBrief,
   AiDayFixture,
-  AiDecision,
   AiPassRow,
   AiResearchEvidence,
   AiResearchRow,
   AiToday,
   EvidenceStatus,
-  PickPostmortem,
 } from "@/lib/api/v1/types_ai_layer";
+import { Choice, DayInput, EngineBadge, Note, Stat, StatGrid, SubTitle, Toolbar } from "./AiBits";
 import {
-  Choice,
-  DayInput,
-  EngineBadge,
-  LevelCosts,
-  MonthBar,
-  Note,
-  NoteCard,
-  ProposalCard,
-  ShadowBanner,
-  Stat,
-  StatGrid,
-  SubTitle,
-  Toolbar,
-  UnitCosts,
-} from "./AiBits";
-import {
-  AI_TZ,
-  DECISION_TONE,
   EVIDENCE_TONE,
-  LOSS_CLASSES,
   PASSES,
-  POSTMORTEM_VERDICTS,
   STALE_ODDS_MINUTES,
-  answerView,
   bogotaDateTime,
   bogotaTime,
-  classTone,
   dayLabel,
-  dayShort,
   decisionLabel,
   decisionTone,
   edgePoints,
-  lossClassLabel,
   minutesText,
-  orderedAnswers,
   passLabel,
   pointsText,
   probText,
-  questionLabel,
-  ratioOf,
   reasonLabel,
   selectionText,
-  signedText,
   teamsOf,
-  toNum,
   usd,
-  verdictLabel,
-  verdictTone,
 } from "./aiModel";
 import { DailyReviewPanel } from "./DailyReviewPanel";
 import { Fact } from "./shared";
-import { useUrlTab } from "@/lib/useUrlTab";
 
-const TABS = ["today", "close", "research", "learning", "sources", "costs"] as const;
-type Tab = (typeof TABS)[number];
 const EVIDENCE_STATUSES: EvidenceStatus[] = [
   "CONFIRMED",
   "PROBABLE",
@@ -447,7 +411,15 @@ function FixtureCard({ f }: { f: AiDayFixture }) {
   );
 }
 
-function TodayTab({ day, onDay, max }: { day: string; onDay: (d: string) => void; max: string }) {
+export function TodayTab({
+  day,
+  onDay,
+  max,
+}: {
+  day: string;
+  onDay: (d: string) => void;
+  max: string;
+}) {
   const q = useLiveQuery(live.aiToday(day));
   const d = q.data?.data ?? null;
   return (
@@ -636,7 +608,7 @@ function ResearchCard({ r }: { r: AiResearchRow }) {
   );
 }
 
-function ResearchTab({
+export function ResearchTab({
   day,
   onDay,
   max,
@@ -672,71 +644,9 @@ function ResearchTab({
 
 // ── APRENDIZAJE ──────────────────────────────────────────────────────────────
 
-function LearningTab({
-  day,
-  onDay,
-  max,
-}: {
-  day: string;
-  onDay: (d: string) => void;
-  max: string;
-}) {
-  const q = useLiveQuery(live.aiLearning(day));
-  const d = q.data?.data ?? null;
-  return (
-    <div className="space-y-3">
-      <Toolbar>
-        <DayInput value={day} onChange={onDay} label={t("ai.research.day")} max={max} />
-      </Toolbar>
-      {q.isError ? <ApiErrorNotice error={q.error} /> : null}
-      <Loading show={q.isLoading} />
-      {d ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          <Panel
-            title={t("ai.research.learning.notes")}
-            subtitle={t("ai.research.learning.notesSubtitle")}
-          >
-            {d.notes.length === 0 ? (
-              <Note>{t("ai.research.learning.empty")}</Note>
-            ) : (
-              <ul className="space-y-2" data-testid="ai-learning-notes">
-                {d.notes.map((n) => (
-                  <NoteCard key={n.id} note={n} />
-                ))}
-              </ul>
-            )}
-          </Panel>
-          <Panel
-            title={t("ai.research.learning.proposals")}
-            subtitle={t("ai.research.learning.proposalsSubtitle")}
-          >
-            <div className="space-y-3">
-              {d.proposals.length === 0 ? (
-                <Note>{t("ai.research.learning.noProposals")}</Note>
-              ) : (
-                <ul className="space-y-2" data-testid="ai-learning-proposals">
-                  {d.proposals.map((p) => (
-                    <ProposalCard key={p.id} p={p} />
-                  ))}
-                </ul>
-              )}
-              <Link
-                to="/admin/evolution"
-                className="tap-y relative inline-flex text-xs font-medium text-primary hover:underline"
-              >
-                {t("ai.research.learning.decide")} →
-              </Link>
-            </div>
-          </Panel>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 // ── FUENTES ──────────────────────────────────────────────────────────────────
 
-function SourcesTab() {
+export function SourcesTab() {
   const [days, setDays] = useState<(typeof SOURCE_DAYS)[number]>(7);
   const q = useLiveQuery(live.aiSources(days));
   const rows = q.data?.data ?? [];
@@ -805,135 +715,18 @@ function SourcesTab() {
   );
 }
 
-// ── COSTOS ───────────────────────────────────────────────────────────────────
-
-function PeriodCosts({ title, p }: { title: string; p: AiCostPeriod }) {
-  return (
-    <Panel title={title}>
-      <div className="space-y-4">
-        <StatGrid>
-          <Stat label={t("ai.research.costs.total")} value={usd(p.cost_usd)} />
-          <Stat label={t("ai.research.costs.requests")} value={int(p.requests)} />
-          <Stat label={t("ai.research.costs.searches")} value={int(p.searches)} />
-          <Stat
-            label={t("ai.research.costs.failed")}
-            value={int(p.failed)}
-            tone={p.failed > 0 ? "warning" : "default"}
-          />
-        </StatGrid>
-        <section className="space-y-1.5">
-          <SubTitle>{t("ai.research.costs.byLevel")}</SubTitle>
-          <LevelCosts period={p} />
-        </section>
-        <section className="space-y-1.5">
-          <SubTitle>{t("ai.research.costs.byModel")}</SubTitle>
-          {p.by_model.length === 0 ? (
-            <Note>{t("ai.research.costs.noModel")}</Note>
-          ) : (
-            <ul className="divide-y divide-border/60">
-              {p.by_model.map((m) => (
-                <li
-                  key={m.key}
-                  className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5 text-xs"
-                >
-                  <span className="numeric min-w-0 wrap-anywhere">{m.key}</span>
-                  <span className="numeric text-muted-foreground">
-                    {usd(m.cost_usd)} ·{" "}
-                    {t("ai.v2.costs.requests", { count: m.requests, n: localInt(m.requests) })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-        <section className="space-y-1">
-          <SubTitle>{t("ai.research.costs.units")}</SubTitle>
-          <UnitCosts period={p} />
-        </section>
-      </div>
-    </Panel>
-  );
-}
-
-function CostsTab() {
-  const q = useLiveQuery(live.aiCosts);
-  const c = q.data?.data ?? null;
-  if (q.isError) return <ApiErrorNotice error={q.error} />;
-  if (!c) return <Loading show={q.isLoading} />;
-  const p = c.projection;
-  const share = p
-    ? (p.projected_share ?? ratioOf(p.projected_month_usd, p.monthly_budget_usd))
-    : null;
-  // the API sends an empty projection ({}) when it has none
-  const runRate = toNum(p?.run_rate_usd);
-  const lastDays = p?.last_days ?? [];
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-2">
-        <PeriodCosts title={t("ai.research.costs.today")} p={c.periods.today} />
-        <PeriodCosts title={t("ai.research.costs.month")} p={c.periods.month} />
-      </div>
-      <Panel title={t("ai.research.costs.projection")}>
-        <div className="space-y-4" data-testid="ai-costs-projection">
-          <StatGrid>
-            <Stat
-              label={t("ai.research.costs.projection")}
-              value={usd(p?.projected_month_usd)}
-              tone={
-                share === null
-                  ? "default"
-                  : share > 1
-                    ? "negative"
-                    : share >= 0.85
-                      ? "warning"
-                      : "default"
-              }
-              hint={
-                share === null
-                  ? undefined
-                  : t("ai.layer.budgetCard.barValue", { share: probText(share, 0) })
-              }
-            />
-            <Stat
-              label={t("ai.research.costs.runRate")}
-              value={
-                runRate === null ? "—" : t("ai.research.costs.perDay", { value: usd(runRate) })
-              }
-            />
-            <Stat label={t("ai.research.costs.budget")} value={usd(c.budget.monthly_budget_usd)} />
-            <Stat label={t("ai.research.costs.spentMonth")} value={usd(c.budget.spent_month_usd)} />
-          </StatGrid>
-          <MonthBar
-            spent={c.budget.spent_month_usd}
-            budget={c.budget.monthly_budget_usd}
-            alerts={c.alerts ?? []}
-          />
-          {lastDays.length ? (
-            <section className="space-y-1.5">
-              <SubTitle>{t("ai.research.costs.lastDays")}</SubTitle>
-              <ul className="flex flex-wrap gap-1.5">
-                {lastDays.map((d) => (
-                  <li
-                    key={d.day}
-                    className="rounded border border-border bg-elevated/50 px-1.5 py-0.5 text-caption"
-                  >
-                    <span className="text-subtle-foreground">{dayShort(d.day)}</span>{" "}
-                    <span className="numeric text-foreground">{usd(d.cost_usd)}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-        </div>
-      </Panel>
-    </div>
-  );
-}
-
 // ── the page ─────────────────────────────────────────────────────────────────
 
 /** CIERRE DIARIO: the closed days, newest first, and one day's close with its revisions. */
-function CloseTab({ day, onDay, max }: { day: string; onDay: (d: string) => void; max: string }) {
+export function CloseTab({
+  day,
+  onDay,
+  max,
+}: {
+  day: string;
+  onDay: (d: string) => void;
+  max: string;
+}) {
   const q = useLiveQuery(live.aiDailyReviews(30));
   const days = q.data?.data ?? [];
   return (
@@ -972,36 +765,12 @@ function CloseTab({ day, onDay, max }: { day: string; onDay: (d: string) => void
           ))}
         </ul>
       </Panel>
-      <DailyReviewPanel day={day} onDay={onDay} max={max} />
-    </div>
-  );
-}
-
-export function AiResearchLive() {
-  const [tab, setTab] = useUrlTab(TABS, "today");
-  const today = todayKey(AI_TZ);
-  const [liveDay, setLiveDay] = useState(today);
-  const [pastDay, setPastDay] = useState(() => shiftDay(today, -1));
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title={t("admin.pages.aiAnalyst.title")}
-        description={t("admin.pages.aiAnalyst.description")}
+      <DailyReviewPanel
+        day={day}
+        onDay={onDay}
+        max={max}
+        title={day === shiftDay(max, -1) ? t("ai.dailyReview.yesterday") : undefined}
       />
-      <ShadowBanner />
-      <SegmentedTabs
-        tabs={TABS}
-        value={tab}
-        onChange={setTab}
-        label={t("ai.research.tabs.label")}
-        format={(x) => t(`ai.research.tabs.${x}`)}
-      />
-      {tab === "today" ? <TodayTab day={liveDay} onDay={setLiveDay} max={today} /> : null}
-      {tab === "close" ? <CloseTab day={pastDay} onDay={setPastDay} max={today} /> : null}
-      {tab === "research" ? <ResearchTab day={liveDay} onDay={setLiveDay} max={today} /> : null}
-      {tab === "learning" ? <LearningTab day={pastDay} onDay={setPastDay} max={today} /> : null}
-      {tab === "sources" ? <SourcesTab /> : null}
-      {tab === "costs" ? <CostsTab /> : null}
     </div>
   );
 }

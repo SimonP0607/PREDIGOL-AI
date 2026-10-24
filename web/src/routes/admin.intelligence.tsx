@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { IntelligenceLive } from "@/live/IntelligenceLive";
+import { LegacyRedirect } from "@/live/AdminAiRedirect";
 
+// Plan F13: the AI pages of the Admin Console are Operación and Aprendizaje now; the old address opens the tab that has what the page had.
 export const Route = createFileRoute("/admin/intelligence")({
   head: () => ({ meta: [{ title: "PrediGol · Admin" }] }),
-  component: IntelligenceLive,
+  component: Page,
 });
+
+function Page() {
+  return <LegacyRedirect page="intelligence" />;
+}
