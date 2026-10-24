@@ -8,7 +8,8 @@
                    learned late booked inside), calibration (prospective evaluation, refits, promotions by the gates),
                    the leakage audit of yesterday's decisions, the DAILY LEARNING REPORT, and the hypotheses the
                    calibration experiment answers
-    intel_weekly   Monday 04:40 Bogotá: the market discovery engine
+    intel_weekly   Monday 04:40 Bogotá: the market catalogue, the market discovery engine, the matrix of markets and - only when
+                   ``FBI_PATTERN_SEARCH`` says so - the search for patterns in the settled decisions (``fbi.research.pattern_search``)
 
 One run of each kind at a time (advisory locks); a run that dies is closed as ``interrupted`` by the next worker
 (``recover_interrupted``). Every step commits on its own, so a failure part-way keeps what was done and is written in
@@ -264,9 +265,15 @@ def run_weekly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
         run = matrix.store(conn, generated)
         return {"run": run, "verdicts": generated["summary"]["by_verdict"], "duration_ms": generated["duration_ms"]}
 
-    # the catalogue first (the links of the definitions are what the discovery reads), the matrix last (it reads the registry the
-    # discovery has just written); a step that fails does not stop the others
-    return _run(conn, "weekly", at, [("catalogue", _catalogue), ("discovery", _discovery), ("matrix", _matrix)])
+    def _patterns() -> dict[str, Any]:
+        from fbi.research import pattern_search
+
+        return pattern_search.weekly(conn, at=at)
+
+    # the catalogue first (the links of the definitions are what the discovery reads), the matrix after it (it reads the registry the
+    # discovery has just written), the search for patterns last (it only reads the decisions, and does nothing unless FBI_PATTERN_SEARCH
+    # says so); a step that fails does not stop the others
+    return _run(conn, "weekly", at, [("catalogue", _catalogue), ("discovery", _discovery), ("matrix", _matrix), ("patterns", _patterns)])
 
 
 # ── the hypotheses the calibration experiment answers ────────────────────────────────────────────────────────────

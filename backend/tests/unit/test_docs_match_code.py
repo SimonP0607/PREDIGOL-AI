@@ -25,6 +25,7 @@ and a stored result another, or a stored result that the code would no longer ju
 from __future__ import annotations
 
 import json
+import math
 import re
 import statistics
 from collections import Counter
@@ -40,6 +41,7 @@ from fbi.ai.config import AiSettings
 from fbi.families import bets, dependence, variants
 from fbi.intel import calibration, decision, memory, postmortem, score, stake
 from fbi.market import closing_reference, closing_value
+from fbi.research import pattern_search as ps
 
 from .test_decision_rules import effects_of_failing
 
@@ -1313,3 +1315,534 @@ def test_the_guide_of_the_variants_says_what_was_measured() -> None:
     assert "Registrarlas no cambia ningún modelo" in f11 and "sección 8" in flat and "## 8. Qué significa y qué se propone" in read_doc("owner", "FAMILIAS_VS_MERCADO_F11.md")
     assert variants.STEP_DAYS == 7 and "hasta casi 7 días antes del partido" in flat
     assert "se reajustan cada 3 horas" in f11 and "que se reajustan cada 3 horas" in flat
+
+
+# ── Plan F12.6: the search for patterns in the settled decisions ──────────────
+
+PATTERNS_GUIDE = "PATRONES_F12.md"
+STORED_PATTERNS = DOCS / "owner" / "PATRONES_F12_resultado.json"
+LEAD_ES = {"under 1 h": "menos de 1 h", "1-3 h": "de 1 a 3 h", "3-6 h": "de 3 a 6 h", "6-12 h": "de 6 a 12 h", "12-24 h": "de 12 a 24 h",
+           "24 h and over": "24 h o más", "-": "sin dato"}
+"""The lead-time bands as the guide's table names them: one for each band of the code, so that a new band fails here until the guide has it."""
+WHY_ES = {"a larger finding in the same dimension says it already": "Fuera: otro mayor de la misma dimensión ya lo dice",
+          "shares most of its rows with a larger finding": "Fuera: comparte la mitad o más de sus filas con otro mayor"}
+"""What the guide's table says of a finding that repeats and is left out, for each reason the search gives (``ps.triage``)."""
+PROPOSED_WORDS = "**Se propone**"
+DOES_NOT_REPEAT = "Fuera: no se repite en las dos mitades"
+CANNOT_TELL = "Fuera: no se pudo comprobar la repetición"
+FINDINGS_HEAD = "| Medida | Grupo | Partidos (grupo / resto) | En el grupo | En el resto | Diferencia | z | z de cada mitad | Qué se hace con él |"
+LEAD_HEAD = "| Antelación de la decisión | Decisiones | Partidos | Valor de cierre medio |"
+COVERAGE_HEAD = ("| Dimensión | Calibración y frente al cierre (grupos · probados · con las mismas filas que otro) "
+                 "| Valor de cierre (grupos · probados · con las mismas filas que otro) |")
+DESCRIPTIVE_HEAD = "| Dimensión | Hallazgos | El mayor |"
+ROWS_HEAD = "| Medida | Filas | Partidos | Media |"
+PROPOSALS_HEAD = "| Hipótesis que deja | Qué cambiaría | z | ¿Sobrevive a la corrección? |"
+TARGET_ES = {"models": "Modelos", "pick_engine": "Motor de picks"}
+"""What Evolución calls the part of the system a hypothesis would change (``evolution.target`` of the Spanish catalogue of the page)."""
+
+
+def stored_patterns() -> dict[str, Any]:
+    """The first real reading of the search (the ``--out`` of the command), kept next to the guide."""
+    if not STORED_PATTERNS.is_file():
+        pytest.skip(f"no {STORED_PATTERNS.name} next to the code")
+    result: dict[str, Any] = json.loads(STORED_PATTERNS.read_text(encoding="utf-8"))
+    return result
+
+
+def odds_band_es(name: str) -> str:
+    """An odds band as the guide writes it: 'under 1.40' -> 'menos de 1,40', '1.40-1.69' -> '1,40 a 1,69', '6.00 and over' -> '6,00 o más'."""
+    if name.startswith("under "):
+        return "menos de " + name[len("under "):].replace(".", ",")
+    if name.endswith(" and over"):
+        return name[:-len(" and over")].replace(".", ",") + " o más"
+    low, high = name.split("-")
+    return f"{low} a {high}".replace(".", ",")
+
+
+def group_name(f: dict[str, Any]) -> str:
+    """A group as the guide's tables name it: the dimension and the group (an odds band in words)."""
+    label = odds_band_es(f["label"]) if f["dimension"] == "odds_band" else f["label"]
+    return f"{ps.DIMENSION_ES[f['dimension']]}: {label}"
+
+
+def level(metric: str, x: float) -> str:
+    """A mean as the guide writes it: the value of the price as a percentage, the other measures as they come."""
+    return points(x) if metric == "clv" else spanish(x, 3, sign=True)
+
+
+def gap_of(metric: str, x: float) -> str:
+    """A difference of means as the guide writes it: the value of the price in points of percentage."""
+    return f"{spanish(x * 100, 1, sign=True)} puntos" if metric == "clv" else spanish(x, 3, sign=True)
+
+
+def what_is_done(report: dict[str, Any], f: dict[str, Any]) -> str:
+    """What the search does with a finding that is not just the price: proposes it, or leaves it out and says why."""
+    chosen, left = ps.triage(report)
+    if any(f is c for c in chosen):
+        return PROPOSED_WORDS
+    for other, why in left:
+        if other is f:
+            return WHY_ES[why]
+    return DOES_NOT_REPEAT if f["stable"] is False else CANNOT_TELL
+
+
+def findings_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """The findings that are not just how the price is built, as the guide's table gives them (the largest ``z`` first, the way the report does)."""
+    rows = []
+    for f in report["found"]:
+        if f["descriptive"]:
+            continue
+        m = f["metric"]
+        halves = " / ".join("n/d" if h is None else spanish(h["z"], 1, sign=True) for h in f["halves"])
+        rows.append(f"| {ps.MEASURE_ES[m]} | {group_name(f)} | {thousands(f['matches'])} / {thousands(f['matches_rest'])} | {level(m, f['mean'])} | "
+                    f"{level(m, f['mean_rest'])} | {gap_of(m, f['delta'])} | {spanish(f['z'], 1, sign=True)} | {halves} | {what_is_done(report, f)} |")
+    return FINDINGS_HEAD, rows
+
+
+def lead_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """The value of the price by the time that went by between the decision and the kick-off."""
+    return LEAD_HEAD, [f"| {LEAD_ES[b['band']]} | {thousands(b['decisions'])} | {thousands(b['matches'])} | {points(b['mean'])} |" for b in report["lead"]]
+
+
+def coverage_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """How many groups each dimension had, how many had enough matches to be tested and how many were set aside for having the rows of another."""
+    def cell(c: dict[str, int]) -> str:
+        return f"{thousands(c['groups'])} · {thousands(c['tested'])} · {thousands(c['same'])}"
+
+    cov = report["coverage"]
+    return COVERAGE_HEAD, [f"| {ps.DIMENSION_ES[d]} | {cell(cov['calibration'][d])} | {cell(cov['clv'][d])} |" for d in ps.DIMENSIONS]
+
+
+def rows_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """What was read: the rows of each measure, the matches they come from and their mean."""
+    return ROWS_HEAD, [f"| {ps.MEASURE_ES[m]} | {thousands(r['rows'])} | {thousands(r['matches'])} | {level(m, r['mean'])} |"
+                       for m, r in report["rows"]["by_measure"].items()]
+
+
+def proposals_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """The hypotheses the search leaves for the owner, the way Evolución will show them: the title, what they would change and how sure they are."""
+    chosen = ps.triage(report)[0]
+    return PROPOSALS_HEAD, [f"| {p.title} | {TARGET_ES[p.target]} | {spanish(f['z'], 1, sign=True)} | {'sí' if f['survives_correction'] else 'no'} |"
+                            for p, f in zip(ps.proposals(report), chosen, strict=True)]
+
+
+def descriptive_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """The findings that only describe how the price is built: how many each structural dimension has and its largest."""
+    rows = []
+    for d in ps.STRUCTURAL:
+        mine = [f for f in report["found"] if f["descriptive"] and f["dimension"] == d]
+        top = max(mine, key=lambda f: abs(f["z"]))
+        label = odds_band_es(top["label"]) if d == "odds_band" else top["label"]
+        rows.append(f"| {ps.DIMENSION_ES[d]} | {len(mine)} | {label}: {level('clv', top['mean'])} frente a {level('clv', top['mean_rest'])} en el resto "
+                    f"(z {spanish(top['z'], 1, sign=True)}) |")
+    return DESCRIPTIVE_HEAD, rows
+
+
+def pattern_doc() -> tuple[str, str]:
+    """The guide of the search for patterns, and the same on one line (the prose, whatever the line breaks of the paragraph)."""
+    doc = read_doc("owner", PATTERNS_GUIDE)
+    return doc, " ".join(doc.split())
+
+
+def listed(items: list[str]) -> str:
+    """'a, b y c': a list the way the guide writes it in a sentence."""
+    return ", ".join(items[:-1]) + " y " + items[-1]
+
+
+def test_the_guide_of_the_search_for_patterns_says_what_the_code_does(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan F12.6: the guide of the search for patterns - the three measures and how each is computed, the rows it reads, the twelve dimensions and
+    their groups, the bars (matches, z, the two halves, the correction for the comparisons), what only describes the price and what is read inside
+    the kind of bet, what is proposed and under which key, the weekly switch and the hour the job runs, and the commands and options (every
+    command it shows is one the parser accepts, with the meaning the guide gives it)."""
+    import inspect
+    import shlex
+
+    from apps.worker import scheduler
+    from scripts import patterns as cli
+
+    from fbi.families.versus import loss as log_loss
+    from fbi.intel import cycle
+
+    from . import test_pattern_search as search_tests
+
+    doc, flat = pattern_doc()
+    stored = stored_patterns()
+    # the version, the window and the bars, with the words the guide gives them
+    assert ps.VERSION == "search-v1" and "(`search-v1`)" in doc
+    assert (ps.WINDOW_DAYS, ps.MIN_Z, ps.MIN_MATCHES, ps.HALF_MIN_MATCHES, ps.HALF_MIN_Z, ps.ALPHA, ps.MAX_PROPOSALS, ps.NEAREST, ps.OVERLAP, ps.TOP) == (
+        90, 3.0, 30, 10, 1.0, 0.05, 5, 10, 0.5, 5)
+    for said in ("Ventana de 90 días", "corre la búsqueda de 90 días",
+                 "Un grupo es un **hallazgo** cuando su diferencia llega a **3 errores estándar** (|z| ≥ 3, `--min-z`)",
+                 "**Un grupo se prueba solo con 30 partidos** en el grupo y 30 en el resto (`--min-matches`)",
+                 "llegar a |z| ≥ 1 (`--half-min-z`) en las dos, con 10 partidos del grupo como mínimo en cada una (`--half-min-matches`)",
+                 "A lo sumo 5 por búsqueda (`--limit`)", "lista los diez grupos que se quedaron más cerca de la barra",
+                 "que comparten la mitad o más de sus filas (las de ambos sobre las de cualquiera de los dos)",
+                 "por debajo de 0,05 dividido por las comparaciones", "y los cinco mayores", "hasta cinco hipótesis"):
+        assert said in flat, f"the guide leaves out {said!r}"
+    # the correction for the comparisons: the tails it reads, how much more often chance reaches a z of 3 with 30 matches, and the bar for many more
+    near_normal, near_student = ps.two_sided_p(3.0), ps.student_two_sided_p(3.0, ps.MIN_MATCHES - 1)
+    assert 1.9 < near_student / near_normal < 2.1
+    assert f"un z de 3 lo alcanza el azar el doble de veces (p {spanish(near_student, 4)}) que lo que dice la curva normal ({spanish(near_normal, 4)})" in flat
+    assert f"con 2.000 haría falta un z de {spanish(ps.corrected_z(2000), 1)}" in flat and f"con 162, por debajo de {ps.ALPHA / 162:.4f}".replace(".", ",") in flat
+    assert "la t de Student con los partidos del lado más pequeño menos uno" in flat and "corrección de Bonferroni" in flat
+    # the three measures: what each is, per row, and what a positive number says
+    assert ps.METRICS == ("calibration", "vs_close", "clv") and [ps.MEASURE_ES[m] for m in ps.METRICS] == ["calibración", "frente al cierre", "valor de cierre (CLV)"]
+    measures = section_of(doc, "## 2. Qué mira")
+    for m in ps.METRICS:
+        assert f"| {ps.MEASURE_ES[m]} |" in measures
+    won, lost = search_tests.row(1, p=0.6, won=1, p_close=0.55, clv=0.04), search_tests.row(2, p=0.6, won=0, p_close=0.55)
+    assert ps.measure("calibration", won) == pytest.approx(1 - 0.6) and ps.measure("calibration", lost) == pytest.approx(0 - 0.6)
+    vs_won, vs_lost = ps.measure("vs_close", won), ps.measure("vs_close", lost)
+    assert vs_won is not None and vs_lost is not None and vs_won > 0 > vs_lost, "positive: the system read it better than the close"
+    assert ps.measure("vs_close", won) == pytest.approx(log_loss(0.55, 1) - log_loss(0.6, 1)) and ps.measure("clv", won) == 0.04
+    assert closing_value.VERSION == "clv-v1" and closing_value.clv(2.0, 0.55) == pytest.approx(2.0 * 0.55 - 1)
+    assert "`cuota \N{MULTIPLICATION SIGN} probabilidad justa de cierre - 1` (`clv-v1`)" in flat and "scores about -6 % even if nothing moved" in " ".join((closing_value.__doc__ or "").split())
+    assert "Un precio de una casa con un margen del 6 % da cerca de -6 % aunque nada se mueva" in flat
+    # the rows: the last decision of each selection, settled and not void, and the ones a probability can be read against
+    sql = " ".join(ps.DECISIONS_SQL.split())
+    assert "DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line)" in sql and "d.known_at DESC" in sql and "o.result_status <> 'void'" in sql
+    assert "COALESCE(l.p_cal, l.p_model)" in sql and "la calibrada si hubo calibrador; si no, la del modelo" in flat
+    assert "la última decisión de cada selección antes del inicio del partido (así lee la memoria), con el partido jugado y sin las anuladas" in flat
+    assert ps.SELECTED_ONLY == "l.state NOT IN ('RECHAZADO', 'INVESTIGACION')" and "(`--selected-only` deja solo las que quedaron como pick o en vigilancia)" in flat
+    assert ps.readable("win", 0.0, Decimal("2.5")) and ps.readable("loss", 0.0, Decimal("-0.5")) and not ps.readable("half_win", 0.0, Decimal("2.25"))
+    assert not ps.readable("win", 0.1, Decimal("2.5")) and not ps.readable("loss", 0.0, Decimal("-0.75"))
+    assert "sin apuesta devuelta, sin medias ganadas ni perdidas y sin líneas de cuarto" in flat
+    # the twelve dimensions, in the order of the code, and the groups the guide gives them
+    assert len(ps.DIMENSIONS) == 12 and "**Doce dimensiones.**" in doc
+    positions = [measures.index(f"\n| {ps.DIMENSION_ES[d]} | ") for d in ps.DIMENSIONS]
+    assert positions == sorted(positions), "the dimensions are listed in the order of the code"
+    bands = [odds_band_es(name) for _, name in ps.ODDS_BANDS] + [odds_band_es(ps.LAST_BAND)]
+    assert f"| Rango de cuota | {'; '.join(bands)} |" in measures
+    assert ps.NAMED[("calibration_role", "none")] == "ninguno (sin calibrar)" and "`CHAMPION`, `CHALLENGER` o «ninguno (sin calibrar)»" in measures
+    assert ps.side_tags("1X2", "Draw") == ps.side_tags("OU", "Over") == ps.side_tags("BTTS", "Yes") == ("home", "away") and ps.side_tags("DC", "1X") == ("home",)
+    assert "el equipo al que respalda la selección; si no respalda a ninguno (el empate) o habla del partido entero (goles, ambos marcan), los dos" in measures
+    # ... the context statuses, with the meaning the code gives them
+    read: dict[str, Any] = {"ai_mode": "shadow", "first_pass": True, "reviewed": False, "searched": False, "web_good": 0, "provider_items": 0, "lineups": False}
+    assert decision.context_status(**{**read, "ai_mode": "off"}) == "AI_OFF" and decision.context_status(**{**read, "first_pass": False}) == "PENDING"
+    assert decision.context_status(**{**read, "web_good": 1}) == "FULL" and decision.context_status(**{**read, "searched": True, "lineups": True}) == "FULL"
+    assert decision.context_status(**{**read, "provider_items": 1}) == "PARTIAL" and decision.context_status(**{**read, "lineups": True}) == "PARTIAL"
+    assert decision.context_status(**read) == "LIMITED"
+    for status, words in (("FULL", "leído, con evidencia de la web o las alineaciones confirmadas"), ("PARTIAL", "leído, solo con lo que informa el proveedor"),
+                          ("LIMITED", "leído, sin nada fuera de los números"), ("PENDING", "aún no lo había leído"), ("AI_OFF", "capa de IA apagada")):
+        assert f"`{status}` ({words})" in measures
+    # what only describes the price, and what is read inside the kind of bet (lead time, line and odds band)
+    assert ps.STRUCTURAL == ("market", "market_line", "selection", "odds_band") and ps.ADJUSTED == ("clv",) and ps.STRATA == ("market_line", "odds_band", "lead")
+    situational = [ps.DIMENSION_ES[d].lower() for d in ps.DIMENSIONS if d not in ps.STRUCTURAL]
+    assert f"**{listed([ps.DIMENSION_ES[d] for d in ps.STRUCTURAL])}** son la estructura del precio" in flat
+    assert f"**Las demás dimensiones** ({listed(situational)}) se comparan en el valor de cierre **dentro de cada clase de apuesta**" in flat
+    assert all(ps.descriptive("clv", d) and not ps.adjusted("clv", d) for d in ps.STRUCTURAL)
+    assert all(ps.adjusted("clv", d) and not ps.descriptive("clv", d) for d in ps.DIMENSIONS if d not in ps.STRUCTURAL)
+    assert not any(ps.adjusted(m, d) or ps.descriptive(m, d) for m in ("calibration", "vs_close") for d in ps.DIMENSIONS), "the other two measures need no such care"
+    lead_names = [LEAD_ES[name] for _, name in ps.LEAD_BANDS] + [LEAD_ES[ps.LAST_LEAD]]
+    assert f"la misma línea de mercado, el mismo rango de cuota y la misma antelación de la decisión ({', '.join(lead_names)}; cada banda incluye su límite inferior)" in flat
+    assert ps.lead_band(0.99) == "under 1 h" and ps.lead_band(1.0) == "1-3 h" and ps.lead_band(24.0) == ps.LAST_LEAD and ps.lead_band(None) == "-"
+    assert set(LEAD_ES) == {name for _, name in ps.LEAD_BANDS} | {ps.LAST_LEAD, "-"}
+    assert "los pesos del estimador de Mantel-Haenszel" in flat and "una clase donde solo hay una de las dos partes no cuenta" in flat
+    # what is proposed: the key, the targets and the cost, and what the owner sees
+    keys = [p.key for p in ps.proposals(stored)]
+    assert keys[0] == "pattern2:calibration:calibration_role:none:down" and "`pattern2:{medida}:{dimensión}:{grupo}:{up|down}`" in doc
+    assert "(por ejemplo, `pattern2:calibration:calibration_role:none:down`)" in flat and all(re.fullmatch(r"pattern2:\w+:\w+:[^:]+:(up|down)", k) for k in keys)
+    assert ps.TARGET == {"calibration": "models", "vs_close": "models", "clv": "pick_engine"} and set(TARGET_ES) == set(ps.TARGET.values())
+    assert "Las de calibración y las de frente al cierre apuntan a «Modelos»; las del valor de cierre, al «Motor de picks»" in flat
+    assert f"«{ps.INVESTIGATION}»" in flat and ps.proposals(stored)[0].evidence["investigation_cost"] == ps.INVESTIGATION
+    assert all(p.evidence["pattern_version"] == ps.VERSION for p in ps.proposals(stored))
+    # ... Evolución's own words
+    catalog = Path(__file__).resolve().parents[3] / "web" / "src" / "locales" / "es" / "ai.json"
+    if catalog.is_file():
+        words = json.loads(catalog.read_text(encoding="utf-8"))["evolution"]
+        assert words["proposals"]["title"] == "Mejoras propuestas" and words["status"]["PROPOSED"] == "Propuesta"
+        assert [words["decide"][k] for k in ("reject", "investigate", "approve_experiment")] == ["Rechazar", "Investigar", "Aprobar experimento"]
+        assert (words["target"]["models"], words["target"]["pick_engine"]) == (TARGET_ES["models"], TARGET_ES["pick_engine"])
+        assert (words["propose"]["fieldTarget"], words["proposals"]["cost"]) == ("Qué cambiaría", "Costo de investigarlo")
+    for said in ("**«Mejoras propuestas»**", "**«Propuesta»**", "**«Rechazar»**, **«Investigar»** o **«Aprobar experimento»**", "costo de investigarlo",
+                 "y lo que cambiarían"):
+        assert said in flat, f"the guide leaves out {said!r}"
+    # the weekly job: the switch and its three states, the hour, the place it keeps its summary and where it sits among the steps
+    assert ps.SWITCH == "FBI_PATTERN_SEARCH" and f"`{ps.SWITCH}`" in doc and ps.MODES == ("off", "report", "propose")
+    for value, want in ((None, "off"), ("bogus", "off"), ("", "off"), ("report", "report"), (" PROPOSE ", "propose")):
+        monkeypatch.setattr(ps, "environment", lambda value=value: {} if value is None else {ps.SWITCH: value})
+        assert ps.mode() == want
+    modes = section_of(doc, "## 9. Cada lunes, si lo enciendes")
+    for mode_text in ("| `off` (por omisión, y cualquier valor desconocido) | nada: la búsqueda no corre |", "| `report` | corre la búsqueda de 90 días y guarda un resumen",
+                      "| `propose` | lo mismo, y además propone en Evolución, una sola vez cada una, hasta cinco hipótesis"):
+        assert mode_text in modes
+    assert (scheduler.INTEL_WEEKLY_WEEKDAY, scheduler.INTEL_WEEKLY_HOUR, scheduler.INTEL_WEEKLY_MINUTE) == ("mon", 4, 40)
+    assert re.search(r'minute=INTEL_WEEKLY_MINUTE, timezone="America/Bogota", id="intel_weekly"', inspect.getsource(scheduler))
+    assert "(`intel_weekly`, los lunes a las 04:40 hora de Bogotá)" in flat
+    assert '("matrix", _matrix), ("patterns", _patterns)])' in inspect.getsource(cycle.run_weekly) and "tiene este paso al final" in flat
+    assert "report.counts[name] = result" in inspect.getsource(cycle._run) and "`counts.patterns`" in flat and "`intel.runs`" in flat
+    assert set(ps.summary(stored)) == {"version", "decisions", "matches", "tests", "expected_by_chance", "found", "descriptive", "repeating", "survive_correction",
+                                       "top"} and len(ps.summary(stored)["top"]) <= ps.TOP
+    assert 'report.status = "partial"' in inspect.getsource(cycle._run) and "deja la corrida como «parcial» sin parar los demás pasos de la semana" in flat
+    assert "`/etc/predigol/app.env`" in flat and "`deploy/vps/app.env.example`" in flat
+    # ... and the two other places that tell the owner about it: the file of variables of the server and the document of the intelligence
+    example = DOCS.parent / "deploy" / "vps" / "app.env.example"
+    if example.is_file():
+        variables = example.read_text(encoding="utf-8")
+        assert "# FBI_PATTERN_SEARCH=off" in variables and f"docs/owner/{PATTERNS_GUIDE}" in variables, "the default is off and the example points at the guide"
+        assert all(f"#   {mode_name} " in variables for mode_name in ps.MODES) and "Every Monday at 04:40 Bogotá, as the last step of intel_weekly" in variables
+    weekly_row = next(line for line in PI.splitlines() if line.startswith("| lunes 04:40 |"))
+    assert f"(`{ps.SWITCH}`)" in weekly_row and f"`docs/owner/{PATTERNS_GUIDE}`" in weekly_row and "`intel_weekly`" in weekly_row and "apagada por omisión" in weekly_row
+    # the commands: the parser accepts each, with the meaning the guide gives it, and the options have the defaults the guide says
+    parser = cli.build_parser()
+    blocks = doc.split("```")
+    sample = blocks[1].strip("\n")
+    assert sample in ps.render(stored).splitlines(), "the line the guide shows is the one the command prints"
+    commands = [line.split("#")[0].strip() for line in blocks[3].splitlines() if line.startswith("python -m scripts.patterns")]
+    assert len(commands) == 5
+    parsed = [parser.parse_args(shlex.split(command)[3:]) for command in commands]
+    assert [a.command for a in parsed] == ["search", "search", "search", "propose", "propose"]
+    assert parsed[0].days == 90 and parsed[1].days == 60 and parsed[1].selected_only is True and parsed[1].metric == ["clv"]
+    assert parsed[1].dimension == ["competition", "market"] and parsed[2].json is True and parsed[2].out == "patrones.json"
+    assert parsed[3].confirm is False and parsed[4].confirm is True
+    search_args, propose_args = parser.parse_args(["search"]), parser.parse_args(["propose"])
+    assert (search_args.days, search_args.until, search_args.selected_only, search_args.metric, search_args.dimension) == (90, None, False, None, None)
+    assert (search_args.min_matches, search_args.min_z, search_args.half_min_matches, search_args.half_min_z, search_args.alpha) == (30, 3.0, 10, 1.0, 0.05)
+    assert (search_args.json, search_args.out, propose_args.limit, propose_args.confirm) == (False, None, 5, False)
+    options = {cells[0]: cells for cells in ([c.strip() for c in line.strip("|").split("|")] for line in table_rows(section_of(doc, "## 10. Cómo se repite"), "| Opción |"))}
+    defaults = {"`--days`": "90", "`--until`": "ahora", "`--selected-only`": "no", "`--metric`": "las tres", "`--dimension`": "las doce", "`--min-matches`": "30",
+                "`--min-z`": "3", "`--half-min-matches`": "10", "`--half-min-z`": "1", "`--alpha`": "0,05"}
+    assert {name: cells[1] for name, cells in options.items() if name in defaults} == defaults
+    assert len(ps.METRICS) == 3 and len(ps.DIMENSIONS) == 12 and set(ps.METRICS) == {"calibration", "vs_close", "clv"}
+    for option in ("--days", "--until", "--selected-only", "--metric", "--dimension", "--min-matches", "--min-z", "--half-min-matches", "--half-min-z", "--alpha",
+                   "--json", "--out", "--limit", "--confirm"):
+        assert f"`{option}`" in doc, f"the guide leaves out {option}"
+    with pytest.raises(SystemExit):
+        parser.parse_args(["search", "--metric", "roi"])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["search", "--dimension", "weather"])
+    assert "Solo lee: abre la conexión de solo lectura y la deshace; con `propose --confirm` es la única orden que escribe" in flat
+    assert cli.READ_ONLY == "-c default_transaction_read_only=on"
+    # what it points to, and what points to it
+    for guide in ("FAMILIAS_VS_MERCADO_F11.md", "PROMOCIONES_F12.md", "VARIANTES_VS_MERCADO_F12.md", "PATRONES_F12_resultado.json"):
+        assert (DOCS / "owner" / guide).is_file() and f"`{guide}`" in doc, guide
+    assert "## 8. Qué significa y qué se propone" in read_doc("owner", "FAMILIAS_VS_MERCADO_F11.md") and "(`FAMILIAS_VS_MERCADO_F11.md`, sección 8)" in flat
+    for test_name in ("test_inside_the_strata_the_difference_is_the_average_of_the_differences_weighted_by_the_rows_of_both",
+                      "test_a_planted_difference_is_found_with_its_numbers_and_nothing_else_is"):
+        assert hasattr(search_tests, test_name) and f"`{test_name}`" in doc, test_name
+    assert (Path(__file__).resolve().parents[1] / "integration" / "test_pattern_search.py").is_file() and "`tests/integration/test_pattern_search.py`" in doc
+    assert "`fbi/research/pattern_search.py`" in doc and "`scripts/patterns.py`" in doc
+
+
+def test_the_stored_reading_of_the_search_is_the_codes_own_arithmetic() -> None:
+    """Plan F12.6: the reading that the guide quotes is held to the code - the criterion it was made with, the window the code reads, the comparisons
+    being the groups it tested, the chance and the corrected bar being what the code computes from them, each finding's z being its difference over its
+    error and its p the tail of Student's t for the matches of its smaller side, whether it survives the correction being that p against alpha over the
+    comparisons, its flags being what the code says of its dimension and measure, whether it repeats being what its two halves say, the lead table adding
+    up to the price read and the proposals being what the code leaves of the findings (so a change in the criterion, the arithmetic or the triage makes
+    the stored reading, and the guide built on it, go stale loudly)."""
+    stored = stored_patterns()
+    assert stored["version"] == ps.VERSION and list(stored) == ["version", "criterion", "rows", "lead", "coverage", "tests", "expected_by_chance",
+                                                                "corrected_z", "found", "nearest", "window"]
+    c = stored["criterion"]
+    assert {k: c[k] for k in ("min_z", "min_matches", "half_min_matches", "half_min_z", "alpha")} == {
+        "min_z": ps.MIN_Z, "min_matches": ps.MIN_MATCHES, "half_min_matches": ps.HALF_MIN_MATCHES, "half_min_z": ps.HALF_MIN_Z, "alpha": ps.ALPHA}
+    assert c["within"] == {"measures": list(ps.ADJUSTED), "strata": list(ps.STRATA), "descriptive": list(ps.STRUCTURAL)}
+    # the window: the days the code reads, ending at midnight, over every decision; the decisions begin on 13 October, so the halves are about five days
+    w = stored["window"]
+    start, end, split = (datetime.fromisoformat(x) for x in (w["start"], w["end"], c["split"]))
+    assert w["days"] == ps.WINDOW_DAYS and end - start == timedelta(days=ps.WINDOW_DAYS) and w["selected_only"] is False and end == datetime(2026, 10, 24, tzinfo=UTC)
+    assert datetime(2026, 10, 17, tzinfo=UTC) < split < datetime(2026, 10, 19, tzinfo=UTC)
+    assert timedelta(days=10) <= 2 * (split - datetime(2026, 10, 13, tzinfo=UTC)) <= timedelta(days=11), "the decisions of the system begin on 13 October"
+    assert "The decisions of the system begin on 13 October 2026" in " ".join((Path(ps.__file__).read_text(encoding="utf-8")).split())
+    # what was read
+    by = stored["rows"]["by_measure"]
+    assert list(by) == list(ps.METRICS) and by["calibration"]["rows"] == by["vs_close"]["rows"] < by["clv"]["rows"] == stored["rows"]["decisions"]
+    assert max(m["matches"] for m in by.values()) == stored["rows"]["matches"] <= stored["rows"]["decisions"]
+    # the questions asked: every group tested is a comparison, and the two measures that read the same rows were asked the same questions
+    cov = stored["coverage"]
+    assert list(cov) == list(ps.METRICS) and all(list(cov[m]) == list(ps.DIMENSIONS) for m in ps.METRICS) and cov["calibration"] == cov["vs_close"]
+    assert all(v["tested"] + v["same"] <= v["groups"] for m in ps.METRICS for v in cov[m].values())
+    tests = stored["tests"]
+    assert tests == sum(cov[m][d]["tested"] for m in ps.METRICS for d in ps.DIMENSIONS)
+    assert stored["corrected_z"] == pytest.approx(ps.corrected_z(tests, c["alpha"]))
+    assert tests * ps.two_sided_p(c["min_z"]) <= stored["expected_by_chance"] <= tests * ps.student_two_sided_p(c["min_z"], c["min_matches"] - 1)
+    # every finding is the arithmetic of its own numbers
+    found, nearest = stored["found"], stored["nearest"]
+    assert all(abs(f["z"]) >= c["min_z"] for f in found) and all(abs(f["z"]) < c["min_z"] for f in nearest) and len(nearest) == ps.NEAREST
+    for group in (found, nearest):
+        assert [abs(f["z"]) for f in group] == sorted((abs(f["z"]) for f in group), reverse=True)
+    assert abs(found[-1]["z"]) >= c["min_z"] > abs(nearest[0]["z"])
+    for i, f in enumerate(found + nearest):
+        who = f"{f['metric']} {f['dimension']} {f['label']}"
+        assert f["metric"] in ps.METRICS and f["dimension"] in ps.DIMENSIONS, who
+        assert f["z"] == pytest.approx(f["delta"] / f["se"]) and f["delta"] == pytest.approx(f["mean"] - f["mean_rest"], abs=1e-12), who
+        assert f["matches"] >= c["min_matches"] and f["matches_rest"] >= c["min_matches"] and f["n"] >= f["matches"] and f["n_rest"] >= f["matches_rest"], who
+        assert f["p"] == pytest.approx(ps.student_two_sided_p(f["z"], min(f["matches"], f["matches_rest"]) - 1), rel=1e-9, abs=1e-15), who
+        assert f["survives_correction"] == (f["p"] <= c["alpha"] / tests), who
+        assert f["descriptive"] == ps.descriptive(f["metric"], f["dimension"]) and f["within_strata"] == ps.adjusted(f["metric"], f["dimension"]), who
+        assert all(ps.STANDS_FOR.index(f["dimension"]) < ps.STANDS_FOR.index(d) for d, _ in f["same_rows_as"]), "the dimension that stands for the others is named"
+        assert all(j < i for j in f["overlaps"]), "a finding overlaps only with a larger one"
+        if f in nearest:
+            assert f["halves"] == [None, None] and f["stable"] is None, "the halves are worked out only for what reached the bar"
+            continue
+        # whether it repeats: the same sign and the bar of a half in each half, each with matches enough to be read
+        assert len(f["halves"]) == 2
+        if None in f["halves"]:
+            assert f["stable"] is None, who
+            continue
+        assert all(h["matches"] >= c["half_min_matches"] for h in f["halves"]), who
+        assert f["stable"] == all(math.copysign(1.0, h["delta"]) == math.copysign(1.0, f["delta"]) and abs(h["z"]) >= c["half_min_z"] for h in f["halves"]), who
+    # what is proposed, and why each of the others that repeat is not
+    chosen, left = ps.triage(stored)
+    assert len(chosen) == ps.MAX_PROPOSALS == len(ps.proposals(stored)) and all(f["stable"] is True and not f["descriptive"] for f in chosen)
+    assert len({(f["metric"], f["dimension"]) for f in chosen}) == len(chosen) and [abs(f["z"]) for f in chosen] == sorted((abs(f["z"]) for f in chosen), reverse=True)
+    assert {why for _, why in left} == {"descriptive: how the price is built", "a larger finding in the same dimension says it already",
+                                        "shares most of its rows with a larger finding"}
+    assert sorted(id(f) for f in chosen + [f for f, _ in left]) == sorted(id(f) for f in found if f["stable"] is True), "every finding that repeats is proposed or left out"
+    assert sum(1 for f, _ in left if f["descriptive"]) == sum(1 for f in found if f["descriptive"]) == 39
+    summary = ps.summary(stored)
+    assert (summary["found"], summary["descriptive"], summary["survive_correction"]) == (len(found), 39, sum(1 for f in found if f["survives_correction"]))
+    assert summary["repeating"] == sum(1 for f in found if f["stable"] is True and not f["descriptive"])
+    # the price by lead time adds up to the price read
+    lead = stored["lead"]
+    assert [b["band"] for b in lead] == [name for _, name in ps.LEAD_BANDS] + [ps.LAST_LEAD]
+    assert sum(b["decisions"] for b in lead) == by["clv"]["rows"] and all(b["matches"] <= by["clv"]["matches"] for b in lead)
+    assert sum(b["decisions"] * b["mean"] for b in lead) / by["clv"]["rows"] == pytest.approx(by["clv"]["mean"], abs=1e-12)
+    # the text of the command prints what is stored
+    printed = ps.render(stored)
+    assert printed.startswith(f"pattern search {ps.VERSION}") and f"FOUND, |z| >= {ps.MIN_Z:g}: {len(found)}" in printed
+    assert f"comparisons made: {tests:,}. By chance alone {stored['expected_by_chance']:.1f}" in printed and f"|z| of about {stored['corrected_z']:.1f}" in printed
+
+
+def find_finding(report: dict[str, Any], metric: str, dimension: str, label: str) -> dict[str, Any]:
+    """One finding of the stored reading, by its measure, its dimension and the name of its group."""
+    return next(f for f in report["found"] if (f["metric"], f["dimension"], f["label"]) == (metric, dimension, label))
+
+
+def test_the_guide_of_the_search_for_patterns_says_what_was_measured() -> None:
+    """Plan F12.6: every figure of the guide - the questions asked and what chance would have said, what was read, the tables and what is said of them
+    in words - is the one of the stored reading, written the way the guide writes it (decimal comma, thousands with a dot), and what it says of
+    the direction of the results (the price explains most of what reaches the bar, the decisions with no calibrator the clearest, the context
+    twice and not twice as proof, the Champions League and the line of 1.5 goals the frailest) is true of those numbers."""
+    doc, flat = pattern_doc()
+    stored = stored_patterns()
+    found, nearest, tests, c = stored["found"], stored["nearest"], stored["tests"], stored["criterion"]
+    by = stored["rows"]["by_measure"]
+    # the tables of the guide are the stored numbers, and the guide has no other table than the ones that something checks
+    tables = {"## 2. Qué mira": [], "## 3. Qué cuenta como un hallazgo, y qué se propone": [], "## 4. El precio se compara con lo de su clase": [lead_table],
+              "## 6. Primera lectura": [rows_table, coverage_table, descriptive_table, findings_table, proposals_table],
+              "## 9. Cada lunes, si lo enciendes": [], "## 10. Cómo se repite": []}
+    for heading, builders in tables.items():
+        part = section_of(doc, heading)
+        for build in builders:
+            head, rows = build(stored)
+            assert rows and table_rows(part, head) == rows, f"{heading}: the table {head!r} of the guide is not the stored reading"
+        rules = sum(1 for line in part.splitlines() if line.startswith("|---"))
+        others = {"## 2. Qué mira": 2, "## 9. Cada lunes, si lo enciendes": 1, "## 10. Cómo se repite": 1}.get(heading, 0)
+        assert rules == len(builders) + others, f"{heading}: a table of the guide that nothing checks"
+    # § 1: the questions, what chance says of them, what reaches the bar and what is proposed
+    expected = stored["expected_by_chance"]
+    descriptive = [f for f in found if f["descriptive"]]
+    survivors = [f for f in found if f["survives_correction"]]
+    chosen = ps.triage(stored)[0]
+    assert (f"Fueron {tests} comparaciones: por azar solo {spanish(expected, 1)} de ellas llegarían a {c['min_z']:g} errores estándar, y para seguir siendo "
+            f"significativa después de hacerlas todas, una diferencia entre grupos grandes necesita llegar a {spanish(stored['corrected_z'], 1)}") in flat
+    assert (f"**Primera lectura: {len(found)} grupos llegan a {c['min_z']:g} errores estándar, y {len(descriptive)} de ellos solo describen cómo se construye el precio**") in flat
+    assert (f"De los otros {len(found) - len(descriptive)}, **{len(chosen)} se proponen** (los que se repiten en las dos mitades de la ventana y no dicen lo que ya "
+            f"dice otro mayor) y {sum(1 for f in chosen if f['survives_correction'])} de las {len(chosen)} siguen siendo significativas corrigiendo por todas las comparaciones") in flat
+    assert (len(found), len(descriptive), len(chosen), sum(1 for f in chosen if f["survives_correction"])) == (49, 39, 5, 3)
+    none = find_finding(stored, "calibration", "calibration_role", "ninguno (sin calibrar)")
+    assert (f"En {none['n']} decisiones de {none['matches']} partidos, lo que ocurre queda en promedio {spanish(-none['mean'], 3)} por debajo de lo que el sistema decía; "
+            f"en el resto queda {spanish(none['mean_rest'], 3)} por encima. Sale en las dos mitades.") in flat
+    assert none["mean"] < 0 < none["mean_rest"] and none["stable"] is True and none["survives_correction"] and (none["n"], none["matches"]) == (295, 231)
+    assert "son unos 10 días de partidos, y «se repite en las dos mitades» quiere decir en dos mitades de unos 5" in flat
+    assert "pero el sistema decide desde el 13 de octubre" in flat and "de modo que de esos 90 días solo hay decisiones en unos 10" in flat
+    # § 2: what was read
+    assert f"líneas de cuarto: {thousands(by['calibration']['rows'])} de las {thousands(stored['rows']['decisions'])}. El valor de cierre se lee en todas" in flat
+    assert by["calibration"]["rows"] == by["vs_close"]["rows"] < by["clv"]["rows"] == stored["rows"]["decisions"], "the first two are read in some of the decisions, the third in all"
+    assert f"la media de todas las decisiones es {spanish(by['clv']['mean'] * 100, 1)} %" in flat
+    # § 3: the half of the window
+    split = datetime.fromisoformat(c["split"])
+    assert f"el {split.day} de octubre a las {split:%H:%M} UTC" in flat and (split.month, split.day) == (10, 18)
+    # § 4: the lead time weighs more than almost any finding
+    lead = stored["lead"]
+    best, worst = max(lead, key=lambda b: b["mean"]), min(lead, key=lambda b: b["mean"])
+    situational = [abs(f["delta"]) for f in found if f["metric"] == "clv" and not f["descriptive"]]
+    assert (f"De la mejor banda ({LEAD_ES[best['band']]}, {points(best['mean'])}) a la peor ({LEAD_ES[worst['band']]}, {points(worst['mean'])}) hay "
+            f"{spanish((best['mean'] - worst['mean']) * 100, 1)} puntos, más que cualquiera de las diferencias entre grupos de dimensiones situacionales de la sección 6 "
+            f"(la mayor es de {spanish(max(situational) * 100, 1)})") in flat
+    assert best["mean"] - worst["mean"] > max(situational) and (best["band"], worst["band"]) == ("under 1 h", "12-24 h")
+    # § 5: the line the guide shows, token by token
+    line = " ".join(ps.render(stored).splitlines()[next(i for i, x in enumerate(ps.render(stored).splitlines()) if x.lstrip().startswith("calibration") and "ninguno" in x)].split())
+    for token in (f"matches {none['matches']} rows {none['n']}", f"group {none['mean']:+.3f} rest {none['mean_rest']:+.3f}", f"diff {none['delta']:+.3f}", f"z {none['z']:+.1f}",
+                  f"halves {none['halves'][0]['z']:+.1f}/{none['halves'][1]['z']:+.1f} repeats", "SURVIVES the correction"):
+        assert token in line, token
+    assert f"**`matches {none['matches']} rows {none['n']}`**" in doc and f"**`group {none['mean']:+.3f} rest {none['mean_rest']:+.3f}`**" in doc
+    assert f"**`z {none['z']:+.1f}`**" in doc and f"**`halves {none['halves'][0]['z']:+.1f}/{none['halves'][1]['z']:+.1f}`**" in doc
+    assert "**`diff`** es grupo - resto" in flat and "**`SURVIVES the correction`**" in doc and "**`repeats`**" in doc
+    # § 6: the window, what the coverage says of the teams, the referees and the coaches, and what only describes the price
+    start, end = (datetime.fromisoformat(stored["window"][k]) for k in ("start", "end"))
+    assert f"entre el {day_es(stored['window']['start'])} y el {day_es(stored['window']['end'])} a las {end:%H:%M} UTC" in flat and (end - start).days == 90
+    cov = stored["coverage"]["clv"]
+    assert (cov["team"]["tested"], cov["referee"]["tested"], cov["coach"]["tested"]) == (0, 0, 1)
+    assert "**ningún equipo, ningún árbitro y un solo entrenador** pudieron probarse (0, 0 y 1)" in flat and "(`--days 365`, cuando haya un año de decisiones)" in flat
+    assert f"({len(descriptive)} de los {len(found)}; por dimensión y el mayor de cada una)" in flat
+    assert f"Se repiten los {len(descriptive)} y {sum(1 for f in descriptive if f['survives_correction'])} sobreviven a la corrección" in flat
+    assert all(f["stable"] is True for f in descriptive) and sum(1 for f in descriptive if f["survives_correction"]) == 36 == len(survivors) - sum(
+        1 for f in found if f["survives_correction"] and not f["descriptive"]) and sum(1 for f in found if f["survives_correction"] and not f["descriptive"]) == 5
+    bands = {f["label"]: f for f in descriptive if f["dimension"] == "odds_band"}
+    long_odds, short_odds = bands["3.50-5.99"], [bands[k] for k in ("1.40-1.69", "1.70-1.99", "2.00-2.49")]
+    rare = find_finding(stored, "clv", "market_line", "OU 1.25")
+    assert (f"las cuotas largas (3,50 a 5,99) valen {spanish(-long_odds['delta'] * 100, 1)} puntos menos al cierre que el resto y las cortas (de 1,40 a 2,49) entre "
+            f"{spanish(min(f['delta'] for f in short_odds) * 100, 1)} y {spanish(max(f['delta'] for f in short_odds) * 100, 1)} puntos más; las líneas raras, como `OU 1.25`, "
+            f"hasta {spanish(-rare['delta'] * 100, 1)} menos") in flat
+    assert long_odds["delta"] < 0 < min(f["delta"] for f in short_odds) and rare["delta"] == min(f["delta"] for f in descriptive if f["dimension"] == "market_line")
+    assert f"**Los otros {len(found) - len(descriptive)} hallazgos**" in flat
+    # § 6, in words: the decisions with no calibrator, and the hypothesis that is the same fact seen from the other side
+    challenger = find_finding(stored, "calibration", "calibration_role", "CHALLENGER")
+    market_dc = find_finding(stored, "calibration", "market", "DC")
+    assert (f"Lo que ocurre queda {spanish(-none['mean'], 3)} por debajo de lo que el sistema decía (frente a {spanish(none['mean_rest'], 3, sign=True)} en el resto: "
+            f"{spanish(none['delta'], 3, sign=True)}, z {spanish(none['z'], 1, sign=True)}), con el mismo signo en las dos mitades "
+            f"({spanish(none['halves'][0]['z'], 1, sign=True)} y {spanish(none['halves'][1]['z'], 1, sign=True)}) y sin perderse en la corrección") in flat
+    assert (f"el de `CHALLENGER` ({spanish(challenger['delta'], 3, sign=True)}) es el mismo hecho visto desde el otro lado: su resto "
+            f"({spanish(challenger['mean_rest'], 3, sign=True)}) lleva dentro a los sin calibrar") in flat
+    assert challenger["mean_rest"] < challenger["mean"] and challenger["mean_rest"] > none["mean"] and ps.triage(stored)[1] and any(
+        f is challenger and "same dimension" in why for f, why in ps.triage(stored)[1])
+    assert any(f is market_dc and "shares most of its rows" in why for f, why in ps.triage(stored)[1]) and market_dc["same_rows_as"] == [["market_line", "DC 0"]]
+    # ... the context, twice
+    pending_clv, pending_cal = (find_finding(stored, m, "context", "PENDING") for m in ("clv", "calibration"))
+    assert (f"El precio tomado pierde {spanish(-pending_clv['delta'] * 100, 1)} puntos más contra el cierre que el resto, en las mismas clases de apuesta "
+            f"({points(pending_clv['mean'])} frente a {points(pending_clv['mean_rest'])}, z {spanish(pending_clv['z'], 1, sign=True)}), y lo que ocurre queda "
+            f"{spanish(pending_cal['delta'], 3)} por encima de lo que el sistema decía ({spanish(pending_cal['mean'], 3, sign=True)} frente a "
+            f"{spanish(pending_cal['mean_rest'], 3, sign=True)}, z {spanish(pending_cal['z'], 1, sign=True)})") in flat
+    assert (f"la del precio es mucho más débil en la segunda mitad ({spanish(pending_clv['halves'][0]['z'], 1, sign=True)} y "
+            f"{spanish(pending_clv['halves'][1]['z'], 1, sign=True)})") in flat
+    assert pending_clv["delta"] < 0 < pending_cal["delta"] and abs(pending_clv["halves"][1]["z"]) < abs(pending_clv["halves"][0]["z"]) / 2
+    assert pending_clv["survives_correction"] and pending_cal["survives_correction"] and pending_clv["stable"] is True is pending_cal["stable"]
+    assert 0.8 < pending_cal["matches"] / pending_clv["matches"] < 1.2, "in good part the same decisions"
+    # ... the Champions League and the line of 1.5 goals, the frailest of the five
+    champions = find_finding(stored, "clv", "competition", "UEFA Champions League")
+    goals = find_finding(stored, "vs_close", "market_line", "OU 1.5")
+    assert (f"Son {champions['matches']} partidos ({champions['n']} decisiones) con el precio tomado {spanish(champions['delta'] * 100, 1)} puntos mejor contra el cierre que el resto "
+            f"({points(champions['mean'])} frente a {points(champions['mean_rest'])}, z {spanish(champions['z'], 1, sign=True)}, mitades "
+            f"{spanish(champions['halves'][0]['z'], 1, sign=True)} y {spanish(champions['halves'][1]['z'], 1, sign=True)}). Se repite, pero no sobrevive a la corrección: "
+            f"su p ({spanish(champions['p'], 4)}) queda por encima de {spanish(c['alpha'] / tests, 4)}") in flat
+    assert champions["stable"] is True and not champions["survives_correction"] and champions["p"] > c["alpha"] / tests and champions["matches"] < 100
+    assert (f"En {goals['matches']} partidos el sistema queda ligeramente por encima de las casas ({spanish(goals['mean'], 3, sign=True)} por fila) mientras que en el "
+            f"resto las casas van por delante ({spanish(goals['mean_rest'], 3, sign=True)}): diferencia de {spanish(goals['delta'], 3, sign=True)}, "
+            f"z {spanish(goals['z'], 1, sign=True)}. Tampoco sobrevive (p {spanish(goals['p'], 4)})") in flat
+    assert goals["mean"] > 0 > goals["mean_rest"] and goals["n"] == goals["matches"] and not goals["survives_correction"] and goals["stable"] is True
+    # ... what was left out, and what came near
+    full_clv, full_cal = find_finding(stored, "clv", "context", "FULL"), find_finding(stored, "calibration", "context", "FULL")
+    limited = find_finding(stored, "clv", "context", "LIMITED")
+    assert (f"«Contexto: LIMITED» en valor de cierre ({spanish(limited['delta'] * 100, 1, sign=True)} puntos, z {spanish(limited['z'], 1, sign=True)}) tiene "
+            f"{spanish(limited['halves'][0]['z'], 1, sign=True)} en la primera mitad y {spanish(limited['halves'][1]['z'], 1, sign=True)} en la segunda") in flat
+    assert limited["stable"] is False and limited["halves"][1]["z"] < c["half_min_z"] and "Cinco hallazgos se quedaron fuera" in flat
+    left = ps.triage(stored)[1]
+    assert sum(1 for f, _ in left if not f["descriptive"]) + sum(1 for f in found if f["stable"] is False) == 5
+    assert all(any(f is x and "same dimension" in why for x, why in left) for f in (challenger, full_clv, full_cal)) and "Tres porque otro mayor de su misma dimensión ya lo dice" in flat
+    assert f"(de z {spanish(abs(nearest[0]['z']), 1)} a {spanish(abs(nearest[-1]['z']), 1)})" in flat
+    # § 7: what can and cannot be said
+    assert (f"Tres sobreviven a la corrección por las {tests} comparaciones, y dos no" in flat and "Salen de unos 10 días de partidos" in flat
+            and f"{len(descriptive)} de los {len(found)} hallazgos solo dicen cómo se construye el precio" in flat)
+    assert f"Las {tests} comparaciones no son {tests} pruebas independientes" in flat
+    assert f"El {spanish(by['clv']['mean'] * 100, 1)} % de la media es sobre todo el margen de las casas" in flat
+    assert "ningún equipo ni árbitro y un solo entrenador llegaron a los 30 partidos" in flat
+    for lead_in in ("**Hoy hay cinco hipótesis, ninguna prueba.**", "**El precio no es el sistema.**", "**Las dimensiones miran las mismas decisiones.**",
+                    "**El valor de cierre medio no es una pérdida.**", "**Equipos, árbitros y entrenadores no se leen todavía**",
+                    "**Lo que dice esta lectura no es la prueba.**", "**La más clara es la de las decisiones sin calibrar.**",
+                    "**«Contexto: PENDING» sale en dos medidas.**", "**La Champions League es la más frágil de las cinco.**", "**«OU 1.5» frente al cierre.**"):
+        assert lead_in in doc, f"the guide no longer says {lead_in}"
+    # § 8: nothing has been written to the owner's page by this reading
+    assert "La lectura de esta guía no registró ninguna" in flat and "la lectura de esta guía no escribió nada" in flat

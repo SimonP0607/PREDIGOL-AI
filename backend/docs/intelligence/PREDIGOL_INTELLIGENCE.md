@@ -66,7 +66,7 @@ señales de contexto que la capa 4 usa como filtro de riesgo y como componente d
 | 100–10 min antes | pasada `final` tras alineaciones; L3 solo para los mejores | `ai_cycle` | Nivel C/D |
 | 07:35 | aprendizaje IA existente (el post-mortem único `pm-v6` de cada selección y de cada partido, las narrativas opcionales, notas, patrones, sombra de la IA) | `ai_learn` | bajo |
 | 07:50 | **ciclo nocturno PI**: liquidación y CLV de decisiones, el mismo post-mortem `pm-v6` si `ai_learn` no lo escribió ya, memoria longitudinal `memory-v4`, calibradores (challenger nuevo + evaluación prospectiva + promoción por criterios), auditoría de fugas, DAILY LEARNING REPORT, vínculo hipótesis↔experimentos | `intel_nightly` | 0 |
-| lunes 04:40 | **MARKET DISCOVERY ENGINE** (propone, nunca activa) | `intel_weekly` | 0 |
+| lunes 04:40 | **MARKET DISCOVERY ENGINE** (propone, nunca activa) y, como último paso y apagada por omisión (`FBI_PATTERN_SEARCH`), la **búsqueda de patrones** de las decisiones liquidadas (F12.6, `docs/owner/PATRONES_F12.md`: solo lee la base, propone hipótesis, nunca activa) | `intel_weekly` | 0 |
 
 Nada se recalcula si sus entradas no cambiaron: el paquete y el brief se guardan por hash, las búsquedas web se
 cachean, la decisión se deduplica por (selección, punto de control, hash de entradas).
