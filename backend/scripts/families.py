@@ -6,6 +6,7 @@
     python -m scripts.families evaluate --measure corners_ft --csv corners.csv.gz --tune --json
     python -m scripts.families sql --measure corners_ft              # the same history as one COPY statement, to run with psql where Python is not at hand
     python -m scripts.families halves                                # the bets of the halves (HT/FT, highest half, BTTS by half...) derived from two fits
+    python -m scripts.families score --days 14                       # how the stored forecasts of the families did on the matches that have finished
 
 ``evaluate`` fits each competition on the matches already known at the start of every block of ``--step-days`` and predicts the block; it reports
 whether that beats the competition's average, the calibration of the totals lines, and competition by competition where it does. It does not
@@ -32,6 +33,7 @@ from fbi.core.clock import now as clock_now
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.families import evaluate, evaluate_halves, history
+from fbi.families import score as scoreboard
 from fbi.families.fit import MIN_TRAIN, OUTCOME_KNOWN_AFTER, Match
 from fbi.market.rules import RULES
 
@@ -253,10 +255,26 @@ def export_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def score_command(args: argparse.Namespace) -> int:
+    """Grade the stored forecasts of the families on the finished matches of the last ``--days`` days (read-only)."""
+    now = clock_now()
+    with psycopg.connect(settings.database.psycopg_url, options="-c default_transaction_read_only=on") as conn:
+        report = scoreboard.score(conn, now=now, days=args.days, wait_hours=args.wait_hours, model=args.model)
+        conn.rollback()
+    print(json.dumps(report, indent=1, default=str) if args.json else scoreboard.render(report, top=args.top))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="families", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="command", required=True)
     sub.add_parser("measures", help="what a family can be trained on")
+    ps = sub.add_parser("score", help="how the stored forecasts of the families did on the matches that have finished")
+    ps.add_argument("--days", type=int, default=14, help="kick-offs of the last N days (default %(default)s)")
+    ps.add_argument("--wait-hours", type=float, default=30.0, help="leave out the last N hours, until the statistics of the cards have settled (default %(default)s)")
+    ps.add_argument("--model", help="only this model (e.g. family-corners_ft)")
+    ps.add_argument("--top", type=int, default=12, help="selections that stray most, per model, in the text (default %(default)s)")
+    ps.add_argument("--json", action="store_true")
     ph = sub.add_parser("halves", help="the bets of the halves derived from the fits of the first and of the second half")
     ph.add_argument("--months", type=int, default=12, help="months of test window (default %(default)s)")
     ph.add_argument("--csv-1h", help="read the first-half goals from this CSV (an 'export' of goals_1h) instead of the database")
@@ -302,6 +320,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return measures_command()
     if args.command == "halves":
         return halves_command(args)
+    if args.command == "score":
+        return score_command(args)
     history.columns_of(args.measure)  # refuses a measure a family cannot be trained on, before anything is read
     if args.command == "sql":
         return sql_command(args)

@@ -5,13 +5,15 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+import psycopg
 import pytest
 from scripts import families as cli
 
 from fbi.core.clock import now as clock_now
-from fbi.families import evaluate
+from fbi.families import evaluate, score
 from fbi.families.fit import Match
 
 N = 12
@@ -190,3 +192,38 @@ def test_the_sql_command_reads_the_referee_only_when_asked(capsys: pytest.Captur
     assert "fr.referee_id AS referee_id" in with_referee and "referee" not in without
     assert "fixture_team_stats" in with_referee and "fixture_team_stats" in without, "cards are read from the statistics, or from events that agree with them"
     assert "cards_consistent" not in with_referee and "cards_consistent" not in without, "a red card is not asked to be reported (it is a selection)"
+
+
+def test_the_score_command_reads_through_a_connection_that_cannot_write_and_passes_what_it_was_asked(
+        monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    seen: dict[str, Any] = {}
+
+    class Connection:
+        def __enter__(self) -> Connection:
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            seen["closed"] = True
+
+        def rollback(self) -> None:
+            seen["rolled_back"] = True
+
+    def connect(url: str, **kwargs: Any) -> Connection:
+        seen["options"] = kwargs.get("options")
+        return Connection()
+
+    def fake_score(conn: Connection, **kwargs: Any) -> dict[str, Any]:
+        seen["asked"] = kwargs
+        window = {"since": "2035-02-01T00:00:00", "until": "2035-02-28T00:00:00", "wait_hours": kwargs["wait_hours"], "forecast_rows": 0}
+        return {**score.summarise([], {"pushed": 0, "ungradable": 3}), "window": window}
+
+    monkeypatch.setattr(psycopg, "connect", connect)  # the very modules the command calls through
+    monkeypatch.setattr(score, "score", fake_score)
+    assert cli.main(["score", "--days", "7", "--wait-hours", "36", "--model", "family-yellow_ft", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["left_out"] == {"pushed": 0, "ungradable": 3}
+    assert seen["options"] == "-c default_transaction_read_only=on", "it reads; it cannot write by mistake"
+    assert (seen["asked"]["days"], seen["asked"]["wait_hours"], seen["asked"]["model"]) == (7, 36.0, "family-yellow_ft")
+    assert seen["rolled_back"] and seen["closed"]
+    assert cli.main(["score"]) == 0
+    assert "nothing to grade yet" in capsys.readouterr().out
+    assert (seen["asked"]["days"], seen["asked"]["wait_hours"], seen["asked"]["model"]) == (14, 30.0, None), "the defaults"
