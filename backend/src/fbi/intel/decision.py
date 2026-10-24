@@ -315,7 +315,9 @@ def _key(r: dict[str, Any]) -> Key:
     return int(r["fixture_id"]), str(r["market_key"]), str(r["selection"]), Decimal(str(r["line"])).quantize(LINE_Q)
 
 
-def read_world(conn: psycopg.Connection[Any], fixtures: list[int], *, at: datetime) -> World:
+def read_world(conn: psycopg.Connection[Any], fixtures: list[int], *, at: datetime, version: str = VERSION) -> World:
+    """Everything a run reads once. ``version`` is the decision version whose previous rows are read (``previous``): the families decide
+    under a version of their own (``fbi.intel.family_decision``), and their rows are not the previous ones of the core layer."""
     from fbi.ai.config import AiSettings
 
     cal = calibration_state(conn, at=at)
@@ -335,7 +337,7 @@ def read_world(conn: psycopg.Connection[Any], fixtures: list[int], *, at: dateti
         cur.execute(TYPE_CLV_SQL, {"since": at - TYPE_CLV_WINDOW, "at": at})
         type_clv = {(str(r["market_key"]), str(r["selection"]), str(r["band"])): (float(r["clv"]), int(r["n"]))
                     for r in cur.fetchall()}
-        cur.execute(PREVIOUS_SQL, {"fixtures": fixtures, "at": at, "version": VERSION})
+        cur.execute(PREVIOUS_SQL, {"fixtures": fixtures, "at": at, "version": version})
         previous = {_key(r): dict(r) for r in cur.fetchall()}
     try:
         with conn.transaction(), conn.cursor(row_factory=dict_row) as cur:
@@ -443,10 +445,14 @@ def evaluate(world: World, key: Key, models: dict[str, dict[str, Any]]) -> Evalu
     p_model = float(r["p_model"])
     p_push = float(r.get("p_push") or 0)
     has_interval = r.get("p_low") is not None and r.get("p_high") is not None
-    filters.append(_f("model", has_interval and 0 < p_model < 1,
-                      f"{model}: p {p_model:.3f}" + ("" if has_interval else " sin intervalo"), "RECHAZADO", 2,
-                      model=model, model_version_id=r.get("model_version_id")))
-    if not (has_interval and 0 < p_model < 1):
+    # a family of the counts states no interval yet (plan F10): its candidates say so (``interval_optional``) and the width of the
+    # interval is judged only where there is one. A row that does not say it keeps the rule: no interval, no decision.
+    model_ok = (has_interval or bool(r.get("interval_optional"))) and 0 < p_model < 1
+    no_interval = (" sin intervalo (la familia no lo guarda: no se juzga su ancho)" if r.get("interval_optional")
+                   else " sin intervalo")
+    filters.append(_f("model", model_ok, f"{model}: p {p_model:.3f}" + ("" if has_interval else no_interval),
+                      "RECHAZADO", 2, model=model, model_version_id=r.get("model_version_id")))
+    if not model_ok:
         stop("RECHAZADO", "model")
     width = (float(r["p_high"]) - float(r["p_low"])) if has_interval else None
 
@@ -642,14 +648,17 @@ def correlate(evaluated: list[Evaluated]) -> None:
             e.filters.sort(key=lambda f: f["n"])
 
 
-def input_hash(e: Evaluated) -> str:
+def input_hash(e: Evaluated, *, version: str = VERSION) -> str:
+    """What the decision was made from, in a digest. A selection with no pick (a family's) names the forecast it rests on in its place."""
     odds = e.row.get("best_odds")
-    payload = {"v": VERSION, "cp": e.checkpoint, "state": e.state,
+    payload = {"v": version, "cp": e.checkpoint, "state": e.state,
                "odds": None if odds is None else round(float(odds), 2),
                "p_model": round(float(e.row["p_model"]), 4), "p_cal": None if e.p_cal is None else round(e.p_cal, 4),
                "cal": e.calibrator_id, "p_mkt": None if e.row.get("p_fair") is None else round(float(e.row["p_fair"]), 4),
                "ctx": e.context.status, "review": None if e.context.review is None else int(e.context.review["id"]),
-               "pick": int(e.row["pick_id"])}
+               "pick": None if e.row.get("pick_id") is None else int(e.row["pick_id"])}
+    if e.row.get("pick_id") is None and e.row.get("forecast_id") is not None:
+        payload["forecast"] = int(e.row["forecast_id"])
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:32]
 
 
@@ -691,15 +700,18 @@ def _d(x: float | None, places: int = 6) -> Decimal | None:
 
 
 def store(conn: psycopg.Connection[Any], e: Evaluated, *, at: datetime, checkpoint: str | None = None,
-          state: str | None = None, stake: staking.Stake | None = None) -> int | None:
+          state: str | None = None, stake: staking.Stake | None = None, version: str = VERSION) -> int | None:
+    """Write one decision (append-only). ``version`` is the decision version it is written under; a selection with no pick (a family's) writes
+    ``pick_id`` as NULL."""
     r = e.row
     rejected = (state or e.state) == "RECHAZADO"
     st = stake or e.stake
     cp = checkpoint or e.checkpoint
     with conn.cursor() as cur:
         cur.execute(INSERT_SQL, {
-            "v": VERSION, "at": at, "cp": cp, "fixture": e.key[0], "kickoff": r["kickoff_at"], "market": e.key[1],
-            "selection": e.key[2], "line": e.key[3], "pick": int(r["pick_id"]), "model": r["model_used"],
+            "v": version, "at": at, "cp": cp, "fixture": e.key[0], "kickoff": r["kickoff_at"], "market": e.key[1],
+            "selection": e.key[2], "line": e.key[3], "pick": None if r.get("pick_id") is None else int(r["pick_id"]),
+            "model": r["model_used"],
             "mv": r.get("model_version_id"), "odds": _d(None if r.get("best_odds") is None else float(r["best_odds"]), 3),
             "bookmaker": r.get("best_bookmaker_id"), "price_at": r.get("price_at"), "books": r.get("n_bookmakers"),
             "p_model": _d(float(r["p_model"])), "p_low": _d(_num(r.get("p_low"))), "p_high": _d(_num(r.get("p_high"))),
@@ -716,8 +728,8 @@ def store(conn: psycopg.Connection[Any], e: Evaluated, *, at: datetime, checkpoi
                          else {"status": e.context.status}),
             "review": None if e.context.review is None else int(e.context.review["id"]),
             "evidence": e.context.evidence_ids if not rejected else [],
-            "hash": input_hash(e) if checkpoint is None and state is None else
-            hashlib.sha256(f"{input_hash(e)}|{cp}|{state}".encode()).hexdigest()[:32],
+            "hash": input_hash(e, version=version) if checkpoint is None and state is None else
+            hashlib.sha256(f"{input_hash(e, version=version)}|{cp}|{state}".encode()).hexdigest()[:32],
             "code": code_version()})
         row = cur.fetchone()
     return None if row is None else int(row[0])
