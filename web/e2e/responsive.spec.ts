@@ -199,10 +199,10 @@ test("a phone held sideways gives the screen to the content", async ({ page }) =
   await assertClean(page, w);
 });
 
-test("controls answer a finger: 44 x 44 px on a touch phone", async ({ page }) => {
-  test.setTimeout(240_000);
-  const w = watch(page);
-  for (const width of [320, 390]) {
+for (const width of [320, 390]) {
+  test(`controls answer a finger: 44 x 44 px on a ${width} px touch phone`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const w = watch(page);
     await page.setViewportSize({ width, height: 844 });
     for (const path of PAGES) {
       await page.goto(path);
@@ -212,13 +212,14 @@ test("controls answer a finger: 44 x 44 px on a touch phone", async ({ page }) =
       );
       await assertClean(page, w);
     }
-  }
-});
+  });
+}
 
-test("form fields never make iOS zoom in (16 px at least on a touch screen)", async ({ page }) => {
-  test.setTimeout(180_000);
-  const w = watch(page);
-  for (const path of ["/matches", "/odds", "/parlays", "/picks", "/profile"]) {
+for (const path of ["/matches", "/odds", "/parlays", "/picks", "/profile"]) {
+  test(`form fields never make iOS zoom in (16 px at least on a touch screen): ${path}`, async ({
+    page,
+  }) => {
+    const w = watch(page);
     await page.goto(path);
     await settle(page);
     const small = await page.$$eval("input, select, textarea", (els) =>
@@ -235,8 +236,8 @@ test("form fields never make iOS zoom in (16 px at least on a touch screen)", as
     );
     expect(small, `form fields under 16 px on ${path}`).toEqual([]);
     await assertClean(page, w);
-  }
-});
+  });
+}
 
 test("the Match Center's tab strip says when more tabs wait beyond the edge", async ({ page }) => {
   const w = watch(page);
