@@ -121,6 +121,8 @@ Rendimientos de +1 % y +7 % con errores de ±4 y ±5 puntos: indistinguibles de 
 2. **El primer experimento razonable (F12)** es la corrección de nivel reciente para los totales (córners y, después, tarjetas), con su fila de promoción, y medir una mezcla anclada al mercado (la señal extra del total, de +0,2 a +0,6 con errores de ±0,3 a ±0,6, es un indicio de que el modelo puede aportar algo). Por equipo, el modelo de cada lado tiene que mejorar antes: hoy sabe menos que el mercado, que ve alineaciones, bajas y planteamientos.
 3. **Falta tiempo y muestra.** Hay 4 semanas de precios. Desde el despliegue de F10 el servidor guarda pronósticos de las familias antes de cada partido; con ellos se mide sin la aproximación semanal.
 
+**Cómo quedan como hipótesis.** Las dos propuestas del punto 2 (la corrección de nivel reciente y la mezcla anclada al mercado, que depende de la primera) están escritas en el código, `fbi/research/hypotheses.py`, con las cifras de esta guía y la sección de la que sale cada una: una prueba falla si la guía y la propuesta dicen cosas distintas. Para que aparezcan en Evolución, en «Mejoras propuestas», como «Propuesta», se registran con `python -m scripts.hypotheses register --confirm`; sin `--confirm` solo dice cuáles registraría, y `python -m scripts.hypotheses show --full` las lee enteras. Registrarlas no cambia ningún modelo, pronóstico ni pick: las decides tú («Rechazar», «Investigar» o «Aprobar experimento»), y una que ya está registrada no se vuelve a escribir aunque la hayas decidido.
+
 ## 9. Cómo se repite
 
 El marcador ya incluye esta comparación para los pronósticos guardados:

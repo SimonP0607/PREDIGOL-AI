@@ -501,6 +501,69 @@ def test_the_guide_of_the_model_code_panel_says_what_the_page_does() -> None:
     assert f"«{words['noPromotion'].rstrip('.')}»" in flat
 
 
+# ── Plan F12.4: the hypotheses the repository proposes from a measurement ─────
+
+def section_of(doc: str, heading: str) -> str:
+    """One section of a guide, from its heading to the next ``## `` heading (the whole guide for an empty heading)."""
+    if not heading:
+        return doc
+    start = doc.find("\n" + heading + "\n")
+    assert start >= 0, f"the guide no longer has the section {heading!r}"
+    rest = doc[start + len(heading) + 2:]
+    end = rest.find("\n## ")
+    return rest if end < 0 else rest[:end]
+
+
+def cells_of_rows(section: str) -> list[list[str]]:
+    """The cells of every row of the tables of a section (the bold marks taken off)."""
+    return [[cell.strip() for cell in line.strip().strip("|").split("|")]
+            for line in section.replace("**", "").splitlines() if line.lstrip().startswith("|")]
+
+
+def test_the_hypotheses_the_repository_proposes_quote_the_guide_they_rest_on() -> None:
+    """Plan F12.4: every figure of a proposal is in the section of the guide it names - in the row of the table that holds it where the proposal says
+    which row - so a proposal and a guide that say different things fail here; and the guide says how the proposals are registered and decided, in
+    the words of the page."""
+    from scripts import hypotheses as cli
+
+    from fbi.research import hypotheses
+
+    doc = read_doc("owner", hypotheses.GUIDE)
+    flat = " ".join(doc.split())
+    minus = "\N{MINUS SIGN}"
+    assert hypotheses.SECTION in doc and hypotheses.SECTION_REPEAT in doc
+    for p in hypotheses.REGISTER:
+        for c in p.cited:
+            section = section_of(doc, c.where)
+            text = c.text.replace(minus, "-")  # the document is read with the typographic minus written as a hyphen
+            where = c.where or "the guide"
+            if c.row is None:
+                assert text in " ".join(section.replace("**", "").split()), f"{p.key}: {where} no longer says {c.text!r}"
+                continue
+            labels = [label.replace(minus, "-") for label in c.row]
+            assert any(text in cells and all(label in cells for label in labels) for cells in cells_of_rows(section)), \
+                f"{p.key}: no row of {where} has {labels} and {c.text!r}"
+    # the proposals are what the guide's own §8 proposes
+    assert "por lo observado entre pronosticado de las 4 semanas anteriores" in flat
+    assert "por lo observado entre pronosticado de las 4 semanas anteriores" in hypotheses.RECENT_LEVEL.hypothesis
+    assert "corrección de nivel reciente" in flat and "mezcla anclada al mercado" in flat and "anclada al mercado" in hypotheses.MARKET_BLEND.title
+    # the command that registers them and the words of the page where the owner decides
+    assert "`fbi/research/hypotheses.py`" in doc and "una prueba falla si la guía y la propuesta dicen cosas distintas" in flat
+    parser = cli.build_parser()
+    assert parser.parse_args(["register", "--confirm"]).confirm is True and parser.parse_args(["register"]).confirm is False
+    assert parser.parse_args(["show", "--full"]).full is True
+    for command in ("python -m scripts.hypotheses register --confirm", "python -m scripts.hypotheses show --full"):
+        assert command in doc, f"the guide leaves out {command}"
+    catalog = Path(__file__).resolve().parents[3] / "web" / "src" / "locales" / "es" / "ai.json"
+    if not catalog.is_file():
+        pytest.skip("no web catalog next to the code")
+    words = json.loads(catalog.read_text(encoding="utf-8"))["evolution"]
+    for said in (words["proposals"]["title"], words["status"]["PROPOSED"], words["decide"]["reject"], words["decide"]["investigate"],
+                 words["decide"]["approve_experiment"]):
+        assert f"«{said}»" in flat, f"the guide does not call {said!r} what the page does"
+    assert "no se vuelve a escribir aunque la hayas decidido" in flat
+
+
 # ── Plan F11.6: the dependence between the families of one match ──────────────
 
 STORED_DEPENDENCE = DOCS / "owner" / "DEPENDENCIA_FAMILIAS_F11_resultado.json"
