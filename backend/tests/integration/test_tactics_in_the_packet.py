@@ -266,3 +266,50 @@ def test_the_rule_catches_a_profile_the_packet_could_not_have_read(world: World,
     result = audited(db, AT)
     assert pid in result["examples"], name
     assert result["violations"] >= 1 if exact is None else result["violations"] == exact, name
+
+
+# ── a re-read is not a read from the future ─────────────────────────────────────────────────────────────────────────────
+
+
+def _rewritten_after_the_moment(db: psycopg.Connection[Any], fid: int, *, payload: str, asked: str | None) -> None:
+    """What the post-match job does 26 hours after the kick-off: the match is read again, its line-ups are rewritten with the instant of
+    the new answer and its events are replaced by the provider's corrected list - all of it after the moment of the packet; ``asked`` is
+    the payload the job's ask names (None: no ask is recorded, as if some other job had written the rows)."""
+    later = AT + timedelta(hours=1)
+    db.execute("UPDATE core.fixture_lineups SET fetched_at = %s, payload_hash = %s WHERE fixture_id = %s", (later, payload, fid))
+    db.execute("UPDATE core.fixture_events SET fetched_at = %s, payload_hash = %s WHERE fixture_id = %s", (later, payload, fid))
+    if asked is not None:
+        db.execute("INSERT INTO core.detail_asks (fixture_id, stage, asked_at, payload_hash) VALUES (%s, 'late', %s, %s)",
+                   (fid, later, asked))
+
+
+def _second_payload(db: psycopg.Connection[Any], seed: Seed) -> str:
+    db.execute("INSERT INTO raw.ingestion_payloads (hash, run_id, endpoint, fetched_at, http_status, file_path, bytes) "
+               "VALUES ('h2', %s, '/fixtures', %s, 200, 'y', 1)", (seed.run_id, AT + timedelta(hours=1)))
+    return "h2"
+
+
+def test_a_match_read_again_by_the_post_match_job_after_the_moment_is_not_a_read_from_the_future(
+        world: World, db: psycopg.Connection[Any], seed: Seed) -> None:
+    at = KICKOFF - timedelta(hours=6)
+    store_packet(db, packet(db, world), built_at=at)
+    late = _second_payload(db, seed)
+    _rewritten_after_the_moment(db, world.f["A"], payload=late, asked=late)
+    assert audited(db, at) == {"checked": 14, "violations": 0, "examples": []}, \
+        "the packet read A's events and sheets as they were at its moment; the job's re-read only moved their fetched_at"
+
+
+def test_the_same_rows_written_after_the_moment_by_another_job_are_still_a_read_from_the_future(
+        world: World, db: psycopg.Connection[Any], seed: Seed) -> None:
+    at = KICKOFF - timedelta(hours=6)
+    pid = store_packet(db, packet(db, world), built_at=at)
+    _rewritten_after_the_moment(db, world.f["A"], payload=_second_payload(db, seed), asked=None)
+    assert audited(db, at) == {"checked": 14, "violations": 1, "examples": [pid]}, "no ask of the post-match job names these rows"
+
+
+def test_an_ask_that_names_another_payload_does_not_excuse_the_rows(
+        world: World, db: psycopg.Connection[Any], seed: Seed) -> None:
+    at = KICKOFF - timedelta(hours=6)
+    pid = store_packet(db, packet(db, world), built_at=at)
+    _rewritten_after_the_moment(db, world.f["A"], payload=_second_payload(db, seed), asked="h1")
+    assert audited(db, at) == {"checked": 14, "violations": 1, "examples": [pid]}, "the rows came from h2, the job asked for h1"

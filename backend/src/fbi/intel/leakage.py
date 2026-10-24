@@ -68,7 +68,9 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              (``dossier.tactics``, ``fbi.intel.tactics``): every match the block cites as its sample is a row that
                              exists, of the team, kicked off before the match and within the window, with its result recorded by
                              the packet's moment; every match it says it read the events of has an event fetched by then, and every
-                             match it says it read the sheet of has a line-up of that team fetched by then. And, one check per side
+                             match it says it read the sheet of has a line-up of that team fetched by then (a row the post-match job rewrote
+                             after the moment, in a match already settled by then, is a re-read and counts as fetched by then: see
+                             ``_reread``). And, one check per side
                              and packet, the sample is at most the last ``N`` matches and none known by the moment was left out in
                              favour of an older one, what was read is inside the sample, the goals the block counts are the goals
                              of the 90 minutes of the matches it read events of (from their results), and its half-time sample is the
@@ -131,6 +133,16 @@ def _int(base: str, path: str, *, side: bool = False) -> str:
     arr = "ARRAY[" + ", ".join("v.side" if (side and k == "side") else f"'{k}'" for k in keys) + "]"
     text = f"({base} #>> {arr})"
     return f"CASE WHEN {text} ~ '^-?[0-9]{{1,9}}$' THEN {text}::bigint END"
+
+
+def _reread(row: str) -> str:
+    """The SQL that says a row of ``core.fixture_events`` / ``core.fixture_lineups`` (the alias ``row``) that was written after the moment
+    of the packet (``f.as_of``) is a re-read, not a later read: the match had its result by then (``r.settled_at``) and the payload the
+    row came from is one the post-match job asked for (``core.detail_asks``). That job reads every finished match again 26 hours after its
+    kick-off, which moves ``fetched_at`` of its line-ups and, when the provider corrected them, rewrites its events; the packets built
+    between the final whistle and that read read the rows as they were."""
+    return (f"(r.settled_at <= f.as_of AND EXISTS (SELECT 1 FROM core.detail_asks da "
+            f"WHERE da.fixture_id = {row}.fixture_id AND da.payload_hash = {row}.payload_hash))")
 
 
 RULES: dict[str, str] = {
@@ -455,10 +467,10 @@ RULES: dict[str, str] = {
                     OR r.settled_at IS NULL OR r.settled_at > f.as_of
                     OR (COALESCE((f.blk #> '{{read,events}}') @> to_jsonb(f.fid), false)
                         AND NOT EXISTS (SELECT 1 FROM core.fixture_events ev
-                                         WHERE ev.fixture_id = f.fid AND ev.fetched_at <= f.as_of))
+                                         WHERE ev.fixture_id = f.fid AND (ev.fetched_at <= f.as_of OR {_reread("ev")})))
                     OR (COALESCE((f.blk #> '{{read,sheets}}') @> to_jsonb(f.fid), false)
                         AND NOT EXISTS (SELECT 1 FROM core.fixture_lineups l
-                                         WHERE l.fixture_id = f.fid AND l.fetched_at <= f.as_of
+                                         WHERE l.fixture_id = f.fid AND (l.fetched_at <= f.as_of OR {_reread("l")})
                                            AND l.team_side = CASE WHEN g.home_team_id = f.team THEN 'home' ELSE 'away' END))) AS bad
               FROM f LEFT JOIN core.fixtures g ON g.id = f.fid LEFT JOIN core.fixture_results r ON r.fixture_id = f.fid
             UNION ALL
