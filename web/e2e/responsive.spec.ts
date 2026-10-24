@@ -316,9 +316,8 @@ const ADMIN_PAGES = [
   "/admin/overview",
   "/admin/picks",
   "/admin/users",
-  "/admin/ai-layer",
-  "/admin/ai-analyst",
-  "/admin/evolution",
+  "/admin/operation",
+  "/admin/learning",
   "/admin/performance",
   "/admin/odds",
   "/admin/models",
@@ -334,6 +333,34 @@ const ADMIN_PAGES = [
   "/admin/system",
   "/admin/audit",
   "/admin/settings",
+];
+
+/**
+ * Operación and Aprendizaje keep their sections behind tabs, and a tab is an address: each one has to hold on a phone, not only the first one
+ * the page opens on (plan F13: the five pages that talked about the AI are these two).
+ */
+const AI_PAGES_PLACES = [
+  "/admin/operation",
+  "/admin/operation#tab=decisions",
+  "/admin/operation#tab=match",
+  "/admin/operation#tab=ai",
+  "/admin/operation#tab=ai&view=research",
+  "/admin/operation#tab=ai&view=reviews",
+  "/admin/operation#tab=ai&view=evidence",
+  "/admin/operation#tab=ai&view=sources",
+  "/admin/operation#tab=costs",
+  "/admin/operation#tab=runs",
+  "/admin/learning",
+  "/admin/learning#tab=learned",
+  "/admin/learning#tab=postmortems",
+  "/admin/learning#tab=memory",
+  "/admin/learning#tab=memory&view=matches",
+  "/admin/learning#tab=memory&view=notes",
+  "/admin/learning#tab=memory&view=findings",
+  "/admin/learning#tab=experiments",
+  "/admin/learning#tab=calibration",
+  "/admin/learning#tab=markets",
+  "/admin/learning#tab=shadow",
 ];
 
 test.describe("the Admin Console on a phone", () => {
@@ -357,21 +384,43 @@ test.describe("the Admin Console on a phone", () => {
       }
     }
   });
+
+  // Every tab and view of the two pages, each by its address: nothing scrolls sideways and every control is within a finger's reach.
+  test("every tab and view of Operación and Aprendizaje holds at 320 and 390 px and answers a finger", async ({
+    context,
+  }) => {
+    test.setTimeout(480_000);
+    for (const width of [320, 390]) {
+      for (const path of AI_PAGES_PLACES) {
+        const page = await context.newPage();
+        const w = watch(page);
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto(path);
+        await settle(page);
+        expect(await smallTargets(page, "main"), `controls at ${width} px on ${path}`).toEqual([]);
+        await assertClean(page, w);
+        await page.close();
+      }
+    }
+  });
 });
 
 test.describe("the Admin Console on a touch tablet", () => {
   test.use({ storageState: statePath("admin"), locale: "en-GB" });
 
-  test("no page scrolls sideways; the header and the menu answer a finger", async ({ page }) => {
+  test("no page scrolls sideways; the header and the menu answer a finger", async ({ context }) => {
     test.setTimeout(240_000);
-    const w = watch(page);
     for (const [width, height] of [
       [768, 1024],
       [1024, 768],
       [1180, 820],
     ] as const) {
-      await page.setViewportSize({ width, height });
-      for (const path of ["/admin/overview", "/admin/picks", "/admin/users", "/admin/ai-layer"]) {
+      for (const path of ["/admin/overview", "/admin/picks", "/admin/users", "/admin/operation"]) {
+        // A page of its own for each load (as in the phone test): a dozen loads of the dev server's unbundled modules in one
+        // page run Chromium out of resources (ERR_INSUFFICIENT_RESOURCES), and Operación, which holds the views of five pages, is the heaviest.
+        const page = await context.newPage();
+        const w = watch(page);
+        await page.setViewportSize({ width, height });
         await page.goto(path);
         await settle(page);
         expect(
@@ -379,25 +428,38 @@ test.describe("the Admin Console on a touch tablet", () => {
           `header controls at ${width} px on ${path}`,
         ).toEqual([]);
         await assertClean(page, w);
+        await page.close();
       }
     }
   });
 
   // The overview's panel links ("Live" was 21 px wide), the explained "—" (cut to 7 x 16 px by a truncating value
   // cell) and the definitions in table headers (38 px under the table's scroll box) were out of a finger's reach.
-  test("the modules' own controls answer a finger, not only the header's", async ({ page }) => {
-    test.setTimeout(240_000);
-    const w = watch(page);
+  test("the modules' own controls answer a finger, not only the header's", async ({ context }) => {
+    test.setTimeout(300_000);
     for (const [width, height] of [
       [768, 1024],
       [1024, 768],
     ] as const) {
-      await page.setViewportSize({ width, height });
-      for (const path of ["/admin/overview", "/admin/picks", "/admin/models", "/admin/system"]) {
+      for (const path of [
+        "/admin/overview",
+        "/admin/picks",
+        "/admin/models",
+        "/admin/system",
+        "/admin/operation",
+        "/admin/operation#tab=match",
+        "/admin/learning",
+        "/admin/learning#tab=experiments",
+      ]) {
+        // A page of its own for each load (see the test above).
+        const page = await context.newPage();
+        const w = watch(page);
+        await page.setViewportSize({ width, height });
         await page.goto(path);
         await settle(page);
         expect(await smallTargets(page, "main"), `controls at ${width} px on ${path}`).toEqual([]);
         await assertClean(page, w);
+        await page.close();
       }
     }
   });
