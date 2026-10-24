@@ -405,6 +405,35 @@ def test_the_guide_of_the_families_against_the_market_says_what_the_code_does() 
         assert option in doc, f"the guide leaves out {option}"
 
 
+def test_the_guide_of_the_criterion_for_a_family_says_what_the_code_does() -> None:
+    """Plan F11.5: the guide of the criterion for a family to decide in shadow - the bets and the value the plan asks for, the moment of the bet, the
+    books behind a price, the one definition of the closing-line value, the three verdicts it prints and the options of the command that repeats it."""
+    from scripts import families as cli
+
+    from fbi.families import bets, versus
+
+    doc = read_doc("owner", "CRITERIO_FAMILIAS_F11.md")
+    assert f"**al menos {bets.MIN_BETS} apuestas simuladas**" in doc and "(el texto dice cuántas faltan)" in doc
+    assert f"es de **al menos {bets.MIN_EV * 100:g} %**" in doc
+    assert f"**{hours(bets.PICK_LEAD):g} horas o más antes del inicio**" in doc and bets.PICK_REF == "h24"
+    assert f"con **{versus.MIN_BOOKS} casas o más** detrás" in doc
+    assert f"como mucho {str(versus.MAX_OVERROUND).replace('.', ',')}" in doc and "por encima de 1" in doc
+    assert closing_value.VERSION == "clv-v1" and "`clv-v1`" in doc and "`fbi.market.closing_value`" in doc
+    for printed in bets.WORDS.values():
+        assert f"`{printed}`" in doc, f"the guide leaves out the verdict {printed!r}"
+    assert bets.verdict(bets.MIN_BETS, 0.0) == bets.MEETS and "(el cero pasa)" in doc
+    assert bets.verdict(bets.MIN_BETS, -1e-9) == bets.CLV_NEGATIVE and bets.verdict(bets.MIN_BETS - 1, 1.0) == bets.TOO_FEW
+    assert "within 2 standard errors of zero" in Path(bets.__file__).read_text(encoding="utf-8") and "*«but the closing-line value is within 2 standard errors of zero»*" in doc
+    assert f"tandas de {versus.CHUNK} partidos" in doc
+    parser = cli.build_parser()
+    assert parser.parse_args(["score"]).min_ev == bets.MIN_EV and parser.parse_args(["score", "--min-ev", "0.05"]).min_ev == 0.05
+    assert parser.parse_args(["score"]).wait_hours == 30.0 and "30 horas" in doc
+    for option in ("python -m scripts.families score --days 60", "--min-ev 0.05", "--json"):
+        assert option in doc, f"the guide leaves out {option}"
+    assert (DOCS / "owner" / "FAMILIAS_VS_MERCADO_F11.md").is_file() and "`FAMILIAS_VS_MERCADO_F11.md`" in doc
+    assert "`CRITERIO_FAMILIAS_F11.md`" in read_doc("owner", "FAMILIAS_VS_MERCADO_F11.md"), "the guide of the comparison points to this one"
+
+
 def test_the_guide_of_the_model_code_promotions_says_what_the_code_does() -> None:
     """Plan F12: the guide of the promotions of the model's code - the code in force, the least a reason can say, the window of the plan, the
     statuses a fingerprint can have and the commands that measure and write them."""

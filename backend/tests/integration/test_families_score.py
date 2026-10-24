@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 import psycopg
@@ -169,3 +170,53 @@ def test_the_forecasts_are_set_against_the_books_at_the_last_price_and_a_day_bef
     assert "against the market" in text and "family-corners_ft close" in text and "market minus model" in text
     assert "versus" not in score.score(db, now=NOW, days=14, wait_hours=30, market=False)
     assert score.score(db, now=NOW, days=14, wait_hours=30, min_books=4)["versus"]["models"] == {}, "four books are asked for and three quoted"
+
+
+def test_the_bets_use_the_forecast_of_a_day_before_and_the_prices_of_that_day(db: psycopg.Connection[Any], w: World) -> None:
+    catalogue(db)
+    played(w)
+    fid = upcoming(w)
+    run(db, [fid])  # stored at AT, exactly a day before the kick-off
+    play(w, fid)  # 11 corners: the over of 10.5 won
+    where = "fixture_id = %s AND market_key = 'CORNERS_OU' AND selection = 'Over' AND line = 10.5 AND model_name = 'family-corners_ft'"
+    early = float(db.execute(f"SELECT p FROM models.match_forecasts WHERE {where}", (fid,)).fetchall()[0][0])
+    # a later forecast (6 h before) that says the opposite: the scoreboard grades with it, a bet taken a day before could not have known it
+    db.execute("INSERT INTO models.match_forecasts (version, known_at, fixture_id, family, market_key, selection, line, model_name, model_version_id, "
+               "data_cutoff_ts, p_model, p, p_push, calibration, basis, input_hash, code_version) "
+               "SELECT version, %s, fixture_id, family, market_key, selection, line, model_name, model_version_id, data_cutoff_ts, 0.001, 0.001, p_push, "
+               f"calibration, basis, input_hash, code_version FROM models.match_forecasts WHERE {where}", (KICKOFF - timedelta(hours=6), fid))
+    since, until = NOW - timedelta(days=14), NOW - timedelta(hours=30)
+    lead = timedelta(hours=24)
+    over_105 = (fid, "CORNERS_OU", Decimal("10.5"), "Over")
+    pick = [r for r in score.load_forecasts(db, since=since, until=until, lead=lead) if (r.fixture_id, r.key, r.line, r.selection) == over_105]
+    last = [r for r in score.load_forecasts(db, since=since, until=until) if (r.fixture_id, r.key, r.line, r.selection) == over_105]
+    assert [round(r.p, 6) for r in pick] == [round(early, 6)] and pick[0].known_at == AT, "a day before: the forecast of a day before"
+    assert [r.p for r in last] == [0.001], "the scoreboard's: the last one before the kick-off"
+    assert not [r for r in score.load_forecasts(db, since=since, until=until, lead=timedelta(hours=25)) if r.fixture_id == fid], "none from 25 h before"
+
+    sync_definitions(db, names={})
+    db.execute("UPDATE market.market_definitions SET market_key = 'CORNERS_OU' WHERE provider_bet_id = 45 AND scope = 'prematch'")
+    extraction = db.execute("INSERT INTO market.odds_extractions (payload_hash, extractor_version, provider_fixture_id, fetched_at, stamped_by, status) "
+                            "VALUES (%s, 'qx-test', 1, %s, 'fetch', 'ok') RETURNING id", (w.hash, KICKOFF - timedelta(days=2))).fetchall()[0][0]
+    # three books a day before pay the over 10 % over the model's probability (a margin of 6 % behind the under); an hour before it has shortened
+    over = round(1.10 / early, 2)
+    under = round(1 / (1.06 - 1 / over), 2)
+    for book in w.books(3):
+        price(db, extraction, fid, book, str(over), str(under), "10.5", KICKOFF - timedelta(days=2))
+        price(db, extraction, fid, book, "1.70", "2.20", "10.5", KICKOFF - timedelta(hours=1))
+    report = score.score(db, now=NOW, days=14, wait_hours=30)
+    entry = report["bets"]["models"]["family-corners_ft"]
+    assert (entry["taken"], entry["n"], entry["fixtures"], entry["no_closing_line"], entry["verdict"]) == (1, 1, 1, 0, "TOO_FEW")
+    assert entry["believed"] == pytest.approx(over * early - 1) and entry["believed"] >= 0.03, "the value the forecast of a day before saw"
+    assert entry["at_pick"] == pytest.approx(over * under / (over + under) - 1), "the same price at the books' probability that day: the over"
+    assert entry["clv"] == pytest.approx(over * 2.20 / 3.90 - 1), "and at the last price before the kick-off"
+    assert entry["return"] == pytest.approx(over - 1) and entry["hit_rate"] == 1.0 and entry["mean_odds"] == pytest.approx(over)
+    assert report["bets"]["criterion"]["min_bets"] == 300 and entry["needed"] == 299
+    assert set(report["bets"]["models"]) == {"family-goals_halves", "family-corners_ft", "family-cards_lines_ft", "family-yellow_ft"}
+    assert all(m["taken"] == 0 for name, m in report["bets"]["models"].items() if name != "family-corners_ft"), "no other family has a price"
+    text = score.render(report, min_rows=1)
+    assert "the plan's criterion for a family to decide in shadow" in text and "family-corners_ft: 1 bets in 1 matches (299 short of 300)" in text
+
+    assert score.score(db, now=NOW, days=14, wait_hours=30, min_ev=0.5)["bets"]["models"]["family-corners_ft"]["taken"] == 0, "a floor of 50 %: no bet"
+    assert score.score(db, now=NOW, days=14, wait_hours=30, min_books=4)["bets"]["models"]["family-corners_ft"]["taken"] == 0
+    assert "bets" not in score.score(db, now=NOW, days=14, wait_hours=30, market=False)

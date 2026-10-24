@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -69,13 +69,25 @@ def comparable(line: Decimal) -> bool:
     return line == 0 or line % 1 == Decimal("0.5")
 
 
-def consensus(quotes: Iterable[Quote]) -> dict[FairKey, tuple[float, int]]:
-    """The fair probability of each selection - the mean over the complete books of their own de-vigged probabilities - and how many books
-    it is the mean of."""
+@dataclass(frozen=True, slots=True)
+class Book:
+    """One COMPLETE book at one line and one moment: every outcome of the market quoted once, with a believable margin (``overround``)."""
+
+    ref: str
+    fixture_id: int
+    key: str
+    line: Decimal
+    quotes: tuple[Quote, ...]
+    overround: float
+
+
+def complete_books(quotes: Iterable[Quote]) -> Iterator[Book]:
+    """The books that are a price: the quotes of one book at one line and one moment, when it quotes every outcome of the market exactly once
+    and its margin is believable (above 1, at most ``MAX_OVERROUND``). A half book, a kind of bet without a consensus and a margin that is not
+    one are left out - the consensus and the best price are read from these books and from no others."""
     books: dict[tuple[str, int, int, str, Decimal], list[Quote]] = defaultdict(list)
     for q in quotes:
         books[(q.ref, q.fixture_id, q.bookmaker_id, q.key, q.line)].append(q)
-    shares: dict[FairKey, list[float]] = defaultdict(list)
     for (ref, fixture_id, _, key, line), members in books.items():
         expected = OUTCOMES.get(members[0].kind)
         if expected is None or len(members) != expected or len({m.selection for m in members}) != expected:
@@ -83,9 +95,29 @@ def consensus(quotes: Iterable[Quote]) -> dict[FairKey, tuple[float, int]]:
         overround = sum(1.0 / m.odds for m in members)
         if not 1.0 < overround <= MAX_OVERROUND:
             continue
-        for m in members:
-            shares[(ref, fixture_id, key, line, m.selection)].append((1.0 / m.odds) / overround)
+        yield Book(ref, fixture_id, key, line, tuple(members), overround)
+
+
+def consensus(quotes: Iterable[Quote]) -> dict[FairKey, tuple[float, int]]:
+    """The fair probability of each selection - the mean over the complete books of their own de-vigged probabilities - and how many books
+    it is the mean of."""
+    shares: dict[FairKey, list[float]] = defaultdict(list)
+    for book in complete_books(quotes):
+        for m in book.quotes:
+            shares[(book.ref, book.fixture_id, book.key, book.line, m.selection)].append((1.0 / m.odds) / book.overround)
     return {k: (sum(v) / len(v), len(v)) for k, v in shares.items()}
+
+
+def best_prices(quotes: Iterable[Quote]) -> dict[FairKey, tuple[float, int]]:
+    """The highest price any complete book quoted for each selection - the price a bettor who shops around would have taken - and how many
+    complete books quoted it (the same books the consensus is the mean of)."""
+    best: dict[FairKey, tuple[float, int]] = {}
+    for book in complete_books(quotes):
+        for m in book.quotes:
+            k = (book.ref, book.fixture_id, book.key, book.line, m.selection)
+            odds, books = best.get(k, (0.0, 0))
+            best[k] = (max(odds, m.odds), books + 1)
+    return best
 
 
 QUOTES_SQL: Final = """
@@ -112,6 +144,25 @@ def load_quotes(conn: psycopg.Connection[Any], *, fixtures: Sequence[int], keys:
         cur.execute(QUOTES_SQL, params)
         return [Quote(str(r["ref"]), int(r["fixture_id"]), int(r["bookmaker_id"]), str(r["market_key"]), str(r["kind"]), str(r["selection"]),
                       Decimal(r["line"]), float(r["odds_decimal"])) for r in cur.fetchall()]
+
+
+CHUNK: Final = 250
+"""The matches whose prices are read, and boiled down to a consensus and a best price, at a time: the quotes of a window of weeks (millions)
+would not fit in memory as objects, and the two boiled-down numbers of each selection are all the comparison needs."""
+
+
+def read_prices(conn: psycopg.Connection[Any], *, fixtures: Iterable[int], keys: Sequence[str], since: datetime
+                ) -> tuple[dict[FairKey, tuple[float, int]], dict[FairKey, tuple[float, int]]]:
+    """The consensus and the best price of every selection of the markets ``keys`` of the matches ``fixtures`` at each of the ``REFERENCES``,
+    read ``CHUNK`` matches at a time (the keys carry the match, so the chunks never overlap)."""
+    fair: dict[FairKey, tuple[float, int]] = {}
+    best: dict[FairKey, tuple[float, int]] = {}
+    ordered = sorted(set(fixtures))
+    for start in range(0, len(ordered), CHUNK):
+        quotes = load_quotes(conn, fixtures=ordered[start:start + CHUNK], keys=keys, since=since)
+        fair.update(consensus(quotes))
+        best.update(best_prices(quotes))
+    return fair, best
 
 
 def _loss(p: float, won: int) -> float:

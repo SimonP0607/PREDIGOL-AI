@@ -33,7 +33,7 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.families import forecast, history, versus
+from fbi.families import bets, forecast, history, versus
 from fbi.families.fit import OUTCOME_KNOWN_AFTER
 from fbi.market.catalogue import KINDS
 from fbi.market.rules import RULES_BY_MEASURE
@@ -186,16 +186,19 @@ SELECT DISTINCT ON (f.fixture_id, f.model_name, f.market_key, f.line, f.selectio
        f.fixture_id, f.model_name, f.market_key, f.line, f.selection, f.p, f.known_at
   FROM models.match_forecasts f JOIN core.fixtures x ON x.id = f.fixture_id
  WHERE f.version = %(version)s AND x.kickoff_at >= %(since)s AND x.kickoff_at < %(until)s AND f.known_at < x.kickoff_at
-   AND (%(model)s::text IS NULL OR f.model_name = %(model)s)
+   AND f.known_at <= x.kickoff_at - %(lead)s::interval AND (%(model)s::text IS NULL OR f.model_name = %(model)s)
  ORDER BY f.fixture_id, f.model_name, f.market_key, f.line, f.selection, f.known_at DESC
 """
-"""The last forecast of each selection of each market of each match that was stored before the kick-off, for the kick-offs of the window."""
+"""The last forecast of each selection of each market of each match that was stored before the kick-off - and at least ``lead`` before it - for
+the kick-offs of the window."""
 
 
 def load_forecasts(conn: psycopg.Connection[Any], *, since: datetime, until: datetime, model: str | None = None,
-                   version: str = forecast.VERSION) -> list[Row]:
+                   version: str = forecast.VERSION, lead: timedelta = timedelta(0)) -> list[Row]:
+    """The stored forecasts the matches of the window are graded with: the last one stored before the kick-off or, with ``lead``, the last one
+    stored at least that long before it (what a bet taken ``lead`` before the kick-off could have used)."""
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(FORECASTS_SQL, {"version": version, "since": since, "until": until, "model": model})
+        cur.execute(FORECASTS_SQL, {"version": version, "since": since, "until": until, "model": model, "lead": lead})
         return [Row(int(r["fixture_id"]), str(r["model_name"]), str(r["market_key"]), Decimal(r["line"]), str(r["selection"]), float(r["p"]),
                     r["known_at"]) for r in cur.fetchall()]
 
@@ -214,23 +217,29 @@ def load_counts(conn: psycopg.Connection[Any], measures: Sequence[str], *, since
 
 
 def score(conn: psycopg.Connection[Any], *, now: datetime, days: int = 14, wait_hours: float = 30.0, model: str | None = None,
-          market: bool = True, min_books: int = versus.MIN_BOOKS) -> dict[str, Any]:
+          market: bool = True, min_books: int = versus.MIN_BOOKS, min_ev: float = bets.MIN_EV) -> dict[str, Any]:
     """Grade the family forecasts of the matches that kicked off in the last ``days`` days, leaving out the last ``wait_hours`` hours: the
     statistics of the cards settle some 26 hours after the match, and a count read before that is short.
 
     With ``market`` the graded rows are also set against the consensus of the books (``fbi.families.versus``): the test of whether the model
-    knew anything the prices did not."""
+    knew anything the prices did not. And the bets that the forecasts of a day before the kick-off would have placed at the best price of that
+    day are simulated and set against the plan's criterion for a family to decide in shadow (``fbi.families.bets``): at least 300 bets and a
+    closing-line value that is not negative."""
     until = now - timedelta(hours=wait_hours)
     since = now - timedelta(days=days)
     rows = load_forecasts(conn, since=since, until=until, model=model)
-    counts = load_counts(conn, measures_to_read(r.key for r in rows), since=since, until=until)
+    early = load_forecasts(conn, since=since, until=until, model=model, lead=bets.PICK_LEAD) if market else []
+    counts = load_counts(conn, measures_to_read(r.key for r in [*rows, *early]), since=since, until=until)
     graded, left = grade(rows, counts)
     report = summarise(graded, left)
     report["window"] = {"since": since.isoformat(), "until": until.isoformat(), "wait_hours": wait_hours, "forecast_rows": len(rows)}
     if market:
-        keys = sorted({g.row.key for g in graded if key_shape(g.row.key)[0] in versus.OUTCOMES})
-        quotes = versus.load_quotes(conn, fixtures=sorted({g.row.fixture_id for g in graded}), keys=keys, since=since)
-        report["versus"] = versus.versus(graded, versus.consensus(quotes), min_books=min_books)
+        graded_early, _ = grade(early, counts)
+        priced = [*graded, *graded_early]
+        keys = sorted({g.row.key for g in priced if key_shape(g.row.key)[0] in versus.OUTCOMES})
+        fair, best = versus.read_prices(conn, fixtures={g.row.fixture_id for g in priced}, keys=keys, since=since)
+        report["versus"] = versus.versus(graded, fair, min_books=min_books)
+        report["bets"] = bets.report(graded_early, fair, best, min_ev=min_ev, min_books=min_books)
     return report
 
 
@@ -250,4 +259,6 @@ def render(report: Mapping[str, Any], *, top: int = 12, min_rows: int = 50) -> s
                          f"happened {x['observed'] * 100:5.1f} %  gain {x['gain']:+.4f}")
     if "versus" in report and report["models"]:
         lines.append(versus.render(report["versus"], min_rows=min_rows))
+    if "bets" in report and report["models"]:
+        lines.append(bets.render(report["bets"], min_rows=min_rows))
     return "\n".join(lines)

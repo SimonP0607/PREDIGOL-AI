@@ -131,6 +131,8 @@ python -m scripts.families score --no-market          # sin la comparación con 
 python -m scripts.families score --min-books 4        # exigir más casas para el consenso (por omisión, 3)
 ```
 
+El criterio del plan para que una familia decida en sombra (al menos 300 apuestas simuladas y valor de cierre no negativo) lo mide el mismo marcador, debajo de esta comparación, con los pronósticos guardados: ver `CRITERIO_FAMILIAS_F11.md`.
+
 Solo lee (conexión de solo lectura, 0 peticiones al proveedor, 0 IA). Se califican los partidos jugados en los últimos días, dejando pasar 30 horas (las estadísticas de tarjetas tardan en asentarse). **Las primeras cifras con pronósticos reales saldrán unas dos semanas después del despliegue**; se propone mirarlas cada semana.
 
 ## 10. Límites de esta medición

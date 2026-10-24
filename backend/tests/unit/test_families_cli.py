@@ -219,13 +219,14 @@ def test_the_score_command_reads_through_a_connection_that_cannot_write_and_pass
 
     monkeypatch.setattr(psycopg, "connect", connect)  # the very modules the command calls through
     monkeypatch.setattr(score, "score", fake_score)
-    assert cli.main(["score", "--days", "7", "--wait-hours", "36", "--model", "family-yellow_ft", "--no-market", "--min-books", "4", "--json"]) == 0
+    assert cli.main(["score", "--days", "7", "--wait-hours", "36", "--model", "family-yellow_ft", "--no-market", "--min-books", "4", "--min-ev", "0.05",
+                     "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["left_out"] == {"pushed": 0, "ungradable": 3}
     assert seen["options"] == "-c default_transaction_read_only=on", "it reads; it cannot write by mistake"
     assert (seen["asked"]["days"], seen["asked"]["wait_hours"], seen["asked"]["model"]) == (7, 36.0, "family-yellow_ft")
-    assert (seen["asked"]["market"], seen["asked"]["min_books"]) == (False, 4)
+    assert (seen["asked"]["market"], seen["asked"]["min_books"], seen["asked"]["min_ev"]) == (False, 4, 0.05)
     assert seen["rolled_back"] and seen["closed"]
     assert cli.main(["score"]) == 0
     assert "nothing to grade yet" in capsys.readouterr().out
     assert (seen["asked"]["days"], seen["asked"]["wait_hours"], seen["asked"]["model"]) == (14, 30.0, None), "the defaults"
-    assert (seen["asked"]["market"], seen["asked"]["min_books"]) == (True, 3), "against the market unless told not to"
+    assert (seen["asked"]["market"], seen["asked"]["min_books"], seen["asked"]["min_ev"]) == (True, 3, 0.03), "against the market unless told not to"
