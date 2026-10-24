@@ -383,7 +383,7 @@ function HypothesisCard({ h }: { h: Hypothesis }) {
       </p>
       {Object.keys(h.evidence).length ? (
         <details className="text-caption text-subtle-foreground">
-          <summary className="cursor-pointer">{t("ai.evolution.evidence")}</summary>
+          <summary className="tap relative cursor-pointer">{t("ai.evolution.evidence")}</summary>
           <pre className="mt-1 max-h-48 overflow-auto rounded border border-border bg-card p-2">
             {JSON.stringify(h.evidence, null, 2)}
           </pre>

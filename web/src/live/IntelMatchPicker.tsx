@@ -51,7 +51,7 @@ export function MatchPicker({
         onClose ? (
           <button
             type="button"
-            className="tap-y rounded-md border border-border px-2.5 py-1 text-xs"
+            className="tap-y relative rounded-md border border-border px-2.5 py-1 text-xs"
             onClick={onClose}
           >
             {t("intel.match.picker.close")}
@@ -75,7 +75,7 @@ export function MatchPicker({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="tap-y rounded-md border border-border px-2.5 py-1 text-xs"
+              className="tap-y relative rounded-md border border-border px-2.5 py-1 text-xs"
               onClick={() => setDay(shiftDay(d?.day ?? todayKey(AI_TZ), -1))}
             >
               ← {t("intel.day.prev")}
@@ -83,7 +83,7 @@ export function MatchPicker({
             <span className="text-sm font-medium">{d ? dayLabel(d.day) : "…"}</span>
             <button
               type="button"
-              className="tap-y rounded-md border border-border px-2.5 py-1 text-xs"
+              className="tap-y relative rounded-md border border-border px-2.5 py-1 text-xs"
               onClick={() => setDay(shiftDay(d?.day ?? todayKey(AI_TZ), 1))}
             >
               {t("intel.day.next")} →
@@ -91,7 +91,7 @@ export function MatchPicker({
             {day ? (
               <button
                 type="button"
-                className="tap-y rounded-md px-2 py-1 text-xs text-primary"
+                className="tap-y relative rounded-md px-2 py-1 text-xs text-primary"
                 onClick={() => setDay(undefined)}
               >
                 {t("intel.day.today")}
@@ -146,7 +146,7 @@ export function PickerResults({
                   aria-pressed={selected}
                   onClick={() => onPick(String(m.fixture_id))}
                   data-testid="intel-picker-row"
-                  className={`flex w-full min-w-0 flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2 text-left text-sm transition-colors hover:bg-elevated/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring ${
+                  className={`flex w-full min-w-0 flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2 text-left text-sm transition-colors pointer-coarse:min-h-11 hover:bg-elevated/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring ${
                     selected ? "bg-primary/8" : ""
                   }`}
                 >

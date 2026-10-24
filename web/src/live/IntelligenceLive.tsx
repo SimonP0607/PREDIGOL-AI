@@ -141,7 +141,7 @@ export function DayView({ onOpen }: { onOpen: (id: number) => void }) {
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="tap-y rounded-md border border-border px-2.5 py-1 text-xs"
+          className="tap-y relative rounded-md border border-border px-2.5 py-1 text-xs"
           onClick={() => setDay(shiftDay(d.day, -1))}
         >
           ← {t("intel.day.prev")}
@@ -149,7 +149,7 @@ export function DayView({ onOpen }: { onOpen: (id: number) => void }) {
         <span className="text-sm font-medium">{dayLabel(d.day)}</span>
         <button
           type="button"
-          className="tap-y rounded-md border border-border px-2.5 py-1 text-xs"
+          className="tap-y relative rounded-md border border-border px-2.5 py-1 text-xs"
           onClick={() => setDay(shiftDay(d.day, 1))}
         >
           {t("intel.day.next")} →
@@ -157,7 +157,7 @@ export function DayView({ onOpen }: { onOpen: (id: number) => void }) {
         {day ? (
           <button
             type="button"
-            className="tap-y rounded-md px-2 py-1 text-xs text-primary"
+            className="tap-y relative rounded-md px-2 py-1 text-xs text-primary"
             onClick={() => setDay(undefined)}
           >
             {t("intel.day.today")}
@@ -848,7 +848,7 @@ export function MatchView({
         <div>
           <button
             type="button"
-            className="tap-y h-8 rounded-md border border-border px-3 text-xs"
+            className="tap-y relative h-8 rounded-md border border-border px-3 text-xs"
             onClick={() => setPicking(true)}
             data-testid="intel-picker-open"
           >

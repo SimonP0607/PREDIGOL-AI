@@ -178,7 +178,7 @@ export function EntityMemory() {
         </label>
       </div>
       <details className="rounded-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
-        <summary className="cursor-pointer text-foreground">
+        <summary className="tap relative cursor-pointer text-foreground">
           {t("memory.entities.confidence")}
         </summary>
         <p className="mt-2 max-w-4xl">{t("memory.entities.help")}</p>
