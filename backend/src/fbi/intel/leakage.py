@@ -83,6 +83,14 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              ``status`` (the head-to-head, the scenarios, the tactics), that status and the block's ``version`` are
                              the ones the packet's factor entry states - so a validation of another version of the code is not used
                              for this one. Examples are packet ids.
+
+Every rule is ONE statement over the whole Bogotá day, so it has to stay linear in the number of packets (a night has some 11,000, each
+citing up to two lists of ten matches): to compare what a packet cited with what it should have cited, build one list per packet
+(``array_agg`` per packet, ``<> ALL`` against it, ``min`` of the kick-offs) and join it once; never probe a CTE or a sub-query once per
+row, because a probe of a materialised CTE scans it again for every row. The first texts of ``h2h_known`` and ``tactics_known`` did
+that, and the nightly run of 24 Oct 2026 (``intel.runs`` 1081) was still inside them after hours. ``tests/integration/test_leak_audit_scale.py`` runs both
+over thousands of packets against a time limit and over small worlds against the frozen first texts
+(``tests/integration/leakage_reference.py``), which must give the same verdict for every packet.
 """
 
 from __future__ import annotations
@@ -344,6 +352,9 @@ RULES: dict[str, str] = {
                    (jsonb_typeof(x #> '{{coach_changed,home}}') = 'boolean'
                     OR jsonb_typeof(x #> '{{coach_changed,away}}') = 'boolean') AS coach_claim
               FROM b CROSS JOIN LATERAL jsonb_array_elements(b.blk -> 'meetings') AS x WHERE jsonb_typeof(x) = 'object'),
+        ml AS (
+            SELECT m.packet_id, array_agg(m.leg) FILTER (WHERE m.leg IS NOT NULL) AS legs, min(g2.kickoff_at) AS first_kick
+              FROM m LEFT JOIN core.fixtures g2 ON g2.id = m.leg GROUP BY m.packet_id),
         c AS (
             SELECT m.packet_id,
                    (g.id IS NULL OR g.kickoff_at >= m.kickoff OR r.settled_at IS NULL OR r.settled_at > m.as_of
@@ -361,11 +372,9 @@ RULES: dict[str, str] = {
                                    OR (g.home_team_id = b.away_id AND g.away_team_id = b.home_id))
                               AND g.kickoff_at < b.kickoff AND r.settled_at <= b.as_of AND g.status_short = ANY({FINISHED})
                               AND r.reg_goals_home IS NOT NULL AND r.reg_goals_away IS NOT NULL
-                              AND NOT EXISTS (SELECT 1 FROM m WHERE m.packet_id = b.packet_id AND m.leg = g.id)
-                              AND (jsonb_array_length(b.blk -> 'meetings') < {h2h.N}
-                                   OR g.kickoff_at > (SELECT min(g2.kickoff_at) FROM m JOIN core.fixtures g2 ON g2.id = m.leg
-                                                       WHERE m.packet_id = b.packet_id))) AS bad
-              FROM b)
+                              AND g.id <> ALL (COALESCE(ml.legs, ARRAY[]::bigint[]))
+                              AND (jsonb_array_length(b.blk -> 'meetings') < {h2h.N} OR g.kickoff_at > ml.first_kick)) AS bad
+              FROM b LEFT JOIN ml ON ml.packet_id = b.packet_id)
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
     "scenarios_known": f"""
@@ -432,6 +441,13 @@ RULES: dict[str, str] = {
                    sum(CASE WHEN g.home_team_id = e.team THEN r.reg_goals_home ELSE r.reg_goals_away END) AS gf,
                    sum(CASE WHEN g.home_team_id = e.team THEN r.reg_goals_away ELSE r.reg_goals_home END) AS ga
               FROM e JOIN core.fixtures g ON g.id = e.fid JOIN core.fixture_results r ON r.fixture_id = g.id GROUP BY 1, 2),
+        fl AS (
+            SELECT f.packet_id, f.side, array_agg(f.fid) FILTER (WHERE f.fid IS NOT NULL) AS fids, min(g2.kickoff_at) AS first_kick
+              FROM f LEFT JOIN core.fixtures g2 ON g2.id = f.fid GROUP BY f.packet_id, f.side),
+        ht AS (
+            SELECT f.packet_id, f.side, count(*) AS n
+              FROM f JOIN core.fixture_results r ON r.fixture_id = f.fid
+             WHERE r.ht_goals_home IS NOT NULL AND r.ht_goals_away IS NOT NULL GROUP BY f.packet_id, f.side),
         c AS (
             SELECT f.packet_id,
                    (g.id IS NULL OR f.team IS NULL OR NOT (g.home_team_id = f.team OR g.away_team_id = f.team)
@@ -451,25 +467,19 @@ RULES: dict[str, str] = {
                     OR {_int("b.blk", "{n}")} IS DISTINCT FROM jsonb_array_length(b.blk -> 'fixtures')
                     OR NOT COALESCE((b.blk -> 'fixtures') @> COALESCE(b.blk #> '{{read,events}}', '[]'::jsonb)
                                     AND (b.blk -> 'fixtures') @> COALESCE(b.blk #> '{{read,sheets}}', '[]'::jsonb), false)
-                    OR COALESCE({_int("b.blk", "{goals,total_for}")}, 0)
-                         IS DISTINCT FROM COALESCE((SELECT s.gf FROM s WHERE s.packet_id = b.packet_id AND s.side = b.side), 0)
-                    OR COALESCE({_int("b.blk", "{goals,total_against}")}, 0)
-                         IS DISTINCT FROM COALESCE((SELECT s.ga FROM s WHERE s.packet_id = b.packet_id AND s.side = b.side), 0)
-                    OR COALESCE({_int("b.blk", "{with_the_score,half_time,n}")}, 0)
-                         IS DISTINCT FROM (SELECT count(*) FROM f JOIN core.fixture_results r ON r.fixture_id = f.fid
-                                            WHERE f.packet_id = b.packet_id AND f.side = b.side
-                                              AND r.ht_goals_home IS NOT NULL AND r.ht_goals_away IS NOT NULL)) AS bad
-              FROM b
+                    OR COALESCE({_int("b.blk", "{goals,total_for}")}, 0) IS DISTINCT FROM COALESCE(s.gf, 0)
+                    OR COALESCE({_int("b.blk", "{goals,total_against}")}, 0) IS DISTINCT FROM COALESCE(s.ga, 0)
+                    OR COALESCE({_int("b.blk", "{with_the_score,half_time,n}")}, 0) IS DISTINCT FROM COALESCE(ht.n, 0)) AS bad
+              FROM b LEFT JOIN s ON s.packet_id = b.packet_id AND s.side = b.side
+                     LEFT JOIN ht ON ht.packet_id = b.packet_id AND ht.side = b.side
             UNION ALL
             SELECT b.packet_id,
                    EXISTS (SELECT 1 FROM core.fixtures g JOIN core.fixture_results r ON r.fixture_id = g.id
                             WHERE (g.home_team_id = b.team OR g.away_team_id = b.team) AND g.kickoff_at < b.kickoff
                               AND g.kickoff_at >= b.kickoff - interval '{tactics.WINDOW.days} days' AND r.settled_at <= b.as_of
-                              AND NOT EXISTS (SELECT 1 FROM f WHERE f.packet_id = b.packet_id AND f.side = b.side AND f.fid = g.id)
-                              AND (jsonb_array_length(b.blk -> 'fixtures') < {tactics.N}
-                                   OR g.kickoff_at > (SELECT min(g2.kickoff_at) FROM f JOIN core.fixtures g2 ON g2.id = f.fid
-                                                       WHERE f.packet_id = b.packet_id AND f.side = b.side))) AS bad
-              FROM b)
+                              AND g.id <> ALL (COALESCE(fl.fids, ARRAY[]::bigint[]))
+                              AND (jsonb_array_length(b.blk -> 'fixtures') < {tactics.N} OR g.kickoff_at > fl.first_kick)) AS bad
+              FROM b LEFT JOIN fl ON fl.packet_id = b.packet_id AND fl.side = b.side)
         SELECT count(*) AS n, count(*) FILTER (WHERE c.bad) AS bad,
                (array_agg(DISTINCT c.packet_id) FILTER (WHERE c.bad))[1:5] AS examples FROM c""",
     "factors_known": f"""
