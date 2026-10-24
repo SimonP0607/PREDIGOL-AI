@@ -259,7 +259,8 @@ def score_command(args: argparse.Namespace) -> int:
     """Grade the stored forecasts of the families on the finished matches of the last ``--days`` days (read-only)."""
     now = clock_now()
     with psycopg.connect(settings.database.psycopg_url, options="-c default_transaction_read_only=on") as conn:
-        report = scoreboard.score(conn, now=now, days=args.days, wait_hours=args.wait_hours, model=args.model)
+        report = scoreboard.score(conn, now=now, days=args.days, wait_hours=args.wait_hours, model=args.model, market=not args.no_market,
+                                  min_books=args.min_books)
         conn.rollback()
     print(json.dumps(report, indent=1, default=str) if args.json else scoreboard.render(report, top=args.top))
     return 0
@@ -274,6 +275,8 @@ def build_parser() -> argparse.ArgumentParser:
     ps.add_argument("--wait-hours", type=float, default=30.0, help="leave out the last N hours, until the statistics of the cards have settled (default %(default)s)")
     ps.add_argument("--model", help="only this model (e.g. family-corners_ft)")
     ps.add_argument("--top", type=int, default=12, help="selections that stray most, per model, in the text (default %(default)s)")
+    ps.add_argument("--no-market", action="store_true", help="do not set the forecasts against the consensus of the books")
+    ps.add_argument("--min-books", type=int, default=3, help="books a consensus needs to be compared with (default %(default)s)")
     ps.add_argument("--json", action="store_true")
     ph = sub.add_parser("halves", help="the bets of the halves derived from the fits of the first and of the second half")
     ph.add_argument("--months", type=int, default=12, help="months of test window (default %(default)s)")

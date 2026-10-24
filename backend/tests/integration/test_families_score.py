@@ -5,13 +5,15 @@ the last forecast stored before the kick-off, the counts through the door the fa
 
 from __future__ import annotations
 
-from datetime import timedelta
+import math
+from datetime import datetime, timedelta
 from typing import Any
 
 import psycopg
 import pytest
 
 from fbi.families import forecast, score
+from fbi.odds.quote_taxonomy import sync_definitions
 from tests.integration.conftest import Seed
 
 from .knowledge_world import World
@@ -121,3 +123,49 @@ def test_the_report_is_text_and_json_ready(db: psycopg.Connection[Any], w: World
     json.dumps(report, default=str)
     text = score.render(report, min_rows=1)
     assert "family-corners_ft: 1 matches" in text and "log loss" in text and "calibration gap" in text
+
+
+def price(db: psycopg.Connection[Any], extraction: int, fixture_id: int, book: int, over: str, under: str, line: str, when: datetime) -> None:
+    """One book's over/under of the corners of the match (provider bet 45) at an instant."""
+    definition = db.execute("SELECT id FROM market.market_definitions WHERE provider_bet_id = 45 AND scope = 'prematch'").fetchall()[0][0]
+    for selection, odds in (("Over", over), ("Under", under)):
+        db.execute("INSERT INTO market.odds_quotes (fixture_id, bookmaker_id, definition_id, selection, line, odds_decimal, captured_at, minutes_to_ko, "
+                   "extraction_id) VALUES (%s, %s, %s, %s, %s, %s, %s, 60, %s)", (fixture_id, book, definition, selection, line, odds, when, extraction))
+
+
+def test_the_forecasts_are_set_against_the_books_at_the_last_price_and_a_day_before(db: psycopg.Connection[Any], w: World) -> None:
+    catalogue(db)
+    played(w)
+    fid = upcoming(w)
+    run(db, [fid])
+    play(w, fid)  # 11 corners: the over of 10.5 won
+    sync_definitions(db, names={})
+    db.execute("UPDATE market.market_definitions SET market_key = 'CORNERS_OU' WHERE provider_bet_id = 45 AND scope = 'prematch'")
+    extraction = db.execute("INSERT INTO market.odds_extractions (payload_hash, extractor_version, provider_fixture_id, fetched_at, stamped_by, status) "
+                            "VALUES (%s, 'qx-test', 1, %s, 'fetch', 'ok') RETURNING id", (w.hash, KICKOFF - timedelta(days=2))).fetchall()[0][0]
+    books = w.books(3)
+    for book in books:  # even prices two days before; an hour before, the over has shortened
+        price(db, extraction, fid, book, "1.90", "1.90", "10.5", KICKOFF - timedelta(days=2))
+        price(db, extraction, fid, book, "1.70", "2.20", "10.5", KICKOFF - timedelta(hours=1))
+    price(db, extraction, fid, books[0], "3.00", "1.40", "10.5", KICKOFF + timedelta(hours=1))  # after the kick-off: never read
+    for book in books[:2]:  # two books only on this line: not a consensus
+        price(db, extraction, fid, book, "2.40", "1.55", "11.5", KICKOFF - timedelta(days=2))
+    stored = {(sel): float(p) for sel, p in db.execute(
+        "SELECT selection, p FROM models.match_forecasts WHERE fixture_id = %s AND market_key = 'CORNERS_OU' AND line = 10.5 AND model_name = "
+        "'family-corners_ft'", (fid,)).fetchall()}
+
+    report = score.score(db, now=NOW, days=14, wait_hours=30)
+    entry = report["versus"]["models"]["family-corners_ft"]
+    close, h24 = entry["close"], entry["h24"]
+    assert (close["n"], close["fixtures"], close["mean_books"]) == (2, 1, 3) and (h24["n"], h24["fixtures"]) == (2, 1)
+    assert close["log_loss_market"] == pytest.approx(-math.log(2.2 / 3.9)), "an hour before: the over at 2.2 / (1.7 + 2.2) of every book"
+    assert h24["log_loss_market"] == pytest.approx(math.log(2)), "two days before: even prices"
+    model_loss = (-math.log(stored["Over"]) - math.log(1 - stored["Under"])) / 2  # the over won, the under lost
+    assert close["log_loss_model"] == pytest.approx(model_loss) == pytest.approx(h24["log_loss_model"])
+    assert close["market_minus_model"] == pytest.approx(close["log_loss_market"] - model_loss)
+    assert [(x["ref"], x["key"]) for x in entry["by_key"]] == [("close", "CORNERS_OU"), ("h24", "CORNERS_OU")]
+    assert set(report["versus"]["models"]) == {"family-corners_ft"}, "the other families have no price in this world"
+    text = score.render(report, min_rows=1)
+    assert "against the market" in text and "family-corners_ft close" in text and "market minus model" in text
+    assert "versus" not in score.score(db, now=NOW, days=14, wait_hours=30, market=False)
+    assert score.score(db, now=NOW, days=14, wait_hours=30, min_books=4)["versus"]["models"] == {}, "four books are asked for and three quoted"

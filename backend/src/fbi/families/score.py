@@ -33,7 +33,7 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.families import forecast, history
+from fbi.families import forecast, history, versus
 from fbi.families.fit import OUTCOME_KNOWN_AFTER
 from fbi.market.catalogue import KINDS
 from fbi.market.rules import RULES_BY_MEASURE
@@ -213,9 +213,13 @@ def load_counts(conn: psycopg.Connection[Any], measures: Sequence[str], *, since
     return dict(out)
 
 
-def score(conn: psycopg.Connection[Any], *, now: datetime, days: int = 14, wait_hours: float = 30.0, model: str | None = None) -> dict[str, Any]:
+def score(conn: psycopg.Connection[Any], *, now: datetime, days: int = 14, wait_hours: float = 30.0, model: str | None = None,
+          market: bool = True, min_books: int = versus.MIN_BOOKS) -> dict[str, Any]:
     """Grade the family forecasts of the matches that kicked off in the last ``days`` days, leaving out the last ``wait_hours`` hours: the
-    statistics of the cards settle some 26 hours after the match, and a count read before that is short."""
+    statistics of the cards settle some 26 hours after the match, and a count read before that is short.
+
+    With ``market`` the graded rows are also set against the consensus of the books (``fbi.families.versus``): the test of whether the model
+    knew anything the prices did not."""
     until = now - timedelta(hours=wait_hours)
     since = now - timedelta(days=days)
     rows = load_forecasts(conn, since=since, until=until, model=model)
@@ -223,6 +227,10 @@ def score(conn: psycopg.Connection[Any], *, now: datetime, days: int = 14, wait_
     graded, left = grade(rows, counts)
     report = summarise(graded, left)
     report["window"] = {"since": since.isoformat(), "until": until.isoformat(), "wait_hours": wait_hours, "forecast_rows": len(rows)}
+    if market:
+        keys = sorted({g.row.key for g in graded if key_shape(g.row.key)[0] in versus.OUTCOMES})
+        quotes = versus.load_quotes(conn, fixtures=sorted({g.row.fixture_id for g in graded}), keys=keys, since=since)
+        report["versus"] = versus.versus(graded, versus.consensus(quotes), min_books=min_books)
     return report
 
 
@@ -240,4 +248,6 @@ def render(report: Mapping[str, Any], *, top: int = 12, min_rows: int = 50) -> s
         for x in stray[:top]:
             lines.append(f"    {x['key']:<16} {x['line']:>5g} {x['selection']:<10} n {x['n']:>5}  said {x['mean_p'] * 100:5.1f} %  "
                          f"happened {x['observed'] * 100:5.1f} %  gain {x['gain']:+.4f}")
+    if "versus" in report and report["models"]:
+        lines.append(versus.render(report["versus"], min_rows=min_rows))
     return "\n".join(lines)
