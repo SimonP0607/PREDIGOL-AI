@@ -8,6 +8,7 @@
     python -m scripts.families halves                                # the bets of the halves (HT/FT, highest half, BTTS by half...) derived from two fits
     python -m scripts.families score --days 14                       # how the stored forecasts of the families did on the matches that have finished
     python -m scripts.families dependence --days 1095                # how much the goals, the corners and the cards of one match depend on each other
+    python -m scripts.families variant --family corners_ft --variant recent-level:28   # a variant of a family next to the family and the books
 
 ``evaluate`` fits each competition on the matches already known at the start of every block of ``--step-days`` and predicts the block; it reports
 whether that beats the competition's average, the calibration of the totals lines, and competition by competition where it does. It does not
@@ -24,7 +25,7 @@ import io
 import json
 import sys
 from collections.abc import Sequence
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -33,7 +34,7 @@ import psycopg
 from fbi.core.clock import now as clock_now
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
-from fbi.families import dependence, evaluate, evaluate_halves, history
+from fbi.families import dependence, evaluate, evaluate_halves, history, variants
 from fbi.families import score as scoreboard
 from fbi.families.fit import MIN_TRAIN, OUTCOME_KNOWN_AFTER, Match
 from fbi.market.rules import RULES
@@ -288,6 +289,43 @@ def dependence_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def instant(text: str) -> datetime:
+    """A day or an instant as the command line writes it (``2026-09-25``, ``2026-10-23T12:00``); one without a zone is UTC."""
+    try:
+        when = datetime.fromisoformat(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a day or an instant (2026-09-25, 2026-10-23T12:00)") from None
+    return when if when.tzinfo is not None else when.replace(tzinfo=UTC)
+
+
+def variant_name(text: str) -> str:
+    """A variant as the command line writes it, refused with the way to write one when it is not."""
+    try:
+        return variants.parse(text).name
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from None
+
+
+def variant_command(args: argparse.Namespace) -> int:
+    """Stand the variants of a family next to the family as it is and to the books on the matches of a window (read-only), week by week with only
+    what was known at the start of each (``fbi.families.variants``)."""
+    until = args.until or clock_now() - timedelta(hours=args.wait_hours)
+    since = args.since or until - timedelta(days=args.days)
+    chosen = variants.variants_of(args.variant or [f"{variants.RECENT_LEVEL}:{variants.LEVEL_DAYS}"])
+    try:
+        with psycopg.connect(settings.database.psycopg_url, options="-c default_transaction_read_only=on") as conn:
+            report = variants.run(conn, family=args.family, variants=chosen, start=since, end=until, step_days=args.step_days,
+                                  dispersion_days=args.dispersion_days, min_books=args.min_books, min_ev=args.min_ev)
+            conn.rollback()
+    except ValueError as exc:  # an empty window or a block shorter than a day: said, not a traceback
+        raise SystemExit(f"variant: {exc}") from None
+    text = json.dumps(report, indent=1, default=str)
+    if args.out:
+        Path(args.out).write_text(text + "\n", encoding="utf-8")
+    print(text if args.json else variants.render(report))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="families", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="command", required=True)
@@ -310,6 +348,20 @@ def build_parser() -> argparse.ArgumentParser:
     pd.add_argument("--seed", type=int, default=dependence.SEED, help="seed of the resamples (default %(default)s)")
     pd.add_argument("--top", type=int, default=12, help="pairs of events that depend most, in the text (default %(default)s)")
     pd.add_argument("--json", action="store_true")
+    pv = sub.add_parser("variant", help="a variant of a family set against the family as it is and the books, on the same matches")
+    pv.add_argument("--family", required=True, choices=sorted(variants.specs()), help="the family to read (fitted on one count the books quote)")
+    pv.add_argument("--variant", action="append", type=variant_name, help=f"a variant to read besides the family as it is: '{variants.RECENT_LEVEL}:DAYS' (the means scaled by "
+                                                      f"observed over predicted of the last DAYS days); repeat it for several (default {variants.RECENT_LEVEL}:{variants.LEVEL_DAYS})")
+    pv.add_argument("--days", type=int, default=28, help="kick-offs of the last N days (default %(default)s)")
+    pv.add_argument("--since", type=instant, help="the first kick-off compared, a day or an instant in UTC (replaces --days: to repeat a reading on the same window)")
+    pv.add_argument("--until", type=instant, help="kick-offs before this day or instant, UTC (default: now minus --wait-hours)")
+    pv.add_argument("--wait-hours", type=float, default=30.0, help="leave out the last N hours, until the statistics of the cards have settled (default %(default)s)")
+    pv.add_argument("--step-days", type=int, default=variants.STEP_DAYS, help="days per block: the family is refitted and states at the start of each (default %(default)s)")
+    pv.add_argument("--dispersion-days", type=int, default=variants.DISPERSION_DAYS, help="days before a block the dispersion is measured on (default %(default)s)")
+    pv.add_argument("--min-books", type=int, default=3, help="books a consensus needs to be compared with (default %(default)s)")
+    pv.add_argument("--min-ev", type=float, default=0.03, help="the value the model has to see at the price for a simulated bet (default %(default)s)")
+    pv.add_argument("--out", help="also write the reading (the --json) to this file")
+    pv.add_argument("--json", action="store_true")
     ph = sub.add_parser("halves", help="the bets of the halves derived from the fits of the first and of the second half")
     ph.add_argument("--months", type=int, default=12, help="months of test window (default %(default)s)")
     ph.add_argument("--csv-1h", help="read the first-half goals from this CSV (an 'export' of goals_1h) instead of the database")
@@ -359,6 +411,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return score_command(args)
     if args.command == "dependence":
         return dependence_command(args)
+    if args.command == "variant":
+        return variant_command(args)
     history.columns_of(args.measure)  # refuses a measure a family cannot be trained on, before anything is read
     if args.command == "sql":
         return sql_command(args)

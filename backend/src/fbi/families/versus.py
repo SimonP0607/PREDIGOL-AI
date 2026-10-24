@@ -165,7 +165,8 @@ def read_prices(conn: psycopg.Connection[Any], *, fixtures: Iterable[int], keys:
     return fair, best
 
 
-def _loss(p: float, won: int) -> float:
+def loss(p: float, won: int) -> float:
+    """The log loss of a probability ``p`` given to a yes/no that did (``won`` 1) or did not (0) happen; a probability is kept off 0 and 1."""
     p = min(max(p, 1e-6), 1.0 - 1e-6)
     return -math.log(p if won else 1.0 - p)
 
@@ -182,6 +183,8 @@ class Pair:
     p_market: float
     won: int
     books: int
+    line: Decimal = Decimal(0)
+    selection: str = ""
 
 
 def pairs(graded: Iterable[Graded], fair: Mapping[FairKey, tuple[float, int]], *, min_books: int = MIN_BOOKS) -> list[Pair]:
@@ -194,13 +197,15 @@ def pairs(graded: Iterable[Graded], fair: Mapping[FairKey, tuple[float, int]], *
         for ref, _ in REFERENCES:
             found = fair.get((ref, row.fixture_id, row.key, row.line, row.selection))
             if found is not None and found[1] >= min_books:
-                out.append(Pair(row.model, ref, row.key, row.fixture_id, row.p, found[0], g.won, found[1]))
+                out.append(Pair(row.model, ref, row.key, row.fixture_id, row.p, found[0], g.won, found[1], row.line, row.selection))
     return out
 
 
-def _block(members: Sequence[Pair]) -> dict[str, Any]:
+def block(members: Sequence[Pair]) -> dict[str, Any]:
+    """The numbers of a group of pairs: what each said, what happened, the log losses and their difference with its standard error (clustered
+    by match)."""
     n = len(members)
-    diffs = [_loss(m.p_market, m.won) - _loss(m.p_model, m.won) for m in members]
+    diffs = [loss(m.p_market, m.won) - loss(m.p_model, m.won) for m in members]
     mean = sum(diffs) / n
     by_match: dict[int, float] = defaultdict(float)
     for m, d in zip(members, diffs, strict=True):
@@ -208,8 +213,8 @@ def _block(members: Sequence[Pair]) -> dict[str, Any]:
     se = math.sqrt(sum(v * v for v in by_match.values())) / n
     return {"n": n, "fixtures": len(by_match), "mean_p_model": sum(m.p_model for m in members) / n,
             "mean_p_market": sum(m.p_market for m in members) / n, "observed": sum(m.won for m in members) / n,
-            "log_loss_model": sum(_loss(m.p_model, m.won) for m in members) / n,
-            "log_loss_market": sum(_loss(m.p_market, m.won) for m in members) / n,
+            "log_loss_model": sum(loss(m.p_model, m.won) for m in members) / n,
+            "log_loss_market": sum(loss(m.p_market, m.won) for m in members) / n,
             "market_minus_model": mean, "se": se, "mean_books": sum(m.books for m in members) / n}
 
 
@@ -224,8 +229,8 @@ def versus(graded: Iterable[Graded], fair: Mapping[FairKey, tuple[float, int]], 
         by_key[(p.model, p.ref, p.key)].append(p)
     models: dict[str, Any] = {}
     for model, refs in sorted(by_model.items()):
-        entry: dict[str, Any] = {ref: _block(members) for ref, members in sorted(refs.items())}
-        entry["by_key"] = [{"key": key, "ref": ref, **_block(members)} for (m, ref, key), members in sorted(by_key.items()) if m == model]
+        entry: dict[str, Any] = {ref: block(members) for ref, members in sorted(refs.items())}
+        entry["by_key"] = [{"key": key, "ref": ref, **block(members)} for (m, ref, key), members in sorted(by_key.items()) if m == model]
         models[model] = entry
     return {"min_books": min_books, "references": [r for r, _ in REFERENCES], "models": models}
 

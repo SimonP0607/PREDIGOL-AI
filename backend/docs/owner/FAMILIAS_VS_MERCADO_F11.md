@@ -135,6 +135,8 @@ python -m scripts.families score --min-books 4        # exigir más casas para e
 
 El criterio del plan para que una familia decida en sombra (al menos 300 apuestas simuladas y valor de cierre no negativo) lo mide el mismo marcador, debajo de esta comparación, con los pronósticos guardados: ver `CRITERIO_FAMILIAS_F11.md`.
 
+Para probar una idea sobre una familia contra el mercado sin esperar semanas de pronósticos guardados (como la corrección de nivel de la sección 7), está `python -m scripts.families variant`: ver `VARIANTES_VS_MERCADO_F12.md`, que repite la prueba de la sección 7 con la herramienta permanente y la extiende a tarjetas y amarillas.
+
 Solo lee (conexión de solo lectura, 0 peticiones al proveedor, 0 IA). Se califican los partidos jugados en los últimos días, dejando pasar 30 horas (las estadísticas de tarjetas tardan en asentarse). **Las primeras cifras con pronósticos reales saldrán unas dos semanas después del despliegue**; se propone mirarlas cada semana.
 
 ## 10. Límites de esta medición
@@ -145,4 +147,4 @@ Solo lee (conexión de solo lectura, 0 peticiones al proveedor, 0 IA). Se califi
 - El último precio del mercado ya conoce las alineaciones; el modelo no. A 24 horas la comparación es más justa y también la menos precisa.
 - Una línea por partido (la principal). Con todas las líneas, los córners dan los mismos signos; las tarjetas, con tan pocos partidos, cambian de signo dentro del error.
 - El 25-sep es el principio del reloj de precios; no hay precios anteriores.
-- Esta medición se hizo a mano el 24-oct con una herramienta provisional; la herramienta permanente (`score`) la mide por sí misma a partir de ahora.
+- Esta medición se hizo a mano el 24-oct con una herramienta provisional; la herramienta permanente (`score`) la mide por sí misma a partir de ahora, y la prueba de la sección 7 la repite `variant` (`VARIANTES_VS_MERCADO_F12.md`).

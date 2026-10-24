@@ -166,7 +166,8 @@ class FamilyReport:
 
 # ── the pure part ────────────────────────────────────────────────────────────────────────────────────────────────
 
-def _teams(matches: Sequence[Match]) -> int:
+def teams(matches: Sequence[Match]) -> int:
+    """How many sides play the matches of a competition (a competition with more than ``MAX_TEAMS`` is never fitted)."""
     return len({t for m in matches for t in (m.home_id, m.away_id)})
 
 
@@ -183,7 +184,7 @@ def out_of_sample(by_competition: dict[int, list[Match]], *, measure: str, at: d
     mh: list[float] = []
     ma: list[float] = []
     for matches in by_competition.values():
-        if _teams(matches) > MAX_TEAMS:
+        if teams(matches) > MAX_TEAMS:
             continue
         try:
             fitted = fit_family(matches, measure=measure, at=start, xi=xi, penalty=penalty)
@@ -250,7 +251,7 @@ def _referees(conn: psycopg.Connection[Any], ids: list[int], at: datetime) -> di
         return {int(r[0]): int(r[1]) for r in cur.fetchall()}
 
 
-def _available(conn: psycopg.Connection[Any]) -> frozenset[str]:
+def available_keys(conn: psycopg.Connection[Any]) -> frozenset[str]:
     """The keys of the catalogue (``market.markets``): a family never invents one."""
     with conn.cursor() as cur:
         cur.execute("SELECT key FROM market.markets")
@@ -312,7 +313,7 @@ def _run_spec(conn: psycopg.Connection[Any], spec: Spec, targets: dict[int, list
         fits: list[Fitted] = []
         for measure in spec.measures:
             matches = loaded[measure].get(competition_id, [])
-            if _teams(matches) > MAX_TEAMS:
+            if teams(matches) > MAX_TEAMS:
                 report.competitions_skipped["too many sides"] += 1
                 break
             try:
@@ -379,7 +380,7 @@ def write_family_forecasts(conn: psycopg.Connection[Any], *, at: datetime, code_
         cur.execute(FIXTURES_SQL, {"ids": ids})
         for r in cur.fetchall():
             targets[int(r["competition_id"])].append((int(r["id"]), int(r["home_team_id"]), int(r["away_team_id"])))
-    available = _available(conn)
+    available = available_keys(conn)
     stored = _stored(conn, ids, at)
     referees = _referees(conn, ids, at) if any(s.referee_kappa for s in specs) else {}
     for spec in specs:

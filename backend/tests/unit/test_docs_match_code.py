@@ -28,7 +28,7 @@ import json
 import re
 import statistics
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -37,7 +37,7 @@ import pytest
 
 from fbi.ai import learning, pm_narratives, usage
 from fbi.ai.config import AiSettings
-from fbi.families import dependence
+from fbi.families import bets, dependence, variants
 from fbi.intel import calibration, decision, memory, postmortem, score, stake
 from fbi.market import closing_reference, closing_value
 
@@ -420,7 +420,7 @@ def test_the_guide_of_the_criterion_for_a_family_says_what_the_code_does() -> No
     books behind a price, the one definition of the closing-line value, the three verdicts it prints and the options of the command that repeats it."""
     from scripts import families as cli
 
-    from fbi.families import bets, versus
+    from fbi.families import versus
 
     doc = read_doc("owner", "CRITERIO_FAMILIAS_F11.md")
     assert f"**al menos {bets.MIN_BETS} apuestas simuladas**" in doc and "(el texto dice cuántas faltan)" in doc
@@ -853,3 +853,463 @@ def test_the_guide_of_the_dependence_between_the_families_says_what_was_measured
     assert phi[("corners.home_more", "cards.away_more")] > 0 and phi[("corners.away_more", "cards.home_more")] > 0
     assert phi[("goals.home_more", "cards.home_more")] < 0 and phi[("goals.away_more", "cards.away_more")] < 0, "the side that wins has fewer cards"
     assert phi[("goals.btts", "cards.over_4_5")] > 0, "matches with goals from both sides have more cards"
+
+
+# ── Plan F12.5: a variant of a family against the market ──────────────────────
+
+STORED_VARIANTS = DOCS / "owner" / "VARIANTES_VS_MERCADO_F12_resultado.json"
+VARIANTS_GUIDE = "VARIANTES_VS_MERCADO_F12.md"
+FAMILIES_READ = ("corners_ft", "cards_lines_ft", "yellow_ft")
+"""The families of the first reading, in the order the guide gives them."""
+SUBJECT_ROWS = {variants.TOTAL: "total del partido", variants.HOME: "equipo local", variants.AWAY: "equipo visitante",
+                variants.RESULT: "quién tiene más (1X2)"}
+"""What the guide's tables call what a comparison is about."""
+SCOPE_OF = {variants.TOTAL: variants.MAIN, variants.HOME: variants.MAIN, variants.AWAY: variants.MAIN, variants.RESULT: variants.ALL}
+"""The guide's tables read one line per match where the market gives one (its main line); who has more has no main line: every selection is a row."""
+MOMENT_ROWS = {"close": "último precio", "h24": "24 h antes"}
+
+
+def stored_variants() -> dict[str, Any]:
+    """The first real readings of the variants (the ``--out`` of the command, one per family), kept next to the guide."""
+    if not STORED_VARIANTS.is_file():
+        pytest.skip(f"no {STORED_VARIANTS.name} next to the code")
+    result: dict[str, Any] = json.loads(STORED_VARIANTS.read_text(encoding="utf-8"))
+    return result
+
+
+def variant_words(name: str) -> str:
+    """A variant as the guide's tables name it: 'as-is' -> 'tal cual', 'recent-level:28' -> 'corrección de 28 días'."""
+    return "tal cual" if name == variants.AS_IS else f"corrección de {variants.parse(name).level_days} días"
+
+
+def with_error(x: float, se: float, digits: int) -> str:
+    """A figure and its standard error as the guide writes them: '-0,0038 ± 0,0032'."""
+    return f"{spanish(x, digits, sign=True)} ± {spanish(se, digits)}"
+
+
+def points(x: float) -> str:
+    """A fraction as signed percentage points with one decimal and the percent sign: 0.1603 -> '+16,0 %'."""
+    return f"{spanish(x * 100, 1, sign=True)} %"
+
+
+def points_with_error(x: float, se: float) -> str:
+    """'-1,0 % ± 0,3 %': a value and its standard error, both in percentage points."""
+    return f"{points(x)} ± {spanish(se * 100, 1)} %"
+
+
+def blocks_of(report: dict[str, Any], subject: str, ref: str) -> list[dict[str, Any]] | None:
+    """What each variant (the family as it is first) says of ``subject`` at a moment, or None when the books gave nothing for it. The variants are
+    read on the same rows: the guide's tables give one number of matches for all."""
+    blocks = [v["versus"].get(ref, {}).get(subject, {}).get(SCOPE_OF[subject]) for v in report["variants"].values()]
+    if blocks[0] is None:
+        return None
+    for block in blocks:
+        assert block is not None and (block["n"], block["fixtures"]) == (blocks[0]["n"], blocks[0]["fixtures"]), f"{subject} {ref}: not read on the same rows"
+    return [b for b in blocks if b is not None]
+
+
+def head_of(first: str, names: list[str]) -> str:
+    return f"| {first} | Momento | Partidos | " + " | ".join(variant_words(n).capitalize() for n in names) + " |"
+
+
+def gap_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """Market minus model of each variant, on the main line of each match: the header and the rows of the guide's table."""
+    rows = []
+    for subject, label in SUBJECT_ROWS.items():
+        for ref in report["criterion"]["references"]:
+            blocks = blocks_of(report, subject, ref)
+            if blocks is not None:
+                rows.append(f"| {label} | {MOMENT_ROWS[ref]} | {thousands(blocks[0]['fixtures'])} | "
+                            + " | ".join(with_error(b["market_minus_model"], b["se"], 4) for b in blocks) + " |")
+    return head_of("Mercado", list(report["variants"])), rows
+
+
+def signal_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """The extra signal of each variant: how much weight the model deserves on top of the market."""
+    rows = []
+    for subject, label in SUBJECT_ROWS.items():
+        for ref in report["criterion"]["references"]:
+            blocks = blocks_of(report, subject, ref)
+            if blocks is not None:
+                cells = [with_error(b["signal"]["coef"], b["signal"]["se"], 2) if b["signal"] else "n/d" for b in blocks]
+                rows.append(f"| {label} | {MOMENT_ROWS[ref]} | {thousands(blocks[0]['fixtures'])} | " + " | ".join(cells) + " |")
+    return head_of("Señal extra de", list(report["variants"])), rows
+
+
+def saves_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """What each variant saves against the family as it is, on the very same rows."""
+    names = list(report["paired"])
+    rows = []
+    for subject, label in SUBJECT_ROWS.items():
+        for ref in report["criterion"]["references"]:
+            found = [report["paired"][n].get(ref, {}).get(subject, {}).get(SCOPE_OF[subject]) for n in names]
+            if found and found[0] is not None and found[0]["n"]:
+                rows.append(f"| {label} | {MOMENT_ROWS[ref]} | {thousands(found[0]['fixtures'])} | "
+                            + " | ".join(with_error(p["gain"], p["se"], 4) for p in found if p is not None) + " |")
+    return head_of("Ahorra en", names), rows
+
+
+def levels_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """The multiplier of each block, home and away, for every variant that corrects the level."""
+    corrected = {name: v["levels"] for name, v in report["variants"].items() if v["level_days"]}
+    head = "| Bloque desde | " + " | ".join(f"Local ({variants.parse(n).level_days} días) | Visitante ({variants.parse(n).level_days} días)" for n in corrected) + " |"
+    blocks = sorted({lv["at"] for levels in corrected.values() for lv in levels})
+    rows = []
+    for at in blocks:
+        cells = []
+        for levels in corrected.values():
+            lv = next((x for x in levels if x["at"] == at), None)
+            cells += [f"{TIMES}{spanish(lv['home'], 3)}", f"{TIMES}{spanish(lv['away'], 3)}"] if lv else ["", ""]
+        rows.append(f"| {day_es(at)} | " + " | ".join(cells) + " |")
+    return head, rows
+
+
+BETS_HEAD = ("| Variante | Apuestas | Partidos | Faltan | Creía el modelo | Las casas ese día | Valor de cierre | Rendimiento | Veredicto |")
+
+
+def bets_table(report: dict[str, Any]) -> tuple[str, list[str]]:
+    """The plan's criterion for each variant: its simulated bets and the verdict (no row for one that took none)."""
+    rows = []
+    for name, m in report["bets"]["models"].items():
+        if m["n"]:
+            rows.append(f"| {variant_words(name)} | {thousands(m['n'])} | {thousands(m['fixtures'])} | {thousands(m['needed'])} | {points(m['believed'])} | "
+                        f"{points(m['at_pick'])} | {points_with_error(m['clv'], m['clv_se'])} | {points_with_error(m['return'], m['return_se'])} | "
+                        f"`{bets.WORDS[m['verdict']]}` |")
+    return BETS_HEAD, rows
+
+
+TABLES = {"gap": gap_table, "signal": signal_table, "saves": saves_table, "levels": levels_table, "bets": bets_table}
+
+
+HEADINGS = {"corners_ft": "## 5. Primera lectura: córners", "cards_lines_ft": "## 6. Primera lectura: tarjetas", "yellow_ft": "## 7. Primera lectura: amarillas"}
+"""The sections of the guide where each family's reading is, in the order of ``FAMILIES_READ``."""
+AS_IS, LEVEL_28, LEVEL_56 = variants.AS_IS, "recent-level:28", "recent-level:56"
+
+
+def group(report: dict[str, Any], variant: str, ref: str, subject: str) -> dict[str, Any]:
+    """What a variant says of ``subject`` at a moment: the main line, or every selection of who has more."""
+    found: dict[str, Any] = report["variants"][variant]["versus"][ref][subject][SCOPE_OF[subject]]
+    return found
+
+
+def saving(report: dict[str, Any], variant: str, ref: str, subject: str) -> dict[str, Any]:
+    """What a variant saves against the family as it is on the very same rows."""
+    found: dict[str, Any] = report["paired"][variant][ref][subject][SCOPE_OF[subject]]
+    return found
+
+
+def gap_words(report: dict[str, Any], variant: str, ref: str, subject: str) -> str:
+    b = group(report, variant, ref, subject)
+    return with_error(b["market_minus_model"], b["se"], 4)
+
+
+def saving_words(report: dict[str, Any], variant: str, ref: str, subject: str) -> str:
+    q = saving(report, variant, ref, subject)
+    return with_error(q["gain"], q["se"], 4)
+
+
+def sigmas(report: dict[str, Any], variant: str, ref: str, subject: str) -> float:
+    """How many standard errors from zero the gap to the market is."""
+    b = group(report, variant, ref, subject)
+    return abs(b["market_minus_model"]) / b["se"]
+
+
+def multipliers(report: dict[str, Any], variant: str, side: str) -> list[float]:
+    """What the correction of a variant multiplied the means of ``side`` by, block by block."""
+    return [lv[side] for lv in report["variants"][variant]["levels"]]
+
+
+def bet_of(report: dict[str, Any], variant: str) -> dict[str, Any]:
+    found: dict[str, Any] = report["bets"]["models"][variant]
+    return found
+
+
+def test_the_guide_of_the_variants_says_what_the_code_does() -> None:
+    """Plan F12.5: the guide of the variants of a family against the market - the block, the memory of the correction and the least it needs, the
+    dispersion, the main line and its band, the books and the criterion it reuses, the test it points to and the options of the command that
+    repeats it (every command it shows is one the parser accepts)."""
+    import shlex
+
+    from scripts import families as cli
+
+    from fbi.families import forecast, versus
+    from fbi.families.fit import OUTCOME_KNOWN_AFTER
+
+    from . import test_families_variants as variant_tests
+
+    doc = read_doc("owner", VARIANTS_GUIDE)
+    flat = " ".join(doc.split())
+    assert variants.VERSION == "variants-v1" and variants.STEP_DAYS == 7 and "Cada 7 días (un «bloque»)" in flat
+    assert hours(OUTCOME_KNOWN_AFTER) == 6 and f"(6 horas después de su inicio) y solo si hay al menos {variants.MIN_PAST} partidos" in flat and variants.MIN_PAST == 200
+    assert (variants.MIN_LEVEL_DAYS, variants.MAX_LEVEL_DAYS, variants.LEVEL_DAYS) == (7, 365, 28)
+    assert (f"N va de {variants.MIN_LEVEL_DAYS} a {variants.MAX_LEVEL_DAYS} días y, si no se pide otra, se lee `{variants.RECENT_LEVEL}:{variants.LEVEL_DAYS}`") in flat
+    assert variants.DISPERSION_DAYS == forecast.DISPERSION_DAYS == 120 and f"se mide en los {variants.DISPERSION_DAYS} días anteriores a cada bloque" in flat
+    assert forecast.MIN_DISPERSION_MATCHES == 300 and f"si no hay {forecast.MIN_DISPERSION_MATCHES} partidos con los que medirla, no se declara nada" in flat
+    low, high = variants.MAIN_BAND
+    assert f"entre el {low * 100:g} % y el {high * 100:g} % (en un empate, la línea más baja)" in flat
+    assert versus.MIN_BOOKS == 3 and f"con {versus.MIN_BOOKS} casas o más, al último precio antes del inicio y {hours(versus.REFERENCES[1][1]):g} horas antes" in flat
+    assert [name for name, _ in versus.REFERENCES] == ["close", "h24"]
+    assert bets.MIN_BETS == 300 and bets.MIN_EV == 0.03 and bets.PICK_REF == "h24"
+    assert f"declarados {hours(bets.PICK_LEAD):g} horas o más antes del inicio y cuando el modelo ve un valor de al menos {bets.MIN_EV * 100:g} %" in flat
+    assert f"Con menos de {variants.MIN_SIGNAL} filas no se calcula" in flat and variants.MIN_SIGNAL == 30
+    for printed in bets.WORDS.values():
+        assert f"`{printed}`" in doc, f"the guide leaves out the verdict {printed!r}"
+    assert "(`variants-v1`)" in doc, "the guide names the version of the reading the stored files were made with"
+    # the families that can be read, and what the reading never does
+    assert tuple(sorted(variants.specs())) == tuple(sorted(FAMILIES_READ))
+    for family in FAMILIES_READ:
+        assert f"`{family}`" in doc
+    assert "Los goles por mitad se ajustan con dos y no se leen aquí" in flat and "goals_halves" not in variants.specs()
+    assert "Solo lee (conexión de solo lectura, 0 peticiones al proveedor, 0 IA)" in flat
+    # the test it points to exists
+    assert hasattr(variant_tests, "test_no_number_of_a_week_changes_when_what_happens_from_that_week_on_does")
+    assert "(`test_no_number_of_a_week_changes_when_what_happens_from_that_week_on_does`)" in doc
+    assert hasattr(variant_tests, "test_the_two_runs_of_the_same_data_are_the_same_reading") and "Otra prueba comprueba que dos lecturas de los mismos datos dan lo mismo" in flat
+    # the options: what the command does when they are not given
+    parser = cli.build_parser()
+    args = parser.parse_args(["variant", "--family", "corners_ft"])
+    assert (args.days, args.wait_hours, args.step_days, args.dispersion_days, args.min_books, args.min_ev) == (
+        28, 30.0, variants.STEP_DAYS, variants.DISPERSION_DAYS, versus.MIN_BOOKS, bets.MIN_EV)
+    assert args.variant is None and args.since is None and args.until is None and args.out is None and args.json is False
+    for said in ("`--days` (por omisión 28)", "(por omisión 30:", "`--step-days` (por omisión 7)", "`--dispersion-days` (por omisión 120)",
+                 "`--min-books` (por omisión 3)", "`--min-ev` (por omisión 0,03)"):
+        assert said in flat, f"the guide leaves out {said!r}"
+    with pytest.raises(SystemExit):
+        parser.parse_args(["variant"])  # --family is required
+    with pytest.raises(SystemExit):
+        parser.parse_args(["variant", "--family", "goals_halves"])
+    for option in ("--family", "--variant", "--days", "--since", "--until", "--wait-hours", "--step-days", "--dispersion-days", "--min-books",
+                   "--min-ev", "--out", "--json"):
+        assert f"`{option}`" in doc, f"the guide leaves out {option}"
+    # every command the guide shows is one the parser accepts, with the meaning the guide gives it
+    block = doc.split("```")[1]
+    commands = [line.split("#")[0].strip() for line in block.splitlines() if line.startswith("python -m scripts.families variant")]
+    assert len(commands) == 4
+    parsed = [parser.parse_args(shlex.split(command)[3:]) for command in commands]
+    assert parsed[0].family == "corners_ft" and parsed[0].variant is None
+    assert parsed[1].variant == [f"{variants.RECENT_LEVEL}:28", f"{variants.RECENT_LEVEL}:56"]
+    assert parsed[2].family == "cards_lines_ft" and parsed[2].since == datetime(2026, 9, 25, tzinfo=UTC) and parsed[2].until == datetime(2026, 10, 23, 12, tzinfo=UTC)
+    assert parsed[2].out == "lectura.json" and parsed[3].json is True
+    # what it points to, and what points to it
+    for guide in ("FAMILIAS_VS_MERCADO_F11.md", "CRITERIO_FAMILIAS_F11.md", "PROMOCIONES_F12.md", "VARIANTES_VS_MERCADO_F12_resultado.json"):
+        assert (DOCS / "owner" / guide).is_file() and f"`{guide}`" in doc, guide
+    assert f"`{VARIANTS_GUIDE}`" in read_doc("owner", "FAMILIAS_VS_MERCADO_F11.md"), "the guide of the comparison points to this one"
+    assert "python -m scripts.hypotheses register --confirm" in doc and "`fbi/research/hypotheses.py`" in doc
+
+
+def test_the_stored_readings_of_the_variants_are_the_codes_own_arithmetic() -> None:
+    """Plan F12.5: the readings that the guide quotes are held to the code - the criterion they were made with, the window the code would plan, the
+    variants asked for, the gap to the market being the difference of the two log losses, the market and what happened being the same for every
+    variant, a variant's saving being the difference of the two models' log losses on the same rows, and every verdict being what the code says of
+    the bets stored (so a change in the criterion, the window or the arithmetic makes the stored readings, and the guide built on them, go stale
+    loudly)."""
+    import math
+
+    from fbi.families import forecast, versus
+
+    stored = stored_variants()
+    assert list(stored) == list(FAMILIES_READ)
+    for family, report in stored.items():
+        spec = variants.spec_of(family)
+        assert report["version"] == variants.VERSION and report["family"] == family and report["measure"] == spec.measures[0], family
+        assert report["params"] == {"xi": spec.xi, "penalty": spec.penalty, "referee_kappa": spec.referee_kappa}
+        c = report["criterion"]
+        assert c == {"min_books": versus.MIN_BOOKS, "min_ev": bets.MIN_EV, "min_bets": bets.MIN_BETS, "dispersion_days": variants.DISPERSION_DAYS,
+                     "min_dispersion": forecast.MIN_DISPERSION_MATCHES, "min_past": variants.MIN_PAST, "main_band": list(variants.MAIN_BAND),
+                     "pick_lead_hours": hours(bets.PICK_LEAD), "references": [name for name, _ in versus.REFERENCES]}, family
+        # the variants asked for, and the window the code plans for them
+        names = list(report["variants"])
+        assert names == [AS_IS, LEVEL_28, LEVEL_56] and report["reference"] == AS_IS and list(report["paired"]) == names[1:]
+        start, end = (datetime.fromisoformat(report["window"][k]) for k in ("start", "end"))
+        planned = variants.plan(start, end, step_days=variants.STEP_DAYS, burn_in_days=variants.DISPERSION_DAYS + 56)
+        assert report["window"] == {"start": start.isoformat(), "end": end.isoformat(), "first_block": planned.first.isoformat(),
+                                    "step_days": variants.STEP_DAYS}, family
+        assert report["window"] == stored[FAMILIES_READ[0]]["window"], "the three families are read on the same window"
+        reference = report["variants"][AS_IS]
+        for name, v in report["variants"].items():
+            days = variants.parse(name).level_days
+            assert v["level_days"] == days and v["matches"] == reference["matches"] > 0 and v["without_dispersion"] == 0
+            assert v["corrected_matches"] == (v["matches"] if days else 0) and bool(v["levels"]) == bool(days)
+            for lv in v["levels"]:
+                at = datetime.fromisoformat(lv["at"])
+                assert start <= at < end and (at - planned.first) % timedelta(days=variants.STEP_DAYS) == timedelta(0), "a level is stated at the start of a block"
+                assert lv["home"] > 0 and lv["away"] > 0 and lv["matches"] >= variants.MIN_PAST
+            for spread in v["dispersion"]:
+                assert spread["matches"] >= c["min_dispersion"] and min(spread["home"], spread["away"], spread["total"]) >= 0
+            if days:
+                assert [lv["at"] for lv in v["levels"]] == [lv["at"] for lv in report["variants"][LEVEL_28]["levels"]], "every correction is stated in the same blocks"
+            for ref, by_subject in v["versus"].items():
+                assert ref in c["references"]
+                for subject, by_scope in by_subject.items():
+                    assert subject in variants.SUBJECTS
+                    for scope, b in by_scope.items():
+                        assert scope in variants.SCOPES
+                        assert b["market_minus_model"] == pytest.approx(b["log_loss_market"] - b["log_loss_model"], abs=1e-12), f"{family} {name} {ref} {subject}"
+                        assert 1 <= b["fixtures"] <= b["n"] and b["se"] > 0 and b["mean_books"] >= c["min_books"]
+                        assert 0 < b["mean_p_model"] < 1 and 0 < b["mean_p_market"] < 1 and 0 <= b["observed"] <= 1
+                        assert scope != variants.MAIN or b["n"] == b["fixtures"], "one row per match on the main line"
+                        sig = b["signal"]
+                        assert sig is None or (math.isfinite(sig["coef"]) and sig["se"] > 0 and math.isfinite(sig["market_slope"]))
+                        # the market and what happened do not depend on the variant: only the model's probability does
+                        base = reference["versus"][ref][subject][scope]
+                        for same in ("n", "fixtures", "mean_p_market", "observed", "log_loss_market", "mean_books"):
+                            assert b[same] == pytest.approx(base[same], abs=1e-12), f"{family} {name} {ref} {subject} {scope}: {same}"
+        # a variant against the family as it is, on the very same rows
+        for name, tree in report["paired"].items():
+            for ref, by_subject in tree.items():
+                for subject, by_scope in by_subject.items():
+                    for scope, p in by_scope.items():
+                        base = reference["versus"][ref][subject][scope]
+                        mine = report["variants"][name]["versus"][ref][subject][scope]
+                        assert p["n"] == base["n"] == mine["n"] and p["fixtures"] == base["fixtures"] and p["se"] > 0
+                        assert p["gain"] == pytest.approx(base["log_loss_model"] - mine["log_loss_model"], abs=1e-12), f"{family} {name} {ref} {subject} {scope}"
+        # the simulated bets and the verdicts
+        simulated = report["bets"]
+        assert simulated["criterion"] == {"min_bets": bets.MIN_BETS, "min_ev": bets.MIN_EV, "min_books": versus.MIN_BOOKS, "pick": bets.PICK_REF,
+                                          "close": bets.CLOSE_REF}
+        assert list(simulated["models"]) == names
+        for m in simulated["models"].values():
+            assert m["verdict"] == bets.verdict(m["n"], m["clv"]) and m["needed"] == max(0, bets.MIN_BETS - m["n"])
+            assert m["taken"] == m["n"] + m["no_closing_line"]
+            if m["n"]:
+                assert sum(x["n"] for x in m["by_key"]) == m["n"] and m["fixtures"] <= m["n"] and m["believed"] >= bets.MIN_EV
+                assert m["mean_odds"] > 1 and 0 < m["hit_rate"] < 1 and m["clv_se"] > 0 and m["return_se"] > 0
+        assert report["left_out"] == {"pushed": 0, "ungradable": 0}
+        # the referee is part of the means of the families that state with it, and only of those
+        history = report["history"]
+        assert (history["window_with_referee"] > 0) == bool(spec.referee_kappa) and history["window_with_referee"] <= reference["matches"]
+        assert history["competitions"] > 0 and history["walk_forward_rows"] >= reference["matches"]
+        # the text of the command prints what is stored
+        printed = variants.render(report)
+        assert printed.startswith(f"{family} ({variants.VERSION}): the family and its variants set against the books")
+        for name in names:
+            assert f"  {name}: {reference['matches']} matches" in printed
+
+
+def test_the_guide_of_the_variants_says_what_was_measured() -> None:
+    """Plan F12.5: every figure of the guide - the window and the matches, the tables of each family and what is said of them in words - is the one
+    of the stored readings, written the way the guide writes it (decimal comma, thousands with a dot), and what it says about the direction of the
+    results (the total of corners level with the market, the sides not, the criterion not met, the cards corrected the other way, the yellows with
+    nothing to compare) is true of those numbers."""
+    doc = read_doc("owner", VARIANTS_GUIDE)
+    flat = " ".join(doc.split())
+    f11 = " ".join(read_doc("owner", "FAMILIAS_VS_MERCADO_F11.md").split())
+    stored = stored_variants()
+    corners, cards, yellow = (stored[family] for family in FAMILIES_READ)
+    # the window: the same for the three, and the one the prices begin at
+    w = corners["window"]
+    window = f"del {day_es(w['start'])} al {day_es(w['end'])} a las {w['end'][11:16]} UTC"
+    assert flat.count(window) == 2 and datetime.fromisoformat(w["start"]) == datetime(2026, 9, 25, tzinfo=UTC)
+    assert "guarda desde el 25 de septiembre" in flat and datetime.fromisoformat(w["end"]) - datetime.fromisoformat(w["start"]) > timedelta(days=28)
+    assert f"**Cuatro semanas de precios** ({window})" in flat and "4 semanas" in flat
+    # the tables of each family are the stored numbers, and the guide has no other table
+    for family, report in stored.items():
+        section = section_of(doc, HEADINGS[family])
+        shown = 0
+        for name, build in TABLES.items():
+            head, rows = build(report)
+            if rows:
+                assert table_rows(section, head) == rows, f"{family}: the table {name!r} of the guide is not the stored reading"
+                shown += 1
+            else:
+                assert head not in section, f"{family}: the guide has a table {name!r} the reading does not"
+        assert sum(1 for line in section.splitlines() if line.startswith("|---")) == shown, f"{family}: a table of the guide that nothing checks"
+    # the headline of each reading, that the numbers checked below it bear out
+    for lead in ("**El total queda a la par del mercado.**", "**La corrección sí mejora a la familia tal cual, pero solo la lleva hasta el mercado.**",
+                 "**Por equipo no se cierra.**", "**Dar 28 o 56 días da lo mismo.**", "**Las apuestas pasan de 300 pero no el valor de cierre.**",
+                 "**Una cosa que mirar, no un hallazgo:**", "**La corrección va en sentido contrario al de córners:**", "**Acerca el total al mercado:**",
+                 "**Faltan apuestas:**", "**No hay con qué compararlas.**", "**Ninguna variante cumple el criterio del plan.**",
+                 "**Ninguna variante tiene valor demostrado.**", "**La corrección de nivel es un arreglo, no una ventaja.**"):
+        assert lead in doc, f"the guide no longer says {lead}"
+    # § 1 and § 5: corners
+    gap = {v: gap_words(corners, v, "close", "total") for v in (AS_IS, LEVEL_28, LEVEL_56)}
+    gap24 = {v: gap_words(corners, v, "h24", "total") for v in (AS_IS, LEVEL_28, LEVEL_56)}
+    assert f"(mercado - modelo pasa de {gap[AS_IS]} a {gap[LEVEL_28]} al cierre) y mejora a la familia tal cual (ahorra {saving_words(corners, LEVEL_28, 'close', 'total')} por fila)" in flat
+    assert f"el local sigue {spanish(sigmas(corners, LEVEL_28, 'close', 'home'), 1)} errores estándar por debajo del mercado" in flat
+    first = group(corners, AS_IS, "close", "total")
+    assert (f"{thousands(corners['variants'][AS_IS]['matches'])} partidos con pronóstico, {thousands(first['fixtures'])} de ellos con una línea principal "
+            f"del total al cierre y {thousands(group(corners, AS_IS, 'h24', 'total')['fixtures'])} a 24 horas") in flat
+    assert (f"Tal cual, mercado - modelo es {gap[AS_IS]} al cierre ({spanish(sigmas(corners, AS_IS, 'close', 'total'), 1)} errores estándar: el mercado "
+            "va por delante, sin que se distinga de cero);") in flat
+    assert 0 < sigmas(corners, AS_IS, "close", "total") < 2 and group(corners, AS_IS, "close", "total")["market_minus_model"] < 0
+    assert (f"con la corrección de 28 días queda en {gap[LEVEL_28]} y con la de 56 en {gap[LEVEL_56]}, y a 24 horas en {gap24[LEVEL_28]} y {gap24[LEVEL_56]}") in flat
+    for variant in (LEVEL_28, LEVEL_56):
+        for ref in ("close", "h24"):
+            b = group(corners, variant, ref, "total")
+            assert abs(b["market_minus_model"]) < b["se"], f"the total of corners is level with the market ({variant}, {ref})"
+    # ... and it is what the hand-made measurement of F11 gave, within the rounding of two windows that do not coincide
+    hand_before, hand_after = "-0,0040 ± 0,0032", "-0,0006 ± 0,0030"
+    assert f"(de {hand_before} a {hand_after} con 1.268 partidos)" in flat and hand_before in f11 and hand_after in f11 and "1.268" in f11
+    assert abs(first["market_minus_model"] + 0.0040) < 0.0005 and abs(group(corners, LEVEL_28, "close", "total")["market_minus_model"] + 0.0006) < 0.0005
+    assert f"(aquí {thousands(first['fixtures'])})" in flat and first["fixtures"] != 1268
+    gains = {(v, s): saving(corners, v, "close", s) for v in (LEVEL_28, LEVEL_56) for s in ("total", "away", "home")}
+    assert (f"En el total ahorra {saving_words(corners, LEVEL_28, 'close', 'total')} por fila al cierre con 28 días ({saving_words(corners, LEVEL_56, 'close', 'total')} con 56) "
+            f"y en el visitante {saving_words(corners, LEVEL_28, 'close', 'away')} ({saving_words(corners, LEVEL_56, 'close', 'away')}); "
+            f"en el local no ahorra nada ({saving_words(corners, LEVEL_28, 'close', 'home')})") in flat
+    assert all(gains[(v, s)]["gain"] > 0 for v in (LEVEL_28, LEVEL_56) for s in ("total", "away")), "the correction saves on the total and on the visitor"
+    assert abs(gains[(LEVEL_28, "home")]["gain"]) < gains[(LEVEL_28, "home")]["se"], "and nothing on the home side"
+    assert (f"El local sigue en {gap_words(corners, LEVEL_28, 'close', 'home')} al cierre con 28 días "
+            f"({spanish(sigmas(corners, LEVEL_28, 'close', 'home'), 1)} errores estándar por debajo del mercado) y «quién tiene más córners» en "
+            f"{gap_words(corners, LEVEL_28, 'close', 'result')} ({spanish(sigmas(corners, LEVEL_28, 'close', 'result'), 1)})") in flat
+    assert sigmas(corners, LEVEL_28, "close", "home") > 3 and sigmas(corners, LEVEL_28, "close", "result") > 2, "by side the market is still ahead"
+    assert all(group(corners, v, "close", s)["market_minus_model"] < 0 for v in (AS_IS, LEVEL_28, LEVEL_56) for s in ("home", "away", "result"))
+    home, away = multipliers(corners, LEVEL_28, "home"), multipliers(corners, LEVEL_28, "away")
+    assert (f"multiplicó las medias del local por entre {spanish(min(home), 3)} y {spanish(max(home), 3)} y las del visitante por entre "
+            f"{spanish(min(away), 3)} y {spanish(max(away), 3)}, hasta {spanish(max(away), 3)} en el último bloque") in flat
+    assert min(home + away) > 1.0 and away[-1] == max(away) and away[-3] < away[-2] < away[-1], "the visitor, more and more short from the block of the 9th"
+    assert [lv["at"][:10] for lv in corners["variants"][LEVEL_28]["levels"]][-3] == "2026-10-09"
+    assert "4,5 % corto entre el 18 de septiembre y el 16 de octubre" in flat and "4,5 % corto" in f11 and "1,045" in f11
+    assert (f"(total al cierre {gap[LEVEL_28]} frente a {gap[LEVEL_56]})") in flat
+    assert abs(group(corners, LEVEL_28, "close", "total")["market_minus_model"] - group(corners, LEVEL_56, "close", "total")["market_minus_model"]) < group(corners, LEVEL_28, "close", "total")["se"]
+    made = {v: bet_of(corners, v) for v in (AS_IS, LEVEL_28, LEVEL_56)}
+    assert (f"Son {thousands(made[AS_IS]['n'])}, {thousands(made[LEVEL_28]['n'])} y {thousands(made[LEVEL_56]['n'])} apuestas y el valor de cierre es "
+            f"{points_with_error(made[AS_IS]['clv'], made[AS_IS]['clv_se'])} tal cual, {points_with_error(made[LEVEL_28]['clv'], made[LEVEL_28]['clv_se'])} con 28 días "
+            f"y {points_with_error(made[LEVEL_56]['clv'], made[LEVEL_56]['clv_se'])} con 56") in flat
+    assert all(m["n"] >= bets.MIN_BETS and m["verdict"] == bets.CLV_NEGATIVE and m["clv"] < 0 for m in made.values())
+    assert all(abs(made[v]["clv"] / made[AS_IS]["clv"] - 0.5) < 0.1 for v in (LEVEL_28, LEVEL_56)), "the correction halves what the value at the close lacked"
+    returns = [made[v] for v in (AS_IS, LEVEL_28, LEVEL_56)]
+    assert (f"Los rendimientos ({points(returns[0]['return'])}, {points(returns[1]['return'])} y {points(returns[2]['return'])}, con errores de "
+            f"±{spanish(min(m['return_se'] for m in returns) * 100, 1)} a ±{spanish(max(m['return_se'] for m in returns) * 100, 1)} puntos) no se distinguen de cero") in flat
+    assert all(abs(m["return"]) < 2 * m["return_se"] for m in returns)
+    kinds = [next(x for x in m["by_key"] if x["key"] == "CORNERS_1X2") for m in returns]
+    assert (f"({points(kinds[0]['clv'])}, {points(kinds[1]['clv'])} y {points(kinds[2]['clv'])}, con errores de ±{spanish(min(k['clv_se'] for k in kinds) * 100, 1)} "
+            f"a ±{spanish(max(k['clv_se'] for k in kinds) * 100, 1)} puntos, con {min(k['n'] for k in kinds)} a {max(k['n'] for k in kinds)} apuestas)") in flat
+    assert all(k["clv"] > 0 for k in kinds) and all(x["clv"] < 0 for m in returns for x in m["by_key"] if x["key"] != "CORNERS_1X2"), "the only kind with a positive value at the close"
+    assert abs(kinds[1]["clv"] - kinds[0]["clv"]) < 2 * kinds[0]["clv_se"], "the same with the correction as without it"
+    assert "(`CRITERIO_FAMILIAS_F11.md`, límites)" in flat and "El mejor precio de todas las casas" in " ".join(read_doc("owner", "CRITERIO_FAMILIAS_F11.md").split())
+    # § 6: cards
+    k28, k56 = (gap_words(cards, v, "close", "total") for v in (LEVEL_28, LEVEL_56))
+    kfirst = group(cards, AS_IS, "close", "total")
+    assert (f"aplicado a {thousands(cards['history']['window_with_referee'])} de los {thousands(cards['variants'][AS_IS]['matches'])} partidos de la ventana") in flat
+    assert f"un prior de {cards['params']['referee_kappa']:g} tarjetas" in flat and "un prior de 150 tarjetas" in " ".join(read_doc("owner", "FAMILIAS_VS_MERCADO_F11.md").split())
+    assert (f"{thousands(kfirst['fixtures'])} partidos al cierre y {thousands(group(cards, AS_IS, 'h24', 'total')['fixtures'])} a 24 horas") in flat
+    assert {subject for by_subject in cards["variants"][AS_IS]["versus"].values() for subject in by_subject} == {variants.TOTAL}, "only the total has a consensus"
+    assert f"pero con {thousands(kfirst['fixtures'])} partidos el error es más del doble que el de córners" in flat
+    assert kfirst["se"] > 2 * first["se"] and group(cards, AS_IS, "h24", "total")["se"] > kfirst["se"]
+    cards_28 = multipliers(cards, LEVEL_28, "home") + multipliers(cards, LEVEL_28, "away")
+    assert max(cards_28) < 1.0 and f"entre un {round((1 - max(cards_28)) * 100)} % y un {round((1 - min(cards_28)) * 100)} %" in flat
+    assert doc.count(f"entre un {round((1 - max(cards_28)) * 100)} % y un {round((1 - min(cards_28)) * 100)} %") == 2
+    assert (f"de {gap_words(cards, AS_IS, 'close', 'total')} a {k28} al cierre con 28 días ({k56} con 56), y ahorra {saving_words(cards, LEVEL_28, 'close', 'total')} por fila "
+            f"(28 días) y {saving_words(cards, LEVEL_56, 'close', 'total')} (56)") in flat
+    assert group(cards, LEVEL_28, "close", "total")["market_minus_model"] > kfirst["market_minus_model"] and saving(cards, LEVEL_28, "close", "total")["gain"] > 0
+    assert all(abs(group(cards, v, "h24", "total")["market_minus_model"]) < 2 * group(cards, v, "h24", "total")["se"] for v in (AS_IS, LEVEL_28, LEVEL_56))
+    short = {v: bet_of(cards, v) for v in (AS_IS, LEVEL_28, LEVEL_56)}
+    assert (f"son {thousands(short[AS_IS]['n'])}, {thousands(short[LEVEL_28]['n'])} y {thousands(short[LEVEL_56]['n'])}; con la corrección de 28 días faltan "
+            f"{thousands(short[LEVEL_28]['needed'])} para las 300 (`{bets.WORDS[bets.TOO_FEW]}`). El valor de cierre "
+            f"({points_with_error(short[LEVEL_28]['clv'], short[LEVEL_28]['clv_se'])}) no es prueba de nada todavía") in flat
+    assert all(m["verdict"] == bets.TOO_FEW and m["n"] < bets.MIN_BETS for m in short.values()) and bets.MIN_BETS == 300
+    # § 7: yellows
+    nothing = [bet_of(yellow, v) for v in (AS_IS, LEVEL_28, LEVEL_56)]
+    assert all(m["n"] == 0 and m["verdict"] == bets.TOO_FEW for m in nothing) and all(not v["versus"] for v in yellow["variants"].values()) and not any(yellow["paired"].values())
+    printed = variants.render(yellow)
+    assert f"{yellow['bets']['models'][AS_IS]['n']} bets" not in printed and "market minus model" not in printed
+    assert f"{AS_IS}: no bet -> {bets.WORDS[bets.TOO_FEW]}" in printed and f"(`no bet -> {bets.WORDS[bets.TOO_FEW]}`)" in doc
+    assert "el reloj de precios guarda una sola casa para ellas, y con menos de 3 no hay consenso" in f11 and "guarda para las amarillas una sola casa" in flat
+    levels_28 = multipliers(yellow, LEVEL_28, "home") + multipliers(yellow, LEVEL_28, "away")
+    assert f"por entre {spanish(min(levels_28), 3)} y {spanish(max(levels_28), 3)}" in flat and max(levels_28) < 1.0
+    # § 1 and § 8: nothing meets the criterion
+    assert "Córners tiene más de 300 apuestas simuladas pero un valor de cierre negativo; tarjetas no llega a 300; amarillas no tiene ninguna." in flat
+    assert "el margen de las casas (≈ -3 %) sigue ahí" in flat and "el margen de las casas (≈ -3 %) sigue ahí" in f11
+    assert "Registrarlas no cambia ningún modelo" in f11 and "sección 8" in flat and "## 8. Qué significa y qué se propone" in read_doc("owner", "FAMILIAS_VS_MERCADO_F11.md")
+    assert variants.STEP_DAYS == 7 and "hasta casi 7 días antes del partido" in flat
+    assert "se reajustan cada 3 horas" in f11 and "que se reajustan cada 3 horas" in flat

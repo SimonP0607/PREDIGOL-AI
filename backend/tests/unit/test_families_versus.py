@@ -84,6 +84,17 @@ def test_the_comparison_is_the_log_loss_of_each_and_their_difference_by_match() 
     assert block["mean_p_model"] == pytest.approx(0.6) and block["mean_p_market"] == pytest.approx(0.5) and block["observed"] == pytest.approx(0.75)
 
 
+def test_a_pair_carries_the_line_and_the_selection_it_was_made_of() -> None:
+    """The readings of F12 choose among the pairs by their line (the main line of a match) and by their selection (the Over of each line)."""
+    rows = [graded(1, 0.6, 1), graded(1, 0.4, 0, selection="Under"), graded(2, 0.7, 1, line="10.5")]
+    fair = {("close", 1, "CORNERS_OU", D("9.5"), "Over"): (0.5, 3), ("close", 1, "CORNERS_OU", D("9.5"), "Under"): (0.5, 4),
+            ("close", 2, "CORNERS_OU", D("10.5"), "Over"): (0.45, 5), ("h24", 2, "CORNERS_OU", D("10.5"), "Over"): (0.4, 3)}
+    found = {(p.ref, p.fixture_id, p.line, p.selection): (p.p_model, p.p_market, p.won, p.books) for p in versus.pairs(rows, fair)}
+    assert found == {("close", 1, D("9.5"), "Over"): (0.6, 0.5, 1, 3), ("close", 1, D("9.5"), "Under"): (0.4, 0.5, 0, 4),
+                     ("close", 2, D("10.5"), "Over"): (0.7, 0.45, 1, 5), ("h24", 2, D("10.5"), "Over"): (0.7, 0.4, 1, 3)}
+    assert {p.key for p in versus.pairs(rows, fair)} == {"CORNERS_OU"} and {p.model for p in versus.pairs(rows, fair)} == {"family-corners_ft"}
+
+
 def test_the_two_sides_of_a_line_of_one_match_are_one_observation_for_the_standard_error() -> None:
     over, under = graded(1, 0.6, 1), graded(1, 0.4, 0, selection="Under")
     fair = {("close", 1, "CORNERS_OU", D("9.5"), "Over"): (0.5, 3), ("close", 1, "CORNERS_OU", D("9.5"), "Under"): (0.5, 3)}

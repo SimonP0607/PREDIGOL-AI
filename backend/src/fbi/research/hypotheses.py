@@ -90,6 +90,10 @@ FROM_DAY = Cited("25 de septiembre", where=ANYWHERE)
 TO_DAY = Cited("24 de octubre de 2026", where=ANYWHERE)
 
 WINDOW: Final = f"precios del {FROM_DAY.text} al {TO_DAY.text}"
+VARIANTS_GUIDE: Final = "VARIANTES_VS_MERCADO_F12.md"
+REPEAT_COMMAND: Final = "python -m scripts.families variant"
+REPEAT: Final = f"La medición se repite con el comando «{REPEAT_COMMAND}» (guía {VARIANTS_GUIDE}), con una ventana posterior a la aprobación."
+"""How the measurement is repeated (F12.5): the permanent tool that stands a variant of a family next to the family and the books. No figure in it."""
 COST: Final = "Ninguna petición al proveedor ni IA: solo precios y resultados ya guardados"
 
 RECENT_LEVEL_KEY: Final = "f11:recent_level:v1"
@@ -105,7 +109,7 @@ RECENT_LEVEL: Final = Proposal(
                f"({MATCHES_CLOSE.text} partidos), y a 24 horas queda en {GAP_24H.text}: a la par del mercado, no por delante. Por equipo no se "
                f"cierra (local {GAP_HOME.text} al cierre), y las {BETS_CLOSE.text} apuestas simuladas del total rindieron {RETURN_CLOSE.text}: "
                "indistinguible de cero. Es un ajuste de nivel, no información nueva. Se propone medirlo hacia delante con el criterio de cualquier "
-               f"modelo (contra el mercado, {CRITERION.text}) antes de tocar el código."),
+               f"modelo (contra el mercado, {CRITERION.text}) antes de tocar el código. {REPEAT}"),
     target="models",
     evidence={
         "n_matches": integer(MATCHES_CLOSE.text),

@@ -103,6 +103,11 @@ def test_the_criterion_a_proposal_quotes_is_the_plans() -> None:
     said = re.search(r"al menos (\d+) apuestas simuladas y valor de cierre no negativo", hypotheses.CRITERION.text)
     assert said and int(said.group(1)) == bets.MIN_BETS
     assert hypotheses.CRITERION.text in hypotheses.RECENT_LEVEL.rationale
+    # ... and the measurement is repeated with the permanent tool, whose guide and command exist and say the same
+    assert hypotheses.REPEAT in hypotheses.RECENT_LEVEL.rationale and hypotheses.REPEAT_COMMAND in hypotheses.RECENT_LEVEL.rationale
+    guides = Path(__file__).resolve().parents[2] / "docs" / "owner"
+    if (guides / hypotheses.VARIANTS_GUIDE).is_file():
+        assert f"`{hypotheses.REPEAT_COMMAND}`" in (guides / hypotheses.VARIANTS_GUIDE).read_text(encoding="utf-8")
     assert bets.verdict(bets.MIN_BETS, 0.0) == bets.MEETS, "a value of exactly zero meets it: 'no negativo'"
 
 

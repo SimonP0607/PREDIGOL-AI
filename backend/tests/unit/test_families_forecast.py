@@ -80,7 +80,7 @@ def test_a_match_is_in_the_window_from_six_hours_after_its_kick_off_and_not_befo
 def test_a_competition_with_too_many_sides_or_too_little_history_is_left_out() -> None:
     crowd = [Match(i, AT - timedelta(days=200) + timedelta(hours=i), 2 * i, 2 * i + 1, 5, 4) for i in range(forecast.MAX_TEAMS)]
     short = league(60, over=0.1)
-    assert forecast._teams(crowd) > forecast.MAX_TEAMS
+    assert forecast.teams(crowd) > forecast.MAX_TEAMS
     assert forecast.out_of_sample({1: crowd, 2: short}, measure="corners_ft", at=AT, xi=0.0019, penalty=2.0) == (NO_DISPERSION, 0)
     ok = league(500, over=0.1, seed=3)
     alone = forecast.out_of_sample({3: ok}, measure="corners_ft", at=AT, xi=0.0019, penalty=2.0)
