@@ -199,7 +199,7 @@ export function PostmortemsPanel({
   );
   const rows = q.data?.data ?? [];
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid="memory-postmortems">
       <Toolbar>
         <DayInput value={day} onChange={onDay} label={t("ai.research.day")} max={max} />
         <Choice label={t("ai.research.postmortems.verdict")} value={verdict} onChange={setVerdict}>

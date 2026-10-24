@@ -283,7 +283,8 @@ test("Memory: the entities with their version, confidence and evidence, and ever
     await assertClean(page, w);
   }
   await page.getByRole("tab", { name: t.memory.tabs.postmortems, exact: true }).click();
-  await expect(page.getByTestId("ai-postmortems")).toBeVisible();
+  // the panel itself, not its list: the list exists only once a post-mortem has been written
+  await expect(page.getByTestId("memory-postmortems")).toBeVisible();
   await page.getByRole("tab", { name: t.memory.tabs.events, exact: true }).click();
   await expect(page.getByTestId("memory-notes")).toBeVisible();
   await page.getByRole("tab", { name: t.memory.tabs.research, exact: true }).click();

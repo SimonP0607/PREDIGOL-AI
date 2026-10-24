@@ -119,10 +119,14 @@ async function smallTargets(page: Page, scope = "body"): Promise<string[]> {
   }, scope);
 }
 
-test("every product page fits every phone width, with the whole tab bar", async ({ page }) => {
-  test.setTimeout(420_000);
-  const w = watch(page);
-  for (const width of PHONES) {
+// One test per width, not one loop over all of them: a browser tab that loads forty-odd pages in a row keeps
+// every page's decoded fonts and images in shared memory until it closes (about 300 MB per page load in headless
+// Chromium) and a small CI machine or a laptop's sandbox ends with "page crashed". A test per width gets a fresh
+// tab, tells which width broke, and runs on its own worker.
+for (const width of PHONES) {
+  test(`every product page fits a ${width} px phone, with the whole tab bar`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const w = watch(page);
     await page.setViewportSize({ width, height: width < 360 ? 568 : 844 });
     for (const path of PAGES) {
       await page.goto(path);
@@ -131,8 +135,8 @@ test("every product page fits every phone width, with the whole tab bar", async 
       expect(await cutLabels(page), `tab bar labels cut at ${width} px on ${path}`).toEqual([]);
       await assertClean(page, w);
     }
-  }
-});
+  });
+}
 
 test("team names are whole in the cards of a 320 px phone", async ({ page }) => {
   test.setTimeout(180_000);
@@ -157,26 +161,27 @@ test("team names are whole in the cards of a 320 px phone", async ({ page }) => 
   }
 });
 
-test("tablets in both orientations and a phone held sideways", async ({ page }) => {
-  test.setTimeout(300_000);
-  const w = watch(page);
-  const sizes: Array<[number, number]> = [
-    [768, 1024],
-    [820, 1180],
-    [1024, 1366],
-    [1024, 768],
-    [1180, 820],
-    [844, 390],
-  ];
-  for (const [width, height] of sizes) {
+// Tablets in both orientations and a phone held sideways - a test per screen, for the reason given above.
+const SCREENS: Array<[number, number]> = [
+  [768, 1024],
+  [820, 1180],
+  [1024, 1366],
+  [1024, 768],
+  [1180, 820],
+  [844, 390],
+];
+for (const [width, height] of SCREENS) {
+  test(`every product page fits a ${width} x ${height} screen`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const w = watch(page);
     await page.setViewportSize({ width, height });
     for (const path of PAGES) {
       await page.goto(path);
       await settle(page);
       await assertClean(page, w);
     }
-  }
-});
+  });
+}
 
 test("a phone held sideways gives the screen to the content", async ({ page }) => {
   const w = watch(page);
