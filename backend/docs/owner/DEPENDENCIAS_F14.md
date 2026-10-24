@@ -1,8 +1,8 @@
 # Librerías fijadas de la imagen del backend (F14.2) — PrediGol
 
 *Escrito el 24 de octubre de 2026. Es solo la forma de construir la imagen del backend: no cambia ningún modelo, pronóstico, precio ni pick,
-no necesita migración, no toca la base de datos, no hace peticiones al proveedor y no usa IA. Sale con el próximo despliegue; hasta entonces
-producción sigue exactamente como está.*
+no necesita migración, no toca la base de datos, no hace peticiones al proveedor y no usa IA. **Entró en producción con el lanzamiento de la tarde del 24 de
+octubre (20:02–20:17 UTC); lo que se comprobó está en la sección 4.***
 
 ## 1. Qué se encontró
 
@@ -44,14 +44,17 @@ código de los modelos (`mc9a7bec97ca`) solo mira nuestro código, no las librer
    salía antes y no afecta a producción.
 3. **La prueba nueva** (sección 2), que se repite en cada pasada de la puerta.
 
-Lo que **no** se ha podido hacer es construir la imagen de verdad: eso ocurre en el servidor, en el próximo despliegue (sección 4).
+Lo que **no** se pudo hacer en el entorno de pruebas fue construir la imagen de verdad: eso ocurrió en el servidor, en el lanzamiento de la tarde del 24 de octubre (sección 4).
 
-## 4. Qué pasará en el próximo despliegue
+## 4. Qué pasó en el primer despliegue con las librerías fijadas (24-oct, 20:02–20:17 UTC)
 
-* La primera construcción con este Dockerfile **rehace la capa de `pip` una vez** (el archivo nuevo cambia su huella de caché): tardará más que
-  un despliegue normal y bajará las librerías de PyPI. Instalará las mismas versiones que corren hoy; no se espera ningún cambio de resultados.
-* Tras desplegar se comprueba, solo en lectura, que la imagen es la del archivo:
-  `diff <(docker exec predigol-worker pip freeze --exclude-editable) <(grep -v '^#' backend/constraints.txt | grep .)` no debe devolver nada.
+* La primera construcción con este Dockerfile **rehízo la capa de `pip` una vez** (el archivo nuevo cambió su huella de caché): la capa tardó **83 s** e
+  instaló exactamente las 60 versiones fijadas (el registro de la construcción lo dice: «Successfully installed … fastapi-0.162.0 … pandas-3.1.0 …
+  sentry-sdk-2.73.0 …»); la exportación de la imagen del backend, otros 91 s. Eran las mismas versiones que corrían antes: ninguna librería cambió.
+* Después de desplegar se comprobó, solo en lectura (`step_verify.sh`, 20:17 UTC), que la imagen es la del archivo:
+  `diff <(docker exec predigol-worker pip freeze --exclude-editable) <(grep -v '^#' backend/constraints.txt | grep .)` **no devolvió nada** ni en
+  `predigol-worker` ni en `predigol-api` (60 librerías cada uno, Python 3.12.15). La huella del código de los modelos siguió en `mc9a7bec97ca` y
+  ningún pronóstico se escribió con otro código.
 * Los despliegues siguientes reutilizan la capa mientras no cambien `pyproject.toml` ni `constraints.txt`.
 
 ## 5. Cómo se sube la versión de una librería

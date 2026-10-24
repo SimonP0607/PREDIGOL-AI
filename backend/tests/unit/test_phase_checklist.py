@@ -23,8 +23,8 @@ if not DOC.is_file():
 
 TEXT = DOC.read_text(encoding="utf-8")
 
-RELEASES = ("F0 + F1", "F0.1", "F2", "F3 + F1.1", "F3.2 + F5", "F4", "F6", "F7", "F8", "F9", "F10", "F11 + F12 + F13")
-"""One row per release of the plan, oldest first (F5 shipped with F3.2, F13 with F11 and F12)."""
+RELEASES = ("F0 + F1", "F0.1", "F2", "F3 + F1.1", "F3.2 + F5", "F4", "F6", "F7", "F8", "F9", "F10", "F11 + F12 + F13", "F14 (con F11.5 a F13.12)")
+"""One row per release of the plan, oldest first (F5 shipped with F3.2, F13 with F11 and F12, and the rest of F11 to F13 with F14)."""
 CHECKS = ("Pruebas", "e2e", "Fuga", "Idempotencia", "Reinicio del worker", "Restauración", "Despliegue", "Shadow", "Dueño")
 
 
