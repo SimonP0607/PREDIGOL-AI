@@ -250,6 +250,10 @@ READERS_OF_STRUCTURE: dict[str, str] = {
                             "layer: post-match by nature, and kept away from every pre-match reader by tests/unit/test_knowledge_isolation.py",
     "fbi.knowledge.layers": "names core.ties as a source of the result layer (a label in the layer's list of sources, no SQL): the same "
                             "post-match layer",
+    "fbi.research.pattern_search": "the search for patterns in the SETTLED decisions (plan F12.6) names the kind of each match by the role of "
+                                   "its stage (one column, a word of the round label: group, knockout...) to compare the groups of "
+                                   "decisions after the matches were played: read only, and what it finds is a hypothesis for the owner, "
+                                   "never a model, a price or a pick",
 }
 """The modules that name ``core.ties`` or ``core.competition_stages`` in SQL, and why each may. A new reader is added HERE, by a
 person, with the reason: a pre-match reader (a feature, a model, a pick, the AI packet, the dossier) belongs behind
