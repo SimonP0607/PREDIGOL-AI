@@ -1,8 +1,9 @@
 # Promociones del código de los modelos (F12)
 
-*Escrito el 24 de octubre de 2026 (la consola, el 24-oct por la tarde). Código: `fbi/research/promotions.py` (el registro), `fbi/research/trace.py`
-(la medición), `python -m scripts.promotion_trace` y, para la consola, `GET /api/v1/admin/evolution/code-promotions` con el panel
-`web/src/live/CodePromotionsPanel.tsx`. Pruebas: `tests/unit/test_model_code_ledger.py`, `tests/unit/test_promotion_trace_cli.py`,
+*Escrito el 24 de octubre de 2026 (la consola y la guarda de lanzamiento, ese mismo día, después de las primeras líneas).
+Código: `fbi/research/promotions.py` (el registro), `fbi/research/trace.py` (la medición), `python -m scripts.promotion_trace`, para la consola
+`GET /api/v1/admin/evolution/code-promotions` con el panel `web/src/live/CodePromotionsPanel.tsx` y, para las entregas, `scripts/model_code_guard.py`.
+Pruebas: `tests/unit/test_model_code_ledger.py`, `tests/unit/test_promotion_trace_cli.py`, `tests/unit/test_model_code_guard.py`,
 `tests/integration/test_promotion_trace.py`, `tests/integration/test_evolution.py` y `web/src/live/CodePromotionsPanel.test.tsx`. Es solo código y
 solo lectura: no cambia ningún modelo, pronóstico, precio ni pick, no necesita migración, no hace peticiones al proveedor y no usa IA.*
 
@@ -98,12 +99,52 @@ prefieres darla por explicada, es una decisión tuya (abajo).
 
 1. Se cambia el código y la prueba falla con el mensaje de qué huella tiene ahora.
 2. Se añade la entrada (motivo, hipótesis y experimentos si los hay) en el mismo commit.
-3. En la entrega: `python -m scripts.promotion_trace sync` (en seco) y luego `sync --confirm`; después `show`.
+3. Al armar el paquete, la guarda de lanzamiento (abajo) dice `COVERED` y te lo cuento antes de desplegar.
+4. En la entrega: `python -m scripts.promotion_trace sync` (en seco) y luego `sync --confirm`; después `show`.
+
+## La guarda de lanzamiento (F12.7)
+
+La prueba `test_model_code_ledger` ya impide que el código de los modelos cambie sin una entrada en el registro, pero corre en mi puerta, sobre el
+árbol que tengo delante, y no en el servidor. La guarda hace la misma pregunta con los dos árboles entre los que se mueve una entrega, el que corre
+hoy en producción y el que lleva el paquete, en los dos puntos por donde pasa:
+
+1. **Al armar el paquete:** compara el commit que corre hoy con el árbol que se empaqueta y anota el veredicto en `RELEASE.json`.
+2. **En el servidor, antes de mover nada** (antes de cambiar de commit, de construir la imagen o de reiniciar un servicio): lo repite leyendo los dos
+   commits del propio paquete, sin ponerlos en el árbol de trabajo.
+
+Es una herramienta aparte, `scripts/model_code_guard.py`, que solo usa la biblioteca estándar de Python (necesita la 3.11.4 o una más nueva; la de un
+Ubuntu 24.04, el sistema del servidor, es la 3.12), no toca la base de datos ni la red y no escribe nada: de un commit extrae `src/fbi` a una carpeta
+temporal que borra. Lee cada árbol con **su propio** `version.py` y **su propio** registro, cargados por ruta, de modo que la respuesta es la que daría
+el código que va a correr. Entra en mis guiones de entrega; no toca `predigolctl` ni tu `deploy/release.sh`.
+
+Cada comparación termina en uno de tres veredictos:
+
+| Veredicto | Cuándo | Qué hace |
+| --- | --- | --- |
+| `UNCHANGED` | La huella del árbol que llega es la que ya corre en producción. | Pasa siempre: la entrega no abre versiones nuevas de ningún modelo. |
+| `COVERED` | La huella cambia y la **última** entrada del registro del árbol nuevo es ese código. | Pasa, con un aviso grande: quién lo decidió, cuándo y el motivo. |
+| `UNCOVERED` | La huella cambia y no hay tal entrada: el registro termina en otro código, está vacío o el árbol no tiene registro. | Por omisión avisa y la entrega sigue; en modo `stop`, se detiene. |
+
+Dos modos: `inform` (por omisión: se imprime el veredicto y la entrega sigue, y yo te lo cuento antes de desplegar) y `stop` (un `UNCOVERED` termina
+con el código de salida `4`). El modo lo fijo al armar el paquete y queda escrito en él, para que el servidor lea el mismo que yo escribí. Códigos de
+salida: `0` si la entrega sigue, `4` si se detiene (solo `stop` con `UNCOVERED`) y `2` si no pudo comprobar nada: un árbol que no se lee, un registro roto
+o un `git` que no responde no son nunca luz verde, tampoco en `inform`.
+
+**Probada con la historia real.** De las trece entregas del backend guardadas desde el 22-oct, la herramienta saca `mc9a7bec97ca` en doce y
+`mce0abbbb30d` solo en la de F5 (23-oct 02:43), el cambio accidental de la sección anterior. Preguntando «F3.1 contra F5» en modo `stop`, responde
+`UNCOVERED` y sale con 4: la guarda habría detenido aquella entrega. Contra el árbol de hoy, frente a lo que corre en producción, responde `UNCHANGED`.
+
+Lo que **no** hace: no mira la base de datos (lo que cada huella produjo de verdad lo mide `python -m scripts.promotion_trace show` después de
+desplegar); no sabe si la decisión de una entrada `COVERED` fue tuya, solo dice quién la anotó (`owner` o `system`) y cuándo, y por eso te cuento ese
+veredicto antes de cada despliegue; no cubre lo que mueve los números sin tocar los paquetes de los modelos, como una librería nueva (para eso están las
+versiones fijadas de `DEPENDENCIAS_F14.md`); y no sustituye la prueba del registro, que sigue en la puerta.
 
 ## Decisiones tuyas
 
-* **¿Que mis paquetes de lanzamiento se detengan si la huella cambia y no hay entrada?** Lo recomiendo y lo añadiría a mis propios guiones de
-  entrega (no toca `predigolctl`). Hoy no lo hace nada.
+* **¿Que mis paquetes de lanzamiento se detengan si la huella cambia y no hay entrada?** Hecho como herramienta (arriba) y puesto en modo `inform`: avisa
+  y la entrega sigue. Lo recomiendo en `stop`, porque un cambio del código de los modelos sin entrada en el registro no debería llegar a producción sin
+  que lo hayas visto; basta con que me lo digas y armo los paquetes con `--mode stop`. Si prefieres la misma guarda en tu `deploy/release.sh`, es una
+  llamada a la misma herramienta; no lo he tocado.
 * **¿Dar por explicada la huella del 23-oct como excepción documentada**, o dejarla contando hasta que salga de la ventana el 22-nov?
 * **¿Mostrar estas promociones en la consola (Evolución)?** Hecho como lectura para administradores (arriba). Si prefieres no verlo ahí, basta
   con quitar una línea de `web/src/live/EvolutionLive.tsx`; la dirección y la medición no cambian.

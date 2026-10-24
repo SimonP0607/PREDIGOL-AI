@@ -503,6 +503,39 @@ def test_the_guide_of_the_model_code_panel_says_what_the_page_does() -> None:
     assert f"«{words['noPromotion'].rstrip('.')}»" in flat
 
 
+def test_the_guide_of_the_release_guard_says_what_the_tool_does() -> None:
+    """Plan F12.7: the verdicts, the modes and the exit statuses the guide gives are the tool's own, its limits are said, and the decision it
+    leaves to the owner is put as it stands: the guard is in ``inform``."""
+    from scripts import model_code_guard as guard
+
+    doc = read_doc("owner", "PROMOCIONES_F12.md")
+    guide = section_of(doc, "## La guarda de lanzamiento (F12.7)")
+    flat = " ".join(guide.split())
+    for path in ("scripts/model_code_guard.py", "tests/unit/test_model_code_guard.py"):
+        assert (DOCS.parent / path).is_file(), path
+        assert f"`{path}`" in " ".join(doc.split()), f"the guide does not name {path}"
+    verdicts = {row[0].strip("`"): row for row in cells_of_rows(guide) if len(row) == 3 and row[0].startswith("`")}
+    assert tuple(verdicts) == guard.STATUSES, "one row for each verdict, in the order of the tool"
+    assert "La huella cambia y la última entrada del registro del árbol nuevo es ese código" in verdicts[guard.COVERED][1]
+    assert "no hay tal entrada" in verdicts[guard.UNCOVERED][1] and "el árbol no tiene registro" in verdicts[guard.UNCOVERED][1]
+    assert "Pasa siempre" in verdicts[guard.UNCHANGED][2] and "Por omisión avisa" in verdicts[guard.UNCOVERED][2]
+    assert guard.DEFAULT_MODE == "inform" and "`inform` (por omisión" in flat, "the default of the tool is the one the guide gives"
+    assert all(f"`{mode}`" in flat for mode in guard.MODES)
+    assert f"con el código de salida `{guard.EXIT_STOP}`" in flat
+    assert f"`{guard.EXIT_GO}` si la entrega sigue" in flat and f"`{guard.EXIT_STOP}` si se detiene (solo `stop` con `UNCOVERED`)" in flat
+    assert f"`{guard.EXIT_CANNOT_CHECK}` si no pudo comprobar nada" in flat and "no son nunca luz verde, tampoco en `inform`" in flat
+    assert f"la {'.'.join(map(str, guard.MIN_PYTHON))} o una más nueva" in flat
+    assert "solo usa la biblioteca estándar de Python" in flat and "no toca la base de datos ni la red y no escribe nada" in flat
+    for limit in ("no mira la base de datos", "python -m scripts.promotion_trace show", "no cubre lo que mueve los números", "`DEPENDENCIAS_F14.md`",
+                  "no sustituye la prueba del registro"):
+        assert limit in flat, f"the guide leaves out what the guard does not do: {limit}"
+    assert (DOCS / "owner" / "DEPENDENCIAS_F14.md").is_file()
+    assert "`mc9a7bec97ca` en doce" in flat and "`mce0abbbb30d` solo en la de F5" in flat and "sale con 4" in flat and "`UNCHANGED`" in flat
+    decision = section_of(doc, "## Decisiones tuyas")
+    assert "puesto en modo `inform`" in " ".join(decision.split()) and "`--mode stop`" in decision, "the decision is put as it stands"
+    assert "no toca `predigolctl` ni tu `deploy/release.sh`" in flat
+
+
 # ── Plan F12.4: the hypotheses the repository proposes from a measurement ─────
 
 def section_of(doc: str, heading: str) -> str:

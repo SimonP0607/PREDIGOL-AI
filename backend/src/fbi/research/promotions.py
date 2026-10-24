@@ -11,6 +11,10 @@ tree is not the last entry, so model code cannot change without a row that says 
 entries into ``intel.promotions`` (entity ``model``, an append-only table that already allowed it) when a release carries them to production, and
 ``show`` measures production against them: every fingerprint that forecast in the window, and the row that covers it.
 
+The release guard (``scripts/model_code_guard.py``, plan F12.7) asks the same question of the two trees a release moves between - the code production
+runs and the code the package carries - when the package is made and again on the server before anything moves: ``UNCOVERED`` is a change of the code
+that this ledger does not put in force.
+
 This module sits outside the fingerprinted packages (it is not model code): adding an entry does not change the fingerprint.
 """
 
