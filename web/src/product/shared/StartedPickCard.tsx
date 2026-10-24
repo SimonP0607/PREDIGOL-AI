@@ -9,7 +9,7 @@ import { Link } from "@tanstack/react-router";
 import { History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtOdds, fmtSignedPct } from "@/lib/i18n/format";
+import { fmtOdds, fmtSignedPct, fmtSignedPp } from "@/lib/i18n/format";
 import { formatTime } from "@/lib/time";
 import type { StartedPick } from "@/lib/api/v1/types_product";
 import type { ResultStatus } from "@/lib/api/v1/types_records";
@@ -123,7 +123,7 @@ export function StartedPickCard({
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <EvBadge ev={pick.ev} />
             <span className="numeric text-caption text-muted-foreground">
-              {t("common.edge")} {fmtSignedPct(pick.edge)}
+              {t("common.edge")} {fmtSignedPp(pick.edge)}
             </span>
             {pick.evaluations > 1 ? (
               <span className="text-caption text-muted-foreground">

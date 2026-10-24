@@ -49,6 +49,14 @@ function signedPct(value: string | null | undefined, digits = 1): string | null 
   return `${n > 0 ? "+" : n < 0 ? "−" : "±"}${localFixed(Math.abs(n), digits)}%`;
 }
 
+/** The edge is a difference of probabilities: percentage points ("+7.4 pp"). A price gap or the expected value is `signedPct`. */
+function signedPp(value: string | null | undefined, digits = 1): string | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value) * 100;
+  if (!Number.isFinite(n)) return null;
+  return `${n > 0 ? "+" : n < 0 ? "−" : "±"}${localFixed(Math.abs(n), digits)} pp`;
+}
+
 const tabs = ["Picks", "Candidates"] as const;
 type Tab = (typeof tabs)[number];
 
@@ -237,7 +245,7 @@ export function PicksLive() {
                           <Numeric muted>{decPct(p.p_market_fair)}</Numeric>
                         </TD>
                         <TD align="right">
-                          <Numeric>{signedPct(p.probability_edge)}</Numeric>
+                          <Numeric>{signedPp(p.probability_edge)}</Numeric>
                         </TD>
                         <TD align="right">
                           <Numeric>{signedPct(p.ev)}</Numeric>

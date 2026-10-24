@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
-import { fmtSignedPct } from "@/lib/i18n/format";
+import { fmtSignedPp } from "@/lib/i18n/format";
 import type { PickCard as PickCardData } from "@/lib/api/v1/types_product";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { EvBadge, Freshness, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
@@ -123,7 +123,7 @@ export function PickCard({
             <EvBadge ev={pick.ev} />
             {pick.edge !== null ? (
               <span className="numeric text-caption text-muted-foreground" title={t("common.edge")}>
-                {t("common.edge")} {fmtSignedPct(pick.edge)}
+                {t("common.edge")} {fmtSignedPp(pick.edge)}
               </span>
             ) : null}
             <Freshness at={pick.price_at} level={pick.freshness} className="ml-auto" />

@@ -1,5 +1,5 @@
 import { formatDateTime, formatTime, zoneAbbrev } from "@/lib/time";
-import { localFixed, localInt, localPct } from "@/lib/i18n/format";
+import { fmtSignedPp, localFixed, localInt, localPct } from "@/lib/i18n/format";
 
 export const EMPTY = "—";
 
@@ -11,6 +11,12 @@ export function pct(value: number | null | undefined, digits = 1): string {
 export function signedPct(value: number | null | undefined, digits = 1): string {
   if (value === null || value === undefined || Number.isNaN(value)) return EMPTY;
   return localPct(value, digits, true);
+}
+
+/** An edge (p_model - p_market) in percentage points: "+7.5 pp". A price gap or an expected value is `signedPct`. */
+export function signedPp(value: number | null | undefined, digits = 1): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return EMPTY;
+  return fmtSignedPp(value, digits);
 }
 
 export function odds(value: number | null | undefined): string {

@@ -25,7 +25,7 @@ import {
 import { MetricLabel } from "@/components/system/InfoTip";
 import { SegmentedTabs } from "@/components/system/Filters";
 import { queries } from "@/lib/api/resources";
-import { dateTimeOf, pct, signedPct, timeOf } from "@/lib/format";
+import { dateTimeOf, pct, signedPct, signedPp, timeOf } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PickCandidate, PickStatus } from "@/types/domain";
 
@@ -269,7 +269,7 @@ function PickDetail({ pick, onClose }: { pick: PickCandidate; onClose: () => voi
           <div className="flex justify-between pt-1 text-caption text-subtle-foreground">
             <span>Difference</span>
             <span className="numeric text-foreground">
-              {signedPct(pick.modelProbability - pick.marketProbability, 2)}
+              {signedPp(pick.modelProbability - pick.marketProbability, 2)}
             </span>
           </div>
         </div>
@@ -282,7 +282,7 @@ function PickDetail({ pick, onClose }: { pick: PickCandidate; onClose: () => voi
             label="Available odds"
             value={`${pick.bestOdds.toFixed(2)} · ${pick.bookmaker}`}
           />
-          <KeyValue label="Edge" value={signedPct(pick.edge, 2)} />
+          <KeyValue label="Edge" value={signedPp(pick.edge, 2)} />
           <KeyValue label="Expected value" value={signedPct(pick.ev, 2)} />
         </div>
 
