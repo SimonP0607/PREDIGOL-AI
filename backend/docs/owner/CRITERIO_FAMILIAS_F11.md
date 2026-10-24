@@ -61,3 +61,4 @@ Solo lee (conexión de solo lectura). Los precios se leen por tandas de 250 part
 * **Elegir la mejor línea de cada mercado escoge los mayores desacuerdos del modelo con el mercado**: es lo que haría un selector real, y por eso lo que el modelo cree (+10 %) está tan lejos de lo que las casas dan.
 * **Solo mercados de dos o tres opciones** (más/menos, ambos marcan, par/impar, empate no apuesta y 1X2) y líneas sin devolución, igual que en F11.3.
 * Las familias siguen **sin calibrar**: la medición no corrige el sesgo del nivel de córners que se vio en F11.4 (sección 7 de esa guía). Esa corrección es un experimento de F12, con su fila de promoción, no algo que esta medición haga por sí sola.
+* **Cada apuesta es de una sola familia y de un solo partido.** Qué pasaría al juntar en una combinada selecciones de familias distintas del mismo partido lo mide aparte `DEPENDENCIA_FAMILIAS_F11.md` (F11.6): hoy no se propone relajar la regla de «una selección por partido».

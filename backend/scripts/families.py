@@ -7,6 +7,7 @@
     python -m scripts.families sql --measure corners_ft              # the same history as one COPY statement, to run with psql where Python is not at hand
     python -m scripts.families halves                                # the bets of the halves (HT/FT, highest half, BTTS by half...) derived from two fits
     python -m scripts.families score --days 14                       # how the stored forecasts of the families did on the matches that have finished
+    python -m scripts.families dependence --days 1095                # how much the goals, the corners and the cards of one match depend on each other
 
 ``evaluate`` fits each competition on the matches already known at the start of every block of ``--step-days`` and predicts the block; it reports
 whether that beats the competition's average, the calibration of the totals lines, and competition by competition where it does. It does not
@@ -32,7 +33,7 @@ import psycopg
 from fbi.core.clock import now as clock_now
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
-from fbi.families import evaluate, evaluate_halves, history
+from fbi.families import dependence, evaluate, evaluate_halves, history
 from fbi.families import score as scoreboard
 from fbi.families.fit import MIN_TRAIN, OUTCOME_KNOWN_AFTER, Match
 from fbi.market.rules import RULES
@@ -266,6 +267,27 @@ def score_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def dependence_command(args: argparse.Namespace) -> int:
+    """Measure how much the goals, the corners and the cards of one match depend on each other (read-only), from the database or from three
+    ``export`` files (one per family, the same window)."""
+    now = clock_now()
+    since = now - timedelta(days=args.days)
+    files = {"goals": args.csv_goals, "corners": args.csv_corners, "cards": args.csv_cards}
+    if any(files.values()):
+        missing = [family for family, path in files.items() if not path]
+        if missing:
+            raise SystemExit(f"dependence from files needs the three of them; missing --csv-{', --csv-'.join(missing)}")
+        histories = {family: read_csv(Path(path)) for family, path in files.items()}
+    else:
+        with psycopg.connect(settings.database.psycopg_url, options="-c default_transaction_read_only=on") as conn:
+            histories = dependence.read(conn, since=since, cutoff=now)
+            conn.rollback()
+    rows, coverage = dependence.join(histories, since=since)
+    report = dependence.measure(rows, replicates=args.replicates, seed=args.seed, coverage=coverage)
+    print(json.dumps(report, indent=1, default=str) if args.json else dependence.render(report, top=args.top))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="families", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="command", required=True)
@@ -279,6 +301,15 @@ def build_parser() -> argparse.ArgumentParser:
     ps.add_argument("--min-books", type=int, default=3, help="books a consensus needs to be compared with (default %(default)s)")
     ps.add_argument("--min-ev", type=float, default=0.03, help="the value the model has to see at the price for a simulated bet (default %(default)s)")
     ps.add_argument("--json", action="store_true")
+    pd = sub.add_parser("dependence", help="how much the goals, the corners and the cards of one match depend on each other")
+    pd.add_argument("--days", type=int, default=dependence.HISTORY_DAYS, help="kick-offs of the last N days (default %(default)s)")
+    pd.add_argument("--csv-goals", help="read the goals of the 90 minutes from this CSV (an 'export' of goals_ft) instead of the database")
+    pd.add_argument("--csv-corners", help="read the corners from this CSV (an 'export' of corners_ft) instead of the database")
+    pd.add_argument("--csv-cards", help="read the cards from this CSV (an 'export' of cards_lines_ft) instead of the database")
+    pd.add_argument("--replicates", type=int, default=dependence.REPLICATES, help="resamples for the intervals (default %(default)s)")
+    pd.add_argument("--seed", type=int, default=dependence.SEED, help="seed of the resamples (default %(default)s)")
+    pd.add_argument("--top", type=int, default=12, help="pairs of events that depend most, in the text (default %(default)s)")
+    pd.add_argument("--json", action="store_true")
     ph = sub.add_parser("halves", help="the bets of the halves derived from the fits of the first and of the second half")
     ph.add_argument("--months", type=int, default=12, help="months of test window (default %(default)s)")
     ph.add_argument("--csv-1h", help="read the first-half goals from this CSV (an 'export' of goals_1h) instead of the database")
@@ -326,6 +357,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return halves_command(args)
     if args.command == "score":
         return score_command(args)
+    if args.command == "dependence":
+        return dependence_command(args)
     history.columns_of(args.measure)  # refuses a measure a family cannot be trained on, before anything is read
     if args.command == "sql":
         return sql_command(args)

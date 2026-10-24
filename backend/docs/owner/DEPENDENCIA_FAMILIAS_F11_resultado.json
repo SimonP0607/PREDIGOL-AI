@@ -1,0 +1,4589 @@
+{
+ "version": "dependence-v1",
+ "criterion": {
+  "tolerance": 0.02,
+  "bar": 0.02,
+  "level": 0.95,
+  "replicates": 400,
+  "seed": 11,
+  "min_stratum": 30,
+  "min_matches": 300,
+  "strata": "a competition in a half-year, UTC",
+  "unit": "competition-day"
+ },
+ "data": {
+  "matches": 59252,
+  "dropped": 2151,
+  "strata": 549,
+  "clusters": 21211,
+  "first": "2023-10-27T19:00:00+00:00",
+  "last": "2026-10-24T00:00:00+00:00",
+  "coverage": {
+   "goals": 89239,
+   "corners": 63127,
+   "cards": 62154,
+   "joined": 61403
+  }
+ },
+ "events": {
+  "goals.over_1_5": {
+   "family": "goals",
+   "text": "goals over 1.5",
+   "rate": 0.7502194018767299
+  },
+  "goals.over_2_5": {
+   "family": "goals",
+   "text": "goals over 2.5",
+   "rate": 0.5175859042732734
+  },
+  "goals.over_3_5": {
+   "family": "goals",
+   "text": "goals over 3.5",
+   "rate": 0.2953993114156484
+  },
+  "goals.btts": {
+   "family": "goals",
+   "text": "both teams score",
+   "rate": 0.530429352595693
+  },
+  "goals.home_more": {
+   "family": "goals",
+   "text": "home win",
+   "rate": 0.44184162559913587
+  },
+  "goals.away_more": {
+   "family": "goals",
+   "text": "away win",
+   "rate": 0.3062175116451765
+  },
+  "corners.over_8_5": {
+   "family": "corners",
+   "text": "corners over 8.5",
+   "rate": 0.6111861202997367
+  },
+  "corners.over_9_5": {
+   "family": "corners",
+   "text": "corners over 9.5",
+   "rate": 0.49326605009113617
+  },
+  "corners.over_10_5": {
+   "family": "corners",
+   "text": "corners over 10.5",
+   "rate": 0.37890704111253626
+  },
+  "corners.over_11_5": {
+   "family": "corners",
+   "text": "corners over 11.5",
+   "rate": 0.277880915412138
+  },
+  "corners.home_more": {
+   "family": "corners",
+   "text": "home side has more corners",
+   "rate": 0.5342773239721866
+  },
+  "corners.away_more": {
+   "family": "corners",
+   "text": "away side has more corners",
+   "rate": 0.37244312428272464
+  },
+  "cards.over_3_5": {
+   "family": "cards",
+   "text": "cards over 3.5",
+   "rate": 0.6278944170660906
+  },
+  "cards.over_4_5": {
+   "family": "cards",
+   "text": "cards over 4.5",
+   "rate": 0.451174643893877
+  },
+  "cards.over_5_5": {
+   "family": "cards",
+   "text": "cards over 5.5",
+   "rate": 0.29556808209005603
+  },
+  "cards.home_more": {
+   "family": "cards",
+   "text": "home side has more cards",
+   "rate": 0.344039019779923
+  },
+  "cards.away_more": {
+   "family": "cards",
+   "text": "away side has more cards",
+   "rate": 0.4527779653007493
+  }
+ },
+ "correlations": [
+  {
+   "a": "goals_total",
+   "b": "corners_total",
+   "r": -0.020693789523802002,
+   "low": -0.028509155333040468,
+   "high": -0.013851861385250644,
+   "pooled": -0.005944180588211651
+  },
+  {
+   "a": "goals_total",
+   "b": "cards_total",
+   "r": -0.027942377626149175,
+   "low": -0.035782618700920206,
+   "high": -0.02031264087865988,
+   "pooled": -0.04832357815202732
+  },
+  {
+   "a": "corners_total",
+   "b": "cards_total",
+   "r": -0.023809389257801957,
+   "low": -0.03286847183542071,
+   "high": -0.0158261905938098,
+   "pooled": -0.0348855983500422
+  },
+  {
+   "a": "goals_diff",
+   "b": "corners_diff",
+   "r": 0.05751716620880629,
+   "low": 0.04857750626849146,
+   "high": 0.06520819829405912,
+   "pooled": 0.0606595006538871
+  },
+  {
+   "a": "goals_diff",
+   "b": "cards_diff",
+   "r": -0.11449863878740808,
+   "low": -0.12239558200809464,
+   "high": -0.10712164495673124,
+   "pooled": -0.11512789860285014
+  },
+  {
+   "a": "corners_diff",
+   "b": "cards_diff",
+   "r": -0.14944912771322175,
+   "low": -0.15733178785164398,
+   "high": -0.1417175796421653,
+   "pooled": -0.15112196438417116
+  }
+ ],
+ "pairs": [
+  {
+   "first": "goals.over_1_5",
+   "second": "corners.over_8_5",
+   "phi": -0.008961700637129194,
+   "phi_low": -0.016459275456611328,
+   "phi_high": -0.0013139411411310564,
+   "cells": {
+    "both": {
+     "observed": 27160.0,
+     "expected": 27269.33205896721,
+     "lift": 0.995990658710276,
+     "low": 0.9926205729616658,
+     "high": 0.9994203579766059,
+     "worth_at_the_bar": 0.01591047188448158,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 17292.0,
+     "expected": 17182.66794103279,
+     "lift": 1.006362926836648,
+     "low": 1.000916712863215,
+     "high": 1.0115555291925467,
+     "worth_at_the_bar": 0.026490185373380992,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 9054.0,
+     "expected": 8944.667941032789,
+     "lift": 1.0122231545863944,
+     "low": 1.0017901764816317,
+     "high": 1.022262460421374,
+     "worth_at_the_bar": 0.03246761767812245,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 5746.0,
+     "expected": 5855.332058967211,
+     "lift": 0.9813277781915419,
+     "low": 0.966144614164078,
+     "high": 0.9972798915941937,
+     "worth_at_the_bar": 0.0009543337553727937,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_1_5",
+   "second": "corners.over_9_5",
+   "phi": -0.01337647558014422,
+   "phi_low": -0.022176577005387697,
+   "phi_high": -0.005447974482993396,
+   "cells": {
+    "both": {
+     "observed": 21869.0,
+     "expected": 22036.302131620516,
+     "lift": 0.9924078853783526,
+     "low": 0.9874740152409419,
+     "high": 0.9969221310779229,
+     "worth_at_the_bar": 0.012256043085919544,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 22583.0,
+     "expected": 22415.697868379484,
+     "lift": 1.0074636146776639,
+     "low": 1.0030081810489113,
+     "high": 1.0123187970443812,
+     "worth_at_the_bar": 0.02761288697121711,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 7358.0,
+     "expected": 7190.697868379484,
+     "lift": 1.0232664665770779,
+     "low": 1.009413039515737,
+     "high": 1.0380059051369666,
+     "worth_at_the_bar": 0.04373179590861942,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 7442.0,
+     "expected": 7609.302131620516,
+     "lift": 0.9780134723622959,
+     "low": 0.9639185620075305,
+     "high": 0.991110315287836,
+     "worth_at_the_bar": -0.0024262581904581637,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_1_5",
+   "second": "corners.over_10_5",
+   "phi": -0.012615821408908014,
+   "phi_low": -0.021022199831936313,
+   "phi_high": -0.004349516737405251,
+   "cells": {
+    "both": {
+     "observed": 16798.0,
+     "expected": 16951.155855512323,
+     "lift": 0.9909648724359691,
+     "low": 0.9849734915082917,
+     "high": 0.996922665819537,
+     "worth_at_the_bar": 0.010784169884688444,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 27654.0,
+     "expected": 27500.844144487677,
+     "lift": 1.0055691328857999,
+     "low": 1.001879754763395,
+     "high": 1.0092120651128564,
+     "worth_at_the_bar": 0.025680515543515803,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 5653.0,
+     "expected": 5499.844144487677,
+     "lift": 1.0278473083034227,
+     "low": 1.00962549966939,
+     "high": 1.0461191769651164,
+     "worth_at_the_bar": 0.04840425446949115,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 9147.0,
+     "expected": 9300.155855512323,
+     "lift": 0.9835319044227043,
+     "low": 0.9726973083468651,
+     "high": 0.9943662610797787,
+     "worth_at_the_bar": 0.0032025425111583683,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_1_5",
+   "second": "corners.over_11_5",
+   "phi": -0.00730024092083757,
+   "phi_low": -0.015226695127004286,
+   "phi_high": 0.0002415864197925532,
+   "cells": {
+    "both": {
+     "observed": 12366.0,
+     "expected": 12447.852720845976,
+     "lift": 0.9934243501524644,
+     "low": 0.9864432676553387,
+     "high": 1.000215668589611,
+     "worth_at_the_bar": 0.01329283715551366,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 32086.0,
+     "expected": 32004.14727915402,
+     "lift": 1.0025575660595492,
+     "low": 0.9999158656694837,
+     "high": 1.0052639936133587,
+     "worth_at_the_bar": 0.022608717380740107,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 4099.0,
+     "expected": 4017.1472791540236,
+     "lift": 1.020375832688717,
+     "low": 0.9993333616271167,
+     "high": 1.0421316080457008,
+     "worth_at_the_bar": 0.04078334934249117,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 10701.0,
+     "expected": 10782.852720845976,
+     "lift": 0.9924089920390238,
+     "low": 0.9844299845705157,
+     "high": 1.0002491470368184,
+     "worth_at_the_bar": 0.012257171879804352,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_1_5",
+   "second": "corners.home_more",
+   "phi": -0.007909986497488187,
+   "phi_low": -0.015937244582091094,
+   "phi_high": 9.304347279215339e-05,
+   "cells": {
+    "both": {
+     "observed": 23643.0,
+     "expected": 23742.396247603436,
+     "lift": 0.9958135545137543,
+     "low": 0.991658287831382,
+     "high": 1.0000493882096892,
+     "worth_at_the_bar": 0.015729825604029468,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 20809.0,
+     "expected": 20709.603752396564,
+     "lift": 1.004799524355551,
+     "low": 0.9999443432129684,
+     "high": 1.0095795560473364,
+     "worth_at_the_bar": 0.024895514842661948,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 8014.0,
+     "expected": 7914.603752396564,
+     "lift": 1.012558587986586,
+     "low": 0.9998529208672249,
+     "high": 1.0250754756357412,
+     "worth_at_the_bar": 0.032809759746317724,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 6786.0,
+     "expected": 6885.396247603436,
+     "lift": 0.9855641935439762,
+     "low": 0.9713406726596473,
+     "high": 1.0001666224578907,
+     "worth_at_the_bar": 0.005275477414855789,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_1_5",
+   "second": "corners.away_more",
+   "phi": 0.00865805810409279,
+   "phi_low": 0.0004682668182491009,
+   "phi_high": 0.01579046952223086,
+   "cells": {
+    "both": {
+     "observed": 16682.0,
+     "expected": 16576.576228766637,
+     "lift": 1.00635980372415,
+     "low": 1.0003409054862569,
+     "high": 1.0114949581306374,
+     "worth_at_the_bar": 0.026486999798633004,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 27770.0,
+     "expected": 27875.423771233363,
+     "lift": 0.9962180387965202,
+     "low": 0.9930922578057574,
+     "high": 0.9997973846192819,
+     "worth_at_the_bar": 0.01614239957245056,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 5386.0,
+     "expected": 5491.423771233363,
+     "lift": 0.9808021060429497,
+     "low": 0.9651525131451867,
+     "high": 0.9989719779512781,
+     "worth_at_the_bar": 0.00041814816380880693,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 9414.0,
+     "expected": 9308.576228766637,
+     "lift": 1.0113254453358365,
+     "low": 1.0006076044708245,
+     "high": 1.0205212585023022,
+     "worth_at_the_bar": 0.031551954242553304,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_1_5",
+   "second": "cards.over_3_5",
+   "phi": -0.024815966771405202,
+   "phi_low": -0.03259795077905411,
+   "phi_high": -0.016787987783022852,
+   "cells": {
+    "both": {
+     "observed": 27470.0,
+     "expected": 27761.933594301852,
+     "lift": 0.9894843926014659,
+     "low": 0.986330523493487,
+     "high": 0.9929406825992044,
+     "worth_at_the_bar": 0.009274080453495204,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 16982.0,
+     "expected": 16690.066405698148,
+     "lift": 1.0174914579250676,
+     "low": 1.01172695294989,
+     "high": 1.0227853980085704,
+     "worth_at_the_bar": 0.03784128708356893,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 9734.0,
+     "expected": 9442.066405698148,
+     "lift": 1.0309184008836958,
+     "low": 1.0207036910106615,
+     "high": 1.0398252600320526,
+     "worth_at_the_bar": 0.05153676890136971,
+     "status": "product_understates"
+    },
+    "neither": {
+     "observed": 5066.0,
+     "expected": 5357.933594301852,
+     "lift": 0.9455137714636249,
+     "low": 0.9291011440007082,
+     "high": 0.9637569255221984,
+     "worth_at_the_bar": -0.0355759531071026,
+     "status": "product_overstates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.over_1_5",
+   "second": "cards.over_4_5",
+   "phi": -0.018883377727785686,
+   "phi_low": -0.02751890131978691,
+   "phi_high": -0.010916885919909235,
+   "cells": {
+    "both": {
+     "observed": 19678.0,
+     "expected": 19906.655788150158,
+     "lift": 0.9885136011501103,
+     "low": 0.983363011481618,
+     "high": 0.9934520253059842,
+     "worth_at_the_bar": 0.008283873173112521,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 24774.0,
+     "expected": 24545.344211849842,
+     "lift": 1.0093156480584113,
+     "low": 1.0053352351902292,
+     "high": 1.0134195294107489,
+     "worth_at_the_bar": 0.029501961019579692,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 7055.0,
+     "expected": 6826.344211849842,
+     "lift": 1.033496082391104,
+     "low": 1.0191742946407438,
+     "high": 1.0486128639587315,
+     "worth_at_the_bar": 0.05416600403892602,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 7745.0,
+     "expected": 7973.655788150158,
+     "lift": 0.9713235943179328,
+     "low": 0.958690971849793,
+     "high": 0.9835056555824804,
+     "worth_at_the_bar": -0.009249933795708487,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_1_5",
+   "second": "cards.over_5_5",
+   "phi": -0.014247745799029148,
+   "phi_low": -0.021411541204722596,
+   "phi_high": -0.006227337611181067,
+   "cells": {
+    "both": {
+     "observed": 12849.0,
+     "expected": 13007.581359943526,
+     "lift": 0.9878085436826962,
+     "low": 0.9817896954593065,
+     "high": 0.9947025416978796,
+     "worth_at_the_bar": 0.007564714556350216,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 31603.0,
+     "expected": 31444.418640056472,
+     "lift": 1.005043227599747,
+     "low": 1.0021795198011112,
+     "high": 1.0074978794922127,
+     "worth_at_the_bar": 0.025144092151741848,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 4664.0,
+     "expected": 4505.418640056474,
+     "lift": 1.0351979189089382,
+     "low": 1.0151751580719937,
+     "high": 1.0524774075451748,
+     "worth_at_the_bar": 0.05590187728711693,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 10136.0,
+     "expected": 10294.581359943526,
+     "lift": 0.9845956475160252,
+     "low": 0.9771433892933011,
+     "high": 0.9933065163611865,
+     "worth_at_the_bar": 0.004287560466345708,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_1_5",
+   "second": "cards.home_more",
+   "phi": 0.002022910881472281,
+   "phi_low": -0.005692991111777184,
+   "phi_high": 0.010138486421946407,
+   "cells": {
+    "both": {
+     "observed": 15306.0,
+     "expected": 15281.7720627976,
+     "lift": 1.0015854141197003,
+     "low": 0.9956138054235503,
+     "high": 1.007890669871631,
+     "worth_at_the_bar": 0.021617122402094235,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 29146.0,
+     "expected": 29170.2279372024,
+     "lift": 0.9991694292806159,
+     "low": 0.9958895374040888,
+     "high": 1.0022919003168658,
+     "worth_at_the_bar": 0.019152817866228355,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 5079.0,
+     "expected": 5103.2279372024,
+     "lift": 0.9952524289527067,
+     "low": 0.9764205747823953,
+     "high": 1.0134730563114072,
+     "worth_at_the_bar": 0.015157477531760888,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 9721.0,
+     "expected": 9696.7720627976,
+     "lift": 1.0024985569471467,
+     "low": 0.9929991033599119,
+     "high": 1.0123952278522508,
+     "worth_at_the_bar": 0.02254852808608976,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_1_5",
+   "second": "cards.away_more",
+   "phi": 0.0025378864779476078,
+   "phi_low": -0.005866974617693625,
+   "phi_high": 0.010538983421298503,
+   "cells": {
+    "both": {
+     "observed": 20163.0,
+     "expected": 20131.159687883814,
+     "lift": 1.0015816432142928,
+     "low": 0.9963743002621591,
+     "high": 1.0065384786005023,
+     "worth_at_the_bar": 0.021613276078578547,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 24289.0,
+     "expected": 24320.840312116186,
+     "lift": 0.9986908218750845,
+     "low": 0.9946070246155203,
+     "high": 1.0029967179966375,
+     "worth_at_the_bar": 0.018664638312586135,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 6665.0,
+     "expected": 6696.840312116186,
+     "lift": 0.9952454723970975,
+     "low": 0.9805005896304763,
+     "high": 1.0109566297600594,
+     "worth_at_the_bar": 0.015150381845039362,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 8135.0,
+     "expected": 8103.159687883814,
+     "lift": 1.0039293699424183,
+     "low": 0.991069353023331,
+     "high": 1.0160747077318375,
+     "worth_at_the_bar": 0.024007957341266817,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "corners.over_8_5",
+   "phi": -0.018937281716542166,
+   "phi_low": -0.02683863954792973,
+   "phi_high": -0.01074080000758391,
+   "cells": {
+    "both": {
+     "observed": 18612.0,
+     "expected": 18877.739506048234,
+     "lift": 0.9859231288808126,
+     "low": 0.9801763738658869,
+     "high": 0.9920934213934213,
+     "worth_at_the_bar": 0.005641591458428907,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 12056.0,
+     "expected": 11790.260493951766,
+     "lift": 1.0225389003223937,
+     "low": 1.0125908856179577,
+     "high": 1.0314932308143943,
+     "worth_at_the_bar": 0.042989678328841485,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 17602.0,
+     "expected": 17336.260493951766,
+     "lift": 1.0153285367476421,
+     "low": 1.0086248570142882,
+     "high": 1.021518057780024,
+     "worth_at_the_bar": 0.03563510748259491,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 10982.0,
+     "expected": 11247.739506048234,
+     "lift": 0.9763739633278902,
+     "low": 0.9668932902318627,
+     "high": 0.9866787069876739,
+     "worth_at_the_bar": -0.0040985574055519836,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "corners.over_9_5",
+   "phi": -0.021750563631968003,
+   "phi_low": -0.029365290264208508,
+   "phi_high": -0.01313518269668652,
+   "cells": {
+    "both": {
+     "observed": 14959.0,
+     "expected": 15271.904405498923,
+     "lift": 0.9795111076398398,
+     "low": 0.972454160863717,
+     "high": 0.9877461482400428,
+     "worth_at_the_bar": -0.000898670207363339,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 15709.0,
+     "expected": 15396.095594501077,
+     "lift": 1.020323620594476,
+     "low": 1.0122009493210786,
+     "high": 1.0271095247036925,
+     "worth_at_the_bar": 0.04073009300636543,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 14268.0,
+     "expected": 13955.095594501077,
+     "lift": 1.0224222330388206,
+     "low": 1.013411767942778,
+     "high": 1.0301615633463326,
+     "worth_at_the_bar": 0.04287067769959707,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 14316.0,
+     "expected": 14628.904405498923,
+     "lift": 0.9786105372743222,
+     "low": 0.9714582101102432,
+     "high": 0.9871390966072946,
+     "worth_at_the_bar": -0.0018172519801913367,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "corners.over_10_5",
+   "phi": -0.020200374958191436,
+   "phi_low": -0.028269073723484386,
+   "phi_high": -0.012184643202537771,
+   "cells": {
+    "both": {
+     "observed": 11471.0,
+     "expected": 11753.071295338521,
+     "lift": 0.976000205541985,
+     "low": 0.9667795424393114,
+     "high": 0.9855366877590525,
+     "worth_at_the_bar": -0.004479790347175272,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 19197.0,
+     "expected": 18914.928704661477,
+     "lift": 1.014912627995738,
+     "low": 1.0089542221837038,
+     "high": 1.0207145146048768,
+     "worth_at_the_bar": 0.03521088055565258,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 10980.0,
+     "expected": 10697.928704661479,
+     "lift": 1.0263669073823245,
+     "low": 1.015676036937549,
+     "high": 1.0363336642516485,
+     "worth_at_the_bar": 0.04689424552997101,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 17604.0,
+     "expected": 17886.071295338523,
+     "lift": 0.9842295554635279,
+     "low": 0.9782075280025462,
+     "high": 0.9906443577485613,
+     "worth_at_the_bar": 0.003914146572798538,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "corners.over_11_5",
+   "phi": -0.018548612358373424,
+   "phi_low": -0.02717148281308962,
+   "phi_high": -0.011183302646200887,
+   "cells": {
+    "both": {
+     "observed": 8405.0,
+     "expected": 8644.215183324835,
+     "lift": 0.9723265584843035,
+     "low": 0.9599849915891472,
+     "high": 0.9834599723344021,
+     "worth_at_the_bar": -0.008226910346010419,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 22263.0,
+     "expected": 22023.784816675165,
+     "lift": 1.010861674563026,
+     "low": 1.0064258862796942,
+     "high": 1.0157221126038316,
+     "worth_at_the_bar": 0.03107890805428637,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 8060.0,
+     "expected": 7820.784816675165,
+     "lift": 1.0305871071679136,
+     "low": 1.0182727564027045,
+     "high": 1.0445253271672152,
+     "worth_at_the_bar": 0.05119884931127183,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 20524.0,
+     "expected": 20763.215183324835,
+     "lift": 0.9884788949489407,
+     "low": 0.9832933496909521,
+     "high": 0.9931540219705689,
+     "worth_at_the_bar": 0.008248472847919519,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "corners.home_more",
+   "phi": -0.0033812709913186166,
+   "phi_low": -0.011901871876377802,
+   "phi_high": 0.0048550468940353276,
+   "cells": {
+    "both": {
+     "observed": 16317.0,
+     "expected": 16365.87149389332,
+     "lift": 0.9970138165931733,
+     "low": 0.9894667209406953,
+     "high": 1.004254530723967,
+     "worth_at_the_bar": 0.016954092925036912,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 14351.0,
+     "expected": 14302.12850610668,
+     "lift": 1.0034170783651157,
+     "low": 0.9951828804858475,
+     "high": 1.011898620835445,
+     "worth_at_the_bar": 0.02348541993241815,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 15340.0,
+     "expected": 15291.12850610668,
+     "lift": 1.0031960684833565,
+     "low": 0.9953970570299971,
+     "high": 1.0111318427562215,
+     "worth_at_the_bar": 0.023259989853023688,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 13244.0,
+     "expected": 13292.87149389332,
+     "lift": 0.9963234810540542,
+     "low": 0.9872801581679591,
+     "high": 1.0052058409130404,
+     "worth_at_the_bar": 0.01624995067513524,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "corners.away_more",
+   "phi": 0.005939435199198463,
+   "phi_low": -0.002519853408629928,
+   "phi_high": 0.01429923968886359,
+   "cells": {
+    "both": {
+     "observed": 11545.0,
+     "expected": 11461.815082713023,
+     "lift": 1.00725756930178,
+     "low": 0.9968994612816247,
+     "high": 1.0174465687571148,
+     "worth_at_the_bar": 0.027402720687815574,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 19123.0,
+     "expected": 19206.184917286977,
+     "lift": 0.9956688474236179,
+     "low": 0.9896912313680847,
+     "high": 1.001804918647754,
+     "worth_at_the_bar": 0.015582224372090225,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 10523.0,
+     "expected": 10606.184917286977,
+     "lift": 0.9921569425824931,
+     "low": 0.9811786840056171,
+     "high": 1.0033162177312862,
+     "worth_at_the_bar": 0.012000081434142995,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 18061.0,
+     "expected": 17977.815082713023,
+     "lift": 1.0046270871573801,
+     "low": 0.9980895046575029,
+     "high": 1.0110346947405509,
+     "worth_at_the_bar": 0.024719628900527812,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "cards.over_3_5",
+   "phi": -0.016324061644036984,
+   "phi_low": -0.024115582223208254,
+   "phi_high": -0.008371121567408348,
+   "cells": {
+    "both": {
+     "observed": 18834.0,
+     "expected": 19054.883100836716,
+     "lift": 0.9884080579414829,
+     "low": 0.983057654035146,
+     "high": 0.9941403881301127,
+     "worth_at_the_bar": 0.00817621910031252,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 11834.0,
+     "expected": 11613.116899163284,
+     "lift": 1.0190201392748084,
+     "low": 1.0097455377927844,
+     "high": 1.02792265838178,
+     "worth_at_the_bar": 0.03940054206030452,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 18370.0,
+     "expected": 18149.116899163284,
+     "lift": 1.0121704599768653,
+     "low": 1.0061046879841102,
+     "high": 1.017895665297343,
+     "worth_at_the_bar": 0.032413869176402654,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 10214.0,
+     "expected": 10434.883100836716,
+     "lift": 0.9788322400258606,
+     "low": 0.968824974908189,
+     "high": 0.9892192902744588,
+     "worth_at_the_bar": -0.001591115173622204,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "cards.over_4_5",
+   "phi": -0.011240490518013563,
+   "phi_low": -0.019528772567211996,
+   "phi_high": -0.0026845379773633286,
+   "cells": {
+    "both": {
+     "observed": 13485.0,
+     "expected": 13641.555803517736,
+     "lift": 0.9885236108129716,
+     "low": 0.9803675666012087,
+     "high": 0.9973054078774809,
+     "worth_at_the_bar": 0.00829408302923107,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 17183.0,
+     "expected": 17026.44419648226,
+     "lift": 1.0091948619283693,
+     "low": 1.0021844407320182,
+     "high": 1.0158655978846776,
+     "worth_at_the_bar": 0.029378759166936774,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 13248.0,
+     "expected": 13091.444196482264,
+     "lift": 1.0119586350572234,
+     "low": 1.0028255723507467,
+     "high": 1.0206067454093646,
+     "worth_at_the_bar": 0.03219780775836778,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 15336.0,
+     "expected": 15492.555803517736,
+     "lift": 0.989894772334324,
+     "low": 0.9824701313919624,
+     "high": 0.9975932947314715,
+     "worth_at_the_bar": 0.009692667781010522,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "cards.over_5_5",
+   "phi": -0.00859395169166445,
+   "phi_low": -0.01751438975824435,
+   "phi_high": -0.0003392439202046592,
+   "cells": {
+    "both": {
+     "observed": 8785.0,
+     "expected": 8895.02218784544,
+     "lift": 0.9876310384030543,
+     "low": 0.9750871701185674,
+     "high": 0.9995135475993583,
+     "worth_at_the_bar": 0.0073836591711153865,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 21883.0,
+     "expected": 21772.97781215456,
+     "lift": 1.0050531529859925,
+     "low": 1.0001976836646251,
+     "high": 1.0101878378580096,
+     "worth_at_the_bar": 0.02515421604571233,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 8728.0,
+     "expected": 8617.97781215456,
+     "lift": 1.0127665898246183,
+     "low": 1.0005056733333086,
+     "high": 1.0257407480656457,
+     "worth_at_the_bar": 0.03302192162111073,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 19856.0,
+     "expected": 19966.02218784544,
+     "lift": 0.9944895289201663,
+     "low": 0.9888882805903522,
+     "high": 0.9997860900052022,
+     "worth_at_the_bar": 0.01437931949856952,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "cards.home_more",
+   "phi": 0.0023146765738634853,
+   "phi_low": -0.005961430614221811,
+   "phi_high": 0.009999582137985566,
+   "cells": {
+    "both": {
+     "observed": 10582.0,
+     "expected": 10550.113166503097,
+     "lift": 1.003022416252192,
+     "low": 0.9922690548955395,
+     "high": 1.0129367169104706,
+     "worth_at_the_bar": 0.02308286457723585,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 20086.0,
+     "expected": 20117.8868334969,
+     "lift": 0.9984150008516894,
+     "low": 0.9931597223277904,
+     "high": 1.0040183568110224,
+     "worth_at_the_bar": 0.018383300868723307,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 9803.0,
+     "expected": 9834.886833496903,
+     "lift": 0.9967577833851328,
+     "low": 0.9861705347214837,
+     "high": 1.0083591793521252,
+     "worth_at_the_bar": 0.01669293905283542,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 18781.0,
+     "expected": 18749.1131665031,
+     "lift": 1.001700711559727,
+     "low": 0.9956729491480316,
+     "high": 1.0072668468314585,
+     "worth_at_the_bar": 0.021734725790921505,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.over_2_5",
+   "second": "cards.away_more",
+   "phi": 0.00036522163646395515,
+   "phi_low": -0.007846556677646938,
+   "phi_high": 0.008823817267459432,
+   "cells": {
+    "both": {
+     "observed": 13886.0,
+     "expected": 13880.729606868432,
+     "lift": 1.000379691362114,
+     "low": 0.9919226231409738,
+     "high": 1.009161453346986,
+     "worth_at_the_bar": 0.020387285189356286,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 16782.0,
+     "expected": 16787.27039313157,
+     "lift": 0.9996860482372568,
+     "low": 0.9924142819715248,
+     "high": 1.0066793730847519,
+     "worth_at_the_bar": 0.019679769202001873,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 12942.0,
+     "expected": 12947.270393131568,
+     "lift": 0.9995929340338513,
+     "low": 0.9902578574063031,
+     "high": 1.0086532970666742,
+     "worth_at_the_bar": 0.019584792714528287,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 15642.0,
+     "expected": 15636.729606868432,
+     "lift": 1.0003370521371204,
+     "low": 0.9928374183466194,
+     "high": 1.0080392234624422,
+     "worth_at_the_bar": 0.0203437931798629,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "corners.over_8_5",
+   "phi": -0.01118737367195481,
+   "phi_low": -0.018910081149433936,
+   "phi_high": -0.004074586514436912,
+   "cells": {
+    "both": {
+     "observed": 10666.0,
+     "expected": 10809.084368837408,
+     "lift": 0.9867625819213771,
+     "low": 0.977742329549529,
+     "high": 0.9952097747445057,
+     "worth_at_the_bar": 0.006497833559804711,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 6837.0,
+     "expected": 6693.915631162592,
+     "lift": 1.0213752871594763,
+     "low": 1.007781495016296,
+     "high": 1.0355621031853206,
+     "worth_at_the_bar": 0.041802792902665864,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 25548.0,
+     "expected": 25404.915631162592,
+     "lift": 1.0056321528839047,
+     "low": 1.0020193448643897,
+     "high": 1.0094879188972758,
+     "worth_at_the_bar": 0.025744795941582854,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 16201.0,
+     "expected": 16344.084368837408,
+     "lift": 0.9912454949687961,
+     "low": 0.9853526741748295,
+     "high": 0.996844627801658,
+     "worth_at_the_bar": 0.011070404868172012,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "corners.over_9_5",
+   "phi": -0.01580004214647252,
+   "phi_low": -0.024251820143507064,
+   "phi_high": -0.007713085166342212,
+   "cells": {
+    "both": {
+     "observed": 8548.0,
+     "expected": 8755.169096516389,
+     "lift": 0.9763375105343403,
+     "low": 0.9641038558353997,
+     "high": 0.9885357686197076,
+     "worth_at_the_bar": -0.004135739254972903,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 8955.0,
+     "expected": 8747.830903483611,
+     "lift": 1.0236823389480345,
+     "low": 1.0114138525789735,
+     "high": 1.0359089158514818,
+     "worth_at_the_bar": 0.044155985726995306,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 20679.0,
+     "expected": 20471.830903483613,
+     "lift": 1.01011971510966,
+     "low": 1.004913959363266,
+     "high": 1.0154165746610397,
+     "worth_at_the_bar": 0.030322109411853093,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 21070.0,
+     "expected": 21277.169096516387,
+     "lift": 0.9902633148434062,
+     "low": 0.9851346812172979,
+     "high": 0.9953113545314165,
+     "worth_at_the_bar": 0.010068581140274313,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "corners.over_10_5",
+   "phi": -0.016620192167982342,
+   "phi_low": -0.024398097769748932,
+   "phi_high": -0.009295483199589168,
+   "cells": {
+    "both": {
+     "observed": 6537.0,
+     "expected": 6748.524690036779,
+     "lift": 0.9686561582342487,
+     "low": 0.9544365528010634,
+     "high": 0.9825352838905309,
+     "worth_at_the_bar": -0.011970718601066355,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 10966.0,
+     "expected": 10754.475309963222,
+     "lift": 1.0196685271889383,
+     "low": 1.010837613624273,
+     "high": 1.0285932542280611,
+     "worth_at_the_bar": 0.04006189773271718,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 15914.0,
+     "expected": 15702.475309963222,
+     "lift": 1.0134707863480967,
+     "low": 1.0074755860846851,
+     "high": 1.0195837682239965,
+     "worth_at_the_bar": 0.03374020207505879,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 25835.0,
+     "expected": 26046.52469003678,
+     "lift": 0.991878966865868,
+     "low": 0.9881044408653089,
+     "high": 0.9955284087381193,
+     "worth_at_the_bar": 0.011716546203185407,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "corners.over_11_5",
+   "phi": -0.014259164125452084,
+   "phi_low": -0.022016426384721774,
+   "phi_high": -0.0070145779165410056,
+   "cells": {
+    "both": {
+     "observed": 4804.0,
+     "expected": 4971.608850858547,
+     "lift": 0.9662867985220513,
+     "low": 0.9483936091269094,
+     "high": 0.9835130429267257,
+     "worth_at_the_bar": -0.01438746550750758,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 12699.0,
+     "expected": 12531.391149141453,
+     "lift": 1.0133751192396567,
+     "low": 1.0065102339312628,
+     "high": 1.0203273167210443,
+     "worth_at_the_bar": 0.033642621624449864,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 11661.0,
+     "expected": 11493.391149141453,
+     "lift": 1.0145830633173105,
+     "low": 1.007122981410018,
+     "high": 1.0222788039127315,
+     "worth_at_the_bar": 0.0348747245836567,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 30088.0,
+     "expected": 30255.608850858545,
+     "lift": 0.9944602387053338,
+     "low": 0.9914985013362266,
+     "high": 0.9973088752784282,
+     "worth_at_the_bar": 0.014349443479440449,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "corners.home_more",
+   "phi": -0.0038369769064898035,
+   "phi_low": -0.01177432791640807,
+   "phi_high": 0.004068026145216892,
+   "cells": {
+    "both": {
+     "observed": 9278.0,
+     "expected": 9328.546418140757,
+     "lift": 0.9945815332984288,
+     "low": 0.9836108431797934,
+     "high": 1.0057171675004353,
+     "worth_at_the_bar": 0.01447316396439735,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 8225.0,
+     "expected": 8174.453581859243,
+     "lift": 1.0061834613940348,
+     "low": 0.9935026275860264,
+     "high": 1.018777531052934,
+     "worth_at_the_bar": 0.026307130621915586,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 22379.0,
+     "expected": 22328.45358185924,
+     "lift": 1.002263767078873,
+     "low": 0.9976267025495977,
+     "high": 1.00686595060437,
+     "worth_at_the_bar": 0.022309042420450398,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 19370.0,
+     "expected": 19420.54641814076,
+     "lift": 0.9973972710626956,
+     "low": 0.9920794576233759,
+     "high": 1.0027184586250022,
+     "worth_at_the_bar": 0.0173452164839496,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "corners.away_more",
+   "phi": 0.0054951202706843795,
+   "phi_low": -0.002800122652237348,
+   "phi_high": 0.012824136035026329,
+   "cells": {
+    "both": {
+     "observed": 6634.0,
+     "expected": 6563.854113656882,
+     "lift": 1.0106866918625097,
+     "low": 0.9946015594478193,
+     "high": 1.024670524868088,
+     "worth_at_the_bar": 0.030900425699759815,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 10869.0,
+     "expected": 10939.145886343118,
+     "lift": 0.9935876267606331,
+     "low": 0.9851864798988338,
+     "high": 1.0032190779798618,
+     "worth_at_the_bar": 0.01345937929584573,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 15434.0,
+     "expected": 15504.145886343118,
+     "lift": 0.9954756690979729,
+     "low": 0.9895045448897913,
+     "high": 1.0023048092462719,
+     "worth_at_the_bar": 0.01538518247993248,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 26315.0,
+     "expected": 26244.854113656882,
+     "lift": 1.0026727481905344,
+     "low": 0.9986499968540293,
+     "high": 1.0062243199087015,
+     "worth_at_the_bar": 0.022726203154345148,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "cards.over_3_5",
+   "phi": -0.025430934280282046,
+   "phi_low": -0.033415117560057675,
+   "phi_high": -0.018239408650820077,
+   "cells": {
+    "both": {
+     "observed": 10481.0,
+     "expected": 10794.633283083469,
+     "lift": 0.9709454434570768,
+     "low": 0.9619493769786911,
+     "high": 0.9792626697688812,
+     "worth_at_the_bar": -0.009635647673781667,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 7022.0,
+     "expected": 6708.366716916531,
+     "lift": 1.0467525548793535,
+     "low": 1.0332000298434245,
+     "high": 1.0615067502077506,
+     "worth_at_the_bar": 0.06768760597694068,
+     "status": "product_understates"
+    },
+    "second_only": {
+     "observed": 26723.0,
+     "expected": 26409.36671691653,
+     "lift": 1.0118758350567556,
+     "low": 1.0084384788033616,
+     "high": 1.0154311997990244,
+     "worth_at_the_bar": 0.03211335175789065,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 15026.0,
+     "expected": 15339.633283083469,
+     "lift": 0.9795540560001951,
+     "low": 0.9732992239166574,
+     "high": 0.9855452888931024,
+     "worth_at_the_bar": -0.0008548628798009661,
+     "status": "borderline"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "cards.over_4_5",
+   "phi": -0.02488725511118944,
+   "phi_low": -0.03306464010681404,
+   "phi_high": -0.016845299284341923,
+   "cells": {
+    "both": {
+     "observed": 7389.0,
+     "expected": 7704.926802417423,
+     "lift": 0.9589967808236283,
+     "low": 0.9464474551896918,
+     "high": 0.9724529936541375,
+     "worth_at_the_bar": -0.021823283559899154,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 10114.0,
+     "expected": 9798.073197582577,
+     "lift": 1.0322437683457366,
+     "low": 1.0218352988597958,
+     "high": 1.042228458752471,
+     "worth_at_the_bar": 0.05288864371265145,
+     "status": "product_understates"
+    },
+    "second_only": {
+     "observed": 19344.0,
+     "expected": 19028.073197582577,
+     "lift": 1.0166031946133969,
+     "low": 1.0110092784781726,
+     "high": 1.0218710374230926,
+     "worth_at_the_bar": 0.036935258505664814,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 22405.0,
+     "expected": 22720.926802417423,
+     "lift": 0.9860953382243276,
+     "low": 0.981606811971269,
+     "high": 0.9906983049526656,
+     "worth_at_the_bar": 0.005817244988814085,
+     "status": "negligible"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "cards.over_5_5",
+   "phi": -0.024132116857950622,
+   "phi_low": -0.032695903756899486,
+   "phi_high": -0.016878265814563427,
+   "cells": {
+    "both": {
+     "observed": 4720.0,
+     "expected": 5001.584245627761,
+     "lift": 0.9437009891667997,
+     "low": 0.9239855292792332,
+     "high": 0.961064610758161,
+     "worth_at_the_bar": -0.0374249910498643,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 12783.0,
+     "expected": 12501.41575437224,
+     "lift": 1.022524188552747,
+     "low": 1.0156175069745952,
+     "high": 1.0304731626730963,
+     "worth_at_the_bar": 0.04297467232380181,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 12793.0,
+     "expected": 12511.41575437224,
+     "lift": 1.022506185643248,
+     "low": 1.0155328149427676,
+     "high": 1.0299001189305268,
+     "worth_at_the_bar": 0.04295630935611294,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 28956.0,
+     "expected": 29237.58424562776,
+     "lift": 0.9903691001533457,
+     "low": 0.9871234095833563,
+     "high": 0.9933805208685688,
+     "worth_at_the_bar": 0.010176482156412536,
+     "status": "negligible"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "cards.home_more",
+   "phi": -0.0015545689914889399,
+   "phi_low": -0.009427420756019125,
+   "phi_high": 0.005618967441572773,
+   "cells": {
+    "both": {
+     "observed": 6008.0,
+     "expected": 6027.518958593326,
+     "lift": 0.9967616927084902,
+     "low": 0.9806066613333938,
+     "high": 1.011598367815108,
+     "worth_at_the_bar": 0.016696926562659975,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 11495.0,
+     "expected": 11475.481041406674,
+     "lift": 1.0017009272659592,
+     "low": 0.9938886647102962,
+     "high": 1.0101700796342146,
+     "worth_at_the_bar": 0.021734945811278328,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 14377.0,
+     "expected": 14357.481041406674,
+     "lift": 1.0013594974311324,
+     "low": 0.9951549332555608,
+     "high": 1.0081873544461966,
+     "worth_at_the_bar": 0.02138668737975502,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 27372.0,
+     "expected": 27391.518958593326,
+     "lift": 0.9992874086821242,
+     "low": 0.9956967931280616,
+     "high": 1.002558049231193,
+     "worth_at_the_bar": 0.019273156855766693,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.over_3_5",
+   "second": "cards.away_more",
+   "phi": 0.002874218558757417,
+   "phi_low": -0.004507878443429596,
+   "phi_high": 0.010701988046035686,
+   "cells": {
+    "both": {
+     "observed": 7948.0,
+     "expected": 7910.196512482,
+     "lift": 1.0047790832324264,
+     "low": 0.9925266824202129,
+     "high": 1.0175057294248349,
+     "worth_at_the_bar": 0.024874664897075016,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 9555.0,
+     "expected": 9592.803487518,
+     "lift": 0.996059182535409,
+     "low": 0.9855574286994885,
+     "high": 1.0060978655258153,
+     "worth_at_the_bar": 0.015980366186117312,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 18880.0,
+     "expected": 18917.803487518002,
+     "lift": 0.9980016978428312,
+     "low": 0.9926432597837672,
+     "high": 1.003112312001439,
+     "worth_at_the_bar": 0.017961731799687852,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 22869.0,
+     "expected": 22831.196512481998,
+     "lift": 1.0016557821442837,
+     "low": 0.9974289029711126,
+     "high": 1.0061467741580736,
+     "worth_at_the_bar": 0.021688897787169426,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.btts",
+   "second": "corners.over_8_5",
+   "phi": 0.013104928408946729,
+   "phi_low": 0.005154049945956616,
+   "phi_high": 0.020984046239639387,
+   "cells": {
+    "both": {
+     "observed": 19510.0,
+     "expected": 19325.3830249647,
+     "lift": 1.009553082326845,
+     "low": 1.0037077105394114,
+     "high": 1.0151730988291898,
+     "worth_at_the_bar": 0.029744143973381876,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 11919.0,
+     "expected": 12103.6169750353,
+     "lift": 0.9847469582509024,
+     "low": 0.9757933725357348,
+     "high": 0.994010197364019,
+     "worth_at_the_bar": 0.004441897415920382,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 16704.0,
+     "expected": 16888.6169750353,
+     "lift": 0.9890685557433033,
+     "low": 0.9825893740226407,
+     "high": 0.9957609250090269,
+     "worth_at_the_bar": 0.008849926858169432,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 11119.0,
+     "expected": 10934.3830249647,
+     "lift": 1.0168840779231707,
+     "low": 1.0066011932468095,
+     "high": 1.0269216942179906,
+     "worth_at_the_bar": 0.0372217594816342,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.btts",
+   "second": "corners.over_9_5",
+   "phi": 0.010178019314685174,
+   "phi_low": 0.001969620510676192,
+   "phi_high": 0.01887228462538015,
+   "cells": {
+    "both": {
+     "observed": 15769.0,
+     "expected": 15622.00487650491,
+     "lift": 1.0094094915894032,
+     "low": 1.0018201465153305,
+     "high": 1.017344131822723,
+     "worth_at_the_bar": 0.029597681421191346,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 15660.0,
+     "expected": 15806.99512349509,
+     "lift": 0.9907006282758575,
+     "low": 0.9828073669621729,
+     "high": 0.9982025954748037,
+     "worth_at_the_bar": 0.010514640841374545,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 13458.0,
+     "expected": 13604.99512349509,
+     "lift": 0.9891955034043903,
+     "low": 0.9802546534104993,
+     "high": 0.9979406567079488,
+     "worth_at_the_bar": 0.008979413472478104,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 14365.0,
+     "expected": 14218.00487650491,
+     "lift": 1.0103386603656324,
+     "low": 1.0019951973941212,
+     "high": 1.0189302751538434,
+     "worth_at_the_bar": 0.030545433572944924,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.btts",
+   "second": "corners.over_10_5",
+   "phi": 0.0107268797261595,
+   "phi_low": 0.0016774787062043771,
+   "phi_high": 0.018768149721681015,
+   "cells": {
+    "both": {
+     "observed": 12176.0,
+     "expected": 12025.626479404566,
+     "lift": 1.0125044230213676,
+     "low": 1.0019419949672814,
+     "high": 1.0218261795971164,
+     "worth_at_the_bar": 0.03275451148179487,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 19253.0,
+     "expected": 19403.373520595436,
+     "lift": 0.9922501352439654,
+     "low": 0.9865931349460525,
+     "high": 0.9988003216540947,
+     "worth_at_the_bar": 0.012095137948844759,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 10275.0,
+     "expected": 10425.373520595434,
+     "lift": 0.9855761982725731,
+     "low": 0.974873791818147,
+     "high": 0.9977536647029884,
+     "worth_at_the_bar": 0.005287722238024539,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 17548.0,
+     "expected": 17397.626479404564,
+     "lift": 1.008643335386781,
+     "low": 1.0013411440582372,
+     "high": 1.0149413813075894,
+     "worth_at_the_bar": 0.02881620209451663,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.btts",
+   "second": "corners.over_11_5",
+   "phi": 0.0163105730108046,
+   "phi_low": 0.0080905297612872,
+   "phi_high": 0.02412724431984174,
+   "cells": {
+    "both": {
+     "observed": 9052.0,
+     "expected": 8840.823771455822,
+     "lift": 1.0238864877304759,
+     "low": 1.0117740065951717,
+     "high": 1.0351596013238102,
+     "worth_at_the_bar": 0.044364217485085344,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 22377.0,
+     "expected": 22588.17622854418,
+     "lift": 0.9906510279356985,
+     "low": 0.9863416734006837,
+     "high": 0.9953992119660015,
+     "worth_at_the_bar": 0.010464048494412515,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 7413.0,
+     "expected": 7624.176228544178,
+     "lift": 0.9723017645167285,
+     "low": 0.9592117561256207,
+     "high": 0.9863225848954682,
+     "worth_at_the_bar": -0.008252200192936932,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 20410.0,
+     "expected": 20198.82377145582,
+     "lift": 1.0104548775182942,
+     "low": 1.0051540334104467,
+     "high": 1.0153191081223998,
+     "worth_at_the_bar": 0.030663975068660143,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.btts",
+   "second": "corners.home_more",
+   "phi": -0.009949043248589933,
+   "phi_low": -0.017627335264349987,
+   "phi_high": -0.0018464460327156354,
+   "cells": {
+    "both": {
+     "observed": 16643.0,
+     "expected": 16787.362850657828,
+     "lift": 0.9914005045377231,
+     "low": 0.9848692930011438,
+     "high": 0.9984177577180072,
+     "worth_at_the_bar": 0.011228514628477626,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 14786.0,
+     "expected": 14641.637149342172,
+     "lift": 1.009859747867356,
+     "low": 1.0018088243098815,
+     "high": 1.0174577700444791,
+     "worth_at_the_bar": 0.03005694282470328,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 15014.0,
+     "expected": 14869.637149342172,
+     "lift": 1.009708565798071,
+     "low": 1.0017918301024356,
+     "high": 1.0171401200665966,
+     "worth_at_the_bar": 0.02990273711403235,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 12809.0,
+     "expected": 12953.362850657828,
+     "lift": 0.9888551836058158,
+     "low": 0.9803002260552679,
+     "high": 0.9979548607031946,
+     "worth_at_the_bar": 0.008632287277932083,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.btts",
+   "second": "corners.away_more",
+   "phi": 0.010723147988671482,
+   "phi_low": 0.002282088066660468,
+   "phi_high": 0.018052465721932223,
+   "cells": {
+    "both": {
+     "observed": 11863.0,
+     "expected": 11712.228160040302,
+     "lift": 1.0128730279072005,
+     "low": 1.0027144234114669,
+     "high": 1.021383119862751,
+     "worth_at_the_bar": 0.0331304884653445,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 19566.0,
+     "expected": 19716.7718399597,
+     "lift": 0.9923531173772507,
+     "low": 0.9872757947277754,
+     "high": 0.9983860853883116,
+     "worth_at_the_bar": 0.012200179724795701,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 10205.0,
+     "expected": 10355.771839959698,
+     "lift": 0.9854407916387347,
+     "low": 0.9756080315290706,
+     "high": 0.996927104389171,
+     "worth_at_the_bar": 0.005149607471509388,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 17618.0,
+     "expected": 17467.2281600403,
+     "lift": 1.0086316980907493,
+     "low": 1.001819745600712,
+     "high": 1.0144586581325017,
+     "worth_at_the_bar": 0.028804332052564163,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.btts",
+   "second": "cards.over_3_5",
+   "phi": 0.05218539753166289,
+   "phi_low": 0.04350305195705356,
+   "phi_high": 0.06000270390754055,
+   "cells": {
+    "both": {
+     "observed": 20394.0,
+     "expected": 19685.105258305954,
+     "lift": 1.036011732342398,
+     "low": 1.0297209405488943,
+     "high": 1.0411125242754853,
+     "worth_at_the_bar": 0.056731966989246096,
+     "status": "product_understates"
+    },
+    "first_only": {
+     "observed": 11035.0,
+     "expected": 11743.894741694046,
+     "lift": 0.9396371683086298,
+     "low": 0.9314863574683031,
+     "high": 0.9497908739754513,
+     "worth_at_the_bar": -0.041570088325197596,
+     "status": "product_overstates"
+    },
+    "second_only": {
+     "observed": 16810.0,
+     "expected": 17518.894741694046,
+     "lift": 0.9595354186353484,
+     "low": 0.9539872218404878,
+     "high": 0.9665344968485972,
+     "worth_at_the_bar": -0.02127387299194461,
+     "status": "product_overstates"
+    },
+    "neither": {
+     "observed": 11013.0,
+     "expected": 10304.105258305954,
+     "lift": 1.0687973117435519,
+     "low": 1.05713050648951,
+     "high": 1.0781675820671093,
+     "worth_at_the_bar": 0.0901732579784229,
+     "status": "product_understates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.btts",
+   "second": "cards.over_4_5",
+   "phi": 0.0594806367645334,
+   "phi_low": 0.05095228525233776,
+   "phi_high": 0.06721511594410585,
+   "cells": {
+    "both": {
+     "observed": 14952.0,
+     "expected": 14120.316641541314,
+     "lift": 1.0588997668800084,
+     "low": 1.0499135595424052,
+     "high": 1.0655345958153948,
+     "worth_at_the_bar": 0.08007776221760854,
+     "status": "product_understates"
+    },
+    "first_only": {
+     "observed": 16477.0,
+     "expected": 17308.683358458686,
+     "lift": 0.9519499351143745,
+     "low": 0.9461950962258069,
+     "high": 0.9591540769665794,
+     "worth_at_the_bar": -0.02901106618333793,
+     "status": "product_overstates"
+    },
+    "second_only": {
+     "observed": 11781.0,
+     "expected": 12612.683358458686,
+     "lift": 0.9340597607327613,
+     "low": 0.9262050035651866,
+     "high": 0.9441800139964519,
+     "worth_at_the_bar": -0.04725904405258341,
+     "status": "product_overstates"
+    },
+    "neither": {
+     "observed": 16042.0,
+     "expected": 15210.316641541314,
+     "lift": 1.0546788984120983,
+     "low": 1.0465184006089188,
+     "high": 1.0612267459317022,
+     "worth_at_the_bar": 0.07577247638034024,
+     "status": "product_understates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.btts",
+   "second": "cards.over_5_5",
+   "phi": 0.05320497411862281,
+   "phi_low": 0.04504493869721583,
+   "phi_high": 0.061146378404241426,
+   "cells": {
+    "both": {
+     "observed": 9911.0,
+     "expected": 9227.185824510674,
+     "lift": 1.0741086381584375,
+     "low": 1.061872169357427,
+     "high": 1.084573118745603,
+     "worth_at_the_bar": 0.09559081092160615,
+     "status": "product_understates"
+    },
+    "first_only": {
+     "observed": 21518.0,
+     "expected": 22201.814175489326,
+     "lift": 0.969200076620574,
+     "low": 0.9650087930381566,
+     "high": 0.9743558878462387,
+     "worth_at_the_bar": -0.011415921847014565,
+     "status": "product_overstates"
+    },
+    "second_only": {
+     "observed": 7602.0,
+     "expected": 8285.814175489326,
+     "lift": 0.9174716978915421,
+     "low": 0.9057203488365112,
+     "high": 0.9306113538712141,
+     "worth_at_the_bar": -0.06417886815062701,
+     "status": "product_overstates"
+    },
+    "neither": {
+     "observed": 20221.0,
+     "expected": 19537.185824510674,
+     "lift": 1.0350006485904144,
+     "low": 1.0294608078398648,
+     "high": 1.0398857866011189,
+     "worth_at_the_bar": 0.05570066156222264,
+     "status": "product_understates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.btts",
+   "second": "cards.home_more",
+   "phi": 0.008303868455764663,
+   "phi_low": 6.679611981763861e-05,
+   "phi_high": 0.015937260076893615,
+   "cells": {
+    "both": {
+     "observed": 10922.0,
+     "expected": 10807.158188879564,
+     "lift": 1.010626457863697,
+     "low": 1.000085891425286,
+     "high": 1.0201400407113448,
+     "worth_at_the_bar": 0.030838987020970876,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 20507.0,
+     "expected": 20621.841811120437,
+     "lift": 0.9944310594479244,
+     "low": 0.9893926875307747,
+     "high": 0.9999558977623869,
+     "worth_at_the_bar": 0.014319680636882826,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 9463.0,
+     "expected": 9577.841811120436,
+     "lift": 0.9880096358464495,
+     "low": 0.9774238784805201,
+     "high": 0.9999037261393542,
+     "worth_at_the_bar": 0.007769828563378489,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 18360.0,
+     "expected": 18245.158188879563,
+     "lift": 1.0062943719057713,
+     "low": 1.0000497664796157,
+     "high": 1.0120421791960634,
+     "worth_at_the_bar": 0.0264202593438867,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.btts",
+   "second": "cards.away_more",
+   "phi": -0.0040991730063682785,
+   "phi_low": -0.011607773140069626,
+   "phi_high": 0.0037044704952924313,
+   "cells": {
+    "both": {
+     "observed": 14166.0,
+     "expected": 14225.385614679246,
+     "lift": 0.995825377512581,
+     "low": 0.9883286314247496,
+     "high": 1.0037080617614773,
+     "worth_at_the_bar": 0.015741885062832583,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 17263.0,
+     "expected": 17203.614385320754,
+     "lift": 1.0034519266329243,
+     "low": 0.9969238947631442,
+     "high": 1.0096608359631976,
+     "worth_at_the_bar": 0.023520965165582775,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 12662.0,
+     "expected": 12602.614385320754,
+     "lift": 1.004712166290545,
+     "low": 0.9957559458155518,
+     "high": 1.0132488667363413,
+     "worth_at_the_bar": 0.02480640961635583,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 15161.0,
+     "expected": 15220.385614679246,
+     "lift": 0.9960982844861715,
+     "low": 0.9890718683668477,
+     "high": 1.003511342582077,
+     "worth_at_the_bar": 0.016020250175895034,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "corners.over_8_5",
+   "phi": -0.025055353566786412,
+   "phi_low": -0.03190846798917481,
+   "phi_high": -0.018009334350375435,
+   "cells": {
+    "both": {
+     "observed": 15641.0,
+     "expected": 15993.712705778318,
+     "lift": 0.9779467899500979,
+     "low": 0.9719435426665034,
+     "high": 0.9841715300020473,
+     "worth_at_the_bar": -0.002494274250900208,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 10539.0,
+     "expected": 10186.287294221682,
+     "lift": 1.034626227946506,
+     "low": 1.0247254059966011,
+     "high": 1.0434725763686779,
+     "worth_at_the_bar": 0.055318752505436164,
+     "status": "product_understates"
+    },
+    "second_only": {
+     "observed": 20573.0,
+     "expected": 20220.28729422168,
+     "lift": 1.017443506150336,
+     "low": 1.012367354091035,
+     "high": 1.0221436908258728,
+     "worth_at_the_bar": 0.037792376273342754,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 12499.0,
+     "expected": 12851.712705778318,
+     "lift": 0.9725551983729194,
+     "low": 0.9653175213334289,
+     "high": 0.9805029379828258,
+     "worth_at_the_bar": -0.007993697659622212,
+     "status": "borderline"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "corners.over_9_5",
+   "phi": -0.02754551144249319,
+   "phi_low": -0.03505085720164423,
+   "phi_high": -0.019470227690560712,
+   "cells": {
+    "both": {
+     "observed": 12512.0,
+     "expected": 12909.533825628154,
+     "lift": 0.9692061827330306,
+     "low": 0.9609719076353402,
+     "high": 0.978287896998246,
+     "worth_at_the_bar": -0.011409693612308813,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 13668.0,
+     "expected": 13270.466174371846,
+     "lift": 1.0299562818973065,
+     "low": 1.0210074896963608,
+     "high": 1.0378505799015474,
+     "worth_at_the_bar": 0.05055540753525256,
+     "status": "product_understates"
+    },
+    "second_only": {
+     "observed": 16715.0,
+     "expected": 16317.466174371846,
+     "lift": 1.0243624727871365,
+     "low": 1.0170263911661968,
+     "high": 1.030561397122389,
+     "worth_at_the_bar": 0.0448497222428792,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 16357.0,
+     "expected": 16754.533825628154,
+     "lift": 0.9762730595929756,
+     "low": 0.9702446489604724,
+     "high": 0.9834776525484588,
+     "worth_at_the_bar": -0.004201479215164894,
+     "status": "borderline"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "corners.over_10_5",
+   "phi": -0.02712762484368546,
+   "phi_low": -0.03494027035707215,
+   "phi_high": -0.019590449177261857,
+   "cells": {
+    "both": {
+     "observed": 9534.0,
+     "expected": 9914.008506387348,
+     "lift": 0.9616695400107315,
+     "low": 0.9510647514443951,
+     "high": 0.9726519443627593,
+     "worth_at_the_bar": -0.01909706918905385,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 16646.0,
+     "expected": 16265.991493612652,
+     "lift": 1.0233621483533033,
+     "low": 1.0167424066136856,
+     "high": 1.0297701801990489,
+     "worth_at_the_bar": 0.04382939132036934,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 12917.0,
+     "expected": 12536.991493612652,
+     "lift": 1.0303109806352628,
+     "low": 1.0216816326241989,
+     "high": 1.0389279726272103,
+     "worth_at_the_bar": 0.050917200247968086,
+     "status": "product_understates"
+    },
+    "neither": {
+     "observed": 20155.0,
+     "expected": 20535.00850638735,
+     "lift": 0.9814946019491958,
+     "low": 0.9762805797262507,
+     "high": 0.9867536738268994,
+     "worth_at_the_bar": 0.00112449398817982,
+     "status": "borderline"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "corners.over_11_5",
+   "phi": -0.0313656683607918,
+   "phi_low": -0.039386363851023586,
+   "phi_high": -0.0236787058122738,
+   "cells": {
+    "both": {
+     "observed": 6862.0,
+     "expected": 7267.801780272446,
+     "lift": 0.9441644402886792,
+     "low": 0.9308994758888339,
+     "high": 0.9582057967535423,
+     "worth_at_the_bar": -0.0369522709055472,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 19318.0,
+     "expected": 18912.198219727554,
+     "lift": 1.0214571450424599,
+     "low": 1.01601020797417,
+     "high": 1.0269649450729563,
+     "worth_at_the_bar": 0.041886287943309064,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 9603.0,
+     "expected": 9197.198219727554,
+     "lift": 1.0441223262321366,
+     "low": 1.0330258116171127,
+     "high": 1.0546138959214542,
+     "worth_at_the_bar": 0.0650047727567793,
+     "status": "product_understates"
+    },
+    "neither": {
+     "observed": 23469.0,
+     "expected": 23874.801780272446,
+     "lift": 0.9830029256784131,
+     "low": 0.9786370433408311,
+     "high": 0.9872742656956363,
+     "worth_at_the_bar": 0.00266298419198141,
+     "status": "borderline"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "corners.home_more",
+   "phi": -0.001786963583732412,
+   "phi_low": -0.01023691385980876,
+   "phi_high": 0.006734070355032889,
+   "cells": {
+    "both": {
+     "observed": 13991.0,
+     "expected": 14016.910358597495,
+     "lift": 0.9981514928800552,
+     "low": 0.9894870834318448,
+     "high": 1.00687355956277,
+     "worth_at_the_bar": 0.018114522737656236,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 12189.0,
+     "expected": 12163.089641402505,
+     "lift": 1.0021302448112606,
+     "low": 0.992036327213665,
+     "high": 1.012158219694914,
+     "worth_at_the_bar": 0.022172849707485787,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 17666.0,
+     "expected": 17640.089641402505,
+     "lift": 1.001468833726144,
+     "low": 0.9945284041828666,
+     "high": 1.0083090315527587,
+     "worth_at_the_bar": 0.021498210400666906,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 15406.0,
+     "expected": 15431.910358597495,
+     "lift": 0.9983209882642261,
+     "low": 0.9904649118649328,
+     "high": 1.0062832445139,
+     "worth_at_the_bar": 0.018287408029510566,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "corners.away_more",
+   "phi": 0.002215138474476586,
+   "phi_low": -0.006682688903748506,
+   "phi_high": 0.010582450229195866,
+   "cells": {
+    "both": {
+     "observed": 9751.0,
+     "expected": 9719.876931651834,
+     "lift": 1.0032020023058952,
+     "low": 0.9903775442805086,
+     "high": 1.0151873861247809,
+     "worth_at_the_bar": 0.023266042352013017,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 16429.0,
+     "expected": 16460.123068348166,
+     "lift": 0.9981091837394573,
+     "low": 0.9910679318600328,
+     "high": 1.005662126018708,
+     "worth_at_the_bar": 0.01807136741424653,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 12317.0,
+     "expected": 12348.123068348166,
+     "lift": 0.9974795304374684,
+     "low": 0.987965708204895,
+     "high": 1.0074872953461287,
+     "worth_at_the_bar": 0.017429121046217855,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 20755.0,
+     "expected": 20723.876931651834,
+     "lift": 1.0015017975859832,
+     "low": 0.9955324819452231,
+     "high": 1.0071138323165365,
+     "worth_at_the_bar": 0.021531833537702827,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "cards.over_3_5",
+   "phi": -0.041081197167465985,
+   "phi_low": -0.04915291129004692,
+   "phi_high": -0.032111947905233536,
+   "cells": {
+    "both": {
+     "observed": 15889.0,
+     "expected": 16446.64709079153,
+     "lift": 0.9660935698496408,
+     "low": 0.9597254557788013,
+     "high": 0.9736283813379477,
+     "worth_at_the_bar": -0.014584558753366395,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 10291.0,
+     "expected": 9733.352909208468,
+     "lift": 1.0572923941002854,
+     "low": 1.0442916462254535,
+     "high": 1.0681258278136474,
+     "worth_at_the_bar": 0.0784382419822911,
+     "status": "product_understates"
+    },
+    "second_only": {
+     "observed": 21315.0,
+     "expected": 20757.35290920847,
+     "lift": 1.0268650387759293,
+     "low": 1.0207037402737809,
+     "high": 1.0318907441230516,
+     "worth_at_the_bar": 0.04740233955144779,
+     "status": "product_understates"
+    },
+    "neither": {
+     "observed": 11757.0,
+     "expected": 12314.647090791532,
+     "lift": 0.9547167623497289,
+     "low": 0.9462813721652609,
+     "high": 0.9650060170812482,
+     "worth_at_the_bar": -0.026188902403276537,
+     "status": "product_overstates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "cards.over_4_5",
+   "phi": -0.039993536929339615,
+   "phi_low": -0.04755132910011781,
+   "phi_high": -0.03206978723003713,
+   "cells": {
+    "both": {
+     "observed": 11280.0,
+     "expected": 11838.799240425578,
+     "lift": 0.9527993313276685,
+     "low": 0.9444015894112484,
+     "high": 0.962537254642469,
+     "worth_at_the_bar": -0.028144682045778135,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 14900.0,
+     "expected": 14341.200759574422,
+     "lift": 1.038964606227447,
+     "low": 1.0311173481761284,
+     "high": 1.0460030359444175,
+     "worth_at_the_bar": 0.05974389835199578,
+     "status": "product_understates"
+    },
+    "second_only": {
+     "observed": 15453.0,
+     "expected": 14894.200759574422,
+     "lift": 1.0375179070999407,
+     "low": 1.0297568057592965,
+     "high": 1.0441128748484694,
+     "worth_at_the_bar": 0.05826826524193951,
+     "status": "product_understates"
+    },
+    "neither": {
+     "observed": 17619.0,
+     "expected": 18177.79924042558,
+     "lift": 0.9692592467858889,
+     "low": 0.9636031708463416,
+     "high": 0.9755042317983854,
+     "worth_at_the_bar": -0.011355568278393235,
+     "status": "product_overstates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "cards.over_5_5",
+   "phi": -0.0352864867010718,
+   "phi_low": -0.04306259101511477,
+   "phi_high": -0.026108608119218824,
+   "cells": {
+    "both": {
+     "observed": 7318.0,
+     "expected": 7771.187449589213,
+     "lift": 0.9416836291070074,
+     "low": 0.929431450253747,
+     "high": 0.9573520167356458,
+     "worth_at_the_bar": -0.03948269831085238,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 18862.0,
+     "expected": 18408.81255041079,
+     "lift": 1.0246179620955018,
+     "low": 1.0180816310815741,
+     "high": 1.0297417577710015,
+     "worth_at_the_bar": 0.045110321337411774,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 10195.0,
+     "expected": 9741.812550410787,
+     "lift": 1.046519828547728,
+     "low": 1.0339773502168057,
+     "high": 1.0562548470618625,
+     "worth_at_the_bar": 0.0674502251186826,
+     "status": "product_understates"
+    },
+    "neither": {
+     "observed": 22877.0,
+     "expected": 23330.18744958921,
+     "lift": 0.9805750617920049,
+     "low": 0.9764953495798804,
+     "high": 0.9857024540085452,
+     "worth_at_the_bar": 0.00018656302784503254,
+     "status": "borderline"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "cards.home_more",
+   "phi": -0.054028873572036895,
+   "phi_low": -0.06166137985327707,
+   "phi_high": -0.04579582806085227,
+   "cells": {
+    "both": {
+     "observed": 8242.0,
+     "expected": 8988.670642843159,
+     "lift": 0.9169320278257538,
+     "low": 0.9062034237929838,
+     "high": 0.930580361963581,
+     "worth_at_the_bar": -0.06472933161773109,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 17938.0,
+     "expected": 17191.329357156843,
+     "lift": 1.0434329787610237,
+     "low": 1.036521219766661,
+     "high": 1.0491898545607596,
+     "worth_at_the_bar": 0.06430163833624425,
+     "status": "product_understates"
+    },
+    "second_only": {
+     "observed": 12143.0,
+     "expected": 11396.329357156841,
+     "lift": 1.065518520871306,
+     "low": 1.0550441222356113,
+     "high": 1.0738043388184826,
+     "worth_at_the_bar": 0.08682889128873228,
+     "status": "product_understates"
+    },
+    "neither": {
+     "observed": 20929.0,
+     "expected": 21675.670642843157,
+     "lift": 0.965552593267065,
+     "low": 0.9608097684986893,
+     "high": 0.9711804989847292,
+     "worth_at_the_bar": -0.015136354867593682,
+     "status": "product_overstates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.home_more",
+   "second": "cards.away_more",
+   "phi": 0.05072565574654865,
+   "phi_low": 0.04277203748885115,
+   "phi_high": 0.05870943247755601,
+   "cells": {
+    "both": {
+     "observed": 12607.0,
+     "expected": 11872.661549416105,
+     "lift": 1.061851207290585,
+     "low": 1.051813359851482,
+     "high": 1.0711547508076174,
+     "worth_at_the_bar": 0.08308823143639676,
+     "status": "product_understates"
+    },
+    "first_only": {
+     "observed": 13573.0,
+     "expected": 14307.338450583895,
+     "lift": 0.9486740001908652,
+     "low": 0.9410206909242418,
+     "high": 0.9572094909608239,
+     "worth_at_the_bar": -0.0323525198053175,
+     "status": "product_overstates"
+    },
+    "second_only": {
+     "observed": 14221.0,
+     "expected": 14955.338450583895,
+     "lift": 0.9508979049180111,
+     "low": 0.9435338603357704,
+     "high": 0.9588908064288637,
+     "worth_at_the_bar": -0.030084136983628662,
+     "status": "product_overstates"
+    },
+    "neither": {
+     "observed": 18851.0,
+     "expected": 18116.661549416105,
+     "lift": 1.0405338725670217,
+     "low": 1.033783402948496,
+     "high": 1.0466440246785105,
+     "worth_at_the_bar": 0.06134455001836203,
+     "status": "product_understates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "corners.over_8_5",
+   "phi": 0.009374393257511729,
+   "phi_low": 0.0010879347191617285,
+   "phi_high": 0.017459828347958655,
+   "cells": {
+    "both": {
+     "observed": 11237.0,
+     "expected": 11114.650783586638,
+     "lift": 1.0110079226775204,
+     "low": 1.001267322469766,
+     "high": 1.020421475865179,
+     "worth_at_the_bar": 0.031228081131070784,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 6907.0,
+     "expected": 7029.349216413362,
+     "lift": 0.9825945172665942,
+     "low": 0.9678766759667086,
+     "high": 0.9979839392868031,
+     "worth_at_the_bar": 0.002246407611926182,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 24977.0,
+     "expected": 25099.349216413364,
+     "lift": 0.9951254028397933,
+     "low": 0.9909667298980833,
+     "high": 0.9994440979573427,
+     "worth_at_the_bar": 0.01502791089658917,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 16131.0,
+     "expected": 16008.650783586638,
+     "lift": 1.0076426938201941,
+     "low": 1.0008794866715287,
+     "high": 1.014097812870432,
+     "worth_at_the_bar": 0.02779554769659809,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "corners.over_9_5",
+   "phi": 0.008479645596202566,
+   "phi_low": -1.610528588190078e-05,
+   "phi_high": 0.015997372451626607,
+   "cells": {
+    "both": {
+     "observed": 9092.0,
+     "expected": 8978.541142978109,
+     "lift": 1.01263666950066,
+     "low": 0.9999762235619348,
+     "high": 1.0232958892160717,
+     "worth_at_the_bar": 0.032889402890673214,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 9052.0,
+     "expected": 9165.458857021891,
+     "lift": 0.9876210390781507,
+     "low": 0.9767975333315894,
+     "high": 1.0000233334409996,
+     "worth_at_the_bar": 0.007373459859713716,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 20135.0,
+     "expected": 20248.45885702189,
+     "lift": 0.9943966670341162,
+     "low": 0.9895400191335912,
+     "high": 1.0000104706216573,
+     "worth_at_the_bar": 0.014284600374798506,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 20973.0,
+     "expected": 20859.54114297811,
+     "lift": 1.0054391827818363,
+     "low": 0.9999897748960259,
+     "high": 1.0102477717004803,
+     "worth_at_the_bar": 0.025547966437473146,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "corners.over_10_5",
+   "phi": 0.010899452494524498,
+   "phi_low": 0.001940281823028934,
+   "phi_high": 0.018885466128830304,
+   "cells": {
+    "both": {
+     "observed": 7041.0,
+     "expected": 6899.445498283752,
+     "lift": 1.0205167939585087,
+     "low": 1.003637472408249,
+     "high": 1.0353654905163594,
+     "worth_at_the_bar": 0.04092712983767899,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 11103.0,
+     "expected": 11244.554501716248,
+     "lift": 0.9874112841291629,
+     "low": 0.9784801368899215,
+     "high": 0.9977974241056072,
+     "worth_at_the_bar": 0.007159509811746068,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 15410.0,
+     "expected": 15551.554501716248,
+     "lift": 0.9908977265455601,
+     "low": 0.9843827431499769,
+     "high": 0.9983761827574751,
+     "worth_at_the_bar": 0.01071568107647125,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 25698.0,
+     "expected": 25556.445498283752,
+     "lift": 1.0055388963119207,
+     "low": 1.000971420603935,
+     "high": 1.009513027431978,
+     "worth_at_the_bar": 0.025649674238159115,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "corners.over_11_5",
+   "phi": 0.011538971778524178,
+   "phi_low": 0.0034460630006807377,
+   "phi_high": 0.01922550672579558,
+   "cells": {
+    "both": {
+     "observed": 5200.0,
+     "expected": 5061.591115661056,
+     "lift": 1.0273449358464957,
+     "low": 1.0081073918994068,
+     "high": 1.0452744950422868,
+     "worth_at_the_bar": 0.047891834563425606,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 12944.0,
+     "expected": 13082.408884338944,
+     "lift": 0.9894202294422525,
+     "low": 0.9826315479159927,
+     "high": 0.9968743361191676,
+     "worth_at_the_bar": 0.009208634031097507,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 11265.0,
+     "expected": 11403.408884338944,
+     "lift": 0.9878624992102993,
+     "low": 0.9798041357038352,
+     "high": 0.9963891234746606,
+     "worth_at_the_bar": 0.007619749194505365,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 29843.0,
+     "expected": 29704.591115661056,
+     "lift": 1.0046595115145676,
+     "low": 1.0013720735223108,
+     "high": 1.0076782624296385,
+     "worth_at_the_bar": 0.024752701744858996,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "corners.home_more",
+   "phi": -0.009801920693315909,
+   "phi_low": -0.01786306101119723,
+   "phi_high": -0.0027785887856315657,
+   "cells": {
+    "both": {
+     "observed": 9518.0,
+     "expected": 9649.766909760308,
+     "lift": 0.9863450681252174,
+     "low": 0.9754593792540014,
+     "high": 0.9961638908215551,
+     "worth_at_the_bar": 0.006071969487721818,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 8626.0,
+     "expected": 8494.233090239692,
+     "lift": 1.015512514003379,
+     "low": 1.0043835359683324,
+     "high": 1.0278462400522699,
+     "worth_at_the_bar": 0.03582276428344655,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 22139.0,
+     "expected": 22007.233090239693,
+     "lift": 1.0059874364587316,
+     "low": 1.001680041674927,
+     "high": 1.0108802888752502,
+     "worth_at_the_bar": 0.026107185187906223,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 18969.0,
+     "expected": 19100.766909760307,
+     "lift": 0.9931014859045804,
+     "low": 0.9875119520547447,
+     "high": 0.9980607049779867,
+     "worth_at_the_bar": 0.01296351562267195,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "corners.away_more",
+   "phi": 0.008895457541557971,
+   "phi_low": 0.0015322204213178675,
+   "phi_high": 0.015911456254181354,
+   "cells": {
+    "both": {
+     "observed": 6924.0,
+     "expected": 6808.125660329225,
+     "lift": 1.0170200060122232,
+     "low": 1.0029249462987364,
+     "high": 1.0302083828754276,
+     "worth_at_the_bar": 0.037360406132467716,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 11220.0,
+     "expected": 11335.874339670776,
+     "lift": 0.9897780853775642,
+     "low": 0.9818122588428655,
+     "high": 0.9982641200412957,
+     "worth_at_the_bar": 0.009573647085115544,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 15144.0,
+     "expected": 15259.874339670776,
+     "lift": 0.9924065993538662,
+     "low": 0.9864510392057313,
+     "high": 0.9986967484603103,
+     "worth_at_the_bar": 0.01225473134094357,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 25964.0,
+     "expected": 25848.125660329224,
+     "lift": 1.0044828913784112,
+     "low": 1.0007611425148368,
+     "high": 1.0079158804793196,
+     "worth_at_the_bar": 0.0245725492059794,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "cards.over_3_5",
+   "phi": 0.01605464429080917,
+   "phi_low": 0.007825649114499738,
+   "phi_high": 0.023375546306755514,
+   "cells": {
+    "both": {
+     "observed": 11456.0,
+     "expected": 11253.952029479506,
+     "lift": 1.0179535126852535,
+     "low": 1.0086187983952195,
+     "high": 1.025890259704396,
+     "worth_at_the_bar": 0.03831258293895856,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 6688.0,
+     "expected": 6890.047970520494,
+     "lift": 0.9706753898688414,
+     "low": 0.9575122202393478,
+     "high": 0.9857973469965021,
+     "worth_at_the_bar": -0.009911102333781785,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 25748.0,
+     "expected": 25950.047970520493,
+     "lift": 0.9922139654327413,
+     "low": 0.9887200703888407,
+     "high": 0.9962307549616919,
+     "worth_at_the_bar": 0.012058244741396162,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 15360.0,
+     "expected": 15157.952029479506,
+     "lift": 1.0133295032289025,
+     "low": 1.0064958769625971,
+     "high": 1.019250283291966,
+     "worth_at_the_bar": 0.033596093293480456,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "cards.over_4_5",
+   "phi": 0.01739236844268081,
+   "phi_low": 0.009160031356145102,
+   "phi_high": 0.025521516571140254,
+   "cells": {
+    "both": {
+     "observed": 8272.0,
+     "expected": 8046.699489700161,
+     "lift": 1.02799912070635,
+     "low": 1.0146661540464719,
+     "high": 1.0406264528004272,
+     "worth_at_the_bar": 0.04855910312047684,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 9872.0,
+     "expected": 10097.30051029984,
+     "lift": 0.9776870550628834,
+     "low": 0.9674518911818878,
+     "high": 0.9884524444735242,
+     "worth_at_the_bar": -0.0027592038358588145,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 18461.0,
+     "expected": 18686.30051029984,
+     "lift": 0.9879430115032317,
+     "low": 0.9823740401061675,
+     "high": 0.9936797679400833,
+     "worth_at_the_bar": 0.007701871733296395,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 22647.0,
+     "expected": 22421.69948970016,
+     "lift": 1.0100483244101695,
+     "low": 1.0052269492148067,
+     "high": 1.014674413555977,
+     "worth_at_the_bar": 0.030249290898372916,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "cards.over_5_5",
+   "phi": 0.01566599311895678,
+   "phi_low": 0.00799306079621739,
+   "phi_high": 0.023348515501548005,
+   "cells": {
+    "both": {
+     "observed": 5425.0,
+     "expected": 5238.463063237555,
+     "lift": 1.035609096506096,
+     "low": 1.0182591626232897,
+     "high": 1.0526972079607044,
+     "worth_at_the_bar": 0.056321278436217925,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 12719.0,
+     "expected": 12905.536936762444,
+     "lift": 0.985545976298663,
+     "low": 0.9785090531613274,
+     "high": 0.9926654937345338,
+     "worth_at_the_bar": 0.005256895824636398,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 12088.0,
+     "expected": 12274.536936762444,
+     "lift": 0.9848029349112337,
+     "low": 0.9775178943342689,
+     "high": 0.9923575432468592,
+     "worth_at_the_bar": 0.004498993609458379,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 29020.0,
+     "expected": 28833.463063237556,
+     "lift": 1.0064694600282087,
+     "low": 1.0032006990092828,
+     "high": 1.0095843363452424,
+     "worth_at_the_bar": 0.02659884922877298,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "cards.home_more",
+   "phi": 0.06330262399747477,
+   "phi_low": 0.05464436546125085,
+   "phi_high": 0.07181671400875338,
+   "cells": {
+    "both": {
+     "observed": 7070.0,
+     "expected": 6258.922543083318,
+     "lift": 1.1295873932507756,
+     "low": 1.110774542132656,
+     "high": 1.1456139919721098,
+     "worth_at_the_bar": 0.15217914111579112,
+     "status": "product_understates"
+    },
+    "first_only": {
+     "observed": 11074.0,
+     "expected": 11885.077456916682,
+     "lift": 0.9317566536813217,
+     "low": 0.9235867507238975,
+     "high": 0.941374272102213,
+     "worth_at_the_bar": -0.049608213245051935,
+     "status": "product_overstates"
+    },
+    "second_only": {
+     "observed": 13315.0,
+     "expected": 14126.077456916682,
+     "lift": 0.9425829669000189,
+     "low": 0.9356466768658311,
+     "high": 0.9507211742121096,
+     "worth_at_the_bar": -0.03856537376198077,
+     "status": "product_overstates"
+    },
+    "neither": {
+     "observed": 27793.0,
+     "expected": 26981.922543083318,
+     "lift": 1.0300600320685673,
+     "low": 1.025764180507862,
+     "high": 1.0338180746232999,
+     "worth_at_the_bar": 0.05066123270993872,
+     "status": "product_understates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "goals.away_more",
+   "second": "cards.away_more",
+   "phi": -0.05926516884007059,
+   "phi_low": -0.06686341481372485,
+   "phi_high": -0.051556846669114136,
+   "cells": {
+    "both": {
+     "observed": 7402.0,
+     "expected": 8197.43661794053,
+     "lift": 0.9029652005848177,
+     "low": 0.8917599400964624,
+     "high": 0.9161111749799659,
+     "worth_at_the_bar": -0.07897549540348592,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 10742.0,
+     "expected": 9946.56338205947,
+     "lift": 1.079970999770157,
+     "low": 1.0686821352953706,
+     "high": 1.0895473052609885,
+     "worth_at_the_bar": 0.10157041976556025,
+     "status": "product_understates"
+    },
+    "second_only": {
+     "observed": 19426.0,
+     "expected": 18630.56338205947,
+     "lift": 1.0426952530435287,
+     "low": 1.0367417316372043,
+     "high": 1.0477116917679261,
+     "worth_at_the_bar": 0.06354915810439943,
+     "status": "product_understates"
+    },
+    "neither": {
+     "observed": 21682.0,
+     "expected": 22477.43661794053,
+     "lift": 0.9646117735104346,
+     "low": 0.960318383386815,
+     "high": 0.969555542171981,
+     "worth_at_the_bar": -0.01609599101935666,
+     "status": "product_overstates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "corners.over_8_5",
+   "second": "cards.over_3_5",
+   "phi": -0.01570762063830585,
+   "phi_low": -0.02459032194361896,
+   "phi_high": -0.008949228830055741,
+   "cells": {
+    "both": {
+     "observed": 22442.0,
+     "expected": 22649.918391608437,
+     "lift": 0.9908203469869689,
+     "low": 0.9856440105850284,
+     "high": 0.99481506423792,
+     "worth_at_the_bar": 0.010636753926708264,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 13772.0,
+     "expected": 13564.081608391563,
+     "lift": 1.0153286007568552,
+     "low": 1.0086556950776473,
+     "high": 1.0238561539156454,
+     "worth_at_the_bar": 0.03563517277199235,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 14762.0,
+     "expected": 14554.081608391563,
+     "lift": 1.0142859162950244,
+     "low": 1.0080604657241776,
+     "high": 1.0220506925949653,
+     "worth_at_the_bar": 0.03457163462092483,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 8276.0,
+     "expected": 8483.918391608437,
+     "lift": 0.9754926459672111,
+     "low": 0.9620561812074929,
+     "high": 0.9861975993885757,
+     "worth_at_the_bar": -0.004997501113444658,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_8_5",
+   "second": "cards.over_4_5",
+   "phi": -0.01645313976122873,
+   "phi_low": -0.024567650423557054,
+   "phi_high": -0.008621427927462713,
+   "cells": {
+    "both": {
+     "observed": 16011.0,
+     "expected": 16235.171776491845,
+     "lift": 0.9861922140659799,
+     "low": 0.9794819863810708,
+     "high": 0.992829122587047,
+     "worth_at_the_bar": 0.005916058347299469,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 20203.0,
+     "expected": 19978.828223508157,
+     "lift": 1.0112204666852318,
+     "low": 1.005828993466653,
+     "high": 1.0167588213284788,
+     "worth_at_the_bar": 0.03144487601893653,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 10722.0,
+     "expected": 10497.828223508155,
+     "lift": 1.0213541097948096,
+     "low": 1.0111666863783102,
+     "high": 1.0315057167014015,
+     "worth_at_the_bar": 0.041781191990705846,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 12316.0,
+     "expected": 12540.171776491845,
+     "lift": 0.9821237076742375,
+     "low": 0.9734142604019719,
+     "high": 0.9907046640422668,
+     "worth_at_the_bar": 0.0017661818277223684,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_8_5",
+   "second": "cards.over_5_5",
+   "phi": -0.013394040358971062,
+   "phi_low": -0.021145809569263097,
+   "phi_high": -0.006393690290132687,
+   "cells": {
+    "both": {
+     "observed": 10435.0,
+     "expected": 10602.744083337744,
+     "lift": 0.9841791821042484,
+     "low": 0.9752946523600575,
+     "high": 0.9925015387580534,
+     "worth_at_the_bar": 0.003862765746333263,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 25779.0,
+     "expected": 25611.255916662256,
+     "lift": 1.0065496234891242,
+     "low": 1.0030804170448495,
+     "high": 1.0102803745072797,
+     "worth_at_the_bar": 0.026680615958906806,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 7078.0,
+     "expected": 6910.255916662256,
+     "lift": 1.0242746557234261,
+     "low": 1.0114514984609146,
+     "high": 1.0377414290099232,
+     "worth_at_the_bar": 0.04476014883789459,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 15960.0,
+     "expected": 16127.744083337744,
+     "lift": 0.9895990361410156,
+     "low": 0.9836646753353108,
+     "high": 0.9951035599947833,
+     "worth_at_the_bar": 0.009391016863836033,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_8_5",
+   "second": "cards.home_more",
+   "phi": -0.006380737700059103,
+   "phi_low": -0.015060126387140379,
+   "phi_high": 0.0011592341966118285,
+   "cells": {
+    "both": {
+     "observed": 12356.0,
+     "expected": 12441.988467392248,
+     "lift": 0.9930888484893227,
+     "low": 0.9838612796264027,
+     "high": 1.0012397666611503,
+     "worth_at_the_bar": 0.012950625459109188,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 23858.0,
+     "expected": 23772.01153260775,
+     "lift": 1.003617214608629,
+     "low": 0.9993469400136573,
+     "high": 1.008396699097525,
+     "worth_at_the_bar": 0.02368955890080171,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 8029.0,
+     "expected": 7943.011532607752,
+     "lift": 1.0108256757577712,
+     "low": 0.9980530520641829,
+     "high": 1.0252588519450863,
+     "worth_at_the_bar": 0.03104218927292668,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 15009.0,
+     "expected": 15094.988467392248,
+     "lift": 0.994303508904429,
+     "low": 0.9868224352413244,
+     "high": 1.001026693921643,
+     "worth_at_the_bar": 0.0141895790825175,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_8_5",
+   "second": "cards.away_more",
+   "phi": 0.006918268353495112,
+   "phi_low": -0.001137906681123447,
+   "phi_high": 0.014718372443873412,
+   "cells": {
+    "both": {
+     "observed": 16493.0,
+     "expected": 16395.336528820306,
+     "lift": 1.0059567835651326,
+     "low": 0.9990183978688351,
+     "high": 1.0126694234367228,
+     "worth_at_the_bar": 0.026075919236435263,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 19721.0,
+     "expected": 19818.663471179694,
+     "lift": 0.9950721464481338,
+     "low": 0.9895421811943637,
+     "high": 1.000805279700314,
+     "worth_at_the_bar": 0.014973589377096586,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 10335.0,
+     "expected": 10432.663471179694,
+     "lift": 0.9906386828781077,
+     "low": 0.9805174282768572,
+     "high": 1.0015207561466375,
+     "worth_at_the_bar": 0.010451456535669923,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 12703.0,
+     "expected": 12605.336528820306,
+     "lift": 1.0077477876894758,
+     "low": 0.9987543532262215,
+     "high": 1.0161627124682135,
+     "worth_at_the_bar": 0.027902743443265265,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "corners.over_9_5",
+   "second": "cards.over_3_5",
+   "phi": -0.02070421650146401,
+   "phi_low": -0.029578838356464056,
+   "phi_high": -0.0126530580802669,
+   "cells": {
+    "both": {
+     "observed": 17975.0,
+     "expected": 18255.95966876366,
+     "lift": 0.9846099753800187,
+     "low": 0.9780912444584894,
+     "high": 0.9906227071016679,
+     "worth_at_the_bar": 0.004302174887619081,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 11252.0,
+     "expected": 10971.040331236341,
+     "lift": 1.0256092093621898,
+     "low": 1.0154641385432364,
+     "high": 1.035993300684193,
+     "worth_at_the_bar": 0.046121393549433565,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 19229.0,
+     "expected": 18948.04033123634,
+     "lift": 1.0148279011365882,
+     "low": 1.0090109734336667,
+     "high": 1.0210532874485627,
+     "worth_at_the_bar": 0.035124459159320054,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 10796.0,
+     "expected": 11076.959668763659,
+     "lift": 0.9746356692481288,
+     "low": 0.9645290456778215,
+     "high": 0.9847023358038964,
+     "worth_at_the_bar": -0.005871617366908555,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_9_5",
+   "second": "cards.over_4_5",
+   "phi": -0.021382049978597627,
+   "phi_low": -0.030302064848889105,
+   "phi_high": -0.013953964180020059,
+   "cells": {
+    "both": {
+     "observed": 12776.0,
+     "expected": 13074.664886080991,
+     "lift": 0.9771569758243713,
+     "low": 0.9681432996231242,
+     "high": 0.9852522378016373,
+     "worth_at_the_bar": -0.0032998846591412168,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 16451.0,
+     "expected": 16152.335113919009,
+     "lift": 1.0184905082747833,
+     "low": 1.0119331426414986,
+     "high": 1.0259255283015518,
+     "worth_at_the_bar": 0.03886031844027893,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 13957.0,
+     "expected": 13658.335113919009,
+     "lift": 1.0218668588513857,
+     "low": 1.0140655704911399,
+     "high": 1.0307607348184564,
+     "worth_at_the_bar": 0.0423041960284134,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 16068.0,
+     "expected": 16366.664886080991,
+     "lift": 0.9817516343030284,
+     "low": 0.9744288753696295,
+     "high": 0.9881245555563895,
+     "worth_at_the_bar": 0.0013866669890889582,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_9_5",
+   "second": "cards.over_5_5",
+   "phi": -0.017760251406848216,
+   "phi_low": -0.025391817152723126,
+   "phi_high": -0.009755197413207572,
+   "cells": {
+    "both": {
+     "observed": 8303.0,
+     "expected": 8531.027589044146,
+     "lift": 0.9732707945597331,
+     "low": 0.9620842170963146,
+     "high": 0.9853063415052928,
+     "worth_at_the_bar": -0.007263789549072253,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 20924.0,
+     "expected": 20695.972410955852,
+     "lift": 1.0110179693186794,
+     "low": 1.0060167444788164,
+     "high": 1.0156272767982992,
+     "worth_at_the_bar": 0.031238328705053053,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 9210.0,
+     "expected": 8981.972410955854,
+     "lift": 1.0253872511082318,
+     "low": 1.013827695763737,
+     "high": 1.0360264797376049,
+     "worth_at_the_bar": 0.04589499613039649,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 20815.0,
+     "expected": 21043.027589044148,
+     "lift": 0.9891637461349493,
+     "low": 0.9845820696600394,
+     "high": 0.9941014988073491,
+     "worth_at_the_bar": 0.00894702105764833,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_9_5",
+   "second": "cards.home_more",
+   "phi": -0.012455110155210157,
+   "phi_low": -0.020608447640945243,
+   "phi_high": -0.004684537747482925,
+   "cells": {
+    "both": {
+     "observed": 9866.0,
+     "expected": 10038.075709176886,
+     "lift": 0.982857699606751,
+     "low": 0.9716942888081522,
+     "high": 0.9935886183191621,
+     "worth_at_the_bar": 0.0025148535988859244,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 19361.0,
+     "expected": 19188.924290823114,
+     "lift": 1.0089674494812186,
+     "low": 1.0033413099650061,
+     "high": 1.014710535462518,
+     "worth_at_the_bar": 0.029146798470843116,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 10519.0,
+     "expected": 10346.924290823114,
+     "lift": 1.016630614503433,
+     "low": 1.0062057394702697,
+     "high": 1.027596644943369,
+     "worth_at_the_bar": 0.03696322679350161,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 19506.0,
+     "expected": 19678.075709176886,
+     "lift": 0.9912554605582374,
+     "low": 0.9856516176554526,
+     "high": 0.9967386805406679,
+     "worth_at_the_bar": 0.011080569769402304,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_9_5",
+   "second": "cards.away_more",
+   "phi": 0.006821000296889946,
+   "phi_low": -0.0012049948728489399,
+   "phi_high": 0.014611115789537487,
+   "cells": {
+    "both": {
+     "observed": 13330.0,
+     "expected": 13231.284465960514,
+     "lift": 1.0074607672666585,
+     "low": 0.9986948814319415,
+     "high": 1.0157740326520575,
+     "worth_at_the_bar": 0.027609982611991546,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 15897.0,
+     "expected": 15995.715534039486,
+     "lift": 0.9938286265575669,
+     "low": 0.9868989831385282,
+     "high": 1.0010904772008404,
+     "worth_at_the_bar": 0.013705199088718256,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 13498.0,
+     "expected": 13596.715534039486,
+     "lift": 0.9927397514648041,
+     "low": 0.9846875301189472,
+     "high": 1.0012596198624035,
+     "worth_at_the_bar": 0.01259454649410019,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 16527.0,
+     "expected": 16428.284465960514,
+     "lift": 1.0060088765959723,
+     "low": 0.998949340597043,
+     "high": 1.0127400426094881,
+     "worth_at_the_bar": 0.026129054127891793,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "corners.over_10_5",
+   "second": "cards.over_3_5",
+   "phi": -0.019915408960795793,
+   "phi_low": -0.027570696724182032,
+   "phi_high": -0.011600215444824986,
+   "cells": {
+    "both": {
+     "observed": 13728.0,
+     "expected": 13990.32078943371,
+     "lift": 0.9812498374138905,
+     "low": 0.9743068943561638,
+     "high": 0.9891630863309188,
+     "worth_at_the_bar": 0.0008748341621682698,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 8723.0,
+     "expected": 8460.67921056629,
+     "lift": 1.0310046963021722,
+     "low": 1.0178565616669,
+     "high": 1.0422516902539047,
+     "worth_at_the_bar": 0.051624790228215645,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 23476.0,
+     "expected": 23213.67921056629,
+     "lift": 1.0113002677022567,
+     "low": 1.0065074940049359,
+     "high": 1.015468334952902,
+     "worth_at_the_bar": 0.031526273056301735,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 13325.0,
+     "expected": 13587.32078943371,
+     "lift": 0.9806937075013563,
+     "low": 0.9735229012807289,
+     "high": 0.9888517388890392,
+     "worth_at_the_bar": 0.0003075816513835594,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_10_5",
+   "second": "cards.over_4_5",
+   "phi": -0.021513543311450372,
+   "phi_low": -0.030416525092475215,
+   "phi_high": -0.013989053025855163,
+   "cells": {
+    "both": {
+     "observed": 9713.0,
+     "expected": 10004.678938236144,
+     "lift": 0.9708457472711696,
+     "low": 0.9593326076546115,
+     "high": 0.9814911745679423,
+     "worth_at_the_bar": -0.009737337783407018,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 12738.0,
+     "expected": 12446.321061763856,
+     "lift": 1.0234349521267136,
+     "low": 1.0150041578573623,
+     "high": 1.0328125237012722,
+     "worth_at_the_bar": 0.04390365116924788,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 17020.0,
+     "expected": 16728.321061763854,
+     "lift": 1.0174362350626351,
+     "low": 1.0113495536810073,
+     "high": 1.0245613060373926,
+     "worth_at_the_bar": 0.03778495976388796,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 19781.0,
+     "expected": 20072.678938236146,
+     "lift": 0.9854688584850261,
+     "low": 0.979765173634114,
+     "high": 0.9905655210854049,
+     "worth_at_the_bar": 0.005178235654726526,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_10_5",
+   "second": "cards.over_5_5",
+   "phi": -0.01951809492926649,
+   "phi_low": -0.027328299427971367,
+   "phi_high": -0.012234975858163586,
+   "cells": {
+    "both": {
+     "observed": 6273.0,
+     "expected": 6516.2394495646595,
+     "lift": 0.9626718061165003,
+     "low": 0.9479655205172286,
+     "high": 0.9768613057132054,
+     "worth_at_the_bar": -0.018074757761169735,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 16178.0,
+     "expected": 15934.760550435341,
+     "lift": 1.0152647069150977,
+     "low": 1.0094604382479848,
+     "high": 1.0211092823170698,
+     "worth_at_the_bar": 0.03557000105339969,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 11240.0,
+     "expected": 10996.760550435341,
+     "lift": 1.0221191912335519,
+     "low": 1.0137338666155835,
+     "high": 1.0305982081105023,
+     "worth_at_the_bar": 0.04256157505822289,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 25561.0,
+     "expected": 25804.23944956466,
+     "lift": 0.9905736632912557,
+     "low": 0.98693405807842,
+     "high": 0.9941899769052818,
+     "worth_at_the_bar": 0.010385136557080843,
+     "status": "negligible"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "corners.over_10_5",
+   "second": "cards.home_more",
+   "phi": -0.01036108765843845,
+   "phi_low": -0.018273685755155367,
+   "phi_high": -0.0032380035477935884,
+   "cells": {
+    "both": {
+     "observed": 7561.0,
+     "expected": 7699.942670874152,
+     "lift": 0.9819553629405947,
+     "low": 0.9683806405599187,
+     "high": 0.9944488427071013,
+     "worth_at_the_bar": 0.0015944701994066168,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 14890.0,
+     "expected": 14751.057329125848,
+     "lift": 1.0094191668959085,
+     "low": 1.0029091432610437,
+     "high": 1.0164684771679457,
+     "worth_at_the_bar": 0.029607550233826663,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 12824.0,
+     "expected": 12685.057329125848,
+     "lift": 1.0109532552568863,
+     "low": 1.0033980481462321,
+     "high": 1.0191434916125832,
+     "worth_at_the_bar": 0.031172320362023997,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 23977.0,
+     "expected": 24115.942670874152,
+     "lift": 0.9942385552673436,
+     "low": 0.9898998295479772,
+     "high": 0.9982052204580742,
+     "worth_at_the_bar": 0.014123326372690537,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_10_5",
+   "second": "cards.away_more",
+   "phi": 0.0056734883620682295,
+   "phi_low": -0.0023563889344428313,
+   "phi_high": 0.013365702855242915,
+   "cells": {
+    "both": {
+     "observed": 10250.0,
+     "expected": 10170.302279672635,
+     "lift": 1.0078363177549459,
+     "low": 0.9967864799070023,
+     "high": 1.0181961831321205,
+     "worth_at_the_bar": 0.027993044110044885,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 12201.0,
+     "expected": 12280.697720327365,
+     "lift": 0.9935103263558513,
+     "low": 0.9848764866574405,
+     "high": 1.002680420049292,
+     "worth_at_the_bar": 0.013380532882968366,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 16578.0,
+     "expected": 16657.697720327364,
+     "lift": 0.9952155620983499,
+     "low": 0.9888077548298382,
+     "high": 1.0019640238977676,
+     "worth_at_the_bar": 0.015119873340317058,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 20223.0,
+     "expected": 20143.302279672636,
+     "lift": 1.0039565369779408,
+     "low": 0.9983630625059514,
+     "high": 1.009271895946656,
+     "worth_at_the_bar": 0.024035667717499765,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "corners.over_11_5",
+   "second": "cards.over_3_5",
+   "phi": -0.01854435777523663,
+   "phi_low": -0.026491336260323205,
+   "phi_high": -0.010110425866938909,
+   "cells": {
+    "both": {
+     "observed": 10015.0,
+     "expected": 10240.596903038175,
+     "lift": 0.9779703365756692,
+     "low": 0.968784354721943,
+     "high": 0.9880773063090568,
+     "worth_at_the_bar": -0.0024702566928174186,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 6450.0,
+     "expected": 6224.403096961825,
+     "lift": 1.0362439417119835,
+     "low": 1.0195237432465265,
+     "high": 1.0514931312588451,
+     "worth_at_the_bar": 0.05696882054622332,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 27189.0,
+     "expected": 26963.403096961825,
+     "lift": 1.0083667815307629,
+     "low": 1.0045566543041082,
+     "high": 1.0118055566122277,
+     "worth_at_the_bar": 0.028534117161378214,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 15598.0,
+     "expected": 15823.596903038175,
+     "lift": 0.9857430074577507,
+     "low": 0.9798177549302842,
+     "high": 0.9923310803788912,
+     "worth_at_the_bar": 0.0054578676069056975,
+     "status": "borderline"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_11_5",
+   "second": "cards.over_4_5",
+   "phi": -0.01836286833533949,
+   "phi_low": -0.026839230349108713,
+   "phi_high": -0.01080664609413135,
+   "cells": {
+    "both": {
+     "observed": 7085.0,
+     "expected": 7314.938397201565,
+     "lift": 0.9685659147465232,
+     "low": 0.9544020581656576,
+     "high": 0.9817174906467906,
+     "worth_at_the_bar": -0.012062766958546356,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 9380.0,
+     "expected": 9150.061602798436,
+     "lift": 1.0251297102886434,
+     "low": 1.0147373010175973,
+     "high": 1.036294056951903,
+     "worth_at_the_bar": 0.04563230449441624,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 19648.0,
+     "expected": 19418.061602798436,
+     "lift": 1.0118414701685994,
+     "low": 1.006870374862677,
+     "high": 1.017262036907287,
+     "worth_at_the_bar": 0.03207829957197128,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 23139.0,
+     "expected": 23368.938397201564,
+     "lift": 0.9901605116461303,
+     "low": 0.9858614336851008,
+     "high": 0.9942432866615937,
+     "worth_at_the_bar": 0.009963721879052923,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_11_5",
+   "second": "cards.over_5_5",
+   "phi": -0.017097934423761448,
+   "phi_low": -0.024581326011403382,
+   "phi_high": -0.009930313338418784,
+   "cells": {
+    "both": {
+     "observed": 4562.0,
+     "expected": 4758.79682495406,
+     "lift": 0.9586456761671139,
+     "low": 0.9410834686689653,
+     "high": 0.9759412338324117,
+     "worth_at_the_bar": -0.022181410309543792,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 11903.0,
+     "expected": 11706.20317504594,
+     "lift": 1.0168113283198068,
+     "low": 1.0097181423523662,
+     "high": 1.0241068958546462,
+     "worth_at_the_bar": 0.03714755488620303,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 12951.0,
+     "expected": 12754.20317504594,
+     "lift": 1.0154299584421786,
+     "low": 1.0089040833070684,
+     "high": 1.0219597385337609,
+     "worth_at_the_bar": 0.03573855761102229,
+     "status": "borderline"
+    },
+    "neither": {
+     "observed": 29836.0,
+     "expected": 30032.79682495406,
+     "lift": 0.9934472694600809,
+     "low": 0.9906123033078449,
+     "high": 0.9962402461645162,
+     "worth_at_the_bar": 0.01331621484928247,
+     "status": "negligible"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "corners.over_11_5",
+   "second": "cards.home_more",
+   "phi": -0.0056561423066381535,
+   "phi_low": -0.013978226182196704,
+   "phi_high": 0.001269356884427553,
+   "cells": {
+    "both": {
+     "observed": 5583.0,
+     "expected": 5653.0532804024415,
+     "lift": 0.9876078860524282,
+     "low": 0.9695314490852368,
+     "high": 1.0027827067550983,
+     "worth_at_the_bar": 0.0073600437734768764,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 10882.0,
+     "expected": 10811.94671959756,
+     "lift": 1.0064792476525493,
+     "low": 0.9985544943763738,
+     "high": 1.0159092756010037,
+     "worth_at_the_bar": 0.026608832605600208,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 14802.0,
+     "expected": 14731.94671959756,
+     "lift": 1.004755195069315,
+     "low": 0.9989446019695692,
+     "high": 1.0116553363900396,
+     "worth_at_the_bar": 0.024850298970701346,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 27985.0,
+     "expected": 28055.05328040244,
+     "lift": 0.9975030066882327,
+     "low": 0.9938514423165601,
+     "high": 1.0005552141811336,
+     "worth_at_the_bar": 0.01745306682199743,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.over_11_5",
+   "second": "cards.away_more",
+   "phi": 0.003804542157242056,
+   "phi_low": -0.004542927369870382,
+   "phi_high": 0.011420316045138486,
+   "cells": {
+    "both": {
+     "observed": 7500.0,
+     "expected": 7450.639905128724,
+     "lift": 1.0066249470515007,
+     "low": 0.9921452397597343,
+     "high": 1.019739466097137,
+     "worth_at_the_bar": 0.026757445992530826,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 8965.0,
+     "expected": 9014.360094871276,
+     "lift": 0.9945242818844835,
+     "low": 0.9837823007850838,
+     "high": 1.006437230564187,
+     "worth_at_the_bar": 0.014414767522173078,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 19328.0,
+     "expected": 19377.360094871277,
+     "lift": 0.9974526924911541,
+     "low": 0.9923850444987715,
+     "high": 1.0030226326275413,
+     "worth_at_the_bar": 0.017401746340977242,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 23459.0,
+     "expected": 23409.639905128723,
+     "lift": 1.0021085371270688,
+     "low": 0.9975074725052167,
+     "high": 1.0062468196270917,
+     "worth_at_the_bar": 0.022150707869610153,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "corners.home_more",
+   "second": "cards.over_3_5",
+   "phi": -0.005381724723657917,
+   "phi_low": -0.013612755621358866,
+   "phi_high": 0.0025068509093297605,
+   "cells": {
+    "both": {
+     "observed": 19872.0,
+     "expected": 19945.37382090666,
+     "lift": 0.9963212611823925,
+     "low": 0.9908119253235588,
+     "high": 1.001697563828752,
+     "worth_at_the_bar": 0.01624768640604035,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 11785.0,
+     "expected": 11711.626179093339,
+     "lift": 1.0062650412320744,
+     "low": 0.9971222644632022,
+     "high": 1.0157400197870698,
+     "worth_at_the_bar": 0.026390342056715976,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 17332.0,
+     "expected": 17258.62617909334,
+     "lift": 1.0042514288301547,
+     "low": 0.9980350371251564,
+     "high": 1.0106276878346694,
+     "worth_at_the_bar": 0.02433645740675794,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 10263.0,
+     "expected": 10336.373820906661,
+     "lift": 0.9929013963525338,
+     "low": 0.9822711229760749,
+     "high": 1.0032855097871745,
+     "worth_at_the_bar": 0.012759424279584541,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "corners.home_more",
+   "second": "cards.over_4_5",
+   "phi": -0.0016296625210590868,
+   "phi_low": -0.010131507927850331,
+   "phi_high": 0.006258963817021346,
+   "cells": {
+    "both": {
+     "observed": 14330.0,
+     "expected": 14352.870042778508,
+     "lift": 0.9984065874831762,
+     "low": 0.990185503678498,
+     "high": 1.0060472562115352,
+     "worth_at_the_bar": 0.018374719232839842,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 17327.0,
+     "expected": 17304.129957221492,
+     "lift": 1.0013216522781005,
+     "low": 0.9949731023476158,
+     "high": 1.0081149868889143,
+     "worth_at_the_bar": 0.021348085323662502,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 12403.0,
+     "expected": 12380.129957221492,
+     "lift": 1.0018473184738395,
+     "low": 0.9930100239329057,
+     "high": 1.011434697281081,
+     "worth_at_the_bar": 0.02188426484331618,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 15192.0,
+     "expected": 15214.870042778508,
+     "lift": 0.9984968624303588,
+     "low": 0.9906792521394093,
+     "high": 1.005656744908481,
+     "worth_at_the_bar": 0.018466799678966028,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "corners.home_more",
+   "second": "cards.over_5_5",
+   "phi": -0.0011847222053471278,
+   "phi_low": -0.008623794378718297,
+   "phi_high": 0.006956290842259719,
+   "cells": {
+    "both": {
+     "observed": 9407.0,
+     "expected": 9422.282319976652,
+     "lift": 0.998378066008036,
+     "low": 0.988247036550953,
+     "high": 1.009382853673013,
+     "worth_at_the_bar": 0.01834562732819678,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 22250.0,
+     "expected": 22234.71768002335,
+     "lift": 1.0006873179231046,
+     "low": 0.9960118389407328,
+     "high": 1.0049838959250668,
+     "worth_at_the_bar": 0.020701064281566817,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 8106.0,
+     "expected": 8090.717680023348,
+     "lift": 1.0018888707505373,
+     "low": 0.9890105204403967,
+     "high": 1.0136397908966261,
+     "worth_at_the_bar": 0.021926648165548013,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 19489.0,
+     "expected": 19504.28231997665,
+     "lift": 0.9992164633527173,
+     "low": 0.9943461517331306,
+     "high": 1.0045895463482917,
+     "worth_at_the_bar": 0.0192007926197717,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "corners.home_more",
+   "second": "cards.home_more",
+   "phi": -0.08571990090574497,
+   "phi_low": -0.09357752306351466,
+   "phi_high": -0.0779644769769033,
+   "cells": {
+    "both": {
+     "observed": 9672.0,
+     "expected": 10861.838806491663,
+     "lift": 0.8904569633476288,
+     "low": 0.8813716646803417,
+     "high": 0.9013537698264418,
+     "worth_at_the_bar": -0.0917338973854186,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 21985.0,
+     "expected": 20795.161193508335,
+     "lift": 1.0572170994694237,
+     "low": 1.0514925721444286,
+     "high": 1.0617677018983758,
+     "worth_at_the_bar": 0.07836144145881208,
+     "status": "product_understates"
+    },
+    "second_only": {
+     "observed": 10713.0,
+     "expected": 9523.161193508337,
+     "lift": 1.1249415800399076,
+     "low": 1.112211563367491,
+     "high": 1.1355653425636418,
+     "worth_at_the_bar": 0.14744041164070576,
+     "status": "product_understates"
+    },
+    "neither": {
+     "observed": 16882.0,
+     "expected": 18071.838806491665,
+     "lift": 0.93416061203112,
+     "low": 0.9286746533475367,
+     "high": 0.9406824150159759,
+     "worth_at_the_bar": -0.04715617572825759,
+     "status": "product_overstates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "corners.home_more",
+   "second": "cards.away_more",
+   "phi": 0.09415493821656952,
+   "phi_low": 0.08688584565740828,
+   "phi_high": 0.10150994093877556,
+   "cells": {
+    "both": {
+     "observed": 15730.0,
+     "expected": 14360.963561957407,
+     "lift": 1.095330402597024,
+     "low": 1.0868780047952453,
+     "high": 1.1015926169928092,
+     "worth_at_the_bar": 0.11723701064896463,
+     "status": "product_understates"
+    },
+    "first_only": {
+     "observed": 15927.0,
+     "expected": 17296.036438042593,
+     "lift": 0.9208468111785773,
+     "low": 0.9156331742833315,
+     "high": 0.927584315556666,
+     "worth_at_the_bar": -0.060736252597851204,
+     "status": "product_overstates"
+    },
+    "second_only": {
+     "observed": 11098.0,
+     "expected": 12467.036438042593,
+     "lift": 0.890187500064968,
+     "low": 0.8824570823790614,
+     "high": 0.8995997476185444,
+     "worth_at_the_bar": -0.09200874993373254,
+     "status": "product_overstates"
+    },
+    "neither": {
+     "observed": 16497.0,
+     "expected": 15127.963561957407,
+     "lift": 1.0904970740070616,
+     "low": 1.082242628809048,
+     "high": 1.0965340011572948,
+     "worth_at_the_bar": 0.11230701548720279,
+     "status": "product_understates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "corners.away_more",
+   "second": "cards.over_3_5",
+   "phi": 0.006738299278938874,
+   "phi_low": -0.0013260661078621711,
+   "phi_high": 0.014523592332149868,
+   "cells": {
+    "both": {
+     "observed": 13866.0,
+     "expected": 13776.978736027462,
+     "lift": 1.0064615955122107,
+     "low": 0.9987439279380337,
+     "high": 1.0138003048328916,
+     "worth_at_the_bar": 0.026590827422454888,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 8202.0,
+     "expected": 8291.021263972538,
+     "lift": 0.9892629314123983,
+     "low": 0.9771447757693658,
+     "high": 1.002088200019628,
+     "worth_at_the_bar": 0.009048190040646276,
+     "status": "borderline"
+    },
+    "second_only": {
+     "observed": 23338.0,
+     "expected": 23427.021263972536,
+     "lift": 0.9962000604784766,
+     "low": 0.9918157510247542,
+     "high": 1.0007431807882596,
+     "worth_at_the_bar": 0.016124061688046254,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 13846.0,
+     "expected": 13756.978736027462,
+     "lift": 1.006470989428762,
+     "low": 0.998736245604597,
+     "high": 1.0138375706648337,
+     "worth_at_the_bar": 0.026600409217337306,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.away_more",
+   "second": "cards.over_4_5",
+   "phi": -0.001261490455950732,
+   "phi_low": -0.009614467218024315,
+   "phi_high": 0.006325392764958421,
+   "cells": {
+    "both": {
+     "observed": 9860.0,
+     "expected": 9877.154460844513,
+     "lift": 0.9982632183274528,
+     "low": 0.9868209842963797,
+     "high": 1.0086412023065856,
+     "worth_at_the_bar": 0.01822848269400179,
+     "status": "negligible"
+    },
+    "first_only": {
+     "observed": 12208.0,
+     "expected": 12190.845539155487,
+     "lift": 1.0014071592318528,
+     "low": 0.9930109530635967,
+     "high": 1.0106638924419047,
+     "worth_at_the_bar": 0.02143530241648972,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 16873.0,
+     "expected": 16855.84553915549,
+     "lift": 1.001017715830669,
+     "low": 0.9949459760084638,
+     "high": 1.007720673089383,
+     "worth_at_the_bar": 0.021038070147282317,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 20311.0,
+     "expected": 20328.15446084451,
+     "lift": 0.9991561230569379,
+     "low": 0.9936496489984074,
+     "high": 1.0041736405341466,
+     "worth_at_the_bar": 0.019139245518076775,
+     "status": "negligible"
+    }
+   },
+   "verdict": "negligible"
+  },
+  {
+   "first": "corners.away_more",
+   "second": "cards.over_5_5",
+   "phi": -0.0029738062525044642,
+   "phi_low": -0.011866290317487264,
+   "phi_high": 0.004398818355437775,
+   "cells": {
+    "both": {
+     "observed": 6416.0,
+     "expected": 6453.171427090071,
+     "lift": 0.9942398202945566,
+     "low": 0.977231735335558,
+     "high": 1.0084255607134935,
+     "worth_at_the_bar": 0.014124616700447845,
+     "status": "borderline"
+    },
+    "first_only": {
+     "observed": 15652.0,
+     "expected": 15614.82857290993,
+     "lift": 1.002380520984685,
+     "low": 0.996470699082637,
+     "high": 1.0094430615988845,
+     "worth_at_the_bar": 0.022428131404378826,
+     "status": "negligible"
+    },
+    "second_only": {
+     "observed": 11097.0,
+     "expected": 11059.82857290993,
+     "lift": 1.003360940619018,
+     "low": 0.9951028383755911,
+     "high": 1.013243114255038,
+     "worth_at_the_bar": 0.02342815943139831,
+     "status": "negligible"
+    },
+    "neither": {
+     "observed": 26087.0,
+     "expected": 26124.17142709007,
+     "lift": 0.9985771251274395,
+     "low": 0.9943808825208968,
+     "high": 1.002090953490432,
+     "worth_at_the_bar": 0.01854866762998819,
+     "status": "negligible"
+    }
+   },
+   "verdict": "borderline"
+  },
+  {
+   "first": "corners.away_more",
+   "second": "cards.home_more",
+   "phi": 0.08588287790758033,
+   "phi_low": 0.07791730760673173,
+   "phi_high": 0.09463719674891669,
+   "cells": {
+    "both": {
+     "observed": 8776.0,
+     "expected": 7620.854042245105,
+     "lift": 1.1515769691102218,
+     "low": 1.1369305009524822,
+     "high": 1.1648128934735744,
+     "worth_at_the_bar": 0.17460850849242626,
+     "status": "product_understates"
+    },
+    "first_only": {
+     "observed": 13292.0,
+     "expected": 14447.145957754896,
+     "lift": 0.9200433108980366,
+     "low": 0.9127205334798687,
+     "high": 0.92780590752334,
+     "worth_at_the_bar": -0.06155582288400263,
+     "status": "product_overstates"
+    },
+    "second_only": {
+     "observed": 11609.0,
+     "expected": 12764.145957754896,
+     "lift": 0.909500724797566,
+     "low": 0.901059621685879,
+     "high": 0.9187387994884978,
+     "worth_at_the_bar": -0.07230926070648258,
+     "status": "product_overstates"
+    },
+    "neither": {
+     "observed": 25575.0,
+     "expected": 24419.854042245104,
+     "lift": 1.047303557005564,
+     "low": 1.0424424926623386,
+     "high": 1.0517066210254464,
+     "worth_at_the_bar": 0.06824962814567526,
+     "status": "product_understates"
+    }
+   },
+   "verdict": "material"
+  },
+  {
+   "first": "corners.away_more",
+   "second": "cards.away_more",
+   "phi": -0.09563743950907659,
+   "phi_low": -0.10327628278369146,
+   "phi_high": -0.08865628205906577,
+   "cells": {
+    "both": {
+     "observed": 8620.0,
+     "expected": 9967.484100875408,
+     "lift": 0.8648120140209641,
+     "low": 0.8551471311315738,
+     "high": 0.8755671755872454,
+     "worth_at_the_bar": -0.1178917456986166,
+     "status": "product_overstates"
+    },
+    "first_only": {
+     "observed": 13448.0,
+     "expected": 12100.515899124592,
+     "lift": 1.1113575745124133,
+     "low": 1.1020364591609815,
+     "high": 1.1193416508140217,
+     "worth_at_the_bar": 0.1335847260026617,
+     "status": "product_understates"
+    },
+    "second_only": {
+     "observed": 18208.0,
+     "expected": 16860.51589912459,
+     "lift": 1.079919505959208,
+     "low": 1.073257064084272,
+     "high": 1.0854070043438628,
+     "worth_at_the_bar": 0.10151789607839201,
+     "status": "product_understates"
+    },
+    "neither": {
+     "observed": 18976.0,
+     "expected": 20323.48410087541,
+     "lift": 0.933698174280198,
+     "low": 0.9288139108223616,
+     "high": 0.939114480373402,
+     "worth_at_the_bar": -0.047627862234198015,
+     "status": "product_overstates"
+    }
+   },
+   "verdict": "material"
+  }
+ ],
+ "summary": {
+  "pairs": 96,
+  "negligible": 21,
+  "borderline": 51,
+  "material": 24
+ }
+}

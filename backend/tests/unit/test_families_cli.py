@@ -13,8 +13,10 @@ import pytest
 from scripts import families as cli
 
 from fbi.core.clock import now as clock_now
-from fbi.families import evaluate, score
+from fbi.families import dependence, evaluate, score
 from fbi.families.fit import Match
+
+from .test_families_dependence import synthetic
 
 N = 12
 
@@ -230,3 +232,76 @@ def test_the_score_command_reads_through_a_connection_that_cannot_write_and_pass
     assert "nothing to grade yet" in capsys.readouterr().out
     assert (seen["asked"]["days"], seen["asked"]["wait_hours"], seen["asked"]["model"]) == (14, 30.0, None), "the defaults"
     assert (seen["asked"]["market"], seen["asked"]["min_books"], seen["asked"]["min_ev"]) == (True, 3, 0.03), "against the market unless told not to"
+
+
+def three_files(tmp_path: Path, rows: list[dependence.Row]) -> dict[str, str]:
+    """The three histories of the rows as the ``export`` command writes them (one file per family)."""
+    paths: dict[str, str] = {}
+    for family in dependence.FAMILIES:
+        by_competition: dict[int, list[Match]] = {}
+        for r in rows:
+            home, away = getattr(r, family)
+            by_competition.setdefault(r.competition_id, []).append(Match(r.fixture_id, r.kickoff_at, 1, 2, home, away))
+        path = tmp_path / f"{family}.csv.gz"
+        cli.write_csv(path, by_competition)
+        paths[family] = str(path)
+    return paths
+
+
+def test_the_dependence_command_reads_three_files_and_prints_the_reading(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    rows = synthetic(dependent=True, seed=4, size=200)
+    files = three_files(tmp_path, rows)
+    args = ["dependence", "--days", "36500", "--csv-goals", files["goals"], "--csv-corners", files["corners"], "--csv-cards", files["cards"], "--replicates", "20"]
+    assert cli.main([*args, "--top", "1"]) == 0
+    text = capsys.readouterr().out
+    assert "dependence-v1" in text and "600 matches with the goals, the corners and the cards known" in text and "20 resamples" in text
+    assert text.count("-> ") == 1, "the pair that depends most, as asked"
+    assert cli.main([*args, "--json", "--seed", "5"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["criterion"]["seed"] == 5 and report["criterion"]["replicates"] == 20 and len(report["pairs"]) == 96
+    assert report["data"]["coverage"] == {"goals": 600, "corners": 600, "cards": 600, "joined": 600}
+    assert cli.main(["dependence", "--days", "1", "--csv-goals", files["goals"], "--csv-corners", files["corners"], "--csv-cards", files["cards"]]) == 0
+    assert "at least 300 matches in two strata are needed" in capsys.readouterr().out, "the window leaves them all out"
+
+
+def test_the_dependence_command_wants_the_three_files_or_none(tmp_path: Path) -> None:
+    files = three_files(tmp_path, synthetic(dependent=False, seed=1, size=50))
+    with pytest.raises(SystemExit, match="needs the three of them; missing --csv-cards"):
+        cli.main(["dependence", "--csv-goals", files["goals"], "--csv-corners", files["corners"]])
+    with pytest.raises(SystemExit, match="missing --csv-corners, --csv-cards"):
+        cli.main(["dependence", "--csv-goals", files["goals"]])
+
+
+def test_the_dependence_command_reads_the_database_through_a_connection_that_cannot_write(monkeypatch: pytest.MonkeyPatch,
+                                                                                         capsys: pytest.CaptureFixture[str]) -> None:
+    seen: dict[str, Any] = {}
+
+    class Connection:
+        def __enter__(self) -> Connection:
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            seen["closed"] = True
+
+        def rollback(self) -> None:
+            seen["rolled_back"] = True
+
+    def connect(url: str, **kwargs: Any) -> Connection:
+        seen["options"] = kwargs.get("options")
+        return Connection()
+
+    def read(conn: Connection, *, since: Any, cutoff: Any) -> dict[str, dict[int, list[Match]]]:
+        seen["window"] = (since, cutoff)
+        return {"goals": {}, "corners": {}, "cards": {}}
+
+    monkeypatch.setattr(psycopg, "connect", connect)
+    monkeypatch.setattr(dependence, "read", read)
+    assert cli.main(["dependence", "--days", "30"]) == 0
+    assert "0 matches with the goals, the corners and the cards known" in capsys.readouterr().out
+    assert seen["options"] == "-c default_transaction_read_only=on" and seen["rolled_back"] and seen["closed"]
+    since, cutoff = seen["window"]
+    assert cutoff - since == timedelta(days=30)
+    assert cli.main(["dependence"]) == 0
+    capsys.readouterr()
+    since, cutoff = seen["window"]
+    assert cutoff - since == timedelta(days=dependence.HISTORY_DAYS), "three years unless told"

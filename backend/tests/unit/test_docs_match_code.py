@@ -15,19 +15,29 @@ is a dated snapshot of production data and is not compared.
 Plan F8 adds the one post-mortem and the memory: the conventions table of the longitudinal memory (the half-life and the ``k`` of each
 kind of memory), the figures of the post-mortem (when it is studied, how far back, how many investigations, the band of a price's
 quality, the named close) and the limits of the narratives, against ``fbi.intel.memory``, ``fbi.intel.postmortem``,
-``fbi.market`` and ``fbi.ai.pm_narratives``."""
+``fbi.market`` and ``fbi.ai.pm_narratives``.
+
+Plan F11.6 adds the guide of the dependence between the families of one match, which is not only a text about the code but a reading of
+the data: its numbers are the ones of the result stored next to it (``DEPENDENCIA_FAMILIAS_F11_resultado.json``), and the stored result
+is held to the code's own arithmetic (every verdict re-derived from the lifts and their intervals). A guide whose table says one thing
+and a stored result another, or a stored result that the code would no longer judge the same way, fails here."""
 
 from __future__ import annotations
 
+import json
 import re
-from datetime import timedelta
+import statistics
+from collections import Counter
+from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from fbi.ai import learning, pm_narratives, usage
 from fbi.ai.config import AiSettings
+from fbi.families import dependence
 from fbi.intel import calibration, decision, memory, postmortem, score, stake
 from fbi.market import closing_reference, closing_value
 
@@ -449,3 +459,294 @@ def test_the_guide_of_the_model_code_promotions_says_what_the_code_does() -> Non
     for command in ("python -m scripts.promotion_trace show", "sync --confirm", "`fbi/research/promotions.py`"):
         assert command in doc, f"the guide leaves out {command}"
     assert "entity = 'model'" in trace.ROWS_SQL and "entidad `model`" in doc and "backtest_session_id IS NULL" in trace.USE_SQL
+
+
+# ── Plan F11.6: the dependence between the families of one match ──────────────
+
+STORED_DEPENDENCE = DOCS / "owner" / "DEPENDENCIA_FAMILIAS_F11_resultado.json"
+TIMES = "\N{MULTIPLICATION SIGN}"
+MONTHS_ES = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+NOUNS_ES = {"goals": "goles", "corners": "córners", "cards": "tarjetas"}
+EVENTS_BY_KEY = {e.key: e for e in dependence.EVENTS}
+KIND_ROWS = ("total con total", "total con «quién tiene más»", "«quién tiene más» con «quién tiene más»", "«ambos marcan» con un total",
+             "«ambos marcan» con «quién tiene más»")
+"""The rows of the guide's table by kind of pair, in the order it gives them."""
+MAIN_PAIRS = (("goals.over_2_5", "corners.over_9_5"), ("goals.over_2_5", "cards.over_4_5"), ("corners.over_9_5", "cards.over_4_5"),
+              ("goals.btts", "corners.over_9_5"), ("goals.btts", "cards.over_4_5"), ("goals.home_more", "corners.home_more"),
+              ("goals.away_more", "corners.away_more"), ("goals.home_more", "cards.home_more"), ("goals.away_more", "cards.away_more"),
+              ("corners.home_more", "cards.home_more"), ("corners.away_more", "cards.away_more"), ("corners.home_more", "cards.away_more"),
+              ("corners.away_more", "cards.home_more"))
+"""The pairs of the guide's table of the most usual ones, in its order."""
+
+
+def spanish(x: float, digits: int, *, sign: bool = False) -> str:
+    """A number as the guides write it: decimal comma, a plus sign where ``sign`` (a minus is the hyphen that ``read_doc`` leaves)."""
+    return (f"{x:+.{digits}f}" if sign else f"{x:.{digits}f}").replace(".", ",")
+
+
+def thousands(n: int) -> str:
+    return f"{n:,}".replace(",", ".")
+
+
+def percent(x: float) -> str:
+    """A fraction as a percentage with one decimal and the decimal comma (0.0563 -> '5,6')."""
+    return spanish(x * 100, 1)
+
+
+def day_es(iso: str) -> str:
+    """'2023-10-27T19:00:00+00:00' as the guide writes a day: '27-oct-2023'."""
+    when = datetime.fromisoformat(iso)
+    return f"{when.day}-{MONTHS_ES[when.month - 1]}-{when.year}"
+
+
+def stored_dependence() -> dict[str, Any]:
+    """The first real reading of the dependence (the ``--json`` of the command), kept next to the guide."""
+    if not STORED_DEPENDENCE.is_file():
+        pytest.skip(f"no {STORED_DEPENDENCE.name} next to the code")
+    result: dict[str, Any] = json.loads(STORED_DEPENDENCE.read_text(encoding="utf-8"))
+    return result
+
+
+def event_words(event: dependence.Event) -> str:
+    """A leg as the guide names it."""
+    noun = NOUNS_ES[event.family]
+    if event.kind == dependence.OVER:
+        return f"más de {spanish(event.line or 0.0, 1)} {noun}"
+    if event.kind == dependence.BTTS:
+        return "ambos marcan"
+    side = "local" if event.kind == dependence.HOME_MORE else "visitante"
+    return f"gana el {side}" if event.family == "goals" else f"el {side} tiene más {noun}"
+
+
+def variable_words(variable: str) -> str:
+    """A count as the guide's table of correlations names it ('goals_total' -> 'goles totales', 'goals_diff' -> 'diferencia de goles')."""
+    family, kind = variable.split("_")
+    return f"{NOUNS_ES[family]} totales" if kind == "total" else f"diferencia de {NOUNS_ES[family]}"
+
+
+def kind_of(pair: dict[str, Any]) -> str:
+    """The row of the guide's table by kind that a pair belongs to."""
+    a, b = EVENTS_BY_KEY[pair["first"]], EVENTS_BY_KEY[pair["second"]]
+    kinds = {a.kind, b.kind}
+    if kinds == {dependence.OVER}:
+        return KIND_ROWS[0]
+    if dependence.BTTS in kinds:
+        other = b if a.kind == dependence.BTTS else a
+        return KIND_ROWS[3] if other.kind == dependence.OVER else KIND_ROWS[4]
+    return KIND_ROWS[1] if dependence.OVER in kinds else KIND_ROWS[2]
+
+
+def deviation(pair: dict[str, Any]) -> float:
+    """How far the independent product is at the farthest of the four combinations of a pair: |lift - 1|."""
+    return max(abs(cell["lift"] - 1.0) for cell in pair["cells"].values())
+
+
+def table_rows(text: str, header: str) -> list[str]:
+    """The rows of the table that begins with the line ``header`` (the header and its rule line left out)."""
+    lines = text.splitlines()
+    start = next((i for i, line in enumerate(lines) if line.startswith(header)), None)
+    assert start is not None, f"the guide no longer has the table {header!r}"
+    rows: list[str] = []
+    for line in lines[start + 2:]:
+        if not line.startswith("|"):
+            break
+        rows.append(line)
+    return rows
+
+
+def test_the_guide_of_the_dependence_between_the_families_says_what_the_code_does() -> None:
+    """Plan F11.6: the guide of the dependence between the families of one match - the questions asked, the groups the matches are compared in, the
+    resamples of the intervals, the tolerance, the rule of the parlays that it leaves as it is and the options of the command that repeats it."""
+    from scripts import families as cli
+
+    from fbi.families import history
+    from fbi.parlays import correlation, persist
+
+    doc = read_doc("owner", "DEPENDENCIA_FAMILIAS_F11.md")
+    assert dependence.VERSION == "dependence-v1"
+    assert len(dependence.EVENTS) == 17 and f"Se miden **{len(dependence.EVENTS)} preguntas**" in doc
+    assert dependence.FAMILIES == ("goals", "corners", "cards")
+    lines = "; ".join(f"{NOUNS_ES[f]} " + " / ".join(spanish(x, 1) for x in dependence.LINES[f]) for f in dependence.FAMILIES)
+    assert f"**Totales por encima de una línea:** {lines}." in doc
+    assert {e.kind for e in dependence.EVENTS} == {dependence.OVER, dependence.BTTS, dependence.HOME_MORE, dependence.AWAY_MORE}
+    assert "**Ambos marcan.**" in doc and "que el local o el visitante tenga más córners, más tarjetas o más goles (ganar)" in doc
+    assert len(dependence.PAIRS) == 96 and all(dependence.EVENTS[i].family != dependence.EVENTS[j].family for i, j in dependence.PAIRS)
+    assert f"({len(dependence.PAIRS)} parejas)" in doc and f"**Son {len(dependence.PAIRS)} parejas a la vez.**" in doc
+    assert len(dependence.CELLS) == 4 and "hay cuatro casos: ocurren **ambas**, **solo la primera**, **solo la segunda** o **ninguna**" in doc
+    # the groups the matches are compared in, and the intervals
+    assert f"grupos de al menos {dependence.MIN_STRATUM} partidos" in doc and "**una competición en un semestre**" in doc
+    assert dependence.REPLICATES == 400 and dependence.SEED == 11 and dependence.LEVEL == 0.95
+    assert (f"**Los intervalos** ({dependence.LEVEL * 100:g} %) salen de **{dependence.REPLICATES} remuestreos** con semilla {dependence.SEED} "
+            "en los que se sortean **días de una competición**") in doc
+    # the tolerance is the margin a parlay must show
+    assert dependence.TOLERANCE == dependence.BAR == decision.PARLAY_MIN_EV == 0.02
+    assert f"**tolerancia de {dependence.TOLERANCE * 100:g} %**" in doc and "`PARLAY_MIN_EV`" in doc
+    assert f"**+{dependence.BAR * 100:g} %** (el mínimo que se le exige)" in doc and f"del tamaño del **{dependence.BAR * 100:g} %** de margen" in doc
+    assert f"supere el {dependence.BAR * 100:g} % **con el factor aplicado**" in doc
+    for word in dependence.PAIR_WORDS.values():
+        assert f"`{word}`" in doc, f"the guide leaves out the verdict {word!r}"
+    # the verdicts it describes are the ones the code gives at the edges of the tolerance
+    assert dependence.cell_status(1.0, 0.99, 1.01) == dependence.NEGLIGIBLE and dependence.cell_status(0.9, 0.85, 0.95) == dependence.TOO_HIGH
+    assert dependence.cell_status(1.1, 1.05, 1.15) == dependence.TOO_LOW and dependence.cell_status(1.0, 0.9, 1.1) == dependence.BORDERLINE
+    assert dependence.pair_verdict([dependence.NEGLIGIBLE, dependence.BORDERLINE]) == dependence.BORDERLINE
+    assert dependence.pair_verdict([dependence.NEGLIGIBLE, dependence.TOO_LOW]) == dependence.MATERIAL
+    # the rule of the parlays that the guide leaves as it is
+    assert persist.RULE_VERSION == "parlay-v5" and "(`parlay-v5`)" in doc
+    assert persist.MAX_PER_COMPETITION == 2 and "como mucho dos por competición" in doc
+    assert "an estimate is allowed to make a parlay look worse, never better" in Path(correlation.__file__).read_text(encoding="utf-8")
+    assert "*una estimación puede empeorar una combinada, nunca mejorarla*" in doc
+    # the command that repeats it
+    parser = cli.build_parser()
+    args = parser.parse_args(["dependence"])
+    assert (args.days, args.replicates, args.seed, args.top, args.json) == (dependence.HISTORY_DAYS, dependence.REPLICATES, dependence.SEED, 12, False)
+    assert dependence.HISTORY_DAYS == 3 * 365 and "# 3 años, lee la base de datos (solo lectura)" in doc
+    args = parser.parse_args(["dependence", "--days", "365", "--top", "20"])
+    assert (args.days, args.top) == (365, 20)
+    args = parser.parse_args(["dependence", "--csv-goals", "g.csv.gz", "--csv-corners", "c.csv.gz", "--csv-cards", "k.csv.gz"])
+    assert (args.csv_goals, args.csv_corners, args.csv_cards) == ("g.csv.gz", "c.csv.gz", "k.csv.gz")
+    for command in ("python -m scripts.families dependence ", "python -m scripts.families dependence --days 365 --top 20",
+                    "python -m scripts.families dependence --json",
+                    "python -m scripts.families dependence --csv-goals g.csv.gz --csv-corners c.csv.gz --csv-cards k.csv.gz"):
+        assert command in doc, f"the guide leaves out {command}"
+    goals, corners, cards = (dependence.MEASURES[f] for f in dependence.FAMILIES)
+    assert f"`export --measure {goals}`, `{corners}` y `{cards}`" in doc
+    for measure in dependence.MEASURES.values():
+        assert history.columns_of(measure), f"{measure} is not a pair of counts a family can read"
+    # what it points to
+    assert (DOCS / "owner" / "DEPENDENCIA_FAMILIAS_F11_resultado.json").is_file() and "`DEPENDENCIA_FAMILIAS_F11_resultado.json`" in doc
+    for guide in ("FAMILIAS_VS_MERCADO_F11.md", "CRITERIO_FAMILIAS_F11.md"):
+        assert (DOCS / "owner" / guide).is_file() and f"`{guide}`" in doc
+    assert "`DEPENDENCIA_FAMILIAS_F11.md`" in read_doc("owner", "CRITERIO_FAMILIAS_F11.md"), "the guide of the criterion points to this one"
+    from . import test_families_dependence as calibration_tests
+
+    assert hasattr(calibration_tests, "test_the_intervals_are_calibrated_on_matches_with_no_dependence"), "the test the guide speaks of"
+    assert "Una prueba del código lo comprueba con partidos simulados sin ninguna dependencia" in doc
+
+
+def test_the_stored_reading_of_the_dependence_is_the_codes_own_arithmetic() -> None:
+    """Plan F11.6: the reading that the guide quotes is held to the code - the criterion it was made with, the events and pairs it has, the four
+    combinations of a pair adding up to the matches, the lift being what was seen over what was expected, and every status and verdict being what
+    the code would say of the lifts and intervals stored (so a change in how a combination is judged makes the stored reading, and the guide
+    built on it, go stale loudly)."""
+    stored = stored_dependence()
+    assert stored["version"] == dependence.VERSION
+    assert stored["criterion"] == {"tolerance": dependence.TOLERANCE, "bar": dependence.BAR, "level": dependence.LEVEL,
+                                   "replicates": dependence.REPLICATES, "seed": dependence.SEED, "min_stratum": dependence.MIN_STRATUM,
+                                   "min_matches": dependence.MIN_MATCHES, "strata": "a competition in a half-year, UTC", "unit": "competition-day"}
+    data = stored["data"]
+    assert data["matches"] >= dependence.MIN_MATCHES and data["coverage"]["joined"] - data["dropped"] == data["matches"]
+    assert data["coverage"]["joined"] <= min(data["coverage"][f] for f in dependence.FAMILIES), "the matches with the three counts are in each history"
+    assert data["first"] < data["last"]
+    # the events: those of the code, with the rate at which each happened
+    assert list(stored["events"]) == [e.key for e in dependence.EVENTS]
+    for event in dependence.EVENTS:
+        found = stored["events"][event.key]
+        assert found["family"] == event.family and found["text"] == event.text and 0.0 < found["rate"] < 1.0
+    # the pairs: those of the code, in its order
+    assert [(p["first"], p["second"]) for p in stored["pairs"]] == [(dependence.EVENTS[i].key, dependence.EVENTS[j].key) for i, j in dependence.PAIRS]
+    assert [(c["a"], c["b"]) for c in stored["correlations"]] == list(dependence.CORRELATIONS)
+    for c in stored["correlations"]:
+        assert c["low"] <= c["high"] and -1.0 <= c["r"] <= 1.0 and -1.0 <= c["pooled"] <= 1.0
+    tally: Counter[str] = Counter()
+    for pair in stored["pairs"]:
+        cells = pair["cells"]
+        assert list(cells) == list(dependence.CELLS)
+        observed = [cells[name]["observed"] for name in dependence.CELLS]
+        expected = [cells[name]["expected"] for name in dependence.CELLS]
+        # the four combinations are the matches, and the two events happen as often as their own rates say, seen or expected
+        assert sum(observed) == pytest.approx(data["matches"]) and sum(expected) == pytest.approx(data["matches"])
+        assert observed[0] + observed[1] == pytest.approx(expected[0] + expected[1]) and observed[0] + observed[2] == pytest.approx(expected[0] + expected[2])
+        assert stored["events"][pair["first"]]["rate"] == pytest.approx((observed[0] + observed[1]) / data["matches"])
+        assert stored["events"][pair["second"]]["rate"] == pytest.approx((observed[0] + observed[2]) / data["matches"])
+        for name in dependence.CELLS:
+            cell = cells[name]
+            assert cell["lift"] == pytest.approx(cell["observed"] / cell["expected"], rel=1e-9)
+            assert cell["worth_at_the_bar"] == pytest.approx(dependence.worth_at_the_bar(cell["lift"]), abs=1e-12)
+            assert 0.0 < cell["low"] <= cell["high"]
+            assert cell["status"] == dependence.cell_status(cell["lift"], cell["low"], cell["high"]), f"{pair['first']} ~ {pair['second']} ({name})"
+        assert pair["phi_low"] <= pair["phi_high"] and -1.0 <= pair["phi"] <= 1.0
+        assert pair["verdict"] == dependence.pair_verdict(cells[name]["status"] for name in dependence.CELLS), f"{pair['first']} ~ {pair['second']}"
+        tally[pair["verdict"]] += 1
+    summary = stored["summary"]
+    assert summary == {"pairs": len(dependence.PAIRS), dependence.NEGLIGIBLE: tally[dependence.NEGLIGIBLE], dependence.BORDERLINE: tally[dependence.BORDERLINE],
+                       dependence.MATERIAL: tally[dependence.MATERIAL]}
+    # the text of the command prints what is stored, and says the same tally
+    printed = dependence.render(stored, top=3)
+    assert f"{summary['pairs']} pairs of events of two families" in printed and f"{summary[dependence.MATERIAL]} material" in printed
+
+
+def test_the_guide_of_the_dependence_between_the_families_says_what_was_measured() -> None:
+    """Plan F11.6: every figure of the guide - the window and the matches it was read on, the correlations of the counts, the tally of the pairs and
+    their worst deviations, the example of the factor and the table of the usual pairs - is the one of the stored reading, written the way the
+    guide writes it (decimal comma, thousands with a dot), and what it says in words about the direction of the dependence is true of those numbers."""
+    doc = read_doc("owner", "DEPENDENCIA_FAMILIAS_F11.md")
+    stored = stored_dependence()
+    data, summary, cover = stored["data"], stored["summary"], stored["data"]["coverage"]
+    corr = {(c["a"], c["b"]): c for c in stored["correlations"]}
+    pairs = {(p["first"], p["second"]): p for p in stored["pairs"]}
+    assert list(pairs) == [(dependence.EVENTS[i].key, dependence.EVENTS[j].key) for i, j in dependence.PAIRS]
+    # the window and the matches
+    assert f"Ventana de {dependence.HISTORY_DAYS // 365} años ({day_es(data['first'])} a {day_es(data['last'])})" in doc
+    assert (f"Tenían goles {thousands(cover['goals'])} partidos, córners {thousands(cover['corners'])} y tarjetas {thousands(cover['cards'])}; "
+            f"los tres a la vez, {thousands(cover['joined'])}, y {thousands(data['matches'])} tras dejar fuera {thousands(data['dropped'])} "
+            f"en grupos de menos de {dependence.MIN_STRATUM} ({thousands(data['strata'])} grupos, {thousands(data['clusters'])} días de competición)") in doc
+    assert f"({thousands(data['matches'])} con goles, córners y tarjetas conocidos)" in doc and "Medido con 3 años de partidos terminados" in doc
+    assert f"Un {round((1 - cover['joined'] / cover['goals']) * 100)} % de los partidos con marcador no tiene las tres cosas" in doc
+    # the correlations of the counts: in the summary and in the table
+    totals = [corr[("goals_total", "corners_total")]["r"], corr[("goals_total", "cards_total")]["r"], corr[("corners_total", "cards_total")]["r"]]
+    assert all(r < 0 for r in totals) and f"correlación de {spanish(max(totals), 3)} a {spanish(min(totals), 3)}" in doc
+    assert f"(correlación {spanish(corr[('corners_diff', 'cards_diff')]['r'], 3)} entre la diferencia de córners y la de tarjetas)" in doc
+    assert f"({spanish(corr[('goals_diff', 'cards_diff')]['r'], 3)} con los goles)" in doc
+    expected_rows = [f"| {variable_words(c['a'])} con {variable_words(c['b'])} | {spanish(c['r'], 3, sign=True)} "
+                     f"[{spanish(c['low'], 3, sign=True)}, {spanish(c['high'], 3, sign=True)}] | {spanish(c['pooled'], 3, sign=True)} |"
+                     for c in stored["correlations"]]
+    assert table_rows(doc, "| Conteos |") == expected_rows
+    assert max(abs(c["r"] - c["pooled"]) for c in stored["correlations"]) < 0.05, "the guide says the groups hardly change the correlations"
+    # how much the product of the totals is wrong, and for which kind of pair it is wrong most
+    total_pairs = [p for p in stored["pairs"] if kind_of(p) == KIND_ROWS[0]]
+    off = [abs(cell["lift"] - 1.0) for p in total_pairs for cell in p["cells"].values()]
+    found = Counter(p["verdict"] for p in total_pairs)
+    assert f"(**{percent(statistics.median(off))} % de mediana, {percent(max(off))} % como mucho**)" in doc
+    assert found[dependence.NEGLIGIBLE] == 0, "the guide says that no pair of totals is shown negligible"
+    assert (f"de las {len(total_pairs)} parejas de totales, ninguna queda demostrada despreciable "
+            f"({found[dependence.BORDERLINE]} dudosas y {found[dependence.MATERIAL]} materiales)") in doc
+    worst_more = max(deviation(p) for p in stored["pairs"] if kind_of(p) == KIND_ROWS[2])
+    assert f"Ahí el producto se equivoca hasta un **{percent(worst_more)} %**" in doc
+    both = pairs[("goals.btts", "cards.over_4_5")]["cells"]["both"]["lift"]
+    assert both > 1.0 and (f"«Ambos marcan» con «{event_words(EVENTS_BY_KEY['cards.over_4_5'])}» ocurren juntos un {percent(both - 1.0)} % más "
+                           "de lo que dice el producto") in doc
+    # the example of the factor
+    cells = pairs[("goals.over_2_5", "corners.over_9_5")]["cells"]
+    assert (f"«{event_words(EVENTS_BY_KEY['goals.over_2_5'])}» y «{event_words(EVENTS_BY_KEY['corners.over_9_5'])}» ocurren juntos con un factor "
+            f"de **{TIMES}{spanish(cells['both']['lift'], 3)}**") in doc
+    assert f"El producto sobrestima esa combinación un {round((1.0 - cells['both']['lift']) * 100)} %" in doc
+    assert f"valdría en realidad **{spanish(cells['both']['worth_at_the_bar'] * 100, 1)} %**" in doc
+    assert (f"el factor es **{TIMES}{spanish(cells['first_only']['lift'], 3)}** y la misma combinada valdría "
+            f"**{spanish(cells['first_only']['worth_at_the_bar'] * 100, 1, sign=True)} %**") in doc
+    # the tally of the pairs, and by kind
+    assert (f"**Las {summary['pairs']} parejas:** {summary[dependence.NEGLIGIBLE]} son `{dependence.PAIR_WORDS[dependence.NEGLIGIBLE]}`, "
+            f"{summary[dependence.BORDERLINE]} `{dependence.PAIR_WORDS[dependence.BORDERLINE]}` y {summary[dependence.MATERIAL]} "
+            f"`{dependence.PAIR_WORDS[dependence.MATERIAL]}`.") in doc
+    by_kind = []
+    for label in KIND_ROWS:
+        members = [p for p in stored["pairs"] if kind_of(p) == label]
+        verdicts = Counter(p["verdict"] for p in members)
+        by_kind.append(f"| {label} | {len(members)} | {verdicts[dependence.NEGLIGIBLE]} | {verdicts[dependence.BORDERLINE]} | {verdicts[dependence.MATERIAL]} "
+                       f"| {percent(max(deviation(p) for p in members))} % |")
+    assert table_rows(doc, "| Tipo de pareja |") == by_kind
+    assert sum(int(row.split("|")[2]) for row in by_kind) == summary["pairs"]
+    # the usual pairs
+    usual = []
+    for key in MAIN_PAIRS:
+        pair = pairs[key]
+        first, second = (event_words(EVENTS_BY_KEY[k]) for k in key)
+        lifts = " | ".join(f"{TIMES}{spanish(pair['cells'][name]['lift'], 3)}" for name in dependence.CELLS)
+        usual.append(f"| {first} | {second} | {spanish(pair['phi'], 3, sign=True)} | {lifts} | `{pair['verdict']}` |")
+    assert table_rows(doc, "| Primera selección |") == usual
+    # what it says in words
+    phi = {key: pairs[key]["phi"] for key in MAIN_PAIRS}
+    assert abs(phi[("goals.home_more", "corners.home_more")]) < 0.01 and abs(phi[("goals.away_more", "corners.away_more")]) < 0.01, "winning and more corners"
+    assert phi[("corners.home_more", "cards.home_more")] < 0 and phi[("corners.away_more", "cards.away_more")] < 0, "the side with more corners has fewer cards"
+    assert phi[("corners.home_more", "cards.away_more")] > 0 and phi[("corners.away_more", "cards.home_more")] > 0
+    assert phi[("goals.home_more", "cards.home_more")] < 0 and phi[("goals.away_more", "cards.away_more")] < 0, "the side that wins has fewer cards"
+    assert phi[("goals.btts", "cards.over_4_5")] > 0, "matches with goals from both sides have more cards"
