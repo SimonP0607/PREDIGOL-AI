@@ -403,3 +403,20 @@ def test_the_guide_of_the_families_against_the_market_says_what_the_code_does() 
     assert args.no_market is True and args.min_books == 4 and cli.build_parser().parse_args(["score"]).min_books == versus.MIN_BOOKS
     for option in ("--no-market", "--min-books", "python -m scripts.families score"):
         assert option in doc, f"the guide leaves out {option}"
+
+
+def test_the_guide_of_the_model_code_promotions_says_what_the_code_does() -> None:
+    """Plan F12: the guide of the promotions of the model's code - the code in force, the least a reason can say, the window of the plan, the
+    statuses a fingerprint can have and the commands that measure and write them."""
+    from fbi.research import promotions, trace
+
+    doc = read_doc("owner", "PROMOCIONES_F12.md")
+    assert f"`{promotions.in_force().fingerprint}`" in doc and promotions.LEDGER[0].baseline, "the guide names the code in force: the baseline"
+    assert f"al menos {promotions.MIN_REASON} caracteres" in doc
+    assert f"{trace.DEFAULT_DAYS} días" in doc and trace.DEFAULT_DAYS == 30, "the window of the plan's criterion"
+    for status in ("BASELINE", "PROMOTED", "AFTER_USE", "PENDING_SYNC", "UNTRACED", "PRE_LEDGER"):
+        assert f"`{status}`" in doc, f"the guide leaves out the status {status}"
+    assert set(trace.TRACED) == {"BASELINE", "PROMOTED", "AFTER_USE"}, "traced = the three statuses that have a decision on record"
+    for command in ("python -m scripts.promotion_trace show", "sync --confirm", "`fbi/research/promotions.py`"):
+        assert command in doc, f"the guide leaves out {command}"
+    assert "entity = 'model'" in trace.ROWS_SQL and "entidad `model`" in doc and "backtest_session_id IS NULL" in trace.USE_SQL
