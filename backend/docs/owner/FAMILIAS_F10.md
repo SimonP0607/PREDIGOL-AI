@@ -257,3 +257,32 @@ de la familia `counts`, sus versiones y sus pronósticos.
 2. **El historial de precios de F1** decide cuándo se puede comparar con el mercado y, solo entonces, calibrar y valorar.
 3. **F11** (liquidación, decisión e IA por familia) debe adoptar la regla de tarjetas de la sección 4.
 4. **Contexto** (derbis, eliminatorias, IA): no se ha hecho; cambiaría la versión de los modelos.
+
+## 9. Resultado en producción
+
+**La entrega.** F10 se desplegó el 24 de octubre de 2026 (de 03:22 a 03:36 UTC; el despliegue entero duró 13 min 25 s). Antes de empezar se hizo una
+copia de seguridad y se probó que se restaura (472 s y 811 s), y el propio despliegue hizo otra (476 s). La migración 0093 se aplicó sin esperar
+ningún bloqueo (se vigiló cada 3 segundos durante todo el despliegue) y el código de los modelos de goles no cambió: su huella sigue siendo
+`mc9a7bec97ca`. Los pronósticos de goles de siempre (`forecast-v1`) siguieron escribiéndose sin interrupción.
+
+**La primera pasada** del worker corrió el mismo día de 04:13:00 a 04:23:40 UTC (**10 min 40 s**: la primera de cada día mide la dispersión de
+cada familia, las demás la reutilizan, y un reinicio del worker la vuelve a medir). Pronosticó 635 partidos de los próximos 4 días, 32 de ellos
+sin ajuste posible, y escribió **62.496 filas `family-v1` sin ningún fallo**:
+
+| Modelo | Partidos | Mercados escritos | Filas | Competiciones ajustadas | Sin ajustar (historial corto / equipo desconocido) |
+|---|---|---|---|---|---|
+| `family-goals_halves` | 516 | 12.900 | 33.024 | 81 | 1 / 86 |
+| `family-corners_ft` | 445 | 6.675 | 14.240 | 73 | 9 / 84 |
+| `family-cards_lines_ft` | 448 (175 con árbitro) | 3.136 | 6.272 | 73 | 9 / 81 |
+| `family-yellow_ft` | 448 (175 con árbitro) | 4.032 | 8.960 | 73 | 9 / 81 |
+
+Lo que se comprobó al terminar, todo como estaba previsto: todas las filas son `family-v1`, `UNCALIBRATED` y `no_champion`; ningún mercado se aparta de
+1 en más de 0,0001; las versiones de tarjetas y amarillas dicen `referee=150.0` y llevan «referee» entre sus variables; cada partido tiene un solo
+pronóstico por modelo (aún no hubo que reescribir ninguno por la llegada de un árbitro); las claves de mercado existen todas; y la tabla
+`models.match_forecasts` pasó a ocupar 33 MB en total (74.000 filas, de ellas 62.496 de las familias: unas 98 por partido, entre 14 y 64 por modelo).
+Mientras corría el cálculo (seis hilos de numpy, la carga de la máquina subió a 6 sobre sus 6 núcleos) las capturas en vivo siguieron a su ritmo
+(24 de cuotas y 12 de partidos en 12 minutos, las que corresponden a su cadencia).
+
+**Qué falta.** Medir si aciertan de verdad. La herramienta (F11, que llega con la próxima entrega) es `python -m scripts.families score --days 14`
+(solo lectura): compara cada pronóstico guardado antes del inicio con lo que pasó y, aparte, con el precio de las casas. Los primeros partidos
+pronosticados se juegan hoy mismo, así que hay con qué medir en unos días. Nada de esto cambia lo que ve un usuario.
