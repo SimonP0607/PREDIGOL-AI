@@ -26,9 +26,10 @@ of the markets the forecasts are about. The age of the price is the age of the l
 fixture): a price that did not change is not an old price.
 
 The cost of a pass is one read of the forecasts of the next 36 hours and one of the quotes of those matches, so the worker runs it once an hour
-(``EVERY``), not every quarter of an hour. It is a step of its own in the decide job, after the core layer's and before the choice of the picks of
-the day: a selection that cannot be judged or written is counted and logged (``FamilyReport.failed``) and the pass goes on, and a pass that fails
-as a whole is the step's failure, written in the run's record, which leaves the other steps to run (``run_step``).
+(``EVERY``), not every quarter of an hour. It is a step of its own in the decide job, AFTER the choice of the picks of the day (the worker adds it:
+``apps.worker.scheduler.family_decide_steps``; ``fbi.intel`` does not import this package), so that it costs the core layer nothing, not even
+time: a selection that cannot be judged or written is counted and logged (``FamilyReport.failed``) and the pass goes on, and a pass that fails as
+a whole is the step's failure, written in the run's record (``run_step``).
 """
 
 from __future__ import annotations
@@ -44,6 +45,7 @@ import psycopg
 import structlog
 from psycopg.rows import dict_row
 
+from fbi.core.decision_versions import DECISION_FAMILIES
 from fbi.core.env import environment
 from fbi.families import bets, forecast, versus
 from fbi.families.score import key_shape
@@ -53,7 +55,7 @@ from fbi.intel.decision import Evaluated, Key
 
 log = structlog.get_logger(__name__)
 
-VERSION: Final = "decision-fam-v1"
+VERSION: Final = DECISION_FAMILIES
 """The decision version the families decide under: the ``decision_version`` of their rows."""
 CORE_VERSION: Final = decision.VERSION
 """The version of the pipeline's decision layer: what every reader that is not about the families reads."""
@@ -421,8 +423,9 @@ def due(at: datetime) -> bool:
 
 def run_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str, Any]:
     """The step of the decide job: nothing while the switch is ``off``; in ``shadow`` the pass of the hour. The step is a step of its own in
-    the job (``fbi.intel.cycle.run_decide``): if it raises, the job writes it in its record - the run is ``partial`` and says ``families: ...`` -
-    and the step that chooses the picks of the day still runs, so the families can cost the core layer nothing but a line in a record."""
+    the job (``fbi.intel.cycle.run_decide``, handed over by the worker) and the last one: it comes after the choice of the picks of the day, and
+    if it raises the job writes it in its record - the run is ``partial`` and says ``families: ...`` - so the families cost the core layer
+    nothing but a line in a record."""
     chosen = mode()
     if chosen == "off":
         return {"mode": chosen}

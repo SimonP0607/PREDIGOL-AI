@@ -2,7 +2,7 @@
 value against the closing line. The second step of the cycle of a family in shadow (decision, settlement, post-mortem, memory).
 
 ``fbi.intel.outcomes`` settles the decisions of the pipeline through ``picks.pick_results``: a pick has a result because the settlement of the
-picks gave it one. A family's decision has no pick (``fbi.intel.family_decision``), so nothing settled it, and this module is the settlement it
+picks gave it one. A family's decision has no pick (``fbi.familydecisions.decide``), so nothing settled it, and this module is the settlement it
 has. It writes the same table, ``intel.decision_outcomes``, with the same columns and the same meaning, under its own version:
 
     result       the status of the selection on the counts of the finished match, by the rule of the market that grades it (``fbi.market.rules``,
@@ -19,7 +19,7 @@ TWO THINGS THAT ARE NOT THE PIPELINE'S, ON PURPOSE.
   waits ``WAIT`` after the kick-off, as the scoreboard does (the statistics of the cards settle some 26 hours after the match), and a count that is
   unknown leaves the decision UNSETTLED - it is tried again on the next pass, and never read as a loss.
 * The closing line. ``market.market_consensus`` holds a Shin consensus for the markets the pipeline covers; the families' markets are priced
-  as the decision priced them, by ``fbi.intel.family_decision.price``: the mean over the COMPLETE books of their own de-vigged probabilities, read
+  as the decision priced them, by ``fbi.familydecisions.decide.price``: the mean over the COMPLETE books of their own de-vigged probabilities, read
   from the quotes in force at the kick-off (nothing captured at or after it), three books or more. The decision and its close are the same
   arithmetic on two moments, so the value measured is the value of the price and not of the method. ``close_as_of`` is the last time the odds of the
   match were read before the kick-off, and ``close_minutes_to_ko`` says how near the close was: as everywhere in the system, a reference that has
@@ -42,8 +42,9 @@ import psycopg
 import structlog
 from psycopg.rows import dict_row
 
+from fbi.core.decision_versions import OUTCOME_FAMILIES
 from fbi.families import score, versus
-from fbi.intel import family_decision as fd
+from fbi.familydecisions import decide as fd
 from fbi.intel.outcomes import profit_per_unit
 from fbi.market import closing_value
 from fbi.market.rules import RULES_BY_MEASURE
@@ -52,7 +53,7 @@ from fbi.picks.settlement import Status
 
 log = structlog.get_logger(__name__)
 
-VERSION: Final = "outcome-fam-v1"
+VERSION: Final = OUTCOME_FAMILIES
 """The version of the outcomes of the families: the ``version`` of their rows in ``intel.decision_outcomes``."""
 DECISION_VERSION: Final = fd.VERSION
 WAIT: Final = timedelta(hours=30)

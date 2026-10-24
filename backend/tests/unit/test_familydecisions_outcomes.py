@@ -1,6 +1,6 @@
-"""Plan F11 - what became of a family's decision (``fbi.intel.family_outcomes``): the pure parts, checked against numbers worked by hand.
+"""Plan F11 - what became of a family's decision (``fbi.familydecisions.outcomes``): the pure parts, checked against numbers worked by hand.
 
-The settlement against a real database is in tests/integration/test_family_outcomes.py."""
+The settlement against a real database is in tests/integration/test_familydecisions_outcomes.py."""
 
 from __future__ import annotations
 
@@ -10,9 +10,10 @@ from typing import Any
 
 import pytest
 
-from fbi.intel import family_decision as fd
-from fbi.intel import family_outcomes as fo
+from fbi.familydecisions import decide as fd
+from fbi.familydecisions import outcomes as fo
 from fbi.intel import outcomes
+from fbi.market import closing_value
 from fbi.picks.settlement import Status
 
 D = Decimal
@@ -51,7 +52,7 @@ def test_the_value_against_the_close_is_the_price_taken_at_the_closing_fair_prob
     assert o.clv == D("0.050000"), "2.10 x 0.50 - 1"
     assert (o.close_p_fair, o.close_odds) == (D("0.500000"), D("2.000"))
     assert o.close_as_of == KICKOFF - timedelta(minutes=12) and o.close_minutes_to_ko == 12, "the last time the odds were read, not the quote's age"
-    assert o.clv == fo.closing_value.clv(D("2.100"), D("0.500000")).quantize(D("0.000001")), "clv-v1, the one definition"
+    assert o.clv == closing_value.clv(D("2.100"), D("0.500000")).quantize(D("0.000001")), "clv-v1, the one definition"
     worse = fo.outcome(row(odds="1.900"), Status.LOSS, closed(p_fair=0.50), KICKOFF - timedelta(minutes=12))
     assert worse.clv == D("-0.050000") and worse.profit_flat == D("-1.0000"), "1.90 against a fair 2.00: the price was worse than the close, and lost"
 
@@ -131,7 +132,7 @@ class Untouchable:
 
 def test_with_the_switch_off_the_step_does_nothing_at_all(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(fd.SWITCH, raising=False)
-    monkeypatch.setattr(fo.fd, "mode", lambda: "off")
+    monkeypatch.setattr(fd, "mode", lambda: "off")
     assert fo.run_step(Untouchable(), at=KICKOFF) == {"mode": "off"}  # type: ignore[arg-type]
 
 
@@ -142,7 +143,7 @@ def test_in_shadow_the_step_reports_what_the_settlement_did(monkeypatch: pytest.
         seen["at"] = at
         return fo.SettleReport(open=3, settled=2, ungradable=1, by_result={"win": 1, "loss": 1}, errors=[f"e{i}" for i in range(9)])
 
-    monkeypatch.setattr(fo.fd, "mode", lambda: "shadow")
+    monkeypatch.setattr(fd, "mode", lambda: "shadow")
     monkeypatch.setattr(fo, "settle", fake)
     out = fo.run_step(Untouchable(), at=KICKOFF)  # type: ignore[arg-type]
     assert seen["at"] == KICKOFF and out["mode"] == "shadow"

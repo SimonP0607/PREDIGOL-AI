@@ -1,7 +1,7 @@
 """The decision layer for a family in a real database (plan F11): the forecasts of the counts and the prices the books quoted go through the ten
 filters of the pipeline, in shadow, under a version of their own.
 
-The pure parts are in tests/unit/test_family_decision.py. Here: a match is forecast, three books price its corners, and a pass of the families
+The pure parts are in tests/unit/test_familydecisions_decide.py. Here: a match is forecast, three books price its corners, and a pass of the families
 writes one row of ``intel.decisions`` under ``decision-fam-v1`` with no pick, in research and with no stake; a second pass writes nothing; a
 price captured after the moment of the decision is never read; a market of two books, or with no value, is not judged; and the core layer
 neither sees these rows nor writes anything because of them."""
@@ -15,8 +15,8 @@ import psycopg
 import pytest
 
 from fbi.families import forecast
+from fbi.familydecisions import decide as fd
 from fbi.intel import decision
-from fbi.intel import family_decision as fd
 from fbi.odds.quote_taxonomy import sync_definitions
 from tests.integration.conftest import Seed
 
@@ -53,6 +53,7 @@ class Market:
 
     def __init__(self, db: psycopg.Connection[Any], w: World, fixture_id: int, *, like: Market | None = None) -> None:
         self.db, self.w, self.fid = db, w, fixture_id
+        self.extraction: int
         if like is not None:  # another match of the same extraction
             self.extraction = like.extraction
             return

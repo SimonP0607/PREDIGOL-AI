@@ -34,7 +34,9 @@ at worst, and a duplicated tick costs nothing at all.
   * ``intel_decide`` (every 15 min) / ``intel_nightly`` (07:50 Bogotá) / ``intel_weekly`` (Monday 04:40 Bogotá)
     PrediGol Intelligence (``fbi.intel``): the decision layer (ten filters, states, score, stake) on the next 36
     hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v4, memory, calibration, the leakage
-    audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only.
+    audit and the DAILY LEARNING REPORT; the market discovery engine. Shadow; database only. While
+    ``FBI_FAMILY_DECISIONS`` is not ``off`` the same jobs carry the steps of the families (``family_decide_steps`` /
+    ``family_nightly_steps``: their decision once an hour, after the picks of the day, and their settlement).
   * ``family_forecasts``  every 3 hours (``FBI_FAMILY_FORECAST_MINUTES``): the goals of each half, the corners and the cards of the
     upcoming matches (``fbi.families``, plan F10), a negative binomial per team, written to the forecast table under ``family-v1``.
     Research: no page reads that version. Database only; ``FBI_FAMILY_FORECASTS=0`` switches it off.
@@ -1154,17 +1156,41 @@ async def _research_weekly() -> None:
     await asyncio.to_thread(_research_weekly_now)
 
 
+def family_decide_steps(conn: psycopg.Connection[Any], at: datetime) -> dict[str, list[tuple[str, Callable[[], Any]]]]:
+    """The decision of the families (plan F11) as a step of the decide job: it runs AFTER the one that chooses the picks of the day, so that it
+    cannot delay them, and only while ``FBI_FAMILY_DECISIONS`` is not ``off``: with the switch off the job is what it was before the families
+    existed - no step, no key in its record. The intelligence package does not import the families (they sit above it); the worker, which
+    sits above both, puts them together."""
+    from fbi.familydecisions import decide
+
+    if decide.mode() == "off":
+        return {}
+    return {"select": [("families", lambda: decide.run_step(conn, at=at))]}
+
+
+def family_nightly_steps(conn: psycopg.Connection[Any], at: datetime) -> dict[str, list[tuple[str, Callable[[], Any]]]]:
+    """What the nightly job does for the families (plan F11), each step right after the one of the core layer it follows, and only while
+    ``FBI_FAMILY_DECISIONS`` is not ``off``: the settlement of the decisions they took (``family_outcomes``)."""
+    from fbi.familydecisions import decide, outcomes
+
+    if decide.mode() == "off":
+        return {}
+    return {"outcomes": [("family_outcomes", lambda: outcomes.run_step(conn, at=at))]}
+
+
 def _intel_decide_now() -> None:
     """PrediGol Intelligence's decision layer. Never raises: it must never stop the worker."""
     from fbi.intel.cycle import run_decide
 
     try:
+        moment = now()
         with _connect() as conn:
-            r = run_decide(conn, at=now())
+            r = run_decide(conn, at=moment, after=family_decide_steps(conn, moment))
         if r.status != "skipped":
             d = r.counts.get("decide") or {}
             log.info("intel.decide", status=r.status, candidates=d.get("candidates"), written=d.get("written"),
-                     by_state=d.get("by_state"), select=r.counts.get("select"), errors=r.errors[:2])
+                     by_state=d.get("by_state"), select=r.counts.get("select"), families=r.counts.get("families"),
+                     errors=r.errors[:2])
     except Exception as exc:
         log.error("intel.decide.failed", error=f"{type(exc).__name__}: {exc}"[:300])
 
@@ -1179,8 +1205,9 @@ def _intel_nightly_now() -> None:
     from fbi.intel.cycle import run_nightly
 
     try:
+        moment = now()
         with _connect() as conn:
-            r = run_nightly(conn, at=now())
+            r = run_nightly(conn, at=moment, after=family_nightly_steps(conn, moment))
         log.info("intel.nightly", status=r.status, counts={k: v for k, v in r.counts.items() if not k.endswith("_ms")},
                  errors=r.errors[:3])
     except Exception as exc:

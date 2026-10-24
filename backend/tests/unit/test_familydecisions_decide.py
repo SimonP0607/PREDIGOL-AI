@@ -1,6 +1,6 @@
-"""Plan F11 - the decision layer for a family (``fbi.intel.family_decision``): the pure parts, checked against numbers worked by hand.
+"""Plan F11 - the decision layer for a family (``fbi.familydecisions.decide``): the pure parts, checked against numbers worked by hand.
 
-The pass against a real database is in tests/integration/test_family_decision.py."""
+The pass against a real database is in tests/integration/test_familydecisions_decide.py."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ from typing import Any
 
 import pytest
 
+from fbi.familydecisions import decide as fd
 from fbi.intel import decision
-from fbi.intel import family_decision as fd
 from fbi.intel import stake as staking
 
 D = Decimal

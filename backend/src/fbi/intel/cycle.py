@@ -11,6 +11,10 @@
     intel_weekly   Monday 04:40 Bogotá: the market catalogue, the market discovery engine, the matrix of markets and - only when
                    ``FBI_PATTERN_SEARCH`` says so - the search for patterns in the settled decisions (``fbi.research.pattern_search``)
 
+The jobs take ``after``: steps the caller wants run right after one of the job's own (``with_extra``). The worker uses it to add the
+decision and the settlement of the FAMILIES (``fbi.familydecisions.decide`` / ``fbi.familydecisions.outcomes``, in shadow, off unless
+``FBI_FAMILY_DECISIONS`` says so) without this package importing them: they sit above it, and a package below may not know the one above.
+
 One run of each kind at a time (advisory locks); a run that dies is closed as ``interrupted`` by the next worker
 (``recover_interrupted``). Every step commits on its own, so a failure part-way keeps what was done and is written in
 the run's ``errors``. Zero API-Football requests and zero language-model calls: everything here reads the database.
@@ -19,7 +23,7 @@ the run's ``errors``. Zero API-Football requests and zero language-model calls: 
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
@@ -30,12 +34,35 @@ from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import local_day
+from fbi.core.decision_versions import DECISION_FAMILIES, OUTCOME_FAMILIES
 from fbi.core.version import code_version
 
 log = structlog.get_logger(__name__)
 
 LOCKS = {"decide": 7310076, "nightly": 7310077, "weekly": 7310078, "calibrate": 7310077, "select": 7310076,
          "backfill": 7310079, "manual": 7310079}
+
+
+Step = tuple[str, Callable[[], Any]]
+"""A step of a job: its name in the run's record, and what it does."""
+Extra = Mapping[str, Sequence[Step]]
+"""Steps another package asks a job to run: for the name of one of the job's own steps, the steps to run right after it. The caller (the
+worker) builds them; this package does not import the packages they come from (``tests/unit/test_architecture.py`` holds the layering)."""
+
+
+def with_extra(steps: list[Step], after: Extra | None) -> list[Step]:
+    """The steps of a job with the extra ones spliced in after the step they name. A name that is not a step of the job is an error: a step that
+    was asked for and never ran must not pass in silence."""
+    if not after:
+        return steps
+    unknown = sorted(set(after) - {name for name, _ in steps})
+    if unknown:
+        raise ValueError(f"extra steps asked to run after {unknown}, which are not steps of this job ({[name for name, _ in steps]})")
+    out: list[Step] = []
+    for name, fn in steps:
+        out.append((name, fn))
+        out.extend(after.get(name, ()))
+    return out
 
 
 @dataclass
@@ -64,7 +91,8 @@ def versions() -> dict[str, str]:
             "calibration": calibration.VERSION, "calib_gate": calibration.GATE_VERSION,
             "edge_gate": calibration.EDGE_GATE_VERSION, "outcome": outcomes.VERSION, "postmortem": postmortem.VERSION,
             "memory": memory.VERSION, "report": report.VERSION, "discovery": discovery.VERSION,
-            "leakage": leakage.VERSION, "selection": decision.RULE_V6}
+            "leakage": leakage.VERSION, "selection": decision.RULE_V6,
+            "decision_families": DECISION_FAMILIES, "outcome_families": OUTCOME_FAMILIES}
 
 
 def open_run(conn: psycopg.Connection[Any], job: str, *, at: datetime) -> int:
@@ -156,7 +184,7 @@ def _run(conn: psycopg.Connection[Any], job: str, at: datetime, steps: list[tupl
     return report
 
 
-def run_decide(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
+def run_decide(conn: psycopg.Connection[Any], *, at: datetime, after: Extra | None = None) -> RunReport:
     from fbi.intel.decision import decide, select_day
     from fbi.picks.daily import day_ready
 
@@ -174,7 +202,7 @@ def run_decide(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
         picks, parlays = select_day(conn, at=at, ready=ready)
         return {"ready": int(ready), "picks": picks, "parlays": parlays}
 
-    return _run(conn, "decide", at, [("decide", _decide), ("select", _select)])
+    return _run(conn, "decide", at, with_extra([("decide", _decide), ("select", _select)], after))
 
 
 def memory_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str, int]:
@@ -205,7 +233,7 @@ def postmortems_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str
             "left": selections.left, "errors": len(selections.errors) + len(matches.errors)}
 
 
-def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
+def run_nightly(conn: psycopg.Connection[Any], *, at: datetime, after: Extra | None = None) -> RunReport:
     from fbi.intel.calibration import run_calibration
     from fbi.intel.leakage import audit_day
     from fbi.intel.outcomes import settle_decisions
@@ -230,7 +258,7 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
     def _hypotheses() -> int:
         return link_hypotheses(conn, at=at, calibration=calib)
 
-    return _run(conn, "nightly", at, [
+    return _run(conn, "nightly", at, with_extra([
         ("outcomes", lambda: settle_decisions(conn, at=at)),
         ("postmortems", lambda: postmortems_step(conn, at=at)),
         ("memory", lambda: memory_step(conn, at=at)),
@@ -238,7 +266,7 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
         ("leakage_audit", _audit),
         ("hypotheses", _hypotheses),
         ("report", _report),
-    ])
+    ], after))
 
 
 def run_weekly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:

@@ -51,12 +51,13 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds, local_day
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.core.version import code_version
 from fbi.intel import score as scoring
 from fbi.intel import stake as staking
 from fbi.intel.calibration import CalibrationState, calibration_state
 
-VERSION = "decision-v1"
+VERSION = DECISION_CORE
 HORIZON = timedelta(hours=36)
 CONSENSUS_LOOKBACK = timedelta(hours=36)
 MIN_MINUTES = 10
@@ -317,7 +318,7 @@ def _key(r: dict[str, Any]) -> Key:
 
 def read_world(conn: psycopg.Connection[Any], fixtures: list[int], *, at: datetime, version: str = VERSION) -> World:
     """Everything a run reads once. ``version`` is the decision version whose previous rows are read (``previous``): the families decide
-    under a version of their own (``fbi.intel.family_decision``), and their rows are not the previous ones of the core layer."""
+    under a version of their own (``fbi.familydecisions.decide``), and their rows are not the previous ones of the core layer."""
     from fbi.ai.config import AiSettings
 
     cal = calibration_state(conn, at=at)

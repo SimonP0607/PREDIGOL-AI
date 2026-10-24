@@ -1,7 +1,7 @@
 """What became of a family's decision in a real database (plan F11): a decision is taken before the kick-off, the match is played, and the settlement
 writes its outcome - the result by the rule of the market, the profit at the price taken, and the value against the close - under its own version.
 
-The pure parts are in tests/unit/test_family_outcomes.py. Here: the decision of the corners of a match is settled once the statistics are there and
+The pure parts are in tests/unit/test_familydecisions_outcomes.py. Here: the decision of the corners of a match is settled once the statistics are there and
 never before, a second pass writes nothing, a close of fewer than three books is no close, a price captured after the kick-off is never read, the
 pipeline's decisions are neither settled by this module nor does their settlement see these, and a decision the database refuses costs only itself."""
 
@@ -14,15 +14,15 @@ from typing import Any
 import psycopg
 import pytest
 
-from fbi.intel import family_decision as fd
-from fbi.intel import family_outcomes as fo
+from fbi.familydecisions import decide as fd
+from fbi.familydecisions import outcomes as fo
 from fbi.intel import outcomes
 from tests.integration.conftest import Seed
 
 from .knowledge_world import World
 from .test_families_forecast import AT, catalogue, played, run, upcoming
 from .test_families_score import play
-from .test_family_decision import KICKOFF, NOW, Market, scene
+from .test_familydecisions_decide import KICKOFF, NOW, Market, scene
 
 pytestmark = pytest.mark.integration
 
