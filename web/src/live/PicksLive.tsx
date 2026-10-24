@@ -24,6 +24,7 @@ import { marketShort, selectionLabel } from "@/product/shared/markets";
 import { rejectionReason } from "./labels";
 import { FunnelPanel } from "./FunnelPanel";
 import { SettlementPanel } from "./SettlementPanel";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 const statusTone: Record<PickStatus, BadgeTone> = {
   shadow: "neutral",
@@ -63,7 +64,7 @@ type Tab = (typeof tabs)[number];
 export function PicksLive() {
   const q = useLiveQuery(live.picks);
   const d = q.data?.data;
-  const [tab, setTab] = useState<Tab>("Picks");
+  const [tab, setTab] = useUrlTab(tabs, "Picks");
   const [open, setOpen] = useState<number | null>(null);
   const lc = d?.lifecycle;
   const stages: Array<[string, string, number | null, string]> = [

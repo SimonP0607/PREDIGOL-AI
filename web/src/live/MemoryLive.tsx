@@ -21,12 +21,13 @@ import { EntityMemory } from "./MemoryEntities";
 import { LearningNotes, ResearchFindings } from "./MemoryNotes";
 import { MatchMemoryPanel } from "./MatchMemoryPanel";
 import { PostmortemsPanel } from "./PostmortemsPanel";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 export const MEMORY_TABS = ["entities", "matches", "postmortems", "events", "research"] as const;
 export type MemoryTab = (typeof MEMORY_TABS)[number];
 
 export function MemoryLive() {
-  const [tab, setTab] = useState<MemoryTab>("entities");
+  const [tab, setTab] = useUrlTab(MEMORY_TABS, "entities");
   // The AI's day is Bogotá's; the post-mortems open on yesterday's, the last day whose results are all in.
   const today = todayKey(AI_TZ);
   const [day, setDay] = useState(() => shiftDay(today, -1));

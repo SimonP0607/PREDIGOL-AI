@@ -38,6 +38,7 @@ import { Markdown } from "./Markdown";
 import { MarketMatrixPanel } from "./MarketMatrixPanel";
 import { PriceClockPanel } from "./PriceClockPanel";
 import { durationMs } from "./format";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 const TABS = ["day", "decisions", "match", "calibration", "markets", "costs"] as const;
 type Tab = (typeof TABS)[number];
@@ -1317,7 +1318,7 @@ function CostsView() {
 // ── the page ─────────────────────────────────────────────────────────────────
 
 export function IntelligenceLive() {
-  const [tab, setTab] = useState<Tab>("day");
+  const [tab, setTab] = useUrlTab(TABS, "day");
   const [open, setOpen] = useState<number>(0);
   const [fixture, setFixture] = useState<string>("");
   const openDecision = (id: number) => {

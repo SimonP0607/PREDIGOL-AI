@@ -60,6 +60,7 @@ import {
   usd,
 } from "./aiModel";
 import { utcDateTime } from "./format";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 const TABS = ["reviews", "evidence", "costs", "shadow"] as const;
 type Tab = (typeof TABS)[number];
@@ -1142,7 +1143,7 @@ function ShadowTab() {
 
 export function AiLayerLive() {
   const q = useLiveQuery(live.aiOverview);
-  const [tab, setTab] = useState<Tab>("reviews");
+  const [tab, setTab] = useUrlTab(TABS, "reviews");
   const o = q.data?.data ?? null;
   return (
     <div className="space-y-4">

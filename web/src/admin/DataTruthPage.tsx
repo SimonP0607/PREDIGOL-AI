@@ -39,6 +39,7 @@ import { DatasetsTab } from "./DatasetsTab";
 import { OddsCoverageTab } from "./OddsCoverageTab";
 import { TruthV2Tab } from "./TruthV2Tab";
 import { ValidationTab } from "./ValidationTab";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 const TABS = [
   "audit_v2",
@@ -144,7 +145,7 @@ function safeText(row: TruthMatrixRow): { text: string; tone: BadgeTone } {
 }
 
 export function DataTruthPage() {
-  const [tab, setTab] = useState<Tab>("audit_v2");
+  const [tab, setTab] = useUrlTab(TABS, "audit_v2");
   const latest = useQuery({ ...live.truthLatest });
   const fresh = useQuery({ ...live.freshness });
   const register = useQuery({ ...live.datasets });

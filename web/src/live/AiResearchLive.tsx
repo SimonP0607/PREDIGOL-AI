@@ -91,6 +91,7 @@ import {
 } from "./aiModel";
 import { DailyReviewPanel } from "./DailyReviewPanel";
 import { Fact } from "./shared";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 const TABS = ["today", "close", "research", "learning", "sources", "costs"] as const;
 type Tab = (typeof TABS)[number];
@@ -977,7 +978,7 @@ function CloseTab({ day, onDay, max }: { day: string; onDay: (d: string) => void
 }
 
 export function AiResearchLive() {
-  const [tab, setTab] = useState<Tab>("today");
+  const [tab, setTab] = useUrlTab(TABS, "today");
   const today = todayKey(AI_TZ);
   const [liveDay, setLiveDay] = useState(today);
   const [pastDay, setPastDay] = useState(() => shiftDay(today, -1));
