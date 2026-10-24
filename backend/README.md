@@ -47,7 +47,7 @@ Primera vez:
 ```bash
 cp .env.example .env          # y pon tu FBI_APIFOOTBALL_KEY
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,analytics]"
+pip install -c constraints.txt -e ".[dev,analytics]"   # las versiones exactas de la imagen (constraints.txt)
 docker compose up -d postgres  # sin perfil solo arranca postgres
 alembic upgrade head
 make check                    # ruff + mypy + pytest

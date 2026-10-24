@@ -92,9 +92,15 @@ Cada fila es un lanzamiento (varias fases salieron juntas). Fechas en UTC.
 ## 6. Lo que esta lista todavía no cubre
 
 * **e2e por fase:** hasta F13 la batería nunca se había pasado entera sobre una base con datos; desde ahora se pasa en cada fase que toque la web.
-* **Dependencias sin fijar:** la imagen del backend instala `pip install -e ".[analytics]"` con cotas inferiores (`>=`), así que una
-  construcción nueva puede traer librerías numéricas distintas sin que cambie la huella del código de los modelos.
-* **Copia de seguridad fuera del servidor:** no existe; las copias y las pruebas de restauración son todas del propio servidor.
+* **Dependencias:** la imagen del backend se construía con cotas inferiores (`>=`), así que cada reconstrucción traía lo más nuevo de ese día
+  (el 24-oct, seis librerías de producción eran más nuevas que las de las puertas). Desde F14.2 las 60 librerías están fijadas en
+  `backend/constraints.txt` (guía `DEPENDENCIAS_F14.md`, con una prueba que mantiene el archivo, el Dockerfile y el entorno de la puerta de
+  acuerdo); **entra en producción con el próximo despliegue**. Siguen sin fijar las imágenes base `python:3.12-slim` y `node:22-alpine`
+  (decisión 24).
+* **Copia de seguridad fuera del servidor:** no existe. El diario del servidor lo dice cada día (24-oct): la copia diaria, la del RAW y la
+  recuperación a un punto en el tiempo (PITR) avisan de que no están configuradas, y las copias y las pruebas de restauración son todas del
+  propio servidor. El código para activarlas ya está en `deploy/vps/bin` (`r2-setup.sh`, `pitr.sh`); falta el cubo de Cloudflare R2 y sus
+  llaves, que son tuyos.
 * **Que mis paquetes de lanzamiento se detengan** si la huella del código de los modelos cambia sin entrada en el registro (decisión 19).
 * **Disco del servidor:** el aviso de disco (90 % en ≈ 15 días, +3.960 MB al día) sigue abierto y es tuyo (volúmenes huérfanos, retención).
 

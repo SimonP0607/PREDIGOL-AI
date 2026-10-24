@@ -10,13 +10,15 @@ WORKDIR /app
 
 # Dependencies first, from pyproject alone, so a code change does not
 # reinstall them. Wheels only (psycopg[binary], numpy, scipy): no compiler.
-COPY pyproject.toml README.md ./
+# constraints.txt fixes the version of every library (plan F14): pyproject only asks for lower bounds, so without it each rebuild of this
+# layer took whatever was newest that day. To upgrade a library change its line there and run the whole gate (docs/owner/DEPENDENCIAS_F14.md).
+COPY pyproject.toml constraints.txt README.md ./
 # Behind a TLS-inspecting proxy (a corporate network, a CI sandbox) the build can trust that proxy's CA with
 #   docker build --secret id=ca,src=/path/to/ca.pem ...
 # It is mounted for this one step and never written into the image. Without it, nothing changes.
 RUN --mount=type=secret,id=ca \
     if [ -s /run/secrets/ca ]; then export PIP_CERT=/run/secrets/ca; fi; \
-    mkdir -p src/fbi && touch src/fbi/__init__.py && pip install -e ".[analytics]"
+    mkdir -p src/fbi && touch src/fbi/__init__.py && pip install -c constraints.txt -e ".[analytics]"
 COPY . .
 
 # The same uid as the WSL user, so payloads written to the bind-mounted
