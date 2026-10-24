@@ -28,6 +28,7 @@ NAMES_THE_TABLE = {
     "ai/packet.py": "the packet's `forecast` block: context a review or a brief may cite, never an input of a computation",
     "intel/leakage.py": "the nightly proof (`forecast_known`) that no packet cited a forecast from after its moment",
     "families/score.py": "the scoreboard of the family forecasts (`family-v1`) after the matches: read-only, a measure of the research, never an input",
+    "research/trace.py": "the trace of the model code's promotions (F12): counts the stored forecasts per model version to say which code production used; read-only, never an input",
 }
 
 IMPORTS_THE_WRITER = {
