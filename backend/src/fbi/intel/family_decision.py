@@ -26,7 +26,9 @@ of the markets the forecasts are about. The age of the price is the age of the l
 fixture): a price that did not change is not an old price.
 
 The cost of a pass is one read of the forecasts of the next 36 hours and one of the quotes of those matches, so the worker runs it once an hour
-(``EVERY``), not every quarter of an hour, and a failure of it never fails the pass of the core layer (``run_step``).
+(``EVERY``), not every quarter of an hour. It is a step of its own in the decide job, after the core layer's and before the choice of the picks of
+the day: a selection that cannot be judged or written is counted and logged (``FamilyReport.failed``) and the pass goes on, and a pass that fails
+as a whole is the step's failure, written in the run's record, which leaves the other steps to run (``run_step``).
 """
 
 from __future__ import annotations
@@ -67,6 +69,8 @@ QUOTE_WINDOW: Final = versus.PRICE_WINDOW
 """How far back a quote can have been first seen and still be in force (the provider keeps the pre-match prices seven days)."""
 CHUNK: Final = 100
 """Matches whose quotes are read at a time."""
+ERRORS_KEPT: Final = 5
+"""How many of the errors of a pass the report carries (the count says how many there were)."""
 REASON_RESEARCH: Final = "family_research"
 REASON_CAPPED: Final = "family_shadow_only"
 
@@ -338,14 +342,16 @@ class FamilyReport:
     candidates: int = 0
     evaluated: int = 0
     written: int = 0
+    failed: int = 0
     by_family: dict[str, int] = field(default_factory=dict)
     by_state: dict[str, int] = field(default_factory=dict)
     by_reason: dict[str, int] = field(default_factory=dict)
+    errors: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return {"forecasts": self.forecasts, "fixtures": self.fixtures, "priced": self.priced_selections, "candidates": self.candidates,
-                "evaluated": self.evaluated, "written": self.written, "by_family": self.by_family, "by_state": self.by_state,
-                "by_reason": self.by_reason}
+                "evaluated": self.evaluated, "written": self.written, "failed": self.failed, "by_family": self.by_family,
+                "by_state": self.by_state, "by_reason": self.by_reason, "errors": self.errors[:ERRORS_KEPT]}
 
 
 def read_prices(conn: psycopg.Connection[Any], forecasts: Sequence[Forecast], *, at: datetime) -> dict[PriceKey, Priced]:
@@ -386,15 +392,25 @@ def decide_families(conn: psycopg.Connection[Any], *, at: datetime, horizon: tim
     world = decision.read_world(conn, sorted({c.forecast.fixture_id for c in found}), at=at, version=VERSION)
     out: list[Evaluated] = []
     for c in found:
-        e = finalise(decision.evaluate(world, c.key, {c.forecast.model: c.row()}), c, specs[c.forecast.family])
+        try:
+            e = finalise(decision.evaluate(world, c.key, {c.forecast.model: c.row()}), c, specs[c.forecast.family])
+            wrote = False
+            if write and decision.should_write(e, world.previous.get(e.key)):
+                with conn.transaction():  # a savepoint: a row the database refuses costs that row, not the rest of the pass
+                    wrote = decision.store(conn, e, at=at, version=VERSION) is not None
+        except Exception as exc:  # research: one selection that cannot be judged or written never costs the others
+            report.failed += 1
+            report.errors.append(f"{c.forecast.fixture_id}/{c.forecast.key}/{c.forecast.selection}/{c.forecast.line}: {type(exc).__name__}: {exc}"[:300])
+            log.error("family_decisions.selection_failed", fixture=c.forecast.fixture_id, key=c.forecast.key, error=type(exc).__name__,
+                      detail=str(exc)[:300])
+            continue
         out.append(e)
         report.evaluated += 1
+        report.written += wrote
         report.by_family[c.forecast.family] = report.by_family.get(c.forecast.family, 0) + 1
         report.by_state[e.state] = report.by_state.get(e.state, 0) + 1
         for reason in e.reasons:
             report.by_reason[reason] = report.by_reason.get(reason, 0) + 1
-        if write and decision.should_write(e, world.previous.get(e.key)) and decision.store(conn, e, at=at, version=VERSION) is not None:
-            report.written += 1
     return report, out
 
 
@@ -404,17 +420,13 @@ def due(at: datetime) -> bool:
 
 
 def run_step(conn: psycopg.Connection[Any], *, at: datetime) -> dict[str, Any]:
-    """The step of the decide job: nothing while the switch is ``off``; in ``shadow`` the pass of the hour. A failure here is logged and written
-    in the record of the run as the step's result - it does not fail the job, whose first duty is the core layer."""
+    """The step of the decide job: nothing while the switch is ``off``; in ``shadow`` the pass of the hour. The step is a step of its own in
+    the job (``fbi.intel.cycle.run_decide``): if it raises, the job writes it in its record - the run is ``partial`` and says ``families: ...`` -
+    and the step that chooses the picks of the day still runs, so the families can cost the core layer nothing but a line in a record."""
     chosen = mode()
     if chosen == "off":
         return {"mode": chosen}
     if not due(at):
         return {"mode": chosen, "waiting": 1}
-    try:
-        report, _ = decide_families(conn, at=at)
-    except Exception as exc:  # the families are research: a read that fails costs this hour's rows, never the pass of the core layer
-        conn.rollback()
-        log.error("family_decisions.failed", error=type(exc).__name__, detail=str(exc)[:300])
-        return {"mode": chosen, "failed": 1, "error": f"{type(exc).__name__}: {exc}"[:200]}
+    report, _ = decide_families(conn, at=at)
     return {"mode": chosen, **report.as_dict()}

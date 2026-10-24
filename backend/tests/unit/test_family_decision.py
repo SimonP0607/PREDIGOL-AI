@@ -244,26 +244,28 @@ def test_the_step_does_nothing_while_the_switch_is_off_and_waits_for_its_hour(mo
     assert conn.rolled_back == 0
 
 
-def test_a_failure_of_the_pass_is_recorded_and_never_raised(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_failure_of_the_pass_reaches_the_record_of_the_job_and_leaves_the_connection_to_it(monkeypatch: pytest.MonkeyPatch) -> None:
     def broken(*_a: Any, **_k: Any) -> Any:
         raise RuntimeError("the quotes could not be read")
 
     monkeypatch.setattr(fd, "environment", lambda: {fd.SWITCH: "shadow"})
     monkeypatch.setattr(fd, "decide_families", broken)
     conn = _Conn()
-    out = fd.run_step(conn, at=AT)  # type: ignore[arg-type]
-    assert out["mode"] == "shadow" and out["failed"] == 1 and "RuntimeError: the quotes could not be read" in out["error"]
-    assert conn.rolled_back == 1, "the transaction the failed read left open is closed"
+    with pytest.raises(RuntimeError, match="the quotes could not be read"):
+        fd.run_step(conn, at=AT)  # type: ignore[arg-type]
+    assert conn.rolled_back == 0, "the job closes the transaction of a step that failed, as it does for every step"
 
 
 def test_the_step_hands_back_what_the_pass_counted(monkeypatch: pytest.MonkeyPatch) -> None:
-    report = fd.FamilyReport(forecasts=10, fixtures=2, priced_selections=6, candidates=3, evaluated=3, written=2,
-                             by_family={"CORNERS": 3}, by_state={"INVESTIGACION": 3}, by_reason={fd.REASON_RESEARCH: 3})
+    report = fd.FamilyReport(forecasts=10, fixtures=2, priced_selections=6, candidates=3, evaluated=3, written=2, failed=1,
+                             by_family={"CORNERS": 3}, by_state={"INVESTIGACION": 3}, by_reason={fd.REASON_RESEARCH: 3},
+                             errors=[f"e{i}" for i in range(9)])
     monkeypatch.setattr(fd, "environment", lambda: {fd.SWITCH: "shadow"})
     monkeypatch.setattr(fd, "decide_families", lambda *_a, **_k: (report, []))
     out = fd.run_step(_Conn(), at=AT)  # type: ignore[arg-type]
-    assert out == {"mode": "shadow", "forecasts": 10, "fixtures": 2, "priced": 6, "candidates": 3, "evaluated": 3, "written": 2,
-                   "by_family": {"CORNERS": 3}, "by_state": {"INVESTIGACION": 3}, "by_reason": {fd.REASON_RESEARCH: 3}}
+    assert out == {"mode": "shadow", "forecasts": 10, "fixtures": 2, "priced": 6, "candidates": 3, "evaluated": 3, "written": 2, "failed": 1,
+                   "by_family": {"CORNERS": 3}, "by_state": {"INVESTIGACION": 3}, "by_reason": {fd.REASON_RESEARCH: 3},
+                   "errors": ["e0", "e1", "e2", "e3", "e4"]}, "the record carries the first five errors; the count says how many there were"
 
 
 def test_the_versions_are_kept_apart() -> None:

@@ -51,8 +51,11 @@ def over_p(db: psycopg.Connection[Any], fixture_id: int, line: str = LINE) -> fl
 class Market:
     """The prices of the corners of one match: an extraction, the definition of the provider's bet, and the books that quote it."""
 
-    def __init__(self, db: psycopg.Connection[Any], w: World, fixture_id: int) -> None:
+    def __init__(self, db: psycopg.Connection[Any], w: World, fixture_id: int, *, like: Market | None = None) -> None:
         self.db, self.w, self.fid = db, w, fixture_id
+        if like is not None:  # another match of the same extraction
+            self.extraction = like.extraction
+            return
         sync_definitions(db, names={})
         db.execute("UPDATE market.market_definitions SET market_key = 'CORNERS_OU' WHERE provider_bet_id = 45 AND scope = 'prematch'")
         self.extraction = int(db.execute(
@@ -176,6 +179,38 @@ def test_a_price_that_pays_no_more_than_the_model_says_is_not_a_candidate(db: ps
     report = fd.decide_families(db, at=NOW)[0]
     assert report.priced_selections == 2 and report.candidates == 0 and report.written == 0
     assert rows(db, fid) == []
+
+
+def test_a_selection_the_database_refuses_costs_that_selection_and_nothing_else(db: psycopg.Connection[Any], w: World,
+                                                                                 monkeypatch: pytest.MonkeyPatch) -> None:
+    catalogue(db)
+    played(w)
+    first, second = upcoming(w, 0, 1), upcoming(w, 2, 3)
+    run(db, [first, second])
+    one = Market(db, w, first)
+    one.pays(0.10)
+    one.read(AT + timedelta(minutes=30))
+    two = Market(db, w, second, like=one)
+    two.pays(0.10)
+    two.read(AT + timedelta(minutes=30))
+
+    real, calls = decision.store, []
+
+    def flaky(conn: psycopg.Connection[Any], e: decision.Evaluated, **kw: Any) -> int | None:
+        calls.append(e.key[0])
+        if len(calls) == 1:
+            conn.execute("SELECT 1 / 0")  # the database refuses: the transaction is aborted until the savepoint is rolled back
+        return real(conn, e, **kw)
+
+    monkeypatch.setattr(decision, "store", flaky)
+    report = fd.decide_families(db, at=NOW)[0]
+    assert (report.candidates, report.evaluated, report.written, report.failed) == (2, 1, 1, 1), report
+    assert len(report.errors) == 1 and "DivisionByZero" in report.errors[0] and str(min(first, second)) in report.errors[0]
+    written = {r["known_at"] for f in (first, second) for r in rows(db, f)}
+    assert written == {NOW} and sum(len(rows(db, f)) for f in (first, second)) == 1, "the other selection was written, in the same transaction"
+    assert db.execute("SELECT 1").fetchone() == (1,), "and the connection is still usable"
+    monkeypatch.setattr(decision, "store", real)
+    assert fd.decide_families(db, at=NOW)[0].written == 1, "the next pass writes what the first could not"
 
 
 def test_a_dry_run_judges_and_writes_nothing(db: psycopg.Connection[Any], w: World) -> None:
