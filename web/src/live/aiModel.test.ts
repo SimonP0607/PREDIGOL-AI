@@ -490,6 +490,50 @@ describe("V2: evidence, compact", () => {
     setLocale("es");
   });
 
+  test("the evidence of a pattern the weekly search proposes: the six values the card has room for, in the page's words", () => {
+    // As `fbi.research.pattern_search` writes them, in the order the database hands a JSON object back (the shortest key first).
+    const apart = ["n_matches", "impact", "investigation_cost"];
+    const evidence = {
+      z: -3.64,
+      delta: -0.0431,
+      group: "Competición: Championship",
+      tests: 180,
+      measure: "calibración",
+      expected_by_chance: 0.6,
+      n_matches: 24,
+      impact: "-0.031 frente a +0.012 en el resto en 24 partidos",
+      investigation_cost:
+        "US$0 en IA: la comparación se repite en local y luego unos 30 días de shadow",
+      pattern_version: "search-v1",
+    };
+    setLocale("es");
+    expect(
+      evidenceSummary(evidence, { omit: apart, max: 6 }).map((i) => [i.label, i.value]),
+    ).toEqual([
+      ["z", "-3,64"],
+      ["Diferencia", "-0,043"],
+      ["Grupo", "Competición: Championship"],
+      ["Comparaciones", "180"],
+      ["Medida", "calibración"],
+      ["Esperadas por azar", "0,6"],
+    ]);
+    setLocale("en");
+    expect(evidenceSummary(evidence, { omit: apart, max: 6 }).map((i) => i.label)).toEqual([
+      "z",
+      "Difference",
+      "Group",
+      "Comparisons",
+      "Measure",
+      "Expected by chance",
+    ]);
+    // none falls back to its raw key (the version is not shown at all)
+    for (const item of evidenceSummary(evidence, { omit: apart })) {
+      expect(item.key === "z" || item.label !== item.key.replace(/_/g, " ")).toBe(true);
+      expect(item.key).not.toBe("pattern_version");
+    }
+    setLocale("es");
+  });
+
   test("the comparison's sample as counts", () => {
     expect(sampleCounts({ selections: 120, days: "14", rejected: null, other: 3 })).toEqual({
       selections: 120,

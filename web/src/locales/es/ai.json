@@ -778,7 +778,12 @@
       "simulated_bets": "Apuestas simuladas",
       "signal_close": "Señal extra al cierre",
       "signal_24h": "Señal extra a 24 h",
-      "depends_on": "Depende de"
+      "depends_on": "Depende de",
+      "group": "Grupo",
+      "measure": "Medida",
+      "delta": "Diferencia",
+      "tests": "Comparaciones",
+      "expected_by_chance": "Esperadas por azar"
     },
     "costs": {
       "requests_one": "{n} llamada",

@@ -778,7 +778,12 @@
       "simulated_bets": "Simulated bets",
       "signal_close": "Extra signal at the close",
       "signal_24h": "Extra signal 24 h before",
-      "depends_on": "Depends on"
+      "depends_on": "Depends on",
+      "group": "Group",
+      "measure": "Measure",
+      "delta": "Difference",
+      "tests": "Comparisons",
+      "expected_by_chance": "Expected by chance"
     },
     "costs": {
       "requests_one": "{n} call",
