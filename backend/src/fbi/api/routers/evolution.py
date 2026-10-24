@@ -9,7 +9,13 @@ import psycopg
 from fastapi import APIRouter, Depends, Path, Query
 
 from fbi.api.contracts.ai_layer import EvolutionDashboard
-from fbi.api.contracts.evolution import DecisionIn, EvolutionOverview, HypothesisIn, PromoteIn
+from fbi.api.contracts.evolution import (
+    CodePromotions,
+    DecisionIn,
+    EvolutionOverview,
+    HypothesisIn,
+    PromoteIn,
+)
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.security import Admin
@@ -22,6 +28,13 @@ Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 @router.get("/evolution", response_model=Envelope[EvolutionOverview])
 def get_evolution(conn: Db) -> Envelope[EvolutionOverview]:
     return evolution.overview(conn)
+
+
+@router.get("/evolution/code-promotions", response_model=Envelope[CodePromotions])
+def get_code_promotions(conn: Db, days: Annotated[int, Query(ge=1, le=365)] = 30) -> Envelope[CodePromotions]:
+    """The model code against its promotions (plan F12): which fingerprints of the model packages forecast in production in the last ``days``
+    days, the decision on record that covers each, and ``traced / counted``. Reading only; kept five minutes."""
+    return evolution.code_promotions(conn, days=days)
 
 
 @router.post("/evolution/hypotheses", response_model=Envelope[dict[str, int]])

@@ -6,7 +6,13 @@ from __future__ import annotations
 from datetime import datetime
 
 from fbi.analyst.db import write_connection
+from fbi.api.cache import shared
 from fbi.api.contracts.evolution import (
+    CodeCounts,
+    CodeFingerprint,
+    CodeLedgerEntry,
+    CodePromotionRow,
+    CodePromotions,
     EvolutionOverview,
     Hypothesis,
     HypothesisIn,
@@ -17,7 +23,8 @@ from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.core.clock import now
-from fbi.research import evolution
+from fbi.core.version import model_code_version
+from fbi.research import evolution, promotions, trace
 from fbi.research.loop import frozen, latest_v2, v2_due_reason
 
 LOOP = [
@@ -64,6 +71,37 @@ def overview(conn: Conn, *, at: datetime | None = None) -> Envelope[EvolutionOve
         last_v2=None if last is None else LastRun.model_validate(last), v2_due=None if due is None else due.text,
         research_frozen=frozen(), v2_due_code=None if due is None else due.code,
         v2_due_vars={} if due is None else due.vars))
+
+
+CODE_CACHE_SECONDS = 300
+"""The trace scans a month of predictions (about 4 s on the server): an answer is kept five minutes, the page never refreshes it by itself."""
+CODE_TIMEOUT = "60s"
+"""The API's own ten seconds are for the boards; this request may take longer, and only this one."""
+
+
+@shared(CODE_CACHE_SECONDS)
+def code_promotions(conn: Conn, *, days: int = trace.DEFAULT_DAYS, at: datetime | None = None) -> Envelope[CodePromotions]:
+    """THE MODEL CODE AGAINST ITS PROMOTIONS (plan F12): every fingerprint of the model packages that production forecast with in the last
+    ``days`` days, the decision that covers each and the count the plan's criterion is made of. Reading only: ``fbi.research.trace`` reads and
+    nothing here writes, and the connection could not."""
+    conn.execute(f"SET LOCAL statement_timeout = '{CODE_TIMEOUT}'")
+    at = at or now()
+    report = trace.trace(conn, now=at, days=days)
+    recorded = trace.load_recorded(conn)
+    used = {f["fingerprint"] for f in report["fingerprints"]}
+    running = model_code_version()
+    in_force = report["ledger_in_force"]
+    fingerprints = [CodeFingerprint(
+        fingerprint=f["fingerprint"], status=f["status"], appeared_at=f["appeared_at"], last_use=f["last_use"], in_force_now=f["in_force_now"],
+        versions=f["versions"], models=f["models"], rows=f["rows"],
+        promotion=None if f["promotion"] is None else CodePromotionRow(**f["promotion"])) for f in report["fingerprints"]]
+    ledger = [CodeLedgerEntry(
+        fingerprint=e.fingerprint, decided_at=e.decided_at, decided_by=e.decided_by, phase=e.phase, reason=e.reason, baseline=e.baseline,
+        evidence=e.evidence, recorded=e.fingerprint in recorded, used=e.fingerprint in used) for e in promotions.LEDGER]
+    return ok(CodePromotions(
+        now=report["now"], since=report["since"], days=report["days"], running_code=running, ledger_in_force=in_force,
+        ledger_since=report["ledger_since"], in_force_matches_running=in_force is not None and in_force == running,
+        fingerprints=fingerprints, counts=CodeCounts(**report["counts"]), coverage=report["coverage"], ledger=ledger, other=report["other"]))
 
 
 def propose(body: HypothesisIn, *, at: datetime | None = None) -> int:

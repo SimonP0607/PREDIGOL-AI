@@ -12,7 +12,8 @@ from typing import Any
 import psycopg
 import pytest
 
-from fbi.research import trace
+from fbi.api.services import evolution as page
+from fbi.research import promotions, trace
 from fbi.research.promotions import CodePromotion
 from tests.integration.conftest import Seed
 
@@ -139,3 +140,56 @@ def test_the_other_promotions_of_the_window_are_counted_for_context(db: psycopg.
                "VALUES (%s, 'calibrator', 'OU', 'poisson', 'CHAMPION', 'calib-gate-v1', '{}', 'test', 'system')", (NOW - timedelta(days=1),))
     other = trace.trace(db, now=NOW, ledger=world)["other"]
     assert other["calibrator"] == 1 and other["market_edge"] == 0 and other["goal_spec"] >= 0 and other["neutral_rule"] >= 0
+
+
+def test_the_admin_page_gets_the_trace_with_the_ledger_and_the_code_the_server_runs(db: psycopg.Connection[Any], world: list[CodePromotion],
+                                                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    """The panel «Código de los modelos»: the same trace the CLI prints, typed, plus the ledger entries (recorded? used?) and whether the code
+    that is running is the one the ledger has in force."""
+    monkeypatch.setattr(promotions, "LEDGER", tuple(world))
+    monkeypatch.setattr(page, "model_code_version", lambda: "mcbbbbbbbbbb")
+    before = page.code_promotions(db, days=30, at=NOW).data
+    assert before is not None
+    assert [(e.fingerprint, e.recorded, e.used) for e in before.ledger] == [("mcaaaaaaaaaa", False, True), ("mcbbbbbbbbbb", False, True)], \
+        "the ledger is not in the database yet: the page says so"
+    assert {f.fingerprint: f.status for f in before.fingerprints}["mcbbbbbbbbbb"] == "PENDING_SYNC"
+    assert before.counts.pending_sync == 2 and before.counts.traced == 0 and before.coverage == 0.0
+
+    trace.sync(db, now=NOW, confirm=True, ledger=world)
+    shown = page.code_promotions(db, days=30, at=NOW).data
+    assert shown is not None
+    assert [f.fingerprint for f in shown.fingerprints] == [f["fingerprint"] for f in trace.trace(db, now=NOW, ledger=world)["fingerprints"]], \
+        "the page lists what the trace lists, oldest first"
+    status = {f.fingerprint: f.status for f in shown.fingerprints}
+    assert status == {"legacy": "PRE_LEDGER", "mc1111111111": "PRE_LEDGER", "mcaaaaaaaaaa": "BASELINE", "mcbbbbbbbbbb": "PROMOTED",
+                      "mcdddddddddd": "UNTRACED"}
+    assert shown.counts.model_dump() == {"fingerprints": 5, "counted": 3, "traced": 2, "untraced": 1, "pending_sync": 0, "after_use": 0, "pre_ledger": 2}
+    assert shown.coverage == pytest.approx(2 / 3)
+    assert [(e.fingerprint, e.recorded, e.used, e.baseline) for e in shown.ledger] == [("mcaaaaaaaaaa", True, True, True),
+                                                                                        ("mcbbbbbbbbbb", True, True, False)]
+    promoted = next(f for f in shown.fingerprints if f.fingerprint == "mcbbbbbbbbbb")
+    assert promoted.promotion is not None and promoted.promotion.decided_by == "owner" and promoted.promotion.reason == REASON
+    assert promoted.versions == 1 and promoted.models == ["poisson"] and promoted.rows == {"predictions": 2} and promoted.in_force_now is False
+    assert next(f for f in shown.fingerprints if f.fingerprint == "mcdddddddddd").promotion is None, "no decision anywhere: nothing to show"
+    assert shown.ledger_in_force == "mcbbbbbbbbbb" and shown.running_code == "mcbbbbbbbbbb" and shown.in_force_matches_running is True
+    assert shown.other["calibrator"] == 0 and shown.days == 30 and shown.now == NOW and shown.since == NOW - timedelta(days=30)
+
+    monkeypatch.setattr(page, "model_code_version", lambda: "mcdddddddddd")  # the server runs a code the ledger does not have in force
+    moved = page.code_promotions(db, days=30, at=NOW).data
+    assert moved is not None and moved.running_code == "mcdddddddddd" and moved.in_force_matches_running is False
+
+    upcoming = entry("mc9999999999", 0)  # decided, written in the ledger, the code not released yet: no fingerprint of it has forecast
+    monkeypatch.setattr(promotions, "LEDGER", (*world, upcoming))
+    ahead = page.code_promotions(db, days=30, at=NOW).data
+    assert ahead is not None
+    assert [(e.fingerprint, e.recorded, e.used) for e in ahead.ledger] == [("mcaaaaaaaaaa", True, True), ("mcbbbbbbbbbb", True, True),
+                                                                          ("mc9999999999", False, False)], "an entry nobody used yet is said so"
+    assert ahead.ledger_in_force == "mc9999999999" and "mc9999999999" not in {f.fingerprint for f in ahead.fingerprints}
+
+
+def test_the_page_reads_and_cannot_write(db: psycopg.Connection[Any], world: list[CodePromotion], monkeypatch: pytest.MonkeyPatch) -> None:
+    """Asking for the page changes nothing: no row in ``intel.promotions`` whatever the ledger holds, and the answer is the same twice."""
+    monkeypatch.setattr(promotions, "LEDGER", tuple(world))
+    first = page.code_promotions(db, days=30, at=NOW).data
+    second = page.code_promotions(db, days=30, at=NOW).data
+    assert first == second and count(db) == 0, "the ledger is copied to the database by `sync` at a release, never by looking at it"

@@ -461,6 +461,46 @@ def test_the_guide_of_the_model_code_promotions_says_what_the_code_does() -> Non
     assert "entity = 'model'" in trace.ROWS_SQL and "entidad `model`" in doc and "backtest_session_id IS NULL" in trace.USE_SQL
 
 
+def test_the_guide_of_the_model_code_panel_says_what_the_page_does() -> None:
+    """Plan F12, the console: the address and its limits, the time the request is given and the answer kept, and the words each status has on the
+    page - read from the web's Spanish catalog, so a guide and a screen that say different things fail here."""
+    import typing
+
+    from fbi.api.contracts.evolution import CodeStatus
+    from fbi.api.deps import READ_ONLY_OPTIONS
+    from fbi.api.routers import evolution as router
+    from fbi.api.services import evolution as service
+    from fbi.research import trace
+
+    doc = read_doc("owner", "PROMOCIONES_F12.md")
+    flat = " ".join(doc.split())  # the prose, whatever the line breaks of the paragraph
+    assert f"`GET /api/v1/admin/evolution/code-promotions?days={trace.DEFAULT_DAYS}`" in doc
+    routes = [r for r in router.router.routes if getattr(r, "path", None) == "/evolution/code-promotions"]
+    assert len(routes) == 1 and getattr(routes[0], "methods", None) == {"GET"}, "one address, read only"
+    query = typing.get_args(typing.get_type_hints(router.get_code_promotions, include_extras=True)["days"])[1]
+    assert {k: getattr(m, k) for m in query.metadata for k in ("ge", "le") if hasattr(m, k)} == {"ge": 1, "le": 365}
+    assert "`days` entre 1 y 365" in flat
+    assert service.CODE_TIMEOUT == "60s" and "se da **60 segundos**" in flat, "the request is given more than the API's own limit"
+    assert "statement_timeout=10000" in READ_ONLY_OPTIONS and "se corta a los diez segundos" in flat
+    assert service.CODE_CACHE_SECONDS == 300 and "se guarda **cinco minutos**" in flat
+    assert trace.IN_FORCE_DAYS == 2 and "«Usado en los últimos 2 días»" in flat and "dos últimos días" in flat
+    assert set(typing.get_args(CodeStatus)) == {"BASELINE", "PROMOTED", "AFTER_USE", "PENDING_SYNC", "UNTRACED", "PRE_LEDGER"}
+    assert set(trace.TRACED) < set(typing.get_args(CodeStatus)), "the statuses the plan counts are among the ones the page shows"
+
+    catalog = Path(__file__).resolve().parents[3] / "web" / "src" / "locales" / "es" / "ai.json"
+    if not catalog.is_file():
+        pytest.skip("no web catalog next to the code")
+    words = json.loads(catalog.read_text(encoding="utf-8"))["evolution"]["code"]
+    assert set(words["status"]) == set(words["statusHelp"]) == set(typing.get_args(CodeStatus)), "the page has words for each status"
+    for status in typing.get_args(CodeStatus):
+        row = f"| `{status}` | {words['status'][status]} | {words['statusHelp'][status]} |"
+        assert row in doc, f"the guide's table says something else than the page for {status}: {row}"
+    for tile in (words["tiles"]["coverage"], words["tiles"]["running"], words["tiles"]["fingerprints"], words["tiles"]["ledgerSince"],
+                 words["ledger"]["title"], words["other"]["title"], words["title"]):
+        assert f"«{tile}»" in flat, f"the guide does not name {tile!r} as the page does"
+    assert f"«{words['noPromotion'].rstrip('.')}»" in flat
+
+
 # ── Plan F11.6: the dependence between the families of one match ──────────────
 
 STORED_DEPENDENCE = DOCS / "owner" / "DEPENDENCIA_FAMILIAS_F11_resultado.json"

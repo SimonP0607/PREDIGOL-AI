@@ -1,9 +1,10 @@
 # Promociones del código de los modelos (F12)
 
-*Escrito el 24 de octubre de 2026. Código: `fbi/research/promotions.py` (el registro), `fbi/research/trace.py` (la medición) y
-`python -m scripts.promotion_trace`. Pruebas: `tests/unit/test_model_code_ledger.py`, `tests/unit/test_promotion_trace_cli.py`,
-`tests/integration/test_promotion_trace.py`. Es solo código y solo lectura: no cambia ningún modelo, pronóstico, precio ni pick, no necesita
-migración, no hace peticiones al proveedor y no usa IA.*
+*Escrito el 24 de octubre de 2026 (la consola, el 24-oct por la tarde). Código: `fbi/research/promotions.py` (el registro), `fbi/research/trace.py`
+(la medición), `python -m scripts.promotion_trace` y, para la consola, `GET /api/v1/admin/evolution/code-promotions` con el panel
+`web/src/live/CodePromotionsPanel.tsx`. Pruebas: `tests/unit/test_model_code_ledger.py`, `tests/unit/test_promotion_trace_cli.py`,
+`tests/integration/test_promotion_trace.py`, `tests/integration/test_evolution.py` y `web/src/live/CodePromotionsPanel.test.tsx`. Es solo código y
+solo lectura: no cambia ningún modelo, pronóstico, precio ni pick, no necesita migración, no hace peticiones al proveedor y no usa IA.*
 
 ## Qué pide el plan y qué faltaba
 
@@ -49,6 +50,44 @@ ningún sitio: lo que el plan dice que no debe pasar) y `PRE_LEDGER` (nació ant
 puede decidir después). El criterio del plan, «el 100 % de los cambios de los últimos 30 días con su promoción trazada», es
 **trazadas / contadas**.
 
+## En la consola: Evolución, «Código de los modelos»
+
+Es la parte web de F12 y está al final de la página de **Evolución** (administración). Solo la ve una cuenta de administrador: para cualquier otra
+cuenta la dirección responde 403. Lee lo mismo que `show`, con las mismas reglas, y no tiene ningún botón que escriba: el único botón,
+«Actualizar», vuelve a preguntar.
+
+* **Dirección:** `GET /api/v1/admin/evolution/code-promotions?days=30` (`days` entre 1 y 365; por defecto 30, la ventana del plan). Lee con la
+  conexión de solo lectura de la API.
+* **Tiempo:** la traza recorre un mes de predicciones y en producción tardó **4,2 segundos** (24-oct 07:00 UTC, 30 días, 7 huellas). La lectura de la
+  API se corta a los diez segundos; esta petición se da **60 segundos** para que en frío nunca devuelva un 500, y la respuesta se guarda
+  **cinco minutos** en el servidor. La página no se refresca sola: se pide al abrirla y al pulsar «Actualizar».
+* **Cuatro cifras arriba:** «Cambios con promoción» (**1 de 2 · 50 %** en producción al desplegar F12: la línea base y el cambio accidental del
+  23-oct), «Código que corre ahora» (la huella que lleva el código de este servidor, con la advertencia en ámbar si **no** es la que el registro
+  tiene en vigor), «Huellas en la ventana» (cuántas hay y cuántas son anteriores al registro) y «Registro iniciado».
+* **Una tarjeta por huella**, la más nueva primero: su estado, si **corre ahora**, cuándo apareció y cuándo se usó por última vez, cuántas
+  versiones y de qué modelos, lo que produjo en la ventana (predicciones, pronósticos, decisiones) y la promoción que la cubre: quién la decidió,
+  cuándo, el motivo y la evidencia (se despliega). Una huella sin promoción lo dice en rojo: «Ninguna decisión registrada cubre este código».
+  Las anteriores al registro van aparte, plegadas, y no cuentan.
+* **«Decisiones del registro»:** las entradas del `LEDGER` que lleva el código del servidor, la más nueva primero, cada una con dos marcas:
+  si ya está **copiada a la base** (`intel.promotions`) y si producción la **usó** en la ventana. Una entrada nueva aparece «sin copiar» y
+  «aún sin usar» hasta el siguiente `sync` y el siguiente pronóstico.
+* **«Otras promociones en la ventana»:** calibradores, especificación de goles, ventaja sobre el mercado y regla de sede neutra, para contexto.
+
+Lo que dice la consola de cada estado:
+
+| Estado | Lo que dice la consola | Qué significa |
+| --- | --- | --- |
+| `BASELINE` | Base del registro | El código que ya estaba en vigor cuando empezó el registro; se anotó después de los hechos y así se dice. |
+| `PROMOTED` | Promovido | Una decisión registrada, anterior al primer uso del código, lo cubre. |
+| `AFTER_USE` | Decidido después | Hay una decisión registrada, pero con fecha posterior al primer uso del código. |
+| `PENDING_SYNC` | Sin copiar a la base | Está en el registro del código, pero todavía no se copió a la base de datos. |
+| `UNTRACED` | Sin promoción | Ninguna decisión lo cubre: es el cambio que el plan dice que no debe ocurrir. |
+| `PRE_LEDGER` | Anterior al registro | Es anterior al registro: se lista y no cuenta. |
+
+Un detalle de lectura: «Usado en los últimos 2 días» no quiere decir «en vigor». La marca «Corre ahora» es la del código que ejecuta el servidor;
+la otra solo dice que esa huella produjo algo en los dos últimos días (la del 23-oct sigue produciendo decisiones porque 174 partidos conservan
+su último pronóstico de aquella pasada).
+
 ## Qué se verá al desplegarlo y sincronizar
 
 `mc9a7bec97ca` como `BASELINE`, `mce0abbbb30d` como `UNTRACED` y las anteriores como `PRE_LEDGER`: **1 de 2, el 50 %**. Es deliberado: la
@@ -66,8 +105,8 @@ prefieres darla por explicada, es una decisión tuya (abajo).
 * **¿Que mis paquetes de lanzamiento se detengan si la huella cambia y no hay entrada?** Lo recomiendo y lo añadiría a mis propios guiones de
   entrega (no toca `predigolctl`). Hoy no lo hace nada.
 * **¿Dar por explicada la huella del 23-oct como excepción documentada**, o dejarla contando hasta que salga de la ventana el 22-nov?
-* **¿Mostrar estas promociones en la consola (Evolución)?** Es la parte web de F12 (tablero hipótesis → experimento → resultado → promoción) y
-  queda pendiente.
+* **¿Mostrar estas promociones en la consola (Evolución)?** Hecho como lectura para administradores (arriba). Si prefieres no verlo ahí, basta
+  con quitar una línea de `web/src/live/EvolutionLive.tsx`; la dirección y la medición no cambian.
 
 ## Lo que no hace
 
