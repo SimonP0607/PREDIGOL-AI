@@ -32,6 +32,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.research import promotions as ledger_module
 from fbi.research.promotions import CodePromotion
 
@@ -52,7 +53,8 @@ WITH used AS (
     FROM models.match_forecasts WHERE version = 'forecast-v1' AND known_at >= %(since)s GROUP BY model_version_id
   UNION ALL
   SELECT 'decisions', model_version_id, min(known_at), max(known_at), count(*)
-    FROM intel.decisions WHERE model_version_id IS NOT NULL AND known_at >= %(since)s GROUP BY model_version_id)
+    FROM intel.decisions WHERE decision_version = %(decision_version)s AND model_version_id IS NOT NULL AND known_at >= %(since)s
+   GROUP BY model_version_id)
 SELECT mr.name AS model, mv.id AS version_id, mv.version, mv.created_at, u.source, u.first_at, u.last_at, u.n
   FROM used u
   JOIN models.model_versions mv ON mv.id = u.model_version_id
@@ -121,7 +123,7 @@ def classify(fingerprint: str, appeared_at: datetime, *, ledger: Sequence[CodePr
 
 def load_use(conn: psycopg.Connection[Any], *, since: datetime) -> list[Use]:
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(USE_SQL, {"since": since})
+        cur.execute(USE_SQL, {"since": since, "decision_version": DECISION_CORE})
         return [Use(str(r["model"]), int(r["version_id"]), str(r["version"]), r["created_at"], str(r["source"]), r["first_at"], r["last_at"],
                     int(r["n"])) for r in cur.fetchall()]
 

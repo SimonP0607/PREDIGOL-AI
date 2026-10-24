@@ -23,12 +23,15 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.core.decision_versions import DECISION_CORE, OUTCOME_CORE
 from fbi.market import closing_value
 
-VERSION = "outcome-v1"
+VERSION = OUTCOME_CORE
 BATCH = 20000
 
 TODO_SQL = """
+-- the settlement of the pipeline's decisions, which are settled through their pick; the decisions of the families have no pick and are
+-- settled by ``fbi.familydecisions.outcomes``, on the counts of the match
 WITH todo AS (
     SELECT d.id, d.fixture_id, d.market_key, d.selection, d.line, d.odds, d.stake_units, d.kickoff_at,
            pr.result_status, pr.settled_at
@@ -36,6 +39,7 @@ WITH todo AS (
       JOIN picks.pick_results pr ON pr.pick_id = d.pick_id
       LEFT JOIN intel.decision_outcomes o ON o.decision_id = d.id
      WHERE o.decision_id IS NULL AND pr.result_status <> 'pending' AND pr.settled_at <= %(at)s AND d.odds IS NOT NULL
+       AND d.decision_version = %(decision_version)s
      ORDER BY d.id
      LIMIT %(limit)s
 )
@@ -65,7 +69,7 @@ def profit_per_unit(result: str, odds: Decimal) -> Decimal:
 
 def settle_decisions(conn: psycopg.Connection[Any], *, at: datetime, limit: int = BATCH) -> int:
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(TODO_SQL, {"at": at, "limit": limit})
+        cur.execute(TODO_SQL, {"at": at, "limit": limit, "decision_version": DECISION_CORE})
         rows = cur.fetchall()
     n = 0
     with conn.cursor() as cur:

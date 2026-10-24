@@ -54,6 +54,7 @@ import psycopg
 from psycopg.rows import dict_row
 from scipy.special import stdtr
 
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.core.env import environment
 from fbi.research.evolution import propose
 
@@ -630,7 +631,7 @@ DECISIONS_SQL = """
 WITH last AS (
     SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*
       FROM intel.decisions d
-     WHERE d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
+     WHERE d.decision_version = %(decision_version)s AND d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
      ORDER BY d.fixture_id, d.market_key, d.selection, d.line, d.known_at DESC, d.id DESC
 )
 SELECT l.id, l.fixture_id, l.kickoff_at, l.market_key, l.line, l.selection, l.model_name, l.calibrator_role, l.odds::float8 AS odds,
@@ -675,7 +676,7 @@ def read(conn: psycopg.Connection[Any], *, start: datetime, end: datetime, selec
     """The settled decisions with kick-off in ``[start, end)`` as rows of the search, and the names of the groups. Reads only."""
     sql = DECISIONS_SQL.format(extra=f"AND {SELECTED_ONLY}" if selected_only else "")
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(sql, {"start": start, "end": end})
+        cur.execute(sql, {"start": start, "end": end, "decision_version": DECISION_CORE})
         decisions = cur.fetchall()
         fixtures = sorted({int(r["fixture_id"]) for r in decisions})
         cur.execute(COACHES_SQL, {"fixtures": fixtures})

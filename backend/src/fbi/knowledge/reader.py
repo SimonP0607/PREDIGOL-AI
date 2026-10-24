@@ -39,6 +39,10 @@ from fbi.people import sides
 
 SOURCE: Final = "api-football"
 """The one provider of the events, the squad sheets and the statistics of the men."""
+DECISION_LAYER: Final = "decision-v1"
+"""The decisions Match Knowledge tells: the pipeline's. The decisions of the families (``decision-fam-v1``, research in shadow, plan F11) share the
+table and are not part of what a match is said to have been. A copy of ``fbi.core.decision_versions.DECISION_CORE`` - this package imports nothing of
+ours - which ``tests/unit/test_decision_version_guard.py`` holds equal."""
 STATS_SOURCES: Final = ("api-football", "football-data.co.uk")
 """The providers of the statistics of the teams, the one to prefer first (``football-data.co.uk`` has only the basic columns)."""
 CHUNK: Final = 200
@@ -69,6 +73,7 @@ def _cols(alias: str, names: Iterable[str]) -> str:
 # ── the fingerprint ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 _IDS = "%(ids)s::bigint[]"
+_LAYER = "%(decision_version)s"
 _MARKETS = "%(markets)s::text[]"
 
 CROSSED_SQL: Final = f"""
@@ -131,10 +136,11 @@ SELECT o.fixture_id, 'final',
   FROM market.final_prematch_odds o WHERE o.fixture_id = ANY({_IDS}) AND o.market_key = ANY({_MARKETS}) GROUP BY o.fixture_id
 UNION ALL
 SELECT d.fixture_id, 'decisions', count(*)::text || ':' || max(d.id)::text
-  FROM intel.decisions d WHERE d.fixture_id = ANY({_IDS}) GROUP BY d.fixture_id
+  FROM intel.decisions d WHERE d.fixture_id = ANY({_IDS}) AND d.decision_version = {_LAYER} GROUP BY d.fixture_id
 UNION ALL
 SELECT d.fixture_id, 'outcomes', count(*)::text || ':' || max(o.decision_id)::text
-  FROM intel.decision_outcomes o JOIN intel.decisions d ON d.id = o.decision_id WHERE d.fixture_id = ANY({_IDS}) GROUP BY d.fixture_id
+  FROM intel.decision_outcomes o JOIN intel.decisions d ON d.id = o.decision_id
+ WHERE d.fixture_id = ANY({_IDS}) AND d.decision_version = {_LAYER} GROUP BY d.fixture_id
 UNION ALL
 SELECT k.fixture_id, 'picks', md5(string_agg(ROW(k.market, k.result, k.n, k.profit)::text, E'\\n' ORDER BY k.market, k.result))
   FROM ({PICKS_SQL}) k GROUP BY k.fixture_id
@@ -162,7 +168,7 @@ def fingerprints(conn: psycopg.Connection[Any], fixture_ids: Sequence[int]) -> d
     if not ids:
         return {}
     seen: dict[int, dict[str, Any]] = {i: {} for i in ids}
-    for row in _rows(conn, FINGERPRINT_SQL, {"ids": ids, "markets": list(layers.MARKETS)}):
+    for row in _rows(conn, FINGERPRINT_SQL, {"ids": ids, "markets": list(layers.MARKETS), "decision_version": DECISION_LAYER}):
         seen[int(row["fixture_id"])][str(row["src"])] = row["h"]
     return {i: {"rules": dict(layers.RULES), **{src: found.get(src) for src in SOURCES}} for i, found in seen.items()}
 
@@ -227,7 +233,7 @@ DECISIONS_SQL: Final = f"""
 SELECT d.fixture_id, d.id, d.checkpoint, d.market_key, d.selection, d.line, d.state, d.known_at, d.score, d.odds, d.p_cal, d.edge_cal,
        d.stake_units, o.result_status, o.profit_flat, o.clv, o.settled_at
   FROM intel.decisions d LEFT JOIN intel.decision_outcomes o ON o.decision_id = d.id
- WHERE d.fixture_id = ANY({_IDS}) ORDER BY d.fixture_id, d.id
+ WHERE d.fixture_id = ANY({_IDS}) AND d.decision_version = {_LAYER} ORDER BY d.fixture_id, d.id
 """
 POSTMORTEMS_SQL: Final = f"""
 SELECT pm.fixture_id, pm.id, pm.decision_id, pm.version, pm.outcome, pm.decision_quality, pm.verdict, pm.created_at, pm.causes,
@@ -330,7 +336,7 @@ def read(conn: psycopg.Connection[Any], fixture_ids: Sequence[int]) -> dict[int,
             market=str(r["market_key"]), selection=str(r["selection"]), line=Decimal(r["line"]), odds=float(r["odds"]), books=int(r["books"]),
             as_of=r["as_of"], fetched_at=r["fetched_at"]))
     decisions: dict[int, list[layers.Decision]] = defaultdict(list)
-    for r in _rows(conn, DECISIONS_SQL, {"ids": ids}):
+    for r in _rows(conn, DECISIONS_SQL, {"ids": ids, "decision_version": DECISION_LAYER}):
         decisions[int(r["fixture_id"])].append(layers.Decision(
             id=int(r["id"]), checkpoint=str(r["checkpoint"]), market=str(r["market_key"]), selection=str(r["selection"]), line=Decimal(r["line"]),
             state=str(r["state"]), known_at=r["known_at"], score=_float(r["score"]), odds=_float(r["odds"]), p_cal=_float(r["p_cal"]),

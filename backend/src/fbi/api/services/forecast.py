@@ -27,6 +27,7 @@ from fbi.api.envelope import DataStatus, Envelope, Section, ok, section, unavail
 from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.core.clock import now
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.core.env import environment
 
 VERSION: Final = "forecast-v1"
@@ -66,10 +67,12 @@ SELECT x.market_key, x.line, x.family, x.selection, x.model_name, x.calibration,
 VALUE_SQL = """
 SELECT DISTINCT ON (market_key, selection, line) market_key, selection, line, state, odds, p_cal, p_market, edge_cal,
        ev_cal, reasons, known_at
-  FROM intel.decisions WHERE fixture_id = %(f)s
+  FROM intel.decisions WHERE fixture_id = %(f)s AND decision_version = %(decision_version)s
  ORDER BY market_key, selection, line, known_at DESC, id DESC
  LIMIT %(limit)s
 """
+"""The value of a price, from the pipeline's decision layer and no other: the rows of the families (``decision-fam-v1``) are research, and a page
+that shows what the model sees in a price shows it from the layer that has calibrators, filters it was held to and a stake."""
 
 PICKS_SQL = """
 SELECT id, market_key, selection, line, status, mode, market_odds, p_calibrated
@@ -114,7 +117,7 @@ def _why_none(fixture: dict[str, Any]) -> tuple[str, str]:
 
 
 def _value(conn: Conn, fixture_id: int) -> Section[list[ValueRow]]:
-    rows = fetch_all(conn, VALUE_SQL, {"f": fixture_id, "limit": MAX_VALUE_ROWS})
+    rows = fetch_all(conn, VALUE_SQL, {"f": fixture_id, "limit": MAX_VALUE_ROWS, "decision_version": DECISION_CORE})
     if not rows:
         return section([], status=DataStatus.EMPTY, code="no_evaluation",
                        reason="The decision layer has not evaluated any price of this match: without a price there is no value.")

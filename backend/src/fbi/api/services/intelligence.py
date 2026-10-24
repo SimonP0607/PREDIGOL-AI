@@ -16,6 +16,7 @@ from fbi.api.envelope import Envelope, ok
 from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.core.clock import now
+from fbi.core.decision_versions import DECISION_CORE
 
 
 def j(x: Any) -> Any:
@@ -35,7 +36,7 @@ LATEST_DAY_SQL = """
 WITH last AS (
     SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*
       FROM intel.decisions d
-     WHERE d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
+     WHERE d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s AND d.decision_version = %(decision_version)s
      ORDER BY d.fixture_id, d.market_key, d.selection, d.line, d.known_at DESC, d.id DESC
 )
 SELECT l.id, l.known_at, l.checkpoint, l.fixture_id, l.kickoff_at, th.name || ' - ' || ta.name AS match,
@@ -68,10 +69,10 @@ def day_view(conn: Conn, *, day: date | None = None) -> Envelope[dict[str, Any]]
     start, end = day_bounds(d)
     states = fetch_all(conn, """
         WITH last AS (SELECT DISTINCT ON (fixture_id, market_key, selection, line) state, context_status, fixture_id
-                        FROM intel.decisions WHERE kickoff_at >= %(s)s AND kickoff_at < %(e)s
+                        FROM intel.decisions WHERE kickoff_at >= %(s)s AND kickoff_at < %(e)s AND decision_version = %(v)s
                        ORDER BY fixture_id, market_key, selection, line, known_at DESC, id DESC)
         SELECT state, context_status, count(*) AS n, count(DISTINCT fixture_id) AS fixtures FROM last GROUP BY 1, 2""",
-                       {"s": start, "e": end})
+                       {"s": start, "e": end, "v": DECISION_CORE})
     by_state: dict[str, int] = {}
     by_context: dict[str, int] = {}
     for r in states:
@@ -79,8 +80,10 @@ def day_view(conn: Conn, *, day: date | None = None) -> Envelope[dict[str, Any]]
         by_context[r["context_status"]] = by_context.get(r["context_status"], 0) + int(r["n"])
     fixtures = fetch_one(conn, """
         SELECT count(*) AS fixtures, count(*) FILTER (WHERE EXISTS (SELECT 1 FROM intel.decisions x
-                                                                   WHERE x.fixture_id = f.id)) AS with_candidates
-          FROM core.fixtures f WHERE f.kickoff_at >= %(s)s AND f.kickoff_at < %(e)s""", {"s": start, "e": end}) or {}
+                                                                   WHERE x.fixture_id = f.id
+                                                                     AND x.decision_version = %(v)s)) AS with_candidates
+          FROM core.fixtures f WHERE f.kickoff_at >= %(s)s AND f.kickoff_at < %(e)s""",
+                         {"s": start, "e": end, "v": DECISION_CORE}) or {}
     passes = fetch_all(conn, """
         SELECT pass, count(*) AS n, sum(COALESCE((counts->>'web_searches')::int, 0)) AS web,
                sum(COALESCE((counts->>'l2')::int, 0)) AS l2, sum(COALESCE((counts->>'l3')::int, 0)) AS l3,
@@ -151,7 +154,7 @@ def decisions(conn: Conn, *, day: date | None, state: str | None, market: str | 
     d = _day(day)
     start, end = day_bounds(d)
     rows = fetch_all(conn, LATEST_DAY_SQL, {"start": start, "end": end, "state": state, "market": market,
-                                            "fixture": fixture_id, "limit": limit})
+                                            "fixture": fixture_id, "limit": limit, "decision_version": DECISION_CORE})
     return ok(j({"day": d, "items": rows}))
 
 
@@ -187,7 +190,9 @@ def decision_detail(conn: Conn, decision_id: int) -> Envelope[dict[str, Any]]:
     history = fetch_all(conn, """
         SELECT id, known_at, checkpoint, state, odds, p_cal, ev_cal, score, stake_units, context_status
           FROM intel.decisions WHERE fixture_id = %(f)s AND market_key = %(m)s AND selection = %(s)s AND line = %(l)s
-         ORDER BY known_at, id""", {"f": d["fixture_id"], "m": d["market_key"], "s": d["selection"], "l": d["line"]})
+           AND decision_version = %(v)s
+         ORDER BY known_at, id""", {"f": d["fixture_id"], "m": d["market_key"], "s": d["selection"], "l": d["line"],
+                                    "v": d["decision_version"]})
     cost = fetch_one(conn, """
         SELECT COALESCE(sum(cost_usd), 0) AS reviews_usd, count(*) AS reviews FROM ai.pick_reviews
          WHERE fixture_id = %(f)s AND market_key = %(m)s AND selection = %(s)s AND line = %(l)s
@@ -315,8 +320,9 @@ def dossier(conn: Conn, fixture_id: int) -> Envelope[dict[str, Any]]:
     decisions_ = fetch_all(conn, """
         SELECT DISTINCT ON (market_key, selection, line) id, known_at, checkpoint, market_key, selection, line, odds,
                p_model, p_cal, p_market, ev_cal, state, score, stake_units, context_status
-          FROM intel.decisions WHERE fixture_id = %(f)s ORDER BY market_key, selection, line, known_at DESC, id DESC""",
-                           {"f": fixture_id})
+          FROM intel.decisions WHERE fixture_id = %(f)s AND decision_version = %(v)s
+         ORDER BY market_key, selection, line, known_at DESC, id DESC""",
+                           {"f": fixture_id, "v": DECISION_CORE})
     return ok(j({"fixture": fx, "packet": None if packet is None else {
         "id": packet["id"], "version": packet["version"], "as_of": packet["as_of"], "missing": packet["missing"]},
                  "dossier": content.get("dossier"), "stakes": content.get("stakes"), "form": content.get("form"),
@@ -552,8 +558,8 @@ def costs(conn: Conn) -> Envelope[dict[str, Any]]:
         SELECT count(DISTINCT (fixture_id, market_key, selection, line)) AS candidates,
                count(DISTINCT (fixture_id, market_key, selection, line)) FILTER (WHERE state <> 'RECHAZADO') AS live,
                count(DISTINCT fixture_id) AS fixtures
-          FROM intel.decisions WHERE known_at >= %(s)s AND known_at < %(e)s""",
-                      {"s": since, "e": day_start(today)}) or {}
+          FROM intel.decisions WHERE known_at >= %(s)s AND known_at < %(e)s AND decision_version = %(v)s""",
+                      {"s": since, "e": day_start(today), "v": DECISION_CORE}) or {}
     picks = fetch_one(conn, "SELECT count(*) AS picks FROM intel.day_selections WHERE kind = 'pick' AND day >= %(d)s "
                             "AND day < %(t)s", {"d": today - timedelta(days=7), "t": today}) or {}
     total = float(per.get("total") or 0)

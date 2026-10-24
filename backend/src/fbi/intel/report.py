@@ -24,6 +24,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.intel import postmortem
 
 VERSION = "learn-report-v1"
@@ -32,7 +33,7 @@ LAST_SQL = """
 WITH last AS (
     SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line) d.*
       FROM intel.decisions d
-     WHERE d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
+     WHERE d.decision_version = %(decision_version)s AND d.kickoff_at >= %(start)s AND d.kickoff_at < %(end)s
      ORDER BY d.fixture_id, d.market_key, d.selection, d.line, d.known_at DESC, d.id DESC
 )
 SELECT l.id, l.state, l.market_key, l.selection, l.context_status, l.score::float8 AS score, l.odds::float8 AS odds,
@@ -85,7 +86,7 @@ def _calibration(rows: list[dict[str, Any]]) -> dict[str, Any]:
 def build_report(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> dict[str, Any]:
     start, end = day_bounds(day)
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(LAST_SQL, {"start": start, "end": end})
+        cur.execute(LAST_SQL, {"start": start, "end": end, "decision_version": DECISION_CORE})
         rows = [dict(r) for r in cur.fetchall()]
         cur.execute("SELECT kind, rank, odds::float8 AS odds, p_est::float8 AS p, ev::float8 AS ev, "
                     "stake_units::float8 AS stake, decision_ids, detail FROM intel.day_selections "
