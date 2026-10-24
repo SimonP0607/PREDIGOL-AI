@@ -12,7 +12,8 @@ WORKDIR /app
 # reinstall them. Wheels only (psycopg[binary], numpy, scipy): no compiler.
 # constraints.txt fixes the version of every library (plan F14): pyproject only asks for lower bounds, so without it each rebuild of this
 # layer took whatever was newest that day. To upgrade a library change its line there and run the whole gate (docs/owner/DEPENDENCIAS_F14.md).
-COPY pyproject.toml constraints.txt README.md ./
+# Only these two files are copied: the layer is rebuilt when either changes and for nothing else (the README is not needed to install).
+COPY pyproject.toml constraints.txt ./
 # Behind a TLS-inspecting proxy (a corporate network, a CI sandbox) the build can trust that proxy's CA with
 #   docker build --secret id=ca,src=/path/to/ca.pem ...
 # It is mounted for this one step and never written into the image. Without it, nothing changes.

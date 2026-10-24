@@ -21,8 +21,9 @@ código de los modelos (`mc9a7bec97ca`) solo mira nuestro código, no las librer
 * **`backend/constraints.txt`** (nuevo): **60 bibliotecas** con su versión exacta (`nombre==versión`, una por línea, en el orden de `pip freeze`), tomadas de
   `pip freeze` dentro de la imagen que corre, sin el propio proyecto. Un archivo de restricciones no instala nada por sí mismo: solo dice qué
   versión usar de lo que ya se pide.
-* **`backend/Dockerfile`**: copia `constraints.txt` junto a `pyproject.toml` y `README.md` antes de la capa de `pip`, y la instala con
-  `pip install -c constraints.txt -e ".[analytics]"`. Si cambia cualquiera de los tres archivos, la capa se rehace; si no, se reutiliza.
+* **`backend/Dockerfile`**: copia `constraints.txt` junto a `pyproject.toml` antes de la capa de `pip` (el `README.md` ya no se copia ahí: no hace falta para instalar, y
+  editarlo reconstruía sin motivo esa capa de 958 MB), y la instala con
+  `pip install -c constraints.txt -e ".[analytics]"`. Si cambia cualquiera de los dos archivos, la capa se rehace; si no, se reutiliza.
 * **`backend/README.md`**: la instalación local pasa a `pip install -c constraints.txt -e ".[dev,analytics]"`.
 * **`backend/tests/unit/test_dependency_pins.py`** (nuevo, 6 pruebas, sin red): el archivo es una lista ordenada de versiones exactas sin
   repetidos; nombra todas las librerías que `pyproject.toml` pide a la imagen (las de siempre y las del extra `analytics`) y ninguna otra;
@@ -51,7 +52,7 @@ Lo que **no** se ha podido hacer es construir la imagen de verdad: eso ocurre en
   un despliegue normal y bajará las librerías de PyPI. Instalará las mismas versiones que corren hoy; no se espera ningún cambio de resultados.
 * Tras desplegar se comprueba, solo en lectura, que la imagen es la del archivo:
   `diff <(docker exec predigol-worker pip freeze --exclude-editable) <(grep -v '^#' backend/constraints.txt | grep .)` no debe devolver nada.
-* Los despliegues siguientes reutilizan la capa mientras no cambien `pyproject.toml`, `constraints.txt` ni `README.md`.
+* Los despliegues siguientes reutilizan la capa mientras no cambien `pyproject.toml` ni `constraints.txt`.
 
 ## 5. Cómo se sube la versión de una librería
 
