@@ -334,7 +334,7 @@ describe("the Admin Console's preview", () => {
     expect(out).toContain("price too short");
     expect(out).toContain("PENDING · shadow");
     expect(out).toMatch(/cuota 1,28/);
-    expect(out).toMatch(/\+2,0 pp/);
+    expect(out).toMatch(/\+2,0 p\. p\./);
   });
 
   test("shows a match without value or picks as such, not as a gap", () => {

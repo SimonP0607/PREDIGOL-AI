@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { fmtInt, fmtOdds, fmtPct, localFixed, toNumber } from "@/lib/i18n/format";
-import { formatKickoff, formatRelative } from "@/lib/time";
+import { formatKickoff, formatRelative, zoneName } from "@/lib/time";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { HistoryGroup, HistoryPeriod, UserParlay, UserPick } from "@/lib/api/v1/types_records";
@@ -154,7 +154,7 @@ function Results() {
             </p>
           ) : null}
           <p className="text-caption text-subtle-foreground">
-            {t("records.mine.results.note", { zone: auth.timeZone })}
+            {t("records.mine.results.note", { zone: zoneName(auth.timeZone) })}
           </p>
         </>
       ) : null}

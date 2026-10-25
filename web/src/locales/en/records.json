@@ -229,7 +229,7 @@
       "hitRate": "Hit rate",
       "roi": "Return (ROI)",
       "empty": "Nothing in this period.",
-      "note": "By the day the match kicks off in your time zone ({zone}). Profit in units of one stake, at the recorded price. PrediGol handles no money and takes no bets."
+      "note": "By the day the match kicks off in your time zone: {zone}. Profit in units of one stake, at the recorded price. PrediGol handles no money and takes no bets."
     },
     "picks": {
       "title": "Saved picks",
@@ -329,7 +329,8 @@
     "yesterday": "Yesterday",
     "jump": "Go to",
     "summary": "{count} picks · {won} won · {lost} lost · {open} to play or in play",
-    "units": "{units} u"
+    "units": "{units} u",
+    "zone": "Pick days in {zone}"
   },
   "outcome": {
     "playing": "In play",

@@ -447,16 +447,16 @@
       "fair": "Cuota justa",
       "edge": "Ventaja",
       "minimum": "Cuota mínima aceptable",
-      "edgeHelp": "Probabilidad de PrediGol menos la del mercado, en puntos porcentuales (pp)",
+      "edgeHelp": "Probabilidad de PrediGol menos la del mercado, en puntos porcentuales (p. p.)",
       "minimumHelp": "La cuota más baja que vale la pena tomar con la probabilidad prudente de PrediGol"
     },
-    "ppUnit": "pp",
+    "ppUnit": "p. p.",
     "area": "Análisis PrediGol",
     "why": {
       "title": "¿Por qué?",
       "estimate": "PrediGol estima {model} frente a {market} del mercado",
       "estimateOnly": "PrediGol estima una probabilidad de {model} para esta selección",
-      "edge": "Ventaja de {edge} pp sobre el precio justo del mercado",
+      "edge": "Ventaja de {edge} puntos porcentuales sobre el precio justo del mercado",
       "minimum": "Solo tendría valor con una cuota de {min} o más",
       "none": "Todavía no hay cifras suficientes para explicarlo."
     },
@@ -813,7 +813,7 @@
   "captures": {
     "title": "Capturas de cuotas",
     "summary": "{captures} capturas · {quotes} cotizaciones de {books} casas",
-    "help": "Cada captura guarda el precio de cada casa, opción y línea. Son las mismas cifras de la Cronología, y aquí se muestran todas, pasen o no los filtros de los picks.",
+    "help": "Cada captura guarda el precio de cada casa, opción y línea en ese momento. Aquí se muestran todas, pasen o no los filtros de los picks.",
     "chip": "{when} · {quotes}",
     "none": "Todavía no se ha capturado ninguna cuota de este partido."
   },

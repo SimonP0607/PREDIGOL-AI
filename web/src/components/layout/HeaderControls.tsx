@@ -2,7 +2,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
+import { LOCALE_NAMES, LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -27,6 +27,9 @@ export function LanguageSwitch({ className }: { className?: string | undefined }
           key={l}
           type="button"
           aria-pressed={locale === l}
+          aria-label={LOCALE_NAMES[l]}
+          title={LOCALE_NAMES[l]}
+          lang={l}
           data-testid={`lang-${l}`}
           onClick={() => void auth.setLocale(l)}
           className={cn(

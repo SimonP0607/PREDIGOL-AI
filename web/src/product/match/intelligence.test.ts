@@ -109,10 +109,10 @@ describe("the card's full title", () => {
 });
 
 describe("the edge in percentage points", () => {
-  test("times 100, signed, one decimal, with its unit apart", () => {
-    expect(ppParts("0.07")).toEqual({ value: "+7,0", unit: "pp" });
-    expect(ppParts(-0.021)).toEqual({ value: "-2,1", unit: "pp" });
-    expect(ppParts(0)).toEqual({ value: "0,0", unit: "pp" });
+  test("times 100, signed, one decimal, with its unit apart - «p. p.» in Spanish (plan UX, A1, F08)", () => {
+    expect(ppParts("0.07")).toEqual({ value: "+7,0", unit: "p. p." });
+    expect(ppParts(-0.021)).toEqual({ value: "-2,1", unit: "p. p." });
+    expect(ppParts(0)).toEqual({ value: "0,0", unit: "p. p." });
     setLocale("en");
     // 0.0745 * 100 is 7.4499... in binary: a half still rounds up.
     expect(ppParts("0.0745")).toEqual({ value: "+7.5", unit: "pp" });
@@ -129,7 +129,7 @@ describe("why", () => {
   test("from the numbers alone when nobody wrote anything", () => {
     expect(plain(whyLines(card()))).toEqual([
       "PrediGol estima 58,0 % frente a 51,0 % del mercado",
-      "Ventaja de 7,0 pp sobre el precio justo del mercado",
+      "Ventaja de 7,0 puntos porcentuales sobre el precio justo del mercado",
     ]);
   });
 

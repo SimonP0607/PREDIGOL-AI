@@ -70,3 +70,36 @@ test("a signed-out reader is sent to sign in and comes back where they were goin
   await page.goto("/home");
   await expect(page).toHaveURL(/\/login\?next=%2Fhome/);
 });
+
+test.describe("served in the reader's language", () => {
+  test.use({ locale: "en-GB" });
+
+  test("an English browser gets lang, title and description in English; the switch names each language in itself", async ({
+    page,
+  }) => {
+    // Plan UX, A1 (F08): the server wrote lang="es" with an English title for everyone, and the switch said ES/EN.
+    watch(page, { expect401: true });
+    const html = await (
+      await page.request.get("/login", { headers: { "accept-language": "en-GB,en;q=0.9" } })
+    ).text();
+    expect(html).toMatch(/<html lang="en"/);
+    expect(html).toContain("<title>Sign in · PrediGol</title>");
+    expect(html).toContain(L.en.common.meta.description);
+    const spanish = await (
+      await page.request.get("/login", { headers: { "accept-language": "es-CO,es;q=0.9" } })
+    ).text();
+    expect(spanish).toMatch(/<html lang="es"/);
+    expect(spanish).toContain("<title>Inicia sesión · PrediGol</title>");
+
+    await page.goto("/login");
+    await expect(page).toHaveTitle("Sign in · PrediGol");
+    expect(await page.evaluate(() => document.documentElement.lang)).toBe("en");
+    await expect(page.getByTestId("lang-es")).toHaveAttribute("aria-label", "Español");
+    await expect(page.getByTestId("lang-en")).toHaveAttribute("aria-label", "English");
+    // the reader's choice takes over the whole page: its text, lang and title
+    await page.getByTestId("lang-es").click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(L.es.auth.title);
+    await expect(page).toHaveTitle("Inicia sesión · PrediGol");
+    await expect.poll(() => page.evaluate(() => document.documentElement.lang)).toBe("es");
+  });
+});

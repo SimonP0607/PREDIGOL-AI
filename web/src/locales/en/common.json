@@ -129,5 +129,9 @@
     "page": "Page {page} of {pages}"
   },
   "reset": "Reset",
-  "roleAdmin": "Administrator"
+  "roleAdmin": "Administrator",
+  "meta": {
+    "title": "PrediGol — Football Intelligence",
+    "description": "PrediGol: matches, live scores, value picks, parlays and the best odds."
+  }
 }

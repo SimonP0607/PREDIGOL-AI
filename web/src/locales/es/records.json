@@ -229,7 +229,7 @@
       "hitRate": "Acierto",
       "roi": "Rentabilidad (ROI)",
       "empty": "Nada en este periodo.",
-      "note": "Por el día de inicio del partido en tu zona horaria ({zone}). Beneficio en unidades de una apuesta, a la cuota registrada. PrediGol no maneja dinero ni acepta apuestas."
+      "note": "Por el día de inicio del partido en tu zona horaria: {zone}. Beneficio en unidades de una apuesta, a la cuota registrada. PrediGol no maneja dinero ni acepta apuestas."
     },
     "picks": {
       "title": "Picks guardados",
@@ -329,7 +329,8 @@
     "yesterday": "Ayer",
     "jump": "Ir a",
     "summary": "{count} picks · {won} ganados · {lost} perdidos · {open} por jugar o en juego",
-    "units": "{units} u"
+    "units": "{units} u",
+    "zone": "Días de picks en {zone}"
   },
   "outcome": {
     "playing": "En juego",

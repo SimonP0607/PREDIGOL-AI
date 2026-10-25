@@ -456,7 +456,7 @@
       "title": "Why?",
       "estimate": "PrediGol estimates {model} against the market's {market}",
       "estimateOnly": "PrediGol puts this selection's chance at {model}",
-      "edge": "An edge of {edge} pp over the market's fair price",
+      "edge": "An edge of {edge} percentage points over the market's fair price",
       "minimum": "It would only be worth it at odds of {min} or more",
       "none": "Not enough figures to explain it yet."
     },
@@ -813,7 +813,7 @@
   "captures": {
     "title": "Price captures",
     "summary": "{captures} captures · {quotes} quotes from {books} bookmakers",
-    "help": "Each capture stores every bookmaker's price for every selection and line. These are the Cronología's numbers, and all of them are shown here, whether or not they pass the pick filters.",
+    "help": "Each capture stores every bookmaker's price for every selection and line at that moment. All of them are shown here, whether or not they pass the pick filters.",
     "chip": "{when} · {quotes}",
     "none": "No price has been captured for this match yet."
   },

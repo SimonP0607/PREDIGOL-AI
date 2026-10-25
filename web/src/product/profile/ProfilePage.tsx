@@ -15,9 +15,16 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { v1 } from "@/lib/api/v1/client";
-import { LOCALES, t, useI18n } from "@/lib/i18n";
+import { LOCALE_NAMES, LOCALES, t, useI18n } from "@/lib/i18n";
 import { fmtInt } from "@/lib/i18n/format";
-import { detectTimeZone, formatDateTime, formatTime, listTimeZones, zoneAbbrev } from "@/lib/time";
+import {
+  detectTimeZone,
+  formatDateTime,
+  formatTime,
+  listTimeZones,
+  zoneAbbrev,
+  zoneName,
+} from "@/lib/time";
 import { Card, PageTitle, errorMessage } from "@/product/shared/States";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { cn } from "@/lib/utils";
@@ -73,6 +80,10 @@ function TimeZonePicker() {
           data-testid="current-timezone"
         >
           {current} · {zoneAbbrev(Date.now(), current)}
+        </span>
+        {/* The zone in words, in the reader's language (plan UX, A1, F09). */}
+        <span className="text-xs text-foreground" data-testid="current-timezone-name">
+          {zoneName(current)}
         </span>
         <span className="text-xs text-muted-foreground">
           {t("profile.currentTime", { time: formatTime(Date.now()) })}
@@ -269,6 +280,7 @@ export function ProfilePage() {
               type="button"
               role="radio"
               aria-checked={locale === l}
+              lang={l}
               data-testid={`profile-lang-${l}`}
               onClick={() => void auth.setLocale(l)}
               className={cn(
@@ -278,7 +290,7 @@ export function ProfilePage() {
                   : "border-border-strong hover:bg-elevated",
               )}
             >
-              {l === "es" ? "Español" : "English"}
+              {LOCALE_NAMES[l]}
             </button>
           ))}
         </div>

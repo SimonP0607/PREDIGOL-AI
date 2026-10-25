@@ -388,6 +388,8 @@ export interface LiveMatch {
   kickoff_at: Iso;
   competition: string;
   country: string | null;
+  /** ISO code of the country (GB-ENG for a home nation): named in the reader's language (countryLabel). */
+  country_code?: string | null;
   competition_id?: number | null;
   competition_logo?: string | null;
   competition_flag?: string | null;

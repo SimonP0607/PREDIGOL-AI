@@ -15,7 +15,9 @@ import { RefreshCw, ShieldAlert, WifiOff } from "lucide-react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider, useAuth } from "@/lib/auth/AuthProvider";
-import { I18nProvider, t } from "@/lib/i18n";
+import { I18nProvider, t, translate } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n/catalogs";
+import { requestLocale } from "@/lib/i18n/requestLocale";
 import { TitleTap } from "@/components/system/TitleTap";
 import { setTimeZone } from "@/lib/time";
 import { UserShell } from "@/components/layout/UserShell";
@@ -79,39 +81,49 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
+/** The page's title and description in a language: the head the server writes, and the one the browser keeps. */
+function headText(locale: Locale): { title: string; description: string } {
+  return {
+    title: translate("common.meta.title", undefined, locale),
+    description: translate("common.meta.description", undefined, locale),
+  };
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#0d1512" },
-      { title: "PrediGol — Football Intelligence" },
-      {
-        name: "description",
-        content: "PrediGol: partidos, en vivo, picks con valor, parlays y las mejores cuotas.",
-      },
-      { property: "og:title", content: "PrediGol — Football Intelligence" },
-      { property: "og:type", content: "website" },
-      { name: "robots", content: "noindex, nofollow" },
-      // Installed on a phone's home screen (PWA): full screen, its own name and status bar.
-      { name: "mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-title", content: "PrediGol" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "icon", href: "/favicon.ico", sizes: "any" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
-      },
-    ],
-  }),
+  // The language the page is served in (plan UX, A1, F08): the server's from Accept-Language, then the reader's.
+  loader: () => ({ locale: requestLocale() }),
+  head: ({ loaderData }) => {
+    const { title, description } = headText(loaderData?.locale ?? "es");
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+        { name: "theme-color", content: "#0d1512" },
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:type", content: "website" },
+        { name: "robots", content: "noindex, nofollow" },
+        // Installed on a phone's home screen (PWA): full screen, its own name and status bar.
+        { name: "mobile-web-app-capable", content: "yes" },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        { name: "apple-mobile-web-app-title", content: "PrediGol" },
+        { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      ],
+      links: [
+        { rel: "stylesheet", href: appCss },
+        { rel: "manifest", href: "/manifest.webmanifest" },
+        { rel: "icon", href: "/favicon.ico", sizes: "any" },
+        { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
+        },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -119,8 +131,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const data = Route.useLoaderData();
+  // The server's language (Accept-Language); the browser sets the reader's once it runs (Localized), so the two
+  // may differ at hydration on purpose.
   return (
-    <html lang="es">
+    <html lang={data.locale} suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
@@ -208,9 +223,13 @@ function UpdateToast() {
 function Localized({ children }: { children: ReactNode }) {
   const auth = useAuth();
   setTimeZone(auth.timeZone);
+  const router = useRouter();
   useEffect(() => {
+    // The page speaks the reader's language from here on (plan UX, A1, F08): lang at once, and the heads again -
+    // the root loader now reads the reader's language (remembered by the auth layer), so every title follows it.
     document.documentElement.lang = auth.locale;
-  }, [auth.locale]);
+    void router.invalidate();
+  }, [auth.locale, router]);
   return <I18nProvider locale={auth.locale}>{children}</I18nProvider>;
 }
 

@@ -40,6 +40,8 @@ const VETOED: ReadonlyArray<readonly [RegExp, string]> = [
   [/\benforce\b/i, "enforce"],
   [/\bSUPER_ADMIN\b/, "SUPER_ADMIN"],
   [/\bUSER\b/, "USER"],
+  // a page of the Admin Console named on a reader's screen (plan UX, A1, F16: match.captures.help)
+  [/\bCronolog[ií]a\b/i, "Cronología"],
 ];
 
 /** Read only by the owner: a key, or a prefix ending in ".", with the reason. */
