@@ -22,6 +22,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Any
 
 import psycopg
+import structlog
 from fastapi import Depends, Request, Response
 
 from fbi.api.deps import get_db
@@ -85,6 +86,15 @@ def require(permission: Permission) -> Callable[[Principal], Principal]:
 
     dependency.__name__ = f"require_{permission.value.replace('.', '_')}"
     return dependency
+
+
+async def observe_principal(request: Request) -> None:
+    """The signed-in account's id on every log line of the rest of the request (plan UX, A2). Async on purpose: it
+    runs in the request's own context, which the route's thread copies - a binding made inside a dependency's thread
+    would end with that thread."""
+    principal = getattr(request.state, "principal", None)
+    if isinstance(principal, Principal):
+        structlog.contextvars.bind_contextvars(user_id=principal.user_id)
 
 
 def same_site_only(request: Request) -> None:

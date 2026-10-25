@@ -242,3 +242,21 @@ def test_when_summarising_fails_the_answer_and_the_log_line_still_come(boom: Tes
     assert line["error"] == "ValueError" and line["request_id"] == r.json()["request_id"]
     assert "summarising the error failed" in line["message"] and line["trace"] == ""
     assert EMAIL not in " ".join(str(v) for v in line.values())
+
+
+def test_an_unexpected_error_reaches_sentry_under_the_request_id_the_client_got(
+        boom: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan UX, A2: the same error, to Sentry too when it is on - under the request id the client received, with
+    nothing of what its message carried."""
+    from tests.unit.sentry_capture import capturing_sentry
+
+    with capturing_sentry(monkeypatch) as transport:
+        r = boom.get("/api/v1/__boom")
+    assert r.status_code == 500
+    [event] = transport.events()
+    assert event["tags"]["request_id"] == r.json()["request_id"] == r.headers["x-request-id"]
+    assert event["tags"]["path"] == "/api/v1/__boom" and event["tags"]["method"] == "GET"
+    assert event["exception"]["values"][-1]["type"] == "ValueError"
+    assert "user" not in event, "nobody was signed in"
+    for secret in (EMAIL, TOKEN, IP):
+        assert secret not in transport.raw(), secret

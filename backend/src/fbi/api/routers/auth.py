@@ -34,7 +34,7 @@ from fbi.api.security import (
     same_site_only,
     set_session_cookie,
 )
-from fbi.auth import service
+from fbi.auth import crypto, service
 from fbi.auth.service import Principal
 from fbi.auth.settings import session_settings
 
@@ -57,7 +57,7 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         session_idle_hours=limits.admin_idle_hours if role == "SUPER_ADMIN" else limits.idle_hours,
         stage=p.stage,  # type: ignore[arg-type]
         mfa_enabled=p.mfa_enabled, mfa_required=p.mfa_required, must_change_password=p.must_change_password,
-        recovery_codes_left=p.recovery_codes_left,
+        recovery_codes_left=p.recovery_codes_left, observability_id=crypto.observability_id(p.user_id),
     )
 
 

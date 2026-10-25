@@ -29,6 +29,8 @@ export interface Me {
   mfa_required: boolean;
   must_change_password: boolean;
   recovery_codes_left: number;
+  /** The pseudonym this account's errors carry to Sentry (an HMAC the server computes), never the id: plan UX, A2. */
+  observability_id?: string | null;
 }
 
 export interface MfaEnrollment {

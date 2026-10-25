@@ -98,6 +98,16 @@ def scrub_personal(text: str) -> str:
     return text
 
 
+def scrub_value(text: str, *, limit: int = 300, quoted: bool = True) -> str:
+    """One line of text as it may leave the server - in a log line or to Sentry (fbi.core.sentry): its first line
+    (the lines after it are where libraries put the data), cut before the filter runs, every quoted value replaced by
+    <value> (``quoted``: not for a line of source code), through the filter of personal data and credentials, at most
+    ``limit`` characters."""
+    stripped = text.strip() if text else ""
+    first = stripped.splitlines()[0][:_FIRST_LINE_MAX] if stripped else ""
+    return scrub_personal(_QUOTED.sub("<value>", first) if quoted else first)[:limit]
+
+
 def error_summary(exc: BaseException) -> str:
     """What an unexpected error says, safe for a log (plan UX, A1; reviews of A1), at most 300 characters:
 
@@ -134,9 +144,7 @@ def error_summary(exc: BaseException) -> str:
         return f"{len(exc.exceptions)} errors: {kinds}"[:300]
     if isinstance(exc, KeyError):
         return ""
-    text = str(exc).strip()
-    first = text.splitlines()[0][:_FIRST_LINE_MAX] if text else ""
-    return scrub_personal(_QUOTED.sub("<value>", first))[:300]
+    return scrub_value(str(exc))
 
 
 def error_trace(exc: BaseException) -> str:
@@ -165,11 +173,14 @@ def configure(level: str = "INFO") -> None:
     # path, so those lines never reach the log: warnings and errors only.
     for noisy in ("httpx", "httpcore"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    from fbi.core.sentry import report_error_logs
+
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
             _add_run_id,
             _redact,
+            report_error_logs,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso", utc=True),
             structlog.processors.StackInfoRenderer(),

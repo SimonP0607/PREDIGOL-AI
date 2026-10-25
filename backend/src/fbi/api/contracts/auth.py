@@ -39,6 +39,10 @@ class Me(Contract):
                                                           "owner's choice): it cannot be turned off.")
     must_change_password: bool = False
     recovery_codes_left: int = 0
+    observability_id: str | None = Field(default=None, description="The pseudonym this account's errors carry to "
+                                                                    "Sentry: an HMAC of its id under the server's "
+                                                                    "key, never the id or the email (plan UX, A2). "
+                                                                    "Null when the server has no key.")
 
 
 class PreferencesIn(BaseModel):
