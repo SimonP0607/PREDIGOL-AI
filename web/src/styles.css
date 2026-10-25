@@ -3,21 +3,13 @@
 @import "tw-animate-css";
 /*
  * The three typefaces, served from PrediGol (plan UX, A4; plan de seguridad, S5): no request to Google - a visitor's
- * address went to fonts.googleapis.com on every page. Latin and Latin Extended (team and player names), the weights
- * in use; each file is fetched only when a character in its range appears (unicode-range).
+ * address went to fonts.googleapis.com on every page. Space Grotesk and IBM Plex Sans as variable fonts (one file per
+ * script for every weight, as Google served them: nine static weights were twice the fonts to decode per page);
+ * IBM Plex Mono has no variable cut, so its three weights in use, Latin and Latin Extended. A browser fetches a file
+ * only when a character in its range appears (unicode-range).
  */
-@import "@fontsource/space-grotesk/latin-500.css";
-@import "@fontsource/space-grotesk/latin-ext-500.css";
-@import "@fontsource/space-grotesk/latin-600.css";
-@import "@fontsource/space-grotesk/latin-ext-600.css";
-@import "@fontsource/space-grotesk/latin-700.css";
-@import "@fontsource/space-grotesk/latin-ext-700.css";
-@import "@fontsource/ibm-plex-sans/latin-400.css";
-@import "@fontsource/ibm-plex-sans/latin-ext-400.css";
-@import "@fontsource/ibm-plex-sans/latin-500.css";
-@import "@fontsource/ibm-plex-sans/latin-ext-500.css";
-@import "@fontsource/ibm-plex-sans/latin-600.css";
-@import "@fontsource/ibm-plex-sans/latin-ext-600.css";
+@import "@fontsource-variable/space-grotesk/wght.css";
+@import "@fontsource-variable/ibm-plex-sans/wght.css";
 @import "@fontsource/ibm-plex-mono/latin-400.css";
 @import "@fontsource/ibm-plex-mono/latin-ext-400.css";
 @import "@fontsource/ibm-plex-mono/latin-500.css";
@@ -43,8 +35,8 @@
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
 
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
   --color-background: var(--background);
