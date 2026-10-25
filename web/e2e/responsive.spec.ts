@@ -389,6 +389,28 @@ test("the update notice floats above the tab bar and the parlay button, its butt
   await assertClean(page, w);
 });
 
+test("a figure's help opens with a tap inside a card's link, and that tap does not open the match", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F16): a card is one link, and the help on its figures could not be read with a finger - a tap
+  // followed the link. A [data-hint] now shows its help, and only the rest of the card opens the match.
+  const w = watch(page);
+  await page.goto("/home");
+  await settle(page);
+  const badge = page.getByTestId("upcoming-bookmakers").first();
+  if ((await badge.count()) === 0) {
+    note(test.info(), "no upcoming match with prices on Inicio");
+    return;
+  }
+  await badge.tap();
+  await expect(page.getByTestId("title-tap")).toHaveText(L.es.home.upcoming.bookmakersHelp);
+  await page.waitForTimeout(800); // the click that followed the tap was the link's: it must not navigate
+  await expect(page).toHaveURL(/\/home$/);
+  await page.getByTestId("upcoming-row").first().getByTestId("matchup").tap();
+  await expect(page).toHaveURL(/\/matches\/\d+/);
+  await assertClean(page, w);
+});
+
 /** Every module of the Admin Console (src/routes/admin.*). */
 const ADMIN_PAGES = [
   "/admin/overview",

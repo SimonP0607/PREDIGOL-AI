@@ -1,4 +1,5 @@
 /** The next matches of the followed competitions: when, where, who, and how many bookmakers quote them. */
+import { hintProps } from "@/components/system/tapHint";
 import { Link } from "@tanstack/react-router";
 import { CalendarDays } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -53,7 +54,8 @@ function UpcomingRow({ m }: { m: UpcomingMatch }) {
           />
           {m.bookmakers > 0 ? (
             <span
-              title={t("home.upcoming.bookmakersHelp")}
+              {...hintProps(t("home.upcoming.bookmakersHelp"))}
+              data-testid="upcoming-bookmakers"
               className="shrink-0 rounded-full border border-border-strong bg-elevated px-2 py-px font-medium text-muted-foreground"
             >
               {t("home.upcoming.bookmakers", { count: m.bookmakers })}

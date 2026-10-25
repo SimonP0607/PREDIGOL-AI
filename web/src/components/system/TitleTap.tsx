@@ -13,7 +13,9 @@ interface Shown {
  * Shows the `title` of what a finger taps (a touch or a pen; a mouse keeps the browser's own tooltip). It is mounted once, at the
  * root: every explanation kept in a `title` - a column head, an abbreviation, the reason a value is missing - becomes reachable
  * on a phone without each of them being rebuilt. A tap on a control (a link, a button, a field) does what the control does and
- * shows nothing; a second tap on the same element, a tap elsewhere, a scroll, Escape, or a few seconds, put it away.
+ * shows nothing - except a `data-hint` inside it (a card's figure), whose hint shows and whose tap does not follow
+ * the link (plan UX, A1, F16); a second tap on the same element, a tap elsewhere, a scroll, Escape, or a few seconds,
+ * put it away.
  */
 export function TitleTap() {
   const [shown, setShown] = useState<Shown | null>(null);
@@ -24,6 +26,15 @@ export function TitleTap() {
   useEffect(() => {
     let down: (Touch & { kind: string; showing: Element | null }) | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // A hint shown from inside a link (a data-hint on a card's figure): the click that follows this tap is the
+    // link's, and is swallowed - the finger asked for the help, not for the page.
+    let swallowUntil = 0;
+    const onClick = (e: MouseEvent) => {
+      if (e.timeStamp > swallowUntil) return;
+      swallowUntil = 0;
+      e.preventDefault();
+      e.stopPropagation();
+    };
     const hide = () => {
       clearTimeout(timer);
       current.current = null;
@@ -47,6 +58,7 @@ export function TitleTap() {
       if (!isTap(start, { x: e.clientX, y: e.clientY, at: e.timeStamp })) return;
       const target = e.target instanceof Element ? e.target : null;
       const titled = target ? titledTarget(target) : null;
+      if (titled?.inControl) swallowUntil = e.timeStamp + 800;
       if (!titled || titled.node === start.showing) return;
       const rect = titled.node.getBoundingClientRect();
       current.current = titled.node;
@@ -62,6 +74,7 @@ export function TitleTap() {
     };
     document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("pointerup", onUp, true);
+    document.addEventListener("click", onClick, true);
     document.addEventListener("keydown", onKey, true);
     window.addEventListener("scroll", hide, true);
     window.addEventListener("resize", hide);
@@ -69,6 +82,7 @@ export function TitleTap() {
       clearTimeout(timer);
       document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("pointerup", onUp, true);
+      document.removeEventListener("click", onClick, true);
       document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("scroll", hide, true);
       window.removeEventListener("resize", hide);

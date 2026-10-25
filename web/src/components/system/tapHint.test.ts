@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CONTROLS, isTap, place, titledTarget, type TitleNode } from "./tapHint";
+import { CONTROLS, hintProps, isTap, place, titledTarget, type TitleNode } from "./tapHint";
 
 class Fake implements TitleNode {
   constructor(
@@ -70,6 +70,36 @@ describe("titledTarget", () => {
     expect(titledTarget(new Fake("IFRAME", { title: "Map" }, cell))).toBeNull();
     expect(titledTarget(new Fake("svg", { title: "Chart" }, cell))).toBeNull();
     expect(titledTarget(null)).toBeNull();
+  });
+
+  test("a data-hint speaks even inside a card's link, and says so, so that tap does not follow the link", () => {
+    // plan UX, A1 (F16): a card is one link; the help on its figures could never be read with a finger
+    const link = new Fake("A", { href: "/matches/1" }, cell);
+    const figure = new Fake(
+      "SPAN",
+      { "data-hint": "Valor esperado", title: "Valor esperado" },
+      link,
+    );
+    const glyph = new Fake("svg", {}, figure);
+    expect(titledTarget(figure)).toEqual({ node: figure, text: "Valor esperado", inControl: true });
+    expect(titledTarget(glyph)?.text).toBe("Valor esperado");
+    // the rest of the card still opens the match
+    expect(titledTarget(new Fake("SPAN", {}, link))).toBeNull();
+    // outside a control it is a hint like a title
+    expect(titledTarget(new Fake("SPAN", { "data-hint": "x" }, cell))?.inControl).toBe(false);
+    // a button's own data-hint is the button's business: the button acts
+    const button = new Fake("BUTTON", { "data-hint": "y" }, cell);
+    expect(titledTarget(button)).toBeNull();
+    expect(titledTarget(new Fake("SPAN", { "data-hint": "  " }, link))).toBeNull();
+  });
+
+  test("hintProps gives a figure both: a title for a mouse, a data-hint for a finger", () => {
+    expect(hintProps(" Valor esperado ")).toEqual({
+      title: "Valor esperado",
+      "data-hint": "Valor esperado",
+    });
+    expect(hintProps("")).toEqual({});
+    expect(hintProps(null)).toEqual({});
   });
 
   test("the list of controls is the one the selector says", () => {
