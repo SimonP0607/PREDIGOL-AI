@@ -19,6 +19,8 @@ const ADMIN_ROUTES = [
   "/api/v1/admin/analytics/migration",
   "/api/v1/admin/ops/jobs",
   "/api/v1/admin/provider",
+  // the queue of messages to readers (plan UX, A5)
+  "/api/v1/admin/messages",
 ];
 
 test("without a session the product is closed and health stays open", async () => {
@@ -30,6 +32,7 @@ test("without a session the product is closed and health stays open", async () =
     "/api/v1/auth/me",
     "/api/v1/me/consents",
     "/api/v1/me/privacy-requests",
+    "/api/v1/me/preferences",
     ...ADMIN_ROUTES,
   ]) {
     expect((await anon.get(path)).status(), path).toBe(401);
@@ -39,6 +42,10 @@ test("without a session the product is closed and health stays open", async () =
     expect((await anon.get(`/api/v1/legal/${document}`)).status(), document).toBe(200);
   }
   expect((await anon.post("/api/v1/me/export", { data: { password: "x" } })).status()).toBe(401);
+  // the provider's webhook (plan UX, A5) answers only a signed event: QA has no secret, so it does not exist
+  expect(
+    (await anon.post("/api/v1/webhooks/resend", { data: { type: "email.bounced" } })).status(),
+  ).toBe(404);
   await anon.dispose();
 });
 
