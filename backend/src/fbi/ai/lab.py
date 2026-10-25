@@ -307,9 +307,11 @@ def probe_batch_collect(conn: psycopg.Connection[Any], settings: AiSettings, *, 
         return {"run": run, "state": "nothing_submitted"}
     passed, evidence = batch_evidence(items)
     out: dict[str, Any] = {"run": run, "poll_errors": polled.errors} | evidence
-    if passed is None or not record:
+    if passed is None:
         return out
-    out["passed"] = passed
+    out["passed"] = passed  # the verdict is shown with or without recording it
+    if not record:
+        return out
     out["gate_id"] = _record_if_new(conn, gate="batch", passed=passed, evidence=evidence | {"run": run}, at=at)
     conn.commit()
     return out
