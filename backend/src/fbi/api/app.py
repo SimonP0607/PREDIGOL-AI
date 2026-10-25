@@ -37,6 +37,7 @@ from fbi.api.routers import (
     messaging,
     monitoring,
     product,
+    reading,
     records,
     referees,
     system,
@@ -214,7 +215,7 @@ def create_app() -> FastAPI:
     # membership's (A8; FBI_MEMBERSHIP_ENFORCE, born off: fbi.customer.membership).
     product_tier = [*measured_tier, Depends(membership_required)]
     for r in (product.router, records.router, football.router, market.router, center.router,
-              ai_layer.router, forecast.router, match_calendar.router, knowledge.router):
+              ai_layer.router, forecast.router, match_calendar.router, knowledge.router, reading.router):
         app.include_router(r, prefix="/api/v1", dependencies=product_tier)
     admin_tier = [Depends(same_site_only), Depends(require_admin), Depends(observe_principal)]
     for r in (system.admin_router, football.admin_router, market.admin_router,
