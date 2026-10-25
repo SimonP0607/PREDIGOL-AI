@@ -27,7 +27,8 @@ from fbi.auth.service import (
     normalize_email,
     valid_timezone,
 )
-from fbi.customer import events
+from fbi.customer import events, membership
+from fbi.customer.db import CustomerError
 
 log = structlog.get_logger("auth.invitations")
 
@@ -38,9 +39,12 @@ def _require_switch() -> None:
 
 
 def invite(actor: Principal, *, email: str, display_name: str | None, language: str, timezone: str,
-           ip: str | None) -> dict[str, Any]:
-    """A new invited USER account and its invitation in the queue - one transaction."""
+           ip: str | None, trial_days: int | None = None) -> dict[str, Any]:
+    """A new invited USER account and its invitation in the queue - one transaction. ``trial_days`` (7 to 14): the
+    trial it gets when it is activated (plan UX, A8); FBI_TRIAL_DAYS when not said."""
     _require_switch()
+    if trial_days is not None and not membership.TRIAL_DAYS_MIN <= trial_days <= membership.TRIAL_DAYS_MAX:
+        raise AuthError(422, "invalid_trial_days")
     address = normalize_email(email)
     if not EMAIL_RE.match(address) or len(address) > 254:
         raise AuthError(422, "invalid_email")
@@ -58,6 +62,11 @@ def invite(actor: Principal, *, email: str, display_name: str | None, language: 
         grant = tokens.issue(conn, user_id, "invite")
         assert grant is not None  # a new account has asked for nothing yet
         account_mail.enqueue_link(conn, user_id, "invite", grant)
+        if trial_days is not None:
+            try:
+                membership.plan_trial(conn, user_id, trial_days, actor=actor.user_id)
+            except CustomerError as exc:  # checked above; kept as the auth's own error
+                raise AuthError(exc.status, exc.code) from exc
         store.record_event(conn, "user.invited", actor_user_id=actor.user_id, target_user_id=user_id, email=address,
                            ip=ip, detail={"language": language, "grant": grant})
     log.info("auth.invited", user_id=user_id)
@@ -129,6 +138,9 @@ def activate(link: str, *, password: str, language: str, timezone: str, ip: str 
                 # The activation funnel's first step (plan UX, A6: a server event; recorded only as FBI_PRODUCT_EVENTS
                 # allows, under the account's pseudonym).
                 events.record_server(conn, user_id, "account_activated")
+                # The membership's trial starts with the account (plan UX, A8): the days the owner chose at the
+                # invitation, FBI_TRIAL_DAYS otherwise.
+                membership.start_trial(conn, user_id)
                 user = store.user_by_id(conn, user_id)
                 assert user is not None
                 stage = _next_stage(user, mfa_done=False)  # "enroll" when the owner required a second factor

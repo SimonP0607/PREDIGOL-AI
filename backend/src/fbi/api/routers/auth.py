@@ -25,6 +25,7 @@ from fbi.api.contracts.auth import (
     RequiredPasswordIn,
     SessionInfo,
 )
+from fbi.api.contracts.membership import MembershipSummary
 from fbi.api.deps import get_db
 from fbi.api.security import (
     AnySession,
@@ -38,7 +39,7 @@ from fbi.api.security import (
 from fbi.auth import crypto, service
 from fbi.auth.service import Principal
 from fbi.auth.settings import session_settings
-from fbi.customer import consents
+from fbi.customer import consents, membership
 
 public_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
 session_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
@@ -64,12 +65,19 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
 
 
 def with_consents(who: Me, principal: Principal, conn: psycopg.Connection[Any]) -> Me:
-    """The consents the reader owes (plan UX, A4), on every Me a step of signing in or /auth/me answers: the page
-    shows the gate at once instead of opening the product and meeting a 403 consent_required on its first read."""
-    if (principal.is_full and consents.gate_enabled()
-            and not consents.exempt(principal.email, super_admin=principal.is_super_admin)):
-        return who.model_copy(update={"consents_due": consents.due_cached(conn, principal.user_id)})
-    return who
+    """The consents the reader owes (plan UX, A4) and their membership now (A8), on every Me a step of signing in or
+    /auth/me answers: the page shows the gate, or what a limited account can do, at once instead of opening the
+    product and meeting a 403 on its first read."""
+    if not principal.is_full:
+        return who
+    update: dict[str, Any] = {}
+    if consents.gate_enabled() and not consents.exempt(principal.email, super_admin=principal.is_super_admin):
+        update["consents_due"] = consents.due_cached(conn, principal.user_id)
+    found = membership.summary(membership.of(conn, principal.user_id, email=principal.email,
+                                             super_admin=principal.is_super_admin))
+    if found is not None:
+        update["membership"] = MembershipSummary(**found)
+    return who.model_copy(update=update) if update else who
 
 
 def _signed_in(response: Response, issued: tuple[str, Principal], conn: psycopg.Connection[Any]) -> Me:

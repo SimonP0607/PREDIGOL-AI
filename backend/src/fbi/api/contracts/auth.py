@@ -8,6 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from fbi.api.contracts.common import Contract
+from fbi.api.contracts.membership import MembershipSummary
 
 Language = Literal["es", "en"]
 Stage = Literal["mfa", "enroll", "password", "full"]
@@ -48,6 +49,9 @@ class Me(Contract):
                                                                       "the gate is off or nothing is owed. Filled by "
                                                                       "GET /auth/me; a 403 consent_required elsewhere "
                                                                       "means: ask /auth/me again.")
+    membership: MembershipSummary | None = Field(default=None, description="The account's membership now (plan UX, "
+                                                                           "A8), filled by GET /auth/me: None for "
+                                                                           "the owner's accounts (no membership).")
 
 
 class PreferencesIn(BaseModel):
@@ -156,6 +160,10 @@ class AdminUser(Contract):
     locked_until: datetime | None = None
     failed_logins: int = 0
     recovery_codes_left: int = 0
+    membership: MembershipSummary | None = Field(default=None, description="The membership now (plan UX, A8): read "
+                                                                           "by the list; None for the owner's "
+                                                                           "accounts and in the answer to an action "
+                                                                           "(the console reads the list again).")
 
 
 class AdminUserCreate(BaseModel):
@@ -273,6 +281,9 @@ class AdminInviteIn(BaseModel):
     display_name: str | None = Field(default=None, max_length=80)
     language: Language = "es"
     timezone: str = Field(default="America/Bogota", max_length=64)
+    trial_days: int | None = Field(default=None, ge=7, le=14, description="The trial this account gets when it is "
+                                                                          "activated (plan UX, A8); FBI_TRIAL_DAYS "
+                                                                          "by default.")
 
 
 class AdminAnonymiseIn(BaseModel):

@@ -86,3 +86,14 @@ def forget_sign_in_failures() -> None:
         conn.execute("DELETE FROM auth.audit_events "
                      "WHERE action IN ('login.failed', 'mfa.failed', 'login.locked', 'login.refused')")
         conn.execute("UPDATE auth.users SET failed_logins = 0, locked_until = NULL")
+
+
+def forget_memberships(conn: psycopg.Connection) -> None:
+    """Before a test deletes accounts: their membership rows (plan UX, A8) - append-only tables whose keys to
+    auth.users refuse a delete - go first, under the documented maintenance switch. Nothing before the 0099."""
+    with conn.transaction():
+        if conn.execute("SELECT to_regclass('customer.membership_events')").fetchone() == (None,):
+            return
+        conn.execute("SET LOCAL fbi.customer_maintenance = 'on'")
+        for table in ("customer.membership_events", "customer.membership_periods", "customer.payments"):
+            conn.execute(f"DELETE FROM {table}")
