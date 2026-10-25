@@ -18,13 +18,13 @@ from fbi.api.contracts.match_calendar import CalendarMatch, MatchCalendar, TeamC
 from fbi.api.envelope import Envelope, ok, unavailable
 from fbi.api.errors import ApiError
 from fbi.api.repositories import Conn, fetch_one
+from fbi.api.switches import user_switch
 from fbi.competitions import team_calendar as tc
 from fbi.core.clock import now
-from fbi.core.env import environment
 
 USERS_SWITCH: Final = "FBI_CALENDAR_USERS"
-"""``FBI_CALENDAR_USERS=1`` lets every signed-in account see the calendar of a match. Off until the owner decides: the Admin
-Console's preview does not depend on it. The API needs a restart to read it."""
+"""Every signed-in account sees the calendar of a match: on since plan UX A9 (the owner approved it), ``FBI_CALENDAR_USERS=0`` hides it again
+without a deploy (``fbi.api.switches``). The Admin Console's preview does not depend on it. The API needs a restart to read it."""
 RECENT_N: Final = 5
 UPCOMING_N: Final = 3
 
@@ -38,7 +38,7 @@ SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, f.away_team_id, h.nam
 
 
 def users_may_see() -> bool:
-    return environment().get(USERS_SWITCH, "0").strip().lower() in {"1", "on", "true", "yes"}
+    return user_switch(USERS_SWITCH, default=True)
 
 
 def _entry(m: tc.Match, kickoff: datetime, *, ahead: bool) -> CalendarMatch:

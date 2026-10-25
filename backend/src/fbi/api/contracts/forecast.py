@@ -39,7 +39,8 @@ class ForecastMarket(Contract):
     market: str
     line: Decimal
     family: str = Field(description="RESULT, TOTAL_GOALS, BOTH_TEAMS_SCORE (F10 adds more).")
-    model: str
+    model: str | None = Field(default=None, description="The model that priced it. Admin preview only: the name of an "
+                                                         "internal model is not a reader's word (plan UX, A9).")
     calibration: Calibration = Field(description="UNCALIBRATED means PrediGol states the model's own number and says so: "
                                                  "calibration exists only where a champion calibrator does.")
     basis: Basis

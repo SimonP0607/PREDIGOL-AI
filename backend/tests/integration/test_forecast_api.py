@@ -74,7 +74,7 @@ def test_a_user_gets_nothing_until_the_owner_decides_and_then_only_the_forecast(
         assert all(o["low"] is not None and float(o["low"]) <= float(o["probability"]) <= float(o["high"]) for o in outcomes)
         assert all(o["fair_odds"] is None and o["model_probability"] is None for o in outcomes), (
             "a user is never shown a number that reads as odds to take")
-    assert markets["1X2"]["model"] == "dixon_coles" and markets["OU"]["model"] == "dixon_coles"
+    assert all(m["model"] is None for m in markets.values()), "an internal model's name is not a reader's word (A9)"
     assert {o["selection"] for o in markets["1X2"]["outcomes"] if o["likely"]} == {"Home"}
     assert body["meta"]["data_as_of"] is not None
 
@@ -83,6 +83,22 @@ def test_a_user_gets_nothing_until_the_owner_decides_and_then_only_the_forecast(
         refused = client(db, "USER", monkeypatch, users=users).get(url(fid, preview=True))
         assert refused.status_code == 403, "403 for an account without the shadow-preview permission"
         assert "fair_odds" not in refused.text and "Home" not in refused.text
+
+
+def test_without_its_line_the_switch_is_on_since_a9_and_an_unreadable_value_hides(
+        db: psycopg.Connection[Any], world: World, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
+    """Plan UX, A9: the owner approved showing the forecast; ``FBI_FORECAST_USERS=0`` hides it again without a deploy, and a
+    value the switch cannot read hides it too (showing less is the safer reading of a line someone wrote)."""
+    fid = forecast_world(world)
+    app = signed_in(create_app(), "USER")
+    app.dependency_overrides[get_db] = lambda: db
+    reader = TestClient(app, headers=SAME_SITE)
+    monkeypatch.delenv(service.USERS_SWITCH, raising=False)
+    assert reader.get(url(fid)).json()["status"] == "ok"
+    for value, status in (("0", "not_available"), ("off", "not_available"), ("si", "not_available"), ("", "ok"),
+                          ("ON", "ok")):
+        monkeypatch.setenv(service.USERS_SWITCH, value)
+        assert reader.get(url(fid)).json()["status"] == status, value
 
 
 def test_the_admin_preview_lays_the_forecast_beside_the_value_and_the_picks(
@@ -101,6 +117,7 @@ def test_the_admin_preview_lays_the_forecast_beside_the_value_and_the_picks(
     assert float(home["probability"]) == pytest.approx(0.50) and home["likely"] is True
     assert float(home["fair_odds"]) == pytest.approx(2.0, abs=0.005), "1 / 0.50, admin only"
     assert float(home["model_probability"]) == pytest.approx(0.50)
+    assert markets["1X2"]["model"] == "dixon_coles", "the owner's preview names the model that priced it"
     assert data["value"]["status"] == "empty" and data["value"]["code"] == "no_evaluation", "no price evaluated, so no value"
     assert data["picks"]["status"] == "empty" and data["picks"]["code"] == "no_pick", "and no pick: a forecast is not one"
 

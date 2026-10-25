@@ -1,5 +1,7 @@
 # Calendario global del equipo: cuánto descansó cada equipo, contado con TODOS sus partidos (Plan Maestro, fase F4)
 
+> **Desde la fase A9 del plan UX** (aprobada por el dueño con el plan), los usuarios ven el calendario del partido sin hacer nada: `FBI_CALENDAR_USERS` vale «encendido» cuando su línea no está, y `FBI_CALENDAR_USERS=0` lo vuelve a ocultar sin desplegar (se recrea la API). Donde este documento dice «apagado hasta que el dueño decida», describe el estado anterior a A9. Guía: `VALOR_DIARIO_UX_A9.md`.
+
 **Qué es.** PrediGol solo guarda los partidos de las competiciones que sigue. Un equipo juega más que eso: una eliminatoria de copa, una noche
 de Champions, un amistoso. Hasta hoy, el «descanso» y la «congestión» que veían los modelos, la IA y la página de un partido salían solo de lo
 guardado: un equipo que jugó la copa hace dos días «descansaba ocho» si su último partido de liga fue hace ocho. Eran **cotas**: el descanso real,
