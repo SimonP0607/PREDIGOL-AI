@@ -1,7 +1,8 @@
 /**
  * The readers' privacy requests (plan UX, A4): queries, claims and deletion requests, open first by their legal
  * deadline in Colombian business days, with the thread and the owner's answer - a new status, or the one extension
- * the law allows (the answer says why and until when). Each answer is audited (an admin write).
+ * the law allows (the answer says why and until when). Each answer is audited (an admin write). A deletion request,
+ * once answered, offers the deletion itself: the account's anonymisation, with its address typed again (A7).
  */
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,8 @@ import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { Card, ErrorState, errorMessage } from "@/product/shared/States";
 import { dayOf } from "@/product/legal/links";
+import { AnonymiseAccount } from "./AnonymiseAccount";
+import { anonymisedSummary, isAnonymised } from "./anonymised";
 
 function daysLeft(deadline: string): number {
   const end = Date.parse(`${deadline.slice(0, 10)}T23:59:59-05:00`);
@@ -97,8 +100,34 @@ function Answer({ request }: { request: AdminPrivacyRequest }) {
   );
 }
 
+/** The deletion itself, after the answer: until then the button waits (the answer is the reader's last e-mail). */
+function DeletionStep({
+  request,
+  onDone,
+}: {
+  request: AdminPrivacyRequest;
+  onDone: (notice: string) => void;
+}) {
+  const answered = request.messages.some((m) => m.author === "owner");
+  return (
+    <div
+      className="flex flex-wrap items-center gap-2 rounded-md border border-negative/30 p-2"
+      data-testid={`deletion-step-${request.id}`}
+    >
+      <p className="min-w-0 flex-1 text-xs text-muted-foreground">{t("admin.users.answerFirst")}</p>
+      <AnonymiseAccount
+        userId={request.user_id}
+        email={request.email}
+        disabled={!answered}
+        onDone={(r) => onDone(anonymisedSummary(r))}
+      />
+    </div>
+  );
+}
+
 export function PrivacyRequestsCard() {
   const [all, setAll] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const q = useQuery({
     queryKey: ["admin", "privacy-requests", all ? "all" : "open"],
     queryFn: () => v1.privacyRequests(all ? "all" : "open"),
@@ -120,6 +149,11 @@ export function PrivacyRequestsCard() {
           </button>
         </div>
         <p className="text-xs text-muted-foreground">{t("legal.admin.help")}</p>
+        {notice ? (
+          <p role="status" className="text-xs text-positive" data-testid="privacy-notice">
+            {notice}
+          </p>
+        ) : null}
         {q.isPending ? (
           <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
         ) : q.isError ? (
@@ -172,6 +206,9 @@ export function PrivacyRequestsCard() {
                     ))}
                   </ul>
                   {r.status !== "closed" ? <Answer request={r} /> : null}
+                  {r.kind === "privacy_deletion" && !isAnonymised(r.email) ? (
+                    <DeletionStep request={r} onDone={setNotice} />
+                  ) : null}
                 </li>
               );
             })}
