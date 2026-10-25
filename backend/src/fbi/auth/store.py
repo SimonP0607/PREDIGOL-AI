@@ -8,6 +8,8 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.auth.settings import session_settings
+
 Row = dict[str, Any]
 Conn = psycopg.Connection[Any]
 
@@ -134,14 +136,27 @@ def use_recovery_code(conn: Conn, user_id: int, code_hash: str) -> bool:
     return cur.rowcount == 1
 
 
-def list_users(conn: Conn) -> list[Row]:
+IDLE_ALIVE = ("s.last_seen_at > now() - make_interval(hours => CASE WHEN u.role = 'SUPER_ADMIN' "
+              "THEN %(admin_idle)s ELSE %(idle)s END)")
+"""A session used within its idle limit: the same test session_principal applies before letting a request in, so a
+session listed or counted is one that can still be used."""
+
+
+def _idle(idle_hours: int | None, admin_idle_hours: int | None) -> dict[str, int]:
+    """The idle limits to apply, from the session settings unless the caller gives them."""
+    cfg = session_settings()
+    return {"idle": cfg.idle_hours if idle_hours is None else idle_hours,
+            "admin_idle": cfg.admin_idle_hours if admin_idle_hours is None else admin_idle_hours}
+
+
+def list_users(conn: Conn, *, idle_hours: int | None = None, admin_idle_hours: int | None = None) -> list[Row]:
     return _all(conn, f"""
         SELECT {USER_COLUMNS},
                (SELECT count(*) FROM auth.sessions s
                  WHERE s.user_id = u.id AND s.revoked_at IS NULL AND s.expires_at > now()
-                   AND s.stage = 'full')::int AS active_sessions
+                   AND s.stage = 'full' AND {IDLE_ALIVE})::int AS active_sessions
         FROM auth.users u ORDER BY u.created_at, u.id
-    """)
+    """, _idle(idle_hours, admin_idle_hours))
 
 
 def count_active_super_admins(conn: Conn, *, excluding: int | None = None) -> int:
@@ -229,14 +244,17 @@ def revoke_user_session_by_prefix(conn: Conn, user_id: int, prefix: str, reason:
     return cur.rowcount
 
 
-def list_sessions(conn: Conn, user_id: int) -> list[Row]:
-    return _all(conn, """
+def list_sessions(conn: Conn, user_id: int, *, idle_hours: int | None = None,
+                  admin_idle_hours: int | None = None) -> list[Row]:
+    """The sessions of an account that can still be used: not revoked, not past their absolute expiry and not dead
+    from idleness."""
+    return _all(conn, f"""
         SELECT left(s.id, 16) AS id, s.created_at, s.last_seen_at, s.expires_at, s.ip, s.user_agent, s.stage,
                s.mfa_verified_at IS NOT NULL AS mfa_verified, s.id AS full_id
-        FROM auth.sessions s
-        WHERE s.user_id = %s AND s.revoked_at IS NULL AND s.expires_at > now()
+        FROM auth.sessions s JOIN auth.users u ON u.id = s.user_id
+        WHERE s.user_id = %(user)s AND s.revoked_at IS NULL AND s.expires_at > now() AND {IDLE_ALIVE}
         ORDER BY s.last_seen_at DESC
-    """, (user_id,))
+    """, {"user": user_id, **_idle(idle_hours, admin_idle_hours)})
 
 
 # ── audit ────────────────────────────────────────────────────────────────────────────

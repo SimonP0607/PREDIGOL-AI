@@ -577,7 +577,9 @@ def set_required_password(principal: Principal, *, new_password: str, ip: str | 
 # ── one's own sessions and sign-in history ───────────────────────────────────────────
 
 def my_sessions(conn: psycopg.Connection[Any], principal: Principal) -> list[dict[str, Any]]:
-    rows = store.list_sessions(conn, principal.user_id)
+    cfg = session_settings()
+    rows = store.list_sessions(conn, principal.user_id, idle_hours=cfg.idle_hours,
+                               admin_idle_hours=cfg.admin_idle_hours)
     out = []
     for r in rows:
         current = r.pop("full_id") == principal.session_id
@@ -616,7 +618,8 @@ def my_access_history(conn: psycopg.Connection[Any], principal: Principal, *, li
 # ── accounts (Admin Console) ─────────────────────────────────────────────────────────
 
 def list_users(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
-    return store.list_users(conn)
+    cfg = session_settings()
+    return store.list_users(conn, idle_hours=cfg.idle_hours, admin_idle_hours=cfg.admin_idle_hours)
 
 
 def create_user(actor: Principal, *, email: str, display_name: str | None, role: str, password: str,
@@ -794,7 +797,9 @@ def admin_revoke_sessions(actor: Principal, user_id: int, *, ip: str | None) -> 
 
 
 def admin_user_sessions(conn: psycopg.Connection[Any], user_id: int) -> list[dict[str, Any]]:
-    rows = store.list_sessions(conn, user_id)
+    cfg = session_settings()
+    rows = store.list_sessions(conn, user_id, idle_hours=cfg.idle_hours,
+                               admin_idle_hours=cfg.admin_idle_hours)
     return [{k: v for k, v in r.items() if k != "full_id"} | {"current": False} for r in rows]
 
 

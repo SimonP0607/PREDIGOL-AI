@@ -18,12 +18,15 @@ class SessionSettings(BaseSettings):
     cookie_samesite: Literal["lax", "strict"] = "lax"
     """strict in production: every API call is a same-origin fetch, so nothing legitimate needs the cookie on a
     cross-site request - not even the first page load, which renders without it and then asks /auth/me."""
-    ttl_hours: int = Field(default=168, ge=1, le=24 * 90)
-    """Absolute lifetime: a session ends this long after sign-in whatever happens."""
-    idle_hours: int = Field(default=72, ge=1, le=24 * 30)
-    """A session not used for this long ends early."""
+    ttl_hours: int = Field(default=24 * 30, ge=1, le=24 * 90)
+    """Absolute lifetime: a session ends this long after sign-in whatever happens (30 days; plan UX, A1)."""
+    idle_hours: int = Field(default=24 * 7, ge=1, le=24 * 30)
+    """A session not used for this long ends: 7 days. Together with ttl_hours a session slides with use - every use
+    gives it another 7 days, never past the 30 of ttl_hours (until A1 it ended 168 hours after sign-in however
+    much it was used)."""
     admin_ttl_hours: int = Field(default=24, ge=1, le=24 * 30)
-    """The same two limits for a SUPER_ADMIN, shorter: that session can manage accounts and see everything."""
+    """The same two limits for a SUPER_ADMIN, shorter: that session can manage accounts and see everything. They stay
+    as they are until the security plan shortens them (R14)."""
     admin_idle_hours: int = Field(default=8, ge=1, le=24 * 7)
     touch_minutes: int = Field(default=5, ge=1, le=60)
     """How stale last_seen_at may get before a request writes it again."""
