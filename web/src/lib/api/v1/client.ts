@@ -23,6 +23,7 @@ import type {
   OutboxSummary,
 } from "./types_messaging";
 import type { ProductOverview } from "./types_events";
+import type { AdminMembership, MyMembership, PaymentIn, PaymentRecorded } from "./types_membership";
 import type {
   IntelCalibration,
   IntelCosts,
@@ -234,8 +235,8 @@ export class LiveApiError extends Error {
 /** Fired when the API says the session is gone; the auth layer sends the reader to sign in. */
 export const UNAUTHENTICATED_EVENT = "predigol:unauthenticated";
 /**
- * Fired when the API says a step of signing in is still owed, or that the current consents are (plan UX, A4); the
- * auth layer asks /auth/me which.
+ * Fired when the API says a step of signing in is still owed, that the current consents are (plan UX, A4), or that
+ * the membership has ended or is suspended (A8); the auth layer asks /auth/me which.
  */
 export const STAGE_EVENT = "predigol:stage";
 const STAGE_CODES = new Set([
@@ -243,6 +244,8 @@ const STAGE_CODES = new Set([
   "mfa_enrollment_required",
   "password_change_required",
   "consent_required",
+  "membership_expired",
+  "membership_suspended",
 ]);
 
 /** A repeated parameter (`?market=1X2&market=OU`) is an array; an empty one is left out. */
@@ -386,6 +389,8 @@ export const v1 = {
   revokeMyOtherSessions: (identity: IdentityIn) =>
     postJson<{ revoked: number }>("/auth/me/sessions/revoke-others", identity),
   myAccess: (limit = 50) => getJson<AccessEvent[]>("/auth/me/access", { limit }),
+  /** The reader's membership: its state now, its periods with their payments and how to renew (plan UX, A8). */
+  myMembership: () => getJson<MyMembership>("/me/membership"),
   // getting in without the owner (plan UX, A7): public; a link's token goes in the body, never in a URL
   accountOptions: () => getJson<AccountOptions>("/auth/options"),
   checkInvitation: (token: string) => postJson<ActivationInfo>("/auth/activate/check", { token }),
@@ -758,6 +763,23 @@ export const v1 = {
   inviteUser: (body: AdminInviteIn) => postJson<Envelope<AdminUser>>("/admin/users/invite", body),
   resendInvitation: (id: number) =>
     postJson<Envelope<AdminUser>>(`/admin/users/${id}/invitation`, {}),
+  // the membership (plan UX, A8): the owner records; every answer is the account's membership as the console reads it
+  adminMembership: (id: number) => getJson<AdminMembership>(`/admin/users/${id}/membership`),
+  recordPayment: (id: number, body: PaymentIn) =>
+    postJson<PaymentRecorded>(`/admin/users/${id}/membership/payments`, body),
+  grantCourtesy: (id: number, days: number, reason: string) =>
+    postJson<AdminMembership>(`/admin/users/${id}/membership/courtesy`, { days, reason }),
+  startTrial: (id: number, days: number) =>
+    postJson<AdminMembership>(`/admin/users/${id}/membership/trial`, { days }),
+  suspendMembership: (id: number, reason: string) =>
+    postJson<AdminMembership>(`/admin/users/${id}/membership/suspend`, { reason }),
+  liftMembership: (id: number, reason?: string) =>
+    postJson<AdminMembership>(`/admin/users/${id}/membership/lift`, reason ? { reason } : {}),
+  renewalIntent: (id: number, willRenew: boolean, reason?: string) =>
+    postJson<AdminMembership>(`/admin/users/${id}/membership/renewal`, {
+      will_renew: willRenew,
+      ...(reason ? { reason } : {}),
+    }),
   /** Deleting an account as anonymisation, with its address typed again (plan UX, A7). Cannot be undone. */
   anonymiseUser: (id: number, confirm: string) =>
     postJson<Envelope<AdminAnonymised>>(`/admin/users/${id}/anonymise`, { confirm }),

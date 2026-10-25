@@ -1,5 +1,6 @@
 /** Types for /api/v1/auth/* and /api/v1/admin/{users,audit}. Mirrors fbi.api.contracts.auth. */
 import type { Iso } from "./types";
+import type { MembershipSummary } from "./types_membership";
 
 export type Language = "es" | "en";
 export type RoleKey = "SUPER_ADMIN" | "USER";
@@ -36,6 +37,8 @@ export interface Me {
    * nothing is owed. GET /auth/me fills it; a 403 consent_required elsewhere means: ask /auth/me again.
    */
   consents_due?: string[];
+  /** The membership now (plan UX, A8), filled by GET /auth/me; null or absent for the owner's accounts. */
+  membership?: MembershipSummary | null;
 }
 
 export interface MfaEnrollment {
@@ -104,6 +107,8 @@ export interface AdminUser {
   locked_until: Iso | null;
   failed_logins: number;
   recovery_codes_left: number;
+  /** The membership now (plan UX, A8): read by the list; null for the owner's accounts. */
+  membership?: MembershipSummary | null;
 }
 
 export interface AdminPasswordResult {
@@ -186,6 +191,8 @@ export interface AdminInviteIn {
   display_name?: string;
   language: Language;
   timezone: string;
+  /** The trial it gets when activated, 7 to 14 days (plan UX, A8); the server's default when left out. */
+  trial_days?: number;
 }
 
 export interface AdminAnonymised {
