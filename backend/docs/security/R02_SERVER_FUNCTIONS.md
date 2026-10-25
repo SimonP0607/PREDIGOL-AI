@@ -65,14 +65,25 @@ de un despliegue que cambie `deploy/vps/Caddyfile` o `deploy/vps/caddy/`:
 2. `compose up -d --no-deps --force-recreate caddy` (como `bin/cloudflare-ips.sh trust`); el certificado vive en `/srv/predigol/caddy/data`;
 3. comprobar que el sha256 de `/etc/caddy/Caddyfile` dentro del contenedor es el del fichero del checkout, y pasar los dos scripts de arriba.
 
+**Un lanzamiento que solo cambia el Caddyfile** (más pruebas, documentos y estos dos scripts; nada de lo que construye las imágenes) no necesita
+`predigolctl deploy`: se mueve el checkout (`git checkout --detach <commit>`) y se hacen los pasos 1 a 3. La API, el worker y la web no se
+reinician, el trabajo en vivo sigue y solo hay un hueco de unos tres segundos en la puerta. Así se aplicó esta regla (S1, 25-oct-2026): el
+constructor del paquete (`make_release_sec.py`, modo `caddy-only`) comprueba que ninguna otra ruta de `backend/` cambió. Hasta el siguiente
+`predigolctl deploy`, `predigolctl status` sigue mostrando la versión de las imágenes que corren (la anterior) y el checkout va por delante, a propósito.
+
 ## Volver atrás
 
-`git checkout --detach <commit anterior>` en `/opt/predigol/backend`, `predigolctl deploy` y los pasos 1 a 3 de arriba. La regla se puede quitar
-sin tocar nada más: sin ella, `/_serverFn/*` vuelve a llegar al servidor web, protegido por las defensas 1 a 3.
+`git checkout --detach <commit anterior>` en `/opt/predigol/backend` y los pasos 1 a 3 de arriba (`step_caddy.sh revert` del paquete); `predigolctl
+deploy` solo si el lanzamiento se aplicó con él. La regla se puede quitar sin tocar nada más: sin ella, `/_serverFn/*` vuelve a llegar al servidor
+web, protegido por las defensas 1 a 3.
 
-## Observación aparte
+## Observaciones aparte
 
-El bloque `respond @closed 404` del Caddyfile (rutas `/docs`, `/openapi.json`, `/redoc`) **no se ejecuta**: Caddy ordena `respond` después de
+Las respuestas de error que fabrica el propio Caddy (el 502 cuando el servidor web no contesta) no llevan las cabeceras de seguridad: el bloque
+`header` del sitio, por llevar `-Server`, es diferido, y Caddy no aplica lo diferido a una respuesta de error. Es igual antes y después de S1 (se
+comparó con la web parada), el cuerpo va vacío y no tiene efecto práctico; queda anotado para S10 (cabeceras, R23).
+
+Y el bloque `respond @closed 404` del Caddyfile (rutas `/docs`, `/openapi.json`, `/redoc`) **no se ejecuta**: Caddy ordena `respond` después de
 `handle`, y el `handle` sin matcher ya atiende esas rutas llevándolas a la web, que contesta su 404. El efecto buscado se cumple de todos
 modos, porque la API no publica sus documentos en producción y esas rutas no le llegan. Queda anotado para corregirlo con una prueba en un
 cambio posterior del Caddyfile (no se toca aquí: un hallazgo, un despliegue).
