@@ -115,7 +115,7 @@ test("the owner's two test errors arrive: the API's under its reference, the web
 
 test("an error the page throws with personal data in it arrives without it", async ({ page }) => {
   const email = "ana.perez" + "@example.com";
-  const token = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0" + "Ga5KoPiRqWe";
+  const token = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0" + "Ga5KoPiRqWe"; // made up  gitleaks:allow
   await page.goto("/home");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.waitForTimeout(1500); // the SDK is switched on after the page settles

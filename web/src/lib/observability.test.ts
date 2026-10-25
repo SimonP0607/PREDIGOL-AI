@@ -16,7 +16,7 @@ import {
 
 // data, as a page would carry it: built from parts so no source line holds it whole
 const EMAIL = "ana.perez" + "@example.com";
-const TOKEN = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0" + "Ga5KoPiRqWe";
+const TOKEN = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0" + "Ga5KoPiRqWe"; // made up  gitleaks:allow
 const NAME = "Ana " + "Pérez Gómez";
 const PSEUDONYM = "0123456789abcdef0123";
 
