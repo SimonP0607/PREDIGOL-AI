@@ -215,6 +215,11 @@ Desde el portátil, una orden: `deploy/release.sh --host predigol` (un host de `
 * recrea solo lo que cambió. La base solo se reinicia si cambió su imagen;
 * espera a que todo esté sano y pasa el monitor.
 
+**Un cambio en `Caddyfile` o en `caddy/` no se aplica solo.** `predigolctl deploy` no recrea Caddy: el compose monta `./Caddyfile` como un solo
+fichero, `git checkout` lo sustituye por otro con otro inodo y el contenedor sigue viendo el viejo. Tras ese despliegue: validar el fichero nuevo
+(`caddy validate` con la imagen que corre), `compose up -d --no-deps --force-recreate caddy` y comprobar que el sha256 de `/etc/caddy/Caddyfile`
+dentro del contenedor es el del checkout (detalle en `docs/security/R02_SERVER_FUNCTIONS.md`, «Cómo se despliega»).
+
 `predigolctl rollback` arranca la versión anterior en segundos (sus imágenes se conservan). La base **no** se baja
 de versión sola; si la versión anterior necesita el esquema anterior, se decide con el dueño (`alembic downgrade` o
 la copia `pre-deploy`).
@@ -266,6 +271,9 @@ en `127.0.0.1:55432`, sin tocar la base en marcha.
   * historial de accesos en Perfil → Seguridad.
 * **Base de datos:** un rol por servicio y ninguno superusuario (§1).
 * **Cabeceras:** HSTS de un año; CSP (este origen, Google Fonts y `media.api-sports.io`); sin incrustar.
+* **Funciones de servidor de la web (R02):** en `/_serverFn/*` Caddy solo deja pasar una llamada de la propia app (cabecera `x-tsr-serverFn: true`,
+  sin `Sec-Fetch-Mode: navigate`, sin pedir `text/html`); lo demás recibe un 403 vacío con CSP `default-src 'none'`. Es un filtro, no
+  autenticación. Detalle y pruebas: `docs/security/R02_SERVER_FUNCTIONS.md`, `bin/serverfn-matrix.sh`, `bin/serverfn-probe.sh`.
 * **Secretos:** solo en `/etc/predigol/*.env` (600), generados por `install.sh`; nada en imágenes, Git ni logs.
   Detalle: `docs/owner/SECRETS_AND_ROTATION.md`.
 
@@ -353,6 +361,7 @@ Resultados completos: `docs/owner/BETA_DEPLOY_REPORT_2026-10-07.md`.
 | `bin/bench.sh` | medir la máquina el día 1 |
 | `bin/loadtest.sh`, `loadtest.py` | la prueba de carga del ensayo |
 | `bin/cloudflare-ips.sh`, `maint.sh` | Cloudflare delante; mantenimiento diario |
+| `bin/serverfn-matrix.sh`, `serverfn-probe.sh` | probar desde fuera la regla de `/_serverFn/*` (R02): casos con resultado esperado y marcador inocuo |
 | `systemd/` | arranque al encender y temporizadores |
 | `rehearsal/` | solo para ensayos: simulador del proveedor y S3 local; nunca en el servidor |
 | `../cutover/export.sh`, `../release.sh` | en el portátil: la copia final del corte; el despliegue sin GitHub |
