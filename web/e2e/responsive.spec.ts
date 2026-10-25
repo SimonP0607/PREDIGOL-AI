@@ -308,6 +308,19 @@ test("the parlay slip under a thumb: a 44 px close, nothing on its title, its fi
   await expect(sheet.getByTestId("slip-save")).toBeInViewport();
   await sheet.getByTestId("slip-clear").click();
   await expect(sheet.getByTestId("slip-leg")).toHaveCount(0);
+  // Plan UX, A1 (F53): the cleared slip can be put back for five seconds - its button within a thumb's reach -
+  // and then the offer goes.
+  await expect(sheet.getByTestId("slip-undo")).toBeVisible();
+  expect(
+    await smallTargets(page, '[data-testid="slip-undo"]'),
+    "the undo button under 44 px",
+  ).toEqual([]);
+  await sheet.getByTestId("slip-undo-button").click();
+  await expect(sheet.getByTestId("slip-leg")).toHaveCount(2);
+  await sheet.getByTestId("slip-clear").click();
+  await expect(sheet.getByTestId("slip-undo")).toBeVisible();
+  await expect(sheet.getByTestId("slip-undo")).toHaveCount(0, { timeout: 8_000 });
+  await expect(sheet.getByTestId("slip-leg")).toHaveCount(0);
   await assertClean(page, w);
 });
 

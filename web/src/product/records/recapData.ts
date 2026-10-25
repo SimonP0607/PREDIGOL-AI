@@ -17,6 +17,12 @@ export interface RecapRecord {
   profit: number;
   outcome: Outcome;
   market: string | null;
+  /**
+   * It counts in the denominator of the return: settled with a profit and not void (a push stakes its unit and gets
+   * it back). The rule of the server's GET /me/history (userdata/records.py, GroupStats.roi), so "Rentabilidad
+   * (ROI)" is one figure wherever it is shown (plan UX, A1).
+   */
+  staked: boolean;
 }
 
 export function outcomeOf(status: ResultStatus | string): Outcome | null {
@@ -44,12 +50,14 @@ export function fromPicks(picks: readonly UserPick[]): RecapRecord[] {
   for (const p of picks) {
     const outcome = outcomeOf(p.status);
     if (outcome === null) continue;
+    const profit = toNumber(p.profit_units);
     out.push({
       at: p.match.kickoff_at,
       odds: toNumber(p.user_odds) ?? toNumber(p.odds),
-      profit: toNumber(p.profit_units) ?? 0,
+      profit: profit ?? 0,
       outcome,
       market: p.market_key,
+      staked: profit !== null && p.status !== "VOID",
     });
   }
   return out;
@@ -65,12 +73,14 @@ export function fromParlays(parlays: readonly UserParlay[]): RecapRecord[] {
       (acc, l) => (acc === null || l.match.kickoff_at > acc ? l.match.kickoff_at : acc),
       null,
     );
+    const profit = toNumber(p.profit_units);
     out.push({
       at: last ?? p.settled_at ?? p.created_at,
       odds: toNumber(p.combined_odds),
-      profit: toNumber(p.profit_units) ?? 0,
+      profit: profit ?? 0,
       outcome,
       market: null,
+      staked: profit !== null && p.status !== "VOID",
     });
   }
   return out;
@@ -127,7 +137,9 @@ export interface Recap {
   /** wins / (wins + losses): a void neither wins nor loses. */
   hitRate: number | null;
   profit: number;
-  /** profit / records (one unit each). */
+  /** Records staked: the sample the return is counted over. */
+  staked: number;
+  /** "Rentabilidad (ROI)": profit / staked, one unit each - the formula of the server's history. */
   roi: number | null;
   avgOdds: number | null;
   avgOddsWon: number | null;
@@ -240,6 +252,7 @@ export function recap(records: readonly RecapRecord[], tz?: string): Recap {
   const pricedWon = sorted
     .filter((r) => r.odds !== null && r.outcome === "win")
     .map((r) => r.odds as number);
+  const staked = sorted.filter((r) => r.staked).length;
   return {
     settled: sorted.length,
     wins,
@@ -247,7 +260,8 @@ export function recap(records: readonly RecapRecord[], tz?: string): Recap {
     voids: sorted.length - decided.length,
     hitRate: rate(wins, decided.length),
     profit,
-    roi: sorted.length ? profit / sorted.length : null,
+    staked,
+    roi: staked ? profit / staked : null,
     avgOdds: mean(priced),
     avgOddsWon: mean(pricedWon),
     streaks: streaksOf(decided),

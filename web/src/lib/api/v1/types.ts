@@ -19,6 +19,8 @@ export interface Meta {
   limit: number | null;
   offset: number | null;
   data_as_of: Iso | null;
+  /** A list read page by page (/me/picks, /me/parlays): the `cursor` of the next page, null on the last one. */
+  next_cursor?: string | null;
 }
 
 export interface Envelope<T> {

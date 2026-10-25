@@ -17,7 +17,8 @@ const r = (
   odds: number | null,
   profit: number,
   market = "1X2",
-) => ({ at, outcome, odds, profit, market }) satisfies RecapRecord;
+  staked = outcome !== "void",
+) => ({ at, outcome, odds, profit, market, staked }) satisfies RecapRecord;
 
 describe("Tu recapitulación (REVIEW point 19)", () => {
   test("results read the same for picks and parlays; pending is not a result", () => {
@@ -49,7 +50,9 @@ describe("Tu recapitulación (REVIEW point 19)", () => {
     expect([x.settled, x.wins, x.losses, x.voids]).toEqual([5, 2, 2, 1]);
     expect(x.hitRate).toBe(0.5);
     expect(x.profit).toBeCloseTo(-0.2);
-    expect(x.roi).toBeCloseTo(-0.04);
+    // one formula with the server's history (plan UX, A1): profit over the staked records - the void is not one
+    expect(x.staked).toBe(4);
+    expect(x.roi).toBeCloseTo(-0.05);
     expect(x.avgOdds).toBeCloseTo((2 + 3.5 + 1.8 + 2.2 + 6) / 5);
     expect(x.avgOddsWon).toBeCloseTo(1.9);
     expect(x.days.map((d) => [d.day, d.count])).toEqual([
@@ -88,7 +91,14 @@ describe("Tu recapitulación (REVIEW point 19)", () => {
       pick("PENDING", "2.00", null, null),
     ]);
     expect(rs).toEqual([
-      { at: "2032-08-01T15:00:00Z", odds: 2.2, profit: 1.2, outcome: "win", market: "1X2" },
+      {
+        at: "2032-08-01T15:00:00Z",
+        odds: 2.2,
+        profit: 1.2,
+        outcome: "win",
+        market: "1X2",
+        staked: true,
+      },
     ]);
     const parlay = {
       status: "LOST",
@@ -102,7 +112,14 @@ describe("Tu recapitulación (REVIEW point 19)", () => {
       ],
     } as unknown as UserParlay;
     expect(fromParlays([parlay])).toEqual([
-      { at: "2032-08-02T18:00:00Z", odds: 7.48, profit: -1, outcome: "loss", market: null },
+      {
+        at: "2032-08-02T18:00:00Z",
+        odds: 7.48,
+        profit: -1,
+        outcome: "loss",
+        market: null,
+        staked: true,
+      },
     ]);
   });
 
@@ -111,5 +128,53 @@ describe("Tu recapitulación (REVIEW point 19)", () => {
     const rs = [r("2032-08-01T15:00:00Z", "win", 2, 1), r("2032-08-30T15:00:00Z", "loss", 2, -1)];
     expect(within(rs, 7, now)).toHaveLength(1);
     expect(within(rs, null, now)).toHaveLength(2);
+  });
+});
+
+describe("Rentabilidad (ROI): one figure with the server's history (plan UX, A1, F54)", () => {
+  const pick = (status: string, profit: string | null): UserPick =>
+    ({
+      id: 1,
+      match: { kickoff_at: "2032-08-01T15:00:00Z" },
+      market_key: "1X2",
+      status,
+      odds: "2.000",
+      user_odds: null,
+      profit_units: profit,
+    }) as unknown as UserPick;
+
+  test("a push stakes its unit, a void does not, and a record without a profit counts in neither", () => {
+    // GET /me/history (userdata/records.py, GroupStats): profit 1.1 - 1 + 0 over WIN, LOSS and PUSH = 3 staked
+    const rs = fromPicks([
+      pick("WIN", "1.1000"),
+      pick("LOSS", "-1.0000"),
+      pick("PUSH", "0.0000"),
+      pick("VOID", "0.0000"),
+      pick("WIN", null),
+      pick("PENDING", null),
+    ]);
+    const x = recap(rs, "UTC");
+    expect(x.staked).toBe(3);
+    expect(x.profit).toBeCloseTo(0.1);
+    expect(x.roi).toBeCloseTo(0.1 / 3);
+  });
+
+  test("a parlay partly void stakes; a void parlay does not", () => {
+    const parlay = (status: string, profit: string | null): UserParlay =>
+      ({
+        id: 1,
+        created_at: "2032-08-01T10:00:00Z",
+        settled_at: "2032-08-01T20:00:00Z",
+        combined_odds: "4.000",
+        status,
+        profit_units: profit,
+        legs: [],
+      }) as unknown as UserParlay;
+    const x = recap(
+      fromParlays([parlay("PARTIAL_VOID", "1.0000"), parlay("VOID", "0.0000")]),
+      "UTC",
+    );
+    expect(x.staked).toBe(1);
+    expect(x.roi).toBeCloseTo(1);
   });
 });

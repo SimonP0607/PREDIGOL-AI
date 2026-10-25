@@ -1,8 +1,10 @@
 {
   "labels": {
     "predigolPick": "PrediGol Pick",
-    "savedByMe": "Saved by me",
-    "result": "Result"
+    "result": "Result",
+    "mine": "Your selection",
+    "mineParlay": "Your parlay",
+    "savedPredigol": "Saved"
   },
   "status": {
     "PENDING": "Pending",
@@ -198,7 +200,10 @@
       "risk": "Risk",
       "independent": "No selections depend on each other.",
       "dependent": "Some selections may depend on each other."
-    }
+    },
+    "undo": "Undo",
+    "undoRemoved": "Selection removed.",
+    "undoCleared": "Slip cleared."
   },
   "mine": {
     "title": "My picks",
@@ -222,7 +227,7 @@
       "pending": "Pending",
       "record": "{won} W · {lost} L",
       "hitRate": "Hit rate",
-      "roi": "ROI",
+      "roi": "Return (ROI)",
       "empty": "Nothing in this period.",
       "note": "By the day the match kicks off in your time zone ({zone}). Profit in units of one stake, at the recorded price. PrediGol handles no money and takes no bets."
     },
@@ -242,7 +247,19 @@
       "cancel": "Cancel",
       "savedAt": "Saved {when}",
       "remove": "Remove",
-      "settlesAt": "Settled at your price if you give one; otherwise at the price shown."
+      "settlesAt": "Settled at your price if you give one; otherwise at the price shown.",
+      "count": "{shown} of {total}",
+      "more": "Show more",
+      "confirmRemove": {
+        "title": "Remove this pick from your list?",
+        "body": "It stops showing here and counting in your results. This cannot be undone.",
+        "ok": "Remove"
+      },
+      "confirmClearOdds": {
+        "title": "Clear your price?",
+        "body": "The pick counts again at the price we showed when you saved it.",
+        "ok": "Clear"
+      }
     },
     "parlays": {
       "title": "My parlays",
@@ -251,7 +268,14 @@
       "build": "Build a parlay",
       "remove": "Delete",
       "createdAt": "Created {when}",
-      "unnamed": "Unnamed parlay"
+      "unnamed": "Unnamed parlay",
+      "more": "Show more",
+      "count": "{shown} of {total}",
+      "confirmRemove": {
+        "title": "Delete this parlay?",
+        "body": "It disappears from your list and this cannot be undone.",
+        "ok": "Delete"
+      }
     }
   },
   "ai": {
@@ -332,7 +356,7 @@
       "record": "{won} W · {lost} L · {void} void",
       "hitRate": "Hit rate",
       "profit": "Profit",
-      "roi": "Return",
+      "roi": "Return (ROI)",
       "avgOdds": "Average odds",
       "avgOddsWon": "When won: {odds}",
       "bestStreak": "Best streak",
@@ -385,7 +409,8 @@
       "current": "Current",
       "bestWin": "Best",
       "worstLoss": "Worst"
-    }
+    },
+    "loading": "Reading your records: {loaded} of {total}…"
   },
   "funnel": {
     "label": "How a pick of the day gets here",
@@ -400,5 +425,7 @@
       "selection": "Selection (max 5)"
     },
     "help": "Each step is a filter: if no pick passes them all, the day has fewer or none. The picks of the day are chosen once PrediGol Intelligence has read the day: its pass of each match, with a news search."
-  }
+  },
+  "roiSample_one": "over {n} settled",
+  "roiSample_other": "over {n} settled"
 }

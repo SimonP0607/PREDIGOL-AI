@@ -146,6 +146,27 @@ export function slipReduce(legs: readonly SlipLeg[], action: SlipAction): SlipCh
   }
 }
 
+/** How long taking legs out of the slip can be undone (plan UX, A1, defect F53: it happened at the first tap). */
+export const UNDO_MS = 5_000;
+
+/** What a change took out of the slip and can be put back: the legs exactly as they were before it. */
+export interface SlipUndo {
+  effect: "removed" | "cleared";
+  before: SlipLeg[];
+  /** How many legs went. */
+  count: number;
+}
+
+/**
+ * The undo a change offers: one that took legs out (a leg removed, the slip cleared), never one that added or
+ * replaced. Any later change withdraws it, so putting it back is putting `before` back, as it was.
+ */
+export function undoOf(before: readonly SlipLeg[], change: SlipChange): SlipUndo | null {
+  if (change.effect !== "removed" && change.effect !== "cleared") return null;
+  const count = before.length - change.legs.length;
+  return count > 0 ? { effect: change.effect, before: [...before], count } : null;
+}
+
 const MARKETS: readonly string[] = ["1X2", "OU", "BTTS", "AH", "DC"];
 
 /** A slip read back from storage: anything malformed is dropped, never trusted. */

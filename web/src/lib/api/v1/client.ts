@@ -363,8 +363,13 @@ export const v1 = {
   // ── records: the day as persisted, and the user's own ──────────────────────
   daily: (q: { day?: string | undefined } & Preview = {}) =>
     getJson<Envelope<DailyBoard>>("/daily", q as Params),
-  myPicks: (status?: "open" | "settled") =>
-    getJson<Envelope<UserPick[]>>("/me/picks", { status, limit: 500 }),
+  /** A page of the user's saved picks: `meta.total` counts them all, `meta.next_cursor` leads on. */
+  myPicks: (q: { status?: "open" | "settled"; limit?: number; cursor?: string | undefined } = {}) =>
+    getJson<Envelope<UserPick[]>>("/me/picks", {
+      status: q.status,
+      limit: q.limit ?? 500,
+      cursor: q.cursor,
+    }),
   savePick: (body: SavePickIn) =>
     postJson<Envelope<{ id: number; snapshot: unknown }>>("/me/picks", body),
   setPickOdds: (id: number, userOdds: string | number | null) =>
@@ -374,7 +379,9 @@ export const v1 = {
     postJson<Envelope<ParlayValidation>>("/me/parlays/validate", { legs }),
   createParlay: (body: ParlayIn) =>
     postJson<Envelope<{ id: number; combined_odds: string | null }>>("/me/parlays", body),
-  myParlays: () => getJson<Envelope<UserParlay[]>>("/me/parlays", { limit: 200 }),
+  /** A page of the user's parlays (`meta.total`, `meta.next_cursor`). */
+  myParlays: (q: { limit?: number; cursor?: string | undefined } = {}) =>
+    getJson<Envelope<UserParlay[]>>("/me/parlays", { limit: q.limit ?? 200, cursor: q.cursor }),
   removeParlay: (id: number) => deleteJson<void>(`/me/parlays/${id}`),
   history: (period: HistoryPeriod, q: Preview = {}) =>
     getJson<Envelope<History>>("/me/history", { period, ...q }),

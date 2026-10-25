@@ -4,8 +4,8 @@
  * each market. Figures count up and charts draw in; nothing moves with reduced motion. One unit per record, at the
  * profit each was settled at: PrediGol handles no money.
  */
-import { useId, useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   Area,
   AreaChart,
@@ -145,6 +145,13 @@ function Kpis({ r }: { r: RecapData }) {
         label={t("records.recap.kpi.roi")}
         value={<Counted value={r.roi} format={(n) => fmtPct(n, 1)} />}
         tone={tone(r.roi)}
+        hint={
+          r.roi !== null ? (
+            <span data-testid="recap-roi-sample">
+              {t("records.roiSample", { count: r.staked, n: fmtInt(r.staked) })}
+            </span>
+          ) : undefined
+        }
       />
       <Kpi
         label={t("records.recap.kpi.avgOdds")}
@@ -449,16 +456,37 @@ function Streak({ r, animate }: { r: RecapData; animate: boolean }) {
   );
 }
 
+/**
+ * The recap reads every record, page after page - the largest pages the API serves, 500 picks or 200 parlays (plan
+ * UX, A1, defect F53: it read the first 500 picks and the first 200 parlays and added those up as if they were all).
+ * Until the last page is in, it says how many it has read of how many there are, and shows no figure: a figure over
+ * part of the records would not be the user's.
+ */
+const PICKS_PAGE = 500;
+const PARLAYS_PAGE = 200;
+
+function loadedOf(pages: ReadonlyArray<{ data: readonly unknown[] }> | undefined): number {
+  return pages?.reduce((n, p) => n + p.data.length, 0) ?? 0;
+}
+
 export function Recap() {
-  const picks = useQuery(live.myPicks);
-  const parlays = useQuery(live.myParlays);
+  const picks = useInfiniteQuery(live.myPicksPages(PICKS_PAGE));
+  const parlays = useInfiniteQuery(live.myParlaysPages(PARLAYS_PAGE));
   const [scope, setScope] = useState<Scope>("picks");
   const [period, setPeriod] = useState<number>(30);
   const reduced = useReducedMotion();
   const query = scope === "picks" ? picks : parlays;
+  const { hasNextPage, isFetchingNextPage, isError, fetchNextPage } = query;
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && !isError) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, isError, fetchNextPage]);
+  const loaded = loadedOf(query.data?.pages);
+  const total = query.data?.pages[0]?.meta.total ?? loaded;
   const records = useMemo(
     () =>
-      scope === "picks" ? fromPicks(picks.data?.data ?? []) : fromParlays(parlays.data?.data ?? []),
+      scope === "picks"
+        ? fromPicks(picks.data?.pages.flatMap((p) => p.data) ?? [])
+        : fromParlays(parlays.data?.pages.flatMap((p) => p.data) ?? []),
     [scope, picks.data, parlays.data],
   );
   const r = useMemo(() => recap(within(records, period || null)), [records, period]);
@@ -477,6 +505,18 @@ export function Recap() {
       <Card>
         <ErrorState error={query.error} onRetry={() => void query.refetch()} />
       </Card>
+    );
+  } else if (hasNextPage) {
+    body = (
+      <div className="space-y-3" data-testid="recap-loading">
+        <p className="numeric text-caption text-muted-foreground" role="status">
+          {t("records.recap.loading", { loaded: fmtInt(loaded), total: fmtInt(total) })}
+        </p>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <SkeletonBlock className="h-64" />
+          <SkeletonBlock className="h-64" />
+        </div>
+      </div>
     );
   } else if (r.settled === 0) {
     body = (

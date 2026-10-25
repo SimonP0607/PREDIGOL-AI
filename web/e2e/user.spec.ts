@@ -203,6 +203,12 @@ test.describe.serial("a user's own records", () => {
     const price = await firstPrice(page, w, fixture.fixture_id);
     await price.getByTestId("save-pick").click();
     await expect(price.getByTestId("save-pick")).toHaveAttribute("aria-pressed", "true");
+    // Plan UX, A1 (F53): taking a saved pick out asks first; cancelling keeps it.
+    await price.getByTestId("save-pick").click();
+    await expect(page.getByTestId("confirm-unsave-pick")).toBeVisible();
+    await page.getByTestId("confirm-unsave-pick-cancel").click();
+    await expect(page.getByTestId("confirm-unsave-pick")).toHaveCount(0);
+    await expect(price.getByTestId("save-pick")).toHaveAttribute("aria-pressed", "true");
 
     await open(page, w, "/my-picks");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(t.records.mine.title);
@@ -213,7 +219,8 @@ test.describe.serial("a user's own records", () => {
     );
     const row = mine.first();
     await expect(row).toBeVisible();
-    await expect(row.getByTestId("origin-mine")).toHaveText(t.records.labels.savedByMe);
+    // Plan UX, A1: the user's own selection says so ("Tu selección"), never mixed with PrediGol's picks.
+    await expect(row.getByTestId("origin-mine")).toHaveText(t.records.labels.mine);
     await expect(row.getByTestId("result-badge")).toHaveAttribute("data-status", "PENDING");
 
     await row.getByTestId("saved-pick-odds").click();
@@ -223,7 +230,13 @@ test.describe.serial("a user's own records", () => {
       lang() === "es" ? "2,35" : "2.35",
     );
 
+    // Removing asks first: cancel keeps the pick, confirm removes it.
     await row.getByTestId("saved-pick-remove").click();
+    await expect(page.getByTestId("confirm-remove-pick")).toBeVisible();
+    await page.getByTestId("confirm-remove-pick-cancel").click();
+    await expect(row).toBeVisible();
+    await row.getByTestId("saved-pick-remove").click();
+    await page.getByTestId("confirm-remove-pick-ok").click();
     await expect(mine).toHaveCount(0);
     await assertClean(page, w);
   });
@@ -246,6 +259,12 @@ test.describe.serial("a user's own records", () => {
     await page.getByTestId("slip-open").click();
     const sheet = page.getByTestId("slip-sheet");
     await expect(sheet.getByTestId("slip-leg")).toHaveCount(2);
+    // Plan UX, A1 (F53): a leg taken out can be put back, as it was, for five seconds.
+    await sheet.getByTestId("slip-remove").first().click();
+    await expect(sheet.getByTestId("slip-leg")).toHaveCount(1);
+    await sheet.getByTestId("slip-undo-button").click();
+    await expect(sheet.getByTestId("slip-leg")).toHaveCount(2);
+    await expect(sheet.getByTestId("slip-undo")).toHaveCount(0);
     await expect(sheet.getByTestId("slip-save")).toBeEnabled();
     await expect(sheet.getByTestId("slip-error")).toHaveCount(0);
     const name = `E2E ${lang()} ${Date.now()}`;
@@ -259,6 +278,7 @@ test.describe.serial("a user's own records", () => {
     await expect(card).toBeVisible();
     await expect(card.getByTestId("parlay-status")).toHaveText(t.records.parlayStatus.READY);
     await card.getByTestId("my-parlay-remove").click();
+    await page.getByTestId("confirm-remove-parlay-ok").click();
     await expect(page.getByTestId("my-parlay").filter({ hasText: name })).toHaveCount(0);
     await assertClean(page, w);
   });

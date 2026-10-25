@@ -181,9 +181,12 @@ export function RecordState({
 /** "PrediGol Pick" or "Guardado por mí": whose choice a record is. */
 export function OriginLabel({
   origin,
+  kind = "pick",
   className,
 }: {
   origin: "predigol" | "mine";
+  /** A user's own record says what it is: «Tu selección» or «Tu parlay» (plan UX, A1). */
+  kind?: "pick" | "parlay";
   className?: string | undefined;
 }) {
   const Icon = origin === "predigol" ? BadgeCheck : Bookmark;
@@ -197,7 +200,11 @@ export function OriginLabel({
       )}
     >
       <Icon aria-hidden className="h-3 w-3" />
-      {origin === "predigol" ? t("records.labels.predigolPick") : t("records.labels.savedByMe")}
+      {origin === "predigol"
+        ? t("records.labels.predigolPick")
+        : kind === "parlay"
+          ? t("records.labels.mineParlay")
+          : t("records.labels.mine")}
     </span>
   );
 }
