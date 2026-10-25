@@ -140,6 +140,49 @@ def test_a_validation_error_logs_where_it_failed_not_what_it_was_given() -> None
         Account.model_validate(given)
     except ValidationError as exc:
         summary, trace = error_summary(exc), error_trace(exc)
-    assert summary.startswith("1 validation error for Account")
+    assert summary == "1 validation error(s): age (int_parsing)", "where it failed and how, not what it was given"
     for secret in ("Ana Pérez", "ana@example.com", "input_value"):
         assert secret not in summary and secret not in trace
+
+
+def test_a_database_error_logs_its_sqlstate_not_the_value_it_quotes() -> None:
+    """psycopg's first line can quote the value it refused ('invalid input syntax for type integer: "..."'): the
+    summary is its SQLSTATE and what it names (second review of A1)."""
+    import psycopg
+
+    from fbi.core.logging import error_summary
+
+    value = "Ana " + "Pérez"
+    summary = error_summary(psycopg.errors.InvalidTextRepresentation(
+        f'invalid input syntax for type integer: "{value}"'))
+    assert summary.startswith("sqlstate 22P02") and "Pérez" not in summary
+
+
+def test_a_group_of_errors_says_how_many_and_what_kinds() -> None:
+    from fbi.core.logging import error_summary, error_trace
+
+    group = ExceptionGroup("two", [ValueError("ana@example.com"), KeyError("secret")])
+    assert error_summary(group) == "2 errors: ValueError, KeyError"
+    assert "ana@example.com" not in error_trace(group)
+
+
+def test_a_chain_of_causes_keeps_each_cause_s_frames_and_none_of_their_messages() -> None:
+    from fbi.core.logging import error_trace
+
+    secret, note = "ana" + "@example.com", "wrap" + "ped"  # data, not code: the frames show source lines
+
+    def low() -> None:
+        raise KeyError(secret)
+
+    def high() -> None:
+        try:
+            low()
+        except KeyError as exc:
+            raise RuntimeError(note) from exc
+
+    try:
+        high()
+    except RuntimeError as exc:
+        trace = error_trace(exc)
+    assert "low" in trace and "high" in trace and "KeyError (a cause)" in trace and trace.endswith("RuntimeError")
+    assert secret not in trace and note not in trace

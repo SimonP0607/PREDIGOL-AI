@@ -92,23 +92,60 @@ def scrub_personal(text: str) -> str:
 
 
 def error_summary(exc: BaseException) -> str:
-    """What an unexpected error says, safe for a log: the first line of its message - the summary; the lines after it
-    are where libraries put the data (a database's "DETAIL: Failing row contains (...)", a validation error's
-    input) - without personal data, at most 300 characters."""
-    first = str(exc).strip().splitlines()[0] if str(exc).strip() else ""
+    """What an unexpected error says, safe for a log (plan UX, A1; reviews of A1), at most 300 characters:
+
+    - a validation error (pydantic, FastAPI): where it failed and how - the fields and the kinds of error - never the
+      input it was given;
+    - a database error (psycopg): its SQLSTATE and the constraint, table and column it names - never the values its
+      messages quote;
+    - a group of errors: how many, and their types;
+    - any other: the first line of its message - the lines after it are where libraries put the data - through the
+      filter of personal data.
+    """
+    errors = getattr(exc, "errors", None)
+    if callable(errors):
+        try:
+            found = errors()
+        except Exception:  # an error that cannot say its errors falls back to its first line
+            found = None
+        if isinstance(found, list) and all(isinstance(e, dict) and "loc" in e for e in found):
+            where = "; ".join(f"{'.'.join(str(x) for x in e['loc']) or '-'} ({e.get('type', '?')})" for e in found[:10])
+            return scrub_personal(f"{len(found)} validation error(s): {where}")[:300]
+    sqlstate = getattr(exc, "sqlstate", None)
+    diag = getattr(exc, "diag", None)
+    if isinstance(sqlstate, str) and diag is not None:
+        parts = [f"sqlstate {sqlstate}"]
+        for label in ("schema_name", "table_name", "column_name", "constraint_name"):
+            value = getattr(diag, label, None)
+            if value:
+                parts.append(f"{label.removesuffix('_name')} {value}")
+        return scrub_personal(", ".join(parts))[:300]
+    if isinstance(exc, BaseExceptionGroup):
+        kinds = ", ".join(type(e).__name__ for e in exc.exceptions[:10])
+        return f"{len(exc.exceptions)} errors: {kinds}"[:300]
+    text = str(exc).strip()
+    first = text.splitlines()[0] if text else ""
     return scrub_personal(first)[:300]
 
 
 def error_trace(exc: BaseException) -> str:
     """Where an unexpected error came from, safe for a log: the frames (file, line, function, the source line) and
-    the type - never the message's data or a frame's values - without personal data, the end of it (the cause)."""
+    the types - never a message's data or a frame's values - through the filter of personal data. Each link of the
+    chain of causes keeps its own end (the frames nearest the error), within 6,000 characters in all."""
     import traceback
 
-    frames = "".join(traceback.format_tb(exc.__traceback__))
-    cause = exc.__cause__ or exc.__context__
-    if cause is not None and cause.__traceback__ is not None:
-        frames = "".join(traceback.format_tb(cause.__traceback__)) + f"{type(cause).__name__} (the cause)\n" + frames
-    return scrub_personal(frames + type(exc).__name__)[-6000:]
+    chain: list[BaseException] = []
+    link: BaseException | None = exc
+    while link is not None and link not in chain and len(chain) < 4:
+        chain.append(link)
+        link = link.__cause__ or link.__context__
+    budget = 6000 // len(chain)
+    parts = []
+    for link in reversed(chain):
+        frames = "".join(traceback.format_tb(link.__traceback__))[-(budget - 80):]
+        role = "" if link is exc else " (a cause)"
+        parts.append(f"{frames}{type(link).__name__}{role}")
+    return scrub_personal("\n".join(parts))[-6000:]
 
 
 def configure(level: str = "INFO") -> None:
