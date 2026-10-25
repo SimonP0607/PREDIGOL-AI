@@ -158,6 +158,13 @@ def decisions(conn: Conn, *, day: date | None, state: str | None, market: str | 
     return ok(j({"day": d, "items": rows}))
 
 
+FAMILY_PM_SQL = """
+SELECT p.*, p.quality AS decision_quality FROM intel.family_postmortems p WHERE p.decision_id = %(id)s ORDER BY p.created_at DESC, p.id DESC LIMIT 1
+"""
+"""The post-mortem of a decision of a family (``pm-fam-v1``), in the shape the page of a decision reads the pipeline's: the quality of the price under
+the pipeline's name for it as well. A family keeps its lessons apart from the pipeline's (``fbi.familydecisions``, migration 0094)."""
+
+
 def decision_detail(conn: Conn, decision_id: int) -> Envelope[dict[str, Any]]:
     d = fetch_one(conn, """
         SELECT d.*, th.name || ' - ' || ta.name AS match, c.name AS competition, b.name AS bookmaker
@@ -187,6 +194,8 @@ def decision_detail(conn: Conn, decision_id: int) -> Envelope[dict[str, Any]]:
     outcome = fetch_one(conn, "SELECT * FROM intel.decision_outcomes WHERE decision_id = %(id)s", {"id": decision_id})
     pm = fetch_one(conn, "SELECT * FROM intel.postmortems WHERE decision_id = %(id)s ORDER BY id DESC LIMIT 1",
                    {"id": decision_id})
+    if pm is None and d["pick_id"] is None:  # the decision of a family has no pick and its post-mortem is the family's own (pm-fam-v1)
+        pm = fetch_one(conn, FAMILY_PM_SQL, {"id": decision_id})
     history = fetch_all(conn, """
         SELECT id, known_at, checkpoint, state, odds, p_cal, ev_cal, score, stake_units, context_status
           FROM intel.decisions WHERE fixture_id = %(f)s AND market_key = %(m)s AND selection = %(s)s AND line = %(l)s

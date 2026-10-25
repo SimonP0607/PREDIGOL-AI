@@ -71,6 +71,7 @@ NAMES_IT: dict[str, str] = {
     "knowledge/layers.py": "Match Knowledge (plan F7), layer c9: the pure layer that turns the post-mortems of a finished match into facts",
     "knowledge/reader.py": "Match Knowledge (plan F7): reads the post-mortems of the finished matches it puts together (layer c9)",
     "api/services/intelligence.py": "the Admin Console's PrediGol Intelligence: the post-mortem of a decision and the memory (GET /admin/intelligence/memory)",
+    "api/services/families.py": "the Admin Console's page of the families in shadow (GET /admin/intelligence/families): their post-mortems and their memory, read",
     "api/services/ai_v2.py": "the Admin Console's post-mortems, learning and sources: the selections of a day with their narratives and notes",
     "api/services/ai_layer.py": "the Admin Console's AI pages: the dashboard of errors, the day's counts and the log of memory events (the card a "
                                 "user is shown, match_analysis, reaches none of it: held below)",
@@ -161,6 +162,10 @@ IMPORTS: dict[str, dict[str, str]] = {
     },
     "fbi.api.services.intelligence": {
         "api/routers/intelligence.py": "the routes of PrediGol Intelligence, all of the Admin Console",
+        "api/services/families.py": "the page of the families in shadow writes its numbers the way this page does (j)",
+    },
+    "fbi.api.services.families": {
+        "api/routers/intelligence.py": "the routes of PrediGol Intelligence, all of the Admin Console (GET /admin/intelligence/families)",
     },
     "fbi.api.services.match_memory": {
         "api/routers/ai_layer.py": "GET /admin/ai/match-memory",
@@ -204,7 +209,8 @@ WRITERS: dict[str, set[str]] = {
 """File -> the only tables its SQL writes to. A post-mortem, a memory or a note is built FROM the facts of a match - fixtures, events, statistics,
 players, prices, picks, settlements - and never into them (``ai.source_stats`` is the day's tally of the sources the notes quote)."""
 
-READ_ONLY = ("api/services/intelligence.py", "api/services/ai_v2.py", "api/services/match_memory.py", "scripts/postmortems.py", "scripts/memory.py")
+READ_ONLY = ("api/services/intelligence.py", "api/services/ai_v2.py", "api/services/match_memory.py", "api/services/families.py", "scripts/postmortems.py",
+             "scripts/memory.py")
 """The pages and commands that look at the post-mortem and the memory write nothing themselves: what a command builds, the builders write."""
 
 CYCLES: dict[str, dict[str, set[str]]] = {
