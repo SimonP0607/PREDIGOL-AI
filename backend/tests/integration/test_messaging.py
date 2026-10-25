@@ -657,3 +657,18 @@ def test_the_operators_real_test_goes_through_the_queue(fresh: str, capsys: pyte
     status = capsys.readouterr().out
     assert "queued, 0 attempt(s)" in status and READER not in status and READER_NAME not in status
     assert email_test.main(["status", "999999"]) == 1
+
+
+def test_the_readers_export_holds_their_messages_and_choices_and_nobody_elses(conn: psycopg.Connection[Any]) -> None:
+    mine, _ = queue(conn, READER), queue(conn, OTHER)
+    conn.execute("INSERT INTO customer.preferences (user_id, email_off) VALUES (%s, '{membership}')",
+                 (user_id(conn, READER),))
+    conn.commit()
+    outbox.dispatch(conn, FakeProvider("re-export-1"), at=NOW)
+    document = privacy.export(conn, user_id(conn, READER))
+    conn.commit()
+    assert [(m["template"], m["status"]) for m in document["messages"]] == [("privacy_request_answered", "sent")]
+    assert document["notification_preferences"]["email_switched_off"] == ["membership"]
+    assert document["notification_preferences"]["email_status"] == "ok"
+    assert "re-export-1" not in json.dumps(document) and "provider_id" not in json.dumps(document)
+    assert mine and OTHER not in json.dumps(document)

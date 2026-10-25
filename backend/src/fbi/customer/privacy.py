@@ -238,6 +238,16 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         """, (user_id,)):
             legs[leg.pop("user_parlay_id")].append(leg)
     parlay_rows = [{**{k: v for k, v in p.items() if k != "id"}, "legs": legs[p["id"]]} for p in parlays]
+    # The messages PrediGol sent or queued for the reader and their choices (plan UX, A5): what each was and its fate,
+    # never the provider's id or error code (operational, not the reader's).
+    messages = _all(conn, """
+        SELECT template, category, locale, status, created_at, sent_at
+        FROM customer.messages_outbox WHERE user_id = %s ORDER BY created_at DESC, id DESC
+    """, (user_id,))
+    notification_prefs = _all(conn, """
+        SELECT email_off AS email_switched_off, email_status, email_status_at, updated_at
+        FROM customer.preferences WHERE user_id = %s
+    """, (user_id,))
     document: dict[str, Any] = _iso({
         "format": EXPORT_FORMAT,
         "generated_at": now or datetime.now(UTC),
@@ -248,5 +258,7 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "privacy_requests": tickets,
         "saved_picks": picks,
         "saved_parlays": parlay_rows,
+        "messages": messages,
+        "notification_preferences": notification_prefs[0] if notification_prefs else None,
     })
     return document
