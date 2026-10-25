@@ -1,4 +1,4 @@
-"""Data-leakage audit - ``leak-audit-v6``: did any decision use something that was not known at its ``known_at``?
+"""Data-leakage audit - ``leak-audit-v7``: did any decision use something that was not known at its ``known_at``?
 
 Run every night over the decisions taken on a Bogotá day, and in the tests. One row per rule
 (``intel.audit_checks``): how many decisions were checked and how many violate it, with examples. The rules:
@@ -9,7 +9,8 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
     calibrator_known         the calibrator was fitted by known_at, on results settled before it was fitted
     review_known             the AI review the decision read was made by known_at
     evidence_known           every evidence item it cites was retrieved (and, when dated, published) by known_at
-    consensus_known          the de-vigged consensus at the price's timestamp exists and was captured by known_at
+    consensus_known          the de-vigged consensus at the price's timestamp exists and was captured by known_at (v7: only the decisions
+                             of the pipeline's own layer, ``decision-v1``: a family prices from the quotes of the books, not from this table)
     tie_legs_known           (v2, plan F2) the AI packets built on the day: every earlier leg of its tie that the packet
                              cites kicked off before the match (so it is not the match itself, nor a later leg) and had
                              its result recorded by the packet's moment. Counted per cited leg; the examples are packet
@@ -85,6 +86,21 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              ``status`` (the head-to-head, the scenarios, the tactics), that status and the block's ``version`` are
                              the ones the packet's factor entry states - so a validation of another version of the code is not used
                              for this one. Examples are packet ids.
+    family_forecast_known    (v7, plan F11) the decisions the FAMILIES took on the day (``decision-fam-v1``, ``fbi.familydecisions``): the
+                             forecast each one cites (``filters``, ``model``, ``data.forecast_id``) is a row that exists for that match,
+                             model, market, line and selection, was written (``known_at``) and had its data cut off by the decision's
+                             moment, and no newer forecast of that selection by the same model existed by then (a decision that read an
+                             older forecast than the one that stood). A decision that cites none is a violation. Examples are decision ids.
+    family_price_known       (v7, plan F11) the same decisions' price: the bookmaker it names had quoted that very price for that selection
+                             and line, before the match, by the decision's moment (``captured_at``). Whether it was still the book's price
+                             then is not asked: a payload read again by a newer extractor writes its quotes with the instant it was
+                             fetched, so a quote can appear for a moment the decision could not have known of, and taking an older price
+                             is staleness, not a leak. This is what ``consensus_known`` is for the pipeline's layer (a family prices from
+                             the quotes of the books, not from the consensus table). Examples are decision ids.
+
+The other rules over decisions (``known_before_kickoff``, ``price_known``, ``pick_known``, ``calibrator_known``, ``review_known``,
+``evidence_known``) read the decisions of every layer: a family's row has no pick, calibrator, review or evidence and drops out of the rules
+that join them, and must still be written before the kick-off and with a price captured by then.
 
 Every rule is ONE statement over the whole Bogotá day, so it has to stay linear in the number of packets (a night has some 11,000, each
 citing up to two lists of ten matches): to compare what a packet cited with what it should have cited, build one list per packet
@@ -106,9 +122,10 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import day_bounds
 from fbi.core import match_state
+from fbi.core.decision_versions import DECISION_CORE, DECISION_FAMILIES
 from fbi.intel import factors, h2h, tactics
 
-VERSION = "leak-audit-v6"
+VERSION = "leak-audit-v7"
 
 FINISHED = "ARRAY[" + ", ".join(f"'{code}'" for code in sorted(match_state.FINISHED)) + "]"
 """The stored states of a match played to a result, as a SQL array (constants of ``fbi.core.match_state``, not user input)."""
@@ -179,7 +196,7 @@ RULES: dict[str, str] = {
                (array_agg(DISTINCT e.decision_id) FILTER (WHERE e.retrieved_at > e.known_at
                                                           OR e.published_at > e.known_at))[1:5] AS examples FROM e""",
     "consensus_known": f"""
-        WITH d AS ({BASE}) SELECT count(*) FILTER (WHERE d.price_at IS NOT NULL) AS n,
+        WITH d AS ({BASE} AND d.decision_version = %(core)s) SELECT count(*) FILTER (WHERE d.price_at IS NOT NULL) AS n,
                count(*) FILTER (WHERE d.price_at IS NOT NULL AND NOT EXISTS (
                    SELECT 1 FROM market.market_consensus m WHERE m.fixture_id = d.fixture_id
                       AND m.market_key = d.market_key AND m.selection = d.selection AND m.line = d.line
@@ -189,6 +206,36 @@ RULES: dict[str, str] = {
                       AND m.market_key = d.market_key AND m.selection = d.selection AND m.line = d.line
                       AND m.as_of = d.price_at AND m.devig_method = 'shin' AND m.as_of <= d.known_at)))[1:5]
                  AS examples FROM d""",
+    "family_forecast_known": f"""
+        WITH d AS ({BASE} AND d.decision_version = %(families)s), t AS (
+            SELECT d.id, d.known_at, d.fixture_id, d.model_name, d.market_key, d.selection, d.line,
+                   jsonb_path_query_first(d.filters, '$[*] ? (@.key == "model").data.forecast_id') #>> '{{}}' AS cited
+              FROM d),
+        c AS (
+            SELECT t.id, t.known_at, t.fixture_id, t.model_name, t.market_key, t.selection, t.line,
+                   CASE WHEN t.cited ~ '^[0-9]{{1,18}}$' THEN t.cited::bigint END AS forecast_id
+              FROM t),
+        k AS (
+            SELECT c.id, (mf.id IS NOT NULL AND mf.known_at <= c.known_at AND mf.data_cutoff_ts <= c.known_at
+                          AND NOT EXISTS (SELECT 1 FROM models.match_forecasts n
+                                           WHERE n.fixture_id = mf.fixture_id AND n.version = mf.version AND n.model_name = mf.model_name
+                                             AND n.market_key = mf.market_key AND n.line = mf.line AND n.selection = mf.selection
+                                             AND n.known_at <= c.known_at AND (n.known_at, n.id) > (mf.known_at, mf.id))) AS ok
+              FROM c LEFT JOIN models.match_forecasts mf
+                     ON mf.id = c.forecast_id AND mf.fixture_id = c.fixture_id AND mf.model_name = c.model_name
+                    AND mf.market_key = c.market_key AND mf.selection = c.selection AND mf.line = c.line)
+        SELECT count(*) AS n, count(*) FILTER (WHERE NOT k.ok) AS bad,
+               (array_agg(k.id ORDER BY k.id) FILTER (WHERE NOT k.ok))[1:5] AS examples FROM k""",
+    "family_price_known": f"""
+        WITH d AS ({BASE} AND d.decision_version = %(families)s AND d.odds IS NOT NULL), k AS (
+            SELECT d.id, EXISTS (
+                SELECT 1 FROM market.odds_quotes x JOIN market.market_definitions md ON md.id = x.definition_id
+                 WHERE x.fixture_id = d.fixture_id AND x.bookmaker_id = d.bookmaker_id AND md.market_key = d.market_key
+                   AND md.scope = 'prematch' AND x.selection = d.selection AND x.line = d.line
+                   AND x.odds_decimal = d.odds AND x.captured_at <= d.known_at) AS ok
+              FROM d)
+        SELECT count(*) AS n, count(*) FILTER (WHERE NOT k.ok) AS bad,
+               (array_agg(k.id ORDER BY k.id) FILTER (WHERE NOT k.ok))[1:5] AS examples FROM k""",
     "tie_legs_known": f"""
         WITH p AS ({PACKETS}), l AS (
             SELECT p.id AS packet_id, p.as_of, p.fixture_id, (x ->> 'fixture_id')::bigint AS leg_id
@@ -524,7 +571,7 @@ def audit_day(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> dict
     out: dict[str, dict[str, Any]] = {}
     with conn.cursor(row_factory=dict_row) as cur:
         for rule, sql in RULES.items():
-            cur.execute(sql, {"start": start, "end": end})
+            cur.execute(sql, {"start": start, "end": end, "core": DECISION_CORE, "families": DECISION_FAMILIES})
             r = cur.fetchone() or {}
             n, bad = int(r.get("n") or 0), int(r.get("bad") or 0)
             examples = [int(x) for x in (r.get("examples") or [])]

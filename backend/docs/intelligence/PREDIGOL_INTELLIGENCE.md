@@ -335,7 +335,7 @@ vista por familia de lo mismo; ver `docs/owner/CATALOGO_MERCADOS_F9.md`.
 * Los tokens de respuestas inválidas se cuentan. Métricas: coste por partido, candidato, pick, investigación,
   post-mortem, día y proyección mensual. Los análisis son compartidos: ningún token por usuario.
 
-## 10. Fugas de datos (`leak-audit-v6`, diario y en tests)
+## 10. Fugas de datos (`leak-audit-v7`, diario y en tests)
 
 Para cada decisión: `known_at` < saque; `price_at` ≤ `known_at`; pick `data_cutoff_ts` y `created_at` ≤ `known_at`;
 calibrador `fitted_at` ≤ `known_at` y sus datos liquidados antes de `fitted_at`; revisión y paquete ≤ `known_at`;
@@ -351,6 +351,16 @@ resultado registrado a la hora del paquete, y no se dejó fuera un cruce conocid
 que el bloque cita, y el global de una vuelta es el del bloque `phase` del propio paquete), `tactics_known` (cada partido de la muestra existe, es del equipo, está dentro de la ventana y tenía su
 resultado, sus eventos y su hoja registrados a la hora del paquete -una fila que el trabajo posterior al partido volvió a escribir después, en un partido ya liquidado a esa hora y desde una lectura que ese trabajo pidió, es una relectura y cuenta como ya registrada-; la muestra son los últimos `N` conocidos y los goles contados son los de los 90 minutos) y `factors_known` (el estado que
 dice el paquete de cada factor, la decisión que cita y el experimento son los de la última decisión de esa versión tomada a esa hora). Toda violación queda en `intel.audit_checks`.
+
+**Capas (v7, plan F11).** La auditoría sabe qué capa escribió cada decisión (`decision_version`). Las reglas que leen decisiones de todas las capas son `known_before_kickoff` y `price_known`
+(una decisión de una familia, que no tiene pick, calibrador, revisión ni evidencias, sale de las reglas que los unen pero cuenta en esas dos); `consensus_known` lee solo la capa del pipeline
+(`decision-v1`, cuyo precio sale de `market.market_consensus`); y dos reglas nuevas leen solo la capa de las familias (`decision-fam-v1`, en *shadow*, escrita por `fbi.familydecisions`).
+`family_forecast_known`: el pronóstico que la decisión cita en su filtro `model` existe para ese partido, modelo, mercado, línea y selección, se había escrito y tenía sus datos cortados a la
+hora de la decisión, y era el más nuevo de ese modelo para esa selección a esa hora; una decisión que no cita ninguno, o que cita algo que no es un número, es una violación (y no detiene la
+auditoría). `family_price_known`: la casa que la decisión nombra había cotizado exactamente ese precio, para esa selección y línea y antes del partido, a la hora de la decisión. Esa regla
+no pide que siguiera siendo el precio vigente de la casa: un cuerpo del proveedor leído otra vez por un extractor más nuevo escribe sus cotizaciones con la hora en que se pidió, así que puede
+aparecer una cotización para un momento que la decisión no podía conocer, y tomar un precio más viejo es retraso, no fuga. Son 19 reglas; una prueba de escala (5.000 decisiones de un día) mide
+las dos nuevas en una fracción de segundo.
 
 ## 11. Autonomía controlada
 
