@@ -6,10 +6,12 @@
  *
  * `measureOf` is the web's copy of `fbi.api.services.families.measure_of` (itself held equal to `fbi.families.score.measure_of`): which measure
  * of the finished match grades a bet. Its test lists every key the families state.
+ *
+ * It also says what a decision did not know (the request for research of plan F11.10): the needs, the factors and the cost in searches.
  */
 import { hasKey, t, translateOr } from "@/lib/i18n";
 import { fmtLine, localFixed, localInt, toNumber } from "@/lib/i18n/format";
-import type { FamiliesRule } from "@/lib/api/v1/types_families";
+import type { FamiliesResearch, FamiliesRule } from "@/lib/api/v1/types_families";
 import type { BadgeTone } from "@/components/primitives/StatusBadge";
 
 /** The families that decide, in the order the tab shows them (the server's own order). */
@@ -301,6 +303,69 @@ export function ruleNote(rule: FamiliesRule): string {
   return rule.note;
 }
 
+// ── what a decision did not know ─────────────────────────────────────────────────────────────────────────────────────────
+
+/** The things a decision of a family could lack (`fbi.familydecisions.research.NEEDS`), and the states, sources and standings the server writes. */
+export const NEED_KEYS = ["referee", "lineups", "context"] as const;
+export const NEED_STATES = ["KNOWN", "PARTIAL", "MISSING"] as const;
+export const NEED_SOURCES = ["provider", "search"] as const;
+/** The context factors an experiment could test against a family (`fbi.intel.factors.CATALOGUE`) and the standing each can have. */
+export const FACTOR_KEYS = [
+  "h2h_weighted",
+  "scenarios",
+  "tactics_profile",
+  "rest_congestion",
+] as const;
+export const FACTOR_STANDINGS = ["DESCRIPTIVE", "VALIDATED"] as const;
+/** Why a request is not served (`fbi.familydecisions.research.UNSERVED`). */
+export const UNSERVED_CODES = ["family_shadow"] as const;
+
+export function needName(key: string): string {
+  return translateOr(`families.research.need.${key}`, key);
+}
+
+export function needStateName(state: string): string {
+  return translateOr(`families.research.state.${state}`, state);
+}
+
+export function sourceName(source: string): string {
+  return translateOr(`families.research.source.${source}`, source);
+}
+
+export function factorName(key: string): string {
+  return translateOr(`families.research.factor.${key}`, key);
+}
+
+export function factorStandingName(status: string): string {
+  return translateOr(`families.research.standing.${status}`, status);
+}
+
+export function unservedName(code: string): string {
+  return translateOr(`families.research.unserved.${code}`, code);
+}
+
+/**
+ * What finding out what a decision lacked would cost: "3 búsquedas", or - when only the provider can bring what is missing - that no search is
+ * needed. A decision that lacks nothing costs nothing and says nothing.
+ */
+export function searchesText(research: FamiliesResearch): string | null {
+  if (research.open.length === 0) return null;
+  return research.searches > 0
+    ? t("families.research.searches", { count: research.searches })
+    : t("families.research.noSearches");
+}
+
+/** The factors that could explain the family, each with its standing when it is anything but the descriptive one it is born as. */
+export function factorsText(research: FamiliesResearch): string {
+  return research.factors
+    .map((f) =>
+      f.status === "DESCRIPTIVE"
+        ? factorName(f.factor)
+        : `${factorName(f.factor)} (${factorStandingName(f.status)})`,
+    )
+    .join(" · ");
+}
+
 // ── the tone of each word (green when it is good news for the family, red when it is not) ────────────────────────────────
 
 const VERDICT_TONE: Record<string, BadgeTone> = {
@@ -329,6 +394,12 @@ const STEP_TONE: Record<string, BadgeTone> = {
 };
 /** The same tones the rest of the console gives the two states a family can reach. */
 const STATE_TONE: Record<string, BadgeTone> = { INVESTIGACION: "info", RECHAZADO: "negative" };
+/** A thing the decision knew is good news, one it knew in part is a note, one it did not know is a warning (nothing is red: the family only measures). */
+const NEED_TONE: Record<string, BadgeTone> = {
+  KNOWN: "positive",
+  PARTIAL: "info",
+  MISSING: "warning",
+};
 
 export function verdictTone(verdict: string): BadgeTone {
   return VERDICT_TONE[verdict] ?? "neutral";
@@ -341,6 +412,9 @@ export function stepTone(status: string): BadgeTone {
 }
 export function stateTone(state: string): BadgeTone {
   return STATE_TONE[state] ?? "neutral";
+}
+export function needTone(state: string): BadgeTone {
+  return NEED_TONE[state] ?? "neutral";
 }
 
 // ── the mode of the cycle ────────────────────────────────────────────────────────────────────────────────────────────────

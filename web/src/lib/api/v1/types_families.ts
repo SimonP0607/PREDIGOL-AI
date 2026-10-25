@@ -1,7 +1,8 @@
 /**
  * The families in shadow (plan F10.17 and F11.11): /api/v1/admin/intelligence/families. Corners, cards and the goals of the halves decide in SHADOW
  * under a version of their own (`decision-fam-v1`), and this is the one place they are read: the last word of each family on each match, the rule
- * that grades it, what became of it, the post-mortem the families made of it and what they remember. Reading only; SUPER_ADMIN only.
+ * that grades it, what the decision did not know, what became of it, the post-mortem the families made of it and what they remember. Reading
+ * only; SUPER_ADMIN only.
  * Numbers arrive as numbers, instants as ISO text; every block may be empty on a young database (the switch is off until the owner asks).
  */
 
@@ -48,6 +49,49 @@ export interface FamiliesRule {
   columns: string[];
   liquidable: boolean;
   note: string;
+}
+
+/** How much of a thing a decision would want to know was known when it was taken: all of it, part of it, or none. */
+export type FamilyNeedState = "KNOWN" | "PARTIAL" | "MISSING";
+
+/** One thing a decision of a family would want to know before anyone believed it. */
+export interface FamiliesNeed {
+  /** `referee` (the one the competition designated), `lineups` (the confirmed ones) or `context` (who can play and what the match is worth). */
+  key: "referee" | "lineups" | "context" | string;
+  state: FamilyNeedState | string;
+  /** Who fills it: `provider` (its own data, free: it arrives when the competition publishes it) or `search` (the outside world, paid). */
+  source: "provider" | "search" | string;
+  /** Since when it was known (ISO), or null when it was not. */
+  since: string | null;
+}
+
+/** A context factor that an experiment could test against the family, with the standing it had when the family decided. */
+export interface FamiliesFactor {
+  factor: string;
+  version: string | null;
+  /** `DESCRIPTIVE` until a person validates an experiment of it; no model of a family reads a factor either way. */
+  status: "DESCRIPTIVE" | "VALIDATED" | string;
+}
+
+/**
+ * The formal request for research a decision of a family carries (`research-fam-v1`): what it did not know when it was taken, what finding it
+ * out would cost in searches, that nothing serves it, and the factors that could explain the family. Informational: it changes nothing of the
+ * decision. Null for a decision taken before the record existed.
+ */
+export interface FamiliesResearch {
+  version: string | null;
+  needs: FamiliesNeed[];
+  /** The keys of the needs that were not fully known. */
+  open: string[];
+  /** The searches of the tiered search that would serve the open needs (one a level; none when only the provider can bring them). */
+  searches: number;
+  /** True only on the day a family leaves shadow and a request is actually served. */
+  served: boolean;
+  /** Why a search is not served (`family_shadow`), or null when no search is missing. */
+  unserved: string | null;
+  factors: FamiliesFactor[];
+  /** `unread` when the registry of factors could not be read: every factor is then shown as it is born, descriptive. */
+  registry: "read" | "unread" | string | null;
 }
 
 export interface FamiliesCard {
@@ -120,6 +164,8 @@ export interface FamiliesItem {
   } | null;
   /** The key of the rule (in `rules`) that grades the bet, or null when no rule can. */
   rule: string | null;
+  /** What the decision did not know and what finding it out would cost; null for a decision from before the record. */
+  research: FamiliesResearch | null;
   outcome: FamiliesOutcome | null;
   postmortem: FamiliesPostmortem | null;
 }

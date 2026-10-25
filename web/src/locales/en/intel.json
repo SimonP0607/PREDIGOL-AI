@@ -65,7 +65,9 @@
     "risk": "7 · Risk",
     "correlation": "8 · Correlation",
     "price": "9 · Current price",
-    "final": "10 · Classification"
+    "final": "10 · Classification",
+    "family": "Family",
+    "research": "Request for research"
   },
   "cols": {
     "match": "Match",

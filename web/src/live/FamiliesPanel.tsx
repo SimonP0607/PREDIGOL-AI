@@ -6,8 +6,8 @@
  *   EL CICLO      the four steps of the worker (decide, settle, post-mortem, remember), when each last worked and what it reported
  *   FAMILIAS      one card per family: how many selections, how many the filters refused, how many are settled, how they ended and which
  *                 rule grades them
- *   LA ÚLTIMA     the last word of each model on each market of each match, with the rule that grades it, what became of it and what the
- *   PALABRA       post-mortem found; a row opens the decision in full
+ *   LA ÚLTIMA     the last word of each model on each market of each match, with what it did not know when it was taken, the rule that
+ *   PALABRA       grades it, what became of it and what the post-mortem found; a row opens the decision in full
  *   MEMORIA       what the families remember: the post-mortems added up by family, market, competition and referee
  *
  * Reading only. A family's probability is its model's own number, not calibrated, and nothing here is offered to a user.
@@ -46,12 +46,16 @@ import {
   FAMILY_CODES,
   STEPS,
   WINDOWS,
+  factorsText,
   familyName,
   marketText,
   modeHelp,
   modeName,
   modeTone,
   msText,
+  needName,
+  needStateName,
+  needTone,
   pickText,
   qualityName,
   reasonsShown,
@@ -59,12 +63,15 @@ import {
   resultTone,
   ruleNote,
   ruleText,
+  searchesText,
+  sourceName,
   stateName,
   stateTone,
   statusName,
   stepFacts,
   stepName,
   stepTone,
+  unservedName,
   verdictHint,
   verdictName,
   verdictTone,
@@ -295,6 +302,69 @@ function OutcomeCell({ x }: { x: FamiliesItem }) {
   );
 }
 
+/**
+ * What the decision did not know when it was taken (the request for research of plan F11.10): each thing it would want to know, whether it knew
+ * it, what finding out would cost in searches, that nothing serves it, and the context factors that could explain the family. Informational.
+ */
+function ResearchCell({ x }: { x: FamiliesItem }) {
+  const r = x.research;
+  if (!r) {
+    return (
+      <span className="text-caption text-subtle-foreground" title={t("families.research.noneHint")}>
+        {t("families.research.none")}
+      </span>
+    );
+  }
+  const cost = searchesText(r);
+  return (
+    <div className="max-w-[18rem] space-y-1" data-testid="families-research">
+      {r.open.length === 0 ? (
+        <div className="text-caption text-muted-foreground">{t("families.research.nothing")}</div>
+      ) : null}
+      <ul className="space-y-0.5">
+        {r.needs.map((n) => (
+          <li
+            key={n.key}
+            className="flex flex-wrap items-center gap-1.5"
+            {...(n.since
+              ? { title: t("families.research.since", { when: bogotaDateTime(n.since) }) }
+              : {})}
+          >
+            <StatusBadge tone={needTone(n.state)} dot={false}>
+              {needStateName(n.state)}
+            </StatusBadge>
+            <span className="text-caption">{needName(n.key)}</span>
+            {n.state !== "KNOWN" ? (
+              <span className="text-caption text-subtle-foreground">{sourceName(n.source)}</span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {cost ? <div className="numeric text-caption text-muted-foreground">{cost}</div> : null}
+      {r.served ? (
+        <StatusBadge tone="info" dot={false}>
+          {t("families.research.served")}
+        </StatusBadge>
+      ) : r.unserved !== null ? (
+        <div className="text-caption text-subtle-foreground">{unservedName(r.unserved)}</div>
+      ) : null}
+      {r.factors.length ? (
+        <div
+          className="break-words text-caption text-muted-foreground"
+          title={t("families.research.factorsHint")}
+        >
+          {t("families.research.factors")}: {factorsText(r)}
+        </div>
+      ) : null}
+      {r.registry === "unread" ? (
+        <div className="text-caption text-subtle-foreground">
+          {t("families.research.registryUnread")}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** How many causes a row lists before it says "+N more" (all of them are in the decision's detail). */
 const CAUSES_SHOWN = 2;
 
@@ -387,6 +457,9 @@ function ItemRow({
           </div>
         ) : null}
       </TD>
+      <TD className="align-top">
+        <ResearchCell x={x} />
+      </TD>
       <TD className="align-top text-xs">
         {rule ? (
           <span className="font-mono" title={ruleText(rule)}>
@@ -446,6 +519,7 @@ function Items({
               {t("families.cols.ev")}
             </TH>
             <TH>{t("families.cols.state")}</TH>
+            <TH title={t("families.cols.researchHint")}>{t("families.cols.research")}</TH>
             <TH>{t("families.cols.rule")}</TH>
             <TH>{t("families.cols.outcome")}</TH>
             <TH>{t("families.cols.postmortem")}</TH>

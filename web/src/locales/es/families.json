@@ -200,6 +200,8 @@
     "ev": "EV bruto",
     "evHint": "P de la familia por la cuota, menos uno: lo que creía ganar la familia",
     "state": "Estado",
+    "research": "Qué le falta saber",
+    "researchHint": "Lo que la decisión no sabía cuando se tomó, lo que averiguarlo costaría y los factores de contexto que podrían explicar a la familia. Es informativo: no cambia la decisión, y nada se sirve mientras las familias estén en sombra.",
     "rule": "Regla",
     "outcome": "Resultado",
     "postmortem": "Post-mortem"
@@ -213,6 +215,46 @@
   "pm": {
     "more": "+{count} más",
     "none": "Aún sin post-mortem"
+  },
+  "research": {
+    "none": "Sin registro",
+    "noneHint": "Decisión anterior al registro de lo que le faltaba saber, o con una lectura que falló: la decisión no pierde nada.",
+    "nothing": "No le falta nada que se pueda saber antes del partido",
+    "need": {
+      "referee": "El árbitro designado",
+      "lineups": "Las alineaciones confirmadas",
+      "context": "El contexto de fuera (bajas y previa)"
+    },
+    "state": {
+      "KNOWN": "conocido",
+      "PARTIAL": "en parte",
+      "MISSING": "falta"
+    },
+    "source": {
+      "provider": "lo trae el proveedor",
+      "search": "una búsqueda"
+    },
+    "searches_one": "1 búsqueda si se sirviera",
+    "searches_other": "{count} búsquedas si se sirviera",
+    "noSearches": "Sin búsquedas: solo lo trae el proveedor",
+    "unserved": {
+      "family_shadow": "No se sirve: las familias están en sombra"
+    },
+    "served": "Servida",
+    "factors": "Podrían explicarla",
+    "factorsHint": "Factores de contexto para un experimento futuro. Son hipótesis, no resultados: ninguno está validado hasta que una persona lo valide, y ningún modelo de familia los lee.",
+    "factor": {
+      "h2h_weighted": "Cara a cara ponderado",
+      "scenarios": "Escenarios de tabla y de eliminatoria",
+      "tactics_profile": "Táctica observable",
+      "rest_congestion": "Descanso y congestión"
+    },
+    "standing": {
+      "DESCRIPTIVE": "sin validar",
+      "VALIDATED": "validado"
+    },
+    "registryUnread": "No se pudo leer el registro de factores: se muestran todos sin validar.",
+    "since": "desde {when}"
   },
   "memory": {
     "title": "Lo que recuerdan",

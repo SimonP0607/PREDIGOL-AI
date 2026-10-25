@@ -6,10 +6,19 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import { hasKey, setLocale, translate } from "@/lib/i18n";
-import type { FamiliesRule } from "@/lib/api/v1/types_families";
+import type { FamiliesResearch, FamiliesRule } from "@/lib/api/v1/types_families";
 import {
+  FACTOR_KEYS,
+  FACTOR_STANDINGS,
   FAMILY_CODES,
+  NEED_KEYS,
+  NEED_SOURCES,
+  NEED_STATES,
   STEPS,
+  UNSERVED_CODES,
+  factorName,
+  factorStandingName,
+  factorsText,
   familyName,
   isFamilyMarket,
   marketText,
@@ -18,6 +27,9 @@ import {
   modeName,
   modeTone,
   msText,
+  needName,
+  needStateName,
+  needTone,
   pickText,
   reasonName,
   reasonsShown,
@@ -26,13 +38,16 @@ import {
   ruleKeyText,
   ruleNote,
   ruleText,
+  searchesText,
   shapeOf,
+  sourceName,
   stateName,
   stateTone,
   statusName,
   stepFacts,
   stepName,
   stepTone,
+  unservedName,
   verdictHint,
   verdictName,
   verdictTone,
@@ -497,6 +512,126 @@ describe("what became of a decision", () => {
     expect(stateTone("INVESTIGACION")).toBe("info");
     expect(stateTone("RECHAZADO")).toBe("negative");
     expect(stateTone("APROBADO")).toBe("neutral");
+  });
+});
+
+/** A request for research with what a test needs of it: the open needs, the searches and the factors. */
+function asked(over: Partial<FamiliesResearch> = {}): FamiliesResearch {
+  return {
+    version: "research-fam-v1",
+    needs: [],
+    open: [],
+    searches: 0,
+    served: false,
+    unserved: null,
+    factors: [],
+    registry: "read",
+    ...over,
+  };
+}
+
+describe("what a decision did not know", () => {
+  test("every need, state, source, factor, standing and reason a request can give has its words in both languages", () => {
+    expect(NEED_KEYS).toEqual(["referee", "lineups", "context"]);
+    expect(FACTOR_KEYS).toEqual([
+      "h2h_weighted",
+      "scenarios",
+      "tactics_profile",
+      "rest_congestion",
+    ]);
+    for (const locale of LOCALES) {
+      for (const key of NEED_KEYS)
+        expect(hasKey(`families.research.need.${key}`, locale)).toBe(true);
+      for (const key of NEED_STATES)
+        expect(hasKey(`families.research.state.${key}`, locale)).toBe(true);
+      for (const key of NEED_SOURCES)
+        expect(hasKey(`families.research.source.${key}`, locale)).toBe(true);
+      for (const key of FACTOR_KEYS)
+        expect(hasKey(`families.research.factor.${key}`, locale)).toBe(true);
+      for (const key of FACTOR_STANDINGS) {
+        expect(hasKey(`families.research.standing.${key}`, locale)).toBe(true);
+      }
+      for (const key of UNSERVED_CODES) {
+        expect(hasKey(`families.research.unserved.${key}`, locale)).toBe(true);
+      }
+      // the decision's detail names the two records that are not one of the ten filters
+      for (const key of ["family", "research"])
+        expect(hasKey(`intel.filter.${key}`, locale)).toBe(true);
+    }
+  });
+
+  test("the words, in both languages, and a word nobody has is shown as it came", () => {
+    setLocale("es");
+    expect(needName("referee")).toBe("El árbitro designado");
+    expect(needName("lineups")).toBe("Las alineaciones confirmadas");
+    expect(needStateName("PARTIAL")).toBe("en parte");
+    expect(sourceName("provider")).toBe("lo trae el proveedor");
+    expect(factorName("rest_congestion")).toBe("Descanso y congestión");
+    expect(factorStandingName("VALIDATED")).toBe("validado");
+    expect(unservedName("family_shadow")).toBe("No se sirve: las familias están en sombra");
+    setLocale("en");
+    expect(needName("referee")).toBe("The designated referee");
+    expect(needStateName("MISSING")).toBe("missing");
+    expect(sourceName("search")).toBe("a search");
+    expect(factorName("h2h_weighted")).toBe("Weighted head-to-head");
+    expect(unservedName("family_shadow")).toBe("Not served: the families are in shadow");
+    for (const word of [
+      needName("x"),
+      needStateName("x"),
+      sourceName("x"),
+      factorName("x"),
+      unservedName("x"),
+    ]) {
+      expect(word).toBe("x");
+    }
+    expect(factorStandingName("x")).toBe("x");
+  });
+
+  test("the cost: nothing open costs nothing and says nothing, the provider alone costs no search, one is singular", () => {
+    setLocale("es");
+    expect(searchesText(asked())).toBeNull();
+    expect(searchesText(asked({ searches: 3 }))).toBeNull();
+    expect(searchesText(asked({ open: ["referee"], searches: 0 }))).toBe(
+      "Sin búsquedas: solo lo trae el proveedor",
+    );
+    expect(searchesText(asked({ open: ["context"], searches: 1 }))).toBe(
+      "1 búsqueda si se sirviera",
+    );
+    expect(searchesText(asked({ open: ["context"], searches: 3 }))).toBe(
+      "3 búsquedas si se sirviera",
+    );
+    setLocale("en");
+    expect(searchesText(asked({ open: ["context"], searches: 1 }))).toBe(
+      "1 search if it were served",
+    );
+    expect(searchesText(asked({ open: ["context"], searches: 2 }))).toBe(
+      "2 searches if it were served",
+    );
+    expect(searchesText(asked({ open: ["lineups"], searches: 0 }))).toBe(
+      "No searches: only the provider can bring it",
+    );
+  });
+
+  test("the factors are told by name, with their standing only when it is not the one they are born with", () => {
+    setLocale("es");
+    expect(factorsText(asked())).toBe("");
+    expect(
+      factorsText(
+        asked({
+          factors: [
+            { factor: "tactics_profile", version: "tactics-v1", status: "DESCRIPTIVE" },
+            { factor: "scenarios", version: null, status: "VALIDATED" },
+          ],
+        }),
+      ),
+    ).toBe("Táctica observable · Escenarios de tabla y de eliminatoria (validado)");
+  });
+
+  test("a thing known is green, one known in part is a note, one missing is a warning (nothing is red: the family only measures)", () => {
+    expect(needTone("KNOWN")).toBe("positive");
+    expect(needTone("PARTIAL")).toBe("info");
+    expect(needTone("MISSING")).toBe("warning");
+    expect(needTone("ODD")).toBe("neutral");
   });
 });
 

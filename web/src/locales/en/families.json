@@ -200,6 +200,8 @@
     "ev": "Raw EV",
     "evHint": "The family's P times the odds, minus one: what the family believed it would win",
     "state": "State",
+    "research": "What it did not know",
+    "researchHint": "What the decision did not know when it was taken, what finding it out would cost and the context factors that could explain the family. Informational: it changes nothing of the decision, and nothing is served while the families are in shadow.",
     "rule": "Rule",
     "outcome": "Result",
     "postmortem": "Post-mortem"
@@ -213,6 +215,46 @@
   "pm": {
     "more": "+{count} more",
     "none": "No post-mortem yet"
+  },
+  "research": {
+    "none": "No record",
+    "noneHint": "A decision from before the record of what it did not know, or one whose read failed: the decision loses nothing.",
+    "nothing": "Nothing is missing that can be known before the match",
+    "need": {
+      "referee": "The designated referee",
+      "lineups": "The confirmed line-ups",
+      "context": "The outside context (absences and preview)"
+    },
+    "state": {
+      "KNOWN": "known",
+      "PARTIAL": "in part",
+      "MISSING": "missing"
+    },
+    "source": {
+      "provider": "the provider brings it",
+      "search": "a search"
+    },
+    "searches_one": "1 search if it were served",
+    "searches_other": "{count} searches if it were served",
+    "noSearches": "No searches: only the provider can bring it",
+    "unserved": {
+      "family_shadow": "Not served: the families are in shadow"
+    },
+    "served": "Served",
+    "factors": "Could explain it",
+    "factorsHint": "Context factors for a future experiment. They are hypotheses, not findings: none is validated until a person validates it, and no model of a family reads them.",
+    "factor": {
+      "h2h_weighted": "Weighted head-to-head",
+      "scenarios": "Table and knockout scenarios",
+      "tactics_profile": "Observable tactics",
+      "rest_congestion": "Rest and congestion"
+    },
+    "standing": {
+      "DESCRIPTIVE": "not validated",
+      "VALIDATED": "validated"
+    },
+    "registryUnread": "The registry of factors could not be read: all are shown as not validated.",
+    "since": "since {when}"
   },
   "memory": {
     "title": "What they remember",

@@ -65,7 +65,9 @@
     "risk": "7 · Riesgo",
     "correlation": "8 · Correlación",
     "price": "9 · Precio actual",
-    "final": "10 · Clasificación"
+    "final": "10 · Clasificación",
+    "family": "Familia",
+    "research": "Pedir investigación"
   },
   "cols": {
     "match": "Partido",

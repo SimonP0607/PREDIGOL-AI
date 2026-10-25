@@ -4,6 +4,10 @@
  * the four families with nothing in them and says why; a family that completed the cycle shows its cycle, its card, the last word on each market with
  * the rule that grades it, what became of it and its post-mortem, and what the families remember; a rejection is not mistaken for a selection; a step
  * that raised shows its error; nothing is offered that the server did not send; and every word is in both languages.
+ *
+ * PLAN F11.10: a decision also says what it did not know when it was taken - the request for research it carries: who brings each thing, what
+ * finding it out would cost in searches, that nothing serves it while the families are in shadow, and the context factors that could explain
+ * the family. A decision from before the record shows none.
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -14,6 +18,7 @@ import type {
   FamiliesItem,
   FamiliesMemoryRow,
   FamiliesRecord,
+  FamiliesResearch,
   FamiliesRule,
   FamiliesStepRun,
   IntelFamilies,
@@ -180,6 +185,24 @@ function run(step: string, over: Partial<FamiliesStepRun> = {}): FamiliesStepRun
   };
 }
 
+/** The request for research of a decision of the corners that knew nothing of the match: the line-ups from the provider, the context from a search. */
+function research(over: Partial<FamiliesResearch> = {}): FamiliesResearch {
+  return {
+    version: "research-fam-v1",
+    needs: [
+      { key: "lineups", state: "MISSING", source: "provider", since: null },
+      { key: "context", state: "MISSING", source: "search", since: null },
+    ],
+    open: ["lineups", "context"],
+    searches: 3,
+    served: false,
+    unserved: "family_shadow",
+    factors: [{ factor: "tactics_profile", version: "tactics-v1", status: "DESCRIPTIVE" }],
+    registry: "read",
+    ...over,
+  };
+}
+
 function item(over: Partial<FamiliesItem> = {}): FamiliesItem {
   return {
     id: 5,
@@ -212,6 +235,7 @@ function item(over: Partial<FamiliesItem> = {}): FamiliesItem {
       calibration: "UNCALIBRATED",
     },
     rule: "corners_ft@v1",
+    research: null,
     outcome: null,
     postmortem: null,
     ...over,
@@ -291,6 +315,7 @@ function cycle(): IntelFamilies {
     ],
     items: [
       item({
+        research: research(),
         outcome: {
           result: "win",
           profit_flat: 0.95,
@@ -525,6 +550,165 @@ describe("a family that completed the cycle", () => {
       "Competición LaLiga Al 2026-10-24 4 — — — — — — — 4 · —",
     );
     expect(table).toContain("Últimos 28 días");
+  });
+});
+
+describe("what a decision did not know", () => {
+  /** The cell of the request for research of the first row of a page with one decision. */
+  function cell(r: FamiliesResearch | null, locale: "es" | "en" = "es"): string {
+    setLocale(locale);
+    const html = render(data({ mode: "shadow", items: [item({ research: r })], total: 1 }));
+    return block(html, "families-items");
+  }
+  const said = (r: FamiliesResearch | null, locale: "es" | "en" = "es") =>
+    norm(text(block(cell(r, locale), "families-research")));
+
+  test("the column has a name and says what it is, and each thing the decision lacked is told with who brings it", () => {
+    const table = cell(research());
+    expect(norm(text(table))).toContain("Qué le falta saber");
+    expect(table).toContain("no cambia la decisión");
+    const r = said(research());
+    expect(r).toContain("falta Las alineaciones confirmadas lo trae el proveedor");
+    expect(r).toContain("falta El contexto de fuera (bajas y previa) una búsqueda");
+    const lacking = [
+      ...block(cell(research()), "families-research").matchAll(/<li\b[^>]*>.*?<\/li>/gs),
+    ];
+    expect(lacking).toHaveLength(2);
+    for (const li of lacking) expect(li[0]).toContain("text-warning");
+  });
+
+  test("what finding it out would cost, that nothing serves it, and the factors that could explain the family", () => {
+    const r = said(research());
+    expect(r).toContain("3 búsquedas si se sirviera");
+    expect(r).toContain("No se sirve: las familias están en sombra");
+    expect(r).toContain("Podrían explicarla: Táctica observable");
+    expect(r).not.toContain("validado");
+    expect(r).not.toContain("Servida");
+    expect(cell(research())).toContain("ninguno está validado hasta que una persona lo valide");
+  });
+
+  test("what the decision knew is told, since when, and its source is not repeated", () => {
+    const since = "2026-10-23T10:00:00+00:00";
+    const r = research({
+      needs: [
+        { key: "lineups", state: "KNOWN", source: "provider", since },
+        { key: "context", state: "PARTIAL", source: "search", since: null },
+      ],
+      open: ["context"],
+    });
+    const html = block(cell(r), "families-research");
+    const t = norm(text(html));
+    expect(t).toContain("conocido Las alineaciones confirmadas");
+    expect(t).not.toContain("conocido Las alineaciones confirmadas lo trae el proveedor");
+    expect(t).toContain("en parte El contexto de fuera (bajas y previa) una búsqueda");
+    expect(html).toContain(`title="desde ${bogotaDateTime(since)}"`);
+    const [known, partial] = [...html.matchAll(/<li\b[^>]*>.*?<\/li>/gs)].map((m) => m[0]);
+    expect(known).toContain("text-positive");
+    expect(partial).toContain("text-info");
+    expect(t).toContain("3 búsquedas si se sirviera");
+  });
+
+  test("a decision that lacked nothing says so, and has no cost and nothing to serve", () => {
+    const r = said(
+      research({
+        needs: [
+          {
+            key: "lineups",
+            state: "KNOWN",
+            source: "provider",
+            since: "2026-10-23T10:00:00+00:00",
+          },
+          { key: "context", state: "KNOWN", source: "search", since: null },
+        ],
+        open: [],
+        searches: 0,
+        unserved: null,
+      }),
+    );
+    expect(r).toContain("No le falta nada que se pueda saber antes del partido");
+    expect(r).not.toContain("búsqueda");
+    expect(r).not.toContain("No se sirve");
+  });
+
+  test("what only the provider can bring costs no search and is not something the server declines to serve", () => {
+    const r = said(
+      research({
+        needs: [
+          { key: "referee", state: "MISSING", source: "provider", since: null },
+          { key: "context", state: "KNOWN", source: "search", since: null },
+        ],
+        open: ["referee"],
+        searches: 0,
+        unserved: null,
+      }),
+    );
+    expect(r).toContain("falta El árbitro designado lo trae el proveedor");
+    expect(r).toContain("Sin búsquedas: solo lo trae el proveedor");
+    expect(r).not.toContain("No se sirve");
+    expect(r).not.toContain("si se sirviera");
+  });
+
+  test("one search is said in the singular", () => {
+    expect(said(research({ searches: 1 }))).toContain("1 búsqueda si se sirviera");
+  });
+
+  test("a factor somebody validated says so; the registry that could not be read says so too", () => {
+    const r = said(
+      research({
+        factors: [
+          { factor: "scenarios", version: "scenarios-v1", status: "VALIDATED" },
+          { factor: "tactics_profile", version: "tactics-v1", status: "DESCRIPTIVE" },
+        ],
+        registry: "unread",
+      }),
+    );
+    expect(r).toContain(
+      "Podrían explicarla: Escenarios de tabla y de eliminatoria (validado) · Táctica observable",
+    );
+    expect(r).toContain("No se pudo leer el registro de factores: se muestran todos sin validar.");
+    expect(said(research())).not.toContain("registro de factores");
+  });
+
+  test("the day a request is served it says so, and no longer says that it is not", () => {
+    const r = said(research({ served: true, unserved: null }));
+    expect(r).toContain("Servida");
+    expect(r).not.toContain("No se sirve");
+  });
+
+  test("a decision from before the record shows none, and says why that is not a fault", () => {
+    const html = cell(null);
+    expect(html).not.toContain("families-research");
+    const [row] = rows(html);
+    expect(norm(row?.text ?? "")).toContain("Sin registro");
+    expect(html).toContain("la decisión no pierde nada");
+  });
+
+  test("what the server sent that the page has no words for is shown as it came", () => {
+    const r = said(
+      research({
+        needs: [{ key: "weather", state: "ODD", source: "telepathy", since: null }],
+        open: ["weather"],
+        searches: 0,
+        unserved: "budget",
+        factors: [{ factor: "moon", version: null, status: "FULL" }],
+      }),
+    );
+    expect(r).toContain("ODD weather telepathy");
+    expect(r).toContain("budget");
+    expect(r).toContain("moon (FULL)");
+  });
+
+  test("it reads in English", () => {
+    const html = cell(research(), "en");
+    const t = norm(text(html));
+    expect(t).toContain("What it did not know");
+    const r = norm(text(block(html, "families-research")));
+    expect(r).toContain("missing The confirmed line-ups the provider brings it");
+    expect(r).toContain("missing The outside context (absences and preview) a search");
+    expect(r).toContain("3 searches if it were served");
+    expect(r).toContain("Not served: the families are in shadow");
+    expect(r).toContain("Could explain it: Observable tactics");
+    expect(said(research({ searches: 1 }), "en")).toContain("1 search if it were served");
   });
 });
 
