@@ -67,7 +67,7 @@ def renew_invitation(body: TokenIn, request: Request, background: BackgroundTask
 
 @router.post("/password/forgot", response_model=Accepted, status_code=202)
 def forgot_password(body: EmailIn, request: Request, background: BackgroundTasks) -> Accepted:
-    """A link to choose a new password, valid one hour, if the address has an active account (an invited one gets its
+    """A link to choose a new password, valid 30 minutes, if the address has an active account (an invited one gets its
     invitation again). The same answer, at once, whatever the address."""
     ip = client_ip(request)
     recovery.accept_request(ip)
