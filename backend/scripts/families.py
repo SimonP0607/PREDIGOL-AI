@@ -9,10 +9,14 @@
     python -m scripts.families score --days 14                       # how the stored forecasts of the families did on the matches that have finished
     python -m scripts.families dependence --days 1095                # how much the goals, the corners and the cards of one match depend on each other
     python -m scripts.families variant --family corners_ft --variant recent-level:28   # a variant of a family next to the family and the books
+    python -m scripts.families decide                                # what the decisions of the families would be if the switch were on: a dry run
 
 ``evaluate`` fits each competition on the matches already known at the start of every block of ``--step-days`` and predicts the block; it reports
 whether that beats the competition's average, the calibration of the totals lines, and competition by competition where it does. It does not
 compare with the market (the price history of F1 is still short): a family stays in RESEARCH until the gate of the plan can be run.
+``decide`` runs the pass of the decisions of the families (``fbi.familydecisions``, plan F11) as a dry run through a connection that cannot write: the
+forecasts the families stored, the prices the books had by the moment, the ten filters of the decision layer - and prints what a pass would do, what
+each decision did not know and what finding it out would cost. It is how to see the rows before ``FBI_FAMILY_DECISIONS`` is turned to ``shadow``.
 It only reads; 0 provider requests; 0 AI.
 """
 
@@ -37,6 +41,8 @@ from fbi.core.logging import configure as configure_logging
 from fbi.families import dependence, evaluate, evaluate_halves, history, variants
 from fbi.families import score as scoreboard
 from fbi.families.fit import MIN_TRAIN, OUTCOME_KNOWN_AFTER, Match
+from fbi.familydecisions import decide as family_decide
+from fbi.familydecisions import preview
 from fbi.market.rules import RULES
 
 DEFAULT_LINES: dict[str, tuple[float, ...]] = {
@@ -289,6 +295,19 @@ def dependence_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def decide_command(args: argparse.Namespace) -> int:
+    """What a pass of the decisions of the families would do at ``--at`` (default: now) over the next ``--horizon-hours`` (read-only): the pass itself
+    as a dry run, through a connection that cannot write, so that nothing is stored, nothing is bought and nobody is asked."""
+    at = args.at or clock_now()
+    horizon = timedelta(hours=args.horizon_hours)
+    with psycopg.connect(settings.database.psycopg_url, options="-c default_transaction_read_only=on") as conn:
+        report, evaluated = family_decide.decide_families(conn, at=at, horizon=horizon, only=args.fixture, write=False)
+        conn.rollback()
+    summary = preview.summarise(report, evaluated, at=at, horizon=horizon, mode=family_decide.mode())
+    print(json.dumps(summary, indent=1, default=str) if args.json else preview.render(summary, top=args.top))
+    return 0
+
+
 def instant(text: str) -> datetime:
     """A day or an instant as the command line writes it (``2026-09-25``, ``2026-10-23T12:00``); one without a zone is UTC."""
     try:
@@ -362,6 +381,13 @@ def build_parser() -> argparse.ArgumentParser:
     pv.add_argument("--min-ev", type=float, default=0.03, help="the value the model has to see at the price for a simulated bet (default %(default)s)")
     pv.add_argument("--out", help="also write the reading (the --json) to this file")
     pv.add_argument("--json", action="store_true")
+    pf = sub.add_parser("decide", help="what a pass of the decisions of the families would do: a dry run that reads and writes nothing")
+    pf.add_argument("--at", type=instant, help="the moment of the pass, a day or an instant in UTC (default: now); a past moment says what the pass would have said then")
+    pf.add_argument("--horizon-hours", type=float, default=family_decide.HORIZON.total_seconds() / 3600,
+                    help="matches that kick off within the next N hours (default %(default)s)")
+    pf.add_argument("--fixture", type=int, action="append", help="only this match (repeat it for several)")
+    pf.add_argument("--top", type=int, default=preview.DEFAULT_TOP, help="decisions listed in the text, the ones with most value first (default %(default)s)")
+    pf.add_argument("--json", action="store_true", help="all the decisions and the counts as JSON")
     ph = sub.add_parser("halves", help="the bets of the halves derived from the fits of the first and of the second half")
     ph.add_argument("--months", type=int, default=12, help="months of test window (default %(default)s)")
     ph.add_argument("--csv-1h", help="read the first-half goals from this CSV (an 'export' of goals_1h) instead of the database")
@@ -413,6 +439,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return dependence_command(args)
     if args.command == "variant":
         return variant_command(args)
+    if args.command == "decide":
+        return decide_command(args)
     history.columns_of(args.measure)  # refuses a measure a family cannot be trained on, before anything is read
     if args.command == "sql":
         return sql_command(args)

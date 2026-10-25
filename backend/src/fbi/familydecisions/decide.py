@@ -407,6 +407,9 @@ class FamilyReport:
     by_state: dict[str, int] = field(default_factory=dict)
     by_reason: dict[str, int] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+    would_write: int = 0
+    """The decisions that are news (no row of them yet, or one that moved: ``decision.should_write``), counted whether the pass wrote them or not -
+    the number a dry run (``write=False``) is for. It is not in ``as_dict``: the record of a run says what it ``written``."""
 
     def as_dict(self) -> dict[str, Any]:
         return {"forecasts": self.forecasts, "fixtures": self.fixtures, "priced": self.priced_selections, "candidates": self.candidates,
@@ -461,7 +464,8 @@ def decide_families(conn: psycopg.Connection[Any], *, at: datetime, horizon: tim
                                                                  judged.context.status)
             e = finalise(judged, c, specs[c.forecast.family], facts=facts, standing=standing, registry_read=registry_read)
             wrote = False
-            if write and decision.should_write(e, world.previous.get(e.key)):
+            news = decision.should_write(e, world.previous.get(e.key))
+            if write and news:
                 with conn.transaction():  # a savepoint: a row the database refuses costs that row, not the rest of the pass
                     wrote = decision.store(conn, e, at=at, version=VERSION) is not None
         except Exception as exc:  # research: one selection that cannot be judged or written never costs the others
@@ -473,6 +477,7 @@ def decide_families(conn: psycopg.Connection[Any], *, at: datetime, horizon: tim
         out.append(e)
         report.evaluated += 1
         report.written += wrote
+        report.would_write += news
         report.by_family[c.forecast.family] = report.by_family.get(c.forecast.family, 0) + 1
         report.by_state[e.state] = report.by_state.get(e.state, 0) + 1
         for reason in e.reasons:

@@ -24,6 +24,8 @@ and a stored result another, or a stored result that the code would no longer ju
 
 from __future__ import annotations
 
+import argparse
+import inspect
 import json
 import math
 import re
@@ -582,6 +584,47 @@ def test_the_guide_of_the_cycle_of_the_families_says_what_the_code_does(monkeypa
             assert f"#   {mode_name} " in variables
     for name in ("FAMILIAS_F10.md", "CRITERIO_FAMILIAS_F11.md", "DEPENDENCIA_FAMILIAS_F11.md", "PROMOCIONES_F12.md", "POSTMORTEM_MEMORIA_F8.md"):
         assert (DOCS / "owner" / name).is_file() and f"`{name}`" in doc, f"the guide points to {name}"
+
+
+def test_the_guide_of_the_cycle_says_how_to_see_the_decisions_before_the_switch_is_on() -> None:
+    """Plan F11.12: the command that runs the pass as a dry run - its name and options, that it cannot write, the window it reads, the steps of the
+    funnel, that it needs no migration of the learning tables, and where the owner is told to use it."""
+    from scripts import families as cli
+
+    from fbi.familydecisions import decide as fd
+    from fbi.familydecisions import preview
+
+    doc = read_doc("owner", "CICLO_FAMILIAS_F11.md")
+    flat = " ".join(doc.split())
+    start = flat.index("**Verlo antes de encenderlo.**")
+    seen = flat[start:flat.index("## 3. Los cuatro pasos")]
+    # the command and its options exist, and the guide names every one of them
+    parser = cli.build_parser()
+    commands = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+    sub = commands.choices["decide"]
+    options = {o for a in sub._actions for o in a.option_strings if o.startswith("--") and o != "--help"}
+    assert options == {"--at", "--horizon-hours", "--fixture", "--top", "--json"}
+    assert "`python -m scripts.families decide`" in seen
+    for option in options - {"--horizon-hours"}:
+        assert f"`{option}`" in seen, f"the guide says what {option} does"
+    # it reads what the pass reads, over the window of the pass, and cannot write
+    assert timedelta(hours=36) == fd.HORIZON and "las próximas 36 horas" in seen and sub.get_default("horizon_hours") == 36.0
+    assert "una sesión de la base de datos que no puede escribir" in seen and "cero peticiones al proveedor, cero IA" in seen
+    assert "los diez filtros" in seen
+    # the funnel, step by step, in the order the text prints it
+    assert "pronósticos → selecciones con precio → candidatas → decisiones juzgadas → filas que escribiría" in seen
+    text = preview.render(preview.summarise(fd.FamilyReport(forecasts=1, fixtures=1), [], at=datetime(2035, 3, 1, tzinfo=UTC),
+                                            horizon=fd.HORIZON, mode="off"))
+    steps = ["forecasts", "priced selections", "candidates", "judged", "rows to write"]
+    assert [text.index(step) for step in steps] == sorted(text.index(step) for step in steps), "the steps of the funnel come in the order the guide says"
+    assert "por familia, estado y motivo" in seen and "en qué paso se agotó" in seen
+    # it needs only what production already has: none of the tables the learning steps create (migration 0094) is read by the pass
+    assert "no necesita la migración `0094`" in seen
+    for table in ("family_postmortems", "family_memory"):
+        assert table not in inspect.getsource(fd) and table not in inspect.getsource(preview)
+    # and the owner is sent to it before the decision about the switch
+    decisions = flat[flat.index("## 10. Lo que decides tú"):]
+    assert "Antes de decidir, mira qué escribiría con `python -m scripts.families decide` (sección 2)." in decisions
 
 
 def test_the_guide_of_the_cycle_says_what_a_decision_of_a_family_did_not_know() -> None:

@@ -9,11 +9,13 @@ neither sees these rows nor writes anything because of them."""
 from __future__ import annotations
 
 import dataclasses
+import json
 from datetime import datetime, timedelta
 from typing import Any
 
 import psycopg
 import pytest
+from scripts import families as cli
 
 from fbi.families import forecast
 from fbi.familydecisions import decide as fd
@@ -160,6 +162,22 @@ def test_a_second_pass_writes_nothing_until_something_moves(db: psycopg.Connecti
     later = KICKOFF - timedelta(hours=11)  # another checkpoint (T-12h), the same prices
     assert fd.decide_families(db, at=later)[0].written == 1
     assert rows(db, fid)[-1]["checkpoint"] == "T-12h" and len(rows(db, fid)) == 3
+
+
+def test_a_second_pass_does_not_write_a_price_that_moved_less_than_the_layer_tolerates(db: psycopg.Connection[Any], w: World) -> None:
+    fid, market, (over, _) = scene(db, w)
+    assert fd.decide_families(db, at=NOW)[0].written == 1
+    [first] = rows(db, fid)
+    for book in w.books(3):  # the books pay 1 % more for the over: the layer tolerates 3 % before a decision is news again
+        market.quote(book, round(over * 1.01, 2), 1.50, NOW + timedelta(minutes=5))
+    market.read(NOW + timedelta(minutes=5))
+    later = NOW + timedelta(minutes=10)
+    dry, [moved] = fd.decide_families(db, at=later, write=False)
+    assert moved.row["best_odds"] == round(over * 1.01, 2) != over, "the price did move"
+    assert decision.input_hash(moved, version=fd.VERSION) != first["input_hash"], "so it is another digest: only the tolerance of the layer keeps it from the table"
+    assert (dry.would_write, dry.written) == (0, 0)
+    real, _ = fd.decide_families(db, at=later)
+    assert (real.would_write, real.written) == (0, 0) and len(rows(db, fid)) == 1, "a pass that writes follows the same rule as the dry run"
 
 
 def test_a_price_captured_after_the_moment_of_the_decision_is_never_read(db: psycopg.Connection[Any], w: World) -> None:
@@ -446,3 +464,106 @@ def test_the_request_changes_nothing_of_the_decision_in_a_real_pass(db: psycopg.
         if field.name != "filters":
             assert getattr(with_record, field.name) == getattr(without, field.name), field.name
     assert [f for f in with_record.filters if f["key"] != research.KEY] == without.filters
+
+
+# ── the dry run, and the command line that prints it ─────────────────────────────────────────────────────────────
+
+def test_a_dry_run_counts_the_rows_a_pass_would_write_and_a_pass_after_a_real_one_would_write_none(db: psycopg.Connection[Any], w: World) -> None:
+    fid, _, _ = scene(db, w)
+    dry, _ = fd.decide_families(db, at=NOW, write=False)
+    assert (dry.evaluated, dry.would_write, dry.written) == (1, 1, 0), "it says what it would write and writes nothing"
+    assert rows(db, fid) == []
+    real, _ = fd.decide_families(db, at=NOW)
+    assert (real.evaluated, real.would_write, real.written) == (1, 1, 1), "the pass that writes writes what the dry run said it would"
+    again, _ = fd.decide_families(db, at=NOW, write=False)
+    assert (again.evaluated, again.would_write, again.written) == (1, 0, 0), "what is already written is not news"
+    assert fd.decide_families(db, at=NOW)[0].would_write == 0 and len(rows(db, fid)) == 1
+    assert "would_write" not in again.as_dict(), "the record of a run says what it wrote"
+
+
+def test_the_dry_run_adds_up_the_news_of_every_match_and_counts_only_the_news(db: psycopg.Connection[Any], w: World) -> None:
+    catalogue(db)
+    played(w)
+    first, second = upcoming(w, 0, 1), upcoming(w, 2, 3)
+    run(db, [first, second])
+    one = Market(db, w, first)
+    one.pays(0.10)
+    one.read(AT + timedelta(minutes=30))
+    two = Market(db, w, second, like=one)
+    two.pays(0.10)
+    two.read(AT + timedelta(minutes=30))
+    dry, _ = fd.decide_families(db, at=NOW, write=False)
+    assert (dry.candidates, dry.evaluated, dry.would_write, dry.written) == (2, 2, 2, 0)
+    assert fd.decide_families(db, at=NOW, only=[first])[0].written == 1
+    partial, _ = fd.decide_families(db, at=NOW, write=False)
+    assert (partial.evaluated, partial.would_write) == (2, 1), "only the match that is not written yet is news"
+    assert fd.decide_families(db, at=NOW)[0].written == 1
+    assert fd.decide_families(db, at=NOW, write=False)[0].would_write == 0
+
+
+def test_a_decision_that_moves_is_news_again_to_the_dry_run(db: psycopg.Connection[Any], w: World) -> None:
+    fid, market, _ = scene(db, w)
+    assert fd.decide_families(db, at=NOW)[0].would_write == 1
+    for book in w.books(3):  # the books raise the over by 30 % after the first decision
+        market.quote(book, 3.0, 1.45, NOW + timedelta(minutes=5))
+    market.read(NOW + timedelta(minutes=5))
+    later = NOW + timedelta(minutes=10)
+    dry, [e] = fd.decide_families(db, at=later, write=False)
+    assert (dry.would_write, dry.written) == (1, 0), "a price that moved by more than the layer tolerates is a new row"
+    [first] = rows(db, fid)
+    assert e.state == first["state"] == "INVESTIGACION" and e.row["best_odds"] == 3.0 and first["odds"] < 3.0, "the state is the same: only the price moved"
+
+
+class ReadOnlySession:
+    """``psycopg.connect`` replaced by the test's own connection, switched to a read-only transaction: whatever the command wrote by mistake, the database
+    would refuse."""
+
+    def __init__(self, db: psycopg.Connection[Any]) -> None:
+        self.db = db
+        self.kwargs: dict[str, Any] = {}
+
+    def __call__(self, url: str, **kwargs: Any) -> ReadOnlySession:
+        self.kwargs = kwargs
+        return self
+
+    def __enter__(self) -> psycopg.Connection[Any]:
+        self.db.execute("SET TRANSACTION READ ONLY")
+        return self.db
+
+    def __exit__(self, *exc: object) -> None:
+        return None
+
+
+def test_the_decide_command_says_what_a_real_pass_would_write_from_a_session_that_cannot_write(
+        db: psycopg.Connection[Any], w: World, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    fid, _, (over, _) = scene(db, w)
+    session = ReadOnlySession(db)
+    monkeypatch.setattr(psycopg, "connect", session)
+    monkeypatch.setattr(fd, "environment", lambda: {})
+    assert cli.main(["decide", "--at", NOW.isoformat(), "--json"]) == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert session.kwargs["options"] == "-c default_transaction_read_only=on"
+    r = summary["report"]
+    assert (r["forecasts"] > 0, r["fixtures"], r["candidates"], r["evaluated"], r["written"], r["would_write"], r["failed"]) == (True, 1, 1, 1, 0, 1, 0)
+    assert summary["mode"] == "off" and summary["version"] == "decision-fam-v1" and summary["at"] == NOW.isoformat()
+    [x] = summary["decisions"]
+    assert (x["fixture_id"], x["family"], x["market"], x["selection"], x["line"]) == (fid, "CORNERS", "CORNERS_OU", "Over", 10.5)
+    assert (x["state"], x["stake"], x["odds"], x["books"]) == ("INVESTIGACION", 0.0, over, 3)
+    assert x["value"] is not None and x["value"] >= fd.MIN_EV and x["research"]["open"] == ["lineups", "context"] and x["research"]["searches"] == 3
+    assert summary["lacking"] == {"asked": 1, "needs": {"context": 1, "lineups": 1}, "matches": 1, "searches": 3}
+
+
+def test_the_decide_command_in_text_for_one_match_and_for_a_moment_with_nothing_to_decide(
+        db: psycopg.Connection[Any], w: World, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    fid, _, _ = scene(db, w)
+    monkeypatch.setattr(psycopg, "connect", ReadOnlySession(db))
+    monkeypatch.setattr(fd, "environment", lambda: {fd.SWITCH: "shadow"})
+    assert cli.main(["decide", "--at", NOW.isoformat(), "--fixture", str(fid)]) == 0
+    out = capsys.readouterr().out
+    assert "FBI_FAMILY_DECISIONS is shadow: the worker runs one pass an hour" in out
+    assert "1 candidates -> 1 judged (0 failed) -> 1 rows to write" in out and "CORNERS_OU Over 10.5 [CORNERS]" in out
+    assert "-> INVESTIGACION (" in out and "stake 0;" in out and "pedir investigación: le falta las alineaciones confirmadas" in out
+    assert cli.main(["decide", "--at", NOW.isoformat(), "--fixture", str(fid + 1000)]) == 0
+    assert "nothing to decide: the families have stated no forecast" in capsys.readouterr().out
+    assert cli.main(["decide", "--at", (KICKOFF + timedelta(hours=1)).isoformat()]) == 0
+    assert "nothing to decide: the families have stated no forecast" in capsys.readouterr().out, "a match that has kicked off is not decided"
