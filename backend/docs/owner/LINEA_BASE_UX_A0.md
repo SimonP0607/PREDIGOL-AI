@@ -38,7 +38,7 @@ existía y pasa en la línea base.
 | Árbol | Backend: ruff, mypy estricto, mypy del árbol, pytest | Web: lint, typecheck, bun test, build |
 | --- | --- | --- |
 | Producción hoy (`b0f693e`, F14) | Todo en verde; pytest 5.096 en verde y 4 omitidas | 0 errores (26 avisos, los de siempre), typecheck, 670 pass, build |
-| A0 | Ver la sección 9 (la puerta corre sobre el árbol que incluye este documento) | 0 errores (26 avisos), typecheck, 676 pass, build |
+| A0 (`fd15772`) | Todo en verde; pytest 5.114 en verde y 4 omitidas (las 18 pruebas nuevas de A0) | 0 errores (26 avisos), typecheck, 676 pass, build |
 
 ## 4. Pruebas de extremo a extremo
 
@@ -126,8 +126,39 @@ restauración desde ella (P13, plan de seguridad).
 
 ## 9. Despliegue y verificación en producción
 
-Se completa tras la publicación (paquete `ux-a0`, solo la web) con la puerta del backend sobre el árbol final, el humo, la
-verificación y la sonda desde Internet.
+Publicada el 25-oct, **solo la web**: commit de lanzamiento `5b74f8948ebb` sobre `55366f6bab66` (árbol `web/` de `fd15772`,
+`499865edfe11`); el backend sigue en `6851c0081d75` y la base en la `0093`. Carpeta del servidor `/root/releases/20261025T0225Z-ux-a0/`
+y copia del código en el portátil (`fbi_scratch\release_ux_a0\`).
+
+| Paso | Resultado |
+| --- | --- |
+| Comprobación previa (03:51 UTC, solo lectura) | Todo OK: hashes, checkouts limpios, huella `mc9a7bec97ca`, 78 GB libres, ventana 02:05–06:40 UTC, servidor tranquilo (`QUIET_GAP=60`), revisión 0093 |
+| Despliegue (`deploy_with_retries.sh`) | A la primera (intento 1 de 8): 03:53:49 → 04:06:20 UTC, código de salida 0. Guardia en modo `stop`: UNCHANGED. Copia previa propia de `predigolctl` 1.375.323.777 bytes en 557 s (sha256 `ecbda45d9ddabc84`), sin migración, **solo se recreó el contenedor web** (API y worker siguieron arriba) |
+| Salud del propio despliegue | Todo «ok» (salud y login por la dirección pública, worker vivo, captura en vivo a 12 s con 7 partidos en juego, 0 errores de servidor en 5 min); el único aviso, el del disco de siempre (decisión 10 del plan anterior) |
+| Humo | SMOKE OK: salud, login 200, HSTS, `/auth/me` 401, `/docs` 404, tres rutas protegidas 401 sin sesión y la sonda de R02: 403 en texto plano, la marca no vuelve como HTML |
+| Verificación (solo lectura) | Checkouts `6851c0081d75` y `5b74f8948ebb`, revisión 0093, huella `mc9a7bec97ca` y 0 filas escritas por otro código; **picks y decisiones del día idénticos antes y después** con el mismo corte (03:54:53 UTC): picks 21.984 `fbe5f963…`, decisiones 5.124 `faa5899f…`; los pronósticos siguen; ninguna corrida fallida en 3 h; 0 errores en los registros de la API y de la web |
+| Vigilancia de candados (cada 3 s desde las 03:53) | Ninguna espera ni bloqueo: solo las escrituras normales del worker |
+| Lecturas posteriores | `promotion_trace show`: «1 de 2 = 50 %», sin cambio |
+| Desde Internet (portátil) | `/health` 200 y todo «ok», `/login` 200 en 0,37 s, `/auth/me` 401, la sonda de R02 403 en texto plano |
+
+**Marcha atrás, si hiciera falta:** en `/opt/predigol/web`, `git checkout --detach 55366f6bab66` y `predigolctl deploy` (sin
+migración; la imagen `predigol-web:55366f6bab66` sigue en el servidor).
+
+**Lista de cierre firmada** (plantilla de `CHECKLIST_POR_FASE_F14.md`, sección 7):
+
+```
+Fase: UX A0   Lanzamiento: backend 6851c0081d75 (sin cambio) / web 5b74f8948ebb   Fecha (UTC): 2026-10-25 04:06
+1 Pruebas              ruff ✔ · mypy estricto ✔ (452 archivos) · mypy árbol ✔ (1.062) · pytest 5.114 pasan / 0 fallan · web lint/tipos/test/build ✔ (676 pasan)
+2 e2e                  100 pruebas: 94 pasan, 6 omitidas, 0 fallan · móvil 320/390 ✔ · WebKit 320/390/430 ✔
+3 Fuga                 n/a: no añade lectores previos al partido · aislamiento de la capa de usuario: test_user_layer_isolation.py y test_user_layer_guards.py · probadas con mutaciones ✔ (6)
+4 Idempotencia         n/a: no hay carga, constructor ni pasada nueva (pruebas, documentos y dependencias de la web)
+5 Reinicio del worker  n/a: el worker no se reinició (solo el contenedor web) · captura en vivo a 12 s con 7 partidos en juego
+6 Restauración         copia 1.369.631.395 bytes en 506 s · restauración superada en 868 s · cuentas de filas iguales ✔ (sin migración: referencia del nivel 4)
+7 Despliegue           03:53:49–04:06:20 · código de salida 0 · humo ✔ · verificación de solo lectura ✔ · bloqueos: sin esperas
+8 Shadow               n/a (no cambia una decisión)
+9 Dueño                aprobada con el plan («APRUEBO. EJECUTA EL PLAN MAESTRO UX») · lo que ve un usuario: no cambia
+Ejecutor: Claude (25-oct-2026)   Dueño: __________
+```
 
 ## 10. Gate
 
