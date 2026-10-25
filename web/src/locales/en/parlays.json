@@ -16,13 +16,13 @@
     "title": "How we build the parlays",
     "value": {
       "title": "Value filter on every selection",
-      "qualified": "Qualified selection: its model has beaten the market",
+      "qualified": "Passes the rule: its model has beaten the market",
       "fresh": "Current price ≤ 3 h old",
       "ev": "Positive expected value at the current price",
       "consensus": "Market consensus from ≥ 2 bookmakers",
       "interval": "A probability without a measured interval is left out, and so is one more than 40 points uncertain",
       "books": "Every selection quoted by 3 bookmakers or more",
-      "ai": "Every selection went through PrediGol Intelligence; in enforce mode it leaves out what it rejects or downgrades",
+      "ai": "Every selection goes through PrediGol Intelligence's context review; only when that review is active does it leave out what it rejects or downgrades",
       "risk": "No selection above 3.00: in our history, long odds lose money"
     },
     "independence": {
