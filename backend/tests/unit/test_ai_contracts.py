@@ -35,6 +35,8 @@ from fbi.ai.contracts.base import (
     ErrorClass,
     ResearchTopic,
     SchemaError,
+    Stance,
+    Verdict,
     check_refs,
     forbidden_names,
     keys_of,
@@ -162,8 +164,8 @@ def test_a_schema_is_refused_if_a_field_could_be_left_out_or_the_type_calls_itse
 # ── the closed lists are the code they name ─────────────────────────────────────────────────────────────────────────
 
 def test_the_closed_lists_of_the_plan_are_exactly_the_plans() -> None:
-    assert values_of(cd.Verdict) == ("APPROVE", "DOWNGRADE", "REJECT", "ABSTAIN")
-    assert values_of(aa.Stance) == ("SUPPORT", "NEUTRAL", "CONCERN", "REJECT_SIGNAL")
+    assert values_of(Verdict) == ("APPROVE", "DOWNGRADE", "REJECT", "ABSTAIN")
+    assert values_of(Stance) == ("SUPPORT", "NEUTRAL", "CONCERN", "REJECT_SIGNAL")
     assert FAMILIES == ("1X2", "DC", "AH", "OU", "BTTS", "CORNERS", "CARDS")
     assert GOALS_RESULT + COUNTS == FAMILIES
 
