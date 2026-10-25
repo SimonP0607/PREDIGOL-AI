@@ -67,6 +67,32 @@ def test_only_failures_count_towards_the_throttle() -> None:
     assert not w.blocked("a@b.co")
 
 
+def test_asking_about_a_client_never_keeps_it_in_memory() -> None:
+    """Every client that tried to sign in stayed in the per-client window for good (third review of A1): a stream of
+    new addresses could fill a worker's memory. Asking keeps nothing; a failure is kept only while it counts."""
+    t = [0.0]
+    w = FailureWindow(max_failures=3, window_s=60, clock=lambda: t[0])
+    for i in range(5000):
+        assert not w.blocked(f"203.0.113.{i}") and w.retry_after(f"203.0.113.{i}") == 0
+    assert w.keys() == 0
+    w.fail("198.51.100.1")
+    assert w.keys() == 1
+    t[0] = 61.0
+    assert not w.blocked("198.51.100.1") and w.keys() == 0, "its failure aged out: the client is forgotten"
+
+
+def test_the_clients_whose_failures_aged_out_are_dropped_as_failures_go_on() -> None:
+    t = [0.0]
+    w = FailureWindow(max_failures=3, window_s=60, clock=lambda: t[0])
+    for i in range(500):
+        w.fail(f"client-{i}")
+    assert w.keys() == 500
+    t[0] = 120.0
+    for _ in range(FailureWindow.PRUNE_EVERY):
+        w.fail("one-more")
+    assert w.keys() == 1, "the 500 whose failures aged out are gone, without anybody asking about them"
+
+
 def test_a_streak_locks_by_the_rule_of_the_account_and_the_lock_doubles_by_blocks() -> None:
     """The rule every address follows, with or without an account (plan UX, A1; R12): failures 5-9 lock for 15
     minutes, from the 10th for 30, doubling by blocks of 5 up to the cap."""

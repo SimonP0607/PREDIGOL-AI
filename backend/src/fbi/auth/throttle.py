@@ -20,35 +20,66 @@ from datetime import datetime, timedelta
 
 
 class FailureWindow:
+    """At most `max_failures` failures per key in any `window_s` seconds. Only a failure keeps a key in memory, and
+    the keys whose failures have all aged out are dropped every PRUNE_EVERY failures: asking whether a client is
+    blocked never adds it (third review of A1 - every client that tried to sign in stayed in memory for good, about
+    850 bytes each, so a stream of new addresses could fill a worker's memory)."""
+
+    PRUNE_EVERY = 1000
+
     def __init__(self, *, max_failures: int, window_s: float, clock: Callable[[], float] = time.monotonic) -> None:
         self._max = max_failures
         self._window = window_s
         self._clock = clock
         self._hits: dict[str, deque[float]] = {}
         self._lock = threading.Lock()
+        self._failures = 0
 
-    def _prune(self, key: str, t: float) -> deque[float]:
-        q = self._hits.setdefault(key, deque())
+    def _recent(self, key: str, t: float) -> deque[float] | None:
+        """The failures of `key` inside the window, or None (and the key forgotten) when there are none."""
+        q = self._hits.get(key)
+        if q is None:
+            return None
         while q and t - q[0] > self._window:
             q.popleft()
+        if not q:
+            del self._hits[key]
+            return None
         return q
+
+    def _prune_all(self, t: float) -> None:
+        stale = [k for k, q in self._hits.items() if not q or t - q[-1] > self._window]
+        for k in stale:
+            del self._hits[k]
 
     def blocked(self, key: str) -> bool:
         with self._lock:
-            return len(self._prune(key, self._clock())) >= self._max
+            q = self._recent(key, self._clock())
+            return q is not None and len(q) >= self._max
 
     def retry_after(self, key: str) -> int:
         with self._lock:
             t = self._clock()
-            q = self._prune(key, t)
-            if len(q) < self._max:
+            q = self._recent(key, t)
+            if q is None or len(q) < self._max:
                 return 0
             return max(1, int(self._window - (t - q[0])) + 1)
 
     def fail(self, key: str) -> None:
         with self._lock:
             t = self._clock()
-            self._prune(key, t).append(t)
+            self._failures += 1
+            if self._failures % self.PRUNE_EVERY == 0:
+                self._prune_all(t)
+            q = self._recent(key, t)
+            if q is None:
+                q = self._hits[key] = deque()
+            q.append(t)
+
+    def keys(self) -> int:
+        """How many keys are held in memory."""
+        with self._lock:
+            return len(self._hits)
 
     def clear(self, key: str) -> None:
         with self._lock:
