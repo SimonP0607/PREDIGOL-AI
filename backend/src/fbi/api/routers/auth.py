@@ -36,6 +36,7 @@ from fbi.api.security import (
 )
 from fbi.auth import service
 from fbi.auth.service import Principal
+from fbi.auth.settings import session_settings
 
 public_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
 session_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
@@ -46,11 +47,15 @@ Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 
 def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
     src = row or {}
+    role = src.get("role", p.role)
+    limits = session_settings()
     return Me(
         id=p.user_id, email=src.get("email", p.email), display_name=src.get("display_name", p.display_name),
-        role=src.get("role", p.role), permissions=sorted(perm.value for perm in p.permissions),
+        role=role, permissions=sorted(perm.value for perm in p.permissions),
         language=src.get("language", p.language), timezone=src.get("timezone", p.timezone),
-        session_expires_at=p.session_expires_at, stage=p.stage,  # type: ignore[arg-type]
+        session_expires_at=p.session_expires_at,
+        session_idle_hours=limits.admin_idle_hours if role == "SUPER_ADMIN" else limits.idle_hours,
+        stage=p.stage,  # type: ignore[arg-type]
         mfa_enabled=p.mfa_enabled, mfa_required=p.mfa_required, must_change_password=p.must_change_password,
         recovery_codes_left=p.recovery_codes_left,
     )

@@ -29,6 +29,9 @@ class Me(Contract):
     language: Language
     timezone: str = Field(description="IANA time zone every time on screen is shown in. Stored data stays UTC.")
     session_expires_at: datetime
+    session_idle_hours: int = Field(default=0, description="A session not used for this long ends: every use gives it "
+                                                            "this long again, never past session_expires_at (7 days "
+                                                            "for a user, 8 hours for the owner's console).")
     stage: Stage = Field(default="full", description="full: signed in. mfa / enroll / password: a step of signing "
                                                      "in is still owed, and nothing else is reachable until it is done.")
     mfa_enabled: bool = False

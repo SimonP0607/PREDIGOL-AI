@@ -158,3 +158,12 @@ def test_a_session_dead_from_idleness_is_neither_listed_nor_counted(fresh: str) 
     users = owner.get("/api/v1/admin/users").json()["data"]
     regular = next(u for u in users if u["email"] == USER_EMAIL)
     assert regular["active_sessions"] == 1, regular
+
+
+def test_the_account_is_told_how_long_its_session_lasts_unused(fresh: str) -> None:
+    """The profile says the session closes sooner if it goes unused (it slides): /auth/me tells the limit that applies
+    to the account - 7 days for a user, 8 hours for the owner - beside the absolute end."""
+    user = signed_in(USER_EMAIL, USER_PW).get("/api/v1/auth/me").json()
+    assert user["session_idle_hours"] == 7 * 24
+    owner = signed_in(ADMIN_EMAIL, ADMIN_PW).get("/api/v1/auth/me").json()
+    assert owner["session_idle_hours"] == 8
