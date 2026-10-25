@@ -30,7 +30,7 @@ import structlog
 from fbi.auth import tokens
 from fbi.core.clock import now
 from fbi.core.logging import error_summary
-from fbi.customer import events
+from fbi.customer import events, membership
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.messaging import notices
 from fbi.messaging.email import client_from_env
@@ -84,6 +84,8 @@ class CycleTotals:
     purge: events.PurgeReport | None = None
     links_purge: tuple[str, int] | None = None
     """The accounts' one-use links past their 30 days (plan UX, A7): the mode and how many."""
+    membership: int = 0
+    """The notices of a membership's end recorded this cycle (plan UX, A8)."""
     errors: list[str] = field(default_factory=list)
 
     def add(self, report: DispatchReport) -> None:
@@ -95,7 +97,8 @@ class CycleTotals:
 
     def counters(self, *, interrupted: bool) -> RunCounters:
         provider_calls = self.sent + self.retried + self.deferred
-        c = RunCounters(api_calls=provider_calls, rows_inserted=self.notices + self.legal + self.rollup,
+        c = RunCounters(api_calls=provider_calls,
+                        rows_inserted=self.notices + self.legal + self.rollup + self.membership,
                         rows_updated=self.sent + self.retried + self.failed + self.suppressed + self.deferred,
                         errors=list(self.errors))
         if interrupted:
@@ -109,13 +112,14 @@ class CycleTotals:
             purge += f"; links purge {self.links_purge[0]}: {self.links_purge[1]}"
         return (f"sending {'on' if sending else 'off'}{'' if provider or not sending else ' (no provider)'}; "
                 f"sent {self.sent}, retried {self.retried}, failed {self.failed}, suppressed {self.suppressed}, "
-                f"deferred {self.deferred}; notices {self.notices}, legal {self.legal}; "
+                f"deferred {self.deferred}; notices {self.notices}, legal {self.legal}, membership {self.membership}; "
                 f"activity rows {self.rollup}{purge}")
 
 
 def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sending: bool, provider: bool) -> None:
-    """The legal-change messages, the owner's notices and the product analytics' daily aggregate and retention (A6);
-    each step's failure is recorded and the cycle goes on."""
+    """The legal-change messages, the owner's notices, the product analytics' daily aggregate and retention (A6), the
+    notices of a membership's end (A8) and the old links' purge (A7); each step's failure is recorded and the cycle
+    goes on."""
     try:
         totals.legal += enqueue_legal_changes(conn)
         conn.commit()
@@ -139,6 +143,12 @@ def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sendin
         conn.rollback()
         totals.errors.append(f"activity: {error_summary(exc)}"[:300])
         log.error("messenger.activity_failed", error=error_summary(exc))
+    try:
+        totals.membership += membership.remind(conn, at=now())
+    except Exception as exc:
+        conn.rollback()
+        totals.errors.append(f"membership: {error_summary(exc)}"[:300])
+        log.error("messenger.membership_failed", error=error_summary(exc))
     try:
         totals.links_purge = tokens.purge(conn, at=now())
         conn.commit()

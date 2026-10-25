@@ -112,6 +112,57 @@ def moment(value: str | datetime, locale: Locale, zone: str) -> str:
     return f"{day}, {local:%H:%M} ({zone_label(zone, locale)})"
 
 
+def day_in_zone(value: str, locale: Locale, zone: str) -> str:
+    """The calendar day of a moment in the reader's time zone, as they say it: «7 de noviembre de 2026»."""
+    try:
+        at = datetime.fromisoformat(value)
+    except ValueError:
+        raise TemplateError(f"not a moment: {value!r}") from None
+    if at.tzinfo is None:
+        raise TemplateError(f"a moment without its time zone: {value!r}")
+    try:
+        tz = ZoneInfo(zone)
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = ZoneInfo("UTC")
+    return long_date(at.astimezone(tz).date().isoformat(), locale)
+
+
+MEMBERSHIP_KINDS: dict[str, dict[Locale, str]] = {
+    "trial": {"es": "Tu prueba de PrediGol", "en": "Your PrediGol trial"},
+    "paid": {"es": "Tu membresía de PrediGol", "en": "Your PrediGol membership"},
+    "courtesy": {"es": "Tu membresía de PrediGol", "en": "Your PrediGol membership"},
+}
+"""What ends, as the reader calls it: a trial, or the membership (paid or a courtesy)."""
+GRACE_DAYS = 3
+
+
+def _renew_how(locale: Locale) -> str:
+    """How to renew, read when the e-mail leaves: WhatsApp (FBI_SUPPORT_WHATSAPP, P7 of the plan) and answering the
+    e-mail (FBI_EMAIL_REPLY_TO) when they exist; the profile otherwise."""
+    digits = re.sub(r"[^0-9]", "", os.environ.get("FBI_SUPPORT_WHATSAPP", ""))
+    phone = f"+{digits}" if 8 <= len(digits) <= 15 else None
+    reply = bool(os.environ.get("FBI_EMAIL_REPLY_TO", "").strip())
+    if locale == "es":
+        ways = ([f"por WhatsApp al {phone}"] if phone else []) + (["respondiendo a este correo"] if reply else [])
+        return f"Para renovar, escríbenos {' o '.join(ways)}." if ways else (
+            "Para renovar, mira cómo hacerlo en tu perfil.")
+    ways = ([f"on WhatsApp at {phone}"] if phone else []) + (["by answering this e-mail"] if reply else [])
+    return f"To renew, write to us {' or '.join(ways)}." if ways else "To renew, see how in your profile."
+
+
+def _membership(params: Mapping[str, str], locale: Locale, zone: str) -> dict[str, str]:
+    kind = MEMBERSHIP_KINDS.get(params["kind"])
+    if kind is None:
+        raise TemplateError(f"a membership is a trial, paid or a courtesy, not {params['kind']!r}")
+    ends = params["ends"]
+    try:
+        grace = (datetime.fromisoformat(ends) + timedelta(days=GRACE_DAYS)).isoformat()
+    except ValueError:
+        raise TemplateError(f"not a moment: {ends!r}") from None
+    return {"what": kind[locale], "date": day_in_zone(ends, locale, zone),
+            "grace": day_in_zone(grace, locale, zone), "how": _renew_how(locale)}
+
+
 BROWSERS: dict[str, dict[Locale, str]] = {
     "chrome": {"es": "Chrome", "en": "Chrome"}, "edge": {"es": "Edge", "en": "Edge"},
     "firefox": {"es": "Firefox", "en": "Firefox"}, "safari": {"es": "Safari", "en": "Safari"},
@@ -230,6 +281,10 @@ class Template:
     parameter ``grant`` and the link is made when the message leaves."""
     stale_after: timedelta | None = None
     """A message still queued this long after it was asked for is not sent any more."""
+    stale_param: str | None = None
+    """The parameter holding the moment (plus ``stale_grace``) past which a queued message is not sent any more: a
+    membership's «ends on the 7th» after the 7th (plan UX, A8)."""
+    stale_grace: timedelta = timedelta(0)
 
     def copy(self, locale: Locale) -> Copy:
         return self.es if locale == "es" else self.en
@@ -372,6 +427,40 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
                 "Review my security"),
         values=_security_change, sample=(("change", "password"), ("when", "2026-10-25T18:05:00+00:00")),
         stale_after=timedelta(hours=24),
+    ),
+    # The membership (plan UX, A8): 7 days before the end (3 in a trial) and at the end - a service notice, no
+    # countdown, no offer, no alarm colours; the reader can switch the category off in the profile.
+    Template(
+        "membership_expiring", "membership", ("ends", "kind"), "/profile#membership",
+        es=Copy("{what} termina el {date}",
+                ("Hola, {name}.",
+                 "{what} termina el {date}. {how}",
+                 "Si renuevas antes, sigues sin cortes; si no, tienes 3 días de gracia con acceso completo."),
+                "Ver mi membresía"),
+        en=Copy("{what} ends on {date}",
+                ("Hello, {name}.",
+                 "{what} ends on {date}. {how}",
+                 "Renew before and nothing stops; if not, you have 3 days of grace with full access."),
+                "See my membership"),
+        values=_membership, sample=(("ends", "2026-11-07T15:00:00+00:00"), ("kind", "paid")),
+        stale_param="ends",
+    ),
+    Template(
+        "membership_grace", "membership", ("ends", "kind"), "/profile#membership",
+        es=Copy("{what} terminó: tienes 3 días de gracia",
+                ("Hola, {name}.",
+                 "{what} terminó el {date}. Hasta el {grace} sigues con acceso completo. {how}",
+                 "Tus datos siguen aquí. Si no renuevas, después del {grace} podrás ver tu perfil, tus picks "
+                 "guardados, la ayuda y tus datos; al renovar vuelve todo."),
+                "Ver mi membresía"),
+        en=Copy("{what} has ended: you have 3 days of grace",
+                ("Hello, {name}.",
+                 "{what} ended on {date}. Until {grace} you keep full access. {how}",
+                 "Your data stays here. If you do not renew, after {grace} you can see your profile, your saved "
+                 "picks, the help and your data; renewing brings everything back."),
+                "See my membership"),
+        values=_membership, sample=(("ends", "2026-11-07T15:00:00+00:00"), ("kind", "trial")),
+        stale_param="ends", stale_grace=timedelta(days=GRACE_DAYS),
     ),
 )}
 

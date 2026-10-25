@@ -73,7 +73,8 @@ def test_the_messenger_is_a_job_the_watchdog_knows_and_its_notices_are_kinds_the
     assert set(m.KINDS_BEFORE + m.KINDS_NEW) == set(KINDS)
     source = Path(notices.__file__).read_text(encoding="utf-8")
     drafted = {k for k in m.KINDS_NEW if f'"{k}", f"' in source}
-    assert drafted == {"ticket_new", "privacy_due", "outbox_failing", "synthetic_failed"}
+    assert drafted == {"ticket_new", "privacy_due", "outbox_failing", "synthetic_failed",
+                       "membership_due"}  # A8
 
 
 def test_the_messenger_runs_alone_with_the_apis_role_and_no_raw_store() -> None:

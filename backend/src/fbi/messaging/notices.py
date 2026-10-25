@@ -12,7 +12,11 @@ keyed so that drafting it again is free:
                       (also: sending switched on without a provider)
     synthetic_failed  the synthetic journey failed twice in a row or more                       - once per streak
 
-``membership_due`` (A8) and ``ai_user_budget`` (A11) are accepted kinds already; their phases draft them.
+    membership_due    covers ending today, accounts in their grace, accounts limited in the last day and «will
+                      not renew» among those ending (A8) - counts only, the names in the console - once a morning
+                      (Bogotá, from 07:00), and only when there is something to say
+
+``ai_user_budget`` (A11) is an accepted kind already; its phase drafts it.
 """
 
 from __future__ import annotations
@@ -26,7 +30,7 @@ import psycopg
 import structlog
 from psycopg.rows import dict_row
 
-from fbi.customer import workdays
+from fbi.customer import events, membership, workdays
 from fbi.customer.privacy import bogota_today
 from fbi.messaging.templates import long_date, web_base
 from fbi.notify.service import Draft
@@ -153,9 +157,39 @@ def synthetic_failed(conn: psycopg.Connection[Any]) -> list[Draft]:
         {"runs": len(streak), "first_run_id": int(first["id"])})]
 
 
+MORNING_HOUR = 7
+"""The owner's membership notice waits for the morning in Bogotá: «each morning the day's count» (section 22)."""
+
+
+def membership_due(conn: psycopg.Connection[Any], *, at: datetime) -> list[Draft]:
+    local = at.astimezone(events.BOGOTA)
+    if local.hour < MORNING_HOUR:
+        return []
+    today = local.date()
+    counts = membership.owner_counts(conn, at=at, today_bounds=events.day_bounds(today))
+    if not any(counts.values()):
+        return []
+    lines = []
+    if counts["ending_today"]:
+        lines.append(f"{_n(counts['ending_today'], 'membresía termina', 'membresías terminan')} hoy.")
+    if counts["in_grace"]:
+        lines.append(f"{_n(counts['in_grace'], 'cuenta está', 'cuentas están')} en sus 3 días de gracia.")
+    if counts["expired_today"]:
+        lines.append(f"{_n(counts['expired_today'], 'cuenta pasó', 'cuentas pasaron')} a acceso limitado en el "
+                     "último día.")
+    if counts["will_not_renew"]:
+        lines.append(f"{_n(counts['will_not_renew'], 'dijo', 'dijeron')} que no renovará.")
+    return [Draft(
+        "membership_due", f"membership_due:{today.isoformat()}",
+        "Vencimientos de membresía de hoy",
+        " ".join(lines) + f" Los nombres, en la consola: {web_base()}/admin/users?membership=due",
+        counts)]
+
+
 def collect(conn: psycopg.Connection[Any], *, at: datetime, sending: bool, provider: bool) -> list[Draft]:
     return [*ticket_new(conn), *privacy_due(conn, at=at),
-            *outbox_failing(conn, at=at, sending=sending, provider=provider), *synthetic_failed(conn)]
+            *outbox_failing(conn, at=at, sending=sending, provider=provider), *synthetic_failed(conn),
+            *membership_due(conn, at=at)]
 
 
 def write(conn: psycopg.Connection[Any], drafts: list[Draft]) -> int:

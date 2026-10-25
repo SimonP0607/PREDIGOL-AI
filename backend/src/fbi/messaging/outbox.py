@@ -128,6 +128,14 @@ def suppression(row: Mapping[str, Any], at: datetime | None = None) -> str | Non
         template = TEMPLATES.get(str(row.get("template") or ""))
         if template is not None and template.stale_after is not None and row["created_at"] < at - template.stale_after:
             return "too late: its moment has passed"
+        if template is not None and template.stale_param is not None:
+            raw = (row.get("params") or {}).get(template.stale_param)
+            try:
+                moment = datetime.fromisoformat(str(raw))
+            except ValueError:
+                moment = None
+            if moment is not None and moment.tzinfo is not None and at >= moment + template.stale_grace:
+                return "too late: its moment has passed"
     status = row["email_status"] or "ok"
     if status == "bounced":
         return "address bounced"
