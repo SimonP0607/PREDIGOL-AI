@@ -293,3 +293,29 @@ Mientras corría el cálculo (seis hilos de numpy, la carga de la máquina subi�
 **Qué falta.** Medir si aciertan de verdad. La herramienta (F11, que llega con la próxima entrega) es `python -m scripts.families score --days 14`
 (solo lectura): compara cada pronóstico guardado antes del inicio con lo que pasó y, aparte, con el precio de las casas. Los primeros partidos
 pronosticados se juegan hoy mismo, así que hay con qué medir en unos días. Nada de esto cambia lo que ve un usuario.
+
+## 10. Primer marcador (25 de octubre de 2026)
+
+**Qué se midió.** El 25 de octubre a las 13:15 UTC se ejecutó en el servidor, solo en lectura, `python -m scripts.families score --days 14`. Mira los partidos que empezaron entre el 11 y el 24 de octubre (espera 30 horas tras cada uno, porque las estadísticas de tarjetas tardan en asentarse) y compara cada pronóstico guardado antes del inicio con lo que pasó: 1.814 filas guardadas, de 11 a 17 partidos por familia (32 filas cuyo resultado cae justo en la línea quedaron fuera).
+
+**Frente a una referencia sin información** (la mejor probabilidad constante para ese mercado; una ganancia positiva quiere decir que la familia supera a esa referencia):
+
+| Familia | Partidos | Filas | Pérdida logarítmica | Mejor constante | Ganancia por fila | Brier | Brecha de calibración |
+|---|---|---|---|---|---|---|---|
+| Tarjetas por líneas (`family-cards_lines_ft`) | 11 | 154 | 0,4703 | 0,4948 | **+0,0245** | 0,1509 | 9,7 puntos |
+| Córners (`family-corners_ft`) | 11 | 352 | 0,5947 | 0,4608 | −0,1340 | 0,2043 | 3,3 puntos |
+| Goles por mitades (`family-goals_halves`) | 17 | 1.056 | 0,5759 | 0,5440 | −0,0319 | 0,1990 | 5,6 puntos |
+| Tarjetas amarillas (`family-yellow_ft`) | 11 | 220 | 0,5630 | 0,5530 | −0,0100 | 0,1912 | 9,8 puntos |
+
+**Frente a las casas** (probabilidades de las casas con su margen quitado, con al menos 3 casas; «mercado menos modelo» positivo quiere decir que el modelo fue mejor):
+
+| Familia | Momento | Filas (partidos) | Mercado menos modelo |
+|---|---|---|---|
+| Goles por mitades | cierre | 516 (15) | −0,0064 ± 0,0115 |
+| Goles por mitades | 24 h antes | 344 (11) | −0,0005 ± 0,0107 |
+| Córners | cierre | 159 (11) | −0,0041 ± 0,0211 |
+| Córners | 24 h antes | 12 (6) | +0,0451 ± 0,0359 |
+
+**Qué dice.** Con 11 a 17 partidos por familia todavía no dice casi nada: las filas de un mismo partido se parecen entre sí (352 filas de córners no son 352 pruebas independientes) y los márgenes de error (± 0,01 a ± 0,04) son del tamaño de las diferencias. Las tarjetas por líneas superan a la referencia; las otras tres familias, no, y la que más se aparta es la de córners. Frente a las casas, ninguna diferencia sale del ruido: en goles por mitades el modelo y el mercado quedan prácticamente empatados, que es lo esperable si el modelo no sabe nada que el mercado no sepa. **No hay, todavía, ninguna señal de ventaja, ni de lo contrario.**
+
+**Lo que aún no se puede medir.** El criterio del plan para que una familia decida en sombra (300 apuestas simuladas con pronósticos guardados 24 horas o más antes del inicio, y valor frente a la línea de cierre que no sea negativo) no se puede evaluar: la herramienta dice que ningún pronóstico guardado con esa antelación se ha liquidado todavía. Los primeros, de los que se guardan desde la primera pasada del 24 de octubre, se podrán medir a partir del 26 de octubre (30 horas después del partido). El marcador se repite a medida que haya más partidos y es la medida con la que se mirará, más adelante, la decisión de encender el ciclo en sombra.
