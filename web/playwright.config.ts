@@ -8,12 +8,12 @@
  *
  * The suite signs in once per QA account (project "setup") and reuses the session:
  *   anon      sign-in, sign-out, redirects; RBAC over the API; the server-function path (R02)
- *   user-es   the product as a USER, in Spanish (America/Bogota)
+ *   user-es   the product as a USER, in Spanish (America/Bogota), and the glossary at a desk
  *   user-en   the product as a USER, in English (Europe/Madrid)
  *   admin     the Admin Console as SUPER_ADMIN, in English
  *   security  two-step verification: set-up, recovery codes, required password, codes; the owner's resets
  *   prefs     language and time-zone changes, serially, on their own account
- *   mobile    the product at 390 px
+ *   mobile    the product at 390 px, and the glossary under a finger
  *   mobile-webkit  the phone checks at 320, 390 and 430 px in WebKit, the engine of every iPhone browser
  *   pwa       manifest, service worker and offline page (E2E_PWA=1, production build only)
  *   prod-smoke  read-only checks of a deployed site, no sign-in (E2E_PROD_SMOKE=1, E2E_BASE_URL=the site)
@@ -60,7 +60,8 @@ export default defineConfig({
     },
     {
       name: "user-es",
-      testMatch: /user\.spec\.ts/,
+      // glossary.spec.ts: the one glossary at a desk (plan UX, A3)
+      testMatch: /(user|glossary)\.spec\.ts/,
       metadata: { lang: "es" },
       use: { ...desktop, storageState: statePath("user") },
       dependencies: ["setup"],
@@ -107,7 +108,8 @@ export default defineConfig({
     },
     {
       name: "mobile",
-      testMatch: /responsive\.spec\.ts/,
+      // glossary.spec.ts: the one glossary under a finger (plan UX, A3)
+      testMatch: /(responsive|glossary)\.spec\.ts/,
       use: {
         ...devices["Pixel 7"],
         viewport: { width: 390, height: 844 },

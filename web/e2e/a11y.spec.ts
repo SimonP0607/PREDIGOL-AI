@@ -21,6 +21,7 @@ const PRODUCT = [
   "/odds",
   "/my-picks",
   "/profile",
+  "/help/glossary",
 ];
 const WIDTHS: ReadonlyArray<readonly [number, number]> = [
   [1440, 900],
