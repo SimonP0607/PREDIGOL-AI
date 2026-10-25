@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 from dataclasses import dataclass
+from pathlib import Path
 
 import psycopg
 import pytest
@@ -19,6 +20,18 @@ from alembic.config import Config
 from tests.integration.helpers import scalar
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+HERE = Path(__file__).resolve().parent
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Every test of this package needs PostgreSQL, so every one carries the ``integration`` mark, whether or not its file
+    says so (on 25 Oct 2026 about 147 of the 219 files did not). ``pytest -m "not integration"`` is then the unit suite
+    alone, and ``pytest -m integration`` the database suite alone (plan UX, A0). The hook sees the whole session's
+    items: only the ones under this folder are marked."""
+    for item in items:
+        if HERE in Path(str(item.path)).resolve().parents:
+            item.add_marker(pytest.mark.integration)
+
 
 def _admin_url() -> str:
     """The DSN used to DROP and CREATE the test database.
