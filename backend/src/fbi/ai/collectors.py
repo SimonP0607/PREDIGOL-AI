@@ -27,8 +27,9 @@ import psycopg
 from psycopg.rows import dict_row
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from fbi.ai import cache
+from fbi.ai import cache, gates
 from fbi.ai.absences import absences_as_of, checked_at_as_of
+from fbi.ai.budget_v3 import exa_budget
 from fbi.ai.config import AiSettings
 from fbi.ai.evidence import (
     TIER_RANK,
@@ -320,6 +321,7 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
         out.skipped = "no such fixture"
         return out
     ledger = ledger or UsageLedger()
+    exa_envelope = gates.enabled(conn, settings, "budget_v3")
     late = f["kickoff_at"] - at <= LATE_WINDOW
     bucket = "late" if late else "early"
     wanted = levels_wanted(levels)
@@ -333,6 +335,11 @@ def collect_web(conn: psycopg.Connection[Any], settings: AiSettings, fixture_id:
                              .encode()).hexdigest()[:40]
         cached = cache.get(conn, "search", key, at=at)
         if cached is None:
+            if exa_envelope and not exa_budget(conn, at=at, settings=settings).allowed:
+                out.skipped = "budget_exa"  # Exa's own envelope (budget v3): spent for the month, or for today
+                if tried == 1:
+                    return out
+                break
             engine = settings.search or "exa"
             try:
                 found = search(query, at)

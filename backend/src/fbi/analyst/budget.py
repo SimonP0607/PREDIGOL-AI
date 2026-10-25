@@ -59,12 +59,19 @@ def monthly_budget() -> Decimal:
 
 
 def spent_this_month(conn: psycopg.Connection[Any], *, at: datetime) -> Decimal:
-    """The month's spend of the WHOLE AI layer: these runs and the decision layer's calls (``ai.usage``) -
-    one cap for both (``fbi.ai.usage``)."""
+    """The month's spend against this cap: these runs and the decision layer's calls (``ai.usage``) - one cap for both
+    (``fbi.ai.usage``). With the budget v3 (Plan Maestro IA, section 26) the cap is PRODUCTION's own envelope, Claude only:
+    Exa's searches and the LAB workspace's calls have theirs and are not counted here; rolled back
+    (``FBI_AI_BUDGET_V3=0``), it is the whole layer's total as before."""
+    from fbi.ai.config import AiSettings
+
     start = at.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    ledger = ("(SELECT sum(cost_usd) FROM ai.usage_scoped WHERE scope = 'production' AND at >= %(s)s)"
+              if AiSettings.from_env().switch("budget_v3") != "off"
+              else "(SELECT sum(cost_usd) FROM ai.usage WHERE at >= %(s)s)")
     with conn.cursor() as cur:
         cur.execute("SELECT COALESCE((SELECT sum(cost_usd) FROM analytics.ai_runs WHERE started_at >= %(s)s), 0) "
-                    "+ COALESCE((SELECT sum(cost_usd) FROM ai.usage WHERE at >= %(s)s), 0)", {"s": start})
+                    f"+ COALESCE({ledger}, 0)", {"s": start})
         row = cur.fetchone()
     return Decimal(row[0]) if row else Decimal(0)
 

@@ -55,12 +55,13 @@ from fbi.ai.pricing import token_cost
 from fbi.ai.providers import provider_for
 from fbi.ai.providers.base import JsonRequest, LlmProvider, LlmResult, LlmUsage, ProviderError
 
-BudgetState = Literal["NORMAL", "REDUCED", "CHEAP_ONLY", "EXHAUSTED"]
+BudgetState = Literal["NORMAL", "AJUSTE", "REDUCED", "CHEAP_ONLY", "EXHAUSTED"]
 Purpose = Literal["evidence_extraction", "pick_review", "match_analysis", "match_brief", "postmortem",
                   "pattern_review", "learning", "web_search", "daily_report", "ask", "other"]
 Connect = Callable[[], AbstractContextManager[psycopg.Connection[Any]]]
 ALLOWED: dict[BudgetState, frozenset[str]] = {
     "NORMAL": frozenset({"bulk", "analysis", "final", "search"}),
+    "AJUSTE": frozenset({"bulk", "analysis", "final", "search"}),  # budget v3: the main path's quality does not change
     "REDUCED": frozenset({"bulk", "analysis", "search"}),
     "CHEAP_ONLY": frozenset({"bulk"}),
     "EXHAUSTED": frozenset(),
@@ -126,6 +127,16 @@ class Budget:
     target: Decimal = Decimal(0)
     """The owner's soft daily target (``FBI_AI_DAILY_TARGET_USD``)."""
     day: date | None = None
+    version: str = "v2"
+    """``v2``: the day's arithmetic of this module. ``v3``: the adaptive budget of ``fbi.ai.budget_v3`` (section 26 of the plan)."""
+    projected: Decimal | None = None
+    """v3: the month's PROJECTED spend of production, against ``monthly`` (its envelope)."""
+    reserve_locked: Decimal = Decimal(0)
+    """v3: the part of what is left that is kept for production's emergencies (released in the last five days)."""
+    limit_until: datetime | None = None
+    """v3: the provider said a spend limit is spent; no call is made until then, and then one tries again."""
+    reasons: tuple[str, ...] = ()
+    """v3: why the state is not NORMAL (``projection``, ``day_allocation``, ``day_cap``, ``month_spent``, ``api_limit``...)."""
 
     @property
     def ratio(self) -> float:
@@ -145,10 +156,24 @@ class Budget:
     def allows(self, tier: str) -> bool:
         return tier in ALLOWED[self.state]
 
+    @property
+    def projection_ratio(self) -> float | None:
+        """v3: the projected month against the envelope (None in v2)."""
+        if self.projected is None:
+            return None
+        return float(self.projected / self.monthly) if self.monthly > 0 else None
+
+    @property
+    def adjusting(self) -> bool:
+        """v3: the budget asks for savings that leave the main path's quality alone (AJUSTE) or for more (REDUCED and below):
+        dedupe, reuse, cache, Batch what can wait, drop redundant calls, postpone secondary experiments, shrink the LAB."""
+        return self.state != "NORMAL"
+
     def marginal_allowed(self) -> bool:
         """Whether a match WITHOUT a candidate may still get the paid depth (model brief, web): only while the day is
-        NORMAL, below 80 % of its budget, and the month below 85 % of its own."""
-        return (self.state == "NORMAL" and self.spent_today < self.daily * MARGINAL_SHARE
+        NORMAL (or, in v3, in AJUSTE: it changes nothing of the main path), below 80 % of its budget, and the month below
+        85 % of its own."""
+        return (self.state in ("NORMAL", "AJUSTE") and self.spent_today < self.daily * MARGINAL_SHARE
                 and self.month_ratio < MARGINAL_MONTH)
 
     def pass_allows(self, pass_kind: str) -> bool:
@@ -158,13 +183,23 @@ class Budget:
         return self.state != "EXHAUSTED" and self.spent_today < self.daily * share
 
     def as_json(self) -> dict[str, Any]:
-        return {"state": self.state, "spent_today_usd": str(_money(self.spent_today)),
-                "spent_month_usd": str(_money(self.spent_month)), "daily_budget_usd": str(self.daily),
-                "daily_cap_usd": str(self.cap), "daily_target_usd": str(self.target),
-                "monthly_budget_usd": str(self.monthly), "remaining_month_usd": str(_money(self.remaining_month)),
-                "pace_usd": str(_money(self.pace)), "load": round(self.load, 3), "days_left": self.days_left,
-                "ratio": round(self.ratio, 4), "month_ratio": round(self.month_ratio, 4),
-                "day": None if self.day is None else self.day.isoformat()}
+        out: dict[str, Any] = {
+            "state": self.state, "spent_today_usd": str(_money(self.spent_today)),
+            "spent_month_usd": str(_money(self.spent_month)), "daily_budget_usd": str(self.daily),
+            "daily_cap_usd": str(self.cap), "daily_target_usd": str(self.target),
+            "monthly_budget_usd": str(self.monthly), "remaining_month_usd": str(_money(self.remaining_month)),
+            "pace_usd": str(_money(self.pace)), "load": round(self.load, 3), "days_left": self.days_left,
+            "ratio": round(self.ratio, 4), "month_ratio": round(self.month_ratio, 4),
+            "day": None if self.day is None else self.day.isoformat()}
+        if self.version != "v2":
+            ratio = self.projection_ratio
+            out.update({"version": self.version,
+                        "projected_month_usd": None if self.projected is None else str(_money(self.projected)),
+                        "projection_ratio": None if ratio is None else round(ratio, 4),
+                        "reserve_locked_usd": str(_money(self.reserve_locked)),
+                        "limit_until": None if self.limit_until is None else self.limit_until.isoformat(),
+                        "reasons": list(self.reasons)})
+        return out
 
 
 SPENT_SQL = """
@@ -204,6 +239,16 @@ def lab_spent_month(conn: psycopg.Connection[Any], at: datetime) -> Decimal:
     return scope_spent(conn, "lab", day_start(month_start(local_day(at))), at + timedelta(seconds=1))
 
 
+def lab_may_spend(conn: psycopg.Connection[Any], settings: AiSettings, at: datetime) -> bool:
+    """Whether an experiment of the LAB workspace may spend now. Budget v3: the LAB runs a day whole or not at all and yields to
+    production first (``fbi.ai.budget_v3.lab_day``); rolled back, it is the LAB's envelope alone."""
+    if gates.enabled(conn, settings, "budget_v3"):
+        from fbi.ai import budget_v3
+
+        return budget_v3.lab_day(conn, at=at, settings=settings).can_spend
+    return settings.lab_monthly_budget > 0 and lab_spent_month(conn, at) < settings.lab_monthly_budget
+
+
 def state_of(*, spent_today: Decimal, daily: Decimal, cap: Decimal, spent_month: Decimal,
              monthly: Decimal) -> BudgetState:
     if monthly <= 0 or spent_month >= monthly or daily <= 0 or spent_today >= cap:
@@ -231,6 +276,16 @@ def load_factor(conn: psycopg.Connection[Any], day: date, settings: AiSettings) 
 
 
 def budget(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings) -> Budget:
+    """Today's budget of production: v3 (``fbi.ai.budget_v3``) unless the owner rolled it back (``FBI_AI_BUDGET_V3=0``)."""
+    if gates.enabled(conn, settings, "budget_v3"):
+        from fbi.ai import budget_v3  # here, not above: budget_v3 builds on this module
+
+        return budget_v3.budget(conn, at=at, settings=settings)
+    return budget_v2(conn, at=at, settings=settings)
+
+
+def budget_v2(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings) -> Budget:
+    """The day's arithmetic of V2 (8 Oct 2026), one total for the whole layer: kept whole for the rollback."""
     day = local_day(at)
     start = day_start(day)
     end = at + timedelta(seconds=1)
@@ -249,8 +304,13 @@ def budget(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings)
 
 
 def check_alerts(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings) -> list[int]:
-    """Record the month's thresholds crossed (50 / 70 / 85 / 95 / 100 %), each once a month. Returns the new ones."""
-    b = budget(conn, at=at, settings=settings)
+    """Record the month's thresholds crossed (50 / 70 / 85 / 95 / 100 %), each once a month. Returns the new ones. With the
+    budget v3 each envelope (production, LAB, Exa) alerts on its own and production's PROJECTION alerts at 95 and 100 %."""
+    if gates.enabled(conn, settings, "budget_v3"):
+        from fbi.ai import budget_v3
+
+        return budget_v3.check_alerts(conn, at=at, settings=settings)
+    b = budget_v2(conn, at=at, settings=settings)
     if b.monthly <= 0:
         return []
     crossed = [t for t in ALERT_THRESHOLDS if b.spent_month * 100 >= b.monthly * t]
@@ -367,7 +427,7 @@ def call_json(conn: psycopg.Connection[Any], settings: AiSettings, *, tier: Tier
     ledger = ledger or UsageLedger()
     workspace, key_label = settings.labelled(lab=lab)
     b = budget(conn, at=at, settings=settings)
-    if lab and (settings.lab_monthly_budget <= 0 or lab_spent_month(conn, at) >= settings.lab_monthly_budget):
+    if lab and not lab_may_spend(conn, settings, at):
         return CallOutcome(None, None, None, None, None, Decimal(0), "over_budget")
     if provider is not None:
         used: Tier | None = tier if b.allows(tier) else None
