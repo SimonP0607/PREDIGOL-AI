@@ -354,6 +354,24 @@ describe("V2: selections, edges and small formats", () => {
     expect(plain(selectionText("OU", "Over", "2.5"))).toBe("Goles · Más de 2,5 goles");
   });
 
+  test("a bet of a family is named by its parts and keeps its line, in both languages", () => {
+    setLocale("es");
+    expect(selectionText("CORNERS_OU", "Over", "9.5", "Millonarios - Santa Fe")).toBe(
+      "Córners · más/menos · Más de 9,5",
+    );
+    expect(selectionText("CARDS_DC", "1X", 0, "Millonarios - Santa Fe")).toBe(
+      "Tarjetas · doble oportunidad · Millonarios o empate",
+    );
+    expect(selectionText("HTFT", "Draw/Away", null)).toBe("Descanso/final · Empate / Visitante");
+    setLocale("en");
+    expect(selectionText("OU_2H", "Under", 1.5)).toBe("Goals · over/under · 2nd half · Under 1.5");
+    expect(selectionText("YELLOW_OU_HOME", "Over", 1.5, "Millonarios - Santa Fe")).toBe(
+      "Home yellow cards · over/under · Over 1.5",
+    );
+    // the markets of the pipeline keep reading as they did
+    expect(selectionText("OU", "Over", "2.5")).toBe("Goals · Over 2.5 goals");
+  });
+
   test("ages and days", () => {
     expect(minutesText(45)).toBe("45 min");
     expect(minutesText(900)).toBe("15 h");

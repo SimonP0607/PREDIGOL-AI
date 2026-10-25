@@ -18,6 +18,7 @@ import type {
   IntelRun,
   IntelState,
 } from "./types_intel";
+import type { IntelFamilies } from "./types_families";
 import type {
   PairStatus,
   RefereeActionResult,
@@ -625,6 +626,15 @@ export const v1 = {
   intelPriceClock: () => getJson<Envelope<IntelPriceClock>>("/admin/intelligence/price-clock"),
   intelMarketMatrix: () =>
     getJson<Envelope<IntelMarketMatrix>>("/admin/intelligence/market-matrix"),
+  /** The families in shadow (plan F10.17, F11.11): what they decided, how each was graded, what became of it and what they remember. */
+  intelFamilies: (
+    q: {
+      family?: string | undefined;
+      state?: string | undefined;
+      days?: number | undefined;
+      limit?: number | undefined;
+    } = {},
+  ) => getJson<Envelope<IntelFamilies>>("/admin/intelligence/families", q as Params),
   intelRuns: () =>
     getJson<
       Envelope<{

@@ -9,6 +9,7 @@
  *   EXPERIMENTOS      every hypothesis by stage, the owner's proposals and the model code against its promotions
  *   CALIBRACIÓN       the calibrators (champions, challengers, retired), their gates, their promotions and their evaluations
  *   MERCADOS          the discovery of markets, the clock of the prices and the matrix of markets by family
+ *   FAMILIAS          corners, cards, yellow cards and the goals of the halves deciding in shadow: what they said, how it was graded, what became of it
  *   LA IA FRENTE AL MODELO   the model alone, with rules, with the AI and the market on the same settled selections
  *
  * Nothing here changes a rule, a model or a pick by itself: every change goes through an experiment, a backtest, shadow and the owner.
@@ -27,6 +28,7 @@ import { ComparisonPanel, ShadowTab } from "./AiLayerLive";
 import { CloseTab } from "./AiResearchLive";
 import { AI_TZ } from "./aiModel";
 import { ExperimentsView, LearnedDay } from "./EvolutionLive";
+import { FamiliesPanel } from "./FamiliesPanel";
 import { CalibrationView, MarketsView } from "./IntelligenceLive";
 import { MemoryViews } from "./MemoryLive";
 import { PostmortemsPanel } from "./PostmortemsPanel";
@@ -59,6 +61,7 @@ export function LearningLive() {
       {tab === "experiments" ? <ExperimentsView /> : null}
       {tab === "calibration" ? <CalibrationView /> : null}
       {tab === "markets" ? <MarketsView /> : null}
+      {tab === "families" ? <FamiliesPanel /> : null}
       {tab === "shadow" ? (
         <div className="space-y-4">
           <ComparisonPanel />

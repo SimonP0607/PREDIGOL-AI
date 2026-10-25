@@ -105,7 +105,7 @@
     },
     "learning": {
       "title": "Aprendizaje",
-      "description": "Lo que PrediGol aprende de sus resultados: el cierre de cada día, lo aprendido y lo que se propone, los post-mortems, la memoria, los experimentos y las promociones de código, la calibración, los mercados y la IA frente al modelo. Aquí nada cambia un pick, una probabilidad ni un modelo por sí solo: lo decide el dueño."
+      "description": "Lo que PrediGol aprende de sus resultados: el cierre de cada día, lo aprendido y lo que se propone, los post-mortems, la memoria, los experimentos y las promociones de código, la calibración, los mercados, las familias en shadow y la IA frente al modelo. Aquí nada cambia un pick, una probabilidad ni un modelo por sí solo: lo decide el dueño."
     }
   },
   "users": {
@@ -479,6 +479,7 @@
       "experiments": "Experimentos",
       "calibration": "Calibración",
       "markets": "Mercados",
+      "families": "Familias",
       "shadow": "La IA frente al modelo"
     },
     "memoryViews": {

@@ -12,6 +12,7 @@ import { hasKey, intlTag, t, translateOr } from "@/lib/i18n";
 import { localFixed, localInt, localPct } from "@/lib/i18n/format";
 import { formatDate, formatDateLong, formatDateTime, formatTime } from "@/lib/time";
 import { marketShort, selectionLabel } from "@/product/shared/markets";
+import { isFamilyMarket, marketText, pickText } from "./familiesText";
 import type { HypothesisDecision, HypothesisStatus, Hypothesis } from "@/lib/api/v1/types_ai";
 import type {
   AiBudgetAlert,
@@ -262,7 +263,10 @@ export function teamsOf(match: string): { home: string; away: string } | null {
   return home && away ? { home, away } : null;
 }
 
-/** "1X2 · Gana Millonarios", "Goles · Más de 2,5 goles": the market and the selection in the reader's words. */
+/**
+ * "1X2 · Gana Millonarios", "Goles · Más de 2,5 goles": the market and the selection in the reader's words. A bet of a family (the corners, the
+ * cards, the yellows, the goals of a half) is named by the words of the families tab, with its line: the pipeline's markets have no name for it.
+ */
 export function selectionText(
   market: string,
   selection: string,
@@ -270,6 +274,9 @@ export function selectionText(
   match?: string,
 ): string {
   const teams = match ? teamsOf(match) : null;
+  if (isFamilyMarket(market)) {
+    return `${marketText(market)} · ${pickText(market, selection, line, teams ?? undefined)}`;
+  }
   const label = selectionLabel({
     market_key: market,
     selection,

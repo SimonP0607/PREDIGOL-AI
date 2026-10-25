@@ -105,7 +105,7 @@
     },
     "learning": {
       "title": "Learning",
-      "description": "What PrediGol learns from its results: the close of each day, what was learned and what is proposed, the post-mortems, the memory, the experiments and the code promotions, the calibration, the markets and the AI against the model. Nothing here changes a pick, a probability or a model by itself: the owner decides."
+      "description": "What PrediGol learns from its results: the close of each day, what was learned and what is proposed, the post-mortems, the memory, the experiments and the code promotions, the calibration, the markets, the families in shadow and the AI against the model. Nothing here changes a pick, a probability or a model by itself: the owner decides."
     }
   },
   "users": {
@@ -479,6 +479,7 @@
       "experiments": "Experiments",
       "calibration": "Calibration",
       "markets": "Markets",
+      "families": "Families",
       "shadow": "The AI against the model"
     },
     "memoryViews": {

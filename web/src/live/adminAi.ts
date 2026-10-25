@@ -14,7 +14,7 @@ import { tabFromHash } from "@/lib/useUrlTab";
 export const OPERATION_TABS = ["day", "decisions", "match", "ai", "costs", "runs"] as const;
 /** The views of the "ai" tab of Operación: the analysis of each match, the research, the reviews of the picks, the evidence and the sources. */
 export const AI_VIEWS = ["today", "research", "reviews", "evidence", "sources"] as const;
-/** APRENDIZAJE: the close of the day, what was learned, the post-mortems, the memory, the experiments and promotions, the calibration, the markets and the AI against the model. */
+/** APRENDIZAJE: the close of the day, what was learned, the post-mortems, the memory, the experiments and promotions, the calibration, the markets, the families in shadow and the AI against the model. */
 export const LEARNING_TABS = [
   "close",
   "learned",
@@ -23,6 +23,7 @@ export const LEARNING_TABS = [
   "experiments",
   "calibration",
   "markets",
+  "families",
   "shadow",
 ] as const;
 /** The views of the "memory" tab of Aprendizaje: the entities over time, the matches, the notes of the learning cycle and the research findings. */
