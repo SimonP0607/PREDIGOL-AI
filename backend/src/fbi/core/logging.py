@@ -66,16 +66,19 @@ def redact_text(text: str) -> str:
     return text
 
 
-# What names a person or opens a door, as it can turn up inside an error message or a traceback: an email address, an
-# IP address, a session token (secrets.token_urlsafe: letters of both cases and digits) and a long hex digest. Function
-# names, paths, line numbers and versions are left alone (plan UX, A1: the trace of an unexpected error is logged).
+# What names a person or opens a door, as it can turn up inside an error message or a traceback: a byte string, a
+# password hash, an email address (any script), an IP address, a session token (secrets.token_urlsafe: letters of
+# both cases, digits mostly) and a long hex digest. Function names, paths, line numbers and versions are left alone
+# (plan UX, A1: the trace of an unexpected error is logged).
 _PERSONAL_PATTERNS = (
-    (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}"), "<email>"),
+    (re.compile(r"""\bb(?:'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*")"""), "<bytes>"),
+    (re.compile(r"\$argon2(?:id|i|d)\$[^\s'\"]*"), "<hash>"),
+    (re.compile(r"[\w.%+-]+@[\w-]+(?:\.[\w-]+)*\.[^\W\d_]{2,}"), "<email>"),
     (re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.])"), "<ip>"),
     (re.compile(r"(?<![\w:.])(?=[0-9A-Fa-f:]*::|(?:[0-9A-Fa-f]{1,4}:){3})"
                 r"[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?<=[0-9A-Fa-f])(?![\w:])"), "<ip>"),
-    (re.compile(r"(?<![\w-])(?=[\w-]*\d)(?=[\w-]*[A-Z])(?=[\w-]*[a-z])[\w-]{32,}(?![\w-])"), "<token>"),
-    (re.compile(r"(?<![\w-])[0-9a-f]{32,}(?![\w-])"), "<hex>"),
+    (re.compile(r"(?<![\w-])(?=[\w-]*[A-Z])(?=[\w-]*[a-z])[\w-]{32,}(?![\w-])"), "<token>"),
+    (re.compile(r"(?<![0-9a-f])[0-9a-f]{32,}(?![0-9a-f])"), "<hex>"),
 )
 
 
@@ -86,6 +89,26 @@ def scrub_personal(text: str) -> str:
     for pattern, replacement in _PERSONAL_PATTERNS:
         text = pattern.sub(replacement, text)
     return text
+
+
+def error_summary(exc: BaseException) -> str:
+    """What an unexpected error says, safe for a log: the first line of its message - the summary; the lines after it
+    are where libraries put the data (a database's "DETAIL: Failing row contains (...)", a validation error's
+    input) - without personal data, at most 300 characters."""
+    first = str(exc).strip().splitlines()[0] if str(exc).strip() else ""
+    return scrub_personal(first)[:300]
+
+
+def error_trace(exc: BaseException) -> str:
+    """Where an unexpected error came from, safe for a log: the frames (file, line, function, the source line) and
+    the type - never the message's data or a frame's values - without personal data, the end of it (the cause)."""
+    import traceback
+
+    frames = "".join(traceback.format_tb(exc.__traceback__))
+    cause = exc.__cause__ or exc.__context__
+    if cause is not None and cause.__traceback__ is not None:
+        frames = "".join(traceback.format_tb(cause.__traceback__)) + f"{type(cause).__name__} (the cause)\n" + frames
+    return scrub_personal(frames + type(exc).__name__)[-6000:]
 
 
 def configure(level: str = "INFO") -> None:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import time
-import traceback
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -49,7 +48,7 @@ from fbi.api.services.ops import VERSION
 from fbi.auth import crypto
 from fbi.auth.service import Principal, record_admin_write
 from fbi.core.config import settings
-from fbi.core.logging import configure, scrub_personal
+from fbi.core.logging import configure, error_summary, error_trace
 
 log = structlog.get_logger("api")
 
@@ -102,12 +101,11 @@ def create_app() -> FastAPI:
             return await call_next(request)
         except Exception as exc:
             rid = errors.request_id(request)
-            # The detail of the error, under the request id the client gets (plan UX, A1): its type, its message and
-            # its traceback (the end of it, where the cause is), each through the filter of personal data and
-            # credentials. The client gets the request id and nothing else.
+            # The detail of the error, under the request id the client gets (plan UX, A1): its type, the first line
+            # of its message and its frames, each through the filter of personal data and credentials - never the
+            # lines where libraries put the data, nor a frame's values. The client gets the request id only.
             log.error("api.unhandled", request_id=rid, method=request.method, path=request.url.path,
-                      error=exc.__class__.__name__, message=scrub_personal(str(exc))[:500],
-                      trace=scrub_personal("".join(traceback.format_exception(exc)))[-6000:])
+                      error=exc.__class__.__name__, message=error_summary(exc), trace=error_trace(exc))
             return JSONResponse(errors.body("internal", "internal error; see the server log for this request id", rid),
                                 status_code=500)
 

@@ -9,9 +9,12 @@ The client still gets nothing but the request id.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 import pytest
+import structlog
 from fastapi.testclient import TestClient
 from structlog.testing import capture_logs
 
@@ -20,6 +23,18 @@ from fbi.core.logging import scrub_personal
 EMAIL = "someone.private@example.com"
 TOKEN = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0Ga5KoPiRqWe"  # the shape of tokens.new_token()
 IP = "203.0.113.77"
+
+
+@contextmanager
+def api_logs(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[dict[str, Any]]]:
+    """The API's log lines, captured. The app's logger is cached on first use (fbi.core.logging.configure:
+    cache_logger_on_first_use), so after any other test built an app, capture_logs alone would not see it: the
+    module's logger is replaced by one bound inside the capture."""
+    import fbi.api.app as app_module
+
+    with capture_logs() as logs:
+        monkeypatch.setattr(app_module, "log", structlog.get_logger("api"))
+        yield logs
 
 
 def explode_in_a_named_frame() -> None:
@@ -40,8 +55,9 @@ def boom() -> TestClient:
     return TestClient(app, raise_server_exceptions=False)
 
 
-def test_an_unexpected_error_logs_its_type_message_and_trace_under_the_request_id(boom: TestClient) -> None:
-    with capture_logs() as logs:
+def test_an_unexpected_error_logs_its_type_message_and_trace_under_the_request_id(
+        boom: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    with api_logs(monkeypatch) as logs:
         r = boom.get("/api/v1/__boom")
     assert r.status_code == 500
     rid = r.json()["request_id"]
@@ -54,8 +70,9 @@ def test_an_unexpected_error_logs_its_type_message_and_trace_under_the_request_i
     assert line["method"] == "GET" and line["path"] == "/api/v1/__boom"
 
 
-def test_nothing_personal_reaches_the_log_line_or_the_answer(boom: TestClient) -> None:
-    with capture_logs() as logs:
+def test_nothing_personal_reaches_the_log_line_or_the_answer(boom: TestClient,
+                                                            monkeypatch: pytest.MonkeyPatch) -> None:
+    with api_logs(monkeypatch) as logs:
         r = boom.get("/api/v1/__boom")
     line = next(e for e in logs if e["event"] == "api.unhandled")
     written = " ".join(str(v) for v in line.values())
@@ -72,6 +89,11 @@ def test_nothing_personal_reaches_the_log_line_or_the_answer(boom: TestClient) -
     ("cookie Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0Ga5KoPiRqWe end", "cookie <token> end", "Zk3pQ9mX"),
     ("sha " + "9f" * 32, "sha <hex>", "9f9f9f9f"),
     ("postgresql+psycopg://fbi:hunter2secret@db/fbi", "postgresql+psycopg://fbi:[REDACTED]@db/fbi", "hunter2"),
+    # found by the review of A1: an address with accents, raw bytes, a password hash, a token without a digit
+    ("from simón.pérez@upb.edu.co", "from <email>", "pérez"),
+    ("got b'\\x9f\\x3a\\x00key' here", "got <bytes> here", "x9f"),
+    ("hash $argon2id$v=19$m=65536,t=3,p=4$c2FsdHNhbHQ$aGFzaGhhc2g end", "hash <hash> end", "c2FsdHNhbHQ"),
+    ("cookie abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ end", "cookie <token> end", "abcdefghij"),
 ])
 def test_the_filter_takes_out_what_names_a_person_or_opens_a_door(raw: str, kept: str, gone: str) -> None:
     out = scrub_personal(raw)
@@ -84,3 +106,40 @@ def test_the_filter_keeps_what_a_trace_needs() -> None:
              "test_the_six_client_routes_answer_the_shape_kept_in_the_snapshot\n"
              "psycopg.errors.UndefinedColumn: column u.status does not exist (v1.168.61)")
     assert scrub_personal(trace) == trace
+
+
+def test_the_lines_where_libraries_put_the_data_never_reach_the_log() -> None:
+    """A database's refusal says the row it refused on the lines after its summary, a validation error says its
+    input there: only the first line is logged, and the trace keeps the frames, not the message (review of A1)."""
+    from fbi.core.logging import error_summary, error_trace
+
+    def refuse() -> None:
+        raise ValueError('duplicate key value violates unique constraint "users_email_key"\n'
+                         "DETAIL:  Key (email)=(Ana Pérez, ana@example.com) already exists.")
+
+    try:
+        refuse()
+    except ValueError as exc:
+        summary, trace = error_summary(exc), error_trace(exc)
+    assert summary == 'duplicate key value violates unique constraint "users_email_key"'
+    assert "refuse" in trace and trace.endswith("ValueError")
+    for secret in ("Ana Pérez", "ana@example.com", "DETAIL"):
+        assert secret not in summary and secret not in trace
+
+
+def test_a_validation_error_logs_where_it_failed_not_what_it_was_given() -> None:
+    from pydantic import BaseModel, ValidationError
+
+    from fbi.core.logging import error_summary, error_trace
+
+    class Account(BaseModel):
+        age: int
+
+    given = {"age": ", ".join(("Ana Pérez", "ana@example.com"))}  # data, as a request would bring it: not code
+    try:
+        Account.model_validate(given)
+    except ValidationError as exc:
+        summary, trace = error_summary(exc), error_trace(exc)
+    assert summary.startswith("1 validation error for Account")
+    for secret in ("Ana Pérez", "ana@example.com", "input_value"):
+        assert secret not in summary and secret not in trace
