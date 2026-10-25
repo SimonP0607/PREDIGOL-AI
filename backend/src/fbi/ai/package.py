@@ -129,9 +129,10 @@ def real_tokens(document: object) -> int:
 
 
 def parse_stamp(value: object) -> datetime | None:
-    """A moment from the text a document states it in. A moment with no zone is read as UTC - the database's - so that it is checked all
-    the same: a stamp that cannot be compared is a stamp that cannot be trusted."""
-    if not isinstance(value, str) or len(value) < 10:
+    """A moment from the text a document states it in, in any form ISO 8601 allows (``2026-10-25``, ``20261025T120000Z``...). A moment
+    with no zone is read as UTC - the database's - so that it is checked all the same: a stamp that cannot be compared is a stamp that
+    cannot be trusted, and a form that is only rare is no reason not to compare it."""
+    if not isinstance(value, str):
         return None
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))

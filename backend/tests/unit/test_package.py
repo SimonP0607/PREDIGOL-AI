@@ -8,7 +8,7 @@ from __future__ import annotations
 import copy
 import json
 import time
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -106,6 +106,9 @@ def test_a_moment_is_read_with_its_zone_or_as_utc_and_anything_else_is_not_a_mom
     assert pk.parse_stamp("2026-10-25T14:00:00+02:00") == AT
     assert pk.parse_stamp("2026-10-25T12:00:00Z") == AT
     assert pk.parse_stamp("2026-10-25T12:00:00") == AT, "no zone: read as UTC, so that it is compared all the same"
+    assert pk.parse_stamp("20261025T120000Z") == AT, "the basic form of ISO 8601 is a moment too"
+    assert pk.parse_stamp("20261025") == datetime(2026, 10, 25, tzinfo=UTC), "so is a date alone, in the basic form (8 characters)"
+    assert pk.parse_stamp("2026-10-25") == datetime(2026, 10, 25, tzinfo=UTC)
     for not_a_moment in (None, 5, "", "yesterday", "2026-13-45T00:00:00", "short", ["2026-10-25T12:00:00+00:00"]):
         assert pk.parse_stamp(not_a_moment) is None
 
@@ -119,6 +122,13 @@ def test_the_stamps_are_found_under_their_keys_and_inside_a_dictionary_of_moment
     assert found["models.provenance.data_cutoff_at.poisson"] < AT < found["models.provenance.data_cutoff_at.elo"]
     assert [p for p, s in pk.knowledge_stamps(document) if s > AT] == ["models.provenance.data_cutoff_at.elo", "markets.opening_as_of"]
     assert "kickoff_at" not in found and "text" not in found, "a match is in the future by nature; a text is not a stamp"
+
+
+def test_a_list_of_moments_under_a_stamp_key_is_all_stamps_and_a_short_form_is_not_skipped() -> None:
+    document = {"snapshot_at": [iso(timedelta(hours=-1)), iso(timedelta(hours=3))], "published_at": "20261031", "other": [iso(timedelta(days=5))]}
+    assert pk.knowledge_stamps(document) == [("snapshot_at", AT - timedelta(hours=1)), ("snapshot_at", AT + timedelta(hours=3)),
+                                             ("published_at", datetime(2026, 10, 31, tzinfo=UTC))]
+    assert [p for p, s in pk.knowledge_stamps(document) if s > AT] == ["snapshot_at", "published_at"]
 
 
 # ── the relation of a slice to the package ──────────────────────────────────────────────────────────────────────────
