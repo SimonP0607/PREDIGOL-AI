@@ -23,6 +23,8 @@ from fbi.core import decision_versions as versions
 from fbi.families import forecast, score
 from fbi.families.fit import NO_DISPERSION, prediction
 from fbi.familydecisions import decide as fd
+from fbi.familydecisions import research
+from fbi.intel import factors
 from fbi.market import catalogue
 from fbi.market.rules import RULES_BY_MEASURE
 from fbi.odds.quote_taxonomy import extracted_specs
@@ -34,8 +36,8 @@ AVAILABLE = frozenset(catalogue.key_defs(list(extracted_specs())))
 # ── what the page holds about the families, held equal to the families ───────────────────────────────────────────────────────
 
 def test_the_families_are_the_ones_that_decide_in_the_order_the_console_shows_them() -> None:
-    assert svc.FAMILIES == tuple(fd.SPECS) == tuple(s.family for s in forecast.SPECS)
-    assert typing.get_args(router.Family) == svc.FAMILIES, "the route accepts exactly the families there are"
+    assert family_rules.FAMILIES == tuple(fd.SPECS) == tuple(s.family for s in forecast.SPECS)
+    assert typing.get_args(router.Family) == family_rules.FAMILIES, "the route accepts exactly the families there are"
     assert typing.get_args(router.FamilyState) == svc.STATES == ("INVESTIGACION", "RECHAZADO")
 
 
@@ -74,10 +76,10 @@ def test_the_measures_of_a_family_are_those_its_forecasts_are_graded_on() -> Non
     for spec in forecast.SPECS:
         by_family.setdefault(spec.family, set()).update(spec.measures)
     for family, measures in by_family.items():
-        assert measures <= set(svc.MEASURES[family]), (family, measures)
-    assert "goals_halves" in svc.MEASURES["GOALS_HALF"], "HT/FT and the highest scoring half read both halves"
-    assert set(svc.MEASURES) == set(svc.FAMILIES)
-    assert all(m in RULES_BY_MEASURE for measures in svc.MEASURES.values() for m in measures)
+        assert measures <= set(family_rules.MEASURES[family]), (family, measures)
+    assert "goals_halves" in family_rules.MEASURES["GOALS_HALF"], "HT/FT and the highest scoring half read both halves"
+    assert set(family_rules.MEASURES) == set(family_rules.FAMILIES)
+    assert all(m in RULES_BY_MEASURE for measures in family_rules.MEASURES.values() for m in measures)
 
 
 def families_keys() -> dict[str, set[str]]:
@@ -88,13 +90,13 @@ def families_keys() -> dict[str, set[str]]:
 
 def test_every_key_a_family_states_maps_to_the_rule_the_scoreboard_grades_it_with() -> None:
     keys = families_keys()
-    assert set(keys) == set(svc.FAMILIES) and all(keys.values()), "the test must see the keys of every family, or it proves nothing"
+    assert set(keys) == set(family_rules.FAMILIES) and all(keys.values()), "the test must see the keys of every family, or it proves nothing"
     assert len(keys["GOALS_HALF"]) >= 18 and any(k.startswith("CORNERS_") for k in keys["CORNERS"])
     for family, found in keys.items():
         for key in sorted(found):
-            assert svc.measure_of(key) == score.measure_of(key), key
-            rule = svc.rule_of(key)
-            assert rule is not None and rule.liquidable and rule.measure in svc.MEASURES[family], (family, key)
+            assert family_rules.measure_of(key) == score.measure_of(key), key
+            rule = family_rules.rule_of(key)
+            assert rule is not None and rule.liquidable and rule.measure in family_rules.MEASURES[family], (family, key)
             assert rule.key in svc.rules_for(family)
 
 
@@ -113,11 +115,11 @@ def test_a_key_the_scoreboard_cannot_read_has_no_rule_here_either() -> None:
                         expected: str | None = score.measure_of(key)
                     except ValueError:
                         expected = None
-                    assert svc.measure_of(key) == expected, key
+                    assert family_rules.measure_of(key) == expected, key
                     checked += 1
     assert checked == len(prefixes) * len(kinds) * 9 and checked > 500
     for key in ("HTFT", "HSH", "HSH_HOME", "HSH_AWAY"):
-        assert svc.measure_of(key) == score.measure_of(key) == "goals_halves"
+        assert family_rules.measure_of(key) == score.measure_of(key) == "goals_halves"
     assert family_rules.HALVES == score.HALVES_KEYS
 
 
@@ -143,7 +145,7 @@ def row(**changes: Any) -> dict[str, Any]:
         "n_bookmakers": 5, "p_model": Decimal("0.5600"), "p_market": Decimal("0.4700"), "ev_raw": Decimal("0.1760"), "stake_units": Decimal("0.00"),
         "reasons": ["family_research"], "revisions": 3,
         "forecast": {"forecast_id": 9, "forecast_known_at": "2035-03-02T20:00:00+00:00", "family": "CORNERS", "calibration": "UNCALIBRATED"},
-        "family": "CORNERS", "result_status": None, "profit_flat": None, "close_odds": None, "close_p_fair": None, "close_minutes_to_ko": None,
+        "research": None, "family": "CORNERS", "result_status": None, "profit_flat": None, "close_odds": None, "close_p_fair": None, "close_minutes_to_ko": None,
         "clv": None, "verdict": None, "quality": None, "causes": None, "actual": None, "margin": None,
         "home": "Alpha", "away": "Beta", "competition": "Premier", "country": "England"}
     return {**base, **changes}
@@ -172,6 +174,49 @@ def test_a_bet_no_rule_can_grade_says_so_instead_of_naming_one() -> None:
     assert svc.item_of(row(market_key="OU"))["rule"] is None
 
 
+# ── the request for research a decision carries ─────────────────────────────────────────────────────────────────────────────
+
+ASKED: dict[str, Any] = {
+    "version": "research-fam-v1", "family": "CARDS", "registry": "read", "served": False, "unserved": "family_shadow", "open": ["referee", "context"],
+    "levels": [1, 2, 3], "searches": 3,
+    "needs": [{"key": "referee", "state": "MISSING", "source": "provider", "topics": [], "levels": [], "since": None},
+              {"key": "context", "state": "PARTIAL", "source": "search", "topics": ["availability", "preview"], "levels": [1, 2, 3], "since": None}],
+    "factors": [{"factor": "scenarios", "version": "scenarios-v1", "status": "DESCRIPTIVE"}]}
+
+
+def test_a_decision_shows_what_it_did_not_know_and_what_finding_it_out_would_cost() -> None:
+    shown = svc.item_of(row(research=ASKED))["research"]
+    assert shown == {
+        "version": "research-fam-v1", "open": ["referee", "context"], "searches": 3, "served": False, "unserved": "family_shadow", "registry": "read",
+        "needs": [{"key": "referee", "state": "MISSING", "source": "provider", "since": None},
+                  {"key": "context", "state": "PARTIAL", "source": "search", "since": None}],
+        "factors": [{"factor": "scenarios", "version": "scenarios-v1", "status": "DESCRIPTIVE"}]}, (
+        "what the console needs, and not the topics or the levels of the tiered search: those are in the filters of the decision")
+
+
+def test_a_decision_without_the_request_shows_none_and_a_malformed_one_never_breaks_the_page() -> None:
+    assert svc.item_of(row())["research"] is None and svc.item_of(row(research="not a record"))["research"] is None
+    assert svc.research_of([ASKED]) is None and svc.research_of(7) is None
+    odd = svc.research_of({"needs": [None, "x", {"key": "referee"}], "open": "referee", "factors": {"factor": "x"}, "searches": "3", "served": "yes"})
+    assert odd == {"version": None, "needs": [{"key": "referee", "state": None, "source": None, "since": None}], "open": [], "searches": 0,
+                   "served": False, "unserved": None, "factors": [], "registry": None}, "a doubt is never read as a service or as a count"
+    assert svc.research_of({"searches": True})["searches"] == 0  # type: ignore[index]
+    assert svc.research_of({"served": True})["served"] is True  # type: ignore[index]
+
+
+def test_the_record_the_page_reads_is_the_one_the_decision_writes() -> None:
+    standing = {f.key: (f.version, factors.DESCRIPTIVE) for f in factors.CATALOGUE}
+    for family in research.OF_FAMILY:
+        _, written = research.request(family, research.Facts(None, None, "PENDING"), standing)
+        shown = svc.research_of(written)
+        assert shown is not None
+        assert set(shown) == {"version", "needs", "open", "searches", "served", "unserved", "factors", "registry"}
+        assert shown["version"] == research.VERSION and shown["open"] == written["open"] and shown["searches"] == written["searches"]
+        assert shown["needs"] == [{k: n[k] for k in ("key", "state", "source", "since")} for n in written["needs"]]
+        assert shown["factors"] == written["factors"] and shown["unserved"] == research.UNSERVED and shown["served"] is False
+        assert shown["registry"] == written["registry"] == "read"
+
+
 def totals(**rows_: tuple[str, str, str | None, str | None, int]) -> list[dict[str, Any]]:
     return [{"family": f, "state": s, "result_status": r, "verdict": v, "n": n} for f, s, r, v, n in rows_.values()]
 
@@ -189,9 +234,9 @@ def test_a_card_counts_the_selections_those_refused_and_what_became_of_the_selec
 
 
 def test_the_cards_are_the_four_families_and_any_other_a_decision_names() -> None:
-    assert svc.families_seen([]) == list(svc.FAMILIES)
+    assert svc.families_seen([]) == list(family_rules.FAMILIES)
     assert svc.families_seen(totals(a=("CARDS", "INVESTIGACION", None, None, 1), b=("ZED", "INVESTIGACION", None, None, 1),
-                                    c=("ALEF", "RECHAZADO", None, None, 1))) == [*svc.FAMILIES, "ALEF", "ZED"]
+                                    c=("ALEF", "RECHAZADO", None, None, 1))) == [*family_rules.FAMILIES, "ALEF", "ZED"]
 
 
 def test_the_total_follows_the_filters_of_the_list() -> None:

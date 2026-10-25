@@ -584,6 +584,69 @@ def test_the_guide_of_the_cycle_of_the_families_says_what_the_code_does(monkeypa
         assert (DOCS / "owner" / name).is_file() and f"`{name}`" in doc, f"the guide points to {name}"
 
 
+def test_the_guide_of_the_cycle_says_what_a_decision_of_a_family_did_not_know() -> None:
+    """Plan F11.10: the formal request for research a decision of a family carries - the version and the key of the record, the three things it can lack and
+    who brings each, what each family asks for, the words of the context, what finding out costs in searches, that nothing serves it and why, the factors that
+    could explain each family, and that it is informational, read as of the moment of the decision and refreshed only when a row is written."""
+    from fbi.ai import research as ai_research
+    from fbi.api.services import families as page
+    from fbi.familydecisions import decide as fd
+    from fbi.familydecisions import research
+    from fbi.intel import factors
+
+    doc = read_doc("owner", "CICLO_FAMILIAS_F11.md")
+    flat = " ".join(doc.split())
+    start = flat.index("**Lo que la decisión no sabía: pedir investigación.**")
+    asked = flat[start:flat.index("## 5. Cómo se liquida")]
+    assert research.KEY == "research" and research.VERSION == "research-fam-v1" and f"`{research.KEY}` (versión `{research.VERSION}`)" in asked
+    # the three things, who brings each one, and the states
+    assert set(research.NEEDS) == {"referee", "lineups", "context"}
+    assert research.NEEDS["referee"].source == research.NEEDS["lineups"].source == research.PROVIDER and research.NEEDS["context"].source == research.SEARCH
+    assert "*el árbitro designado* y *las alineaciones confirmadas*, que trae el proveedor sin ninguna búsqueda" in asked
+    assert "*el contexto de fuera* (bajas y previa), lo único que solo una búsqueda mejora" in asked
+    assert research.STATES == ("KNOWN", "PARTIAL", "MISSING")
+    assert "(`KNOWN` sabida, `PARTIAL` en parte, `MISSING` falta)" in asked
+    # what each family asks for, and why
+    assert research.OF_FAMILY["GOALS_HALF"] == research.OF_FAMILY["CORNERS"] == ("lineups", "context")
+    assert research.OF_FAMILY["CARDS"] == research.OF_FAMILY["YELLOW"] == ("referee", "context") and set(research.OF_FAMILY) == set(fd.SPECS)
+    assert "los goles por mitad y los córners, alineaciones y contexto" in asked and "las tarjetas y las amarillas, árbitro y contexto" in asked
+    assert "multiplica la media por el factor del árbitro cuando hay uno designado" in asked
+    # the context is the word the ten filters already use
+    assert research.CONTEXT_STATE == {"FULL": "KNOWN", "PARTIAL": "PARTIAL", "LIMITED": "MISSING", "PENDING": "MISSING", "AI_OFF": "MISSING"}
+    assert "completo es sabido, parcial es en parte, y limitado, pendiente o IA apagada es que falta" in asked
+    # the cost: one search a level, all three for the context, and one search serves every selection of the match
+    assert research.NEEDS["context"].levels == (1, 2, 3) == tuple(range(1, ai_research.FULL + 1))
+    assert research.NEEDS["referee"].levels == research.NEEDS["lineups"].levels == ()
+    assert "una por nivel; el contexto abarca los tres niveles, así que son 3 búsquedas" in asked
+    assert "la búsqueda de un nivel sirve a todas las selecciones del mismo partido" in asked and "Lo que solo trae el proveedor no cuesta ninguna." in asked
+    # nothing serves it, and says why only when a search is what is missing
+    assert research.UNSERVED == "family_shadow" and research.UNSERVED not in ai_research.UNSERVED
+    assert "`served` es falso y, cuando lo que falta se pediría a una búsqueda, `unserved` dice `family_shadow`" in asked
+    assert "las búsquedas y el presupuesto del día son tuyos (decisión 12 del estado del plan)" in asked
+    # the factors that could explain each family
+    for key in sum(research.HYPOTHESES.values(), ()):
+        assert key in factors.BY_KEY
+    assert "tactics_profile" in research.HYPOTHESES["GOALS_HALF"] and "tactics_profile" in research.HYPOTHESES["CORNERS"]
+    assert all("scenarios" in research.HYPOTHESES[family] for family in ("GOALS_HALF", "CARDS", "YELLOW")) and "scenarios" not in research.HYPOTHESES["CORNERS"]
+    assert "rest_congestion" in research.HYPOTHESES["GOALS_HALF"] and not any("rest_congestion" in research.HYPOTHESES[f] for f in ("CORNERS", "CARDS", "YELLOW"))
+    assert not any("h2h_weighted" in names for names in research.HYPOTHESES.values())
+    for label in (factors.BY_KEY[k].label for k in ("tactics_profile", "scenarios", "rest_congestion")):
+        assert label.lower() in asked, f"the guide names the factor {label}"
+    assert "la *táctica observable* para los goles por mitad y los córners" in asked
+    assert "los *escenarios de tabla y de eliminatoria* para los goles por mitad, las tarjetas y las amarillas" in asked
+    assert "el *descanso y congestión* para los goles por mitad" in asked
+    assert research.DESCRIPTIVE == factors.DESCRIPTIVE and "un factor es descriptivo hasta que una persona valida un experimento suyo" in asked
+    assert "ningún modelo de una familia lee ninguno" in asked
+    # informational, as of the moment of the decision, and refreshed only with a row
+    assert fd.finalise.__doc__ and "informational" in fd.finalise.__doc__
+    assert "no cambia el estado, ni los motivos, ni la puntuación, ni la apuesta de la decisión" in asked
+    assert "tal como estaban en el momento de la decisión" in asked and "solo cuando se escribe una fila nueva" in asked
+    assert "Si esa lectura falla, la decisión se escribe igual, sin el registro" in asked
+    # the page of the Admin Console reads it
+    assert "research" in page.LAST_SQL and "«Qué le falta saber»" in flat and "«Sin registro»" in flat and "el filtro «Pedir investigación»" in asked
+    assert "decisión 12" in flat and "**¿Servir algún día las peticiones de investigación de una familia?**" in flat
+
+
 def test_the_guides_say_who_sees_what_the_families_forecast() -> None:
     """Plan F10.17b: what the families forecast is shown in the Admin Console's preview of a match, in a section of its own, and to no user. The guides say
     it as the contract and the page of the forecast do: the version, the field, and that it is null in every other answer."""
@@ -593,7 +656,7 @@ def test_the_guides_say_who_sees_what_the_families_forecast() -> None:
 
     field = MatchForecast.model_fields["families"]
     assert field.default is None and page.FAMILY_VERSION == families.VERSION, "the field is null unless the preview fills it, and it reads the families' version"
-    assert page.VERSION != page.FAMILY_VERSION and "forecast" in MatchForecast.model_fields, "the forecast of the match is another section, of another version"
+    assert len({page.VERSION, page.FAMILY_VERSION}) == 2 and "forecast" in MatchForecast.model_fields, "the forecast of the match is another section, of another version"
 
     def flat(*parts: str) -> str:
         return " ".join(read_doc(*parts).split())

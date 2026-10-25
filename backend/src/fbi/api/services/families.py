@@ -1,5 +1,6 @@
 """THE FAMILIES IN SHADOW for the Admin Console (plan F10.17 and F11.11): what corners, cards and the goals of the halves decided, the rule that
-grades each bet, what became of it, the post-mortem the families made of it and what they remember. Reading only.
+grades each bet, what the decision did not know and what finding it out would cost (the request for research it carries), what became of it, the
+post-mortem the families made of it and what they remember. Reading only.
 
 The families decide in SHADOW (``FBI_FAMILY_DECISIONS``, off by default) under versions of their own - ``decision-fam-v1`` for the decision,
 ``outcome-fam-v1`` for its settlement, ``pm-fam-v1`` for the post-mortem and ``memory-fam-v1`` for the memory - in rows that are never a pick: a
@@ -87,6 +88,7 @@ WITH last AS (
            d.id, d.fixture_id, d.model_name, d.market_key, d.selection, d.line, d.known_at, d.checkpoint, d.kickoff_at, d.state, d.odds,
            d.n_bookmakers, d.p_model, d.p_market, d.ev_raw, d.stake_units, d.reasons,
            jsonb_path_query_first(d.filters, '$[*] ? (@.key == "model").data') AS forecast,
+           jsonb_path_query_first(d.filters, '$[*] ? (@.key == "research").data') AS research,
            count(*) OVER (PARTITION BY d.fixture_id, d.model_name, d.market_key) AS revisions
       FROM intel.decisions d
      WHERE d.decision_version = %(decision_version)s AND d.pick_id IS NULL AND d.odds IS NOT NULL
@@ -164,6 +166,28 @@ def _number(x: Any) -> float | None:
     return None if x is None else float(x)
 
 
+def research_of(raw: Any) -> dict[str, Any] | None:
+    """The formal request for research a decision of a family carries (``fbi.familydecisions.research``, ``research-fam-v1``) as the console shows
+    it: what the decision did not know when it was taken (each need with its state, who fills it and since when it is known), which of them are
+    still open, how many searches finding them out would take, that nothing serves them (``served`` and, when a search is what is missing, why) and
+    the context factors that could explain the family with the standing each had. None for a decision taken before the record existed (or whose
+    read of the match failed: the record costs the decision nothing). What it does not copy - the topics and the levels of the tiered search - is
+    in the filters of the decision itself."""
+    if not isinstance(raw, dict):
+        return None
+    needs, opened, factors, searches = raw.get("needs"), raw.get("open"), raw.get("factors"), raw.get("searches")
+    return {
+        "version": raw.get("version"),
+        "needs": [{"key": n.get("key"), "state": n.get("state"), "source": n.get("source"), "since": n.get("since")}
+                  for n in (needs if isinstance(needs, list) else []) if isinstance(n, dict)],
+        "open": [str(k) for k in (opened if isinstance(opened, list) else [])],
+        "searches": searches if isinstance(searches, int) and not isinstance(searches, bool) else 0,
+        "served": raw.get("served") is True, "unserved": raw.get("unserved"),
+        "factors": [{"factor": h.get("factor"), "version": h.get("version"), "status": h.get("status")}
+                    for h in (factors if isinstance(factors, list) else []) if isinstance(h, dict)],
+        "registry": raw.get("registry")}
+
+
 def item_of(row: Mapping[str, Any]) -> dict[str, Any]:
     """One last word as the console shows it. ``rule`` is the key of the rule that grades the bet (its words are in ``rules``)."""
     forecast = row["forecast"] if isinstance(row["forecast"], dict) else None
@@ -179,7 +203,7 @@ def item_of(row: Mapping[str, Any]) -> dict[str, Any]:
         "reasons": list(row["reasons"] or []), "revisions": int(row["revisions"]),
         "forecast": None if forecast is None else {"forecast_id": forecast.get("forecast_id"), "known_at": forecast.get("forecast_known_at"),
                                                     "calibration": forecast.get("calibration")},
-        "rule": None if rule is None else rule.key,
+        "rule": None if rule is None else rule.key, "research": research_of(row["research"]),
         "outcome": None if row["result_status"] is None else {
             "result": row["result_status"], "profit_flat": _number(row["profit_flat"]), "close_odds": _number(row["close_odds"]),
             "close_p_fair": _number(row["close_p_fair"]), "close_minutes_to_ko": row["close_minutes_to_ko"], "clv": _number(row["clv"])},

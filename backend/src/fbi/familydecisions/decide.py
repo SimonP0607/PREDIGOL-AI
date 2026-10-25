@@ -19,6 +19,10 @@ WHAT IT CANNOT DO, ON PURPOSE.
   (the default) and the family is back to research - the rows stay as the record of what it said.
 * A family states no interval yet (``fbi.families.forecast.market_forecast``), so the filter of the width of the interval cannot judge it: the
   candidate says so (``interval_optional``) and the width is judged the day an interval exists (``FamilySpec.max_width``).
+* It asks for research and gets none. Beside the filters each decision carries the family's formal request to look into the match
+  (``fbi.familydecisions.research``): the referee, the line-ups and the context it did not have, what a search for them would cost, which context
+  factors could explain the family and the standing each had. It is a record, not an action - nothing is searched, nothing is bought and the
+  decision does not move for it.
 
 WHAT IS READ AS OF THE MOMENT. The forecast: the last one stored by then. The prices: the last quote in force of every book (``market.odds_quotes``
 stores a price once, the first time it is seen, and it stays in force until the next row, so "the last row at or before the moment" is the price),
@@ -49,7 +53,8 @@ from fbi.core.decision_versions import DECISION_FAMILIES
 from fbi.core.env import environment
 from fbi.families import bets, forecast, versus
 from fbi.families.score import key_shape
-from fbi.intel import decision
+from fbi.familydecisions import research
+from fbi.intel import decision, factors
 from fbi.intel import stake as staking
 from fbi.intel.decision import Evaluated, Key
 
@@ -244,6 +249,51 @@ def load_forecasts(conn: psycopg.Connection[Any], *, at: datetime, horizon: time
                          r["known_at"], r["data_cutoff_ts"], {k: r[k] for k in FIXTURE_FIELDS}) for r in cur.fetchall()]
 
 
+# ── what the match is missing ────────────────────────────────────────────────────────────────────────────────────
+
+REFEREES_SQL: Final = """
+SELECT DISTINCT ON (o.fixture_id) o.fixture_id, o.observed_at, a.referee_id
+  FROM core.fixture_officials o LEFT JOIN core.referee_aliases a ON a.id = o.alias_id
+ WHERE o.fixture_id = ANY(%(fixtures)s::bigint[]) AND o.role = 'referee' AND o.observed_at <= %(at)s
+ ORDER BY o.fixture_id, o.observed_at DESC
+"""
+"""The newest sighting of the referee of each match by ``at`` (``core.fixture_officials`` keeps the history of what the provider said, so a name seen after
+``at`` is not read, and one the provider took off the match before ``at`` is not a referee)."""
+
+
+def read_referees(conn: psycopg.Connection[Any], fixtures: Sequence[int], *, at: datetime) -> dict[int, datetime]:
+    """When the referee the competition designated was seen, of the matches that had one by ``at``."""
+    if not fixtures:
+        return {}
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(REFEREES_SQL, {"fixtures": list(fixtures), "at": at})
+        return {int(r["fixture_id"]): r["observed_at"] for r in cur.fetchall() if r["referee_id"] is not None}
+
+
+def read_referees_or_none(conn: psycopg.Connection[Any], fixtures: Sequence[int], *, at: datetime) -> dict[int, datetime] | None:
+    """``read_referees`` for the pass: a read that fails costs the pass its record of what the matches lack (None) and nothing else, in a savepoint of its own -
+    the families are research, and a fact that is only written down never costs a decision."""
+    try:
+        with conn.transaction():
+            return read_referees(conn, fixtures, at=at)
+    except psycopg.Error as exc:
+        log.warning("family_decisions.referees_unread", error=type(exc).__name__, detail=str(exc)[:200])
+        return None
+
+
+def read_standing(conn: psycopg.Connection[Any], *, at: datetime) -> tuple[dict[str, tuple[str, str]], bool]:
+    """The (version, standing) of every context factor at ``at`` (``fbi.intel.factors.standings``) and whether the registry could be read. When it could
+    not, every factor is the DESCRIPTIVE it is born as - the safe side of every doubt - and the record of the decision says so."""
+    try:
+        with conn.transaction():
+            found = factors.standings(conn, at=at)
+        read = True
+    except psycopg.Error as exc:
+        log.warning("family_decisions.factors_unread", error=type(exc).__name__, detail=str(exc)[:200])
+        found, read = factors.unread(), False
+    return {key: (s.factor.version, s.status) for key, s in found.items()}, read
+
+
 # ── candidates ───────────────────────────────────────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True, slots=True)
@@ -308,9 +358,14 @@ def candidates(forecasts: Iterable[Forecast], priced: Mapping[PriceKey, Priced],
     return [c for _, c in sorted(chosen.values(), key=lambda x: (x[1].forecast.fixture_id, x[1].forecast.model, x[1].forecast.key))]
 
 
-def finalise(e: Evaluated, c: Candidate, spec: FamilySpec) -> Evaluated:
+def finalise(e: Evaluated, c: Candidate, spec: FamilySpec, *, facts: research.Facts | None = None,
+             standing: Mapping[str, tuple[str, str]] | None = None, registry_read: bool = True) -> Evaluated:
     """What a family adds to a decision: where its forecast came from, why it is only being measured, and the cap. A family is capped at
-    INVESTIGACION whatever the filters said, and its stake is zero: a state above that is the owner's to give."""
+    INVESTIGACION whatever the filters said, and its stake is zero: a state above that is the owner's to give.
+
+    With ``facts`` (what was known of the match at the moment) it also writes the formal request for research of the family
+    (``fbi.familydecisions.research``): what the decision lacks, what finding out would cost, that nothing serves it and which context factors could
+    explain the family. The record is informational - it changes neither the state, nor the reasons, nor the stake - and without ``facts`` there is none."""
     f = c.forecast
     for flt in e.filters:
         if flt["key"] == "model":
@@ -321,6 +376,9 @@ def finalise(e: Evaluated, c: Candidate, spec: FamilySpec) -> Evaluated:
         f"{c.believed:+.1%} al mejor precio" + ("" if spec.max_width is None else f", intervalo de {spec.max_width * 100:.0f} puntos como mucho"),
         n=0, family=f.family, min_books=spec.min_books, min_ev=spec.min_ev, max_width=spec.max_width, believed=round(c.believed, 6)))
     e.filters.append(decision._f("correlation", None, "no se aplica: una familia no pasa de investigación, no compite por el partido", n=8))
+    if facts is not None:
+        why, data = research.request(f.family, facts, standing or {}, registry_read=registry_read)
+        e.filters.append(decision._f(research.KEY, None, why, n=0, **data))
     e.filters.sort(key=lambda x: x["n"])
     if REASON_RESEARCH not in e.reasons:
         e.reasons.append(REASON_RESEARCH)
@@ -391,11 +449,17 @@ def decide_families(conn: psycopg.Connection[Any], *, at: datetime, horizon: tim
     report.candidates = len(found)
     if not found:
         return report, []
-    world = decision.read_world(conn, sorted({c.forecast.fixture_id for c in found}), at=at, version=VERSION)
+    fixtures = sorted({c.forecast.fixture_id for c in found})
+    world = decision.read_world(conn, fixtures, at=at, version=VERSION)
+    referees = read_referees_or_none(conn, fixtures, at=at)
+    standing, registry_read = read_standing(conn, at=at)
     out: list[Evaluated] = []
     for c in found:
         try:
-            e = finalise(decision.evaluate(world, c.key, {c.forecast.model: c.row()}), c, specs[c.forecast.family])
+            judged = decision.evaluate(world, c.key, {c.forecast.model: c.row()})
+            facts = None if referees is None else research.Facts(referees.get(c.forecast.fixture_id), world.lineups.get(c.forecast.fixture_id),
+                                                                 judged.context.status)
+            e = finalise(judged, c, specs[c.forecast.family], facts=facts, standing=standing, registry_read=registry_read)
             wrote = False
             if write and decision.should_write(e, world.previous.get(e.key)):
                 with conn.transaction():  # a savepoint: a row the database refuses costs that row, not the rest of the pass

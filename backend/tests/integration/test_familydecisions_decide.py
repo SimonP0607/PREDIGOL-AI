@@ -8,6 +8,7 @@ neither sees these rows nor writes anything because of them."""
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -16,13 +17,13 @@ import pytest
 
 from fbi.families import forecast
 from fbi.familydecisions import decide as fd
-from fbi.intel import decision
+from fbi.familydecisions import research
+from fbi.intel import decision, factors
 from fbi.odds.quote_taxonomy import sync_definitions
 from tests.integration.conftest import Seed
 
 from .knowledge_world import World
-from .test_families_forecast import AT, catalogue, played, run, upcoming
-from .test_families_score import price as quote_prices
+from .test_families_forecast import AT, catalogue, played, referees, run, upcoming, whistle
 
 pytestmark = pytest.mark.integration
 
@@ -42,33 +43,41 @@ def small_window(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(forecast, "MIN_DISPERSION_MATCHES", 40)
 
 
-def over_p(db: psycopg.Connection[Any], fixture_id: int, line: str = LINE) -> float:
-    """What the family said of the over of the corners at a line (the one forecast stored)."""
-    return float(db.execute("SELECT p FROM models.match_forecasts WHERE fixture_id = %s AND version = %s AND market_key = 'CORNERS_OU' AND line = %s "
-                            "AND selection = 'Over' AND model_name = 'family-corners_ft'", (fixture_id, forecast.VERSION, line)).fetchall()[0][0])
+def over_p(db: psycopg.Connection[Any], fixture_id: int, line: str = LINE, *, key: str = "CORNERS_OU", model: str = "family-corners_ft") -> float:
+    """What the family said of the over of a market at a line (the one forecast stored): the corners unless told otherwise."""
+    return float(db.execute("SELECT p FROM models.match_forecasts WHERE fixture_id = %s AND version = %s AND market_key = %s AND line = %s "
+                            "AND selection = 'Over' AND model_name = %s", (fixture_id, forecast.VERSION, key, line, model)).fetchall()[0][0])
 
 
 class Market:
-    """The prices of the corners of one match: an extraction, the definition of the provider's bet, and the books that quote it."""
+    """The prices of a market of counts of one match (the corners unless told otherwise): an extraction, the definition of the provider's bet, and
+    the books that quote it."""
 
-    def __init__(self, db: psycopg.Connection[Any], w: World, fixture_id: int, *, like: Market | None = None) -> None:
+    def __init__(self, db: psycopg.Connection[Any], w: World, fixture_id: int, *, like: Market | None = None, key: str = "CORNERS_OU", bet: int = 45,
+                 model: str = "family-corners_ft") -> None:
         self.db, self.w, self.fid = db, w, fixture_id
+        self.key, self.bet, self.model = key, bet, model
         self.extraction: int
         if like is not None:  # another match of the same extraction
             self.extraction = like.extraction
             return
         sync_definitions(db, names={})
-        db.execute("UPDATE market.market_definitions SET market_key = 'CORNERS_OU' WHERE provider_bet_id = 45 AND scope = 'prematch'")
+        db.execute("UPDATE market.market_definitions SET market_key = %s WHERE provider_bet_id = %s AND scope = 'prematch'", (key, bet))
         self.extraction = int(db.execute(
             "INSERT INTO market.odds_extractions (payload_hash, extractor_version, provider_fixture_id, fetched_at, stamped_by, status) "
             "VALUES (%s, 'qx-test', 1, %s, 'fetch', 'ok') RETURNING id", (w.hash, AT - timedelta(hours=4))).fetchall()[0][0])
 
     def quote(self, book: int, over: float, under: float, when: datetime, line: str = LINE) -> None:
-        quote_prices(self.db, self.extraction, self.fid, book, str(over), str(under), line, when)
+        """One book's over/under of the market at an instant."""
+        definition = self.db.execute("SELECT id FROM market.market_definitions WHERE provider_bet_id = %s AND scope = 'prematch'", (self.bet,)).fetchall()[0][0]
+        for selection, odds in (("Over", over), ("Under", under)):
+            self.db.execute("INSERT INTO market.odds_quotes (fixture_id, bookmaker_id, definition_id, selection, line, odds_decimal, captured_at, "
+                            "minutes_to_ko, extraction_id) VALUES (%s, %s, %s, %s, %s, %s, %s, 60, %s)",
+                            (self.fid, book, definition, selection, line, str(odds), when, self.extraction))
 
     def pays(self, value: float, *, books: int = 3, when: datetime = AT - timedelta(hours=3), line: str = LINE) -> tuple[float, float]:
         """``books`` books quote the over ``value`` above what the forecast says of it, with a margin of 6 %: (the over, the under)."""
-        over = round((1.0 + value) / over_p(self.db, self.fid, line), 2)
+        over = round((1.0 + value) / over_p(self.db, self.fid, line, key=self.key, model=self.model), 2)
         under = round(1.0 / (1.06 - 1.0 / over), 2)
         for book in self.w.books(books):
             self.quote(book, over, under, when, line)
@@ -97,7 +106,7 @@ def rows(db: psycopg.Connection[Any], fixture_id: int) -> list[dict[str, Any]]:
     cur = db.cursor()
     cur.execute("SELECT decision_version, pick_id, known_at, checkpoint, market_key, selection, line, model_name, odds::float8, bookmaker_id, price_at, "
                 "n_bookmakers, p_model::float8, p_cal, p_market::float8, ev_raw::float8, ev_cal, state, reasons, premium, parlay_eligible, score, "
-                "stake_units::float8, filters, input_hash FROM intel.decisions WHERE fixture_id = %s ORDER BY known_at, id", (fixture_id,))
+                "stake_units::float8, filters, input_hash, context_status FROM intel.decisions WHERE fixture_id = %s ORDER BY known_at, id", (fixture_id,))
     names = [c.name for c in cur.description or []]
     return [dict(zip(names, r, strict=True)) for r in cur.fetchall()]
 
@@ -122,10 +131,12 @@ def test_a_pass_writes_the_decision_of_the_family_under_its_own_version_with_no_
     assert r["p_market"] == pytest.approx((1 / over) / (1 / over + 1 / under), abs=1e-6), "the fair probability of the books, margin out"
     assert {"not_calibrated", fd.REASON_RESEARCH} <= set(r["reasons"]) and fd.REASON_CAPPED not in r["reasons"]
     by_key = {f["key"]: f for f in r["filters"]}
-    assert set(by_key) == {"family", "data", "model", "market", "calibration", "ev", "context", "risk", "correlation", "price", "final"}
+    assert set(by_key) == {"family", "data", "model", "market", "calibration", "ev", "context", "risk", "correlation", "price", "final", "research"}
     assert by_key["model"]["ok"] is True and by_key["model"]["data"]["calibration"] == "UNCALIBRATED", "the width of an interval is not asked of a family"
     assert by_key["model"]["data"]["forecast_id"] and by_key["market"]["ok"] is True and by_key["calibration"]["ok"] is False
     assert [f["n"] for f in r["filters"]] == sorted(f["n"] for f in r["filters"])
+    request = by_key["research"]
+    assert request["ok"] is None and request["n"] == 0 and request["data"] == record_of(r), "informational: it passes nothing and refuses nothing"
     assert [(e.state, e.stake.units) for e in evaluated] == [("INVESTIGACION", 0.0)]
     assert db.execute("SELECT count(*) FROM intel.decisions WHERE decision_version <> %s", (fd.VERSION,)).fetchone() == (0,), "nothing under the core version"
     assert db.execute("SELECT count(*) FROM picks.picks").fetchone() == (0,), "and no pick is born from a family"
@@ -253,3 +264,185 @@ def test_the_step_of_the_job_runs_the_pass_only_in_shadow_and_in_its_hour(db: ps
     out = fd.run_step(db, at=NOW)
     assert out["mode"] == "shadow" and out["written"] == 1 and out["candidates"] == 1 and out["by_state"] == {"INVESTIGACION": 1}
     assert len(rows(db, fid)) == 1
+
+
+# ── the formal request for research ──────────────────────────────────────────────────────────────────────────────
+
+def record_of(row: dict[str, Any]) -> dict[str, Any]:
+    """The request for research a decision carries among its filters (empty when it has none)."""
+    found = [f for f in row["filters"] if f["key"] == research.KEY]
+    assert len(found) <= 1
+    return dict(found[0]["data"]) if found else {}
+
+
+def need_of(row: dict[str, Any], key: str) -> dict[str, Any]:
+    return next(n for n in record_of(row)["needs"] if n["key"] == key)
+
+
+def cards_scene(db: psycopg.Connection[Any], w: World, *, value: float = 0.10) -> tuple[int, Market, str]:
+    """A match 23 hours away whose cards the families forecast, and three books that quote the line closest to even above the model's own price."""
+    catalogue(db)
+    played(w)
+    fid = upcoming(w)
+    run(db, [fid])
+    lines = db.execute("SELECT line, p FROM models.match_forecasts WHERE fixture_id = %s AND version = %s AND market_key = 'CARDS_OU' "
+                       "AND selection = 'Over' AND model_name = 'family-cards_lines_ft'", (fid, forecast.VERSION)).fetchall()
+    assert lines, "the families forecast the cards of the match"
+    line = str(min(lines, key=lambda r: abs(float(r[1]) - 0.5))[0])
+    market = Market(db, w, fid, key="CARDS_OU", bet=80, model="family-cards_lines_ft")
+    market.pays(value, line=line)
+    market.read(AT + timedelta(minutes=30))
+    return fid, market, line
+
+
+def test_a_decision_says_what_it_lacks_and_that_nothing_serves_it(db: psycopg.Connection[Any], w: World) -> None:
+    fid, _, _ = scene(db, w)
+    assert fd.decide_families(db, at=NOW)[0].written == 1
+    [r] = rows(db, fid)
+    data = record_of(r)
+    assert r["context_status"] in {"PENDING", "AI_OFF"}, "no AI read the match"
+    assert data["version"] == "research-fam-v1" and data["family"] == "CORNERS" and data["registry"] == "read"
+    assert [(n["key"], n["state"], n["source"], n["since"]) for n in data["needs"]] == [
+        ("lineups", "MISSING", "provider", None), ("context", "MISSING", "search", None)], "no line-up was read and no AI read the match"
+    assert data["open"] == ["lineups", "context"] and data["levels"] == [1, 2, 3] and data["searches"] == 3
+    assert data["served"] is False and data["unserved"] == "family_shadow"
+    assert data["factors"] == [{"factor": "tactics_profile", "version": factors.BY_KEY["tactics_profile"].version, "status": "DESCRIPTIVE"}]
+    [asked] = [f for f in r["filters"] if f["key"] == research.KEY]
+    assert asked["why"].startswith("pedir investigación: le falta las alineaciones confirmadas (lo trae el proveedor) y el contexto de fuera")
+    assert db.execute("SELECT count(*) FROM ai.fixture_passes").fetchone() == (0,), "and nothing was asked of the AI"
+
+
+def test_the_line_ups_are_known_from_the_moment_they_were_read_and_not_before(db: psycopg.Connection[Any], w: World) -> None:
+    fid, _, _ = scene(db, w)
+    read = NOW - timedelta(minutes=20)
+    w.sheet(fid, "home", "4-3-3", [11, 12, 13], fetched=read)
+    w.sheet(fid, "away", "4-4-2", [21, 22, 23], fetched=NOW + timedelta(minutes=30))  # read after the decision
+    assert fd.decide_families(db, at=NOW)[0].written == 1
+    [r] = rows(db, fid)
+    assert need_of(r, "lineups") == {"key": "lineups", "state": "KNOWN", "source": "provider", "topics": [], "levels": [], "since": read.isoformat()}
+    assert record_of(r)["open"] == ["context"], "the sheet that was read by then is the one that counts"
+
+
+def test_line_ups_read_after_the_moment_of_the_decision_are_missing_then_and_known_at_the_next_row(db: psycopg.Connection[Any], w: World) -> None:
+    fid, _, _ = scene(db, w)
+    after = NOW + timedelta(minutes=30)
+    w.sheet(fid, "home", "4-3-3", [11, 12, 13], fetched=after)
+    assert fd.decide_families(db, at=NOW)[0].written == 1
+    later = KICKOFF - timedelta(hours=11)  # another checkpoint (T-12h): another row
+    assert fd.decide_families(db, at=later)[0].written == 1
+    first, second = rows(db, fid)
+    assert need_of(first, "lineups")["state"] == "MISSING" and need_of(first, "lineups")["since"] is None, "not known at the first decision"
+    assert need_of(second, "lineups")["state"] == "KNOWN" and need_of(second, "lineups")["since"] == after.isoformat()
+    assert first["known_at"] == NOW and second["known_at"] == later, "append-only: the first row says what was known then"
+
+
+def test_the_context_need_is_the_word_of_the_decision_layer(db: psycopg.Connection[Any], w: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    fid, _, _ = scene(db, w)
+    monkeypatch.setattr(decision, "context_status", lambda **kw: "FULL")
+    assert fd.decide_families(db, at=NOW)[0].written == 1
+    [r] = rows(db, fid)
+    assert need_of(r, "context")["state"] == "KNOWN" and record_of(r)["open"] == ["lineups"]
+    assert record_of(r)["searches"] == 0 and record_of(r)["unserved"] is None, "what only the provider can bring needs no search"
+    monkeypatch.setattr(decision, "context_status", lambda **kw: "PARTIAL")
+    assert fd.decide_families(db, at=KICKOFF - timedelta(hours=11))[0].written == 1
+    assert need_of(rows(db, fid)[-1], "context")["state"] == "PARTIAL" and record_of(rows(db, fid)[-1])["open"] == ["lineups", "context"]
+
+
+def test_the_referee_is_the_newest_sighting_by_the_moment_and_only_if_the_provider_still_had_one(db: psycopg.Connection[Any], w: World) -> None:
+    alpha, bravo = referees(db, "Alpha", "Bravo")
+    f1, f2, f3, f4 = (upcoming(w, 0, 1, when=timedelta(days=d)) for d in (1, 2, 3, 4))
+    whistle(db, f1, alpha, NOW)                                    # seen at the very moment: it counts
+    whistle(db, f2, alpha, NOW + timedelta(hours=1))               # seen an hour after
+    whistle(db, f3, alpha, NOW - timedelta(hours=4))               # seen, and taken off by the provider an hour before
+    db.execute("INSERT INTO core.fixture_officials (fixture_id, role, observed_at, alias_id) VALUES (%s, 'referee', %s, NULL)",
+               (f3, NOW - timedelta(hours=1)))
+    whistle(db, f4, alpha, NOW - timedelta(hours=5))               # one referee, and another named after the moment
+    whistle(db, f4, bravo, NOW + timedelta(hours=1))
+    everything = [f1, f2, f3, f4]
+    assert fd.read_referees(db, everything, at=NOW) == {f1: NOW, f4: NOW - timedelta(hours=5)}
+    assert fd.read_referees(db, everything, at=NOW - timedelta(hours=2)) == {f3: NOW - timedelta(hours=4), f4: NOW - timedelta(hours=5)}, (
+        "two hours earlier the provider had not taken him off")
+    assert fd.read_referees(db, everything, at=NOW + timedelta(hours=2)) == {f1: NOW, f2: NOW + timedelta(hours=1), f4: NOW + timedelta(hours=1)}
+    assert fd.read_referees(db, [], at=NOW) == {}
+    assert fd.read_referees(db, [f2], at=NOW - timedelta(days=1)) == {}
+    assert fd.read_referees(db, [f1], at=NOW) == {f1: NOW}, "only the matches asked for are read, not every sighting of the history"
+
+
+def test_the_cards_ask_for_the_referee_and_know_him_from_the_moment_he_was_designated(db: psycopg.Connection[Any], w: World) -> None:
+    fid, _, _ = cards_scene(db, w)
+    [alpha] = referees(db, "Alpha")
+    seen = NOW + timedelta(hours=2)
+    whistle(db, fid, alpha, seen)  # on the books before the first pass, but seen after its moment
+    assert fd.decide_families(db, at=NOW)[0].written == 1
+    [first] = rows(db, fid)
+    assert first["market_key"] == "CARDS_OU" and first["model_name"] == "family-cards_lines_ft"
+    assert record_of(first)["family"] == "CARDS" and record_of(first)["open"] == ["referee", "context"]
+    assert need_of(first, "referee") == {"key": "referee", "state": "MISSING", "source": "provider", "topics": [], "levels": [], "since": None}
+    assert [h["factor"] for h in record_of(first)["factors"]] == ["scenarios"]
+
+    later = KICKOFF - timedelta(hours=11)
+    assert fd.decide_families(db, at=later)[0].written == 1
+    second = rows(db, fid)[-1]
+    assert need_of(second, "referee")["state"] == "KNOWN" and need_of(second, "referee")["since"] == seen.isoformat()
+    assert record_of(second)["open"] == ["context"]
+    assert need_of(rows(db, fid)[0], "referee")["state"] == "MISSING", "the first row still says what was known then"
+
+
+def test_the_factors_are_read_as_of_the_moment_of_the_decision(db: psycopg.Connection[Any], w: World) -> None:
+    fid, _, _ = scene(db, w)
+    decided = NOW + timedelta(hours=1)
+    factors.promote(db, "tactics_profile", experiment="F12-tactics-01", result={"matches": 2000, "logloss_delta": -0.003},
+                    reason="the observable tactics beat the form on the test matches", who="Simon", at=decided)
+    assert fd.decide_families(db, at=NOW)[0].written == 1
+    assert fd.decide_families(db, at=KICKOFF - timedelta(hours=11))[0].written == 1
+    first, second = rows(db, fid)
+    tactics = factors.BY_KEY["tactics_profile"].version
+    assert record_of(first)["factors"] == [{"factor": "tactics_profile", "version": tactics, "status": "DESCRIPTIVE"}], "validated an hour later"
+    assert record_of(second)["factors"] == [{"factor": "tactics_profile", "version": tactics, "status": "VALIDATED"}]
+    assert second["state"] == "INVESTIGACION" and second["stake_units"] == 0.0 and second["ev_raw"] == pytest.approx(first["ev_raw"]), (
+        "a validated factor moves nothing of the decision of a family")
+
+
+def test_a_read_that_fails_costs_the_record_and_never_the_decision(db: psycopg.Connection[Any], w: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    fid, _, _ = scene(db, w)
+
+    def broken(conn: psycopg.Connection[Any], fixtures: Any, *, at: datetime) -> Any:
+        conn.execute("SELECT 1 / 0")  # the database refuses: the savepoint of the read must be rolled back
+
+    monkeypatch.setattr(fd, "read_referees", broken)
+    report = fd.decide_families(db, at=NOW)[0]
+    assert (report.written, report.failed) == (1, 0), report
+    [r] = rows(db, fid)
+    assert research.KEY not in {f["key"] for f in r["filters"]} and r["state"] == "INVESTIGACION"
+    assert db.execute("SELECT 1").fetchone() == (1,), "and the connection is still usable"
+
+
+def test_a_registry_that_cannot_be_read_is_said_in_the_record_and_every_factor_is_descriptive(db: psycopg.Connection[Any], w: World,
+                                                                                              monkeypatch: pytest.MonkeyPatch) -> None:
+    fid, _, _ = scene(db, w)
+
+    def broken(conn: psycopg.Connection[Any], *, at: datetime) -> Any:
+        conn.execute("SELECT 1 / 0")
+
+    monkeypatch.setattr(factors, "standings", broken)
+    assert fd.decide_families(db, at=NOW)[0].written == 1
+    [r] = rows(db, fid)
+    assert record_of(r)["registry"] == "unread" and {h["status"] for h in record_of(r)["factors"]} == {"DESCRIPTIVE"}
+    assert db.execute("SELECT 1").fetchone() == (1,)
+
+
+def test_the_request_changes_nothing_of_the_decision_in_a_real_pass(db: psycopg.Connection[Any], w: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    fid, _, _ = scene(db, w)
+    w.sheet(fid, "home", "4-3-3", [11, 12, 13], fetched=NOW - timedelta(minutes=20))
+    [with_record] = fd.decide_families(db, at=NOW, write=False)[1]
+
+    def broken(conn: psycopg.Connection[Any], fixtures: Any, *, at: datetime) -> Any:
+        conn.execute("SELECT 1 / 0")
+
+    monkeypatch.setattr(fd, "read_referees", broken)
+    [without] = fd.decide_families(db, at=NOW, write=False)[1]
+    assert any(f["key"] == research.KEY for f in with_record.filters) and all(f["key"] != research.KEY for f in without.filters)
+    for field in dataclasses.fields(decision.Evaluated):
+        if field.name != "filters":
+            assert getattr(with_record, field.name) == getattr(without, field.name), field.name
+    assert [f for f in with_record.filters if f["key"] != research.KEY] == without.filters

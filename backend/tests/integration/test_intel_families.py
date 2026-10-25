@@ -24,7 +24,7 @@ from fbi.api.services import intelligence
 from fbi.familydecisions import decide as fd
 from fbi.familydecisions import outcomes as fo
 from fbi.familydecisions import postmortem as pm
-from fbi.intel import cycle
+from fbi.intel import cycle, factors
 from tests.integration.conftest import Seed
 
 from .knowledge_world import World
@@ -116,6 +116,12 @@ def test_a_family_that_completed_the_cycle_in_shadow_is_read_whole(db: psycopg.C
     assert item["rule"] == "corners_ft@v1" and data["rules"]["corners_ft@v1"]["columns"] == ["corners_ft_home", "corners_ft_away"]
     assert item["odds"] == float(p["odds"]) and item["p_model"] == float(p["p_model"]) and item["p_market"] == float(p["p_decision"])
     assert item["forecast"]["calibration"] == "UNCALIBRATED" and item["forecast"]["forecast_id"] and item["forecast"]["known_at"]
+    assert item["research"] == {
+        "version": "research-fam-v1", "open": ["lineups", "context"], "searches": 3, "served": False, "unserved": "family_shadow", "registry": "read",
+        "needs": [{"key": "lineups", "state": "MISSING", "source": "provider", "since": None},
+                  {"key": "context", "state": "MISSING", "source": "search", "since": None}],
+        "factors": [{"factor": "tactics_profile", "version": factors.BY_KEY["tactics_profile"].version, "status": "DESCRIPTIVE"}],
+    }, "what the decision did not know, as it wrote it"
     o = item["outcome"]
     assert (o["result"], o["profit_flat"], o["close_p_fair"], o["close_minutes_to_ko"], o["clv"]) == (
         "win", float(p["profit_flat"]), float(p["p_close"]), 23 * 60 + 30, float(p["clv"]))

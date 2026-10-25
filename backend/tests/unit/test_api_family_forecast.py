@@ -203,7 +203,7 @@ def test_both_questions_are_asked_as_of_the_same_moment_the_page_was_asked_for(d
 
 def test_the_version_the_page_reads_is_the_one_the_families_write() -> None:
     assert service.FAMILY_VERSION == families.VERSION == families_service.FORECAST_VERSION
-    assert service.FAMILY_VERSION != service.VERSION, "two versions: the forecast of the product reads one, the preview of the families the other"
+    assert len({service.FAMILY_VERSION, service.VERSION}) == 2, "two versions: the forecast of the product reads one, the preview of the families the other"
     assert "version = %(version)s" in service.FORECAST_SQL, "the same query, asked with another version"
 
 

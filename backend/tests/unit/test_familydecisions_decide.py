@@ -4,15 +4,19 @@ The pass against a real database is in tests/integration/test_familydecisions_de
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Mapping
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
+import psycopg
 import pytest
 
 from fbi.familydecisions import decide as fd
-from fbi.intel import decision
+from fbi.familydecisions import research
+from fbi.intel import decision, factors
 from fbi.intel import stake as staking
 
 D = Decimal
@@ -203,6 +207,99 @@ def test_the_record_says_where_the_forecast_came_from_and_that_the_filter_of_the
 def test_the_width_asked_of_a_family_is_written_in_its_filter_when_it_has_one() -> None:
     out = fd.finalise(evaluated("INVESTIGACION"), candidate(), fd.FamilySpec("CORNERS", max_width=0.2))
     assert "intervalo de 20 puntos" in next(f for f in out.filters if f["key"] == "family")["why"]
+
+
+# ── the request for research ─────────────────────────────────────────────────────────────────────────────────────
+
+KNOWN_AT = AT - timedelta(hours=3)
+STANDING = {f.key: (f.version, factors.DESCRIPTIVE) for f in factors.CATALOGUE}
+
+
+@pytest.mark.parametrize("state", ["APROBADO", "CANDIDATO_PARLAY", "PICK_PREMIUM", "CAUTELA", "INVESTIGACION", "RECHAZADO"])
+def test_the_request_for_research_is_one_more_record_among_the_filters_and_changes_nothing_of_the_decision(state: str) -> None:
+    plain = fd.finalise(evaluated(state, p_cal=0.6), candidate(), fd.SPECS["CORNERS"])
+    asked = fd.finalise(evaluated(state, p_cal=0.6), candidate(), fd.SPECS["CORNERS"], facts=research.Facts(KNOWN_AT, None, "PENDING"), standing=STANDING)
+    for field in dataclasses.fields(decision.Evaluated):
+        if field.name != "filters":
+            assert getattr(asked, field.name) == getattr(plain, field.name), f"{field.name}: the request must not move the decision"
+    assert [f for f in asked.filters if f["key"] != research.KEY] == plain.filters
+    [record] = [f for f in asked.filters if f["key"] == research.KEY]
+    assert record["ok"] is None and record["n"] == 0 and "effect" not in record
+    assert record["data"]["version"] == "research-fam-v1" and record["data"]["family"] == "CORNERS"
+    assert record["data"]["open"] == ["lineups", "context"] and record["data"]["served"] is False and record["data"]["unserved"] == "family_shadow"
+    assert record["why"].startswith("pedir investigación: le falta las alineaciones confirmadas")
+    assert [f["n"] for f in asked.filters] == sorted(f["n"] for f in asked.filters), "the filters stay in the order of the ten"
+
+
+def test_without_the_facts_of_the_match_there_is_no_request() -> None:
+    out = fd.finalise(evaluated("INVESTIGACION"), candidate(), fd.SPECS["CORNERS"])
+    assert research.KEY not in {f["key"] for f in out.filters}
+
+
+def test_the_request_is_the_one_of_the_family_of_the_forecast_and_says_whether_the_registry_was_read() -> None:
+    facts = research.Facts(None, None, "AI_OFF")
+    out = fd.finalise(evaluated("INVESTIGACION"), candidate(), fd.SPECS["CORNERS"], facts=facts, standing=STANDING, registry_read=False)
+    [record] = [f for f in out.filters if f["key"] == research.KEY]
+    assert record["data"]["family"] == "CORNERS" and record["data"]["registry"] == "unread"
+    tactics = factors.BY_KEY["tactics_profile"].version
+    assert record["data"]["factors"] == [{"factor": "tactics_profile", "version": tactics, "status": "DESCRIPTIVE"}]
+    validated = {**STANDING, "tactics_profile": (tactics, "VALIDATED")}
+    out = fd.finalise(evaluated("INVESTIGACION"), candidate(), fd.SPECS["CORNERS"], facts=facts, standing=validated)
+    [record] = [f for f in out.filters if f["key"] == research.KEY]
+    assert record["data"]["factors"] == [{"factor": "tactics_profile", "version": tactics, "status": "VALIDATED"}], "the standing it was given is the one it writes"
+    assert record["data"]["registry"] == "read"
+    out = fd.finalise(evaluated("INVESTIGACION"), candidate(), fd.SPECS["CORNERS"], facts=facts)
+    [record] = [f for f in out.filters if f["key"] == research.KEY]
+    assert record["data"]["factors"] == [{"factor": "tactics_profile", "version": None, "status": "DESCRIPTIVE"}], "with no standing it is the safe side of the doubt"
+    cards = forecast(key="CARDS_OU", line="4.5", family="CARDS", model="family-cards_lines_ft", id=102)
+    c = fd.candidates([cards], keyed(1, "CARDS_OU", "4.5", "Over", priced(2.10)), {})[0]
+    out = fd.finalise(evaluated("INVESTIGACION"), c, fd.SPECS["CARDS"], facts=facts, standing=STANDING)
+    [record] = [f for f in out.filters if f["key"] == research.KEY]
+    assert record["data"]["family"] == "CARDS" and record["data"]["open"] == ["referee", "context"]
+    out = fd.finalise(evaluated("INVESTIGACION"), c, fd.SPECS["CORNERS"], facts=facts, standing=STANDING)  # the spec lends its thresholds, never the family
+    [record] = [f for f in out.filters if f["key"] == research.KEY]
+    assert record["data"]["family"] == "CARDS" and record["data"]["open"] == ["referee", "context"]
+
+
+class _Savepoints:
+    """The two things the readers ask of a connection when the read itself is replaced: a savepoint."""
+
+    def transaction(self) -> Any:
+        return nullcontext()
+
+
+def test_a_registry_that_cannot_be_read_leaves_every_factor_descriptive_and_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(*_: Any, **__: Any) -> Any:
+        raise psycopg.OperationalError("the registry is down")
+
+    monkeypatch.setattr(factors, "standings", boom)
+    standing, read = fd.read_standing(_Savepoints(), at=AT)  # type: ignore[arg-type]
+    assert read is False and set(standing) == {f.key for f in factors.CATALOGUE}
+    assert standing == STANDING, "every factor is the DESCRIPTIVE it is born as, at the version of the code"
+
+
+def test_a_registry_that_is_read_gives_the_version_and_the_standing_of_every_factor(monkeypatch: pytest.MonkeyPatch) -> None:
+    decided = factors.Decision(1, "scenarios", factors.BY_KEY["scenarios"].version, "VALIDATED", AT - timedelta(days=1), "person", "Simon", "tested",
+                               {"experiment": "x"}, None)
+    found = {f.key: factors.Standing(f, decided if f.key == "scenarios" else None) for f in factors.CATALOGUE}
+    monkeypatch.setattr(factors, "standings", lambda conn, *, at: found)
+    standing, read = fd.read_standing(_Savepoints(), at=AT)  # type: ignore[arg-type]
+    assert read is True
+    assert standing == {**STANDING, "scenarios": (factors.BY_KEY["scenarios"].version, "VALIDATED")}
+
+
+def test_a_read_of_the_referees_that_fails_costs_the_pass_its_record_and_nothing_else(monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(*_: Any, **__: Any) -> Any:
+        raise psycopg.OperationalError("the table is gone")
+
+    monkeypatch.setattr(fd, "read_referees", boom)
+    assert fd.read_referees_or_none(_Savepoints(), [1, 2], at=AT) is None  # type: ignore[arg-type]
+    monkeypatch.setattr(fd, "read_referees", lambda conn, fixtures, *, at: {1: KNOWN_AT})
+    assert fd.read_referees_or_none(_Savepoints(), [1, 2], at=AT) == {1: KNOWN_AT}  # type: ignore[arg-type]
+
+
+def test_there_is_nothing_to_read_for_no_matches() -> None:
+    assert fd.read_referees(_Savepoints(), [], at=AT) == {}  # type: ignore[arg-type]
 
 
 # ── the switch, the clock and the step of the job ────────────────────────────────────────────────────────────────
