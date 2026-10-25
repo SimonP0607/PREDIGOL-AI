@@ -24,6 +24,7 @@ import { t } from "@/lib/i18n";
 import { detectTimeZone, formatDateTime, formatRelative, listTimeZones } from "@/lib/time";
 import { Card, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
 import { cn } from "@/lib/utils";
+import { PrivacyRequestsCard } from "./PrivacyRequests";
 
 const ROLES: RoleKey[] = ["USER", "SUPER_ADMIN"];
 
@@ -645,6 +646,7 @@ export function UsersPage() {
           </>
         )}
       </Card>
+      <PrivacyRequestsCard />
     </div>
   );
 }

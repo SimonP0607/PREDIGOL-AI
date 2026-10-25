@@ -50,7 +50,20 @@
     "mfa_required_by_policy": "Tu cuenta debe usar verificación en dos pasos: no se puede desactivar.",
     "session_not_found": "Esa sesión ya no existe.",
     "invalid_session_id": "Sesión no válida.",
-    "payload_too_large": "La petición es demasiado grande."
+    "payload_too_large": "La petición es demasiado grande.",
+    "consent_required": "Para seguir, acepta los textos vigentes.",
+    "legal_text_changed": "El texto cambió mientras lo leías: revisa la versión nueva.",
+    "not_withdrawable": "Esto no se retira: termina con la cuenta. Para cerrarla, pide el borrado de tus datos.",
+    "no_decision": "No marcaste nada.",
+    "duplicate_decision": "Cada punto se responde una vez.",
+    "unknown_purpose": "Ese punto no existe.",
+    "request_open": "Ya tienes una solicitud de este tipo abierta: la respondemos dentro de su plazo.",
+    "password_required": "Confírmalo con tu contraseña.",
+    "daily_limit": "Ya lo hiciste 3 veces hoy. Vuelve a intentarlo mañana.",
+    "invalid_message": "Escribe un mensaje de hasta 4.000 caracteres.",
+    "unknown_request": "Ese tipo de solicitud no existe.",
+    "already_extended": "La ley permite una sola ampliación y ya se usó.",
+    "request_closed": "La solicitud está cerrada."
   },
   "problem": {
     "password_too_short": "Mínimo 10 caracteres.",

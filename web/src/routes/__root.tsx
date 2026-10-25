@@ -22,10 +22,13 @@ import { requestLocale } from "@/lib/i18n/requestLocale";
 import { TitleTap } from "@/components/system/TitleTap";
 import { setTimeZone } from "@/lib/time";
 import { UserShell } from "@/components/layout/UserShell";
+import { PublicShell } from "@/components/layout/PublicShell";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { BrandMark } from "@/components/brand/Brand";
 import { applyUpdate, registerServiceWorker, UPDATE_EVENT } from "@/lib/pwa";
 import { SecurityStep } from "@/product/auth/SecurityStep";
+import { ConsentGate } from "@/product/legal/ConsentGate";
+import { isLegalPath } from "@/product/legal/links";
 
 function NotFoundComponent() {
   return (
@@ -117,12 +120,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { rel: "manifest", href: "/manifest.webmanifest" },
         { rel: "icon", href: "/favicon.ico", sizes: "any" },
         { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-        { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-        {
-          rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
-        },
+        // The fonts are served from PrediGol, inside styles.css (plan UX, A4): no request to Google.
       ],
     };
   },
@@ -302,9 +300,11 @@ function Gate() {
   const path = location.pathname;
   const onLogin = path === "/login";
   const onAdmin = path === "/admin" || path.startsWith("/admin/");
+  // The legal texts are public (plan UX, A4): anyone reads the terms before having an account.
+  const onLegal = isLegalPath(path);
 
   useEffect(() => {
-    if (auth.status === "anonymous" && !onLogin) {
+    if (auth.status === "anonymous" && !onLogin && !onLegal) {
       const next = `${location.pathname}${location.searchStr ?? ""}`;
       void navigate({
         to: "/login",
@@ -320,18 +320,42 @@ function Gate() {
           : "/home";
       void navigate({ to: safe as never, replace: true });
     }
-  }, [auth.status, auth.sessionExpired, onLogin, location.pathname, location.searchStr, navigate]);
+  }, [
+    auth.status,
+    auth.sessionExpired,
+    onLogin,
+    onLegal,
+    location.pathname,
+    location.searchStr,
+    navigate,
+  ]);
 
   if (auth.status === "loading") return <Splash />;
   if (auth.status === "error") return <ConnectionProblem onRetry={auth.retry} />;
   // The password was right but a step is owed (second factor, setting it up, a new password): that step,
   // whatever the address; the page the reader wanted shows once it is done.
   if (auth.status === "staged") return <SecurityStep />;
-  if (auth.status === "anonymous") return onLogin ? <Outlet /> : <Splash />;
+  if (auth.status === "anonymous") {
+    if (onLegal) {
+      return (
+        <PublicShell key={auth.locale}>
+          <Outlet />
+        </PublicShell>
+      );
+    }
+    return onLogin ? <Outlet /> : <Splash />;
+  }
   if (onLogin) return <Splash />;
 
   // A remount on a language or time-zone change re-renders every formatted string.
   const key = `${auth.locale}|${auth.timeZone}`;
+  // The current consents are owed (plan UX, A4; the server refuses the product with 403 consent_required): the
+  // boxes, whatever the address - except the texts themselves and the profile, where the reader can still take a
+  // copy of their data or ask for its deletion without accepting.
+  const due = auth.user?.consents_due ?? [];
+  if (due.length > 0 && !onLegal && path !== "/profile") {
+    return <ConsentGate key={key} due={due} />;
+  }
   if (onAdmin) {
     return (
       <Fragment key={key}>

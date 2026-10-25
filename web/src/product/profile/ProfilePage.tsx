@@ -1,4 +1,4 @@
-/** Account, language, time zone and password. Preferences are stored on the account. */
+/** Account, language, time zone, password, security, and privacy (plan UX, A4). Preferences are stored on the account. */
 import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -7,6 +7,7 @@ import {
   History,
   KeyRound,
   Languages,
+  Lock,
   Loader2,
   LogOut,
   MapPin,
@@ -30,6 +31,7 @@ import { Card, PageTitle, errorMessage } from "@/product/shared/States";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { cn } from "@/lib/utils";
 import { AccessPanel, SessionsPanel, TwoFactorPanel } from "./SecurityPanels";
+import { PrivacyPanel } from "./PrivacyPanel";
 
 /** "7 días", "8 horas": how long a session may go unused. */
 function idleText(hours: number): string {
@@ -338,6 +340,14 @@ export function ProfilePage() {
           {t("profile.securityPanel.accessTitle")}
         </h2>
         <AccessPanel />
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
+          <Lock aria-hidden className="h-4 w-4 text-primary" />
+          {t("legal.privacy.title")}
+        </h2>
+        <PrivacyPanel />
       </Card>
 
       <button

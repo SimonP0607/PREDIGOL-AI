@@ -50,7 +50,20 @@
     "mfa_required_by_policy": "Your account must use two-step verification: it cannot be turned off.",
     "session_not_found": "That session no longer exists.",
     "invalid_session_id": "Invalid session.",
-    "payload_too_large": "The request is too large."
+    "payload_too_large": "The request is too large.",
+    "consent_required": "To go on, accept the current texts.",
+    "legal_text_changed": "The text changed while you were reading it: look at the new version.",
+    "not_withdrawable": "This is not withdrawn: it ends with the account. To close it, ask for your data to be deleted.",
+    "no_decision": "Nothing was ticked.",
+    "duplicate_decision": "Each point is answered once.",
+    "unknown_purpose": "That point does not exist.",
+    "request_open": "You already have an open request of this kind: we answer it within its deadline.",
+    "password_required": "Confirm it with your password.",
+    "daily_limit": "You already did it 3 times today. Try again tomorrow.",
+    "invalid_message": "Write a message of up to 4,000 characters.",
+    "unknown_request": "That kind of request does not exist.",
+    "already_extended": "The law allows one extension only, and it was used.",
+    "request_closed": "The request is closed."
   },
   "problem": {
     "password_too_short": "At least 10 characters.",

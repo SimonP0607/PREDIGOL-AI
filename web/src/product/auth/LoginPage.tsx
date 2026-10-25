@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import { BrandCrest } from "@/components/brand/Brand";
 import { LanguageSwitch } from "@/components/layout/HeaderControls";
+import { Disclaimer } from "@/components/system/Disclaimer";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { t, translateOr } from "@/lib/i18n";
@@ -131,9 +132,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
           <p className="mt-4 text-center text-caption text-subtle-foreground">
             {t("auth.privateNote")}
           </p>
-          <p className="mt-6 text-center text-caption text-subtle-foreground">
-            {t("common.disclaimer")}
-          </p>
+          <Disclaimer className="mt-6 text-center text-caption text-subtle-foreground" />
         </div>
       </main>
     </div>

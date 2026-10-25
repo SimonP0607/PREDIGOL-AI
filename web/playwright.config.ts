@@ -86,9 +86,10 @@ export default defineConfig({
       dependencies: ["setup"],
     },
     {
-      // Two-step verification and the staged sign-in, on an account the test creates and switches off.
+      // Two-step verification and the staged sign-in, and the legal texts and the consent gate (plan UX, A4), each
+      // on an account the test creates and switches off.
       name: "security",
-      testMatch: /security\.spec\.ts/,
+      testMatch: /(security|legal)\.spec\.ts/,
       use: desktop,
       dependencies: ["setup"],
     },

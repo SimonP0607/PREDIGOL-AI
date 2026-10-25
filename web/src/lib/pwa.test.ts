@@ -52,10 +52,11 @@ describe("what the service worker caches", () => {
     expect(at("/sw.js")).toBe("bypass");
   });
 
-  test("another origin (fonts, team logos) and anything that is not a GET are left to the browser", () => {
-    expect(at("/css2?family=IBM+Plex+Sans", "cors", "GET", "https://fonts.googleapis.com")).toBe(
-      "bypass",
-    );
+  test("another origin (team logos) and anything that is not a GET are left to the browser", () => {
+    // The fonts are ours since plan UX, A4 (/assets/*.woff2, cached like any static file); another origin stays
+    // the browser's.
+    expect(at("/assets/ibm-plex-sans-latin-400-normal.woff2")).toBe("static");
+    expect(at("/widget.css", "cors", "GET", "https://cdn.example.org")).toBe("bypass");
     expect(at("/football/teams/33.png", "no-cors", "GET", "https://media.api-sports.io")).toBe(
       "bypass",
     );

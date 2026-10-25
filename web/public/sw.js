@@ -7,7 +7,7 @@
  *     answer could show yesterday's price as today's or one account's data to another;
  *   - pages (HTML): a navigation always goes to the network; only when the network fails is the offline page
  *     shown - never a stale copy of a page;
- *   - anything from another origin (fonts, team logos): the browser's own HTTP cache handles those.
+ *   - anything from another origin (team logos): the browser's own HTTP cache handles those.
  *
  * Updates are CONTROLLED: a new version of this file installs in the background and then WAITS. The page shows
  * "a new version is ready" and only when the reader accepts does it send SKIP_WAITING; the page reloads once the new

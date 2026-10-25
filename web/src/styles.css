@@ -1,6 +1,29 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+/*
+ * The three typefaces, served from PrediGol (plan UX, A4; plan de seguridad, S5): no request to Google - a visitor's
+ * address went to fonts.googleapis.com on every page. Latin and Latin Extended (team and player names), the weights
+ * in use; each file is fetched only when a character in its range appears (unicode-range).
+ */
+@import "@fontsource/space-grotesk/latin-500.css";
+@import "@fontsource/space-grotesk/latin-ext-500.css";
+@import "@fontsource/space-grotesk/latin-600.css";
+@import "@fontsource/space-grotesk/latin-ext-600.css";
+@import "@fontsource/space-grotesk/latin-700.css";
+@import "@fontsource/space-grotesk/latin-ext-700.css";
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-ext-400.css";
+@import "@fontsource/ibm-plex-sans/latin-500.css";
+@import "@fontsource/ibm-plex-sans/latin-ext-500.css";
+@import "@fontsource/ibm-plex-sans/latin-600.css";
+@import "@fontsource/ibm-plex-sans/latin-ext-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-ext-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+@import "@fontsource/ibm-plex-mono/latin-ext-500.css";
+@import "@fontsource/ibm-plex-mono/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-ext-600.css";
 
 @custom-variant dark (&:is(.dark *));
 /* A phone held sideways: so little height that fixed chrome must give way to the content. */
