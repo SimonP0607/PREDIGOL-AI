@@ -13,8 +13,11 @@
  *   admin     the Admin Console as SUPER_ADMIN, in English
  *   security  two-step verification: set-up, recovery codes, required password, codes; the owner's resets
  *   prefs     language and time-zone changes, serially, on their own account
- *   mobile    the product at 390 px, and the glossary under a finger
+ *   mobile    the product at 390 px, and the glossary under a finger (its own reader, "phone")
  *   mobile-webkit  the phone checks at 320, 390 and 430 px in WebKit, the engine of every iPhone browser
+ *   account   getting in without the owner (plan UX, A7): invitation, activation, recovery, unlocking. With the QA
+ *             API's self-service off it checks that nothing is offered; on (QA_SELF_SERVICE=1 QA_MESSENGER=1), the
+ *             e-mails' links, read from the QA messenger's folder (E2E_MAIL_SINK)
  *   pwa       manifest, service worker and offline page (E2E_PWA=1, production build only)
  *   prod-smoke  read-only checks of a deployed site, no sign-in (E2E_PROD_SMOKE=1, E2E_BASE_URL=the site)
  * Two measurements run only when asked, and never fail on what they measure:
@@ -94,6 +97,12 @@ export default defineConfig({
       dependencies: ["setup"],
     },
     {
+      name: "account",
+      testMatch: /account\.spec\.ts/,
+      use: desktop,
+      dependencies: ["setup"],
+    },
+    {
       name: "prefs",
       testMatch: /prefs\.spec\.ts/,
       fullyParallel: false,
@@ -114,7 +123,7 @@ export default defineConfig({
       use: {
         ...devices["Pixel 7"],
         viewport: { width: 390, height: 844 },
-        storageState: statePath("user"),
+        storageState: statePath("phone"),
       },
       dependencies: ["setup"],
     },
@@ -128,7 +137,7 @@ export default defineConfig({
       use: {
         ...devices["iPhone 13"],
         viewport: { width: 390, height: 844 },
-        storageState: statePath("user"),
+        storageState: statePath("phone"),
       },
       dependencies: ["setup"],
     },
@@ -147,7 +156,7 @@ export default defineConfig({
           {
             name: "screens",
             testMatch: /screens\.spec\.ts/,
-            use: { ...devices["Pixel 7"], storageState: statePath("user") },
+            use: { ...devices["Pixel 7"], storageState: statePath("phone") },
             dependencies: ["setup"],
           },
         ]

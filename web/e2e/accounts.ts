@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export type AccountName = "admin" | "user" | "userEn" | "switch" | "target";
+export type AccountName = "admin" | "user" | "userEn" | "switch" | "target" | "phone";
 
 /** Which file holds each account, and the role and language the suite expects it to have. */
 export const ACCOUNTS: Record<
@@ -20,6 +20,9 @@ export const ACCOUNTS: Record<
   userEn: { file: "qa-user-en.txt", role: "USER", lang: "en", tz: "Europe/Madrid" },
   switch: { file: "qa-switch.txt", role: "USER", lang: "es", tz: "America/Bogota" },
   target: { file: "qa-target.txt", role: "USER", lang: "es", tz: "UTC" },
+  // The phone projects' own reader: the desktop projects' "user" saves and removes picks on the same matches at the
+  // same time, and one run's removal was the other's failure (plan UX, A7's e2e).
+  phone: { file: "qa-phone.txt", role: "USER", lang: "es", tz: "America/Bogota" },
 };
 
 const DIR = process.env["E2E_ACCOUNTS_DIR"] ?? join(homedir(), ".fbi");
