@@ -45,15 +45,19 @@ let sdk: Sdk | null = null;
 let starting: Promise<boolean> | null = null;
 let observed: string | null = null;
 
+/** At most ``n`` UTF-16 units, never half of a character (a cut emoji would make the event unreadable). */
+function cut(text: string, n: number): string {
+  if (text.length <= n) return text;
+  const head = text.slice(0, n);
+  const last = head.charCodeAt(head.length - 1);
+  return last >= 0xd800 && last <= 0xdbff ? head.slice(0, -1) : head;
+}
+
 /** One line of text as it may leave the browser: the first line, emails and tokens out, quoted values out. */
 export function scrubText(text: string, quoted = true): string {
-  const first = (text.trim().split("\n")[0] ?? "").slice(0, 1000);
+  const first = cut(text.trim().split("\n")[0] ?? "", 1000);
   const plain = quoted ? first.replace(QUOTED, "<value>") : first;
-  return plain
-    .replace(EMAIL, "<email>")
-    .replace(TOKEN, "<token>")
-    .replace(HEX, "<hex>")
-    .slice(0, MAX);
+  return cut(plain.replace(EMAIL, "<email>").replace(TOKEN, "<token>").replace(HEX, "<hex>"), MAX);
 }
 
 /** A URL without its query string, its fragment or a user:password. */
@@ -128,6 +132,9 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent | null {
       else if (typeof item.value === "string") item.value = scrubText(item.value);
       for (const frame of item.stacktrace?.frames ?? []) {
         delete frame.vars;
+        // the first frame of a browser error is often the page's own address, query string included
+        if (frame.filename?.includes("://")) frame.filename = cleanUrl(frame.filename);
+        if (frame.abs_path?.includes("://")) frame.abs_path = cleanUrl(frame.abs_path);
       }
     }
     if (typeof event.message === "string") event.message = scrubText(event.message);
@@ -198,6 +205,7 @@ export function startObservability(
           stackFrameVariables: false,
         },
         maxBreadcrumbs: 30,
+        sendClientReports: false,
         // the errors only: no sessions, no tracing, no replay, no console lines, no clicks, no locale
         integrations: (defaults) => [
           ...defaults.filter((i) => !LEFT_OUT.has(i.name)),
@@ -244,7 +252,7 @@ export function reportApiFailure(info: {
     tags: {
       request_id: info.requestId ?? "-",
       status: String(info.status),
-      code: info.code,
+      error_code: info.code,
       route: cleanUrl(window.location.pathname),
     },
   });

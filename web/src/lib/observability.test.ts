@@ -96,6 +96,39 @@ describe("the filter of the web's errors (plan UX, A2)", () => {
     expect(scrubEvent(event)?.user).toEqual({ id: PSEUDONYM });
   });
 
+  test("a cut never leaves half a character", () => {
+    const text = "x".repeat(299) + "😀 tail";
+    const out = scrubText(text);
+    expect(out.length).toBe(299);
+    expect(/[\uD800-\uDBFF]$/.test(out)).toBe(false);
+  });
+
+  test("a frame whose file is the page keeps no query string", () => {
+    const event = {
+      exception: {
+        values: [
+          {
+            type: "Error",
+            value: "x",
+            stacktrace: {
+              frames: [
+                {
+                  filename: `https://predigolai.com/reset?token=${TOKEN}`,
+                  abs_path: `https://predigolai.com/x?e=${EMAIL}`,
+                },
+              ],
+            },
+          },
+        ],
+      },
+    } as unknown as ErrorEvent;
+    const frame = scrubEvent(event)?.exception?.values?.[0]?.stacktrace?.frames?.[0];
+    expect(frame).toEqual({
+      filename: "https://predigolai.com/reset",
+      abs_path: "https://predigolai.com/x",
+    });
+  });
+
   test("text and addresses", () => {
     expect(scrubText(`a '${NAME}' b ${EMAIL}\nnext`)).toBe("a <value> b <email>");
     expect(cleanUrl(`https://u:p@predigolai.com/a/b?x=${TOKEN}#h`)).toBe(
@@ -189,6 +222,7 @@ describe("switching reporting on", () => {
     const o = rec.options ?? {};
     expect(o["dsn"]).toBe(ON.dsn);
     expect(o["tunnel"]).toBe("/api/v1/monitoring/envelope");
+    expect(o["sendClientReports"]).toBe(false);
     expect(o["dataCollection"]).toMatchObject({
       userInfo: false,
       cookies: false,
@@ -235,7 +269,7 @@ describe("switching reporting on", () => {
     expect(context.tags).toEqual({
       request_id: "a1b2",
       status: "503",
-      code: "unavailable",
+      error_code: "unavailable",
       route: "/my-picks",
     });
 
