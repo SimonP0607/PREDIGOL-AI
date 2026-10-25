@@ -96,6 +96,18 @@ function ConsentRow({
           </button>
         )
       ) : null}
+      {/* A reader who withdrew it can give it again here (with the gate on, the gate asks for it anyway). */}
+      {purpose.withdrawable && latest && !latest.granted ? (
+        <button
+          type="button"
+          disabled={busy}
+          data-testid="privacy-regrant"
+          onClick={() => void onDecide(true)}
+          className={cn(BUTTON, "border border-border-strong font-medium")}
+        >
+          {t("legal.privacy.regrant")}
+        </button>
+      ) : null}
     </li>
   );
 }

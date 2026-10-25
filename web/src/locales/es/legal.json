@@ -48,6 +48,7 @@
     "withdraw": "Retirar mi autorización",
     "withdrawConfirm": "Si retiras tu autorización para tratar tus datos, no podrás usar PrediGol hasta darla de nuevo. Tus datos no se borran por esto: para borrarlos, pide el borrado más abajo.",
     "withdrawYes": "Sí, retirarla",
+    "regrant": "Dar de nuevo mi autorización",
     "history": "Historial completo",
     "historyGranted": "Aceptado",
     "historyWithdrawn": "Retirado",

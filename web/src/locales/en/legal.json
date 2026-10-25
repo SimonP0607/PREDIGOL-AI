@@ -48,6 +48,7 @@
     "withdraw": "Withdraw my authorisation",
     "withdrawConfirm": "If you withdraw your authorisation to process your data, you cannot use PrediGol until you give it again. Your data is not deleted by this: to delete it, ask for deletion below.",
     "withdrawYes": "Yes, withdraw it",
+    "regrant": "Give my authorisation again",
     "history": "Full history",
     "historyGranted": "Accepted",
     "historyWithdrawn": "Withdrawn",

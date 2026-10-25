@@ -24,9 +24,21 @@ const ADMIN_ROUTES = [
 test("without a session the product is closed and health stays open", async () => {
   const anon = await request.newContext({ baseURL: BASE, extraHTTPHeaders: H });
   expect((await anon.get("/health")).status()).toBeLessThan(600);
-  for (const path of ["/api/v1/home", "/api/v1/matches", "/api/v1/auth/me", ...ADMIN_ROUTES]) {
+  for (const path of [
+    "/api/v1/home",
+    "/api/v1/matches",
+    "/api/v1/auth/me",
+    "/api/v1/me/consents",
+    "/api/v1/me/privacy-requests",
+    ...ADMIN_ROUTES,
+  ]) {
     expect((await anon.get(path)).status(), path).toBe(401);
   }
+  // the legal texts are public (plan UX, A4): anyone reads the terms before having an account
+  for (const document of ["terms", "privacy", "responsible_gaming"]) {
+    expect((await anon.get(`/api/v1/legal/${document}`)).status(), document).toBe(200);
+  }
+  expect((await anon.post("/api/v1/me/export", { data: { password: "x" } })).status()).toBe(401);
   await anon.dispose();
 });
 
