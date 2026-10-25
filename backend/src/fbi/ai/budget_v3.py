@@ -34,7 +34,9 @@ A spent limit (HTTP 400 workspace limit, 429 tier cap) is read from ``ai.limit_h
 each hit of the last 12 hours (30 minutes up to 6 hours), then ONE call tries again - never a loop.
 
 ALERTS warn and degrade nothing: the month crossing 50 / 70 / 85 / 95 / 100 % of each envelope, and production's PROJECTION
-crossing 95 and 100 % (``ai.budget_alerts``: scope and kind).
+crossing 95 and 100 %. Production's month alert is written to ``ai.budget_alerts`` exactly as the earlier code wrote it (one table,
+one key, shared by both generations of code, so a rollback never meets a schema it cannot use); the LAB's, Exa's and the
+projection's go to ``ai.envelope_alerts`` (scope and kind). ``ai.budget_alerts_all`` reads both.
 
 Everything here is a function of the ledger and of ``at``: no clock, no network, nothing written but the alerts."""
 
@@ -64,6 +66,7 @@ from fbi.ai.usage import (
     CHEAP_AT,
     HARD_FACTOR,
     LOAD_MIN,
+    MONTH_ALERT_SQL,
     REDUCED_AT,
     Budget,
     BudgetState,
@@ -487,9 +490,9 @@ def exa_budget(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSetti
 
 # ── alerts ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-ALERT_SQL = ("INSERT INTO ai.budget_alerts (month, scope, kind, threshold, created_at, spent_usd, budget_usd) "
-             "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (month, scope, kind, threshold) DO NOTHING "
-             "RETURNING threshold")
+ENVELOPE_ALERT_SQL = ("INSERT INTO ai.envelope_alerts (month, scope, kind, threshold, created_at, spent_usd, budget_usd) "
+                      "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (month, scope, kind, threshold) DO NOTHING "
+                      "RETURNING threshold")
 
 
 def check_alerts(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings) -> list[int]:
@@ -503,7 +506,10 @@ def check_alerts(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSet
 
         def record(scope: str, kind: str, thresholds: list[int], figure: Decimal, envelope: Decimal) -> None:
             for t in thresholds:
-                cur.execute(ALERT_SQL, (month, scope, kind, t, at, _money(figure), envelope))
+                if (scope, kind) == ("production", "month"):  # the one alert both generations of code share
+                    cur.execute(MONTH_ALERT_SQL, (month, t, at, _money(figure), envelope))
+                else:
+                    cur.execute(ENVELOPE_ALERT_SQL, (month, scope, kind, t, at, _money(figure), envelope))
                 if cur.fetchone() is not None:
                     new.append(t)
 

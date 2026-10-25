@@ -118,7 +118,7 @@ BUDGET_SCOPES = {"production": "Claude de producción", "lab": "Claude del LAB",
 
 
 def budget_draft(r: dict[str, Any]) -> Draft:
-    """The notification of one budget alert (``ai.budget_alerts``). An alert of production's month is worded and keyed as it
+    """The notification of one budget alert (``ai.budget_alerts_all``). An alert of production's month is worded and keyed as it
     always was; the LAB's, Exa's and the projections (Plan Maestro IA, phase 0) say which envelope they are about. An alert
     warns: nothing is cut by it."""
     scope, kind, threshold = str(r["scope"]), str(r["kind"]), int(r["threshold"])
@@ -207,11 +207,19 @@ def collect(conn: psycopg.Connection, *, at: datetime) -> list[Draft]:
                                 f"{r['job_type']}: the last 3 runs failed",
                                 f"Last at {r['last_at']:%d %b %H:%M} UTC: {(r['last_error'] or '')[:300]}",
                                 {"job_type": r["job_type"]}))
-        cur.execute("SELECT to_regclass('ai.budget_alerts') IS NOT NULL AS present")
+        # ai.budget_alerts_all (migration 0110) reads the old table - production's month - and the envelopes' alerts; before 0110
+        # only the old table exists, and every row of it is production's month.
+        cur.execute("SELECT to_regclass('ai.budget_alerts_all') IS NOT NULL AS wide, "
+                    "to_regclass('ai.budget_alerts') IS NOT NULL AS plain")
         present = cur.fetchone()
-        if present and present["present"]:
-            cur.execute("SELECT month, threshold, spent_usd, budget_usd, created_at, scope, kind FROM ai.budget_alerts "
+        if present and present["wide"]:
+            cur.execute("SELECT month, threshold, spent_usd, budget_usd, created_at, scope, kind FROM ai.budget_alerts_all "
                         "WHERE created_at > %s - interval '40 days'", (at,))
+            for r in cur.fetchall():
+                drafts.append(budget_draft(r))
+        elif present and present["plain"]:
+            cur.execute("SELECT month, threshold, spent_usd, budget_usd, created_at, 'production' AS scope, 'month' AS kind "
+                        "FROM ai.budget_alerts WHERE created_at > %s - interval '40 days'", (at,))
             for r in cur.fetchall():
                 drafts.append(budget_draft(r))
         cur.execute("SELECT worker_id, last_beat_at, tick_interval_s FROM raw.worker_heartbeats "

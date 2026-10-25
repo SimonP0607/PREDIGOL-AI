@@ -1,5 +1,5 @@
 """Plan Maestro IA, Phase 0 - efficiency: the ledger learns what a cache write, a Batch call and a workspace are, the
-Message Batches API gets its tables, the budget alerts get a scope, and the optimisations get an evidence gate.
+Message Batches API gets its tables, the other envelopes' budget alerts get theirs, and the optimisations get an evidence gate.
 
 All of it is ADDITIVE (docs/owner/IA_FASE0.md):
 
@@ -11,8 +11,10 @@ All of it is ADDITIVE (docs/owner/IA_FASE0.md):
 * ``ai.batches`` / ``ai.batch_items``: the Message Batches API (``fbi.ai.batch``). A task is reserved as an item before it is
   sent (``submitting``), so a crash between the request and its note can never pay the same task twice; at most one OPEN
   item per ``custom_id``.
-* ``ai.budget_alerts`` gains ``scope`` (production, lab, exa) and ``kind`` (month, projection), and its UNIQUE key becomes
-  (month, scope, kind, threshold). Rows written by the earlier code take the defaults (production, month).
+* ``ai.envelope_alerts``: the alerts the old table cannot hold - the LAB's and Exa's months and production's PROJECTION - keyed
+  by (month, scope, kind, threshold). ``ai.budget_alerts`` itself is NOT touched (not its columns, not its UNIQUE (month,
+  threshold)): the earlier code keeps writing and reading it as it always did, so rolling the code back never meets a schema it
+  cannot use, and production's month alert exists once for both generations of code. ``ai.budget_alerts_all`` reads both.
 * ``ai.feature_gates`` (append-only): the evidence an optimisation needs before it switches itself on (``fbi.ai.gates``): the
   Batch probe, the structured-output stability test, the cache layout test. The newest row of a gate decides.
 * ``ai.limit_hits`` (append-only): every time the provider said a spend limit is spent (HTTP 400 "workspace API usage limits",
@@ -37,7 +39,7 @@ down_revision = "0093"
 branch_labels = None
 depends_on = None
 
-APPEND_ONLY = ("feature_gates", "limit_hits")
+APPEND_ONLY = ("feature_gates", "limit_hits", "envelope_alerts")
 
 USAGE_COLUMNS = ("cache_write_tokens", "cache_write_1h_tokens", "cache_ttl", "thinking_tokens", "batch_id", "custom_id",
                  "workspace", "key_label", "run_id", "agent")
@@ -45,7 +47,7 @@ USAGE_COLUMNS = ("cache_write_tokens", "cache_write_1h_tokens", "cache_ttl", "th
 
 def upgrade() -> None:
     op.execute("SET LOCAL lock_timeout = '10s'")
-    op.execute("LOCK TABLE ai.budget_alerts, ai.usage, ai.match_briefs IN ACCESS EXCLUSIVE MODE")
+    op.execute("LOCK TABLE ai.usage, ai.match_briefs IN ACCESS EXCLUSIVE MODE")
 
     # ── the ledger ────────────────────────────────────────────────────────────────
     op.execute("""
@@ -146,25 +148,34 @@ def upgrade() -> None:
           'context: what is needed to validate and store the answer, never a prompt and never a key.';
     """)
 
-    # ── the budget's alerts, by scope ─────────────────────────────────────────────
+    # ── the alerts of the envelopes (the old table stays exactly as it is) ──────────
     op.execute("""
-        ALTER TABLE ai.budget_alerts
-            ADD COLUMN scope TEXT NOT NULL DEFAULT 'production' CHECK (scope IN ('production', 'lab', 'exa')),
-            ADD COLUMN kind  TEXT NOT NULL DEFAULT 'month' CHECK (kind IN ('month', 'projection'));
-        DO $do$
-        DECLARE c text;
-        BEGIN
-            FOR c IN SELECT conname FROM pg_constraint
-                      WHERE conrelid = 'ai.budget_alerts'::regclass AND contype = 'u'
-            LOOP
-                EXECUTE format('ALTER TABLE ai.budget_alerts DROP CONSTRAINT %I', c);
-            END LOOP;
-        END
-        $do$;
-        ALTER TABLE ai.budget_alerts ADD CONSTRAINT budget_alerts_scope_key UNIQUE (month, scope, kind, threshold);
-        COMMENT ON COLUMN ai.budget_alerts.kind IS
-          'month: the spend of the month crossed threshold % of the scope''s envelope. projection: the month''s PROJECTED '
-          'spend did (spent_usd is then the projection). An alert warns; it never degrades anything.';
+        CREATE TABLE ai.envelope_alerts (
+            id         BIGSERIAL     PRIMARY KEY,
+            month      DATE          NOT NULL CHECK (extract(day FROM month) = 1),
+            scope      TEXT          NOT NULL CHECK (scope IN ('production', 'lab', 'exa')),
+            kind       TEXT          NOT NULL CHECK (kind IN ('month', 'projection')),
+            threshold  SMALLINT      NOT NULL CHECK (threshold IN (50, 70, 85, 95, 100)),
+            created_at TIMESTAMPTZ   NOT NULL,
+            spent_usd  NUMERIC(12,6) NOT NULL CHECK (spent_usd >= 0),
+            budget_usd NUMERIC(12,6) NOT NULL CHECK (budget_usd >= 0),
+            CONSTRAINT envelope_alerts_key UNIQUE (month, scope, kind, threshold),
+            CONSTRAINT envelope_alerts_not_the_old_ones CHECK (NOT (scope = 'production' AND kind = 'month'))
+        );
+        COMMENT ON TABLE ai.envelope_alerts IS
+          'Budget alerts of Plan Maestro IA, phase 0, that ai.budget_alerts cannot hold: the LAB''s and Exa''s month (their own '
+          'envelopes) and production''s PROJECTION. Production''s month alert lives in ai.budget_alerts, once for the old code '
+          'and the new. kind month: the spend of the month crossed threshold percent of the scope''s envelope; projection: the '
+          'month''s PROJECTED spend did (spent_usd is then the projection). An alert warns; it never degrades anything.';
+
+        CREATE VIEW ai.budget_alerts_all AS
+            SELECT month, 'production'::text AS scope, 'month'::text AS kind, threshold::smallint AS threshold, created_at,
+                   spent_usd, budget_usd
+              FROM ai.budget_alerts
+            UNION ALL
+            SELECT month, scope, kind, threshold, created_at, spent_usd, budget_usd FROM ai.envelope_alerts;
+        COMMENT ON VIEW ai.budget_alerts_all IS
+          'Every budget alert with its scope and kind: the old table (production, month) and ai.envelope_alerts.';
     """)
 
     # ── the evidence an optimisation needs, and the spend limits the provider reported ──
@@ -227,10 +238,8 @@ def downgrade() -> None:
         ALTER TABLE ai.match_briefs DROP COLUMN material, DROP COLUMN material_hash;
         DROP TABLE ai.limit_hits;
         DROP TABLE ai.feature_gates;
-        DELETE FROM ai.budget_alerts WHERE scope <> 'production' OR kind <> 'month';
-        ALTER TABLE ai.budget_alerts DROP CONSTRAINT budget_alerts_scope_key;
-        ALTER TABLE ai.budget_alerts ADD CONSTRAINT budget_alerts_month_threshold_key UNIQUE (month, threshold);
-        ALTER TABLE ai.budget_alerts DROP COLUMN kind, DROP COLUMN scope;
+        DROP VIEW ai.budget_alerts_all;
+        DROP TABLE ai.envelope_alerts;
         DROP TABLE ai.batch_items;
         DROP TABLE ai.batches;
         DROP VIEW ai.usage_scoped;

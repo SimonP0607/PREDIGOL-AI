@@ -23,7 +23,8 @@ Degradation, never breakage (by today's spend against today's budget; the month'
 
 Inside the day the passes share it (``PASS_SHARE``): the first pass may take 55 %, the second up to 75 %, the
 last one the rest - the line-ups are never left without money. The month's spend crossing 50, 70, 85, 95 and 100 %
-is recorded once each (``ai.budget_alerts``) and sent through the notifier.
+is recorded once each (``ai.budget_alerts``; the LAB's, Exa's and the projection's in ``ai.envelope_alerts``) and sent
+through the notifier.
 
 PRIORITY (PrediGol Intelligence, 13 Oct 2026): depth on MARGINAL matches - a match of the day without any candidate -
 stops first: no model brief and no web for them once today's spend reaches 80 % of today's budget, the day is no longer
@@ -99,6 +100,10 @@ LOAD_MIN = 0.5
 TYPICAL_DAYS = 14
 MIN_TYPICAL = 3
 ALERT_THRESHOLDS = (50, 70, 85, 95, 100)
+MONTH_ALERT_SQL = ("INSERT INTO ai.budget_alerts (month, threshold, created_at, spent_usd, budget_usd) "
+                   "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (month, threshold) DO NOTHING RETURNING threshold")
+"""Production's month alert, exactly as the code before Plan Maestro IA wrote it: ``ai.budget_alerts`` is the one table the
+old and the new code share (migration 0110 does not touch it), so the alert exists once whichever code raised it."""
 MARGINAL_SHARE = Decimal("0.80")
 MARGINAL_MONTH = 0.85
 PASS_SHARE: dict[str, Decimal] = {"first": Decimal("0.55"), "pre": Decimal("0.75"), "final": Decimal("1.00"),
@@ -339,10 +344,7 @@ def check_alerts(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSet
     new: list[int] = []
     with conn.cursor(row_factory=tuple_row) as cur:
         for t in crossed:
-            cur.execute("INSERT INTO ai.budget_alerts (month, scope, kind, threshold, created_at, spent_usd, budget_usd) "
-                        "VALUES (%s, 'production', 'month', %s, %s, %s, %s) "
-                        "ON CONFLICT (month, scope, kind, threshold) DO NOTHING RETURNING threshold",
-                        (month_start(local_day(at)), t, at, _money(b.spent_month), b.monthly))
+            cur.execute(MONTH_ALERT_SQL, (month_start(local_day(at)), t, at, _money(b.spent_month), b.monthly))
             if cur.fetchone() is not None:
                 new.append(t)
     return new

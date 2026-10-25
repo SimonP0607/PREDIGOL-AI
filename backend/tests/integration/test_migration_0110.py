@@ -82,25 +82,43 @@ def test_0110_keeps_what_was_written_defaults_the_new_and_enforces_its_rules() -
                             "ORDER BY id").fetchall()
             assert old == [(None, None, None, "production"), (None, None, None, "exa")], \
                 "rows written before keep NULL; the scope is derived: searches are Exa's money, the rest production's"
-            assert c.execute("SELECT scope, kind FROM ai.budget_alerts").fetchall() == [("production", "month")], \
-                "the alert the earlier code wrote takes the defaults"
+            assert _columns(c, "budget_alerts") == {"id", "month", "threshold", "created_at", "spent_usd", "budget_usd"}, \
+                "the old alerts table is NOT touched: the earlier code finds the schema it wrote"
+            assert c.execute("SELECT scope, kind, threshold FROM ai.budget_alerts_all").fetchall() \
+                == [("production", "month", 50)], "the view shows the alert the earlier code wrote as production's month"
             # the scope of a call made with the LAB workspace's key
             assert c.execute("SELECT ai.scope_of('analysis', 'PREDIGOL-LAB'), ai.scope_of('analysis', 'PREDIGOL'), "
                              "ai.scope_of('search', 'PREDIGOL-LAB'), ai.scope_of('bulk', NULL)").fetchone() \
                 == ("lab", "production", "exa", "production")
 
-            # the new unique key: the same threshold may alert once per scope and kind, never twice for the same
-            insert = ("INSERT INTO ai.budget_alerts (month, threshold, created_at, spent_usd, budget_usd, scope, kind) "
+            # the envelopes' alerts: once per (month, scope, kind, threshold). Production's month is the old table's - once for
+            # both generations of code - and this one refuses it
+            insert = ("INSERT INTO ai.envelope_alerts (month, threshold, created_at, spent_usd, budget_usd, scope, kind) "
                       "VALUES ('2026-10-01', 95, now(), 100, 190, %s, %s)")
-            for scope, kind in (("production", "month"), ("lab", "month"), ("exa", "month"), ("production", "projection")):
+            for scope, kind in (("lab", "month"), ("exa", "month"), ("production", "projection"), ("lab", "projection")):
                 c.execute(insert, (scope, kind))
+            c.execute("INSERT INTO ai.budget_alerts (month, threshold, created_at, spent_usd, budget_usd) "
+                      "VALUES ('2026-10-01', 95, now(), 171, 180)")
             c.commit()
             with pytest.raises(psycopg.errors.UniqueViolation):
                 c.execute(insert, ("lab", "month"))
             c.rollback()
+            with pytest.raises(psycopg.errors.CheckViolation, match="not_the_old_ones"):
+                c.execute(insert, ("production", "month"))
+            c.rollback()
             with pytest.raises(psycopg.errors.CheckViolation):
                 c.execute(insert, ("production", "weekly"))
             c.rollback()
+            with pytest.raises(psycopg.errors.CheckViolation):
+                c.execute("INSERT INTO ai.envelope_alerts (month, threshold, created_at, spent_usd, budget_usd, scope, kind) "
+                          "VALUES ('2026-10-01', 60, now(), 1, 2, 'lab', 'month')")  # not one of the thresholds
+            c.rollback()
+            with pytest.raises(psycopg.errors.CheckViolation, match="append-only"):
+                c.execute("DELETE FROM ai.envelope_alerts")
+            c.rollback()
+            assert c.execute("SELECT scope, kind, threshold FROM ai.budget_alerts_all ORDER BY scope, kind, threshold").fetchall() \
+                == [("exa", "month", 95), ("lab", "month", 95), ("lab", "projection", 95), ("production", "month", 50),
+                    ("production", "month", 95), ("production", "projection", 95)], "the view reads both tables"
 
             # a Batch result is recorded once; an open task exists once
             c.execute("INSERT INTO ai.batches (batch_ref, provider, workspace, key_label, kind, status, created_at, n_items) "
@@ -155,15 +173,17 @@ def test_0110_keeps_what_was_written_defaults_the_new_and_enforces_its_rules() -
                           "VALUES ('something-else', now(), true, '{}'::jsonb, repeat('a', 64), 'script')")
             c.rollback()
 
-        # the downgrade undoes it: the old key is back, the new tables are gone, the ledger keeps its rows
+        # the downgrade undoes it: the new tables are gone, the ledger keeps its rows and the old alerts table - which 0110 never
+        # touched - keeps every alert it ever held
         command.downgrade(_cfg(), "0093")
         with psycopg.connect(dsn) as c:
             assert c.execute("SELECT count(*) FROM ai.usage").fetchone() == (3,), "every cost the ledger had stays"
-            assert "batch_id" not in _columns(c, "usage") and "scope" not in _columns(c, "budget_alerts")
+            assert "batch_id" not in _columns(c, "usage")
             assert c.execute("SELECT to_regclass('ai.batches'), to_regclass('ai.feature_gates'), "
-                             "to_regclass('ai.usage_scoped')").fetchone() == (None, None, None)
-            assert c.execute("SELECT count(*) FROM ai.budget_alerts").fetchone() == (2,), \
-                "the month's alerts of production stay (50 and 95); the lab, exa and projection ones go with their scope"
+                             "to_regclass('ai.usage_scoped'), to_regclass('ai.envelope_alerts'), "
+                             "to_regclass('ai.budget_alerts_all')").fetchone() == (None, None, None, None, None)
+            assert c.execute("SELECT threshold FROM ai.budget_alerts ORDER BY threshold").fetchall() == [(50,), (95,)], \
+                "the month's alerts of production stay (50 and 95); only the envelopes' own ones go with their table"
             with pytest.raises(psycopg.errors.UniqueViolation):
                 c.execute("INSERT INTO ai.budget_alerts (month, threshold, created_at, spent_usd, budget_usd) "
                           "VALUES ('2026-10-01', 50, now(), 91, 180)")

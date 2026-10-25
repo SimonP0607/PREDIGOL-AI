@@ -306,29 +306,72 @@ def test_a_web_search_is_not_made_when_exas_envelope_is_spent(db: psycopg.Connec
     assert rolled_back.skipped != "budget_exa"
 
 
+def alerts_of(db: psycopg.Connection[Any], where: str = "TRUE") -> list[tuple[Any, ...]]:
+    """Every alert with its scope and kind, from both tables (``ai.budget_alerts_all``)."""
+    return db.execute(f"SELECT scope, kind, threshold FROM ai.budget_alerts_all WHERE {where} "
+                      "ORDER BY scope, kind, threshold").fetchall()
+
+
 def test_each_envelope_alerts_once_and_the_projection_too(db: psycopg.Connection[Any]) -> None:
     month(db, unit="0.58", spent_today="1.00")  # production: 81.2 + 1 = 82.2 of 185 (44 %); projected 179.8 (97 %)
     spend(db, NOW - timedelta(days=3), "8.00", workspace="PREDIGOL-LAB")  # 8 of 15: 53 %
     spend(db, NOW - timedelta(days=2), "25.00", search=True)  # 25 of 35: 71 %
     lab15 = settings(lab_monthly_budget=D(15))
     first = check_alerts(db, at=NOW, settings=lab15)
-    rows = db.execute("SELECT scope, kind, threshold FROM ai.budget_alerts ORDER BY scope, kind, threshold").fetchall()
-    assert rows == [("exa", "month", 50), ("exa", "month", 70), ("lab", "month", 50), ("production", "projection", 95)]
+    assert alerts_of(db) == [("exa", "month", 50), ("exa", "month", 70), ("lab", "month", 50), ("production", "projection", 95)]
     assert sorted(first) == [50, 50, 70, 95]
     assert check_alerts(db, at=NOW, settings=lab15) == [], "each is recorded once a month"
     spend(db, NOW - timedelta(minutes=30), "12.00")  # production: 94.2 of 185 (51 %); the projection passes 100 %
     assert check_alerts(db, at=NOW, settings=lab15) == [50, 100]
-    rows = db.execute("SELECT scope, kind, threshold FROM ai.budget_alerts WHERE scope = 'production' "
-                      "ORDER BY kind, threshold").fetchall()
-    assert rows == [("production", "month", 50), ("production", "projection", 95), ("production", "projection", 100)]
-    row = db.execute("SELECT spent_usd, budget_usd FROM ai.budget_alerts WHERE scope = 'production' AND kind = 'projection' "
+    assert alerts_of(db, "scope = 'production'") == [("production", "month", 50), ("production", "projection", 95),
+                                                     ("production", "projection", 100)]
+    row = db.execute("SELECT spent_usd, budget_usd FROM ai.envelope_alerts WHERE scope = 'production' AND kind = 'projection' "
                      "AND threshold = 95").fetchone()
     assert row == (D("179.8000"), D(185)), "a projection alert records the projection against the envelope"
+
+
+def test_production_s_month_alert_lives_in_the_table_the_earlier_code_uses(db: psycopg.Connection[Any]) -> None:
+    """One table, one key, both generations of code: the alert the new budget raises is a row of ``ai.budget_alerts`` as the
+    earlier release wrote it, and the other envelopes' alerts are not there - the earlier code finds nothing it cannot read."""
+    month(db, unit="0.58", spent_today="1.00")
+    spend(db, NOW - timedelta(days=3), "8.00", workspace="PREDIGOL-LAB")
+    spend(db, NOW - timedelta(days=2), "25.00", search=True)
+    spend(db, NOW - timedelta(minutes=30), "12.00")  # production: 94.2 of 185 (51 %); the projection passes 100 %
+    lab15 = settings(lab_monthly_budget=D(15))
+    check_alerts(db, at=NOW, settings=lab15)
+    assert db.execute("SELECT threshold FROM ai.budget_alerts ORDER BY threshold").fetchall() == [(50,)]
+    assert db.execute("SELECT scope, kind, threshold FROM ai.envelope_alerts ORDER BY scope, kind, threshold").fetchall() \
+        == [("exa", "month", 50), ("exa", "month", 70), ("lab", "month", 50), ("production", "projection", 95),
+            ("production", "projection", 100)]
+
+
+def test_production_s_month_alert_raised_by_the_earlier_code_is_not_raised_again(db: psycopg.Connection[Any]) -> None:
+    month(db, unit="0.58", spent_today="1.00")
+    spend(db, NOW - timedelta(minutes=30), "12.00")  # production: 94.2 of 185 (51 %)
+    earlier = NOW - timedelta(hours=1)
+    db.execute("INSERT INTO ai.budget_alerts (month, threshold, created_at, spent_usd, budget_usd) "
+               "VALUES (%s, 50, %s, 82, 185)", (date(2032, 8, 1), earlier))  # the statement of the release before the plan
+    new = check_alerts(db, at=NOW, settings=settings())
+    assert 50 not in new, "production's 50 % exists once, whichever code raised it"
+    assert db.execute("SELECT created_at, spent_usd FROM ai.budget_alerts").fetchall() == [(earlier, D(82))]
+
+
+def test_the_notifier_words_the_alerts_of_both_tables(db: psycopg.Connection[Any]) -> None:
+    from fbi.notify.service import collect
+
+    month(db, unit="0.58", spent_today="1.00")
+    spend(db, NOW - timedelta(days=3), "8.00", workspace="PREDIGOL-LAB")
+    spend(db, NOW - timedelta(days=2), "25.00", search=True)
+    spend(db, NOW - timedelta(minutes=30), "12.00")
+    check_alerts(db, at=NOW, settings=settings(lab_monthly_budget=D(15)))
+    keys = {d.dedup_key for d in collect(db, at=NOW) if d.kind == "ai_budget"}
+    assert keys == {"ai_budget:2032-08:50",  # production's month: keyed and worded as it always was
+                    "ai_budget:2032-08:exa:month:50", "ai_budget:2032-08:exa:month:70", "ai_budget:2032-08:lab:month:50",
+                    "ai_budget:2032-08:production:projection:95", "ai_budget:2032-08:production:projection:100"}
 
 
 def test_rolled_back_the_alerts_are_the_old_ones_of_the_one_total(db: psycopg.Connection[Any]) -> None:
     month(db, unit="0.58", spent_today="1.00")
     spend(db, NOW - timedelta(days=2), "25.00", search=True)
     check_alerts(db, at=NOW, settings=settings(switches={"budget_v3": "off"}))
-    rows = db.execute("SELECT scope, kind, threshold FROM ai.budget_alerts ORDER BY threshold").fetchall()
-    assert rows == [("production", "month", 50)], "107 of 185 in one total, Exa inside it - and no projection alert"
+    assert alerts_of(db) == [("production", "month", 50)], "107 of 185 in one total, Exa inside it - and no projection alert"

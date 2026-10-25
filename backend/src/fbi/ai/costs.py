@@ -107,8 +107,7 @@ def projection(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSetti
 def alerts(conn: psycopg.Connection[Any], *, at: datetime) -> list[dict[str, Any]]:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("SELECT month, threshold, created_at, spent_usd, budget_usd FROM ai.budget_alerts "
-                    "WHERE month = %s AND scope = 'production' AND kind = 'month' ORDER BY threshold",
-                    (month_start(local_day(at)),))
+                    "WHERE month = %s ORDER BY threshold", (month_start(local_day(at)),))
         return [{"month": r["month"].isoformat(), "threshold": int(r["threshold"]), "at": r["created_at"].isoformat(),
                  "spent_usd": float(r["spent_usd"]), "budget_usd": float(r["budget_usd"])} for r in cur.fetchall()]
 
