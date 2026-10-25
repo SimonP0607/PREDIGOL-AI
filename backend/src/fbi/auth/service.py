@@ -498,6 +498,32 @@ def regenerate_recovery_codes(principal: Principal, *, password: str, code: str 
     return codes
 
 
+def reauthenticate(principal: Principal, *, password: str, code: str | None, ip: str | None, action: str,
+                   per_day: int | None = None) -> None:
+    """The account's own password once more - and its second factor's code when it has one - before an action that
+    hands over or ends the account's data (plan UX, A4: the export and the deletion request; plan de seguridad, S5).
+    A wrong password or code counts like one at sign-in. ``per_day`` caps how often the action runs in 24 hours
+    (counted in the audit trail, so the two API processes share it). The action is recorded under its own name."""
+    refusal: AuthError | None = None
+    with write_connection() as conn:
+        _lock_streak_of(conn, principal.email)
+        user = store.user_by_id(conn, principal.user_id, for_update=True)
+        if user is None or user.get("status") != "active":
+            raise AuthError(401, "unauthenticated")
+        if per_day is not None:
+            row = conn.execute("SELECT count(*) FROM auth.audit_events WHERE action = %s AND target_user_id = %s "
+                               "AND at > now() - interval '24 hours'", (action, principal.user_id)).fetchone()
+            if row is not None and int(row[0]) >= per_day:
+                raise AuthError(429, "daily_limit", retry_after=3600)
+        refusal = _check_password_and_code(conn, principal, user, password=password, code=code, ip=ip,
+                                           action=action)
+        if refusal is None:
+            store.record_event(conn, action, actor_user_id=principal.user_id, target_user_id=principal.user_id,
+                               ip=ip)
+    if refusal is not None:
+        raise refusal
+
+
 def principal_from_token(conn: psycopg.Connection[Any], token: str | None) -> Principal | None:
     """Who a cookie belongs to, on the request's read-only connection. None: nobody."""
     if not tokens.looks_like_token(token):

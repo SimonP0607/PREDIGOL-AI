@@ -37,6 +37,7 @@ from fbi.api.security import (
 from fbi.auth import crypto, service
 from fbi.auth.service import Principal
 from fbi.auth.settings import session_settings
+from fbi.customer import consents
 
 public_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
 session_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
@@ -87,8 +88,12 @@ def logout(request: Request, principal: Annotated[Principal | None, Depends(opti
 
 
 @session_router.get("/me", response_model=Me)
-def me(principal: AnySession) -> Me:
-    return me_of(principal)
+def me(principal: AnySession, conn: Db) -> Me:
+    who = me_of(principal)
+    if (principal.is_full and consents.gate_enabled()
+            and not consents.exempt(principal.email, super_admin=principal.is_super_admin)):
+        who = who.model_copy(update={"consents_due": consents.due_cached(conn, principal.user_id)})
+    return who
 
 
 @session_router.post("/mfa/verify", response_model=Me)

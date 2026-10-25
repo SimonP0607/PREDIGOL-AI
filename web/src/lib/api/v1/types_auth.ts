@@ -31,6 +31,11 @@ export interface Me {
   recovery_codes_left: number;
   /** The pseudonym this account's errors carry to Sentry (an HMAC the server computes), never the id: plan UX, A2. */
   observability_id?: string | null;
+  /**
+   * The consents the reader must accept before using the product (plan UX, A4): empty while the gate is off or
+   * nothing is owed. GET /auth/me fills it; a 403 consent_required elsewhere means: ask /auth/me again.
+   */
+  consents_due?: string[];
 }
 
 export interface MfaEnrollment {

@@ -29,14 +29,14 @@ USER_LAYER = ("auth", "userdata", "customer", "messaging")
 MAY_IMPORT_THE_USER_LAYER = {
     "api": "the API serves the accounts and the client's own records (sign-in, profile, my picks); it is the user layer's door",
 }
-"""Packages allowed to import the user layer, each with its reason. A4 adds ``customer`` (it reads ``fbi.auth`` for the account
-it belongs to) and A5 adds ``messaging`` (it reads ``fbi.customer`` for preferences), with theirs."""
+"""Packages allowed to import the user layer, each with its reason. ``fbi.customer`` (A4) and ``fbi.messaging`` (A5) are part of the
+user layer itself, so their imports of ``fbi.auth`` and of each other need no reason here."""
 
 CLIENT_TABLES = re.compile(r"\b(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a-z_]+)\b")
 """A client's data in SQL: the ``auth`` and ``customer`` schemas and the picks and parlays a client saves."""
 
 USER_ROUTERS = ("system", "auth", "product", "records", "football", "market", "center", "ai_layer", "forecast",
-                "match_calendar", "knowledge")
+                "match_calendar", "knowledge", "customer")
 """``fbi.api.routers`` modules mounted on the public and app tiers by ``create_app`` (every other router is ``/admin``)."""
 
 CALLS_OUT = ("fbi.ai.providers", "fbi.analyst.agent", "fbi.analyst.search", "anthropic", "openai", "httpx", "requests",

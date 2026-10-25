@@ -6,7 +6,8 @@ the browser is presentation, not protection. A route belongs to exactly one tier
   public     /health, /auth/login, /auth/logout
   session    /auth/me and the steps that finish signing in (second factor, enrolment, required new password):
              any live session, whatever its stage
-  APP        the product (any signed-in, active account whose sign-in is complete)
+  APP        the product (any signed-in, active account whose sign-in is complete; with FBI_CONSENT_GATE on, one
+             that has accepted the current texts - else 403 consent_required), the account and the reader's rights
   ADMIN      /api/v1/admin/* (SUPER_ADMIN)
 
 A request with no valid session gets 401; a session still owing a step gets 403 with that step's code
@@ -31,6 +32,7 @@ from fbi.api.limits import SlidingWindow
 from fbi.auth.roles import Permission
 from fbi.auth.service import STAGE_REFUSALS, Principal, principal_from_token
 from fbi.auth.settings import session_settings
+from fbi.customer import consents
 
 DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -130,6 +132,16 @@ def clear_session_cookie(response: Response) -> None:
     cfg = session_settings()
     response.delete_cookie(key=cfg.cookie_name, path="/", secure=cfg.cookie_secure, httponly=True,
                            samesite=cfg.cookie_samesite)
+
+
+def consent_required(conn: Db, principal: Annotated[Principal, Depends(current_principal)]) -> None:
+    """The product is used with the current versions of the four required consents (plan UX, A4). Off until
+    FBI_CONSENT_GATE says otherwise and no required text is a draft; SUPER_ADMIN and the synthetic journey's account
+    are exempt (fbi.customer.consents). 403 ``consent_required``: the page shows the boxes."""
+    if not consents.gate_enabled() or consents.exempt(principal.email, super_admin=principal.is_super_admin):
+        return
+    if consents.due_cached(conn, principal.user_id):
+        raise ApiError(403, "consent_required", "accept the current terms to continue")
 
 
 require_app = require(Permission.APP)

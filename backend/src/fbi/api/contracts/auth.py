@@ -43,6 +43,11 @@ class Me(Contract):
                                                                     "Sentry: an HMAC of its id under the server's "
                                                                     "key, never the id or the email (plan UX, A2). "
                                                                     "Null when the server has no key.")
+    consents_due: list[str] = Field(default_factory=list, description="The consents the reader must accept before "
+                                                                      "using the product (plan UX, A4): empty while "
+                                                                      "the gate is off or nothing is owed. Filled by "
+                                                                      "GET /auth/me; a 403 consent_required elsewhere "
+                                                                      "means: ask /auth/me again.")
 
 
 class PreferencesIn(BaseModel):

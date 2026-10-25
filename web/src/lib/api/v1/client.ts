@@ -4,6 +4,18 @@ import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
 import type {
+  AdminPrivacyRequest,
+  ConsentState,
+  ConsentsIn,
+  ExportDocument,
+  LegalDocument,
+  LegalDocumentName,
+  PrivacyAnswerIn,
+  PrivacyRequest,
+  PrivacyRequestIn,
+  ReauthIn,
+} from "./types_customer";
+import type {
   IntelCalibration,
   IntelCosts,
   IntelDay,
@@ -203,12 +215,16 @@ export class LiveApiError extends Error {
 
 /** Fired when the API says the session is gone; the auth layer sends the reader to sign in. */
 export const UNAUTHENTICATED_EVENT = "predigol:unauthenticated";
-/** Fired when the API says a step of signing in is still owed; the auth layer asks /auth/me which one. */
+/**
+ * Fired when the API says a step of signing in is still owed, or that the current consents are (plan UX, A4); the
+ * auth layer asks /auth/me which.
+ */
 export const STAGE_EVENT = "predigol:stage";
 const STAGE_CODES = new Set([
   "mfa_required",
   "mfa_enrollment_required",
   "password_change_required",
+  "consent_required",
 ]);
 
 /** A repeated parameter (`?market=1X2&market=OU`) is an array; an empty one is left out. */
@@ -349,6 +365,18 @@ export const v1 = {
   revokeMySession: (id: string) => postJson<void>(`/auth/me/sessions/${id}/revoke`, {}),
   revokeMyOtherSessions: () => postJson<{ revoked: number }>("/auth/me/sessions/revoke-others", {}),
   myAccess: (limit = 50) => getJson<AccessEvent[]>("/auth/me/access", { limit }),
+
+  // ── legal texts, consents and the reader's rights (plan UX, A4) ───────────
+  /** Public: anyone may read the texts before having an account. */
+  legalDocument: (document: LegalDocumentName, lang: "es" | "en") =>
+    getJson<LegalDocument>(`/legal/${document}`, { lang }),
+  myConsents: (lang: "es" | "en") => getJson<ConsentState>("/me/consents", { lang }),
+  decideConsents: (body: ConsentsIn) => postJson<ConsentState>("/me/consents", body),
+  /** Everything PrediGol keeps about the reader: the password first (and the code with a second factor). */
+  exportMyData: (body: ReauthIn) => postJson<ExportDocument>("/me/export", body),
+  myPrivacyRequests: () => getJson<PrivacyRequest[]>("/me/privacy-requests"),
+  openPrivacyRequest: (body: PrivacyRequestIn) =>
+    postJson<PrivacyRequest>("/me/privacy-requests", body),
 
   // ── product ───────────────────────────────────────────────────────────────
   home: (q: Preview = {}) => getJson<Envelope<Home>>("/home", q),
@@ -678,6 +706,11 @@ export const v1 = {
   migration: () => getJson<Envelope<MigrationProgress>>("/admin/analytics/migration"),
   admin: () => getJson<Envelope<AdminOverview>>("/admin/system"),
   users: () => getJson<Envelope<AdminUser[]>>("/admin/users"),
+  /** The readers' privacy requests (plan UX, A4), open first by their legal deadline. */
+  privacyRequests: (status: "open" | "all" = "open") =>
+    getJson<AdminPrivacyRequest[]>("/admin/privacy-requests", { status }),
+  answerPrivacyRequest: (id: number, body: PrivacyAnswerIn) =>
+    postJson<AdminPrivacyRequest>(`/admin/privacy-requests/${id}/answer`, body),
   createUser: (body: AdminUserCreate) => postJson<Envelope<AdminUser>>("/admin/users", body),
   resetUserPassword: (id: number, password?: string) =>
     postJson<Envelope<AdminPasswordResult>>(
