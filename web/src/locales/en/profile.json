@@ -18,7 +18,7 @@
   "currentPassword": "Current password",
   "newPassword": "New password",
   "passwordChanged": "Password changed. Your other sessions were signed out.",
-  "passwordRules": "At least 10 characters, no spaces at the start or the end.",
+  "passwordRules": "At least 15 characters (12 with two-step verification), no spaces at the start or the end; do not use your e-mail, your name or “predigol”.",
   "signOut": "Sign out",
   "saved": "Preferences saved.",
   "sessionLabel": "Your session",
@@ -53,13 +53,19 @@
       "mfa.enrolled": "Two-step verification turned on",
       "logout": "Signed out",
       "password.changed": "Password changed",
-      "session.revoked": "Session ended"
+      "session.revoked": "Session ended",
+      "password.reset": "Password reset",
+      "user.unlocked": "Account unlocked",
+      "user.activated": "Account activated"
     },
-    "confirmEndOthers": {
-      "title": "Close the other sessions?",
-      "body_one": "{count} session open on another device will be closed; it will have to sign in again. This one stays open.",
-      "body_other": "{count} sessions open on other devices will be closed; they will have to sign in again. This one stays open.",
-      "ok": "Close sessions"
+    "identity": {
+      "title": "Confirm it is you",
+      "body": "To end other sessions, type your password or a code from your authenticator app.",
+      "password": "Password",
+      "code": "6-digit code",
+      "useCode": "Use a code from the app",
+      "usePassword": "Use the password",
+      "confirm": "Confirm and end"
     }
   },
   "notifications": {

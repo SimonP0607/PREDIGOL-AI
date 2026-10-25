@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActivateRouteImport } from './routes/activate'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LoginRouteImport } from './routes/login'
@@ -19,6 +21,8 @@ import { Route as OddsRouteImport } from './routes/odds'
 import { Route as ParlaysRouteImport } from './routes/parlays'
 import { Route as PicksRouteImport } from './routes/picks'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as UnlockRouteImport } from './routes/unlock'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiAnalystRouteImport } from './routes/admin.ai-analyst'
 import { Route as AdminAiLayerRouteImport } from './routes/admin.ai-layer'
@@ -60,9 +64,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActivateRoute = ActivateRouteImport.update({
+  id: '/activate',
+  path: '/activate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HomeRoute = HomeRouteImport.update({
@@ -103,6 +117,16 @@ const PicksRoute = PicksRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnlockRoute = UnlockRouteImport.update({
+  id: '/unlock',
+  path: '/unlock',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -283,7 +307,9 @@ const AdminRefereesRefereeIdRoute = AdminRefereesRefereeIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activate': typeof ActivateRoute
   '/admin': typeof AdminRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/home': typeof HomeRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -292,6 +318,8 @@ export interface FileRoutesByFullPath {
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/unlock': typeof UnlockRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -330,6 +358,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activate': typeof ActivateRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/home': typeof HomeRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -338,6 +368,8 @@ export interface FileRoutesByTo {
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/unlock': typeof UnlockRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -377,7 +409,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activate': typeof ActivateRoute
   '/admin': typeof AdminRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/home': typeof HomeRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -386,6 +420,8 @@ export interface FileRoutesById {
   '/parlays': typeof ParlaysRoute
   '/picks': typeof PicksRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/unlock': typeof UnlockRoute
   '/admin/ai-analyst': typeof AdminAiAnalystRoute
   '/admin/ai-layer': typeof AdminAiLayerRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -426,7 +462,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activate'
     | '/admin'
+    | '/forgot-password'
     | '/home'
     | '/live'
     | '/login'
@@ -435,6 +473,8 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/picks'
     | '/profile'
+    | '/reset-password'
+    | '/unlock'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
     | '/admin/analytics'
@@ -473,6 +513,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/activate'
+    | '/forgot-password'
     | '/home'
     | '/live'
     | '/login'
@@ -481,6 +523,8 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/picks'
     | '/profile'
+    | '/reset-password'
+    | '/unlock'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
     | '/admin/analytics'
@@ -519,7 +563,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/activate'
     | '/admin'
+    | '/forgot-password'
     | '/home'
     | '/live'
     | '/login'
@@ -528,6 +574,8 @@ export interface FileRouteTypes {
     | '/parlays'
     | '/picks'
     | '/profile'
+    | '/reset-password'
+    | '/unlock'
     | '/admin/ai-analyst'
     | '/admin/ai-layer'
     | '/admin/analytics'
@@ -567,7 +615,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivateRoute: typeof ActivateRoute
   AdminRoute: typeof AdminRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   HomeRoute: typeof HomeRoute
   LiveRoute: typeof LiveRoute
   LoginRoute: typeof LoginRoute
@@ -576,6 +626,8 @@ export interface RootRouteChildren {
   ParlaysRoute: typeof ParlaysRoute
   PicksRoute: typeof PicksRoute
   ProfileRoute: typeof ProfileRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  UnlockRoute: typeof UnlockRoute
   HelpGlossaryRoute: typeof HelpGlossaryRoute
   LegalDocRoute: typeof LegalDocRoute
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
@@ -591,11 +643,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/activate': {
+      id: '/activate'
+      path: '/activate'
+      fullPath: '/activate'
+      preLoaderRoute: typeof ActivateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/home': {
@@ -652,6 +718,20 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unlock': {
+      id: '/unlock'
+      path: '/unlock'
+      fullPath: '/unlock'
+      preLoaderRoute: typeof UnlockRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -974,7 +1054,9 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivateRoute: ActivateRoute,
   AdminRoute: AdminRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   HomeRoute: HomeRoute,
   LiveRoute: LiveRoute,
   LoginRoute: LoginRoute,
@@ -983,6 +1065,8 @@ const rootRouteChildren: RootRouteChildren = {
   ParlaysRoute: ParlaysRoute,
   PicksRoute: PicksRoute,
   ProfileRoute: ProfileRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  UnlockRoute: UnlockRoute,
   HelpGlossaryRoute: HelpGlossaryRoute,
   LegalDocRoute: LegalDocRoute,
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,

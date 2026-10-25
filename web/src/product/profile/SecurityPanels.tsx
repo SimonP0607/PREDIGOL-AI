@@ -17,9 +17,9 @@ import { t, translateOr } from "@/lib/i18n";
 import { formatDateTime, formatRelative } from "@/lib/time";
 import { EnrollmentPanel, RecoveryCodes } from "@/product/auth/SecurityStep";
 import { stepError } from "@/product/auth/stepError";
-import { ConfirmAction } from "@/product/shared/Confirm";
 import { ErrorState } from "@/product/shared/States";
 import { deviceLabel } from "./device";
+import { IdentityDialog } from "./IdentityDialog";
 import { cn } from "@/lib/utils";
 
 const field =
@@ -269,20 +269,18 @@ export function TwoFactorPanel({ user }: { user: Me }) {
 
 /**
  * The account's open sessions. A failure to read them says so, with a retry and the reference of the request (plan
- * UX, A1, defect F05: it showed as an empty list - "no sessions" - which is not true); a failure to close one says so
- * too; and closing every other session asks first.
+ * UX, A1, defect F05: it showed as an empty list - "no sessions" - which is not true). Ending another session - one or
+ * all the others - asks who is asking first: the password or a code of the second factor (plan UX, A7; ASVS 7.5.2),
+ * in a dialog that also says what went wrong.
  */
 export function SessionsPanel() {
+  const auth = useAuth();
   const qc = useQueryClient();
   const sessions = useQuery({ queryKey: ["auth", "sessions"], queryFn: v1.mySessions });
-  const refresh = () => void qc.invalidateQueries({ queryKey: ["auth", "sessions"] });
-  const revoke = useMutation({
-    mutationFn: (id: string) => v1.revokeMySession(id),
-    onSuccess: refresh,
-  });
-  const others = useMutation({ mutationFn: () => v1.revokeMyOtherSessions(), onSuccess: refresh });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["auth", "sessions"] });
+  /** The session about to end, "others" for every other one, or null. */
+  const [asking, setAsking] = useState<string | null>(null);
   const list = sessions.data ?? [];
-  const failed = revoke.error ?? others.error;
   return (
     <div className="space-y-3" data-testid="sessions-panel">
       {sessions.isPending ? (
@@ -316,8 +314,8 @@ export function SessionsPanel() {
               {!s.current ? (
                 <button
                   type="button"
-                  onClick={() => revoke.mutate(s.id)}
-                  disabled={revoke.isPending}
+                  onClick={() => setAsking(s.id)}
+                  data-testid={`session-end-${s.id}`}
                   className="tap-y relative shrink-0 rounded-md border border-border-strong px-2 py-1 text-xs hover:bg-elevated pointer-coarse:px-3 pointer-coarse:py-2"
                 >
                   {t("profile.securityPanel.end")}
@@ -327,31 +325,29 @@ export function SessionsPanel() {
           ))}
         </ul>
       )}
-      {failed ? (
-        <p role="alert" className="text-xs text-negative" data-testid="sessions-action-error">
-          {stepError(failed)}
-        </p>
-      ) : null}
       {list.length > 1 ? (
-        <ConfirmAction
-          testId="end-others"
-          title={t("profile.securityPanel.confirmEndOthers.title")}
-          body={t("profile.securityPanel.confirmEndOthers.body", { count: list.length - 1 })}
-          confirm={t("profile.securityPanel.confirmEndOthers.ok")}
-          onConfirm={() => others.mutate()}
-          trigger={
-            <button
-              type="button"
-              disabled={others.isPending}
-              data-testid="sessions-end-others"
-              className={cn(button, "border-negative/40 text-negative hover:bg-negative-soft")}
-            >
-              <LogOut aria-hidden className="h-4 w-4" />
-              {t("profile.securityPanel.endOthers")}
-            </button>
-          }
-        />
+        <button
+          type="button"
+          onClick={() => setAsking("others")}
+          data-testid="sessions-end-others"
+          className={cn(button, "border-negative/40 text-negative hover:bg-negative-soft")}
+        >
+          <LogOut aria-hidden className="h-4 w-4" />
+          {t("profile.securityPanel.endOthers")}
+        </button>
       ) : null}
+      <IdentityDialog
+        open={asking !== null}
+        onOpenChange={(open) => {
+          if (!open) setAsking(null);
+        }}
+        hasMfa={auth.user?.mfa_enabled ?? false}
+        onConfirm={async (identity) => {
+          if (asking === "others") await v1.revokeMyOtherSessions(identity);
+          else if (asking) await v1.revokeMySession(asking, identity);
+          await refresh();
+        }}
+      />
     </div>
   );
 }

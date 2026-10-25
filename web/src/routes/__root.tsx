@@ -29,6 +29,7 @@ import { applyUpdate, registerServiceWorker, UPDATE_EVENT } from "@/lib/pwa";
 import { SecurityStep } from "@/product/auth/SecurityStep";
 import { ConsentGate } from "@/product/legal/ConsentGate";
 import { isLegalPath } from "@/product/legal/links";
+import { isAccountPath } from "@/product/auth/accountPaths";
 import { noteLocation, startSession } from "@/lib/track";
 
 function NotFoundComponent() {
@@ -303,6 +304,8 @@ function Gate() {
   const onAdmin = path === "/admin" || path.startsWith("/admin/");
   // The legal texts are public (plan UX, A4): anyone reads the terms before having an account.
   const onLegal = isLegalPath(path);
+  // Activating an invitation, recovering a password, unlocking (plan UX, A7): public, whatever the session.
+  const onAccount = isAccountPath(path);
   // Plan UX, A6: where the reader comes from (match_opened's origin) and the session's start, once per tab.
   useEffect(() => noteLocation(path), [path]);
   const measured = auth.status === "signed-in" && (auth.user?.consents_due ?? []).length === 0;
@@ -311,7 +314,7 @@ function Gate() {
   }, [measured, auth.locale]);
 
   useEffect(() => {
-    if (auth.status === "anonymous" && !onLogin && !onLegal) {
+    if (auth.status === "anonymous" && !onLogin && !onLegal && !onAccount) {
       const next = `${location.pathname}${location.searchStr ?? ""}`;
       void navigate({
         to: "/login",
@@ -332,6 +335,7 @@ function Gate() {
     auth.sessionExpired,
     onLogin,
     onLegal,
+    onAccount,
     location.pathname,
     location.searchStr,
     navigate,
@@ -339,6 +343,8 @@ function Gate() {
 
   if (auth.status === "loading") return <Splash />;
   if (auth.status === "error") return <ConnectionProblem onRetry={auth.retry} />;
+  // The account pages carry their own frame, signed in or not, with a step owed or not.
+  if (onAccount) return <Outlet />;
   // The password was right but a step is owed (second factor, setting it up, a new password): that step,
   // whatever the address; the page the reader wanted shows once it is done.
   if (auth.status === "staged") return <SecurityStep />;

@@ -80,12 +80,18 @@ export interface PreferencesIn {
   display_name?: string;
 }
 
+/**
+ * invited: created by an invitation, not activated yet; deleted: anonymised at the reader's request (plan UX, A7) -
+ * its address is masked and nothing about it changes any more.
+ */
+export type AccountStatus = "active" | "disabled" | "invited" | "deleted";
+
 export interface AdminUser {
   id: number;
   email: string;
   display_name: string;
   role: RoleKey | string;
-  status: "active" | "disabled";
+  status: AccountStatus;
   language: Language;
   timezone: string;
   created_at: Iso;
@@ -127,4 +133,74 @@ export interface AuditEvent {
   email: string | null;
   ip: string | null;
   detail: Record<string, unknown>;
+}
+
+// ── account and access (plan UX, A7) ──────────────────────────────────────────
+
+/** What the sign-in page may offer: recovery and unlocking by e-mail, only while they work (FBI_SELF_SERVICE). */
+export interface AccountOptions {
+  self_service: boolean;
+}
+
+/** An invitation link that works: whose, to fill the page (and for the password manager to save under it). */
+export interface ActivationInfo {
+  email: string;
+  display_name: string;
+  language: Language;
+  timezone: string;
+}
+
+export interface ActivateIn {
+  token: string;
+  password: string;
+  language: Language;
+  timezone: string;
+}
+
+/** A reset link that works: the address, and whether the account's second factor is asked with the new password. */
+export interface ResetInfo {
+  email: string;
+  mfa: boolean;
+}
+
+export interface ResetIn {
+  token: string;
+  password: string;
+  code?: string;
+  recovery_code?: string;
+}
+
+/** Always the same answer to a request for a link: whether or not the address has an account. */
+export interface Accepted {
+  status: "accepted";
+}
+
+/** Ending another session of one's own account: the password, or a code of the second factor (ASVS 7.5.2). */
+export interface IdentityIn {
+  password?: string;
+  code?: string;
+}
+
+export interface AdminInviteIn {
+  email: string;
+  display_name?: string;
+  language: Language;
+  timezone: string;
+}
+
+export interface AdminAnonymised {
+  user: AdminUser;
+  picks: number;
+  parlays: number;
+  sessions: number;
+  /** Messages still queued for the reader that will not be sent. */
+  messages_dropped: number;
+  /** Rows of the sign-in trail whose typed address was masked. */
+  trail_rows: number;
+}
+
+export interface SelfServiceState {
+  self_service: boolean;
+  /** FBI_EMAIL_SEND: off, invitations wait in the queue. */
+  email_sending: boolean;
 }

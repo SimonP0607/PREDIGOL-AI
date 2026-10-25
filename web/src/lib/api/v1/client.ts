@@ -143,15 +143,25 @@ import type {
   ProviderPredictionView,
 } from "./types_center";
 import type {
+  Accepted,
   AccessEvent,
+  AccountOptions,
+  ActivateIn,
+  ActivationInfo,
+  AdminAnonymised,
+  AdminInviteIn,
   AdminPasswordResult,
   AdminUser,
   AdminUserCreate,
   AuditEvent,
+  IdentityIn,
   Me,
   MfaEnrolled,
   MfaEnrollment,
   PreferencesIn,
+  ResetIn,
+  ResetInfo,
+  SelfServiceState,
   SessionInfo,
 } from "./types_auth";
 import type {
@@ -370,9 +380,22 @@ export const v1 = {
   renewRecoveryCodes: (password: string, code: string) =>
     postJson<{ recovery_codes: string[] }>("/auth/me/mfa/recovery-codes", { password, code }),
   mySessions: () => getJson<SessionInfo[]>("/auth/me/sessions"),
-  revokeMySession: (id: string) => postJson<void>(`/auth/me/sessions/${id}/revoke`, {}),
-  revokeMyOtherSessions: () => postJson<{ revoked: number }>("/auth/me/sessions/revoke-others", {}),
+  /** Ending another session asks for the password or a code (ASVS 7.5.2); ending this one is signing out. */
+  revokeMySession: (id: string, identity: IdentityIn = {}) =>
+    postJson<void>(`/auth/me/sessions/${id}/revoke`, identity),
+  revokeMyOtherSessions: (identity: IdentityIn) =>
+    postJson<{ revoked: number }>("/auth/me/sessions/revoke-others", identity),
   myAccess: (limit = 50) => getJson<AccessEvent[]>("/auth/me/access", { limit }),
+  // getting in without the owner (plan UX, A7): public; a link's token goes in the body, never in a URL
+  accountOptions: () => getJson<AccountOptions>("/auth/options"),
+  checkInvitation: (token: string) => postJson<ActivationInfo>("/auth/activate/check", { token }),
+  activate: (body: ActivateIn) => postJson<Me>("/auth/activate", body),
+  renewInvitation: (token: string) => postJson<Accepted>("/auth/activate/renew", { token }),
+  forgotPassword: (email: string) => postJson<Accepted>("/auth/password/forgot", { email }),
+  checkReset: (token: string) => postJson<ResetInfo>("/auth/password/reset/check", { token }),
+  resetPassword: (body: ResetIn) => postJson<void>("/auth/password/reset", body),
+  requestUnlock: (email: string) => postJson<Accepted>("/auth/unlock/request", { email }),
+  unlock: (token: string) => postJson<void>("/auth/unlock", { token }),
 
   // ── legal texts, consents and the reader's rights (plan UX, A4) ───────────
   /** Public: anyone may read the texts before having an account. */
@@ -730,6 +753,14 @@ export const v1 = {
   /** Product analytics (plan UX, A6): activation, habit, usage, devices - only with enough readers. */
   productOverview: () => getJson<ProductOverview>("/admin/product"),
   createUser: (body: AdminUserCreate) => postJson<Envelope<AdminUser>>("/admin/users", body),
+  /** Invitations (plan UX, A7): whether they can be sent, sending one, sending it again. */
+  selfServiceState: () => getJson<SelfServiceState>("/admin/users/self-service"),
+  inviteUser: (body: AdminInviteIn) => postJson<Envelope<AdminUser>>("/admin/users/invite", body),
+  resendInvitation: (id: number) =>
+    postJson<Envelope<AdminUser>>(`/admin/users/${id}/invitation`, {}),
+  /** Deleting an account as anonymisation, with its address typed again (plan UX, A7). Cannot be undone. */
+  anonymiseUser: (id: number, confirm: string) =>
+    postJson<Envelope<AdminAnonymised>>(`/admin/users/${id}/anonymise`, { confirm }),
   resetUserPassword: (id: number, password?: string) =>
     postJson<Envelope<AdminPasswordResult>>(
       `/admin/users/${id}/password`,

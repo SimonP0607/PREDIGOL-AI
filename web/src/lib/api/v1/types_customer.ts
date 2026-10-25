@@ -88,7 +88,8 @@ export interface ConsentDecision {
 export interface ConsentsIn {
   decisions: ConsentDecision[];
   locale: "es" | "en";
-  source?: "gate" | "profile";
+  /** activation: the gate shown right after /activate (plan UX, A7); the server keeps it only within the hour. */
+  source?: "gate" | "profile" | "activation";
 }
 
 export interface ReauthIn {

@@ -18,7 +18,7 @@
   "currentPassword": "Contraseña actual",
   "newPassword": "Nueva contraseña",
   "passwordChanged": "Contraseña cambiada. Las demás sesiones se han cerrado.",
-  "passwordRules": "Mínimo 10 caracteres, sin espacios al principio o al final.",
+  "passwordRules": "Mínimo 15 caracteres (12 con la verificación en dos pasos), sin espacios al principio ni al final; no uses tu correo, tu nombre ni «predigol».",
   "signOut": "Cerrar sesión",
   "saved": "Preferencias guardadas.",
   "sessionLabel": "Tu sesión",
@@ -53,13 +53,19 @@
       "mfa.enrolled": "Verificación en dos pasos activada",
       "logout": "Cierre de sesión",
       "password.changed": "Contraseña cambiada",
-      "session.revoked": "Sesión cerrada"
+      "session.revoked": "Sesión cerrada",
+      "password.reset": "Contraseña restablecida",
+      "user.unlocked": "Cuenta desbloqueada",
+      "user.activated": "Cuenta activada"
     },
-    "confirmEndOthers": {
-      "title": "¿Cerrar las demás sesiones?",
-      "body_one": "Se cerrará {count} sesión abierta en otro dispositivo; allí habrá que volver a entrar. Esta se queda abierta.",
-      "body_other": "Se cerrarán {count} sesiones abiertas en otros dispositivos; allí habrá que volver a entrar. Esta se queda abierta.",
-      "ok": "Cerrar sesiones"
+    "identity": {
+      "title": "Confirma que eres tú",
+      "body": "Para cerrar otras sesiones, escribe tu contraseña o un código de tu app de autenticación.",
+      "password": "Contraseña",
+      "code": "Código de 6 dígitos",
+      "useCode": "Usar un código de la app",
+      "usePassword": "Usar la contraseña",
+      "confirm": "Confirmar y cerrar"
     }
   },
   "notifications": {

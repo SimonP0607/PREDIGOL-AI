@@ -21,7 +21,14 @@ import { LanguageSwitch } from "@/components/layout/HeaderControls";
 import { Card, ErrorState, errorMessage } from "@/product/shared/States";
 import { legalPath } from "./links";
 
-export function ConsentGate({ due }: { due: readonly string[] }) {
+export function ConsentGate({
+  due,
+  source = "gate",
+}: {
+  due: readonly string[];
+  /** activation: right after /activate (plan UX, A7) - the server keeps it only within the hour of the activation. */
+  source?: "gate" | "activation";
+}) {
   const auth = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -59,7 +66,7 @@ export function ConsentGate({ due }: { due: readonly string[] }) {
       await v1.decideConsents({
         decisions: owed.map((p) => ({ kind: p.kind, granted: true, version: p.version })),
         locale,
-        source: "gate",
+        source,
       });
       await qc.invalidateQueries({ queryKey: ["me", "consents"] });
       await qc.invalidateQueries({ queryKey: ["auth", "me"] });
