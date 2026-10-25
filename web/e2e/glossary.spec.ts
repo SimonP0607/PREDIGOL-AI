@@ -101,6 +101,17 @@ test("on a 320 px phone the definition is a sheet from the bottom that fits, and
   await expect(sheet).toBeVisible();
   await expect(sheet.getByRole("heading")).toHaveText(G.terms[key].name);
   await expect(sheet.getByTestId("glossary-short")).toHaveText(G.terms[key].short);
+  // The sheet slides up from the bottom: measured once it has arrived (A3's e2e caught it 3.6 px below the screen,
+  // mid-slide, under load).
+  await expect
+    .poll(
+      async () => {
+        const b = await sheet.boundingBox();
+        return b ? b.y + b.height : Number.POSITIVE_INFINITY;
+      },
+      { message: "the sheet ends inside the screen" },
+    )
+    .toBeLessThanOrEqual(640 + 0.5);
   const box = await sheet.boundingBox();
   expect(box, "the sheet is on the screen").not.toBeNull();
   if (box) {
