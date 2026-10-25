@@ -17,6 +17,7 @@ from starlette.concurrency import run_in_threadpool
 from fbi.api import errors
 from fbi.api.limits import BodyLimit, SlidingWindow
 from fbi.api.routers import (
+    account,
     admin_users,
     ai_layer,
     analyst,
@@ -60,7 +61,12 @@ from fbi.core.logging import configure, error_summary, error_trace
 log = structlog.get_logger("api")
 
 AUTH_STEP_PATHS = frozenset({"/api/v1/auth/login", "/api/v1/auth/mfa/verify",
-                             "/api/v1/auth/mfa/enroll/confirm", "/api/v1/auth/password/required"})
+                             "/api/v1/auth/mfa/enroll/confirm", "/api/v1/auth/password/required",
+                             # plan UX, A7: the one-use links and the requests for one
+                             "/api/v1/auth/activate", "/api/v1/auth/activate/check", "/api/v1/auth/activate/renew",
+                             "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset",
+                             "/api/v1/auth/password/reset/check", "/api/v1/auth/unlock",
+                             "/api/v1/auth/unlock/request"})
 SELF_AUDITED = ("/api/v1/admin/users",)
 """Account management records its own, more precise events (user.created, password.reset, ...)."""
 
@@ -183,11 +189,11 @@ def create_app() -> FastAPI:
         return response
 
     # Three tiers, decided here and nowhere else (see fbi.api.security):
-    #   public  - health, sign-in, sign-out
+    #   public  - health, sign-in, sign-out, and the one-use links of an account (plan UX, A7)
     #   app     - the product, for any signed-in account (and, once FBI_CONSENT_GATE is on, its current consents)
     #   admin   - /api/v1/admin/*, SUPER_ADMIN only
     # The provider's signed webhook (plan UX, A5) is public too: its signature is its authentication.
-    for r in (system.router, auth.public_router, auth.session_router, customer.public_router,
+    for r in (system.router, auth.public_router, auth.session_router, account.router, customer.public_router,
               messaging.webhook_router):
         app.include_router(r, prefix="/api/v1")
     # The browser's error reports (plan UX, A2): public - an error can happen before signing in - but same-site.

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Path, Query, Request, Response
 
 from fbi.api.contracts.auth import (
     AccessEvent,
+    IdentityIn,
     LoginIn,
     Me,
     MfaCodeIn,
@@ -178,8 +179,12 @@ def my_sessions(conn: Db, principal: App) -> list[SessionInfo]:
 
 @router.post("/me/sessions/{session_id}/revoke", status_code=204)
 def revoke_my_session(request: Request, principal: App,
-                      session_id: Annotated[str, Path(pattern=r"^[0-9a-f]{16}$")]) -> Response:
-    own = service.revoke_my_session(principal, session_id, ip=client_ip(request))
+                      session_id: Annotated[str, Path(pattern=r"^[0-9a-f]{16}$")],
+                      body: IdentityIn | None = None) -> Response:
+    """Ending another session asks for the password or a code (ASVS 7.5.2); ending this one is signing out."""
+    who = body or IdentityIn()
+    own = service.revoke_my_session(principal, session_id, ip=client_ip(request), password=who.password,
+                                    code=who.code)
     response = Response(status_code=204)
     if own:
         clear_session_cookie(response)
@@ -187,8 +192,11 @@ def revoke_my_session(request: Request, principal: App,
 
 
 @router.post("/me/sessions/revoke-others", response_model=dict[str, int])
-def revoke_my_other_sessions(request: Request, principal: App) -> dict[str, int]:
-    return {"revoked": service.revoke_my_other_sessions(principal, ip=client_ip(request))}
+def revoke_my_other_sessions(request: Request, principal: App, body: IdentityIn | None = None) -> dict[str, int]:
+    """Every other session ends, once the password or a code of the second factor confirms who asks (ASVS 7.5.2)."""
+    who = body or IdentityIn()
+    return {"revoked": service.revoke_my_other_sessions(principal, ip=client_ip(request), password=who.password,
+                                                        code=who.code)}
 
 
 @router.get("/me/access", response_model=list[AccessEvent])

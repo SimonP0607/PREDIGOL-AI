@@ -16,9 +16,9 @@ from fbi.auth.settings import reset as reset_auth_settings
 from fbi.core.config import reset_cache
 
 OWNER = "boss@predigol.test"
-OWNER_PW = "Boss-pass-2026!"
+OWNER_PW = "Dugout-talk-2026!"
 FAN = "reader@predigol.test"
-FAN_PW = "Reader-pass-2026"
+FAN_PW = "Terrace-view-2026"
 SAME_SITE = {"x-requested-with": "predigol"}
 COOKIE = "predigol_session"
 
@@ -300,14 +300,25 @@ def test_my_sessions_and_my_sign_in_history(accounts: dict[str, int]) -> None:
         assert len(sessions) == 3 and sum(s["current"] for s in sessions) == 1
         assert all(len(s["id"]) == 16 for s in sessions)
         other = next(s for s in sessions if not s["current"])
-        assert a.post(f"/api/v1/auth/me/sessions/{other['id']}/revoke").status_code == 204
-        assert a.post("/api/v1/auth/me/sessions/revoke-others").json()["revoked"] == 1
+        # Ending another session asks who asks (ASVS 7.5.2; R25 of the security plan, plan UX A7): the password or
+        # a code of the second factor; a wrong password is refused and recorded
+        bare = a.post(f"/api/v1/auth/me/sessions/{other['id']}/revoke")
+        assert bare.status_code == 422 and bare.json()["error"]["code"] == "identity_required"
+        wrong = a.post(f"/api/v1/auth/me/sessions/{other['id']}/revoke", json={"password": "Not-the-password-2026"})
+        assert wrong.status_code == 403 and wrong.json()["error"]["code"] == "wrong_password"
+        assert a.post(f"/api/v1/auth/me/sessions/{other['id']}/revoke", json={"password": FAN_PW}).status_code == 204
+        assert a.post("/api/v1/auth/me/sessions/revoke-others", json={}).status_code == 422
+        assert a.post("/api/v1/auth/me/sessions/revoke-others", json={"password": FAN_PW}).json()["revoked"] == 1
         assert b.get("/api/v1/auth/me").status_code == 401
         assert len(a.get("/api/v1/auth/me/sessions").json()) == 1
         history = a.get("/api/v1/auth/me/access").json()
         actions = [h["action"] for h in history]
         assert "login.succeeded" in actions and "login.failed" in actions and "session.revoked" in actions
         assert a.post("/api/v1/auth/me/sessions/zzzz/revoke").status_code == 422
+        # this browser's own session is signing out: nothing is asked
+        own = next(s for s in a.get("/api/v1/auth/me/sessions").json() if s["current"])
+        assert a.post(f"/api/v1/auth/me/sessions/{own['id']}/revoke").status_code == 204
+        assert a.get("/api/v1/auth/me").status_code == 401
 
 
 def test_admin_writes_are_audited_and_limits_hold(accounts: dict[str, int], db: str,

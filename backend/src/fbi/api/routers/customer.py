@@ -103,9 +103,16 @@ def my_consents(conn: Db, principal: App, lang: Lang = None) -> ConsentState:
 def decide(body: ConsentsIn, conn: Db, principal: App) -> ConsentState:
     """Accepts or withdraws purposes, each on the version of the text the reader was shown (409
     ``legal_text_changed`` when a newer one exists: the page reloads it)."""
+    source = body.source
+    if source == "activation":
+        # The proof says where the boxes were ticked: «activation» only right after the account's activation (plan UX,
+        # A7) - not because a page says so.
+        row = conn.execute("SELECT 1 FROM auth.audit_events WHERE action = 'user.activated' AND target_user_id = %s "
+                           "AND at > now() - interval '1 hour' LIMIT 1", (principal.user_id,)).fetchone()
+        source = "activation" if row is not None else "gate"
     try:
         consents.record(principal.user_id, [consents.Decision(d.kind, d.granted, d.version) for d in body.decisions],
-                        locale=body.locale, source=body.source)
+                        locale=body.locale, source=source)
     except CustomerError as exc:
         raise _refused(exc) from exc
     conn.rollback()  # a fresh snapshot: the decisions were written by another connection

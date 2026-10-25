@@ -48,13 +48,13 @@ def user_by_id(conn: Conn, user_id: int, *, for_update: bool = False) -> Row | N
 
 
 def insert_user(conn: Conn, *, email: str, display_name: str, password_hash: str, role: str,
-                language: str, timezone: str, must_change_password: bool = False) -> Row:
+                language: str, timezone: str, must_change_password: bool = False, status: str = "active") -> Row:
     row = _one(conn, """
         INSERT INTO auth.users AS u (email, display_name, password_hash, role, language, timezone,
-                                     must_change_password)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                     must_change_password, status)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id
-    """, (email, display_name, password_hash, role, language, timezone, must_change_password))
+    """, (email, display_name, password_hash, role, language, timezone, must_change_password, status))
     assert row is not None
     user = user_by_id(conn, int(row["id"]))
     assert user is not None
@@ -350,7 +350,8 @@ def count_events(conn: Conn, *, action: str | None = None, target_user_id: int |
 
 
 ACCESS_ACTIONS = ("login.succeeded", "login.failed", "login.refused", "login.locked", "mfa.verified", "mfa.failed",
-                  "mfa.recovery_code_used", "logout", "password.changed", "session.revoked", "mfa.enrolled")
+                  "mfa.recovery_code_used", "logout", "password.changed", "session.revoked", "mfa.enrolled",
+                  "password.reset", "user.unlocked", "user.activated")
 
 
 def access_history(conn: Conn, user_id: int, *, limit: int) -> list[Row]:

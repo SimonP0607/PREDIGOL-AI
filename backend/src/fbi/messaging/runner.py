@@ -3,8 +3,9 @@ nothing else - no model, no decision, no data of PrediGol Intelligence (it runs 
 
 One messenger per database (a PostgreSQL advisory lock on a connection of its own; a second one waits). Work is
 organised in cycles of five minutes, each one row of the job ledger (``raw.ingestion_runs``, job
-``messenger_cycle``): at the start of a cycle the owner's notices, the legal-change messages and the product
-analytics' daily aggregate and retention (A6: the purge only with FBI_EVENTS_PURGE=on); then a tick every
+``messenger_cycle``): at the start of a cycle the owner's notices, the legal-change messages, the product
+analytics' daily aggregate and retention (A6: the purge only with FBI_EVENTS_PURGE=on) and the retention of the
+accounts' one-use links (A7: 30 days, deleted only with FBI_TOKENS_PURGE=on); then a tick every
 15 seconds sends what is due (only while FBI_EMAIL_SEND is on and the provider is configured), with a heartbeat on
 the run. A cycle that dies is closed as stale by the worker's run watchdog (``fbi.ops.run_watchdog``: the
 messenger's job is registered there) and three failed cycles in a row are a ``job_failing`` notice. The container's
@@ -26,6 +27,7 @@ from typing import Any
 import psycopg
 import structlog
 
+from fbi.auth import tokens
 from fbi.core.clock import now
 from fbi.core.logging import error_summary
 from fbi.customer import events
@@ -80,6 +82,8 @@ class CycleTotals:
     deferred: int = 0
     rollup: int = 0
     purge: events.PurgeReport | None = None
+    links_purge: tuple[str, int] | None = None
+    """The accounts' one-use links past their 30 days (plan UX, A7): the mode and how many."""
     errors: list[str] = field(default_factory=list)
 
     def add(self, report: DispatchReport) -> None:
@@ -101,6 +105,8 @@ class CycleTotals:
     def notes(self, *, sending: bool, provider: bool) -> str:
         purge = (f"; events purge {self.purge.mode}: raw {self.purge.raw}, daily {self.purge.daily}"
                  if self.purge is not None else "")
+        if self.links_purge is not None:
+            purge += f"; links purge {self.links_purge[0]}: {self.links_purge[1]}"
         return (f"sending {'on' if sending else 'off'}{'' if provider or not sending else ' (no provider)'}; "
                 f"sent {self.sent}, retried {self.retried}, failed {self.failed}, suppressed {self.suppressed}, "
                 f"deferred {self.deferred}; notices {self.notices}, legal {self.legal}; "
@@ -133,6 +139,13 @@ def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sendin
         conn.rollback()
         totals.errors.append(f"activity: {error_summary(exc)}"[:300])
         log.error("messenger.activity_failed", error=error_summary(exc))
+    try:
+        totals.links_purge = tokens.purge(conn, at=now())
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        totals.errors.append(f"links: {error_summary(exc)}"[:300])
+        log.error("messenger.links_purge_failed", error=error_summary(exc))
 
 
 def tick(conn: psycopg.Connection[Any], provider: Provider | None, totals: CycleTotals) -> None:

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 from types import ModuleType
 
@@ -60,7 +61,9 @@ def test_the_categories_are_the_databases() -> None:
 @pytest.mark.parametrize("name", sorted(TEMPLATES))
 @pytest.mark.parametrize("locale", ["es", "en"])
 def test_every_template_renders_with_its_sample(name: str, locale: str) -> None:
-    out = render(name, locale, sample(name), {"name": "Ana"})  # type: ignore[arg-type]
+    # an e-mail with a one-use link (plan UX, A7) is rendered with the moment its link expires
+    until = datetime(2026, 11, 1, 18, 5, tzinfo=UTC) if TEMPLATES[name].grant else None
+    out = render(name, locale, sample(name), {"name": "Ana"}, until=until)  # type: ignore[arg-type]
     assert "{" not in out.subject + out.text, "a placeholder was left unfilled"
     assert "Ana" in out.text
     assert out.html.startswith("<!doctype html>") and f'lang="{locale}"' in out.html

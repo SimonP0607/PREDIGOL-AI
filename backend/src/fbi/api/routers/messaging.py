@@ -30,9 +30,10 @@ from fbi.api.contracts.messaging import (
 from fbi.api.deps import get_db
 from fbi.api.errors import ApiError
 from fbi.api.security import App, same_site_only
+from fbi.auth import tokens
 from fbi.customer.db import CustomerError, write_connection
 from fbi.messaging import outbox, preferences, webhooks
-from fbi.messaging.templates import CATEGORIES, MANDATORY, render
+from fbi.messaging.templates import CATEGORIES, MANDATORY, TEMPLATES, render
 
 router = APIRouter(prefix="/me", tags=["notifications"], dependencies=[Depends(same_site_only)])
 admin_router = APIRouter(prefix="/messages", tags=["admin"])
@@ -94,15 +95,20 @@ def message_queue(conn: Db, status: Annotated[MessageStatus | None, Query()] = N
 
 @admin_router.get("/{message_id}/preview", response_model=OutboxPreview)
 def message_preview(conn: Db, message_id: Annotated[int, Path(ge=1)]) -> OutboxPreview:
-    """The message as it would leave now: rendered from the queue's parameters and the reader's current name."""
+    """The message as it would leave now: rendered from the queue's parameters and the reader's current name and time
+    zone. An e-mail with a one-use link shows a stand-in, never a link (plan UX, A7): the preview makes none."""
     row = conn.execute("""
-        SELECT o.template, o.locale, o.params, u.display_name
+        SELECT o.template, o.locale, o.params, u.display_name, u.timezone
           FROM customer.messages_outbox o JOIN auth.users u ON u.id = o.user_id WHERE o.id = %s
     """, (message_id,)).fetchone()
     if row is None:
         raise ApiError(404, "not_found", "no such message")
+    template = TEMPLATES.get(str(row[0]))
+    until = (datetime.now(UTC) + tokens.LIFETIME[template.grant]
+             if template is not None and template.grant is not None else None)
     try:
-        rendered = render(row[0], row[1], dict(row[2]), {"name": str(row[3] or "")})
+        rendered = render(row[0], row[1], dict(row[2]), {"name": str(row[3] or "")}, zone=str(row[4] or "UTC"),
+                          until=until)
     except ValueError as exc:
         raise ApiError(409, "preview_unavailable", f"this message does not render: {exc}"[:200]) from exc
     return OutboxPreview(subject=rendered.subject, text=rendered.text, html=rendered.html, link=rendered.link)

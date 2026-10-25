@@ -19,7 +19,7 @@ from fbi.core.config import reset_cache
 from fbi.ops import synthetic
 
 EMAIL = "synthetic-a2@predigol.test"
-PASSWORD = "Synthetic-a2-pass-26"  # the test account's, made up  # gitleaks:allow
+PASSWORD = "Kickoff-a2-pass-2026"  # the test account's, made up  # gitleaks:allow
 
 
 @pytest.fixture(scope="module")
@@ -84,7 +84,7 @@ def test_a_pass_is_a_completed_row_with_every_step_and_the_session_closed(databa
     assert all(s.ok for s in steps), [s.problem() for s in steps if not s.ok]
     status, errors, last_error, notes = last_run(database)
     assert (status, errors, last_error) == ("completed", 0, None)
-    for name in ("page", "sign_in", "home", "matches_today", "picks", "my_picks", "sign_out"):
+    for name in ("page", "activation", "sign_in", "home", "matches_today", "picks", "my_picks", "sign_out"):
         assert name in notes, name
     assert PASSWORD not in notes and EMAIL not in notes
     assert open_sessions(database) == 0, "it signs out after itself"
@@ -105,6 +105,6 @@ def test_a_refused_sign_in_stops_there(database: str) -> None:
     cfg = synthetic.JourneyConfig(base_url="http://testserver", email=EMAIL, password="Not-the-password-26")
     with psycopg.connect(database) as conn, platform() as client:
         steps = synthetic.run_once(conn, cfg, client=client)
-    assert [s.name for s in steps] == ["page", "sign_in"]
+    assert [s.name for s in steps] == ["page", "activation", "sign_in"]
     status, _, last_error, _ = last_run(database)
     assert (status, last_error) == ("failed", "sign_in: HTTP 401")

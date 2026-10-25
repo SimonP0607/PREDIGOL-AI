@@ -30,7 +30,9 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     q = sub.add_parser("queue", help="queue a template's sample message for an existing account")
     q.add_argument("--user", required=True, help="the account's address")
-    q.add_argument("--template", default="privacy_request_answered", choices=sorted(TEMPLATES))
+    # An e-mail with a one-use link (plan UX, A7) is never a sample: its link belongs to one account's token row.
+    q.add_argument("--template", default="privacy_request_answered",
+                   choices=sorted(n for n, t in TEMPLATES.items() if t.grant is None))
     s = sub.add_parser("status", help="a queued message's fate")
     s.add_argument("message_id", type=int)
     args = parser.parse_args(argv)

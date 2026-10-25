@@ -10,6 +10,10 @@
   (security and account, then privacy, support, membership and the legal notices, which go to everyone at once).
 
 Nothing is sent while ``FBI_EMAIL_SEND`` is off: the messenger does not call ``dispatch`` and the queue waits.
+
+An e-mail with a one-use link (plan UX, A7) gets its link in the transaction that sends it (``fbi.auth.tokens.arm``):
+a link that must no longer leave (used, replaced, the account changed) suppresses its message, and so does a message
+past its moment (``Template.stale_after``). Without the server's key the link cannot be made: the message waits.
 """
 
 from __future__ import annotations
@@ -25,8 +29,16 @@ import structlog
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
 
+from fbi.auth import crypto, tokens
 from fbi.messaging.provider import Outgoing, Provider, ProviderError
-from fbi.messaging.templates import MANDATORY, OPTIONAL, TemplateError, check_params, render
+from fbi.messaging.templates import (
+    MANDATORY,
+    OPTIONAL,
+    TEMPLATES,
+    TemplateError,
+    check_params,
+    render,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -89,7 +101,7 @@ class DispatchReport:
 
 CLAIM_SQL = f"""
 SELECT o.id, o.user_id, o.category, o.template, o.locale, o.params, o.dedup_key, o.attempts, o.created_at,
-       u.email, u.display_name, p.email_off, p.email_status
+       u.email, u.display_name, u.timezone, p.email_off, p.email_status
   FROM customer.messages_outbox o
   JOIN auth.users u ON u.id = o.user_id
   LEFT JOIN customer.preferences p ON p.user_id = o.user_id
@@ -106,11 +118,16 @@ def sent_today(conn: psycopg.Connection[Any], at: datetime) -> int:
     return int(row[0]) if row else 0
 
 
-def suppression(row: Mapping[str, Any]) -> str | None:
-    """Why this message must not leave, or None. The reader's choices and their address's deliverability."""
+def suppression(row: Mapping[str, Any], at: datetime | None = None) -> str | None:
+    """Why this message must not leave, or None. The reader's choices, their address's deliverability and - from A7 -
+    whether its moment has passed."""
     email = str(row["email"] or "")
     if not email or email.endswith(".invalid"):
         return "no address"
+    if at is not None:
+        template = TEMPLATES.get(str(row.get("template") or ""))
+        if template is not None and template.stale_after is not None and row["created_at"] < at - template.stale_after:
+            return "too late: its moment has passed"
     status = row["email_status"] or "ok"
     if status == "bounced":
         return "address bounced"
@@ -149,7 +166,24 @@ def dispatch(conn: psycopg.Connection[Any], provider: Provider, *, at: datetime,
             conn.commit()
             break
         mid = int(row["id"])
-        reason = suppression(row)
+        reason = suppression(row, at)
+        armed: tokens.Armed | None = None
+        template = TEMPLATES.get(str(row["template"]))
+        if reason is None and template is not None and template.grant is not None:
+            grant = str(dict(row["params"]).get("grant", ""))
+            try:
+                armed = tokens.arm(conn, int(grant), user_id=int(row["user_id"]), purpose=template.grant,
+                                   at=at) if grant.isdigit() else None
+            except crypto.KeyUnavailableError:
+                # Every link would fail the same way: the message waits, no attempt spent, and the pass stops.
+                _finish(conn, mid, "next_attempt_at = %s, last_error = %s",
+                        (at + timedelta(minutes=30), "the server's key is missing: no link can be made"))
+                report.deferred += 1
+                report.stopped = report.last_error = "auth key unavailable"
+                log.error("outbox.no_key", message_id=mid, template=row["template"])
+                break
+            if armed is None:
+                reason = "its link no longer works (used, replaced or the account changed)"
         if reason is not None:
             _finish(conn, mid, "status = 'suppressed', last_error = %s", (reason,))
             report.suppressed += 1
@@ -157,7 +191,8 @@ def dispatch(conn: psycopg.Connection[Any], provider: Provider, *, at: datetime,
             continue
         try:
             rendered = render(row["template"], row["locale"], dict(row["params"]),
-                              {"name": str(row["display_name"] or "")})
+                              {"name": str(row["display_name"] or "")}, zone=str(row["timezone"] or "UTC"),
+                              link=armed.link if armed else None, until=armed.expires_at if armed else None)
         except ValueError as exc:  # TemplateError, or a legal text the register does not know
             # A bug, never the reader's: recorded, the owner is told (outbox_failing), the queue goes on.
             _finish(conn, mid, "status = 'failed', attempts = attempts + 1, last_error = %s",

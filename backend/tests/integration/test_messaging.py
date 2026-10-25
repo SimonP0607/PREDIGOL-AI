@@ -45,7 +45,7 @@ READER_EN = "reader.en@example.org"
 OTHER = "otro.lector@example.org"
 OWNER = "owner.a5@predigol.test"
 ROBOT = "robot.a5@predigol.test"
-PASSWORD = "Reader-pass-2026-long"  # gitleaks:allow - the password of the test accounts this module creates
+PASSWORD = "Quiet-harbour-2026-long"  # gitleaks:allow - the password of the test accounts this module creates
 SAME_SITE = {"x-requested-with": "predigol"}
 SECRET_TEXT = "Texto privado zzq-7781 del lector"
 OWNER_TEXT = "Respuesta privada del dueño qq-5512"
@@ -295,7 +295,7 @@ def test_the_readers_choices_and_the_address_stop_what_they_must(
     support = Template("test_support_note", "support", ("ticket",), "/profile",
                        es=Copy("Respuesta", ("Hola, {name}.", "Te respondimos ({ticket}).")),
                        en=Copy("Answer", ("Hello, {name}.", "We answered ({ticket}).")),
-                       values=lambda p, _locale: {"ticket": p["ticket"]}, sample=(("ticket", "1"),))
+                       values=lambda p, _locale, _zone: {"ticket": p["ticket"]}, sample=(("ticket", "1"),))
     monkeypatch.setitem(templates.TEMPLATES, support.name, support)
     uid = user_id(conn, READER)
 

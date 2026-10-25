@@ -142,7 +142,9 @@ class AdminUser(Contract):
     email: str
     display_name: str
     role: str
-    status: Literal["active", "disabled"]
+    status: Literal["active", "disabled", "invited", "deleted"] = Field(
+        description="invited: created by an invitation, not activated yet; deleted: anonymised at the reader's "
+                    "request (plan UX, A7) - its address is masked and nothing about it changes any more.")
     language: Language
     timezone: str
     created_at: datetime
@@ -199,3 +201,95 @@ class AuditEvent(Contract):
     email: str | None = Field(description="The address that was tried, for sign-ins of unknown accounts.")
     ip: str | None
     detail: dict[str, Any]
+
+
+# ── account and access (plan UX, A7) ──────────────────────────────────────────────────
+
+class AccountOptions(Contract):
+    self_service: bool = Field(description="Invitations, password recovery and unlocking by e-mail are on "
+                                           "(FBI_SELF_SERVICE). Off, the owner gives accounts a temporary password.")
+
+
+class TokenIn(BaseModel):
+    """A one-use link's token, as the page read it from the link's fragment (#t=...): never in a URL the server
+    sees."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1, max_length=128)
+
+
+class ActivationInfo(Contract):
+    email: str
+    display_name: str
+    language: Language
+    timezone: str
+
+
+class ActivateIn(TokenIn):
+    password: str = Field(min_length=1, max_length=256)
+    language: Language
+    timezone: str = Field(min_length=1, max_length=64)
+
+
+class EmailIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=1, max_length=254)
+
+
+class ResetInfo(Contract):
+    email: str
+    mfa: bool = Field(description="The account has a second factor: a code from its app (or a recovery code) is "
+                                  "asked with the new password (R25 of the security plan).")
+
+
+class ResetIn(TokenIn):
+    password: str = Field(min_length=1, max_length=256)
+    code: str | None = Field(default=None, max_length=12)
+    recovery_code: str | None = Field(default=None, max_length=24)
+
+
+class IdentityIn(BaseModel):
+    """Ending another session of one's own account: the password, or a code of the second factor (ASVS 7.5.2; R25 of
+    the security plan) - either is enough. Not needed to end the session in use (that is signing out)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    password: str | None = Field(default=None, max_length=256)
+    code: str | None = Field(default=None, max_length=12)
+
+
+class Accepted(Contract):
+    status: Literal["accepted"] = Field(default="accepted", description="Always the same answer: whether or not the "
+                                                                        "address has an account, whether or not an "
+                                                                        "e-mail leaves.")
+
+
+class AdminInviteIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=3, max_length=254)
+    display_name: str | None = Field(default=None, max_length=80)
+    language: Language = "es"
+    timezone: str = Field(default="America/Bogota", max_length=64)
+
+
+class AdminAnonymiseIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    confirm: str = Field(min_length=3, max_length=254, description="The account's address, typed again.")
+
+
+class AdminAnonymised(Contract):
+    user: AdminUser
+    picks: int
+    parlays: int
+    sessions: int
+    messages_dropped: int = Field(description="Messages still queued for the reader that will not be sent.")
+    trail_rows: int = Field(description="Rows of the sign-in trail whose typed address was masked.")
+
+
+class SelfServiceState(Contract):
+    self_service: bool
+    email_sending: bool = Field(description="FBI_EMAIL_SEND: off, invitations wait in the queue.")

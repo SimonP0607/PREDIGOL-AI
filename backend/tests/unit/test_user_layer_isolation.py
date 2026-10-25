@@ -35,8 +35,8 @@ user layer itself, so their imports of ``fbi.auth`` and of each other need no re
 CLIENT_TABLES = re.compile(r"\b(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a-z_]+)\b")
 """A client's data in SQL: the ``auth`` and ``customer`` schemas and the picks and parlays a client saves."""
 
-USER_ROUTERS = ("system", "auth", "product", "records", "football", "market", "center", "ai_layer", "forecast",
-                "match_calendar", "knowledge", "customer", "messaging", "events")
+USER_ROUTERS = ("system", "auth", "account", "product", "records", "football", "market", "center", "ai_layer",
+                "forecast", "match_calendar", "knowledge", "customer", "messaging", "events")
 """``fbi.api.routers`` modules mounted on the public and app tiers by ``create_app`` (every other router is ``/admin``)."""
 
 CALLS_OUT = ("fbi.ai.providers", "fbi.analyst.agent", "fbi.analyst.search", "anthropic", "openai", "httpx", "requests",

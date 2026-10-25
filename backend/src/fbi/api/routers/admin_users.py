@@ -1,7 +1,9 @@
 """Accounts and the sign-in audit trail - SUPER_ADMIN only.
 
-There is no public registration: every account is created here (or with scripts/create_user.py). A new account
-signs in once with the password the owner gives it and must then choose its own.
+There is no public registration: every account is created here (or with scripts/create_user.py). From A7 (plan UX),
+while FBI_SELF_SERVICE is on, the way in is an invitation: the reader receives a one-use link and chooses their own
+password. The temporary password stays as the backup: a new account signs in once with the password the owner gives
+it and must then choose its own. An account is deleted only as anonymisation, with its address typed again.
 """
 
 from __future__ import annotations
@@ -12,18 +14,23 @@ import psycopg
 from fastapi import APIRouter, Depends, Path, Query, Request
 
 from fbi.api.contracts.auth import (
+    AdminAnonymised,
+    AdminAnonymiseIn,
+    AdminInviteIn,
     AdminPasswordReset,
     AdminPasswordResult,
     AdminUser,
     AdminUserCreate,
     AdminUserPatch,
     AuditEvent,
+    SelfServiceState,
     SessionInfo,
 )
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, listing, ok
 from fbi.api.security import UsersAdmin, client_ip, same_site_only
-from fbi.auth import service
+from fbi.auth import anonymize, invitations, service, tokens
+from fbi.messaging import outbox
 
 router = APIRouter(tags=["admin: users"], dependencies=[Depends(same_site_only)])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
@@ -55,6 +62,37 @@ def create_user(body: AdminUserCreate, request: Request, actor: UsersAdmin) -> E
                               ip=client_ip(request), must_change_password=body.must_change_password,
                               mfa_required=body.mfa_required)
     return ok(_user(row))
+
+
+@router.get("/users/self-service", response_model=SelfServiceState)
+def self_service_state(_: UsersAdmin) -> SelfServiceState:
+    """Whether invitations can be sent, and whether their e-mails leave now or wait in the queue."""
+    return SelfServiceState(self_service=tokens.self_service_enabled(), email_sending=outbox.sending_enabled())
+
+
+@router.post("/users/invite", response_model=Envelope[AdminUser], status_code=201)
+def invite_user(body: AdminInviteIn, request: Request, actor: UsersAdmin) -> Envelope[AdminUser]:
+    """An invited USER account and an e-mail with a one-use link, valid 7 days (409 ``self_service_off`` while
+    FBI_SELF_SERVICE is off: then the account is created with a temporary password)."""
+    row = invitations.invite(actor, email=body.email, display_name=body.display_name, language=body.language,
+                             timezone=body.timezone, ip=client_ip(request))
+    return ok(_user(row))
+
+
+@router.post("/users/{user_id}/invitation", response_model=Envelope[AdminUser])
+def resend_invitation(request: Request, actor: UsersAdmin, user_id: UserId) -> Envelope[AdminUser]:
+    """A new link for an account still invited; the previous one stops working (at most three an hour)."""
+    return ok(_user(invitations.resend(actor, user_id, ip=client_ip(request))))
+
+
+@router.post("/users/{user_id}/anonymise", response_model=Envelope[AdminAnonymised])
+def anonymise_user(body: AdminAnonymiseIn, request: Request, actor: UsersAdmin,
+                   user_id: UserId) -> Envelope[AdminAnonymised]:
+    """The deletion of an account as anonymisation (fbi.auth.anonymize), with its address typed again (422
+    ``confirmation_mismatch`` otherwise). Not the owner's own account, nor a SUPER_ADMIN's. Cannot be undone."""
+    done = anonymize.anonymise(actor, user_id, confirm=body.confirm, ip=client_ip(request))
+    return ok(AdminAnonymised(user=_user(done.user), picks=done.picks, parlays=done.parlays, sessions=done.sessions,
+                              messages_dropped=done.messages_dropped, trail_rows=done.trail_rows))
 
 
 @router.patch("/users/{user_id}", response_model=Envelope[AdminUser])

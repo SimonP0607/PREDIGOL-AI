@@ -92,7 +92,9 @@ class ConsentsIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     decisions: list[ConsentDecisionIn] = Field(min_length=1, max_length=8)
     locale: Language
-    source: Literal["gate", "profile"] = "gate"
+    source: Literal["gate", "profile", "activation"] = Field(
+        default="gate", description="activation: the gate shown right after /activate (plan UX, A7) - recorded as "
+                                    "such only within an hour of the account's activation, as gate otherwise.")
 
 
 class ReauthIn(BaseModel):
