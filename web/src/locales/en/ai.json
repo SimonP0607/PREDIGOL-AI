@@ -297,6 +297,7 @@
       "today": "Today",
       "month": "Month",
       "NORMAL": "Normal",
+      "AJUSTE": "Adjusting (same quality)",
       "REDUCED": "Reduced (no final tier)",
       "CHEAP_ONLY": "Cheapest model only",
       "EXHAUSTED": "Exhausted (rules only)"
@@ -543,6 +544,7 @@
       "barValue": "{share} of the monthly budget",
       "stateHelp": {
         "NORMAL": "Below today's budget: every level is available.",
+        "AJUSTE": "The month's projection is past 95% of the envelope: duplicate work stops, what is stored is reused and what can wait goes by batch. The main path's quality does not change.",
         "REDUCED": "Past 100% of today's budget: no L3 (strong) level and no images.",
         "CHEAP_ONLY": "Past 125% of today's budget: only the economical model (L1), no web search.",
         "EXHAUSTED": "Today's ceiling reached or the month spent: no model calls, only the rules work."
@@ -605,6 +607,93 @@
       "evNote": "Observed EV: the expected value of the prices taken at the market's probability.",
       "clvNote": "CLV: the price taken against the fair closing probability, margin removed (the same measure as Intelligence).",
       "empty": "No shadow evaluation to compare yet."
+    },
+    "envelopes": {
+      "title": "The three spending envelopes",
+      "subtitle": "Claude of production, Claude of the LAB and Exa are measured apart, each against its own; Claude as a whole stays under the joint ceiling.",
+      "empty": "The server does not send the envelopes yet (an older version, or it could not build them).",
+      "production": "Claude · production",
+      "lab": "Claude · LAB (experiments)",
+      "exa": "Exa · web search",
+      "joint": "Claude in total",
+      "workspace": "Workspace {name}",
+      "spent": "Spent this month",
+      "spentHint": "{share} of {budget}",
+      "today": "Today",
+      "projection": "Month's projection",
+      "projectionHint": "{share} of the envelope",
+      "reserve": "Production's reserve",
+      "reserveHint": "{locked} locked until the last 5 days",
+      "reserved": "Reserved for open batches",
+      "reservedHint": "Counts as spent until the result arrives",
+      "allocation": "LAB's allocation",
+      "allocationHint": "Its envelope, or what the joint ceiling leaves after production",
+      "ceiling": "Joint ceiling",
+      "searches": "Searches",
+      "bar": "{name}'s spend this month",
+      "limit": "The provider said the limit is spent: no calls until {time}.",
+      "labReason": {
+        "ok": "Runs today",
+        "no_envelope": "No envelope: the LAB makes no calls",
+        "api_limit": "Provider limit spent",
+        "yields_to_production": "Yields to production",
+        "allocation_spent": "Its allocation for the month is spent"
+      },
+      "exaReason": {
+        "ok": "May search",
+        "no_envelope": "No envelope: no searches",
+        "month_spent": "The month's envelope is spent",
+        "day_cap": "Today's cap reached"
+      },
+      "days": "Daily spend",
+      "daysHelp": "The last 14 days (Bogotá time), per envelope.",
+      "day": "Day"
+    },
+    "savings": {
+      "title": "What the cache and the batches save",
+      "subtitle": "Measured on the ledger's tokens with the same price table. The cache's may come out negative while a cache write has not been read yet.",
+      "total": "Month's saving",
+      "cache": "Prompt cache",
+      "cacheHint": "{share} of the input tokens were read from the cache",
+      "batch": "Batches (half price)",
+      "batchHint": "{share} of the calls with tokens went by batch",
+      "writes": "Written to the cache",
+      "writesHint": "tokens",
+      "reuse": "Reused instead of paid",
+      "briefs": "Briefs reused",
+      "briefsHint": "{material} for no material change · {paid} paid",
+      "reviews": "Reviews reused",
+      "reviewsHint": "{batched} sent by batch",
+      "batches": "Open batches",
+      "batchesHint": "{items} tasks waiting for a result · {ended} finished this month",
+      "lost": "Lost batches",
+      "lostHint": "Failed or abandoned: their tasks are asked again in real time"
+    },
+    "switches": {
+      "title": "Phase 0 optimisations",
+      "subtitle": "Each one switches itself on only when what it changes is proven; the owner can turn it off with its variable.",
+      "on": "On",
+      "off": "Off",
+      "names": {
+        "cache": "Prompt cache",
+        "brief_material": "Brief only on a material change",
+        "budget_v3": "Adaptive budget v3",
+        "batch": "Batches (Batch API)",
+        "native_schema": "Native structured outputs",
+        "cache_layout": "Shared match block"
+      },
+      "why": {
+        "default": "On by default: it changes what is billed or reused, never a verdict.",
+        "forced": "Forced on by the owner.",
+        "ownerOff": "Turned off by the owner.",
+        "passed": "On: its evidence passed.",
+        "waiting": "Waiting for the evidence of its real test.",
+        "layout": "It reorders what the model reads: it needs its own equivalence test."
+      },
+      "evidence": "Evidence",
+      "passedOn": "passed on {date}",
+      "failedOn": "did not pass ({date})",
+      "none": "no evidence yet"
     }
   },
   "v2": {

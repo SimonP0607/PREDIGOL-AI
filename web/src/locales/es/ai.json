@@ -297,6 +297,7 @@
       "today": "Hoy",
       "month": "Mes",
       "NORMAL": "Normal",
+      "AJUSTE": "Ajuste (misma calidad)",
       "REDUCED": "Reducido (sin nivel final)",
       "CHEAP_ONLY": "Solo el modelo barato",
       "EXHAUSTED": "Agotado (solo reglas)"
@@ -543,6 +544,7 @@
       "barValue": "{share} del presupuesto mensual",
       "stateHelp": {
         "NORMAL": "Por debajo del presupuesto de hoy: todos los niveles disponibles.",
+        "AJUSTE": "La proyección del mes pasó el 95 % de la bolsa: se deja de repetir trabajo, se reutiliza lo guardado y lo que puede esperar va por lotes. La calidad del camino principal no cambia.",
         "REDUCED": "Pasó el 100 % del presupuesto de hoy: sin nivel L3 (fuerte) ni imágenes.",
         "CHEAP_ONLY": "Pasó el 125 % del presupuesto de hoy: solo el modelo económico (L1), sin búsqueda web.",
         "EXHAUSTED": "Tope del día alcanzado o mes agotado: ninguna llamada a modelos, trabajan solo las reglas."
@@ -605,6 +607,93 @@
       "evNote": "VE observado: el valor esperado de las cuotas tomadas con la probabilidad del mercado.",
       "clvNote": "CLV: la cuota tomada frente a la probabilidad justa del cierre, sin margen (la misma medida de Inteligencia).",
       "empty": "Aún no hay evaluación shadow con la que comparar."
+    },
+    "envelopes": {
+      "title": "Las tres bolsas de gasto",
+      "subtitle": "Claude de producción, Claude del LAB y Exa se miden por separado, cada una contra la suya; Claude en total no pasa del tope conjunto.",
+      "empty": "El servidor aún no envía las bolsas (versión anterior, o no pudo calcularlas).",
+      "production": "Claude · producción",
+      "lab": "Claude · LAB (experimentos)",
+      "exa": "Exa · búsquedas web",
+      "joint": "Claude en total",
+      "workspace": "Espacio de trabajo {name}",
+      "spent": "Gastado este mes",
+      "spentHint": "{share} de {budget}",
+      "today": "Hoy",
+      "projection": "Proyección del mes",
+      "projectionHint": "{share} de la bolsa",
+      "reserve": "Reserva de producción",
+      "reserveHint": "{locked} bloqueados hasta los últimos 5 días",
+      "reserved": "Reservado en lotes abiertos",
+      "reservedHint": "Cuenta como gasto hasta que llegue el resultado",
+      "allocation": "Asignación del LAB",
+      "allocationHint": "Su bolsa o lo que deja el tope conjunto tras producción",
+      "ceiling": "Tope conjunto",
+      "searches": "Búsquedas",
+      "bar": "Gasto del mes de {name}",
+      "limit": "El proveedor dijo que el límite está agotado: sin llamadas hasta {time}.",
+      "labReason": {
+        "ok": "Corre hoy",
+        "no_envelope": "Sin bolsa: el LAB no llama",
+        "api_limit": "Límite del proveedor agotado",
+        "yields_to_production": "Cede ante producción",
+        "allocation_spent": "Su asignación del mes está gastada"
+      },
+      "exaReason": {
+        "ok": "Puede buscar",
+        "no_envelope": "Sin bolsa: no busca",
+        "month_spent": "La bolsa del mes está gastada",
+        "day_cap": "Tope del día alcanzado"
+      },
+      "days": "Gasto diario",
+      "daysHelp": "Los últimos 14 días (hora de Bogotá), por bolsa.",
+      "day": "Día"
+    },
+    "savings": {
+      "title": "Lo que ahorran la caché y los lotes",
+      "subtitle": "Medido sobre los tokens del libro de gasto con la misma tabla de precios. El de la caché puede salir negativo mientras una escritura de caché todavía no se ha leído.",
+      "total": "Ahorro del mes",
+      "cache": "Caché de prompts",
+      "cacheHint": "{share} de los tokens de entrada se leyeron de la caché",
+      "batch": "Lotes (mitad de precio)",
+      "batchHint": "{share} de las llamadas con tokens fueron en lote",
+      "writes": "Escritos en la caché",
+      "writesHint": "tokens",
+      "reuse": "Reutilizado en vez de pagado",
+      "briefs": "Resúmenes reutilizados",
+      "briefsHint": "{material} por no haber cambio material · {paid} pagados",
+      "reviews": "Revisiones reutilizadas",
+      "reviewsHint": "{batched} enviadas en lote",
+      "batches": "Lotes abiertos",
+      "batchesHint": "{items} tareas esperando resultado · {ended} terminados este mes",
+      "lost": "Lotes perdidos",
+      "lostHint": "Fallidos o abandonados: sus tareas se piden de nuevo en tiempo real"
+    },
+    "switches": {
+      "title": "Optimizaciones de la Fase 0",
+      "subtitle": "Cada una se enciende sola solo cuando lo que cambia está probado; el dueño puede apagarla con su variable.",
+      "on": "Activa",
+      "off": "Apagada",
+      "names": {
+        "cache": "Caché de prompts",
+        "brief_material": "Resumen solo si cambia lo material",
+        "budget_v3": "Presupuesto adaptativo v3",
+        "batch": "Lotes (Batch)",
+        "native_schema": "Salidas estructuradas nativas",
+        "cache_layout": "Bloque compartido del partido"
+      },
+      "why": {
+        "default": "Activa por defecto: cambia lo que se factura o se reutiliza, nunca un veredicto.",
+        "forced": "Forzada por el dueño.",
+        "ownerOff": "Apagada por el dueño.",
+        "passed": "Activa: su evidencia pasó.",
+        "waiting": "Espera la evidencia de su prueba real.",
+        "layout": "Reordena lo que lee el modelo: necesita su propia prueba de equivalencia."
+      },
+      "evidence": "Evidencia",
+      "passedOn": "pasó el {date}",
+      "failedOn": "no pasó ({date})",
+      "none": "todavía sin evidencia"
     }
   },
   "v2": {
