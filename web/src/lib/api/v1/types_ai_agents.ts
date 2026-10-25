@@ -1,7 +1,7 @@
 /**
  * The agents of PrediGol Intelligence (plan IA, phase 1), as the Admin Console reads them. Mirrors fbi.api.contracts.ai_agents.
  * Reading only: the registry as the code has it, the engine each family of markets reads, what the job that writes the state of each match did,
- * the Orchestrator's queue (empty until phase 2), the audit of what an agent may know, and the file of one match. Nothing here calls a model,
+ * the Orchestrator's queue (empty until phase 3), the audit of what an agent may know, and the file of one match. Nothing here calls a model,
  * creates a task or changes a pick. Money travels as text (`Dec`), a moment as ISO text (`Iso`), a day as `YYYY-MM-DD`.
  */
 import type { Dec, Iso } from "./types";

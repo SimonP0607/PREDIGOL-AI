@@ -542,10 +542,10 @@ describe("the states of the matches", () => {
 });
 
 describe("the queue", () => {
-  test("it says it is empty until phase 2, with every state counted, even those at zero, in the order of a task's life", () => {
+  test("it says it is empty until phase 3, with every state counted, even those at zero, in the order of a task's life", () => {
     const html = render(overview());
     expect(html).toContain("Cola del Orquestador");
-    expect(html).toContain("Vacía hasta la fase 2");
+    expect(html).toContain("Vacía hasta la fase 3");
     expect(html).toContain("Tareas abiertas 0");
     const order = [
       "Planeadas",
@@ -897,10 +897,10 @@ describe("the state of a match for the agents", () => {
     expect(html).toContain("replay");
   });
 
-  test("with no task and no attempt the page says the Orchestrator arrives in phase 2", () => {
+  test("with no task and no attempt the page says the Orchestrator arrives in phase 3", () => {
     const html = renderState(file());
     expect(html).toContain(
-      "Ningún agente ha trabajado en este partido: el Orquestador llega en la fase 2.",
+      "Ningún agente ha trabajado en este partido: el Orquestador llega en la fase 3.",
     );
     expect(html).toContain("Sin intentos");
   });

@@ -1279,7 +1279,7 @@
     },
     "queue": {
       "title": "Cola del Orquestador",
-      "subtitle": "Vacía hasta la fase 2: nada crea tareas todavía. Cuando las haya, se verán aquí por estado, con lo que reservan del presupuesto.",
+      "subtitle": "Vacía hasta la fase 3: nada crea tareas todavía. Cuando las haya, se verán aquí por estado, con lo que reservan del presupuesto.",
       "stat": {
         "open": "Tareas abiertas",
         "reserved": "Reservado del presupuesto"
@@ -1387,7 +1387,7 @@
       },
       "tasks": {
         "title": "Tareas de los agentes en este partido",
-        "empty": "Ningún agente ha trabajado en este partido: el Orquestador llega en la fase 2.",
+        "empty": "Ningún agente ha trabajado en este partido: el Orquestador llega en la fase 3.",
         "col": {
           "agent": "Agente",
           "task": "Tarea",

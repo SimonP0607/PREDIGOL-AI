@@ -2,7 +2,7 @@
  * AGENTES (Operación, plan IA, phase 1): the agents of PrediGol Intelligence as the owner reads them. What the registry says exists and whether the
  * code that runs is the code it holds; which engine each family of markets reads (the newest promotion row decides, none means the language model of
  * today) and the owner's latest decisions; what the job that writes the state of each match did - how many states, how big each slice is against
- * its cap, how long it took, how the job itself fared -; the Orchestrator's queue (empty until phase 2); and the nightly audit of what an agent
+ * its cap, how long it took, how the job itself fared -; the Orchestrator's queue (empty until phase 3); and the nightly audit of what an agent
  * may know. Reading only: nothing here calls a model, creates a task or changes a pick. The file of one match is in "Partido" (MatchStatePanel).
  */
 import type { ReactNode } from "react";

@@ -1279,7 +1279,7 @@
     },
     "queue": {
       "title": "Orchestrator queue",
-      "subtitle": "Empty until phase 2: nothing creates tasks yet. Once there are, they show here by state, with what they reserve of the budget.",
+      "subtitle": "Empty until phase 3: nothing creates tasks yet. Once there are, they show here by state, with what they reserve of the budget.",
       "stat": {
         "open": "Open tasks",
         "reserved": "Reserved of the budget"
@@ -1387,7 +1387,7 @@
       },
       "tasks": {
         "title": "Tasks of the agents on this match",
-        "empty": "No agent has worked on this match: the Orchestrator arrives in phase 2.",
+        "empty": "No agent has worked on this match: the Orchestrator arrives in phase 3.",
         "col": {
           "agent": "Agent",
           "task": "Task",

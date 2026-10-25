@@ -1,7 +1,7 @@
 /**
  * The state of a match for the agents (Operación > Partido, plan IA, phase 1): what the job that writes the states stored about the match, without
  * any model - the measures of each slice of its package, never their content -, every state the match went through, and the tasks and attempts of
- * the agents on it (none until phase 2). Reading only.
+ * the agents on it (none until phase 3). Reading only.
  */
 import type { ReactNode } from "react";
 import { t, translateOr } from "@/lib/i18n";
