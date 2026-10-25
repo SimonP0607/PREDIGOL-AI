@@ -1,0 +1,18 @@
+# PrediGol — coincidencias del historial ya clasificadas (R07 / S1.c, 25-oct-2026). Una línea por huella: commit:fichero:regla:línea.
+# Ninguna es un secreto real; cada una dice por qué. Una coincidencia NUEVA no entra aquí sin esa misma explicación y sin comparar su huella
+# con la de producción (security/README.md, «Si Gitleaks marca algo»).
+
+# Clave de prueba de 44 caracteres que `scripts/api_shapes.py` pone con setdefault solo para poder construir el OpenAPI sin servidor
+# (la misma constante que tests/conftest.py: TEST_AUTH_KEY). La huella con la de producción se compara en S1.d, sin imprimir ningún valor.
+88b0d8593d2e062d6d788493794d46ea5be14267:backend/scripts/api_shapes.py:generic-api-key:43
+8ba309f4c7e4a12c701e21f7419a6357292808f9:scripts/api_shapes.py:generic-api-key:43
+
+# Código, no valores: argumentos de set_cookie (key=cfg.cookie_name, value=token, ...).
+403f36fbafca611cf559f6aac709b678cc1c1e2d:src/fbi/api/security.py:generic-api-key:91
+
+# Nombres de etiqueta (la clave de un diccionario y un identificador de línea base), no credenciales.
+9a83ac0109d897e472da01f22bba6d7fef51e20f:src/fbi/backtesting/evaluate.py:generic-api-key:55
+425763109324470c674c115ce7033185d6aa2f96:src/fbi/research/prospective.py:generic-api-key:169
+
+# `POSTGRES_PASSWORD=` con el valor vacío en una plantilla de entorno.
+d39c9ebf615b76cdfa4ea0f69ac61249031249f1:deploy/env_example.txt:generic-api-key:2

@@ -1,0 +1,26 @@
+# PrediGol — configuración de Gitleaks (plan de seguridad, R07 / S1.c).
+# Se usa igual en el hook de pre-commit (.githooks/pre-commit), en la puerta de cada lanzamiento (security/scan_release.sh) y en la CI
+# (.github/workflows/gitleaks.yml). Partimos de las reglas de fábrica de la versión fijada (security/GITLEAKS_VERSION) y solo se
+# permiten dos cosas, las dos con su motivo:
+#   1) las constantes FIJAS Y FALSAS de las pruebas (abajo);
+#   2) las coincidencias ya clasificadas del historial, una a una, en .gitleaksignore (con su explicación).
+# Cualquier otra coincidencia es un hallazgo: no se silencia con una expresión amplia. Un hallazgo real se REVOCA primero y se limpia después
+# (security/README.md). Los valores nunca se imprimen (--redact=100).
+
+title = "PrediGol - secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Constantes fijas y falsas de las suites de pruebas (claves HMAC de mentira y contraseñas de cuentas de prueba)"
+# AND: solo cuenta lo que está en una carpeta de pruebas Y en una línea que asigna uno de estos nombres. Un valor nuevo con otro nombre, o
+# fuera de las pruebas, se sigue marcando. Solo se relaja la regla genérica: las reglas de formato (Telegram, AWS, GitHub, Anthropic, ...) siguen vivas.
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''(^|/)tests?/''']
+regexTarget = "line"
+regexes = [
+  '''^\s*(TEST_AUTH_KEY|SECRET)\s*=\s*["']''',
+  '''"(new_|old_|current_)?password"\s*:''',
+]

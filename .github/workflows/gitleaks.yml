@@ -1,0 +1,39 @@
+# PrediGol — Gitleaks en la CI (plan de seguridad, R07 / S1.c). Mira todo el historial en cada push a main y en cada pull request.
+# Misma configuración que el hook y que la puerta de cada lanzamiento (.gitleaks.toml, .gitleaksignore); versión y huellas fijadas en
+# security/GITLEAKS_VERSION. No usa acciones de terceros salvo checkout (fijada por SHA), no recibe ningún secreto y solo puede leer el repositorio.
+# Un hallazgo hace fallar el trabajo; el valor nunca se imprime (--redact=100).
+name: gitleaks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout (historial completo)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Instalar Gitleaks (versión y huella fijadas)
+        run: |
+          set -euo pipefail
+          . security/GITLEAKS_VERSION
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+          echo "${linux_x64_sha256}  gitleaks.tgz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/gl"
+          tar -xzf gitleaks.tgz -C "$RUNNER_TEMP/gl" gitleaks
+          echo "GITLEAKS_BIN=$RUNNER_TEMP/gl/gitleaks" >> "$GITHUB_ENV"
+          rm -f gitleaks.tgz
+
+      - name: Escanear el historial
+        run: security/scan.sh history
