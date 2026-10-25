@@ -231,3 +231,22 @@ def test_no_trace_header_tells_third_parties_the_projects_key(monkeypatch: pytes
     opts = sentry.options("worker")
     assert opts is not None and opts["trace_propagation_targets"] == []
     assert opts["before_send"] is sentry.send_or_drop and opts["send_client_reports"] is False
+    # e2e of A2: the SDK's release health sent every request's session as counts - no sessions leave either
+    assert opts["auto_session_tracking"] is False
+
+
+def test_the_owners_test_error_arrives_every_time_but_inside_the_days_budget() -> None:
+    """e2e of A2: pressed twice within the hour, the second test error was the "same error" and never arrived - the
+    owner would read a broken Sentry. Each press is its own event; the day's budget still holds."""
+    budget = sentry.EventBudget(gap_s=3600.0, per_day=3)
+
+    def test_error(rid: str) -> dict[str, object]:
+        return {"exception": {"values": [{"type": "MonitoringTestError"}]}, "transaction": "/api/v1/admin/monitoring/test-error",
+                "tags": {"request_id": rid}}
+
+    keys = [sentry.event_key(test_error(r)) for r in ("a1", "b2", "c3", "d4")]
+    assert len(set(keys)) == 4
+    assert [budget.allow(k, now=10.0 + i) for i, k in enumerate(keys)] == [True, True, True, False], "the day's cap"
+    other = {"exception": {"values": [{"type": "ValueError"}]}, "transaction": "/x", "tags": {"request_id": "e5"}}
+    again = {**other, "tags": {"request_id": "f6"}}
+    assert sentry.event_key(other) == sentry.event_key(again), "any other error is the same error whatever its request"

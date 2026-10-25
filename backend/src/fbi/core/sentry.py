@@ -82,6 +82,8 @@ def options(component: str) -> dict[str, Any] | None:
         "attach_stacktrace": False,
         "max_breadcrumbs": 30,
         "send_client_reports": False,
+        # no "release health": the SDK would send every request's session as counts (the e2e of A2 saw them arrive)
+        "auto_session_tracking": False,
         # no "baggage" / "sentry-trace" headers on the requests the backend makes (API-Football, Anthropic, Telegram...):
         # they carry the project's public key and the release to every third party (review of A2)
         "trace_propagation_targets": [],
@@ -296,6 +298,12 @@ class EventBudget:
 BACKEND_EVENTS = EventBudget()
 
 
+OWNER_TEST = "MonitoringTestError"
+"""The owner's test error (fbi.api.routers.monitoring): every press is its own event - the owner presses it to see one
+arrive, and an hour's silence would read as a broken Sentry. Only a SUPER_ADMIN can raise it, and it stays inside the
+day's budget."""
+
+
 def event_key(event: Mapping[str, Any]) -> str:
     """What makes two events "the same error": the exception's type (or the message), and where it happened."""
     values = (event.get("exception") or {}).get("values") if isinstance(event.get("exception"), Mapping) else None
@@ -303,6 +311,8 @@ def event_key(event: Mapping[str, Any]) -> str:
         else "msg:" + str(event.get("message") or (event.get("logentry") or {}).get("message") or "")[:120]
     tags = event.get("tags") if isinstance(event.get("tags"), Mapping) else {}
     where = str(event.get("transaction") or (tags or {}).get("path") or (tags or {}).get("log_event") or "")
+    if kind == OWNER_TEST:
+        where += "#" + str((tags or {}).get("request_id") or "")
     return f"{kind}@{where}"[:300]
 
 
