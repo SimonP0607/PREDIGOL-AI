@@ -66,6 +66,28 @@ def redact_text(text: str) -> str:
     return text
 
 
+# What names a person or opens a door, as it can turn up inside an error message or a traceback: an email address, an
+# IP address, a session token (secrets.token_urlsafe: letters of both cases and digits) and a long hex digest. Function
+# names, paths, line numbers and versions are left alone (plan UX, A1: the trace of an unexpected error is logged).
+_PERSONAL_PATTERNS = (
+    (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}"), "<email>"),
+    (re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.])"), "<ip>"),
+    (re.compile(r"(?<![\w:.])(?=[0-9A-Fa-f:]*::|(?:[0-9A-Fa-f]{1,4}:){3})"
+                r"[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?<=[0-9A-Fa-f])(?![\w:])"), "<ip>"),
+    (re.compile(r"(?<![\w-])(?=[\w-]*\d)(?=[\w-]*[A-Z])(?=[\w-]*[a-z])[\w-]{32,}(?![\w-])"), "<token>"),
+    (re.compile(r"(?<![\w-])[0-9a-f]{32,}(?![\w-])"), "<hex>"),
+)
+
+
+def scrub_personal(text: str) -> str:
+    """The text without credentials (redact_text) and without personal data: what an error may carry before it is
+    written to a log."""
+    text = redact_text(text)
+    for pattern, replacement in _PERSONAL_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
 def configure(level: str = "INFO") -> None:
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level)
     # httpx logs every request URL at INFO. A Telegram bot token is in the URL
