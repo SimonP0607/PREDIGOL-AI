@@ -1,6 +1,6 @@
 """The agents of PrediGol Intelligence, read for the Admin Console (plan IA, phase 1). Never a model call and never a write: the registry is the
 code's own (``fbi.ai.agents.registry``), the engine of each family is the newest promotion row (``intel.agent_champion``), the states of the matches
-are what the package job stored (``ai.match_runs``; ``fbi.ai.match_runs``), the queue is the Orchestrator's tables (empty until phase 2) and the audit
+are what the package job stored (``ai.match_runs``; ``fbi.ai.match_runs``), the queue is the Orchestrator's tables (empty until phase 3) and the audit
 is the nightly one (``fbi.intel.leakage``).
 
 What the page may say it knows is what is here: the owner reads in it whether the registry agrees with the code, which engine each family reads, how
@@ -294,7 +294,7 @@ def state_row(r: dict[str, Any]) -> MatchStateRow:
 
 def match_state(conn: Conn, fixture_id: int) -> Envelope[MatchState]:
     """The state of a match - the newest live row, which is what ``ai.match_state`` says - with every state it went through, newest first, and the
-    tasks and attempts of the agents on it (none until phase 2)."""
+    tasks and attempts of the agents on it (none until phase 3)."""
     rows = fetch_all(conn, HISTORY_SQL, {"fixture": fixture_id, "limit": HISTORY})
     history = [state_row(r) for r in rows]
     current_id = fetch_one(conn, CURRENT_SQL, {"fixture": fixture_id})

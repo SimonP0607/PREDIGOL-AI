@@ -270,7 +270,7 @@ def test_what_each_state_of_the_budget_leaves() -> None:
 def test_the_router_lets_through_only_what_the_spend_guard_lets_through_but_for_opus_on_e1_in_reduced() -> None:
     wider = {(state, level, esc) for state in STATES for esc in (None, *rt.ESCALATIONS) for level in rt.permitted_levels(state, escalation=esc)
              if (tier := rt.TIER_OF_LEVEL.get(level)) is not None and tier not in ALLOWED[state]}
-    assert wider == {("REDUCED", "critical", "E1")}  # the one thing the plan adds: the guard learns it when the Orchestrator exists (phase 2)
+    assert wider == {("REDUCED", "critical", "E1")}  # the one thing the plan adds: the guard learns it when the Orchestrator exists (phase 3)
     for state in STATES:  # and nothing the guard allows is refused
         guard = {level for level, tier in rt.TIER_OF_LEVEL.items() if tier in ALLOWED[state]}
         assert guard <= rt.permitted_levels(state), state

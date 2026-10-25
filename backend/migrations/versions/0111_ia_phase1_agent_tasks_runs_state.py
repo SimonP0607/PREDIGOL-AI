@@ -2,7 +2,7 @@
 
 All of it is ADDITIVE and nothing reads it yet (docs/owner/IA_FASE1.md): the code that ran before this phase finds the schema it wrote.
 
-* ``ai.agent_tasks``: the queue of the orchestrator (``fbi.ai.orchestrator``, phase 2) and, with ``ai.batches``, the only AI table
+* ``ai.agent_tasks``: the queue of the orchestrator (``fbi.ai.orchestrator``, phase 3) and, with ``ai.batches``, the only AI table
   whose rows change. A task is one question put to one agent: its identity is the fields ``fbi.ai.idempotency.TaskIdentity`` hashes
   into ``idem_key`` (UNIQUE: the same question is one row, so it is asked once), and a trigger holds them still. The state moves only
   along the lines the plan draws (planned > queued > running > done | failed | skipped | expired; a failed, skipped or expired task

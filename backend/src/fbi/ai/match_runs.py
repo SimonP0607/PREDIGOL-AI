@@ -7,7 +7,7 @@ slices, and appends one row to ``ai.match_runs``: the hash of the package and of
 what was cleaned - never their content, which anyone can derive again from the stored packet, and the nightly audit does (``slice_known``).
 
 Nothing here calls a model, searches the web, asks the provider for anything or creates a packet: it reads what the passes stored and writes a
-table nothing reads yet (the Match Agent of phase 2 will, through ``ai.match_state``). So its rollback is to stop it (``FBI_AI_PACKAGE=0``).
+table nothing reads yet (the Match Agent of phase 3 will, through ``ai.match_state``). So its rollback is to stop it (``FBI_AI_PACKAGE=0``).
 
 What a run does, in the order it does it:
 

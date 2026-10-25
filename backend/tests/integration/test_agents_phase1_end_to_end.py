@@ -111,7 +111,7 @@ def test_an_honest_day_reaches_the_screen_as_the_tables_hold_it(db: psycopg.Conn
     expected = honest(db, packets[2], pass_kind="final", model_code=CODE)
     assert cur["package_hash"] == expected["package_hash"], "the hash on the screen is the one of the package derived again from the packet"
     assert [x["hash"] for x in cur["slices"]] == [x["hash"] for x in expected["slices"]]
-    assert body["tasks"] == [] and body["runs"] == [], "no agent has worked on it: the Orchestrator arrives in phase 2"
+    assert body["tasks"] == [] and body["runs"] == [], "no agent has worked on it: the Orchestrator arrives in phase 3"
 
     content = packet_text(db, s.packet)
     assert "Availability 0" in content, "the packet does hold the names of the match"
