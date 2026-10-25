@@ -1,3 +1,4 @@
+import { reportApiFailure } from "@/lib/observability";
 import { API_BASE_URL } from "@/lib/api/mode";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
@@ -274,11 +275,14 @@ async function request<T>(
       window.dispatchEvent(new Event(STAGE_EVENT));
     }
     const { code: _c, message: _m, problems, ...details } = err.error ?? {};
+    const requestId = err.request_id ?? res.headers.get("x-request-id");
+    // A server error reaches Sentry with its request id, the one in the server's log line (plan UX, A2).
+    if (res.status >= 500) reportApiFailure({ status: res.status, code, requestId, method, path });
     throw new LiveApiError(
       err.error?.message ?? `${method} ${path} failed (${res.status})`,
       res.status,
       code,
-      err.request_id ?? res.headers.get("x-request-id"),
+      requestId,
       (problems as string[] | undefined) ?? [],
       details,
     );
@@ -487,6 +491,8 @@ export const v1 = {
   issues: () => getJson<Envelope<QualityIssue[]>>("/admin/data-quality/issues"),
   runs: (limit = 20) => getJson<Envelope<RunSummary[]>>("/admin/ingestion/runs", { limit }),
   jobs: () => getJson<Envelope<JobHealth[]>>("/admin/ops/jobs"),
+  /** The owner's test of error reporting (plan UX, A2): always answers 500, with the request id to look for. */
+  monitoringTestError: () => postJson<void>("/admin/monitoring/test-error", {}),
   match: (id: number | string) => getJson<Envelope<MatchDetail>>(`/admin/matches/${id}`),
   audit: (id: number | string) => getJson<Envelope<MatchAudit>>(`/admin/matches/${id}/audit`),
   providerPrediction: (id: number | string) =>

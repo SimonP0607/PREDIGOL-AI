@@ -14,6 +14,7 @@ import { RefreshCw, ShieldAlert, WifiOff } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { reportError, startObservability } from "../lib/observability";
 import { AuthProvider, useAuth } from "@/lib/auth/AuthProvider";
 import { I18nProvider, t, translate } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/catalogs";
@@ -51,6 +52,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportError(error, "root"); // to Sentry, when the server switched it on (plan UX, A2)
   }, [error]);
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
@@ -165,6 +167,7 @@ function RootComponent() {
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     void registerServiceWorker();
+    void startObservability();
   }, []);
   if (!mounted) return <Splash />;
   return (
