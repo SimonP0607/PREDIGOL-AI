@@ -34,11 +34,12 @@ from typing import Any, Literal
 
 import httpx
 import psycopg
+import structlog
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from fbi.ai import research
+from fbi.ai import gates, material, research
 from fbi.ai.claims import ClaimOut, _unverified, corpus_numbers, refused
 from fbi.ai.config import AiSettings
 from fbi.ai.packet import Packet, canonical
@@ -49,6 +50,8 @@ from fbi.ai.text import fit, plain
 from fbi.ai.usage import UsageLedger, call_json
 from fbi.ai.views import validated_factors
 from fbi.intel import factors
+
+log = structlog.get_logger(__name__)
 
 GAP = 0.20
 """A model-market gap this large on a 1X2 selection is worth a closer look (20 points). Measured on a real Saturday
@@ -215,6 +218,8 @@ class Brief:
     cost: Decimal = Decimal(0)
     usage_ids: list[int] = field(default_factory=list)
     reused: bool = False
+    reuse: Literal["hash", "material"] | None = None
+    """How a reused brief was found: an identical input (``hash``) or no material change since (``material``, plan section 19)."""
     rejected: list[dict[str, str]] = field(default_factory=list)
     error: str | None = None
     """Why the model did not write it (a provider's error code), when it was asked and the rules wrote it."""
@@ -424,10 +429,11 @@ def validate(out: BriefOut, packet: Packet, cards: list[dict[str, Any]]) -> tupl
 
 INSERT_SQL = """
 INSERT INTO ai.match_briefs (fixture_id, created_at, pass, version, engine, provider, model, packet_id, input_hash,
-    status, escalate, reasons, uncertainty, data_quality, content, rejected, usage_ids, cost_usd, error)
+    status, escalate, reasons, uncertainty, data_quality, content, rejected, usage_ids, cost_usd, error, material_hash,
+    material)
 VALUES (%(fixture)s, %(at)s, %(pass)s, %(version)s, %(engine)s, %(provider)s, %(model)s, %(packet)s, %(hash)s,
     %(status)s, %(escalate)s, %(reasons)s, %(uncertainty)s, %(quality)s, %(content)s, %(rejected)s, %(usage)s, %(cost)s,
-    %(error)s)
+    %(error)s, %(material_hash)s, %(material)s)
 RETURNING id
 """
 
@@ -441,6 +447,14 @@ SELECT id, fixture_id, created_at, pass, version, engine, provider, model, packe
 BY_HASH_SQL = """
 SELECT id, engine, status, escalate, reasons, content FROM ai.match_briefs
  WHERE fixture_id = %(fixture)s AND input_hash = %(hash)s ORDER BY created_at DESC, id DESC LIMIT 1
+"""
+
+
+MATERIAL_SQL = """
+SELECT id, engine, status, escalate, reasons, content, created_at, material FROM ai.match_briefs
+ WHERE fixture_id = %(fixture)s AND engine = 'llm' AND status = 'ok' AND version = %(version)s
+   AND material_hash IS NOT NULL AND created_at <= %(at)s AND created_at >= %(since)s
+ ORDER BY created_at DESC, id DESC LIMIT 1
 """
 
 
@@ -460,11 +474,34 @@ def _by_hash(conn: psycopg.Connection[Any], fixture_id: int, h: str) -> dict[str
 
 def _reuse(fixture_id: int, row: dict[str, Any]) -> Brief:
     return Brief(int(row["id"]), fixture_id, row["engine"], row["status"], bool(row["escalate"]),
-                 list(row["reasons"] or []), dict(row["content"] or {}), reused=True)
+                 list(row["reasons"] or []), dict(row["content"] or {}), reused=True, reuse="hash")
+
+
+def _material_row(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime) -> dict[str, Any] | None:
+    """The newest brief a model wrote for this match, in this version, with the material it was written under."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(MATERIAL_SQL, {"fixture": fixture_id, "version": BRIEF_VERSION, "at": at,
+                                   "since": at - material.MAX_AGE})
+        row = cur.fetchone()
+    return None if row is None else dict(row)
+
+
+def _reuse_material(fixture_id: int, row: dict[str, Any], reasons: list[str]) -> Brief:
+    """A stored brief carried over to the match as it is now: its reading is kept, but the server's reasons to look closer are the
+    ones of the packet NOW (a price may have moved less than 3 % and still cross the market-move threshold), plus the flags the
+    model itself raised."""
+    content = dict(row["content"] or {})
+    flags = list(reasons)
+    if content.get("uncertainty") == "high" and "high_uncertainty" not in flags:
+        flags.append("high_uncertainty")
+    if content.get("escalate") and not flags:
+        flags.append("brief_flag")
+    return Brief(int(row["id"]), fixture_id, row["engine"], row["status"], bool(flags), flags, content, reused=True,
+                 reuse="material")
 
 
 def _store(conn: psycopg.Connection[Any], b: Brief, *, at: datetime, pass_kind: str, packet_id: int, h: str,
-           provider: str | None, model: str | None, error: str | None) -> int:
+           provider: str | None, model: str | None, error: str | None, snapshot: material.Material | None = None) -> int:
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(INSERT_SQL, {
             "fixture": b.fixture_id, "at": at, "pass": pass_kind, "version": BRIEF_VERSION, "engine": b.engine,
@@ -472,10 +509,22 @@ def _store(conn: psycopg.Connection[Any], b: Brief, *, at: datetime, pass_kind: 
             "escalate": b.escalate, "reasons": b.reasons, "uncertainty": b.content.get("uncertainty"),
             "quality": b.content.get("data_quality"), "content": Jsonb(json.loads(canonical(b.content))),
             "rejected": Jsonb(b.rejected), "usage": b.usage_ids, "cost": b.cost,
-            "error": None if error is None else error[:300]})
+            "error": None if error is None else error[:300],
+            "material_hash": None if snapshot is None else snapshot.hash,
+            "material": None if snapshot is None else Jsonb(snapshot.as_json())})
         row = cur.fetchone()
     assert row is not None
     return int(row[0])
+
+
+def _snapshot(packet: Packet, cards: list[dict[str, Any]]) -> material.Material | None:
+    """The material of the match now. A packet it cannot read leaves the brief paid and stored as before: the layer fails open to
+    the old behaviour, never to a cycle that stops."""
+    try:
+        return material.material_of(packet, cards)
+    except (KeyError, TypeError, ValueError, ArithmeticError, AttributeError) as exc:
+        log.warning("brief_material_unreadable", fixture=packet.fixture_id, error=type(exc).__name__)
+        return None
 
 
 def input_hash(packet: Packet, cards: list[dict[str, Any]], reasons: list[str], engine: str) -> str:
@@ -502,6 +551,12 @@ def make_brief(conn: psycopg.Connection[Any], settings: AiSettings, packet: Pack
             return _reuse(packet.fixture_id, before)
         if before is not None:
             llm_wanted, error = False, "invalid_output"  # this exact input already got an invalid answer
+    snapshot = _snapshot(packet, cards)
+    if llm_wanted and snapshot is not None and gates.enabled(conn, settings, "brief_material"):
+        # not the same input, but maybe the same match: nothing material changed since a model last wrote its brief (plan section 19)
+        stored = _material_row(conn, packet.fixture_id, at=at)
+        if stored is not None and material.compare(stored["material"], snapshot).same:
+            return _reuse_material(packet.fixture_id, stored, reasons)
     if llm_wanted:
         previous = latest(conn, packet.fixture_id)
         body = {"now": at.isoformat(), "pass": pass_kind, "packet": json.loads(canonical(packet.content)),
@@ -548,7 +603,7 @@ def make_brief(conn: psycopg.Connection[Any], settings: AiSettings, packet: Pack
             b = Brief(None, packet.fixture_id, "llm", "ok", bool(flags), flags, content, cost, usage,
                       rejected=rejected)
             b.id = _store(conn, b, at=at, pass_kind=pass_kind, packet_id=packet_id, h=llm_h, provider=call.provider,
-                          model=call.model, error=None)
+                          model=call.model, error=None, snapshot=snapshot)
             return b
         if call is not None and call.result is not None:  # answered twice, never valid: not asked again for this input
             failed = Brief(None, packet.fixture_id, "llm", "invalid_output", bool(reasons), reasons,

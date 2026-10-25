@@ -563,6 +563,9 @@ def _pass(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
     counts["brief_reused" if brief.reused else f"brief_{brief.engine}"] += 1
     report.counts["briefs_llm" if brief.engine == "llm" and not brief.reused else
                   "briefs_reused" if brief.reused else "briefs_rules"] += 1
+    if brief.reuse == "material":  # a call saved because nothing material changed (plan section 19), apart from the identical input
+        counts["brief_reused_material"] += 1
+        report.counts["briefs_reused_material"] += 1
     if brief.escalate:
         report.counts["escalated"] += 1
     if not brief.reused and brief.content.get("research"):  # what this reading asks the next pass that reads the web to look into
