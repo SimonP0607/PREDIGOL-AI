@@ -12,3 +12,9 @@ else
   echo "AVISO: Gitleaks no corrió limpio (¿falta el binario o hay un hallazgo?). Mira: security/scan.sh history" >&2
   exit 1
 fi
+if sh security/selftest.sh > /dev/null 2>&1; then
+  echo "OK: la autoprueba pasa (el hook bloquea secretos falsos y deja pasar las plantillas)"
+else
+  echo "AVISO: la autoprueba falla. Mira: sh security/selftest.sh" >&2
+  exit 1
+fi

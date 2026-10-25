@@ -35,5 +35,8 @@ jobs:
           echo "GITLEAKS_BIN=$RUNNER_TEMP/gl/gitleaks" >> "$GITHUB_ENV"
           rm -f gitleaks.tgz
 
+      - name: Autoprueba de la red (secretos falsos fabricados al momento)
+        run: sh security/selftest.sh
+
       - name: Escanear el historial
         run: security/scan.sh history
