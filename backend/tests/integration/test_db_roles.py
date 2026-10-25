@@ -96,6 +96,19 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_worker", "intel.match_knowledge", "INSERT", True),
     ("predigol_worker", "core.fixture_event_kinds", "INSERT", True),
     ("predigol_worker", "core.fixture_event_kinds", "DELETE", True),
+    # the customer's own data (plan UX, A4): the API writes what the rules allow, the worker sees nothing
+    ("predigol_api", "customer.consents", "SELECT", True),
+    ("predigol_api", "customer.consents", "INSERT", True),
+    ("predigol_api", "customer.consents", "UPDATE", False),
+    ("predigol_api", "customer.consents", "DELETE", False),
+    ("predigol_api", "customer.support_tickets", "INSERT", True),
+    ("predigol_api", "customer.support_tickets", "UPDATE", True),
+    ("predigol_api", "customer.support_tickets", "DELETE", False),
+    ("predigol_api", "customer.ticket_messages", "INSERT", True),
+    ("predigol_api", "customer.ticket_messages", "UPDATE", False),
+    ("predigol_worker", "customer.consents", "SELECT", False),
+    ("predigol_worker", "customer.support_tickets", "SELECT", False),
+    ("predigol_worker", "customer.ticket_messages", "INSERT", False),
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,
                                             expected: bool) -> None:
@@ -108,6 +121,32 @@ def test_the_worker_sees_nothing_of_the_accounts(granted: str) -> None:
         row = conn.execute("SELECT has_schema_privilege('predigol_worker', 'auth', 'USAGE')").fetchone()
         assert row == (False,)
         assert not can(conn, "predigol_worker", "auth.users", "SELECT")
+
+
+def test_the_worker_sees_nothing_of_the_customers_data(granted: str) -> None:
+    """Plan UX, A4: the worker of PrediGol Intelligence cannot read the customer schema - not its tables, not its
+    sequences, and not a table a later migration adds to it."""
+    with psycopg.connect(granted, autocommit=True) as conn:
+        row = conn.execute("SELECT has_schema_privilege('predigol_worker', 'customer', 'USAGE')").fetchone()
+        assert row == (False,)
+        seq = conn.execute("SELECT has_sequence_privilege('predigol_worker', 'customer.consents_id_seq', 'USAGE')"
+                           ).fetchone()
+        assert seq == (False,)
+        assert conn.execute("SELECT has_sequence_privilege('predigol_api', 'customer.consents_id_seq', 'USAGE')"
+                            ).fetchone() == (True,)
+        conn.execute("CREATE TABLE customer.zz_future_table (id bigserial PRIMARY KEY, v int)")
+        try:
+            assert can(conn, "predigol_api", "customer.zz_future_table", "SELECT")
+            assert not can(conn, "predigol_worker", "customer.zz_future_table", "SELECT")
+            assert not can(conn, "predigol_worker", "customer.zz_future_table", "INSERT")
+        finally:
+            conn.execute("DROP TABLE customer.zz_future_table")
+        conn.execute("SET ROLE predigol_worker")
+        try:
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                conn.execute("SELECT 1 FROM customer.consents LIMIT 1")
+        finally:
+            conn.execute("RESET ROLE")
 
 
 def test_a_table_a_future_migration_adds_is_covered_by_the_default_privileges(granted: str) -> None:

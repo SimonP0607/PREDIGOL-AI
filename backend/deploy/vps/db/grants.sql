@@ -2,11 +2,11 @@
 --
 --   fbi              OWNS the database and every object in it: migrations, backups, maintenance. NOSUPERUSER.
 --   predigol_worker  the worker: reads and writes every data schema (core, market, features, models, picks, raw,
---                    audit, analytics ...). No DDL, nothing in auth, never the migration ledger.
---   predigol_api     the API: reads what it shows; writes only accounts (auth), a user's own records
---                    (picks.user_*) and the Admin Console's few tables (AI layer, research decisions, the
---                    evidence-ledger verdicts, the AI decision layer's run requests). Never ai.* results: those
---                    are the worker's, append-only.
+--                    audit, analytics ...). No DDL, nothing in auth or customer, never the migration ledger.
+--   predigol_api     the API: reads what it shows; writes only accounts (auth), the customer's own data
+--                    (customer: consents, privacy requests - plan UX, A4), a user's own records (picks.user_*) and
+--                    the Admin Console's few tables (AI layer, research decisions, the evidence-ledger verdicts, the
+--                    AI decision layer's run requests). Never ai.* results: those are the worker's, append-only.
 --
 -- Run as the owner after EVERY migration (bin/predigolctl does: deploy, import). Idempotent. A table a future
 -- migration adds is covered at once by the default privileges below, and re-granted explicitly the next run.
@@ -26,6 +26,15 @@ BEGIN
     IF s = 'auth' THEN
       EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA auth FROM predigol_worker';
       EXECUTE 'REVOKE USAGE ON SCHEMA auth FROM predigol_worker';
+    ELSIF s = 'customer' THEN
+      -- The customer's own data (plan UX, A4) is treated as auth is: the worker of PrediGol Intelligence never reads
+      -- it. Its sequences and the default privileges too, so a table a later migration adds never reaches the worker,
+      -- even after a run of an older version of this file.
+      EXECUTE 'REVOKE ALL ON ALL TABLES IN SCHEMA customer FROM predigol_worker';
+      EXECUTE 'REVOKE ALL ON ALL SEQUENCES IN SCHEMA customer FROM predigol_worker';
+      EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE fbi IN SCHEMA customer REVOKE ALL ON TABLES FROM predigol_worker';
+      EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE fbi IN SCHEMA customer REVOKE ALL ON SEQUENCES FROM predigol_worker';
+      EXECUTE 'REVOKE USAGE ON SCHEMA customer FROM predigol_worker';
     ELSE
       EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO predigol_worker', s);
       EXECUTE format('GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA %I TO predigol_worker', s);
@@ -53,6 +62,9 @@ DECLARE
   seq regclass;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
+    -- the customer's own data (fbi.customer, plan UX, A4): a consent and a request's message are never edited or
+    -- deleted (the tables' own triggers refuse it too); a request's status changes
+    'customer.consents:INSERT', 'customer.support_tickets:INSERT, UPDATE', 'customer.ticket_messages:INSERT',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',
