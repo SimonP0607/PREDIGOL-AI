@@ -21,7 +21,7 @@ const BASE = process.env["E2E_BASE_URL"] ?? "http://127.0.0.1:5173";
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 const TEXTS = join(import.meta.dirname, "..", "..", "backend", "src", "fbi", "customer", "texts");
 const t = L.es;
-const PASSWORD = "E2e-consent-pass-2026"; // gitleaks:allow - the password of a QA account the test creates and switches off
+const PASSWORD = "E2e-gate-four-boxes-2026"; // gitleaks:allow - the password of a QA account the test creates and switches off
 
 interface Text {
   title: string;

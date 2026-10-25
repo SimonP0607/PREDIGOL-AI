@@ -452,7 +452,12 @@ test("Mis picks with an open pick, its confirmation, and a match's markets: 44 p
       await expect(row).toBeVisible();
       expect(await smallTargets(page, "main"), `Mis picks at ${width} px`).toEqual([]);
       await row.getByTestId("saved-pick-remove").click();
-      await expect(page.getByTestId("confirm-remove-pick")).toBeVisible();
+      const dialog = page.getByTestId("confirm-remove-pick");
+      await expect(dialog).toBeVisible();
+      // Measured once it has finished opening: during its zoom-in the buttons are drawn at 95 % of their size.
+      await dialog.evaluate((el) =>
+        Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+      );
       expect(
         await smallTargets(page, '[data-testid="confirm-remove-pick"]'),
         `the confirmation at ${width} px`,

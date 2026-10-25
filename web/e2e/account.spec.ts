@@ -382,8 +382,10 @@ test.describe("self-service on, with the QA messenger", () => {
       ).toBe(200);
       await api.dispose();
 
+      // the link a second time: opening it still does nothing; the tap is refused
       const again = await (await browser.newContext({ viewport: PHONE })).newPage();
       await again.goto(link);
+      await again.getByTestId("unlock-submit").click();
       await expect(again.getByTestId("link-invalid")).toHaveText(t.auth.account.unlockInvalid);
       await again.context().close();
     } finally {

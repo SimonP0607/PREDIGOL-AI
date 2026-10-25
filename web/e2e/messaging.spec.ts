@@ -13,7 +13,7 @@ import { L, assertClean, getJson, sendJson, settle, watch } from "./support";
 
 const BASE = process.env["E2E_BASE_URL"] ?? "http://127.0.0.1:5173";
 const t = L.es;
-const PASSWORD = "E2e-messages-pass-2026"; // gitleaks:allow - the password of a QA account the test creates and switches off
+const PASSWORD = "E2e-quiet-queue-2026"; // gitleaks:allow - the password of a QA account the test creates and switches off
 const SAME_SITE = { "x-requested-with": "predigol" };
 const WORDS = "Quiero saber qué datos guardan de mí (prueba e2e).";
 
