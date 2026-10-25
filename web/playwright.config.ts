@@ -15,6 +15,7 @@
  *   prefs     language and time-zone changes, serially, on their own account
  *   mobile    the product at 390 px, and the glossary under a finger (its own reader, "phone")
  *   mobile-webkit  the phone checks at 320, 390 and 430 px in WebKit, the engine of every iPhone browser
+ *   membership  the trial, the owner's renewal and the limit of an ended membership (plan UX, A8)
  *   account   getting in without the owner (plan UX, A7): invitation, activation, recovery, unlocking. With the QA
  *             API's self-service off it checks that nothing is offered; on (QA_SELF_SERVICE=1 QA_MESSENGER=1), the
  *             e-mails' links, read from the QA messenger's folder (E2E_MAIL_SINK)
@@ -99,6 +100,14 @@ export default defineConfig({
     {
       name: "account",
       testMatch: /account\.spec\.ts/,
+      use: desktop,
+      dependencies: ["setup"],
+    },
+    {
+      // The membership (plan UX, A8): from the trial to the renewal, and the limit (QA_MEMBERSHIP_ENFORCE=1 and
+      // E2E_DATABASE_URL, which writes a trial that has ended).
+      name: "membership",
+      testMatch: /membership\.spec\.ts/,
       use: desktop,
       dependencies: ["setup"],
     },

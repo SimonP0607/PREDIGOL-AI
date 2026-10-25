@@ -35,6 +35,7 @@ test("without a session the product is closed and health stays open", async () =
     "/api/v1/me/consents",
     "/api/v1/me/privacy-requests",
     "/api/v1/me/preferences",
+    "/api/v1/me/membership",
     ...ADMIN_ROUTES,
   ]) {
     expect((await anon.get(path)).status(), path).toBe(401);
@@ -75,6 +76,19 @@ test("a USER gets the product and 403 on every admin route, and no shadow previe
   expect(
     (await user.patch("/api/v1/admin/users/1", { data: { role: "SUPER_ADMIN" } })).status(),
   ).toBe(403);
+  // the membership (plan UX, A8): the reader reads their own; only the owner records a payment or reads another's
+  expect((await user.get("/api/v1/me/membership")).status()).toBe(200);
+  expect((await user.get("/api/v1/admin/users/1/membership")).status()).toBe(403);
+  const payment = await user.post("/api/v1/admin/users/1/membership/payments", {
+    data: {
+      amount: "1",
+      currency: "COP",
+      method: "cash",
+      months: 1,
+      idempotency_key: "rbac-e2e-0001",
+    },
+  });
+  expect(payment.status()).toBe(403);
   await user.dispose();
 });
 
