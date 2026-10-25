@@ -333,6 +333,7 @@ test("Learning: the close of the day, what was learned, the post-mortems, the me
     "experiments",
     "calibration",
     "markets",
+    "families",
     "shadow",
     "close",
   ] as const) {
@@ -421,6 +422,55 @@ test("Memory, a tab of Learning: the entities with their version, confidence and
   await expect(page.getByTestId("memory-notes")).toBeVisible();
   await choose(page, views, LEARN.memoryViews.findings);
   await expect(page.getByTestId("memory-research")).toBeVisible();
+});
+
+test("Families, a tab of Learning: the cycle of the families in shadow, a card per family, the last word on each market and what they remember - read only, nothing to switch on", async ({
+  page,
+}, info) => {
+  test.setTimeout(150_000);
+  const w = watch(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await go(page, w, "/admin/learning#tab=families");
+  await expect(openTab(page, LEARN.tabs.label)).toHaveText(LEARN.tabs.families);
+  await expect(page.getByTestId("families-tab")).toBeVisible();
+  const res = await getJson<{
+    data: {
+      mode: string | null;
+      steps: unknown[];
+      families: Array<{ family: string }>;
+      items: unknown[];
+      total: number;
+      memory: unknown[];
+    };
+  }>(page.request, "/api/v1/admin/intelligence/families");
+  expect(res.status).toBe(200);
+  expect(JSON.stringify(res.body)).not.toMatch(/sk-[A-Za-z0-9]/);
+  const d = res.body.data;
+  note(
+    info,
+    `families: mode ${d.mode ?? "none"}, ${d.steps.length} steps run, ${d.total} last words, ${d.memory.length} remembered`,
+  );
+
+  // the cycle: its four steps and the mode of the worker - and nothing to switch on (the switch is the owner's, in the server's environment)
+  await expect(page.getByTestId("families-cycle")).toBeVisible();
+  await expect(page.getByTestId("families-mode")).toBeVisible();
+  for (const step of ["families", "family_outcomes", "family_postmortems", "family_memory"])
+    await expect(page.getByTestId(`families-step-${step}`)).toBeVisible();
+  await expect(page.getByRole("button", { name: /activ|encend/i })).toHaveCount(0);
+
+  // one card per family, in the server's order
+  await expect(page.getByTestId("families-cards")).toBeVisible();
+  expect(d.families.map((f) => f.family)).toEqual(["GOALS_HALF", "CORNERS", "CARDS", "YELLOW"]);
+  for (const f of d.families)
+    await expect(page.getByTestId(`families-card-${f.family}`)).toBeVisible();
+
+  // the last word of each model on each market (or why there is none), and what the families remember (or that nothing yet)
+  await expect(page.getByTestId("families-items")).toBeVisible();
+  if (d.total === 0) await expect(page.getByTestId("families-items-empty")).toBeVisible();
+  await expect(page.getByTestId("families-memory")).toBeVisible();
+  if (d.memory.length === 0) await expect(page.getByTestId("families-memory-empty")).toBeVisible();
+  await settle(page);
+  await assertClean(page, w);
 });
 
 test("Experiments, a tab of Learning: every hypothesis by stage with the owner's three answers, the loop, and the model code against its promotions", async ({
