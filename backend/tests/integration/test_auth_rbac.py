@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from fbi.auth import service, throttle
 from fbi.auth.settings import reset as reset_session_settings
 from fbi.core.config import reset_cache
+from tests.integration.helpers import forget_sign_in_failures
 
 ADMIN_EMAIL = "owner@predigol.test"
 USER_EMAIL = "fan@predigol.test"
@@ -55,6 +56,7 @@ def accounts(migrated_database: str) -> Iterator[dict[str, int]]:
 @pytest.fixture()
 def app_client(accounts: dict[str, int]) -> Iterator[TestClient]:
     throttle.reset_all()
+    forget_sign_in_failures()
     from fbi.api.app import create_app
 
     with TestClient(create_app(), headers=SAME_SITE) as c:
@@ -106,12 +108,9 @@ def test_repeated_failures_are_throttled_but_never_block_the_right_password_befo
     r = app_client.post("/api/v1/auth/login", json={"email": USER_EMAIL, "password": USER_PW})
     assert r.status_code == 429 and r.json()["error"]["code"] == "too_many_attempts"
     assert int(r.headers["retry-after"]) > 0
+    # The five failures locked the address and the account (test_auth_lockout.py has the rule): lift both.
     throttle.reset_all()
-    # The five failures also locked the account in the database (test_auth_mfa.py covers that lock): lift it.
-    from fbi.auth.db import write_connection
-
-    with write_connection() as conn:
-        conn.execute("UPDATE auth.users SET failed_logins = 0, locked_until = NULL")
+    forget_sign_in_failures()
 
 
 def test_a_user_reaches_the_product_and_gets_403_on_every_admin_route(app_client: TestClient) -> None:
@@ -187,6 +186,7 @@ def test_changing_the_password_ends_the_other_sessions(accounts: dict[str, int])
     from fbi.api.app import create_app
 
     throttle.reset_all()
+    forget_sign_in_failures()
     with TestClient(create_app(), headers=SAME_SITE) as a, TestClient(create_app(), headers=SAME_SITE) as b:
         login(a, USER_EMAIL, USER_PW)
         login(b, USER_EMAIL, USER_PW)
@@ -232,6 +232,7 @@ def test_disabling_an_account_ends_its_sessions_at_once(accounts: dict[str, int]
     from fbi.api.app import create_app
 
     throttle.reset_all()
+    forget_sign_in_failures()
     with TestClient(create_app(), headers=SAME_SITE) as owner, TestClient(create_app(), headers=SAME_SITE) as fan:
         login(owner, ADMIN_EMAIL, ADMIN_PW)
         login(fan, USER_EMAIL, USER_PW)
@@ -245,6 +246,9 @@ def test_disabling_an_account_ends_its_sessions_at_once(accounts: dict[str, int]
 
 
 def test_the_audit_trail_records_who_did_what_and_never_a_secret(app_client: TestClient) -> None:
+    # a failure of its own: each test starts with the sign-in failures forgotten (forget_sign_in_failures)
+    assert app_client.post("/api/v1/auth/login", json={"email": USER_EMAIL, "password": "wrong-pw-123"}
+                           ).status_code == 401
     login(app_client, ADMIN_EMAIL, ADMIN_PW)
     body = app_client.get("/api/v1/admin/audit?limit=200")
     events = body.json()["data"]

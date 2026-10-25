@@ -23,6 +23,7 @@ from fastapi.testclient import TestClient
 from fbi.auth import service, throttle
 from fbi.auth.settings import reset as reset_session_settings
 from fbi.core.config import reset_cache
+from tests.integration.helpers import forget_sign_in_failures
 
 ADMIN_EMAIL = "keeper@predigol.test"
 USER_EMAIL = "regular@predigol.test"
@@ -61,6 +62,7 @@ def database(migrated_database: str) -> Iterator[str]:
 def fresh(database: str) -> Iterator[str]:
     """No session left from another test."""
     throttle.reset_all()
+    forget_sign_in_failures()
     with psycopg.connect(database, autocommit=True) as conn:
         conn.execute("DELETE FROM auth.sessions")
     yield database

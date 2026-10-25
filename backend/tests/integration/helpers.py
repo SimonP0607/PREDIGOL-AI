@@ -74,3 +74,15 @@ def row(cur: psycopg.Cursor) -> tuple[Any, ...]:
 def scalar(cur: psycopg.Cursor) -> Any:
     """First column of the single row the query must have returned."""
     return row(cur)[0]
+
+
+def forget_sign_in_failures() -> None:
+    """A clean slate for sign-in tests: the addresses' streaks live in the audit trail every API process reads (plan
+    UX, A1; fbi.auth.store.address_streak), so their failure events go, with the accounts' own counters - as
+    fbi.auth.throttle.reset_all() empties the per-client windows of this process."""
+    from fbi.auth.db import write_connection
+
+    with write_connection() as conn:
+        conn.execute("DELETE FROM auth.audit_events "
+                     "WHERE action IN ('login.failed', 'mfa.failed', 'login.locked', 'login.refused')")
+        conn.execute("UPDATE auth.users SET failed_logins = 0, locked_until = NULL")

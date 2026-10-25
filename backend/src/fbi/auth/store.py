@@ -84,18 +84,52 @@ def mark_login(conn: Conn, user_id: int) -> None:
                  "WHERE id = %s", (user_id,))
 
 
-def record_failure(conn: Conn, user_id: int, *, threshold: int, lock_minutes: int, max_minutes: int) -> Row:
-    """One more consecutive failure. From the threshold on, each failure (re)locks the account: lock_minutes, then
-    doubling with every further block of `threshold` failures, never more than max_minutes. Returns the counters."""
+# ── an address's sign-in streak, shared by every API process ────────────────────────────────
+
+FAILURE_ACTIONS = ["login.failed", "mfa.failed"]
+"""A wrong password (for any address, with or without an account) and a wrong second-factor code."""
+RESET_ACTIONS = ["login.succeeded", "user.unlocked", "password.reset"]
+"""What ends a streak, as it ends the account's own count (mark_login, unlock)."""
+STREAK_HORIZON_DAYS = 30
+"""How far back a streak is read: older failures are forgotten, for every address alike."""
+
+
+def address_streak(conn: Conn, address: str) -> Row:
+    """The consecutive sign-in failures of an address since what last ended them, the time of the last one and the
+    database's now - read from the audit trail every API process writes (plan UX, A1; R12). The API runs several
+    worker processes and restarts: a count kept in one process's memory would lock an address without an account
+    later than one with (the account's own count is in the database), and tell which addresses have accounts. The
+    trail already records every failure with its address, with or without an account; an address's account, when it
+    has one, also ends a streak with its success, an unlock or a password reset (by its id)."""
     row = _one(conn, """
-        UPDATE auth.users SET failed_logins = failed_logins + 1,
-               locked_until = CASE
-                 WHEN failed_logins + 1 >= %(t)s THEN now() + make_interval(mins => LEAST(%(max)s,
-                      %(m)s * power(2, LEAST(10, (failed_logins + 1 - %(t)s) / %(t)s))::int))
-                 ELSE locked_until END
+        WITH account AS (SELECT id FROM auth.users WHERE email = %(a)s),
+        recent AS (
+            SELECT e.at, e.action FROM auth.audit_events e
+             WHERE e.at > now() - make_interval(days => %(h)s)
+               AND e.action = ANY(%(actions)s)
+               AND (e.email = %(a)s OR e.target_user_id = (SELECT id FROM account))),
+        reset AS (SELECT max(at) AS at FROM recent WHERE action = ANY(%(resets)s))
+        SELECT count(*) FILTER (WHERE r.action = ANY(%(fails)s) AND (reset.at IS NULL OR r.at > reset.at))::int
+                 AS streak,
+               max(r.at) FILTER (WHERE r.action = ANY(%(fails)s) AND (reset.at IS NULL OR r.at > reset.at))
+                 AS last_at,
+               now() AS now
+          FROM reset LEFT JOIN recent r ON true
+    """, {"a": address[:254], "h": STREAK_HORIZON_DAYS, "actions": FAILURE_ACTIONS + RESET_ACTIONS,
+          "resets": RESET_ACTIONS, "fails": FAILURE_ACTIONS})
+    assert row is not None
+    return row
+
+
+def set_failures(conn: Conn, user_id: int, *, streak: int, lock_minutes: int) -> Row:
+    """The account's own count follows the address's streak (address_streak + the failure being recorded): the
+    Admin Console reads it, and it locks the account by the same rule. lock_minutes 0: no new lock."""
+    row = _one(conn, """
+        UPDATE auth.users SET failed_logins = %(s)s,
+               locked_until = CASE WHEN %(m)s > 0 THEN now() + make_interval(mins => %(m)s) ELSE locked_until END
         WHERE id = %(id)s
         RETURNING failed_logins, locked_until, locked_until > now() AS is_locked
-    """, {"t": threshold, "m": lock_minutes, "max": max_minutes, "id": user_id})
+    """, {"s": streak, "m": lock_minutes, "id": user_id})
     assert row is not None
     return row
 

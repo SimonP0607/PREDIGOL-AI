@@ -67,37 +67,28 @@ def test_only_failures_count_towards_the_throttle() -> None:
     assert not w.blocked("a@b.co")
 
 
-def test_an_address_locks_by_the_rule_of_the_account_and_the_lock_doubles_by_blocks() -> None:
-    """AddressLocks counts every address with the account's rule (store.record_failure): failures 5-9 lock for 15
-    minutes, from the 10th for 30, doubling up to the cap; a sign-in that works ends the streak."""
-    from fbi.auth.throttle import AddressLocks
+def test_a_streak_locks_by_the_rule_of_the_account_and_the_lock_doubles_by_blocks() -> None:
+    """The rule every address follows, with or without an account (plan UX, A1; R12): failures 5-9 lock for 15
+    minutes, from the 10th for 30, doubling by blocks of 5 up to the cap."""
+    from fbi.auth.throttle import lock_minutes
 
-    t = [0.0]
-    locks = AddressLocks(clock=lambda: t[0])
-    rule = {"threshold": 5, "lock_minutes": 15, "max_minutes": 40}
-    assert [locks.fail("a@b.co", **rule) for _ in range(4)] == [0, 0, 0, 0]
-    assert locks.wait("a@b.co") == 0
-    assert locks.fail("a@b.co", **rule) == 15 * 60 + 1
-    t[0] += 60
-    assert locks.wait("a@b.co") == 14 * 60 + 1
-    waits = []
-    for _ in range(5):  # failures 6..10, each once the previous lock has passed
-        t[0] += 3600
-        assert locks.wait("a@b.co") == 0
-        waits.append(locks.fail("a@b.co", **rule))
-    assert waits == [15 * 60 + 1] * 4 + [30 * 60 + 1]
-    for _ in range(5):  # failures 11..15: the 15th would be 60 minutes, the cap says 40
-        t[0] += 3600
-        last = locks.fail("a@b.co", **rule)
-    assert last == 40 * 60 + 1 and locks.streak("a@b.co") == 15
-    locks.clear("a@b.co")
-    assert locks.wait("a@b.co") == 0 and locks.streak("a@b.co") == 0
+    rule = {"threshold": 5, "minutes": 15, "max_minutes": 40}
+    assert [lock_minutes(n, **rule) for n in range(1, 5)] == [0, 0, 0, 0]
+    assert [lock_minutes(n, **rule) for n in range(5, 10)] == [15] * 5
+    assert [lock_minutes(n, **rule) for n in range(10, 15)] == [30] * 5
+    assert lock_minutes(15, **rule) == 40, "60 by the doubling, 40 by the cap"
+    assert lock_minutes(10_000, threshold=5, minutes=15, max_minutes=1440) == 1440
 
 
-def test_the_address_locks_forget_the_oldest_beyond_their_size() -> None:
-    from fbi.auth.throttle import AddressLocks
+def test_the_wait_runs_from_the_last_failure_in_whole_seconds_rounded_up() -> None:
+    from datetime import UTC, datetime, timedelta
 
-    locks = AddressLocks(max_keys=3)
-    for n in range(5):
-        locks.fail(f"{n}@b.co", threshold=5, lock_minutes=15, max_minutes=60)
-    assert [locks.streak(f"{n}@b.co") for n in range(5)] == [0, 0, 1, 1, 1]
+    from fbi.auth.throttle import wait_seconds
+
+    rule = {"threshold": 5, "minutes": 15, "max_minutes": 1440}
+    last = datetime(2026, 10, 25, 12, tzinfo=UTC)
+    assert wait_seconds(5, last, last + timedelta(seconds=0.4), **rule) == 15 * 60  # 899.6 s left: said 900
+    assert wait_seconds(5, last, last + timedelta(minutes=1), **rule) == 14 * 60 + 1
+    assert wait_seconds(5, last, last + timedelta(minutes=15), **rule) == 0, "the lock has passed"
+    assert wait_seconds(4, last, last, **rule) == 0, "below the threshold nothing waits"
+    assert wait_seconds(5, None, last, **rule) == 0

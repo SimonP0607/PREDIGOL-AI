@@ -9,9 +9,10 @@ address did not, so the answers told an attacker which addresses have accounts.
 From A1 the failure that reaches the threshold answers 429 too_many_attempts with the real wait (Retry-After and
 error.retry_after, in seconds), and every address - with or without an account - follows the account's rule: the
 threshold of consecutive failures, then lock_minutes, doubling with every further block of failures, up to
-lock_max_minutes. The rule is counted in the API's memory for every address; the account's lock in the database stays
-too, for the next process. (A restart forgets the memory, while an account's database lock survives it: that last
-difference goes away with the persistent counters of the security plan, S5.)
+lock_max_minutes. The streak of every address is read from the audit trail in the database, which records each
+failure with its address: the API runs two worker processes (deploy/vps/docker-compose.yml) and restarts, and a
+count kept in one process's memory would lock an address without an account later than one with (review of A1).
+The account's own counters follow the same streak; the owner's unlock ends both.
 """
 
 from __future__ import annotations
@@ -25,9 +26,12 @@ from fastapi.testclient import TestClient
 from fbi.auth import service, throttle
 from fbi.auth.settings import reset as reset_session_settings
 from fbi.core.config import reset_cache
+from tests.integration.helpers import forget_sign_in_failures
 
 KNOWN = "member@predigol.test"
 UNKNOWN = "nobody-here@predigol.test"
+OWNER = "keeper@predigol.test"
+OWNER_PW = "Keeper-pass-2026!"
 PASSWORD = "Member-pass-2026"
 WRONG = "Wrong-pass-2026!"
 SAME_SITE = {"x-requested-with": "predigol"}
@@ -39,6 +43,7 @@ def database(migrated_database: str) -> Iterator[str]:
     mp = pytest.MonkeyPatch()
     mp.setenv("FBI_DATABASE_URL", migrated_database.replace("postgresql://", "postgresql+psycopg://"))
     mp.setenv("FBI_API_LOGIN_RATE_LIMIT", "1000")  # the per-minute limit of the API is not what this file tests
+    mp.setenv("FBI_AUTH_MFA_ROLES", "")  # the owner signs in with the password alone here (test_auth_mfa.py: MFA)
     reset_cache()
     reset_session_settings()
     with psycopg.connect(migrated_database, autocommit=True) as conn:
@@ -47,6 +52,8 @@ def database(migrated_database: str) -> Iterator[str]:
         conn.execute("DELETE FROM auth.users")
     service.create_user_unattended(email=KNOWN, display_name="Member", role="USER", password=PASSWORD,
                                    language="es", timezone="America/Bogota")
+    service.create_user_unattended(email=OWNER, display_name="Keeper", role="SUPER_ADMIN", password=OWNER_PW,
+                                   language="es", timezone="Europe/Madrid")
     yield migrated_database
     with psycopg.connect(migrated_database, autocommit=True) as conn:
         conn.execute("DELETE FROM auth.sessions")
@@ -58,7 +65,7 @@ def database(migrated_database: str) -> Iterator[str]:
 
 
 class Clock:
-    """The memory of the throttle on a clock the test moves (the database lock is moved with SQL)."""
+    """The per-client window of the throttle on a clock the test moves (the streaks are moved with SQL)."""
 
     def __init__(self) -> None:
         self.t = 1_000_000.0
@@ -71,11 +78,8 @@ class Clock:
 def client(database: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[TestClient, Clock]]:
     throttle.reset_all()
     clock = Clock()
-    for name in ("ADDRESSES", "BY_CLIENT"):
-        if hasattr(throttle, name):  # (the rule per address is new in A1: before it, the test fails on the answers)
-            monkeypatch.setattr(getattr(throttle, name), "_clock", clock)
-    with psycopg.connect(database, autocommit=True) as conn:
-        conn.execute("UPDATE auth.users SET failed_logins = 0, locked_until = NULL")
+    monkeypatch.setattr(throttle.BY_CLIENT, "_clock", clock)
+    forget_sign_in_failures()
     from fbi.api.app import create_app
 
     with TestClient(create_app(), headers=SAME_SITE) as c:
@@ -96,9 +100,11 @@ def attempt(c: TestClient, email: str, password: str = WRONG) -> tuple[int, int 
 
 
 def expire(database: str, clock: Clock, seconds: float) -> None:
-    """Let `seconds` pass for both locks: the API's memory and the account's row."""
+    """Let `seconds` pass: for the audit trail the streaks are read from, the accounts' rows and the per-client
+    window."""
     clock.t += seconds
     with psycopg.connect(database, autocommit=True) as conn:
+        conn.execute("UPDATE auth.audit_events SET at = at - make_interval(secs => %s)", (seconds,))
         conn.execute("UPDATE auth.users SET locked_until = locked_until - make_interval(secs => %s) "
                      "WHERE locked_until IS NOT NULL", (seconds,))
 
@@ -162,3 +168,53 @@ def test_after_the_lock_the_right_password_signs_in_and_starts_the_count_again(
     assert attempt(c, KNOWN, PASSWORD) == (200, None)
     for _ in range(4):
         assert attempt(c, KNOWN) == (401, None), "a fresh streak: four failures do not lock"
+
+
+def test_the_lock_holds_in_every_api_process_and_after_a_restart(client: tuple[TestClient, Clock]) -> None:
+    """The API runs two worker processes, and restarts: a lock kept in one process's memory locked an address
+    without an account later than one with (review of A1: 8 failures against 5 with the attempts spread over two
+    workers). The streak is in the database now; a process with nothing in its memory answers the same."""
+    c, _ = client
+    for email in (KNOWN, UNKNOWN):
+        for _ in range(4):
+            assert attempt(c, email)[0] == 401
+            throttle.reset_all()  # the next attempt reaches the other process, or a restarted one
+        status, wait = attempt(c, email)
+        assert status == 429 and near(wait, LOCK_S), (email, status, wait)
+        throttle.reset_all()
+        status, left = attempt(c, email, PASSWORD)
+        assert status == 429 and left is not None, (email, status)
+
+
+def test_the_owners_unlock_lets_the_account_in_at_once(database: str, client: tuple[TestClient, Clock]) -> None:
+    """The owner's Unlock cleared the account's row while the lock in the API's memory went on - up to a day once
+    it had doubled (review of A1). It now ends the streak itself: the right password works at once."""
+    c, _ = client
+    for _ in range(5):
+        attempt(c, KNOWN)
+    assert attempt(c, KNOWN, PASSWORD)[0] == 429
+    from fbi.api.app import create_app
+
+    with TestClient(create_app(), headers=SAME_SITE) as owner:
+        assert owner.post("/api/v1/auth/login", json={"email": OWNER, "password": OWNER_PW}).status_code == 200
+        user_id = next(u["id"] for u in owner.get("/api/v1/admin/users").json()["data"] if u["email"] == KNOWN)
+        assert owner.post(f"/api/v1/admin/users/{user_id}/unlock").status_code == 200
+    assert attempt(c, KNOWN, PASSWORD) == (200, None)
+
+
+def test_a_right_password_with_a_second_step_owed_does_not_end_the_streak(
+        database: str, client: tuple[TestClient, Clock]) -> None:
+    """Only a finished sign-in ends a streak, as it ends the account's count: a right password that still owes a
+    step (here a new password: a staged session) leaves it as it was."""
+    c, _ = client
+    for _ in range(4):
+        assert attempt(c, KNOWN) == (401, None)
+    with psycopg.connect(database, autocommit=True) as conn:
+        conn.execute("UPDATE auth.users SET must_change_password = true WHERE email = %s", (KNOWN,))
+    try:
+        r = c.post("/api/v1/auth/login", json={"email": KNOWN, "password": PASSWORD})
+        assert r.status_code == 200 and r.json()["stage"] == "password"
+        assert attempt(c, KNOWN)[0] == 429, "the fifth failure still locks"
+    finally:
+        with psycopg.connect(database, autocommit=True) as conn:
+            conn.execute("UPDATE auth.users SET must_change_password = false WHERE email = %s", (KNOWN,))
