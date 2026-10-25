@@ -31,6 +31,7 @@ from fbi.api.routers import (
     knowledge,
     market,
     match_calendar,
+    messaging,
     monitoring,
     product,
     records,
@@ -184,13 +185,16 @@ def create_app() -> FastAPI:
     #   public  - health, sign-in, sign-out
     #   app     - the product, for any signed-in account (and, once FBI_CONSENT_GATE is on, its current consents)
     #   admin   - /api/v1/admin/*, SUPER_ADMIN only
-    for r in (system.router, auth.public_router, auth.session_router, customer.public_router):
+    # The provider's signed webhook (plan UX, A5) is public too: its signature is its authentication.
+    for r in (system.router, auth.public_router, auth.session_router, customer.public_router,
+              messaging.webhook_router):
         app.include_router(r, prefix="/api/v1")
     # The browser's error reports (plan UX, A2): public - an error can happen before signing in - but same-site.
     app.include_router(monitoring.router, prefix="/api/v1", dependencies=[Depends(same_site_only)])
     app_tier = [Depends(same_site_only), Depends(require_app), Depends(observe_principal)]
-    # The account itself and the reader's rights (consents, export, privacy requests): never behind the gate.
-    for r in (auth.router, customer.router):
+    # The account itself and the reader's rights (consents, export, privacy requests, notification preferences):
+    # never behind the gate.
+    for r in (auth.router, customer.router, messaging.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
     # The product, behind the consent gate (plan UX, A4; FBI_CONSENT_GATE, born off: fbi.customer.consents).
     product_tier = [*app_tier, Depends(consent_required)]
@@ -201,7 +205,7 @@ def create_app() -> FastAPI:
     for r in (system.admin_router, football.admin_router, market.admin_router,
               center.admin_router, explorer.router, analyst.router, admin_users.router, truth.router,
               evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
-              monitoring.admin_router, customer.admin_router):
+              monitoring.admin_router, customer.admin_router, messaging.admin_router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)

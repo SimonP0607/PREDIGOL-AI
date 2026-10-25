@@ -8,6 +8,9 @@
   (15, extendable by 8), as a ticket of ``customer.support_tickets`` with its legal deadline in Colombian business
   days, counted from the day after it arrives in Bogotá. One open request of each kind at a time. The owner answers
   from the Admin Console; the deletion itself (anonymisation) is A7's.
+* **E-mail (A5):** the receipt of a request and each answer of the owner queue a message to the reader in the same
+  transaction (``fbi.messaging.outbox``): the kind, the number and the deadline - never the words of either side,
+  which the reader reads in their profile.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from psycopg.rows import dict_row
 
 from fbi.customer import consents, workdays
 from fbi.customer.db import CustomerError, write_connection
+from fbi.messaging import outbox
 
 BOGOTA = ZoneInfo("America/Bogota")
 EXPORT_FORMAT = "predigol-export/1"
@@ -121,6 +125,9 @@ def open_request(user_id: int, kind: RequestKind, message: str, *, now: datetime
         assert row is not None
         conn.execute("INSERT INTO customer.ticket_messages (ticket_id, author, body, at) VALUES (%s, 'customer', %s, %s)",
                      (row[0], body, opened))
+        outbox.enqueue(conn, user_id=user_id, template="privacy_request_received",
+                       params={"request": kind, "ticket": str(row[0]), "deadline": due_on.isoformat()},
+                       dedup_key=f"privacy_request_received:{row[0]}")
         return _tickets(conn, "t.id = %s", (row[0],))[0]
 
 
@@ -151,8 +158,12 @@ def answer(ticket_id: int, *, body: str, status: Literal["open", "answered", "cl
             if ticket.extended_to is not None or ticket.due_on is None:
                 raise CustomerError(409, "already_extended", "the law allows one extension")
             extended_to = workdays.add_business_days(ticket.due_on, DEADLINES[ticket.kind][1])
-        conn.execute("INSERT INTO customer.ticket_messages (ticket_id, author, body, at) VALUES (%s, 'owner', %s, %s)",
-                     (ticket_id, text, at))
+        message = conn.execute("INSERT INTO customer.ticket_messages (ticket_id, author, body, at) "
+                               "VALUES (%s, 'owner', %s, %s) RETURNING id", (ticket_id, text, at)).fetchone()
+        assert message is not None
+        outbox.enqueue(conn, user_id=ticket.user_id, template="privacy_request_answered",
+                       params={"request": ticket.kind, "ticket": str(ticket_id)},
+                       dedup_key=f"privacy_request_answered:{message[0]}")
         conn.execute("""
             UPDATE customer.support_tickets SET status = %s, extended_to = %s,
                    closed_at = CASE WHEN %s = 'closed' THEN %s ELSE NULL END

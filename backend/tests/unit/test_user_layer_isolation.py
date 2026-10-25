@@ -36,7 +36,7 @@ CLIENT_TABLES = re.compile(r"\b(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a
 """A client's data in SQL: the ``auth`` and ``customer`` schemas and the picks and parlays a client saves."""
 
 USER_ROUTERS = ("system", "auth", "product", "records", "football", "market", "center", "ai_layer", "forecast",
-                "match_calendar", "knowledge", "customer")
+                "match_calendar", "knowledge", "customer", "messaging")
 """``fbi.api.routers`` modules mounted on the public and app tiers by ``create_app`` (every other router is ``/admin``)."""
 
 CALLS_OUT = ("fbi.ai.providers", "fbi.analyst.agent", "fbi.analyst.search", "anthropic", "openai", "httpx", "requests",
@@ -170,3 +170,25 @@ def test_the_checks_see_a_violation() -> None:
     assert any(t == "httpx" for t in raw_imports("fbi.ai.providers"))
     assert CLIENT_TABLES.search("SELECT email FROM auth.users") and CLIENT_TABLES.search("JOIN picks.user_picks up")
     assert not CLIENT_TABLES.search("FROM picks.picks p")
+
+
+INTELLIGENCE = ("models", "features", "predictions", "backtesting", "domain", "picks", "intel", "ai", "analyst",
+                "research", "families", "forecasting", "knowledge", "odds", "parlays", "truth", "validation", "market",
+                "quality", "catalog", "competitions", "people", "datasets", "migration")
+"""PrediGol Intelligence and the data it is built on: what the messenger (plan UX, A5) must never load."""
+
+
+def test_the_messenger_reaches_no_model_and_no_decision() -> None:
+    """Plan UX, A5: the messenger sends the readers' messages with the API's role, "sin acceso a modelos ni
+    decisiones" - nothing it imports, at any depth, is PrediGol Intelligence."""
+    reach = closure([name for name in modules() if name.startswith("fbi.messaging")])
+    assert "fbi.messaging.runner" in reach and "fbi.ingestion.ledger" in reach, "the messenger's imports were not followed"
+    into = sorted(name for name in reach if package_of(name) in INTELLIGENCE)
+    assert not into, f"the messenger can load PrediGol Intelligence: {into}"
+
+
+def test_the_api_never_loads_the_providers_client() -> None:
+    """The API queues and previews messages; only the messenger holds the provider's HTTP client."""
+    reach = closure(["fbi.api.app"])
+    assert "fbi.messaging.outbox" in reach and "fbi.api.routers.messaging" in reach
+    assert "fbi.messaging.email" not in reach and "fbi.messaging.runner" not in reach
