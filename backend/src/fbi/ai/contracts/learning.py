@@ -3,8 +3,10 @@ that would test it.
 
 It only PROPOSES. PrediGol experiments, the gates validate and the owner promotes (section 13 of the plan): a hypothesis goes to
 ``analytics.research_hypotheses`` as ``PROPOSED`` (``proposed_by = 'ai'``), an experiment draft to ``analytics.experiments`` as a draft,
-and nothing of either changes a prompt, a threshold, a model or the router. The analyst's database role cannot write
-``intel.promotions`` at all (a row policy, ``migrations`` 0111) - the database enforces it, not the prompt.
+and nothing of either changes a prompt, a threshold, a model or the router. The analyst has no database of its own - the backend
+writes what it answers - and the worker's role, which runs that job, cannot sign a promotion of an agent in ``intel.promotions`` (a row
+policy, ``migrations`` 0111): only the owner's signed order can, and the automatic roll-back through a role of its own. The database
+enforces it, not the prompt.
 
 Each hypothesis cites the attributions it rests on (``attribution_ids``: rows of ``intel.agent_attributions``) and says, BEFORE
 anything runs, the metric, the family, the design and the sample the experiment needs: a hypothesis is tested forward, on data later
