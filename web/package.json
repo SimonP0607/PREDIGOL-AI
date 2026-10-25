@@ -23,7 +23,10 @@
     "zod": "4.6.6",
     "@babel/types": "7.29.8",
     "@babel/parser": "7.29.9",
-    "@babel/helper-string-parser": "7.29.7"
+    "@babel/helper-string-parser": "7.29.7",
+    "source-map-js": "1.2.2",
+    "launch-editor": "2.14.2",
+    "shell-quote": "1.11.0"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -100,6 +103,6 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "8.1.5"
+    "vite": "8.1.6"
   }
 }
