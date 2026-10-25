@@ -21,7 +21,7 @@
   "passwordRules": "Mínimo 10 caracteres, sin espacios al principio o al final.",
   "signOut": "Cerrar sesión",
   "saved": "Preferencias guardadas.",
-  "sessionLabel": "Sesión válida hasta",
+  "sessionLabel": "Tu sesión",
   "securityPanel": {
     "mfaTitle": "Verificación en dos pasos",
     "mfaOn": "Activada",
@@ -61,5 +61,11 @@
       "body_other": "Se cerrarán {count} sesiones abiertas en otros dispositivos; allí habrá que volver a entrar. Esta se queda abierta.",
       "ok": "Cerrar sesiones"
     }
-  }
+  },
+  "sessionUntil": "Abierta hasta el {date} como máximo",
+  "sessionIdle": "Se cierra antes si pasas {idle} sin usarla; cada uso la renueva.",
+  "idleDays_one": "{n} día",
+  "idleDays_other": "{n} días",
+  "idleHours_one": "{n} hora",
+  "idleHours_other": "{n} horas"
 }

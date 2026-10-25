@@ -128,5 +128,6 @@
     "range": "{from}–{to} of {total}",
     "page": "Page {page} of {pages}"
   },
-  "reset": "Reset"
+  "reset": "Reset",
+  "roleAdmin": "Administrator"
 }

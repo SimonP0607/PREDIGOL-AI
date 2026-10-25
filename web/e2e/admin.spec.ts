@@ -139,6 +139,20 @@ test("Preview as USER shows the product only, until it is switched off", async (
   await assertClean(page, w);
 });
 
+test("the owner's account says Administrator, never an internal role name, and its short session", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F07): the profile and the account menu showed the raw role ("SUPER_ADMIN", "USER").
+  const w = watch(page);
+  await go(page, w, "/profile");
+  await expect(page.getByTestId("profile-role")).toHaveText(t.common.roleAdmin);
+  await expect(page.locator("main")).not.toContainText("SUPER_ADMIN");
+  await expect(page.getByTestId("profile-session")).toContainText("8 hours");
+  await page.getByTestId("account-menu").click();
+  await expect(page.getByTestId("account-role")).toHaveText(t.common.roleAdmin);
+  await expect(page.getByRole("menu")).not.toContainText("SUPER_ADMIN");
+});
+
 test("evaluation mode is the owner's: the recorded evaluation picks and parlays, labelled, kept after kick-off", async ({
   page,
 }) => {

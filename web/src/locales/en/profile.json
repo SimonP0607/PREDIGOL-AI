@@ -21,7 +21,7 @@
   "passwordRules": "At least 10 characters, no spaces at the start or the end.",
   "signOut": "Sign out",
   "saved": "Preferences saved.",
-  "sessionLabel": "Session valid until",
+  "sessionLabel": "Your session",
   "securityPanel": {
     "mfaTitle": "Two-step verification",
     "mfaOn": "On",
@@ -61,5 +61,11 @@
       "body_other": "{count} sessions open on other devices will be closed; they will have to sign in again. This one stays open.",
       "ok": "Close sessions"
     }
-  }
+  },
+  "sessionUntil": "Open until {date} at most",
+  "sessionIdle": "It closes sooner if you go {idle} without using it; every use renews it.",
+  "idleDays_one": "{n} day",
+  "idleDays_other": "{n} days",
+  "idleHours_one": "{n} hour",
+  "idleHours_other": "{n} hours"
 }

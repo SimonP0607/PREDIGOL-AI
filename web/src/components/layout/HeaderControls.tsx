@@ -75,9 +75,15 @@ export function AccountMenu() {
           <div className="truncate text-caption font-normal text-muted-foreground">
             {user.email}
           </div>
-          <div className="text-[0.65rem] font-bold uppercase tracking-wider text-gold">
-            {user.role}
-          </div>
+          {/* Plan UX, A1 (F07): a reader never sees an internal role ("USER"); the owner sees "Administrador". */}
+          {user.role === "SUPER_ADMIN" ? (
+            <div
+              className="text-[0.65rem] font-bold uppercase tracking-wider text-gold"
+              data-testid="account-role"
+            >
+              {t("common.roleAdmin")}
+            </div>
+          ) : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

@@ -593,6 +593,17 @@ test("Profile shows the account's language and time zone", async ({ page }) => {
   const tz = lang() === "es" ? "America/Bogota" : "Europe/Madrid";
   await expect(page.getByTestId("current-timezone")).toContainText(tz);
   await expect(page.getByTestId(`profile-lang-${lang()}`)).toHaveAttribute("aria-checked", "true");
+  // Plan UX, A1 (F07): no internal role on screen - not in the profile, not in the account menu.
+  await expect(page.getByTestId("profile-role")).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText("USER");
+  // The session slides with use (F05): the profile says it closes sooner if it goes unused.
+  await expect(page.getByTestId("profile-session")).toContainText(
+    lang() === "es" ? "7 días" : "7 days",
+  );
+  await page.getByTestId("account-menu").click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  await expect(page.getByTestId("account-role")).toHaveCount(0);
+  await expect(page.getByRole("menu")).not.toContainText("USER");
 });
 
 test("Profile security: a failure to read the sessions or the activity says so, with the reference and a retry", async ({
