@@ -27,6 +27,7 @@
     "system": "System",
     "migration": "Migration",
     "users": "Users",
+    "messages": "Messages",
     "audit": "Audit",
     "settings": "Settings"
   },
@@ -90,6 +91,10 @@
     "users": {
       "title": "Users",
       "description": "Accounts, roles and status. SUPER_ADMIN only."
+    },
+    "messages": {
+      "title": "Messages",
+      "description": "The queue of e-mails to readers: what went out, what waits and what failed. Never a message's content."
     },
     "audit": {
       "title": "Audit",
@@ -157,6 +162,35 @@
     "sessionsEnded_one": "{count} session ended.",
     "sessionsEnded_other": "{count} sessions ended.",
     "unlocked": "Account unlocked."
+  },
+  "messages": {
+    "sendingOn": "Sending on",
+    "sendingOff": "Sending off: messages wait in the queue (FBI_EMAIL_SEND)",
+    "providerMissing": "Resend's key or sender is missing.",
+    "today": "Today (UTC): {sent} of {cap} sent",
+    "filter": "Filter by status",
+    "all": "All",
+    "countsHelp": "Counts of the last 7 days.",
+    "status": {
+      "queued": "Queued",
+      "sent": "Sent",
+      "failed": "Failed",
+      "bounced": "Bounced",
+      "complained": "Marked as spam",
+      "suppressed": "Not sent"
+    },
+    "attempts": "{n} attempts",
+    "sentAt": "sent on {date}",
+    "nextAt": "next attempt on {date}",
+    "preview": "View",
+    "hide": "Hide",
+    "link": "The button's link",
+    "empty": "No messages.",
+    "template": {
+      "privacy_request_received": "Receipt of a privacy request",
+      "privacy_request_answered": "Answer to a privacy request",
+      "legal_change": "A legal text changed"
+    }
   },
   "audit": {
     "when": "When",

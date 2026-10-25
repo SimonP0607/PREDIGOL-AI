@@ -16,6 +16,13 @@ import type {
   ReauthIn,
 } from "./types_customer";
 import type {
+  NotificationPreferences,
+  NotificationPreferencesIn,
+  MessageStatus,
+  OutboxPreview,
+  OutboxSummary,
+} from "./types_messaging";
+import type {
   IntelCalibration,
   IntelCosts,
   IntelDay,
@@ -377,6 +384,10 @@ export const v1 = {
   myPrivacyRequests: () => getJson<PrivacyRequest[]>("/me/privacy-requests"),
   openPrivacyRequest: (body: PrivacyRequestIn) =>
     postJson<PrivacyRequest>("/me/privacy-requests", body),
+  /** Which e-mails the reader receives, by category, and whether their address can receive them (plan UX, A5). */
+  myNotificationPreferences: () => getJson<NotificationPreferences>("/me/preferences"),
+  updateNotificationPreferences: (body: NotificationPreferencesIn) =>
+    patchJson<NotificationPreferences>("/me/preferences", body),
 
   // ── product ───────────────────────────────────────────────────────────────
   home: (q: Preview = {}) => getJson<Envelope<Home>>("/home", q),
@@ -711,6 +722,10 @@ export const v1 = {
     getJson<AdminPrivacyRequest[]>("/admin/privacy-requests", { status }),
   answerPrivacyRequest: (id: number, body: PrivacyAnswerIn) =>
     postJson<AdminPrivacyRequest>(`/admin/privacy-requests/${id}/answer`, body),
+  /** The queue of messages to readers (plan UX, A5): sending on or off, today's count, the latest messages. */
+  messageQueue: (status?: MessageStatus) =>
+    getJson<OutboxSummary>("/admin/messages", status ? { status } : {}),
+  messagePreview: (id: number) => getJson<OutboxPreview>(`/admin/messages/${id}/preview`),
   createUser: (body: AdminUserCreate) => postJson<Envelope<AdminUser>>("/admin/users", body),
   resetUserPassword: (id: number, password?: string) =>
     postJson<Envelope<AdminPasswordResult>>(

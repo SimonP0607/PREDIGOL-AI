@@ -62,6 +62,35 @@
       "ok": "Close sessions"
     }
   },
+  "notifications": {
+    "title": "Notifications",
+    "help": "Which e-mails we send you. Those about your account, its security, your requests about your data and changes to the legal texts always arrive.",
+    "email": "E-mail",
+    "always": "Always",
+    "on": "On",
+    "off": "Off",
+    "category": {
+      "account": "Your account",
+      "security": "Security",
+      "membership": "Membership",
+      "support": "Support",
+      "privacy": "Your data",
+      "legal": "Legal texts"
+    },
+    "categoryHelp": {
+      "account": "Invitation, activation and changes to your account.",
+      "security": "Recovering your password and sign-in notices.",
+      "membership": "Reminders before it expires and payment confirmations.",
+      "support": "Answers to your questions and reports.",
+      "privacy": "The receipt and the answer of your requests about your data.",
+      "legal": "Changes to the terms or the privacy policy you must accept."
+    },
+    "status": {
+      "bounced": "Your e-mail bounces: we cannot deliver messages to you. Check that your account's address is right and write to us if it changed.",
+      "complained": "You marked one of our e-mails as spam: we only send you what is essential about your account, its security, your data and the legal texts."
+    },
+    "statusSince": "Since {date}"
+  },
   "sessionUntil": "Open until {date} at most",
   "sessionIdle": "It closes sooner if you go {idle} without using it; every use renews it.",
   "idleDays_one": "{n} day",

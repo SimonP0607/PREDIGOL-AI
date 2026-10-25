@@ -11,14 +11,18 @@ export function Card({
   className,
   premium = false,
   as: Tag = "section",
+  id,
 }: {
   children: ReactNode;
   className?: string | undefined;
   premium?: boolean;
   as?: "section" | "article" | "div";
+  /** An anchor a link can lead to (an e-mail's button: /profile#privacy). */
+  id?: string | undefined;
 }) {
   return (
     <Tag
+      id={id}
       className={cn(
         "rounded-xl border border-border bg-card",
         premium && "gold-ring bg-gradient-to-b from-gold-soft/40 to-card",

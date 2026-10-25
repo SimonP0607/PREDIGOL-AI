@@ -1,7 +1,11 @@
-/** Account, language, time zone, password, security, and privacy (plan UX, A4). Preferences are stored on the account. */
-import { useMemo, useState, type FormEvent } from "react";
+/**
+ * Account, language, time zone, password, security, notifications (plan UX, A5) and privacy (A4). Preferences are
+ * stored on the account. An e-mail's button can lead to a block: /profile#privacy, /profile#notifications.
+ */
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Bell,
   Check,
   Globe2,
   History,
@@ -31,6 +35,7 @@ import { Card, PageTitle, errorMessage } from "@/product/shared/States";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { cn } from "@/lib/utils";
 import { AccessPanel, SessionsPanel, TwoFactorPanel } from "./SecurityPanels";
+import { NotificationsPanel } from "./NotificationsPanel";
 import { PrivacyPanel } from "./PrivacyPanel";
 
 /** "7 días", "8 horas": how long a session may go unused. */
@@ -234,11 +239,23 @@ function PasswordForm() {
   );
 }
 
+/** The block an address names (#privacy), brought into view once the page is there - the browser's own jump comes
+ * before the page renders. */
+function useAnchor(ready: boolean): void {
+  useEffect(() => {
+    if (!ready || typeof window === "undefined") return;
+    const id = window.location.hash.slice(1);
+    if (!/^[a-z-]{1,40}$/.test(id)) return;
+    document.getElementById(id)?.scrollIntoView({ block: "start" });
+  }, [ready]);
+}
+
 export function ProfilePage() {
   const auth = useAuth();
   const { locale } = useI18n();
   const navigate = useNavigate();
   const user = auth.user;
+  useAnchor(Boolean(user));
   if (!user) return null;
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -342,7 +359,15 @@ export function ProfilePage() {
         <AccessPanel />
       </Card>
 
-      <Card className="p-5">
+      <Card className="scroll-mt-20 p-5" id="notifications">
+        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
+          <Bell aria-hidden className="h-4 w-4 text-primary" />
+          {t("profile.notifications.title")}
+        </h2>
+        <NotificationsPanel />
+      </Card>
+
+      <Card className="scroll-mt-20 p-5" id="privacy">
         <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
           <Lock aria-hidden className="h-4 w-4 text-primary" />
           {t("legal.privacy.title")}

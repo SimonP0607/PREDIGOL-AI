@@ -32,6 +32,7 @@ import { Route as AdminEvolutionRouteImport } from './routes/admin.evolution'
 import { Route as AdminIntelligenceRouteImport } from './routes/admin.intelligence'
 import { Route as AdminLearningRouteImport } from './routes/admin.learning'
 import { Route as AdminMemoryRouteImport } from './routes/admin.memory'
+import { Route as AdminMessagesRouteImport } from './routes/admin.messages'
 import { Route as AdminMigrationRouteImport } from './routes/admin.migration'
 import { Route as AdminModelsRouteImport } from './routes/admin.models'
 import { Route as AdminOddsRouteImport } from './routes/admin.odds'
@@ -168,6 +169,11 @@ const AdminMemoryRoute = AdminMemoryRouteImport.update({
   path: '/memory',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMessagesRoute = AdminMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMigrationRoute = AdminMigrationRouteImport.update({
   id: '/migration',
   path: '/migration',
@@ -292,6 +298,7 @@ export interface FileRoutesByFullPath {
   '/admin/intelligence': typeof AdminIntelligenceRoute
   '/admin/learning': typeof AdminLearningRoute
   '/admin/memory': typeof AdminMemoryRoute
+  '/admin/messages': typeof AdminMessagesRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
@@ -336,6 +343,7 @@ export interface FileRoutesByTo {
   '/admin/intelligence': typeof AdminIntelligenceRoute
   '/admin/learning': typeof AdminLearningRoute
   '/admin/memory': typeof AdminMemoryRoute
+  '/admin/messages': typeof AdminMessagesRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
@@ -382,6 +390,7 @@ export interface FileRoutesById {
   '/admin/intelligence': typeof AdminIntelligenceRoute
   '/admin/learning': typeof AdminLearningRoute
   '/admin/memory': typeof AdminMemoryRoute
+  '/admin/messages': typeof AdminMessagesRoute
   '/admin/migration': typeof AdminMigrationRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/odds': typeof AdminOddsRoute
@@ -429,6 +438,7 @@ export interface FileRouteTypes {
     | '/admin/intelligence'
     | '/admin/learning'
     | '/admin/memory'
+    | '/admin/messages'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
@@ -473,6 +483,7 @@ export interface FileRouteTypes {
     | '/admin/intelligence'
     | '/admin/learning'
     | '/admin/memory'
+    | '/admin/messages'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
@@ -518,6 +529,7 @@ export interface FileRouteTypes {
     | '/admin/intelligence'
     | '/admin/learning'
     | '/admin/memory'
+    | '/admin/messages'
     | '/admin/migration'
     | '/admin/models'
     | '/admin/odds'
@@ -721,6 +733,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMemoryRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/messages': {
+      id: '/admin/messages'
+      path: '/messages'
+      fullPath: '/admin/messages'
+      preLoaderRoute: typeof AdminMessagesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/migration': {
       id: '/admin/migration'
       path: '/migration'
@@ -877,6 +896,7 @@ interface AdminRouteChildren {
   AdminIntelligenceRoute: typeof AdminIntelligenceRoute
   AdminLearningRoute: typeof AdminLearningRoute
   AdminMemoryRoute: typeof AdminMemoryRoute
+  AdminMessagesRoute: typeof AdminMessagesRoute
   AdminMigrationRoute: typeof AdminMigrationRoute
   AdminModelsRoute: typeof AdminModelsRoute
   AdminOddsRoute: typeof AdminOddsRoute
@@ -909,6 +929,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminIntelligenceRoute: AdminIntelligenceRoute,
   AdminLearningRoute: AdminLearningRoute,
   AdminMemoryRoute: AdminMemoryRoute,
+  AdminMessagesRoute: AdminMessagesRoute,
   AdminMigrationRoute: AdminMigrationRoute,
   AdminModelsRoute: AdminModelsRoute,
   AdminOddsRoute: AdminOddsRoute,

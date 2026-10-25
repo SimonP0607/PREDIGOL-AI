@@ -62,6 +62,35 @@
       "ok": "Cerrar sesiones"
     }
   },
+  "notifications": {
+    "title": "Notificaciones",
+    "help": "Qué correos te enviamos. Los de tu cuenta, su seguridad, tus solicitudes sobre tus datos y los cambios de los textos legales llegan siempre.",
+    "email": "Correo",
+    "always": "Siempre",
+    "on": "Activado",
+    "off": "Desactivado",
+    "category": {
+      "account": "Tu cuenta",
+      "security": "Seguridad",
+      "membership": "Membresía",
+      "support": "Soporte",
+      "privacy": "Tus datos",
+      "legal": "Textos legales"
+    },
+    "categoryHelp": {
+      "account": "Invitación, activación y cambios de tu cuenta.",
+      "security": "Recuperar tu contraseña y avisos de acceso.",
+      "membership": "Recordatorios antes de que venza y confirmaciones de pago.",
+      "support": "Respuestas a tus preguntas y reportes.",
+      "privacy": "El acuse y la respuesta de tus solicitudes sobre tus datos.",
+      "legal": "Cambios de los términos o de la privacidad que debes aceptar."
+    },
+    "status": {
+      "bounced": "Tu correo rebota: no podemos entregarte mensajes. Revisa que la dirección de tu cuenta sea correcta y escríbenos si cambió.",
+      "complained": "Marcaste un correo nuestro como spam: solo te enviamos lo imprescindible de tu cuenta, su seguridad, tus datos y los textos legales."
+    },
+    "statusSince": "Desde el {date}"
+  },
   "sessionUntil": "Abierta hasta el {date} como máximo",
   "sessionIdle": "Se cierra antes si pasas {idle} sin usarla; cada uso la renueva.",
   "idleDays_one": "{n} día",

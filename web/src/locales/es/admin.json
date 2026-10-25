@@ -27,6 +27,7 @@
     "system": "Sistema",
     "migration": "Migración",
     "users": "Usuarios",
+    "messages": "Mensajes",
     "audit": "Auditoría",
     "settings": "Ajustes"
   },
@@ -90,6 +91,10 @@
     "users": {
       "title": "Usuarios",
       "description": "Cuentas, roles y estado. Solo SUPER_ADMIN."
+    },
+    "messages": {
+      "title": "Mensajes",
+      "description": "La cola de correos a lectores: qué salió, qué espera y qué falló. Nunca el contenido de un mensaje."
     },
     "audit": {
       "title": "Auditoría",
@@ -157,6 +162,35 @@
     "sessionsEnded_one": "{count} sesión cerrada.",
     "sessionsEnded_other": "{count} sesiones cerradas.",
     "unlocked": "Cuenta desbloqueada."
+  },
+  "messages": {
+    "sendingOn": "Envío encendido",
+    "sendingOff": "Envío apagado: los mensajes esperan en la cola (FBI_EMAIL_SEND)",
+    "providerMissing": "Falta la clave o el remitente de Resend.",
+    "today": "Hoy (UTC): {sent} de {cap} enviados",
+    "filter": "Filtrar por estado",
+    "all": "Todos",
+    "countsHelp": "Recuentos de los últimos 7 días.",
+    "status": {
+      "queued": "En cola",
+      "sent": "Enviado",
+      "failed": "Falló",
+      "bounced": "Rebotó",
+      "complained": "Marcado como spam",
+      "suppressed": "No enviado"
+    },
+    "attempts": "{n} intentos",
+    "sentAt": "enviado el {date}",
+    "nextAt": "próximo intento el {date}",
+    "preview": "Ver",
+    "hide": "Ocultar",
+    "link": "Enlace del botón",
+    "empty": "No hay mensajes.",
+    "template": {
+      "privacy_request_received": "Acuse de una solicitud de privacidad",
+      "privacy_request_answered": "Respuesta a una solicitud de privacidad",
+      "legal_change": "Cambio de un texto legal"
+    }
   },
   "audit": {
     "when": "Cuándo",
