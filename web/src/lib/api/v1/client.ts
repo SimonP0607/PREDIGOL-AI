@@ -22,6 +22,7 @@ import type {
   OutboxPreview,
   OutboxSummary,
 } from "./types_messaging";
+import type { ProductOverview } from "./types_events";
 import type {
   IntelCalibration,
   IntelCosts,
@@ -726,6 +727,8 @@ export const v1 = {
   messageQueue: (status?: MessageStatus) =>
     getJson<OutboxSummary>("/admin/messages", status ? { status } : {}),
   messagePreview: (id: number) => getJson<OutboxPreview>(`/admin/messages/${id}/preview`),
+  /** Product analytics (plan UX, A6): activation, habit, usage, devices - only with enough readers. */
+  productOverview: () => getJson<ProductOverview>("/admin/product"),
   createUser: (body: AdminUserCreate) => postJson<Envelope<AdminUser>>("/admin/users", body),
   resetUserPassword: (id: number, password?: string) =>
     postJson<Envelope<AdminPasswordResult>>(

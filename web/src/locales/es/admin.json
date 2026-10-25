@@ -28,6 +28,7 @@
     "migration": "Migración",
     "users": "Usuarios",
     "messages": "Mensajes",
+    "product": "Producto",
     "audit": "Auditoría",
     "settings": "Ajustes"
   },
@@ -95,6 +96,10 @@
     "messages": {
       "title": "Mensajes",
       "description": "La cola de correos a lectores: qué salió, qué espera y qué falló. Nunca el contenido de un mensaje."
+    },
+    "product": {
+      "title": "Producto",
+      "description": "Activación, hábito y uso del producto, con los eventos propios de un catálogo cerrado: sin terceros, sin IP y sin texto libre."
     },
     "audit": {
       "title": "Auditoría",
@@ -191,6 +196,50 @@
       "privacy_request_answered": "Respuesta a una solicitud de privacidad",
       "legal_change": "Cambio de un texto legal"
     }
+  },
+  "product": {
+    "title": "Analítica de producto",
+    "mode": {
+      "off": "Medición apagada (FBI_PRODUCT_EVENTS)",
+      "on": "Medición encendida",
+      "consent": "Medición solo con consentimiento de analítica"
+    },
+    "purge": {
+      "off": "Purga apagada",
+      "dry": "Purga en ensayo: cuenta lo que pasaría de su plazo y no borra (FBI_EVENTS_PURGE)",
+      "on": "Purga encendida: crudos a 90 días, agregados a 13 meses"
+    },
+    "empty": "Todavía no hay eventos.",
+    "insufficient": "Datos insuficientes: {n} lectores activos en 30 días; las cifras globales empiezan con {min}.",
+    "active": {
+      "d1": "Activos hoy",
+      "d7": "Activos en 7 días",
+      "d30": "Activos en 30 días"
+    },
+    "daysPerWeek": "Días activos por semana",
+    "errorsPerActive": "Errores por lector activo (7 días)",
+    "dauMau": "DAU/MAU (desde 100 lectores)",
+    "funnel": "Activación (30 días)",
+    "step": {
+      "activated": "Cuenta activada",
+      "onboarding_started": "Bienvenida empezada",
+      "onboarding_completed": "Bienvenida completada",
+      "first_value": "Primer valor (partido o pick)"
+    },
+    "devices": "Sesiones por dispositivo (7 días)",
+    "device": {
+      "phone": "Teléfono",
+      "tablet": "Tableta",
+      "desktop": "Escritorio",
+      "unknown": "Sin dato"
+    },
+    "usage": "Uso por función",
+    "event": "Evento",
+    "events7": "Eventos 7 d",
+    "readers7": "Lectores 7 d",
+    "events30": "Eventos 30 d",
+    "readers30": "Lectores 30 d",
+    "antiMetrics": "No se optimizan: el tiempo en la app, los picks guardados por lector ni los avisos enviados. El dueño y la cuenta sintética no cuentan."
   },
   "audit": {
     "when": "Cuándo",

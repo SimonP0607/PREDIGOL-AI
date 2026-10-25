@@ -28,6 +28,7 @@
     "migration": "Migration",
     "users": "Users",
     "messages": "Messages",
+    "product": "Product",
     "audit": "Audit",
     "settings": "Settings"
   },
@@ -95,6 +96,10 @@
     "messages": {
       "title": "Messages",
       "description": "The queue of e-mails to readers: what went out, what waits and what failed. Never a message's content."
+    },
+    "product": {
+      "title": "Product",
+      "description": "Activation, habit and use of the product, from its own events of a closed catalog: no third party, no IP, no free text."
     },
     "audit": {
       "title": "Audit",
@@ -191,6 +196,50 @@
       "privacy_request_answered": "Answer to a privacy request",
       "legal_change": "A legal text changed"
     }
+  },
+  "product": {
+    "title": "Product analytics",
+    "mode": {
+      "off": "Measuring off (FBI_PRODUCT_EVENTS)",
+      "on": "Measuring on",
+      "consent": "Measuring only with the analytics consent"
+    },
+    "purge": {
+      "off": "Purge off",
+      "dry": "Purge rehearsed: counts what would pass its retention and deletes nothing (FBI_EVENTS_PURGE)",
+      "on": "Purge on: raw events at 90 days, aggregates at 13 months"
+    },
+    "empty": "No events yet.",
+    "insufficient": "Not enough data: {n} readers active in 30 days; global figures start at {min}.",
+    "active": {
+      "d1": "Active today",
+      "d7": "Active in 7 days",
+      "d30": "Active in 30 days"
+    },
+    "daysPerWeek": "Active days per week",
+    "errorsPerActive": "Errors per active reader (7 days)",
+    "dauMau": "DAU/MAU (from 100 readers)",
+    "funnel": "Activation (30 days)",
+    "step": {
+      "activated": "Account activated",
+      "onboarding_started": "Welcome started",
+      "onboarding_completed": "Welcome completed",
+      "first_value": "First value (a match or a pick)"
+    },
+    "devices": "Sessions by device (7 days)",
+    "device": {
+      "phone": "Phone",
+      "tablet": "Tablet",
+      "desktop": "Desktop",
+      "unknown": "Unknown"
+    },
+    "usage": "Use by function",
+    "event": "Event",
+    "events7": "Events 7 d",
+    "readers7": "Readers 7 d",
+    "events30": "Events 30 d",
+    "readers30": "Readers 30 d",
+    "antiMetrics": "Not optimised: time in the app, picks saved per reader, notices sent. The owner and the synthetic account are not counted."
   },
   "audit": {
     "when": "When",
