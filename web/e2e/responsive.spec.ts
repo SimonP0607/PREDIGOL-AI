@@ -7,7 +7,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
-import { assertClean, getJson, note, settle, watch } from "./support";
+import { L, assertClean, getJson, note, settle, watch } from "./support";
 
 const PAGES = [
   "/home",
@@ -321,6 +321,71 @@ test("the parlay slip under a thumb: a 44 px close, nothing on its title, its fi
   await expect(sheet.getByTestId("slip-undo")).toBeVisible();
   await expect(sheet.getByTestId("slip-undo")).toHaveCount(0, { timeout: 8_000 });
   await expect(sheet.getByTestId("slip-leg")).toHaveCount(0);
+  await assertClean(page, w);
+});
+
+test("the update notice floats above the tab bar and the parlay button, its buttons in a finger's reach", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F33): the "new version" notice sat on the tab bar. It is raised by the service worker when a new
+  // version waits (src/lib/pwa.ts); here the same event is sent by hand.
+  const w = watch(page);
+  // A leg in the slip, so the parlay button shows too (the slip lives in this tab's session storage).
+  await page.addInitScript(() =>
+    window.sessionStorage.setItem(
+      "predigol.slip",
+      JSON.stringify([
+        {
+          fixture_id: 999_999,
+          market_key: "1X2",
+          selection: "Home",
+          line: "0",
+          home: "Local",
+          away: "Visitante",
+          kickoff_at: "2099-01-01T18:00:00Z",
+          odds: "2.00",
+          bookmaker: null,
+        },
+      ]),
+    ),
+  );
+  for (const [width, height] of [
+    [320, 700],
+    [390, 844],
+    [844, 390],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/home");
+    await settle(page);
+    await page.evaluate(() =>
+      window.dispatchEvent(
+        new CustomEvent("predigol:update-ready", { detail: { postMessage: () => undefined } }),
+      ),
+    );
+    const notice = page.getByTestId("update-toast");
+    await expect(notice).toBeVisible();
+    const box = await notice.boundingBox();
+    const bar = await page.getByRole("navigation", { name: L.es.nav.mainNavigation }).boundingBox();
+    expect(box && bar, `notice and tab bar at ${width}x${height}`).toBeTruthy();
+    if (!box || !bar) return;
+    expect(
+      box.y + box.height,
+      `the notice ends above the tab bar at ${width}x${height}`,
+    ).toBeLessThanOrEqual(bar.y);
+    const slip = await page.getByTestId("slip-open").boundingBox();
+    expect(slip, "the parlay button shows").toBeTruthy();
+    if (slip) {
+      const apart =
+        box.y + box.height <= slip.y ||
+        slip.y + slip.height <= box.y ||
+        box.x + box.width <= slip.x ||
+        slip.x + slip.width <= box.x;
+      expect(apart, `the notice covers the parlay button at ${width}x${height}`).toBe(true);
+    }
+    expect(await smallTargets(page, '[data-testid="update-toast"]'), "notice buttons").toEqual([]);
+    await page.getByTestId("update-later").click();
+    await expect(notice).toHaveCount(0);
+  }
   await assertClean(page, w);
 });
 

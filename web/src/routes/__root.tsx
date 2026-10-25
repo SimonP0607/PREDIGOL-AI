@@ -180,7 +180,11 @@ function RootComponent() {
   );
 }
 
-/** A new version of the app is installed and waiting: the reader decides when to switch (public/sw.js). */
+/**
+ * A new version of the app is installed and waiting: the reader decides when to switch (public/sw.js). On a phone or
+ * a tablet it floats above the tab bar and the parlay button (plan UX, A1, defect F33: it covered the tab bar); on a
+ * desk, bottom left, clear of the parlay button. Its buttons are 44 px tall under a finger.
+ */
 function UpdateToast() {
   const [worker, setWorker] = useState<{ postMessage: (m: unknown) => void } | null>(null);
   useEffect(() => {
@@ -195,14 +199,15 @@ function UpdateToast() {
     <div
       role="status"
       data-testid="update-toast"
-      className="fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-lg border border-primary/40 bg-card px-4 py-3 text-sm shadow-xl sm:inset-x-auto sm:right-4"
+      className="fixed inset-x-4 bottom-[calc(8.5rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-lg border border-primary/40 bg-card px-4 py-3 text-sm shadow-xl short:bottom-[calc(7rem+env(safe-area-inset-bottom))] lg:inset-x-auto lg:bottom-4 lg:left-4"
     >
       <span>{t("common.updateReady")}</span>
       <span className="flex shrink-0 gap-2">
         <button
           type="button"
           onClick={() => setWorker(null)}
-          className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+          data-testid="update-later"
+          className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:px-3"
         >
           {t("common.updateLater")}
         </button>
@@ -210,7 +215,7 @@ function UpdateToast() {
           type="button"
           onClick={() => applyUpdate(worker)}
           data-testid="update-now"
-          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground pointer-coarse:min-h-11"
         >
           <RefreshCw aria-hidden className="h-3.5 w-3.5" />
           {t("common.updateNow")}
