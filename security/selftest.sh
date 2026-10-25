@@ -100,8 +100,15 @@ expect_pass() { # <etiqueta>
   fi
 }
 
+# el mismo orden de búsqueda que security/scan.sh: GITLEAKS_BIN, el PATH y security/bin/ de la guarda
+BIN=${GITLEAKS_BIN:-}
+if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then BIN=$(command -v gitleaks 2> /dev/null || command -v gitleaks.exe 2> /dev/null || true); fi
+if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then
+  for c in "$GUARD/security/bin/gitleaks" "$GUARD/security/bin/gitleaks.exe"; do [ -x "$c" ] && BIN=$c && break; done
+fi
+[ -n "$BIN" ] && [ -x "$BIN" ] || { echo "selftest: no encuentro gitleaks (GITLEAKS_BIN, el PATH o security/bin/ de la guarda; security/README.md, «Instalar»)" >&2; exit 2; }
 echo "selftest: guarda en $GUARD"
-echo "selftest: $(${GITLEAKS_BIN:-gitleaks} version 2> /dev/null | tr -d '\r' | head -n 1 | sed 's/^/gitleaks /')"
+echo "selftest: gitleaks $("$BIN" version 2> /dev/null | tr -d '\r' | head -n 1) ($BIN)"
 echo
 echo "1) Lo que parece un secreto real se bloquea"
 LOWE=$(printf 'a1b2c3d4%.0s' 1 2 3 4) # 32 hexadecimales con solo 8 símbolos distintos: entropía 3,0 < 3,5 (la regla genérica de fábrica lo ignora)
