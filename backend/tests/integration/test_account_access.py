@@ -36,7 +36,7 @@ from fbi.auth import crypto, recovery, service, store, throttle, tokens, totp
 from fbi.auth.db import write_connection
 from fbi.auth.settings import reset as reset_auth_settings
 from fbi.core.config import reset_cache
-from fbi.customer import consents
+from fbi.customer import consents, legal
 from fbi.messaging import outbox
 from fbi.messaging.provider import Outgoing
 from fbi.messaging.templates import PREVIEW_LINK
@@ -137,7 +137,7 @@ def account(email: str, *, role: str = "USER") -> int:
     return int(row["id"])
 
 
-def one(dsn: str, sql: str, params: tuple[Any, ...] = ()) -> dict[str, Any]:
+def one(dsn: str, sql: str, params: tuple[Any, ...] | dict[str, Any] = ()) -> dict[str, Any]:
     with psycopg.connect(dsn) as conn, conn.cursor(row_factory=dict_row) as cur:
         cur.execute(sql, params)
         row = cur.fetchone()
@@ -636,8 +636,8 @@ def test_anonymising_an_account_with_its_address_typed_again(fresh: str, seed: S
                      "snapshot, saved_at) VALUES (%s, %s, '1X2', 'Home', 0, 'market', 2.1, '{}'::jsonb, now())",
                      (uid, seed.fixture_id))
         conn.execute("INSERT INTO customer.preferences (user_id) VALUES (%s)", (uid,))
-    consents.record(uid, [consents.Decision(p.kind, True, consents.legal.current(p.document).version)
-                          for p in consents.legal.PURPOSES if p.required], locale="es", source="gate")
+    consents.record(uid, [consents.Decision(p.kind, True, legal.current(p.document).version)
+                          for p in legal.PURPOSES if p.required], locale="es", source="gate")
     assert reader.post("/api/v1/me/privacy-requests", json={"kind": "privacy_deletion", "message": "Borren mis datos",
                                                             "password": PASSWORD}).status_code in (200, 201)
     lock_until_wrong = anon().post("/api/v1/auth/login", json={"email": f"gone@{DOMAIN}", "password": "nope-nope-1"})

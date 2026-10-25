@@ -36,10 +36,10 @@ class FolderSink:
 
     def send(self, message: Outgoing) -> str:
         provider_id = f"qa-{uuid.uuid4().hex[:16]}"
+        at = datetime.now(UTC).isoformat(timespec="milliseconds")
         record = {"id": provider_id, "to": message.to, "subject": message.subject, "text": message.text,
-                  "template": message.tags.get("template"), "category": message.tags.get("category"),
-                  "at": datetime.now(UTC).isoformat(timespec="milliseconds")}
-        path = self.folder / f"{record['at'].replace(':', '')}-{provider_id}.json"
+                  "template": message.tags.get("template"), "category": message.tags.get("category"), "at": at}
+        path = self.folder / f"{at.replace(':', '')}-{provider_id}.json"
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
         tmp.replace(path)  # the tests never read half a file
