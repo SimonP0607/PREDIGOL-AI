@@ -51,9 +51,9 @@ def test_a_changed_field_is_reported_by_route_and_by_schema(now: dict[str, Any])
 
 
 def test_a_new_parameter_is_reported() -> None:
-    old = {"GET /x": {"parameters": [], "answer": {}, "schemas": {}}}
-    new = {"GET /x": {"parameters": [{"name": "q", "in": "query", "required": False, "schema": {}}], "answer": {},
-                      "schemas": {}}}
+    old: dict[str, Any] = {"GET /x": {"parameters": [], "answer": {}, "schemas": {}}}
+    new: dict[str, Any] = {"GET /x": {"parameters": [{"name": "q", "in": "query", "required": False, "schema": {}}],
+                                      "answer": {}, "schemas": {}}}
     assert api_shapes.differences(old, new) == [
         "GET /x: parameters changed: [] -> [{'name': 'q', 'in': 'query', 'required': False, 'schema': {}}]"]
 
