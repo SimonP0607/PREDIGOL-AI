@@ -50,6 +50,15 @@ def people(migrated_database: str) -> Iterator[dict[str, int]]:
     reset_auth_settings()
 
 
+def scalars(node: Any, key: str = "") -> list[tuple[str, Any]]:
+    """Every value in an event, however deep, with the key it sits under."""
+    if isinstance(node, dict):
+        return [kv for k, x in node.items() for kv in scalars(x, str(k))]
+    if isinstance(node, list):
+        return [kv for x in node for kv in scalars(x, key)]
+    return [(key, node)]
+
+
 def signed_in(email: str, password: str, *, app: Any = None) -> TestClient:
     from fbi.api.app import create_app
 
@@ -72,8 +81,14 @@ def test_the_owners_test_error_reaches_sentry_under_its_request_id(people: dict[
         assert event["exception"]["values"][-1]["type"] == "MonitoringTestError"
         assert event["user"] == {"id": crypto.observability_id(people["owner"])}
         raw = transport.raw()
-        for secret in (OWNER, OWNER_PW, str(people["owner"]) + '"'):
+        for secret in (OWNER, OWNER_PW):
             assert secret not in raw, secret
+        # the account's id under no key that names an id, and as no text (a substring test flaked: id 1 against a
+        # request id ending in "1"; line numbers and flags may equal a small id, so they do not count)
+        owner_id = people["owner"]
+        found = [(k, v) for k, v in scalars(event) if (isinstance(v, str) and v == str(owner_id)) or (
+            isinstance(v, int) and not isinstance(v, bool) and v == owner_id and "id" in k.lower())]
+        assert found == [], found
     finally:
         owner.__exit__(None, None, None)
 
