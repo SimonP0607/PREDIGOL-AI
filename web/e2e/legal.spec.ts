@@ -122,8 +122,9 @@ test("the notice on every screen links the three texts", async ({ browser }) => 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     text("es", "responsible_gaming").title,
   );
-  // a signed-in reader reads it inside the product's own frame
-  await expect(page.getByTestId("tab-home")).toBeVisible();
+  // a signed-in reader reads it inside the product's own frame (the account menu, not the visitor's way in)
+  await expect(page.getByTestId("public-sign-in")).toHaveCount(0);
+  await expect(page.getByTestId("account-menu")).toBeVisible();
   await assertClean(page, w);
   await context.close();
 });
@@ -177,7 +178,7 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
       const box = gate.getByTestId(`consent-${p.kind}`);
       await expect(box).not.toBeChecked();
       // the server's own sentence, and the whole row answers a finger
-      const label = gate.locator("label", { has: box });
+      const label = gate.locator("label", { has: page.getByTestId(`consent-${p.kind}`) });
       await expect(label).toContainText(p.statement);
       expect((await label.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
     }
@@ -195,7 +196,7 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
     await expect(submit).toBeEnabled();
     await submit.click();
     await expect(gate).toHaveCount(0);
-    await expect(page.getByTestId("tab-home")).toBeVisible();
+    await expect(page.getByTestId("account-menu")).toBeVisible();
     await settle(page);
     const after = await getJson<{
       due: string[];
@@ -228,7 +229,7 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
     await gate.getByTestId("consent-privacy").check();
     await gate.getByTestId("consent-submit").click();
     await expect(gate).toHaveCount(0);
-    await expect(page.getByTestId("tab-home")).toBeVisible();
+    await expect(page.getByTestId("account-menu")).toBeVisible();
 
     // 3. a copy of the data: the password first, then a file with the reader's own data
     await page.goto("/profile");
