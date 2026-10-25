@@ -1,5 +1,6 @@
 # PrediGol on ONE server (a VPS with Ubuntu 24.04 LTS): PostgreSQL 16 (with pgBackRest for point-in-time recovery),
-# the API, the worker (exactly one), the web app and Caddy - HTTPS and the only public ports. The procedure, in
+# the API, the worker (exactly one), the messenger (exactly one; plan UX, A5), the web app and Caddy - HTTPS and the
+# only public ports. The procedure, in
 # Spanish, is README.md beside this file.
 #
 #   bin/predigolctl up        (docker compose --env-file /etc/predigol/predigol.env -f docker-compose.yml up -d)
@@ -10,7 +11,7 @@
 #                               Read by the scripts and interpolated here; NEVER handed whole to an application
 #                               container.
 #   /etc/predigol/app.env       the application's FBI_* settings (API-Football, Telegram, the second-factor key...):
-#                               handed to the API, the worker and one-off commands (ops).
+#                               handed to the API, the worker, the messenger and one-off commands (ops).
 # The database roles (db/grants.sql): the API connects as predigol_api, the worker as predigol_worker, migrations
 # and maintenance as the owner fbi - never as a superuser.
 # Data lives under PREDIGOL_DATA (default /srv/predigol): the database, the RAW store, the backups, Caddy's
@@ -193,6 +194,28 @@ services:
       start_period: 15m
     mem_limit: ${WORKER_MEM_LIMIT:-3g}
     cpus: ${WORKER_CPUS:-3}
+
+  # The messenger (plan UX, A5): sends the readers' e-mails from the queue (customer.messages_outbox) and drafts the
+  # owner's notices about the readers' side - with the API's database role, never the worker's, and nothing of
+  # PrediGol Intelligence; no RAW store. One per database (an advisory lock). Nothing leaves while FBI_EMAIL_SEND
+  # (app.env) is off. Rollback: FBI_EMAIL_SEND=0 (the queue is kept) and `docker compose stop messenger`.
+  messenger:
+    <<: *backend
+    container_name: predigol-messenger
+    hostname: predigol-messenger
+    command: ["python", "-m", "apps.messenger.main"]
+    environment:
+      <<: *backend-env
+      FBI_DATABASE_URL: postgresql+psycopg://predigol_api:${POSTGRES_API_PASSWORD}@postgres:5432/fbi
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "-m", "apps.messenger.main", "--alive"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 2m
+    mem_limit: ${MESSENGER_MEM_LIMIT:-384m}
+    cpus: ${MESSENGER_CPUS:-0.5}
 
   # One-off commands as the database OWNER: migrations, maintenance, accounts. Never started by `up`.
   #   docker compose run --rm ops alembic upgrade head

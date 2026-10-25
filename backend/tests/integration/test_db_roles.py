@@ -109,6 +109,24 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_worker", "customer.consents", "SELECT", False),
     ("predigol_worker", "customer.support_tickets", "SELECT", False),
     ("predigol_worker", "customer.ticket_messages", "INSERT", False),
+    # the messages to readers (plan UX, A5): the API and the messenger (the API's role) queue and record their fate,
+    # never delete one; the owner's notices and the messenger's cycles; the worker reads none of the readers' side
+    ("predigol_api", "customer.messages_outbox", "INSERT", True),
+    ("predigol_api", "customer.messages_outbox", "UPDATE", True),
+    ("predigol_api", "customer.messages_outbox", "DELETE", False),
+    ("predigol_api", "customer.preferences", "INSERT", True),
+    ("predigol_api", "customer.preferences", "UPDATE", True),
+    ("predigol_api", "customer.preferences", "DELETE", False),
+    ("predigol_api", "audit.notifications", "INSERT", True),
+    ("predigol_api", "audit.notifications", "UPDATE", False),
+    ("predigol_api", "audit.notifications", "DELETE", False),
+    ("predigol_api", "raw.ingestion_runs", "INSERT", True),
+    ("predigol_api", "raw.ingestion_runs", "UPDATE", True),
+    ("predigol_api", "raw.ingestion_runs", "DELETE", False),
+    ("predigol_api", "raw.ingestion_payloads", "INSERT", False),
+    ("predigol_worker", "customer.messages_outbox", "SELECT", False),
+    ("predigol_worker", "customer.preferences", "SELECT", False),
+    ("predigol_worker", "audit.notifications", "UPDATE", True),   # its notifier sends the messenger's drafts
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,
                                             expected: bool) -> None:
@@ -210,3 +228,56 @@ def test_retention_removes_only_old_operational_rows_after_a_fresh_backup(grante
         with psycopg.connect(granted, autocommit=True) as conn:
             conn.execute("DELETE FROM audit.storage_cleanups WHERE kind = 'retention'")
             conn.execute("DELETE FROM raw.provider_minute_usage")
+
+
+def test_the_messenger_does_its_work_with_the_apis_role_and_nothing_more(granted: str) -> None:
+    """Plan UX, A5 (SECURITY): the messenger runs as predigol_api - its cycle in the job ledger, the queue, the owner's
+    notices - and that role cannot delete a message nor touch PrediGol Intelligence; the worker cannot read the queue."""
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+    from fbi.messaging import notices, outbox
+    from fbi.messaging.provider import Outgoing
+    from fbi.notify.service import Draft
+
+    class Provider:
+        name = "fake"
+
+        def send(self, message: Outgoing) -> str:
+            return f"roles-{message.idempotency_key[-6:]}"
+
+    with psycopg.connect(granted) as conn:
+        uid = conn.execute("INSERT INTO auth.users (email, display_name, password_hash) VALUES "
+                           "('roles.messenger@example.org', 'R', '$argon2id$v=19$m=65536,t=3,p=4$cm9sZXM$cm9sZXM') "
+                           "RETURNING id").fetchone()
+        assert uid is not None
+        conn.commit()
+        try:
+            conn.execute("SET ROLE predigol_api")
+            ledger = RunLedger(conn)
+            run_id = ledger.open("messenger_cycle")
+            assert outbox.enqueue(conn, user_id=uid[0], template="privacy_request_answered",
+                                  params={"request": "privacy_query", "ticket": "1"},
+                                  dedup_key="roles:messenger:1") is not None
+            conn.commit()
+            report = outbox.dispatch(conn, Provider(), at=datetime.now(UTC))
+            assert report.sent == 1
+            assert notices.write(conn, [Draft("ticket_new", "ticket_new:roles", "t", "b", {"last_id": 0})]) == 1
+            ledger.close(run_id, RunCounters(rows_updated=1))
+            for sql in ("DELETE FROM customer.messages_outbox", "UPDATE audit.notifications SET status = 'sent'",
+                        "UPDATE picks.picks SET status = status", "INSERT INTO models.model_registry (name) VALUES ('x')",
+                        "DELETE FROM raw.ingestion_runs WHERE job_type = 'messenger_cycle'"):
+                with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                    conn.execute(sql)
+                conn.rollback()
+            conn.execute("SET ROLE predigol_worker")
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                conn.execute("SELECT 1 FROM customer.messages_outbox LIMIT 1")
+            conn.rollback()
+        finally:
+            conn.rollback()
+            conn.execute("RESET ROLE")
+            conn.execute("SET LOCAL fbi.customer_maintenance = 'on'")
+            conn.execute("DELETE FROM customer.messages_outbox WHERE dedup_key = 'roles:messenger:1'")
+            conn.execute("DELETE FROM audit.notifications WHERE dedup_key = 'ticket_new:roles'")
+            conn.execute("DELETE FROM raw.ingestion_runs WHERE job_type = 'messenger_cycle'")
+            conn.execute("DELETE FROM auth.users WHERE email = 'roles.messenger@example.org'")
+            conn.commit()

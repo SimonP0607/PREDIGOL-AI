@@ -4,9 +4,12 @@
 --   predigol_worker  the worker: reads and writes every data schema (core, market, features, models, picks, raw,
 --                    audit, analytics ...). No DDL, nothing in auth or customer, never the migration ledger.
 --   predigol_api     the API: reads what it shows; writes only accounts (auth), the customer's own data
---                    (customer: consents, privacy requests - plan UX, A4), a user's own records (picks.user_*) and
---                    the Admin Console's few tables (AI layer, research decisions, the evidence-ledger verdicts, the
---                    AI decision layer's run requests). Never ai.* results: those are the worker's, append-only.
+--                    (customer: consents, privacy requests - plan UX, A4; the messages to readers and their
+--                    choices - A5), a user's own records (picks.user_*) and the Admin Console's few tables (AI
+--                    layer, research decisions, the evidence-ledger verdicts, the AI decision layer's run
+--                    requests). Never ai.* results: those are the worker's, append-only. The messenger (plan UX, A5)
+--                    runs with this role: it also drafts the owner's notices (audit.notifications) and records
+--                    its cycles in the job ledger (raw.ingestion_runs).
 --
 -- Run as the owner after EVERY migration (bin/predigolctl does: deploy, import). Idempotent. A table a future
 -- migration adds is covered at once by the default privileges below, and re-granted explicitly the next run.
@@ -65,6 +68,11 @@ BEGIN
     -- the customer's own data (fbi.customer, plan UX, A4): a consent and a request's message are never edited or
     -- deleted (the tables' own triggers refuse it too); a request's status changes
     'customer.consents:INSERT', 'customer.support_tickets:INSERT, UPDATE', 'customer.ticket_messages:INSERT',
+    -- the messages to readers and their choices (fbi.messaging, plan UX, A5): a queued message's fate changes, it
+    -- is never deleted (the table's own triggers refuse it too); the owner's notices the messenger drafts (the
+    -- worker's notifier sends them) and the messenger's cycles in the job ledger
+    'customer.messages_outbox:INSERT, UPDATE', 'customer.preferences:INSERT, UPDATE',
+    'audit.notifications:INSERT', 'raw.ingestion_runs:INSERT, UPDATE',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',
