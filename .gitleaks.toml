@@ -2,7 +2,7 @@
 # Se usa igual en el hook de pre-commit (.githooks/pre-commit), en la puerta de cada lanzamiento (security/scan_release.sh) y en la CI
 # (.github/workflows/gitleaks.yml). Partimos de las reglas de fábrica de la versión fijada (security/GITLEAKS_VERSION) y solo se
 # permiten dos cosas, las dos con su motivo:
-#   1) las constantes FIJAS Y FALSAS de las pruebas (abajo);
+#   1) las constantes FIJAS Y FALSAS de las pruebas y las pocas líneas de código clasificadas como falsas (abajo);
 #   2) las coincidencias ya clasificadas del historial, una a una, en .gitleaksignore (con su explicación).
 # Cualquier otra coincidencia es un hallazgo: no se silencia con una expresión amplia. Un hallazgo real se REVOCA primero y se limpia después
 # (security/README.md). Los valores nunca se imprimen (--redact=100).
@@ -24,6 +24,24 @@ regexes = [
   '''^\s*(TEST_AUTH_KEY|SECRET)\s*=\s*["']''',
   '''"(new_|old_|current_)?password"\s*:''',
 ]
+
+[[allowlists]]
+description = "Líneas de código que parecen un secreto solo por llevar «key» en el nombre (etiquetas de mercado y de precio, argumentos de set_cookie): clasificadas una a una (security/README.md). Independiente del commit y de si la ruta lleva el prefijo backend/"
+# AND: solo cuenta en esos tres ficheros Y en una línea con esa forma exacta. Un valor al azar con otro nombre en esos mismos ficheros se sigue marcando.
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''(^|/)src/fbi/(backtesting/evaluate|research/prospective|api/security)\.py$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*BET_PRICE_KEY\s*=\s*["'][A-Za-z0-9_./:-]+["']\s*$''',
+  '''\bbaseline_key\s*=\s*["'][A-Za-z0-9_./:-]+["']''',
+  '''\bkey=cfg\.cookie_name\b''',
+]
+
+[[allowlists]]
+description = "Plantilla de variables de entorno sin valores: con una asignación vacía la regla genérica lee la línea siguiente. Las reglas por nombre siguen vivas en este fichero"
+targetRules = ["generic-api-key"]
+paths = ['''(^|/)deploy/env_example\.txt$''']
 
 # --- Reglas propias: los secretos de PrediGol por NOMBRE -----------------------------------------------------------------------------------
 # La regla genérica de fábrica descarta los valores con poca entropía (< 3,5 bits por carácter) y una clave real de 32 hexadecimales puede quedar por

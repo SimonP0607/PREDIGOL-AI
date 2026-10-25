@@ -130,6 +130,10 @@ w bot.env "FBI_TELEGRAM_BOT_TOKEN=$(rnd_digits 10):A$(rnd_url 34)"
 expect_block "token de bot de Telegram con su formato" "telegram-bot-api-token|predigol-secret-by-name"
 w src/auth.py "TEST_AUTH_KEY = \"$(rnd_alnum 44)\""
 expect_block "la constante de prueba (TEST_AUTH_KEY) FUERA de la carpeta de pruebas" "generic-api-key"
+w src/fbi/backtesting/evaluate.py "API_KEY = \"$(rnd_alnum 40)\""
+expect_block "un valor al azar en el mismo fichero de código clasificado (la excepción es solo para las etiquetas)" "generic-api-key"
+w deploy/env_example.txt "POSTGRES_PASSWORD=$(rnd_alnum 24)"
+expect_block "la plantilla deploy/env_example.txt con una contraseña escrita (las reglas por nombre siguen vivas)" "predigol-secret-by-name"
 {
   printf -- '-----BEGIN %s-----\n' "PRIVATE KEY"
   rnd_alnum 90
@@ -202,6 +206,15 @@ w setenv_ok.ps1 '$env:FBI_AUTH_SECRET_KEY = $env:SECRETO_DEL_GESTOR' '$env:POSTG
 expect_pass "PowerShell que toma el valor de otra variable o de un fichero"
 w allowed.py "API_FOOTBALL_KEY = \"$LOWE\"  # gitleaks:allow - valor de ejemplo de la documentación"
 expect_pass "una sola línea marcada con # gitleaks:allow y su motivo"
+# Estas tres líneas son EXACTAMENTE las que la excepción deja pasar; se componen en trozos para que este fichero no las contenga y se escanee como cualquier otro.
+KL=key
+KU=KEY
+EA="POSTGRES_PASSWORD="
+w src/fbi/backtesting/evaluate.py "BET_PRICE_$KU = \"pinnacle/closing/1X2\""
+w backend/src/fbi/research/prospective.py "compare(mine, market, baseline_$KL=\"market/close/shin\", market_$KL=\"1X2\")"
+expect_pass "etiquetas de mercado con «key» en el nombre, en los ficheros de código clasificados (con y sin el prefijo backend/)"
+w deploy/env_example.txt '# BOX A (.env, chmod 600). Never commit the filled-in file.' "$EA" 'PRIVATE_IP=10.0.0.2'
+expect_pass "plantilla con una asignación vacía seguida de otra línea"
 
 echo
 echo "3) SKIP_GITLEAKS y GITLEAKS_REQUIRED"
