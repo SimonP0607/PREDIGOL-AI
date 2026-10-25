@@ -24,20 +24,28 @@
 	}
 }
 
+# The security headers every response carries. One list for the site-wide block and for the server-function block below, so that they cannot drift
+# apart. (Caddy runs a site-wide `header` block last, and in this one the -Server removal makes it deferred, so a path cannot override one of its
+# fields from a handler: the path that needs another Content-Security-Policy gets its own block, and the site-wide one skips it.)
+(security_headers) {
+	Strict-Transport-Security "max-age=31536000"
+	X-Content-Type-Options "nosniff"
+	X-Frame-Options "DENY"
+	Referrer-Policy "strict-origin-when-cross-origin"
+	Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+	Cross-Origin-Opener-Policy "same-origin"
+	-Server
+}
+
 {$PREDIGOL_SITE} {
 	import /etc/caddy/snippets/tls-{$PREDIGOL_TLS_MODE}.caddy
 	encode zstd gzip
 
-	header {
-		Strict-Transport-Security "max-age=31536000"
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
-		Referrer-Policy "strict-origin-when-cross-origin"
-		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
-		Cross-Origin-Opener-Policy "same-origin"
+	@not_serverfn not path /_serverFn/*
+	header @not_serverfn {
+		import security_headers
 		# 'unsafe-inline' for scripts: the server-rendered page carries the framework's inline hydration script.
 		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://media.api-sports.io; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
-		-Server
 	}
 
 	# The API's interactive docs and schema list every route, the admin ones included: never public.
@@ -57,6 +65,22 @@
 		reverse_proxy api:8000 {
 			header_up X-Forwarded-For {client_ip}
 		}
+	}
+
+	# R02 (security plan, S1; GHSA-qx66-fv34-fjm8): a call to a TanStack Start server function is made by the app's own script with the
+	# literal header x-tsr-serverFn: true, never by a document navigation and never asking for HTML. This app defines no server function and
+	# its own CSRF middleware (src/start.ts) already answers 403 to anything that is not same-origin; this is a second lock at the door.
+	# A request that fails any of the three tests gets an empty 403; the others go on to the web as before. Either way the response carries
+	# the common security headers and a Content-Security-Policy that allows nothing. The header is client-controlled and proves nothing about
+	# who sends it: it is a filter, not authentication.
+	handle /_serverFn/* {
+		header {
+			import security_headers
+			Content-Security-Policy "default-src 'none'"
+		}
+		@not_a_call expression `{http.request.header.X-Tsr-Serverfn} != "true" || {http.request.header.Sec-Fetch-Mode} == "navigate" || {http.request.header.Accept}.contains("text/html")`
+		respond @not_a_call 403
+		reverse_proxy web:3000
 	}
 
 	# The service worker must be re-read on every visit, or an update would wait up to a day. (The web server
