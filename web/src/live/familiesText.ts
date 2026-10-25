@@ -285,6 +285,15 @@ export function ruleText(rule: FamiliesRule): string {
   return translateOr(`families.rule.${rule.measure}`, rule.convention);
 }
 
+/**
+ * The rule that grades a bet on a market, from its key as the forecast of a match names it (`corners_ft@v1`): what it measures, in the reader's
+ * language; the key itself for a rule the catalog has no words for.
+ */
+export function ruleKeyText(key: string): string {
+  const measure = key.split("@")[0] ?? key;
+  return translateOr(`families.rule.${measure}`, key);
+}
+
 /** What the registry warns about a rule, or an empty text. */
 export function ruleNote(rule: FamiliesRule): string {
   if (hasKey(`families.rule.${rule.measure}`))

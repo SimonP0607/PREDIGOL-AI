@@ -23,6 +23,7 @@ import {
   reasonsShown,
   resultName,
   resultTone,
+  ruleKeyText,
   ruleNote,
   ruleText,
   shapeOf,
@@ -299,6 +300,19 @@ describe("how a bet is graded", () => {
     expect(ruleText(rule("offsides_ft", { convention: "offsides of the match" }))).toBe(
       "offsides of the match",
     );
+  });
+
+  test("a rule named by its key, as the forecast of a match names it, is said the way the tab says it", () => {
+    for (const measure of Object.values(MEASURE_OF_FAMILY).flat()) {
+      for (const locale of LOCALES) {
+        setLocale(locale);
+        expect(ruleKeyText(`${measure}@v1`)).toBe(ruleText(rule(measure)));
+      }
+    }
+    setLocale("es");
+    expect(ruleKeyText("corners_ft@v1")).toContain("Córners del partido");
+    expect(ruleKeyText("corners_ft")).toContain("Córners del partido");
+    expect(ruleKeyText("offsides_ft@v2")).toBe("offsides_ft@v2");
   });
 
   test("the warning about the cards convention is kept; the registry's own note is said only for a rule the catalog does not know", () => {

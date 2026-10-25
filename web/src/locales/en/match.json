@@ -583,14 +583,20 @@
       "edge": "edge",
       "ev": "expected value",
       "state": "state",
-      "selection": "selection"
+      "selection": "selection",
+      "familiesTitle": "Families for this match (research, admin only)",
+      "familiesNote": "What the families of goals by half, corners, cards and yellow cards forecast: the model's own number, uncalibrated and with no measured range. In brackets, the fair odds (1 / probability). It is research: not the forecast above, and not a recommendation.",
+      "familyMarkets": "Markets: {n}",
+      "settledWith": "Graded with: {rule}",
+      "noRule": "No settlement rule can grade a bet on this market."
     },
     "reason": {
       "data_not_fit": "PrediGol does not forecast this competition: its data is not fit for a model yet.",
       "quarantined": "PrediGol made no forecast: the data of this match is under review.",
       "no_forecast_yet": "PrediGol has no forecast for this match yet.",
       "no_evaluation": "The decision layer has not evaluated any price of this match: without a price there is no value.",
-      "no_pick": "No pick was frozen for this match: a forecast, however sure, is not one."
+      "no_pick": "No pick was frozen for this match: a forecast, however sure, is not one.",
+      "no_family_forecast": "The families have forecast nothing for this match: they forecast the matches about to be played of the competitions whose data is fit for a model."
     }
   },
   "calendar": {
