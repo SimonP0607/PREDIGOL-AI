@@ -1,10 +1,11 @@
 /** Cards, section headers and the honest empty / error / loading states of the product. */
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import { AlertTriangle, ChevronRight, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t, translateOr } from "@/lib/i18n";
 import { LiveApiError } from "@/lib/api/v1/client";
+import { track } from "@/lib/track";
 
 export function Card({
   children,
@@ -122,6 +123,12 @@ export function ErrorState({
   className?: string | undefined;
 }) {
   const rid = error instanceof LiveApiError ? error.requestId : null;
+  const code = error instanceof LiveApiError ? error.code : "client";
+  const status = error instanceof LiveApiError ? error.status : 0;
+  // Plan UX, A6: which errors readers see (the code and the status, never the message).
+  useEffect(() => {
+    track("error_shown", { code: /^[A-Za-z0-9_.+-]{1,40}$/.test(code) ? code : "other", status });
+  }, [code, status]);
   return (
     <div
       role="alert"

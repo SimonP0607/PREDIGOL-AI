@@ -58,6 +58,7 @@ import {
   type SlipLeg,
 } from "./model";
 import { useSlip } from "./slipContext";
+import { track } from "@/lib/track";
 
 /** The server is asked once the legs stop changing for this long; the client's figures show at once. */
 const CHECK_DELAY_MS = 250;
@@ -655,6 +656,7 @@ export function SlipSheet() {
   const create = useMutation({
     mutationFn: () => v1.createParlay({ name: name.trim() || null, legs: legsBody(legs) }),
     onSuccess: () => {
+      track("parlay_created", { legs: Math.min(Math.max(legs.length, 1), 30) });
       toast.success(t("records.toast.parlaySaved"), {
         action: {
           label: t("records.slip.history"),

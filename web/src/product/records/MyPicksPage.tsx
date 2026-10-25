@@ -38,6 +38,7 @@ import { useRefreshMine } from "./hooks";
 import { HISTORY_GROUPS, hasStarted } from "./model";
 import { useSlip } from "./slipContext";
 import { Recap } from "./Recap";
+import { track } from "@/lib/track";
 
 const PERIODS: readonly HistoryPeriod[] = ["today", "7d", "30d", "all"];
 
@@ -263,6 +264,7 @@ function SavedPickRow({ pick }: { pick: UserPick }) {
   const remove = useMutation({
     mutationFn: () => v1.removePick(pick.id),
     onSuccess: () => {
+      track("pick_removed");
       toast(t("records.toast.unsaved"));
       void refresh();
     },

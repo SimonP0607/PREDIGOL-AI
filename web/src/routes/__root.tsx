@@ -29,6 +29,7 @@ import { applyUpdate, registerServiceWorker, UPDATE_EVENT } from "@/lib/pwa";
 import { SecurityStep } from "@/product/auth/SecurityStep";
 import { ConsentGate } from "@/product/legal/ConsentGate";
 import { isLegalPath } from "@/product/legal/links";
+import { noteLocation, startSession } from "@/lib/track";
 
 function NotFoundComponent() {
   return (
@@ -302,6 +303,12 @@ function Gate() {
   const onAdmin = path === "/admin" || path.startsWith("/admin/");
   // The legal texts are public (plan UX, A4): anyone reads the terms before having an account.
   const onLegal = isLegalPath(path);
+  // Plan UX, A6: where the reader comes from (match_opened's origin) and the session's start, once per tab.
+  useEffect(() => noteLocation(path), [path]);
+  const measured = auth.status === "signed-in" && (auth.user?.consents_due ?? []).length === 0;
+  useEffect(() => {
+    if (measured) startSession(auth.locale);
+  }, [measured, auth.locale]);
 
   useEffect(() => {
     if (auth.status === "anonymous" && !onLogin && !onLegal) {

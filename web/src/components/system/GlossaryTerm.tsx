@@ -1,3 +1,4 @@
+import { track } from "@/lib/track";
 import { useId, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
@@ -76,7 +77,10 @@ export function GlossaryTerm({
             data-glossary={term}
             aria-haspopup="dialog"
             aria-expanded={open !== null}
-            onClick={() => setOpen(open ? null : wantsSheet() ? "sheet" : "card")}
+            onClick={() => {
+              if (!open) track("term_explained", { term });
+              setOpen(open ? null : wantsSheet() ? "sheet" : "card");
+            }}
             className={cn(
               "tap relative cursor-help rounded-sm text-inherit underline decoration-dotted decoration-1 underline-offset-[3px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               className,

@@ -16,6 +16,7 @@ import { useSlip } from "@/product/records/slipContext";
 import { adviceFor, builtToSlip, legsBody } from "./builderForm";
 import { LegRow } from "./LegRow";
 import { viewOfBuilt } from "./legs";
+import { track } from "@/lib/track";
 
 function Stat({ label, title, children }: { label: string; title?: string; children: ReactNode }) {
   return (
@@ -58,6 +59,7 @@ export function Result({ body }: { body: BuiltParlay }) {
       }),
     onSuccess: () => {
       setSaved(true);
+      track("parlay_created", { legs: Math.min(Math.max(body.legs.length, 1), 30) });
       toast.success(t("parlays.builder.savedToast"), {
         action: {
           label: t("parlays.builder.seeMine"),

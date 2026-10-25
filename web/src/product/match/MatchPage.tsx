@@ -25,6 +25,7 @@ import { liveSnapshot, matchPhase, shownScore } from "./model";
 import { StatsTab } from "./StatsTab";
 import { SummaryTab } from "./SummaryTab";
 import { useMatchTab } from "./useMatchTab";
+import { originOf, track } from "@/lib/track";
 
 const USER_TABS: readonly TabKey[] = ["summary", "picks", "stats", "markets", "lineups"];
 const ADMIN_TABS: readonly TabKey[] = [...USER_TABS, "advanced"];
@@ -204,6 +205,15 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
   });
   const tabs = auth.showAdmin ? ADMIN_TABS : USER_TABS;
   const [tab, setTab] = useMatchTab(fixtureId, tabs);
+  // Plan UX, A6: which matches readers open, from where, and which sections they read.
+  useEffect(() => {
+    if (valid) track("match_opened", { match_id: Number(fixtureId), origin: originOf() });
+  }, [fixtureId, valid]);
+  const openSection = (key: TabKey) => {
+    if (valid && key !== tab)
+      track("match_section_opened", { section: key, match_id: Number(fixtureId) });
+    setTab(key);
+  };
 
   if (!valid) return <NotFound />;
   if (!view.data) {
@@ -244,7 +254,7 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
       retry: () => void center.refetch(),
     },
     showAdmin: auth.showAdmin,
-    goTo: setTab,
+    goTo: openSection,
   };
 
   let panel: ReactNode;
@@ -273,7 +283,7 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
       <BackLink />
       <MatchHeader ctx={ctx} />
       <div id="match-tabs-anchor" aria-hidden className="mb-0" />
-      <TabBar tabs={tabs} active={tab} onSelect={setTab} live={phase === "live"} />
+      <TabBar tabs={tabs} active={tab} onSelect={openSection} live={phase === "live"} />
       <div
         role="tabpanel"
         id={`match-panel-${tab}`}

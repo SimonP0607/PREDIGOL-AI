@@ -14,6 +14,7 @@ import type {
   NotificationPreferences,
 } from "@/lib/api/v1/types_messaging";
 import { t } from "@/lib/i18n";
+import { track } from "@/lib/track";
 import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ErrorState, errorMessage } from "@/product/shared/States";
@@ -155,6 +156,10 @@ export function NotificationsPanel() {
     try {
       const next = await v1.updateNotificationPreferences({ email: { [item.category]: !item.on } });
       qc.setQueryData(PREFERENCES_KEY, next);
+      track(item.on ? "notification_disabled" : "notification_enabled", {
+        channel: "email",
+        category: item.category,
+      });
     } catch (err) {
       setFailure(errorMessage(err));
     } finally {
