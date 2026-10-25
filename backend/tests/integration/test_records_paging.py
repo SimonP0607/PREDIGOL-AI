@@ -164,3 +164,17 @@ def test_a_cursor_the_api_did_not_write_is_refused(world: dict[str, Any], cursor
     for path in ("/api/v1/me/picks", "/api/v1/me/parlays"):
         r = c.get(path, params={"cursor": cursor})
         assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_cursor", (path, r.text)
+
+
+def test_a_page_past_the_last_one_does_not_say_the_list_is_empty(world: dict[str, Any]) -> None:
+    """A cursor that has nothing after it (the last record was removed meanwhile) answers an empty page, but never
+    "You have not saved a pick yet" when the account has picks (review of A1)."""
+    from fbi.api.services.records import encode_cursor
+
+    c = client_for(world["user"])
+    past = encode_cursor("p", NOW - timedelta(days=400), 1)
+    page = c.get("/api/v1/me/picks", params={"cursor": past}).json()
+    assert page["status"] == "empty" and page["meta"]["total"] == FIXTURES * 3
+    assert "not saved a pick yet" not in page["reason"]
+    empty = client_for(world["other"]).get("/api/v1/me/parlays").json()
+    assert empty["meta"]["total"] == 0 and "not built a parlay yet" in empty["reason"]

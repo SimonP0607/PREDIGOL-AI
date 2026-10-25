@@ -348,8 +348,10 @@ def user_picks(conn: Conn, *, user_id: int, status: str | None, limit: int,
         user_odds=r["user_odds"], saved_at=r["saved_at"], status=r["status"], profit_units=r["profit_units"],
         settled_at=r["settled_at"], snapshot=r["snapshot"], corrections=trail.get(r["id"], [])) for r in rows]
     next_cursor = encode_cursor("p", rows[-1]["m_kickoff_at"], int(rows[-1]["id"])) if more else None
-    return listing(out, empty_reason="You have not saved a pick yet.", total=int(total["n"]) if total else 0,
-                   limit=limit, offset=0 if cursor is None else None, next_cursor=next_cursor)
+    n = int(total["n"]) if total else 0
+    # An empty page past the last one is not an empty list (review of A1): it says so.
+    return listing(out, empty_reason="You have not saved a pick yet." if n == 0 else "No more picks after this one.",
+                   total=n, limit=limit, offset=0 if cursor is None else None, next_cursor=next_cursor)
 
 
 USER_PARLAYS_SQL = """
@@ -390,8 +392,9 @@ def user_parlays(conn: Conn, *, user_id: int, limit: int, cursor: str | None = N
         warnings=list((p["validation"] or {}).get("warnings", [])), legs=legs[int(p["id"])],
         corrections=trail.get(p["id"], [])) for p in parlays]
     next_cursor = encode_cursor("l", parlays[-1]["created_at"], int(parlays[-1]["id"])) if more else None
-    return listing(out, empty_reason="You have not built a parlay yet.", total=int(total["n"]) if total else 0,
-                   limit=limit, offset=0 if cursor is None else None, next_cursor=next_cursor)
+    n = int(total["n"]) if total else 0
+    return listing(out, empty_reason="You have not built a parlay yet." if n == 0 else "No more parlays after this one.",
+                   total=n, limit=limit, offset=0 if cursor is None else None, next_cursor=next_cursor)
 
 
 def history(conn: Conn, *, user_id: int, period: userdata.Period, tz: str, include_shadow: bool,
