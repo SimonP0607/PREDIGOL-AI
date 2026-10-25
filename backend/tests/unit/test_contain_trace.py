@@ -9,6 +9,7 @@ The client still gets nothing but the request id.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterator, MutableMapping
 from contextlib import contextmanager
 from typing import Any
@@ -121,7 +122,7 @@ def test_the_lines_where_libraries_put_the_data_never_reach_the_log() -> None:
         refuse()
     except ValueError as exc:
         summary, trace = error_summary(exc), error_trace(exc)
-    assert summary == 'duplicate key value violates unique constraint "users_email_key"'
+    assert summary == "duplicate key value violates unique constraint <value>", "a quoted text is not logged"
     assert "refuse" in trace and trace.endswith("ValueError")
     for secret in ("Ana Pérez", "ana@example.com", "DETAIL"):
         assert secret not in summary and secret not in trace
@@ -186,3 +187,57 @@ def test_a_chain_of_causes_keeps_each_cause_s_frames_and_none_of_their_messages(
         trace = error_trace(exc)
     assert "low" in trace and "high" in trace and "KeyError (a cause)" in trace and trace.endswith("RuntimeError")
     assert secret not in trace and note not in trace
+
+
+def test_a_value_the_caller_passed_is_not_logged_even_where_python_quotes_it() -> None:
+    """int() and float() quote the text they could not read, fromisoformat() the date, a KeyError is the key (third
+    review of A1): a quoted value becomes <value> and a KeyError says nothing but its type."""
+    from datetime import date
+
+    from fbi.core.logging import error_summary
+
+    name = "Juan " + "Pérez Gómez"  # data, as a request would bring it: not code
+    summaries = []
+    for parse in (int, float, date.fromisoformat):
+        try:
+            parse(name)
+        except ValueError as exc:
+            summaries.append(error_summary(exc))
+    try:
+        {}[name]
+    except KeyError as exc:
+        summaries.append(error_summary(exc))
+    assert len(summaries) == 4
+    for summary in summaries:
+        assert "Pérez" not in summary and "Juan" not in summary, summary
+    assert summaries[0] == "invalid literal for int() with base 10: <value>"
+    assert summaries[3] == "", "a KeyError's message is the key"
+
+
+def test_a_long_message_is_cut_before_the_filter_runs() -> None:
+    """The filter's patterns over a 16 KB line took more than a second of the server's loop (third review of A1)."""
+    from fbi.core.logging import error_summary
+
+    huge = ValueError("a." * 8000)  # a 16 KB run the address pattern backtracks over: 0.6 s when filtered whole
+    started = time.perf_counter()
+    summary = error_summary(huge)
+    assert time.perf_counter() - started < 0.1 and len(summary) <= 300
+
+
+def test_when_summarising_fails_the_answer_and_the_log_line_still_come(boom: TestClient,
+                                                                       monkeypatch: pytest.MonkeyPatch) -> None:
+    """An error inside the summary would reach the server, which logs the original error's messages unfiltered
+    (third review of A1): the log line keeps the type and the request id, the client gets its 500."""
+    import fbi.api.app as app_module
+
+    def broken(_: BaseException) -> str:
+        raise RuntimeError("the summariser broke")
+
+    monkeypatch.setattr(app_module, "error_summary", broken)
+    with api_logs(monkeypatch) as logs:
+        r = boom.get("/api/v1/__boom")
+    assert r.status_code == 500 and r.json()["error"]["code"] == "internal"
+    line = next(e for e in logs if e["event"] == "api.unhandled")
+    assert line["error"] == "ValueError" and line["request_id"] == r.json()["request_id"]
+    assert "summarising the error failed" in line["message"] and line["trace"] == ""
+    assert EMAIL not in " ".join(str(v) for v in line.values())

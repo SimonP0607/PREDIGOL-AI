@@ -82,6 +82,13 @@ _PERSONAL_PATTERNS = (
 )
 
 
+# A value quoted inside a message - Python's own repr ('...') or a library's ("...") - is what a caller passed: int()
+# and float() quote the text they could not read, fromisoformat() the date, a KeyError the key (third review of A1).
+_QUOTED = re.compile(r"'(?:[^'\\\n]|\\.)*'" r'|"(?:[^"\\\n]|\\.)*"')
+_FIRST_LINE_MAX = 1000
+"""A message is cut BEFORE the filter runs: the filter's patterns over a 16 KB line cost more than a second."""
+
+
 def scrub_personal(text: str) -> str:
     """The text without credentials (redact_text) and without personal data: what an error may carry before it is
     written to a log."""
@@ -99,8 +106,10 @@ def error_summary(exc: BaseException) -> str:
     - a database error (psycopg): its SQLSTATE and the constraint, table and column it names - never the values its
       messages quote;
     - a group of errors: how many, and their types;
-    - any other: the first line of its message - the lines after it are where libraries put the data - through the
-      filter of personal data.
+    - a KeyError: nothing - its message is the key it did not find;
+    - any other: the first line of its message - the lines after it are where libraries put the data - with every
+      quoted value replaced by <value>, through the filter of personal data (third review of A1: int() and float()
+      quote the text they could not read, fromisoformat() the date).
     """
     errors = getattr(exc, "errors", None)
     if callable(errors):
@@ -110,7 +119,7 @@ def error_summary(exc: BaseException) -> str:
             found = None
         if isinstance(found, list) and all(isinstance(e, dict) and "loc" in e for e in found):
             where = "; ".join(f"{'.'.join(str(x) for x in e['loc']) or '-'} ({e.get('type', '?')})" for e in found[:10])
-            return scrub_personal(f"{len(found)} validation error(s): {where}")[:300]
+            return scrub_personal(f"{len(found)} validation error(s): {where}"[:_FIRST_LINE_MAX])[:300]
     sqlstate = getattr(exc, "sqlstate", None)
     diag = getattr(exc, "diag", None)
     if isinstance(sqlstate, str) and diag is not None:
@@ -123,9 +132,11 @@ def error_summary(exc: BaseException) -> str:
     if isinstance(exc, BaseExceptionGroup):
         kinds = ", ".join(type(e).__name__ for e in exc.exceptions[:10])
         return f"{len(exc.exceptions)} errors: {kinds}"[:300]
+    if isinstance(exc, KeyError):
+        return ""
     text = str(exc).strip()
-    first = text.splitlines()[0] if text else ""
-    return scrub_personal(first)[:300]
+    first = text.splitlines()[0][:_FIRST_LINE_MAX] if text else ""
+    return scrub_personal(_QUOTED.sub("<value>", first))[:300]
 
 
 def error_trace(exc: BaseException) -> str:

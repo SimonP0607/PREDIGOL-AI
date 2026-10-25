@@ -104,8 +104,14 @@ def create_app() -> FastAPI:
             # The detail of the error, under the request id the client gets (plan UX, A1): its type, the first line
             # of its message and its frames, each through the filter of personal data and credentials - never the
             # lines where libraries put the data, nor a frame's values. The client gets the request id only.
+            try:
+                message, trace = error_summary(exc), error_trace(exc)
+            except Exception:
+                # The summary must never become an error of its own: the server would log the original error's
+                # messages unfiltered (third review of A1). The type and the request id are kept.
+                message, trace = "(no summary: summarising the error failed)", ""
             log.error("api.unhandled", request_id=rid, method=request.method, path=request.url.path,
-                      error=exc.__class__.__name__, message=error_summary(exc), trace=error_trace(exc))
+                      error=exc.__class__.__name__, message=message, trace=trace)
             return JSONResponse(errors.body("internal", "internal error; see the server log for this request id", rid),
                                 status_code=500)
 
