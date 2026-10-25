@@ -15,6 +15,12 @@ known then. The dossier, the AI's packet, the models, the forecast, the decision
 kick-off: if any of them could read this, a model trained on it, or a packet that cites it, would know the answer to the question it asks - and
 the nightly proof of ``intel/leakage.py`` would have nothing to tell it by.
 
+The families of counts (plan F11: corners, cards, the goals of the halves; in shadow) learn from their own decisions in tables apart -
+``intel.family_postmortems`` and ``intel.family_memory`` with its view ``intel.family_memory_latest`` (migration 0094; ``fbi.familydecisions``) -
+so that a research layer with forecasts that are not calibrated does not move the sample sizes, the verdicts or the confidence of the layer that
+acts. They are held to the same rule: they are the future of the match they describe, they are derived, and nothing that is said before a kick-off
+reads them.
+
 The memory is NOT in the AI's packet, and that is a decision, not an omission: whether PrediGol's own history of a team, a referee or a market
 goes into what the AI reads before a match is the owner's (plan F8, decision 17). When it does, that change adds its files here with the reason
 and a leak-audit rule (``memory_known``: ``built_at`` not after the packet's moment and ``as_of_day`` before the match day), as ``calendar_known``
@@ -41,11 +47,12 @@ APPS = ROOT / "apps"
 MIGRATIONS = ROOT / "migrations" / "versions"
 
 WORDS = re.compile(
-    r"\b(?:intel\.(?:postmortems|selection_postmortems|match_postmortems|entity_memory(?:_latest)?)"
+    r"\b(?:intel\.(?:postmortems|selection_postmortems|match_postmortems|entity_memory(?:_latest)?|family_postmortems|family_memory(?:_latest)?)"
     r"|ai\.(?:postmortem_narratives|learning_notes|pick_postmortems|postmortems|memory_events))\b")
 """How the objects are named: the post-mortem (``intel.postmortems``, the view ``intel.selection_postmortems``, ``intel.match_postmortems``, the
 narratives ``ai.postmortem_narratives`` and the two frozen tables), the memory (``intel.entity_memory`` and its view, the events
-``ai.memory_events``) and the notes (``ai.learning_notes``). Always with their schema: that is how every query of the platform writes them."""
+``ai.memory_events``), the notes (``ai.learning_notes``) and what the families of counts learned (``intel.family_postmortems``,
+``intel.family_memory`` and its view). Always with their schema: that is how every query of the platform writes them."""
 
 NAMES_IT: dict[str, str] = {
     "intel/postmortem.py": "THE post-mortem (pm-v6): the only writer of intel.postmortems (it reads the selections already studied, to write each once)",
@@ -381,11 +388,12 @@ def test_the_listed_modules_and_files_exist() -> None:
 def test_only_its_own_migrations_name_the_tables() -> None:
     """A view, a function or a foreign key over the tables is made by a migration: the one that makes it is the one that must be listed here, so
     that no pre-match reader reaches the post-mortem or the memory through an object that does not carry its name. 0072, 0073 and 0076 made the
-    tables, 0079 only comments a column and 0091 made the one post-mortem and memory-v4 (their two views are the ones the readers use)."""
+    tables, 0079 only comments a column, 0091 made the one post-mortem and memory-v4 (their two views are the ones the readers use) and 0094 made
+    what the families of counts learn, apart from all of them (it names the pipeline's tables to say why)."""
     naming = {p.name for p in MIGRATIONS.glob("*.py") if WORDS.search(p.read_text(encoding="utf-8"))}
     assert naming == {
         "0072_ai_decision_layer.py", "0073_ai_v2_day_passes_learning.py", "0076_predigol_intelligence.py", "0079_promoted_forecast_spec.py",
-        "0091_single_postmortem_memory_v4.py"}, (
+        "0091_single_postmortem_memory_v4.py", "0094_family_learning.py"}, (
         f"migrations naming the post-mortem, the memory or the notes: {sorted(naming)}. A migration that adds an object over them (a view, a "
         "function, a key) opens a second way in: decide here, with the reason, whether the pre-match side may reach it")
 
