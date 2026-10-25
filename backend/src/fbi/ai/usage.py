@@ -237,8 +237,9 @@ def check_alerts(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSet
     new: list[int] = []
     with conn.cursor(row_factory=tuple_row) as cur:
         for t in crossed:
-            cur.execute("INSERT INTO ai.budget_alerts (month, threshold, created_at, spent_usd, budget_usd) "
-                        "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (month, threshold) DO NOTHING RETURNING threshold",
+            cur.execute("INSERT INTO ai.budget_alerts (month, scope, kind, threshold, created_at, spent_usd, budget_usd) "
+                        "VALUES (%s, 'production', 'month', %s, %s, %s, %s) "
+                        "ON CONFLICT (month, scope, kind, threshold) DO NOTHING RETURNING threshold",
                         (month_start(local_day(at)), t, at, _money(b.spent_month), b.monthly))
             if cur.fetchone() is not None:
                 new.append(t)
