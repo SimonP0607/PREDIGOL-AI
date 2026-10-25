@@ -1,0 +1,57 @@
+{
+  "_comment": "The register of the legal texts (fbi/customer/legal.py): every version of each document, oldest first. A text never changes without a new entry here: add one with the date, draft (true until the lawyer's written OK, P5), material (true when every reader must accept again), what changed in both languages, and the sha256 printed by `python -m scripts.legal_texts hashes`. The test suite recomputes every hash.",
+  "terms": {
+    "versions": [
+      {
+        "version": "2026-10-25-draft1",
+        "date": "2026-10-25",
+        "draft": true,
+        "material": true,
+        "changes": {
+          "es": "Primera versión: borrador pendiente de la revisión del abogado (P5) y de los datos del responsable (P4).",
+          "en": "First version: a draft pending the lawyer's review (P5) and the controller's details (P4)."
+        },
+        "sha256": {
+          "es": "dcecec5c95a14ab56e0281c8931084534e531b902cc20b3b20ebab556015a4c1",
+          "en": "0f19010504b18993eb8465533396d132193a1bc62bdeee7eb30352680a5c8838"
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "versions": [
+      {
+        "version": "2026-10-25-draft1",
+        "date": "2026-10-25",
+        "draft": true,
+        "material": true,
+        "changes": {
+          "es": "Primera versión: borrador pendiente de la revisión del abogado (P5) y de los datos del responsable (P4).",
+          "en": "First version: a draft pending the lawyer's review (P5) and the controller's details (P4)."
+        },
+        "sha256": {
+          "es": "91a2ebe4244938ef98709db9cd8c912ce62aebe98e9e93ea2485255030e455d1",
+          "en": "8c8ef58f7a470e66585a43cf91c98878e1eb657db85bc44ab5514d665b69bfb2"
+        }
+      }
+    ]
+  },
+  "responsible_gaming": {
+    "versions": [
+      {
+        "version": "2026-10-25-draft1",
+        "date": "2026-10-25",
+        "draft": true,
+        "material": true,
+        "changes": {
+          "es": "Primera versión: borrador pendiente de la revisión del abogado (P5) y de los datos del responsable (P4).",
+          "en": "First version: a draft pending the lawyer's review (P5) and the controller's details (P4)."
+        },
+        "sha256": {
+          "es": "afaab58898a5ce81d61f71b2fbcefb171793ee283f52a14ade309fdb799df9c5",
+          "en": "d374158c14ec1338aa079b59e9d071e3bcb2e22120ed547e908ed8f27a20a048"
+        }
+      }
+    ]
+  }
+}

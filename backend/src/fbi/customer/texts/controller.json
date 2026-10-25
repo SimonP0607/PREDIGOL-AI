@@ -1,0 +1,7 @@
+{
+  "_comment": "The data controller named in the legal texts (plan UX, A4; owner's action P4). Public information: it appears in the privacy policy. Until the owner gives it, each field says it is pending (in both languages). Changing a value changes the texts' sha256: bump the documents' version in fbi/customer/legal.py.",
+  "name": "[P4 · nombre o razón social del responsable / controller's name]",
+  "address": "[P4 · domicilio y dirección / address]",
+  "email": "[P4 · correo de privacidad / privacy e-mail]",
+  "phone": "[P4 · teléfono / phone]"
+}

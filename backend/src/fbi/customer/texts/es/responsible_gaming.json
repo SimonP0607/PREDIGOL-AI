@@ -1,0 +1,73 @@
+{
+  "title": "Juego responsable",
+  "summary": "PrediGol informa; no es una casa de apuestas ni promueve ningún operador. Apostar implica perder dinero, y ninguna probabilidad lo evita.",
+  "sections": [
+    {
+      "id": "que-hacemos",
+      "title": "1. Lo que hace PrediGol y lo que no",
+      "blocks": [
+        {
+          "p": "PrediGol muestra información y análisis de fútbol. No recibe apuestas, no paga premios, no tiene enlaces para apostar y no recomienda a ningún operador."
+        },
+        {
+          "p": "Solo pueden usarlo mayores de 18 años."
+        }
+      ]
+    },
+    {
+      "id": "riesgo",
+      "title": "2. El riesgo de apostar",
+      "blocks": [
+        {
+          "p": "Toda apuesta puede perderse. Una probabilidad alta falla con frecuencia: un 70 % falla tres veces de cada diez. Las rachas buenas no anuncian las siguientes."
+        }
+      ]
+    },
+    {
+      "id": "senales",
+      "title": "3. Señales de alerta",
+      "blocks": [
+        {
+          "ul": [
+            "Apuestas más dinero o más seguido del que habías decidido.",
+            "Intentas recuperar lo perdido con nuevas apuestas.",
+            "Apuestas dinero que necesitas para otras cosas o pides prestado para apostar.",
+            "Escondes cuánto apuestas, o apostar te produce ansiedad o discusiones."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "consejos",
+      "title": "4. Si decides apostar",
+      "blocks": [
+        {
+          "ul": [
+            "Fija de antemano cuánto puedes perder y no lo superes.",
+            "No persigas las pérdidas.",
+            "Haz pausas y no apuestes bajo presión, alcohol o cansancio.",
+            "Usa solo operadores autorizados en Colombia por Coljuegos."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ayuda",
+      "title": "5. Dónde pedir ayuda",
+      "blocks": [
+        {
+          "ul": [
+            "Línea 192, opción 4, del Ministerio de Salud y Protección Social: orientación gratuita en salud mental.",
+            "«Toma el control», el micrositio de juego responsable de Coljuegos (tomaelcontrol.coljuegos.gov.co), y su correo colombiajuegaresponsable@coljuegos.gov.co."
+          ]
+        },
+        {
+          "p": "Si sientes que el juego te está haciendo daño, habla con alguien de confianza o con un profesional de la salud."
+        }
+      ]
+    }
+  ],
+  "statements": {
+    "risk_notice": "Entiendo que los pronósticos de PrediGol son probabilidades, no garantías, y he leído la página de juego responsable."
+  }
+}

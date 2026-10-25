@@ -1,0 +1,143 @@
+{
+  "title": "Términos del servicio",
+  "summary": "PrediGol es un servicio de información y análisis de fútbol para mayores de 18 años. No es una casa de apuestas, no acepta apuestas, no maneja dinero y no garantiza ningún resultado.",
+  "sections": [
+    {
+      "id": "que-es",
+      "title": "1. Qué es PrediGol",
+      "blocks": [
+        {
+          "p": "PrediGol es un servicio de información: muestra datos de partidos, probabilidades calculadas por sus modelos, cuotas publicadas por casas de apuestas y análisis sobre todo ello. El responsable del servicio es {{controller.name}}, con domicilio en {{controller.address}}."
+        },
+        {
+          "p": "PrediGol no es una casa de apuestas ni un operador de juegos de suerte y azar: no recibe apuestas, no paga premios, no maneja dinero de los usuarios y no actúa como intermediario de ningún operador. No incluye enlaces para apostar ni promueve a ningún operador."
+        }
+      ]
+    },
+    {
+      "id": "sin-garantia",
+      "title": "2. Sin garantía de resultados",
+      "blocks": [
+        {
+          "p": "Una probabilidad dice qué es probable, no qué va a pasar. Ningún pronóstico, pick, parlay o cifra de PrediGol garantiza un resultado ni una ganancia, y los resultados pasados no aseguran los futuros."
+        },
+        {
+          "p": "Lo que decidas hacer con la información es decisión tuya y bajo tu responsabilidad. PrediGol no responde por pérdidas derivadas de apuestas que hagas con terceros."
+        }
+      ]
+    },
+    {
+      "id": "mayores-de-18",
+      "title": "3. Solo para mayores de 18 años",
+      "blocks": [
+        {
+          "p": "Para usar PrediGol debes tener 18 años o más. Al crear tu cuenta declaras que es así. PrediGol no pide documentos, pero cerrará la cuenta de quien no cumpla este requisito."
+        }
+      ]
+    },
+    {
+      "id": "cuenta",
+      "title": "4. Tu cuenta",
+      "blocks": [
+        {
+          "p": "La cuenta es personal e intransferible. Eres responsable de guardar tu contraseña y de lo que se haga con tu cuenta. Si sospechas que alguien más la usa, cambia la contraseña, cierra las demás sesiones desde tu perfil y avísanos."
+        },
+        {
+          "p": "Puedes activar la verificación en dos pasos desde tu perfil; la recomendamos."
+        }
+      ]
+    },
+    {
+      "id": "membresia",
+      "title": "5. Membresía",
+      "blocks": [
+        {
+          "p": "El acceso a PrediGol puede requerir una membresía de pago. Mientras no exista una pasarela de pagos, la membresía se gestiona de forma manual: el alta, el vencimiento, la renovación, la suspensión y los reembolsos se registran por PrediGol y se te informan en la aplicación y por los canales de contacto."
+        },
+        {
+          "p": "[Pendiente de la decisión del dueño (P6) y de la revisión del abogado (P5): precio y moneda, medios de pago, duración, renovación, derecho de retracto de 5 días hábiles y sus excepciones, reembolsos y canal de reclamos.]"
+        }
+      ]
+    },
+    {
+      "id": "uso",
+      "title": "6. Uso permitido",
+      "blocks": [
+        {
+          "p": "No está permitido:"
+        },
+        {
+          "ul": [
+            "compartir tu cuenta o revender la información de PrediGol;",
+            "extraer datos de forma automatizada, interferir con el servicio o intentar acceder a datos de otros usuarios;",
+            "usar PrediGol para fines ilegales o para promocionar operadores de apuestas."
+          ]
+        },
+        {
+          "p": "PrediGol puede suspender o cerrar una cuenta que incumpla estos términos, informándote del motivo."
+        }
+      ]
+    },
+    {
+      "id": "datos-de-terceros",
+      "title": "7. Datos de terceros y disponibilidad",
+      "blocks": [
+        {
+          "p": "Los resultados, alineaciones, estadísticas y cuotas provienen de proveedores externos y de las casas de apuestas, y pueden contener errores o retrasos. PrediGol los corrige cuando los detecta y, si un resultado cambia después de liquidarse, vuelve a liquidar y deja constancia."
+        },
+        {
+          "p": "El servicio puede interrumpirse por mantenimiento o por causas ajenas. PrediGol hará lo razonable para que esté disponible, sin garantizarlo."
+        }
+      ]
+    },
+    {
+      "id": "propiedad",
+      "title": "8. Propiedad intelectual",
+      "blocks": [
+        {
+          "p": "Los textos, modelos, análisis y el diseño de PrediGol pertenecen a su responsable. Puedes usarlos para tu uso personal; no puedes copiarlos ni distribuirlos sin autorización."
+        }
+      ]
+    },
+    {
+      "id": "privacidad-y-juego",
+      "title": "9. Privacidad y juego responsable",
+      "blocks": [
+        {
+          "p": "Cómo tratamos tus datos está en la Política de tratamiento de datos personales. Cómo entendemos el juego responsable está en su página. Las dos forman parte de estos términos."
+        }
+      ]
+    },
+    {
+      "id": "cambios",
+      "title": "10. Cambios en estos términos",
+      "blocks": [
+        {
+          "p": "Si cambiamos algo importante de estos términos, te lo pediremos aceptar de nuevo antes de seguir usando PrediGol. Cada versión queda fechada y con su huella (sha256), y en tu perfil ves qué versión aceptaste y cuándo."
+        }
+      ]
+    },
+    {
+      "id": "ley-y-reclamos",
+      "title": "11. Ley aplicable y reclamos",
+      "blocks": [
+        {
+          "p": "Estos términos se rigen por la ley colombiana. Puedes presentar quejas o reclamos a {{controller.email}}. Si no quedas conforme, puedes acudir a la Superintendencia de Industria y Comercio."
+        }
+      ]
+    },
+    {
+      "id": "contacto",
+      "title": "12. Contacto",
+      "blocks": [
+        {
+          "p": "{{controller.name}} · {{controller.address}} · {{controller.email}} · {{controller.phone}}"
+        }
+      ]
+    }
+  ],
+  "statements": {
+    "terms": "He leído y acepto los Términos del servicio.",
+    "age_18": "Declaro que tengo 18 años o más."
+  }
+}

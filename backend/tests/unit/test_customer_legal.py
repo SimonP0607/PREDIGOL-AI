@@ -1,0 +1,174 @@
+"""The legal texts, their versions and their sha256, and the gate's rules (plan UX, A4; plan de seguridad, section 23).
+
+A text cannot change without a new version: the register's hash of every document in every language is recomputed
+here. The two languages say the same thing in the same places (same sections, same boxes). A reader owes the gate a
+purpose they never answered, withdrew, or answered on a version a material change replaced - never one a
+non-material change touched.
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+
+from fbi.customer import consents, legal
+
+TEXTS = legal.TEXTS
+
+
+@pytest.fixture(autouse=True)
+def fresh_caches() -> Iterator[None]:
+    legal.register.cache_clear()
+    legal.load.cache_clear()
+    legal.controller.cache_clear()
+    yield
+    legal.register.cache_clear()
+    legal.load.cache_clear()
+    legal.controller.cache_clear()
+
+
+def test_every_text_has_the_hash_the_register_gives_it() -> None:
+    for name in legal.DOCUMENTS:
+        version = legal.current(name)
+        for locale in legal.LOCALES:
+            doc = legal.load(name, locale)
+            assert doc.sha256 == version.sha256[locale], (
+                f"{locale}/{name}.json (or controller.json) changed without a new version: add one to versions.json "
+                f"(python -m scripts.legal_texts hashes)")
+
+
+def test_the_hash_is_of_the_text_shown_so_one_changed_letter_changes_it(monkeypatch: pytest.MonkeyPatch,
+                                                                        tmp_path: Path) -> None:
+    original = legal.load("terms", "es")
+    copy = tmp_path / "texts"
+    copy.mkdir()
+    for item in TEXTS.rglob("*.json"):
+        target = copy / item.relative_to(TEXTS)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(item.read_text(encoding="utf-8"), encoding="utf-8")
+    data = json.loads((copy / "es" / "terms.json").read_text(encoding="utf-8"))
+    data["sections"][1]["blocks"][0]["p"] = data["sections"][1]["blocks"][0]["p"].replace("garantiza", "asegura")
+    (copy / "es" / "terms.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(legal, "TEXTS", copy)
+    legal.load.cache_clear()
+    changed = legal.load("terms", "es")
+    assert changed.sha256 != original.sha256
+    assert changed.version == original.version  # the register is what the test above catches
+
+
+def test_the_two_languages_have_the_same_sections_and_the_same_boxes() -> None:
+    for name in legal.DOCUMENTS:
+        es, en = legal.load(name, "es"), legal.load(name, "en")
+        assert [s["id"] for s in es.sections] == [s["id"] for s in en.sections], name
+        assert [len(s["blocks"]) for s in es.sections] == [len(s["blocks"]) for s in en.sections], name
+        assert set(es.statements) == set(en.statements), name
+        assert len({s["id"] for s in es.sections}) == len(es.sections), f"{name}: an anchor appears twice"
+
+
+def test_every_purpose_has_its_box_in_both_languages_and_the_database_takes_it() -> None:
+    assert legal.REQUIRED == ("terms", "privacy", "age_18", "risk_notice")
+    for purpose in legal.PURPOSES:
+        for locale in legal.LOCALES:
+            doc, sentence = legal.statement(purpose.kind, locale)
+            assert doc.document == purpose.document
+            assert 1 <= len(sentence.strip()) <= 500, "customer.consents.statement holds 1 to 500 characters"
+    with pytest.raises(legal.LegalTextError):
+        legal.statement("marketing_email", "es")  # B8 adds it with its box
+
+
+def test_the_texts_are_plain_text_with_every_placeholder_filled() -> None:
+    for name in legal.DOCUMENTS:
+        for locale in legal.LOCALES:
+            raw = (TEXTS / locale / f"{name}.json").read_text(encoding="utf-8")
+            assert "{{" not in json.dumps(legal._fill(json.loads(raw)), ensure_ascii=False)
+            assert "<" not in raw and "](" not in raw, f"{locale}/{name}: no HTML or markdown, the page renders text"
+            for section in json.loads(raw)["sections"]:
+                for block in section["blocks"]:
+                    assert set(block) <= {"p", "ul"} and len(block) == 1, (name, section["id"])
+
+
+def test_the_versions_are_dated_ordered_and_bilingual() -> None:
+    for name in legal.DOCUMENTS:
+        versions = legal.register()[name]
+        assert versions[0].material
+        for v in versions:
+            assert legal.VERSION_FORMAT.match(v.version) and v.version.startswith(v.date)
+            assert set(v.changes) == {"es", "en"} and all(v.changes.values())
+
+
+def test_until_the_lawyer_says_so_the_texts_are_drafts_and_the_gate_stays_off(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    assert legal.any_draft(), "the first texts are drafts until P5"
+    monkeypatch.setenv(consents.GATE_ENV, "1")
+    assert consents.gate_mode() == "on" and not consents.gate_enabled()
+    monkeypatch.setenv(consents.GATE_ENV, "drafts")
+    assert consents.gate_enabled(), "QA turns it on over the drafts"
+    monkeypatch.setenv(consents.GATE_ENV, "0")
+    assert not consents.gate_enabled()
+    monkeypatch.delenv(consents.GATE_ENV)
+    assert consents.gate_mode() == "off" and not consents.gate_enabled()
+    monkeypatch.setenv(consents.GATE_ENV, "1")
+    monkeypatch.setattr(legal, "any_draft", lambda: False)
+    assert consents.gate_enabled(), "with the lawyer's OK, 1 turns it on"
+
+
+def test_the_controller_and_the_synthetic_journey_are_exempt(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FBI_SYNTHETIC_EMAIL", " Robot@PrediGol.test ")
+    assert consents.exempt("robot@predigol.test", super_admin=False)
+    assert consents.exempt("owner@predigol.test", super_admin=True)
+    assert not consents.exempt("reader@predigol.test", super_admin=False)
+    monkeypatch.delenv("FBI_SYNTHETIC_EMAIL")
+    assert not consents.exempt("", super_admin=False), "no synthetic account set: nobody matches an empty address"
+
+
+def _register(versions: list[dict[str, object]]) -> dict[str, tuple[legal.Version, ...]]:
+    def v(e: dict[str, object]) -> legal.Version:
+        return legal.Version(version=str(e["version"]), date=str(e["version"])[:10], draft=False,
+                             material=bool(e["material"]), changes={"es": "x", "en": "x"},
+                             sha256={"es": "0" * 64, "en": "0" * 64})
+    fixed = (v({"version": "2026-10-25", "material": True}),)
+    return {"terms": tuple(v(e) for e in versions), "privacy": fixed, "responsible_gaming": fixed}
+
+
+def test_a_reader_owes_what_they_never_answered_withdrew_or_answered_before_a_material_change(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(legal, "register", lambda: _register([
+        {"version": "2026-10-25", "material": True},
+        {"version": "2026-11-02", "material": False},   # a clearer sentence
+        {"version": "2026-12-01", "material": True},    # a new obligation
+        {"version": "2026-12-05", "material": False},
+    ]))
+    assert legal.valid_versions("terms") == frozenset({"2026-12-01", "2026-12-05"})
+    everything = {"terms": (True, "2026-12-05"), "privacy": (True, "2026-10-25"), "age_18": (True, "2026-12-01"),
+                  "risk_notice": (True, "2026-10-25")}
+    assert legal.due(everything) == []
+    assert legal.due({}) == ["terms", "privacy", "age_18", "risk_notice"], "in the order of the boxes"
+    assert legal.due({**everything, "privacy": (False, "2026-10-25")}) == ["privacy"], "withdrawn"
+    assert legal.due({**everything, "terms": (True, "2026-11-02")}) == ["terms"], "before the material change"
+    assert legal.due({**everything, "age_18": (True, "2026-10-25")}) == ["age_18"]
+
+
+def test_a_broken_register_is_refused_before_it_reaches_a_reader(monkeypatch: pytest.MonkeyPatch,
+                                                                tmp_path: Path) -> None:
+    good = json.loads((TEXTS / "versions.json").read_text(encoding="utf-8"))
+    cases = {
+        "undated": lambda d: d["terms"]["versions"][0].update(version="draft1"),
+        "one language": lambda d: d["terms"]["versions"][0]["sha256"].pop("en"),
+        "first not material": lambda d: d["terms"]["versions"][0].update(material=False),
+        "out of order": lambda d: d["terms"]["versions"].insert(0, {**d["terms"]["versions"][0],
+                                                                    "version": "2026-12-01", "date": "2026-12-01"}),
+        "missing": lambda d: d.pop("privacy"),
+    }
+    for label, damage in cases.items():
+        data = json.loads(json.dumps(good))
+        damage(data)
+        folder = tmp_path / label.replace(" ", "_")
+        folder.mkdir()
+        (folder / "versions.json").write_text(json.dumps(data), encoding="utf-8")
+        monkeypatch.setattr(legal, "TEXTS", folder)
+        legal.register.cache_clear()
+        with pytest.raises(legal.LegalTextError):
+            legal.register()

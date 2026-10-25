@@ -1,0 +1,161 @@
+{
+  "title": "Personal data processing policy",
+  "summary": "Which of your data we process, what for, who else receives it, how long we keep it and how to exercise your rights (Ley 1581 de 2012 and Decreto 1074 de 2015).",
+  "sections": [
+    {
+      "id": "responsable",
+      "title": "1. Data controller",
+      "blocks": [
+        {
+          "p": "{{controller.name}}, domiciled at {{controller.address}}. E-mail for privacy matters: {{controller.email}}. Phone: {{controller.phone}}."
+        },
+        {
+          "p": "The controller handles queries and claims about your data directly."
+        }
+      ]
+    },
+    {
+      "id": "datos",
+      "title": "2. Which data we process",
+      "blocks": [
+        {
+          "ul": [
+            "Of your account: e-mail address, name or alias, language, time zone and the password, stored only as a fingerprint (argon2id), never in clear.",
+            "Of your account's security: the open sessions (date, device and IP address), the sign-in history and, if you turn it on, two-step verification.",
+            "Of your use of the product: the picks and parlays you save and their results, and your preferences.",
+            "Your consents (what you accepted, in which version and when) and your privacy or support requests."
+          ]
+        },
+        {
+          "p": "We do not ask for or keep identity documents, card or bank account numbers, or sensitive data."
+        }
+      ]
+    },
+    {
+      "id": "finalidades",
+      "title": "3. What we process them for",
+      "blocks": [
+        {
+          "p": "We process your data for these purposes, each a separate one:"
+        },
+        {
+          "ul": [
+            "Providing the service and managing your account and your membership, including the e-mails this needs: access, password recovery, membership expiry and the answers to your requests.",
+            "Protecting your account and the service: detecting improper access and slowing down repeated attempts.",
+            "Improving the product with usage statistics based on pseudonymous identifiers, with no third-party trackers. [Pending the legal review (P5): whether this purpose needs a box of its own.]",
+            "Sending you commercial e-mails (a weekly summary and PrediGol's news) only if you ask for them separately in your profile, with a one-click unsubscribe. Today we send no commercial e-mails."
+          ]
+        },
+        {
+          "p": "The first three are part of the authorisation you give us when you create your account; the last one, only if you ask for it."
+        }
+      ]
+    },
+    {
+      "id": "encargados",
+      "title": "4. Who else receives data",
+      "blocks": [
+        {
+          "p": "Only providers that help us run the service, with the minimum they need:"
+        },
+        {
+          "ul": [
+            "Contabo, server hosting (United States).",
+            "Sentry (error logging): a pseudonymous identifier, the error's reference, the version and the browser; never your e-mail, passwords, tokens or cookies.",
+            "Resend (e-mail, once turned on): your e-mail address, your language and the notice's content.",
+            "Meta's WhatsApp (support, once turned on): your number and what you write."
+          ]
+        },
+        {
+          "p": "[Pending the legal review (P5): whether each sending abroad is a transmission under contract or a transfer, and its safeguards.]"
+        }
+      ]
+    },
+    {
+      "id": "derechos",
+      "title": "5. Your rights",
+      "blocks": [
+        {
+          "p": "As the data subject you can, at any time and free of charge:"
+        },
+        {
+          "ul": [
+            "know, update and correct your data;",
+            "ask for proof of the authorisation you gave us;",
+            "know what use we have made of your data;",
+            "revoke an authorisation or ask us to delete your data, when there is no legal or contractual duty to keep it;",
+            "file complaints with the Superintendence of Industry and Commerce (SIC), after having come to us."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "como-ejercerlos",
+      "title": "6. How to exercise them and within what time",
+      "blocks": [
+        {
+          "p": "From your profile you can see what you accepted and when, withdraw your authorisation, download your data (with your password), send a query or a claim and ask for your data to be deleted. You can also write to {{controller.email}}."
+        },
+        {
+          "p": "We answer queries within at most 10 business days (extendable by 5, telling you why) and claims (correction, update or deletion) within at most 15 business days (extendable by 8). Your request's deadline is shown in your profile."
+        }
+      ]
+    },
+    {
+      "id": "conservacion",
+      "title": "7. How long we keep them",
+      "blocks": [
+        {
+          "ul": [
+            "Your account's data, for as long as the account exists.",
+            "Sessions, up to 90 days after they expire; the sign-in history, 12 months.",
+            "Your consents, for as long as the relationship lasts and the time they could be required as evidence.",
+            "Requests and tickets, 24 months after they are closed."
+          ]
+        },
+        {
+          "p": "When you ask for deletion, your account is anonymised: your personal data is removed and only the records the law requires us to keep are kept, without identifying you."
+        }
+      ]
+    },
+    {
+      "id": "seguridad",
+      "title": "8. Security",
+      "blocks": [
+        {
+          "p": "Connections are encrypted, passwords are stored as fingerprints, sessions expire, you can turn on two-step verification and access to the data is limited to what each part of the system needs."
+        }
+      ]
+    },
+    {
+      "id": "menores",
+      "title": "9. Minors",
+      "blocks": [
+        {
+          "p": "PrediGol is for people aged 18 or over only and does not knowingly process minors' data. If we detect a minor's account, we close it and delete its data."
+        }
+      ]
+    },
+    {
+      "id": "cookies",
+      "title": "10. Cookies",
+      "blocks": [
+        {
+          "p": "We use only the session cookie, which you need to sign in. We use no third-party cookies or trackers, and the fonts are served from PrediGol."
+        }
+      ]
+    },
+    {
+      "id": "vigencia",
+      "title": "11. Validity and changes",
+      "blocks": [
+        {
+          "p": "This policy applies from its publication [date — pending]. The database is kept for as long as the purpose for which the data was collected lasts. If we change something important, we will ask you to accept the new version; each version is dated and has its fingerprint (sha256)."
+        }
+      ]
+    }
+  ],
+  "statements": {
+    "privacy": "I authorise the processing of my data for the purposes of the Personal data processing policy: providing the service, protecting my account and improving the product with pseudonymous statistics."
+  }
+}
