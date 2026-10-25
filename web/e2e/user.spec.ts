@@ -667,7 +667,9 @@ test("Profile security: a failure to read the sessions or the activity says so, 
   await page.route("**/api/v1/auth/me/access*", (route) => route.fulfill(fault("e2e-access-1")));
   await page.goto("/profile");
   const sessions = page.getByTestId("sessions-error");
-  await expect(sessions).toBeVisible();
+  // The error shows after the two retries of a 5xx (1 s and 2 s apart) - and, on the QA dev server under load, after
+  // up to 12 s of hydration (A2's run 3: the first request left 12.6 s after the page loaded).
+  await expect(sessions).toBeVisible({ timeout: 30_000 });
   await expect(sessions).toContainText(t.errors.requestId.replace("{id}", "e2e-sessions-1"));
   await expect(page.getByTestId("access-error")).toContainText(
     t.errors.requestId.replace("{id}", "e2e-access-1"),
