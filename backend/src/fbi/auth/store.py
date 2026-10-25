@@ -86,12 +86,46 @@ def mark_login(conn: Conn, user_id: int) -> None:
 
 # ── an address's sign-in streak, shared by every API process ────────────────────────────────
 
-FAILURE_ACTIONS = ["login.failed", "mfa.failed"]
+FAILURE_ACTIONS = ("login.failed", "mfa.failed")
 """A wrong password (for any address, with or without an account) and a wrong second-factor code."""
-RESET_ACTIONS = ["login.succeeded", "user.unlocked", "password.reset"]
+RESET_ACTIONS = ("login.succeeded", "user.unlocked", "password.reset")
 """What ends a streak, as it ends the account's own count (mark_login, unlock)."""
 STREAK_HORIZON_DAYS = 30
 """How far back a streak is read: older failures are forgotten, for every address alike."""
+
+
+def _in(actions: tuple[str, ...]) -> str:
+    """A list of this module's constant action names, written into SQL (never a value from a request)."""
+    return ", ".join(f"'{a}'" for a in actions)
+
+
+# The action lists are written into the SQL as constants, never sent as parameters: the partial index of revision 0094
+# (auth.audit_events (email, at DESC) for these five actions) is used only when the planner sees them.
+ADDRESS_STREAK_SQL = f"""
+    WITH account AS (SELECT id FROM auth.users WHERE email = %(a)s),
+    recent AS (
+        SELECT e.at, e.action FROM auth.audit_events e
+         WHERE e.email = %(a)s AND e.at > now() - make_interval(days => %(h)s)
+           AND e.action IN ({_in(FAILURE_ACTIONS + RESET_ACTIONS)})
+        UNION ALL
+        SELECT e.at, e.action FROM auth.audit_events e
+         WHERE e.target_user_id = (SELECT id FROM account) AND e.email IS DISTINCT FROM %(a)s
+           AND e.at > now() - make_interval(days => %(h)s)
+           AND e.action IN ({_in(FAILURE_ACTIONS + RESET_ACTIONS)})),
+    reset AS (SELECT max(at) AS at FROM recent WHERE action IN ({_in(RESET_ACTIONS)}))
+    SELECT count(*) FILTER (WHERE r.action IN ({_in(FAILURE_ACTIONS)})
+                              AND (reset.at IS NULL OR r.at > reset.at))::int AS streak,
+           max(r.at) FILTER (WHERE r.action IN ({_in(FAILURE_ACTIONS)})
+                               AND (reset.at IS NULL OR r.at > reset.at)) AS last_at,
+           now() AS now
+      FROM reset LEFT JOIN recent r ON true
+"""
+
+
+def lock_address(conn: Conn, address: str) -> None:
+    """One sign-in decision at a time per address, until the transaction ends (review of A1): two attempts of the
+    same address in two processes would each read the streak before the other's failure is written."""
+    conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 7041))", (address[:254],))
 
 
 def address_streak(conn: Conn, address: str) -> Row:
@@ -101,34 +135,19 @@ def address_streak(conn: Conn, address: str) -> Row:
     later than one with (the account's own count is in the database), and tell which addresses have accounts. The
     trail already records every failure with its address, with or without an account; an address's account, when it
     has one, also ends a streak with its success, an unlock or a password reset (by its id)."""
-    row = _one(conn, """
-        WITH account AS (SELECT id FROM auth.users WHERE email = %(a)s),
-        recent AS (
-            SELECT e.at, e.action FROM auth.audit_events e
-             WHERE e.at > now() - make_interval(days => %(h)s)
-               AND e.action = ANY(%(actions)s)
-               AND (e.email = %(a)s OR e.target_user_id = (SELECT id FROM account))),
-        reset AS (SELECT max(at) AS at FROM recent WHERE action = ANY(%(resets)s))
-        SELECT count(*) FILTER (WHERE r.action = ANY(%(fails)s) AND (reset.at IS NULL OR r.at > reset.at))::int
-                 AS streak,
-               max(r.at) FILTER (WHERE r.action = ANY(%(fails)s) AND (reset.at IS NULL OR r.at > reset.at))
-                 AS last_at,
-               now() AS now
-          FROM reset LEFT JOIN recent r ON true
-    """, {"a": address[:254], "h": STREAK_HORIZON_DAYS, "actions": FAILURE_ACTIONS + RESET_ACTIONS,
-          "resets": RESET_ACTIONS, "fails": FAILURE_ACTIONS})
+    row = _one(conn, ADDRESS_STREAK_SQL, {"a": address[:254], "h": STREAK_HORIZON_DAYS})
     assert row is not None
     return row
 
 
 def set_failures(conn: Conn, user_id: int, *, streak: int, lock_minutes: int) -> Row:
     """The account's own count follows the address's streak (address_streak + the failure being recorded): the
-    Admin Console reads it, and it locks the account by the same rule. lock_minutes 0: no new lock."""
+    Admin Console reads it. Its lock is the streak's - set, or cleared below the threshold - never one of its own."""
     row = _one(conn, """
         UPDATE auth.users SET failed_logins = %(s)s,
-               locked_until = CASE WHEN %(m)s > 0 THEN now() + make_interval(mins => %(m)s) ELSE locked_until END
+               locked_until = CASE WHEN %(m)s > 0 THEN now() + make_interval(mins => %(m)s) END
         WHERE id = %(id)s
-        RETURNING failed_logins, locked_until, locked_until > now() AS is_locked
+        RETURNING failed_logins, locked_until, COALESCE(locked_until > now(), false) AS is_locked
     """, {"s": streak, "m": lock_minutes, "id": user_id})
     assert row is not None
     return row

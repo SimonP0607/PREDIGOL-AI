@@ -200,17 +200,19 @@ def login(email: str, password: str, *, ip: str | None, user_agent: str | None) 
     counted = False
     # A refusal is recorded and COMMITTED before it is raised: raising inside the block would
     # roll the audit row (and the failure count) back with everything else.
+    # The client's own window first: it is the same for every address, and costs no database work.
+    if throttle.BY_CLIENT.blocked(client):
+        raise AuthError(429, "too_many_attempts", retry_after=throttle.BY_CLIENT.retry_after(client))
     with write_connection() as conn:
         # The address first, by the same rule whether or not it has an account (R12; plan UX, A1): its streak is in
-        # the database, read before the account is looked at, so the answer depends on the address alone - whichever
-        # API process answers, and after a restart.
+        # the database, read before the account is looked at - one decision at a time per address - so the answer
+        # depends on the address alone, whichever API process answers, and after a restart. A refusal while locked
+        # writes nothing: the attempts of a locked address cannot grow the trail.
+        store.lock_address(conn, address)
         state = store.address_streak(conn, address)
         wait = _wait(state, cfg)
         if wait:
-            store.record_event(conn, "login.refused", email=address, ip=ip, detail={"reason": "locked"})
             refusal = AuthError(429, "too_many_attempts", retry_after=wait)
-        elif throttle.BY_CLIENT.blocked(client):
-            refusal = AuthError(429, "too_many_attempts", retry_after=throttle.BY_CLIENT.retry_after(client))
         else:
             user = store.user_by_email(conn, address) if EMAIL_RE.match(address) else None
             if user is None:
@@ -218,12 +220,6 @@ def login(email: str, password: str, *, ip: str | None, user_agent: str | None) 
                 refusal = _count_failure(conn, state, cfg, address=address, user_id=None, ip=ip,
                                          action="login.failed", detail={"reason": "unknown_email"})
                 counted = True
-            elif user["is_locked"]:
-                # The account's own lock follows the same streak (set_failures); it stays as a second guard.
-                passwords.burn_verification_time(password)
-                store.record_event(conn, "login.refused", target_user_id=user["id"], email=address, ip=ip,
-                                   detail={"reason": "locked"})
-                refusal = AuthError(429, "too_many_attempts", retry_after=_retry_after(user["locked_until"]))
             elif not passwords.verify_password(user["password_hash"], password):
                 refusal = _count_failure(conn, state, cfg, address=address, user_id=int(user["id"]), ip=ip,
                                          action="login.failed", detail={"reason": "wrong_password"})
@@ -293,6 +289,7 @@ def _wrong_code(conn: psycopg.Connection[Any], principal: Principal, *, kind: st
     cfg = auth_settings()
     attempts = store.bump_mfa_attempts(conn, principal.session_id)
     address = normalize_email(principal.email)
+    store.lock_address(conn, address)
     streak = int(store.address_streak(conn, address)["streak"]) + 1
     minutes = throttle.lock_minutes(streak, threshold=cfg.lock_threshold, minutes=cfg.lock_minutes,
                                     max_minutes=cfg.lock_max_minutes)

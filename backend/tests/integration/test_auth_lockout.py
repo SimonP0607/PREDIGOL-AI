@@ -218,3 +218,53 @@ def test_a_right_password_with_a_second_step_owed_does_not_end_the_streak(
     finally:
         with psycopg.connect(database, autocommit=True) as conn:
             conn.execute("UPDATE auth.users SET must_change_password = false WHERE email = %s", (KNOWN,))
+
+
+def test_a_refusal_while_locked_writes_nothing_and_the_streak_is_read_through_its_index(
+        database: str, client: tuple[TestClient, Clock]) -> None:
+    """The attempts of a locked address cannot grow the trail (second review of A1: every attempt read thirty days
+    of it, and every refusal wrote a row), and the streak is read through the index of revision 0094."""
+    c, _ = client
+    for _ in range(5):
+        attempt(c, UNKNOWN)
+    with psycopg.connect(database) as conn:
+        before = conn.execute("SELECT count(*) FROM auth.audit_events").fetchone()
+    for _ in range(20):
+        assert attempt(c, UNKNOWN)[0] == 429
+    with psycopg.connect(database) as conn:
+        assert conn.execute("SELECT count(*) FROM auth.audit_events").fetchone() == before
+        from fbi.auth.store import ADDRESS_STREAK_SQL
+
+        conn.execute("SET enable_seqscan = off")
+        plan = "\n".join(r[0] for r in conn.execute("EXPLAIN " + ADDRESS_STREAK_SQL,
+                                                     {"a": UNKNOWN, "h": 30}).fetchall())
+    assert "audit_events_signin_idx" in plan, plan
+
+
+def test_parallel_failures_of_one_address_are_decided_one_at_a_time(client: tuple[TestClient, Clock]) -> None:
+    """Five wrong passwords sent at once: the streak is read under a lock of the address, so exactly one of them is
+    the fifth and locks (review of A1: each read the streak before the others' failures were written)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from fbi.api.app import create_app
+
+    def one(_: int) -> int:
+        with TestClient(create_app(), headers=SAME_SITE) as each:
+            return each.post("/api/v1/auth/login", json={"email": UNKNOWN, "password": WRONG}).status_code
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        statuses = sorted(pool.map(one, range(5)))
+    assert statuses == [401, 401, 401, 401, 429], statuses
+
+
+def test_below_the_threshold_the_account_is_not_locked_whatever_it_was(database: str,
+                                                                       client: tuple[TestClient, Clock]) -> None:
+    """The account's lock is the streak's (second review of A1: a lock stored on the row outlived the streak and
+    answered where an address without an account did not)."""
+    c, _ = client
+    with psycopg.connect(database, autocommit=True) as conn:
+        conn.execute("UPDATE auth.users SET locked_until = now() + interval '8 hours' WHERE email = %s", (KNOWN,))
+    assert attempt(c, KNOWN)[0] == 401, "the streak (1) decides, not a lock left on the row"
+    with psycopg.connect(database) as conn:
+        row = conn.execute("SELECT failed_logins, locked_until FROM auth.users WHERE email = %s", (KNOWN,)).fetchone()
+    assert row == (1, None)
