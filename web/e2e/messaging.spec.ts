@@ -68,7 +68,8 @@ test("the reader chooses the optional e-mails; a privacy request's receipt waits
   expect(created.status).toBe(201);
   const id = created.body.data.id;
   try {
-    const w = watch(page, { expectStatus: [403] });
+    // the anonymous /auth/me before signing in answers 401, and the product 403 until the boxes are ticked
+    const w = watch(page, { expect401: true, expectStatus: [403] });
     await signIn(page, email);
     await acceptAll(page);
 
