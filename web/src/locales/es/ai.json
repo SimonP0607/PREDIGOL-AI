@@ -309,7 +309,8 @@
       "analysis": "Último análisis",
       "learning": "Último aprendizaje",
       "postmortem": "Último post-mortem",
-      "evaluation": "Última evaluación"
+      "evaluation": "Última evaluación",
+      "package": "Últimos estados de partido"
     },
     "cycleStatus": {
       "running": "corriendo",
@@ -1112,5 +1113,324 @@
     "settled": "{won} ganadas · {lost} perdidas · {pnl}",
     "events_one": "{count} evento de memoria",
     "events_other": "{count} eventos de memoria"
+  },
+  "agents": {
+    "intro": "Los agentes de la IA: qué existe, qué motor lee cada familia de mercados, qué escribió el job de estados y cómo va la cola. Solo lectura: nada aquí llama a un modelo, crea una tarea ni cambia un pick.",
+    "attention": {
+      "title": "Qué mirar",
+      "none": "Nada que atender: el registro coincide con el código, la auditoría no halló fugas y el job de estados no falló.",
+      "audit_violations": "Violaciones de la auditoría de fugas: {n}. Un estado supo más de lo que su momento permitía.",
+      "drift": "Agentes cuyo código no es el registrado: {n}",
+      "registry_problems": "Hallazgos del registro frente al código: {n}",
+      "slices_over_cap": "Slices que no caben en su tope en algún estado: {n}",
+      "job_failed": "El último ciclo del job de estados falló",
+      "job_partial": "El último ciclo del job de estados terminó a medias",
+      "job_off": "El job de estados está apagado (FBI_AI_PACKAGE)"
+    },
+    "registry": {
+      "title": "Registro de agentes",
+      "subtitle": "Lo que el código tiene, lo que cada fase del plan construirá y lo que está pospuesto, con la huella del código que corre frente a la que guarda el registro.",
+      "counts": {
+        "built": "Construidos",
+        "planned": "Planeados",
+        "postponed": "Pospuestos",
+        "drift": "Fuera de sincronía"
+      },
+      "noProblems": "El registro coincide con el código: sin hallazgos.",
+      "problemsTitle": "El registro y el código no coinciden",
+      "col": {
+        "agent": "Agente",
+        "status": "Estado",
+        "version": "Versión y código",
+        "contract": "Contrato y tareas",
+        "plan": "Plan"
+      },
+      "status": {
+        "built": "Construido",
+        "planned": "Planeado",
+        "postponed": "Pospuesto"
+      },
+      "sync": {
+        "in_sync": "Coincide",
+        "drift": "No coincide",
+        "none": "Sin comparar"
+      },
+      "baseline": "Línea base: ya funcionaba antes del registro",
+      "retires": "Se retira en la fase {n}",
+      "next": "Después: {version} (fase {n})",
+      "phase": "Se construye en la fase {n}",
+      "replaces": "Reemplaza a {what}"
+    },
+    "engines": {
+      "title": "Motor de cada familia",
+      "subtitle": "Decide la fila más reciente de promociones de la familia. Sin fila (o si la última la retiró), la familia lee el modelo de lenguaje de hoy; solo la firma del propietario cambia eso.",
+      "col": {
+        "family": "Familia",
+        "engine": "Motor",
+        "promotion": "Promoción vigente",
+        "since": "Desde"
+      },
+      "engineName": {
+        "llm": "Modelo de lenguaje",
+        "agent": "Agente"
+      },
+      "notUnderstood": "Nombre que este código no lee: se muestra tal cual"
+    },
+    "decisions": {
+      "title": "Últimas decisiones sobre agentes",
+      "empty": "Ningún agente ha sido promovido ni retirado: todas las familias leen el modelo de lenguaje.",
+      "col": {
+        "when": "Cuándo",
+        "family": "Familia",
+        "promotion": "Promoción",
+        "change": "Cambio",
+        "by": "Firmó",
+        "gate": "Puerta",
+        "reason": "Razón"
+      },
+      "by": {
+        "owner": "Propietario",
+        "system": "Sistema (reversión)"
+      }
+    },
+    "package": {
+      "title": "Estados de partido",
+      "subtitle": "Lo que escribió el job de estados en los últimos {days} días: un estado por pase y partido, armado sin llamar a ningún modelo.",
+      "stat": {
+        "states": "Estados escritos",
+        "matches": "Partidos",
+        "blocked": "Con algo que bloquea a un agente",
+        "blockedHint": "Una clase de competición o una validación en cuarentena",
+        "flagged": "Con texto de proveedor marcado",
+        "flaggedHint": "Texto que parecía una instrucción",
+        "build": "Tiempo de armado",
+        "cycles": "Ciclos del job",
+        "job": "Job de estados"
+      },
+      "cyclesText": "{ok} correctos · {partial} parciales · {failed} fallidos · {running} en curso",
+      "job": {
+        "on": "Encendido",
+        "off": "Apagado",
+        "mode": "Modo de la IA: {mode}"
+      },
+      "last": "Último ciclo del job",
+      "lastStarted": "Empezó",
+      "lastError": "Error",
+      "never": "El job todavía no ha corrido en esta ventana.",
+      "count": {
+        "pending": "Pases por armar",
+        "built": "Armados",
+        "existing": "Ya existían",
+        "refused": "Rechazados",
+        "failed": "Fallidos",
+        "deferred": "Aplazados",
+        "build_ms": "Tiempo de armado (ms)",
+        "tokens_max": "Slice mayor (tokens)"
+      },
+      "byPass": "Estados por pase",
+      "pass": {
+        "first": "Primer pase",
+        "pre": "Pase previo",
+        "final": "Pase final",
+        "request": "A petición"
+      },
+      "slices": {
+        "title": "Tamaño de cada slice (tokens reales)",
+        "hint": "Un slice que no cabe en su tope es uno que un agente rechazaría. Uno recortado perdió contenido para caber: si es lo habitual, el tope está mordiendo.",
+        "empty": "Todavía no hay estados en la ventana: el job no ha escrito ninguno.",
+        "col": {
+          "slice": "Slice",
+          "states": "Estados",
+          "max": "Máx.",
+          "cap": "Tope",
+          "share": "p95 / tope",
+          "trimmed": "Recortados",
+          "over": "Sin caber",
+          "level": "Veredicto"
+        },
+        "level": {
+          "ok": "Holgado",
+          "near": "Cerca del tope",
+          "cut": "Recortado",
+          "over": "No cabe"
+        }
+      },
+      "perDay": {
+        "title": "Estados por día de Bogotá",
+        "empty": "Sin estados en la ventana.",
+        "col": {
+          "day": "Día",
+          "states": "Estados",
+          "matches": "Partidos",
+          "blocked": "Bloqueados",
+          "flagged": "Marcados"
+        }
+      },
+      "rule": {
+        "title": "Reglas del job",
+        "stateVersion": "Versión del estado",
+        "packageVersion": "Versión del paquete",
+        "window": "Ventana de pases",
+        "windowDays": "{n} días",
+        "limit": "Máximo por ciclo",
+        "maxSeconds": "Tiempo máximo por ciclo",
+        "seconds": "{n} s"
+      }
+    },
+    "queue": {
+      "title": "Cola del Orquestador",
+      "subtitle": "Vacía hasta la fase 2: nada crea tareas todavía. Cuando las haya, se verán aquí por estado, con lo que reservan del presupuesto.",
+      "stat": {
+        "open": "Tareas abiertas",
+        "reserved": "Reservado del presupuesto"
+      },
+      "tasks": "Tareas creadas en los últimos {days} días, por estado",
+      "runs": "Intentos de los últimos {days} días, por resultado",
+      "state": {
+        "planned": "Planeadas",
+        "queued": "En cola",
+        "running": "En curso",
+        "done": "Hechas",
+        "failed": "Fallidas",
+        "skipped": "Omitidas",
+        "expired": "Vencidas"
+      },
+      "status": {
+        "ok": "Correctos",
+        "invalid": "Inválidos",
+        "timeout": "Tiempo agotado",
+        "abstain": "Abstenciones",
+        "skipped": "Omitidos",
+        "expired": "Vencidos",
+        "budget_skip": "Sin presupuesto"
+      }
+    },
+    "audit": {
+      "title": "Auditoría de fugas de los agentes",
+      "subtitle": "Cada noche se vuelve a derivar lo que cada estado sabía y se compara con lo que su momento permitía saber. Una regla que la auditoría aún no corre no tiene días: no es un registro limpio.",
+      "empty": "La auditoría todavía no tiene ninguna regla de agentes.",
+      "col": {
+        "rule": "Regla",
+        "verdict": "Veredicto",
+        "days": "Días auditados",
+        "checked": "Revisados",
+        "violations": "Violaciones",
+        "last": "Último día"
+      },
+      "verdict": {
+        "never": "Sin auditar",
+        "clean": "Limpia",
+        "violations": "Con violaciones"
+      },
+      "rule": {
+        "slice_known": "Cada slice sabía solo lo de su momento",
+        "agent_known": "Cada agente sabía solo lo de su momento",
+        "review_known": "Cada revisión sabía solo lo de su momento",
+        "shadow_review_known": "Cada revisión en shadow sabía solo lo de su momento",
+        "memory_known": "Cada nota de memoria sabía solo lo de su momento"
+      },
+      "examples": "Días con violaciones"
+    },
+    "match": {
+      "title": "Estado del partido para los agentes",
+      "subtitle": "Lo que el job de estados escribió de este partido, sin ningún modelo: las medidas de cada slice, nunca su contenido.",
+      "empty": "Este partido todavía no tiene estado vivo: el job lo escribe cuando hay un pase hecho dentro de su ventana.",
+      "current": "Estado vivo",
+      "none": "ninguno",
+      "field": {
+        "pass": "Pase",
+        "knownAt": "Conocido hasta",
+        "written": "Escrito",
+        "version": "Versión del estado y del paquete",
+        "hash": "Huella del paquete",
+        "code": "Código del modelo",
+        "packet": "Paquete de datos",
+        "elapsed": "Tiempo de armado",
+        "blocking": "Bloquea a los agentes",
+        "flags": "Texto de proveedor marcado",
+        "agents": "Agentes previstos",
+        "contradictions": "Contradicciones",
+        "candidates": "Candidatos",
+        "risks": "Riesgos",
+        "final": "Veredicto del Consejo"
+      },
+      "final": {
+        "yes": "Escrito en el estado",
+        "no": "Aún no"
+      },
+      "slice": {
+        "col": {
+          "slice": "Slice",
+          "tokens": "Tokens",
+          "cap": "Tope",
+          "fits": "Cabe",
+          "trimmed": "Recortado",
+          "blocks": "Bloques"
+        }
+      },
+      "fits": {
+        "yes": "Cabe",
+        "no": "No cabe"
+      },
+      "history": {
+        "title": "Estados por los que pasó el partido",
+        "current": "vivo",
+        "over": "{name} no cabe",
+        "col": {
+          "pass": "Pase",
+          "known": "Conocido hasta",
+          "written": "Escrito",
+          "hash": "Huella",
+          "tokens": "Tokens",
+          "problems": "Problemas"
+        }
+      },
+      "tasks": {
+        "title": "Tareas de los agentes en este partido",
+        "empty": "Ningún agente ha trabajado en este partido: el Orquestador llega en la fase 2.",
+        "col": {
+          "agent": "Agente",
+          "task": "Tarea",
+          "pass": "Pase",
+          "state": "Estado",
+          "priority": "Prioridad",
+          "cost": "Costo estimado",
+          "attempts": "Intentos",
+          "reason": "Razón"
+        }
+      },
+      "runs": {
+        "title": "Intentos de los agentes en este partido",
+        "empty": "Sin intentos: ningún agente ha llamado a un modelo sobre este partido.",
+        "col": {
+          "agent": "Agente",
+          "task": "Tarea",
+          "status": "Resultado",
+          "model": "Modelo",
+          "verdict": "Veredicto",
+          "started": "Empezó",
+          "cost": "Costo",
+          "reason": "Razón"
+        }
+      },
+      "state": {
+        "planned": "Planeada",
+        "queued": "En cola",
+        "running": "En curso",
+        "done": "Hecha",
+        "failed": "Fallida",
+        "skipped": "Omitida",
+        "expired": "Vencida"
+      },
+      "status": {
+        "ok": "Correcto",
+        "invalid": "Inválido",
+        "timeout": "Tiempo agotado",
+        "abstain": "Abstención",
+        "skipped": "Omitido",
+        "expired": "Vencido",
+        "budget_skip": "Sin presupuesto"
+      }
+    }
   }
 }

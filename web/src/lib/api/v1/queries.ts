@@ -274,6 +274,18 @@ export const live = {
     queryFn: v1.aiCosts,
     refetchInterval: 5 * MINUTE,
   },
+  aiAgents: (days = 7) => ({
+    queryKey: ["v1", "ai-layer", "agents", days],
+    queryFn: () => v1.aiAgents(days),
+    refetchInterval: MINUTE,
+  }),
+  /** Asked for with a fixture the page has (a match found by the picker); no fixture, no request. */
+  aiMatchState: (fixtureId: string) => ({
+    queryKey: ["v1", "ai-layer", "match-state", fixtureId],
+    queryFn: () => v1.aiMatchState(fixtureId),
+    enabled: fixtureId !== "",
+    refetchInterval: MINUTE,
+  }),
   aiShadow: { queryKey: ["v1", "ai-layer", "shadow"], queryFn: v1.aiShadow, staleTime: 5 * MINUTE },
   aiMemory: (kind?: string) => ({
     queryKey: ["v1", "ai-layer", "memory", kind ?? "all"],
