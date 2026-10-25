@@ -12,8 +12,9 @@
                    ``FBI_PATTERN_SEARCH`` says so - the search for patterns in the settled decisions (``fbi.research.pattern_search``)
 
 The jobs take ``after``: steps the caller wants run right after one of the job's own (``with_extra``). The worker uses it to add the
-decision and the settlement of the FAMILIES (``fbi.familydecisions.decide`` / ``fbi.familydecisions.outcomes``, in shadow, off unless
-``FBI_FAMILY_DECISIONS`` says so) without this package importing them: they sit above it, and a package below may not know the one above.
+decision, the settlement, the post-mortem and the memory of the FAMILIES (``fbi.familydecisions.decide`` / ``.outcomes`` / ``.postmortem`` /
+``.memory``, in shadow, off unless ``FBI_FAMILY_DECISIONS`` says so; docs/owner/CICLO_FAMILIAS_F11.md) without this package importing them: they
+sit above it, and a package below may not know the one above.
 
 One run of each kind at a time (advisory locks); a run that dies is closed as ``interrupted`` by the next worker
 (``recover_interrupted``). Every step commits on its own, so a failure part-way keeps what was done and is written in

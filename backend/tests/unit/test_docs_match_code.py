@@ -446,6 +446,144 @@ def test_the_guide_of_the_criterion_for_a_family_says_what_the_code_does() -> No
     assert "`CRITERIO_FAMILIAS_F11.md`" in read_doc("owner", "FAMILIAS_VS_MERCADO_F11.md"), "the guide of the comparison points to this one"
 
 
+def test_the_guide_of_the_cycle_of_the_families_says_what_the_code_does(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan F11: the guide of the cycle of the families in shadow - the switch and what it means, the four steps with their versions and the moment each
+    runs, the rule that makes a selection a candidate, the cap and the stake, the wait before a decision is settled, the six rules that grade it, the bands of
+    the quality of a price and the six verdicts, the conventions of the memory, the page of the Admin Console and the place the example of the settings points
+    at."""
+    from apps.worker import scheduler
+
+    from fbi.api.routers import intelligence as router
+    from fbi.api.services import families as page
+    from fbi.core import decision_versions as versions
+    from fbi.families import versus
+    from fbi.familydecisions import decide as fd
+    from fbi.familydecisions import memory as fm
+    from fbi.familydecisions import outcomes as fo
+    from fbi.familydecisions import postmortem as fp
+    from fbi.intel import cycle
+    from fbi.intel import outcomes as pipeline_outcomes
+    from fbi.intel import postmortem as pipeline_pm
+    from fbi.intel import stake as staking
+    from fbi.market import rules
+
+    guide = "CICLO_FAMILIAS_F11.md"
+    doc = read_doc("owner", guide)
+    flat = " ".join(doc.split())
+    # the four versions, and the one of the forecasts they judge
+    assert (versions.DECISION_FAMILIES, versions.OUTCOME_FAMILIES, versions.POSTMORTEM_FAMILIES, versions.MEMORY_FAMILIES) == (
+        "decision-fam-v1", "outcome-fam-v1", "pm-fam-v1", "memory-fam-v1")
+    for version in (versions.DECISION_FAMILIES, versions.OUTCOME_FAMILIES, versions.POSTMORTEM_FAMILIES, versions.MEMORY_FAMILIES, fd.FORECAST_VERSION):
+        assert f"`{version}`" in doc, f"the guide leaves out {version}"
+    assert fd.FORECAST_VERSION == "family-v1" and set(fd.SPECS) == {"GOALS_HALF", "CORNERS", "CARDS", "YELLOW"}
+    assert "Las familias (goles por mitad, córners, tarjetas y amarillas)" in flat
+    # the switch: off by default, whatever is not "shadow" means off, and the worker has to be restarted to read it
+    assert fd.SWITCH == "FBI_FAMILY_DECISIONS" and fd.MODES == ("off", "shadow") and f"`{fd.SWITCH}=shadow`" in doc
+    for value, want in ((None, "off"), ("", "off"), ("off", "off"), ("shadow", "shadow"), (" SHADOW ", "shadow"), ("on", "off"), ("1", "off")):
+        monkeypatch.setattr(fd, "environment", lambda value=value: {} if value is None else {fd.SWITCH: value})
+        assert fd.mode() == want, value
+    modes = section_of(doc, "## 2. El interruptor")
+    assert "| `off` (por omisión, y cualquier valor desconocido) | nada: el trabajo de decisión y el de la noche siguen como antes de las familias, " \
+           "sin ningún paso suyo y sin ninguna clave suya en su registro |" in modes
+    assert "| `shadow` | una pasada de decisión por hora y, de noche, la liquidación, el post-mortem y la memoria |" in modes
+    assert "`/etc/predigol/app.env`" in flat and "`deploy/vps/app.env.example`" in flat and "hay que reiniciar el worker" in flat
+    migration = DOCS.parent / "migrations" / "versions" / "0094_family_learning.py"
+    if migration.is_file():
+        text = migration.read_text(encoding="utf-8")
+        assert "intel.family_postmortems" in text and "intel.family_memory" in text and "family_memory_latest" in text, "0094 makes the tables the guide names"
+    assert "la migración `0094`" in flat
+    # the steps: each one of its job, in the order of the nightly job, with its version and the table it writes
+    monkeypatch.setattr(fd, "mode", lambda: "shadow")
+    at = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
+    decide_steps = scheduler.family_decide_steps(None, at)  # type: ignore[arg-type]  # the steps are built, not run
+    night_steps = scheduler.family_nightly_steps(None, at)  # type: ignore[arg-type]
+    assert {after: [name for name, _ in steps] for after, steps in decide_steps.items()} == {"select": ["families"]}
+    assert {after: [name for name, _ in steps] for after, steps in night_steps.items()} == {
+        "outcomes": ["family_outcomes"], "postmortems": ["family_postmortems"], "memory": ["family_memory"]}
+    nightly = [("outcomes", lambda: None), ("postmortems", lambda: None), ("memory", lambda: None), ("calibration", lambda: None)]
+    assert [name for name, _ in cycle.with_extra(nightly, night_steps)] == [
+        "outcomes", "family_outcomes", "postmortems", "family_postmortems", "memory", "family_memory", "calibration"]
+    decide_job = [("decide", lambda: None), ("select", lambda: None)]
+    assert [name for name, _ in cycle.with_extra(decide_job, decide_steps)] == ["decide", "select", "families"]
+    assert list(page.STEPS) == ["families", "family_outcomes", "family_postmortems", "family_memory"]
+    steps = [[cell.strip() for cell in row.strip("|").split("|")] for row in table_rows(section_of(doc, "## 3. Los cuatro pasos"), "| Paso |")]
+    assert [row[0] for row in steps] == ["Decidir", "Liquidar", "Post-mortem", "Recordar"]
+    assert [row[1] for row in steps] == [f"`{name}` (dentro de `{job}`)" for name, job in (
+        ("families", "intel_decide"), ("family_outcomes", "intel_nightly"), ("family_postmortems", "intel_nightly"), ("family_memory", "intel_nightly"))]
+    assert [row[3] for row in steps] == [f"`{v}`" for v in (versions.DECISION_FAMILIES, versions.OUTCOME_FAMILIES, versions.POSTMORTEM_FAMILIES,
+                                                           versions.MEMORY_FAMILIES)]
+    assert [row[4] for row in steps] == ["`intel.decisions`, sin pick", "`intel.decision_outcomes`", "`intel.family_postmortems`",
+                                         "`intel.family_memory` (y la vista `intel.family_memory_latest`)"]
+    assert scheduler.INTEL_DECIDE_MINUTES == 15 and "el trabajo que viene cada 15 minutos" in steps[0][2]
+    assert timedelta(minutes=60) == fd.EVERY and "una vez por hora" in steps[0][2]
+    assert fd.due(datetime(2026, 10, 25, 12, 0, tzinfo=UTC)) and fd.due(datetime(2026, 10, 25, 12, 14, tzinfo=UTC))
+    assert not fd.due(datetime(2026, 10, 25, 12, 15, tzinfo=UTC)) and not fd.due(datetime(2026, 10, 25, 12, 45, tzinfo=UTC)), "the first pass of each hour"
+    assert (scheduler.INTEL_NIGHTLY_HOUR, scheduler.INTEL_NIGHTLY_MINUTE) == (7, 50) and "a las 07:50 hora de Bogotá" in steps[1][2]
+    assert "después** de elegir los picks del día" in steps[0][2]
+    # what makes a selection a candidate
+    assert f"**próximas {hours(fd.HORIZON):g} horas**" in flat
+    assert f"**{versus.MIN_BOOKS} casas completas o más**" in flat
+    assert f"con un margen de {str(versus.MAX_OVERROUND).replace('.', ',')} como mucho" in flat
+    assert f"un **valor visto de al menos {fd.MIN_EV * 100:g} %**" in flat and fd.MIN_EV == bets.MIN_EV
+    assert set(versus.OUTCOMES) == {"over_under", "both_teams_score", "odd_even", "draw_no_bet", "one_x_two"}
+    assert "más/menos, ambos marcan, par/impar, empate no apuesta y 1X2" in flat
+    assert versus.comparable(Decimal("9.5")) and not versus.comparable(Decimal("10")) and "(sin línea, o con «medio»)" in flat
+    assert "`CRITERIO_FAMILIAS_F11.md`" in flat and "`PREDIGOL_INTELLIGENCE.md`, sección 5" in flat
+    assert (DOCS / "intelligence" / "PREDIGOL_INTELLIGENCE.md").is_file() and (DOCS / "owner" / "CRITERIO_FAMILIAS_F11.md").is_file()
+    # the cap, the stake and the reasons a row carries
+    assert page.STATES == ("INVESTIGACION", "RECHAZADO") and "`INVESTIGACION`" in doc and "`RECHAZADO`" in doc
+    assert staking.CAPS["INVESTIGACION"] == 0.0 and staking.CAPS["RECHAZADO"] == 0.0 and "**La apuesta es cero.**" in flat
+    assert (fd.REASON_RESEARCH, fd.REASON_CAPPED) == ("family_research", "family_shadow_only")
+    assert "`family_shadow_only`" in doc and "`family_research`" in doc
+    assert (Path(__file__).parent / "test_decision_version_guard.py").is_file() and "`test_decision_version_guard.py`" in doc
+    # the settlement: the wait, the look-back, the six rules, the profit of a unit and the close
+    assert timedelta(hours=30) == fo.WAIT and f"liquida las decisiones de los partidos que terminaron **{hours(fo.WAIT):g} horas** atrás" in flat
+    assert timedelta(days=30) == fo.LOOKBACK and f"que no pasaron de hace **{fo.LOOKBACK.days} días**" in flat
+    assert fo.CLOSE_MIN_BOOKS == versus.MIN_BOOKS and "con las mismas 3 casas completas como mínimo" in flat
+    assert closing_value.VERSION == "clv-v1" and "(`clv-v1`, la única definición del sistema)" in flat
+    graded = [row[0] for row in (cells_of_rows(section_of(doc, "## 5. Cómo se liquida")))]
+    keys = sorted(page.rules_of_families())
+    assert keys == ["cards_lines_ft@v1", "corners_ft@v1", "goals_1h@v1", "goals_2h@v1", "goals_halves@v1", "yellow_ft@v1"]
+    assert sorted(cell.strip("`") for cell in graded if cell.startswith("`")) == keys and all(rules.RULES_BY_KEY[key].liquidable for key in keys)
+    assert [pipeline_outcomes.profit_per_unit(result, Decimal("2.5")) for result in ("win", "half_win", "push", "void", "half_loss", "loss")] == [
+        Decimal("1.5"), Decimal("0.75"), Decimal(0), Decimal(0), Decimal("-0.5"), Decimal(-1)]
+    assert "gana, cuota - 1; media ganada, (cuota - 1) / 2; devuelta o anulada, 0; media perdida, -½; pierde, -1" in flat
+    # the post-mortem: the bands of the price, the six verdicts as the code gives them and the lesson of each
+    assert closing_value.GOOD == 0.01 and "por encima de +1 % es `GOOD`, por debajo de -1 % es `BAD`, entre medias `NEUTRAL`, y sin cierre `UNKNOWN`" in flat
+    assert [closing_value.quality(x) for x in (0.011, 0.0, -0.011, None)] == ["GOOD", "NEUTRAL", "BAD", "UNKNOWN"]
+    verdicts = {row[2].strip("`"): row for row in ([cell.strip() for cell in line.strip("|").split("|")] for line in table_rows(section_of(doc, "## 6. Qué aprende de cada decisión (el post-mortem)"), "| Resultado |"))}
+    assert set(verdicts) == set(fm.VERDICTS) == set(fp.LESSON) and [row[3] for row in verdicts.values()] == [fp.LESSON[v] for v in verdicts]
+    asked = {"ganó": ("win", "half_win"), "perdió": ("loss", "half_loss"), "devuelta o anulada": ("push", "void"), "cualquiera": ("win", "loss")}
+    quality = {"buena o neutra": ("GOOD", "NEUTRAL"), "mala": ("BAD",), "cualquiera": ("GOOD", "NEUTRAL", "BAD"), "sin cierre": ("UNKNOWN",)}
+    for verdict, (result_text, quality_text, _, _) in verdicts.items():
+        for result in asked[result_text]:
+            for q in quality[quality_text]:
+                if verdict == "SIN_DATOS" and result in ("push", "void"):
+                    continue
+                assert pipeline_pm.verdict_of(result, q) == verdict, (result, q, verdict)
+    assert pipeline_pm.verdict_of("void", "UNKNOWN") == "NULO" and "una investigación) y no un rechazo" in flat
+    # the memory: the entities and how many post-mortems each needs, the windows and the confidence
+    assert fm.ENTITY_TYPES == ("family", "market", "competition", "referee") and fm.NEEDS == {"family": 1, "market": 1, "competition": 3, "referee": 3}
+    assert "Una competición o un árbitro necesitan al menos 3 post-mortems para existir" in flat and "una familia o un mercado, uno" in flat
+    assert fm.RECENT_DAYS == 28 and f"últimos **{fm.RECENT_DAYS} días**" in flat
+    assert fm.HALF_LIFE_DAYS == 60.0 and f"cada **{fm.HALF_LIFE_DAYS:g} días**" in flat and f"`n_eff / (n_eff + {fm.PRIOR:g})`" in flat and fm.PRIOR == 30.0
+    assert f"Los {fm.RECENT_DAYS}, los {fm.HALF_LIFE_DAYS:g} y los {fm.PRIOR:g} son convenciones de la memoria" in flat and "es `memory-fam-v2`" in flat
+    # the page of the Admin Console
+    assert any(getattr(route, "path", None) == "/intelligence/families" for route in router.router.routes) and "`GET /admin/intelligence/families`" in doc
+    assert (page.DEFAULT_DAYS, page.MAX_DAYS, page.MEMORY_TOP) == (14, 120, 25) and "(por omisión 14 días, como mucho 120)" in flat
+    assert "los 25 con más post-mortems de cada tipo" in flat and timedelta(days=7) == page.STEPS_LOOKBACK and "Mira los últimos **7 días**" in flat
+    assert "`/admin/learning#tab=families`" in doc
+    # the example of the settings of the server
+    example = DOCS.parent / "deploy" / "vps" / "app.env.example"
+    if example.is_file():
+        variables = example.read_text(encoding="utf-8")
+        assert f"# {fd.SWITCH}=off" in variables and f"docs/owner/{guide}" in variables, "the default is off and the example points at the guide"
+        for mode_name in fd.MODES:
+            assert f"#   {mode_name} " in variables
+    for name in ("FAMILIAS_F10.md", "CRITERIO_FAMILIAS_F11.md", "DEPENDENCIA_FAMILIAS_F11.md", "PROMOCIONES_F12.md", "POSTMORTEM_MEMORIA_F8.md"):
+        assert (DOCS / "owner" / name).is_file() and f"`{name}`" in doc, f"the guide points to {name}"
+
+
 def test_the_guide_of_the_model_code_promotions_says_what_the_code_does() -> None:
     """Plan F12: the guide of the promotions of the model's code - the code in force, the least a reason can say, the window of the plan, the
     statuses a fingerprint can have and the commands that measure and write them."""
