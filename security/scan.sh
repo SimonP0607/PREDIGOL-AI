@@ -6,19 +6,26 @@
 #   security/scan.sh range <base> <head>  los commits de base..head (la puerta de un lanzamiento)
 #
 # Salida: 0 limpio · 1 hay hallazgos · 2 el escáner no pudo mirar (nunca es luz verde).
-# GITLEAKS_BIN=<ruta> elige el binario (si no, el del PATH); GITLEAKS_REPORT=<fichero.json> guarda el informe (redactado) de history y range.
+# GITLEAKS_BIN=<ruta> elige el binario (si no, el del PATH y, al final, security/bin/ de la carpeta de la guarda); GITLEAKS_REPORT=<fichero.json> guarda el informe
+# (redactado) de history y range. PREDIGOL_GUARD_DIR=<carpeta> dice dónde están .gitleaks.toml, .gitleaksignore y security/GITLEAKS_VERSION cuando no es el
+# propio repositorio (el portátil del dueño usa una copia de la guarda para clones que aún no la tienen); por defecto es la raíz del repo.
 set -u
 MODE=${1:-}
 ROOT=$(git rev-parse --show-toplevel 2> /dev/null) || { echo "scan.sh: no estoy dentro de un repositorio git" >&2; exit 2; }
-CONFIG="$ROOT/.gitleaks.toml"
+GUARD=${PREDIGOL_GUARD_DIR:-$ROOT}
+CONFIG="$GUARD/.gitleaks.toml"
+IGNORE="$GUARD/.gitleaksignore"
 [ -f "$CONFIG" ] || { echo "scan.sh: falta $CONFIG" >&2; exit 2; }
 BIN=${GITLEAKS_BIN:-}
 if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then BIN=$(command -v gitleaks 2> /dev/null || command -v gitleaks.exe 2> /dev/null || true); fi
 if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then
+  for c in "$GUARD/security/bin/gitleaks" "$GUARD/security/bin/gitleaks.exe"; do [ -x "$c" ] && BIN=$c && break; done
+fi
+if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then
   echo "scan.sh: no encuentro gitleaks (pon GITLEAKS_BIN o ponlo en el PATH; security/README.md, «Instalar»)" >&2
   exit 2
 fi
-WANT=$(sed -n 's/^version=//p' "$ROOT/security/GITLEAKS_VERSION" 2> /dev/null | head -n 1)
+WANT=$(sed -n 's/^version=//p' "$GUARD/security/GITLEAKS_VERSION" 2> /dev/null | head -n 1)
 GOT=$("$BIN" version 2> /dev/null | tr -d '\r' | head -n 1)
 case "$GOT" in [0-9]*) [ -z "$WANT" ] || [ "$GOT" = "$WANT" ] || echo "scan.sh: aviso, gitleaks es $GOT y el fijado es $WANT" >&2 ;; esac
 BASE=${2:-}
@@ -46,7 +53,7 @@ fi
 REPORT=""
 if [ -n "${GITLEAKS_REPORT:-}" ] && [ "$MODE" != staged ]; then REPORT="--report-format=json --report-path=$GITLEAKS_REPORT"; fi
 # shellcheck disable=SC2086
-"$BIN" "$@" --redact=100 --no-banner --log-level=warn -v --exit-code=42 -c "$CONFIG" -i "$ROOT/.gitleaksignore" $REPORT "$ROOT"
+"$BIN" "$@" --redact=100 --no-banner --log-level=warn -v --exit-code=42 -c "$CONFIG" -i "$IGNORE" $REPORT "$ROOT"
 rc=$?
 case $rc in
   0) exit 0 ;;

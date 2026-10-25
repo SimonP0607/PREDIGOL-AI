@@ -7,7 +7,11 @@ if [ "${SKIP_GITLEAKS:-0}" = 1 ]; then
   exit 0
 fi
 ROOT=$(git rev-parse --show-toplevel) || exit 0
-"$ROOT/security/scan.sh" staged
+# La guarda es la carpeta que contiene este hook (la raíz del repo, o la copia de la guarda del portátil si el clon aún no la tiene)
+GUARD=$(cd "$(dirname "$0")/.." 2> /dev/null && pwd) || GUARD=$ROOT
+SCAN="$GUARD/security/scan.sh"
+[ -f "$SCAN" ] || SCAN="$ROOT/security/scan.sh"
+PREDIGOL_GUARD_DIR=${PREDIGOL_GUARD_DIR:-$GUARD} sh "$SCAN" staged
 rc=$?
 case $rc in
   0) exit 0 ;;
