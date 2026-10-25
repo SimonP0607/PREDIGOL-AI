@@ -3,7 +3,8 @@ nothing else - no model, no decision, no data of PrediGol Intelligence (it runs 
 
 One messenger per database (a PostgreSQL advisory lock on a connection of its own; a second one waits). Work is
 organised in cycles of five minutes, each one row of the job ledger (``raw.ingestion_runs``, job
-``messenger_cycle``): at the start of a cycle the owner's notices and the legal-change messages; then a tick every
+``messenger_cycle``): at the start of a cycle the owner's notices, the legal-change messages and the product
+analytics' daily aggregate and retention (A6: the purge only with FBI_EVENTS_PURGE=on); then a tick every
 15 seconds sends what is due (only while FBI_EMAIL_SEND is on and the provider is configured), with a heartbeat on
 the run. A cycle that dies is closed as stale by the worker's run watchdog (``fbi.ops.run_watchdog``: the
 messenger's job is registered there) and three failed cycles in a row are a ``job_failing`` notice. The container's
@@ -18,6 +19,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +28,7 @@ import structlog
 
 from fbi.core.clock import now
 from fbi.core.logging import error_summary
+from fbi.customer import events
 from fbi.ingestion.ledger import RunCounters, RunLedger
 from fbi.messaging import notices
 from fbi.messaging.email import client_from_env
@@ -75,6 +78,8 @@ class CycleTotals:
     failed: int = 0
     suppressed: int = 0
     deferred: int = 0
+    rollup: int = 0
+    purge: events.PurgeReport | None = None
     errors: list[str] = field(default_factory=list)
 
     def add(self, report: DispatchReport) -> None:
@@ -86,7 +91,7 @@ class CycleTotals:
 
     def counters(self, *, interrupted: bool) -> RunCounters:
         provider_calls = self.sent + self.retried + self.deferred
-        c = RunCounters(api_calls=provider_calls, rows_inserted=self.notices + self.legal,
+        c = RunCounters(api_calls=provider_calls, rows_inserted=self.notices + self.legal + self.rollup,
                         rows_updated=self.sent + self.retried + self.failed + self.suppressed + self.deferred,
                         errors=list(self.errors))
         if interrupted:
@@ -94,13 +99,17 @@ class CycleTotals:
         return c
 
     def notes(self, *, sending: bool, provider: bool) -> str:
+        purge = (f"; events purge {self.purge.mode}: raw {self.purge.raw}, daily {self.purge.daily}"
+                 if self.purge is not None else "")
         return (f"sending {'on' if sending else 'off'}{'' if provider or not sending else ' (no provider)'}; "
                 f"sent {self.sent}, retried {self.retried}, failed {self.failed}, suppressed {self.suppressed}, "
-                f"deferred {self.deferred}; notices {self.notices}, legal {self.legal}")
+                f"deferred {self.deferred}; notices {self.notices}, legal {self.legal}; "
+                f"activity rows {self.rollup}{purge}")
 
 
 def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sending: bool, provider: bool) -> None:
-    """The legal-change messages and the owner's notices; each step's failure is recorded and the cycle goes on."""
+    """The legal-change messages, the owner's notices and the product analytics' daily aggregate and retention (A6);
+    each step's failure is recorded and the cycle goes on."""
     try:
         totals.legal += enqueue_legal_changes(conn)
         conn.commit()
@@ -114,6 +123,16 @@ def start_of_cycle(conn: psycopg.Connection[Any], totals: CycleTotals, *, sendin
         conn.rollback()
         totals.errors.append(f"notices: {error_summary(exc)}"[:300])
         log.error("messenger.notices_failed", error=error_summary(exc))
+    try:
+        moment = now()
+        today = events.bogota_day(moment)
+        totals.rollup += events.rollup(conn, [today - timedelta(days=1), today])
+        totals.purge = events.purge(conn, at=moment)
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        totals.errors.append(f"activity: {error_summary(exc)}"[:300])
+        log.error("messenger.activity_failed", error=error_summary(exc))
 
 
 def tick(conn: psycopg.Connection[Any], provider: Provider | None, totals: CycleTotals) -> None:

@@ -23,7 +23,7 @@ from zoneinfo import ZoneInfo
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.customer import consents, workdays
+from fbi.customer import consents, events, workdays
 from fbi.customer.db import CustomerError, write_connection
 from fbi.messaging import outbox
 
@@ -248,6 +248,8 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         SELECT email_off AS email_switched_off, email_status, email_status_at, updated_at
         FROM customer.preferences WHERE user_id = %s
     """, (user_id,))
+    # The product events kept under the reader's pseudonym and their daily aggregate (plan UX, A6).
+    analytics = events.events_of(conn, user_id)
     document: dict[str, Any] = _iso({
         "format": EXPORT_FORMAT,
         "generated_at": now or datetime.now(UTC),
@@ -260,5 +262,7 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "saved_parlays": parlay_rows,
         "messages": messages,
         "notification_preferences": notification_prefs[0] if notification_prefs else None,
+        "product_events": analytics["product_events"],
+        "activity_daily": analytics["activity_daily"],
     })
     return document

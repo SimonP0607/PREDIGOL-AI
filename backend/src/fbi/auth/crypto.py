@@ -69,6 +69,17 @@ def observability_id(user_id: int) -> str | None:
     return hmac.new(key, f"user:{user_id}".encode(), hashlib.sha256).hexdigest()[:20]
 
 
+def product_id(user_id: int) -> str | None:
+    """The pseudonym a reader's product events carry (plan UX, A6): an HMAC of the account's id under its own subkey -
+    not the one of Sentry's pseudonym, so the two cannot be joined - stable for an account, and meaningless without
+    the key. None without the key: then nothing is recorded."""
+    try:
+        key = _subkey(b"product-events")
+    except KeyUnavailableError:
+        return None
+    return hmac.new(key, f"user:{user_id}".encode(), hashlib.sha256).hexdigest()[:20]
+
+
 def new_key_b64() -> str:
     """A fresh FBI_AUTH_SECRET_KEY value (for install scripts)."""
     return base64.b64encode(os.urandom(32)).decode("ascii")
