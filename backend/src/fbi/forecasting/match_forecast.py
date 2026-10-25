@@ -419,7 +419,8 @@ def store(conn: psycopg.Connection[Any], f: MarketForecast, *, at: datetime, cod
     """The rows of one market forecast (all its outcomes). Returns how many were written.
 
     ``version`` and ``family`` are those of the core markets unless the caller is another writer of the same table (``fbi.families``, F10):
-    it writes under a version of its own, which the page of the forecast of a match does not read, and names the family of its keys."""
+    it writes under a version of its own, which the forecast of a match does not read (only the Admin Console's preview shows it, in a section of
+    its own), and names the family of its keys."""
     written = 0
     with conn.cursor() as cur:
         for o in f.outcomes:

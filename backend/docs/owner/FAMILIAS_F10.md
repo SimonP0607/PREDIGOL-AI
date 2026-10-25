@@ -26,8 +26,9 @@ se conviertan en apuestas es una decisión posterior (F11 y la puerta de F14), y
 * **La comprobación de calibración** (`--calibration`). Con las predicciones en el orden en que se jugaron, la primera mitad ajusta
   una recalibración (un desplazamiento, y un desplazamiento con inclinación) y la segunda la califica. Nunca se califica con los
   partidos que la ajustaron.
-* **El almacén** (`models.match_forecasts`, el de F5, versión **`family-v1`**). La página del pronóstico de un partido lee solo la
-  versión `forecast-v1`, así que nadie ve estas filas. Cada mercado queda siempre **UNCALIBRATED** (base `no_champion`, sin intervalo): ninguna
+* **El almacén** (`models.match_forecasts`, el de F5, versión **`family-v1`**). El pronóstico de un partido que ve el producto lee solo la
+  versión `forecast-v1`, así que ningún usuario ve estas filas; la vista previa del administrador las muestra aparte, en la sección
+  «Familias» de la ficha del partido (sección 6). Cada mercado queda siempre **UNCALIBRATED** (base `no_champion`, sin intervalo): ninguna
   familia tiene calibrador ni lo tendrá hasta que la puerta del plan (al menos 300 apuestas y un CLV no negativo, que necesita el
   historial de precios de F1) lo diga. Una fila nueva se escribe cuando el mercado es nuevo, cuando cambió el modelo o su versión, o cuando
   alguna probabilidad se movió medio punto.
@@ -218,7 +219,8 @@ Se recalibró con la primera mitad (hasta el 2026-03-24) de las 18.024 prediccio
 ## 5. Lo que F10 NO hace
 
 * No pone **precio**, ni **valor**, ni **apuesta**: la capa de decisión no lee estas filas.
-* No los **muestra**: la página del pronóstico lee `forecast-v1`. Enseñarlos (`FBI_FORECAST_USERS`, o un bloque nuevo) es decisión suya.
+* No se los **muestra a los usuarios**: el pronóstico del partido lee `forecast-v1`, y `FBI_FORECAST_USERS` solo decide si los usuarios ven ese.
+  Enseñarles estos (con un bloque nuevo) es decisión suya. El administrador sí los ve, aparte, en la vista previa (sección 6).
 * No tiene **calibrador**: las probabilidades guardadas son las del modelo, marcadas UNCALIBRATED. La comprobación de la sección 3 dice
   si una recalibración las arreglaría, pero no se aplica a nada.
 * No se **compara con el mercado**: falta el historial de precios (F1).
@@ -238,6 +240,11 @@ SELECT m.name, f.version, f.calibration, count(*) AS filas, count(DISTINCT f.fix
 ```
 
 Cada mercado de un partido suma 1 (las probabilidades más el empuje) y todas las claves existen en `market.markets`.
+Para ver lo que las familias pronostican de **un partido** sin escribir SQL: en la ficha del partido, con la vista previa del administrador
+(`GET /api/v1/matches/{id}/forecast?preview=shadow`), el bloque «Pronóstico PrediGol» trae una sección «Familias» con cada familia, cada
+mercado y cada línea, la probabilidad de cada desenlace (la más probable marcada), la cuota justa (1 / probabilidad) y la regla de
+liquidación que juzgaría una apuesta en ese mercado. Las cifras son las guardadas, sin calibrar y sin intervalo; la sección es `null` para
+cualquiera que no sea esa vista previa y se pide a la base solo entonces.
 La corrida de cada paso, cuando escribe, queda en `raw.ingestion_runs` con `job_type = 'family_forecasts'` y sus notas dicen qué escribió cada
 familia. Cada primera pasada escribe del orden de 130 filas por partido y unos 20 MB en total; después solo cambia lo que se movió.
 

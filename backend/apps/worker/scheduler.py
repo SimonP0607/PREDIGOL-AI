@@ -39,7 +39,8 @@ at worst, and a duplicated tick costs nothing at all.
     ``family_nightly_steps``: their decision once an hour, after the picks of the day, and their settlement).
   * ``family_forecasts``  every 3 hours (``FBI_FAMILY_FORECAST_MINUTES``): the goals of each half, the corners and the cards of the
     upcoming matches (``fbi.families``, plan F10), a negative binomial per team, written to the forecast table under ``family-v1``.
-    Research: no page reads that version. Database only; ``FBI_FAMILY_FORECASTS=0`` switches it off.
+    Research: the forecast of a match reads none of it; only the Admin Console's preview of a match shows it, in a section of its own.
+    Database only; ``FBI_FAMILY_FORECASTS=0`` switches it off.
   * ``reference_refresh``  every 30 min: the reference feeds (``fbi.ingestion.reference``) -
     the provider's predictions (auxiliary), rounds, top scorers, coaches, transfers, sidelined,
     trophies, the odds catalogues and mapping - what is due on the documented cadence, at most

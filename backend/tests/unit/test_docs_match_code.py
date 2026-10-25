@@ -584,6 +584,32 @@ def test_the_guide_of_the_cycle_of_the_families_says_what_the_code_does(monkeypa
         assert (DOCS / "owner" / name).is_file() and f"`{name}`" in doc, f"the guide points to {name}"
 
 
+def test_the_guides_say_who_sees_what_the_families_forecast() -> None:
+    """Plan F10.17b: what the families forecast is shown in the Admin Console's preview of a match, in a section of its own, and to no user. The guides say
+    it as the contract and the page of the forecast do: the version, the field, and that it is null in every other answer."""
+    from fbi.api.contracts.forecast import MatchForecast
+    from fbi.api.services import forecast as page
+    from fbi.families import forecast as families
+
+    field = MatchForecast.model_fields["families"]
+    assert field.default is None and page.FAMILY_VERSION == families.VERSION, "the field is null unless the preview fills it, and it reads the families' version"
+    assert page.VERSION != page.FAMILY_VERSION and "forecast" in MatchForecast.model_fields, "the forecast of the match is another section, of another version"
+
+    def flat(*parts: str) -> str:
+        return " ".join(read_doc(*parts).split())
+
+    f5, f10, cycle = flat("owner", "PRONOSTICO_F5.md"), flat("owner", "FAMILIAS_F10.md"), flat("owner", "CICLO_FAMILIAS_F11.md")
+    assert "con `?preview=shadow` (solo SUPER_ADMIN; cualquier otro recibe 403)" in f5
+    assert f"un cuarto bloque, `families`, con lo que pronostican las familias (goles por mitad, córners, tarjetas y amarillas, versión `{page.FAMILY_VERSION}`)" in f5
+    assert "para cualquier otra respuesta es `null`" in f5 and f"que sigue leyendo solo `{page.VERSION}`" in f5
+    assert "ningún usuario ve estas filas; la vista previa del administrador las muestra aparte, en la sección «Familias» de la ficha del partido" in f10
+    assert "la sección es `null` para cualquiera que no sea esa vista previa y se pide a la base solo entonces" in f10
+    assert "El administrador sí los ve, aparte, en la vista previa" in f10 and "`FBI_FORECAST_USERS` solo decide si los usuarios ven ese" in f10
+    assert f"una sección «Familias» con lo que las cuatro familias pronostican de ese partido (versión `{page.FAMILY_VERSION}`)" in cycle
+    assert "con la cuota justa (1 / probabilidad) y la regla que liquidaría una apuesta en ese mercado" in cycle and "Ningún usuario la recibe." in cycle
+    assert page.USERS_SWITCH == "FBI_FORECAST_USERS"
+
+
 def test_the_guide_of_the_model_code_promotions_says_what_the_code_does() -> None:
     """Plan F12: the guide of the promotions of the model's code - the code in force, the least a reason can say, the window of the plan, the
     statuses a fingerprint can have and the commands that measure and write them."""

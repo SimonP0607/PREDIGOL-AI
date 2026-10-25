@@ -18,6 +18,7 @@ from apps.worker import scheduler
 
 from fbi.api.routers import intelligence as router
 from fbi.api.services import families as svc
+from fbi.api.services import family_rules
 from fbi.core import decision_versions as versions
 from fbi.families import forecast, score
 from fbi.families.fit import NO_DISPERSION, prediction
@@ -117,7 +118,7 @@ def test_a_key_the_scoreboard_cannot_read_has_no_rule_here_either() -> None:
     assert checked == len(prefixes) * len(kinds) * 9 and checked > 500
     for key in ("HTFT", "HSH", "HSH_HOME", "HSH_AWAY"):
         assert svc.measure_of(key) == score.measure_of(key) == "goals_halves"
-    assert svc.HALVES == score.HALVES_KEYS
+    assert family_rules.HALVES == score.HALVES_KEYS
 
 
 def test_the_rules_that_are_shown_say_what_is_measured_and_from_which_columns() -> None:

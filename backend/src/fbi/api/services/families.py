@@ -10,8 +10,10 @@ against decision and the causes the post-mortem found.
 
 It reads the tables by SQL and imports nothing of ``fbi.families`` or ``fbi.familydecisions``: a package that serves the console does not pull the
 research into its import cycle (``tests/unit/test_architecture.py`` holds the cycle at eight packages), so the few facts of the families it needs
-- which they are, how a market key maps to the rule that grades it, which steps they run in - are written here and held equal to the code by
-``tests/unit/test_api_families.py``. Nothing it reads is an input of anything said before a kick-off (``tests/unit/test_postmortem_isolation.py``)."""
+- which they are, how a market key maps to the rule that grades it (those two live in ``fbi.api.services.family_rules``, which the readers of what is
+said before a kick-off share), which steps they run in - are written here and held equal to the code by ``tests/unit/test_api_families.py``.
+Nothing it reads is an input of anything said before a kick-off (``tests/unit/test_postmortem_isolation.py``), and for that reason no reader of what
+is said before one imports this module."""
 
 from __future__ import annotations
 
@@ -22,6 +24,7 @@ from typing import Any, Final
 
 from fbi.api.envelope import Envelope, ok
 from fbi.api.repositories import Conn, fetch_all
+from fbi.api.services.family_rules import FAMILIES, MEASURES, measure_of, rule_of
 from fbi.api.services.intelligence import j
 from fbi.core.clock import now
 from fbi.core.decision_versions import (
@@ -34,13 +37,6 @@ from fbi.market.rules import RULES_BY_MEASURE, Rule
 
 FORECAST_VERSION: Final = "family-v1"
 """The version of the forecasts the families state (``fbi.families.forecast.VERSION``): held equal by a test."""
-FAMILIES: Final = ("GOALS_HALF", "CORNERS", "CARDS", "YELLOW")
-"""The families that decide, in the order the console shows them (the keys of ``fbi.familydecisions.decide.SPECS``: held equal by a test)."""
-MEASURES: Final[Mapping[str, tuple[str, ...]]] = {
-    "GOALS_HALF": ("goals_1h", "goals_2h", "goals_halves"), "CORNERS": ("corners_ft",), "CARDS": ("cards_lines_ft",), "YELLOW": ("yellow_ft",)}
-"""The measures of the settlement rules (``fbi.market.rules``) that grade the bets of each family."""
-HALVES: Final = frozenset({"HTFT", "HSH", "HSH_HOME", "HSH_AWAY"})
-"""The market keys that read both halves of the goals (``fbi.families.score.HALVES_KEYS``: held equal by a test)."""
 STEPS: Final = ("families", "family_outcomes", "family_postmortems", "family_memory")
 """The steps the worker hands to its jobs while the switch is not off, in the order they run (``apps.worker.scheduler``): the decision, in the
 job that decides every quarter of an hour, and the three that learn, in the nightly one. Held equal by a test."""
@@ -64,30 +60,6 @@ UNKNOWN: Final = "UNKNOWN"
 
 
 # ── what the families are ────────────────────────────────────────────────────────────────────────────────────────────────
-
-def measure_of(key: str) -> str | None:
-    """The measure of the settlement rules that grades a market key of the families, or None for a key none of them bets on
-    (``fbi.families.score.measure_of`` without the exception: held equal by a test over every key the catalogue can make)."""
-    if key.startswith("CORNERS_"):
-        return "corners_ft"
-    if key.startswith("CARDS_"):
-        return "cards_lines_ft"
-    if key.startswith("YELLOW_"):
-        return "yellow_ft"
-    if key in HALVES:
-        return "goals_halves"
-    if key.endswith("_1H"):
-        return "goals_1h"
-    if key.endswith("_2H"):
-        return "goals_2h"
-    return None
-
-
-def rule_of(key: str) -> Rule | None:
-    """The settlement rule that grades a bet on this market key, or None when none can."""
-    measure = measure_of(key)
-    return None if measure is None else RULES_BY_MEASURE.get(measure)
-
 
 def rule_view(rule: Rule) -> dict[str, Any]:
     """A rule as the console shows it: what is measured, in which convention (the registry's own words, in English), from which columns of the

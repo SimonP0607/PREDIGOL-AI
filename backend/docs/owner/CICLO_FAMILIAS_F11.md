@@ -107,6 +107,8 @@ Solo la ve un administrador (`GET /admin/intelligence/families`; solo lee, sin e
 
 Los filtros son la familia, el estado y la ventana de partidos (por omisión 14 días, como mucho 120).
 
+**En la ficha de un partido.** La vista previa del administrador del bloque «Pronóstico PrediGol» trae, junto al valor y los picks, una sección «Familias» con lo que las cuatro familias pronostican de ese partido (versión `family-v1`): mercado por mercado y línea por línea, con la cuota justa (1 / probabilidad) y la regla que liquidaría una apuesta en ese mercado. Es la cifra que esta pestaña juzga después: aquí ves lo que dijo la familia, allá lo que hizo con ello. Ningún usuario la recibe.
+
 ## 9. Cómo leerla, y cómo no
 
 * **El valor bruto que ve la familia no es ventaja.** Por construcción es de al menos 3 % y casi siempre es sesgo del propio modelo: elegir la mejor línea escoge justo los mayores desacuerdos con el mercado. Lo que mide si un precio estaba bien es el **valor de cierre**.

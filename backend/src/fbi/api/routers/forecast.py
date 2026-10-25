@@ -29,8 +29,8 @@ router = APIRouter(tags=["forecast"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 FixtureId = Annotated[int, Path(ge=1, le=2**62)]
 Preview = Annotated[Literal["shadow"] | None, Query(
-    description="SUPER_ADMIN only: the forecast with its fair odds, beside the value and the picks of the match. "
-                "Never a user's view.")]
+    description="SUPER_ADMIN only: the forecast with its fair odds, beside the value and the picks of the match and, in a section of its own, "
+                "what the families forecast (research, uncalibrated). Never a user's view.")]
 
 
 def _preview(preview: str | None, principal: Principal) -> bool:
@@ -46,5 +46,6 @@ def get_match_forecast(conn: Db, principal: App, fixture_id: FixtureId,
                        preview: Preview = None) -> Envelope[MatchForecast | None]:
     """PRONÓSTICO PREDIGOL: per market (1X2, total goals at 2.5, both teams to score) the probability of each outcome with
     its interval, the model that made it and CALIBRATED or UNCALIBRATED. A forecast is not a recommendation: it carries no
-    price, and what is worth betting is the decision layer's, not this."""
+    price, and what is worth betting is the decision layer's, not this. The Admin Console's preview adds the value, the picks and the
+    forecasts of the families, each in a section of its own."""
     return forecast.match_forecast(conn, fixture_id, preview=_preview(preview, principal))
