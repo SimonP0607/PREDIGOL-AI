@@ -1,18 +1,24 @@
 /**
  * "Tu recapitulación" in Mis picks (REVIEW PREDIGOL, point 19): what the user's own settled picks (or parlays) add
  * up to - profit day by day and in total, the average odds, how each odds range and each market went, the streaks.
- * Computed here from the records the page already reads (GET /me/picks, /me/parlays), at one unit per record, with
- * the profit each record was settled at. Pure: no React here.
+ * Computed here from every record of the account (GET /me/picks, /me/parlays, every page), at one unit per record,
+ * with the profit each record was settled at. Pure: no React here.
+ *
+ * One figure wherever it is shown (plan UX, A1, defects F53 and F54): the window and the counts follow the server's
+ * history (GET /me/history, userdata/records.py) - calendar days in the reader's zone, a parlay by its first match,
+ * the return over the records staked - so over the same days the recap and "Tus resultados" say the same.
  */
 import type { ResultStatus, UserParlay, UserPick } from "@/lib/api/v1/types_records";
 import { toNumber } from "@/lib/i18n/format";
-import { dayKey } from "@/lib/time";
+import { dayKey, shiftDay, todayKey } from "@/lib/time";
 
 export type Outcome = "win" | "loss" | "void";
 
 export interface RecapRecord {
-  /** When it was decided: the kick-off of its match (a parlay: of its last match). */
+  /** When it was decided: the kick-off of its match (a parlay: of its last match). The day it counts on in charts. */
   at: string;
+  /** What puts it inside a window: the kick-off of its match (a parlay: of its first match), as the server counts. */
+  from: string;
   odds: number | null;
   profit: number;
   outcome: Outcome;
@@ -53,6 +59,7 @@ export function fromPicks(picks: readonly UserPick[]): RecapRecord[] {
     const profit = toNumber(p.profit_units);
     out.push({
       at: p.match.kickoff_at,
+      from: p.match.kickoff_at,
       odds: toNumber(p.user_odds) ?? toNumber(p.odds),
       profit: profit ?? 0,
       outcome,
@@ -63,19 +70,21 @@ export function fromPicks(picks: readonly UserPick[]): RecapRecord[] {
   return out;
 }
 
-/** The user's settled parlays, dated by their last match. */
+/** The user's settled parlays, dated by their last match; a window takes them by their first, as the server does. */
 export function fromParlays(parlays: readonly UserParlay[]): RecapRecord[] {
   const out: RecapRecord[] = [];
   for (const p of parlays) {
     const outcome = outcomeOf(p.status);
     if (outcome === null) continue;
-    const last = p.legs.reduce<string | null>(
-      (acc, l) => (acc === null || l.match.kickoff_at > acc ? l.match.kickoff_at : acc),
-      null,
-    );
+    const kickoffs = p.legs.map((l) => l.match.kickoff_at).sort();
+    const first = kickoffs[0];
+    const last = kickoffs[kickoffs.length - 1];
+    // Without a leg the server's history leaves it out (no first match), and so does the recap.
+    if (first === undefined || last === undefined) continue;
     const profit = toNumber(p.profit_units);
     out.push({
-      at: last ?? p.settled_at ?? p.created_at,
+      at: last,
+      from: first,
       odds: toNumber(p.combined_odds),
       profit: profit ?? 0,
       outcome,
@@ -86,15 +95,23 @@ export function fromParlays(parlays: readonly UserParlay[]): RecapRecord[] {
   return out;
 }
 
-/** The records of the last `days` days (null: all of them). */
+/**
+ * The records of the last `days` calendar days in the reader's zone, today included (null: all of them): the
+ * server's window for its history (period_bounds - from local midnight `days - 1` days ago to the end of today).
+ */
 export function within(
   records: readonly RecapRecord[],
   days: number | null,
   now: number = Date.now(),
+  tz?: string,
 ): RecapRecord[] {
   if (days === null) return [...records];
-  const from = now - days * 86_400_000;
-  return records.filter((r) => Date.parse(r.at) >= from);
+  const today = tz ? todayKey(tz, now) : todayKey(undefined, now);
+  const since = shiftDay(today, -(days - 1));
+  return records.filter((r) => {
+    const day = tz ? dayKey(r.from, tz) : dayKey(r.from);
+    return day >= since && day <= today;
+  });
 }
 
 export interface DayPoint {

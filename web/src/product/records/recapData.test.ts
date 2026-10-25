@@ -18,7 +18,7 @@ const r = (
   profit: number,
   market = "1X2",
   staked = outcome !== "void",
-) => ({ at, outcome, odds, profit, market, staked }) satisfies RecapRecord;
+) => ({ at, from: at, outcome, odds, profit, market, staked }) satisfies RecapRecord;
 
 describe("Tu recapitulación (REVIEW point 19)", () => {
   test("results read the same for picks and parlays; pending is not a result", () => {
@@ -93,6 +93,7 @@ describe("Tu recapitulación (REVIEW point 19)", () => {
     expect(rs).toEqual([
       {
         at: "2032-08-01T15:00:00Z",
+        from: "2032-08-01T15:00:00Z",
         odds: 2.2,
         profit: 1.2,
         outcome: "win",
@@ -114,6 +115,7 @@ describe("Tu recapitulación (REVIEW point 19)", () => {
     expect(fromParlays([parlay])).toEqual([
       {
         at: "2032-08-02T18:00:00Z",
+        from: "2032-08-01T15:00:00Z",
         odds: 7.48,
         profit: -1,
         outcome: "loss",
@@ -126,8 +128,39 @@ describe("Tu recapitulación (REVIEW point 19)", () => {
   test("a period keeps the records of its last days", () => {
     const now = Date.parse("2032-08-31T12:00:00Z");
     const rs = [r("2032-08-01T15:00:00Z", "win", 2, 1), r("2032-08-30T15:00:00Z", "loss", 2, -1)];
-    expect(within(rs, 7, now)).toHaveLength(1);
-    expect(within(rs, null, now)).toHaveLength(2);
+    expect(within(rs, 7, now, "UTC")).toHaveLength(1);
+    expect(within(rs, null, now, "UTC")).toHaveLength(2);
+  });
+
+  test("a period is calendar days in the reader's zone, today included - the server's window (plan UX, A1)", () => {
+    // 7 days on 31 Aug: from local midnight of the 25th to the end of the 31st (userdata/records.py, period_bounds)
+    const now = Date.parse("2032-08-31T12:00:00Z");
+    const edge = [r("2032-08-25T00:30:00Z", "win", 2, 1), r("2032-08-24T23:30:00Z", "loss", 2, -1)];
+    expect(within(edge, 7, now, "UTC").map((x) => x.at)).toEqual(["2032-08-25T00:30:00Z"]);
+    // in Bogotá (UTC-5) 03:00 UTC on the 25th is still the 24th: outside
+    expect(within([r("2032-08-25T03:00:00Z", "win", 2, 1)], 7, now, "America/Bogota")).toEqual([]);
+    expect(within([r("2032-08-25T06:00:00Z", "win", 2, 1)], 7, now, "America/Bogota")).toHaveLength(
+      1,
+    );
+  });
+
+  test("a parlay enters a period by its first match, as the server counts it; one without legs never", () => {
+    const parlay = (first: string, last: string | null) =>
+      ({
+        status: "WON",
+        combined_odds: "4.000",
+        profit_units: "3.0000",
+        created_at: "2032-08-20T10:00:00Z",
+        settled_at: null,
+        legs: [first, last]
+          .filter((k): k is string => k !== null)
+          .map((k) => ({ match: { kickoff_at: k } })),
+      }) as unknown as UserParlay;
+    const now = Date.parse("2032-08-31T12:00:00Z");
+    const spanning = fromParlays([parlay("2032-08-24T20:00:00Z", "2032-08-26T20:00:00Z")]);
+    expect(spanning[0]?.at).toBe("2032-08-26T20:00:00Z");
+    expect(within(spanning, 7, now, "UTC")).toEqual([]);
+    expect(fromParlays([{ ...parlay("2032-08-30T20:00:00Z", null), legs: [] }])).toEqual([]);
   });
 });
 
@@ -168,7 +201,7 @@ describe("Rentabilidad (ROI): one figure with the server's history (plan UX, A1,
         combined_odds: "4.000",
         status,
         profit_units: profit,
-        legs: [],
+        legs: [{ match: { kickoff_at: "2032-08-01T15:00:00Z" } }],
       }) as unknown as UserParlay;
     const x = recap(
       fromParlays([parlay("PARTIAL_VOID", "1.0000"), parlay("VOID", "0.0000")]),

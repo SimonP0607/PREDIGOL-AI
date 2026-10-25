@@ -68,7 +68,9 @@ function GroupCard({ name, group }: { name: string; group: HistoryGroup }) {
         <span className="numeric text-2xl font-semibold" data-testid={`history-${name}-total`}>
           {fmtInt(group.total)}
         </span>
-        <Units value={group.profit_units} className="text-sm" />
+        <span data-testid={`history-${name}-profit`}>
+          <Units value={group.profit_units} className="text-sm" />
+        </span>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
         <Stat
@@ -81,7 +83,7 @@ function GroupCard({ name, group }: { name: string; group: HistoryGroup }) {
           label={t("records.mine.results.roi")}
           value={
             <>
-              {roi === null ? "—" : fmtPct(roi, 1)}
+              <span data-testid={`history-${name}-roi`}>{roi === null ? "—" : fmtPct(roi, 1)}</span>
               {roi === null ? null : (
                 <span
                   className="block text-caption font-normal text-subtle-foreground"

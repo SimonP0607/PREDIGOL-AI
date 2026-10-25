@@ -308,6 +308,48 @@ test.describe.serial("a user's own records", () => {
   });
 });
 
+test("One figure: over 30 days and over everything, the recap's profit and return are My results' own", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F53, F54): the recap counted its own "Rentabilidad" over the first 500 picks, with another formula
+  // and another window than "Tus resultados". Now both count every record, the same way, over the same days.
+  const w = watch(page);
+  const t = L[lang()];
+  await page.emulateMedia({ reducedMotion: "reduce" }); // the recap's figures count up; without motion they are final
+  await open(page, w, "/my-picks");
+  const recap = page.getByTestId("my-recap");
+  const results = page.getByTestId("my-results");
+  for (const [period, recapLabel] of [
+    ["30d", t.records.recap.days_other.replace("{count}", "30")],
+    ["all", t.records.recap.all],
+  ] as const) {
+    const { body } = await getJson<{
+      data: { groups: { my_picks: { won: number; lost: number } } };
+    }>(page.request, `/api/v1/me/history?period=${period}`);
+    const g = body.data.groups.my_picks;
+    if (g.won + g.lost === 0) {
+      note(test.info(), `no settled pick of this account in the period ${period}`);
+      continue;
+    }
+    await results
+      .getByTestId("history-period")
+      .getByRole("button", { name: t.records.mine.results.period[period] })
+      .click();
+    await recap.getByTestId("recap-period").getByRole("button", { name: recapLabel }).click();
+    await settle(page);
+    for (const [mine, theirs] of [
+      ["recap-kpi-profit", "history-my_picks-profit"],
+      ["recap-kpi-roi", "history-my_picks-roi"],
+      ["recap-roi-sample", "history-my_picks-roi-sample"],
+    ] as const) {
+      await expect(recap.getByTestId(mine), `${mine} over ${period}`).toHaveText(
+        (await results.getByTestId(theirs).innerText()).trim(),
+      );
+    }
+  }
+  await assertClean(page, w);
+});
+
 test("Odds: the best-odds board per market", async ({ page }) => {
   const w = watch(page);
   const t = L[lang()];

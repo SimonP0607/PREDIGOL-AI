@@ -76,16 +76,23 @@ function Kpi({
   value,
   tone,
   hint,
+  testId,
 }: {
   label: string;
   value: ReactNode;
   tone?: string | undefined;
   hint?: ReactNode;
+  testId: string;
 }) {
   return (
     <div className="min-w-0 rounded-xl border border-border bg-card px-4 py-3">
       <div className="text-label leading-tight text-subtle-foreground">{label}</div>
-      <div className={cn("numeric mt-1.5 text-xl font-semibold leading-none", tone)}>{value}</div>
+      <div
+        className={cn("numeric mt-1.5 text-xl font-semibold leading-none", tone)}
+        data-testid={`recap-kpi-${testId}`}
+      >
+        {value}
+      </div>
       {hint ? <div className="mt-1 text-caption text-muted-foreground">{hint}</div> : null}
     </div>
   );
@@ -129,20 +136,24 @@ function Kpis({ r }: { r: RecapData }) {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6" data-testid="recap-kpis">
       <Kpi
         label={t("records.recap.kpi.settled")}
+        testId="settled"
         value={<Counted value={r.settled} format={(n) => fmtInt(Math.round(n))} />}
         hint={t("records.recap.kpi.record", { won: r.wins, lost: r.losses, void: r.voids })}
       />
       <Kpi
         label={t("records.recap.kpi.hitRate")}
+        testId="hit-rate"
         value={<Counted value={r.hitRate} format={(n) => fmtPct(n, 0)} />}
       />
       <Kpi
         label={t("records.recap.kpi.profit")}
+        testId="profit"
         value={<Counted value={r.profit} format={units} />}
         tone={tone(r.profit)}
       />
       <Kpi
         label={t("records.recap.kpi.roi")}
+        testId="roi"
         value={<Counted value={r.roi} format={(n) => fmtPct(n, 1)} />}
         tone={tone(r.roi)}
         hint={
@@ -155,6 +166,7 @@ function Kpis({ r }: { r: RecapData }) {
       />
       <Kpi
         label={t("records.recap.kpi.avgOdds")}
+        testId="avg-odds"
         value={<Counted value={r.avgOdds} format={(n) => fmtOdds(n)} />}
         hint={
           r.avgOddsWon !== null
@@ -164,6 +176,7 @@ function Kpis({ r }: { r: RecapData }) {
       />
       <Kpi
         label={t("records.recap.kpi.bestStreak")}
+        testId="best-streak"
         value={<Counted value={r.streaks.bestWin} format={(n) => fmtInt(Math.round(n))} />}
         hint={
           current
