@@ -22,10 +22,13 @@ export function ResetPasswordPage() {
   const auth = useAuth();
   const [token] = useState(() => readLinkToken());
   useEffect(() => forgetLinkFromAddress(), []);
+  const [done, setDone] = useState(false);
+  // Under "auth", and never asked again once the password changed: signing out (this browser's session ends with the
+  // others) clears the cache, and the used link must not be asked about again.
   const info = useQuery({
-    queryKey: ["account", "reset", token],
+    queryKey: ["auth", "reset", token],
     queryFn: () => v1.checkReset(token ?? ""),
-    enabled: !!token,
+    enabled: !!token && !done,
     retry: false,
     staleTime: Infinity,
   });
@@ -35,7 +38,6 @@ export function ResetPasswordPage() {
   const [useRecovery, setUseRecovery] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
   const [linkGone, setLinkGone] = useState(false);
 
   const off = info.error instanceof LiveApiError && info.error.status === 404;
@@ -61,9 +63,9 @@ export function ResetPasswordPage() {
         password,
         ...(mfa ? (useRecovery ? { recovery_code: code } : { code }) : {}),
       });
+      setDone(true);
       // Every session of the account ended: this browser's too, when it was signed in as it.
       if (auth.user?.email === email) await auth.signOut();
-      setDone(true);
     } catch (err) {
       if (err instanceof LiveApiError && err.status === 410) setLinkGone(true);
       else setFailure(stepError(err));

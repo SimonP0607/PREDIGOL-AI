@@ -38,10 +38,13 @@ export function ActivatePage() {
   const navigate = useNavigate();
   const [token] = useState(() => readLinkToken());
   useEffect(() => forgetLinkFromAddress(), []);
+  const [activated, setActivated] = useState(false);
+  // Under "auth": signing in drops every other cached query (a new session), and this one must not be asked again -
+  // the link has just been used. Once activated, it is never asked again.
   const info = useQuery({
-    queryKey: ["account", "invitation", token],
+    queryKey: ["auth", "invitation", token],
     queryFn: () => v1.checkInvitation(token ?? ""),
-    enabled: !!token,
+    enabled: !!token && !activated,
     retry: false,
     staleTime: Infinity,
   });
@@ -52,7 +55,6 @@ export function ActivatePage() {
   const [zone, setZone] = useState("America/Bogota");
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const [activated, setActivated] = useState(false);
   const [renewed, setRenewed] = useState<"idle" | "busy" | "sent" | "failed">("idle");
   const filled = useRef(false);
   const zones = useMemo(listTimeZones, []);
@@ -91,8 +93,8 @@ export function ActivatePage() {
     setFailure(null);
     try {
       const who = await v1.activate({ token, password, language, timezone: zone });
-      auth.completeStep(who);
       setActivated(true);
+      auth.completeStep(who);
     } catch (err) {
       setFailure(stepError(err));
     } finally {
