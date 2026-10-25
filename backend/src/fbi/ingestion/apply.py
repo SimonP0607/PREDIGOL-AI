@@ -21,7 +21,7 @@ newer response established.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -75,8 +75,13 @@ def apply_fixtures_payload(
     payload_hash: str,
     fetched_at: datetime,
     season_ids: Mapping[tuple[int, int], int],
+    skip_ids: Collection[int] = (),
 ) -> PayloadOutcome:
-    """Apply one /fixtures response. The caller owns the transaction."""
+    """Apply one /fixtures response. The caller owns the transaction.
+
+    ``skip_ids``: provider ids of fixtures whose reading the caller has found impossible (the live follow: a negative
+    minute, 25 Oct 2026). Nothing of them is applied from this payload - no fixture row, no result, no fact - exactly as
+    with a premature final, and the caller leaves them out of whatever else it writes from the same payload."""
     lineage = PayloadLineage(payload_hash=payload_hash, fetched_at=fetched_at)
     refs = provider.parse_fixtures(body)
     premature = {r.provider_fixture_id for r in refs
@@ -87,8 +92,9 @@ def apply_fixtures_payload(
                     fixtures=[{"provider_fixture_id": r.provider_fixture_id, "status": r.status_short,
                                "minutes_after_kickoff": round(match_state.minutes_after_kickoff(r.kickoff_at, fetched_at), 1)}
                               for r in refs if r.provider_fixture_id in premature])
+    left_out = premature | set(skip_ids)
     ours = [r for r in refs if (r.provider_league_id, r.season) in season_ids
-            and r.provider_fixture_id not in premature]
+            and r.provider_fixture_id not in left_out]
     inserted = updated = 0
     repo = FixtureRepository(conn)
     if ours:
@@ -100,8 +106,8 @@ def apply_fixtures_payload(
     left = repo.note_left_tracked(refs, season_ids, payload_hash=payload_hash) if len(ours) < len(refs) else 0
     results = provider.parse_results(body)
     _, written = ResultRepository(conn).apply(
-        [x for x in results if x.provider_fixture_id not in premature], lineage=lineage)
-    facts = apply_fixture_facts(conn, (f for f in iter_fixture_facts(body) if f.provider_fixture_id not in premature),
+        [x for x in results if x.provider_fixture_id not in left_out], lineage=lineage)
+    facts = apply_fixture_facts(conn, (f for f in iter_fixture_facts(body) if f.provider_fixture_id not in left_out),
                                 payload_hash=payload_hash, observed_at=fetched_at)
     verdicts = _classify_venues(conn, [r.provider_fixture_id for r in ours], payload_hash=payload_hash)
     return PayloadOutcome(
