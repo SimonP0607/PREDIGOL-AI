@@ -12,7 +12,8 @@ libraries put request data dropped. The browser's events take the same filter on
 (fbi.api.routers.monitoring: the browser never talks to Sentry itself).
 
     FBI_SENTRY_DSN           the backend project; empty = off (the default)
-    FBI_SENTRY_WEB_DSN       the web project, served to the browser and checked on every event it sends; empty = off
+    FBI_SENTRY_WEB_DSN       the web project, where the server forwards the browser's events; it never leaves the
+                             server (the browser starts with BROWSER_DSN); empty = off
     FBI_SENTRY_ENVIRONMENT   default FBI_ENV (production on the server)
 """
 
@@ -51,8 +52,15 @@ def environment() -> str:
     return os.environ.get("FBI_SENTRY_ENVIRONMENT") or os.environ.get("FBI_ENV") or "development"
 
 
+BROWSER_DSN = "https://browser@tunnel.predigol.invalid/1"
+"""What the browser is given in place of the web project's DSN: its SDK needs one to start, and with a tunnel it
+never writes to that host. The real one stays on the server (review of A2): on the free plan a key cannot be
+rate-limited, so a key in the page would let anyone spend the month - shared by both projects - straight at Sentry,
+around the tunnel's caps."""
+
+
 def web_dsn() -> str | None:
-    """The web project's DSN (public by design: it goes to the browser), or None when the web reports nothing."""
+    """The web project's DSN - the server's only, never sent to the browser - or None when the web reports nothing."""
     dsn = os.environ.get("FBI_SENTRY_WEB_DSN", "").strip()
     return dsn or None
 

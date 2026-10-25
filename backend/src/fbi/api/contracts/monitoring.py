@@ -12,7 +12,8 @@ class MonitoringClient(Contract):
     event again and the reader's address never reaches a third party."""
 
     enabled: bool = Field(description="False while the web project has no DSN: the browser then reports nothing.")
-    dsn: str | None = Field(description="The web project's public DSN, checked on every event the browser sends.")
+    dsn: str | None = Field(description="A stand-in DSN for the browser's SDK (fbi.core.sentry.BROWSER_DSN), which every "
+                                        "event it sends must name: the web project's own never leaves the server.")
     environment: str
     tunnel: str = Field(description="Where the browser sends its events.")
 

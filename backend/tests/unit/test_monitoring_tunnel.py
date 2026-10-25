@@ -1,10 +1,10 @@
 """The browser's errors reach Sentry through this API, filtered, and the API is no open relay (plan UX, A2).
 
 The web sends its events to /api/v1/monitoring/envelope instead of to Sentry: the reader's address never reaches a
-third party and every event takes the server's filter again. The tunnel forwards only envelopes that name this
-platform's web project, only error events (never attachments, replays, sessions or feedback), at most 100 KB, and a
-client and the whole process have their limits. The forwarding itself is replaced here by a recorder: nothing leaves
-the test.
+third party and every event takes the server's filter again. The tunnel forwards only to this platform's web project,
+whose DSN never leaves the server (the browser names a stand-in), only error events (never attachments, replays,
+sessions or feedback), at most 100 KB, and a client and the whole process have their limits. The forwarding itself is
+replaced here by a recorder: nothing leaves the test.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 
 from fbi.api.limits import SlidingWindow
 from fbi.api.routers import monitoring
+from fbi.core.sentry import BROWSER_DSN
 
 WEB_DSN = "https://webkey@o0.ingest.example.invalid/2"
 SAME_SITE = {"x-requested-with": "predigol"}
@@ -27,7 +28,7 @@ TOKEN = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0" + "Ga5KoPiRqWe"
 NAME = "Ana " + "Pérez Gómez"
 
 
-def envelope(dsn: str = WEB_DSN, *, extra_items: list[tuple[dict[str, Any], bytes]] | None = None) -> bytes:
+def envelope(dsn: str = BROWSER_DSN, *, extra_items: list[tuple[dict[str, Any], bytes]] | None = None) -> bytes:
     event = {
         "event_id": "f" * 32, "platform": "javascript", "release": "predigol-web@abc", "level": "error",
         "exception": {"values": [{"type": "TypeError",
@@ -81,10 +82,15 @@ def test_without_a_web_project_the_browser_reports_nothing(monkeypatch: pytest.M
         assert r.status_code == 404
 
 
-def test_the_browser_learns_where_to_report(tunnel: tuple[TestClient, list[tuple[str, bytes]]]) -> None:
+def test_the_browser_learns_where_to_report_and_never_the_projects_key(
+        tunnel: tuple[TestClient, list[tuple[str, bytes]]]) -> None:
+    """Review of A2: on the free plan a key cannot be rate-limited, so the web project's DSN in the page would let
+    anyone spend the month straight at Sentry, around the tunnel's caps. The browser gets a stand-in."""
     client, _ = tunnel
-    body = client.get("/api/v1/monitoring/client").json()
-    assert body == {"enabled": True, "dsn": WEB_DSN, "environment": "local", "tunnel": "/api/v1/monitoring/envelope"}
+    r = client.get("/api/v1/monitoring/client")
+    assert r.json() == {"enabled": True, "dsn": BROWSER_DSN, "environment": "local",
+                        "tunnel": "/api/v1/monitoring/envelope"}
+    assert "webkey" not in r.text and "ingest" not in r.text
 
 
 def test_an_event_is_forwarded_filtered_and_nothing_else_goes(
@@ -100,7 +106,8 @@ def test_an_event_is_forwarded_filtered_and_nothing_else_goes(
     [(dsn, body)] = sent
     assert dsn == WEB_DSN
     header, items = monitoring.parse_envelope(body)
-    assert header == {"dsn": WEB_DSN, "event_id": "f" * 32, "sent_at": "2026-10-25T10:00:00Z"}
+    assert header == {"dsn": WEB_DSN, "event_id": "f" * 32, "sent_at": "2026-10-25T10:00:00Z"}, \
+        "under the project's real DSN, which only the server knows; the trace header (it named the reader) dropped"
     assert [kind for kind, _ in items] == ["event"]
     text = body.decode()
     for secret in (EMAIL, TOKEN, NAME, "Pérez"):
@@ -115,8 +122,9 @@ def test_an_event_is_forwarded_filtered_and_nothing_else_goes(
 
 @pytest.mark.parametrize(("body", "code"), [
     (envelope("https://otherkey@o0.ingest.example.invalid/9"), 400),
+    (envelope(WEB_DSN), 400),  # only the stand-in: the browser never knew the real one
     (b"not an envelope", 400),
-    (b'{"dsn": "' + WEB_DSN.encode() + b'"}\n{"type": "event", "length": 999}\n{}', 400),
+    (b'{"dsn": "' + BROWSER_DSN.encode() + b'"}\n{"type": "event", "length": 999}\n{}', 400),
 ])
 def test_an_envelope_for_another_project_or_unreadable_is_refused(
         tunnel: tuple[TestClient, list[tuple[str, bytes]]], body: bytes, code: int) -> None:
@@ -172,7 +180,7 @@ def test_input_python_cannot_read_is_refused_not_a_500(tunnel: tuple[TestClient,
     client, sent = tunnel
     deep = b"[" * 100_000
     assert client.post("/api/v1/monitoring/envelope", content=deep, headers=SAME_SITE).status_code == 400
-    head = json.dumps({"dsn": WEB_DSN}).encode()
+    head = json.dumps({"dsn": BROWSER_DSN}).encode()
     r = client.post("/api/v1/monitoring/envelope", content=head + b"\n" + json.dumps({"type": "event"}).encode()
                     + b"\n" + deep + b"\n", headers=SAME_SITE)
     assert r.status_code == 200 and r.json()["events"] == 0

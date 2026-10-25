@@ -2,10 +2,11 @@
 
 The web reports its errors here (a Sentry "tunnel"), never to Sentry itself: the reader's address never reaches a
 third party, the page's security policy needs no new origin, and every event takes the server's filter again
-(fbi.core.sentry.scrub_event) before it leaves. The tunnel is not an open relay: an envelope must name this
-platform's web project (FBI_SENTRY_WEB_DSN) or it is refused, only error events are forwarded (never attachments,
-replays, sessions or feedback text), an envelope is at most 100 KB, and a client and the whole process have their own
-limits - the free plan's month (5,000 errors) cannot be spent from outside.
+(fbi.core.sentry.scrub_event) before it leaves. The tunnel is not an open relay: it forwards only to this platform's
+web project (FBI_SENTRY_WEB_DSN, which never leaves the server: the browser names a stand-in, fbi.core.sentry.
+BROWSER_DSN), only error events (never attachments, replays, sessions or feedback text), an envelope is at most
+100 KB, and a client and the whole process have their own limits - the free plan's month (5,000 errors) cannot be
+spent from outside, through the tunnel or around it.
 """
 
 from __future__ import annotations
@@ -36,7 +37,8 @@ ENVELOPE_MAX_BYTES = 100 * 1024
 MAX_ITEMS = 20
 FORWARDED_TYPES = frozenset({"event"})
 """Only errors. Never "attachment", "replay_event", "replay_recording", "session", "feedback", "transaction"..."""
-HEADER_FIELDS = ("dsn", "event_id", "sent_at", "sdk")
+HEADER_FIELDS = ("event_id", "sent_at", "sdk")
+"""The browser's envelope header fields that are kept; its "dsn" is replaced by the real one, "trace" dropped."""
 PER_CLIENT = SlidingWindow(per_window=int(os.environ.get("FBI_MONITORING_RATE_LIMIT", "20")), window_s=60.0)
 PER_PROCESS = SlidingWindow(per_window=int(os.environ.get("FBI_MONITORING_HOURLY_CAP", "10")), window_s=3600.0)
 PER_DAY = SlidingWindow(per_window=int(os.environ.get("FBI_MONITORING_DAILY_CAP", "20")), window_s=86400.0)
@@ -53,7 +55,8 @@ class EnvelopeError(ValueError):
 @router.get("/monitoring/client", response_model=MonitoringClient)
 def get_client() -> MonitoringClient:
     dsn = sentry.web_dsn()
-    return MonitoringClient(enabled=dsn is not None, dsn=dsn, environment=sentry.environment(), tunnel=TUNNEL)
+    return MonitoringClient(enabled=dsn is not None, dsn=sentry.BROWSER_DSN if dsn else None,
+                            environment=sentry.environment(), tunnel=TUNNEL)
 
 
 def parse_envelope(body: bytes) -> tuple[dict[str, Any], list[tuple[str, bytes]]]:
@@ -100,8 +103,11 @@ def envelope_url(dsn: str) -> str:
     return f"{parts.scheme}://{host}/api/{project}/envelope/"
 
 
-def build_envelope(header: dict[str, Any], events: list[dict[str, Any]]) -> bytes:
-    lines = [json.dumps({k: header[k] for k in HEADER_FIELDS if k in header}, separators=(",", ":")).encode()]
+def build_envelope(header: dict[str, Any], events: list[dict[str, Any]], dsn: str) -> bytes:
+    """The envelope Sentry receives: the browser's header fields that say nothing about the reader, under the web
+    project's real DSN (the browser only knew the stand-in), and the filtered events."""
+    kept = {"dsn": dsn, **{k: header[k] for k in HEADER_FIELDS if k in header}}
+    lines = [json.dumps(kept, separators=(",", ":")).encode()]
     for event in events:
         # ASCII: a lone surrogate (half an emoji cut by a browser) is written as an escape instead of failing
         payload = json.dumps(event, separators=(",", ":")).encode()
@@ -135,7 +141,7 @@ async def post_envelope(request: Request) -> EnvelopeForwarded:
         header, items = parse_envelope(body)
     except EnvelopeError as exc:
         raise ApiError(400, "bad_envelope", "not an error report this server reads") from exc
-    if header.get("dsn") != dsn:
+    if header.get("dsn") != sentry.BROWSER_DSN:
         raise ApiError(400, "bad_envelope", "not this platform's project")
     events: list[dict[str, Any]] = []
     for kind, payload in items:
@@ -153,7 +159,7 @@ async def post_envelope(request: Request) -> EnvelopeForwarded:
         return EnvelopeForwarded(events=0)
     if not PER_PROCESS.allow("all") or not PER_DAY.allow("all"):
         raise ApiError(429, "rate_limited", "too many error reports", headers={"retry-after": "3600"})
-    status = await run_in_threadpool(forward, dsn, build_envelope(header, events))
+    status = await run_in_threadpool(forward, dsn, build_envelope(header, events, dsn))
     log.info("monitoring.forwarded", events=len(events), upstream=status)
     if status == 429:
         raise ApiError(429, "rate_limited", "the error service asks to wait", headers={"retry-after": "60"})
