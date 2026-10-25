@@ -194,9 +194,13 @@ def login(email: str, password: str, *, ip: str | None, user_agent: str | None) 
     password is still owed. The token is shown to nobody else."""
     address = normalize_email(email)
     client = ip or "unknown"
-    for window, key in ((throttle.BY_EMAIL, address), (throttle.BY_CLIENT, client)):
-        if window.blocked(key):
-            raise AuthError(429, "too_many_attempts", retry_after=window.retry_after(key))
+    # The address first, with the same rule whether or not it has an account (R12): a locked address waits before
+    # anything is looked up, so the answer cannot depend on the database.
+    wait = throttle.ADDRESSES.wait(address)
+    if wait:
+        raise AuthError(429, "too_many_attempts", retry_after=wait)
+    if throttle.BY_CLIENT.blocked(client):
+        raise AuthError(429, "too_many_attempts", retry_after=throttle.BY_CLIENT.retry_after(client))
     cfg = auth_settings()
     refusal: AuthError | None = None
     result: tuple[str, Principal] | None = None
@@ -240,17 +244,25 @@ def login(email: str, password: str, *, ip: str | None, user_agent: str | None) 
                 result = _open_session(conn, user, stage=stage, ip=ip, user_agent=user_agent, mfa_verified=False)
     if refusal is not None:
         if refusal.code == "invalid_credentials":
-            _failed(address, client)
+            locked = _failed(address, client)
+            if locked:
+                # The failure that locks says so, with the real wait (plan UX, A1): until A1 it answered 401 and only the
+                # next attempt learned of the lock. An address without an account locks at the same failure, for as long.
+                refusal = AuthError(429, "too_many_attempts", retry_after=locked)
         raise refusal
     assert result is not None
-    throttle.BY_EMAIL.clear(address)
+    throttle.ADDRESSES.clear(address)
     log.info("auth.login", user_id=result[1].user_id, role=result[1].role, stage=result[1].stage)
     return result
 
 
-def _failed(address: str, client: str) -> None:
-    throttle.BY_EMAIL.fail(address)
+def _failed(address: str, client: str) -> int:
+    """Count a failed sign-in for the address and the client. The seconds of the lock it starts for the address, or 0.
+    The account's own lock in the database (store.record_failure) counted the same failure by the same rule."""
+    cfg = auth_settings()
     throttle.BY_CLIENT.fail(client)
+    return throttle.ADDRESSES.fail(address, threshold=cfg.lock_threshold, lock_minutes=cfg.lock_minutes,
+                                   max_minutes=cfg.lock_max_minutes)
 
 
 def _staged_session(conn: psycopg.Connection[Any], principal: Principal, *stages: str) -> dict[str, Any]:

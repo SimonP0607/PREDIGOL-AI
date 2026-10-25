@@ -65,3 +65,39 @@ def test_only_failures_count_towards_the_throttle() -> None:
     w.fail("a@b.co")
     w.clear("a@b.co")
     assert not w.blocked("a@b.co")
+
+
+def test_an_address_locks_by_the_rule_of_the_account_and_the_lock_doubles_by_blocks() -> None:
+    """AddressLocks counts every address with the account's rule (store.record_failure): failures 5-9 lock for 15
+    minutes, from the 10th for 30, doubling up to the cap; a sign-in that works ends the streak."""
+    from fbi.auth.throttle import AddressLocks
+
+    t = [0.0]
+    locks = AddressLocks(clock=lambda: t[0])
+    rule = {"threshold": 5, "lock_minutes": 15, "max_minutes": 40}
+    assert [locks.fail("a@b.co", **rule) for _ in range(4)] == [0, 0, 0, 0]
+    assert locks.wait("a@b.co") == 0
+    assert locks.fail("a@b.co", **rule) == 15 * 60 + 1
+    t[0] += 60
+    assert locks.wait("a@b.co") == 14 * 60 + 1
+    waits = []
+    for _ in range(5):  # failures 6..10, each once the previous lock has passed
+        t[0] += 3600
+        assert locks.wait("a@b.co") == 0
+        waits.append(locks.fail("a@b.co", **rule))
+    assert waits == [15 * 60 + 1] * 4 + [30 * 60 + 1]
+    for _ in range(5):  # failures 11..15: the 15th would be 60 minutes, the cap says 40
+        t[0] += 3600
+        last = locks.fail("a@b.co", **rule)
+    assert last == 40 * 60 + 1 and locks.streak("a@b.co") == 15
+    locks.clear("a@b.co")
+    assert locks.wait("a@b.co") == 0 and locks.streak("a@b.co") == 0
+
+
+def test_the_address_locks_forget_the_oldest_beyond_their_size() -> None:
+    from fbi.auth.throttle import AddressLocks
+
+    locks = AddressLocks(max_keys=3)
+    for n in range(5):
+        locks.fail(f"{n}@b.co", threshold=5, lock_minutes=15, max_minutes=60)
+    assert [locks.streak(f"{n}@b.co") for n in range(5)] == [0, 0, 1, 1, 1]

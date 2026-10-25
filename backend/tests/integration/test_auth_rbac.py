@@ -97,9 +97,12 @@ def test_a_wrong_password_and_an_unknown_address_look_the_same(app_client: TestC
 
 
 def test_repeated_failures_are_throttled_but_never_block_the_right_password_before(app_client: TestClient) -> None:
-    for _ in range(5):
+    for _ in range(4):
         assert app_client.post("/api/v1/auth/login", json={"email": USER_EMAIL, "password": "wrong-pw-123"}
                                ).status_code == 401
+    # The failure that locks says so (plan UX, A1; test_auth_lockout.py has the rest of the rule).
+    locking = app_client.post("/api/v1/auth/login", json={"email": USER_EMAIL, "password": "wrong-pw-123"})
+    assert locking.status_code == 429 and locking.json()["error"]["code"] == "too_many_attempts"
     r = app_client.post("/api/v1/auth/login", json={"email": USER_EMAIL, "password": USER_PW})
     assert r.status_code == 429 and r.json()["error"]["code"] == "too_many_attempts"
     assert int(r.headers["retry-after"]) > 0

@@ -195,8 +195,10 @@ def test_wrong_codes_end_the_staged_session_and_lock_the_account(accounts: dict[
 def test_wrong_passwords_lock_the_account_across_processes_until_the_owner_unlocks_it(
         accounts: dict[str, int], db: str) -> None:
     with client() as c:
-        for _ in range(5):
+        for _ in range(4):
             assert c.post("/api/v1/auth/login", json={"email": FAN, "password": "Wrong-pass-2026"}).status_code == 401
+        # the fifth locks, and says so (plan UX, A1)
+        assert c.post("/api/v1/auth/login", json={"email": FAN, "password": "Wrong-pass-2026"}).status_code == 429
         throttle.reset_all()  # another API process: nothing in its memory
         r = c.post("/api/v1/auth/login", json={"email": FAN, "password": FAN_PW})
         assert r.status_code == 429 and r.json()["error"]["retry_after"] > 800
