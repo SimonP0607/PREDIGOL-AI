@@ -129,6 +129,9 @@ class AiOverview(Contract):
                                                                           "search API - from the configuration.")
     efficiency: dict[str, Any] = Field(default_factory=dict)
     day: dict[str, Any] | None = None
+    envelopes: dict[str, Any] = Field(default_factory=dict, description="Phase 0 of the AI master plan: the production, LAB and Exa "
+                                      "envelopes against their budgets, what the cache and the Batch saved, the switches. "
+                                      "Empty when it could not be built.")
 
 
 class ReviewRow(Contract):
