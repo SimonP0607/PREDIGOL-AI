@@ -594,3 +594,36 @@ test("Profile shows the account's language and time zone", async ({ page }) => {
   await expect(page.getByTestId("current-timezone")).toContainText(tz);
   await expect(page.getByTestId(`profile-lang-${lang()}`)).toHaveAttribute("aria-checked", "true");
 });
+
+test("Profile security: a failure to read the sessions or the activity says so, with the reference and a retry", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F05): a failed read showed as an empty list - "no sessions", "no activity" - which is not true.
+  const t = L[lang()];
+  const fault = (id: string) => ({
+    status: 500,
+    headers: { "content-type": "application/json", "x-request-id": id },
+    body: JSON.stringify({ error: { code: "internal", message: "fault" }, request_id: id }),
+  });
+  await page.route("**/api/v1/auth/me/sessions", (route) => route.fulfill(fault("e2e-sessions-1")));
+  await page.route("**/api/v1/auth/me/access*", (route) => route.fulfill(fault("e2e-access-1")));
+  await page.goto("/profile");
+  const sessions = page.getByTestId("sessions-error");
+  await expect(sessions).toBeVisible();
+  await expect(sessions).toContainText(t.errors.requestId.replace("{id}", "e2e-sessions-1"));
+  await expect(page.getByTestId("access-error")).toContainText(
+    t.errors.requestId.replace("{id}", "e2e-access-1"),
+  );
+  await expect(page.getByTestId("sessions-panel")).not.toContainText(
+    t.profile.securityPanel.thisDevice,
+  );
+  // the retry reads them again, and the panels show what is there
+  await page.unroute("**/api/v1/auth/me/sessions");
+  await page.unroute("**/api/v1/auth/me/access*");
+  await sessions.getByRole("button", { name: t.common.retry }).click();
+  await expect(page.getByTestId("sessions-panel")).toContainText(
+    t.profile.securityPanel.thisDevice,
+  );
+  await page.getByTestId("access-error").getByRole("button", { name: t.common.retry }).click();
+  await expect(page.getByTestId("access-error")).toHaveCount(0);
+});

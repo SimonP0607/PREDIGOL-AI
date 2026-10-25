@@ -54,6 +54,12 @@
       "logout": "Signed out",
       "password.changed": "Password changed",
       "session.revoked": "Session ended"
+    },
+    "confirmEndOthers": {
+      "title": "Close the other sessions?",
+      "body_one": "{count} session open on another device will be closed; it will have to sign in again. This one stays open.",
+      "body_other": "{count} sessions open on other devices will be closed; they will have to sign in again. This one stays open.",
+      "ok": "Close sessions"
     }
   }
 }

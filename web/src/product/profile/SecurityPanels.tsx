@@ -17,6 +17,8 @@ import { t, translateOr } from "@/lib/i18n";
 import { formatDateTime, formatRelative } from "@/lib/time";
 import { EnrollmentPanel, RecoveryCodes } from "@/product/auth/SecurityStep";
 import { stepError } from "@/product/auth/stepError";
+import { ConfirmAction } from "@/product/shared/Confirm";
+import { ErrorState } from "@/product/shared/States";
 import { deviceLabel } from "./device";
 import { cn } from "@/lib/utils";
 
@@ -265,6 +267,11 @@ export function TwoFactorPanel({ user }: { user: Me }) {
   );
 }
 
+/**
+ * The account's open sessions. A failure to read them says so, with a retry and the reference of the request (plan
+ * UX, A1, defect F05: it showed as an empty list - "no sessions" - which is not true); a failure to close one says so
+ * too; and closing every other session asks first.
+ */
 export function SessionsPanel() {
   const qc = useQueryClient();
   const sessions = useQuery({ queryKey: ["auth", "sessions"], queryFn: v1.mySessions });
@@ -275,10 +282,15 @@ export function SessionsPanel() {
   });
   const others = useMutation({ mutationFn: () => v1.revokeMyOtherSessions(), onSuccess: refresh });
   const list = sessions.data ?? [];
+  const failed = revoke.error ?? others.error;
   return (
     <div className="space-y-3" data-testid="sessions-panel">
       {sessions.isPending ? (
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      ) : sessions.isError ? (
+        <div className="rounded-md border border-border" data-testid="sessions-error">
+          <ErrorState error={sessions.error} onRetry={() => void sessions.refetch()} />
+        </div>
       ) : (
         <ul className="divide-y divide-border/70 rounded-md border border-border">
           {list.map((s) => (
@@ -315,22 +327,36 @@ export function SessionsPanel() {
           ))}
         </ul>
       )}
+      {failed ? (
+        <p role="alert" className="text-xs text-negative" data-testid="sessions-action-error">
+          {stepError(failed)}
+        </p>
+      ) : null}
       {list.length > 1 ? (
-        <button
-          type="button"
-          onClick={() => others.mutate()}
-          disabled={others.isPending}
-          data-testid="sessions-end-others"
-          className={cn(button, "border-negative/40 text-negative hover:bg-negative-soft")}
-        >
-          <LogOut aria-hidden className="h-4 w-4" />
-          {t("profile.securityPanel.endOthers")}
-        </button>
+        <ConfirmAction
+          testId="end-others"
+          title={t("profile.securityPanel.confirmEndOthers.title")}
+          body={t("profile.securityPanel.confirmEndOthers.body", { count: list.length - 1 })}
+          confirm={t("profile.securityPanel.confirmEndOthers.ok")}
+          onConfirm={() => others.mutate()}
+          trigger={
+            <button
+              type="button"
+              disabled={others.isPending}
+              data-testid="sessions-end-others"
+              className={cn(button, "border-negative/40 text-negative hover:bg-negative-soft")}
+            >
+              <LogOut aria-hidden className="h-4 w-4" />
+              {t("profile.securityPanel.endOthers")}
+            </button>
+          }
+        />
       ) : null}
     </div>
   );
 }
 
+/** The account's recent sign-in activity; a failure to read it says so (it showed as "no activity"). */
 export function AccessPanel() {
   const access = useQuery({ queryKey: ["auth", "access"], queryFn: () => v1.myAccess(20) });
   const rows = access.data ?? [];
@@ -338,6 +364,10 @@ export function AccessPanel() {
     <div data-testid="access-panel">
       {access.isPending ? (
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      ) : access.isError ? (
+        <div className="rounded-md border border-border" data-testid="access-error">
+          <ErrorState error={access.error} onRetry={() => void access.refetch()} />
+        </div>
       ) : rows.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("profile.securityPanel.noActivity")}</p>
       ) : (

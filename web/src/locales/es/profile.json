@@ -54,6 +54,12 @@
       "logout": "Cierre de sesión",
       "password.changed": "Contraseña cambiada",
       "session.revoked": "Sesión cerrada"
+    },
+    "confirmEndOthers": {
+      "title": "¿Cerrar las demás sesiones?",
+      "body_one": "Se cerrará {count} sesión abierta en otro dispositivo; allí habrá que volver a entrar. Esta se queda abierta.",
+      "body_other": "Se cerrarán {count} sesiones abiertas en otros dispositivos; allí habrá que volver a entrar. Esta se queda abierta.",
+      "ok": "Cerrar sesiones"
     }
   }
 }
