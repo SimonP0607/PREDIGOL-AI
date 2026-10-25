@@ -34,9 +34,10 @@ def hashes(version: str | None) -> dict[str, dict[str, str]]:
 
 def check() -> int:
     bad = []
-    for name, by_locale in hashes(None).items():
+    digests = hashes(None)
+    for name in legal.DOCUMENTS:
         current = legal.current(name)
-        for locale, digest in by_locale.items():
+        for locale, digest in digests[name].items():
             if digest != current.sha256[locale]:
                 bad.append(f"{locale}/{name}.json changed without a new version (register {current.version})")
     for line in bad or ["every text has the hash the register gives it"]:
