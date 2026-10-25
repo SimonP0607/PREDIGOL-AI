@@ -9,7 +9,7 @@ The client still gets nothing but the request id.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, MutableMapping
 from contextlib import contextmanager
 from typing import Any
 
@@ -26,7 +26,7 @@ IP = "203.0.113.77"
 
 
 @contextmanager
-def api_logs(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[dict[str, Any]]]:
+def api_logs(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[MutableMapping[str, Any]]]:
     """The API's log lines, captured. The app's logger is cached on first use (fbi.core.logging.configure:
     cache_logger_on_first_use), so after any other test built an app, capture_logs alone would not see it: the
     module's logger is replaced by one bound inside the capture."""
