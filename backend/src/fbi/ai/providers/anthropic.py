@@ -219,8 +219,10 @@ def read_message(out: dict[str, Any], request: JsonRequest, model: str, *, nativ
         if not uses or not isinstance(uses[0].get("input"), dict):
             raise ProviderError("invalid_output", "the model did not submit the answer", usage=usage)
         data = dict(uses[0]["input"])
-    return LlmResult(data, usage, "anthropic", str(out.get("model") or model), latency_ms, request_id=request_id,
-                     extra={"stop_reason": out.get("stop_reason"), "thinking_tokens": usage.thinking_tokens})
+    extra: dict[str, Any] = {"stop_reason": out.get("stop_reason"), "thinking_tokens": usage.thinking_tokens}
+    if request.shared:  # said only when it is so: an answer to the usual layout carries what it always carried
+        extra["layout"] = "shared"
+    return LlmResult(data, usage, "anthropic", str(out.get("model") or model), latency_ms, request_id=request_id, extra=extra)
 
 
 class AnthropicProvider:

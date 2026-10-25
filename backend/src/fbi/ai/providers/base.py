@@ -96,6 +96,11 @@ class JsonRequest:
     """Mark the system block (1 hour) and ``shared`` (5 minutes) for the prompt cache (Anthropic ``cache_control``)."""
     native_schema: bool = False
     """Ask for the schema through structured outputs (Anthropic ``output_config.format``) instead of a forced tool call."""
+    split: tuple[str, str] | None = None
+    """The user message in its OTHER layout (plan section 28, cut point 2): ``(shared, variable)`` - the same facts as ``user``, with what
+    is the same for every call about the match first and what moves with the clock (time, prices, new evidence) and the candidate last.
+    The request is sent as ``user`` says until ``fbi.ai.usage.with_switches`` finds the ``cache_layout`` gate passed for the model; then
+    ``shared`` and ``user`` are taken from here. A provider never reads this field."""
 
     @property
     def user_text(self) -> str:

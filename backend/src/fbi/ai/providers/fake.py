@@ -44,7 +44,7 @@ class FakeProvider:
         out_tokens = self._output_tokens if self._output_tokens is not None else approx_tokens(json.dumps(data))
         counted = LlmUsage(input_tokens=approx_tokens(text_in), output_tokens=out_tokens)
         return LlmResult(data, counted if self._usage is None else self._usage(request, counted),
-                         self.name, model, latency_ms=0)
+                         self.name, model, latency_ms=0, extra={"layout": "shared"} if request.shared else {})
 
 
 # ── a Message Batches API that never leaves the machine ──────────────────────────────────────────────────────

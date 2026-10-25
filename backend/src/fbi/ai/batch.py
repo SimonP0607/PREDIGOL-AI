@@ -308,7 +308,7 @@ class BatchQueue:
         if why is not None:
             return self._refuse(task, cid, why, estimate)
         batch_id = self._batch_id(task.lab)
-        context = dict(task.context) | {"schema_name": request.schema_name}
+        context = dict(task.context) | {"schema_name": request.schema_name} | ({"layout": "shared"} if request.shared else {})
         with self.conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(INSERT_ITEM_SQL, {
                 "batch": batch_id, "cid": cid, "purpose": task.purpose, "tier": task.tier, "model": tm.model,

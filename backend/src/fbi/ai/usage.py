@@ -426,11 +426,17 @@ def with_effort(request: JsonRequest, tier: Tier | None) -> JsonRequest:
 def with_switches(conn: psycopg.Connection[Any], settings: AiSettings, request: JsonRequest,
                   model: str) -> JsonRequest:
     """The request with the optimisations of Phase 0 that are in force for this model (``fbi.ai.gates``): the prompt cache
-    (it only marks blocks - the same tokens are read) and structured outputs. What a caller already asked for stays."""
+    (it only marks blocks - the same tokens are read), structured outputs and, once the ``cache_layout`` gate has passed for the model,
+    the layout with the match's common block first (``JsonRequest.split``: the same facts in another order). What a caller already
+    asked for stays."""
     cache = request.cache or gates.enabled(conn, settings, "cache", model=model)
     native = request.native_schema or gates.enabled(conn, settings, "native_schema", model=model)
-    if cache == request.cache and native == request.native_schema:
+    split = request.split if request.split is not None and not request.shared \
+        and gates.layout_shared(conn, settings, model=model) else None
+    if cache == request.cache and native == request.native_schema and split is None:
         return request
+    if split is not None:
+        return replace(request, cache=cache, native_schema=native, shared=split[0], user=split[1])
     return replace(request, cache=cache, native_schema=native)
 
 
