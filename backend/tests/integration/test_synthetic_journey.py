@@ -17,6 +17,7 @@ from fbi.auth import service, throttle
 from fbi.auth.settings import reset as reset_auth_settings
 from fbi.core.config import reset_cache
 from fbi.ops import synthetic
+from tests.integration.helpers import forget_memberships
 
 EMAIL = "synthetic-a2@predigol.test"
 PASSWORD = "Kickoff-a2-pass-2026"  # the test account's, made up  # gitleaks:allow
@@ -31,6 +32,7 @@ def database(migrated_database: str) -> Iterator[str]:
     reset_auth_settings()
     throttle.reset_all()
     with psycopg.connect(migrated_database, autocommit=True) as conn:
+        forget_memberships(conn)
         for t in ("auth.sessions", "auth.recovery_codes", "auth.audit_events", "auth.users"):
             conn.execute(f"DELETE FROM {t}")
         conn.execute("DELETE FROM raw.ingestion_runs WHERE job_type = %s", (synthetic.JOB_TYPE,))

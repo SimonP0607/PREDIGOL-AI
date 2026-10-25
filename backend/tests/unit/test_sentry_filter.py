@@ -10,6 +10,7 @@ account's pseudonym.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any
 
@@ -128,7 +129,8 @@ def test_the_pseudonym_groups_one_account_and_tells_nobody_which(monkeypatch: py
         first = crypto.observability_id(42)
         assert first is not None and sentry.USER_ID.fullmatch(first)
         assert crypto.observability_id(42) == first and crypto.observability_id(43) != first
-        assert "42" not in first
+        unkeyed = {hashlib.sha256(s).hexdigest()[:20] for s in (b"42", b"user:42")}
+        assert first != "42" and first not in unkeyed, "not the id, nor a hash anyone computes without the key"
         monkeypatch.setenv("FBI_AUTH_SECRET_KEY", crypto.new_key_b64())
         reset_auth_settings()
         assert crypto.observability_id(42) != first, "another key, another pseudonym: it depends on the secret"

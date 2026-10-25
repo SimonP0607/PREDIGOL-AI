@@ -37,7 +37,7 @@ from fbi.messaging import notices, outbox, runner, templates, webhooks
 from fbi.messaging.legal_change import enqueue_legal_changes
 from fbi.messaging.provider import Outgoing, ProviderError
 from fbi.messaging.templates import Copy, Template, TemplateError
-from tests.integration.helpers import forget_sign_in_failures
+from tests.integration.helpers import forget_memberships, forget_sign_in_failures
 
 READER = "zq.distinto+a5@example.org"
 READER_NAME = "Zacarías Quintero-Pérez"
@@ -79,6 +79,7 @@ def database(migrated_database: str) -> Iterator[str]:
             conn.execute("DELETE FROM auth.sessions")
             conn.execute("DELETE FROM auth.audit_events")
             conn.execute("DELETE FROM picks.user_picks")
+            forget_memberships(conn)
             conn.execute("DELETE FROM auth.users")
 
     wipe()

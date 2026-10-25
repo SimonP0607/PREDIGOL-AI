@@ -26,7 +26,7 @@ from fastapi.testclient import TestClient
 from fbi.auth import service, throttle
 from fbi.auth.settings import reset as reset_session_settings
 from fbi.core.config import reset_cache
-from tests.integration.helpers import forget_sign_in_failures
+from tests.integration.helpers import forget_memberships, forget_sign_in_failures
 
 KNOWN = "member@predigol.test"
 UNKNOWN = "nobody-here@predigol.test"
@@ -49,6 +49,7 @@ def database(migrated_database: str) -> Iterator[str]:
     with psycopg.connect(migrated_database, autocommit=True) as conn:
         conn.execute("DELETE FROM auth.sessions")
         conn.execute("DELETE FROM auth.audit_events")
+        forget_memberships(conn)
         conn.execute("DELETE FROM auth.users")
     service.create_user_unattended(email=KNOWN, display_name="Member", role="USER", password=PASSWORD,
                                    language="es", timezone="America/Bogota")
@@ -58,6 +59,7 @@ def database(migrated_database: str) -> Iterator[str]:
     with psycopg.connect(migrated_database, autocommit=True) as conn:
         conn.execute("DELETE FROM auth.sessions")
         conn.execute("DELETE FROM auth.audit_events")
+        forget_memberships(conn)
         conn.execute("DELETE FROM auth.users")
     mp.undo()
     reset_cache()

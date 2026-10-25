@@ -149,8 +149,18 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "picks.user_parlays", "DELETE", True),
     ("predigol_api", "auth.sessions", "DELETE", True),
     ("predigol_api", "auth.audit_events", "UPDATE", True),
-    ("predigol_api", "customer.messages_outbox", "UPDATE", True),
-    ("predigol_api", "customer.messages_outbox", "DELETE", False),
+    # A8: the membership - recorded by the owner's console and the messenger, never edited or deleted; the worker reads
+    # none of it
+    ("predigol_api", "customer.payments", "INSERT", True),
+    ("predigol_api", "customer.payments", "UPDATE", False),
+    ("predigol_api", "customer.payments", "DELETE", False),
+    ("predigol_api", "customer.membership_periods", "INSERT", True),
+    ("predigol_api", "customer.membership_periods", "UPDATE", False),
+    ("predigol_api", "customer.membership_events", "INSERT", True),
+    ("predigol_api", "customer.membership_events", "DELETE", False),
+    ("predigol_worker", "customer.payments", "SELECT", False),
+    ("predigol_worker", "customer.membership_periods", "SELECT", False),
+    ("predigol_worker", "customer.membership_events", "SELECT", False),
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,
                                             expected: bool) -> None:

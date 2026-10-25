@@ -25,7 +25,7 @@ from fbi.auth.settings import reset as reset_session_settings
 from fbi.core.config import reset_cache
 from fbi.customer import consents, events
 from fbi.customer.events import EventError
-from tests.integration.helpers import forget_sign_in_failures
+from tests.integration.helpers import forget_memberships, forget_sign_in_failures
 
 READER = "lector.eventos@example.org"
 OTHER = "otro.eventos@example.org"
@@ -63,6 +63,7 @@ def database(migrated_database: str) -> Iterator[str]:
             conn.execute("DELETE FROM auth.sessions")
             conn.execute("DELETE FROM auth.audit_events")
             conn.execute("DELETE FROM picks.user_picks")
+            forget_memberships(conn)
             conn.execute("DELETE FROM auth.users")
 
     wipe()

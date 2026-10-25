@@ -41,7 +41,7 @@ from fbi.messaging import outbox
 from fbi.messaging.provider import Outgoing
 from fbi.messaging.templates import PREVIEW_LINK
 from tests.integration.conftest import Seed
-from tests.integration.helpers import forget_sign_in_failures
+from tests.integration.helpers import forget_memberships, forget_sign_in_failures
 
 DOMAIN = "a7.test"
 OWNER = f"owner@{DOMAIN}"
@@ -67,6 +67,7 @@ def wipe(dsn: str) -> None:
         conn.execute("DELETE FROM auth.account_tokens")
         conn.execute("DELETE FROM auth.sessions")
         conn.execute("DELETE FROM auth.audit_events")
+        forget_memberships(conn)
         conn.execute("DELETE FROM auth.users WHERE email NOT IN (%s, %s)", (OWNER, ROBOT))
 
 
@@ -88,6 +89,7 @@ def database(migrated_database: str) -> Iterator[str]:
         conn.execute("DELETE FROM picks.user_picks")
         conn.execute("DELETE FROM auth.sessions")
         conn.execute("DELETE FROM auth.audit_events")
+        forget_memberships(conn)
         conn.execute("DELETE FROM auth.users")
     for email, role in ((OWNER, "SUPER_ADMIN"), (ROBOT, "USER")):
         service.create_user_unattended(email=email, display_name=email.split("@")[0].title(), role=role,
@@ -95,6 +97,7 @@ def database(migrated_database: str) -> Iterator[str]:
     yield migrated_database
     wipe(migrated_database)
     with psycopg.connect(migrated_database, autocommit=True) as conn:
+        forget_memberships(conn)
         conn.execute("DELETE FROM auth.users")
     mp.undo()
     reset_cache()

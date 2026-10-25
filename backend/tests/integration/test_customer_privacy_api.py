@@ -28,7 +28,7 @@ from fbi.auth.settings import reset as reset_session_settings
 from fbi.core.config import reset_cache
 from fbi.customer import consents, legal, privacy
 from tests.integration.conftest import Seed
-from tests.integration.helpers import forget_sign_in_failures
+from tests.integration.helpers import forget_memberships, forget_sign_in_failures
 
 READER = "reader@predigol.test"
 OTHER = "other@predigol.test"
@@ -67,6 +67,7 @@ def database(migrated_database: str, seed: Seed) -> Iterator[str]:
             conn.execute("DELETE FROM picks.user_picks")
             conn.execute("DELETE FROM auth.sessions")
             conn.execute("DELETE FROM auth.audit_events")
+            forget_memberships(conn)
             conn.execute("DELETE FROM auth.users")
 
     wipe()
@@ -382,6 +383,7 @@ def test_the_database_keeps_the_evidence(fresh: str) -> None:
                 conn.execute(sql)
         conn.execute("UPDATE customer.support_tickets SET status = 'answered'")  # the status may change
         with pytest.raises(psycopg.errors.ForeignKeyViolation):
+            forget_memberships(conn)
             conn.execute("DELETE FROM auth.users WHERE email = %s", (READER,))
 
 
@@ -394,7 +396,8 @@ def test_no_table_of_the_customer_schema_has_room_for_an_ip_a_card_a_token_or_an
         """).fetchall()
     assert {t for t, _ in columns} == {"consents", "support_tickets", "ticket_messages",
                                        "messages_outbox", "preferences",  # A5
-                                       "product_events", "activity_daily"}  # A6
+                                       "product_events", "activity_daily",  # A6
+                                       "payments", "membership_periods", "membership_events"}  # A8
     offending = [(t, c) for t, c in columns if any(c == f or c.startswith(f + "_") or c.endswith("_" + f)
                                                    for f in forbidden)]
     assert not offending, offending
