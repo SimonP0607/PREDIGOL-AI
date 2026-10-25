@@ -23,6 +23,7 @@ from fbi.api.routers import (
     auth,
     center,
     customer,
+    events,
     evolution,
     explorer,
     football,
@@ -196,16 +197,17 @@ def create_app() -> FastAPI:
     # never behind the gate.
     for r in (auth.router, customer.router, messaging.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
-    # The product, behind the consent gate (plan UX, A4; FBI_CONSENT_GATE, born off: fbi.customer.consents).
+    # The product, behind the consent gate (plan UX, A4; FBI_CONSENT_GATE, born off: fbi.customer.consents); the
+    # product's own analytics too (A6): a reader who has not accepted the processing is not measured.
     product_tier = [*app_tier, Depends(consent_required)]
     for r in (product.router, records.router, football.router, market.router, center.router,
-              ai_layer.router, forecast.router, match_calendar.router, knowledge.router):
+              ai_layer.router, forecast.router, match_calendar.router, knowledge.router, events.router):
         app.include_router(r, prefix="/api/v1", dependencies=product_tier)
     admin_tier = [Depends(same_site_only), Depends(require_admin), Depends(observe_principal)]
     for r in (system.admin_router, football.admin_router, market.admin_router,
               center.admin_router, explorer.router, analyst.router, admin_users.router, truth.router,
               evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
-              monitoring.admin_router, customer.admin_router, messaging.admin_router):
+              monitoring.admin_router, customer.admin_router, messaging.admin_router, events.admin_router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)

@@ -48,6 +48,8 @@ def forget_customer_data(dsn: str) -> None:
         conn.execute("DELETE FROM customer.consents")
         conn.execute("DELETE FROM customer.messages_outbox")  # A5: the receipts and answers a request queues
         conn.execute("DELETE FROM customer.preferences")
+        conn.execute("DELETE FROM customer.product_events")  # A6
+        conn.execute("DELETE FROM customer.activity_daily")
 
 
 @pytest.fixture(scope="module")
@@ -391,7 +393,8 @@ def test_no_table_of_the_customer_schema_has_room_for_an_ip_a_card_a_token_or_an
             SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'customer'
         """).fetchall()
     assert {t for t, _ in columns} == {"consents", "support_tickets", "ticket_messages",
-                                       "messages_outbox", "preferences"}  # the last two: A5
+                                       "messages_outbox", "preferences",  # A5
+                                       "product_events", "activity_daily"}  # A6
     offending = [(t, c) for t, c in columns if any(c == f or c.startswith(f + "_") or c.endswith("_" + f)
                                                    for f in forbidden)]
     assert not offending, offending
