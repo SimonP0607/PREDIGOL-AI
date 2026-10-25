@@ -90,6 +90,23 @@ expect_block() { # <etiqueta> <regla(s) esperada(s), separadas por |>
   fi
   back_to_head
 }
+expect_block_retry() { # <etiqueta> <regla(s)> <función que escribe el fichero con un valor al azar NUEVO>
+  # La regla genérica de fábrica lleva 1.446 palabras de relleno (stopwords): un 1,2 % de las claves al azar de 44 caracteres se cuela por contener una de ellas.
+  # Esto no es un fallo de la red: se prueba con hasta tres valores nuevos y solo falla si ninguno se bloquea (una regla rota no bloquearía ninguno).
+  n=0
+  while [ "$n" -lt 3 ]; do
+    n=$((n + 1))
+    "$3"
+    commit_try
+    if [ "$RC" -ne 0 ] && printf '%s\n' "$OUT" | grep -Eq "^RuleID:[[:space:]]+($2)([[:space:]]|\$)"; then
+      if [ "$n" -gt 1 ]; then ok "se bloquea: $1 [$(rules_seen)] (con el valor $n: el anterior llevaba una palabra de relleno de la regla de fábrica)"; else ok "se bloquea: $1 [$(rules_seen)]"; fi
+      back_to_head
+      return
+    fi
+    back_to_head
+  done
+  bad "NO se bloquea con tres valores distintos: $1"
+}
 expect_pass() { # <etiqueta>
   commit_try
   if [ "$RC" -eq 0 ]; then
@@ -122,16 +139,16 @@ w db.env "POSTGRES_PASSWORD=$(rnd_alnum 24)"
 expect_block "POSTGRES_PASSWORD con una contraseña generada" "predigol-secret-by-name"
 w auth.env "FBI_AUTH_SECRET_KEY=$(rnd_url 43)"
 expect_block "FBI_AUTH_SECRET_KEY con 43 caracteres al azar" "predigol-secret-by-name|generic-api-key"
-w src/svc.py "api_key = \"$(rnd_alnum 40)\""
-expect_block "api_key con un valor al azar en el código (regla genérica de fábrica)" "generic-api-key"
+w_svc() { w src/svc.py "api_key = \"$(rnd_alnum 40)\""; }
+expect_block_retry "api_key con un valor al azar en el código (regla genérica de fábrica)" "generic-api-key" w_svc
 w ci.env "GITHUB_TOKEN=ghp_$(rnd_alnum 36)"
 expect_block "token de GitHub con su formato (regla de formato de fábrica)" "github-pat"
 w bot.env "FBI_TELEGRAM_BOT_TOKEN=$(rnd_digits 10):A$(rnd_url 34)"
 expect_block "token de bot de Telegram con su formato" "telegram-bot-api-token|predigol-secret-by-name"
-w src/auth.py "TEST_AUTH_KEY = \"$(rnd_alnum 44)\""
-expect_block "la constante de prueba (TEST_AUTH_KEY) FUERA de la carpeta de pruebas" "generic-api-key"
-w src/fbi/backtesting/evaluate.py "API_KEY = \"$(rnd_alnum 40)\""
-expect_block "un valor al azar en el mismo fichero de código clasificado (la excepción es solo para las etiquetas)" "generic-api-key"
+w_testkey() { w src/auth.py "TEST_AUTH_KEY = \"$(rnd_alnum 44)\""; }
+expect_block_retry "la constante de prueba (TEST_AUTH_KEY) FUERA de la carpeta de pruebas" "generic-api-key" w_testkey
+w_evalkey() { w src/fbi/backtesting/evaluate.py "API_KEY = \"$(rnd_alnum 40)\""; }
+expect_block_retry "un valor al azar en el mismo fichero de código clasificado (la excepción es solo para las etiquetas)" "generic-api-key" w_evalkey
 w deploy/env_example.txt "POSTGRES_PASSWORD=$(rnd_alnum 24)"
 expect_block "la plantilla deploy/env_example.txt con una contraseña escrita (las reglas por nombre siguen vivas)" "predigol-secret-by-name"
 {
