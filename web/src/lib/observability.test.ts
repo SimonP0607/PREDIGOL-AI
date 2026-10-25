@@ -168,7 +168,7 @@ function fakeSdk(rec: Recorded) {
 
 const ON: MonitoringConfig = {
   enabled: true,
-  dsn: "https://webkey@o0.ingest.example.invalid/2",
+  dsn: "https://browser@tunnel.predigol.invalid/1", // the stand-in the API gives (fbi.core.sentry.BROWSER_DSN)
   environment: "production",
   tunnel: "/api/v1/monitoring/envelope",
 };

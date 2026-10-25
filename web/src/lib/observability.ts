@@ -2,7 +2,9 @@
  * The web's errors to Sentry (plan UX, A2) - through our own API, never to Sentry itself: the browser posts its
  * events to /api/v1/monitoring/envelope, the server filters each one again (fbi.core.sentry) and forwards it, so
  * the reader's address never reaches a third party and the page's security policy needs no new origin. Off until the
- * server says it is on (/api/v1/monitoring/client): the SDK is not even downloaded then.
+ * server says it is on (/api/v1/monitoring/client): the SDK is not even downloaded then. The DSN the server gives is
+ * a stand-in the SDK needs to start: the web project's own never reaches the page (on the free plan a key cannot be
+ * rate-limited, so anyone holding it could spend the month at Sentry directly).
  *
  * What goes: the error (type, message without values, frames), the page's route without its query, the release,
  * the request id of a failed API call, the browser's name, the screen width, whether it is the installed app or a

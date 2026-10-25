@@ -88,6 +88,13 @@ test("the owner's two test errors arrive: the API's under its reference, the web
     "the web's test error",
   );
   expect(web.path).toBe("/api/2/envelope/");
+  // under the web project's real DSN, which only the server holds: the page was given a stand-in
+  const forwarded = received().find((r) => r.path === "/api/2/envelope/");
+  expect(String(forwarded?.header["dsn"])).toContain("webkey@");
+  const client = (await (await page.request.get("/api/v1/monitoring/client")).json()) as {
+    dsn: string;
+  };
+  expect(client.dsn).not.toContain("webkey");
   const tags = web.event["tags"] as Record<string, string>;
   expect(tags["viewport"]).toBe("1440");
   expect(tags["display"]).toBe("browser");
