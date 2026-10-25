@@ -101,6 +101,12 @@ def _in(actions: tuple[str, ...]) -> str:
 
 # The action lists are written into the SQL as constants, never sent as parameters: the partial index of revision 0094
 # (auth.audit_events (email, at DESC) for these five actions) is used only when the planner sees them.
+# The first half reads the rows of the address. The second reads the account's rows written WITHOUT an address -
+# before A1, the owner's unlock and password reset wrote none; from A1 every row a streak is made of has its address -
+# through the same index (its NULL entries): the same few old rows for an address with an account as for one without,
+# so neither its cost nor its time tells whether the address has an account, and nobody can grow it (third review of
+# A1: through the index of every action of the account, it read the account's whole month, and someone with the
+# password could grow it at will).
 ADDRESS_STREAK_SQL = f"""
     WITH account AS (SELECT id FROM auth.users WHERE email = %(a)s),
     recent AS (
@@ -109,7 +115,7 @@ ADDRESS_STREAK_SQL = f"""
            AND e.action IN ({_in(FAILURE_ACTIONS + RESET_ACTIONS)})
         UNION ALL
         SELECT e.at, e.action FROM auth.audit_events e
-         WHERE e.target_user_id = (SELECT id FROM account) AND e.email IS DISTINCT FROM %(a)s
+         WHERE e.target_user_id = (SELECT id FROM account) AND e.email IS NULL
            AND e.at > now() - make_interval(days => %(h)s)
            AND e.action IN ({_in(FAILURE_ACTIONS + RESET_ACTIONS)})),
     reset AS (SELECT max(at) AS at FROM recent WHERE action IN ({_in(RESET_ACTIONS)}))
@@ -133,8 +139,9 @@ def address_streak(conn: Conn, address: str) -> Row:
     database's now - read from the audit trail every API process writes (plan UX, A1; R12). The API runs several
     worker processes and restarts: a count kept in one process's memory would lock an address without an account
     later than one with (the account's own count is in the database), and tell which addresses have accounts. The
-    trail already records every failure with its address, with or without an account; an address's account, when it
-    has one, also ends a streak with its success, an unlock or a password reset (by its id)."""
+    trail already records every failure with its address, with or without an account, and from A1 every row that
+    ends a streak too (a success, an unlock, a password reset); the rows an account got without an address before A1
+    are read by its id."""
     row = _one(conn, ADDRESS_STREAK_SQL, {"a": address[:254], "h": STREAK_HORIZON_DAYS})
     assert row is not None
     return row
