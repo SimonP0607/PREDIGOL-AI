@@ -1,0 +1,5 @@
+# Versión fijada de Gitleaks para el hook, la puerta de cada lanzamiento y la CI (R07). Las huellas son las de la publicación oficial
+# (gitleaks_8.30.1_checksums.txt, https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1); la CI y el instalador las comprueban.
+version=8.30.1
+linux_x64_sha256=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+windows_x64_sha256=d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e

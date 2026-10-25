@@ -22,7 +22,7 @@ from structlog.testing import capture_logs
 from fbi.core.logging import scrub_personal
 
 EMAIL = "someone.private@example.com"
-TOKEN = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0Ga5KoPiRqWe"  # the shape of tokens.new_token()
+TOKEN = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0Ga5KoPiRqWe"  # the shape of tokens.new_token(); made up  # gitleaks:allow
 IP = "203.0.113.77"
 
 
@@ -89,7 +89,8 @@ def test_nothing_personal_reaches_the_log_line_or_the_answer(boom: TestClient,
     ("v6 2001:db8::8a2e:370:7334 here", "v6 <ip> here", "2001:db8"),
     ("cookie Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0Ga5KoPiRqWe end", "cookie <token> end", "Zk3pQ9mX"),
     ("sha " + "9f" * 32, "sha <hex>", "9f9f9f9f"),
-    ("postgresql+psycopg://fbi:hunter2secret@db/fbi", "postgresql+psycopg://fbi:[REDACTED]@db/fbi", "hunter2"),
+    ("postgresql+psycopg://fbi:hunter2secret@db/fbi", "postgresql+psycopg://fbi:[REDACTED]@db/fbi",  # gitleaks:allow (made up)
+     "hunter2"),
     # found by the review of A1: an address with accents, raw bytes, a password hash, a token without a digit
     ("from simón.pérez@upb.edu.co", "from <email>", "pérez"),
     ("got b'\\x9f\\x3a\\x00key' here", "got <bytes> here", "x9f"),
