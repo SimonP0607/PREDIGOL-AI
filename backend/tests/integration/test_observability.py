@@ -25,9 +25,9 @@ from fbi.core.config import reset_cache
 from tests.unit.sentry_capture import capturing_sentry
 
 OWNER = "lookout@predigol.test"
-OWNER_PW = "Lookout-pass-2026!"
+OWNER_PW = "Floodlit-night-2026!"
 READER = "reader-a2@predigol.test"
-READER_PW = "Reader-a2-pass-26"
+READER_PW = "Terrace-a2-pass-2026"
 SAME_SITE = {"x-requested-with": "predigol"}
 
 

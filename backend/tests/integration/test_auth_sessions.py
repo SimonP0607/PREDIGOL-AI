@@ -27,8 +27,8 @@ from tests.integration.helpers import forget_sign_in_failures
 
 ADMIN_EMAIL = "keeper@predigol.test"
 USER_EMAIL = "regular@predigol.test"
-ADMIN_PW = "Keeper-pass-2026!"
-USER_PW = "Regular-pass-2026"
+ADMIN_PW = "Clean-sheet-2026!"
+USER_PW = "Season-ticket-2026"
 SAME_SITE = {"x-requested-with": "predigol"}
 
 

@@ -31,8 +31,8 @@ from tests.integration.helpers import forget_sign_in_failures
 KNOWN = "member@predigol.test"
 UNKNOWN = "nobody-here@predigol.test"
 OWNER = "keeper@predigol.test"
-OWNER_PW = "Keeper-pass-2026!"
-PASSWORD = "Member-pass-2026"
+OWNER_PW = "Clean-sheet-2026!"
+PASSWORD = "Offside-pass-2026"
 WRONG = "Wrong-pass-2026!"
 SAME_SITE = {"x-requested-with": "predigol"}
 LOCK_S = 15 * 60  # FBI_AUTH_LOCK_MINUTES, default

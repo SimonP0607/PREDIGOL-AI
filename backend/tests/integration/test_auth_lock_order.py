@@ -32,9 +32,9 @@ from fbi.core.config import reset_cache
 from tests.integration.helpers import forget_sign_in_failures
 
 OWNER = "warden@predigol.test"
-OWNER_PW = "Warden-pass-2026!"
+OWNER_PW = "Tunnel-vision-2026!"
 KNOWN = "visitor@predigol.test"
-PASSWORD = "Visitor-pass-2026"
+PASSWORD = "Halftime-pass-2026"
 WRONG = "Wrong-pass-2026!"
 SAME_SITE = {"x-requested-with": "predigol"}
 

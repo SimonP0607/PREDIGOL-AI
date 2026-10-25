@@ -34,7 +34,7 @@ READER = "reader@predigol.test"
 OTHER = "other@predigol.test"
 OWNER = "owner@predigol.test"
 ROBOT = "robot@predigol.test"
-PASSWORD = "Reader-pass-2026-long"
+PASSWORD = "Pitch-side-2026-long"
 SAME_SITE = {"x-requested-with": "predigol"}
 PRODUCT = "/api/v1/me/picks"
 
