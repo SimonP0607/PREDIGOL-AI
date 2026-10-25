@@ -13,7 +13,9 @@ import pytest
 from apps.worker import scheduler
 
 from fbi.familydecisions import decide as fd
+from fbi.familydecisions import memory as fm
 from fbi.familydecisions import outcomes as fo
+from fbi.familydecisions import postmortem as fp
 from fbi.intel import cycle
 from fbi.intel.cycle import Step, with_extra
 
@@ -72,9 +74,12 @@ def test_both_jobs_accept_the_steps_and_the_names_the_worker_uses_are_steps_of_t
 
     ran.clear()
     cycle.run_decide(Conn(), at=at, after={"select": [_step("families")]})  # type: ignore[arg-type]
-    cycle.run_nightly(Conn(), at=at, after={"outcomes": [_step("family_outcomes")]})  # type: ignore[arg-type]
+    family_steps = {"outcomes": [_step("family_outcomes")], "postmortems": [_step("family_postmortems")], "memory": [_step("family_memory")]}
+    cycle.run_nightly(Conn(), at=at, after=family_steps)  # type: ignore[arg-type]
     assert names(ran["decide"]) == ["decide", "select", "families"]
-    assert names(ran["nightly"])[:3] == ["outcomes", "family_outcomes", "postmortems"]
+    assert names(ran["nightly"])[:6] == ["outcomes", "family_outcomes", "postmortems", "family_postmortems", "memory", "family_memory"], (
+        "each family step right after the step of the core layer it follows: the settlement before the post-mortem that reads it, and that one "
+        "before the memory that sums it")
 
     with pytest.raises(ValueError, match="not steps of this job"):
         cycle.run_decide(Conn(), at=at, after={"outcomes": [_step("x")]})  # type: ignore[arg-type]
@@ -108,9 +113,14 @@ def test_in_shadow_the_decision_follows_the_picks_of_the_day_and_the_settlement_
     nightly = scheduler.family_nightly_steps(Conn(), at)  # type: ignore[arg-type]
     assert {k: names(list(v)) for k, v in decide.items()} == {"select": ["families"]}, (
         "after the choice of the picks of the day, so that it cannot delay it")
-    assert {k: names(list(v)) for k, v in nightly.items()} == {"outcomes": ["family_outcomes"]}
+    assert {k: names(list(v)) for k, v in nightly.items()} == {
+        "outcomes": ["family_outcomes"], "postmortems": ["family_postmortems"], "memory": ["family_memory"]}
     # and the job accepts exactly those names
     assert names(with_extra([_step("decide"), _step("select")], decide)) == ["decide", "select", "families"]
+    core = [_step(n) for n in ("outcomes", "postmortems", "memory", "calibration", "leakage_audit", "hypotheses", "report")]
+    assert names(with_extra(core, nightly)) == [
+        "outcomes", "family_outcomes", "postmortems", "family_postmortems", "memory", "family_memory", "calibration", "leakage_audit", "hypotheses",
+        "report"], "a family settles before its post-mortem reads the settlement and the memory sums the post-mortems, and none moves a step of the core layer"
 
 
 def test_the_steps_call_the_families_with_the_connection_and_the_moment_of_the_run(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -125,11 +135,14 @@ def test_the_steps_call_the_families_with_the_connection_and_the_moment_of_the_r
 
     monkeypatch.setattr(fd, "run_step", fake("decide"))
     monkeypatch.setattr(fo, "run_step", fake("outcomes"))
+    monkeypatch.setattr(fp, "run_step", fake("postmortems"))
+    monkeypatch.setattr(fm, "run_step", fake("memory"))
     conn, at = object(), datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
     d = scheduler.family_decide_steps(conn, at)  # type: ignore[arg-type]
     n = scheduler.family_nightly_steps(conn, at)  # type: ignore[arg-type]
     assert d["select"][0][1]() == {"mode": "shadow"} and n["outcomes"][0][1]() == {"mode": "shadow"}
-    assert seen == [("decide", conn, at), ("outcomes", conn, at)]
+    assert n["postmortems"][0][1]() == {"mode": "shadow"} and n["memory"][0][1]() == {"mode": "shadow"}
+    assert seen == [("decide", conn, at), ("outcomes", conn, at), ("postmortems", conn, at), ("memory", conn, at)]
 
 
 def test_the_record_of_a_run_names_the_versions_of_the_families() -> None:
@@ -139,3 +152,5 @@ def test_the_record_of_a_run_names_the_versions_of_the_families() -> None:
     assert v["decision"] == dv.DECISION_CORE and v["outcome"] == dv.OUTCOME_CORE
     assert v["decision_families"] == dv.DECISION_FAMILIES == fd.VERSION
     assert v["outcome_families"] == dv.OUTCOME_FAMILIES == fo.VERSION
+    assert v["postmortem_families"] == dv.POSTMORTEM_FAMILIES == fp.VERSION
+    assert v["memory_families"] == dv.MEMORY_FAMILIES == fm.VERSION

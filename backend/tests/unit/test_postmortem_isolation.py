@@ -78,6 +78,10 @@ NAMES_IT: dict[str, str] = {
     "scripts/postmortems.py": "the owner's command for the post-mortem: status, coverage, closes (the two closes a price is judged against) and "
                               "build (a dry run until --apply)",
     "scripts/memory.py": "the owner's command for the memory: status, coverage, rebuild (a dry run until --apply) and audit",
+    "familydecisions/postmortem.py": "the post-mortem of the families (pm-fam-v1, F11, shadow): the only writer of intel.family_postmortems; it names the "
+                                     "pipeline's tables only to say why it is kept apart from them",
+    "familydecisions/memory.py": "the memory of the families (memory-fam-v1, F11, shadow): the only writer of intel.family_memory, and the reader of the "
+                                 "post-mortems of the families it adds up",
 }
 """Every file under ``src/fbi``, ``scripts`` and ``apps`` that names the objects and sits after a kick-off, with why."""
 
@@ -95,6 +99,8 @@ IMPORTS: dict[str, dict[str, str]] = {
         "ai/cycle.py": "the learning cycle: the same function, so that whichever of the two jobs runs first writes the day",
         "ai/pm_narratives.py": "the narratives wait as long as the post-mortem does before a selection counts as settled (SETTLE_DELAY)",
         "scripts/postmortems.py": "the owner's command: build (a dry run until --apply), status, coverage and closes",
+        "familydecisions/postmortem.py": "the post-mortem of a family is judged by the pipeline's own definitions - the quality of a price, the verdict, "
+                                         "the causes and the queries of the events, the statistics and the referee's average - not by copies of them",
     },
     "fbi.intel.match_review": {
         "intel/cycle.py": "the nightly: the post-mortems step reviews the matches after the selections",
@@ -167,6 +173,13 @@ IMPORTS: dict[str, dict[str, str]] = {
         "api/routers/ai_layer.py": "the admin routes of the AI pages and, beside them, the card of a match (held below)",
         "api/routers/evolution.py": "the dashboard of the evolution loop: errors and findings",
     },
+    "fbi.familydecisions.postmortem": {
+        "apps/worker/scheduler.py": "the nightly: the post-mortems of the families, right after the one of the core layer (only while FBI_FAMILY_DECISIONS is not off)",
+        "familydecisions/memory.py": "the memory adds up the post-mortems of the version the post-mortem writes, and names the families the way it does",
+    },
+    "fbi.familydecisions.memory": {
+        "apps/worker/scheduler.py": "the nightly: the memory of the families, right after the one of the core layer (only while FBI_FAMILY_DECISIONS is not off)",
+    },
 }
 """Module -> the files that may import it (a path under ``src/fbi``, ``apps/..`` or ``scripts/..``), each with why. Inside its own file a module is
 free to use itself; its neighbours are listed."""
@@ -182,6 +195,8 @@ WRITERS: dict[str, set[str]] = {
     "ai/learning.py": {"ai.learning_notes", "ai.source_stats"},
     "ai/daily_review.py": {"ai.daily_reviews"},
     "intel/report.py": {"intel.daily_reports"},
+    "familydecisions/postmortem.py": {"intel.family_postmortems"},
+    "familydecisions/memory.py": {"intel.family_memory"},
     "ai/patterns.py": set(),
     "intel/pm_facts.py": set(),
     "intel/pm_questions.py": set(),

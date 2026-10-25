@@ -171,11 +171,16 @@ def test_the_versions_are_distinct_and_the_layers_say_which_is_which() -> None:
     assert len(set(layers)) == 2 and len(set(results)) == 2, "two layers, two versions of each"
     assert dv.LAYERS == {"core": dv.DECISION_CORE, "families": dv.DECISION_FAMILIES}
     assert dv.DECISION_FAMILIES.startswith("decision-fam-") and dv.OUTCOME_FAMILIES.startswith("outcome-fam-")
+    learned: list[str] = [dv.POSTMORTEM_FAMILIES, dv.MEMORY_FAMILIES]
+    assert len(set(layers + results + learned)) == 6, "what a family learns has versions of its own: none is the decision's or the settlement's"
+    assert dv.POSTMORTEM_FAMILIES.startswith("pm-fam-") and dv.MEMORY_FAMILIES.startswith("memory-fam-")
 
 
 def test_each_module_takes_its_version_from_the_one_place_that_defines_them() -> None:
     from fbi.familydecisions import decide
+    from fbi.familydecisions import memory as family_memory
     from fbi.familydecisions import outcomes as family_outcomes
+    from fbi.familydecisions import postmortem as family_postmortem
     from fbi.intel import decision
     from fbi.intel import outcomes as core_outcomes
     from fbi.knowledge import reader
@@ -183,6 +188,11 @@ def test_each_module_takes_its_version_from_the_one_place_that_defines_them() ->
     assert decision.VERSION == dv.DECISION_CORE and decide.VERSION == dv.DECISION_FAMILIES
     assert core_outcomes.VERSION == dv.OUTCOME_CORE and family_outcomes.VERSION == dv.OUTCOME_FAMILIES
     assert decide.CORE_VERSION == dv.DECISION_CORE
+    assert family_postmortem.VERSION == dv.POSTMORTEM_FAMILIES
+    assert family_memory.VERSION == dv.MEMORY_FAMILIES and family_memory.SOURCE == family_postmortem.VERSION, (
+        "the memory of the families sums the post-mortems of the families, under the version the post-mortem writes")
+    assert family_postmortem.DECISION_VERSION == dv.DECISION_FAMILIES and family_postmortem.OUTCOME_VERSION == dv.OUTCOME_FAMILIES, (
+        "the post-mortem of a family studies the decisions of the families, settled by the settlement of the families, and no other")
     assert reader.DECISION_LAYER == dv.DECISION_CORE, (
         "fbi.knowledge may import nothing of ours but itself, so it keeps a copy of the core version; the copy must not drift")
 
@@ -190,7 +200,7 @@ def test_each_module_takes_its_version_from_the_one_place_that_defines_them() ->
 def test_no_statement_writes_a_decision_version_by_hand() -> None:
     """The versions are written where the code names them (``fbi.core.decision_versions``), not copied into a statement: a copy is a version that
     is not renamed the day the layer is."""
-    literal = re.compile(r"decision-(?:fam-)?v\d+|outcome-(?:fam-)?v\d+")
+    literal = re.compile(r"decision-(?:fam-)?v\d+|outcome-(?:fam-)?v\d+|pm-fam-v\d+|memory-fam-v\d+")
     found = [f"{s.file}:{s.line}: {' '.join(s.text.split())[:120]}" for s in statements() if literal.search(s.text)]
     assert not found, "write the version as a parameter:\n" + "\n".join(found)
 

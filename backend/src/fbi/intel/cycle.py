@@ -34,7 +34,12 @@ from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
 from fbi.ai.calendar import local_day
-from fbi.core.decision_versions import DECISION_FAMILIES, OUTCOME_FAMILIES
+from fbi.core.decision_versions import (
+    DECISION_FAMILIES,
+    MEMORY_FAMILIES,
+    OUTCOME_FAMILIES,
+    POSTMORTEM_FAMILIES,
+)
 from fbi.core.version import code_version
 
 log = structlog.get_logger(__name__)
@@ -92,7 +97,8 @@ def versions() -> dict[str, str]:
             "edge_gate": calibration.EDGE_GATE_VERSION, "outcome": outcomes.VERSION, "postmortem": postmortem.VERSION,
             "memory": memory.VERSION, "report": report.VERSION, "discovery": discovery.VERSION,
             "leakage": leakage.VERSION, "selection": decision.RULE_V6,
-            "decision_families": DECISION_FAMILIES, "outcome_families": OUTCOME_FAMILIES}
+            "decision_families": DECISION_FAMILIES, "outcome_families": OUTCOME_FAMILIES,
+            "postmortem_families": POSTMORTEM_FAMILIES, "memory_families": MEMORY_FAMILIES}
 
 
 def open_run(conn: psycopg.Connection[Any], job: str, *, at: datetime) -> int:

@@ -1170,12 +1170,18 @@ def family_decide_steps(conn: psycopg.Connection[Any], at: datetime) -> dict[str
 
 def family_nightly_steps(conn: psycopg.Connection[Any], at: datetime) -> dict[str, list[tuple[str, Callable[[], Any]]]]:
     """What the nightly job does for the families (plan F11), each step right after the one of the core layer it follows, and only while
-    ``FBI_FAMILY_DECISIONS`` is not ``off``: the settlement of the decisions they took (``family_outcomes``)."""
-    from fbi.familydecisions import decide, outcomes
+    ``FBI_FAMILY_DECISIONS`` is not ``off``: the settlement of the decisions they took (``family_outcomes``), once settled what became of each
+    one (``family_postmortems``) and what those post-mortems add up to (``family_memory``). The order is the one of the core layer: outcomes first,
+    then the post-mortems that read them, then the memory that sums them."""
+    from fbi.familydecisions import decide, memory, outcomes, postmortem
 
     if decide.mode() == "off":
         return {}
-    return {"outcomes": [("family_outcomes", lambda: outcomes.run_step(conn, at=at))]}
+    return {
+        "outcomes": [("family_outcomes", lambda: outcomes.run_step(conn, at=at))],
+        "postmortems": [("family_postmortems", lambda: postmortem.run_step(conn, at=at))],
+        "memory": [("family_memory", lambda: memory.run_step(conn, at=at))],
+    }
 
 
 def _intel_decide_now() -> None:

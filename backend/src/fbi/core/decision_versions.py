@@ -25,5 +25,11 @@ OUTCOME_CORE: Final = "outcome-v1"
 OUTCOME_FAMILIES: Final = "outcome-fam-v1"
 """The version of the rows of ``intel.decision_outcomes`` of each layer."""
 
+POSTMORTEM_FAMILIES: Final = "pm-fam-v1"
+"""The version of what a family learned from one decision of its own, after the match (``fbi.familydecisions.postmortem``)."""
+MEMORY_FAMILIES: Final = "memory-fam-v1"
+"""The version of what the families remember: those post-mortems added up (``fbi.familydecisions.memory``). Both are named here, as they are in the
+record of every run, and no more: this module imports nothing and names no table of what is learned after a match."""
+
 LAYERS: Final = {"core": DECISION_CORE, "families": DECISION_FAMILIES}
 """The layer a reader asks for, by name (the admin's views accept ``core`` and ``families``)."""
