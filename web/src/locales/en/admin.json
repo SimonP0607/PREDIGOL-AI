@@ -281,7 +281,8 @@
     "historical_validation": "Historical validation",
     "truth_audit": "Data truth audit",
     "capacity_probe": "Capacity probe",
-    "raw_backfill_season_stats": "Season stats from RAW"
+    "raw_backfill_season_stats": "Season stats from RAW",
+    "synthetic_journey": "Synthetic journey"
   },
   "labels": {
     "marketAverage": "Market average",
