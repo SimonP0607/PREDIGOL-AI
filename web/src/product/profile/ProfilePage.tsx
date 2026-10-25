@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { v1 } from "@/lib/api/v1/client";
-import { LOCALE_NAMES, LOCALES, t, useI18n } from "@/lib/i18n";
+import { LOCALES, t, useI18n } from "@/lib/i18n";
+import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
 import { fmtInt } from "@/lib/i18n/format";
 import {
   detectTimeZone,

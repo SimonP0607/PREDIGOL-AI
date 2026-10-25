@@ -13,9 +13,6 @@ import { CATALOGS, type Catalog, type Locale } from "./catalogs";
 
 export type { Locale } from "./catalogs";
 export const LOCALES: readonly Locale[] = ["es", "en"] as const;
-
-/** Each language named in itself - the same in every language (plan UX, A1, F08: the switch said "ES" / "EN"). */
-export const LOCALE_NAMES: Readonly<Record<Locale, string>> = { es: "Español", en: "English" };
 export const DEFAULT_LOCALE: Locale = "es";
 
 const INTL_TAG: Record<Locale, string> = { es: "es-ES", en: "en-GB" };

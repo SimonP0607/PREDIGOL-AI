@@ -37,7 +37,12 @@ function card(over: Partial<AnalysisCard> = {}): AnalysisCard {
 
 const render = (c: AnalysisCard, contextPending: boolean) =>
   renderToStaticMarkup(
-    <AnalysisCardView card={c} home="Millonarios" away="Santa Fe" contextPending={contextPending} />,
+    <AnalysisCardView
+      card={c}
+      home="Millonarios"
+      away="Santa Fe"
+      contextPending={contextPending}
+    />,
   );
 
 afterAll(() => setLocale("es"));

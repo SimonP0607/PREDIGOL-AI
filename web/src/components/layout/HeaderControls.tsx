@@ -2,7 +2,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { LOCALE_NAMES, LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
+import { LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
+import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
