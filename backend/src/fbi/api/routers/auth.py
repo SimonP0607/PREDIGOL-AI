@@ -62,19 +62,28 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
     )
 
 
-def _signed_in(response: Response, issued: tuple[str, Principal]) -> Me:
+def with_consents(who: Me, principal: Principal, conn: psycopg.Connection[Any]) -> Me:
+    """The consents the reader owes (plan UX, A4), on every Me a step of signing in or /auth/me answers: the page
+    shows the gate at once instead of opening the product and meeting a 403 consent_required on its first read."""
+    if (principal.is_full and consents.gate_enabled()
+            and not consents.exempt(principal.email, super_admin=principal.is_super_admin)):
+        return who.model_copy(update={"consents_due": consents.due_cached(conn, principal.user_id)})
+    return who
+
+
+def _signed_in(response: Response, issued: tuple[str, Principal], conn: psycopg.Connection[Any]) -> Me:
     token, principal = issued
     set_session_cookie(response, token, principal.session_expires_at)
-    return me_of(principal)
+    return with_consents(me_of(principal), principal, conn)
 
 
 @public_router.post("/login", response_model=Me)
-def login(body: LoginIn, request: Request, response: Response) -> Me:
+def login(body: LoginIn, request: Request, response: Response, conn: Db) -> Me:
     """Sets an HttpOnly, SameSite session cookie. The token is never in the body. When a step is still owed
     (stage mfa / enroll / password) the session can do nothing but that step."""
     issued = service.login(body.email, body.password, ip=client_ip(request),
                            user_agent=request.headers.get("user-agent"))
-    return _signed_in(response, issued)
+    return _signed_in(response, issued, conn)
 
 
 @public_router.post("/logout", status_code=204)
@@ -89,20 +98,17 @@ def logout(request: Request, principal: Annotated[Principal | None, Depends(opti
 
 @session_router.get("/me", response_model=Me)
 def me(principal: AnySession, conn: Db) -> Me:
-    who = me_of(principal)
-    if (principal.is_full and consents.gate_enabled()
-            and not consents.exempt(principal.email, super_admin=principal.is_super_admin)):
-        who = who.model_copy(update={"consents_due": consents.due_cached(conn, principal.user_id)})
-    return who
+    return with_consents(me_of(principal), principal, conn)
 
 
 @session_router.post("/mfa/verify", response_model=Me)
-def verify_mfa(body: MfaVerifyIn, request: Request, response: Response, principal: AnySession) -> Me:
+def verify_mfa(body: MfaVerifyIn, request: Request, response: Response, principal: AnySession,
+               conn: Db) -> Me:
     """Second step: a 6-digit code from the authenticator app, or one recovery code. A new session replaces the
     staged one."""
     issued = service.verify_mfa(principal, code=body.code, recovery_code=body.recovery_code, ip=client_ip(request),
                                 user_agent=request.headers.get("user-agent"))
-    return _signed_in(response, issued)
+    return _signed_in(response, issued, conn)
 
 
 @session_router.post("/mfa/enroll/start", response_model=MfaEnrollment)
@@ -113,31 +119,34 @@ def start_enrollment(body: MfaStartIn, request: Request, principal: AnySession) 
 
 
 @session_router.post("/mfa/enroll/confirm", response_model=MfaEnrolled)
-def confirm_enrollment(body: MfaCodeIn, request: Request, response: Response, principal: AnySession) -> MfaEnrolled:
+def confirm_enrollment(body: MfaCodeIn, request: Request, response: Response, principal: AnySession,
+                       conn: Db) -> MfaEnrolled:
     """The first code turns the second factor on. The recovery codes come back ONCE, here."""
     codes, advanced = service.confirm_enrollment(principal, code=body.code, ip=client_ip(request),
                                                  user_agent=request.headers.get("user-agent"))
     if advanced is not None:
-        me_now = _signed_in(response, advanced)
+        me_now = _signed_in(response, advanced, conn)
     else:
-        me_now = me_of(principal).model_copy(update={"mfa_enabled": True, "recovery_codes_left": len(codes)})
+        me_now = with_consents(
+            me_of(principal).model_copy(update={"mfa_enabled": True, "recovery_codes_left": len(codes)}),
+            principal, conn)
     return MfaEnrolled(me=me_now, recovery_codes=codes)
 
 
 @session_router.post("/password/required", response_model=Me)
 def set_required_password(body: RequiredPasswordIn, request: Request, response: Response,
-                          principal: AnySession) -> Me:
+                          principal: AnySession, conn: Db) -> Me:
     """The account was created or reset by an administrator: it chooses its own password before anything else."""
     issued = service.set_required_password(principal, new_password=body.new_password, ip=client_ip(request),
                                            user_agent=request.headers.get("user-agent"))
-    return _signed_in(response, issued)
+    return _signed_in(response, issued, conn)
 
 
 @router.patch("/me/preferences", response_model=Me)
-def update_preferences(body: PreferencesIn, principal: App) -> Me:
+def update_preferences(body: PreferencesIn, principal: App, conn: Db) -> Me:
     row = service.update_preferences(principal, language=body.language, timezone=body.timezone,
                                      display_name=body.display_name)
-    return me_of(principal, row)
+    return with_consents(me_of(principal, row), principal, conn)
 
 
 @router.post("/me/password", status_code=204)

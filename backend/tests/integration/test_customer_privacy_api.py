@@ -162,6 +162,23 @@ def test_the_gate_asks_for_the_four_consents_and_opens_once_they_are_given(
             True, doc.document, doc.version, doc.sha256, "es", expected, "gate")
 
 
+def test_signing_in_says_at_once_what_is_owed(fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The Me of the sign-in itself carries the owed consents: the page shows the gate at once instead of opening the
+    product and meeting a 403 on its first read (A4's e2e: a new account's first page)."""
+    monkeypatch.setenv(consents.GATE_ENV, "drafts")
+    from fbi.api.app import create_app
+
+    c = TestClient(create_app(), headers=SAME_SITE)
+    signed = c.post("/api/v1/auth/login", json={"email": READER, "password": PASSWORD})
+    assert signed.status_code == 200
+    assert signed.json()["consents_due"] == ["terms", "privacy", "age_18", "risk_notice"]
+    accept(c)
+    again = c.patch("/api/v1/auth/me/preferences", json={"timezone": "America/Bogota"})
+    assert again.json()["consents_due"] == []
+    owner = TestClient(create_app(), headers=SAME_SITE)
+    assert owner.post("/api/v1/auth/login", json={"email": OWNER, "password": PASSWORD}).json()["consents_due"] == []
+
+
 def test_withdrawing_the_processing_authorisation_closes_the_product_until_it_is_given_again(
         fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(consents.GATE_ENV, "drafts")
