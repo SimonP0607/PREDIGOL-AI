@@ -3,6 +3,10 @@
   {
    "date": "2026-10-25",
    "reason": "A0: line base of the six client routes, taken from the code that runs in production (backend 6851c0081d75)"
+  },
+  {
+   "date": "2026-10-25",
+   "reason": "A1: Meta gains next_cursor (optional, null unless a list has a next page) for the pages of /me/picks and /me/parlays (defect F53); the six routes answer the same fields as before"
   }
  ],
  "routes": {
@@ -804,6 +808,18 @@
         }
        ],
        "title": "Limit"
+      },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
       },
       "offset": {
        "anyOf": [
@@ -2135,6 +2151,18 @@
         }
        ],
        "title": "Limit"
+      },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
       },
       "offset": {
        "anyOf": [
@@ -4461,6 +4489,18 @@
        ],
        "title": "Limit"
       },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
       "offset": {
        "anyOf": [
         {
@@ -6582,6 +6622,18 @@
        ],
        "title": "Limit"
       },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
+      },
       "offset": {
        "anyOf": [
         {
@@ -7052,6 +7104,18 @@
         }
        ],
        "title": "Limit"
+      },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
       },
       "offset": {
        "anyOf": [
@@ -7576,6 +7640,18 @@
         }
        ],
        "title": "Limit"
+      },
+      "next_cursor": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "A list read page by page: when more records remain, the value to pass back as `cursor` for the next page (null on the last page). Opaque.",
+       "title": "Next Cursor"
       },
       "offset": {
        "anyOf": [

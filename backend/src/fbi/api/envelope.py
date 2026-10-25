@@ -51,6 +51,11 @@ class Meta(BaseModel):
     data_as_of: datetime | None = Field(
         default=None, description="Newest timestamp among the rows the answer was built from."
     )
+    next_cursor: str | None = Field(
+        default=None,
+        description="A list read page by page: when more records remain, the value to pass back as `cursor` for the "
+                    "next page (null on the last page). Opaque.",
+    )
 
 
 class Section[T](BaseModel):

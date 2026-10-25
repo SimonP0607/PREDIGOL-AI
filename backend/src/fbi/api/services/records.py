@@ -6,6 +6,8 @@ parlay) go through ``fbi.userdata`` with the signed-in user's id and nothing els
 
 from __future__ import annotations
 
+import base64
+import re
 from collections import defaultdict
 from collections.abc import Hashable, Mapping, Sequence
 from datetime import date, datetime
@@ -279,31 +281,85 @@ def daily_board(conn: Conn, *, day: date | None, include_shadow: bool, at: datet
     return ok(board)
 
 
+# A user's own lists are read page by page (plan UX, A1: "Todo" was cut at 500 picks and 200 parlays and called
+# everything). The cursor is the position of the last record of a page in the list's order - picks by kick-off, parlays
+# by creation, the id breaking ties, newest first - so a page never repeats or skips a record, whatever is saved in
+# between. It is opaque to the client: base64url of "c1|<list>|<timestamp>|<id>".
+CURSOR_RE = re.compile(r"^c1\|(?P<kind>[pl])\|(?P<at>\d{4}-\d\d-\d\dT[0-9:.+\-]+)\|(?P<id>\d{1,18})$")
+
+
+class CursorError(ValueError):
+    """A cursor this API did not write."""
+
+
+def encode_cursor(kind: str, at: datetime, record_id: int) -> str:
+    raw = f"c1|{kind}|{at.isoformat()}|{record_id}".encode()
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def decode_cursor(kind: str, cursor: str | None) -> tuple[datetime | None, int | None]:
+    if cursor is None:
+        return None, None
+    try:
+        raw = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)).decode()
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise CursorError("not a cursor of this list") from exc
+    found = CURSOR_RE.match(raw)
+    if found is None or found["kind"] != kind:
+        raise CursorError("not a cursor of this list")
+    try:
+        at = datetime.fromisoformat(found["at"])
+    except ValueError as exc:
+        raise CursorError("not a cursor of this list") from exc
+    if at.tzinfo is None:
+        raise CursorError("not a cursor of this list")
+    return at, int(found["id"])
+
+
+USER_PICKS_FILTER = """
+ WHERE u.user_id = %(user)s AND (%(status)s::text IS NULL OR (%(status)s = 'open' AND u.status = 'PENDING')
+                                  OR (%(status)s = 'settled' AND u.status <> 'PENDING'))
+"""
+
 USER_PICKS_SQL = """
 SELECT u.*, """ + MATCH_COLS + """
   FROM picks.user_picks u
-""" + MATCH_JOINS.format(alias="u") + """
- WHERE u.user_id = %(user)s AND (%(status)s::text IS NULL OR (%(status)s = 'open' AND u.status = 'PENDING')
-                                  OR (%(status)s = 'settled' AND u.status <> 'PENDING'))
+""" + MATCH_JOINS.format(alias="u") + USER_PICKS_FILTER + """
+   AND (%(after_at)s::timestamptz IS NULL OR (f.kickoff_at, u.id) < (%(after_at)s::timestamptz, %(after_id)s::bigint))
  ORDER BY f.kickoff_at DESC, u.id DESC
  LIMIT %(limit)s
 """
 
+USER_PICKS_TOTAL_SQL = "SELECT count(*) AS n FROM picks.user_picks u" + USER_PICKS_FILTER
 
-def user_picks(conn: Conn, *, user_id: int, status: str | None, limit: int) -> Envelope[list[UserPick]]:
-    rows = fetch_all(conn, USER_PICKS_SQL, {"user": user_id, "status": status, "limit": limit})
+
+def user_picks(conn: Conn, *, user_id: int, status: str | None, limit: int,
+               cursor: str | None = None) -> Envelope[list[UserPick]]:
+    after_at, after_id = decode_cursor("p", cursor)
+    rows = fetch_all(conn, USER_PICKS_SQL, {"user": user_id, "status": status, "limit": limit + 1,
+                                            "after_at": after_at, "after_id": after_id})
+    more = len(rows) > limit
+    rows = rows[:limit]
+    total = fetch_one(conn, USER_PICKS_TOTAL_SQL, {"user": user_id, "status": status})
     trail = corrections(conn, {r["id"]: [("user_pick", str(r["id"]))] for r in rows})
     out = [UserPick(
         id=r["id"], match=match_of(r), market_key=r["market_key"], selection=r["selection"], line=r["line"],
         origin=r["origin"], pick_id=r["pick_id"], odds=r["odds"], bookmaker=r["bookmaker"], price_at=r["price_at"],
         user_odds=r["user_odds"], saved_at=r["saved_at"], status=r["status"], profit_units=r["profit_units"],
         settled_at=r["settled_at"], snapshot=r["snapshot"], corrections=trail.get(r["id"], [])) for r in rows]
-    return listing(out, empty_reason="You have not saved a pick yet.", total=len(out), limit=limit, offset=0)
+    next_cursor = encode_cursor("p", rows[-1]["m_kickoff_at"], int(rows[-1]["id"])) if more else None
+    return listing(out, empty_reason="You have not saved a pick yet.", total=int(total["n"]) if total else 0,
+                   limit=limit, offset=0 if cursor is None else None, next_cursor=next_cursor)
 
 
 USER_PARLAYS_SQL = """
-SELECT p.* FROM picks.user_parlays p WHERE p.user_id = %(user)s ORDER BY p.created_at DESC LIMIT %(limit)s
+SELECT p.* FROM picks.user_parlays p
+ WHERE p.user_id = %(user)s
+   AND (%(after_at)s::timestamptz IS NULL OR (p.created_at, p.id) < (%(after_at)s::timestamptz, %(after_id)s::bigint))
+ ORDER BY p.created_at DESC, p.id DESC LIMIT %(limit)s
 """
+
+USER_PARLAYS_TOTAL_SQL = "SELECT count(*) AS n FROM picks.user_parlays p WHERE p.user_id = %(user)s"
 
 USER_LEGS_SQL = """
 SELECT l.*, """ + MATCH_COLS + """
@@ -313,8 +369,13 @@ SELECT l.*, """ + MATCH_COLS + """
 """
 
 
-def user_parlays(conn: Conn, *, user_id: int, limit: int) -> Envelope[list[UserParlay]]:
-    parlays = fetch_all(conn, USER_PARLAYS_SQL, {"user": user_id, "limit": limit})
+def user_parlays(conn: Conn, *, user_id: int, limit: int, cursor: str | None = None) -> Envelope[list[UserParlay]]:
+    after_at, after_id = decode_cursor("l", cursor)
+    parlays = fetch_all(conn, USER_PARLAYS_SQL, {"user": user_id, "limit": limit + 1, "after_at": after_at,
+                                                 "after_id": after_id})
+    more = len(parlays) > limit
+    parlays = parlays[:limit]
+    total = fetch_one(conn, USER_PARLAYS_TOTAL_SQL, {"user": user_id})
     legs: dict[int, list[UserParlayLeg]] = defaultdict(list)
     if parlays:
         for r in fetch_all(conn, USER_LEGS_SQL, {"ids": [p["id"] for p in parlays]}):
@@ -328,7 +389,9 @@ def user_parlays(conn: Conn, *, user_id: int, limit: int) -> Envelope[list[UserP
         profit_units=p["profit_units"], settled_at=p["settled_at"],
         warnings=list((p["validation"] or {}).get("warnings", [])), legs=legs[int(p["id"])],
         corrections=trail.get(p["id"], [])) for p in parlays]
-    return listing(out, empty_reason="You have not built a parlay yet.", total=len(out), limit=limit, offset=0)
+    next_cursor = encode_cursor("l", parlays[-1]["created_at"], int(parlays[-1]["id"])) if more else None
+    return listing(out, empty_reason="You have not built a parlay yet.", total=int(total["n"]) if total else 0,
+                   limit=limit, offset=0 if cursor is None else None, next_cursor=next_cursor)
 
 
 def history(conn: Conn, *, user_id: int, period: userdata.Period, tz: str, include_shadow: bool,
