@@ -14,7 +14,9 @@ Rules that keep the budget honest:
   tokens, GPT-6 above 272k, Gemini 3.1 Pro above 200k).
 * Gemini 3.8 Flash's promotional price ends on 31 December 2026: from 1 January 2027 the table
   charges the announced price.
-* Cached input is charged at the provider's cache-read price; nothing else is discounted.
+* Cached input is charged at the provider's cache-read price. A cache WRITE costs more than plain input where the
+  provider says so (Anthropic: 1.25 times for the 5-minute entry, 2 times for the 1-hour one - Plan Maestro IA, section 28,
+  verified 24 October 2026); a call made through the Message Batches API costs half of everything it reads and writes.
 """
 
 from __future__ import annotations
@@ -95,6 +97,13 @@ SEARCH_PRICES: dict[str, Decimal] = {
     "tavily": Decimal("8"),
 }
 
+CACHE_WRITE_FACTOR: dict[str, tuple[Decimal, Decimal]] = {"anthropic": (Decimal("1.25"), Decimal("2"))}
+"""Times the input price a cache WRITE costs, for the (5 minutes, 1 hour) entry. Providers without an entry charge a write as
+plain input (they bill the cache by reading it, not by writing it)."""
+
+BATCH_FACTOR = Decimal("0.5")
+"""The Message Batches API charges half on every token (input, output, cache reads and writes)."""
+
 TOKEN_FACTOR: dict[str, Decimal] = {"anthropic": Decimal("1.30")}
 """Tokens per 4 characters relative to the usual 1.0: Claude 4.7 and later tokenize ~30 % more."""
 
@@ -115,8 +124,12 @@ def price_of(provider: str, model: str) -> tuple[Price, bool]:
 
 
 def token_cost(provider: str, model: str, *, input_tokens: int, output_tokens: int, cached_tokens: int = 0,
+               cache_write_5m_tokens: int = 0, cache_write_1h_tokens: int = 0, batch: bool = False,
                at: datetime | date | None = None) -> Decimal:
-    """USD for one call. ``input_tokens`` includes ``cached_tokens`` (as every provider reports them)."""
+    """USD for one call. ``input_tokens`` is ALL the input tokens - the fresh ones, the ``cached_tokens`` read from the
+    cache and the tokens written to it (``cache_write_5m_tokens`` + ``cache_write_1h_tokens``) - as the providers' totals
+    are built here. A write costs its provider's factor times the input price (``CACHE_WRITE_FACTOR``); ``batch`` halves
+    the whole call."""
     price, _known = price_of(provider, model)
     day = at.date() if isinstance(at, datetime) else at
     pin, pout, pcache = price.input, price.output, price.cached
@@ -125,8 +138,13 @@ def token_cost(provider: str, model: str, *, input_tokens: int, output_tokens: i
     if price.long_after is not None and price.long is not None and input_tokens > price.long_after:
         pin, pout, pcache = price.long
     cached = max(0, min(cached_tokens, input_tokens))
-    fresh = input_tokens - cached
-    cost = (pin * fresh + pcache * cached + pout * output_tokens) / M
+    w5 = max(0, min(cache_write_5m_tokens, input_tokens - cached))
+    w1 = max(0, min(cache_write_1h_tokens, input_tokens - cached - w5))
+    fresh = input_tokens - cached - w5 - w1
+    f5, f1 = CACHE_WRITE_FACTOR.get(provider, (Decimal(1), Decimal(1)))
+    cost = (pin * fresh + pcache * cached + pin * f5 * w5 + pin * f1 * w1 + pout * output_tokens) / M
+    if batch:
+        cost *= BATCH_FACTOR
     return cost.quantize(Decimal("0.000001"))
 
 

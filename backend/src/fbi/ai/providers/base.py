@@ -17,7 +17,11 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
-ErrorCode = Literal["timeout", "unavailable", "rate_limited", "refused", "invalid_output", "not_configured"]
+ErrorCode = Literal["timeout", "unavailable", "rate_limited", "refused", "invalid_output", "not_configured",
+                    "limit_reached"]
+"""``limit_reached``: the workspace's spend limit or the account's tier cap is spent (HTTP 400 "workspace API usage
+limits", or 429 ``enforced_spend_limit_reached``). Asking again cannot help until the limit is lifted or the month turns:
+the layer treats it as EXHAUSTED (``fbi.ai.budget_v3``)."""
 
 
 class ProviderError(RuntimeError):
@@ -33,11 +37,29 @@ class ProviderError(RuntimeError):
 @dataclass(frozen=True, slots=True)
 class LlmUsage:
     input_tokens: int = 0
-    """All input tokens, cached ones included."""
+    """All input tokens: the fresh ones, the ones read from the cache and the ones written to it."""
     output_tokens: int = 0
+    """Everything the model wrote, its thinking included."""
     cached_tokens: int = 0
+    """Input read from the cache."""
     searches: int = 0
     vision_items: int = 0
+    cache_write_5m_tokens: int = 0
+    """Input written to the 5-minute cache entry (billed 1.25 times the input price)."""
+    cache_write_1h_tokens: int = 0
+    """Input written to the 1-hour cache entry (billed 2 times the input price)."""
+    thinking_tokens: int = 0
+    """The part of ``output_tokens`` the model spent thinking (already counted in them; recorded to see it)."""
+
+    @property
+    def cache_write_tokens(self) -> int:
+        return self.cache_write_5m_tokens + self.cache_write_1h_tokens
+
+    @property
+    def cache_ttl(self) -> str | None:
+        """Which entry this call wrote: '5m', '1h', 'mixed', or None when it wrote none."""
+        five, hour = self.cache_write_5m_tokens > 0, self.cache_write_1h_tokens > 0
+        return "mixed" if five and hour else "5m" if five else "1h" if hour else None
 
 
 @dataclass(frozen=True)
