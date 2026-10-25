@@ -68,6 +68,7 @@ from fbi.ai.usage import (
     Budget,
     BudgetState,
     _money,
+    reserved_by_day,
 )
 
 AJUSTE_AT = Decimal("0.95")
@@ -347,8 +348,10 @@ def forecast(conn: psycopg.Connection[Any], *, at: datetime, scope: str = "produ
     month_first = month_start(day)
     since = min(day_start(month_first), day_start(day - timedelta(days=max(UNIT_WINDOWS))))
     costs = costs_by_day(conn, scope, since, at + timedelta(seconds=1))
-    before = sum((c for d, c in costs.items() if month_first <= d < day), Decimal(0))
-    today = costs.get(day, Decimal(0))
+    held = reserved_by_day(conn, scope)  # the Message Batches still open count as spent: their result will replace the reservation
+    before = sum((c for d, c in costs.items() if month_first <= d < day), Decimal(0)) + sum(
+        (v for d, v in held.items() if month_first <= d < day), Decimal(0))
+    today = costs.get(day, Decimal(0)) + held.get(day, Decimal(0))
     p = plans(conn, day - timedelta(days=7 * WEEKDAY_WEEKS), day + timedelta(days=CALENDAR_DAYS))
     loads = expected_loads(conn, day, p)
     unit, unit_days = unit_cost(costs, p, day)
@@ -426,8 +429,10 @@ def lab_day(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings
     month_first = month_start(day)
     since = min(day_start(month_first), day_start(day - timedelta(days=14)))
     costs = costs_by_day(conn, "lab", since, at + timedelta(seconds=1))
-    before = sum((c for d, c in costs.items() if month_first <= d < day), Decimal(0))
-    spent = before + costs.get(day, Decimal(0))
+    held = reserved_by_day(conn, "lab")
+    before = sum((c for d, c in costs.items() if month_first <= d < day), Decimal(0)) + sum(
+        (v for d, v in held.items() if month_first <= d < day), Decimal(0))
+    spent = before + costs.get(day, Decimal(0)) + held.get(day, Decimal(0))
     active = [c for d, c in costs.items() if day - timedelta(days=7) <= d < day and c > 0]
     typical = Decimal(str(statistics.median(active))) if active else Decimal(0)
     remaining = max(Decimal(0), allocation - spent)

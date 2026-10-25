@@ -868,5 +868,22 @@ def store_packet(conn: psycopg.Connection[Any], packet: Packet, *, built_at: dat
     return int(row[0])
 
 
+LOAD_PACKET_SQL = ("SELECT fixture_id, packet_version, as_of, content, sources, missing, quality FROM ai.match_packets "
+                   "WHERE id = %s")
+
+
+def load_packet(conn: psycopg.Connection[Any], packet_id: int) -> Packet | None:
+    """A stored packet as it was read (``store_packet`` writes its content as canonical JSON): what a review that was asked for
+    earlier - a Message Batch's - is validated against when its answer arrives."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(LOAD_PACKET_SQL, (packet_id,))
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return Packet(fixture_id=int(row["fixture_id"]), as_of=row["as_of"], content=dict(row["content"] or {}),
+                  sources=list(row["sources"] or []), missing=list(row["missing"] or []),
+                  quality=dict(row["quality"] or {}), version=str(row["packet_version"]))
+
+
 def _jsonable(value: Any) -> Any:
     return json.loads(canonical(value))

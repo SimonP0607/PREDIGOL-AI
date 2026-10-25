@@ -234,6 +234,26 @@ def scope_spent(conn: psycopg.Connection[Any], scope: str, since: datetime, unti
     return Decimal(row[0]) if row and row[0] is not None else Decimal(0)
 
 
+RESERVED_SQL = """
+SELECT (i.created_at AT TIME ZONE 'America/Bogota')::date, COALESCE(sum(i.est_cost_usd), 0)
+  FROM ai.batch_items i JOIN ai.batches b ON b.id = i.batch_id
+ WHERE i.status IN ('submitting', 'submitted') AND b.kind = ANY(%(kinds)s) GROUP BY 1
+"""
+RESERVED_KINDS: dict[str, list[str]] = {"production": ["production"], "lab": ["lab", "probe"]}
+
+
+def reserved_by_day(conn: psycopg.Connection[Any], scope: str) -> dict[date, Decimal]:
+    """What the Message Batches still open have RESERVED, per Bogotá day of their creation: the estimated cost of every item sent and
+    not yet answered (``fbi.ai.batch``). The budget counts it as spent until the result arrives and the ledger holds the real cost, so
+    a day's batches cannot go over it. Exa has none."""
+    kinds = RESERVED_KINDS.get(scope)
+    if not kinds:
+        return {}
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(RESERVED_SQL, {"kinds": kinds})
+        return {r[0]: Decimal(r[1]) for r in cur.fetchall()}
+
+
 def lab_spent_month(conn: psycopg.Connection[Any], at: datetime) -> Decimal:
     """The LAB workspace's spend this month (Bogotá's), up to ``at``."""
     return scope_spent(conn, "lab", day_start(month_start(local_day(at))), at + timedelta(seconds=1))
@@ -289,8 +309,10 @@ def budget_v2(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettin
     day = local_day(at)
     start = day_start(day)
     end = at + timedelta(seconds=1)
-    before = spent(conn, day_start(month_start(day)), start)
-    today = spent(conn, start, end)
+    held = reserved_by_day(conn, "production")
+    before = spent(conn, day_start(month_start(day)), start) + sum(
+        (v for d, v in held.items() if month_start(day) <= d < day), Decimal(0))
+    today = spent(conn, start, end) + held.get(day, Decimal(0))
     monthly = settings.monthly_budget
     remaining_before = max(Decimal(0), monthly - before)
     days_left = days_left_in_month(day)

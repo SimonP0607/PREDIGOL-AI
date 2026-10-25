@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -26,7 +27,7 @@ def test_a_call_is_priced_per_million_tokens_with_the_cached_share_at_the_cache_
 
 def test_a_cache_write_costs_125_percent_for_five_minutes_and_double_for_an_hour() -> None:
     # Plan Maestro IA, section 28 (verified 24 Oct 2026). Sonnet 5.5: 2 in, 10 out, 0.10 read (USD per 1M)
-    base = {"input_tokens": 10_000, "output_tokens": 0}
+    base: dict[str, Any] = {"input_tokens": 10_000, "output_tokens": 0}
     plain = token_cost("anthropic", "claude-sonnet-5-5", **base)
     five = token_cost("anthropic", "claude-sonnet-5-5", cache_write_5m_tokens=10_000, **base)
     hour = token_cost("anthropic", "claude-sonnet-5-5", cache_write_1h_tokens=10_000, **base)
@@ -46,7 +47,8 @@ def test_a_cache_write_costs_125_percent_for_five_minutes_and_double_for_an_hour
 
 
 def test_a_batch_call_costs_half_of_everything_it_reads_and_writes() -> None:
-    kw = {"input_tokens": 12_000, "output_tokens": 900, "cached_tokens": 4_000, "cache_write_5m_tokens": 2_000}
+    kw: dict[str, Any] = {"input_tokens": 12_000, "output_tokens": 900, "cached_tokens": 4_000,
+                          "cache_write_5m_tokens": 2_000}
     live = token_cost("anthropic", "claude-sonnet-5-5", **kw)
     batch = token_cost("anthropic", "claude-sonnet-5-5", batch=True, **kw)
     assert batch == (live / 2).quantize(Decimal("0.000001"))

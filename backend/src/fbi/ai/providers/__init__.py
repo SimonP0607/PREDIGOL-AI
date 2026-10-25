@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import httpx
 
-from fbi.ai.config import AiSettings, Tier
-from fbi.ai.providers.anthropic import AnthropicProvider
+from fbi.ai.config import BASE_URLS, AiSettings, Tier
+from fbi.ai.providers.anthropic import AnthropicBatches, AnthropicProvider, BatchResult
 from fbi.ai.providers.base import JsonRequest, LlmProvider, LlmResult, LlmUsage, ProviderError
-from fbi.ai.providers.fake import FakeProvider
+from fbi.ai.providers.fake import FakeBatches, FakeProvider
 from fbi.ai.providers.openai_compat import OpenAICompatibleProvider
 
 
@@ -25,5 +25,16 @@ def provider_for(settings: AiSettings, tier: Tier, *, transport: httpx.BaseTrans
     return OpenAICompatibleProvider(tm.provider, key, base, transport=transport), tm.model
 
 
-__all__ = ["AnthropicProvider", "FakeProvider", "JsonRequest", "LlmProvider", "LlmResult", "LlmUsage",
-           "OpenAICompatibleProvider", "ProviderError", "provider_for"]
+def batches_for(settings: AiSettings, *, lab: bool = False,
+                transport: httpx.BaseTransport | None = None) -> AnthropicBatches | None:
+    """The Message Batches client of a workspace, or None when that workspace has no Anthropic key (the LAB workspace's own key
+    for the LAB: an experiment never spends production's). Only Anthropic has the API."""
+    key = (settings.lab_keys if lab else settings.keys).get("anthropic")
+    if not key:
+        return None
+    return AnthropicBatches(key, settings.base_urls.get("anthropic") or BASE_URLS["anthropic"], transport=transport)
+
+
+__all__ = ["AnthropicBatches", "AnthropicProvider", "BatchResult", "FakeBatches", "FakeProvider", "JsonRequest",
+           "LlmProvider", "LlmResult", "LlmUsage", "OpenAICompatibleProvider", "ProviderError", "batches_for",
+           "provider_for"]
