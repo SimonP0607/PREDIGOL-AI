@@ -26,12 +26,15 @@ the layer treats it as EXHAUSTED (``fbi.ai.budget_v3``)."""
 
 class ProviderError(RuntimeError):
     def __init__(self, code: ErrorCode, message: str, *, status: int | None = None,
-                 usage: LlmUsage | None = None) -> None:
+                 usage: LlmUsage | None = None, limit_kind: str | None = None, request_id: str | None = None) -> None:
         super().__init__(message)
         self.code: ErrorCode = code
         self.status = status
         self.usage = usage
         """What the provider billed for an answer that came back but could not be used (``invalid_output``)."""
+        self.limit_kind = limit_kind
+        """For ``limit_reached``: ``workspace_limit`` (the workspace's own limit) or ``tier_cap`` (the account's)."""
+        self.request_id = request_id
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +88,18 @@ class JsonRequest:
     effort: str | None = None
     """How much the model may think and write: low | medium | high (Anthropic ``output_config.effort``). Set from
     the tier by ``fbi.ai.usage.with_effort``; a provider without such a control ignores it."""
+    shared: str = ""
+    """The part of the user message that is the SAME for every call about this match (its block of data): it is sent
+    first and, with ``cache``, cached for 5 minutes. What varies - the time, the price, the candidate - goes in ``user``,
+    after it. A provider without a prompt cache reads ``user_text``: the two joined."""
+    cache: bool = False
+    """Mark the system block (1 hour) and ``shared`` (5 minutes) for the prompt cache (Anthropic ``cache_control``)."""
+    native_schema: bool = False
+    """Ask for the schema through structured outputs (Anthropic ``output_config.format``) instead of a forced tool call."""
+
+    @property
+    def user_text(self) -> str:
+        return self.shared + self.user if self.shared else self.user
 
 
 class LlmProvider(Protocol):

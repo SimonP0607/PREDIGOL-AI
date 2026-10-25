@@ -74,7 +74,7 @@ class OpenAICompatibleProvider:
                       "nothing else:\n" + json.dumps(request.schema, separators=(",", ":")))
         return {
             "model": model,
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": request.user}],
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": request.user_text}],
             "response_format": response_format,
             COMPLETION_TOKENS_FIELD.get(self.name, "max_tokens"): request.max_tokens,
         }
