@@ -171,6 +171,9 @@ class AiSettings:
     reserve: Decimal = Decimal("10")
     """Kept for production only (released in the last five days of the month)."""
     batch_min_lead_minutes: int = 240
+    package: bool = True
+    """Plan IA, phase 1: the state of each match is written from the passes already run (``fbi.ai.match_runs``; no model, no cost, and nothing reads it
+    yet). ``FBI_AI_PACKAGE=0`` stops the job - it is the phase's rollback."""
 
     @classmethod
     def from_env(cls) -> AiSettings:
@@ -218,6 +221,7 @@ class AiSettings:
             joint_ceiling=_decimal("FBI_AI_JOINT_CEILING_USD", "190", env),
             reserve=_decimal("FBI_AI_RESERVE_USD", "10", env),
             batch_min_lead_minutes=max(30, _int("FBI_AI_BATCH_MIN_LEAD_MINUTES", 240, env)),
+            package=(env.get("FBI_AI_PACKAGE") or "1").strip().lower() not in ("0", "off", "false", "no"),
         )
 
     def switch(self, name: str) -> Switch:
@@ -281,6 +285,7 @@ class AiSettings:
             "joint_ceiling_usd": str(self.joint_ceiling),
             "reserve_usd": str(self.reserve),
             "batch_min_lead_minutes": self.batch_min_lead_minutes,
+            "package": self.package,
         }
 
     @property
