@@ -920,6 +920,24 @@ async def _match_knowledge_sweep() -> None:
     await asyncio.to_thread(functools.partial(_match_knowledge_now, sweep=True))
 
 
+def _synthetic_now() -> None:
+    from fbi.ops.synthetic import config_from_env, run_once
+
+    cfg = config_from_env()
+    if cfg is None:  # the owner took the account or its password away since the clock started
+        return
+    with _connect() as conn:
+        run_once(conn, cfg)
+
+
+async def _synthetic() -> None:
+    """The synthetic journey (plan UX, A2): a dedicated USER account walks the sign-in, Home, a match of today, the
+    picks and its own picks through the public front door, and writes one row in the ledger. In a thread so the live
+    jobs keep their cadence; nothing of PrediGol Intelligence is read or written."""
+    new_run_id()
+    await asyncio.to_thread(_synthetic_now)
+
+
 def _notify_now() -> None:
     """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
     from fbi.notify.service import channel_from_env, run_notifier
@@ -1233,6 +1251,7 @@ WORKER_JOB_TYPES = frozenset({
     "reference_refresh", "catalogue_refresh", "elo_refresh", "post_match_detail", "historical_validation",
     "research_monitor", "research_v2", "feature_build", "pick_settlement", "odds_quotes_extract",
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
+    "synthetic_journey",
 })
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
@@ -1511,6 +1530,16 @@ async def main() -> None:
     else:
         log.warning("worker.family_forecasts_off",
                     hint="FBI_FAMILY_FORECASTS=0: the goals of each half, the corners and the cards are not being forecast")
+    from fbi.ops.synthetic import EVERY_MINUTES as SYNTHETIC_MINUTES
+    from fbi.ops.synthetic import config_from_env as synthetic_config
+
+    if synthetic_config() is not None:
+        scheduler.add_job(_deadline("synthetic_journey", "synthetic_journey", _synthetic), "interval",
+                          minutes=SYNTHETIC_MINUTES, id="synthetic_journey", max_instances=1, coalesce=True,
+                          misfire_grace_time=SYNTHETIC_MINUTES * 60, next_run_time=moment + timedelta(minutes=4))
+    else:
+        log.info("worker.synthetic_journey_off",
+                 hint="FBI_SYNTHETIC_BASE_URL, FBI_SYNTHETIC_EMAIL and its password unset: no synthetic journey")
     scheduler.add_job(_ai_report, "interval", minutes=AI_CHECK_MINUTES, id="ai_daily_report",
                       max_instances=1, coalesce=True, misfire_grace_time=AI_CHECK_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=9))
