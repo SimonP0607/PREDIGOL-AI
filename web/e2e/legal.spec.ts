@@ -266,10 +266,14 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
     const ownerPage = await (
       await browser.newContext({ storageState: statePath("admin"), locale: "en-GB" })
     ).newPage();
-    await ownerPage.goto("/admin/users");
     const list = ownerPage.getByTestId("admin-privacy-requests");
     const item = list.locator("li", { hasText: email }).first();
-    await expect(item).toBeVisible();
+    // The accounts page is the console's heaviest beside the suite's other owner tests (A4's run: the card's read
+    // once came too late under that load): read again until the request is there.
+    await expect(async () => {
+      await ownerPage.goto("/admin/users");
+      await expect(item).toBeVisible({ timeout: 15_000 });
+    }).toPass({ timeout: 60_000 });
     await item.locator("textarea").fill("Recibida: la atendemos dentro del plazo legal.");
     await item.getByRole("button", { name: L.en.legal.admin.send }).click();
     await expect(item).toContainText(L.en.legal.privacy.status.answered);
