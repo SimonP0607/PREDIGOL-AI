@@ -60,8 +60,8 @@ export default defineConfig({
     },
     {
       name: "user-es",
-      // glossary.spec.ts: the one glossary at a desk (plan UX, A3)
-      testMatch: /(user|glossary)\.spec\.ts/,
+      // glossary.spec.ts: the one glossary at a desk (plan UX, A3); analytics.spec.ts: a journey's events (A6)
+      testMatch: /(user|glossary|analytics)\.spec\.ts/,
       metadata: { lang: "es" },
       use: { ...desktop, storageState: statePath("user") },
       dependencies: ["setup"],

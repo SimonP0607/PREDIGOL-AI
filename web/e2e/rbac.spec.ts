@@ -21,6 +21,8 @@ const ADMIN_ROUTES = [
   "/api/v1/admin/provider",
   // the queue of messages to readers (plan UX, A5)
   "/api/v1/admin/messages",
+  // product analytics (plan UX, A6)
+  "/api/v1/admin/product",
 ];
 
 test("without a session the product is closed and health stays open", async () => {
