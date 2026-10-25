@@ -102,5 +102,68 @@
   "idleDays_one": "{n} día",
   "idleDays_other": "{n} días",
   "idleHours_one": "{n} hora",
-  "idleHours_other": "{n} horas"
+  "idleHours_other": "{n} horas",
+  "membership": {
+    "title": "Membresía",
+    "state": {
+      "trial": "En prueba",
+      "active": "Activa",
+      "expiring": "Próxima a vencer",
+      "grace": "En gracia",
+      "expired": "Vencida",
+      "renewed": "Renovada",
+      "suspended": "Suspendida",
+      "none": "Sin periodo"
+    },
+    "line": {
+      "trial": "En prueba hasta el {date}.",
+      "active": "Activa hasta el {date}.",
+      "expiringTrial": "Tu prueba termina el {date}.",
+      "expiring": "Tu membresía termina el {date}.",
+      "grace": "Tu membresía terminó: hasta el {date} sigues con acceso completo.",
+      "expired": "Tu membresía terminó. Tus datos siguen aquí; al renovar vuelve todo.",
+      "renewed": "Renovada hasta el {date}. Gracias.",
+      "suspended": "Tu cuenta está suspendida: escríbenos.",
+      "none": "Tu cuenta todavía no tiene un periodo de membresía."
+    },
+    "daysLeft_one": "Queda {count} día.",
+    "daysLeft_other": "Quedan {count} días.",
+    "willNotRenew": "Nos dijiste que no renovarás. Si cambias de idea, escríbenos.",
+    "notEnforced": "Por ahora, el acceso sigue completo aunque la membresía termine.",
+    "howToRenew": "Cómo renovar",
+    "renewHelp": "Pagas por el medio acordado y lo registramos al momento: la membresía sigue desde su fecha de fin, o desde hoy si ya terminó.",
+    "renewWhatsapp": "Escribir por WhatsApp",
+    "renewEmail": "Escribir un correo",
+    "renewNone": "Para renovar, responde a cualquiera de nuestros correos o pídeselo a quien te invitó.",
+    "whatsappText": "Hola, quiero renovar mi membresía de PrediGol.",
+    "history": "Periodos",
+    "period": {
+      "trial": "Prueba",
+      "paid": "Pago",
+      "courtesy": "Cortesía"
+    },
+    "range": "{from} – {to}",
+    "banner": {
+      "expiringTrial": "Tu prueba termina el {date}.",
+      "expiring": "Tu membresía termina el {date}.",
+      "eveTrial": "Mañana termina tu prueba.",
+      "eve": "Mañana termina tu membresía.",
+      "grace": "Tu membresía terminó: hasta el {date} sigues con acceso completo.",
+      "expired": "Acceso limitado: tu membresía terminó. Al renovar vuelve todo.",
+      "suspended": "Tu cuenta está suspendida: escríbenos.",
+      "action": "Cómo renovar"
+    },
+    "limited": {
+      "expiredTitle": "Tu membresía terminó",
+      "expiredBody": "Tus datos siguen aquí. Puedes ver tu perfil, tus picks guardados, la ayuda y los textos legales, y descargar tus datos. Al renovar vuelve todo.",
+      "suspendedTitle": "Tu cuenta está suspendida",
+      "suspendedBody": "Puedes ver tu perfil, tus picks guardados, la ayuda y los textos legales, y descargar tus datos. Escríbenos para saber más.",
+      "myPicks": "Mis picks guardados",
+      "profile": "Mi perfil y mi membresía",
+      "help": "Ayuda",
+      "legal": "Textos legales",
+      "export": "Descargar mis datos",
+      "readOnly": "Solo lectura mientras la membresía está terminada."
+    }
+  }
 }

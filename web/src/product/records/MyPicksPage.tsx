@@ -255,12 +255,18 @@ function UserOddsForm({ pick, onDone }: { pick: UserPick; onDone: () => void }) 
   );
 }
 
+/** A limited account reads its records and changes none of them (plan UX, A8): the server refuses the writes too. */
+function useReadOnly(): boolean {
+  return useAuth().user?.membership?.limited ?? false;
+}
+
 function SavedPickRow({ pick }: { pick: UserPick }) {
   const refresh = useRefreshMine();
   const [editing, setEditing] = useState(false);
+  const readOnly = useReadOnly();
   const m = pick.match;
   const started = hasStarted(m);
-  const open = pick.status === "PENDING" && !started;
+  const open = pick.status === "PENDING" && !started && !readOnly;
   const remove = useMutation({
     mutationFn: () => v1.removePick(pick.id),
     onSuccess: () => {
@@ -497,6 +503,7 @@ function SavedPicks() {
 }
 
 function UserParlayCard({ parlay }: { parlay: UserParlay }) {
+  const readOnly = useReadOnly();
   const refresh = useRefreshMine();
   const settled = ["WON", "LOST", "VOID", "PARTIAL_VOID"].includes(parlay.status);
   const removable = parlay.status === "READY" && !parlay.legs.some((l) => hasStarted(l.match));
@@ -566,7 +573,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
             </span>
             {settled ? <Units value={parlay.profit_units} className="text-sm" /> : null}
           </div>
-          {removable ? (
+          {removable && !readOnly ? (
             <ConfirmAction
               testId="remove-parlay"
               title={t("records.mine.parlays.confirmRemove.title")}
@@ -658,9 +665,15 @@ function MyParlays() {
 }
 
 export function MyPicksPage() {
+  const readOnly = useReadOnly();
   return (
     <div className="space-y-9" data-testid="my-picks-page">
       <PageTitle title={t("records.mine.title")} subtitle={t("records.mine.subtitle")} />
+      {readOnly ? (
+        <p className="text-xs text-muted-foreground" data-testid="my-picks-read-only">
+          {t("profile.membership.limited.readOnly")}
+        </p>
+      ) : null}
       <Results />
       <Recap />
       <SavedPicks />

@@ -1,0 +1,94 @@
+/**
+ * The membership in the reader's words (plan UX, A8; section 22): pure, so it is tested without a page. The state
+ * comes from the server, computed from dates; this only says it - with the date in the reader's time zone - and
+ * decides which pages a limited account still opens.
+ */
+import type { MembershipSummary } from "@/lib/api/v1/types_membership";
+import { t } from "@/lib/i18n";
+import { formatDateLong } from "@/lib/time";
+
+/** What a limited account still opens: its profile (with its membership and its data), its saved picks, the help and
+ * the legal texts. The server refuses the rest of the product (403 membership_expired / membership_suspended). */
+export function isLimitedPath(path: string): boolean {
+  const p = path.replace(/\/+$/, "") || "/";
+  return (
+    p === "/profile" ||
+    p === "/my-picks" ||
+    p === "/help" ||
+    p.startsWith("/help/") ||
+    p.startsWith("/legal/")
+  );
+}
+
+function day(iso: string | null): string {
+  return iso ? formatDateLong(iso) : "";
+}
+
+/** The card's sentence for the state now. */
+export function membershipLine(m: MembershipSummary): string {
+  switch (m.state) {
+    case "trial":
+      return t("profile.membership.line.trial", { date: day(m.ends_at) });
+    case "active":
+      return t("profile.membership.line.active", { date: day(m.ends_at) });
+    case "renewed":
+      return t("profile.membership.line.renewed", { date: day(m.ends_at) });
+    case "expiring":
+      return m.kind === "trial"
+        ? t("profile.membership.line.expiringTrial", { date: day(m.ends_at) })
+        : t("profile.membership.line.expiring", { date: day(m.ends_at) });
+    case "grace":
+      return t("profile.membership.line.grace", { date: day(m.grace_until) });
+    case "expired":
+      return t("profile.membership.line.expired");
+    case "suspended":
+      return t("profile.membership.line.suspended");
+    case "none":
+      return t("profile.membership.line.none");
+  }
+}
+
+/**
+ * The quiet notice at the top of every page, or null: from 7 days before the end (3 in a trial), the day before, the
+ * grace (fixed), and - on the pages a limited account still opens - the limit itself. No countdown, no offer, no
+ * alarm colours: a notice of the service the reader has.
+ */
+export function bannerText(m: MembershipSummary): string | null {
+  switch (m.state) {
+    case "expiring": {
+      const eve = (m.days_left ?? 99) <= 1;
+      if (m.kind === "trial") {
+        return eve
+          ? t("profile.membership.banner.eveTrial")
+          : t("profile.membership.banner.expiringTrial", { date: day(m.ends_at) });
+      }
+      return eve
+        ? t("profile.membership.banner.eve")
+        : t("profile.membership.banner.expiring", { date: day(m.ends_at) });
+    }
+    case "grace":
+      return t("profile.membership.banner.grace", { date: day(m.grace_until) });
+    case "expired":
+      return m.limited
+        ? t("profile.membership.banner.expired")
+        : t("profile.membership.line.expired");
+    case "suspended":
+      return t("profile.membership.banner.suspended");
+    default:
+      return null;
+  }
+}
+
+/** A WhatsApp chat with the business number and a first line already written. */
+export function whatsappLink(digits: string, text: string): string {
+  return `https://wa.me/${digits.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
+}
+
+/** Days left are said while the cover runs. */
+export function showsDaysLeft(m: MembershipSummary): boolean {
+  return (
+    m.days_left !== null &&
+    ["trial", "active", "expiring", "renewed"].includes(m.state) &&
+    m.ends_at !== null
+  );
+}

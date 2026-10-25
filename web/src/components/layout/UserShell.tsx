@@ -15,6 +15,7 @@ import { Disclaimer } from "@/components/system/Disclaimer";
 import { Toaster } from "@/components/ui/sonner";
 import { SlipProvider } from "@/product/records/slip";
 import { SlipButton, SlipSheet } from "@/product/records/SlipSheet";
+import { MembershipBanner } from "@/product/membership/MembershipBanner";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { isActive, userNav } from "./nav";
 import { AccountMenu, LanguageSwitch, PreviewBanner } from "./HeaderControls";
@@ -91,6 +92,8 @@ export function UserShell({ children }: { children: ReactNode }) {
             </div>
           </header>
 
+          {/* The membership's notice (plan UX, A8): in the page's flow, never over the tab bar. */}
+          <MembershipBanner />
           <main className="px-safe mx-auto w-full max-w-6xl pb-6 pt-5 lg:pb-12">{children}</main>
 
           {/* The disclaimer (+18, no guarantee) on every screen; on a phone it also keeps the page's end clear of

@@ -30,6 +30,8 @@ import { SecurityStep } from "@/product/auth/SecurityStep";
 import { ConsentGate } from "@/product/legal/ConsentGate";
 import { isLegalPath } from "@/product/legal/links";
 import { isAccountPath } from "@/product/auth/accountPaths";
+import { isLimitedPath } from "@/product/membership/membership";
+import { LimitedAccess } from "@/product/membership/LimitedAccess";
 import { noteLocation, startSession } from "@/lib/track";
 
 function NotFoundComponent() {
@@ -368,6 +370,19 @@ function Gate() {
   const due = auth.user?.consents_due ?? [];
   if (due.length > 0 && !onLegal && path !== "/profile") {
     return <ConsentGate key={key} due={due} />;
+  }
+  // The membership has ended or is suspended (plan UX, A8; the server refuses the product with 403
+  // membership_expired / membership_suspended): what a limited account can do, on every page but those it still
+  // opens - its profile, its saved picks, the help and the legal texts.
+  const member = auth.user?.membership;
+  if (member?.limited && !onAdmin && !isLimitedPath(path)) {
+    return (
+      <Fragment key={key}>
+        <UserShell>
+          <LimitedAccess membership={member} />
+        </UserShell>
+      </Fragment>
+    );
   }
   if (onAdmin) {
     return (

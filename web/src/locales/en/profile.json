@@ -102,5 +102,68 @@
   "idleDays_one": "{n} day",
   "idleDays_other": "{n} days",
   "idleHours_one": "{n} hour",
-  "idleHours_other": "{n} hours"
+  "idleHours_other": "{n} hours",
+  "membership": {
+    "title": "Membership",
+    "state": {
+      "trial": "On trial",
+      "active": "Active",
+      "expiring": "Ending soon",
+      "grace": "In grace",
+      "expired": "Ended",
+      "renewed": "Renewed",
+      "suspended": "Suspended",
+      "none": "No period"
+    },
+    "line": {
+      "trial": "On trial until {date}.",
+      "active": "Active until {date}.",
+      "expiringTrial": "Your trial ends on {date}.",
+      "expiring": "Your membership ends on {date}.",
+      "grace": "Your membership has ended: until {date} you keep full access.",
+      "expired": "Your membership has ended. Your data stays here; renewing brings everything back.",
+      "renewed": "Renewed until {date}. Thank you.",
+      "suspended": "Your account is suspended: write to us.",
+      "none": "Your account has no membership period yet."
+    },
+    "daysLeft_one": "{count} day left.",
+    "daysLeft_other": "{count} days left.",
+    "willNotRenew": "You told us you will not renew. If you change your mind, write to us.",
+    "notEnforced": "For now, access stays full even when the membership ends.",
+    "howToRenew": "How to renew",
+    "renewHelp": "You pay by the agreed means and we record it at once: the membership carries on from its end date, or from today if it has ended.",
+    "renewWhatsapp": "Write on WhatsApp",
+    "renewEmail": "Write an e-mail",
+    "renewNone": "To renew, answer any of our e-mails or ask whoever invited you.",
+    "whatsappText": "Hello, I would like to renew my PrediGol membership.",
+    "history": "Periods",
+    "period": {
+      "trial": "Trial",
+      "paid": "Payment",
+      "courtesy": "Courtesy"
+    },
+    "range": "{from} – {to}",
+    "banner": {
+      "expiringTrial": "Your trial ends on {date}.",
+      "expiring": "Your membership ends on {date}.",
+      "eveTrial": "Your trial ends tomorrow.",
+      "eve": "Your membership ends tomorrow.",
+      "grace": "Your membership has ended: until {date} you keep full access.",
+      "expired": "Limited access: your membership has ended. Renewing brings everything back.",
+      "suspended": "Your account is suspended: write to us.",
+      "action": "How to renew"
+    },
+    "limited": {
+      "expiredTitle": "Your membership has ended",
+      "expiredBody": "Your data stays here. You can see your profile, your saved picks, the help and the legal texts, and download your data. Renewing brings everything back.",
+      "suspendedTitle": "Your account is suspended",
+      "suspendedBody": "You can see your profile, your saved picks, the help and the legal texts, and download your data. Write to us to know more.",
+      "myPicks": "My saved picks",
+      "profile": "My profile and membership",
+      "help": "Help",
+      "legal": "Legal texts",
+      "export": "Download my data",
+      "readOnly": "Read-only while the membership has ended."
+    }
+  }
 }

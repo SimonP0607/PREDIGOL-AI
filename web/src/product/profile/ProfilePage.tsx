@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bell,
+  CalendarClock,
   Check,
   Globe2,
   History,
@@ -36,6 +37,7 @@ import { LiveApiError } from "@/lib/api/v1/client";
 import { cn } from "@/lib/utils";
 import { AccessPanel, SessionsPanel, TwoFactorPanel } from "./SecurityPanels";
 import { NotificationsPanel } from "./NotificationsPanel";
+import { MembershipCard } from "@/product/membership/MembershipCard";
 import { PrivacyPanel } from "./PrivacyPanel";
 
 /** "7 días", "8 horas": how long a session may go unused. */
@@ -358,6 +360,16 @@ export function ProfilePage() {
         </h2>
         <AccessPanel />
       </Card>
+
+      {user.membership ? (
+        <Card className="scroll-mt-20 p-5" id="membership">
+          <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
+            <CalendarClock aria-hidden className="h-4 w-4 text-primary" />
+            {t("profile.membership.title")}
+          </h2>
+          <MembershipCard />
+        </Card>
+      ) : null}
 
       <Card className="scroll-mt-20 p-5" id="notifications">
         <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
