@@ -7,6 +7,7 @@ import {
   useRouterState,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { RefreshCw, ShieldAlert, WifiOff } from "lucide-react";
@@ -41,7 +42,9 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+// Since the R02 upgrade (router-core 1.171.35) the router types what a boundary catches as `unknown`: a loader may
+// throw a Response or any value. Both uses below already take unknown.
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {

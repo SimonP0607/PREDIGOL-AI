@@ -7,7 +7,7 @@
  * E2E_ACCOUNTS_DIR where the QA accounts' credential files are (default ~/.fbi), see e2e/accounts.ts.
  *
  * The suite signs in once per QA account (project "setup") and reuses the session:
- *   anon      sign-in, sign-out, redirects; RBAC over the API
+ *   anon      sign-in, sign-out, redirects; RBAC over the API; the server-function path (R02)
  *   user-es   the product as a USER, in Spanish (America/Bogota)
  *   user-en   the product as a USER, in English (Europe/Madrid)
  *   admin     the Admin Console as SUPER_ADMIN, in English
@@ -45,7 +45,12 @@ export default defineConfig({
   },
   projects: [
     { name: "setup", testMatch: /global\.setup\.ts/ },
-    { name: "anon", testMatch: /(auth|rbac)\.spec\.ts/, use: desktop, dependencies: ["setup"] },
+    {
+      name: "anon",
+      testMatch: /(auth|rbac|serverfn)\.spec\.ts/,
+      use: desktop,
+      dependencies: ["setup"],
+    },
     {
       name: "user-es",
       testMatch: /user\.spec\.ts/,
