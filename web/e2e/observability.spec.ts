@@ -103,6 +103,9 @@ test("the owner's two test errors arrive: the API's under its reference, the web
     (api.event["user"] as { id?: string } | undefined)?.id,
   );
 
+  // errors only: no sessions (the backend SDK's release health sent them until A2's e2e saw it), no client reports
+  const kinds = new Set(received().flatMap((r) => r.items.map((i) => i.type)));
+  expect([...kinds]).toEqual(["event"]);
   const raw = readFileSync(SINK as string, "utf-8");
   for (const secret of [
     credentials("admin").email,
