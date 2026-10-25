@@ -203,8 +203,9 @@ def test_a_value_the_caller_passed_is_not_logged_even_where_python_quotes_it() -
             parse(name)
         except ValueError as exc:
             summaries.append(error_summary(exc))
+    by_name: dict[str, int] = {}
     try:
-        {}[name]
+        by_name[name]
     except KeyError as exc:
         summaries.append(error_summary(exc))
     assert len(summaries) == 4
