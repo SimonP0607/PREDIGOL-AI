@@ -340,9 +340,11 @@ def test_the_table_itself_refuses_a_decision_taken_after_the_kick_off_or_priced_
 
 SIZE, WRONG = 5_000, 60
 """Decisions of one Bogotá day (a busy night has a few thousand), and how many of them cite a forecast of another match / a price no book quoted."""
-LIMIT = 4.0
-"""Seconds. Each rule is a handful of index probes per decision and takes a fraction of a second; a rule that grew with the square of the decisions
-(the ``h2h_known`` of 24 Oct 2026 took hours over 10,000 packets) would not meet it."""
+LIMIT, RUNS = 10.0, 3
+"""Seconds, for the fastest of ``RUNS`` runs of a rule. Each rule is a handful of index probes per decision and takes a quarter of a second here; a rule that
+grew with the square of the decisions (the ``h2h_known`` of 24 Oct 2026 took hours over 10,000 packets) would take minutes. The limit is generous and the
+fastest run counts on purpose: a busy machine (the first full run on the final tree of F11 had a release package being built beside it) stretched one run
+from 0.2 s to 5.6 s, and a test of the SHAPE of the cost must not fail for the load of the machine."""
 
 
 def multiplied(db: psycopg.Connection[Any], h: Honest, n: int) -> tuple[list[int], list[int]]:
@@ -379,12 +381,17 @@ def multiplied(db: psycopg.Connection[Any], h: Honest, n: int) -> tuple[list[int
 
 
 def timed(db: psycopg.Connection[Any], rule: str) -> tuple[dict[str, Any], float]:
+    """The row the rule gives and the time of its fastest run out of ``RUNS`` (the rule reads, it writes nothing: every run gives the same row)."""
     start, end = day_bounds(local_day(NOW))
+    row: dict[str, Any] = {}
+    fastest = float("inf")
     with db.cursor(row_factory=dict_row) as cur:
-        t0 = perf_counter()
-        cur.execute(leakage.RULES[rule], {"start": start, "end": end, "core": dv.DECISION_CORE, "families": dv.DECISION_FAMILIES})
-        row = cur.fetchone() or {}
-        return row, perf_counter() - t0
+        for _ in range(RUNS):
+            t0 = perf_counter()
+            cur.execute(leakage.RULES[rule], {"start": start, "end": end, "core": dv.DECISION_CORE, "families": dv.DECISION_FAMILIES})
+            row = cur.fetchone() or {}
+            fastest = min(fastest, perf_counter() - t0)
+    return row, fastest
 
 
 def test_both_rules_stay_linear_in_the_decisions_of_the_day(db: psycopg.Connection[Any], w: World) -> None:
