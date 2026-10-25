@@ -248,7 +248,7 @@ WITH feed AS (
     UNION
     SELECT fixture_id FROM odds WHERE NOT COALESCE(is_finished, false) AND at > %(at)s - interval '5 minutes'
 )
-SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition, c.country,
+SELECT f.id AS fixture_id, f.kickoff_at, c.name AS competition, c.country, c.country_code,
        c.id AS competition_id, c.logo_url AS competition_logo, c.flag_url AS competition_flag,
        th.id AS home_id, th.name AS home_name, th.logo_url AS home_logo,
        ta.id AS away_id, ta.name AS away_name, ta.logo_url AS away_logo,

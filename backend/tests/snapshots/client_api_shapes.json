@@ -7,6 +7,10 @@
   {
    "date": "2026-10-25",
    "reason": "A1: Meta gains next_cursor (optional, null unless a list has a next page) for the pages of /me/picks and /me/parlays (defect F53); the six routes answer the same fields as before"
+  },
+  {
+   "date": "2026-10-25",
+   "reason": "A1 (F08): LiveMatch gains country_code, so the client names a live match's country in the reader's language"
   }
  ],
  "routes": {
@@ -1699,6 +1703,18 @@
         }
        ],
        "title": "Country"
+      },
+      "country_code": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "ISO code of the competition's country (GB-ENG for a home nation): the client names it in the reader's language.",
+       "title": "Country Code"
       },
       "data_status": {
        "description": "stale: no state for 3 minutes; no_odds: in play but nobody quotes it in play.",
