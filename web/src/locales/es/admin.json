@@ -312,7 +312,14 @@
       "user_unlock_requested": "Desbloqueo pedido por correo",
       "user_anonymised": "Cuenta borrada (anonimizada)",
       "account_link_capped": "Enlaces de la hora agotados",
-      "session_revoke_refused": "Cierre de otra sesión rechazado"
+      "session_revoke_refused": "Cierre de otra sesión rechazado",
+      "membership_payment_recorded": "Pago de membresía registrado",
+      "membership_courtesy_granted": "Cortesía de membresía",
+      "membership_trial_started": "Prueba empezada",
+      "membership_suspended": "Membresía suspendida",
+      "membership_suspension_lifted": "Suspensión de membresía levantada",
+      "membership_will_not_renew": "Marcada «no renovará»",
+      "membership_will_renew": "Quitada «no renovará»"
     },
     "keys": {
       "fields": "campos",
@@ -346,7 +353,12 @@
       "sessions": "sesiones",
       "messages_dropped": "correos sin enviar",
       "trail_rows": "filas enmascaradas",
-      "language": "idioma"
+      "language": "idioma",
+      "currency": "moneda",
+      "months": "meses",
+      "renewal": "renovación",
+      "days": "días",
+      "amount": "importe"
     },
     "values": {
       "language": "idioma",
@@ -622,5 +634,74 @@
       "notes": "Notas de aprendizaje",
       "findings": "Hallazgos de investigación"
     }
+  },
+  "membership": {
+    "column": "Membresía",
+    "until": "hasta {date}",
+    "graceUntil": "gracia hasta {date}",
+    "noPeriod": "sin periodo",
+    "willNotRenew": "no renovará",
+    "manage": "Membresía",
+    "dueFilter": "Vencimientos",
+    "dueFilterOn": "Mostrando vencimientos: próximas a vencer, en gracia y vencidas",
+    "showAll": "Ver todas",
+    "title": "Membresía de {email}",
+    "notEnforced": "La puerta de membresía está apagada (FBI_MEMBERSHIP_ENFORCE): nadie queda limitado todavía.",
+    "pay": "Registrar pago y extender",
+    "amount": "Importe",
+    "currency": "Moneda",
+    "method": "Medio",
+    "reference": "Referencia",
+    "referenceHint": "Unas palabras, nunca números de cuenta o tarjeta: «Nequi, 25 oct» o los 4 últimos dígitos.",
+    "months": "Meses",
+    "monthsOption_one": "{count} mes",
+    "monthsOption_other": "{count} meses",
+    "payNote": "El periodo empieza al final del vigente, o hoy si ya terminó.",
+    "paySubmit": "Registrar y extender",
+    "paid": "Pago registrado: {state} hasta {date}.",
+    "paidAgain": "Ese pago ya estaba registrado: no se duplicó.",
+    "courtesy": "Cortesía",
+    "days": "Días",
+    "reason": "Motivo",
+    "courtesySubmit": "Dar cortesía",
+    "trial": "Empezar prueba",
+    "trialDays": "Días de prueba",
+    "trialSubmit": "Empezar prueba",
+    "suspend": "Suspender",
+    "suspendSubmit": "Suspender con este motivo",
+    "lift": "Levantar suspensión",
+    "liftSubmit": "Levantar con este motivo",
+    "suspendedBecause": "Suspendida: {reason}",
+    "willNotRenewSet": "No renovará",
+    "willNotRenewSubmit": "Marcar «no renovará»",
+    "willRenewSubmit": "Quitar «no renovará»",
+    "history": "Historia",
+    "events": {
+      "trial_planned": "Prueba elegida en la invitación",
+      "trial_started": "Prueba empezada",
+      "payment_recorded": "Pago registrado",
+      "courtesy_granted": "Cortesía",
+      "suspended": "Suspendida",
+      "suspension_lifted": "Suspensión levantada",
+      "will_not_renew": "No renovará",
+      "will_renew": "Renovará",
+      "notice": "Aviso al cliente"
+    },
+    "milestone": {
+      "before": "antes del fin",
+      "due": "al terminar",
+      "grace_end": "fin de la gracia"
+    },
+    "methods": {
+      "transfer": "Transferencia",
+      "nequi": "Nequi",
+      "daviplata": "Daviplata",
+      "cash": "Efectivo",
+      "card": "Tarjeta (fuera de PrediGol)",
+      "paypal": "PayPal",
+      "other": "Otro"
+    },
+    "inviteTrial": "Días de prueba",
+    "inviteTrialDefault": "Lo predeterminado (FBI_TRIAL_DAYS)"
   }
 }

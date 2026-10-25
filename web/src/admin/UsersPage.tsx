@@ -37,10 +37,12 @@ import { detectTimeZone, formatDateTime, formatRelative, listTimeZones } from "@
 import { Card, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
 import { cn } from "@/lib/utils";
 import { AnonymiseAccount } from "./AnonymiseAccount";
+import { MembershipCell } from "./MembershipCell";
 import { anonymisedSummary } from "./anonymised";
 import { PrivacyRequestsCard } from "./PrivacyRequests";
 
 const ROLES: RoleKey[] = ["USER", "SUPER_ADMIN"];
+const DUE_STATES: readonly string[] = ["expiring", "grace", "expired"];
 
 function RoleBadge({ role }: { role: string }) {
   const admin = role === "SUPER_ADMIN";
@@ -133,7 +135,7 @@ function InviteForm({
         <h2 className="font-display text-base font-semibold">{t("admin.users.inviteTitle")}</h2>
         <p className="mt-1 text-xs text-muted-foreground">{t("admin.users.inviteHelp")}</p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <label className="block">
           <span className="text-xs text-muted-foreground">{t("admin.users.email")}</span>
           <input
@@ -179,6 +181,28 @@ function InviteForm({
             {zones.map((z) => (
               <option key={z} value={z}>
                 {z}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-xs text-muted-foreground">{t("admin.membership.inviteTrial")}</span>
+          <select
+            value={form.trial_days ?? ""}
+            onChange={(e) => {
+              const days = e.target.value ? Number(e.target.value) : undefined;
+              const next: AdminInviteIn = { ...form };
+              if (days === undefined) delete next.trial_days;
+              else next.trial_days = days;
+              setForm(next);
+            }}
+            className={field}
+            data-testid="invite-trial"
+          >
+            <option value="">{t("admin.membership.inviteTrialDefault")}</option>
+            {[7, 8, 9, 10, 11, 12, 13, 14].map((d) => (
+              <option key={d} value={d}>
+                {d}
               </option>
             ))}
           </select>
@@ -722,9 +746,20 @@ export function UsersPage() {
   const [creating, setCreating] = useState<"invite" | "password" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
+  // The owner's morning notice links here with ?membership=due (plan UX, A8): the accounts ending, in grace or ended.
+  const [dueOnly, setDueOnly] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("membership") === "due";
+    } catch {
+      return false;
+    }
+  });
   const everyone = q.data?.data ?? [];
   const deleted = everyone.filter((u) => u.status === "deleted").length;
-  const users = showDeleted ? everyone : everyone.filter((u) => u.status !== "deleted");
+  const visible = showDeleted ? everyone : everyone.filter((u) => u.status !== "deleted");
+  const users = dueOnly
+    ? visible.filter((u) => DUE_STATES.includes(u.membership?.state ?? "none"))
+    : visible;
   const toggle = (form: "invite" | "password") => {
     setNotice(null);
     setCreating((v) => (v === form ? null : form));
@@ -809,7 +844,18 @@ export function UsersPage() {
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 text-caption text-muted-foreground">
-              <span>{t("admin.users.count", { count: users.length })}</span>
+              <span>
+                {dueOnly ? `${t("admin.membership.dueFilterOn")} · ` : ""}
+                {t("admin.users.count", { count: users.length })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setDueOnly((v) => !v)}
+                className="tap-y relative text-caption font-medium text-primary"
+                data-testid="membership-due-filter"
+              >
+                {dueOnly ? t("admin.membership.showAll") : t("admin.membership.dueFilter")}
+              </button>
               {deleted > 0 ? (
                 <button
                   type="button"
@@ -833,6 +879,7 @@ export function UsersPage() {
                     <th className="px-3 py-2 font-medium">{t("admin.users.role")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.status")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.security")}</th>
+                    <th className="px-3 py-2 font-medium">{t("admin.membership.column")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.language")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.timezone")}</th>
                     <th className="px-3 py-2 font-medium">{t("admin.users.created")}</th>
@@ -866,6 +913,9 @@ export function UsersPage() {
                       </td>
                       <td className="px-3 py-3">
                         <SecurityBadges user={u} />
+                      </td>
+                      <td className="px-3 py-3">
+                        <MembershipCell user={u} />
                       </td>
                       <td className="px-3 py-3 text-xs uppercase">{u.language}</td>
                       <td className="px-3 py-3 text-xs">{u.timezone}</td>
@@ -918,6 +968,7 @@ export function UsersPage() {
                     </span>
                   </div>
                   <SecurityBadges user={u} />
+                  <MembershipCell user={u} />
                   <RowActions user={u} self={u.id === auth.user?.id} onNotice={setNotice} />
                   <SecurityActions user={u} self={u.id === auth.user?.id} />
                 </li>

@@ -312,7 +312,14 @@
       "user_unlock_requested": "Unlock asked by e-mail",
       "user_anonymised": "Account deleted (anonymised)",
       "account_link_capped": "The hour's links used up",
-      "session_revoke_refused": "Ending another session refused"
+      "session_revoke_refused": "Ending another session refused",
+      "membership_payment_recorded": "Membership payment recorded",
+      "membership_courtesy_granted": "Membership courtesy",
+      "membership_trial_started": "Trial started",
+      "membership_suspended": "Membership suspended",
+      "membership_suspension_lifted": "Membership suspension lifted",
+      "membership_will_not_renew": "Marked “will not renew”",
+      "membership_will_renew": "Removed “will not renew”"
     },
     "keys": {
       "fields": "fields",
@@ -346,7 +353,12 @@
       "sessions": "sessions",
       "messages_dropped": "e-mails not sent",
       "trail_rows": "rows masked",
-      "language": "language"
+      "language": "language",
+      "currency": "currency",
+      "months": "months",
+      "renewal": "renewal",
+      "days": "days",
+      "amount": "amount"
     },
     "values": {
       "language": "language",
@@ -622,5 +634,74 @@
       "notes": "Learning notes",
       "findings": "Research findings"
     }
+  },
+  "membership": {
+    "column": "Membership",
+    "until": "until {date}",
+    "graceUntil": "grace until {date}",
+    "noPeriod": "no period",
+    "willNotRenew": "will not renew",
+    "manage": "Membership",
+    "dueFilter": "Ending",
+    "dueFilterOn": "Showing endings: ending soon, in grace and ended",
+    "showAll": "Show all",
+    "title": "Membership of {email}",
+    "notEnforced": "The membership gate is off (FBI_MEMBERSHIP_ENFORCE): nobody is limited yet.",
+    "pay": "Record payment and extend",
+    "amount": "Amount",
+    "currency": "Currency",
+    "method": "Method",
+    "reference": "Reference",
+    "referenceHint": "A few words, never account or card numbers: “Nequi, 25 Oct” or the last 4 digits.",
+    "months": "Months",
+    "monthsOption_one": "{count} month",
+    "monthsOption_other": "{count} months",
+    "payNote": "The period starts at the end of the one in force, or today if it has ended.",
+    "paySubmit": "Record and extend",
+    "paid": "Payment recorded: {state} until {date}.",
+    "paidAgain": "That payment was already recorded: nothing was duplicated.",
+    "courtesy": "Courtesy",
+    "days": "Days",
+    "reason": "Reason",
+    "courtesySubmit": "Give courtesy",
+    "trial": "Start a trial",
+    "trialDays": "Trial days",
+    "trialSubmit": "Start the trial",
+    "suspend": "Suspend",
+    "suspendSubmit": "Suspend with this reason",
+    "lift": "Lift the suspension",
+    "liftSubmit": "Lift with this reason",
+    "suspendedBecause": "Suspended: {reason}",
+    "willNotRenewSet": "Will not renew",
+    "willNotRenewSubmit": "Mark “will not renew”",
+    "willRenewSubmit": "Remove “will not renew”",
+    "history": "History",
+    "events": {
+      "trial_planned": "Trial chosen at the invitation",
+      "trial_started": "Trial started",
+      "payment_recorded": "Payment recorded",
+      "courtesy_granted": "Courtesy",
+      "suspended": "Suspended",
+      "suspension_lifted": "Suspension lifted",
+      "will_not_renew": "Will not renew",
+      "will_renew": "Will renew",
+      "notice": "Notice to the reader"
+    },
+    "milestone": {
+      "before": "before the end",
+      "due": "at the end",
+      "grace_end": "end of the grace"
+    },
+    "methods": {
+      "transfer": "Transfer",
+      "nequi": "Nequi",
+      "daviplata": "Daviplata",
+      "cash": "Cash",
+      "card": "Card (outside PrediGol)",
+      "paypal": "PayPal",
+      "other": "Other"
+    },
+    "inviteTrial": "Trial days",
+    "inviteTrialDefault": "The default (FBI_TRIAL_DAYS)"
   }
 }
