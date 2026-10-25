@@ -25,7 +25,7 @@ from tests.unit.sentry_capture import capturing_sentry
 # data, as a request would bring it: built from parts so that no source line carries it whole
 EMAIL = "ana.perez" + "@example.com"
 PASSWORD = "Hunter2-" + "secret!"
-TOKEN = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0" + "Ga5KoPiRqWe"
+TOKEN = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0" + "Ga5KoPiRqWe"  # made up  # gitleaks:allow
 IP = "203.0.113." + "77"
 NAME = "Ana " + "Pérez Gómez"
 COOKIE = "__Host-predigol_session=" + TOKEN

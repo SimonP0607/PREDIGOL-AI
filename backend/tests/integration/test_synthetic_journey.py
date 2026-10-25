@@ -19,7 +19,7 @@ from fbi.core.config import reset_cache
 from fbi.ops import synthetic
 
 EMAIL = "synthetic-a2@predigol.test"
-PASSWORD = "Synthetic-a2-pass-26"
+PASSWORD = "Synthetic-a2-pass-26"  # the test account's, made up  # gitleaks:allow
 
 
 @pytest.fixture(scope="module")

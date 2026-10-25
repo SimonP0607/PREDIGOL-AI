@@ -24,7 +24,7 @@ from fbi.core.sentry import BROWSER_DSN
 WEB_DSN = "https://webkey@o0.ingest.example.invalid/2"
 SAME_SITE = {"x-requested-with": "predigol"}
 EMAIL = "ana.perez" + "@example.com"
-TOKEN = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0" + "Ga5KoPiRqWe"
+TOKEN = "Zk3pQ9mX_2vLr8TnY4wB7cHs1uJd6Ef0" + "Ga5KoPiRqWe"  # made up  # gitleaks:allow
 NAME = "Ana " + "Pérez Gómez"
 
 
