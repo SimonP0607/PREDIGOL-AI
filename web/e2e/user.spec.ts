@@ -635,6 +635,11 @@ test("Profile shows the account's language and time zone", async ({ page }) => {
   const tz = lang() === "es" ? "America/Bogota" : "Europe/Madrid";
   await expect(page.getByTestId("current-timezone")).toContainText(tz);
   await expect(page.getByTestId(`profile-lang-${lang()}`)).toHaveAttribute("aria-checked", "true");
+  // The time zones are a listbox that owns its options: every item is a wrapper, every option a button inside it (the
+  // three findings of axe on this page in the line base of A0).
+  const zones = page.getByRole("listbox");
+  await expect(zones.getByRole("option").first()).toBeVisible();
+  await expect(zones.locator("> li:not([role='presentation'])")).toHaveCount(0);
   // Plan UX, A1 (F07): no internal role on screen - not in the profile, not in the account menu.
   await expect(page.getByTestId("profile-role")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText("USER");

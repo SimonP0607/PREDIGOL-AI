@@ -115,7 +115,9 @@ function TimeZonePicker() {
         aria-label={t("profile.timezone")}
       >
         {matches.map((z) => (
-          <li key={z}>
+          // The item is only a wrapper: the option is the button, so the listbox owns its options (axe, line base of
+          // A0: aria-required-parent, listitem and aria-required-children on this list).
+          <li key={z} role="presentation">
             <button
               type="button"
               role="option"
