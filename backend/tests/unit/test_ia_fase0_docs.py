@@ -24,7 +24,7 @@ from types import ModuleType
 from typing import Any
 
 import pytest
-from scripts import ia_equivalence, ia_gate, ia_probe, ia_reconcile
+from scripts import ia_battery, ia_equivalence, ia_gate, ia_probe, ia_reconcile
 
 from fbi.ai import batch, budget_v3, config, gate_a, gates, lab, material, pricing, reconcile, usage
 from fbi.ai.config import SWITCH_ENV, AiSettings
@@ -204,7 +204,8 @@ def test_the_variables_of_the_guide_change_the_settings_they_say(monkeypatch: py
 def test_the_gates_of_the_guide_are_the_gates_of_the_code() -> None:
     rows = table(section(3), "| Gate")
     assert [ticked(r[0]) for r in rows] == list(gates.GATES)
-    commands_of = {"ia_probe": ia_probe.COMMANDS, "ia_equivalence": ia_equivalence.COMMANDS, "ia_gate": ia_gate.COMMANDS}
+    commands_of = {"ia_probe": ia_probe.COMMANDS, "ia_equivalence": ia_equivalence.COMMANDS, "ia_gate": ia_gate.COMMANDS,
+                   "ia_battery": ia_battery.COMMANDS}
     for r in rows:
         script, command = ticked(r[1]).split()[:2]
         assert command in commands_of[script], f"{script} has no command {command!r}"

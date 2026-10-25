@@ -38,7 +38,7 @@ El **bloque común del partido primero** (el único cambio de la fase que reorde
 
 ## 3. Los gates de evidencia
 
-Un gate es una fila de `ai.feature_gates` que dice si una optimización ha demostrado lo que debía. Hay cuatro:
+Un gate es una fila de `ai.feature_gates` que dice si una optimización ha demostrado lo que debía. Hay cinco (los cuatro primeros son de esta fase; el quinto lo añadió la fase 1):
 
 | Gate | Lo escribe | Qué decide |
 | --- | --- | --- |
@@ -46,6 +46,9 @@ Un gate es una fila de `ai.feature_gates` que dice si una optimización ha demos
 | `native_schema` | `ia_equivalence collect` | `FBI_AI_NATIVE_SCHEMA` en `auto` |
 | `cache_layout` | `ia_equivalence collect` | el bloque común del partido primero |
 | `gate_a` | `ia_gate evaluate --record` | el fin de la fase 0 |
+| `battery` | `ia_battery collect` | la batería adversaria de la fase 1: el gate B del plan la necesita en verde |
+
+`battery` no es una optimización: ningún interruptor de esta fase depende de ella. Es la medición de que el texto escrito para engañar a un modelo no mueve su veredicto (la explica la guía de la fase 1, `IA_FASE1.md`).
 
 La tabla es de solo añadir: nadie edita una fila. **La fila más nueva manda**, así que una repetición que falla vuelve a apagar la optimización que otra había encendido. La evidencia puede nombrar los modelos con los que se midió, y otro modelo no queda cubierto. Cada fila guarda el hash de su evidencia, para poder reproducir la decisión; solo las escriben los scripts, desde mediciones, nunca a mano.
 

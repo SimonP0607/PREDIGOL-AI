@@ -13,9 +13,12 @@ evidence of its own gate allows it:
 The shared match block of the cache layout (the same bytes first, what varies last) always needs its own ``cache_layout`` gate -
 not even ``on`` skips it: it is the one change of Phase 0 that reorders what a model reads.
 
-The evidence is a row of ``ai.feature_gates`` (append-only, written by ``scripts/ia_probe.py`` and ``scripts/ia_equivalence.py`` from
-measurements, never by hand): the NEWEST row of a gate decides, so a failing re-run switches the optimisation off again. A row may
+The evidence is a row of ``ai.feature_gates`` (append-only, written by ``scripts/ia_probe.py``, ``scripts/ia_equivalence.py`` and
+``scripts/ia_battery.py`` from measurements, never by hand): the NEWEST row of a gate decides, so a failing re-run switches the optimisation off again. A row may
 name the ``models`` it was measured with; another model is not covered by it.
+
+The gate ``battery`` (phase 1) switches nothing: it is the evidence that the prompts which read text someone else wrote do not follow it
+(``fbi.ai.battery``), which Gate B of the plan needs green.
 
 Nothing here reads a key and nothing changes a probability, a threshold or a pick."""
 
@@ -33,7 +36,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai.config import SWITCH_ENV, AiSettings
 
-GATES = ("batch", "native_schema", "cache_layout", "gate_a")
+GATES = ("batch", "native_schema", "cache_layout", "gate_a", "battery")
 AUTO_WITHOUT_EVIDENCE: dict[str, bool] = {"cache": True, "brief_material": True, "budget_v3": True, "batch": False,
                                           "native_schema": False}
 """What ``auto`` means for each switch when no gate is needed (True) or one is (False)."""

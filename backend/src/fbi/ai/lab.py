@@ -347,14 +347,21 @@ def _settle_equivalence(conn: psycopg.Connection[Any], r: Resolved, ctx: dict[st
 
 def settle_lab(conn: psycopg.Connection[Any], r: Resolved) -> None:
     """What an answer of the LAB becomes: a summary kept in its item (``context.result``). A probe's says whether the answer fits its
-    schema; an equivalence input's is the verdict the CHECKED review would have had - the same ``answer_review`` as production's.
-    Nothing else is written: a LAB answer is never a review, a pick or a state."""
+    schema; an equivalence input's is the verdict the CHECKED review would have had - the same ``answer_review`` as production's; a
+    battery ask's is the outcome the rule of ``fbi.ai.battery`` reads. Nothing else is written: a LAB answer is never a review, a pick
+    or a state."""
     ctx = r.item["context"] or {}
     kind = ctx.get("lab")
     if kind == "probe":
         summary = _settle_probe(r)
     elif kind == "equivalence":
         summary = _settle_equivalence(conn, r, ctx)
+    elif kind == "battery":
+        from fbi.ai.battery.settle import (
+            summarise,  # the battery runs on this module: it is loaded when its answers arrive
+        )
+
+        summary = summarise(r, ctx)
     else:
         raise ValueError("an item of purpose 'other' that is not a probe or an experiment")
     with conn.cursor(row_factory=tuple_row) as cur:
