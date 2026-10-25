@@ -14,9 +14,15 @@
  *   security  two-step verification: set-up, recovery codes, required password, codes; the owner's resets
  *   prefs     language and time-zone changes, serially, on their own account
  *   mobile    the product at 390 px
+ *   mobile-webkit  the phone checks at 320, 390 and 430 px in WebKit, the engine of every iPhone browser
  *   pwa       manifest, service worker and offline page (E2E_PWA=1, production build only)
+ * Two measurements run only when asked, and never fail on what they measure:
+ *   a11y      axe-core on the sign-in page and the product, WCAG 2.2 A/AA (E2E_A11Y=1)
+ *   screens   reference screenshots of the product at 320/360/390/412/430 px (E2E_SCREENS=1)
  * A full run loads a few hundred pages: the API's per-client limit must allow it
- * (dev-up sets FBI_API_RATE_LIMIT=3000).
+ * (dev-up sets FBI_API_RATE_LIMIT=3000). The web must run in live mode (web/.env.example:
+ * VITE_DATA_MODE=live and VITE_API_BASE_URL set to the web's own origin): without the API address the
+ * app shows its demo adapter and the Admin Console's modules are scaffolds.
  */
 import { defineConfig, devices } from "@playwright/test";
 import { statePath } from "./e2e/accounts";
@@ -107,5 +113,32 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
+    {
+      // Every iPhone browser draws with WebKit: the phone checks of responsive.spec.ts at the narrowest, the most
+      // common and the widest iPhone widths (320, 390, 430 px) - every page fits with the whole tab bar, team
+      // names are whole, and controls answer a finger.
+      name: "mobile-webkit",
+      testMatch: /responsive\.spec\.ts/,
+      grep: /\b(320|390|430) px (touch )?phone\b/,
+      use: {
+        ...devices["iPhone 13"],
+        viewport: { width: 390, height: 844 },
+        storageState: statePath("user"),
+      },
+      dependencies: ["setup"],
+    },
+    ...(process.env["E2E_A11Y"]
+      ? [{ name: "a11y", testMatch: /a11y\.spec\.ts/, use: desktop, dependencies: ["setup"] }]
+      : []),
+    ...(process.env["E2E_SCREENS"]
+      ? [
+          {
+            name: "screens",
+            testMatch: /screens\.spec\.ts/,
+            use: { ...devices["Pixel 7"], storageState: statePath("user") },
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
   ],
 });
