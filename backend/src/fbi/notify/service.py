@@ -35,7 +35,10 @@ WEB_BASE = os.environ.get("FBI_WEB_BASE_URL", "http://localhost:5173")
 # run-watchdog kinds were drafted from 5 Oct 2026 05:45 UTC without it: the database refused them, and the refusal
 # rolled back every other message of the run, every run, until 6 Oct 01:35 UTC - logged only as notify.failed.
 KINDS = ("shadow_pick", "pick_settled", "first_capture", "capture_failed", "worker_down", "run_recovered",
-         "job_failing", "ai_budget")
+         "job_failing", "ai_budget",
+         # The readers' side (plan UX, A5; revision 0096), drafted by the messenger with the API's role - counts and a
+         # link to the console, never a reader's address, alias or words - and sent by this notifier like the others.
+         "outbox_failing", "membership_due", "ticket_new", "privacy_due", "synthetic_failed", "ai_user_budget")
 
 
 @dataclass(frozen=True, slots=True)
