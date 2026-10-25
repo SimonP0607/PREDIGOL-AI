@@ -127,6 +127,15 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_worker", "customer.messages_outbox", "SELECT", False),
     ("predigol_worker", "customer.preferences", "SELECT", False),
     ("predigol_worker", "audit.notifications", "UPDATE", True),   # its notifier sends the messenger's drafts
+    # product analytics (plan UX, A6): the API records, the messenger aggregates and purges (once the owner says so)
+    ("predigol_api", "customer.product_events", "INSERT", True),
+    ("predigol_api", "customer.product_events", "UPDATE", False),
+    ("predigol_api", "customer.product_events", "DELETE", True),
+    ("predigol_api", "customer.activity_daily", "INSERT", True),
+    ("predigol_api", "customer.activity_daily", "UPDATE", True),
+    ("predigol_api", "customer.activity_daily", "DELETE", True),
+    ("predigol_worker", "customer.product_events", "SELECT", False),
+    ("predigol_worker", "customer.activity_daily", "SELECT", False),
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,
                                             expected: bool) -> None:

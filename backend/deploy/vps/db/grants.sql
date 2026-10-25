@@ -5,11 +5,12 @@
 --                    audit, analytics ...). No DDL, nothing in auth or customer, never the migration ledger.
 --   predigol_api     the API: reads what it shows; writes only accounts (auth), the customer's own data
 --                    (customer: consents, privacy requests - plan UX, A4; the messages to readers and their
---                    choices - A5), a user's own records (picks.user_*) and the Admin Console's few tables (AI
---                    layer, research decisions, the evidence-ledger verdicts, the AI decision layer's run
---                    requests). Never ai.* results: those are the worker's, append-only. The messenger (plan UX, A5)
---                    runs with this role: it also drafts the owner's notices (audit.notifications) and records
---                    its cycles in the job ledger (raw.ingestion_runs).
+--                    choices - A5; product analytics - A6), a user's own records (picks.user_*) and the Admin
+--                    Console's few tables (AI layer, research decisions, the evidence-ledger verdicts, the AI
+--                    decision layer's run requests). Never ai.* results: those are the worker's, append-only.
+--                    The messenger (plan UX, A5) runs with this role: it also drafts the owner's notices
+--                    (audit.notifications), records its cycles in the job ledger (raw.ingestion_runs) and keeps
+--                    the product analytics' daily aggregate and retention (A6).
 --
 -- Run as the owner after EVERY migration (bin/predigolctl does: deploy, import). Idempotent. A table a future
 -- migration adds is covered at once by the default privileges below, and re-granted explicitly the next run.
@@ -73,6 +74,10 @@ BEGIN
     -- worker's notifier sends them) and the messenger's cycles in the job ledger
     'customer.messages_outbox:INSERT, UPDATE', 'customer.preferences:INSERT, UPDATE',
     'audit.notifications:INSERT', 'raw.ingestion_runs:INSERT, UPDATE',
+    -- product analytics (fbi.customer.events, plan UX, A6): the API records a reader's events; the messenger
+    -- recomputes the daily aggregate and, once the owner switches the purge on, deletes what is past its retention
+    -- (raw events 90 days, aggregates 13 months)
+    'customer.product_events:INSERT, DELETE', 'customer.activity_daily:INSERT, UPDATE, DELETE',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',
