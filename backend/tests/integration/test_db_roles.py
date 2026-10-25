@@ -116,7 +116,7 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "customer.messages_outbox", "DELETE", False),
     ("predigol_api", "customer.preferences", "INSERT", True),
     ("predigol_api", "customer.preferences", "UPDATE", True),
-    ("predigol_api", "customer.preferences", "DELETE", False),
+    ("predigol_api", "customer.preferences", "DELETE", True),     # A7: anonymising an account removes them
     ("predigol_api", "audit.notifications", "INSERT", True),
     ("predigol_api", "audit.notifications", "UPDATE", False),
     ("predigol_api", "audit.notifications", "DELETE", False),
@@ -136,6 +136,21 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "customer.activity_daily", "DELETE", True),
     ("predigol_worker", "customer.product_events", "SELECT", False),
     ("predigol_worker", "customer.activity_daily", "SELECT", False),
+    # an account's one-use links (plan UX, A7): the API issues and redeems them, the messenger arms them and purges
+    # them (the API's role); the worker of PrediGol Intelligence sees none of them
+    ("predigol_api", "auth.account_tokens", "SELECT", True),
+    ("predigol_api", "auth.account_tokens", "INSERT", True),
+    ("predigol_api", "auth.account_tokens", "UPDATE", True),
+    ("predigol_api", "auth.account_tokens", "DELETE", True),
+    ("predigol_worker", "auth.account_tokens", "SELECT", False),
+    ("predigol_worker", "auth.account_tokens", "UPDATE", False),
+    # A7: what anonymising an account removes or masks, as the API (fbi.auth.anonymize)
+    ("predigol_api", "picks.user_picks", "DELETE", True),
+    ("predigol_api", "picks.user_parlays", "DELETE", True),
+    ("predigol_api", "auth.sessions", "DELETE", True),
+    ("predigol_api", "auth.audit_events", "UPDATE", True),
+    ("predigol_api", "customer.messages_outbox", "UPDATE", True),
+    ("predigol_api", "customer.messages_outbox", "DELETE", False),
 ])
 def test_each_role_gets_exactly_what_it_uses(granted: str, role: str, table: str, privilege: str,
                                             expected: bool) -> None:
@@ -148,6 +163,15 @@ def test_the_worker_sees_nothing_of_the_accounts(granted: str) -> None:
         row = conn.execute("SELECT has_schema_privilege('predigol_worker', 'auth', 'USAGE')").fetchone()
         assert row == (False,)
         assert not can(conn, "predigol_worker", "auth.users", "SELECT")
+    # Plan UX, A7: nor their one-use links - tried as the worker itself, not only asked of the catalog
+    with psycopg.connect(granted, autocommit=True) as conn:
+        conn.execute("SET ROLE predigol_worker")
+        try:
+            for table in ("auth.account_tokens", "auth.users"):
+                with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                    conn.execute(f"SELECT 1 FROM {table} LIMIT 1")
+        finally:
+            conn.execute("RESET ROLE")
 
 
 def test_the_worker_sees_nothing_of_the_customers_data(granted: str) -> None:

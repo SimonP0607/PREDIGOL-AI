@@ -3,11 +3,12 @@
 --   fbi              OWNS the database and every object in it: migrations, backups, maintenance. NOSUPERUSER.
 --   predigol_worker  the worker: reads and writes every data schema (core, market, features, models, picks, raw,
 --                    audit, analytics ...). No DDL, nothing in auth or customer, never the migration ledger.
---   predigol_api     the API: reads what it shows; writes only accounts (auth), the customer's own data
---                    (customer: consents, privacy requests - plan UX, A4; the messages to readers and their
---                    choices - A5; product analytics - A6), a user's own records (picks.user_*) and the Admin
---                    Console's few tables (AI layer, research decisions, the evidence-ledger verdicts, the AI
---                    decision layer's run requests). Never ai.* results: those are the worker's, append-only.
+--   predigol_api     the API: reads what it shows; writes only accounts (auth, their one-use links included -
+--                    plan UX, A7), the customer's own data (customer: consents, privacy requests - A4; the
+--                    messages to readers and their choices - A5; product analytics - A6), a user's own records
+--                    (picks.user_*) and the Admin Console's few tables (AI layer, research decisions, the
+--                    evidence-ledger verdicts, the AI decision layer's run requests). Never ai.* results: those
+--                    are the worker's, append-only.
 --                    The messenger (plan UX, A5) runs with this role: it also drafts the owner's notices
 --                    (audit.notifications), records its cycles in the job ledger (raw.ingestion_runs) and keeps
 --                    the product analytics' daily aggregate and retention (A6).
@@ -72,7 +73,10 @@ BEGIN
     -- the messages to readers and their choices (fbi.messaging, plan UX, A5): a queued message's fate changes, it
     -- is never deleted (the table's own triggers refuse it too); the owner's notices the messenger drafts (the
     -- worker's notifier sends them) and the messenger's cycles in the job ledger
-    'customer.messages_outbox:INSERT, UPDATE', 'customer.preferences:INSERT, UPDATE',
+    'customer.messages_outbox:INSERT, UPDATE',
+    -- a reader's choices; deleted with the rest of what the reader keeps when their account is anonymised at their
+    -- request, with the owner's confirmation (fbi.auth.anonymize, plan UX, A7)
+    'customer.preferences:INSERT, UPDATE, DELETE',
     'audit.notifications:INSERT', 'raw.ingestion_runs:INSERT, UPDATE',
     -- product analytics (fbi.customer.events, plan UX, A6): the API records a reader's events; the messenger
     -- recomputes the daily aggregate and, once the owner switches the purge on, deletes what is past its retention
