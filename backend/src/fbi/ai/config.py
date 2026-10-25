@@ -221,17 +221,18 @@ class AiSettings:
         )
 
     def switch(self, name: str) -> Switch:
-        """The owner's setting of one Phase 0 optimisation (unknown name: ``off``, so a typo never switches anything on)."""
-        return self.switches.get(name, "off")
+        """The owner's setting of one Phase 0 optimisation: what the environment says, ``auto`` for a known switch it does not
+        mention, and ``off`` for a name that is not one (so a typo never switches anything on)."""
+        return self.switches.get(name, "auto" if name in SWITCH_ENV else "off")
 
     def labelled(self, *, lab: bool) -> tuple[str, str]:
         """The workspace and key NAMES the ledger records for a call (never the key)."""
         return (self.workspace_lab, self.key_label_lab) if lab else (self.workspace, self.key_label)
 
-    def tier(self, tier: Tier) -> TierModel | None:
-        """The model of a tier, only when its provider's key is present."""
+    def tier(self, tier: Tier, *, lab: bool = False) -> TierModel | None:
+        """The model of a tier, only when its provider's key is present (the LAB workspace's own key for a LAB call)."""
         tm = self.tiers.get(tier)
-        return tm if tm is not None and tm.provider in self.keys else None
+        return tm if tm is not None and tm.provider in (self.lab_keys if lab else self.keys) else None
 
     @property
     def llm_configured(self) -> bool:

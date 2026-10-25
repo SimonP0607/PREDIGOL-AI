@@ -11,13 +11,14 @@ from fbi.ai.providers.fake import FakeProvider
 from fbi.ai.providers.openai_compat import OpenAICompatibleProvider
 
 
-def provider_for(settings: AiSettings, tier: Tier, *,
-                 transport: httpx.BaseTransport | None = None) -> tuple[LlmProvider, str] | None:
-    """The provider and model of a tier, or None when the tier has no model or no key."""
-    tm = settings.tier(tier)
+def provider_for(settings: AiSettings, tier: Tier, *, transport: httpx.BaseTransport | None = None,
+                 lab: bool = False) -> tuple[LlmProvider, str] | None:
+    """The provider and model of a tier, or None when the tier has no model or no key. ``lab``: the LAB workspace's own key
+    (experiments never spend production's)."""
+    tm = settings.tier(tier, lab=lab)
     if tm is None:
         return None
-    key = settings.keys[tm.provider]
+    key = (settings.lab_keys if lab else settings.keys)[tm.provider]
     base = settings.base_urls[tm.provider]
     if tm.provider == "anthropic":
         return AnthropicProvider(key, base, transport=transport), tm.model

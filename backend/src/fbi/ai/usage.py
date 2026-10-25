@@ -48,6 +48,7 @@ import httpx
 import psycopg
 from psycopg.rows import tuple_row
 
+from fbi.ai import gates
 from fbi.ai.calendar import day_start, days_left_in_month, local_day, month_start
 from fbi.ai.config import AiSettings, Tier
 from fbi.ai.pricing import token_cost
@@ -184,6 +185,25 @@ def spent(conn: psycopg.Connection[Any], since: datetime, until: datetime) -> De
     return Decimal(row[0]) if row and row[0] is not None else Decimal(0)
 
 
+SCOPE_SPENT_SQL = """
+SELECT COALESCE(sum(cost_usd), 0) FROM ai.usage_scoped WHERE scope = %(scope)s AND at >= %(since)s AND at < %(until)s
+"""
+
+
+def scope_spent(conn: psycopg.Connection[Any], scope: str, since: datetime, until: datetime) -> Decimal:
+    """What one envelope spent in a period: ``production`` (Claude of the production workspace), ``lab`` (Claude of the LAB
+    workspace) or ``exa`` (every search). The scope is derived by ``ai.scope_of`` from the tier and the workspace."""
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute(SCOPE_SPENT_SQL, {"scope": scope, "since": since, "until": until})
+        row = cur.fetchone()
+    return Decimal(row[0]) if row and row[0] is not None else Decimal(0)
+
+
+def lab_spent_month(conn: psycopg.Connection[Any], at: datetime) -> Decimal:
+    """The LAB workspace's spend this month (Bogotá's), up to ``at``."""
+    return scope_spent(conn, "lab", day_start(month_start(local_day(at))), at + timedelta(seconds=1))
+
+
 def state_of(*, spent_today: Decimal, daily: Decimal, cap: Decimal, spent_month: Decimal,
              monthly: Decimal) -> BudgetState:
     if monthly <= 0 or spent_month >= monthly or daily <= 0 or spent_today >= cap:
@@ -246,11 +266,11 @@ def check_alerts(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSet
     return new
 
 
-def effective_tier(b: Budget, wanted: Tier, settings: AiSettings) -> Tier | None:
+def effective_tier(b: Budget, wanted: Tier, settings: AiSettings, *, lab: bool = False) -> Tier | None:
     """The tier actually used: the wanted one, or the next cheaper one the budget allows and the
     owner configured; None when no model may be called."""
     for tier in DOWNGRADE[wanted]:
-        if b.allows(tier) and settings.tier(tier) is not None:
+        if b.allows(tier) and settings.tier(tier, lab=lab) is not None:
             return tier
     return None
 
@@ -262,19 +282,38 @@ class UsageLedger:
     def record(self, *, at: datetime, purpose: Purpose, tier: str, provider: str, model: str,
                usage: LlmUsage | None, cost: Decimal, status: str, prompt_version: str | None = None,
                fixture_id: int | None = None, latency_ms: int | None = None, error: str | None = None,
-               input_hash: str | None = None, request_id: str | None = None) -> int:
+               input_hash: str | None = None, request_id: str | None = None, workspace: str | None = None,
+               key_label: str | None = None, batch_id: int | None = None, custom_id: str | None = None,
+               run_id: int | None = None, agent: str | None = None) -> int:
+        """One call, priced. ``workspace`` and ``key_label`` are NAMES (never a key): they say whose money it was - the
+        LAB's or production's - and a search has none (it is Exa's). A result of a Batch carries its ``batch_id`` and
+        ``custom_id``: the database refuses to record the same result twice."""
         u = usage or LlmUsage()
         with self._connect() as conn, conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(
                 "INSERT INTO ai.usage (at, purpose, tier, provider, model, prompt_version, fixture_id, input_tokens, "
                 "output_tokens, cached_tokens, searches, vision_items, cost_usd, latency_ms, status, error, input_hash, "
-                "request_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+                "request_id, cache_write_tokens, cache_write_1h_tokens, cache_ttl, thinking_tokens, batch_id, custom_id, "
+                "workspace, key_label, run_id, agent) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
                 (at, purpose, tier, provider, model, prompt_version, fixture_id, u.input_tokens, u.output_tokens,
                  u.cached_tokens, u.searches, u.vision_items, cost, latency_ms, status,
-                 None if error is None else error[:300], input_hash, request_id))
+                 None if error is None else error[:300], input_hash, request_id, u.cache_write_tokens,
+                 u.cache_write_1h_tokens, u.cache_ttl, u.thinking_tokens, batch_id, custom_id, workspace, key_label,
+                 run_id, agent))
             row = cur.fetchone()
         assert row is not None
         return int(row[0])
+
+    def record_limit_hit(self, *, at: datetime, provider: str, workspace: str, key_label: str | None, kind: str,
+                         http_status: int, request_id: str | None = None, purpose: str | None = None) -> None:
+        """The provider said a spend limit is spent (``ai.limit_hits``, append-only): the budget treats the workspace as
+        exhausted for a while and asks again later, once - never in a loop."""
+        kind = kind if kind in ("workspace_limit", "tier_cap") else "workspace_limit"
+        with self._connect() as conn, conn.cursor(row_factory=tuple_row) as cur:
+            cur.execute("INSERT INTO ai.limit_hits (at, provider, workspace, key_label, kind, http_status, request_id, "
+                        "purpose) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                        (at, provider, workspace, key_label, kind, http_status, request_id, purpose))
 
 
 @dataclass
@@ -302,46 +341,80 @@ def with_effort(request: JsonRequest, tier: Tier | None) -> JsonRequest:
     return replace(request, effort=TIER_EFFORT[tier])
 
 
+def with_switches(conn: psycopg.Connection[Any], settings: AiSettings, request: JsonRequest,
+                  model: str) -> JsonRequest:
+    """The request with the optimisations of Phase 0 that are in force for this model (``fbi.ai.gates``): the prompt cache
+    (it only marks blocks - the same tokens are read) and structured outputs. What a caller already asked for stays."""
+    cache = request.cache or gates.enabled(conn, settings, "cache", model=model)
+    native = request.native_schema or gates.enabled(conn, settings, "native_schema", model=model)
+    if cache == request.cache and native == request.native_schema:
+        return request
+    return replace(request, cache=cache, native_schema=native)
+
+
 def call_json(conn: psycopg.Connection[Any], settings: AiSettings, *, tier: Tier, purpose: Purpose,
               request: JsonRequest, at: datetime, prompt_version: str, input_hash: str,
               fixture_id: int | None = None, ledger: UsageLedger | None = None,
               transport: httpx.BaseTransport | None = None,
-              provider: tuple[LlmProvider, str] | None = None) -> CallOutcome:
+              provider: tuple[LlmProvider, str] | None = None, lab: bool = False, agent: str | None = None,
+              run_id: int | None = None) -> CallOutcome:
     """One JSON call at the best tier the budget and the configuration allow - recorded, priced,
-    never raising for a provider's failure (the outcome says what happened)."""
+    never raising for a provider's failure (the outcome says what happened).
+
+    ``lab``: the call is an experiment of the LAB workspace - its own key, its own name in the ledger, its own envelope.
+    A provider that says a spend limit is spent is recorded (``ai.limit_hits``) and the outcome is ``over_budget``: the
+    layer's rules decide, and nothing is asked again in a loop."""
     ledger = ledger or UsageLedger()
+    workspace, key_label = settings.labelled(lab=lab)
     b = budget(conn, at=at, settings=settings)
+    if lab and (settings.lab_monthly_budget <= 0 or lab_spent_month(conn, at) >= settings.lab_monthly_budget):
+        return CallOutcome(None, None, None, None, None, Decimal(0), "over_budget")
     if provider is not None:
         used: Tier | None = tier if b.allows(tier) else None
         chosen = provider if used is not None else None
     else:
-        used = effective_tier(b, tier, settings)
-        chosen = provider_for(settings, used, transport=transport) if used is not None else None
+        used = effective_tier(b, tier, settings, lab=lab)
+        chosen = provider_for(settings, used, transport=transport, lab=lab) if used is not None else None
     if chosen is None:
         code = "over_budget" if b.state == "EXHAUSTED" or (settings.llm_configured and used is None) \
             else "not_configured"
         return CallOutcome(None, None, None, None, None, Decimal(0), code)
     impl, model = chosen
-    request = with_effort(request, used)
+    request = with_switches(conn, settings, with_effort(request, used), model)
     try:
         result = impl.complete_json(model, request)
     except ProviderError as exc:
-        status = "timeout" if exc.code == "timeout" else "invalid_output" if exc.code == "invalid_output" \
-            else "refused" if exc.code == "refused" else "failed"
         # An answer that came back but did not validate was billed: its tokens are counted (13 Oct 2026; before, an
-        # invalid output was recorded at US$0).
+        # invalid output was recorded at US$0). A cache write and a read are priced as they are billed.
         billed = exc.usage
         lost = Decimal(0) if billed is None else token_cost(
             impl.name, model, input_tokens=billed.input_tokens, output_tokens=billed.output_tokens,
-            cached_tokens=billed.cached_tokens, at=at)
+            cached_tokens=billed.cached_tokens, cache_write_5m_tokens=billed.cache_write_5m_tokens,
+            cache_write_1h_tokens=billed.cache_write_1h_tokens, at=at)
+        if exc.code == "limit_reached":
+            uid = ledger.record(at=at, purpose=purpose, tier=used or tier, provider=impl.name, model=model, usage=billed,
+                                cost=lost, status="over_budget", prompt_version=prompt_version, fixture_id=fixture_id,
+                                error=f"limit_reached: {exc.limit_kind or 'workspace_limit'} (HTTP {exc.status})",
+                                input_hash=input_hash, request_id=exc.request_id, workspace=workspace,
+                                key_label=key_label, run_id=run_id, agent=agent)
+            ledger.record_limit_hit(at=at, provider=impl.name, workspace=workspace, key_label=key_label,
+                                    kind=exc.limit_kind or "workspace_limit", http_status=exc.status or 0,
+                                    request_id=exc.request_id, purpose=purpose)
+            return CallOutcome(None, uid, used, impl.name, model, lost, "over_budget")
+        status = "timeout" if exc.code == "timeout" else "invalid_output" if exc.code == "invalid_output" \
+            else "refused" if exc.code == "refused" else "failed"
         uid = ledger.record(at=at, purpose=purpose, tier=used or tier, provider=impl.name, model=model, usage=billed,
                             cost=lost, status=status, prompt_version=prompt_version, fixture_id=fixture_id,
-                            error=f"{exc.code}: {exc}", input_hash=input_hash)
+                            error=f"{exc.code}: {exc}", input_hash=input_hash, request_id=exc.request_id,
+                            workspace=workspace, key_label=key_label, run_id=run_id, agent=agent)
         return CallOutcome(None, uid, used, impl.name, model, lost, exc.code)
-    cost = token_cost(result.provider, model, input_tokens=result.usage.input_tokens,
-                      output_tokens=result.usage.output_tokens, cached_tokens=result.usage.cached_tokens, at=at)
+    u = result.usage
+    cost = token_cost(result.provider, model, input_tokens=u.input_tokens, output_tokens=u.output_tokens,
+                      cached_tokens=u.cached_tokens, cache_write_5m_tokens=u.cache_write_5m_tokens,
+                      cache_write_1h_tokens=u.cache_write_1h_tokens, at=at)
     uid = ledger.record(at=at, purpose=purpose, tier=used or tier, provider=result.provider, model=model,
-                        usage=result.usage, cost=cost, status="ok", prompt_version=prompt_version,
+                        usage=u, cost=cost, status="ok", prompt_version=prompt_version,
                         fixture_id=fixture_id, latency_ms=result.latency_ms, input_hash=input_hash,
-                        request_id=result.request_id)
+                        request_id=result.request_id, workspace=workspace, key_label=key_label, run_id=run_id,
+                        agent=agent)
     return CallOutcome(result, uid, used, result.provider, model, cost)
