@@ -36,7 +36,7 @@ CLIENT_TABLES = re.compile(r"\b(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a
 """A client's data in SQL: the ``auth`` and ``customer`` schemas and the picks and parlays a client saves."""
 
 USER_ROUTERS = ("system", "auth", "account", "product", "records", "football", "market", "center", "ai_layer",
-                "forecast", "match_calendar", "knowledge", "reading", "customer", "messaging", "events",
+                "forecast", "match_calendar", "knowledge", "reading", "today", "customer", "messaging", "events",
                 "membership")
 """``fbi.api.routers`` modules mounted on the public and app tiers by ``create_app`` (every other router is ``/admin``)."""
 
