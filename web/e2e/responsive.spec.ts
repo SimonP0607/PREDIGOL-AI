@@ -7,7 +7,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
-import { L, assertClean, getJson, note, settle, watch } from "./support";
+import { L, assertClean, getJson, note, sendJson, settle, watch } from "./support";
 
 const PAGES = [
   "/home",
@@ -199,7 +199,8 @@ test("a phone held sideways gives the screen to the content", async ({ page }) =
   await assertClean(page, w);
 });
 
-for (const width of [320, 390]) {
+// The five phone widths of the plan (UX, section 36; A1 asks 44 px on all of them).
+for (const width of [320, 360, 390, 412, 430]) {
   test(`controls answer a finger: 44 x 44 px on a ${width} px touch phone`, async ({ page }) => {
     test.setTimeout(150_000);
     const w = watch(page);
@@ -408,6 +409,64 @@ test("a figure's help opens with a tap inside a card's link, and that tap does n
   await expect(page).toHaveURL(/\/home$/);
   await page.getByTestId("upcoming-row").first().getByTestId("matchup").tap();
   await expect(page).toHaveURL(/\/matches\/\d+/);
+  await assertClean(page, w);
+});
+
+test("Mis picks with an open pick, its confirmation, and a match's markets: 44 px at the five phone widths", async ({
+  page,
+}) => {
+  // Plan UX, A1 (F33): Mis picks had 32 px buttons (your price, remove) and the line selector of a match's markets
+  // 32 px; they show only with an open saved pick and a priced match, so the check makes one and removes it.
+  test.setTimeout(180_000);
+  const w = watch(page);
+  const { body } = await getJson<{
+    data: { fixtures: Array<{ fixture_id: number; kickoff_at: string }> };
+  }>(page.request, "/api/v1/odds/best?hours=72&market=1X2");
+  const soon = Date.now() + 30 * 60_000;
+  const fixture = body.data.fixtures.find((f) => Date.parse(f.kickoff_at) > soon);
+  if (!fixture) {
+    note(test.info(), "no upcoming match with a 1X2 price");
+    return;
+  }
+  const open = await getJson<{ data: Array<{ id: number; match: { fixture_id: number } }> }>(
+    page.request,
+    "/api/v1/me/picks?status=open",
+  );
+  for (const p of open.body.data.filter((x) => x.match.fixture_id === fixture.fixture_id)) {
+    await sendJson(page.request, "DELETE", `/api/v1/me/picks/${p.id}`);
+  }
+  const saved = await sendJson<{ data: { id: number } }>(page.request, "POST", "/api/v1/me/picks", {
+    fixture_id: fixture.fixture_id,
+    market_key: "1X2",
+    selection: "Home",
+  });
+  expect(saved.status, "the pick is saved").toBe(201);
+  try {
+    for (const width of [320, 360, 390, 412, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto("/my-picks");
+      await settle(page);
+      const row = page.locator(
+        `[data-testid="saved-pick"][data-fixture-id="${fixture.fixture_id}"]`,
+      );
+      await expect(row).toBeVisible();
+      expect(await smallTargets(page, "main"), `Mis picks at ${width} px`).toEqual([]);
+      await row.getByTestId("saved-pick-remove").click();
+      await expect(page.getByTestId("confirm-remove-pick")).toBeVisible();
+      expect(
+        await smallTargets(page, '[data-testid="confirm-remove-pick"]'),
+        `the confirmation at ${width} px`,
+      ).toEqual([]);
+      await page.getByTestId("confirm-remove-pick-cancel").click();
+      await page.goto(`/matches/${fixture.fixture_id}`);
+      await settle(page);
+      await page.getByRole("tab", { name: L.es.match.tabs.markets }).click();
+      await settle(page);
+      expect(await smallTargets(page, "main"), `a match's markets at ${width} px`).toEqual([]);
+    }
+  } finally {
+    await sendJson(page.request, "DELETE", `/api/v1/me/picks/${saved.body.data.id}`);
+  }
   await assertClean(page, w);
 });
 

@@ -270,7 +270,7 @@ function BooksPanel({
           <select
             value={String(line)}
             onChange={(e) => setLine(Number(e.target.value))}
-            className="numeric h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="numeric h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:h-11 pointer-coarse:px-3"
           >
             {lines.map((l) => (
               <option key={l} value={String(l)}>
