@@ -386,8 +386,8 @@
     "PRICE_PENDING": "Aún no hay cuotas: se piden desde 3 días antes del partido.",
     "PRICE_UNAVAILABLE": "Ninguna casa que recibimos cotiza este mercado.",
     "NOT_COVERED": "Nuestro proveedor de cuotas no cubre esta competición.",
-    "model": "Estimación del modelo, aún no probada frente al mercado: {selection} {probability} · cuota justa {fair}.",
-    "minOdds": "Con {min} o más en tu casa, la apuesta tendría el margen que pide nuestra regla.",
+    "model": "Estimación del modelo, aún no probada frente al mercado: {selection} {probability} · cuota según PrediGol {fair}.",
+    "minOdds": "Con {min} o más en tu casa, la apuesta tendría el valor que pide nuestra regla.",
     "notAPick": "No es un pick ni una cuota de casa: ningún modelo ha superado al mercado todavía."
   },
   "providerPrediction": {
@@ -444,10 +444,9 @@
       "bestOdds": "Mejor cuota",
       "model": "Prob. PrediGol",
       "market": "Prob. mercado",
-      "fair": "Cuota justa",
+      "fair": "Cuota según PrediGol",
       "edge": "Ventaja",
       "minimum": "Cuota mínima aceptable",
-      "edgeHelp": "Probabilidad de PrediGol menos la del mercado, en puntos porcentuales (p. p.)",
       "minimumHelp": "La cuota más baja que vale la pena tomar con la probabilidad prudente de PrediGol"
     },
     "ppUnit": "p. p.",
@@ -456,7 +455,7 @@
       "title": "¿Por qué?",
       "estimate": "PrediGol estima {model} frente a {market} del mercado",
       "estimateOnly": "PrediGol estima una probabilidad de {model} para esta selección",
-      "edge": "Ventaja de {edge} puntos porcentuales sobre el precio justo del mercado",
+      "edge": "Ventaja de {edge} puntos porcentuales sobre la probabilidad del mercado sin margen",
       "minimum": "Solo tendría valor con una cuota de {min} o más",
       "none": "Todavía no hay cifras suficientes para explicarlo."
     },
@@ -566,7 +565,6 @@
       "needs_price": "Por ahora es la probabilidad del modelo tal cual: la corrección de este mercado necesita un precio reciente y no lo hay.",
       "not_applicable": "Es la probabilidad del modelo tal cual: la corrección no se pudo aplicar a este número."
     },
-    "footnote": "Un pronóstico dice qué es probable, no si está bien pagado: eso lo dice el análisis de valor, y lo que PrediGol recomienda está en la pestaña Picks.",
     "updated": "Actualizado {when}",
     "model": "Modelo: {model}",
     "models": {
@@ -575,7 +573,7 @@
       "elo_ologit": "Elo (logit ordenado)"
     },
     "admin": {
-      "fairOdds": "cuota justa {odds}",
+      "fairOdds": "cuota según PrediGol {odds}",
       "modelNumber": "modelo {p}",
       "detailsTitle": "Valor y picks de este partido (solo administrador)",
       "valueTitle": "Valor: lo que dijo la capa de decisión (necesita precio)",

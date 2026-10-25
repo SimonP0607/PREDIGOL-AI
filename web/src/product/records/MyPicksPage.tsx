@@ -18,6 +18,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { HistoryGroup, HistoryPeriod, UserParlay, UserPick } from "@/lib/api/v1/types_records";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { OddsPill } from "@/product/shared/Bits";
 import {
   Card,
@@ -45,7 +46,7 @@ function Stat({
   value,
   tone,
 }: {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   tone?: string | undefined;
 }) {
@@ -80,7 +81,7 @@ function GroupCard({ name, group }: { name: string; group: HistoryGroup }) {
         <Stat label={t("records.mine.results.pending")} value={fmtInt(group.pending)} />
         <Stat label={t("records.mine.results.hitRate")} value={fmtPct(group.hit_rate, 0)} />
         <Stat
-          label={t("records.mine.results.roi")}
+          label={<GlossaryTerm term="roi">{t("records.mine.results.roi")}</GlossaryTerm>}
           value={
             <>
               <span data-testid={`history-${name}-roi`}>{roi === null ? "—" : fmtPct(roi, 1)}</span>
@@ -89,10 +90,12 @@ function GroupCard({ name, group }: { name: string; group: HistoryGroup }) {
                   className="block text-caption font-normal text-subtle-foreground"
                   data-testid={`history-${name}-roi-sample`}
                 >
-                  {t("records.roiSample", {
-                    count: Number(group.staked_units),
-                    n: fmtInt(Number(group.staked_units)),
-                  })}
+                  <GlossaryTerm term="sample">
+                    {t("records.roiSample", {
+                      count: Number(group.staked_units),
+                      n: fmtInt(Number(group.staked_units)),
+                    })}
+                  </GlossaryTerm>
                 </span>
               )}
             </>
@@ -154,7 +157,8 @@ function Results() {
             </p>
           ) : null}
           <p className="text-caption text-subtle-foreground">
-            {t("records.mine.results.note", { zone: zoneName(auth.timeZone) })}
+            {t("records.mine.results.note", { zone: zoneName(auth.timeZone) })}{" "}
+            <GlossaryTerm term="units">{t("records.unitsLink")}</GlossaryTerm>
           </p>
         </>
       ) : null}

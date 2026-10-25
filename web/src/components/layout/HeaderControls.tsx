@@ -1,6 +1,6 @@
 /** Language switch, account menu and the Preview-as-USER banner - shared by both shells. */
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Eye, EyeOff, LayoutDashboard, LogOut, UserRound } from "lucide-react";
+import { BookOpen, Eye, EyeOff, LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
 import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
@@ -94,6 +94,13 @@ export function AccountMenu() {
           <Link to="/profile" className="flex items-center gap-2">
             <UserRound aria-hidden className="h-4 w-4" />
             {t("nav.profile")}
+          </Link>
+        </DropdownMenuItem>
+        {/* plan UX, A3: every word PrediGol uses, one definition each (the "Más" menu of A15 will carry it too) */}
+        <DropdownMenuItem asChild>
+          <Link to="/help/glossary" className="flex items-center gap-2" data-testid="go-glossary">
+            <BookOpen aria-hidden className="h-4 w-4" />
+            {t("nav.glossary")}
           </Link>
         </DropdownMenuItem>
         {auth.isSuperAdmin && !auth.previewAsUser ? (

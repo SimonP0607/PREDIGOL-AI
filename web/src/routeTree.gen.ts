@@ -44,6 +44,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminSystemRouteImport } from './routes/admin.system'
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as HelpGlossaryRouteImport } from './routes/help.glossary'
 import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
 import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.index'
@@ -226,6 +227,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const HelpGlossaryRoute = HelpGlossaryRouteImport.update({
+  id: '/help/glossary',
+  path: '/help/glossary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MatchesIndexRoute = MatchesIndexRouteImport.update({
   id: '/matches/',
   path: '/matches/',
@@ -292,6 +298,7 @@ export interface FileRoutesByFullPath {
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/help/glossary': typeof HelpGlossaryRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/admin/': typeof AdminIndexRoute
   '/matches/': typeof MatchesIndexRoute
@@ -334,6 +341,7 @@ export interface FileRoutesByTo {
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/help/glossary': typeof HelpGlossaryRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/admin': typeof AdminIndexRoute
   '/matches': typeof MatchesIndexRoute
@@ -378,6 +386,7 @@ export interface FileRoutesById {
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/help/glossary': typeof HelpGlossaryRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/admin/': typeof AdminIndexRoute
   '/matches/': typeof MatchesIndexRoute
@@ -423,6 +432,7 @@ export interface FileRouteTypes {
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
+    | '/help/glossary'
     | '/matches/$fixtureId'
     | '/admin/'
     | '/matches/'
@@ -465,6 +475,7 @@ export interface FileRouteTypes {
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
+    | '/help/glossary'
     | '/matches/$fixtureId'
     | '/admin'
     | '/matches'
@@ -508,6 +519,7 @@ export interface FileRouteTypes {
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
+    | '/help/glossary'
     | '/matches/$fixtureId'
     | '/admin/'
     | '/matches/'
@@ -528,6 +540,7 @@ export interface RootRouteChildren {
   ParlaysRoute: typeof ParlaysRoute
   PicksRoute: typeof PicksRoute
   ProfileRoute: typeof ProfileRoute
+  HelpGlossaryRoute: typeof HelpGlossaryRoute
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
 }
@@ -779,6 +792,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/help/glossary': {
+      id: '/help/glossary'
+      path: '/help/glossary'
+      fullPath: '/help/glossary'
+      preLoaderRoute: typeof HelpGlossaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/matches/': {
       id: '/matches/'
       path: '/matches'
@@ -901,6 +921,7 @@ const rootRouteChildren: RootRouteChildren = {
   ParlaysRoute: ParlaysRoute,
   PicksRoute: PicksRoute,
   ProfileRoute: ProfileRoute,
+  HelpGlossaryRoute: HelpGlossaryRoute,
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,
   MatchesIndexRoute: MatchesIndexRoute,
 }

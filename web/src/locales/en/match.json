@@ -386,8 +386,8 @@
     "PRICE_PENDING": "Prices not in yet: they are asked for 3 days before kick-off.",
     "PRICE_UNAVAILABLE": "No bookmaker we receive prices this market.",
     "NOT_COVERED": "Our odds provider does not cover this competition.",
-    "model": "The model's estimate, not yet proven against the market: {selection} {probability} · fair odds {fair}.",
-    "minOdds": "At {min} or more at your bookmaker, the bet would carry the margin our rule asks for.",
+    "model": "The model's estimate, not yet proven against the market: {selection} {probability} · PrediGol's odds {fair}.",
+    "minOdds": "At {min} or more at your bookmaker, the bet would carry the value our rule asks for.",
     "notAPick": "Not a pick and not a bookmaker's price: no model has beaten the market yet."
   },
   "providerPrediction": {
@@ -444,10 +444,9 @@
       "bestOdds": "Best odds",
       "model": "PrediGol prob.",
       "market": "Market prob.",
-      "fair": "Fair odds",
+      "fair": "PrediGol's odds",
       "edge": "Edge",
       "minimum": "Minimum acceptable odds",
-      "edgeHelp": "PrediGol's probability minus the market's, in percentage points (pp)",
       "minimumHelp": "The lowest odds worth taking at PrediGol's prudent probability"
     },
     "ppUnit": "pp",
@@ -456,7 +455,7 @@
       "title": "Why?",
       "estimate": "PrediGol estimates {model} against the market's {market}",
       "estimateOnly": "PrediGol puts this selection's chance at {model}",
-      "edge": "An edge of {edge} percentage points over the market's fair price",
+      "edge": "An edge of {edge} percentage points over the market probability, margin removed",
       "minimum": "It would only be worth it at odds of {min} or more",
       "none": "Not enough figures to explain it yet."
     },
@@ -566,7 +565,6 @@
       "needs_price": "For now this is the model's own probability: this market's correction needs a recent price and there is none.",
       "not_applicable": "This is the model's own probability: the correction could not be applied to this number."
     },
-    "footnote": "A forecast says what is likely, not whether it is well paid: the value analysis says that, and what PrediGol recommends is in the Picks tab.",
     "updated": "Updated {when}",
     "model": "Model: {model}",
     "models": {
@@ -575,7 +573,7 @@
       "elo_ologit": "Elo (ordered logit)"
     },
     "admin": {
-      "fairOdds": "fair odds {odds}",
+      "fairOdds": "PrediGol's odds {odds}",
       "modelNumber": "model {p}",
       "detailsTitle": "Value and picks of this match (admin only)",
       "valueTitle": "Value: what the decision layer said (needs a price)",

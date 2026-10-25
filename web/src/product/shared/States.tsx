@@ -171,7 +171,8 @@ export function PageTitle({
   className,
 }: {
   title: string;
-  subtitle?: string | undefined;
+  /** Text, or text with a glossary term in it (plan UX, A3: «¿Qué es un pick?»). */
+  subtitle?: ReactNode;
   right?: ReactNode;
   className?: string | undefined;
 }) {

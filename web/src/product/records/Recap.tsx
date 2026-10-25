@@ -25,6 +25,7 @@ import { intlTag, t } from "@/lib/i18n";
 import { DASH, fmtInt, fmtOdds, fmtPct, localFixed } from "@/lib/i18n/format";
 import { getTimeZone, zonedInstant } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { Card, ErrorState, SectionHeader, SkeletonBlock } from "@/product/shared/States";
 import { marketName } from "@/product/shared/markets";
 import { useCountUp, useReducedMotion } from "@/product/shared/motion";
@@ -78,7 +79,7 @@ function Kpi({
   hint,
   testId,
 }: {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   tone?: string | undefined;
   hint?: ReactNode;
@@ -135,7 +136,7 @@ function Kpis({ r }: { r: RecapData }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6" data-testid="recap-kpis">
       <Kpi
-        label={t("records.recap.kpi.settled")}
+        label={<GlossaryTerm term="settlement">{t("records.recap.kpi.settled")}</GlossaryTerm>}
         testId="settled"
         value={<Counted value={r.settled} format={(n) => fmtInt(Math.round(n))} />}
         hint={t("records.recap.kpi.record", { won: r.wins, lost: r.losses, void: r.voids })}
@@ -152,14 +153,16 @@ function Kpis({ r }: { r: RecapData }) {
         tone={tone(r.profit)}
       />
       <Kpi
-        label={t("records.recap.kpi.roi")}
+        label={<GlossaryTerm term="roi">{t("records.recap.kpi.roi")}</GlossaryTerm>}
         testId="roi"
         value={<Counted value={r.roi} format={(n) => fmtPct(n, 1)} />}
         tone={tone(r.roi)}
         hint={
           r.roi !== null ? (
             <span data-testid="recap-roi-sample">
-              {t("records.roiSample", { count: r.staked, n: fmtInt(r.staked) })}
+              <GlossaryTerm term="sample">
+                {t("records.roiSample", { count: r.staked, n: fmtInt(r.staked) })}
+              </GlossaryTerm>
             </span>
           ) : undefined
         }
@@ -553,7 +556,10 @@ export function Recap() {
           <Streak r={r} animate={animate} />
           {scope === "picks" && r.byMarket.length ? <Markets r={r} animate={animate} /> : null}
         </div>
-        <p className="text-caption text-subtle-foreground">{t("records.recap.note")}</p>
+        <p className="text-caption text-subtle-foreground">
+          {t("records.recap.note")}{" "}
+          <GlossaryTerm term="units">{t("records.unitsLink")}</GlossaryTerm>
+        </p>
       </div>
     );
   }

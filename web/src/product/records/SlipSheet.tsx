@@ -39,6 +39,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { OddsPill } from "@/product/shared/Bits";
 import { errorMessage } from "@/product/shared/States";
 import { marketName, riskLabel, selectionLabel } from "@/product/shared/markets";
@@ -374,7 +375,7 @@ function Summary({
 
         <div className="min-w-0">
           <dt className="text-caption font-medium text-muted-foreground">
-            {t("records.slip.summary.fair")}
+            <GlossaryTerm term="marketProbability">{t("records.slip.summary.fair")}</GlossaryTerm>
           </dt>
           <dd className="mt-0.5">
             <Value
@@ -384,9 +385,6 @@ function Summary({
             >
               {fmtProbability(fair)}
             </Value>
-            <span className="mt-0.5 block text-caption text-subtle-foreground">
-              {t("records.slip.summary.fairHelp")}
-            </span>
           </dd>
         </div>
 
@@ -398,7 +396,7 @@ function Summary({
             data-source={dep?.source}
           >
             <dt className="text-caption font-medium text-muted-foreground">
-              {t("records.slip.summary.dependency")}
+              <GlossaryTerm term="dependency">{t("records.slip.summary.dependency")}</GlossaryTerm>
             </dt>
             <dd>
               {dep ? (
@@ -422,7 +420,7 @@ function Summary({
 
         <div className="min-w-0">
           <dt className="text-caption font-medium text-muted-foreground">
-            {t("records.slip.measures.ev")}
+            <GlossaryTerm term="expectedValue">{t("records.slip.measures.ev")}</GlossaryTerm>
           </dt>
           <dd className="mt-0.5">
             <Value

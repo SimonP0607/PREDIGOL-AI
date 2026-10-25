@@ -5,7 +5,7 @@ import { t } from "@/lib/i18n";
 import { fmtOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatKickoff, formatRelative, formatTime } from "@/lib/time";
 import type { PriceFreshness, ParlayRisk } from "@/lib/api/v1/types_product";
-import { glossaryText } from "@/lib/glossary";
+import { termShort } from "@/lib/glossary";
 import { hintProps } from "@/components/system/tapHint";
 import { riskLabel } from "./markets";
 
@@ -61,7 +61,7 @@ export function EvBadge({
     );
   return (
     <span
-      {...(hint ? hintProps(glossaryText("ev")) : {})}
+      {...(hint ? hintProps(termShort("expectedValue")) : {})}
       className={cn(
         "numeric inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold",
         n > 0 ? "bg-positive-soft text-positive" : "bg-negative-soft text-negative",

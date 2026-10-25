@@ -12,6 +12,8 @@ import { formatKickoff } from "@/lib/time";
 import type { Section } from "@/lib/api/v1/types";
 import type { BestHighlight } from "@/lib/api/v1/types_product";
 import { CompetitionTag, TeamName } from "@/components/football/Logos";
+import { hintProps } from "@/components/system/tapHint";
+import { termShort } from "@/lib/glossary";
 import { SelectablePrice } from "@/product/odds/SelectablePrice";
 import { pickableOfHighlight } from "@/product/records/pickable";
 import { Card, SectionHeader } from "@/product/shared/States";
@@ -77,7 +79,8 @@ function BestRow({ h }: { h: BestHighlight }) {
         </div>
 
         <div className="col-span-2 flex items-center justify-between gap-x-3 text-caption lg:col-span-1 lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:flex-col lg:items-end lg:justify-center lg:gap-0.5">
-          <span className="text-muted-foreground">
+          {/* inside the row's link: the definition shows on a tap or under the mouse (A1's data-hint), not a control */}
+          <span className="text-muted-foreground" {...hintProps(termShort("fairOdds"))}>
             {t("common.fairOdds")}{" "}
             <span className="numeric font-medium text-foreground">
               {fmtOdds(h.price.fair_odds)}

@@ -5,9 +5,8 @@
  * now (minute and score), its result and its value against the last pre-match price (a
  * near-close price, not validated as the closing line - so the label says so).
  */
-import { Hint } from "@/components/system/Hint";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { hintProps } from "@/components/system/tapHint";
-import { glossaryText } from "@/lib/glossary";
 import { Link } from "@tanstack/react-router";
 import { History } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -130,12 +129,12 @@ export function StartedPickCard({
         className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-3"
         data-testid="started-pick-figures"
       >
-        <Hint text={glossaryText("ev")} className="no-underline">
+        <GlossaryTerm term="expectedValue" className="no-underline">
           <EvBadge ev={pick.ev} hint={false} />
-        </Hint>
-        <Hint text={glossaryText("edge")} className="numeric text-caption text-muted-foreground">
+        </GlossaryTerm>
+        <GlossaryTerm term="edge" className="numeric text-caption text-muted-foreground">
           {t("common.edge")} {fmtSignedPp(pick.edge)}
-        </Hint>
+        </GlossaryTerm>
         {pick.evaluations > 1 ? (
           <span className="text-caption text-muted-foreground">
             {t("match.picks.evaluations", { count: pick.evaluations })}

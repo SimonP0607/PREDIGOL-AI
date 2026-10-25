@@ -145,8 +145,7 @@
       "estimatedIndependent": "Product of PrediGol's probabilities: the selections are independent.",
       "estimatedWaiting": "Waiting for the dependence adjustment.",
       "estimatedNone": "No estimate: a selection has no probability.",
-      "fair": "Fair probability",
-      "fairHelp": "The market's, without the bookmakers' margin.",
+      "fair": "Market probability",
       "dependency": "Dependence level",
       "calculating": "calculating…"
     },
@@ -428,5 +427,6 @@
     "help": "Each step is a filter: if no pick passes them all, the day has fewer or none. The picks of the day are chosen once PrediGol Intelligence has read the day: its pass of each match, with a news search."
   },
   "roiSample_one": "over {n} settled",
-  "roiSample_other": "over {n} settled"
+  "roiSample_other": "over {n} settled",
+  "unitsLink": "What is a unit?"
 }

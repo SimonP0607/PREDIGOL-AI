@@ -53,7 +53,7 @@
     "title": "Por qué está",
     "model": "PrediGol le da {model} de probabilidad (al menos {low} en el escenario prudente); el mercado, {market}.",
     "modelNoLow": "PrediGol le da {model} de probabilidad; el mercado, {market}.",
-    "price": "Cuota {odds} frente a un precio justo de {fair} ({edge} frente al justo).",
+    "price": "Cuota {odds} frente a una cuota justa de {fair} ({edge} frente a la justa).",
     "evFrozen": "Valor esperado {ev} por unidad, con la cuota con que se tomó.",
     "evNow": "Valor esperado {ev} por unidad, a la cuota de ahora.",
     "books_one": "Cotizada ahora por {count} casa, sin cuotas atípicas.",
@@ -142,5 +142,6 @@
       "cap": "Prueba subiendo la cuota total máxima o bajando el mínimo de selecciones.",
       "wait": "Vuelve más tarde: los precios y las selecciones se actualizan durante el día."
     }
-  }
+  },
+  "whatIsParlay": "¿Qué es un parlay?"
 }

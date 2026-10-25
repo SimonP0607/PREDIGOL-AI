@@ -17,9 +17,9 @@
   },
   "best": {
     "title": "Best odds",
-    "subtitle": "Prices above the market's fair price",
+    "subtitle": "Odds above the market's fair odds",
     "seeAll": "See all",
-    "overFair": "{pct} over the fair price",
+    "overFair": "{pct} over the fair odds",
     "empty": "No price above the market yet."
   },
   "upcoming": {

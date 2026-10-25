@@ -4,7 +4,7 @@
  * stays on the page after kick-off.
  */
 import { Hint } from "@/components/system/Hint";
-import { glossaryText } from "@/lib/glossary";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { Link } from "@tanstack/react-router";
 import { Snowflake } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -161,9 +161,9 @@ export function DailyItemCard({
         className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-3"
         data-testid="daily-item-figures"
       >
-        <Hint text={glossaryText("ev")} className="no-underline">
+        <GlossaryTerm term="expectedValue" className="no-underline">
           <EvBadge ev={item.ev} hint={false} />
-        </Hint>
+        </GlossaryTerm>
         <Hint text={t("records.frozenHelp")} className="no-underline">
           <span
             className="inline-flex items-center gap-1 text-caption text-muted-foreground"

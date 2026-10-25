@@ -175,7 +175,10 @@ describe("what a user sees once the owner lets users see the forecast", () => {
     expect(out).toContain('data-testid="forecast-block"');
     expect(out).toContain("Pronóstico PrediGol");
     expect(out).toContain("no una recomendación ni una cuota para apostar");
-    expect(out).toContain("no si está bien pagado");
+    // forecast ≠ value ≠ pick (plan UX, A3): the three questions under the forecast, each word opening its definition
+    expect(out).toContain('data-testid="explain-layers"');
+    expect(out).toContain("¿Está bien pagado?");
+    expect(out).toContain('data-glossary="calibrated"');
   });
 
   test("the three markets in order, each with its title", () => {
@@ -231,6 +234,7 @@ describe("what a user sees once the owner lets users see the forecast", () => {
 
   test("no odds, no edge, no value, no pick, no preview badge", () => {
     expect(out).not.toContain("cuota justa");
+    expect(out).not.toContain("cuota según PrediGol");
     expect(out).not.toContain("modelo 55");
     expect(out).not.toContain("forecast-admin");
     expect(out).not.toContain("forecast-value");
@@ -248,6 +252,7 @@ describe("what a user sees once the owner lets users see the forecast", () => {
     };
     const seen = render(leaky, false);
     expect(seen).not.toContain("cuota justa");
+    expect(seen).not.toContain("cuota según PrediGol");
     expect(seen).not.toContain("1,92");
     expect(seen).not.toContain("forecast-admin");
     expect(seen).not.toContain("RECHAZADO");
@@ -317,10 +322,11 @@ describe("the Admin Console's preview", () => {
     expect(out).toContain("No es una recomendación");
   });
 
-  test("shows the fair odds beside each number, and the model's own number where it was corrected", () => {
-    expect(out).toContain("cuota justa 1,92");
-    expect(out).toContain("cuota justa 3,85");
-    expect(out.match(/cuota justa/g)?.length).toBe(7);
+  test("shows PrediGol's odds beside each number, and the model's own number where it was corrected", () => {
+    expect(out).toContain("cuota según PrediGol 1,92"); // the model's 1/p (plan UX, A3: «cuota justa» is the market's)
+    expect(out).toContain("cuota según PrediGol 3,85");
+    expect(out.match(/cuota según PrediGol/g)?.length).toBe(7);
+    expect(out).not.toContain("cuota justa");
     // only the calibrated market has a model number that differs from the stated one
     expect(out.match(/modelo 55\s%/g)?.length).toBe(1);
   });

@@ -33,8 +33,8 @@ describe("why a leg is in the parlay (REVIEW point 15)", () => {
     expect(html).toContain("PrediGol le da 55,0 %");
     expect(html).toContain("al menos 50,0 %");
     expect(html).toContain("el mercado, 45,0 %");
-    expect(html).toContain("Cuota 2,30 frente a un precio justo de 2,22");
-    expect(html).toContain("+3,5 % frente al justo");
+    expect(html).toContain("Cuota 2,30 frente a una cuota justa de 2,22");
+    expect(html).toContain("+3,5 % frente a la justa");
     expect(html).toContain("a la cuota de ahora");
     expect(html).toContain("4 casas");
   });

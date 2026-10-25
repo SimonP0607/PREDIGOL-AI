@@ -28,7 +28,9 @@ import type {
   ForecastValueRow,
   MatchForecast,
 } from "@/lib/api/v1/types_forecast";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { ShadowBadge } from "@/product/shared/Bits";
+import { ExplainLayers } from "@/product/shared/ExplainLayers";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import {
@@ -131,7 +133,7 @@ function OutcomeRow({
       </div>
       <RangeBar outcome={outcome} />
       <p className="mt-1 flex flex-wrap gap-x-2 text-caption text-muted-foreground">
-        <span>{intervalText(outcome)}</span>
+        <GlossaryTerm term="range">{intervalText(outcome)}</GlossaryTerm>
         {fair ? (
           <span className="numeric">
             · {t("match.forecast.admin.fairOdds", { odds: fmtOdds(fair) })}
@@ -169,7 +171,7 @@ function MarketView({
         <h3 className="min-w-0 break-words text-sm font-semibold">{forecastMarketTitle(market)}</h3>
         <Tag tone={calibrated ? CALIBRATED_TAG : UNCALIBRATED_TAG}>
           {calibrated ? <CircleCheck aria-hidden className="h-3 w-3" /> : null}
-          {calibrationLabel(market.calibration)}
+          <GlossaryTerm term="calibrated">{calibrationLabel(market.calibration)}</GlossaryTerm>
         </Tag>
       </header>
       <ul className="space-y-3">
@@ -379,9 +381,8 @@ export function ForecastView({
                 preview={preview}
               />
             ))}
-            <p className="text-caption leading-snug text-subtle-foreground">
-              {t("match.forecast.footnote")}
-            </p>
+            {/* forecast ≠ value ≠ pick (plan UX, A3): where the three answers are told apart */}
+            <ExplainLayers compact />
           </>
         ) : null}
         {preview && data ? <AdminDetails data={data} sides={sides} /> : null}

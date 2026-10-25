@@ -1,9 +1,12 @@
 import { translateOr } from "@/lib/i18n";
 
 /**
- * Single source of truth for quantitative terminology shown in the UI.
- * Never mix these definitions: model probability, market probability and
- * confidence are different objects.
+ * The Admin Console's definitions of its research metrics, in English (Spanish in admin.glossary.*).
+ *
+ * @deprecated Since plan UX A3 the one glossary is `@/lib/glossary` (src/locales/<lang>/glossary.json), in
+ * Spanish and English, for readers and the console alike. Nothing new reads this file; the console's InfoTip still
+ * does, and the file goes when nothing imports it (plan UX, section 6: DEPRECATE → READ ONLY → RETIRE).
+ * Never mix these definitions: model probability, market probability and confidence are different objects.
  */
 export const glossary = {
   modelProbability:

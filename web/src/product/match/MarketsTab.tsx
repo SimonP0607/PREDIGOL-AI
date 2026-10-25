@@ -16,6 +16,7 @@ import { fmtLine, fmtOdds, toNumber } from "@/lib/i18n/format";
 import { live as queries } from "@/lib/api/v1/queries";
 import type { MatchMarkets, SelectionQuotes } from "@/lib/api/v1/types_profile";
 import { formatDateTime } from "@/lib/time";
+import { GlossaryLink, GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { marketName } from "@/product/shared/markets";
 import type { MatchCtx } from "./context";
 import {
@@ -101,7 +102,7 @@ function LinesTable<T>({
           <tr className="text-caption text-subtle-foreground">
             {isOU ? (
               <th scope="col" className="w-14 pb-1.5 text-left font-medium">
-                {t("match.markets.line")}
+                <GlossaryTerm term="line">{t("match.markets.line")}</GlossaryTerm>
               </th>
             ) : null}
             <th scope="col" className="pb-1.5 pr-2 text-left font-medium">
@@ -523,7 +524,8 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
         {boards.length > 0 ? (
           <>
             <p className="-mt-1.5 mb-3 text-xs text-muted-foreground">
-              {t("match.markets.bestHelp")} {before ? t("match.markets.chooseHelp") : null}
+              {t("match.markets.bestHelp")} <GlossaryLink term="bestOdds" />{" "}
+              {before ? t("match.markets.chooseHelp") : null}
             </p>
             {all ? <CapturesStrip all={all} /> : null}
             <div className="mt-3">

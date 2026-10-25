@@ -1,5 +1,5 @@
 {
-  "subtitle": "The best price for each selection, next to its fair price.",
+  "subtitle": "The best odds for each selection, next to its fair odds.",
   "marketsLabel": "Market",
   "tabs": {
     "1X2": "1X2",
@@ -15,7 +15,7 @@
   "pricesUpdated": "Prices updated {when}",
   "highlights": {
     "title": "Best prices against the market",
-    "subtitle": "Odds that pay more than the fair price right now.",
+    "subtitle": "Odds that pay more than the fair odds right now.",
     "vsFair": "{edge} vs fair"
   },
   "value": {
@@ -32,15 +32,15 @@
     "noPrice": "No price",
     "bookmakers_one": "Best price among {count} bookmaker",
     "bookmakers_other": "Best price among {count} bookmakers",
-    "edgeHelp": "How much the best price pays above (or below) the fair price",
-    "cell": "{selection}: {odds} at {bookmaker}. Fair odds {fair}; {edge} against the fair price.",
+    "edgeHelp": "How much the best odds pay above (or below) the fair odds",
+    "cell": "{selection}: {odds} at {bookmaker}. Fair odds {fair}; {edge} against the fair odds.",
     "cellNoPrice": "{selection}: no price.",
     "bestSr": "Best value in this match.",
     "emptyTitle": "No matches with odds in this window",
     "emptyBody": "Once bookmakers publish prices for the upcoming matches, they will show up here.",
     "widen": "Show the next {hours} h",
     "outlier": "Unusual price",
-    "outlierHelp": "Far above the fair price: most likely one bookmaker's stale or mistaken quote."
+    "outlierHelp": "Far above the fair odds: most likely one bookmaker's stale or mistaken quote."
   },
   "movement": {
     "toggle": "Movement",
@@ -59,8 +59,8 @@
     "remove": "Remove from my parlay",
     "replaces": "Replaces the other selection of this match in your parlay: one per match"
   },
-  "fairExplainer": "Fair price: the odds each selection would pay if bookmakers took no margin (the market's consensus probability, without its margin). In green, how much the best price pays above that fair price; “outlier”, one bookmaker's price that is probably stale or wrong.",
-  "fairExplainerToggle": "What is the fair price?",
+  "fairExplainer": "Fair odds: what each selection would pay if bookmakers took no margin (1 divided by the market probability without its margin). In green, how much the best odds pay above fair; “outlier”, a price from a single bookmaker that is most likely stale or a mistake.",
+  "fairExplainerToggle": "What are fair odds?",
   "filters": {
     "search": "Search team or competition",
     "searchPlaceholder": "Team or competition",
@@ -72,7 +72,7 @@
     "aboveFair": "Only above fair",
     "sort": "Order",
     "sortTime": "By time",
-    "sortEdge": "Widest margin over fair",
+    "sortEdge": "Furthest above fair",
     "clear": "Clear filters",
     "emptyTitle": "No match fits your filters",
     "emptyBody": "Try another name, another country, or turn off “Only above fair”."

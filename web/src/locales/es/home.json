@@ -17,9 +17,9 @@
   },
   "best": {
     "title": "Mejores cuotas",
-    "subtitle": "Precios por encima del precio justo del mercado",
+    "subtitle": "Cuotas por encima de la cuota justa del mercado",
     "seeAll": "Ver todas",
-    "overFair": "{pct} sobre el precio justo",
+    "overFair": "{pct} sobre la cuota justa",
     "empty": "Todavía no hay precios por encima del mercado."
   },
   "upcoming": {

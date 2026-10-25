@@ -23,6 +23,7 @@ import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ShadowBadge } from "@/product/shared/Bits";
 import { PickCard } from "@/product/shared/PickCard";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { StartedPickCard } from "@/product/shared/StartedPickCard";
 import {
   Card,
@@ -70,7 +71,11 @@ export function PicksPage() {
     <div className="space-y-8">
       <PageTitle
         title={t("nav.picks")}
-        subtitle={t("picks.subtitle")}
+        subtitle={
+          <>
+            {t("picks.subtitle")} <GlossaryTerm term="pick">{t("picks.whatIsPick")}</GlossaryTerm>
+          </>
+        }
         right={auth.showAdmin ? <ShadowToggle /> : undefined}
       />
       <DailySetBlock query={daily} nav={{ day, today, onDay: setDay }} />

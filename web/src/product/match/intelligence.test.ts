@@ -129,7 +129,7 @@ describe("why", () => {
   test("from the numbers alone when nobody wrote anything", () => {
     expect(plain(whyLines(card()))).toEqual([
       "PrediGol estima 58,0 % frente a 51,0 % del mercado",
-      "Ventaja de 7,0 puntos porcentuales sobre el precio justo del mercado",
+      "Ventaja de 7,0 puntos porcentuales sobre la probabilidad del mercado sin margen",
     ]);
   });
 

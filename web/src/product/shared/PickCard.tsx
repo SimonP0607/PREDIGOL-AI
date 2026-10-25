@@ -11,7 +11,7 @@ import { fmtSignedPp } from "@/lib/i18n/format";
 import type { PickCard as PickCardData } from "@/lib/api/v1/types_product";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { Hint } from "@/components/system/Hint";
-import { glossaryText } from "@/lib/glossary";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { EvBadge, Freshness, Kickoff, OddsPill, ProbCompare, ShadowBadge } from "./Bits";
 import { gateReason, marketName, selectionLabel } from "./markets";
 
@@ -139,13 +139,13 @@ export function PickCard({
         )}
         data-testid="pick-card-figures"
       >
-        <Hint text={glossaryText("ev")} className="no-underline">
+        <GlossaryTerm term="expectedValue" className="no-underline">
           <EvBadge ev={pick.ev} hint={false} />
-        </Hint>
+        </GlossaryTerm>
         {pick.edge !== null ? (
-          <Hint text={glossaryText("edge")} className="numeric text-caption text-muted-foreground">
+          <GlossaryTerm term="edge" className="numeric text-caption text-muted-foreground">
             {t("common.edge")} {fmtSignedPp(pick.edge)}
-          </Hint>
+          </GlossaryTerm>
         ) : null}
         <Hint text={t(`common.freshnessLevel.${pick.freshness}`)} className="ml-auto no-underline">
           <Freshness at={pick.price_at} level={pick.freshness} hint={false} />

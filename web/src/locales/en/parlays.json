@@ -53,7 +53,7 @@
     "title": "Why it's here",
     "model": "PrediGol gives it {model} (at least {low} in the prudent case); the market, {market}.",
     "modelNoLow": "PrediGol gives it {model}; the market, {market}.",
-    "price": "Odds {odds} against a fair price of {fair} ({edge} against fair).",
+    "price": "Odds {odds} against fair odds of {fair} ({edge} against fair).",
     "evFrozen": "Expected value {ev} per unit, at the odds it was taken at.",
     "evNow": "Expected value {ev} per unit, at today's odds.",
     "books_one": "Quoted now by {count} bookmaker, no outlier prices.",
@@ -142,5 +142,6 @@
       "cap": "Try raising the maximum total odds or lowering the minimum of selections.",
       "wait": "Come back later: prices and selections update during the day."
     }
-  }
+  },
+  "whatIsParlay": "What is a parlay?"
 }

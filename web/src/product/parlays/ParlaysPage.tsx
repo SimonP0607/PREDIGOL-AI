@@ -12,6 +12,7 @@ import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import type { RecordKind } from "@/lib/api/v1/types_records";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { Card, ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
 import { ShadowToggle } from "@/product/shared/ShadowToggle";
 import { EvaluationNote } from "@/product/records/DailySetBlock";
@@ -137,7 +138,12 @@ export function ParlaysPage() {
     <div className="space-y-6" data-testid="parlays-page">
       <PageTitle
         title={t("nav.parlays")}
-        subtitle={t("parlays.subtitle")}
+        subtitle={
+          <>
+            {t("parlays.subtitle")}{" "}
+            <GlossaryTerm term="parlay">{t("parlays.whatIsParlay")}</GlossaryTerm>
+          </>
+        }
         right={adminToggle ? <ShadowToggle /> : undefined}
       />
       {data?.evaluation_mode ? <EvaluationNote /> : null}

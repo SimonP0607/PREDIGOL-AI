@@ -12,6 +12,7 @@ import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { t, useI18n } from "@/lib/i18n";
 import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { GlossaryLink } from "@/components/system/GlossaryTerm";
 import { Card, EmptyState, ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
 import { MARKETS, marketShort, type MarketKey } from "@/product/shared/markets";
 import { Pager } from "@/product/shared/Pager";
@@ -66,14 +67,18 @@ function FairExplainer() {
             className="h-4 w-4 shrink-0 text-subtle-foreground transition-transform group-open:rotate-180"
           />
         </summary>
-        <p className="px-4 pb-3 pl-10">{t("odds.fairExplainer")}</p>
+        <p className="px-4 pb-3 pl-10">
+          {t("odds.fairExplainer")} <GlossaryLink term="fairOdds" />
+        </p>
       </details>
       <p
         className="hidden items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground md:flex"
         data-testid="odds-fair-explainer"
       >
         <Scale aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <span>{t("odds.fairExplainer")}</span>
+        <span>
+          {t("odds.fairExplainer")} <GlossaryLink term="fairOdds" />
+        </span>
       </p>
     </>
   );

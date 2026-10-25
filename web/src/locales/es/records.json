@@ -145,8 +145,7 @@
       "estimatedIndependent": "Producto de las probabilidades de PrediGol: las selecciones son independientes.",
       "estimatedWaiting": "Esperando el ajuste por dependencia.",
       "estimatedNone": "Sin estimación: falta la probabilidad de alguna selección.",
-      "fair": "Probabilidad justa",
-      "fairHelp": "La del mercado, sin el margen de las casas.",
+      "fair": "Probabilidad del mercado",
       "dependency": "Nivel de dependencia",
       "calculating": "calculando…"
     },
@@ -428,5 +427,6 @@
     "help": "Cada paso es un filtro: si no hay picks que los pasen todos, el día se queda con menos o sin ninguno. Los picks del día se eligen cuando PrediGol Intelligence ya leyó el día: su pasada de cada partido, con búsqueda de noticias."
   },
   "roiSample_one": "sobre {n} liquidado",
-  "roiSample_other": "sobre {n} liquidados"
+  "roiSample_other": "sobre {n} liquidados",
+  "unitsLink": "¿Qué es una unidad?"
 }

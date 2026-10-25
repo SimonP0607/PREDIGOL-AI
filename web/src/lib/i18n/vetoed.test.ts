@@ -28,6 +28,7 @@ const CLIENT = [
   "picks",
   "profile",
   "records",
+  "glossary",
 ] as const;
 
 const VETOED: ReadonlyArray<readonly [RegExp, string]> = [

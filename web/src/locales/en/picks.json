@@ -40,5 +40,6 @@
       "other": "Void and pending"
     }
   },
-  "priceHelp": "Tap the price to add it to your parlay; the bookmark saves it."
+  "priceHelp": "Tap the price to add it to your parlay; the bookmark saves it.",
+  "whatIsPick": "What is a pick?"
 }
