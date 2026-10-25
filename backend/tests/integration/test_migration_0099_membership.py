@@ -66,7 +66,7 @@ def test_0099_adds_the_membership_tables_that_refuse_what_they_must_never_hold(m
             assert _shape(c) == before, "not a column more or less in any table that was there"
             pay = ("INSERT INTO customer.payments (user_id, amount, currency, method, reference, idempotency_key) "
                    "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id")
-            refused = (
+            refused: tuple[tuple[str, tuple[Any, ...]], ...] = (
                 (pay, (uid, 50000, "COP", "nequi", "tarjeta 4111 1111 1111 1111", "key-00000001")),
                 (pay, (uid, 50000, "COP", "nequi", "cuenta 123-456-7890", "key-00000002")),
                 (pay, (uid, 0, "COP", "nequi", "", "key-00000003")),
@@ -98,13 +98,14 @@ def test_0099_adds_the_membership_tables_that_refuse_what_they_must_never_hold(m
             c.execute("INSERT INTO customer.membership_events (user_id, kind, period_id, milestone) "
                       "VALUES (%s, 'notice', %s, 'before')", (uid, trial[0]))
             c.commit()
-            for sql, params in (
+            duplicates: tuple[tuple[str, tuple[Any, ...]], ...] = (
                 ("INSERT INTO customer.membership_periods (user_id, kind, starts_at, ends_at) "
                  "VALUES (%s, 'trial', now(), now() + interval '7 days')", (uid,)),
                 ("INSERT INTO customer.membership_events (user_id, kind, period_id, milestone) "
                  "VALUES (%s, 'notice', %s, 'before')", (uid, trial[0])),
                 (pay, (uid, 10, "COP", "cash", "", "key-00000009")),
-            ):
+            )
+            for sql, params in duplicates:
                 with pytest.raises(psycopg.errors.UniqueViolation):
                     c.execute(sql, params)
                 c.rollback()
