@@ -31,6 +31,8 @@ from fbi.core.version import code_version
 
 USER_ID = re.compile(r"[0-9a-f]{20}")
 """The shape of fbi.auth.crypto.observability_id: anything else in an event's user is dropped."""
+TRACE_ID = re.compile(r"[0-9a-f]{16}|[0-9a-f]{32}")
+"""The shape of a trace's and a span's ids (random hex), kept as they are in the event's trace context."""
 
 _SENSITIVE = re.compile(
     r"(pass(word|wd)?|secret|token|cookie|authori[sz]ation|session|e-?mail|phone|dsn|csrf|totp|otp|recovery|"
@@ -72,7 +74,10 @@ def options(component: str) -> dict[str, Any] | None:
         "attach_stacktrace": False,
         "max_breadcrumbs": 30,
         "send_client_reports": False,
-        "before_send": scrub_event,
+        # no "baggage" / "sentry-trace" headers on the requests the backend makes (API-Football, Anthropic, Telegram...):
+        # they carry the project's public key and the release to every third party (review of A2)
+        "trace_propagation_targets": [],
+        "before_send": send_or_drop,
         "before_breadcrumb": scrub_breadcrumb,
     }
 
@@ -141,6 +146,9 @@ def _clean_frames(stacktrace: Any) -> None:
         if not isinstance(frame, MutableMapping):
             continue
         frame.pop("vars", None)
+        for key in ("filename", "abs_path"):
+            if isinstance(frame.get(key), str) and "://" in frame[key]:
+                frame[key] = clean_url(frame[key]) or ""
         # source lines: code, not data - the filter of personal data, but quoted text stays readable
         if isinstance(frame.get("context_line"), str):
             frame["context_line"] = scrub_value(frame["context_line"], limit=300, quoted=False)
@@ -210,9 +218,16 @@ def _scrub_event(event: dict[str, Any], *, keep_agent: bool) -> dict[str, Any]:
     if isinstance(values, list):
         kept = [c for c in (scrub_breadcrumb(dict(v)) for v in values if isinstance(v, Mapping)) if c is not None]
         event["breadcrumbs"] = {"values": kept}
+    trace = (event.get("contexts") or {}).get("trace") if isinstance(event.get("contexts"), Mapping) else None
     for key in ("extra", "contexts", "tags"):
         if key in event:
             event[key] = _clean(event[key])
+    if isinstance(trace, Mapping) and isinstance(event.get("contexts"), dict):
+        # ids of the trace (random hex, nothing personal), which the filter would take for digests
+        ids = {k: trace[k] for k in ("trace_id", "span_id", "parent_span_id")
+               if isinstance(trace.get(k), str) and TRACE_ID.fullmatch(trace[k])}
+        if ids:
+            event["contexts"]["trace"] = {**(event["contexts"].get("trace") or {}), **ids}
     for key in ("cookies", "server_name_full", "spans", "_meta"):
         event.pop(key, None)
     return event
@@ -244,6 +259,53 @@ def scrub_breadcrumb(crumb: dict[str, Any], hint: Any = None) -> dict[str, Any] 
         return None
 
 
+class EventBudget:
+    """What the backend may send to Sentry (review of A2): the same error - its type or log event and its route -
+    at most once every ``gap_s`` seconds, and at most ``per_day`` events a day, per process. Three processes (two of
+    the API, the worker) and the web's own cap (fbi.api.routers.monitoring) stay well inside the free plan's month
+    (5,000 errors), so a broken route after a deploy cannot leave the rest of the month without reports."""
+
+    def __init__(self, *, gap_s: float = 3600.0, per_day: int = 25) -> None:
+        self._gap = gap_s
+        self._per_day = per_day
+        self._last: dict[str, float] = {}
+        self._day: list[float] = []
+        self._lock = threading.Lock()
+
+    def allow(self, key: str, now: float | None = None) -> bool:
+        t = time.monotonic() if now is None else now
+        with self._lock:
+            self._day = [s for s in self._day if t - s < 86400.0]
+            if len(self._day) >= self._per_day or t - self._last.get(key, -1e18) < self._gap:
+                return False
+            self._last[key] = t
+            self._day.append(t)
+            if len(self._last) > 1000:
+                self._last = {k: v for k, v in self._last.items() if t - v < self._gap}
+            return True
+
+
+BACKEND_EVENTS = EventBudget()
+
+
+def event_key(event: Mapping[str, Any]) -> str:
+    """What makes two events "the same error": the exception's type (or the message), and where it happened."""
+    values = (event.get("exception") or {}).get("values") if isinstance(event.get("exception"), Mapping) else None
+    kind = str(values[-1].get("type")) if isinstance(values, list) and values and isinstance(values[-1], Mapping) \
+        else "msg:" + str(event.get("message") or (event.get("logentry") or {}).get("message") or "")[:120]
+    tags = event.get("tags") if isinstance(event.get("tags"), Mapping) else {}
+    where = str(event.get("transaction") or (tags or {}).get("path") or (tags or {}).get("log_event") or "")
+    return f"{kind}@{where}"[:300]
+
+
+def send_or_drop(event: dict[str, Any], hint: Any = None) -> dict[str, Any] | None:
+    """``before_send`` of the backend: the filter, then the budget."""
+    cleaned = scrub_event(event, hint)
+    if cleaned is None or not BACKEND_EVENTS.allow(event_key(cleaned)):
+        return None
+    return cleaned
+
+
 # ── reporting ───────────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -269,9 +331,10 @@ def capture_exception(exc: BaseException, *, user: str | None = None, **tags: st
 
 class _ReportLimit:
     """At most one report of the same log event every ``gap_s`` seconds and ``per_hour`` reports an hour, per
-    process: a noisy error must not spend the plan's month (5,000 errors) in a day."""
+    process - a cheap first sieve before an event is even built; the budget of every backend event is
+    ``BACKEND_EVENTS`` (in ``before_send``)."""
 
-    def __init__(self, *, gap_s: float = 600.0, per_hour: int = 60) -> None:
+    def __init__(self, *, gap_s: float = 3600.0, per_hour: int = 25) -> None:
         self._gap = gap_s
         self._per_hour = per_hour
         self._last: dict[str, float] = {}

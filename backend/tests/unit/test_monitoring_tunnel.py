@@ -56,6 +56,7 @@ def tunnel(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[TestClient, list[t
     monkeypatch.setenv("FBI_SENTRY_WEB_DSN", WEB_DSN)
     monkeypatch.setattr(monitoring, "PER_CLIENT", SlidingWindow(per_window=1000, window_s=60.0))
     monkeypatch.setattr(monitoring, "PER_PROCESS", SlidingWindow(per_window=1000, window_s=3600.0))
+    monkeypatch.setattr(monitoring, "PER_DAY", SlidingWindow(per_window=1000, window_s=86400.0))
     sent: list[tuple[str, bytes]] = []
 
     def record(dsn: str, body: bytes) -> int:
@@ -146,8 +147,40 @@ def test_a_client_and_the_process_have_their_limits(tunnel: tuple[TestClient, li
              for _ in range(3)]
     assert codes == [200, 200, 429] and len(sent) == 2
     monkeypatch.setattr(monitoring, "PER_CLIENT", SlidingWindow(per_window=1000, window_s=60.0))
-    monkeypatch.setattr(monitoring, "PER_PROCESS", SlidingWindow(per_window=0, window_s=3600.0))
+    monkeypatch.setattr(monitoring, "PER_DAY", SlidingWindow(per_window=0, window_s=86400.0))
     assert client.post("/api/v1/monitoring/envelope", content=envelope(), headers=SAME_SITE).status_code == 429
+    assert len(sent) == 2, "past the day's share nothing is forwarded"
+
+
+def test_junk_does_not_spend_the_share_real_browsers_need(tunnel: tuple[TestClient, list[tuple[str, bytes]]],
+                                                          monkeypatch: pytest.MonkeyPatch) -> None:
+    """Review of A2: the hourly budget was charged before the envelope was read, so junk posts blocked real
+    reports. It is charged only for an envelope that is forwarded."""
+    client, sent = tunnel
+    monkeypatch.setattr(monitoring, "PER_PROCESS", SlidingWindow(per_window=1, window_s=3600.0))
+    for _ in range(5):
+        assert client.post("/api/v1/monitoring/envelope", content=b"junk", headers=SAME_SITE).status_code == 400
+        assert client.post("/api/v1/monitoring/envelope", content=envelope("https://k@x.invalid/9"),
+                           headers=SAME_SITE).status_code == 400
+    assert client.post("/api/v1/monitoring/envelope", content=envelope(), headers=SAME_SITE).status_code == 200
+    assert len(sent) == 1
+
+
+def test_input_python_cannot_read_is_refused_not_a_500(tunnel: tuple[TestClient, list[tuple[str, bytes]]]) -> None:
+    """Review of A2: a nesting too deep raised RecursionError and half an emoji (a lone surrogate) failed the
+    re-encoding - both became a 500 and an error of the backend."""
+    client, sent = tunnel
+    deep = b"[" * 100_000
+    assert client.post("/api/v1/monitoring/envelope", content=deep, headers=SAME_SITE).status_code == 400
+    head = json.dumps({"dsn": WEB_DSN}).encode()
+    r = client.post("/api/v1/monitoring/envelope", content=head + b"\n" + json.dumps({"type": "event"}).encode()
+                    + b"\n" + deep + b"\n", headers=SAME_SITE)
+    assert r.status_code == 200 and r.json()["events"] == 0
+    half = b'{"exception": {"values": [{"type": "Error", "value": "cut \\ud83d"}]}}'
+    body = head + b"\n" + json.dumps({"type": "event", "length": len(half)}).encode() + b"\n" + half + b"\n"
+    r = client.post("/api/v1/monitoring/envelope", content=body, headers=SAME_SITE)
+    assert r.status_code == 200 and r.json()["events"] == 1
+    assert b"\\ud83d" in sent[-1][1], "written as an escape, never a failure"
 
 
 def test_when_sentry_asks_to_wait_the_browser_is_told(tunnel: tuple[TestClient, list[tuple[str, bytes]]],

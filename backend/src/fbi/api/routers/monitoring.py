@@ -38,7 +38,11 @@ FORWARDED_TYPES = frozenset({"event"})
 """Only errors. Never "attachment", "replay_event", "replay_recording", "session", "feedback", "transaction"..."""
 HEADER_FIELDS = ("dsn", "event_id", "sent_at", "sdk")
 PER_CLIENT = SlidingWindow(per_window=int(os.environ.get("FBI_MONITORING_RATE_LIMIT", "20")), window_s=60.0)
-PER_PROCESS = SlidingWindow(per_window=int(os.environ.get("FBI_MONITORING_HOURLY_CAP", "120")), window_s=3600.0)
+PER_PROCESS = SlidingWindow(per_window=int(os.environ.get("FBI_MONITORING_HOURLY_CAP", "10")), window_s=3600.0)
+PER_DAY = SlidingWindow(per_window=int(os.environ.get("FBI_MONITORING_DAILY_CAP", "20")), window_s=86400.0)
+"""Forwarded envelopes per API process (two on the server): at most ~1,200 web errors a month, the web's share of the
+free plan's 5,000 (review of A2: the DSN is public, so anyone could spend the month from outside; the backend has
+its own budget, fbi.core.sentry.EventBudget). Charged only for an envelope that is forwarded, so junk cannot use it."""
 TIMEOUT_S = 3.0
 
 
@@ -59,7 +63,7 @@ def parse_envelope(body: bytes) -> tuple[dict[str, Any], list[tuple[str, bytes]]
     first, _, rest = body.partition(b"\n")
     try:
         header = json.loads(first)
-    except (ValueError, UnicodeDecodeError) as exc:
+    except (ValueError, RecursionError) as exc:
         raise EnvelopeError("the header is not JSON") from exc
     if not isinstance(header, dict):
         raise EnvelopeError("the header is not an object")
@@ -68,7 +72,7 @@ def parse_envelope(body: bytes) -> tuple[dict[str, Any], list[tuple[str, bytes]]
         line, _, rest = rest.partition(b"\n")
         try:
             item = json.loads(line)
-        except (ValueError, UnicodeDecodeError) as exc:
+        except (ValueError, RecursionError) as exc:
             raise EnvelopeError("an item header is not JSON") from exc
         if not isinstance(item, dict):
             raise EnvelopeError("an item header is not an object")
@@ -99,7 +103,8 @@ def envelope_url(dsn: str) -> str:
 def build_envelope(header: dict[str, Any], events: list[dict[str, Any]]) -> bytes:
     lines = [json.dumps({k: header[k] for k in HEADER_FIELDS if k in header}, separators=(",", ":")).encode()]
     for event in events:
-        payload = json.dumps(event, separators=(",", ":"), ensure_ascii=False).encode()
+        # ASCII: a lone surrogate (half an emoji cut by a browser) is written as an escape instead of failing
+        payload = json.dumps(event, separators=(",", ":")).encode()
         lines.append(json.dumps({"type": "event", "length": len(payload)}, separators=(",", ":")).encode())
         lines.append(payload)
     return b"\n".join(lines) + b"\n"
@@ -121,7 +126,7 @@ async def post_envelope(request: Request) -> EnvelopeForwarded:
     dsn = sentry.web_dsn()
     if dsn is None:
         raise ApiError(404, "not_found", "the web reports no errors on this server")
-    if not PER_CLIENT.allow(client_ip(request) or "unknown") or not PER_PROCESS.allow("all"):
+    if not PER_CLIENT.allow(client_ip(request) or "unknown"):
         raise ApiError(429, "rate_limited", "too many error reports", headers={"retry-after": "60"})
     body = await request.body()
     if len(body) > ENVELOPE_MAX_BYTES:
@@ -138,7 +143,7 @@ async def post_envelope(request: Request) -> EnvelopeForwarded:
             continue
         try:
             event = json.loads(payload)
-        except (ValueError, UnicodeDecodeError):
+        except (ValueError, RecursionError):
             continue
         if isinstance(event, dict):
             cleaned = sentry.scrub_event(event, keep_agent=True)
@@ -146,6 +151,8 @@ async def post_envelope(request: Request) -> EnvelopeForwarded:
                 events.append(cleaned)
     if not events:
         return EnvelopeForwarded(events=0)
+    if not PER_PROCESS.allow("all") or not PER_DAY.allow("all"):
+        raise ApiError(429, "rate_limited", "too many error reports", headers={"retry-after": "3600"})
     status = await run_in_threadpool(forward, dsn, build_envelope(header, events))
     log.info("monitoring.forwarded", events=len(events), upstream=status)
     if status == 429:

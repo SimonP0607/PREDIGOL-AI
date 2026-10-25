@@ -184,3 +184,50 @@ def test_the_report_limit_spares_the_month_of_the_free_plan() -> None:
 
 def test_sentry_is_off_again_after_a_capturing_test() -> None:
     assert not sentry_sdk.is_initialized() and not sentry.enabled()
+
+
+def test_the_trace_ids_stay_and_a_url_as_a_file_name_loses_its_query() -> None:
+    event = loaded_event()
+    event["contexts"]["trace"] = {"trace_id": "a" * 32, "span_id": "b" * 16, "op": f"lookup {EMAIL}"}
+    event["exception"]["values"][0]["stacktrace"]["frames"][0]["filename"] = f"https://predigolai.com/reset?token={TOKEN}"
+    out = sentry.scrub_event(event)
+    assert out is not None
+    assert out["contexts"]["trace"]["trace_id"] == "a" * 32 and out["contexts"]["trace"]["span_id"] == "b" * 16
+    assert EMAIL not in json.dumps(out["contexts"])
+    assert out["exception"]["values"][0]["stacktrace"]["frames"][0]["filename"] == "https://predigolai.com/reset"
+
+
+def test_the_backend_sends_the_same_error_once_an_hour_and_a_bounded_day() -> None:
+    """Review of A2: a broken route after a deploy reported once per request and could spend the free plan's month
+    (5,000 errors) in a day, leaving the rest of the month without reports."""
+    budget = sentry.EventBudget(gap_s=3600.0, per_day=3)
+    assert budget.allow("ValueError@/api/v1/home", now=0.0)
+    assert not budget.allow("ValueError@/api/v1/home", now=3599.0)
+    assert budget.allow("ValueError@/api/v1/home", now=3601.0)
+    assert budget.allow("KeyError@/api/v1/picks", now=3602.0)
+    assert not budget.allow("TypeError@/api/v1/odds", now=3603.0), "the day's three are spent"
+    assert budget.allow("TypeError@/api/v1/odds", now=90000.0)
+
+
+def test_before_send_filters_then_keeps_the_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    with capturing_sentry(monkeypatch) as transport:
+        for _ in range(3):
+            try:
+                raise ValueError(f"lookup failed for {EMAIL}")
+            except ValueError as exc:
+                sentry.capture_exception(exc, request_id="a1b2c3d4e5f6", path="/api/v1/home")
+        try:
+            raise KeyError("other")
+        except KeyError as exc:
+            sentry.capture_exception(exc, request_id="b1", path="/api/v1/home")
+        kinds = [e["exception"]["values"][-1]["type"] for e in transport.events()]
+        assert kinds == ["ValueError", "KeyError"], "the same error once; another error still goes"
+
+
+def test_no_trace_header_tells_third_parties_the_projects_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Review of A2: by default the SDK adds "baggage" with the public key and the release to every outgoing request
+    (API-Football, Anthropic, Telegram...)."""
+    monkeypatch.setenv("FBI_SENTRY_DSN", "https://public@o0.ingest.example.invalid/1")
+    opts = sentry.options("worker")
+    assert opts is not None and opts["trace_propagation_targets"] == []
+    assert opts["before_send"] is sentry.send_or_drop and opts["send_client_reports"] is False

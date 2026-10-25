@@ -5,8 +5,8 @@ through the public front door, as a browser would, and the worker writes the res
 (fbi.core.sentry.report_error_logs), and the console shows the last runs with the jobs.
 
 Black box on purpose: it speaks HTTP to the platform like a reader and imports nothing of what serves the pages, so it
-sees what a reader would - Caddy, the web, the API and the database together. It writes nothing but its ledger row
-(a sign-in leaves its session, closed at the end, and its audit rows, like any reader's).
+sees what a reader would - Caddy, the web, the API and the database together. Besides its ledger row it leaves what
+any reader's visit leaves: a session, closed at the end, and the sign-in's audit rows (about 190 rows a day).
 
 Off until the owner configures it (and creates the account, which only the owner does):
 
@@ -35,6 +35,9 @@ log = structlog.get_logger(__name__)
 
 JOB_TYPE = "synthetic_journey"
 EVERY_MINUTES = 15
+BUDGET_S = 90.0
+"""The whole walk: past it the remaining steps are skipped (and named), but a signed-in walk always signs out - the
+job's deadline cannot stop a thread, so the walk stops itself (review of A2)."""
 SAME_SITE = {"x-requested-with": "predigol"}
 AGENT = "predigol-synthetic/1 (+plan UX A2)"
 
@@ -80,17 +83,23 @@ def config_from_env(env: dict[str, str] | None = None) -> JourneyConfig | None:
     return JourneyConfig(base_url=base, email=email, password=password)
 
 
-def walk(cfg: JourneyConfig, *, client: httpx.Client | None = None, today: date | None = None) -> list[Step]:
-    """Walk the journey once and say how each step went. Stops at a failed sign-in; always signs out after
-    signing in. Never raises: a step that cannot be made is a failed step."""
+def walk(cfg: JourneyConfig, *, client: httpx.Client | None = None, today: date | None = None,
+         budget_s: float = BUDGET_S, clock: Callable[[], float] = time.monotonic) -> list[Step]:
+    """Walk the journey once and say how each step went. Stops at a failed sign-in; signs out whenever the server
+    accepted the password, even when a step of signing in was still owed (review of A2: that session stayed open).
+    Never raises: a step that cannot be made is a failed step."""
     day = today or datetime.now(UTC).date()
     steps: list[Step] = []
+    deadline = clock() + budget_s
     own = client is None
     http = client or httpx.Client(base_url=cfg.base_url, timeout=cfg.timeout_s, follow_redirects=False,
                                   headers={"user-agent": AGENT})
 
     def call(name: str, method: str, path: str, *, check: Callable[[httpx.Response], str] | None = None,
-             **kwargs: Any) -> httpx.Response | None:
+             always: bool = False, **kwargs: Any) -> httpx.Response | None:
+        if not always and clock() > deadline:
+            steps.append(Step(name, False, None, 0, "skipped: past the walk's time budget"))
+            return None
         started = time.monotonic()
         try:
             reply = http.request(method, path, **kwargs)
@@ -105,15 +114,21 @@ def walk(cfg: JourneyConfig, *, client: httpx.Client | None = None, today: date 
             except Exception as exc:  # an answer the check cannot read is a failed step
                 problem = f"unreadable answer ({type(exc).__name__})"
         steps.append(Step(name, not problem, reply.status_code, ms, problem if problem != "unexpected status" else ""))
+        last[0] = reply
         return reply if not problem else None
 
+    last: list[httpx.Response | None] = [None]
     try:
         call("page", "GET", "/login", headers={"accept": "text/html"},
              check=lambda r: "" if "<html" in r.text[:4000].lower() else "not the sign-in page")
+        last[0] = None
         signed = call("sign_in", "POST", "/api/v1/auth/login", headers=SAME_SITE,
                       json={"email": cfg.email, "password": cfg.password},
                       check=lambda r: "" if r.json().get("stage") == "full" else "a sign-in step is still owed")
+        accepted = last[0] is not None and 200 <= last[0].status_code < 300
         if signed is None:
+            if accepted:  # a session was opened (a step still owed): it is closed all the same
+                call("sign_out", "POST", "/api/v1/auth/logout", headers=SAME_SITE, always=True)
             return steps
         try:
             call("home", "GET", "/api/v1/home")
@@ -127,7 +142,7 @@ def walk(cfg: JourneyConfig, *, client: httpx.Client | None = None, today: date 
             call("picks", "GET", "/api/v1/picks")
             call("my_picks", "GET", "/api/v1/me/picks", params={"limit": 5})
         finally:
-            call("sign_out", "POST", "/api/v1/auth/logout", headers=SAME_SITE)
+            call("sign_out", "POST", "/api/v1/auth/logout", headers=SAME_SITE, always=True)
     finally:
         if own:
             http.close()

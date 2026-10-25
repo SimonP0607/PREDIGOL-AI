@@ -66,6 +66,26 @@ def test_a_failed_step_is_named_with_its_status_and_the_walk_still_signs_out() -
     assert steps[-1].name == "sign_out" and steps[-1].ok
 
 
+def test_a_session_opened_with_a_step_still_owed_is_closed_all_the_same() -> None:
+    """Review of A2: a sign-in answered 200 with a step still owed (a second factor, a new password) left its
+    session open on every run."""
+    seen: list[httpx.Request] = []
+    steps = synthetic.walk(CFG, client=platform(stage="mfa", seen=seen), today=TODAY)
+    assert [s.name for s in steps] == ["page", "sign_in", "sign_out"]
+    assert seen[-1].url.path == "/api/v1/auth/logout"
+
+
+def test_past_its_time_budget_the_walk_skips_the_rest_but_signs_out() -> None:
+    ticks = iter([0.0, 1.0, 2.0, 3.0, 200.0, 201.0, 202.0, 203.0, 204.0, 205.0])
+    steps = synthetic.walk(CFG, client=platform(matches=[{"id": 9}]), today=TODAY, budget_s=90.0,
+                           clock=lambda: next(ticks))
+    names = [(s.name, s.ok) for s in steps]
+    assert names[:3] == [("page", True), ("sign_in", True), ("home", True)]
+    skipped = [s for s in steps if s.note.startswith("skipped")]
+    assert skipped and all(not s.ok for s in skipped)
+    assert steps[-1].name == "sign_out" and steps[-1].ok
+
+
 @pytest.mark.parametrize(("stage", "fail", "first_problem"), [
     ("mfa", None, "sign_in: HTTP 200 (a sign-in step is still owed)"),
     ("full", "/login", "page: HTTP 500"),
@@ -75,7 +95,7 @@ def test_a_sign_in_that_does_not_finish_stops_the_walk(stage: str, fail: str | N
     problems = [s.problem() for s in steps if not s.ok]
     assert problems[0] == first_problem
     if stage == "mfa":
-        assert [s.name for s in steps] == ["page", "sign_in"], "nothing is visited without a finished sign-in"
+        assert [s.name for s in steps] == ["page", "sign_in", "sign_out"], "nothing is visited, the session closed"
 
 
 def test_an_unreachable_platform_is_a_failed_step_never_an_exception() -> None:

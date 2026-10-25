@@ -35,6 +35,7 @@ class Capture(Transport):
 @contextmanager
 def capturing_sentry(monkeypatch: pytest.MonkeyPatch, component: str = "api") -> Iterator[Capture]:
     monkeypatch.setenv("FBI_SENTRY_DSN", DSN)
+    monkeypatch.setattr(sentry, "BACKEND_EVENTS", sentry.EventBudget())  # each test starts with the whole budget
     opts = sentry.options(component)
     assert opts is not None
     sentry_sdk.init(**{**opts, "transport": Capture, "default_integrations": False})
