@@ -454,6 +454,17 @@ def prompt_parts(c: Candidate, packet: Packet, signals: list[Signal], *, at: dat
     return json.dumps(common, ensure_ascii=False, default=str), json.dumps(tail, ensure_ascii=False, default=str)
 
 
+def review_request(c: Candidate, packet: Packet, signals: list[Signal], *, at: datetime,
+                   view: dict[str, Any] | None = None) -> JsonRequest:
+    """The request a candidate's review is asked with: the usual prompt - and the offer of the layout of the prompt cache, which
+    ``fbi.ai.usage.with_switches`` takes only when its gate has passed. One function, so that what an experiment measures is what
+    production asks."""
+    view = review_view(packet.content) if view is None else view
+    return JsonRequest(system=REVIEW_SYSTEM, user=prompt_content(c, packet, signals, at=at, view=view), schema=REVIEW_SCHEMA,
+                       schema_name="submit_review", max_tokens=8000, timeout_s=120.0,
+                       split=prompt_parts(c, packet, signals, at=at, view=view))
+
+
 def input_hash(*parts: Any) -> str:
     return hashlib.sha256(canonical(list(parts)).encode()).hexdigest()
 
@@ -534,7 +545,6 @@ def llm_review(conn: psycopg.Connection[Any], settings: AiSettings, c: Candidate
     ``deferral`` the queue accepts, in a Message Batch (the result then has status ``pending`` and nothing is stored yet)."""
     evidence_status = evidence_status_of(packet)
     view = review_view(packet.content)
-    content = prompt_content(c, packet, signals, at=at, view=view)
     h = input_hash(REVIEW_VERSION, review_hash(packet, view), c.as_json(), sorted(evidence_status.items()), tier)
     existing = _stored(conn, c, "llm", REVIEW_VERSION, h)
     if existing is not None:
@@ -542,8 +552,7 @@ def llm_review(conn: psycopg.Connection[Any], settings: AiSettings, c: Candidate
         return EngineResult("llm", REVIEW_VERSION, existing["decision"], reused, existing["status"],
                             existing["error"], existing["provider"], existing["model"], list(existing["usage_ids"]),
                             Decimal(0), h)
-    request = JsonRequest(system=REVIEW_SYSTEM, user=content, schema=REVIEW_SCHEMA, schema_name="submit_review",
-                          max_tokens=8000, timeout_s=120.0, split=prompt_parts(c, packet, signals, at=at, view=view))
+    request = review_request(c, packet, signals, at=at, view=view)
     if deferral is not None:
         admission = deferral.queue.add(Task(
             purpose="pick_review", tier=tier, request=request, prompt_version=REVIEW_VERSION, input_hash=h,

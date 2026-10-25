@@ -428,7 +428,9 @@ def with_switches(conn: psycopg.Connection[Any], settings: AiSettings, request: 
     """The request with the optimisations of Phase 0 that are in force for this model (``fbi.ai.gates``): the prompt cache
     (it only marks blocks - the same tokens are read), structured outputs and, once the ``cache_layout`` gate has passed for the model,
     the layout with the match's common block first (``JsonRequest.split``: the same facts in another order). What a caller already
-    asked for stays."""
+    asked for stays. A ``pinned`` request (an experiment's) is left exactly as it is."""
+    if request.pinned:
+        return request
     cache = request.cache or gates.enabled(conn, settings, "cache", model=model)
     native = request.native_schema or gates.enabled(conn, settings, "native_schema", model=model)
     split = request.split if request.split is not None and not request.shared \

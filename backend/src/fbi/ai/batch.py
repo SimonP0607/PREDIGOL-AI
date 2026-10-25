@@ -80,7 +80,7 @@ FAILED = ("errored", "canceled", "expired")
 
 Handler = Callable[[psycopg.Connection[Any], "Resolved"], None]
 _HANDLERS: dict[str, Handler] = {}
-_MODULES = ("fbi.ai.review",)
+_MODULES = ("fbi.ai.review", "fbi.ai.lab")
 """The modules that register the handlers: imported on first use, so the worker's poll never depends on who imported what."""
 
 ITEMS_SQL = """
@@ -150,6 +150,9 @@ class Task:
     lab: bool = False
     agent: str | None = None
     run_id: int | None = None
+    typical_output: int | None = None
+    """The tokens the answer is expected to write, for the reservation of its cost. None = what the purpose has written lately in real time
+    (an experiment of the LAB, whose purpose is ``other``, says its own: the history of ``other`` is not its answer's size)."""
 
 
 Status = Literal["queued", "in_flight", "done", "refused"]
@@ -303,7 +306,8 @@ class BatchQueue:
         if failed is not None and int(failed[0]) >= MAX_FAILED_ATTEMPTS:
             return self._refuse(task, cid, "attempts")
         request = with_switches(self.conn, self.settings, with_effort(task.request, task.tier), tm.model)
-        estimate = estimate_cost(tm.model, request, typical_output=self._typical_output(task.purpose, tm.model), at=self.at)
+        typical = task.typical_output if task.typical_output is not None else self._typical_output(task.purpose, tm.model)
+        estimate = estimate_cost(tm.model, request, typical_output=typical, at=self.at)
         why = self._unaffordable(task, estimate)
         if why is not None:
             return self._refuse(task, cid, why, estimate)

@@ -101,6 +101,9 @@ class JsonRequest:
     is the same for every call about the match first and what moves with the clock (time, prices, new evidence) and the candidate last.
     The request is sent as ``user`` says until ``fbi.ai.usage.with_switches`` finds the ``cache_layout`` gate passed for the model; then
     ``shared`` and ``user`` are taken from here. A provider never reads this field."""
+    pinned: bool = False
+    """The request is exactly what an experiment asked for: ``fbi.ai.usage.with_switches`` leaves it alone, so a switch of production
+    can neither add nor take away what is being measured (the cache, the schema route and the layout are set by whoever builds it)."""
 
     @property
     def user_text(self) -> str:
