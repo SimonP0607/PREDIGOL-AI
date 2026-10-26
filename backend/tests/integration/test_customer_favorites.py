@@ -109,7 +109,8 @@ class Football:
                     ("ancient", "uno", "viejo", "millonarios", at - timedelta(days=500), "finished"),
                     ("far", "lejana", "lejano", "lejano2", at + timedelta(days=2), "scheduled"),
                     ("betplay_later", "betplay", "junior", "medellin", at + timedelta(days=20), "scheduled"),
-                    ("betplay_past", "betplay", "pereira", "junior", at - timedelta(days=30), "finished")):
+                    ("betplay_past", "betplay", "pereira", "junior", at - timedelta(days=30), "finished"),
+                    ("result_dos", "dos", "junior", "medellin", at - timedelta(hours=20), "finished")):
                 n += 1
                 self.fixtures[name] = int(scalar(conn.execute(
                     "INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, away_team_id, "
@@ -316,6 +317,7 @@ def test_home_says_why_each_match_is_the_readers_and_lists_the_next_match_of_eac
     assert matches[fx["today_dos"]]["followed"] == {"kind": "team", "names": ["Santa Fe"]}, (
         "Copa Dos is not followed: Santa Fe is")
     assert fx["far"] not in matches, "a league PrediGol does not follow is not on the board"
+    assert fx["result_dos"] not in matches, "a finished match that is not the reader's is left out of their answer"
     following = data["following"]
     assert (following["suggested"], following["personalization"]) == (False, True)
     assert names(following["leagues"]) == ["Liga Uno", "Liga BetPlay"]
@@ -329,6 +331,11 @@ def test_home_says_why_each_match_is_the_readers_and_lists_the_next_match_of_eac
     assert other["following"]["suggested"] is True and "Liga BetPlay" in names(other["following"]["leagues"])
     others = {m["fixture_id"]: m for m in other["matches"]["data"]}
     assert others[fx["today_uno"]]["followed"] is None and others[fx["today_dos"]]["followed"] is None
+    junior = client(OTHER)
+    junior.put("/api/v1/me/favorites", json={"leagues": [], "teams": [f["junior"]]})
+    mine = {m["fixture_id"]: m for m in junior.get("/api/v1/today").json()["data"]["matches"]["data"]}
+    assert mine[fx["result_dos"]]["followed"] == {"kind": "team", "names": ["Junior"]}, "the result of a followed team"
+    junior.put("/api/v1/me/favorites", json={"leagues": [], "teams": []})
 
     monkeypatch.setenv(favorites.PERSONALIZATION_SWITCH, "0")
     common = reader.get("/api/v1/today").json()["data"]

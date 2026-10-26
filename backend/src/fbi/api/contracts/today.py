@@ -99,7 +99,8 @@ class Today(Contract):
                                                           "suggested.")
     suggested_team: str | None = Field(description="The national team suggested with them (Colombia).")
     matches: Section[list[TodayMatch]] = Field(description="From 48 hours ago (results) to 36 hours ahead, kick-off order: "
-                                                           "the reader's own day is cut in the reader's time zone.")
+                                                           "the reader's own day is cut in the reader's time zone. On "
+                                                           "GET /today the finished ones are the reader's own only.")
     no_pick: Section[NoPick]
     following: Following | None = Field(default=None, description=(
         "The reader's own leagues and teams (A13): always present on ``GET /today`` - the board is common, this is the "

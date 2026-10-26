@@ -109,6 +109,26 @@ def test_the_matches_around_today_with_the_forecast_labelled_a_line_of_the_readi
     assert up["forecast"] is None and up["headline"] is None and up["has_reading"] is False and up["context"] == []
 
 
+def test_a_weekend_of_matches_never_cuts_today_off(db: psycopg.Connection[Any], seed: Seed,
+                                                  monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan UX, A13's baseline (26 Oct 2026, 10:15 UTC): 607 matches of the followed competitions in the window on a Monday.
+    The board, read in kick-off order, was once cut at 300 - the oldest results stayed and today's matches went."""
+    db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+    now = datetime.now(UTC)
+    db.execute("INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, away_team_id, "
+               "kickoff_at, status_group, status_short) SELECT 9950000 + g, %s, %s, %s, %s - make_interval(mins => g), "
+               "'finished', 'FT' FROM generate_series(1, 400) g",
+               (seed.season_id, seed.home_team_id, seed.away_team_id, now - timedelta(hours=20)))
+    upcoming = int(scalar(db.execute(
+        "INSERT INTO core.fixtures (provider_fixture_id, competition_season_id, home_team_id, away_team_id, kickoff_at) "
+        "VALUES (9950999, %s, %s, %s, %s) RETURNING id",
+        (seed.season_id, seed.home_team_id, seed.away_team_id, now + timedelta(hours=3)))))
+    data = client(db, monkeypatch).get("/api/v1/today").json()["data"]
+    ids = [m["fixture_id"] for m in data["matches"]["data"]]
+    assert upcoming in ids, "today's match is on the board, after the 400 results of yesterday"
+    assert len(ids) >= 401
+
+
 def test_a_day_without_published_picks_says_why_from_the_published_sets_funnel(
         db: psycopg.Connection[Any], world: World, seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
     db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))

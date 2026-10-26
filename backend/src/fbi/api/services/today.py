@@ -56,7 +56,10 @@ WINDOW_BEFORE: Final = timedelta(hours=48)
 """Results: the last 48 hours (plan section 24, block 6)."""
 WINDOW_AFTER: Final = timedelta(hours=36)
 """Enough for the reader's own today in any time zone."""
-MAX_MATCHES: Final = 300
+MAX_MATCHES: Final = 2000
+"""A cap against a runaway, never the day: a weekend of the 133 followed competitions puts 600 matches and more in the window
+(607 on Monday 26 Oct 2026 at 10:15 UTC), and the window is read in kick-off order - a cap of 300 kept the oldest results and
+cut today's matches off. A reader's answer carries the finished ones of their own only (``for_reader``)."""
 Outcome = Literal["home", "draw", "away"]
 OUTCOME: Final[dict[str, Outcome]] = {"Home": "home", "Draw": "draw", "Away": "away"}
 STAGE_ORDER: Final = ("selection", "context", "risk", "value", "calibration", "model", "market", "data")
@@ -337,14 +340,17 @@ def following(conn: Conn, follows: Follows, *, at: datetime | None = None) -> Fo
 
 def for_reader(conn: Conn, board: Envelope[Today], follows: Follows, *, at: datetime | None = None) -> Envelope[Today]:
     """The common board with the reader's own on top: each of their matches says why it is theirs and keeps its context;
-    the rest lose the context (the answer stays light). A copy: the board kept for every reader is never touched, and no
-    forecast, line, state or the day's picks state changes."""
+    the rest lose the context, and a finished match that is not theirs is left out (Home shows the results of the reader's
+    own only: the answer stays light on a weekend's 600 matches). A copy: the board kept for every reader is never touched,
+    and no forecast, line, state or the day's picks state changes."""
     body = board.data
     if body is None:
         return board
     matches: list[TodayMatch] = []
     for m in body.matches.data or []:
         reason = why(m, follows)
+        if reason is None and m.status_group == "finished":
+            continue
         matches.append(m.model_copy(update={"followed": reason, "context": m.context if reason is not None else []}))
     mine = body.model_copy(update={"matches": body.matches.model_copy(update={"data": matches}),
                                    "following": following(conn, follows, at=at)})
