@@ -104,6 +104,15 @@ export default defineConfig({
       dependencies: ["setup"],
     },
     {
+      // The welcome, the favourites, the hints and the tour (plan UX, A13), on accounts the test makes: timed from the
+      // invitation's link with self-service on (E2E_MAIL_SINK), from the sign-in otherwise; E2E_DATABASE_URL for the
+      // account from before A13.
+      name: "onboarding",
+      testMatch: /onboarding\.spec\.ts/,
+      use: desktop,
+      dependencies: ["setup"],
+    },
+    {
       // The membership (plan UX, A8): from the trial to the renewal, and the limit (QA_MEMBERSHIP_ENFORCE=1 and
       // E2E_DATABASE_URL, which writes a trial that has ended).
       name: "membership",

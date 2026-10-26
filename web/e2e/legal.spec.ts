@@ -15,7 +15,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, request, test, type APIRequestContext, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
-import { L, assertClean, getJson, sendJson, settle, watch } from "./support";
+import { L, assertClean, getJson, sendJson, settle, skipWelcome, watch } from "./support";
 
 const BASE = process.env["E2E_BASE_URL"] ?? "http://127.0.0.1:5173";
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
@@ -161,6 +161,8 @@ test("the consent gate: four separate boxes before the product, a withdrawal bri
     // 403 consent_required is the product's answer while the boxes are owed; a wrong password is refused on purpose
     const w = watch(page, { expect401: true, expectStatus: [403] });
     await signIn(page, email);
+    // the account's welcome (A13) is another test's: recorded as done, the gate leads to the product
+    await skipWelcome(page.request);
 
     // 1. the gate: four boxes, none ticked, the product closed until all four are
     const gate = page.getByTestId("consent-gate");

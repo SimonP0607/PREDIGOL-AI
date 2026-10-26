@@ -15,7 +15,7 @@
 import { execFileSync } from "node:child_process";
 import { expect, request, test, type APIRequestContext, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
-import { L, assertClean, getJson, sendJson, settle, watch } from "./support";
+import { L, assertClean, getJson, sendJson, settle, skipWelcome, watch } from "./support";
 
 const BASE = process.env["E2E_BASE_URL"] ?? "http://127.0.0.1:5173";
 const DB = (process.env["E2E_DATABASE_URL"] ?? "").replace(
@@ -70,6 +70,8 @@ async function signIn(page: Page, email: string): Promise<void> {
   await page.locator('input[name="password"]').fill(PASSWORD);
   await page.getByTestId("login-submit").click();
   await expect(page).not.toHaveURL(/\/login/);
+  // the account's welcome (A13) is another test's: recorded as done, the pages open as the test asks
+  await skipWelcome(page.request);
 }
 
 /** The QA API runs the consent gate over the draft texts: the new reader ticks its four boxes first. */

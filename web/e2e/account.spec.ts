@@ -222,12 +222,16 @@ test.describe("self-service on, with the QA messenger", () => {
       await assertClean(page, w);
       await page.getByTestId("activate-submit").click();
 
-      // 4. the consents right after (the gate's own boxes), then the product
+      // 4. the consents right after (the gate's own boxes), then the welcome (A13, skipped here: e2e/onboarding.spec.ts
+      // goes through it), then the product
       const gate = page.getByTestId("consent-gate");
       await expect(gate).toBeVisible();
       for (const kind of ["terms", "privacy", "age_18", "risk_notice"])
         await gate.getByTestId(`consent-${kind}`).check();
       await gate.getByTestId("consent-submit").click();
+      await expect(page).toHaveURL(/\/welcome$/);
+      await page.getByTestId("welcome-skip").click();
+      await page.getByTestId("welcome-about-skip").click();
       await expect(page).toHaveURL(/\/home$/);
       await settle(page);
       await assertClean(page, w);

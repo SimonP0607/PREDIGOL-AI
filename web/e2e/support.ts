@@ -37,6 +37,7 @@ const NAMESPACES = [
   "glossary",
   "legal",
   "transparency",
+  "onboarding",
 ] as const;
 interface Catalogs {
   admin: typeof import("../src/locales/es/admin.json");
@@ -60,6 +61,7 @@ interface Catalogs {
   glossary: typeof import("../src/locales/es/glossary.json");
   legal: typeof import("../src/locales/es/legal.json");
   transparency: typeof import("../src/locales/es/transparency.json");
+  onboarding: typeof import("../src/locales/es/onboarding.json");
 }
 
 function catalogs(lang: "es" | "en"): Catalogs {
@@ -82,7 +84,7 @@ const LEAKS: ReadonlyArray<readonly [string, RegExp]> = [
   ["Infinity", /\bInfinity\b/],
   [
     "an untranslated key",
-    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors|system|ops|research|analytics|catalog|center|truth|records|ai|glossary|legal|transparency)\.[a-z][\w.]+[a-z]\b/,
+    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors|system|ops|research|analytics|catalog|center|truth|records|ai|glossary|legal|transparency|onboarding)\.[a-z][\w.]+[a-z]\b/,
   ],
 ];
 
@@ -173,6 +175,19 @@ export async function sendJson<T>(
     ...(data === undefined ? {} : { data }),
   });
   return { status: res.status(), body: (await res.json().catch(() => null)) as T };
+}
+
+/**
+ * A new account's welcome (plan UX, A13), recorded as done through the API - for the tests that are not about it: the
+ * gate then sends the account where the test goes, once the page loads again.
+ */
+export async function skipWelcome(request: APIRequestContext): Promise<void> {
+  const r = await request.fetch("/api/v1/me/onboarding", {
+    method: "POST",
+    headers: { "x-requested-with": "predigol", "content-type": "application/json" },
+    data: {},
+  });
+  expect(r.status(), "the welcome recorded as done").toBe(200);
 }
 
 export async function getJson<T>(
