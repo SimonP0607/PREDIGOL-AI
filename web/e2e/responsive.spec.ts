@@ -365,6 +365,60 @@ test("a match's Noticias at every phone width: cards stacked, the status in word
   await assertClean(page, w);
 });
 
+test("a match's narrative (A11) at every phone width: the conclusion first, the sections folding under 44 px rows", async ({
+  page,
+}) => {
+  // Plan UX, A11: «MÓVIL: apartados plegables con la conclusión arriba».
+  test.setTimeout(180_000);
+  const w = watch(page);
+  const after = new Date().toISOString();
+  const upcoming = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    `/api/v1/matches?status=scheduled&order=asc&limit=20&kickoff_after=${encodeURIComponent(after)}`,
+  );
+  let id: number | null = null;
+  for (const m of upcoming.body.data) {
+    const r = await getJson<{ data: { narrative?: unknown } | null }>(
+      page.request,
+      `/api/v1/matches/${m.id}/reading`,
+    );
+    if (r.body.data?.narrative) {
+      id = m.id;
+      break;
+    }
+  }
+  if (id === null) {
+    note(test.info(), "no narrative on this database");
+    return;
+  }
+  for (const width of PHONES) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`/matches/${id}?s=analisis`);
+    await settle(page);
+    const block = page.getByTestId("reading-narrative");
+    await expect(block).toBeVisible();
+    const first = await block
+      .locator('[data-testid^="narrative-section-"]')
+      .first()
+      .getAttribute("data-testid");
+    expect(first, `${width} px: the conclusion first`).toBe("narrative-section-conclusion");
+    expect(
+      await block.locator("details[open]").count(),
+      `${width} px: only the summary open on a phone`,
+    ).toBeLessThanOrEqual(1);
+    const closed = block.locator("details:not([open]) > summary");
+    while ((await closed.count()) > 0) await closed.first().click();
+    const sideways = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(sideways, `the narrative at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
+    expect(await smallTargets(page, '[data-testid="reading-narrative"]'), `${width} px`).toEqual(
+      [],
+    );
+  }
+  await assertClean(page, w);
+});
+
 test("the parlay slip under a thumb: a 44 px close, nothing on its title, its fields at 16 px", async ({
   page,
 }) => {

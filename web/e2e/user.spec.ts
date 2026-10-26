@@ -85,6 +85,7 @@ interface TodayBody {
   matches: {
     data: Array<{
       fixture_id: number;
+      kickoff_at: string;
       suggested: boolean;
       has_reading: boolean;
       status_group: string;
@@ -103,8 +104,11 @@ interface NewsItemBody {
   id: string;
   status: string;
   kind: string;
+  headline_es?: string | null;
+  headline_en?: string | null;
   claims: Array<{
     text: string | null;
+    text_en?: string | null;
     assertion: string;
     sources: Array<{ name: string; url: string | null }>;
   }>;
@@ -673,21 +677,48 @@ test("A match's PrediGol analysis: only what a user may see, never value without
   );
 });
 
+interface NarrativeBody {
+  version: string;
+  data_at: string;
+  es: Array<{ key: string; sentences: Array<{ text: string; refs: string[] }> }>;
+  en: Array<{ key: string; sentences: Array<{ text: string; refs: string[] }> }>;
+}
+
 interface ReadingBody {
   status: string;
   data: {
     complete: boolean;
     sections: Array<{ key: string; facts: Array<{ code: string; ref: string }> }>;
+    narrative?: NarrativeBody | null;
   } | null;
 }
 
-/** A match whose reading has its context (a packet), else any match to come: the reading of either is checked. */
-async function matchToRead(page: Page): Promise<{ id: number; withPacket: boolean } | null> {
+/**
+ * Today's matches with a reading's context (a packet) that are still to kick off - a QA match whose kick-off passed while its
+ * status says scheduled shows «pending result» instead of the pre-match blocks.
+ */
+async function packedMatches(page: Page): Promise<number[]> {
   const today = await getJson<{ data: TodayBody }>(page.request, "/api/v1/today");
-  const packed = today.body.data.matches.data.find(
-    (m) => m.has_reading && m.status_group === "scheduled",
-  );
-  if (packed) return { id: packed.fixture_id, withPacket: true };
+  const now = Date.now();
+  return today.body.data.matches.data
+    .filter(
+      (m) => m.has_reading && m.status_group === "scheduled" && Date.parse(m.kickoff_at) > now,
+    )
+    .map((m) => m.fixture_id);
+}
+
+async function readingOf(page: Page, id: number): Promise<ReadingBody> {
+  return (await getJson<ReadingBody>(page.request, `/api/v1/matches/${id}/reading`)).body;
+}
+
+/**
+ * A match whose reading has its context (a packet) and no narrative - the facts are what A9 shows -, else any match to come:
+ * the reading of either is checked.
+ */
+async function matchToRead(page: Page): Promise<{ id: number; withPacket: boolean } | null> {
+  for (const id of await packedMatches(page)) {
+    if (!(await readingOf(page, id)).data?.narrative) return { id, withPacket: true };
+  }
   const after = new Date().toISOString();
   const { body } = await getJson<{ data: Array<{ id: number }> }>(
     page.request,
@@ -774,6 +805,91 @@ test("A match's Análisis PrediGol: six sections of facts with their references,
   await expect(highlights).toBeVisible();
   await highlights.getByTestId("reading-see-all").click();
   await expect(tab).toHaveAttribute("aria-selected", "true");
+  await assertClean(page, w);
+});
+
+/** A match to come whose reading carries a narrative (A11), and another whose reading has none (refused, or never written). */
+async function narrativeTargets(
+  page: Page,
+): Promise<{ withNarrative: number | null; withFacts: number | null }> {
+  let withNarrative: number | null = null;
+  let withFacts: number | null = null;
+  const after = new Date().toISOString();
+  const { body } = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    `/api/v1/matches?status=scheduled&order=asc&limit=20&kickoff_after=${encodeURIComponent(after)}`,
+  );
+  const ids = [...new Set([...(await packedMatches(page)), ...body.data.map((m) => m.id)])];
+  for (const id of ids) {
+    const reading = await readingOf(page, id);
+    if (reading.status !== "ok" || !reading.data?.complete) continue;
+    if (reading.data.narrative) withNarrative ??= id;
+    else withFacts ??= id;
+    if (withNarrative !== null && withFacts !== null) break;
+  }
+  return { withNarrative, withFacts };
+}
+
+test("A match's analysis written with AI (A11): labelled as checked against PrediGol's data, the conclusion first, in the reader's language; without one, the facts", async ({
+  page,
+}) => {
+  // Plan UX, A11 (section 26): the narrative only when the server validated it for THIS reading; the facts otherwise.
+  const w = watch(page);
+  const t = L[lang()];
+  const { withNarrative, withFacts } = await narrativeTargets(page);
+  if (withNarrative === null) {
+    note(
+      test.info(),
+      "no narrative on this database (the owner keeps it off, or none was written)",
+    );
+    return;
+  }
+  const reading = (await readingOf(page, withNarrative)).data!;
+  const narrative = reading.narrative!;
+  expect(narrative.version).toBe("user-narrative-v1");
+  const sections = narrative[lang()];
+  expect(sections.map((x) => x.key)).toEqual(narrative.es.map((x) => x.key));
+  await open(page, w, `/matches/${withNarrative}?s=analisis`);
+  const block = page.getByTestId("match-reading");
+  await expect(block.getByTestId("reading-narrative")).toBeVisible();
+  await expect(block.getByTestId("reading-label")).toHaveText(t.match.readingBlock.narrative.label);
+  await expect(block.getByTestId("reading-data-at")).toBeVisible();
+  await expect(block.getByTestId("reading-fact")).toHaveCount(0);
+  // the conclusion first, never folded; then the other sections in the reading's order
+  const order = await block
+    .locator('[data-testid^="narrative-section-"]')
+    .evaluateAll((els) =>
+      els.map((e) => e.getAttribute("data-testid")?.replace("narrative-section-", "")),
+    );
+  expect(order[0]).toBe("conclusion");
+  expect(order.slice(1)).toEqual(sections.map((x) => x.key).filter((k) => k !== "conclusion"));
+  const conclusion = sections.find((x) => x.key === "conclusion")!;
+  await expect(block.getByTestId("narrative-section-conclusion")).toContainText(
+    conclusion.sentences[0]!.text,
+  );
+  await expect(block.getByTestId("reading-caveat")).toHaveText(t.match.readingBlock.caveat);
+  // every folded section opens with a tap and says its sentences, each with what it rests on
+  const closed = block.locator("details:not([open]) > summary");
+  while ((await closed.count()) > 0) await closed.first().click();
+  const shown = block.getByTestId("narrative-sentence");
+  await expect(shown).toHaveCount(sections.reduce((n, x) => n + x.sentences.length, 0));
+  for (const refs of await shown.evaluateAll((els) =>
+    els.map((e) => e.getAttribute("data-refs")),
+  )) {
+    expect(refs ?? "", "every sentence carries its references").toMatch(/^(P|E):\S+( (P|E):\S+)*$/);
+  }
+  const words = await block.innerText();
+  expect(words, "never a raw code").not.toMatch(/\b[a-z]+_[a-z_]+\b/);
+  expect(words, "no certainty, no «valor»").not.toMatch(VETOED[lang()]);
+  const other = lang() === "es" ? narrative.en : narrative.es;
+  expect(words, "only the reader's language").not.toContain(other[0]!.sentences[0]!.text);
+  // a match whose reading has no narrative shows its facts, as A9 does
+  if (withFacts !== null) {
+    await open(page, w, `/matches/${withFacts}?s=analisis`);
+    await expect(block.getByTestId("reading-fact").first()).toBeVisible();
+    await expect(block.getByTestId("reading-narrative")).toHaveCount(0);
+    await expect(block.getByTestId("reading-label")).toHaveText(t.match.readingBlock.label);
+  }
   await assertClean(page, w);
 });
 
@@ -910,8 +1026,25 @@ test("A match's Noticias: cards with their seven elements in the order of sectio
     await expect(block.getByTestId("news-rumor-note")).toBeVisible();
   }
   expect(await block.innerText(), "no certainty, no «valor»").not.toMatch(VETOED[lang()]);
-  if (lang() === "en" && items.some((i) => i.claims.some((c) => c.text)))
+  // in English: a summary PrediGol translated (A11) is shown in English; one it did not, in Spanish and labelled
+  if (lang() === "en" && items.some((i) => i.claims.some((c) => c.text && !c.text_en)))
     await expect(block.getByTestId("news-in-spanish").first()).toBeVisible();
+  const translated = items.flatMap((i) => i.claims).find((c) => c.text_en);
+  if (translated)
+    await expect(
+      block
+        .getByTestId("news-summary")
+        .filter({ hasText: lang() === "en" ? translated.text_en! : translated.text! })
+        .first(),
+    ).toBeVisible();
+  const headed = items.find((i) => (lang() === "es" ? i.headline_es : i.headline_en));
+  if (headed)
+    await expect(
+      block
+        .getByTestId("news-headline")
+        .filter({ hasText: (lang() === "es" ? headed.headline_es : headed.headline_en)! })
+        .first(),
+    ).toBeVisible();
   await expect.poll(() => sent, { timeout: 20_000 }).toContain("news_opened");
   // Alineaciones: the press's absences with their status and source - never a rumour -, and the way to Noticias
   const said = items.filter(
