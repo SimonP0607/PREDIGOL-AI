@@ -25,6 +25,10 @@ or the team's eleven); medium - the same without a name, or the coach; low - the
 contradict each other become one card with each claim and its own sources.
 
 ``FBI_NEWS_USERS`` (on since A10; ``=0`` hides the news again without a deploy, ``fbi.api.switches``).
+
+**The other language** (plan UX, A11): an item's own headline in Spanish and English and its summary in English, written by the
+readers' narrative in the worker and checked there one by one (``ai.evidence_translations``, keyed by the item's unchanging
+content). Read here, never written; shown only while the owner has the narrative on (``FBI_USER_NARRATIVE=on``).
 """
 
 from __future__ import annotations
@@ -53,8 +57,9 @@ from fbi.api.contracts.news import (
     TodayNewsMatch,
 )
 from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
-from fbi.api.errors import ApiError
+from fbi.api.problem import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
+from fbi.api.services.reading import narrative_mode
 from fbi.api.services.today import SUGGESTED_LEAGUES, SUGGESTED_TEAM
 from fbi.api.switches import user_switch
 from fbi.core.clock import now
@@ -162,6 +167,9 @@ class Row:
     assertion: str
     player: str | None
     title: str | None
+    headline_es: str | None = None
+    headline_en: str | None = None
+    claim_en: str | None = None
 
     @property
     def when(self) -> datetime:
@@ -172,14 +180,21 @@ class Row:
         return max(self.retrieved_at, self.last_seen_at or self.retrieved_at)
 
 
-def _row(r: Mapping[str, Any]) -> Row:
+def _text(value: Any) -> str | None:
+    return " ".join(str(value).split()) or None if value else None
+
+
+def _row(r: Mapping[str, Any], *, translated: bool = False) -> Row:
     assertion = str(r.get("assertion") or "info")
     player = str(r["player"]).strip()[:80] if r.get("player") and str(r["player"]).strip() else None
     return Row(id=int(r["id"]), fixture_id=int(r["fixture_id"]), team_id=None if r["team_id"] is None else int(r["team_id"]),
                kind=str(r["kind"]), claim=str(r["claim"]), source_name=str(r["source_name"]), source_url=r["source_url"],
                tier=str(r["source_tier"]), published_at=r["published_at"], retrieved_at=r["retrieved_at"],
                last_seen_at=r["last_seen_at"], story_key=str(r["story_key"]), status=str(r["status"]),
-               assertion=assertion if assertion in ASSERTIONS else "info", player=player, title=r.get("title"))
+               assertion=assertion if assertion in ASSERTIONS else "info", player=player, title=r.get("title"),
+               headline_es=_text(r.get("headline_es")) if translated else None,
+               headline_en=_text(r.get("headline_en")) if translated else None,
+               claim_en=_text(r.get("claim_en")) if translated else None)
 
 
 def day_only(moment: datetime | None) -> bool:
@@ -251,11 +266,14 @@ class Story:
 
     def claim(self) -> NewsClaim:
         text = None
-        for r in sorted(self.chosen, key=lambda x: (x.when, x.id), reverse=True):
+        newest_first = sorted(self.chosen, key=lambda x: (x.when, x.id), reverse=True)
+        source = newest_first[0]
+        for r in newest_first:
             text = own_summary(r.claim, r.title)
             if text:
+                source = r
                 break
-        return NewsClaim(text=text, lang="es", assertion=cast(Assertion, self.newest.assertion),
+        return NewsClaim(text=text, lang="es", text_en=source.claim_en, assertion=cast(Assertion, self.newest.assertion),
                          sources=_sources(self.chosen))
 
 
@@ -266,11 +284,13 @@ def _card(stories: Sequence[Story], status: NewsStatus, teams: Mapping[int, News
     published = max((r.published_at for r in rows if r.published_at is not None), default=None)
     relevance = min((relevance_of(s.newest.kind, s.newest.player) for s in ordered), key=RELEVANCE_ORDER.index)
     player = next((s.newest.player for s in ordered if s.newest.player), None)
+    own = status != "CONTRADICTORY"  # a headline of one side would take that side
     return NewsItem(
         id=f"n{min(r.id for s in ordered for r in s.rows)}", kind=cast(NewsKind, lead.kind if lead.kind in KINDS else "other"),
         status=status, relevance=relevance, team=teams.get(lead.team_id) if lead.team_id is not None else None,
         player=player, claims=[s.claim() for s in ordered], published_at=published, published_day_only=day_only(published),
-        seen_at=max(r.seen for r in rows))
+        seen_at=max(r.seen for r in rows), headline_es=lead.headline_es if own else None,
+        headline_en=lead.headline_en if own else None)
 
 
 def _order(item: NewsItem) -> tuple[int, int, float, str]:
@@ -317,14 +337,22 @@ SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, th.name AS home_name,
 """
 
 EVIDENCE_SQL = """
-SELECT * FROM (
+SELECT x.*, tes.headline AS headline_es, ten.headline AS headline_en, ten.claim AS claim_en FROM (
   SELECT e.id, e.fixture_id, e.team_id, e.kind, e.claim, e.source_name, e.source_url, e.source_tier, e.published_at,
-         e.retrieved_at, e.last_seen_at, e.story_key, e.status, e.attributes->>'assertion' AS assertion,
+         e.retrieved_at, e.last_seen_at, e.story_key, e.status, e.content_hash, e.attributes->>'assertion' AS assertion,
          e.attributes->>'player_name' AS player, e.attributes->>'result_title' AS title,
          row_number() OVER (PARTITION BY e.fixture_id ORDER BY e.retrieved_at DESC, e.id DESC) AS n
     FROM ai.evidence e
    WHERE e.fixture_id = ANY(%(fixtures)s) AND e.origin = 'web' AND e.retrieved_at <= %(at)s
-) x WHERE x.n <= %(limit)s
+) x
+LEFT JOIN LATERAL (SELECT t.headline FROM ai.evidence_translations t
+                    WHERE t.evidence_id = x.id AND t.content_hash = x.content_hash AND t.lang = 'es'
+                      AND t.headline IS NOT NULL AND %(translated)s
+                    ORDER BY t.created_at DESC, t.id DESC LIMIT 1) tes ON true
+LEFT JOIN LATERAL (SELECT t.headline, t.claim FROM ai.evidence_translations t
+                    WHERE t.evidence_id = x.id AND t.content_hash = x.content_hash AND t.lang = 'en' AND %(translated)s
+                    ORDER BY t.created_at DESC, t.id DESC LIMIT 1) ten ON true
+WHERE x.n <= %(limit)s
 """
 """Only the web's items of the matches asked for (the data provider's reports and the owner's notes stay out), as of a moment."""
 
@@ -350,12 +378,19 @@ def _teams(f: Mapping[str, Any]) -> dict[int, NewsTeam]:
             int(f["away_team_id"]): NewsTeam(id=int(f["away_team_id"]), name=f["away_name"], side="away")}
 
 
+def translations_shown() -> bool:
+    """The items' own headlines and English summaries (A11) reach readers only while the narrative is on."""
+    return narrative_mode() == "on"
+
+
 def _read(conn: Conn, fixtures: Sequence[int], at: datetime) -> dict[int, list[Row]]:
     found: dict[int, list[Row]] = defaultdict(list)
     if not fixtures:
         return found
-    for r in fetch_all(conn, EVIDENCE_SQL, {"fixtures": list(fixtures), "at": at, "limit": MAX_READ}):
-        found[int(r["fixture_id"])].append(_row(r))
+    translated = translations_shown()
+    for r in fetch_all(conn, EVIDENCE_SQL, {"fixtures": list(fixtures), "at": at, "limit": MAX_READ,
+                                            "translated": translated}):
+        found[int(r["fixture_id"])].append(_row(r, translated=translated))
     return found
 
 

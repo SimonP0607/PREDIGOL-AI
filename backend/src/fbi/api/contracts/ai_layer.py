@@ -129,6 +129,10 @@ class AiOverview(Contract):
                                                                           "search API - from the configuration.")
     efficiency: dict[str, Any] = Field(default_factory=dict)
     day: dict[str, Any] | None = None
+    user_ai: dict[str, Any] = Field(default_factory=dict, description=(
+        "The readers' AI (plan UX, A11), apart from the budget above: the switch (FBI_USER_NARRATIVE: off, shadow or on), its "
+        "own budget (FBI_AI_USER_MONTHLY_BUDGET_USD: state, cap, spent today and this month) and today's narratives by "
+        "outcome, translations and calls."))
 
 
 class ReviewRow(Contract):

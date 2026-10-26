@@ -16,6 +16,7 @@ from psycopg.rows import tuple_row
 
 from fbi.ai import costs as ai_costs
 from fbi.ai import shadow as ai_shadow
+from fbi.ai import user_budget
 from fbi.ai.config import AiSettings
 from fbi.ai.gating import enforcement
 from fbi.ai.text import shown as owner_text
@@ -135,6 +136,27 @@ SELECT (SELECT count(*) FROM ai.match_packets WHERE built_at >= %(since)s) AS pa
 """
 
 
+USER_AI_SQL = """
+SELECT (SELECT count(*) FILTER (WHERE status = 'ok') FROM ai.user_narratives WHERE created_at >= %(since)s) AS ok,
+       (SELECT count(*) FILTER (WHERE status = 'rejected') FROM ai.user_narratives WHERE created_at >= %(since)s) AS rejected,
+       (SELECT count(*) FILTER (WHERE status IN ('invalid_output', 'failed')) FROM ai.user_narratives
+         WHERE created_at >= %(since)s) AS failed,
+       (SELECT count(*) FROM ai.evidence_translations WHERE created_at >= %(since)s) AS translations,
+       (SELECT count(*) FROM ai.user_usage WHERE at >= %(since)s) AS calls
+"""
+"""Today's narratives of the readers' layer by outcome, its translations and its calls (plan UX, A11)."""
+
+
+def user_ai(conn: Conn, *, at: datetime, day: datetime) -> dict[str, Any]:
+    """The readers' AI beside Intelligence's (plan UX, A11): its own budget (``FBI_AI_USER_MONTHLY_BUDGET_USD``), the switch and
+    what it wrote today - none of it counts in the budget above."""
+    from fbi.api.services.reading import narrative_mode
+
+    today = fetch_one(conn, USER_AI_SQL, {"since": day}) or {}
+    return {"mode": narrative_mode(), "budget": user_budget.overview(conn, at=at),
+            "today": {k: int(v or 0) for k, v in today.items()}}
+
+
 def overview(conn: Conn, *, at: datetime | None = None) -> Envelope[AiOverview]:
     at = at or now()
     settings = AiSettings.from_env()
@@ -148,7 +170,7 @@ def overview(conn: Conn, *, at: datetime | None = None) -> Envelope[AiOverview]:
                      "gate_verdict": (enf.gate or {}).get("verdict")},
         last_cycles=[CycleRow.model_validate(r) for r in fetch_all(conn, CYCLES_SQL)],
         today={k: int(v or 0) for k, v in today.items()},
-        shadow=[_shadow_row(r) for r in ai_shadow.latest(conn)], **extra))
+        shadow=[_shadow_row(r) for r in ai_shadow.latest(conn)], user_ai=user_ai(conn, at=at, day=day), **extra))
 
 
 def _shadow_row(r: dict[str, Any]) -> dict[str, Any]:

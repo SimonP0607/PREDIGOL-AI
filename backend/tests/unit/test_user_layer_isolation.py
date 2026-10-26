@@ -193,3 +193,57 @@ def test_the_api_never_loads_the_providers_client() -> None:
     reach = closure(["fbi.api.app"])
     assert "fbi.messaging.outbox" in reach and "fbi.api.routers.messaging" in reach
     assert "fbi.messaging.email" not in reach and "fbi.messaging.runner" not in reach
+
+
+USER_AI_TABLES = re.compile(r"\bai\.(?:user_narratives|evidence_translations|user_usage)\b")
+"""The readers' AI (plan UX, A11): its narratives, its translations of the news and its own spend."""
+
+USER_AI_MODULES = frozenset({"fbi.narrative.job", "fbi.ai.user_budget"})
+"""The readers' AI: its job (``fbi.narrative``, outside Intelligence) and its budget, which lives beside Intelligence's in ``fbi.ai``
+and is not part of it."""
+
+MAY_NAME_USER_AI = {
+    "fbi.narrative.job": "writes the narrative and the translations, reads what it answered already",
+    "fbi.ai.user_budget": "the readers' budget: writes ai.user_usage and sums it",
+    "fbi.api.services.reading": "shows a reader the narrative of the reading beside it",
+    "fbi.api.services.news": "shows a reader an item's headline and English summary",
+    "fbi.api.services.ai_layer": "the Admin Console's view of the readers' AI beside Intelligence's",
+}
+"""The only modules that may name those tables, each with its reason."""
+
+
+def test_nothing_of_intelligence_reads_the_readers_ai() -> None:
+    """Plan UX, A11: models, decisions, picks, settlement and the AI's packet never read ``ai.user_narratives``,
+    ``ai.evidence_translations`` or ``ai.user_usage`` - nor load the modules that write them. Intelligence's budget sums
+    ``ai.usage`` and ``analytics.ai_runs`` only (``fbi.ai.usage.SPENT_SQL``)."""
+    naming = {name: sorted(set(USER_AI_TABLES.findall(path.read_text(encoding="utf-8"))))
+              for name, path in modules().items()}
+    naming = {name: tables for name, tables in naming.items() if tables}
+    unexpected = {name: tables for name, tables in naming.items() if name not in MAY_NAME_USER_AI}
+    assert not unexpected, f"these modules name the readers' AI tables without a listed reason: {unexpected}"
+    assert set(naming) == set(MAY_NAME_USER_AI), f"listed modules that no longer name them: {set(MAY_NAME_USER_AI) - set(naming)}"
+    intelligence = [name for name in modules() if package_of(name) in INTELLIGENCE and name not in USER_AI_MODULES]
+    reach = closure(intelligence)
+    assert "fbi.ai.packet" in reach and "fbi.intel.decision" in reach, "Intelligence's imports were not followed"
+    assert not reach & USER_AI_MODULES, f"PrediGol Intelligence can load the readers' AI: {sorted(reach & USER_AI_MODULES)}"
+    from fbi.ai import usage
+
+    assert "ai.usage" in usage.SPENT_SQL and not USER_AI_TABLES.search(usage.SPENT_SQL)
+
+
+SQL_CLIENT_TABLES = re.compile(r"(?<![\w.])(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a-z_]+)\b")
+"""A client's table as SQL names it - not a module path that happens to contain one (``fbi.auth.crypto`` in a docstring)."""
+
+
+def test_the_readers_ai_reads_no_clients_data() -> None:
+    """The narrative's call carries the match's facts only: nothing it loads - the user layer's packages included - names a
+    client's tables. (It reads the structured reading through the API's own service, which refuses with ``fbi.api.problem``,
+    not with the web layer's handlers that know the accounts.)"""
+    reach = closure(sorted(USER_AI_MODULES))
+    assert "fbi.api.services.reading" in reach and "fbi.ai.usage" in reach, "the readers' AI's imports were not followed"
+    into_user_layer = sorted(name for name in reach if package_of(name) in USER_LAYER)
+    assert not into_user_layer, f"the readers' AI can load the user layer: {into_user_layer}"
+    naming = {name: sorted(set(SQL_CLIENT_TABLES.findall(modules()[name].read_text(encoding="utf-8"))))
+              for name in sorted(reach)}
+    naming = {name: tables for name, tables in naming.items() if tables}
+    assert not naming, f"files the readers' AI loads name a client's tables: {naming}"

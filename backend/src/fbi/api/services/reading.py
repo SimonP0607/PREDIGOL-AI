@@ -14,28 +14,54 @@ each market with its probability, labelled when it is the model's own number (un
 
 ``FBI_READING_USERS`` (on since A9; ``=0`` hides it again without a deploy, ``fbi.api.switches``) decides whether readers
 see it; the Admin Console's preview does not depend on it.
+
+THE NARRATIVE (plan UX, A11). The same reading written as prose in Spanish and English by PrediGol's AI - in the worker, never
+here (``fbi.narrative.job``: this module only reads ``ai.user_narratives``, with no model client and no key). A narrative is
+attached only while it was written from THIS reading: the same packet and the same facts (``reading_hash``), so it can never
+tell a reader something the facts beside it no longer say; otherwise, or while the owner keeps it off, the reader gets the
+facts. ``FBI_USER_NARRATIVE``: off (default) | ``shadow`` (only the Admin Console's preview shows it: the owner reviews a sample
+first) | ``on``.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Final, Literal
 
+import structlog
+from pydantic import ValidationError
+
 from fbi.api.contracts.forecast import ForecastMarket
-from fbi.api.contracts.reading import MatchReading, ReadingFact, ReadingSection
+from fbi.api.contracts.reading import (
+    MatchReading,
+    NarrativeSection,
+    ReadingFact,
+    ReadingNarrative,
+    ReadingSection,
+)
 from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
-from fbi.api.errors import ApiError
+from fbi.api.problem import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.api.services import forecast as forecast_service
-from fbi.api.switches import user_switch
+from fbi.api.switches import ON, user_switch
 from fbi.core.clock import now
+from fbi.core.env import environment
+
+log = structlog.get_logger(__name__)
 
 VERSION: Final = "reading-v1"
 USERS_SWITCH: Final = "FBI_READING_USERS"
 """Every signed-in account sees the structured reading: on since plan UX A9, ``FBI_READING_USERS=0`` hides it again without a
 deploy. The Admin Console's preview does not depend on it. The API needs a restart to read it."""
+
+NARRATIVE_VERSION: Final = "user-narrative-v1"
+"""The prompt and the checks of the narrative (``fbi.narrative.job``): a narrative of another version is not shown."""
+NARRATIVE_SWITCH: Final = "FBI_USER_NARRATIVE"
+NarrativeMode = Literal["off", "shadow", "on"]
 
 SectionKey = Literal["summary", "context", "data", "market", "risks", "conclusion"]
 SECTIONS: Final[tuple[SectionKey, ...]] = ("summary", "context", "data", "market", "risks", "conclusion")
@@ -397,7 +423,7 @@ SELECT f.id, f.kickoff_at, f.status_group, th.name AS home_name, ta.name AS away
 PACKET_BLOCKS: Final = ("fixture", "phase", "stakes", "scenarios", "form", "schedule", "h2h", "absences", "lineups", "market",
                         "quality")
 PACKET_SQL = (
-    "SELECT p.as_of, p.missing, "
+    "SELECT p.id AS packet_id, p.as_of, p.missing, "
     + ", ".join(f"p.content->'{b}' AS {b}" for b in PACKET_BLOCKS)
     + """,
        jsonb_build_object('teams', p.content->'dossier'->'teams', 'players', p.content->'dossier'->'players',
@@ -455,13 +481,39 @@ def _sections(r: Reading) -> list[ReadingSection]:
             for k in SECTIONS if r.sections[k]]
 
 
-def match_reading(conn: Conn, fixture_id: int, *, preview: bool, at: datetime | None = None
-                  ) -> Envelope[MatchReading | None]:
-    fixture = fetch_one(conn, FIXTURE_SQL, {"f": fixture_id})
+@dataclass(frozen=True)
+class Basis:
+    """A match's reading at a moment and what it was built from: the packet (its id, its moment, the blocks read) and the
+    forecast a reader may see. The narrative is written from it (``fbi.ai.user_narrative``) and shown against it."""
+
+    fixture: Mapping[str, Any]
+    packet_id: int | None
+    data_at: datetime | None
+    forecast_at: datetime | None
+    content: dict[str, Any]
+    missing: list[str]
+    sections: list[ReadingSection]
+
+    @property
+    def hash(self) -> str:
+        return reading_hash(self.sections)
+
+
+def reading_hash(sections: Sequence[ReadingSection]) -> str:
+    """The identity of a reading's facts: the same codes, parameters and references in the same order give the same hash. A
+    narrative carries the hash of the facts it was written from."""
+    body = {"v": VERSION, "sections": [s.model_dump(mode="json") for s in sections]}
+    return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+                                     default=str).encode()).hexdigest()
+
+
+def reading_basis(conn: Conn, fixture_id: int, *, at: datetime | None = None,
+                  fixture: Mapping[str, Any] | None = None) -> Basis:
+    """The reading of a match as a reader gets it at ``at`` (now by default), whatever the switches say; 404 for an unknown
+    match. ``fixture``: its row of ``FIXTURE_SQL`` when the caller has read it already."""
+    fixture = fixture if fixture is not None else fetch_one(conn, FIXTURE_SQL, {"f": fixture_id})
     if fixture is None:
         raise ApiError(404, "not_found", "no such fixture")
-    if not preview and not users_may_see():
-        return unavailable(None, "The structured reading is not shown to users yet.")
     moment = at or now()
     row = fetch_one(conn, PACKET_SQL, {"f": fixture_id, "at": moment})
     content: dict[str, Any] = {}
@@ -478,8 +530,57 @@ def match_reading(conn: Conn, fixture_id: int, *, preview: bool, at: datetime | 
     markets, code, forecast_at = _forecast(conn, fixture_id, at)
     reading = build(content, missing, markets, forecast_code=code, packet=row is not None,
                     pre_match=fixture["status_group"] == "scheduled")
-    data_at: datetime | None = row["as_of"] if row is not None else None
-    body = MatchReading(fixture_id=int(fixture["id"]), version=VERSION, complete=row is not None, data_at=data_at,
-                        forecast_at=forecast_at, sections=_sections(reading))
-    newest = max((t for t in (data_at, forecast_at) if t is not None), default=None)
+    return Basis(fixture=fixture, packet_id=None if row is None else int(row["packet_id"]),
+                 data_at=None if row is None else row["as_of"], forecast_at=forecast_at, content=content, missing=missing,
+                 sections=_sections(reading))
+
+
+def narrative_mode() -> NarrativeMode:
+    """``FBI_USER_NARRATIVE``: ``on`` (or 1, true, yes) - readers see the narrative; ``shadow`` - the job writes it and only the
+    Admin Console's preview shows it; anything else, the line absent included - off."""
+    raw = (environment().get(NARRATIVE_SWITCH) or "").strip().lower()
+    if raw == "shadow":
+        return "shadow"
+    return "on" if raw in ON else "off"
+
+
+NARRATIVE_SQL = """
+SELECT id, created_at, data_at, version, content FROM ai.user_narratives
+ WHERE fixture_id = %(f)s AND status = 'ok' AND version = %(version)s AND packet_id = %(packet)s AND reading_hash = %(hash)s
+ ORDER BY created_at DESC, id DESC LIMIT 1
+"""
+
+
+def narrative_for(conn: Conn, basis: Basis, *, preview: bool) -> ReadingNarrative | None:
+    """The validated narrative of this very reading, when the reader may see it: readers only with the switch ``on``, the Admin
+    Console's preview whenever one exists. A stored narrative that does not read as the contract says is not shown (logged)."""
+    if basis.packet_id is None or not (preview or narrative_mode() == "on"):
+        return None
+    row = fetch_one(conn, NARRATIVE_SQL, {"f": int(basis.fixture["id"]), "version": NARRATIVE_VERSION,
+                                          "packet": basis.packet_id, "hash": basis.hash})
+    if row is None:
+        return None
+    content = row["content"] if isinstance(row["content"], Mapping) else {}
+    try:
+        return ReadingNarrative(
+            version=str(row["version"]), written_at=row["created_at"], data_at=row["data_at"],
+            es=[NarrativeSection.model_validate(x) for x in content.get("es") or []],
+            en=[NarrativeSection.model_validate(x) for x in content.get("en") or []])
+    except ValidationError as exc:
+        log.error("reading.narrative_unreadable", narrative_id=row["id"], errors=len(exc.errors()))
+        return None
+
+
+def match_reading(conn: Conn, fixture_id: int, *, preview: bool, at: datetime | None = None
+                  ) -> Envelope[MatchReading | None]:
+    fixture = fetch_one(conn, FIXTURE_SQL, {"f": fixture_id})
+    if fixture is None:
+        raise ApiError(404, "not_found", "no such fixture")
+    if not preview and not users_may_see():
+        return unavailable(None, "The structured reading is not shown to users yet.")
+    basis = reading_basis(conn, fixture_id, at=at, fixture=fixture)
+    body = MatchReading(fixture_id=int(basis.fixture["id"]), version=VERSION, complete=basis.packet_id is not None,
+                        data_at=basis.data_at, forecast_at=basis.forecast_at, sections=basis.sections,
+                        narrative=narrative_for(conn, basis, preview=preview))
+    newest = max((t for t in (basis.data_at, basis.forecast_at) if t is not None), default=None)
     return ok(body, data_as_of=newest)
