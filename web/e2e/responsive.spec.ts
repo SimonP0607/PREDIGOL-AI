@@ -173,14 +173,17 @@ const SCREENS: Array<[number, number]> = [
   [844, 390],
 ];
 for (const [width, height] of SCREENS) {
-  test(`every product page fits a ${width} x ${height} screen`, async ({ page }) => {
+  test(`every product page fits a ${width} x ${height} screen`, async ({ context }) => {
     test.setTimeout(150_000);
-    const w = watch(page);
-    await page.setViewportSize({ width, height });
     for (const path of PAGES) {
+      // a tab of its own for each page, as in the phones' tour: a tablet's larger screen holds even more of each page
+      const page = await context.newPage();
+      const w = watch(page);
+      await page.setViewportSize({ width, height });
       await page.goto(path);
       await settle(page);
       await assertClean(page, w);
+      await page.close();
     }
   });
 }
