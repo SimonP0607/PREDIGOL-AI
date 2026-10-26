@@ -5,7 +5,8 @@ layer (``intel.decisions``: edge, expected value, the ten filters) needs a price
 take the forecast as an input, or the "probable" and the "well paid" would mix again in the numbers that decide, and a forecast that
 moves for a reason of its own (a refit, a calibrator promoted, a price that went stale) would move a pick. The forecast is written by
 one module, read by the page, by the AI's packet (a probability a review or a brief may cite - they can confirm, lower or reject, never
-raise a probability or create a pick) and by the nightly proof that no packet read the future.
+raise a probability or create a pick), by the AI's package (the forecasts of the counts, for the Statistics Agent in shadow: same
+rule) and by the nightly proof that no packet read the future.
 
 This file holds the door shut: the files that name the table, and the files that import the module that writes it, are listed here, with
 why. A new reader fails the test until someone decides it may read."""
@@ -26,6 +27,7 @@ NAMES_THE_TABLE = {
     "forecasting/match_forecast.py": "the writer: the only module that inserts, and the one that reads back its own rows",
     "api/services/forecast.py": "the page of a match: the product's forecast and the Admin Console's preview",
     "ai/packet.py": "the packet's `forecast` block: context a review or a brief may cite, never an input of a computation",
+    "ai/package.py": "the `families` block of the `mcp-v1` package (IA phase 1): the forecasts of the counts (`family-v1`), read as of the pass's moment, that the Statistics Agent may cite in shadow - context, never an input of a computation",
     "intel/leakage.py": "the nightly proof (`forecast_known`) that no packet cited a forecast from after its moment",
     "families/score.py": "the scoreboard of the family forecasts (`family-v1`) after the matches: read-only, a measure of the research, never an input",
     "research/trace.py": "the trace of the model code's promotions (F12): counts the stored forecasts per model version to say which code production used; read-only, never an input",
@@ -35,8 +37,8 @@ IMPORTS_THE_WRITER = {
     "picks/pipeline.py": "runs the writer as a step of its own, in a savepoint, after the forecasts of the models",
     "families/forecast.py": "the counts of F10 (halves, corners, cards): same table, version `family-v1` that the page of the match never reads",
 }
-"""(``api/services/forecast.py`` and ``ai/packet.py`` do not import it: they duplicate its constants and a test holds them equal, so
-that neither the API nor the AI layer depends on the worker's package.)"""
+"""(``api/services/forecast.py``, ``ai/packet.py`` and ``ai/package.py`` do not import it: they duplicate its constants and a test holds
+them equal, so that neither the API nor the AI layer depends on the worker's package.)"""
 
 
 def python_files(*roots: Path) -> list[Path]:

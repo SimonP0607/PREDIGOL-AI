@@ -206,7 +206,7 @@ def tampered(packet: Packet, change: Any) -> dict[str, Any]:
 
 
 def test_the_rule_is_in_the_audit_and_the_version_says_so() -> None:
-    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v6" and RULE in (leakage.__doc__ or "")
+    assert RULE in leakage.RULES and leakage.VERSION == "leak-audit-v7" and RULE in (leakage.__doc__ or "")
 
 
 def test_an_honest_packet_passes_one_check_per_market(world: World) -> None:  # noqa: F811
@@ -216,7 +216,7 @@ def test_an_honest_packet_passes_one_check_per_market(world: World) -> None:  # 
 
     assert audited(world) == {"checked": 3, "violations": 0, "examples": []}
     rows = world.db.execute("SELECT version, n_checked, n_violations FROM intel.audit_checks WHERE rule = %s", (RULE,)).fetchall()
-    assert rows == [("leak-audit-v6", 3, 0)], "the run is kept in the ledger of the audit with its version"
+    assert rows == [("leak-audit-v7", 3, 0)], "the run is kept in the ledger of the audit with its version"
 
 
 def test_a_packet_without_a_forecast_is_not_counted(world: World) -> None:  # noqa: F811

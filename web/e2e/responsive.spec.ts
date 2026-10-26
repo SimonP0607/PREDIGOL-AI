@@ -507,6 +507,7 @@ const AI_PAGES_PLACES = [
   "/admin/operation#tab=ai&view=reviews",
   "/admin/operation#tab=ai&view=evidence",
   "/admin/operation#tab=ai&view=sources",
+  "/admin/operation#tab=agents",
   "/admin/operation#tab=costs",
   "/admin/operation#tab=runs",
   "/admin/learning",

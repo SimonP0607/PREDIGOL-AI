@@ -31,6 +31,12 @@ at worst, and a duplicated tick costs nothing at all.
     (from 00:05, 6-4 h before, after the line-ups); post-mortems, yesterday's notes, patterns as hypotheses, the
     parlays' measured dependence, the AI's own shadow report and tomorrow prepared; the owner's "run now".
     Zero API-Football requests; a language model and a search API only when configured, inside the budget.
+  * ``ai_batch_poll`` (every 5 min)  the Message Batches the analysis cycle sent for what can wait (``fbi.ai.batch``, plan IA
+    section 29): the ones that ended are collected, priced at half and stored as the reviews they answer. One query when none is
+    open; it never sends anything and works whatever the Batch switch says.
+  * ``ai_package`` (every 10 min)  the state of each match at the end of each pass (``fbi.ai.match_runs``, plan IA phase 1): the
+    ``mcp-v1`` package derived from the packet the pass stored, its slices measured, one row of ``ai.match_runs``. Database only - no
+    model, no search, no request, nothing paid - and nothing reads it yet. One query when nothing waits; ``FBI_AI_PACKAGE=0`` stops it.
   * ``intel_decide`` (every 15 min) / ``intel_nightly`` (07:50 Bogotá) / ``intel_weekly`` (Monday 04:40 Bogotá)
     PrediGol Intelligence (``fbi.intel``): the decision layer (ten filters, states, score, stake) on the next 36
     hours and the picks of the day of daily-set-v6; outcomes, post-mortems pm-v4, memory, calibration, the leakage
@@ -269,6 +275,13 @@ analyses of the next days. Database only unless a model or a search API is confi
 AI_LEARN_HOUR = int(os.environ.get("FBI_AI_LEARN_HOUR", "7"))
 """Post-mortems, memory, patterns and the AI's shadow report, daily at HH:35 Bogotá (after the monitor)."""
 AI_REQUESTS_MINUTES = 2
+AI_BATCH_POLL_MINUTES = int(os.environ.get("FBI_AI_BATCH_POLL_MINUTES", "5"))
+"""How often the open Message Batches are asked about (``fbi.ai.batch.poll``). A batch ends within the hour in the usual case and
+within 24 h at the latest; with none open the job is a single query."""
+AI_PACKAGE_MINUTES = int(os.environ.get("FBI_AI_PACKAGE_MINUTES", "10"))
+"""How often the passes without a state are turned into one (``fbi.ai.match_runs.run``): the ``mcp-v1`` package of each, its slices measured,
+a row of ``ai.match_runs``. Database only - no model, no search, no request - and a single query when nothing waits. ``FBI_AI_PACKAGE=0``
+(or ``FBI_AI_MODE=off``) stops it; the rows already written stay."""
 RESEARCH_MONITOR_HOUR = int(os.environ.get("FBI_RESEARCH_MONITOR_HOUR", "7"))
 """The evolution loop's daily monitor (Bogotá): the shadow-pick audit and the prospective
 evaluation, turned into memory and proposals. Seconds of database reads, zero requests."""
@@ -1127,6 +1140,53 @@ async def _ai_requests() -> None:
     await asyncio.to_thread(_ai_requests_now)
 
 
+def _ai_batch_poll_now() -> None:
+    """Collect the Message Batches that ended: validated, stored, priced at half (``fbi.ai.batch.poll``). Never raises. It works on
+    whatever is open whatever the Batch switch says: ``FBI_AI_BATCH=0`` stops new batches, never the collection of those paid for."""
+    from fbi.ai.batch import poll
+    from fbi.ai.config import AiSettings
+
+    try:
+        with _connect() as conn:
+            r = poll(conn, AiSettings.from_env(), at=now())
+        if r.batches or r.errors:
+            log.info("ai.batch_poll", batches=r.batches, ended=r.ended, waiting=r.waiting, items=r.items,
+                     cost_usd=str(r.cost_usd), errors=len(r.errors), **r.counts)
+    except Exception as exc:
+        log.error("ai.batch_poll.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_batch_poll() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_batch_poll_now)
+
+
+def _ai_package_now() -> None:
+    """The passes the AI layer has already run, turned into the state of their match (``fbi.ai.match_runs.run``). It calls no model, searches
+    nothing and asks the provider for nothing. Never raises. Off with ``FBI_AI_PACKAGE=0`` or ``FBI_AI_MODE=off`` (and then it does not even
+    open a connection); with nothing waiting it is one query and leaves no trace."""
+    from fbi.ai.config import AiSettings
+    from fbi.ai.match_runs import run
+
+    try:
+        settings = AiSettings.from_env()
+        if settings.mode == "off" or not settings.package:
+            return
+        with _connect() as conn:
+            r = run(conn, settings, at=now())
+        if r is not None:
+            log.info("ai.package", status=r.status, cycle=r.cycle_id, **dict(r.counts))
+            if r.errors:
+                log.warning("ai.package.errors", errors=[e[:200] for e in r.errors[:3]], total=len(r.errors))
+    except Exception as exc:
+        log.error("ai.package.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _ai_package() -> None:
+    new_run_id()
+    await asyncio.to_thread(_ai_package_now)
+
+
 def _research_monitor_now() -> None:
     """Audit + prospective -> memory and proposals. Never raises."""
     from fbi.research.loop import run_monitor
@@ -1564,6 +1624,12 @@ async def main() -> None:
     scheduler.add_job(_ai_requests, "interval", minutes=AI_REQUESTS_MINUTES, id="ai_requests", max_instances=1,
                       coalesce=True, misfire_grace_time=AI_REQUESTS_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=1))
+    scheduler.add_job(_ai_batch_poll, "interval", minutes=AI_BATCH_POLL_MINUTES, id="ai_batch_poll", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_BATCH_POLL_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=3))
+    scheduler.add_job(_ai_package, "interval", minutes=AI_PACKAGE_MINUTES, id="ai_package", max_instances=1,
+                      coalesce=True, misfire_grace_time=AI_PACKAGE_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=4))
     scheduler.add_job(_research_monitor, "cron", hour=RESEARCH_MONITOR_HOUR, minute=5, timezone="America/Bogota",
                       id="research_monitor", max_instances=1, coalesce=True, misfire_grace_time=6 * 3600)
     if monitor_last is None or moment - monitor_last > timedelta(hours=26):

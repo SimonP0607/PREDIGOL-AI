@@ -33,6 +33,8 @@ Fecha: 7 oct 2026. Aplica al servidor (`deploy/vps`) y al portátil mientras sig
 | Certificado de origen de Cloudflare (si `PREDIGOL_TLS_MODE=origin`) | `/etc/predigol/origin/key.pem` (600) | Caddy | suplantar el origen ante Cloudflare |
 | Contraseña, TOTP y códigos de recuperación del dueño | gestor del dueño y su teléfono | inicio de sesión | entrar como SUPER_ADMIN |
 | Llave SSH del servidor | portátil del dueño | acceso al servidor | acceso root |
+| Clave de Claude de producción (`FBI_AI_KEY_ANTHROPIC`; en la Console, `worker-prod`) | `app.env` | worker | gasto en el workspace PREDIGOL, acotado por su tope en la Console (190 USD) |
+| Clave de Claude del LAB (`FBI_AI_KEY_ANTHROPIC_LAB`; en la Console, `worker-lab`) | `app.env` | worker, solo las sondas y pruebas del LAB | gasto en el workspace PREDIGOL-LAB, acotado por su tope en la Console (20 USD) |
 
 ## Cómo se rota cada uno
 
@@ -82,10 +84,18 @@ antigua se guarda mientras haya copias cifradas con ella (12 meses con la retenc
 **Sesiones.** `predigolctl accounts revoke-sessions --all` cierra todas. Cada cuenta puede cerrar las suyas en
 Perfil → Seguridad, y el dueño las de cualquiera en Admin → Usuarios.
 
+**Claves de Claude (`FBI_AI_KEY_ANTHROPIC`, `FBI_AI_KEY_ANTHROPIC_LAB`).** La clave nueva se crea en la Console, dentro de
+su workspace (`worker-prod` en PREDIGOL, `worker-lab` en PREDIGOL-LAB), y se pone en `app.env` sin que se vea en pantalla
+(`IA_ACCIONES_MANUALES.md`, acciones 5 a 7). `predigolctl up` recrea el worker y se comprueba en Usage que la clave nueva
+suma peticiones. A las 48 horas, con la antigua en 0 peticiones, se **desactiva** (Disable); nunca se borra (Delete), porque
+la archiva para siempre y no tiene vuelta. El libro de la IA guarda solo el *nombre* de la clave y del workspace, nunca la
+clave.
+
 ## Calendario propuesto
 
 | Qué | Cuándo |
 |---|---|
+| Claves de Claude | al cambiar quién tiene acceso al servidor o ante una sospecha de filtración; la antigua se desactiva a las 48 h |
 | API-Football | cuando el dueño lo autorice (pendiente) |
 | Contraseñas de la base y tokens de R2 | una vez al año, o al cambiar quién tiene acceso |
 | Clave `age` | cada 2 años |
