@@ -212,7 +212,7 @@ function nextDay(at: string): string {
 }
 
 /** A favourite's next match (beyond today's board too): when, who, where, and whose next it is. */
-function NextRow({ n }: { n: NextFixture }) {
+export function NextRow({ n }: { n: NextFixture }) {
   return (
     <Link
       to="/matches/$fixtureId"
@@ -255,7 +255,16 @@ function NextRow({ n }: { n: NextFixture }) {
 }
 
 /** 1 · Hoy en tus ligas: today's matches still to finish, in play first; when there are none, why and what comes next. */
-export function TodayBlock({ query, now }: { query: TodayQuery; now: number }) {
+export function TodayBlock({
+  query,
+  now,
+  suggestion = null,
+}: {
+  query: TodayQuery;
+  now: number;
+  /** One league or team to add, with its reason (plan UX, B2: the page's SuggestionCard). */
+  suggestion?: ReactNode;
+}) {
   const today = query.data?.data ?? null;
   const suggested = today ? suggestedView(today) : true;
   let body: ReactNode;
@@ -344,6 +353,7 @@ export function TodayBlock({ query, now }: { query: TodayQuery; now: number }) {
         )
       ) : null}
       {today && personal ? <ChooseLink chosen={!suggested} /> : null}
+      {today && personal ? suggestion : null}
       {body}
     </section>
   );

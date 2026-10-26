@@ -33,6 +33,11 @@ export const live = {
    * (staleTime 0) and after a change in one of its blocks.
    */
   account: { queryKey: ["me", "account"], queryFn: v1.myAccount, staleTime: 0 },
+  /**
+   * What the reader's own use orders and suggests (plan UX, B2): their markets first in a match's «Mercados» and one league
+   * or team to follow. Kept five minutes: their habits move slowly; a choice of theirs reads it again.
+   */
+  personal: { queryKey: ["me", "personal"], queryFn: v1.myPersonal, staleTime: 5 * MINUTE },
   /** Public: the way to reach PrediGol without signing in. */
   supportContact: {
     queryKey: ["support", "contact"],

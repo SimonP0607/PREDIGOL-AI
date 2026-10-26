@@ -20,7 +20,8 @@ import { RowClock } from "@/product/matches/MatchRow";
 import { liveLabel } from "@/product/matches/status";
 import { factText } from "@/product/reading/text";
 import { inPlay, phaseOf, played } from "./today";
-import { whyText, type Why } from "./why";
+import { WhyChip } from "@/product/favorites/WhyChip";
+import type { Why } from "./why";
 
 function dayLabel(at: string): string | null {
   const rel = relativeDay(at);
@@ -56,20 +57,6 @@ function When({ m, now }: { m: TodayMatch; now: number }) {
       {off ? (
         <span className="mt-0.5 text-caption text-warning">{t(`common.status.${phase}`)}</span>
       ) : null}
-    </span>
-  );
-}
-
-export function WhyChip({ why }: { why: Why }) {
-  const { label, help } = whyText(why);
-  return (
-    <span
-      {...hintProps(help)}
-      data-testid="today-why"
-      data-why={why.kind}
-      className="min-w-0 max-w-full truncate rounded-full border border-primary/30 bg-primary/10 px-2 py-px font-medium text-primary"
-    >
-      {label}
     </span>
   );
 }

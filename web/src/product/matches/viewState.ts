@@ -4,6 +4,7 @@
  * "today" has moved on.
  */
 import { todayKey } from "@/lib/time";
+import type { Scope } from "@/product/favorites/follow";
 import { CATEGORIES, type Category } from "./facets";
 import { STATUS_FILTERS, type StatusFilter } from "./model";
 
@@ -15,6 +16,11 @@ export interface MatchesView {
   query: string;
   country: string | null;
   category: Category | null;
+  /**
+   * The reader's own leagues and teams (plan UX, B2), or every match; null until the reader chooses: their own once they
+   * have chosen favourites, every match while they are the suggested ones.
+   */
+  scope: Scope | null;
 }
 
 const KEY = "predigol.matches.view";
@@ -28,6 +34,7 @@ export function defaultView(): MatchesView {
     query: "",
     country: null,
     category: null,
+    scope: null,
   };
 }
 
@@ -52,6 +59,7 @@ export function readView(): MatchesView {
       category: CATEGORIES.includes(saved.category as Category)
         ? (saved.category as Category)
         : null,
+      scope: saved.scope === "all" || saved.scope === "mine" ? saved.scope : null,
     };
   } catch {
     return fallback;

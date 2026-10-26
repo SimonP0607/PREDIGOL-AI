@@ -130,7 +130,15 @@
     "none": "No odds for this match yet.",
     "movement": "See price movement in Odds",
     "chooseHelp": "Tap a price to add it to your parlay or take it out; the bookmark saves it to My picks.",
-    "allError": "We could not load each bookmaker's odds: the match's best ones are still below."
+    "allError": "We could not load each bookmaker's odds: the match's best ones are still below.",
+    "order": {
+      "mine": "First, the markets you check most: {list}.",
+      "help": "Counted: the times you opened their bookmakers or all their lines, or chose one of their prices, in the last {days} days (from {min} times). Probabilities and prices are the same for everyone.",
+      "usualButton": "Usual order",
+      "usual": "Markets in the usual order.",
+      "mineButton": "Back to my order",
+      "failed": "The order could not be changed."
+    }
   },
   "liveOdds": {
     "title": "Live odds",

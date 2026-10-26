@@ -299,6 +299,23 @@ describe("A13 · Hoy en tus ligas", () => {
     expect(markup).toContain('href="/matches/901"');
   });
 
+  test("B2: the suggestion sits with the reader's own part; never with personalisation off", async () => {
+    const match = m({ at: NOW + H, followed: { kind: "league", names: ["Liga BetPlay"] } });
+    const slot = <p data-testid="slot">¿Agregas la Serie A a tus ligas?</p>;
+    const on = await html(
+      <TodayBlock query={loaded(mine([match], following()))} now={NOW} suggestion={slot} />,
+    );
+    expect(on).toContain('data-testid="slot"');
+    const off = await html(
+      <TodayBlock
+        query={loaded(mine([match], following({ personalization: false })))}
+        now={NOW}
+        suggestion={slot}
+      />,
+    );
+    expect(off).not.toContain('data-testid="slot"');
+  });
+
   test("Qué se juega and Resultados follow the reader's own too", async () => {
     const stake = {
       code: "stakes_pressure",

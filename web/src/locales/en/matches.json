@@ -90,5 +90,21 @@
     "title": "Live board",
     "body": "Every match in play with its statistics and PrediGol's picks first; it refreshes every 15 seconds.",
     "open": "Open the live board"
+  },
+  "scope": {
+    "label": "Which matches to see",
+    "mine": "Your leagues · {count}",
+    "suggested": "Suggested · {count}",
+    "all": "All · {count}"
+  },
+  "mine": {
+    "emptyToday": "None of your leagues or teams play today.",
+    "emptyDay": "None of your leagues or teams play that day.",
+    "emptyTodaySuggested": "None of the suggested leagues play today.",
+    "emptyDaySuggested": "None of the suggested leagues play that day.",
+    "others_one": "There is {count} match of other leagues.",
+    "others_other": "There are {count} matches of other leagues.",
+    "seeAll": "See all matches",
+    "next": "Your next matches"
   }
 }

@@ -4,18 +4,36 @@
  *
  * REVIEW PREDIGOL, point 3: the day chips read Hoy, Mañana and the date after; the list
  * narrows by country, category and a team's name (and still by competition).
+ *
+ * Plan UX, B2 (section 38): the reader's own come first - by default, once they chose
+ * favourites, the day of their leagues and teams, everything one tap away and counted (while
+ * they are the suggested ones, every match, the suggested a tap away); their leagues lead the
+ * list in their order, after what is in play; each of their competitions and each match of a
+ * team they follow says why. A day without theirs says so and shows their next matches.
+ * FBI_PERSONALIZATION=0: the common list.
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarX2, ChevronRight, Globe2, Layers, RadioTower, SearchX } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import type { MatchSummary } from "@/lib/api/v1/types";
 import type { LiveMatch } from "@/lib/api/v1/types_center";
 import { t, useI18n } from "@/lib/i18n";
 import { formatDateLong, shiftDay, todayKey, zonedInstant } from "@/lib/time";
 import { Card, EmptyState, ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
 import { FilterSheet, SheetField } from "@/product/shared/FilterSheet";
+import {
+  followFirst,
+  followSet,
+  reasonOf,
+  whyOf,
+  type FollowSet,
+} from "@/product/favorites/follow";
+import { ScopeSwitch } from "@/product/favorites/ScopeSwitch";
+import { NextRow } from "@/product/home/TodayBlocks";
+import type { Why } from "@/product/home/why";
 import { CompetitionSection } from "./CompetitionSection";
 import {
   CATEGORIES,
@@ -33,6 +51,7 @@ import {
   statusCounts,
   toItems,
   wantsLiveBoard,
+  type MatchItem,
   type StatusFilter,
 } from "./model";
 import { dayMatchesQuery } from "./query";
@@ -105,6 +124,43 @@ function ListSkeleton() {
   );
 }
 
+/** Why a competition is the reader's: a league they follow («Tu liga», or «Sugerida» while they chose none). */
+function competitionWhy(id: number, name: string, follow: FollowSet | null): Why | null {
+  if (!follow || !follow.leagues.has(id)) return null;
+  return whyOf({ kind: "league", names: [name] }, follow.suggested);
+}
+
+/** Why a match is the reader's when its competition is not: a team they follow plays it. */
+function rowWhyOf(follow: FollowSet | null) {
+  return (item: MatchItem): Why | null => {
+    if (!follow) return null;
+    const reason = reasonOf(item.match, follow);
+    if (!reason || reason.kind !== "team") return null;
+    return whyOf(reason, follow.suggested);
+  };
+}
+
+/** The reader's next matches, from Home's own answer (GET /today): when their day is empty, what comes next. */
+function NextOfMine() {
+  const today = useQuery(live.today);
+  const next = today.data?.data?.following?.next ?? [];
+  if (next.length === 0) return null;
+  return (
+    <div data-testid="matches-next-mine">
+      <Card className="overflow-hidden">
+        <p className="px-4 pt-3 text-sm font-semibold sm:px-5">{t("matches.mine.next")}</p>
+        <ul className="divide-y divide-border/60">
+          {next.slice(0, 5).map((n) => (
+            <li key={n.fixture_id}>
+              <NextRow n={n} />
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
 export function MatchesPage() {
   const { locale } = useI18n();
   const [view, setView] = useState<MatchesView>(readView);
@@ -123,7 +179,22 @@ export function MatchesPage() {
   const board = useQuery({ ...live.liveBoard, enabled: needsBoard });
   const followed = needsBoard ? (board.data?.data.matches ?? NO_LIVE) : NO_LIVE;
 
-  const items = useMemo(() => toItems(rows, followed), [rows, followed]);
+  // A reader's own (the owner's console account sees the common list, as with the welcome and the star).
+  const reader = useAuth().user?.role === "USER";
+  const favorites = useQuery({ ...live.favorites, enabled: reader });
+  const follow = useMemo(
+    () => (reader ? followSet(favorites.data) : null),
+    [reader, favorites.data],
+  );
+  // The reader's own by default once they chose favourites (plan UX, B2); while they are the suggested ones, every match
+  // with the suggested a tap away; without favourites known or with personalisation off, every match.
+  const scope = follow ? (view.scope ?? (follow.suggested ? "all" : "mine")) : "all";
+  const allItems = useMemo(() => toItems(rows, followed), [rows, followed]);
+  const ownItems = useMemo(
+    () => (follow ? allItems.filter((it) => reasonOf(it.match, follow) !== null) : allItems),
+    [allItems, follow],
+  );
+  const items = scope === "mine" ? ownItems : allItems;
   const counts = useMemo(() => statusCounts(items), [items]);
   const countries = useMemo(
     () =>
@@ -178,8 +249,8 @@ export function MatchesPage() {
         (competition === null || it.match.competition.id === competition) &&
         inFacets(it.match, { country, category: view.category, team: view.query }),
     );
-    return groupByCompetition(visible, locale);
-  }, [items, view.status, view.query, view.category, country, competition, locale]);
+    return followFirst(groupByCompetition(visible, locale), follow);
+  }, [items, view.status, view.query, view.category, country, competition, locale, follow]);
 
   const filtered =
     view.status !== "all" ||
@@ -227,6 +298,40 @@ export function MatchesPage() {
         />
       </Card>
     );
+  } else if (scope === "mine" && ownItems.length === 0) {
+    const suggested = follow?.suggested ?? false;
+    body = (
+      <div className="space-y-3">
+        <div data-testid="matches-mine-empty">
+          <Card>
+            <EmptyState
+              icon={<CalendarX2 aria-hidden className="h-6 w-6" />}
+              title={t(
+                view.day === today
+                  ? suggested
+                    ? "matches.mine.emptyTodaySuggested"
+                    : "matches.mine.emptyToday"
+                  : suggested
+                    ? "matches.mine.emptyDaySuggested"
+                    : "matches.mine.emptyDay",
+              )}
+              body={t("matches.mine.others", { count: allItems.length })}
+              action={
+                <button
+                  type="button"
+                  onClick={() => update({ scope: "all" })}
+                  data-testid="matches-mine-see-all"
+                  className="tap-y relative rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated"
+                >
+                  {t("matches.mine.seeAll")}
+                </button>
+              }
+            />
+          </Card>
+        </div>
+        <NextOfMine />
+      </div>
+    );
   } else if (groups.length === 0) {
     body = (
       <Card>
@@ -255,6 +360,8 @@ export function MatchesPage() {
             group={g}
             collapsed={collapsed.has(g.id)}
             onToggle={() => toggle(g.id)}
+            why={competitionWhy(g.id, g.competition.name, follow)}
+            rowWhy={follow && !follow.leagues.has(g.id) ? rowWhyOf(follow) : undefined}
           />
         ))}
       </div>
@@ -310,6 +417,17 @@ export function MatchesPage() {
       <PageTitle title={t("nav.matches")} subtitle={dayTitle(view.day, today)} />
 
       <div className="space-y-3">
+        {follow ? (
+          <ScopeSwitch
+            value={scope}
+            onChange={(next) => update({ scope: next })}
+            mine={ownItems.length}
+            all={allItems.length}
+            suggested={follow.suggested}
+            ns="matches"
+            testId="matches-scope"
+          />
+        ) : null}
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <DayNav day={view.day} today={today} onChange={(day) => update({ day })} />
           <div

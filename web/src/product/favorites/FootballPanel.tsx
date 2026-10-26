@@ -75,6 +75,7 @@ export function FootballPanel() {
       qc.setQueryData(live.favorites.queryKey, next);
       void qc.invalidateQueries({ queryKey: ["v1", "today"] });
       void qc.invalidateQueries({ queryKey: ["me", "account"] });
+      void qc.invalidateQueries({ queryKey: ["me", "personal"] });
       setEditing(null);
       setSaved(true);
     } catch {

@@ -7,6 +7,8 @@ import { Link } from "@tanstack/react-router";
 import { t } from "@/lib/i18n";
 import { formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { WhyChip } from "@/product/favorites/WhyChip";
+import type { Why } from "@/product/home/why";
 import { FixtureLine } from "./FixtureLine";
 import { rowScore, rowWinner, type MatchItem } from "./model";
 import { liveLabel } from "./status";
@@ -111,7 +113,7 @@ function OddsChip({ count }: { count: number }) {
   );
 }
 
-export function MatchRow({ item }: { item: MatchItem }) {
+export function MatchRow({ item, why = null }: { item: MatchItem; why?: Why | null }) {
   const { match, group } = item;
   const off = group === "postponed" || group === "cancelled";
   return (
@@ -127,14 +129,31 @@ export function MatchRow({ item }: { item: MatchItem }) {
       <span className="w-[3.25rem] shrink-0 sm:w-14">
         <TimeCell item={item} />
       </span>
-      <FixtureLine
-        home={{ name: match.home.name, logo: match.home.logo_url }}
-        away={{ name: match.away.name, logo: match.away.logo_url }}
-        score={rowScore(item)}
-        winner={rowWinner(item)}
-        live={group === "live"}
-        className={cn(off && "opacity-70")}
-      />
+      {why ? (
+        // A match shown because of a team the reader follows says so under its teams, on one line (plan UX, B2).
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <FixtureLine
+            home={{ name: match.home.name, logo: match.home.logo_url }}
+            away={{ name: match.away.name, logo: match.away.logo_url }}
+            score={rowScore(item)}
+            winner={rowWinner(item)}
+            live={group === "live"}
+            className={cn(off && "opacity-70")}
+          />
+          <span className="flex min-w-0">
+            <WhyChip why={why} testId="match-why" className="text-micro" />
+          </span>
+        </span>
+      ) : (
+        <FixtureLine
+          home={{ name: match.home.name, logo: match.home.logo_url }}
+          away={{ name: match.away.name, logo: match.away.logo_url }}
+          score={rowScore(item)}
+          winner={rowWinner(item)}
+          live={group === "live"}
+          className={cn(off && "opacity-70")}
+        />
+      )}
       <span className="flex max-w-[4.5rem] shrink-0 flex-col items-end gap-1 sm:w-28 sm:max-w-none">
         <StatusTag group={group} />
         {match.odds.bookmakers > 0 ? <OddsChip count={match.odds.bookmakers} /> : null}

@@ -46,5 +46,19 @@
     "filtersTitle": "Filters of the picks that have started"
   },
   "priceHelp": "Tap the price to add it to your parlay; the bookmark saves it.",
-  "whatIsPick": "What is a pick?"
+  "whatIsPick": "What is a pick?",
+  "scope": {
+    "label": "Which selections to see",
+    "mine": "Your leagues · {count}",
+    "suggested": "Suggested · {count}",
+    "all": "All · {count}"
+  },
+  "mine": {
+    "empty": "None of your leagues or teams with these filters.",
+    "emptySuggested": "None of the suggested leagues with these filters.",
+    "others_one": "There is {count} in other leagues.",
+    "others_other": "There are {count} in other leagues.",
+    "seeAll_one": "See the one in other leagues",
+    "seeAll_other": "See the {count} in other leagues"
+  }
 }

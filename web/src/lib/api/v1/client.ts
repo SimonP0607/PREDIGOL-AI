@@ -109,6 +109,7 @@ import type {
 } from "./types_favorites";
 import type { Transparency } from "./types_transparency";
 import type { AccountSummary } from "./types_account";
+import type { PersonalView, Suggestion } from "./types_personal";
 import type {
   AdminInbox,
   AdminTicket,
@@ -437,6 +438,11 @@ export const v1 = {
   myMembership: () => getJson<MyMembership>("/me/membership"),
   /** The profile's eight blocks, folded: one read of the reader's own account (plan UX, B1). */
   myAccount: () => getJson<AccountSummary>("/me/account"),
+  // ── what the reader's own use orders and suggests (plan UX, B2) ─────
+  myPersonal: () => getJson<PersonalView>("/me/personal"),
+  dismissSuggestion: (kind: Suggestion["kind"], id: number) =>
+    postJson<PersonalView>("/me/personal/suggestion/dismiss", { kind, id }),
+  setMarketOrder: (common: boolean) => putJson<PersonalView>("/me/personal/markets", { common }),
   // getting in without the owner (plan UX, A7): public; a link's token goes in the body, never in a URL
   accountOptions: () => getJson<AccountOptions>("/auth/options"),
   checkInvitation: (token: string) => postJson<ActivationInfo>("/auth/activate/check", { token }),

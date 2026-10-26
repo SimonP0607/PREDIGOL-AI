@@ -90,5 +90,21 @@
     "title": "Tablero en vivo",
     "body": "Cada partido en juego con sus estadísticas y los picks de PrediGol primero; se actualiza cada 15 segundos.",
     "open": "Abrir el tablero en vivo"
+  },
+  "scope": {
+    "label": "Qué partidos ver",
+    "mine": "Tus ligas · {count}",
+    "suggested": "Sugeridas · {count}",
+    "all": "Todos · {count}"
+  },
+  "mine": {
+    "emptyToday": "Hoy no juegan tus ligas ni tus equipos.",
+    "emptyDay": "Ese día no juegan tus ligas ni tus equipos.",
+    "emptyTodaySuggested": "Hoy no juegan las ligas sugeridas.",
+    "emptyDaySuggested": "Ese día no juegan las ligas sugeridas.",
+    "others_one": "Hay {count} partido de otras ligas.",
+    "others_other": "Hay {count} partidos de otras ligas.",
+    "seeAll": "Ver todos los partidos",
+    "next": "Tus próximos partidos"
   }
 }

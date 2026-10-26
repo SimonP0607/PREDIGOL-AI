@@ -83,6 +83,18 @@
   "news": {
     "title": "Noticias",
     "subtitle": "Confirmadas o probables, de los partidos de hoy de las ligas sugeridas",
-    "match": "{home} – {away} · {time}"
+    "match": "{home} – {away} · {time}",
+    "subtitleMine": "Confirmadas o probables, de los partidos de tus ligas y equipos"
+  },
+  "suggest": {
+    "titleLeague": "¿Agregas {name} a tus ligas?",
+    "titleTeam": "¿Sigues a {name}?",
+    "reason_one": "Abriste {count} partido suyo en los últimos 30 días.",
+    "reason_other": "Abriste {count} partidos suyos en los últimos 30 días.",
+    "rule": "Te lo sugerimos porque lo abres a menudo y no está entre tus favoritos. Solo se agrega si tú lo confirmas.",
+    "add": "Agregar",
+    "dismiss": "No, gracias",
+    "failed": "No se pudo guardar. Inténtalo de nuevo.",
+    "added": "{name} ya está entre tus favoritos."
   }
 }

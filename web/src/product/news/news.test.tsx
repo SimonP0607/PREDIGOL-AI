@@ -14,7 +14,21 @@ import { setTimeZone } from "@/lib/time";
 import esMatch from "@/locales/es/match.json";
 import enMatch from "@/locales/en/match.json";
 import type { Envelope } from "@/lib/api/v1/types";
-import type { MatchNews, NewsItem, NewsStatus, TodayNewsItem } from "@/lib/api/v1/types_news";
+import type {
+  MatchNews,
+  NewsItem,
+  NewsStatus,
+  TodayNews,
+  TodayNewsItem,
+} from "@/lib/api/v1/types_news";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import { NewsBlock, type TodayNewsQuery } from "@/product/home/NewsBlock";
+import type { FollowReason } from "@/lib/api/v1/types_today";
 import {
   groups,
   headline,
@@ -430,5 +444,61 @@ describe("what the section says", () => {
           : [];
     for (const s of strings(esMatch.news)) expect(s).not.toMatch(VETOED_ES);
     for (const s of strings(enMatch.news)) expect(s).not.toMatch(VETOED_EN);
+  });
+});
+
+describe("Home's news are the reader's (plan UX, B2)", () => {
+  async function page(news: TodayNews): Promise<string> {
+    const query = {
+      data: { status: "ok", data: news, reason: null, meta: {} },
+      dataUpdatedAt: NOW,
+    } as unknown as TodayNewsQuery;
+    const router = createRouter({
+      routeTree: createRootRoute({ component: () => <NewsBlock query={query} now={NOW} /> }),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+    });
+    await router.load();
+    return renderToStaticMarkup(<RouterProvider router={router} />);
+  }
+  const tonight = "2026-10-26T01:00:00Z";
+  const entry = (fixture: number, followed: FollowReason | null): TodayNewsItem => ({
+    match: {
+      fixture_id: fixture,
+      kickoff_at: tonight,
+      status_group: "scheduled",
+      home: "Nacional",
+      away: "Millonarios",
+      competition: "Liga BetPlay",
+      followed,
+    },
+    item: item({ status: "CONFIRMED" }),
+  });
+
+  test("their leagues and teams: their own subtitle and, on each, why its match is theirs", async () => {
+    setLocale("es");
+    const markup = await page({
+      items: [
+        entry(1, { kind: "team", names: ["Atlético Nacional"] }),
+        entry(2, { kind: "league", names: ["Liga BetPlay"] }),
+      ],
+      suggested: false,
+    });
+    const shown = text(markup);
+    expect(shown).toContain("de los partidos de tus ligas y equipos");
+    expect(shown).toContain("Sigues a Atlético Nacional");
+    expect(shown).toContain("Tu liga");
+    expect(markup.match(/data-testid="home-news-why"/g)).toHaveLength(2);
+  });
+
+  test("the suggested ones (or an API from before B2): said once in the subtitle, no chip on each", async () => {
+    setLocale("es");
+    for (const news of [
+      { items: [entry(3, { kind: "league" as const, names: ["Liga BetPlay"] })], suggested: true },
+      { items: [entry(4, null)] },
+    ]) {
+      const markup = await page(news);
+      expect(text(markup)).toContain("de los partidos de hoy de las ligas sugeridas");
+      expect(markup).not.toContain('data-testid="home-news-why"');
+    }
   });
 });

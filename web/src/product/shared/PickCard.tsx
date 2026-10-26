@@ -22,6 +22,7 @@ export function PickCard({
   compact = false,
   className,
   actions,
+  why,
 }: {
   pick: PickCardData;
   /** 1-5 for the Top 5. */
@@ -32,6 +33,8 @@ export function PickCard({
   className?: string | undefined;
   /** Save / add to parlay: below the card's link, never inside it. */
   actions?: ReactNode;
+  /** Why the reader is shown it (plan UX, B2): «Sigues a Nacional», «Tu liga» - one line under the teams. */
+  why?: ReactNode;
 }) {
   const label = selectionLabel({
     market_key: pick.market_key,
@@ -93,6 +96,7 @@ export function PickCard({
             className="flex-1"
           />
         </div>
+        {why ? <div className="flex min-w-0 px-4 pt-1.5">{why}</div> : null}
 
         <div
           className={cn(

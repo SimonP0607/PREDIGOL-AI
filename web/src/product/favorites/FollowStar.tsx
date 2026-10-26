@@ -44,6 +44,7 @@ export function FollowStar({ team }: { team: TeamBadge }) {
       for (const c of removed) track("favorite_removed", { kind: c.kind, id: c.id });
       qc.setQueryData(live.favorites.queryKey, saved);
       void qc.invalidateQueries({ queryKey: ["v1", "today"] });
+      void qc.invalidateQueries({ queryKey: ["me", "personal"] });
       toast(
         t(following ? "onboarding.follow.removed" : "onboarding.follow.added", { team: team.name }),
       );

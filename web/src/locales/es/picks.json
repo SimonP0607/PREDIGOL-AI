@@ -46,5 +46,19 @@
     "filtersTitle": "Filtros de los picks que ya empezaron"
   },
   "priceHelp": "Toca la cuota para agregarla a tu parlay; el marcador la guarda.",
-  "whatIsPick": "¿Qué es un pick?"
+  "whatIsPick": "¿Qué es un pick?",
+  "scope": {
+    "label": "Qué selecciones ver",
+    "mine": "Tus ligas · {count}",
+    "suggested": "Sugeridas · {count}",
+    "all": "Todas · {count}"
+  },
+  "mine": {
+    "empty": "Ninguna de tus ligas ni de tus equipos con estos filtros.",
+    "emptySuggested": "Ninguna de las ligas sugeridas con estos filtros.",
+    "others_one": "Hay {count} en otras ligas.",
+    "others_other": "Hay {count} en otras ligas.",
+    "seeAll_one": "Ver la de otras ligas",
+    "seeAll_other": "Ver las {count} de otras ligas"
+  }
 }

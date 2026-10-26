@@ -31,6 +31,7 @@ import { BestPrices } from "./BestPrices";
 import { HomeHeader } from "./HomeHeader";
 import { LiveTiles } from "./LiveTiles";
 import { NewsBlock } from "./NewsBlock";
+import { SuggestionCard } from "@/product/favorites/SuggestionCard";
 import { ContextBlock, RelevantBlock, ResultsBlock, TodayBlock } from "./TodayBlocks";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
@@ -161,7 +162,7 @@ export function HomePage() {
   return (
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
       <HomeHeader freshness={home.data?.data?.data_freshness ?? null} loading={home.isPending} />
-      <TodayBlock query={today} now={now} />
+      <TodayBlock query={today} now={now} suggestion={<SuggestionCard />} />
       {openYesterday ? (
         <DailySetBlock query={yesterday} variant="home" title={t("records.daily.yesterdayOpen")} />
       ) : null}

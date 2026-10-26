@@ -6,6 +6,7 @@
  */
 import type { CompetitionBadge, TeamBadge } from "@/lib/api/v1/types_product";
 import type { FavoritesView } from "@/lib/api/v1/types_favorites";
+import type { Suggestion } from "@/lib/api/v1/types_personal";
 
 export interface Choice {
   leagues: CompetitionBadge[];
@@ -56,6 +57,22 @@ export function full(choice: Choice, limits: Limits): { leagues: boolean; teams:
     leagues: choice.leagues.length >= limits.leagues,
     teams: choice.teams.length >= limits.teams,
   };
+}
+
+/**
+ * The reader's favourites with a suggestion accepted (plan UX, B2): what they see now - the suggested ones while they chose
+ * none, so nothing disappears - and it at the end. At the limit nothing is added (the API offers none then).
+ */
+export function withSuggestion(view: FavoritesView, s: Suggestion): Choice {
+  const choice = choiceOf(view);
+  const limits = limitsOf(view);
+  return s.kind === "league"
+    ? toggleLeague(
+        choice,
+        { id: s.id, name: s.name, country: null, logo_url: null, flag_url: null },
+        limits,
+      )
+    : toggleTeam(choice, { id: s.id, name: s.name, logo_url: null }, limits);
 }
 
 /** What the API is sent: ids in the reader's order. */

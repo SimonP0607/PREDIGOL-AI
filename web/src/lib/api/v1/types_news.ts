@@ -5,6 +5,7 @@
  * English and the summary in English, checked one by one where they were written (null while there are none).
  */
 import type { Iso } from "./types";
+import type { FollowReason } from "./types_today";
 
 export type NewsStatus = "CONFIRMED" | "PROBABLE" | "CONTRADICTORY" | "RUMOR" | "OUTDATED";
 export type NewsKind =
@@ -90,6 +91,8 @@ export interface TodayNewsMatch {
   home: string;
   away: string;
   competition: string;
+  /** Why the match is the reader's (plan UX, B2): a team they follow plays it, or it belongs to a league they follow. */
+  followed?: FollowReason | null;
 }
 
 export interface TodayNewsItem {
@@ -99,4 +102,6 @@ export interface TodayNewsItem {
 
 export interface TodayNews {
   items: TodayNewsItem[];
+  /** The matches are the suggested ones for Colombia (none chosen, or FBI_PERSONALIZATION=0): labelled so. */
+  suggested?: boolean;
 }

@@ -83,6 +83,18 @@
   "news": {
     "title": "News",
     "subtitle": "Confirmed or probable, from today's matches of the suggested leagues",
-    "match": "{home} – {away} · {time}"
+    "match": "{home} – {away} · {time}",
+    "subtitleMine": "Confirmed or probable, from the matches of your leagues and teams"
+  },
+  "suggest": {
+    "titleLeague": "Add {name} to your leagues?",
+    "titleTeam": "Do you follow {name}?",
+    "reason_one": "You opened {count} of its matches in the last 30 days.",
+    "reason_other": "You opened {count} of its matches in the last 30 days.",
+    "rule": "We suggest it because you open it often and it is not among your favourites. It is added only if you confirm.",
+    "add": "Add",
+    "dismiss": "No, thanks",
+    "failed": "It could not be saved. Try again.",
+    "added": "{name} is now among your favourites."
   }
 }

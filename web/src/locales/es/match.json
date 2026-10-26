@@ -130,7 +130,15 @@
     "none": "Todavía no hay cuotas para este partido.",
     "movement": "Ver movimiento en Cuotas",
     "chooseHelp": "Toca una cuota para agregarla a tu parlay o quitarla; el marcador la guarda en Mis picks.",
-    "allError": "No pudimos cargar las cuotas de cada casa: abajo siguen las mejores del partido."
+    "allError": "No pudimos cargar las cuotas de cada casa: abajo siguen las mejores del partido.",
+    "order": {
+      "mine": "Primero, los mercados que más consultas: {list}.",
+      "help": "Cuentan las veces que abriste sus casas o todas sus líneas, o elegiste uno de sus precios, en los últimos {days} días (desde {min} veces). Las probabilidades y los precios son los mismos para todos.",
+      "usualButton": "Orden de siempre",
+      "usual": "Mercados en el orden de siempre.",
+      "mineButton": "Volver a mi orden",
+      "failed": "No se pudo cambiar el orden."
+    }
   },
   "liveOdds": {
     "title": "Cuotas en vivo",

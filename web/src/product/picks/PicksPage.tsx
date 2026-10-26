@@ -55,6 +55,9 @@ import {
 } from "./filters";
 import { FilterSheet } from "@/product/shared/FilterSheet";
 import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
+import { followSet, reasonOf, whyOf, type FollowSet, type Scope } from "@/product/favorites/follow";
+import { ScopeSwitch } from "@/product/favorites/ScopeSwitch";
+import { WhyChip } from "@/product/favorites/WhyChip";
 
 const DAY_ZONE = "America/Bogota";
 
@@ -72,6 +75,16 @@ export function PicksPage() {
   // Plan UX, A9: today's empty set says why (the published set's own funnel); another day's does not.
   const reason = useQuery({ ...live.noPick, enabled: day === today });
   const list = useQuery({ ...live.productPicks(q, preview), placeholderData: keepPreviousData });
+  // Plan UX, B2: the selections of the reader's leagues and teams first, every one a tap away (the day's set above is
+  // PrediGol's own, the same for everyone, and is never filtered or reordered).
+  const reader = auth.user?.role === "USER";
+  const favorites = useQuery({ ...live.favorites, enabled: reader });
+  const follow = useMemo(
+    () => (reader ? followSet(favorites.data) : null),
+    [reader, favorites.data],
+  );
+  // Their own by default once they chose favourites; every selection while they are the suggested ones (a tap away).
+  const [scope, setScope] = useState<Scope | null>(null);
 
   return (
     <div className="space-y-8">
@@ -90,7 +103,14 @@ export function PicksPage() {
         nav={{ day, today, onDay: setDay }}
         noPick={day === today ? noPickLoad(reason, (n) => n) : undefined}
       />
-      <AllPicks query={list} filters={filters} onChange={setFilters} />
+      <AllPicks
+        query={list}
+        filters={filters}
+        onChange={setFilters}
+        follow={follow}
+        scope={follow ? (scope ?? (follow.suggested ? "all" : "mine")) : "all"}
+        onScope={setScope}
+      />
       <StartedPicks />
     </div>
   );
@@ -302,16 +322,29 @@ function AllPicks({
   query,
   filters,
   onChange,
+  follow,
+  scope,
+  onScope,
 }: {
   query: BoardQuery;
   filters: PickFilters;
   onChange: (next: PickFilters) => void;
+  /** The reader's leagues and teams (plan UX, B2); null: the common list (personalisation off, or the owner). */
+  follow: FollowSet | null;
+  scope: Scope;
+  onScope: (next: Scope) => void;
 }) {
   const board = query.data?.data;
   const shadow = board?.source === "shadow_preview";
-  const picks = board?.picks ?? [];
-  // Pages of 15 (REVIEW point 13); back to the first whenever the filters change.
-  const paged = usePaged(picks, JSON.stringify(toQuery(filters)));
+  const picks = useMemo(() => board?.picks ?? [], [board]);
+  const own = useMemo(
+    () => (follow ? picks.filter((p) => reasonOf(p, follow) !== null) : picks),
+    [picks, follow],
+  );
+  const mineOnly = scope === "mine" && follow !== null;
+  const shown = mineOnly ? own : picks;
+  // Pages of 15 (REVIEW point 13); back to the first whenever the filters or the scope change.
+  const paged = usePaged(shown, `${JSON.stringify(toQuery(filters))}|${scope}`);
   const refreshing = query.isPlaceholderData;
   const asOf = query.data?.meta.data_as_of ?? null;
   const filtered = !isDefault(filters);
@@ -365,6 +398,30 @@ function AllPicks({
         />
       </Card>
     );
+  } else if (mineOnly && own.length === 0) {
+    // Never «no picks» while there are some: the others are counted and one tap away.
+    body = (
+      <div data-testid="picks-mine-empty">
+        <Card>
+          <EmptyState
+            compact
+            icon={<ListFilter aria-hidden className="h-5 w-5" />}
+            title={t(follow.suggested ? "picks.mine.emptySuggested" : "picks.mine.empty")}
+            body={t("picks.mine.others", { count: picks.length })}
+            action={
+              <button
+                type="button"
+                onClick={() => onScope("all")}
+                data-testid="picks-mine-see-all"
+                className="tap-y relative inline-flex h-9 items-center rounded-full border border-border-strong px-4 text-xs font-semibold transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {t("picks.mine.seeAll", { count: picks.length })}
+              </button>
+            }
+          />
+        </Card>
+      </div>
+    );
   } else {
     body = (
       <>
@@ -376,15 +433,19 @@ function AllPicks({
             refreshing && "opacity-60",
           )}
         >
-          {paged.items.map((pick) => (
-            <PickCard
-              key={pick.pick_id}
-              pick={pick}
-              compact
-              shadow={shadow}
-              actions={<SelectablePriceRow sel={pickableOfCard(pick)} />}
-            />
-          ))}
+          {paged.items.map((pick) => {
+            const why = follow ? whyOf(reasonOf(pick, follow), follow.suggested) : null;
+            return (
+              <PickCard
+                key={pick.pick_id}
+                pick={pick}
+                compact
+                shadow={shadow}
+                actions={<SelectablePriceRow sel={pickableOfCard(pick)} />}
+                why={why ? <WhyChip why={why} testId="pick-why" className="text-micro" /> : null}
+              />
+            );
+          })}
         </div>
         <Pager
           paged={paged}
@@ -418,7 +479,7 @@ function AllPicks({
               testId="picks-filters-sheet"
               active={activeCount(filters)}
               onReset={() => onChange(DEFAULT_FILTERS)}
-              showLabel={loaded ? t("picks.filters.show", { count: picks.length }) : undefined}
+              showLabel={loaded ? t("picks.filters.show", { count: shown.length }) : undefined}
             >
               <PicksFilterFields
                 filters={filters}
@@ -429,11 +490,22 @@ function AllPicks({
           </div>
         </>
       ) : null}
+      {loaded && picks.length > 0 && follow ? (
+        <ScopeSwitch
+          value={scope}
+          onChange={onScope}
+          mine={own.length}
+          all={picks.length}
+          suggested={follow.suggested}
+          ns="picks"
+          testId="picks-scope"
+        />
+      ) : null}
       <div aria-live="polite">
-        {loaded && picks.length > 0 ? (
+        {loaded && shown.length > 0 ? (
           <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <p className="text-sm font-semibold" data-testid="picks-count">
-              {t("picks.count", { count: picks.length })}
+              {t("picks.count", { count: shown.length })}
             </p>
             <div className="flex flex-wrap items-center gap-3">
               {asOf ? (
