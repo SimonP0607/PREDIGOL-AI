@@ -71,8 +71,15 @@ Lo que se ha medido de esos días, que es trabajo de este plan y no un goteo:
 Con las fotos diarias no se puede repartir cada gigabyte de los dos días grandes entre estas causas; lo que sí se puede decir es que ninguna
 es un goteo que siga abierto. **El ritmo de régimen que cabe esperar** es el de antes (≈ 0,5 GB/día) más el reloj de precios (≈ 0,3), más lo que
 cueste cada despliegue (unos 0,05 GB si solo cambia el código, ≈ 2,5 GB si cambia una librería, más su copia previa). A ≈ 0,8 GB/día los 81 GB
-libres duran más de tres meses, y con los volúmenes quitados, más de cinco. Hay un recordatorio programado para el 26-oct: leer `disk.history`
-otra vez y escribir aquí el ritmo medido.
+libres duran más de tres meses, y con los volúmenes quitados, más de cinco.
+
+**Medido el 26-oct (10:31 UTC, `disk.history`, una foto al día):** del 24 al 26-oct el disco creció **≈ 4,0 GB al día** (de 109,6 a 117,6 GiB) y
+en la última semana (19 al 26-oct) **≈ 4,4 GB al día** (de 86,7 a 117,6 GiB); del 13 al 22-oct habían sido ≈ 0,75 GB al día. El ritmo de régimen
+no se ha podido medir: cada día de esta semana tuvo uno o más despliegues (imagen nueva, caché de construcción y volcado previo) y la base crece
+además ≈ 0,8 GB al día con los rellenos en marcha (medido el 25 y 26-oct en `ALMACENAMIENTO_PREDIGOL.md`). **Lo que cambia la conclusión:**
+si la cola de despliegues sigue a este ritmo, los ≈ 80 GB libres llegan al 90 % en unas dos semanas. La poda de imágenes viejas y de la caché
+de construcción (≈ 21 GB, regenerable) no depende de tener la copia fuera del servidor y es lo primero que conviene hacer; los volúmenes
+(54 GB) siguen esperando la copia en R2 y tu «sí». Desde que se despliegue, `bin/storage-report.sh` medirá el ritmo cuatro veces al día.
 
 ## 5. Lo que se puede quitar (tuyo; yo no lo hago sin que me lo pidas)
 
