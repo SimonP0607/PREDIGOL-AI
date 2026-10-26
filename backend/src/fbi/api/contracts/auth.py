@@ -52,6 +52,12 @@ class Me(Contract):
     membership: MembershipSummary | None = Field(default=None, description="The account's membership now (plan UX, "
                                                                            "A8), filled by GET /auth/me: None for "
                                                                            "the owner's accounts (no membership).")
+    welcome_due: bool = Field(default=False, description="The account still owes its welcome (plan UX, A13; FBI_ONBOARDING): "
+                                                         "the page opens /welcome after the consents. Readers only, once.")
+    welcome_steps: list[str] = Field(default_factory=list, description="football (the favourites) and, for a new account, "
+                                                                       "about («Qué es PrediGol»).")
+    hints_seen: list[str] = Field(default_factory=list, description="The first-visit hints the reader dismissed (picks, match, "
+                                                                    "parlay, my_picks): never shown again.")
     transparency: bool = Field(default=False, description="«Cómo le va a PrediGol» is open to readers (plan UX, A12; "
                                                           "FBI_TRANSPARENCY, off until the owner reviewed it): the page "
                                                           "links to it only then.")

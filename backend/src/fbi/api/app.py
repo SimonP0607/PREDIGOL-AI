@@ -27,6 +27,7 @@ from fbi.api.routers import (
     events,
     evolution,
     explorer,
+    favorites,
     football,
     forecast,
     intelligence,
@@ -207,7 +208,7 @@ def create_app() -> FastAPI:
     app_tier = [Depends(same_site_only), Depends(require_app), Depends(observe_principal)]
     # The account itself, its membership and the reader's rights (consents, export, privacy requests, notification
     # preferences): never behind the gates - a limited reader still sees why, and how to renew.
-    for r in (auth.router, customer.router, messaging.router, membership.router):
+    for r in (auth.router, customer.router, messaging.router, membership.router, favorites.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
     # The product's own analytics (A6), behind the consent gate only: a reader who has not accepted the processing is
     # not measured; a limited one is (what they open while limited is part of renewing).

@@ -248,6 +248,15 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         SELECT email_off AS email_switched_off, email_status, email_status_at, updated_at
         FROM customer.preferences WHERE user_id = %s
     """, (user_id,))
+    # The leagues and teams the reader follows, the welcome and the hints dismissed (plan UX, A13).
+    favourite_rows = _all(conn, """
+        SELECT f.kind, f.ref_id AS id, COALESCE(c.name, t.name) AS name, f.created_at
+        FROM customer.favorites f
+        LEFT JOIN core.competitions c ON c.id = f.league_id
+        LEFT JOIN core.teams t ON t.id = f.team_id
+        WHERE f.user_id = %s ORDER BY f.created_at, f.ref_id
+    """, (user_id,))
+    welcome = _all(conn, "SELECT onboarded_at, hints_seen FROM customer.preferences WHERE user_id = %s", (user_id,))
     # The product events kept under the reader's pseudonym and their daily aggregate (plan UX, A6).
     analytics = events.events_of(conn, user_id)
     # The membership: its periods, the payments recorded and its events (plan UX, A8).
@@ -264,6 +273,8 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "saved_parlays": parlay_rows,
         "messages": messages,
         "notification_preferences": notification_prefs[0] if notification_prefs else None,
+        "favorites": favourite_rows,
+        "welcome": welcome[0] if welcome else None,
         "product_events": analytics["product_events"],
         "activity_daily": analytics["activity_daily"],
         "membership_periods": member["membership_periods"],

@@ -38,9 +38,10 @@ from fbi.api.security import (
 )
 from fbi.api.switches import transparency_open
 from fbi.auth import crypto, service
+from fbi.auth.roles import Role
 from fbi.auth.service import Principal
 from fbi.auth.settings import session_settings
-from fbi.customer import consents, membership
+from fbi.customer import consents, favorites, membership
 
 public_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
 session_router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(same_site_only)])
@@ -79,6 +80,12 @@ def with_consents(who: Me, principal: Principal, conn: psycopg.Connection[Any]) 
                                              super_admin=principal.is_super_admin))
     if found is not None:
         update["membership"] = MembershipSummary(**found)
+    # the welcome and the hints (plan UX, A13): the page opens /welcome once the consents are done
+    prefs = favorites.preferences(conn, principal.user_id)
+    update["hints_seen"] = list(prefs.hints_seen)
+    if favorites.welcome_due(conn, principal.user_id, reader=principal.role == Role.USER):
+        update["welcome_due"] = True
+        update["welcome_steps"] = list(favorites.welcome_steps(conn, principal.user_id))
     return who.model_copy(update=update) if update else who
 
 

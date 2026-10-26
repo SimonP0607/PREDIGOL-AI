@@ -60,9 +60,9 @@ from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
 from fbi.api.problem import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.api.services.reading import narrative_mode
-from fbi.api.services.today import SUGGESTED_LEAGUES, SUGGESTED_TEAM
 from fbi.api.switches import user_switch
 from fbi.core.clock import now
+from fbi.core.suggestions import SUGGESTED_LEAGUES, SUGGESTED_TEAM
 
 USERS_SWITCH: Final = "FBI_NEWS_USERS"
 """Every signed-in account sees the news: on since plan UX A10, ``FBI_NEWS_USERS=0`` hides them again without a deploy (the

@@ -1,7 +1,7 @@
 """Deleting an account as anonymisation (plan UX, A7 and section 23), on a reader's deletion request and only with the
 owner's confirmation - the account's address typed again in the console.
 
-What goes: the reader's preferences, what they saved (picks and parlays), their sessions, their second factor and
+What goes: the reader's preferences and favourites (A13), what they saved (picks and parlays), their sessions, their second factor and
 recovery codes, and every link of theirs that could still work. The account's row stays - its address masked
 (``deleted-<id>@deleted.invalid``, which the e-mail queue never sends to), its name replaced, a random password hash
 nobody knows, status ``deleted`` - and so does the address typed in the sign-in trail, masked the same way. What
@@ -60,6 +60,7 @@ def anonymise(actor: Principal, user_id: int, *, confirm: str, ip: str | None) -
         parlays = conn.execute("DELETE FROM picks.user_parlays WHERE user_id = %s", (user_id,)).rowcount
         picks = conn.execute("DELETE FROM picks.user_picks WHERE user_id = %s", (user_id,)).rowcount
         conn.execute("DELETE FROM customer.preferences WHERE user_id = %s", (user_id,))
+        conn.execute("DELETE FROM customer.favorites WHERE user_id = %s", (user_id,))
         sessions = conn.execute("DELETE FROM auth.sessions WHERE user_id = %s", (user_id,)).rowcount
         store.clear_totp(conn, user_id)  # the second factor's secret and the recovery codes
         tokens.revoke_open(conn, user_id, tuple(tokens.LIFETIME), "account_closed")
