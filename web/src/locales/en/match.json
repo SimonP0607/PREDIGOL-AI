@@ -128,7 +128,8 @@
     "bestHelp": "The best price for each option among every bookmaker offering it.",
     "none": "No odds for this match yet.",
     "movement": "See price movement in Odds",
-    "chooseHelp": "Tap a price to add it to your parlay or take it out; the bookmark saves it to My picks."
+    "chooseHelp": "Tap a price to add it to your parlay or take it out; the bookmark saves it to My picks.",
+    "allError": "We could not load each bookmaker's odds: the match's best ones are still below."
   },
   "liveOdds": {
     "title": "Live odds",

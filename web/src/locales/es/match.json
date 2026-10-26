@@ -128,7 +128,8 @@
     "bestHelp": "El mejor precio de cada opción entre todas las casas que la ofrecen.",
     "none": "Todavía no hay cuotas para este partido.",
     "movement": "Ver movimiento en Cuotas",
-    "chooseHelp": "Toca una cuota para agregarla a tu parlay o quitarla; el marcador la guarda en Mis picks."
+    "chooseHelp": "Toca una cuota para agregarla a tu parlay o quitarla; el marcador la guarda en Mis picks.",
+    "allError": "No pudimos cargar las cuotas de cada casa: abajo siguen las mejores del partido."
   },
   "liveOdds": {
     "title": "Cuotas en vivo",

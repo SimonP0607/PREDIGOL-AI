@@ -18,6 +18,7 @@ import type { MatchMarkets, SelectionQuotes } from "@/lib/api/v1/types_profile";
 import { formatDateTime } from "@/lib/time";
 import { GlossaryLink, GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { marketName } from "@/product/shared/markets";
+import { ErrorState } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import {
   ageLevel,
@@ -528,6 +529,23 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
               {before ? t("match.markets.chooseHelp") : null}
             </p>
             {all ? <CapturesStrip all={all} /> : null}
+            {/* Plan UX, A9: every bookmaker's prices failing to load is said, with its reference and a retry - the
+                best prices above come from the match itself and stay. */}
+            {allQ.isError ? (
+              <div
+                className="mt-3 rounded-xl border border-border bg-card"
+                data-testid="markets-all-error"
+              >
+                <p className="px-4 pt-3 text-xs text-muted-foreground">
+                  {t("match.markets.allError")}
+                </p>
+                <ErrorState
+                  error={allQ.error}
+                  onRetry={() => void allQ.refetch()}
+                  className="py-3"
+                />
+              </div>
+            ) : null}
             <div className="mt-3">
               <CardGrid
                 items={boards.map((b) => ({
