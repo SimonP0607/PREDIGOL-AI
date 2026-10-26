@@ -95,7 +95,9 @@ def onboarding_state(conn: psycopg.Connection[Any], principal: Principal) -> Onb
     return OnboardingState(
         welcome_due=favorites.welcome_due(conn, principal.user_id, reader=reader),
         welcome_steps=list(favorites.welcome_steps(conn, principal.user_id)),
-        onboarded_at=prefs.onboarded_at, hints_seen=list(prefs.hints_seen))
+        onboarded_at=prefs.onboarded_at,
+        # the pages' first-visit hints only: the same list keeps the reader's dismissed suggestions and market order (B2)
+        hints_seen=[h for h in prefs.hints_seen if h in favorites.HINTS])
 
 
 @router.get("/favorites", response_model=FavoritesView)

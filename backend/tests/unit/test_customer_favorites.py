@@ -17,6 +17,7 @@ import pytest
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 from fbi.api.contracts.today import TodayMatch
 from fbi.api.services import today
+from fbi.api.services.follows import Follows
 from fbi.customer import favorites
 from fbi.customer.db import CustomerError
 
@@ -128,11 +129,11 @@ def match(home: tuple[int, str], away: tuple[int, str], league: tuple[int, str])
 
 def test_a_match_says_why_it_is_the_readers_a_team_first_then_the_league() -> None:
     m = match((10, "Atlético Nacional"), (11, "Millonarios"), (5, "Liga BetPlay"))
-    follows = today.Follows(leagues=(5,), teams=(11,), suggested=False)
+    follows = Follows(leagues=(5,), teams=(11,), suggested=False)
     reason = today.why(m, follows)
     assert reason is not None and (reason.kind, reason.names) == ("team", ["Millonarios"]), "the nearer reason"
-    both = today.why(m, today.Follows(leagues=(), teams=(11, 10), suggested=False))
+    both = today.why(m, Follows(leagues=(), teams=(11, 10), suggested=False))
     assert both is not None and both.names == ["Atlético Nacional", "Millonarios"], "home first"
-    league = today.why(m, today.Follows(leagues=(5,), teams=(), suggested=False))
+    league = today.why(m, Follows(leagues=(5,), teams=(), suggested=False))
     assert league is not None and (league.kind, league.names) == ("league", ["Liga BetPlay"])
-    assert today.why(m, today.Follows(leagues=(6,), teams=(12,), suggested=False)) is None, "not theirs"
+    assert today.why(m, Follows(leagues=(6,), teams=(12,), suggested=False)) is None, "not theirs"

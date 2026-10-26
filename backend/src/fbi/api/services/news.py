@@ -59,6 +59,7 @@ from fbi.api.contracts.news import (
 from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
 from fbi.api.problem import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
+from fbi.api.services.follows import Follows, follow_reason
 from fbi.api.services.reading import narrative_mode
 from fbi.api.switches import user_switch
 from fbi.core.clock import now
@@ -373,6 +374,22 @@ SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, th.name AS home_name,
 """The suggested matches not yet over (Home's block 4, until the reader's favourites arrive with A13)."""
 
 
+FOLLOWED_MATCHES_SQL = """
+SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, th.name AS home_name, f.away_team_id, ta.name AS away_name,
+       c.id AS competition_id, c.name AS competition
+  FROM core.fixtures f
+  JOIN core.teams th ON th.id = f.home_team_id
+  JOIN core.teams ta ON ta.id = f.away_team_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE c.is_tracked AND f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
+   AND f.status_group IN ('scheduled', 'live')
+   AND (c.id = ANY(%(leagues)s) OR f.home_team_id = ANY(%(teams)s) OR f.away_team_id = ANY(%(teams)s))
+ ORDER BY f.kickoff_at, f.id
+"""
+"""The reader's matches not yet over (plan UX, B2): their leagues and teams, as ids - the suggested ones while they chose none."""
+
+
 def _teams(f: Mapping[str, Any]) -> dict[int, NewsTeam]:
     return {int(f["home_team_id"]): NewsTeam(id=int(f["home_team_id"]), name=f["home_name"], side="home"),
             int(f["away_team_id"]): NewsTeam(id=int(f["away_team_id"]), name=f["away_name"], side="away")}
@@ -406,6 +423,38 @@ def match_news(conn: Conn, fixture_id: int, *, at: datetime | None = None) -> En
     if not items:
         return unavailable(body, "No verified news relevant to this match.", status=DataStatus.EMPTY, count=0)
     return ok(body, count=len(items), data_as_of=max(i.seen_at for i in items))
+
+
+@shared(120)
+def news_for(conn: Conn, follows: Follows, *, at: datetime | None = None) -> Envelope[TodayNews | None]:
+    """Home's «Noticias» for a reader (plan UX, B2; section 27: «desde B2, las de sus equipos favoritos»): the newest
+    confirmed or probable news of the matches of the leagues and teams they follow - the suggested ones while they chose
+    none or FBI_PERSONALIZATION=0 - not yet over, each match saying why it is theirs. Kept two minutes per set of
+    favourites: every reader who follows the same shares it. The items are the same for every reader who sees them."""
+    if not users_may_see():
+        return unavailable(None, "The news are not shown to users at the moment.")
+    moment = at or now()
+    fixtures = fetch_all(conn, FOLLOWED_MATCHES_SQL, {"since": moment - TODAY_BEFORE, "until": moment + TODAY_AFTER,
+                                                      "leagues": list(follows.leagues), "teams": list(follows.teams)})
+    rows = _read(conn, [int(f["id"]) for f in fixtures], moment)
+    items: list[TodayNewsItem] = []
+    for f in fixtures:
+        fid = int(f["id"])
+        if fid not in rows:
+            continue
+        reason = follow_reason((int(f["home_team_id"]), str(f["home_name"])), (int(f["away_team_id"]), str(f["away_name"])),
+                               (int(f["competition_id"]), str(f["competition"])), follows)
+        match = TodayNewsMatch(fixture_id=fid, kickoff_at=f["kickoff_at"], status_group=str(f["status_group"]),
+                               home=f["home_name"], away=f["away_name"], competition=f["competition"], followed=reason)
+        shown = [c for c in cards(rows[fid], _teams(f)) if c.status in HOME_STATUSES][:TODAY_PER_MATCH]
+        items.extend(TodayNewsItem(match=match, item=c) for c in shown)
+        if len(items) >= TODAY_MAX:
+            break
+    body = TodayNews(items=items[:TODAY_MAX], suggested=follows.suggested)
+    if not body.items:
+        return unavailable(body, "No confirmed or probable news of the reader's matches.", status=DataStatus.EMPTY,
+                           count=0)
+    return ok(body, count=len(body.items), data_as_of=max(i.item.seen_at for i in body.items))
 
 
 @shared(120)

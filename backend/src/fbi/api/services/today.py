@@ -18,7 +18,6 @@ here, never counted and never named.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final, Literal
@@ -39,6 +38,7 @@ from fbi.api.envelope import DataStatus, Envelope, Section, ok, section
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.api.services import center, reading
 from fbi.api.services import forecast as forecast_service
+from fbi.api.services.follows import Follows, follow_reason
 from fbi.core.clock import now
 from fbi.core.suggestions import SUGGESTED_LEAGUES, SUGGESTED_TEAM
 from fbi.picks import funnel
@@ -278,28 +278,10 @@ def today(conn: Conn, *, at: datetime | None = None) -> Envelope[Today]:
 # ── the reader's own on top (A13) ────────────────────────────────────────────────────────────────────────────────────
 
 
-@dataclass(frozen=True)
-class Follows:
-    """What a reader's Home follows, as ids: their favourites (in the order chosen) - or, while they chose none or
-    personalisation is off, the ones suggested for Colombia (``suggested``). Built by the API's router from the reader's
-    favourites; this module never reads them."""
-
-    leagues: tuple[int, ...]
-    teams: tuple[int, ...]
-    suggested: bool
-    personalization: bool = True
-
-
 def why(m: TodayMatch, follows: Follows) -> FollowReason | None:
-    """Why a match is the reader's (pure): a followed team plays it - the nearer reason, both named when both are followed,
-    home first - or it belongs to a followed league. None: not theirs."""
-    teams = set(follows.teams)
-    names = [side.name for side in (m.home, m.away) if side.id in teams]
-    if names:
-        return FollowReason(kind="team", names=names)
-    if m.competition.id in set(follows.leagues):
-        return FollowReason(kind="league", names=[m.competition.name])
-    return None
+    """Why a match of the board is the reader's (pure): ``follow_reason`` of its sides and its league."""
+    return follow_reason((m.home.id, m.home.name), (m.away.id, m.away.name), (m.competition.id, m.competition.name),
+                         follows)
 
 
 def _badges(rows: Sequence[dict[str, Any]], key: str, order: Sequence[int]) -> dict[int, dict[str, Any]]:

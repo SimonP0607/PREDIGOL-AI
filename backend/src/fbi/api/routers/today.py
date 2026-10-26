@@ -22,19 +22,20 @@ from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok
 from fbi.api.security import App
 from fbi.api.services import today
+from fbi.api.services.follows import Follows
 from fbi.customer import favorites
 
 router = APIRouter(tags=["today"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 
 
-def follows_of(conn: psycopg.Connection[Any], user_id: int) -> today.Follows:
+def follows_of(conn: psycopg.Connection[Any], user_id: int) -> Follows:
     """What the reader's Home follows: their favourites - or, while they chose none or FBI_PERSONALIZATION=0, the ones
     suggested for Colombia (labelled)."""
     on = favorites.personalization_on()
     mine = favorites.chosen(conn, user_id) if on else None
     shown = mine or favorites.suggested(conn)
-    return today.Follows(leagues=shown.leagues, teams=shown.teams, suggested=mine is None, personalization=on)
+    return Follows(leagues=shown.leagues, teams=shown.teams, suggested=mine is None, personalization=on)
 
 
 @router.get("/today", response_model=Envelope[Today])

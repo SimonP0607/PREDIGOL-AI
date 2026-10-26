@@ -38,6 +38,7 @@ from fbi.api.routers import (
     messaging,
     monitoring,
     news,
+    personal,
     product,
     reading,
     records,
@@ -214,9 +215,10 @@ def create_app() -> FastAPI:
     for r in (auth.router, customer.router, messaging.router, membership.router, favorites.router, support.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
     # The product's own analytics (A6), behind the consent gate only: a reader who has not accepted the processing is
-    # not measured; a limited one is (what they open while limited is part of renewing).
+    # not measured; a limited one is (what they open while limited is part of renewing). What the reader's own use orders
+    # and suggests (B2) reads what is measured: the same gate.
     measured_tier = [*app_tier, Depends(consent_required)]
-    for r in (events.router,):
+    for r in (events.router, personal.router):
         app.include_router(r, prefix="/api/v1", dependencies=measured_tier)
     # The product, behind the consent gate (plan UX, A4; FBI_CONSENT_GATE, born off: fbi.customer.consents) and the
     # membership's (A8; FBI_MEMBERSHIP_ENFORCE, born off: fbi.customer.membership).

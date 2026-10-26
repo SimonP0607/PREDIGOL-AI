@@ -10,6 +10,7 @@ from typing import Literal
 from pydantic import Field
 
 from fbi.api.contracts.common import Contract
+from fbi.api.contracts.today import FollowReason
 
 NewsStatus = Literal["CONFIRMED", "PROBABLE", "CONTRADICTORY", "RUMOR", "OUTDATED"]
 NewsKind = Literal["injury", "suspension", "doubtful", "lineup", "coach", "news", "transfer", "motivation", "weather",
@@ -88,6 +89,9 @@ class TodayNewsMatch(Contract):
     home: str
     away: str
     competition: str
+    followed: FollowReason | None = Field(default=None, description="Why the match is the reader's (plan UX, B2): a team "
+                                                                    "they follow plays it, or it belongs to a league they "
+                                                                    "follow - the suggested ones while they chose none.")
 
 
 class TodayNewsItem(Contract):
@@ -97,5 +101,8 @@ class TodayNewsItem(Contract):
 
 class TodayNews(Contract):
     items: list[TodayNewsItem] = Field(description="Home's «Noticias» (plan section 24, block 4): confirmed or probable news "
-                                                   "of the suggested matches not yet over, from three hours ago to 36 hours "
-                                                   "ahead - kick-off order, at most three per match.")
+                                                   "of the reader's matches not yet over - their leagues and teams (B2), the "
+                                                   "suggested ones while they chose none - from three hours ago to 36 hours "
+                                                   "ahead, kick-off order, at most three per match.")
+    suggested: bool = Field(default=True, description="The matches are the suggested ones for Colombia (the reader chose "
+                                                      "none, or FBI_PERSONALIZATION=0): labelled so.")

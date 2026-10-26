@@ -170,6 +170,12 @@ def _recordable(conn: psycopg.Connection[Any], user_id: int, email: str, *, supe
     return crypto.product_id(user_id)
 
 
+def subject_now(conn: psycopg.Connection[Any], user_id: int, email: str, *, super_admin: bool) -> str | None:
+    """The reader's pseudonym while their events are being recorded now (the mode, their consent, never the owner or the
+    robot), else None: what reads a reader's own events for them (plan UX, B2: fbi.customer.personal) uses them only then."""
+    return _recordable(conn, user_id, email, super_admin=super_admin)
+
+
 def record(user_id: int, email: str, events: Sequence[tuple[object, object]], *, super_admin: bool) -> int:
     """The browser's batch: every event is checked first (one wrong event refuses the batch - a bug in the page, never
     a reader's input), then written in one statement. How many were recorded (0 when nothing is to be)."""
