@@ -33,7 +33,7 @@ case "$*" in
   "images -q") printf 'a\nb\nb\nc\n' ;;
   "volume ls -q -f dangling=true") printf 'v1\nv2\nv3\nv4\nv5\n' ;;
   *pg_database_size*) echo 23200000000 ;;
-  *json_agg*) echo '[{"name":"raw.odds","bytes":9000000000},{"name":"models.predictions","bytes":3000000000}]' ;;
+  *jsonb_agg*) echo '[{"name":"raw.odds","bytes":9000000000},{"name":"models.predictions","bytes":3000000000}]' ;;
   *) echo "unexpected docker call: $*" >&2; exit 3 ;;
 esac
 """
@@ -58,7 +58,8 @@ def server(tmp_path: Path) -> dict[str, Path]:
         {"bytes": 4096, "sha256": "ab" * 32, "offsite": {"remote": "r2:b/dumps/daily/x.age", "bytes": 4300,
                                                           "verified_at": "2026-10-26T03:01:00Z"}}))
     (data / "state/restore-test.json").write_text(json.dumps(
-        {"dump": "predigol-20261026T030000Z", "at": "2026-10-26T04:00:00Z", "passed": True, "seconds": 812}))
+        {"dump": "predigol-20261026T030000Z", "tested_at": "2026-10-26T04:00:00Z", "passed": True, "seconds": 812,
+         "failures": []}))
     env = tmp_path / "predigol.env"
     env.write_text(f"PREDIGOL_DATA={data}\nPOSTGRES_PASSWORD=sup3r-secret-value\nBACKUP_KEEP_DAILY=3\n"
                    "BACKUP_KEEP_WEEKLY=2\nBACKUP_RCLONE_REMOTE=r2:predigol-backups\n")
@@ -134,6 +135,7 @@ def test_one_line_a_day_in_the_history(server: dict[str, Path]) -> None:
     lines = (server["data"] / "state/storage/history.jsonl").read_text().splitlines()
     assert len(lines) == 1
     assert json.loads(lines[0])["used_bytes"] == 101 * GIB, "the day keeps its latest measure"
+    assert json.loads(lines[0])["tables"] == {"raw.odds": 9_000_000_000, "models.predictions": 3_000_000_000}
 
 
 def seed_history(server: dict[str, Path], deltas: list[int], start: int = 100 * GIB) -> int:

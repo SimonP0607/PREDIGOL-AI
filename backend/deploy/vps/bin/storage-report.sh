@@ -19,7 +19,7 @@ QUIET=0
 [[ "${1:-}" == "--quiet" ]] && QUIET=1
 say() { (( QUIET )) || log "$*"; }
 
-OUT_DIR="$STATE/storage"
+OUT_DIR="${STORAGE_REPORT_DIR:-$STATE/storage}"  # overridable only to try the script without touching the real report
 mkdir -p "$OUT_DIR"
 chmod 755 "$OUT_DIR"
 REPORT="$OUT_DIR/report.json"
@@ -31,7 +31,7 @@ num() { [[ "${1:-}" =~ ^[0-9]+$ ]] && echo "$1" || echo 0; }
 
 # 1. The disk.
 read -r size used avail < <(df -PB1 "$PREDIGOL_DATA" | awk 'NR==2 {print $2, $3, $4}')
-pct=$(( used * 100 / size ))
+pct=$(( (used * 100 + used + avail - 1) / (used + avail) ))  # the way df rounds: up, over used + available
 if (( pct >= 90 )); then level=critical; elif (( pct >= 80 )); then level=high
 elif (( pct >= 70 )); then level=warning; else level=ok; fi
 
@@ -60,7 +60,7 @@ orphans="$(docker volume ls -q -f dangling=true 2> /dev/null | wc -l)"
 # 4. The database, as PostgreSQL counts it (read-only).
 db_bytes="$(num "$(psql_q "SELECT pg_database_size('fbi')" 2> /dev/null || true)")"
 top_tables="$(compose exec -T postgres psql -U fbi -d fbi -v ON_ERROR_STOP=1 -qAtX -c "SET default_transaction_read_only = on" \
-  -c "SELECT coalesce(json_agg(t), '[]') FROM (SELECT n.nspname || '.' || c.relname AS name, pg_total_relation_size(c.oid) AS bytes
+  -c "SELECT coalesce(jsonb_agg(t), '[]') FROM (SELECT n.nspname || '.' || c.relname AS name, pg_total_relation_size(c.oid) AS bytes
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind IN ('r', 'p', 'm')
       AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%'
       ORDER BY pg_total_relation_size(c.oid) DESC LIMIT 12) t" < /dev/null 2> /dev/null | tail -n 1 || true)"
@@ -77,7 +77,7 @@ fi
 last_offsite="$(for m in $(ls -t "$DB_BACKUPS"/predigol-*.json 2> /dev/null | head -60); do
   jq -r '.offsite.verified_at // empty' "$m" 2> /dev/null; done | sort | tail -1)"
 restore='null'
-[[ -r "$STATE/restore-test.json" ]] && restore="$(jq -c '{dump: (.dump // null), at: (.at // null), passed: (.passed // null),
+[[ -r "$STATE/restore-test.json" ]] && restore="$(jq -c '{dump: (.dump // null), at: (.tested_at // .at // null), passed: (.passed // null),
   seconds: (.seconds // null)}' "$STATE/restore-test.json" 2> /dev/null || echo null)"
 offsite_configured=false
 [[ -n "${BACKUP_RCLONE_REMOTE:-}" ]] && offsite_configured=true
@@ -86,11 +86,13 @@ cleanup='null'
 [[ -r "$STATE/prune.json" ]] && cleanup="$(jq -c '{at: (.at // null), freed_bytes: (.freed_bytes // null),
   items: ((.items // []) | .[:50])}' "$STATE/prune.json" 2> /dev/null || echo null)"
 
-# 6. Growth: one line a day; the anomaly compares the last day with the median of the 14 before it.
+# 6. Growth: one line a day (with the largest tables, so that which table grows can be read later); the anomaly compares
+#    the last day with the median of the 14 before it.
 today="$(date -u +%F)"
 line="$(jq -cn --arg date "$today" --argjson used "$used" --argjson db "$db_bytes" --argjson raw "$raw" \
-  --argjson docker "$(( img + vol + cache ))" --argjson backups "$backups" \
-  '{date: $date, used_bytes: $used, db_bytes: $db, raw_bytes: $raw, docker_bytes: $docker, backups_bytes: $backups}')"
+  --argjson docker "$(( img + vol + cache ))" --argjson backups "$backups" --argjson top "$top_tables" \
+  '{date: $date, used_bytes: $used, db_bytes: $db, raw_bytes: $raw, docker_bytes: $docker, backups_bytes: $backups,
+    tables: ($top | map({(.name): .bytes}) | add // {})}')"
 if grep -q "\"date\":\"$today\"" "$HISTORY" 2> /dev/null; then
   grep -v "\"date\":\"$today\"" "$HISTORY" > "$HISTORY.new" || true
   echo "$line" >> "$HISTORY.new"; mv "$HISTORY.new" "$HISTORY"
