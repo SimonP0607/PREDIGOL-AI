@@ -29,6 +29,8 @@ NAMES_THE_TABLE = {
     "intel/leakage.py": "the nightly proof (`forecast_known`) that no packet cited a forecast from after its moment",
     "families/score.py": "the scoreboard of the family forecasts (`family-v1`) after the matches: read-only, a measure of the research, never an input",
     "research/trace.py": "the trace of the model code's promotions (F12): counts the stored forecasts per model version to say which code production used; read-only, never an input",
+    "api/services/transparency.py": "«Cómo le va a PrediGol» (plan UX, A12): the forecast's calibration after the matches - the last forecast before kick-off against the result; read-only, never an input",
+    "scripts/transparency_check.py": "the contrast of that page (A12): the same calibration counted by an independent query at each deploy; read-only",
 }
 
 IMPORTS_THE_WRITER = {

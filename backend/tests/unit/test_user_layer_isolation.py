@@ -37,7 +37,7 @@ CLIENT_TABLES = re.compile(r"\b(?:auth\.[a-z_]+|customer\.[a-z_]+|picks\.user_[a
 
 USER_ROUTERS = ("system", "auth", "account", "product", "records", "football", "market", "center", "ai_layer",
                 "forecast", "match_calendar", "knowledge", "reading", "today", "news", "customer", "messaging",
-                "events", "membership")
+                "events", "membership", "transparency")
 """``fbi.api.routers`` modules mounted on the public and app tiers by ``create_app`` (every other router is ``/admin``)."""
 
 CALLS_OUT = ("fbi.ai.providers", "fbi.analyst.agent", "fbi.analyst.search", "anthropic", "openai", "httpx", "requests",

@@ -16,9 +16,20 @@ from fbi.core.env import environment
 ON: Final = frozenset({"1", "on", "true", "yes"})
 
 
+TRANSPARENCY: Final = "FBI_TRANSPARENCY"
+"""«Cómo le va a PrediGol» (plan UX, A12): OFF while the line is absent - the page is published only after the owner reviewed
+it in QA (P9) - and ``=1`` opens it to every signed-in reader (the API recreated). The Admin Console's preview
+(``preview=shadow``) shows it either way."""
+
+
 def user_switch(name: str, *, default: bool) -> bool:
     """Whether the switch ``name`` is on: ``default`` while the line is absent or empty, off for a value it cannot read."""
     raw = environment().get(name)
     if raw is None or not raw.strip():
         return default
     return raw.strip().lower() in ON
+
+
+def transparency_open() -> bool:
+    """Whether readers see «Cómo le va a PrediGol» (``FBI_TRANSPARENCY``, off by default)."""
+    return user_switch(TRANSPARENCY, default=False)

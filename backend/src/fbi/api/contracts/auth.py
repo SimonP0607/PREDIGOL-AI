@@ -52,6 +52,9 @@ class Me(Contract):
     membership: MembershipSummary | None = Field(default=None, description="The account's membership now (plan UX, "
                                                                            "A8), filled by GET /auth/me: None for "
                                                                            "the owner's accounts (no membership).")
+    transparency: bool = Field(default=False, description="«Cómo le va a PrediGol» is open to readers (plan UX, A12; "
+                                                          "FBI_TRANSPARENCY, off until the owner reviewed it): the page "
+                                                          "links to it only then.")
 
 
 class PreferencesIn(BaseModel):
