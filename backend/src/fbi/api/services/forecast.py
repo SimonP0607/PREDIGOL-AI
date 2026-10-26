@@ -24,7 +24,7 @@ from fbi.api.contracts.forecast import (
     ValueRow,
 )
 from fbi.api.envelope import DataStatus, Envelope, Section, ok, section, unavailable
-from fbi.api.errors import ApiError
+from fbi.api.problem import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.api.switches import user_switch
 from fbi.core.clock import now

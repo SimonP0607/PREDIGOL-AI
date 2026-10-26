@@ -15,7 +15,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from fbi.api.limits import BodyTooLargeError
+from fbi.api.problem import ApiError
 from fbi.auth.service import AuthError
+
+__all__ = ["ApiError", "install", "request_id"]
 
 log = structlog.get_logger("api")
 
@@ -25,15 +28,6 @@ def body(code: str, message: str, request_id: str, **extra: object) -> dict[str,
     return {"status": "error", "error": error, "request_id": request_id}
 
 
-class ApiError(Exception):
-    """A refusal the API means to give: a status and a code the frontend translates."""
-
-    def __init__(self, status: int, code: str, message: str, *, headers: dict[str, str] | None = None) -> None:
-        super().__init__(message)
-        self.status = status
-        self.code = code
-        self.message = message
-        self.headers = headers or {}
 
 
 STATUS_CODES = {400: "bad_request", 401: "unauthenticated", 403: "forbidden", 404: "not_found", 409: "conflict",
