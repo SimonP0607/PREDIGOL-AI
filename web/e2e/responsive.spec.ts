@@ -18,6 +18,7 @@ const PAGES = [
   "/odds",
   "/my-picks",
   "/profile",
+  "/help",
 ];
 const PHONES = [320, 360, 375, 390, 412, 430];
 

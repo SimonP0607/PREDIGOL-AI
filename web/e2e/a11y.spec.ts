@@ -22,6 +22,7 @@ const PRODUCT = [
   "/my-picks",
   "/profile",
   "/help/glossary",
+  "/help",
 ];
 const WIDTHS: ReadonlyArray<readonly [number, number]> = [
   [1440, 900],

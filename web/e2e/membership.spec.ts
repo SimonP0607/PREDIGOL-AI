@@ -64,6 +64,18 @@ function moveTrial(userId: number, endsInDays: number): void {
   execFileSync("psql", [DB, "-v", "ON_ERROR_STOP=1", "-qtAc", sql], { stdio: "pipe" });
 }
 
+/** A limited account still opens Ayuda and writes to PrediGol (plan UX, A14; section 32: «también con la cuenta VENCIDA»). */
+async function limitedHelp(page: Page): Promise<void> {
+  await page.goto("/help");
+  await expect(page.getByTestId("help-page")).toBeVisible();
+  await expect(page.getByTestId("limited-access")).toHaveCount(0);
+  const asked = await page.request.post("/api/v1/me/support/tickets", {
+    headers: { ...SAME_SITE, "content-type": "application/json" },
+    data: { category: "account", text: "Pagué y no tengo acceso a los picks" },
+  });
+  expect(asked.status(), "a limited reader still writes to PrediGol").toBe(201);
+}
+
 async function signIn(page: Page, email: string): Promise<void> {
   await page.goto("/login");
   await page.locator('input[name="email"]').fill(email);
@@ -212,6 +224,8 @@ test("an ended membership opens only what a limited account reads, on a 320 px p
     // the profile: why, and how to renew
     await page.goto("/profile#membership");
     await expect(page.getByTestId("membership-card")).toHaveAttribute("data-state", "expired");
+    // Ayuda, and writing to PrediGol (plan UX, A14): reachable while limited
+    await limitedHelp(page);
     await page.goto("/picks");
     await expect(page.getByTestId("limited-access")).toBeVisible();
     await assertClean(page, w);

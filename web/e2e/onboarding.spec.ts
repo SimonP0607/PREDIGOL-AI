@@ -408,7 +408,7 @@ test("the optional tour from the help: four steps, each on its page, closed at t
     await signIn(page, email);
     await skipWelcome(page.request);
     await consents(page);
-    await page.goto("/help/glossary");
+    await page.goto("/help");
     await page.getByTestId("tour-start").click();
     const card = page.getByTestId("tour-card");
     const steps: Array<[string, RegExp]> = [
