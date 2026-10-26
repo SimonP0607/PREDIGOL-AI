@@ -22,7 +22,7 @@ from fbi.api.contracts.ops import (
 )
 from fbi.api.deps import get_db, read_only_connection
 from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
-from fbi.api.services import ops
+from fbi.api.services import ops, storage
 
 router = APIRouter(tags=["system"])
 admin_router = APIRouter(tags=["admin: operations & data quality"])
@@ -56,6 +56,13 @@ def get_health(response: Response) -> SystemHealth:
 @admin_router.get("/health/quality", response_model=Envelope[QualityReport])
 def get_quality(conn: Db) -> Envelope[QualityReport]:
     return ops.quality(conn)
+
+
+@admin_router.get("/storage", response_model=Envelope[dict[str, Any]])
+def get_storage() -> Envelope[dict[str, Any]]:
+    """Where the server's disk goes, how fast it grows, the copies, the last cleanup and the retention policy (the host's
+    storage report, read through a read-only mount). Reading only: nothing on this route deletes anything."""
+    return storage.overview()
 
 
 @admin_router.get("/overview", response_model=Envelope[Overview])
