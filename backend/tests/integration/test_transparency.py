@@ -115,7 +115,7 @@ class World(IntelWorld):
                  known: timedelta = timedelta(hours=3), market: str = "OU", line: str = "2.5") -> None:
         filters = []
         for n, key in enumerate(service.STOPS, start=1):
-            ok = stop is None or service.STOPS.index(key) < service.STOPS.index(stop)  # type: ignore[arg-type]
+            ok = stop is None or service.STOPS.index(key) < service.STOPS.index(stop)
             filters.append({"n": n, "key": key, "ok": ok if key != stop else False, "why": "test"})
         self.cur.execute(
             "INSERT INTO intel.decisions (decision_version, known_at, checkpoint, fixture_id, kickoff_at, market_key, "

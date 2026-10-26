@@ -26,6 +26,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.api.services import transparency as service
+from fbi.api.services.forecast import VERSION as FORECAST_VERSION
 from fbi.core.clock import now
 from fbi.core.config import settings
 from fbi.market import closing_value
@@ -221,7 +222,7 @@ def check(conn: psycopg.Connection[Any], *, tz: str, at: datetime) -> list[Misma
                 slot = (str(r["stop"]), bool(r["qualified"]))
                 by_day = stops.setdefault(r["day"], {})
                 by_day[slot] = by_day.get(slot, 0) + int(r["n"])
-    order = {key: i for i, key in enumerate(service.STOPS)}
+    order: dict[str, int] = {key: i for i, key in enumerate(service.STOPS)}
     expected_days = []
     for r in facts:
         if r["has_picks"]:
@@ -259,7 +260,7 @@ def check(conn: psycopg.Connection[Any], *, tz: str, at: datetime) -> list[Misma
 
     since = at - timedelta(days=service.CALIBRATION_DAYS)
     for fc in page.forecasts:
-        rows = _rows(conn, FORECAST_SQL, {"version": service.FORECAST_VERSION, "market": fc.market, "line": fc.line,
+        rows = _rows(conn, FORECAST_SQL, {"version": FORECAST_VERSION, "market": fc.market, "line": fc.line,
                                           "side": fc.selection, "since": since, "at": at})
         total = next(r for r in rows if r["bucket"] is None)
         if (fc.matches, fc.calibrated) != (total["matches"], total["calibrated"]):
