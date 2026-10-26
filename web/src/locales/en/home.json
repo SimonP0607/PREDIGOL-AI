@@ -60,5 +60,10 @@
     "postmatch": "Post-match"
   },
   "parlaysNone": "No PrediGol parlays yet today: they are only built from selections that pass all its rules, and we never pad them.",
-  "parlaysLink": "See parlays"
+  "parlaysLink": "See parlays",
+  "news": {
+    "title": "News",
+    "subtitle": "Confirmed or probable, from today's matches of the suggested leagues",
+    "match": "{home} – {away} · {time}"
+  }
 }

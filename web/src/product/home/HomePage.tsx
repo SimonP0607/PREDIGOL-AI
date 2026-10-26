@@ -1,10 +1,10 @@
 /**
- * Inicio (plan UX, A9; section 24): «qué hay hoy para mí» in five seconds, with or without picks. Top to bottom:
+ * Inicio (plan UX, A9 and A10; section 24): «qué hay hoy para mí» in five seconds, with or without picks. Top to bottom:
  *
  *   1  Hoy en las ligas sugeridas   today's matches, in play first, with the forecast labelled and a line of the reading
  *   2  Picks del día                the published set with its real state - or why there is none - and PrediGol's parlays
  *   3  Partidos relevantes          today's other matches with a reading (only when there are some)
- *   4  Noticias                     (A10)
+ *   4  Noticias                     the confirmed or probable news of today's suggested matches (only with content)
  *   5  Qué se juega                 table or tie, rest and next match of the next suggested matches (only with content)
  *   6  Resultados                   the suggested leagues' last 48 hours
  *
@@ -30,6 +30,7 @@ import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
 import { BestPrices } from "./BestPrices";
 import { HomeHeader } from "./HomeHeader";
 import { LiveTiles } from "./LiveTiles";
+import { NewsBlock } from "./NewsBlock";
 import { ContextBlock, RelevantBlock, ResultsBlock, TodayBlock } from "./TodayBlocks";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
@@ -149,6 +150,7 @@ export function HomePage() {
   const preview = usePreviewParam();
   const home = useQuery(live.home(preview));
   const today = useQuery(live.today);
+  const news = useQuery(live.todayNews);
   const board = useQuery(live.daily(preview));
   const yesterday = useQuery(live.daily(preview, shiftDay(todayKey("America/Bogota"), -1)));
   const now = Date.now();
@@ -170,6 +172,7 @@ export function HomePage() {
       />
       <HomeParlays board={board} />
       <RelevantBlock query={today} now={now} />
+      <NewsBlock query={news} now={now} />
       <ContextBlock query={today} now={now} />
       <ResultsBlock query={today} now={now} />
       <LiveAndPrices query={home} />

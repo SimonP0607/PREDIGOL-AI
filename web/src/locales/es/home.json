@@ -60,5 +60,10 @@
     "postmatch": "Postpartido"
   },
   "parlaysNone": "Hoy todavía no hay parlays de PrediGol: solo se arman con selecciones que pasan todas sus reglas, y nunca los rellenamos.",
-  "parlaysLink": "Ver parlays"
+  "parlaysLink": "Ver parlays",
+  "news": {
+    "title": "Noticias",
+    "subtitle": "Confirmadas o probables, de los partidos de hoy de las ligas sugeridas",
+    "match": "{home} – {away} · {time}"
+  }
 }
