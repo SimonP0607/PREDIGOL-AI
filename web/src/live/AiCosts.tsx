@@ -116,6 +116,8 @@ function BudgetCard({ o }: { o: AiOverview }) {
 export function UserAiCard({ u }: { u: AiUserView }) {
   const b = u.budget;
   const today = u.today;
+  const funded = (toNum(b.monthly_budget_usd) ?? 0) > 0;
+  const state = funded ? b.state : "none";
   return (
     <Panel title={t("ai.layer.userAi.title")} subtitle={t("ai.layer.userAi.subtitle")}>
       <div className="space-y-4" data-testid="ai-user-card">
@@ -125,8 +127,8 @@ export function UserAiCard({ u }: { u: AiUserView }) {
           >
             {t(`ai.layer.userAi.mode.${u.mode}`)}
           </StatusBadge>
-          <StatusBadge tone={budgetTone(b.state)}>
-            {translateOr(`ai.layer.budget.${b.state}`, b.state)}
+          <StatusBadge tone={state === "none" ? "neutral" : budgetTone(state)}>
+            {translateOr(`ai.layer.userAi.state.${state}`, state)}
           </StatusBadge>
           <span className="text-xs text-muted-foreground">
             {t(`ai.layer.userAi.modeHelp.${u.mode}`)}
@@ -147,7 +149,9 @@ export function UserAiCard({ u }: { u: AiUserView }) {
             value={localInt(today.translations ?? 0)}
           />
         </StatGrid>
-        <MonthBar spent={b.spent_month_usd} budget={b.monthly_budget_usd} alerts={[]} />
+        {funded ? (
+          <MonthBar spent={b.spent_month_usd} budget={b.monthly_budget_usd} alerts={[]} />
+        ) : null}
         <Note>{t("ai.layer.userAi.apart")}</Note>
       </div>
     </Panel>

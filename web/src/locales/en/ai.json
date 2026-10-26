@@ -623,7 +623,14 @@
       "refused": "Not shown today",
       "refusedHint": "Refused by the checks or no answer from the model: the reader sees the structured reading",
       "translations": "News items translated today",
-      "apart": "This spend is recorded in ai.user_usage and never counts in Intelligence's budget above. With the budget at 0 nothing is spent (P8 approves it)."
+      "apart": "This spend is recorded apart and never counts in Intelligence's budget above. With the budget at 0 nothing is spent (the owner approves it: P8).",
+      "state": {
+        "none": "No budget: it spends nothing",
+        "NORMAL": "Within its budget",
+        "REDUCED": "Above the day's pace",
+        "CHEAP_ONLY": "Above the day's pace",
+        "EXHAUSTED": "Cap reached: the structured reading"
+      }
     }
   },
   "v2": {
