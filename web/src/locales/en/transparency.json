@@ -135,7 +135,7 @@
     "summary": "Of {markets} kinds of bet we measure against the market ({pairs} model and market combinations), {passed} have beaten it out of sample.",
     "noneYet": "No kind of bet has beaten the market in a sustained way yet; that is why we publish little today.",
     "since": "Measured since {since}.",
-    "qualified": "Forecasts of models that beat the market in their own test (the only ones that can be a pick) on those days: {count}.",
+    "qualified": "Forecasts of models that beat the market in their own test (the only ones that can be a pick), from {since} to {until}: {count}.",
     "nothing": "There are no measurements saved yet.",
     "never": "We never show selections, odds or results of evaluation: only these counts."
   },

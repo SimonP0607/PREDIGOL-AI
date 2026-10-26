@@ -135,7 +135,7 @@
     "summary": "De {markets} tipos de apuesta que medimos frente al mercado ({pairs} combinaciones de modelo y mercado), {passed} lo han superado fuera de muestra.",
     "noneYet": "Ningún tipo de apuesta ha superado todavía al mercado de forma sostenida; por eso hoy publicamos poco.",
     "since": "Medido desde el {since}.",
-    "qualified": "Pronósticos de modelos que superaron al mercado en su prueba (los únicos que pueden ser pick) en esos días: {count}.",
+    "qualified": "Pronósticos de modelos que superaron al mercado en su prueba (los únicos que pueden ser pick), del {since} al {until}: {count}.",
     "nothing": "Todavía no hay mediciones guardadas.",
     "never": "Nunca mostramos selecciones, cuotas ni resultados de evaluación: solo estos recuentos."
   },

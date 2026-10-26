@@ -91,6 +91,22 @@ describe("what the page says", () => {
     expect(html).toContain('data-reason="non_positive_ev"');
   });
 
+  test("a decided empty day carries what the caller adds (the way to «Cómo le va a PrediGol», A12); a day being read does not", () => {
+    const more = <a data-testid="more-link">más</a>;
+    for (const value of [
+      day({ stage: "value", reason: "non_positive_ev" }),
+      day({ reason: "no_matches", matches: 0 }),
+    ])
+      expect(
+        renderToStaticMarkup(<NoPickState load={{ status: "ok", value }} more={more} />),
+      ).toContain('data-testid="more-link"');
+    expect(
+      renderToStaticMarkup(
+        <NoPickState load={{ status: "ok", value: day({ state: "reviewing" }) }} more={more} />,
+      ),
+    ).not.toContain('data-testid="more-link"');
+  });
+
   test("the set not chosen yet: «todavía estamos revisando», and no hour is promised", () => {
     const html = text(
       renderToStaticMarkup(

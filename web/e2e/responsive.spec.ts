@@ -419,6 +419,53 @@ test("a match's narrative (A11) at every phone width: the conclusion first, the 
   await assertClean(page, w);
 });
 
+test("«Cómo le va a PrediGol» (A12) at every phone width: the blocks stacked as cards, each figure with its n, the list of days under a 44 px fold, nothing sideways", async ({
+  page,
+}) => {
+  // Plan UX, A12: «MÓVIL: bloques en tarjetas con la cifra y su n juntas»; «RESPONSIVE: tablas convertidas en tarjetas a 320 px».
+  test.setTimeout(180_000);
+  const w = watch(page);
+  const { body } = await getJson<{ status: string }>(page.request, "/api/v1/transparency");
+  if (body.status !== "ok") {
+    note(test.info(), "the page is not open to readers on this database");
+    return;
+  }
+  for (const width of PHONES) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/transparency");
+    await settle(page);
+    await expect(page.getByTestId("transparency-body")).toBeVisible();
+    // the three periods one under the other: a card per period, never a table squeezed sideways
+    const tops = await page
+      .locator('[data-testid^="transparency-period-"]')
+      .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
+    tops
+      .slice(1)
+      .forEach((top, i) =>
+        expect(top, `${width} px: period ${i + 2} under the one before`).toBeGreaterThan(
+          tops[i] ?? 0,
+        ),
+      );
+    const list = page.getByTestId("transparency-day-list");
+    if ((await list.count()) > 0) {
+      const summary = list.locator("summary");
+      expect(
+        (await summary.boundingBox())!.height,
+        `${width} px: the days' fold under a finger`,
+      ).toBeGreaterThanOrEqual(43.5);
+      await summary.click();
+    }
+    const sideways = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(sideways, `the page at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
+    expect(await smallTargets(page, '[data-testid="transparency-page"]'), `${width} px`).toEqual(
+      [],
+    );
+  }
+  await assertClean(page, w);
+});
+
 test("the parlay slip under a thumb: a 44 px close, nothing on its title, its fields at 16 px", async ({
   page,
 }) => {

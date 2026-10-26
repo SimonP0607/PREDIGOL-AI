@@ -36,6 +36,7 @@ const NAMESPACES = [
   "memory",
   "glossary",
   "legal",
+  "transparency",
 ] as const;
 interface Catalogs {
   admin: typeof import("../src/locales/es/admin.json");
@@ -58,6 +59,7 @@ interface Catalogs {
   memory: typeof import("../src/locales/es/memory.json");
   glossary: typeof import("../src/locales/es/glossary.json");
   legal: typeof import("../src/locales/es/legal.json");
+  transparency: typeof import("../src/locales/es/transparency.json");
 }
 
 function catalogs(lang: "es" | "en"): Catalogs {
@@ -80,7 +82,7 @@ const LEAKS: ReadonlyArray<readonly [string, RegExp]> = [
   ["Infinity", /\bInfinity\b/],
   [
     "an untranslated key",
-    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors|system|ops|research|analytics|catalog|center|truth|records|ai|glossary|legal)\.[a-z][\w.]+[a-z]\b/,
+    /\b(common|nav|home|picks|parlays|odds|matches|live|match|markets|admin|profile|auth|errors|system|ops|research|analytics|catalog|center|truth|records|ai|glossary|legal|transparency)\.[a-z][\w.]+[a-z]\b/,
   ],
 ];
 

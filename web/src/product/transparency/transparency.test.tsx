@@ -270,6 +270,14 @@ describe("«Cómo le va a PrediGol»", () => {
     expect(shown).not.toMatch(NEVER.es);
   });
 
+  test("published picks of qualified models while no kind of bet beat the market out of sample: no «por eso publicamos poco»", async () => {
+    setLocale("es");
+    const data = { ...TODAY, evaluation: { ...TODAY.evaluation, qualified: 25 } };
+    const shown = text(await render(<TransparencyBody data={data} />));
+    expect(shown).not.toContain("por eso hoy publicamos poco");
+    expect(shown).toContain("del 4 oct 2026 al 25 oct 2026: 25.");
+  });
+
   test("in English, the same page and the same guards", async () => {
     setLocale("en");
     const shown = text(await render(<TransparencyBody data={HISTORY} />));

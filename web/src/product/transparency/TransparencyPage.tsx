@@ -116,7 +116,7 @@ function TallyBody({
   const counts = countsOf(tally);
   return (
     <div className="space-y-2" data-testid={testId} data-settled={tally.settled}>
-      <p className="numeric text-sm font-semibold text-foreground">
+      <p className="text-sm font-semibold text-foreground">
         {t("transparency.published.published", { count: tally.published })}
         <span className="font-normal text-muted-foreground">
           {" · "}
@@ -214,7 +214,7 @@ function DaysBlock({ data }: { data: Transparency }) {
         </p>
       ) : (
         <>
-          <p className="numeric text-sm font-semibold" data-testid="transparency-days-summary">
+          <p className="text-sm font-semibold" data-testid="transparency-days-summary">
             {t("transparency.days.summary", {
               without: intText(days.without),
               days: intText(days.days),
@@ -268,7 +268,7 @@ function DaysBlock({ data }: { data: Transparency }) {
                   <p className="text-muted-foreground">
                     {t(`transparency.days.reasons.${d.reason}`)}
                   </p>
-                  <p className="numeric text-caption text-subtle-foreground">
+                  <p className="text-caption text-subtle-foreground">
                     {t("transparency.days.matches", { count: d.matches })}
                     {d.measured > 0
                       ? ` · ${t("transparency.days.measuredDay", { count: d.measured })}`
@@ -351,7 +351,7 @@ function LineValueBlock({ data }: { data: Transparency }) {
             testId="transparency-line-value-mean"
           />
           <Figure label={t("transparency.lineValue.positive")} value={pctText(lv.positive)} />
-          <p className="col-span-2 numeric text-caption text-muted-foreground">
+          <p className="col-span-2 text-caption text-muted-foreground">
             {t("transparency.lineValue.n", { count: lv.n })}
           </p>
         </dl>
@@ -386,7 +386,7 @@ function ForecastCard({ f, data }: { f: ForecastCalibration; data: Transparency 
             : t("transparency.forecast.uncalibrated")}
         </span>
       </div>
-      <p className="numeric text-caption text-muted-foreground">
+      <p className="text-caption text-muted-foreground">
         {t("transparency.forecast.matches", { count: f.matches })}
         {f.matches > 0
           ? ` · ${t("transparency.forecast.calibratedOf", { calibrated: intText(f.calibrated), matches: intText(f.matches) })}`
@@ -472,14 +472,14 @@ function EvaluationBlock({ data }: { data: Transparency }) {
         <p className="text-sm">{t("transparency.evaluation.nothing")}</p>
       ) : (
         <>
-          <p className="numeric text-sm" data-testid="transparency-evaluation-summary">
+          <p className="text-sm" data-testid="transparency-evaluation-summary">
             {t("transparency.evaluation.summary", {
               markets: intText(ev.markets),
               pairs: intText(ev.pairs),
               passed: intText(ev.passed_markets),
             })}
           </p>
-          {ev.passed_markets === 0 ? (
+          {ev.passed_markets === 0 && ev.qualified === 0 ? (
             <p className="text-sm font-medium">{t("transparency.evaluation.noneYet")}</p>
           ) : null}
           {ev.since ? (
@@ -487,11 +487,12 @@ function EvaluationBlock({ data }: { data: Transparency }) {
           ) : null}
         </>
       )}
-      <p
-        className="numeric text-sm text-muted-foreground"
-        data-testid="transparency-evaluation-qualified"
-      >
-        {t("transparency.evaluation.qualified", { count: intText(ev.qualified) })}
+      <p className="text-sm text-muted-foreground" data-testid="transparency-evaluation-qualified">
+        {t("transparency.evaluation.qualified", {
+          count: intText(ev.qualified),
+          since: dayText(data.days.since),
+          until: dayText(data.days.until),
+        })}
       </p>
       <Note>{t("transparency.evaluation.never")}</Note>
     </Block>

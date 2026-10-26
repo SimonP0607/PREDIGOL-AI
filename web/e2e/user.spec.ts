@@ -1231,3 +1231,128 @@ test("Profile security: a failure to read the sessions or the activity says so, 
   await page.getByTestId("access-error").getByRole("button", { name: t.common.retry }).click();
   await expect(page.getByTestId("access-error")).toHaveCount(0);
 });
+
+interface TransparencyBody {
+  status: string;
+  data: null | {
+    periods: Array<{ period: string; published: number; settled: number; units: string | null }>;
+    days: {
+      days: number;
+      without: number;
+      reasons: Record<string, number>;
+      items: unknown[];
+    };
+    markets: Array<{ market: string }>;
+    line_value: { n: number; mean: string | null };
+    forecasts: Array<{ market: string; state: string; bins: unknown[] }>;
+    evaluation: { markets: number; pairs: number; passed_markets: number; qualified: number };
+  };
+}
+
+/** What the page never says (plan section 31: no streaks, no star pick, no projection, no promise). */
+const NEVER_SAID: Record<Lang, RegExp> = {
+  es: /racha|pick estrella|garantiz|seguro que|ganar[áa]s|recupera tus|apuesta segura/i,
+  en: /streak|star pick|guarantee|sure bet|you will win|recover your/i,
+};
+
+test("«Cómo le va a PrediGol» (A12): the seven blocks, every figure as the API counted it with its sample, reached from the account menu and from a day without picks - only once readers can open it", async ({
+  page,
+}) => {
+  // Plan UX, A12 (section 31): what PrediGol published and how it went, the days without picks and why, the evaluation in
+  // counts - and, while the owner has not opened it (FBI_TRANSPARENCY off, as production starts), no way to it at all.
+  const w = watch(page);
+  const t = L[lang()];
+  const { body } = await getJson<TransparencyBody>(page.request, "/api/v1/transparency");
+  const me = (await getJson<{ transparency?: boolean }>(page.request, "/api/v1/auth/me")).body;
+  if (body.status !== "ok" || body.data === null) {
+    expect(me.transparency ?? false).toBe(false);
+    await open(page, w, "/home");
+    await page.getByTestId("account-menu").click();
+    await expect(page.getByTestId("go-glossary")).toBeVisible();
+    await expect(page.getByTestId("go-transparency")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await open(page, w, "/transparency");
+    await expect(page.getByText(t.transparency.page.notAvailable)).toBeVisible();
+    await expect(page.getByTestId("transparency-body")).toHaveCount(0);
+    note(test.info(), "the page is not open to readers on this database (FBI_TRANSPARENCY off)");
+    return;
+  }
+  expect(me.transparency).toBe(true);
+  const data = body.data;
+  await open(page, w, "/home");
+  await page.getByTestId("account-menu").click();
+  await page.getByTestId("go-transparency").click();
+  await expect(page).toHaveURL(/\/transparency$/);
+  await settle(page);
+  await assertClean(page, w);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(t.transparency.page.title);
+  await expect(page.getByTestId("transparency-preview")).toHaveCount(0);
+  for (const block of [
+    "published",
+    "days",
+    "markets",
+    "line-value",
+    "forecast",
+    "evaluation",
+    "how",
+    "definitions",
+  ])
+    await expect(page.getByTestId(`transparency-${block}`)).toBeVisible();
+  // the periods: what the API counted, and units only from the sample
+  for (const p of data.periods) {
+    await expect(page.getByTestId(`transparency-tally-${p.period}`)).toHaveAttribute(
+      "data-settled",
+      String(p.settled),
+    );
+    await expect(page.getByTestId(`transparency-tally-${p.period}-units`)).toHaveCount(
+      p.units === null ? 0 : 1,
+    );
+  }
+  if (data.periods.every((p) => p.published === 0))
+    await expect(page.getByText(t.transparency.published.none).first()).toBeVisible();
+  // the days without picks, why, and the list of days under a finger
+  if (data.days.without > 0) {
+    await expect(page.getByTestId("transparency-days-summary")).toContainText(
+      String(data.days.without),
+    );
+    for (const [reason, n] of Object.entries(data.days.reasons))
+      if (n > 0) await expect(page.getByTestId(`transparency-reason-${reason}`)).toBeVisible();
+    const list = page.getByTestId("transparency-day-list");
+    await list.locator("summary").click();
+    await expect(list.getByTestId("transparency-day")).toHaveCount(data.days.items.length);
+  }
+  if (data.markets.length === 0)
+    await expect(page.getByTestId("transparency-markets-none")).toBeVisible();
+  await expect(page.getByTestId("transparency-line-value-version")).toBeVisible();
+  if (data.line_value.n === 0)
+    await expect(page.getByTestId("transparency-line-value-none")).toBeVisible();
+  for (const f of data.forecasts) {
+    await expect(page.getByTestId(`transparency-forecast-state-${f.market}`)).toHaveText(
+      f.state === "CALIBRATED"
+        ? t.transparency.forecast.calibrated
+        : t.transparency.forecast.uncalibrated,
+    );
+    await expect(page.getByTestId(`transparency-bins-${f.market}`)).toHaveCount(
+      f.state === "CALIBRATED" && f.bins.length > 0 ? 1 : 0,
+    );
+  }
+  if (data.evaluation.pairs > 0)
+    await expect(page.getByTestId("transparency-evaluation-summary")).toContainText(
+      String(data.evaluation.pairs),
+    );
+  await expect(page.getByTestId("transparency-evaluation-qualified")).toContainText(
+    String(data.evaluation.qualified),
+  );
+  expect(await page.getByTestId("transparency-page").innerText()).not.toMatch(NEVER_SAID[lang()]);
+  // a day without picks leads there (Picks, today) - once the day is decided, not while it is still being read
+  await open(page, w, "/picks");
+  const empty = page.getByTestId("no-pick");
+  if ((await empty.count()) > 0 && (await empty.getAttribute("data-state")) === "none") {
+    await empty.getByTestId("transparency-link").click();
+    await expect(page).toHaveURL(/\/transparency$/);
+    await settle(page);
+    await assertClean(page, w);
+  } else {
+    note(test.info(), "today's set is not an empty decided day: its link is not on screen");
+  }
+});
