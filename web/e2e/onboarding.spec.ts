@@ -329,7 +329,11 @@ test("the picker on a 320 px phone: nothing sideways, every control in a finger'
     await page.getByTestId("fav-search").focus();
     await expect(page.getByTestId("fav-search")).toBeFocused();
     // a folded country opens with Enter; a league's toggle changes with Space
-    const closed = page.locator('[data-testid="fav-country"]:not([open])').first();
+    const folded = await page
+      .locator('[data-testid="fav-country"]:not([open])')
+      .first()
+      .getAttribute("data-country");
+    const closed = page.locator(`[data-testid="fav-country"][data-country="${folded ?? ""}"]`);
     await closed.locator("summary").focus();
     await page.keyboard.press("Enter");
     await expect(closed).toHaveAttribute("open", "");
