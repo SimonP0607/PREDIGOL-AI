@@ -13,12 +13,22 @@
  * * the optional tour from the help: four steps, each on its page;
  * * the star in a match's header follows the team; Inicio then says why its match is there.
  */
+import AxeBuilder from "@axe-core/playwright";
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, request, test, type APIRequestContext, type Page } from "@playwright/test";
 import { statePath } from "./accounts";
-import { L, assertClean, getJson, sendJson, settle, skipWelcome, watch } from "./support";
+import {
+  L,
+  assertClean,
+  getJson,
+  sendJson,
+  settle,
+  skipWelcome,
+  smallTargets,
+  watch,
+} from "./support";
 
 const BASE = process.env["E2E_BASE_URL"] ?? "http://127.0.0.1:5173";
 const SINK = process.env["E2E_MAIL_SINK"] ?? "";
@@ -30,6 +40,7 @@ const PASSWORD = "Mi-primer-partido-2026"; // gitleaks:allow - a QA account's pa
 const CHOSEN = "La-tarde-del-clasico-26"; // gitleaks:allow - the password an invited QA reader chooses
 const SAME_SITE = { "x-requested-with": "predigol" };
 const PHONE = { width: 320, height: 720 };
+const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 const t = L.es;
 const o = t.onboarding;
 /** Plan UX, section 19 and gate G8: from the activation to the first value, timed. */
@@ -76,6 +87,7 @@ async function signIn(page: Page, email: string, password = PASSWORD): Promise<v
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(password);
   await page.getByTestId("login-submit").click();
+  await expect(page).not.toHaveURL(/\/login/);
 }
 
 async function consents(page: Page): Promise<void> {
@@ -299,21 +311,19 @@ test("the picker on a 320 px phone: nothing sideways, every control in a finger'
     await settle(page);
     const sideways = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     expect(sideways, "nothing scrolls sideways at 320 px").toBeLessThanOrEqual(0);
-    const small = await page.evaluate(() =>
-      Array.from(
-        document.querySelectorAll<HTMLElement>(
-          '[data-testid="welcome"] button, [data-testid="welcome"] input',
-        ),
-      )
-        .map((el) => ({ el, r: el.getBoundingClientRect() }))
-        .filter(({ r }) => r.width > 0 && (r.width < 43.5 || r.height < 43.5))
-        .map(
-          ({ el, r }) =>
-            `${el.getAttribute("data-testid") ?? el.tagName} ${Math.round(r.width)}x${Math.round(r.height)}`,
-        ),
-    );
+    // the picker and the welcome's own buttons (the header's language switch and the notice's links are the shared
+    // ones responsive.spec.ts measures on a touch phone)
+    const small = await smallTargets(page, '[data-testid="welcome"] main');
     expect(small, "every toggle, chip and button 44 px").toEqual([]);
     await expect(page.getByTestId("fav-search")).toHaveCSS("font-size", "16px");
+    const axe = await new AxeBuilder({ page })
+      .withTags(WCAG)
+      .include('[data-testid="welcome"]')
+      .analyze();
+    expect(
+      axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
+      "the welcome passes axe (WCAG 2.2 AA)",
+    ).toEqual([]);
 
     // the keyboard alone: the search, a league's toggle (Space), the save (Enter)
     await page.getByTestId("fav-search").focus();
