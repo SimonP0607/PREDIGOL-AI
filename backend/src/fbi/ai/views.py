@@ -89,6 +89,20 @@ def review_view(content: dict[str, Any]) -> dict[str, Any]:
     return view
 
 
+LIVE_BLOCKS: Final = ("market", "models", "evidence")
+"""The blocks of a packet that move with the clock and so do not belong in the part of a request the prompt cache keeps (plan section 28:
+«hora, precio, minuto y evidencias nuevas ... va siempre al final», «no meter datos variables en un bloque cacheado»): the prices
+(``market``; ``models`` carries each selection's edge against them) and the news (``evidence``)."""
+
+
+def split_live(view: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """A packet view in two: what is the same for every call about the match while the packet is - the common block, which the prompt
+    cache keeps for five minutes - and the blocks of ``LIVE_BLOCKS`` that are present, in their order. Neither is a copy and nothing in
+    ``view`` is changed; the two together are the view."""
+    live: dict[str, Any] = {k: view[k] for k in LIVE_BLOCKS if k in view}
+    return {k: v for k, v in view.items() if k not in LIVE_BLOCKS}, live
+
+
 def review_missing(missing: Sequence[str]) -> list[str]:
     """What the packet could not say, as far as the reviewer is concerned: a block it is not given is not missing from what it reads."""
     return [m for m in missing if m not in HIDDEN_MISSING]

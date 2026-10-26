@@ -180,7 +180,10 @@ def test_pass_rules_are_pure() -> None:
 
 # ── the budget ───────────────────────────────────────────────────────────────
 
-OWNER = AiSettings(mode="shadow", monthly_budget=Decimal("150"), daily_budget=Decimal("5"))
+# The V2 arithmetic (one total, a pace left in the month): what the layer falls back to when the owner rolls the adaptive budget
+# back (FBI_AI_BUDGET_V3=0). The v3 budget - the projection, the reserve, the three envelopes - is tested in test_budget_v3.py.
+OWNER = AiSettings(mode="shadow", monthly_budget=Decimal("150"), daily_budget=Decimal("5"),
+                   switches={"budget_v3": "off"})
 MID = datetime(2032, 8, 15, 17, tzinfo=UTC)  # 12:00 in Bogotá, 17 days left in August
 
 

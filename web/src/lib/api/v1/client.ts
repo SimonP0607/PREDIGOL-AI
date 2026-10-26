@@ -2,6 +2,7 @@ import { API_BASE_URL } from "@/lib/api/mode";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
+import type { AgentsOverview, MatchState } from "./types_ai_agents";
 import type {
   IntelCalibration,
   IntelCosts,
@@ -549,6 +550,11 @@ export const v1 = {
   aiEvidence: (q: { fixture_id?: number | undefined; status?: EvidenceStatus | undefined } = {}) =>
     getJson<Envelope<AiEvidenceRow[]>>("/admin/ai/evidence", q as Params),
   aiCosts: () => getJson<Envelope<AiCosts>>("/admin/ai/costs"),
+  /** The agents (plan IA, phase 1): the registry, the engine of each family, what the state job wrote, the queue and the audit. Reading only. */
+  aiAgents: (days = 7) => getJson<Envelope<AgentsOverview>>("/admin/ai/agents", { days }),
+  /** The file of one match: its live state, every state it went through, and the tasks and attempts of the agents on it. */
+  aiMatchState: (fixtureId: number | string) =>
+    getJson<Envelope<MatchState>>(`/admin/ai/matches/${fixtureId}/state`),
   aiShadow: () => getJson<Envelope<ShadowReportRow[]>>("/admin/ai/shadow"),
   aiMemory: (kind?: string) => getJson<Envelope<AiMemoryEvent[]>>("/admin/ai/memory", { kind }),
   aiRunRequests: () => getJson<Envelope<AiRunRequest[]>>("/admin/ai/run-requests"),

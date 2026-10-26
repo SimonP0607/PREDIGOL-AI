@@ -101,7 +101,7 @@
     },
     "operation": {
       "title": "Operation",
-      "description": "The day of PrediGol Intelligence and of the AI in one place: what was analysed and what was decided, the dossier of each match, what the AI did with each one, what it costs and what ran. All in shadow: nothing is published and nothing is staked."
+      "description": "The day of PrediGol Intelligence and of the AI in one place: what was analysed and what was decided, the dossier of each match, what the AI did with each one, the agents and their state, what it costs and what ran. All in shadow: nothing is published and nothing is staked."
     },
     "learning": {
       "title": "Learning",
@@ -457,6 +457,7 @@
       "decisions": "Decisions",
       "match": "Match",
       "ai": "AI work",
+      "agents": "Agents",
       "costs": "Costs",
       "runs": "Runs"
     },

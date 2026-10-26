@@ -15,6 +15,7 @@ from decimal import Decimal
 import httpx
 import pytest
 
+from fbi.ai import gates
 from fbi.ai.collectors import language_of, queries_for, query_for
 from fbi.ai.providers import AnthropicProvider, ProviderError
 from fbi.ai.providers.base import JsonRequest
@@ -97,6 +98,7 @@ def test_call_json_records_the_cost_of_an_invalid_answer(monkeypatch: pytest.Mon
             return 7
 
     monkeypatch.setattr(usage, "budget", lambda conn, at, settings: _budget("NORMAL", "1", "6", "10"))
+    monkeypatch.setattr(gates, "enabled", lambda *_a, **_k: False)  # no database here: no evidence to read
     out = usage.call_json(None, AiSettings(), tier="bulk", purpose="match_brief", request=REQ,  # type: ignore[arg-type]
                           at=KO, prompt_version="v", input_hash="h", ledger=Ledger(),  # type: ignore[arg-type]
                           provider=(Broken(), "claude-haiku-5-5"))  # type: ignore[arg-type]

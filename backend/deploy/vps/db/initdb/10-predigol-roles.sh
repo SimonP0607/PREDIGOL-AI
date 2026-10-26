@@ -1,11 +1,13 @@
 #!/bin/bash
 # Runs ONCE, when PostgreSQL initialises an empty data folder (docker-entrypoint-initdb.d), as the superuser
 # `postgres` - the only superuser, used by nobody but the operator inside this container. Creates the database
-# and the three roles PrediGol uses (what each may do: ../grants.sql):
+# and the roles PrediGol uses (what each may do: ../grants.sql):
 #
 #   fbi              owns the database and every object in it (migrations, backups, maintenance); NOSUPERUSER
 #   predigol_worker  the worker
 #   predigol_api     the API
+#   predigol_rollback  NOLOGIN: the automatic roll-back of an agent's promotion (../roles.sql carries the same statements for a
+#                    cluster that already exists); the worker reaches it with SET ROLE
 #
 # The passwords come from the env file through docker-compose.yml (PREDIGOL_DB_*_PASSWORD), never from here.
 set -Eeuo pipefail
@@ -20,6 +22,9 @@ CREATE ROLE predigol_api LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
 COMMENT ON ROLE fbi IS 'PrediGol: owner of the database and its objects (migrations, backups, maintenance)';
 COMMENT ON ROLE predigol_worker IS 'PrediGol worker: DML on the data schemas, no DDL, nothing in auth';
 COMMENT ON ROLE predigol_api IS 'PrediGol API: reads; writes accounts, user records and the admin console tables';
+CREATE ROLE predigol_rollback NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+COMMENT ON ROLE predigol_rollback IS 'PrediGol: writes only the automatic demotion of a champion agent in intel.promotions (reached with SET ROLE)';
+GRANT predigol_rollback TO predigol_worker WITH INHERIT FALSE, SET TRUE;
 
 CREATE DATABASE fbi OWNER fbi;
 REVOKE ALL ON DATABASE fbi FROM PUBLIC;
@@ -37,4 +42,4 @@ ALTER ROLE predigol_worker SET idle_in_transaction_session_timeout = '30min';
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 ALTER SCHEMA public OWNER TO fbi;
 SQL
-echo "predigol: roles fbi, predigol_worker, predigol_api and database fbi created"
+echo "predigol: roles fbi, predigol_worker, predigol_api, predigol_rollback and database fbi created"

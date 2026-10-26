@@ -1,4 +1,4 @@
-"""Data-leakage audit - ``leak-audit-v6``: did any decision use something that was not known at its ``known_at``?
+"""Data-leakage audit - ``leak-audit-v7``: did any decision use something that was not known at its ``known_at``?
 
 Run every night over the decisions taken on a Bogotá day, and in the tests. One row per rule
 (``intel.audit_checks``): how many decisions were checked and how many violate it, with examples. The rules:
@@ -85,8 +85,18 @@ Run every night over the decisions taken on a Bogotá day, and in the tests. One
                              ``status`` (the head-to-head, the scenarios, the tactics), that status and the block's ``version`` are
                              the ones the packet's factor entry states - so a validation of another version of the code is not used
                              for this one. Examples are packet ids.
+    slice_known              (v7, plan IA, phase 1) the states of a match (``ai.match_runs``) written on the day that name a package
+                             (``mcp-v1``): the package came from a stored packet of the SAME match, which was built by the moment the row
+                             was written and whose moment (``as_of``) is the row's ``known_at``, and that moment is before the kick-off;
+                             and the package and EACH of its slices, derived again from that stored packet with the code of today, are
+                             byte for byte the ones the row recorded (the hash of the package and the hash of every slice, in the order
+                             of the slices) - so a slice is a part of the package, the package is a part of the packet, and none of them
+                             carries a moment later than the pass (``PackageLeakError`` is a violation too). A row whose package version
+                             this code cannot derive again is a violation: the audit is taught a new version when the code is. One check
+                             per row. Examples are the ids of the rows. The one rule that is not a statement: it reads the packets one
+                             at a time, but only those of the rows of the day (some hundreds at most).
 
-Every rule is ONE statement over the whole Bogotá day, so it has to stay linear in the number of packets (a night has some 11,000, each
+Every other rule is ONE statement over the whole Bogotá day, so it has to stay linear in the number of packets (a night has some 11,000, each
 citing up to two lists of ten matches): to compare what a packet cited with what it should have cited, build one list per packet
 (``array_agg`` per packet, ``<> ALL`` against it, ``min`` of the kick-offs) and join it once; never probe a CTE or a sub-query once per
 row, because a probe of a materialised CTE scans it again for every row. The first texts of ``h2h_known`` and ``tactics_known`` did
@@ -97,6 +107,7 @@ over thousands of packets against a time limit and over small worlds against the
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date, datetime
 from typing import Any
 
@@ -104,11 +115,13 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from fbi.ai import package as mcp_package
 from fbi.ai.calendar import day_bounds
+from fbi.ai.contracts.mcp import SLICE_NAMES
 from fbi.core import match_state
 from fbi.intel import factors, h2h, tactics
 
-VERSION = "leak-audit-v6"
+VERSION = "leak-audit-v7"
 
 FINISHED = "ARRAY[" + ", ".join(f"'{code}'" for code in sorted(match_state.FINISHED)) + "]"
 """The stored states of a match played to a result, as a SQL array (constants of ``fbi.core.match_state``, not user input)."""
@@ -519,16 +532,79 @@ RULES: dict[str, str] = {
 }
 
 
+# ── the rules that are not one statement ─────────────────────────────────────────────────────────────────────────────
+
+SLICE_ROWS = """
+SELECT r.id, r.fixture_id, r.pass_kind, r.known_at, r.created_at, r.package_version, r.package_hash, r.packet_id, r.slices,
+       r.model_status ->> 'code' AS model_code, p.fixture_id AS packet_fixture, p.built_at AS packet_built_at, f.kickoff_at
+  FROM ai.match_runs r
+  LEFT JOIN ai.match_packets p ON p.id = r.packet_id
+  LEFT JOIN core.fixtures f ON f.id = r.fixture_id
+ WHERE r.created_at >= %(start)s AND r.created_at < %(end)s AND r.package_hash IS NOT NULL
+ ORDER BY r.id
+"""
+
+
+def _slice_row_honest(conn: psycopg.Connection[Any], row: dict[str, Any]) -> bool:
+    """One row of ``ai.match_runs`` against the packet it says it came from: see ``slice_known`` in the module's text."""
+    if row["packet_fixture"] != row["fixture_id"]:  # the join found no packet (none is named, or it is not there) or found another match's
+        return False
+    if row["packet_built_at"] > row["created_at"] or row["known_at"] >= row["kickoff_at"]:
+        return False
+    if row["package_version"] != mcp_package.VERSION:
+        return False
+    try:
+        rebuilt = mcp_package.derive(conn, int(row["packet_id"]), pass_kind=row["pass_kind"], model_code=row["model_code"] or "")
+        if rebuilt is None or rebuilt.hash != row["package_hash"] or rebuilt.known_at != row["known_at"]:
+            return False
+        made = mcp_package.slices_of(rebuilt)
+        stored = [(str(s.get("name")), str(s.get("hash"))) for s in row["slices"] if isinstance(s, dict)]
+        return stored == [(name, made[name].hash) for name in SLICE_NAMES]
+    except psycopg.Error:
+        raise  # a database that fails is not a verdict about the row, and the transaction is no longer usable
+    except Exception:  # a packet written by hand can fail the rule - a package that cannot be derived is a violation - and never stop the audit
+        return False
+
+
+def slice_known(conn: psycopg.Connection[Any], start: datetime, end: datetime) -> tuple[int, int, list[int]]:
+    """``(checked, violations, examples)`` of the rule ``slice_known`` over the rows written between ``start`` and ``end``."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT to_regclass('ai.match_runs') IS NOT NULL")
+        present = cur.fetchone()
+    if not present or not present[0]:
+        return 0, 0, []  # a database from before the table (the code is ahead of its schema, or the schema was rolled back): nothing to read
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(SLICE_ROWS, {"start": start, "end": end})
+        rows = [dict(r) for r in cur.fetchall()]
+    bad = [int(r["id"]) for r in rows if not _slice_row_honest(conn, r)]
+    return len(rows), len(bad), bad[:5]
+
+
+PYTHON_RULES: dict[str, Callable[[psycopg.Connection[Any], datetime, datetime], tuple[int, int, list[int]]]] = {
+    "slice_known": slice_known,
+}
+"""The rules that need the code to be run, not only a statement: ``(connection, start, end) -> (checked, violations, examples)``."""
+
+RULE_NAMES: tuple[str, ...] = (*RULES, *PYTHON_RULES)
+"""Every rule of the audit, in the order the night runs them (the statements first, then the ones that run code)."""
+
+
 def audit_day(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> dict[str, dict[str, Any]]:
     start, end = day_bounds(day)
     out: dict[str, dict[str, Any]] = {}
+
+    def keep(cur: psycopg.Cursor[Any], rule: str, n: int, bad: int, examples: list[int]) -> None:
+        out[rule] = {"checked": n, "violations": bad, "examples": examples}
+        cur.execute("INSERT INTO intel.audit_checks (day, checked_at, version, rule, n_checked, n_violations, "
+                    "examples) VALUES (%s,%s,%s,%s,%s,%s,%s)", (day, at, VERSION, rule, n, bad, Jsonb(examples)))
+
     with conn.cursor(row_factory=dict_row) as cur:
         for rule, sql in RULES.items():
             cur.execute(sql, {"start": start, "end": end})
             r = cur.fetchone() or {}
-            n, bad = int(r.get("n") or 0), int(r.get("bad") or 0)
-            examples = [int(x) for x in (r.get("examples") or [])]
-            out[rule] = {"checked": n, "violations": bad, "examples": examples}
-            cur.execute("INSERT INTO intel.audit_checks (day, checked_at, version, rule, n_checked, n_violations, "
-                        "examples) VALUES (%s,%s,%s,%s,%s,%s,%s)", (day, at, VERSION, rule, n, bad, Jsonb(examples)))
+            keep(cur, rule, int(r.get("n") or 0), int(r.get("bad") or 0), [int(x) for x in (r.get("examples") or [])])
+    for rule, check in PYTHON_RULES.items():
+        n, bad, examples = check(conn, start, end)
+        with conn.cursor() as cur:
+            keep(cur, rule, n, bad, examples)
     return out

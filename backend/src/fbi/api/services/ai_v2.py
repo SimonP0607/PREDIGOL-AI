@@ -6,6 +6,7 @@ model, a search API or anything that costs.
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -33,6 +34,8 @@ from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.core.clock import now
 from fbi.intel.pm_facts import AI_ROLES
 from fbi.intel.pm_questions import stored_clv
+
+log = logging.getLogger(__name__)
 
 LEVEL_ROLE = {"bulk": ("L1", "Resumen de cada partido del día con mercado; extracción de noticias"),
               "analysis": ("L2", "Revisión de candidatos y partidos escalados"),
@@ -409,12 +412,25 @@ def comparison(conn: Conn) -> Envelope[AiComparison]:
                                    if k in ("selections", "days", "rejected")}))
 
 
+def envelopes(conn: Conn, *, at: datetime, settings: AiSettings) -> dict[str, Any]:
+    """The three envelopes and what the cache and the Batch saved (Plan Maestro IA, Phase 0). A failure here leaves this panel
+    empty and logs why; it never takes the rest of the overview down (a savepoint keeps the connection usable)."""
+    from fbi.ai import costs_v3
+
+    try:
+        with conn.transaction():
+            return costs_v3.envelopes(conn, at=at, settings=settings)
+    except Exception:
+        log.exception("the AI overview: the envelopes panel could not be built")
+        return {}
+
+
 def overview_extra(conn: Conn, *, at: datetime, settings: AiSettings) -> dict[str, Any]:
     from fbi.ai import costs as ai_costs
 
     return {"projection": ai_costs.projection(conn, at=at, settings=settings), "alerts": ai_costs.alerts(conn, at=at),
             "stack": stack(settings), "efficiency": efficiency(conn, at=at),
-            "day": day_plan(conn, day=local_day(at))}
+            "day": day_plan(conn, day=local_day(at)), "envelopes": envelopes(conn, at=at, settings=settings)}
 
 
 def day_counts(conn: Conn, *, day: date) -> dict[str, Any]:
@@ -453,5 +469,5 @@ SELECT (SELECT COALESCE(max(fixtures_with_market), 0) FROM ai.day_plans WHERE da
 """
 
 
-__all__ = ["NARRATIVE_SQL", "comparison", "day_counts", "day_plan", "efficiency", "learning", "notes_learned_on", "overview_extra",
+__all__ = ["NARRATIVE_SQL", "comparison", "day_counts", "day_plan", "efficiency", "envelopes", "learning", "notes_learned_on", "overview_extra",
            "postmortems", "proposals", "research", "sources", "stack", "today_view"]

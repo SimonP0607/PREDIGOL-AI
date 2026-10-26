@@ -4,25 +4,38 @@
  * days, today's efficiency, what each unit costs (the AI layer's, per period; PrediGol Intelligence's, over the last seven days), what each
  * period and each level and each model cost, and the simulation per provider profile. Reading only.
  */
+import type { ReactNode } from "react";
 import { t, translateOr } from "@/lib/i18n";
 import { localFixed, localInt } from "@/lib/i18n/format";
 import { int } from "@/lib/format";
-import { Panel } from "@/components/primitives/Panel";
+import { cn } from "@/lib/utils";
+import { Panel, WarningBanner } from "@/components/primitives/Panel";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { TD, TH, THead, TRow, TableShell, TableSkeleton } from "@/components/primitives/DataTable";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
-import type { AiCostPeriod, AiCosts, AiEfficiency, AiOverview } from "@/lib/api/v1/types_ai_layer";
+import type {
+  AiCostPeriod,
+  AiCosts,
+  AiEfficiency,
+  AiEnvelopes,
+  AiOverview,
+  AiSwitchState,
+} from "@/lib/api/v1/types_ai_layer";
 import { LevelBadge, MonthBar, Note, Stat, StatGrid, SubTitle, type StatTone } from "./AiBits";
 import {
   LEVELS,
+  barPercent,
+  bogotaDateTime,
   budgetTone,
   dayShort,
+  envelopesOf,
   levelLabel,
   levelRows,
   probText,
   ratioOf,
+  shareTone,
   toNum,
   usd,
 } from "./aiModel";
@@ -153,6 +166,412 @@ function StackCard({ o }: { o: AiOverview }) {
         </ul>
       </div>
     </Panel>
+  );
+}
+
+// ── the three envelopes, the savings and the switches (Phase 0 of the AI master plan) ──────
+
+/** A thin bar: how much of an envelope is spent. */
+function EnvelopeBar({ share, label }: { share: number | null; label: string }) {
+  const fill =
+    share === null
+      ? "bg-muted-foreground/40"
+      : share >= 1
+        ? "bg-negative"
+        : share >= 0.85
+          ? "bg-warning"
+          : "bg-primary";
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(barPercent(share))}
+      aria-valuetext={probText(share, 0)}
+      className="h-2 rounded-full bg-muted"
+    >
+      <div
+        className={cn("h-full rounded-full transition-[width] duration-500", fill)}
+        style={{ width: `${barPercent(share)}%` }}
+      />
+    </div>
+  );
+}
+
+/** One envelope: its name, its state, the bar of what is spent and its figures. */
+function EnvelopeBox({
+  id,
+  title,
+  badge,
+  share,
+  workspace,
+  children,
+}: {
+  id: string;
+  title: string;
+  badge?: ReactNode;
+  share: number | null;
+  workspace?: string | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="min-w-0 space-y-3 rounded-md border border-border p-3"
+      data-testid={`ai-envelope-${id}`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <h3 className="text-sm font-medium">{title}</h3>
+        {badge}
+      </div>
+      {workspace ? (
+        <p className="text-caption text-muted-foreground">
+          {t("ai.layer.envelopes.workspace", { name: workspace })}
+        </p>
+      ) : null}
+      <EnvelopeBar share={share} label={t("ai.layer.envelopes.bar", { name: title })} />
+      {children}
+    </section>
+  );
+}
+
+/** Claude of the production workspace against US$185: spent, projected, what the open batches hold and the reserve. */
+function ProductionBox({ p }: { p: AiEnvelopes["production"] }) {
+  return (
+    <EnvelopeBox
+      id="production"
+      title={t("ai.layer.envelopes.production")}
+      share={p.share}
+      workspace={p.workspace}
+      badge={
+        <StatusBadge tone={budgetTone(p.state)}>
+          {translateOr(`ai.layer.budget.${p.state}`, p.state)}
+        </StatusBadge>
+      }
+    >
+      <StatGrid className="sm:grid-cols-2 lg:grid-cols-2">
+        <Stat
+          label={t("ai.layer.envelopes.spent")}
+          value={usd(p.spent_usd)}
+          hint={t("ai.layer.envelopes.spentHint", {
+            share: probText(p.share, 0),
+            budget: usd(p.budget_usd),
+          })}
+        />
+        <Stat label={t("ai.layer.envelopes.today")} value={usd(p.spent_today_usd)} />
+        <Stat
+          label={t("ai.layer.envelopes.projection")}
+          value={usd(p.projected_usd)}
+          tone={shareTone(p.projection_share)}
+          hint={t("ai.layer.envelopes.projectionHint", { share: probText(p.projection_share, 0) })}
+        />
+        <Stat
+          label={t("ai.layer.envelopes.reserved")}
+          value={usd(p.reserved_for_batches_usd)}
+          hint={t("ai.layer.envelopes.reservedHint")}
+        />
+        <Stat
+          label={t("ai.layer.envelopes.reserve")}
+          value={usd(p.reserve_usd)}
+          hint={t("ai.layer.envelopes.reserveHint", { locked: usd(p.reserve_locked_usd) })}
+        />
+      </StatGrid>
+      {p.limit.active ? (
+        <WarningBanner>
+          {t("ai.layer.envelopes.limit", { time: bogotaDateTime(p.limit.until) })}
+        </WarningBanner>
+      ) : null}
+    </EnvelopeBox>
+  );
+}
+
+/** Claude of the LAB workspace: it runs a day whole or not at all, and yields to production. */
+function LabBox({ l }: { l: AiEnvelopes["lab"] }) {
+  return (
+    <EnvelopeBox
+      id="lab"
+      title={t("ai.layer.envelopes.lab")}
+      share={l.share}
+      workspace={l.workspace}
+      badge={
+        <StatusBadge tone={l.allowed ? "positive" : "neutral"}>
+          {translateOr(`ai.layer.envelopes.labReason.${l.reason}`, l.reason)}
+        </StatusBadge>
+      }
+    >
+      <StatGrid className="sm:grid-cols-2 lg:grid-cols-2">
+        <Stat
+          label={t("ai.layer.envelopes.spent")}
+          value={usd(l.spent_usd)}
+          hint={t("ai.layer.envelopes.spentHint", {
+            share: probText(l.share, 0),
+            budget: usd(l.budget_usd),
+          })}
+        />
+        <Stat label={t("ai.layer.envelopes.today")} value={usd(l.spent_today_usd)} />
+        <Stat
+          label={t("ai.layer.envelopes.allocation")}
+          value={usd(l.allocation_usd)}
+          hint={t("ai.layer.envelopes.allocationHint")}
+        />
+        <Stat
+          label={t("ai.layer.envelopes.reserved")}
+          value={usd(l.reserved_for_batches_usd)}
+          hint={t("ai.layer.envelopes.reservedHint")}
+        />
+      </StatGrid>
+      {l.limit.active ? (
+        <WarningBanner>
+          {t("ai.layer.envelopes.limit", { time: bogotaDateTime(l.limit.until) })}
+        </WarningBanner>
+      ) : null}
+    </EnvelopeBox>
+  );
+}
+
+/** Exa: every web search, its own money. */
+function ExaBox({ x }: { x: AiEnvelopes["exa"] }) {
+  return (
+    <EnvelopeBox
+      id="exa"
+      title={t("ai.layer.envelopes.exa")}
+      share={x.share}
+      badge={
+        <StatusBadge tone={x.allowed ? "positive" : "warning"}>
+          {translateOr(`ai.layer.envelopes.exaReason.${x.reason}`, x.reason)}
+        </StatusBadge>
+      }
+    >
+      <StatGrid className="sm:grid-cols-2 lg:grid-cols-2">
+        <Stat
+          label={t("ai.layer.envelopes.spent")}
+          value={usd(x.spent_usd)}
+          hint={t("ai.layer.envelopes.spentHint", {
+            share: probText(x.share, 0),
+            budget: usd(x.budget_usd),
+          })}
+        />
+        <Stat label={t("ai.layer.envelopes.today")} value={usd(x.spent_today_usd)} />
+        <Stat label={t("ai.layer.envelopes.searches")} value={int(x.searches)} />
+      </StatGrid>
+    </EnvelopeBox>
+  );
+}
+
+/** Production and the LAB together against the joint ceiling Claude may not pass. */
+function JointBox({ c }: { c: AiEnvelopes["claude"] }) {
+  return (
+    <EnvelopeBox id="claude" title={t("ai.layer.envelopes.joint")} share={c.share}>
+      <StatGrid className="sm:grid-cols-2 lg:grid-cols-2">
+        <Stat
+          label={t("ai.layer.envelopes.spent")}
+          value={usd(c.spent_usd)}
+          hint={t("ai.layer.envelopes.spentHint", {
+            share: probText(c.share, 0),
+            budget: usd(c.ceiling_usd),
+          })}
+        />
+        <Stat label={t("ai.layer.envelopes.ceiling")} value={usd(c.ceiling_usd)} />
+        <Stat
+          label={t("ai.layer.envelopes.projection")}
+          value={usd(c.projected_usd)}
+          tone={shareTone(c.projection_share)}
+          hint={t("ai.layer.envelopes.projectionHint", { share: probText(c.projection_share, 0) })}
+        />
+      </StatGrid>
+    </EnvelopeBox>
+  );
+}
+
+/** Claude of production, Claude of the LAB and Exa against their own envelopes, the joint ceiling, and each of the last 14 days. */
+function EnvelopesCard({ e }: { e: AiEnvelopes }) {
+  const days = [...e.days].reverse();
+  return (
+    <Panel title={t("ai.layer.envelopes.title")} subtitle={t("ai.layer.envelopes.subtitle")}>
+      <div className="space-y-4" data-testid="ai-envelopes">
+        <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-4">
+          <ProductionBox p={e.production} />
+          <LabBox l={e.lab} />
+          <ExaBox x={e.exa} />
+          <JointBox c={e.claude} />
+        </div>
+        <section className="space-y-1.5">
+          <SubTitle>{t("ai.layer.envelopes.days")}</SubTitle>
+          <Note>{t("ai.layer.envelopes.daysHelp")}</Note>
+          <TableShell>
+            <THead>
+              <TH>{t("ai.layer.envelopes.day")}</TH>
+              <TH align="right">{t("ai.layer.envelopes.production")}</TH>
+              <TH align="right">{t("ai.layer.envelopes.lab")}</TH>
+              <TH align="right">{t("ai.layer.envelopes.exa")}</TH>
+            </THead>
+            <tbody>
+              {days.map((d) => (
+                <TRow key={d.day}>
+                  <TD className="text-xs">{dayShort(d.day)}</TD>
+                  <TD align="right" className="numeric text-xs">
+                    {usd(d.production_usd)}
+                  </TD>
+                  <TD align="right" className="numeric text-xs">
+                    {usd(d.lab_usd)}
+                  </TD>
+                  <TD align="right" className="numeric text-xs">
+                    {usd(d.exa_usd)}
+                  </TD>
+                </TRow>
+              ))}
+            </tbody>
+          </TableShell>
+        </section>
+      </div>
+    </Panel>
+  );
+}
+
+/** What the cache and the batches saved this month, and what was reused instead of paid again. */
+function SavingsCard({ e }: { e: AiEnvelopes }) {
+  const s = e.savings.month;
+  const r = e.reuse;
+  const b = e.batch;
+  const total = toNum(s.total_usd);
+  return (
+    <Panel title={t("ai.layer.savings.title")} subtitle={t("ai.layer.savings.subtitle")}>
+      <div className="space-y-4" data-testid="ai-savings">
+        <StatGrid className="sm:grid-cols-2 lg:grid-cols-2">
+          <Stat
+            label={t("ai.layer.savings.total")}
+            value={usd(s.total_usd)}
+            tone={total === null ? "default" : total < 0 ? "negative" : "positive"}
+          />
+          <Stat
+            label={t("ai.layer.savings.cache")}
+            value={usd(s.cache_usd)}
+            hint={
+              s.read_share === null
+                ? undefined
+                : t("ai.layer.savings.cacheHint", { share: probText(s.read_share, 0) })
+            }
+          />
+          <Stat
+            label={t("ai.layer.savings.batch")}
+            value={usd(s.batch_usd)}
+            hint={
+              s.batch_share === null
+                ? undefined
+                : t("ai.layer.savings.batchHint", { share: probText(s.batch_share, 0) })
+            }
+          />
+          <Stat
+            label={t("ai.layer.savings.writes")}
+            value={int(s.write_tokens)}
+            hint={t("ai.layer.savings.writesHint")}
+          />
+        </StatGrid>
+        <section className="space-y-2">
+          <SubTitle>{t("ai.layer.savings.reuse")}</SubTitle>
+          <StatGrid className="sm:grid-cols-2 lg:grid-cols-2">
+            <Stat
+              label={t("ai.layer.savings.briefs")}
+              value={int(r.briefs_reused)}
+              hint={t("ai.layer.savings.briefsHint", {
+                material: int(r.briefs_reused_material),
+                paid: int(r.briefs_paid),
+              })}
+            />
+            <Stat
+              label={t("ai.layer.savings.reviews")}
+              value={int(r.reviews_reused)}
+              hint={t("ai.layer.savings.reviewsHint", { batched: int(r.reviews_batched) })}
+            />
+            <Stat
+              label={t("ai.layer.savings.batches")}
+              value={int(b.open_batches)}
+              hint={t("ai.layer.savings.batchesHint", {
+                items: int(b.open_items),
+                ended: int(b.ended_batches),
+              })}
+            />
+            <Stat
+              label={t("ai.layer.savings.lost")}
+              value={int(b.lost_batches)}
+              tone={b.lost_batches > 0 ? "warning" : "default"}
+              hint={t("ai.layer.savings.lostHint")}
+            />
+          </StatGrid>
+        </section>
+      </div>
+    </Panel>
+  );
+}
+
+const SWITCH_NAMES = [
+  "cache",
+  "brief_material",
+  "budget_v3",
+  "batch",
+  "native_schema",
+  "cache_layout",
+] as const;
+
+/** Why a switch is on or off, from what the server says (its mode, whether it is in force, and its gate) - not from the server's English. */
+function switchWhy(name: (typeof SWITCH_NAMES)[number], s: AiSwitchState): string {
+  if (s.mode === "off") return t("ai.layer.switches.why.ownerOff");
+  if (name === "cache_layout") {
+    return s.on ? t("ai.layer.switches.why.passed") : t("ai.layer.switches.why.layout");
+  }
+  if (s.mode === "on") return t("ai.layer.switches.why.forced");
+  if (s.on) {
+    return s.gate ? t("ai.layer.switches.why.passed") : t("ai.layer.switches.why.default");
+  }
+  return t("ai.layer.switches.why.waiting");
+}
+
+/** The five optimisations of Phase 0 and the shared match block: whether each is in force, why, and the evidence it rests on. */
+function SwitchesCard({ e }: { e: AiEnvelopes }) {
+  const gates = e.switches.gates;
+  return (
+    <Panel title={t("ai.layer.switches.title")} subtitle={t("ai.layer.switches.subtitle")}>
+      <ul className="space-y-3" data-testid="ai-switches">
+        {SWITCH_NAMES.map((name) => {
+          const s = e.switches[name];
+          const gate = s.gate ? gates[s.gate] : undefined;
+          return (
+            <li key={name} className="min-w-0 space-y-1" data-testid={`ai-switch-${name}`}>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs font-medium">{t(`ai.layer.switches.names.${name}`)}</span>
+                <StatusBadge tone={s.on ? "positive" : "neutral"}>
+                  {s.on ? t("ai.layer.switches.on") : t("ai.layer.switches.off")}
+                </StatusBadge>
+              </div>
+              <p className="text-caption text-muted-foreground">{switchWhy(name, s)}</p>
+              {s.gate ? (
+                <p className="text-caption text-subtle-foreground">
+                  {t("ai.layer.switches.evidence")}:{" "}
+                  {gate?.passed
+                    ? t("ai.layer.switches.passedOn", { date: bogotaDateTime(gate.at) })
+                    : gate?.at
+                      ? t("ai.layer.switches.failedOn", { date: bogotaDateTime(gate.at) })
+                      : t("ai.layer.switches.none")}
+                </p>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
+  );
+}
+
+/** The three envelopes, what the cache and the batches saved, and the switches: Phase 0 of the AI master plan. */
+export function EnvelopesBody({ e }: { e: AiEnvelopes }) {
+  return (
+    <>
+      <EnvelopesCard e={e} />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <SavingsCard e={e} />
+        <SwitchesCard e={e} />
+      </div>
+    </>
   );
 }
 
@@ -524,6 +943,7 @@ export function CostsView() {
   const costs = useLiveQuery(live.aiCosts);
   const o = overview.data?.data ?? null;
   const c = costs.data?.data ?? null;
+  const envelopes = o ? envelopesOf(o) : null;
   return (
     <div className="space-y-4" data-testid="ai-costs">
       {overview.isError ? <ApiErrorNotice error={overview.error} /> : null}
@@ -533,6 +953,13 @@ export function CostsView() {
             <BudgetCard o={o} />
             <StackCard o={o} />
           </div>
+          {envelopes ? (
+            <EnvelopesBody e={envelopes} />
+          ) : (
+            <Panel title={t("ai.layer.envelopes.title")}>
+              <Note>{t("ai.layer.envelopes.empty")}</Note>
+            </Panel>
+          )}
           <EfficiencyPanel e={o.efficiency} />
         </>
       ) : overview.isLoading ? (

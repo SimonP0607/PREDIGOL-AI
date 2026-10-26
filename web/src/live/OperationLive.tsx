@@ -6,6 +6,7 @@
  *   DECISIONES    every decision whole: the ten filters, the score and the stake, the context, the model, the outcome
  *   PARTIDO       the dossier of a match, found by a search and not by typing an id, with its narrative
  *   TRABAJO IA    the mode and the owner's "run now", and the AI's own work: today's matches, the research, the reviews, the evidence, the sources
+ *   AGENTES       the agents of the plan: the registry against the code, the engine of each family, the state of the matches, the queue, the audit
  *   COSTOS        the budget, the models, the pace, the efficiency of today and everything the periods cost
  *   EJECUCIONES   what ran and the leakage audit
  *
@@ -28,6 +29,7 @@ import { CostsView } from "./AiCosts";
 import { ShadowBanner } from "./AiBits";
 import { EvidenceTab, ReviewsTab, StatusStrip } from "./AiLayerLive";
 import { ResearchTab, SourcesTab, TodayTab } from "./AiResearchLive";
+import { AgentsView } from "./AgentsLive";
 import { AI_TZ } from "./aiModel";
 import { DayView, DecisionDetail, DecisionsView, MatchView, RunsView } from "./IntelligenceLive";
 
@@ -97,6 +99,7 @@ export function OperationLive() {
         <MatchView fixture={fixture} setFixture={setFixture} onOpen={openDecision} />
       ) : null}
       {tab === "ai" ? <AiWork /> : null}
+      {tab === "agents" ? <AgentsView /> : null}
       {tab === "costs" ? <CostsView /> : null}
       {tab === "runs" ? <RunsView /> : null}
     </div>
