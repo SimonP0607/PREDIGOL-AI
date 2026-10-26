@@ -666,3 +666,22 @@ test("a tab and a view are in the address: a reload keeps them, the first of eac
   await expect(openTab(page, t.memory.tabs.label)).toHaveText(LEARN.memoryViews.notes);
   await assertClean(page, w);
 });
+
+test("«Cómo le va a PrediGol» for the owner (A12): the page whatever the switch, labelled a preview while readers cannot open it, and in the account menu", async ({
+  page,
+}) => {
+  // Plan UX, A12: «tu revisión antes de publicar» (P9) - the owner sees the page before readers do.
+  const w = watch(page);
+  const me = (await getJson<{ transparency?: boolean }>(page.request, "/api/v1/auth/me")).body;
+  await go(page, w, "/home");
+  await page.getByTestId("account-menu").click();
+  await page.getByTestId("go-transparency").click();
+  await expect(page).toHaveURL(/\/transparency$/);
+  await settle(page);
+  await assertClean(page, w);
+  await expect(page.getByTestId("transparency-body")).toBeVisible();
+  await expect(page.getByTestId("transparency-preview")).toHaveCount(me.transparency ? 0 : 1);
+  if (!me.transparency)
+    await expect(page.getByTestId("transparency-preview")).toHaveText(t.transparency.page.preview);
+  else note(test.info(), "readers can open it on this database: no preview label");
+});
