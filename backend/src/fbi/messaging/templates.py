@@ -220,6 +220,32 @@ def _request_answered(params: Mapping[str, str], locale: Locale, _zone: str) -> 
     return {"request": _request(params, locale)}
 
 
+SUPPORT_TOPICS: dict[str, dict[Locale, str]] = {
+    "access": {"es": "el acceso a tu cuenta", "en": "getting into your account"},
+    "account": {"es": "tu cuenta o tu membresía", "en": "your account or membership"},
+    "technical": {"es": "un error técnico", "en": "a technical error"},
+    "wrong_data": {"es": "un dato incorrecto", "en": "wrong data"},
+    "suggestion": {"es": "una sugerencia", "en": "a suggestion"},
+    "complaint": {"es": "una reclamación", "en": "a complaint"},
+}
+"""What a support ticket is about (plan UX, A14: fbi.customer.support.CATEGORIES), as the reader reads it."""
+
+
+def _support(params: Mapping[str, str], locale: Locale) -> dict[str, str]:
+    ticket = params["ticket"]
+    if not ticket.isdigit():
+        raise TemplateError(f"a ticket is a number, not {ticket!r}")
+    return {"topic": _word(SUPPORT_TOPICS, params["category"], locale, "support category"), "ticket": ticket}
+
+
+def _support_received(params: Mapping[str, str], locale: Locale, zone: str) -> dict[str, str]:
+    return {**_support(params, locale), "by": moment(params["by"], locale, zone)}
+
+
+def _support_answered(params: Mapping[str, str], locale: Locale, _zone: str) -> dict[str, str]:
+    return _support(params, locale)
+
+
 def _legal_change(params: Mapping[str, str], locale: Locale, _zone: str) -> dict[str, str]:
     from fbi.customer import legal
 
@@ -321,6 +347,38 @@ TEMPLATES: dict[str, Template] = {t.name: t for t in (
                 "Read the answer"),
         values=_request_answered,
         sample=(("request", "privacy_claim"), ("ticket", "12")),
+    ),
+    Template(
+        "support_ticket_received", "support", ("ticket", "category", "by"), "/help/messages/{ticket}",
+        es=Copy("Recibimos tu mensaje",
+                ("Hola, {name}.",
+                 "Recibimos tu mensaje sobre {topic} (n.º {ticket}). Te respondemos a más tardar el {by}.",
+                 "Cuando te respondamos te avisaremos por aquí; también lo ves en Ayuda, en «Tus mensajes»."),
+                "Ver mi mensaje"),
+        en=Copy("We received your message",
+                ("Hello, {name}.",
+                 "We received your message about {topic} (no. {ticket}). We will answer by {by} at the latest.",
+                 "We will let you know here when we answer; you can also see it in Help, under “Your messages”."),
+                "See my message"),
+        values=_support_received,
+        sample=(("ticket", "34"), ("category", "technical"), ("by", "2026-10-27T13:04:00+00:00")),
+        stale_after=timedelta(days=2),
+    ),
+    Template(
+        "support_ticket_answered", "support", ("ticket", "category"), "/help/messages/{ticket}",
+        es=Copy("Te respondimos",
+                ("Hola, {name}.",
+                 "Hay una respuesta nueva a tu mensaje sobre {topic} (n.º {ticket}).",
+                 "Léela en PrediGol, en Ayuda. Por tu seguridad no la copiamos en este correo."),
+                "Leer la respuesta"),
+        en=Copy("We answered you",
+                ("Hello, {name}.",
+                 "There is a new answer to your message about {topic} (no. {ticket}).",
+                 "Read it in PrediGol, under Help. For your security we do not copy it into this e-mail."),
+                "Read the answer"),
+        values=_support_answered,
+        sample=(("ticket", "34"), ("category", "access")),
+        stale_after=timedelta(days=7),
     ),
     Template(
         "legal_change", "legal", ("document", "version"), "/legal/{document_slug}",

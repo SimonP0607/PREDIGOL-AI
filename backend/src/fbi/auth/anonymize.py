@@ -6,8 +6,8 @@ recovery codes, and every link of theirs that could still work. The account's ro
 (``deleted-<id>@deleted.invalid``, which the e-mail queue never sends to), its name replaced, a random password hash
 nobody knows, status ``deleted`` - and so does the address typed in the sign-in trail, masked the same way. What
 stays linked to the row, as the law asks: the consents (the proof of what was accepted, and when) and the privacy
-requests with their thread (the proof that the request was answered). Messages still queued for the reader are not
-sent. Nothing about an anonymised account changes afterwards; no account of the owner's (SUPER_ADMIN) is anonymised.
+requests with their thread (the proof that the request was answered) and the support tickets with theirs (A14: the
+open ones are closed - nobody is left to answer). Messages still queued for the reader are not sent. Nothing about an anonymised account changes afterwards; no account of the owner's (SUPER_ADMIN) is anonymised.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ class Anonymised:
     sessions: int
     messages_dropped: int
     trail_rows: int
+    tickets_closed: int = 0
 
 
 def masked_address(user_id: int) -> str:
@@ -61,6 +62,10 @@ def anonymise(actor: Principal, user_id: int, *, confirm: str, ip: str | None) -
         picks = conn.execute("DELETE FROM picks.user_picks WHERE user_id = %s", (user_id,)).rowcount
         conn.execute("DELETE FROM customer.preferences WHERE user_id = %s", (user_id,))
         conn.execute("DELETE FROM customer.favorites WHERE user_id = %s", (user_id,))
+        # Their support tickets still open (plan UX, A14): nobody is left to answer. The thread stays, as a privacy
+        # request's does.
+        tickets = conn.execute("UPDATE customer.support_tickets SET status = 'closed', closed_at = now() "
+                               "WHERE user_id = %s AND kind = 'support' AND status <> 'closed'", (user_id,)).rowcount
         sessions = conn.execute("DELETE FROM auth.sessions WHERE user_id = %s", (user_id,)).rowcount
         store.clear_totp(conn, user_id)  # the second factor's secret and the recovery codes
         tokens.revoke_open(conn, user_id, tuple(tokens.LIFETIME), "account_closed")
@@ -78,7 +83,7 @@ def anonymise(actor: Principal, user_id: int, *, confirm: str, ip: str | None) -
              WHERE id = %s
         """, (masked, f"deleted-{user_id}", passwords.unusable_hash(), user_id))
         counts = {"picks": picks, "parlays": parlays, "sessions": sessions, "messages_dropped": dropped,
-                  "trail_rows": trail}
+                  "trail_rows": trail, "tickets_closed": tickets}
         # Never the address: the row says who did it, to which account and what went.
         store.record_event(conn, "user.anonymised", actor_user_id=actor.user_id, target_user_id=user_id, ip=ip,
                            detail=counts)

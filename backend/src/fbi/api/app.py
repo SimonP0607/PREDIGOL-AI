@@ -42,6 +42,7 @@ from fbi.api.routers import (
     reading,
     records,
     referees,
+    support,
     system,
     today,
     transparency,
@@ -200,15 +201,17 @@ def create_app() -> FastAPI:
     #   app     - the product, for any signed-in account (and, once FBI_CONSENT_GATE is on, its current consents)
     #   admin   - /api/v1/admin/*, SUPER_ADMIN only
     # The provider's signed webhook (plan UX, A5) is public too: its signature is its authentication.
+    # The way to reach PrediGol without signing in (plan UX, A14) is public too: data the owner publishes.
     for r in (system.router, auth.public_router, auth.session_router, account.router, customer.public_router,
-              messaging.webhook_router):
+              messaging.webhook_router, support.public_router):
         app.include_router(r, prefix="/api/v1")
     # The browser's error reports (plan UX, A2): public - an error can happen before signing in - but same-site.
     app.include_router(monitoring.router, prefix="/api/v1", dependencies=[Depends(same_site_only)])
     app_tier = [Depends(same_site_only), Depends(require_app), Depends(observe_principal)]
     # The account itself, its membership and the reader's rights (consents, export, privacy requests, notification
-    # preferences): never behind the gates - a limited reader still sees why, and how to renew.
-    for r in (auth.router, customer.router, messaging.router, membership.router, favorites.router):
+    # preferences) and their questions to PrediGol (A14): never behind the gates - a limited reader still sees why, how
+    # to renew, and reaches Ayuda.
+    for r in (auth.router, customer.router, messaging.router, membership.router, favorites.router, support.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
     # The product's own analytics (A6), behind the consent gate only: a reader who has not accepted the processing is
     # not measured; a limited one is (what they open while limited is part of renewing).
@@ -227,7 +230,7 @@ def create_app() -> FastAPI:
               center.admin_router, explorer.router, analyst.router, admin_users.router, truth.router,
               evolution.router, ai_layer.admin_router, intelligence.router, referees.router,
               monitoring.admin_router, customer.admin_router, messaging.admin_router, events.admin_router,
-              membership.admin_router):
+              membership.admin_router, support.admin_router):
         app.include_router(r, prefix="/api/v1/admin", dependencies=admin_tier)
     # The original unversioned health endpoint stays where monitors expect it.
     app.add_api_route("/health", system.get_health, methods=["GET"], include_in_schema=False)

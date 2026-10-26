@@ -5,7 +5,10 @@ The messenger drafts them every cycle into ``audit.notifications`` (the API's ro
 notifier sends every queued row to the owner's channel, as it does with its own (fbi.notify.service). A notice is
 keyed so that drafting it again is free:
 
-    ticket_new        a request opened since the last notice (privacy now, support from A14)   - per newest request
+    ticket_new        a privacy request or an urgent support ticket (access) opened since the  - per newest one
+                      last notice (A14: section 32, «aviso inmediato al dueño»)
+                      and, once a morning (Bogotá, from 07:00), the support tickets waiting    - once a morning
+                      for PrediGol, with those past the target of their first answer
     privacy_due       open privacy requests within 3 business days of their legal deadline     - once a day (Bogotá)
                       or past it
     outbox_failing    messages that failed in 24 h, or waiting over an hour while sending is on - once a day (UTC)
@@ -30,7 +33,7 @@ import psycopg
 import structlog
 from psycopg.rows import dict_row
 
-from fbi.customer import events, membership, workdays
+from fbi.customer import events, membership, support, workdays
 from fbi.customer.privacy import bogota_today
 from fbi.messaging.templates import long_date, web_base
 from fbi.notify.service import Draft
@@ -38,6 +41,9 @@ from fbi.notify.service import Draft
 log = structlog.get_logger(__name__)
 
 DUE_WITHIN_BUSINESS_DAYS = 3
+MORNING_HOUR = 7
+"""The morning's notices (membership, the support tickets waiting) wait for the morning in Bogotá: «each morning the
+day's count» (section 22)."""
 STUCK_AFTER = timedelta(hours=1)
 SYNTHETIC_STREAK = 2
 KIND_WORDS: dict[str, tuple[str, str]] = {
@@ -46,6 +52,7 @@ KIND_WORDS: dict[str, tuple[str, str]] = {
     "privacy_deletion": ("solicitud de borrado", "solicitudes de borrado"),
     "support": ("pregunta de soporte", "preguntas de soporte"),
 }
+URGENT_WORDS: tuple[str, str] = ("ticket urgente de acceso", "tickets urgentes de acceso")
 
 
 def _n(count: int, one: str, many: str) -> str:
@@ -57,25 +64,52 @@ def _day(value: date) -> str:
 
 
 def ticket_new(conn: psycopg.Connection[Any]) -> list[Draft]:
+    """At once: the privacy requests (their legal deadline runs) and the urgent support tickets opened since the last
+    notice. The other support tickets wait for the morning's count (``support_waiting``)."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("SELECT coalesce(max((payload->>'last_id')::bigint), 0) AS last FROM audit.notifications "
                     "WHERE kind = 'ticket_new'")
         last = int((cur.fetchone() or {"last": 0})["last"])
-        cur.execute("SELECT id, kind, coalesce(extended_to, due_on) AS deadline FROM customer.support_tickets "
-                    "WHERE id > %s AND status = 'open' ORDER BY id", (last,))
+        cur.execute("SELECT id, kind, category, coalesce(extended_to, due_on) AS deadline "
+                    "FROM customer.support_tickets WHERE id > %s AND status = 'open' "
+                    "AND (kind <> 'support' OR category = ANY(%s)) ORDER BY id", (last, sorted(support.URGENT)))
         rows = cur.fetchall()
     if not rows:
         return []
     kinds = Counter(str(r["kind"]) for r in rows)
-    parts = [_n(n, *KIND_WORDS.get(k, ("solicitud", "solicitudes"))) for k, n in sorted(kinds.items())]
+    parts = [_n(n, *(URGENT_WORDS if k == "support" else KIND_WORDS.get(k, ("solicitud", "solicitudes"))))
+             for k, n in sorted(kinds.items())]
     deadlines = [r["deadline"] for r in rows if r["deadline"] is not None]
     nearest = f" Plazo más cercano: {_day(min(deadlines))}." if deadlines else ""
     newest = int(rows[-1]["id"])
     return [Draft(
         "ticket_new", f"ticket_new:{newest}",
         f"{_n(len(rows), 'solicitud nueva', 'solicitudes nuevas')} de lectores",
-        f"{', '.join(parts)}.{nearest} Respóndelas desde la consola: {web_base()}/admin/users",
+        f"{', '.join(parts)}.{nearest} Respóndelas desde la consola: {web_base()}/admin/support",
         {"last_id": newest, "count": len(rows)})]
+
+
+def support_waiting(conn: psycopg.Connection[Any], *, at: datetime) -> list[Draft]:
+    """Once a morning (Bogotá, from 07:00): the support tickets waiting for PrediGol, and how many of them passed the
+    target of their first answer (section 32). Counts only; nothing when none waits."""
+    local = at.astimezone(events.BOGOTA)
+    if local.hour < MORNING_HOUR:
+        return []
+    live = [t for t in support.inbox(conn, status="waiting", limit=10_000) if t.kind == "support"]
+    if not live:
+        return []
+    late = sum(1 for t in live if t.late(at))
+    urgent = sum(1 for t in live if t.priority == "urgent")
+    lines = [f"{_n(len(live), 'ticket de soporte espera', 'tickets de soporte esperan')} tu respuesta"
+             + (f" ({_n(urgent, 'urgente', 'urgentes')})" if urgent else "") + "."]
+    if late:
+        lines.append(f"{_n(late, 'pasó', 'pasaron')} el plazo de su primera respuesta.")
+    today = local.date()
+    return [Draft(
+        "ticket_new", f"ticket_new:waiting:{today.isoformat()}",
+        "Tickets de soporte por responder",
+        " ".join(lines) + f" Bandeja: {web_base()}/admin/support",
+        {"waiting": len(live), "late": late, "urgent": urgent})]
 
 
 def privacy_due(conn: psycopg.Connection[Any], *, at: datetime) -> list[Draft]:
@@ -99,7 +133,7 @@ def privacy_due(conn: psycopg.Connection[Any], *, at: datetime) -> list[Draft]:
     return [Draft(
         "privacy_due", f"privacy_due:{today.isoformat()}",
         "Solicitudes de privacidad cerca de su plazo legal",
-        " ".join(lines) + f" Ley 1581: respóndelas desde la consola: {web_base()}/admin/users",
+        " ".join(lines) + f" Ley 1581: respóndelas desde la consola: {web_base()}/admin/support",
         {"soon": soon, "late": late})]
 
 
@@ -157,10 +191,6 @@ def synthetic_failed(conn: psycopg.Connection[Any]) -> list[Draft]:
         {"runs": len(streak), "first_run_id": int(first["id"])})]
 
 
-MORNING_HOUR = 7
-"""The owner's membership notice waits for the morning in Bogotá: «each morning the day's count» (section 22)."""
-
-
 def membership_due(conn: psycopg.Connection[Any], *, at: datetime) -> list[Draft]:
     local = at.astimezone(events.BOGOTA)
     if local.hour < MORNING_HOUR:
@@ -187,7 +217,7 @@ def membership_due(conn: psycopg.Connection[Any], *, at: datetime) -> list[Draft
 
 
 def collect(conn: psycopg.Connection[Any], *, at: datetime, sending: bool, provider: bool) -> list[Draft]:
-    return [*ticket_new(conn), *privacy_due(conn, at=at),
+    return [*ticket_new(conn), *support_waiting(conn, at=at), *privacy_due(conn, at=at),
             *outbox_failing(conn, at=at, sending=sending, provider=provider), *synthetic_failed(conn),
             *membership_due(conn, at=at)]
 

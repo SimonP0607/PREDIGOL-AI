@@ -61,6 +61,9 @@ class Me(Contract):
     transparency: bool = Field(default=False, description="«Cómo le va a PrediGol» is open to readers (plan UX, A12; "
                                                           "FBI_TRANSPARENCY, off until the owner reviewed it): the page "
                                                           "links to it only then.")
+    support: bool = Field(default=False, description="A reader can write to PrediGol from the page (plan UX, A14; "
+                                                     "FBI_SUPPORT, on unless the owner turned it off): «Reportar un "
+                                                     "problema» in Ayuda, in an error and in a match.")
 
 
 class PreferencesIn(BaseModel):

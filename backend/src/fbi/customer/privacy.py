@@ -23,7 +23,7 @@ from zoneinfo import ZoneInfo
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.customer import consents, events, membership, workdays
+from fbi.customer import consents, events, membership, support, workdays
 from fbi.customer.db import CustomerError, write_connection
 from fbi.messaging import outbox
 
@@ -119,8 +119,8 @@ def open_request(user_id: int, kind: RequestKind, message: str, *, now: datetime
         if existing:
             raise CustomerError(409, "request_open", "a request of this kind is already open")
         row = conn.execute("""
-            INSERT INTO customer.support_tickets (user_id, kind, opened_at, due_on) VALUES (%s, %s, %s, %s)
-            RETURNING id
+            INSERT INTO customer.support_tickets (user_id, kind, category, opened_at, due_on)
+            VALUES (%s, %s, 'privacy', %s, %s) RETURNING id
         """, (user_id, kind, opened, due_on)).fetchone()
         assert row is not None
         conn.execute("INSERT INTO customer.ticket_messages (ticket_id, author, body, at) VALUES (%s, 'customer', %s, %s)",
@@ -261,6 +261,8 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
     analytics = events.events_of(conn, user_id)
     # The membership: its periods, the payments recorded and its events (plan UX, A8).
     member = membership.export_rows(conn, user_id)
+    # Their questions to PrediGol, with the context attached and the answers (plan UX, A14).
+    support_rows = support.export_rows(conn, user_id)
     document: dict[str, Any] = _iso({
         "format": EXPORT_FORMAT,
         "generated_at": now or datetime.now(UTC),
@@ -280,5 +282,6 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "membership_periods": member["membership_periods"],
         "payments": member["payments"],
         "membership_events": member["membership_events"],
+        "support_tickets": support_rows,
     })
     return document
