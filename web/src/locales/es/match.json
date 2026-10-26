@@ -13,7 +13,9 @@
     "markets": "Mercados",
     "lineups": "Alineaciones",
     "advanced": "Avanzado / Auditoría",
-    "picks": "Picks"
+    "picks": "Picks",
+    "analysis": "Análisis",
+    "postmatch": "Postpartido"
   },
   "round": {
     "matchday": "Jornada {n}",
@@ -841,5 +843,186 @@
     "open": "Ver resumen de {name}",
     "rating": "Valoración del proveedor: {value}",
     "fullPage": "Ver ficha completa"
+  },
+  "readingBlock": {
+    "title": "Análisis PrediGol",
+    "label": "Lectura automática con los datos de PrediGol",
+    "dataAt": "Con datos de las {time}",
+    "dataAtDay": "Con datos del {date}",
+    "incomplete": "Lectura parcial: todavía no reunimos el contexto de este partido.",
+    "caveat": "Es una probabilidad, no una recomendación: un pick de PrediGol es otra cosa, y se publica aparte.",
+    "marketNote": "La probabilidad implícita es la cuota sin el margen de las casas.",
+    "unavailable": "La lectura de este partido no está disponible.",
+    "risksTitle": "Riesgos principales",
+    "seeAll": "Ver el análisis completo",
+    "sections": {
+      "summary": "Resumen",
+      "context": "Contexto",
+      "data": "Datos",
+      "market": "Mercado",
+      "risks": "Riesgos",
+      "conclusion": "Conclusión de PrediGol"
+    }
+  },
+  "facts": {
+    "outcome": {
+      "home": "la victoria de {team}",
+      "draw": "el empate",
+      "away": "la victoria de {team}"
+    },
+    "uncalibrated": ", sin calibrar",
+    "match_intro": {
+      "plain": "Partido de {competition}.",
+      "round": "Partido de {competition} ({round}).",
+      "neutral": " Se juega en campo neutral."
+    },
+    "match_kind": {
+      "final": "Es una final.",
+      "second_leg": "Es el partido de vuelta de una eliminatoria.",
+      "knockout": "Es una eliminatoria.",
+      "derby": "Es un derbi: la historia del clásico no cambia las probabilidades.",
+      "friendly": "Es un amistoso: rotaciones probables y poco en juego."
+    },
+    "expected_result": "PrediGol ve como resultado más probable {outcome} ({pct}{uncal}).",
+    "missing": {
+      "data_not_fit": "PrediGol no pronostica esta competición: sus datos aún no son aptos para un modelo.",
+      "quarantined": "PrediGol no hizo pronóstico: los datos de este partido están en revisión.",
+      "no_forecast_yet": "PrediGol todavía no tiene pronóstico de este partido.",
+      "hidden": "El pronóstico de PrediGol no se muestra todavía."
+    },
+    "zone": {
+      "title": "título",
+      "europe": "plazas internacionales",
+      "relegation": "descenso",
+      "promotion": "ascenso"
+    },
+    "rank": " ({rank}.º)",
+    "stakes_zone": "{team}{rank} está en la zona de {zone}.",
+    "stakes_gap_up_one": "{team} está a {count} punto de la zona de {zone}.",
+    "stakes_gap_up_other": "{team} está a {count} puntos de la zona de {zone}.",
+    "stakes_gap_down_one": "{team} le saca {count} punto a la zona de {zone}.",
+    "stakes_gap_down_other": "{team} le saca {count} puntos a la zona de {zone}.",
+    "pressure": {
+      "title": "{team} pelea el título.",
+      "europe": "{team} pelea plazas internacionales.",
+      "relegation": "{team} pelea por no descender.",
+      "promotion": "{team} pelea el ascenso.",
+      "settled": "{team} ya no se juega nada en la tabla.",
+      "playoff": "{team} pelea el playoff."
+    },
+    "first_leg": "La ida terminó {home_goals}-{away_goals} (primero, los goles del local de hoy).",
+    "tie_outlook": "En el global, tras los 90 minutos {home} va por delante si {ahead}; queda igualado si {level}. Si queda igualado, deciden las reglas de la competición.",
+    "tie": {
+      "ahead_many": "gana por {count} goles o más",
+      "ahead_one": "gana",
+      "ahead_zero": "empata o gana",
+      "ahead_lose_one": "no pierde por más de 1 gol",
+      "ahead_lose_many": "no pierde por más de {count} goles",
+      "level_win_one": "gana por 1 gol",
+      "level_win_many": "gana por {count} goles",
+      "level_zero": "empata",
+      "level_lose_one": "pierde por 1 gol",
+      "level_lose_many": "pierde por {count} goles"
+    },
+    "places": {
+      "one": "puesto {best}.º",
+      "range": "puestos {best}.º a {worst}.º"
+    },
+    "table_after": {
+      "home_win": "Si gana {home}: {home} sumaría {home_points} puntos ({home_places}) y {away}, {away_points} ({away_places}).",
+      "draw": "Si empatan: {home} sumaría {home_points} puntos ({home_places}) y {away}, {away_points} ({away_places}).",
+      "away_win": "Si gana {away}: {home} sumaría {home_points} puntos ({home_places}) y {away}, {away_points} ({away_places})."
+    },
+    "tableNote": "Con los demás equipos en sus puntos de hoy: un puesto es un intervalo.",
+    "days": {
+      "exact": "{days} días",
+      "at_most": "a lo sumo {days} días"
+    },
+    "rest_days": "{team} llega con {days} de descanso.",
+    "rest_days_matches": "{team} llega con {days} de descanso y {matches} partidos en los últimos 14 días.",
+    "next_match": "{team} vuelve a jugar en {days} días.",
+    "next_match_comp": "{team} vuelve a jugar en {days} días ({competition}).",
+    "form": "{team}: {sequence} en sus últimos {n} partidos ({ppg} puntos por partido; {gf} goles a favor y {ga} en contra por partido).",
+    "formLetters": {
+      "W": "G",
+      "D": "E",
+      "L": "P"
+    },
+    "venue_record": {
+      "home": "{team} en casa: {w}G {d}E {l}P en {n} partidos.",
+      "away": "{team} fuera: {w}G {d}E {l}P en {n} partidos."
+    },
+    "xg": "{team} genera {xg_for} xG y concede {xg_against} (en {n} partidos con estadísticas).",
+    "xg_plain": "{team} genera {xg_for} xG y concede {xg_against}.",
+    "streak_unbeaten": "{team} suma {n} partidos sin perder.",
+    "streak_winless": "{team} lleva {n} partidos sin ganar.",
+    "h2h": "Cara a cara (90 minutos): {n} partidos, {home_wins} victorias de {home}, {draws} empates y {away_wins} de {away} ({n_effective} efectivos).",
+    "top_scorer": "{team}: {player} lleva {goals} goles.",
+    "top_scorer_minutes": "{team}: {player} lleva {goals} goles en {minutes} minutos.",
+    "key_absences": "Bajas importantes de {team}: {players}.",
+    "key_absences_more": "Bajas importantes de {team}: {players} y {more} más.",
+    "market_unpriced": "Todavía no hay cuotas para este partido.",
+    "market_favourite": "El mercado da {pct} a {outcome}.",
+    "market_favourite_books": "El mercado da {pct} a {outcome} ({books} casas).",
+    "market_moved": "Desde la apertura, {outcome} pasó de {opening} a {now} en el mercado.",
+    "total": {
+      "over": "más de {line} goles",
+      "under": "menos de {line} goles"
+    },
+    "market_total": "Para los goles, el mercado da {pct} a {total}.",
+    "no_context_yet": "PrediGol todavía no reunió el contexto de este partido: esta lectura solo tiene el pronóstico.",
+    "lineups_unconfirmed": "Las alineaciones aún no están confirmadas.",
+    "short_rest": "{team} llega con poco descanso.",
+    "rest_disadvantage": "{team} descansó varios días menos que su rival.",
+    "contradictory_news_one": "Hay {count} información contradictoria sobre el partido.",
+    "contradictory_news_other": "Hay {count} informaciones contradictorias sobre el partido.",
+    "rumours_one": "Hay {count} rumor sin confirmar: no cuenta como hecho.",
+    "rumours_other": "Hay {count} rumores sin confirmar: no cuentan como hechos.",
+    "no_external_info": "No encontramos información externa del partido (noticias o bajas confirmadas por una fuente).",
+    "h2h_weak": "El cara a cara dice poco: {n} partidos, {n_effective} efectivos.",
+    "data_not_fit": "Los datos de esta competición no son aptos para modelos: esta lectura es solo descripción.",
+    "not_checked": "No pudimos comprobar: {blocks}.",
+    "blocks": {
+      "form": "la forma",
+      "h2h": "el cara a cara",
+      "stats": "las estadísticas",
+      "absences": "las bajas",
+      "lineups": "las alineaciones",
+      "market": "las cuotas",
+      "schedule": "el calendario",
+      "standings": "la tabla",
+      "dossier": "el informe del partido",
+      "phase": "la fase de la competición"
+    },
+    "uncalibrated_markets": "El pronóstico de {markets} está sin calibrar: es el número del propio modelo.",
+    "markets": {
+      "1X2": "resultado",
+      "OU": "goles",
+      "BTTS": "ambos marcan"
+    },
+    "none_found": "No vimos riesgos en los datos disponibles; las alineaciones y las noticias de última hora pueden cambiarlo.",
+    "description_only": "Los datos de esta competición no permiten un pronóstico: solo describimos el partido.",
+    "likely": {
+      "1X2": "Resultado: lo más probable según PrediGol es {outcome} ({pct}{uncal}).",
+      "OU": "Goles: lo más probable según PrediGol es {total} ({pct}{uncal}).",
+      "BTTS": "Ambos marcan: lo más probable según PrediGol es que {btts} ({pct}{uncal})."
+    },
+    "btts": {
+      "yes": "marquen los dos",
+      "no": "no marquen los dos"
+    },
+    "and": " y "
+  },
+  "postmatch": {
+    "title": "Pronóstico frente a resultado",
+    "line": "PrediGol veía más probable «{outcome}» ({pct}{uncal}). Terminó {score}: {actual}.",
+    "uncalibrated": ", sin calibrar",
+    "hit": "Coincidió con el resultado",
+    "miss": "No coincidió con el resultado",
+    "said": "Pronóstico del {date}",
+    "none": "PrediGol no tenía pronóstico de resultado para este partido.",
+    "myPicks": "Tus picks guardados de este partido y su liquidación están en Mis picks.",
+    "myPicksAction": "Ir a Mis picks",
+    "pending": "El resultado todavía no es definitivo: el postpartido se arma cuando lo sea."
   }
 }
