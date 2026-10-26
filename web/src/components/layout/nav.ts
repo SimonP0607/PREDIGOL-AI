@@ -31,6 +31,7 @@ import {
   UserRound,
   Users,
   Workflow,
+  HardDrive,
   type LucideIcon,
 } from "lucide-react";
 
@@ -90,6 +91,7 @@ export const adminNav: Array<{ label: string; items: NavItem[] }> = [
       { to: "/admin/data-truth", label: "admin.nav.dataTruth", icon: ScanSearch },
       { to: "/admin/data-quality", label: "admin.nav.dataQuality", icon: Database },
       { to: "/admin/system", label: "admin.nav.system", icon: ClipboardList },
+      { to: "/admin/storage", label: "admin.nav.storage", icon: HardDrive },
       { to: "/admin/migration", label: "admin.nav.migration", icon: Workflow },
       { to: "/admin/users", label: "admin.nav.users", icon: UserRound },
       { to: "/admin/audit", label: "admin.nav.audit", icon: ScrollText },

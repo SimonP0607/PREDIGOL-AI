@@ -2,6 +2,7 @@ import { API_BASE_URL } from "@/lib/api/mode";
 import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
+import type { StorageOverview } from "./types_storage";
 import type {
   IntelCalibration,
   IntelCosts,
@@ -674,6 +675,8 @@ export const v1 = {
   dataCoverage: () => getJson<Envelope<CoverageCell[]>>("/admin/analytics/coverage"),
   migration: () => getJson<Envelope<MigrationProgress>>("/admin/analytics/migration"),
   admin: () => getJson<Envelope<AdminOverview>>("/admin/system"),
+  /** Where the server's disk goes, the copies, the last cleanup and the retention policy (reading only). */
+  adminStorage: () => getJson<Envelope<StorageOverview>>("/admin/storage"),
   users: () => getJson<Envelope<AdminUser[]>>("/admin/users"),
   createUser: (body: AdminUserCreate) => postJson<Envelope<AdminUser>>("/admin/users", body),
   resetUserPassword: (id: number, password?: string) =>

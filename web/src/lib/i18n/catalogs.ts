@@ -30,6 +30,7 @@ import esIntel from "@/locales/es/intel.json";
 import esReferees from "@/locales/es/referees.json";
 import esMemory from "@/locales/es/memory.json";
 import esFamilies from "@/locales/es/families.json";
+import esStorage from "@/locales/es/storage.json";
 import enAdmin from "@/locales/en/admin.json";
 import enAuth from "@/locales/en/auth.json";
 import enCommon from "@/locales/en/common.json";
@@ -57,6 +58,7 @@ import enIntel from "@/locales/en/intel.json";
 import enReferees from "@/locales/en/referees.json";
 import enMemory from "@/locales/en/memory.json";
 import enFamilies from "@/locales/en/families.json";
+import enStorage from "@/locales/en/storage.json";
 
 export type Locale = "es" | "en";
 export type Catalog = { [key: string]: string | Catalog };
@@ -90,6 +92,7 @@ export const CATALOGS: Record<Locale, Catalog> = {
     referees: esReferees,
     memory: esMemory,
     families: esFamilies,
+    storage: esStorage,
   },
   en: {
     admin: enAdmin,
@@ -119,5 +122,6 @@ export const CATALOGS: Record<Locale, Catalog> = {
     referees: enReferees,
     memory: enMemory,
     families: enFamilies,
+    storage: enStorage,
   },
 };

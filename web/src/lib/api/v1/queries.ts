@@ -169,6 +169,12 @@ export const live = {
 
   // ── Admin Console ─────────────────────────────────────────────────────────
   admin: { queryKey: ["v1", "admin"], queryFn: v1.admin, refetchInterval: 30_000 },
+  /** The storage report is written four times a day: a few minutes is as fresh as it gets. */
+  adminStorage: {
+    queryKey: ["v1", "admin", "storage"],
+    queryFn: v1.adminStorage,
+    refetchInterval: 10 * MINUTE,
+  },
   overview: { queryKey: ["v1", "overview"], queryFn: v1.overview, refetchInterval: MINUTE },
   quality: { queryKey: ["v1", "quality"], queryFn: v1.quality, refetchInterval: MINUTE },
   coverage: { queryKey: ["v1", "coverage"], queryFn: v1.coverage },

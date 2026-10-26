@@ -41,6 +41,7 @@ import { Route as AdminPerformanceRouteImport } from './routes/admin.performance
 import { Route as AdminPicksRouteImport } from './routes/admin.picks'
 import { Route as AdminRankingsRouteImport } from './routes/admin.rankings'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminStorageRouteImport } from './routes/admin.storage'
 import { Route as AdminSystemRouteImport } from './routes/admin.system'
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
@@ -211,6 +212,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminStorageRoute = AdminStorageRouteImport.update({
+  id: '/storage',
+  path: '/storage',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSystemRoute = AdminSystemRouteImport.update({
   id: '/system',
   path: '/system',
@@ -289,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/admin/picks': typeof AdminPicksRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/storage': typeof AdminStorageRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -331,6 +338,7 @@ export interface FileRoutesByTo {
   '/admin/picks': typeof AdminPicksRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/storage': typeof AdminStorageRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
   '/admin/picks': typeof AdminPicksRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/storage': typeof AdminStorageRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/admin/picks'
     | '/admin/rankings'
     | '/admin/settings'
+    | '/admin/storage'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
@@ -462,6 +472,7 @@ export interface FileRouteTypes {
     | '/admin/picks'
     | '/admin/rankings'
     | '/admin/settings'
+    | '/admin/storage'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
@@ -505,6 +516,7 @@ export interface FileRouteTypes {
     | '/admin/picks'
     | '/admin/rankings'
     | '/admin/settings'
+    | '/admin/storage'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
@@ -758,6 +770,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/storage': {
+      id: '/admin/storage'
+      path: '/storage'
+      fullPath: '/admin/storage'
+      preLoaderRoute: typeof AdminStorageRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/system': {
       id: '/admin/system'
       path: '/system'
@@ -846,6 +865,7 @@ interface AdminRouteChildren {
   AdminPicksRoute: typeof AdminPicksRoute
   AdminRankingsRoute: typeof AdminRankingsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminStorageRoute: typeof AdminStorageRoute
   AdminSystemRoute: typeof AdminSystemRoute
   AdminTeamsRoute: typeof AdminTeamsRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -878,6 +898,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminPicksRoute: AdminPicksRoute,
   AdminRankingsRoute: AdminRankingsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminStorageRoute: AdminStorageRoute,
   AdminSystemRoute: AdminSystemRoute,
   AdminTeamsRoute: AdminTeamsRoute,
   AdminUsersRoute: AdminUsersRoute,
