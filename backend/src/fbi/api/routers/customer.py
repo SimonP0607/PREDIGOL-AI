@@ -1,5 +1,5 @@
 """The legal texts (public), a reader's consents, the export of their own data and their privacy requests (plan UX,
-A4), and the owner's answers to those requests (Admin Console).
+A4), the owner's answers to those requests (Admin Console) and the reader's account centre in one read (B1).
 
 None of these routes sits behind the consent gate: a reader who has not accepted the current texts can still read
 them, accept them, withdraw an authorisation, take a copy of their data or ask for its deletion.
@@ -14,6 +14,7 @@ import psycopg
 from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi.responses import JSONResponse
 
+from fbi.api.contracts.account import AccountSummary
 from fbi.api.contracts.customer import (
     AdminPrivacyRequest,
     ConsentPurpose,
@@ -35,6 +36,7 @@ from fbi.api.errors import ApiError
 from fbi.api.security import App, client_ip, same_site_only
 from fbi.auth import service as auth_service
 from fbi.auth.service import Principal
+from fbi.customer import account as account_centre
 from fbi.customer import consents, legal, privacy
 from fbi.customer.db import CustomerError
 
@@ -91,6 +93,14 @@ def consent_state(conn: psycopg.Connection[Any], principal: Principal, locale: l
                for c in consents.history(conn, principal.user_id)]
     return ConsentState(gate=gate, due=owed if gate else [], purposes=purposes,  # type: ignore[arg-type]
                         history=history)
+
+
+@router.get("/account", response_model=AccountSummary)
+def my_account(conn: Db, principal: App) -> AccountSummary:
+    """The profile's eight blocks, folded (plan UX, B1; section 21): the account, its football, language and zone,
+    e-mails, privacy, security, membership and help, in one read of the reader's own rows. Outside the consent and
+    membership gates, as the profile is: a limited account reads its own account."""
+    return AccountSummary.model_validate(account_centre.summary(conn, principal))
 
 
 @router.get("/consents", response_model=ConsentState)
