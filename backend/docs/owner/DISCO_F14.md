@@ -76,7 +76,7 @@ libres duran más de tres meses, y con los volúmenes quitados, más de cinco.
 **Medido el 26-oct (10:31 UTC, `disk.history`, una foto al día):** del 24 al 26-oct el disco creció **≈ 4,0 GB al día** (de 109,6 a 117,6 GiB) y
 en la última semana (19 al 26-oct) **≈ 4,4 GB al día** (de 86,7 a 117,6 GiB); del 13 al 22-oct habían sido ≈ 0,75 GB al día. El ritmo de régimen
 no se ha podido medir: cada día de esta semana tuvo uno o más despliegues (imagen nueva, caché de construcción y volcado previo) y la base crece
-además ≈ 0,8 GB al día con los rellenos en marcha (medido el 25 y 26-oct en `ALMACENAMIENTO_PREDIGOL.md`). **Lo que cambia la conclusión:**
+además ≈ 0,8 GB al día con los rellenos en marcha (medido el 25 y 26-oct; documento «ALMACENAMIENTO_PREDIGOL» del Proyecto). **Lo que cambia la conclusión:**
 si la cola de despliegues sigue a este ritmo, los ≈ 80 GB libres llegan al 90 % en unas dos semanas. La poda de imágenes viejas y de la caché
 de construcción (≈ 21 GB, regenerable) no depende de tener la copia fuera del servidor y es lo primero que conviene hacer; los volúmenes
 (54 GB) siguen esperando la copia en R2 y tu «sí». Desde que se despliegue, `bin/storage-report.sh` medirá el ritmo cuatro veces al día.

@@ -133,7 +133,7 @@ Cada fila es un lanzamiento (varias fases salieron juntas). Fechas en UTC.
 * **Disco del servidor:** medido el 26-oct, la última semana creció ≈ 4,4 GB al día (≈ 4,0 del 24 al 26-oct), casi todo por los despliegues
   diarios; del 13 al 22-oct fueron ≈ 0,75. Si la cola de despliegues sigue así, el 90 % llega en unas dos semanas: conviene podar ya las imágenes
   viejas y la caché de construcción (≈ 21 GB, regenerable, no espera a R2). Qué lo llena y qué se puede quitar está en `DISCO_F14.md` y en
-  `ALMACENAMIENTO_PREDIGOL.md`: 54,2 GB son cinco volúmenes huérfanos que dejó un fallo ya corregido de la prueba de restauración. Quitarlos es
+  el documento «ALMACENAMIENTO_PREDIGOL» del Proyecto: 54,2 GB son cinco volúmenes huérfanos que dejó un fallo ya corregido de la prueba de restauración. Quitarlos es
   tuyo (decisión 10) y espera a la copia fuera del servidor; no se ha borrado nada.
 
 ## 7. Plantilla para firmar una fase nueva
