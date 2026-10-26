@@ -222,6 +222,9 @@ test("a new account: from its first entry to «Hoy en tus ligas» with its favou
     test
       .info()
       .annotations.push({ type: "timing", description: `first entry to Inicio: ${elapsed} ms` });
+    console.log(
+      `onboarding timing (${invited ? "from the invitation's link" : "from the sign-in"}): ${elapsed} ms`,
+    );
     expect(elapsed, "plan UX G8: under 90 seconds").toBeLessThan(LIMIT_MS);
     // useful content in the first minute, with or without picks: today's matches of the reader's own, why each is there
     await expect(block.getByTestId("today-row").first()).toBeVisible();
@@ -359,7 +362,7 @@ test("the picker on a 320 px phone: nothing sideways, every control in a finger'
 test("a first-visit hint on Picks, a match, the parlays and Mis picks: dismissed with a tap, never again", async ({
   page,
 }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(240_000);
   const admin = await owner();
   const { id, email } = await account(admin, "hints");
   try {

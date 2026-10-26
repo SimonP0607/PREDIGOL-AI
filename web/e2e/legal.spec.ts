@@ -138,6 +138,7 @@ async function signIn(page: Page, email: string): Promise<void> {
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(PASSWORD);
   await page.getByTestId("login-submit").click();
+  await expect(page).not.toHaveURL(/\/login/);
 }
 
 test("the consent gate: four separate boxes before the product, a withdrawal brings back its one box, the copy of the data and a deletion request", async ({
