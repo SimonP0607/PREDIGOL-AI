@@ -22,8 +22,12 @@ export const live = {
     queryFn: () => v1.favoriteOptions(q),
     staleTime: 10 * MINUTE,
   }),
-  /** Help and support (plan UX, A14): the reader's tickets, the categories and the contact. */
-  support: { queryKey: ["me", "support"], queryFn: v1.mySupport, staleTime: MINUTE },
+  /**
+   * Help and support (plan UX, A14): the reader's tickets, the categories and the contact. Read again whenever Ayuda or a
+   * message's page opens (staleTime 0): a ticket answered a moment ago never reads «Esperando respuesta» from the cache
+   * (found by A16's journey: the receipt's «Ver mi mensaje» within a minute of the owner's answer).
+   */
+  support: { queryKey: ["me", "support"], queryFn: v1.mySupport, staleTime: 0 },
   /** Public: the way to reach PrediGol without signing in. */
   supportContact: {
     queryKey: ["support", "contact"],
