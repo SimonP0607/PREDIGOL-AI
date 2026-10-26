@@ -65,12 +65,13 @@ export function LegalPage({ document }: { document: LegalDocumentName }) {
           <FileText aria-hidden className="h-4 w-4 text-primary" />
           {t("legal.page.contents")}
         </summary>
+        {/* Under a finger each entry is 44 px tall (plan UX, A15: a one-line title was 40). */}
         <ol className="space-y-1 px-4 pb-3 text-sm">
           {d.sections.map((s) => (
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                className="inline-block py-1 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline pointer-coarse:py-2.5"
+                className="inline-block py-1 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline pointer-coarse:py-3"
               >
                 {s.title}
               </a>

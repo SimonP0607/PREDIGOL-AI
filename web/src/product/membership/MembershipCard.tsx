@@ -42,7 +42,7 @@ export function MembershipCard() {
       <div className="flex flex-wrap items-center gap-2">
         <span
           className={cn(
-            "rounded-full border px-2 py-0.5 text-[0.6875rem] font-bold",
+            "rounded-full border px-2 py-0.5 text-micro font-bold",
             ended
               ? "border-gold/45 bg-gold-soft text-gold-strong"
               : "border-positive/40 text-positive",

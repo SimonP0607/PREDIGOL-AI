@@ -131,7 +131,7 @@ export function Result({ body }: { body: BuiltParlay }) {
           </Stat>
         </dl>
         <div className="mt-4 space-y-1.5">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-wider text-subtle-foreground">
+          <p className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">
             {t("parlays.builder.result.why.title")}
           </p>
           <ul className="space-y-1 text-caption text-muted-foreground">

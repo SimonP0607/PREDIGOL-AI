@@ -488,7 +488,7 @@ function AbsenceList({ ctx, rows }: { ctx: MatchCtx; rows: Absence[] }) {
                       </span>
                       <span
                         className={cn(
-                          "rounded-full border px-1.5 py-px text-[0.65rem] font-semibold",
+                          "rounded-full border px-1.5 py-px text-micro font-semibold",
                           KIND_TONE[kind],
                         )}
                       >

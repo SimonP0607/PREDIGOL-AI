@@ -25,14 +25,20 @@ import { UserShell } from "@/components/layout/UserShell";
 import { PublicShell } from "@/components/layout/PublicShell";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { BrandMark } from "@/components/brand/Brand";
-import { applyUpdate, registerServiceWorker, UPDATE_EVENT } from "@/lib/pwa";
+import {
+  applyUpdate,
+  isStandalone,
+  markInstalledOnce,
+  registerServiceWorker,
+  UPDATE_EVENT,
+} from "@/lib/pwa";
 import { SecurityStep } from "@/product/auth/SecurityStep";
 import { ConsentGate } from "@/product/legal/ConsentGate";
 import { isLegalPath } from "@/product/legal/links";
 import { isAccountPath } from "@/product/auth/accountPaths";
 import { isLimitedPath } from "@/product/membership/membership";
 import { LimitedAccess } from "@/product/membership/LimitedAccess";
-import { noteLocation, startSession } from "@/lib/track";
+import { noteLocation, startSession, track } from "@/lib/track";
 import { TourProvider } from "@/product/tour/Tour";
 import { ReportProblemProvider } from "@/product/support/ReportProblem";
 
@@ -330,7 +336,11 @@ function Gate() {
   useEffect(() => noteLocation(path), [path]);
   const measured = auth.status === "signed-in" && (auth.user?.consents_due ?? []).length === 0;
   useEffect(() => {
-    if (measured) startSession(auth.locale);
+    if (!measured) return;
+    startSession(auth.locale);
+    // Plan UX, A15 (section 35): the first opening of the installed app on this device - the rule that also counts
+    // an iPhone, which never fires appinstalled.
+    if (isStandalone() && markInstalledOnce()) track("pwa_installed");
   }, [measured, auth.locale]);
 
   useEffect(() => {

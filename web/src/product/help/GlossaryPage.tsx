@@ -96,16 +96,17 @@ function TermEntry({ term }: { term: TermKey }) {
       <p className="mt-1.5 text-sm font-medium leading-relaxed">{termShort(term)}</p>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{termLong(term)}</p>
       {related.length > 0 ? (
-        <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption">
+        <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption pointer-coarse:gap-y-2">
           {/* Each related term is a 24 x 24 px target at least (WCAG 2.2, 2.5.8): on a phone the row wraps and a
-              12 px word sat 4 px from the one below (axe target-size in A3's e2e). */}
+              12 px word sat 4 px from the one below (axe target-size in A3's e2e). Under a finger, 44 px wide too
+              (plan UX, A15: "Pick" was 24 px). */}
           <span className="text-subtle-foreground">{t("glossary.page.related")}</span>
           {related.map((r) => (
             <Link
               key={r}
               to={GLOSSARY_PATH}
               hash={termAnchor(r)}
-              className="tap-y relative inline-flex min-h-6 min-w-6 items-center justify-center rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="tap-y relative inline-flex min-h-6 min-w-6 items-center justify-center rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pointer-coarse:min-w-11"
             >
               {termName(r)}
             </Link>

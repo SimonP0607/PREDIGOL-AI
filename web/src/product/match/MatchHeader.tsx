@@ -37,7 +37,7 @@ function StatePill({ tone = "neutral", children }: { tone?: Tone; children: Reac
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold",
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-micro font-semibold",
         PILL_TONE[tone],
       )}
     >
@@ -214,7 +214,7 @@ function TeamSide({
       {goals.length > 0 ? (
         <ul
           aria-label={t("match.header.scorers", { team: team.name })}
-          className="w-full space-y-0.5 text-[0.7rem] leading-snug text-muted-foreground sm:text-xs"
+          className="w-full space-y-0.5 text-micro leading-snug text-muted-foreground sm:text-xs"
         >
           {goals.map((g) => (
             <li key={g.seq} className="break-words" title={g.name}>

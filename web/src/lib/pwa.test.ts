@@ -6,7 +6,16 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { registerServiceWorker, SERVICE_WORKER_URL, watchForUpdates } from "@/lib/pwa";
+import {
+  installOrder,
+  installPlatform,
+  isStandalone,
+  markInstalledOnce,
+  registerServiceWorker,
+  reloadOnStaleChunks,
+  SERVICE_WORKER_URL,
+  watchForUpdates,
+} from "@/lib/pwa";
 
 const ORIGIN = "https://predigol.example";
 type Route = "bypass" | "navigate" | "static";
@@ -213,6 +222,158 @@ describe("the manifest", () => {
       expect(() =>
         readFileSync(join(import.meta.dir, "..", "..", "public", icon.src)),
       ).not.toThrow();
+    }
+  });
+});
+
+describe("a new version never leaves anyone on a broken one (plan UX, A15)", () => {
+  type Listener = (event?: unknown) => void;
+  /** public/sw.js with a cache store that remembers what was deleted. */
+  function loadWorker(keys: string[]) {
+    const listeners: Record<string, Listener> = {};
+    const deleted: string[] = [];
+    let claimed = 0;
+    const self = {
+      location: new URL(ORIGIN),
+      addEventListener: (type: string, fn: Listener) => {
+        listeners[type] = fn;
+      },
+      skipWaiting: () => undefined,
+      clients: {
+        claim: () => {
+          claimed += 1;
+          return Promise.resolve();
+        },
+      },
+    };
+    const caches = {
+      keys: () => Promise.resolve([...keys]),
+      delete: (key: string) => {
+        deleted.push(key);
+        return Promise.resolve(true);
+      },
+      open: () => Promise.resolve({ addAll: () => Promise.resolve() }),
+    };
+    const source = readFileSync(join(import.meta.dir, "..", "..", "public", "sw.js"), "utf8");
+    const version = /const VERSION = "([^"]+)"/.exec(source)?.[1] ?? "";
+    new Function("self", "caches", "fetch", source)(self, caches, () => undefined);
+    return { listeners, deleted, claimed: () => claimed, version };
+  }
+
+  test("taking over, it retires every cache of an older version (and anything not its own) and claims the tabs", async () => {
+    const w = loadWorker(["predigol-v1-static", "predigol-v2-static", "something-else"]);
+    const current = `${w.version}-static`;
+    const all = loadWorker(["predigol-v1-static", current, "predigol-v2-static", "something-else"]);
+    let pending: Promise<unknown> = Promise.resolve();
+    all.listeners["activate"]?.({ waitUntil: (p: Promise<unknown>) => (pending = p) });
+    await pending;
+    expect(all.deleted.sort()).toEqual([
+      "predigol-v1-static",
+      "predigol-v2-static",
+      "something-else",
+    ]);
+    expect(all.deleted).not.toContain(current);
+    expect(all.claimed()).toBe(1);
+    expect(w.version).toMatch(/^predigol-v\d+$/);
+  });
+
+  test("the offline page is cached at install, so a new version can show it without the network", () => {
+    const source = readFileSync(join(import.meta.dir, "..", "..", "public", "sw.js"), "utf8");
+    expect(source).toMatch(/const PRECACHE = \[OFFLINE_URL/);
+  });
+});
+
+describe("installing PrediGol (plan UX, A15)", () => {
+  test("the installed app is told apart from a browser tab - Safari's own flag or the display mode", () => {
+    expect(isStandalone({ navigator: { standalone: true } })).toBe(true);
+    expect(
+      isStandalone({
+        matchMedia: (q: string) => ({ matches: q === "(display-mode: standalone)" }),
+      }),
+    ).toBe(true);
+    expect(isStandalone({ matchMedia: () => ({ matches: false }), navigator: {} })).toBe(false);
+    expect(isStandalone({})).toBe(false);
+    expect(isStandalone(undefined)).toBe(false);
+  });
+
+  test("the steps of this device come first: an iPhone or iPad (also one asking for the desktop site), an Android, the rest", () => {
+    const iphone =
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+    const ipadDesktop =
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15";
+    const android =
+      "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
+    expect(installPlatform({ userAgent: iphone })).toBe("ios");
+    expect(installPlatform({ userAgent: ipadDesktop, maxTouchPoints: 5 })).toBe("ios");
+    expect(installPlatform({ userAgent: ipadDesktop, maxTouchPoints: 0 })).toBe("other");
+    expect(installPlatform({ userAgent: android })).toBe("android");
+    expect(installPlatform({ userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" })).toBe(
+      "other",
+    );
+    expect(installPlatform(undefined)).toBe("other");
+    expect(installOrder("android")).toEqual(["android", "ios", "other"]);
+    expect(installOrder("ios")).toEqual(["ios", "android", "other"]);
+    expect(installOrder("other")).toEqual(["other", "ios", "android"]);
+  });
+
+  test("pwa_installed is owed once per device: the first opening of the installed app, never again", () => {
+    const store = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+    };
+    expect(markInstalledOnce(storage)).toBe(true);
+    expect(markInstalledOnce(storage)).toBe(false);
+    expect([...store.keys()]).toEqual(["predigol.pwa_installed"]);
+    expect(store.get("predigol.pwa_installed")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test("without storage it never says yes, so a reader who refuses storage is not counted at every opening", () => {
+    const refusing = {
+      getItem: () => {
+        throw new Error("SecurityError");
+      },
+      setItem: () => {
+        throw new Error("SecurityError");
+      },
+    };
+    expect(markInstalledOnce(refusing)).toBe(false);
+    const forgetting = { getItem: () => null, setItem: () => undefined };
+    expect(markInstalledOnce(forgetting)).toBe(false);
+  });
+});
+
+describe("a page open across a deploy (plan UX, A15)", () => {
+  test("a script chunk the server no longer has reloads the page once - not in a loop", () => {
+    const listeners: Array<(e: { preventDefault: () => void }) => void> = [];
+    const store = new Map<string, string>();
+    let reloads = 0;
+    let prevented = 0;
+    const scope = globalThis as { window?: unknown };
+    const before = scope.window;
+    scope.window = {
+      addEventListener: (_: string, fn: (e: { preventDefault: () => void }) => void) =>
+        listeners.push(fn),
+      sessionStorage: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+      },
+      location: {
+        reload: () => {
+          reloads += 1;
+        },
+      },
+    };
+    try {
+      reloadOnStaleChunks();
+      const event = { preventDefault: () => void (prevented += 1) };
+      listeners.forEach((fn) => fn(event));
+      expect([reloads, prevented]).toEqual([1, 1]);
+      // the reloaded page meets the same missing chunk at once: no second reload within 30 s
+      listeners.forEach((fn) => fn(event));
+      expect([reloads, prevented]).toEqual([1, 1]);
+    } finally {
+      scope.window = before;
     }
   });
 });

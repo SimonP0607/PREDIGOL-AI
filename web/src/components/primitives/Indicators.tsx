@@ -162,7 +162,7 @@ export function FormStrip({ form }: { form: Array<"W" | "D" | "L"> }) {
         <span
           key={i}
           className={cn(
-            "numeric flex h-5 w-5 items-center justify-center rounded text-[0.65rem] font-semibold",
+            "numeric flex h-5 w-5 items-center justify-center rounded text-micro font-semibold",
             tone[r],
           )}
         >
@@ -176,7 +176,7 @@ export function FormStrip({ form }: { form: Array<"W" | "D" | "L"> }) {
 export function TeamBadge({ code, name }: { code: string; name?: string }) {
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="numeric flex h-6 w-6 items-center justify-center rounded border border-border bg-elevated text-[0.6rem] font-semibold text-muted-foreground">
+      <span className="numeric flex h-6 w-6 items-center justify-center rounded border border-border bg-elevated text-micro font-semibold text-muted-foreground">
         {code}
       </span>
       {name ? <span className="truncate text-sm">{name}</span> : null}
@@ -187,7 +187,7 @@ export function TeamBadge({ code, name }: { code: string; name?: string }) {
 export function CompetitionBadge({ code, name }: { code: string; name: string }) {
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="numeric rounded border border-border px-1 py-0.5 text-[0.6rem] text-muted-foreground">
+      <span className="numeric rounded border border-border px-1 py-0.5 text-micro text-muted-foreground">
         {code}
       </span>
       <span className="truncate text-sm text-muted-foreground">{name}</span>

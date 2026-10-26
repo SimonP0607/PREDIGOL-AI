@@ -6,14 +6,16 @@
  * narrows by country, category and a team's name (and still by competition).
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarX2, Globe2, Layers, SearchX } from "lucide-react";
+import { CalendarX2, ChevronRight, Globe2, Layers, RadioTower, SearchX } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
 import type { MatchSummary } from "@/lib/api/v1/types";
 import type { LiveMatch } from "@/lib/api/v1/types_center";
 import { t, useI18n } from "@/lib/i18n";
 import { formatDateLong, shiftDay, todayKey, zonedInstant } from "@/lib/time";
 import { Card, EmptyState, ErrorState, PageTitle, SkeletonBlock } from "@/product/shared/States";
+import { FilterSheet, SheetField } from "@/product/shared/FilterSheet";
 import { CompetitionSection } from "./CompetitionSection";
 import {
   CATEGORIES,
@@ -50,6 +52,29 @@ function dayTitle(day: string, today: string): string {
           ? t("common.day.yesterday")
           : null;
   return rel ? `${rel} · ${long}` : long.charAt(0).toUpperCase() + long.slice(1);
+}
+
+/**
+ * En vivo is a filter of Partidos (plan UX, A15): with it on, today, the board of the matches in play - their
+ * statistics, PrediGol's picks first, every 15 seconds - is one tap further, at its own address (/live).
+ */
+function LiveBoardLink() {
+  return (
+    <Link
+      to="/live"
+      data-testid="matches-live-board"
+      className="flex min-h-14 items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <RadioTower aria-hidden className="h-5 w-5 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{t("matches.liveBoard.open")}</span>
+        <span className="block text-caption text-muted-foreground">
+          {t("matches.liveBoard.body")}
+        </span>
+      </span>
+      <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-primary" />
+    </Link>
+  );
 }
 
 function ListSkeleton() {
@@ -236,6 +261,50 @@ export function MatchesPage() {
     );
   }
 
+  // The four facets - a team's name, the country, the category, the competition: in a row from 1024 px, in the
+  // «Filtros» sheet below it (plan UX, A15); the day and the state chips (En vivo among them) stay on the page.
+  const facetsOn =
+    (country !== null ? 1 : 0) +
+    (view.category !== null ? 1 : 0) +
+    (competition !== null ? 1 : 0) +
+    (searching ? 1 : 0);
+  const shown = groups.reduce((n, g) => n + g.items.length, 0);
+  // The same pickers in the desk's row and in the sheet, where their name is written above them: there, while nothing
+  // is chosen, they say «Todos los países» instead of repeating «País».
+  const countryPicker = (sheet: boolean) => (
+    <FacetPicker<string>
+      label={t("matches.filters.country")}
+      anyLabel={t("matches.filters.allCountries")}
+      emptyText={sheet ? t("matches.filters.allCountries") : undefined}
+      value={country}
+      options={countries}
+      onChange={(c) => update({ country: c, competition: null })}
+      icon={<Globe2 />}
+      testId="country-select"
+    />
+  );
+  const categoryPicker = (sheet: boolean) => (
+    <FacetPicker<Category>
+      label={t("matches.filters.category")}
+      anyLabel={t("matches.filters.allCategories")}
+      emptyText={sheet ? t("matches.filters.allCategories") : undefined}
+      value={view.category}
+      options={categories}
+      onChange={(c) => update({ category: c, competition: null })}
+      icon={<Layers />}
+      testId="category-select"
+    />
+  );
+  const competitionPicker = (sheet: boolean) => (
+    <CompetitionPicker
+      value={competition}
+      options={options}
+      onChange={(c) => update({ competition: c })}
+      emptyText={sheet ? t("matches.filters.allCompetitions") : undefined}
+    />
+  );
+  const searchBox = <SearchBox value={view.query} onChange={search} />;
+
   return (
     <div className="space-y-4">
       <PageTitle title={t("nav.matches")} subtitle={dayTitle(view.day, today)} />
@@ -243,50 +312,44 @@ export function MatchesPage() {
       <div className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <DayNav day={view.day} today={today} onChange={(day) => update({ day })} />
-          {/* Two columns on a phone, four on a tablet (the search no longer sits alone, right-aligned, on a row
-              of its own at 768 px), one row on a desk. */}
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:flex lg:flex-wrap lg:justify-end">
-            <FacetPicker<string>
-              label={t("matches.filters.country")}
-              anyLabel={t("matches.filters.allCountries")}
-              value={country}
-              options={countries}
-              onChange={(c) => update({ country: c, competition: null })}
-              icon={<Globe2 />}
-              testId="country-select"
-            />
-            <FacetPicker<Category>
-              label={t("matches.filters.category")}
-              anyLabel={t("matches.filters.allCategories")}
-              value={view.category}
-              options={categories}
-              onChange={(c) => update({ category: c, competition: null })}
-              icon={<Layers />}
-              testId="category-select"
-            />
-            {/* Under 360 px these two take a row each: half a row cut "Competición" and the search hint. */}
-            <CompetitionPicker
-              value={competition}
-              options={options}
-              onChange={(c) => update({ competition: c })}
-              className="max-[359px]:col-span-2"
-            />
-            <SearchBox value={view.query} onChange={search} className="max-[359px]:col-span-2" />
+          <div
+            className="hidden gap-2 lg:flex lg:flex-wrap lg:justify-end"
+            data-testid="matches-facets"
+          >
+            {countryPicker(false)}
+            {categoryPicker(false)}
+            {competitionPicker(false)}
+            {searchBox}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="min-w-0 flex-1">
+            {/* On a phone the chips scroll from the screen's left edge up to the «Filtros» button. */}
             <StatusChips
               value={view.status}
               counts={matches.data ? counts : null}
               onChange={(status: StatusFilter) => update({ status })}
+              className="mr-0 pr-1"
             />
           </div>
+          <FilterSheet
+            testId="matches-filters"
+            active={facetsOn}
+            onReset={() => update({ competition: null, query: "", country: null, category: null })}
+            showLabel={matches.data ? t("matches.filters.show", { count: shown }) : undefined}
+          >
+            <SheetField label={t("matches.filters.team")}>{searchBox}</SheetField>
+            <SheetField label={t("matches.filters.country")}>{countryPicker(true)}</SheetField>
+            <SheetField label={t("matches.filters.category")}>{categoryPicker(true)}</SheetField>
+            <SheetField label={t("matches.filters.competition")}>
+              {competitionPicker(true)}
+            </SheetField>
+          </FilterSheet>
           {filtered && rows.length > 0 ? (
             <button
               type="button"
               onClick={clearFilters}
-              className="tap-y relative ml-auto hidden min-h-9 shrink-0 items-center text-xs font-medium text-primary hover:underline sm:inline-flex"
+              className="tap-y relative ml-auto hidden min-h-9 shrink-0 items-center text-xs font-medium text-primary hover:underline lg:inline-flex"
             >
               {t("matches.filters.clear")}
             </button>
@@ -294,6 +357,7 @@ export function MatchesPage() {
         </div>
       </div>
 
+      {view.status === "live" && view.day === today && counts.live > 0 ? <LiveBoardLink /> : null}
       {body}
     </div>
   );

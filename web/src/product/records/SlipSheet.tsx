@@ -143,7 +143,7 @@ function LegRow({
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="numeric mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-[0.65rem] font-semibold text-gold-strong"
+          className="numeric mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-micro font-semibold text-gold-strong"
         >
           {n}
         </span>
@@ -403,7 +403,7 @@ function Summary({
               {dep ? (
                 <span
                   className={cn(
-                    "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider",
+                    "inline-flex items-center rounded-full border px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider",
                     DEPENDENCY_TONE[dep.level],
                   )}
                 >
@@ -692,7 +692,7 @@ export function SlipSheet() {
             {t("records.slip.title")}
             {empty ? null : (
               <span
-                className="numeric rounded-full border border-gold/40 bg-gold-soft px-2 py-0.5 text-[0.7rem] font-semibold text-gold-strong"
+                className="numeric rounded-full border border-gold/40 bg-gold-soft px-2 py-0.5 text-micro font-semibold text-gold-strong"
                 data-testid="slip-count"
               >
                 <span aria-hidden>

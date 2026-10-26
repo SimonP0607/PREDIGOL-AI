@@ -538,7 +538,7 @@ function UserParlayCard({ parlay }: { parlay: UserParlay }) {
         <ol className="mt-3 divide-y divide-border/60 border-t border-border/60">
           {parlay.legs.map((leg) => (
             <li key={leg.leg_no} className="flex items-center gap-3 px-4 py-2.5 sm:px-5">
-              <span className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-[0.65rem] font-semibold text-gold-strong">
+              <span className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft text-micro font-semibold text-gold-strong">
                 {leg.leg_no}
               </span>
               <div className="min-w-0 flex-1">

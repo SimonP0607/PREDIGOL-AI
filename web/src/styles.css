@@ -247,6 +247,21 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  /* Phones and tablets: 12 px, the plan's minimum on a reader's screen (plan UX, A15, section 36; 11 px on a desk). */
+  @media (max-width: 63.98rem), (pointer: coarse) {
+    font-size: 0.75rem;
+  }
+}
+
+/*
+ * The smallest text of a pill, a count or a note: 11 px on a desk, 12 px on a phone or a tablet - never under the plan's
+ * minimum where a finger reads it (plan UX, A15, section 36). Only the size: weight and line height stay the element's.
+ */
+@utility text-micro {
+  font-size: 0.6875rem;
+  @media (max-width: 63.98rem), (pointer: coarse) {
+    font-size: 0.75rem;
+  }
 }
 
 @utility text-caption {

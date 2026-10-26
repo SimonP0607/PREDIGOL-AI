@@ -225,7 +225,7 @@ function Moved({ now, opening }: { now: string; opening: string }) {
   const Icon = up ? ArrowUpRight : ArrowDownRight;
   return (
     <span
-      className="numeric inline-flex items-center gap-0.5 text-[0.65rem] text-subtle-foreground"
+      className="numeric inline-flex items-center gap-0.5 text-micro text-subtle-foreground"
       title={
         up
           ? t("match.books.movedUp", { odds: fmtOdds(opening) })
@@ -354,7 +354,7 @@ function CapturesStrip({ all }: { all: MatchMarkets }) {
         {prematch.map((c) => (
           <li
             key={c.captured_at}
-            className="numeric rounded-full border border-border-strong bg-elevated px-2 py-0.5 text-[0.7rem] text-muted-foreground"
+            className="numeric rounded-full border border-border-strong bg-elevated px-2 py-0.5 text-micro text-muted-foreground"
             title={Object.entries(c.by_market)
               .map(([m, n]) => `${marketName(m)}: ${n}`)
               .join(" · ")}

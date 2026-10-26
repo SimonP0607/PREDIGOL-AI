@@ -25,7 +25,10 @@
     "allCountries": "Todos los países",
     "international": "Internacional",
     "category": "Categoría",
-    "allCategories": "Todas las categorías"
+    "allCategories": "Todas las categorías",
+    "show_one": "Ver {count} partido",
+    "show_other": "Ver {count} partidos",
+    "team": "Equipo"
   },
   "group": {
     "live_one": "{count} en vivo",
@@ -82,5 +85,10 @@
     "international": "Selecciones",
     "women": "Femenino",
     "youth": "Juveniles"
+  },
+  "liveBoard": {
+    "title": "Tablero en vivo",
+    "body": "Cada partido en juego con sus estadísticas y los picks de PrediGol primero; se actualiza cada 15 segundos.",
+    "open": "Abrir el tablero en vivo"
   }
 }

@@ -22,7 +22,9 @@
     "hours": "{count} h",
     "days_one": "{count} day",
     "days_other": "{count} days",
-    "reset": "Clear filters"
+    "reset": "Clear filters",
+    "show_one": "Show {count} selection",
+    "show_other": "Show {count} selections"
   },
   "started": {
     "title": "Already started today",
@@ -38,7 +40,10 @@
       "won": "Won",
       "lost": "Lost",
       "other": "Void and pending"
-    }
+    },
+    "show_one": "Show {count} pick",
+    "show_other": "Show {count} picks",
+    "filtersTitle": "Filters of the picks that have started"
   },
   "priceHelp": "Tap the price to add it to your parlay; the bookmark saves it.",
   "whatIsPick": "What is a pick?"

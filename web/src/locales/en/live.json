@@ -75,6 +75,10 @@
     "clear": "Clear filters",
     "showing": "{shown} of {total} matches",
     "emptyTitle": "No live match matches these filters",
-    "emptyBody": "Remove a filter to see the other matches being played."
-  }
+    "emptyBody": "Remove a filter to see the other matches being played.",
+    "show_one": "Show {count} match",
+    "show_other": "Show {count} matches",
+    "team": "Team"
+  },
+  "backToMatches": "Back to Matches"
 }

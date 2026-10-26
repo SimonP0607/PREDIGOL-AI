@@ -53,15 +53,15 @@ export function PriceTile({
       ) : (
         <span className="numeric py-1 text-sm text-subtle-foreground">—</span>
       )}
-      <span className="w-full truncate text-[0.6875rem] leading-4 text-subtle-foreground">
+      <span className="w-full truncate text-micro leading-4 text-subtle-foreground">
         {price ? price.bookmaker : t("match.prices.noPrice")}
       </span>
       {showBooks && price ? (
-        <span className="-mt-1 text-[0.6875rem] text-subtle-foreground">
+        <span className="-mt-1 text-micro text-subtle-foreground">
           {t("match.markets.books", { count: price.books })}
         </span>
       ) : null}
-      {note ? <span className="-mt-1 text-[0.6875rem] text-subtle-foreground">{note}</span> : null}
+      {note ? <span className="-mt-1 text-micro text-subtle-foreground">{note}</span> : null}
     </div>
   );
 }
@@ -87,7 +87,7 @@ export function PriceInline({
           <OddsPill odds={price.odds} size="sm" />
         )}
       </span>
-      <span className="max-w-full truncate text-[0.6875rem] text-subtle-foreground">
+      <span className="max-w-full truncate text-micro text-subtle-foreground">
         {price.bookmaker} · {t("match.markets.books", { count: price.books })}
       </span>
     </div>
@@ -126,7 +126,7 @@ export function LiveOdds({ price, size = "md" }: { price: LivePrice | null; size
       className={cn(
         "inline-flex items-center justify-center rounded-md border border-dashed border-border-strong text-subtle-foreground",
         size === "sm"
-          ? "min-w-[3rem] px-1.5 py-0.5 text-[0.7rem]"
+          ? "min-w-[3rem] px-1.5 py-0.5 text-micro"
           : "min-w-[3.5rem] px-2 py-1 text-xs",
       )}
     >
@@ -143,7 +143,7 @@ export function LiveTile({ label, price }: { label: string; price: LivePrice | n
         {label}
       </span>
       <LiveOdds price={price} />
-      <span className="w-full truncate text-[0.6875rem] leading-4 text-subtle-foreground">
+      <span className="w-full truncate text-micro leading-4 text-subtle-foreground">
         {state === "suspended"
           ? t("match.liveOdds.suspended")
           : state === "open" && price?.minute !== null && price?.minute !== undefined

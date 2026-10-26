@@ -421,7 +421,7 @@ function Streak({ r, animate }: { r: RecapData; animate: boolean }) {
             title={t(`records.recap.streak.${x}`)}
             style={animate ? { animationDelay: `${i * 45}ms` } : undefined}
             className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-full text-[0.65rem] font-bold",
+              "flex h-7 w-7 items-center justify-center rounded-full text-micro font-bold",
               x === "win"
                 ? "bg-positive-soft text-positive ring-1 ring-positive/40"
                 : "bg-negative-soft text-negative ring-1 ring-negative/40",

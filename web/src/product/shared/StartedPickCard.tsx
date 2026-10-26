@@ -91,7 +91,7 @@ export function StartedPickCard({
 
         <div className="mt-3 border-t border-border/70 px-4 pb-2.5 pt-3">
           <div
-            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.7rem] font-semibold uppercase tracking-wider text-gold"
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-micro font-semibold uppercase tracking-wider text-gold"
             {...hintProps(t("match.picks.prematchHelp"))}
           >
             <History aria-hidden className="h-3 w-3" />

@@ -9,7 +9,7 @@
  * the next 24 hours and comes in pages of 15 (point 13); "Ya empezaron hoy" has its own
  * filters and pages (point 14); a price is chosen the Cuotas way (point 18).
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { ChevronDown, Clock, History, ListFilter, RotateCcw } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
@@ -47,11 +47,13 @@ import {
   ODDS_RANGES,
   ODDS_RANGE_KEYS,
   WINDOWS,
+  activeCount,
   isDefault,
   toQuery,
   type OddsRange,
   type PickFilters,
 } from "./filters";
+import { FilterSheet } from "@/product/shared/FilterSheet";
 import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
 
 const DAY_ZONE = "America/Bogota";
@@ -124,6 +126,39 @@ function StartedPicks() {
   const paged = usePaged(shown, `${competition}|${market}|${state}|${all.length}`);
   if (q.isSuccess && all.length === 0) return null;
   const filtered = competition !== null || market !== null || state !== "all";
+  const fields = (
+    <>
+      <StartedCompetition
+        value={competition}
+        competitions={competitions}
+        onChange={setCompetition}
+      />
+      <Field label={t("picks.filters.market")}>
+        <ChipGroup
+          label={t("picks.filters.market")}
+          value={market ?? "all"}
+          options={[
+            { value: "all", label: t("common.all") },
+            ...MARKETS.filter((m) => markets.includes(m)).map((m) => ({
+              value: m,
+              label: marketShort(m),
+            })),
+          ]}
+          onChange={(m) => setMarket(m === "all" ? null : m)}
+          testId="started-market"
+        />
+      </Field>
+      <Field label={t("picks.started.state")}>
+        <ChipGroup
+          label={t("picks.started.state")}
+          value={state}
+          options={STATES.map((s) => ({ value: s, label: t(`picks.started.states.${s}`) }))}
+          onChange={setState}
+          testId="started-state"
+        />
+      </Field>
+    </>
+  );
   return (
     <section className="space-y-3" data-testid="picks-started">
       <BlockHeader
@@ -140,58 +175,31 @@ function StartedPicks() {
         </Card>
       ) : (
         <>
+          {/* From 1024 px in a card; below it in the «Filtros» sheet (plan UX, A15). */}
           <div
-            className="grid gap-x-6 gap-y-4 rounded-xl border border-border bg-card p-3 sm:p-4 md:grid-cols-3"
+            className="hidden gap-x-6 gap-y-4 rounded-xl border border-border bg-card p-3 sm:p-4 md:grid-cols-3 lg:grid"
             data-testid="started-filters"
           >
-            <div className="flex min-w-0 flex-col gap-2">
-              <label htmlFor="started-competition" className="text-label text-subtle-foreground">
-                {t("picks.filters.competition")}
-              </label>
-              <div className="relative">
-                <select
-                  id="started-competition"
-                  value={competition === null ? "" : String(competition)}
-                  onChange={(e) => setCompetition(e.target.value ? Number(e.target.value) : null)}
-                  className="h-10 w-full appearance-none truncate rounded-lg border border-border bg-background pl-3 pr-9 text-sm text-foreground transition-colors hover:border-border-strong focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:h-11"
-                >
-                  <option value="">{t("picks.filters.allCompetitions")}</option>
-                  {competitions.map((c) => (
-                    <option key={c.id} value={String(c.id)}>
-                      {competitionLabel(c)}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  aria-hidden
-                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                />
-              </div>
-            </div>
-            <Field label={t("picks.filters.market")}>
-              <ChipGroup
-                label={t("picks.filters.market")}
-                value={market ?? "all"}
-                options={[
-                  { value: "all", label: t("common.all") },
-                  ...MARKETS.filter((m) => markets.includes(m)).map((m) => ({
-                    value: m,
-                    label: marketShort(m),
-                  })),
-                ]}
-                onChange={(m) => setMarket(m === "all" ? null : m)}
-                testId="started-market"
-              />
-            </Field>
-            <Field label={t("picks.started.state")}>
-              <ChipGroup
-                label={t("picks.started.state")}
-                value={state}
-                options={STATES.map((s) => ({ value: s, label: t(`picks.started.states.${s}`) }))}
-                onChange={setState}
-                testId="started-state"
-              />
-            </Field>
+            {fields}
+          </div>
+          <div className="flex lg:hidden">
+            <FilterSheet
+              testId="started-filters-sheet"
+              title={t("picks.started.filtersTitle")}
+              active={
+                (competition !== null ? 1 : 0) +
+                (market !== null ? 1 : 0) +
+                (state !== "all" ? 1 : 0)
+              }
+              onReset={() => {
+                setCompetition(null);
+                setMarket(null);
+                setState("all");
+              }}
+              showLabel={t("picks.started.show", { count: shown.length })}
+            >
+              {fields}
+            </FilterSheet>
           </div>
           <p className="text-sm font-semibold" data-testid="started-count" aria-live="polite">
             {t("picks.started.count", { count: shown.length })}
@@ -215,6 +223,45 @@ function StartedPicks() {
         </>
       )}
     </section>
+  );
+}
+
+/** The started picks' competition: its own id in each copy (the desk's card and the phone's sheet). */
+function StartedCompetition({
+  value,
+  competitions,
+  onChange,
+}: {
+  value: number | null;
+  competitions: CompetitionBadge[];
+  onChange: (next: number | null) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <label htmlFor={id} className="text-label text-subtle-foreground">
+        {t("picks.filters.competition")}
+      </label>
+      <div className="relative">
+        <select
+          id={id}
+          value={value === null ? "" : String(value)}
+          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+          className="h-10 w-full appearance-none truncate rounded-lg border border-border bg-background pl-3 pr-9 text-base text-foreground transition-colors hover:border-border-strong focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm pointer-coarse:h-11"
+        >
+          <option value="">{t("picks.filters.allCompetitions")}</option>
+          {competitions.map((c) => (
+            <option key={c.id} value={String(c.id)}>
+              {competitionLabel(c)}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          aria-hidden
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -359,11 +406,28 @@ function AllPicks({
         shadow={shadow}
       />
       {filtered || (loaded && !bare) ? (
-        <PicksFilters
-          filters={filters}
-          onChange={onChange}
-          competitions={board?.competitions ?? []}
-        />
+        <>
+          <PicksFilters
+            filters={filters}
+            onChange={onChange}
+            competitions={board?.competitions ?? []}
+          />
+          {/* Below 1024 px the same filters in the «Filtros» sheet (plan UX, A15). */}
+          <div className="flex lg:hidden">
+            <FilterSheet
+              testId="picks-filters-sheet"
+              active={activeCount(filters)}
+              onReset={() => onChange(DEFAULT_FILTERS)}
+              showLabel={loaded ? t("picks.filters.show", { count: picks.length }) : undefined}
+            >
+              <PicksFilterFields
+                filters={filters}
+                onChange={onChange}
+                competitions={board?.competitions ?? []}
+              />
+            </FilterSheet>
+          </div>
+        </>
       ) : null}
       <div aria-live="polite">
         {loaded && picks.length > 0 ? (
@@ -412,7 +476,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function PicksFilters({
+function PicksFilterFields({
   filters,
   onChange,
   competitions,
@@ -433,40 +497,56 @@ function PicksFilters({
   const windows: ChipOption<number>[] = WINDOWS.map((h) => ({ value: h, label: windowLabel(h) }));
 
   return (
-    <div className="rounded-xl border border-border bg-card p-3 sm:p-4" data-testid="picks-filters">
-      <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
-        <CompetitionSelect
-          value={filters.competition}
-          competitions={competitions}
-          onChange={(competition) => set({ competition })}
+    <>
+      <CompetitionSelect
+        value={filters.competition}
+        competitions={competitions}
+        onChange={(competition) => set({ competition })}
+      />
+      <Field label={t("picks.filters.window")}>
+        <ChipGroup
+          label={t("picks.filters.window")}
+          value={filters.hours}
+          options={windows}
+          onChange={(hours) => set({ hours })}
+          testId="filter-window"
         />
-        <Field label={t("picks.filters.window")}>
-          <ChipGroup
-            label={t("picks.filters.window")}
-            value={filters.hours}
-            options={windows}
-            onChange={(hours) => set({ hours })}
-            testId="filter-window"
-          />
-        </Field>
-        <Field label={t("picks.filters.market")}>
-          <ChipGroup
-            label={t("picks.filters.market")}
-            value={filters.market ?? "all"}
-            options={markets}
-            onChange={(m) => set({ market: m === "all" ? null : m })}
-            testId="filter-market"
-          />
-        </Field>
-        <Field label={t("picks.filters.odds")}>
-          <ChipGroup
-            label={t("picks.filters.odds")}
-            value={filters.odds}
-            options={odds}
-            onChange={(range) => set({ odds: range })}
-            testId="filter-odds"
-          />
-        </Field>
+      </Field>
+      <Field label={t("picks.filters.market")}>
+        <ChipGroup
+          label={t("picks.filters.market")}
+          value={filters.market ?? "all"}
+          options={markets}
+          onChange={(m) => set({ market: m === "all" ? null : m })}
+          testId="filter-market"
+        />
+      </Field>
+      <Field label={t("picks.filters.odds")}>
+        <ChipGroup
+          label={t("picks.filters.odds")}
+          value={filters.odds}
+          options={odds}
+          onChange={(range) => set({ odds: range })}
+          testId="filter-odds"
+        />
+      </Field>
+    </>
+  );
+}
+
+/** The filters in a card of the page, from 1024 px (below it they are in the «Filtros» sheet). */
+function PicksFilters(props: {
+  filters: PickFilters;
+  onChange: (next: PickFilters) => void;
+  competitions: CompetitionBadge[];
+}) {
+  return (
+    <div
+      className="hidden rounded-xl border border-border bg-card p-3 sm:p-4 lg:block"
+      data-testid="picks-filters"
+    >
+      <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
+        <PicksFilterFields {...props} />
       </div>
     </div>
   );
@@ -493,21 +573,22 @@ function CompetitionSelect({
     return list;
   }, [competitions, value]);
 
+  const id = useId();
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <label htmlFor="picks-competition" className="text-label text-subtle-foreground">
+      <label htmlFor={id} className="text-label text-subtle-foreground">
         {t("picks.filters.competition")}
       </label>
       <div className="relative">
         <select
-          id="picks-competition"
+          id={id}
           value={value ? String(value.id) : ""}
           onChange={(e) => {
             const id = Number(e.target.value);
             onChange(options.find((c) => c.id === id) ?? null);
           }}
           data-testid="filter-competition"
-          className="h-10 w-full appearance-none truncate rounded-lg border border-border bg-background pl-3 pr-9 text-sm text-foreground transition-colors hover:border-border-strong focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:h-11"
+          className="h-10 w-full appearance-none truncate rounded-lg border border-border bg-background pl-3 pr-9 text-base text-foreground transition-colors hover:border-border-strong focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm pointer-coarse:h-11"
         >
           <option value="">{t("picks.filters.allCompetitions")}</option>
           {options.map((c) => (

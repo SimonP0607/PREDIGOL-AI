@@ -61,7 +61,7 @@ export function StatusChip({ status }: { status: NewsStatus }) {
       data-testid="news-status"
       data-status={status}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-micro font-semibold",
         STATUS_TONE[status],
       )}
     >
@@ -80,7 +80,7 @@ export function RelevanceChip({ relevance }: { relevance: NewsRelevance }) {
       {...hintProps(help)}
       data-testid="news-relevance"
       data-relevance={relevance}
-      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[0.7rem] font-medium text-muted-foreground"
+      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-micro font-medium text-muted-foreground"
     >
       <Icon aria-hidden className="h-3 w-3 shrink-0" />
       {t(`match.news.relevance.${relevance}`)}
@@ -127,7 +127,7 @@ function ClaimView({
   return (
     <div className="space-y-1" data-testid="news-claim" data-assertion={claim.assertion}>
       {labelled ? (
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+        <p className="text-micro font-semibold uppercase tracking-[0.06em] text-muted-foreground">
           {kindLabel(item.kind, claim.assertion)}
         </p>
       ) : null}

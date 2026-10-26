@@ -75,6 +75,8 @@
     "sortEdge": "Furthest above fair",
     "clear": "Clear filters",
     "emptyTitle": "No match fits your filters",
-    "emptyBody": "Try another name, another country, or turn off “Only above fair”."
+    "emptyBody": "Try another name, another country, or turn off “Only above fair”.",
+    "show_one": "Show {count} match",
+    "show_other": "Show {count} matches"
   }
 }

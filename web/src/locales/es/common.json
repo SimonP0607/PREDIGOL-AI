@@ -133,5 +133,14 @@
   "meta": {
     "title": "PrediGol — Inteligencia de fútbol",
     "description": "PrediGol: partidos, en vivo, picks con valor, parlays y las mejores cuotas."
+  },
+  "filters": {
+    "open": "Filtros",
+    "title": "Filtros",
+    "description": "Elige qué ver; la lista cambia al momento.",
+    "active_one": "{count} filtro activo",
+    "active_other": "{count} filtros activos",
+    "reset": "Borrar filtros",
+    "show": "Ver resultados"
   }
 }

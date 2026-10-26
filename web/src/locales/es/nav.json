@@ -17,5 +17,25 @@
   "signOut": "Cerrar sesión",
   "mainNavigation": "Navegación principal",
   "adminNavigation": "Navegación del Admin Console",
-  "help": "Ayuda"
+  "help": "Ayuda",
+  "more": "Más",
+  "moreTitle": "Más",
+  "moreDescription": "Lo que no cabe en la barra: a un toque desde cualquier pantalla.",
+  "transparency": "Transparencia",
+  "moreHint": {
+    "parlays": "Combinadas con selecciones que tienen valor",
+    "odds": "La mejor cuota de cada selección",
+    "transparency": "Cómo le va a PrediGol",
+    "help": "Preguntas frecuentes, tus mensajes y contacto",
+    "profile": "Cuenta, membresía, avisos y privacidad",
+    "glossary": "Qué significa cada palabra"
+  },
+  "install": {
+    "label": "Instalar PrediGol",
+    "hint": "Ábrela como una app, a pantalla completa",
+    "ios": "En iPhone o iPad, con Safari: toca Compartir, baja y elige «Agregar a Inicio». Si ves «Abrir como app web», déjalo activado y toca «Agregar».",
+    "android": "En Android, con Chrome: toca Más (⋮) junto a la barra de direcciones y elige «Instalar y crear acceso directo» (o «Agregar a la pantalla principal»).",
+    "other": "En un computador, con Chrome o Edge: usa el icono de instalar de la barra de direcciones.",
+    "after": "Instalada, se abre desde su icono, a pantalla completa y con tu misma cuenta. Se actualiza sola: cuando haya una versión nueva, PrediGol te lo dirá."
+  }
 }

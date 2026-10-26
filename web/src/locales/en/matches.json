@@ -25,7 +25,10 @@
     "allCountries": "All countries",
     "international": "International",
     "category": "Category",
-    "allCategories": "All categories"
+    "allCategories": "All categories",
+    "show_one": "Show {count} match",
+    "show_other": "Show {count} matches",
+    "team": "Team"
   },
   "group": {
     "live_one": "{count} live",
@@ -82,5 +85,10 @@
     "international": "National teams",
     "women": "Women",
     "youth": "Youth"
+  },
+  "liveBoard": {
+    "title": "Live board",
+    "body": "Every match in play with its statistics and PrediGol's picks first; it refreshes every 15 seconds.",
+    "open": "Open the live board"
   }
 }

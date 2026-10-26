@@ -22,7 +22,9 @@
     "hours": "{count} h",
     "days_one": "{count} día",
     "days_other": "{count} días",
-    "reset": "Quitar filtros"
+    "reset": "Quitar filtros",
+    "show_one": "Ver {count} selección",
+    "show_other": "Ver {count} selecciones"
   },
   "started": {
     "title": "Ya empezaron hoy",
@@ -38,7 +40,10 @@
       "won": "Ganados",
       "lost": "Perdidos",
       "other": "Nulos y pendientes"
-    }
+    },
+    "show_one": "Ver {count} pick",
+    "show_other": "Ver {count} picks",
+    "filtersTitle": "Filtros de los picks que ya empezaron"
   },
   "priceHelp": "Toca la cuota para agregarla a tu parlay; el marcador la guarda.",
   "whatIsPick": "¿Qué es un pick?"

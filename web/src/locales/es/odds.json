@@ -75,6 +75,8 @@
     "sortEdge": "Más por encima de la justa",
     "clear": "Quitar filtros",
     "emptyTitle": "Ningún partido coincide con tus filtros",
-    "emptyBody": "Prueba con otro nombre, otro país o quitando «Solo por encima de la justa»."
+    "emptyBody": "Prueba con otro nombre, otro país o quitando «Solo por encima de la justa».",
+    "show_one": "Ver {count} partido",
+    "show_other": "Ver {count} partidos"
   }
 }

@@ -301,7 +301,7 @@ export function SessionsPanel() {
                   />
                   <span className="min-w-0 break-words">{deviceLabel(s.user_agent)}</span>
                   {s.current ? (
-                    <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.6875rem] font-bold text-primary">
+                    <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-micro font-bold text-primary">
                       {t("profile.securityPanel.thisDevice")}
                     </span>
                   ) : null}
