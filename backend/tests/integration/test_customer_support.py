@@ -248,6 +248,7 @@ def test_the_inbox_waiting_first_by_priority_with_the_privacy_requests_and_their
     assert inbox["counts"] == {"open": 5, "waiting": 4, "late": 0, "urgent": 1}
     by_id = {t["id"]: t for t in inbox["tickets"]}
     assert by_id[urgent["id"]]["email"] == OTHER and by_id[urgent["id"]]["priority"] == "urgent"
+    assert request.due_on is not None
     assert by_id[request.id]["category"] == "privacy" and by_id[request.id]["deadline"] == request.due_on.isoformat()
     assert by_id[request.id]["respond_by"] is None and by_id[technical["id"]]["respond_by"]
     filtered = owner.get("/api/v1/admin/support", params={"category": "privacy"}).json()["tickets"]
