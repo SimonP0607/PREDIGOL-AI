@@ -68,7 +68,7 @@ USAGE_INSERT = ("INSERT INTO ai.usage (at, purpose, tier, provider, model, input
 
 
 def test_0110_keeps_what_was_written_defaults_the_new_and_enforces_its_rules() -> None:
-    with scratch_at("0093") as dsn:
+    with scratch_at("0094") as dsn:
         with psycopg.connect(dsn) as c:
             c.execute(USAGE_INSERT, ("2026-10-20 10:00+00", "pick_review", "analysis", "anthropic", "claude-sonnet-5-5", "0.05"))
             c.execute(USAGE_INSERT, ("2026-10-20 10:01+00", "web_search", "search", "exa", "exa-auto", "0.015"))
@@ -175,7 +175,7 @@ def test_0110_keeps_what_was_written_defaults_the_new_and_enforces_its_rules() -
 
         # the downgrade undoes it: the new tables are gone, the ledger keeps its rows and the old alerts table - which 0110 never
         # touched - keeps every alert it ever held
-        command.downgrade(_cfg(), "0093")
+        command.downgrade(_cfg(), "0094")
         with psycopg.connect(dsn) as c:
             assert c.execute("SELECT count(*) FROM ai.usage").fetchone() == (3,), "every cost the ledger had stays"
             assert "batch_id" not in _columns(c, "usage")
@@ -194,7 +194,7 @@ def test_0110_keeps_what_was_written_defaults_the_new_and_enforces_its_rules() -
 
 
 def test_0110_never_waits_for_a_lock_while_holding_others() -> None:
-    with scratch_at("0093") as dsn:
+    with scratch_at("0094") as dsn:
         holder = psycopg.connect(dsn)  # the notifier, or a report: a long transaction that has read the ledger
         holder.execute("LOCK TABLE ai.usage IN ACCESS SHARE MODE")
         failure: list[BaseException] = []
@@ -222,7 +222,7 @@ def test_0110_never_waits_for_a_lock_while_holding_others() -> None:
         holder.rollback()
         holder.close()
         with psycopg.connect(dsn) as c:
-            assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0093",)
+            assert c.execute("SELECT version_num FROM alembic_version").fetchone() == ("0094",)
             assert c.execute("SELECT to_regclass('ai.batches')").fetchone() == (None,), "nothing half done"
             assert "batch_id" not in _columns(c, "usage")
         command.upgrade(_cfg(), "0110")  # with the lock free it applies whole

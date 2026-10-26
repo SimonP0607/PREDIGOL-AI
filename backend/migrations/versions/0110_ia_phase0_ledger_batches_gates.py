@@ -26,8 +26,11 @@ On a live database (the worker keeps writing the ledger): the busy tables are lo
 than 10 s fails the migration whole (the lesson of 0076, 13 Oct 2026), so nothing is left half done and nothing else waits
 behind it. The new tables hold no foreign key to a busy table for the same reason.
 
+Chain: written on top of 0093; the UX plan's A1 reached production first with 0094, so the link was moved to 0094 when the
+release was packaged - before any database had run this migration. The migration itself did not change.
+
 Revision ID: 0110
-Revises: 0093
+Revises: 0094
 """
 
 from __future__ import annotations
@@ -35,7 +38,7 @@ from __future__ import annotations
 from alembic import op
 
 revision = "0110"
-down_revision = "0093"
+down_revision = "0094"
 branch_labels = None
 depends_on = None
 
