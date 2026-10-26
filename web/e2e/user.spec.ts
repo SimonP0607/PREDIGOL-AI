@@ -875,7 +875,9 @@ test("A match's Noticias: cards with their seven elements in the order of sectio
     items.map((i) => i.status),
   );
   // the rumours and the outdated are folded under what is verified: one tap opens each group
-  for (const fold of await block.locator("details:not([open]) > summary").all()) await fold.click();
+  // each group opened leaves the list of the closed ones: always the first one still closed
+  const closed = block.locator("details:not([open]) > summary");
+  while ((await closed.count()) > 0) await closed.first().click();
   const labels = t.match.news.status as Record<string, { label: string }>;
   for (let i = 0; i < items.length; i++) {
     const card = cards.nth(i);

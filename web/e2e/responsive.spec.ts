@@ -343,10 +343,8 @@ test("a match's Noticias at every phone width: cards stacked, the status in word
     await settle(page);
     const cards = page.getByTestId("news-card");
     await expect(cards.first()).toBeVisible();
-    for (const fold of await page
-      .locator('[data-testid="match-news"] details:not([open]) > summary')
-      .all())
-      await fold.click();
+    const closed = page.locator('[data-testid="match-news"] details:not([open]) > summary');
+    while ((await closed.count()) > 0) await closed.first().click();
     const sideways = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
