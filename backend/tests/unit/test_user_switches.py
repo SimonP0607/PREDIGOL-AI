@@ -1,5 +1,6 @@
-"""The switches of what a reader is shown (plan UX, A9): on without their line, off with ``0`` and off with a value they cannot
-read - one rule (``fbi.api.switches``) for the forecast, the calendar, the post-match's base and the structured reading."""
+"""The switches of what a reader is shown (plan UX, A9 and A10): on without their line, off with ``0`` and off with a value they
+cannot read - one rule (``fbi.api.switches``) for the forecast, the calendar, the post-match's base, the structured reading and
+the news."""
 
 from __future__ import annotations
 
@@ -8,14 +9,14 @@ from types import ModuleType
 import pytest
 
 from fbi.api import switches
-from fbi.api.services import forecast, knowledge, match_calendar, reading
+from fbi.api.services import forecast, knowledge, match_calendar, news, reading
 
-SERVICES = (forecast, match_calendar, knowledge, reading)
+SERVICES = (forecast, match_calendar, knowledge, reading, news)
 
 
-def test_the_four_switches_and_their_names() -> None:
+def test_the_five_switches_and_their_names() -> None:
     assert [s.USERS_SWITCH for s in SERVICES] == ["FBI_FORECAST_USERS", "FBI_CALENDAR_USERS", "FBI_KNOWLEDGE_USERS",
-                                                  "FBI_READING_USERS"]
+                                                  "FBI_READING_USERS", "FBI_NEWS_USERS"]
 
 
 @pytest.mark.parametrize("service", SERVICES, ids=lambda s: s.USERS_SWITCH)
