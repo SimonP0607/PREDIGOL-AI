@@ -60,7 +60,11 @@ def test_the_matches_around_today_with_the_forecast_labelled_a_line_of_the_readi
                "VALUES (%s, 'packet-v8', %s, %s, %s, %s)",
                (upcoming, now - timedelta(hours=2), now - timedelta(hours=2), "b" * 64,
                 Jsonb({"fixture": {"home": {"name": "Manchester United"}, "away": {"name": "Liverpool"}},
-                       "stakes": {"away": {"rank": 1, "pressure": "title"}}})))
+                       "stakes": {"away": {"rank": 1, "pressure": "title"}},
+                       "schedule": {"calendar": {"complete": True},
+                                    "home": {"rest_days": 3, "matches_last_14d": 4},
+                                    "away": {"next_match": {"days_after": 3.5, "competition": "UEFA Champions League"}}},
+                       "scenarios": {"table": {"after": {"draw": {"home": {"points": 30}, "away": {"points": 31}}}}}})))
     finished = world.fixture(now - timedelta(hours=20))
     db.execute("UPDATE core.fixtures SET status_group = 'finished', status_short = 'FT' WHERE id = %s", (finished,))
     db.execute("INSERT INTO core.fixture_results (fixture_id, goals_home, goals_away) VALUES (%s, 2, 1)", (finished,))
@@ -83,10 +87,18 @@ def test_the_matches_around_today_with_the_forecast_labelled_a_line_of_the_readi
     assert up["has_reading"] is True
     assert up["headline"]["code"] == "stakes_pressure" and up["headline"]["params"]["pressure"] == "title"
     assert up["headline"]["params"]["team"] == "Liverpool" and up["headline"]["ref"] == "packet:stakes.away"
+    # Home's «Contexto»: what is at stake, the rest and the next match - never the table after each result (the reading's)
+    assert [(f["code"], f["params"].get("side")) for f in up["context"]] == [
+        ("stakes_pressure", "away"), ("rest_days", "home"), ("next_match", "away")]
+    rest = up["context"][1]
+    assert rest["params"] == {"side": "home", "team": "Manchester United", "days": 3.0, "matches_14d": 4, "at_most": False}
+    assert rest["ref"] == "packet:schedule.home"
     done = matches[finished]
     assert (done["goals_home"], done["goals_away"], done["status"]) == (2, 1, "FT")
+    assert done["context"] == [], "a match already played has no context to tell"
     other = matches[elsewhere]
     assert other["suggested"] is False and other["has_reading"] is False and other["forecast"] is None
+    assert other["context"] == []
     assert "Premier League" in [c["name"] for c in data["suggested"]] and data["suggested_team"] == "Colombia"
     kickoffs = [m["kickoff_at"] for m in data["matches"]["data"]]
     assert kickoffs == sorted(kickoffs), "kick-off order: the reader's day is cut in the reader's zone"
@@ -94,18 +106,23 @@ def test_the_matches_around_today_with_the_forecast_labelled_a_line_of_the_readi
     # the owner's switches: off, the forecast and the reading's line are gone from the list too
     hidden = client(db, monkeypatch, forecast=False, reading=False).get("/api/v1/today").json()["data"]
     up = next(m for m in hidden["matches"]["data"] if m["fixture_id"] == upcoming)
-    assert up["forecast"] is None and up["headline"] is None and up["has_reading"] is False
+    assert up["forecast"] is None and up["headline"] is None and up["has_reading"] is False and up["context"] == []
 
 
 def test_a_day_without_published_picks_says_why_from_the_published_sets_funnel(
         db: psycopg.Connection[Any], world: World, seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
     db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
     world.fixture(noon_today())
-    no_pick = client(db, monkeypatch).get("/api/v1/today").json()["data"]["no_pick"]
+    api = client(db, monkeypatch)
+    no_pick = api.get("/api/v1/today").json()["data"]["no_pick"]
     assert no_pick["status"] == "ok"
     reason = no_pick["data"]
     assert reason["state"] == "none" and reason["reason"] == "no_qualified_candidates" and reason["matches"] >= 1
     assert reason["day"] == noon_today().date().isoformat()
+    # the Picks page asks for the reason alone: the same answer, without the matches
+    alone = api.get("/api/v1/today/no-pick")
+    assert alone.status_code == 200 and alone.json()["status"] == "ok"
+    assert alone.json()["data"] == reason
 
 
 def test_a_day_without_matches_says_so(db: psycopg.Connection[Any], monkeypatch: pytest.MonkeyPatch) -> None:

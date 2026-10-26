@@ -1,5 +1,6 @@
-"""Today, for Home (plan UX, A9; section 24 of the plan): the matches around today with PrediGol's forecast labelled and one line
-of the reading, the leagues suggested until the reader picks theirs (favourites arrive with A13), and why there is no pick today.
+"""Today, for Home (plan UX, A9; section 24 of the plan): the matches around today with PrediGol's forecast labelled, one line
+of the reading and - for the suggested matches still to be played - what is at stake, the rest and the next match; the leagues
+suggested until the reader picks theirs (favourites arrive with A13), and why there is no pick today.
 
 One board for every reader, kept a minute (``shared``): picks, probabilities and states are the same for everyone; what a reader
 follows will filter it on top (A13). Reading only: nothing here computes a probability, prices a selection or chooses a pick.
@@ -113,8 +114,16 @@ def _forecast(found: tuple[str, Decimal, str] | None) -> TodayForecast | None:
                          calibrated=calibration == "CALIBRATED")
 
 
-def _headline(fact: reading.Fact | None) -> ReadingFact | None:
-    return None if fact is None else ReadingFact(code=fact.code, params=fact.params, ref=fact.ref)
+def _fact(fact: reading.Fact) -> ReadingFact:
+    return ReadingFact(code=fact.code, params=fact.params, ref=fact.ref)
+
+
+def _context(r: dict[str, Any], seen: reading.Glance | None) -> list[ReadingFact]:
+    """Home's «Contexto» (plan section 24, block 5): what is at stake for the suggested matches still to be played - until the
+    reader's favourites arrive (A13). Nothing for the rest: the list stays light."""
+    if seen is None or r["status_group"] != "scheduled" or not _suggested(r):
+        return []
+    return [_fact(f) for f in seen.context]
 
 
 def _day_bounds(day: date) -> tuple[datetime, datetime]:
@@ -165,13 +174,14 @@ def today(conn: Conn, *, at: datetime | None = None) -> Envelope[Today]:
                                          "limit": MAX_MATCHES})
     ids = [int(r["fixture_id"]) for r in rows]
     likely = forecast_service.likely_results(conn, ids, at=at)
-    lines = reading.headlines(conn, ids, at=at)
+    lines = reading.glances(conn, ids, at=at)
     live = {m.fixture_id: m for m in center.live_board(conn, at=at).data.matches} if any(
         r["status_group"] == "live" for r in rows) else {}
     matches: list[TodayMatch] = []
     for r in rows:
         fid = int(r["fixture_id"])
         state = live.get(fid)
+        seen = lines.get(fid)
         finished = r["status_group"] == "finished" and r["final_home"] is not None
         matches.append(TodayMatch(
             fixture_id=fid, kickoff_at=r["kickoff_at"], status_group=str(r["status_group"]),
@@ -182,8 +192,9 @@ def today(conn: Conn, *, at: datetime | None = None) -> Envelope[Today]:
             competition=_competition(r),
             home=TeamBadge(id=int(r["home_team_id"]), name=r["home_name"], logo_url=r["home_logo"]),
             away=TeamBadge(id=int(r["away_team_id"]), name=r["away_name"], logo_url=r["away_logo"]),
-            suggested=_suggested(r), forecast=_forecast(likely.get(fid)), headline=_headline(lines.get(fid)),
-            has_reading=fid in lines))
+            suggested=_suggested(r), forecast=_forecast(likely.get(fid)),
+            headline=_fact(seen.headline) if seen is not None and seen.headline is not None else None,
+            has_reading=seen is not None, context=_context(r, seen)))
     suggested = [_competition(r) for r in fetch_all(conn, SUGGESTED_SQL, {"leagues": list(SUGGESTED_LEAGUES)})]
     body = Today(
         day=product_day(moment), suggested=suggested, suggested_team=SUGGESTED_TEAM,

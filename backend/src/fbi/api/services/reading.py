@@ -361,6 +361,27 @@ def headline(content: Mapping[str, Any]) -> Fact | None:
                 None)
 
 
+GLANCE_CONTEXT: Final = ("stakes_pressure", "first_leg", "tie_outlook", "stakes_zone", "stakes_gap_up", "stakes_gap_down",
+                         "rest_days", "next_match")
+"""What Home's «Contexto» tells of a match (plan section 24, block 5: what is at stake - the table or the tie -, the rest and
+the next match), in this order. The table after each result (three long lines) stays in the match's own reading."""
+
+
+@dataclass(frozen=True)
+class Glance:
+    """A match in a list (Home): its one line and the facts of its context."""
+
+    headline: Fact | None
+    context: list[Fact]
+
+
+def glance(content: Mapping[str, Any]) -> Glance:
+    r = Reading()
+    context(r, content)
+    facts = sorted((f for f in r.sections["context"] if f.code in GLANCE_CONTEXT), key=lambda f: GLANCE_CONTEXT.index(f.code))
+    return Glance(headline(content), facts)
+
+
 # ── reading it from the database ──────────────────────────────────────────────────────────────────────────────────
 
 FIXTURE_SQL = """
@@ -397,22 +418,25 @@ def users_may_see() -> bool:
     return user_switch(USERS_SWITCH, default=True)
 
 
-HEADLINES_SQL = """
+GLANCES_SQL = """
 SELECT DISTINCT ON (p.fixture_id) p.fixture_id, p.content->'fixture' AS fixture, p.content->'stakes' AS stakes,
+       p.content->'phase' AS phase, p.content->'schedule' AS schedule,
        jsonb_build_object('context', p.content->'dossier'->'context') AS dossier
   FROM ai.match_packets p
  WHERE p.fixture_id = ANY(%(ids)s) AND p.as_of <= %(at)s
  ORDER BY p.fixture_id, p.as_of DESC, p.id DESC
 """
+GLANCE_BLOCKS: Final = ("fixture", "stakes", "phase", "schedule", "dossier")
 
 
-def headlines(conn: Conn, fixture_ids: list[int], *, at: datetime | None = None) -> dict[int, Fact | None]:
-    """For a list of matches (Home): which have a reading with context (a key per match with a packet) and its one line
-    (``headline``; None when the packet says nothing that stands out). Empty while readers do not see the reading."""
+def glances(conn: Conn, fixture_ids: list[int], *, at: datetime | None = None) -> dict[int, Glance]:
+    """For a list of matches (Home): which have a reading with context (a key per match with a packet), its one line
+    (``headline``; None when the packet says nothing that stands out) and its context. Empty while readers do not see the
+    reading."""
     if not fixture_ids or not users_may_see():
         return {}
-    return {int(r["fixture_id"]): headline({k: r[k] for k in ("fixture", "stakes", "dossier") if r.get(k) is not None})
-            for r in fetch_all(conn, HEADLINES_SQL, {"ids": fixture_ids, "at": at or now()})}
+    return {int(r["fixture_id"]): glance({k: r[k] for k in GLANCE_BLOCKS if r.get(k) is not None})
+            for r in fetch_all(conn, GLANCES_SQL, {"ids": fixture_ids, "at": at or now()})}
 
 
 def _forecast(conn: Conn, fixture_id: int, at: datetime | None) -> tuple[list[ForecastMarket], str | None, datetime | None]:

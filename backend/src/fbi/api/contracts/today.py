@@ -1,5 +1,6 @@
-"""Today, for Home (plan UX, A9): the matches around today with PrediGol's forecast labelled and one line of the reading, the
-leagues suggested until the reader picks theirs, and why there is no pick today when there is none."""
+"""Today, for Home (plan UX, A9): the matches around today with PrediGol's forecast labelled, one line of the reading and the
+context of the suggested ones still to be played, the leagues suggested until the reader picks theirs, and why there is no pick
+today when there is none."""
 
 from __future__ import annotations
 
@@ -40,6 +41,9 @@ class TodayMatch(Contract):
                                                      "leg, what a side fights for). Null when nothing stands out.")
     has_reading: bool = Field(description="Whether the match's reading has its context (a packet) - the full reading at "
                                           "/matches/{id}/reading.")
+    context: list[ReadingFact] = Field(default_factory=list, description=(
+        "Home's «Contexto» (plan section 24, block 5), for the suggested matches still to be played: what is at stake (the "
+        "table or the tie), the rest and the next match, as the reading's facts. Empty for the rest."))
 
 
 class NoPick(Contract):
