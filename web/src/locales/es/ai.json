@@ -623,7 +623,14 @@
       "refused": "No mostradas hoy",
       "refusedHint": "Rechazadas por los controles o sin respuesta del modelo: el lector ve la lectura estructurada",
       "translations": "Noticias traducidas hoy",
-      "apart": "Este gasto se registra en ai.user_usage y nunca cuenta en el presupuesto de Intelligence de arriba. Con el presupuesto en 0 no se gasta nada (P8 lo aprueba)."
+      "apart": "Este gasto se registra aparte y nunca cuenta en el presupuesto de Intelligence de arriba. Con el presupuesto en 0 no se gasta nada (lo aprueba el dueño: P8).",
+      "state": {
+        "none": "Sin presupuesto: no gasta",
+        "NORMAL": "Dentro del presupuesto",
+        "REDUCED": "Por encima del ritmo del día",
+        "CHEAP_ONLY": "Por encima del ritmo del día",
+        "EXHAUSTED": "Tope alcanzado: lectura estructurada"
+      }
     }
   },
   "v2": {
