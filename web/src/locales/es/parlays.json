@@ -10,7 +10,8 @@
   "legsList": "Selecciones del parlay",
   "combinedOdds": "Cuota combinada",
   "empty": {
-    "never": "Nunca rellenamos un parlay con selecciones sin valor."
+    "never": "Nunca rellenamos un parlay con selecciones que no pasan las reglas.",
+    "what": "¿Qué es un parlay?"
   },
   "how": {
     "title": "Cómo construimos los parlays",
@@ -127,7 +128,7 @@
     "replacedSlip": "Reemplazó las selecciones que tenías en Mi parlay.",
     "none": {
       "title": "No hay parlay con estos filtros",
-      "no_candidates": "Ahora mismo no hay selecciones que pasen las reglas de PrediGol en esta ventana. No armamos parlays con selecciones que no las pasan.",
+      "no_candidates": "Ningún partido de las próximas {hours} horas cumplió las condiciones de PrediGol. Preferimos no publicar a publicar por publicar.",
       "no_match": "Hay selecciones que pasan las reglas, pero ninguna cumple tus filtros.",
       "too_few_legs_one": "Con tus filtros solo hay selecciones combinables en {count} partido: no alcanza el mínimo de {min}.",
       "too_few_legs_other": "Con tus filtros solo hay selecciones combinables en {count} partidos: no alcanza el mínimo de {min}.",
@@ -141,7 +142,8 @@
       "filters": "Prueba quitando algún filtro de mercado, competición o cuota.",
       "cap": "Prueba subiendo la cuota total máxima o bajando el mínimo de selecciones.",
       "wait": "Vuelve más tarde: los precios y las selecciones se actualizan durante el día."
-    }
+    },
+    "more": "Más sobre:"
   },
   "whatIsParlay": "¿Qué es un parlay?"
 }

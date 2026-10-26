@@ -271,6 +271,46 @@ test("the Match Center's tab strip says when more tabs wait beyond the edge", as
   await assertClean(page, w);
 });
 
+test("a match's Análisis and Postpartido fit every phone width and the tablets, the tabs in a finger's reach", async ({
+  page,
+}) => {
+  // Plan UX, A9: «RESPONSIVE: Inicio y partido en los cinco anchos y en tablet» - Inicio is in the tour above.
+  test.setTimeout(240_000);
+  const w = watch(page);
+  const after = new Date().toISOString();
+  const upcoming = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    `/api/v1/matches?status=scheduled&order=asc&limit=1&kickoff_after=${encodeURIComponent(after)}`,
+  );
+  const finished = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    "/api/v1/matches?status=finished&order=desc&limit=1",
+  );
+  const paths = [
+    upcoming.body.data[0] ? `/matches/${upcoming.body.data[0].id}?s=analisis` : null,
+    finished.body.data[0] ? `/matches/${finished.body.data[0].id}` : null,
+  ].filter((x): x is string => x !== null);
+  if (paths.length === 0) {
+    note(test.info(), "no match to open");
+    return;
+  }
+  for (const width of [...PHONES, 768, 1024]) {
+    await page.setViewportSize({ width, height: width >= 768 ? 1024 : 800 });
+    for (const path of paths) {
+      await page.goto(path);
+      await settle(page);
+      const sideways = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(sideways, `${path} at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
+      expect(await smallTargets(page, '[role="tablist"]'), `${path} at ${width} px: tabs`).toEqual(
+        [],
+      );
+    }
+  }
+  await assertClean(page, w);
+});
+
 test("the parlay slip under a thumb: a 44 px close, nothing on its title, its fields at 16 px", async ({
   page,
 }) => {
@@ -395,19 +435,20 @@ test("a figure's help opens with a tap inside a card's link, and that tap does n
 }) => {
   // Plan UX, A1 (F16): a card is one link, and the help on its figures could not be read with a finger - a tap
   // followed the link. A [data-hint] now shows its help, and only the rest of the card opens the match.
+  // Plan UX, A9: Inicio's rows say why they show («Sugerida») - a figure's help inside the row's link.
   const w = watch(page);
   await page.goto("/home");
   await settle(page);
-  const badge = page.getByTestId("upcoming-bookmakers").first();
+  const badge = page.getByTestId("today-why").first();
   if ((await badge.count()) === 0) {
-    note(test.info(), "no upcoming match with prices on Inicio");
+    note(test.info(), "no match of the suggested leagues on Inicio");
     return;
   }
   await badge.tap();
-  await expect(page.getByTestId("title-tap")).toHaveText(L.es.home.upcoming.bookmakersHelp);
+  await expect(page.getByTestId("title-tap")).toHaveText(L.es.home.today.whyHelp);
   await page.waitForTimeout(800); // the click that followed the tap was the link's: it must not navigate
   await expect(page).toHaveURL(/\/home$/);
-  await page.getByTestId("upcoming-row").first().getByTestId("matchup").tap();
+  await page.getByTestId("today-row").first().getByTestId("matchup").tap();
   await expect(page).toHaveURL(/\/matches\/\d+/);
   await assertClean(page, w);
 });

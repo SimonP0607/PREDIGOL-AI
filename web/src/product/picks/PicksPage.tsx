@@ -35,6 +35,7 @@ import {
 } from "@/product/shared/States";
 import { MARKETS, emptyReason, marketShort } from "@/product/shared/markets";
 import { DailySetBlock } from "@/product/records/DailySetBlock";
+import { noPickLoad } from "@/product/records/noPick";
 import { pickableOfCard, type Pickable } from "@/product/records/pickable";
 import { SelectablePriceRow } from "@/product/odds/SelectablePrice";
 import { Pager } from "@/product/shared/Pager";
@@ -65,6 +66,8 @@ export function PicksPage() {
   const today = todayKey(DAY_ZONE);
   const [day, setDay] = useState(today);
   const daily = useQuery(live.daily(preview, day === today ? undefined : day));
+  // Plan UX, A9: today's empty set says why (the published set's own funnel); another day's does not.
+  const reason = useQuery({ ...live.noPick, enabled: day === today });
   const list = useQuery({ ...live.productPicks(q, preview), placeholderData: keepPreviousData });
 
   return (
@@ -78,7 +81,11 @@ export function PicksPage() {
         }
         right={auth.showAdmin ? <ShadowToggle /> : undefined}
       />
-      <DailySetBlock query={daily} nav={{ day, today, onDay: setDay }} />
+      <DailySetBlock
+        query={daily}
+        nav={{ day, today, onDay: setDay }}
+        noPick={day === today ? noPickLoad(reason, (n) => n) : undefined}
+      />
       <AllPicks query={list} filters={filters} onChange={setFilters} />
       <StartedPicks />
     </div>

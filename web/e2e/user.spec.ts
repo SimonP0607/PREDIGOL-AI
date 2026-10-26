@@ -80,30 +80,105 @@ async function expectParlay(
   }
 }
 
-test("Home: the day's recorded picks or an honest empty state, the two parlays, live, best odds", async ({
+interface TodayBody {
+  day: string;
+  matches: {
+    data: Array<{
+      fixture_id: number;
+      suggested: boolean;
+      has_reading: boolean;
+      status_group: string;
+      forecast: { outcome: string; probability: string; calibrated: boolean } | null;
+    }>;
+  };
+  no_pick: { data: { state: string; stage: string | null; reason: string | null } };
+}
+
+const VETOED: Record<Lang, RegExp> = {
+  es: /\b(valor|seguro|segura|fijo|fija|garantizad[oa]s?|apuesta)\b/i,
+  en: /\b(value|sure|guaranteed|lock|bet)\b/i,
+};
+
+test("Home: today in the suggested leagues, the day's picks or why there are none, the parlays, results, live, best odds", async ({
   page,
 }) => {
+  // Plan UX, A9 (section 24): with or without picks, Inicio says what there is today - in that order.
   const w = watch(page);
   const t = L[lang()];
   const { status, body } = await getJson<{ data: BoardBody }>(page.request, "/api/v1/daily");
   expect(status).toBe(200);
   expect(body.data.evaluation_mode, "a USER never gets the evaluation records").toBe(false);
+  const today = await getJson<{ data: TodayBody }>(page.request, "/api/v1/today");
+  expect(today.status).toBe(200);
   await open(page, w, "/home");
   await expect(page.getByTestId("home-date")).toBeVisible();
+
+  // 1 · Hoy en las ligas sugeridas: the suggested leagues named, each match says why it shows
+  const block1 = page.getByTestId("home-today");
+  await expect(block1.getByRole("heading", { name: t.home.today.title })).toBeVisible();
+  await expect(block1.getByTestId("suggested-leagues")).toBeVisible();
+  const rows = block1.getByTestId("today-row");
+  if ((await rows.count()) > 0) {
+    await expect(rows.first().getByTestId("today-why")).toHaveText(t.home.today.why);
+  } else {
+    await expect(block1.getByTestId("today-empty")).toBeVisible();
+    note(test.info(), "no match of the suggested leagues today: the block said so");
+  }
+
+  // 2 · Picks del día: the recorded set, or the honest sentence and its reason
   const daily = page.getByTestId("daily-set");
   await expect(daily.getByRole("heading", { name: t.records.daily.title })).toBeVisible();
   const items = body.data.set?.items ?? [];
   if (items.length > 0) {
     await expect(daily.getByTestId("daily-item")).toHaveCount(items.length);
   } else {
-    await expect(daily.getByText(t.records.daily.reason.no_qualified_picks)).toBeVisible();
-    note(test.info(), "no qualified pick recorded today: the honest empty state was checked");
+    const reason = today.body.data.no_pick.data;
+    const empty = daily.getByTestId("no-pick");
+    await expect(empty).toBeVisible();
+    if (reason.state === "reviewing") {
+      await expect(empty.getByTestId("no-pick-title")).toHaveText(t.records.noPick.reviewing);
+    } else if (reason.reason === "no_matches") {
+      await expect(empty.getByTestId("no-pick-title")).toHaveText(t.records.noPick.noMatches);
+    } else if (reason.state === "none") {
+      await expect(empty.getByTestId("no-pick-title")).toHaveText(t.records.noPick.honest);
+      const known = reason.reason
+        ? (t.records.noPick.reason as Record<string, string>)[reason.reason]
+        : undefined;
+      if (known) await expect(empty.getByTestId("no-pick-reason")).toContainText(known);
+    }
+    expect(await empty.innerText(), "an empty day never says «valor»").not.toMatch(VETOED[lang()]);
+    note(
+      test.info(),
+      `no pick today (${reason.state}, ${reason.reason ?? "-"}): the honest empty state was checked`,
+    );
   }
-  await expectParlay(page.getByTestId("home-parlay-daily"), body.data.daily_parlay);
-  await expectParlay(page.getByTestId("home-parlay-multiday"), body.data.multiday_parlay);
+  const built = (p: ParlayRecordBody | null) => Boolean(p && p.legs.length > 0);
+  if (!built(body.data.daily_parlay) && !built(body.data.multiday_parlay)) {
+    await expect(page.getByTestId("home-parlays-none")).toBeVisible();
+  } else {
+    await expectParlay(page.getByTestId("home-parlay-daily"), body.data.daily_parlay);
+    await expectParlay(page.getByTestId("home-parlay-multiday"), body.data.multiday_parlay);
+  }
+
+  // 6 · Resultados, then what is in play everywhere and the best prices
+  const results = page.getByTestId("home-results");
+  await expect(results.getByRole("heading", { name: t.home.results.title })).toBeVisible();
+  await expect(
+    results.getByTestId("results-list").or(results.getByTestId("results-empty")),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: t.home.live.title })).toBeVisible();
   await expect(page.getByRole("heading", { name: t.home.best.title })).toBeVisible();
-  await expect(page.getByRole("heading", { name: t.home.upcoming.title })).toBeVisible();
+  // the blocks in the order of section 24
+  const order = await page.$$eval(
+    '[data-testid="home-today"], [data-testid="daily-set"], [data-testid="home-relevant"], [data-testid="home-context"], [data-testid="home-results"]',
+    (els) => els.map((e) => e.getAttribute("data-testid")),
+  );
+  expect(order.filter((x) => x !== "home-relevant" && x !== "home-context")).toEqual([
+    "home-today",
+    "daily-set",
+    "home-results",
+  ]);
+  await assertClean(page, w);
 });
 
 test("Picks: the day's recorded picks (kept after kick-off) and the qualified list, never research vocabulary", async ({
@@ -117,6 +192,10 @@ test("Picks: the day's recorded picks (kept after kick-off) and the qualified li
   await expect(page.getByRole("heading", { name: t.records.daily.title })).toBeVisible();
   const items = body.data.set?.items ?? [];
   await expect(page.getByTestId("daily-item")).toHaveCount(items.length);
+  if (items.length === 0) {
+    // plan UX, A9: today's empty set says why, as Inicio does
+    await expect(page.getByTestId("no-pick")).toBeVisible();
+  }
   const started = items.filter((i) => Date.parse(i.match.kickoff_at) <= Date.now()).length;
   if (started > 0)
     note(test.info(), `${started} of today's picks have kicked off and are still shown`);
@@ -378,7 +457,7 @@ test("Matches: today in the reader's zone, and a match opens its centre", async 
   await expect(page).toHaveURL(/\/matches\/\d+$/);
   await settle(page);
   await expect(page.getByTestId("match-center")).toBeVisible();
-  for (const key of ["summary", "stats", "markets", "lineups"] as const) {
+  for (const key of ["summary", "analysis", "stats", "markets", "lineups"] as const) {
     await expect(page.getByRole("tab", { name: t.match.tabs[key] })).toBeVisible();
   }
   await expect(page.getByRole("tab", { name: t.match.tabs.advanced })).toHaveCount(0);
@@ -524,6 +603,145 @@ test("A match's PrediGol analysis: only what a user may see, never value without
     test.info(),
     `analysis of ${found.id}: ${found.cards.length} cards, ${found.withheld} in evaluation`,
   );
+});
+
+interface ReadingBody {
+  status: string;
+  data: {
+    complete: boolean;
+    sections: Array<{ key: string; facts: Array<{ code: string; ref: string }> }>;
+  } | null;
+}
+
+/** A match whose reading has its context (a packet), else any match to come: the reading of either is checked. */
+async function matchToRead(page: Page): Promise<{ id: number; withPacket: boolean } | null> {
+  const today = await getJson<{ data: TodayBody }>(page.request, "/api/v1/today");
+  const packed = today.body.data.matches.data.find(
+    (m) => m.has_reading && m.status_group === "scheduled",
+  );
+  if (packed) return { id: packed.fixture_id, withPacket: true };
+  const after = new Date().toISOString();
+  const { body } = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    `/api/v1/matches?status=scheduled&order=asc&limit=1&kickoff_after=${encodeURIComponent(after)}`,
+  );
+  const id = body.data[0]?.id;
+  return id ? { id, withPacket: false } : null;
+}
+
+test("A match's Análisis PrediGol: six sections of facts with their references, the time of its data, a link in either language and the tabs by keyboard", async ({
+  page,
+}) => {
+  // Plan UX, A9 (sections 25 and 26): the structured reading, no AI - every fact a template, each with its reference.
+  const w = watch(page);
+  const t = L[lang()];
+  const target = await matchToRead(page);
+  if (!target) {
+    note(test.info(), "no match to come");
+    return;
+  }
+  const api = await getJson<ReadingBody>(page.request, `/api/v1/matches/${target.id}/reading`);
+  expect(api.status).toBe(200);
+  const denied = await getJson<unknown>(
+    page.request,
+    `/api/v1/matches/${target.id}/reading?preview=shadow`,
+  );
+  expect(denied.status, "the owner's preview is not a reader's").toBe(403);
+  await open(page, w, `/matches/${target.id}?s=analisis`);
+  const tab = page.getByRole("tab", { name: t.match.tabs.analysis });
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+  const block = page.getByTestId("match-reading");
+  await expect(block).toBeVisible();
+  if (api.body.status !== "ok" || !api.body.data) {
+    await expect(block.getByTestId("reading-unavailable")).toBeVisible();
+    note(test.info(), "the reading is turned off for readers here");
+    return;
+  }
+  const reading = api.body.data;
+  for (const section of reading.sections) {
+    const shown = block.getByTestId(`reading-section-${section.key}`);
+    await expect(shown).toBeVisible();
+    await expect(shown.getByRole("heading", { level: 3 })).toHaveText(
+      (t.match.readingBlock.sections as Record<string, string>)[section.key] ?? "",
+    );
+  }
+  const facts = block.getByTestId("reading-fact");
+  expect(await facts.count()).toBeGreaterThan(0);
+  for (const ref of await facts.evaluateAll((els) => els.map((e) => e.getAttribute("data-ref")))) {
+    expect(ref ?? "", "every fact carries its reference").toMatch(/^(packet|forecast)\b/);
+  }
+  const words = await block.innerText();
+  expect(words).not.toMatch(/\b[a-z]+_[a-z_]+\b/); // never a raw code
+  expect(words, "no certainty, no «valor»").not.toMatch(VETOED[lang()]);
+  await expect(block.getByTestId("reading-caveat")).toHaveText(t.match.readingBlock.caveat);
+  if (target.withPacket) {
+    await expect(block.getByTestId("reading-data-at")).toBeVisible();
+    expect(reading.sections.map((x) => x.key)).toEqual(
+      expect.arrayContaining(["summary", "context", "data", "risks", "conclusion"]),
+    );
+  } else {
+    await expect(block.getByTestId("reading-partial")).toBeVisible();
+  }
+  // the same section from an English link, and the tabs by keyboard (ARIA: arrows, Home, End)
+  await page.goto(`/matches/${target.id}?s=analysis`);
+  await settle(page);
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+  await tab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tab", { name: t.match.tabs.stats })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.getByRole("tab", { name: t.match.tabs.stats })).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(page.getByRole("tab", { name: t.match.tabs.summary })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.keyboard.press("End");
+  await expect(page.getByRole("tab").last()).toHaveAttribute("aria-selected", "true");
+  // the Resumen opens with the reading's summary and its two main risks, and the way to the whole analysis
+  await page.getByRole("tab", { name: t.match.tabs.summary }).click();
+  const highlights = page.getByTestId("reading-highlights");
+  await expect(highlights).toBeVisible();
+  await highlights.getByTestId("reading-see-all").click();
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+  await assertClean(page, w);
+});
+
+test("A finished match opens on its Postpartido: the result and what the forecast said, or that there was none", async ({
+  page,
+}) => {
+  const w = watch(page);
+  const t = L[lang()];
+  const { body } = await getJson<{ data: Array<{ id: number }> }>(
+    page.request,
+    "/api/v1/matches?status=finished&order=desc&limit=1",
+  );
+  const id = body.data[0]?.id;
+  if (!id) {
+    note(test.info(), "no finished match");
+    return;
+  }
+  await open(page, w, `/matches/${id}`);
+  await expect(page.getByRole("tab", { name: t.match.tabs.postmatch })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(
+    page.getByRole("heading", { name: t.match.result.title, exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: t.match.postmatch.title, exact: true }),
+  ).toBeVisible();
+  // an old link to the picks opens the Resumen, where the picks of the match now live
+  await page.goto(`/matches/${id}#picks`);
+  await settle(page);
+  await expect(page.getByRole("tab", { name: t.match.tabs.summary })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await assertClean(page, w);
 });
 
 test("Live: richest matches first, or an honest empty board", async ({ page }) => {

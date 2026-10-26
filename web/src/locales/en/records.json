@@ -76,11 +76,11 @@
     "legsResult": "{won} of {total} won",
     "building": {
       "title": "Looking for the parlay",
-      "body": "There are selections with value, but no combination grows at their cautious probability. We never pad a parlay."
+      "body": "Some selections pass the rules, but no combination of {min} or more grows at their cautious probability."
     },
     "none": {
       "title": "No parlay yet",
-      "body": "It is built when there are selections with value in its window."
+      "body": "It is built when at least {min} selections in its window pass all of PrediGol's rules."
     },
     "void": {
       "title": "There was no parlay this day",
@@ -428,5 +428,43 @@
   },
   "roiSample_one": "over {n} settled",
   "roiSample_other": "over {n} settled",
-  "unitsLink": "What is a unit?"
+  "unitsLink": "What is a unit?",
+  "noPick": {
+    "honest": "No match met the conditions to publish a pick today. We would rather not publish than publish for the sake of it.",
+    "reviewing": "We are still going through today's matches",
+    "reviewingBody": "Today's picks show here when the review is over. Meanwhile, today's matches already have their forecast and their analysis.",
+    "noMatches": "There are no matches of the competitions we follow today, so there are no picks either.",
+    "why": "Why",
+    "reasonError": "We could not load the reason.",
+    "reason": {
+      "no_qualified_candidates": "None of the models PrediGol publishes with had selections for today's matches.",
+      "not_scheduled": "The matches with selections were no longer scheduled: they had started, were postponed or suspended.",
+      "too_close_to_kickoff": "The selections came too close to their match's kick-off.",
+      "outside_window": "The matches with selections were outside the window in which we choose the picks.",
+      "no_price": "The selections had no odds at the bookmakers we follow.",
+      "stale_price": "The selections' odds were not up to date.",
+      "no_consensus": "The bookmakers did not agree enough on the selections' price.",
+      "few_bookmakers": "Too few bookmakers offered the selections.",
+      "price_outlier": "The selections' best odds were too far from the rest of the market.",
+      "not_qualified": "The selections came from models that have not beaten the market in their own backtest yet.",
+      "model_retired": "The selections came from a retired model.",
+      "no_interval": "The model had not measured the range of its probability for those selections.",
+      "non_positive_ev": "No market showed an edge over the market price.",
+      "no_pessimistic_growth": "At the cautious end of its probability, no selection made up for its risk.",
+      "odds_above_cap": "The selections that got that far paid odds above our risk limit: in our history, long odds lose money.",
+      "day_not_ready": "PrediGol Intelligence did not finish reviewing the matches' context in time.",
+      "no_day_pass": "PrediGol Intelligence did not finish reviewing the matches' context in time.",
+      "not_reviewed": "PrediGol Intelligence did not finish reviewing the matches' context in time.",
+      "ai_rejected": "PrediGol Intelligence turned the selections down after reviewing their matches' context."
+    },
+    "stage": {
+      "data": "Today's matches did not have the data we ask for to publish.",
+      "market": "The market's prices did not meet our conditions.",
+      "model": "The models did not meet our conditions to publish.",
+      "calibration": "The model had not measured the range of its probability.",
+      "value": "No market showed an edge over the market price.",
+      "risk": "The selections paid odds above our risk limit.",
+      "context": "PrediGol Intelligence did not finish reviewing the matches' context in time."
+    }
+  }
 }

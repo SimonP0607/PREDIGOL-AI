@@ -10,7 +10,8 @@
   "legsList": "Parlay selections",
   "combinedOdds": "Combined odds",
   "empty": {
-    "never": "We never pad a parlay with selections that have no value."
+    "never": "We never pad a parlay with selections that do not pass the rules.",
+    "what": "What is a parlay?"
   },
   "how": {
     "title": "How we build the parlays",
@@ -127,7 +128,7 @@
     "replacedSlip": "It replaced the selections you had in My parlay.",
     "none": {
       "title": "No parlay for these filters",
-      "no_candidates": "Right now no selection passes PrediGol's rules in this window. We do not build parlays from selections that do not pass them.",
+      "no_candidates": "No match in the next {hours} hours met PrediGol's conditions. We would rather not publish than publish for the sake of it.",
       "no_match": "Some selections pass the rules, but none matches your filters.",
       "too_few_legs_one": "With your filters there are combinable selections in only {count} match: short of the minimum of {min}.",
       "too_few_legs_other": "With your filters there are combinable selections in only {count} matches: short of the minimum of {min}.",
@@ -141,7 +142,8 @@
       "filters": "Try removing a market, competition or odds filter.",
       "cap": "Try raising the maximum total odds or lowering the minimum of selections.",
       "wait": "Come back later: prices and selections update during the day."
-    }
+    },
+    "more": "More on:"
   },
   "whatIsParlay": "What is a parlay?"
 }

@@ -6,6 +6,7 @@
  * leave a parlay out, never let in a selection that does not pass the rule.
  */
 import type { BuilderLeg, BuilderQuery, BuildReason } from "@/lib/api/v1/types_builder";
+import type { TermKey } from "@/lib/glossary";
 import type { MarketKey } from "@/lib/api/v1/types_records";
 import { normLine, selectionKey, type SlipLeg } from "@/product/records/model";
 
@@ -116,6 +117,26 @@ export function builtToSlip(legs: readonly BuilderLeg[]): SlipLeg[] {
     };
     return { ...leg, key: selectionKey(leg) };
   });
+}
+
+/**
+ * The glossary's words behind each reason (plan UX, A9: every reason links to its explanation). The way to «Cómo le va a
+ * PrediGol», the other link the plan names, arrives with that page (A12).
+ */
+export function termsFor(reason: BuildReason | null): TermKey[] {
+  switch (reason) {
+    case "no_match":
+      return ["market"];
+    case "too_few_legs":
+      return ["parlay"];
+    case "total_odds_cap":
+    case "risk_cap":
+      return ["odds", "parlay"];
+    case "no_growth":
+      return ["dependency", "parlay"];
+    default:
+      return ["pick", "parlay"];
+  }
 }
 
 /** What the user can change when there is no parlay: the advice follows the reason. */

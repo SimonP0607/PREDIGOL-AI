@@ -22,12 +22,43 @@
     "overFair": "{pct} sobre la cuota justa",
     "empty": "Todavía no hay precios por encima del mercado."
   },
-  "upcoming": {
-    "title": "Próximos partidos",
-    "seeAll": "Ver todos",
-    "bookmakers_one": "{count} casa",
-    "bookmakers_other": "{count} casas",
-    "bookmakersHelp": "Casas de apuestas con cuotas para este partido",
-    "empty": "No hay partidos próximos."
-  }
+  "today": {
+    "title": "Hoy en las ligas sugeridas",
+    "subtitle": "Mientras no elijas tus ligas, las que más se siguen en Colombia",
+    "why": "Sugerida",
+    "whyHelp": "Mientras no elijas tus ligas, te sugerimos las que más se siguen en Colombia: la Liga BetPlay, la Selección, la Libertadores, la Champions y las grandes ligas de Europa.",
+    "updated": "Actualizado a las {time}",
+    "zone": "Horas en {zone}",
+    "seeAll": "Ver todos los partidos",
+    "more_one": "Hoy juega {count} partido más de las ligas sugeridas",
+    "more_other": "Hoy juegan {count} partidos más de las ligas sugeridas",
+    "empty": "Hoy no juegan las ligas sugeridas.",
+    "played_one": "El partido de hoy de las ligas sugeridas ya terminó: su resultado está en Resultados.",
+    "played_other": "Los {count} partidos de hoy de las ligas sugeridas ya terminaron: sus resultados están en Resultados.",
+    "next": "Próximos partidos de las ligas sugeridas",
+    "forecast": {
+      "home": "Pronóstico: gana {team}",
+      "away": "Pronóstico: gana {team}",
+      "draw": "Pronóstico: empate"
+    },
+    "uncalibrated": "sin calibrar",
+    "forecastNote": "El pronóstico dice qué resultado es más probable; no es una recomendación. Lo que PrediGol recomienda es el pick."
+  },
+  "relevant": {
+    "title": "Partidos relevantes",
+    "subtitle": "De otras competiciones que seguimos, con análisis de PrediGol"
+  },
+  "context": {
+    "title": "Qué se juega",
+    "subtitle": "Los próximos partidos de las ligas sugeridas: tabla o eliminatoria, descanso y próximo partido",
+    "analysis": "Ver el análisis"
+  },
+  "results": {
+    "title": "Resultados",
+    "subtitle": "Ligas sugeridas · últimas 48 horas",
+    "empty": "Sin resultados recientes en las ligas sugeridas.",
+    "postmatch": "Postpartido"
+  },
+  "parlaysNone": "Hoy todavía no hay parlays de PrediGol: solo se arman con selecciones que pasan todas sus reglas, y nunca los rellenamos.",
+  "parlaysLink": "Ver parlays"
 }

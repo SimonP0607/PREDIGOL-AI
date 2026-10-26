@@ -13,7 +13,8 @@ import { RiskBadge, ShadowBadge } from "@/product/shared/Bits";
 import { errorMessage } from "@/product/shared/States";
 import { useRefreshMine } from "@/product/records/hooks";
 import { useSlip } from "@/product/records/slipContext";
-import { adviceFor, builtToSlip, legsBody } from "./builderForm";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
+import { adviceFor, builtToSlip, legsBody, termsFor } from "./builderForm";
 import { LegRow } from "./LegRow";
 import { viewOfBuilt } from "./legs";
 import { track } from "@/lib/track";
@@ -194,6 +195,7 @@ export function NoParlay({ body }: { body: BuiltParlay }) {
       ? t("parlays.builder.none.too_few_legs", { count: body.funnel.matches, min: f.min_legs })
       : t(`parlays.builder.none.${reason}`, {
           min: f.min_legs,
+          hours: f.hours,
           cap: f.max_total_odds ? localDecimalText(String(Number(f.max_total_odds))) : "",
           max: fmtOdds(body.funnel.max_odds ?? null),
         });
@@ -224,6 +226,15 @@ export function NoParlay({ body }: { body: BuiltParlay }) {
           </p>
         ) : null}
         <p className="text-caption text-subtle-foreground">{t("parlays.empty.never")}</p>
+        <p
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-muted-foreground"
+          data-testid="builder-terms"
+        >
+          <span>{t("parlays.builder.more")}</span>
+          {termsFor(body.reason).map((term) => (
+            <GlossaryTerm key={term} term={term} />
+          ))}
+        </p>
       </div>
     </div>
   );

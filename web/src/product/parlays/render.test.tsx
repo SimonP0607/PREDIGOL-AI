@@ -139,9 +139,31 @@ describe("no parlay: why, and what to change (REVIEW point 15)", () => {
         />,
       ),
     );
-    expect(html).toContain("no hay selecciones que pasen las reglas");
+    // plan UX, A9: the builder's empty day says it as Inicio does
+    expect(html).toContain("cumplió las condiciones de PrediGol");
+    expect(html).toContain("Preferimos no publicar a publicar por publicar");
     expect(html).toContain("Vuelve más tarde");
     expect(html).not.toContain("De 0 selecciones");
+  });
+
+  test("every reason opens the glossary's words behind it (plan UX, A9)", () => {
+    const reasons = [
+      "no_candidates",
+      "no_match",
+      "too_few_legs",
+      "total_odds_cap",
+      "no_growth",
+      "risk_cap",
+      "not_reviewed",
+    ] as const;
+    for (const reason of reasons) {
+      const html = renderToStaticMarkup(<NoParlay body={empty(reason)} />);
+      expect(html, reason).toContain('data-testid="builder-terms"');
+      expect(html.match(/data-glossary="/g)?.length ?? 0, reason).toBeGreaterThan(0);
+    }
+    expect(text(renderToStaticMarkup(<NoParlay body={empty("no_growth")} />))).toContain(
+      "Dependencia",
+    );
   });
 });
 

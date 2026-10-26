@@ -76,11 +76,11 @@
     "legsResult": "{won} de {total} acertadas",
     "building": {
       "title": "Buscando el parlay",
-      "body": "Hay selecciones con valor, pero ninguna combinación crece con su probabilidad prudente. Nunca rellenamos un parlay."
+      "body": "Hay selecciones que pasan las reglas, pero ninguna combinación de {min} o más crece con su probabilidad prudente."
     },
     "none": {
       "title": "Aún no hay parlay",
-      "body": "Se arma cuando hay selecciones con valor en su ventana."
+      "body": "Se arma cuando al menos {min} selecciones de su ventana pasan todas las reglas de PrediGol."
     },
     "void": {
       "title": "No hubo parlay este día",
@@ -428,5 +428,43 @@
   },
   "roiSample_one": "sobre {n} liquidado",
   "roiSample_other": "sobre {n} liquidados",
-  "unitsLink": "¿Qué es una unidad?"
+  "unitsLink": "¿Qué es una unidad?",
+  "noPick": {
+    "honest": "Hoy ningún partido cumplió las condiciones para publicar un pick. Preferimos no publicar a publicar por publicar.",
+    "reviewing": "Todavía estamos revisando los partidos de hoy",
+    "reviewingBody": "Los picks del día aparecen aquí cuando termina la revisión. Mientras tanto, los partidos de hoy ya tienen su pronóstico y su análisis.",
+    "noMatches": "Hoy no hay partidos de las competiciones que seguimos, así que tampoco hay picks.",
+    "why": "Motivo",
+    "reasonError": "No pudimos cargar el motivo.",
+    "reason": {
+      "no_qualified_candidates": "Ninguno de los modelos con los que PrediGol publica tenía selecciones para los partidos de hoy.",
+      "not_scheduled": "Los partidos con selecciones ya no estaban programados: empezaron, se aplazaron o se suspendieron.",
+      "too_close_to_kickoff": "Las selecciones llegaron demasiado cerca del inicio de su partido.",
+      "outside_window": "Los partidos con selecciones quedaban fuera de la ventana en la que elegimos los picks.",
+      "no_price": "Las selecciones no tenían cuota en las casas que seguimos.",
+      "stale_price": "Las cuotas de las selecciones no estaban al día.",
+      "no_consensus": "Las casas no coincidían lo suficiente en el precio de las selecciones.",
+      "few_bookmakers": "Muy pocas casas ofrecían las selecciones.",
+      "price_outlier": "La mejor cuota de las selecciones se alejaba demasiado del resto del mercado.",
+      "not_qualified": "Las selecciones venían de modelos que todavía no han superado al mercado en su propio backtest.",
+      "model_retired": "Las selecciones venían de un modelo retirado.",
+      "no_interval": "El modelo no tenía medido el rango de su probabilidad para esas selecciones.",
+      "non_positive_ev": "Ningún mercado mostró ventaja frente al precio del mercado.",
+      "no_pessimistic_growth": "Con el extremo prudente de su probabilidad, ninguna selección compensaba su riesgo.",
+      "odds_above_cap": "Las selecciones que llegaron hasta ahí pagaban cuotas por encima de nuestro límite de riesgo: en nuestro histórico, las cuotas altas pierden dinero.",
+      "day_not_ready": "PrediGol Intelligence no terminó a tiempo de revisar el contexto de los partidos.",
+      "no_day_pass": "PrediGol Intelligence no terminó a tiempo de revisar el contexto de los partidos.",
+      "not_reviewed": "PrediGol Intelligence no terminó a tiempo de revisar el contexto de los partidos.",
+      "ai_rejected": "PrediGol Intelligence descartó las selecciones al revisar el contexto de sus partidos."
+    },
+    "stage": {
+      "data": "Los partidos de hoy no reunían los datos que pedimos para publicar.",
+      "market": "Los precios del mercado no cumplían nuestras condiciones.",
+      "model": "Los modelos no cumplían nuestras condiciones para publicar.",
+      "calibration": "El modelo no tenía medido el rango de su probabilidad.",
+      "value": "Ningún mercado mostró ventaja frente al precio del mercado.",
+      "risk": "Las selecciones pagaban cuotas por encima de nuestro límite de riesgo.",
+      "context": "PrediGol Intelligence no terminó a tiempo de revisar el contexto de los partidos."
+    }
+  }
 }
