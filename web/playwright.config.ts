@@ -19,6 +19,9 @@
  *   account   getting in without the owner (plan UX, A7): invitation, activation, recovery, unlocking. With the QA
  *             API's self-service off it checks that nothing is offered; on (QA_SELF_SERVICE=1 QA_MESSENGER=1), the
  *             e-mails' links, read from the QA messenger's folder (E2E_MAIL_SINK)
+ *   journey   the real test's sixteen steps on one invited account at 390 px (plan UX, A16), from the invitation's
+ *             e-mail to the recovery; journey-webkit, the same in WebKit. Needs self-service and the QA messenger
+ *             (QA_SELF_SERVICE=1 QA_MESSENGER=1, E2E_MAIL_SINK); skipped otherwise
  *   pwa       manifest, service worker and offline page (E2E_PWA=1, production build only)
  *   prod-smoke  read-only checks of a deployed site, no sign-in (E2E_PROD_SMOKE=1, E2E_BASE_URL=the site)
  * Two measurements run only when asked, and never fail on what they measure:
@@ -126,6 +129,20 @@ export default defineConfig({
       name: "membership",
       testMatch: /membership\.spec\.ts/,
       use: desktop,
+      dependencies: ["setup"],
+    },
+    {
+      // The real test's journey (plan UX, A16; section 45): one invited account through the sixteen steps, on a phone -
+      // Android's engine here, an iPhone's in journey-webkit. Its own account, made and deleted by the test.
+      name: "journey",
+      testMatch: /journey\.spec\.ts/,
+      use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
+      dependencies: ["setup"],
+    },
+    {
+      name: "journey-webkit",
+      testMatch: /journey\.spec\.ts/,
+      use: { ...devices["iPhone 13"], viewport: { width: 390, height: 844 } },
       dependencies: ["setup"],
     },
     {
