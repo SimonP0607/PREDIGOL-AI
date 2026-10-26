@@ -98,6 +98,7 @@ import type { MatchCalendar } from "./types_calendar";
 import type { MatchForecast } from "./types_forecast";
 import type { MatchKnowledge } from "./types_knowledge";
 import type { MatchReading } from "./types_reading";
+import type { MatchNews, TodayNews } from "./types_news";
 import type { NoPick, Today } from "./types_today";
 import type {
   AnalystReply,
@@ -518,6 +519,10 @@ export const v1 = {
   today: () => getJson<Envelope<Today>>("/today"),
   /** The day's picks state and its reason alone, for the Picks page (the same as /today's no_pick). */
   noPick: () => getJson<Envelope<NoPick>>("/today/no-pick"),
+  /** NOTICIAS (plan UX, A10): the match's verified news, confirmed first, rumours and the outdated last. */
+  matchNews: (id: string) => getJson<Envelope<MatchNews | null>>(`/matches/${id}/news`),
+  /** Home's «Noticias»: the confirmed or probable news of the suggested matches not yet over. */
+  todayNews: () => getJson<Envelope<TodayNews | null>>("/today/news"),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {

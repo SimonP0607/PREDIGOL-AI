@@ -150,6 +150,18 @@ export const live = {
   today: { queryKey: ["v1", "today"], queryFn: v1.today, refetchInterval: 2 * MINUTE },
   /** Why the day has no pick, for the Picks page: the server keeps it five minutes. */
   noPick: { queryKey: ["v1", "today", "no-pick"], queryFn: v1.noPick, refetchInterval: 5 * MINUTE },
+  /** A match's news change when PrediGol Intelligence reads the press again (hours apart; the last hours before kick-off). */
+  matchNews: (id: string) => ({
+    queryKey: ["v1", "match-news", id],
+    queryFn: () => v1.matchNews(id),
+    refetchInterval: 5 * MINUTE,
+  }),
+  /** Home's «Noticias»: the server keeps it two minutes. */
+  todayNews: {
+    queryKey: ["v1", "today", "news"],
+    queryFn: v1.todayNews,
+    refetchInterval: 5 * MINUTE,
+  },
   liveBoard: { queryKey: ["v1", "live"], queryFn: v1.liveBoard, refetchInterval: 15_000 },
   players: (q: { q?: string | undefined; team_id?: number | undefined }) => ({
     queryKey: ["v1", "players", q.q ?? "", q.team_id ?? 0],
