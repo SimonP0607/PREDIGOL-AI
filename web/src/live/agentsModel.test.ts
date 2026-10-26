@@ -26,6 +26,7 @@ import {
   orderedCounts,
   promotionLine,
   registryCounts,
+  registryKey,
   sliceLevel,
   slicesOver,
   syncState,
@@ -261,6 +262,27 @@ describe("the registry against the code", () => {
     ];
     expect(registryCounts(registry)).toEqual({ built: 3, planned: 2, postponed: 1, drift: 2 });
     expect(registryCounts([])).toEqual({ built: 0, planned: 0, postponed: 0, drift: 0 });
+  });
+
+  test("an agent that is built and planned at once - the extractor, the Post-Match Reviewer, the Learning Analyst - is two rows with two keys", () => {
+    // the registry of the code lists these three twice: the version in force and the one that grows out of it
+    const twice = ["extractor", "post_match_reviewer", "learning_analyst"];
+    const registry = [
+      agent({ agent: "brief" }),
+      ...twice.map((name) => agent({ agent: name })),
+      agent({ agent: "match", status: "planned", in_sync: null }),
+      ...twice.map((name) => agent({ agent: name, status: "planned", in_sync: null })),
+      agent({ agent: "player", status: "postponed", in_sync: null }),
+    ];
+    const keys = registry.map(registryKey);
+    expect(new Set(keys).size).toBe(registry.length);
+    expect(registryKey(agent({ agent: "extractor" }))).not.toBe(
+      registryKey(agent({ agent: "extractor", status: "planned", in_sync: null })),
+    );
+    // the same row is the same key, however often the page asks
+    expect(registryKey(agent({ agent: "extractor" }))).toBe(
+      registryKey(agent({ agent: "extractor" })),
+    );
   });
 });
 

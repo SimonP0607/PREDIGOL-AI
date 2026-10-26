@@ -125,6 +125,14 @@ export const ENGINE_TONE: Record<FamilyEngine["engine"], BadgeTone> = {
   agent: "brand",
 };
 
+/**
+ * What tells one row of the registry from another. An agent can be on it twice - built (the version in force) and planned (the one that grows
+ * out of it: the extractor, the Post-Match Reviewer and the Learning Analyst are) - so the name alone is not a key; the name and the status are.
+ */
+export function registryKey(a: Pick<AgentView, "agent" | "status">): string {
+  return `${a.agent}:${a.status}`;
+}
+
 export interface RegistryCounts {
   built: number;
   planned: number;

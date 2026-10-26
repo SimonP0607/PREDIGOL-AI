@@ -45,6 +45,7 @@ import {
   orderedCounts,
   promotionLine,
   registryCounts,
+  registryKey,
   sliceLevel,
   syncState,
   taskLine,
@@ -238,7 +239,7 @@ function RegistryPanel({ o }: { o: AgentsOverview }) {
           </THead>
           <tbody>
             {o.registry.map((a) => (
-              <RegistryRow key={a.agent} a={a} />
+              <RegistryRow key={registryKey(a)} a={a} />
             ))}
           </tbody>
         </TableShell>
