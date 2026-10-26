@@ -155,6 +155,14 @@ export default defineConfig({
       dependencies: ["setup"],
     },
     {
+      // Personalisation (plan UX, B2): two accounts with different favourites, the reasons at 320 px, the markets in the
+      // reader's order and the suggestion - on accounts the test makes and deletes.
+      name: "personal",
+      testMatch: /personal\.spec\.ts/,
+      use: desktop,
+      dependencies: ["setup"],
+    },
+    {
       name: "prefs",
       testMatch: /prefs\.spec\.ts/,
       fullyParallel: false,
