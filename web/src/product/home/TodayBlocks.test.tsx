@@ -17,7 +17,7 @@ import {
 import { setLocale } from "@/lib/i18n";
 import { setTimeZone } from "@/lib/time";
 import { LiveApiError } from "@/lib/api/v1/client";
-import type { Today, TodayMatch } from "@/lib/api/v1/types_today";
+import type { Following, Today, TodayMatch } from "@/lib/api/v1/types_today";
 import {
   ContextBlock,
   RelevantBlock,
@@ -215,7 +215,7 @@ describe("6 · Resultados", () => {
 });
 
 describe("A13 · Hoy en tus ligas", () => {
-  const following = (over: Partial<NonNullable<Today["following"]>> = {}): Today["following"] => ({
+  const following = (over: Partial<Following> = {}): Following => ({
     suggested: false,
     personalization: true,
     leagues: [{ id: 1, name: "Liga BetPlay", country: "Colombia", logo_url: null, flag_url: null }],
@@ -223,7 +223,7 @@ describe("A13 · Hoy en tus ligas", () => {
     next: [],
     ...over,
   });
-  const mine = (matches: TodayMatch[], f: Today["following"]): Today => ({
+  const mine = (matches: TodayMatch[], f: Following): Today => ({
     ...board(matches),
     following: f,
   });

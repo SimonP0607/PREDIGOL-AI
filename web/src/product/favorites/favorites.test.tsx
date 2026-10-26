@@ -20,8 +20,10 @@ import { FavoritesPicker } from "./FavoritesPicker";
 import {
   byCountry,
   changes,
+  chosenIn,
   fold,
   full,
+  leagueMatches,
   searchable,
   toggleLeague,
   toggleTeam,
@@ -83,6 +85,17 @@ describe("the picker's rules", () => {
     expect(groups.map((g) => g.country)).toEqual(["Colombia", "Italy", "Spain", null]);
     expect(groups[0]?.leagues.map((l) => l.name)).toEqual(["Liga BetPlay", "Primera B"]);
     expect(groups[3]?.leagues.map((l) => l.name)).toEqual(["Champions", "Libertadores"]);
+  });
+
+  test("a league is found by its name or its country; a country's row counts what is chosen", () => {
+    const premier = league(2, "Premier League", "England");
+    expect(leagueMatches(premier, "premier")).toBe(true);
+    expect(leagueMatches(premier, "ENGL")).toBe(true);
+    expect(leagueMatches(league(3, "Liga BetPlay"), "betplay")).toBe(true);
+    expect(leagueMatches(premier, "serie")).toBe(false);
+    expect(leagueMatches(premier, "  ")).toBe(false);
+    const c: Choice = { leagues: [premier], teams: [] };
+    expect(chosenIn(c, [premier, league(4, "Championship", "England")])).toBe(1);
   });
 
   test("the search as the API folds it: no accents, no case, two letters or more", () => {

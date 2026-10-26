@@ -24,12 +24,11 @@
     "failed": "We could not save. Try again or skip this step."
   },
   "picker": {
-    "searchLabel": "Find a team",
+    "searchLabel": "Find a league or a team",
     "searchPlaceholder": "Type at least two letters",
     "searching": "Looking for teams…",
     "found_one": "{count} team found",
     "found_other": "{count} teams found",
-    "noTeams": "No team of the leagues we follow has that name.",
     "leagues": "Leagues",
     "teams": "Teams",
     "chosen": "Your choice",
@@ -40,7 +39,16 @@
     "remove": "Remove {name}",
     "international": "International",
     "noneChosen": "No league or team picked yet: Home will show the suggested ones.",
-    "loading": "Loading the leagues…"
+    "loading": "Loading the leagues…",
+    "byCountry": "Leagues by country",
+    "groupCount_one": "{count} league",
+    "groupCount_other": "{count} leagues",
+    "groupChosen_one": "{count} chosen",
+    "groupChosen_other": "{count} chosen",
+    "foundLeagues_one": "{count} league",
+    "foundLeagues_other": "{count} leagues",
+    "noneFound": "No league or team we follow has that name.",
+    "teamsHint": "To follow a team, find it by its name."
   },
   "panel": {
     "title": "Your football",

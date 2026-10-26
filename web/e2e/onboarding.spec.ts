@@ -328,7 +328,12 @@ test("the picker on a 320 px phone: nothing sideways, every control in a finger'
     // the keyboard alone: the search, a league's toggle (Space), the save (Enter)
     await page.getByTestId("fav-search").focus();
     await expect(page.getByTestId("fav-search")).toBeFocused();
-    const league = page.getByTestId("fav-league").last();
+    // a folded country opens with Enter; a league's toggle changes with Space
+    const closed = page.locator('[data-testid="fav-country"]:not([open])').first();
+    await closed.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(closed).toHaveAttribute("open", "");
+    const league = closed.getByTestId("fav-league").first();
     const before = await league.getAttribute("aria-pressed");
     await league.focus();
     await page.keyboard.press("Space");

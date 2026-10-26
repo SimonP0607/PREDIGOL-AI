@@ -24,12 +24,11 @@
     "failed": "No pudimos guardar. Inténtalo de nuevo o salta este paso."
   },
   "picker": {
-    "searchLabel": "Busca un equipo",
+    "searchLabel": "Busca una liga o un equipo",
     "searchPlaceholder": "Escribe al menos dos letras",
     "searching": "Buscando equipos…",
     "found_one": "{count} equipo encontrado",
     "found_other": "{count} equipos encontrados",
-    "noTeams": "Ningún equipo de las ligas que seguimos se llama así.",
     "leagues": "Ligas",
     "teams": "Equipos",
     "chosen": "Tu selección",
@@ -40,7 +39,16 @@
     "remove": "Quitar {name}",
     "international": "Internacionales",
     "noneChosen": "Aún no eliges ninguna liga ni equipo: Inicio te mostrará las sugeridas.",
-    "loading": "Cargando las ligas…"
+    "loading": "Cargando las ligas…",
+    "byCountry": "Ligas por país",
+    "groupCount_one": "{count} liga",
+    "groupCount_other": "{count} ligas",
+    "groupChosen_one": "{count} elegida",
+    "groupChosen_other": "{count} elegidas",
+    "foundLeagues_one": "{count} liga",
+    "foundLeagues_other": "{count} ligas",
+    "noneFound": "Ninguna liga ni equipo de los que seguimos se llama así.",
+    "teamsHint": "Para seguir a un equipo, búscalo por su nombre."
   },
   "panel": {
     "title": "Tu fútbol",

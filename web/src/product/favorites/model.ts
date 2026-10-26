@@ -141,3 +141,15 @@ export function fold(text: string): string {
 export function searchable(q: string): boolean {
   return fold(q.trim()).length >= 2;
 }
+
+/** A league the search names: its name or its country, without accents or case. */
+export function leagueMatches(league: CompetitionBadge, q: string): boolean {
+  const want = fold(q.trim());
+  if (!want) return false;
+  return fold(league.name).includes(want) || fold(league.country ?? "").includes(want);
+}
+
+/** How many of a group's leagues the reader chose. */
+export function chosenIn(choice: Choice, leagues: readonly CompetitionBadge[]): number {
+  return leagues.filter((l) => hasLeague(choice, l.id)).length;
+}
