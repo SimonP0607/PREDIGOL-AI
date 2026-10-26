@@ -3,7 +3,8 @@
  * of news and about whom), the status and the relevance with their explanations, the source's standing in words, the time
  * - relative, a day when the source gave only the day, or when PrediGol saw it -, PrediGol's own summary or, when it could
  * not be sent, a sentence written from the card's kind, player, team and source; and the groups of the order (confirmed and
- * probable, contradictions, rumours, the outdated).
+ * probable, contradictions, rumours, the outdated). From A11 the API may send the card's own headline in both languages and the
+ * summary in English, checked where they were written: shown when the page is in that language, the words above otherwise.
  */
 import { getLocale, t } from "@/lib/i18n";
 import { formatDate, formatDateTime, formatRelative, getTimeZone, relativeDay } from "@/lib/time";
@@ -38,8 +39,13 @@ export function who(item: Pick<NewsItem, "player" | "team">): string | null {
   return item.player ?? item.team?.name ?? null;
 }
 
-/** The headline: the kind and its protagonist - «Baja por lesión · Bruno Fernandes (Manchester United)». */
+/**
+ * The headline: PrediGol's own one in the page's language when the API sends it (A11; never for a contradiction), otherwise
+ * the kind and its protagonist - «Baja por lesión · Bruno Fernandes (Manchester United)».
+ */
 export function headline(item: NewsItem): string {
+  const own = getLocale() === "es" ? item.headline_es : item.headline_en;
+  if (own) return own;
   const first = item.claims[0];
   const label =
     item.claims.length > 1 || !first
@@ -91,10 +97,12 @@ export function whenTitle(at: {
 }
 
 /**
- * PrediGol's own summary, or - when it could not be sent (it did not read as Spanish, or it repeated the source's title) - a
- * sentence from the card's facts: «Bruno Fernandes (Manchester United) no jugará, según as.com.» Never empty.
+ * PrediGol's own summary - in English on an English page when the API sends its translation (A11) - or, when it could not be
+ * sent (it did not read as Spanish, or it repeated the source's title), a sentence from the card's facts: «Bruno Fernandes
+ * (Manchester United) no jugará, según as.com.» Never empty.
  */
 export function summary(item: Pick<NewsItem, "player" | "team">, claim: NewsClaim): string {
+  if (getLocale() !== "es" && claim.text_en) return claim.text_en;
   if (claim.text) return claim.text;
   const source = claim.sources[0]?.name ?? t("match.news.someSource");
   const person = item.player ? who(item) : null;
@@ -105,9 +113,15 @@ export function summary(item: Pick<NewsItem, "player" | "team">, claim: NewsClai
   });
 }
 
+/** The language of the summary shown, for its element: Spanish unless it is the English translation or the card's own words. */
+export function summaryLang(claim: NewsClaim): "es" | undefined {
+  if (getLocale() !== "es" && claim.text_en) return undefined;
+  return claim.text ? "es" : undefined;
+}
+
 /** Whether the summary shown is the Spanish one on a page in another language: it is labelled «(in Spanish)». */
 export function shownInSpanish(claim: NewsClaim): boolean {
-  return claim.text !== null && getLocale() !== "es";
+  return claim.text !== null && getLocale() !== "es" && !claim.text_en;
 }
 
 export type NewsGroup = "verified" | "contradictory" | "rumor" | "outdated";

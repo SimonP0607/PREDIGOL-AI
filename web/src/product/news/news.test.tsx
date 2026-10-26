@@ -21,6 +21,7 @@ import {
   homeNews,
   pressAbsences,
   shownInSpanish,
+  summaryLang,
   statusHelp,
   statusLabel,
   summary,
@@ -188,6 +189,40 @@ describe("the headline, the time and the summary", () => {
     expect(summary(own, { ...unsent, assertion: "doubtful" })).toBe(
       "Baba Diocou (Tenerife) is doubtful, according to sport.es.",
     );
+  });
+
+  test("the card's own headline and the English summary (A11) in their language, the words of A10 otherwise", () => {
+    const own = item({
+      headline_es: "Baba Diocou, baja por lesión",
+      headline_en: "Baba Diocou out injured",
+    });
+    const translated = {
+      ...own.claims[0]!,
+      text_en: "According to Sport, Baba Diocou is out injured.",
+    };
+    expect(headline(own)).toBe("Baba Diocou, baja por lesión");
+    expect(summary(own, translated)).toBe(own.claims[0]!.text!);
+    expect(summaryLang(translated)).toBe("es");
+    setLocale("en");
+    expect(headline(own)).toBe("Baba Diocou out injured");
+    expect(headline(item({ headline_es: "Solo en español" }))).toBe(
+      "Out injured · Baba Diocou (Tenerife)",
+    );
+    expect(summary(own, translated)).toBe("According to Sport, Baba Diocou is out injured.");
+    expect(shownInSpanish(translated)).toBe(false);
+    expect(summaryLang(translated)).toBeUndefined();
+    const html = renderToStaticMarkup(
+      <NewsView
+        load={{
+          status: "success",
+          envelope: ok([{ ...own, claims: [translated] }]),
+        }}
+        now={NOW}
+      />,
+    );
+    expect(text(html)).toContain("According to Sport, Baba Diocou is out injured.");
+    expect(text(html)).toContain("Baba Diocou out injured");
+    expect(text(html)).not.toContain("(in Spanish)");
   });
 
   test("the Spanish summary is labelled on an English page, and only there", () => {

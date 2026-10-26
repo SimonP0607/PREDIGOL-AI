@@ -25,6 +25,7 @@ import {
   headline,
   kindLabel,
   shownInSpanish,
+  summaryLang,
   sourceLine,
   statusHelp,
   statusLabel,
@@ -133,7 +134,7 @@ function ClaimView({
       <p
         className="text-sm leading-relaxed text-foreground/90"
         data-testid="news-summary"
-        lang={claim.text ? "es" : undefined}
+        lang={summaryLang(claim)}
       >
         {summary(item, claim)}
         {shownInSpanish(claim) ? (

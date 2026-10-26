@@ -6,12 +6,22 @@
  * Every state shows: loading, an error with its reference and a retry, the owner having turned it off (said, not hidden) and a
  * partial reading when PrediGol has not gathered the match's context yet. The conclusion carries its caveat: a probability is
  * not a recommendation, and a PrediGol pick is published apart.
+ *
+ * THE NARRATIVE (A11). When the API sends one - written by PrediGol's AI from these very facts and checked sentence by sentence
+ * before it was stored - the block shows it instead, in the page's language: «Redactado con IA y validado contra los datos de
+ * PrediGol», «Escrito con datos de las 12:30». The conclusion comes first and the other sections fold (open on a wide screen,
+ * the summary open on a phone). Without one, the facts: never a text the server did not validate.
  */
-import { useId, type ReactNode } from "react";
-import { BookOpenText, ChevronRight, TriangleAlert } from "lucide-react";
-import { t } from "@/lib/i18n";
+import { useEffect, useId, useState, type ReactNode } from "react";
+import { BookOpenText, ChevronDown, ChevronRight, Sparkles, TriangleAlert } from "lucide-react";
+import { getLocale, t } from "@/lib/i18n";
 import { formatDateTime, formatTime, relativeDay } from "@/lib/time";
-import type { ReadingFact, ReadingSection } from "@/lib/api/v1/types_reading";
+import type {
+  NarrativeSection,
+  ReadingFact,
+  ReadingNarrative,
+  ReadingSection,
+} from "@/lib/api/v1/types_reading";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "@/product/match/context";
 import { factText } from "./text";
@@ -22,6 +32,27 @@ function dataAt(iso: string): string {
   return relativeDay(iso) === "today"
     ? t("match.readingBlock.dataAt", { time: formatTime(iso) })
     : t("match.readingBlock.dataAtDay", { date: formatDateTime(iso) });
+}
+
+/** The narrative's time: «Escrito con datos de las 12:30», or of a day. */
+function writtenAt(iso: string): string {
+  return relativeDay(iso) === "today"
+    ? t("match.readingBlock.narrative.writtenAt", { time: formatTime(iso) })
+    : t("match.readingBlock.narrative.writtenAtDay", { date: formatDateTime(iso) });
+}
+
+/** A screen at least as wide as a tablet, read after the first paint (the server cannot know it). */
+function useWide(): boolean {
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia("(min-width: 768px)");
+    setWide(query.matches);
+    const changed = (e: MediaQueryListEvent) => setWide(e.matches);
+    query.addEventListener?.("change", changed);
+    return () => query.removeEventListener?.("change", changed);
+  }, []);
+  return wide;
 }
 
 function sentences(facts: ReadingFact[]): Array<{ fact: ReadingFact; text: string }> {
@@ -77,6 +108,110 @@ function SectionView({ section }: { section: ReadingSection }) {
   );
 }
 
+function SectionNotes({ keyName, priced }: { keyName: string; priced: boolean }) {
+  return (
+    <>
+      {keyName === "market" && priced ? <Note>{t("match.readingBlock.marketNote")}</Note> : null}
+      {keyName === "conclusion" ? (
+        <Note testId="reading-caveat">{t("match.readingBlock.caveat")}</Note>
+      ) : null}
+    </>
+  );
+}
+
+function Sentences({ section }: { section: NarrativeSection }) {
+  return (
+    <div className="space-y-1.5">
+      {section.sentences.map((s, i) => (
+        <p
+          key={i}
+          data-testid="narrative-sentence"
+          data-refs={s.refs.join(" ")}
+          className="text-sm leading-relaxed text-foreground/90"
+        >
+          {s.text}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** One section of the narrative, folded under its title (a 44 px row); the conclusion is never folded. */
+function NarrativeFold({
+  section,
+  open,
+  priced,
+}: {
+  section: NarrativeSection;
+  open: boolean;
+  priced: boolean;
+}) {
+  return (
+    <details
+      open={open}
+      data-testid={`narrative-section-${section.key}`}
+      className="group border-t border-border pt-1 first:border-t-0"
+    >
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+        <h3 className="min-w-0 break-words">{t(`match.readingBlock.sections.${section.key}`)}</h3>
+        <ChevronDown
+          aria-hidden
+          className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="space-y-2 pb-2">
+        <Sentences section={section} />
+        <SectionNotes keyName={section.key} priced={priced} />
+      </div>
+    </details>
+  );
+}
+
+/** The narrative in the page's language: the conclusion first, then the other sections, each folding. */
+export function NarrativeBody({
+  narrative,
+  priced,
+}: {
+  narrative: ReadingNarrative;
+  priced: boolean;
+}) {
+  const wide = useWide();
+  const sections = getLocale() === "es" ? narrative.es : narrative.en;
+  const conclusion = sections.find((s) => s.key === "conclusion");
+  const rest = sections.filter((s) => s.key !== "conclusion");
+  const id = useId();
+  return (
+    <div className="space-y-3" data-testid="reading-narrative" data-version={narrative.version}>
+      {conclusion ? (
+        <section
+          aria-labelledby={id}
+          data-testid="narrative-section-conclusion"
+          className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5"
+        >
+          <h3
+            id={id}
+            className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+          >
+            {t("match.readingBlock.sections.conclusion")}
+          </h3>
+          <Sentences section={conclusion} />
+          <SectionNotes keyName="conclusion" priced={priced} />
+        </section>
+      ) : null}
+      <div>
+        {rest.map((s) => (
+          <NarrativeFold
+            key={s.key}
+            section={s}
+            open={wide || s.key === "summary"}
+            priced={priced}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Note({ children, testId }: { children: ReactNode; testId?: string }) {
   return (
     <p className="text-caption leading-snug text-subtle-foreground" data-testid={testId}>
@@ -89,10 +224,13 @@ function Frame({
   titleId,
   children,
   right,
+  label,
 }: {
   titleId: string;
   children: ReactNode;
   right?: ReactNode;
+  /** The line under the title: how the reading was written. */
+  label?: ReactNode;
 }) {
   return (
     <section
@@ -109,7 +247,9 @@ function Frame({
             <BookOpenText aria-hidden className="h-4 w-4 shrink-0 text-primary" />
             <span className="min-w-0 break-words">{t("match.readingBlock.title")}</span>
           </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t("match.readingBlock.label")}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground" data-testid="reading-label">
+            {label ?? t("match.readingBlock.label")}
+          </p>
         </div>
         {right}
       </header>
@@ -150,6 +290,33 @@ export function ReadingView({ load }: { load: ReadingLoad }) {
         >
           {t("match.readingBlock.unavailable")}
         </p>
+      </Frame>
+    );
+  }
+  const narrative = reading.narrative ?? null;
+  if (narrative) {
+    const priced = reading.sections.some(
+      (s) => s.key === "market" && s.facts.some((f) => f.code !== "market_unpriced"),
+    );
+    return (
+      <Frame
+        titleId={titleId}
+        label={
+          <span className="inline-flex items-start gap-1">
+            <Sparkles aria-hidden className="mt-0.5 h-3 w-3 shrink-0" />
+            {t("match.readingBlock.narrative.label")}
+          </span>
+        }
+        right={
+          <span
+            className="shrink-0 text-right text-caption text-subtle-foreground"
+            data-testid="reading-data-at"
+          >
+            {writtenAt(narrative.data_at)}
+          </span>
+        }
+      >
+        <NarrativeBody narrative={narrative} priced={priced} />
       </Frame>
     );
   }

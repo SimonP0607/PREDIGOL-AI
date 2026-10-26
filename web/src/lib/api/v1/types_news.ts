@@ -1,7 +1,8 @@
 /**
  * The news (plan UX, A10; section 27), as the API returns them. Mirrors fbi.api.contracts.news: per card PrediGol's own
  * summary (Spanish; never the article's words or title), the sources with their standing, the time, the relevance for the
- * match, the status the server decided and the link to the original.
+ * match, the status the server decided and the link to the original - and, from A11, the card's own headline in Spanish and
+ * English and the summary in English, checked one by one where they were written (null while there are none).
  */
 import type { Iso } from "./types";
 
@@ -53,6 +54,8 @@ export interface NewsClaim {
   /** PrediGol's own summary in Spanish; null when it could not be sent - the page words it from kind, player and team. */
   text: string | null;
   lang: "es";
+  /** The same summary in English (A11); null when there is none: the English page shows the Spanish, labelled. */
+  text_en?: string | null;
   assertion: NewsAssertion;
   sources: NewsSource[];
 }
@@ -66,6 +69,9 @@ export interface NewsItem {
   player: string | null;
   /** One; two or more when the sources contradict each other. */
   claims: NewsClaim[];
+  /** PrediGol's own headline (A11), at most 80 characters; null for a contradiction and while there is none. */
+  headline_es?: string | null;
+  headline_en?: string | null;
   published_at: Iso | null;
   published_day_only: boolean;
   seen_at: Iso;

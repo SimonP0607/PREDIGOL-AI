@@ -866,6 +866,11 @@
       "market": "Mercado",
       "risks": "Riesgos",
       "conclusion": "Conclusión de PrediGol"
+    },
+    "narrative": {
+      "label": "Redactado con IA y validado contra los datos de PrediGol",
+      "writtenAt": "Escrito con datos de las {time}",
+      "writtenAtDay": "Escrito con datos del {date}"
     }
   },
   "facts": {

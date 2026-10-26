@@ -866,6 +866,11 @@
       "market": "Market",
       "risks": "Risks",
       "conclusion": "PrediGol's conclusion"
+    },
+    "narrative": {
+      "label": "Written with AI and checked against PrediGol's data",
+      "writtenAt": "Written with data as of {time}",
+      "writtenAtDay": "Written with data as of {date}"
     }
   },
   "facts": {

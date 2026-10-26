@@ -13,7 +13,13 @@ import { TD, TH, THead, TRow, TableShell, TableSkeleton } from "@/components/pri
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
-import type { AiCostPeriod, AiCosts, AiEfficiency, AiOverview } from "@/lib/api/v1/types_ai_layer";
+import type {
+  AiCostPeriod,
+  AiCosts,
+  AiEfficiency,
+  AiOverview,
+  AiUserView,
+} from "@/lib/api/v1/types_ai_layer";
 import { LevelBadge, MonthBar, Note, Stat, StatGrid, SubTitle, type StatTone } from "./AiBits";
 import {
   LEVELS,
@@ -98,6 +104,51 @@ function BudgetCard({ o }: { o: AiOverview }) {
             })}
           </Note>
         ) : null}
+      </div>
+    </Panel>
+  );
+}
+
+/**
+ * The readers' AI (plan UX, A11): the narrative's switch, its OWN budget - apart from the one above, which it never touches - and
+ * what it wrote today. With the budget at 0 it never spends; the owner approves it (P8).
+ */
+export function UserAiCard({ u }: { u: AiUserView }) {
+  const b = u.budget;
+  const today = u.today;
+  return (
+    <Panel title={t("ai.layer.userAi.title")} subtitle={t("ai.layer.userAi.subtitle")}>
+      <div className="space-y-4" data-testid="ai-user-card">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <StatusBadge
+            tone={u.mode === "on" ? "positive" : u.mode === "shadow" ? "warning" : "neutral"}
+          >
+            {t(`ai.layer.userAi.mode.${u.mode}`)}
+          </StatusBadge>
+          <StatusBadge tone={budgetTone(b.state)}>
+            {translateOr(`ai.layer.budget.${b.state}`, b.state)}
+          </StatusBadge>
+          <span className="text-xs text-muted-foreground">
+            {t(`ai.layer.userAi.modeHelp.${u.mode}`)}
+          </span>
+        </div>
+        <StatGrid className="lg:grid-cols-3">
+          <Stat label={t("ai.layer.budgetCard.monthly")} value={usd(b.monthly_budget_usd)} />
+          <Stat label={t("ai.layer.budgetCard.spentToday")} value={usd(b.spent_today_usd)} />
+          <Stat label={t("ai.layer.budgetCard.spentMonth")} value={usd(b.spent_month_usd)} />
+          <Stat label={t("ai.layer.userAi.written")} value={localInt(today.ok ?? 0)} />
+          <Stat
+            label={t("ai.layer.userAi.refused")}
+            value={localInt((today.rejected ?? 0) + (today.failed ?? 0))}
+            hint={t("ai.layer.userAi.refusedHint")}
+          />
+          <Stat
+            label={t("ai.layer.userAi.translations")}
+            value={localInt(today.translations ?? 0)}
+          />
+        </StatGrid>
+        <MonthBar spent={b.spent_month_usd} budget={b.monthly_budget_usd} alerts={[]} />
+        <Note>{t("ai.layer.userAi.apart")}</Note>
       </div>
     </Panel>
   );
@@ -533,6 +584,7 @@ export function CostsView() {
             <BudgetCard o={o} />
             <StackCard o={o} />
           </div>
+          {o.user_ai ? <UserAiCard u={o.user_ai} /> : null}
           <EfficiencyPanel e={o.efficiency} />
         </>
       ) : overview.isLoading ? (

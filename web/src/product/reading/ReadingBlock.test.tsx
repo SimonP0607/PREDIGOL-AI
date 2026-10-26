@@ -125,6 +125,105 @@ describe("the reading's states", () => {
   });
 });
 
+const NARRATIVE: MatchReading["narrative"] = {
+  version: "user-narrative-v1",
+  written_at: "2026-10-25T10:40:00Z",
+  data_at: "2026-10-25T10:30:00Z",
+  es: [
+    {
+      key: "summary",
+      sentences: [{ text: "Partido de la Liga BetPlay en Medellín.", refs: ["P:fixture"] }],
+    },
+    {
+      key: "risks",
+      sentences: [{ text: "Las alineaciones aún no están confirmadas.", refs: ["P:lineups"] }],
+    },
+    {
+      key: "conclusion",
+      sentences: [
+        {
+          text: "Lo más probable según PrediGol es la victoria de Nacional (48 %, sin calibrar).",
+          refs: ["P:forecast.1X2"],
+        },
+      ],
+    },
+  ],
+  en: [
+    {
+      key: "summary",
+      sentences: [{ text: "A Liga BetPlay match in Medellín.", refs: ["P:fixture"] }],
+    },
+    {
+      key: "risks",
+      sentences: [{ text: "The line-ups are not confirmed yet.", refs: ["P:lineups"] }],
+    },
+    {
+      key: "conclusion",
+      sentences: [
+        {
+          text: "PrediGol's most likely outcome is a Nacional win (48 %, uncalibrated).",
+          refs: ["P:forecast.1X2"],
+        },
+      ],
+    },
+  ],
+};
+
+describe("the narrative (A11)", () => {
+  test("shown instead of the facts, labelled as written with AI and checked, with the time of its data", () => {
+    const html = renderToStaticMarkup(
+      <ReadingView load={ok({ ...READING, narrative: NARRATIVE })} />,
+    );
+    expect(html).toContain('data-testid="reading-narrative"');
+    expect(html).toContain("Redactado con IA y validado contra los datos de PrediGol");
+    expect(html).not.toContain("Lectura automática con los datos de PrediGol");
+    expect(html).toContain("Escrito con datos de");
+    expect(html).toContain(
+      "Lo más probable según PrediGol es la victoria de Nacional (48 %, sin calibrar).",
+    );
+    expect(html).not.toContain('data-testid="reading-fact"');
+    expect(html).toContain('data-refs="P:forecast.1X2"');
+    expect(html).toContain('data-testid="reading-caveat"');
+  });
+
+  test("the conclusion first, never folded; the other sections fold, the summary open on a phone", () => {
+    const html = renderToStaticMarkup(
+      <ReadingView load={ok({ ...READING, narrative: NARRATIVE })} />,
+    );
+    const conclusion = html.indexOf('data-testid="narrative-section-conclusion"');
+    const summary = html.indexOf('data-testid="narrative-section-summary"');
+    const risks = html.indexOf('data-testid="narrative-section-risks"');
+    expect(conclusion).toBeGreaterThan(-1);
+    expect(conclusion).toBeLessThan(summary);
+    expect(summary).toBeLessThan(risks);
+    expect(html).toMatch(/<details open=""[^>]*data-testid="narrative-section-summary"/);
+    expect(html).toMatch(/<details[^>]*data-testid="narrative-section-risks"/);
+    expect(html).not.toMatch(/<details open=""[^>]*data-testid="narrative-section-risks"/);
+    expect(html).not.toMatch(/<details[^>]*data-testid="narrative-section-conclusion"/);
+  });
+
+  test("in the page's language", () => {
+    setLocale("en");
+    const html = renderToStaticMarkup(
+      <ReadingView load={ok({ ...READING, narrative: NARRATIVE })} />,
+    );
+    expect(html).toContain("Written with AI and checked against PrediGol&#x27;s data");
+    expect(html).toContain(
+      "PrediGol&#x27;s most likely outcome is a Nacional win (48 %, uncalibrated).",
+    );
+    expect(html).not.toContain("sin calibrar");
+  });
+
+  test("without a narrative - or with null - the facts, as A9 shows them", () => {
+    for (const reading of [{ ...READING, narrative: null }, READING]) {
+      const html = renderToStaticMarkup(<ReadingView load={ok(reading)} />);
+      expect(html).not.toContain('data-testid="reading-narrative"');
+      expect(html).toContain("Lectura automática con los datos de PrediGol");
+      expect(html).toContain('data-testid="reading-fact"');
+    }
+  });
+});
+
 describe("the Resumen's highlights", () => {
   test("the summary and the two main risks, with the way to the whole analysis", () => {
     const html = renderToStaticMarkup(

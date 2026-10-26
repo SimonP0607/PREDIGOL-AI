@@ -280,6 +280,25 @@ export interface AiOverview {
   stack?: AiStackRow[];
   efficiency?: AiEfficiency;
   day?: AiDayPlan | null;
+  /** The readers' AI (plan UX, A11), apart from the budget above. Older answers omit it. */
+  user_ai?: AiUserView;
+}
+
+/** The readers' narrative: its switch, its own budget (FBI_AI_USER_MONTHLY_BUDGET_USD) and what it wrote today. */
+export interface AiUserView {
+  mode: "off" | "shadow" | "on";
+  budget: {
+    state: string;
+    monthly_budget_usd: string;
+    spent_month_usd: string;
+    spent_today_usd: string;
+    daily_budget_usd: string;
+    daily_cap_usd: string;
+    remaining_month_usd: string;
+    days_left: number;
+    day: string | null;
+  };
+  today: { ok?: number; rejected?: number; failed?: number; translations?: number; calls?: number };
 }
 
 export interface AiReviewRow {
