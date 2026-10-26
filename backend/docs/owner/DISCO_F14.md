@@ -79,7 +79,7 @@ no se ha podido medir: cada día de esta semana tuvo uno o más despliegues (ima
 además ≈ 0,8 GB al día con los rellenos en marcha (medido el 25 y 26-oct; documento «ALMACENAMIENTO_PREDIGOL» del Proyecto). **Lo que cambia la conclusión:**
 si la cola de despliegues sigue a este ritmo, los ≈ 80 GB libres llegan al 90 % en unas dos semanas. La poda de imágenes viejas y de la caché
 de construcción (≈ 21 GB, regenerable) no depende de tener la copia fuera del servidor y es lo primero que conviene hacer; los volúmenes
-(54 GB) siguen esperando la copia en R2 y tu «sí». Desde que se despliegue, `bin/storage-report.sh` medirá el ritmo cuatro veces al día.
+(54 GB) siguen esperando la copia en R2 y tu «sí». Desde que se despliegue, `deploy/vps/bin/storage-report.sh` medirá el ritmo cuatro veces al día.
 
 ## 5. Lo que se puede quitar (tuyo; yo no lo hago sin que me lo pidas)
 
