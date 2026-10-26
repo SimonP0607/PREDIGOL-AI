@@ -142,3 +142,40 @@ def test_the_furthest_stage_and_its_commonest_reason() -> None:
               Stage("context", 0, 0), Stage("selection", 0, 0)]
     assert service.deepest(stages) == ("risk", "odds_above_cap"), "the furthest stage anything entered"
     assert service.deepest([Stage("data", 0, 0)]) == (None, None)
+
+
+INTELLIGENCE = ("picks", "intel", "models", "ai", "market", "core", "raw")
+CHANGES_SQL = """
+SELECT schemaname || '.' || relname AS t, n_tup_ins + n_tup_upd + n_tup_del AS n
+  FROM pg_stat_xact_user_tables WHERE schemaname = ANY(%(s)s)
+"""
+
+
+def changes(db: psycopg.Connection[Any]) -> dict[str, int]:
+    """What this transaction has inserted, updated or deleted so far in each table of PrediGol Intelligence and its data."""
+    return {str(r[0]): int(r[1]) for r in db.execute(CHANGES_SQL, {"s": list(INTELLIGENCE)}).fetchall()}
+
+
+def test_the_layer_for_readers_consumes_the_intelligence_and_never_alters_it(
+        db: psycopg.Connection[Any], world: World, seed: Seed, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
+    """Plan UX, A9: Inicio, the day's reason and a match's reading read; not a row of a pick, a candidate, a decision, a
+    forecast, a packet or the data changes while they answer (the rule that picks is the same before and after)."""
+    db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+    now = datetime.now(UTC)
+    upcoming = world.fixture(now + timedelta(hours=3))
+    for model in ("poisson", "dixon_coles"):
+        world.predict_all(upcoming, model)
+    world.write(upcoming, at=now - timedelta(hours=1))
+    db.execute("INSERT INTO ai.match_packets (fixture_id, packet_version, as_of, built_at, packet_hash, content) "
+               "VALUES (%s, 'packet-v8', %s, %s, %s, %s)",
+               (upcoming, now - timedelta(hours=2), now - timedelta(hours=2), "c" * 64,
+                Jsonb({"fixture": {"home": {"name": "A"}, "away": {"name": "B"}}})))
+    before = changes(db)
+    assert before.get("ai.match_packets", 0) >= 1, "the transaction's own writes are counted"
+    api = client(db, monkeypatch)
+    for path in ("/api/v1/today", "/api/v1/today/no-pick", f"/api/v1/matches/{upcoming}/reading",
+                 f"/api/v1/matches/{upcoming}/forecast"):
+        assert api.get(path).status_code == 200, path
+    after = changes(db)
+    altered = {t: after[t] - before.get(t, 0) for t in after if after[t] != before.get(t, 0)}
+    assert altered == {}, f"the reader's layer wrote to {altered}"
