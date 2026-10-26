@@ -47,6 +47,8 @@ export interface Me {
   welcome_steps?: string[];
   /** The first-visit hints the reader dismissed (picks, match, parlay, my_picks): never shown again. */
   hints_seen?: string[];
+  /** A reader can write to PrediGol from the page (plan UX, A14; FBI_SUPPORT): «Reportar un problema». */
+  support?: boolean;
 }
 
 export interface MfaEnrollment {

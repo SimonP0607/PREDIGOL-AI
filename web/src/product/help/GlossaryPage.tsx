@@ -24,7 +24,6 @@ import {
 } from "@/lib/glossary";
 import { PageTitle } from "@/product/shared/States";
 import { ExplainLayers } from "@/product/shared/ExplainLayers";
-import { TourStart } from "@/product/tour/Tour";
 
 export function GlossaryPage() {
   const [query, setQuery] = useState("");
@@ -35,8 +34,6 @@ export function GlossaryPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5" data-testid="glossary-page">
       <PageTitle title={t("glossary.page.title")} subtitle={t("glossary.page.subtitle")} />
-      {/* Plan UX, A13: the optional four-step tour starts from the help (this page until /help arrives, A14). */}
-      <TourStart />
       <ExplainLayers />
       <div className="sticky top-sticky z-10 -mx-1 bg-background/95 px-1 py-2 backdrop-blur">
         <label className="relative block">

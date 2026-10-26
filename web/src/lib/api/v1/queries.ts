@@ -22,6 +22,15 @@ export const live = {
     queryFn: () => v1.favoriteOptions(q),
     staleTime: 10 * MINUTE,
   }),
+  /** Help and support (plan UX, A14): the reader's tickets, the categories and the contact. */
+  support: { queryKey: ["me", "support"], queryFn: v1.mySupport, staleTime: MINUTE },
+  /** Public: the way to reach PrediGol without signing in. */
+  supportContact: {
+    queryKey: ["support", "contact"],
+    queryFn: v1.supportContact,
+    staleTime: 30 * MINUTE,
+    retry: false,
+  },
 
   // ── product ───────────────────────────────────────────────────────────────
   home: (preview: Preview) => ({

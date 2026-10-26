@@ -30,7 +30,8 @@
     "messages": "Mensajes",
     "product": "Producto",
     "audit": "Auditoría",
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "support": "Soporte"
   },
   "pages": {
     "overview": {
@@ -221,7 +222,9 @@
     "template": {
       "privacy_request_received": "Acuse de una solicitud de privacidad",
       "privacy_request_answered": "Respuesta a una solicitud de privacidad",
-      "legal_change": "Cambio de un texto legal"
+      "legal_change": "Cambio de un texto legal",
+      "support_ticket_received": "Acuse de un mensaje a soporte",
+      "support_ticket_answered": "Respuesta a un mensaje de soporte"
     }
   },
   "product": {

@@ -17,6 +17,7 @@ import {
   Gauge,
   House,
   Layers,
+  LifeBuoy,
   LineChart,
   ListChecks,
   Mail,
@@ -63,6 +64,7 @@ export const adminNav: Array<{ label: string; items: NavItem[] }> = [
       { to: "/admin/picks", label: "admin.nav.picks", icon: ListChecks },
       { to: "/admin/performance", label: "admin.nav.performance", icon: LineChart },
       { to: "/admin/odds", label: "admin.nav.odds", icon: TrendingUp },
+      { to: "/admin/support", label: "admin.nav.support", icon: LifeBuoy },
     ],
   },
   {

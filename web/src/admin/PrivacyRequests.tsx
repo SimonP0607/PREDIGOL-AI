@@ -22,7 +22,17 @@ function daysLeft(deadline: string): number {
   return Math.floor((end - Date.now()) / 86_400_000);
 }
 
-function Answer({ request }: { request: AdminPrivacyRequest }) {
+/** The owner's answer to a privacy request: a new status or the one extension (also used by the support inbox, A14). */
+export function PrivacyAnswer({
+  id,
+  canExtend,
+  onDone,
+}: {
+  id: number;
+  /** The law allows one extension: offered while it has not been used. */
+  canExtend: boolean;
+  onDone?: (() => void) | undefined;
+}) {
   const qc = useQueryClient();
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<TicketStatus>("answered");
@@ -35,10 +45,11 @@ function Answer({ request }: { request: AdminPrivacyRequest }) {
     setBusy(true);
     setFailure(null);
     try {
-      await v1.answerPrivacyRequest(request.id, { body: body.trim(), status, extend });
+      await v1.answerPrivacyRequest(id, { body: body.trim(), status, extend });
       setBody("");
       setExtend(false);
       await qc.invalidateQueries({ queryKey: ["admin", "privacy-requests"] });
+      onDone?.();
     } catch (err) {
       setFailure(errorMessage(err));
     } finally {
@@ -71,7 +82,7 @@ function Answer({ request }: { request: AdminPrivacyRequest }) {
             ))}
           </select>
         </label>
-        {request.extended_to === null ? (
+        {canExtend ? (
           <label className="flex min-h-11 items-center gap-2 text-xs">
             <input
               type="checkbox"
@@ -101,11 +112,11 @@ function Answer({ request }: { request: AdminPrivacyRequest }) {
 }
 
 /** The deletion itself, after the answer: until then the button waits (the answer is the reader's last e-mail). */
-function DeletionStep({
+export function DeletionStep({
   request,
   onDone,
 }: {
-  request: AdminPrivacyRequest;
+  request: Pick<AdminPrivacyRequest, "id" | "user_id" | "email" | "messages">;
   onDone: (notice: string) => void;
 }) {
   const answered = request.messages.some((m) => m.author === "owner");
@@ -205,7 +216,9 @@ export function PrivacyRequestsCard() {
                       </li>
                     ))}
                   </ul>
-                  {r.status !== "closed" ? <Answer request={r} /> : null}
+                  {r.status !== "closed" ? (
+                    <PrivacyAnswer id={r.id} canExtend={r.extended_to === null} />
+                  ) : null}
                   {r.kind === "privacy_deletion" && !isAnonymised(r.email) ? (
                     <DeletionStep request={r} onDone={setNotice} />
                   ) : null}

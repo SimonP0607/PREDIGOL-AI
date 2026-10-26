@@ -109,6 +109,16 @@ import type {
 } from "./types_favorites";
 import type { Transparency } from "./types_transparency";
 import type {
+  AdminInbox,
+  AdminTicket,
+  InboxQuery,
+  SupportContact,
+  SupportState,
+  SupportTicket,
+  TicketAnswerIn,
+  TicketIn,
+} from "./types_support";
+import type {
   AnalystReply,
   AnalystStatus,
   CompetitionDetail,
@@ -259,6 +269,23 @@ const STAGE_CODES = new Set([
   "membership_suspended",
 ]);
 
+/** How long the last error's request id rides along with a report (plan UX, A14): an older one is not «the» error. */
+const LAST_ERROR_MS = 30 * 60 * 1000;
+let lastError: { requestId: string; at: number } | null = null;
+
+/**
+ * The request id of the last API error this page met in the last half hour, or null (plan UX, A14): «Reportar un
+ * problema» attaches it, so the owner finds the server's log line of that error. Never a body, a path or a value.
+ */
+export function lastApiError(now = Date.now()): string | null {
+  return lastError && now - lastError.at <= LAST_ERROR_MS ? lastError.requestId : null;
+}
+
+/** For tests: forget the last error. */
+export function resetLastApiError(): void {
+  lastError = null;
+}
+
 /** A repeated parameter (`?market=1X2&market=OU`) is an array; an empty one is left out. */
 type Params = Record<
   string,
@@ -324,6 +351,10 @@ async function request<T>(
     }
     const { code: _c, message: _m, problems, ...details } = err.error ?? {};
     const requestId = err.request_id ?? res.headers.get("x-request-id");
+    // the last error a report can point at (plan UX, A14); a sign-in that is simply over is not one
+    if (requestId && /^[A-Za-z0-9]{1,32}$/.test(requestId) && res.status !== 401) {
+      lastError = { requestId, at: Date.now() };
+    }
     // A server error reaches Sentry with its request id, the one in the server's log line (plan UX, A2).
     if (res.status >= 500) reportApiFailure({ status: res.status, code, requestId, method, path });
     throw new LiveApiError(
@@ -442,6 +473,24 @@ export const v1 = {
   completeOnboarding: () => postJson<OnboardingState>("/me/onboarding", {}),
   /** A first-visit hint dismissed: it never comes back. */
   dismissHint: (hint: HintKey) => postJson<OnboardingState>("/me/hints", { hint }),
+
+  // ── help and support (plan UX, A14) ───────────────────────────────────────
+  /** Public: the WhatsApp number and the reply address, for whoever cannot sign in; nulls until the owner gives them. */
+  supportContact: () => getJson<SupportContact>("/support/contact"),
+  /** Whether tickets are on, the contact, the categories and the reader's own tickets with their threads. */
+  mySupport: () => getJson<SupportState>("/me/support"),
+  /** 409 too_many_open (3), 429 too_many_tickets (10 a day), 404 not_available while FBI_SUPPORT is off. */
+  openTicket: (body: TicketIn) => postJson<SupportTicket>("/me/support/tickets", body),
+  replyTicket: (id: number, text: string) =>
+    postJson<SupportTicket>(`/me/support/tickets/${id}/messages`, { text }),
+  /** «Ya está resuelto», with how easy it was (1-5) if the reader says. */
+  closeTicket: (id: number, effort?: number) =>
+    postJson<SupportTicket>(
+      `/me/support/tickets/${id}/close`,
+      effort === undefined ? {} : { effort },
+    ),
+  rateTicket: (id: number, effort: number) =>
+    postJson<SupportTicket>(`/me/support/tickets/${id}/effort`, { effort }),
 
   // ── product ───────────────────────────────────────────────────────────────
   home: (q: Preview = {}) => getJson<Envelope<Home>>("/home", q),
@@ -796,6 +845,15 @@ export const v1 = {
     getJson<AdminPrivacyRequest[]>("/admin/privacy-requests", { status }),
   answerPrivacyRequest: (id: number, body: PrivacyAnswerIn) =>
     postJson<AdminPrivacyRequest>(`/admin/privacy-requests/${id}/answer`, body),
+  /** The support inbox (plan UX, A14): tickets and privacy requests, waiting first by priority, with their counts. */
+  supportInbox: (q: InboxQuery = {}) =>
+    getJson<AdminInbox>("/admin/support", {
+      status: q.status ?? "open",
+      category: q.category,
+      priority: q.priority,
+    }),
+  answerTicket: (id: number, body: TicketAnswerIn) =>
+    postJson<AdminTicket>(`/admin/support/${id}/answer`, body),
   /** The queue of messages to readers (plan UX, A5): sending on or off, today's count, the latest messages. */
   messageQueue: (status?: MessageStatus) =>
     getJson<OutboxSummary>("/admin/messages", status ? { status } : {}),

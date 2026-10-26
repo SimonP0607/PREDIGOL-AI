@@ -16,5 +16,6 @@
   "previewNote": "Only the presentation changes; your real permissions do not.",
   "signOut": "Sign out",
   "mainNavigation": "Main navigation",
-  "adminNavigation": "Admin Console navigation"
+  "adminNavigation": "Admin Console navigation",
+  "help": "Help"
 }

@@ -30,7 +30,8 @@
     "messages": "Messages",
     "product": "Product",
     "audit": "Audit",
-    "settings": "Settings"
+    "settings": "Settings",
+    "support": "Support"
   },
   "pages": {
     "overview": {
@@ -221,7 +222,9 @@
     "template": {
       "privacy_request_received": "Receipt of a privacy request",
       "privacy_request_answered": "Answer to a privacy request",
-      "legal_change": "A legal text changed"
+      "legal_change": "A legal text changed",
+      "support_ticket_received": "Receipt of a support message",
+      "support_ticket_answered": "Answer to a support message"
     }
   },
   "product": {

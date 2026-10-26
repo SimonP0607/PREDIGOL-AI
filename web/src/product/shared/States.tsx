@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { t, translateOr } from "@/lib/i18n";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { track } from "@/lib/track";
+import { useReportProblem } from "@/product/support/report";
 
 export function Card({
   children,
@@ -125,6 +126,8 @@ export function ErrorState({
   const rid = error instanceof LiveApiError ? error.requestId : null;
   const code = error instanceof LiveApiError ? error.code : "client";
   const status = error instanceof LiveApiError ? error.status : 0;
+  // Plan UX, A14: from every error, «Reportar un problema» with this error's reference (never on the owner's console).
+  const report = useReportProblem();
   // Plan UX, A6: which errors readers see (the code and the status, never the message).
   useEffect(() => {
     track("error_shown", { code: /^[A-Za-z0-9_.+-]{1,40}$/.test(code) ? code : "other", status });
@@ -148,6 +151,16 @@ export function ErrorState({
           className="tap-y relative mt-1 rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium hover:bg-elevated pointer-coarse:px-4"
         >
           {t("common.retry")}
+        </button>
+      ) : null}
+      {report.available ? (
+        <button
+          type="button"
+          onClick={() => report.open({ category: "technical", requestId: rid })}
+          data-testid="error-report"
+          className="tap-y relative mt-0.5 rounded-sm text-xs font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {t("support.report.title")}
         </button>
       ) : null}
     </div>

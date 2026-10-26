@@ -113,6 +113,14 @@ export default defineConfig({
       dependencies: ["setup"],
     },
     {
+      // Help and support (plan UX, A14; gate G10): Ayuda, a ticket with its context answered in the console's Soporte,
+      // from an error and from a match, the sheet at 320 px, the readers kept apart - on accounts the test makes.
+      name: "support",
+      testMatch: /support\.spec\.ts/,
+      use: desktop,
+      dependencies: ["setup"],
+    },
+    {
       // The membership (plan UX, A8): from the trial to the renewal, and the limit (QA_MEMBERSHIP_ENFORCE=1 and
       // E2E_DATABASE_URL, which writes a trial that has ended).
       name: "membership",

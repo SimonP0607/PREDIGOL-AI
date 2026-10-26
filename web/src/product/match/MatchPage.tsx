@@ -20,6 +20,7 @@ import type { MatchCtx, TabKey } from "./context";
 import { LineupsTab } from "./LineupsTab";
 import { MarketsTab } from "./MarketsTab";
 import { MatchHeader } from "./MatchHeader";
+import { ReportWrongData } from "@/product/support/ReportWrongData";
 import { PostmatchTab } from "./PostmatchTab";
 import { ReadingBlock } from "@/product/reading/ReadingBlock";
 import { NewsTab } from "@/product/news/NewsTab";
@@ -301,6 +302,7 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
       >
         {panel}
       </div>
+      <ReportWrongData matchId={Number(fixtureId)} />
     </div>
   );
 }

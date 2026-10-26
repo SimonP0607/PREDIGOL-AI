@@ -1,0 +1,357 @@
+{
+  "help": {
+    "pageTitle": "Ayuda",
+    "title": "Ayuda",
+    "subtitle": "Respuestas rápidas, el glosario y cómo escribirnos.",
+    "searchLabel": "Busca en la ayuda",
+    "searchPlaceholder": "Una palabra: pick, renovar, contraseña…",
+    "clear": "Borrar la búsqueda",
+    "noResults": "Nada coincide con «{q}». Prueba otra palabra o escríbenos.",
+    "results_one": "{count} respuesta",
+    "results_other": "{count} respuestas",
+    "groups": {
+      "start": "Empezar",
+      "account": "Cuenta y acceso",
+      "membership": "Membresía y pagos",
+      "picks": "Picks y parlays",
+      "settlement": "Mis picks y liquidación",
+      "notices": "Notificaciones e instalación",
+      "privacy": "Privacidad y datos",
+      "responsible": "Juego responsable"
+    },
+    "more": {
+      "title": "Más ayuda",
+      "glossary": "Glosario",
+      "glossaryBody": "Cada palabra de PrediGol, con una sola definición.",
+      "tour": "Recorrido de 4 pasos",
+      "tourBody": "Dónde está cada cosa, en un minuto.",
+      "responsible": "Juego responsable",
+      "responsibleBody": "El riesgo de apostar, las señales de alerta y dónde pedir ayuda.",
+      "privacy": "Privacidad y datos",
+      "privacyBody": "Descarga tus datos o pide corregirlos o borrarlos."
+    },
+    "contact": {
+      "title": "Escríbenos",
+      "body": "Si no encuentras la respuesta, cuéntanos qué pasa. Respondemos personas, no un robot.",
+      "report": "Reportar un problema",
+      "whatsapp": "WhatsApp",
+      "whatsappText": "Hola, les escribo desde PrediGol:",
+      "email": "Correo",
+      "urgent": "¿No puedes entrar o pagaste y no accedes? Elige «No puedo entrar» y lo vemos hoy mismo.",
+      "off": "Los mensajes desde PrediGol están pausados por ahora; escríbenos por WhatsApp o por correo.",
+      "nothing": "Los mensajes desde PrediGol están pausados y todavía no hay otro canal publicado. Vuelve a intentarlo más tarde."
+    },
+    "tickets": {
+      "title": "Tus mensajes",
+      "empty": "Todavía no nos has escrito. Lo que nos escribas aparece aquí con nuestra respuesta.",
+      "number": "N.º {id}",
+      "open": "Ver mensaje",
+      "status": {
+        "open": "Esperando respuesta",
+        "answered": "Respondido",
+        "closed": "Cerrado"
+      },
+      "readOnly": "Puedes leer tus mensajes; escribir desde PrediGol está pausado por ahora."
+    },
+    "go": {
+      "glossary": "Abrir el glosario",
+      "profile": "Ir a tu perfil",
+      "membership": "Ver tu membresía",
+      "myPicks": "Ir a Mis picks",
+      "notifications": "Elegir tus avisos",
+      "privacy": "Ir a Privacidad y datos",
+      "responsible": "Leer «Juego responsable»"
+    }
+  },
+  "faq": {
+    "what_is": {
+      "q": "¿Qué es PrediGol?",
+      "a": "PrediGol analiza partidos de fútbol con datos y modelos estadísticos: muestra un pronóstico de cada partido, compara las cuotas del mercado y publica picks solo cuando encuentra valor con evidencia suficiente. Es información para mayores de 18 años: no recibe apuestas, no paga premios ni recomienda a ningún operador."
+    },
+    "no_pick": {
+      "q": "¿Por qué hoy no hay pick?",
+      "a": "Un pick se publica solo cuando un partido cumple todas las reglas: valor frente a la cuota, evidencia suficiente y un modelo validado. Si ningún partido las cumple, no hay pick ese día. Nunca rellenamos con picks para ocupar espacio: Inicio te dice por qué no hubo."
+    },
+    "forecast_pick": {
+      "q": "¿Qué diferencia hay entre un pronóstico y un pick?",
+      "a": "El pronóstico es la probabilidad que PrediGol calcula para cada partido, haya o no apuesta. El valor aparece cuando esa probabilidad es mayor que la que da la cuota. Un pick es un caso con valor que además pasó todas las reglas de publicación. En el glosario están las tres capas explicadas."
+    },
+    "guarantee": {
+      "q": "¿PrediGol garantiza que voy a ganar?",
+      "a": "No. Ninguna probabilidad garantiza un resultado: un 70 % falla tres veces de cada diez. En «Cómo le va a PrediGol», cuando esté publicada, verás los resultados reales con su muestra, también los malos."
+    },
+    "cant_sign_in": {
+      "q": "No puedo entrar a mi cuenta",
+      "a": "Revisa que el correo esté bien escrito y que no tengas el bloqueo de mayúsculas activado. Tras varios intentos fallidos la cuenta espera unos minutos antes de dejarte intentar de nuevo. Si en la pantalla de entrada ves «¿Olvidaste tu contraseña?», úsalo: te llega un enlace de un solo uso. Si no lo ves o el enlace caducó, escríbenos por WhatsApp o por correo (Contacto, abajo) y te ayudamos ese mismo día."
+    },
+    "two_steps": {
+      "q": "¿Cómo activo la verificación en dos pasos?",
+      "a": "En tu perfil, en «Seguridad»: escaneas un código con una app como Google Authenticator o Microsoft Authenticator y guardas tus códigos de recuperación en un lugar seguro. Desde entonces, al entrar te pedimos también el código de la app."
+    },
+    "language_zone": {
+      "q": "¿Cómo cambio el idioma o la zona horaria?",
+      "a": "El idioma cambia con el selector ES / EN de la parte de arriba. La zona horaria, en tu perfil: todas las horas de PrediGol se muestran en la zona que elijas."
+    },
+    "renew": {
+      "q": "¿Cómo renuevo mi membresía?",
+      "a": "PrediGol no cobra con tarjeta dentro de la app. Escríbenos por WhatsApp o respondiendo el correo de aviso; cuando registremos tu pago, tu membresía se extiende y lo ves en tu perfil, en «Membresía», con sus fechas."
+    },
+    "membership_ends": {
+      "q": "¿Qué pasa cuando termina mi membresía?",
+      "a": "Te avisamos unos días antes. Al terminar tienes 3 días de gracia con todo. Después la cuenta queda con acceso limitado: sigues viendo tu perfil, tus picks guardados, esta ayuda, los textos legales y tus datos, y vuelves a tenerlo todo en cuanto renuevas."
+    },
+    "trial": {
+      "q": "¿Cómo funciona la prueba?",
+      "a": "Una cuenta nueva empieza con una prueba (normalmente de 14 días) con acceso completo. En tu perfil ves cuántos días le quedan; antes de que termine te avisamos cómo seguir."
+    },
+    "what_pick": {
+      "q": "¿Qué es un pick de PrediGol?",
+      "a": "Es una selección concreta —un mercado, una opción y la cuota con la que se evaluó— que PrediGol publica porque pasó todas sus reglas. Cada pick dice por qué se publicó y se liquida al terminar el partido; su resultado cuenta en el historial, gane o pierda."
+    },
+    "own_selection": {
+      "q": "¿Qué es «Tu selección»?",
+      "a": "Es una selección que tú guardas por tu cuenta, aunque PrediGol no la haya publicado como pick. Siempre lleva el rótulo «Tu selección» para que nunca se confunda con un pick de PrediGol, y no cuenta en sus resultados."
+    },
+    "parlay": {
+      "q": "¿Cómo funciona una combinada (parlay)?",
+      "a": "Una combinada une varias selecciones en una sola apuesta: la cuota se multiplica, pero basta que una falle para perderla, así que el riesgo crece con cada selección. Al armarla, PrediGol te muestra la cuota combinada, su riesgo y si dos selecciones dependen entre sí."
+    },
+    "when_settled": {
+      "q": "¿Cuándo se liquida un pick?",
+      "a": "Cuando el partido termina y el resultado queda confirmado por el proveedor de datos, normalmente minutos después del final. Si el proveedor corrige un resultado, PrediGol vuelve a liquidar los picks de ese partido y verás el cambio en Mis picks."
+    },
+    "void_half": {
+      "q": "¿Qué significan devuelto, anulado o medio ganado?",
+      "a": "Devuelto: la apuesta se devuelve, por ejemplo cuando el resultado cae justo en la línea. Anulado: el partido no se jugó o se suspendió y la selección no cuenta. Medio ganado (o medio perdido): en líneas de cuarto de gol, la mitad se gana (o se pierde) y la otra mitad se devuelve. El glosario explica cada uno."
+    },
+    "units": {
+      "q": "¿Qué son las unidades y la rentabilidad?",
+      "a": "Cada pick se mide como si se apostara 1 unidad: ganar a cuota 2,10 suma 1,10 unidades y perder resta 1. La rentabilidad es lo ganado dividido entre lo apostado. Con pocos picks esas cifras cambian mucho, por eso siempre van con su muestra."
+    },
+    "emails": {
+      "q": "¿Qué correos envía PrediGol y cómo los apago?",
+      "a": "Los de tu cuenta, su seguridad, tus solicitudes de privacidad y los cambios importantes de los textos legales llegan siempre. Los de membresía y soporte puedes apagarlos en tu perfil, en «Notificaciones». Nunca enviamos publicidad sin tu permiso."
+    },
+    "install": {
+      "q": "¿Cómo instalo PrediGol en mi teléfono?",
+      "a": "En iPhone, abre PrediGol en Safari, toca Compartir y luego «Añadir a pantalla de inicio». En Android, ábrelo en Chrome, toca el menú y luego «Instalar app» o «Añadir a pantalla de inicio». Se abre como una app, sin tienda."
+    },
+    "my_data": {
+      "q": "¿Qué datos guarda PrediGol de mí?",
+      "a": "Los de tu cuenta, tus consentimientos, lo que guardas (picks, combinadas, favoritos), tus mensajes a soporte y tu membresía. En tu perfil, en «Privacidad y datos», puedes descargarlo todo en un archivo (te pedimos tu contraseña) y pedir que se corrija."
+    },
+    "delete_account": {
+      "q": "¿Cómo borro mi cuenta?",
+      "a": "En tu perfil, en «Privacidad y datos», pide el borrado: te pedimos la contraseña y lo atendemos dentro del plazo legal (15 días hábiles). Tu cuenta se anonimiza: se borra lo tuyo y solo se conserva lo que la ley obliga a guardar."
+    },
+    "report_context": {
+      "q": "¿Qué se envía cuando reporto un problema?",
+      "a": "Tu mensaje y lo justo para entender qué pasó: la pantalla en la que estabas, la referencia del último error, la versión de PrediGol, el tipo de dispositivo y si usas la app instalada. Nunca tu contraseña, ni enlaces de acceso, ni lo que escribiste en otros formularios."
+    },
+    "should_bet": {
+      "q": "¿Debo apostar según los picks?",
+      "a": "PrediGol informa; la decisión es tuya. Si decides apostar, fija antes cuánto puedes perder y no lo superes, no persigas las pérdidas y usa solo operadores autorizados en Colombia por Coljuegos."
+    },
+    "get_help": {
+      "q": "Siento que el juego me está haciendo daño",
+      "a": "Habla con alguien de confianza o con un profesional de la salud. En «Juego responsable» encontrarás las señales de alerta y las líneas de ayuda gratuitas de Colombia."
+    }
+  },
+  "report": {
+    "title": "Reportar un problema",
+    "description": "Cuéntanos qué pasa: nos llega con lo justo para entenderlo.",
+    "categoryLabel": "¿Sobre qué es?",
+    "category": {
+      "access": {
+        "label": "No puedo entrar o pagué y no accedo",
+        "hint": "Urgente: te respondemos hoy mismo"
+      },
+      "account": {
+        "label": "Mi cuenta o mi membresía",
+        "hint": "Te respondemos en 24 horas"
+      },
+      "technical": {
+        "label": "Algo no funciona",
+        "hint": "Un error o una pantalla que no carga · 24 horas"
+      },
+      "wrong_data": {
+        "label": "Un dato está mal",
+        "hint": "Un resultado, una cuota, una alineación · 48 horas"
+      },
+      "suggestion": {
+        "label": "Una sugerencia",
+        "hint": "Leemos todas · te respondemos en una semana"
+      },
+      "complaint": {
+        "label": "Una reclamación",
+        "hint": "Algo con lo que no estás conforme · 24 horas"
+      }
+    },
+    "privacy": {
+      "label": "Mis datos personales",
+      "hint": "Ver, corregir o borrar tus datos, con su plazo legal",
+      "go": "Ir a Privacidad y datos"
+    },
+    "chosen": "Sobre: {category}",
+    "change": "Cambiar",
+    "textLabel": "Cuéntanos qué pasó",
+    "textPlaceholder": "Qué hacías, qué esperabas y qué pasó. Sin contraseñas.",
+    "counter": "{count} de {max}",
+    "matchLinked": "El partido va enlazado.",
+    "context": {
+      "title": "Con tu mensaje enviamos",
+      "body": "la pantalla ({route}), la versión de PrediGol, el tipo de dispositivo y si usas la app instalada.",
+      "error": "También la referencia del último error: {id}.",
+      "never": "Nunca tu contraseña ni lo que escribiste en otros formularios."
+    },
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "done": {
+      "title": "Recibimos tu mensaje",
+      "body": "Es el n.º {id}. Te respondemos a más tardar el {date}.",
+      "email": "Nuestra respuesta aparecerá en Ayuda, en «Tus mensajes».",
+      "see": "Ver mi mensaje"
+    },
+    "full": "Ya tienes {max} mensajes abiertos: añade lo nuevo a uno de ellos.",
+    "openTickets": "Ver mis mensajes"
+  },
+  "ticket": {
+    "pageTitle": "Tu mensaje",
+    "title": "Mensaje n.º {id}",
+    "back": "Volver a Ayuda",
+    "about": "Sobre {category}",
+    "opened": "Escrito el {date}",
+    "respondBy": "Te respondemos a más tardar el {date}.",
+    "status": {
+      "open": "Esperando respuesta de PrediGol",
+      "answered": "Respondido",
+      "closed": "Cerrado"
+    },
+    "author": {
+      "customer": "Tú",
+      "owner": "PrediGol",
+      "system": "PrediGol"
+    },
+    "channel": {
+      "email": "por correo",
+      "whatsapp": "por WhatsApp"
+    },
+    "replyLabel": "Escribe tu respuesta",
+    "reply": "Enviar",
+    "resolved": "Ya está resuelto",
+    "closedNote": "Este mensaje está cerrado. Si el problema sigue, escríbenos uno nuevo.",
+    "effort": {
+      "question": "¿Qué tan fácil fue resolverlo?",
+      "optional": "Opcional: nos ayuda a mejorar.",
+      "scale": {
+        "1": "Muy difícil",
+        "2": "Difícil",
+        "3": "Normal",
+        "4": "Fácil",
+        "5": "Muy fácil"
+      },
+      "thanks": "Gracias por contarnos.",
+      "yours": "Tu respuesta: {answer}."
+    },
+    "notFound": "Ese mensaje no existe o no es tuyo.",
+    "readOnly": "Escribir desde PrediGol está pausado por ahora; escríbenos por WhatsApp o por correo."
+  },
+  "match": {
+    "report": "¿Ves un dato incorrecto? Avísanos"
+  },
+  "login": {
+    "trouble": "¿No puedes entrar?",
+    "whatsapp": "Escríbenos por WhatsApp",
+    "email": "Escríbenos a {email}"
+  },
+  "admin": {
+    "title": "Soporte",
+    "subtitle": "Los mensajes de los lectores y sus solicitudes de privacidad, en una sola bandeja: primero lo que espera respuesta, por prioridad.",
+    "counts": {
+      "waiting": "Esperan respuesta",
+      "late": "Fuera de plazo",
+      "urgent": "Urgentes",
+      "open": "Abiertos"
+    },
+    "filters": {
+      "status": "Estado",
+      "category": "Categoría",
+      "priority": "Prioridad",
+      "all": "Todas",
+      "statusValue": {
+        "open": "Abiertos",
+        "waiting": "Esperan respuesta",
+        "answered": "Respondidos",
+        "closed": "Cerrados",
+        "all": "Todos"
+      }
+    },
+    "empty": "No hay mensajes con este filtro.",
+    "category": {
+      "access": "Acceso",
+      "account": "Cuenta / membresía",
+      "technical": "Error técnico",
+      "wrong_data": "Dato incorrecto",
+      "suggestion": "Sugerencia",
+      "complaint": "Reclamación",
+      "privacy": "Privacidad"
+    },
+    "priority": {
+      "urgent": "Urgente",
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja"
+    },
+    "status": {
+      "open": "Espera respuesta",
+      "answered": "Respondido",
+      "closed": "Cerrado"
+    },
+    "respondBy": "Responder antes del {date}",
+    "late": "Fuera de plazo",
+    "deadline": "Plazo legal: {date}",
+    "extended": "prorrogado",
+    "firstAnswer": "Primera respuesta: {date}",
+    "opened": "Abierto el {date}",
+    "deleted": "Cuenta eliminada",
+    "effort": "Facilidad según el lector: {value} de 5",
+    "context": {
+      "title": "Contexto",
+      "route": "Pantalla",
+      "request": "Referencia del error",
+      "version": "Versión",
+      "device": "Dispositivo",
+      "pwa": "App instalada",
+      "match": "Partido",
+      "yes": "Sí",
+      "no": "No, una pestaña",
+      "devices": {
+        "phone": "Teléfono",
+        "tablet": "Tableta",
+        "desktop": "Computador"
+      },
+      "none": "Sin contexto"
+    },
+    "answer": {
+      "label": "Tu respuesta",
+      "placeholder": "Escribe la respuesta al lector…",
+      "channel": "Cómo",
+      "channels": {
+        "web": "Responder aquí (le avisamos por correo)",
+        "whatsapp": "Anotar lo hablado por WhatsApp (sin correo)",
+        "email": "Anotar un correo recibido o enviado (sin correo)"
+      },
+      "status": "Dejarlo",
+      "statuses": {
+        "answered": "Respondido",
+        "open": "Abierto (sigo con él)",
+        "closed": "Cerrado"
+      },
+      "send": "Guardar respuesta"
+    },
+    "privacyNote": "Solicitud de privacidad: se responde con sus reglas legales (plazo y una sola prórroga).",
+    "notice": "Respuesta guardada."
+  }
+}

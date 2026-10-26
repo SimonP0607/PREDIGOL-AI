@@ -4,7 +4,7 @@
  * texts and the copy of its data are one tap away, with how to renew. The server refuses the rest (403).
  */
 import { Link } from "@tanstack/react-router";
-import { BookOpen, Download, FileText, ListChecks, UserRound } from "lucide-react";
+import { Download, FileText, LifeBuoy, ListChecks, UserRound } from "lucide-react";
 import type { MembershipSummary } from "@/lib/api/v1/types_membership";
 import { t } from "@/lib/i18n";
 import { Card } from "@/product/shared/States";
@@ -40,8 +40,8 @@ export function LimitedAccess({ membership }: { membership: MembershipSummary })
             <Download aria-hidden className="h-4 w-4 text-primary" />
             {t("profile.membership.limited.export")}
           </Link>
-          <Link to="/help/glossary" className={item}>
-            <BookOpen aria-hidden className="h-4 w-4 text-primary" />
+          <Link to="/help" className={item} data-testid="limited-help">
+            <LifeBuoy aria-hidden className="h-4 w-4 text-primary" />
             {t("profile.membership.limited.help")}
           </Link>
           <Link to="/legal/$doc" params={{ doc: "terms" }} className={item}>

@@ -49,9 +49,11 @@ import { Route as AdminPicksRouteImport } from './routes/admin.picks'
 import { Route as AdminProductRouteImport } from './routes/admin.product'
 import { Route as AdminRankingsRouteImport } from './routes/admin.rankings'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminSystemRouteImport } from './routes/admin.system'
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as HelpIndexRouteImport } from './routes/help.index'
 import { Route as HelpGlossaryRouteImport } from './routes/help.glossary'
 import { Route as LegalDocRouteImport } from './routes/legal.$doc'
 import { Route as MatchesIndexRouteImport } from './routes/matches.index'
@@ -60,6 +62,7 @@ import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.in
 import { Route as AdminPlayersPlayerIdRouteImport } from './routes/admin.players.$playerId'
 import { Route as AdminRefereesIndexRouteImport } from './routes/admin.referees.index'
 import { Route as AdminRefereesRefereeIdRouteImport } from './routes/admin.referees.$refereeId'
+import { Route as HelpMessagesTicketIdRouteImport } from './routes/help.messages.$ticketId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -261,6 +264,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSystemRoute = AdminSystemRouteImport.update({
   id: '/system',
   path: '/system',
@@ -275,6 +283,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AdminRoute,
+} as any)
+const HelpIndexRoute = HelpIndexRouteImport.update({
+  id: '/help/',
+  path: '/help/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const HelpGlossaryRoute = HelpGlossaryRouteImport.update({
   id: '/help/glossary',
@@ -315,6 +328,11 @@ const AdminRefereesRefereeIdRoute = AdminRefereesRefereeIdRouteImport.update({
   id: '/referees/$refereeId',
   path: '/referees/$refereeId',
   getParentRoute: () => AdminRoute,
+} as any)
+const HelpMessagesTicketIdRoute = HelpMessagesTicketIdRouteImport.update({
+  id: '/help/messages/$ticketId',
+  path: '/help/messages/$ticketId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -357,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/admin/product': typeof AdminProductRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -364,9 +383,11 @@ export interface FileRoutesByFullPath {
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
+  '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
   '/admin/referees/': typeof AdminRefereesIndexRoute
 }
@@ -409,6 +430,7 @@ export interface FileRoutesByTo {
   '/admin/product': typeof AdminProductRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -416,9 +438,11 @@ export interface FileRoutesByTo {
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/admin': typeof AdminIndexRoute
+  '/help': typeof HelpIndexRoute
   '/matches': typeof MatchesIndexRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
+  '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
   '/admin/players': typeof AdminPlayersIndexRoute
   '/admin/referees': typeof AdminRefereesIndexRoute
 }
@@ -463,6 +487,7 @@ export interface FileRoutesById {
   '/admin/product': typeof AdminProductRoute
   '/admin/rankings': typeof AdminRankingsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -470,9 +495,11 @@ export interface FileRoutesById {
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
+  '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
   '/admin/referees/': typeof AdminRefereesIndexRoute
 }
@@ -518,6 +545,7 @@ export interface FileRouteTypes {
     | '/admin/product'
     | '/admin/rankings'
     | '/admin/settings'
+    | '/admin/support'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
@@ -525,9 +553,11 @@ export interface FileRouteTypes {
     | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/admin/'
+    | '/help/'
     | '/matches/'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
+    | '/help/messages/$ticketId'
     | '/admin/players/'
     | '/admin/referees/'
   fileRoutesByTo: FileRoutesByTo
@@ -570,6 +600,7 @@ export interface FileRouteTypes {
     | '/admin/product'
     | '/admin/rankings'
     | '/admin/settings'
+    | '/admin/support'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
@@ -577,9 +608,11 @@ export interface FileRouteTypes {
     | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/admin'
+    | '/help'
     | '/matches'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
+    | '/help/messages/$ticketId'
     | '/admin/players'
     | '/admin/referees'
   id:
@@ -623,6 +656,7 @@ export interface FileRouteTypes {
     | '/admin/product'
     | '/admin/rankings'
     | '/admin/settings'
+    | '/admin/support'
     | '/admin/system'
     | '/admin/teams'
     | '/admin/users'
@@ -630,9 +664,11 @@ export interface FileRouteTypes {
     | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/admin/'
+    | '/help/'
     | '/matches/'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
+    | '/help/messages/$ticketId'
     | '/admin/players/'
     | '/admin/referees/'
   fileRoutesById: FileRoutesById
@@ -657,7 +693,9 @@ export interface RootRouteChildren {
   HelpGlossaryRoute: typeof HelpGlossaryRoute
   LegalDocRoute: typeof LegalDocRoute
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
+  HelpIndexRoute: typeof HelpIndexRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
+  HelpMessagesTicketIdRoute: typeof HelpMessagesTicketIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -942,6 +980,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/system': {
       id: '/admin/system'
       path: '/system'
@@ -962,6 +1007,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/help/': {
+      id: '/help/'
+      path: '/help'
+      fullPath: '/help/'
+      preLoaderRoute: typeof HelpIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/help/glossary': {
       id: '/help/glossary'
@@ -1019,6 +1071,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRefereesRefereeIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/help/messages/$ticketId': {
+      id: '/help/messages/$ticketId'
+      path: '/help/messages/$ticketId'
+      fullPath: '/help/messages/$ticketId'
+      preLoaderRoute: typeof HelpMessagesTicketIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1046,6 +1105,7 @@ interface AdminRouteChildren {
   AdminProductRoute: typeof AdminProductRoute
   AdminRankingsRoute: typeof AdminRankingsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSupportRoute: typeof AdminSupportRoute
   AdminSystemRoute: typeof AdminSystemRoute
   AdminTeamsRoute: typeof AdminTeamsRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1080,6 +1140,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminProductRoute: AdminProductRoute,
   AdminRankingsRoute: AdminRankingsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminSupportRoute: AdminSupportRoute,
   AdminSystemRoute: AdminSystemRoute,
   AdminTeamsRoute: AdminTeamsRoute,
   AdminUsersRoute: AdminUsersRoute,
@@ -1112,7 +1173,9 @@ const rootRouteChildren: RootRouteChildren = {
   HelpGlossaryRoute: HelpGlossaryRoute,
   LegalDocRoute: LegalDocRoute,
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,
+  HelpIndexRoute: HelpIndexRoute,
   MatchesIndexRoute: MatchesIndexRoute,
+  HelpMessagesTicketIdRoute: HelpMessagesTicketIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

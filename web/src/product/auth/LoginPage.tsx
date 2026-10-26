@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
 import { t, translateOr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { LoginContact } from "@/product/support/LoginContact";
 import { tooManyAttempts } from "./wait";
 
 /** The refusal in the reader's words; a lock says the real wait, in minutes (plan UX, A1, defect F01). */
@@ -194,6 +195,7 @@ export function LoginPage({ expired }: { expired: boolean }) {
           <p className="mt-4 text-center text-caption text-subtle-foreground">
             {t("auth.privateNote")}
           </p>
+          <LoginContact />
           <Disclaimer className="mt-6 text-center text-caption text-subtle-foreground" />
         </div>
       </main>

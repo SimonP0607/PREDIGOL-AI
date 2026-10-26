@@ -1,0 +1,357 @@
+{
+  "help": {
+    "pageTitle": "Help",
+    "title": "Help",
+    "subtitle": "Quick answers, the glossary and how to write to us.",
+    "searchLabel": "Search help",
+    "searchPlaceholder": "A word: pick, renew, password…",
+    "clear": "Clear the search",
+    "noResults": "Nothing matches “{q}”. Try another word or write to us.",
+    "results_one": "{count} answer",
+    "results_other": "{count} answers",
+    "groups": {
+      "start": "Getting started",
+      "account": "Account and access",
+      "membership": "Membership and payments",
+      "picks": "Picks and parlays",
+      "settlement": "My picks and settlement",
+      "notices": "Notifications and installing",
+      "privacy": "Privacy and data",
+      "responsible": "Responsible gambling"
+    },
+    "more": {
+      "title": "More help",
+      "glossary": "Glossary",
+      "glossaryBody": "Every word PrediGol uses, with one definition.",
+      "tour": "4-step tour",
+      "tourBody": "Where everything is, in a minute.",
+      "responsible": "Responsible gambling",
+      "responsibleBody": "The risk of betting, the warning signs and where to get help.",
+      "privacy": "Privacy and data",
+      "privacyBody": "Download your data or ask us to correct or delete it."
+    },
+    "contact": {
+      "title": "Write to us",
+      "body": "If you cannot find the answer, tell us what is going on. People answer, not a robot.",
+      "report": "Report a problem",
+      "whatsapp": "WhatsApp",
+      "whatsappText": "Hi, I am writing from PrediGol:",
+      "email": "E-mail",
+      "urgent": "Cannot get in, or paid and have no access? Choose “I cannot get in” and we look at it today.",
+      "off": "Messages from PrediGol are paused for now; write to us on WhatsApp or by e-mail.",
+      "nothing": "Messages from PrediGol are paused and no other channel is published yet. Please try again later."
+    },
+    "tickets": {
+      "title": "Your messages",
+      "empty": "You have not written to us yet. What you write appears here with our answer.",
+      "number": "No. {id}",
+      "open": "See message",
+      "status": {
+        "open": "Waiting for an answer",
+        "answered": "Answered",
+        "closed": "Closed"
+      },
+      "readOnly": "You can read your messages; writing from PrediGol is paused for now."
+    },
+    "go": {
+      "glossary": "Open the glossary",
+      "profile": "Go to your profile",
+      "membership": "See your membership",
+      "myPicks": "Go to My picks",
+      "notifications": "Choose your notices",
+      "privacy": "Go to Privacy and data",
+      "responsible": "Read “Responsible gambling”"
+    }
+  },
+  "faq": {
+    "what_is": {
+      "q": "What is PrediGol?",
+      "a": "PrediGol analyses football matches with data and statistical models: it shows a forecast of every match, compares the market's odds and publishes picks only when it finds value with enough evidence. It is information for people 18 and over: it takes no bets, pays no prizes and recommends no operator."
+    },
+    "no_pick": {
+      "q": "Why is there no pick today?",
+      "a": "A pick is published only when a match meets every rule: value against the odds, enough evidence and a validated model. If no match meets them, there is no pick that day. We never fill the space with picks: Home tells you why there was none."
+    },
+    "forecast_pick": {
+      "q": "What is the difference between a forecast and a pick?",
+      "a": "The forecast is the probability PrediGol computes for every match, bet or no bet. Value appears when that probability is higher than the one the odds imply. A pick is a case with value that also passed every publishing rule. The glossary explains the three layers."
+    },
+    "guarantee": {
+      "q": "Does PrediGol guarantee I will win?",
+      "a": "No. No probability guarantees a result: a 70% chance fails three times out of ten. In “How PrediGol is doing”, once it is published, you will see the real results with their sample, the bad ones too."
+    },
+    "cant_sign_in": {
+      "q": "I cannot sign in to my account",
+      "a": "Check that your e-mail is spelled right and that caps lock is off. After several failed attempts the account waits a few minutes before letting you try again. If the sign-in screen shows “Forgot your password?”, use it: a one-use link reaches you. If it does not, or the link expired, write to us on WhatsApp or by e-mail (Contact, below) and we help you the same day."
+    },
+    "two_steps": {
+      "q": "How do I turn on two-step verification?",
+      "a": "In your profile, under “Security”: you scan a code with an app such as Google Authenticator or Microsoft Authenticator and keep your recovery codes somewhere safe. From then on, signing in also asks for the app's code."
+    },
+    "language_zone": {
+      "q": "How do I change the language or the time zone?",
+      "a": "The language changes with the ES / EN switch at the top. The time zone, in your profile: every time in PrediGol is shown in the zone you choose."
+    },
+    "renew": {
+      "q": "How do I renew my membership?",
+      "a": "PrediGol does not charge cards inside the app. Write to us on WhatsApp or answer the reminder e-mail; once we record your payment, your membership is extended and you see it in your profile, under “Membership”, with its dates."
+    },
+    "membership_ends": {
+      "q": "What happens when my membership ends?",
+      "a": "We remind you a few days before. When it ends you have 3 days of grace with everything. After that the account has limited access: you still see your profile, your saved picks, this help, the legal texts and your data, and you get everything back as soon as you renew."
+    },
+    "trial": {
+      "q": "How does the trial work?",
+      "a": "A new account starts with a trial (usually 14 days) with full access. Your profile shows how many days are left; before it ends we tell you how to continue."
+    },
+    "what_pick": {
+      "q": "What is a PrediGol pick?",
+      "a": "A concrete selection — a market, an option and the odds it was judged at — that PrediGol publishes because it passed all its rules. Every pick says why it was published and is settled when the match ends; its result counts in the record, win or lose."
+    },
+    "own_selection": {
+      "q": "What is “Your selection”?",
+      "a": "A selection you save on your own, even if PrediGol did not publish it as a pick. It always carries the label “Your selection” so it is never confused with a PrediGol pick, and it does not count in PrediGol's results."
+    },
+    "parlay": {
+      "q": "How does a parlay work?",
+      "a": "A parlay joins several selections into one bet: the odds multiply, but a single miss loses it, so the risk grows with every selection. While you build it, PrediGol shows the combined odds, its risk and whether two selections depend on each other."
+    },
+    "when_settled": {
+      "q": "When is a pick settled?",
+      "a": "When the match ends and the data provider confirms the result, usually minutes after the final whistle. If the provider corrects a result, PrediGol settles that match's picks again and you will see the change in My picks."
+    },
+    "void_half": {
+      "q": "What do refunded, void and half won mean?",
+      "a": "Refunded: the stake comes back, for example when the result lands exactly on the line. Void: the match was not played or was suspended and the selection does not count. Half won (or half lost): on quarter-goal lines, half is won (or lost) and the other half is refunded. The glossary explains each one."
+    },
+    "units": {
+      "q": "What are units and return?",
+      "a": "Every pick is measured as if 1 unit were staked: winning at odds of 2.10 adds 1.10 units and losing takes 1 away. The return is what was won divided by what was staked. With few picks those figures swing a lot, which is why they always come with their sample."
+    },
+    "emails": {
+      "q": "Which e-mails does PrediGol send, and how do I turn them off?",
+      "a": "The ones about your account, its security, your privacy requests and important changes to the legal texts always arrive. Membership and support ones can be turned off in your profile, under “Notifications”. We never send advertising without your permission."
+    },
+    "install": {
+      "q": "How do I install PrediGol on my phone?",
+      "a": "On iPhone, open PrediGol in Safari, tap Share and then “Add to Home Screen”. On Android, open it in Chrome, tap the menu and then “Install app” or “Add to Home screen”. It opens like an app, without a store."
+    },
+    "my_data": {
+      "q": "What data does PrediGol keep about me?",
+      "a": "Your account's, your consents, what you save (picks, parlays, favourites), your messages to support and your membership. In your profile, under “Privacy and data”, you can download all of it in one file (we ask for your password) and ask for it to be corrected."
+    },
+    "delete_account": {
+      "q": "How do I delete my account?",
+      "a": "In your profile, under “Privacy and data”, ask for the deletion: we ask for your password and handle it within the legal deadline (15 business days). Your account is anonymised: what is yours is deleted and only what the law requires is kept."
+    },
+    "report_context": {
+      "q": "What is sent when I report a problem?",
+      "a": "Your message and just enough to understand what happened: the screen you were on, the reference of the last error, PrediGol's version, the kind of device and whether you use the installed app. Never your password, sign-in links or what you typed in other forms."
+    },
+    "should_bet": {
+      "q": "Should I bet on the picks?",
+      "a": "PrediGol informs; the decision is yours. If you decide to bet, set beforehand how much you can lose and do not go past it, do not chase losses and use only operators licensed in Colombia by Coljuegos."
+    },
+    "get_help": {
+      "q": "I feel gambling is harming me",
+      "a": "Talk to someone you trust or to a health professional. In “Responsible gambling” you will find the warning signs and Colombia's free help lines."
+    }
+  },
+  "report": {
+    "title": "Report a problem",
+    "description": "Tell us what is going on: it reaches us with just enough to understand it.",
+    "categoryLabel": "What is it about?",
+    "category": {
+      "access": {
+        "label": "I cannot get in, or paid and have no access",
+        "hint": "Urgent: we answer today"
+      },
+      "account": {
+        "label": "My account or membership",
+        "hint": "We answer within 24 hours"
+      },
+      "technical": {
+        "label": "Something does not work",
+        "hint": "An error or a screen that does not load · 24 hours"
+      },
+      "wrong_data": {
+        "label": "Some data is wrong",
+        "hint": "A result, odds, a line-up · 48 hours"
+      },
+      "suggestion": {
+        "label": "A suggestion",
+        "hint": "We read them all · we answer within a week"
+      },
+      "complaint": {
+        "label": "A complaint",
+        "hint": "Something you are not happy with · 24 hours"
+      }
+    },
+    "privacy": {
+      "label": "My personal data",
+      "hint": "See, correct or delete your data, with its legal deadline",
+      "go": "Go to Privacy and data"
+    },
+    "chosen": "About: {category}",
+    "change": "Change",
+    "textLabel": "Tell us what happened",
+    "textPlaceholder": "What you were doing, what you expected and what happened. No passwords.",
+    "counter": "{count} of {max}",
+    "matchLinked": "The match is attached.",
+    "context": {
+      "title": "With your message we send",
+      "body": "the screen ({route}), PrediGol's version, the kind of device and whether you use the installed app.",
+      "error": "Also the reference of the last error: {id}.",
+      "never": "Never your password or what you typed in other forms."
+    },
+    "send": "Send",
+    "sending": "Sending…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "done": {
+      "title": "We received your message",
+      "body": "It is no. {id}. We will answer by {date} at the latest.",
+      "email": "Our answer will appear in Help, under “Your messages”.",
+      "see": "See my message"
+    },
+    "full": "You already have {max} open messages: add what is new to one of them.",
+    "openTickets": "See my messages"
+  },
+  "ticket": {
+    "pageTitle": "Your message",
+    "title": "Message no. {id}",
+    "back": "Back to Help",
+    "about": "About {category}",
+    "opened": "Written on {date}",
+    "respondBy": "We will answer by {date} at the latest.",
+    "status": {
+      "open": "Waiting for PrediGol's answer",
+      "answered": "Answered",
+      "closed": "Closed"
+    },
+    "author": {
+      "customer": "You",
+      "owner": "PrediGol",
+      "system": "PrediGol"
+    },
+    "channel": {
+      "email": "by e-mail",
+      "whatsapp": "on WhatsApp"
+    },
+    "replyLabel": "Write your answer",
+    "reply": "Send",
+    "resolved": "It is solved",
+    "closedNote": "This message is closed. If the problem continues, write us a new one.",
+    "effort": {
+      "question": "How easy was it to solve?",
+      "optional": "Optional: it helps us improve.",
+      "scale": {
+        "1": "Very hard",
+        "2": "Hard",
+        "3": "Neither",
+        "4": "Easy",
+        "5": "Very easy"
+      },
+      "thanks": "Thank you for telling us.",
+      "yours": "Your answer: {answer}."
+    },
+    "notFound": "That message does not exist or is not yours.",
+    "readOnly": "Writing from PrediGol is paused for now; write to us on WhatsApp or by e-mail."
+  },
+  "match": {
+    "report": "See some wrong data? Tell us"
+  },
+  "login": {
+    "trouble": "Cannot sign in?",
+    "whatsapp": "Write to us on WhatsApp",
+    "email": "Write to us at {email}"
+  },
+  "admin": {
+    "title": "Support",
+    "subtitle": "The readers' messages and their privacy requests in one inbox: what waits for an answer first, by priority.",
+    "counts": {
+      "waiting": "Waiting for an answer",
+      "late": "Past their target",
+      "urgent": "Urgent",
+      "open": "Open"
+    },
+    "filters": {
+      "status": "Status",
+      "category": "Category",
+      "priority": "Priority",
+      "all": "All",
+      "statusValue": {
+        "open": "Open",
+        "waiting": "Waiting for an answer",
+        "answered": "Answered",
+        "closed": "Closed",
+        "all": "All"
+      }
+    },
+    "empty": "No messages with this filter.",
+    "category": {
+      "access": "Access",
+      "account": "Account / membership",
+      "technical": "Technical error",
+      "wrong_data": "Wrong data",
+      "suggestion": "Suggestion",
+      "complaint": "Complaint",
+      "privacy": "Privacy"
+    },
+    "priority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "status": {
+      "open": "Waiting for an answer",
+      "answered": "Answered",
+      "closed": "Closed"
+    },
+    "respondBy": "Answer by {date}",
+    "late": "Past its target",
+    "deadline": "Legal deadline: {date}",
+    "extended": "extended",
+    "firstAnswer": "First answer: {date}",
+    "opened": "Opened on {date}",
+    "deleted": "Account deleted",
+    "effort": "Ease according to the reader: {value} of 5",
+    "context": {
+      "title": "Context",
+      "route": "Screen",
+      "request": "Error reference",
+      "version": "Version",
+      "device": "Device",
+      "pwa": "Installed app",
+      "match": "Match",
+      "yes": "Yes",
+      "no": "No, a tab",
+      "devices": {
+        "phone": "Phone",
+        "tablet": "Tablet",
+        "desktop": "Computer"
+      },
+      "none": "No context"
+    },
+    "answer": {
+      "label": "Your answer",
+      "placeholder": "Write the answer to the reader…",
+      "channel": "How",
+      "channels": {
+        "web": "Answer here (they are told by e-mail)",
+        "whatsapp": "Note what was said on WhatsApp (no e-mail)",
+        "email": "Note an e-mail received or sent (no e-mail)"
+      },
+      "status": "Leave it",
+      "statuses": {
+        "answered": "Answered",
+        "open": "Open (I keep working on it)",
+        "closed": "Closed"
+      },
+      "send": "Save answer"
+    },
+    "privacyNote": "A privacy request: it is answered with its legal rules (deadline and one extension).",
+    "notice": "Answer saved."
+  }
+}

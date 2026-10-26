@@ -34,6 +34,7 @@ import { isLimitedPath } from "@/product/membership/membership";
 import { LimitedAccess } from "@/product/membership/LimitedAccess";
 import { noteLocation, startSession } from "@/lib/track";
 import { TourProvider } from "@/product/tour/Tour";
+import { ReportProblemProvider } from "@/product/support/ReportProblem";
 
 function NotFoundComponent() {
   return (
@@ -178,7 +179,9 @@ function RootComponent() {
       <AuthProvider>
         <Localized>
           <TourProvider>
-            <Gate />
+            <ReportProblemProvider>
+              <Gate />
+            </ReportProblemProvider>
           </TourProvider>
           <UpdateToast />
           <TitleTap />

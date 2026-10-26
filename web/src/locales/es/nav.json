@@ -16,5 +16,6 @@
   "previewNote": "Solo cambia la presentación; tus permisos reales no cambian.",
   "signOut": "Cerrar sesión",
   "mainNavigation": "Navegación principal",
-  "adminNavigation": "Navegación del Admin Console"
+  "adminNavigation": "Navegación del Admin Console",
+  "help": "Ayuda"
 }
