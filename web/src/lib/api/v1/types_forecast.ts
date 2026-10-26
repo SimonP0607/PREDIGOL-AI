@@ -26,7 +26,8 @@ export interface ForecastMarket {
   market: string;
   line: Dec;
   family: string;
-  model: string;
+  /** The model that priced it. Admin preview only: null for a reader (an internal name is not a reader's word, plan UX A9). */
+  model: string | null;
   calibration: ForecastCalibration;
   basis: ForecastBasis;
   known_at: Iso;

@@ -140,6 +140,16 @@ export const live = {
     queryFn: () => v1.matchKnowledge(id, { preview }),
     refetchInterval: 10 * MINUTE,
   }),
+  /** The reading changes when PrediGol Intelligence stores a new packet (every one to three hours) or a new forecast. */
+  matchReading: (id: string, preview: Preview) => ({
+    queryKey: ["v1", "match-reading", id, preview ?? "user"],
+    queryFn: () => v1.matchReading(id, { preview }),
+    refetchInterval: 10 * MINUTE,
+  }),
+  /** Home's board: the server keeps it a minute; the page reads it again when the reader comes back to it. */
+  today: { queryKey: ["v1", "today"], queryFn: v1.today, refetchInterval: 2 * MINUTE },
+  /** Why the day has no pick, for the Picks page: the server keeps it five minutes. */
+  noPick: { queryKey: ["v1", "today", "no-pick"], queryFn: v1.noPick, refetchInterval: 5 * MINUTE },
   liveBoard: { queryKey: ["v1", "live"], queryFn: v1.liveBoard, refetchInterval: 15_000 },
   players: (q: { q?: string | undefined; team_id?: number | undefined }) => ({
     queryKey: ["v1", "players", q.q ?? "", q.team_id ?? 0],

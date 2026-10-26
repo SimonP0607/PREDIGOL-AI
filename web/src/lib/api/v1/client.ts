@@ -97,6 +97,8 @@ import type {
 import type { MatchCalendar } from "./types_calendar";
 import type { MatchForecast } from "./types_forecast";
 import type { MatchKnowledge } from "./types_knowledge";
+import type { MatchReading } from "./types_reading";
+import type { NoPick, Today } from "./types_today";
 import type {
   AnalystReply,
   AnalystStatus,
@@ -506,6 +508,16 @@ export const v1 = {
    */
   matchKnowledge: (id: number | string, q: Preview = {}) =>
     getJson<Envelope<MatchKnowledge | null>>(`/matches/${id}/knowledge`, q),
+  /**
+   * LECTURA PREDIGOL (plan UX, A9): six sections of facts with their references - summary, context, data, market, risks and
+   * the conclusion. Null data with `not_available`: the owner turned it off (FBI_READING_USERS=0).
+   */
+  matchReading: (id: number | string, q: Preview = {}) =>
+    getJson<Envelope<MatchReading | null>>(`/matches/${id}/reading`, q),
+  /** HOY (plan UX, A9): the matches around today with the forecast and a line of the reading, and the day's picks state. */
+  today: () => getJson<Envelope<Today>>("/today"),
+  /** The day's picks state and its reason alone, for the Picks page (the same as /today's no_pick). */
+  noPick: () => getJson<Envelope<NoPick>>("/today/no-pick"),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {

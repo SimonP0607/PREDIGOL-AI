@@ -11,7 +11,7 @@
  * fair odds beside each number and, folded away, what the decision layer and the pick engine said about the same
  * match - three answers that are not one.
  */
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CircleCheck, Gauge } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ import { fmtOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatRelative } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
+import { track } from "@/lib/track";
 import type { Section } from "@/lib/api/v1/types";
 import type {
   ForecastMarket,
@@ -187,8 +188,15 @@ function MarketView({
       </ul>
       <p className="text-caption leading-snug text-subtle-foreground">
         {note ? <span data-testid="forecast-basis">{note} </span> : null}
-        <span>{t("match.forecast.model", { model: modelLabel(market.model) })}</span>
-        <span> · {t("match.forecast.updated", { when: formatRelative(market.known_at) })}</span>
+        {/* The model's name is the owner's preview only (plan UX, A9): a reader gets null. */}
+        {market.model ? (
+          <>
+            <span>{t("match.forecast.model", { model: modelLabel(market.model) })}</span>
+            <span> · {t("match.forecast.updated", { when: formatRelative(market.known_at) })}</span>
+          </>
+        ) : (
+          <span>{t("match.forecast.updated", { when: formatRelative(market.known_at) })}</span>
+        )}
       </p>
     </section>
   );
@@ -398,8 +406,13 @@ export function ForecastBlock({ ctx }: { ctx: MatchCtx }) {
   const load: ForecastLoad = q.isPending
     ? { status: "pending" }
     : q.isError
-      ? { status: "error", error: q.error }
+      ? { status: "error", error: q.error, retry: () => void q.refetch() }
       : { status: "success", envelope: q.data };
+  const shown = forecastScreen(load, shadow === "shadow").kind === "forecast";
+  // Plan UX, A6 and A9: a reader saw PrediGol's forecast of this match (once per match opened; the owner is never measured).
+  useEffect(() => {
+    if (shown && shadow !== "shadow") track("forecast_viewed", { match_id: Number(ctx.fixtureId) });
+  }, [shown, shadow, ctx.fixtureId]);
   return (
     <ForecastView
       load={load}

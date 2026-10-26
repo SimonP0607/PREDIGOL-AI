@@ -237,7 +237,7 @@ export function CalendarBlock({ ctx }: { ctx: MatchCtx }) {
   const load: CalendarLoad = q.isPending
     ? { status: "pending" }
     : q.isError
-      ? { status: "error", error: q.error }
+      ? { status: "error", error: q.error, retry: () => void q.refetch() }
       : { status: "success", envelope: q.data };
   return <CalendarView load={load} preview={shadow === "shadow"} />;
 }
