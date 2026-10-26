@@ -131,7 +131,10 @@ export function watch(
   });
   page.on("requestfailed", (req) => {
     const why = req.failure()?.errorText ?? "";
-    if (isApi(req.url()) && !why.includes("ERR_ABORTED")) {
+    // A request the page itself gave up (a navigation away, a query superseded) is not a failure: Chromium says
+    // ERR_ABORTED, WebKit "Load request cancelled" (the analytics' last batch as a page is left, plan UX, A15).
+    const cancelled = why.includes("ERR_ABORTED") || why.includes("Load request cancelled");
+    if (isApi(req.url()) && !cancelled) {
       w.problems.push(`request failed: ${req.url()} ${why}`);
     }
   });

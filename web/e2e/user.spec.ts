@@ -46,16 +46,28 @@ async function open(page: Page, w: Watch, path: string): Promise<void> {
   await assertClean(page, w);
 }
 
-test("navigation is the product's seven destinations, in the account's language", async ({
+test("navigation is the product's five destinations, in the account's language", async ({
   page,
 }) => {
+  // Plan UX, A15: Inicio, Partidos, Picks, Mis picks and «Más» (Parlays, Cuotas, Ayuda, Perfil, Glosario and, once it
+  // is open to readers, Transparencia) - at a desk the same groups as the phone's bar.
   const w = watch(page);
   const t = L[lang()];
   await open(page, w, "/home");
   const nav = page.getByRole("navigation", { name: t.nav.mainNavigation }).first();
-  for (const key of ["home", "matches", "live", "picks", "parlays", "odds", "myPicks"] as const) {
+  for (const key of ["home", "matches", "picks", "myPicks"] as const) {
     await expect(nav.getByRole("link", { name: t.nav[key], exact: true })).toBeVisible();
   }
+  for (const key of ["live", "parlays", "odds"] as const) {
+    await expect(nav.getByRole("link", { name: t.nav[key], exact: true })).toHaveCount(0);
+  }
+  await nav.getByTestId("nav-more").click();
+  const menu = page.getByTestId("nav-more-menu");
+  for (const key of ["parlays", "odds", "help", "profile", "glossary"] as const) {
+    await expect(menu.getByRole("menuitem", { name: new RegExp(`^${t.nav[key]}`) })).toBeVisible();
+  }
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
   // nothing of the Admin Console
   await expect(page.getByText(t.admin.groups.intelligence, { exact: true })).toHaveCount(0);
   await expect(page.getByTestId("shadow-toggle")).toHaveCount(0);

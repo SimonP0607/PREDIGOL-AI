@@ -23,6 +23,9 @@ const PRODUCT = [
   "/profile",
   "/help/glossary",
   "/help",
+  // plan UX, A15: the pages of A4 and A12 the reader reaches from «Más» or a footer
+  "/transparency",
+  "/legal/terms",
 ];
 const WIDTHS: ReadonlyArray<readonly [number, number]> = [
   [1440, 900],
@@ -85,4 +88,26 @@ test.describe("the product, signed in", () => {
       });
     }
   }
+});
+
+// Plan UX, A15: the bar's «Más» and the filters' sheet, open on a phone (focus, names, contrast inside the dialogs).
+test.describe("the sheets of the phone, open", () => {
+  test.use({ storageState: statePath("user") });
+  test("axe on «Más» open at 390 px", async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/home");
+    await settle(page);
+    await page.getByTestId("tab-more").click();
+    await page.getByTestId("more-sheet").waitFor();
+    await page.getByTestId("more-install-toggle").click();
+    await measure(page, info, "/home+more", 390);
+  });
+  test("axe on the filters of Partidos open at 390 px", async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/matches");
+    await settle(page);
+    await page.getByTestId("matches-filters-open").click();
+    await page.getByTestId("matches-filters-sheet").waitFor();
+    await measure(page, info, "/matches+filters", 390);
+  });
 });
