@@ -107,10 +107,8 @@ async function follow(page: Page, leagues: number[], teams: number[]): Promise<F
 }
 
 /** Today's matches as Partidos reads them: the reader's day in Bogotá (no daylight saving: -05:00 all year). */
-async function todaysMatches(api: APIRequestContext): Promise<DayMatch[]> {
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
-  const from = new Date(`${day}T00:00:00-05:00`);
-  const to = new Date(from.getTime() + 24 * 3_600_000);
+/** The matches between two instants, as the API pages them. */
+async function matchesBetween(api: APIRequestContext, from: Date, to: Date): Promise<DayMatch[]> {
   const out: DayMatch[] = [];
   for (let offset = 0; offset < 2000; offset += 200) {
     const page = await getJson<{ data: DayMatch[]; meta: { total?: number } }>(
@@ -122,6 +120,27 @@ async function todaysMatches(api: APIRequestContext): Promise<DayMatch[]> {
     expect(page.status).toBe(200);
     out.push(...page.body.data);
     if (page.body.data.length < 200) break;
+  }
+  return out;
+}
+
+/** Today's matches as Partidos reads them: the reader's day in Bogotá (no daylight saving: -05:00 all year). */
+async function todaysMatches(api: APIRequestContext): Promise<DayMatch[]> {
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
+  const from = new Date(`${day}T00:00:00-05:00`);
+  return matchesBetween(api, from, new Date(from.getTime() + 24 * 3_600_000));
+}
+
+/** Matches of one competition with no team in common: the matches a reader keeps opening, never one team's. */
+function apart(matches: DayMatch[], want: number): DayMatch[] {
+  const used = new Set<number>();
+  const out: DayMatch[] = [];
+  for (const m of matches) {
+    if (used.has(m.home.id) || used.has(m.away.id)) continue;
+    out.push(m);
+    used.add(m.home.id);
+    used.add(m.away.id);
+    if (out.length === want) break;
   }
   return out;
 }
@@ -434,19 +453,31 @@ test("Inicio suggests what a reader keeps opening: «No, gracias» never brings 
       const page = await ctx.newPage();
       const w = watch(page, { expect401: true, expectStatus: [403] });
       await signIn(page, who.email);
-      const today = await todaysMatches(page.request);
-      const leagues = [...byCompetition(today).entries()].sort((x, y) => y[1].length - x[1].length);
-      expect(leagues.length).toBeGreaterThan(1);
-      const [mineL, opened] = [leagues[1]!, leagues[0]!];
-      expect(opened[1].length, "three matches of one league to open").toBeGreaterThanOrEqual(3);
-      await follow(page, [mineL[0]], []);
+      // the last three weeks and the next one: a league with three matches of different teams, and another to follow
+      const around = await matchesBetween(
+        page.request,
+        new Date(Date.now() - 21 * 86_400_000),
+        new Date(Date.now() + 7 * 86_400_000),
+      );
+      const leagues = [...byCompetition(around).entries()].sort(
+        (x, y) => y[1].length - x[1].length,
+      );
+      const opened = leagues.find(([, ms]) => apart(ms, 3).length === 3);
+      expect(
+        opened,
+        "a followed league with three matches of different teams (seed_a9.py)",
+      ).toBeTruthy();
+      const mineL = leagues.find(([id]) => id !== opened![0]);
+      expect(mineL, "another followed league to choose").toBeTruthy();
+      await follow(page, [mineL![0]], []);
       const marker = 1 + Math.floor(Math.random() * 999);
       const r = await sendJson<{ recorded: number }>(page.request, "POST", "/api/v1/events", {
         events: [
           { name: "search_submitted", props: { results: marker } },
-          ...opened[1]
-            .slice(0, 3)
-            .map((m) => ({ name: "match_opened", props: { origin: "matches", match_id: m.id } })),
+          ...apart(opened![1], 3).map((m) => ({
+            name: "match_opened",
+            props: { origin: "matches", match_id: m.id },
+          })),
         ],
       });
       expect(r.body.recorded).toBe(4);
@@ -485,7 +516,7 @@ test("Inicio suggests what a reader keeps opening: «No, gracias» never brings 
         expect(
           favs.body.leagues.map((x) => x.id),
           "nothing they had disappears",
-        ).toContain(mineL[0]);
+        ).toContain(mineL![0]);
       }
       await assertClean(page, w);
     }
