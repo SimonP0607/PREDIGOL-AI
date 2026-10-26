@@ -397,7 +397,8 @@ def test_no_table_of_the_customer_schema_has_room_for_an_ip_a_card_a_token_or_an
     assert {t for t, _ in columns} == {"consents", "support_tickets", "ticket_messages",
                                        "messages_outbox", "preferences",  # A5
                                        "product_events", "activity_daily",  # A6
-                                       "payments", "membership_periods", "membership_events"}  # A8
+                                       "payments", "membership_periods", "membership_events",  # A8
+                                       "favorites"}  # A13: leagues and teams only - never an amount or a bankroll
     offending = [(t, c) for t, c in columns if any(c == f or c.startswith(f + "_") or c.endswith("_" + f)
                                                    for f in forbidden)]
     assert not offending, offending

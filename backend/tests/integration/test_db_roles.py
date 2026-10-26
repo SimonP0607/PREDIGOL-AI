@@ -146,6 +146,14 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "customer.activity_daily", "DELETE", True),
     ("predigol_worker", "customer.product_events", "SELECT", False),
     ("predigol_worker", "customer.activity_daily", "SELECT", False),
+    # a reader's favourite leagues and teams (plan UX, A13): chosen or removed by the API, never edited; deleted when the
+    # account is anonymised; the worker of PrediGol Intelligence never reads them (personalisation never feeds a pick)
+    ("predigol_api", "customer.favorites", "SELECT", True),
+    ("predigol_api", "customer.favorites", "INSERT", True),
+    ("predigol_api", "customer.favorites", "DELETE", True),
+    ("predigol_api", "customer.favorites", "UPDATE", False),
+    ("predigol_worker", "customer.favorites", "SELECT", False),
+    ("predigol_worker", "customer.favorites", "INSERT", False),
     # an account's one-use links (plan UX, A7): the API issues and redeems them, the messenger arms them and purges
     # them (the API's role); the worker of PrediGol Intelligence sees none of them
     ("predigol_api", "auth.account_tokens", "SELECT", True),
