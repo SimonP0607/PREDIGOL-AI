@@ -108,6 +108,7 @@ import type {
   OnboardingState,
 } from "./types_favorites";
 import type { Transparency } from "./types_transparency";
+import type { AccountSummary } from "./types_account";
 import type {
   AdminInbox,
   AdminTicket,
@@ -434,6 +435,8 @@ export const v1 = {
   myAccess: (limit = 50) => getJson<AccessEvent[]>("/auth/me/access", { limit }),
   /** The reader's membership: its state now, its periods with their payments and how to renew (plan UX, A8). */
   myMembership: () => getJson<MyMembership>("/me/membership"),
+  /** The profile's eight blocks, folded: one read of the reader's own account (plan UX, B1). */
+  myAccount: () => getJson<AccountSummary>("/me/account"),
   // getting in without the owner (plan UX, A7): public; a link's token goes in the body, never in a URL
   accountOptions: () => getJson<AccountOptions>("/auth/options"),
   checkInvitation: (token: string) => postJson<ActivationInfo>("/auth/activate/check", { token }),

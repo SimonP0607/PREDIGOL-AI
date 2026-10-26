@@ -1,38 +1,43 @@
 /**
- * Account, language, time zone, password, security, notifications (plan UX, A5) and privacy (A4). Preferences are
- * stored on the account. An e-mail's button can lead to a block: /profile#privacy, /profile#notifications.
+ * The account centre (plan UX, B1; section 21): the profile in eight blocks - Cuenta, Fútbol, Idioma y zona,
+ * Notificaciones, Privacidad, Seguridad, Membresía and Ayuda - each a card that folds (folded under 1024 px, with the one
+ * line it says from GET /me/account; open at a desk). An e-mail's button or a page leads to a block by its address:
+ * /profile#privacy, #notifications, #membership, #football. Preferences are stored on the account.
  */
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   CalendarClock,
   Check,
-  Globe2,
-  History,
   KeyRound,
   Languages,
+  LifeBuoy,
   Lock,
   Loader2,
   LogOut,
   MapPin,
-  MonitorSmartphone,
   ShieldCheck,
+  Star,
+  UserRound,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { v1 } from "@/lib/api/v1/client";
+import { live } from "@/lib/api/v1/queries";
+import type { Me } from "@/lib/api/v1/types_auth";
 import { LOCALES, t, useI18n } from "@/lib/i18n";
 import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
-import { fmtInt } from "@/lib/i18n/format";
-import {
-  detectTimeZone,
-  formatDateTime,
-  formatTime,
-  listTimeZones,
-  zoneAbbrev,
-  zoneName,
-} from "@/lib/time";
-import { Card, PageTitle, errorMessage } from "@/product/shared/States";
+import { detectTimeZone, formatTime, listTimeZones, zoneAbbrev, zoneName } from "@/lib/time";
+import { PageTitle, errorMessage } from "@/product/shared/States";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { cn } from "@/lib/utils";
 import { AccessPanel, SessionsPanel, TwoFactorPanel } from "./SecurityPanels";
@@ -40,22 +45,10 @@ import { NotificationsPanel } from "./NotificationsPanel";
 import { MembershipCard } from "@/product/membership/MembershipCard";
 import { PrivacyPanel } from "./PrivacyPanel";
 import { FootballPanel } from "@/product/favorites/FootballPanel";
-
-/** "7 días", "8 horas": how long a session may go unused. */
-function idleText(hours: number): string {
-  return hours % 24 === 0
-    ? t("profile.idleDays", { count: hours / 24, n: fmtInt(hours / 24) })
-    : t("profile.idleHours", { count: hours, n: fmtInt(hours) });
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1 border-b border-border/70 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="min-w-0 text-sm">{children}</span>
-    </div>
-  );
-}
+import { AccountPanel } from "./AccountPanel";
+import { Block } from "./Block";
+import { HelpPanel } from "./HelpPanel";
+import { BLOCKS, blockOfHash, blockSummary, startsOpen, type BlockKey } from "./centre";
 
 function TimeZonePicker() {
   const auth = useAuth();
@@ -242,65 +235,22 @@ function PasswordForm() {
   );
 }
 
-/** The block an address names (#privacy), brought into view once the page is there - the browser's own jump comes
- * before the page renders. */
-function useAnchor(ready: boolean): void {
-  useEffect(() => {
-    if (!ready || typeof window === "undefined") return;
-    const id = window.location.hash.slice(1);
-    if (!/^[a-z-]{1,40}$/.test(id)) return;
-    document.getElementById(id)?.scrollIntoView({ block: "start" });
-  }, [ready]);
+function Subsection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3 border-t border-border/70 pt-4 first:border-0 first:pt-0">
+      <h3 className="font-display text-sm font-semibold">{title}</h3>
+      {children}
+    </section>
+  );
 }
 
-export function ProfilePage() {
+function RegionPanel() {
   const auth = useAuth();
   const { locale } = useI18n();
-  const navigate = useNavigate();
-  const user = auth.user;
-  useAnchor(Boolean(user));
-  if (!user) return null;
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
-      <PageTitle title={t("profile.title")} subtitle={t("profile.subtitle")} />
-
-      <Card className="p-5">
-        <h2 className="mb-1 font-display text-base font-semibold">{t("profile.account")}</h2>
-        <Row label={t("profile.displayName")}>{user.display_name}</Row>
-        <Row label={t("profile.email")}>{user.email}</Row>
-        {/* Plan UX, A1 (F07): a reader never sees an internal role; the owner's account says "Administrador". */}
-        {user.role === "SUPER_ADMIN" ? (
-          <Row label={t("profile.role")}>
-            <span
-              className="rounded-full border border-gold/40 bg-gold-soft px-2 py-0.5 text-xs font-bold tracking-wider text-gold-strong"
-              data-testid="profile-role"
-            >
-              {t("common.roleAdmin")}
-            </span>
-          </Row>
-        ) : null}
-        <Row label={t("profile.sessionLabel")}>
-          {/* The session slides with use (plan UX, A1): open until this date at most, sooner if it goes unused. */}
-          <span className="text-xs" data-testid="profile-session">
-            {t("profile.sessionUntil", { date: formatDateTime(user.session_expires_at) })}
-            {user.session_idle_hours ? (
-              <span className="block text-caption text-muted-foreground">
-                {t("profile.sessionIdle", { idle: idleText(user.session_idle_hours) })}
-              </span>
-            ) : null}
-          </span>
-        </Row>
-      </Card>
-
-      {/* Plan UX, A13: the leagues and teams the reader follows (B1 gathers the profile's blocks later). */}
-      <FootballPanel />
-
-      <Card className="p-5">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
-          <Languages aria-hidden className="h-4 w-4 text-primary" />
-          {t("profile.language")}
-        </h2>
-        <p className="mb-3 text-xs text-muted-foreground">{t("profile.languageHelp")}</p>
+    <div className="space-y-4" data-testid="region-panel">
+      <Subsection title={t("profile.language")}>
+        <p className="text-xs text-muted-foreground">{t("profile.languageHelp")}</p>
         <div className="flex gap-2" role="radiogroup" aria-label={t("profile.language")}>
           {LOCALES.map((l) => (
             <button
@@ -322,79 +272,169 @@ export function ProfilePage() {
             </button>
           ))}
         </div>
-      </Card>
-
-      <Card className="p-5">
-        <h2 className="mb-1 flex items-center gap-2 font-display text-base font-semibold">
-          <Globe2 aria-hidden className="h-4 w-4 text-primary" />
-          {t("profile.timezone")}
-        </h2>
-        <p className="mb-3 text-xs text-muted-foreground">{t("profile.timezoneHelp")}</p>
+      </Subsection>
+      <Subsection title={t("profile.timezone")}>
+        <p className="text-xs text-muted-foreground">{t("profile.timezoneHelp")}</p>
         <TimeZonePicker />
-      </Card>
+      </Subsection>
+    </div>
+  );
+}
 
-      <Card className="p-5">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
-          <KeyRound aria-hidden className="h-4 w-4 text-primary" />
-          {t("profile.security")}
-        </h2>
+function SecurityPanel({ user }: { user: Me }) {
+  return (
+    <div className="space-y-4" data-testid="security-panel">
+      <Subsection title={t("profile.centre.password")}>
         <PasswordForm />
-      </Card>
-
-      <Card className="p-5">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
-          <ShieldCheck aria-hidden className="h-4 w-4 text-primary" />
-          {t("profile.securityPanel.mfaTitle")}
-        </h2>
+      </Subsection>
+      <Subsection title={t("profile.securityPanel.mfaTitle")}>
         <TwoFactorPanel user={user} />
-      </Card>
-
-      <Card className="p-5">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
-          <MonitorSmartphone aria-hidden className="h-4 w-4 text-primary" />
-          {t("profile.securityPanel.sessionsTitle")}
-        </h2>
+      </Subsection>
+      <Subsection title={t("profile.securityPanel.sessionsTitle")}>
         <SessionsPanel />
-      </Card>
-
-      <Card className="p-5">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
-          <History aria-hidden className="h-4 w-4 text-primary" />
-          {t("profile.securityPanel.accessTitle")}
-        </h2>
+      </Subsection>
+      <Subsection title={t("profile.securityPanel.accessTitle")}>
         <AccessPanel />
-      </Card>
+      </Subsection>
+    </div>
+  );
+}
 
-      {user.membership ? (
-        <Card className="scroll-mt-20 p-5" id="membership">
-          <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
-            <CalendarClock aria-hidden className="h-4 w-4 text-primary" />
-            {t("profile.membership.title")}
-          </h2>
-          <MembershipCard />
-        </Card>
+type OpenState = Record<BlockKey, boolean>;
+
+/** Which blocks start open: all of them at a desk, none under 1024 px - and always the one the address names. */
+function initialOpen(): OpenState {
+  const open = startsOpen();
+  const named = typeof window === "undefined" ? null : blockOfHash(window.location.hash);
+  return Object.fromEntries(BLOCKS.map((key) => [key, open || key === named])) as OpenState;
+}
+
+/** The block an address names (#privacy) opens and comes into view, on arrival and when the address changes. */
+function useNamedBlock(ready: boolean, setOpen: Dispatch<SetStateAction<OpenState>>): void {
+  useEffect(() => {
+    if (!ready || typeof window === "undefined") return;
+    const go = () => {
+      const key = blockOfHash(window.location.hash);
+      if (!key) return;
+      setOpen((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+      window.requestAnimationFrame(() =>
+        document.getElementById(key)?.scrollIntoView({ block: "start" }),
+      );
+    };
+    go();
+    window.addEventListener("hashchange", go);
+    return () => window.removeEventListener("hashchange", go);
+  }, [ready, setOpen]);
+}
+
+export function ProfilePage() {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const user = auth.user;
+  const summary = useQuery({ ...live.account, enabled: Boolean(user) });
+  const [open, setOpen] = useState<OpenState>(initialOpen);
+  useNamedBlock(Boolean(user), setOpen);
+  const toggle = useCallback(
+    (key: BlockKey) => {
+      setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+      // folding a block after a change in it: its line says the new state
+      if (open[key]) void qc.invalidateQueries({ queryKey: ["me", "account"] });
+    },
+    [open, qc],
+  );
+  const data = summary.data;
+  const line = useMemo(() => (key: BlockKey) => (data ? blockSummary(key, data) : null), [data]);
+  if (!user) return null;
+  const block = (key: BlockKey) => ({
+    id: key,
+    summary: line(key),
+    open: open[key],
+    onToggle: () => toggle(key),
+  });
+  return (
+    <div className="mx-auto max-w-3xl space-y-3" data-testid="account-centre">
+      <PageTitle title={t("profile.title")} subtitle={t("profile.centre.subtitle")} />
+      {summary.isError ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-2 rounded-md border border-border px-4 py-3 text-xs text-muted-foreground"
+          data-testid="account-summary-error"
+        >
+          {t("profile.centre.summaryError")}
+          <button
+            type="button"
+            onClick={() => void summary.refetch()}
+            className="inline-flex min-h-11 items-center rounded-md border border-border-strong px-3 text-xs font-medium hover:bg-elevated"
+          >
+            {t("common.retry")}
+          </button>
+        </div>
       ) : null}
 
-      <Card className="scroll-mt-20 p-5" id="notifications">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
-          <Bell aria-hidden className="h-4 w-4 text-primary" />
-          {t("profile.notifications.title")}
-        </h2>
+      <Block
+        {...block("account")}
+        icon={<UserRound className="h-5 w-5" />}
+        title={t("profile.account")}
+      >
+        <AccountPanel user={user} summary={data} />
+      </Block>
+      <Block
+        {...block("football")}
+        icon={<Star className="h-5 w-5" />}
+        title={t("onboarding.panel.title")}
+      >
+        <FootballPanel />
+      </Block>
+      <Block
+        {...block("region")}
+        icon={<Languages className="h-5 w-5" />}
+        title={t("profile.centre.region")}
+      >
+        <RegionPanel />
+      </Block>
+      <Block
+        {...block("notifications")}
+        icon={<Bell className="h-5 w-5" />}
+        title={t("profile.notifications.title")}
+      >
         <NotificationsPanel />
-      </Card>
-
-      <Card className="scroll-mt-20 p-5" id="privacy">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
-          <Lock aria-hidden className="h-4 w-4 text-primary" />
-          {t("legal.privacy.title")}
-        </h2>
+      </Block>
+      <Block
+        {...block("privacy")}
+        icon={<Lock className="h-5 w-5" />}
+        title={t("legal.privacy.title")}
+      >
         <PrivacyPanel />
-      </Card>
+      </Block>
+      <Block
+        {...block("security")}
+        icon={<ShieldCheck className="h-5 w-5" />}
+        title={t("profile.security")}
+      >
+        <SecurityPanel user={user} />
+      </Block>
+      {user.membership ? (
+        <Block
+          {...block("membership")}
+          icon={<CalendarClock className="h-5 w-5" />}
+          title={t("profile.membership.title")}
+        >
+          <MembershipCard />
+        </Block>
+      ) : null}
+      <Block
+        {...block("help")}
+        icon={<LifeBuoy className="h-5 w-5" />}
+        title={t("profile.centre.help.title")}
+      >
+        <HelpPanel summary={data} />
+      </Block>
 
       <button
         type="button"
         onClick={() => void auth.signOut().then(() => navigate({ to: "/login" }))}
-        className="inline-flex items-center gap-2 rounded-md border border-negative/40 px-4 py-2 text-sm font-medium text-negative hover:bg-negative-soft pointer-coarse:min-h-11"
+        className="mt-2 inline-flex items-center gap-2 rounded-md border border-negative/40 px-4 py-2 text-sm font-medium text-negative hover:bg-negative-soft pointer-coarse:min-h-11"
       >
         <LogOut aria-hidden className="h-4 w-4" />
         {t("profile.signOut")}

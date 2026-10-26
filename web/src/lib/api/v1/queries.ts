@@ -28,6 +28,11 @@ export const live = {
    * (found by A16's journey: the receipt's «Ver mi mensaje» within a minute of the owner's answer).
    */
   support: { queryKey: ["me", "support"], queryFn: v1.mySupport, staleTime: 0 },
+  /**
+   * The account centre (plan UX, B1): what the profile's eight blocks say folded. Read again whenever the profile opens
+   * (staleTime 0) and after a change in one of its blocks.
+   */
+  account: { queryKey: ["me", "account"], queryFn: v1.myAccount, staleTime: 0 },
   /** Public: the way to reach PrediGol without signing in. */
   supportContact: {
     queryKey: ["support", "contact"],

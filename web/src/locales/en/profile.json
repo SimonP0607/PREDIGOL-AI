@@ -165,5 +165,71 @@
       "export": "Download my data",
       "readOnly": "Read-only while the membership has ended."
     }
+  },
+  "centre": {
+    "subtitle": "Your account, your football, your notifications, your privacy and your security, in one place.",
+    "region": "Language and time zone",
+    "password": "Password",
+    "stateLabel": "Status",
+    "sinceLabel": "Account created",
+    "since": "On PrediGol since {date}",
+    "summaryError": "We could not read your account's summary. The blocks still work.",
+    "state": {
+      "active": "Active",
+      "activeUntil": "Active until {date}",
+      "trial": "On trial until {date}",
+      "expiring": "Ends on {date}",
+      "expiringTrial": "Your trial ends on {date}",
+      "grace": "In grace until {date}",
+      "expired": "Ended",
+      "suspended": "Suspended"
+    },
+    "alias": {
+      "label": "Alias",
+      "help": "How PrediGol greets you. Only you see it (and PrediGol, if you write to us).",
+      "empty": "Write an alias.",
+      "long": "At most {max} characters.",
+      "save": "Save alias",
+      "saved": "We saved your alias."
+    },
+    "help": {
+      "title": "Help",
+      "label": "Help and contact",
+      "center": "Help centre",
+      "centerHint": "Answers to the most common questions",
+      "reportHint": "Tell us what happened: we answer here and by e-mail",
+      "messages": "Your messages",
+      "whatsappHint": "Write to us on WhatsApp"
+    },
+    "summary": {
+      "account": "{name} · {state}",
+      "footballSuggested_one": "Suggested for Colombia: {n} league",
+      "footballSuggested_other": "Suggested for Colombia: {n} leagues",
+      "footballNone": "You follow no league or team yet",
+      "leagues_one": "{n} league",
+      "leagues_other": "{n} leagues",
+      "teams_one": "{n} team",
+      "teams_other": "{n} teams",
+      "email": "E-mails: {on} of {total} topics",
+      "emailBounced": "Your e-mail bounced: nothing reaches you now",
+      "emailComplained": "You marked an e-mail as spam: we send you no more",
+      "consentsDue_one": "You have {n} authorisation to accept",
+      "consentsDue_other": "You have {n} authorisations to accept",
+      "requests_one": "{n} open request",
+      "requests_other": "{n} open requests",
+      "requestsUntil_one": "{n} open request, due by {date}",
+      "requestsUntil_other": "{n} open requests; the first is due on {date}",
+      "privacyOk": "Authorisations up to date · no open request",
+      "mfaOn": "Two-step verification on",
+      "mfaOff": "No two-step verification",
+      "sessions_one": "{n} open session",
+      "sessions_other": "{n} open sessions",
+      "noMembership": "No membership",
+      "waiting_one": "{n} message waits for an answer",
+      "waiting_other": "{n} messages wait for an answer",
+      "answered_one": "{n} message answered",
+      "answered_other": "{n} messages answered",
+      "helpNone": "No open message"
+    }
   }
 }
