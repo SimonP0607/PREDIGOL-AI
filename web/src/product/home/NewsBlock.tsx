@@ -42,7 +42,7 @@ export function NewsBlock({ query, now }: { query: TodayNewsQuery; now: number }
               params={{ fixtureId: String(match.fixture_id) }}
               hash="news"
               data-testid="home-news-match"
-              className="tap-y flex min-w-0 items-center gap-1 text-caption font-medium text-muted-foreground hover:text-foreground"
+              className="tap-y relative flex min-w-0 items-center gap-1 text-caption font-medium text-muted-foreground hover:text-foreground"
             >
               <span className="min-w-0 truncate">
                 {t("home.news.match", {

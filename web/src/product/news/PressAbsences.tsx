@@ -49,7 +49,7 @@ export function PressAbsencesView({ items, onMore }: { items: NewsItem[]; onMore
           type="button"
           onClick={onMore}
           data-testid="press-absences-more"
-          className="tap-y text-caption font-semibold text-primary underline-offset-2 hover:underline"
+          className="tap-y relative text-caption font-semibold text-primary underline-offset-2 hover:underline"
         >
           {t("match.news.press.more")}
         </button>

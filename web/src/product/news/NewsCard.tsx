@@ -105,7 +105,7 @@ function SourceLink({ claim }: { claim: NewsClaim }) {
       data-testid="news-link"
       aria-label={t("match.news.readNamed", { source: primary.name })}
       onClick={() => track("news_link_clicked")}
-      className="tap-y inline-flex items-center gap-1 text-caption font-semibold text-primary underline-offset-2 hover:underline"
+      className="tap-y relative inline-flex items-center gap-1 text-caption font-semibold text-primary underline-offset-2 hover:underline"
     >
       {t("match.news.read")}
       <ExternalLink aria-hidden className="h-3 w-3 shrink-0" />
