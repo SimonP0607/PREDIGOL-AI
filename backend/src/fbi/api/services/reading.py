@@ -445,13 +445,19 @@ def users_may_see() -> bool:
 
 
 GLANCES_SQL = """
-SELECT DISTINCT ON (p.fixture_id) p.fixture_id, p.content->'fixture' AS fixture, p.content->'stakes' AS stakes,
-       p.content->'phase' AS phase, p.content->'schedule' AS schedule,
-       jsonb_build_object('context', p.content->'dossier'->'context') AS dossier
-  FROM ai.match_packets p
- WHERE p.fixture_id = ANY(%(ids)s) AND p.as_of <= %(at)s
- ORDER BY p.fixture_id, p.as_of DESC, p.id DESC
+SELECT w.id AS fixture_id, p.fixture, p.stakes, p.phase, p.schedule, p.dossier
+  FROM unnest(%(ids)s::bigint[]) AS w(id)
+  CROSS JOIN LATERAL (
+    SELECT p.content->'fixture' AS fixture, p.content->'stakes' AS stakes, p.content->'phase' AS phase,
+           p.content->'schedule' AS schedule, jsonb_build_object('context', p.content->'dossier'->'context') AS dossier
+      FROM ai.match_packets p
+     WHERE p.fixture_id = w.id AND p.as_of <= %(at)s
+     ORDER BY p.as_of DESC, p.id DESC
+     LIMIT 1) p
 """
+"""The newest packet of each match, one per match through its index (``fixture_id, as_of DESC, id DESC``): packets are kept
+as they are rebuilt - about 50 per match in production on 26 Oct 2026, 29,713 (299 MB) for the 600 matches of Home's window -
+and a DISTINCT ON over all of them took longer than the API's 10 s (UX A13's baseline)."""
 GLANCE_BLOCKS: Final = ("fixture", "stakes", "phase", "schedule", "dossier")
 
 

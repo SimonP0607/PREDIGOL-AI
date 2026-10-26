@@ -109,6 +109,28 @@ def test_the_matches_around_today_with_the_forecast_labelled_a_line_of_the_readi
     assert up["forecast"] is None and up["headline"] is None and up["has_reading"] is False and up["context"] == []
 
 
+def test_home_reads_the_newest_packet_of_each_match(db: psycopg.Connection[Any], world: World, seed: Seed,  # noqa: F811
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    """One packet per match - the newest known - as the match's own reading takes it; read through the packets' index (UX
+    A13: about 50 packets a match in production, and reading all of them took longer than the API allows)."""
+    db.execute("UPDATE core.competitions SET is_tracked = true WHERE id = %s", (seed.competition_id,))
+    now = datetime.now(UTC)
+    upcoming = world.fixture(now + timedelta(hours=3))
+    for n, (hours, pressure) in enumerate(((5, "title"), (1, "relegation"), (3, "europe"))):
+        db.execute("INSERT INTO ai.match_packets (fixture_id, packet_version, as_of, built_at, packet_hash, content) "
+                   "VALUES (%s, 'packet-v8', %s, %s, %s, %s)",
+                   (upcoming, now - timedelta(hours=hours), now - timedelta(hours=hours), f"{n}" * 64,
+                    Jsonb({"fixture": {"home": {"name": "A"}, "away": {"name": "B"}},
+                           "stakes": {"away": {"rank": 18, "pressure": pressure}}})))
+    db.execute("INSERT INTO ai.match_packets (fixture_id, packet_version, as_of, built_at, packet_hash, content) "
+               "VALUES (%s, 'packet-v8', %s, %s, %s, %s)",
+               (upcoming, now + timedelta(hours=1), now + timedelta(hours=1), "9" * 64,
+                Jsonb({"fixture": {}, "stakes": {"away": {"rank": 1, "pressure": "promotion"}}})))  # not known yet
+    data = client(db, monkeypatch).get("/api/v1/today").json()["data"]
+    up = next(m for m in data["matches"]["data"] if m["fixture_id"] == upcoming)
+    assert up["headline"]["params"]["pressure"] == "relegation", "the newest packet known now, not a later one"
+
+
 def test_a_weekend_of_matches_never_cuts_today_off(db: psycopg.Connection[Any], seed: Seed,
                                                   monkeypatch: pytest.MonkeyPatch) -> None:
     """Plan UX, A13's baseline (26 Oct 2026, 10:15 UTC): 607 matches of the followed competitions in the window on a Monday.
