@@ -46,8 +46,9 @@ picks del partido. Las pestañas responden a las flechas, Inicio y Fin.
   c1–c6) y cómo terminaron los picks; lo guardado por el cliente, en Mis picks.
 
 **Lo que nunca sale de la API al cliente:** probabilidades propias de los modelos, ventajas, Elo, nombre del modelo,
-cuotas o casas en la lectura, ni el texto, la fuente o el enlace de una noticia o un rumor (solo cuántos hay, por
-estado). Ninguna plantilla dice «seguro», «fijo», «garantizado» ni «valor» (probado), y «margen» sigue siendo solo el de
+cuotas o casas en la lectura, ni, en la lectura, el texto, la fuente o el enlace de una noticia o un rumor (solo cuántos
+hay, por estado; desde A10 las noticias tienen su propia sección, con su fuente y su enlace y nunca el texto del
+artículo: `NOTICIAS_UX_A10.md`). Ninguna plantilla dice «seguro», «fijo», «garantizado» ni «valor» (probado), y «margen» sigue siendo solo el de
 las casas.
 
 **Armador de parlays:** cada motivo de «no hay parlay» abre las palabras del glosario que lo explican, y la ventana sin
