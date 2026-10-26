@@ -99,6 +99,33 @@ const VETOED: Record<Lang, RegExp> = {
   en: /\b(value|sure|guaranteed|lock|bet)\b/i,
 };
 
+interface NewsItemBody {
+  id: string;
+  status: string;
+  kind: string;
+  claims: Array<{
+    text: string | null;
+    assertion: string;
+    sources: Array<{ name: string; url: string | null }>;
+  }>;
+}
+interface NewsBody {
+  status: string;
+  data: { items: NewsItemBody[] } | null;
+}
+interface TodayNewsBody {
+  items: Array<{
+    match: { fixture_id: number; kickoff_at: string; status_group: string };
+    item: NewsItemBody;
+  }>;
+}
+
+/** Whether an instant falls on today in a time zone (the reader's own day). */
+function sameDay(iso: string, zone: string): boolean {
+  const day = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: zone });
+  return day(new Date(iso)) === day(new Date());
+}
+
 test("Home: today in the suggested leagues, the day's picks or why there are none, the parlays, results, live, best odds", async ({
   page,
 }) => {
@@ -168,16 +195,57 @@ test("Home: today in the suggested leagues, the day's picks or why there are non
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: t.home.live.title })).toBeVisible();
   await expect(page.getByRole("heading", { name: t.home.best.title })).toBeVisible();
+  // 4 · Noticias (A10): the confirmed or probable news of today's suggested matches - only with content
+  const news = await getJson<{ status: string; data: TodayNewsBody | null }>(
+    page.request,
+    "/api/v1/today/news",
+  );
+  expect(news.status).toBe(200);
+  const me = await getJson<{ timezone: string }>(page.request, "/api/v1/auth/me");
+  const zone = me.body.timezone; // the page cuts the reader's day in the account's own zone
+  const todays = (news.body.data?.items ?? []).filter(
+    (i) => i.match.status_group === "live" || sameDay(i.match.kickoff_at, zone),
+  );
+  const block4 = page.getByTestId("home-news");
+  if (news.body.status === "ok" && todays.length > 0) {
+    await expect(block4.getByRole("heading", { name: t.home.news.title })).toBeVisible();
+    const cards = block4.getByTestId("news-card");
+    await expect(cards).toHaveCount(Math.min(todays.length, 4));
+    for (const status of await cards.evaluateAll((els) =>
+      els.map((e) => e.getAttribute("data-status")),
+    )) {
+      expect(
+        ["CONFIRMED", "PROBABLE"],
+        "Inicio shows only what is confirmed or probable",
+      ).toContain(status);
+    }
+    await expect(block4.getByTestId("home-news-match").first()).toHaveAttribute(
+      "href",
+      /\/matches\/\d+#news$/,
+    );
+  } else {
+    await expect(block4).toHaveCount(0);
+    note(
+      test.info(),
+      "no confirmed or probable news of today's suggested matches: the block stays out",
+    );
+  }
   // the blocks in the order of section 24
   const order = await page.$$eval(
-    '[data-testid="home-today"], [data-testid="daily-set"], [data-testid="home-relevant"], [data-testid="home-context"], [data-testid="home-results"]',
-    (els) => els.map((e) => e.getAttribute("data-testid")),
+    '[data-testid="home-today"], [data-testid="daily-set"], [data-testid="home-relevant"], [data-testid="home-news"], [data-testid="home-context"], [data-testid="home-results"]',
+    (els) => els.map((e) => e.getAttribute("data-testid") ?? ""),
   );
-  expect(order.filter((x) => x !== "home-relevant" && x !== "home-context")).toEqual([
+  const seen = order.filter((x, i) => order.indexOf(x) === i);
+  const SECTION_24 = [
     "home-today",
     "daily-set",
+    "home-relevant",
+    "home-news",
+    "home-context",
     "home-results",
-  ]);
+  ];
+  expect(seen).toEqual(SECTION_24.filter((x) => seen.includes(x)));
+  expect(seen).toEqual(expect.arrayContaining(["home-today", "daily-set", "home-results"]));
   await assertClean(page, w);
 });
 
@@ -457,11 +525,11 @@ test("Matches: today in the reader's zone, and a match opens its centre", async 
   await expect(page).toHaveURL(/\/matches\/\d+$/);
   await settle(page);
   await expect(page.getByTestId("match-center")).toBeVisible();
-  for (const key of ["summary", "analysis", "stats", "markets", "lineups"] as const) {
+  for (const key of ["summary", "analysis", "stats", "markets", "lineups", "news"] as const) {
     await expect(page.getByRole("tab", { name: t.match.tabs[key] })).toBeVisible();
   }
   await expect(page.getByRole("tab", { name: t.match.tabs.advanced })).toHaveCount(0);
-  for (const key of ["stats", "markets", "lineups"] as const) {
+  for (const key of ["stats", "markets", "lineups", "news"] as const) {
     await page.getByRole("tab", { name: t.match.tabs[key] }).click();
     await settle(page);
     await assertClean(page, w);
@@ -740,6 +808,129 @@ test("A finished match opens on its Postpartido: the result and what the forecas
   await expect(page.getByRole("tab", { name: t.match.tabs.summary })).toHaveAttribute(
     "aria-selected",
     "true",
+  );
+  await assertClean(page, w);
+});
+
+/** A match of the window with news (the QA database's «QA Primera A» match of today has them) and one without. */
+async function newsTargets(
+  page: Page,
+): Promise<{ withNews: number | null; without: number | null }> {
+  const today = await getJson<{ data: TodayBody }>(page.request, "/api/v1/today");
+  let withNews: number | null = null;
+  let without: number | null = null;
+  for (const m of today.body.data.matches.data) {
+    if (withNews !== null && without !== null) break;
+    const r = await getJson<NewsBody>(page.request, `/api/v1/matches/${m.fixture_id}/news`);
+    expect(r.status).toBe(200);
+    if (r.body.status === "ok" && withNews === null) withNews = m.fixture_id;
+    if (r.body.status === "empty" && without === null) without = m.fixture_id;
+  }
+  return { withNews, without };
+}
+
+const NEWS_ORDER = ["CONFIRMED", "PROBABLE", "CONTRADICTORY", "RUMOR", "OUTDATED"];
+
+test("A match's Noticias: cards with their seven elements in the order of section 27, rumours last and labelled, the press's absences in Alineaciones, and the exact sentence without coverage", async ({
+  page,
+}) => {
+  // Plan UX, A10 (sections 25 and 27): what PrediGol Intelligence verified in the press, never an article's text.
+  const w = watch(page);
+  const t = L[lang()];
+  const sent: string[] = [];
+  page.on("request", (req) => {
+    if (req.method() === "POST" && req.url().endsWith("/api/v1/events")) {
+      const body = req.postDataJSON() as { events?: Array<{ name: string }> } | null;
+      sent.push(...(body?.events ?? []).map((e) => e.name));
+    }
+  });
+  const { withNews, without } = await newsTargets(page);
+  const tab = page.getByRole("tab", { name: t.match.tabs.news });
+  if (without !== null) {
+    await open(page, w, `/matches/${without}?s=noticias`);
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("news-empty")).toHaveText(t.match.news.empty);
+  } else {
+    note(test.info(), "every match of the window has news");
+  }
+  if (withNews === null) {
+    note(
+      test.info(),
+      "no match with news on this database (PrediGol Intelligence has not read the press here)",
+    );
+    return;
+  }
+  const api = await getJson<NewsBody>(page.request, `/api/v1/matches/${withNews}/news`);
+  const items = api.body.data?.items ?? [];
+  const ranks = items.map((i) => NEWS_ORDER.indexOf(i.status));
+  expect(ranks, "confirmed first, rumours and the outdated last").toEqual(
+    [...ranks].sort((a, b) => a - b),
+  );
+  await open(page, w, `/matches/${withNews}?s=news`);
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+  const block = page.getByTestId("match-news");
+  const cards = block.getByTestId("news-card");
+  await expect(cards).toHaveCount(items.length);
+  expect(await cards.evaluateAll((els) => els.map((e) => e.getAttribute("data-status")))).toEqual(
+    items.map((i) => i.status),
+  );
+  // the rumours and the outdated are folded under what is verified: one tap opens each group
+  for (const fold of await block.locator("details:not([open]) > summary").all()) await fold.click();
+  const labels = t.match.news.status as Record<string, { label: string }>;
+  for (let i = 0; i < items.length; i++) {
+    const card = cards.nth(i);
+    const item = items[i]!;
+    for (const id of [
+      "news-status",
+      "news-relevance",
+      "news-time",
+      "news-headline",
+      "news-summary",
+      "news-source",
+    ]) {
+      await expect(card.getByTestId(id).first(), id).toBeVisible();
+    }
+    // the status in words, not only a colour
+    await expect(card.getByTestId("news-status")).toContainText(labels[item.status]?.label ?? "?");
+    if (item.claims[0]?.sources.some((s) => s.url)) {
+      const link = card.getByTestId("news-link").first();
+      await expect(link).toHaveAttribute("target", "_blank");
+      await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    }
+    expect(
+      (await card.getByTestId("news-summary").first().innerText()).trim().length,
+    ).toBeGreaterThan(10);
+    if (item.claims.length > 1)
+      await expect(card.getByTestId("news-claim")).toHaveCount(item.claims.length);
+  }
+  if (items.some((i) => i.status === "RUMOR")) {
+    await expect(block.getByTestId("news-group-rumor")).toBeVisible();
+    await expect(block.getByTestId("news-rumor-note")).toBeVisible();
+  }
+  expect(await block.innerText(), "no certainty, no «valor»").not.toMatch(VETOED[lang()]);
+  if (lang() === "en" && items.some((i) => i.claims.some((c) => c.text)))
+    await expect(block.getByTestId("news-in-spanish").first()).toBeVisible();
+  await expect.poll(() => sent, { timeout: 20_000 }).toContain("news_opened");
+  // Alineaciones: the press's absences with their status and source - never a rumour -, and the way to Noticias
+  const said = items.filter(
+    (i) =>
+      ["injury", "suspension", "doubtful"].includes(i.kind) &&
+      ["CONFIRMED", "PROBABLE", "CONTRADICTORY"].includes(i.status) &&
+      i.claims.some((c) => c.assertion === "out" || c.assertion === "doubtful"),
+  );
+  await page.getByRole("tab", { name: t.match.tabs.lineups }).click();
+  await settle(page);
+  if (said.length > 0) {
+    const press = page.getByTestId("press-absences");
+    await expect(press.getByTestId("press-absence")).toHaveCount(said.length);
+    await press.getByTestId("press-absences-more").click();
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+  } else {
+    await expect(page.getByTestId("press-absences")).toHaveCount(0);
+  }
+  note(
+    test.info(),
+    `news of ${withNews}: ${items.length} cards, ${said.length} absences in the press`,
   );
   await assertClean(page, w);
 });

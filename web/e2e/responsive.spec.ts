@@ -311,6 +311,62 @@ test("a match's Análisis and Postpartido fit every phone width and the tablets,
   await assertClean(page, w);
 });
 
+test("a match's Noticias at every phone width: cards stacked, the status in words, the link in a finger's reach", async ({
+  page,
+}) => {
+  // Plan UX, A10: «RESPONSIVE: tarjetas a 320 px» and «ACCESSIBILITY: el estado se lee sin depender del color».
+  test.setTimeout(180_000);
+  const w = watch(page);
+  const today = await getJson<{ data: { matches: { data: Array<{ fixture_id: number }> } } }>(
+    page.request,
+    "/api/v1/today",
+  );
+  let id: number | null = null;
+  for (const m of today.body.data.matches.data) {
+    const r = await getJson<{ status: string }>(
+      page.request,
+      `/api/v1/matches/${m.fixture_id}/news`,
+    );
+    if (r.body.status === "ok") {
+      id = m.fixture_id;
+      break;
+    }
+  }
+  if (id === null) {
+    note(test.info(), "no match with news on this database");
+    return;
+  }
+  const labels = Object.values(L.es.match.news.status).map((s) => s.label);
+  for (const width of PHONES) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`/matches/${id}?s=noticias`);
+    await settle(page);
+    const cards = page.getByTestId("news-card");
+    await expect(cards.first()).toBeVisible();
+    for (const fold of await page
+      .locator('[data-testid="match-news"] details:not([open]) > summary')
+      .all())
+      await fold.click();
+    const sideways = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(sideways, `Noticias at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
+    const wider = await cards.evaluateAll(
+      (els, vw) => els.filter((e) => e.getBoundingClientRect().right > vw + 1).length,
+      width,
+    );
+    expect(wider, `cards wider than ${width} px`).toBe(0);
+    expect(await smallTargets(page, '[data-testid="match-news"]'), `${width} px`).toEqual([]);
+    for (const text of await page.getByTestId("news-status").allInnerTexts()) {
+      expect(
+        labels.some((label) => text.trim().startsWith(label)),
+        `the status is written, not only coloured: ${text}`,
+      ).toBe(true);
+    }
+  }
+  await assertClean(page, w);
+});
+
 test("the parlay slip under a thumb: a 44 px close, nothing on its title, its fields at 16 px", async ({
   page,
 }) => {
