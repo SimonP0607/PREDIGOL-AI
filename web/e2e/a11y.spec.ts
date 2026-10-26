@@ -90,6 +90,20 @@ test.describe("the product, signed in", () => {
   }
 });
 
+// Plan UX, B1: the account centre on a phone - folded (the eight headers and their lines) and with every block open.
+test.describe("the account centre on a phone", () => {
+  test.use({ storageState: statePath("user") });
+  test("axe on the profile's eight blocks open at 390 px", async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/profile");
+    await settle(page);
+    for (const toggle of await page.locator('[data-testid^="profile-toggle-"]').all())
+      await toggle.click();
+    await settle(page);
+    await measure(page, info, "/profile+open", 390);
+  });
+});
+
 // Plan UX, A15: the bar's «Más» and the filters' sheet, open on a phone (focus, names, contrast inside the dialogs).
 test.describe("the sheets of the phone, open", () => {
   test.use({ storageState: statePath("user") });

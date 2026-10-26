@@ -514,6 +514,28 @@ test("the real test's sixteen steps on one invited account, on a 390 px phone: f
     await test.step("10 · Perfil: idioma y zona, la copia de los datos (solo los suyos), seguridad y membresía", async () => {
       await more(page, "more-profile");
       await expect(page).toHaveURL(/\/profile/);
+      // the account centre (plan UX, B1): on a phone, eight blocks folded, each with its line
+      for (const key of [
+        "account",
+        "football",
+        "region",
+        "notifications",
+        "privacy",
+        "security",
+        "membership",
+        "help",
+      ]) {
+        await expect(page.getByTestId(`profile-block-${key}`)).toHaveAttribute(
+          "data-open",
+          "false",
+        );
+        await expect(page.getByTestId(`profile-summary-${key}`)).not.toHaveText("");
+      }
+      await expect(page.getByTestId("profile-summary-membership")).toContainText(
+        "En prueba hasta el",
+      );
+      for (const key of ["region", "security", "membership", "privacy"])
+        await page.getByTestId(`profile-toggle-${key}`).click();
       await expect(page.getByTestId("profile-lang-es")).toHaveAttribute("aria-checked", "true");
       await expect(page.getByTestId("current-timezone")).toContainText("America/Bogota");
       await expect(page.getByTestId("sessions-panel")).toBeVisible();

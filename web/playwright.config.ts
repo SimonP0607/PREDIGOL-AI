@@ -22,6 +22,7 @@
  *   journey   the real test's sixteen steps on one invited account at 390 px (plan UX, A16), from the invitation's
  *             e-mail to the recovery; journey-webkit, the same in WebKit. Needs self-service and the QA messenger
  *             (QA_SELF_SERVICE=1 QA_MESSENGER=1, E2E_MAIL_SINK); skipped otherwise
+ *   profile   the account centre's eight blocks (plan UX, B1), at 320 px and at a desk, on its own accounts
  *   pwa       manifest, service worker and offline page (E2E_PWA=1, production build only)
  *   prod-smoke  read-only checks of a deployed site, no sign-in (E2E_PROD_SMOKE=1, E2E_BASE_URL=the site)
  * Two measurements run only when asked, and never fail on what they measure:
@@ -143,6 +144,14 @@ export default defineConfig({
       name: "journey-webkit",
       testMatch: /journey\.spec\.ts/,
       use: { ...devices["iPhone 13"], viewport: { width: 390, height: 844 } },
+      dependencies: ["setup"],
+    },
+    {
+      // The account centre (plan UX, B1): the eight blocks on a 320 px phone and at a desk, by finger and by keyboard,
+      // on accounts the test makes and deletes.
+      name: "profile",
+      testMatch: /profile\.spec\.ts/,
+      use: desktop,
       dependencies: ["setup"],
     },
     {
