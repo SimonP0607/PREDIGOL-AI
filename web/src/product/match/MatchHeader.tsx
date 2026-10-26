@@ -8,6 +8,7 @@ import type { TeamRef } from "@/lib/api/v1/types";
 import { CompetitionTag, TeamLogo } from "@/components/football/Logos";
 import { Freshness, LiveMinute } from "@/product/shared/Bits";
 import { Card } from "@/product/shared/States";
+import { FollowStar } from "@/product/favorites/FollowStar";
 import { venueFacts, venuePlace } from "@/product/shared/venue";
 import type { MatchCtx } from "./context";
 import { tieView } from "./tie";
@@ -208,6 +209,8 @@ function TeamSide({
       >
         {team.name}
       </span>
+      {/* Plan UX, A13: follow the team from its match - Inicio shows its matches first. */}
+      <FollowStar team={{ id: team.id, name: team.name, logo_url: team.logo_url ?? null }} />
       {goals.length > 0 ? (
         <ul
           aria-label={t("match.header.scorers", { team: team.name })}

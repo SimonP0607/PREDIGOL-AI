@@ -33,6 +33,7 @@ import { isAccountPath } from "@/product/auth/accountPaths";
 import { isLimitedPath } from "@/product/membership/membership";
 import { LimitedAccess } from "@/product/membership/LimitedAccess";
 import { noteLocation, startSession } from "@/lib/track";
+import { TourProvider } from "@/product/tour/Tour";
 
 function NotFoundComponent() {
   return (
@@ -176,7 +177,9 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Localized>
-          <Gate />
+          <TourProvider>
+            <Gate />
+          </TourProvider>
           <UpdateToast />
           <TitleTap />
         </Localized>
@@ -308,6 +311,18 @@ function Gate() {
   const onLegal = isLegalPath(path);
   // Activating an invitation, recovering a password, unlocking (plan UX, A7): public, whatever the session.
   const onAccount = isAccountPath(path);
+  // The account's welcome (plan UX, A13): once, after the consents - its own page, whatever the address asked for.
+  const onWelcome = path === "/welcome";
+  const consentsDone = (auth.user?.consents_due ?? []).length === 0;
+  const welcomeOwed =
+    auth.status === "signed-in" &&
+    consentsDone &&
+    Boolean(auth.user?.welcome_due) &&
+    !onWelcome &&
+    !onLegal &&
+    !onAccount &&
+    !onAdmin &&
+    path !== "/profile";
   // Plan UX, A6: where the reader comes from (match_opened's origin) and the session's start, once per tab.
   useEffect(() => noteLocation(path), [path]);
   const measured = auth.status === "signed-in" && (auth.user?.consents_due ?? []).length === 0;
@@ -343,6 +358,17 @@ function Gate() {
     navigate,
   ]);
 
+  // The welcome is owed: to /welcome, keeping where the reader was going (a link they opened) for after it.
+  useEffect(() => {
+    if (!welcomeOwed) return;
+    const asked = `${location.pathname}${location.searchStr ?? ""}`;
+    void navigate({
+      to: "/welcome",
+      search: (path === "/home" || path === "/" ? {} : { next: asked }) as never,
+      replace: true,
+    });
+  }, [welcomeOwed, location.pathname, location.searchStr, path, navigate]);
+
   if (auth.status === "loading") return <Splash />;
   if (auth.status === "error") return <ConnectionProblem onRetry={auth.retry} />;
   // The account pages carry their own frame, signed in or not, with a step owed or not.
@@ -371,6 +397,9 @@ function Gate() {
   if (due.length > 0 && !onLegal && path !== "/profile") {
     return <ConsentGate key={key} due={due} />;
   }
+  // The welcome (plan UX, A13): its own frame, like the consents'; the page sends the reader on when nothing is owed.
+  if (onWelcome) return <Outlet key={key} />;
+  if (welcomeOwed) return <Splash />;
   // The membership has ended or is suspended (plan UX, A8; the server refuses the product with 403
   // membership_expired / membership_suspended): what a limited account can do, on every page but those it still
   // opens - its profile, its saved picks, the help and the legal texts.

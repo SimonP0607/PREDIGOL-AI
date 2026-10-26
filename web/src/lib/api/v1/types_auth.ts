@@ -41,6 +41,12 @@ export interface Me {
   membership?: MembershipSummary | null;
   /** «Cómo le va a PrediGol» is open to readers (plan UX, A12; FBI_TRANSPARENCY): link to it only then. */
   transparency?: boolean;
+  /** The account still owes its welcome (plan UX, A13; FBI_ONBOARDING): /welcome after the consents. Readers only, once. */
+  welcome_due?: boolean;
+  /** football (the favourites) and, for a new account, about («Qué es PrediGol»). */
+  welcome_steps?: string[];
+  /** The first-visit hints the reader dismissed (picks, match, parlay, my_picks): never shown again. */
+  hints_seen?: string[];
 }
 
 export interface MfaEnrollment {

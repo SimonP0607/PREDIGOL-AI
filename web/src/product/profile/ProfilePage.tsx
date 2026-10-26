@@ -39,6 +39,7 @@ import { AccessPanel, SessionsPanel, TwoFactorPanel } from "./SecurityPanels";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { MembershipCard } from "@/product/membership/MembershipCard";
 import { PrivacyPanel } from "./PrivacyPanel";
+import { FootballPanel } from "@/product/favorites/FootballPanel";
 
 /** "7 días", "8 horas": how long a session may go unused. */
 function idleText(hours: number): string {
@@ -290,6 +291,9 @@ export function ProfilePage() {
           </span>
         </Row>
       </Card>
+
+      {/* Plan UX, A13: the leagues and teams the reader follows (B1 gathers the profile's blocks later). */}
+      <FootballPanel />
 
       <Card className="p-5">
         <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">

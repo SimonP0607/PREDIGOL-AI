@@ -39,6 +39,7 @@ import { HISTORY_GROUPS, hasStarted } from "./model";
 import { useSlip } from "./slipContext";
 import { Recap } from "./Recap";
 import { track } from "@/lib/track";
+import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
 
 const PERIODS: readonly HistoryPeriod[] = ["today", "7d", "30d", "all"];
 
@@ -669,6 +670,7 @@ export function MyPicksPage() {
   return (
     <div className="space-y-9" data-testid="my-picks-page">
       <PageTitle title={t("records.mine.title")} subtitle={t("records.mine.subtitle")} />
+      <FirstVisitHint hint="my_picks" />
       {readOnly ? (
         <p className="text-xs text-muted-foreground" data-testid="my-picks-read-only">
           {t("profile.membership.limited.readOnly")}

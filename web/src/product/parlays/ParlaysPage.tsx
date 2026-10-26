@@ -19,6 +19,7 @@ import { EvaluationNote } from "@/product/records/DailySetBlock";
 import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
 import { useSlip } from "@/product/records/slipContext";
 import { ParlayBuilder } from "./Builder";
+import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
 
 function RuleGroup({
   icon: Icon,
@@ -146,6 +147,7 @@ export function ParlaysPage() {
         }
         right={adminToggle ? <ShadowToggle /> : undefined}
       />
+      <FirstVisitHint hint="parlay" />
       {data?.evaluation_mode ? <EvaluationNote /> : null}
       {KINDS.map((kind) =>
         data ? (

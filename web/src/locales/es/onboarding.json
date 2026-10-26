@@ -1,0 +1,96 @@
+{
+  "welcome": {
+    "pageTitle": "Bienvenida",
+    "step": "Paso {n} de {total}",
+    "football": {
+      "title": "Tu fútbol",
+      "intro": "Elige las ligas y los equipos que sigues: Inicio te mostrará primero sus partidos. Ya marcamos los que más se siguen en Colombia.",
+      "introOlder": "Ahora puedes elegir tus ligas y equipos: Inicio te mostrará primero sus partidos. Ya marcamos los que más se siguen en Colombia.",
+      "save": "Guardar y seguir",
+      "saveLast": "Guardar y entrar",
+      "skip": "Saltar",
+      "skipHelp": "Si saltas, te quedas con las sugeridas para Colombia. Las cambias cuando quieras en tu perfil."
+    },
+    "about": {
+      "title": "Qué es PrediGol",
+      "analysis": "Cada día, el análisis de tus partidos: el pronóstico, el contexto y lo que se juega cada equipo.",
+      "picks": "Picks solo cuando medimos ventaja frente al precio del mercado. Si ningún partido la tiene, ese día no publicamos.",
+      "transparency": "Te contamos cómo nos va, también cuando perdemos.",
+      "transparencyLink": "Cómo le va a PrediGol",
+      "enter": "Entrar a PrediGol",
+      "tour": "Hacer el recorrido (4 pasos)",
+      "skip": "Saltar"
+    },
+    "failed": "No pudimos guardar. Inténtalo de nuevo o salta este paso."
+  },
+  "picker": {
+    "searchLabel": "Busca un equipo",
+    "searchPlaceholder": "Escribe al menos dos letras",
+    "searching": "Buscando equipos…",
+    "found_one": "{count} equipo encontrado",
+    "found_other": "{count} equipos encontrados",
+    "noTeams": "Ningún equipo de las ligas que seguimos se llama así.",
+    "leagues": "Ligas",
+    "teams": "Equipos",
+    "chosen": "Tu selección",
+    "countLeagues": "{count} de {max} ligas",
+    "countTeams": "{count} de {max} equipos",
+    "fullLeagues": "Llegaste a {max} ligas: quita una para elegir otra.",
+    "fullTeams": "Llegaste a {max} equipos: quita uno para elegir otro.",
+    "remove": "Quitar {name}",
+    "international": "Internacionales",
+    "noneChosen": "Aún no eliges ninguna liga ni equipo: Inicio te mostrará las sugeridas.",
+    "loading": "Cargando las ligas…"
+  },
+  "panel": {
+    "title": "Tu fútbol",
+    "help": "Las ligas y los equipos que sigues ordenan Inicio: primero sus partidos. Nunca cambian un pick, una probabilidad ni una cuota.",
+    "suggested": "Sugeridas para Colombia: aún no eliges las tuyas.",
+    "edit": "Cambiar",
+    "choose": "Elegir mis ligas",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "saved": "Guardamos tus ligas y equipos.",
+    "failed": "No pudimos guardar tus ligas y equipos. Inténtalo de nuevo."
+  },
+  "hint": {
+    "label": "Pista",
+    "dismiss": "Entendido",
+    "picks": "Un pick sale solo cuando medimos ventaja frente al precio del mercado. Toca cualquier término para ver qué significa.",
+    "match": "Aquí está todo el partido: el pronóstico, el contexto, el mercado y, cuando lo hay, el pick con su estado real.",
+    "parlay": "En un parlay las cuotas se multiplican, y basta que una selección falle para perderlo.",
+    "my_picks": "Tus picks guardados se liquidan con el resultado oficial; tus cifras cuentan solo los que tienen cuota."
+  },
+  "tour": {
+    "start": "Hacer el recorrido",
+    "startHelp": "Cuatro pasos por lo esencial: Inicio, un partido, un pick y Mis picks.",
+    "step": "Recorrido · {n} de {total}",
+    "next": "Siguiente",
+    "done": "Terminar",
+    "close": "Cerrar el recorrido",
+    "home": {
+      "title": "Inicio",
+      "body": "Responde qué hay hoy para ti: tus ligas primero, los picks del día —o por qué no hay— y los resultados."
+    },
+    "match": {
+      "title": "Centro de partido",
+      "body": "Cada partido tiene su centro: el pronóstico, el contexto, el mercado y, al terminar, el postpartido."
+    },
+    "pick": {
+      "title": "Un pick y su estado",
+      "body": "En Picks ves cada pick con su estado real, de pendiente a liquidado, y por qué cumplió las condiciones."
+    },
+    "myPicks": {
+      "title": "Mis picks",
+      "body": "Lo que guardas se liquida solo con el resultado oficial, y tus cifras salen de ahí."
+    }
+  },
+  "follow": {
+    "add": "Seguir a {team}",
+    "remove": "Dejar de seguir a {team}",
+    "added": "Ahora sigues a {team}: sus partidos salen primero en Inicio.",
+    "removed": "Ya no sigues a {team}.",
+    "full": "Ya sigues {max} equipos: quita uno en tu perfil para seguir a {team}.",
+    "failed": "No pudimos guardar el cambio. Inténtalo de nuevo."
+  }
+}

@@ -15,6 +15,13 @@ type Preview = "shadow" | undefined;
 export const live = {
   // ── auth ──────────────────────────────────────────────────────────────────
   me: { queryKey: ["auth", "me"], queryFn: v1.me, staleTime: 5 * MINUTE, retry: false },
+  /** The reader's favourites (plan UX, A13): Home's own part follows them through /today. */
+  favorites: { queryKey: ["me", "favorites"], queryFn: v1.myFavorites, staleTime: 5 * MINUTE },
+  favoriteOptions: (q: string) => ({
+    queryKey: ["me", "favorite-options", q],
+    queryFn: () => v1.favoriteOptions(q),
+    staleTime: 10 * MINUTE,
+  }),
 
   // ── product ───────────────────────────────────────────────────────────────
   home: (preview: Preview) => ({

@@ -42,7 +42,23 @@
       "draw": "Pronóstico: empate"
     },
     "uncalibrated": "sin calibrar",
-    "forecastNote": "El pronóstico dice qué resultado es más probable; no es una recomendación. Lo que PrediGol recomienda es el pick."
+    "forecastNote": "El pronóstico dice qué resultado es más probable; no es una recomendación. Lo que PrediGol recomienda es el pick.",
+    "titleMine": "Hoy en tus ligas",
+    "subtitleMine": "Tus ligas y equipos: los partidos de hoy, en vivo primero",
+    "whyLeague": "Tu liga",
+    "whyTeam": "Sigues a {team}",
+    "whyLeagueHelp": "Te mostramos este partido porque sigues esta liga.",
+    "whyTeamHelp": "Te mostramos este partido porque sigues a {team}.",
+    "emptyMine": "Hoy no juegan tus ligas.",
+    "playedMine_one": "El partido de hoy de tus ligas ya terminó: su resultado está en Resultados.",
+    "playedMine_other": "Los {count} partidos de hoy de tus ligas ya terminaron: sus resultados están en Resultados.",
+    "moreMine_one": "Hoy juega {count} partido más de tus ligas",
+    "moreMine_other": "Hoy juegan {count} partidos más de tus ligas",
+    "nextMine": "Lo próximo de tus favoritos",
+    "nextOf": "Próximo de {name}",
+    "mineLabel": "Tus ligas y equipos",
+    "choose": "Elegir mis ligas",
+    "edit": "Cambiar"
   },
   "relevant": {
     "title": "Partidos relevantes",
@@ -51,13 +67,16 @@
   "context": {
     "title": "Qué se juega",
     "subtitle": "Los próximos partidos de las ligas sugeridas: tabla o eliminatoria, descanso y próximo partido",
-    "analysis": "Ver el análisis"
+    "analysis": "Ver el análisis",
+    "subtitleMine": "Los próximos partidos de tus ligas y equipos: tabla o eliminatoria, descanso y próximo partido"
   },
   "results": {
     "title": "Resultados",
     "subtitle": "Ligas sugeridas · últimas 48 horas",
     "empty": "Sin resultados recientes en las ligas sugeridas.",
-    "postmatch": "Postpartido"
+    "postmatch": "Postpartido",
+    "subtitleMine": "Tus ligas y equipos · últimas 48 horas",
+    "emptyMine": "Sin resultados recientes de tus equipos."
   },
   "parlaysNone": "Hoy todavía no hay parlays de PrediGol: solo se arman con selecciones que pasan todas sus reglas, y nunca los rellenamos.",
   "parlaysLink": "Ver parlays",

@@ -42,7 +42,23 @@
       "draw": "Forecast: a draw"
     },
     "uncalibrated": "uncalibrated",
-    "forecastNote": "The forecast says which result is likeliest; it is not a recommendation. What PrediGol recommends is the pick."
+    "forecastNote": "The forecast says which result is likeliest; it is not a recommendation. What PrediGol recommends is the pick.",
+    "titleMine": "Today in your leagues",
+    "subtitleMine": "Your leagues and teams: today's matches, live first",
+    "whyLeague": "Your league",
+    "whyTeam": "You follow {team}",
+    "whyLeagueHelp": "We show you this match because you follow this league.",
+    "whyTeamHelp": "We show you this match because you follow {team}.",
+    "emptyMine": "Your leagues do not play today.",
+    "playedMine_one": "Today's match of your leagues is over: its result is in Results.",
+    "playedMine_other": "Today's {count} matches of your leagues are over: their results are in Results.",
+    "moreMine_one": "{count} more match of your leagues today",
+    "moreMine_other": "{count} more matches of your leagues today",
+    "nextMine": "Next for your favourites",
+    "nextOf": "Next for {name}",
+    "mineLabel": "Your leagues and teams",
+    "choose": "Pick my leagues",
+    "edit": "Change"
   },
   "relevant": {
     "title": "Matches worth a look",
@@ -51,13 +67,16 @@
   "context": {
     "title": "What is at stake",
     "subtitle": "The suggested leagues' next matches: table or tie, rest and next match",
-    "analysis": "See the analysis"
+    "analysis": "See the analysis",
+    "subtitleMine": "The next matches of your leagues and teams: table or tie, rest and next match"
   },
   "results": {
     "title": "Results",
     "subtitle": "Suggested leagues · last 48 hours",
     "empty": "No recent results in the suggested leagues.",
-    "postmatch": "Post-match"
+    "postmatch": "Post-match",
+    "subtitleMine": "Your leagues and teams · last 48 hours",
+    "emptyMine": "No recent results of your teams."
   },
   "parlaysNone": "No PrediGol parlays yet today: they are only built from selections that pass all its rules, and we never pad them.",
   "parlaysLink": "See parlays",

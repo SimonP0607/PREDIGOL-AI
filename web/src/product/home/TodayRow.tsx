@@ -1,8 +1,9 @@
 /**
- * One match of Inicio (plan UX, A9; section 24): when - the hour in the reader's zone, the minute while it is played or
- * its final state -, who, the score, where it comes from and why it is shown («Sugerida»), PrediGol's forecast labelled
- * («sin calibrar» where it is the model's own number) and one line of its reading. The whole row opens the match; a
- * figure's help opens with a tap without opening it (A1).
+ * One match of Inicio (plan UX, A9 and A13; section 24): when - the hour in the reader's zone, the minute while it is played
+ * or its final state -, who, the score, where it comes from and why it is shown («Sigues a Nacional», «Tu liga» or
+ * «Sugerida»: plan section 38, every personalised item says why), PrediGol's forecast labelled («sin calibrar» where it is
+ * the model's own number) and one line of its reading. The whole row opens the match; a figure's help opens with a tap
+ * without opening it (A1).
  */
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -19,6 +20,7 @@ import { RowClock } from "@/product/matches/MatchRow";
 import { liveLabel } from "@/product/matches/status";
 import { factText } from "@/product/reading/text";
 import { inPlay, phaseOf, played } from "./today";
+import { whyText, type Why } from "./why";
 
 function dayLabel(at: string): string | null {
   const rel = relativeDay(at);
@@ -58,6 +60,20 @@ function When({ m, now }: { m: TodayMatch; now: number }) {
   );
 }
 
+export function WhyChip({ why }: { why: Why }) {
+  const { label, help } = whyText(why);
+  return (
+    <span
+      {...hintProps(help)}
+      data-testid="today-why"
+      data-why={why.kind}
+      className="min-w-0 max-w-full truncate rounded-full border border-primary/30 bg-primary/10 px-2 py-px font-medium text-primary"
+    >
+      {label}
+    </span>
+  );
+}
+
 /** «Pronóstico: gana Nacional · 52 %», labelled when uncalibrated. */
 export function ForecastLine({ m }: { m: TodayMatch }) {
   const f = m.forecast;
@@ -89,7 +105,7 @@ export function ForecastLine({ m }: { m: TodayMatch }) {
 export function TodayRow({
   m,
   now,
-  why = false,
+  why = null,
   reading = true,
   forecast = true,
   tab,
@@ -97,8 +113,8 @@ export function TodayRow({
 }: {
   m: TodayMatch;
   now: number;
-  /** «Sugerida»: why it is on Inicio (plan section 24: every personalised item says why). */
-  why?: boolean;
+  /** Why it is on Inicio (plan section 38: every personalised item says why); nothing for the rest of the board. */
+  why?: Why | null | undefined;
   /** The reading's line (what the match is about). */
   reading?: boolean;
   /** PrediGol's forecast, labelled (not for a result: the Postpartido says what it said). */
@@ -143,15 +159,7 @@ export function TodayRow({
             size={12}
             className="min-w-0"
           />
-          {why ? (
-            <span
-              {...hintProps(t("home.today.whyHelp"))}
-              data-testid="today-why"
-              className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-px font-medium text-primary"
-            >
-              {t("home.today.why")}
-            </span>
-          ) : null}
+          {why ? <WhyChip why={why} /> : null}
         </div>
         {forecast ? <ForecastLine m={m} /> : null}
         {line ? (

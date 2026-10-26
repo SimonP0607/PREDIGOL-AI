@@ -100,6 +100,13 @@ import type { MatchKnowledge } from "./types_knowledge";
 import type { MatchReading } from "./types_reading";
 import type { MatchNews, TodayNews } from "./types_news";
 import type { NoPick, Today } from "./types_today";
+import type {
+  FavoriteOptions,
+  FavoritesIn,
+  FavoritesView,
+  HintKey,
+  OnboardingState,
+} from "./types_favorites";
 import type { Transparency } from "./types_transparency";
 import type {
   AnalystReply,
@@ -263,7 +270,7 @@ type Params = Record<
  * the same-site header the API requires on anything that changes state.
  */
 async function request<T>(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   { params, body }: { params?: Params | undefined; body?: unknown } = {},
 ): Promise<T> {
@@ -333,6 +340,7 @@ async function request<T>(
 
 const getJson = <T>(path: string, params?: Params) => request<T>("GET", path, { params });
 const postJson = <T>(path: string, body: unknown) => request<T>("POST", path, { body });
+const putJson = <T>(path: string, body: unknown) => request<T>("PUT", path, { body });
 const patchJson = <T>(path: string, body: unknown) => request<T>("PATCH", path, { body });
 const deleteJson = <T>(path: string) => request<T>("DELETE", path);
 
@@ -421,6 +429,19 @@ export const v1 = {
   myNotificationPreferences: () => getJson<NotificationPreferences>("/me/preferences"),
   updateNotificationPreferences: (body: NotificationPreferencesIn) =>
     patchJson<NotificationPreferences>("/me/preferences", body),
+
+  // ── the reader's favourites, the welcome and the hints (plan UX, A13) ─────
+  /** The leagues and teams the reader follows - the suggested ones for Colombia, labelled, while they chose none. */
+  myFavorites: () => getJson<FavoritesView>("/me/favorites"),
+  /** They become exactly these: 422 too_many_leagues / too_many_teams / unknown_league / unknown_team otherwise. */
+  saveFavorites: (body: FavoritesIn) => putJson<FavoritesView>("/me/favorites", body),
+  /** Every league PrediGol follows, and the teams of those leagues whose name matches `q` (two letters or more). */
+  favoriteOptions: (q = "") => getJson<FavoriteOptions>("/me/favorites/options", { q }),
+  myOnboarding: () => getJson<OnboardingState>("/me/onboarding"),
+  /** The welcome done or skipped: recorded once, never shown again. */
+  completeOnboarding: () => postJson<OnboardingState>("/me/onboarding", {}),
+  /** A first-visit hint dismissed: it never comes back. */
+  dismissHint: (hint: HintKey) => postJson<OnboardingState>("/me/hints", { hint }),
 
   // ── product ───────────────────────────────────────────────────────────────
   home: (q: Preview = {}) => getJson<Envelope<Home>>("/home", q),

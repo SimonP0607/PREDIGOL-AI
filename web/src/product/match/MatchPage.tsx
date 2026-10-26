@@ -28,6 +28,7 @@ import { StatsTab } from "./StatsTab";
 import { SummaryTab } from "./SummaryTab";
 import { tabsFor, useMatchTab } from "./useMatchTab";
 import { originOf, track } from "@/lib/track";
+import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
 
 function BackLink() {
   return (
@@ -288,6 +289,7 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
     <div className="space-y-4" data-testid="match-center" data-phase={phase}>
       <BackLink />
       <MatchHeader ctx={ctx} />
+      <FirstVisitHint hint="match" />
       <div id="match-tabs-anchor" aria-hidden className="mb-0" />
       <TabBar tabs={tabs} active={tab} onSelect={openSection} live={phase === "live"} />
       <div

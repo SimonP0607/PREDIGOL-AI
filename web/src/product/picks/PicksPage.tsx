@@ -52,6 +52,7 @@ import {
   type OddsRange,
   type PickFilters,
 } from "./filters";
+import { FirstVisitHint } from "@/product/shared/FirstVisitHint";
 
 const DAY_ZONE = "America/Bogota";
 
@@ -81,6 +82,7 @@ export function PicksPage() {
         }
         right={auth.showAdmin ? <ShadowToggle /> : undefined}
       />
+      <FirstVisitHint hint="picks" />
       <DailySetBlock
         query={daily}
         nav={{ day, today, onDay: setDay }}

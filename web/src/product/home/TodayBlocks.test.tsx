@@ -213,3 +213,120 @@ describe("6 · Resultados", () => {
     expect(empty).toContain("Sin resultados recientes en las ligas sugeridas.");
   });
 });
+
+describe("A13 · Hoy en tus ligas", () => {
+  const following = (over: Partial<NonNullable<Today["following"]>> = {}): Today["following"] => ({
+    suggested: false,
+    personalization: true,
+    leagues: [{ id: 1, name: "Liga BetPlay", country: "Colombia", logo_url: null, flag_url: null }],
+    teams: [{ id: 7, name: "Santa Fe", logo_url: null }],
+    next: [],
+    ...over,
+  });
+  const mine = (matches: TodayMatch[], f: Today["following"]): Today => ({
+    ...board(matches),
+    following: f,
+  });
+
+  test("the reader's own: their title, why each match is theirs, their leagues and teams named, the way to change them", async () => {
+    const byTeam = m({
+      at: NOW + H,
+      suggested: false,
+      followed: { kind: "team", names: ["Santa Fe"] },
+      competition: { id: 9, name: "Copa", country: "Colombia", logo_url: null, flag_url: null },
+    });
+    const byLeague = m({ at: NOW + 2 * H, followed: { kind: "league", names: ["Liga BetPlay"] } });
+    const notMine = m({ at: NOW + 3 * H, suggested: true, followed: null });
+    const markup = await html(
+      <TodayBlock query={loaded(mine([byTeam, byLeague, notMine], following()))} now={NOW} />,
+    );
+    const page = text(markup);
+    expect(page).toContain("Hoy en tus ligas");
+    expect(page).not.toContain("ligas sugeridas");
+    expect(markup).toContain('data-view="mine"');
+    expect(page).toContain("Sigues a Santa Fe");
+    expect(page).toContain("Tu liga");
+    expect(markup).toContain("porque sigues a Santa Fe");
+    expect(markup).not.toContain(`data-fixture="${notMine.fixture_id}"`);
+    expect(markup).toContain('data-testid="mine-chips"');
+    expect(page).toContain("Cambiar");
+    expect(markup).toContain('href="/profile#football"');
+  });
+
+  test("while the reader chose none: the suggested ones, labelled, and the way to choose", async () => {
+    const match = m({ at: NOW + H, followed: { kind: "league", names: ["Liga BetPlay"] } });
+    const markup = await html(
+      <TodayBlock query={loaded(mine([match], following({ suggested: true })))} now={NOW} />,
+    );
+    const page = text(markup);
+    expect(page).toContain("Hoy en las ligas sugeridas");
+    expect(page).toContain("Sugerida");
+    expect(page).toContain("Elegir mis ligas");
+    expect(markup).toContain('data-testid="suggested-leagues"');
+  });
+
+  test("personalisation off: the common view, without the way to choose", async () => {
+    const match = m({ at: NOW + H, followed: { kind: "league", names: ["Liga BetPlay"] } });
+    const markup = await html(
+      <TodayBlock
+        query={loaded(mine([match], following({ suggested: true, personalization: false })))}
+        now={NOW}
+      />,
+    );
+    expect(text(markup)).toContain("Hoy en las ligas sugeridas");
+    expect(markup).not.toContain('data-testid="today-choose"');
+  });
+
+  test("their leagues do not play today: it says so and lists the next match of each favourite", async () => {
+    const elsewhere = m({ at: NOW + H, suggested: true, followed: null });
+    const next = [
+      {
+        followed: { kind: "team" as const, names: ["Santa Fe"] },
+        fixture_id: 901,
+        kickoff_at: new Date(NOW + 30 * H).toISOString(),
+        competition: { id: 9, name: "Copa", country: "Colombia", logo_url: null, flag_url: null },
+        home: { id: 7, name: "Santa Fe", logo_url: null },
+        away: { id: 8, name: "Junior", logo_url: null },
+      },
+    ];
+    const markup = await html(
+      <TodayBlock query={loaded(mine([elsewhere], following({ next })))} now={NOW} />,
+    );
+    const page = text(markup);
+    expect(page).toContain("Hoy no juegan tus ligas.");
+    expect(page).toContain("Lo próximo de tus favoritos");
+    expect(page).toContain("Próximo de Santa Fe");
+    expect(markup).toContain('href="/matches/901"');
+  });
+
+  test("Qué se juega and Resultados follow the reader's own too", async () => {
+    const stake = {
+      code: "stakes_pressure",
+      params: { pressure: "title", team: "Santa Fe", side: "home" },
+      ref: "packet:stakes.home",
+    };
+    const ahead = m({
+      at: NOW + 5 * H,
+      suggested: false,
+      followed: { kind: "team", names: ["Santa Fe"] },
+      context: [stake],
+    });
+    const done = m({
+      at: NOW - 5 * H,
+      status_group: "finished",
+      status: "FT",
+      goals_home: 1,
+      goals_away: 0,
+      suggested: false,
+      followed: { kind: "team", names: ["Santa Fe"] },
+    });
+    const today = mine([ahead, done], following());
+    const context = text(await html(<ContextBlock query={loaded(today)} now={NOW} />));
+    expect(context).toContain("tus ligas y equipos");
+    const results = await html(<ResultsBlock query={loaded(today)} now={NOW} />);
+    expect(text(results)).toContain("Tus ligas y equipos · últimas 48 horas");
+    expect(results).toContain(`data-fixture="${done.fixture_id}"`);
+    const none = text(await html(<ResultsBlock query={loaded(mine([], following()))} now={NOW} />));
+    expect(none).toContain("Sin resultados recientes de tus equipos.");
+  });
+});

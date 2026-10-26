@@ -1,0 +1,96 @@
+{
+  "welcome": {
+    "pageTitle": "Welcome",
+    "step": "Step {n} of {total}",
+    "football": {
+      "title": "Your football",
+      "intro": "Pick the leagues and teams you follow: Home will show their matches first. We have ticked the most followed in Colombia.",
+      "introOlder": "You can now pick your leagues and teams: Home will show their matches first. We have ticked the most followed in Colombia.",
+      "save": "Save and continue",
+      "saveLast": "Save and enter",
+      "skip": "Skip",
+      "skipHelp": "If you skip, you keep the ones suggested for Colombia. Change them any time in your profile."
+    },
+    "about": {
+      "title": "What PrediGol is",
+      "analysis": "Every day, the analysis of your matches: the forecast, the context and what each team plays for.",
+      "picks": "Picks only when we measure an edge over the market's price. If no match has one, we publish nothing that day.",
+      "transparency": "We tell you how we are doing, losses included.",
+      "transparencyLink": "How PrediGol is doing",
+      "enter": "Enter PrediGol",
+      "tour": "Take the tour (4 steps)",
+      "skip": "Skip"
+    },
+    "failed": "We could not save. Try again or skip this step."
+  },
+  "picker": {
+    "searchLabel": "Find a team",
+    "searchPlaceholder": "Type at least two letters",
+    "searching": "Looking for teams…",
+    "found_one": "{count} team found",
+    "found_other": "{count} teams found",
+    "noTeams": "No team of the leagues we follow has that name.",
+    "leagues": "Leagues",
+    "teams": "Teams",
+    "chosen": "Your choice",
+    "countLeagues": "{count} of {max} leagues",
+    "countTeams": "{count} of {max} teams",
+    "fullLeagues": "You reached {max} leagues: remove one to pick another.",
+    "fullTeams": "You reached {max} teams: remove one to pick another.",
+    "remove": "Remove {name}",
+    "international": "International",
+    "noneChosen": "No league or team picked yet: Home will show the suggested ones.",
+    "loading": "Loading the leagues…"
+  },
+  "panel": {
+    "title": "Your football",
+    "help": "The leagues and teams you follow order Home: their matches first. They never change a pick, a probability or a price.",
+    "suggested": "Suggested for Colombia: you have not picked yours yet.",
+    "edit": "Change",
+    "choose": "Pick my leagues",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saved": "Your leagues and teams are saved.",
+    "failed": "We could not save your leagues and teams. Try again."
+  },
+  "hint": {
+    "label": "Tip",
+    "dismiss": "Got it",
+    "picks": "A pick comes out only when we measure an edge over the market's price. Tap any term to see what it means.",
+    "match": "The whole match is here: the forecast, the context, the market and, when there is one, the pick with its real state.",
+    "parlay": "In a parlay the odds multiply, and one selection that fails is enough to lose it.",
+    "my_picks": "Your saved picks settle with the official result; your figures count only those with a price."
+  },
+  "tour": {
+    "start": "Take the tour",
+    "startHelp": "Four steps through the essentials: Home, a match, a pick and My picks.",
+    "step": "Tour · {n} of {total}",
+    "next": "Next",
+    "done": "Finish",
+    "close": "Close the tour",
+    "home": {
+      "title": "Home",
+      "body": "It answers what is on today for you: your leagues first, the day's picks —or why there are none— and the results."
+    },
+    "match": {
+      "title": "Match centre",
+      "body": "Every match has its centre: the forecast, the context, the market and, once it is over, the post-match."
+    },
+    "pick": {
+      "title": "A pick and its state",
+      "body": "In Picks you see each pick with its real state, from pending to settled, and why it met the conditions."
+    },
+    "myPicks": {
+      "title": "My picks",
+      "body": "What you save settles by itself with the official result, and your figures come from there."
+    }
+  },
+  "follow": {
+    "add": "Follow {team}",
+    "remove": "Unfollow {team}",
+    "added": "You now follow {team}: their matches come first on Home.",
+    "removed": "You no longer follow {team}.",
+    "full": "You already follow {max} teams: remove one in your profile to follow {team}.",
+    "failed": "We could not save the change. Try again."
+  }
+}

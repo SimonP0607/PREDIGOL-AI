@@ -32,6 +32,7 @@ import esMemory from "@/locales/es/memory.json";
 import esGlossary from "@/locales/es/glossary.json";
 import esLegal from "@/locales/es/legal.json";
 import esTransparency from "@/locales/es/transparency.json";
+import esOnboarding from "@/locales/es/onboarding.json";
 import enAdmin from "@/locales/en/admin.json";
 import enAuth from "@/locales/en/auth.json";
 import enCommon from "@/locales/en/common.json";
@@ -61,6 +62,7 @@ import enMemory from "@/locales/en/memory.json";
 import enGlossary from "@/locales/en/glossary.json";
 import enLegal from "@/locales/en/legal.json";
 import enTransparency from "@/locales/en/transparency.json";
+import enOnboarding from "@/locales/en/onboarding.json";
 
 export type Locale = "es" | "en";
 
@@ -99,6 +101,7 @@ export const CATALOGS: Record<Locale, Catalog> = {
     glossary: esGlossary,
     legal: esLegal,
     transparency: esTransparency,
+    onboarding: esOnboarding,
   },
   en: {
     admin: enAdmin,
@@ -130,5 +133,6 @@ export const CATALOGS: Record<Locale, Catalog> = {
     glossary: enGlossary,
     legal: enLegal,
     transparency: enTransparency,
+    onboarding: enOnboarding,
   },
 };
