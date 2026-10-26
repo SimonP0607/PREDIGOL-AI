@@ -28,6 +28,8 @@ const ALIASES: Readonly<Record<string, TabKey>> = {
   markets: "markets",
   alineaciones: "lineups",
   lineups: "lineups",
+  noticias: "news",
+  news: "news",
   postpartido: "postmatch",
   postmatch: "postmatch",
 };
@@ -98,7 +100,7 @@ export function useMatchTab(
   return [active, select];
 }
 
-const BASE_TABS: readonly TabKey[] = ["summary", "analysis", "stats", "markets", "lineups"];
+const BASE_TABS: readonly TabKey[] = ["summary", "analysis", "stats", "markets", "lineups", "news"];
 
 /** The sections of a match: Postpartido once it is over (or waiting for its result); the owner's research view last. */
 export function tabsFor(phase: Phase | null, admin: boolean): TabKey[] {

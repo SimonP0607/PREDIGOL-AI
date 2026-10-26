@@ -12,6 +12,7 @@
     "stats": "Estadísticas",
     "markets": "Mercados",
     "lineups": "Alineaciones",
+    "news": "Noticias",
     "advanced": "Avanzado / Auditoría",
     "picks": "Picks",
     "analysis": "Análisis",
@@ -231,7 +232,9 @@
     },
     "seasonLine": "{apps} PJ · {starts} de titular · {goals} goles",
     "seasonShare": "Titular en {starts} de {team} partidos",
-    "noSeason": "Sin estadísticas de temporada"
+    "noSeason": "Sin estadísticas de temporada",
+    "source": "Fuente: parte de bajas de nuestro proveedor de datos, actualizado {when}.",
+    "sourceNoTime": "Fuente: parte de bajas de nuestro proveedor de datos."
   },
   "lineups": {
     "title": "Alineaciones",
@@ -1025,5 +1028,167 @@
     "myPicks": "Tus picks guardados de este partido y su liquidación están en Mis picks.",
     "myPicksAction": "Ir a Mis picks",
     "pending": "El resultado todavía no es definitivo: el postpartido se arma cuando lo sea."
+  },
+  "news": {
+    "title": "Noticias",
+    "note": "Lo que PrediGol encontró en la prensa sobre este partido, con su fuente y su estado. El resumen es nuestro; el artículo está en el enlace.",
+    "count_one": "{count} noticia",
+    "count_other": "{count} noticias",
+    "empty": "No encontramos noticias verificadas relevantes para este partido.",
+    "unavailable": "Las noticias no están disponibles en este momento.",
+    "group": {
+      "verified": "Confirmadas y probables",
+      "contradictory": "Se contradicen",
+      "rumor": "Rumores",
+      "outdated": "Desactualizadas"
+    },
+    "rumorNote": "Solo las dicen agregadores, redes sociales o sitios sin clasificar: no las tomes como un hecho.",
+    "status": {
+      "CONFIRMED": {
+        "label": "Confirmado",
+        "help": "Lo dice una fuente oficial con fecha, la alineación confirmada o dos medios independientes."
+      },
+      "PROBABLE": {
+        "label": "Probable",
+        "help": "Lo dice un medio o un periodista; falta una segunda fuente que lo confirme."
+      },
+      "CONTRADICTORY": {
+        "label": "Contradictorio",
+        "help": "Fuentes de un nivel parecido dicen cosas opuestas y nada más reciente lo aclara."
+      },
+      "RUMOR": {
+        "label": "Rumor",
+        "help": "Solo lo dicen agregadores, redes sociales o sitios sin clasificar. No lo tomes como un hecho."
+      },
+      "OUTDATED": {
+        "label": "Desactualizado",
+        "help": "Una noticia más reciente lo superó o es demasiado antigua para este partido."
+      }
+    },
+    "relevance": {
+      "high": "Relevancia alta",
+      "medium": "Relevancia media",
+      "low": "Relevancia baja",
+      "help": "Cuánto afecta al partido: alta si dice quién juega o no juega; media si habla del equipo o del entrenador sin nombrar a un jugador; baja si es contexto."
+    },
+    "tier": {
+      "official": "fuente oficial",
+      "competition": "la competición",
+      "club": "el club",
+      "provider": "proveedor de datos",
+      "journalist": "periodista",
+      "media": "medio de comunicación",
+      "aggregator": "agregador",
+      "social": "red social",
+      "unknown": "fuente sin clasificar"
+    },
+    "time": {
+      "published": "Publicada {when}",
+      "day": "Publicada el {date}",
+      "seen": "Vista por PrediGol {when}"
+    },
+    "source": "Fuente:",
+    "sources": "Fuentes:",
+    "someSource": "una fuente",
+    "theTeam": "el equipo",
+    "read": "Leer en la fuente",
+    "readNamed": "Leer en {source} (se abre en una pestaña nueva)",
+    "noLink": "Sin enlace público",
+    "inSpanish": "(en español)",
+    "kind": {
+      "injury": {
+        "out": "Baja por lesión",
+        "doubtful": "En duda por lesión",
+        "available": "Recuperado",
+        "starts": "Recuperado",
+        "info": "Lesión"
+      },
+      "suspension": {
+        "out": "Baja por sanción",
+        "doubtful": "Sanción en duda",
+        "available": "Disponible tras su sanción",
+        "starts": "Disponible tras su sanción",
+        "info": "Sanción"
+      },
+      "doubtful": {
+        "out": "Baja",
+        "doubtful": "En duda",
+        "available": "Disponible",
+        "starts": "Disponible",
+        "info": "En duda"
+      },
+      "lineup": {
+        "out": "Fuera de la alineación",
+        "doubtful": "Titularidad en duda",
+        "available": "Convocado",
+        "starts": "Titular",
+        "info": "Alineación"
+      },
+      "coach": {
+        "any": "Entrenador"
+      },
+      "news": {
+        "any": "Noticia"
+      },
+      "transfer": {
+        "any": "Fichaje"
+      },
+      "motivation": {
+        "any": "Motivación"
+      },
+      "weather": {
+        "any": "Clima"
+      },
+      "travel": {
+        "any": "Viaje"
+      },
+      "schedule": {
+        "any": "Calendario"
+      },
+      "other": {
+        "any": "Noticia"
+      }
+    },
+    "topic": {
+      "injury": "Lesión",
+      "suspension": "Sanción",
+      "doubtful": "Estado físico",
+      "lineup": "Alineación",
+      "coach": "Entrenador",
+      "news": "Noticia",
+      "transfer": "Fichaje",
+      "motivation": "Motivación",
+      "weather": "Clima",
+      "travel": "Viaje",
+      "schedule": "Calendario",
+      "other": "Noticia"
+    },
+    "fallback": {
+      "out": {
+        "player": "{who} no jugará, según {source}.",
+        "team": "{team} tendrá bajas, según {source}."
+      },
+      "doubtful": {
+        "player": "{who} está en duda, según {source}.",
+        "team": "{team} tiene jugadores en duda, según {source}."
+      },
+      "available": {
+        "player": "{who} está disponible, según {source}.",
+        "team": "{team} recupera jugadores, según {source}."
+      },
+      "starts": {
+        "player": "{who} sería titular, según {source}.",
+        "team": "{source} publica la alineación de {team}."
+      },
+      "info": {
+        "player": "{source} publica información sobre {who}.",
+        "team": "{source} publica información sobre {team}."
+      }
+    },
+    "press": {
+      "title": "Bajas en la prensa",
+      "note": "Lo que dicen los medios sobre quién no juega o está en duda, con su estado; los detalles y el enlace, en Noticias.",
+      "more": "Ver en Noticias"
+    }
   }
 }

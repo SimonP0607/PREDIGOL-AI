@@ -22,6 +22,7 @@ import { MarketsTab } from "./MarketsTab";
 import { MatchHeader } from "./MatchHeader";
 import { PostmatchTab } from "./PostmatchTab";
 import { ReadingBlock } from "@/product/reading/ReadingBlock";
+import { NewsTab } from "@/product/news/NewsTab";
 import { liveSnapshot, matchPhase, shownScore } from "./model";
 import { StatsTab } from "./StatsTab";
 import { SummaryTab } from "./SummaryTab";
@@ -272,6 +273,9 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
       break;
     case "lineups":
       panel = <LineupsTab ctx={ctx} />;
+      break;
+    case "news":
+      panel = <NewsTab ctx={ctx} />;
       break;
     case "advanced":
       panel = auth.showAdmin ? <AdvancedTab fixtureId={fixtureId} /> : null;

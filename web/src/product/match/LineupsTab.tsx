@@ -16,6 +16,7 @@ import { sectionCodeText } from "@/components/system/sectionCode";
 import { Card, EmptyState } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
 import { AbsencesBlock } from "./ContextBlocks";
+import { PressAbsences } from "@/product/news/PressAbsences";
 import {
   bench,
   eventKind,
@@ -463,6 +464,7 @@ export function LineupsTab({ ctx }: { ctx: MatchCtx }) {
         }}
       </CenterSection>
       {hasAbsences ? <AbsencesBlock ctx={ctx} /> : null}
+      <PressAbsences ctx={ctx} />
     </div>
   );
 }

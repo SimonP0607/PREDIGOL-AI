@@ -12,6 +12,7 @@
     "stats": "Stats",
     "markets": "Markets",
     "lineups": "Line-ups",
+    "news": "News",
     "advanced": "Advanced / Audit",
     "picks": "Picks",
     "analysis": "Analysis",
@@ -231,7 +232,9 @@
     },
     "seasonLine": "{apps} apps · {starts} starts · {goals} goals",
     "seasonShare": "Started {starts} of {team} matches",
-    "noSeason": "No season statistics"
+    "noSeason": "No season statistics",
+    "source": "Source: our data provider's absence report, updated {when}.",
+    "sourceNoTime": "Source: our data provider's absence report."
   },
   "lineups": {
     "title": "Line-ups",
@@ -1025,5 +1028,167 @@
     "myPicks": "Your saved picks of this match and how they settled are in My picks.",
     "myPicksAction": "Go to My picks",
     "pending": "The result is not final yet: the post-match is put together once it is."
+  },
+  "news": {
+    "title": "News",
+    "note": "What PrediGol found in the press about this match, with its source and status. The summary is ours; the article is at the link.",
+    "count_one": "{count} item",
+    "count_other": "{count} items",
+    "empty": "We found no verified news relevant to this match.",
+    "unavailable": "The news are not available at the moment.",
+    "group": {
+      "verified": "Confirmed and probable",
+      "contradictory": "Contradicting each other",
+      "rumor": "Rumours",
+      "outdated": "Outdated"
+    },
+    "rumorNote": "Only aggregators, social posts or unclassified sites say these: do not take them as facts.",
+    "status": {
+      "CONFIRMED": {
+        "label": "Confirmed",
+        "help": "An official source with a date, the confirmed line-up or two independent outlets say it."
+      },
+      "PROBABLE": {
+        "label": "Probable",
+        "help": "One outlet or journalist says it; no second source has confirmed it yet."
+      },
+      "CONTRADICTORY": {
+        "label": "Contradictory",
+        "help": "Sources of similar standing say opposite things and nothing newer settles it."
+      },
+      "RUMOR": {
+        "label": "Rumour",
+        "help": "Only aggregators, social posts or unclassified sites say it. Do not take it as a fact."
+      },
+      "OUTDATED": {
+        "label": "Outdated",
+        "help": "Something newer superseded it, or it is too old for this match."
+      }
+    },
+    "relevance": {
+      "high": "High relevance",
+      "medium": "Medium relevance",
+      "low": "Low relevance",
+      "help": "How much it bears on the match: high if it says who plays or not; medium if it is about the team or the coach without naming a player; low if it is context."
+    },
+    "tier": {
+      "official": "official source",
+      "competition": "the competition",
+      "club": "the club",
+      "provider": "data provider",
+      "journalist": "journalist",
+      "media": "news outlet",
+      "aggregator": "aggregator",
+      "social": "social media",
+      "unknown": "unclassified source"
+    },
+    "time": {
+      "published": "Published {when}",
+      "day": "Published on {date}",
+      "seen": "Seen by PrediGol {when}"
+    },
+    "source": "Source:",
+    "sources": "Sources:",
+    "someSource": "a source",
+    "theTeam": "the team",
+    "read": "Read at the source",
+    "readNamed": "Read at {source} (opens in a new tab)",
+    "noLink": "No public link",
+    "inSpanish": "(in Spanish)",
+    "kind": {
+      "injury": {
+        "out": "Out injured",
+        "doubtful": "Doubtful with an injury",
+        "available": "Back from injury",
+        "starts": "Back from injury",
+        "info": "Injury"
+      },
+      "suspension": {
+        "out": "Suspended",
+        "doubtful": "Suspension in doubt",
+        "available": "Available after suspension",
+        "starts": "Available after suspension",
+        "info": "Suspension"
+      },
+      "doubtful": {
+        "out": "Out",
+        "doubtful": "Doubtful",
+        "available": "Available",
+        "starts": "Available",
+        "info": "Doubtful"
+      },
+      "lineup": {
+        "out": "Left out of the line-up",
+        "doubtful": "Place in the line-up in doubt",
+        "available": "In the squad",
+        "starts": "Starting",
+        "info": "Line-up"
+      },
+      "coach": {
+        "any": "Coach"
+      },
+      "news": {
+        "any": "News"
+      },
+      "transfer": {
+        "any": "Transfer"
+      },
+      "motivation": {
+        "any": "Motivation"
+      },
+      "weather": {
+        "any": "Weather"
+      },
+      "travel": {
+        "any": "Travel"
+      },
+      "schedule": {
+        "any": "Schedule"
+      },
+      "other": {
+        "any": "News"
+      }
+    },
+    "topic": {
+      "injury": "Injury",
+      "suspension": "Suspension",
+      "doubtful": "Fitness",
+      "lineup": "Line-up",
+      "coach": "Coach",
+      "news": "News",
+      "transfer": "Transfer",
+      "motivation": "Motivation",
+      "weather": "Weather",
+      "travel": "Travel",
+      "schedule": "Schedule",
+      "other": "News"
+    },
+    "fallback": {
+      "out": {
+        "player": "{who} will not play, according to {source}.",
+        "team": "{team} will have absences, according to {source}."
+      },
+      "doubtful": {
+        "player": "{who} is doubtful, according to {source}.",
+        "team": "{team} have doubts in the squad, according to {source}."
+      },
+      "available": {
+        "player": "{who} is available, according to {source}.",
+        "team": "{team} get players back, according to {source}."
+      },
+      "starts": {
+        "player": "{who} would start, according to {source}.",
+        "team": "{source} publishes the line-up of {team}."
+      },
+      "info": {
+        "player": "{source} reports on {who}.",
+        "team": "{source} reports on {team}."
+      }
+    },
+    "press": {
+      "title": "Absences in the press",
+      "note": "What the outlets say about who will not play or is in doubt, with its status; the details and the link are in News.",
+      "more": "See in News"
+    }
   }
 }
