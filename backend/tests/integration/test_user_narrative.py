@@ -184,7 +184,8 @@ def narrative(db: psycopg.Connection[Any], monkeypatch: pytest.MonkeyPatch, fid:
     assert r.status_code == 200, r.text
     data = r.json()["data"]
     assert data["sections"], "the facts are always there"
-    return data["narrative"]  # type: ignore[no-any-return]
+    shown: dict[str, Any] | None = data["narrative"]
+    return shown
 
 
 def count(db: psycopg.Connection[Any], table: str) -> int:
@@ -266,7 +267,7 @@ def test_a_provider_failure_is_recorded_and_tried_again_at_the_next_run(
     fid, _, ids = match(db, world, seed)
     first = run(db, Model(ProviderError("timeout", "the provider did not answer in 90 s")))
     assert first.counts["failed"] == 1
-    assert db.execute("SELECT status, error FROM ai.user_narratives WHERE fixture_id = %s", (fid,)).fetchone()[0] == "failed"
+    assert scalar(db.execute("SELECT status FROM ai.user_narratives WHERE fixture_id = %s", (fid,))) == "failed"
     second = run(db, Model(answer(ids)))
     assert second.counts["ok"] == 1
     statuses = [r[0] for r in db.execute("SELECT status FROM ai.user_narratives WHERE fixture_id = %s ORDER BY id", (fid,))]
