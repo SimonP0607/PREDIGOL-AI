@@ -39,6 +39,8 @@ export interface Me {
   consents_due?: string[];
   /** The membership now (plan UX, A8), filled by GET /auth/me; null or absent for the owner's accounts. */
   membership?: MembershipSummary | null;
+  /** «Cómo le va a PrediGol» is open to readers (plan UX, A12; FBI_TRANSPARENCY): link to it only then. */
+  transparency?: boolean;
 }
 
 export interface MfaEnrollment {

@@ -54,7 +54,14 @@ function Generic({ action }: { action?: ReactNode }) {
   );
 }
 
-export function NoPickState({ load }: { load: NoPickLoad }) {
+export function NoPickState({
+  load,
+  more,
+}: {
+  load: NoPickLoad;
+  /** What else a day without picks leads to (the way to «Cómo le va a PrediGol», A12): the caller decides. */
+  more?: ReactNode;
+}) {
   if (load.status === "pending") {
     return (
       <Card>
@@ -105,6 +112,7 @@ export function NoPickState({ load }: { load: NoPickLoad }) {
         <p className="text-sm font-semibold text-foreground" data-testid="no-pick-title">
           {t("records.noPick.noMatches")}
         </p>
+        {more}
       </Frame>
     );
   }
@@ -122,6 +130,7 @@ export function NoPickState({ load }: { load: NoPickLoad }) {
       <p className="text-caption leading-snug text-subtle-foreground">
         {t("records.daily.emptyBody")}
       </p>
+      {more}
     </Frame>
   );
 }

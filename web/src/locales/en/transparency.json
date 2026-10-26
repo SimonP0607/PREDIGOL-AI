@@ -1,0 +1,166 @@
+{
+  "page": {
+    "title": "How PrediGol is doing",
+    "subtitle": "What we published and how it went, the days without picks and what is still in evaluation. Always with its sample.",
+    "preview": "Preview: readers do not see this page yet. It is published once you have reviewed it.",
+    "dataAsOf": "Latest settlement counted: {time}",
+    "notAvailable": "This page is not published yet.",
+    "error": "We could not load the page.",
+    "link": "How PrediGol is doing",
+    "linkHint": "What we published, the days without picks and what is in evaluation, with its sample"
+  },
+  "published": {
+    "title": "Published picks",
+    "subtitle": "Only what we published, counted as in My picks: one unit per pick.",
+    "periods": {
+      "7d": "Last 7 days",
+      "30d": "Last 30 days",
+      "all": "All time"
+    },
+    "range": "{since} – {until}",
+    "rangeAll": "up to {until}",
+    "none": "We have not published any pick yet.",
+    "published_one": "{count} pick published",
+    "published_other": "{count} picks published",
+    "counts": {
+      "won": "Won",
+      "lost": "Lost",
+      "half_won": "Half won",
+      "half_lost": "Half lost",
+      "push": "Returned",
+      "void": "Voided",
+      "pending": "Pending"
+    },
+    "settled_one": "{count} settled",
+    "settled_other": "{count} settled",
+    "units": "Units",
+    "roi": "Return",
+    "roiValue": "{roi} ± {margin} points",
+    "small_one": "With {count} settled pick we do not show a return yet: the sample is too small to know whether PrediGol wins in the long run.",
+    "small_other": "With {count} settled picks we do not show a return yet: the sample is too small to know whether PrediGol wins in the long run.",
+    "inconclusive": "Below {count} settled picks the sample does not allow a conclusion yet.",
+    "margin": "The margin is one standard error: the real return can be about {points} points above or below."
+  },
+  "days": {
+    "title": "Days without picks",
+    "subtitle": "A day without picks is a day when no match met the conditions to publish. We would rather not publish than publish for the sake of it.",
+    "summary": "{without} of {days} days without picks, from {since} to {until}.",
+    "noneYet": "There are no days to count yet.",
+    "allPicked": "There were picks every day, from {since} to {until}.",
+    "reasons": {
+      "no_matches": "There were no matches of the competitions we follow",
+      "no_qualified_candidates": "No model had beaten the market in its own test yet: there was nothing that could be published",
+      "not_chosen": "There were candidates, but none met the rest of the conditions"
+    },
+    "reasonDays_one": "{count} day",
+    "reasonDays_other": "{count} days",
+    "measured_one": "On those days PrediGol Intelligence measured {count} selection in evaluation.",
+    "measured_other": "On those days PrediGol Intelligence measured {count} selections in evaluation.",
+    "stopCommon": "The commonest stop: {stop}.",
+    "reconstructed": "Reconstructed from the decisions saved each day.",
+    "stops": {
+      "data": "not enough data, or a match not fit to read",
+      "model": "no probability from the model",
+      "market": "no sufficient market price",
+      "calibration": "no validated calibration for that market",
+      "ev": "the odds did not pay enough",
+      "context": "the context advised against it",
+      "risk": "too much risk",
+      "correlation": "another selection of the same match",
+      "price": "an outdated price",
+      "final": "a market that has not beaten the market yet"
+    },
+    "list_one": "See the day",
+    "list_other": "See the {count} days",
+    "matches_one": "{count} match",
+    "matches_other": "{count} matches",
+    "measuredDay_one": "{count} selection measured",
+    "measuredDay_other": "{count} selections measured"
+  },
+  "markets": {
+    "title": "By kind of bet",
+    "subtitle": "All time. The kinds with fewer than {count} settled picks go together under «Other».",
+    "none": "No published picks yet.",
+    "names": {
+      "1X2": "Result (1X2)",
+      "OU": "Total goals",
+      "BTTS": "Both teams to score",
+      "AH": "Asian handicap",
+      "DC": "Double chance",
+      "other": "Other"
+    }
+  },
+  "lineValue": {
+    "title": "Line value",
+    "definition": "It compares the odds we published with the bookmakers' consensus probability without margin, at the last capture before kick-off. Positive: we published above that fair price.",
+    "version": "Definition {version}, in force since {since}.",
+    "none": "There are no published picks with their closing reference yet.",
+    "small_one": "{count} pick with its reference: we do not show the mean yet.",
+    "small_other": "{count} picks with their reference: we do not show the mean yet.",
+    "mean": "Mean line value",
+    "positive": "Above zero",
+    "n_one": "{count} pick with a reference",
+    "n_other": "{count} picks with a reference",
+    "minutes": "The reference was taken, as a median, {minutes} minutes before kick-off."
+  },
+  "forecast": {
+    "title": "Forecast",
+    "subtitle": "The last probability before kick-off against the result, in the matches finished over the last {days} days.",
+    "markets": {
+      "1X2": "Result (1X2)",
+      "OU": "Over or under 2.5 goals",
+      "BTTS": "Both teams to score"
+    },
+    "calibrated": "Calibrated",
+    "uncalibrated": "Uncalibrated",
+    "uncalibratedNote": "We show the model's own number and label it «uncalibrated»: there is no validated calibration yet.",
+    "matches_one": "{count} match",
+    "matches_other": "{count} matches",
+    "calibratedOf": "{calibrated} of {matches} calibrated",
+    "small": "The calibrated sample does not allow showing it yet ({count} matches are needed).",
+    "side": {
+      "Over": "Over 2.5 goals",
+      "Yes": "Both teams to score: yes"
+    },
+    "allOutcomes": "The three results",
+    "said": "We said",
+    "happened": "Happened",
+    "cases": "Cases",
+    "bin": "{low}–{high} %",
+    "binLine": "When we said between {low} % and {high} %, it happened {observed} % of the time ({count} cases).",
+    "omitted": "{count} cases in ranges with fewer than {min} are not shown."
+  },
+  "evaluation": {
+    "title": "In evaluation",
+    "summary": "Of {markets} kinds of bet we measure against the market ({pairs} model and market combinations), {passed} have beaten it out of sample.",
+    "noneYet": "No kind of bet has beaten the market in a sustained way yet; that is why we publish little today.",
+    "since": "Measured since {since}.",
+    "qualified": "Forecasts of models that beat the market in their own test (the only ones that can be a pick) on those days: {count}.",
+    "nothing": "There are no measurements saved yet.",
+    "never": "We never show selections, odds or results of evaluation: only these counts."
+  },
+  "how": {
+    "title": "How a pick is decided",
+    "intro": "All of this must happen for there to be a pick. If nothing meets it, nothing is published that day.",
+    "steps": {
+      "model": "A model that has beaten the market in its own test.",
+      "value": "Odds that pay more than the probability says, with a recent price from several bookmakers.",
+      "risk": "A bounded risk: no odds too high and no probability too uncertain.",
+      "context": "The match read by PrediGol Intelligence that same day, with its news.",
+      "one": "At most one pick per match, and never to fill the day."
+    }
+  },
+  "definitions": {
+    "title": "Definitions in force",
+    "subtitle": "If one changes, we say it here and recompute the history with the new one.",
+    "line": "{name}: {version}, since {since}",
+    "names": {
+      "roi": "Return (one unit per pick)",
+      "sample": "Sample and margin",
+      "no_pick_day": "Day without picks",
+      "line_value": "Line value",
+      "calibration": "Forecast and calibration",
+      "evaluation": "Test against the market"
+    }
+  }
+}

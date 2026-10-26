@@ -1,6 +1,6 @@
 /** Language switch, account menu and the Preview-as-USER banner - shared by both shells. */
 import { Link, useNavigate } from "@tanstack/react-router";
-import { BookOpen, Eye, EyeOff, LayoutDashboard, LogOut, UserRound } from "lucide-react";
+import { BarChart3, BookOpen, Eye, EyeOff, LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
 import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
@@ -103,6 +103,19 @@ export function AccountMenu() {
             {t("nav.glossary")}
           </Link>
         </DropdownMenuItem>
+        {/* plan UX, A12: «Cómo le va a PrediGol», once it is open to readers (the owner reviews it before) */}
+        {user.transparency || auth.showAdmin ? (
+          <DropdownMenuItem asChild>
+            <Link
+              to="/transparency"
+              className="flex items-center gap-2"
+              data-testid="go-transparency"
+            >
+              <BarChart3 aria-hidden className="h-4 w-4" />
+              {t("transparency.page.link")}
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         {auth.isSuperAdmin && !auth.previewAsUser ? (
           <DropdownMenuItem asChild>
             <Link to="/admin/overview" className="flex items-center gap-2" data-testid="go-admin">

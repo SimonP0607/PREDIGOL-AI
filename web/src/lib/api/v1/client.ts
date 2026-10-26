@@ -100,6 +100,7 @@ import type { MatchKnowledge } from "./types_knowledge";
 import type { MatchReading } from "./types_reading";
 import type { MatchNews, TodayNews } from "./types_news";
 import type { NoPick, Today } from "./types_today";
+import type { Transparency } from "./types_transparency";
 import type {
   AnalystReply,
   AnalystStatus,
@@ -523,6 +524,12 @@ export const v1 = {
   matchNews: (id: string) => getJson<Envelope<MatchNews | null>>(`/matches/${id}/news`),
   /** Home's «Noticias»: the confirmed or probable news of the suggested matches not yet over. */
   todayNews: () => getJson<Envelope<TodayNews | null>>("/today/news"),
+  /**
+   * CÓMO LE VA A PREDIGOL (plan UX, A12): the published picks and how they went, the days without picks and why, the line
+   * value, the forecast's calibration and what is in evaluation - always with its sample. Null data with `not_available`:
+   * readers do not see it yet (FBI_TRANSPARENCY). `preview: "shadow"` (the owner) shows it either way.
+   */
+  transparency: (q: Preview = {}) => getJson<Envelope<Transparency | null>>("/transparency", q),
   liveBoard: () => getJson<Envelope<LiveBoard>>("/live"),
   players: (q: { q?: string | undefined; team_id?: number | undefined; limit?: number } = {}) =>
     getJson<Envelope<PlayerSummary[]>>("/players", {

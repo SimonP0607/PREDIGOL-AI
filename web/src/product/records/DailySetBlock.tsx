@@ -25,6 +25,7 @@ import { DayNav } from "./DayNav";
 import { FunnelLine } from "./FunnelLine";
 import type { NoPickLoad } from "./noPick";
 import { NoPickState } from "./NoPickState";
+import { TransparencyLink } from "@/product/transparency/TransparencyLink";
 
 type BoardQuery = UseQueryResult<Envelope<DailyBoard>>;
 
@@ -90,7 +91,7 @@ export function DailySetBlock({
       </Card>
     );
   } else if (items.length === 0 && noPick && !evaluation) {
-    body = <NoPickState load={noPick} />;
+    body = <NoPickState load={noPick} more={<TransparencyLink />} />;
   } else if (items.length === 0) {
     body = (
       <Card>

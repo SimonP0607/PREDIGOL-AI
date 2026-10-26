@@ -1,0 +1,166 @@
+{
+  "page": {
+    "title": "Cómo le va a PrediGol",
+    "subtitle": "Lo que publicamos y cómo ha ido, los días sin picks y lo que sigue en evaluación. Siempre con su muestra.",
+    "preview": "Vista previa: los lectores todavía no ven esta página. Se publica cuando tú la revises.",
+    "dataAsOf": "Última liquidación contada: {time}",
+    "notAvailable": "Esta página todavía no está publicada.",
+    "error": "No pudimos cargar la página.",
+    "link": "Cómo le va a PrediGol",
+    "linkHint": "Lo publicado, los días sin picks y lo que sigue en evaluación, con su muestra"
+  },
+  "published": {
+    "title": "Picks publicados",
+    "subtitle": "Solo lo que publicamos, contado como en Mis picks: una unidad por pick.",
+    "periods": {
+      "7d": "Últimos 7 días",
+      "30d": "Últimos 30 días",
+      "all": "Todo el histórico"
+    },
+    "range": "{since} – {until}",
+    "rangeAll": "hasta el {until}",
+    "none": "Todavía no hemos publicado ningún pick.",
+    "published_one": "{count} pick publicado",
+    "published_other": "{count} picks publicados",
+    "counts": {
+      "won": "Ganados",
+      "lost": "Perdidos",
+      "half_won": "Medio ganados",
+      "half_lost": "Medio perdidos",
+      "push": "Devueltos",
+      "void": "Anulados",
+      "pending": "Pendientes"
+    },
+    "settled_one": "{count} liquidado",
+    "settled_other": "{count} liquidados",
+    "units": "Unidades",
+    "roi": "Rentabilidad",
+    "roiValue": "{roi} ± {margin} puntos",
+    "small_one": "Con {count} pick liquidado todavía no mostramos rentabilidad: la muestra es demasiado pequeña para saber si PrediGol gana a largo plazo.",
+    "small_other": "Con {count} picks liquidados todavía no mostramos rentabilidad: la muestra es demasiado pequeña para saber si PrediGol gana a largo plazo.",
+    "inconclusive": "Con menos de {count} picks liquidados la muestra todavía no permite concluir.",
+    "margin": "El margen es un error estándar: la rentabilidad real puede estar unos {points} puntos por encima o por debajo."
+  },
+  "days": {
+    "title": "Días sin picks",
+    "subtitle": "Un día sin picks es un día en que ningún partido cumplió las condiciones para publicar. Preferimos no publicar a publicar por publicar.",
+    "summary": "{without} de {days} días sin picks, del {since} al {until}.",
+    "noneYet": "Todavía no hay días que contar.",
+    "allPicked": "Hubo picks todos los días, del {since} al {until}.",
+    "reasons": {
+      "no_matches": "No hubo partidos de las competiciones que seguimos",
+      "no_qualified_candidates": "Ningún modelo había superado todavía al mercado en su prueba: no hubo candidatos que publicar",
+      "not_chosen": "Hubo candidatos, pero ninguno cumplió el resto de las condiciones"
+    },
+    "reasonDays_one": "{count} día",
+    "reasonDays_other": "{count} días",
+    "measured_one": "Esos días PrediGol Intelligence midió {count} selección en evaluación.",
+    "measured_other": "Esos días PrediGol Intelligence midió {count} selecciones en evaluación.",
+    "stopCommon": "La parada más común: {stop}.",
+    "reconstructed": "Reconstruido con las decisiones guardadas de cada día.",
+    "stops": {
+      "data": "datos insuficientes o partido no apto",
+      "model": "sin probabilidad del modelo",
+      "market": "sin un precio suficiente del mercado",
+      "calibration": "sin una calibración validada para ese mercado",
+      "ev": "la cuota no pagaba lo suficiente",
+      "context": "el contexto lo desaconsejó",
+      "risk": "riesgo demasiado alto",
+      "correlation": "otra selección del mismo partido",
+      "price": "un precio desactualizado",
+      "final": "un mercado que aún no ha superado al mercado"
+    },
+    "list_one": "Ver el día",
+    "list_other": "Ver los {count} días",
+    "matches_one": "{count} partido",
+    "matches_other": "{count} partidos",
+    "measuredDay_one": "{count} selección medida",
+    "measuredDay_other": "{count} selecciones medidas"
+  },
+  "markets": {
+    "title": "Por tipo de apuesta",
+    "subtitle": "Todo el histórico. Los tipos con menos de {count} picks liquidados van juntos en «Otros».",
+    "none": "Sin picks publicados todavía.",
+    "names": {
+      "1X2": "Resultado (1X2)",
+      "OU": "Más o menos goles",
+      "BTTS": "Ambos marcan",
+      "AH": "Hándicap asiático",
+      "DC": "Doble oportunidad",
+      "other": "Otros"
+    }
+  },
+  "lineValue": {
+    "title": "Valor de línea",
+    "definition": "Compara la cuota que publicamos con la probabilidad sin margen del consenso de las casas en la última captura antes del inicio. Positivo: publicamos por encima de ese precio justo.",
+    "version": "Definición {version}, vigente desde el {since}.",
+    "none": "Todavía no hay picks publicados con su referencia de cierre.",
+    "mean": "Valor de línea medio",
+    "positive": "Por encima de cero",
+    "n_one": "{count} pick con referencia",
+    "n_other": "{count} picks con referencia",
+    "minutes": "La referencia se tomó, de mediana, {minutes} minutos antes del inicio.",
+    "small_one": "{count} pick con su referencia: todavía no mostramos la media.",
+    "small_other": "{count} picks con su referencia: todavía no mostramos la media."
+  },
+  "forecast": {
+    "title": "Pronóstico",
+    "subtitle": "La última probabilidad antes del inicio frente al resultado, en los partidos terminados de los últimos {days} días.",
+    "markets": {
+      "1X2": "Resultado (1X2)",
+      "OU": "Más o menos de 2,5 goles",
+      "BTTS": "Ambos marcan"
+    },
+    "calibrated": "Calibrado",
+    "uncalibrated": "Sin calibrar",
+    "uncalibratedNote": "Mostramos el número del modelo y lo rotulamos «sin calibrar»: todavía no hay una calibración validada.",
+    "matches_one": "{count} partido",
+    "matches_other": "{count} partidos",
+    "calibratedOf": "{calibrated} de {matches} calibrados",
+    "small": "La muestra calibrada todavía no permite mostrarlo (hacen falta {count} partidos).",
+    "side": {
+      "Over": "Más de 2,5 goles",
+      "Yes": "Ambos marcan: sí"
+    },
+    "allOutcomes": "Los tres resultados",
+    "said": "Dijimos",
+    "happened": "Ocurrió",
+    "cases": "Casos",
+    "bin": "{low}–{high} %",
+    "binLine": "Cuando dijimos entre {low} % y {high} %, ocurrió el {observed} % ({count} casos).",
+    "omitted": "{count} casos en tramos con menos de {min} no se muestran."
+  },
+  "evaluation": {
+    "title": "En evaluación",
+    "summary": "De {markets} tipos de apuesta que medimos frente al mercado ({pairs} combinaciones de modelo y mercado), {passed} lo han superado fuera de muestra.",
+    "noneYet": "Ningún tipo de apuesta ha superado todavía al mercado de forma sostenida; por eso hoy publicamos poco.",
+    "since": "Medido desde el {since}.",
+    "qualified": "Pronósticos de modelos que superaron al mercado en su prueba (los únicos que pueden ser pick) en esos días: {count}.",
+    "nothing": "Todavía no hay mediciones guardadas.",
+    "never": "Nunca mostramos selecciones, cuotas ni resultados de evaluación: solo estos recuentos."
+  },
+  "how": {
+    "title": "Cómo se decide",
+    "intro": "Para que haya un pick tiene que pasar todo esto. Si nada lo cumple, ese día no se publica.",
+    "steps": {
+      "model": "Un modelo que haya superado al mercado en su propia prueba.",
+      "value": "Una cuota que pague más de lo que dice la probabilidad, con un precio reciente de varias casas.",
+      "risk": "Un riesgo acotado: sin cuotas demasiado altas ni probabilidades demasiado inciertas.",
+      "context": "El partido leído por PrediGol Intelligence ese mismo día, con sus noticias.",
+      "one": "Como mucho un pick por partido, y nunca para llenar el día."
+    }
+  },
+  "definitions": {
+    "title": "Definiciones vigentes",
+    "subtitle": "Si una cambia, lo decimos aquí y recalculamos el histórico con la nueva.",
+    "line": "{name}: {version}, desde el {since}",
+    "names": {
+      "roi": "Rentabilidad (una unidad por pick)",
+      "sample": "Muestra y margen",
+      "no_pick_day": "Día sin picks",
+      "line_value": "Valor de línea",
+      "calibration": "Pronóstico y calibración",
+      "evaluation": "Prueba frente al mercado"
+    }
+  }
+}
