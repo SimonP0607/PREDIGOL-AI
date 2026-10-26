@@ -203,7 +203,6 @@ test("a match's Análisis and Postpartido fit every phone width and the tablets,
 }) => {
   // Plan UX, A9: «RESPONSIVE: Inicio y partido en los cinco anchos y en tablet» - Inicio is in the tour above.
   test.setTimeout(240_000);
-  const w = watch(page);
   const after = new Date().toISOString();
   const upcoming = await getJson<{ data: Array<{ id: number }> }>(
     page.request,
@@ -222,20 +221,25 @@ test("a match's Análisis and Postpartido fit every phone width and the tablets,
     return;
   }
   for (const width of [...PHONES, 768, 1024]) {
-    await page.setViewportSize({ width, height: width >= 768 ? 1024 : 800 });
+    // A fresh tab per width (see «One test per width» above): sixteen match pages loaded in one tab kept their decoded
+    // fonts and images until it closed, and the test machine's memory limit ended the browser («page crashed»).
+    const tab = await page.context().newPage();
+    const w = watch(tab);
+    await tab.setViewportSize({ width, height: width >= 768 ? 1024 : 800 });
     for (const path of paths) {
-      await page.goto(path);
-      await settle(page);
-      const sideways = await page.evaluate(
+      await tab.goto(path);
+      await settle(tab);
+      const sideways = await tab.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(sideways, `${path} at ${width} px scrolls sideways`).toBeLessThanOrEqual(1);
-      expect(await smallTargets(page, '[role="tablist"]'), `${path} at ${width} px: tabs`).toEqual(
+      expect(await smallTargets(tab, '[role="tablist"]'), `${path} at ${width} px: tabs`).toEqual(
         [],
       );
     }
+    await assertClean(tab, w);
+    await tab.close();
   }
-  await assertClean(page, w);
 });
 
 test("a match's Noticias at every phone width: cards stacked, the status in words, the link in a finger's reach", async ({
