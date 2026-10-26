@@ -18,12 +18,14 @@ def emitted() -> list[str]:
     tree = ast.parse(Path(reading.__file__).read_text(encoding="utf-8"))
     codes: list[str] = []
     for node in ast.walk(tree):
-        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "add"
-                and len(node.args) >= 2 and all(isinstance(a, ast.Constant) for a in node.args[:2])):
-            section, code = node.args[0].value, node.args[1].value
-            assert section in reading.SECTIONS, section
-            if code not in codes:
-                codes.append(str(code))
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "add"
+                and len(node.args) >= 2):
+            continue
+        first, second = node.args[0], node.args[1]
+        if isinstance(first, ast.Constant) and isinstance(second, ast.Constant):
+            assert first.value in reading.SECTIONS, first.value
+            if second.value not in codes:
+                codes.append(str(second.value))
     return codes
 
 
