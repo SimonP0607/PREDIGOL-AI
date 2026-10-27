@@ -120,13 +120,13 @@ Coste: 0. Sin migración.
   pintar a los 15 s, con dos trabajadores) y, repetidos solos con un trabajador, pasaron 4 de 4.
 - **Antes, sobre la rama de la fase:** backend 6.064 pruebas pasadas (4 omitidas) y web 935 pruebas; `pickstates.spec.ts` 10 de 10
   y la suite de tickets apagados 7 de 7.
-- **El paquete que se despliega es `ux-b5`** (A3 a A16 y B1 a B5, sobre `ia-p02` de la IA, que llegó antes): sus puertas y su
+- **El paquete que se despliega es `ux-b5`** (A3 a A16 y B1 a B5, sobre `ia-p03` de la IA, que llegó antes): sus puertas y su
   e2e completo se repiten sobre ese árbol final antes de desplegar (`MIS_PICKS_UX_B5.md` y `ESTADO_EJECUCION_UX.md`).
 
 ## 8. Despliegue
 
 Backend y web juntos (el contrato cruza los dos), sin migración. Va en el paquete `ux-b5` con todo lo terminado después de A2
-(A3 a A16 y B1 a B5), sobre `ia-p02`; el resultado del despliegue queda en `ESTADO_EJECUCION_UX.md`.
+(A3 a A16 y B1 a B5), sobre `ia-p03`; el resultado del despliegue queda en `ESTADO_EJECUCION_UX.md`.
 **Vuelta atrás:** la web anterior funciona con este backend (ignora los campos nuevos; la lista ya no trae los picks sin valor,
 que siguen en su partido) o las dos publicaciones anteriores. No hay nada que encender ni apagar.
 
