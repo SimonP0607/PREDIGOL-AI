@@ -201,9 +201,10 @@ def test_the_variables_of_the_guide_change_the_settings_they_say(monkeypatch: py
 
 # ── 3. the gates ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-LATER_GATES = ("research_v2",)
-"""The gates a later phase added after the guide of phase 0 was written: the guide of THEIR phase lists them (``IA_FASE2.md`` for research v2) and
-the test of that guide holds them to the code. They come last in ``gates.GATES``."""
+LATER_GATES = ("research_v2", "switches")
+"""The words a later phase added to the evidence after the guide of phase 0 was written: the guide of THEIR phase lists them (``IA_FASE2.md`` for
+research v2; section 10 of this one for ``switches``, which is a ledger and not a gate) and the test of that guide holds them to the code. They
+come last in ``gates.GATES``."""
 
 
 def test_the_gates_of_the_guide_are_the_gates_of_the_code() -> None:
@@ -471,6 +472,30 @@ def test_the_commands_of_the_guide_are_accepted_by_their_parsers() -> None:
     mentioned = set(re.findall(r"`(--[a-z-]+)", section(11)))
     assert mentioned == {"--cost-column", "--date-column", "--workspace-column", "--cost-divisor", "--date-format"}
     assert mentioned <= options_of(ia_reconcile.build_parser())
+
+
+def test_the_ledger_of_the_switches_in_the_guide_is_the_job_the_migration_and_the_words_of_the_code() -> None:
+    text = section(10).replace("**", "")
+    minutes = re.search(r"^AI_SWITCHES_MINUTES = (\d+)$", SCHEDULER, flags=re.M)
+    assert minutes and 'id="ai_switches"' in SCHEDULER and "`ai_switches`" in text, "the worker job the guide names"
+    said(r"\(cada (\d+) minutos, y al minuto de arrancar\)", text, int(minutes.group(1)))
+    assert f"gate `{gates.SWITCHES}`" in text and "migración `0116`" in text
+    assert (BACKEND / "migrations" / "versions" / "0116_ia_switches_ledger.py").is_file()
+    assert gates.GATES[-1] == gates.SWITCHES, "the ledger is the last word of the vocabulary of the evidence"
+    # what it holds is what the guide lists, five switches and three envelopes, and nothing that is a secret
+    words = gates.switch_words(AiSettings())
+    assert set(words) == {"mode", "package", "research_v2", "switches", "models", "budgets_usd"}
+    for phrase in ("el modo", "el trabajo de paquetes", "la investigación v2", "los cinco interruptores", "el modelo de cada nivel", "los tres sobres"):
+        assert phrase in text, phrase
+    assert len(words["switches"]) == 5 == len(SWITCH_ENV) and len(words["budgets_usd"]) == 3
+    said(r"los tres sobres \((\d+), (\d+) y (\d+)\)", text, *gate_a.EXPECTED_ENV.values())
+    assert "nunca una clave, una URL ni el nombre de un workspace" in text
+    # how Gate A reads it
+    assert "La primera fila es la línea base" in text and "no cuenta como cambio" in text
+    source = inspect.getsource(gate_a.check_equivalence)
+    for key in ("in_force_by_ledger", "in_force_now", "switch_ledger", "ledger_and_process_disagree"):
+        assert f"`{key}`" in text and key in source, key
+    assert "(c) el último cambio de una palabra tuya" in text and gate_a.switch_changes.__doc__
 
 
 # ── 11, 12 and 13. reconciliation, the way back, the exit codes ───────────────────────────────────────────────────

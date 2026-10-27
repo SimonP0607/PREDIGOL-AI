@@ -78,7 +78,8 @@ def test_the_phase_zero_description_is_what_it_was_plus_the_gate_in_its_map(db: 
     key of ``gates``."""
     described = gates.describe(db, settings("on"))
     assert set(described) == {"cache", "batch", "native_schema", "brief_material", "budget_v3", "cache_layout", "gates"}
-    assert set(described["gates"]) == set(gates.GATES) and described["gates"]["research_v2"]["passed"] is False
+    assert set(described["gates"]) == set(gates.GATES) - {gates.SWITCHES}, "the ledger of the owner's words is not a gate: the panel does not show it"
+    assert described["gates"]["research_v2"]["passed"] is False
     record(db, passed=True)
     assert gates.describe(db, settings("on"))["gates"]["research_v2"]["passed"] is True
 

@@ -227,6 +227,20 @@ def test_the_count_of_the_set_of_the_day_hides_the_claims_when_nobody_says_other
     assert sum(shown[f5].values()) == sum(daily.evidence_counts(db, [f5], at=LATE)[f5].values()) + 2
 
 
+def test_the_set_of_the_day_is_built_as_before_on_a_database_that_does_not_know_the_columns_of_research_v2(
+        db: psycopg.Connection[Any], before: tuple[Pm, dict[str, Any]]) -> None:
+    """The evidence is read with ``subject_type`` (0114). On a database that went back down the migrations - or with the code ahead of its schema -
+    the savepoint of ``ai_view`` answers the way it does for a missing table: the set of the day is built without the view of the AI instead of
+    failing (review of phase 2, L1)."""
+    pm, _ = before
+    stub: Any = SimpleNamespace(leg=SimpleNamespace(candidate=SimpleNamespace(fixture_id=pm.f["F5"])))
+    assert daily.ai_view(db, [stub], at=LATE, day=False).evidence, "with the column, v1's web item of the world is counted"
+    db.execute("ALTER TABLE ai.evidence DROP COLUMN subject_type CASCADE")  # undone with the rest of the test
+    view = daily.ai_view(db, [stub], at=LATE, day=False)
+    assert view == daily.AiView(mode="shadow"), "no reviews, no evidence: the set is built as it was before the AI layer"
+    assert db.info.transaction_status == psycopg.pq.TransactionStatus.INTRANS, "the failed read was rolled back to its savepoint, not the test"
+
+
 def test_the_counts_of_the_dashboard_filter_the_claims_by_themselves(db: psycopg.Connection[Any], before: tuple[Pm, dict[str, Any]]) -> None:
     """``dashboard`` overwrites ``news``, ``injuries`` and ``lineups`` with the counts of ``ai_v2.day_counts``; its own statement must not be a
     second way to see the claims the day it stops being overwritten."""

@@ -317,15 +317,17 @@ SELECT (built_at AT TIME ZONE 'America/Bogota')::date AS day_bogota, packet_vers
  GROUP BY 1, 2 ORDER BY 1, 2;
 
 \echo ### evidence_by_day
+-- v1's items only (subject_type IS NULL): the claims research v2 writes beside them (phase 2) are not part of the line base and must not move it.
 SELECT (retrieved_at AT TIME ZONE 'America/Bogota')::date AS day_bogota, origin, kind, status, count(*) AS evidence,
        sum(seen_count) AS seen, count(DISTINCT fixture_id) AS fixtures
-  FROM ai.evidence WHERE retrieved_at >= now() - interval '30 days'
+  FROM ai.evidence WHERE retrieved_at >= now() - interval '30 days' AND subject_type IS NULL
  GROUP BY 1, 2, 3, 4 ORDER BY 1, 2, 3, 4;
 
 \echo ### evidence_per_fixture
+-- v1's items only, as above.
 WITH per AS (
   SELECT fixture_id, count(*) AS n FROM ai.evidence
-   WHERE retrieved_at >= now() - interval '30 days' AND fixture_id IS NOT NULL GROUP BY 1
+   WHERE retrieved_at >= now() - interval '30 days' AND fixture_id IS NOT NULL AND subject_type IS NULL GROUP BY 1
 )
 SELECT count(*) AS fixtures_with_evidence, round(avg(n), 2) AS avg_evidence, percentile_cont(0.5) WITHIN GROUP (ORDER BY n) AS p50,
        percentile_cont(0.9) WITHIN GROUP (ORDER BY n) AS p90, max(n) AS max_evidence FROM per;
