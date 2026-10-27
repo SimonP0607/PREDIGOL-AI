@@ -75,21 +75,30 @@ def _schema(contract: str) -> dict[str, Any]:
     return wire_schema(CONTRACTS[contract])
 
 
+def decode(raw: object) -> tuple[dict[str, Any] | None, tuple[str, ...]]:
+    """An answer as an object, or why it is not one, in the closed words ``parse`` uses (``too_long``, ``not_json``, ``not_an_object``). The
+    first door of ``parse``, for a caller that has to look at what the answer holds before the contract reads it. Never raises."""
+    data: Any = raw
+    if isinstance(raw, (str, bytes)):
+        if len(raw) > MAX_RAW:
+            return None, ("too_long",)
+        try:
+            data = json.loads(raw)
+        except (ValueError, RecursionError):
+            return None, ("not_json",)
+    if not isinstance(data, dict):
+        return None, ("not_an_object",)
+    return data, ()
+
+
 def parse(contract: str, raw: str | bytes | dict[str, Any]) -> Parsed:
     """An answer as the server reads it. ``contract`` is the one that was asked for; the answer's own ``contract`` field must be one of
     the versions the reader accepts for it. Never raises."""
     if contract not in CONTRACTS:
         return Parsed(contract, problems=("unknown_contract",))
-    data: Any = raw
-    if isinstance(raw, (str, bytes)):
-        if len(raw) > MAX_RAW:
-            return Parsed(contract, problems=("too_long",))
-        try:
-            data = json.loads(raw)
-        except (ValueError, RecursionError):
-            return Parsed(contract, problems=("not_json",))
-    if not isinstance(data, dict):
-        return Parsed(contract, problems=("not_an_object",))
+    data, problems = decode(raw)
+    if data is None:
+        return Parsed(contract, problems=problems)
     said = data.get("contract")
     if said not in ACCEPTS[contract]:
         return Parsed(contract, problems=("wrong_contract",))
@@ -112,4 +121,4 @@ def _describe(exc: ValidationError) -> tuple[str, ...]:
     return tuple(out) or ("invalid",)
 
 
-__all__ = ["ACCEPTS", "CONTRACTS", "MCP", "WRITERS", "Parsed", "parse", "schema_of"]
+__all__ = ["ACCEPTS", "CONTRACTS", "MCP", "WRITERS", "Parsed", "decode", "parse", "schema_of"]

@@ -5,7 +5,6 @@
  * its cap, how long it took, how the job itself fared -; the Orchestrator's queue (empty until phase 3); and the nightly audit of what an agent
  * may know. Reading only: nothing here calls a model, creates a task or changes a pick. The file of one match is in "Partido" (MatchStatePanel).
  */
-import type { ReactNode } from "react";
 import { t, translateOr } from "@/lib/i18n";
 import { DASH, localInt, localPct } from "@/lib/i18n/format";
 import { Panel } from "@/components/primitives/Panel";
@@ -14,7 +13,6 @@ import { TD, TH, THead, TRow, TableShell, TableSkeleton } from "@/components/pri
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
 import { ApiErrorNotice } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
-import { cn } from "@/lib/utils";
 import type {
   AgentView,
   AgentsOverview,
@@ -26,7 +24,7 @@ import type {
   QueueStats,
   SliceStat,
 } from "@/lib/api/v1/types_ai_agents";
-import { Fact, Note, Stat, StatGrid, SubTitle } from "./AiBits";
+import { Block, Fact, Framed, Note, Notice, Stat, StatGrid } from "./AiBits";
 import { bogotaDateTime, dayShort, usd } from "./aiModel";
 import { durationMs } from "./format";
 import {
@@ -50,52 +48,6 @@ import {
   syncState,
   taskLine,
 } from "./agentsModel";
-
-/** A titled block inside a panel: the title, a line of what it means, then the block. */
-function Block({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <SubTitle>{title}</SubTitle>
-      {hint ? <Note>{hint}</Note> : null}
-      {children}
-    </div>
-  );
-}
-
-/** A table inside a padded panel: its own frame, so its edge fade and its scroll stay inside the card. */
-function Framed({ children }: { children: ReactNode }) {
-  return <div className="overflow-hidden rounded-md border border-border">{children}</div>;
-}
-
-/** A framed list of things to look at: a warning, or an alarm when what it lists is a fault of ours. */
-function Notice({
-  tone,
-  testId,
-  title,
-  children,
-}: {
-  tone: "warning" | "negative";
-  testId: string;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      role={tone === "negative" ? "alert" : undefined}
-      data-tone={tone}
-      data-testid={testId}
-      className={cn(
-        "rounded-md border px-3 py-2 text-xs",
-        tone === "negative"
-          ? "border-negative/35 bg-negative-soft"
-          : "border-warning/35 bg-warning-soft",
-      )}
-    >
-      <div className="font-medium">{title}</div>
-      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-foreground/85">{children}</ul>
-    </div>
-  );
-}
 
 /** What the owner should look at, most serious first - or, honestly, that there is nothing. */
 function AttentionLine({ o }: { o: AgentsOverview }) {

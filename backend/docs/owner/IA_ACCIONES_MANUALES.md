@@ -1,6 +1,6 @@
 # Acciones manuales del dueño · Plan Maestro IA
 
-Fecha: 25 oct 2026. Fuente: secciones 45 y 46 del Plan Maestro IA (aprobado). Son **16 acciones**, todas tuyas: yo no entro en la Console de Anthropic ni toco claves.
+Fecha: 25 oct 2026 (la sección de `step_keys.sh` se añadió el 26 oct 2026 y se quitó la ventana horaria el 26 oct 2026 a las 23:00 UTC por orden del dueño; **las acciones 6 y 7 se hicieron el 26 oct 2026 a las 23:44 UTC**). Fuente: secciones 45 y 46 del Plan Maestro IA (aprobado). Son **16 acciones**, todas tuyas: yo no entro en la Console de Anthropic ni toco claves.
 
 **Estas 16 no son las tareas del plan de seguridad** (esas se numeran aparte en `ESTADO_EJECUCION_SEGURIDAD.md`). Aquí «acción 7» es siempre la 7 del Plan Maestro IA.
 
@@ -21,17 +21,46 @@ No dejes copias `.bak` del fichero con una clave nueva. El fichero sigue siendo 
 
 ## Cuándo y en qué orden
 
-Los valores de abajo son los definitivos del plan. Las acciones 6 y 7 reinician la API y el worker unos segundos (los dos leen `app.env`), así que **cuentan como tocar producción**: se hacen dentro de la ventana de despliegue (19:55–23:00 UTC, un despliegue por ventana entre los tres planes) y yo te aviso del momento exacto. Lo que sí puedes hacer ya, sin tocar el servidor, es todo lo de la Console.
+Los valores de abajo son los definitivos del plan. Las acciones 6 y 7 reinician la API y el worker unos segundos (los dos leen `app.env`), así que **cuentan como tocar producción**, pero **ya no hay ventana horaria** (orden del dueño, 26 oct 2026 23:00 UTC): se pueden hacer a cualquier hora y yo te aviso cuando toque. Lo que protege al servidor no es el reloj sino el propio script: toma el candado del despliegue (nadie más despliega ni reinicia a la vez), espera a que no haya escrituras largas abiertas (`fixtures_sync`, la corrida nocturna), repite esa comprobación justo antes de reiniciar y repone la copia si la API o el worker no quedan sanos. Lo que sí puedes hacer ya, sin tocar el servidor, es todo lo de la Console.
 
 | Cuándo | Acciones | Qué desbloquea |
 | --- | --- | --- |
 | **Ahora** (Console, unos 15 min) | 1, 2, 3, 4, 5 | Las claves y los workspaces que necesitan las pruebas del LAB. **El gate A espera a la 3 y a la 5.** |
-| Cuando yo te avise, en la ventana de la IA | 6 y 7 | La clave de producción en su workspace y la clave del LAB con los tres sobres (185, 15 y 35). **El gate A espera a la 7.** |
+| **HECHAS el 26 oct a las 23:44 UTC** | 6 y 7 | La clave de producción en su workspace y la clave del LAB con los tres sobres (185, 15 y 35). El gate A esperaba a la 7: ya no la espera. |
 | Después | 8, 9, 10 (topes en la Console), 11 (48 h después de la 6), 12, 13, 14 | La red de seguridad de la Console y la conciliación |
 | Al empezar la fase 3 | 15 | **El arranque de la sombra espera a la 15** |
 | En la fase 9 | 16 | Vuelve el LAB a su tamaño de régimen |
 
 **Estado a 25 oct 08:00 UTC** (lo que puedo ver desde el servidor, por nombres de variables; la Console solo la ves tú): no hay `FBI_AI_KEY_ANTHROPIC_LAB` ni `FBI_AI_LAB_MONTHLY_BUDGET_USD` ni `FBI_AI_EXA_MONTHLY_BUDGET_USD`; `FBI_AI_MONTHLY_BUDGET_USD` vale 180 (el plan pide 185) y `FBI_AI_DAILY_BUDGET_USD` y `FBI_AI_DAILY_TARGET_USD` valen 6,00. Ninguna de las 16 está marcada como hecha.
+
+**Estado a 27 oct 00:15 UTC.** Las acciones 6 y 7 están **hechas y comprobadas en el servidor** (26 oct, 23:44:52 UTC): las dos claves instaladas y aceptadas por Anthropic con la consulta que no gasta, `FBI_AI_KEY_ANTHROPIC_LAB` añadida y `FBI_AI_KEY_ANTHROPIC` sustituida, los tres sobres puestos (185, 15 y 35), API y worker recreados y sanos, 0 fugas; la clave antigua sigue guardada en `app.env.before-ia-keys-20261026T234019Z` (de root y 600) hasta la acción 11. Las acciones 2 a 5 las das por hechas y desde el servidor no se ven; la prueba indirecta es que Anthropic acepta las dos claves y que las sondas del LAB corren con la del LAB. Las 8 a 16 siguen pendientes (la 15 no hasta empezar la fase 3).
+
+**Lo único que me falta para cerrar la comprobación de las claves es tuyo y es solo mirar:** en Cost o en Usage de la Console, con el filtro de `worker-lab` y el de `worker-prod`, que cada clave suma en su workspace (PREDIGOL-LAB y PREDIGOL). El panel va con horas de retraso («Data as of …»): tu primera mirada, el 27 oct a las 00:06 UTC, enseñaba datos de las 22:51 UTC del 26 oct, anteriores a las claves, así que US$ 0,00 era lo esperado y no un fallo. Vuelve a mirar pasadas unas horas: en `worker-lab` deberían salir ≈ US$ 0,03 de las sondas y, cuando cierren los dos lotes de Anthropic, ≈ US$ 10 más; `worker-prod` sale con la primera llamada de producción con la clave nueva. Tampoco hace falta esperar al panel: Settings → API keys enseña el último uso de cada clave (si la columna está).
+
+## Las acciones 6 y 7 con un solo comando (`step_keys.sh`), a cualquier hora
+
+**Hecho el 26 oct 2026 a las 23:44 UTC (tercera ejecución, sin ventana).** Lo que sigue se conserva para cuando haya que cambiar una clave (rotación) o repetirlo.
+
+La entrega de las fases 0 y 1 lleva un script que hace la 6 y la 7 juntas sin que ninguna clave se vea en pantalla, quede en el historial de la terminal, en un registro o en el chat. Va **después** del despliegue y de su verificación, a cualquier hora (sin ventana), y yo te aviso cuando sea el momento. Se ejecuta desde tu ordenador, en una terminal (sin terminal se niega):
+
+```bash
+ssh -t predigol /root/releases/<sello>-ia-p01/step_keys.sh
+```
+
+`<sello>` es el de la entrega; hoy la carpeta es `20261026T1955Z-ia-p01` y yo te escribo la ruta completa al avisarte. Antes de ese momento tienes que tener hechas las acciones 2, 3, 4 y 5 y las dos claves (`worker-lab` y `worker-prod`) a mano en tu gestor de contraseñas. Si hoy solo tienes una, escribe `DEJAR` en la otra y se queda como está; esa se pone después, volviendo a ejecutar el script (no hay límite de horario) o con el procedimiento manual de las acciones 6 y 7 de más abajo.
+
+Qué verás y qué hacer, en orden (el script escribe sin tildes a propósito: la consola de Windows las muestra mal):
+
+1. **Un resumen** de lo que hay ahora en el fichero, solo con nombres (una clave se dice `set` o `empty`, nunca se muestra). Antes de pedirte nada comprueba que la versión desplegada es la de la IA, que la IA sigue en sombra y que el servidor está tranquilo (tarda como un minuto: **no pulses ninguna tecla hasta ver «CLAVE 1 de 2»**; lo que se teclee antes se descarta); si hay una escritura larga abierta espera (hasta 20 intentos, cerca de media hora) y no te pide nada hasta entonces.
+2. **«CLAVE 1 de 2»**, la del LAB (`worker-lab`): pégala; no se ve al pegarla. Te dice cuántos caracteres recibió (una clave de Anthropic tiene del orden de 100) y si empieza por `sk-ant-`; comprueba que tiene forma de clave y que Anthropic la acepta con una consulta que no gasta nada; tienes tres intentos. Para dejarla como está escribe `DEJAR`: un Intro vacío **no** vale (se te vuelve a pedir, para que un Intro de más no deje la clave sin poner).
+3. **«CLAVE 2 de 2»**, la de producción (`worker-prod`), igual. Las dos tienen que ser distintas.
+4. **Lo que va a hacer, por nombres**, y la pregunta final: escribe `SI` en mayúsculas para aplicarlo; cualquier otra cosa cancela y no toca nada.
+5. **El cambio.** Guarda una copia fechada del fichero (`app.env.before-ia-keys-<sello>`, de root y 600; conserva la clave **antigua** hasta que la desactives en la acción 11), escribe `FBI_AI_KEY_ANTHROPIC_LAB`, `FBI_AI_KEY_ANTHROPIC`, `FBI_AI_MONTHLY_BUDGET_USD=185`, `FBI_AI_LAB_MONTHLY_BUDGET_USD=15` y `FBI_AI_EXA_MONTHLY_BUDGET_USD=35` de forma atómica, comprueba que solo cambiaría la configuración de la API y del worker, vuelve a mirar que el servidor está tranquilo y reinicia **solo esos dos** (unos segundos). Si en 4 minutos no están sanos, **repone la copia** y los vuelve a crear.
+6. **Las comprobaciones**, sin mostrar ningún valor: que la base de datos, la web y Caddy siguen siendo los mismos contenedores, que el worker tiene las variables, el estado de la sonda de la IA (`ia_probe status`, que no llama a ningún proveedor) y la cuenta de fugas, que tiene que ser 0 (busca los valores de las claves en los registros de la entrega y de los contenedores).
+
+Si sale «LISTO», escríbeme una sola palabra en el chat (por ejemplo «hecho»); yo leo el resto desde el servidor. **Nunca pegues una clave en el chat**, ni una captura que la muestre. Salidas del script: 0 hecho (o nada que hacer), 1 se negó antes de tocar nada, 2 tocó el fichero y volvió atrás, 3 hecho con algo que mirar. En los tres últimos casos cuéntame lo que dice la pantalla (nunca una clave): no se revierte nada más sin que lo hablemos.
+
+Para comprobarlo tú: en Usage o en Cost, con `worker-prod` en el selector, aparecen peticiones en cuanto el panel se ponga al día (va con retraso de horas, mira la fecha de «Data as of») y la clave antigua deja de sumar; Operación → Costes muestra 185, 15 y 35. La clave antigua **no** se desactiva hoy: es la acción 11, 48 horas después y solo si Usage confirma 0 peticiones suyas (nunca «Delete»).
 
 ## Cómo encontrar cada página
 
@@ -86,15 +115,17 @@ No he podido verificar las etiquetas del menú de la Console (Keys & access, Spe
 
 ## Acción 6 · La clave de producción en el servidor
 
+- **ESTADO:** **HECHA el 26 oct 2026 a las 23:44:52 UTC** (con `step_keys.sh`, tercera ejecución). Falta solo tu mirada de Usage/Cost de más abajo.
 - **DÓNDE:** servidor, por SSH con tu usuario; fichero `/etc/predigol/app.env`.
 - **QUÉ HACER:** poner en `FBI_AI_KEY_ANTHROPIC` la clave `worker-prod` (edita la línea que ya existe con `nano`; no añadas otra). Reinicia con el procedimiento de siempre: `predigolctl up` (si la terminal no lo encuentra: `/opt/predigol/backend/deploy/vps/bin/predigolctl up`). No toques otras variables que las de esta lista y no dejes copias `.bak` con la clave nueva.
 - **VALOR:** `FBI_AI_KEY_ANTHROPIC` = la clave `worker-prod`.
-- **CÓMO VERIFICAR:** en Usage, con `worker-prod` en el selector, aparecen peticiones en pocos minutos (el ciclo corre cada 15) y la clave antigua deja de sumar.
+- **CÓMO VERIFICAR:** en Usage o en Cost, con `worker-prod` en el selector, aparecen peticiones en cuanto el panel se ponga al día (va con retraso de horas, mira la fecha de «Data as of»; el ciclo de producción corre cada 15 minutos) y la clave antigua deja de sumar.
 - **QUÉ BLOQUEA:** nada técnico. Condiciona las acciones 9 y 11.
 
 ## Acción 7 · La clave del LAB y los tres sobres
 
-- **DÓNDE:** servidor, cuando esté desplegado el código de la fase 0 (o justo antes, dentro de la misma ventana: el código viejo ignora las variables nuevas).
+- **ESTADO:** **HECHA el 26 oct 2026 a las 23:44:52 UTC** (con `step_keys.sh`): `ia_probe status` dice clave del LAB puesta, sobre del LAB 15 con 15,0000 disponibles y 0 bloqueos; las sondas de caché y de esquema pasan con ella. Falta solo tu mirada de Usage/Cost bajo PREDIGOL-LAB.
+- **DÓNDE:** servidor, cuando esté desplegado el código de la fase 0 (o justo antes, en el mismo momento: el código viejo ignora las variables nuevas).
 - **QUÉ HACER:** añadir `FBI_AI_KEY_ANTHROPIC_LAB` con el comando de arriba (la clave no se ve); cambiar `FBI_AI_MONTHLY_BUDGET_USD` de 180 a 185 (esa línea ya existe: edítala); añadir `FBI_AI_LAB_MONTHLY_BUDGET_USD=15` y `FBI_AI_EXA_MONTHLY_BUDGET_USD=35`. Reinicia el worker con `predigolctl up`.
 
   ```bash

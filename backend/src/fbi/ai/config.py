@@ -48,6 +48,14 @@ own evidence allows it - ``fbi.ai.gates``). To go back: set the switch to 0 and 
     FBI_AI_BUDGET_V3            the adaptive budget v3 of section 26 (projection, scopes, AJUSTE, API limit errors)
     FBI_AI_BATCH_MIN_LEAD_MINUTES   default 240 - a task goes to Batch only with this many minutes before kick-off
 
+Phase 2 of the plan - the research of an entity (``fbi.ai.entity_research``):
+
+    FBI_AI_RESEARCH_V2          off (default) | shadow | on. off: the cycle does not know it. shadow: it runs after v1's research in the same
+                                pass and writes typed evidence that no packet shows (the week of comparison; v1 goes on deciding). on: it
+                                REPLACES v1's research and the packet shows what it wrote - and only once the ``research_v2`` gate has passed
+                                (``fbi.ai.gates.research_mode``); until then ``on`` behaves as ``shadow``. Any other word is ``off``. To go
+                                back: set it to ``off`` (or ``shadow``) and restart the worker (about a minute).
+
 A model or a search is used only for TODAY's matches (America/Bogota) that have a market (``fbi.ai.day``).
 
 No tier configured = the layer runs its deterministic reviewer only and says so (``status()``). A tier is
@@ -68,6 +76,7 @@ Mode = Literal["off", "shadow", "enforce"]
 Tier = Literal["bulk", "analysis", "final"]
 TIERS: tuple[Tier, ...] = ("bulk", "analysis", "final")
 Switch = Literal["off", "on", "auto"]
+ResearchMode = Literal["off", "shadow", "on"]
 SWITCH_ENV: dict[str, str] = {"cache": "FBI_AI_CACHE", "batch": "FBI_AI_BATCH", "native_schema": "FBI_AI_NATIVE_SCHEMA",
                               "brief_material": "FBI_AI_BRIEF_MATERIAL", "budget_v3": "FBI_AI_BUDGET_V3"}
 """The five optimisations of Phase 0 and the variable that rolls each one back."""
@@ -129,6 +138,13 @@ def _switch(raw: str | None) -> Switch:
     return "auto"
 
 
+def _research_mode(raw: str | None) -> ResearchMode:
+    """``FBI_AI_RESEARCH_V2``: only the words ``shadow`` and ``on`` switch research v2 on - ``1``, ``true`` or a typo are ``off``, so nothing
+    reaches the packet by accident."""
+    value = (raw or "").strip().lower()
+    return "shadow" if value == "shadow" else "on" if value == "on" else "off"
+
+
 def _all_auto() -> dict[str, Switch]:
     return dict.fromkeys(SWITCH_ENV, "auto")
 
@@ -174,6 +190,9 @@ class AiSettings:
     package: bool = True
     """Plan IA, phase 1: the state of each match is written from the passes already run (``fbi.ai.match_runs``; no model, no cost, and nothing reads it
     yet). ``FBI_AI_PACKAGE=0`` stops the job - it is the phase's rollback."""
+    research_v2: ResearchMode = "off"
+    """Plan IA, phase 2: what the owner asked of the research of an entity (``FBI_AI_RESEARCH_V2``). What the cycle does is ``gates.research_mode``:
+    ``on`` is ``shadow`` until the ``research_v2`` gate has passed."""
 
     @classmethod
     def from_env(cls) -> AiSettings:
@@ -222,6 +241,7 @@ class AiSettings:
             reserve=_decimal("FBI_AI_RESERVE_USD", "10", env),
             batch_min_lead_minutes=max(30, _int("FBI_AI_BATCH_MIN_LEAD_MINUTES", 240, env)),
             package=(env.get("FBI_AI_PACKAGE") or "1").strip().lower() not in ("0", "off", "false", "no"),
+            research_v2=_research_mode(env.get("FBI_AI_RESEARCH_V2")),
         )
 
     def switch(self, name: str) -> Switch:
@@ -286,6 +306,7 @@ class AiSettings:
             "reserve_usd": str(self.reserve),
             "batch_min_lead_minutes": self.batch_min_lead_minutes,
             "package": self.package,
+            "research_v2": self.research_v2,
         }
 
     @property

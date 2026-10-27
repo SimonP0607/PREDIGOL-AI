@@ -40,6 +40,7 @@ def test_the_options_say_what_they_say() -> None:
     args = parse("collect", "--targets", "extract", "--native", "--suffix", "2", "--no-record", "--dsn", "postgresql://example/none")
     assert (args.targets, args.native, args.suffix, args.no_record, args.dsn) == (["extract"], True, "2", True, "postgresql://example/none")
     assert parse("plan", "--targets", "review", "extract").targets == ["review", "extract"]
+    assert parse("plan", "--targets", "claims").targets == ["claims"] and parse("plan", "--targets", "extract", "claims").targets == ["extract", "claims"]
 
 
 @pytest.mark.parametrize("argv", [[], ["ask"], ["submit", "--targets", "brief"], ["submit", "--targets"], ["plan", "--unknown"], ["Submit"]])
@@ -70,7 +71,7 @@ def test_the_guide_names_every_command_and_every_option_and_the_four_exit_status
         assert f"``{option}" in guide, option
     for status in ("0 done and PASA", "1 done and not PASA", "2 could not run", "3 asks still on their way"):
         assert status in guide, status
-    assert f"{len(corpus.CASES)} cases" in guide and len(corpus.CASES) == 80, "it says how many cases there are"
+    assert f"{len(corpus.CASES)} cases" in guide and len(corpus.CASES) == 120, "it says how many cases there are"
 
 
 def test_the_help_is_the_first_paragraph_of_the_guide() -> None:
@@ -84,14 +85,16 @@ def test_the_help_is_the_first_paragraph_of_the_guide() -> None:
 def test_offline_is_ok_for_the_corpus_in_force_and_counts_what_it_checked() -> None:
     report, code = ia_battery.run_offline(list(TARGETS), native=False)
     assert code == ia_battery.OK and report["verdict"] == "PASA" and report["findings"] == []
-    assert report["checked"] == {"cases": 80, "bases": 6, "minimum": MIN_CASES}
+    assert report["checked"] == {"cases": 120, "bases": 9, "minimum": MIN_CASES}
     only, code = ia_battery.run_offline(["extract"], native=True)
     assert code == ia_battery.OK and only["checked"] == {"cases": 40, "bases": 3, "minimum": MIN_CASES}
+    third, code = ia_battery.run_offline(["claims"], native=False)
+    assert code == ia_battery.OK and third["checked"] == {"cases": 40, "bases": 3, "minimum": MIN_CASES}
 
 
 def test_a_defect_found_offline_is_exit_one_and_is_listed(monkeypatch: pytest.MonkeyPatch) -> None:
     found = Finding("review.hidden_html.2", "hidden_survives", "the hidden text is still in what the model reads")
-    monkeypatch.setattr(offline, "run", lambda targets, native=False: OfflineReport({"cases": 80, "bases": 6, "minimum": MIN_CASES}, (found,)))
+    monkeypatch.setattr(offline, "run", lambda targets, native=False: OfflineReport({"cases": 120, "bases": 9, "minimum": MIN_CASES}, (found,)))
     report, code = ia_battery.run_offline(list(TARGETS), native=False)
     assert code == ia_battery.NO and report["verdict"] == "NO PASA" and report["findings"] == [found.as_json()]
 
@@ -105,8 +108,10 @@ def test_main_offline_prints_the_report_as_json_and_returns_its_status_with_no_d
     monkeypatch.setattr(AiSettings, "from_env", never)
     assert ia_battery.main(["offline"]) == ia_battery.OK
     printed = json.loads(capsys.readouterr().out)
-    assert printed["verdict"] == "PASA" and printed["checked"]["cases"] == 80
+    assert printed["verdict"] == "PASA" and printed["checked"]["cases"] == 120
     assert ia_battery.main(["offline", "--targets", "review"]) == ia_battery.OK
+    assert json.loads(capsys.readouterr().out)["checked"]["cases"] == 40
+    assert ia_battery.main(["offline", "--targets", "claims"]) == ia_battery.OK
     assert json.loads(capsys.readouterr().out)["checked"]["cases"] == 40
 
 
@@ -201,7 +206,7 @@ def test_offline_asks_the_corpus_of_the_route_and_of_the_targets_it_was_given(mo
     assert ia_battery.main(["offline", "--targets", "extract", "--native"]) == ia_battery.OK
     assert ia_battery.main(["offline"]) == ia_battery.OK
     capsys.readouterr()
-    assert seen == [(("review",), True), (("extract",), True), (("review", "extract"), False)]
+    assert seen == [(("review",), True), (("extract",), True), (("review", "extract", "claims"), False)]
 
 
 @pytest.mark.parametrize(("report", "code"), [

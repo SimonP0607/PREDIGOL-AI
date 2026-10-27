@@ -275,6 +275,7 @@ def ai_view(conn: psycopg.Connection[Any], ranked: list[Ranked], *, at: datetime
     """Read in a savepoint: without the AI tables (an older database) the set is built as before. ``day``: whether to
     ask if today has been read whole (``day_ready``) - only the daily set's context stage needs it."""
     from fbi.ai.config import AiSettings
+    from fbi.ai.gates import typed_visible
     from fbi.ai.gating import enforcement
     from fbi.ai.review import latest_reviews
 
@@ -284,7 +285,7 @@ def ai_view(conn: psycopg.Connection[Any], ranked: list[Ranked], *, at: datetime
         with conn.transaction():
             reviews = latest_reviews(conn, fixtures, at=at)
             enf = enforcement(conn, settings)
-            evidence = evidence_counts(conn, fixtures, at=at)
+            evidence = evidence_counts(conn, fixtures, at=at, typed=typed_visible(conn, settings))
             passed, searched = day_passes(conn, fixtures, at=at)
             ready = frozenset({product_day(at)}) if day and day_ready(conn, at=at) else frozenset()
     except psycopg.errors.UndefinedTable:
@@ -329,18 +330,20 @@ def day_ready(conn: psycopg.Connection[Any], *, at: datetime) -> bool:
 
 EVIDENCE_SQL = """
 SELECT e.fixture_id, e.status, count(*) AS n FROM ai.evidence e
- WHERE e.fixture_id = ANY(%(fixtures)s) AND e.retrieved_at <= %(at)s GROUP BY 1, 2
+ WHERE e.fixture_id = ANY(%(fixtures)s) AND e.retrieved_at <= %(at)s AND (e.subject_type IS NULL OR %(typed)s) GROUP BY 1, 2
 """
 
 
-def evidence_counts(conn: psycopg.Connection[Any], fixtures: list[int], *, at: datetime) -> dict[int, dict[str, int]]:
+def evidence_counts(conn: psycopg.Connection[Any], fixtures: list[int], *, at: datetime, typed: bool = False) -> dict[int, dict[str, int]]:
     """The outside evidence about each match known at ``at``, by status (CONFIRMED, PROBABLE, RUMOR, CONTRADICTORY,
-    OUTDATED - the server decides it, never a model: ``fbi.ai.evidence``). No row: no evidence at all."""
+    OUTDATED - the server decides it, never a model: ``fbi.ai.evidence``). No row: no evidence at all. The claims of research v2
+    (``typed``) count only when research v2 is ``on`` (``fbi.ai.gates.typed_visible``): beside v1 they are written for the comparison
+    and the set of the day does not know them."""
     if not fixtures:
         return {}
     out: dict[int, dict[str, int]] = {}
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(EVIDENCE_SQL, {"fixtures": fixtures, "at": at})
+        cur.execute(EVIDENCE_SQL, {"fixtures": fixtures, "at": at, "typed": typed})
         for r in cur.fetchall():
             out.setdefault(int(r["fixture_id"]), {})[str(r["status"])] = int(r["n"])
     return out

@@ -5,7 +5,8 @@
  *   EL DÍA        what was analysed and what became of every candidate, how deep the AI went, the picks of the day and the day's learning report
  *   DECISIONES    every decision whole: the ten filters, the score and the stake, the context, the model, the outcome
  *   PARTIDO       the dossier of a match, found by a search and not by typing an id, with its narrative
- *   TRABAJO IA    the mode and the owner's "run now", and the AI's own work: today's matches, the research, the reviews, the evidence, the sources
+ *   TRABAJO IA    the mode and the owner's "run now", and the AI's own work: today's matches, the research, the research by entity and topic (plan IA,
+ *                 phase 2), the reviews, the evidence, the sources
  *   AGENTES       the agents of the plan: the registry against the code, the engine of each family, the state of the matches, the queue, the audit
  *   COSTOS        the budget, the models, the pace, the efficiency of today and everything the periods cost
  *   EJECUCIONES   what ran and the leakage audit
@@ -30,6 +31,7 @@ import { ShadowBanner } from "./AiBits";
 import { EvidenceTab, ReviewsTab, StatusStrip } from "./AiLayerLive";
 import { ResearchTab, SourcesTab, TodayTab } from "./AiResearchLive";
 import { AgentsView } from "./AgentsLive";
+import { TopicsView } from "./TopicsLive";
 import { AI_TZ } from "./aiModel";
 import { DayView, DecisionDetail, DecisionsView, MatchView, RunsView } from "./IntelligenceLive";
 
@@ -59,6 +61,7 @@ function AiWork() {
       />
       {view === "today" ? <TodayTab day={day} onDay={setDay} max={today} /> : null}
       {view === "research" ? <ResearchTab day={day} onDay={setDay} max={today} /> : null}
+      {view === "topics" ? <TopicsView /> : null}
       {view === "reviews" ? <ReviewsTab /> : null}
       {view === "evidence" ? <EvidenceTab /> : null}
       {view === "sources" ? <SourcesTab /> : null}

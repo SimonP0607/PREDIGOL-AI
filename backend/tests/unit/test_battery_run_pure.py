@@ -130,7 +130,7 @@ def test_the_input_of_every_ask_is_its_own_and_does_not_change_between_calls() -
             h = run.task_of(ask, rid).input_hash
             assert h == run.task_of(ask, rid).input_hash and re.fullmatch(r"[0-9a-f]{64}", h)
             hashes[f"{target}/{ask.key}"] = h
-    assert len(set(hashes.values())) == len(hashes) == 110, "five clean asks of a base are five asks"
+    assert len(set(hashes.values())) == len(hashes) == 165, "five clean asks of a base are five asks"
     ask = run.first_round("review")[0]
     assert run.task_of(ask, run.run_id("review")).input_hash != run.task_of(ask, run.run_id("review", suffix="2")).input_hash
 

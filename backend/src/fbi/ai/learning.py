@@ -38,6 +38,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from fbi.ai.calendar import day_bounds
 from fbi.ai.config import AiSettings
+from fbi.ai.gates import typed_visible
 from fbi.ai.prompts import LEARNING_SCHEMA, LEARNING_SYSTEM, LEARNING_VERSION
 from fbi.ai.providers.base import JsonRequest, LlmProvider
 from fbi.ai.text import CLASS_ES, TIER_ES, fit, plain, selection_es, words
@@ -80,15 +81,18 @@ SELECT e.source_domain AS domain, e.source_tier AS tier, count(*) AS evidence,
        count(*) FILTER (WHERE e.status IN ('RUMOR', 'OUTDATED', 'CONTRADICTORY')) AS discarded
   FROM ai.evidence e
  WHERE e.origin = 'web' AND e.source_domain IS NOT NULL AND e.retrieved_at >= %(start)s AND e.retrieved_at < %(end)s
+   AND (e.subject_type IS NULL OR %(typed)s)
  GROUP BY 1, 2
 """
+"""What each domain gave that day (a display of the sources' record; the tier of a domain is the registry's, ``ai.sources``). The claims of research v2
+(``subject_type``) count only when research v2 is ``on``."""
 
 
 def refresh_source_stats(conn: psycopg.Connection[Any], *, day: date, at: datetime) -> int:
     """The day's evidence per domain into ``ai.source_stats`` (results and cost were counted when searched)."""
     start, end = day_bounds(day)
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(SOURCES_SQL, {"start": start, "end": end})
+        cur.execute(SOURCES_SQL, {"start": start, "end": end, "typed": typed_visible(conn)})
         rows = [dict(r) for r in cur.fetchall()]
     with conn.cursor(row_factory=tuple_row) as cur:
         for r in rows:

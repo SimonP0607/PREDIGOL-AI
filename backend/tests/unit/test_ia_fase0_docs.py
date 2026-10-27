@@ -201,9 +201,15 @@ def test_the_variables_of_the_guide_change_the_settings_they_say(monkeypatch: py
 
 # ── 3. the gates ──────────────────────────────────────────────────────────────────────────────────────────────────
 
+LATER_GATES = ("research_v2",)
+"""The gates a later phase added after the guide of phase 0 was written: the guide of THEIR phase lists them (``IA_FASE2.md`` for research v2) and
+the test of that guide holds them to the code. They come last in ``gates.GATES``."""
+
+
 def test_the_gates_of_the_guide_are_the_gates_of_the_code() -> None:
     rows = table(section(3), "| Gate")
-    assert [ticked(r[0]) for r in rows] == list(gates.GATES)
+    assert tuple(gates.GATES[-len(LATER_GATES):]) == LATER_GATES, "a later phase's gates come after the ones of phases 0 and 1"
+    assert [ticked(r[0]) for r in rows] == [g for g in gates.GATES if g not in LATER_GATES]
     commands_of = {"ia_probe": ia_probe.COMMANDS, "ia_equivalence": ia_equivalence.COMMANDS, "ia_gate": ia_gate.COMMANDS,
                    "ia_battery": ia_battery.COMMANDS}
     for r in rows:

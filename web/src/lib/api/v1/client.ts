@@ -4,6 +4,7 @@ import type { MatchMarkets, MatchProfile } from "./types_profile";
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { SelectionFunnel } from "./types_funnel";
 import type { AgentsOverview, MatchState } from "./types_ai_agents";
+import type { EntityResearchOverview } from "./types_ai_research";
 import type {
   IntelCalibration,
   IntelCosts,
@@ -558,6 +559,9 @@ export const v1 = {
   aiCosts: () => getJson<Envelope<AiCosts>>("/admin/ai/costs"),
   /** The agents (plan IA, phase 1): the registry, the engine of each family, what the state job wrote, the queue and the audit. Reading only. */
   aiAgents: (days = 7) => getJson<Envelope<AgentsOverview>>("/admin/ai/agents", { days }),
+  /** Research by entity and topic (plan IA, phase 2): what research v2 kept, found, spent and reused, v1 against v2, and its gate. Reading only. */
+  aiResearchEntities: (days = 7) =>
+    getJson<Envelope<EntityResearchOverview>>("/admin/ai/research/entities", { days }),
   /** The file of one match: its live state, every state it went through, and the tasks and attempts of the agents on it. */
   aiMatchState: (fixtureId: number | string) =>
     getJson<Envelope<MatchState>>(`/admin/ai/matches/${fixtureId}/state`),

@@ -93,11 +93,11 @@ def test_0113_keeps_what_was_written_accepts_the_new_gate_and_moves_nothing_else
             assert evidence(c) == before, "every row written before is as it was: same ids, same content"
             assert [r[0] for r in before] == written
             new_def, validated = gate_check(c)
-            assert validated and gates_of(new_def) == [*OLD_GATES, "battery"] == list(gates.GATES) and " OR " not in new_def, new_def
+            assert validated and gates_of(new_def) == [*OLD_GATES, "battery"] and " OR " not in new_def, new_def
             assert other_rules(c) == rules, "no other constraint, no index and no trigger of the evidence moved"
             ok = gate_row(c, "battery", passed=False, evidence={"battery": "battery-v1", "verdict": "NO PASA"})
             assert c.execute("SELECT gate, passed, decided_by FROM ai.feature_gates WHERE id = %s", (ok,)).fetchone() == ("battery", False, "script")
-            for gate in gates.GATES:
+            for gate in (*OLD_GATES, "battery"):
                 gate_row(c, gate, at=NOON + timedelta(days=1))  # every gate is accepted, the old ones as before
             for nonsense in ("batteries", "Battery", "battery ", "", "gate_b", "adversarial", "BATTERY"):
                 with refuses(c, psycopg.errors.CheckViolation, constraint=CONSTRAINT):
@@ -113,12 +113,13 @@ def test_0113_keeps_what_was_written_accepts_the_new_gate_and_moves_nothing_else
             c.rollback()
 
 
-def test_0113_the_words_of_the_database_are_the_words_of_the_code() -> None:
-    """A gate added to ``gates.GATES`` without a migration, or the other way round, fails here instead of failing on the day the gate is
-    first recorded."""
+def test_0113_leaves_the_five_words_of_its_time_and_the_code_still_knows_them() -> None:
+    """The words of the database at 0113. That the database and ``gates.GATES`` agree is held at the head (``test_migration_0115``): the list
+    of the code grows with every phase, this one is what 0113 left."""
     with scratch_at("0113") as dsn, psycopg.connect(dsn) as c:
-        assert gates_of(gate_check(c)[0]) == list(gates.GATES)
-        for gate in gates.GATES:
+        assert gates_of(gate_check(c)[0]) == [*OLD_GATES, "battery"]
+        assert set(gates.GATES) >= {*OLD_GATES, "battery"}, "the code never forgets a gate it once wrote"
+        for gate in (*OLD_GATES, "battery"):
             gate_row(c, gate)
         c.rollback()
 

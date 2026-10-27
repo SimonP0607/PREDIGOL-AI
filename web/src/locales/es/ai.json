@@ -1432,5 +1432,308 @@
         "budget_skip": "Sin presupuesto"
       }
     }
+  },
+  "topics": {
+    "intro": "Cómo investiga la IA por entidad y tema (plan IA, fase 2): la respuesta que la caché guarda para cada equipo o partido en cada tema, lo fresca que está, las veces que se reutilizó en vez de buscar otra vez y la clase de fuente de cada afirmación. Junto a eso, la comparación con la investigación v1 y la puerta que decide si v2 puede sustituirla. Solo lectura: nada aquí busca, llama a un modelo, escribe una afirmación ni cambia el interruptor.",
+    "attention": {
+      "title": "Qué mirar",
+      "none": "Nada que atender: ninguna parte de la página falló, la investigación v2 no falló ni se cortó y no hay páginas marcadas.",
+      "part_unavailable": "Partes de esta página que no se pudieron calcular: {n}",
+      "v2_failed": "Pases en los que la investigación v2 falló: {n}",
+      "v2_cut": "Pases en los que la investigación v2 se cortó (presupuesto o caída de la búsqueda): {n}",
+      "not_running": "El interruptor no está apagado, pero ningún pase de la ventana ejecutó la investigación v2",
+      "held_as_shadow": "Se pidió «on», pero la puerta no ha pasado: v2 sigue corriendo en shadow, junto a v1",
+      "claims_flagged": "Afirmaciones leídas de páginas que sonaban a una orden para un modelo: {n}",
+      "pages_flagged": "Páginas marcadas porque parecían una instrucción: {n}",
+      "unreadable": "Filas de la caché de entidades que este código no sabe leer: {n}"
+    },
+    "switch": {
+      "title": "Interruptor de la investigación v2",
+      "subtitle": "Lo que pidió el propietario (FBI_AI_RESEARCH_V2) y lo que hace el ciclo con ello. «on» solo rige si la última evaluación de la puerta pasó; mientras no, v2 corre en shadow junto a v1 y solo v1 decide.",
+      "asked": "Pedido",
+      "mode": "En vigor",
+      "typed": "Afirmaciones tipificadas",
+      "typedVisible": "Las lee el sistema",
+      "typedHidden": "Ocultas: solo se miden",
+      "gate": "Puerta de v2",
+      "gateState": {
+        "never": "Nunca se registró",
+        "passed": "Pasó el {date}",
+        "failed": "No pasó el {date}"
+      },
+      "state": {
+        "off": "Apagada: v1 investiga sola",
+        "shadow": "Shadow: v2 corre junto a v1 y nadie lee lo suyo",
+        "on": "En vigor: v2 sustituye a v1",
+        "held": "Pedida «on» y retenida como shadow: la puerta no ha pasado"
+      },
+      "history": {
+        "title": "Veredictos registrados de la puerta",
+        "hint": "Cada evaluación registrada de la puerta «research_v2». Solo se añaden filas: decide la más reciente.",
+        "empty": "La puerta nunca se registró. Se evalúa y se registra con python -m scripts.ia_research_gate evaluate --record, y solo con un veredicto PASA o NO PASA.",
+        "passed": "Pasó",
+        "failed": "No pasó",
+        "col": {
+          "when": "Cuándo",
+          "verdict": "Veredicto",
+          "by": "Registró",
+          "version": "Versión del código",
+          "hash": "Huella de la evidencia"
+        }
+      }
+    },
+    "gate": {
+      "title": "Puerta de la investigación v2",
+      "subtitle": "Lo que decide si v2 puede sustituir a v1: siete días completos de Bogotá con v2 en shadow en todos los pases y siete comprobaciones. Evaluarla no escribe nada y nunca sustituye a la evidencia real.",
+      "none": "Esta página no tiene una evaluación de la puerta que mostrar.",
+      "evaluatedAt": "Evaluada el {at}",
+      "verdict": {
+        "pass": "PASA",
+        "fail": "NO PASA",
+        "pending": "PENDIENTE POR TIEMPO REAL"
+      },
+      "window": {
+        "days": "Días completos con v2 en shadow",
+        "daysOf": "{n} de {total}",
+        "range": "Ventana evaluada",
+        "since": "Primer día de la racha",
+        "eligible": "Primer día evaluable",
+        "anchoredBy": "Lo que fija el inicio"
+      },
+      "pendingTitle": "Lo que falta",
+      "col": {
+        "check": "Comprobación",
+        "result": "Resultado",
+        "detail": "Detalle",
+        "revert": "Si falla, se revierte"
+      },
+      "check": {
+        "window": "Siete días completos con v2 en shadow",
+        "fewer_searches": "Menos búsquedas que v1",
+        "coverage": "Cobertura de las evidencias de v1 (≥ 95 %)",
+        "coverage_players": "Cobertura de quién puede jugar (≥ 95 %)",
+        "shadow_invisible": "En shadow nada cita a v2",
+        "evidence_known": "Auditoría nocturna «evidence_known» sin violaciones",
+        "sample": "Muestra suficiente de partidos y hechos"
+      },
+      "mark": {
+        "yes": "Sí",
+        "no": "No",
+        "pending": "Pendiente"
+      },
+      "consequenceTitle": "Consecuencia",
+      "preview": {
+        "title": "Lo que muestran los días transcurridos",
+        "hint": "No es evidencia de la puerta: solo las cifras de los días completos que lleva con v2 en shadow.",
+        "figure": {
+          "passes_compared": "Pases comparados",
+          "searches_v1": "Búsquedas de v1",
+          "searches_v2_alone": "Búsquedas de v2 por sí sola",
+          "saved_pct": "Búsquedas ahorradas",
+          "reuse_pct": "Reutilización",
+          "fixtures": "Partidos con hechos de v1",
+          "facts_v1": "Hechos de v1",
+          "facts_v2": "Hechos de v2",
+          "coverage_pct": "Cobertura de v1",
+          "coverage_players_pct": "Cobertura de quién puede jugar"
+        }
+      },
+      "recordNote": "Esta página solo lee. La puerta se evalúa y se registra desde el servidor con python -m scripts.ia_research_gate evaluate --record, y solo queda registrado un veredicto PASA o NO PASA; las cifras que preceden a un PENDIENTE no cuentan."
+    },
+    "comparison": {
+      "title": "Investigación v1 frente a v2",
+      "subtitle": "La misma aritmética de la puerta sobre la ventana de esta página, pase a pase: v1 decide y v2 corre detrás sin que nadie lea lo suyo. Una lectura de los días transcurridos, no una evidencia.",
+      "range": "Del {first} al {last}.",
+      "none": "Ningún pase de la ventana ejecutó la investigación v2 junto a v1: todavía no hay nada que comparar.",
+      "stat": {
+        "passes": "Pases comparados",
+        "passesHint": "{n} en shadow · {failed} con fallo de v2 · {cut} cortados",
+        "searchesV1": "Búsquedas de v1",
+        "searchesV2": "Búsquedas de v2 por sí sola",
+        "searchesV2Hint": "Las pagadas más las que respondió la caché de búsquedas: lo que habría pagado sin v1 al lado",
+        "saved": "Búsquedas ahorradas",
+        "reuse": "Reutilización",
+        "reuseHint": "Respuestas aún frescas sobre todo lo que v2 necesitó",
+        "coverage": "Cobertura de v1",
+        "coverageHint": "{found} de {facts} hechos de v1 los encontró también v2",
+        "players": "Cobertura de quién puede jugar",
+        "playersHint": "Solo los hechos sobre jugadores y entrenadores",
+        "perMatch": "Hechos por partido (v1 · v2)",
+        "perMatchHint": "Sobre {n} partidos con hechos de v1",
+        "exaV1": "Gasto en Exa de v1",
+        "exaV2": "Gasto en Exa de v2",
+        "exaSearches": "{n} búsquedas",
+        "extractor": "Llamadas del extractor",
+        "invalid": "Salidas inválidas del extractor",
+        "invalidHint": "Respuestas del modelo que no cumplían el contrato claim-v1"
+      },
+      "missed": {
+        "title": "Hechos de v1 que v2 no encontró",
+        "hint": "Partido · lado · quién · clase de fuente. Son ejemplos, no la lista completa.",
+        "none": "v2 encontró todos los hechos de v1 de la ventana, o v1 no halló ninguno."
+      }
+    },
+    "freshness": {
+      "title": "Frescura por tema",
+      "subtitle": "La caché guarda una sola respuesta por entidad y tema, compartida por todos los partidos y agentes que la necesiten. Cuánto tiempo vale depende de lo cerca que esté el saque.",
+      "topic": {
+        "availability": "Disponibilidad",
+        "confirmation": "Confirmación",
+        "preview": "Previa"
+      },
+      "col": {
+        "topic": "Tema",
+        "entity": "Sobre",
+        "levels": "Niveles",
+        "rule": "Vigencia (lejos / cerca)",
+        "entries": "Guardadas",
+        "fresh": "Frescas",
+        "expired": "Caducadas",
+        "reuses": "Reutilizadas",
+        "newest": "La más reciente",
+        "lastReuse": "Última reutilización"
+      },
+      "window": "«Cerca» son las últimas {n} h antes del saque más próximo de la entidad; «lejos», todo lo anterior. Cuanto más cerca del saque, antes caduca una respuesta.",
+      "empty": "La caché todavía no guarda ninguna respuesta por entidad: v2 aún no ha buscado nada.",
+      "unreadable": "Filas de la caché de entidades con una clave que este código no lee: {n}. Se cuentan, no se interpretan."
+    },
+    "entity": {
+      "TEAM": "Equipo",
+      "PLAYER": "Jugador",
+      "COACH": "Entrenador",
+      "REFEREE": "Árbitro",
+      "MATCH": "Partido",
+      "COMPETITION": "Competición"
+    },
+    "answers": {
+      "title": "Respuestas guardadas",
+      "subtitle": "Las más recientes de la caché, con las afirmaciones que dejaron en los últimos {days} días.",
+      "empty": "La caché todavía no guarda respuestas por entidad.",
+      "col": {
+        "entity": "Entidad",
+        "topic": "Tema",
+        "level": "Nivel",
+        "results": "Resultados",
+        "standing": "Fuente reconocida",
+        "tiers": "Resultados por nivel de fuente",
+        "fetched": "Buscada",
+        "state": "Estado",
+        "reuses": "Reutilizada",
+        "claims": "Afirmaciones"
+      },
+      "standing": {
+        "yes": "Sí",
+        "no": "No"
+      },
+      "tier": {
+        "official": "Oficial",
+        "competition": "Competición",
+        "club": "Club",
+        "provider": "Proveedor",
+        "journalist": "Periodista",
+        "media": "Medio",
+        "aggregator": "Agregador",
+        "social": "Red social",
+        "unknown": "Desconocida"
+      },
+      "fresh": {
+        "yes": "Fresca",
+        "no": "Caducada"
+      },
+      "until": "hasta el {at}",
+      "claimsFresh": "({n} vigentes)"
+    },
+    "claims": {
+      "title": "Afirmaciones por clase de fuente y estado",
+      "subtitle": "Lo que v2 dejó escrito en la ventana como afirmaciones tipificadas: quién lo dijo (la clase de fuente), de qué trata (el tipo) y en qué estado terminó.",
+      "empty": "v2 no escribió ninguna afirmación tipificada en la ventana.",
+      "stat": {
+        "total": "Afirmaciones",
+        "fresh": "Vigentes",
+        "entity": "Sobre una entidad",
+        "entityHint": "Un equipo o un jugador sin partido: el próximo partido del equipo también las lee",
+        "match": "Sobre un partido",
+        "flagged": "De páginas marcadas",
+        "flaggedHint": "Leídas de una página que sonaba a una orden para un modelo: cuentan como fuente desconocida"
+      },
+      "status": {
+        "CONFIRMED": "Confirmadas",
+        "PROBABLE": "Probables",
+        "RUMOR": "Rumores",
+        "CONTRADICTORY": "Contradictorias",
+        "OUTDATED": "Desactualizadas"
+      },
+      "byClass": "Por clase de fuente",
+      "byClassHint": "De la que cierra un hecho (oficial, proveedor) a la que no cierra ninguno (red social, desconocida).",
+      "byType": "Por tipo de afirmación",
+      "class": {
+        "OFFICIAL": "Oficial",
+        "PROVIDER": "Proveedor de datos",
+        "JOURNALIST": "Periodista",
+        "RELIABLE_MEDIA": "Medio fiable",
+        "LOCAL_MEDIA": "Medio local",
+        "AGGREGATOR": "Agregador",
+        "SOCIAL": "Red social",
+        "UNKNOWN": "Desconocida"
+      },
+      "type": {
+        "OUT": "Baja",
+        "DOUBT": "Duda",
+        "AVAILABLE": "Disponible",
+        "STARTER": "Titular",
+        "SUSPENSION": "Sanción",
+        "COACH": "Entrenador",
+        "SCHEDULE": "Horario",
+        "VENUE": "Sede",
+        "OTHER": "Otra"
+      },
+      "col": {
+        "class": "Clase de fuente",
+        "type": "Tipo",
+        "total": "Total",
+        "fresh": "Vigentes"
+      },
+      "silent": "Clases de fuente sin ninguna afirmación en la ventana: {list}"
+    },
+    "days": {
+      "title": "Día a día del ciclo",
+      "subtitle": "Por día de Bogotá, lo que hizo cada pase del ciclo: cuántos corrieron v2, cuántas búsquedas hicieron falta, cuántas se pagaron, cuántas respondió la caché de búsquedas y cuántas se evitaron con una respuesta fresca.",
+      "hint": "Búsquedas: las de v1. Necesarias: las que v2 necesitó porque la respuesta de la entidad no estaba fresca. Pagadas: las que v2 pagó. Compartidas: las que la caché de búsquedas ya tenía pagadas por v1 o por un pase anterior (v2 las habría pagado sola). Reutilizadas: respuestas de entidad aún frescas, es decir, búsquedas que no hizo falta pedir. Reutilización = reutilizadas / (reutilizadas + necesarias).",
+      "total": "Total",
+      "known": "({n} conocidas)",
+      "new": "({n} nuevas)",
+      "col": {
+        "day": "Día",
+        "passes": "Pases",
+        "v2": "Con v2",
+        "failed": "Fallidos",
+        "cut": "Cortados",
+        "searches": "Búsquedas de v1",
+        "demand": "Necesarias",
+        "paid": "Pagadas",
+        "shared": "Compartidas",
+        "reused": "Reutilizadas",
+        "reuse": "Reutilización",
+        "pages": "Páginas",
+        "claims": "Afirmaciones",
+        "exaV1": "Exa v1",
+        "exaV2": "Exa v2"
+      }
+    },
+    "pages": {
+      "title": "Páginas leídas",
+      "subtitle": "v2 recuerda cada página que leyó: si ya la leyó para los mismos sujetos, no se la vuelve a mostrar al extractor.",
+      "stat": {
+        "remembered": "Páginas recordadas",
+        "fresh": "Aún vigentes",
+        "reuses": "Reutilizaciones",
+        "read": "Leídas en la ventana",
+        "known": "Ya conocidas",
+        "unread": "Sin leer",
+        "unreadHint": "Más allá de las seis páginas más fiables de cada pase",
+        "flagged": "Marcadas",
+        "flaggedHint": "Parecían una instrucción para un modelo: su texto se trata como no fiable"
+      }
+    }
   }
 }

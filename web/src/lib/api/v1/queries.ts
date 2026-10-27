@@ -297,6 +297,11 @@ export const live = {
     queryFn: () => v1.aiAgents(days),
     refetchInterval: MINUTE,
   }),
+  aiResearchEntities: (days = 7) => ({
+    queryKey: ["v1", "ai-layer", "research-entities", days],
+    queryFn: () => v1.aiResearchEntities(days),
+    refetchInterval: 2 * MINUTE,
+  }),
   /** Asked for with a fixture the page has (a match found by the picker); no fixture, no request. */
   aiMatchState: (fixtureId: string) => ({
     queryKey: ["v1", "ai-layer", "match-state", fixtureId],

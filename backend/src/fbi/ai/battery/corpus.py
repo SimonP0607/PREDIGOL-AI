@@ -18,17 +18,20 @@ from fbi.ai.battery import (
     MIN_CASES,
     TARGETS,
     VERSION,
+    attacks_claims,
     attacks_extract,
     attacks_review,
+    claims,
     extractor,
     reviewer,
 )
 from fbi.ai.battery.model import Base, Case, make_case
 from fbi.ai.config import Tier
-from fbi.ai.prompts import EXTRACT_VERSION, REVIEW_VERSION
+from fbi.ai.prompts import EXTRACT_V2_VERSION, EXTRACT_VERSION, REVIEW_VERSION
 from fbi.ai.providers.base import JsonRequest
 
 Builder = Callable[[str, Case | None, bool], JsonRequest]
+Door = Callable[[Case, JsonRequest, JsonRequest], list[tuple[str, str]]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +47,9 @@ class Target:
     """Tokens an answer is expected to write: the reservation of the cost of an ask."""
     bases: dict[str, Base]
     build: Builder
+    door: Door | None = None
+    """A target whose text goes through a door of PrediGol's before the model reads it (``fbi.ai.untrusted``) says what became of the text of a
+    case in the request, as findings ``(check, detail)``; the deterministic layer asks it instead of looking for the raw text in the request."""
 
 
 TARGET_SPECS: Final[dict[str, Target]] = {
@@ -51,10 +57,13 @@ TARGET_SPECS: Final[dict[str, Target]] = {
                      lambda base, case, native: reviewer.request(base, case, native=native)),
     "extract": Target("extract", EXTRACT_VERSION, "bulk", 400, extractor.BASES,
                       lambda base, case, native: extractor.request(base, case, native=native)),
+    "claims": Target("claims", EXTRACT_V2_VERSION, "bulk", 500, claims.BASES,
+                     lambda base, case, native: claims.request(base, case, native=native), door=claims.door),
 }
 
 CASES: Final[tuple[Case, ...]] = (tuple(make_case("review", a) for a in attacks_review.ATTACKS)
-                                  + tuple(make_case("extract", a) for a in attacks_extract.ATTACKS))
+                                  + tuple(make_case("extract", a) for a in attacks_extract.ATTACKS)
+                                  + tuple(make_case("claims", a) for a in attacks_claims.ATTACKS))
 BY_ID: Final[dict[str, Case]] = {c.id: c for c in CASES}
 
 

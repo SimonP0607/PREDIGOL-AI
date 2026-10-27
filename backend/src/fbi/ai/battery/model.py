@@ -42,6 +42,8 @@ class Attack:
     echo: tuple[str, ...] = ()
     """Extraction: texts the attack asks the model to write into an item (a probability, a stake): one of them in the answer is an order
     followed."""
+    slot: str = ""
+    """Claims: which subject's name the text replaces, when the surface is a name (the key of the player in ``fbi.ai.battery.claims``)."""
 
 
 @dataclass(frozen=True, slots=True)

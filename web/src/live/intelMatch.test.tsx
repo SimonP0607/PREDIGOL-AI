@@ -817,6 +817,9 @@ describe("the research the AI asked for", () => {
       "cerca del presupuesto: 2 · sin búsquedas disponibles: 1",
     );
     expect(unservedText({ no_search_pass: 1 })).toBe("este pase no lee la web: 1");
+    expect(unservedText({ research_failed: 1 })).toBe(
+      "la investigación por entidad falló en este pase: 1",
+    );
     expect(unservedText({ something_new: 3 })).toBe("something new: 3");
   });
 
@@ -937,7 +940,7 @@ describe("the dynamic texts exist in both languages", () => {
     ),
     ...["availability", "confirmation", "preview"].map((k) => `intel.match.research.topic.${k}`),
     ...["home", "away", "both"].map((k) => `intel.match.research.side.${k}`),
-    ...["no_allowance", "near_budget", "pass_budget", "no_search_pass"].map(
+    ...["no_allowance", "near_budget", "pass_budget", "no_search_pass", "research_failed"].map(
       (k) => `intel.match.research.unserved.${k}`,
     ),
     ...["home_win", "draw", "away_win"].map((k) => `intel.match.scen.result.${k}`),

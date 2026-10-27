@@ -39,8 +39,8 @@ from typing import Any, Final, Literal
 
 from fbi.ai import claims, prompts, router
 from fbi.ai.config import TIERS, Tier
-from fbi.ai.contracts import CONTRACTS
-from fbi.ai.contracts.base import OUTPUTS
+from fbi.ai.contracts import CONTRACTS, schema_of
+from fbi.ai.contracts.base import CLAIM, OUTPUTS
 from fbi.ai.contracts.mcp import SLICE_NAMES, PassKind
 from fbi.ai.idempotency import EFFORTS, Effort, TaskIdentity, Workspace
 from fbi.ai.pricing import PRICES
@@ -121,6 +121,10 @@ class AgentSpec:
     """A slice of ``mcp-v1`` (``SLICE_NAMES``) or a view of its own (``VIEWS``); None when it reads neither (the extractor reads search results)."""
     retire_phase: int | None = None
     """The phase of the plan that retires it, when the plan says so."""
+    replaces: str | None = None
+    """The agent of this registry it takes over from if the owner promotes it (``claim_extractor`` replaces ``extractor``). Until then both are
+    in the code and the switch of the phase decides which one runs: a new version that has to run beside the old one for a comparison is another
+    agent here, because the registry holds exactly one version of an agent, the one the code has."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -254,6 +258,10 @@ def _extract() -> Definition:
     return Definition(prompts.EXTRACT_VERSION, prompts.EXTRACT_SYSTEM, prompts.EXTRACT_VERSION, prompts.EXTRACT_SCHEMA)
 
 
+def _extract_v2() -> Definition:
+    return Definition(prompts.EXTRACT_V2_VERSION, prompts.EXTRACT_V2_SYSTEM, CLAIM, schema_of(CLAIM))
+
+
 def _postmortem() -> Definition:
     return Definition(prompts.POSTMORTEM_VERSION, prompts.POSTMORTEM_SYSTEM, prompts.POSTMORTEM_VERSION, prompts.POSTMORTEM_SCHEMA)
 
@@ -275,6 +283,10 @@ AGENTS: Final[tuple[AgentSpec, ...]] = (
               retire_phase=9),
     AgentSpec("extractor", "Extracts dated facts about who can or cannot play from the pages a search returned.",
               (BuiltTask("extraction", "low", _extract, tier="bulk"),)),
+    AgentSpec("claim_extractor", "The extractor of the Research Service v2: typed claims (claim-v1) about the subjects of a match, from the pages a search "
+              "returned for an entity and a topic. It runs beside the extractor of today for a week of comparison (FBI_AI_RESEARCH_V2) and replaces it "
+              "only by the owner's signature.",
+              (BuiltTask("extraction", "low", _extract_v2, tier="bulk"),), contract=CLAIM, replaces="extractor"),
     AgentSpec("postmortem", "The post-mortem narrative of a finished match, for the owner.",
               (BuiltTask("narrative", "low", _postmortem, tier="bulk"),)),
     AgentSpec("post_match_reviewer", "The post-mortem narrative of one selection after its match, for the owner; the Post-Match Reviewer of phase 5 "
@@ -285,8 +297,6 @@ AGENTS: Final[tuple[AgentSpec, ...]] = (
 )
 
 PLANNED: Final[tuple[PlannedAgent, ...]] = (
-    PlannedAgent("extractor", "extract-v2", "The extractor of the Research Service v2: typed claims (claim-v1), one research per entity and topic.", 2,
-                 "claim-v1", (PlannedTask("extraction", "claude-haiku-5-5", "low", "extract-v2"),), replaces="extract-v1"),
     PlannedAgent("match", "match-v1", "The Match Agent: signals and an evaluation per candidate for the families of goals and result; its context mode takes "
                  "over from brief-v8.", 3, "aa-v1",
                  (PlannedTask("context", "claude-haiku-5-5", "low", "match-context-v1"),
@@ -336,6 +346,12 @@ LEDGER: Final[tuple[Registration, ...]] = (
               "the narrative of a selection, with the two price numbers named apart, since 22 Oct 2026 (plan F0, defect 7)"),
     _baseline("learning_analyst", "learning-v2", "ag23805385d8", {"analyst": Part("learning-v2", "7bdb67711a7d", "learning-v2", "1ea34b6c1585")},
               "the weekly lessons, since 9 Oct 2026"),
+    Registration(agent="claim_extractor", version="extract-v2", registered_at=datetime(2026, 10, 26, 5, 30, tzinfo=UTC), decided_by="owner", phase="IA-2",
+                 reason="Built under the Plan Maestro IA the owner approved in full (phase 2, section 8): the extractor of the Research Service v2 answers in "
+                        "claim-v1 about subjects the server lists, one research per entity and topic; it runs beside extract-v1 for a week of comparison "
+                        "and becomes the champion only by a row the owner signs.",
+                 fingerprint="ag851f0d8c93",
+                 parts={"extraction": Part("extract-v2", "16a3d6d616f2", "claim-v1", "732492401844")}),
 )
 """Oldest first, by agent; the last entry of an agent is its version in force. To change an agent - a prompt, a schema, a model, an effort - change
 it, add the entry below the last one of the agent and bump the label of the prompt that changed, in the same commit."""
@@ -408,6 +424,8 @@ class Registry:
                 found.append(Problem("duplicate_agent", who, "two agents with one name"))
             seen.add(who)
             found += _spec_shape_problems(spec)
+            if spec.replaces is not None and (spec.replaces == who or spec.replaces not in {s.agent for s in self.agents}):
+                found.append(Problem("replaces", who, f"{spec.replaces!r} is not another agent of the registry: an agent takes over from one the code has"))
             try:
                 parts = live_parts(spec)
             except Exception as exc:  # the definition reads the code: whatever is wrong with it is a finding, not a crash
@@ -554,7 +572,7 @@ class Registry:
                         "registered_at": current.registered_at.isoformat() if current else None,
                         "in_sync": current is not None and live_fingerprint(spec) == current.fingerprint, "tasks": tasks,
                         "next_version": planned.version if planned else None, "next_phase": planned.phase if planned else None,
-                        "history": [r.version for r in history]})
+                        "replaces": spec.replaces, "history": [r.version for r in history]})
         for plan in self.planned:
             out.append({"agent": plan.agent, "status": "planned", "purpose": plan.purpose, "contract": plan.contract, "reads": plan.reads,
                         "version": plan.version, "phase": plan.phase, "replaces": plan.replaces,

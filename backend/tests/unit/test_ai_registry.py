@@ -81,11 +81,15 @@ def test_the_agents_of_the_old_route_run_at_the_effort_its_guard_gives_their_tie
                 assert TIER_EFFORT[t.tier] == t.effort, f"{spec.agent}/{t.task}: the tier {t.tier} is asked at {TIER_EFFORT[t.tier]}"
 
 
-def test_the_version_of_the_ai_that_runs_today_is_the_label_of_its_prompt() -> None:
+def test_the_version_of_an_agent_is_the_label_of_its_prompt() -> None:
     for spec in AGENTS:
         version = REGISTRY.in_force(spec.agent).version
         assert {p.prompt_version for p in rg.live_parts(spec).values()} == {version}, spec.agent
-        assert {p.schema_version for p in rg.live_parts(spec).values()} == {version}, "it versions its schema with its prompt"
+        schemas = {p.schema_version for p in rg.live_parts(spec).values()}
+        if spec.contract is None:
+            assert schemas == {version}, "the AI that runs today versions its schema with its prompt"
+        else:
+            assert schemas == {spec.contract}, "an agent of the plan answers in a contract, and the contract is the label of its schema"
 
 
 def test_what_the_plan_builds_is_what_the_router_and_the_contracts_can_run() -> None:
@@ -101,17 +105,16 @@ def test_what_the_plan_builds_is_what_the_router_and_the_contracts_can_run() -> 
 def test_the_plan_gives_each_agent_its_phase_and_its_prompts() -> None:
     by_agent = {(p.agent, p.version): p for p in PLANNED}
     assert {k: v.phase for k, v in by_agent.items()} == {
-        ("extractor", "extract-v2"): 2, ("match", "match-v1"): 3, ("council", "council-v1"): 3, ("statistics", "stats-v1"): 4,
-        ("post_match_reviewer", "pmr-v1"): 5, ("learning_analyst", "la-v1"): 5}
+        ("match", "match-v1"): 3, ("council", "council-v1"): 3, ("statistics", "stats-v1"): 4,
+        ("post_match_reviewer", "pmr-v1"): 5, ("learning_analyst", "la-v1"): 5}, "phase 2 is built: its extractor left the plan for the code"
     labels = {k: {t.prompt_version for t in v.tasks} for k, v in by_agent.items()}
     assert labels[("match", "match-v1")] == {"match-context-v1", "match-assess-v1"}
     assert labels[("council", "council-v1")] == {"council-v1", "council-opus-v1"}
     assert labels[("statistics", "stats-v1")] == {"stats-assess-v1"}
     assert {(p.agent, p.contract) for p in PLANNED} == {
-        ("extractor", "claim-v1"), ("match", "aa-v1"), ("council", "cd-v1"), ("statistics", "aa-v1"), ("post_match_reviewer", "pmr-v1"),
-        ("learning_analyst", "la-v1")}
+        ("match", "aa-v1"), ("council", "cd-v1"), ("statistics", "aa-v1"), ("post_match_reviewer", "pmr-v1"), ("learning_analyst", "la-v1")}
     assert {p.agent: p.replaces for p in PLANNED if p.replaces} == {
-        "extractor": "extract-v1", "post_match_reviewer": "pick-postmortem-v4", "learning_analyst": "learning-v2"}
+        "post_match_reviewer": "pick-postmortem-v4", "learning_analyst": "learning-v2"}
 
 
 def test_the_council_judges_with_sonnet_and_opus_only_by_escalation_and_the_match_agent_reads_with_haiku() -> None:
@@ -129,12 +132,32 @@ def test_the_player_agent_is_postponed_with_no_code_no_phase_and_a_gate() -> Non
     assert "F-Player" in POSTPONED[0].gate
 
 
+BASELINE_AGENTS = ("brief", "reviewer", "extractor", "postmortem", "post_match_reviewer", "learning_analyst")
+"""The AI that was already in force when the registry was started (phase 1). Every other agent of the code was born later, as a challenger."""
+
+
 def test_the_ledger_starts_every_agent_of_today_as_a_baseline_champion() -> None:
-    assert [r.agent for r in LEDGER] == [s.agent for s in AGENTS]
-    for r in LEDGER:
-        assert r.baseline and r.born_as == "CHAMPION" and r.decided_by == "system", r.agent
+    baselines = [r for r in LEDGER if r.baseline]
+    assert [r.agent for r in baselines] == list(BASELINE_AGENTS)
+    for r in baselines:
+        assert r.born_as == "CHAMPION" and r.decided_by == "system", r.agent
         assert rg.FINGERPRINT.fullmatch(r.fingerprint)
         assert "after the fact" in r.reason, "a baseline says it was recorded afterwards"
+        assert REGISTRY.history(r.agent)[0] is r, "and it is the first entry of its agent"
+
+
+def test_an_agent_built_after_the_baseline_is_born_a_challenger_with_a_reason_and_replaces_one_of_the_registry() -> None:
+    """Phase 2 builds the claim extractor beside the extractor of today: the same registry holds both, the switch of the phase decides which runs,
+    and only a row the owner signs in ``intel.promotions`` makes the new one the champion."""
+    built = {s.agent for s in AGENTS} - set(BASELINE_AGENTS)
+    assert built == {"claim_extractor"}
+    for agent in built:
+        (entry,) = REGISTRY.history(agent)
+        assert not entry.baseline and entry.born_as == "CHALLENGER" and entry.decided_by in rg.DECIDERS
+        assert len(entry.reason) >= rg.MIN_REASON and entry.phase == "IA-2"
+    assert {s.agent: s.replaces for s in AGENTS if s.replaces} == {"claim_extractor": "extractor"}
+    assert REGISTRY.spec("claim_extractor").contract == "claim-v1"
+    assert REGISTRY.in_force("claim_extractor").version == "extract-v2" and REGISTRY.in_force("extractor").version == "extract-v1"
 
 
 # -- the fingerprint ------------------------------------------------------------------------------------------------------------------
@@ -358,6 +381,17 @@ def test_an_agent_has_one_name_a_task_each_and_a_model_or_a_tier() -> None:
     assert "reads" in own(lone(agent(reads="everything")))
     assert own(lone(agent(contract="aa-v1", reads="stats"))) == set()
     assert own(lone(agent(reads="council_view"))) == set()
+
+
+def test_an_agent_replaces_only_another_agent_the_code_has() -> None:
+    spec = agent()
+    assert "replaces" in own(lone(replace(spec, replaces="nobody")))
+    assert "replaces" in own(lone(replace(spec, replaces=spec.agent))), "not itself"
+    two = replace(agent(name="newer"), replaces=spec.agent)
+    registry = replace(lone(spec), agents=(spec, two))
+    assert "replaces" not in codes(registry, prompt_versions={"X_VERSION": "x-v1"})
+    real = replace(REGISTRY, agents=tuple(replace(s, replaces="nobody") if s.agent == "claim_extractor" else s for s in AGENTS))
+    assert "replaces" in codes(real), "and the real registry is held to it as well"
 
 
 def test_a_definition_that_cannot_be_read_is_a_finding_and_not_a_crash() -> None:

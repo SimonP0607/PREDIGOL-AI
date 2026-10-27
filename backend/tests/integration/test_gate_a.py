@@ -438,8 +438,9 @@ def test_an_assessment_that_the_letters_do_not_reproduce_fails(db: psycopg.Conne
     assert check.ok is False and check.detail["not_reproducible"] == ["native_schema"]
 
 
-def test_a_variant_that_changed_more_verdicts_than_repeating_the_call_fails_even_though_its_switch_is_already_off(
+def test_a_variant_that_changed_more_verdicts_than_repeating_the_call_and_is_off_is_reported_and_does_not_block(
         db: psycopg.Connection[Any], seed: Seed) -> None:
+    """The owner's decision A (27 Oct 2026): what is off changes nothing the window measures, so it is listed and not judged."""
     build(db, seed, with_gates=False)
     gates.record_gate(db, gate="batch", passed=True, at=GATES_AT, evidence={"models": [SONNET.model]})
     bad, passed = equivalence("native_schema", repeat=3, changed=9)
@@ -448,8 +449,46 @@ def test_a_variant_that_changed_more_verdicts_than_repeating_the_call_fails_even
     good, ok = equivalence("shared_layout")
     gates.record_gate(db, gate="cache_layout", passed=ok, at=GATES_AT, evidence=good)
     check = gate_a.check_equivalence(db, settings())
-    assert check.ok is False and check.detail["failed"] == ["native_schema"] and check.detail["rolled_back"] == ["native_schema"]
-    assert check.detail["in_force"]["native_schema"] is False
+    detail = check.detail
+    assert check.ok is True and detail["failed"] == [] and detail["missing"] == [] and detail["not_reproducible"] == []
+    assert detail["in_force"] == {"batch": True, "native_schema": False, "cache_layout": True}
+    assert detail["judged"] == ["batch", "cache_layout"]
+    assert detail["not_in_force"] == {"native_schema": "failed"} and detail["rolled_back"] == ["native_schema"]
+    assert detail["optimisations"]["native_schema"]["changed_variant"] == 9 > detail["optimisations"]["native_schema"]["changed_repeat"] == 3, \
+        "its figures stay on view in the report"
+    assert "reported, not judged (off): native_schema" in detail["note"]
+    assert evaluate(db).verdict == gate_a.PASS, "and the gate does not wait for a measure of something that is not running"
+
+
+def test_a_variant_rejected_by_its_evidence_but_forced_on_by_the_owner_fails_and_names_its_switch(
+        db: psycopg.Connection[Any], seed: Seed) -> None:
+    build(db, seed, with_gates=False)
+    gates.record_gate(db, gate="batch", passed=True, at=GATES_AT, evidence={"models": [SONNET.model]})
+    bad, _ = equivalence("native_schema", repeat=3, changed=9)
+    gates.record_gate(db, gate="native_schema", passed=False, at=GATES_AT, evidence=bad)
+    good, ok = equivalence("shared_layout")
+    gates.record_gate(db, gate="cache_layout", passed=ok, at=GATES_AT, evidence=good)
+    forced = settings(switches=lab_switches(native_schema="on"))
+    check = gate_a.check_equivalence(db, forced)
+    assert check.ok is False and check.detail["in_force"]["native_schema"] is True
+    assert check.detail["failed"] == ["native_schema"] and check.detail["rolled_back"] == []
+    assert check.revert == "FBI_AI_NATIVE_SCHEMA", "the switch to roll back is the one in force that fails, not a list of all of them"
+    report = evaluate(db, cfg=forced)
+    assert report.verdict == gate_a.FAIL and "verdict_equivalence" in failing(report)
+    assert report.consequence is not None and "FBI_AI_NATIVE_SCHEMA" in report.consequence
+
+
+def test_a_batch_forced_on_whose_probe_failed_fails_and_a_batch_left_to_its_probe_is_only_reported(
+        db: psycopg.Connection[Any], seed: Seed) -> None:
+    build(db, seed, with_gates=False)
+    gates.record_gate(db, gate="batch", passed=False, at=GATES_AT, evidence={"models": [SONNET.model], "why": "probe failed"})
+    for variant in ("native_schema", "shared_layout"):
+        evidence, passed = equivalence(variant)
+        gates.record_gate(db, gate=lab.GATE_OF_VARIANT[variant], passed=passed, evidence=evidence, at=GATES_AT)
+    left = gate_a.check_equivalence(db, settings())
+    assert left.ok is True and left.detail["not_in_force"] == {"batch": "failed"}
+    forced = gate_a.check_equivalence(db, settings(switches=lab_switches(batch="on")))
+    assert forced.ok is False and forced.detail["failed"] == ["batch"] and forced.revert == "FBI_AI_BATCH"
 
 
 def test_a_failed_batch_probe_leaves_batch_off_and_the_other_checks_judge_what_is_left(db: psycopg.Connection[Any], seed: Seed) -> None:
@@ -464,17 +503,35 @@ def test_a_failed_batch_probe_leaves_batch_off_and_the_other_checks_judge_what_i
     assert checks(report)["batch_lost"].detail["batch_on"] is False
 
 
-def test_missing_or_too_small_evidence_is_pending_never_a_pass(db: psycopg.Connection[Any], seed: Seed) -> None:
+def test_with_nothing_in_force_there_is_nothing_to_compare_and_the_check_does_not_block(db: psycopg.Connection[Any], seed: Seed) -> None:
     build(db, seed, with_gates=False)
-    assert gate_a.check_equivalence(db, settings()).ok is None, "no evidence at all"
+    check = gate_a.check_equivalence(db, settings())
+    assert check.ok is True and check.detail["judged"] == [] and "nothing to compare" in check.detail["note"]
+    assert check.detail["unmeasured"] == ["batch", "native_schema", "cache_layout"], "and the report says none was ever measured"
+    assert check.detail["not_in_force"] == dict.fromkeys(gate_a.OPTIMISATIONS, "missing")
+
+
+def test_missing_or_too_small_evidence_of_what_is_in_force_is_pending_never_a_pass(db: psycopg.Connection[Any], seed: Seed) -> None:
+    build(db, seed, with_gates=False)
+    forced = settings(switches=lab_switches(native_schema="on"))
+    check = gate_a.check_equivalence(db, forced)
+    assert check.ok is None and check.detail["missing"] == ["native_schema"], "forced on without a single measure"
     gates.record_gate(db, gate="batch", passed=True, at=GATES_AT, evidence={"models": [SONNET.model]})
     small, _ = equivalence("native_schema", n=150, repeat=4, changed=3)
     gates.record_gate(db, gate="native_schema", passed=False, at=GATES_AT, evidence=small)
     full, passed = equivalence("shared_layout")
     gates.record_gate(db, gate="cache_layout", passed=passed, at=GATES_AT, evidence=full)
-    check = gate_a.check_equivalence(db, settings())
+    check = gate_a.check_equivalence(db, forced)
     assert check.ok is None and check.detail["missing"] == ["native_schema"], "150 inputs are INSUFICIENTE, not a verdict"
     assert check.detail["optimisations"]["native_schema"]["state"] == "insufficient"
+    assert "pruebas del LAB de lo que está en vigor (native_schema)" in gate_a._waiting_for(check)
+    # the same 150 inputs with the switch left to its evidence: off, so reported (not measured) and not judged
+    left = gate_a.check_equivalence(db, settings())
+    assert left.ok is True and left.detail["unmeasured"] == ["native_schema"] and left.detail["judged"] == ["batch", "cache_layout"]
+    # a row that CLAIMS a pass with 150 inputs turns the switch on (auto): in force, and 150 inputs are still not a verdict
+    gates.record_gate(db, gate="native_schema", passed=True, at=GATES_AT + timedelta(minutes=1), evidence=small)
+    claimed = gate_a.check_equivalence(db, settings())
+    assert claimed.ok is None and claimed.detail["in_force"]["native_schema"] is True and claimed.detail["missing"] == ["native_schema"]
 
 
 # ── the manual actions of the owner, by data ──────────────────────────────────────────────────────────────────────

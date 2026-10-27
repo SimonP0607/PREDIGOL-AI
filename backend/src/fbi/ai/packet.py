@@ -29,6 +29,7 @@ from psycopg.types.json import Jsonb
 
 from fbi.ai import context as ctx
 from fbi.ai.absences import absences_as_of, checked_at_as_of
+from fbi.ai.evidence import STALE_AFTER
 from fbi.ai.pricing import approx_tokens
 from fbi.catalog.neutral_store import rule_in_force
 from fbi.competitions import context as phase_context
@@ -320,9 +321,13 @@ SELECT e.id, e.kind, e.claim, e.team_id, e.provider_player_id, e.status, e.origi
   FROM ai.evidence e
  WHERE (e.fixture_id = %(fixture)s OR (e.fixture_id IS NULL AND e.team_id = ANY(%(teams)s)))
    AND e.retrieved_at <= %(at)s AND e.status <> 'OUTDATED'
+   AND (e.subject_type IS NULL OR (%(typed)s AND COALESCE(e.published_at, e.retrieved_at) > %(at)s - %(stale)s))
  ORDER BY e.relevance DESC, e.retrieved_at DESC, e.id
  LIMIT 40
 """
+"""A claim typed by research v2 (``subject_type`` not NULL) is shown only when the builder was told to (``PacketBuilder.typed_evidence``: research v2 is
+``on``, ``fbi.ai.gates.typed_visible``) and only while it is not older than ``STALE_AFTER`` - by its own date, the page's, or the day it was read.
+What v1 wrote and the provider's reports have no ``subject_type``: they are read exactly as before."""
 
 
 @dataclass
@@ -392,8 +397,10 @@ def _row(conn: psycopg.Connection[Any], sql: str, params: dict[str, Any]) -> dic
 class PacketBuilder:
     """Builds packets for many fixtures with the per-run lookups (the Elo run) done once."""
 
-    def __init__(self, conn: psycopg.Connection[Any]) -> None:
+    def __init__(self, conn: psycopg.Connection[Any], *, typed_evidence: bool = False) -> None:
         self.conn = conn
+        self.typed_evidence = typed_evidence
+        """Whether the claims of research v2 are part of the packet's ``evidence`` block (research v2 ``on``; shadow shows none)."""
         self._elo_run: dict[datetime, tuple[str, int] | None] = {}
 
     def _elo_version(self, at: datetime) -> tuple[str, int] | None:
@@ -828,7 +835,8 @@ class PacketBuilder:
 
     def _evidence(self, fixture_id: int, home: int, away: int, at: datetime, sources: list[dict[str, Any]]
                   ) -> list[dict[str, Any]]:
-        rows = _rows(self.conn, EVIDENCE_SQL, {"fixture": fixture_id, "teams": [home, away], "at": at})
+        rows = _rows(self.conn, EVIDENCE_SQL, {"fixture": fixture_id, "teams": [home, away], "at": at, "typed": self.typed_evidence,
+                                               "stale": STALE_AFTER})
         out = [{"id": int(r["id"]), "kind": r["kind"], "claim": r["claim"],
                 "side": "home" if r["team_id"] == home else "away" if r["team_id"] == away else None,
                 "player_id": r["provider_player_id"], "status": r["status"], "origin": r["origin"], "tier": r["source_tier"],

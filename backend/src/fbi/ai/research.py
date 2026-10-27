@@ -63,11 +63,22 @@ TOPICS: Final[tuple[Topic, ...]] = (
 )
 BY_KEY: Final[dict[str, Topic]] = {t.key: t for t in TOPICS}
 
+LEVEL_TOPIC: Final[dict[int, str]] = {1: "availability", 2: "confirmation", 3: "preview"}
+"""Research v2 keeps ONE answer per entity and topic (``fbi.ai.cache.entity_key``), and the topic of an answer is the kind of search that
+found it: team news (level 1) is what is known about WHO CAN PLAY, the clubs' and the competition's own words (level 2) are the
+CONFIRMATION, the international preview (level 3) is the PREVIEW. A level reached as the fallback of ``availability`` keeps the topic of its
+query: the same search is the same answer whoever asked for it."""
+TOPIC_ENTITY: Final = {"availability": "TEAM", "confirmation": "TEAM", "preview": "MATCH"}
+"""What an answer is about: the teams of the match for the first two (each team's answer is kept apart, so the next match of either team reads
+it), the match itself for a preview (nobody else shares it)."""
+
+
 UNSERVED: Final = {
     "no_allowance": "the day's searches of this pass were spent on matches ranked before it, or no search is set up",
     "near_budget": "the day is near its budget: a match without a candidate loses its paid depth first",
     "pass_budget": "the budget left for this pass does not allow a search",
     "no_search_pass": "this pass does not read the web",
+    "research_failed": "the research of an entity failed in this pass, and it was the one reading the web (``FBI_AI_RESEARCH_V2=on``)",
 }
 """Why a request was not served, in the words of the cycle's counts (``research_unserved_<reason>``)."""
 

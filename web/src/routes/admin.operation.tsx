@@ -34,7 +34,8 @@ function Page() {
         },
         {
           title: "The AI's work",
-          description: "From GET /admin/ai/*: today, research, reviews, evidence and sources.",
+          description:
+            "From GET /admin/ai/*: today, research, research by entity and topic, reviews, evidence and sources.",
           state: "blocked",
         },
         {
@@ -52,6 +53,7 @@ function Page() {
         "GET /admin/ai/overview",
         "GET /admin/ai/today",
         "GET /admin/ai/research",
+        "GET /admin/ai/research/entities",
         "GET /admin/ai/reviews",
         "GET /admin/ai/evidence",
         "GET /admin/ai/sources",
