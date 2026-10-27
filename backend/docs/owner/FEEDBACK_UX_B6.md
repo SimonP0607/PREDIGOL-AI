@@ -113,8 +113,11 @@ PUERTAS_B6
 ## 8. Despliegue
 
 Backend y web juntos (el contrato cruza los dos), con la migración 0103: **copia → prueba de restauración → migración →
-validación → despliegue**. **Vuelta atrás:** `FBI_FEEDBACK=0` quita las preguntas sin desplegar y las respuestas se quedan; la
-web anterior funciona con este backend (la API es aditiva). La bajada de la 0103 solo es posible mientras no haya respuestas.
+validación → despliegue**. Va en el paquete `ux-b7` junto con B7 (una sola tanda de puertas y de e2e para los dos), sobre
+`ux-b5`. **Vuelta atrás:** `FBI_FEEDBACK=0` en `app.env` (con su copia fechada y, al final, `predigolctl config-baseline`, el
+último paso de cualquier cambio en un fichero de entorno desde `sec-s3`) quita las preguntas sin desplegar y las respuestas se
+quedan; la web anterior funciona con este backend (la API es aditiva). La bajada de la 0103 solo es posible mientras no haya
+respuestas.
 
 ## 9. Acción manual
 
