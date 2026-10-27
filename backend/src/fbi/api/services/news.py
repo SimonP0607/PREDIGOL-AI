@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from typing import Any, Final, Literal, cast
 
+from fbi.ai.gates import typed_visible
 from fbi.api.cache import shared
 from fbi.api.contracts.news import (
     Assertion,
@@ -345,6 +346,7 @@ SELECT x.*, tes.headline AS headline_es, ten.headline AS headline_en, ten.claim 
          row_number() OVER (PARTITION BY e.fixture_id ORDER BY e.retrieved_at DESC, e.id DESC) AS n
     FROM ai.evidence e
    WHERE e.fixture_id = ANY(%(fixtures)s) AND e.origin = 'web' AND e.retrieved_at <= %(at)s
+     AND (e.subject_type IS NULL OR %(typed)s)
 ) x
 LEFT JOIN LATERAL (SELECT t.headline FROM ai.evidence_translations t
                     WHERE t.evidence_id = x.id AND t.content_hash = x.content_hash AND t.lang = 'es'
@@ -355,7 +357,9 @@ LEFT JOIN LATERAL (SELECT t.headline, t.claim FROM ai.evidence_translations t
                     ORDER BY t.created_at DESC, t.id DESC LIMIT 1) ten ON true
 WHERE x.n <= %(limit)s
 """
-"""Only the web's items of the matches asked for (the data provider's reports and the owner's notes stay out), as of a moment."""
+"""Only the web's items of the matches asked for (the data provider's reports and the owner's notes stay out), as of a moment -
+and the claims of research v2 (``subject_type``) only while it is ``on`` (``fbi.ai.gates.typed_visible``, the IA plan's phase 2): in
+``off`` and ``shadow`` they are written for the comparison and no reader sees them."""
 
 TODAY_MATCHES_SQL = """
 SELECT f.id, f.kickoff_at, f.status_group, f.home_team_id, th.name AS home_name, f.away_team_id, ta.name AS away_name,
@@ -406,7 +410,7 @@ def _read(conn: Conn, fixtures: Sequence[int], at: datetime) -> dict[int, list[R
         return found
     translated = translations_shown()
     for r in fetch_all(conn, EVIDENCE_SQL, {"fixtures": list(fixtures), "at": at, "limit": MAX_READ,
-                                            "translated": translated}):
+                                            "translated": translated, "typed": typed_visible(conn)}):
         found[int(r["fixture_id"])].append(_row(r, translated=translated))
     return found
 

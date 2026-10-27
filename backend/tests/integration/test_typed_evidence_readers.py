@@ -1,7 +1,7 @@
 """Who reads what research v2 writes (plan IA, phase 2). Its claims are rows of ``ai.evidence`` with a ``subject_type``; while ``FBI_AI_RESEARCH_V2`` is
 ``shadow`` they exist for the comparison and for nobody else: not the packet (``test_research_v2_cycle``), not the set of the day, the decision layer,
-the post-match review, the report of the day, the learning of the sources, nor any panel of the admin. Only ``on`` - with the evidence of its gate -
-turns them into part of what the system knows.
+the post-match review, the report of the day, the learning of the sources, any panel of the admin, nor the news a reader sees (plan UX, A10).
+Only ``on`` - with the evidence of its gate - turns them into part of what the system knows.
 
 Every reader of the table is run on the world of the post-match tests (six matches, a report that proved wrong) three times: as it is; with a typed
 claim written for F5 - and ``off``, ``shadow`` or ``on`` without the gate: it answers exactly the same; and ``on`` with the gate passed: it notices the
@@ -25,7 +25,7 @@ from psycopg.rows import dict_row
 from fbi.ai import gates, learning
 from fbi.ai.calendar import day_bounds, local_day
 from fbi.ai.evidence import EvidenceIn, store
-from fbi.api.services import ai_layer, ai_v2, intelligence
+from fbi.api.services import ai_layer, ai_v2, intelligence, news
 from fbi.intel import decision, match_review, report
 from fbi.picks import daily
 
@@ -149,6 +149,12 @@ def of_the_intelligence_day(db: psycopg.Connection[Any], pm: Pm) -> Any:
     return intelligence.day_view(db, day=DAY).data["sources"]
 
 
+def of_the_readers_news(db: psycopg.Connection[Any], pm: Pm) -> Any:
+    """What a reader sees in the match's «Noticias» (plan UX, A10): the user layer reads the table too since the two plans' code was merged."""
+    got = news.match_news(db, pm.f["F5"], at=LATE).data
+    return None if got is None else got.model_dump(mode="json")
+
+
 READERS: dict[str, Reader] = {
     "the set of the day (picks.daily)": of_the_day_set,
     "the decision layer (intel.decision)": of_the_decision_layer,
@@ -162,6 +168,7 @@ READERS: dict[str, Reader] = {
     "the research panel (ai_v2.research)": of_the_research_panel,
     "the day in PrediGol AI (ai_v2.day_counts)": of_the_day_in_predigol_ai,
     "the intelligence day (intelligence.day_view)": of_the_intelligence_day,
+    "the readers' news of the match (news.match_news, plan UX A10)": of_the_readers_news,
 }
 
 

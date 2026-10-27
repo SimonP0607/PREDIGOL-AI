@@ -121,7 +121,7 @@ REPLAY_SRC = (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
 # ── reading the documents ─────────────────────────────────────────────────────────────────────────────────────────
 
 WORDS = {"un": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
-         "once": 11, "doce": 12, "trece": 13}
+         "once": 11, "doce": 12, "trece": 13, "catorce": 14, "quince": 15}
 """The numbers the guide writes in words."""
 
 
@@ -1177,12 +1177,14 @@ def test_who_reads_the_evidence_table_is_what_the_guide_counts_and_the_structura
                       flags=re.S)
     assert words
     counted = tuple(WORDS[w.lower()] for w in words.groups())
-    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (13, 3, 10, 4)
+    assert counted == (len(files), len(own), len(others), len(guard.BY_ID)) == (15, 3, 12, 4)
     assert set(all_ticked(readers.split("Los otros")[0].split("Tres la leen a propósito")[1])) == own
+    # the IA's ten, and the readers' news and narrative of the UX plan (A10 and A11) since the two plans' code was merged
     assert others == {"ai/packet.py", "picks/daily.py", "intel/decision.py", "intel/match_review.py", "intel/report.py", "ai/learning.py",
-                      "intel/leakage.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py"}
-    assert "y otros siete (sección 5)" in section(1) and len(others) - 3 == 7
-    assert "trece módulos, diez de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
+                      "intel/leakage.py", "api/services/ai_layer.py", "api/services/ai_v2.py", "api/services/intelligence.py",
+                      "api/services/news.py", "narrative/job.py"}
+    assert "y otros nueve (sección 5)" in section(1) and len(others) - 3 == 9
+    assert "quince módulos, doce de ellos ajenos a v2" in section(11) and "el paquete, los picks del día, la decisión, la revisión del partido" in section(11)
     assert "(`subject_type IS NULL OR` lo que diga `gates.typed_visible`: v2 en `on` **y** la fila más nueva del gate en `PASA`)" in readers
     assert "ai_replay.py" in readers
     assert "PacketBuilder(conn, typed_evidence=typed_visible(conn))" in (BACKEND / "scripts" / "ai_replay.py").read_text(encoding="utf-8")
