@@ -180,6 +180,11 @@
       "name": "Muestra",
       "short": "Cuántos casos hay detrás de una cifra. Con pocos, la suerte pesa tanto como el acierto.",
       "long": "Una rentabilidad del 20 % con 15 picks dice poco; con 500, mucho más. Por eso PrediGol muestra cuántos picks liquidados hay detrás de cada resultado."
+    },
+    "lineValue": {
+      "name": "Valor de línea",
+      "short": "Lo que valía tu cuota frente al precio justo del cierre: la cuota por la probabilidad sin margen del consenso de las casas en la última captura antes del inicio, menos uno.",
+      "long": "Positivo: tomaste una cuota mejor que la del cierre sin margen. Se calcula cuando el partido ya empezó, con tu cuota si la indicaste. Dice si el precio era bueno, no si el pick ganó: también tiene su muestra."
     }
   }
 }

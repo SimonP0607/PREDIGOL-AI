@@ -1,15 +1,7 @@
 /// <reference types="bun" />
 import { describe, expect, test } from "bun:test";
 import type { UserParlay, UserPick } from "@/lib/api/v1/types_records";
-import {
-  fromParlays,
-  fromPicks,
-  outcomeOf,
-  recap,
-  streaksOf,
-  within,
-  type RecapRecord,
-} from "./recapData";
+import { fromParlays, fromPicks, outcomeOf, recap, within, type RecapRecord } from "./recapData";
 
 const r = (
   at: string,
@@ -29,16 +21,7 @@ describe("Tu recapitulación (REVIEW point 19)", () => {
     expect(outcomeOf("ACTIVE")).toBeNull();
   });
 
-  test("the streaks: current, best won, worst lost - a void neither", () => {
-    expect(streaksOf(["win", "win", "loss", "win", "win", "win", "loss", "loss"])).toEqual({
-      current: { kind: "loss", length: 2 },
-      bestWin: 3,
-      worstLoss: 2,
-    });
-    expect(streaksOf([])).toEqual({ current: null, bestWin: 0, worstLoss: 0 });
-  });
-
-  test("profit by day and in total, odds and markets, at the profit each record was settled at", () => {
+  test("profit by day and in total, at the profit each record was settled at - and never a streak", () => {
     const rs = [
       r("2032-08-01T15:00:00Z", "win", 2.0, 1.0),
       r("2032-08-01T18:00:00Z", "loss", 3.5, -1, "OU"),
@@ -63,17 +46,24 @@ describe("Tu recapitulación (REVIEW point 19)", () => {
     expect(x.days.map((d) => Math.round(d.total * 10) / 10)).toEqual([0, 0.8, -0.2]);
     expect(x.bestDay?.day).toBe("2032-08-02");
     expect(x.worstDay?.day).toBe("2032-08-03");
-    expect(x.byOdds.find((b) => b.key === "1.5-2")).toMatchObject({
-      count: 1,
-      wins: 1,
-      hitRate: 1,
-    });
-    expect(x.byOdds.find((b) => b.key === "5+")).toMatchObject({ count: 1, wins: 0, hitRate: 0 });
-    expect(x.byMarket.map((m) => [m.market, m.count, m.hitRate])).toEqual([
-      ["1X2", 3, 0.5],
-      ["OU", 2, 0.5],
-    ]);
-    expect(x.last).toEqual(["win", "loss", "win", "loss"]);
+    // plan UX, B5 (section 30): no streak is kept, and the breakdown is the server's
+    expect(Object.keys(x).sort()).toEqual(
+      [
+        "avgOdds",
+        "avgOddsWon",
+        "bestDay",
+        "days",
+        "hitRate",
+        "losses",
+        "profit",
+        "roi",
+        "settled",
+        "staked",
+        "voids",
+        "wins",
+        "worstDay",
+      ].sort(),
+    );
   });
 
   test("the user's own odds count when they gave them; pending picks are left out", () => {

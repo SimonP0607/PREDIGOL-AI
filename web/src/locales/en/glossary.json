@@ -180,6 +180,11 @@
       "name": "Sample",
       "short": "How many cases stand behind a figure. With few, luck weighs as much as skill.",
       "long": "A 20% return over 15 picks says little; over 500, far more. That is why PrediGol shows how many settled picks stand behind each result."
+    },
+    "lineValue": {
+      "name": "Line value",
+      "short": "What your odds were worth against the fair closing price: the odds times the bookmakers' consensus probability without margin at the last capture before kick-off, minus one.",
+      "long": "Positive: you took better odds than the close without margin. It is worked out once the match has started, with your own odds when you gave them. It says whether the price was good, not whether the pick won: it has its sample too."
     }
   }
 }

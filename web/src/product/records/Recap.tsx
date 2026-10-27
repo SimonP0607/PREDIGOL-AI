@@ -1,8 +1,10 @@
 /**
- * "Tu recapitulación" (REVIEW PREDIGOL, point 19): the user's own settled picks - or parlays - in animated charts:
- * profit building up day by day, profit per day, the average odds and how each odds range went, the streaks, and
- * each market. Figures count up and charts draw in; nothing moves with reduced motion. One unit per record, at the
- * profit each was settled at: PrediGol handles no money.
+ * "Tu recapitulación" (REVIEW PREDIGOL, point 19): the user's own settled picks - or parlays - over time: how many, how
+ * they went, the average odds, and - from the sample the plan asks (plan UX, B5, section 30: «con menos de 25 liquidados
+ * solo se muestran los conteos») - the hit rate, the units, the return with its margin and the two charts of units, day by
+ * day. No streaks (section 30: «rachas que inviten a apostar», never); the breakdown by kind of bet, league and odds
+ * range is the server's, under the filter of «Picks guardados» (PicksSummary). Figures count up and charts draw in;
+ * nothing moves with reduced motion. One unit per record, at the profit each was settled at: PrediGol handles no money.
  */
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -19,7 +21,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3, Flame, TrendingDown } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { intlTag, t } from "@/lib/i18n";
 import { DASH, fmtInt, fmtOdds, fmtPct, localFixed } from "@/lib/i18n/format";
@@ -27,18 +29,16 @@ import { getTimeZone, zonedInstant } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { Card, ErrorState, SectionHeader, SkeletonBlock } from "@/product/shared/States";
-import { marketName } from "@/product/shared/markets";
 import { useCountUp, useReducedMotion } from "@/product/shared/motion";
 import { ChipGroup } from "@/product/picks/Controls";
 import { fromParlays, fromPicks, recap, within, type Recap as RecapData } from "./recapData";
 import { fmtUnits } from "./units";
+import { MIN_SAMPLE, enough, marginOf, sampleLine } from "./sample";
 
 type Scope = "picks" | "parlays";
 const PERIODS: readonly number[] = [30, 90, 0];
 const POSITIVE = "var(--color-positive)";
 const NEGATIVE = "var(--color-negative)";
-const GOLD = "var(--color-gold)";
-const PRIMARY = "var(--color-primary)";
 const GRID = "var(--color-border)";
 const TICK = { fill: "var(--color-subtle-foreground)", fontSize: 10 };
 const TOOLTIP = {
@@ -132,9 +132,9 @@ function tone(n: number | null): string | undefined {
 }
 
 function Kpis({ r }: { r: RecapData }) {
-  const current = r.streaks.current;
+  const shown = enough(r.staked);
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6" data-testid="recap-kpis">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" data-testid="recap-kpis">
       <Kpi
         label={<GlossaryTerm term="settlement">{t("records.recap.kpi.settled")}</GlossaryTerm>}
         testId="settled"
@@ -144,24 +144,24 @@ function Kpis({ r }: { r: RecapData }) {
       <Kpi
         label={t("records.recap.kpi.hitRate")}
         testId="hit-rate"
-        value={<Counted value={r.hitRate} format={(n) => fmtPct(n, 0)} />}
+        value={<Counted value={shown ? r.hitRate : null} format={(n) => fmtPct(n, 0)} />}
       />
       <Kpi
         label={t("records.recap.kpi.profit")}
         testId="profit"
-        value={<Counted value={r.profit} format={units} />}
-        tone={tone(r.profit)}
+        value={<Counted value={shown ? r.profit : null} format={units} />}
+        tone={shown ? tone(r.profit) : undefined}
       />
       <Kpi
         label={<GlossaryTerm term="roi">{t("records.recap.kpi.roi")}</GlossaryTerm>}
         testId="roi"
-        value={<Counted value={r.roi} format={(n) => fmtPct(n, 1)} />}
-        tone={tone(r.roi)}
+        value={<Counted value={shown ? r.roi : null} format={(n) => fmtPct(n, 1)} />}
+        tone={shown ? tone(r.roi) : undefined}
         hint={
-          r.roi !== null ? (
+          r.staked > 0 ? (
             <span data-testid="recap-roi-sample">
               <GlossaryTerm term="sample">
-                {t("records.roiSample", { count: r.staked, n: fmtInt(r.staked) })}
+                {sampleLine({ n: r.staked, margin: shown ? marginOf(r.staked) : null })}
               </GlossaryTerm>
             </span>
           ) : undefined
@@ -174,16 +174,6 @@ function Kpis({ r }: { r: RecapData }) {
         hint={
           r.avgOddsWon !== null
             ? t("records.recap.kpi.avgOddsWon", { odds: fmtOdds(r.avgOddsWon) })
-            : undefined
-        }
-      />
-      <Kpi
-        label={t("records.recap.kpi.bestStreak")}
-        testId="best-streak"
-        value={<Counted value={r.streaks.bestWin} format={(n) => fmtInt(Math.round(n))} />}
-        hint={
-          current
-            ? t(`records.recap.kpi.current.${current.kind}`, { count: current.length })
             : undefined
         }
       />
@@ -293,185 +283,6 @@ function PerDay({ r, animate }: { r: RecapData; animate: boolean }) {
   );
 }
 
-function OddsRanges({ r, animate }: { r: RecapData; animate: boolean }) {
-  const data = r.byOdds.map((b) => ({
-    ...b,
-    label: t(`records.recap.odds.bucket.${b.key}`),
-  }));
-  return (
-    <ChartCard
-      title={t("records.recap.odds.title")}
-      subtitle={
-        r.avgOdds !== null
-          ? t("records.recap.odds.subtitle", { odds: fmtOdds(r.avgOdds) })
-          : undefined
-      }
-      testId="recap-odds"
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
-          <CartesianGrid vertical={false} stroke={GRID} />
-          <XAxis dataKey="label" tick={TICK} tickLine={false} axisLine={false} />
-          <YAxis tick={TICK} tickLine={false} axisLine={false} width={30} allowDecimals={false} />
-          <Tooltip
-            {...TOOLTIP}
-            formatter={(
-              v: number,
-              _n: string,
-              item: { payload?: { hitRate?: number | null; profit?: number } },
-            ) => [
-              t("records.recap.odds.tooltip", {
-                count: v,
-                hit: fmtPct(item.payload?.hitRate ?? null, 0),
-                profit: units(item.payload?.profit ?? 0),
-              }),
-              t("records.recap.odds.count"),
-            ]}
-          />
-          <Bar
-            dataKey="count"
-            fill={GOLD}
-            radius={[3, 3, 0, 0]}
-            isAnimationActive={animate}
-            animationDuration={DRAW_MS}
-            animationEasing="ease-out"
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartCard>
-  );
-}
-
-function Markets({ r, animate }: { r: RecapData; animate: boolean }) {
-  const data = r.byMarket.map((m) => ({
-    ...m,
-    label: marketName(m.market),
-    pct: m.hitRate === null ? 0 : Math.round(m.hitRate * 100),
-  }));
-  return (
-    <ChartCard
-      title={t("records.recap.markets.title")}
-      subtitle={t("records.recap.markets.subtitle")}
-      testId="recap-markets"
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
-          <CartesianGrid horizontal={false} stroke={GRID} />
-          <XAxis
-            type="number"
-            domain={[0, 100]}
-            tick={TICK}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v: number) => `${v}%`}
-          />
-          <YAxis
-            type="category"
-            dataKey="label"
-            tick={TICK}
-            tickLine={false}
-            axisLine={false}
-            width={96}
-          />
-          <Tooltip
-            {...TOOLTIP}
-            formatter={(
-              v: number,
-              _n: string,
-              item: { payload?: { count?: number; profit?: number } },
-            ) => [
-              t("records.recap.markets.tooltip", {
-                pct: v,
-                count: item.payload?.count ?? 0,
-                profit: units(item.payload?.profit ?? 0),
-              }),
-              t("records.recap.markets.hitRate"),
-            ]}
-          />
-          <Bar
-            dataKey="pct"
-            fill={PRIMARY}
-            radius={[0, 3, 3, 0]}
-            isAnimationActive={animate}
-            animationDuration={DRAW_MS}
-            animationEasing="ease-out"
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartCard>
-  );
-}
-
-function Streak({ r, animate }: { r: RecapData; animate: boolean }) {
-  const current = r.streaks.current;
-  return (
-    <Card className="p-4" as="article">
-      <h3 className="font-display text-sm font-semibold">{t("records.recap.streak.title")}</h3>
-      <p className="mt-0.5 text-caption text-muted-foreground">
-        {t("records.recap.streak.subtitle", { count: r.last.length })}
-      </p>
-      <ol
-        className="mt-4 flex flex-wrap gap-1.5"
-        data-testid="recap-streak"
-        aria-label={t("records.recap.streak.title")}
-      >
-        {r.last.map((x, i) => (
-          <li
-            key={i}
-            title={t(`records.recap.streak.${x}`)}
-            style={animate ? { animationDelay: `${i * 45}ms` } : undefined}
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-full text-micro font-bold",
-              x === "win"
-                ? "bg-positive-soft text-positive ring-1 ring-positive/40"
-                : "bg-negative-soft text-negative ring-1 ring-negative/40",
-              animate && "animate-in fade-in zoom-in-50 fill-mode-both duration-300",
-            )}
-          >
-            {x === "win" ? t("records.recap.streak.w") : t("records.recap.streak.l")}
-          </li>
-        ))}
-      </ol>
-      <dl className="mt-4 grid grid-cols-3 gap-3 text-center">
-        <div>
-          <dt className="text-label text-subtle-foreground">{t("records.recap.streak.current")}</dt>
-          <dd
-            className={cn(
-              "numeric mt-1 flex items-center justify-center gap-1 text-lg font-semibold",
-              current?.kind === "win" ? "text-positive" : current ? "text-negative" : undefined,
-            )}
-          >
-            {current ? (
-              <>
-                {current.kind === "win" ? (
-                  <Flame aria-hidden className="h-4 w-4" />
-                ) : (
-                  <TrendingDown aria-hidden className="h-4 w-4" />
-                )}
-                {current.length}
-              </>
-            ) : (
-              DASH
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-label text-subtle-foreground">{t("records.recap.streak.bestWin")}</dt>
-          <dd className="numeric mt-1 text-lg font-semibold text-positive">{r.streaks.bestWin}</dd>
-        </div>
-        <div>
-          <dt className="text-label text-subtle-foreground">
-            {t("records.recap.streak.worstLoss")}
-          </dt>
-          <dd className="numeric mt-1 text-lg font-semibold text-negative">
-            {r.streaks.worstLoss}
-          </dd>
-        </div>
-      </dl>
-    </Card>
-  );
-}
-
 /**
  * The recap reads every record, page after page - the largest pages the API serves, 500 picks or 200 parlays (plan
  * UX, A1, defect F53: it read the first 500 picks and the first 200 parlays and added those up as if they were all).
@@ -549,13 +360,23 @@ export function Recap() {
     body = (
       <div key={key} className="space-y-3">
         <Kpis r={r} />
-        <div className="grid gap-3 lg:grid-cols-2">
-          <Cumulative r={r} animate={animate} />
-          <PerDay r={r} animate={animate} />
-          <OddsRanges r={r} animate={animate} />
-          <Streak r={r} animate={animate} />
-          {scope === "picks" && r.byMarket.length ? <Markets r={r} animate={animate} /> : null}
-        </div>
+        {enough(r.staked) ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Cumulative r={r} animate={animate} />
+            <PerDay r={r} animate={animate} />
+          </div>
+        ) : (
+          <p
+            className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
+            data-testid="recap-sample-note"
+          >
+            {t("records.recap.sampleNote", {
+              count: r.staked,
+              n: fmtInt(r.staked),
+              min: fmtInt(MIN_SAMPLE),
+            })}
+          </p>
+        )}
         <p className="text-caption text-subtle-foreground">
           {t("records.recap.note")}{" "}
           <GlossaryTerm term="units">{t("records.unitsLink")}</GlossaryTerm>

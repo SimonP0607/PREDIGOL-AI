@@ -99,6 +99,7 @@ import type { MatchCalendar } from "./types_calendar";
 import type { MatchForecast } from "./types_forecast";
 import type { MatchKnowledge } from "./types_knowledge";
 import type { PostMatch } from "./types_postmatch";
+import type { MyPicksFilter, PicksSummary } from "./types_mypicks";
 import type { MatchReading } from "./types_reading";
 import type { PickExplanation } from "./types_explanation";
 import type { MatchNews, TodayNews } from "./types_news";
@@ -289,6 +290,38 @@ export function lastApiError(now = Date.now()): string | null {
 /** For tests: forget the last error. */
 export function resetLastApiError(): void {
   lastError = null;
+}
+
+/** The filter of Mis picks as query parameters (plan UX, B5): what is not set is left out. */
+export function filterParams(
+  filter: MyPicksFilter | undefined,
+): Record<string, string | number | undefined> {
+  const f = filter ?? {};
+  return {
+    result: f.result ?? undefined,
+    market: f.market ?? undefined,
+    competition: f.competition ?? undefined,
+    origin: f.origin ?? undefined,
+    band: f.band ?? undefined,
+    since: f.since ?? undefined,
+    until: f.until ?? undefined,
+    q: f.q?.trim() ? f.q.trim() : undefined,
+  };
+}
+
+/**
+ * The address of a CSV file of the reader's own records (plan UX, B5): a plain download from the page's own origin, with
+ * the session cookie, the filter of Mis picks for the picks. A GET: nothing to protect from another site's form.
+ */
+export function exportUrl(kind: "picks" | "parlays", filter?: MyPicksFilter): string {
+  const params = new URLSearchParams();
+  if (kind === "picks") {
+    for (const [k, v] of Object.entries(filterParams(filter))) {
+      if (v !== undefined && v !== "") params.set(k, String(v));
+    }
+  }
+  const query = params.toString();
+  return `/api/v1/me/${kind}/export${query ? `?${query}` : ""}`;
 }
 
 /** A repeated parameter (`?market=1X2&market=OU`) is an array; an empty one is left out. */
@@ -524,13 +557,27 @@ export const v1 = {
   // ── records: the day as persisted, and the user's own ──────────────────────
   daily: (q: { day?: string | undefined } & Preview = {}) =>
     getJson<Envelope<DailyBoard>>("/daily", q as Params),
-  /** A page of the user's saved picks: `meta.total` counts them all, `meta.next_cursor` leads on. */
-  myPicks: (q: { status?: "open" | "settled"; limit?: number; cursor?: string | undefined } = {}) =>
+  /**
+   * A page of the user's saved picks: `meta.total` counts them all, `meta.next_cursor` leads on - under the filter of
+   * Mis picks when one is given (plan UX, B5).
+   */
+  myPicks: (
+    q: {
+      status?: "open" | "settled";
+      limit?: number;
+      cursor?: string | undefined;
+      filter?: MyPicksFilter | undefined;
+    } = {},
+  ) =>
     getJson<Envelope<UserPick[]>>("/me/picks", {
       status: q.status,
       limit: q.limit ?? 500,
       cursor: q.cursor,
+      ...filterParams(q.filter),
     }),
+  /** The reader's saved picks under the filter: totals, breakdown and line value, with their sample (plan UX, B5). */
+  myPicksSummary: (filter?: MyPicksFilter) =>
+    getJson<Envelope<PicksSummary>>("/me/picks/summary", filterParams(filter)),
   savePick: (body: SavePickIn) =>
     postJson<Envelope<{ id: number; snapshot: unknown }>>("/me/picks", body),
   setPickOdds: (id: number, userOdds: string | number | null) =>

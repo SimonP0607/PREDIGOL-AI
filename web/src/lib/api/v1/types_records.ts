@@ -238,6 +238,13 @@ export interface UserPick {
   snapshot: PickSnapshot;
   /** Settled again after the provider corrected the match; oldest first. Empty: never. */
   corrections?: ResultCorrection[];
+  /**
+   * Once the match started: the de-vigged (Shin) consensus probability of the selection at the last capture before
+   * kick-off - the closing reference (plan UX, B5; clv-v1). Null before kick-off or without one; older answers omit it.
+   */
+  p_close?: Dec | null;
+  /** clv-v1: the price the reader counts (theirs when they gave it) at p_close, odds × p_close − 1, a share. */
+  line_value?: Dec | null;
 }
 
 export interface LegIn {
@@ -331,6 +338,10 @@ export interface UserParlay {
 export type HistoryPeriod = "today" | "7d" | "30d" | "all";
 export type HistoryGroupKey = "predigol_picks" | "my_picks" | "predigol_parlays" | "my_parlays";
 
+/**
+ * A group counted with the sample rule of Mis picks (plan UX, B5, section 30): below min_sample settled records only the
+ * counts - hit rate, units and ROI are null - and below `conclusive` the sample does not allow a conclusion yet.
+ */
 export interface HistoryGroup {
   total: number;
   pending: number;
@@ -339,9 +350,13 @@ export interface HistoryGroup {
   push: number;
   void: number;
   hit_rate: number | null;
+  /** Settled records with a stake: the n of the sample. */
   staked_units: Dec;
-  profit_units: Dec;
+  profit_units: Dec | null;
   roi: number | null;
+  /** ± one standard error of the ROI, a share; null below min_sample. Older answers omit it. */
+  margin?: number | null;
+  conclusive?: boolean;
 }
 
 export interface History {
@@ -351,4 +366,8 @@ export interface History {
   until: Iso;
   evaluation_mode: boolean;
   groups: Record<HistoryGroupKey, HistoryGroup>;
+  /** Settled records from which hit rate, units, ROI and margin are shown (25). */
+  min_sample?: number;
+  /** Settled records from which the sample allows a conclusion (100). */
+  conclusive?: number;
 }

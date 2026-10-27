@@ -1,8 +1,9 @@
 /**
  * "Tu recapitulación" in Mis picks (REVIEW PREDIGOL, point 19): what the user's own settled picks (or parlays) add
- * up to - profit day by day and in total, the average odds, how each odds range and each market went, the streaks.
- * Computed here from every record of the account (GET /me/picks, /me/parlays, every page), at one unit per record,
- * with the profit each record was settled at. Pure: no React here.
+ * up to - profit day by day and in total, the average odds. Computed here from every record of the account (GET
+ * /me/picks, /me/parlays, every page), at one unit per record, with the profit each record was settled at. Pure: no React
+ * here. No streaks (plan UX, B5, section 30: «rachas que inviten a apostar», never); the breakdown by kind of bet, league
+ * and odds range is the server's (GET /me/picks/summary), with its sample.
  *
  * One figure wherever it is shown (plan UX, A1, defects F53 and F54): the window and the counts follow the server's
  * history (GET /me/history, userdata/records.py) - calendar days in the reader's zone, a parlay by its first match,
@@ -122,30 +123,6 @@ export interface DayPoint {
   total: number;
 }
 
-export interface Bucket {
-  key: string;
-  from: number;
-  to: number | null;
-  count: number;
-  wins: number;
-  hitRate: number | null;
-  profit: number;
-}
-
-export interface MarketRow {
-  market: string;
-  count: number;
-  wins: number;
-  hitRate: number | null;
-  profit: number;
-}
-
-export interface Streaks {
-  current: { kind: "win" | "loss"; length: number } | null;
-  bestWin: number;
-  worstLoss: number;
-}
-
 export interface Recap {
   settled: number;
   wins: number;
@@ -160,43 +137,13 @@ export interface Recap {
   roi: number | null;
   avgOdds: number | null;
   avgOddsWon: number | null;
-  streaks: Streaks;
-  /** The last 20 decided records, oldest first (voids left out). */
-  last: Array<"win" | "loss">;
   days: DayPoint[];
   bestDay: DayPoint | null;
   worstDay: DayPoint | null;
-  byOdds: Bucket[];
-  byMarket: MarketRow[];
 }
-
-export const ODDS_BUCKETS: ReadonlyArray<{ key: string; from: number; to: number | null }> = [
-  { key: "lt1.5", from: 1, to: 1.5 },
-  { key: "1.5-2", from: 1.5, to: 2 },
-  { key: "2-3", from: 2, to: 3 },
-  { key: "3-5", from: 3, to: 5 },
-  { key: "5+", from: 5, to: null },
-];
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const rate = (wins: number, decided: number) => (decided > 0 ? wins / decided : null);
-
-export function streaksOf(results: ReadonlyArray<"win" | "loss">): Streaks {
-  let bestWin = 0;
-  let worstLoss = 0;
-  let kind: "win" | "loss" | null = null;
-  let length = 0;
-  for (const r of results) {
-    if (r === kind) length += 1;
-    else {
-      kind = r;
-      length = 1;
-    }
-    if (kind === "win") bestWin = Math.max(bestWin, length);
-    else worstLoss = Math.max(worstLoss, length);
-  }
-  return { current: kind ? { kind, length } : null, bestWin, worstLoss };
-}
 
 export function recap(records: readonly RecapRecord[], tz?: string): Recap {
   const sorted = [...records].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
@@ -231,40 +178,6 @@ export function recap(records: readonly RecapRecord[], tz?: string): Recap {
     null,
   );
 
-  const byOdds: Bucket[] = ODDS_BUCKETS.map((b) => {
-    const inside = sorted.filter(
-      (r) => r.odds !== null && r.odds >= b.from && (b.to === null || r.odds < b.to),
-    );
-    const w = inside.filter((r) => r.outcome === "win").length;
-    const l = inside.filter((r) => r.outcome === "loss").length;
-    return {
-      ...b,
-      count: inside.length,
-      wins: w,
-      hitRate: rate(w, w + l),
-      profit: inside.reduce((a, r) => a + r.profit, 0),
-    };
-  });
-
-  const markets = new Map<string, RecapRecord[]>();
-  for (const r of sorted) {
-    if (r.market === null) continue;
-    markets.set(r.market, [...(markets.get(r.market) ?? []), r]);
-  }
-  const byMarket: MarketRow[] = [...markets.entries()]
-    .map(([market, rs]) => {
-      const w = rs.filter((r) => r.outcome === "win").length;
-      const l = rs.filter((r) => r.outcome === "loss").length;
-      return {
-        market,
-        count: rs.length,
-        wins: w,
-        hitRate: rate(w, w + l),
-        profit: rs.reduce((a, r) => a + r.profit, 0),
-      };
-    })
-    .sort((a, b) => b.count - a.count || a.market.localeCompare(b.market));
-
   const priced = sorted.filter((r) => r.odds !== null).map((r) => r.odds as number);
   const pricedWon = sorted
     .filter((r) => r.odds !== null && r.outcome === "win")
@@ -281,12 +194,8 @@ export function recap(records: readonly RecapRecord[], tz?: string): Recap {
     roi: staked ? profit / staked : null,
     avgOdds: mean(priced),
     avgOddsWon: mean(pricedWon),
-    streaks: streaksOf(decided),
-    last: decided.slice(-20),
     days,
     bestDay: best,
     worstDay: worst,
-    byOdds,
-    byMarket,
   };
 }

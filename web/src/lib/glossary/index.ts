@@ -53,7 +53,8 @@ export const TERMS = {
   halfLost: { category: "results", related: ["line", "halfWon"] },
   units: { category: "results", related: ["roi", "odds"] },
   roi: { category: "results", related: ["units", "sample", "settlement"] },
-  sample: { category: "results", related: ["roi"] },
+  sample: { category: "results", related: ["roi", "lineValue"] },
+  lineValue: { category: "results", related: ["odds", "marketProbability", "margin", "sample"] },
 } as const satisfies Record<string, TermInfo>;
 
 export type TermKey = keyof typeof TERMS;

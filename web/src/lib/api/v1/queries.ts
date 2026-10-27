@@ -1,6 +1,7 @@
 /** TanStack Query option factories for the live API. */
 import { infiniteQueryOptions } from "@tanstack/react-query";
-import { v1, type BestOddsQuery, type MatchQuery } from "./client";
+import { filterParams, v1, type BestOddsQuery, type MatchQuery } from "./client";
+import type { MyPicksFilter } from "./types_mypicks";
 import type { ParlayKind, PicksQuery } from "./types_product";
 import type { BuilderQuery } from "./types_builder";
 import type { HistoryPeriod } from "./types_records";
@@ -104,14 +105,21 @@ export const live = {
    * the next page from `meta.next_cursor`. Mis picks lists with pages of 25 (parlays: 10); the recap reads every
    * page, of 500 (parlays: 200, the most the API serves).
    */
-  myPicksPages: (size: number) =>
+  /** The reader's saved picks a page at a time, under the filter of Mis picks when one is given (plan UX, B5). */
+  myPicksPages: (size: number, filter?: MyPicksFilter) =>
     infiniteQueryOptions({
-      queryKey: ["v1", "me", "picks", "pages", size],
-      queryFn: ({ pageParam }) => v1.myPicks({ limit: size, cursor: pageParam }),
+      queryKey: ["v1", "me", "picks", "pages", size, filterParams(filter)],
+      queryFn: ({ pageParam }) => v1.myPicks({ limit: size, cursor: pageParam, filter }),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (last) => last.meta.next_cursor ?? undefined,
       refetchInterval: 2 * MINUTE,
     }),
+  /** Totals, breakdown and line value of the reader's saved picks under the filter (plan UX, B5). */
+  myPicksSummary: (filter?: MyPicksFilter) => ({
+    queryKey: ["v1", "me", "picks", "summary", filterParams(filter)],
+    queryFn: () => v1.myPicksSummary(filter),
+    refetchInterval: 2 * MINUTE,
+  }),
   myParlaysPages: (size: number) =>
     infiniteQueryOptions({
       queryKey: ["v1", "me", "parlays", "pages", size],
